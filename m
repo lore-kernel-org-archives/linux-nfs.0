@@ -1,8 +1,8 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 4/7] nfsd: nfs4xdr encode_stateid helper function
-Date: Tue, 12 Aug 2008 14:39:41 -0400
-Message-ID: <20080812183941.GB30729@fieldses.org>
-References: <48A1CB0C.4090906@panasas.com> <1218563107-25393-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [PATCH 7/7] nfsd: nfs4xdr decode_stateid helper function
+Date: Tue, 12 Aug 2008 15:04:10 -0400
+Message-ID: <20080812190410.GC30729@fieldses.org>
+References: <48A1CB0C.4090906@panasas.com> <1218563178-25480-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: NFS list <linux-nfs@vger.kernel.org>,
@@ -10,37 +10,50 @@ Cc: NFS list <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chucklever@gmail.com>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59756 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:34780 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750781AbYHLSjn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2008 14:39:43 -0400
-In-Reply-To: <1218563107-25393-1-git-send-email-bhalevy@panasas.com>
+	id S1751357AbYHLTEM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2008 15:04:12 -0400
+In-Reply-To: <1218563178-25480-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 12, 2008 at 08:45:07PM +0300, Benny Halevy wrote:
+On Tue, Aug 12, 2008 at 08:46:18PM +0300, Benny Halevy wrote:
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfsd/nfs4xdr.c |   76 ++++++++++++++++++++++------------------------------
->  1 files changed, 32 insertions(+), 44 deletions(-)
+>  fs/nfsd/nfs4xdr.c |   99 +++++++++++++++++++++++++++++-----------------------
+>  1 files changed, 55 insertions(+), 44 deletions(-)
 > 
 > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 4ec52f9..96da1aa 100644
+> index 47ac498..9570b1b 100644
 > --- a/fs/nfsd/nfs4xdr.c
 > +++ b/fs/nfsd/nfs4xdr.c
-...
-> @@ -2083,12 +2091,9 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
->  {
->  	ENCODE_SEQID_OP_HEAD;
+>  static __be32
+> @@ -929,9 +939,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+>  	int len;
+>  	DECODE_HEAD;
 >  
-> -	if (!nfserr) {
-> -		RESERVE_SPACE(4 + sizeof(stateid_t));
+> -	READ_BUF(sizeof(stateid_opaque_t) + 20);
+> -	READ32(write->wr_stateid.si_generation);
+> -	COPYMEM(&write->wr_stateid.si_opaque, sizeof(stateid_opaque_t));
+> +	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
+> +	if (status)
+> +		return status;
+> +	READ_BUF(16);
 
-Hm, so that was a little over before (a harmless error, but better to
-have it fixed).
+How did that 20 become a 16?
+
+OK, I guess this is another case of a preexisting arithmetic error.
+Anywhere that error would have had immediate consequences, but here
+thanks to the hand-coded write-data decoding, the incorrect argp->p
+isn't used except to check that there's space for the incoming data.
+And previously that check was more pessimistic than necessary.
 
 --b.
 
-> -		WRITE32(lock->lk_resp_stateid.si_generation);
-> -		WRITEMEM(&lock->lk_resp_stateid.si_opaque, sizeof(stateid_opaque_t));
-> -		ADJUST_ARGS();
+>  	READ64(write->wr_offset);
+>  	READ32(write->wr_stable_how);
+>  	if (write->wr_stable_how > 2)
+> -- 
+> 1.5.6.5
+> 
