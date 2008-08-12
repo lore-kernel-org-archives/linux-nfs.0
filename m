@@ -1,64 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: permit unauthenticated stat of export root
-Date: Mon, 11 Aug 2008 18:11:49 -0400
-Message-ID: <20080811221149.GD7550@fieldses.org>
-References: <20080807181148.GK18904@fieldses.org> <489B3DAC.5060004@redhat.com> <20080807191656.GL18904@fieldses.org> <489B4F81.8000204@redhat.com> <20080807204154.GR18904@fieldses.org> <20080808202106.GR15265@fieldses.org> <48A0A64E.1080508@redhat.com> <20080811212640.GB7550@fieldses.org> <48A0AF45.8050306@redhat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Confused about BUG_ON in rpcb_getport_async
+Date: Tue, 12 Aug 2008 12:27:22 +1000
+Message-ID: <18592.62730.840231.108375@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:32984 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:34109 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755452AbYHKWLu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Aug 2008 18:11:50 -0400
-In-Reply-To: <48A0AF45.8050306@redhat.com>
+	id S1751248AbYHLC13 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2008 22:27:29 -0400
+Received: from Relay2.suse.de (relay-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id A4CDC45D89
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2008 04:27:28 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 11, 2008 at 05:29:41PM -0400, Peter Staubach wrote:
-> J. Bruce Fields wrote:
->> On Mon, Aug 11, 2008 at 04:51:26PM -0400, Peter Staubach wrote:
->>   
->>> The Solaris client behaves plus or minus like the Linux client.
->>> It generates a GETATTR unless it receives the attributes via
->>> one of the previous calls.  In the Solaris case, it is an FSINFO
->>> call.
->>>
->>> The current Linux NFS server does not return attributes for the
->>> PATHCONF, FSINFO, or FSSTAT calls.
->>>     
->>
->> Hm.  I don't know why that is.
->>
->>   
->>> Unless these calls are modified, then the NFSv3 GETATTR will need
->>> to be allowed for the same reason that the NFSv2 GETATTR is
->>> allowed.  The NFS client needs, at the very least, the file type
->>> of the node that it is mounting.
->>>
->>> I am confused as to how the testing could have been successful.
->>>     
->>
->> Well, you can try exporting a filesystem with sec=krb5:krb5i:krb5p (no
->> sys) and try mounting v2 or v3, and you'll see that if fails without the
->> patch, and succeeds with it.
->>
->> But testing again (linux client and server), and taking a network trace
->> this time: I mount with -overs=3,sec=krb5, and the client behavior is
->> odd:
->>
->> 	FSINFO call with auth_sys
->> 	GETATTR call with krb5
->> 	FSINFO call with krb5
->>
->> Note that this client actually *does* have access to kerberos
->> credentials--it's just not using them on the initial FSINFO call.
->>
->>   
->
-> What happens if you perform this mount using autofs?
 
-I haven't tried yet.
+Hi 
+ I have a report of a the BUG_ON in rpcb_getport_clnt being
+ triggered.  This is:
+	/* Autobind on cloned rpc clients is discouraged */
+	BUG_ON(clnt->cl_parent != clnt);
 
---b.
+ It looks to me that while they might be discouraged, they are not
+ prevented and so having the BUG_ON is wrong.
+
+ When rpc_clone_client creates a clone, it sets cl_autobind to 0,
+ and gives the new client a reference to the same cl_xprt as the
+ original client.
+
+ The only effect of cl_autobind is to prevent rpc_force_rebind from
+ clearing the BOUND flag on ->cl_xprt.
+ So while a call to rpc_force_rebind on the clone will not clear that
+ flag, a call on the original client will clear that flag.
+
+ So a cloned client can still end up with a ->cl_xprt with the BOUND
+ flag clear.
+
+ So call_bind (which is present in the call trace under the oops) can
+ find that !xprt_bound, even when the client is a cloned client.
+
+ When this happens, ->rpcbind, which is rpcb_getport_clnt, goes BOOM.
+
+ What should happen when a clone client finds that its transport is no
+ longer bound?  Should rpc_getport_async just do
+    clnt = task->tk_client->cl_parent;
+ ??
+
+Perplexed,
+NeilBrown
