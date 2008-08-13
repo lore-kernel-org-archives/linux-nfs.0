@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 8/8] SUNRPC: Add kernel build option to disable server-side
-	use of rpcbind v3/v4
-Date: Wed, 13 Aug 2008 18:40:32 -0400
-Message-ID: <20080813224032.13068.70558.stgit@manray.1015granger.net>
+Subject: [PATCH 2/8] SUNRPC: Add address family field to svc_serv data
+	structure
+Date: Wed, 13 Aug 2008 18:39:46 -0400
+Message-ID: <20080813223945.13068.77265.stgit@manray.1015granger.net>
 References: <20080813223653.13068.9467.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,59 +10,150 @@ Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@netapp.com,
 	trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:30806 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:30834 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753457AbYHMWlq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 18:41:46 -0400
+	with ESMTP id S1753414AbYHMWlv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 18:41:51 -0400
 In-Reply-To: <20080813223653.13068.9467.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow distributions to use the legacy behavior until they integrate an
-appropriate user-space rpcbind daemon that can support IPv6 RPC services.
+Introduce and initialize an address family field in the svc_serv structure.
 
-I tried adding some logic to fall back if (un)registering with a v4
-protocol request failed, but there are too many corner cases.  So I just
-made it a compile-time switch that distributions can throw when they've
-replaced portmapper with rpcbind.
+This field will determine what address family to use for the service's
+listener sockets and which address family is advertised via the local
+rpcbind daemon.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/Kconfig |   22 ++++++++++++++++++++++
- 1 files changed, 22 insertions(+), 0 deletions(-)
+ fs/lockd/svc.c             |    2 +-
+ fs/nfs/callback.c          |    3 ++-
+ fs/nfsd/nfssvc.c           |    3 ++-
+ include/linux/sunrpc/svc.h |   11 +++++++----
+ net/sunrpc/svc.c           |   12 +++++++-----
+ 5 files changed, 19 insertions(+), 12 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index d387358..949e6d1 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -1765,6 +1765,28 @@ config SUNRPC_XPRT_RDMA
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 5bd9bf0..1553fec 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -266,7 +266,7 @@ lockd_up(int proto) /* Maybe add a 'family' option when IPv6 is supported ?? */
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
  
- 	  If unsure, say N.
+ 	error = -ENOMEM;
+-	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
++	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, AF_INET, NULL);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		goto out;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index f447f4b..6a09760 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -105,7 +105,8 @@ int nfs_callback_up(void)
+ 	mutex_lock(&nfs_callback_mutex);
+ 	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+ 		goto out;
+-	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
++	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
++				AF_INET, NULL);
+ 	ret = -ENOMEM;
+ 	if (!serv)
+ 		goto out_err;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 80292ff..4eed938 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -229,7 +229,8 @@ int nfsd_create_serv(void)
  
-+config SUNRPC_REGISTER_V4
-+	bool "Register local RPC services via rpcbind v4 (EXPERIMENTAL)"
-+	depends on SUNRPC && EXPERIMENTAL
-+	default n
-+	help 
-+	  Sun added support for registering RPC services at an IPv6
-+	  address by creating two new versions of the rpcbind protocol
-+	  (RFC 1833).
-+
-+	  This option enables support in the kernel RPC server for
-+	  registering kernel RPC services via version 4 of the rpcbind
-+	  protocol.  If you enable this option, you must run a portmapper
-+	  daemon that supports rpcbind protocol version 4.
-+
-+	  Serving NFS over IPv6 from knfsd (the kernel's NFS server)
-+	  requires that you enable this option and use a portmapper that
-+	  supports rpcbind version 4.
-+
-+	  If unsure, say N to get traditional behavior (register kernel
-+	  RPC services using only rpcbind version 2).  Distributions
-+	  using the legacy Linux portmapper daemon must say N here.
-+
- config RPCSEC_GSS_KRB5
- 	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
- 	depends on SUNRPC && EXPERIMENTAL
+ 	atomic_set(&nfsd_busy, 0);
+ 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+-				      nfsd_last_thread, nfsd, THIS_MODULE);
++				      AF_INET, nfsd_last_thread,
++				      nfsd, THIS_MODULE);
+ 	if (nfsd_serv == NULL)
+ 		err = -ENOMEM;
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index dc69068..a794d4a 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -66,6 +66,7 @@ struct svc_serv {
+ 	struct list_head	sv_tempsocks;	/* all temporary sockets */
+ 	int			sv_tmpcnt;	/* count of temporary sockets */
+ 	struct timer_list	sv_temptimer;	/* timer for aging temporary sockets */
++	sa_family_t		sv_family;	/* listener's address family */
+ 
+ 	char *			sv_name;	/* service name */
+ 
+@@ -381,14 +382,16 @@ struct svc_procedure {
+ /*
+  * Function prototypes.
+  */
+-struct svc_serv *  svc_create(struct svc_program *, unsigned int,
+-			      void (*shutdown)(struct svc_serv*));
++struct svc_serv *svc_create(struct svc_program *, unsigned int,
++					const sa_family_t,
++					void (*shutdown)(struct svc_serv *));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+ 					struct svc_pool *pool);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+-			void (*shutdown)(struct svc_serv*), svc_thread_fn,
+-			struct module *);
++					const sa_family_t,
++					void (*shutdown)(struct svc_serv *),
++					svc_thread_fn, struct module *);
+ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+ void		   svc_destroy(struct svc_serv *);
+ int		   svc_process(struct svc_rqst *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 5a32cb7..2a6649f 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -357,7 +357,7 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
+  */
+ static struct svc_serv *
+ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+-	   void (*shutdown)(struct svc_serv *serv))
++	     const sa_family_t family, void (*shutdown)(struct svc_serv *serv))
+ {
+ 	struct svc_serv	*serv;
+ 	unsigned int vers;
+@@ -366,6 +366,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 
+ 	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+ 		return NULL;
++	serv->sv_family    = family;
+ 	serv->sv_name      = prog->pg_name;
+ 	serv->sv_program   = prog;
+ 	serv->sv_nrthreads = 1;
+@@ -425,21 +426,22 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 
+ struct svc_serv *
+ svc_create(struct svc_program *prog, unsigned int bufsize,
+-		void (*shutdown)(struct svc_serv *serv))
++	   const sa_family_t family, void (*shutdown)(struct svc_serv *serv))
+ {
+-	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
++	return __svc_create(prog, bufsize, /*npools*/1, family, shutdown);
+ }
+ EXPORT_SYMBOL(svc_create);
+ 
+ struct svc_serv *
+ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+-		void (*shutdown)(struct svc_serv *serv),
++		  const sa_family_t family,
++		  void (*shutdown)(struct svc_serv *serv),
+ 		  svc_thread_fn func, struct module *mod)
+ {
+ 	struct svc_serv *serv;
+ 	unsigned int npools = svc_pool_map_get();
+ 
+-	serv = __svc_create(prog, bufsize, npools, shutdown);
++	serv = __svc_create(prog, bufsize, npools, family, shutdown);
+ 
+ 	if (serv != NULL) {
+ 		serv->sv_function = func;
 
