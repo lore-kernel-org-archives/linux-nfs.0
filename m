@@ -1,95 +1,112 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 7/7] nfsd: nfs4xdr decode_stateid helper function
-Date: Wed, 13 Aug 2008 16:57:19 -0400
-Message-ID: <76bd70e30808131357r34ebea2bo9cadc720700cd994@mail.gmail.com>
-References: <48A1CB0C.4090906@panasas.com>
-	 <20080812190410.GC30729@fieldses.org> <48A28DEA.5060406@panasas.com>
-	 <20080813150329.GF21004@fieldses.org>
-	 <1218650349.9042.20.camel@localhost>
-	 <20080813183041.GG26765@fieldses.org>
-	 <1218653992.9042.32.camel@localhost>
-	 <20080813191143.GI26765@fieldses.org>
-	 <1218656153.9042.46.camel@localhost>
-	 <20080813201728.GJ26765@fieldses.org>
-Reply-To: chucklever@gmail.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] svcrdma: Fix race between svc_rdma_recvfrom thread and
+	the dto_tasklet
+Date: Wed, 13 Aug 2008 17:10:18 -0400
+Message-ID: <20080813211018.GM26765@fieldses.org>
+References: <48A30655.3070208@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	"Benny Halevy" <bhalevy@panasas.com>,
-	"NFS list" <linux-nfs@vger.kernel.org>,
-	"pNFS Mailing List" <pnfs@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.190]:51065 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752021AbYHMU5W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 16:57:22 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so38765gvc.37
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2008 13:57:20 -0700 (PDT)
-In-Reply-To: <20080813201728.GJ26765@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:40652 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751040AbYHMVKU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2008 17:10:20 -0400
+In-Reply-To: <48A30655.3070208@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 13, 2008 at 4:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Aug 13, 2008 at 03:35:53PM -0400, Trond Myklebust wrote:
->> On Wed, 2008-08-13 at 15:11 -0400, J. Bruce Fields wrote:
->> > On Wed, Aug 13, 2008 at 02:59:52PM -0400, Trond Myklebust wrote:
->> > > On Wed, 2008-08-13 at 14:30 -0400, J. Bruce Fields wrote:
->> > > > On Wed, Aug 13, 2008 at 01:59:09PM -0400, Trond Myklebust wrote:
->> > > > > Which is a good reason for ditching the entire confusing typedef, and
->> > > > > replacing it with a packed structure instead:
->> > > > >
->> > > > > struct stateid {
->> > > > >       __be32 generation;
->> > > > >       char opaque[12];
->> > > > > } __attribute__((packed));
->> > > >
->> > > > So without the ((packed)), all arrays get aligned to 8-byte boundaries
->> > > > on 64-bit machines?  (What do I need to read to catch up here?)
->> > >
->> > > A quick google showed up:
->> > >
->> > >   http://sig9.com/articles/gcc-packed-structures
->> > >
->> > > In any case, yes, the idea behind the packed attribute is to turn off
->> > > the field alignment.
->> >
->> > Yeah, I was more curious about how to decide when it's necessary.  (Why
->> > didn't we need it before?  Is an embedded struct always aligned as if
->> > the fields of the embedded struct were declared directly in the
->> > containing struct?  Or should we really just be using the packed
->> > attribute *any* time we depend on that alignment, even if it seems
->> > obvious the compiler wouldn't need to add padding?)
->>
->> The advantage of having it packed like the above is that you can still
->> use WRITEMEM() to write out the whole structure in one fell swoop.
+On Wed, Aug 13, 2008 at 11:05:41AM -0500, Tom Tucker wrote:
 >
-> Right, I understand.  But the code has been doing exactly that (a
-> WRITEMEM of the whole thing) since the beginning, so I wondered if there
-> was some reason you thought the switch to the extra char opaque[12] in
-> particular was something that was likely to trigger the addition of
-> padding.
+> RDMA_READ completions are kept on a separate queue from the general
+> I/O request queue. Since a separate lock is used to protect the RDMA_READ
+> completion queue, a race exists between the dto_tasklet and the
+> svc_rdma_recvfrom thread where the dto_tasklet sets the XPT_DATA
+> bit and adds I/O to the read-completion queue. Concurrently, the
+> recvfrom thread checks the generic queue, finds it empty and resets
+> the XPT_DATA bit. A subsequent svc_xprt_enqueue will fail to enqueue
+> the transport for I/O and cause the transport to "stall".
 >
-> Sounds instead like your policy would be just to declare any struct
-> "packed" if we might depend on the absence of padding, without making
-> any assumptions about what compilers might do.  Which is fine.
+> The fix is to protect both lists with the same lock and set the XPT_DATA
+> bit with this lock held.
 >
-> --b.
->
->> If you don't specify 'packed', then the C standard allows the compiler
->> to add padding between the fields in order align them. I'm not sure
->> that compilers will usually do that for a 'char[]' field, but they
->> will definitely for the integer types.
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
-If we go down this route, I suggest we add extra pre-processor
-checking to ensure that the sizeof() the structure is exactly what we
-expect.  This would catch compiler bugs, platform-specific structure
-packing behaviors we didn't anticipate, and incorrect human
-assumptions.  An added bonus might be using sizeof() such a structure
-to generate the maximum buffer size macros automatically.
+OK.  As a bugfix, would you like this sent in now for 2.6.27?
 
-I'm a little leary of using attribute(packed) structures, though.
+--b.
 
--- 
-"Officer. Ma'am. Squeaker."
--- Mr. Incredible
+>
+> ---
+> include/linux/sunrpc/svc_rdma.h          |    1 -
+> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    8 ++++----
+> net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 ++---
+> 3 files changed, 6 insertions(+), 8 deletions(-)
+>
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index ef2e3a2..dc05b54 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -143,7 +143,6 @@ struct svcxprt_rdma {
+> 	unsigned long	     sc_flags;
+> 	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
+> 	struct list_head     sc_read_complete_q;
+> -	spinlock_t           sc_read_complete_lock;
+> 	struct work_struct   sc_work;
+> };
+> /* sc_flags */
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index b4b17f4..74de31a 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -443,18 +443,18 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+>
+> 	dprintk("svcrdma: rqstp=%p\n", rqstp);
+>
+> -	spin_lock_bh(&rdma_xprt->sc_read_complete_lock);
+> +	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
+> 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
+> 		ctxt = list_entry(rdma_xprt->sc_read_complete_q.next,
+> 				  struct svc_rdma_op_ctxt,
+> 				  dto_q);
+> 		list_del_init(&ctxt->dto_q);
+> 	}
+> -	spin_unlock_bh(&rdma_xprt->sc_read_complete_lock);
+> -	if (ctxt)
+> +	if (ctxt) {
+> +		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
+> 		return rdma_read_complete(rqstp, ctxt);
+> +	}
+>
+> -	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
+> 	if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
+> 		ctxt = list_entry(rdma_xprt->sc_rq_dto_q.next,
+> 				  struct svc_rdma_op_ctxt,
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 19ddc38..900cb69 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -359,11 +359,11 @@ static void sq_cq_reap(struct svcxprt_rdma *xprt)
+> 			if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
+> 				struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
+> 				BUG_ON(!read_hdr);
+> +				spin_lock_bh(&xprt->sc_rq_dto_lock);
+> 				set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
+> -				spin_lock_bh(&xprt->sc_read_complete_lock);
+> 				list_add_tail(&read_hdr->dto_q,
+> 					      &xprt->sc_read_complete_q);
+> -				spin_unlock_bh(&xprt->sc_read_complete_lock);
+> +				spin_unlock_bh(&xprt->sc_rq_dto_lock);
+> 				svc_xprt_enqueue(&xprt->sc_xprt);
+> 			}
+> 			svc_rdma_put_context(ctxt, 0);
+> @@ -428,7 +428,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+> 	init_waitqueue_head(&cma_xprt->sc_send_wait);
+>
+> 	spin_lock_init(&cma_xprt->sc_lock);
+> -	spin_lock_init(&cma_xprt->sc_read_complete_lock);
+> 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
+>
+> 	cma_xprt->sc_ord = svcrdma_ord;
+>
