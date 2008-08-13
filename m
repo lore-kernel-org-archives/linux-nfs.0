@@ -1,78 +1,104 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 7/7] nfsd: nfs4xdr decode_stateid helper function
-Date: Wed, 13 Aug 2008 11:03:29 -0400
-Message-ID: <20080813150329.GF21004@fieldses.org>
-References: <48A1CB0C.4090906@panasas.com> <1218563178-25480-1-git-send-email-bhalevy@panasas.com> <20080812190410.GC30729@fieldses.org> <48A28DEA.5060406@panasas.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: [PATCH] svcrdma: Fix race between svc_rdma_recvfrom thread and the
+ dto_tasklet
+Date: Wed, 13 Aug 2008 11:05:41 -0500
+Message-ID: <48A30655.3070208@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Chuck Lever <chucklever@gmail.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:40309 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752393AbYHMPDb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Aug 2008 11:03:31 -0400
-In-Reply-To: <48A28DEA.5060406@panasas.com>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:53392 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751164AbYHMQFm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:05:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 13, 2008 at 10:31:54AM +0300, Benny Halevy wrote:
-> On Aug. 12, 2008, 22:04 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Tue, Aug 12, 2008 at 08:46:18PM +0300, Benny Halevy wrote:
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> ---
-> >>  fs/nfsd/nfs4xdr.c |   99 +++++++++++++++++++++++++++++-----------------------
-> >>  1 files changed, 55 insertions(+), 44 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> >> index 47ac498..9570b1b 100644
-> >> --- a/fs/nfsd/nfs4xdr.c
-> >> +++ b/fs/nfsd/nfs4xdr.c
-> >>  static __be32
-> >> @@ -929,9 +939,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
-> >>  	int len;
-> >>  	DECODE_HEAD;
-> >>  
-> >> -	READ_BUF(sizeof(stateid_opaque_t) + 20);
-> >> -	READ32(write->wr_stateid.si_generation);
-> >> -	COPYMEM(&write->wr_stateid.si_opaque, sizeof(stateid_opaque_t));
-> >> +	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
-> >> +	if (status)
-> >> +		return status;
-> >> +	READ_BUF(16);
-> > 
-> > How did that 20 become a 16?
-> 
-> It was sizeof(stateid_opaque_t) + 20 == sizeof(stateid_t) - 4 + 20 ==
-> sizeof(stateid_t) + 16.
 
-Whoops!  Even now I still fall into the stateid_opaque_t/stateid_t trap!
+RDMA_READ completions are kept on a separate queue from the general
+I/O request queue. Since a separate lock is used to protect the RDMA_READ
+completion queue, a race exists between the dto_tasklet and the
+svc_rdma_recvfrom thread where the dto_tasklet sets the XPT_DATA
+bit and adds I/O to the read-completion queue. Concurrently, the
+recvfrom thread checks the generic queue, finds it empty and resets
+the XPT_DATA bit. A subsequent svc_xprt_enqueue will fail to enqueue
+the transport for I/O and cause the transport to "stall".
 
-> > OK, I guess this is another case of a preexisting arithmetic error.
-> > Anywhere that error would have had immediate consequences, but here
-> > thanks to the hand-coded write-data decoding, the incorrect argp->p
-> > isn't used except to check that there's space for the incoming data.
-> > And previously that check was more pessimistic than necessary.
-> 
-> Oddly enough, the hand coded calculation was fine, as shown above...
-> Note that the remaining 16 bytes correspond to one READ64
-> and two READ32s.
+The fix is to protect both lists with the same lock and set the XPT_DATA
+bit with this lock held.
 
-Got it.
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
---b.
+---
+ include/linux/sunrpc/svc_rdma.h          |    1 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    8 ++++----
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 ++---
+ 3 files changed, 6 insertions(+), 8 deletions(-)
 
-> 
-> Benny
-> 
-> > 
-> > --b.
-> > 
-> >>  	READ64(write->wr_offset);
-> >>  	READ32(write->wr_stable_how);
-> >>  	if (write->wr_stable_how > 2)
-> >> -- 
-> >> 1.5.6.5
-> >>
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index ef2e3a2..dc05b54 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -143,7 +143,6 @@ struct svcxprt_rdma {
+ 	unsigned long	     sc_flags;
+ 	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
+ 	struct list_head     sc_read_complete_q;
+-	spinlock_t           sc_read_complete_lock;
+ 	struct work_struct   sc_work;
+ };
+ /* sc_flags */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index b4b17f4..74de31a 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -443,18 +443,18 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	dprintk("svcrdma: rqstp=%p\n", rqstp);
+ 
+-	spin_lock_bh(&rdma_xprt->sc_read_complete_lock);
++	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
+ 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
+ 		ctxt = list_entry(rdma_xprt->sc_read_complete_q.next,
+ 				  struct svc_rdma_op_ctxt,
+ 				  dto_q);
+ 		list_del_init(&ctxt->dto_q);
+ 	}
+-	spin_unlock_bh(&rdma_xprt->sc_read_complete_lock);
+-	if (ctxt)
++	if (ctxt) {
++		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
+ 		return rdma_read_complete(rqstp, ctxt);
++	}
+ 
+-	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
+ 	if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
+ 		ctxt = list_entry(rdma_xprt->sc_rq_dto_q.next,
+ 				  struct svc_rdma_op_ctxt,
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 19ddc38..900cb69 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -359,11 +359,11 @@ static void sq_cq_reap(struct svcxprt_rdma *xprt)
+ 			if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
+ 				struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
+ 				BUG_ON(!read_hdr);
++				spin_lock_bh(&xprt->sc_rq_dto_lock);
+ 				set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
+-				spin_lock_bh(&xprt->sc_read_complete_lock);
+ 				list_add_tail(&read_hdr->dto_q,
+ 					      &xprt->sc_read_complete_q);
+-				spin_unlock_bh(&xprt->sc_read_complete_lock);
++				spin_unlock_bh(&xprt->sc_rq_dto_lock);
+ 				svc_xprt_enqueue(&xprt->sc_xprt);
+ 			}
+ 			svc_rdma_put_context(ctxt, 0);
+@@ -428,7 +428,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 	init_waitqueue_head(&cma_xprt->sc_send_wait);
+ 
+ 	spin_lock_init(&cma_xprt->sc_lock);
+-	spin_lock_init(&cma_xprt->sc_read_complete_lock);
+ 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
+ 
+ 	cma_xprt->sc_ord = svcrdma_ord;
+
