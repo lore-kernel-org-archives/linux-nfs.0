@@ -1,57 +1,42 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH,RFC 09/09] svcrdma: Update svc_rdma_send_error to use DMA
- LKEY
-Date: Wed, 13 Aug 2008 11:16:45 -0500
-Message-ID: <48A308ED.40900@opengridcomputing.com>
+Subject: [PATCH,RFC 00/02] xprtrdma: Client Fast Memory Registration Support
+Date: Wed, 13 Aug 2008 11:17:21 -0500
+Message-ID: <48A30911.90903@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tom Talpey <Thomas.Talpey@netapp.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:36755 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:36766 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751447AbYHMQQp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:16:45 -0400
+	by vger.kernel.org with ESMTP id S1751993AbYHMQRW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:17:22 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update the svc_rdma_send_error code to use the DMA LKEY which is valid
-regardless of the memory registration strategy in use.
+
+This set of patches implements support for Fast Memory Registration in
+the NFS client. Fast Memory Registration is enabled by writing 6 to
+the rdma_memreg_strategy proc file as follows:
+
+# echo 6 > /proc/sys/sunrpc/rdma_memreg_strategy
+
+If Fast Memory Registration is not supported by the device, the
+memory registration strategy reverts to a global default that
+is supported by all RDMA adapters.
+
+This patches are also available here:
+git://git.linux-nfs.org/projects/tomtucker/xprt-switch-2.6.git
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
----
-  net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 +++++++++--
-  1 files changed, 9 insertions(+), 2 deletions(-)
+[PATCH 01/02] xprtrdma: Add data types to support FRMR
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index e75cb96..94f51da 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -1331,10 +1331,14 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
-  	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+  include/linux/sunrpc/xprtrdma.h |    1 +
+  net/sunrpc/xprtrdma/xprt_rdma.h |   10 +++++++++-
+  2 files changed, 10 insertions(+), 1 deletions(-)
 
-  	/* Prepare SGE for local address */
--	atomic_inc(&xprt->sc_dma_used);
-  	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
-  				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
--	sge.lkey = xprt->sc_phys_mr->lkey;
-+	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
-+		put_page(p);
-+		return;
-+	}
-+	atomic_inc(&xprt->sc_dma_used);
-+	sge.lkey = xprt->sc_dma_lkey;
-  	sge.length = length;
+[PATCH 02/02] xprtrdma: Update the RPC memory registration to use FRMR
 
-  	ctxt = svc_rdma_get_context(xprt);
-@@ -1355,6 +1359,9 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
-  	if (ret) {
-  		dprintk("svcrdma: Error %d posting send for protocol error\n",
-  			ret);
-+		ib_dma_unmap_page(xprt->sc_cm_id->device,
-+				  sge.addr, PAGE_SIZE,
-+				  DMA_FROM_DEVICE);
-  		svc_rdma_put_context(ctxt, 1);
-  	}
-  }
+  net/sunrpc/xprtrdma/verbs.c |  296 ++++++++++++++++++++++++++++++++++++++-----
+  1 files changed, 263 insertions(+), 33 deletions(-)
