@@ -1,159 +1,73 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/8] SUNRPC: Split portmap unregister API into separate
-	function
-Date: Wed, 13 Aug 2008 18:40:09 -0400
-Message-ID: <20080813224008.13068.66471.stgit@manray.1015granger.net>
-References: <20080813223653.13068.9467.stgit@manray.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Confused about BUG_ON in rpcb_getport_async
+Date: Thu, 14 Aug 2008 09:45:51 +1000
+Message-ID: <18595.29231.61262.220929@notabene.brown>
+References: <18592.62730.840231.108375@notabene.brown>
+	<1218573178.7253.31.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org, trond.myklebust@netapp.com,
-	trond.myklebust@fys.uio.no
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:37287 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753506AbYHMWl6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 18:41:58 -0400
-In-Reply-To: <20080813223653.13068.9467.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mx2.suse.de ([195.135.220.15]:43310 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754263AbYHMXp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2008 19:45:57 -0400
+In-Reply-To: message from Trond Myklebust on Tuesday August 12
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Create a separate server-level interface for unregistering RPC services.
+On Tuesday August 12, trond.myklebust@fys.uio.no wrote:
+> On Tue, 2008-08-12 at 12:27 +1000, Neil Brown wrote:
+> > Hi 
+> >  I have a report of a the BUG_ON in rpcb_getport_clnt being
+> >  triggered.  This is:
+> > 	/* Autobind on cloned rpc clients is discouraged */
+> > 	BUG_ON(clnt->cl_parent != clnt);
+> > 
+> >  It looks to me that while they might be discouraged, they are not
+> >  prevented and so having the BUG_ON is wrong.
+> > 
+> >  When rpc_clone_client creates a clone, it sets cl_autobind to 0,
+> >  and gives the new client a reference to the same cl_xprt as the
+> >  original client.
+> > 
+> >  The only effect of cl_autobind is to prevent rpc_force_rebind from
+> >  clearing the BOUND flag on ->cl_xprt.
+> >  So while a call to rpc_force_rebind on the clone will not clear that
+> >  flag, a call on the original client will clear that flag.
+> > 
+> >  So a cloned client can still end up with a ->cl_xprt with the BOUND
+> >  flag clear.
+> > 
+> >  So call_bind (which is present in the call trace under the oops) can
+> >  find that !xprt_bound, even when the client is a cloned client.
+> > 
+> >  When this happens, ->rpcbind, which is rpcb_getport_clnt, goes BOOM.
+> > 
+> >  What should happen when a clone client finds that its transport is no
+> >  longer bound?  Should rpc_getport_async just do
+> >     clnt = task->tk_client->cl_parent;
+> >  ??
+> 
+> This shouldn't be a particularly urgent problem, since lockd should
+> normally be the only thing that needs to use the autobind functionality,
+> and it does not use cloned clients.
+> 
+> That said, I think that the answer is that cloned clients may indeed use
+> rpcbind as long as they share the same program number and version as the
+> parent.
+> IOW: we should probably rather BUG_ON() calls to rpc_bind_new_program()
+> if the parent has xprt->cl_autobind set.
 
-The mechanics of, and the API for, registering and unregistering RPC
-services will diverge further as support for IPv6 is added.
+Just to confirm,  you are saying that the current BUG_ON is indeed
+wrong, and the fact that it fires does not imply any real bug.
+It should be removed.  Possibly a BUG_ON could be put somewhere else
+to catch incorrect behaviour.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Is that correct?
 
- net/sunrpc/svc.c |   76 +++++++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 63 insertions(+), 13 deletions(-)
+I now have multiple people for whom this BUG_ON has fired.
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 2a6649f..58a8012 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -28,6 +28,8 @@
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCDSP
- 
-+static void svc_unregister(const struct svc_serv *serv);
-+
- #define svc_serv_is_pooled(serv)    ((serv)->sv_function)
- 
- /*
-@@ -417,9 +419,8 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		spin_lock_init(&pool->sp_lock);
- 	}
- 
--
- 	/* Remove any stale portmap registrations */
--	svc_register(serv, 0, 0);
-+	svc_unregister(serv);
- 
- 	return serv;
- }
-@@ -488,8 +489,7 @@ svc_destroy(struct svc_serv *serv)
- 	if (svc_serv_is_pooled(serv))
- 		svc_pool_map_put();
- 
--	/* Unregister service with the portmapper */
--	svc_register(serv, 0, 0);
-+	svc_unregister(serv);
- 	kfree(serv->sv_pools);
- 	kfree(serv);
- }
-@@ -729,12 +729,10 @@ int
- svc_register(struct svc_serv *serv, int proto, unsigned short port)
- {
- 	struct svc_program	*progp;
--	unsigned long		flags;
- 	unsigned int		i;
- 	int			error = 0, dummy;
- 
--	if (!port)
--		clear_thread_flag(TIF_SIGPENDING);
-+	BUG_ON(proto == 0 && port == 0);
- 
- 	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
- 		for (i = 0; i < progp->pg_nvers; i++) {
-@@ -755,20 +753,72 @@ svc_register(struct svc_serv *serv, int proto, unsigned short port)
- 			error = rpcb_register(progp->pg_prog, i, proto, port, &dummy);
- 			if (error < 0)
- 				break;
--			if (port && !dummy) {
-+			if (!dummy) {
- 				error = -EACCES;
- 				break;
- 			}
- 		}
- 	}
- 
--	if (!port) {
--		spin_lock_irqsave(&current->sighand->siglock, flags);
--		recalc_sigpending();
--		spin_unlock_irqrestore(&current->sighand->siglock, flags);
-+	return error;
-+}
-+
-+/*
-+ * The local rpcbind daemon listens on either only IPv6 or only
-+ * IPv4.  The kernel can't tell how it's configured.
-+ *
-+ * However, AF_INET addresses are mapped to AF_INET6 in IPv6-only
-+ * configurations, so even an unregistration request on AF_INET
-+ * will get to a local rpcbind daemon listening only on AF_INET6.
-+ *
-+ * So we always unregister via AF_INET (the loopback address is
-+ * fairly unambiguous anyway).
-+ *
-+ * At this point we don't need rpcbind version 4 for unregistration:
-+ * A v2 UNSET request will clear all transports (netids), addresses,
-+ * and address families for [program, version].
-+ *
-+ * This should allow automatic support for both an all-IPv4 and
-+ * an all-IPv6 configuration.
-+ */
-+static void __svc_unregister(struct svc_program *progp, u32 version)
-+{
-+	int error, boolean;
-+
-+	error = rpcb_register(progp->pg_prog, version, 0, 0, &boolean);
-+	dprintk("svc: svc_unregister(%sv%u), error %d, %s\n",
-+			progp->pg_name, version, error,
-+			(boolean ? "succeeded" : "failed"));
-+}
-+
-+/*
-+ * All transport protocols and ports for this service are removed from
-+ * the local rpcbind database if the service is not hidden.  The result
-+ * of unregistration is reported via dprintk for those who want
-+ * verification of the result, but is otherwise not important.
-+ */
-+static void svc_unregister(const struct svc_serv *serv)
-+{
-+	struct svc_program *progp;
-+	unsigned long flags;
-+
-+	clear_thread_flag(TIF_SIGPENDING);
-+
-+	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-+		unsigned int i;
-+		for (i = 0; i < progp->pg_nvers; i++) {
-+			if (progp->pg_vers[i] == NULL)
-+				continue;
-+			if (progp->pg_vers[i]->vs_hidden)
-+				continue;
-+
-+			__svc_unregister(progp, i);
-+		}
- 	}
- 
--	return error;
-+	spin_lock_irqsave(&current->sighand->siglock, flags);
-+	recalc_sigpending();
-+	spin_unlock_irqrestore(&current->sighand->siglock, flags);
- }
- 
- /*
-
+Thanks,
+NeilBrown
