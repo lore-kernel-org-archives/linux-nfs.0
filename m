@@ -1,96 +1,217 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH,RFC 01/09] svcrdma: Add Fast Reg MR Data Types
-Date: Wed, 13 Aug 2008 11:07:08 -0500
-Message-ID: <48A306AC.80800@opengridcomputing.com>
+Subject: [PATCH,RFC 02/09] svcrdma: Add FRMR get/put services
+Date: Wed, 13 Aug 2008 11:10:14 -0500
+Message-ID: <48A30766.2000308@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:53408 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:44618 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751373AbYHMQHI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:07:08 -0400
+	by vger.kernel.org with ESMTP id S1751352AbYHMQKP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:10:15 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Add data types to track Fast Reg Memory Regions. The core data type is
-svc_rdma_fastreg_mr that associates a device MR with a host kva and page
-list. A field is added to the WR context to keep track of the FRMR
-used to map the local memory for an RPC.
-
-An FRMR list and spin lock are added to the transport instance to keep
-track of all FRMR allocated for the transport. Also added are device
-capability flags to indicate what the memory registration
-capabilities are for the underlying device and whether or not fast
-memory registration is supported.
+Add services for the allocating, freeing, and unmapping Fast Reg MR. These
+services will be used by the transport connection setup, send and receive
+routines.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
 ---
- include/linux/sunrpc/svc_rdma.h |   27 ++++++++++++++++++++++++++-
- 1 files changed, 26 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    3 +
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  125 ++++++++++++++++++++++++++++-
+ 2 files changed, 123 insertions(+), 5 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index dc05b54..295ebbc 100644
+index 295ebbc..100754e 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -72,6 +72,7 @@ extern atomic_t rdma_stat_sq_prod;
-  */
- struct svc_rdma_op_ctxt {
- 	struct svc_rdma_op_ctxt *read_hdr;
-+	struct svc_rdma_fastreg_mr *frmr;
- 	int hdr_count;
- 	struct xdr_buf arg;
- 	struct list_head dto_q;
-@@ -103,16 +104,35 @@ struct svc_rdma_chunk_sge {
- 	int start;		/* sge no for this chunk */
- 	int count;		/* sge count for this chunk */
- };
-+struct svc_rdma_fastreg_mr {
+@@ -219,6 +219,9 @@ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
+ extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+ extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
+ extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
++extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
++extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
++			      struct svc_rdma_fastreg_mr *);
+ extern void svc_sq_reap(struct svcxprt_rdma *);
+ extern void svc_rq_reap(struct svcxprt_rdma *);
+ extern struct svc_xprt_class svc_rdma_class;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 900cb69..f200345 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -100,6 +100,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ 	ctxt->xprt = xprt;
+ 	INIT_LIST_HEAD(&ctxt->dto_q);
+ 	ctxt->count = 0;
++	ctxt->frmr = NULL;
+ 	atomic_inc(&xprt->sc_ctxt_used);
+ 	return ctxt;
+ }
+@@ -109,11 +110,19 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
+ 	struct svcxprt_rdma *xprt = ctxt->xprt;
+ 	int i;
+ 	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
+-		atomic_dec(&xprt->sc_dma_used);
+-		ib_dma_unmap_single(xprt->sc_cm_id->device,
+-				    ctxt->sge[i].addr,
+-				    ctxt->sge[i].length,
+-				    ctxt->direction);
++		/*
++		 * Unmap the DMA addr in the SGE if the lkey matches
++		 * the sc_dma_lkey, otherwise, ignore it since it is
++		 * an FRMR lkey and will be unmapped later when the
++		 * last WR that uses it completes.
++		 */
++		if (ctxt->sge[i].lkey == xprt->sc_dma_lkey) {
++			atomic_dec(&xprt->sc_dma_used);
++			ib_dma_unmap_single(xprt->sc_cm_id->device,
++					    ctxt->sge[i].addr,
++					    ctxt->sge[i].length,
++					    ctxt->direction);
++		}
+ 	}
+ }
+ 
+@@ -150,6 +159,7 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
+ 		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+ 	}
+ 	map->count = 0;
++	map->frmr = NULL;
+ 	return map;
+ }
+ 
+@@ -425,10 +435,12 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
++	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
+ 	init_waitqueue_head(&cma_xprt->sc_send_wait);
+ 
+ 	spin_lock_init(&cma_xprt->sc_lock);
+ 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
++	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
+ 
+ 	cma_xprt->sc_ord = svcrdma_ord;
+ 
+@@ -686,6 +698,106 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+ 	return ERR_PTR(ret);
+ }
+ 
++static int rdma_alloc_frmr(struct svcxprt_rdma *xprt)
++{
 +	struct ib_mr *mr;
-+	void *kva;
-+	struct ib_fast_reg_page_list *page_list;
-+	int page_list_len;
-+	unsigned long access_flags;
-+	unsigned long map_len;
-+	enum dma_data_direction direction;
-+	struct list_head frmr_list;
-+};
- struct svc_rdma_req_map {
++	struct ib_fast_reg_page_list *pl;
 +	struct svc_rdma_fastreg_mr *frmr;
- 	unsigned long count;
- 	union {
- 		struct kvec sge[RPCSVC_MAXPAGES];
- 		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
- 	};
- };
--
-+#define RDMACTXT_F_FAST_UNREG	1
- #define RDMACTXT_F_LAST_CTXT	2
- 
-+enum svcrdma_dev_cap {		     	/* device supports: */
-+	SVCRDMA_DEVCAP_FAST_REG = 1, 	/*	- fast mr registration */
-+	SVCRDMA_DEVCAP_READ_W_INV = 2, 	/*	- read w/ invalidate */
-+	SVCRDMA_DEVCAP_LCL_DMA_MR = 4,	/*	- lcl dma lkey */
-+	SVCRDMA_DEVCAP_LCL_WR_REQ = 8,	/*	- data sink requires remote */
-+					/*	  write */
-+};
 +
- struct svcxprt_rdma {
- 	struct svc_xprt      sc_xprt;		/* SVC transport structure */
- 	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
-@@ -136,6 +156,11 @@ struct svcxprt_rdma {
- 	struct ib_cq         *sc_rq_cq;
- 	struct ib_cq         *sc_sq_cq;
- 	struct ib_mr         *sc_phys_mr;	/* MR for server memory */
-+	enum svcrdma_dev_cap sc_dev_caps;	/* distilled device caps */
-+	u32		     sc_dma_lkey;	/* local dma key */
-+	unsigned int	     sc_frmr_pg_list_len;
-+	struct list_head     sc_frmr_q;
-+	spinlock_t	     sc_frmr_q_lock;
++	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
++	if (!mr)
++		goto errout;
++	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
++					 RPCSVC_MAXPAGES);
++	if (!pl) {
++		ib_dereg_mr(mr);
++		goto errout;
++	}
++	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
++	if (!frmr) {
++		ib_dereg_mr(mr);
++		ib_free_fast_reg_page_list(pl);
++		goto errout;
++	}
++	frmr->mr = mr;
++	frmr->page_list = pl;
++	INIT_LIST_HEAD(&frmr->frmr_list);
++	spin_lock_bh(&xprt->sc_frmr_q_lock);
++	list_add(&frmr->frmr_list, &xprt->sc_frmr_q);
++	spin_unlock_bh(&xprt->sc_frmr_q_lock);
++
++	return 0;
++
++ errout:
++	return -ENOMEM;
++}
++
++static void rdma_dealloc_frmr_q(struct svcxprt_rdma *xprt)
++{
++	struct svc_rdma_fastreg_mr *frmr;
++
++	while (!list_empty(&xprt->sc_frmr_q)) {
++		frmr = list_entry(xprt->sc_frmr_q.next,
++				  struct svc_rdma_fastreg_mr, frmr_list);
++		list_del_init(&frmr->frmr_list);
++		ib_dereg_mr(frmr->mr);
++		ib_free_fast_reg_page_list(frmr->page_list);
++		kfree(frmr);
++	}
++}
++
++struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
++{
++	struct svc_rdma_fastreg_mr *frmr = NULL;
++
++	while (1) {
++		spin_lock_bh(&rdma->sc_frmr_q_lock);
++		if (!list_empty(&rdma->sc_frmr_q)) {
++			frmr = list_entry(rdma->sc_frmr_q.next,
++					  struct svc_rdma_fastreg_mr, frmr_list);
++			list_del_init(&frmr->frmr_list);
++		}
++		spin_unlock_bh(&rdma->sc_frmr_q_lock);
++		if (frmr)
++			break;
++		if (rdma_alloc_frmr(rdma))
++			return ERR_PTR(-ENOMEM);
++	}
++	frmr->map_len = 0;
++	frmr->page_list_len = 0;
++
++	return frmr;
++}
++
++static void frmr_unmap_dma(struct svcxprt_rdma *xprt,
++			   struct svc_rdma_fastreg_mr *frmr)
++{
++	int page_no;
++	dprintk("svcrdma:%s: xprt %p page_list_len %d\n",
++		__func__, xprt, frmr->page_list_len);
++	for (page_no = 0; page_no < frmr->page_list_len; page_no++) {
++		dma_addr_t addr = frmr->page_list->page_list[page_no];
++		dprintk("svcrdma:      %08x %llx\n", frmr->mr->lkey, addr);
++		if (ib_dma_mapping_error(frmr->mr->device, addr))
++			continue;
++		atomic_dec(&xprt->sc_dma_used);
++		ib_dma_unmap_single(frmr->mr->device, addr, PAGE_SIZE,
++				    frmr->direction);
++	}
++}
++
++void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
++		       struct svc_rdma_fastreg_mr *frmr)
++{
++	if (frmr) {
++		frmr_unmap_dma(rdma, frmr);
++		spin_lock_bh(&rdma->sc_frmr_q_lock);
++		BUG_ON(!list_empty(&frmr->frmr_list));
++		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
++		spin_unlock_bh(&rdma->sc_frmr_q_lock);
++	}
++}
++
+ /*
+  * This is the xpo_recvfrom function for listening endpoints. Its
+  * purpose is to accept incoming connections. The CMA callback handler
+@@ -961,6 +1073,9 @@ static void __svc_rdma_free(struct work_struct *work)
+ 	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
+ 	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
  
- 	spinlock_t	     sc_lock;		/* transport lock */
- 
++	/* De-allocate fastreg mr */
++	rdma_dealloc_frmr_q(rdma);
++
+ 	/* Destroy the QP if present (not a listener) */
+ 	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
+ 		ib_destroy_qp(rdma->sc_qp);
 
