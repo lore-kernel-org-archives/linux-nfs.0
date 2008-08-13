@@ -1,85 +1,96 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH,RFC 00/09] svcrdma: Fast Memory Registration Support
-Date: Wed, 13 Aug 2008 11:06:29 -0500
-Message-ID: <48A30685.6050301@opengridcomputing.com>
+Subject: [PATCH,RFC 01/09] svcrdma: Add Fast Reg MR Data Types
+Date: Wed, 13 Aug 2008 11:07:08 -0500
+Message-ID: <48A306AC.80800@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:53405 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:53408 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751864AbYHMQGa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:06:30 -0400
+	by vger.kernel.org with ESMTP id S1751373AbYHMQHI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 12:07:08 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-This patchset implements support for Fast Memory Registration in the
-NFS server.  Fast Memory Regstration is the ability to quickly map a
-kernel memory page list as a logically contiguous memory region from
-the perspective of the adapter. This mapping is created and
-invalidated using work requests posted on the SQ. This allows for
-large amounts of data to transferred between the client and server
-with a single work request as well as the ability to invalidate a
-previously mapped memory region. For iWARP, this allows for "one-shot"
-memory regions to be mapped for a single NFS-RDMA data transfer. This
-improves security since a byzantine app listening on the net will have
-a very short window during which the RKEY is valid.
+Add data types to track Fast Reg Memory Regions. The core data type is
+svc_rdma_fastreg_mr that associates a device MR with a host kva and page
+list. A field is added to the WR context to keep track of the FRMR
+used to map the local memory for an RPC.
 
-This capability is only enabled if the underlying device advertises
-that it is supported.
-
-This patches are also available here:
-git://git.linux-nfs.org/projects/tomtucker/xprt-switch-2.6.git
+An FRMR list and spin lock are added to the transport instance to keep
+track of all FRMR allocated for the transport. Also added are device
+capability flags to indicate what the memory registration
+capabilities are for the underlying device and whether or not fast
+memory registration is supported.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
+---
  include/linux/sunrpc/svc_rdma.h |   27 ++++++++++++++++++++++++++-
  1 files changed, 26 insertions(+), 1 deletions(-)
 
-[PATCH 02/09] svcrdma: Add FRMR get/put services
-
- include/linux/sunrpc/svc_rdma.h          |    3 +
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  125 ++++++++++++++++++++++++++++-
- 2 files changed, 123 insertions(+), 5 deletions(-)
-
-[PATCH 03/09] svcrdma: Query device for Fast Reg support during connection setup
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   86 +++++++++++++++++++++++++++--
- 1 files changed, 80 insertions(+), 6 deletions(-)
-
-[PATCH 04/09] svcrdma: Add a service to register a Fast Reg MR with the device
-
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   53 ++++++++++++++++++++++++++---
- 2 files changed, 48 insertions(+), 6 deletions(-)
-
-[PATCH 05/09] svcrdma: Modify post recv path to use local dma key
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
-
-[PATCH 06/09] svcrdma: Add support to svc_rdma_send to handle chained WR
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 +++++++++++++++++++++--------
- 1 files changed, 21 insertions(+), 8 deletions(-)
-
-[PATCH 07/09] svcrdma: Modify the RPC recv path to use FRMR when available
-
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  187 ++++++++++++++++++++++++++----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +-
- 3 files changed, 171 insertions(+), 22 deletions(-)
-
-[PATCH 08/09] svcrdma: Modify the RPC reply path to use FRMR when available
-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |  263 +++++++++++++++++++++++++-----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +
- 2 files changed, 225 insertions(+), 40 deletions(-)
-
-[PATCH 09/09] svcrdma: Update svc_rdma_send_error to use DMA LKEY
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 +++++++++--
- 1 files changed, 9 insertions(+), 2 deletions(-)
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index dc05b54..295ebbc 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -72,6 +72,7 @@ extern atomic_t rdma_stat_sq_prod;
+  */
+ struct svc_rdma_op_ctxt {
+ 	struct svc_rdma_op_ctxt *read_hdr;
++	struct svc_rdma_fastreg_mr *frmr;
+ 	int hdr_count;
+ 	struct xdr_buf arg;
+ 	struct list_head dto_q;
+@@ -103,16 +104,35 @@ struct svc_rdma_chunk_sge {
+ 	int start;		/* sge no for this chunk */
+ 	int count;		/* sge count for this chunk */
+ };
++struct svc_rdma_fastreg_mr {
++	struct ib_mr *mr;
++	void *kva;
++	struct ib_fast_reg_page_list *page_list;
++	int page_list_len;
++	unsigned long access_flags;
++	unsigned long map_len;
++	enum dma_data_direction direction;
++	struct list_head frmr_list;
++};
+ struct svc_rdma_req_map {
++	struct svc_rdma_fastreg_mr *frmr;
+ 	unsigned long count;
+ 	union {
+ 		struct kvec sge[RPCSVC_MAXPAGES];
+ 		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
+ 	};
+ };
+-
++#define RDMACTXT_F_FAST_UNREG	1
+ #define RDMACTXT_F_LAST_CTXT	2
+ 
++enum svcrdma_dev_cap {		     	/* device supports: */
++	SVCRDMA_DEVCAP_FAST_REG = 1, 	/*	- fast mr registration */
++	SVCRDMA_DEVCAP_READ_W_INV = 2, 	/*	- read w/ invalidate */
++	SVCRDMA_DEVCAP_LCL_DMA_MR = 4,	/*	- lcl dma lkey */
++	SVCRDMA_DEVCAP_LCL_WR_REQ = 8,	/*	- data sink requires remote */
++					/*	  write */
++};
++
+ struct svcxprt_rdma {
+ 	struct svc_xprt      sc_xprt;		/* SVC transport structure */
+ 	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
+@@ -136,6 +156,11 @@ struct svcxprt_rdma {
+ 	struct ib_cq         *sc_rq_cq;
+ 	struct ib_cq         *sc_sq_cq;
+ 	struct ib_mr         *sc_phys_mr;	/* MR for server memory */
++	enum svcrdma_dev_cap sc_dev_caps;	/* distilled device caps */
++	u32		     sc_dma_lkey;	/* local dma key */
++	unsigned int	     sc_frmr_pg_list_len;
++	struct list_head     sc_frmr_q;
++	spinlock_t	     sc_frmr_q_lock;
+ 
+ 	spinlock_t	     sc_lock;		/* transport lock */
+ 
 
