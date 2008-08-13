@@ -1,63 +1,52 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Confused about BUG_ON in rpcb_getport_async
-Date: Tue, 12 Aug 2008 16:32:58 -0400
-Message-ID: <1218573178.7253.31.camel@localhost>
-References: <18592.62730.840231.108375@notabene.brown>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 4/7] nfsd: nfs4xdr encode_stateid helper function
+Date: Wed, 13 Aug 2008 10:27:37 +0300
+Message-ID: <48A28CE9.3080400@panasas.com>
+References: <48A1CB0C.4090906@panasas.com> <1218563107-25393-1-git-send-email-bhalevy@panasas.com> <20080812183941.GB30729@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Chuck Lever <chucklever@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:49642 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750875AbYHLUdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2008 16:33:04 -0400
-In-Reply-To: <18592.62730.840231.108375-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:13976 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751486AbYHMH2H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2008 03:28:07 -0400
+In-Reply-To: <20080812183941.GB30729@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-08-12 at 12:27 +1000, Neil Brown wrote:
-> Hi 
->  I have a report of a the BUG_ON in rpcb_getport_clnt being
->  triggered.  This is:
-> 	/* Autobind on cloned rpc clients is discouraged */
-> 	BUG_ON(clnt->cl_parent != clnt);
+On Aug. 12, 2008, 21:39 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Tue, Aug 12, 2008 at 08:45:07PM +0300, Benny Halevy wrote:
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c |   76 ++++++++++++++++++++++------------------------------
+>>  1 files changed, 32 insertions(+), 44 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 4ec52f9..96da1aa 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+> ...
+>> @@ -2083,12 +2091,9 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+>>  {
+>>  	ENCODE_SEQID_OP_HEAD;
+>>  
+>> -	if (!nfserr) {
+>> -		RESERVE_SPACE(4 + sizeof(stateid_t));
 > 
->  It looks to me that while they might be discouraged, they are not
->  prevented and so having the BUG_ON is wrong.
-> 
->  When rpc_clone_client creates a clone, it sets cl_autobind to 0,
->  and gives the new client a reference to the same cl_xprt as the
->  original client.
-> 
->  The only effect of cl_autobind is to prevent rpc_force_rebind from
->  clearing the BOUND flag on ->cl_xprt.
->  So while a call to rpc_force_rebind on the clone will not clear that
->  flag, a call on the original client will clear that flag.
-> 
->  So a cloned client can still end up with a ->cl_xprt with the BOUND
->  flag clear.
-> 
->  So call_bind (which is present in the call trace under the oops) can
->  find that !xprt_bound, even when the client is a cloned client.
-> 
->  When this happens, ->rpcbind, which is rpcb_getport_clnt, goes BOOM.
-> 
->  What should happen when a clone client finds that its transport is no
->  longer bound?  Should rpc_getport_async just do
->     clnt = task->tk_client->cl_parent;
->  ??
+> Hm, so that was a little over before (a harmless error, but better to
+> have it fixed).
 
-This shouldn't be a particularly urgent problem, since lockd should
-normally be the only thing that needs to use the autobind functionality,
-and it does not use cloned clients.
+True.  I can add a preliminary patch fixing that.
 
-That said, I think that the answer is that cloned clients may indeed use
-rpcbind as long as they share the same program number and version as the
-parent.
-IOW: we should probably rather BUG_ON() calls to rpc_bind_new_program()
-if the parent has xprt->cl_autobind set.
+Benny
 
-Cheers
-  Trond
-
+> 
+> --b.
+> 
+>> -		WRITE32(lock->lk_resp_stateid.si_generation);
+>> -		WRITEMEM(&lock->lk_resp_stateid.si_opaque, sizeof(stateid_opaque_t));
+>> -		ADJUST_ARGS();
