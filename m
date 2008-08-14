@@ -1,131 +1,132 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] knfsd: allocate readahead cache in individual chunks
-Date: Thu, 14 Aug 2008 14:52:27 -0400
-Message-ID: <20080814145227.15efe087@barsoom.rdu.redhat.com>
-References: <1218679407-11364-1-git-send-email-jlayton@redhat.com>
-	<20080814180635.GC23859@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH]lockd: fix handling of grace period after long periods
+	of inactivity
+Date: Thu, 14 Aug 2008 15:06:52 -0400
+Message-ID: <20080814190652.GE23859@fieldses.org>
+References: <48A41220.8030203@oss.ntt.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond.Myklebust@netapp.com, neilb@suse.de,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: NAKANO Hiroaki <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57841 "EHLO mx1.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:56979 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753011AbYHNSwb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Aug 2008 14:52:31 -0400
-In-Reply-To: <20080814180635.GC23859@fieldses.org>
+	id S1752732AbYHNTHF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Aug 2008 15:07:05 -0400
+In-Reply-To: <48A41220.8030203-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 14 Aug 2008 14:06:35 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Wed, Aug 13, 2008 at 10:03:27PM -0400, Jeff Layton wrote:
-> > I had a report from someone building a large NFS server that they were
-> > unable to start more than 585 nfsd threads. It was reported against an
-> > older kernel using the slab allocator, and I tracked it down to the
-> > large allocation in nfsd_racache_init failing.
-> > 
-> > It appears that the slub allocator handles large allocations better,
-> > but large contiguous allocations can often be problematic. There
-> > doesn't seem to be any reason that the racache has to be allocated as a
-> > single large chunk. This patch breaks this up so that the racache is
-> > built up from separate allocations.
+On Thu, Aug 14, 2008 at 08:08:16PM +0900, NAKANO Hiroaki wrote:
+> lockd uses time_before() to determine whether the grace period has
+> expired. This would seem to be enough to avoid timer wrap-around issues,
+> but, unfortunately, that is not the case. The time_* family of
+> comparison functions can be safely used to compare jiffies relatively
+> close in time, but they stop working after approximately LONG_MAX/2
+> ticks. nfsd can suffer this problem because the time_before() comparison
+> in lockd() is not performed until the first request comes in, which
+> means that if there is no lockd traffic for more than LONG_MAX/2 ticks
+> we are screwed.
 > 
-> So by default nfsd_racache_init gets called with size 2*nrservs, so 1170
-> in this case.  Looks like struct raprms is about 50 bytes.  So that's
-> about a 60k allocation?
+> The implication of this is that once time_before() starts misbehaving
+> any attempt from a NFS client to execute fcntl() will be received with a
+> NLM_LCK_DENIED_GRACE_PERIOD message for 25 days (assuming HZ=1000). In
+> other words, the 50 seconds grace period could turn into a grace period
+> of 50 days or more.
 > 
-
-On my x86_64 box, sizeof(struct raparm) is 72 bytes for recent
-kernels. For 2.6.18-ish it's 112:
-
-2*585*112 = 131040
-
-...which is just under a 128k allocation, and that seems to be as large
-a kmalloc as you can do with slab. This is just the breakover point
-though, the customer in question was trying to start 2048 nfsd's. That
-might be considered insane, but if it is, we should probably reduce
-NFSD_MAXSERVS which is set at 8192.
-
-> And RAPARM_HASH_SIZE is 16.  So you could use an array for each hash
-> bucket and each array would be under a page even in this rather extreme
-> case, if you wanted to avoid lots of little allocations.  I don't know
-> whether that really matters, though.
+> This patch corrects this behavior by implementing grace period with a
+> (retriggerable) timer.
 > 
+> Note: This bug was analyzed independently by Oda-san <oda-jCdQPDEk3idL9jVzuh4AOg@public.gmane.org>
+> and myself.
 
-I thought about that after I sent this patch.
+Good catch!  Did you actually run across this in practice?  I would've
+thought it relatively unusual to have a lockd that didn't receive its
+first lock request until 25 days after startup.
 
-I suppose there are 3 routes we can go with this:
+I've actually had a patch that does roughly the same thing for a while
+at:
 
-1) do what I did here (individual kmalloc for each raparm)
+	git://linux-nfs.org/~bfields/linux.git failover
 
-2) do an allocation of an raparms array for each hash bucket, but when
-we get to larger thread counts, these will still require multi-page
-allocations:
+3ff893a7.. "lockd: don't depend on lockd main loop to end grace" but
+hadn't submitted it since I didn't see the bug you found.  (I had other
+reasons I wanted to do this).  Difference that I can see off-hand:
 
-8192 threads * 2 / 16 buckets * 72 bytes = 73728 byte allocation
+	- I used schedule_delayed_work instead of a timer.
+	- I forgot to delete the thing before exiting!
 
-3) declare a separate slabcache for this and allocate each raparm
-individually from that
+So I think my solution has a bug that yours doesn't.  (I don't see what
+would stop the module being removed before my work gets scheduled.)
 
-...#3 might be reasonable, but we could end up wasting even more memory
-that way when we only have a few threads. Tough call...
+I still have a mild preference for a work struct just in case we end up
+wanting to do something slightly more complicated to end the grace
+period, but I don't really have anything in mind.
 
-> > +static unsigned int		raparm_hash_buckets;
+--b.
+
 > 
-> It looks like this is here just to tell you how many bucket heads are
-> non-null when freeing?  But I think the
+> Signed-off-by: Nakano Hiroaki <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
+> ---
 > 
-> 	if (cache_size < 2*RAPARM_HASH_SIZE)
-> 		cache_size = 2*RAPARM_HASH_SIZE;
+> diff -Nrup linux-2.6.27-rc3/fs/lockd/svc.c b/fs/lockd/svc.c
+> --- linux-2.6.27-rc3/fs/lockd/svc.c	2008-08-14 16:54:24.000000000 +0900
+> +++ b/fs/lockd/svc.c	2008-08-14 17:04:15.000000000 +0900
+> @@ -53,6 +53,7 @@ static struct task_struct	*nlmsvc_task;
+>  static struct svc_rqst		*nlmsvc_rqst;
+>  int				nlmsvc_grace_period;
+>  unsigned long			nlmsvc_timeout;
+> +static struct timer_list        nlm_period_timer;
 > 
-> in nfsd_racache_init ensures no bucket is null, and anyway you check for
-> null when freeing, so it doesn't seem like it would matter much.
+>  /*
+>   * These can be set at insmod time (useful for NFS as root filesystem),
+> @@ -141,6 +142,12 @@ lockd(void *vrqstp)
 > 
-
-Very good point. Your way is better...
-
-> >  	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
-> > -	for (i = 0; i < cache_size - 1; i++) {
-> > +	for (i = 0; i < cache_size; i++) {
-> > +		raparm = kzalloc(sizeof(*raparm), GFP_KERNEL);
-> > +		if (!raparm)
-> > +			goto out_nomem;
-> > +
-> >  		if (i % nperbucket == 0)
-> > -			raparm_hash[j++].pb_head = raparml + i;
-> > -		if (i % nperbucket < nperbucket-1)
-> > -			raparml[i].p_next = raparml + i + 1;
-> > +			raparm_hash[j++].pb_head = raparm;
-> > +		else
-> > +			last_raparm->p_next = raparm;
-> > +		last_raparm = raparm;
+>  	grace_period_expire = set_grace_period();
 > 
-> The modular arithmetic here always struck me as a bit convoluted.  Why
-> not just nested for loops, and not be as fussy about the round-off
-> error?  E.g.
+> +	init_timer(&nlm_period_timer);
+> +	nlm_period_timer.function = clear_grace_period;
+> +	nlm_period_timer.expires = grace_period_expire;
+> +
+> +	add_timer(&nlm_period_timer);
+> +
+>  	/*
+>  	 * The main request loop. We don't terminate until the last
+>  	 * NFS mount or NFS daemon has gone away.
+> @@ -154,6 +161,7 @@ lockd(void *vrqstp)
+>  			if (nlmsvc_ops) {
+>  				nlmsvc_invalidate_all();
+>  				grace_period_expire = set_grace_period();
+> +				mod_timer(&nlm_period_timer, grace_period_expire);
+>  			}
+>  			continue;
+>  		}
+> @@ -164,10 +172,8 @@ lockd(void *vrqstp)
+>  		 * (Theoretically, there shouldn't even be blocked locks
+>  		 * during grace period).
+>  		 */
+> -		if (!nlmsvc_grace_period) {
+> +		if (!nlmsvc_grace_period)
+>  			timeout = nlmsvc_retry_blocked();
+> -		} else if (time_before(grace_period_expire, jiffies))
+> -			clear_grace_period();
 > 
-> 	for (i = 0; i < RAPARM_HASH_SIZE; i++) {
-> 		spin_lock_init(&raparm_hash[i].pb_lock);
-> 		raparm = &raparm_hash[i].pb_head;
+>  		/*
+>  		 * Find a socket with data available and call its
+> @@ -195,6 +201,7 @@ lockd(void *vrqstp)
+>  		svc_process(rqstp);
+>  	}
+>  	flush_signals(current);
+> +	del_timer(&nlm_period_timer);
+>  	if (nlmsvc_ops)
+>  		nlmsvc_invalidate_all();
+>  	nlm_shutdown_hosts();
 > 
-> 		for (j = 0; j < nperbucket; j++) {
-> 			*raparm = kzalloc(sizeof(*raparm), GFP_KERNEL);
-> 			if (!*raparm)
-> 				goto out_nomem;
-> 			raparm = &(*raparm)->p_next;
-> 		}
-> 		*raparm = NULL;
-> 	}
->
-> Lightly-tested patch (to apply on top of yours) follows.
+> -- 
+> (NAKANO, Hiroaki) <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
 > 
-> --b.
->
-
-The combined patch looks good to me
-
-Thanks!
--- 
-Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
