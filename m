@@ -1,99 +1,111 @@
-From: NAKANO Hiroaki <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
-Subject: [PATCH]lockd: fix handling of grace period after long periods of
- inactivity
-Date: Thu, 14 Aug 2008 20:08:16 +0900
-Message-ID: <48A41220.8030203@oss.ntt.co.jp>
+From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Subject: below top level mounting NFS3 authentication patch
+Date: Thu, 14 Aug 2008 13:42:19 +0200
+Message-ID: <48A41A1B.7070501@few.vu.nl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Trond.Myklebust@netapp.com
+Content-Type: multipart/mixed;
+ boundary="------------070102070201040509000902"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:54200 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753493AbYHNLIU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2008 07:08:20 -0400
+Received: from top.few.vu.nl ([130.37.20.4]:35114 "EHLO top.few.vu.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752866AbYHNM21 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Aug 2008 08:28:27 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lockd uses time_before() to determine whether the grace period has
-expired. This would seem to be enough to avoid timer wrap-around issues,
-but, unfortunately, that is not the case. The time_* family of
-comparison functions can be safely used to compare jiffies relatively
-close in time, but they stop working after approximately LONG_MAX/2
-ticks. nfsd can suffer this problem because the time_before() comparison
-in lockd() is not performed until the first request comes in, which
-means that if there is no lockd traffic for more than LONG_MAX/2 ticks
-we are screwed.
+This is a multi-part message in MIME format.
+--------------070102070201040509000902
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-The implication of this is that once time_before() starts misbehaving
-any attempt from a NFS client to execute fcntl() will be received with a
-NLM_LCK_DENIED_GRACE_PERIOD message for 25 days (assuming HZ=1000). In
-other words, the 50 seconds grace period could turn into a grace period
-of 50 days or more.
+At our faculty we use Linux (Debian) clients and Solaris 9/10 file servers.
+We use the automounter on the Linux clients to access home directories with krb5.
+The servers  export the home directories on the level above the user home
+directories.
+Kernel 2.6.18 allows this behavior, kernels later then 2.6.23 do not.
+The underlying cause for the problem is the interpretation of the wording in
+RFC 2623, sec  2.3.2. This allows fsinfo with UNIX authentication on the
+root of the  export. But the automounter mounts below the root of the export/share
+and the Solaris  server (justly) requires full, i.e. krb5, authentication.
+Thus the mount fails, which makes the automounter useless in our environment.
+The client should try both authentications and use the first one that
+succeeds.
+The nfs_proc_get_root subroutine in nfs3proc already does
+this, but...
+the call to the sget routine earlier in the routine nfs_get_sb causes a
+fsinfo call that always uses UNIX authentication. Which causes the mount
+to fail.
 
-This patch corrects this behavior by implementing grace period with a
-(retriggerable) timer.
+The solution i came up with is simple. Transplant the way get_root
+handles this to fsinfo. This is implemented in the patch to 2.6.24-rc4
+in the attachment.
 
-Note: This bug was analyzed independently by Oda-san <oda-jCdQPDEk3idL9jVzuh4AOg@public.gmane.org>
-and myself.
+The are probably better solutions. For example by collapsing the two
+calls to get_root and fsinfo. But all i needed was something that made
+things work for me and did not ruin something for anybody.
 
-Signed-off-by: Nakano Hiroaki <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
----
+It would be nice if this patch found its way into the distribution...
 
-diff -Nrup linux-2.6.27-rc3/fs/lockd/svc.c b/fs/lockd/svc.c
---- linux-2.6.27-rc3/fs/lockd/svc.c	2008-08-14 16:54:24.000000000 +0900
-+++ b/fs/lockd/svc.c	2008-08-14 17:04:15.000000000 +0900
-@@ -53,6 +53,7 @@ static struct task_struct	*nlmsvc_task;
- static struct svc_rqst		*nlmsvc_rqst;
- int				nlmsvc_grace_period;
- unsigned long			nlmsvc_timeout;
-+static struct timer_list        nlm_period_timer;
 
- /*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-@@ -141,6 +142,12 @@ lockd(void *vrqstp)
+Ed Keizer
+IT group                                        tel: +31 20 5987804
+Faculty of Sciences		                fax: +31 20 5987653
+Vrije Universiteit                              e-mail: keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org
+De Boelelaan 1081A, 1081 HV  Amsterdam, The Netherlands
 
- 	grace_period_expire = set_grace_period();
 
-+	init_timer(&nlm_period_timer);
-+	nlm_period_timer.function = clear_grace_period;
-+	nlm_period_timer.expires = grace_period_expire;
+
+
+--------------070102070201040509000902
+Content-Type: text/plain;
+ name="mount-patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="mount-patch"
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 4cdc236..1215d42 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -687,7 +687,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
+ }
+ 
+ static int
+-nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
++do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
+ 		 struct nfs_fsinfo *info)
+ {
+ 	struct rpc_message msg = {
+@@ -699,11 +699,26 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ 	dprintk("NFS call  fsinfo\n");
+ 	nfs_fattr_init(info->fattr);
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(client, &msg, 0);
+ 	dprintk("NFS reply fsinfo: %d\n", status);
+ 	return status;
+ }
+ 
++/*
++ * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via nfs_create_server
++ */
++static int
++nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
++		   struct nfs_fsinfo *info)
++{
++	int	status;
 +
-+	add_timer(&nlm_period_timer);
++	status = do_proc_fsinfo(server->client, fhandle, info);
++	if (status && server->nfs_client->cl_rpcclient != server->client)
++		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
++	return status;
++}
 +
- 	/*
- 	 * The main request loop. We don't terminate until the last
- 	 * NFS mount or NFS daemon has gone away.
-@@ -154,6 +161,7 @@ lockd(void *vrqstp)
- 			if (nlmsvc_ops) {
- 				nlmsvc_invalidate_all();
- 				grace_period_expire = set_grace_period();
-+				mod_timer(&nlm_period_timer, grace_period_expire);
- 			}
- 			continue;
- 		}
-@@ -164,10 +172,8 @@ lockd(void *vrqstp)
- 		 * (Theoretically, there shouldn't even be blocked locks
- 		 * during grace period).
- 		 */
--		if (!nlmsvc_grace_period) {
-+		if (!nlmsvc_grace_period)
- 			timeout = nlmsvc_retry_blocked();
--		} else if (time_before(grace_period_expire, jiffies))
--			clear_grace_period();
+ static int
+ nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		   struct nfs_pathconf *info)
 
- 		/*
- 		 * Find a socket with data available and call its
-@@ -195,6 +201,7 @@ lockd(void *vrqstp)
- 		svc_process(rqstp);
- 	}
- 	flush_signals(current);
-+	del_timer(&nlm_period_timer);
- 	if (nlmsvc_ops)
- 		nlmsvc_invalidate_all();
- 	nlm_shutdown_hosts();
 
--- 
-(NAKANO, Hiroaki) <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
-
+--------------070102070201040509000902--
