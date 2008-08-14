@@ -1,145 +1,103 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] knfsd: allocate readahead cache in individual chunks
-Date: Wed, 13 Aug 2008 22:03:27 -0400
-Message-ID: <1218679407-11364-1-git-send-email-jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Confused about BUG_ON in rpcb_getport_async
+Date: Thu, 14 Aug 2008 12:26:59 +1000
+Message-ID: <18595.38899.266212.237798@notabene.brown>
+References: <18592.62730.840231.108375@notabene.brown>
+	<1218573178.7253.31.camel@localhost>
+	<18595.29231.61262.220929@notabene.brown>
+	<1218672609.9042.86.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48938 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:54474 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751286AbYHNCD2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Aug 2008 22:03:28 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m7E23RZG022143
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2008 22:03:27 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m7E23RPX001971
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2008 22:03:27 -0400
-Received: from dantu.redhat.com (dantu.rdu.redhat.com [172.16.57.196])
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m7E23RWg028693
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2008 22:03:27 -0400
-Received: from dantu.usersys.redhat.com ([127.0.0.1])
-	by dantu.redhat.com (8.13.8/8.13.8) with ESMTP id m7E23Rbg011385
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2008 22:03:27 -0400
-Received: (from jlayton@localhost)
-	by dantu.usersys.redhat.com (8.13.8/8.13.8/Submit) id m7E23RUA011384
-	for linux-nfs@vger.kernel.org; Wed, 13 Aug 2008 22:03:27 -0400
+	id S1751763AbYHNC1I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2008 22:27:08 -0400
+In-Reply-To: message from Trond Myklebust on Wednesday August 13
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I had a report from someone building a large NFS server that they were
-unable to start more than 585 nfsd threads. It was reported against an
-older kernel using the slab allocator, and I tracked it down to the
-large allocation in nfsd_racache_init failing.
+On Wednesday August 13, trond.myklebust@fys.uio.no wrote:
+> On Thu, 2008-08-14 at 09:45 +1000, Neil Brown wrote:
+> > Just to confirm,  you are saying that the current BUG_ON is indeed
+> > wrong, and the fact that it fires does not imply any real bug.
+> > It should be removed.  Possibly a BUG_ON could be put somewhere else
+> > to catch incorrect behaviour.
+> > 
+> > Is that correct?
+> 
+> Yes.
 
-It appears that the slub allocator handles large allocations better,
-but large contiguous allocations can often be problematic. There
-doesn't seem to be any reason that the racache has to be allocated as a
-single large chunk. This patch breaks this up so that the racache is
-built up from separate allocations.
+Thanks.
 
-Thoughts?
+> 
+> > I now have multiple people for whom this BUG_ON has fired.
+> 
+> Could you send us a trace? AFAIK it shouldn't really be happening...
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/vfs.c |   49 ++++++++++++++++++++++++++++++++-----------------
- 1 files changed, 32 insertions(+), 17 deletions(-)
+https://bugzilla.novell.com/show_bug.cgi?id=415607
+contains
+Aug  7 09:55:42 copperhead klogd: ------------[ cut here ]------------
+Aug  7 09:55:42 copperhead klogd: kernel BUG at net/sunrpc/rpcb_clnt.c:290!
+Aug  7 09:55:42 copperhead klogd: invalid opcode: 0000 [1] SMP
+Aug  7 09:55:42 copperhead klogd: last sysfs file: /sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_map
+Aug  7 09:55:42 copperhead klogd: CPU 3
+Aug  7 09:55:42 copperhead klogd: Modules linked in: lp parport_pc ppdev
+parport nls_utf8 nfs lockd nfs_acl sunrpc autofs4 binfmt_misc iptable_filter
+ip_tables ip6table_filter ip6_tables x_tables ipv6 bonding microcode
+firmware_class fuse loop dm_mod rtc_cmos iTCO_wdt sg shpchp rtc_core i2c_i801
+iTCO_vendor_support rtc_lib floppy container i2c_core i5000_edac usb_storage
+sr_mod pci_hotplug button cdrom joydev e1000e edac_core usbhid hid ff_memless
+ehci_hcd uhci_hcd sd_mod usbcore edd ext3 mbcache jbd fan ata_piix ahci libata
+dock 3w_9xxx scsi_mod thermal processor [last unloaded: parport_pc]
+Aug  7 09:55:42 copperhead klogd: Pid: 14342, comm: xauth Tainted: G        N 2.6.25.11-0.1-default #1
+Aug  7 09:55:42 copperhead klogd: RIP: 0010:[<ffffffff883ad55a>] [<ffffffff883ad55a>] :sunrpc:rpcb_getport_async+0x66/0x460
+Aug  7 09:55:42 copperhead klogd: RSP: 0018:ffff810110cff938  EFLAGS: 00010287
+Aug  7 09:55:42 copperhead klogd: RAX: ffffffff883d11d0 RBX: ffff81022c8d5c00 RCX: 0000000000000001
+Aug  7 09:55:42 copperhead klogd: RDX: 0000000000000000 RSI: ffff81010a543e40 RDI: ffff81010a543e40
+Aug  7 09:55:42 copperhead klogd: RBP: ffff810110cffa58 R08: ffff81010a543f28 R09: 0000000000000001
+Aug  7 09:55:42 copperhead klogd: R10: ffff810001031280 R11: ffff810110cffc18 R12: ffff81018b047800
+Aug  7 09:55:42 copperhead klogd: R13: ffff81018b047800 R14: ffff81010a543e40 R15: ffff810229d40800
+Aug  7 09:55:42 copperhead klogd: FS:  00007fb4bd7ed6f0(0000) GS:ffff81022f1037c0(0000) knlGS:0000000000000000
+Aug  7 09:55:42 copperhead klogd: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+Aug  7 09:55:42 copperhead klogd: CR2: 00007f3992dfcf00 CR3: 00000001d4601000 CR4: 00000000000006e0
+Aug  7 09:55:42 copperhead klogd: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+Aug  7 09:55:42 copperhead klogd: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Aug  7 09:55:42 copperhead klogd: Process xauth (pid: 14342, threadinfo ffff810110cfe000, task ffff810116954080)
+Aug  7 09:55:42 copperhead klogd: Stack:  0000000000000246 ffff81022ad67370 ffff810110cff978 0000000000000246
+Aug  7 09:55:42 copperhead klogd:  0000000000011200 ffff81022ad67340 ffff810110cff9a8 ffff810110cff9c0
+Aug  7 09:55:42 copperhead klogd:  ffff810110cff988 ffffffff80276757 ffff810110cffa08 ffffffff8027685a
+Aug  7 09:55:42 copperhead klogd: Call Trace: Aug  7 09:55:42 copperhead klogd:  [<ffffffff883a018b>] :sunrpc:call_bind+0x6f/0x74
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff883a72d9>] :sunrpc:__rpc_execute+0x86/0x246
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff883a751e>] :sunrpc:rpc_execute+0x85/0x8e
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff883a14a5>] :sunrpc:rpc_run_task+0x52/0x5a
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff883a1598>] :sunrpc:rpc_call_sync+0x3f/0x5d
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff8840c0bb>] :nfs:nfs3_rpc_wrapper+0x22/0x5c
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff8840c5b5>] :nfs:nfs3_proc_access+0xf3/0x15e
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff883ffde0>] :nfs:nfs_do_access+0x173/0x341
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff884000a3>] :nfs:nfs_permission+0xf5/0x166
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff802a7497>] permission+0xc7/0x118
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff802a7bbc>] lookup_hash+0x21/0x43
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff802ab6d8>] open_namei+0xe8/0x6a0
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff8029ec5b>] do_filp_open+0x28/0x4b
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff8029eccf>] do_sys_open+0x51/0xd2
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff8029ed79>] sys_open+0x1b/0x1d
+Aug  7 09:55:42 copperhead klogd:  [<ffffffff8020bffa>] system_call_after_swapgs+0x8a/0x8f
+Aug  7 09:55:42 copperhead klogd: DWARF2 unwinder stuck at system_call_after_swapgs+0x8a/0x8f
+Aug  7 09:55:42 copperhead klogd:
+Aug  7 09:55:42 copperhead klogd: Leftover inexact backtrace:
+Aug  7 09:55:42 copperhead klogd:
+Aug  7 09:55:42 copperhead syslog-ng[2774]: last message repeated 2 times
+Aug  7 09:55:42 copperhead klogd: Code: 3b 88 44 8b 4b 44 44 8b 43 40 48 c7 c7
+57 74 3b 88 48 8b 4b 50 89 04 24 31 c0 e8 ed 24 0a f8 4c 8b bb e8 00 00 00 49
+39 df 74 04 <0f> 0b eb fe 49 8d 85 78 02 00 00 48 89 85 f8 fe ff ff f0 0f ba
+Aug  7 09:55:42 copperhead klogd: RIP  [<ffffffff883ad55a>] :sunrpc:rpcb_getport_async+0x66/0x460
+Aug  7 09:55:42 copperhead klogd:  RSP <ffff810110cff938>
+Aug  7 09:55:42 copperhead klogd: ---[ end trace 4b516acb183486f8 ]---
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 1319e80..8bdf46f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -83,11 +83,11 @@ struct raparm_hbucket {
- 	spinlock_t		pb_lock;
- } ____cacheline_aligned_in_smp;
- 
--static struct raparms *		raparml;
- #define RAPARM_HASH_BITS	4
- #define RAPARM_HASH_SIZE	(1<<RAPARM_HASH_BITS)
- #define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
- static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
-+static unsigned int		raparm_hash_buckets;
- 
- /* 
-  * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
-@@ -1966,11 +1966,20 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- void
- nfsd_racache_shutdown(void)
- {
--	if (!raparml)
--		return;
-+	struct raparms *raparm, *last_raparm;
-+	unsigned int i;
-+
- 	dprintk("nfsd: freeing readahead buffers.\n");
--	kfree(raparml);
--	raparml = NULL;
-+
-+	for (i = 0; i < raparm_hash_buckets; i++) {
-+		raparm = raparm_hash[i].pb_head;
-+		while(raparm) {
-+			last_raparm = raparm;
-+			raparm = raparm->p_next;
-+			kfree(last_raparm);
-+		}
-+		raparm_hash[i].pb_head = NULL;
-+	}
- }
- /*
-  * Initialize readahead param cache
-@@ -1981,35 +1990,41 @@ nfsd_racache_init(int cache_size)
- 	int	i;
- 	int	j = 0;
- 	int	nperbucket;
-+	struct raparms *raparm, *last_raparm = NULL;
- 
- 
--	if (raparml)
-+	if (raparm_hash[0].pb_head)
- 		return 0;
- 	if (cache_size < 2*RAPARM_HASH_SIZE)
- 		cache_size = 2*RAPARM_HASH_SIZE;
--	raparml = kcalloc(cache_size, sizeof(struct raparms), GFP_KERNEL);
--
--	if (!raparml) {
--		printk(KERN_WARNING
--			"nfsd: Could not allocate memory read-ahead cache.\n");
--		return -ENOMEM;
--	}
- 
- 	dprintk("nfsd: allocating %d readahead buffers.\n", cache_size);
- 	for (i = 0 ; i < RAPARM_HASH_SIZE ; i++) {
- 		raparm_hash[i].pb_head = NULL;
- 		spin_lock_init(&raparm_hash[i].pb_lock);
- 	}
-+
- 	nperbucket = DIV_ROUND_UP(cache_size, RAPARM_HASH_SIZE);
--	for (i = 0; i < cache_size - 1; i++) {
-+	for (i = 0; i < cache_size; i++) {
-+		raparm = kzalloc(sizeof(*raparm), GFP_KERNEL);
-+		if (!raparm)
-+			goto out_nomem;
-+
- 		if (i % nperbucket == 0)
--			raparm_hash[j++].pb_head = raparml + i;
--		if (i % nperbucket < nperbucket-1)
--			raparml[i].p_next = raparml + i + 1;
-+			raparm_hash[j++].pb_head = raparm;
-+		else
-+			last_raparm->p_next = raparm;
-+		last_raparm = raparm;
- 	}
- 
- 	nfsdstats.ra_size = cache_size;
-+	raparm_hash_buckets = j;
- 	return 0;
-+
-+out_nomem:
-+	dprintk("nfsd: kmalloc failed, freeing readahead buffers\n");
-+	nfsd_racache_shutdown();
-+	return -ENOMEM;
- }
- 
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
--- 
-1.5.5.1
+Kernel was
+   Linux copperhead 2.6.25.11-0.1-default #1 SMP 2008-07-13 20:48:28 +0200 x86_64 x86_64 x86_64 GNU/Linux
 
+NeilBrown
