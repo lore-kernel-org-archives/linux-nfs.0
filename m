@@ -1,112 +1,160 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: below top level mounting NFS3 authentication patch
-Date: Thu, 14 Aug 2008 16:54:14 -0400
-Message-ID: <20080814205414.GL23859@fieldses.org>
-References: <48A41A1B.7070501@few.vu.nl> <20080814192225.GF23859@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
-To: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 6/8] SUNRPC: Refactor svc_register()
+Date: Thu, 14 Aug 2008 17:11:25 -0400
+Message-ID: <30F27AE9-3D40-4B3D-9496-4C57493BD6BC@oracle.com>
+References: <20080813223653.13068.9467.stgit@manray.1015granger.net> <20080813224016.13068.29786.stgit@manray.1015granger.net> <20080814203640.GJ23859@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@netapp.com, trond.myklebust@fys.uio.no,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:36297 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751379AbYHNUyQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Aug 2008 16:54:16 -0400
-In-Reply-To: <20080814192225.GF23859@fieldses.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:38992 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753933AbYHNVLt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2008 17:11:49 -0400
+In-Reply-To: <20080814203640.GJ23859@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 14, 2008 at 03:22:25PM -0400, bfields wrote:
-> On Thu, Aug 14, 2008 at 01:42:19PM +0200, EG Keizer wrote:
-> > At our faculty we use Linux (Debian) clients and Solaris 9/10 file servers.
-> > We use the automounter on the Linux clients to access home directories with krb5.
-> > The servers  export the home directories on the level above the user home
-> > directories.
-> > Kernel 2.6.18 allows this behavior, kernels later then 2.6.23 do not.
-> > The underlying cause for the problem is the interpretation of the wording in
-> > RFC 2623, sec  2.3.2. This allows fsinfo with UNIX authentication on the
-> > root of the  export. But the automounter mounts below the root of the export/share
-> > and the Solaris  server (justly) requires full, i.e. krb5, authentication.
-> > Thus the mount fails, which makes the automounter useless in our environment.
-> > The client should try both authentications and use the first one that
-> > succeeds.
-> > The nfs_proc_get_root subroutine in nfs3proc already does
-> > this, but...
-> > the call to the sget routine earlier in the routine nfs_get_sb causes a
-> > fsinfo call that always uses UNIX authentication. Which causes the mount
-> > to fail.
-> >
-> > The solution i came up with is simple. Transplant the way get_root
-> > handles this to fsinfo. This is implemented in the patch to 2.6.24-rc4
-> > in the attachment.
-> >
-> > The are probably better solutions. For example by collapsing the two
-> > calls to get_root and fsinfo. But all i needed was something that made
-> > things work for me and did not ruin something for anybody.
-> >
-> > It would be nice if this patch found its way into the distribution...
-> 
-> Seems fine to me.  Doesn't v2 need the same treatment as v3 here,
-> though?
+On Aug 14, 2008, at 4:36 PM, J. Bruce Fields wrote:
+> On Wed, Aug 13, 2008 at 06:40:17PM -0400, Chuck Lever wrote:
+>> Clean up: refactor the rpcb_register() call out of svc_register().
+>>
+>> The next patch will choose the correct registration subroutine to use
+>> based on whether IPv6 support is desired for RPC services.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> include/linux/sunrpc/svc.h |    4 +++-
+>> net/sunrpc/svc.c           |   40 ++++++++++++++++++++++++++ 
+>> +-------------
+>> 2 files changed, 30 insertions(+), 14 deletions(-)
+>>
+>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>> index a794d4a..2a41d29 100644
+>> --- a/include/linux/sunrpc/svc.h
+>> +++ b/include/linux/sunrpc/svc.h
+>> @@ -395,7 +395,9 @@ struct svc_serv *  svc_create_pooled(struct  
+>> svc_program *, unsigned int,
+>> int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *,  
+>> int);
+>> void		   svc_destroy(struct svc_serv *);
+>> int		   svc_process(struct svc_rqst *);
+>> -int		   svc_register(struct svc_serv *, int, unsigned short);
+>> +int		   svc_register(const struct svc_serv *, const unsigned short,
+>> +				const unsigned short);
+>> +
+>> void		   svc_wake_up(struct svc_serv *);
+>> void		   svc_reserve(struct svc_rqst *rqstp, int space);
+>> struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 58a8012..aa334c2 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -720,17 +720,32 @@ svc_exit_thread(struct svc_rqst *rqstp)
+>> }
+>> EXPORT_SYMBOL(svc_exit_thread);
+>>
+>> -/*
+>> - * Register an RPC service with the local portmapper.
+>> - * To unregister a service, call this routine with
+>> - * proto and port == 0.
+>> +static int __svc_register(const u32 program, const u32 version,
+>> +			  sa_family_t family,
+>> +			  const unsigned short protocol,
+>> +			  const unsigned short port)
+>> +{
+>> +	int error, result;
+>> +
+>> +	error = rpcb_register(program, version, protocol, port, &result);
+>> +	if (!result)
+>> +		error = -EACCES;
+>> +	return error;
+>
+> Isn't "result" 0 whenever error is nonzero?  In that case the above  
+> is really equivalent to
+>
+> 	rpcb_register(program, version, protocol, port, &result);
+> 	return result ? 0 : -EACCES;
+>
+> Is that what's intended?  I don't believe it's the behavior of the
+> original code.
 
-Oh, also, if you could read part 12 of Documentation/SubmittingPatches
-and add a Signed-off-by: line, that'd help us.
+I'll fix it.  It's a vestige of a previous implementation of  
+rpcb_v4_register.
 
-> 
-> --b.
-> 
-> >
-> >
-> > Ed Keizer
-> > IT group                                        tel: +31 20 5987804
-> > Faculty of Sciences		                fax: +31 20 5987653
-> > Vrije Universiteit                              e-mail: keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org
-> > De Boelelaan 1081A, 1081 HV  Amsterdam, The Netherlands
-> >
-> >
-> >
-> 
-> > diff --git a/fs/dcache.c b/fs/dcache.c
-> > diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> > index 4cdc236..1215d42 100644
-> > --- a/fs/nfs/nfs3proc.c
-> > +++ b/fs/nfs/nfs3proc.c
-> > @@ -687,7 +687,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
-> >  }
-> >  
-> >  static int
-> > -nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-> > +do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
-> >  		 struct nfs_fsinfo *info)
-> >  {
-> >  	struct rpc_message msg = {
-> > @@ -699,11 +699,26 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-> >  
-> >  	dprintk("NFS call  fsinfo\n");
-> >  	nfs_fattr_init(info->fattr);
-> > -	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-> > +	status = rpc_call_sync(client, &msg, 0);
-> >  	dprintk("NFS reply fsinfo: %d\n", status);
-> >  	return status;
-> >  }
-> >  
-> > +/*
-> > + * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via nfs_create_server
-> > + */
-> > +static int
-> > +nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-> > +		   struct nfs_fsinfo *info)
-> > +{
-> > +	int	status;
-> > +
-> > +	status = do_proc_fsinfo(server->client, fhandle, info);
-> > +	if (status && server->nfs_client->cl_rpcclient != server->client)
-> > +		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
-> > +	return status;
-> > +}
-> > +
-> >  static int
-> >  nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-> >  		   struct nfs_pathconf *info)
-> > 
-> 
+> I understand why they're there, but the separate "result" and "error"
+> returns are kinda confusing.  If the distinction's not needed then I
+> wonder whether it should just be buried as deep in rpcb_register() as
+> possible so we don't have to think about it.
+
+pmap_set() is the user space API for this function, and it returns a  
+bool_t -- TRUE if the service was registered, FALSE if it failed in  
+any way.  It is probably unnecessary to expose the RPC call and RPC  
+reply status codes separately.
+
+To fix this, I will rework the rpcb_register() and rpcb_v4_register()  
+APIs, and the patches in this series that depend on them.
+
+>> +}
+>> +
+>> +/**
+>> + * svc_register - register an RPC service with the local portmapper
+>> + * @serv: svc_serv struct for the service to register
+>> + * @proto: transport protocol number to advertise
+>> + * @port: port to advertise
+>> + *
+>>  */
+>> -int
+>> -svc_register(struct svc_serv *serv, int proto, unsigned short port)
+>> +int svc_register(const struct svc_serv *serv, const unsigned short  
+>> proto,
+>> +		 const unsigned short port)
+>> {
+>> 	struct svc_program	*progp;
+>> 	unsigned int		i;
+>> -	int			error = 0, dummy;
+>> +	int			error = 0;
+>>
+>> 	BUG_ON(proto == 0 && port == 0);
+>>
+>> @@ -739,8 +754,9 @@ svc_register(struct svc_serv *serv, int proto,  
+>> unsigned short port)
+>> 			if (progp->pg_vers[i] == NULL)
+>> 				continue;
+>>
+>> -			dprintk("svc: svc_register(%s, %s, %d, %d)%s\n",
+>> +			dprintk("svc: svc_register(%s, %u, %s, %u, %d)%s\n",
+>> 					progp->pg_name,
+>> +					serv->sv_family,
+>> 					proto == IPPROTO_UDP?  "udp" : "tcp",
+>> 					port,
+>> 					i,
+>> @@ -750,13 +766,11 @@ svc_register(struct svc_serv *serv, int  
+>> proto, unsigned short port)
+>> 			if (progp->pg_vers[i]->vs_hidden)
+>> 				continue;
+>>
+>> -			error = rpcb_register(progp->pg_prog, i, proto, port, &dummy);
+>> +			error = __svc_register(progp->pg_prog, i,
+>> +						serv->sv_family, proto,
+>> +						port);
+>> 			if (error < 0)
+>> 				break;
+>> -			if (!dummy) {
+>> -				error = -EACCES;
+>> -				break;
+>> -			}
+>> 		}
+>> 	}
+>>
+>>
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
