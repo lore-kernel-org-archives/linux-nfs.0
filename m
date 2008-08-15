@@ -1,159 +1,55 @@
-From: James Lentini <jlentini@netapp.com>
-Subject: Re: [PATCH,RFC 00/09] svcrdma: Fast Memory Registration Support
-Date: Fri, 15 Aug 2008 17:06:45 -0400 (EDT)
-Message-ID: <alpine.LFD.1.10.0808151644500.1717@jlentini-linux.nane.netapp.com>
-References: <48A30685.6050301@opengridcomputing.com> <20080813211953.GN26765@fieldses.org> <48A36004.1030304@opengridcomputing.com> <20080814194847.GH23859@fieldses.org>
+From: "Chuck Lever" <chucklever@gmail.com>
+Subject: Re: Massive NFS problems on large cluster with large number of mounts
+Date: Fri, 15 Aug 2008 17:39:35 -0400
+Message-ID: <76bd70e30808151439y3470245ds3093956608561dac@mail.gmail.com>
+References: <20080701182250.GB21807@fieldses.org>
+	 <20080717144852.GA11759@fieldses.org>
+	 <76bd70e30807170811s78175c0ep3a52da7c0ef95fc6@mail.gmail.com>
+	 <76bd70e30807281355t4890a9b2q6960d79552538f60@mail.gmail.com>
+	 <20080730175308.GH12364@fieldses.org>
+	 <76bd70e30807301233t73f92775tbdeb3f8efbb34a4f@mail.gmail.com>
+	 <76bd70e30807301501p5c0ba3c6i38fee02a1e606e31@mail.gmail.com>
+	 <76bd70e30808151334i19822280j67a08b92b17582ba@mail.gmail.com>
+	 <1218833230.7037.29.camel@localhost>
+	 <1218834252.7037.31.camel@localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Tom Tucker <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Carsten Aulbert" <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	linux-nfs@vger.kernel.org,
+	"Henning Fehrmann" <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	"Steffen Grunewald" <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56244 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751454AbYHOVGr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Aug 2008 17:06:47 -0400
-In-Reply-To: <20080814194847.GH23859@fieldses.org>
+Received: from gv-out-0910.google.com ([216.239.58.185]:60157 "EHLO
+	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753675AbYHOVjh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2008 17:39:37 -0400
+Received: by gv-out-0910.google.com with SMTP id e6so498210gvc.37
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2008 14:39:36 -0700 (PDT)
+In-Reply-To: <1218834252.7037.31.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Aug 15, 2008 at 5:04 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Fri, 2008-08-15 at 16:47 -0400, Trond Myklebust wrote:
+>> On Fri, 2008-08-15 at 16:34 -0400, Chuck Lever wrote:
+>> > Trond, NFS_MOUNT_FLAGMASK is used in nfs_init_server() and
+>> > nfs4_init_server() for both legacy binary and text-based mounts.  This
+>> > needs to be moved to a legacy-only path if we want to use the
+>> > high-order 16 bits in the 'flags' field for text-based mounts.
+>>
+>> We definitely want to do this. The point of introducing text-based
+>> mounts was to allow us to add functionality without having to worry
+>> about legacy binary mount formats. The mask should be there in order to
+>> ensure that binary formats don't start enabling features that they
+>> cannot support. There is no justification for applying it to the text
+>> mount path.
+>
+> I've attached the patch...
 
+Thanks!
 
-On Thu, 14 Aug 2008, J. Bruce Fields wrote:
-
-> On Wed, Aug 13, 2008 at 05:28:20PM -0500, Tom Tucker wrote:
-> > J. Bruce Fields wrote:
-> >> On Wed, Aug 13, 2008 at 11:06:29AM -0500, Tom Tucker wrote:
-> >>> This patchset implements support for Fast Memory Registration in the
-> >>> NFS server.  Fast Memory Regstration is the ability to quickly map a
-> >>> kernel memory page list as a logically contiguous memory region from
-> >>> the perspective of the adapter. This mapping is created and
-> >>> invalidated using work requests posted on the SQ. This allows for
-> >>> large amounts of data to transferred between the client and server
-> >>> with a single work request as well as the ability to invalidate a
-> >>> previously mapped memory region. For iWARP, this allows for "one-shot"
-> >>> memory regions to be mapped for a single NFS-RDMA data transfer. This
-> >>> improves security since a byzantine app listening on the net will have
-> >>> a very short window during which the RKEY is valid.
-> >>>
-> >>> This capability is only enabled if the underlying device advertises
-> >>> that it is supported.
-> >>
-> >> Thanks for your continuing work on this.
-> >>
-> >> I think we really need to document the security assumptions, though.
-> >>
-> >
-> > Yes, that's a good idea. Maybe a file in Documentation/svcrdma?
-> 
-> That would be great!  (Actually Documentation/filesystems/nfs-something
-> might be good.  Adding it to nfs-rdma.txt would be ideal.)
-> 
-> >
-> >> (Currently is your entire memory at the mercy of anyone on the same
-> >> local network as your rdma adapter?
-> >
-> > ------------------------------------------------------------------------
-> >
-> > A principal exploit is that a node listening on a mirror port of a switch
-> > could snoop RDMA packets containing RKEY and then forge a packet with this
-> > RKEY to write or read the memory of the peer to which the RKEY referred.
-> 
-> RKEY?  Apologies, I've been avoiding up till now asking about every bit
-> of jargon in hopes I could still get the gist, but I think I have to
-> give up and learn it.  Remind me what I need to read?
-
-The IBTA InfiniBand spec (http://www.infinibandta.org) and the IETF 
-iWARP specs, RDMAP (RFC5040), DDP (RFC5041), and MPA (RFC5044), are 
-good places to start.
-
-> > The NFSRDMA protocol is defined such that a) only the server initiates
-> > RDMA, and b) only the client's memory is exposed via RKEY. This is why
-> > the server reads to fetch RPC data from the client even though it would
-> > be more efficient for the client to write the data to the server's memory.
-> >
-> > The above design goal is not entirely realized with iWARP, however, because
-> > the RKEY (called an STag on iWARP) for the data sink of an RDMA_READ is
-> > actually placed on the wire!
-> 
-> So "data sink" here means the server memory that the data's being copied
-> to?  OK.
-
-Yes.
-
-> > Not only that, iWARP (RDDP) requires that this
-> > RKEY have Remote Write! This means that the server's memory is exposed by
-> > virtue of having placed the RKEY for it's local memory on the wire in order
-> > to receive the result of the RDMA_READ.
-> 
-> Got it.
-> 
-> > By contrast, IB uses an opaque
-> > transaction ID# to associate the READ_RPL with the READ_REQ _and_ the data
-> 
-> Google gives only two hits for READ_RPL.  Help!
-
-READ reply. This is the ack of the READ_REQ that contains the data 
-that was read.
-
-> 
-> > sink of an RDMA_READ does not require remote access. That said, 
-> > the evil node in question, for example, could potentially forge a 
-> > packet with this transaction ID and corrupt the target memory, 
-> > however, the duration of the exploit is this single READ_REQ.
-> 
-> OK.  So what would be the effect of the forged packet?
-
-The data sink of the RDMA read would have bogus data.
-
-> 
-> > The newer RDMA adapters (both iWARP and IB) support "Fast Memory Registration".
-> > This capability allows memory to be quickly registered and
-> > de-registered by submitting WR on the SQ. So the idea is to create an RKEY
-> > that ONLY maps the single RPC. So the WR sequence is post_map,
-> > post_rdma_read, post_invalidate. This has two benefits, a) it restricts the
-> > domain of the exploit to the memory of a single RPC,
-> 
-> So the only server-side memory that can be remotely written to is the
-> pages that will hold the write data?
-
-
-For iWARP yes.
-
-As Tom described, an InfiniBand RDMA Read operations doesn't require 
-the data sink of the RDMA Read to be remotely writable.
-
-> 
-> > and b) it limits the
-> > duration of the exploit to the time it takes to satisfy the RDMA_READ.
-> 
-> OK.
-> 
-> >   If so, fixing that would certainly
-> >> make this stuff useful in more situations, but language like "a very
-> >> short window" doesn't sound promising.  Also, we've got to make sure
-> >> users understand where it's safe to use this stuff....)
-> >>
-> >
-> > There are those who argue that a one-shot STag/RKEY is no less secure than TCP.
-> 
-> If the attacker is limited to corrupting some write data, then, yes,
-> that doesn't sound so different from nfs/rcp with auth_unix.
-> 
-> > Consider that the exact same evil application could more easily corrupt RPC
-> > payload by simply forging a packet with the correct TCP sequence number --
-> > in fact it's easier than the RDMA exploit because the RDMA exploit requires
-> > that you correctly forge both the TCP packet _and_ the RDMA payload. In
-> > addition the duration of the TCP exploit is the lifetime of the connection, not
-> > the lifetime of a single WR.
-> >
-> > So if you buy the argument above, RDMA on IB or iWARP using Fast Reg is no
-> > less secure than TCP. That is the goal of this patch series.
-> 
-> OK, thanks.
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+"Officer. Ma'am. Squeaker."
+  -- Mr. Incredible
