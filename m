@@ -1,231 +1,172 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Fri, 15 Aug 2008 12:59:09 -0400
-Message-ID: <52C9C44B-750E-437C-B3E8-380DB7371629@oracle.com>
-References: <20080814223028.GN23859@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v928.1)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: "Chuck Lever" <chuck.lever@oracle.com>
+Subject: Re: Massive NFS problems on large cluster with large number of mounts
+Date: Fri, 15 Aug 2008 16:34:03 -0400
+Message-ID: <76bd70e30808151334i19822280j67a08b92b17582ba@mail.gmail.com>
+References: <20080701182250.GB21807@fieldses.org> <487DC43F.8040408@aei.mpg.de>
+	 <20080716190658.GF20298@fieldses.org>
+	 <76bd70e30807170747r31af3280icf0bd3fdbde17bac@mail.gmail.com>
+	 <20080717144852.GA11759@fieldses.org>
+	 <76bd70e30807170811s78175c0ep3a52da7c0ef95fc6@mail.gmail.com>
+	 <76bd70e30807281355t4890a9b2q6960d79552538f60@mail.gmail.com>
+	 <20080730175308.GH12364@fieldses.org>
+	 <76bd70e30807301233t73f92775tbdeb3f8efbb34a4f@mail.gmail.com>
+	 <76bd70e30807301501p5c0ba3c6i38fee02a1e606e31@mail.gmail.com>
+Reply-To: chucklever@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Carsten Aulbert" <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	linux-nfs@vger.kernel.org,
+	"Henning Fehrmann" <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	"Steffen Grunewald" <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:51296 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757062AbYHORAT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2008 13:00:19 -0400
-In-Reply-To: <20080814223028.GN23859@fieldses.org>
+Received: from mu-out-0910.google.com ([209.85.134.188]:44040 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753011AbYHOUeF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2008 16:34:05 -0400
+Received: by mu-out-0910.google.com with SMTP id w8so1453716mue.1
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2008 13:34:03 -0700 (PDT)
+In-Reply-To: <76bd70e30807301501p5c0ba3c6i38fee02a1e606e31-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug 14, 2008, at 6:30 PM, J. Bruce Fields wrote:
-> I was looking back at this bug with the misparsing of
-> (non-mull-terminated) fs_locations attributes.  Thanks to the work on
-> nfs_parse_server_address, etc., we can now also more easily support  
-> ipv6
-> addresses here.  But I got lost in the usual maze of twisty struct
-> sockaddr_*'s, all alike.  Is this right?  Does any of it need to be
-> under CONFIG_IPV6?  Is there a simpler way?
-
-The use of the new address parser looks correct, but your string  
-handling needs work.  :-)
-
-Comments below...
-
+On Wed, Jul 30, 2008 at 6:01 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> On Wed, Jul 30, 2008 at 3:33 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> On Wed, Jul 30, 2008 at 1:53 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>> On Mon, Jul 28, 2008 at 04:55:50PM -0400, Chuck Lever wrote:
+>>>> On Thu, Jul 17, 2008 at 11:11 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> > On Thu, Jul 17, 2008 at 10:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>> >> On Thu, Jul 17, 2008 at 10:47:25AM -0400, Chuck Lever wrote:
+>>>> >>> On Wed, Jul 16, 2008 at 3:06 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>> >>> > The immediate problem seems like a kernel bug to me--it seems to me that
+>>>> >>> > the calls to local daemons should be ignoring {min_,max}_resvport.  (Or
+>>>> >>> > is there some way the daemons can still know that those calls come from
+>>>> >>> > the local kernel?)
+>>>> >>>
+>>>> >>> I tend to agree.  The rpcbind client (at least) does specifically
+>>>> >>> require a privileged port, so a large min/max port range would be out
+>>>> >>> of the question for those rpc_clients.
+>>>> >>
+>>>> >> Any chance I could talk you into doing a patch for that?
+>>>> >
+>>>> > I can look at it when I get back next week.
+>>>>
+>>>> I've been pondering this.
+>>>>
+>>>> It seems like the NFS client is a rather unique case for using
+>>>> unprivileged ports; most or all of the other RPC clients in the kernel
+>>>> want to use privileged ports pretty much all the time, and have
+>>>> learned to switch this off as needed and appropriate.  We even have an
+>>>> internal API feature for doing this: the RPC_CLNT_CREATE_NONPRIVPORT
+>>>> flag to rpc_create().
+>>>>
+>>>> And instead of allowing a wide source port range, it would be better
+>>>> for the NFS client to use either privileged ports, or unprivileged
+>>>> ports, but not both, for the same mount point.  Otherwise we could be
+>>>> opening ourselves up for non-deterministic behavior: "How come
+>>>> sometimes I get EPERM when I try to mount my NFS servers, but other
+>>>> times the same mount command works fine?" or "Sometimes after a long
+>>>> idle period my NFS mount points stop working, and all the programs
+>>>> running on the mount point get EACCES."
+>>>>
+>>>> It seems like a good solution would be to:
+>>>>
+>>>> 1.  Make the xprt_minresvport and xprt_maxresvport sysctls mean what
+>>>> they say: they are _reserved_ port limits.  Thus xprt_maxresvport
+>>>> should never be allowed to be larger than 1023, and xprt_minresvport
+>>>> should always be made to be strictly less than xprt_maxresvport; and
+>>>
+>>> That would break existing setups: so, someone googles for "nfs linux
+>>> large numbers of mounts" and comes across:
+>>>
+>>>        http://marc.info/?l=linux-nfs&m=121509091004851&w=2
+>>>
+>>> They add
+>>>
+>>>        echo 2000 >/proc/sys/sunrpc/max_resvport
+>>>
+>>> to their initscripts, and their problem goes away.  A year later, with
+>>> this incident long forgotten, they upgrade their kernel, start getting
+>>> failed mounts, and in the worst case end up debugging the whole problem
+>>> from scratch again.
+>>
+>>>> 2.  Introduce a mechanism to specifically enable the NFS client to use
+>>>> non-privileged ports.  It could be a new mount option like "insecure"
+>>>> (which is what some other O/Ses use) or "unpriv-source-port" for
+>>>> example.  I tend to dislike the former because such a feature is
+>>>> likely to be quite useful with Kerberos-authenticated NFS, and
+>>>> "sec=krb5,insecure" is probably a little funny looking, but
+>>>> "sec=krb5,unpriv-source-port" makes it pretty clear what is going on.
+>>>
+>>> But I can see the argument for the mount option.
+>>>
+>>> Maybe we could leave the meaning of the sysctls alone, and allowing
+>>> noresvport as an alternate way to allow use of nonreserved ports?
+>>>
+>>> In any case, this all seems a bit orthogonal to the problem of what
+>>> ports the rpcbind client uses, right?
+>>
+>> No, this is exactly the original problem.  The reason xprt_maxresvport
+>> is allowed to go larger than 1023 is to permit more NFS mounts.  There
+>> really is no other reason for it I can think of.
+>>
+>> But it's broken (or at least inconsistent) behavior that max_resvport
+>> can go past 1023 in the first place.  The name is "max_resvport" --
+>> Maximum Reserved Port.  A port value of more than 1024 is not a
+>> reserved port.  These sysctls are designed to restrict the range of
+>> ports used when a _reserved_ port is requested, not when _any_ source
+>> port is requested.  Trond's suggestion is an "off label" use of this
+>> facility.
+>>
+>> And rpcbind isn't the only kernel-level RPC service that requires a
+>> reserved port.  The kernel-level NSM code that calls user space, for
+>> example, is one such service.  In other words, rpcbind isn't the only
+>> service that could potentially hit this issue, so an rpcbind-only fix
+>> would be incomplete.
+>>
+>> We already have an appropriate interface for kernel RPC services to
+>> request a non-privileged port.  The NFS client should use that
+>> interface.
+>>
+>> Now, we don't have to change both at the same time.  We can introduce
+>> the mount option now; the default reserved port range is still good.
+>> And eventually folks using the sysctl will hit the rpcbind bug (or a
+>> lock recovery problem), trace it back to this issue, and change their
+>> mount options and reset their resvport sysctls.
 >
+> Unfortunately we are out of NFS_MOUNT_ flags: there are already 16
+> defined and this is a legacy kernel ABI, so I'm not sure if we are
+> allowed to use the upper 16 bits in the flags word.
 >
-> --b.
->
->    nfs: Fix misparsing of nfsv4 fs_locations attribute
->
->    The code incorrectly assumes here that the server name (or ip  
-> address)
->    is null-terminated.  This can cause referrals to fail in some  
-> cases.
->
->    Also support ipv6 addresses.
->
->    Compile-tested only.
->
->    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->
-> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-> index b112857..c0f5191 100644
-> --- a/fs/nfs/nfs4namespace.c
-> +++ b/fs/nfs/nfs4namespace.c
-> @@ -93,23 +93,6 @@ static int nfs4_validate_fspath(const struct  
-> vfsmount *mnt_parent,
-> 	return 0;
-> }
->
-> -/*
-> - * Check if the string represents a "valid" IPv4 address
-> - */
-> -static inline int valid_ipaddr4(const char *buf)
-> -{
-> -	int rc, count, in[4];
-> -
-> -	rc = sscanf(buf, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
-> -	if (rc != 4)
-> -		return -EINVAL;
-> -	for (count = 0; count < 4; count++) {
-> -		if (in[count] > 255)
-> -			return -EINVAL;
-> -	}
-> -	return 0;
-> -}
-> -
-> /**
->  * nfs_follow_referral - set up mountpoint when hitting a referral  
-> on moved error
->  * @mnt_parent - mountpoint of parent directory
-> @@ -172,30 +155,44 @@ static struct vfsmount  
-> *nfs_follow_referral(const struct vfsmount *mnt_parent,
->
-> 		s = 0;
-> 		while (s < location->nservers) {
-> -			struct sockaddr_in addr = {
-> -				.sin_family	= AF_INET,
-> -				.sin_port	= htons(NFS_PORT),
-> -			};
-> -
-> -			if (location->servers[s].len <= 0 ||
-> -			    valid_ipaddr4(location->servers[s].data) < 0) {
-> -				s++;
-> -				continue;
-> -			}
-> +			const struct nfs4_string *buf = &location->servers[s];
-> +			struct sockaddr_storage addr;
-> +
-> +			if (buf->len <= 0 || buf->len >= PAGE_SIZE)
-> +				goto next;
->
-> -			mountdata.hostname = location->servers[s].data;
-> -			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
-> 			mountdata.addr = (struct sockaddr *)&addr;
-> -			mountdata.addrlen = sizeof(addr);
-> +
-> +			if (memchr(buf->data, '%', buf->len))
-> +				goto next;
+> Will think about this more.
 
-Why are you looking for a '%' ?
+We had some discussion about this at the pub last night.
 
-> +			nfs_parse_ip_address(buf->data, buf->len,
-> +					mountdata.addr, &mountdata.addrlen);
+Trond, NFS_MOUNT_FLAGMASK is used in nfs_init_server() and
+nfs4_init_server() for both legacy binary and text-based mounts.  This
+needs to be moved to a legacy-only path if we want to use the
+high-order 16 bits in the 'flags' field for text-based mounts.
 
-Now what's so hard about that?  :-)
+I reviewed the Solaris mount_nfs(1M) man page (I hope this is the
+correct place to look).  There doesn't appear to be a mount option to
+make Solaris NFS clients use a reserved port. Not sure if there's some
+other UI (like a config file in /etc).
 
->
-> +			switch (mountdata.addr->sa_family) {
-> +			case AF_UNSPEC:
-> +				goto next;
-> +			case AF_INET:
-> +				((struct sockaddr_in *)&addr)->sin_port =
-> +							htons(NFS_PORT);
-> +				break;
-> +			case AF_INET6:
-> +				((struct sockaddr_in6 *)&addr)->sin6_port =
-> +							htons(NFS_PORT);
-> +				break;
-> +			}
+FreeBSD and Mac OS both use "[no]resvport" as Mike pointed out
+earlier.  That's my vote for the new Linux mount option.
 
-It might be cleaner to pull the whole while {} loop into a separate  
-function.  I didn't look closely enough to see if this would be easy.
+[ Sidebar: I found this in the Mac OS mount_nfs(8) man page:
 
-At least here, you could set the port in a small helper function, and  
-then put an "if (unlikely(family == AF_UNSPEC)) goto next;" just after  
-the call to nfs_parse_ip_address, to save all the crazy indenting.  If  
-we ever create a global helper to manage AF-agnostic port setting,  
-that would make it easier to use here if the AF_UNSPEC check were  
-separate.
+     noconn  Do not connect UDP sockets.  For UDP mount points, do not do a
+             connect(2).  This must be used for servers that do not reply to
+             requests from the standard NFS port number 2049.  It may also be
+             required for servers with more than one IP address if replies come
+             from an address other than the one specified in the requests.
 
-In fact, as part of this patch you could add a static inline helper in  
-fs/nfs/internal.h to do the port setting.  That can be shared between  
-fs/nfs/super.c and fs/nfs/nfs4namespace.c.
+An interesting consideration if we support connected UDP sockets for
+NFS at some point. ]
 
-Arguably the addition of the AF_UNSPEC check in the switch statement  
-is an optimization that is slightly confusing.  You are checking for  
-AF_UNSPEC to see if you should continue the loop, but the other cases  
-are for setting a port; two entirely different purposes.
-
-It would be more precise structuring to keep these two separate, even  
-though it might add an extra conditional branch.  This makes it easier  
-to spot the loop condition expressions.
-
-> +
-> +			mountdata.hostname = kmalloc(buf->len + 1, GFP_KERNEL);
-> +			mountdata.hostname[buf->len] = 0;
-
-The usual practice is to use '\0' here since it is a character array;  
-0 is an int, not a character, so this does an implicit cast.   
-Harmless, but using a character constant is more precise.
-
-But I'm not sure why you are not using location->servers[s].data (or  
-buf->data).  You kmalloc a buffer for hostname, but aren't setting it  
-to anything.  Did you mean kstrndup?
-
-> 			snprintf(page, PAGE_SIZE, "%s:%s",
-> 					mountdata.hostname,
-> 					mountdata.mnt_path);
-
-For snprintf, you can specify the length of the string with a "%.*s"  
-format.  Then you pass buf->len and buf->data (in that order) to it.   
-That way you can print a non-NUL-terminated string safely.  That  
-should make any memory allocation or string copying unnecessary here.
-
-> 			mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, &mountdata);
-> +			kfree(mountdata.hostname);
-
-mountdata.hostname is used in other places... I don't think you can  
-just free it here.  Another reason to use a pointer to location- 
- >servers[s].data.
-
-If location->servers[s].data isn't always NUL-terminated, you might  
-make mountdata.hostname an nfs4_string so it carries the string length  
-with it; the other users of mountdata.hostname can then see the length.
-
-> 			if (!IS_ERR(mnt)) {
-> 				break;
-> 			}
-> +next:
-> 			s++;
-> 		}
-> 		loc++;
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 9abcd2b..1d10756 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -798,7 +798,7 @@ static void nfs_parse_ipv6_address(char *string,  
-> size_t str_len,
->  * If there is a problem constructing the new sockaddr, set the  
-> address
->  * family to AF_UNSPEC.
->  */
-> -static void nfs_parse_ip_address(char *string, size_t str_len,
-> +void nfs_parse_ip_address(char *string, size_t str_len,
-> 				 struct sockaddr *sap, size_t *addr_len)
-> {
-> 	unsigned int i, colons;
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index 78a5922..62ca683 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -444,6 +444,8 @@ extern const struct inode_operations  
-> nfs_referral_inode_operations;
-> extern int nfs_mountpoint_expiry_timeout;
-> extern void nfs_release_automount_timer(void);
->
-> +void nfs_parse_ip_address(char *, size_t, struct sockaddr *, size_t  
-> *);
-> +
-
-Perhaps a better place for this would be fs/nfs/internal.h.  This  
-function is used only internally in fs/nfs; no need to expose it to  
-user space.
-
->
-> /*
->  * linux/fs/nfs/unlink.c
->  */
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+-- 
+"Officer. Ma'am. Squeaker."
+  -- Mr. Incredible
