@@ -1,70 +1,67 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [pnfs] [PATCH 7/7] nfsd: nfs4xdr decode_stateid helper function
-Date: Sun, 17 Aug 2008 15:02:01 +0300
-Message-ID: <48A81339.9010302@panasas.com>
-References: <48A1CB0C.4090906@panasas.com>	<1218563178-25480-1-git-send-email-bhalevy@panasas.com>	<20080812190410.GC30729@fieldses.org> <48A28DEA.5060406@panasas.com>	<20080813150329.GF21004@fieldses.org> <1218650349.9042.20.camel@localhost>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: nfs_file_flush() question
+Date: Sun, 17 Aug 2008 13:04:01 -0400
+Message-ID: <1218992641.7999.2.camel@localhost>
+References: <20080817002342.GA17223@yahoo-inc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chucklever@gmail.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-colo-pa.panasas.com ([66.238.117.130]:24082 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752549AbYHQMCi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Aug 2008 08:02:38 -0400
-In-Reply-To: <1218650349.9042.20.camel@localhost>
+Received: from mail-out1.uio.no ([129.240.10.57]:45836 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751758AbYHQREG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Aug 2008 13:04:06 -0400
+In-Reply-To: <20080817002342.GA17223@yahoo-inc.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Wed, 2008-08-13 at 11:03 -0400, J. Bruce Fields wrote:
->> On Wed, Aug 13, 2008 at 10:31:54AM +0300, Benny Halevy wrote:
->>> On Aug. 12, 2008, 22:04 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>> On Tue, Aug 12, 2008 at 08:46:18PM +0300, Benny Halevy wrote:
->>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>>> ---
->>>>>  fs/nfsd/nfs4xdr.c |   99 +++++++++++++++++++++++++++++-----------------------
->>>>>  1 files changed, 55 insertions(+), 44 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>>>> index 47ac498..9570b1b 100644
->>>>> --- a/fs/nfsd/nfs4xdr.c
->>>>> +++ b/fs/nfsd/nfs4xdr.c
->>>>>  static __be32
->>>>> @@ -929,9 +939,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
->>>>>  	int len;
->>>>>  	DECODE_HEAD;
->>>>>  
->>>>> -	READ_BUF(sizeof(stateid_opaque_t) + 20);
->>>>> -	READ32(write->wr_stateid.si_generation);
->>>>> -	COPYMEM(&write->wr_stateid.si_opaque, sizeof(stateid_opaque_t));
->>>>> +	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
->>>>> +	if (status)
->>>>> +		return status;
->>>>> +	READ_BUF(16);
->>>> How did that 20 become a 16?
->>> It was sizeof(stateid_opaque_t) + 20 == sizeof(stateid_t) - 4 + 20 ==
->>> sizeof(stateid_t) + 16.
->> Whoops!  Even now I still fall into the stateid_opaque_t/stateid_t trap!
+On Sat, 2008-08-16 at 19:23 -0500, Quentin Barnes wrote:
+> I've been coming up to speed on the NFS protocol and its NFS client
+> support in Linux.  I've been comparing performance of NFS on RHEL4
+> and RHEL5 vs. FreeBSD 6.2.  (Okay, we're on an old base, but I don't
+> think it matters here for this question.)
 > 
-> Which is a good reason for ditching the entire confusing typedef, and
-> replacing it with a packed structure instead:
+> In watching the NFS protocols fly back and forth between BSD
+> and Linux clients to an NFS server, I noticed that Linux is
+> doing an extra GETATTR over FreeBSD when closing a read-write
+> file.  I tracked this back to nfs_file_flush() which is
+> doing a __nfs_revalidate_inode() (or in current kernels
+> nfs_revalidate_inode()).  Why do we want nfs_file_flush() to force
+> a revalidate of an inode we're closing?  Why not instead just
+> invalidate the inode's attribute?
 > 
-> struct stateid {
-> 	__be32 generation;
-> 	char opaque[12];
-> } __attribute__((packed));
+> I looked at the FreeBSD 6.2 code.  In its nfs_close(), it does an
+> "np->n_attrstamp = 0;" to invalidate the inode's attribute cache.
 > 
-> Trond
+> The current Linux kernel code in question in nfs_file_flush() is:
+> ==========
+>     /* Ensure that data+attribute caches are up to date after close() */
+>     status = nfs_do_fsync(ctx, inode);
+>     if (!status)
+>             nfs_revalidate_inode(NFS_SERVER(inode), inode);
+> ==========
 > 
+> I would imagine this better as:
+> ==========
+>     /* Ensure that data+attribute caches are up to date after close() */
+>     status = nfs_do_fsync(ctx, inode);
+>     if (!status && !(NFS_SERVER(inode)->flags & NFS_MOUNT_NOCTO))
+>             NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
+> ==========
+> 
+> Is there a reason I'm missing that the revalidate and GETATTR are
+> required?
 
-Please use the "__packed" Kernel macro for better compilers support.
+Yes: It is required for correct close-to-open cache consistency
+semantics.
 
-And Yes I would suggest using "__packed" where ever a struct is defined
-for on-the-wire. Even just for indication to fellow programmers that this 
-is going on the wire as is.
+If I don't know the correct mtime attribute of the file when I close it,
+then I can't compare it with the mtime of the file when I open it again.
+If so, close-to-open semantics forbid me from assuming that my cached
+data is still valid, and so I have to throw out the entire page cache
+contents for that file.
 
-Boaz
+Cheers
+  Trond
+
