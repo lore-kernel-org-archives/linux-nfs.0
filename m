@@ -1,34 +1,69 @@
-From: Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>
-Subject: NFS regression?  Odd delays and lockups accessing an NFS export.
-Date: Mon, 18 Aug 2008 12:02:20 +1000
-Message-ID: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com>
-Reply-To: Grant Coady <gcoady.lk@gmail.com>
+From: David Woodhouse <dwmw2@infradead.org>
+Subject: [PATCH 1/3] Fix handling of explicit uuid
+Date: Mon, 18 Aug 2008 13:17:30 +0100
+Message-ID: <1219061850.3184.378.camel@pmac.infradead.org>
+References: <48A5449F.7050205@nokia.com>
+	 <1218808776.3184.89.camel@pmac.infradead.org>
+	 <1218809892.7037.3.camel@localhost>
+	 <1219058258.3184.358.camel@pmac.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@suse.de, bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay04.mail-hub.dodo.com.au ([123.2.6.239]:48148 "EHLO
-	relay04.mail-hub.dodo.com.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751019AbYHRCDE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Aug 2008 22:03:04 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Artem.Bityutskiy@nokia.com, linux-fsdevel@vger.kernel.org,
+	steved@redhat.com, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1219058258.3184.358.camel@pmac.infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi there,
+Fix a couple of bugs which show up if you try to explicitly set a
+16-byte UUID when exporting a file system. First, exportfs cuts the
+first two bytes off the UUID and writes something invalid to etab.
+Second, mountd writes the _ascii_ form of the UUID to the kernel,
+instead of converting it to hex.
 
-I've been using NFS here for years, lately there's something odd going on 
-since about a month or so.  Previously reported last month:
-http://www.gossamer-threads.com/lists/linux/kernel/951419?page=last
+Signed-off-by: David Woodhouse <David.Woodhouse@intel.com>
+---
+ support/nfs/exports.c |    2 +-
+ utils/mountd/cache.c  |    4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-Now with 2.6.27-rc3 on one of the client boxes I get a complete stall 
-at odd times when accessing the server's exported directory, cannot 
-see a pattern to it.  Eventually recovers after a Ctrl-C.  Nothing in 
-the server or client log files.  Not easy to reproduce either.
+diff --git a/support/nfs/exports.c b/support/nfs/exports.c
+index 525e5b1..334c08e 100644
+--- a/support/nfs/exports.c
++++ b/support/nfs/exports.c
+@@ -595,7 +595,7 @@ bad_option:
+ 				if (opt[5]!='\0' && *oe == '\0') 
+ 					ep->e_flags |= NFSEXP_FSID;
+ 				else if (valid_uuid(opt+5))
+-					ep->e_uuid = strdup(opt+7);
++					ep->e_uuid = strdup(opt+5);
+ 				else {
+ 					xlog(L_ERROR, "%s: %d: bad fsid \"%s\"\n",
+ 					     flname, flline, opt);	
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index f555dcc..cd377ce 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -590,8 +590,10 @@ static int dump_to_cache(FILE *f, char *domain, char *path, struct exportent *ex
+  				qword_printhex(f, u, 16);
+  			}
+  		} else {
++			char u[16];
++			get_uuid(NULL, exp->e_uuid, 16, u);
+  			qword_print(f, "uuid");
+- 			qword_printhex(f, exp->e_uuid, 16);
++ 			qword_printhex(f, u, 16);
+  		}
+ #endif
+ 	}
+-- 
+1.5.5.1
 
-The server runs 2.6.26.2 at the moment.
 
-Server config, etc: http://bugsplatter.id.au/kernel/boxen/deltree/
-Client config, etc: http://bugsplatter.id.au/kernel/boxen/pooh/
+-- 
+David Woodhouse                            Open Source Technology Centre
+David.Woodhouse@intel.com                              Intel Corporation
 
-Grant.
+
+
