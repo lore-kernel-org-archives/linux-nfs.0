@@ -1,62 +1,49 @@
-From: David Woodhouse <dwmw2@infradead.org>
-Subject: [PATCH 3/3] Use fsid from statfs for UUID if blkid can't cope (or
-	not used)
-Date: Mon, 18 Aug 2008 13:17:40 +0100
-Message-ID: <1219061860.3184.382.camel@pmac.infradead.org>
-References: <48A5449F.7050205@nokia.com>
-	 <1218808776.3184.89.camel@pmac.infradead.org>
-	 <1218809892.7037.3.camel@localhost>
-	 <1219058258.3184.358.camel@pmac.infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Artem.Bityutskiy@nokia.com, linux-fsdevel@vger.kernel.org,
-	steved@redhat.com, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] NFS: missing nfs_fattr_init in nfs3_proc_getacl and nfs3_proc_setacls (resend #2)
+Date: Mon, 18 Aug 2008 09:17:58 -0400
+Message-ID: <1219065478-28215-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:50236 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753606AbYHRMRr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Aug 2008 08:17:47 -0400
-In-Reply-To: <1219058258.3184.358.camel-ZP4jZrcIevRpWr+L1FloEB2eb7JE58TQ@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:50854 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752007AbYHRNSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2008 09:18:02 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: David Woodhouse <David.Woodhouse@intel.com>
----
- utils/mountd/cache.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
+The fattrs used in the NFSv3 getacl/setacl calls are not being properly
+initialized. This occasionally causes nfs_update_inode to fall into
+NFSv4 specific codepaths when handling post-op attrs from these calls.
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 0136eca..f29b885 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -213,8 +213,17 @@ int get_uuid(char *path, char *uuid, int uuidlen, char *u)
+Thanks to Cai Qian for noticing the spurious NFSv4 messages in debug
+output from a v3 mount...
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs3acl.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 423842f..cef6255 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -229,6 +229,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
  
- 	if (path) {
- 		val = get_uuid_blkdev(path);
--		if (!val)
--			return 0;
-+		if (!val) {
-+			struct statfs64 st;
-+
-+			if (statfs64(path, &st))
-+				return 0;
-+			if (!st.f_fsid.__val[0] && !st.f_fsid.__val[1])
-+				return 0;
-+			snprintf(fsid_val, 17, "%08x%08x",
-+				 st.f_fsid.__val[0], st.f_fsid.__val[1]);
-+			val = fsid_val;
-+		}
- 	} else {
- 		val = uuid;
- 	}
+ 	dprintk("NFS call getacl\n");
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_GETACL];
++	nfs_fattr_init(&fattr);
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+ 	dprintk("NFS reply getacl: %d\n", status);
+ 
+@@ -322,6 +323,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 
+ 	dprintk("NFS call setacl\n");
+ 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
++	nfs_fattr_init(&fattr);
+ 	status = rpc_call_sync(server->client_acl, &msg, 0);
+ 	nfs_access_zap_cache(inode);
+ 	nfs_zap_acl_cache(inode);
 -- 
 1.5.5.1
-
-
--- 
-David Woodhouse                            Open Source Technology Centre
-David.Woodhouse@intel.com                              Intel Corporation
-
-
 
