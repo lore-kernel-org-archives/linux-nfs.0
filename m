@@ -1,105 +1,47 @@
-From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
-Subject: [PATCH 001/001] nfs: authenticated deep mounting
-Date: Tue, 19 Aug 2008 11:23:46 +0200
-Message-ID: <48AA9122.90805@few.vu.nl>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/7] NFS: nfs_parsed_mount_options can use unsigned int
+Date: Mon, 18 Aug 2008 19:33:29 -0400
+Message-ID: <20080818233328.1214.62818.stgit@manray.1015granger.net>
+References: <20080818233128.1214.48603.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org, trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from top.few.vu.nl ([130.37.20.4]:58565 "EHLO top.few.vu.nl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751418AbYHSJXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Aug 2008 05:23:49 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:21571 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132AbYHSMG7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 08:06:59 -0400
+In-Reply-To: <20080818233128.1214.48603.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow mount to do authenticated mounts below the root of the exported tree.
-The wording in RFC 2623, sec 2.3.2. allows fsinfo with UNIX authentication
-on the root of the export. Mounts are not always done on the root
-of the exported tree. Especially autoumounts often mount below the root of
-the exported tree.
-Some server implementations (justly) require full authentication for the
-so-called deep mounts. The old code used AUTH_SYS only. This caused deep
-mounts to fail on systems requiring stronger authentication..
-The client should try both authentication types and use the first one that
-succeeds.
-This method was already partially implemented. This patch completes
-the implementation for NFS2 and NFS3.
-This patch was developed to allow Debian systems to automount home directories
-on Solaris servers with krb5 authentication.
+Eliminate mixed sign comparisons in nfs_compare_remount_options().
 
-Tested on kernel 2.6.24-etchnhalf.1
-
-Signed-off-by: E.G. Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 549dbce..ce575e6 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -684,7 +684,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
-  }
+ fs/nfs/internal.h |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-  static int
--nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-+do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
-  		 struct nfs_fsinfo *info)
-  {
-  	struct rpc_message msg = {
-@@ -696,11 +696,26 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 24241fc..275a692 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -32,11 +32,11 @@ struct nfs_clone_mount {
+  */
+ struct nfs_parsed_mount_data {
+ 	int			flags;
+-	int			rsize, wsize;
+-	int			timeo, retrans;
+-	int			acregmin, acregmax,
++	unsigned int		rsize, wsize;
++	unsigned int		timeo, retrans;
++	unsigned int		acregmin, acregmax,
+ 				acdirmin, acdirmax;
+-	int			namlen;
++	unsigned int		namlen;
+ 	unsigned int		bsize;
+ 	unsigned int		auth_flavor_len;
+ 	rpc_authflavor_t	auth_flavors[1];
 
-  	dprintk("NFS call  fsinfo\n");
-  	nfs_fattr_init(info->fattr);
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(client, &msg, 0);
-  	dprintk("NFS reply fsinfo: %d\n", status);
-  	return status;
-  }
-
-+/*
-+ * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via nfs_create_server
-+ */
-+static int
-+nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-+		   struct nfs_fsinfo *info)
-+{
-+	int	status;
-+
-+	status = do_proc_fsinfo(server->client, fhandle, info);
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
-+	return status;
-+}
-+
-  static int
-  nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-  		   struct nfs_pathconf *info)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 5ccf7fa..f728118 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -65,14 +65,22 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
-
-  	dprintk("%s: call getattr\n", __FUNCTION__);
-  	nfs_fattr_init(fattr);
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	/* Retry with default authentication if different */
-+	if (status && server->nfs_client->cl_rpcclient != server->client) {
-+		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	}
-  	dprintk("%s: reply getattr: %d\n", __FUNCTION__, status);
-  	if (status)
-  		return status;
-  	dprintk("%s: call statfs\n", __FUNCTION__);
-  	msg.rpc_proc = &nfs_procedures[NFSPROC_STATFS];
-  	msg.rpc_resp = &fsinfo;
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	/* Retry with default authentication if different */
-+	if (status && server->nfs_client->cl_rpcclient != server->client) {
-+		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	}
-  	dprintk("%s: reply statfs: %d\n", __FUNCTION__, status);
-  	if (status)
-  		return status;
