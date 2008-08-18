@@ -1,49 +1,53 @@
-From: "J. K. Cliburn" <jcliburn@gmail.com>
-Subject: Re: NFS regression?  Odd delays and lockups accessing an NFS export.
-Date: Mon, 18 Aug 2008 14:37:45 -0500
-Message-ID: <48A9CF89.9090304@bellsouth.net>
-References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com> <20080818185048.GO20684@miggy.org>
-Reply-To: jacliburn-Bdlq13kUjeyLZ21kGMrzwg@public.gmane.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH,RFC 00/09] svcrdma: Fast Memory Registration Support
+Date: Mon, 18 Aug 2008 18:39:53 -0400
+Message-ID: <20080818223953.GB32543@fieldses.org>
+References: <48A30685.6050301@opengridcomputing.com> <20080813211953.GN26765@fieldses.org> <48A36004.1030304@opengridcomputing.com> <20080814194847.GH23859@fieldses.org> <48A4A23D.8040702@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>, neilb@suse.de,
-	bfields@fieldses.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from yx-out-2324.google.com ([74.125.44.28]:16419 "EHLO
-	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764476AbYHRThs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Aug 2008 15:37:48 -0400
-Received: by yx-out-2324.google.com with SMTP id 8so1333219yxm.1
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Aug 2008 12:37:47 -0700 (PDT)
-In-Reply-To: <20080818185048.GO20684-QVNlIYdkypLYtjvyW6yDsg@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:55588 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753414AbYHRWkF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2008 18:40:05 -0400
+In-Reply-To: <48A4A23D.8040702@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Athanasius wrote:
-> On Mon, Aug 18, 2008 at 12:02:20PM +1000, Grant Coady wrote:
->> I've been using NFS here for years, lately there's something odd going on 
->> since about a month or so.  Previously reported last month:
->> http://www.gossamer-threads.com/lists/linux/kernel/951419?page=last
->>
->> Now with 2.6.27-rc3 on one of the client boxes I get a complete stall 
->> at odd times when accessing the server's exported directory, cannot 
->> see a pattern to it.  Eventually recovers after a Ctrl-C.  Nothing in 
->> the server or client log files.  Not easy to reproduce either.
-> 
->   I wonder if this is what I've been seeing.  I've been otherwise too
-> busy to properly report it, thinking that *someone* else must also be
-> seeing it and it's being worked on, else it's a subtle configuration
-> problem my end.
-> 
->   I first started seeing this with 2.6.26 on the client end, 
+On Thu, Aug 14, 2008 at 04:23:09PM -0500, Tom Tucker wrote:
+> Here are the relevant specs:
+>
+> Unfortunately, the IB specs are private to the IBTA.
+> http://www.infinibandta.org/home
+>
+> The OFA verbs most closely resemble IB verbs.
+>
+> Here are the iWARP protocol specs:
+>
+> http://www.ietf.org/rfc/rfc5040.txt
+> http://www.ietf.org/rfc/rfc5041.txt
+> http://www.ietf.org/rfc/rfc5044.txt
+>
+> Here are the iWARP verbs specs. This is what the adapters where written to.
+>
+> http://www.rdmaconsortium.org/home/RNIC_Verbs_Overview2.pdf
+> http://www.rdmaconsortium.org/home/draft-hilland-iwarp-verbs-v1.0-RDMAC.pdf
 
-I see you're running the atl1 driver on your client.  I'm chasing an 
-intermittent bug in that driver that seems to be affected by certain 
-offload parameters.  Try disabling TSO and see if things improve.
+OK, thanks very much to you and James for all the explanation.  And
+actually the IB specs do appear to be available if you give them your
+name and address?
 
-ethtool -K eth0 tso off
+So could one of you add some of this (the explanation of the security
+issues, at least) to Documentation/filesystems/nfs-rdma.txt?
 
-Let me know if it helps.
+I'm worried about the fact that the amount of trust required in the
+network will vary so much depending on exactly which hardware and kernel
+version the user has.
 
-Jay
+As long as this is relatively specialized hardware, perhaps it's not
+such a big deal....  But at the very least I think we should make sure
+this is carefully documented.
+
+--b.
