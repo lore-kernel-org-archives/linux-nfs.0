@@ -1,49 +1,74 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] NFS: missing nfs_fattr_init in nfs3_proc_getacl and nfs3_proc_setacls (resend #2)
-Date: Mon, 18 Aug 2008 09:17:58 -0400
-Message-ID: <1219065478-28215-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+From: David Woodhouse <dwmw2@infradead.org>
+Subject: [PATCH 4/3] Stop exportfs warning about needing fsid, when we
+	actually have one
+Date: Mon, 18 Aug 2008 17:00:35 +0100
+Message-ID: <1219075235.3184.397.camel@pmac.infradead.org>
+References: <48A5449F.7050205@nokia.com>
+	 <1218808776.3184.89.camel@pmac.infradead.org>
+	 <1218809892.7037.3.camel@localhost>
+	 <1219058258.3184.358.camel@pmac.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Artem.Bityutskiy@nokia.com, linux-fsdevel@vger.kernel.org,
+	steved@redhat.com, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:50854 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752007AbYHRNSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Aug 2008 09:18:02 -0400
+Received: from bombadil.infradead.org ([18.85.46.34]:34352 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752736AbYHRQAk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Aug 2008 12:00:40 -0400
+In-Reply-To: <1219058258.3184.358.camel-ZP4jZrcIevRpWr+L1FloEB2eb7JE58TQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The fattrs used in the NFSv3 getacl/setacl calls are not being properly
-initialized. This occasionally causes nfs_update_inode to fall into
-NFSv4 specific codepaths when handling post-op attrs from these calls.
-
-Thanks to Cai Qian for noticing the spurious NFSv4 messages in debug
-output from a v3 mount...
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: David Woodhouse <David.Woodhouse@intel.com>
 ---
- fs/nfs/nfs3acl.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ utils/exportfs/exportfs.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 423842f..cef6255 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -229,6 +229,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 18dfe5a..fec2571 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -12,6 +12,7 @@
+ #include <config.h>
+ #endif
  
- 	dprintk("NFS call getacl\n");
- 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_GETACL];
-+	nfs_fattr_init(&fattr);
- 	status = rpc_call_sync(server->client_acl, &msg, 0);
- 	dprintk("NFS reply getacl: %d\n", status);
++#include <sys/vfs.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -388,6 +389,8 @@ validate_export(nfs_export *exp)
+ 	 */
+ 	struct stat stb;
+ 	char *path = exp->m_export.e_path;
++	struct statfs64 stf;
++	int fs_has_fsid = 0;
  
-@@ -322,6 +323,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	if (stat(path, &stb) < 0) {
+ 		fprintf(stderr, "exportfs: Warning: %s does not exist\n",
+@@ -403,7 +406,12 @@ validate_export(nfs_export *exp)
+ 	if (!can_test())
+ 		return;
  
- 	dprintk("NFS call setacl\n");
- 	msg.rpc_proc = &server->client_acl->cl_procinfo[ACLPROC3_SETACL];
-+	nfs_fattr_init(&fattr);
- 	status = rpc_call_sync(server->client_acl, &msg, 0);
- 	nfs_access_zap_cache(inode);
- 	nfs_zap_acl_cache(inode);
+-	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid) {
++	if (!statfs64(path, &stf) &&
++	    (stf.f_fsid.__val[0] || stf.f_fsid.__val[1]))
++		fs_has_fsid = 1;
++
++	if ((exp->m_export.e_flags & NFSEXP_FSID) || exp->m_export.e_uuid ||
++	    fs_has_fsid) {
+ 		if ( !test_export(path, 1)) {
+ 			fprintf(stderr, "exportfs: Warning: %s does not "
+ 				"support NFS export.\n",
 -- 
 1.5.5.1
+
+
+
+-- 
+David Woodhouse                            Open Source Technology Centre
+David.Woodhouse@intel.com                              Intel Corporation
+
+
 
