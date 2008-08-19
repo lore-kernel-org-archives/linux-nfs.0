@@ -1,69 +1,97 @@
-From: "Fortier,Vincent [Montreal]" <Vincent.Fortier1-TdIlj1wg2M0@public.gmane.org>
-Subject: RE: RE: .Xauthority going stale (but not really)
-Date: Tue, 19 Aug 2008 12:44:10 -0400
-Message-ID: <D9EB0C553F14B441BE4F2CA9EB4D45C24EAE7E@ECQCMTLMAIL2.quebec.int.ec.gc.ca>
-References: <D9EB0C553F14B441BE4F2CA9EB4D45C24EAE7A@ECQCMTLMAIL2.quebec.int.ec.gc.ca> <alpine.DEB.1.99.0808191627460.5165@sebohet.brgvxre.pu> <D9EB0C553F14B441BE4F2CA9EB4D45C24EAE7D@ECQCMTLMAIL2.quebec.int.ec.gc.ca> <alpine.DEB.1.99.0808191817280.32254@wbuna.brgvxre.pu>
+From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
+Subject: Re: nfs_file_flush() question
+Date: Tue, 19 Aug 2008 15:17:31 -0500
+Message-ID: <20080819201731.GA25036@yahoo-inc.com>
+References: <1218992641.7999.2.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <linux-nfs@vger.kernel.org>
-To: "Tobias Oetiker" <tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fwstl1-1.wul.qc.ec.gc.ca ([205.211.132.24]:20174 "EHLO
-	ecqcmtlbh.quebec.int.ec.gc.ca" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752194AbYHSQob convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Aug 2008 12:44:31 -0400
-In-Reply-To: <alpine.DEB.1.99.0808191817280.32254-ZxOFkyelvri73kmZFr1Urg@public.gmane.org>
+Received: from dip4-fw.champ.corp.yahoo.com ([64.198.211.64]:45457 "EHLO
+	enemycanmeet.champ.corp.yahoo.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1759315AbYHSUUd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 16:20:33 -0400
+In-Reply-To: <1218992641.7999.2.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Message d'origine-----
-> De : Tobias Oetiker [mailto:tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org] 
+On Sun, Aug 17, 2008 at 10:04:01AM -0700, Trond Myklebust wrote:
+> On Sat, 2008-08-16 at 19:23 -0500, Quentin Barnes wrote:
+> > I've been coming up to speed on the NFS protocol and its NFS client
+> > support in Linux.  I've been comparing performance of NFS on RHEL4
+> > and RHEL5 vs. FreeBSD 6.2.  (Okay, we're on an old base, but I don't
+> > think it matters here for this question.)
+
+Oops.  I goofed in my assumption.  There is a notable difference
+between the older kernels and the newer kernels in this regards.
+
+[...]
+> > Is there a reason I'm missing that the revalidate and GETATTR are
+> > required?
 > 
-> Hi Vincent,
+> Yes: It is required for correct close-to-open cache consistency
+> semantics.
 > 
-> Today Fortier,Vincent [Montreal] wrote:
+> If I don't know the correct mtime attribute of the file when I close it,
+
+If I follow the code, you do know the mtime when closing the
+file.  With V3, from the WRITE and COMMIT, you're given weak cache
+consistency data containing the the updated mtimes, correct?
+
+I'm still learning the NFS protocol, so I know I don't fully
+understand when and how the WCC is utilized in the kernel, so I
+probably have something wrong.
+
+> then I can't compare it with the mtime of the file when I open it again.
+> If so, close-to-open semantics forbid me from assuming that my cached
+> data is still valid, and so I have to throw out the entire page cache
+> contents for that file.
+
+I watched a 2.6.24 kernel I had lying around.  It never does a
+GETATTR anymore during closing a file.
+
+The older kernels invalidated the attribute cache as part of
+nfs_file_flush()'s write/commit step.  The newer kernels still leave
+the attribute or data cache marked as valid post-write and commit.
+(More below).
+
+If the nocto mount flag is used, the only difference is the GETATTR
+on open(2) is avoided.
+
+On Mon, Aug 18, 2008 at 09:53:11AM -0700, Trond Myklebust wrote:
+> On Mon, 2008-08-18 at 12:04 -0400, Chuck Lever wrote:
+> > Does the Linux NFS client optimize away the GETATTR when it has sent
+> > only a single WRITE and the server has returned post-op attributes?
+> > Using a large wsize with a modern server implementation might make
+> > this a fairly common scenario.
 > 
-> > It has to be client-side... I have not seen this with any previous 
-> > kernels on the client-side (either old redhat 7.3 with 2.4.20
-kernels 
-> > or Debian Sarge with 2.6.8 to 2.6.23.17).  Also my server side is 
-> > unchanged with a RHEL 4 (2.6.9 based kernel).
-> >
-> > This is a totally new behaviour to me wich only occured with 
-> > installation of 64bit 2.6.24 kernel based debian etch clients (have 
-> > not yet tried 32bit to confirm wether it is 2.6.24 OR amd64 based).
+> Yes: please see the code. We use a standard nfs_revalidate_inode() which
+> will be optimised away if the inode metadata is known to be up to date.
 
-> > Although I cannot reproduce it with a 2.6.23.17 32-bit.
-> >
-> > If the problem reside with 2.6.24 kernel (and not 64bit specific) it
+That's what I found.  There was two pieces to that change.
+The first was in nfs_file_flush() changing the call from
+__nfs_revalidate_inode() to nfs_revalidate_inode() in 2.6.15 so the
+always forced GETATTR could be optimized out when the attribute
+cache was still valid and hadn't timed out.
 
-> > should be "easy" to git bisect where it comes from 
-> > (although did not catch the details of git bisect just yet :)
-> 
-> Well can you reproduce the problem 'on demand' ? We have not 
-> yet found a pattern.
+But making the change to nfs_revalidate_inode() by itself only
+helps in the case where the file was open O_RDWR and no write(2)
+was done.  The code still needed to be updated to use the WCC data
+at the right time.  In the older kernels when nfs_wb_all() ended up
+calling nfs_update_inode() which was clearing the cache when it saw
+the mtime change from the WRITE.  I tracked down why.  Newer kernels
+(2.6.24 and later) had nfs_post_op_update_inode_force_wcc() call
+added to nfs3_write_done() which updated the inode with the WCC data
+from the WRITE so the later call to nfs_update_inode() didn't see
+an unexpected mtime change flagging the attribute and data cache as
+invalid.
 
-Yes.  We have a common startup script that is being used on the
-client-side.  This script is being called with a keyword and, based on a
-configuration file, it generate on the fly an execution string to
-fire-up a remote (although sometimes local) application with a bunch of
-required parameters depending of the language or login user per example.
-The execution string is based on multiple connexion protocols since not
-all servers yet work with ssh (we still have a old crappy hpux 10.20 K
-box and we never took the time to install openssh on it!).  Also, since
-we have a pool of workstation that can be used for different purpose
-some of them, depending of that daily usage, need to recieve popups from
-different servers hence a few xhost +serverABC somehow became necessary.
+At least that's my current understanding from reading through the
+code for the last couple of days and comparing older and newer
+kernels.  Please correct me where I'm wrong.
 
-To conclude, using thoses scripts I can generate a Stale NFS file handle
-within 1 or 2 remote application launch.  Now I have found a way to get
-rid of the lock by forcing a read or write on the file (usually a simple
-cat $HOME/.Xauthority works).  To do so a conjunction of theses commands
-seems to solve the problem:
-chmod 600 $HOME/.Xauthority
-cat $HOME/.Xauthority
-xauth list 1>/dev/null
+> Cheers
+>   Trond
 
-- vin
+Quentin
