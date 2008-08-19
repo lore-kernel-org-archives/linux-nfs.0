@@ -1,97 +1,126 @@
-From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
-Subject: Re: nfs_file_flush() question
-Date: Tue, 19 Aug 2008 15:17:31 -0500
-Message-ID: <20080819201731.GA25036@yahoo-inc.com>
-References: <1218992641.7999.2.camel@localhost>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] nfs: authenticated deep mounting
+Date: Tue, 19 Aug 2008 16:34:36 -0400
+Message-ID: <20080819203436.GC8331@fieldses.org>
+References: <48AA9122.90805@few.vu.nl>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
+To: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from dip4-fw.champ.corp.yahoo.com ([64.198.211.64]:45457 "EHLO
-	enemycanmeet.champ.corp.yahoo.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1759315AbYHSUUd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 16:20:33 -0400
-In-Reply-To: <1218992641.7999.2.camel@localhost>
+Received: from mail.fieldses.org ([66.93.2.214]:44960 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753901AbYHSUei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Aug 2008 16:34:38 -0400
+In-Reply-To: <48AA9122.90805-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 17, 2008 at 10:04:01AM -0700, Trond Myklebust wrote:
-> On Sat, 2008-08-16 at 19:23 -0500, Quentin Barnes wrote:
-> > I've been coming up to speed on the NFS protocol and its NFS client
-> > support in Linux.  I've been comparing performance of NFS on RHEL4
-> > and RHEL5 vs. FreeBSD 6.2.  (Okay, we're on an old base, but I don't
-> > think it matters here for this question.)
+From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
 
-Oops.  I goofed in my assumption.  There is a notable difference
-between the older kernels and the newer kernels in this regards.
+Allow mount to do authenticated mounts below the root of the exported tree.
+The wording in RFC 2623, sec 2.3.2. allows fsinfo with UNIX authentication
+on the root of the export. Mounts are not always done on the root
+of the exported tree. Especially autoumounts often mount below the root of
+the exported tree.
+Some server implementations (justly) require full authentication for the
+so-called deep mounts. The old code used AUTH_SYS only. This caused deep
+mounts to fail on systems requiring stronger authentication..
+The client should try both authentication types and use the first one that
+succeeds.
+This method was already partially implemented. This patch completes
+the implementation for NFS2 and NFS3.
+This patch was developed to allow Debian systems to automount home directories
+on Solaris servers with krb5 authentication.
 
-[...]
-> > Is there a reason I'm missing that the revalidate and GETATTR are
-> > required?
-> 
-> Yes: It is required for correct close-to-open cache consistency
-> semantics.
-> 
-> If I don't know the correct mtime attribute of the file when I close it,
+Tested on kernel 2.6.24-etchnhalf.1
 
-If I follow the code, you do know the mtime when closing the
-file.  With V3, from the WRITE and COMMIT, you're given weak cache
-consistency data containing the the updated mtimes, correct?
+Signed-off-by: E.G. Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfs/nfs3proc.c |   20 ++++++++++++++++++--
+ fs/nfs/proc.c     |   10 ++++++++--
+ 2 files changed, 26 insertions(+), 4 deletions(-)
 
-I'm still learning the NFS protocol, so I know I don't fully
-understand when and how the WCC is utilized in the kernel, so I
-probably have something wrong.
+On Tue, Aug 19, 2008 at 11:23:46AM +0200, EG Keizer wrote:
+> Allow mount to do authenticated mounts below the root of the exported tree.
 
-> then I can't compare it with the mtime of the file when I open it again.
-> If so, close-to-open semantics forbid me from assuming that my cached
-> data is still valid, and so I have to throw out the entire page cache
-> contents for that file.
+Thanks.  For some reason, if I look at your mail in a text editor I see
+an extra space at the beginning of each line.  Which prevents patch from
+applying it.  Anyway, with that fixed up, and some other trivial
+changes, the below is what I get.  Makes sense to me; Trond?
 
-I watched a 2.6.24 kernel I had lying around.  It never does a
-GETATTR anymore during closing a file.
+--b.
 
-The older kernels invalidated the attribute cache as part of
-nfs_file_flush()'s write/commit step.  The newer kernels still leave
-the attribute or data cache marked as valid post-write and commit.
-(More below).
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 1e750e4..c55be7a 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -699,7 +699,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
+ }
+ 
+ static int
+-nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
++do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
+ 		 struct nfs_fsinfo *info)
+ {
+ 	struct rpc_message msg = {
+@@ -711,11 +711,27 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ 	dprintk("NFS call  fsinfo\n");
+ 	nfs_fattr_init(info->fattr);
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(client, &msg, 0);
+ 	dprintk("NFS reply fsinfo: %d\n", status);
+ 	return status;
+ }
+ 
++/*
++ * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via
++ * nfs_create_server
++ */
++static int
++nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
++		   struct nfs_fsinfo *info)
++{
++	int	status;
++
++	status = do_proc_fsinfo(server->client, fhandle, info);
++	if (status && server->nfs_client->cl_rpcclient != server->client)
++		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
++	return status;
++}
++
+ static int
+ nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		   struct nfs_pathconf *info)
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 4dbb84d..1934652 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -65,14 +65,20 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ 	dprintk("%s: call getattr\n", __func__);
+ 	nfs_fattr_init(fattr);
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(server->client, &msg, 0);
++	/* Retry with default authentication if different */
++	if (status && server->nfs_client->cl_rpcclient != server->client)
++		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
+ 	dprintk("%s: reply getattr: %d\n", __func__, status);
+ 	if (status)
+ 		return status;
+ 	dprintk("%s: call statfs\n", __func__);
+ 	msg.rpc_proc = &nfs_procedures[NFSPROC_STATFS];
+ 	msg.rpc_resp = &fsinfo;
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(server->client, &msg, 0);
++	/* Retry with default authentication if different */
++	if (status && server->nfs_client->cl_rpcclient != server->client)
++		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
+ 	dprintk("%s: reply statfs: %d\n", __func__, status);
+ 	if (status)
+ 		return status;
+-- 
+1.5.5.rc1
 
-If the nocto mount flag is used, the only difference is the GETATTR
-on open(2) is avoided.
-
-On Mon, Aug 18, 2008 at 09:53:11AM -0700, Trond Myklebust wrote:
-> On Mon, 2008-08-18 at 12:04 -0400, Chuck Lever wrote:
-> > Does the Linux NFS client optimize away the GETATTR when it has sent
-> > only a single WRITE and the server has returned post-op attributes?
-> > Using a large wsize with a modern server implementation might make
-> > this a fairly common scenario.
-> 
-> Yes: please see the code. We use a standard nfs_revalidate_inode() which
-> will be optimised away if the inode metadata is known to be up to date.
-
-That's what I found.  There was two pieces to that change.
-The first was in nfs_file_flush() changing the call from
-__nfs_revalidate_inode() to nfs_revalidate_inode() in 2.6.15 so the
-always forced GETATTR could be optimized out when the attribute
-cache was still valid and hadn't timed out.
-
-But making the change to nfs_revalidate_inode() by itself only
-helps in the case where the file was open O_RDWR and no write(2)
-was done.  The code still needed to be updated to use the WCC data
-at the right time.  In the older kernels when nfs_wb_all() ended up
-calling nfs_update_inode() which was clearing the cache when it saw
-the mtime change from the WRITE.  I tracked down why.  Newer kernels
-(2.6.24 and later) had nfs_post_op_update_inode_force_wcc() call
-added to nfs3_write_done() which updated the inode with the WCC data
-from the WRITE so the later call to nfs_update_inode() didn't see
-an unexpected mtime change flagging the attribute and data cache as
-invalid.
-
-At least that's my current understanding from reading through the
-code for the last couple of days and comparing older and newer
-kernels.  Please correct me where I'm wrong.
-
-> Cheers
->   Trond
-
-Quentin
