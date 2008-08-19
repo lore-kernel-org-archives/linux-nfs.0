@@ -1,74 +1,105 @@
-From: Athanasius <link-QVNlIYdkypLYtjvyW6yDsg@public.gmane.org>
-Subject: Re: NFS regression?  Odd delays and lockups accessing an NFS export.
-Date: Tue, 19 Aug 2008 00:13:40 +0100
-Message-ID: <20080818231340.GP20684@miggy.org>
-References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com> <20080818185048.GO20684@miggy.org> <48A9CF89.9090304@bellsouth.net>
+From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Subject: [PATCH 001/001] nfs: authenticated deep mounting
+Date: Tue, 19 Aug 2008 11:23:46 +0200
+Message-ID: <48AA9122.90805@few.vu.nl>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="byLs0wutDcxFdwtm"
-Cc: Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>, neilb@suse.de,
-	bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: jacliburn-Bdlq13kUjeyLZ21kGMrzwg@public.gmane.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from pond.fysh.org ([166.84.7.109]:39984 "EHLO pond.fysh.org"
+Received: from top.few.vu.nl ([130.37.20.4]:58565 "EHLO top.few.vu.nl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752245AbYHRXNm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Aug 2008 19:13:42 -0400
-In-Reply-To: <48A9CF89.9090304-Bdlq13kUjeyLZ21kGMrzwg@public.gmane.org>
+	id S1751418AbYHSJXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Aug 2008 05:23:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Allow mount to do authenticated mounts below the root of the exported tree.
+The wording in RFC 2623, sec 2.3.2. allows fsinfo with UNIX authentication
+on the root of the export. Mounts are not always done on the root
+of the exported tree. Especially autoumounts often mount below the root of
+the exported tree.
+Some server implementations (justly) require full authentication for the
+so-called deep mounts. The old code used AUTH_SYS only. This caused deep
+mounts to fail on systems requiring stronger authentication..
+The client should try both authentication types and use the first one that
+succeeds.
+This method was already partially implemented. This patch completes
+the implementation for NFS2 and NFS3.
+This patch was developed to allow Debian systems to automount home directories
+on Solaris servers with krb5 authentication.
 
---byLs0wutDcxFdwtm
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Tested on kernel 2.6.24-etchnhalf.1
 
-On Mon, Aug 18, 2008 at 02:37:45PM -0500, J. K. Cliburn wrote:
-> Athanasius wrote:
-> >  I wonder if this is what I've been seeing.  I've been otherwise too
-> >busy to properly report it, thinking that *someone* else must also be
-> >seeing it and it's being worked on, else it's a subtle configuration
-> >problem my end.
-> >
-> >  I first started seeing this with 2.6.26 on the client end,=20
->=20
-> I see you're running the atl1 driver on your client.  I'm chasing an=20
-> intermittent bug in that driver that seems to be affected by certain=20
-> offload parameters.  Try disabling TSO and see if things improve.
->=20
-> ethtool -K eth0 tso off
->=20
-> Let me know if it helps.
+Signed-off-by: E.G. Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+---
 
-  Indeed it does, and indeed tso was on by default.  I booted up once
-after first trying this, thinking I had things set to apply it
-automatically, but hadn't and ran into the exact same problem.  This 2nd
-time around with the setting definitely applied things appear to be
-working normally.  At least I can actually start Firefox up and have it
-work (lots of /home/users/... access over NFS to the server).
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 549dbce..ce575e6 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -684,7 +684,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
+  }
 
-thanks,
+  static int
+-nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
++do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
+  		 struct nfs_fsinfo *info)
+  {
+  	struct rpc_message msg = {
+@@ -696,11 +696,26 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
 
--Ath
---=20
-- Athanasius =3D Athanasius(at)miggy.org / http://www.miggy.org/
-                  Finger athan(at)fysh.org for PGP key
-	   "And it's me who is my enemy. Me who beats me up.
-Me who makes the monsters. Me who strips my confidence." Paula Cole - ME
+  	dprintk("NFS call  fsinfo\n");
+  	nfs_fattr_init(info->fattr);
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(client, &msg, 0);
+  	dprintk("NFS reply fsinfo: %d\n", status);
+  	return status;
+  }
 
---byLs0wutDcxFdwtm
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
++/*
++ * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via nfs_create_server
++ */
++static int
++nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
++		   struct nfs_fsinfo *info)
++{
++	int	status;
++
++	status = do_proc_fsinfo(server->client, fhandle, info);
++	if (status && server->nfs_client->cl_rpcclient != server->client)
++		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
++	return status;
++}
++
+  static int
+  nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+  		   struct nfs_pathconf *info)
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 5ccf7fa..f728118 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -65,14 +65,22 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFIqgIkSEDmQuIYzh0RApx2AJ4m2Sh3BWGlE9PUygG4bOQ2Cs8kJwCfdr3J
-bOtWRC2AUJ8WOH5q4SDrkHU=
-=aw7P
------END PGP SIGNATURE-----
-
---byLs0wutDcxFdwtm--
+  	dprintk("%s: call getattr\n", __FUNCTION__);
+  	nfs_fattr_init(fattr);
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(server->client, &msg, 0);
++	/* Retry with default authentication if different */
++	if (status && server->nfs_client->cl_rpcclient != server->client) {
++		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	}
+  	dprintk("%s: reply getattr: %d\n", __FUNCTION__, status);
+  	if (status)
+  		return status;
+  	dprintk("%s: call statfs\n", __FUNCTION__);
+  	msg.rpc_proc = &nfs_procedures[NFSPROC_STATFS];
+  	msg.rpc_resp = &fsinfo;
+-	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	status = rpc_call_sync(server->client, &msg, 0);
++	/* Retry with default authentication if different */
++	if (status && server->nfs_client->cl_rpcclient != server->client) {
++		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
++	}
+  	dprintk("%s: reply statfs: %d\n", __FUNCTION__, status);
+  	if (status)
+  		return status;
