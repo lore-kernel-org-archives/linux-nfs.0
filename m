@@ -1,62 +1,69 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH,RFC 00/09] svcrdma: Fast Memory Registration Support
-Date: Tue, 19 Aug 2008 09:13:58 -0500
-Message-ID: <48AAD526.6080402@opengridcomputing.com>
-References: <48A30685.6050301@opengridcomputing.com> <20080813211953.GN26765@fieldses.org> <48A36004.1030304@opengridcomputing.com> <20080814194847.GH23859@fieldses.org> <48A4A23D.8040702@opengridcomputing.com> <20080818223953.GB32543@fieldses.org>
+From: "Fortier,Vincent [Montreal]" <Vincent.Fortier1-TdIlj1wg2M0@public.gmane.org>
+Subject: RE: .Xauthority going stale (but not really)
+Date: Tue, 19 Aug 2008 11:06:49 -0400
+Message-ID: <D9EB0C553F14B441BE4F2CA9EB4D45C24EAE7D@ECQCMTLMAIL2.quebec.int.ec.gc.ca>
+References: <D9EB0C553F14B441BE4F2CA9EB4D45C24EAE7A@ECQCMTLMAIL2.quebec.int.ec.gc.ca> <alpine.DEB.1.99.0808191627460.5165@sebohet.brgvxre.pu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: <linux-nfs@vger.kernel.org>
+To: "Tobi Oetiker" <tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:51711 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753198AbYHSON6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 10:13:58 -0400
-In-Reply-To: <20080818223953.GB32543@fieldses.org>
+Received: from fwstl1-1.wul.qc.ec.gc.ca ([205.211.132.24]:14630 "EHLO
+	ecqcmtlbh.quebec.int.ec.gc.ca" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752700AbYHSP2Y convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Aug 2008 11:28:24 -0400
+In-Reply-To: <alpine.DEB.1.99.0808191627460.5165-EjsAmf5DE5zIvOfxy3zmAzgUDZmNtoG9@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Aug 14, 2008 at 04:23:09PM -0500, Tom Tucker wrote:
->> Here are the relevant specs:
->>
->> Unfortunately, the IB specs are private to the IBTA.
->> http://www.infinibandta.org/home
->>
->> The OFA verbs most closely resemble IB verbs.
->>
->> Here are the iWARP protocol specs:
->>
->> http://www.ietf.org/rfc/rfc5040.txt
->> http://www.ietf.org/rfc/rfc5041.txt
->> http://www.ietf.org/rfc/rfc5044.txt
->>
->> Here are the iWARP verbs specs. This is what the adapters where written to.
->>
->> http://www.rdmaconsortium.org/home/RNIC_Verbs_Overview2.pdf
->> http://www.rdmaconsortium.org/home/draft-hilland-iwarp-verbs-v1.0-RDMAC.pdf
-> 
-> OK, thanks very much to you and James for all the explanation.  And
-> actually the IB specs do appear to be available if you give them your
-> name and address?
-> 
-> So could one of you add some of this (the explanation of the security
-> issues, at least) to Documentation/filesystems/nfs-rdma.txt?
-> 
-> I'm worried about the fact that the amount of trust required in the
-> network will vary so much depending on exactly which hardware and kernel
-> version the user has.
-> 
-> As long as this is relatively specialized hardware, perhaps it's not
-> such a big deal....  But at the very least I think we should make sure
-> this is carefully documented.
-> 
+> -----Message d'origine-----
+> De : Tobi Oetiker [mailto:tobi-7K0TWYW2a3pyDzI6CaY1VQ@public.gmane.org]=20
+> Envoy=E9 : 19 ao=FBt 2008 10:29
+>=20
+> Hi Vincent,
+>=20
+> Today Fortier,Vincent [Montreal] wrote:
+>=20
+> > Hi Thomas,
+> >
+> > I saw this post from you:
+> > http://marc.info/?l=3Dlinux-nfs&m=3D121345713729459&w=3D2
+> >
+> > Have you found any way to solve the problem?
+> >
+> > Until now I have only seen that behaviour on a 64bit 2.6.24 kernel=20
+> > (running debian etchnhalf).  I was about to check wether it does it=
+ or=20
+> > not in 32bit.
+> >
+> > Help greatly appreciated!
+> >
+>=20
+>
+> we have not yet solved the problem ... we see it with a=20
+> 2.6.24 server and 2.6.24 client both 64bit ....
+>=20
+> since the message comes from the server, I imagine the probem=20
+> is with the server ... but maybe the client strokes the=20
+> server the wrong way ...
+>=20
+> did you figure anything out ?
 
-ok. will do.
+It has to be client-side... I have not seen this with any previous kern=
+els on the client-side (either old redhat 7.3 with 2.4.20 kernels or De=
+bian Sarge with 2.6.8 to 2.6.23.17).  Also my server side is unchanged =
+with a RHEL 4 (2.6.9 based kernel).
 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This is a totally new behaviour to me wich only occured with installati=
+on of 64bit 2.6.24 kernel based debian etch clients (have not yet tried=
+ 32bit to confirm wether it is 2.6.24 OR amd64 based).  Although I cann=
+ot reproduce it with a 2.6.23.17 32-bit.
 
+If the problem reside with 2.6.24 kernel (and not 64bit specific) it sh=
+ould be "easy" to git bisect where it comes from (although did not catc=
+h the details of git bisect just yet :)
+
+Note: Added linux-nfs in CC.
+
+- vin
