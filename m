@@ -1,126 +1,36 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfs: authenticated deep mounting
-Date: Tue, 19 Aug 2008 16:34:36 -0400
-Message-ID: <20080819203436.GC8331@fieldses.org>
-References: <48AA9122.90805@few.vu.nl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
-To: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: use of non-privileged ports for MNT and NLM
+Date: Tue, 19 Aug 2008 17:14:54 -0400
+Message-ID: <0CD0CE08-CB11-419A-9AAC-DEB1AC2B26B3@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Bruce Fields <bfields@citi.umich.edu>,
+	Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44960 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753901AbYHSUei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Aug 2008 16:34:38 -0400
-In-Reply-To: <48AA9122.90805-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:19865 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751830AbYHSVPn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 17:15:43 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Working on "resvport" mount option.  Question occurred to me:
 
-Allow mount to do authenticated mounts below the root of the exported tree.
-The wording in RFC 2623, sec 2.3.2. allows fsinfo with UNIX authentication
-on the root of the export. Mounts are not always done on the root
-of the exported tree. Especially autoumounts often mount below the root of
-the exported tree.
-Some server implementations (justly) require full authentication for the
-so-called deep mounts. The old code used AUTH_SYS only. This caused deep
-mounts to fail on systems requiring stronger authentication..
-The client should try both authentication types and use the first one that
-succeeds.
-This method was already partially implemented. This patch completes
-the implementation for NFS2 and NFS3.
-This patch was developed to allow Debian systems to automount home directories
-on Solaris servers with krb5 authentication.
+If I specify "noresvport" on a mount, can the client also use a non- 
+privileged port for the initial MNT request, and can it use it for the  
+NLM connection as well?
 
-Tested on kernel 2.6.24-etchnhalf.1
+Question applies not just to Linux servers, but servers in general.   
+Brief searching on teh internets does not reveal a quick answer.  I  
+think rpc.mountd will allow a non-privileged port for "insecure"  
+exports.
 
-Signed-off-by: E.G. Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfs/nfs3proc.c |   20 ++++++++++++++++++--
- fs/nfs/proc.c     |   10 ++++++++--
- 2 files changed, 26 insertions(+), 4 deletions(-)
+I think the answer is "yes, non-privileged ports can be used for MNT  
+and NLM if the server explicitly allows it" but I thought I would open  
+this up to the list.
 
-On Tue, Aug 19, 2008 at 11:23:46AM +0200, EG Keizer wrote:
-> Allow mount to do authenticated mounts below the root of the exported tree.
-
-Thanks.  For some reason, if I look at your mail in a text editor I see
-an extra space at the beginning of each line.  Which prevents patch from
-applying it.  Anyway, with that fixed up, and some other trivial
-changes, the below is what I get.  Makes sense to me; Trond?
-
---b.
-
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 1e750e4..c55be7a 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -699,7 +699,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- }
- 
- static int
--nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-+do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
- 		 struct nfs_fsinfo *info)
- {
- 	struct rpc_message msg = {
-@@ -711,11 +711,27 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
- 
- 	dprintk("NFS call  fsinfo\n");
- 	nfs_fattr_init(info->fattr);
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(client, &msg, 0);
- 	dprintk("NFS reply fsinfo: %d\n", status);
- 	return status;
- }
- 
-+/*
-+ * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via
-+ * nfs_create_server
-+ */
-+static int
-+nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-+		   struct nfs_fsinfo *info)
-+{
-+	int	status;
-+
-+	status = do_proc_fsinfo(server->client, fhandle, info);
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
-+	return status;
-+}
-+
- static int
- nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
- 		   struct nfs_pathconf *info)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4dbb84d..1934652 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -65,14 +65,20 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 
- 	dprintk("%s: call getattr\n", __func__);
- 	nfs_fattr_init(fattr);
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	/* Retry with default authentication if different */
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
- 	dprintk("%s: reply getattr: %d\n", __func__, status);
- 	if (status)
- 		return status;
- 	dprintk("%s: call statfs\n", __func__);
- 	msg.rpc_proc = &nfs_procedures[NFSPROC_STATFS];
- 	msg.rpc_resp = &fsinfo;
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	/* Retry with default authentication if different */
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
- 	dprintk("%s: reply statfs: %d\n", __func__, status);
- 	if (status)
- 		return status;
 -- 
-1.5.5.rc1
-
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
