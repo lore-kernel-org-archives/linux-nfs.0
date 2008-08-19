@@ -1,74 +1,49 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH 7/7] nfsd: nfs4xdr decode_stateid helper function
-Date: Tue, 19 Aug 2008 18:44:25 -0400
-Message-ID: <20080819224425.GH8331@fieldses.org>
-References: <48A1CB0C.4090906@panasas.com> <1218563178-25480-1-git-send-email-bhalevy@panasas.com> <20080812190410.GC30729@fieldses.org> <48A28DEA.5060406@panasas.com> <20080813150329.GF21004@fieldses.org> <1218650349.9042.20.camel@localhost> <48A81339.9010302@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: use of non-privileged ports for MNT and NLM
+Date: Tue, 19 Aug 2008 19:44:42 -0400
+Message-ID: <1219189482.7150.6.camel@localhost>
+References: <0CD0CE08-CB11-419A-9AAC-DEB1AC2B26B3@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chucklever@gmail.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Content-Type: text/plain
+Cc: Bruce Fields <bfields@citi.umich.edu>,
+	Steve Dickson <SteveD@redhat.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51285 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:19081 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751665AbYHSWof (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Aug 2008 18:44:35 -0400
-In-Reply-To: <48A81339.9010302@panasas.com>
+	id S1752530AbYHSXpY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Aug 2008 19:45:24 -0400
+In-Reply-To: <0CD0CE08-CB11-419A-9AAC-DEB1AC2B26B3@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 17, 2008 at 03:02:01PM +0300, Boaz Harrosh wrote:
-> Trond Myklebust wrote:
-> > On Wed, 2008-08-13 at 11:03 -0400, J. Bruce Fields wrote:
-> >> On Wed, Aug 13, 2008 at 10:31:54AM +0300, Benny Halevy wrote:
-> >>> On Aug. 12, 2008, 22:04 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>> On Tue, Aug 12, 2008 at 08:46:18PM +0300, Benny Halevy wrote:
-> >>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>>>> ---
-> >>>>>  fs/nfsd/nfs4xdr.c |   99 +++++++++++++++++++++++++++++-----------------------
-> >>>>>  1 files changed, 55 insertions(+), 44 deletions(-)
-> >>>>>
-> >>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> >>>>> index 47ac498..9570b1b 100644
-> >>>>> --- a/fs/nfsd/nfs4xdr.c
-> >>>>> +++ b/fs/nfsd/nfs4xdr.c
-> >>>>>  static __be32
-> >>>>> @@ -929,9 +939,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
-> >>>>>  	int len;
-> >>>>>  	DECODE_HEAD;
-> >>>>>  
-> >>>>> -	READ_BUF(sizeof(stateid_opaque_t) + 20);
-> >>>>> -	READ32(write->wr_stateid.si_generation);
-> >>>>> -	COPYMEM(&write->wr_stateid.si_opaque, sizeof(stateid_opaque_t));
-> >>>>> +	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
-> >>>>> +	if (status)
-> >>>>> +		return status;
-> >>>>> +	READ_BUF(16);
-> >>>> How did that 20 become a 16?
-> >>> It was sizeof(stateid_opaque_t) + 20 == sizeof(stateid_t) - 4 + 20 ==
-> >>> sizeof(stateid_t) + 16.
-> >> Whoops!  Even now I still fall into the stateid_opaque_t/stateid_t trap!
-> > 
-> > Which is a good reason for ditching the entire confusing typedef, and
-> > replacing it with a packed structure instead:
-> > 
-> > struct stateid {
-> > 	__be32 generation;
-> > 	char opaque[12];
-> > } __attribute__((packed));
-> > 
-> > Trond
-> > 
+On Tue, 2008-08-19 at 17:14 -0400, Chuck Lever wrote:
+> Working on "resvport" mount option.  Question occurred to me:
 > 
-> Please use the "__packed" Kernel macro for better compilers support.
+> If I specify "noresvport" on a mount, can the client also use a non- 
+> privileged port for the initial MNT request, and can it use it for the  
+> NLM connection as well?
 > 
-> And Yes I would suggest using "__packed" where ever a struct is defined
-> for on-the-wire. Even just for indication to fellow programmers that this 
-> is going on the wire as is.
+> Question applies not just to Linux servers, but servers in general.   
+> Brief searching on teh internets does not reveal a quick answer.  I  
+> think rpc.mountd will allow a non-privileged port for "insecure"  
+> exports.
+> 
+> I think the answer is "yes, non-privileged ports can be used for MNT  
+> and NLM if the server explicitly allows it" but I thought I would open  
+> this up to the list.
 
-OK.  This all sounds reasonable, but I can't volunteer at the moment,
-so: patches welcomed.
+How about a default that tries to connect using an insecure port first,
+then falls back to a secure port if the attempt fails?
 
---b.
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
