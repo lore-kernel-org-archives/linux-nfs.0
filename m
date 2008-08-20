@@ -1,65 +1,38 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/7] Register kernel RPC services via rpcbind v4
-Date: Wed, 20 Aug 2008 19:20:02 -0400
-Message-ID: <20080820232002.GA28617@fieldses.org>
-References: <20080818233128.1214.48603.stgit@manray.1015granger.net>
+Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Wed, 20 Aug 2008 19:30:24 -0400
+Message-ID: <20080820233024.GC28617@fieldses.org>
+References: <20080814223028.GN23859@fieldses.org> <52C9C44B-750E-437C-B3E8-380DB7371629@oracle.com> <20080820200827.GC21226@fieldses.org> <76bd70e30808201319j7b59de5gc912fcd01594e8@mail.gmail.com> <20080820204751.GE21226@fieldses.org> <76bd70e30808201419g5171d7eob7e6b57dd735e07d@mail.gmail.com> <20080820212902.GH21226@fieldses.org> <76bd70e30808201507l44c85d08o3ec4e8eeb7edda5e@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+To: chucklever@gmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:36567 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:38455 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754785AbYHTXUG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Aug 2008 19:20:06 -0400
-In-Reply-To: <20080818233128.1214.48603.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752697AbYHTXaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Aug 2008 19:30:25 -0400
+In-Reply-To: <76bd70e30808201507l44c85d08o3ec4e8eeb7edda5e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 18, 2008 at 07:33:20PM -0400, Chuck Lever wrote:
-> Hi Bruce, Trond-
+On Wed, Aug 20, 2008 at 06:07:50PM -0400, Chuck Lever wrote:
+> What may be confusing you is that scope delimiters are used almost
+> exclusively for link-local addresses, which are valid only on the
+> local host.
 > 
-> Here's the patch series that adds rpcbind v4 support to svc_register(), with
-> the simplification we discussed last week.  I think this looks cleaner.
-> 
-> Please consider these for 2.6.28.
+> If you don't want to handle a referral that uses a link-local address,
+> or you don't want to handle a link-local address with a scope ID, then
+> there are explicit checks you can do.
 
-Thanks. I've applied #5, #6, and 37 (#2, #3, and #4 were already
-applied--let me know if my versions are out of date--and #1 I'll leave
-to Trond):
+Well, the current code does allow a referral to point to 127.0.0.1.  I
+don't know what to think of that; it seems unlikely to be useful for
+anything but testing, and possibly succeptible to abuse, but of course
+the protocol doesn't forbid it.
 
-	git://linux-nfs.org/~bfields/linux.git for-2.6.28
-
-Keep sending patches....
+I google around a bit, but still don't get the scope stuff.  Are they
+really part of an "ipv6 address"?  I thought an ipv6 address was just a
+128-bit number?  (Or do they just give another way of writing something
+that you could already write without the %?)
 
 --b.
-
-
-> 
-> ---
-> 
-> Chuck Lever (7):
->       SUNRPC: Support IPv6 when registering kernel RPC services
->       SUNRPC: Split portmap unregister API into separate function
->       SUNRPC: Simplify rpcb_register() API
->       SUNRPC: Use proper INADDR_ANY when setting up RPC services on IPv6
->       SUNRPC: Set V6ONLY socket option for RPC listener sockets
->       SUNRPC: Add address family field to svc_serv data structure
->       NFS: nfs_parsed_mount_options can use unsigned int
-> 
-> 
->  fs/Kconfig                  |   22 +++++
->  fs/lockd/svc.c              |    2 
->  fs/nfs/callback.c           |    3 -
->  fs/nfs/internal.h           |    8 +-
->  fs/nfsd/nfssvc.c            |    3 -
->  include/linux/sunrpc/clnt.h |    4 -
->  include/linux/sunrpc/svc.h  |   15 ++--
->  net/sunrpc/rpcb_clnt.c      |   65 +++++++---------
->  net/sunrpc/svc.c            |  175 ++++++++++++++++++++++++++++++++++++-------
->  net/sunrpc/svc_xprt.c       |   37 +++++++--
->  net/sunrpc/svcsock.c        |   13 +++
->  11 files changed, 260 insertions(+), 87 deletions(-)
-> 
-> -- 
-> Chuck Lever
