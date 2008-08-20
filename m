@@ -1,115 +1,126 @@
-From: Fernando Luis =?ISO-8859-1?Q?V=E1zquez?= Cao
-	<fernando-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
-Subject: Re: [PATCH]lockd: fix handling of grace period after long periods
-	of inactivity
-Date: Wed, 20 Aug 2008 10:31:19 +0900
-Message-ID: <1219195879.17077.36.camel@sebastian.kern.oss.ntt.co.jp>
-References: <48A41220.8030203@oss.ntt.co.jp>
-	 <20080814190652.GE23859@fieldses.org>
-	 <1218763945.5291.19.camel@sebastian.kern.oss.ntt.co.jp>
-	 <20080819221209.GF8331@fieldses.org>
+From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
+Subject: Re: nfs_file_flush() question
+Date: Tue, 19 Aug 2008 22:38:14 -0500
+Message-ID: <20080820033814.GA2528@yahoo-inc.com>
+References: <20080819201731.GA25036@yahoo-inc.com> <1219192252.7150.30.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: NAKANO Hiroaki <nakano.hiroaki-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>,
-	Trond.Myklebust@netapp.com, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:56794 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751174AbYHTBbV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 21:31:21 -0400
-In-Reply-To: <20080819221209.GF8331@fieldses.org>
+Received: from dip4-fw.champ.corp.yahoo.com ([64.198.211.64]:31324 "EHLO
+	enemycanmeet.champ.corp.yahoo.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753020AbYHTDjp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 23:39:45 -0400
+In-Reply-To: <1219192252.7150.30.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-08-19 at 18:12 -0400, J. Bruce Fields wrote:
-> On Fri, Aug 15, 2008 at 10:32:25AM +0900, Fernando Luis V=C3=A1zquez =
-Cao wrote:
-> > Hi Bruce!
-> >=20
-> > On Thu, 2008-08-14 at 15:06 -0400, J. Bruce Fields wrote:
-> > > On Thu, Aug 14, 2008 at 08:08:16PM +0900, NAKANO Hiroaki wrote:
-> > > > lockd uses time_before() to determine whether the grace period =
-has
-> > > > expired. This would seem to be enough to avoid timer wrap-aroun=
-d issues,
-> > > > but, unfortunately, that is not the case. The time_* family of
-> > > > comparison functions can be safely used to compare jiffies rela=
-tively
-> > > > close in time, but they stop working after approximately LONG_M=
-AX/2
-> > > > ticks. nfsd can suffer this problem because the time_before() c=
-omparison
-> > > > in lockd() is not performed until the first request comes in, w=
-hich
-> > > > means that if there is no lockd traffic for more than LONG_MAX/=
-2 ticks
-> > > > we are screwed.
-> > > >=20
-> > > > The implication of this is that once time_before() starts misbe=
-having
-> > > > any attempt from a NFS client to execute fcntl() will be receiv=
-ed with a
-> > > > NLM_LCK_DENIED_GRACE_PERIOD message for 25 days (assuming HZ=3D=
-1000). In
-> > > > other words, the 50 seconds grace period could turn into a grac=
-e period
-> > > > of 50 days or more.
-> > > >=20
-> > > > This patch corrects this behavior by implementing grace period =
-with a
-> > > > (retriggerable) timer.
-> > > >=20
-> > > > Note: This bug was analyzed independently by Oda-san <oda@valin=
-ux.co.jp>
-> > > > and myself.
-> > >=20
-> > > Good catch!  Did you actually run across this in practice?  I wou=
-ld've
-> > > thought it relatively unusual to have a lockd that didn't receive=
- its
-> > > first lock request until 25 days after startup.
-> > Yes, we did find this problem in production. More often than one wo=
-uld
-> > wish, installing new software in a system that has been running wit=
-hout
-> > a hiccup for weeks or months is the only thing you will need to bri=
-ng
-> > mayhem.
-> >=20
-> > > I still have a mild preference for a work struct just in case we =
-end up
-> > > wanting to do something slightly more complicated to end the grac=
-e
-> > > period, but I don't really have anything in mind.
-> > For simplicity I think we could we get Nakano-san's patch merged fi=
-rst.
-> > If needed, moving to a work-based solution should be relatively eas=
-ily.
->=20
-> There's no real difference; patches I've been planning on submitting =
-for
-> 2.6.28 follow.
-Yes, both approaches are essentially the same.
+On Tue, Aug 19, 2008 at 05:30:52PM -0700, Trond Myklebust wrote:
+> On Tue, 2008-08-19 at 15:17 -0500, Quentin Barnes wrote:
+> > > If I don't know the correct mtime attribute of the file when I close it,
+> >
+> > If I follow the code, you do know the mtime when closing the
+> > file.  With V3, from the WRITE and COMMIT, you're given weak cache
+> > consistency data containing the the updated mtimes, correct?
+> 
+> No. Please note the difference between a call to nfs_update_inode(), and
+> a call to nfs_refresh_inode(). The latter tries to be more careful about
+> updating the inode attributes if there is a chance that we may have
+> raced with another RPC call to the same inode, and hence that the
+> attributes returned may be stale.
+> 
+> > But making the change to nfs_revalidate_inode() by itself only
+> > helps in the case where the file was open O_RDWR and no write(2)
+> > was done.  The code still needed to be updated to use the WCC data
+> > at the right time.  In the older kernels when nfs_wb_all() ended up
+> > calling nfs_update_inode() which was clearing the cache when it saw
+> > the mtime change from the WRITE.  I tracked down why.  Newer kernels
+> > (2.6.24 and later) had nfs_post_op_update_inode_force_wcc() call
+> > added to nfs3_write_done() which updated the inode with the WCC data
+> > from the WRITE so the later call to nfs_update_inode() didn't see
+> > an unexpected mtime change flagging the attribute and data cache as
+> > invalid.
+> 
+> See above.
 
-> patches I've been planning on submitting for 2.6.28 follow.
-Thanks!
+I'm not sure I'm following what you mean.  What I wrote in the
+second part is what's happening from watching the traces.  I may not
+have gotten the exact call chain right, but the end result is what's
+going on.  I'll go into more detail.
 
-> (We could submit a patch for 2.6.27, since it's a bugfix, but this is=
-n't
-> a new regression, so existing users at least won't be made any worse
-> off, and this doesn't crash the server, or anything similarly drastic=
-=2E
-> It's still serious, just not quite serious enough to submit at this
-> point in the release cycle, as I understand the rules....)
-My only concern is that even though the server will not crash we may ge=
-t
-seemingly hanged processes on the client side (the reason being that th=
-e
-client will be receiving only NLM_LCK_DENIED_GRACE_PERIOD messages
-during the whole "extended" grace period). It might be worth getting it
-merged before 2.6.27 comes out and distros start using it.
+But what I'm wondering is what exactly is wrong.  Is it my
+understanding or something in my analysis?  Are you indicating
+that the 2.6.24 kernel and later are misbehaving since they don't
+invalidate the caches and do a GETATTR?
 
- - Fernando
+Here's a debug trace on a 2.6.24 kernel of a process doing an
+open(2), write(2), and close(2):
+======
+NFS: permission(0:14/33685649), mask=0x1, res=0
+NFS: nfs_lookup_revalidate(/.xtest1) is valid
+NFS: permission(0:14/33686480), mask=0x6, res=0
+nfs: write(/.xtest1(33686480), 23@0)
+NFS:      nfs_updatepage(/.xtest1 23@0)
+NFS:      nfs_updatepage returns 0 (isize 23)
+nfs: flush(0:14/33686480)
+*nfs: flush pre-nfs_do_fsync cache_validity = 0x00000000
+NFS:     0 initiated write call (req 0:14/33686480, 23 bytes @ offset 0)
+NFS:    38 nfs_writeback_done (status 23)
+NFS: nfs_update_inode(0:14/33686480 ct=2 info=0x7)
+NFS: write (0:14/33686480 23@0) marked for commit
+NFS:     0 initiated commit call
+NFS:    39 nfs_commit_done (status 0) 
+NFS: nfs_update_inode(0:14/33686480 ct=2 info=0x6)
+NFS: commit (0:14/33686480 23@0) OK
+*nfs: flush post-nfs_do_fsync cache_validity = 0x00000000
+NFS: dentry_delete(/.xtest1, 8)       
+======
 
+I added some extra debug of my own just before and after the call to
+nfs_do_fsync() in nfs_file_flush().  I noted them with "*"s.  Note
+that after the commit, the attribute and data cache are still valid
+with 2.6.24 (cache_validity is still 0x0, so nothing's invalidated).
+When that's the case, there is no GETATTR call.
+
+Now the same thing on 2.6.9:
+======
+nfs: flush(0:13/33686480)
+*nfs: flush pre-nfs_wb_all cache_validity = 0x00000000
+NFS:  103 initiated write call (req 0:13/33686480, 23 bytes @ offset 0)
+NFS: nfs_update_inode(0:13/33686480 ct=2 info=0x6)
+NFS: mtime change on server for file 0:13/33686480
+NFS:  103 nfs_writeback_done (status 23) 
+NFS: write (0:13/33686480 23@0) marked for commit 
+NFS:  104 initiated commit call
+NFS: nfs_update_inode(0:13/33686480 ct=2 info=0x6)
+NFS:  104 nfs_commit_done (status 0)
+NFS: commit (0:13/33686480 23@0) OK
+*nfs: flush post-nfs_wb_all cache_validity = 0x0000001b
+NFS: revalidating (0:13/33686480)
+NFS call  getattr
+NFS reply getattr
+NFS: nfs_update_inode(0:13/33686480 ct=1 info=0x6)
+NFS: (0:13/33686480) data cache invalidated
+NFS: nfs3_forget_cached_acls(0:13/33686480)
+NFS: (0:13/33686480) revalidation complete
+NFS: dentry_delete(//.xtest1, 0)
+======
+
+The extra debug this time is around the nfs_wb_all() call.  As you
+can see during the flush the attribute and data caches get marked
+invalid (cache_validity goes from 0x0 to 0x1b) so a GETATTR call is
+made.  In nfs_update_inode(), it tells us why it happened, "mtime
+change on server for file" which does not happen on 2.6.24.
+
+I ported over the nfs_post_op_update_inode_force_wcc() function
+to 2.6.9 and hooked it into the *write_done() functions and that
+got rid of the "mtime change on server for file" message from
+nfs_update_inode() on that kernel.
+
+Is 2.6.24 doing the right thing?
+
+> Cheers
+>   Trond
+
+Quentin
