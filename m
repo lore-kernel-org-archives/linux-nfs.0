@@ -1,150 +1,144 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 4/4] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Wed, 20 Aug 2008 16:10:23 -0400
-Message-ID: <1219263023-22592-4-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 1/4] nfs: break up nfs_follow_referral
+Date: Wed, 20 Aug 2008 16:10:20 -0400
+Message-ID: <1219263023-22592-1-git-send-email-bfields@citi.umich.edu>
 References: <20080820200827.GC21226@fieldses.org>
- <1219263023-22592-1-git-send-email-bfields@citi.umich.edu>
- <1219263023-22592-2-git-send-email-bfields@citi.umich.edu>
- <1219263023-22592-3-git-send-email-bfields@citi.umich.edu>
 Cc: linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37980 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:37974 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754195AbYHTUKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1750898AbYHTUKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 20 Aug 2008 16:10:25 -0400
-In-Reply-To: <1219263023-22592-3-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <20080820200827.GC21226@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The code incorrectly assumes here that the server name (or ip address)
-is null-terminated.  This can cause referrals to fail in some cases.
-
-Also support ipv6 addresses.
+This function is a little longer and more deeply nested than necessary.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfs/internal.h      |    2 ++
- fs/nfs/nfs4namespace.c |   44 ++++++++++++++++++--------------------------
- fs/nfs/super.c         |    4 +---
- 3 files changed, 21 insertions(+), 29 deletions(-)
+ fs/nfs/nfs4namespace.c |   84 ++++++++++++++++++++++++++---------------------
+ 1 files changed, 46 insertions(+), 38 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 0b30f24..625abae 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -153,6 +153,7 @@ extern void nfs4_clear_inode(struct inode *);
- void nfs_zap_acl_cache(struct inode *inode);
- 
- /* super.c */
-+void nfs_parse_ip_address(char *, size_t, struct sockaddr *, size_t *);
- extern struct file_system_type nfs_xdev_fs_type;
- #ifdef CONFIG_NFS_V4
- extern struct file_system_type nfs4_xdev_fs_type;
-@@ -276,6 +277,7 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
- 		PAGE_SIZE - 1) >> PAGE_SHIFT;
- }
- 
-+#define IPV6_SCOPE_DELIMITER	'%'
- 
- /*
-  * Set the port number in an address.  Be agnostic about the address
 diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 6bcc569..30befc3 100644
+index b112857..956cbbc 100644
 --- a/fs/nfs/nfs4namespace.c
 +++ b/fs/nfs/nfs4namespace.c
-@@ -93,50 +93,42 @@ static int nfs4_validate_fspath(const struct vfsmount *mnt_parent,
+@@ -110,6 +110,48 @@ static inline int valid_ipaddr4(const char *buf)
  	return 0;
  }
  
--/*
-- * Check if the string represents a "valid" IPv4 address
-- */
--static inline int valid_ipaddr4(const char *buf)
--{
--	int rc, count, in[4];
--
--	rc = sscanf(buf, "%d.%d.%d.%d", &in[0], &in[1], &in[2], &in[3]);
--	if (rc != 4)
--		return -EINVAL;
--	for (count = 0; count < 4; count++) {
--		if (in[count] > 255)
--			return -EINVAL;
--	}
--	return 0;
--}
--
- static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
- 				     char *page, char *page2,
- 				     const struct nfs4_fs_location *location)
- {
- 	struct vfsmount *mnt = ERR_PTR(-ENOENT);
- 	char *mnt_path;
-+	int page2len;
- 	unsigned int s;
++static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
++				     char *page, char *page2,
++				     const struct nfs4_fs_location *location)
++{
++	struct vfsmount *mnt = ERR_PTR(-ENOENT);
++	char *mnt_path;
++	unsigned int s = 0;
++
++	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
++	if (IS_ERR(mnt_path))
++		return mnt;
++	mountdata->mnt_path = mnt_path;
++
++	while (s < location->nservers) {
++		struct sockaddr_in addr = {
++			.sin_family	= AF_INET,
++			.sin_port	= htons(NFS_PORT),
++		};
++
++		if (location->servers[s].len <= 0 ||
++		    valid_ipaddr4(location->servers[s].data) < 0) {
++			s++;
++			continue;
++		}
++
++		mountdata->hostname = location->servers[s].data;
++		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
++		mountdata->addr = (struct sockaddr *)&addr;
++		mountdata->addrlen = sizeof(addr);
++
++		snprintf(page, PAGE_SIZE, "%s:%s",
++				mountdata->hostname,
++				mountdata->mnt_path);
++
++		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
++		if (!IS_ERR(mnt))
++			break;
++		s++;
++	}
++	return mnt;
++}
++
+ /**
+  * nfs_follow_referral - set up mountpoint when hitting a referral on moved error
+  * @mnt_parent - mountpoint of parent directory
+@@ -128,7 +170,6 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 		.authflavor = NFS_SB(mnt_parent->mnt_sb)->client->cl_auth->au_flavor,
+ 	};
+ 	char *page = NULL, *page2 = NULL;
+-	unsigned int s;
+ 	int loc, error;
  
- 	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
- 	if (IS_ERR(mnt_path))
- 		return mnt;
- 	mountdata->mnt_path = mnt_path;
-+	page2 += strlen(mnt_path) + 1;
-+	page2len = PAGE_SIZE - strlen(mnt_path) - 1;
+ 	if (locations == NULL || locations->nlocations <= 0)
+@@ -153,9 +194,8 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 	}
  
- 	for (s = 0; s < location->nservers; s++) {
--		struct sockaddr_in addr = {
--			.sin_family	= AF_INET,
--			.sin_port	= htons(NFS_PORT),
--		};
-+		const struct nfs4_string *buf = &location->servers[s];
-+		struct sockaddr_storage addr;
+ 	loc = 0;
+-	while (loc < locations->nlocations && IS_ERR(mnt)) {
++	while (loc < locations->nlocations) {
+ 		const struct nfs4_fs_location *location = &locations->locations[loc];
+-		char *mnt_path;
  
--		if (location->servers[s].len <= 0 ||
--		    valid_ipaddr4(location->servers[s].data) < 0)
-+		if (buf->len <= 0 || buf->len >= PAGE_SIZE)
+ 		if (location == NULL || location->nservers <= 0 ||
+ 		    location->rootpath.ncomponents == 0) {
+@@ -163,41 +203,9 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
  			continue;
+ 		}
  
--		mountdata->hostname = location->servers[s].data;
--		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
- 		mountdata->addr = (struct sockaddr *)&addr;
--		mountdata->addrlen = sizeof(addr);
-+
-+		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len))
-+			continue;
-+		nfs_parse_ip_address(buf->data, buf->len,
-+				mountdata->addr, &mountdata->addrlen);
-+		if (mountdata->addr->sa_family == AF_UNSPEC)
-+			continue;
-+		nfs_set_port(mountdata->addr, NFS_PORT);
-+
-+		strncpy(page2, buf->data, page2len);
-+		page2[page2len] = '\0';
-+		mountdata->hostname = page2;
- 
- 		snprintf(page, PAGE_SIZE, "%s:%s",
- 				mountdata->hostname,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 497dd31..349cee6 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -705,8 +705,6 @@ static void nfs_parse_ipv4_address(char *string, size_t str_len,
- 	*addr_len = 0;
- }
- 
--#define IPV6_SCOPE_DELIMITER	'%'
+-		mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
+-		if (IS_ERR(mnt_path)) {
+-			loc++;
+-			continue;
+-		}
+-		mountdata.mnt_path = mnt_path;
 -
- #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
- static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
- 				    const char *delim,
-@@ -779,7 +777,7 @@ static void nfs_parse_ipv6_address(char *string, size_t str_len,
-  * If there is a problem constructing the new sockaddr, set the address
-  * family to AF_UNSPEC.
-  */
--static void nfs_parse_ip_address(char *string, size_t str_len,
-+void nfs_parse_ip_address(char *string, size_t str_len,
- 				 struct sockaddr *sap, size_t *addr_len)
- {
- 	unsigned int i, colons;
+-		s = 0;
+-		while (s < location->nservers) {
+-			struct sockaddr_in addr = {
+-				.sin_family	= AF_INET,
+-				.sin_port	= htons(NFS_PORT),
+-			};
+-
+-			if (location->servers[s].len <= 0 ||
+-			    valid_ipaddr4(location->servers[s].data) < 0) {
+-				s++;
+-				continue;
+-			}
+-
+-			mountdata.hostname = location->servers[s].data;
+-			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
+-			mountdata.addr = (struct sockaddr *)&addr;
+-			mountdata.addrlen = sizeof(addr);
+-
+-			snprintf(page, PAGE_SIZE, "%s:%s",
+-					mountdata.hostname,
+-					mountdata.mnt_path);
+-
+-			mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, &mountdata);
+-			if (!IS_ERR(mnt)) {
+-				break;
+-			}
+-			s++;
+-		}
++		mnt = try_location(&mountdata, page, page2, location);
++		if (!IS_ERR(mnt))
++			break;
+ 		loc++;
+ 	}
+ 
 -- 
 1.5.5.rc1
 
