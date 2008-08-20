@@ -1,86 +1,62 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Wed, 20 Aug 2008 18:07:50 -0400
-Message-ID: <76bd70e30808201507l44c85d08o3ec4e8eeb7edda5e@mail.gmail.com>
-References: <20080814223028.GN23859@fieldses.org>
-	 <52C9C44B-750E-437C-B3E8-380DB7371629@oracle.com>
-	 <20080820200827.GC21226@fieldses.org>
-	 <76bd70e30808201319j7b59de5gc912fcd01594e8@mail.gmail.com>
-	 <20080820204751.GE21226@fieldses.org>
-	 <76bd70e30808201419g5171d7eob7e6b57dd735e07d@mail.gmail.com>
-	 <20080820212902.GH21226@fieldses.org>
-Reply-To: chucklever@gmail.com
+From: Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>
+Subject: Re: NFS regression?  Odd delays and lockups accessing an NFS export.
+Date: Thu, 21 Aug 2008 09:17:07 +1000
+Message-ID: <mi8pa4hi3809h8nbm332k7ifjvc3idnkja@4ax.com>
+References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com> <1219087258.7192.19.camel@localhost>
+Reply-To: Grant Coady <gcoady.lk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Grant Coady <gcoady.lk@gmail.com>, linux-kernel@vger.kernel.org,
+	neilb@suse.de, bfields@fieldses.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.187]:9338 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751884AbYHTWHw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2008 18:07:52 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so92225gvc.37
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2008 15:07:50 -0700 (PDT)
-In-Reply-To: <20080820212902.GH21226@fieldses.org>
+Received: from relay03.mail-hub.dodo.com.au ([123.2.6.238]:45347 "EHLO
+	relay03.mail-hub.dodo.com.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751491AbYHTXRj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2008 19:17:39 -0400
+In-Reply-To: <1219087258.7192.19.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 20, 2008 at 5:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Aug 20, 2008 at 05:19:50PM -0400, Chuck Lever wrote:
->> On Wed, Aug 20, 2008 at 4:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> > On Wed, Aug 20, 2008 at 04:19:48PM -0400, Chuck Lever wrote:
->> >> On Wed, Aug 20, 2008 at 4:08 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> >> > On Fri, Aug 15, 2008 at 12:59:09PM -0400, Chuck Lever wrote:
->> >> >> On Aug 14, 2008, at 6:30 PM, J. Bruce Fields wrote:
->> >> >>> I was looking back at this bug with the misparsing of
->> >> >>> (non-mull-terminated) fs_locations attributes.  Thanks to the work on
->> >> >>> nfs_parse_server_address, etc., we can now also more easily support
->> >> >>> ipv6
->> >> >>> addresses here.  But I got lost in the usual maze of twisty struct
->> >> >>> sockaddr_*'s, all alike.  Is this right?  Does any of it need to be
->> >> >>> under CONFIG_IPV6?  Is there a simpler way?
->> >> >>
->> >> >> The use of the new address parser looks correct, but your string
->> >> >> handling needs work.  :-)
->> >> >>
->> >> >> Comments below...
->> >> >
->> >> > Pffft.  My hope that someone else would pick this up for me was
->> >> > obviously fantasy. OK, thanks for comments:
->> >> >
->> >> >>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->> >> >>> index b112857..c0f5191 100644
->> >> > ...
->> >> >>> +                    if (memchr(buf->data, '%', buf->len))
->> >> >>> +                            goto next;
->> >> >>
->> >> >> Why are you looking for a '%' ?
->> >> >
->> >> > Would it have been clearer if I'd moved the IPV6_SCOPE_DELIMITER define
->> >> > to a common header?  I don't think that has any place in the nfs
->> >> > protocol.  And we've got less trust in the address we're parsing here
->> >> > (which came across the wire) then we would in a mount commandline.
->> >>
->> >> OK, so you wanted a scope delimiter.  Why do you want to punt IPv6
->> >> addresses that have a scope delimiter?  Sorry to be dense.
->> >
->> > The thing we're parsing here is a hostname that the server returned to
->> > us.  It should be either a dns name (which we don't handle yet) or an ip
->> > address.  The scope-delimiter thing isn't legal.
->>
->> Scope delimiters are legal in IPv6 addresses.  Unfortunately I can't
->> find the relevant RFC at the moment.
+On Mon, 18 Aug 2008 15:20:58 -0400, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+
+>On Mon, 2008-08-18 at 12:02 +1000, Grant Coady wrote:
+>> Hi there,
+>> 
+>> I've been using NFS here for years, lately there's something odd going on 
+>> since about a month or so.  Previously reported last month:
+>> http://www.gossamer-threads.com/lists/linux/kernel/951419?page=last
+>> 
+>> Now with 2.6.27-rc3 on one of the client boxes I get a complete stall 
+>> at odd times when accessing the server's exported directory, cannot 
+>> see a pattern to it.  Eventually recovers after a Ctrl-C.  Nothing in 
+>> the server or client log files.  Not easy to reproduce either.
+>> 
+>> The server runs 2.6.26.2 at the moment.
+>> 
+>> Server config, etc: http://bugsplatter.id.au/kernel/boxen/deltree/
+>> Client config, etc: http://bugsplatter.id.au/kernel/boxen/pooh/
 >
-> Oh, OK, I think I took a quick look and assumed they were something that
-> only made sense locally.  I'll look again.
+>Please try to reproduce the hang, then do
+>
+>	echo 0 >/proc/sys/sunrpc/rpc_debug
+>
+>and send the output from 'dmesg'...
 
-What may be confusing you is that scope delimiters are used almost
-exclusively for link-local addresses, which are valid only on the
-local host.
+It's not NFS, I just had WinXP box stall completely (no KB NumLock 
+response) on a PuTTY (ssh) terminal to a linux box running 2.6.26.3 
+for about five or ten seconds, when it came back to operation the 
+PuTYY toolbar icon was flashing.  Dunno which terminal as I had four 
+open at the time, but they all to a server box running 2.6.26.3 with 
+multiple Intel pro/100 (e100) NICs.
 
-If you don't want to handle a referral that uses a link-local address,
-or you don't want to handle a link-local address with a scope ID, then
-there are explicit checks you can do.
+I think this may be to do with the e100 network driver instead, as a 
+few weeks ago I started compiling it in rather than as a module like 
+I've been doing for years (in response to the firmware (microcode) 
+being dropped on the floor last month issue).  This box is the server 
+(deltree) that all linux boxes mount a /home/common NFS export from.
 
--- 
-Chuck Lever
+All machines have the Intel pro/100 NIC, going to recompile the lot 
+back to modules, see if that fixes the problem.
+
+Grant.
