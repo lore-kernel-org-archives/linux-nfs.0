@@ -1,79 +1,64 @@
-From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
-Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
-Date: Sun, 31 Aug 2008 22:18:25 +0100
-Message-ID: <1220217505.31172.26.camel@localhost.localdomain>
-References: <1219442213.9097.25.camel@localhost>
-	 <1219603981.27921.145.camel@localhost.localdomain>
-	 <1219605422.14389.2.camel@localhost> <1219605596.14389.5.camel@localhost>
-	 <1219615789.27921.152.camel@localhost.localdomain>
-	 <1219616136.14389.12.camel@localhost>
-	 <48B2D7F8.5020206@opengridcomputing.com>
-	 <20080826192711.GJ4380@fieldses.org>
-	 <48B567F5.2090605@opengridcomputing.com>
-	 <1220111261.31172.14.camel@localhost.localdomain>
-	 <20080831193037.GB14876@fieldses.org>
-	 <1220211842.31172.18.camel@localhost.localdomain>
-	 <48BAF643.4070808@opengridcomputing.com>
+From: Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>
+Subject: Re: NFS regression?  Odd delays and lockups accessing an NFS export.
+Date: Wed, 20 Aug 2008 11:10:14 +1000
+Message-ID: <75rma4544lqk5otlk58jjcn4kf5kb27fm7@4ax.com>
+References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com> <1219087258.7192.19.camel@localhost>
+Reply-To: Grant Coady <gcoady.lk@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-5cFuHFFWM7no6u50eDd+"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	John Ronciak <john.ronciak@gmail.com>,
-	Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel@vger.kernel.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org,
-	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
-	Jesse Brandeburg <jesse.brandeburg@intel.com>,
-	Bruce Allan <bruce.w.allan@intel.com>,
-	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
-	John Ronciak <john.ronciak@intel.com>,
-	e1000-devel@lists.sourceforge.net
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Grant Coady <gcoady.lk@gmail.com>, linux-kernel@vger.kernel.org,
+	neilb@suse.de, bfields@fieldses.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout01-winn.ispmail.ntl.com ([81.103.221.47]:60307 "EHLO
-	mtaout01-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752412AbYHaVSd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Aug 2008 17:18:33 -0400
-In-Reply-To: <48BAF643.4070808@opengridcomputing.com>
+Received: from relay03.mail-hub.dodo.com.au ([123.2.6.238]:47505 "EHLO
+	relay03.mail-hub.dodo.com.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754795AbYHTBKm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2008 21:10:42 -0400
+In-Reply-To: <1219087258.7192.19.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond,
 
---=-5cFuHFFWM7no6u50eDd+
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Mon, 18 Aug 2008 15:20:58 -0400, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-On Sun, 2008-08-31 at 14:51 -0500, Tom Tucker wrote:
->=20
-> Looks like you ran this on the client. Sorry, Ian, I should have been
-> more specific. You need to modify the rpc_debug file on the server.
+>On Mon, 2008-08-18 at 12:02 +1000, Grant Coady wrote:
+>> Hi there,
+>> 
+>> I've been using NFS here for years, lately there's something odd going on 
+>> since about a month or so.  Previously reported last month:
+>> http://www.gossamer-threads.com/lists/linux/kernel/951419?page=last
+>> 
+>> Now with 2.6.27-rc3 on one of the client boxes I get a complete stall 
+>> at odd times when accessing the server's exported directory, cannot 
+>> see a pattern to it.  Eventually recovers after a Ctrl-C.  Nothing in 
+>> the server or client log files.  Not easy to reproduce either.
+>> 
+>> The server runs 2.6.26.2 at the moment.
+>> 
+>> Server config, etc: http://bugsplatter.id.au/kernel/boxen/deltree/
+>> Client config, etc: http://bugsplatter.id.au/kernel/boxen/pooh/
+>
+>Please try to reproduce the hang, then do
+>
+>	echo 0 >/proc/sys/sunrpc/rpc_debug
+>
+>and send the output from 'dmesg'...
 
-I tried this on the server but it's pretty crippling (the server is
-quite weedy, 300MHz K3 or something).
+dmesg and logs from client machine showed nothing, dmesg from server:
 
-I'll leave it logging overnight since things should be pretty quiet (and
-that's often when the problem occurs) but if there's a less aggressive
-setting than 256 but which would still be useful I could leave it on
-permanently until the problem happens.
+-pid- proc flgs status -client- -prog- --rqstp- -timeout -rpcwait -action- ---ops--
 
-Ian.
---=20
-Ian Campbell
+(nothing, nada, zilch after what looks like the header line)
 
-Marriages are made in heaven and consummated on earth.
-		-- John Lyly
+Situation, first use of 'df' after reboot, client machine hung for many 
+seconds before the /home/common export showed up, this is not repeatable. 
+Mounting another export and doing 'df' again had no delays.
 
---=-5cFuHFFWM7no6u50eDd+
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
+Client is running 2.6.27-rc3-git5 (x86_64) at the moment, configs, etc 
+at: http://bugsplatter.id.au/kernel/boxen/pooh64/
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+Server as above.  Am I supposed to have some debugging turned on in the 
+.configs?
 
-iEYEABECAAYFAki7CqEACgkQM0+0qS9rzVlzCwCgmRve7F25dzDC+NeywP0hF4gr
-F+cAoLhNPR1btyuZkr31AfLYHwg6pQAZ
-=9h3S
------END PGP SIGNATURE-----
-
---=-5cFuHFFWM7no6u50eDd+--
-
+Grant.  
