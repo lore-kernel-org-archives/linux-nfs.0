@@ -1,54 +1,89 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
-Date: Fri, 22 Aug 2008 14:25:58 -0400
-Message-ID: <76bd70e30808221125n42e93bf1i1e19685b57144dce@mail.gmail.com>
-References: <20080820200827.GC21226@fieldses.org>
-	 <76bd70e30808201419g5171d7eob7e6b57dd735e07d@mail.gmail.com>
-	 <20080820212902.GH21226@fieldses.org>
-	 <76bd70e30808201507l44c85d08o3ec4e8eeb7edda5e@mail.gmail.com>
-	 <20080820233024.GC28617@fieldses.org>
-	 <76bd70e30808201900r699ca044o884584ecedc6a799@mail.gmail.com>
-	 <20080821204620.GD29466@fieldses.org>
-	 <76bd70e30808211522k7cb6846fs4e371c8003320fe7@mail.gmail.com>
-	 <20080821225413.GD4076@fieldses.org>
-	 <76bd70e30808211605j3c32cc44v440c19e5fe81bdc9@mail.gmail.com>
-Reply-To: chucklever@gmail.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: fix nfs_parse_ip_address() corner case
+Date: Fri, 22 Aug 2008 14:24:22 -0400
+Message-ID: <20080822182419.19572.34705.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.186]:33891 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753549AbYHVS0A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2008 14:26:00 -0400
-Received: by mu-out-0910.google.com with SMTP id w8so767985mue.1
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2008 11:25:58 -0700 (PDT)
-In-Reply-To: <76bd70e30808211605j3c32cc44v440c19e5fe81bdc9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:14994 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755782AbYHVSaA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2008 14:30:00 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2008 at 7:05 PM, Chuck Lever <chucklever@gmail.com> wrote:
-> On Thu, Aug 21, 2008 at 6:54 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> On Thu, Aug 21, 2008 at 06:22:02PM -0400, Chuck Lever wrote:
->>> I don't think you want to add a lot of specialized logic in
->>> nfs4namespace.c or client.c or where ever that has to figure out what
->>> a valid IP address string looks like.  Just hand the referral hostname
->>> string to the super.c address parser.  That's what it's there for.
->>>
->>> If something comes out, it's almost sure to be a valid address.  If
->>> you have a scope ID too, then it's unsupported for now, and punt.  You
->>> can also explicitly check for a link-local address (there is a
->>> facility for that) and punt in that case too.
->>
->> The case where the scope id is bad or the kstrndup() in
->> nfs_parse_ipv6_scope_id fails seems to be indistinguishable from the
->> case where there is no scope id specified.
->
-> This sounds like nfs_parse_ipv6_scope_id() is broken.  You mean if the
-> hostname just ends with a '%' ?
+Bruce observed that nfs_parse_ip_address() will successfully parse an IPv6
+address that looks like this:
 
-I just sent you a patch that should address this issue.  Compile-tested only.
+  "::1%"
 
--- 
-Chuck Lever
+A scope delimiter is present, but there is no scope ID following it.
+This is harmless, as it would simply set the scope ID to zero.  However,
+in some cases we would like to flag this as an improperly formed
+address.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/super.c |   24 +++++++++++++++---------
+ 1 files changed, 15 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 5b2aa04..f73e068 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -727,19 +727,21 @@ static void nfs_parse_ipv4_address(char *string, size_t str_len,
+ #define IPV6_SCOPE_DELIMITER	'%'
+ 
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+-static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
+-				    const char *delim,
+-				    struct sockaddr_in6 *sin6)
++static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
++				   const char *delim,
++				   struct sockaddr_in6 *sin6)
+ {
+ 	char *p;
+ 	size_t len;
+ 
+ 	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
+-		return ;
++		return 0;
+ 	if (*delim != IPV6_SCOPE_DELIMITER)
+-		return;
+-
++		return 0;
+ 	len = (string + str_len) - delim - 1;
++	if (len == 0)
++		return 0;
++
+ 	p = kstrndup(delim + 1, len, GFP_KERNEL);
+ 	if (p) {
+ 		unsigned long scope_id = 0;
+@@ -758,6 +760,8 @@ static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
+ 		sin6->sin6_scope_id = scope_id;
+ 		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
+ 	}
++
++	return 1;
+ }
+ 
+ static void nfs_parse_ipv6_address(char *string, size_t str_len,
+@@ -773,9 +777,11 @@ static void nfs_parse_ipv6_address(char *string, size_t str_len,
+ 
+ 		sin6->sin6_family = AF_INET6;
+ 		*addr_len = sizeof(*sin6);
+-		if (in6_pton(string, str_len, addr, IPV6_SCOPE_DELIMITER, &delim)) {
+-			nfs_parse_ipv6_scope_id(string, str_len, delim, sin6);
+-			return;
++		if (in6_pton(string, str_len, addr,
++					IPV6_SCOPE_DELIMITER, &delim)) {
++			if (nfs_parse_ipv6_scope_id(string,
++							str_len, delim, sin6))
++				return;
+ 		}
+ 	}
+ 
+
