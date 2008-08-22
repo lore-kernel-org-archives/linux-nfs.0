@@ -1,93 +1,123 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Massive NFS problems on large cluster with large number of
-	mounts
-Date: Wed, 2 Jul 2008 16:31:30 -0400
-Message-ID: <20080702203130.GA24850@fieldses.org>
-References: <4869E8AB.4060905@aei.mpg.de> <20080701182250.GB21807@fieldses.org> <486B89F5.9000109@aei.mpg.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org,
-	Henning Fehrmann <henning.fehrmann-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
-	Steffen Grunewald <steffen.grunewald-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-To: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47273 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757725AbYGBUbb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jul 2008 16:31:31 -0400
-In-Reply-To: <486B89F5.9000109-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Message-ID: <48AE6C38.9040507@bull.net>
+Date: Fri, 22 Aug 2008 09:35:20 +0200
+From: Le Rouzic <aime.le-rouzic@bull.net>
+To: nfsv4 <nfsv4@linux-nfs.org>
+Subject: linux-2.6.27-rc3: kernel BUG at fs/nfs/write.c:252
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        nfs@lists.sourceforge.net
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
+MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 02, 2008 at 04:00:21PM +0200, Carsten Aulbert wrote:
-> Hi all,
-> 
-> 
-> J. Bruce Fields wrote:
-> > 
-> > I'm slightly confused--the above is all about server configuration, but
-> > the below seems to describe only client problems?
-> 
-> Well, yes and no. All our servers are clients as well. I.e. we have
-> ~1340 nodes which all export a local directory to be cross-mounted.
-> 
-> >> (1) All our mounts use nfsvers=3 why is rpc.idmapd involved at all?
-> > 
-> > Are there actually files named "idmap" in those directories?  (Looks to
-> > me like they're only created in the v4 case, so I assume those open
-> > calls would return ENOENT if they didn't return ENFILE....)
-> 
-> No there is not and since we are not running v4 yet, we've disabled the
-> start for these on all nodes now.
-> 
-> 
-> > 
-> >> (2) Why is this daemon growing so extremely large?
-> >> # ps aux|grep rpc.idmapd
-> >> root      2309  0.1 16.2 2037152 1326944 ?     Ss   Jun30   1:24
-> >> /usr/sbin/rpc.idmapd
-> > 
-> > I think rpc.idmapd has some state for each directory whether they're for
-> > a v4 client or not, since it's using dnotify to watch for an "idmap"
-> > file to appear in each one.  The above shows about 2k per mount?
-> 
-> As you have written in your other email, yes that's 2 GByte and I've
-> seen boxes where > 500 mounts hung that the process was using all of the
-> 8 GByte. So I do think there is a bug.
-> 
-> OTOH, we still have the problem, that we can only mount up to ~ 350
-> remote directories. This one we think we tracked down to the fact that
-> the NFS clients refuse to use ports >1023 even though the servers are
-> exporting with the "insecure" option. Is there a way to force this?
-> Right now the NFS clients use ports 665-1023 (except a few odd ports
-> which were in use earlier).
-> 
-> Any hint for us how we shall proceed and maybe force the clients to also
-> use ports > 1023? I think that would solve our problems.
+Hi,
+Client and server On Intel X86_64 with linux-2.6.27-rc3.
 
-I think the below (untested) would tell the client to stop demanding a
-privileged port.
+Doing several stress benchmarks simultaneously:
+fsstress
+iozone   (without  -U )
+fsx
+ffsb
+cthon
 
-Then you may find you run into other problems, I don't know.  Sounds
-like nobody's using this many mounts, so you get to find out what the
-next limit is....  But if it works, then maybe someday we should add a
-mount option to control this.
+The server crashed.
 
---b.
+Here is the trace on the server:
+------------[ cut here ]------------
+kernel BUG at fs/nfs/write.c:252!
+
+Entering kdb (current=0xffff8800621c78d0, pid 25953) on processor 1 due to
+KDB_ENTER()
+[1]kdb> bt
+Stack traceback for pid 25953
+0xffff8800621c78d0    25953     5308  1    1   R  0xffff8800621c7c38 *fsx-linux
+sp                ip                Function (args)
+0xffff8800660cdb88 0xffffffff80330871 nfs_do_writepage+0xe7
+(0xffffe20001770140, invalid, 0xffff8800660cdd18)
+0xffff8800660cdbf0 0xffffffff80330cd0 nfs_writepages_callback+0xf
+(0xffffe20001770140)
+0xffff8800660cdc10 0xffffffff802657f9 write_cache_pages+0x1ca
+(0xffff880062402468, 0xffff8800660cddc8, 0xffffffff80330cc1,
+0xffff8800660cdd18)
+0xffff8800660cdd10 0xffffffff80330c95 nfs_writepages+0x72 (0xffff880062402468,
+0xffff8800660cddc8)
+0xffff8800660cdd90 0xffffffff803315b6 __nfs_write_mapping+0x19
+(0xffff880062402468, 0xffff8800660cddc8, invalid)
+0xffff8800660cddc0 0xffffffff80331655 nfs_write_mapping+0x68
+(0xffff880062402468, invalid)
+0xffff8800660cde30 0xffffffff80331675 nfs_wb_nocommit+0x15 (invalid)
+0xffff8800660cde40 0xffffffff80327638 nfs_getattr+0x5c (0xffff88007fbbf1c0,
+invalid, 0xffff8800660cdef8)
+0xffff8800660cde80 0xffffffff8028c637 vfs_getattr+0x44 (0xffff88007fbbf1c0,
+0xffff8800664e00b8, 0xffff8800660cdef8)
+0xffff8800660cdec0 0xffffffff8028c687 vfs_fstat+0x33 (invalid,
+0xffff8800660cdef8)
+0xffff8800660cdef0 0xffffffff8028c6b8 sys_newfstat+0x1a (invalid,
+0x7fffec90f890)
+  not matched: from 0xffffffff8020bead to 0xffffffff8020bf25 drop_through 0
+bb_jmp[7]
+bb_special_case: Invalid bb_reg_state.memory, missing trailing entries
+bb_special_case: on transfer to int_with_check
+  system_call_fastpath has memory parameters but no register parameters.
+  Assuming it is a 'pass through' function that does not refer to its register
+  parameters and setting 6 register parameters
+kdb_bb: 0xffffffff8020be3b [kernel]system_call_fastpath failed at
+0xffffffff8020bec8
+
+Using old style backtrace, unreliable with no arguments
+sp                ip                Function (args)
+0xffff8800660cdb88 0xffffffff80330871 nfs_do_writepage+0xe7
+0xffff8800660cdbb0 0xffffffff80330871 nfs_do_writepage+0xe7
+0xffff8800660cdbf0 0xffffffff80330cd0 nfs_writepages_callback+0xf
+0xffff8800660cdc10 0xffffffff802657f9 write_cache_pages+0x1ca
+0xffff8800660cdc20 0xffffffff80330cc1 nfs_writepages_callback
+0xffff8800660cdc68 0xffffffff8032d3bc nfs_wait_bit_killable
+0xffff8800660cdc80 0xffffffff80603a87 out_of_line_wait_on_bit+0x6e
+0xffff8800660cdca8 0xffffffff8023f9b8 wake_bit_function
+0xffff8800660cdd10 0xffffffff80330c95 nfs_writepages+0x72
+0xffff8800660cdd50 0xffffffff80331c41 nfs_flush_one
+0xffff8800660cdd90 0xffffffff803315b6 __nfs_write_mapping+0x19
+0xffff8800660cddc0 0xffffffff80331655 nfs_write_mapping+0x68
+0xffff8800660cde30 0xffffffff80331675 nfs_wb_nocommit+0x15
+0xffff8800660cde40 0xffffffff80327638 nfs_getattr+0x5c
+0xffff8800660cde80 0xffffffff8028c637 vfs_getattr+0x44
+0xffff8800660cdec0 0xffffffff8028c687 vfs_fstat+0x33
+0xffff8800660cdef0 0xffffffff8028c6b8 sys_newfstat+0x1a
+0xffff8800660cdf40 0xffffffff80242540 up_write+0x9
+0xffff8800660cdf50 0xffffffff802731c5 sys_munmap+0x4d
+
+Bug registered at:
 
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 8945307..51f68cc 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -300,9 +300,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	 * but it is always enabled for rpciod, which handles the connect
- 	 * operation.
- 	 */
--	xprt->resvport = 1;
--	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
--		xprt->resvport = 0;
-+	xprt->resvport = 0;
- 
- 	clnt = rpc_new_client(args, xprt);
- 	if (IS_ERR(clnt))
+
+------------------------------------------------------------- 
+Bug: 
+ http://bugzilla.linux-nfs.org/show_bug.cgi?id=168 
+
+
+
+Best Regards
+
+-- 
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic 
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- 
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
