@@ -1,102 +1,54 @@
-From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
-Subject: Re: NFS regression?  Odd delays and lockups accessing an NFS
-	export.
-Date: Fri, 22 Aug 2008 19:13:38 +0100
-Message-ID: <1219428818.27921.43.camel@localhost.localdomain>
-References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com>
-	 <1219087258.7192.19.camel@localhost>
-	 <1219400624.18774.67.camel@zakaz.uk.xensource.com>
-	 <1219428489.6919.21.camel@localhost>
+From: "Chuck Lever" <chuck.lever@oracle.com>
+Subject: Re: [PATCH] nfs: Fix misparsing of nfsv4 fs_locations attribute
+Date: Fri, 22 Aug 2008 14:25:58 -0400
+Message-ID: <76bd70e30808221125n42e93bf1i1e19685b57144dce@mail.gmail.com>
+References: <20080820200827.GC21226@fieldses.org>
+	 <76bd70e30808201419g5171d7eob7e6b57dd735e07d@mail.gmail.com>
+	 <20080820212902.GH21226@fieldses.org>
+	 <76bd70e30808201507l44c85d08o3ec4e8eeb7edda5e@mail.gmail.com>
+	 <20080820233024.GC28617@fieldses.org>
+	 <76bd70e30808201900r699ca044o884584ecedc6a799@mail.gmail.com>
+	 <20080821204620.GD29466@fieldses.org>
+	 <76bd70e30808211522k7cb6846fs4e371c8003320fe7@mail.gmail.com>
+	 <20080821225413.GD4076@fieldses.org>
+	 <76bd70e30808211605j3c32cc44v440c19e5fe81bdc9@mail.gmail.com>
+Reply-To: chucklever@gmail.com
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-3x0/XuuH4gaAYTKPEX+I"
-Cc: Grant Coady <gcoady.lk@gmail.com>, linux-kernel@vger.kernel.org,
-	neilb@suse.de, bfields@fieldses.org, linux-nfs@vger.kernel.org,
-	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
-	Jesse Brandeburg <jesse.brandeburg@intel.com>,
-	Bruce Allan <bruce.w.allan@intel.com>,
-	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
-	John Ronciak <john.ronciak@intel.com>,
-	e1000-devel@lists.sourceforge.net
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout03-winn.ispmail.ntl.com ([81.103.221.49]:24778 "EHLO
-	mtaout03-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756054AbYHVSNv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2008 14:13:51 -0400
-In-Reply-To: <1219428489.6919.21.camel@localhost>
+Received: from mu-out-0910.google.com ([209.85.134.186]:33891 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753549AbYHVS0A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2008 14:26:00 -0400
+Received: by mu-out-0910.google.com with SMTP id w8so767985mue.1
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2008 11:25:58 -0700 (PDT)
+In-Reply-To: <76bd70e30808211605j3c32cc44v440c19e5fe81bdc9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Aug 21, 2008 at 7:05 PM, Chuck Lever <chucklever@gmail.com> wrote:
+> On Thu, Aug 21, 2008 at 6:54 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> On Thu, Aug 21, 2008 at 06:22:02PM -0400, Chuck Lever wrote:
+>>> I don't think you want to add a lot of specialized logic in
+>>> nfs4namespace.c or client.c or where ever that has to figure out what
+>>> a valid IP address string looks like.  Just hand the referral hostname
+>>> string to the super.c address parser.  That's what it's there for.
+>>>
+>>> If something comes out, it's almost sure to be a valid address.  If
+>>> you have a scope ID too, then it's unsupported for now, and punt.  You
+>>> can also explicitly check for a link-local address (there is a
+>>> facility for that) and punt in that case too.
+>>
+>> The case where the scope id is bad or the kstrndup() in
+>> nfs_parse_ipv6_scope_id fails seems to be indistinguishable from the
+>> case where there is no scope id specified.
+>
+> This sounds like nfs_parse_ipv6_scope_id() is broken.  You mean if the
+> hostname just ends with a '%' ?
 
---=-3x0/XuuH4gaAYTKPEX+I
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I just sent you a patch that should address this issue.  Compile-tested only.
 
-On Fri, 2008-08-22 at 11:08 -0700, Trond Myklebust wrote:
-> On Fri, 2008-08-22 at 11:23 +0100, Ian Campbell wrote:
-> > On Mon, 2008-08-18 at 15:20 -0400, Trond Myklebust wrote:
-> > > Please try to reproduce the hang, then do
-> > >=20
-> > > 	echo 0 >/proc/sys/sunrpc/rpc_debug
-> > >=20
-> > > and send the output from 'dmesg'...
-> >=20
-> > I've also been seeing some NFS related lockups, although I'm not sure i=
-f
-> > they are the same as the one in this thread or not. Client is 2.6.26
-> > (Debian's kernel) and Server is 2.6.25 (also a Debian kernel, but from
-> > backports.org).
-> >=20
-> > rpc_debug on the server gives nothing, on the client gives:
-> > [144741.637997] -pid- proc flgs status -client- -prog- --rqstp- -timeou=
-t -rpcwait -action- ---ops--
-> > [144741.637997]  3439 0004 0080    -11 f3f48200 100003 f7770000        =
-0 xprt_sending fa0ae88e fa0bddf4
-> > [144741.637997]  3438 0001 00a0      0 f77f2a00 100003 f77700d0    1500=
-0 xprt_pending fa0ae88e fa0bddf4
->=20
-> That's probably also a networking device driver issue candidate: your
-> RPC task is queued up waiting to be sent.
->=20
-> What networking card+device driver are you using here?
-
-# ethtool -i eth0
-driver: e1000
-version: 7.3.20-k2-NAPI
-firmware-version: N/A
-bus-info: 0000:01:0a.0
-
-Adding CC's to peeps listed in MAINTAINERS
-
-I have to reboot the system now (or else there will be no TV to watch
-during my tea ;-). It will probably repro again quite soon though.
-
-> > There are no processes running with pid 3439 3438 (I don't think it's
-> > that sort of pid though).
->=20
-> The 'pid' is an internal RPC cookie that just serves to identify and
-> track specific RPC requests.
-
-Right, thanks.
-
-Ian.
-
---=20
-Ian Campbell
-
-Colors may fade.
-
---=-3x0/XuuH4gaAYTKPEX+I
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkivAdIACgkQM0+0qS9rzVlFcQCffxm5vgStyXKuaFGnuguUtXdk
-PpYAoMD+hYRiMVPZa7ouxp5dZn/OP8BF
-=HAJQ
------END PGP SIGNATURE-----
-
---=-3x0/XuuH4gaAYTKPEX+I--
-
+-- 
+Chuck Lever
