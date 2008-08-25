@@ -1,20 +1,23 @@
 From: Le Rouzic <aime.le-rouzic@bull.net>
 Subject: Re: [NFS] linux-2.6.27-rc3: kernel BUG at fs/nfs/write.c:252
 Date: Mon, 25 Aug 2008 12:01:15 +0200
-Message-ID: <48B282EB.6030306__45117.6870301881$1219659446$gmane$org@bull.net>
+Message-ID: <48B282EB.6030306__40411.3380158835$1219659455$gmane$org@bull.net>
 References: <48AE6C38.9040507@bull.net> <20080822190452.GA3868@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Cc: nfs@lists.sourceforge.net,
+Content-Type: text/plain; charset=iso-8859-1
+Cc: nfsv4 <nfsv4@linux-nfs.org>,
 	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	nfsv4 <nfsv4@linux-nfs.org>
+	nfs@lists.sourceforge.net
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:37336 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753594AbYHYKCi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2008 06:02:38 -0400
+Received: from neil.brown.name ([220.233.11.133]:58791 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754515AbYHYKD0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2008 06:03:26 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KXYuw-0001U3-RD
+	for linux-nfs@vger.kernel.org; Mon, 25 Aug 2008 20:03:23 +1000
 In-Reply-To: <20080822190452.GA3868@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -196,4 +199,22 @@ E-Mail  : aime.le-rouzic@bull.net
 Phone   : 33 (4) 76.29.75.51
 =46ax     : 33 (4) 76.29.75.18
 -----------------------------------------------------------------=20
+
+
+-----------------------------------------------------------------------=
+--
+This SF.Net email is sponsored by the Moblin Your Move Developer's chal=
+lenge
+Build the coolest Linux based applications with Moblin SDK & win great =
+prizes
+Grand prize is a trip for two to an Open Source event anywhere in the w=
+orld
+http://moblin-contest.org/redirect.php?banner_id=3D100&url=3D/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
