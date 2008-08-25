@@ -1,61 +1,48 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
-Date: Sun, 24 Aug 2008 18:15:36 -0400
-Message-ID: <1219616136.14389.12.camel@localhost>
-References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com>
-	 <1219087258.7192.19.camel@localhost>
-	 <1219400624.18774.67.camel@zakaz.uk.xensource.com>
-	 <1219428489.6919.21.camel@localhost>
-	 <1219428818.27921.43.camel@localhost.localdomain>
-	 <56a8daef0808221233h68853587n6015ca7d809b17e1@mail.gmail.com>
-	 <1219435207.27921.51.camel@localhost.localdomain>
-	 <1219440202.9097.14.camel@localhost>
-	 <1219441041.27921.57.camel@localhost.localdomain>
-	 <1219442213.9097.25.camel@localhost>
-	 <1219603981.27921.145.camel@localhost.localdomain>
-	 <1219605422.14389.2.camel@localhost>  <1219605596.14389.5.camel@localhost>
-	 <1219615789.27921.152.camel@localhost.localdomain>
+From: Jari Aalto <jari.aalto-w6EBCRcXQ4deoWH0uzbU5w@public.gmane.org>
+Subject: Linux NFS-HOWTO - improvement to Troubleshooting permission denied
+Date: Mon, 25 Aug 2008 10:36:00 +0300
+Message-ID: <87skstbl7j.fsf@jondo.cante.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: John Ronciak <john.ronciak@gmail.com>,
-	Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel@vger.kernel.org, neilb@suse.de, bfields@fieldses.org,
-	linux-nfs@vger.kernel.org,
-	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
-	Jesse Brandeburg <jesse.brandeburg@intel.com>,
-	Bruce Allan <bruce.w.allan@intel.com>,
-	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
-	John Ronciak <john.ronciak@intel.com>,
-	e1000-devel@lists.sourceforge.net
-To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org (http://linux-nfs.org),
+	chip@users.sourceforge.net, hjl@users.sourceforge.net,
+	jbfields@users.sourceforge.net, jweber@users.sourceforge.net,
+	marcmerlin@users.sourceforge.net, neilbrown@users.sourceforge.net,
+	steved12345@users.sourceforge.net, trondmy@users.sourceforge.net
+To: smithere@gmail.com (NFS HOWTO author)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:54248 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750909AbYHXWPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Aug 2008 18:15:45 -0400
-In-Reply-To: <1219615789.27921.152.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from emh06.mail.saunalahti.fi ([62.142.5.116]:41852 "EHLO
+	emh06.mail.saunalahti.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752281AbYHYHp2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2008 03:45:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2008-08-24 at 23:09 +0100, Ian Campbell wrote:
-> (added some quoting from previous mail to save replying twice)
-> 
-> On Sun, 2008-08-24 at 15:19 -0400, Trond Myklebust wrote:
-> > On Sun, 2008-08-24 at 15:17 -0400, Trond Myklebust wrote:
-> > > >From the tcpdump, it looks as if the NFS server is failing to close the
-> > > socket, when the client closes its side. You therefore end up getting
-> > > stuck in the FIN_WAIT2 state (as netstat clearly shows above).
-> > >
-> > > Is the server keeping the client in this state for a very long
-> > > period?
-> 
-> Well, it had been around an hour and a half on this occasion. Next time
-> it happens I can wait longer but I'm pretty sure I've come back from
-> time away and it's been wedged for at least a day. How long would you
-> expect it to remain in this state for?
 
-The server should ideally start to close the socket as soon as it
-receives the FIN from the client. I'll have a look at the code.
+Thank you for the NFS howto (last modified 2006). Please add further
+diagnostics to section:
 
-Trond
+	=> "I do not have permission to access files on the mounted volume"
+	http://nfs.sourceforge.net/nfs-howto/ar01s07.html#pemission_issues
 
+The error condition "Permission denied" also happens in certain NFS
+(client/server) combinations and the workaround is to add additional
+mount parameter at client:
+
+        sec=sys
+
+Please add this to the "#pemission_issues" (tag the word seems to have a
+small typo).
+
+See reported incidents:
+
+        http://thread.gmane.org/gmane.linux.debian.user/333162
+        http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=492970
+
+Jari
+
+----
+CC: team http://sourceforge.net/projects/nfs
+
+You're all in CC, as I did not know who is responsible for updating the
+NFS-HOWTO at sourceforge.
