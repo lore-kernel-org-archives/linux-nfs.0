@@ -1,86 +1,114 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/5] NFS: Enable NFSv4 callback server to listen on
-	AF_INET6 sockets
-Date: Mon, 25 Aug 2008 18:48:05 -0400
-Message-ID: <20080825224805.GA10175@fieldses.org>
-References: <20080822163939.20488.92983.stgit@manray.1015granger.net> <20080822164201.20488.61180.stgit@manray.1015granger.net> <20080822231801.GA12995@fieldses.org> <76bd70e30808221934o22de4d51vca758957f565f256@mail.gmail.com> <2E06E166-E115-4EA0-A6BC-F10F76673482@oracle.com>
+From: Grant Coady <grant_lkml@dodo.com.au>
+Subject: Re: NFS regression? Odd delays and lockups accessing
+	an NFS export.
+Date: Tue, 26 Aug 2008 10:29:17 +1000
+Message-ID: <kgh6b498u1t11gur76aefbs878grh5gal7@4ax.com>
+References: <1219400624.18774.67.camel@zakaz.uk.xensource.com>
+	<1219428489.6919.21.camel@localhost>
+	<1219428818.27921.43.camel@localhost.localdomain>
+	<56a8daef0808221233h68853587n6015ca7d809b17e1@mail.gmail.com>
+	<1219435207.27921.51.camel@localhost.localdomain>
+	<1219440202.9097.14.camel@localhost>
+	<1219441041.27921.57.camel@localhost.localdomain>
+	<1219442213.9097.25.camel@localhost>
+	<4156b4tgrrsflla1svmu4jl6j5sme4a715@4ax.com>
+	<1219702272.7665.56.camel@localhost>
+Reply-To: Grant Coady <gcoady.lk@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@netapp.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43890 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753737AbYHYWsJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Aug 2008 18:48:09 -0400
-In-Reply-To: <2E06E166-E115-4EA0-A6BC-F10F76673482@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, Grant Coady <gcoady.lk@gmail.com>,
+	e1000-devel@lists.sourceforge.net, neilb@suse.de,
+	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
+	Bruce Allan <bruce.w.allan@intel.com>, linux-kernel@vger.kernel.org,
+	John Ronciak <john.ronciak@gmail.com>, bfields@fieldses.org,
+	Jesse Brandeburg <jesse.brandeburg@intel.com>,
+	John Ronciak <john.ronciak@intel.com>,
+	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
+	Ian Campbell <ijc@hellion.org.uk>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <e1000-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <1219702272.7665.56.camel@localhost>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/e1000-devel>,
+	<mailto:e1000-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=e1000-devel>
+List-Post: <mailto:e1000-devel@lists.sourceforge.net>
+List-Help: <mailto:e1000-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/e1000-devel>,
+	<mailto:e1000-devel-request@lists.sourceforge.net?subject=subscribe>
+Sender: e1000-devel-bounces@lists.sourceforge.net
+Errors-To: e1000-devel-bounces@lists.sourceforge.net
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 25, 2008 at 12:16:00PM -0400, Chuck Lever wrote:
-> On Aug 22, 2008, at Aug 22, 2008, 10:34 PM, Chuck Lever wrote:
->> On Fri, Aug 22, 2008 at 7:18 PM, J. Bruce Fields  
->> <bfields@fieldses.org> wrote:
->>> On Fri, Aug 22, 2008 at 12:42:02PM -0400, Chuck Lever wrote:
->>>> Allow the NFS callback server to listen for requests via an AF_INET6
->>>> or AF_INET socket.
->>>>
->>>> The NFS callback server determines the listener's address family  
->>>> from
->>>> the address the client uses to contact the server.  The server will
->>>> always call the client back using the same address family.
->>>
->>> Won't the server determine that from the callback address which the
->>> client provides in the setclientid?
->>
->> A client has to have IPv6 networking to mount an IPv6 server.
->> Otherwise both will use IPv4.  Do you think we should worry about the
->> case where a client provides a callback address in a different address
->> family from the server's address?
+On Mon, 25 Aug 2008 18:11:12 -0400, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-Oh!  I don't know.  If there's a choice then I'd think the server would
-use whatever address family it thinks the address you sent it in the
-cb_location field of the setclientid, but if you tell me it's impossible
-for that situation to ever arise then I'll believe you....
+>On Tue, 2008-08-26 at 06:23 +1000, Grant Coady wrote:
+>> On Fri, 22 Aug 2008 14:56:53 -0700, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+>> 
+>> >On Fri, 2008-08-22 at 22:37 +0100, Ian Campbell wrote:
+>> >> I can ssh to the server fine. The same server also serves my NFS home
+>> >> directory to the box I'm writing this from and I've not seen any trouble
+>> >> with this box at all, it's a 2.6.18-xen box.
+>> >
+>> >OK... Are you able to reproduce the problem reliably?
+>> >
+>> >If so, can you provide me with a binary tcpdump or wireshark dump? If
+>> >using tcpdump, then please use something like
+>> >
+>> >   tcpdump -w /tmp/dump.out -s 90000 host myserver.foo.bar and port 2049
+>>                              ^^^^^^^^-->  typo?
+>
+>No. The intention was to record _all_ the info in the packet for
+>analysis, not just random header info.
 
->> But I suppose it would be more precise to call nfs_callback_up() using
->> the family of the passed-in clientaddr= mount option instead of the
->> passed-in addr= option.  That will require discovering the address
->> family of the clientaddr string.
->>
->> We could convert the clientaddr string into a sockaddr temporarily (we
->> don't already do that... it's converted into a universal address
->> string, but not into a sockaddr).
->
-> I thought about this more over the weekend.
->
-> We've got a similar problem here that we have with starting just a TCP  
-> or UDP listener for lockd based on what transport protocols were  
-> requested on the mount command line.
->
-> The NFSv4 callback server (and lockd, and probably NFSD) should start  
-> either a single AF_INET or a single AF_INET6 listener, not both.  Right 
-> now, the callback server's address family is selected based on mount 
-> options for the first mount request.  But we only want one of these 
-> listeners for all mount points on a system, and it should be one that 
-> covers all the needed address families, no matter which address family 
-> was used during the first mount request.
->
-> So these services need to start a listener not based on mount options,  
-> but on what kind of networking is available on the host.  If IPV6 is  
-> available in the kernel, I think, an AF_INET6 listener should be  
-> started; otherwise, start an AF_INET listener.
->
-> I think the only externally visible issue with doing this is how  
-> addresses are presented in kernel log and error messages.  If the  
-> functions which generate presentation format address strings are smart  
-> enough to recognize a mapped IPv4 address and present it in dotted-quad 
-> format, that should be enough.
->
-> Thoughts/opinions?
+Hi Trond,
 
-I don't know.  I still haven't had a chance to learn about ipv6, so I
-feel a bit at a loss.
+My tcpdump seems to have a 16 bit snaplen counter:
 
---b.
+~# tcpdump -w /tmp/dump.out -s 65535 host deltree and port 2049
+tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
+^C0 packets captured
+4 packets received by filter
+0 packets dropped by kernel
+
+~# tcpdump -w /tmp/dump.out -s 65536 host deltree and port 2049
+tcpdump: invalid snaplen 65536
+
+~# tcpdump --version
+tcpdump version 3.9.8
+libpcap version 0.9.8
+
+
+So I'm now using:
+~# tcpdump -w /tmp/dump.out -s 65535 -C 10 -W 100 host deltree and port 2049
+tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 65535 bytes
+
+to get a 1GB round-robin trace buffer, I can stop the trace when problem 
+noticed, as it is so long between delay/stall happenings.  Then I'll try 
+to trigger the thing.
+
+Is this the correct style of trace you are expecting?
+
+~$ /usr/sbin/tcpdump -r /tmp/dump.out00
+reading from file /tmp/dump.out00, link-type EN10MB (Ethernet)
+10:13:49.719781 IP pooh64.mire.mine.nu.2156510591 > deltree.mire.mine.nu.nfs: 116 access fh 0,1/218104576 001f
+10:13:49.720215 IP deltree.mire.mine.nu.nfs > pooh64.mire.mine.nu.2156510591: reply ok 124 access c 001f
+10:13:49.720225 IP pooh64.mire.mine.nu.984 > deltree.mire.mine.nu.nfsd: . ack 1649405551 win 5840
+10:13:49.720288 IP pooh64.mire.mine.nu.2173287807 > deltree.mire.mine.nu.nfs: 136 readdirplus fh 0,1/218104576 512 bytes @ 0
+10:13:49.742450 IP deltree.mire.mine.nu.nfs > pooh64.mire.mine.nu.2173287807: reply ok 1460 readdirplus
+
+
+Is there some test suite I can use?  Compiling kernels over NFS worked 
+fine yesterday, apart from the fastest box' make complaining about clock 
+skew.  The kernel booted though, so that was okay.  
+
+Guess it's back to the interactive editing over NFS and see if the thing 
+manifest the delay/stalls again, I'm on the .27-rc4-git4 kernel as soon 
+as it compiles for the client, NFS server is 2.6.24.7 at the moment.
+
+Grant.
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
