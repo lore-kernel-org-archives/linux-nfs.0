@@ -1,83 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS regression? Odd delays and lockups accessing
-	an NFS export.
-Date: Tue, 26 Aug 2008 15:27:11 -0400
-Message-ID: <20080826192711.GJ4380@fieldses.org>
-References: <1219435207.27921.51.camel@localhost.localdomain>
-	<1219440202.9097.14.camel@localhost>
-	<1219441041.27921.57.camel@localhost.localdomain>
-	<1219442213.9097.25.camel@localhost>
-	<1219603981.27921.145.camel@localhost.localdomain>
-	<1219605422.14389.2.camel@localhost>
-	<1219605596.14389.5.camel@localhost>
-	<1219615789.27921.152.camel@localhost.localdomain>
-	<1219616136.14389.12.camel@localhost>
-	<48B2D7F8.5020206@opengridcomputing.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, Grant Coady <gcoady.lk@gmail.com>,
-	e1000-devel@lists.sourceforge.net, neilb@suse.de,
-	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
-	Bruce Allan <bruce.w.allan@intel.com>, linux-kernel@vger.kernel.org,
-	John Ronciak <john.ronciak@gmail.com>,
-	Jesse Brandeburg <jesse.brandeburg@intel.com>,
-	John Ronciak <john.ronciak@intel.com>,
-	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
-	Ian Campbell <ijc@hellion.org.uk>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <e1000-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <48B2D7F8.5020206@opengridcomputing.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/e1000-devel>,
-	<mailto:e1000-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=e1000-devel>
-List-Post: <mailto:e1000-devel@lists.sourceforge.net>
-List-Help: <mailto:e1000-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/e1000-devel>,
-	<mailto:e1000-devel-request@lists.sourceforge.net?subject=subscribe>
-Sender: e1000-devel-bounces@lists.sourceforge.net
-Errors-To: e1000-devel-bounces@lists.sourceforge.net
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 5/5] lockd: Add address family-agnostic helper for zeroing the port number
+Date: Tue, 26 Aug 2008 15:49:33 -0400
+Message-ID: <7AD6FAE8-B6E1-432B-A34B-C15100232998@oracle.com>
+References: <20080822163939.20488.92983.stgit@manray.1015granger.net> <20080822164232.20488.11685.stgit@manray.1015granger.net> <20080826190319.GF4380@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:49153 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753279AbYHZTvH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2008 15:51:07 -0400
+In-Reply-To: <20080826190319.GF4380@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 25, 2008 at 11:04:08AM -0500, Tom Tucker wrote:
-> Trond Myklebust wrote:
->> On Sun, 2008-08-24 at 23:09 +0100, Ian Campbell wrote:
->>> (added some quoting from previous mail to save replying twice)
->>>
->>> On Sun, 2008-08-24 at 15:19 -0400, Trond Myklebust wrote:
->>>> On Sun, 2008-08-24 at 15:17 -0400, Trond Myklebust wrote:
->>>>> >From the tcpdump, it looks as if the NFS server is failing to close the
->>>>> socket, when the client closes its side. You therefore end up getting
->>>>> stuck in the FIN_WAIT2 state (as netstat clearly shows above).
->>>>>
->>>>> Is the server keeping the client in this state for a very long
->>>>> period?
->>> Well, it had been around an hour and a half on this occasion. Next time
->>> it happens I can wait longer but I'm pretty sure I've come back from
->>> time away and it's been wedged for at least a day. How long would you
->>> expect it to remain in this state for?
+On Aug 26, 2008, at Aug 26, 2008, 3:03 PM, J. Bruce Fields wrote:
+> It would be nice if not necessary just to move nfs_set_port()  
+> somewhere
+> common and use that (maybe with a more generic name).
+
+I agree.  However...
+
+As we round out to a full IPv6 implementation for NFS, it will become  
+clear what additional helper functions can be shared.  This might  
+include not only a port setting helper, but also one that can  
+construct presentation format addresses, and so on.
+
+At that point, we can consolidate as needed.
+
+Until then, I would like to wait until everything is reviewed and  
+integrated so we are sure to include changes and updates related to  
+the review process, if that's OK with you.
+
+> On Fri, Aug 22, 2008 at 12:42:33PM -0400, Chuck Lever wrote:
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
 >>
->> The server should ideally start to close the socket as soon as it
->> receives the FIN from the client. I'll have a look at the code.
+>> fs/lockd/host.c |   14 +++++++++++++-
+>> 1 files changed, 13 insertions(+), 1 deletions(-)
 >>
->
-> I don't think it should matter how long the connection stays in FIN WAIT,
-> the client should reconnect anyway.
->
-> Since the client seems to be the variable, I would think it might be an
-> issue with the client reconnect logic?
->
-> That said, 2.6.25 is when the server side transport switch logic went in.
+>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+>> index 55ef751..3f0c1a8 100644
+>> --- a/fs/lockd/host.c
+>> +++ b/fs/lockd/host.c
+>> @@ -39,6 +39,18 @@ static struct nsm_handle *	nsm_find(const struct  
+>> sockaddr_in *sin,
+>> 					 const char *hostname,
+>> 					 unsigned int hostname_len);
+>>
+>> +static void nlm_clear_port(struct sockaddr *sap)
+>> +{
+>> +	switch (sap->sa_family) {
+>> +	case AF_INET:
+>> +		((struct sockaddr_in *)sap)->sin_port = 0;
+>> +		break;
+>> +	case AF_INET6:
+>> +		((struct sockaddr_in6 *)sap)->sin6_port = 0;
+>> +		break;
+>> +	}
+>> +}
+>> +
+>> static void nlm_display_address(const struct sockaddr *sap,
+>> 				char *buf, const size_t len)
+>> {
+>> @@ -149,7 +161,7 @@ static struct nlm_host *nlm_lookup_host(int  
+>> server,
+>> 	}
+>> 	host->h_name	   = nsm->sm_name;
+>> 	host->h_addr       = *sin;
+>> -	host->h_addr.sin_port = 0;	/* ouch! */
+>> +	nlm_clear_port((struct sockaddr *)&host->h_addr);
+>> 	host->h_saddr	   = *ssin;
+>> 	host->h_version    = version;
+>> 	host->h_proto      = proto;
+>>
 
-Any chance you could help Trond figure out why the server might be doing
-this?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-If not, I'll get to it, but not as soon as I should.
 
---b.
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
+
