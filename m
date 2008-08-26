@@ -1,78 +1,74 @@
-From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
-Subject: Re: Bug#492970: (was: nfs-utils-1.1.3 released)
-Date: Tue, 26 Aug 2008 21:10:20 +1000
-Message-ID: <20080826111020.GI12699@debianrules.debiancolombia.org>
-References: <87myjul1fk.fsf@burly.wgtn.ondioline.org>
-	<20080803151022.GA31484@fieldses.org>
-	<60C652E1-512E-484A-874E-01997B688505@oracle.com>
-	<87d4ko5wlx.fsf@burly.wgtn.ondioline.org>
-	<9692E351-7140-4AD8-99F8-C9271F54CD5F@oracle.com>
-	<863alj9s8p.fsf@gere.msconsult.dk>
-	<5535F9D8-CD96-4807-80B3-7FD4B3983794@oracle.com>
-	<20080807150514.GA3696@xanadu.blop.info>
-	<6A0B8017-9FCB-4CF1-88F0-8E5752AC22EC@oracle.com>
-	<2237EBE9-FE80-4B9A-B908-1533C47BBD0F@oracle.com>
+From: Richard Kennedy <richard-GNCsCaawp5mSE57U5PDhIQ@public.gmane.org>
+Subject: [PATCH] NFS: remove 8 bytes of padding from struct nfs_fattr on 64
+	bit builds
+Date: Tue, 26 Aug 2008 16:23:20 +0100
+Message-ID: <1219764200.3018.16.camel@castor.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============0634196436=="
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>, bcwong@cisco.com,
-	492970@bugs.debian.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <2237EBE9-FE80-4B9A-B908-1533C47BBD0F@oracle.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Mime-version: 1.0
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: lkml <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
+To: Trond.Myklebust@netapp.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from anchor-post-37.mail.demon.net ([194.217.242.87]:35207 "EHLO
+	anchor-post-37.mail.demon.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756604AbYHZPXn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2008 11:23:43 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+remove 8 bytes of padding from struct nfs_fattr on 64 bit builds
 
---===============0634196436==
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="POjlveFHrWq2ZO+N"
-Content-Disposition: inline
+This also removes padding from several nfs structures, including
+16 bytes from  nfs4_opendata, nfs4_createdata,nfs3_createdata
+& 8 bytes from nfs_read_data,nfs_write_data,nfs_removeres,nfs4_closedata
+
+This also reduces the reported stack usage of many nfs functions (30+).
+    
+Signed-off-by: Richard Kennedy <richard-GNCsCaawp5mSE57U5PDhIQ@public.gmane.org>
+----
+
+This patch is against the latest git 2.6.27-rc4.
+I've built & run this on my AMD64 desktop, & successfully run _simple_
+tests with a  64 bit client => 32 bit server & 32 bit client to 64 bit
+server.
+
+On fedora with gcc (GCC) 4.3.0 20080428 (Red Hat 4.3.0-8) checkpatch
+reports 33 functions with reduced stack usage.
+e.g.
+__nfs_revalidate_inode [nfs] 216 => 200
+_nfs4_proc_access [nfs] 304 => 288
+_nfs4_proc_link [nfs] 536 => 504
+_nfs4_proc_remove [nfs] 304 => 288
+_nfs4_proc_rename [nfs] 584 => 552
+nfs3_proc_access [nfs] 272 => 256
+nfs3_proc_getacl [nfs] 384 => 368
+nfs3_proc_link [nfs] 496 => 464
+etc
+I can supply the complete list if anyone is interested.
+
+regards
+Richard
 
 
---POjlveFHrWq2ZO+N
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
 
-On Fri, Aug 08, 2008 at 09:06:46PM -0400, Chuck Lever wrote:
->Confirmed.  The kernel's mountd client doesn't even bother to
->unmarshal the auth flavor list in the server's reply.
->
->I'll work on a fix.
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 8c77c11..9cabbb3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -36,6 +36,7 @@ struct nfs_fattr {
+ 	__u32			nlink;
+ 	__u32			uid;
+ 	__u32			gid;
++	dev_t			rdev;
+ 	__u64			size;
+ 	union {
+ 		struct {
+@@ -46,7 +47,6 @@ struct nfs_fattr {
+ 			__u64	used;
+ 		} nfs3;
+ 	} du;
+-	dev_t			rdev;
+ 	struct nfs_fsid		fsid;
+ 	__u64			fileid;
+ 	struct timespec		atime;
 
-Please let me know when you have a patch to test it.
 
---POjlveFHrWq2ZO+N
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkiz5JoACgkQgY5NIXPNpFVqHgCgtcW7McsE/HOt6+GALltq7P/j
-6vcAoMOGKOVlggAaMXoFefaGTr6gSf0R
-=wXGZ
------END PGP SIGNATURE-----
-
---POjlveFHrWq2ZO+N--
-
---===============0634196436==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---===============0634196436==--
