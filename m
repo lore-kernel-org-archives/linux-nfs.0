@@ -1,103 +1,66 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS: fix nfs_parse_ip_address() corner case
-Date: Tue, 26 Aug 2008 14:39:42 -0400
-Message-ID: <20080826183942.GE4380@fieldses.org>
-References: <20080822182419.19572.34705.stgit@manray.1015granger.net>
+Subject: Re: [PATCH 5/5] lockd: Add address family-agnostic helper for
+	zeroing the port number
+Date: Tue, 26 Aug 2008 15:03:19 -0400
+Message-ID: <20080826190319.GF4380@fieldses.org>
+References: <20080822163939.20488.92983.stgit@manray.1015granger.net> <20080822164232.20488.11685.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:48454 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:50393 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756453AbYHZSjz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2008 14:39:55 -0400
-In-Reply-To: <20080822182419.19572.34705.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1760074AbYHZTDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Aug 2008 15:03:43 -0400
+In-Reply-To: <20080822164232.20488.11685.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 22, 2008 at 02:24:22PM -0400, Chuck Lever wrote:
-> Bruce observed that nfs_parse_ip_address() will successfully parse an IPv6
-> address that looks like this:
-> 
->   "::1%"
-> 
-> A scope delimiter is present, but there is no scope ID following it.
-> This is harmless, as it would simply set the scope ID to zero.  However,
-> in some cases we would like to flag this as an improperly formed
-> address.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfs/super.c |   24 +++++++++++++++---------
->  1 files changed, 15 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 5b2aa04..f73e068 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -727,19 +727,21 @@ static void nfs_parse_ipv4_address(char *string, size_t str_len,
->  #define IPV6_SCOPE_DELIMITER	'%'
->  
->  #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> -static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
-> -				    const char *delim,
-> -				    struct sockaddr_in6 *sin6)
-> +static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
-> +				   const char *delim,
-> +				   struct sockaddr_in6 *sin6)
->  {
->  	char *p;
->  	size_t len;
->  
->  	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
-> -		return ;
-> +		return 0;
->  	if (*delim != IPV6_SCOPE_DELIMITER)
-> -		return;
-> -
-> +		return 0;
+It would be nice if not necessary just to move nfs_set_port() somewhere
+common and use that (maybe with a more generic name).
 
-What happens in the case where there's no scope delimiter?  In that case
-can't *delim correctly point to something else here?
-
-Arguably kstrndup() and dev_get_by_name() failures should also result in
-parser failures.  It seems safer to me to reject bad addresses than to
-try to use them anyway (possibly resulting in mounting a different
-server from what was intended).
+That aside, all 5 patches are OK by me.
 
 --b.
 
->  	len = (string + str_len) - delim - 1;
-> +	if (len == 0)
-> +		return 0;
+On Fri, Aug 22, 2008 at 12:42:33PM -0400, Chuck Lever wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/lockd/host.c |   14 +++++++++++++-
+>  1 files changed, 13 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 55ef751..3f0c1a8 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -39,6 +39,18 @@ static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
+>  					 const char *hostname,
+>  					 unsigned int hostname_len);
+>  
+> +static void nlm_clear_port(struct sockaddr *sap)
+> +{
+> +	switch (sap->sa_family) {
+> +	case AF_INET:
+> +		((struct sockaddr_in *)sap)->sin_port = 0;
+> +		break;
+> +	case AF_INET6:
+> +		((struct sockaddr_in6 *)sap)->sin6_port = 0;
+> +		break;
+> +	}
+> +}
 > +
->  	p = kstrndup(delim + 1, len, GFP_KERNEL);
->  	if (p) {
->  		unsigned long scope_id = 0;
-> @@ -758,6 +760,8 @@ static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
->  		sin6->sin6_scope_id = scope_id;
->  		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
+>  static void nlm_display_address(const struct sockaddr *sap,
+>  				char *buf, const size_t len)
+>  {
+> @@ -149,7 +161,7 @@ static struct nlm_host *nlm_lookup_host(int server,
 >  	}
-> +
-> +	return 1;
->  }
->  
->  static void nfs_parse_ipv6_address(char *string, size_t str_len,
-> @@ -773,9 +777,11 @@ static void nfs_parse_ipv6_address(char *string, size_t str_len,
->  
->  		sin6->sin6_family = AF_INET6;
->  		*addr_len = sizeof(*sin6);
-> -		if (in6_pton(string, str_len, addr, IPV6_SCOPE_DELIMITER, &delim)) {
-> -			nfs_parse_ipv6_scope_id(string, str_len, delim, sin6);
-> -			return;
-> +		if (in6_pton(string, str_len, addr,
-> +					IPV6_SCOPE_DELIMITER, &delim)) {
-> +			if (nfs_parse_ipv6_scope_id(string,
-> +							str_len, delim, sin6))
-> +				return;
->  		}
->  	}
->  
+>  	host->h_name	   = nsm->sm_name;
+>  	host->h_addr       = *sin;
+> -	host->h_addr.sin_port = 0;	/* ouch! */
+> +	nlm_clear_port((struct sockaddr *)&host->h_addr);
+>  	host->h_saddr	   = *ssin;
+>  	host->h_version    = version;
+>  	host->h_proto      = proto;
 > 
