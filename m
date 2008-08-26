@@ -1,56 +1,83 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] SUNRPC: Make svc_addr's argument a constant
-Date: Tue, 26 Aug 2008 15:20:41 -0400
-Message-ID: <20080826192041.GI4380@fieldses.org>
-References: <20080822164315.20600.28603.stgit@manray.1015granger.net>
+Subject: Re: NFS regression? Odd delays and lockups accessing
+	an NFS export.
+Date: Tue, 26 Aug 2008 15:27:11 -0400
+Message-ID: <20080826192711.GJ4380@fieldses.org>
+References: <1219435207.27921.51.camel@localhost.localdomain>
+	<1219440202.9097.14.camel@localhost>
+	<1219441041.27921.57.camel@localhost.localdomain>
+	<1219442213.9097.25.camel@localhost>
+	<1219603981.27921.145.camel@localhost.localdomain>
+	<1219605422.14389.2.camel@localhost>
+	<1219605596.14389.5.camel@localhost>
+	<1219615789.27921.152.camel@localhost.localdomain>
+	<1219616136.14389.12.camel@localhost>
+	<48B2D7F8.5020206@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37216 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758304AbYHZTUs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2008 15:20:48 -0400
-In-Reply-To: <20080822164315.20600.28603.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, Grant Coady <gcoady.lk@gmail.com>,
+	e1000-devel@lists.sourceforge.net, neilb@suse.de,
+	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
+	Bruce Allan <bruce.w.allan@intel.com>, linux-kernel@vger.kernel.org,
+	John Ronciak <john.ronciak@gmail.com>,
+	Jesse Brandeburg <jesse.brandeburg@intel.com>,
+	John Ronciak <john.ronciak@intel.com>,
+	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
+	Ian Campbell <ijc@hellion.org.uk>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <e1000-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <48B2D7F8.5020206@opengridcomputing.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/e1000-devel>,
+	<mailto:e1000-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=e1000-devel>
+List-Post: <mailto:e1000-devel@lists.sourceforge.net>
+List-Help: <mailto:e1000-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/e1000-devel>,
+	<mailto:e1000-devel-request@lists.sourceforge.net?subject=subscribe>
+Sender: e1000-devel-bounces@lists.sourceforge.net
+Errors-To: e1000-devel-bounces@lists.sourceforge.net
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also applied.--b.
+On Mon, Aug 25, 2008 at 11:04:08AM -0500, Tom Tucker wrote:
+> Trond Myklebust wrote:
+>> On Sun, 2008-08-24 at 23:09 +0100, Ian Campbell wrote:
+>>> (added some quoting from previous mail to save replying twice)
+>>>
+>>> On Sun, 2008-08-24 at 15:19 -0400, Trond Myklebust wrote:
+>>>> On Sun, 2008-08-24 at 15:17 -0400, Trond Myklebust wrote:
+>>>>> >From the tcpdump, it looks as if the NFS server is failing to close the
+>>>>> socket, when the client closes its side. You therefore end up getting
+>>>>> stuck in the FIN_WAIT2 state (as netstat clearly shows above).
+>>>>>
+>>>>> Is the server keeping the client in this state for a very long
+>>>>> period?
+>>> Well, it had been around an hour and a half on this occasion. Next time
+>>> it happens I can wait longer but I'm pretty sure I've come back from
+>>> time away and it's been wedged for at least a day. How long would you
+>>> expect it to remain in this state for?
+>>
+>> The server should ideally start to close the socket as soon as it
+>> receives the FIN from the client. I'll have a look at the code.
+>>
+>
+> I don't think it should matter how long the connection stays in FIN WAIT,
+> the client should reconnect anyway.
+>
+> Since the client seems to be the variable, I would think it might be an
+> issue with the client reconnect logic?
+>
+> That said, 2.6.25 is when the server side transport switch logic went in.
 
-On Fri, Aug 22, 2008 at 12:43:16PM -0400, Chuck Lever wrote:
-> Clean up: Add extra type safety and squelch a few compiler complaints
-> in upcoming patches.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  include/linux/sunrpc/svc.h |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 2a41d29..564e045 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -266,17 +266,17 @@ struct svc_rqst {
->  /*
->   * Rigorous type checking on sockaddr type conversions
->   */
-> -static inline struct sockaddr_in *svc_addr_in(struct svc_rqst *rqst)
-> +static inline struct sockaddr_in *svc_addr_in(const struct svc_rqst *rqst)
->  {
->  	return (struct sockaddr_in *) &rqst->rq_addr;
->  }
->  
-> -static inline struct sockaddr_in6 *svc_addr_in6(struct svc_rqst *rqst)
-> +static inline struct sockaddr_in6 *svc_addr_in6(const struct svc_rqst *rqst)
->  {
->  	return (struct sockaddr_in6 *) &rqst->rq_addr;
->  }
->  
-> -static inline struct sockaddr *svc_addr(struct svc_rqst *rqst)
-> +static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
->  {
->  	return (struct sockaddr *) &rqst->rq_addr;
->  }
-> 
+Any chance you could help Trond figure out why the server might be doing
+this?
+
+If not, I'll get to it, but not as soon as I should.
+
+--b.
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
