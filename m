@@ -1,19 +1,25 @@
 From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 37/59] CRED: Wrap task credential accesses in the NFS daemon
-Date: Wed, 27 Aug 2008 14:48:53 +0100
-Message-ID: <20080827134853.19980.45910.stgit@warthog.procyon.org.uk>
+Subject: [PATCH 54/59] CRED: Wrap task credential accesses in the SunRPC
+	protocol
+Date: Wed, 27 Aug 2008 14:50:21 +0100
+Message-ID: <20080827135021.19980.77243.stgit@warthog.procyon.org.uk>
 References: <20080827134541.19980.61042.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-security-module@vger.kernel.org,
 	David Howells <dhowells@redhat.com>,
 	Serge Hallyn <serue@us.ibm.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <20080827134541.19980.61042.stgit@warthog.procyon.org.uk>
-Sender: linux-security-module-owner@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:49426 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756448AbYH0Nus (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2008 09:50:48 -0400
+In-Reply-To: <20080827134541.19980.61042.stgit-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Wrap access to task credentials so that they can be separated more easily from
@@ -28,44 +34,29 @@ addressed by later patches.
 Signed-off-by: David Howells <dhowells@redhat.com>
 Reviewed-by: James Morris <jmorris@namei.org>
 Acked-by: Serge Hallyn <serue@us.ibm.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: J. Bruce Fields <bfields@fieldses.org>
 Cc: Neil Brown <neilb@suse.de>
 Cc: linux-nfs@vger.kernel.org
 ---
 
- fs/nfsd/vfs.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ net/sunrpc/auth.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index e3e37f7..34d2ade 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1165,7 +1165,7 @@ nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
- 	 * send along the gid on create when it tries to implement
- 	 * setgid directories via NFS:
- 	 */
--	if (current->fsuid != 0)
-+	if (current_fsuid() != 0)
- 		iap->ia_valid &= ~(ATTR_UID|ATTR_GID);
- 	if (iap->ia_valid)
- 		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
-@@ -1998,7 +1998,7 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 		IS_APPEND(inode)?	" append" : "",
- 		__mnt_is_readonly(exp->ex_path.mnt)?	" ro" : "");
- 	dprintk("      owner %d/%d user %d/%d\n",
--		inode->i_uid, inode->i_gid, current->fsuid, current->fsgid);
-+		inode->i_uid, inode->i_gid, current_fsuid(), current_fsgid());
- #endif
- 
- 	/* Normally we reject any write/sattr etc access on a read-only file
-@@ -2041,7 +2041,7 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 	 * with NFSv3.
- 	 */
- 	if ((acc & NFSD_MAY_OWNER_OVERRIDE) &&
--	    inode->i_uid == current->fsuid)
-+	    inode->i_uid == current_fsuid())
- 		return 0;
- 
- 	/* This assumes  NFSD_MAY_{READ,WRITE,EXEC} == MAY_{READ,WRITE,EXEC} */
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 436bf1b..fc2bb08 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -349,8 +349,8 @@ struct rpc_cred *
+ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
+ {
+ 	struct auth_cred acred = {
+-		.uid = current->fsuid,
+-		.gid = current->fsgid,
++		.uid = current_fsuid(),
++		.gid = current_fsgid(),
+ 		.group_info = current->group_info,
+ 	};
+ 	struct rpc_cred *ret;
 
