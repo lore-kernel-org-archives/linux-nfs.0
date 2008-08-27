@@ -1,122 +1,60 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
-Date: Wed, 27 Aug 2008 09:43:01 -0500
-Message-ID: <48B567F5.2090605@opengridcomputing.com>
-References: <1219435207.27921.51.camel@localhost.localdomain> <1219440202.9097.14.camel@localhost> <1219441041.27921.57.camel@localhost.localdomain> <1219442213.9097.25.camel@localhost> <1219603981.27921.145.camel@localhost.localdomain> <1219605422.14389.2.camel@localhost> <1219605596.14389.5.camel@localhost> <1219615789.27921.152.camel@localhost.localdomain> <1219616136.14389.12.camel@localhost> <48B2D7F8.5020206@opengridcomputing.com> <20080826192711.GJ4380@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>,
-	John Ronciak <john.ronciak@gmail.com>,
-	Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel@vger.kernel.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org,
-	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
-	Jesse Brandeburg <jesse.brandeburg@intel.com>,
-	Bruce Allan <bruce.w.allan@intel.com>,
-	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
-	John Ronciak <john.ronciak@intel.com>,
-	e1000-devel@lists.sourceforge.net
+From: Chuck Lever <chuck.lever-Onf44Ee+mfbQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 5/5] lockd: Add address family-agnostic helper for zeroing the port number
+Date: Wed, 27 Aug 2008 14:37:56 -0400
+Message-ID: <0752D7FB-FBDD-4B85-913F-408A3918C6B7@Oracle.com>
+References: <20080822163939.20488.92983.stgit@manray.1015granger.net> <20080822164232.20488.11685.stgit@manray.1015granger.net> <20080826190319.GF4380@fieldses.org> <20080826191750.GH4380@fieldses.org> <BE820CD5-33E0-4F61-B6C9-90FFEAB9F6D4@oracle.com> <20080827135527.GA2018@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:39295 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752675AbYH0OnD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2008 10:43:03 -0400
-In-Reply-To: <20080826192711.GJ4380@fieldses.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:55429 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750802AbYH0Sje (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2008 14:39:34 -0400
+In-Reply-To: <20080827135527.GA2018@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Mon, Aug 25, 2008 at 11:04:08AM -0500, Tom Tucker wrote:
->> Trond Myklebust wrote:
->>> On Sun, 2008-08-24 at 23:09 +0100, Ian Campbell wrote:
->>>> (added some quoting from previous mail to save replying twice)
+On Aug 27, 2008, at Aug 27, 2008, 9:55 AM, J. Bruce Fields wrote:
+> On Tue, Aug 26, 2008 at 03:56:12PM -0400, Chuck Lever wrote:
+>> On Aug 26, 2008, at Aug 26, 2008, 3:17 PM, J. Bruce Fields wrote:
+>>> On Tue, Aug 26, 2008 at 03:03:19PM -0400, bfields wrote:
+>>>> It would be nice if not necessary just to move nfs_set_port()
+>>>> somewhere
+>>>> common and use that (maybe with a more generic name).
 >>>>
->>>> On Sun, 2008-08-24 at 15:19 -0400, Trond Myklebust wrote:
->>>>> On Sun, 2008-08-24 at 15:17 -0400, Trond Myklebust wrote:
->>>>>> >From the tcpdump, it looks as if the NFS server is failing to close the
->>>>>> socket, when the client closes its side. You therefore end up getting
->>>>>> stuck in the FIN_WAIT2 state (as netstat clearly shows above).
->>>>>>
->>>>>> Is the server keeping the client in this state for a very long
->>>>>> period?
->>>> Well, it had been around an hour and a half on this occasion. Next time
->>>> it happens I can wait longer but I'm pretty sure I've come back from
->>>> time away and it's been wedged for at least a day. How long would you
->>>> expect it to remain in this state for?
->>> The server should ideally start to close the socket as soon as it
->>> receives the FIN from the client. I'll have a look at the code.
+>>>> That aside, all 5 patches are OK by me.
 >>>
->> I don't think it should matter how long the connection stays in FIN WAIT,
->> the client should reconnect anyway.
+>>> Provisionally applied all but the first (purely client-side) patch  
+>>> to
+>>>
+>>> 	git://linux-nfs.org/~bfields/linux.git for-2.6.28
+>>>
+>>> Do you have any good regression tests for nsm?
 >>
->> Since the client seems to be the variable, I would think it might be an
->> issue with the client reconnect logic?
->>
->> That said, 2.6.25 is when the server side transport switch logic went in.
-> 
-> Any chance you could help Trond figure out why the server might be doing
-> this?
-> 
-> If not, I'll get to it, but not as soon as I should.
-> 
+>> Netapp is providing some testing resources.  Their lock recovery  
+>> tests
+>> provide some test coverage, but I don't know details.
+>
+> OK.  If they've got it in a form that's easy to distribute and use I'd
+> like to be able to run something like that here to test some of my  
+> work
+> in progress.
 
-Sure. I've actually tried to reproduce it here unsuccessfully.
+I believe it is still under development, and I don't know if they had  
+plans to package and support it outside of their Q/A team.  I agree  
+that it would be useful for the community at large.
 
-As a starter, I would suggest turning on transport debugging:
+>> One of the issues on the list for the Austin bake-a-thon is to review
+>> our test coverage, and see if we can flesh this out more.
+>
+> I won't be able to make it to Austin but I'll be interested in  
+> whatever
+> you find out.
 
-# echo 256 > /proc/sys/sunrpc/rpc_debug
+No problem.
 
-Here are my thoughts on how it is supposed to work. Trond if this doesn't match
-your understanding, please let me know.
-
-For the case where the client closes the connection first
-because it's timeout is shorter (5min vs. 6), the sequence of events should be:
-
-
-client					server
-
-close
-sends FIN goes to FIN-WAIT-1
-					receives FIN replies with ACK
-					and goes to CLOSE-WAIT
-receives ACK goes to FIN-WAIT-2
-					calls tcp_state_change callback on socket
-					svc_tcp_state_change sets XPT_CLOSE on
-					the transport and enqueues transport for
-					servicing by svc thread.
-
-					thread gets dequeued, calls svc_recv
-					svc_recv sees XPT_CLOSE and calls
-					svc_xprt_destroy that closes the socket
-
-					TCP sends FIN/ACK after close
-receives FIN/ACK goes to TIME-WAIT
-
-since state is TIME-WAIT and
-reuse port is set, we can re-connect
-
-There's a couple places we could be getting stuck:
-
-- The state-change callback never gets called.
-- The state-change callback gets called but svsk is null and it ignores the event
-- svc_tcp_state_change enqueues the transport, but due to a race bug, the transport
-   doesn't actually get queued and since there is no activity it never closes
-- something else
-
-The message log with RPCDBG_SVCXPRT (256) enabled as shown above would help figure
-out where it's happening.
-
-If Ian is willing to create the log (or already has one), I'm certainly willing to
-look at it.
-
-Tom
-
-
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
