@@ -1,51 +1,53 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/6] 2nd IPv6 patchset for 2.6.28 (repost)
-Date: Wed, 27 Aug 2008 16:56:58 -0400
-Message-ID: <20080827204852.17837.38361.stgit@manray.1015granger.net>
+Subject: [PATCH 6/6] SUNRPC: Make svc_addr's argument a constant
+Date: Wed, 27 Aug 2008 16:57:46 -0400
+Message-ID: <20080827205745.17837.85496.stgit@manray.1015granger.net>
+References: <20080827204852.17837.38361.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:59511 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754897AbYH0U6A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2008 16:58:00 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:44779 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755445AbYH0U6B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2008 16:58:01 -0400
+In-Reply-To: <20080827204852.17837.38361.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Based on review comments, I've changed how the NFSv4 callback server
-starts its listener.  If the kernel has IPv6 support, it will start an
-AF_INET6 listener; otherwise it will start an AF_INET listener.
+Clean up: Add extra type safety and squelch a few compiler complaints
+in upcoming patches.
 
-Subsequent lockd IPv6 patches already work this way, it turns out, so
-I've updated the patch in this subseries that adds a helper to display
-NLM IPv6 addresses.  If an IPv6 address is a mapped IPv4 address, it
-will be displayed as a dotted-quad instead of as an IPv6 address.  This
-should cause the helper to display IPv4-style addresses on systems that
-use only IPv4, even though the listener is AF_INET6.  This effects
-only error and debugging messages.
-
-I should revisit other areas (already integrated, and in pending
-patches) which display presentation format addresses, to ensure they
-follow suit.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (6):
-      SUNRPC: Make svc_addr's argument a constant
-      lockd: Add address family-agnostic helper for zeroing the port number
-      lockd: Specify address family for source address
-      lockd: address-family independent printable addresses
-      NLM: Clean up before introducing new debugging messages
-      NFS: Enable NFSv4 callback server to listen on AF_INET6 sockets
+ include/linux/sunrpc/svc.h |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 2a41d29..564e045 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -266,17 +266,17 @@ struct svc_rqst {
+ /*
+  * Rigorous type checking on sockaddr type conversions
+  */
+-static inline struct sockaddr_in *svc_addr_in(struct svc_rqst *rqst)
++static inline struct sockaddr_in *svc_addr_in(const struct svc_rqst *rqst)
+ {
+ 	return (struct sockaddr_in *) &rqst->rq_addr;
+ }
+ 
+-static inline struct sockaddr_in6 *svc_addr_in6(struct svc_rqst *rqst)
++static inline struct sockaddr_in6 *svc_addr_in6(const struct svc_rqst *rqst)
+ {
+ 	return (struct sockaddr_in6 *) &rqst->rq_addr;
+ }
+ 
+-static inline struct sockaddr *svc_addr(struct svc_rqst *rqst)
++static inline struct sockaddr *svc_addr(const struct svc_rqst *rqst)
+ {
+ 	return (struct sockaddr *) &rqst->rq_addr;
+ }
 
- fs/lockd/host.c             |  123 +++++++++++++++++++++++++++++++++----------
- fs/nfs/callback.c           |   19 +++++--
- include/linux/lockd/lockd.h |    4 +
- include/linux/sunrpc/svc.h  |    6 +-
- 4 files changed, 115 insertions(+), 37 deletions(-)
-
--- 
-Chuck Lever
