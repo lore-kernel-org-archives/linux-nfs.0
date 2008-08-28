@@ -1,61 +1,108 @@
-From: "Dilip Kumar" <udilipkumar@gmail.com>
-Subject: Re: Bug in NFSV3 ACCESS Procedure reply
-Date: Thu, 28 Aug 2008 10:41:24 -0700
-Message-ID: <9344d2ec0808281041w15e2738ew546531398f80a312@mail.gmail.com>
-References: <9344d2ec0808271241x375a4d86r6cfa7c10beb905c8@mail.gmail.com>
-	 <20080828173424.GA3529@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: NFS over TCP behavior in older 2.6 kernel
+Date: Thu, 28 Aug 2008 12:41:49 -0500
+Message-ID: <48B6E35D.8000601@opengridcomputing.com>
+References: <48B6E206.1020401@mvista.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org,
+	"Scott A. Ikenaga" <sikenaga-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
+	Yuksel Tokuz <ytokuz-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
+To: Paolo Galtieri <pgaltieri-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.155]:48154 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755270AbYH1Rl0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2008 13:41:26 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so317661fgg.17
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Aug 2008 10:41:24 -0700 (PDT)
-In-Reply-To: <20080828173424.GA3529@fieldses.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:45462 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751805AbYH1Rlu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2008 13:41:50 -0400
+In-Reply-To: <48B6E206.1020401-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The directory was created by a local user (not root) with access mode
-200 (Write only for owner). When I perform the ACCESS call as a owner
-(who created that directory), I see that the ACCESS reply has access
-set to 0x0. My /etc/exports just has just this one line :"/nfsshare
-*(rw,sync)"
+Paolo Galtieri wrote:
+> Folks,
+>  I have a question regarding the behavior of nfsd v3 running over TCP.  
+> Specifically how should the NFS server behave if the clock is moved 
+> backwards on the server.  I've tried to find references to what the 
+> correct behavior should be and have been unable to, so I'm posting to 
+> this list with the hope someone can point me to where I can find it.
+> 
+> I'm running a 2.6.10 kernel on 2 systems, one acting as an NFS server 
+> the other as the client (obviously).  I advertise to the client a 
+> directory that contains several files which I mount on the client as /app
+> 
+> On the server I run the following test:
+> 
+> while ;
+> do
+>   date 022910002008;
+>   sleep 10;
+>   date 022910102008;
+>   sleep 10;
+> done
+> 
+> on the client I run the following in /app
+> 
+> while :
+> do
+>  ls
+>  sleep 10
+> done
+> 
+> What I observe is that often I see long pauses when doing the ls before 
+> it actually displays the data.
+> 
+> I ran tcpdump and what I observed is that the NFS server closed the 
+> connection when the timestamp of ACK for a packet sent by the client is 
+> earlier than the timestamp for the original packet, i.e. between the 
+> receipt of the original packet and the sending of the ACK the clock went 
+> backwards.  For example:
+> 
 
-Thanks
-Dilip Kumar
+Both the client and server have logic that shuts down idle connections. 
+The client idle time out is 5m and the server's idle timeout is 6m. What 
+is probably happening is that the server believes that the connection has 
+been idle longer than the 6m timeout and shuts down the connection.
 
-On Thu, Aug 28, 2008 at 10:34 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Aug 27, 2008 at 12:41:34PM -0700, Dilip Kumar wrote:
->> Hi all,
->>
->> I noticed a bug in the access rights of a NFSV3 ACCESS Reply. If a
->> directory was created with only write permissions for the owner (chmod
->> 200 directory), we expect the modify, extend and delete bits (access =
->> 0x1C) to be set for this directory in the reply to an ACCESS RPC call
->> with access = 0x1F send by the owner. Instead the NFS server on Linux
->> returns an ACCESS Reply with access set to 0x0 (none of the bits were
->> set). I tried checking this against Solaris server and it returns the
->> expected access rights 0x1C. The Linux server I was using for testing
->> was 2.6.9-1.667smp and the Solaris server was SunOS 5.8
->> Generic_108528-22 Ultra Sparc-IIi.
->
-> What user are you performing the access call as, and who owns the
-> directory?  What does exportfs -v say?   (Do you have root_squash or
-> no_root_squash set?)
->
-> --b.
->
->>
->> Please let me know if you need further details regarding this issue.
->>
->> Thanks
->> Dilip Kumar
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> Frame 1019 contains this packet
+> 
+> TCP      nfs > legent-1 [FIN, ACK] Seq=961 Ack=937 Win=1448 Len=0 
+> TSV=979162569 TSER=979004710
+> 
+> 0000  00 14 f8 ec 30 2f 00 14  f8 ec 47 11 08 00 45 00   ....0/.. ..G...E.
+> 0010  00 34 2a 2c 40 00 40 06  ba 95 a9 fe 01 01 a9 fe   .4*,@.@. ........
+> 0020  01 05 08 01 01 75 03 a6  6d a7 a9 d3 d4 ff 80 11   .....u.. m.......
+> 0030  05 a8 69 d4 00 00 01 01  08 0a 3a 5c d5 c9 3a 5a   ..i..... ..:\..:Z
+> 0040  6d 26
+> and is time stamped (using wireshark) 2008-02-29 02:00:00.911651.  The 
+> original packet for which this is the ACK is frame 924 and contains:
+> 
+> TCP      legent-1 > nfs [ACK] Seq=937 Ack=961 Win=1460 Len=0 
+> TSV=979004710 TSER=979159895
+> 
+> 0000  00 14 f8 ec 47 11 00 14  f8 ec 30 2f 08 00 45 00   ....G... ..0/..E.
+> 0010  00 34 2b e9 40 00 40 06  b8 d8 a9 fe 01 05 a9 fe   .4+.@.@. ........
+> 0020  01 01 01 75 08 01 a9 d3  d4 ff 03 a6 6d a7 80 10   ...u.... ....m...
+> 0030  05 b4 74 3b 00 00 01 01  08 0a 3a 5a 6d 26 3a 5c   ..t;.... ..:Zm&:\
+> 0040  cb 57                                              .W            
+> Wireshark reports the RTT as:
+> 
+> [The RTT to ACK the segment was: -7.377099000 seconds]
+> 
+> After the server disconnects the client has to reconnect and it is looks 
+> like the delay is occurring during this disconnect/reconnect process.
+> 
+> Can someone point me to any documentation, either for NFS or TCP that 
+> explains the behavior?  Note that this problem does not occur with UDP 
+> so I suspect it's a consequence of the connection oriented aspects of 
+> the TCP protocol vs UDP, but it would nice to see it in writing.
+> 
+> I appreciate any assistance, flames, or other comments :-)
+> 
+> Thank you,
+> Paolo
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+It
