@@ -1,102 +1,45 @@
-From: Doug Hughes <doug-rDJHdQPhaF8@public.gmane.org>
-Subject: Re: [Bugme-new] [Bug 11448] New: NFS client has inconsistent write
- flushing to non-linux serversa
-Date: Thu, 28 Aug 2008 16:33:05 -0400
-Message-ID: <48B70B81.5060200@will.to>
-References: <bug-11448-10286@http.bugzilla.kernel.org/> <20080828132753.08bfe05f.akpm@linux-foundation.org>
+From: "Payphone LIOU" <lioupayphone@gmail.com>
+Subject: may be a bug?
+Date: Thu, 28 Aug 2008 16:52:58 +0800
+Message-ID: <200808281652540341291@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org, bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain;
+	charset="gb2312"
+To: "linux-nfs" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman.will.to ([68.164.136.125]:49873 "EHLO will.to"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752913AbYH1Urb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Aug 2008 16:47:31 -0400
-In-Reply-To: <20080828132753.08bfe05f.akpm@linux-foundation.org>
+Received: from ti-out-0910.google.com ([209.85.142.187]:17502 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751009AbYH1IxE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2008 04:53:04 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so176009tic.23
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Aug 2008 01:53:02 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andrew Morton wrote:
-> (switched to email.  Please respond via emailed reply-to-all, not via the
-> bugzilla web interface).
->
-> On Thu, 28 Aug 2008 11:41:08 -0700 (PDT)
-> bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org wrote:
->
->   
->> http://bugzilla.kernel.org/show_bug.cgi?id=11448
->>
->>            Summary: NFS client has inconsistent write flushing to non-linux
->>                     serversa
->>            Product: File System
->>            Version: 2.5
->>      KernelVersion: 2.6.22.15
->>           Platform: All
->>         OS/Version: Linux
->>               Tree: Mainline
->>             Status: NEW
->>           Severity: normal
->>           Priority: P1
->>          Component: NFS
->>         AssignedTo: trond.myklebust@fys.uio.no
->>         ReportedBy: doug-rDJHdQPhaF8@public.gmane.org
->>
->>
->> Latest working kernel version: N/A (works on 2.6.18 with Linux NFS server, but
->> we cannot continue to use that kernel for various reasons)
->> Earliest failing kernel version: N/A (2.6.18, 2.6.24, and 2.6.25 are also known
->> to fail by another party experiencing same bug against non-Linux NFS servers).
->> Not currently known to be reproducible against NetApp, but this is not
->> authoritative (lack of seeing a bug does not guarantee lack of existence)
->> Distribution: CentOS 4.6
->> Hardware Environment: supermicro twin, 2 quad core Harpertown CPU, 16G ram.
->> Software Environment: CentOS 4.6
->> Problem Description: 
->>
->> NFS client writes to Sun Solaris 10 U4 server. 
->> at some point in time, there is an empty portion of the output file from the
->> writer containing missing data (shows as NULL bytes from another NFS client
->> issuing a tail -f on the file being written). 
->> confirmed that the file as exists on the NFS server is sparse, missing bytes
->> (not necessarily multiple of 512 or 1024, one sample is a gap of 3818 bytes,
->> another is 1895 bytes, another is 423 bytes)
->>
->> if you do a read of the entire file from the NFS client doing the writing, it
->> causes the non-flushed writes to be instantly flushed to the server followed by
->> a NFS3 commit operation. The data then can be seen on all other NFS clients.
->>
->> If you do an open of the file alone, no flush
->> if you do an open and a close, no flush
->> if you do an open and a read at the beginning of the file (far before the data
->> that is outstanding), *usually* no flush (one case where it did).
->> If you do a read at another position in the file, no flush (other than as
->> indicated above).
->> If you do a read at the indicated offset where the bytes are null, it causes
->> the NFS client to write and NFS commit to the server (truss output available)
->>
->> The missing blocks may flush themselves after undefined periods of time which
->> can be hours. Our runs last days.
->>
->> Steps to reproduce:
->>
->> Chemist running NAMD sees frequent cases of this in his output trajectory index
->> files. We don't have an exact sequence of steps to reproduce. After I file this
->> ticket I will be giving ticket number to another person I know at a different
->> company experiencing the same problem as described above (to the best of my
->> knowledge)
->>
->>     
->
-> That seems rather ugly.
->
-> 2.6.22 is getting a bit old though.  It's quite possible that this was
-> subsequently fixed, in which case upgrading your kernel or hassling the
-> vendor to backport the fix would be needed.
->   
+Hi, ALL.
 
-I am in the process of trying to duplicate this on 2.6.26.. I need the 
-chemist to change his machine. (it's a kernel.org kernel for reasons of 
-IB support, so no vendor to hassle). There is another party to this bug 
-who seems to have the same symptoms in 2.6.25 who is trying to capture 
-packet data and reproduce.
+in moutd.h of nfs-utils-1.1.3, an union object was defined  below.
+union mountd_results {
+	fhstatus		fstatus;
+	mountlist		mountlist;
+	exports			exports;
+};
+
+the space size of mountd_results is the maximum one among fsstaus,mountlist and exports, and all of them are the output arguments of mountd procedures.
+in nfsv3, mount_mnt_3_svc takes "mountres3" as its output. so i think it may be :
+
+union mountd_results {
+	fhstatus		fstatus;
+	mountlist		mountlist;
+	exports			exports;
+	mountres3    mountres3;
+};
+
+because the size of fstatus is larger than mountres3, no erros happens. but i think semantically  "mountres3" should be added into this union structure. am i wrong?
+
+thansk a lot.
+
+Best regards. :-)
+
+Payphone LIOU 
+
