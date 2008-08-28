@@ -1,55 +1,39 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: mount issue with Mac OSX and --manage-gids, client hangs
-Date: Thu, 28 Aug 2008 11:08:46 -0400
-Message-ID: <48B6BF7E.9090503@RedHat.com>
-References: <20080731204701.GE26609@samad.com.au> <18578.41640.740866.153235@notabene.brown>
+Subject: Re: [PATCH 1/3] Remove redundant m_path field
+Date: Thu, 28 Aug 2008 11:36:03 -0400
+Message-ID: <48B6C5E3.3040508@RedHat.com>
+References: <1218422830-5465-1-git-send-email-bfields@citi.umich.edu> <1218422830-5465-2-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Alex Samad <alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+To: Bruce Fields <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34920 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:33169 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421AbYH1POK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Aug 2008 11:14:10 -0400
-In-Reply-To: <18578.41640.740866.153235-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1752957AbYH1PiM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Aug 2008 11:38:12 -0400
+In-Reply-To: <1218422830-5465-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-Neil Brown wrote:
-> On Friday August 1, alex-SGFoFqf0RKf0CCvOHzKKcA@public.gmane.org wrote:
->> I tracked it down to --manage-gids - when I remove this from
->> /etc/defaults/nfs-kernel-server everything works fine.
->>
->> Note though, the UID's, GIDs are not synced between the linux box and
->> the mac box. so the 2 users I have on the mac box uid 501 & 502, do not
->> exist on the nas box
+Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> Yes... I never tested that case, did I :-(
+> Contrary to the comment above its definition, the field m_path always
+> has the same value as e_path: the *only* modifications of m_path are all
+> of the form:
 > 
-> This patch should fix it.  Are you able to compile a new nfs-utils
-> with this patch applied and test the mountd from there?
+> 	strncpy(exp->m_export.m_path, exp->m_export.e_path,
+> 		sizeof (exp->m_export.m_path) - 1);
+> 	exp->m_export.m_path[sizeof (exp->m_export.m_path) - 1] = '\0';
 > 
-> Thanks,
-> NeilBrown
+> So m_path is always just a copy of e_path.  In places where we need to
+> store a path to a submount of a CROSSMNT-exported filesystem, as in
+> cache.c, we just use a local variable.
 > 
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index f555dcc..48d737b 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -158,7 +158,8 @@ void auth_unix_gid(FILE *f)
->  		qword_printint(f, ngroups);
->  		for (i=0; i<ngroups; i++)
->  			qword_printint(f, groups[i]);
-> -	}
-> +	} else
-> +		qword_printint(f, 0);
->  	qword_eol(f);
->  	if (groups != glist)
->  		free(groups);
-Committed...
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Committed....
 
 steved.
