@@ -1,130 +1,105 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS over TCP behavior in older 2.6 kernel
-Date: Fri, 29 Aug 2008 13:25:58 -0400
-Message-ID: <44720D17-3440-415B-A7BC-A7C3F15AEBDD@oracle.com>
-References: <48B6E206.1020401@mvista.com> <48B6E35D.8000601@opengridcomputing.com>
-Mime-Version: 1.0 (Apple Message framework v928.1)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	"Scott A. Ikenaga" <sikenaga-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
-	Yuksel Tokuz <ytokuz-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
-	Tom Tucker <tom@opengridcomputing.com>
-To: Paolo Galtieri <pgaltieri-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [Bugme-new] [Bug 11448] New: NFS client has inconsistent write
+ flushing to non-linux serversa
+Date: Fri, 29 Aug 2008 13:53:22 -0400
+Message-ID: <48B83792.5060004@redhat.com>
+References: <bug-11448-10286@http.bugzilla.kernel.org/> <20080828132753.08bfe05f.akpm@linux-foundation.org> <20080829170838.GA7099@fieldses.org> <48B82E61.6060609@redhat.com> <48B83091.7060800@will.to>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-nfs@vger.kernel.org, bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org
+To: Doug Hughes <doug-rDJHdQPhaF8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:32036 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754016AbYH2Rbg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2008 13:31:36 -0400
-In-Reply-To: <48B6E35D.8000601@opengridcomputing.com>
+Received: from mx1.redhat.com ([66.187.233.31]:52333 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751960AbYH2Ryj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Aug 2008 13:54:39 -0400
+In-Reply-To: <48B83091.7060800-rDJHdQPhaF8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug 28, 2008, at Aug 28, 2008, 1:41 PM, Tom Tucker wrote:
-> Paolo Galtieri wrote:
->> Folks,
->> I have a question regarding the behavior of nfsd v3 running over  
->> TCP.  Specifically how should the NFS server behave if the clock is  
->> moved backwards on the server.  I've tried to find references to  
->> what the correct behavior should be and have been unable to, so I'm  
->> posting to this list with the hope someone can point me to where I  
->> can find it.
->> I'm running a 2.6.10 kernel on 2 systems, one acting as an NFS  
->> server the other as the client (obviously).  I advertise to the  
->> client a directory that contains several files which I mount on the  
->> client as /app
->> On the server I run the following test:
->> while ;
->> do
->>  date 022910002008;
->>  sleep 10;
->>  date 022910102008;
->>  sleep 10;
->> done
->> on the client I run the following in /app
->> while :
->> do
->> ls
->> sleep 10
->> done
->> What I observe is that often I see long pauses when doing the ls  
->> before it actually displays the data.
->> I ran tcpdump and what I observed is that the NFS server closed the  
->> connection when the timestamp of ACK for a packet sent by the  
->> client is earlier than the timestamp for the original packet, i.e.  
->> between the receipt of the original packet and the sending of the  
->> ACK the clock went backwards.  For example:
+Doug Hughes wrote:
+> Peter Staubach wrote:
+>> J. Bruce Fields wrote:
+>>> On Thu, Aug 28, 2008 at 01:27:53PM -0700, Andrew Morton wrote:
+>>>  
+>>>> (switched to email.  Please respond via emailed reply-to-all, not 
+>>>> via the
+>>>> bugzilla web interface).
+>>>>
+>>>> On Thu, 28 Aug 2008 11:41:08 -0700 (PDT)
+>>>> bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org wrote:
+>>>>   
+>>>>> NFS client writes to Sun Solaris 10 U4 server. at some point in 
+>>>>> time, there is an empty portion of the output file from the
+>>>>> writer containing missing data (shows as NULL bytes from another 
+>>>>> NFS client
+>>>>> issuing a tail -f on the file being written). confirmed that the 
+>>>>> file as exists on the NFS server is sparse, missing bytes
+>>>>> (not necessarily multiple of 512 or 1024, one sample is a gap of 
+>>>>> 3818 bytes,
+>>>>> another is 1895 bytes, another is 423 bytes)
+>>>>>       
+>>>
+>>> Seems like something that could happen if for example two write rpc's
+>>> got reordered on the network.  That's not necessarily a bug--the nfs
+>>> client isn't required to wait for confirmation of every previous write
+>>> before sending the next one.
+>>>
+> if two RPCs got reordered on the network, and they encompass all the 
+> data, then there shouldn't be any missing data. It seems to me like 
+> pieces of data are just being skipped, for whatever reason, but I 
+> haven't exhaustively examined the NFS network data.
 >
-> Both the client and server have logic that shuts down idle  
-> connections. The client idle time out is 5m and the server's idle  
-> timeout is 6m. What is probably happening is that the server  
-> believes that the connection has been idle longer than the 6m  
-> timeout and shuts down the connection.
+>>> However if the client isn't flushing dirty data to the server before
+>>> returning from close, then that's a violation of NFS's close-to-open
+>>> semantics:...
+>>>
+> this is not confirmed yet. No solid cases of data not being present 
+> after close.
+>>>  
+>>>>> if you do a read of the entire file from the NFS client doing the 
+>>>>> writing, it
+>>>>> causes the non-flushed writes to be instantly flushed to the 
+>>>>> server followed by
+>>>>> a NFS3 commit operation. The data then can be seen on all other 
+>>>>> NFS clients.
+>>>>>
+>>>>> If you do an open of the file alone, no flush
+>>>>> if you do an open and a close, no flush
+>>>>>       
+>>>
+>>> ... so this "close, no flush" could be a bug (depending on who is doing
+>>> that close when--I don't completely understand the described 
+>>> situation).
+>>
+>> I suspect that this last might depend upon 1) what options were used
+>> when the file system was mounted and 2) how the file was opened.  The
+>> flush-on-close wouldn't be needed if the file was opened read-only.
+>>
+> no special options on open. Here are the mount options:
+> retry=1000,tcp,noatime,nosuid,nodev,dirsync,timeo=100,rsize=32768,wsize=32768 
+>
+> ,hard,intr
+>
+>
+>> It seems a little odd that the holes aren't page aligned or page
+>> sized multiples.
+>>
+> indeed. and the time for them to actually get to the server is 
+> indeterminate (days is not uncommon. We have not as yet confirmed that 
+> some of the data never gets sent to the server until close)
+>
+>> What application is being used to generate the file which is showing
+>> these holes?
+>>
+> namd and some custom code developed in-house for chemistry research 
+> (at the very least) 
 
-I don't know for sure, but it seems like the server's network layer  
-would drop a connection if it thought it was getting ACKs way out of  
-order.  It may be a defense against malicious behavior.
+Do these applications use mmap() or generate the file contents
+serially or randomly?
 
-If the client detects that the server dropped the connection, it does  
-wait a bit before reconnecting.  This prevents a hard loop where the  
-server drops, the client immediately reconnects, the server drops  
-again, the client reconnects, and so on.
+    Thanx...
 
-There are some cases where the server drops because it's got a  
-listener, but it's not actually ready to take NFS requests yet; or,  
-the server drops a connection because it is overloaded; or, the server  
-still has a listener, but is being shut down.
-
-The reason the client waits only 5 minutes for an idle timeout is to  
-try to ensure it will disconnect first.  Otherwise, if the server  
-idles out a connection first, the client will see this and wait before  
-reconnecting when there is more work to do.
-
-The client-side logic to wait before reconnecting has seen some  
-evolution during 2.6. So it hasn't always worked quite correctly and  
-has seen some changes over time.  It would be interesting if you tried  
-this test with later kernels.
-
->> Frame 1019 contains this packet
->> TCP      nfs > legent-1 [FIN, ACK] Seq=961 Ack=937 Win=1448 Len=0  
->> TSV=979162569 TSER=979004710
->> 0000  00 14 f8 ec 30 2f 00 14  f8 ec 47 11 08 00 45 00   .... 
->> 0/.. ..G...E.
->> 0010  00 34 2a 2c 40 00 40 06  ba 95 a9 fe 01 01 a9 fe   . 
->> 4*,@.@. ........
->> 0020  01 05 08 01 01 75 03 a6  6d a7 a9 d3 d4 ff 80 11   .....u..  
->> m.......
->> 0030  05 a8 69 d4 00 00 01 01  08 0a 3a 5c d5 c9 3a  
->> 5a   ..i..... ..:\..:Z
->> 0040  6d 26
->> and is time stamped (using wireshark) 2008-02-29 02:00:00.911651.   
->> The original packet for which this is the ACK is frame 924 and  
->> contains:
->> TCP      legent-1 > nfs [ACK] Seq=937 Ack=961 Win=1460 Len=0  
->> TSV=979004710 TSER=979159895
->> 0000  00 14 f8 ec 47 11 00 14  f8 ec 30 2f 08 00 45 00   ....G... .. 
->> 0/..E.
->> 0010  00 34 2b e9 40 00 40 06  b8 d8 a9 fe 01 05 a9 fe   . 
->> 4+.@.@. ........
->> 0020  01 01 01 75 08 01 a9 d3  d4 ff 03 a6 6d a7 80  
->> 10   ...u.... ....m...
->> 0030  05 b4 74 3b 00 00 01 01  08 0a 3a 5a 6d 26 3a  
->> 5c   ..t;.... ..:Zm&:\
->> 0040  cb  
->> 57                                              .W             
->> Wireshark reports the RTT as:
->> [The RTT to ACK the segment was: -7.377099000 seconds]
->> After the server disconnects the client has to reconnect and it is  
->> looks like the delay is occurring during this disconnect/reconnect  
->> process.
->> Can someone point me to any documentation, either for NFS or TCP  
->> that explains the behavior?  Note that this problem does not occur  
->> with UDP so I suspect it's a consequence of the connection oriented  
->> aspects of the TCP protocol vs UDP, but it would nice to see it in  
->> writing.
->> I appreciate any assistance, flames, or other comments :-)
->> Thank you,
->> Paolo
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+       ps
