@@ -1,79 +1,130 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/6] 2nd IPv6 patchset for 2.6.28 (repost)
-Date: Fri, 29 Aug 2008 13:29:12 -0400
-Message-ID: <76bd70e30808291029j1da5db26waa3e4db93c2a857d@mail.gmail.com>
-References: <20080827204852.17837.38361.stgit@manray.1015granger.net>
-	 <20080829172506.GB7099@fieldses.org>
-	 <20080829172530.GC7099@fieldses.org>
-Reply-To: chucklever@gmail.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS over TCP behavior in older 2.6 kernel
+Date: Fri, 29 Aug 2008 13:25:58 -0400
+Message-ID: <44720D17-3440-415B-A7BC-A7C3F15AEBDD@oracle.com>
+References: <48B6E206.1020401@mvista.com> <48B6E35D.8000601@opengridcomputing.com>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	"Scott A. Ikenaga" <sikenaga-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
+	Yuksel Tokuz <ytokuz-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Paolo Galtieri <pgaltieri-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.191]:23875 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751494AbYH2R3O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2008 13:29:14 -0400
-Received: by mu-out-0910.google.com with SMTP id g7so770913muf.1
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2008 10:29:12 -0700 (PDT)
-In-Reply-To: <20080829172530.GC7099@fieldses.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:32036 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754016AbYH2Rbg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2008 13:31:36 -0400
+In-Reply-To: <48B6E35D.8000601@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 29, 2008 at 1:25 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Aug 29, 2008 at 01:25:06PM -0400, bfields wrote:
->> On Wed, Aug 27, 2008 at 04:56:58PM -0400, Chuck Lever wrote:
->> > Based on review comments, I've changed how the NFSv4 callback server
->> > starts its listener.  If the kernel has IPv6 support, it will start an
->> > AF_INET6 listener; otherwise it will start an AF_INET listener.
->> >
->> > Subsequent lockd IPv6 patches already work this way, it turns out, so
->> > I've updated the patch in this subseries that adds a helper to display
->> > NLM IPv6 addresses.  If an IPv6 address is a mapped IPv4 address, it
->> > will be displayed as a dotted-quad instead of as an IPv6 address.  This
->> > should cause the helper to display IPv4-style addresses on systems that
->> > use only IPv4, even though the listener is AF_INET6.  This effects
->> > only error and debugging messages.
->> >
->> > I should revisit other areas (already integrated, and in pending
->> > patches) which display presentation format addresses, to ensure they
->> > follow suit.
->>
->> I already applied 2-6, so I've removed those and replaced them by your
->> new versions.  The resulting change is just the following.
+On Aug 28, 2008, at Aug 28, 2008, 1:41 PM, Tom Tucker wrote:
+> Paolo Galtieri wrote:
+>> Folks,
+>> I have a question regarding the behavior of nfsd v3 running over  
+>> TCP.  Specifically how should the NFS server behave if the clock is  
+>> moved backwards on the server.  I've tried to find references to  
+>> what the correct behavior should be and have been unable to, so I'm  
+>> posting to this list with the hope someone can point me to where I  
+>> can find it.
+>> I'm running a 2.6.10 kernel on 2 systems, one acting as an NFS  
+>> server the other as the client (obviously).  I advertise to the  
+>> client a directory that contains several files which I mount on the  
+>> client as /app
+>> On the server I run the following test:
+>> while ;
+>> do
+>>  date 022910002008;
+>>  sleep 10;
+>>  date 022910102008;
+>>  sleep 10;
+>> done
+>> on the client I run the following in /app
+>> while :
+>> do
+>> ls
+>> sleep 10
+>> done
+>> What I observe is that often I see long pauses when doing the ls  
+>> before it actually displays the data.
+>> I ran tcpdump and what I observed is that the NFS server closed the  
+>> connection when the timestamp of ACK for a packet sent by the  
+>> client is earlier than the timestamp for the original packet, i.e.  
+>> between the receipt of the original packet and the sending of the  
+>> ACK the clock went backwards.  For example:
 >
-> Whoops, sorry, I meant:
->
-> --b.
->
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 3f0c1a8..008e402 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -18,6 +18,7 @@
->  #include <linux/lockd/sm_inter.h>
->  #include <linux/mutex.h>
->
-> +#include <net/ipv6.h>
->
->  #define NLMDBG_FACILITY                NLMDBG_HOSTCACHE
->  #define NLM_HOST_NRHASH                32
-> @@ -65,7 +66,11 @@ static void nlm_display_address(const struct sockaddr *sap,
->                snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
->                break;
->        case AF_INET6:
-> -               snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
-> +               if (ipv6_addr_v4mapped(&sin6->sin6_addr))
-> +                       snprintf(buf, len, NIPQUAD_FMT,
-> +                                NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
-> +               else
-> +                       snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
->                break;
->        default:
->                snprintf(buf, len, "unsupported address family");
+> Both the client and server have logic that shuts down idle  
+> connections. The client idle time out is 5m and the server's idle  
+> timeout is 6m. What is probably happening is that the server  
+> believes that the connection has been idle longer than the 6m  
+> timeout and shuts down the connection.
 
-Yes, I think that's the only change in patches 2-6.
+I don't know for sure, but it seems like the server's network layer  
+would drop a connection if it thought it was getting ACKs way out of  
+order.  It may be a defense against malicious behavior.
 
---
+If the client detects that the server dropped the connection, it does  
+wait a bit before reconnecting.  This prevents a hard loop where the  
+server drops, the client immediately reconnects, the server drops  
+again, the client reconnects, and so on.
+
+There are some cases where the server drops because it's got a  
+listener, but it's not actually ready to take NFS requests yet; or,  
+the server drops a connection because it is overloaded; or, the server  
+still has a listener, but is being shut down.
+
+The reason the client waits only 5 minutes for an idle timeout is to  
+try to ensure it will disconnect first.  Otherwise, if the server  
+idles out a connection first, the client will see this and wait before  
+reconnecting when there is more work to do.
+
+The client-side logic to wait before reconnecting has seen some  
+evolution during 2.6. So it hasn't always worked quite correctly and  
+has seen some changes over time.  It would be interesting if you tried  
+this test with later kernels.
+
+>> Frame 1019 contains this packet
+>> TCP      nfs > legent-1 [FIN, ACK] Seq=961 Ack=937 Win=1448 Len=0  
+>> TSV=979162569 TSER=979004710
+>> 0000  00 14 f8 ec 30 2f 00 14  f8 ec 47 11 08 00 45 00   .... 
+>> 0/.. ..G...E.
+>> 0010  00 34 2a 2c 40 00 40 06  ba 95 a9 fe 01 01 a9 fe   . 
+>> 4*,@.@. ........
+>> 0020  01 05 08 01 01 75 03 a6  6d a7 a9 d3 d4 ff 80 11   .....u..  
+>> m.......
+>> 0030  05 a8 69 d4 00 00 01 01  08 0a 3a 5c d5 c9 3a  
+>> 5a   ..i..... ..:\..:Z
+>> 0040  6d 26
+>> and is time stamped (using wireshark) 2008-02-29 02:00:00.911651.   
+>> The original packet for which this is the ACK is frame 924 and  
+>> contains:
+>> TCP      legent-1 > nfs [ACK] Seq=937 Ack=961 Win=1460 Len=0  
+>> TSV=979004710 TSER=979159895
+>> 0000  00 14 f8 ec 47 11 00 14  f8 ec 30 2f 08 00 45 00   ....G... .. 
+>> 0/..E.
+>> 0010  00 34 2b e9 40 00 40 06  b8 d8 a9 fe 01 05 a9 fe   . 
+>> 4+.@.@. ........
+>> 0020  01 01 01 75 08 01 a9 d3  d4 ff 03 a6 6d a7 80  
+>> 10   ...u.... ....m...
+>> 0030  05 b4 74 3b 00 00 01 01  08 0a 3a 5a 6d 26 3a  
+>> 5c   ..t;.... ..:Zm&:\
+>> 0040  cb  
+>> 57                                              .W             
+>> Wireshark reports the RTT as:
+>> [The RTT to ACK the segment was: -7.377099000 seconds]
+>> After the server disconnects the client has to reconnect and it is  
+>> looks like the delay is occurring during this disconnect/reconnect  
+>> process.
+>> Can someone point me to any documentation, either for NFS or TCP  
+>> that explains the behavior?  Note that this problem does not occur  
+>> with UDP so I suspect it's a consequence of the connection oriented  
+>> aspects of the TCP protocol vs UDP, but it would nice to see it in  
+>> writing.
+>> I appreciate any assistance, flames, or other comments :-)
+>> Thank you,
+>> Paolo
+
+-- 
 Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
