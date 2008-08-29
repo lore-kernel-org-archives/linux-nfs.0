@@ -1,53 +1,56 @@
-From: Ricardo Santos <xscorpionbr-/E1597aS9LRfJ/NunPodnw@public.gmane.org>
-Subject: directory attribute cache on NFS4 client
-Date: Fri, 29 Aug 2008 13:42:05 +0000 (UTC)
-Message-ID: <loom.20080829T132559-688@post.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [Bugme-new] [Bug 11448] New: NFS client has inconsistent write
+	flushing to non-linux serversa
+Date: Fri, 29 Aug 2008 13:08:38 -0400
+Message-ID: <20080829170838.GA7099@fieldses.org>
+References: <bug-11448-10286@http.bugzilla.kernel.org/> <20080828132753.08bfe05f.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	doug-rDJHdQPhaF8@public.gmane.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:46668 "EHLO ciao.gmane.org"
+Received: from mail.fieldses.org ([66.93.2.214]:38605 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758093AbYH2NpG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Aug 2008 09:45:06 -0400
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1KZ4He-0007GK-SQ
-	for linux-nfs@vger.kernel.org; Fri, 29 Aug 2008 13:45:03 +0000
-Received: from viper.litoral.com.br ([200.155.112.7])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2008 13:45:02 +0000
-Received: from xscorpionbr by viper.litoral.com.br with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2008 13:45:02 +0000
+	id S1752317AbYH2RIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Aug 2008 13:08:41 -0400
+In-Reply-To: <20080828132753.08bfe05f.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-First, some info:
+On Thu, Aug 28, 2008 at 01:27:53PM -0700, Andrew Morton wrote:
+> 
+> (switched to email.  Please respond via emailed reply-to-all, not via the
+> bugzilla web interface).
+> 
+> On Thu, 28 Aug 2008 11:41:08 -0700 (PDT)
+> bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org wrote:
+> > NFS client writes to Sun Solaris 10 U4 server. 
+> > at some point in time, there is an empty portion of the output file from the
+> > writer containing missing data (shows as NULL bytes from another NFS client
+> > issuing a tail -f on the file being written). 
+> > confirmed that the file as exists on the NFS server is sparse, missing bytes
+> > (not necessarily multiple of 512 or 1024, one sample is a gap of 3818 bytes,
+> > another is 1895 bytes, another is 423 bytes)
 
-NFS4 Client: Fedora 9 - 2.6.25.9-76.fc9.i686
-NFS4 Server: Fedora 9 - 2.6.25.6-55.fc9.i686
-exportfs: rw,fsid=0,no_root_squash,async
-mount: rw,bg,retry=1,timeo=30,rsize=8192,wsize=8192
+Seems like something that could happen if for example two write rpc's
+got reordered on the network.  That's not necessarily a bug--the nfs
+client isn't required to wait for confirmation of every previous write
+before sending the next one.
 
-Both on a local network
+However if the client isn't flushing dirty data to the server before
+returning from close, then that's a violation of NFS's close-to-open
+semantics:...
 
-The Server act as a filer to a webhosting solution. I have 2 clients (FTP and
-WebServer). When someone upload and overwrite a file on FTP, normally it do it:
+> > 
+> > if you do a read of the entire file from the NFS client doing the writing, it
+> > causes the non-flushed writes to be instantly flushed to the server followed by
+> > a NFS3 commit operation. The data then can be seen on all other NFS clients.
+> > 
+> > If you do an open of the file alone, no flush
+> > if you do an open and a close, no flush
 
-- UPLOAD fileA.tmp
-- DELETE fileA
-- RENAME fileA.tmp fileA
+... so this "close, no flush" could be a bug (depending on who is doing
+that close when--I don't completely understand the described situation).
 
-This operation changes the inode for "fileA" and the WebServer doesn't see the
-changes, still getting the old file (old inode).
-
-After upload, if I do a "ls -la /path/path/fileA", it returns the old stats
-(inode, mtime...). But if I do a "ls -la /path/path/" this will refresh info,
-and get the file correctly.
-
-I've tried the "acdirmin" and "acdirmax" defined to 0, but didn't work. I tried
-too "noac", really works but the performance cost is expensive.
-
-I really wouldn't like back to NFS3... :)
-
+--b.
