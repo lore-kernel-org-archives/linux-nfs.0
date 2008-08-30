@@ -1,53 +1,132 @@
-From: "NeilBrown" <neilb@suse.de>
-Subject: Re: RESTRICTED_STATD
-Date: Sat, 30 Aug 2008 07:31:58 +1000 (EST)
-Message-ID: <3400963b9465552abb83ecefede125bc.squirrel@neil.brown.name>
-References: <6972A199-D332-4E74-9D47-70EC2CA381FE@oracle.com>
-    <48B5332B.2040800@RedHat.com>
-    <76bd70e30808270714p4342c8c3k8d1b98763cc95aef@mail.gmail.com>
-    <EB4BA6CC-B023-49DC-9FE6-BD478DA5CB9F@oracle.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: NFS over TCP behavior in older 2.6 kernel
+Date: Fri, 29 Aug 2008 19:54:59 -0500
+Message-ID: <48B89A63.3030205@opengridcomputing.com>
+References: <48B6E206.1020401@mvista.com> <48B6E35D.8000601@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Steve Dickson" <steved@redhat.com>,
-	"Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-To: "Chuck Lever" <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org,
+	"Scott A. Ikenaga" <sikenaga-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
+	Yuksel Tokuz <ytokuz-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
+To: Paolo Galtieri <pgaltieri-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns1.suse.de ([195.135.220.2]:42373 "EHLO mx1.suse.de"
+Received: from mail.es335.com ([67.65.19.105]:14594 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751207AbYH2VcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Aug 2008 17:32:05 -0400
-In-Reply-To: <EB4BA6CC-B023-49DC-9FE6-BD478DA5CB9F@oracle.com>
+	id S1752620AbYH3BTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Aug 2008 21:19:20 -0400
+In-Reply-To: <48B6E35D.8000601@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, August 30, 2008 6:56 am, Chuck Lever wrote:
-> A little follow-up here.
+Tom Tucker wrote:
+> Paolo Galtieri wrote:
+>> Folks,
+>>  I have a question regarding the behavior of nfsd v3 running over 
+>> TCP.  Specifically how should the NFS server behave if the clock is 
+>> moved backwards on the server.  I've tried to find references to what 
+>> the correct behavior should be and have been unable to, so I'm 
+>> posting to this list with the hope someone can point me to where I 
+>> can find it.
+>>
+>> I'm running a 2.6.10 kernel on 2 systems, one acting as an NFS server 
+>> the other as the client (obviously).  I advertise to the client a 
+>> directory that contains several files which I mount on the client as 
+>> /app
+>>
+>> On the server I run the following test:
+>>
+>> while ;
+>> do
+>>   date 022910002008;
+>>   sleep 10;
+>>   date 022910102008;
+>>   sleep 10;
+>> done
+>>
+>> on the client I run the following in /app
+>>
+>> while :
+>> do
+>>  ls
+>>  sleep 10
+>> done
+>>
+>> What I observe is that often I see long pauses when doing the ls 
+>> before it actually displays the data.
+>>
+>> I ran tcpdump and what I observed is that the NFS server closed the 
+>> connection when the timestamp of ACK for a packet sent by the client 
+>> is earlier than the timestamp for the original packet, i.e. between 
+>> the receipt of the original packet and the sending of the ACK the 
+>> clock went backwards.  For example:
+>>
 >
-> Steve and I looked at the nfs-utils-1.1.3 RPM for Fedora today.  I did
-> an "rpmbuild -bc" and looked at it's config.h, and RESTRICTED_STATD is
-> defined as 1.  So it uses the default.
+> Both the client and server have logic that shuts down idle 
+> connections. The client idle time out is 5m and the server's idle 
+> timeout is 6m. What is probably happening is that the server believes 
+> that the connection has been idle longer than the 6m timeout and shuts 
+> down the connection.
 >
-> Looking at the code, it appears that when RESTRICTED_STATD is set,
-> NL_ADDR() is always going to be the loopback address.  Neil, is that
-> your understanding of this code?
+
+BTW, what I meant here is that the client shuts down the connection 
+because the connection has been idle for 5m or longer. 
+Erf. Must have been late.
+
+>> Frame 1019 contains this packet
+>>
+>> TCP      nfs > legent-1 [FIN, ACK] Seq=961 Ack=937 Win=1448 Len=0 
+>> TSV=979162569 TSER=979004710
+>>
+>> 0000  00 14 f8 ec 30 2f 00 14  f8 ec 47 11 08 00 45 00   ....0/.. 
+>> ..G...E.
+>> 0010  00 34 2a 2c 40 00 40 06  ba 95 a9 fe 01 01 a9 fe   .4*,@.@. 
+>> ........
+>> 0020  01 05 08 01 01 75 03 a6  6d a7 a9 d3 d4 ff 80 11   .....u.. 
+>> m.......
+>> 0030  05 a8 69 d4 00 00 01 01  08 0a 3a 5c d5 c9 3a 5a   ..i..... 
+>> ..:\..:Z
+>> 0040  6d 26
+>> and is time stamped (using wireshark) 2008-02-29 02:00:00.911651.  
+>> The original packet for which this is the ACK is frame 924 and contains:
+>>
+>> TCP      legent-1 > nfs [ACK] Seq=937 Ack=961 Win=1460 Len=0 
+>> TSV=979004710 TSER=979159895
+>>
+>> 0000  00 14 f8 ec 47 11 00 14  f8 ec 30 2f 08 00 45 00   ....G... 
+>> ..0/..E.
+>> 0010  00 34 2b e9 40 00 40 06  b8 d8 a9 fe 01 05 a9 fe   .4+.@.@. 
+>> ........
+>> 0020  01 01 01 75 08 01 a9 d3  d4 ff 03 a6 6d a7 80 10   ...u.... 
+>> ....m...
+>> 0030  05 b4 74 3b 00 00 01 01  08 0a 3a 5a 6d 26 3a 5c   ..t;.... 
+>> ..:Zm&:\
+>> 0040  cb 57                                              
+>> .W            Wireshark reports the RTT as:
+>>
+>> [The RTT to ACK the segment was: -7.377099000 seconds]
+>>
+>> After the server disconnects the client has to reconnect and it is 
+>> looks like the delay is occurring during this disconnect/reconnect 
+>> process.
+>>
+>> Can someone point me to any documentation, either for NFS or TCP that 
+>> explains the behavior?  Note that this problem does not occur with 
+>> UDP so I suspect it's a consequence of the connection oriented 
+>> aspects of the TCP protocol vs UDP, but it would nice to see it in 
+>> writing.
+>>
+>> I appreciate any assistance, flames, or other comments :-)
+>>
+>> Thank you,
+>> Paolo
+>> -- 
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
-Nearly.
-If RESTRICTED_STATD is defined (to anything), MON, UNMON, UNMON_ALL
-and SIMU_CRASH are only honour if they come from 127.0.0.1, so the
-callback address (NL_ADDR) for any service that statd is monitoring
-will always be local.
-Only NOTIFY can come from other hosts (to tell us they rebooted).
-
-Also, only the lockd callback service is recognised.  If any service
-other than lockd registers a callback it will be ignored, even if it
-is from localhost.
-
-This last point is the only bit that could conceivably cause a problem.
-
-However we don't really want any user to be able to request a callback
-to any random service....
-I wonder if anyone uses for statd for anything but lockd, and how
-could we know?
-
-NeilBrown
+> It
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
