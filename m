@@ -1,132 +1,85 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: NFS over TCP behavior in older 2.6 kernel
-Date: Fri, 29 Aug 2008 19:54:59 -0500
-Message-ID: <48B89A63.3030205@opengridcomputing.com>
-References: <48B6E206.1020401@mvista.com> <48B6E35D.8000601@opengridcomputing.com>
+From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
+Date: Sat, 30 Aug 2008 16:47:41 +0100
+Message-ID: <1220111261.31172.14.camel@localhost.localdomain>
+References: <1219435207.27921.51.camel@localhost.localdomain>
+	 <1219440202.9097.14.camel@localhost>
+	 <1219441041.27921.57.camel@localhost.localdomain>
+	 <1219442213.9097.25.camel@localhost>
+	 <1219603981.27921.145.camel@localhost.localdomain>
+	 <1219605422.14389.2.camel@localhost> <1219605596.14389.5.camel@localhost>
+	 <1219615789.27921.152.camel@localhost.localdomain>
+	 <1219616136.14389.12.camel@localhost>
+	 <48B2D7F8.5020206@opengridcomputing.com>
+	 <20080826192711.GJ4380@fieldses.org>
+	 <48B567F5.2090605@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org,
-	"Scott A. Ikenaga" <sikenaga-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>,
-	Yuksel Tokuz <ytokuz-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
-To: Paolo Galtieri <pgaltieri-Igf4POYTYCDQT0dZR+AlfA@public.gmane.org>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-N+xzNbkT5pn/TJhoODfv"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	John Ronciak <john.ronciak@gmail.com>,
+	Grant Coady <gcoady.lk@gmail.com>,
+	linux-kernel@vger.kernel.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org,
+	Jeff Kirsher <jeffrey.t.kirsher@intel.com>,
+	Jesse Brandeburg <jesse.brandeburg@intel.com>,
+	Bruce Allan <bruce.w.allan@intel.com>,
+	PJ Waskiewicz <peter.p.waskiewicz.jr@intel.com>,
+	John Ronciak <john.ronciak@intel.com>,
+	e1000-devel@lists.sourceforge.net
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:14594 "EHLO mail.es335.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752620AbYH3BTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Aug 2008 21:19:20 -0400
-In-Reply-To: <48B6E35D.8000601@opengridcomputing.com>
+Received: from mtaout03-winn.ispmail.ntl.com ([81.103.221.49]:17427 "EHLO
+	mtaout03-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753371AbYH3Prv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Aug 2008 11:47:51 -0400
+In-Reply-To: <48B567F5.2090605@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom Tucker wrote:
-> Paolo Galtieri wrote:
->> Folks,
->>  I have a question regarding the behavior of nfsd v3 running over 
->> TCP.  Specifically how should the NFS server behave if the clock is 
->> moved backwards on the server.  I've tried to find references to what 
->> the correct behavior should be and have been unable to, so I'm 
->> posting to this list with the hope someone can point me to where I 
->> can find it.
->>
->> I'm running a 2.6.10 kernel on 2 systems, one acting as an NFS server 
->> the other as the client (obviously).  I advertise to the client a 
->> directory that contains several files which I mount on the client as 
->> /app
->>
->> On the server I run the following test:
->>
->> while ;
->> do
->>   date 022910002008;
->>   sleep 10;
->>   date 022910102008;
->>   sleep 10;
->> done
->>
->> on the client I run the following in /app
->>
->> while :
->> do
->>  ls
->>  sleep 10
->> done
->>
->> What I observe is that often I see long pauses when doing the ls 
->> before it actually displays the data.
->>
->> I ran tcpdump and what I observed is that the NFS server closed the 
->> connection when the timestamp of ACK for a packet sent by the client 
->> is earlier than the timestamp for the original packet, i.e. between 
->> the receipt of the original packet and the sending of the ACK the 
->> clock went backwards.  For example:
->>
->
-> Both the client and server have logic that shuts down idle 
-> connections. The client idle time out is 5m and the server's idle 
-> timeout is 6m. What is probably happening is that the server believes 
-> that the connection has been idle longer than the 6m timeout and shuts 
-> down the connection.
->
 
-BTW, what I meant here is that the client shuts down the connection 
-because the connection has been idle for 5m or longer. 
-Erf. Must have been late.
+--=-N+xzNbkT5pn/TJhoODfv
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
->> Frame 1019 contains this packet
->>
->> TCP      nfs > legent-1 [FIN, ACK] Seq=961 Ack=937 Win=1448 Len=0 
->> TSV=979162569 TSER=979004710
->>
->> 0000  00 14 f8 ec 30 2f 00 14  f8 ec 47 11 08 00 45 00   ....0/.. 
->> ..G...E.
->> 0010  00 34 2a 2c 40 00 40 06  ba 95 a9 fe 01 01 a9 fe   .4*,@.@. 
->> ........
->> 0020  01 05 08 01 01 75 03 a6  6d a7 a9 d3 d4 ff 80 11   .....u.. 
->> m.......
->> 0030  05 a8 69 d4 00 00 01 01  08 0a 3a 5c d5 c9 3a 5a   ..i..... 
->> ..:\..:Z
->> 0040  6d 26
->> and is time stamped (using wireshark) 2008-02-29 02:00:00.911651.  
->> The original packet for which this is the ACK is frame 924 and contains:
->>
->> TCP      legent-1 > nfs [ACK] Seq=937 Ack=961 Win=1460 Len=0 
->> TSV=979004710 TSER=979159895
->>
->> 0000  00 14 f8 ec 47 11 00 14  f8 ec 30 2f 08 00 45 00   ....G... 
->> ..0/..E.
->> 0010  00 34 2b e9 40 00 40 06  b8 d8 a9 fe 01 05 a9 fe   .4+.@.@. 
->> ........
->> 0020  01 01 01 75 08 01 a9 d3  d4 ff 03 a6 6d a7 80 10   ...u.... 
->> ....m...
->> 0030  05 b4 74 3b 00 00 01 01  08 0a 3a 5a 6d 26 3a 5c   ..t;.... 
->> ..:Zm&:\
->> 0040  cb 57                                              
->> .W            Wireshark reports the RTT as:
->>
->> [The RTT to ACK the segment was: -7.377099000 seconds]
->>
->> After the server disconnects the client has to reconnect and it is 
->> looks like the delay is occurring during this disconnect/reconnect 
->> process.
->>
->> Can someone point me to any documentation, either for NFS or TCP that 
->> explains the behavior?  Note that this problem does not occur with 
->> UDP so I suspect it's a consequence of the connection oriented 
->> aspects of the TCP protocol vs UDP, but it would nice to see it in 
->> writing.
->>
->> I appreciate any assistance, flames, or other comments :-)
->>
->> Thank you,
->> Paolo
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> It
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Wed, 2008-08-27 at 09:43 -0500, Tom Tucker wrote:
+> Sure. I've actually tried to reproduce it here unsuccessfully.
+>=20
+> As a starter, I would suggest turning on transport debugging:
+>=20
+> # echo 256 > /proc/sys/sunrpc/rpc_debug
+> [...]
+> If Ian is willing to create the log (or already has one), I'm
+> certainly willing to look at it.
+
+It produced only the following (is that what was expected?):
+
+[146866.448112] -pid- proc flgs status -client- -prog- --rqstp- -timeout -r=
+pcwait -action- ---ops--
+[146866.448112] 30576 0001 00a0      0 f77a1600 100003 f7903340    15000 xp=
+rt_pending fa0ba88e fa0c9df4
+[146866.448112] 30577 0004 0080    -11 f77a1600 100003 f7903000        0 xp=
+rt_sending fa0ba88e fa0c9df4
+
+Ian.
+--=20
+Ian Campbell
+
+Life is a concentration camp.  You're stuck here and there's no way
+out and you can only rage impotently against your persecutors.
+		-- Woody Allen
+
+--=-N+xzNbkT5pn/TJhoODfv
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAki5a50ACgkQM0+0qS9rzVkKVgCffqWaEb2ozXNfneXRttb4Dr1d
+4JEAnRuuBKBw8K0HNcSJU+mr29qgEsjF
+=qFux
+-----END PGP SIGNATURE-----
+
+--=-N+xzNbkT5pn/TJhoODfv--
 
