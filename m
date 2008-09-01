@@ -1,109 +1,58 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: nfsd fixes for 2.6.27
-Date: Mon, 1 Sep 2008 14:46:13 -0400
-Message-ID: <20080901184613.GB8598@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH] sunrpc: fix possible overrun on read of /proc/sys/sunrpc/transports
+Date: Mon,  1 Sep 2008 14:51:01 -0400
+Message-ID: <1220295062-10957-1-git-send-email-bfields@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Cyrill Gorcunov <gorcunov@gmail.com>,
+	Ingo Oeser <ioe-lkml-MFZNYGWX9eyELgA04lAiVw@public.gmane.org>, Neil Brown <neilb@suse.de>,
+	Chuck Lever <chuck.lever@oracle.com>, Greg Banks <gnb@sgi.com>,
+	Tom Tucker <tom@opengridcomputing.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: stable@kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43820 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:57159 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751018AbYIASqP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Sep 2008 14:46:15 -0400
+	id S1752034AbYIASvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Sep 2008 14:51:13 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following nfsd bugfixes are available in for-2.6.27 branch at:
+From: Cyrill Gorcunov <gorcunov@gmail.com>
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.27
+Vegard Nossum reported
+----------------------
+> I noticed that something weird is going on with /proc/sys/sunrpc/transports.
+> This file is generated in net/sunrpc/sysctl.c, function proc_do_xprt(). When
+> I "cat" this file, I get the expected output:
+>    $ cat /proc/sys/sunrpc/transports
+>    tcp 1048576
+>    udp 32768
 
---b.
+> But I think that it does not check the length of the buffer supplied by
+> userspace to read(). With my original program, I found that the stack was
+> being overwritten by the characters above, even when the length given to
+> read() was just 1.
 
-Andy Adamson (1):
-      nfsd: fix compound state allocation error handling
+David Wagner added (among other things) that copy_to_user could be
+probably used here.
 
-Cyrill Gorcunov (1):
-      sunrpc: fix possible overrun on read of /proc/sys/sunrpc/transports
+Ingo Oeser suggested to use simple_read_from_buffer() here.
 
-J. Bruce Fields (1):
-      nfsd: fix buffer overrun decoding NFSv4 acl
+The conclusion is that proc_do_xprt doesn't check for userside buffer
+size indeed so fix this by using Ingo's suggestion.
 
-Tom Tucker (1):
-      svcrdma: Fix race between svc_rdma_recvfrom thread and the dto_tasklet
+Reported-by: Vegard Nossum <vegard.nossum@gmail.com>
+Signed-off-by: Cyrill Gorcunov <gorcunov@gmail.com>
+CC: Ingo Oeser <ioe-lkml-MFZNYGWX9eyELgA04lAiVw@public.gmane.org>
+Cc: Neil Brown <neilb@suse.de>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: Greg Banks <gnb@sgi.com>
+Cc: Tom Tucker <tom@opengridcomputing.com>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/sysctl.c |   18 ++++--------------
+ 1 files changed, 4 insertions(+), 14 deletions(-)
 
- fs/nfsd/nfs4acl.c                        |    2 +-
- fs/nfsd/nfs4proc.c                       |   12 ++++++------
- include/linux/sunrpc/svc_rdma.h          |    1 -
- net/sunrpc/sysctl.c                      |   18 ++++--------------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    8 ++++----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 ++---
- 6 files changed, 17 insertions(+), 29 deletions(-)
-
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index b6ed383..54b8b41 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -443,7 +443,7 @@ init_state(struct posix_acl_state *state, int cnt)
- 	 * enough space for either:
- 	 */
- 	alloc = sizeof(struct posix_ace_state_array)
--		+ cnt*sizeof(struct posix_ace_state);
-+		+ cnt*sizeof(struct posix_user_ace_state);
- 	state->users = kzalloc(alloc, GFP_KERNEL);
- 	if (!state->users)
- 		return -ENOMEM;
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2e51ada..e5b51ff 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -867,11 +867,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	int		slack_bytes;
- 	__be32		status;
- 
--	status = nfserr_resource;
--	cstate = cstate_alloc();
--	if (cstate == NULL)
--		goto out;
--
- 	resp->xbuf = &rqstp->rq_res;
- 	resp->p = rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len;
- 	resp->tagp = resp->p;
-@@ -890,6 +885,11 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	if (args->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
- 		goto out;
- 
-+	status = nfserr_resource;
-+	cstate = cstate_alloc();
-+	if (cstate == NULL)
-+		goto out;
-+
- 	status = nfs_ok;
- 	while (!status && resp->opcnt < args->opcnt) {
- 		op = &args->ops[resp->opcnt++];
-@@ -957,9 +957,9 @@ encode_op:
- 		nfsd4_increment_op_stats(op->opnum);
- 	}
- 
-+	cstate_free(cstate);
- out:
- 	nfsd4_release_compoundargs(args);
--	cstate_free(cstate);
- 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
- 	return status;
- }
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index ef2e3a2..dc05b54 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -143,7 +143,6 @@ struct svcxprt_rdma {
- 	unsigned long	     sc_flags;
- 	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
- 	struct list_head     sc_read_complete_q;
--	spinlock_t           sc_read_complete_lock;
- 	struct work_struct   sc_work;
- };
- /* sc_flags */
 diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
 index 0f8c439..5231f7a 100644
 --- a/net/sunrpc/sysctl.c
@@ -137,56 +86,6 @@ index 0f8c439..5231f7a 100644
  }
  
  static int
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index b4b17f4..74de31a 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -443,18 +443,18 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 
- 	dprintk("svcrdma: rqstp=%p\n", rqstp);
- 
--	spin_lock_bh(&rdma_xprt->sc_read_complete_lock);
-+	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
- 		ctxt = list_entry(rdma_xprt->sc_read_complete_q.next,
- 				  struct svc_rdma_op_ctxt,
- 				  dto_q);
- 		list_del_init(&ctxt->dto_q);
- 	}
--	spin_unlock_bh(&rdma_xprt->sc_read_complete_lock);
--	if (ctxt)
-+	if (ctxt) {
-+		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
- 		return rdma_read_complete(rqstp, ctxt);
-+	}
- 
--	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
- 	if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
- 		ctxt = list_entry(rdma_xprt->sc_rq_dto_q.next,
- 				  struct svc_rdma_op_ctxt,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 19ddc38..900cb69 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -359,11 +359,11 @@ static void sq_cq_reap(struct svcxprt_rdma *xprt)
- 			if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
- 				struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
- 				BUG_ON(!read_hdr);
-+				spin_lock_bh(&xprt->sc_rq_dto_lock);
- 				set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
--				spin_lock_bh(&xprt->sc_read_complete_lock);
- 				list_add_tail(&read_hdr->dto_q,
- 					      &xprt->sc_read_complete_q);
--				spin_unlock_bh(&xprt->sc_read_complete_lock);
-+				spin_unlock_bh(&xprt->sc_rq_dto_lock);
- 				svc_xprt_enqueue(&xprt->sc_xprt);
- 			}
- 			svc_rdma_put_context(ctxt, 0);
-@@ -428,7 +428,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 	init_waitqueue_head(&cma_xprt->sc_send_wait);
- 
- 	spin_lock_init(&cma_xprt->sc_lock);
--	spin_lock_init(&cma_xprt->sc_read_complete_lock);
- 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
- 
- 	cma_xprt->sc_ord = svcrdma_ord;
+-- 
+1.5.5.rc1
+
