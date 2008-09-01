@@ -1,45 +1,39 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] nfsd: fix buffer overrun decoding NFSv4 acl
-Date: Mon,  1 Sep 2008 14:51:02 -0400
-Message-ID: <1220295062-10957-2-git-send-email-bfields@citi.umich.edu>
-References: <1220295062-10957-1-git-send-email-bfields@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	David Richter <richterd@citi.umich.edu>
-To: stable@kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: mem leak?
+Date: Mon, 1 Sep 2008 17:20:04 -0400
+Message-ID: <20080901212003.GA13392@fieldses.org>
+References: <200809011153057338447@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: Payphone LIOU <lioupayphone@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57155 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:43997 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750737AbYIASvH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Sep 2008 14:51:07 -0400
-In-Reply-To: <1220295062-10957-1-git-send-email-bfields@citi.umich.edu>
+	id S1751389AbYIAVUF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Sep 2008 17:20:05 -0400
+In-Reply-To: <200809011153057338447@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The array we kmalloc() here is not large enough.
+On Mon, Sep 01, 2008 at 11:53:07AM +0800, Payphone LIOU wrote:
+> Hi, linux-nfs :
+> 			
+>   in nfs-utils1.1.3,  procedure "get_exportlist()" would malloc() some
+>   memory for storing the directories and groups for "showmount".
+>   obviously those memory are not released when the procedure ends.
+>   once mountd received a signal for quiting itself(eg : kill -9 `pidof
+>   mountd`), it will call "killer()" for some exiting-works. but those
+>   memory allocated in "get_exportlist()" were not released. memory
+>   leak? i am not sure. :-(
 
-Thanks to Johann Dahm and David Richter for bug report and testing.
+You're talking about the allocation done on this line?:
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Cc: David Richter <richterd@citi.umich.edu>
-Tested-by: Johann Dahm <jdahm@umich.edu>
----
- fs/nfsd/nfs4acl.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+	e = (struct exportnode *) xmalloc(sizeof(*e));
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index b6ed383..54b8b41 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -443,7 +443,7 @@ init_state(struct posix_acl_state *state, int cnt)
- 	 * enough space for either:
- 	 */
- 	alloc = sizeof(struct posix_ace_state_array)
--		+ cnt*sizeof(struct posix_ace_state);
-+		+ cnt*sizeof(struct posix_user_ace_state);
- 	state->users = kzalloc(alloc, GFP_KERNEL);
- 	if (!state->users)
- 		return -ENOMEM;
--- 
-1.5.5.rc1
+>From a quick glance, it looks like the code tries to free that up the
+next time get_exportlist() is called, in that first loop over elist.  I
+haven't tried to figure out whether that code's correct, though; maybe
+you have?  Patches always welcome.
 
+--b.
