@@ -1,65 +1,83 @@
-From: David Woodhouse <dwmw2@infradead.org>
-Subject: Re: [PATCH] UBIFS: fill f_fsid
-Date: Tue, 02 Sep 2008 23:12:41 +0100
-Message-ID: <1220393561.2985.19.camel@pmac.infradead.org>
-References: <1220194366-12731-1-git-send-email-dedekind@infradead.org>
-	 <1220194366-12731-13-git-send-email-dedekind@infradead.org>
-	 <1220262187.2982.58.camel@pmac.infradead.org>
-	 <20080901150147.GA20323@infradead.org> <1220339032.4036.31.camel@sauron>
-	 <20080902170954.GE3086@webber.adilger.int>
-	 <20080902210219.GA9856@infradead.org>
-	 <1220390769.2985.6.camel@pmac.infradead.org>
-	 <20080902214841.GA9204@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andreas Dilger <adilger-xsfywfwIY+M@public.gmane.org>,
-	Artem Bityutskiy <dedekind@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Adrian Hunter <ext-adrian.hunter@nokia.com>,
-	linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: RESTRICTED_STATD
+Date: Tue, 2 Sep 2008 18:17:21 -0400
+Message-ID: <EB1B1F05-65DA-4A18-80F6-13DE4FCB387C@oracle.com>
+References: <6972A199-D332-4E74-9D47-70EC2CA381FE@oracle.com> <48B5332B.2040800@RedHat.com> <76bd70e30808270714p4342c8c3k8d1b98763cc95aef@mail.gmail.com> <EB4BA6CC-B023-49DC-9FE6-BD478DA5CB9F@oracle.com> <3400963b9465552abb83ecefede125bc.squirrel@neil.brown.name>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Steve Dickson <steved@redhat.com>, Olaf Kirch <okir@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:59857 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753112AbYIBWMs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2008 18:12:48 -0400
-In-Reply-To: <20080902214841.GA9204@infradead.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:48409 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751664AbYIBWX1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2008 18:23:27 -0400
+In-Reply-To: <3400963b9465552abb83ecefede125bc.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-09-02 at 17:48 -0400, Christoph Hellwig wrote:
-> On Tue, Sep 02, 2008 at 10:26:09PM +0100, David Woodhouse wrote:
-> > > We also called the filesystem part of the NFS filehandle in a few
-> > > places, and for those it's correct that it should be stable.  Currently
-> > > the fsid is either created from the dev_t in kernelspace or from
-> > > uuids extracted through libuuid in userspace.
-> > 
-> > Or from the f_fsid returned in statfs(), as of a week or so ago.
-> 
-> I think that's a rather bad idea.  As mentioned before f_fsid is
-> basically random.
+On Aug 29, 2008, at Aug 29, 2008, 5:31 PM, NeilBrown wrote:
+> On Sat, August 30, 2008 6:56 am, Chuck Lever wrote:
+>> A little follow-up here.
+>>
+>> Steve and I looked at the nfs-utils-1.1.3 RPM for Fedora today.  I  
+>> did
+>> an "rpmbuild -bc" and looked at it's config.h, and RESTRICTED_STATD  
+>> is
+>> defined as 1.  So it uses the default.
+>>
+>> Looking at the code, it appears that when RESTRICTED_STATD is set,
+>> NL_ADDR() is always going to be the loopback address.  Neil, is that
+>> your understanding of this code?
+>>
+> Nearly.
+> If RESTRICTED_STATD is defined (to anything), MON, UNMON, UNMON_ALL
+> and SIMU_CRASH are only honour if they come from 127.0.0.1, so the
+> callback address (NL_ADDR) for any service that statd is monitoring
+> will always be local.
 
-It's not that bad. Of the file systems which actually fill it in...
+The value of NL_ADDR is determined only by sm_mon_1_svc() as far as I  
+can tell.  If RESTRICTED_STATD is defined, NL_ADDR is always set to  
+127.0.0.1.
 
-For NTFS it's the volume serial number.
+For IPv6, we would need to check the incoming address for both  
+127.0.0.1 or ::1.  Outgoing we can always use 127.0.0.1 for the time  
+being.  I was hoping to eliminate NL_ADDR, and just use a constant  
+127.0.0.1 where needed.
 
-For ext[234] it's the UUID xor-folded into 64 bits.
-For btrfs the same, but with the root object ID xor'd in too.
+> Only NOTIFY can come from other hosts (to tell us they rebooted).
 
-For bfs and xfs it's the block device -- which isn't ideal, as Andreas
-points out, but is what we'd fall back to anyway.
+Right.  sm_notify_1_svc() grabs the callers IP address with
 
-BFS seems to have a s_volume field which perhaps we could use, but we
-should check for it being all spaces and leave f_fsid as zero in that
-case. Presumably XFS could be using sb_uuid?
+    svc_getcaller(rqstp->rq_xprt)->sin_addr
 
-For efs, it'll be either EFS_MAGIC or EFS_NEWMAGIC, which is probably a
-bad thing if you want to export multiple EFS file systems. I'll send a
-patch to fix that (by leaving it zero) shortly.
+It converts this to a string and checks this against lp->dns_name, in  
+addition to checking the mon_name that was originally registered to be  
+monitored.  Shouldn't statd check only mon_name against dns_name?  Why  
+does it check both?
+
+This would need IPv6 support.  It would be easier just to eliminate it  
+if possible, and just check mon_name.  It then wouldn't need any IPv6- 
+specific logic.
+
+> Also, only the lockd callback service is recognised.  If any service
+> other than lockd registers a callback it will be ignored, even if it
+> is from localhost.
+>
+> This last point is the only bit that could conceivably cause a  
+> problem.
+>
+> However we don't really want any user to be able to request a callback
+> to any random service....
+> I wonder if anyone uses for statd for anything but lockd, and how
+> could we know?
+
+I think the real question is whether we should continue to support  
+this "off-label" use.  It adds complexity and security problems, and  
+the code paths that support this aren't ever tested these days, I'm  
+willing to bet.
 
 -- 
-David Woodhouse                            Open Source Technology Centre
-David.Woodhouse@intel.com                              Intel Corporation
-
-
-
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
