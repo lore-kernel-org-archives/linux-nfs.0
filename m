@@ -1,7 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 39/42] nfsd: fix buffer overrun decoding NFSv4 acl
-Date: Wed, 3 Sep 2008 10:26:47 -0700
-Message-ID: <20080903172647.GN7731@suse.de>
+Subject: [patch 38/42] sunrpc: fix possible overrun on read of
+	/proc/sys/sunrpc/transports
+Date: Wed, 3 Sep 2008 10:26:45 -0700
+Message-ID: <20080903172645.GM7731@suse.de>
 References: <20080903171927.534216229@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,49 +20,97 @@ Cc: Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
 	Jake Edge <jake-T1hC0tSOHrs@public.gmane.org>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-nfs@vger.kernel.org,
+	Greg Banks <gnb@sgi.com>, Neil Brown <neilb@suse.de>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	David Richter <richterd@citi.umich.edu>
+	Tom Tucker <tom@opengridcomputing.com>,
+	Ingo Oeser <ioe-lkml-MFZNYGWX9eyELgA04lAiVw@public.gmane.org>,
+	Cyrill Gorcunov <gorcunov@gmail.com>,
+	Chuck Lever <chuck.lever@oracle.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57867 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:57802 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758364AbYICRqp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Sep 2008 13:46:45 -0400
+	id S1758205AbYICRqU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2008 13:46:20 -0400
 In-Reply-To: <20080903172447.GA7731@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
 
 2.6.26-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: Cyrill Gorcunov <gorcunov@gmail.com>
 
-commit 91b80969ba466ba4b915a4a1d03add8c297add3f upstream
+commit 27df6f25ff218072e0e879a96beeb398a79cdbc8 upstream
 
-The array we kmalloc() here is not large enough.
+Vegard Nossum reported
+----------------------
+> I noticed that something weird is going on with /proc/sys/sunrpc/transports.
+> This file is generated in net/sunrpc/sysctl.c, function proc_do_xprt(). When
+> I "cat" this file, I get the expected output:
+>    $ cat /proc/sys/sunrpc/transports
+>    tcp 1048576
+>    udp 32768
 
-Thanks to Johann Dahm and David Richter for bug report and testing.
+> But I think that it does not check the length of the buffer supplied by
+> userspace to read(). With my original program, I found that the stack was
+> being overwritten by the characters above, even when the length given to
+> read() was just 1.
 
+David Wagner added (among other things) that copy_to_user could be
+probably used here.
+
+Ingo Oeser suggested to use simple_read_from_buffer() here.
+
+The conclusion is that proc_do_xprt doesn't check for userside buffer
+size indeed so fix this by using Ingo's suggestion.
+
+Reported-by: Vegard Nossum <vegard.nossum@gmail.com>
+Signed-off-by: Cyrill Gorcunov <gorcunov@gmail.com>
+CC: Ingo Oeser <ioe-lkml-MFZNYGWX9eyELgA04lAiVw@public.gmane.org>
+Cc: Neil Brown <neilb@suse.de>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: Greg Banks <gnb@sgi.com>
+Cc: Tom Tucker <tom@opengridcomputing.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-Cc: David Richter <richterd@citi.umich.edu>
-Tested-by: Johann Dahm <jdahm@umich.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/nfsd/nfs4acl.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/sysctl.c |   18 ++++--------------
+ 1 file changed, 4 insertions(+), 14 deletions(-)
 
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -443,7 +443,7 @@ init_state(struct posix_acl_state *state
- 	 * enough space for either:
- 	 */
- 	alloc = sizeof(struct posix_ace_state_array)
--		+ cnt*sizeof(struct posix_ace_state);
-+		+ cnt*sizeof(struct posix_user_ace_state);
- 	state->users = kzalloc(alloc, GFP_KERNEL);
- 	if (!state->users)
- 		return -ENOMEM;
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -60,24 +60,14 @@ static int proc_do_xprt(ctl_table *table
+ 			void __user *buffer, size_t *lenp, loff_t *ppos)
+ {
+ 	char tmpbuf[256];
+-	int len;
++	size_t len;
++
+ 	if ((*ppos && !write) || !*lenp) {
+ 		*lenp = 0;
+ 		return 0;
+ 	}
+-	if (write)
+-		return -EINVAL;
+-	else {
+-		len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
+-		if (!access_ok(VERIFY_WRITE, buffer, len))
+-			return -EFAULT;
+-
+-		if (__copy_to_user(buffer, tmpbuf, len))
+-			return -EFAULT;
+-	}
+-	*lenp -= len;
+-	*ppos += len;
+-	return 0;
++	len = svc_print_xprts(tmpbuf, sizeof(tmpbuf));
++	return simple_read_from_buffer(buffer, *lenp, ppos, tmpbuf, len);
+ }
+ 
+ static int
 
 -- 
