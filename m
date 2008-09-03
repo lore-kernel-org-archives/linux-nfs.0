@@ -1,33 +1,67 @@
-From: Ricardo Santos <xscorpionbr-/E1597aS9LRfJ/NunPodnw@public.gmane.org>
-Subject: Re: directory attribute cache on NFS4 client
-Date: Wed, 3 Sep 2008 02:57:53 +0000 (UTC)
-Message-ID: <loom.20080903T025252-10@post.gmane.org>
-References: <loom.20080829T132559-688@post.gmane.org> <loom.20080901T163528-489@post.gmane.org> <20080902175047.GA10855@fieldses.org> <loom.20080902T195042-521@post.gmane.org> <Pine.BSO.4.64.0809021610460.7435@citi.umich.edu>
+From: Greg KH <gregkh@suse.de>
+Subject: [patch 39/42] nfsd: fix buffer overrun decoding NFSv4 acl
+Date: Wed, 3 Sep 2008 10:26:47 -0700
+Message-ID: <20080903172647.GN7731@suse.de>
+References: <20080903171927.534216229@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw-lrwSPXAIdEw7YuNMryXyOw@public.gmane.org>,
+	Chris Wedgwood <reviews-vFB7bnJMxjixIvdkapsUdQ@public.gmane.org>,
+	Michael Krufky <mkrufky-dJidKbW2IEtAfugRpC6u6w@public.gmane.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
+	Rodrigo Rubira Branco <rbranco-OG872enO0lhw4vQD1pnt9QC/G2K4zDHf@public.gmane.org>,
+	Jake Edge <jake-T1hC0tSOHrs@public.gmane.org>, Eugene Teo <eteo@redhat.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>,
+	David Richter <richterd@citi.umich.edu>
+To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:43007 "EHLO ciao.gmane.org"
+Received: from cantor2.suse.de ([195.135.220.15]:57867 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752091AbYICC6I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Sep 2008 22:58:08 -0400
-Received: from list by ciao.gmane.org with local (Exim 4.43)
-	id 1KaiZH-0002HF-Cx
-	for linux-nfs@vger.kernel.org; Wed, 03 Sep 2008 02:58:03 +0000
-Received: from bd22caa7.virtua.com.br ([bd22caa7.virtua.com.br])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Sep 2008 02:58:03 +0000
-Received: from xscorpionbr by bd22caa7.virtua.com.br with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Sep 2008 02:58:03 +0000
+	id S1758364AbYICRqp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2008 13:46:45 -0400
+In-Reply-To: <20080903172447.GA7731@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> yes, you can echo 0 to /proc/sys/fs/leases-enable
-> 
-> note that that disables all leases (atop which NFS delegations are 
-> implemented).
+2.6.26-stable review patch.  If anyone has any objections, please let us know.
 
-david, thanks for the tip. It really works for me!
+------------------
 
+From: J. Bruce Fields <bfields@citi.umich.edu>
+
+commit 91b80969ba466ba4b915a4a1d03add8c297add3f upstream
+
+The array we kmalloc() here is not large enough.
+
+Thanks to Johann Dahm and David Richter for bug report and testing.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Cc: David Richter <richterd@citi.umich.edu>
+Tested-by: Johann Dahm <jdahm@umich.edu>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/nfsd/nfs4acl.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -443,7 +443,7 @@ init_state(struct posix_acl_state *state
+ 	 * enough space for either:
+ 	 */
+ 	alloc = sizeof(struct posix_ace_state_array)
+-		+ cnt*sizeof(struct posix_ace_state);
++		+ cnt*sizeof(struct posix_user_ace_state);
+ 	state->users = kzalloc(alloc, GFP_KERNEL);
+ 	if (!state->users)
+ 		return -ENOMEM;
+
+-- 
