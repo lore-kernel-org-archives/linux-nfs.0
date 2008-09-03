@@ -1,9 +1,9 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 38/42] sunrpc: fix possible overrun on read of
+Subject: [patch 03/16] sunrpc: fix possible overrun on read of
 	/proc/sys/sunrpc/transports
-Date: Wed, 3 Sep 2008 10:26:45 -0700
-Message-ID: <20080903172645.GM7731@suse.de>
-References: <20080903171927.534216229@mini.kroah.org>
+Date: Wed, 3 Sep 2008 10:32:47 -0700
+Message-ID: <20080903173247.GD10429@suse.de>
+References: <20080903172849.927077124@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
@@ -28,19 +28,18 @@ Cc: Justin Forbes <jmforbes-a5Mqy2EUIFVAfugRpC6u6w@public.gmane.org>,
 	Chuck Lever <chuck.lever@oracle.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57802 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58364 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758205AbYICRqU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Sep 2008 13:46:20 -0400
-In-Reply-To: <20080903172447.GA7731@suse.de>
+	id S1753893AbYICRtb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2008 13:49:31 -0400
+In-Reply-To: <20080903173218.GA10429@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-2.6.26-stable review patch.  If anyone has any objections, please let us know.
+2.6.25-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-
 From: Cyrill Gorcunov <gorcunov@gmail.com>
 
 commit 27df6f25ff218072e0e879a96beeb398a79cdbc8 upstream
