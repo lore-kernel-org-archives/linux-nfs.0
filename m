@@ -1,113 +1,42 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/7] lockd: Use sockaddr_storage + length for h_addr field
-Date: Wed, 03 Sep 2008 14:35:39 -0400
-Message-ID: <20080903183539.16867.8416.stgit@ingres.1015granger.net>
-References: <20080903183411.16867.33715.stgit@ingres.1015granger.net>
+Subject: [PATCH 0/7] More IPv6 support for lockd
+Date: Wed, 03 Sep 2008 14:35:31 -0400
+Message-ID: <20080903183411.16867.33715.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:56828 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753637AbYICSgf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2008 14:36:35 -0400
-In-Reply-To: <20080903183411.16867.33715.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:50989 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756179AbYICSiP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2008 14:38:15 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To store larger addresses in the nlm_host structure, make h_addr a
-sockaddr_storage, and add an address length field.
+Hi Bruce-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Here's the next set of IPv6-related patches for lockd.  Please consider these
+for 2.6.28.
+
 ---
 
- fs/lockd/clntlock.c         |    2 +-
- fs/lockd/host.c             |   11 ++++++-----
- include/linux/lockd/lockd.h |   16 +++++++++++++++-
- 3 files changed, 22 insertions(+), 7 deletions(-)
+Chuck Lever (7):
+      lockd: Update nsm_find() to support non-AF_INET addresses
+      lockd: Combine __nsm_find() and nsm_find().
+      lockd: Support AF_INET6 when hashing addresses in nlm_lookup_host
+      lockd: Teach nlm_cmp_addr() to support AF_INET6 addresses
+      NSM: Use sockaddr_storage for sm_addr field
+      lockd: Use sockaddr_storage for h_saddr field
+      lockd: Use sockaddr_storage + length for h_addr field
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 0b45fd3..0df5587 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -166,7 +166,7 @@ __be32 nlmclnt_grant(const struct sockaddr_in *addr, const struct nlm_lock *lock
- 		 */
- 		if (fl_blocked->fl_u.nfs_fl.owner->pid != lock->svid)
- 			continue;
--		if (!nlm_cmp_addr(&block->b_host->h_addr, addr))
-+		if (!nlm_cmp_addr(nlm_addr_in(block->b_host), addr))
- 			continue;
- 		if (nfs_compare_fh(NFS_FH(fl_blocked->fl_file->f_path.dentry->d_inode) ,fh) != 0)
- 			continue;
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 008e402..8c7022e 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -116,7 +116,7 @@ static struct nlm_host *nlm_lookup_host(int server,
- 	 */
- 	chain = &nlm_hosts[hash];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
--		if (!nlm_cmp_addr(&host->h_addr, sin))
-+		if (!nlm_cmp_addr(nlm_addr_in(host), sin))
- 			continue;
- 
- 		/* See if we have an NSM handle for this client */
-@@ -165,8 +165,9 @@ static struct nlm_host *nlm_lookup_host(int server,
- 		goto out;
- 	}
- 	host->h_name	   = nsm->sm_name;
--	host->h_addr       = *sin;
--	nlm_clear_port((struct sockaddr *)&host->h_addr);
-+	memcpy(nlm_addr(host), sin, sizeof(*sin));
-+	host->h_addrlen = sizeof(*sin);
-+	nlm_clear_port(nlm_addr(host));
- 	host->h_saddr	   = *ssin;
- 	host->h_version    = version;
- 	host->h_proto      = proto;
-@@ -291,8 +292,8 @@ nlm_bind_host(struct nlm_host *host)
- 		};
- 		struct rpc_create_args args = {
- 			.protocol	= host->h_proto,
--			.address	= (struct sockaddr *)&host->h_addr,
--			.addrsize	= sizeof(host->h_addr),
-+			.address	= nlm_addr(host),
-+			.addrsize	= host->h_addrlen,
- 			.saddress	= (struct sockaddr *)&host->h_saddr,
- 			.timeout	= &timeparms,
- 			.servername	= host->h_name,
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 0691efb..41d7a8e 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -38,7 +38,8 @@
-  */
- struct nlm_host {
- 	struct hlist_node	h_hash;		/* doubly linked list */
--	struct sockaddr_in	h_addr;		/* peer address */
-+	struct sockaddr_storage	h_addr;		/* peer address */
-+	size_t			h_addrlen;
- 	struct sockaddr_in	h_saddr;	/* our address (optional) */
- 	struct rpc_clnt	*	h_rpcclnt;	/* RPC client to talk to peer */
- 	char *			h_name;		/* remote hostname */
-@@ -77,6 +78,19 @@ struct nsm_handle {
- };
- 
- /*
-+ * Rigorous type checking on sockaddr type conversions
-+ */
-+static inline struct sockaddr_in *nlm_addr_in(const struct nlm_host *host)
-+{
-+	return (struct sockaddr_in *)&host->h_addr;
-+}
-+
-+static inline struct sockaddr *nlm_addr(const struct nlm_host *host)
-+{
-+	return (struct sockaddr *)&host->h_addr;
-+}
-+
-+/*
-  * Map an fl_owner_t into a unique 32-bit "pid"
-  */
- struct nlm_lockowner {
 
+ fs/lockd/clntlock.c         |    3 +
+ fs/lockd/host.c             |  115 ++++++++++++++++++++++++++++---------------
+ fs/lockd/mon.c              |    2 -
+ fs/lockd/svcsubs.c          |    2 -
+ include/linux/lockd/lockd.h |   79 +++++++++++++++++++++++++++---
+ 5 files changed, 149 insertions(+), 52 deletions(-)
+
+-- 
+Chuck Lever
