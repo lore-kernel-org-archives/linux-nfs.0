@@ -1,101 +1,57 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/16] nfs-utils: Clean up support/nfs/rpcmisc.c:closedown()
-Date: Thu, 04 Sep 2008 12:56:53 -0400
-Message-ID: <20080904165653.1471.56941.stgit@manray.1015granger.net>
+Subject: [PATCH 10/16] nfs-utils: remove disabled code from
+	support/nfs/rpcmisc.c
+Date: Thu, 04 Sep 2008 12:56:48 -0400
+Message-ID: <20080904165647.1471.11212.stgit@manray.1015granger.net>
 References: <20080904165122.1471.24485.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:48023 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:47978 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752997AbYIDQ5V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:21 -0400
+	with ESMTP id S1752755AbYIDQ5P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:15 -0400
 In-Reply-To: <20080904165122.1471.24485.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: update closedown()'s synopsis to modern C style, and move the
-function so we can remove the forward declaration.
+After some recent discussions, we want to rely on the kernel's network
+layer to autotune socket buffers.  Since this code is already disabled in
+support/nfs/rpcmisc.c (and has been for some time), let's just remove it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/nfs/rpcmisc.c |   48 +++++++++++++++++++++++++-----------------------
- 1 files changed, 25 insertions(+), 23 deletions(-)
+ support/nfs/rpcmisc.c |   16 ----------------
+ 1 files changed, 0 insertions(+), 16 deletions(-)
 
 diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
-index 40c2102..ad53a43 100644
+index bd1a2db..40c2102 100644
 --- a/support/nfs/rpcmisc.c
 +++ b/support/nfs/rpcmisc.c
-@@ -38,7 +38,6 @@
- #define socklen_t int
- #endif
+@@ -192,22 +192,6 @@ int makesock(int port, int proto)
+ 			xlog(L_ERROR, "setsockopt failed: %s\n",
+ 			     strerror(errno));
  
--static void	closedown(int sig);
- int	makesock(int port, int proto);
- 
- #define _RPCSVC_CLOSEDOWN	120
-@@ -46,6 +45,31 @@ int	_rpcpmstart = 0;
- int	_rpcfdtype = 0;
- int	_rpcsvcdirty = 0;
- 
-+static void
-+closedown(int sig)
-+{
-+	(void) signal(sig, closedown);
-+
-+	if (_rpcsvcdirty == 0) {
-+		static int size;
-+		int i, openfd;
-+
-+		if (_rpcfdtype == SOCK_DGRAM)
-+			exit(0);
-+
-+		if (size == 0)
-+			size = getdtablesize();
-+
-+		for (i = 0, openfd = 0; i < size && openfd < 2; i++)
-+			if (FD_ISSET(i, &svc_fdset))
-+				openfd++;
-+		if (openfd <= 1)
-+			exit(0);
-+	}
-+
-+	(void) alarm(_RPCSVC_CLOSEDOWN);
-+}
-+
- void
- rpc_init(char *name, int prog, int vers,
- 	 void (*dispatch)(struct svc_req *, register SVCXPRT *),
-@@ -144,28 +168,6 @@ rpc_init(char *name, int prog, int vers,
- 	}
- }
- 
--static void closedown(sig)
--int sig;
--{
--	(void) signal(sig, closedown);
--	if (_rpcsvcdirty == 0) {
--		static int size;
--		int i, openfd;
+-#if 0
+-	/* I was told it didn't work with gigabit ethernet.
+-	   Don't bothet with it.  H.J. */
+-#ifdef SO_SNDBUF
+-	{
+-		int sblen, rblen;
 -
--		if (_rpcfdtype == SOCK_DGRAM)
--			exit(0);
--		if (size == 0) {
--			size = getdtablesize();
--		}
--		for (i = 0, openfd = 0; i < size && openfd < 2; i++)
--			if (FD_ISSET(i, &svc_fdset))
--				openfd++;
--		if (openfd <= 1)
--			exit(0);
+-		/* 1024 for rpc & transport overheads */
+-		sblen = rblen = socksz + 1024;
+-		if (setsockopt(s, SOL_SOCKET, SO_SNDBUF, &sblen, sizeof sblen) < 0 ||
+-		    setsockopt(s, SOL_SOCKET, SO_RCVBUF, &rblen, sizeof rblen) < 0)
+-			xlog(L_ERROR, "setsockopt failed: %s\n", strerror(errno));
 -	}
--	(void) alarm(_RPCSVC_CLOSEDOWN);
--}
+-#endif				/* SO_SNDBUF */
+-#endif
 -
- int makesock(int port, int proto)
- {
- 	struct sockaddr_in sin;
+ 	if (bind(s, (struct sockaddr *) &sin, sizeof(sin)) == -1) {
+ 		xlog(L_FATAL, "Could not bind name to socket: %s\n",
+ 					strerror(errno));
 
