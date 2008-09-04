@@ -1,101 +1,108 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/16] showmount command: clean up error returns from
-	connect_nb()
-Date: Thu, 04 Sep 2008 12:56:14 -0400
-Message-ID: <20080904165613.1471.53094.stgit@manray.1015granger.net>
+Subject: [PATCH 08/16] nfs-utils: remove unused function rpc_logcall()
+Date: Thu, 04 Sep 2008 12:56:36 -0400
+Message-ID: <20080904165636.1471.27310.stgit@manray.1015granger.net>
 References: <20080904165122.1471.24485.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:47876 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:47999 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751896AbYIDQ5J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:09 -0400
+	with ESMTP id S1752735AbYIDQ5T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:19 -0400
 In-Reply-To: <20080904165122.1471.24485.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up connect_nb() in the showmount command.
-
-Sometimes it returns -1 on error, and sometimes a negative errno.  On error,
-it should always return one of these or the other, not both.
-
-Similar functions in other parts of nfs-utils return -1 on error, and set
-errno; so let's do that here too.
+Clean up: Eliminate rpc_logcall(), which has no callers.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/showmount/showmount.c |   22 ++++++++++++----------
- 1 files changed, 12 insertions(+), 10 deletions(-)
+ support/include/rpcmisc.h |    1 -
+ support/nfs/rpcmisc.c     |   60 ---------------------------------------------
+ 2 files changed, 0 insertions(+), 61 deletions(-)
 
-diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
-index b6cea92..eafcf4c 100644
---- a/utils/showmount/showmount.c
-+++ b/utils/showmount/showmount.c
-@@ -83,7 +83,8 @@ static void usage(FILE *fp, int n)
-  *  tout contains the timeout.  It will be modified to contain the time
-  *  remaining (i.e. time provided - time elasped).
-  *
-- *  Returns 0 for success 
-+ *  Returns zero on success; otherwise, -1 is returned and errno is set
-+ *  to reflect the nature of the error.
-  */
- static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
- {
-@@ -107,7 +108,7 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
- 	len = sizeof(struct sockaddr);
- 	ret = connect(fd, (struct sockaddr *)addr, len);
- 	if (ret < 0 && errno != EINPROGRESS) {
--		ret = -errno;
-+		ret = -1;
- 		goto done;
+diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
+index a2b2b5a..665df8e 100644
+--- a/support/include/rpcmisc.h
++++ b/support/include/rpcmisc.h
+@@ -50,7 +50,6 @@ void		rpc_svcrun(void);
+ void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
+ 				struct rpc_dtable *dtable, int nvers,
+ 				void *argp, void *resp);
+-void		rpc_logcall(struct svc_req *, char *xname, char *args);
+ 
+ extern int	_rpcpmstart;
+ extern int	_rpcfdtype;
+diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
+index fcc6433..bd1a2db 100644
+--- a/support/nfs/rpcmisc.c
++++ b/support/nfs/rpcmisc.c
+@@ -215,63 +215,3 @@ int makesock(int port, int proto)
  	}
- 
-@@ -121,9 +122,8 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
- 	ret = select(fd + 1, NULL, &rset, NULL, tout);
- 	if (ret <= 0) {
- 		if (ret == 0)
--			ret = -ETIMEDOUT;
--		else
--			ret = -errno;
-+			errno = ETIMEDOUT;
-+		ret = -1;
- 		goto done;
- 	}
- 
-@@ -133,13 +133,15 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
- 		len = sizeof(ret);
- 		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
- 		if (status < 0) {
--			ret = -errno;
-+			ret = -1;
- 			goto done;
- 		}
- 
- 		/* Oops - something wrong with connect */
--		if (ret)
--			ret = -ret;
-+		if (ret != 0) {
-+			errno = ret;
-+			ret = -1;
-+		}
- 	}
- 
- done:
-@@ -179,10 +181,10 @@ static unsigned short getport(struct sockaddr_in *addr,
- 		tout.tv_sec = TIMEOUT_TCP;
- 
- 		ret = connect_nb(sock, &saddr, &tout);
--		if (ret < 0) {
--			close(sock);
-+		if (ret != 0) {
- 			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
- 			rpc_createerr.cf_error.re_errno = errno;
-+			close(sock);
- 			return 0;
- 		}
- 		client = clnttcp_create(&saddr,
+ 	return (s);
+ }
+-
+-
+-/* Log an incoming call. */
+-void
+-rpc_logcall(struct svc_req *rqstp, char *xname, char *arg)
+-{
+-	char		buff[1024];
+-	int		buflen=sizeof(buff);
+-	int		len;
+-	char		*sp;
+-	int		i;
+-
+-	if (!xlog_enabled(D_CALL))
+-		return;
+-
+-	sp = buff;
+-	switch (rqstp->rq_cred.oa_flavor) {
+-	case AUTH_NULL:
+-		sprintf(sp, "NULL");
+-		break;
+-	case AUTH_UNIX: {
+-		struct authunix_parms *unix_cred;
+-		time_t time;
+-		struct tm *tm;
+-
+-		unix_cred = (struct authunix_parms *) rqstp->rq_clntcred;
+-		time = unix_cred->aup_time;
+-		tm = localtime(&time);
+-		snprintf(sp, buflen, "UNIX %d/%d/%d %02d:%02d:%02d %s %d.%d",
+-			tm->tm_year, tm->tm_mon + 1, tm->tm_mday,
+-			tm->tm_hour, tm->tm_min, tm->tm_sec,
+-			unix_cred->aup_machname,
+-			unix_cred->aup_uid,
+-			unix_cred->aup_gid);
+-		sp[buflen-1] = 0;
+-		len = strlen(sp);
+-		sp += buflen;
+-		buflen -= len;
+-		if ((int) unix_cred->aup_len > 0) {
+-			snprintf(sp, buflen, "+%d", unix_cred->aup_gids[0]);
+-			sp[buflen-1] = 0;
+-			len = strlen(sp);
+-			sp += buflen;
+-			buflen -= len;
+-			for (i = 1; i < unix_cred->aup_len; i++) {
+-				snprintf(sp, buflen, ",%d", 
+-					unix_cred->aup_gids[i]);
+-				sp[buflen-1] = 0;
+-				len = strlen(sp);
+-				sp += buflen;
+-				buflen -= len;
+-			}
+-		}
+-		}
+-		break;
+-	default:
+-		sprintf(sp, "CRED %d", rqstp->rq_cred.oa_flavor);
+-	}
+-	xlog(D_CALL, "%s [%s]\n\t%s\n", xname, buff, arg);
+-}
 
