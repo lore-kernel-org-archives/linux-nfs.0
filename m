@@ -1,84 +1,71 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/16] rpc.statd: Clean up: replace "if (!(foo = rtnl))".
-Date: Thu, 04 Sep 2008 12:57:16 -0400
-Message-ID: <20080904165716.1471.64706.stgit@manray.1015granger.net>
+Subject: [PATCH 14/16] nfs-utils: whitespace clean ups in support/nfs/rpcmisc.c
+Date: Thu, 04 Sep 2008 12:57:11 -0400
+Message-ID: <20080904165710.1471.34227.stgit@manray.1015granger.net>
 References: <20080904165122.1471.24485.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:56196 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:56267 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753064AbYIDQ7Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:59:16 -0400
+	with ESMTP id S1752144AbYIDQ7Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:59:24 -0400
 In-Reply-To: <20080904165122.1471.24485.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static code checkers flag this kind of thing because it's easy to
-confuse with "if (!(foo == rtnl))".  In one of these cases, the
-combination of evaluation and assignment isn't even necessary.
-
-While we are in the neighborhood, remove an extra argument to note() that is
-not called for in the passed-in format string.
+Clean up: fix a few spurious white space issues in support/nfs/rpcmisc.c.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/callback.c |    6 ++----
- utils/statd/monitor.c  |    6 ++++--
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ support/nfs/rpcmisc.c |   13 ++++++-------
+ 1 files changed, 6 insertions(+), 7 deletions(-)
 
-diff --git a/utils/statd/callback.c b/utils/statd/callback.c
-index d5d036e..505fdb3 100644
---- a/utils/statd/callback.c
-+++ b/utils/statd/callback.c
-@@ -36,11 +36,9 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
- 				argp->mon_name, argp->state);
+diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
+index 09bbbb7..9b95e69 100644
+--- a/support/nfs/rpcmisc.c
++++ b/support/nfs/rpcmisc.c
+@@ -1,9 +1,8 @@
+ /*
+- * support/nfs/rpcmisc.c
++ * Miscellaneous functions for RPC service startup and shutdown.
+  *
+- * Miscellaneous functions for RPC startup and shutdown.
+  * This code is partially snarfed from rpcgen -s tcp -s udp,
+- * partly written by Mark Shand, Donald Becker, and Rick 
++ * partly written by Mark Shand, Donald Becker, and Rick
+  * Sladkey. It was tweaked slightly by Olaf Kirch to be
+  * usable by both unfsd and mountd.
+  *
+@@ -122,7 +121,7 @@ rpc_init(char *name, int prog, int vers,
+ 	sock = 0;
+ 	if (getsockname(0, (struct sockaddr *) &saddr, &asize) == 0
+ 	    && saddr.sin_family == AF_INET) {
+-		socklen_t ssize = sizeof (int);
++		socklen_t ssize = sizeof(int);
+ 		int fdtype = 0;
+ 		if (getsockopt(0, SOL_SOCKET, SO_TYPE,
+ 				(char *)&fdtype, &ssize) == -1)
+@@ -142,7 +141,7 @@ rpc_init(char *name, int prog, int vers,
  
- 	/* quick check - don't bother if we're not monitoring anyone */
--	/* LH - this was != MULL, meaning that if anyone _was_ in our RTNL,
--	 * we'd never pass this point. */
--	if (!(lp = rtnl)) {
-+	if (rtnl == NULL) {
- 		note(N_WARNING, "SM_NOTIFY from %s while not monitoring any hosts.",
--				argp->mon_name, argp->state);
-+				argp->mon_name);
- 		return ((void *) &result);
+ 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
+ 		static SVCXPRT *last_transp = NULL;
+- 
++
+ 		if (_rpcpmstart == 0) {
+ 			if (last_transp
+ 			    && (!defport || defport == last_transp->xp_port)) {
+@@ -197,7 +196,7 @@ rpc_init(char *name, int prog, int vers,
  	}
  
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index d300338..a6a1d9c 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -326,12 +326,13 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
- 
- 
- 	/* Check if we're monitoring anyone. */
--	if (!(clnt = rtnl)) {
-+	if (rtnl == NULL) {
- 		note(N_WARNING,
- 			"Received SM_UNMON request from %s for %s while not "
- 			"monitoring any hosts.", my_name, argp->mon_name);
- 		return (&result);
+ 	if (_rpcpmstart) {
+-		signal (SIGALRM, closedown);
+-		alarm (_RPCSVC_CLOSEDOWN);
++		signal(SIGALRM, closedown);
++		alarm(_RPCSVC_CLOSEDOWN);
  	}
-+	clnt = rtnl;
- 
- 	/*
- 	 * OK, we are.  Now look for appropriate entry in run-time list.
-@@ -379,11 +380,12 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
- 
- 	result.state = MY_STATE;
- 
--	if (!(clnt = rtnl)) {
-+	if (rtnl == NULL) {
- 		note(N_WARNING, "Received SM_UNMON_ALL request from %s "
- 			"while not monitoring any hosts", my_name);
- 		return (&result);
- 	}
-+	clnt = rtnl;
- 
- 	while ((clnt = nlist_gethost(clnt, my_name, 1))) {
- 		if (NL_MY_PROC(clnt) == argp->my_proc &&
+ }
 
