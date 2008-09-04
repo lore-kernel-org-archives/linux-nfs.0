@@ -1,48 +1,84 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/16] sm-notify command: getaddrinfo(3) addrinfo leak
-Date: Thu, 04 Sep 2008 12:56:25 -0400
-Message-ID: <20080904165625.1471.31815.stgit@manray.1015granger.net>
+Subject: [PATCH 15/16] rpc.statd: Clean up: replace "if (!(foo = rtnl))".
+Date: Thu, 04 Sep 2008 12:57:16 -0400
+Message-ID: <20080904165716.1471.64706.stgit@manray.1015granger.net>
 References: <20080904165122.1471.24485.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:48007 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752958AbYIDQ5U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:20 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:56196 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753064AbYIDQ7Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:59:16 -0400
 In-Reply-To: <20080904165122.1471.24485.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make sure the results of getaddrinfo(3) are properly freed in notify().
+Static code checkers flag this kind of thing because it's easy to
+confuse with "if (!(foo == rtnl))".  In one of these cases, the
+combination of evaluation and assignment isn't even necessary.
 
-Note this is a one-time addrinfo allocation that would be automatically
-freed when sm-notify exits anyway, so this is more of a nit than a real
-bug fix.
+While we are in the neighborhood, remove an extra argument to note() that is
+not called for in the passed-in format string.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+ utils/statd/callback.c |    6 ++----
+ utils/statd/monitor.c  |    6 ++++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 5a02394..b69f4cc 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -241,8 +241,11 @@ notify(void)
- 				opt_srcaddr);
- 			exit(1);
- 		}
--		memcpy(&local_addr, ai->ai_addr, ai->ai_addrlen);
-+
- 		/* We know it's IPv4 at this point */
-+		memcpy(&local_addr, ai->ai_addr, ai->ai_addrlen);
-+
-+		freeaddrinfo(ai);
+diff --git a/utils/statd/callback.c b/utils/statd/callback.c
+index d5d036e..505fdb3 100644
+--- a/utils/statd/callback.c
++++ b/utils/statd/callback.c
+@@ -36,11 +36,9 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
+ 				argp->mon_name, argp->state);
+ 
+ 	/* quick check - don't bother if we're not monitoring anyone */
+-	/* LH - this was != MULL, meaning that if anyone _was_ in our RTNL,
+-	 * we'd never pass this point. */
+-	if (!(lp = rtnl)) {
++	if (rtnl == NULL) {
+ 		note(N_WARNING, "SM_NOTIFY from %s while not monitoring any hosts.",
+-				argp->mon_name, argp->state);
++				argp->mon_name);
+ 		return ((void *) &result);
  	}
  
- 	/* Use source port if provided on the command line,
+diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
+index d300338..a6a1d9c 100644
+--- a/utils/statd/monitor.c
++++ b/utils/statd/monitor.c
+@@ -326,12 +326,13 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
+ 
+ 
+ 	/* Check if we're monitoring anyone. */
+-	if (!(clnt = rtnl)) {
++	if (rtnl == NULL) {
+ 		note(N_WARNING,
+ 			"Received SM_UNMON request from %s for %s while not "
+ 			"monitoring any hosts.", my_name, argp->mon_name);
+ 		return (&result);
+ 	}
++	clnt = rtnl;
+ 
+ 	/*
+ 	 * OK, we are.  Now look for appropriate entry in run-time list.
+@@ -379,11 +380,12 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
+ 
+ 	result.state = MY_STATE;
+ 
+-	if (!(clnt = rtnl)) {
++	if (rtnl == NULL) {
+ 		note(N_WARNING, "Received SM_UNMON_ALL request from %s "
+ 			"while not monitoring any hosts", my_name);
+ 		return (&result);
+ 	}
++	clnt = rtnl;
+ 
+ 	while ((clnt = nlist_gethost(clnt, my_name, 1))) {
+ 		if (NL_MY_PROC(clnt) == argp->my_proc &&
 
