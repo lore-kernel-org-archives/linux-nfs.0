@@ -1,52 +1,100 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/16] sm-notify command: include <config.h>
-Date: Thu, 04 Sep 2008 12:56:19 -0400
-Message-ID: <20080904165619.1471.69831.stgit@manray.1015granger.net>
+Subject: [PATCH 09/16] nfs-utils: Remove unused function rpc_svcrun()
+Date: Thu, 04 Sep 2008 12:56:42 -0400
+Message-ID: <20080904165642.1471.1021.stgit@manray.1015granger.net>
 References: <20080904165122.1471.24485.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:47961 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:48002 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752707AbYIDQ5N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:13 -0400
+	with ESMTP id S1752877AbYIDQ5T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:57:19 -0400
 In-Reply-To: <20080904165122.1471.24485.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Include config.h as other source files do; instead of using
-"config.h" use the HAVE_CONFIG_H macro and include <config.h>.
+Clean up: remove function that has been disabled (via #if 0) for almost a
+decade.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/sm-notify.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ support/include/rpcmisc.h |    1 -
+ support/nfs/rpcdispatch.c |   51 ---------------------------------------------
+ 2 files changed, 0 insertions(+), 52 deletions(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index b75f11b..5a02394 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -4,6 +4,10 @@
-  * Copyright (C) 2004-2006 Olaf Kirch <okir@suse.de>
-  */
- 
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
- #include <sys/types.h>
- #include <sys/socket.h>
- #include <sys/stat.h>
-@@ -24,8 +28,6 @@
- #include <errno.h>
- #include <grp.h>
- 
--#include "config.h"
+diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
+index 665df8e..35c5011 100644
+--- a/support/include/rpcmisc.h
++++ b/support/include/rpcmisc.h
+@@ -46,7 +46,6 @@ int		makesock(int port, int proto);
+ void		rpc_init(char *name, int prog, int vers,
+ 				void (*dispatch)(struct svc_req *, SVCXPRT *),
+ 				int defport);
+-void		rpc_svcrun(void);
+ void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
+ 				struct rpc_dtable *dtable, int nvers,
+ 				void *argp, void *resp);
+diff --git a/support/nfs/rpcdispatch.c b/support/nfs/rpcdispatch.c
+index 3d34774..502fc5f 100644
+--- a/support/nfs/rpcdispatch.c
++++ b/support/nfs/rpcdispatch.c
+@@ -61,54 +61,3 @@ rpc_dispatch(struct svc_req *rqstp, SVCXPRT *transp,
+ 		exit (2);
+ 	}
+ }
 -
- #ifndef BASEDIR
- # ifdef NFS_STATEDIR
- #  define BASEDIR		NFS_STATEDIR
+-#if 0
+-/*
+- * This is our replacement for svc_run. It turns off some signals while
+- * executing the server procedures to avoid nasty race conditions.
+- */
+-void
+-rpc_svcrun(fd_set *morefds, void (*func)(int fd))
+-{
+-	sigset_t	block, current;
+-	fd_set		readfds;
+-
+-	for (;;) {
+-		readfds = svc_fdset;
+-		if (morefds) {
+-			int	i;
+-
+-			/* most efficient */
+-			for (i = 0; i < FD_SETSIZE; i++)
+-				if (FD_ISSET(i, morefds))
+-					FD_SET(i, &readfs);
+-		}
+-		switch (select(FD_SETSIZE, &readfds, NULL, NULL, NULL)) {
+-		case -1:
+-			if (errno == EINTR)
+-				continue;
+-			xlog(L_ERROR, "svc_run: - select failed");
+-			break;
+-		case 0:
+-			continue;
+-		default:
+-			if (morefds) {
+-				int	i;
+-
+-				/* most efficient */
+-				for (i = 0; i < FD_SETSIZE; i++)
+-					if (FD_ISSET(i, morefds) &&
+-					    FD_ISSET(i, &readfds))
+-						func(i);
+-			}
+-			sigemptyset(&block);
+-			sigaddset(&block, SIGALRM);
+-			sigaddset(&block, SIGVTALRM);
+-			sigaddset(&block, SIGIO);
+-			sigprocmask(SIG_BLOCK, &block, &current);
+-			svc_getreqset(&readfds);
+-			sigprocmask(SIG_SETMASK, &current, NULL);
+-		}
+-	}
+-}
+-#endif
 
