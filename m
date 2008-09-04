@@ -1,42 +1,75 @@
-From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
-Subject: Re: XPRTRDMA max payload?
-Date: Thu, 4 Sep 2008 12:00:10 -0400
-Message-ID: <AB7BC5FB-EC6C-464C-9540-F609B27BF005@myri.com>
-References: <B520CA74-F8C7-4D93-BC99-0B784F31C1D9@myri.com> <loom.20080904T152400-181@post.gmane.org>
-Mime-Version: 1.0 (Apple Message framework v926)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Jim Schutt <jaschut@sandia.gov>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] nfsd/nfs4acl: Number of used used array elements needs
+ to be zeroed.
+Date: Thu, 04 Sep 2008 19:40:48 +0300
+Message-ID: <48C00F90.40907@panasas.com>
+References: <20080904165518.15a02908@psychotron.englab.brq.redhat.com> <20080904150101.GB4536@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jiri Pirko <jpirko@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, neilb@suse.de
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailbox2.myri.com ([64.172.73.26]:1847 "EHLO myri.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752770AbYIDQAO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2008 12:00:14 -0400
-In-Reply-To: <loom.20080904T152400-181-eS7Uydv5nfjZ+VzJOa5vwg@public.gmane.org>
+Received: from gw-colo-pa.panasas.com ([66.238.117.130]:27770 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750822AbYIDQl2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:41:28 -0400
+In-Reply-To: <20080904150101.GB4536@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 4, 2008, at 11:39 AM, Jim Schutt wrote:
+On Sep. 04, 2008, 18:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Thu, Sep 04, 2008 at 04:55:18PM +0200, Jiri Pirko wrote:
+>> Number of used used array elements needs to be zeroed. It may cause
+>> problems otherwise, because it's used uninitialized in find_uid().
+>>
+>> Signed-off-by: Jiri Pirko <jpirko@redhat.com>
+>> ---
+>>  fs/nfsd/nfs4acl.c |    2 ++
+>>  1 files changed, 2 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+>> index 54b8b41..7dcd90f 100644
+>> --- a/fs/nfsd/nfs4acl.c
+>> +++ b/fs/nfsd/nfs4acl.c
+>> @@ -447,11 +447,13 @@ init_state(struct posix_acl_state *state, int cnt)
+>>  	state->users = kzalloc(alloc, GFP_KERNEL);
+>>  	if (!state->users)
+>>  		return -ENOMEM;
+>> +	state->users->n = 0;
+>>  	state->groups = kzalloc(alloc, GFP_KERNEL);
+>>  	if (!state->groups) {
+>>  		kfree(state->users);
+>>  		return -ENOMEM;
+>>  	}
+>> +	state->groups->n = 0;
+>>  	return 0;
+>>  }
+> 
+> Thanks for the extra eyes on this code, but: surely the kzalloc()'s are
+> all that's necessary?  Am I missing something?
 
-> That's the only way I was able to find to do it.
->
-> You'll want this patch also:
-> http://marc.info/?l=linux-nfs&m=121936891515202&w=2
->
-> There are some things on the stack dimensioned by
-> RPCRDMA_MAX_DATA_SEGS.  I've not encountered any
-> problems using 16 for RPCRDMA_MAX_DATA_SEGS,
-> but I've not tried anything bigger.
->
-> -- Jim
+quickly browsing over the code, shouldn't it be:
 
-Hi Jim,
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index b6ed383..54b8b41 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -443,7 +443,7 @@ init_state(struct posix_acl_state *state, int cnt)
+ 	 * enough space for either:
+ 	 */
+ 	alloc = sizeof(struct posix_ace_state_array)
+-		+ cnt*sizeof(struct posix_ace_state);
++		+ cnt*sizeof(struct posix_user_ace_state);
+ 	state->users = kzalloc(alloc, GFP_KERNEL);
+ 	if (!state->users)
+ 		return -ENOMEM;
 
-Thanks for the patch and the confirmation.
+Benny
 
-I would like to support 256 pages if possible, but I have other items  
-that need fixing before worrying about performance. :-)
-
-Scott
-
-
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
