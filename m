@@ -1,28 +1,39 @@
-From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
-Subject: Re: XPRTRDMA max payload?
-Date: Thu, 4 Sep 2008 11:03:33 -0400
-Message-ID: <FBD49F54-F63F-4385-8B7C-B1D48AA4C2E0@myri.com>
-References: <B520CA74-F8C7-4D93-BC99-0B784F31C1D9@myri.com>
-Mime-Version: 1.0 (Apple Message framework v926)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-To: linux-nfs@vger.kernel.org
+From: "Chuck Lever" <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/2] rpc.statd: eliminate --secure_statd
+Date: Thu, 4 Sep 2008 11:05:46 -0400
+Message-ID: <76bd70e30809040805o141c52f5rc9e8b518f4dd7066@mail.gmail.com>
+References: <20080902215132.31328.44934.stgit@manray.1015granger.net>
+	 <20080902215354.31328.21471.stgit@manray.1015granger.net>
+	 <18623.31606.828680.632520@notabene.brown>
+Reply-To: chucklever@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: steved@redhat.com, okir@suse.de, linux-nfs@vger.kernel.org
+To: "Neil Brown" <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailbox2.myri.com ([64.172.73.26]:1854 "EHLO myri.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752854AbYIDPDe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2008 11:03:34 -0400
-Received: from scott-wlan.sw.myri.com (scott-wlan.sw.myri.com [172.31.162.6])
-	by myri.com (8.13.7+Sun/8.13.7) with ESMTP id m84F3XBW021594
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Sep 2008 08:03:33 -0700 (PDT)
-In-Reply-To: <B520CA74-F8C7-4D93-BC99-0B784F31C1D9-vV262kQ/Wyo@public.gmane.org>
+Received: from an-out-0708.google.com ([209.85.132.249]:54349 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752594AbYIDPFr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 11:05:47 -0400
+Received: by an-out-0708.google.com with SMTP id d40so604282and.103
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2008 08:05:46 -0700 (PDT)
+In-Reply-To: <18623.31606.828680.632520-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 4, 2008, at 11:00 AM, Scott Atchley wrote:
+On Thu, Sep 4, 2008 at 2:08 AM, Neil Brown <neilb@suse.de> wrote:
+> On Tuesday September 2, chuck.lever@oracle.com wrote:
+>> -     /* Restrict access to statd.
+>> -      * In the light of CERT CA-99.05, we tighten access to
+>> -      * statd.                       --okir
+>> -      */
+>
+> This is my only concern.  You've removed the reference to CERT
+> CA-99.05.
+> Maybe put it back in the new "caller_is_localhost" function??
 
-> It seems to be set on the client to 23 KB (RPCRDMA_MAX_DATA_SEGS *  
-> PAGE_SIZE).
+Sure.  A signpost for those future developers who might consider
+removing this function.
 
-s/23/32/
-
-:-P
+--
+Chuck Lever
