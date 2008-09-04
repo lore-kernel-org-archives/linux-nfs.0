@@ -1,118 +1,66 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: fix nfs_parse_ip_address() corner case
-Date: Wed, 03 Sep 2008 16:35:57 -0400
-Message-ID: <20080903203414.3322.97607.stgit@tarkus.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: RESTRICTED_STATD
+Date: Thu, 4 Sep 2008 16:03:16 +1000
+Message-ID: <18623.31268.970805.5694@notabene.brown>
+References: <6972A199-D332-4E74-9D47-70EC2CA381FE@oracle.com>
+	<48B5332B.2040800@RedHat.com>
+	<76bd70e30808270714p4342c8c3k8d1b98763cc95aef@mail.gmail.com>
+	<EB4BA6CC-B023-49DC-9FE6-BD478DA5CB9F@oracle.com>
+	<3400963b9465552abb83ecefede125bc.squirrel@neil.brown.name>
+	<EB1B1F05-65DA-4A18-80F6-13DE4FCB387C@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <steved@redhat.com>, Olaf Kirch <okir@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:55262 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752286AbYICUgb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2008 16:36:31 -0400
+Received: from ns2.suse.de ([195.135.220.15]:53908 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751100AbYIDGD1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Sep 2008 02:03:27 -0400
+In-Reply-To: message from Chuck Lever on Tuesday September 2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce observed that nfs_parse_ip_address() will successfully parse an
-IPv6 address that looks like this:
+On Tuesday September 2, chuck.lever@oracle.com wrote:
+> > Only NOTIFY can come from other hosts (to tell us they rebooted).
+> 
+> Right.  sm_notify_1_svc() grabs the callers IP address with
+> 
+>     svc_getcaller(rqstp->rq_xprt)->sin_addr
+> 
+> It converts this to a string and checks this against lp->dns_name, in  
+> addition to checking the mon_name that was originally registered to be  
+> monitored.  Shouldn't statd check only mon_name against dns_name?  Why  
+> does it check both?
 
-  "::1%"
+If it was to only check one, it would probably to check ip_addr
+against dns_name.
 
-A scope delimiter is present, but there is no scope ID following it.
-This is harmless, as it would simply set the scope ID to zero.  However,
-in some cases we would like to flag this as an improperly formed
-address.
+The IP address of that the SM_NOTIFY came from is the most reliable
+thing we have to identify which host just rebooted.  We use that to
+find a 'dns_name' when we first MONitor a host, and use that name for
+the file stored in /var/lib/nfs/sm.  We then match the source of
+SM_NOTIFY against those file names.
 
-We are now also careful to reject addresses where garbage follows the
-address (up to the length of the string), instead of ignoring the
-non-address characters; and where the scope ID is nonsense (not a valid
-device name, but also not numeric).  Before, both of these cases would
-result in a harmless zero scope ID.
-    
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+So I think this part of the code really does need to be IPv6-aware.
+Certainly matchhostname does.
 
-This has seen some local testing.  I'm not sure it gets every corner case
-right, as the mount.nfs4 command passes the server name/address through DNS,
-so it already doesn't allow patently bogus addresses like the above example.
+> > However we don't really want any user to be able to request a callback
+> > to any random service....
+> > I wonder if anyone uses for statd for anything but lockd, and how
+> > could we know?
+> 
+> I think the real question is whether we should continue to support  
+> this "off-label" use.  It adds complexity and security problems, and  
+> the code paths that support this aren't ever tested these days, I'm  
+> willing to bet.
 
-But I thought I would post this for comments.
+How about we subtly break it, and then we nobody complains for 12
+months, remove it as it was broken anyway :-)
 
- fs/nfs/super.c |   37 ++++++++++++++++++++++++-------------
- 1 files changed, 24 insertions(+), 13 deletions(-)
+I'm think I'm happy with removing any support for non-lockd uses for
+statd.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 5b2aa04..92de5e2 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -727,19 +727,22 @@ static void nfs_parse_ipv4_address(char *string, size_t str_len,
- #define IPV6_SCOPE_DELIMITER	'%'
- 
- #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
--static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
--				    const char *delim,
--				    struct sockaddr_in6 *sin6)
-+static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
-+				   const char *delim,
-+				   struct sockaddr_in6 *sin6)
- {
-+	size_t len = (string + str_len) - delim - 1;
- 	char *p;
--	size_t len;
- 
--	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
--		return ;
-+	if (len == 0)
-+		return 1;
-+
- 	if (*delim != IPV6_SCOPE_DELIMITER)
--		return;
-+		return 0;
-+
-+	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
-+		return 0;
- 
--	len = (string + str_len) - delim - 1;
- 	p = kstrndup(delim + 1, len, GFP_KERNEL);
- 	if (p) {
- 		unsigned long scope_id = 0;
-@@ -750,14 +753,20 @@ static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
- 			scope_id = dev->ifindex;
- 			dev_put(dev);
- 		} else {
--			/* scope_id is set to zero on error */
--			strict_strtoul(p, 10, &scope_id);
-+			if (strict_strtoul(p, 10, &scope_id) == 0) {
-+				kfree(p);
-+				return 0;
-+			}
- 		}
- 
- 		kfree(p);
-+
- 		sin6->sin6_scope_id = scope_id;
- 		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
-+		return 1;
- 	}
-+
-+	return 0;
- }
- 
- static void nfs_parse_ipv6_address(char *string, size_t str_len,
-@@ -773,9 +782,11 @@ static void nfs_parse_ipv6_address(char *string, size_t str_len,
- 
- 		sin6->sin6_family = AF_INET6;
- 		*addr_len = sizeof(*sin6);
--		if (in6_pton(string, str_len, addr, IPV6_SCOPE_DELIMITER, &delim)) {
--			nfs_parse_ipv6_scope_id(string, str_len, delim, sin6);
--			return;
-+		if (in6_pton(string, str_len, addr,
-+					IPV6_SCOPE_DELIMITER, &delim) != 0) {
-+			if (nfs_parse_ipv6_scope_id(string, str_len,
-+							delim, sin6) != 0)
-+				return;
- 		}
- 	}
- 
+NeilBrown
 
