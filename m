@@ -1,76 +1,92 @@
-From: =?ISO-8859-1?Q?Fran=E7ois_Valenduc?= <francois.valenduc@skynet.be>
-Subject: Re: nfs and kerberos authentification problem.
-Date: Thu, 04 Sep 2008 18:45:03 +0200
-Message-ID: <48C0108F.40204@skynet.be>
-References: <48BED539.1000404@skynet.be> <4d569c330809031312p3515f4d8id9cbec94d871e058@mail.gmail.com>
+From: "david m. richter" <richterd@citi.umich.edu>
+Subject: Re: [PATCH] nfsd/nfs4acl: Number of used used array elements needs
+ to be zeroed.
+Date: Thu, 4 Sep 2008 12:47:26 -0400 (EDT)
+Message-ID: <Pine.BSO.4.64.0809041245240.30827@citi.umich.edu>
+References: <20080904165518.15a02908@psychotron.englab.brq.redhat.com>
+ <20080904150101.GB4536@fieldses.org> <48C00F90.40907@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@umich.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Jiri Pirko <jpirko@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, neilb@suse.de
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agave.telenet-ops.be ([195.130.137.77]:38693 "EHLO
-	agave.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752433AbYIDQpH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2008 12:45:07 -0400
-In-Reply-To: <4d569c330809031312p3515f4d8id9cbec94d871e058-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from citi.umich.edu ([141.211.133.111]:34067 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754369AbYIDQr1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Sep 2008 12:47:27 -0400
+In-Reply-To: <48C00F90.40907@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Kevin Coffman a =E9crit :
-> Hello Fran=E7ois,
-> First, you should not need to limit the encryption types in
-> /etc/krb5.conf as you have done.  None of the following lines are
-> necessary in either the client or server's /etc/krb5.conf file.
-> (Leaving them in will probably lead to headaches with other Kerberos
-> applications in the future.)
->
->   default_tkt_enctypes =3D aes256-cts-hmac-sha1-96 des-cbc-crc
->   default_tgs_enctypes =3D aes256-cts-hmac-sha1-96 des-cbc-crc
->   permitted_enctypes =3D aes256-cts-hmac-sha1-96 rc4-hmac des-cbc-crc
-> des3-hmac-sha1
->
-> You said that you limited the client's keytab to des-cbc-crc.  It
-> appears you have done the same for the server's keytab since the
-> ticket and session key the client gets are des-cbc-crc.
->
->  =20
->> Sep  3 19:36:22 pc-francois krb5kdc[9787]: TGS_REQ (2 etypes {18 1})
->> 192.168.1.3: ISSUE: authtime 1220463382, etypes {rep=3D18 tkt=3D1 se=
-s=3D1},
->> nfs/ordi-francois.homenetwork.net-wmZDWbG+120CDknkFGB/9A@public.gmane.org for
->> nfs/pc-francois.homenetwork.net-wmZDWbG+120CDknkFGB/9A@public.gmane.org
->>    =20
->
-> It looks like the client is successfully authenticating as
-> "nfs/ordi-francois.homenetwork.net-wmZDWbG+120CDknkFGB/9A@public.gmane.org".
->
->  =20
->> Sep  3 19:36:22 pc-francois rpc.svcgssd[7008]: sname =3D
->> nfs/ordi-francois.homenetwork.net-wmZDWbG+120CDknkFGB/9A@public.gmane.org
->>    =20
->
-> However, mapping that gss_auth_name to a local ID is failing, and is
-> being mapped to uid/gid of "-1 -1"
-> .
->
->  =20
->> Sep  3 19:36:22 pc-francois rpc.svcgssd[7008]: \x01000000 2147483647=
- -1 -1 0 krb5
->> \x000000000000[...]80b98
->>    =20
->
-> The "-1" should be interpreted in the kernel as nfsnobody.  What are
-> the permissions on the exported filesystem?
->
-> K.C.
->
->  =20
-So, is it normat that gss map the local uid/gid to -1 -1 ? If not, what=
-=20
-should I change ?
-The folder I try to export is configured like this:
+On Thu, 4 Sep 2008, Benny Halevy wrote:
 
-/home/francois ordi-francois(rw,root_squash,no_subtree_check)
+> On Sep. 04, 2008, 18:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Thu, Sep 04, 2008 at 04:55:18PM +0200, Jiri Pirko wrote:
+> >> Number of used used array elements needs to be zeroed. It may cause
+> >> problems otherwise, because it's used uninitialized in find_uid().
+> >>
+> >> Signed-off-by: Jiri Pirko <jpirko@redhat.com>
+> >> ---
+> >>  fs/nfsd/nfs4acl.c |    2 ++
+> >>  1 files changed, 2 insertions(+), 0 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+> >> index 54b8b41..7dcd90f 100644
+> >> --- a/fs/nfsd/nfs4acl.c
+> >> +++ b/fs/nfsd/nfs4acl.c
+> >> @@ -447,11 +447,13 @@ init_state(struct posix_acl_state *state, int cnt)
+> >>  	state->users = kzalloc(alloc, GFP_KERNEL);
+> >>  	if (!state->users)
+> >>  		return -ENOMEM;
+> >> +	state->users->n = 0;
+> >>  	state->groups = kzalloc(alloc, GFP_KERNEL);
+> >>  	if (!state->groups) {
+> >>  		kfree(state->users);
+> >>  		return -ENOMEM;
+> >>  	}
+> >> +	state->groups->n = 0;
+> >>  	return 0;
+> >>  }
+> > 
+> > Thanks for the extra eyes on this code, but: surely the kzalloc()'s are
+> > all that's necessary?  Am I missing something?
+> 
+> quickly browsing over the code, shouldn't it be:
+> 
+> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+> index b6ed383..54b8b41 100644
+> --- a/fs/nfsd/nfs4acl.c
+> +++ b/fs/nfsd/nfs4acl.c
+> @@ -443,7 +443,7 @@ init_state(struct posix_acl_state *state, int cnt)
+>  	 * enough space for either:
+>  	 */
+>  	alloc = sizeof(struct posix_ace_state_array)
+> -		+ cnt*sizeof(struct posix_ace_state);
+> +		+ cnt*sizeof(struct posix_user_ace_state);
 
-=46ran=E7ois
+	:) heheheh, we could've used your sharp eyes last week when we 
+were dealing with ACL shenanigans -- i believe that this is covered in one 
+of the patches that bruce sent out in the last few days.
+
+	d
+	.
+
+>  	state->users = kzalloc(alloc, GFP_KERNEL);
+>  	if (!state->users)
+>  		return -ENOMEM;
+> 
+> Benny
+> 
+> > 
+> > --b.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
