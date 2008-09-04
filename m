@@ -1,37 +1,51 @@
-From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
-Subject: XPRTRDMA max payload?
-Date: Thu, 4 Sep 2008 11:00:02 -0400
-Message-ID: <B520CA74-F8C7-4D93-BC99-0B784F31C1D9@myri.com>
-Mime-Version: 1.0 (Apple Message framework v926)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-To: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfsd/nfs4acl: Number of used used array elements needs
+	to be zeroed.
+Date: Thu, 4 Sep 2008 11:01:01 -0400
+Message-ID: <20080904150101.GB4536@fieldses.org>
+References: <20080904165518.15a02908@psychotron.englab.brq.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	neilb@suse.de
+To: Jiri Pirko <jpirko@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailbox2.myri.com ([64.172.73.26]:1933 "EHLO myri.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751516AbYIDPAE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2008 11:00:04 -0400
-Received: from scott-wlan.sw.myri.com (scott-wlan.sw.myri.com [172.31.162.6])
-	by myri.com (8.13.7+Sun/8.13.7) with ESMTP id m84F03Ie021207
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Sep 2008 08:00:03 -0700 (PDT)
+Received: from mail.fieldses.org ([66.93.2.214]:35934 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751013AbYIDPBD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Sep 2008 11:01:03 -0400
+In-Reply-To: <20080904165518.15a02908-YzwxZg+R7evSU73v1vjTzyO4YDw3rz4rAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+On Thu, Sep 04, 2008 at 04:55:18PM +0200, Jiri Pirko wrote:
+> Number of used used array elements needs to be zeroed. It may cause
+> problems otherwise, because it's used uninitialized in find_uid().
+> 
+> Signed-off-by: Jiri Pirko <jpirko@redhat.com>
+> ---
+>  fs/nfsd/nfs4acl.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+> index 54b8b41..7dcd90f 100644
+> --- a/fs/nfsd/nfs4acl.c
+> +++ b/fs/nfsd/nfs4acl.c
+> @@ -447,11 +447,13 @@ init_state(struct posix_acl_state *state, int cnt)
+>  	state->users = kzalloc(alloc, GFP_KERNEL);
+>  	if (!state->users)
+>  		return -ENOMEM;
+> +	state->users->n = 0;
+>  	state->groups = kzalloc(alloc, GFP_KERNEL);
+>  	if (!state->groups) {
+>  		kfree(state->users);
+>  		return -ENOMEM;
+>  	}
+> +	state->groups->n = 0;
+>  	return 0;
+>  }
 
-I thought that the max payload for XPRTRDMA would be 1 MB. It seems to  
-be set on the client to 23 KB (RPCRDMA_MAX_DATA_SEGS * PAGE_SIZE). The  
-server, on the other hand, sets it to 1 MB (RPCSVC_MAXPAYLOAD_TCP).
+Thanks for the extra eyes on this code, but: surely the kzalloc()'s are
+all that's necessary?  Am I missing something?
 
-If I try to mount with rdma with:
-
-# mount.nfs host:/exports /mnt/test -o  
-rdma,port=2050,rsize=1048576,wsize=1048576
-
-It ignores the size parameters and /proc/mounts shows it is 32 KB.
-
-Is there a way to increase it at loadtime or runtime or do I need to  
-change RPCRDMA_MAX_DATA_SEGS and recompile?
-
-Thanks,
-
-Scott
+--b.
