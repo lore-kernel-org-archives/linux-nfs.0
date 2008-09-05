@@ -1,69 +1,47 @@
-From: "Chuck Lever" <chuck.lever@oracle.com>
-Subject: Re: Confused about 'sloppy' option parsing in NFS.
-Date: Fri, 5 Sep 2008 12:27:17 -0400
-Message-ID: <76bd70e30809050927k2a080ffdq47cade676afa1b13@mail.gmail.com>
-References: <18624.55656.904241.183933@notabene.brown>
-Reply-To: chucklever@gmail.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Restore missing hunk in NFS mount option parser
+Date: Fri, 05 Sep 2008 14:16:07 -0400
+Message-ID: <20080905181339.17103.36231.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Trond Myklebust" <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: "Neil Brown" <neilb@suse.de>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.184]:53563 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753864AbYIEQ1U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 12:27:20 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so42751gvc.37
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2008 09:27:18 -0700 (PDT)
-In-Reply-To: <18624.55656.904241.183933-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:31960 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751167AbYIESR3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 14:17:29 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 5, 2008 at 3:02 AM, Neil Brown <neilb@suse.de> wrote:
->
-> The kernel used by OpenSUSE-11.0 complains when automount passes a
-> 'grpid' option.  So I'm looking at backporting the 'sloppy' option
-> parsing fix.  But I'm confused.
->
-> Looking at commit f45663ce5fb30f76a3414ab3ac69f4dd320e760a
->
-> It introduced 'sloppy' and 'errors' in nfs_parse_mount_options,
-> possibly sets them to some non-zero value based on what it finds, and
-> then does absolutely nothing with them.
->
-> nfs_parse_mount_options only returns zero if:
->  - memalloc fails
->  - security_sb_parse_opts_str fails
->
-> But never if there is an unrecognised argument.
->
-> This functionality is obviously quite trivial to backport, but I
-> wonder if it is correct.
->
-> Is it just a simple slip up, or am I missing something?
+Commit f45663ce5fb30f76a3414ab3ac69f4dd320e760a was missing a hunk that
+prevented the new "sloppy" mount option from having any effect.
 
-There was a lot of controversy around this patch and several others in
-the same area.  As usual an important hunk got dropped in the final
-version I sent in.  Something like this:
+Tested against 2.6.27-rc.  2.6.26 is not affected.
 
-@@ -1182,6 +1250,12 @@ static int nfs_parse_mount_options(char *raw,
-                break;
-        }
+Thanks to Neil Brown for reporting this.
 
-+       if (errors > 0) {
-+               dfprintk(MOUNT, "NFS: parsing encountered %d error%s\n",
-+                               errors, (errors == 1 ? "" : "s"));
-+               if (!sloppy)
-+                       return 0;
-+       }
-        return 1;
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/nfs/super.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 5b2aa04..e3ac650 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1279,6 +1279,12 @@ static int nfs_parse_mount_options(char *raw,
+ 		}
+ 	}
+ 
++	if (errors > 0) {
++		dfprintk(MOUNT, "NFS: parsing encountered %d error%s\n",
++				errors, (errors == 1 ? "" : "s"));
++		if (!sloppy)
++			return 0;
++	}
+ 	return 1;
+ 
  out_nomem:
 
-I found this in my git repo on linux-nfs.org in commit
-17cdb8c69388cc7611adb4d43c46cfa1ec4938c2.  I can post a tested delta
-for 26-stable and 27-rc later today.
-
---
-Chuck Lever
