@@ -1,59 +1,101 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/19] nfs-utils: Remove excess log reporting
-Date: Fri, 05 Sep 2008 17:08:21 -0400
-Message-ID: <20080905210820.10001.3551.stgit@manray.1015granger.net>
+Subject: [PATCH 13/19] nfs-utils: Clean up support/nfs/rpcmisc.c:closedown()
+Date: Fri, 05 Sep 2008 17:08:10 -0400
+Message-ID: <20080905210809.10001.75136.stgit@manray.1015granger.net>
 References: <20080905210054.10001.8518.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:49134 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:49148 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751751AbYIEVOT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 17:14:19 -0400
+	with ESMTP id S1752102AbYIEVOV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 17:14:21 -0400
 In-Reply-To: <20080905210054.10001.8518.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The makesock() function already reports an error if it can't
-create a socket.  Remove the redundant error check and logging done in
-rpc_init() after a makesock() call.
+Clean up: update closedown()'s synopsis to modern C style, and move the
+function so we can remove the forward declaration.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/nfs/rpcmisc.c |   12 ++++--------
- 1 files changed, 4 insertions(+), 8 deletions(-)
+ support/nfs/rpcmisc.c |   48 +++++++++++++++++++++++++-----------------------
+ 1 files changed, 25 insertions(+), 23 deletions(-)
 
 diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
-index 9d76e5d..506b595 100644
+index 40c2102..ad53a43 100644
 --- a/support/nfs/rpcmisc.c
 +++ b/support/nfs/rpcmisc.c
-@@ -151,10 +151,8 @@ rpc_init(char *name, int prog, int vers,
- 			}
- 			if (defport == 0)
- 				sock = RPC_ANYSOCK;
--			else if ((sock = makesock(defport, IPPROTO_UDP)) < 0) {
--				xlog(L_FATAL, "%s: cannot make a UDP socket\n",
--						name);
--			}
-+			else
-+				sock = makesock(defport, IPPROTO_UDP);
- 		}
- 		if (sock == RPC_ANYSOCK)
- 			sock = svcudp_socket (prog, 1);
-@@ -181,10 +179,8 @@ rpc_init(char *name, int prog, int vers,
- 			}
- 			if (defport == 0)
- 				sock = RPC_ANYSOCK;
--			else if ((sock = makesock(defport, IPPROTO_TCP)) < 0) {
--				xlog(L_FATAL, "%s: cannot make a TCP socket\n",
--						name);
--			}
-+			else
-+				sock = makesock(defport, IPPROTO_TCP);
- 		}
- 		if (sock == RPC_ANYSOCK)
- 			sock = svctcp_socket (prog, 1);
+@@ -38,7 +38,6 @@
+ #define socklen_t int
+ #endif
+ 
+-static void	closedown(int sig);
+ int	makesock(int port, int proto);
+ 
+ #define _RPCSVC_CLOSEDOWN	120
+@@ -46,6 +45,31 @@ int	_rpcpmstart = 0;
+ int	_rpcfdtype = 0;
+ int	_rpcsvcdirty = 0;
+ 
++static void
++closedown(int sig)
++{
++	(void) signal(sig, closedown);
++
++	if (_rpcsvcdirty == 0) {
++		static int size;
++		int i, openfd;
++
++		if (_rpcfdtype == SOCK_DGRAM)
++			exit(0);
++
++		if (size == 0)
++			size = getdtablesize();
++
++		for (i = 0, openfd = 0; i < size && openfd < 2; i++)
++			if (FD_ISSET(i, &svc_fdset))
++				openfd++;
++		if (openfd <= 1)
++			exit(0);
++	}
++
++	(void) alarm(_RPCSVC_CLOSEDOWN);
++}
++
+ void
+ rpc_init(char *name, int prog, int vers,
+ 	 void (*dispatch)(struct svc_req *, register SVCXPRT *),
+@@ -144,28 +168,6 @@ rpc_init(char *name, int prog, int vers,
+ 	}
+ }
+ 
+-static void closedown(sig)
+-int sig;
+-{
+-	(void) signal(sig, closedown);
+-	if (_rpcsvcdirty == 0) {
+-		static int size;
+-		int i, openfd;
+-
+-		if (_rpcfdtype == SOCK_DGRAM)
+-			exit(0);
+-		if (size == 0) {
+-			size = getdtablesize();
+-		}
+-		for (i = 0, openfd = 0; i < size && openfd < 2; i++)
+-			if (FD_ISSET(i, &svc_fdset))
+-				openfd++;
+-		if (openfd <= 1)
+-			exit(0);
+-	}
+-	(void) alarm(_RPCSVC_CLOSEDOWN);
+-}
+-
+ int makesock(int port, int proto)
+ {
+ 	struct sockaddr_in sin;
 
