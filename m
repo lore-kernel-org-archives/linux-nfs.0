@@ -1,71 +1,101 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
-Date: Fri, 5 Sep 2008 16:36:46 -0400
-Message-ID: <04854041-E23D-48B5-B9FF-0B7ECEB2C371@oracle.com>
-References: <20080905191939.GG22796@merfinllc.com> <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com> <20080905200455.GH22796@merfinllc.com>
-Mime-Version: 1.0 (Apple Message framework v928.1)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	LKML Kernel <linux-kernel@vger.kernel.org>
-To: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Subject: [PATCH 04/19] showmount command: clean up error returns from
+	connect_nb()
+Date: Fri, 05 Sep 2008 17:07:19 -0400
+Message-ID: <20080905210718.10001.65913.stgit@manray.1015granger.net>
+References: <20080905210054.10001.8518.stgit@manray.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:31617 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751098AbYIEUlc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 16:41:32 -0400
-In-Reply-To: <20080905200455.GH22796-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:46821 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750955AbYIEVHv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 17:07:51 -0400
+In-Reply-To: <20080905210054.10001.8518.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 5, 2008, at Sep 5, 2008, 4:04 PM, Aaron Straus wrote:
-> Hi,
->
-> On Sep 05 03:56 PM, Chuck Lever wrote:
->> [ replacing cc: nfs-qX0GgiIySws@public.gmane.org with linux-nfs@vger.kernel.org, and neil's
->> old address with his current one ]
->
-> Sorry I probably grabbed an old MAINTAINERS file.
->
->> On Sep 5, 2008, at Sep 5, 2008, 3:19 PM, Aaron Straus wrote:
->>> Writer_Version     Outcome:
->>> <= 2.6.19          OK
->>>> = 2.6.20	    BAD
->>
->> Up to which kernel?  Recent ones may address this issue already.
->
-> BAD up to 2.6.27-rc?
->
-> I have to see exactly which is the last rc version I tested.
->
->>> I can try to bisect between 2.6.19 <-> 2.6.20.
->>
->> That's a good start.
->
-> OK will try to bisect.
->
->> Comparing a wire trace with strace output, starting with the writing
->> client, might also be illuminating.  We prefer wireshark as it uses
->> good default trace settings, parses the wire bytes and displays them
->> coherently, and allows you to sort the frames in various useful ways.
->
-> OK.  Could you also try to reproduce on your side using those python
-> programs?  I want to make sure it's not something specific with our
-> mounts, etc.
+Clean up connect_nb() in the showmount command.
 
-I have the latest Fedora 9 kernels on two clients, mounting via NFSv3  
-using "actimeo=600" (for other reasons).  The server is OpenSolaris  
-2008.5.
+Sometimes it returns -1 on error, and sometimes a negative errno.  On error,
+it should always return one of these or the other, not both.
 
-reader.py reported zeroes in the test file after about 5 minutes.
+Similar functions in other parts of nfs-utils return -1 on error, and set
+errno; so let's do that here too.
 
-Looking at the file a little later, I don't see any problems with it.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Since your scripts are not using any kind of serialization (ie file  
-locking) between the clients, I wonder if non-determinant behavior is  
-to be expected.
+ utils/showmount/showmount.c |   22 ++++++++++++----------
+ 1 files changed, 12 insertions(+), 10 deletions(-)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
+index b6cea92..eafcf4c 100644
+--- a/utils/showmount/showmount.c
++++ b/utils/showmount/showmount.c
+@@ -83,7 +83,8 @@ static void usage(FILE *fp, int n)
+  *  tout contains the timeout.  It will be modified to contain the time
+  *  remaining (i.e. time provided - time elasped).
+  *
+- *  Returns 0 for success 
++ *  Returns zero on success; otherwise, -1 is returned and errno is set
++ *  to reflect the nature of the error.
+  */
+ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
+ {
+@@ -107,7 +108,7 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
+ 	len = sizeof(struct sockaddr);
+ 	ret = connect(fd, (struct sockaddr *)addr, len);
+ 	if (ret < 0 && errno != EINPROGRESS) {
+-		ret = -errno;
++		ret = -1;
+ 		goto done;
+ 	}
+ 
+@@ -121,9 +122,8 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
+ 	ret = select(fd + 1, NULL, &rset, NULL, tout);
+ 	if (ret <= 0) {
+ 		if (ret == 0)
+-			ret = -ETIMEDOUT;
+-		else
+-			ret = -errno;
++			errno = ETIMEDOUT;
++		ret = -1;
+ 		goto done;
+ 	}
+ 
+@@ -133,13 +133,15 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
+ 		len = sizeof(ret);
+ 		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
+ 		if (status < 0) {
+-			ret = -errno;
++			ret = -1;
+ 			goto done;
+ 		}
+ 
+ 		/* Oops - something wrong with connect */
+-		if (ret)
+-			ret = -ret;
++		if (ret != 0) {
++			errno = ret;
++			ret = -1;
++		}
+ 	}
+ 
+ done:
+@@ -179,10 +181,10 @@ static unsigned short getport(struct sockaddr_in *addr,
+ 		tout.tv_sec = TIMEOUT_TCP;
+ 
+ 		ret = connect_nb(sock, &saddr, &tout);
+-		if (ret < 0) {
+-			close(sock);
++		if (ret != 0) {
+ 			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+ 			rpc_createerr.cf_error.re_errno = errno;
++			close(sock);
+ 			return 0;
+ 		}
+ 		client = clnttcp_create(&saddr,
+
