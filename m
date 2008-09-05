@@ -1,85 +1,186 @@
-From: =?UTF-8?B?RnJhbsOnb2lzIFZhbGVuZHVj?= <francois.valenduc@skynet.be>
-Subject: Re: nfs and kerberos authentification problem.
-Date: Fri, 05 Sep 2008 20:57:16 +0200
-Message-ID: <48C1810C.5090703@skynet.be>
-References: <48C01B5F.3060808@skynet.be> <20080904173346.GJ4536@fieldses.org> <48C01DBD.7000309@skynet.be> <20080904174928.GM4536@fieldses.org> <48C021E0.9000901@skynet.be> <20080904183934.GO4536@fieldses.org> <48C02E95.1000406@skynet.be> <20080904185954.GR4536@fieldses.org> <4d569c330809041231wcbddde8w419968280de9e39a@mail.gmail.com> <48C0393A.5090503@skynet.be> <20080904194046.GA13981@fieldses.org> <48C17C20.6010707@skynet.be>
+From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Subject: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
+Date: Fri, 5 Sep 2008 12:19:40 -0700
+Message-ID: <20080905191939.GG22796@merfinllc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: multipart/mixed; boundary="L+ofChggJdETEG3Y"
+To: neilb-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org, nfs@lists.sourceforge.net,
+	trond.myklebust@fys.uio.no, linux-kernel@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ananke.telenet-ops.be ([195.130.137.78]:35050 "EHLO
-	ananke.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751719AbYIES5T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 14:57:19 -0400
-In-Reply-To: <48C17C20.6010707@skynet.be>
+Received: from neil.brown.name ([220.233.11.133]:49775 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754160AbYIETTy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Sep 2008 15:19:54 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KbgqW-0000GX-Aj
+	for linux-nfs@vger.kernel.org; Sat, 06 Sep 2008 05:19:52 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-=46ran=C3=A7ois Valenduc a =C3=A9crit :
-> J. Bruce Fields a =C3=A9crit :
->> On Thu, Sep 04, 2008 at 09:38:34PM +0200, Fran=C3=A7ois Valenduc wro=
-te:
->> =20
->>> Kevin Coffman a =C3=A9crit :
->>>   =20
->>>> This may be a stupid question, but can you access the mount using
->>>> auth_sys?  As I think I said before, it looks like the Kerberos pa=
-rt
->>>> is working.  (Unless there are errors on the client side from
->>>> rpc.gssd.)
->>>>
->>>>        =20
->>> I finally found a solution to the problem.
->>>    =20
->>
->> Great!
->>
->> =20
->>> It seems that it's needed to  compile both NFS v3 and v4 server=20
->>> support to make kerberos support  working. I find that a bit strang=
-e,=20
->>> but with this kernel configuration,  it is working fine. I find tha=
-t=20
->>> a bit strange since I export the  filesystem as NFS3.
->>> Should we consider this as a bug ? I am running kernel 2.6.26.3.
->>>    =20
->>
->> Yes, that would be a bug!  But: are you sure gss support was built i=
-n on
->> the server?
->>
->> --b.
->>
->> =20
->>> Thanks a lot for your patience,
->>> Fran=C3=A7ois
->>>    =20
->>
->>  =20
-> There is still a major problem. Even if I can now mount the filesyste=
-m=20
-> with kerberos authentification, I can't write any file. Furthermore, =
-I=20
-> can even not see the content of the exported directory without being=20
-> root. Is it due to the problem of uid/gid mapping ?
->=20
-> Fran=C3=A7ois
 
-What I don' understand is that the file system is well mounted read-wri=
-te:
-pc-francois:/home/francois on /mnt/pc-francois type nfs=20
-(rw,users,noatime,sec=3Dkrb5,rsize=3D1024,wsize=3D1024,soft,addr=3D192.=
-168.1.2)
+--L+ofChggJdETEG3Y
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-The mounted directory has the following permissions:
+Hi all,
 
-drwxrwsr-x 77 francois francois 4,0K sep  5 20:35 pc-francois/
+  We're hitting some bad behavior in NFS v3.  The situation is this:
 
-So, I don't understand why I can't write any file on it.
+   machine A - NFS server
 
-Thanks for your help;
+   machine B - NFS client (writer)
+   machine C - NFS client (reader)
 
-=46ran=C3=A7ois
+   (all machines x86 SMP)
+
+  machine A exports a directory on ext3 filesystem:
+
+	/srv/home       192.168.0.0/24(rw,sync,no_subtree_check)
+
+  machines B and C mount that directory normally
+
+        mount A:/srv/home /mntpnt
+
+  machine B opens a file and writes to it (think a log file)
+
+  machine C stats that file, opens it and reads it (think tailing the
+                                                    log file)
+
+
+  The issue is that machine C will often see large blocks of NULLs
+(zeros) in the file.  If you do the same read again just after you see
+the block of NULLs you will see proper the data.
+
+  Attached are two simple python programs that demonstrate the problem.
+
+  To use them (they will write to a file called test-nfs in CWD):
+
+ (on machine B in one window)
+
+   python writer.py
+
+ (on machine C in another window)
+
+   python reader.py
+
+  
+  reader.py will die when it sees NULLs in the file.  Usually for us
+this happens after about 60s (two timeouts I think).   The first NULL is
+usually either at index 4000 or 8000 depending on the kernel.
+
+
+  Now the version of the kernel the server is running doesn't seem to
+matter.  The reader also doesn't seem to matter (though I didn't test
+this completely).  The writer seems to be the issue:
+
+  Writer_Version     Outcome:
+  <= 2.6.19          OK
+  >= 2.6.20	     BAD
+
+  I've tested both vanilla kernel.org kernels and Ubuntu 8.04 kernels.
+
+  I can try to bisect between 2.6.19 <-> 2.6.20. 
+
+  Anyone else hitting this problem?  Any better ideas?
+
+
+  					Thanks,
+					=a=
+
+
+   
+-- 
+===================
+Aaron Straus
+aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
+
+--L+ofChggJdETEG3Y
+Content-Type: text/x-python; charset=us-ascii
+Content-Disposition: attachment; filename="reader.py"
+
+#!/usr/bin/env python
+import time
+import os
+
+def run(file_name):
+    data = ''
+    last_data_len = len(data)
+    last_size = os.stat(file_name).st_size
+
+    while True:
+        st_size = os.stat(file_name).st_size
+        if st_size != last_size:
+            print 'size changed @ %s' % time.asctime()
+
+        data = open(file_name).read()
+
+        if len(data) != last_data_len:
+            print 'new data arrived @ %s' % time.asctime()
+            print repr(data[-50:])
+
+
+        if '\0' in data:
+            first_index = data.index('\0')
+            data_fragment = data[first_index-50:first_index+50]
+            print 'Detected NULL @ %d %s' % (first_index, repr(data_fragment))
+            break
+
+        time.sleep(0.250)
+
+        last_data_len = len(data)
+        last_size = st_size
+
+if __name__ == '__main__':
+    run('test-nfs')
+
+--L+ofChggJdETEG3Y
+Content-Type: text/x-python; charset=us-ascii
+Content-Disposition: attachment; filename="writer.py"
+
+#!/usr/bin/env python
+import time
+
+def run(file_name):
+    fp = open(file_name, 'w')
+
+    count = 1
+
+    while count:
+        fp.write('meow\n' * 800)
+        fp.flush()
+        time.sleep(32)
+
+    fp.close()
+
+if __name__ == '__main__':
+    run('test-nfs')
+
+--L+ofChggJdETEG3Y
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+--L+ofChggJdETEG3Y
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--L+ofChggJdETEG3Y--
+
+
