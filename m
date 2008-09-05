@@ -1,84 +1,118 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 17/19] rpc.statd: Clean up: replace "if (!(foo = rtnl))".
-Date: Fri, 05 Sep 2008 17:08:33 -0400
-Message-ID: <20080905210832.10001.79513.stgit@manray.1015granger.net>
+Subject: [PATCH 09/19] sm-notify command: use static function definitions
+Date: Fri, 05 Sep 2008 17:07:47 -0400
+Message-ID: <20080905210746.10001.93139.stgit@manray.1015granger.net>
 References: <20080905210054.10001.8518.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:41599 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:41647 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752118AbYIEVI7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 17:08:59 -0400
+	with ESMTP id S1752301AbYIEVJG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 17:09:06 -0400
 In-Reply-To: <20080905210054.10001.8518.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static code checkers flag this kind of thing because it's easy to
-confuse with "if (!(foo == rtnl))".  In one of these cases, the
-combination of evaluation and assignment isn't even necessary.
+Clean up.
 
-While we are in the neighborhood, remove an extra argument to note() that is
-not called for in the passed-in format string.
+The sm-notify command is built from a single source file.
+Some of its internal functions are appropriately defined as static.
+
+However, some are declared static, but defined as global.  Some are
+declared and defined as global.  None of them are used outside of
+utils/statd/sm-notify.c.
+
+Make all the internal functions in utils/statd/sm-notify.cstatic.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/statd/callback.c |    6 ++----
- utils/statd/monitor.c  |    6 ++++--
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ utils/statd/sm-notify.c |   20 ++++++++++----------
+ 1 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/utils/statd/callback.c b/utils/statd/callback.c
-index d5d036e..505fdb3 100644
---- a/utils/statd/callback.c
-+++ b/utils/statd/callback.c
-@@ -36,11 +36,9 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
- 				argp->mon_name, argp->state);
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 8108765..76a378c 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -83,11 +83,11 @@ static void		recv_reply(int);
+ static void		backup_hosts(const char *, const char *);
+ static void		get_hosts(const char *);
+ static void		insert_host(struct nsm_host *);
+-struct nsm_host *	find_host(uint32_t);
+-void			nsm_log(int fac, const char *fmt, ...);
++static struct nsm_host *find_host(uint32_t);
++static void		nsm_log(int fac, const char *fmt, ...);
+ static int		record_pid(void);
+ static void		drop_privs(void);
+-static void set_kernel_nsm_state(int state);
++static void		set_kernel_nsm_state(int state);
  
- 	/* quick check - don't bother if we're not monitoring anyone */
--	/* LH - this was != MULL, meaning that if anyone _was_ in our RTNL,
--	 * we'd never pass this point. */
--	if (!(lp = rtnl)) {
-+	if (rtnl == NULL) {
- 		note(N_WARNING, "SM_NOTIFY from %s while not monitoring any hosts.",
--				argp->mon_name, argp->state);
-+				argp->mon_name);
- 		return ((void *) &result);
- 	}
+ static struct nsm_host *	hosts = NULL;
  
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index d300338..a6a1d9c 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -326,12 +326,13 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
- 
- 
- 	/* Check if we're monitoring anyone. */
--	if (!(clnt = rtnl)) {
-+	if (rtnl == NULL) {
- 		note(N_WARNING,
- 			"Received SM_UNMON request from %s for %s while not "
- 			"monitoring any hosts.", my_name, argp->mon_name);
- 		return (&result);
- 	}
-+	clnt = rtnl;
- 
- 	/*
- 	 * OK, we are.  Now look for appropriate entry in run-time list.
-@@ -379,11 +380,12 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
- 
- 	result.state = MY_STATE;
- 
--	if (!(clnt = rtnl)) {
-+	if (rtnl == NULL) {
- 		note(N_WARNING, "Received SM_UNMON_ALL request from %s "
- 			"while not monitoring any hosts", my_name);
- 		return (&result);
- 	}
-+	clnt = rtnl;
- 
- 	while ((clnt = nlist_gethost(clnt, my_name, 1))) {
- 		if (NL_MY_PROC(clnt) == argp->my_proc &&
+@@ -249,7 +249,7 @@ usage:		fprintf(stderr,
+ /*
+  * Notify hosts
+  */
+-void
++static void
+ notify(void)
+ {
+ 	struct sockaddr_storage address;
+@@ -372,7 +372,7 @@ notify(void)
+ /*
+  * Send notification to a single host
+  */
+-int
++static int
+ notify_host(int sock, struct nsm_host *host)
+ {
+ 	struct sockaddr_storage address;
+@@ -475,7 +475,7 @@ notify_host(int sock, struct nsm_host *host)
+ /*
+  * Receive reply from remote host
+  */
+-void
++static void
+ recv_reply(int sock)
+ {
+ 	struct nsm_host	*hp;
+@@ -634,7 +634,7 @@ get_hosts(const char *dirname)
+ /*
+  * Insert host into sorted list
+  */
+-void
++static void
+ insert_host(struct nsm_host *host)
+ {
+ 	struct nsm_host	**where, *p;
+@@ -662,7 +662,7 @@ insert_host(struct nsm_host *host)
+ /*
+  * Find host given the XID
+  */
+-struct nsm_host *
++static struct nsm_host *
+ find_host(uint32_t xid)
+ {
+ 	struct nsm_host	**where, *p;
+@@ -682,7 +682,7 @@ find_host(uint32_t xid)
+ /*
+  * Retrieve the current NSM state
+  */
+-unsigned int
++static unsigned int
+ nsm_get_state(int update)
+ {
+ 	char		newfile[PATH_MAX];
+@@ -738,7 +738,7 @@ nsm_get_state(int update)
+ /*
+  * Log a message
+  */
+-void
++static void
+ nsm_log(int fac, const char *fmt, ...)
+ {
+ 	va_list	ap;
 
