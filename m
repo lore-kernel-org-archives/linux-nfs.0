@@ -1,69 +1,83 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS: fix nfs_parse_ip_address() corner case
-Date: Fri, 5 Sep 2008 17:58:30 -0400
-Message-ID: <20080905215830.GI12947@fieldses.org>
-References: <20080903203414.3322.97607.stgit@tarkus.1015granger.net> <20080904202302.GD13981@fieldses.org> <76bd70e30809041436y4a8fc1d2hb8230cb7aba17f26@mail.gmail.com>
+From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
+Date: Fri, 5 Sep 2008 15:14:35 -0700
+Message-ID: <20080905221435.GA12911@merfinllc.com>
+References: <20080905191939.GG22796@merfinllc.com> <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com> <20080905200455.GH22796@merfinllc.com> <04854041-E23D-48B5-B9FF-0B7ECEB2C371@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: chucklever@gmail.com
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="17pEHd4RhPHOinZp"
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	LKML Kernel <linux-kernel@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:46127 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751825AbYIEV6e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Sep 2008 17:58:34 -0400
-In-Reply-To: <76bd70e30809041436y4a8fc1d2hb8230cb7aba17f26-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from quackingmoose.com ([63.73.180.143]:60382 "EHLO
+	penguin.merfinllc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751646AbYIEWOg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 18:14:36 -0400
+In-Reply-To: <04854041-E23D-48B5-B9FF-0B7ECEB2C371@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 04, 2008 at 05:36:17PM -0400, Chuck Lever wrote:
-> On Thu, Sep 4, 2008 at 4:23 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > Slightly irrelevant, but same comment as before--wouldn't it be easier
-> > to follow the logic if instead of:
-> >
-> >        p = kstrndup(...)
-> >        if (p) {
-> >                do stuff for successful case
-> >                ....
-> >                return 1;
-> >        }
-> >
-> >        return 0;
-> >
-> > it were:
-> >
-> >        p = kstrndup(...)
-> >        if (!p)
-> >                return 0;
-> >        do stuff for successful case
-> >        ...
-> >        return 1;
-> 
-> I tried that.  It made this patch about 3x larger than it needed to
-> be, obscured the changes introduced by the patch, and made it harder
-> to show that the new logic is correct.  As we are not introducing new
-> code here but repairing existing issues, such a clean up would need to
-> be in a separate patch.
 
-I agree.
+--17pEHd4RhPHOinZp
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> I generally prefer to use a structured language as it was intended,
-> rather than to abuse "goto" as is the trend in the Linux kernel.
+Hi,
 
-That's a well-established practice, not a trend, and in any case I
-didn't add a goto.
+On Sep 05 04:36 PM, Chuck Lever wrote:
+> I have the latest Fedora 9 kernels on two clients, mounting via NFSv3 =20
+> using "actimeo=3D600" (for other reasons).  The server is OpenSolaris =20
+> 2008.5.
+>=20
+> reader.py reported zeroes in the test file after about 5 minutes.
 
-> By creating named subroutines instead of using lambda functions
+Awesome.  Thanks for testing!  Our actime is much shorter which is
+probably why it happens sooner for us.
 
-I don't see any difference over named subroutines here?  Does c even
-support lambda functions?
+> Looking at the file a little later, I don't see any problems with it.
+>=20
+> Since your scripts are not using any kind of serialization (ie file =20
+> locking) between the clients, I wonder if non-determinant behavior is =20
+> to be expected.
 
-To me the second example is obviously more readable, partly since it
-helps clear up the return convention ("oh, we're returning 0 on failure
-of kstrndup!  0 must mean failure..."), while the 1st delays one of the
-two branches of the if longer than necessary.
+Hmm... yep.  I don't know what guarantees we want to make.   The
+behavior doesn't seem to be consistent with older kernels though... so
+I'm thinking it might be a bug.
 
-But I don't care enough to insist.  Take it as an indicator of what'd be
-clearer to me for code I have to read a lot, if you like.
+We hit this particular issue because we have scripts which essentially
+'tail -f' log files looking for errors.   They miss log messages (and
+see corrupted ones) b/c of the NULLs.  That's also why there is no
+serialization.... we don't need it when grep'ing through log messages.
 
---b.
+I'm bisecting now.  I see a block of intricate-looking NFS patches, I'll
+try to narrow it down to a particular commit. =20
+
+I'll also get the wireshark data at that point.
+
+					Thanks,
+					=3Da=3D
+
+
+--=20
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Aaron Straus
+aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
+
+--17pEHd4RhPHOinZp
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2.2 (GNU/Linux)
+
+iD8DBQFIwa9Lr/o4YuvB+jgRAmvKAKDUdRcC4+2SENjQ7ZG5zDktvwmtfwCg38Cv
+G/k0kYMgXmnCnQFFINZ0oP8=
+=N7mJ
+-----END PGP SIGNATURE-----
+
+--17pEHd4RhPHOinZp--
