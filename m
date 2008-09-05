@@ -1,67 +1,80 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/19] REPOST (with addn'l patches) nfs-utils cleanups
-Date: Fri, 05 Sep 2008 17:06:55 -0400
-Message-ID: <20080905210054.10001.8518.stgit@manray.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NFS: Restore missing hunk in NFS mount option parser
+Date: Fri, 5 Sep 2008 17:11:10 -0400
+Message-ID: <20080905211110.GE12947@fieldses.org>
+References: <20080905181339.17103.36231.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:42101 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751448AbYIEVKY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 17:10:24 -0400
+Received: from mail.fieldses.org ([66.93.2.214]:57708 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752315AbYIEVLU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Sep 2008 17:11:20 -0400
+In-Reply-To: <20080905181339.17103.36231.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+On Fri, Sep 05, 2008 at 02:16:07PM -0400, Chuck Lever wrote:
+> Commit f45663ce5fb30f76a3414ab3ac69f4dd320e760a was missing a hunk that
+> prevented the new "sloppy" mount option from having any effect.
 
-Here are a group of minor clean-ups to nfs-utils culled from my IPv6
-patch set.  It would be nice to get these sorted before we start into
-the meat of the client-side IPv6-related changes to nfs-utils.  Please
-consider these for the next release of nfs-utils.
+I don't think that on its own would justify sending it in for 2.6.27.[1]
 
-In addition to the RPC_ANYSOCK change suggested by Neil, there are
-three additional small patches (8, 9, and 18 in this repost) that I
-found yesterday.
+> 
+> Tested against 2.6.27-rc.  2.6.26 is not affected.
 
----
+But if I understand right, the effect of leaving out this chunk was to
+make the *default* behavior "sloppy"?  Which seems a drastic change from
+the previous behavior.  And it's a simple enough patch.
 
-Chuck Lever (19):
-      rpc.statd: Stop overloading sockfd in utils/statd/rmtcall.c
-      rpc.statd: Use __func__ in dprintf
-      rpc.statd: Clean up: replace "if (!(foo = rtnl))".
-      nfs-utils: whitespace clean ups in support/nfs/rpcmisc.c
-      nfs-utils: Remove excess log reporting
-      nfs-utils: make makesock() static
-      nfs-utils: Clean up support/nfs/rpcmisc.c:closedown()
-      nfs-utils: remove disabled code from support/nfs/rpcmisc.c
-      nfs-utils: Remove unused function rpc_svcrun()
-      nfs-utils: remove unused function rpc_logcall()
-      sm-notify command: use static function definitions
-      sm-notify command: replace nsm_address typedef
-      sm-notify command: clean up error logging
-      sm-notify command: getaddrinfo(3) addrinfo leak
-      sm-notify command: include <config.h>
-      showmount command: clean up error returns from connect_nb()
-      showmount: destroy RPC client when finished
-      rpc.statd: eliminate --secure_statd
-      rpc.statd: refactor check to see if call is from loopback address
+So I'd be inclined to agree and send it in for 2.6.27....  If Trond
+doesn't poke his head up by tomorrow, let's go ahead--feel free to send
+it to Linus with my
+
+	Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+if I fall off the face of the earth tomorrow.
+
+--b.
+
+[1] Linus has been pretty hard on -rc patches lately:
+
+	http://marc.info/?l=linux-netdev&m=122048427801318&w=2
+
+	"Here's a simple rule of thumb:
+	 - if it's not on the regression list
+	 - if it's not a reported security hole
+	 - if it's not on the reported oopses list
+	then why are people sending it to me?"
 
 
- configure.ac                |    9 --
- support/include/rpcmisc.h   |    3 -
- support/nfs/rpcdispatch.c   |   51 ----------
- support/nfs/rpcmisc.c       |  225 ++++++++++++++-----------------------------
- utils/showmount/showmount.c |   27 +++--
- utils/statd/callback.c      |    6 -
- utils/statd/monitor.c       |  100 ++++++-------------
- utils/statd/rmtcall.c       |   78 ++++++++-------
- utils/statd/simu.c          |   35 ++-----
- utils/statd/sm-notify.c     |  206 +++++++++++++++++++++------------------
- utils/statd/statd.c         |    4 -
- utils/statd/statd.h         |    1 
- 12 files changed, 290 insertions(+), 455 deletions(-)
-
--- 
-Chuck Lever
+> 
+> Thanks to Neil Brown for reporting this.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfs/super.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 5b2aa04..e3ac650 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1279,6 +1279,12 @@ static int nfs_parse_mount_options(char *raw,
+>  		}
+>  	}
+>  
+> +	if (errors > 0) {
+> +		dfprintk(MOUNT, "NFS: parsing encountered %d error%s\n",
+> +				errors, (errors == 1 ? "" : "s"));
+> +		if (!sloppy)
+> +			return 0;
+> +	}
+>  	return 1;
+>  
+>  out_nomem:
+> 
