@@ -1,77 +1,56 @@
-From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
-Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
-Date: Fri, 5 Sep 2008 17:03:51 -0700
-Message-ID: <20080906000351.GE12911@merfinllc.com>
-References: <20080905191939.GG22796@merfinllc.com> <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com>
+From: Anika Kehrer <akehrer-zu56ho9s1uzMAQ0/efJHgQ@public.gmane.org>
+Subject: NFS experiences in Linux-Magazin
+Date: Sat, 6 Sep 2008 18:05:37 +0200
+Message-ID: <20080906160540.200983030486@mail.linux-new-media.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="RpqchZ26BWispMcB"
-Cc: Neil Brown <neilb@suse.de>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	LKML Kernel <linux-kernel@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=iso-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from quackingmoose.com ([63.73.180.143]:45266 "EHLO
-	penguin.merfinllc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751607AbYIFADv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 20:03:51 -0400
-In-Reply-To: <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com>
+Received: from mail.linux-new-media.de ([62.245.157.204]:52200 "EHLO
+	mail.linux-new-media.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751790AbYIFQNB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Sep 2008 12:13:01 -0400
+Received: from localhost (mail.linux-new-media.de [62.245.157.204])
+	by mail.linux-new-media.de (Postfix) with ESMTP id 200983030486
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2008 18:05:40 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
---RpqchZ26BWispMcB
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Sep 05 03:56 PM, Chuck Lever wrote:
-> > I can try to bisect between 2.6.19 <-> 2.6.20.
->=20
-> That's a good start.
-
 Hi,
 
-OK.    Bisected.
+I suppose many of you are working with the NFS in your daily work life.=
+ For an =20
+article about NFS work experiences: Would you like to take the time and=
+=20
+answer some questions about it? This article should show how and why=20
+professionals are using NFS, and how they're optimizing the performance=
+=2E
 
-This is the commit where we start to see blocks of NULLs in NFS files.
+So my questions would be: What's the setup; how does it work out; what =
+gives=20
+you a regular headache; and did you come up with special extensions or=20
+workarounds. And please, give me some info why you're working with NFSv=
+4 and=20
+your professional backround.
 
-e261f51f25b98c213e0b3d7f2109b117d714f69d is first bad commit
-commit e261f51f25b98c213e0b3d7f2109b117d714f69d
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 5 00:35:41 2006 -0500
+I'd highly appreciate your input. If you like the idea to share your=20
+experience and opinion, please send me an email.
 
-    NFS: Make nfs_updatepage() mark the page as dirty.
-   =20
-    This will ensure that we can call set_page_writeback() from within
-    nfs_writepage(), which is always called with the page lock set.
-   =20
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Thank you,
 
-
-
-					Thanks,
-					=3Da=3D
-
-
+Anika
 
 --=20
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-Aaron Straus
-aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
-
---RpqchZ26BWispMcB
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.2.2 (GNU/Linux)
-
-iD8DBQFIwcjmr/o4YuvB+jgRAkFpAKDwFy4suG3fDVj9cdeidhWJcZ3obgCg43yF
-g0Aat8IFtXE0yjOzxOwARNc=
-=xXb5
------END PGP SIGNATURE-----
-
---RpqchZ26BWispMcB--
+Anika Kehrer | Linux-Magazin Online
+Linux New Media AG, Putzbrunner Stra=DFe 71, 81739 M=FCnchen, Germany
+Phone: +49 (0)89 993 41 144, Fax: +49 (0)89 993 41 198
+akehrer-J4tZAbal8plhqCoHyYs2ew@public.gmane.org - http://www.linux-magazin.de
+-----------------------------------------------------------
+Linux New Media | The Pulse of Open Source
+Lawrence, KS - M=E1laga - Manchester - M=FCnchen -
+S=E3o Paulo - Timisoara - Warszawa
+-----------------------------------------------------------
+Sitz der Gesellschaft: Putzbrunner Stra=DFe 71, 81739 M=FCnchen
+Amtsgericht Muenchen: HRB 129161
+Vorstand: Rosemarie Schuster, Herman Plank
+Aufsichtsratvorsitzender: Rudolf Strobl
