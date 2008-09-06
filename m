@@ -1,66 +1,77 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Restore missing hunk in NFS mount option parser
-Date: Fri, 05 Sep 2008 18:51:54 -0400
-Message-ID: <20080905224919.5065.15488.stgit@ingres.1015granger.net>
+From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
+Date: Fri, 5 Sep 2008 17:03:51 -0700
+Message-ID: <20080906000351.GE12911@merfinllc.com>
+References: <20080905191939.GG22796@merfinllc.com> <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: neilb@suse.de, trond.myklebust@netapp.com,
-	linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="RpqchZ26BWispMcB"
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	LKML Kernel <linux-kernel@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:25060 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750768AbYIEWwX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 18:52:23 -0400
+Received: from quackingmoose.com ([63.73.180.143]:45266 "EHLO
+	penguin.merfinllc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751607AbYIFADv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2008 20:03:51 -0400
+In-Reply-To: <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Automounter maps can contain mount options valid for other NFS
-implementations but not for Linux.  The Linux automounter uses the
-mount command's "-s" command line option ("s" for "sloppy") so that
-mount requests containing such options are not rejected.
 
-Commit f45663ce5fb30f76a3414ab3ac69f4dd320e760a attempted to address a
-known regression with text-based NFS mount option parsing.  Unrecognized
-mount options would cause mount requests to fail, even if the "-s"
-option was used on the mount command line.
+--RpqchZ26BWispMcB
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Unfortunately, this commit was not complete as submitted.  The commit
-adds a new mount option, "sloppy".  But it is missing a hunk, so it now
-allows NFS mounts with unrecognized mount options, even if the "sloppy"
-option is not present.  This could be a problem if a required critical
-mount option such as "sync" is misspelled, for example, and is considered
-a regression from 2.6.26.
+On Sep 05 03:56 PM, Chuck Lever wrote:
+> > I can try to bisect between 2.6.19 <-> 2.6.20.
+>=20
+> That's a good start.
 
-This patch restores the missing hunk.  Now, the default behavior of
-text-based NFS mount options is as before: any unrecognized mount option
-will cause the mount to fail.
+Hi,
 
-Please include this in 2.6.27-rc.
+OK.    Bisected.
 
-Thanks to Neil Brown for spotting this.
+This is the commit where we start to see blocks of NULLs in NFS files.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+e261f51f25b98c213e0b3d7f2109b117d714f69d is first bad commit
+commit e261f51f25b98c213e0b3d7f2109b117d714f69d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Dec 5 00:35:41 2006 -0500
 
- fs/nfs/super.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+    NFS: Make nfs_updatepage() mark the page as dirty.
+   =20
+    This will ensure that we can call set_page_writeback() from within
+    nfs_writepage(), which is always called with the page lock set.
+   =20
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 5b2aa04..e3ac650 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1279,6 +1279,12 @@ static int nfs_parse_mount_options(char *raw,
- 		}
- 	}
- 
-+	if (errors > 0) {
-+		dfprintk(MOUNT, "NFS: parsing encountered %d error%s\n",
-+				errors, (errors == 1 ? "" : "s"));
-+		if (!sloppy)
-+			return 0;
-+	}
- 	return 1;
- 
- out_nomem:
 
+
+					Thanks,
+					=3Da=3D
+
+
+
+--=20
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Aaron Straus
+aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
+
+--RpqchZ26BWispMcB
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2.2 (GNU/Linux)
+
+iD8DBQFIwcjmr/o4YuvB+jgRAkFpAKDwFy4suG3fDVj9cdeidhWJcZ3obgCg43yF
+g0Aat8IFtXE0yjOzxOwARNc=
+=xXb5
+-----END PGP SIGNATURE-----
+
+--RpqchZ26BWispMcB--
