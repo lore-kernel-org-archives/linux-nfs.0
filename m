@@ -1,56 +1,98 @@
-From: Anika Kehrer <akehrer-zu56ho9s1uzMAQ0/efJHgQ@public.gmane.org>
-Subject: NFS experiences in Linux-Magazin
-Date: Sat, 6 Sep 2008 18:05:37 +0200
-Message-ID: <20080906160540.200983030486@mail.linux-new-media.de>
+From: Hisashi Hifumi <hifumi.hisashi-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
+Subject: [PATCH] NFS: Pagecache usage optimization on nfs
+Date: Mon, 08 Sep 2008 13:31:25 +0900
+Message-ID: <6.0.0.20.2.20080908132950.04ab2d50@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-kernel@vger.kernel.org
+To: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linux-new-media.de ([62.245.157.204]:52200 "EHLO
-	mail.linux-new-media.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751790AbYIFQNB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Sep 2008 12:13:01 -0400
-Received: from localhost (mail.linux-new-media.de [62.245.157.204])
-	by mail.linux-new-media.de (Postfix) with ESMTP id 200983030486
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2008 18:05:40 +0200 (CEST)
+Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:47924 "EHLO
+	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751138AbYIHEeA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2008 00:34:00 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Hi.
 
-I suppose many of you are working with the NFS in your daily work life.=
- For an =20
-article about NFS work experiences: Would you like to take the time and=
-=20
-answer some questions about it? This article should show how and why=20
-professionals are using NFS, and how they're optimizing the performance=
-=2E
+The new address_space_ops is_partially_uptodate was added at 2.6.27-rc1.
+On ext3, this aops checks whether buffer_heads that are attached to a page are
+uptodate or not when a page is not uptodate. When all buffers which correspond
+to a portion we want to read are uptodate even if a page is not uptodate, 
+we can avoid actual read IO.
 
-So my questions would be: What's the setup; how does it work out; what =
-gives=20
-you a regular headache; and did you come up with special extensions or=20
-workarounds. And please, give me some info why you're working with NFSv=
-4 and=20
-your professional backround.
+See
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=8ab22b9abb5c55413802e4adc9aa6223324547c3;hp=d84a52f62f6a396ed77aa0052da74ca9e760b28a
 
-I'd highly appreciate your input. If you like the idea to share your=20
-experience and opinion, please send me an email.
+I wrote is_partially_uptodate aops for nfs named nfs_is_partially_uptodate.This aops
+checks whether read IO to a page is between wb_pgbase and wb_pgbase + wb_bytes of
+nfs_page that is attached to this page. If this aops succeed, we do not have to do actual read.
+I think random read/write mixed workloads or random read after random write 
+workloads can be optimized with this patch.
 
-Thank you,
+Thanks.
 
-Anika
+Signed-off-by: Hisashi Hifumi <hifumi.hisashi-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>
 
---=20
-Anika Kehrer | Linux-Magazin Online
-Linux New Media AG, Putzbrunner Stra=DFe 71, 81739 M=FCnchen, Germany
-Phone: +49 (0)89 993 41 144, Fax: +49 (0)89 993 41 198
-akehrer-J4tZAbal8plhqCoHyYs2ew@public.gmane.org - http://www.linux-magazin.de
------------------------------------------------------------
-Linux New Media | The Pulse of Open Source
-Lawrence, KS - M=E1laga - Manchester - M=FCnchen -
-S=E3o Paulo - Timisoara - Warszawa
------------------------------------------------------------
-Sitz der Gesellschaft: Putzbrunner Stra=DFe 71, 81739 M=FCnchen
-Amtsgericht Muenchen: HRB 129161
-Vorstand: Rosemarie Schuster, Herman Plank
-Aufsichtsratvorsitzender: Rudolf Strobl
+diff -Nrup linux-2.6.27-rc5.org/fs/nfs/file.c linux-2.6.27-rc5.nfs/fs/nfs/file.c
+--- linux-2.6.27-rc5.org/fs/nfs/file.c	2008-09-03 14:56:16.000000000 +0900
++++ linux-2.6.27-rc5.nfs/fs/nfs/file.c	2008-09-08 10:53:00.000000000 +0900
+@@ -446,6 +446,7 @@ const struct address_space_operations nf
+ 	.releasepage = nfs_release_page,
+ 	.direct_IO = nfs_direct_IO,
+ 	.launder_page = nfs_launder_page,
++	.is_partially_uptodate = nfs_is_partially_uptodate,
+ };
+ 
+ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+diff -Nrup linux-2.6.27-rc5.org/fs/nfs/read.c linux-2.6.27-rc5.nfs/fs/nfs/read.c
+--- linux-2.6.27-rc5.org/fs/nfs/read.c	2008-07-14 06:51:29.000000000 +0900
++++ linux-2.6.27-rc5.nfs/fs/nfs/read.c	2008-09-08 11:02:59.000000000 +0900
+@@ -605,6 +605,33 @@ out:
+ 	return ret;
+ }
+ 
++int nfs_is_partially_uptodate(struct page *page, read_descriptor_t *desc,
++					unsigned long from)
++{
++	struct inode *inode = page->mapping->host;
++	unsigned to;
++	struct nfs_page *req = NULL;
++
++	spin_lock(&inode->i_lock);
++	if (PagePrivate(page)) {
++		req = (struct nfs_page *)page_private(page);
++		if (req)
++			kref_get(&req->wb_kref);
++	}
++	spin_unlock(&inode->i_lock);
++	if (!req)
++		return 0;
++
++	to = min_t(unsigned, PAGE_CACHE_SIZE - from, desc->count);
++	to = from + to;
++	if (from >= req->wb_pgbase && to <= req->wb_pgbase + req->wb_bytes) {
++		nfs_release_request(req);
++		return 1;
++	}
++	nfs_release_request(req);
++	return 0;
++}
++
+ int __init nfs_init_readpagecache(void)
+ {
+ 	nfs_rdata_cachep = kmem_cache_create("nfs_read_data",
+diff -Nrup linux-2.6.27-rc5.org/include/linux/nfs_fs.h linux-2.6.27-rc5.nfs/include/linux/nfs_fs.h
+--- linux-2.6.27-rc5.org/include/linux/nfs_fs.h	2008-09-03 14:56:20.000000000 +0900
++++ linux-2.6.27-rc5.nfs/include/linux/nfs_fs.h	2008-09-08 11:04:28.000000000 +0900
+@@ -504,6 +504,8 @@ extern int  nfs_readpages(struct file *,
+ 		struct list_head *, unsigned);
+ extern int  nfs_readpage_result(struct rpc_task *, struct nfs_read_data *);
+ extern void nfs_readdata_release(void *data);
++extern int  nfs_is_partially_uptodate(struct page *, read_descriptor_t *,
++		unsigned long);
+ 
+ /*
+  * Allocate nfs_read_data structures
+
