@@ -1,54 +1,61 @@
-From: "Serge E. Hallyn" <serue@us.ibm.com>
+From: Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
 Subject: Re: [RFC][PATCH] sunrpc: fix oops in rpc_create() when the mount
-	namespace is unshared
-Date: Tue, 9 Sep 2008 10:29:52 -0500
-Message-ID: <20080909152952.GA21207@us.ibm.com>
-References: <48C52B29.4020204@fr.ibm.com> <20080909124311.GA10053@us.ibm.com> <m18wu1nyon.fsf@frodo.ebiederm.org>
+ namespace is unshared
+Date: Tue, 09 Sep 2008 17:40:54 +0200
+Message-ID: <48C69906.5070703@fr.ibm.com>
+References: <48C52B29.4020204@fr.ibm.com> <20080909124311.GA10053@us.ibm.com> <m18wu1nyon.fsf@frodo.ebiederm.org> <20080909152952.GA21207@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>,
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	Trond Myklebust <trond.myklebust@fys.uio.no>,
 	Chuck Lever <chuck.lever@oracle.com>,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
 	Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>,
 	linux-nfs@vger.kernel.org
-To: "Eric W. Biederman" <ebiederm@xmission.com>
+To: "Serge E. Hallyn" <serue@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:49261 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753885AbYIIPai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2008 11:30:38 -0400
-In-Reply-To: <m18wu1nyon.fsf-B27657KtZYmhTnVgQlOflh2eb7JE58TQ@public.gmane.org>
+Received: from mtagate3.uk.ibm.com ([195.212.29.136]:47207 "EHLO
+	mtagate3.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753223AbYIIPlA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2008 11:41:00 -0400
+In-Reply-To: <20080909152952.GA21207@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quoting Eric W. Biederman (ebiederm@xmission.com):
-> "Serge E. Hallyn" <serue@us.ibm.com> writes:
+Serge E. Hallyn wrote:
+> Quoting Eric W. Biederman (ebiederm@xmission.com):
+>> "Serge E. Hallyn" <serue@us.ibm.com> writes:
+>>
+>>> Thanks, Cedric.  Eric is probably right about the long-term fix, but
+>>> yeah it might take a while to properly wade through the sunrpc and nfs
+>>> layers to store the nodename at nfs mount time, and in the meantime this
+>>> fixes a real oops.
+>> A very esoteric oops that hasn't shown up for two years.
 > 
-> > Thanks, Cedric.  Eric is probably right about the long-term fix, but
-> > yeah it might take a while to properly wade through the sunrpc and nfs
-> > layers to store the nodename at nfs mount time, and in the meantime this
-> > fixes a real oops.
+> But an easily reproducible one.
 > 
-> A very esoteric oops that hasn't shown up for two years.
+> It's not as though we'll stop looking for the right fix just bc we have
+> this "bad" fix in for a short while.
+> 
+>> Please let's look at this and see what it would take to fix this
+>> properly.
+> 
+> Of course.  Cedric is looking at the best way to fix it...
 
-But an easily reproducible one.
+yes. well, my eyes are making progress in the NFS code. it will take some 
+time :)
 
-It's not as though we'll stop looking for the right fix just bc we have
-this "bad" fix in for a short while.
+>> What are we trying to achieve by reading utsname?
+> 
+> It looks like it gets copied into the sunrpc messages so I assume it is
+> a part of the sunrpc spec?
+> 
+> I don't want to do this, but we *could* put a conditional in utsname()
+> to have it return init_utsname if current->nsproxy is null...
 
-> Please let's look at this and see what it would take to fix this
-> properly.
+I nearly did that one but it will hide future misusage of utsname(). So 
+I think it's better to keep it that way, and let the machine oops when
+we need to fix our code. 
 
-Of course.  Cedric is looking at the best way to fix it...
-
-> What are we trying to achieve by reading utsname?
-
-It looks like it gets copied into the sunrpc messages so I assume it is
-a part of the sunrpc spec?
-
-I don't want to do this, but we *could* put a conditional in utsname()
-to have it return init_utsname if current->nsproxy is null...
-
--serge
+C.
