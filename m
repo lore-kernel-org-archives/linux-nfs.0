@@ -1,95 +1,96 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC][PATCH] sunrpc: fix oops in rpc_create() when the mount
-	namespace is unshared
-Date: Tue, 9 Sep 2008 15:00:55 -0400
-Message-ID: <869FF00C-4DAF-4D19-80AF-9230617A9223@oracle.com>
-References: <48C52B29.4020204@fr.ibm.com> <20080909124311.GA10053@us.ibm.com>
-	<m18wu1nyon.fsf@frodo.ebiederm.org>
-	<20080909152952.GA21207@us.ibm.com>
-	<DE845309-1684-472A-8269-78AB3A2823A9@oracle.com>
-	<m1fxo9mba5.fsf@frodo.ebiederm.org>
-Mime-Version: 1.0 (Apple Message framework v928.1)
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>,
-        Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-To: ebiederm@xmission.com
-Return-path: <containers-bounces@lists.linux-foundation.org>
-In-Reply-To: <m1fxo9mba5.fsf-B27657KtZYmhTnVgQlOflh2eb7JE58TQ@public.gmane.org>
-List-Unsubscribe: <https://lists.linux-foundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request@lists.linux-foundation.org?subject=unsubscribe>
-List-Archive: <http://lists.linux-foundation.org/pipermail/containers>
-List-Post: <mailto:containers@lists.linux-foundation.org>
-List-Help: <mailto:containers-request@lists.linux-foundation.org?subject=help>
-List-Subscribe: <https://lists.linux-foundation.org/mailman/listinfo/containers>,
-	<mailto:containers-request@lists.linux-foundation.org?subject=subscribe>
-Sender: containers-bounces@lists.linux-foundation.org
-Errors-To: containers-bounces@lists.linux-foundation.org
+From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
+Date: Tue, 9 Sep 2008 12:46:44 -0700
+Message-ID: <20080909194644.GI5290@merfinllc.com>
+References: <20080905191939.GG22796@merfinllc.com> <0A24B45A-9761-4310-B1DB-B4738964E862@oracle.com> <20080908190212.GF28123@merfinllc.com> <76bd70e30809081415h6b55a8dfl8171634c576ac946@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="tSiBuZsJmMXpnp7T"
+Cc: Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	LKML Kernel <linux-kernel@vger.kernel.org>
+To: chucklever@gmail.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from quackingmoose.com ([63.73.180.143]:58075 "EHLO
+	penguin.merfinllc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753427AbYIITqp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2008 15:46:45 -0400
+In-Reply-To: <76bd70e30809081415h6b55a8dfl8171634c576ac946-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 9, 2008, at Sep 9, 2008, 2:20 PM, ebiederm@xmission.com wrote:
-> Chuck Lever <chuck.lever@oracle.com> writes:
->
->> If the upper layers are responsible for providing the utsname, you  
->> will need to
->> fix up lockd and the NFS server's callback client too, at  least.
->
-> Actually looking at the code.  It looks like a proper fix may be   
-> even simpler.
-> Why do we have both clnt->cl_server and clnt->cl_nodename?    Or is  
-> cl_server
-> the other side of the connection?
 
-cl_server is the server-side.  cl_nodename is the "machine name" of  
-the client.
+--tSiBuZsJmMXpnp7T
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
->>>> What are we trying to achieve by reading utsname?
->>>
->>> It looks like it gets copied into the sunrpc messages so I assume  
->>> it is
->>> a part of the sunrpc spec?
->>
->> It appears to be used only for RPC's AUTH_SYS credentials.  The  
->> nodename is used
->> to identify the caller's host.  See RFC 1831,  Appendix A:
->>
->>  http://rfclibrary.hosting.com/rfc/rfc1831/rfc1831-16.asp
->
-> Thanks that helps a lot.
->
->> I'm not terribly familiar with uts namespaces, though.  Can someone  
->> explain why
->> we need to distinguish between these for AUTH_SYS if the  caller is  
->> on a remote
->> system?
->
-> Semantically processes in different uts namespaces are on different  
-> machines.
+Hi,
 
-OK.
+On Sep 08 05:15 PM, Chuck Lever wrote:
+> I think I saw some recent work in Trond's development branch that
+> makes some changes in this area.  I will wait for him to respond to
+> this thread.
 
->> I don't like the idea of an oops in here.  Instead, (for now) it  
->> should warn and
->> fail to create the client, IMO.
->
-> Which is interesting when the problem happens during NFS unmount.   
-> Although
-> frankly it could fail anyway.
->
-> It seems strange that we are creating a client during unmount anyway.
+One other piece of information.
 
-It's worth investigating.  Just enable RPC tracing (/usr/sbin/rpcdebug  
--m rpc -s all) before shutting down the client.
+Of the bisected offending commit:
 
-NFS unmounting is historically difficult because during a system  
-shutdown, unmounting is the last thing to occur, and usually happens  
-after most system services (such as the portmapper service) have  
-become unavailable.  That's fine for local file systems, but it makes  
-for a rather dodgy situation for NFS.
+commit e261f51f25b98c213e0b3d7f2109b117d714f69d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Dec 5 00:35:41 2006 -0500
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+    NFS: Make nfs_updatepage() mark the page as dirty.
+   =20
+    This will ensure that we can call set_page_writeback() from within
+    nfs_writepage(), which is always called with the page lock set.
+   =20
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+
+It seems to be this hunk which introduces the problem:
+
+
+@@ -628,7 +667,6 @@ static struct nfs_page * nfs_update_request(struct nfs_=
+open_context* ctx,
+ 				return ERR_PTR(error);
+ 			}
+ 			spin_unlock(&nfsi->req_lock);
+-			nfs_mark_request_dirty(new);
+ 			return new;
+ 		}
+ 		spin_unlock(&nfsi->req_lock);
+
+
+
+If I add that function call back in... the problem disappears.  I don't
+know if this just papers over the real problem though? =20
+
+
+					Thanks,
+					=3Da=3D
+
+
+
+
+
+--=20
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Aaron Straus
+aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
+
+--tSiBuZsJmMXpnp7T
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.2.2 (GNU/Linux)
+
+iD8DBQFIxtKkr/o4YuvB+jgRAt+CAKDi6826th7ohL2HY/9z4yxvIpw53gCghZHe
+MRq7nJqH7u83oKHTAZYgcYo=
+=MR8a
+-----END PGP SIGNATURE-----
+
+--tSiBuZsJmMXpnp7T--
