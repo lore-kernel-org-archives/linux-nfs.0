@@ -1,133 +1,112 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 5/7] lockd: Support AF_INET6 when hashing addresses in
-	nlm_lookup_host
-Date: Fri, 12 Sep 2008 17:59:47 -0400
-Message-ID: <20080912215947.GG22126@fieldses.org>
-References: <20080903183411.16867.33715.stgit@ingres.1015granger.net> <20080903183608.16867.80962.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 2/7] lockd: Use sockaddr_storage for h_saddr field
+Date: Fri, 12 Sep 2008 18:07:01 -0400
+Message-ID: <20080912220701.GH22126@fieldses.org>
+References: <20080903183411.16867.33715.stgit@ingres.1015granger.net> <20080903183546.16867.90601.stgit@ingres.1015granger.net> <20080912014154.GA27568@fieldses.org> <76bd70e30809112014m52af6961ja83522100203300b@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: chucklever@gmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53793 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:43589 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756965AbYILV7v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Sep 2008 17:59:51 -0400
-In-Reply-To: <20080903183608.16867.80962.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1751717AbYILWHD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Sep 2008 18:07:03 -0400
+In-Reply-To: <76bd70e30809112014m52af6961ja83522100203300b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 03, 2008 at 02:36:08PM -0400, Chuck Lever wrote:
-> Adopt an approach similar to the RPC server's auth cache (from Aurelien
-> Charbon and Brian Haley).
+On Thu, Sep 11, 2008 at 11:14:39PM -0400, Chuck Lever wrote:
+> On Thu, Sep 11, 2008 at 9:41 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Wed, Sep 03, 2008 at 02:35:46PM -0400, Chuck Lever wrote:
+> >> @@ -294,7 +294,7 @@ nlm_bind_host(struct nlm_host *host)
+> >>                       .protocol       = host->h_proto,
+> >>                       .address        = nlm_addr(host),
+> >>                       .addrsize       = host->h_addrlen,
+> >> -                     .saddress       = (struct sockaddr *)&host->h_saddr,
+> >> +                     .saddress       = nlm_srcaddr(host),
+> >
+> > Just out of curiosity--in the patch 1 and 3, you also add a length
+> > field.  Here you don't.  Why the difference?  None of the new length
+> > fields seem to be used yet.
 > 
-> Note nlm_lookup_host()'s existing IP address hash function has the same
-> issue with correctness
+> h_addrlen should be used in nlm_bind_host already in patch 1.
 
-(Wasn't it more perforance than correctness?  Arguably a hash is
-*correct* as long as the output is uniquely determined by the input, but
-the issue in this case was just that it was likely to be constant in
-common cases, right?)
-
-Anyway, looks fine, applied.
+Whoops, yes, I missed the rpc_create_args assignment, thanks.
 
 --b.
 
-> on little-endian systems as the original IPv4 auth
-> cache hash function, so I've also updated it with a hash function similar
-> to the new auth cache hash function.
+> When we
+> get up to the NSM changes, sm_addrlen will be used in nsm_mon_unmon.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> The source address is provided to rpc_create() only, which doesn't
+> take an address length.
 > 
->  fs/lockd/host.c |   49 +++++++++++++++++++++++++++++++++++++++++++------
->  1 files changed, 43 insertions(+), 6 deletions(-)
+> >>                       .timeout        = &timeparms,
+> >>                       .servername     = host->h_name,
+> >>                       .program        = &nlm_program,
+> >> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> >> index 198b4e5..d3d1330 100644
+> >> --- a/fs/lockd/svcsubs.c
+> >> +++ b/fs/lockd/svcsubs.c
+> >> @@ -418,7 +418,7 @@ EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_sb);
+> >>  static int
+> >>  nlmsvc_match_ip(void *datap, struct nlm_host *host)
+> >>  {
+> >> -     return nlm_cmp_addr(&host->h_saddr, datap);
+> >> +     return nlm_cmp_addr(nlm_srcaddr_in(host), datap);
+> >>  }
+> >>
+> >>  /**
+> >> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> >> index 41d7a8e..964e6c9 100644
+> >> --- a/include/linux/lockd/lockd.h
+> >> +++ b/include/linux/lockd/lockd.h
+> >> @@ -40,7 +40,7 @@ struct nlm_host {
+> >>       struct hlist_node       h_hash;         /* doubly linked list */
+> >>       struct sockaddr_storage h_addr;         /* peer address */
+> >>       size_t                  h_addrlen;
+> >> -     struct sockaddr_in      h_saddr;        /* our address (optional) */
+> >> +     struct sockaddr_storage h_srcaddr;      /* our address (optional) */
+> >>       struct rpc_clnt *       h_rpcclnt;      /* RPC client to talk to peer */
+> >>       char *                  h_name;         /* remote hostname */
+> >>       u32                     h_version;      /* interface version */
+> >> @@ -64,7 +64,7 @@ struct nlm_host {
+> >>       struct nsm_handle *     h_nsmhandle;    /* NSM status handle */
+> >>
+> >>       char                    h_addrbuf[48],  /* address eyecatchers */
+> >> -                             h_saddrbuf[48];
+> >> +                             h_srcaddrbuf[48];
+> >>  };
+> >>
+> >>  struct nsm_handle {
+> >> @@ -90,6 +90,16 @@ static inline struct sockaddr *nlm_addr(const struct nlm_host *host)
+> >>       return (struct sockaddr *)&host->h_addr;
+> >>  }
+> >>
+> >> +static inline struct sockaddr_in *nlm_srcaddr_in(const struct nlm_host *host)
+> >> +{
+> >> +     return (struct sockaddr_in *)&host->h_srcaddr;
+> >> +}
+> >> +
+> >> +static inline struct sockaddr *nlm_srcaddr(const struct nlm_host *host)
+> >> +{
+> >> +     return (struct sockaddr *)&host->h_srcaddr;
+> >> +}
+> >> +
+> >>  /*
+> >>   * Map an fl_owner_t into a unique 32-bit "pid"
+> >>   */
+> >>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
 > 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index dbf3fe6..1f9d72a 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -22,7 +22,6 @@
->  
->  #define NLMDBG_FACILITY		NLMDBG_HOSTCACHE
->  #define NLM_HOST_NRHASH		32
-> -#define NLM_ADDRHASH(addr)	(ntohl(addr) & (NLM_HOST_NRHASH-1))
->  #define NLM_HOST_REBIND		(60 * HZ)
->  #define NLM_HOST_EXPIRE		(300 * HZ)
->  #define NLM_HOST_COLLECT	(120 * HZ)
-> @@ -40,6 +39,48 @@ static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
->  					 const char *hostname,
->  					 unsigned int hostname_len);
->  
-> +/*
-> + * Hash function must work well on big- and little-endian platforms
-> + */
-> +static unsigned int __nlm_hash32(const __be32 n)
-> +{
-> +	unsigned int hash = (__force u32)n ^ ((__force u32)n >> 16);
-> +	return hash ^ (hash >> 8);
-> +}
-> +
-> +static unsigned int __nlm_hash_addr4(const struct sockaddr *sap)
-> +{
-> +	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-> +	return __nlm_hash32(sin->sin_addr.s_addr);
-> +}
-> +
-> +static unsigned int __nlm_hash_addr6(const struct sockaddr *sap)
-> +{
-> +	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
-> +	const struct in6_addr addr = sin6->sin6_addr;
-> +	return __nlm_hash32(addr.s6_addr32[0]) ^
-> +	       __nlm_hash32(addr.s6_addr32[1]) ^
-> +	       __nlm_hash32(addr.s6_addr32[2]) ^
-> +	       __nlm_hash32(addr.s6_addr32[3]);
-> +}
-> +
-> +static unsigned int nlm_hash_address(const struct sockaddr *sap)
-> +{
-> +	unsigned int hash;
-> +
-> +	switch (sap->sa_family) {
-> +	case AF_INET:
-> +		hash = __nlm_hash_addr4(sap);
-> +		break;
-> +	case AF_INET6:
-> +		hash = __nlm_hash_addr6(sap);
-> +		break;
-> +	default:
-> +		hash = 0;
-> +	}
-> +	return hash & (NLM_HOST_NRHASH - 1);
-> +}
-> +
->  static void nlm_clear_port(struct sockaddr *sap)
->  {
->  	switch (sap->sa_family) {
-> @@ -92,16 +133,12 @@ static struct nlm_host *nlm_lookup_host(int server,
->  	struct hlist_node *pos;
->  	struct nlm_host	*host;
->  	struct nsm_handle *nsm = NULL;
-> -	int		hash;
->  
->  	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
->  			" my role is %s, hostname=%.*s)\n",
->  			proto, version, server ? "server" : "client",
->  			hostname_len, hostname ? hostname : "<none>");
->  
-> -	hash = NLM_ADDRHASH(sin->sin_addr.s_addr);
-> -
-> -	/* Lock hash table */
->  	mutex_lock(&nlm_host_mutex);
->  
->  	if (time_after_eq(jiffies, next_gc))
-> @@ -114,7 +151,7 @@ static struct nlm_host *nlm_lookup_host(int server,
->  	 * different NLM rpc_clients into one single nlm_host object.
->  	 * This would allow us to have one nlm_host per address.
->  	 */
-> -	chain = &nlm_hosts[hash];
-> +	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
->  	hlist_for_each_entry(host, pos, chain, h_hash) {
->  		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
->  			continue;
 > 
+> 
+> -- 
+> "If you simplify your English, you are freed from the worst follies of
+> orthodoxy."
+>  -- George Orwell
