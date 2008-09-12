@@ -1,71 +1,126 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] sunrpc: make warning in svc_check_conn_limits() more generic
-Date: Fri, 12 Sep 2008 09:12:07 -0400
-Message-ID: <1221225127-6042-1-git-send-email-jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 6/7] lockd: Combine __nsm_find() and nsm_find().
+Date: Fri, 12 Sep 2008 17:56:37 -0400
+Message-ID: <20080912215637.GF22126@fieldses.org>
+References: <20080903183411.16867.33715.stgit@ingres.1015granger.net> <20080903183615.16867.58815.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:47065 "EHLO mx2.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:45823 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750936AbYILNMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Sep 2008 09:12:55 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m8CDCJCX014036
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2008 09:12:39 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m8CDC8so003572
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2008 09:12:08 -0400
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m8CDC7Xw014944
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2008 09:12:07 -0400
-Received: from dantu.rdu.redhat.com ([127.0.0.1])
-	by dantu.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m8CDC7sM006063
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2008 09:12:07 -0400
-Received: (from jlayton@localhost)
-	by dantu.rdu.redhat.com (8.13.8/8.13.8/Submit) id m8CDC7cx006062
-	for linux-nfs@vger.kernel.org; Fri, 12 Sep 2008 09:12:07 -0400
+	id S1754951AbYILV4j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Sep 2008 17:56:39 -0400
+In-Reply-To: <20080903183615.16867.58815.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I got a bug report from a user who got this message in his logs:
+On Wed, Sep 03, 2008 at 02:36:16PM -0400, Chuck Lever wrote:
+> Clean up: Having two separate functions doesn't add clarity, so
+> eliminate one of them.
 
-    lockd: too many open TCP sockets, consider increasing number of nfsd
-           threads.
+Yeah, agreed, there's no way to guess what the difference between
+__nsm_find(...,0) and nsm_find(...) is without looking up the prototype,
+so why bother?--there's no loss here in just using nsm_find(...,0) and
+nsm_find(...,1) instead.
 
-...lockd also started refusing connections at this point. He was
-apparently doing some testing with a highly contended lock. lockd
-started refusing connections after the first 80 and started printing
-this warning. He tried increasing the number of nfsd threads, which of
-course didn't do any good. This patch removes the "nfsd" from the
-message to make this a little less confusing.
+That said, with a couple wrappers, say nsm_lookup() and nsm_create(),
+you might be able to save the reader the trouble of having to go look at
+the implementation.
 
-There is still an artificial limit of 80 concurrent clients with lockd.
-svc_check_conn_limits has this hardcoded check:
+Up to you.  I'll apply this and you can send an incremental patch if you
+want.
 
-    if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
+--b.
 
-...my feeling is that we need to either raise the number or eliminate
-this check for single-threaded services like lockd. I'd first like to
-understand the rationale for setting the limit here, however. Can anyone
-clarify?
+> Use contemporary kernel coding conventions
+> where appropriate.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/svc_xprt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..340f549 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -536,7 +536,7 @@ static void svc_check_conn_limits(struct svc_serv *serv)
- 				/* Try to help the admin */
- 				printk(KERN_NOTICE "%s: too many open  "
- 				       "connections, consider increasing the "
--				       "number of nfsd threads\n",
-+				       "number of threads\n",
- 				       serv->sv_name);
- 			}
- 			/*
--- 
-1.5.5.1
-
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/lockd/host.c |   32 +++++++++++---------------------
+>  1 files changed, 11 insertions(+), 21 deletions(-)
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 1f9d72a..b9eeafe 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -31,13 +31,11 @@ static unsigned long		next_gc;
+>  static int			nrhosts;
+>  static DEFINE_MUTEX(nlm_host_mutex);
+>  
+> -
+>  static void			nlm_gc_hosts(void);
+> -static struct nsm_handle *	__nsm_find(const struct sockaddr_in *,
+> -					const char *, unsigned int, int);
+> -static struct nsm_handle *	nsm_find(const struct sockaddr_in *sin,
+> -					 const char *hostname,
+> -					 unsigned int hostname_len);
+> +static struct nsm_handle	*nsm_find(const struct sockaddr_in *sin,
+> +						const char *hostname,
+> +						const size_t hostname_len,
+> +						const int create);
+>  
+>  /*
+>   * Hash function must work well on big- and little-endian platforms
+> @@ -187,7 +185,7 @@ static struct nlm_host *nlm_lookup_host(int server,
+>  		atomic_inc(&nsm->sm_count);
+>  	else {
+>  		host = NULL;
+> -		nsm = nsm_find(sin, hostname, hostname_len);
+> +		nsm = nsm_find(sin, hostname, hostname_len, 1);
+>  		if (!nsm) {
+>  			dprintk("lockd: nlm_lookup_host failed; "
+>  				"no nsm handle\n");
+> @@ -419,8 +417,7 @@ void nlm_host_rebooted(const struct sockaddr_in *sin,
+>  	struct nsm_handle *nsm;
+>  	struct nlm_host	*host;
+>  
+> -	/* Find the NSM handle for this peer */
+> -	nsm = __nsm_find(sin, hostname, hostname_len, 0);
+> +	nsm = nsm_find(sin, hostname, hostname_len, 0);
+>  	if (nsm == NULL) {
+>  		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
+>  				hostname_len, hostname);
+> @@ -560,10 +557,10 @@ nlm_gc_hosts(void)
+>  static LIST_HEAD(nsm_handles);
+>  static DEFINE_SPINLOCK(nsm_lock);
+>  
+> -static struct nsm_handle *
+> -__nsm_find(const struct sockaddr_in *sin,
+> -		const char *hostname, unsigned int hostname_len,
+> -		int create)
+> +static struct nsm_handle *nsm_find(const struct sockaddr_in *sin,
+> +				   const char *hostname,
+> +				   const size_t hostname_len,
+> +				   const int create)
+>  {
+>  	struct nsm_handle *nsm = NULL;
+>  	struct nsm_handle *pos;
+> @@ -575,7 +572,7 @@ __nsm_find(const struct sockaddr_in *sin,
+>  		if (printk_ratelimit()) {
+>  			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
+>  					    "in NFS lock request\n",
+> -				hostname_len, hostname);
+> +				(int)hostname_len, hostname);
+>  		}
+>  		return NULL;
+>  	}
+> @@ -623,13 +620,6 @@ found:
+>  	return nsm;
+>  }
+>  
+> -static struct nsm_handle *
+> -nsm_find(const struct sockaddr_in *sin, const char *hostname,
+> -	 unsigned int hostname_len)
+> -{
+> -	return __nsm_find(sin, hostname, hostname_len, 1);
+> -}
+> -
+>  /*
+>   * Release an NSM handle
+>   */
+> 
