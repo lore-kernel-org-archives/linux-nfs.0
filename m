@@ -1,143 +1,65 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [Fwd: [PATCH, RFC] xprtrdma: Simplify client responder resource handling]
-Date: Mon, 15 Sep 2008 11:00:53 -0500
-Message-ID: <48CE86B5.8000101@opengridcomputing.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/2] SUNRPC: Use short-hand IPv6 ANYADDR for RPCB_SET
+Date: Mon, 15 Sep 2008 16:27:30 -0500
+Message-ID: <20080915212730.3939.35770.stgit@ellison.1015granger.net>
+References: <20080915212437.3939.82594.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Tom Talpey <Thomas.Talpey@netapp.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: okir@suse.de, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:37704 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754208AbYIOQAy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2008 12:00:54 -0400
+Received: from rgminet01.oracle.com ([148.87.113.118]:50649 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754078AbYIOV2J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2008 17:28:09 -0400
+In-Reply-To: <20080915212437.3939.82594.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Clean up: When doing an RPCB_SET, make the kernel's rpcb client use the
+shorthand "::" for the universal form of the IPv6 ANY address.
 
-Hey guys. Do you have any status/comments on this patch?
+Without this patch, rpcbind will advertise:
 
-Perhaps my description is misleading. This is a bug and there are people 
-playing with big data mounts that are hitting this. I'll be happy to 
-resend it if you'd like.
+  0000:0000:0000:0000:0000:0000:0000:0000.x.y
 
-Thanks,
-Tom
+This is cosmetic only.  It cleans up the display of information from
+/sbin/rpcinfo.
 
-
--------- Original Message --------
-Subject: [PATCH, RFC] xprtrdma: Simplify client responder resource handling
-Date: Thu, 21 Aug 2008 20:35:06 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: linux-nfs@vger.kernel.org, Tom Talpey <Thomas.Talpey@netapp.com>
-
-
-This logic sets the connection parameter that configures the local 
-device and informs the remote peer how many concurrent incoming 
-RDMA_READ requests are supported. This logic didn't really do what was 
-intended for two reasons:
-
-- The max number supported by the device is typically smaller than
-any one factor in the calculation used, and
-
-- The field in the connection parameter structure where the value is
-stored is a u8 and always overflows for the default settings.
-
-So what really happens is the value requested for responder resources
-is the left over 8 bits from the "desired value". If the desired value
-happened to be a multiple of 256, the result was zero and it wouldn't
-connect at all.
-
-Given the above and the fact that max_requests is almost always larger
-than the max responder resources supported by the adapter, this patch
-simplifies this logic and simply requests the max supported by the device.
-
-This bug was found by Jim Schutt at Sandia.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-  net/sunrpc/xprtrdma/verbs.c |   44 
-++++++------------------------------------
-  1 files changed, 7 insertions(+), 37 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index edf520c..a6d86f6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -670,30 +670,11 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct 
-rpcrdma_ia *ia,
-  	ep->rep_remote_cma.private_data_len = 0;
+ net/sunrpc/rpcb_clnt.c |   12 ++++++++----
+ 1 files changed, 8 insertions(+), 4 deletions(-)
 
-  	/* Client offers RDMA Read but does not initiate */
--	switch (ia->ri_memreg_strategy) {
--	case RPCRDMA_BOUNCEBUFFERS:
--		ep->rep_remote_cma.responder_resources = 0;
--		break;
--	case RPCRDMA_MTHCAFMR:
--	case RPCRDMA_REGISTER:
--	case RPCRDMA_FASTREG:
--		ep->rep_remote_cma.responder_resources = cdata->max_requests *
--				(RPCRDMA_MAX_DATA_SEGS / 8);
--		break;
--	case RPCRDMA_MEMWINDOWS:
--	case RPCRDMA_MEMWINDOWS_ASYNC:
--#if RPCRDMA_PERSISTENT_REGISTRATION
--	case RPCRDMA_ALLPHYSICAL:
--#endif
--		ep->rep_remote_cma.responder_resources = cdata->max_requests *
--				(RPCRDMA_MAX_DATA_SEGS / 2);
--		break;
--	default:
--		break;
--	}
--	if (ep->rep_remote_cma.responder_resources > devattr.max_qp_rd_atom)
--		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
-  	ep->rep_remote_cma.initiator_depth = 0;
-+	if (ia->ri_memreg_strategy != RPCRDMA_BOUNCEBUFFERS)
-+		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index cc7250d..02164d4 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -20,6 +20,7 @@
+ #include <linux/in6.h>
+ #include <linux/kernel.h>
+ #include <linux/errno.h>
++#include <net/ipv6.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+@@ -304,10 +305,13 @@ static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
+ 	char buf[64];
+ 
+ 	/* Construct AF_INET6 universal address */
+-	snprintf(buf, sizeof(buf),
+-			NIP6_FMT".%u.%u",
+-			NIP6(address_to_register->sin6_addr),
+-			port >> 8, port & 0xff);
++ 	if (ipv6_addr_any(&address_to_register->sin6_addr))
++		snprintf(buf, sizeof(buf), "::.%u.%u",
++				port >> 8, port & 0xff);
 +	else
-+		ep->rep_remote_cma.responder_resources = 0;
++		snprintf(buf, sizeof(buf), NIP6_FMT".%u.%u",
++				NIP6(address_to_register->sin6_addr),
++				port >> 8, port & 0xff);
+ 	map->r_addr = buf;
+ 
+ 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
 
-  	ep->rep_remote_cma.retry_count = 7;
-  	ep->rep_remote_cma.flow_control = 0;
-@@ -822,15 +803,6 @@ if 
-(strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
-  		rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
-  	}
-  }
--
--	/* Theoretically a client initiator_depth > 0 is not needed,
--	 * but many peers fail to complete the connection unless they
--	 * == responder_resources! */
--	if (ep->rep_remote_cma.initiator_depth !=
--				ep->rep_remote_cma.responder_resources)
--		ep->rep_remote_cma.initiator_depth =
--			ep->rep_remote_cma.responder_resources;
--
-  	ep->rep_connected = 0;
-
-  	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
-@@ -859,12 +831,10 @@ if 
-(strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
-  	if (ep->rep_connected <= 0) {
-  		/* Sometimes, the only way to reliably connect to remote
-  		 * CMs is to use same nonzero values for ORD and IRD. */
-+		if (!ep->rep_remote_cma.responder_resources)
-+			ep->rep_remote_cma.responder_resources = 1;
-  		ep->rep_remote_cma.initiator_depth =
--					ep->rep_remote_cma.responder_resources;
--		if (ep->rep_remote_cma.initiator_depth == 0)
--			++ep->rep_remote_cma.initiator_depth;
--		if (ep->rep_remote_cma.responder_resources == 0)
--			++ep->rep_remote_cma.responder_resources;
-+			ep->rep_remote_cma.responder_resources;
-  		if (retry_count++ == 0)
-  			goto retry;
-  		rc = ep->rep_connected;
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
