@@ -1,251 +1,82 @@
-From: Le Rouzic <aime.le-rouzic@bull.net>
-Subject: [PATCH 2/2] NFSV4 Ipv6 server support
-Date: Tue, 16 Sep 2008 11:32:07 +0200
-Message-ID: <48CF7D17.9050008@bull.net>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
+Date: Tue, 16 Sep 2008 06:38:43 -0500
+Message-ID: <48CF9AC3.6060801@opengridcomputing.com>
+References: <48B2D7F8.5020206@opengridcomputing.com>	 <20080826192711.GJ4380@fieldses.org>	 <48B567F5.2090605@opengridcomputing.com>	 <1220111261.31172.14.camel@localhost.localdomain>	 <20080831193037.GB14876@fieldses.org>	 <1220211842.31172.18.camel@localhost.localdomain>	 <48BAF643.4070808@opengridcomputing.com>	 <1220217505.31172.26.camel@localhost.localdomain>	 <48BC2466.2070806@opengridcomputing.com>	 <1221036015.24993.27.camel@zakaz.uk.xensource.com>	 <20080912224323.GN22126@fieldses.org>	 <48CAF80A.4010109@opengridcomputing.com>	 <1221296243.2534.7.camel@localhost.localdomain> <1221544139.2534.18.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="------------000600000501010305040304"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	nfsv4 <nfsv4@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Grant Coady <gcoady.lk@gmail.com>,
+	linux-kernel@vger.kernel.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org
+To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.es335.com ([67.65.19.105]:20114 "EHLO mail.es335.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752476AbYIPLio (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2008 07:38:44 -0400
+In-Reply-To: <1221544139.2534.18.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------000600000501010305040304
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
+Ian Campbell wrote:
+> (dropping the e1000 guys, it seems unnecessary to keep spamming them
+> with this issue when it's unlikely to be anything to do with them. I've
+> left their list on for now so they know. I'd suggest dropping it from
+> any replies.)
+>
+> On Sat, 2008-09-13 at 09:57 +0100, Ian Campbell wrote:
+>   
+>> On Fri, 2008-09-12 at 18:15 -0500, Tom Tucker wrote:
+>>     
+>>> Iain sadly yes. There's a thread stuck holding the BUSY bit or a thread 
+>>> failed to clear the bit properly
+>>> (maybe an error path). Data continues to arrives, but the transport 
+>>> never gets put back on the queue
+>>> because it's BUSY bit is set.  In other words, this is a different error 
+>>> than the one we've been chasing.
+>>>
+>>> If I sent you a patch, could you rebuild the kernel and give it a whirl? 
+>>> Also, can you give me a
+>>> kernel.org relative commit-id or tag for the kernel that you're using?
+>>>       
+>> I sure could. I'm using the Debian kernel which is currently at 2.6.26.3
+>> (pkg version 2.6.26-4) although I have an update to 2.6.26.4 (via pkg
+>> 2.6.26-5) pending.
+>>
+>> If I'm going to build my own I'll start with current git
+>> (a551b98d5f6fce5897d497abd8bfb262efb33d2a) and repro there before trying
+>> your patch.
+>>     
+>
+> FYI I've repro'd with 
+>         commit a551b98d5f6fce5897d497abd8bfb262efb33d2a
+>         Merge: d1c6d2e... 50bed2e...
+>         Author: Linus Torvalds <torvalds@linux-foundation.org>
+>         Date:   Thu Sep 11 11:50:15 2008 -0700
+>         
+>             Merge branch 'for-linus' of git://git.kernel.dk/linux-2.6-block
+>             
+>             * 'for-linus' of git://git.kernel.dk/linux-2.6-block:
+>               sg: disable interrupts inside sg_copy_buffer
+> which was the latest git a few days back.
+>
+> I'm going to start bisecting between v2.6.25 and v2.6.26. There's 173
+> commits in fs/nfs* net/sunrpc in that interval so with a day per test I
+> should have something next week...
+>
+>   
+Iain:
 
+I'm assuming you'll do this in advance of any patch from me? I was 
+simply going to add printk to the various shutdown paths and see if we 
+could get some finer grained debug output since the generic transport 
+debug output was too verbose.
 
+Let me know and I'll help if I can,
+Tom
 
---------------000600000501010305040304
-Content-Type: text/plain;
- name="patch2_ipv6overrpcbindv4"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="patch2_ipv6overrpcbindv4"
+> Ian.
+>   
 
-
- NFSV4 IPV6: Enable daemons server to listen on AF_INET6 sockets when IPv6 support available
- NFSV4 IPV6: Adds AF_INET6 domain processing when AF_INET processing only available
-
- ---
-
- fs/lockd/svc.c       |   10 ++++++++++
- fs/nfs/callback.c    |   12 ++++++++++++
- fs/nfsd/nfsctl.c     |   41 +++++++++++++++++++++++++++++++----------
- fs/nfsd/nfssvc.c     |   11 +++++++++++
- net/sunrpc/svcsock.c |    3 ++-
- 5 files changed, 66 insertions(+), 11 deletions(-)
-
- Signed-off-by: Aime Le Rouzic <aime.le-rouzic@bull.net>
----
-diff -Nru rpcbindv4/fs/lockd/svc.c ipv6overrpcbindv4/fs/lockd/svc.c
---- rpcbindv4/fs/lockd/svc.c	2008-09-15 14:36:40.000000000 +0200
-+++ ipv6overrpcbindv4/fs/lockd/svc.c	2008-09-15 15:12:29.000000000 +0200
-@@ -266,7 +266,17 @@
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
- 
- 	error = -ENOMEM;
-+
-+	/*
-+	 * If the kernel has IPv6 support available, always listen for
-+	 * both AF_INET and AF_INET6 requests.
-+	 */
-+	#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, AF_INET6, NULL);
-+	#else
- 	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, AF_INET, NULL);
-+	#endif
-+
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		goto out;
-diff -Nru rpcbindv4/fs/nfs/callback.c ipv6overrpcbindv4/fs/nfs/callback.c
---- rpcbindv4/fs/nfs/callback.c	2008-09-15 14:35:48.000000000 +0200
-+++ ipv6overrpcbindv4/fs/nfs/callback.c	2008-09-15 15:30:16.000000000 +0200
-@@ -105,8 +105,20 @@
- 	mutex_lock(&nfs_callback_mutex);
- 	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
- 		goto out;
-+
-+	/*
-+	 * If the kernel has IPv6 support available, always listen for
-+	 * both AF_INET and AF_INET6 requests.
-+	 */
-+	#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
-+				AF_INET6, NULL);
-+	#else
- 	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
- 				AF_INET, NULL);
-+	#endif
-+
-+
- 	ret = -ENOMEM;
- 	if (!serv)
- 		goto out_err;
-diff -Nru rpcbindv4/fs/nfsd/nfsctl.c ipv6overrpcbindv4/fs/nfsd/nfsctl.c
---- rpcbindv4/fs/nfsd/nfsctl.c	2008-09-15 14:50:09.000000000 +0200
-+++ ipv6overrpcbindv4/fs/nfsd/nfsctl.c	2008-09-15 15:18:24.000000000 +0200
-@@ -230,6 +230,7 @@
- {
- 	struct nfsctl_fsparm *data;
- 	struct sockaddr_in *sin;
-+	struct sockaddr_in6 *sin6;
- 	struct auth_domain *clp;
- 	int err = 0;
- 	struct knfsd_fh *res;
-@@ -239,9 +240,19 @@
- 		return -EINVAL;
- 	data = (struct nfsctl_fsparm*)buf;
- 	err = -EPROTONOSUPPORT;
--	if (data->gd_addr.sa_family != AF_INET)
-+	switch (data->gd_addr.sa_family) {
-+	case AF_INET:
-+		sin = (struct sockaddr_in *)&data->gd_addr;
-+		ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
-+		break;
-+	case AF_INET6:
-+		sin6 = (struct sockaddr_in6 *)&data->gd_addr;
-+		ipv6_addr_copy(&in6, &sin6->sin6_addr); 
-+		break;
-+	default:
- 		goto out;
--	sin = (struct sockaddr_in *)&data->gd_addr;
-+	}
-+
- 	if (data->gd_maxlen > NFS3_FHSIZE)
- 		data->gd_maxlen = NFS3_FHSIZE;
- 
-@@ -249,8 +260,6 @@
- 
- 	exp_readlock();
- 
--	ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
--
- 	clp = auth_unix_lookup(&in6);
- 	if (!clp)
- 		err = -EPERM;
-@@ -269,6 +278,7 @@
- {
- 	struct nfsctl_fdparm *data;
- 	struct sockaddr_in *sin;
-+	struct sockaddr_in6 *sin6;
- 	struct auth_domain *clp;
- 	int err = 0;
- 	struct knfsd_fh fh;
-@@ -279,20 +289,31 @@
- 		return -EINVAL;
- 	data = (struct nfsctl_fdparm*)buf;
- 	err = -EPROTONOSUPPORT;
--	if (data->gd_addr.sa_family != AF_INET)
-+	if (data->gd_addr.sa_family != AF_INET &&
-+	    data->gd_addr.sa_family != AF_INET6)
- 		goto out;
-+
- 	err = -EINVAL;
- 	if (data->gd_version < 2 || data->gd_version > NFSSVC_MAXVERS)
- 		goto out;
- 
- 	res = buf;
--	sin = (struct sockaddr_in *)&data->gd_addr;
- 	exp_readlock();
- 
--	ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
-+	switch (data->gd_addr.sa_family) {
-+	case AF_INET:
-+		sin = (struct sockaddr_in *)&data->gd_addr;
-+		ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
-+		break;
-+	case AF_INET6:
-+		sin6 = (struct sockaddr_in6 *)&data->gd_addr;
-+		ipv6_addr_copy(&in6, &sin6->sin6_addr);
-+		break;
-+	default:
-+		goto out;
-+	}
- 
--	clp = auth_unix_lookup(&in6);
--	if (!clp)
-+	if (!(clp = auth_unix_lookup(&in6)))
- 		err = -EPERM;
- 	else {
- 		err = exp_rootfh(clp, data->gd_path, &fh, NFS_FHSIZE);
-@@ -305,7 +326,7 @@
- 		memcpy(res, &fh.fh_base, fh.fh_size);
- 		err = NFS_FHSIZE;
- 	}
-- out:
-+out:
- 	return err;
- }
- 
-diff -Nru rpcbindv4/fs/nfsd/nfssvc.c ipv6overrpcbindv4/fs/nfsd/nfssvc.c
---- rpcbindv4/fs/nfsd/nfssvc.c	2008-09-15 14:37:22.000000000 +0200
-+++ ipv6overrpcbindv4/fs/nfsd/nfssvc.c	2008-09-15 14:54:58.000000000 +0200
-@@ -228,9 +228,20 @@
- 	}
- 
- 	atomic_set(&nfsd_busy, 0);
-+	/*
-+	 * If the kernel has IPv6 support available, always listen for
-+	 * both AF_INET and AF_INET6 requests.
-+	 */
-+	#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
-+                                      AF_INET6, nfsd_last_thread,
-+                                      nfsd, THIS_MODULE);
-+
-+	#else
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
- 				      AF_INET, nfsd_last_thread,
- 				      nfsd, THIS_MODULE);
-+	#endif
- 	if (nfsd_serv == NULL)
- 		err = -ENOMEM;
- 
-diff -Nru rpcbindv4/net/sunrpc/svcsock.c ipv6overrpcbindv4/net/sunrpc/svcsock.c
---- rpcbindv4/net/sunrpc/svcsock.c	2008-09-15 14:42:16.000000000 +0200
-+++ ipv6overrpcbindv4/net/sunrpc/svcsock.c	2008-09-15 15:34:47.000000000 +0200
-@@ -1176,8 +1176,9 @@
- 
- 	if (!so)
- 		return err;
--	if (so->sk->sk_family != AF_INET)
-+	if ((so->sk->sk_family != AF_INET) && (so->sk->sk_family != AF_INET6)) {
- 		err =  -EAFNOSUPPORT;
-+	}
- 	else if (so->sk->sk_protocol != IPPROTO_TCP &&
- 	    so->sk->sk_protocol != IPPROTO_UDP)
- 		err =  -EPROTONOSUPPORT;
-
--- 
------------------------------------------------------------------
-Company : Bull, Architect of an Open World TM (www.bull.com)
-Name    : Aime Le Rouzic 
-Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
-E-Mail  : aime.le-rouzic@bull.net
-Phone   : 33 (4) 76.29.75.51
-Fax     : 33 (4) 76.29.75.18
------------------------------------------------------------------ 
-
---------------000600000501010305040304
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
---------------000600000501010305040304--
