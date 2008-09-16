@@ -1,268 +1,105 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] SUNRPC: Register both netids for AF_INET6 servers
-Date: Mon, 15 Sep 2008 16:27:23 -0500
-Message-ID: <20080915212723.3939.23359.stgit@ellison.1015granger.net>
-References: <20080915212437.3939.82594.stgit@ellison.1015granger.net>
+From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
+Date: Tue, 16 Sep 2008 06:48:59 +0100
+Message-ID: <1221544139.2534.18.camel@localhost.localdomain>
+References: <48B2D7F8.5020206@opengridcomputing.com>
+	 <20080826192711.GJ4380@fieldses.org>
+	 <48B567F5.2090605@opengridcomputing.com>
+	 <1220111261.31172.14.camel@localhost.localdomain>
+	 <20080831193037.GB14876@fieldses.org>
+	 <1220211842.31172.18.camel@localhost.localdomain>
+	 <48BAF643.4070808@opengridcomputing.com>
+	 <1220217505.31172.26.camel@localhost.localdomain>
+	 <48BC2466.2070806@opengridcomputing.com>
+	 <1221036015.24993.27.camel@zakaz.uk.xensource.com>
+	 <20080912224323.GN22126@fieldses.org>
+	 <48CAF80A.4010109@opengridcomputing.com>
+	 <1221296243.2534.7.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: okir@suse.de, linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-YtkQp/hz1Ig8crtFlFuk"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Grant Coady <gcoady.lk@gmail.com>,
+	linux-kernel@vger.kernel.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org, e1000-devel@lists.sourceforge.net
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:40094 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754132AbYIOV1z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2008 17:27:55 -0400
-In-Reply-To: <20080915212437.3939.82594.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from mtaout02-winn.ispmail.ntl.com ([81.103.221.48]:7722 "EHLO
+	mtaout02-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751221AbYIPFtT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2008 01:49:19 -0400
+In-Reply-To: <1221296243.2534.7.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TI-RPC is a user-space library of RPC functions that replaces ONC RPC
-and allows RPC to operate in the new world of IPv6.
 
-TI-RPC combines the concept of a transport protocol (UDP and TCP)
-and a protocol family (PF_INET and PF_INET6) into a single identifier
-called a "netid."  For example, "udp" means UDP over IPv4, and "udp6"
-means UDP over IPv6.
+--=-YtkQp/hz1Ig8crtFlFuk
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-For rpcbind, then, the RPC service tuple that is registered and
-advertised is:
+(dropping the e1000 guys, it seems unnecessary to keep spamming them
+with this issue when it's unlikely to be anything to do with them. I've
+left their list on for now so they know. I'd suggest dropping it from
+any replies.)
 
-  [RPC program, RPC version, service address and port, netid]
+On Sat, 2008-09-13 at 09:57 +0100, Ian Campbell wrote:
+> On Fri, 2008-09-12 at 18:15 -0500, Tom Tucker wrote:
+> > Iain sadly yes. There's a thread stuck holding the BUSY bit or a thread=
+=20
+> > failed to clear the bit properly
+> > (maybe an error path). Data continues to arrives, but the transport=20
+> > never gets put back on the queue
+> > because it's BUSY bit is set.  In other words, this is a different erro=
+r=20
+> > than the one we've been chasing.
+> >=20
+> > If I sent you a patch, could you rebuild the kernel and give it a whirl=
+?=20
+> > Also, can you give me a
+> > kernel.org relative commit-id or tag for the kernel that you're using?
+>=20
+> I sure could. I'm using the Debian kernel which is currently at 2.6.26.3
+> (pkg version 2.6.26-4) although I have an update to 2.6.26.4 (via pkg
+> 2.6.26-5) pending.
+>=20
+> If I'm going to build my own I'll start with current git
+> (a551b98d5f6fce5897d497abd8bfb262efb33d2a) and repro there before trying
+> your patch.
 
-instead of
+FYI I've repro'd with=20
+        commit a551b98d5f6fce5897d497abd8bfb262efb33d2a
+        Merge: d1c6d2e... 50bed2e...
+        Author: Linus Torvalds <torvalds@linux-foundation.org>
+        Date:   Thu Sep 11 11:50:15 2008 -0700
+       =20
+            Merge branch 'for-linus' of git://git.kernel.dk/linux-2.6-block
+           =20
+            * 'for-linus' of git://git.kernel.dk/linux-2.6-block:
+              sg: disable interrupts inside sg_copy_buffer
+which was the latest git a few days back.
 
-  [RPC program, RPC version, port, protocol]
+I'm going to start bisecting between v2.6.25 and v2.6.26. There's 173
+commits in fs/nfs* net/sunrpc in that interval so with a day per test I
+should have something next week...
 
-Service address is typically ANYADDR, but can be a specific address
-of one of the interfaces on a multi-homed host.  The third item in
-the new tuple is expressed as a universal address.
+Ian.
+--=20
+Ian Campbell
 
-The current Linux rpcbind implementation registers a netid for both
-protocol families when RPCB_SET is done for just the PF_INET6 version
-of the netid (ie udp6 or tcp6).  So registering "udp6" causes a
-registration for "udp" to appear automatically as well.
+Vini, vidi, Linux!
+		-- Unknown source
 
-We've recently determined that this is incorrect behavior.  In the
-TI-RPC world, "udp6" is not meant to imply that the registered RPC
-service handles requests from AF_INET as well, even if the listener
-socket does address mapping.  "udp" and "udp6" are entirely separate
-capabilities, and must be registered separately.
+--=-YtkQp/hz1Ig8crtFlFuk
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
 
-The Linux kernel, unlike TI-RPC, leverages address mapping to allow a
-single listener socket to handle requests for both AF_INET and AF_INET6.
-This is still OK, but the kernel currently assumes registering "udp6"
-will cover "udp" as well.  It registers only "udp6" for it's AF_INET6
-services, even though they handle both AF_INET and AF_INET6 on the same
-port.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
 
-So svc_register() actually needs to register both "udp" and "udp6"
-explicitly (and likewise for TCP).  Until rpcbind is fixed, the
-kernel can ignore the return code for the second RPCB_SET call.
+iEYEABECAAYFAkjPSMsACgkQM0+0qS9rzVnbYQCgzMmAzAO18O2pPMwETHdOi3KZ
+PmAAoNAafL5cZZ86s6F3zXeQNVmBMsZH
+=1Uzq
+-----END PGP SIGNATURE-----
 
-Please merge this with commit 15231312:
-
-    SUNRPC: Support IPv6 when registering kernel RPC services
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Olaf Kirch <okir@suse.de>
----
-
- net/sunrpc/svc.c |  143 ++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 100 insertions(+), 43 deletions(-)
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index c023cb3..5089014 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -721,69 +721,125 @@ svc_exit_thread(struct svc_rqst *rqstp)
- EXPORT_SYMBOL(svc_exit_thread);
- 
- #ifdef CONFIG_SUNRPC_REGISTER_V4
-+
- /*
-- * Registering kernel RPC services with rpcbind version 2 will work
-- * over either IPv4 or IPv6, since the Linux kernel always registers
-- * services for the "any" address.
-- *
-- * However, the local rpcbind daemon listens on either only AF_INET
-- * or AF_INET6 (never both).  When it listens on AF_INET6, an rpcbind
-- * version 2 registration will result in registering the service at
-- * IN6ADDR_ANY, even if the RPC service being registered is not
-- * IPv6-enabled.
-+ * Register an "inet" protocol family netid with the local
-+ * rpcbind daemon via an rpcbind v4 SET request.
-  *
-- * Rpcbind version 4 allows us to be a little more specific.  Kernel
-- * RPC services that don't yet support AF_INET6 can register
-- * themselves as IPv4-only with the local rpcbind daemon, even if the
-- * daemon is listening only on AF_INET6.
-+ * No netconfig infrastructure is available in the kernel, so
-+ * we map IP_ protocol numbers to netids by hand.
-  *
-- * And, registering IPv6-enabled kernel RPC services via AF_INET6
-- * verifies that the local user space rpcbind daemon is properly
-- * configured to support remote AF_INET6 rpcbind requests.
-- *
-- * An AF_INET6 registration request will fail if the local rpcbind
-- * daemon is not set up to listen on AF_INET6.  Likewise, we fail
-- * AF_INET6 registration requests if svc_register() is configured to
-- * support only rpcbind version 2.
-+ * Returns zero on success; a negative errno value is returned
-+ * if any error occurs.
-  */
--static int __svc_register(const u32 program, const u32 version,
--			  const sa_family_t family,
--			  const unsigned short protocol,
--			  const unsigned short port)
-+static int __svc_rpcb_register4(const u32 program, const u32 version,
-+				const unsigned short protocol,
-+				const unsigned short port)
- {
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
- 		.sin_addr.s_addr	= htonl(INADDR_ANY),
- 		.sin_port		= htons(port),
- 	};
-+	char *netid;
-+
-+	switch (protocol) {
-+	case IPPROTO_UDP:
-+		netid = RPCBIND_NETID_UDP;
-+		break;
-+	case IPPROTO_TCP:
-+		netid = RPCBIND_NETID_TCP;
-+		break;
-+	default:
-+		return -EPROTONOSUPPORT;
-+	}
-+
-+	return rpcb_v4_register(program, version,
-+				(struct sockaddr *)&sin, netid);
-+}
-+
-+/*
-+ * Register an "inet6" protocol family netid with the local
-+ * rpcbind daemon via an rpcbind v4 SET request.
-+ *
-+ * No netconfig infrastructure is available in the kernel, so
-+ * we map IP_ protocol numbers to netids by hand.
-+ *
-+ * Returns zero on success; a negative errno value is returned
-+ * if any error occurs.
-+ */
-+static int __svc_rpcb_register6(const u32 program, const u32 version,
-+				const unsigned short protocol,
-+				const unsigned short port)
-+{
- 	struct sockaddr_in6 sin6 = {
- 		.sin6_family		= AF_INET6,
- 		.sin6_addr		= IN6ADDR_ANY_INIT,
- 		.sin6_port		= htons(port),
- 	};
--	struct sockaddr *sap;
- 	char *netid;
- 
--	switch (family) {
--	case AF_INET:
--		sap = (struct sockaddr *)&sin;
--		netid = RPCBIND_NETID_TCP;
--		if (protocol == IPPROTO_UDP)
--			netid = RPCBIND_NETID_UDP;
-+	switch (protocol) {
-+	case IPPROTO_UDP:
-+		netid = RPCBIND_NETID_UDP6;
- 		break;
--	case AF_INET6:
--		sap = (struct sockaddr *)&sin6;
-+	case IPPROTO_TCP:
- 		netid = RPCBIND_NETID_TCP6;
--		if (protocol == IPPROTO_UDP)
--			netid = RPCBIND_NETID_UDP6;
- 		break;
- 	default:
--		return -EAFNOSUPPORT;
-+		return -EPROTONOSUPPORT;
-+	}
-+
-+	return rpcb_v4_register(program, version,
-+				(struct sockaddr *)&sin6, netid);
-+}
-+
-+/*
-+ * Register a kernel RPC service via rpcbind version 4.
-+ *
-+ * Returns zero on success; a negative errno value is returned
-+ * if any error occurs.
-+ */
-+static int __svc_register(const u32 program, const u32 version,
-+			  const sa_family_t family,
-+			  const unsigned short protocol,
-+			  const unsigned short port)
-+{
-+	int error;
-+
-+	switch (family) {
-+	case AF_INET:
-+		return __svc_rpcb_register4(program, version,
-+						protocol, port);
-+	case AF_INET6:
-+		error = __svc_rpcb_register6(program, version,
-+						protocol, port);
-+		if (error < 0)
-+			return error;
-+
-+		/*
-+		 * Work around bug in some versions of Linux rpcbind
-+		 * which don't allow registration of both inet and
-+		 * inet6 netids.
-+		 *
-+		 * Error return ignored for now.
-+		 */
-+		__svc_rpcb_register4(program, version,
-+						protocol, port);
-+		return 0;
- 	}
- 
--	return rpcb_v4_register(program, version, sap, netid);
-+	return -EAFNOSUPPORT;
- }
--#else
-+
-+#else	/* CONFIG_SUNRPC_REGISTER_V4 */
-+
-+/*
-+ * Register a kernel RPC service via rpcbind version 2.
-+ *
-+ * Returns zero on success; a negative errno value is returned
-+ * if any error occurs.
-+ */
- static int __svc_register(const u32 program, const u32 version,
- 			  sa_family_t family,
- 			  const unsigned short protocol,
-@@ -794,7 +850,8 @@ static int __svc_register(const u32 program, const u32 version,
- 
- 	return rpcb_register(program, version, protocol, port);
- }
--#endif
-+
-+#endif /* CONFIG_SUNRPC_REGISTER_V4 */
- 
- /**
-  * svc_register - register an RPC service with the local portmapper
-@@ -818,12 +875,12 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
- 			if (progp->pg_vers[i] == NULL)
- 				continue;
- 
--			dprintk("svc: svc_register(%s, %u, %s, %u, %d)%s\n",
-+			dprintk("svc: svc_register(%sv%d, %s, %u, %u)%s\n",
- 					progp->pg_name,
--					serv->sv_family,
-+					i,
- 					proto == IPPROTO_UDP?  "udp" : "tcp",
- 					port,
--					i,
-+					serv->sv_family,
- 					progp->pg_vers[i]->vs_hidden?
- 						" (but not telling portmap)" : "");
- 
+--=-YtkQp/hz1Ig8crtFlFuk--
 
