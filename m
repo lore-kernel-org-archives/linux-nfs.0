@@ -1,172 +1,120 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/10] lockd: IPv6 support for SM_MON / SM_UNMON
-Date: Wed, 17 Sep 2008 11:18:19 -0500
-Message-ID: <20080917161818.4963.27169.stgit@ellison.1015granger.net>
+Subject: [PATCH 06/10] lockd: Add helper to sanity check incoming NOTIFY
+	requests
+Date: Wed, 17 Sep 2008 11:17:57 -0500
+Message-ID: <20080917161757.4963.82230.stgit@ellison.1015granger.net>
 References: <20080917161337.4963.74674.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:21595 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:21530 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753694AbYIQQYU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:24:20 -0400
+	with ESMTP id S1754002AbYIQQYQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:24:16 -0400
 In-Reply-To: <20080917161337.4963.74674.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Widen the field that stores addresses in the nsm_args structure to handle
-non-AF_INET addresses, and adjust NSM XDR routines to handle AF_INET6
-family addresses.
+The NLM performs a silly test to see that incoming NOTIFY requests are
+relatively secure.  Make sure the test works for both AF_INET and AF_INET6
+addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c                 |   76 +++++++++++++++++++++++++++++++---------
- include/linux/lockd/sm_inter.h |    2 +
- 2 files changed, 59 insertions(+), 19 deletions(-)
+ fs/lockd/svc4proc.c         |    6 ++----
+ fs/lockd/svcproc.c          |    6 ++----
+ include/linux/lockd/lockd.h |   41 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 45 insertions(+), 8 deletions(-)
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 4e7e958..d49dfe6 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -18,7 +18,7 @@
- 
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- 
--#define XDR_ADDRBUF_LEN		(20)
-+#define XDR_ADDRBUF_LEN		(48)
- 
- static struct rpc_clnt *	nsm_create(void);
- 
-@@ -37,7 +37,12 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+index 9e1c751..6a5ef9f 100644
+--- a/fs/lockd/svc4proc.c
++++ b/fs/lockd/svc4proc.c
+@@ -432,11 +432,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
  {
- 	struct rpc_clnt	*clnt;
- 	int		status;
--	struct nsm_args	args;
-+	struct nsm_args	args = {
-+		.prog		= NLM_PROGRAM,
-+		.vers		= 3,
-+		.proc		= NLMPROC_NSM_NOTIFY,
-+		.mon_name	= nsm->sm_name,
-+	};
- 	struct rpc_message msg = {
- 		.rpc_argp	= &args,
- 		.rpc_resp	= res,
-@@ -46,21 +51,18 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- 	clnt = nsm_create();
- 	if (IS_ERR(clnt)) {
- 		status = PTR_ERR(clnt);
-+		printk(KERN_NOTICE "nsm_mon_unmon: failed to create transport, "
-+			"status=%d\n", status);
- 		goto out;
- 	}
+ 	struct sockaddr_in	saddr;
  
--	memset(&args, 0, sizeof(args));
--	args.mon_name = nsm->sm_name;
--	args.addr = nsm_addr_in(nsm)->sin_addr.s_addr;
--	args.prog = NLM_PROGRAM;
--	args.vers = 3;
--	args.proc = NLMPROC_NSM_NOTIFY;
-+	memcpy(&args.addr, nsm_addr(nsm), nsm->sm_addrlen);
- 	memset(res, 0, sizeof(*res));
- 
- 	msg.rpc_proc = &clnt->cl_procinfo[proc];
- 	status = rpc_call_sync(clnt, &msg, 0);
- 	if (status < 0)
--		printk(KERN_DEBUG "nsm_mon_unmon: rpc failed, status=%d\n",
-+		printk(KERN_NOTICE "nsm_mon_unmon: rpc failed, status=%d\n",
- 			status);
- 	else
- 		status = 0;
-@@ -174,14 +176,30 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
-  */
- static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
- {
--	char	buffer[XDR_ADDRBUF_LEN + 1];
--	char	*name = argp->mon_name;
-+	char	*name, buffer[XDR_ADDRBUF_LEN + 1];
- 
- 	if (!nsm_use_hostnames) {
--		snprintf(buffer, XDR_ADDRBUF_LEN,
--			 NIPQUAD_FMT, NIPQUAD(argp->addr));
-+		const struct sockaddr_storage *ssp = &argp->addr;
-+		const struct sockaddr_in *sin = (struct sockaddr_in *)ssp;
-+		const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ssp;
+-	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
+-
+ 	dprintk("lockd: SM_NOTIFY     called\n");
+-	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
+-	 || ntohs(saddr.sin_port) >= 1024) {
 +
-+		switch (ssp->ss_family) {
-+		case AF_INET:
-+			snprintf(buffer, XDR_ADDRBUF_LEN, NIPQUAD_FMT,
-+						NIPQUAD(sin->sin_addr.s_addr));
-+			break;
-+		case AF_INET6:
-+			snprintf(buffer, XDR_ADDRBUF_LEN, NIP6_FMT,
-+						NIP6(sin6->sin6_addr));
-+			break;
-+		default:
-+			printk(KERN_NOTICE "%s: unsupported address family "
-+				"(%u)\n", __func__, ssp->ss_family);
-+			return ERR_PTR(-EIO);
-+		}
- 		name = buffer;
--	}
-+	} else
-+		name = argp->mon_name;
++	if (!nlm_privileged_requester(rqstp)) {
+ 		char buf[RPC_MAX_ADDRBUFLEN];
+ 		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
+ 				svc_print_addr(rqstp, buf, sizeof(buf)));
+diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+index fcb7998..62fcfdb 100644
+--- a/fs/lockd/svcproc.c
++++ b/fs/lockd/svcproc.c
+@@ -464,11 +464,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+ {
+ 	struct sockaddr_in	saddr;
  
- 	return xdr_encode_nsm_string(p, name);
+-	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
+-
+ 	dprintk("lockd: SM_NOTIFY     called\n");
+-	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
+-	 || ntohs(saddr.sin_port) >= 1024) {
++
++	if (!nlm_privileged_requester(rqstp)) {
+ 		char buf[RPC_MAX_ADDRBUFLEN];
+ 		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
+ 				svc_print_addr(rqstp, buf, sizeof(buf)));
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 075095f..409eab4 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -280,6 +280,47 @@ static inline struct inode *nlmsvc_file_inode(struct nlm_file *file)
+ 	return file->f_file->f_path.dentry->d_inode;
  }
-@@ -225,13 +243,35 @@ static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
-  *
-  * Linux provides the raw IP address of the monitored host,
-  * left in network byte order.
+ 
++static inline int __nlm_privileged_request4(const struct sockaddr *sap)
++{
++	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	return (sin->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) &&
++			(ntohs(sin->sin_port) < 1024);
++}
++
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++static inline int __nlm_privileged_request6(const struct sockaddr *sap)
++{
++	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	return (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK) &&
++			(ntohs(sin6->sin6_port) < 1024);
++}
++#else	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
++static inline int __nlm_privileged_request6(const struct sockaddr *sap)
++{
++	return 0;
++}
++#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
++
++/*
++ * Ensure incoming requests are suitably "secure"
 + *
-+ * We should send only AF_INET6 addresses in this field if the
-+ * underlying transport is IPv6, and only AF_INET addresses if
-+ * the underlying transport is IPv4.
-  */
- static __be32 *xdr_encode_priv(__be32 *p, struct nsm_args *argp)
- {
--	*p++ = argp->addr;
--	*p++ = 0;
--	*p++ = 0;
--	*p++ = 0;
-+	const struct sockaddr_storage *ssp = &argp->addr;
-+	const struct sockaddr_in *sin = (struct sockaddr_in *)ssp;
-+	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ssp;
++ * Return TRUE if sender is local and is connecting via a privileged port;
++ * otherwise return FALSE.
++ */
++static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
++{
++	const struct sockaddr *sap = svc_addr(rqstp);
 +
-+	switch (ssp->ss_family) {
++	switch (sap->sa_family) {
 +	case AF_INET:
-+		*p++ = sin->sin_addr.s_addr;
-+		*p++ = 0;
-+		*p++ = 0;
-+		*p++ = 0;
-+		break;
++		return __nlm_privileged_request4(sap);
 +	case AF_INET6:
-+		*p++ = sin6->sin6_addr.s6_addr32[0];
-+		*p++ = sin6->sin6_addr.s6_addr32[1];
-+		*p++ = sin6->sin6_addr.s6_addr32[2];
-+		*p++ = sin6->sin6_addr.s6_addr32[3];
-+		break;
++		return __nlm_privileged_request6(sap);
 +	default:
-+		printk(KERN_NOTICE "%s: unsupported address family (%u)\n",
-+			__func__, ssp->ss_family);
-+		return ERR_PTR(-EIO);
++		return 0;
 +	}
- 
- 	return p;
- }
-diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
-index 5a5448b..0b0a0ae 100644
---- a/include/linux/lockd/sm_inter.h
-+++ b/include/linux/lockd/sm_inter.h
-@@ -25,7 +25,7 @@
-  * Arguments for all calls to statd
-  */
- struct nsm_args {
--	__be32		addr;		/* remote address */
-+	struct sockaddr_storage addr;	/* remote address */
- 	u32		prog;		/* RPC callback info */
- 	u32		vers;
- 	u32		proc;
++}
++
+ static inline int __nlm_cmp_addr4(const struct sockaddr *sap1,
+ 				  const struct sockaddr *sap2)
+ {
 
