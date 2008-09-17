@@ -1,54 +1,63 @@
-From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
-Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
-Date: Tue, 16 Sep 2008 17:24:45 +0100
-Message-ID: <1221582285.28572.67.camel@zakaz.uk.xensource.com>
-References: <48B2D7F8.5020206@opengridcomputing.com>
-	 <20080826192711.GJ4380@fieldses.org>
-	 <48B567F5.2090605@opengridcomputing.com>
-	 <1220111261.31172.14.camel@localhost.localdomain>
-	 <20080831193037.GB14876@fieldses.org>
-	 <1220211842.31172.18.camel@localhost.localdomain>
-	 <48BAF643.4070808@opengridcomputing.com>
-	 <1220217505.31172.26.camel@localhost.localdomain>
-	 <48BC2466.2070806@opengridcomputing.com>
-	 <1221036015.24993.27.camel@zakaz.uk.xensource.com>
-	 <20080912224323.GN22126@fieldses.org>
-	 <48CAF80A.4010109@opengridcomputing.com>
-	 <1221296243.2534.7.camel@localhost.localdomain>
-	 <1221544139.2534.18.camel@localhost.localdomain>
-	 <48CF9AC3.6060801@opengridcomputing.com>
-	 <1221577412.28572.60.camel@zakaz.uk.xensource.com>
-	 <48CFD7C3.5080207@opengridcomputing.com>
+From: "Chris Fanning" <christopher.fanning@gmail.com>
+Subject: [NFS] sync, async, write speeds.
+Date: Wed, 17 Sep 2008 09:35:15 +0200
+Message-ID: <215ff4410809170035s38183fe3r51aeea62939b6327@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel@vger.kernel.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout03-winn.ispmail.ntl.com ([81.103.221.49]:12059 "EHLO
-	mtaout03-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754653AbYIPQZJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2008 12:25:09 -0400
-In-Reply-To: <48CFD7C3.5080207@opengridcomputing.com>
+Received: from neil.brown.name ([220.233.11.133]:42924 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751634AbYIQIA5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Sep 2008 04:00:57 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Kfry2-00021u-0z
+	for linux-nfs@vger.kernel.org; Wed, 17 Sep 2008 18:00:54 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-09-16 at 10:58 -0500, Tom Tucker wrote:
-> I'll send you a patch for the server.
+Hello all,
 
-Thanks. It's running 2.6.25.7 although I can massage a more recent patch
-if needed. (I'm a bit less keen to run a variety of random kernels on
-that machine).
+I'm using NFS to mount /home on a gigabit network.
+/etc/exports on the server
+/home  192.168.2.48/255.255.255.248(rw,no_root_squash,sync,no_subtree_check)
 
-Ian.
+/proc/mount on the client
+home_server:/home /home nfs
+rw,vers=3,rsize=32768,wsize=32768,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=192.168.2.22
+0 0
 
--- 
-Ian Campbell
-Current Noise: The Ocean - Protoerozoic - Rhyacian - Untimely Meditations
+Write performance is not good.
 
-We may not return the affection of those who like us, but we always respect
-their good judgement.
+dd if=/dev/zero of=/home/testfile bs=16k count=16384
+268435456 bytes (268 MB) copied, 45.0461 seconds, 6.0 MB/s
+
+If I change the export to async, it improves a lot.
+
+dd if=/dev/zero of=./testfile bs=16k count=16384
+268435456 bytes (268 MB) copied, 3.6 seconds, 74.4 MB/s
+
+But the recommendation is not to use async, right?
+
+I've tried the same thing on two different servers (one xenified
+kernel, one stock etch kernel) and two different clients (ubuntu 7.10
+y debian etch), with the same results. :(
+Where should I start looking to fix this?
+
+Thanks.
+Chris.
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
