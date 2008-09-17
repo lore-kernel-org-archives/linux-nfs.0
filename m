@@ -1,198 +1,80 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/10] lockd: Support non-AF_INET addresses in
-	nlm_lookup_host()
-Date: Wed, 17 Sep 2008 11:17:21 -0500
-Message-ID: <20080917161720.4963.42788.stgit@ellison.1015granger.net>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net>
+From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+Date: Wed, 17 Sep 2008 09:23:03 -0700 (PDT)
+Message-ID: <804604.40886.qm@web32607.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
+	linux-kernel@vger.kernel.org
+To: Chuck Lever <chucklever@gmail.com>,
+	Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:18722 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753793AbYIQQVu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:21:50 -0400
-In-Reply-To: <20080917161337.4963.74674.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from web32607.mail.mud.yahoo.com ([68.142.207.234]:34480 "HELO
+	web32607.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753940AbYIQQXG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:23:06 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make nlm_lookup_host() agnostic to address families.  As a clean up, convert
-nlm_lookup_host() to use a single structure instead of nearly a dozen separate
-arguments.
+----- Original Message ----
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> From: Chuck Lever <chucklever@gmail.com>
+> To: Peter Staubach <staubach@redhat.com>
+> Cc: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org
+> Sent: Wednesday, September 17, 2008 5:41:15 PM
+> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+> 
+> On Wed, Sep 17, 2008 at 9:06 AM, Peter Staubach wrote:
+> > Martin Knoblauch wrote:
+> >>
+> >> Hi,
+> >>
+> >> the following/attached patch works around a [obscure] problem when an 2.6
+> >> (not sure/caring about 2.4) NFS client accesses an "offline" file on a
+> >> Sun/Solaris-10 NFS server when the underlying filesystem is of type SAM-FS.
+> >> Happens with RHEL4/5 and mainline kernels. Frankly, it is not a Linux
+> >> problem, but the chance for a short-/mid-term solution from Sun are very
+> >> slim. So, being lazy, I would love to get this patch into Linux. If not, I
+> >> just will have to maintain it for eternity out of tree.
+> >>
+> >> The problem: SAM-FS is Suns proprietary HSM filesystem. It stores
+> >> meta-data and a relatively small amount of data "online" on disk and pushes
+> >> old or infrequently used data to "offline" media like e.g. tape. This is
+> >> completely transparent to the users. If the date for an "offline" file is
+> >> needed, the so called "stager daemon" copies it back from the offline
+> >> medium. All of this works great most of the time. Now, if an Linux NFS
+> >> client tries to read such an offline file, performance drops to "extremely
+> >> slow". After lengthly investigation of tcp-dumps, mount options and
+> >> procedures involving black cats at midnight, we found out that the readahead
+> >> behaviour of the Linux NFS client causes the problem. Basically it seems to
+> >> issue read requests up to 15*rsize to the server. In the case of the
+> >> "offline" files, this behaviour causes heavy competition for the inode lock
+> >> between the NFSD process and the stager daemon on the Solaris server.
+> >>
+> >> - The real solution: fixing SAM-FS/NFSD interaction. Sun engineering acks
+> >> the problem, but a solution will need time. Lots of it.
+> >> - The working solution: disable the client side readahead, or make it
+> >> tunable. The patch does that by introducing a NFS module parameter
+> >> "ra_factor" which can take values between 1 and 15 (default 15) and a
+> >> tunable "/proc/sys/fs/nfs/nfs_ra_factor" with the same range and default.
+> >
+> > Hi.
+> >
+> > I was curious if a design to limit or eliminate read-ahead
+> > activity when the server returns EJUKEBOX was considered?
+> > Unless one can know that the server and client can get into
+> > this situation ahead of time, how would the tunable be used?
+> 
+> I tend to agree.  A tunable is probably not a good solution in this case.
+> 
+> I would bet that this lock contention issue is a problem in other more
+> common cases, and would merit some careful analysis.
+> 
 
- fs/lockd/host.c |   88 +++++++++++++++++++++++++++++++++++--------------------
- 1 files changed, 56 insertions(+), 32 deletions(-)
+ Are you talking wrt. a Solaris NFS-Server with SAM-FS/QFS as backend filesystem? We have in a lot of tests not observed any problems when accessing online files with the default readahead setting. The "offline" situation seems unique. As for other NFS Servers, we have never observed any readahead related problems either.
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index be8f19d..c9d25d1 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -38,6 +38,21 @@ static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
- 						const size_t hostname_len,
- 						const int create);
- 
-+#define NLM_SERVER	(0)
-+#define NLM_CLIENT	(1)
-+
-+struct nlm_lookup_host_info {
-+	const int		peer;		/* search for server|client */
-+	const struct sockaddr	*sap;		/* address to search for */
-+	const size_t		salen;		/* it's length */
-+	const unsigned short	protocol;	/* transport to search for*/
-+	const u32		version;	/* NLM version to search for */
-+	const char		*hostname;	/* remote's hostname */
-+	const size_t		hostname_len;	/* it's length */
-+	const struct sockaddr	*src_sap;	/* our address (optional) */
-+	const size_t		src_len;	/* it's length */
-+};
-+
- /*
-  * Hash function must work well on big- and little-endian platforms
-  */
-@@ -121,23 +136,13 @@ static void nlm_display_address(const struct sockaddr *sap,
- /*
-  * Common host lookup routine for server & client
-  */
--static struct nlm_host *nlm_lookup_host(int server,
--					const struct sockaddr_in *sin,
--					int proto, u32 version,
--					const char *hostname,
--					unsigned int hostname_len,
--					const struct sockaddr_in *ssin)
-+static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- {
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
- 	struct nlm_host	*host;
- 	struct nsm_handle *nsm = NULL;
- 
--	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
--			" my role is %s, hostname=%.*s)\n",
--			proto, version, server ? "server" : "client",
--			hostname_len, hostname ? hostname : "<none>");
--
- 	mutex_lock(&nlm_host_mutex);
- 
- 	if (time_after_eq(jiffies, next_gc))
-@@ -150,22 +155,22 @@ static struct nlm_host *nlm_lookup_host(int server,
- 	 * different NLM rpc_clients into one single nlm_host object.
- 	 * This would allow us to have one nlm_host per address.
- 	 */
--	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
-+	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
--		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
-+		if (!nlm_cmp_addr(nlm_addr(host), ni->sap))
- 			continue;
- 
- 		/* See if we have an NSM handle for this client */
- 		if (!nsm)
- 			nsm = host->h_nsmhandle;
- 
--		if (host->h_proto != proto)
-+		if (host->h_proto != ni->protocol)
- 			continue;
--		if (host->h_version != version)
-+		if (host->h_version != ni->version)
- 			continue;
--		if (host->h_server != server)
-+		if (host->h_server != ni->peer)
- 			continue;
--		if (!nlm_cmp_addr(nlm_srcaddr(host), (struct sockaddr *)ssin))
-+		if (!nlm_cmp_addr(nlm_srcaddr(host), ni->src_sap))
- 			continue;
- 
- 		/* Move to head of hash chain. */
-@@ -186,8 +191,8 @@ static struct nlm_host *nlm_lookup_host(int server,
- 		atomic_inc(&nsm->sm_count);
- 	else {
- 		host = NULL;
--		nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
--				hostname, hostname_len, 1);
-+		nsm = nsm_find(ni->sap, ni->salen,
-+					ni->hostname, ni->hostname_len, 1);
- 		if (!nsm) {
- 			dprintk("lockd: nlm_lookup_host failed; "
- 				"no nsm handle\n");
-@@ -202,12 +207,12 @@ static struct nlm_host *nlm_lookup_host(int server,
- 		goto out;
- 	}
- 	host->h_name	   = nsm->sm_name;
--	memcpy(nlm_addr(host), sin, sizeof(*sin));
--	host->h_addrlen = sizeof(*sin);
-+	memcpy(nlm_addr(host), ni->sap, ni->salen);
-+	host->h_addrlen = ni->salen;
- 	nlm_clear_port(nlm_addr(host));
--	memcpy(nlm_srcaddr(host), ssin, sizeof(*ssin));
--	host->h_version    = version;
--	host->h_proto      = proto;
-+	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
-+	host->h_version    = ni->version;
-+	host->h_proto      = ni->protocol;
- 	host->h_rpcclnt    = NULL;
- 	mutex_init(&host->h_mutex);
- 	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
-@@ -218,7 +223,7 @@ static struct nlm_host *nlm_lookup_host(int server,
- 	host->h_state      = 0;			/* pseudo NSM state */
- 	host->h_nsmstate   = 0;			/* real NSM state */
- 	host->h_nsmhandle  = nsm;
--	host->h_server	   = server;
-+	host->h_server	   = ni->peer;
- 	hlist_add_head(&host->h_hash, chain);
- 	INIT_LIST_HEAD(&host->h_lockowners);
- 	spin_lock_init(&host->h_lock);
-@@ -270,12 +275,22 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
- 				     const char *hostname,
- 				     unsigned int hostname_len)
- {
--	const struct sockaddr_in source = {
--		.sin_family	= AF_UNSPEC,
-+	const struct sockaddr source = {
-+		.sa_family	= AF_UNSPEC,
-+	};
-+	struct nlm_lookup_host_info ni = {
-+		.peer		= NLM_SERVER,
-+		.sap		= (struct sockaddr *)sin,
-+		.salen		= sizeof(*sin),
-+		.protocol	= proto,
-+		.version	= version,
-+		.hostname	= hostname,
-+		.hostname_len	= hostname_len,
-+		.src_sap	= &source,
-+		.src_len	= sizeof(source),
- 	};
- 
--	return nlm_lookup_host(0, sin, proto, version,
--			       hostname, hostname_len, &source);
-+	return nlm_lookup_host(&ni);
- }
- 
- /*
-@@ -289,10 +304,19 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
- 		.sin_family	= AF_INET,
- 		.sin_addr	= rqstp->rq_daddr.addr,
- 	};
-+	struct nlm_lookup_host_info ni = {
-+		.peer		= NLM_CLIENT,
-+		.sap		= svc_addr(rqstp),
-+		.salen		= rqstp->rq_addrlen,
-+		.protocol	= rqstp->rq_prot,
-+		.version	= rqstp->rq_vers,
-+		.hostname	= hostname,
-+		.hostname_len	= hostname_len,
-+		.src_sap	= (struct sockaddr *)&source,
-+		.src_len	= sizeof(source),
-+	};
- 
--	return nlm_lookup_host(1, svc_addr_in(rqstp),
--			       rqstp->rq_prot, rqstp->rq_vers,
--			       hostname, hostname_len, &source);
-+	return nlm_lookup_host(&ni);
- }
- 
- /*
+ As I already replied elsewhere, teaching the Linux NFS client to do "proper" readahead handling is beyond my knowledge. But I can test. I guess Sun engineering would be delighted if they don't have to fix their stuff :-)
+
+Cheers
+Martin
 
