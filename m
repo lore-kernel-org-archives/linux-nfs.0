@@ -1,125 +1,134 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/10] lockd: Adjust nlmsvc_lookup_host() to accomodate
-	AF_INET6 addresses
-Date: Wed, 17 Sep 2008 11:17:35 -0500
-Message-ID: <20080917161735.4963.86248.stgit@ellison.1015granger.net>
+Subject: [PATCH 05/10] lockd: Adjust signature of nlm_host_rebooted to handle
+	non-AF_INET
+Date: Wed, 17 Sep 2008 11:17:50 -0500
+Message-ID: <20080917161749.4963.84067.stgit@ellison.1015granger.net>
 References: <20080917161337.4963.74674.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:21531 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:21528 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753954AbYIQQYN (ORCPT
+	with ESMTP id S1752942AbYIQQYN (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:24:13 -0400
 In-Reply-To: <20080917161337.4963.74674.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix up nlmsvc_lookup_host() to pass AF_INET6 source addresses to
-nlm_lookup_host().
-
-To keep stack usage down, we use address-family-specific sockaddr_in
-and sockaddr_in6 structures instead of sockaddr_storage where
-appropriate.  The server-side supports only AF_INET and AF_INET6.
+Pass a struct sockaddr * and length to nlm_host_rebooted() to accomodate
+non-AF_INET addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |   51 +++++++++++++++++++++++++++++++++++--------
- include/linux/lockd/lockd.h |    5 +++-
- 2 files changed, 44 insertions(+), 12 deletions(-)
+ fs/lockd/host.c             |   28 ++++++++++++++++------------
+ fs/lockd/svc4proc.c         |    4 +++-
+ fs/lockd/svcproc.c          |    4 +++-
+ include/linux/lockd/lockd.h |    7 +++++--
+ 4 files changed, 27 insertions(+), 16 deletions(-)
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index b9c87e1..cfaa9a2 100644
+index cfaa9a2..d893c58 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -307,29 +307,60 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 	return nlm_lookup_host(&ni);
+@@ -473,31 +473,35 @@ void nlm_release_host(struct nlm_host *host)
+ 	}
  }
  
 -/*
-- * Find an NLM client handle in the cache. If there is none, create it.
+- * We were notified that the host indicated by address &sin
+- * has rebooted.
+- * Release all resources held by that peer.
 +/**
-+ * nlmsvc_lookup_host - Find an NLM host handle matching a remote client
-+ * @rqstp: incoming NLM request
-+ * @hostname: name of client host
-+ * @hostname_len: length of client hostname
++ * nlm_host_rebooted - Release all resources held by rebooted host
++ * @sap: network address of peer that just rebooted
++ * @salen: length of peer's network address
++ * @hostname: hostname of peer that just rebooted
++ * @hostname_len: length of peer's hostname
++ * @new_state: peer's new nsmstate
 + *
-+ * Returns an nlm_host structure that matches the [client address,
-+ * transport protocol, NLM version, client hostname] of the passed-in
-+ * NLM request.  If one doesn't already exist in the host cache, a
-+ * new handle is created and returned.
-+ *
-+ * Manufacture a specific source address in case the local system
-+ * services clients from multiple IP addresses.  The family of the
-+ * address in rq_daddr is guaranteed to be the same as the family of
-+ * the address in rq_addr, so it's safe to use the same family and
-+ * length for our manufactured source address.
++ * We were notified that the host indicated by address "sap"
++ * has rebooted.  Release all resources held by that peer.
   */
--struct nlm_host *
--nlmsvc_lookup_host(struct svc_rqst *rqstp,
--			const char *hostname, unsigned int hostname_len)
-+struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
-+				    const char *hostname,
-+				    const size_t hostname_len)
+-void nlm_host_rebooted(const struct sockaddr_in *sin,
+-				const char *hostname,
+-				unsigned int hostname_len,
+-				u32 new_state)
++void nlm_host_rebooted(const struct sockaddr *sap, const size_t salen,
++		       const char *hostname, const size_t hostname_len,
++		       const u32 new_state)
  {
--	const struct sockaddr_in source = {
--		.sin_family	= AF_INET,
--		.sin_addr	= rqstp->rq_daddr.addr,
-+	const struct sockaddr *sap = svc_addr(rqstp);
-+	struct sockaddr_storage source = {
-+		.ss_family	= sap->sa_family,
- 	};
-+	struct sockaddr_in *sin = (struct sockaddr_in *)&source;
-+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&source;
- 	struct nlm_lookup_host_info ni = {
- 		.peer		= NLM_CLIENT,
--		.sap		= svc_addr(rqstp),
-+		.sap		= sap,
- 		.salen		= rqstp->rq_addrlen,
- 		.protocol	= rqstp->rq_prot,
- 		.version	= rqstp->rq_vers,
- 		.hostname	= hostname,
- 		.hostname_len	= hostname_len,
- 		.src_sap	= (struct sockaddr *)&source,
--		.src_len	= sizeof(source),
-+		.src_len	= rqstp->rq_addrlen,
- 	};
+ 	struct hlist_head *chain;
+ 	struct hlist_node *pos;
+ 	struct nsm_handle *nsm;
+ 	struct nlm_host	*host;
  
-+	dprintk("lockd: %s(host='%.*s', vers=%u, proto=%s)\n", __func__,
-+			(int)hostname_len, hostname, rqstp->rq_vers,
-+			(rqstp->rq_prot == IPPROTO_UDP ? "udp" : "tcp"));
-+
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		sin->sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
-+		break;
-+	case AF_INET6:
-+		ipv6_addr_copy(&sin6->sin6_addr, &rqstp->rq_daddr.addr6);
-+		break;
-+	default:
-+		return NULL;
-+	}
-+
- 	return nlm_lookup_host(&ni);
+-	nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
+-			hostname, hostname_len, 0);
++	nsm = nsm_find(sap, salen, hostname, hostname_len, 0);
+ 	if (nsm == NULL) {
+ 		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
+-				hostname_len, hostname);
++				(int)hostname_len, hostname);
+ 		return;
+ 	}
+ 
+ 	dprintk("lockd: nlm_host_rebooted(%.*s, %s)\n",
+-			hostname_len, hostname, nsm->sm_addrbuf);
++			(int)hostname_len, hostname, nsm->sm_addrbuf);
+ 
+ 	/* When reclaiming locks on this peer, make sure that
+ 	 * we set up a new notification */
+diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+index 89eb6f9..9e1c751 100644
+--- a/fs/lockd/svc4proc.c
++++ b/fs/lockd/svc4proc.c
+@@ -447,8 +447,10 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+ 	 * reclaim all locks we hold on this server.
+ 	 */
+ 	memset(&saddr, 0, sizeof(saddr));
++	saddr.sin_family = AF_INET;
+ 	saddr.sin_addr.s_addr = argp->addr;
+-	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
++	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
++			  argp->mon, argp->len, argp->state);
+ 
+ 	return rpc_success;
  }
+diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+index 361aac2..fcb7998 100644
+--- a/fs/lockd/svcproc.c
++++ b/fs/lockd/svcproc.c
+@@ -479,8 +479,10 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
+ 	 * reclaim all locks we hold on this server.
+ 	 */
+ 	memset(&saddr, 0, sizeof(saddr));
++	saddr.sin_family = AF_INET;
+ 	saddr.sin_addr.s_addr = argp->addr;
+-	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
++	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
++			  argp->mon, argp->len, argp->state);
  
+ 	return rpc_success;
+ }
 diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 693d57b..2e13c0b 100644
+index 165ef7a..075095f 100644
 --- a/include/linux/lockd/lockd.h
 +++ b/include/linux/lockd/lockd.h
-@@ -220,8 +220,9 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
- 					const unsigned short protocol,
- 					const u32 version,
- 					const char *hostname);
--struct nlm_host  *nlmsvc_lookup_host(struct svc_rqst *, const char *,
--					unsigned int);
-+struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
-+					const char *hostname,
-+					const size_t hostname_len);
- struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
+@@ -229,8 +229,11 @@ void		  nlm_rebind_host(struct nlm_host *);
  struct nlm_host * nlm_get_host(struct nlm_host *);
+ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+-extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
+-					unsigned int, u32);
++extern void	  nlm_host_rebooted(const struct sockaddr *sap,
++					const size_t salen,
++					const char *hostname,
++					const size_t hostname_len,
++					const u32 new_state);
+ void		  nsm_release(struct nsm_handle *);
+ 
+ 
 
