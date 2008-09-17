@@ -1,101 +1,198 @@
-From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-Date: Wed, 17 Sep 2008 09:15:45 -0700 (PDT)
-Message-ID: <690463.13660.qm@web32606.mail.mud.yahoo.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/10] lockd: Support non-AF_INET addresses in
+	nlm_lookup_host()
+Date: Wed, 17 Sep 2008 11:17:21 -0500
+Message-ID: <20080917161720.4963.42788.stgit@ellison.1015granger.net>
+References: <20080917161337.4963.74674.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org
-To: Michael Trimarchi <trimarchimichael-whZMOeQn8C0@public.gmane.org>,
-	linux-nfs list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web32606.mail.mud.yahoo.com ([68.142.207.233]:41491 "HELO
-	web32606.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752926AbYIQQPq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:15:46 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:18722 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753793AbYIQQVu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2008 12:21:50 -0400
+In-Reply-To: <20080917161337.4963.74674.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message ----
+Make nlm_lookup_host() agnostic to address families.  As a clean up, convert
+nlm_lookup_host() to use a single structure instead of nearly a dozen separate
+arguments.
 
-> From: Michael Trimarchi <trimarchimichael-whZMOeQn8C0@public.gmane.org>
-> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>
-> Cc: linux-kernel@vger.kernel.org
-> Sent: Wednesday, September 17, 2008 3:42:30 PM
-> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-> 
-> Hi,
-> 
-> ...
-> 
-> > Signed-off-by: Martin Knoblauch 
-> > 
-> > diff -urp linux-2.6.27-rc6-git4/fs/nfs/client.c 
-> > linux-2.6.27-rc6-git4-nfs_ra/fs/nfs/client.c
-> > --- linux-2.6.27-rc6-git4/fs/nfs/client.c       2008-09-17 11:35:21.000000000 
-> > +0200
-> > +++ linux-2.6.27-rc6-git4-nfs_ra/fs/nfs/client.c        2008-09-17 
-> > 11:55:18.000000000 +0200
-> > @@ -722,6 +722,11 @@ error:
-> > }
-> > 
-> > /*
-> > + * NFS Client Read-Ahead factor
-> > +*/
-> > +unsigned int nfs_ra_factor;
-> > +
-> > +/*
-> >   * Load up the server record from information gained in an fsinfo record
-> >   */
-> > static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo 
-> 
-> > *fsinfo)
-> > @@ -746,7 +751,11 @@ static void nfs_server_set_fsinfo(struct
-> >                 server->rsize = NFS_MAX_FILE_IO_SIZE;
-> >         server->rpages = (server->rsize + PAGE_CACHE_SIZE - 1) >> 
-> > PAGE_CACHE_SHIFT;
-> > 
-> > -       server->backing_dev_info.ra_pages = server->rpages * 
-> NFS_MAX_READAHEAD;
-> > +       dprintk("nfs_server_set_fsinfo: rsize, wsize, rpages, \
-> > +               nfs_ra_factor, ra_pages: %d %d %d %d %d\n",
-> > +               server->rsize,server->wsize,server->rpages,
-> > +               nfs_ra_factor,server->rpages * nfs_ra_factor);
-> > +       server->backing_dev_info.ra_pages = server->rpages * nfs_ra_factor;
-> > 
-> >         if (server->wsize > max_rpc_payload)
-> >                 server->wsize = max_rpc_payload;
-> > diff -urp linux-2.6.27-rc6-git4/fs/nfs/inode.c 
-> > linux-2.6.27-rc6-git4-nfs_ra/fs/nfs/inode.c
-> > --- linux-2.6.27-rc6-git4/fs/nfs/inode.c        2008-09-17 11:35:21.000000000 
-> > +0200
-> > +++ linux-2.6.27-rc6-git4-nfs_ra/fs/nfs/inode.c 2008-09-17 11:45:09.000000000 
-> > +0200
-> > @@ -53,6 +53,8 @@
-> > 
-> > /* Default is to see 64-bit inode numbers */
-> > static int enable_ino64 = NFS_64_BIT_INODE_NUMBERS_ENABLED;
-> > +static unsigned int ra_factor __read_mostly = NFS_MAX_READAHEAD;
-> > +
-> > 
-> > static void nfs_invalidate_inode(struct inode *);
-> > static int nfs_update_inode(struct inode *, struct nfs_fattr *);
-> > @@ -1347,6 +1349,12 @@ static int __init init_nfs_fs(void)
-> > #endif
-> >         if ((err = register_nfs_fs()) != 0)
-> >                 goto out;
-> > +
-> > +       if (ra_factor < 1 || ra_factor > NFS_MAX_READAHEAD)
-> > +               nfs_ra_factor = NFS_MAX_READAHEAD;
-> > +       else
-> > +               nfs_ra_factor = ra_factor;
-> > +
-> 
-> So, I think that this is not necessary because it is done ( ... I hope) by the 
-> proc_dointvec_minmax handler. It is correct?
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-That is of course true if the tunable is changed via the /proc interface. The code above handles the module parameter, which is not governed by the minmax handler.
+ fs/lockd/host.c |   88 +++++++++++++++++++++++++++++++++++--------------------
+ 1 files changed, 56 insertions(+), 32 deletions(-)
 
-Cheers
-Martin
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index be8f19d..c9d25d1 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -38,6 +38,21 @@ static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+ 						const size_t hostname_len,
+ 						const int create);
+ 
++#define NLM_SERVER	(0)
++#define NLM_CLIENT	(1)
++
++struct nlm_lookup_host_info {
++	const int		peer;		/* search for server|client */
++	const struct sockaddr	*sap;		/* address to search for */
++	const size_t		salen;		/* it's length */
++	const unsigned short	protocol;	/* transport to search for*/
++	const u32		version;	/* NLM version to search for */
++	const char		*hostname;	/* remote's hostname */
++	const size_t		hostname_len;	/* it's length */
++	const struct sockaddr	*src_sap;	/* our address (optional) */
++	const size_t		src_len;	/* it's length */
++};
++
+ /*
+  * Hash function must work well on big- and little-endian platforms
+  */
+@@ -121,23 +136,13 @@ static void nlm_display_address(const struct sockaddr *sap,
+ /*
+  * Common host lookup routine for server & client
+  */
+-static struct nlm_host *nlm_lookup_host(int server,
+-					const struct sockaddr_in *sin,
+-					int proto, u32 version,
+-					const char *hostname,
+-					unsigned int hostname_len,
+-					const struct sockaddr_in *ssin)
++static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ {
+ 	struct hlist_head *chain;
+ 	struct hlist_node *pos;
+ 	struct nlm_host	*host;
+ 	struct nsm_handle *nsm = NULL;
+ 
+-	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
+-			" my role is %s, hostname=%.*s)\n",
+-			proto, version, server ? "server" : "client",
+-			hostname_len, hostname ? hostname : "<none>");
+-
+ 	mutex_lock(&nlm_host_mutex);
+ 
+ 	if (time_after_eq(jiffies, next_gc))
+@@ -150,22 +155,22 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 	 * different NLM rpc_clients into one single nlm_host object.
+ 	 * This would allow us to have one nlm_host per address.
+ 	 */
+-	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
++	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+-		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
++		if (!nlm_cmp_addr(nlm_addr(host), ni->sap))
+ 			continue;
+ 
+ 		/* See if we have an NSM handle for this client */
+ 		if (!nsm)
+ 			nsm = host->h_nsmhandle;
+ 
+-		if (host->h_proto != proto)
++		if (host->h_proto != ni->protocol)
+ 			continue;
+-		if (host->h_version != version)
++		if (host->h_version != ni->version)
+ 			continue;
+-		if (host->h_server != server)
++		if (host->h_server != ni->peer)
+ 			continue;
+-		if (!nlm_cmp_addr(nlm_srcaddr(host), (struct sockaddr *)ssin))
++		if (!nlm_cmp_addr(nlm_srcaddr(host), ni->src_sap))
+ 			continue;
+ 
+ 		/* Move to head of hash chain. */
+@@ -186,8 +191,8 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 		atomic_inc(&nsm->sm_count);
+ 	else {
+ 		host = NULL;
+-		nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
+-				hostname, hostname_len, 1);
++		nsm = nsm_find(ni->sap, ni->salen,
++					ni->hostname, ni->hostname_len, 1);
+ 		if (!nsm) {
+ 			dprintk("lockd: nlm_lookup_host failed; "
+ 				"no nsm handle\n");
+@@ -202,12 +207,12 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 		goto out;
+ 	}
+ 	host->h_name	   = nsm->sm_name;
+-	memcpy(nlm_addr(host), sin, sizeof(*sin));
+-	host->h_addrlen = sizeof(*sin);
++	memcpy(nlm_addr(host), ni->sap, ni->salen);
++	host->h_addrlen = ni->salen;
+ 	nlm_clear_port(nlm_addr(host));
+-	memcpy(nlm_srcaddr(host), ssin, sizeof(*ssin));
+-	host->h_version    = version;
+-	host->h_proto      = proto;
++	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
++	host->h_version    = ni->version;
++	host->h_proto      = ni->protocol;
+ 	host->h_rpcclnt    = NULL;
+ 	mutex_init(&host->h_mutex);
+ 	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+@@ -218,7 +223,7 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 	host->h_state      = 0;			/* pseudo NSM state */
+ 	host->h_nsmstate   = 0;			/* real NSM state */
+ 	host->h_nsmhandle  = nsm;
+-	host->h_server	   = server;
++	host->h_server	   = ni->peer;
+ 	hlist_add_head(&host->h_hash, chain);
+ 	INIT_LIST_HEAD(&host->h_lockowners);
+ 	spin_lock_init(&host->h_lock);
+@@ -270,12 +275,22 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
+ 				     const char *hostname,
+ 				     unsigned int hostname_len)
+ {
+-	const struct sockaddr_in source = {
+-		.sin_family	= AF_UNSPEC,
++	const struct sockaddr source = {
++		.sa_family	= AF_UNSPEC,
++	};
++	struct nlm_lookup_host_info ni = {
++		.peer		= NLM_SERVER,
++		.sap		= (struct sockaddr *)sin,
++		.salen		= sizeof(*sin),
++		.protocol	= proto,
++		.version	= version,
++		.hostname	= hostname,
++		.hostname_len	= hostname_len,
++		.src_sap	= &source,
++		.src_len	= sizeof(source),
+ 	};
+ 
+-	return nlm_lookup_host(0, sin, proto, version,
+-			       hostname, hostname_len, &source);
++	return nlm_lookup_host(&ni);
+ }
+ 
+ /*
+@@ -289,10 +304,19 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
+ 		.sin_family	= AF_INET,
+ 		.sin_addr	= rqstp->rq_daddr.addr,
+ 	};
++	struct nlm_lookup_host_info ni = {
++		.peer		= NLM_CLIENT,
++		.sap		= svc_addr(rqstp),
++		.salen		= rqstp->rq_addrlen,
++		.protocol	= rqstp->rq_prot,
++		.version	= rqstp->rq_vers,
++		.hostname	= hostname,
++		.hostname_len	= hostname_len,
++		.src_sap	= (struct sockaddr *)&source,
++		.src_len	= sizeof(source),
++	};
+ 
+-	return nlm_lookup_host(1, svc_addr_in(rqstp),
+-			       rqstp->rq_prot, rqstp->rq_vers,
+-			       hostname, hostname_len, &source);
++	return nlm_lookup_host(&ni);
+ }
+ 
+ /*
 
