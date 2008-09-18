@@ -1,58 +1,92 @@
-From: "Chris Fanning" <christopher.fanning@gmail.com>
-Subject: Re: [NFS] sync, async, write speeds.
-Date: Thu, 18 Sep 2008 10:22:01 +0200
-Message-ID: <215ff4410809180122o3141a5f5h6e93e092abf07fd1@mail.gmail.com>
-References: <215ff4410809170035s38183fe3r51aeea62939b6327@mail.gmail.com>
-	<48D0DCC9.3090208@cse.unsw.edu.au>
-	<76bd70e30809170836t17a46227mf84c92e0fc80c8b3@mail.gmail.com>
+From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+Date: Thu, 18 Sep 2008 01:38:57 -0700 (PDT)
+Message-ID: <124712.40022.qm@web32602.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>
-To: "Chuck Lever" <chucklever@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
+	linux-nfs list <linux-nfs@vger.kernel.org>,
+	linux-kernel@vger.kernel.org,
+	Peter zijlstra <a.p.zijlstra@chello.nl>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37894 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752147AbYIRIWX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2008 04:22:23 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KgEmK-0007iA-6r
-	for linux-nfs@vger.kernel.org; Thu, 18 Sep 2008 18:22:20 +1000
-In-Reply-To: <76bd70e30809170836t17a46227mf84c92e0fc80c8b3-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from web32602.mail.mud.yahoo.com ([68.142.207.229]:46053 "HELO
+	web32602.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753266AbYIRIi7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 04:38:59 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+----- Original Message ----
 
-I'm going to try jumbo frames but it'll take me a while to set it up.
-I'll get back to you with the results.
-
-Thanks.
-Chris.
-
-On Wed, Sep 17, 2008 at 5:36 PM, Chuck Lever <chucklever@gmail.com> wrote:
-> On Wed, Sep 17, 2008 at 5:32 AM, Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org> wrote:
->>> If I change the export to async, it improves a lot.
->> If you can assure uninterrupted power to the server, I dont see any
->> reason why you cant use the "async" option.
+> From: Andrew Morton <akpm@linux-foundation.org>
+> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+> Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org
+> Sent: Thursday, September 18, 2008 10:18:18 AM
+> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+> 
+> On Thu, 18 Sep 2008 00:42:58 -0700 (PDT) Martin Knoblauch 
+> wrote:
+> 
+> > ----- Original Message ----
+> > 
+> > > From: Andrew Morton 
+> > > To: Greg Banks 
+> > > Cc: Martin Knoblauch ; linux-nfs list 
+> ; linux-kernel@vger.kernel.org
+> > > Sent: Thursday, September 18, 2008 5:13:34 AM
+> > > Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+> > > 
+> > > On Thu, 18 Sep 2008 11:42:54 +1000 Greg Banks wrote:
+> > > 
+> > > > I think having a tunable for client readahead is an excellent idea,
+> > > > although not to solve your particular problem.  The SLES10 kernel has a
+> > > > patch which does precisely that, perhaps Neil could post it.
+> > > > 
+> > > > I don't think there's a lot of point having both a module parameter and
+> > > > a sysctl.
+> > > 
+> > > mount -o remount,readahead=42
+> > 
+> > [root@lpsdm52 ~]# mount -o remount,readahead=42 /net/spsdms/fs13
+> > Bad nfs mount parameter: readahead
+> > [root@lpsdm52 ~]# mount -o readahead=42 /net/spsdms/fs13
+> > Bad nfs mount parameter: readahead
+> > 
+> > 
+> >  I assume the reply was meant to say that the correct way of introducing a 
+> modifyable readahead size is to implement it as a mount option ? :-)
+> 
+> Yes.
 >
-> If the server O/S crashes due to a bug, you are still open to silent
-> data corruption.  A UPS cannot help you with that.
->
-> --
-> Chuck Lever
+
+:-)
+ 
+> > I considered it, but it seems to be more intrusive than the workaround patch. 
+> It also needs changes to userspace tools - correct?
+> 
+> No.  mount(8) will pass unrecognised options straight down into the
+> filesystem driver.
 >
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+ Has that always been the case, or is it a recent change? I have to support RHEL4 userland, which is not really new.
+ 
+> It's better this way - it allows the tunable to be set on a per-mount
+> basis rather than machine-wide.
+>
 
+ No question about that. I just thought it to be to complicated. Maybe I erred.
+ 
+> Note that for block devices, readahead is a per-backing_dev_info thing
+> (and a backing_dev_info has a 1:1 relationship to a disk drive for sane
+> setups).  
+> 
+> And the NFS client maintains a backing_dev_info, which appears to map
+> onto a server, so making the NFS readahead a per-backing_dev_info (ie:
+> per server) thing might make sense.  Maybe nfs makes per-server information
+> manipulatable down in sysfs somewhere..
+
+ I believe Peter wanted to add per bdi stuff for nfs some time ago. Not sure what came out of it.
+
+Cheers
+Martin
