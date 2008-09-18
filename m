@@ -1,78 +1,120 @@
-From: "Chuck Lever" <chucklever@gmail.com>
-Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-Date: Thu, 18 Sep 2008 13:24:42 -0500
-Message-ID: <76bd70e30809181124t78c0d574gaed5702095c02921@mail.gmail.com>
-References: <688309.69831.qm@web32604.mail.mud.yahoo.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Andrew Morton" <akpm@linux-foundation.org>,
-	"Greg Banks" <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
-	"linux-nfs list" <linux-nfs@vger.kernel.org>,
-	linux-kernel@vger.kernel.org,
-	"Peter zijlstra" <a.p.zijlstra@chello.nl>
-To: "Martin Knoblauch" <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: netid in the NFS mount command
+Date: Thu, 18 Sep 2008 14:04:20 -0500
+Message-ID: <BE3BB0EF-ABC9-4BB3-A828-2ACE54220EC9@oracle.com>
+References: <288393.82711.qm@web38108.mail.mud.yahoo.com>
+Mime-Version: 1.0 (Apple Message framework v928.1)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ey-out-2122.google.com ([74.125.78.27]:25518 "EHLO
-	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753252AbYIRSYo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 14:24:44 -0400
-Received: by ey-out-2122.google.com with SMTP id 6so11949eyi.37
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2008 11:24:42 -0700 (PDT)
-In-Reply-To: <688309.69831.qm-lSXk2nNw7cevuULXzWHTWIglqE1Y4D90QQ4Iyu8u01E@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:24844 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754929AbYIRTGc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 15:06:32 -0400
+In-Reply-To: <288393.82711.qm-EWur9jtuEOivuULXzWHTWIglqE1Y4D90QQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 18, 2008 at 6:53 AM, Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org> wrote:
-> ----- Original Message ----
+On Sep 18, 2008, at 6:16 AM, Mike Eisler wrote:
+> http://article.gmane.org/gmane.linux.nfs/16950 has Chuck Lever's  
+> patch to the nfs man page, which includes:
 >
->> From: Andrew Morton <akpm@linux-foundation.org>
->> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
->> Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org; Peter zijlstra <a.p.zijlstra@chello.nl>
->> Sent: Thursday, September 18, 2008 10:47:33 AM
->> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
->>
->> On Thu, 18 Sep 2008 01:38:57 -0700 (PDT) Martin Knoblauch
->> wrote:
->>
->> > > No.  mount(8) will pass unrecognised options straight down into the
->> > > filesystem driver.
->> > >
->> >
->> >  Has that always been the case, or is it a recent change? I have to support
->> RHEL4 userland, which is not really new.
->>
->> It's been that way for ever and ever.  It's how all these guys:
->>
->> y:/usr/src/25> grep Opt_ fs/*/super.c|wc
->>     781    2626   33703
->>
->> get handled.
 >
->  while that seems to be not to complicated, I seem to have a problem passing the mount options to the kernel. They come down as mount data version "6". Apparently mount(8) or mount.nfs(8) are doing the parsing and send down the legacy data block. So, what is the minimum version of mount or mount.nfs that pass the options down unaltered?
+> -The default value depends on whether
+> -.IR proto=udp
+> [...]
+> +.BI proto= netid
+> +The transport protocol used by the RPC client
+> +to transmit requests to the NFS server for this mount point.
+> +The value of
+> +.I netid
+> +can be either
+> +.B udp
+> or
+> -.IR proto=tcp
+> -is in effect (see below).
+>
+> After talking to Chuck yesterday, it appears that he is being literal:
+> the netid can only be either udp or tcp, and not also udp6 or tcp6,  
+> which
+> are the netids IETF defines (see RFC3530) for ONC RPC over UDP/IPv6
+> and TCP/IPv6.
+>
+> If proto= is going to mean transport protocol in the Linux mount
+> command (as opposed to meaning a netid as it does in the Solaris mount
+> command), then please fix the man page to say that.
 
-The mount command has passed a string of options to the kernel for
-particular file systems for a while, but the facility for the NFS
-client to parse a string of mount options in the kernel was added only
-recently -- at least 2.6.23 or 2.6.24 is required to support this.
-Before this, the mount command parsed these options.
+The man page should be corrected.
 
-For RHEL 4, based on 2.6.9, you are stuck.  It uses a binary structure
-whose fields must match between the kernel and user space.  For RH
-enterprise kernels, the ABI cannot change in a given release, so RH
-wouldn't take a patch to change the data structure that mount uses.
-You would have to maintain such a change yourself, and build your own
-kernels and mount command after each RHEL 4 update is released.
+However, before we do that, we need to revisit the issue of how the  
+kernel selects an RPC transport capability, and resolve as much as  
+possible how this should work.
 
-I agree that a mount option would allow more fine-grained control over
-readahead.  A system wide parameter controlling readahead has always
-been a weakness.  Readahead, as implemented in the VFS, has a
-*per-file descriptor* context, however, which operates automatically
-(and can be tuned at run-time by an application with [mf]advise(2).
+> But I think there is value in following the Solaris convention
+> (which I established when I was at Sun in the 1990s working on the
+> Solaris NFS/TCP stack) because by specifying "proto=tcp6" in the
+> mount command, this can force the use of TCP over the IPv6 networking
+> protocol in cases where the same host name is resolvable to both an
+> IPv4 or IPv6 host address. Of course, one could edit nsswitch.conf  
+> and /etc/hosts or ipnodes to insert an IPv6-only host name, but that  
+> is cumbersome.
 
-As a future feature, this might work in better combination with the
-per-mount bdi changes proposed by Peter to provide maximal flexibility
-without exposing yet another confusing knob that could help some
-workloads but hurt others.
+On the other hand, if a user mounts "server" with "proto=tcp" on  
+Solaris, and the server drops its IPv4 addresses in favor of IPv6  
+addresses, client sysadmins will have to be aware of this change, and  
+modify their mount options.  On Linux, the server can change to IPv6- 
+only, and the clients will adjust without intervention.
+
+Perhaps for one user that operates both the client and server, this is  
+not an issue.  However, this does become a problem if a large number  
+of clients access a server that is being changed in another  
+administrative domain.  Naturally this can be hidden with automounter,  
+but we wander straight back into the realm of diddling with  
+configuration files, which is cumbersome.  Not to mention that not  
+everyone chooses to use an automounter.
+
+It seems more natural to me to use an AF_INET6 address to choose NFS  
+over IPv6, rather than a netid.  One of my interests is to keep the  
+details of AF_INET v. AF_INET6 inconsequential to NFS.  It would be  
+easy, however, to add a "netid=" mount option in addition to "proto="  
+where a true netid could be used instead of a protocol name.
+
+And finally, we had to do something to allow NFS/RDMA on InfiniBand,  
+which still doesn't have a netid, as you point out.  According to the  
+man page I have on my OpenSolaris system, it actually does allow  
+"proto=rdma".
+
+> BTW, the terse netid stuff in RFC3530 is being codified in a separate
+> to-be-approved RFC. You can look at the internet draft at:
+> http://tools.ietf.org/wg/nfsv4/draft-ietf-nfsv4-rpc-netid/
+
+
+I personally am glad of any clarification around netids.
+
+One thing I noticed was this in RFC 1833 (August 1995):
+
+/*
+* A mapping of (program, version, network ID) to address *
+* The network identifier (r_netid):
+* This is a string that represents a local identification for a
+* network. This is defined by a system administrator based on local
+* conventions, and cannot be depended on to have the same value on
+* every system. */
+
+ From this, I assumed that netids were not standardized on purpose.   
+Mike, does your draft address and clarify this statement?  Will your  
+draft supercede RFC 1833 and subsequent related RFCs?
+
+
+> Netids for all the IETF transports that I am aware of are specified.
+> Additional ones can be added after the RFC is published by registering
+> with IANA via the process specified in the internet-draft.
+>
+> Note that rdma and rdma6, corresponding to the rdma over TCP/IP and
+> rdma over TCP/IPv6 protocols are among the netids. If people want
+> a netid for a raw, non-IP-based RDMA transport, that will have to be
+> registered with IANA.
 
 --
 Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
