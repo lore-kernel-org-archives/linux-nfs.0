@@ -1,67 +1,49 @@
-From: Mike Eisler <email2mre-linuxv4@yahoo.com>
-Subject: netid in the NFS mount command
-Date: Thu, 18 Sep 2008 04:16:49 -0700 (PDT)
-Message-ID: <288393.82711.qm@web38108.mail.mud.yahoo.com>
-Reply-To: email2mre-linuxv4@yahoo.com
+From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+Date: Thu, 18 Sep 2008 04:53:22 -0700 (PDT)
+Message-ID: <688309.69831.qm@web32604.mail.mud.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
+	linux-nfs list <linux-nfs@vger.kernel.org>,
+	linux-kernel@vger.kernel.org,
+	Peter zijlstra <a.p.zijlstra@chello.nl>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web38108.mail.mud.yahoo.com ([209.191.124.135]:31860 "HELO
-	web38108.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752789AbYIRLXb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 07:23:31 -0400
+Received: from web32604.mail.mud.yahoo.com ([68.142.207.231]:27982 "HELO
+	web32604.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752513AbYIRLxX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 07:53:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-http://article.gmane.org/gmane.linux.nfs/16950 has Chuck Lever's patch to the nfs man page, which includes:
+----- Original Message ----
 
+> From: Andrew Morton <akpm@linux-foundation.org>
+> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+> Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org; Peter zijlstra <a.p.zijlstra@chello.nl>
+> Sent: Thursday, September 18, 2008 10:47:33 AM
+> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+> 
+> On Thu, 18 Sep 2008 01:38:57 -0700 (PDT) Martin Knoblauch 
+> wrote:
+> 
+> > > No.  mount(8) will pass unrecognised options straight down into the
+> > > filesystem driver.
+> > >
+> > 
+> >  Has that always been the case, or is it a recent change? I have to support 
+> RHEL4 userland, which is not really new.
+> 
+> It's been that way for ever and ever.  It's how all these guys:
+> 
+> y:/usr/src/25> grep Opt_ fs/*/super.c|wc
+>     781    2626   33703
+> 
+> get handled.
 
--The default value depends on whether
--.IR proto=udp
-[...]
-+.BI proto= netid
-+The transport protocol used by the RPC client
-+to transmit requests to the NFS server for this mount point.
-+The value of
-+.I netid
-+can be either
-+.B udp
- or
--.IR proto=tcp
--is in effect (see below).
+ while that seems to be not to complicated, I seem to have a problem passing the mount options to the kernel. They come down as mount data version "6". Apparently mount(8) or mount.nfs(8) are doing the parsing and send down the legacy data block. So, what is the minimum version of mount or mount.nfs that pass the options down unaltered?
 
-After talking to Chuck yesterday, it appears that he is being literal:
-the netid can only be either udp or tcp, and not also udp6 or tcp6, which
-are the netids IETF defines (see RFC3530) for ONC RPC over UDP/IPv6
-and TCP/IPv6. 
-
-If proto= is going to mean transport protocol in the Linux mount 
-command (as opposed to meaning a netid as it does in the Solaris mount
-command), then please fix the man page to say that.
-
-But I think there is value in following the Solaris convention
-(which I established when I was at Sun in the 1990s working on the
-Solaris NFS/TCP stack) because by specifying "proto=tcp6" in the
-mount command, this can force the use of TCP over the IPv6 networking
-protocol in cases where the same host name is resolvable to both an
-IPv4 or IPv6 host address. Of course, one could edit nsswitch.conf and /etc/hosts or ipnodes to insert an IPv6-only host name, but that is cumbersome.
-
-BTW, the terse netid stuff in RFC3530 is being codified in a separate
-to-be-approved RFC. You can look at the internet draft at:
-  http://tools.ietf.org/wg/nfsv4/draft-ietf-nfsv4-rpc-netid/
-
-Netids for all the IETF transports that I am aware of are specified.
-Additional ones can be added after the RFC is published by registering
-with IANA via the process specified in the internet-draft.
-
-Note that rdma and rdma6, corresponding to the rdma over TCP/IP and 
-rdma over TCP/IPv6 protocols are among the netids. If people want
-a netid for a raw, non-IP-based RDMA transport, that will have to be
-registered with IANA.
-
-
-
-
-
+Cheers
+Martin
 
