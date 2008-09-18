@@ -1,38 +1,37 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-Date: Thu, 18 Sep 2008 15:20:48 +0200
-Message-ID: <1221744048.15314.30.camel@lappy.programming.kicks-ass.net>
-References: <124712.40022.qm@web32602.mail.mud.yahoo.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: slowness with nfs kernel 2.6.25 and Ontap 7.2.x
+Date: Thu, 18 Sep 2008 07:45:40 -0700
+Message-ID: <1221749140.7332.4.camel@localhost>
+References: <3b6787960809171747y37d52114w31da245767c87fe2@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Greg Banks <gnb@melbourne.sgi.com>,
-	linux-nfs list <linux-nfs@vger.kernel.org>,
-	linux-kernel@vger.kernel.org
-To: Martin Knoblauch <knobi@knobisoft.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756162AbYIRNVV@vger.kernel.org>
-In-Reply-To: <124712.40022.qm@web32602.mail.mud.yahoo.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Di Pe <dipeit@gmail.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:45085 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753990AbYIROpp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Sep 2008 10:45:45 -0400
+In-Reply-To: <3b6787960809171747y37d52114w31da245767c87fe2-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-09-18 at 01:38 -0700, Martin Knoblauch wrote:
+On Wed, 2008-09-17 at 17:47 -0700, Di Pe wrote:
+> Trond et al,
+> 
+> https://bugzilla.novell.com/show_bug.cgi?id=415607#c9
+> 
+> you know if there will there be an update to Kernel 2.6.25 or do we
+> need to install OnTap 7.3 to fix or reduce this problem?
+> 
+> Thanks much
+> dp
 
->  I believe Peter wanted to add per bdi stuff for nfs some time ago. Not sure what came out of it.
+AFAICR Neil has sent me a patch for that BUG_ON, but due to vacation +
+business travel, I haven't had time to review it yet. I'm planning on
+prepping the NFS updates for the 2.6.28 merge window next week, so I'll
+get back to it then.
 
-$ mount localhost:/ /mnt/tmp
-$ grep nfs /proc/$$/mountinfo
-21 17 0:17 / /var/lib/nfs/rpc_pipefs rw - rpc_pipefs rpc_pipefs rw
-31 13 0:20 / /proc/fs/nfsd rw - nfsd nfsd rw
-37 17 0:22 / /mnt/tmp rw - nfs localhost:/ rw,vers=3,rsize=65536,wsize=65536,namlen=255,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=127.0.0.1,mountvers=3,mountproto=tcp,addr=127.0.0.1
-$ ls -la /sys/class/bdi/0\:22/
-total 0
-drwxr-xr-x  3 root root    0 2008-09-18 15:16 .
-drwxr-xr-x 21 root root    0 2008-09-18 15:16 ..
--rw-r--r--  1 root root 4096 2008-09-18 15:19 max_ratio
--rw-r--r--  1 root root 4096 2008-09-18 15:19 min_ratio
-drwxr-xr-x  2 root root    0 2008-09-18 15:19 power
--rw-r--r--  1 root root 4096 2008-09-18 15:19 read_ahead_kb
-lrwxrwxrwx  1 root root    0 2008-09-18 15:19 subsystem -> ../../bdi
--rw-r--r--  1 root root 4096 2008-09-18 15:19 uevent
-$ cat /sys/class/bdi/0\:22/read_ahead_kb
-960
+Cheers
+  Trond
+
