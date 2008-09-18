@@ -1,88 +1,156 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-Date: Thu, 18 Sep 2008 15:03:01 -0400
-Message-ID: <48D2A5E5.1080100@redhat.com>
-References: <688309.69831.qm@web32604.mail.mud.yahoo.com> <76bd70e30809181124t78c0d574gaed5702095c02921@mail.gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
+Date: Thu, 18 Sep 2008 14:24:39 -0500
+Message-ID: <48D2AAF7.6060808@panasas.com>
+References: <48D15DF0.4000406@panasas.com> <20080917231018.GA5723@fieldses.org> <48D193EE.2020805@panasas.com> <48D19C74.8000303@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
-	linux-nfs list <linux-nfs@vger.kernel.org>,
-	linux-kernel@vger.kernel.org,
-	Peter zijlstra <a.p.zijlstra@chello.nl>
-To: Chuck Lever <chucklever@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
+	pnfs mailing list <pnfs@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:46127 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754236AbYIRTHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2008 15:07:09 -0400
-In-Reply-To: <76bd70e30809181124t78c0d574gaed5702095c02921-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from gw-ca.panasas.com ([66.104.249.162]:6518 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754288AbYIRT22 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 15:28:28 -0400
+In-Reply-To: <48D19C74.8000303@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Thu, Sep 18, 2008 at 6:53 AM, Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org> wrote:
->   
->> ----- Original Message ----
->>
->>     
->>> From: Andrew Morton <akpm@linux-foundation.org>
->>> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
->>> Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org; Peter zijlstra <a.p.zijlstra@chello.nl>
->>> Sent: Thursday, September 18, 2008 10:47:33 AM
->>> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
->>>
->>> On Thu, 18 Sep 2008 01:38:57 -0700 (PDT) Martin Knoblauch
->>> wrote:
->>>
->>>       
->>>>> No.  mount(8) will pass unrecognised options straight down into the
->>>>> filesystem driver.
->>>>>
->>>>>           
->>>>  Has that always been the case, or is it a recent change? I have to support
->>>>         
->>> RHEL4 userland, which is not really new.
->>>
->>> It's been that way for ever and ever.  It's how all these guys:
->>>
->>> y:/usr/src/25> grep Opt_ fs/*/super.c|wc
->>>     781    2626   33703
->>>
->>> get handled.
->>>       
->>  while that seems to be not to complicated, I seem to have a problem passing the mount options to the kernel. They come down as mount data version "6". Apparently mount(8) or mount.nfs(8) are doing the parsing and send down the legacy data block. So, what is the minimum version of mount or mount.nfs that pass the options down unaltered?
->>     
->
-> The mount command has passed a string of options to the kernel for
-> particular file systems for a while, but the facility for the NFS
-> client to parse a string of mount options in the kernel was added only
-> recently -- at least 2.6.23 or 2.6.24 is required to support this.
-> Before this, the mount command parsed these options.
->
-> For RHEL 4, based on 2.6.9, you are stuck.  It uses a binary structure
-> whose fields must match between the kernel and user space.  For RH
-> enterprise kernels, the ABI cannot change in a given release, so RH
-> wouldn't take a patch to change the data structure that mount uses.
-> You would have to maintain such a change yourself, and build your own
-> kernels and mount command after each RHEL 4 update is released.
->
-> I agree that a mount option would allow more fine-grained control over
-> readahead.  A system wide parameter controlling readahead has always
-> been a weakness.  Readahead, as implemented in the VFS, has a
-> *per-file descriptor* context, however, which operates automatically
-> (and can be tuned at run-time by an application with [mf]advise(2).
->
-> As a future feature, this might work in better combination with the
-> per-mount bdi changes proposed by Peter to provide maximal flexibility
-> without exposing yet another confusing knob that could help some
-> workloads but hurt others.
+From: Benny Halevy <bhalevy@panasas.com>
 
-And perhaps add some dynamic tuning capabilities to the NFS client
-code to just make it do "the right thing".  This would be better
-than any tunables and would help to serve in other situations, such
-as high bandwidth/latency networks, overloaded servers who don't
-need more read-ahead READ requests piled on, etc...
+since commit ff7d9756b501744540be65e172d27ee321d86103
+"nfsd: use static memory for callback program and stats"
+do_probe_callback uses a static callback program
+(NFS4_CALLBACK) rather than the one set in clp->cl_callback.cb_prog
+as passed in by the client in setclientid (4.0)
+or create_session (4.1).
 
-       ps
+This patches allows allocating cb_program (and cb_stats) dynamically
+and setting a free_rpc_program function pointer to be
+called when the rpc_clnt structure is destroyed.
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+
+Bruce, how about the following patch instead.
+It should solve the callback program number as well as Olga
+gss_auth issue.
+
+I'm still not sure about the gss_auth reference accounting
+for the rpc_clnt it references, but that's somewhat orthogonal
+to the solution in this patch.
+
+Benny
+
+ fs/nfsd/nfs4callback.c      |   47 ++++++++++++++++++++++++++++--------------
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |    2 +
+ 3 files changed, 34 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 30d3130..6599b1e 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -342,20 +342,11 @@ static struct rpc_version *	nfs_cb_version[] = {
+ 	&nfs_cb_version4,
+ };
+ 
+-static struct rpc_program cb_program;
+-
+-static struct rpc_stat cb_stats = {
+-		.program	= &cb_program
+-};
+-
+-#define NFS4_CALLBACK 0x40000000
+-static struct rpc_program cb_program = {
+-		.name 		= "nfs4_cb",
+-		.number		= NFS4_CALLBACK,
+-		.nrvers		= ARRAY_SIZE(nfs_cb_version),
+-		.version	= nfs_cb_version,
+-		.stats		= &cb_stats,
+-};
++static void free_rpc_program(struct rpc_program *cb_program)
++{
++	dprintk("%s: freeing callback program 0x%p\n", __func__, cb_program);
++	kfree(cb_program);
++}
+ 
+ /* Reference counting, callback cleanup, etc., all look racy as heck.
+  * And why is cb_set an atomic? */
+@@ -371,12 +362,13 @@ static int do_probe_callback(void *data)
+ 		.to_maxval	= (NFSD_LEASE_TIME/2) * HZ,
+ 		.to_exponential	= 1,
+ 	};
++	struct rpc_stat		*cb_stats;
++	struct rpc_program	*cb_program;
+ 	struct rpc_create_args args = {
+ 		.protocol	= IPPROTO_TCP,
+ 		.address	= (struct sockaddr *)&addr,
+ 		.addrsize	= sizeof(addr),
+ 		.timeout	= &timeparms,
+-		.program	= &cb_program,
+ 		.version	= nfs_cb_version[1]->number,
+ 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+@@ -394,8 +386,31 @@ static int do_probe_callback(void *data)
+ 	addr.sin_port = htons(cb->cb_port);
+ 	addr.sin_addr.s_addr = htonl(cb->cb_addr);
+ 
++	/* Initialize rpc_program */
++	cb_program = kzalloc(sizeof(struct rpc_program) +
++			     sizeof(struct rpc_stat), GFP_KERNEL);
++	if (!cb_program) {
++		dprintk("NFSD: %s: couldn't allocate callback program\n",
++			__func__);
++		status = -ENOMEM;
++		goto out_err;
++	}
++
++	cb_program->name = "nfs4_cb";
++	cb_program->number = clp->cl_callback.cb_prog;
++	cb_program->nrvers = ARRAY_SIZE(nfs_cb_version);
++	cb_program->version = nfs_cb_version;
++	cb_program->free_rpc_program = free_rpc_program;
++	args.program = cb_program;
++
++	dprintk("%s: program %s 0x%x nrvers %u version %u\n",
++		__func__, args.program->name, args.program->number,
++		args.program->nrvers, args.version);
++
+ 	/* Initialize rpc_stat */
+-	memset(args.program->stats, 0, sizeof(struct rpc_stat));
++	cb_stats = (struct rpc_stat *)(cb_program + 1);
++	cb_stats->program = cb_program;
++	cb_program->stats = cb_stats;
+ 
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index e5bfe01..d342374 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -71,6 +71,7 @@ struct rpc_program {
+ 	struct rpc_version **	version;	/* version array */
+ 	struct rpc_stat *	stats;		/* statistics */
+ 	char *			pipe_dir_name;	/* path to rpc_pipefs dir */
++	void			(*free_rpc_program)(struct rpc_program *);
+ };
+ 
+ struct rpc_version {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 76739e9..cfb21c0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -415,6 +415,8 @@ rpc_free_client(struct kref *kref)
+ 	if (clnt->cl_server != clnt->cl_inline_name)
+ 		kfree(clnt->cl_server);
+ out_free:
++	if (clnt->cl_program && clnt->cl_program->free_rpc_program)
++		clnt->cl_program->free_rpc_program(clnt->cl_program);
+ 	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	clnt->cl_metrics = NULL;
+-- 
+1.6.0.1
+
