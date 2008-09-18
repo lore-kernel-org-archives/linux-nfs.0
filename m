@@ -1,37 +1,75 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: slowness with nfs kernel 2.6.25 and Ontap 7.2.x
-Date: Thu, 18 Sep 2008 07:45:40 -0700
-Message-ID: <1221749140.7332.4.camel@localhost>
-References: <3b6787960809171747y37d52114w31da245767c87fe2@mail.gmail.com>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Re: [PATCH 0/2] NFSV4 Ipv6 server support
+Date: Thu, 18 Sep 2008 17:06:48 +0200
+Message-ID: <48D26E88.5020900@bull.net>
+References: <48CF7C56.7070708@bull.net> <48D1FA18.8030404@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Di Pe <dipeit@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:45085 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753990AbYIROpp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2008 10:45:45 -0400
-In-Reply-To: <3b6787960809171747y37d52114w31da245767c87fe2-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: linux-nfs@vger.kernel.org, nfsv4 <nfsv4@linux-nfs.org>
+To: Varun Chandramohan <varunc@linux.vnet.ibm.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <48D1FA18.8030404@linux.vnet.ibm.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-09-17 at 17:47 -0700, Di Pe wrote:
-> Trond et al,
-> 
-> https://bugzilla.novell.com/show_bug.cgi?id=415607#c9
-> 
-> you know if there will there be an update to Kernel 2.6.25 or do we
-> need to install OnTap 7.3 to fix or reduce this problem?
-> 
-> Thanks much
-> dp
+Varun Chandramohan a =E9crit :
 
-AFAICR Neil has sent me a patch for that BUG_ON, but due to vacation +
-business travel, I haven't had time to review it yet. I'm planning on
-prepping the NFS updates for the 2.6.28 merge window next week, so I'll
-get back to it then.
+> Le Rouzic wrote:
+>
+>>
+>> ------------------------------------------------------------------------
+>>
+>> _______________________________________________
+>> NFSv4 mailing list
+>> NFSv4@linux-nfs.org
+>> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+>
+> Can you provide the link to nfs-utils.1.1.2 that you used for a nfsv4 =
 
-Cheers
-  Trond
+> mounting over ipv6? I didnt find in bullopensource.org, so incase i =
 
+> have missed it let me know. =
+
+
+
+Hi,
+Should be available to-morrow on Bull site.
+I let you know.
+Regards
+
+
+
+
+
+
+>
+> Regards,
+> Varun
+> -- =
+
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+-- =
+
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic =
+
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- =
