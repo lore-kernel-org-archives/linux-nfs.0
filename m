@@ -1,97 +1,67 @@
-From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-Date: Thu, 18 Sep 2008 02:32:16 -0700 (PDT)
-Message-ID: <151874.61127.qm@web32601.mail.mud.yahoo.com>
+From: Mike Eisler <email2mre-linuxv4@yahoo.com>
+Subject: netid in the NFS mount command
+Date: Thu, 18 Sep 2008 04:16:49 -0700 (PDT)
+Message-ID: <288393.82711.qm@web38108.mail.mud.yahoo.com>
+Reply-To: email2mre-linuxv4@yahoo.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
-	linux-kernel@vger.kernel.org
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web32601.mail.mud.yahoo.com ([68.142.207.228]:48522 "HELO
-	web32616.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with SMTP id S1753990AbYIRJcR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 05:32:17 -0400
+Received: from web38108.mail.mud.yahoo.com ([209.191.124.135]:31860 "HELO
+	web38108.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752789AbYIRLXb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 07:23:31 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message ----
+http://article.gmane.org/gmane.linux.nfs/16950 has Chuck Lever's patch to the nfs man page, which includes:
 
-> From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
-> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
-> Cc: linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org
-> Sent: Thursday, September 18, 2008 10:45:01 AM
-> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
-> 
-> Martin Knoblauch wrote:
-> > ----- Original Message ----
-> >
-> >  
-> >>
-> >> I think having a tunable for client readahead is an excellent idea,
-> >> although not to solve your particular problem.  The SLES10 kernel has a
-> >> patch which does precisely that, perhaps Neil could post it.
-> >>
-> >> I don't think there's a lot of point having both a module parameter and
-> >> a sysctl.
-> >>
-> >>    
-> >
-> >  Actually there is a good reason. The module parameter can be used to set the 
-> new value at load time and never bother again. The sysctl is very convenient 
-> when doing experiments.
-> >  
-> You can set module parameters after module load in
-> /sys/module/$module/parameters.
 
- OK, one always learns new stuff :-)
+-The default value depends on whether
+-.IR proto=udp
+[...]
++.BI proto= netid
++The transport protocol used by the RPC client
++to transmit requests to the NFS server for this mount point.
++The value of
++.I netid
++can be either
++.B udp
+ or
+-.IR proto=tcp
+-is in effect (see below).
 
-> >  As Andrew already pointed out, the best solution would be a mount option.
-> Yep.
-> >  But that seems much more involved as my workaround patch.
-> >
-> >  
-> Yep.
+After talking to Chuck yesterday, it appears that he is being literal:
+the netid can only be either udp or tcp, and not also udp6 or tcp6, which
+are the netids IETF defines (see RFC3530) for ONC RPC over UDP/IPv6
+and TCP/IPv6. 
 
- Seeing Andrews Mails, it might be less involved that I thought :-) Will have a look.
+If proto= is going to mean transport protocol in the Linux mount 
+command (as opposed to meaning a netid as it does in the Solaris mount
+command), then please fix the man page to say that.
 
-> >> A maximum of 15 is unwise.  I've found that (at least with the older
-> >> readahead mechanisms in SLES10) a multiple of 4 is required to preserve
-> >> rsize-alignment of READ rpcs to the server, which helps a lot with wide
-> >> RAID backends.  So in SGI we tune client readahead to 16.
-> >>
-> >>    
-> >
-> >  15 is the value that the Linux NFS client uses., at least since 2.6.3. 
-> It's a silly value.
+But I think there is value in following the Solaris convention
+(which I established when I was at Sun in the 1990s working on the
+Solaris NFS/TCP stack) because by specifying "proto=tcp6" in the
+mount command, this can force the use of TCP over the IPv6 networking
+protocol in cases where the same host name is resolvable to both an
+IPv4 or IPv6 host address. Of course, one could edit nsswitch.conf and /etc/hosts or ipnodes to insert an IPv6-only host name, but that is cumbersome.
 
- I was not sure whether it was just arbitrary, or caused by some other internal limit. The definition made it look like it was somehow related to RPC_DEF_SLOT.
+BTW, the terse netid stuff in RFC3530 is being codified in a separate
+to-be-approved RFC. You can look at the internet draft at:
+  http://tools.ietf.org/wg/nfsv4/draft-ietf-nfsv4-rpc-netid/
 
-> > As it is not tunable up to today, the comment seems moot :-)  But it opens the 
-> questions:
-> >
-> > a) should 1 be the minimum, or 0?
-> >  
-> Turning off client RA entirely is potentially useful.
-> > b) can the backing_dev_info.ra_pages field safely be set to something higher 
-> than 15?
-> >  
-> Yes.  Did I mention 16 ?
+Netids for all the IETF transports that I am aware of are specified.
+Additional ones can be added after the RFC is published by registering
+with IANA via the process specified in the internet-draft.
 
- You also mentioned that you do that at SGI. So, who knows whatelse there is changed :-) Anyway, thanks for the hint. 
+Note that rdma and rdma6, corresponding to the rdma over TCP/IP and 
+rdma over TCP/IPv6 protocols are among the netids. If people want
+a netid for a raw, non-IP-based RDMA transport, that will have to be
+registered with IANA.
 
-> >  
-> >> Your patch seems to have a bunch of other unrelated stuff mixed in.
-> >>
-> >>    
-> >
-> >  Yeah, someone already pointed out, that the Makefile hunk does not belong 
-> there. But you say "a bunch" - anything else?
-> >  
-> I rapidly scrolled past some stuff about 64bit inodes.
 
- Ahh. Now I remember... when I implemented the module  parameter, I found that "enable_ino64" lacks a description. Yeah, should be a separate patch.
 
-Cheers
-Martin
+
+
 
