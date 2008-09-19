@@ -1,122 +1,69 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
-Date: Thu, 18 Sep 2008 16:36:11 -0500
-Message-ID: <48D2C9CB.6040306@panasas.com>
-References: <48D15DF0.4000406@panasas.com>	<20080917231018.GA5723@fieldses.org>	<48D193EE.2020805@panasas.com>	<48D19C74.8000303@panasas.com> <48D2AAF7.6060808@panasas.com>	<48D2AF61.7030500@redhat.com> <48D2B4A6.9000207@panasas.com>
+From: "Chris Fanning" <christopher.fanning@gmail.com>
+Subject: Re: [NFS] sync, async, write speeds.
+Date: Fri, 19 Sep 2008 09:40:00 +0200
+Message-ID: <215ff4410809190040w424d2cc2sd1e119a90d64cc6d@mail.gmail.com>
+References: <215ff4410809170035s38183fe3r51aeea62939b6327@mail.gmail.com>
+	<48D0DCC9.3090208@cse.unsw.edu.au>
+	<76bd70e30809170836t17a46227mf84c92e0fc80c8b3@mail.gmail.com>
+	<215ff4410809180122o3141a5f5h6e93e092abf07fd1@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
-	Olga Kornievskaia <aglo@citi.umich.edu>
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net, Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org>
+To: "Chuck Lever" <chucklever@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:10668 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754235AbYIRVfi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2008 17:35:38 -0400
-In-Reply-To: <48D2B4A6.9000207@panasas.com>
+Received: from neil.brown.name ([220.233.11.133]:57604 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750876AbYISHkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2008 03:40:10 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Kgab1-0007Qf-DL
+	for linux-nfs@vger.kernel.org; Fri, 19 Sep 2008 17:40:07 +1000
+In-Reply-To: <215ff4410809180122o3141a5f5h6e93e092abf07fd1-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep. 18, 2008, 15:05 -0500, Benny Halevy <bhalevy@panasas.com> wrote:
-> On Sep. 18, 2008, 14:43 -0500, Peter Staubach <staubach@redhat.com> wrote:
-> [snip]
->>> +	cb_program = kzalloc(sizeof(struct rpc_program) +
->>> +			     sizeof(struct rpc_stat), GFP_KERNEL);
->>>   
->> Ugg.  What about defining a struct which contains an rpc_program
->> followed by an rpc_stat and then allocate and free that?  This
->> seems a little, unclean, to me.
+Hi,
+
+> I'm going to try jumbo frames but it'll take me a while to set it up.
+> I'll get back to you with the results.
+>
+Meanwhile I've been thinking about this. Please excuse my ignorance.
+Jumbo frames are changes at ethernet level2 but nfs is at ip level3. right?
+If I've been getting reasonable results using async, doesn't this
+indicate that my ethernet network is fast enough already? How will
+Jumbo frames help to solve the 'sync' issue?
+
+Thanks.
+Chris.
+
+> Thanks.
+> Chris.
+>
+> On Wed, Sep 17, 2008 at 5:36 PM, Chuck Lever <chucklever@gmail.com> wrote:
+>> On Wed, Sep 17, 2008 at 5:32 AM, Shehjar Tikoo <shehjart-YbfuJp6tym7X/JP9YwkgDA@public.gmane.org> wrote:
+>>>> If I change the export to async, it improves a lot.
+>>> If you can assure uninterrupted power to the server, I dont see any
+>>> reason why you cant use the "async" option.
 >>
->>        ps
+>> If the server O/S crashes due to a bug, you are still open to silent
+>> data corruption.  A UPS cannot help you with that.
 >>
-> 
-> Sure. No problem.
-> Thanks for reviewing this.
-> 
-> Benny
+>> --
+>> Chuck Lever
+>>
+>
 
-Here's the diff from the patch I sent.
-I'll send the modified patch once I get Bruce's Ack
-and possibly other comments.
-Tested here in the Austin BAT.
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-Benny
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 6599b1e..0f13d75 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -342,10 +342,19 @@ static struct rpc_version *	nfs_cb_version[] = {
- 	&nfs_cb_version4,
- };
- 
--static void free_rpc_program(struct rpc_program *cb_program)
-+/* used internally for dynamically allocating the callback rpc_program
-+ * and rpc_stat */
-+struct __rpc_prog_stats {
-+	struct rpc_program	program;
-+	struct rpc_stat		stats;
-+};
-+
-+static void free_rpc_program(struct rpc_program *p)
- {
--	dprintk("%s: freeing callback program 0x%p\n", __func__, cb_program);
--	kfree(cb_program);
-+	struct __rpc_prog_stats *ps = container_of(p, struct __rpc_prog_stats,
-+						   program);
-+	dprintk("%s: freeing callback prog_stats 0x%p\n", __func__, ps);
-+	kfree(ps);
- }
- 
- /* Reference counting, callback cleanup, etc., all look racy as heck.
-@@ -362,8 +371,7 @@ static int do_probe_callback(void *data)
- 		.to_maxval	= (NFSD_LEASE_TIME/2) * HZ,
- 		.to_exponential	= 1,
- 	};
--	struct rpc_stat		*cb_stats;
--	struct rpc_program	*cb_program;
-+	struct __rpc_prog_stats	*cb_prog_stats;
- 	struct rpc_create_args args = {
- 		.protocol	= IPPROTO_TCP,
- 		.address	= (struct sockaddr *)&addr,
-@@ -387,30 +395,28 @@ static int do_probe_callback(void *data)
- 	addr.sin_addr.s_addr = htonl(cb->cb_addr);
- 
- 	/* Initialize rpc_program */
--	cb_program = kzalloc(sizeof(struct rpc_program) +
--			     sizeof(struct rpc_stat), GFP_KERNEL);
--	if (!cb_program) {
-+	cb_prog_stats = kzalloc(sizeof(*cb_prog_stats), GFP_KERNEL);
-+	if (!cb_prog_stats) {
- 		dprintk("NFSD: %s: couldn't allocate callback program\n",
- 			__func__);
- 		status = -ENOMEM;
- 		goto out_err;
- 	}
- 
--	cb_program->name = "nfs4_cb";
--	cb_program->number = clp->cl_callback.cb_prog;
--	cb_program->nrvers = ARRAY_SIZE(nfs_cb_version);
--	cb_program->version = nfs_cb_version;
--	cb_program->free_rpc_program = free_rpc_program;
--	args.program = cb_program;
-+	args.program = &cb_prog_stats->program;
-+	args.program->name = "nfs4_cb";
-+	args.program->number = clp->cl_callback.cb_prog;
-+	args.program->nrvers = ARRAY_SIZE(nfs_cb_version);
-+	args.program->version = nfs_cb_version;
-+	args.program->free_rpc_program = free_rpc_program;
- 
- 	dprintk("%s: program %s 0x%x nrvers %u version %u\n",
- 		__func__, args.program->name, args.program->number,
- 		args.program->nrvers, args.version);
- 
- 	/* Initialize rpc_stat */
--	cb_stats = (struct rpc_stat *)(cb_program + 1);
--	cb_stats->program = cb_program;
--	cb_program->stats = cb_stats;
-+	args.program->stats = &cb_prog_stats->stats;
-+	args.program->stats->program = args.program;
- 
- 	/* Create RPC client */
- 	client = rpc_create(&args);
