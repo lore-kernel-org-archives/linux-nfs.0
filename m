@@ -1,103 +1,102 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] nfsd: use nfs client rpc callback program
-Date: Fri, 19 Sep 2008 16:15:51 -0500
-Message-ID: <48D41687.4040409@panasas.com>
-References: <48D15DF0.4000406@panasas.com> <20080917231018.GA5723@fieldses.org> <48D193EE.2020805@panasas.com> <48D402A8.7020006@citi.umich.edu>
+From: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+Date: Sun, 21 Sep 2008 05:50:47 -0700 (PDT)
+Message-ID: <968192.84087.qm@web32607.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
-	Fred Isaman <iisaman@citi.umich.edu>
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
+	linux-nfs list <linux-nfs@vger.kernel.org>,
+	linux-kernel@vger.kernel.org,
+	Peter zijlstra <a.p.zijlstra@chello.nl>
+To: Chuck Lever <chucklever@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:21411 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751017AbYISVPM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2008 17:15:12 -0400
-In-Reply-To: <48D402A8.7020006@citi.umich.edu>
+Received: from web32607.mail.mud.yahoo.com ([68.142.207.234]:46221 "HELO
+	web32607.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751414AbYIUMut (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Sep 2008 08:50:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep. 19, 2008, 14:51 -0500, Olga Kornievskaia <aglo@citi.umich.edu> wrote:
+----- Original Message ----
+
+> From: Chuck Lever <chucklever@gmail.com>
+> To: Martin Knoblauch <knobi-Ys4E+72pFW0hFhg+JK9F0w@public.gmane.org>
+> Cc: Andrew Morton <akpm@linux-foundation.org>; Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>; linux-nfs list <linux-nfs@vger.kernel.org>; linux-kernel@vger.kernel.org; Peter zijlstra <a.p.zijlstra@chello.nl>
+> Sent: Thursday, September 18, 2008 8:24:42 PM
+> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
 > 
-> Benny Halevy wrote:
->> On Sep. 17, 2008, 18:10 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>   
->>> On Wed, Sep 17, 2008 at 02:43:44PM -0500, Benny Halevy wrote:
->>>     
->>>> From: Benny Halevy <bhalevy@panasas.com>
->>>>
->>>> since commit ff7d9756b501744540be65e172d27ee321d86103
->>>> "nfsd: use static memory for callback program and stats"
->>>> do_probe_callback uses a static callback program
->>>> (NFS4_CALLBACK) rather than the one set in clp->cl_callback.cb_prog
->>>> as passed in by the client in setclientid (4.0)
->>>> or create_session (4.1).
->>>>       
->>> Ugh, yes, sorry about that.  (I wonder why pynfs testing didn't catch
->>> this?  Oh, I guess it's because NFS4_CALLBACK is the program number our
->>> client always gives us.)
->>>     
->> Well, Fred (thanks!) added a test today which uses a non-default
->> callback program and he sees a corresponding callback coming back.
->>
->> (Note that this test is not absolutely generic as the server is
->> not required to probe the callback immediately, or at all, after
->> setclientid or create_session.)
->>
->>   
->>>> @@ -371,6 +356,8 @@ static int do_probe_callback(void *data)
->>>>  		.to_maxval	= (NFSD_LEASE_TIME/2) * HZ,
->>>>  		.to_exponential	= 1,
->>>>  	};
->>>> +	static struct rpc_stat	cb_stats;
->>>> +	struct rpc_program	cb_program;
->>>>  	struct rpc_create_args args = {
->>>>  		.protocol	= IPPROTO_TCP,
->>>>  		.address	= (struct sockaddr *)&addr,
->>>> @@ -394,6 +381,20 @@ static int do_probe_callback(void *data)
->>>>  	addr.sin_port = htons(cb->cb_port);
->>>>  	addr.sin_addr.s_addr = htonl(cb->cb_addr);
->>>>  
->>>> +	/* Initialize rpc_program */
->>>> +	memset(&cb_program, 0, sizeof(cb_program));
->>>> +	cb_program.name = "nfs4_cb";
->>>> +	cb_program.number = clp->cl_callback.cb_prog;
->>>> +	cb_program.nrvers = ARRAY_SIZE(nfs_cb_version);
->>>> +	cb_program.version = nfs_cb_version;
->>>> +	cb_program.stats = &cb_stats;
->>>> +	memset(&cb_stats, 0, sizeof(cb_stats));
->>>> +	cb_stats.program = &cb_program;
->>>>       
->>> You don't want a pointer to data on the stack here, do you?
->>>     
->> Hmm, you're right...
->> I went back and forth whether this should be allocated statically,
->> dynamically, or on the stack.  I was mislead by the fact we're doing
->> a sync rpc call, but indeed this needs to live until the nfs client
->> is destroyed.  I'm trying to fully understand what Olga saw
->> before coming up with a new proposal... maybe putting the cb_program
->> back into struct nfs4_callback and just make cb_stats static would
->> provide a solution of the problem Olga witnessed and keep everybody
->> happy.
->>   
-> I'm trying really hard to remember what was the issue of not using the 
-> structure and instead using static memory. From what I remember the 
-> issue was that the memory (clp->cl_callback.cb_prog) was going away.
+> On Thu, Sep 18, 2008 at 6:53 AM, Martin Knoblauch wrote:
+> > ----- Original Message ----
+> >
+> >> From: Andrew Morton 
+> >> To: Martin Knoblauch 
+> >> Cc: Greg Banks ; linux-nfs list 
+> ; linux-kernel@vger.kernel.org; Peter zijlstra 
+> 
+> >> Sent: Thursday, September 18, 2008 10:47:33 AM
+> >> Subject: Re: [RFC][Resend] Make NFS-Client readahead tunable
+> >>
+> >> On Thu, 18 Sep 2008 01:38:57 -0700 (PDT) Martin Knoblauch
+> >> wrote:
+> >>
+> >> > > No.  mount(8) will pass unrecognised options straight down into the
+> >> > > filesystem driver.
+> >> > >
+> >> >
+> >> >  Has that always been the case, or is it a recent change? I have to support
+> >> RHEL4 userland, which is not really new.
+> >>
+> >> It's been that way for ever and ever.  It's how all these guys:
+> >>
+> >> y:/usr/src/25> grep Opt_ fs/*/super.c|wc
+> >>     781    2626   33703
+> >>
+> >> get handled.
+> >
+> >  while that seems to be not to complicated, I seem to have a problem passing 
+> the mount options to the kernel. They come down as mount data version "6". 
+> Apparently mount(8) or mount.nfs(8) are doing the parsing and send down the 
+> legacy data block. So, what is the minimum version of mount or mount.nfs that 
+> pass the options down unaltered?
+> 
+> The mount command has passed a string of options to the kernel for
+> particular file systems for a while, but the facility for the NFS
+> client to parse a string of mount options in the kernel was added only
+> recently -- at least 2.6.23 or 2.6.24 is required to support this.
+> Before this, the mount command parsed these options.
+>
+
+ I understand that. Question remains, which version of the mount(8) or nfs.mount(8) command do I need to pass the options to the kernel.
+ 
+> For RHEL 4, based on 2.6.9, you are stuck.  It uses a binary structure
+> whose fields must match between the kernel and user space.  For RH
+> enterprise kernels, the ABI cannot change in a given release, so RH
+> wouldn't take a patch to change the data structure that mount uses.
+> You would have to maintain such a change yourself, and build your own
+> kernels and mount command after each RHEL 4 update is released.
 > 
 
-Yeah... pls see my reply on this thread.  From reading the code it
-seems like the root cause is that gss_auth is holding a reference
-on the rpc_clnt (for which I haven't seen a kref taken and released
-which looks quite worrisome) and in gss_destroying_context() it's
-doing rpc_call_null(gss_auth->client ... RPC_TASK_ASYNC) and therfore it needs
-the program and stats.  This probably being called via:
+ For implementation/testing purposes I have some freedom in what userland I run. My systems are mainly RHEL4,  but I have long junked the 2.6.9 based kernels.
 
-nfs_free_client -> put_rpccred -> gss_destroy_cred (via
-cred->cr_ops->crdestroy) -> gss_destroying_context.
+> I agree that a mount option would allow more fine-grained control over
+> readahead.  A system wide parameter controlling readahead has always
+> been a weakness.  Readahead, as implemented in the VFS, has a
+> *per-file descriptor* context, however, which operates automatically
+> (and can be tuned at run-time by an application with [mf]advise(2).
+>
 
-since gss_destroying_context issues async null rpc
-control returns to nfs_free_client which frees up the nfs_client
-(and with it it used to free the rpc_program and rpc_stat)
+ The per-file descriptor stuff is not applicable in my case, as I do not have controll over programms acessing the files.
+ 
+> As a future feature, this might work in better combination with the
+> per-mount bdi changes proposed by Peter to provide maximal flexibility
+> without exposing yet another confusing knob that could help some
+> workloads but hurt others.
+> 
 
-Benny
+
+ Thats why I am open to experiment, but need to know which userland tools support the direct passing of mount options to the NFS client.
+
+Cheers
+Martin
+
