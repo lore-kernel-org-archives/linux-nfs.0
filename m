@@ -1,149 +1,80 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v3] nfsd: use nfs client rpc callback program
-Date: Mon, 22 Sep 2008 16:07:45 +0300
-Message-ID: <1222088865-19162-1-git-send-email-bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@fieldses.org>
+From: "Hans-Peter Jansen" <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
+Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
+Date: Mon, 22 Sep 2008 18:05:47 +0200
+Message-ID: <200809221805.48463.hpj@urpla.net>
+References: <20080905191939.GG22796@merfinllc.com> <56258A29-95D5-4A8C-A097-014B8FEDFB8F@oracle.com> <20080911184951.GB19054@merfinllc.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="utf-8"
+Cc: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Neil Brown <neilb@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:40942 "EHLO
-	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752090AbYIVNbF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2008 09:31:05 -0400
+Received: from moutng.kundenserver.de ([212.227.126.186]:52212 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752829AbYIVQGA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2008 12:06:00 -0400
+In-Reply-To: <20080911184951.GB19054-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-since commit ff7d9756b501744540be65e172d27ee321d86103
-"nfsd: use static memory for callback program and stats"
-do_probe_callback uses a static callback program
-(NFS4_CALLBACK) rather than the one set in clp->cl_callback.cb_prog
-as passed in by the client in setclientid (4.0)
-or create_session (4.1).
+Hi Aaron, hi NFS hackers,
 
-This patches allows allocating cb_program (and cb_stats) dynamically
-and setting a free_rpc_program function pointer to be
-called when the rpc_clnt structure is destroyed.
+Am Donnerstag, 11. September 2008 schrieb Aaron Straus:
+> Hi,
+>
+> On Sep 11 01:48 PM, Chuck Lever wrote:
+> > Were you able to modify your writer to do real fsync system calls?  If
+> > so, did it help?  That would be a useful data point.
+>
+> Yes/Yes.  Please see the attached tarball sync-test.tar.bz2.
+>
+> Inside you'll find the modified writer:  writer_sync.py
+>
+> That will call fsync on the file descriptor after each write.
+>
+> Also I added the strace and wireshark data for the sync and nosync
+> cases.
+>
+> Note these are all tested with latest linus git:
+>
+>   d1c6d2e547148c5aa0c0a4ff6aac82f7c6da1d8b
+>
+> > Practically speaking this is often not enough for typical
+> > applications, so NFS client implementations go to further (non-
+> > standard) efforts to behave like a local file system.  This is simply
+> > a question of whether we can address this while not creating
+> > performance or correctness issues for other common use cases.
+>
+> Yep, I agree.  I'm not saying what we do now is "wrong" per the RFC
+> (writing the file out of order).  It's just different from what we've
+> done in the past (and somewhat unexpected).
+>
+> I'm still hoping there is a simple fix... but maybe not... :(
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
+For what is worth, this behavior is visible in bog standard writing/reading 
+files, (log files in my case, via the python logging package). It obviously 
+deviates from local filesystem behavior, and former state of the linux 
+nfs-client. Should we add patches to less, tail, and all other instruments 
+for watching/analysing log files (just to pick the tip of the ice rock) in 
+order to throw away runs of zeros, when reading from nfs mounted files? Or 
+should we ask their maintainers to add locking code for the nfs "read 
+files, which are written at the same time" case, just to work around 
+__some__ of the consequences of this bug? Imagine, how ugly this is going 
+to look! 
 
-v3 fixes review comments by J. Bruce Fields and Pete Staubach
-Applies against 2.6.27-rc6 and 2.6.26
+The whole issue is what I call a major regression, thus I strongly ask for a 
+reply from Trond on this matter.
 
-Benny
+I even vote for sending a revert request for this hunk to the stable team, 
+where it is applicable, after Trond sorted it out (for 2.6.27?).
 
- fs/nfsd/nfs4callback.c      |   49 ++++++++++++++++++++++++++++++------------
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/clnt.c           |    2 +
- 3 files changed, 38 insertions(+), 14 deletions(-)
+Thanks, Aaron and Chuck for the detailed analysis - it demystified a wired 
+behavior, I observed here. When you're in a process to get real work done 
+in a fixed timeline, such things could make you mad..
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 30d3130..0f13d75 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -342,20 +342,20 @@ static struct rpc_version *	nfs_cb_version[] = {
- 	&nfs_cb_version4,
- };
- 
--static struct rpc_program cb_program;
--
--static struct rpc_stat cb_stats = {
--		.program	= &cb_program
-+/* used internally for dynamically allocating the callback rpc_program
-+ * and rpc_stat */
-+struct __rpc_prog_stats {
-+	struct rpc_program	program;
-+	struct rpc_stat		stats;
- };
- 
--#define NFS4_CALLBACK 0x40000000
--static struct rpc_program cb_program = {
--		.name 		= "nfs4_cb",
--		.number		= NFS4_CALLBACK,
--		.nrvers		= ARRAY_SIZE(nfs_cb_version),
--		.version	= nfs_cb_version,
--		.stats		= &cb_stats,
--};
-+static void free_rpc_program(struct rpc_program *p)
-+{
-+	struct __rpc_prog_stats *ps = container_of(p, struct __rpc_prog_stats,
-+						   program);
-+	dprintk("%s: freeing callback prog_stats 0x%p\n", __func__, ps);
-+	kfree(ps);
-+}
- 
- /* Reference counting, callback cleanup, etc., all look racy as heck.
-  * And why is cb_set an atomic? */
-@@ -371,12 +371,12 @@ static int do_probe_callback(void *data)
- 		.to_maxval	= (NFSD_LEASE_TIME/2) * HZ,
- 		.to_exponential	= 1,
- 	};
-+	struct __rpc_prog_stats	*cb_prog_stats;
- 	struct rpc_create_args args = {
- 		.protocol	= IPPROTO_TCP,
- 		.address	= (struct sockaddr *)&addr,
- 		.addrsize	= sizeof(addr),
- 		.timeout	= &timeparms,
--		.program	= &cb_program,
- 		.version	= nfs_cb_version[1]->number,
- 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
-@@ -394,8 +394,29 @@ static int do_probe_callback(void *data)
- 	addr.sin_port = htons(cb->cb_port);
- 	addr.sin_addr.s_addr = htonl(cb->cb_addr);
- 
-+	/* Initialize rpc_program */
-+	cb_prog_stats = kzalloc(sizeof(*cb_prog_stats), GFP_KERNEL);
-+	if (!cb_prog_stats) {
-+		dprintk("NFSD: %s: couldn't allocate callback program\n",
-+			__func__);
-+		status = -ENOMEM;
-+		goto out_err;
-+	}
-+
-+	args.program = &cb_prog_stats->program;
-+	args.program->name = "nfs4_cb";
-+	args.program->number = clp->cl_callback.cb_prog;
-+	args.program->nrvers = ARRAY_SIZE(nfs_cb_version);
-+	args.program->version = nfs_cb_version;
-+	args.program->free_rpc_program = free_rpc_program;
-+
-+	dprintk("%s: program %s 0x%x nrvers %u version %u\n",
-+		__func__, args.program->name, args.program->number,
-+		args.program->nrvers, args.version);
-+
- 	/* Initialize rpc_stat */
--	memset(args.program->stats, 0, sizeof(struct rpc_stat));
-+	args.program->stats = &cb_prog_stats->stats;
-+	args.program->stats->program = args.program;
- 
- 	/* Create RPC client */
- 	client = rpc_create(&args);
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index e5bfe01..d342374 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -71,6 +71,7 @@ struct rpc_program {
- 	struct rpc_version **	version;	/* version array */
- 	struct rpc_stat *	stats;		/* statistics */
- 	char *			pipe_dir_name;	/* path to rpc_pipefs dir */
-+	void			(*free_rpc_program)(struct rpc_program *);
- };
- 
- struct rpc_version {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 76739e9..cfb21c0 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -415,6 +415,8 @@ rpc_free_client(struct kref *kref)
- 	if (clnt->cl_server != clnt->cl_inline_name)
- 		kfree(clnt->cl_server);
- out_free:
-+	if (clnt->cl_program && clnt->cl_program->free_rpc_program)
-+		clnt->cl_program->free_rpc_program(clnt->cl_program);
- 	rpc_unregister_client(clnt);
- 	rpc_free_iostats(clnt->cl_metrics);
- 	clnt->cl_metrics = NULL;
--- 
-1.6.0
-
+Cheers,
+Pete
