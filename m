@@ -1,91 +1,149 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: NFS and mobile clients - can it work?
-Date: Mon, 22 Sep 2008 11:00:07 +0530
-Message-ID: <OF6640388A.E528F300-ON652574CC.001DC61A-652574CC.001E395A@in.ibm.com>
-References: <18646.58594.377630.950531@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v3] nfsd: use nfs client rpc callback program
+Date: Mon, 22 Sep 2008 16:07:45 +0300
+Message-ID: <1222088865-19162-1-git-send-email-bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Benny Halevy <bhalevy@panasas.com>
+To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:45310 "EHLO
-	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751354AbYIVFbl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2008 01:31:41 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m8M5Va1m027123
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2008 11:01:36 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m8M5Uaoi1515550
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2008 11:01:25 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m8M5UZqH009752
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2008 15:30:36 +1000
-In-Reply-To: <18646.58594.377630.950531-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:40942 "EHLO
+	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752090AbYIVNbF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2008 09:31:05 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil,
+since commit ff7d9756b501744540be65e172d27ee321d86103
+"nfsd: use static memory for callback program and stats"
+do_probe_callback uses a static callback program
+(NFS4_CALLBACK) rather than the one set in clp->cl_callback.cb_prog
+as passed in by the client in setclientid (4.0)
+or create_session (4.1).
 
-If you have running over IPv6, you can use Mobile IPv6 (configure
-IPv6_MIP6)
-to make this work over TCP. I have never tried it, but theoretically it
-should
-work. Mobile IP will fool the TCP layer (and other ULP's) onwards by
-passing
-the "home" network address while using the new network address internally
-at
-IP layer for communication (both sends and recvs).
+This patches allows allocating cb_program (and cb_stats) dynamically
+and setting a free_rpc_program function pointer to be
+called when the rpc_clnt structure is destroyed.
 
-- KK
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
 
->  Suppose I have a mobile client such as a notebook computer which
->  changes networks from time to time - e.g. when "docked" it uses a
->  wired network, but when I "undock" it uses a wireless network.  And
->  as I move around it might change from one wireless network to
->  another.
->
->  Is it at all reasonable to expect that I could have an NFS mounted
->  filesystem that continues to work across all of those changes?
->
->  If we just assume NFSv3 and ignore locking for the moment, then this
->  seems to work quite well if you use UDP, but fails badly if you use
->  TCP.  This is because the connected socket holds on to the old source
->  address.
->
->  I think that the only way to get the client to close and re-open the
->  socket would be to wait for 5 minutes with no IO requests.  But that
->  would be hard to ensure.  Any attempt to access any file will trigger
->  a request which will keep retrying which will keep the socket active,
->  so the client won't close it.... It doesn't seem to work anyway.  The
->  RPC client appears to try to connect from the same source IP address,
->  though I haven't checked the code to be sure of this.
->
->  Would it be worthwhile/practical to have a 'remount' mount option to
->  request that the socket be closed and re-opened?
->
->  If there were any active locks, there is probably nothing useful that
->  can be done for them.  Unless the client manages to send a NOTIFY to
->  the server before changing IP address, the server will never drop the
->  locks.   Maybe "-o remount,reopen" would only work if "-o nolocks"
->  were in force.  It's not an ideal solution, but it might be better
->  than the current situations?
->
->  I'm not sure whether NFSv4 makes this easier or harder.  Can you
->  continue a client session (SET_CLIENTID) from a different IP address?
->  Can you change the callback address for a CLIENT once it is created?
->
->
->  For now, I think the options are to use UDP (which has it's own
->  problems) or to for an unmount (--lazy) when the client IP address
->  changes.
->
-> Thoughts?
->
-> Thanks,
-> NeilBrown
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+v3 fixes review comments by J. Bruce Fields and Pete Staubach
+Applies against 2.6.27-rc6 and 2.6.26
+
+Benny
+
+ fs/nfsd/nfs4callback.c      |   49 ++++++++++++++++++++++++++++++------------
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |    2 +
+ 3 files changed, 38 insertions(+), 14 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 30d3130..0f13d75 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -342,20 +342,20 @@ static struct rpc_version *	nfs_cb_version[] = {
+ 	&nfs_cb_version4,
+ };
+ 
+-static struct rpc_program cb_program;
+-
+-static struct rpc_stat cb_stats = {
+-		.program	= &cb_program
++/* used internally for dynamically allocating the callback rpc_program
++ * and rpc_stat */
++struct __rpc_prog_stats {
++	struct rpc_program	program;
++	struct rpc_stat		stats;
+ };
+ 
+-#define NFS4_CALLBACK 0x40000000
+-static struct rpc_program cb_program = {
+-		.name 		= "nfs4_cb",
+-		.number		= NFS4_CALLBACK,
+-		.nrvers		= ARRAY_SIZE(nfs_cb_version),
+-		.version	= nfs_cb_version,
+-		.stats		= &cb_stats,
+-};
++static void free_rpc_program(struct rpc_program *p)
++{
++	struct __rpc_prog_stats *ps = container_of(p, struct __rpc_prog_stats,
++						   program);
++	dprintk("%s: freeing callback prog_stats 0x%p\n", __func__, ps);
++	kfree(ps);
++}
+ 
+ /* Reference counting, callback cleanup, etc., all look racy as heck.
+  * And why is cb_set an atomic? */
+@@ -371,12 +371,12 @@ static int do_probe_callback(void *data)
+ 		.to_maxval	= (NFSD_LEASE_TIME/2) * HZ,
+ 		.to_exponential	= 1,
+ 	};
++	struct __rpc_prog_stats	*cb_prog_stats;
+ 	struct rpc_create_args args = {
+ 		.protocol	= IPPROTO_TCP,
+ 		.address	= (struct sockaddr *)&addr,
+ 		.addrsize	= sizeof(addr),
+ 		.timeout	= &timeparms,
+-		.program	= &cb_program,
+ 		.version	= nfs_cb_version[1]->number,
+ 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+@@ -394,8 +394,29 @@ static int do_probe_callback(void *data)
+ 	addr.sin_port = htons(cb->cb_port);
+ 	addr.sin_addr.s_addr = htonl(cb->cb_addr);
+ 
++	/* Initialize rpc_program */
++	cb_prog_stats = kzalloc(sizeof(*cb_prog_stats), GFP_KERNEL);
++	if (!cb_prog_stats) {
++		dprintk("NFSD: %s: couldn't allocate callback program\n",
++			__func__);
++		status = -ENOMEM;
++		goto out_err;
++	}
++
++	args.program = &cb_prog_stats->program;
++	args.program->name = "nfs4_cb";
++	args.program->number = clp->cl_callback.cb_prog;
++	args.program->nrvers = ARRAY_SIZE(nfs_cb_version);
++	args.program->version = nfs_cb_version;
++	args.program->free_rpc_program = free_rpc_program;
++
++	dprintk("%s: program %s 0x%x nrvers %u version %u\n",
++		__func__, args.program->name, args.program->number,
++		args.program->nrvers, args.version);
++
+ 	/* Initialize rpc_stat */
+-	memset(args.program->stats, 0, sizeof(struct rpc_stat));
++	args.program->stats = &cb_prog_stats->stats;
++	args.program->stats->program = args.program;
+ 
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index e5bfe01..d342374 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -71,6 +71,7 @@ struct rpc_program {
+ 	struct rpc_version **	version;	/* version array */
+ 	struct rpc_stat *	stats;		/* statistics */
+ 	char *			pipe_dir_name;	/* path to rpc_pipefs dir */
++	void			(*free_rpc_program)(struct rpc_program *);
+ };
+ 
+ struct rpc_version {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 76739e9..cfb21c0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -415,6 +415,8 @@ rpc_free_client(struct kref *kref)
+ 	if (clnt->cl_server != clnt->cl_inline_name)
+ 		kfree(clnt->cl_server);
+ out_free:
++	if (clnt->cl_program && clnt->cl_program->free_rpc_program)
++		clnt->cl_program->free_rpc_program(clnt->cl_program);
+ 	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+ 	clnt->cl_metrics = NULL;
+-- 
+1.6.0
 
