@@ -1,92 +1,58 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
 Subject: Re: [NFS] blocks of zeros (NULLs) in NFS files in kernels >= 2.6.20
-Date: Mon, 22 Sep 2008 13:29:01 -0400
-Message-ID: <1222104541.7615.23.camel@localhost>
-References: <20080905191939.GG22796@merfinllc.com>
-	 <56258A29-95D5-4A8C-A097-014B8FEDFB8F@oracle.com>
-	 <20080911184951.GB19054@merfinllc.com> <200809221805.48463.hpj@urpla.net>
-	 <1222101322.7615.6.camel@localhost>  <20080922170414.GC12483@merfinllc.com>
+Date: Mon, 22 Sep 2008 10:37:15 -0700
+Message-ID: <20080922173715.GE12483@merfinllc.com>
+References: <20080905191939.GG22796@merfinllc.com> <56258A29-95D5-4A8C-A097-014B8FEDFB8F@oracle.com> <20080911184951.GB19054@merfinllc.com> <200809221805.48463.hpj@urpla.net> <1222101322.7615.6.camel@localhost> <20080922170414.GC12483@merfinllc.com> <76bd70e30809221026g7bde774pbffa35881682ea4b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-is3cApJkYlRsaw3Ok6RD"
-Cc: Hans-Peter Jansen <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>, linux-kernel@vger.kernel.org,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Neil Brown <neilb@suse.de>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Hans-Peter Jansen <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>,
+	linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
 	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+To: chucklever@gmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:56002 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751409AbYIVR3I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2008 13:29:08 -0400
-In-Reply-To: <20080922170414.GC12483-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
+Received: from quackingmoose.com ([63.73.180.143]:49024 "EHLO
+	penguin.merfinllc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751652AbYIVRhQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2008 13:37:16 -0400
+In-Reply-To: <76bd70e30809221026g7bde774pbffa35881682ea4b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
---=-is3cApJkYlRsaw3Ok6RD
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+On Sep 22 01:26 PM, Chuck Lever wrote:
+> Why can't you use O_SYNC | O_APPEND ?
 
-On Mon, 2008-09-22 at 10:04 -0700, Aaron Straus wrote:
-> Here is the crux.  It was possible previously but unlikely e.g. our app
-> never saw this behavior.  The new writeout semantics causes visible
-> holes in files often.
-> 
-> Anyway, I agree the new writeout semantics are allowed and possibly
-> saner than the previous writeout path.  The problem is that it is
-> __annoying__ for this use case (log files).
+In our case, some of the writers are not in our control.  Another case
+we see the issue is you spawn a job:
 
-There is always the option of using syslog.
+   job 1> out 2> err &
+   tail -f out err
 
-> I'm not sure if there is an easy solution.  We want the VM to writeout
-> the address space in order.   Maybe we can start the scan for dirty
-> pages at the last page we wrote out i.e. page 0 in the example above?
+--
 
-You can never guarantee that in a multi-threaded environment.
+Also, we actually do like caching the writes (b/c log files do not need
+to be checked immediately after being written).   We just wish the cache
+could be written out in-order.
 
-Two threads may, for instance, force 2 competing fsync() calls: that
-again may cause out-of-order writes.
-...and even if the client doesn't reorder the writes, the _server_ may
-do it, since multiple nfsd threads may race when processing writes to
-the same file.
+If there's no way to make that happen... we can reorganize our
+file-system, exports, mounts, etc so that the log file directory is
+mounted with the sync option.   
 
-Anyway, the patch to force a single threaded nfs client to write out the
-data in order is trivial. See attachment...
+However, the problem *might* be annoying and wide-spread enough to
+warrant a change.
 
-Trond
+Anyway, thanks!
 
---=-is3cApJkYlRsaw3Ok6RD
-Content-Disposition: attachment; filename=linux-2.6.27-ordered_writes.dif
-Content-Type: message/rfc822; name=linux-2.6.27-ordered_writes.dif
+				Regards,
+				=a=
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: 
-NFS: Always sync data to disk in sequential order
-Subject: No Subject
-Message-Id: <1222104509.7615.22.camel@localhost>
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
 
- fs/nfs/write.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3229e21..eb6b211 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1428,7 +1428,8 @@ static int nfs_write_mapping(struct address_space *mapping, int how)
- 		.sync_mode = WB_SYNC_NONE,
- 		.nr_to_write = LONG_MAX,
- 		.for_writepages = 1,
--		.range_cyclic = 1,
-+		.range_start = 0,
-+		.range_end = LLONG_MAX,
- 	};
- 	int ret;
- 
 
---=-is3cApJkYlRsaw3Ok6RD--
-
+-- 
+===================
+Aaron Straus
+aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
