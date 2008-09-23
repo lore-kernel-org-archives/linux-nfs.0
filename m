@@ -1,8 +1,8 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Subject: Re: [PATCH 2/2] nfs(5): Clarify behavior of the mountproto=
   and proto= options
-Date: Tue, 23 Sep 2008 12:32:14 -0400
-Message-ID: <RTPCLUEXC1-PRD77bie000000cb@RTPMVEXC1-PRD.hq.netapp.com>
+Date: Tue, 23 Sep 2008 12:41:14 -0400
+Message-ID: <RTPCLUEXC1-PRDSzbAU000000cd@RTPMVEXC1-PRD.hq.netapp.com>
 References: <20080923161322.5119.20872.stgit@manray.1015granger.net>
  <20080923161641.5119.37034.stgit@manray.1015granger.net>
 Mime-Version: 1.0
@@ -10,21 +10,17 @@ Content-Type: text/plain; charset="us-ascii"
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45845 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18404 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752139AbYIWQdf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2008 12:33:35 -0400
+	id S1752368AbYIWQms (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2008 12:42:48 -0400
 In-Reply-To: <20080923161641.5119.37034.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 References: <20080923161322.5119.20872.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
  <20080923161641.5119.37034.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-You might also mention that none of this description is applicable
-to NFSv4, which doesn't use any of the protocols controlled by
-the mountproto option.
-
-Tom.
+One other comment...
 
 At 12:16 PM 9/23/2008, Chuck Lever wrote:
 >Document the interaction between the mountproto= and the proto= mount
@@ -57,6 +53,19 @@ At 12:16 PM 9/23/2008, Chuck Lever wrote:
 >+.P
 >+The NSM protocol uses the UDP transport
 >+no matter what transport specific options are specified.
+
+This actually isn't true - in fact the client NSM by default listens on
+both UDP and TCP, as can be seen with rpcinfo -p.
+
+What is true is that the vast majority of NFS servers call back on UDP,
+and if this fails, there is no indication at the client whatsoever.
+
+So the text should perhaps say "NFS servers typically choose UDP for the
+NSM protocol; the client in any case accepts both UDP and TCP."
+
+Tom.
+
+
 >+The NFSACL protocol shares the same RPC transport as the main NFS
 >+service.
 >+.P
