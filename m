@@ -1,113 +1,105 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
-Date: Wed, 24 Sep 2008 14:54:56 -0400
-Message-ID: <1222282496.7390.39.camel@localhost>
-References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 01/10] svcrdma: Add Fast Reg MR Data Types
+Date: Wed, 24 Sep 2008 15:11:51 -0400
+Message-ID: <20080924191151.GL5772@fieldses.org>
+References: <1221564879-85046-1-git-send-email-tom@opengridcomputing.com> <1221564879-85046-2-git-send-email-tom@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2864 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:46671 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755279AbYIXSzs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2008 14:55:48 -0400
-In-Reply-To: <20080924184732.4078.83334.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752694AbYIXTLw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2008 15:11:52 -0400
+In-Reply-To: <1221564879-85046-2-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-09-24 at 14:50 -0400, Chuck Lever wrote:
-> statd and some servers always need lockd to listen on UDP, so always
-> start both lockd listener sockets.
+On Tue, Sep 16, 2008 at 06:34:30AM -0500, Tom Tucker wrote:
+> Add data types to track Fast Reg Memory Regions. The core data type is
+> svc_rdma_fastreg_mr that associates a device MR with a host kva and page
+> list. A field is added to the WR context to keep track of the FRMR
+> used to map the local memory for an RPC.
 > 
-> This probably leaks an svc_serv if the TCP listener can't be created,
-> but it will do for now.
+> An FRMR list and spin lock are added to the transport instance to keep
+> track of all FRMR allocated for the transport. Also added are device
+> capability flags to indicate what the memory registration
+> capabilities are for the underlying device and whether or not fast
+> memory registration is supported.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-
-ACK. We need this also in order to deal with servers that only send NLM
-callbacks on UDP (yeah, I know that's lame...).
-
-Trond
-
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> 
 > ---
+>  include/linux/sunrpc/svc_rdma.h |   27 ++++++++++++++++++++++++++-
+>  1 files changed, 26 insertions(+), 1 deletions(-)
 > 
-> I currently have this workaround lurking in my git repo.  Is there some kind
-> of fix for this issue planned for 2.6.28?
-> 
-> This is only a reminder, not a suggested patch.
-> 
->  fs/lockd/svc.c |   31 +++++++++++++------------------
->  1 files changed, 13 insertions(+), 18 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index a7b604c..36b6d03 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -213,25 +213,23 @@ lockd(void *vrqstp)
->  }
->  
->  /*
-> - * Make any sockets that are needed but not present.
-> - * If nlm_udpport or nlm_tcpport were set as module
-> - * options, make those sockets unconditionally
-> + * Create UDP and TCP listeners for lockd.  Even if we only
-> + * have TCP NFS mounts and TCP NFSDs, some services (such
-> + * as rpc.statd) still require UDP.
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index dc05b54..295ebbc 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -72,6 +72,7 @@ extern atomic_t rdma_stat_sq_prod;
 >   */
-> -static int make_socks(struct svc_serv *serv, const unsigned short proto)
-> +static int make_socks(struct svc_serv *serv)
->  {
->  	static int warned;
->  	struct svc_xprt *xprt;
->  	int err = 0;
+>  struct svc_rdma_op_ctxt {
+>  	struct svc_rdma_op_ctxt *read_hdr;
+> +	struct svc_rdma_fastreg_mr *frmr;
+>  	int hdr_count;
+>  	struct xdr_buf arg;
+>  	struct list_head dto_q;
+> @@ -103,16 +104,35 @@ struct svc_rdma_chunk_sge {
+>  	int start;		/* sge no for this chunk */
+>  	int count;		/* sge count for this chunk */
+>  };
+> +struct svc_rdma_fastreg_mr {
+> +	struct ib_mr *mr;
+> +	void *kva;
+> +	struct ib_fast_reg_page_list *page_list;
+> +	int page_list_len;
+> +	unsigned long access_flags;
+> +	unsigned long map_len;
+> +	enum dma_data_direction direction;
+> +	struct list_head frmr_list;
+> +};
+>  struct svc_rdma_req_map {
+> +	struct svc_rdma_fastreg_mr *frmr;
+>  	unsigned long count;
+>  	union {
+>  		struct kvec sge[RPCSVC_MAXPAGES];
+>  		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
+>  	};
+>  };
+> -
+> +#define RDMACTXT_F_FAST_UNREG	1
+>  #define RDMACTXT_F_LAST_CTXT	2
 >  
-> -	if (proto == IPPROTO_UDP || nlm_udpport) {
-> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
-> -		if (!xprt)
-> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
-> -					      SVC_SOCK_DEFAULTS);
-> -		else
-> -			svc_xprt_put(xprt);
-> -	}
-> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
-> +	xprt = svc_find_xprt(serv, "udp", 0, 0);
-> +	if (!xprt)
-> +		err = svc_create_xprt(serv, "udp", nlm_udpport,
-> +				      SVC_SOCK_DEFAULTS);
-> +	else
-> +		svc_xprt_put(xprt);
-> +	if (err >= 0) {
->  		xprt = svc_find_xprt(serv, "tcp", 0, 0);
->  		if (!xprt)
->  			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
-> @@ -260,11 +258,8 @@ int lockd_up(const unsigned short proto)
->  	/*
->  	 * Check whether we're already up and running.
->  	 */
-> -	if (nlmsvc_rqst) {
-> -		if (proto)
-> -			error = make_socks(nlmsvc_rqst->rq_server, proto);
-> +	if (nlmsvc_rqst)
->  		goto out;
-> -	}
->  
->  	/*
->  	 * Sanity check: if there's no pid,
-> @@ -281,7 +276,7 @@ int lockd_up(const unsigned short proto)
->  		goto out;
->  	}
->  
-> -	if ((error = make_socks(serv, proto)) < 0)
-> +	if ((error = make_socks(serv)) < 0)
->  		goto destroy_and_out;
->  
->  	/*
-> 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> +enum svcrdma_dev_cap {		     	/* device supports: */
+> +	SVCRDMA_DEVCAP_FAST_REG = 1, 	/*	- fast mr registration */
+> +	SVCRDMA_DEVCAP_READ_W_INV = 2, 	/*	- read w/ invalidate */
+> +	SVCRDMA_DEVCAP_LCL_DMA_MR = 4,	/*	- lcl dma lkey */
+> +	SVCRDMA_DEVCAP_LCL_WR_REQ = 8,	/*	- data sink requires remote */
+> +					/*	  write */
+> +};
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Nit: I suppose that works, but I thought the idea of an enum was that it
+enumerated every possible value of the given type?  If you're expecting
+to "or" these together I would have expected just some kind of unsigned
+int with some #define's.
+
+--b.
+
+> +
+>  struct svcxprt_rdma {
+>  	struct svc_xprt      sc_xprt;		/* SVC transport structure */
+>  	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
+> @@ -136,6 +156,11 @@ struct svcxprt_rdma {
+>  	struct ib_cq         *sc_rq_cq;
+>  	struct ib_cq         *sc_sq_cq;
+>  	struct ib_mr         *sc_phys_mr;	/* MR for server memory */
+> +	enum svcrdma_dev_cap sc_dev_caps;	/* distilled device caps */
+> +	u32		     sc_dma_lkey;	/* local dma key */
+> +	unsigned int	     sc_frmr_pg_list_len;
+> +	struct list_head     sc_frmr_q;
+> +	spinlock_t	     sc_frmr_q_lock;
+>  
+>  	spinlock_t	     sc_lock;		/* transport lock */
+>  
