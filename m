@@ -1,137 +1,70 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] nfs: authenticated deep mounting
-Date: Tue, 23 Sep 2008 16:07:18 -0400
-Message-ID: <1222200438.7799.52.camel@localhost>
-References: <48AA9122.90805@few.vu.nl>  <20080819203436.GC8331@fieldses.org>
+From: Suresh Jayaraman <sjayaraman@suse.de>
+Subject: Re: NFS and mobile clients - can it work?
+Date: Wed, 24 Sep 2008 12:49:02 +0530
+Message-ID: <48D9E9E6.8000706@suse.de>
+References: <18646.58594.377630.950531@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>, linux-nfs@vger.kernel.org,
-	Trond Myklebust <trond@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35152 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753125AbYIWUIN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2008 16:08:13 -0400
-In-Reply-To: <20080819203436.GC8331@fieldses.org>
+Received: from victor.provo.novell.com ([137.65.250.26]:49012 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751325AbYIXHSW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2008 03:18:22 -0400
+In-Reply-To: <18646.58594.377630.950531-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-08-19 at 16:34 -0400, J. Bruce Fields wrote:
-> From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Neil Brown wrote:
 > 
-> Allow mount to do authenticated mounts below the root of the exported tree.
-> The wording in RFC 2623, sec 2.3.2. allows fsinfo with UNIX authentication
-> on the root of the export. Mounts are not always done on the root
-> of the exported tree. Especially autoumounts often mount below the root of
-> the exported tree.
-> Some server implementations (justly) require full authentication for the
-> so-called deep mounts. The old code used AUTH_SYS only. This caused deep
-> mounts to fail on systems requiring stronger authentication..
-> The client should try both authentication types and use the first one that
-> succeeds.
-> This method was already partially implemented. This patch completes
-> the implementation for NFS2 and NFS3.
-> This patch was developed to allow Debian systems to automount home directories
-> on Solaris servers with krb5 authentication.
-> 
-> Tested on kernel 2.6.24-etchnhalf.1
-> 
-> Signed-off-by: E.G. Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/nfs/nfs3proc.c |   20 ++++++++++++++++++--
->  fs/nfs/proc.c     |   10 ++++++++--
->  2 files changed, 26 insertions(+), 4 deletions(-)
-> 
-> On Tue, Aug 19, 2008 at 11:23:46AM +0200, EG Keizer wrote:
-> > Allow mount to do authenticated mounts below the root of the exported tree.
-> 
-> Thanks.  For some reason, if I look at your mail in a text editor I see
-> an extra space at the beginning of each line.  Which prevents patch from
-> applying it.  Anyway, with that fixed up, and some other trivial
-> changes, the below is what I get.  Makes sense to me; Trond?
-> 
-> --b.
+>  Suppose I have a mobile client such as a notebook computer which
+>  changes networks from time to time - e.g. when "docked" it uses a
+>  wired network, but when I "undock" it uses a wireless network.  And
+>  as I move around it might change from one wireless network to
+>  another.
 
-OK. This one applies correctly...
+This is quite a common scenario these days.
 
-> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> index 1e750e4..c55be7a 100644
-> --- a/fs/nfs/nfs3proc.c
-> +++ b/fs/nfs/nfs3proc.c
-> @@ -699,7 +699,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
->  }
->  
->  static int
-> -nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-> +do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
->  		 struct nfs_fsinfo *info)
->  {
->  	struct rpc_message msg = {
-> @@ -711,11 +711,27 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
->  
->  	dprintk("NFS call  fsinfo\n");
->  	nfs_fattr_init(info->fattr);
-> -	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-> +	status = rpc_call_sync(client, &msg, 0);
->  	dprintk("NFS reply fsinfo: %d\n", status);
->  	return status;
->  }
->  
-> +/*
-> + * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via
-> + * nfs_create_server
-> + */
-> +static int
-> +nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-> +		   struct nfs_fsinfo *info)
-> +{
-> +	int	status;
-> +
-> +	status = do_proc_fsinfo(server->client, fhandle, info);
-> +	if (status && server->nfs_client->cl_rpcclient != server->client)
-> +		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
-> +	return status;
-> +}
-> +
->  static int
->  nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
->  		   struct nfs_pathconf *info)
-> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-> index 4dbb84d..1934652 100644
-> --- a/fs/nfs/proc.c
-> +++ b/fs/nfs/proc.c
-> @@ -65,14 +65,20 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
->  
->  	dprintk("%s: call getattr\n", __func__);
->  	nfs_fattr_init(fattr);
-> -	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-> +	status = rpc_call_sync(server->client, &msg, 0);
-> +	/* Retry with default authentication if different */
-> +	if (status && server->nfs_client->cl_rpcclient != server->client)
-> +		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
->  	dprintk("%s: reply getattr: %d\n", __func__, status);
->  	if (status)
->  		return status;
->  	dprintk("%s: call statfs\n", __func__);
->  	msg.rpc_proc = &nfs_procedures[NFSPROC_STATFS];
->  	msg.rpc_resp = &fsinfo;
-> -	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-> +	status = rpc_call_sync(server->client, &msg, 0);
-> +	/* Retry with default authentication if different */
-> +	if (status && server->nfs_client->cl_rpcclient != server->client)
-> +		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
->  	dprintk("%s: reply statfs: %d\n", __func__, status);
->  	if (status)
->  		return status;
-> -- 
-> 1.5.5.rc1
+>  Is it at all reasonable to expect that I could have an NFS mounted
+>  filesystem that continues to work across all of those changes?
+
+I think it is reasonable to expect with the changing network paradigm of
+mobile computing. Successful protocols/implementations always have
+adapted themselves to the changing (network) needs :)
+
+>  I think that the only way to get the client to close and re-open the
+>  socket would be to wait for 5 minutes with no IO requests.  But that
+>  would be hard to ensure.  Any attempt to access any file will trigger
+>  a request which will keep retrying which will keep the socket active,
+>  so the client won't close it.... It doesn't seem to work anyway.  The
+>  RPC client appears to try to connect from the same source IP address,
+>  though I haven't checked the code to be sure of this.
 > 
+>  Would it be worthwhile/practical to have a 'remount' mount option to
+>  request that the socket be closed and re-opened?
+
+or better name would be 'reconnect'?
+
+>  If there were any active locks, there is probably nothing useful that
+>  can be done for them.  Unless the client manages to send a NOTIFY to
+>  the server before changing IP address, the server will never drop the
+>  locks.   Maybe "-o remount,reopen" would only work if "-o nolocks"
+>  were in force.  It's not an ideal solution, but it might be better
+>  than the current situations?
+
+Definitely, it can make mobile clients life easier. And it looks to me
+that all of these can be done at the userspace itself.
+
+>  I'm not sure whether NFSv4 makes this easier or harder.  Can you
+>  continue a client session (SET_CLIENTID) from a different IP address?
+>  Can you change the callback address for a CLIENT once it is created?
+
+I think 'nolock' and 'nfs4' can't be used together and nfs4 always will
+enable locking.
+
+
+Thanks,
+
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Suresh Jayaraman
