@@ -1,104 +1,45 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] nfs(5): Replace the term "netid" in mount option descriptions
-Date: Wed, 24 Sep 2008 14:24:54 -0400
-Message-ID: <20080924182235.3000.71437.stgit@tarkus.1015granger.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
+Date: Wed, 24 Sep 2008 14:42:25 -0400
+Message-ID: <1222281745.7390.34.camel@localhost>
+References: <48D15DF0.4000406@panasas.com>
+	 <20080917231018.GA5723@fieldses.org> <48D193EE.2020805@panasas.com>
+	 <48D19C74.8000303@panasas.com> <48D2AAF7.6060808@panasas.com>
+	 <20080924163528.GB5772@fieldses.org> <1222275582.7390.8.camel@localhost>
+	 <20080924172134.GI5772@fieldses.org> <1222277168.7390.19.camel@localhost>
+	 <20080924174230.GJ5772@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: mike.eisler@netapp.com, linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
+	Trond Myklebust <trond@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:32777 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752095AbYIXS3D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2008 14:29:03 -0400
+Received: from mail-out2.uio.no ([129.240.10.58]:60907 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752105AbYIXSme (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2008 14:42:34 -0400
+In-Reply-To: <20080924174230.GJ5772@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TI-RPC introduced the concept of "netid" which is a string that is
-mapped to a set of transport capabilities via a netconfig database.
-RPC services register a netid and bindaddr with their local rpcbind
-daemon to advertise their ability to support particular transports.
+On Wed, 2008-09-24 at 13:42 -0400, J. Bruce Fields wrote:
 
-Mike Eisler noted that the use of the term "netid" in nfs(5) is not
-appropriate, since Linux does not treat the value of the proto= or
-mountproto= options as a netid proper, but rather to select a
-particular transport capability provided locally on the client.
+> If by "broken" you mean, "introduces a new kernel bug", I don't see it.
 
-The Linux NFS client currently uses a simple internal mapping between
-these names and its own transport capabilities rather than using the
-names as part of an rpcbind query, thus these strings are really not
-netids.  They are more akin to what TI-RPC calls "protocol names".
+I mean it introduces utterly unnecessary complications that may return
+to bite us in the arse at a future time.
+Remember how we once said that it would never make sense for child
+clones to call the portmapper, and so we added the BUG_ON() in
+rpcb_getport_async; well guess what, we currently have a bug to fix...
 
-Remove the term "netid" from nfs(5) for now.
+One pretty obvious fix is to simply move the release method so that it
+doesn't occur when you release a child. The disadvantage is that a child
+may then not change its program to one that requires a release method
+(do we need that?).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Mike Eisler <mike.eisler@netapp.com>
----
+Another fix would be to add a refcount to the rpc_program structure...
 
-Second take.  I hope I've addressed Trond's and Tom's concerns.
-
- utils/mount/nfs.man |   22 +++++++++++-----------
- 1 files changed, 11 insertions(+), 11 deletions(-)
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 0fc5079..c625ee2 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -411,15 +411,15 @@ for mounting the
- .B nfs
- file system type.
- .TP 1.5i
--.BI proto= netid
--The transport protocol used by the NFS client
-+.BI proto= name
-+The transport the NFS client uses
- to transmit requests to the NFS server for this mount point.
--.I netid
-+.I name
- can be either
- .B udp
- or
- .BR tcp .
--Each transport protocol uses different default
-+Each transport uses different default
- .B retrans
- and
- .B timeo
-@@ -489,18 +489,18 @@ or the server's mountd service is not available on the advertised port.
- This option can be used when mounting an NFS server
- through a firewall that blocks the rpcbind protocol.
- .TP 1.5i
--.BI mountproto= netid
--The transport protocol used by the NFS client
-+.BI mountproto= name
-+The transport the NFS client uses
- to transmit requests to the NFS server's mountd service when performing
- this mount request, and when later unmounting this mount point.
--.I netid
-+.I name
- can be either
- .B udp
- or
- .BR tcp .
- .IP
- This option can be used when mounting an NFS server
--through a firewall that blocks a particular transport protocol.
-+through a firewall that blocks a particular transport.
- When used in combination with the
- .B proto
- option, different transports for mountd requests and NFS requests
-@@ -638,10 +638,10 @@ for mounting the
- .B nfs4
- file system type.
- .TP 1.5i
--.BI proto= netid
--The transport protocol used by the NFS client
-+.BI proto= name
-+The transport the NFS client uses
- to transmit requests to the NFS server for this mount point.
--.I netid
-+.I name
- can be either
- .B udp
- or
+Trond
 
