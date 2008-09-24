@@ -1,47 +1,60 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Full IPv6 client and server support (kernel and user commands)
-Date: Wed, 24 Sep 2008 12:51:08 -0400
-Message-ID: <20080924165108.GC5772@fieldses.org>
-References: <48D39CDE.1040600@bull.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
+Date: Wed, 24 Sep 2008 12:59:42 -0400
+Message-ID: <1222275582.7390.8.camel@localhost>
+References: <48D15DF0.4000406@panasas.com>
+	 <20080917231018.GA5723@fieldses.org> <48D193EE.2020805@panasas.com>
+	 <48D19C74.8000303@panasas.com> <48D2AAF7.6060808@panasas.com>
+	 <20080924163528.GB5772@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	nfsv4 <nfsv4@linux-nfs.org>
-To: Le Rouzic <aime.le-rouzic@bull.net>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <48D39CDE.1040600@bull.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
+	Trond Myklebust <trond@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:51142 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751635AbYIXQ7z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2008 12:59:55 -0400
+In-Reply-To: <20080924163528.GB5772@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 19, 2008 at 02:36:46PM +0200, Le Rouzic wrote:
-> I have just posted at http://nfsv4.bullopensource.org/ a full IPV6 
-> client and server NFSV4 support
-> based on linux-2.6.27-rc3 and nfs-utils.1.1.2.
-> It is experimental and not fully tested but it allows to have a IPV6 
-> NFSV4 linux configuration to
-> play with.
+On Wed, 2008-09-24 at 12:35 -0400, J. Bruce Fields wrote:
+> On Thu, Sep 18, 2008 at 02:24:39PM -0500, Benny Halevy wrote:
+> > From: Benny Halevy <bhalevy@panasas.com>
+> > 
+> > since commit ff7d9756b501744540be65e172d27ee321d86103
+> > "nfsd: use static memory for callback program and stats"
+> > do_probe_callback uses a static callback program
+> > (NFS4_CALLBACK) rather than the one set in clp->cl_callback.cb_prog
+> > as passed in by the client in setclientid (4.0)
+> > or create_session (4.1).
+> > 
+> > This patches allows allocating cb_program (and cb_stats) dynamically
+> > and setting a free_rpc_program function pointer to be
+> > called when the rpc_clnt structure is destroyed.
 > 
-> Let me know if any issues to get this delivery and to run it.
+> So that means we handle two cases:
+> 
+> 	- free_rpc_program = NULL: We assume the program and stats are
+> 	  in static memory (or module memory--which might be a problem
+> 	  if we shut down the server and remove the nfsd module in quick
+> 	  succession.  I assume there's a similar (probably very
+> 	  hard-to-hit) bug on the client too, but haven't looked
+> 	  carefully.).
+> 	- free_rpc_program != NULL: We assume this rpc_client is the
+> 	  last user of the program.
+> 
+> It seems a little ad hoc, but I can't see why it wouldn't solve the
+> problem.
+> 
+> I'd want Trond's ack.
 
-I took a quick look at the server patch available from the URL above.
+Well the current implementation is certainly broken. Look at what
+happens if I clone the rpc_clnt...
 
-There are more #if's than necessary--for example, maybe you could define
-a constant once in a header to choose the correct address family rather
-than putting #if's around all the svc_create() calls?
+  Trond
 
-It'd be worth running this by Chuck, as he's been doing a good job of
-that kind of thing.
-
-Could you mail future versions of any patches to the mailing list in the
-usual format, rather than providing a URL?  That'd save us a little
-time.
-
---b.
