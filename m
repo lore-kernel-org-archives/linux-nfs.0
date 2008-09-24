@@ -1,55 +1,104 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
-Date: Wed, 24 Sep 2008 13:42:30 -0400
-Message-ID: <20080924174230.GJ5772@fieldses.org>
-References: <48D15DF0.4000406@panasas.com> <20080917231018.GA5723@fieldses.org> <48D193EE.2020805@panasas.com> <48D19C74.8000303@panasas.com> <48D2AAF7.6060808@panasas.com> <20080924163528.GB5772@fieldses.org> <1222275582.7390.8.camel@localhost> <20080924172134.GI5772@fieldses.org> <1222277168.7390.19.camel@localhost>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfs(5): Replace the term "netid" in mount option descriptions
+Date: Wed, 24 Sep 2008 14:24:54 -0400
+Message-ID: <20080924182235.3000.71437.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Olga Kornievskaia <aglo@citi.umich.edu>,
-	linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
-	Trond Myklebust <trond@netapp.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="utf-8"
+Cc: mike.eisler@netapp.com, linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58158 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751652AbYIXRmh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2008 13:42:37 -0400
-In-Reply-To: <1222277168.7390.19.camel@localhost>
+Received: from rgminet01.oracle.com ([148.87.113.118]:32777 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752095AbYIXS3D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2008 14:29:03 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 24, 2008 at 01:26:08PM -0400, Trond Myklebust wrote:
-> On Wed, 2008-09-24 at 13:21 -0400, J. Bruce Fields wrote:
-> > > Well the current implementation is certainly broken.  Look at what
-> > > happens if I clone the rpc_clnt...
-> > 
-> > Hence the comment that "we assume this rpc_client is the last user of
-> > the program."  I believe that assumption is correct in the case of nfsd
-> > callbacks, so Benny's patch is at least not broken--just a little
-> > ad-hoc.
-> > 
-> > So the question is whether the above solution, which addresses only this
-> > particular case, is sufficient, or whether we'd like something more
-> > general, like adding a reference count to the program along with a
-> > free_program callback called only on the final put.
-> 
-> It's broken...
+TI-RPC introduced the concept of "netid" which is a string that is
+mapped to a set of transport capabilities via a netconfig database.
+RPC services register a netid and bindaddr with their local rpcbind
+daemon to advertise their ability to support particular transports.
 
-If by "broken" you mean, "introduces a new kernel bug", I don't see it.
+Mike Eisler noted that the use of the term "netid" in nfs(5) is not
+appropriate, since Linux does not treat the value of the proto= or
+mountproto= options as a netid proper, but rather to select a
+particular transport capability provided locally on the client.
 
-The new free_rpc_program callback is set only in
-fs/nfsd/nfs4callback.c:do_probe_callback().  For all other programs it
-is NULL, thus there's no change of behavior.
+The Linux NFS client currently uses a simple internal mapping between
+these names and its own transport capabilities rather than using the
+names as part of an rpcbind query, thus these strings are really not
+netids.  They are more akin to what TI-RPC calls "protocol names".
 
-And rpc_clone_client() is never called on the client created in
-do_probe_callback().
+Remove the term "netid" from nfs(5) for now.
 
-If your argument that it's ugly to introduce a rule like that requires
-you never to call rpc_clone_client on a cllient with certain properties,
-then I can agree.  (In that case, does a reference count on the program
-look like an acceptable solution?)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Mike Eisler <mike.eisler@netapp.com>
+---
 
-If there's some other bug, then I'd like to understand.
+Second take.  I hope I've addressed Trond's and Tom's concerns.
 
---b.
+ utils/mount/nfs.man |   22 +++++++++++-----------
+ 1 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 0fc5079..c625ee2 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -411,15 +411,15 @@ for mounting the
+ .B nfs
+ file system type.
+ .TP 1.5i
+-.BI proto= netid
+-The transport protocol used by the NFS client
++.BI proto= name
++The transport the NFS client uses
+ to transmit requests to the NFS server for this mount point.
+-.I netid
++.I name
+ can be either
+ .B udp
+ or
+ .BR tcp .
+-Each transport protocol uses different default
++Each transport uses different default
+ .B retrans
+ and
+ .B timeo
+@@ -489,18 +489,18 @@ or the server's mountd service is not available on the advertised port.
+ This option can be used when mounting an NFS server
+ through a firewall that blocks the rpcbind protocol.
+ .TP 1.5i
+-.BI mountproto= netid
+-The transport protocol used by the NFS client
++.BI mountproto= name
++The transport the NFS client uses
+ to transmit requests to the NFS server's mountd service when performing
+ this mount request, and when later unmounting this mount point.
+-.I netid
++.I name
+ can be either
+ .B udp
+ or
+ .BR tcp .
+ .IP
+ This option can be used when mounting an NFS server
+-through a firewall that blocks a particular transport protocol.
++through a firewall that blocks a particular transport.
+ When used in combination with the
+ .B proto
+ option, different transports for mountd requests and NFS requests
+@@ -638,10 +638,10 @@ for mounting the
+ .B nfs4
+ file system type.
+ .TP 1.5i
+-.BI proto= netid
+-The transport protocol used by the NFS client
++.BI proto= name
++The transport the NFS client uses
+ to transmit requests to the NFS server for this mount point.
+-.I netid
++.I name
+ can be either
+ .B udp
+ or
+
