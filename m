@@ -1,58 +1,47 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 3/3] NFS: SETCLIENTID truncates client ID and netid
-Date: Thu, 25 Sep 2008 12:10:26 -0400
-Message-ID: <1222359026.13388.8.camel@localhost>
-References: <20080925154814.8353.64762.stgit@manray.1015granger.net>
-	 <20080925155712.8353.47707.stgit@manray.1015granger.net>
+Date: Thu, 25 Sep 2008 12:58:21 -0400
+Message-ID: <20080925165821.GA31775@fieldses.org>
+References: <20080925154814.8353.64762.stgit@manray.1015granger.net> <20080925155712.8353.47707.stgit@manray.1015granger.net> <1222359026.13388.8.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1446 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:56907 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751506AbYIYQVw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Sep 2008 12:21:52 -0400
-In-Reply-To: <20080925155712.8353.47707.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1754638AbYIYQ6Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Sep 2008 12:58:24 -0400
+In-Reply-To: <1222359026.13388.8.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-09-25 at 11:57 -0400, Chuck Lever wrote:
-> The sc_name field is currently 56 bytes long.  This is not large enough
-> to hold a pair of IPv6 addresses, the authentication type, the protocol
-> name, and a uniquifier number.  The maximum possible size of the name
-> string using IPv6 addresses is just under 110 bytes, so I increased the
-> size of the sc_name field to accomodate this maximum.
-> 
-> In addition, the strings in the nfs4_setclientid structure are
-> constructed with scnprintf(), which wants to terminate its output with
-> '\0'.  The sc_netid field was large enough only for a three byte netid
-> string and a '\0' so inet6 netids were being truncated.  Perhaps we
-> don't need the overhead of scnprintf() to do a simple string copy, but
-> I fixed this by increasing the size of the buffer by one byte.
-> 
-> Since all three of the string buffers in nfs4_setclientid are
-> constructed with scnprintf(), I increased the size of all three by one
-> byte to document the requirement, although I don't think either the
-> universal address field or the name field will be so small that these
-> strings get truncated in this way.
-> 
-> The size of the Linux client's client ID on the wire will be larger
-> than before.  RFC 3530 suggests the size limit for client IDs is 1024,
-> and we are still well below that.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+On Thu, Sep 25, 2008 at 12:10:26PM -0400, Trond Myklebust wrote:
+> ACK. I'll take this patch, but should Bruce take the other 2? I believe
+> he should already have other changes to rpcb_clnt.c in his tree...
 
-ACK. I'll take this patch, but should Bruce take the other 2? I believe
-he should already have other changes to rpcb_clnt.c in his tree...
+Yes I do; I'll take a look.  (My goal is to get through my backlog from
+Trond this afternoon....)
 
-Cheers
-  Trond
+I recall one remaining uncertainty about the patches already in my
+for-2.6.28: they allow building either a kernel that supports nfs/ipv6,
+or a kernel that works with older nfs-utils, but not both.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I'd prefer a stricter level of backwards compatibility.  The current
+approach may be confusing to distributors, early adopters, and testers.
+But I'm willing to settle for it and let it be a lesson to us if it
+turns out to cause more problems than expected.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Talking to Trond the other day he asked why we couldn't use
+PROG_MISMATCH (unsupported program version) error to fall back.  Chuck
+says in the changelog comment:
+
+	"I tried adding some automatic logic to fall back if registering
+	with a v4 protocol request failed, but there are too many corner
+	cases."
+
+Which I can believe, though I haven't looked at it myself.
+
+In any case I'd like Trond's ACK or NACK.
+
+--b.
