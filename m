@@ -1,73 +1,121 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] NFS: SETCLIENTID truncates client ID and netid
-Date: Thu, 25 Sep 2008 11:57:12 -0400
-Message-ID: <20080925155712.8353.47707.stgit@manray.1015granger.net>
+Subject: [PATCH 1/3] SUNRPC: Fix up svc_unregister()
+Date: Thu, 25 Sep 2008 11:56:57 -0400
+Message-ID: <20080925155655.8353.87098.stgit@manray.1015granger.net>
 References: <20080925154814.8353.64762.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:29329 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754299AbYIYP6k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 11:58:40 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:21796 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753281AbYIYP6j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 11:58:39 -0400
 In-Reply-To: <20080925154814.8353.64762.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The sc_name field is currently 56 bytes long.  This is not large enough
-to hold a pair of IPv6 addresses, the authentication type, the protocol
-name, and a uniquifier number.  The maximum possible size of the name
-string using IPv6 addresses is just under 110 bytes, so I increased the
-size of the sc_name field to accomodate this maximum.
+With the new rpcbind code, a PMAP_UNSET will not have any effect on
+services registered via rpcbind v3 or v4.
 
-In addition, the strings in the nfs4_setclientid structure are
-constructed with scnprintf(), which wants to terminate its output with
-'\0'.  The sc_netid field was large enough only for a three byte netid
-string and a '\0' so inet6 netids were being truncated.  Perhaps we
-don't need the overhead of scnprintf() to do a simple string copy, but
-I fixed this by increasing the size of the buffer by one byte.
+Implement a version of svc_unregister() that uses an RPCB_UNSET with
+an empty netid string to make sure we have cleared *all* entries for
+a kernel RPC service when shutting down, or before starting a fresh
+instance of the service.
 
-Since all three of the string buffers in nfs4_setclientid are
-constructed with scnprintf(), I increased the size of all three by one
-byte to document the requirement, although I don't think either the
-universal address field or the name field will be so small that these
-strings get truncated in this way.
-
-The size of the Linux client's client ID on the wire will be larger
-than before.  RFC 3530 suggests the size limit for client IDs is 1024,
-and we are still well below that.
+Use the new version only when CONFIG_SUNRPC_REGISTER_V4 is enabled;
+otherwise, the legacy PMAP version is used to ensure complete
+backwards-compatibility with the Linux portmapper daemon.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/nfs_xdr.h |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ net/sunrpc/svc.c |   58 +++++++++++++++++++++++++++++++++++-------------------
+ 1 files changed, 38 insertions(+), 20 deletions(-)
 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8c77c11..dc34977 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -672,16 +672,16 @@ struct nfs4_rename_res {
- 	struct nfs_fattr *		new_fattr;
- };
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 5089014..e626f01 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -897,31 +897,51 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
+ 	return error;
+ }
  
--#define NFS4_SETCLIENTID_NAMELEN	(56)
-+#define NFS4_SETCLIENTID_NAMELEN	(128)
- struct nfs4_setclientid {
- 	const nfs4_verifier *		sc_verifier;
- 	unsigned int			sc_name_len;
--	char				sc_name[NFS4_SETCLIENTID_NAMELEN];
-+	char				sc_name[NFS4_SETCLIENTID_NAMELEN + 1];
- 	u32				sc_prog;
- 	unsigned int			sc_netid_len;
--	char				sc_netid[RPCBIND_MAXNETIDLEN];
-+	char				sc_netid[RPCBIND_MAXNETIDLEN + 1];
- 	unsigned int			sc_uaddr_len;
--	char				sc_uaddr[RPCBIND_MAXUADDRLEN];
-+	char				sc_uaddr[RPCBIND_MAXUADDRLEN + 1];
- 	u32				sc_cb_ident;
- };
++#ifdef CONFIG_SUNRPC_REGISTER_V4
++
++static void __svc_unregister(const u32 program, const u32 version,
++			     const char *progname)
++{
++	struct sockaddr_in6 sin6 = {
++		.sin6_family		= AF_INET6,
++		.sin6_addr		= IN6ADDR_ANY_INIT,
++		.sin6_port		= 0,
++	};
++	int error;
++
++	error = rpcb_v4_register(program, version,
++				(struct sockaddr *)&sin6, "");
++	dprintk("svc: %s(%sv%u), error %d\n",
++			__func__, progname, version, error);
++}
++
++#else	/* CONFIG_SUNRPC_REGISTER_V4 */
++
++static void __svc_unregister(const u32 program, const u32 version,
++			     const char *progname)
++{
++	int error;
++
++	error = rpcb_register(program, version, 0, 0);
++	dprintk("svc: %s(%sv%u), error %d\n",
++			__func__, progname, version, error);
++}
++
++#endif	/* CONFIG_SUNRPC_REGISTER_V4 */
++
+ /*
+- * All transport protocols and ports for this service are removed
+- * from the local rpcbind database if the service is not hidden.
+- *
+- * The result of unregistration is reported via dprintk for those
+- * who want verification of the result, but is otherwise not
+- * important.
++ * All netids, bind addresses and ports registered for [program, version]
++ * are removed from the local rpcbind database (if the service is not
++ * hidden) to make way for a new instance of the service.
+  *
+- * The local rpcbind daemon listens on either only IPv6 or only
+- * IPv4.  The kernel can't tell how it's configured.  However,
+- * AF_INET addresses are mapped to AF_INET6 in IPv6-only config-
+- * urations, so even an unregistration request on AF_INET will
+- * get to a local rpcbind daemon listening only on AF_INET6.  So
+- * we always unregister via AF_INET.
+- *
+- * At this point we don't need rpcbind version 4 for unregis-
+- * tration:  A v2 UNSET request will clear all transports (netids),
+- * addresses, and address families for [program, version].
++ * The result of unregistration is reported via dprintk for those who want
++ * verification of the result, but is otherwise not important.
+  */
+ static void svc_unregister(const struct svc_serv *serv)
+ {
+ 	struct svc_program *progp;
+ 	unsigned long flags;
+ 	unsigned int i;
+-	int error;
+ 
+ 	clear_thread_flag(TIF_SIGPENDING);
+ 
+@@ -932,9 +952,7 @@ static void svc_unregister(const struct svc_serv *serv)
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+ 
+-			error = rpcb_register(progp->pg_prog, i, 0, 0);
+-			dprintk("svc: svc_unregister(%sv%u), error %d\n",
+-					progp->pg_name, i, error);
++			__svc_unregister(progp->pg_prog, i, progp->pg_name);
+ 		}
+ 	}
  
 
