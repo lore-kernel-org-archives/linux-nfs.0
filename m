@@ -1,148 +1,76 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 10/10] svcrdma: Documentation update for the FastReg	memory
- model
-Date: Thu, 25 Sep 2008 08:35:26 -0500
-Message-ID: <48DB939E.4090503@opengridcomputing.com>
-References: <1221564879-85046-2-git-send-email-tom@opengridcomputing.com> <1221564879-85046-3-git-send-email-tom@opengridcomputing.com> <1221564879-85046-4-git-send-email-tom@opengridcomputing.com> <1221564879-85046-5-git-send-email-tom@opengridcomputing.com> <1221564879-85046-6-git-send-email-tom@opengridcomputing.com> <1221564879-85046-7-git-send-email-tom@opengridcomputing.com> <1221564879-85046-8-git-send-email-tom@opengridcomputing.com> <1221564879-85046-9-git-send-email-tom@opengridcomputing.com> <1221564879-85046-10-git-send-email-tom@opengridcomputing.com> <1221564879-85046-11-git-send-email-tom@opengridcomputing.com> <20080924212102.GD10841@fieldses.org>
+Subject: Re: [PATCH 05/10] svcrdma: Modify post recv path to use local dma
+ key
+Date: Thu, 25 Sep 2008 08:36:29 -0500
+Message-ID: <48DB93DD.6040005@opengridcomputing.com>
+References: <1221564879-85046-1-git-send-email-tom@opengridcomputing.com> <1221564879-85046-2-git-send-email-tom@opengridcomputing.com> <1221564879-85046-3-git-send-email-tom@opengridcomputing.com> <1221564879-85046-4-git-send-email-tom@opengridcomputing.com> <1221564879-85046-5-git-send-email-tom@opengridcomputing.com> <1221564879-85046-6-git-send-email-tom@opengridcomputing.com> <20080924203111.GC10841@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:41580 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:41582 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752286AbYIYNf1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 09:35:27 -0400
-In-Reply-To: <20080924212102.GD10841@fieldses.org>
+	by vger.kernel.org with ESMTP id S1752965AbYIYNga (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 09:36:30 -0400
+In-Reply-To: <20080924203111.GC10841@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 J. Bruce Fields wrote:
-> On Tue, Sep 16, 2008 at 06:34:39AM -0500, Tom Tucker wrote:
->> This patch adds security related documentation to the nfs-rdma.txt file
->> that describes the memory registration model, the potential security
->> exploits, and compares these exploits to a similar threat when using TCP
->> as the transport.
-> 
-> Thanks for doing this.
-> 
+> On Tue, Sep 16, 2008 at 06:34:34AM -0500, Tom Tucker wrote:
+>> Update the svc_rdma_post_recv routine to use the adapter's global LKEY
+>> instead of sc_phys_mr which is only valid when using a DMA MR.
+>>
 >> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 >>
 >> ---
->>  Documentation/filesystems/nfs-rdma.txt |   66 ++++++++++++++++++++++++++++++++
->>  1 files changed, 66 insertions(+), 0 deletions(-)
+>>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 +++++++---
+>>  1 files changed, 7 insertions(+), 3 deletions(-)
 >>
->> diff --git a/Documentation/filesystems/nfs-rdma.txt b/Documentation/filesystems/nfs-rdma.txt
->> index 44bd766..41f0fb2 100644
->> --- a/Documentation/filesystems/nfs-rdma.txt
->> +++ b/Documentation/filesystems/nfs-rdma.txt
->> @@ -269,3 +269,69 @@ NFS/RDMA Setup
->>      the "proto" field for the given mount.
->>  
->>    Congratulations! You're using NFS/RDMA!
->> +
->> +Security
->> +--------
->> +
->> +  NFSRDMA exploits the RDMA capabilities of the IB and iWARP
->> +  transports to more efficiently exchange RPC data between the client
->> +  and the server. This section discusses the security implications of
->> +  the exchange of memory information on the wire when the wire may be
->> +  monitorable by an untrusted application. The identifier that
->> +  encapsulates this memory information is called an RKEY.
->> +
->> +  A principal exploit is that a node listening on a mirror port of a
->> +  switch
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> index b8c642d..a61caa7 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -476,7 +476,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+>>  	struct ib_recv_wr recv_wr, *bad_recv_wr;
+>>  	struct svc_rdma_op_ctxt *ctxt;
+>>  	struct page *page;
+>> -	unsigned long pa;
+>> +	dma_addr_t pa;
+>>  	int sge_no;
+>>  	int buflen;
+>>  	int ret;
+>> @@ -488,13 +488,17 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+>>  		BUG_ON(sge_no >= xprt->sc_max_sge);
+>>  		page = svc_rdma_get_page();
+>>  		ctxt->pages[sge_no] = page;
+>> -		atomic_inc(&xprt->sc_dma_used);
+>>  		pa = ib_dma_map_page(xprt->sc_cm_id->device,
+>>  				     page, 0, PAGE_SIZE,
+>>  				     DMA_FROM_DEVICE);
+>> +		if (ib_dma_mapping_error(xprt->sc_cm_id->device, pa)) {
+>> +			svc_rdma_put_context(ctxt, 1);
+>> +			return -ENOMEM;
+>> +		}
 > 
-> There are probably always other ways to do trick the switch into sending
-> an attacker some of the traffic.  It might be simpler just to say "a
-> node on the local network".
-
-Ok.
-
+> Might be a tad nicer to do a "goto out_put_ctx" here and consolidate the
+> cleanup with the similar cleanup done after the later ib_post_recv
+> failure.
 > 
->> +  could snoop RDMA packets containing RKEY and then forge a
->> +  packet with this RKEY to write and/or read the memory of the peer to
->> +  which the RKEY referred.
->> +
->> +  The NFSRDMA protocol is defined such that a) only the server
->> +  initiates RDMA, and b) only the client's memory is exposed via
->> +  RKEY. This is why the server reads to fetch RPC data from the client
->> +  even though it would be more efficient for the client to write the
->> +  data to the server's memory. This design goal is not entirely
->> +  realized with iWARP, however, because the RKEY (called an STag on
->> +  iWARP) for the data sink of an RDMA_READ is actually placed on the
->> +  wire, and this RKEY has Remote Write permission. This means that the
->> +  server's memory is exposed by virtue of having placed the RKEY for
->> +  it's local memory on the wire in order to receive the result of the
-> 
-> s/it's/its/
->
 
-Yes, erf.
+Yes it would.
 
-
->> +  RDMA_READ.
->> +
->> +  By contrast, IB uses an opaque transaction ID# to associate the
->> +  READ_RPL with the READ_REQ and the data sink of an READ_REQ does not
->> +  require remote access. That said, the byzantine node in question
->> +  could forge a packet with this transaction ID and corrupt the target
->> +  memory, however, the scope of the exploit is bounded to the lifetime
->> +  of this single RDMA_READ request and to the memory mapped by the
->> +  data sink of the READ_REQ.
->> +
->> +  The newer RDMA adapters (both iWARP and IB) support "Fast Memory
->> +  Registration". This capability allows memory to be quickly
->> +  registered (i.e. made available for remote access) and de-registered
->> +  by submitting WR on the SQ. These capabilities provide a mechanism
->> +  to reduce the exposure discused above by limiting the scope of the
->> +  exploit. The idea is to create an RKEY that only maps the single RPC
->> +  and whose effective lifetime is only the exchange of this single
->> +  RPC. This is the default memory model that is employed by the server
->> +  when supported by the adapter and by the client when the
->> +  rdma_memreg_strategy is set to 6. Note that the client and server
->> +  may use different memory registration strategies, however,
->> +  performance is better when both the client and server use the
->> +  FastReg memory registration strategy.
->> +
->> +  This approach has two benefits, a) it restricts the domain of the
->> +  exploit to the memory of a single RPC, and b) it limits the duration
->> +  of the exploit to the time it takes to satisfy the RDMA_READ.
->> +
->> +  It is arguable that a one-shot STag/RKEY is no less secure than RPC
->> +  on the TCP transport. Consider that the exact same byzantine
->> +  application could more easily corrupt TCP RPC payload by simply
->> +  forging a packet with the correct TCP sequence number -- in fact
->> +  it's easier than the RDMA exploit because the RDMA exploit requires
->> +  that you correctly forge both the TCP packet and the RDMA
->> +  payload. In addition the duration of the TCP exploit is the lifetime
->> +  of the connection, not the lifetime of a single WR/RPC data transfer.
->> +
->> +  So if you buy the argument above, RDMA on IB or iWARP using Fast Reg
->> +  is no less secure than TCP.
-> 
-> I'd leave out the first seven words of that last sentence on the grounds
-> that it's implicit....
-
-Agreed.
-
-> 
-> This explanation is helpful, thanks.  It would also be helpful if we
-> could boil down the advice to just a sentence or two for the busy admin.
-> Something like:  unless you have card XYZ and kernel 2.6.y, do *not* use
-> rdma on a network where you cannot trust every machine....
-
-
-Would it be better to say, "Do not use RDMA on a network where your 
-policy requires a security model stronger than tcp/auth_unix."
-
-> 
-> And better at some point might be to allow nfs-utils to automatically
-> check for that situation, and/or just to drop support for anything that
-> can't provide at least a tcp/auth_unix-like security model.
-> 
 > --b.
+> 
+>> +		atomic_inc(&xprt->sc_dma_used);
+>>  		ctxt->sge[sge_no].addr = pa;
+>>  		ctxt->sge[sge_no].length = PAGE_SIZE;
+>> -		ctxt->sge[sge_no].lkey = xprt->sc_phys_mr->lkey;
+>> +		ctxt->sge[sge_no].lkey = xprt->sc_dma_lkey;
+>>  		buflen += PAGE_SIZE;
+>>  	}
+>>  	ctxt->count = sge_no;
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
