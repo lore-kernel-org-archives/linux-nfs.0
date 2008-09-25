@@ -1,116 +1,70 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/3] NFS: SETCLIENTID truncates client ID and netid
-Date: Thu, 25 Sep 2008 14:51:37 -0400
-Message-ID: <306811F2-3AD5-4FC8-BE6B-E29C0E61C3E0@oracle.com>
-References: <20080925154814.8353.64762.stgit@manray.1015granger.net> <20080925155712.8353.47707.stgit@manray.1015granger.net> <48DBCBDC.9060305@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: trond.myklebust@netapp.com, bfields@fieldses.org,
-	linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
+Date: Thu, 25 Sep 2008 22:30:33 +0300
+Message-ID: <48DBE6D9.3010603@panasas.com>
+References: <20080917231018.GA5723@fieldses.org> <48D193EE.2020805@panasas.com> <48D19C74.8000303@panasas.com> <48D2AAF7.6060808@panasas.com> <20080924163528.GB5772@fieldses.org> <1222275582.7390.8.camel@localhost> <20080924172134.GI5772@fieldses.org> <1222277168.7390.19.camel@localhost> <20080924174230.GJ5772@fieldses.org> <1222281745.7390.34.camel@localhost> <20080924184934.GK5772@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
+	Trond Myklebust <trond@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:59400 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754030AbYIYSwd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 14:52:33 -0400
-In-Reply-To: <48DBCBDC.9060305@redhat.com>
+Received: from gw-ca.panasas.com ([66.104.249.162]:15030 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753339AbYIYTas (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 15:30:48 -0400
+In-Reply-To: <20080924184934.GK5772@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 09/24/2008 9:49:34 pm +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Wed, Sep 24, 2008 at 02:42:25PM -0400, Trond Myklebust wrote:
+>> On Wed, 2008-09-24 at 13:42 -0400, J. Bruce Fields wrote:
+>>
+>>> If by "broken" you mean, "introduces a new kernel bug", I don't see it.
+>> I mean it introduces utterly unnecessary complications that may return
+>> to bite us in the arse at a future time.
+> 
+> OK, that's the answer I was looking for, thanks.
+> 
+>> Remember how we once said that it would never make sense for child
+>> clones to call the portmapper, and so we added the BUG_ON() in
+>> rpcb_getport_async; well guess what, we currently have a bug to fix...
+> 
+> No, I don't remember that.  But yes, I can see how in general this sort
+> of thing could make the code harder to maintain.
+> 
+>> One pretty obvious fix is to simply move the release method so that it
+>> doesn't occur when you release a child. The disadvantage is that a child
+>> may then not change its program to one that requires a release method
+>> (do we need that?).
+> 
+> I doubt we need that, but...
+> 
+>> Another fix would be to add a refcount to the rpc_program structure...
+> 
+> ... a refcount seems more straightforward.  Benny, what do you think?
 
-On Sep 25, 2008, at 1:35 PM, Peter Staubach wrote:
+I agree.  I'll send a patch hopefully tomorrow.
+Would you like that combined with the one I sent or as a separate one?
+(I'm inclined towards the latter).
 
-> Chuck Lever wrote:
->> The sc_name field is currently 56 bytes long.  This is not large  
->> enough
->> to hold a pair of IPv6 addresses, the authentication type, the  
->> protocol
->> name, and a uniquifier number.  The maximum possible size of the name
->> string using IPv6 addresses is just under 110 bytes, so I increased  
->> the
->> size of the sc_name field to accomodate this maximum.
->>
->> In addition, the strings in the nfs4_setclientid structure are
->> constructed with scnprintf(), which wants to terminate its output  
->> with
->> '\0'.  The sc_netid field was large enough only for a three byte  
->> netid
->> string and a '\0' so inet6 netids were being truncated.  Perhaps we
->> don't need the overhead of scnprintf() to do a simple string copy,  
->> but
->> I fixed this by increasing the size of the buffer by one byte.
->>
->> Since all three of the string buffers in nfs4_setclientid are
->> constructed with scnprintf(), I increased the size of all three by  
->> one
->> byte to document the requirement, although I don't think either the
->> universal address field or the name field will be so small that these
->> strings get truncated in this way.
->>
->> The size of the Linux client's client ID on the wire will be larger
->> than before.  RFC 3530 suggests the size limit for client IDs is  
->> 1024,
->> and we are still well below that.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> include/linux/nfs_xdr.h |    8 ++++----
->> 1 files changed, 4 insertions(+), 4 deletions(-)
->>
->> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->> index 8c77c11..dc34977 100644
->> --- a/include/linux/nfs_xdr.h
->> +++ b/include/linux/nfs_xdr.h
->> @@ -672,16 +672,16 @@ struct nfs4_rename_res {
->> 	struct nfs_fattr *		new_fattr;
->> };
->> -#define NFS4_SETCLIENTID_NAMELEN	(56)
->> +#define NFS4_SETCLIENTID_NAMELEN	(128)
->>
->
-> Perhaps (127) might have been a better choice here?  In the
-> struct below, the arrays end up being allocated to (128) + 1
-> plus whatever alignment bytes are valid for the platform.
-> This wastes a fair amount of space.
+One more thing that seems to need fixing is rpc_bind_new_program
+which now uses the passed-in program->cl_stats but doesn't point
+to the passed-in program, but rather it only extracts its
+name, number, and stats.
+Since program->stats may possibly go away with the program
+in the refcounted world I think we should get a reference on the
+program here too.
 
-Probably the worst alignment padding would be 7 bytes.  The struct is  
-already large, and is only used once on the stack just after mounting,  
-so I'm not that concerned.  I would rather have a little extra here  
-than not enough.
+That observed, it may also be a good idea to get rid of clnt->cl_stats
+altogether and use clnt->program->stats instead to prevent any
+discrepancy.
 
-However, we can trim the length of the name a little.  I counted about  
-105 characters maximum in my simple calculations.  We could probably  
-make it (111) to round out the field to 112 bytes (divisible by 8).
+Benny
 
->       ps
->
->> struct nfs4_setclientid {
->> 	const nfs4_verifier *		sc_verifier;
->> 	unsigned int			sc_name_len;
->> -	char				sc_name[NFS4_SETCLIENTID_NAMELEN];
->> +	char				sc_name[NFS4_SETCLIENTID_NAMELEN + 1];
->> 	u32				sc_prog;
->> 	unsigned int			sc_netid_len;
->> -	char				sc_netid[RPCBIND_MAXNETIDLEN];
->> +	char				sc_netid[RPCBIND_MAXNETIDLEN + 1];
->> 	unsigned int			sc_uaddr_len;
->> -	char				sc_uaddr[RPCBIND_MAXUADDRLEN];
->> +	char				sc_uaddr[RPCBIND_MAXUADDRLEN + 1];
->> 	u32				sc_cb_ident;
->> };
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+> 
+> --b.
 
