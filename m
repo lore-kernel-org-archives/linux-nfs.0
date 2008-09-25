@@ -1,82 +1,107 @@
-From: "Jim Schutt" <jaschut@sandia.gov>
-Subject: Re: svcrdma/xprtrdma fast memory registration questions
-Date: Thu, 25 Sep 2008 15:32:31 -0600
-Message-ID: <1222378352.32577.44.camel@sale659>
-References: <1222357183.32577.34.camel@sale659>
- <48DBF4C6.7010008@opengridcomputing.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
+Date: Thu, 25 Sep 2008 17:38:31 -0400
+Message-ID: <20080925213831.GF14349@fieldses.org>
+References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "Tom Tucker" <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sentry.sandia.gov ([132.175.109.21]:4139 "EHLO
-	sentry.sandia.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753842AbYIYVcp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 17:32:45 -0400
-In-Reply-To: <48DBF4C6.7010008@opengridcomputing.com>
+Received: from mail.fieldses.org ([66.93.2.214]:58288 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753664AbYIYVie (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Sep 2008 17:38:34 -0400
+In-Reply-To: <20080924184732.4078.83334.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-09-25 at 14:29 -0600, Tom Tucker wrote:
-> Jim Schutt wrote:
-> > Hi,
-> >
-> > I've been giving the fast memory registration NFS RDMA
-> > patches a spin, and I've got a couple questions.
-> >
-> > AFAICS the default xprtrdma memory registration model
-> > is still RPCRDMA_ALLPHYSICAL; I had to
-> >   "echo 6 > /proc/sys/sunrpc/rdma_memreg_strategy"
-> > prior to a mount to get fast registration.  Given that fast
-> > registration has better security properties for iWARP, and
-> > the fallback is RPCRDMA_ALLPHYSICAL if fast registration is
-> > not supported, is it more appropriate to have RPCRDMA_FASTREG
->    ???
-> > be the default?
+On Wed, Sep 24, 2008 at 02:50:36PM -0400, Chuck Lever wrote:
+> statd and some servers always need lockd to listen on UDP, so always
+> start both lockd listener sockets.
 > 
-> I'm not sure I parsed this right, but I think you're asking if FASTREG
-> should be the default if it _is_ supported by the HW. IMO yes.
-
-Yes, that't it.
-
+> This probably leaks an svc_serv if the TCP listener can't be created,
+> but it will do for now.
 > 
-> >
-> > Second, it seems that the number of pages in a client fast
-> > memory registration is still limited to RPCRDMA_MAX_DATA_SEGS.
-> > So on a client write, without fast registration I get
-> > RPCRDMA_MAX_DATA_SEGS RDMA reads of 1 page each, whereas with
-> > fast registration I get 1 RDMA read of RPCRDMA_MAX_DATA_SEGS
-> > pages.
-> >
-> > In either case my maximum rsize, wsize for an RDMA mount
-> > is still 32 KiB.
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
-> Sure, Big data was not the purpose of the patch.
+> I currently have this workaround lurking in my git repo.  Is there some kind
+> of fix for this issue planned for 2.6.28?
 
-OK.
+Not that I know of.
+
+> This is only a reminder, not a suggested patch.
+
+Any chance you could generate a patch?
+
+--b.
 
 > 
-> >
-> > My understanding is that, e.g., a Chelsio T3 with the
-> > 2.6.27-rc driver can support 24 pages in a fast registration
-> > request.  So, what I was hoping to see with a T3 were RPCs with
-> > RPCRDMA_MAX_DATA_SEGS  chunks, each for a fast registration of
-> > 24 pages each, making possible an RDMA mount with 768 KiB for
-> > rsize, wsize.
-> >
-> > Is something like that possible?  If so, do you have any
-> > work in progress along those lines?
-> >
+>  fs/lockd/svc.c |   31 +++++++++++++------------------
+>  1 files changed, 13 insertions(+), 18 deletions(-)
 > 
-> I have nothing in the works along those lines -- sorry.
-
-OK - thanks for letting me know.
-
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index a7b604c..36b6d03 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -213,25 +213,23 @@ lockd(void *vrqstp)
+>  }
+>  
+>  /*
+> - * Make any sockets that are needed but not present.
+> - * If nlm_udpport or nlm_tcpport were set as module
+> - * options, make those sockets unconditionally
+> + * Create UDP and TCP listeners for lockd.  Even if we only
+> + * have TCP NFS mounts and TCP NFSDs, some services (such
+> + * as rpc.statd) still require UDP.
+>   */
+> -static int make_socks(struct svc_serv *serv, const unsigned short proto)
+> +static int make_socks(struct svc_serv *serv)
+>  {
+>  	static int warned;
+>  	struct svc_xprt *xprt;
+>  	int err = 0;
+>  
+> -	if (proto == IPPROTO_UDP || nlm_udpport) {
+> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
+> -		if (!xprt)
+> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
+> -					      SVC_SOCK_DEFAULTS);
+> -		else
+> -			svc_xprt_put(xprt);
+> -	}
+> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
+> +	xprt = svc_find_xprt(serv, "udp", 0, 0);
+> +	if (!xprt)
+> +		err = svc_create_xprt(serv, "udp", nlm_udpport,
+> +				      SVC_SOCK_DEFAULTS);
+> +	else
+> +		svc_xprt_put(xprt);
+> +	if (err >= 0) {
+>  		xprt = svc_find_xprt(serv, "tcp", 0, 0);
+>  		if (!xprt)
+>  			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+> @@ -260,11 +258,8 @@ int lockd_up(const unsigned short proto)
+>  	/*
+>  	 * Check whether we're already up and running.
+>  	 */
+> -	if (nlmsvc_rqst) {
+> -		if (proto)
+> -			error = make_socks(nlmsvc_rqst->rq_server, proto);
+> +	if (nlmsvc_rqst)
+>  		goto out;
+> -	}
+>  
+>  	/*
+>  	 * Sanity check: if there's no pid,
+> @@ -281,7 +276,7 @@ int lockd_up(const unsigned short proto)
+>  		goto out;
+>  	}
+>  
+> -	if ((error = make_socks(serv, proto)) < 0)
+> +	if ((error = make_socks(serv)) < 0)
+>  		goto destroy_and_out;
+>  
+>  	/*
 > 
-> > -- Jim
-> >
-> >
-> 
-> 
-
-
