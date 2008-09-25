@@ -1,90 +1,73 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] SUNRPC: Clean up debug messages in rpcb_clnt.c
-Date: Thu, 25 Sep 2008 11:57:05 -0400
-Message-ID: <20080925155704.8353.38944.stgit@manray.1015granger.net>
+Subject: [PATCH 3/3] NFS: SETCLIENTID truncates client ID and netid
+Date: Thu, 25 Sep 2008 11:57:12 -0400
+Message-ID: <20080925155712.8353.47707.stgit@manray.1015granger.net>
 References: <20080925154814.8353.64762.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:29327 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:29329 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754156AbYIYP6k (ORCPT
+	with ESMTP id S1754299AbYIYP6k (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2008 11:58:40 -0400
 In-Reply-To: <20080925154814.8353.64762.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPCB XDR functions are used for multiple procedures.  For instance,
-rpcb_encode_getaddr() is used for RPCB_GETADDR, RPCB_SET, and
-RPCB_UNSET.  Make the XDR debug messages more generic so they are less
-confusing.
+The sc_name field is currently 56 bytes long.  This is not large enough
+to hold a pair of IPv6 addresses, the authentication type, the protocol
+name, and a uniquifier number.  The maximum possible size of the name
+string using IPv6 addresses is just under 110 bytes, so I increased the
+size of the sc_name field to accomodate this maximum.
 
-And, unlike in other RPC consumers in the kernel, a single debug flag
-enables all levels of debug messages in the RPC bind client, including
-XDR debug messages.  Since the XDR decoders already report success or
-failure in this case, remove redundant debug messages in the mid-level
-rpcb_register_call() function.
+In addition, the strings in the nfs4_setclientid structure are
+constructed with scnprintf(), which wants to terminate its output with
+'\0'.  The sc_netid field was large enough only for a three byte netid
+string and a '\0' so inet6 netids were being truncated.  Perhaps we
+don't need the overhead of scnprintf() to do a simple string copy, but
+I fixed this by increasing the size of the buffer by one byte.
+
+Since all three of the string buffers in nfs4_setclientid are
+constructed with scnprintf(), I increased the size of all three by one
+byte to document the requirement, although I don't think either the
+universal address field or the name field will be so small that these
+strings get truncated in this way.
+
+The size of the Linux client's client ID on the wire will be larger
+than before.  RFC 3530 suggests the size limit for client IDs is 1024,
+and we are still well below that.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   14 +++++---------
- 1 files changed, 5 insertions(+), 9 deletions(-)
+ include/linux/nfs_xdr.h |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 02164d4..0b93205 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -197,12 +197,8 @@ static int rpcb_register_call(struct sockaddr *addr, size_t addrlen,
- 		return error;
- 	}
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 8c77c11..dc34977 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -672,16 +672,16 @@ struct nfs4_rename_res {
+ 	struct nfs_fattr *		new_fattr;
+ };
  
--	if (!result) {
--		dprintk("RPC:       registration failed\n");
-+	if (!result)
- 		return -EACCES;
--	}
--
--	dprintk("RPC:       registration succeeded\n");
- 	return 0;
- }
+-#define NFS4_SETCLIENTID_NAMELEN	(56)
++#define NFS4_SETCLIENTID_NAMELEN	(128)
+ struct nfs4_setclientid {
+ 	const nfs4_verifier *		sc_verifier;
+ 	unsigned int			sc_name_len;
+-	char				sc_name[NFS4_SETCLIENTID_NAMELEN];
++	char				sc_name[NFS4_SETCLIENTID_NAMELEN + 1];
+ 	u32				sc_prog;
+ 	unsigned int			sc_netid_len;
+-	char				sc_netid[RPCBIND_MAXNETIDLEN];
++	char				sc_netid[RPCBIND_MAXNETIDLEN + 1];
+ 	unsigned int			sc_uaddr_len;
+-	char				sc_uaddr[RPCBIND_MAXUADDRLEN];
++	char				sc_uaddr[RPCBIND_MAXUADDRLEN + 1];
+ 	u32				sc_cb_ident;
+ };
  
-@@ -628,7 +624,7 @@ static void rpcb_getport_done(struct rpc_task *child, void *data)
- static int rpcb_encode_mapping(struct rpc_rqst *req, __be32 *p,
- 			       struct rpcbind_args *rpcb)
- {
--	dprintk("RPC:       rpcb_encode_mapping(%u, %u, %d, %u)\n",
-+	dprintk("RPC:       encoding rpcb request (%u, %u, %d, %u)\n",
- 			rpcb->r_prog, rpcb->r_vers, rpcb->r_prot, rpcb->r_port);
- 	*p++ = htonl(rpcb->r_prog);
- 	*p++ = htonl(rpcb->r_vers);
-@@ -643,7 +639,7 @@ static int rpcb_decode_getport(struct rpc_rqst *req, __be32 *p,
- 			       unsigned short *portp)
- {
- 	*portp = (unsigned short) ntohl(*p++);
--	dprintk("RPC:       rpcb_decode_getport result %u\n",
-+	dprintk("RPC:       rpcb getport result: %u\n",
- 			*portp);
- 	return 0;
- }
-@@ -652,7 +648,7 @@ static int rpcb_decode_set(struct rpc_rqst *req, __be32 *p,
- 			   unsigned int *boolp)
- {
- 	*boolp = (unsigned int) ntohl(*p++);
--	dprintk("RPC:       rpcb_decode_set: call %s\n",
-+	dprintk("RPC:       rpcb set/unset call %s\n",
- 			(*boolp ? "succeeded" : "failed"));
- 	return 0;
- }
-@@ -660,7 +656,7 @@ static int rpcb_decode_set(struct rpc_rqst *req, __be32 *p,
- static int rpcb_encode_getaddr(struct rpc_rqst *req, __be32 *p,
- 			       struct rpcbind_args *rpcb)
- {
--	dprintk("RPC:       rpcb_encode_getaddr(%u, %u, %s)\n",
-+	dprintk("RPC:       encoding rpcb request (%u, %u, %s)\n",
- 			rpcb->r_prog, rpcb->r_vers, rpcb->r_addr);
- 	*p++ = htonl(rpcb->r_prog);
- 	*p++ = htonl(rpcb->r_vers);
 
