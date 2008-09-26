@@ -1,50 +1,108 @@
-From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
-Subject: Re: [NFS] Is this group still active?
-Date: Fri, 26 Sep 2008 08:27:25 -0400
-Message-ID: <C64948E9-2355-4D89-8B2B-A94E5EF2EBF0@myri.com>
-References: <b66ddc900809260359s4bcd3af5he318549f75ccb689@mail.gmail.com>
-	<48DCC354.7060901@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: svcrdma/xprtrdma fast memory registration questions
+Date: Fri, 26 Sep 2008 09:14:03 -0400
+Message-ID: <RTPCLUEXC2-PRDFRaqb00000032@RTPMVEXC1-PRD.hq.netapp.com>
+References: <1222357183.32577.34.camel@sale659>
+Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: "Tom Tucker" <tom@opengridcomputing.com>, linux-nfs@vger.kernel.org
+To: "Jim Schutt" <jaschut@sandia.gov>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:38297 "EHLO neil.brown.name"
+Received: from mx2.netapp.com ([216.240.18.37]:39821 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754244AbYIZNEa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 09:04:30 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KjCzi-0005Yg-2e
-	for linux-nfs@vger.kernel.org; Fri, 26 Sep 2008 23:04:26 +1000
-In-Reply-To: <48DCC354.7060901@panasas.com>
+	id S1751904AbYIZNPO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 09:15:14 -0400
+In-Reply-To: <1222357183.32577.34.camel@sale659>
+References: <1222357183.32577.34.camel@sale659>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 26, 2008, at 7:11 AM, Benny Halevy wrote:
-
-> linux-nfs@vger.kernel.org would be a better place.
-> This list is practically obsolete AFAIK.
+At 11:39 AM 9/25/2008, Jim Schutt wrote:
+>Hi,
 >
-> Benny
+>I've been giving the fast memory registration NFS RDMA
+>patches a spin, and I've got a couple questions.
 
-This list is like Hotel California. You can check in, but you can  
-never check out.
+Your questions are mainly about the client, so I'll jump in here too...
 
-I have tried to unsubscribe a half dozen times. :-(
+>
+>AFAICS the default xprtrdma memory registration model 
+>is still RPCRDMA_ALLPHYSICAL; I had to 
+>  "echo 6 > /proc/sys/sunrpc/rdma_memreg_strategy"
+>prior to a mount to get fast registration.  Given that fast 
+>registration has better security properties for iWARP, and 
+>the fallback is RPCRDMA_ALLPHYSICAL if fast registration is 
+>not supported, is it more appropriate to have RPCRDMA_FASTREG 
+>be the default?
 
-Scott
+Possibly. At this point we don't have enough experience with FASTREG
+to know whether it's better. For large-footprint memory on the server
+with a Chelsio interconnect, it's required, but on Infiniband adapters,
+there are more degrees of freedom and historically ALLPHYS works best.
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Also, at this point we don't know that FASTREG is really FASTer. :-)
+Frankly, I hate calling things "fast" or "new", there's always something
+"faster" or "newer". But the OFA code uses this name. In any case,
+the codepath still needs testing and performance evaluation before
+we make it a default.
+
+
+>Second, it seems that the number of pages in a client fast 
+>memory registration is still limited to RPCRDMA_MAX_DATA_SEGS.
+>So on a client write, without fast registration I get 
+>RPCRDMA_MAX_DATA_SEGS RDMA reads of 1 page each, whereas with 
+>fast registration I get 1 RDMA read of RPCRDMA_MAX_DATA_SEGS 
+>pages.
+
+Yes, the client is currently limited to this many segments. You can raise
+the number by recompiling, but I don't recommend it, the client gets rather
+greedy with per-mount memory. I do plan to remedy this.
+
+In the meantime, let me offer the observation that multiple RDMA Reads
+are not a penalty, since they are able to stream up to the IRD max offered
+by the client, which is in turn more than sufficient to maintain bandwidth
+usage. Are you seeing a bottleneck? If so, I'd like to see the output from
+the client with RPCDBG_TRANS turned on, it prints the IRD at connect time.
+
+>In either case my maximum rsize, wsize for an RDMA mount
+>is still 32 KiB.
+
+Yes. But here's the deal - write throughput is almost never a network
+problem. Instead, it's either a server ordering problem, or a congestion/
+latency issue. The rub is, large I/O's help the former (by cramming lots
+of writes together in a single request), but they hurt the latter (by
+cramming large chunks into the pipe).
+
+In other words, small I/Os on low-latency networks can be good.
+
+However, the Linux NFS server has a rather clumsy interface to the
+backing filesystem, and if you're using ext, its ability to handle many
+32KB sized writes in arbitrary order is somewhat poor. What type
+of storage are you exporting? Are you using async on the server?
+
+>
+>My understanding is that, e.g., a Chelsio T3 with the 
+>2.6.27-rc driver can support 24 pages in a fast registration
+>request.  So, what I was hoping to see with a T3 were RPCs with 
+>RPCRDMA_MAX_DATA_SEGS  chunks, each for a fast registration of 
+>24 pages each, making possible an RDMA mount with 768 KiB for
+>rsize, wsize.
+
+You can certainly try raising MAX_DATA_SEGS to this value and building
+a new sunrpc module. I do not recommend such a large write size however;
+you won't be able to do many mounts, due to resource issues on both client
+and server.
+
+If you're seeing throughput problems, I would suggest trying a 64KB write
+size first (MAX_DATA_SEGS==16), and if that improves then maybe 128KB (32).
+128KB is generally more than enough to make ext happy (well, happi*er*).
+
+>
+>Is something like that possible?  If so, do you have any
+>work in progress along those lines?
+
+I do. But I'd be very interested to see more data before committing to
+the large-io approach. Can you help?
+
+Tom.
 
