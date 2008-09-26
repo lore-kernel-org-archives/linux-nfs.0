@@ -1,100 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 04/10] lockd: change nlmclnt_grant() to take a "struct
-	sockaddr *"
-Date: Fri, 26 Sep 2008 18:21:04 -0400
-Message-ID: <20080926222104.GF7138@fieldses.org>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161742.4963.24984.stgit@ellison.1015granger.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
+Date: Fri, 26 Sep 2008 18:22:05 -0400
+Message-ID: <1222467725.15581.5.camel@localhost>
+References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net>
+	 <20080925213831.GF14349@fieldses.org>
+	 <AED0D581-07B0-4EC6-90AB-2F61B6F3C76B@oracle.com>
+	 <20080926184554.GA1492@fieldses.org> <1222454975.10150.8.camel@localhost>
+	 <EF58CFE4-3F4B-4985-9DEA-E61CC0DFC8EA@oracle.com>
+	 <1222456290.10150.10.camel@localhost> <20080926194421.GD1492@fieldses.org>
+	 <87089E47-10AE-4D41-B5BE-CCEE034C526B@oracle.com>
+	 <1222459067.10150.16.camel@localhost>
+	 <215DBAD9-1E4B-4E23-9F54-AAF6518D24DA@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34385 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:11913 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751904AbYIZWVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 18:21:08 -0400
-In-Reply-To: <20080917161742.4963.24984.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752050AbYIZWWk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 18:22:40 -0400
+In-Reply-To: <215DBAD9-1E4B-4E23-9F54-AAF6518D24DA@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 17, 2008 at 11:17:42AM -0500, Chuck Lever wrote:
-> Adjust the signature and callers of nlmclnt_grant() to pass a "struct
-> sockaddr *" instead of a "struct sockaddr_in *" in order to support IPv6
-> addresses.
+On Fri, 2008-09-26 at 17:11 -0400, Chuck Lever wrote:
+> If I know in advance when you (and Bruce) are taking new features or  
+> bug fixes for each kernel release, that would be helpful.
 
-OK!--b.
+That won't happen.
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/lockd/clntlock.c         |    5 ++---
->  fs/lockd/svc4proc.c         |    2 +-
->  fs/lockd/svcproc.c          |    2 +-
->  include/linux/lockd/lockd.h |    3 ++-
->  4 files changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-> index 9eaf306..2976bf0 100644
-> --- a/fs/lockd/clntlock.c
-> +++ b/fs/lockd/clntlock.c
-> @@ -141,7 +141,7 @@ int nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout)
->  /*
->   * The server lockd has called us back to tell us the lock was granted
->   */
-> -__be32 nlmclnt_grant(const struct sockaddr_in *addr, const struct nlm_lock *lock)
-> +__be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
->  {
->  	const struct file_lock *fl = &lock->fl;
->  	const struct nfs_fh *fh = &lock->fh;
-> @@ -165,8 +165,7 @@ __be32 nlmclnt_grant(const struct sockaddr_in *addr, const struct nlm_lock *lock
->  		 */
->  		if (fl_blocked->fl_u.nfs_fl.owner->pid != lock->svid)
->  			continue;
-> -		if (!nlm_cmp_addr(nlm_addr(block->b_host),
-> -					(struct sockaddr *)addr))
-> +		if (!nlm_cmp_addr(nlm_addr(block->b_host), addr))
->  			continue;
->  		if (nfs_compare_fh(NFS_FH(fl_blocked->fl_file->f_path.dentry->d_inode) ,fh) != 0)
->  			continue;
-> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-> index 4a714f6..89eb6f9 100644
-> --- a/fs/lockd/svc4proc.c
-> +++ b/fs/lockd/svc4proc.c
-> @@ -231,7 +231,7 @@ nlm4svc_proc_granted(struct svc_rqst *rqstp, struct nlm_args *argp,
->  	resp->cookie = argp->cookie;
->  
->  	dprintk("lockd: GRANTED       called\n");
-> -	resp->status = nlmclnt_grant(svc_addr_in(rqstp), &argp->lock);
-> +	resp->status = nlmclnt_grant(svc_addr(rqstp), &argp->lock);
->  	dprintk("lockd: GRANTED       status %d\n", ntohl(resp->status));
->  	return rpc_success;
->  }
-> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-> index 76262c1..361aac2 100644
-> --- a/fs/lockd/svcproc.c
-> +++ b/fs/lockd/svcproc.c
-> @@ -261,7 +261,7 @@ nlmsvc_proc_granted(struct svc_rqst *rqstp, struct nlm_args *argp,
->  	resp->cookie = argp->cookie;
->  
->  	dprintk("lockd: GRANTED       called\n");
-> -	resp->status = nlmclnt_grant(svc_addr_in(rqstp), &argp->lock);
-> +	resp->status = nlmclnt_grant(svc_addr(rqstp), &argp->lock);
->  	dprintk("lockd: GRANTED       status %d\n", ntohl(resp->status));
->  	return rpc_success;
->  }
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index 2e13c0b..165ef7a 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -207,7 +207,8 @@ int		  nlm_async_reply(struct nlm_rqst *, u32, const struct rpc_call_ops *);
->  struct nlm_wait * nlmclnt_prepare_block(struct nlm_host *host, struct file_lock *fl);
->  void		  nlmclnt_finish_block(struct nlm_wait *block);
->  int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout);
-> -__be32		  nlmclnt_grant(const struct sockaddr_in *addr, const struct nlm_lock *);
-> +__be32		  nlmclnt_grant(const struct sockaddr *addr,
-> +				const struct nlm_lock *lock);
->  void		  nlmclnt_recovery(struct nlm_host *);
->  int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
->  void		  nlmclnt_next_cookie(struct nlm_cookie *);
-> 
+Send it when it is _ready_. That is the way everyone else works when
+doing Linux kernel development...
+
+If it needs to go into a particular kernel release, either because it is
+a bugfix for a known problem, or because other patches depend upon it,
+then make a special case for that.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
