@@ -1,121 +1,70 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
-Date: Fri, 26 Sep 2008 13:53:58 -0400
-Message-ID: <AED0D581-07B0-4EC6-90AB-2F61B6F3C76B@oracle.com>
-References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net> <20080925213831.GF14349@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
+Date: Fri, 26 Sep 2008 19:17:33 +0100
+Message-ID: <1222453053.3949.21.camel@localhost.localdomain>
+References: <20080912224323.GN22126@fieldses.org>
+	 <48CAF80A.4010109@opengridcomputing.com>
+	 <1221296243.2534.7.camel@localhost.localdomain>
+	 <1221544139.2534.18.camel@localhost.localdomain>
+	 <48CF9AC3.6060801@opengridcomputing.com>
+	 <1221577412.28572.60.camel@zakaz.uk.xensource.com>
+	 <48CFD7C3.5080207@opengridcomputing.com>
+	 <1221582285.28572.67.camel@zakaz.uk.xensource.com>
+	 <1222156770.6869.13.camel@localhost.localdomain>
+	 <1222169589.6869.20.camel@localhost.localdomain>
+	 <20080923170344.GC2700@fieldses.org>
+	 <1222443426.3949.18.camel@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-GrfiCwdn8hFeHg9fofwS"
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Grant Coady <gcoady.lk@gmail.com>,
+	linux-kernel@vger.kernel.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:46810 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752209AbYIZRyS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 13:54:18 -0400
-In-Reply-To: <20080925213831.GF14349@fieldses.org>
+Received: from mtaout01-winn.ispmail.ntl.com ([81.103.221.47]:23200 "EHLO
+	mtaout01-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752503AbYIZSRm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 14:17:42 -0400
+In-Reply-To: <1222443426.3949.18.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 25, 2008, at Sep 25, 2008, 5:38 PM, J. Bruce Fields wrote:
-> On Wed, Sep 24, 2008 at 02:50:36PM -0400, Chuck Lever wrote:
->> statd and some servers always need lockd to listen on UDP, so always
->> start both lockd listener sockets.
->>
->> This probably leaks an svc_serv if the TCP listener can't be created,
->> but it will do for now.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> I currently have this workaround lurking in my git repo.  Is there  
->> some kind
->> of fix for this issue planned for 2.6.28?
->
-> Not that I know of.
->
->> This is only a reminder, not a suggested patch.
->
-> Any chance you could generate a patch?
 
-I can, but no guarantee it will be in time for the 2.6.28 merge window.
+--=-GrfiCwdn8hFeHg9fofwS
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Would we consider this a regression fix?  If so, we could post it  
-after the merge window closes.  It would give a little more time to do  
-some testing.
+On Fri, 2008-09-26 at 16:37 +0100, Ian Campbell wrote:
+> It's possible, the good case is naturally quite hard to establish with
+> 100% certainty. I declared v2.6.26 OK after an uptime of 4 days and 19
+> hours, compared with failure normally within 1-2 days. It's possible I
+> was premature in doing so. I'll run 2e96d2867 for at least a full week
+> before reporting back.
 
->> fs/lockd/svc.c |   31 +++++++++++++------------------
->> 1 files changed, 13 insertions(+), 18 deletions(-)
->>
->> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
->> index a7b604c..36b6d03 100644
->> --- a/fs/lockd/svc.c
->> +++ b/fs/lockd/svc.c
->> @@ -213,25 +213,23 @@ lockd(void *vrqstp)
->> }
->>
->> /*
->> - * Make any sockets that are needed but not present.
->> - * If nlm_udpport or nlm_tcpport were set as module
->> - * options, make those sockets unconditionally
->> + * Create UDP and TCP listeners for lockd.  Even if we only
->> + * have TCP NFS mounts and TCP NFSDs, some services (such
->> + * as rpc.statd) still require UDP.
->>  */
->> -static int make_socks(struct svc_serv *serv, const unsigned short  
->> proto)
->> +static int make_socks(struct svc_serv *serv)
->> {
->> 	static int warned;
->> 	struct svc_xprt *xprt;
->> 	int err = 0;
->>
->> -	if (proto == IPPROTO_UDP || nlm_udpport) {
->> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
->> -		if (!xprt)
->> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
->> -					      SVC_SOCK_DEFAULTS);
->> -		else
->> -			svc_xprt_put(xprt);
->> -	}
->> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
->> +	xprt = svc_find_xprt(serv, "udp", 0, 0);
->> +	if (!xprt)
->> +		err = svc_create_xprt(serv, "udp", nlm_udpport,
->> +				      SVC_SOCK_DEFAULTS);
->> +	else
->> +		svc_xprt_put(xprt);
->> +	if (err >= 0) {
->> 		xprt = svc_find_xprt(serv, "tcp", 0, 0);
->> 		if (!xprt)
->> 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
->> @@ -260,11 +258,8 @@ int lockd_up(const unsigned short proto)
->> 	/*
->> 	 * Check whether we're already up and running.
->> 	 */
->> -	if (nlmsvc_rqst) {
->> -		if (proto)
->> -			error = make_socks(nlmsvc_rqst->rq_server, proto);
->> +	if (nlmsvc_rqst)
->> 		goto out;
->> -	}
->>
->> 	/*
->> 	 * Sanity check: if there's no pid,
->> @@ -281,7 +276,7 @@ int lockd_up(const unsigned short proto)
->> 		goto out;
->> 	}
->>
->> -	if ((error = make_socks(serv, proto)) < 0)
->> +	if ((error = make_socks(serv)) < 0)
->> 		goto destroy_and_out;
->>
->> 	/*
->>
+Or it'll reproduce after just a few hours :-/
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Looks like a false negative on v2.6.26 -- I'll retest from there.
 
+Ian.
 
+--=20
+Ian Campbell
 
+That secret you've been guarding, isn't.
+
+--=-GrfiCwdn8hFeHg9fofwS
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkjdJzwACgkQM0+0qS9rzVlhXgCfVfi+FgdOHW3/5wkWUmhU4dqS
+Z9QAniJhdkWjeeg1WjgEWTK2hN7Yot/J
+=xvRm
+-----END PGP SIGNATURE-----
+
+--=-GrfiCwdn8hFeHg9fofwS--
 
