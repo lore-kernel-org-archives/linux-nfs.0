@@ -1,53 +1,85 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: Permission denied when mounting NFS (was okay before)
-Date: Fri, 26 Sep 2008 07:50:27 -0400
-Message-ID: <RTPCLUEXC2-PRDM3SOl0000001f@RTPMVEXC1-PRD.hq.netapp.com>
-References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com> <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.co
- m>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH] nfsd: use nfs client rpc callback program
+Date: Fri, 26 Sep 2008 14:52:10 +0300
+Message-ID: <48DCCCEA.80706@panasas.com>
+References: <20080924163528.GB5772@fieldses.org> <1222275582.7390.8.camel@localhost> <20080924172134.GI5772@fieldses.org> <1222277168.7390.19.camel@localhost> <20080924174230.GJ5772@fieldses.org> <1222281745.7390.34.camel@localhost> <20080924184934.GK5772@fieldses.org> <48DBE6D9.3010603@panasas.com> <20080925200014.GA14078@fieldses.org> <1222374421.13388.26.camel@localhost> <20080925204110.GB14349@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org
-To: "howard chen" <howachen@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	linux-nfs@vger.kernel.org, pnfs mailing list <pnfs@linux-nfs.org>,
+	Trond Myklebust <trond@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43633 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750912AbYIZLwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 07:52:23 -0400
-In-Reply-To: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a-JsoAwUIsXouhRSP0FMvGiw@public.gmane.org
- m>
-References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from gw-ca.panasas.com ([66.104.249.162]:28061 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751034AbYIZLwb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 07:52:31 -0400
+In-Reply-To: <20080925204110.GB14349@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just because it's "authenticated" doesn't mean you have "permission".
-What are the contents of your server's export file, and the umode of
-the target /data0/tmp directory? And btw, what types/versions are
-your client and server?
+J. Bruce Fields wrote:
+> On Thu, Sep 25, 2008 at 04:27:01PM -0400, Trond Myklebust wrote:
+>> On Thu, 2008-09-25 at 16:00 -0400, J. Bruce Fields wrote:
+>>>>>> Another fix would be to add a refcount to the rpc_program structure...
+>>>>> ... a refcount seems more straightforward.  Benny, what do you think?
+>>>> I agree.  I'll send a patch hopefully tomorrow.
+>>>> Would you like that combined with the one I sent or as a separate one?
+>>>> (I'm inclined towards the latter).
+>>> That'd be fine.
+>> So, looking at what you're trying to do, I'm still having trouble
+>> figuring out why you think you need a dynamically allocated rpc_program
+>> in the first place.
+>>
+>> If the only thing you are trying to support is dynamically allocated
+>> program numbers, then note that rpc_encode_header() doesn't use
+>> program->number at all. Instead, it uses clnt->cl_prog and
+>> clnt->cl_vers. Nothing stops you from setting those values explicitly...
+> 
+> Oh, sure, that sounds like an excellent plan--thanks!
+> 
+Yeah, much simpler.
+Though having nfs4_probe_callback directly assign to clnt->cl_prog
+would work, it seems like a layering violation.
+How about allowing this officially via struct rpc_create_args?
 
-Tom.
+Benny
 
-At 07:32 AM 9/26/2008, howard chen wrote:
->Hi,
->
->I have a sudden problem when my server reboot and mount to a NFS
->failed, so I neeed to mount
->by hand. (But it was okay before...)
->
->Error:
->
->mount: trying xxxx prog 100003 vers 3 prot udp port 2049
->mount: trying xxxx prog 100005 vers 3 prot udp port 891
->mount: xxxx:/data0/tmp failed, reason given by server: Permission
->denied
->
->Many pages in the web said it is related to the hostname and ip
->mapping, which made permission issues,
->but in my NFS server,  I see the permission is ok:
->
->(/var/log/message)
->
->authenticated mount request from xxxx for yyyy...
->
->Any idea for this funny problem?
->
-
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index e5bfe01..4ba84e8 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -104,6 +104,7 @@ struct  {
+ 	const struct rpc_timeout *timeout;
+ 	char			*servername;
+ 	struct rpc_program	*program;
++	u32			prognumber;	/* overrides program->number */
+ 	u32			version;
+ 	rpc_authflavor_t	authflavor;
+ 	unsigned long		flags;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 76739e9..da0789f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -174,7 +174,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	clnt->cl_procinfo = version->procs;
+ 	clnt->cl_maxproc  = version->nrprocs;
+ 	clnt->cl_protname = program->name;
+-	clnt->cl_prog     = program->number;
++	clnt->cl_prog     = args->prognumber ? : program->number;
+ 	clnt->cl_vers     = version->number;
+ 	clnt->cl_stats    = program->stats;
+ 	clnt->cl_metrics  = rpc_alloc_iostats(clnt);
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 30d3130..5e95909 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -377,6 +377,7 @@ static int do_probe_callback(void *data)
+ 		.addrsize	= sizeof(addr),
+ 		.timeout	= &timeparms,
+ 		.program	= &cb_program,
++		.prognumber	= cb->cb_prog,
+ 		.version	= nfs_cb_version[1]->number,
+ 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
