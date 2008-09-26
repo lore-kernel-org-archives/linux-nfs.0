@@ -1,71 +1,88 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "howard chen" <howachen@gmail.com>
 Subject: Re: Permission denied when mounting NFS (was okay before)
-Date: Fri, 26 Sep 2008 12:06:01 -0400
-Message-ID: <1222445161.10150.4.camel@localhost>
+Date: Sat, 27 Sep 2008 00:13:45 +0800
+Message-ID: <b66ddc900809260913r6c009658p958d88aa2e1be99e@mail.gmail.com>
 References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com>
 	 <RTPCLUEXC2-PRDM3SOl0000001f@RTPMVEXC1-PRD.hq.netapp.com>
 	 <b66ddc900809260805g71578cacr73a526e87a77e677@mail.gmail.com>
 	 <RTPCLUEXC2-PRDNXRPm0000003a@RTPMVEXC1-PRD.hq.netapp.com>
 	 <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc@mail.gmail.com>
+	 <1222445161.10150.4.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
 	linux-nfs@vger.kernel.org
-To: howard chen <howachen@gmail.com>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:41345 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751878AbYIZQGG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 12:06:06 -0400
-In-Reply-To: <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-gx0-f16.google.com ([209.85.217.16]:56184 "EHLO
+	mail-gx0-f16.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752468AbYIZQNq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 12:13:46 -0400
+Received: by gxk9 with SMTP id 9so8477439gxk.13
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2008 09:13:45 -0700 (PDT)
+In-Reply-To: <1222445161.10150.4.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2008-09-26 at 23:57 +0800, howard chen wrote:
-> Hi,
-> 
-> On Fri, Sep 26, 2008 at 11:25 PM, Talpey, Thomas
-> <Thomas.Talpey@netapp.com> wrote:
-> > At 11:05 AM 9/26/2008, howard chen wrote:
-> > You didn't indicate what the client and server were, btw.
-> 
-> client is 3, as I see when mount with verbose option: ... mount:
-> trying xxxx prog 100003 vers 3 prot udp port 2049
-> 
-> server should be also 3, default by CentOS 4.4, 64bit
+Hi,
 
-What does
+Thanks all for your input first.
 
-  'rpcinfo -p 10.10.10.1'
+On Sat, Sep 27, 2008 at 12:06 AM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
 
-give you? Also,
+> What does
+>
+>  'rpcinfo -p 10.10.10.1'
 
-  'showmount -e 10.10.10.1'
+ program vers proto   port
+    100000    2   tcp    111  portmapper
+    100000    2   udp    111  portmapper
+    100021    1   udp  32773  nlockmgr
+    100021    3   udp  32773  nlockmgr
+    100021    4   udp  32773  nlockmgr
+    100021    1   tcp  32779  nlockmgr
+    100021    3   tcp  32779  nlockmgr
+    100021    4   tcp  32779  nlockmgr
+    100024    1   udp    883  status
+    100024    1   tcp    886  status
+    100011    1   udp    821  rquotad
+    100011    2   udp    821  rquotad
+    100011    1   tcp    824  rquotad
+    100011    2   tcp    824  rquotad
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100005    1   udp    891  mountd
+    100005    1   tcp    894  mountd
+    100005    2   udp    891  mountd
+    100005    2   tcp    894  mountd
+    100005    3   udp    891  mountd
+    100005    3   tcp    894  mountd
 
-Finally, what kind of filesystem are you exporting on /data0/tmp?
 
-> >
-> > Do you have multiple interfaces on the client? If the client routing
-> > originates from a different address than 10.10.10.2, then the server
-> > will deny it because you have specified a numerical address.
-> 
-> Yes, both servers have interface for public IP, but as I can see the
-> 10.10.10.2 in /var/log/message of NFS server, so I think routing is
-> ok.
-> 
-> 
-> 
-> > This isn't the source of the permissions error, but why are you doing
-> > a UDP mount, and with only three retries? Generally, TCP will perform
-> > better, and more robustly. Also, the "noatime" option is a no-op for
-> > the NFS client (servers are in charge of maintaining atime).
-> 
-> I agree TCP is more robust, but isn't UDP will have a better performance?
+> give you? Also,
+>
+>  'showmount -e 10.10.10.1'
+>
 
-That depends. In my experience, the difference in performance on an
-unloaded network, then UDP will outperform TCP by ~10%. However, if you
-have a heavily loaded network with lots of dropped packets, then TCP
-will usually give much better performance than UDP.
 
-Trond
+Export list for 10.10.10.1
+/data0/tmp     10.10.10.2
 
+
+
+
+> That depends. In my experience, the difference in performance on an
+> unloaded network, then UDP will outperform TCP by ~10%. However, if you
+> have a heavily loaded network with lots of dropped packets, then TCP
+> will usually give much better performance than UDP.
+
+Good to know! I will definitely have a test, any parameters are also
+recommend together with TCP so I can do a fair benchmark?
+
+
+Thank you again.
