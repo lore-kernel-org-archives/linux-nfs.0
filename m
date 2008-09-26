@@ -1,55 +1,48 @@
-From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
-Subject: Congestion window or other reason?
-Date: Fri, 26 Sep 2008 15:16:11 -0400
-Message-ID: <ADA11BC1-B3F1-49F0-8B6A-5303A034DDE3@myri.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-To: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
+Date: Fri, 26 Sep 2008 15:44:21 -0400
+Message-ID: <20080926194421.GD1492@fieldses.org>
+References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net> <20080925213831.GF14349@fieldses.org> <AED0D581-07B0-4EC6-90AB-2F61B6F3C76B@oracle.com> <20080926184554.GA1492@fieldses.org> <1222454975.10150.8.camel@localhost> <EF58CFE4-3F4B-4985-9DEA-E61CC0DFC8EA@oracle.com> <1222456290.10150.10.camel@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailbox2.myri.com ([64.172.73.26]:1960 "EHLO myri.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751925AbYIZTQP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 15:16:15 -0400
-Received: from scott-wlan.sw.myri.com (scott-wlan.sw.myri.com [172.31.162.6])
-	by myri.com (8.13.7+Sun/8.13.7) with ESMTP id m8QJGC60005081
-	for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2008 12:16:12 -0700 (PDT)
+Received: from mail.fieldses.org ([66.93.2.214]:50909 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750885AbYIZToY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 15:44:24 -0400
+In-Reply-To: <1222456290.10150.10.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+On Fri, Sep 26, 2008 at 03:11:30PM -0400, Trond Myklebust wrote:
+> On Fri, 2008-09-26 at 15:04 -0400, Chuck Lever wrote:
+> > 
+> > So in light of Linus' stated position, it would be helpful for me (and  
+> > maybe others on the list) to have a good feel for when you guys are  
+> > planning to push your merge-window changes to Linus before each window  
+> > opens.
+> > 
+> > At the very least, since many of us do not follow LKML, would someone  
+> > commit to reflecting the LKML merge announcements to linux-nfs?  Or is  
+> > there a kernel announcements list we can follow (or that we can  
+> > subscribe linux-nfs to)?
+> 
+> There are no announcements. The merge window starts as soon as 2.6.27 is
+> released, and lasts for 2 weeks. There has been some talk about
+> shortening it to 1 week, but that hasn't been fully decided yet.
+> 
+> IOW: Assume as soon as you see the 2.6.27 announcement, that we're
+> preparing the merge.
 
-I have bulk writing and reading working on RPCMX, sort of.
+Yeah.  Unfortunately I don't know of a simple way to get just the
+release announcements.  I guess lwn.net's rss feed would get them with a
+little less noise than lkml.
 
-Reading seems to work fine. Writing seems to work fine if  
-RPCMX_MAX_DATA_SEGS is set to <=32 (versus the default of 8 in  
-RPCRDMA). Above that value, I get an oops on the server.
+We should probably restart sending those "what's in my tree for 2.6.x"
+messages with the tentative shortlog for the pull.  I think I did it a
+couple times and then got lazy....
 
-Reading seems to work fine with values up to 128. I have not tried  
-256, because the code then adds 2 to create RPCMX_MAX_SEGS and MX is  
-limited to 256 total segments. I tried 254, but the client seems to  
-prefer power of 2 values, so it uses 128 pages (512 KB).
-
-As best I can tell when reading a 1 MB file, the first transfer is 32  
-pages, the second transfer is 128 pages, and the final transfer is the  
-remaining 96 pages.
-
-When writing, the client tries to send 128 pages twice. The SVC MX  
-layer receives them correctly (it parses the request correctly and  
-posts 128 pages), but I get an oops in svc_process().
-
-Is this related to the congestion window or something else? It doesn't  
-come up in RPCRDMA since it is limited to 8 pages.
-
-Any advice would be great.
-
-Thanks,
-
-Scott
-
-
---
-Scott Atchley
-Myricom Inc.
-http://www.myri.com
-
-
+--b.
