@@ -1,68 +1,41 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [NFS] Is this group still active?
-Date: Fri, 26 Sep 2008 14:11:16 +0300
-Message-ID: <48DCC354.7060901@panasas.com>
-References: <b66ddc900809260359s4bcd3af5he318549f75ccb689@mail.gmail.com>
+From: "howard chen" <howachen@gmail.com>
+Subject: Permission denied when mounting NFS (was okay before)
+Date: Fri, 26 Sep 2008 19:32:27 +0800
+Message-ID: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: howard chen <howachen@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:54274 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751625AbYIZLYJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 07:24:09 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KjBQc-0004VK-E0
-	for linux-nfs@vger.kernel.org; Fri, 26 Sep 2008 21:24:06 +1000
-In-Reply-To: <b66ddc900809260359s4bcd3af5he318549f75ccb689-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from wa-out-1112.google.com ([209.85.146.182]:12820 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751323AbYIZLc3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 07:32:29 -0400
+Received: by wa-out-1112.google.com with SMTP id v27so446074wah.21
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2008 04:32:29 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-linux-nfs@vger.kernel.org would be a better place.
-This list is practically obsolete AFAIK.
+Hi,
 
-Benny
+I have a sudden problem when my server reboot and mount to a NFS
+failed, so I neeed to mount
+by hand. (But it was okay before...)
 
-On 09/26/2008 1:59:27 pm +0300, "howard chen" <howachen@gmail.com> wrote:
-> Hello,
-> 
-> Is this group still active?
-> 
-> Any other place I can ask about NFS questions?
-> 
-> Thanks.
-> 
-> -------------------------------------------------------------------------
-> This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-> Build the coolest Linux based applications with Moblin SDK & win great prizes
-> Grand prize is a trip for two to an Open Source event anywhere in the world
-> http://moblin-contest.org/redirect.php?banner_id=100&url=/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->     http://vger.kernel.org/vger-lists.html#linux-nfs
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Error:
 
+mount: trying xxxx prog 100003 vers 3 prot udp port 2049
+mount: trying xxxx prog 100005 vers 3 prot udp port 891
+mount: xxxx:/data0/tmp failed, reason given by server: Permission
+denied
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Many pages in the web said it is related to the hostname and ip
+mapping, which made permission issues,
+but in my NFS server,  I see the permission is ok:
 
+(/var/log/message)
+
+authenticated mount request from xxxx for yyyy...
+
+Any idea for this funny problem?
+
+Thanks.
