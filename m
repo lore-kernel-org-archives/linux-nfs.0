@@ -1,89 +1,140 @@
-From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
-Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
-Date: Fri, 26 Sep 2008 16:37:06 +0100
-Message-ID: <1222443426.3949.18.camel@localhost.localdomain>
-References: <20080912224323.GN22126@fieldses.org>
-	 <48CAF80A.4010109@opengridcomputing.com>
-	 <1221296243.2534.7.camel@localhost.localdomain>
-	 <1221544139.2534.18.camel@localhost.localdomain>
-	 <48CF9AC3.6060801@opengridcomputing.com>
-	 <1221577412.28572.60.camel@zakaz.uk.xensource.com>
-	 <48CFD7C3.5080207@opengridcomputing.com>
-	 <1221582285.28572.67.camel@zakaz.uk.xensource.com>
-	 <1222156770.6869.13.camel@localhost.localdomain>
-	 <1222169589.6869.20.camel@localhost.localdomain>
-	 <20080923170344.GC2700@fieldses.org>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
+Date: Fri, 26 Sep 2008 11:50:08 -0400
+Message-ID: <RTPCLUEXC2-PRDcarcR0000003b@RTPMVEXC1-PRD.hq.netapp.com>
+References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net>
+ <1222282496.7390.39.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-WKsm0TWQEwHV+eO4cfBL"
-Cc: Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Grant Coady <gcoady.lk@gmail.com>,
-	linux-kernel@vger.kernel.org, neilb@suse.de,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Chuck Lever <chuck.lever@oracle.com>, bfields@fieldses.org,
 	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout03-winn.ispmail.ntl.com ([81.103.221.49]:31434 "EHLO
-	mtaout03-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751611AbYIZPhY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 11:37:24 -0400
-In-Reply-To: <20080923170344.GC2700@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:48234 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752733AbYIZPuO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 11:50:14 -0400
+In-Reply-To: <1222282496.7390.39.camel@localhost>
+References: <20080924184732.4078.83334.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+ <1222282496.7390.39.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+At 02:54 PM 9/24/2008, Trond Myklebust wrote:
+>On Wed, 2008-09-24 at 14:50 -0400, Chuck Lever wrote:
+>> statd and some servers always need lockd to listen on UDP, so always
+>> start both lockd listener sockets.
+>> 
+>> This probably leaks an svc_serv if the TCP listener can't be created,
+>> but it will do for now.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>
+>ACK. We need this also in order to deal with servers that only send NLM
+>callbacks on UDP (yeah, I know that's lame...).
 
---=-WKsm0TWQEwHV+eO4cfBL
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Lame it may be, but performing a single callback over TCP is expensive,
+and if it's frequent enough, can lead to socket exhaustion from TIME_WAIT.
 
-On Tue, 2008-09-23 at 13:03 -0400, J. Bruce Fields wrote:
-> On Tue, Sep 23, 2008 at 12:33:09PM +0100, Ian Campbell wrote:
-> > On Tue, 2008-09-23 at 08:59 +0100, Ian Campbell wrote:
-> > > I've found that the problem was backported into the stable stream sin=
-ce
-> > > I cannot reproduce the issue with 2.6.26 but I can with 2.6.26.5. Thi=
-s
-> > > is quite useful since there are only 3 relevant looking changesets in
-> > > that range. I will bisect between these before confirming the culprit=
- on
-> > > mainline.
->=20
-> Could you double-check that this is reproduceable with this commit
-> applied, and not reproduceable when it's not?
+Thumbs-up for this patch. The worst thing about the unpatched issue is that
+if the server tries UDP callbacks for a TCP mount, then the client never knows
+the lock was available. It enters a polling loop and many races can occur.
 
-I've reproduced with exactly commit
-f41f741838480aeaa3a189cff6e210503cf9c42d on trunk and am now running
-2e96d2867245668dbdb973729288cf69b9fafa66 which is the changeset
-immediately before.
+I posted some patches to that a while back (when we used sourceforge),
+they're not a prerequisite to this change, but perhaps relevant for hardening
+purposes:
 
-> I suppose it's not impossible that this could be triggering the problem
-> in some very roundabout way, but it seems a bit out of left field--so I
-> wonder whether one of the bisection points could have gotten marked good
-> when it should have been bad, or vice-versa.
+<http://sourceforge.net/mailarchive/forum.php?thread_name=EXNANE01OSQeSOzNCWb00000734%40exnane01.hq.netapp.com&forum_name=nfs>
 
-It's possible, the good case is naturally quite hard to establish with
-100% certainty. I declared v2.6.26 OK after an uptime of 4 days and 19
-hours, compared with failure normally within 1-2 days. It's possible I
-was premature in doing so. I'll run 2e96d2867 for at least a full week
-before reporting back.
 
-Ian.
---=20
-Ian Campbell
+Tom.
 
-Unix is mature OS, windows is still in diapers and they smell badly.
-		-- Rafael Skodlar=20
-
---=-WKsm0TWQEwHV+eO4cfBL
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkjdAaIACgkQM0+0qS9rzVlnhwCghXf5JG5La4zjqAI59GFAu8nX
-1A4An0i4FpPd/3R4mGWQrDZNobtD/kBB
-=VM2U
------END PGP SIGNATURE-----
-
---=-WKsm0TWQEwHV+eO4cfBL--
+>
+>Trond
+>
+>> ---
+>> 
+>> I currently have this workaround lurking in my git repo.  Is there some kind
+>> of fix for this issue planned for 2.6.28?
+>> 
+>> This is only a reminder, not a suggested patch.
+>> 
+>>  fs/lockd/svc.c |   31 +++++++++++++------------------
+>>  1 files changed, 13 insertions(+), 18 deletions(-)
+>> 
+>> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+>> index a7b604c..36b6d03 100644
+>> --- a/fs/lockd/svc.c
+>> +++ b/fs/lockd/svc.c
+>> @@ -213,25 +213,23 @@ lockd(void *vrqstp)
+>>  }
+>>  
+>>  /*
+>> - * Make any sockets that are needed but not present.
+>> - * If nlm_udpport or nlm_tcpport were set as module
+>> - * options, make those sockets unconditionally
+>> + * Create UDP and TCP listeners for lockd.  Even if we only
+>> + * have TCP NFS mounts and TCP NFSDs, some services (such
+>> + * as rpc.statd) still require UDP.
+>>   */
+>> -static int make_socks(struct svc_serv *serv, const unsigned short proto)
+>> +static int make_socks(struct svc_serv *serv)
+>>  {
+>>  	static int warned;
+>>  	struct svc_xprt *xprt;
+>>  	int err = 0;
+>>  
+>> -	if (proto == IPPROTO_UDP || nlm_udpport) {
+>> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
+>> -		if (!xprt)
+>> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
+>> -					      SVC_SOCK_DEFAULTS);
+>> -		else
+>> -			svc_xprt_put(xprt);
+>> -	}
+>> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
+>> +	xprt = svc_find_xprt(serv, "udp", 0, 0);
+>> +	if (!xprt)
+>> +		err = svc_create_xprt(serv, "udp", nlm_udpport,
+>> +				      SVC_SOCK_DEFAULTS);
+>> +	else
+>> +		svc_xprt_put(xprt);
+>> +	if (err >= 0) {
+>>  		xprt = svc_find_xprt(serv, "tcp", 0, 0);
+>>  		if (!xprt)
+>>  			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+>> @@ -260,11 +258,8 @@ int lockd_up(const unsigned short proto)
+>>  	/*
+>>  	* Check whether we're already up and running.
+>>  	*/
+>> -	if (nlmsvc_rqst) {
+>> -		if (proto)
+>> -			error = make_socks(nlmsvc_rqst->rq_server, proto);
+>> +	if (nlmsvc_rqst)
+>>  		goto out;
+>> -	}
+>>  
+>>  	/*
+>>  	* Sanity check: if there's no pid,
+>> @@ -281,7 +276,7 @@ int lockd_up(const unsigned short proto)
+>>  		goto out;
+>>  	}
+>>  
+>> -	if ((error = make_socks(serv, proto)) < 0)
+>> +	if ((error = make_socks(serv)) < 0)
+>>  		goto destroy_and_out;
+>>  
+>>  	/*
+>> 
+>-- 
+>Trond Myklebust
+>Linux NFS client maintainer
+>
+>NetApp
+>Trond.Myklebust@netapp.com
+>www.netapp.com
+>--
+>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>the body of a message to majordomo@vger.kernel.org
+>More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
