@@ -1,50 +1,50 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] nfsd: do_probe_callback should not clear rpc stats
-Date: Fri, 26 Sep 2008 15:14:13 +0300
-Message-ID: <48DCD215.8050508@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
+Subject: Re: [NFS] Is this group still active?
+Date: Fri, 26 Sep 2008 08:27:25 -0400
+Message-ID: <C64948E9-2355-4D89-8B2B-A94E5EF2EBF0@myri.com>
+References: <b66ddc900809260359s4bcd3af5he318549f75ccb689@mail.gmail.com>
+	<48DCC354.7060901@panasas.com>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:20925 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750969AbYIZMOX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 08:14:23 -0400
+Received: from neil.brown.name ([220.233.11.133]:38297 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754244AbYIZNEa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 09:04:30 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KjCzi-0005Yg-2e
+	for linux-nfs@vger.kernel.org; Fri, 26 Sep 2008 23:04:26 +1000
+In-Reply-To: <48DCC354.7060901@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that cb_stats are static (since commit
-ff7d9756b501744540be65e172d27ee321d86103)
-there's no need to clear them.
+On Sep 26, 2008, at 7:11 AM, Benny Halevy wrote:
 
-Initially I thought it might make sense to do
-that every callback probing but since the stats
-are per-program and they are shared between possibly
-several client callback instances, zeroing them out
-seems like the wrong thing to do.
+> linux-nfs@vger.kernel.org would be a better place.
+> This list is practically obsolete AFAIK.
+>
+> Benny
 
-Note that that commit also introduced a bug
-since stats.program is also being cleared in the process
-and it is not restored after the memset as it used to be.
+This list is like Hotel California. You can check in, but you can  
+never check out.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4callback.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+I have tried to unsubscribe a half dozen times. :-(
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 5e95909..7b94701 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -399,9 +399,6 @@ static int do_probe_callback(void *data)
- 		__func__, args.program->name, args.program->number,
- 		args.program->nrvers, args.version);
- 
--	/* Initialize rpc_stat */
--	memset(args.program->stats, 0, sizeof(struct rpc_stat));
--
- 	/* Create RPC client */
- 	client = rpc_create(&args);
- 	if (IS_ERR(client)) {
+Scott
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
