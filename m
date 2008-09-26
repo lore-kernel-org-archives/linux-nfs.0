@@ -1,67 +1,71 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 10/10] svcrdma: Documentation update for the
-  FastReg	memory model
-Date: Fri, 26 Sep 2008 12:01:01 -0400
-Message-ID: <RTPCLUEXC2-PRDGryWt0000003c@RTPMVEXC1-PRD.hq.netapp.com>
-References: <1221564879-85046-2-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-3-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-4-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-5-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-6-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-7-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-8-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-9-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-10-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-11-git-send-email-tom@opengridcomputing.com>
- <20080924212102.GD10841@fieldses.org>
- <48DB939E.4090503@opengridcomputing.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Permission denied when mounting NFS (was okay before)
+Date: Fri, 26 Sep 2008 12:06:01 -0400
+Message-ID: <1222445161.10150.4.camel@localhost>
+References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com>
+	 <RTPCLUEXC2-PRDM3SOl0000001f@RTPMVEXC1-PRD.hq.netapp.com>
+	 <b66ddc900809260805g71578cacr73a526e87a77e677@mail.gmail.com>
+	 <RTPCLUEXC2-PRDNXRPm0000003a@RTPMVEXC1-PRD.hq.netapp.com>
+	 <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: howard chen <howachen@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7189 "EHLO mx2.netapp.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:41345 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752557AbYIZQBn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 12:01:43 -0400
-In-Reply-To: <48DB939E.4090503@opengridcomputing.com>
-References: <1221564879-85046-2-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-3-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-4-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-5-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-6-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-7-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-8-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-9-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-10-git-send-email-tom@opengridcomputing.com>
- <1221564879-85046-11-git-send-email-tom@opengridcomputing.com>
- <20080924212102.GD10841@fieldses.org>
- <48DB939E.4090503@opengridcomputing.com>
+	id S1751878AbYIZQGG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 12:06:06 -0400
+In-Reply-To: <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 09:35 AM 9/25/2008, Tom Tucker wrote:
->> This explanation is helpful, thanks.  It would also be helpful if we
->> could boil down the advice to just a sentence or two for the busy admin.
->> Something like:  unless you have card XYZ and kernel 2.6.y, do *not* use
->> rdma on a network where you cannot trust every machine....
->
->
->Would it be better to say, "Do not use RDMA on a network where your 
->policy requires a security model stronger than tcp/auth_unix."
+On Fri, 2008-09-26 at 23:57 +0800, howard chen wrote:
+> Hi,
+> 
+> On Fri, Sep 26, 2008 at 11:25 PM, Talpey, Thomas
+> <Thomas.Talpey@netapp.com> wrote:
+> > At 11:05 AM 9/26/2008, howard chen wrote:
+> > You didn't indicate what the client and server were, btw.
+> 
+> client is 3, as I see when mount with verbose option: ... mount:
+> trying xxxx prog 100003 vers 3 prot udp port 2049
+> 
+> server should be also 3, default by CentOS 4.4, 64bit
 
-No! This would confuse integrity and privacy concerns (the root of the
-RDMA attack you describe) with authentication. While it's true there are
-different attacks with a different transport, they do not in any way
-contravene the protections in the RPC and NFS layers.
+What does
 
-In fact, I believe the text is unfairly protraying a vulnerability in iWARP
-as to be residing in NFS/RDMA, which is isn't.
+  'rpcinfo -p 10.10.10.1'
 
-While many of today's adapters allow so-called "type 2" RKEYs, the
-protocol does not encourage them, and their use introduces these
-risks. The risks are avoidable. The IETF RFCs describe these in detail,
-for both RDDP and NFS/RPC/RDMA.
+give you? Also,
 
-Tom.
+  'showmount -e 10.10.10.1'
+
+Finally, what kind of filesystem are you exporting on /data0/tmp?
+
+> >
+> > Do you have multiple interfaces on the client? If the client routing
+> > originates from a different address than 10.10.10.2, then the server
+> > will deny it because you have specified a numerical address.
+> 
+> Yes, both servers have interface for public IP, but as I can see the
+> 10.10.10.2 in /var/log/message of NFS server, so I think routing is
+> ok.
+> 
+> 
+> 
+> > This isn't the source of the permissions error, but why are you doing
+> > a UDP mount, and with only three retries? Generally, TCP will perform
+> > better, and more robustly. Also, the "noatime" option is a no-op for
+> > the NFS client (servers are in charge of maintaining atime).
+> 
+> I agree TCP is more robust, but isn't UDP will have a better performance?
+
+That depends. In my experience, the difference in performance on an
+unloaded network, then UDP will outperform TCP by ~10%. However, if you
+have a heavily loaded network with lots of dropped packets, then TCP
+will usually give much better performance than UDP.
+
+Trond
 
