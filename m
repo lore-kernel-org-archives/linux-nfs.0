@@ -1,109 +1,121 @@
-From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: Permission denied when mounting NFS (was okay before)
-Date: Fri, 26 Sep 2008 12:23:56 -0400
-Message-ID: <RTPCLUEXC2-PRDIIZS20000003d@RTPMVEXC1-PRD.hq.netapp.com>
-References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com>
- <RTPCLUEXC2-PRDM3SOl0000001f@RTPMVEXC1-PRD.hq.netapp.com>
- <b66ddc900809260805g71578cacr73a526e87a77e677@mail.gmail.com>
- <RTPCLUEXC2-PRDNXRPm0000003a@RTPMVEXC1-PRD.hq.netapp.com>
- <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc@mail.gmail.com>
- <1222445161.10150.4.camel@localhost>
- <b66ddc900809260913r6c009658p958d88aa2e1be99e@mail.gmail.com> <b66ddc900809260913r6c009658p958d88aa2e1be99e@mail.gmail.co
- m>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org
-To: "howard chen" <howachen@gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
+Date: Fri, 26 Sep 2008 13:53:58 -0400
+Message-ID: <AED0D581-07B0-4EC6-90AB-2F61B6F3C76B@oracle.com>
+References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net> <20080925213831.GF14349@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:44928 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752372AbYIZQYF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 12:24:05 -0400
-In-Reply-To: <b66ddc900809260913r6c009658p958d88aa2e1be99e-JsoAwUIsXouhRSP0FMvGiw@public.gmane.org
- m>
-References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
- <RTPCLUEXC2-PRDM3SOl0000001f-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
- <b66ddc900809260805g71578cacr73a526e87a77e677-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
- <RTPCLUEXC2-PRDNXRPm0000003a-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
- <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
- <1222445161.10150.4.camel@localhost>
- <b66ddc900809260913r6c009658p958d88aa2e1be99e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:46810 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752209AbYIZRyS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 13:54:18 -0400
+In-Reply-To: <20080925213831.GF14349@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have you tried my suggestion of replacing "10.10.10.2" with "*" in
-your server's exports, as a test? It will tell us whether you have
-an IP aliasing issue.
-
-As for TCP, no special mount parameters are required. The timers
-and algorithms are all adaptive and preconfiguring them is often
-counterproductive. You still haven't shown "uname -a" for your
-client, but if it's anything recent, you don't even need to specify
-tcp, it's the default.
-
-Tom.
-
-At 12:13 PM 9/26/2008, howard chen wrote:
->Hi,
->
->Thanks all for your input first.
->
->On Sat, Sep 27, 2008 at 12:06 AM, Trond Myklebust
-><trond.myklebust@fys.uio.no> wrote:
->
->> What does
+On Sep 25, 2008, at Sep 25, 2008, 5:38 PM, J. Bruce Fields wrote:
+> On Wed, Sep 24, 2008 at 02:50:36PM -0400, Chuck Lever wrote:
+>> statd and some servers always need lockd to listen on UDP, so always
+>> start both lockd listener sockets.
 >>
->>  'rpcinfo -p 10.10.10.1'
->
-> program vers proto   port
->    100000    2   tcp    111  portmapper
->    100000    2   udp    111  portmapper
->    100021    1   udp  32773  nlockmgr
->    100021    3   udp  32773  nlockmgr
->    100021    4   udp  32773  nlockmgr
->    100021    1   tcp  32779  nlockmgr
->    100021    3   tcp  32779  nlockmgr
->    100021    4   tcp  32779  nlockmgr
->    100024    1   udp    883  status
->    100024    1   tcp    886  status
->    100011    1   udp    821  rquotad
->    100011    2   udp    821  rquotad
->    100011    1   tcp    824  rquotad
->    100011    2   tcp    824  rquotad
->    100003    2   udp   2049  nfs
->    100003    3   udp   2049  nfs
->    100003    4   udp   2049  nfs
->    100003    2   tcp   2049  nfs
->    100003    3   tcp   2049  nfs
->    100003    4   tcp   2049  nfs
->    100005    1   udp    891  mountd
->    100005    1   tcp    894  mountd
->    100005    2   udp    891  mountd
->    100005    2   tcp    894  mountd
->    100005    3   udp    891  mountd
->    100005    3   tcp    894  mountd
->
->
->> give you? Also,
+>> This probably leaks an svc_serv if the TCP listener can't be created,
+>> but it will do for now.
 >>
->>  'showmount -e 10.10.10.1'
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
 >>
+>> I currently have this workaround lurking in my git repo.  Is there  
+>> some kind
+>> of fix for this issue planned for 2.6.28?
 >
+> Not that I know of.
 >
->Export list for 10.10.10.1
->/data0/tmp     10.10.10.2
+>> This is only a reminder, not a suggested patch.
 >
->
->
->
->> That depends. In my experience, the difference in performance on an
->> unloaded network, then UDP will outperform TCP by ~10%. However, if you
->> have a heavily loaded network with lots of dropped packets, then TCP
->> will usually give much better performance than UDP.
->
->Good to know! I will definitely have a test, any parameters are also
->recommend together with TCP so I can do a fair benchmark?
->
->
->Thank you again.
+> Any chance you could generate a patch?
+
+I can, but no guarantee it will be in time for the 2.6.28 merge window.
+
+Would we consider this a regression fix?  If so, we could post it  
+after the merge window closes.  It would give a little more time to do  
+some testing.
+
+>> fs/lockd/svc.c |   31 +++++++++++++------------------
+>> 1 files changed, 13 insertions(+), 18 deletions(-)
+>>
+>> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+>> index a7b604c..36b6d03 100644
+>> --- a/fs/lockd/svc.c
+>> +++ b/fs/lockd/svc.c
+>> @@ -213,25 +213,23 @@ lockd(void *vrqstp)
+>> }
+>>
+>> /*
+>> - * Make any sockets that are needed but not present.
+>> - * If nlm_udpport or nlm_tcpport were set as module
+>> - * options, make those sockets unconditionally
+>> + * Create UDP and TCP listeners for lockd.  Even if we only
+>> + * have TCP NFS mounts and TCP NFSDs, some services (such
+>> + * as rpc.statd) still require UDP.
+>>  */
+>> -static int make_socks(struct svc_serv *serv, const unsigned short  
+>> proto)
+>> +static int make_socks(struct svc_serv *serv)
+>> {
+>> 	static int warned;
+>> 	struct svc_xprt *xprt;
+>> 	int err = 0;
+>>
+>> -	if (proto == IPPROTO_UDP || nlm_udpport) {
+>> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
+>> -		if (!xprt)
+>> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
+>> -					      SVC_SOCK_DEFAULTS);
+>> -		else
+>> -			svc_xprt_put(xprt);
+>> -	}
+>> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
+>> +	xprt = svc_find_xprt(serv, "udp", 0, 0);
+>> +	if (!xprt)
+>> +		err = svc_create_xprt(serv, "udp", nlm_udpport,
+>> +				      SVC_SOCK_DEFAULTS);
+>> +	else
+>> +		svc_xprt_put(xprt);
+>> +	if (err >= 0) {
+>> 		xprt = svc_find_xprt(serv, "tcp", 0, 0);
+>> 		if (!xprt)
+>> 			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
+>> @@ -260,11 +258,8 @@ int lockd_up(const unsigned short proto)
+>> 	/*
+>> 	 * Check whether we're already up and running.
+>> 	 */
+>> -	if (nlmsvc_rqst) {
+>> -		if (proto)
+>> -			error = make_socks(nlmsvc_rqst->rq_server, proto);
+>> +	if (nlmsvc_rqst)
+>> 		goto out;
+>> -	}
+>>
+>> 	/*
+>> 	 * Sanity check: if there's no pid,
+>> @@ -281,7 +276,7 @@ int lockd_up(const unsigned short proto)
+>> 		goto out;
+>> 	}
+>>
+>> -	if ((error = make_socks(serv, proto)) < 0)
+>> +	if ((error = make_socks(serv)) < 0)
+>> 		goto destroy_and_out;
+>>
+>> 	/*
+>>
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
