@@ -1,209 +1,70 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 08/10] lockd: struct nlm_reboot should contain a full
-	socket address
-Date: Fri, 26 Sep 2008 19:09:38 -0400
-Message-ID: <20080926230938.GK7138@fieldses.org>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161811.4963.60224.stgit@ellison.1015granger.net>
+Subject: Re: [PATCH 00/10] Next series of IPv6 patches for lockd
+Date: Fri, 26 Sep 2008 19:21:23 -0400
+Message-ID: <20080926232123.GL7138@fieldses.org>
+References: <20080917161337.4963.74674.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:60601 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:33098 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752179AbYIZXJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 19:09:39 -0400
-In-Reply-To: <20080917161811.4963.60224.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752651AbYIZXVY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 19:21:24 -0400
+In-Reply-To: <20080917161337.4963.74674.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 17, 2008 at 11:18:11AM -0500, Chuck Lever wrote:
-> The XDR decoders for the NSM NOTIFY procedure should construct a full
-> socket address and store it in the nlm_reboot structure.  In addition
-> to being able to store larger addresses, this means upper layer
-> routines get an address family tag so they can distinguish between
-> AF_INET and AF_INET6 addresses.
+On Wed, Sep 17, 2008 at 11:17:13AM -0500, Chuck Lever wrote:
+> Hi Bruce-
 > 
-> This also keeps potentially large socket addresses off the stack and
-> instead in dynamically allocated storage.
+> Here are ten more IPv6 patches for lockd, as requested.  There are just
+> a handful of remaining minor IPv6 patches to finish enabling IPv6 in
+> lockd.  These can likely wait until we have a complete IPv6 user space
+> implementation.
 
-So one way to think of this would be that you're extending the
-kernel<->statd interface by using the address family of statd's notify
-call to communicate the address family of the host that rebooted.
+Thanks, I've read through them all.
 
-Do I have that right?
+Could you just split up those one or two initial patches?
+
+My remaining point of confusion is over just exactly how the interface
+to statd is going to work.  I don't think about statd enough and may
+just be terribly confused....
 
 --b.
 
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Please consider these for 2.6.28.
+> 
 > ---
 > 
->  fs/lockd/svc4proc.c       |   10 +---------
->  fs/lockd/svcproc.c        |   10 +---------
->  fs/lockd/xdr.c            |   28 ++++++++++++++++++++++++++--
->  fs/lockd/xdr4.c           |   27 +++++++++++++++++++++++++--
->  include/linux/lockd/xdr.h |    3 ++-
->  5 files changed, 55 insertions(+), 23 deletions(-)
+> Chuck Lever (10):
+>       lockd: Use "unsigned short" for lockd_up() "proto" argument
+>       lockd: IPv6 support for SM_MON / SM_UNMON
+>       lockd: struct nlm_reboot should contain a full socket address
+>       lockd: Remove unused fields in the nlm_reboot structure
+>       lockd: Add helper to sanity check incoming NOTIFY requests
+>       lockd: Adjust signature of nlm_host_rebooted to handle non-AF_INET
+>       lockd: change nlmclnt_grant() to take a "struct sockaddr *"
+>       lockd: Adjust nlmsvc_lookup_host() to accomodate AF_INET6 addresses
+>       lockd: Adjust nlmclnt_lookup_host() signature to accomodate non-AF_INET
+>       lockd: Support non-AF_INET addresses in nlm_lookup_host()
 > 
-> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-> index 6a5ef9f..e61c05f 100644
-> --- a/fs/lockd/svc4proc.c
-> +++ b/fs/lockd/svc4proc.c
-> @@ -430,8 +430,6 @@ static __be32
->  nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
->  					      void	        *resp)
->  {
-> -	struct sockaddr_in	saddr;
-> -
->  	dprintk("lockd: SM_NOTIFY     called\n");
->  
->  	if (!nlm_privileged_requester(rqstp)) {
-> @@ -441,13 +439,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
->  		return rpc_system_err;
->  	}
->  
-> -	/* Obtain the host pointer for this NFS server and try to
-> -	 * reclaim all locks we hold on this server.
-> -	 */
-> -	memset(&saddr, 0, sizeof(saddr));
-> -	saddr.sin_family = AF_INET;
-> -	saddr.sin_addr.s_addr = argp->addr;
-> -	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
-> +	nlm_host_rebooted((struct sockaddr *)&argp->addr, argp->addrlen,
->  			  argp->mon, argp->len, argp->state);
->  
->  	return rpc_success;
-> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-> index 62fcfdb..86a487a 100644
-> --- a/fs/lockd/svcproc.c
-> +++ b/fs/lockd/svcproc.c
-> @@ -462,8 +462,6 @@ static __be32
->  nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
->  					      void	        *resp)
->  {
-> -	struct sockaddr_in	saddr;
-> -
->  	dprintk("lockd: SM_NOTIFY     called\n");
->  
->  	if (!nlm_privileged_requester(rqstp)) {
-> @@ -473,13 +471,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
->  		return rpc_system_err;
->  	}
->  
-> -	/* Obtain the host pointer for this NFS server and try to
-> -	 * reclaim all locks we hold on this server.
-> -	 */
-> -	memset(&saddr, 0, sizeof(saddr));
-> -	saddr.sin_family = AF_INET;
-> -	saddr.sin_addr.s_addr = argp->addr;
-> -	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
-> +	nlm_host_rebooted((struct sockaddr *)&argp->addr, argp->addrlen,
->  			  argp->mon, argp->len, argp->state);
->  
->  	return rpc_success;
-> diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-> index 1f22629..92c5695 100644
-> --- a/fs/lockd/xdr.c
-> +++ b/fs/lockd/xdr.c
-> @@ -9,6 +9,7 @@
->  #include <linux/types.h>
->  #include <linux/sched.h>
->  #include <linux/utsname.h>
-> +#include <linux/in.h>
->  #include <linux/nfs.h>
->  
->  #include <linux/sunrpc/xdr.h>
-> @@ -346,11 +347,34 @@ nlmsvc_decode_notify(struct svc_rqst *rqstp, __be32 *p, struct nlm_args *argp)
->  int
->  nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp)
->  {
-> +	struct sockaddr_in *sin = (struct sockaddr_in *)&argp->addr;
-> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&argp->addr;
-> +
->  	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
->  		return 0;
->  	argp->state = ntohl(*p++);
-> -	/* Preserve the address in network byte order */
-> -	argp->addr = *p++;
-> +
-> +	/* Decode the 16-byte private field */
-> +	memset(&argp->addr, 0, sizeof(argp->addr));
-> +	switch (svc_addr(rqstp)->sa_family) {
-> +	case AF_INET:
-> +		/* data in recv buffer is already in network byte order */
-> +		sin->sin_family = AF_INET;
-> +		sin->sin_addr.s_addr = *p++;
-> +		argp->addrlen = sizeof(*sin);
-> +		break;
-> +	case AF_INET6:
-> +		sin6->sin6_family = AF_INET6;
-> +		sin6->sin6_addr.s6_addr32[0] = *p++;
-> +		sin6->sin6_addr.s6_addr32[1] = *p++;
-> +		sin6->sin6_addr.s6_addr32[2] = *p++;
-> +		sin6->sin6_addr.s6_addr32[3] = *p++;
-> +		argp->addrlen = sizeof(*sin6);
-> +		break;
-> +	default:
-> +		return -EIO;
-> +	}
-> +
->  	return xdr_argsize_check(rqstp, p);
->  }
->  
-> diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-> index 50c493a..2009020 100644
-> --- a/fs/lockd/xdr4.c
-> +++ b/fs/lockd/xdr4.c
-> @@ -353,11 +353,34 @@ nlm4svc_decode_notify(struct svc_rqst *rqstp, __be32 *p, struct nlm_args *argp)
->  int
->  nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp)
->  {
-> +	struct sockaddr_in *sin = (struct sockaddr_in *)&argp->addr;
-> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&argp->addr;
-> +
->  	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
->  		return 0;
->  	argp->state = ntohl(*p++);
-> -	/* Preserve the address in network byte order */
-> -	argp->addr  = *p++;
-> +
-> +	/* Decode the 16-byte private field */
-> +	memset(&argp->addr, 0, sizeof(argp->addr));
-> +	switch (svc_addr(rqstp)->sa_family) {
-> +	case AF_INET:
-> +		/* address in recv buffer is already in network byte order */
-> +		sin->sin_family = AF_INET;
-> +		sin->sin_addr.s_addr = *p++;
-> +		argp->addrlen = sizeof(*sin);
-> +		break;
-> +	case AF_INET6:
-> +		sin6->sin6_family = AF_INET6;
-> +		sin6->sin6_addr.s6_addr32[0] = *p++;
-> +		sin6->sin6_addr.s6_addr32[1] = *p++;
-> +		sin6->sin6_addr.s6_addr32[2] = *p++;
-> +		sin6->sin6_addr.s6_addr32[3] = *p++;
-> +		argp->addrlen = sizeof(*sin6);
-> +		break;
-> +	default:
-> +		return -EIO;
-> +	}
-> +
->  	return xdr_argsize_check(rqstp, p);
->  }
->  
-> diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
-> index d6b3a80..6057b7e 100644
-> --- a/include/linux/lockd/xdr.h
-> +++ b/include/linux/lockd/xdr.h
-> @@ -80,7 +80,8 @@ struct nlm_reboot {
->  	char *		mon;
->  	unsigned int	len;
->  	u32		state;
-> -	__be32		addr;
-> +	struct sockaddr_storage	addr;
-> +	size_t		addrlen;
->  };
->  
->  /*
 > 
+>  fs/lockd/clntlock.c            |   10 +-
+>  fs/lockd/host.c                |  189 ++++++++++++++++++++++++++++------------
+>  fs/lockd/mon.c                 |   76 ++++++++++++----
+>  fs/lockd/svc.c                 |    5 -
+>  fs/lockd/svc4proc.c            |   18 +---
+>  fs/lockd/svcproc.c             |   18 +---
+>  fs/lockd/xdr.c                 |   30 ++++++
+>  fs/lockd/xdr4.c                |   29 +++++-
+>  include/linux/lockd/bind.h     |    2 
+>  include/linux/lockd/lockd.h    |   63 ++++++++++++-
+>  include/linux/lockd/sm_inter.h |    2 
+>  include/linux/lockd/xdr.h      |    5 -
+>  12 files changed, 315 insertions(+), 132 deletions(-)
+> 
+> -- 
+> Chuck Lever
