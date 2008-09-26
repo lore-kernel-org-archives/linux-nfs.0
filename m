@@ -1,147 +1,89 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 4/7] nfs: break up nfs_follow_referral
-Date: Fri, 26 Sep 2008 19:35:14 -0400
-Message-ID: <1222472117-9773-5-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 6/7] nfs: prepare to share nfs_set_port
+Date: Fri, 26 Sep 2008 19:35:16 -0400
+Message-ID: <1222472117-9773-7-git-send-email-bfields@citi.umich.edu>
 References: <1222472117-9773-1-git-send-email-bfields@citi.umich.edu>
  <1222472117-9773-2-git-send-email-bfields@citi.umich.edu>
  <1222472117-9773-3-git-send-email-bfields@citi.umich.edu>
  <1222472117-9773-4-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-5-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-6-git-send-email-bfields@citi.umich.edu>
 Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58544 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:58546 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752624AbYIZXfU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 19:35:20 -0400
-In-Reply-To: <1222472117-9773-4-git-send-email-bfields@citi.umich.edu>
+	id S1752777AbYIZXfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 19:35:21 -0400
+In-Reply-To: <1222472117-9773-6-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is a little longer and more deeply nested than necessary.
+We plan to use this function elsewhere.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfs/nfs4namespace.c |   84 ++++++++++++++++++++++++++---------------------
- 1 files changed, 46 insertions(+), 38 deletions(-)
+ fs/nfs/internal.h |   18 ++++++++++++++++++
+ fs/nfs/super.c    |   19 -------------------
+ 2 files changed, 18 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index b112857..956cbbc 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -110,6 +110,48 @@ static inline int valid_ipaddr4(const char *buf)
- 	return 0;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 24241fc..926d8db 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -276,3 +276,21 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ 		PAGE_SIZE - 1) >> PAGE_SHIFT;
  }
  
-+static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
-+				     char *page, char *page2,
-+				     const struct nfs4_fs_location *location)
++/*
++ * Set the port number in an address.  Be agnostic about the address
++ * family.
++ */
++static inline void nfs_set_port(struct sockaddr *sap, unsigned short port)
 +{
-+	struct vfsmount *mnt = ERR_PTR(-ENOENT);
-+	char *mnt_path;
-+	unsigned int s = 0;
++	struct sockaddr_in *ap = (struct sockaddr_in *)sap;
++	struct sockaddr_in6 *ap6 = (struct sockaddr_in6 *)sap;
 +
-+	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
-+	if (IS_ERR(mnt_path))
-+		return mnt;
-+	mountdata->mnt_path = mnt_path;
-+
-+	while (s < location->nservers) {
-+		struct sockaddr_in addr = {
-+			.sin_family	= AF_INET,
-+			.sin_port	= htons(NFS_PORT),
-+		};
-+
-+		if (location->servers[s].len <= 0 ||
-+		    valid_ipaddr4(location->servers[s].data) < 0) {
-+			s++;
-+			continue;
-+		}
-+
-+		mountdata->hostname = location->servers[s].data;
-+		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
-+		mountdata->addr = (struct sockaddr *)&addr;
-+		mountdata->addrlen = sizeof(addr);
-+
-+		snprintf(page, PAGE_SIZE, "%s:%s",
-+				mountdata->hostname,
-+				mountdata->mnt_path);
-+
-+		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
-+		if (!IS_ERR(mnt))
-+			break;
-+		s++;
++	switch (sap->sa_family) {
++	case AF_INET:
++		ap->sin_port = htons(port);
++		break;
++	case AF_INET6:
++		ap6->sin6_port = htons(port);
++		break;
 +	}
-+	return mnt;
 +}
-+
- /**
-  * nfs_follow_referral - set up mountpoint when hitting a referral on moved error
-  * @mnt_parent - mountpoint of parent directory
-@@ -128,7 +170,6 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 		.authflavor = NFS_SB(mnt_parent->mnt_sb)->client->cl_auth->au_flavor,
- 	};
- 	char *page = NULL, *page2 = NULL;
--	unsigned int s;
- 	int loc, error;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index c989e71..9608797 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -664,25 +664,6 @@ static void nfs_umount_begin(struct super_block *sb)
+ }
  
- 	if (locations == NULL || locations->nlocations <= 0)
-@@ -153,9 +194,8 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 	}
- 
- 	loc = 0;
--	while (loc < locations->nlocations && IS_ERR(mnt)) {
-+	while (loc < locations->nlocations) {
- 		const struct nfs4_fs_location *location = &locations->locations[loc];
--		char *mnt_path;
- 
- 		if (location == NULL || location->nservers <= 0 ||
- 		    location->rootpath.ncomponents == 0) {
-@@ -163,41 +203,9 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 			continue;
- 		}
- 
--		mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
--		if (IS_ERR(mnt_path)) {
--			loc++;
--			continue;
--		}
--		mountdata.mnt_path = mnt_path;
+ /*
+- * Set the port number in an address.  Be agnostic about the address family.
+- */
+-static void nfs_set_port(struct sockaddr *sap, unsigned short port)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET: {
+-		struct sockaddr_in *ap = (struct sockaddr_in *)sap;
+-		ap->sin_port = htons(port);
+-		break;
+-	}
+-	case AF_INET6: {
+-		struct sockaddr_in6 *ap = (struct sockaddr_in6 *)sap;
+-		ap->sin6_port = htons(port);
+-		break;
+-	}
+-	}
+-}
 -
--		s = 0;
--		while (s < location->nservers) {
--			struct sockaddr_in addr = {
--				.sin_family	= AF_INET,
--				.sin_port	= htons(NFS_PORT),
--			};
--
--			if (location->servers[s].len <= 0 ||
--			    valid_ipaddr4(location->servers[s].data) < 0) {
--				s++;
--				continue;
--			}
--
--			mountdata.hostname = location->servers[s].data;
--			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
--			mountdata.addr = (struct sockaddr *)&addr;
--			mountdata.addrlen = sizeof(addr);
--
--			snprintf(page, PAGE_SIZE, "%s:%s",
--					mountdata.hostname,
--					mountdata.mnt_path);
--
--			mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, &mountdata);
--			if (!IS_ERR(mnt)) {
--				break;
--			}
--			s++;
--		}
-+		mnt = try_location(&mountdata, page, page2, location);
-+		if (!IS_ERR(mnt))
-+			break;
- 		loc++;
- 	}
- 
+-/*
+  * Sanity-check a server address provided by the mount command.
+  *
+  * Address family must be initialized, and address must not be
 -- 
 1.5.5.rc1
 
