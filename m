@@ -1,45 +1,48 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
-Date: Fri, 26 Sep 2008 17:11:25 -0400
-Message-ID: <215DBAD9-1E4B-4E23-9F54-AAF6518D24DA@oracle.com>
-References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net> <20080925213831.GF14349@fieldses.org> <AED0D581-07B0-4EC6-90AB-2F61B6F3C76B@oracle.com> <20080926184554.GA1492@fieldses.org> <1222454975.10150.8.camel@localhost> <EF58CFE4-3F4B-4985-9DEA-E61CC0DFC8EA@oracle.com> <1222456290.10150.10.camel@localhost> <20080926194421.GD1492@fieldses.org> <87089E47-10AE-4D41-B5BE-CCEE034C526B@oracle.com> <1222459067.10150.16.camel@localhost>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/2] SUNRPC: Register both netids for AF_INET6 servers
+Date: Fri, 26 Sep 2008 17:17:36 -0400
+Message-ID: <20080926211736.GA7138@fieldses.org>
+References: <20080915212437.3939.82594.stgit@ellison.1015granger.net> <20080915212723.3939.23359.stgit@ellison.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: okir@suse.de, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:10954 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751762AbYIZVLo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2008 17:11:44 -0400
-In-Reply-To: <1222459067.10150.16.camel@localhost>
+Received: from mail.fieldses.org ([66.93.2.214]:50040 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751983AbYIZVRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 17:17:43 -0400
+In-Reply-To: <20080915212723.3939.23359.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 26, 2008, at Sep 26, 2008, 3:57 PM, Trond Myklebust wrote:
-> On Fri, 2008-09-26 at 15:54 -0400, Chuck Lever wrote:
->> The whole system makes it absolutely impossible to plan features and
->> bug fixes.
->
-> The only thing it makes impossible is planning features for a
-> _particular_ kernel revision.
+On Mon, Sep 15, 2008 at 04:27:23PM -0500, Chuck Lever wrote:
+...
+> We've recently determined that this is incorrect behavior.  In the
+> TI-RPC world, "udp6" is not meant to imply that the registered RPC
+> service handles requests from AF_INET as well, even if the listener
+> socket does address mapping.  "udp" and "udp6" are entirely separate
+> capabilities, and must be registered separately.
+> 
+> The Linux kernel, unlike TI-RPC, leverages address mapping to allow a
+> single listener socket to handle requests for both AF_INET and AF_INET6.
+> This is still OK, but the kernel currently assumes registering "udp6"
+> will cover "udp" as well.  It registers only "udp6" for it's AF_INET6
+> services, even though they handle both AF_INET and AF_INET6 on the same
+> port.
+> 
+> So svc_register() actually needs to register both "udp" and "udp6"
+> explicitly (and likewise for TCP).  Until rpcbind is fixed, the
+> kernel can ignore the return code for the second RPCB_SET call.
 
-I find it impossible to plan for a particular _year_ (or even two).
+Looks fine, thanks, applied.
 
-The problem is _you_, the subsystem maintainer, have a merge window  
-too.  I find it challenging to align my patch submissions with two  
-sliding merge windows that open and close at arbitrary times without  
-any warning whatever.  And now I have to worry about Bruce's merge  
-window as well....
+> Please merge this with commit 15231312:
+> 
+>     SUNRPC: Support IPv6 when registering kernel RPC services
 
-Plus, the submission guidelines keep changing.  FreeBSD has an amazing  
-guide to kernel development rules and conventions posted on the web.   
-I wish Linux had the same.
+That was actually a pretty helpful commit message; I'm tempted just to
+leave this unmerged and not worry too much about the briefly-existing
+bug in this case.
 
-If I know in advance when you (and Bruce) are taking new features or  
-bug fixes for each kernel release, that would be helpful.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
