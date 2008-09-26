@@ -1,107 +1,40 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
-Date: Thu, 25 Sep 2008 17:38:31 -0400
-Message-ID: <20080925213831.GF14349@fieldses.org>
-References: <20080924184732.4078.83334.stgit@tarkus.1015granger.net>
+From: "howard chen" <howachen@gmail.com>
+Subject: [NFS] Is this group still active?
+Date: Fri, 26 Sep 2008 18:59:27 +0800
+Message-ID: <b66ddc900809260359s4bcd3af5he318549f75ccb689@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58288 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:42334 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753664AbYIYVie (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Sep 2008 17:38:34 -0400
-In-Reply-To: <20080924184732.4078.83334.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1755175AbYIZLAa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 07:00:30 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KjB3i-0003lj-0K
+	for linux-nfs@vger.kernel.org; Fri, 26 Sep 2008 21:00:26 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 24, 2008 at 02:50:36PM -0400, Chuck Lever wrote:
-> statd and some servers always need lockd to listen on UDP, so always
-> start both lockd listener sockets.
-> 
-> This probably leaks an svc_serv if the TCP listener can't be created,
-> but it will do for now.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> I currently have this workaround lurking in my git repo.  Is there some kind
-> of fix for this issue planned for 2.6.28?
+Hello,
 
-Not that I know of.
+Is this group still active?
 
-> This is only a reminder, not a suggested patch.
+Any other place I can ask about NFS questions?
 
-Any chance you could generate a patch?
+Thanks.
 
---b.
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-> 
->  fs/lockd/svc.c |   31 +++++++++++++------------------
->  1 files changed, 13 insertions(+), 18 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index a7b604c..36b6d03 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -213,25 +213,23 @@ lockd(void *vrqstp)
->  }
->  
->  /*
-> - * Make any sockets that are needed but not present.
-> - * If nlm_udpport or nlm_tcpport were set as module
-> - * options, make those sockets unconditionally
-> + * Create UDP and TCP listeners for lockd.  Even if we only
-> + * have TCP NFS mounts and TCP NFSDs, some services (such
-> + * as rpc.statd) still require UDP.
->   */
-> -static int make_socks(struct svc_serv *serv, const unsigned short proto)
-> +static int make_socks(struct svc_serv *serv)
->  {
->  	static int warned;
->  	struct svc_xprt *xprt;
->  	int err = 0;
->  
-> -	if (proto == IPPROTO_UDP || nlm_udpport) {
-> -		xprt = svc_find_xprt(serv, "udp", 0, 0);
-> -		if (!xprt)
-> -			err = svc_create_xprt(serv, "udp", nlm_udpport,
-> -					      SVC_SOCK_DEFAULTS);
-> -		else
-> -			svc_xprt_put(xprt);
-> -	}
-> -	if (err >= 0 && (proto == IPPROTO_TCP || nlm_tcpport)) {
-> +	xprt = svc_find_xprt(serv, "udp", 0, 0);
-> +	if (!xprt)
-> +		err = svc_create_xprt(serv, "udp", nlm_udpport,
-> +				      SVC_SOCK_DEFAULTS);
-> +	else
-> +		svc_xprt_put(xprt);
-> +	if (err >= 0) {
->  		xprt = svc_find_xprt(serv, "tcp", 0, 0);
->  		if (!xprt)
->  			err = svc_create_xprt(serv, "tcp", nlm_tcpport,
-> @@ -260,11 +258,8 @@ int lockd_up(const unsigned short proto)
->  	/*
->  	 * Check whether we're already up and running.
->  	 */
-> -	if (nlmsvc_rqst) {
-> -		if (proto)
-> -			error = make_socks(nlmsvc_rqst->rq_server, proto);
-> +	if (nlmsvc_rqst)
->  		goto out;
-> -	}
->  
->  	/*
->  	 * Sanity check: if there's no pid,
-> @@ -281,7 +276,7 @@ int lockd_up(const unsigned short proto)
->  		goto out;
->  	}
->  
-> -	if ((error = make_socks(serv, proto)) < 0)
-> +	if ((error = make_socks(serv)) < 0)
->  		goto destroy_and_out;
->  
->  	/*
-> 
