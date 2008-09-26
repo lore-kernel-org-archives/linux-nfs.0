@@ -1,28 +1,29 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/10] lockd: Support non-AF_INET addresses in
-	nlm_lookup_host()
-Date: Fri, 26 Sep 2008 17:53:24 -0400
-Message-ID: <20080926215324.GC7138@fieldses.org>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161720.4963.42788.stgit@ellison.1015granger.net>
+Subject: Re: [PATCH 02/10] lockd: Adjust nlmclnt_lookup_host() signature to
+	accomodate non-AF_INET
+Date: Fri, 26 Sep 2008 18:02:21 -0400
+Message-ID: <20080926220221.GD7138@fieldses.org>
+References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161728.4963.48337.stgit@ellison.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59600 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:36651 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751966AbYIZVxZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 17:53:25 -0400
-In-Reply-To: <20080917161720.4963.42788.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1752069AbYIZWC3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 18:02:29 -0400
+In-Reply-To: <20080917161728.4963.48337.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 17, 2008 at 11:17:21AM -0500, Chuck Lever wrote:
-> Make nlm_lookup_host() agnostic to address families.  As a clean up, convert
-> nlm_lookup_host() to use a single structure instead of nearly a dozen separate
-> arguments.
+On Wed, Sep 17, 2008 at 11:17:28AM -0500, Chuck Lever wrote:
+> Pass a struct sockaddr * and a length to nlmclnt_lookup_host() to
+> accomodate non-AF_INET family addresses.
 
-Could you do those two steps as two separate patches, and resend?
+I'd prefer separate patches here too, though since the two changes
+(null-terminated hostname and sockaddr) are a bit easier to separate
+visually, it doesn't bother me as much here....
 
 --b.
 
@@ -30,175 +31,104 @@ Could you do those two steps as two separate patches, and resend?
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/lockd/host.c |   88 +++++++++++++++++++++++++++++++++++--------------------
->  1 files changed, 56 insertions(+), 32 deletions(-)
+>  fs/lockd/clntlock.c         |    5 ++---
+>  fs/lockd/host.c             |   34 ++++++++++++++++++++++++----------
+>  include/linux/lockd/lockd.h |    9 +++++----
+>  3 files changed, 31 insertions(+), 17 deletions(-)
 > 
+> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> index 237224a..9eaf306 100644
+> --- a/fs/lockd/clntlock.c
+> +++ b/fs/lockd/clntlock.c
+> @@ -58,10 +58,9 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+>  	if (status < 0)
+>  		return ERR_PTR(status);
+>  
+> -	host = nlmclnt_lookup_host((struct sockaddr_in *)nlm_init->address,
+> +	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
+>  				   nlm_init->protocol, nlm_version,
+> -				   nlm_init->hostname,
+> -				   strlen(nlm_init->hostname));
+> +				   nlm_init->hostname);
+>  	if (host == NULL) {
+>  		lockd_down();
+>  		return ERR_PTR(-ENOLCK);
 > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index be8f19d..c9d25d1 100644
+> index c9d25d1..b9c87e1 100644
 > --- a/fs/lockd/host.c
 > +++ b/fs/lockd/host.c
-> @@ -38,6 +38,21 @@ static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
->  						const size_t hostname_len,
->  						const int create);
+> @@ -267,29 +267,43 @@ nlm_destroy_host(struct nlm_host *host)
+>  	kfree(host);
+>  }
 >  
-> +#define NLM_SERVER	(0)
-> +#define NLM_CLIENT	(1)
-> +
-> +struct nlm_lookup_host_info {
-> +	const int		peer;		/* search for server|client */
-> +	const struct sockaddr	*sap;		/* address to search for */
-> +	const size_t		salen;		/* it's length */
-> +	const unsigned short	protocol;	/* transport to search for*/
-> +	const u32		version;	/* NLM version to search for */
-> +	const char		*hostname;	/* remote's hostname */
-> +	const size_t		hostname_len;	/* it's length */
-> +	const struct sockaddr	*src_sap;	/* our address (optional) */
-> +	const size_t		src_len;	/* it's length */
-> +};
-> +
->  /*
->   * Hash function must work well on big- and little-endian platforms
+> -/*
+> - * Find an NLM server handle in the cache. If there is none, create it.
+> +/**
+> + * nlmclnt_lookup_host - Find an NLM host handle matching a remote server
+> + * @sap: network address of server
+> + * @salen: length of server address
+> + * @protocol: transport protocol to use
+> + * @version: NLM protocol version
+> + * @hostname: '\0'-terminated hostname of server
+> + *
+> + * Returns an nlm_host structure that matches the passed-in
+> + * [server address, transport protocol, NLM version, server hostname].
+> + * If one doesn't already exist in the host cache, a new handle is
+> + * created and returned.
 >   */
-> @@ -121,23 +136,13 @@ static void nlm_display_address(const struct sockaddr *sap,
+> -struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
+> -				     int proto, u32 version,
+> -				     const char *hostname,
+> -				     unsigned int hostname_len)
+> +struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+> +				     const size_t salen,
+> +				     const unsigned short protocol,
+> +				     const u32 version, const char *hostname)
+>  {
+>  	const struct sockaddr source = {
+>  		.sa_family	= AF_UNSPEC,
+>  	};
+>  	struct nlm_lookup_host_info ni = {
+>  		.peer		= NLM_SERVER,
+> -		.sap		= (struct sockaddr *)sin,
+> -		.salen		= sizeof(*sin),
+> -		.protocol	= proto,
+> +		.sap		= sap,
+> +		.salen		= salen,
+> +		.protocol	= protocol,
+>  		.version	= version,
+>  		.hostname	= hostname,
+> -		.hostname_len	= hostname_len,
+> +		.hostname_len	= strlen(hostname),
+>  		.src_sap	= &source,
+>  		.src_len	= sizeof(source),
+>  	};
+>  
+> +	dprintk("lockd: nlmclnt_lookup_host(host='%s', vers=%u, proto=%s)\n",
+> +			(hostname ? hostname : "<none>"), version,
+> +			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
+> +
+>  	return nlm_lookup_host(&ni);
+>  }
+>  
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index ec8af11..693d57b 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -215,10 +215,11 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
 >  /*
->   * Common host lookup routine for server & client
+>   * Host cache
 >   */
-> -static struct nlm_host *nlm_lookup_host(int server,
-> -					const struct sockaddr_in *sin,
+> -struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr_in *sin,
 > -					int proto, u32 version,
 > -					const char *hostname,
-> -					unsigned int hostname_len,
-> -					const struct sockaddr_in *ssin)
-> +static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
->  {
->  	struct hlist_head *chain;
->  	struct hlist_node *pos;
->  	struct nlm_host	*host;
->  	struct nsm_handle *nsm = NULL;
->  
-> -	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
-> -			" my role is %s, hostname=%.*s)\n",
-> -			proto, version, server ? "server" : "client",
-> -			hostname_len, hostname ? hostname : "<none>");
-> -
->  	mutex_lock(&nlm_host_mutex);
->  
->  	if (time_after_eq(jiffies, next_gc))
-> @@ -150,22 +155,22 @@ static struct nlm_host *nlm_lookup_host(int server,
->  	 * different NLM rpc_clients into one single nlm_host object.
->  	 * This would allow us to have one nlm_host per address.
->  	 */
-> -	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
-> +	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
->  	hlist_for_each_entry(host, pos, chain, h_hash) {
-> -		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
-> +		if (!nlm_cmp_addr(nlm_addr(host), ni->sap))
->  			continue;
->  
->  		/* See if we have an NSM handle for this client */
->  		if (!nsm)
->  			nsm = host->h_nsmhandle;
->  
-> -		if (host->h_proto != proto)
-> +		if (host->h_proto != ni->protocol)
->  			continue;
-> -		if (host->h_version != version)
-> +		if (host->h_version != ni->version)
->  			continue;
-> -		if (host->h_server != server)
-> +		if (host->h_server != ni->peer)
->  			continue;
-> -		if (!nlm_cmp_addr(nlm_srcaddr(host), (struct sockaddr *)ssin))
-> +		if (!nlm_cmp_addr(nlm_srcaddr(host), ni->src_sap))
->  			continue;
->  
->  		/* Move to head of hash chain. */
-> @@ -186,8 +191,8 @@ static struct nlm_host *nlm_lookup_host(int server,
->  		atomic_inc(&nsm->sm_count);
->  	else {
->  		host = NULL;
-> -		nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
-> -				hostname, hostname_len, 1);
-> +		nsm = nsm_find(ni->sap, ni->salen,
-> +					ni->hostname, ni->hostname_len, 1);
->  		if (!nsm) {
->  			dprintk("lockd: nlm_lookup_host failed; "
->  				"no nsm handle\n");
-> @@ -202,12 +207,12 @@ static struct nlm_host *nlm_lookup_host(int server,
->  		goto out;
->  	}
->  	host->h_name	   = nsm->sm_name;
-> -	memcpy(nlm_addr(host), sin, sizeof(*sin));
-> -	host->h_addrlen = sizeof(*sin);
-> +	memcpy(nlm_addr(host), ni->sap, ni->salen);
-> +	host->h_addrlen = ni->salen;
->  	nlm_clear_port(nlm_addr(host));
-> -	memcpy(nlm_srcaddr(host), ssin, sizeof(*ssin));
-> -	host->h_version    = version;
-> -	host->h_proto      = proto;
-> +	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
-> +	host->h_version    = ni->version;
-> +	host->h_proto      = ni->protocol;
->  	host->h_rpcclnt    = NULL;
->  	mutex_init(&host->h_mutex);
->  	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
-> @@ -218,7 +223,7 @@ static struct nlm_host *nlm_lookup_host(int server,
->  	host->h_state      = 0;			/* pseudo NSM state */
->  	host->h_nsmstate   = 0;			/* real NSM state */
->  	host->h_nsmhandle  = nsm;
-> -	host->h_server	   = server;
-> +	host->h_server	   = ni->peer;
->  	hlist_add_head(&host->h_hash, chain);
->  	INIT_LIST_HEAD(&host->h_lockowners);
->  	spin_lock_init(&host->h_lock);
-> @@ -270,12 +275,22 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
->  				     const char *hostname,
->  				     unsigned int hostname_len)
->  {
-> -	const struct sockaddr_in source = {
-> -		.sin_family	= AF_UNSPEC,
-> +	const struct sockaddr source = {
-> +		.sa_family	= AF_UNSPEC,
-> +	};
-> +	struct nlm_lookup_host_info ni = {
-> +		.peer		= NLM_SERVER,
-> +		.sap		= (struct sockaddr *)sin,
-> +		.salen		= sizeof(*sin),
-> +		.protocol	= proto,
-> +		.version	= version,
-> +		.hostname	= hostname,
-> +		.hostname_len	= hostname_len,
-> +		.src_sap	= &source,
-> +		.src_len	= sizeof(source),
->  	};
->  
-> -	return nlm_lookup_host(0, sin, proto, version,
-> -			       hostname, hostname_len, &source);
-> +	return nlm_lookup_host(&ni);
->  }
->  
->  /*
-> @@ -289,10 +304,19 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
->  		.sin_family	= AF_INET,
->  		.sin_addr	= rqstp->rq_daddr.addr,
->  	};
-> +	struct nlm_lookup_host_info ni = {
-> +		.peer		= NLM_CLIENT,
-> +		.sap		= svc_addr(rqstp),
-> +		.salen		= rqstp->rq_addrlen,
-> +		.protocol	= rqstp->rq_prot,
-> +		.version	= rqstp->rq_vers,
-> +		.hostname	= hostname,
-> +		.hostname_len	= hostname_len,
-> +		.src_sap	= (struct sockaddr *)&source,
-> +		.src_len	= sizeof(source),
-> +	};
->  
-> -	return nlm_lookup_host(1, svc_addr_in(rqstp),
-> -			       rqstp->rq_prot, rqstp->rq_vers,
-> -			       hostname, hostname_len, &source);
-> +	return nlm_lookup_host(&ni);
->  }
->  
->  /*
+> -					unsigned int hostname_len);
+> +struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
+> +					const size_t salen,
+> +					const unsigned short protocol,
+> +					const u32 version,
+> +					const char *hostname);
+>  struct nlm_host  *nlmsvc_lookup_host(struct svc_rqst *, const char *,
+>  					unsigned int);
+>  struct rpc_clnt * nlm_bind_host(struct nlm_host *);
 > 
