@@ -1,117 +1,94 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 2/7] nfs: authenticated deep mounting
-Date: Fri, 26 Sep 2008 19:35:12 -0400
-Message-ID: <1222472117-9773-3-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 5/7] nfs: replace while loop by for loops in nfs_follow_referral
+Date: Fri, 26 Sep 2008 19:35:15 -0400
+Message-ID: <1222472117-9773-6-git-send-email-bfields@citi.umich.edu>
 References: <1222472117-9773-1-git-send-email-bfields@citi.umich.edu>
  <1222472117-9773-2-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-3-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-4-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-5-git-send-email-bfields@citi.umich.edu>
 Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-	EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58547 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:58545 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752821AbYIZXfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752772AbYIZXfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 26 Sep 2008 19:35:21 -0400
-In-Reply-To: <1222472117-9773-2-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1222472117-9773-5-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: EG Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
+Whoever wrote this had a bizarre allergy to for loops.
 
-Allow mount to do authenticated mounts below the root of the exported tree.
-The wording in RFC 2623, sec 2.3.2. allows fsinfo with UNIX authentication
-on the root of the export. Mounts are not always done on the root
-of the exported tree. Especially autoumounts often mount below the root of
-the exported tree.
-Some server implementations (justly) require full authentication for the
-so-called deep mounts. The old code used AUTH_SYS only. This caused deep
-mounts to fail on systems requiring stronger authentication..
-The client should try both authentication types and use the first one that
-succeeds.
-This method was already partially implemented. This patch completes
-the implementation for NFS2 and NFS3.
-This patch was developed to allow Debian systems to automount home directories
-on Solaris servers with krb5 authentication.
-
-Tested on kernel 2.6.24-etchnhalf.1
-
-Signed-off-by: E.G. Keizer <keie-vHs5IaWfoDhmR6Xm/wNWPw@public.gmane.org>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfs/nfs3proc.c |   20 ++++++++++++++++++--
- fs/nfs/proc.c     |   10 ++++++++--
- 2 files changed, 26 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4namespace.c |   17 +++++------------
+ 1 files changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 1e750e4..c55be7a 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -699,7 +699,7 @@ nfs3_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- }
- 
- static int
--nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-+do_proc_fsinfo(struct rpc_clnt *client, struct nfs_fh *fhandle,
- 		 struct nfs_fsinfo *info)
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 956cbbc..6bcc569 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -116,24 +116,22 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
  {
- 	struct rpc_message msg = {
-@@ -711,11 +711,27 @@ nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	struct vfsmount *mnt = ERR_PTR(-ENOENT);
+ 	char *mnt_path;
+-	unsigned int s = 0;
++	unsigned int s;
  
- 	dprintk("NFS call  fsinfo\n");
- 	nfs_fattr_init(info->fattr);
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(client, &msg, 0);
- 	dprintk("NFS reply fsinfo: %d\n", status);
- 	return status;
+ 	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
+ 	if (IS_ERR(mnt_path))
+ 		return mnt;
+ 	mountdata->mnt_path = mnt_path;
+ 
+-	while (s < location->nservers) {
++	for (s = 0; s < location->nservers; s++) {
+ 		struct sockaddr_in addr = {
+ 			.sin_family	= AF_INET,
+ 			.sin_port	= htons(NFS_PORT),
+ 		};
+ 
+ 		if (location->servers[s].len <= 0 ||
+-		    valid_ipaddr4(location->servers[s].data) < 0) {
+-			s++;
++		    valid_ipaddr4(location->servers[s].data) < 0)
+ 			continue;
+-		}
+ 
+ 		mountdata->hostname = location->servers[s].data;
+ 		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
+@@ -147,7 +145,6 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
+ 		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
+ 		if (!IS_ERR(mnt))
+ 			break;
+-		s++;
+ 	}
+ 	return mnt;
  }
+@@ -193,20 +190,16 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 		goto out;
+ 	}
  
-+/*
-+ * Bare-bones access to fsinfo: this is for nfs_get_root/nfs_get_sb via
-+ * nfs_create_server
-+ */
-+static int
-+nfs3_proc_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
-+		   struct nfs_fsinfo *info)
-+{
-+	int	status;
-+
-+	status = do_proc_fsinfo(server->client, fhandle, info);
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = do_proc_fsinfo(server->nfs_client->cl_rpcclient, fhandle, info);
-+	return status;
-+}
-+
- static int
- nfs3_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
- 		   struct nfs_pathconf *info)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 4dbb84d..1934652 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -65,14 +65,20 @@ nfs_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+-	loc = 0;
+-	while (loc < locations->nlocations) {
++	for (loc = 0; loc < locations->nlocations; loc++) {
+ 		const struct nfs4_fs_location *location = &locations->locations[loc];
  
- 	dprintk("%s: call getattr\n", __func__);
- 	nfs_fattr_init(fattr);
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	/* Retry with default authentication if different */
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
- 	dprintk("%s: reply getattr: %d\n", __func__, status);
- 	if (status)
- 		return status;
- 	dprintk("%s: call statfs\n", __func__);
- 	msg.rpc_proc = &nfs_procedures[NFSPROC_STATFS];
- 	msg.rpc_resp = &fsinfo;
--	status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
-+	status = rpc_call_sync(server->client, &msg, 0);
-+	/* Retry with default authentication if different */
-+	if (status && server->nfs_client->cl_rpcclient != server->client)
-+		status = rpc_call_sync(server->nfs_client->cl_rpcclient, &msg, 0);
- 	dprintk("%s: reply statfs: %d\n", __func__, status);
- 	if (status)
- 		return status;
+ 		if (location == NULL || location->nservers <= 0 ||
+-		    location->rootpath.ncomponents == 0) {
+-			loc++;
++		    location->rootpath.ncomponents == 0)
+ 			continue;
+-		}
+ 
+ 		mnt = try_location(&mountdata, page, page2, location);
+ 		if (!IS_ERR(mnt))
+ 			break;
+-		loc++;
+ 	}
+ 
+ out:
 -- 
 1.5.5.rc1
 
