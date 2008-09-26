@@ -1,69 +1,147 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NLM: Revert parts of commit 24e36663
-Date: Fri, 26 Sep 2008 19:30:56 -0400
-Message-ID: <20080926233056.GM7138@fieldses.org>
-References: <20080925213831.GF14349@fieldses.org> <AED0D581-07B0-4EC6-90AB-2F61B6F3C76B@oracle.com> <20080926184554.GA1492@fieldses.org> <1222454975.10150.8.camel@localhost> <EF58CFE4-3F4B-4985-9DEA-E61CC0DFC8EA@oracle.com> <1222456290.10150.10.camel@localhost> <20080926194421.GD1492@fieldses.org> <87089E47-10AE-4D41-B5BE-CCEE034C526B@oracle.com> <1222459067.10150.16.camel@localhost> <215DBAD9-1E4B-4E23-9F54-AAF6518D24DA@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 4/7] nfs: break up nfs_follow_referral
+Date: Fri, 26 Sep 2008 19:35:14 -0400
+Message-ID: <1222472117-9773-5-git-send-email-bfields@citi.umich.edu>
+References: <1222472117-9773-1-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-2-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-3-git-send-email-bfields@citi.umich.edu>
+ <1222472117-9773-4-git-send-email-bfields@citi.umich.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58522 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:58544 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752821AbYIZXbK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 19:31:10 -0400
-In-Reply-To: <215DBAD9-1E4B-4E23-9F54-AAF6518D24DA@oracle.com>
+	id S1752624AbYIZXfU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 19:35:20 -0400
+In-Reply-To: <1222472117-9773-4-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 26, 2008 at 05:11:25PM -0400, Chuck Lever wrote:
-> On Sep 26, 2008, at Sep 26, 2008, 3:57 PM, Trond Myklebust wrote:
->> On Fri, 2008-09-26 at 15:54 -0400, Chuck Lever wrote:
->>> The whole system makes it absolutely impossible to plan features and
->>> bug fixes.
->>
->> The only thing it makes impossible is planning features for a
->> _particular_ kernel revision.
->
-> I find it impossible to plan for a particular _year_ (or even two).
->
-> The problem is _you_, the subsystem maintainer, have a merge window too.  
-> I find it challenging to align my patch submissions with two sliding 
-> merge windows that open and close at arbitrary times without any warning 
-> whatever.  And now I have to worry about Bruce's merge window as well....
+This function is a little longer and more deeply nested than necessary.
 
-Please just send them in whenever they're ready--I mean to take patches
-at any time, and then decide separately whether they should be queued up
-for the current version, the next one, and/or the previous (stable)
-version.  There are inevitably delays (especially with vacations and
-such), but normally I'll try to at least respond with an estimate if
-it's going to take longer than a couple days.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfs/nfs4namespace.c |   84 ++++++++++++++++++++++++++---------------------
+ 1 files changed, 46 insertions(+), 38 deletions(-)
 
-> Plus, the submission guidelines keep changing.  FreeBSD has an amazing  
-> guide to kernel development rules and conventions posted on the web.  I 
-> wish Linux had the same.
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index b112857..956cbbc 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -110,6 +110,48 @@ static inline int valid_ipaddr4(const char *buf)
+ 	return 0;
+ }
+ 
++static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
++				     char *page, char *page2,
++				     const struct nfs4_fs_location *location)
++{
++	struct vfsmount *mnt = ERR_PTR(-ENOENT);
++	char *mnt_path;
++	unsigned int s = 0;
++
++	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
++	if (IS_ERR(mnt_path))
++		return mnt;
++	mountdata->mnt_path = mnt_path;
++
++	while (s < location->nservers) {
++		struct sockaddr_in addr = {
++			.sin_family	= AF_INET,
++			.sin_port	= htons(NFS_PORT),
++		};
++
++		if (location->servers[s].len <= 0 ||
++		    valid_ipaddr4(location->servers[s].data) < 0) {
++			s++;
++			continue;
++		}
++
++		mountdata->hostname = location->servers[s].data;
++		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
++		mountdata->addr = (struct sockaddr *)&addr;
++		mountdata->addrlen = sizeof(addr);
++
++		snprintf(page, PAGE_SIZE, "%s:%s",
++				mountdata->hostname,
++				mountdata->mnt_path);
++
++		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
++		if (!IS_ERR(mnt))
++			break;
++		s++;
++	}
++	return mnt;
++}
++
+ /**
+  * nfs_follow_referral - set up mountpoint when hitting a referral on moved error
+  * @mnt_parent - mountpoint of parent directory
+@@ -128,7 +170,6 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 		.authflavor = NFS_SB(mnt_parent->mnt_sb)->client->cl_auth->au_flavor,
+ 	};
+ 	char *page = NULL, *page2 = NULL;
+-	unsigned int s;
+ 	int loc, error;
+ 
+ 	if (locations == NULL || locations->nlocations <= 0)
+@@ -153,9 +194,8 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 	}
+ 
+ 	loc = 0;
+-	while (loc < locations->nlocations && IS_ERR(mnt)) {
++	while (loc < locations->nlocations) {
+ 		const struct nfs4_fs_location *location = &locations->locations[loc];
+-		char *mnt_path;
+ 
+ 		if (location == NULL || location->nservers <= 0 ||
+ 		    location->rootpath.ncomponents == 0) {
+@@ -163,41 +203,9 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
+ 			continue;
+ 		}
+ 
+-		mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
+-		if (IS_ERR(mnt_path)) {
+-			loc++;
+-			continue;
+-		}
+-		mountdata.mnt_path = mnt_path;
+-
+-		s = 0;
+-		while (s < location->nservers) {
+-			struct sockaddr_in addr = {
+-				.sin_family	= AF_INET,
+-				.sin_port	= htons(NFS_PORT),
+-			};
+-
+-			if (location->servers[s].len <= 0 ||
+-			    valid_ipaddr4(location->servers[s].data) < 0) {
+-				s++;
+-				continue;
+-			}
+-
+-			mountdata.hostname = location->servers[s].data;
+-			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
+-			mountdata.addr = (struct sockaddr *)&addr;
+-			mountdata.addrlen = sizeof(addr);
+-
+-			snprintf(page, PAGE_SIZE, "%s:%s",
+-					mountdata.hostname,
+-					mountdata.mnt_path);
+-
+-			mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, &mountdata);
+-			if (!IS_ERR(mnt)) {
+-				break;
+-			}
+-			s++;
+-		}
++		mnt = try_location(&mountdata, page, page2, location);
++		if (!IS_ERR(mnt))
++			break;
+ 		loc++;
+ 	}
+ 
+-- 
+1.5.5.rc1
 
-Do you have a pointer to it, and/or suggestions how it could be used to
-improve existing linux documentation?
-
-There's Documentation/SubmittingPatches and stuff.  My main gripe with
-Documentation/ is that people contribute to it, but there's no
-maintainer to say "no" or to keep things organized, so it tends to get
-large and messy over time.
-
-In any case lkml would be a better forum for this.
-
-> If I know in advance when you (and Bruce) are taking new features or bug 
-> fixes for each kernel release, that would be helpful.
-
-I'd like to say the answer is "any time", barring occasional
-interruptions.
-
-Or if the problem is that you've got stuff that you're basically done
-with, but that you know you *might* get the chance to take one more look
-at if you had another week--I think it'd be better if people just sent
-stuff in when they think it's good enough, and if we later find a
-problem we'll fix it.
-
---b.
