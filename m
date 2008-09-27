@@ -1,56 +1,39 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: do_probe_callback should not clear rpc stats
-Date: Fri, 26 Sep 2008 23:38:55 -0400
-Message-ID: <20080927033855.GB12765@fieldses.org>
-References: <48DCD215.8050508@panasas.com>
+Subject: Re: NFS regression? Odd delays and lockups accessing an NFS export.
+Date: Fri, 26 Sep 2008 23:54:15 -0400
+Message-ID: <20080927035415.GC12765@fieldses.org>
+References: <1221544139.2534.18.camel@localhost.localdomain> <48CF9AC3.6060801@opengridcomputing.com> <1221577412.28572.60.camel@zakaz.uk.xensource.com> <48CFD7C3.5080207@opengridcomputing.com> <1221582285.28572.67.camel@zakaz.uk.xensource.com> <1222156770.6869.13.camel@localhost.localdomain> <1222169589.6869.20.camel@localhost.localdomain> <20080923170344.GC2700@fieldses.org> <1222443426.3949.18.camel@localhost.localdomain> <1222453053.3949.21.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Grant Coady <gcoady.lk@gmail.com>,
+	linux-kernel@vger.kernel.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org
+To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:56443 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:45864 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751789AbYI0Di5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 23:38:57 -0400
-In-Reply-To: <48DCD215.8050508@panasas.com>
+	id S1751138AbYI0Dy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 23:54:29 -0400
+In-Reply-To: <1222453053.3949.21.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 26, 2008 at 03:14:13PM +0300, Benny Halevy wrote:
-> Now that cb_stats are static (since commit
-> ff7d9756b501744540be65e172d27ee321d86103)
-> there's no need to clear them.
+On Fri, Sep 26, 2008 at 07:17:33PM +0100, Ian Campbell wrote:
+> On Fri, 2008-09-26 at 16:37 +0100, Ian Campbell wrote:
+> > It's possible, the good case is naturally quite hard to establish with
+> > 100% certainty. I declared v2.6.26 OK after an uptime of 4 days and 19
+> > hours, compared with failure normally within 1-2 days. It's possible I
+> > was premature in doing so. I'll run 2e96d2867 for at least a full week
+> > before reporting back.
 > 
-> Initially I thought it might make sense to do
-> that every callback probing but since the stats
-> are per-program and they are shared between possibly
-> several client callback instances, zeroing them out
-> seems like the wrong thing to do.
+> Or it'll reproduce after just a few hours :-/
 > 
-> Note that that commit also introduced a bug
-> since stats.program is also being cleared in the process
-> and it is not restored after the memset as it used to be.
+> Looks like a false negative on v2.6.26 -- I'll retest from there.
 
-Thanks applied.--b.
+OK, so apologies, but this has been a long thread, and maybe we could
+use a summary of the symptoms and the results so far.  I think you said
+2.6.24 or .25 was the last you're *positive* was good?
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4callback.c |    3 ---
->  1 files changed, 0 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 5e95909..7b94701 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -399,9 +399,6 @@ static int do_probe_callback(void *data)
->  		__func__, args.program->name, args.program->number,
->  		args.program->nrvers, args.version);
->  
-> -	/* Initialize rpc_stat */
-> -	memset(args.program->stats, 0, sizeof(struct rpc_stat));
-> -
->  	/* Create RPC client */
->  	client = rpc_create(&args);
->  	if (IS_ERR(client)) {
-> 
+--b.
