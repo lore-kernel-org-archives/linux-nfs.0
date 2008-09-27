@@ -1,57 +1,107 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3/3] NFS: SETCLIENTID truncates client ID and netid
-Date: Fri, 26 Sep 2008 20:03:27 -0400
-Message-ID: <20080927000327.GD9889@fieldses.org>
-References: <20080925154814.8353.64762.stgit@manray.1015granger.net> <20080925155712.8353.47707.stgit@manray.1015granger.net> <1222359026.13388.8.camel@localhost> <20080925165821.GA31775@fieldses.org> <25D4D20B-DC01-4864-A583-9A522CB774EC@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Scott Atchley <atchley-vV262kQ/Wyo@public.gmane.org>
+Subject: Re: Congestion window or other reason?
+Date: Fri, 26 Sep 2008 20:35:18 -0400
+Message-ID: <01F77AFC-1D5A-459B-A5AC-7F02E598F2E9@myri.com>
+References: <ADA11BC1-B3F1-49F0-8B6A-5303A034DDE3@myri.com> <RTPCLUEXC2-PRDIuB1z00000045@RTPMVEXC1-PRD.hq.netapp.com> <5E69B347-E76C-473D-ABEB-6D0992D66755@myri.com> <RTPCLUEXC2-PRDPaRTO00000047@RTPMVEXC1-PRD.hq.netapp.com>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35156 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751471AbYI0ADa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2008 20:03:30 -0400
-In-Reply-To: <25D4D20B-DC01-4864-A583-9A522CB774EC@oracle.com>
+Received: from mailbox2.myri.com ([64.172.73.26]:1914 "EHLO myri.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751648AbYI0Af2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2008 20:35:28 -0400
+In-Reply-To: <RTPCLUEXC2-PRDPaRTO00000047-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 25, 2008 at 02:13:11PM -0400, Chuck Lever wrote:
-> On Sep 25, 2008, at 12:58 PM, J. Bruce Fields wrote:
->> But I'm willing to settle for it and let it be a lesson to us if it
->> turns out to cause more problems than expected.
+On Sep 26, 2008, at 5:24 PM, Talpey, Thomas wrote:
+
+> Ok, you've got my attention! Is the code visible somewhere btw?
+
+No, it is in our internal CVS. I can send you a tarball if you want to  
+take a look.
+
+>> Interesting. The client does not have a global view, unfortunately,
+>> and has no idea how busy the server is (i.e. how many other clients  
+>> it
+>> is servicing).
 >
-> I will be here to fix it if there is a problem.  In this case, this  
-> whole NFS/IPv6 thing is so complicated that I'm implementing just what  
-> is needed as we go along.  We can fill in the niceties at a later point.
+> Correct, because the NFS protocol is not designed this way. However,
+> the server can manage clients via the RPCRDMA credit mechanism, by
+> allowing them to send more or less messages in response to its own
+> load.
+
+I believe that I am duplicating the RPCRDMA usage of credits. I need  
+to check.
+
+> RPCRDMA credits are primarily used for this, it's not so much the  
+> fact that
+> there's a queuepair, it's actually the number of posted receives. If  
+> the
+> client sends more than the server has available, then the connection  
+> will
+> fail. However, the server can implement something called "shared  
+> receive
+> queue" which permits a sort of oversubscription.
+
+MX's behavior is more like the shared receive queue. Unexpected  
+messages <=32KB are stored in a temp buffer until the matching receive  
+has been posted. Once it is posted, the data is copied to the receive  
+buffers and the app can complete the request by testing (polling) or  
+waiting (blocking).
+
+MX also gives an app the ability to supply a function to handle  
+unexpected messages. Instead of per-posting receives like RPCRDMA, I  
+allocate the ctxt and hang them on an idle queue (doubly-linked list).  
+In the unexpected handler, I dequeue a ctxt and post the matching  
+receive. MX then can place the data in the proper buffer without an  
+additional copy.
+
+I chose not to pre-post the receives for the client's request messages  
+since they could overwhelm the MX posted receive list. By using the  
+unexpected handler, only bulk IO are pre-posted (i.e. after the  
+request has come in).
+
+> Yes, and dedicating that much memory to clients is another. With the
+> IB and iWARP protocols and the current Linux server, these buffers are
+> not shared. This enhances integrity and protection, but it limits the
+> maximum scaling. I take it this is not a concern for you?
+
+I am not sure about what you mean by integrity and protection. A  
+buffer is only used by one request at a time.
+
+> RPC is purely a request/response mechanism, with rules for discovering
+> endpoints and formatting requests and replies. RPCRDMA adds framing
+> for RDMA networks, and mechanisms for managing RDMA networks such
+> as credits and rules on when to use RDMA. Finally, the NFS/RDMA  
+> transport
+> binding makes requirements for sending messages. Since there are  
+> several
+> NFS protocol versions, the answer to your question depends on that.
+> There is no congestion control (slow start, message sizes) in the RPC
+> protocol, however there are many implementations of it in RPC.
+
+I am trying to duplicate all of the above from RPCRDMA. I am curious  
+why a client read of 256 pages with a rsize of 128 pages arrives in  
+three transfers of 32, 128, and then 96 pages. I assume that the same  
+reason is allowing client writes to succeed only if the max pages is 32.
+
+> I'm not certain if your question is purely about TCP, or if it's  
+> about RDMA
+> with TCP as an example. However in both cases the answer is the same:
+> it's not about the size of a message, it's about the message itself.  
+> If
+> the client and server have agreed that a 1MB write is ok, then yes the
+> client may immediately send 1MB.
 >
-> /me is taking his cue from "lazy evaluation."
+> Tom.
 
-OK, fair enough, barring any other objections.
+Hmmm, I will try to debug the svc_process code to find the oops.
 
-> Today, if CONFIG_SUNRPC_REGISTER_V4 is enabled and svc_register() can't 
-> contact rpcbind's IPv6 listener and issue a v4 SET request, it fails and 
-> the RPC service is shut down.
->
-> The only area that might be trouble is when a sysadmin shuts off ALL  
-> IPv6 in her network configuration, even if the kernel is build with IPv6 
-> support.  The network layer should do the right thing and map the IPv6 
-> loopback address to the IPv4 loopback address automatically, but I 
-> haven't tested this.
->
-> I'm also not convinced that people will try to install a 2.6 kernel on a 
-> distribution that was built for 2.4 or earlier kernels.  There are too 
-> many missing pieces in the old distributions (like kernel module  
-> utilities) to make it easy.  So I'm not trying to make this compatible  
-> with every distribution since the beginning.
+I am on vacation next week. I will take a look once I get back.
 
-Is it 2.4-era distributions that's really the issue?
+Thanks!
 
-I thought the userspace rpcbind stuff was still a bit experimental--so
-that when the switchover is made to a kernel that supports rpcbind v4,
-the userspace that's required will be more recent than that.
-
-Just curious.
-
---b.
+Scott
