@@ -1,43 +1,45 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] nfs(5): Replace the term "netid" in mount option descriptions
-Date: Mon, 29 Sep 2008 07:53:43 -0400
-Message-ID: <48E0C1C7.4060201@RedHat.com>
-References: <20080924182235.3000.71437.stgit@tarkus.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: mike.eisler@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] mountd: change "unknown host" error message to "unmatched host"
+Date: Mon, 29 Sep 2008 08:11:38 -0400
+Message-ID: <1222690298-20802-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48508 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:37057 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751968AbYI2LzR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2008 07:55:17 -0400
-In-Reply-To: <20080924182235.3000.71437.stgit-lQeC5l55kZ7wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1751412AbYI2MLm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2008 08:11:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I've had a few users mention that they find this message confusing:
 
+     mount request from unknown host 10.11.14.99 for /export
 
-Chuck Lever wrote:
-> TI-RPC introduced the concept of "netid" which is a string that is
-> mapped to a set of transport capabilities via a netconfig database.
-> RPC services register a netid and bindaddr with their local rpcbind
-> daemon to advertise their ability to support particular transports.
-> 
-> Mike Eisler noted that the use of the term "netid" in nfs(5) is not
-> appropriate, since Linux does not treat the value of the proto= or
-> mountproto= options as a netid proper, but rather to select a
-> particular transport capability provided locally on the client.
-> 
-> The Linux NFS client currently uses a simple internal mapping between
-> these names and its own transport capabilities rather than using the
-> names as part of an rpcbind query, thus these strings are really not
-> netids.  They are more akin to what TI-RPC calls "protocol names".
-> 
-> Remove the term "netid" from nfs(5) for now.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: Mike Eisler <mike.eisler@netapp.com>
-Committed... 
+The hosts are listed in DNS with proper reverse records, so the reason
+why the host is "unknown" isn't clear. This patch just changes the
+wording of this error to hopefully make it more clear why the mount
+request was rejected. This also makes this error message use a format
+more similar to the other error messages in auth_authenticate().
 
-steved.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/mountd/auth.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 2bb708f..dfe61ea 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -223,7 +223,7 @@ auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
+ 		break;
+ 
+ 	case unknown_host:
+-		xlog(L_WARNING, "%s request from unknown host %s for %s (%s)",
++		xlog(L_WARNING, "refused %s request from %s for %s (%s): unmatched host",
+ 		     what, inet_ntoa(addr), path, epath);
+ 		break;
+ 
+-- 
+1.5.5.1
+
