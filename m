@@ -1,37 +1,31 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] mountd: change "unknown host" error message to "unmatched
- host"
-Date: Mon, 29 Sep 2008 10:21:01 -0400
-Message-ID: <48E0E44D.7090207@RedHat.com>
-References: <1222690298-20802-1-git-send-email-jlayton@redhat.com>
+Subject: nfs-utils-1.1.4??
+Date: Mon, 29 Sep 2008 12:26:24 -0400
+Message-ID: <48E101B0.20503@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
+To: "Linux NFSv4 mailing list"@redhat.com,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37295 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:47695 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751440AbYI2OWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2008 10:22:25 -0400
-In-Reply-To: <1222690298-20802-1-git-send-email-jlayton@redhat.com>
+	id S1751939AbYI2Q1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2008 12:27:46 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m8TGRktK008324
+	for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2008 12:27:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I'm thinking about creating another minor release... 
 
+The only outstanding issue I know of is:
 
-Jeff Layton wrote:
-> I've had a few users mention that they find this message confusing:
-> 
->      mount request from unknown host 10.11.14.99 for /export
-> 
-> The hosts are listed in DNS with proper reverse records, so the reason
-> why the host is "unknown" isn't clear. This patch just changes the
-> wording of this error to hopefully make it more clear why the mount
-> request was rejected. This also makes this error message use a format
-> more similar to the other error messages in auth_authenticate().
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+        http://thread.gmane.org/gmane.linux.debian.user/333162
+        http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=492970
 
-Committed.
+any head way on this? I haven't had much luck on reproducing it...
+
+Anything else needs to go in?
 
 steved.
