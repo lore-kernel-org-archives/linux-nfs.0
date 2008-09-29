@@ -1,75 +1,52 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: lockd using up 60% CPU and won't let go
-Date: Mon, 29 Sep 2008 13:14:07 -0400
-Message-ID: <20080929171407.GA23212@fieldses.org>
-References: <48E10657.7020503@corky.net>
+Subject: Re: Permission denied when mounting NFS (was okay before)
+Date: Mon, 29 Sep 2008 13:26:30 -0400
+Message-ID: <20080929172630.GB23212@fieldses.org>
+References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com> <RTPCLUEXC2-PRDM3SOl0000001f@RTPMVEXC1-PRD.hq.netapp.com> <b66ddc900809260805g71578cacr73a526e87a77e677@mail.gmail.com> <RTPCLUEXC2-PRDNXRPm0000003a@RTPMVEXC1-PRD.hq.netapp.com> <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc@mail.gmail.com> <1222445161.10150.4.camel@localhost> <b66ddc900809260913r6c009658p958d88aa2e1be99e@mail.gmail.com> <RTPCLUEXC2-PRDIIZS20000003d@RTPMVEXC1-PRD.hq.netapp.com> <b66ddc900809282121t6953e068n62870810f1d0874@mail.gmail.com> <b66ddc900809282153yb873d8ayf82f2a61eca9cc18@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Just Marc <marc-ZTWYIuj8JqNeoWH0uzbU5w@public.gmane.org>
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: howard chen <howachen@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44162 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:47056 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258AbYI2ROJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2008 13:14:09 -0400
-In-Reply-To: <48E10657.7020503-ZTWYIuj8JqNeoWH0uzbU5w@public.gmane.org>
+	id S1750819AbYI2R0d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2008 13:26:33 -0400
+In-Reply-To: <b66ddc900809282153yb873d8ayf82f2a61eca9cc18-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 29, 2008 at 12:46:15PM -0400, Just Marc wrote:
-> Doing a seemingly innocent operation such as opening a file with vim on  
-> a CFS (yes, that old crypto file system)
+On Mon, Sep 29, 2008 at 12:53:16PM +0800, howard chen wrote:
+> Hello all,
+> 
+> On Mon, Sep 29, 2008 at 12:21 PM, howard chen <howachen@gmail.com> wrote:
+> >
+> > Yes, tested, and same error... Also tried "no_root_squash"...
+> >
+> > Really have no idea what is going on...
+> >
+> 
+> Problem solved by adding the following line in fstab, according to
+> this site: http://www.linuxforums.org/forum/linux-networking/44779-nfs-permission-denied-error.html
 
-It's basically just a userspace NFS server, right?
+Huh.  Surely mountd or knfsd could have given a more helpful error
+message, at least....
 
-> NFS mount, lockd would wake up  
-> and take 60% of my CPU away - probably doing nothing important but  
-> certainly keeping the CPU busy, forever.
+> nfsd /proc/fs/nfsd nfsd auto,defaults 0 0
+> 
+> 
+> This is really funny as I never have this option in my other NFS servers....
+> 
+> Anyone know the reason? Redhat's bug?
 
-Could you work around the problem by mounting with -onolock?
+It looks like nfsd is supposed to be mounted on load of the nfsd module,
+by a line in /etc/modprobe.d/modprobe.conf.
 
-> I use kernel 2.6.26 and kernel NFS.   Some detail is available below:
->
-> $ grep nfs /proc/mounts
-> nfsd /proc/fs/nfsd nfsd rw 0 0localhost:/var/lib/cfs/.cfsfs /var/cfs nfs  
+(Maybe you built a new kernel with nfsd built-in instead of built as a
+module?)
 
-(Missing end-of-line before "localhost"?)
-
-> rw,vers=2,rsize=8192,wsize=8192,namlen=255,hard,intr,proto=udp,timeo=11,retrans=3,sec=sys,addr=127.0.0.1 
-> 0 0
-> localhost:/var/lib/cfs/.cfsfs/x /var/cfs/x nfs  
-> rw,vers=2,rsize=8192,wsize=8192,namlen=255,hard,intr,proto=udp,timeo=11,retrans=3,sec=sys,addr=127.0.0.1 
-> 0 0
->
-> $ egrep 'NFS|_LOCKD' .config
-> CONFIG_LOCKDEP_SUPPORT=y
-> CONFIG_NFS_FS=y
-> CONFIG_NFS_V3=y
-> CONFIG_NFS_V3_ACL=y
-> CONFIG_NFS_V4=y
-> CONFIG_NFSD=y
-> CONFIG_NFSD_V2_ACL=y
-> CONFIG_NFSD_V3=y
-> CONFIG_NFSD_V3_ACL=y
-> CONFIG_NFSD_V4=y
-> CONFIG_ROOT_NFS=y
-> CONFIG_LOCKD=y
-> CONFIG_LOCKD_V4=y
-> CONFIG_NFS_ACL_SUPPORT=y
-> CONFIG_NFS_COMMON=y
->
-> I noticed this a few weeks ago but I don't quite know what causes it but  
-> I certainly know how to trigger it.   Stopping CFS and NFS completely  
-> doesn't help - as soon as NFS is restarted lockd starts eating CPU again  
-> just like before.
->
-> I'd appreciate any hints on what I can do to find the root cause of the  
-> problem and help get this bug out of the way.
-
-You might try running wireshark on the "lo" interface and seeing whether
-there's any NLM traffic from lockd.
-
-Or a sysrq-t trace ("echo t >/proc/sysrq-trigger", then look in the
-logs) might show what lockd's doing.
+But I thought nfs-utils was supposed to fall back on old behavior when
+the nfsd filesystem wasn't found.
 
 --b.
