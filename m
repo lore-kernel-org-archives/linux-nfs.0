@@ -1,50 +1,84 @@
-From: "howard chen" <howachen@gmail.com>
-Subject: Re: Permission denied when mounting NFS (was okay before)
-Date: Tue, 30 Sep 2008 21:51:08 +0800
-Message-ID: <b66ddc900809300651i11d07caudd32831d6954f02d@mail.gmail.com>
-References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com>
-	 <b66ddc900809260805g71578cacr73a526e87a77e677@mail.gmail.com>
-	 <RTPCLUEXC2-PRDNXRPm0000003a@RTPMVEXC1-PRD.hq.netapp.com>
-	 <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc@mail.gmail.com>
-	 <1222445161.10150.4.camel@localhost>
-	 <b66ddc900809260913r6c009658p958d88aa2e1be99e@mail.gmail.com>
-	 <RTPCLUEXC2-PRDIIZS20000003d@RTPMVEXC1-PRD.hq.netapp.com>
-	 <b66ddc900809282121t6953e068n62870810f1d0874@mail.gmail.com>
-	 <b66ddc900809282153yb873d8ayf82f2a61eca9cc18@mail.gmail.com>
-	 <20080929172630.GB23212@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3/3] lockd: reject reclaims outside the grace period
+Date: Tue, 30 Sep 2008 11:59:35 -0400
+Message-ID: <20080930155935.GA10405@fieldses.org>
+References: <1222742643-31541-1-git-send-email-bfields@citi.umich.edu> <1222742643-31541-2-git-send-email-bfields@citi.umich.edu> <1222742643-31541-3-git-send-email-bfields@citi.umich.edu> <1222742643-31541-4-git-send-email-bfields@citi.umich.edu> <OF00072D17.F38B2A1C-ON882574D4.0019CC91-882574D4.001A6F58@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Marc Eshel <eshel@almaden.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.178]:16814 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751705AbYI3NvI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Sep 2008 09:51:08 -0400
-Received: by wa-out-1112.google.com with SMTP id v27so10439wah.21
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Sep 2008 06:51:08 -0700 (PDT)
-In-Reply-To: <20080929172630.GB23212@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:46912 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752857AbYI3P7i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Sep 2008 11:59:38 -0400
+In-Reply-To: <OF00072D17.F38B2A1C-ON882574D4.0019CC91-882574D4.001A6F58@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Mon, Sep 29, 2008 at 09:48:48PM -0700, Marc Eshel wrote:
+> Unfortunately the application don't get notified when the reclaim failed. 
 
-On Tue, Sep 30, 2008 at 1:26 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> It looks like nfsd is supposed to be mounted on load of the nfsd module,
-> by a line in /etc/modprobe.d/modprobe.conf.
->
-> (Maybe you built a new kernel with nfsd built-in instead of built as a
-> module?)
->
-> But I thought nfs-utils was supposed to fall back on old behavior when
-> the nfsd filesystem wasn't found.
+That depends on the client.  My understanding is that you're correct for
+the Linux client, but that Solaris sends a signal?  Anyone know more, or
+have suggestions about what we should do to fix the client?  I believe
+that's a bug.
 
+> Now you are making sure that application will fail because if they missed 
+> the reclaim window they will not get the lock back and the application 
+> will continue to run without a lock. Not sure this is better behavior.
 
-Are there any related docs I should read?
+Agreed that it's an unfortunate situation, but I think we have to do it.
+The protocol requires it, and we owe this to clients who do make use of
+the reclaim result somehow.
 
-As mentioned before, the server was working before the reboot, really
-don't understand why it behave in this way...Need to find out the
-reason.
+--b.
 
-THanks!
+> Marc.
+> 
+> 
+> linux-nfs-owner@vger.kernel.org wrote on 09/29/2008 07:44:03 PM:
+> 
+> > 
+> > [PATCH 3/3] lockd: reject reclaims outside the grace period
+> > 
+> > The current lockd does not reject reclaims that arrive outside of the
+> > grace period.
+> > 
+> > Accepting a reclaim means promising to the client that no conflicting
+> > locks were granted since last it held the lock.  We can meet that
+> > promise if we assume the only lockers are nfs clients, and that they are
+> > sufficiently well-behaved to reclaim only locks that they held before,
+> > and that only reclaim locks have been permitted so far.  Once we leave
+> > the grace period (and start permitting non-reclaims), we can no longer
+> > keep that promise.  So we must start rejecting reclaims at that point.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > ---
+> >  fs/lockd/svclock.c |    4 ++++
+> >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> > index 808d246..6063a8e 100644
+> > --- a/fs/lockd/svclock.c
+> > +++ b/fs/lockd/svclock.c
+> > @@ -410,6 +410,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct 
+> > nlm_file *file,
+> >        ret = nlm_lck_denied_grace_period;
+> >        goto out;
+> >     }
+> > +   if (reclaim && !locks_in_grace()) {
+> > +      ret = nlm_lck_denied_grace_period;
+> > +      goto out;
+> > +   }
+> > 
+> >     if (!wait)
+> >        lock->fl.fl_flags &= ~FL_SLEEP;
+> > -- 
+> > 1.5.5.rc1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
