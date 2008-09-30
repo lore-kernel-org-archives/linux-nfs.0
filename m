@@ -1,48 +1,60 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: lockd using up 60% CPU and won't let go
-Date: Tue, 30 Sep 2008 14:26:42 -0400
-Message-ID: <20080930182642.GB12268@fieldses.org>
-References: <48E17042.101@corky.net>
+Subject: Re: [PATCH 10/10] svcrdma: Documentation update for the FastReg
+	memory model
+Date: Tue, 30 Sep 2008 14:44:33 -0400
+Message-ID: <20080930184433.GC12268@fieldses.org>
+References: <1221564879-85046-6-git-send-email-tom@opengridcomputing.com> <1221564879-85046-7-git-send-email-tom@opengridcomputing.com> <1221564879-85046-8-git-send-email-tom@opengridcomputing.com> <1221564879-85046-9-git-send-email-tom@opengridcomputing.com> <1221564879-85046-10-git-send-email-tom@opengridcomputing.com> <1221564879-85046-11-git-send-email-tom@opengridcomputing.com> <20080924212102.GD10841@fieldses.org> <48DB939E.4090503@opengridcomputing.com> <20080926234006.GA9889@fieldses.org> <48E197ED.6080409@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Just Marc <marc-ZTWYIuj8JqNeoWH0uzbU5w@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org, Tom Talpey <Thomas.Talpey@netapp.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34142 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:60339 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751838AbYI3S0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Sep 2008 14:26:44 -0400
-In-Reply-To: <48E17042.101-ZTWYIuj8JqNeoWH0uzbU5w@public.gmane.org>
+	id S1753686AbYI3Sof (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Sep 2008 14:44:35 -0400
+In-Reply-To: <48E197ED.6080409@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 29, 2008 at 08:18:10PM -0400, Just Marc wrote:
-> Hi,
+On Mon, Sep 29, 2008 at 10:07:25PM -0500, Tom Tucker wrote:
+> J. Bruce Fields wrote:
+>> On Thu, Sep 25, 2008 at 08:35:26AM -0500, Tom Tucker wrote:
+>>> J. Bruce Fields wrote:
+>>>> This explanation is helpful, thanks.  It would also be helpful if we
+>>>> could boil down the advice to just a sentence or two for the busy admin.
+>>>> Something like:  unless you have card XYZ and kernel 2.6.y, do *not* use
+>>>> rdma on a network where you cannot trust every machine....
+>>>
+>>> Would it be better to say, "Do not use RDMA on a network where your   
+>>> policy requires a security model stronger than tcp/auth_unix."
+>>
+>> I'm not worried about the case where the security provided is roughly
+>> equivalent to that provided by tcp/auth_unix.
+>>
+>> I'm worried about the non-"Fast Reg" case where I thought you were
+>> saying that the network could access memory other than that meant to
+>> hold rpc data.
+>>
 >
-> > It's basically just a userspace NFS server, right?
->
-> Correct.
->
-> > Could you work around the problem by mounting with -onolock?
->
-> That doesn't seem to help.
->
-> >You might try running wireshark on the "lo" interface and seeing  
-> whether there's any NLM traffic from lockd.
->
-> You guessed right.   There's a 12 megabytes per second of NLM traffic on lo.
->
-> unlock call requests and unlock replies saying permission denied, looks  
-> like it just repeats forever in a tight loop.
+> Ok, so maybe we could state the security exposure of ALLPHYSICAL instead  
+> of dwelling on the relative differences between the similar exposures of  
+> tcp/auth_unix vs. fastreg?
 
-Permission denied on an unlock sounds pretty weird--probably a bug on
-the server (CFS) side.  The client might be able to handle it
-gracefully, but that's probably not a high priority.
+Right.  It's all interesting, so I wouldn't cut anything out--but you
+could put off the details to the end; e.g., start with "in situation
+<...>, nfs/rdma provides roughly the same security as nfs over tcp and
+auth_unix (see below for more details)".
 
-So -onlock is the way to go; see Trond's suggestions.  Locking will
-still work, CFS just won't be told about it.  That would only be a
-problem if you had multiple NFS clients doing locking on the same CFS
-filesystem, but you're only loopback-mounting, so only one client is
-involved.
+> I'd also like to get to fastreg as a default at some point.
+
+OK, good.
+
+> What's your perspective on the lifetime of bounce buffers, memory  
+> windows, and the other strategies in client?
+
+I'm ignorant.  Pointer to something else I should read?
+
+I assume there are similar issues on the client?
 
 --b.
