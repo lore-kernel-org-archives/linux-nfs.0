@@ -1,174 +1,61 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 02/10] lockd: Adjust nlmclnt_lookup_host() signature to
-	accomodate non-AF_INET
-Date: Wed, 1 Oct 2008 14:23:53 -0400
-Message-ID: <20081001182353.GH6001@fieldses.org>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161728.4963.48337.stgit@ellison.1015granger.net> <20080926220221.GD7138@fieldses.org> <A9B2B56C-D97D-4B5F-A09E-DDE620F81AD0@oracle.com>
+Subject: Re: [PATCH 10/10] svcrdma: Documentation update for the FastReg
+	memory model
+Date: Wed, 1 Oct 2008 14:26:54 -0400
+Message-ID: <20081001182654.GA9907@fieldses.org>
+References: <1221564879-85046-8-git-send-email-tom@opengridcomputing.com> <1221564879-85046-9-git-send-email-tom@opengridcomputing.com> <1221564879-85046-10-git-send-email-tom@opengridcomputing.com> <1221564879-85046-11-git-send-email-tom@opengridcomputing.com> <20080924212102.GD10841@fieldses.org> <48DB939E.4090503@opengridcomputing.com> <20080926234006.GA9889@fieldses.org> <48E197ED.6080409@opengridcomputing.com> <20080930184433.GC12268@fieldses.org> <RTPCLUEXC2-PRDgFrYI00000094@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:52635 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:42158 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753577AbYJASXy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Oct 2008 14:23:54 -0400
-In-Reply-To: <A9B2B56C-D97D-4B5F-A09E-DDE620F81AD0@oracle.com>
+	id S1752337AbYJAS04 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Oct 2008 14:26:56 -0400
+In-Reply-To: <RTPCLUEXC2-PRDgFrYI00000094-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 01, 2008 at 11:52:58AM -0400, Chuck Lever wrote:
-> On Sep 26, 2008, at Sep 26, 2008, 6:02 PM, J. Bruce Fields wrote:
->> On Wed, Sep 17, 2008 at 11:17:28AM -0500, Chuck Lever wrote:
->>> Pass a struct sockaddr * and a length to nlmclnt_lookup_host() to
->>> accomodate non-AF_INET family addresses.
->>
->> I'd prefer separate patches here too, though since the two changes
->> (null-terminated hostname and sockaddr) are a bit easier to separate
->> visually, it doesn't bother me as much here....
->
-> I'm not sure I understand what you want here.  The "NUL-terminated"  
-> stuff is merely documenting what is already the case, and eliminating an 
-> unneeded argument.
+On Tue, Sep 30, 2008 at 03:04:26PM -0400, Talpey, Thomas wrote:
+> At 02:44 PM 9/30/2008, J. Bruce Fields wrote:
+> >On Mon, Sep 29, 2008 at 10:07:25PM -0500, Tom Tucker wrote:
+> >> What's your perspective on the lifetime of bounce buffers, memory  
+> >> windows, and the other strategies in client?
+> >
+> >I'm ignorant.  Pointer to something else I should read?
+> >
+> >I assume there are similar issues on the client?
+> 
+> Tom's asking about the client memory registration options and
+> whether they should all remain in the client code going forward.
+> There are different strategies in there, depending on what the
+> hardware supports, how well it supports it, and how you want
+> to run it all.
 
-Yes, I understand, and I'm fine with that--it's just that I'd personally
-normally stick those two in a separate patch.
-
-It's not a big deal.
+Do any of them allow reading or writing memory other than that holding
+rpc data?
 
 --b.
 
-
-> Maybe I should just add a note about it to the patch 
-> description?
->
->
->>
->>
->> --b.
->>
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> fs/lockd/clntlock.c         |    5 ++---
->>> fs/lockd/host.c             |   34 ++++++++++++++++++++++++----------
->>> include/linux/lockd/lockd.h |    9 +++++----
->>> 3 files changed, 31 insertions(+), 17 deletions(-)
->>>
->>> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
->>> index 237224a..9eaf306 100644
->>> --- a/fs/lockd/clntlock.c
->>> +++ b/fs/lockd/clntlock.c
->>> @@ -58,10 +58,9 @@ struct nlm_host *nlmclnt_init(const struct  
->>> nlmclnt_initdata *nlm_init)
->>> 	if (status < 0)
->>> 		return ERR_PTR(status);
->>>
->>> -	host = nlmclnt_lookup_host((struct sockaddr_in *)nlm_init->address,
->>> +	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
->>> 				   nlm_init->protocol, nlm_version,
->>> -				   nlm_init->hostname,
->>> -				   strlen(nlm_init->hostname));
->>> +				   nlm_init->hostname);
->>> 	if (host == NULL) {
->>> 		lockd_down();
->>> 		return ERR_PTR(-ENOLCK);
->>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
->>> index c9d25d1..b9c87e1 100644
->>> --- a/fs/lockd/host.c
->>> +++ b/fs/lockd/host.c
->>> @@ -267,29 +267,43 @@ nlm_destroy_host(struct nlm_host *host)
->>> 	kfree(host);
->>> }
->>>
->>> -/*
->>> - * Find an NLM server handle in the cache. If there is none, create 
->>> it.
->>> +/**
->>> + * nlmclnt_lookup_host - Find an NLM host handle matching a remote  
->>> server
->>> + * @sap: network address of server
->>> + * @salen: length of server address
->>> + * @protocol: transport protocol to use
->>> + * @version: NLM protocol version
->>> + * @hostname: '\0'-terminated hostname of server
->>> + *
->>> + * Returns an nlm_host structure that matches the passed-in
->>> + * [server address, transport protocol, NLM version, server  
->>> hostname].
->>> + * If one doesn't already exist in the host cache, a new handle is
->>> + * created and returned.
->>>  */
->>> -struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
->>> -				     int proto, u32 version,
->>> -				     const char *hostname,
->>> -				     unsigned int hostname_len)
->>> +struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
->>> +				     const size_t salen,
->>> +				     const unsigned short protocol,
->>> +				     const u32 version, const char *hostname)
->>> {
->>> 	const struct sockaddr source = {
->>> 		.sa_family	= AF_UNSPEC,
->>> 	};
->>> 	struct nlm_lookup_host_info ni = {
->>> 		.peer		= NLM_SERVER,
->>> -		.sap		= (struct sockaddr *)sin,
->>> -		.salen		= sizeof(*sin),
->>> -		.protocol	= proto,
->>> +		.sap		= sap,
->>> +		.salen		= salen,
->>> +		.protocol	= protocol,
->>> 		.version	= version,
->>> 		.hostname	= hostname,
->>> -		.hostname_len	= hostname_len,
->>> +		.hostname_len	= strlen(hostname),
->>> 		.src_sap	= &source,
->>> 		.src_len	= sizeof(source),
->>> 	};
->>>
->>> +	dprintk("lockd: nlmclnt_lookup_host(host='%s', vers=%u, proto=%s) 
->>> \n",
->>> +			(hostname ? hostname : "<none>"), version,
->>> +			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
->>> +
->>> 	return nlm_lookup_host(&ni);
->>> }
->>>
->>> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/ 
->>> lockd.h
->>> index ec8af11..693d57b 100644
->>> --- a/include/linux/lockd/lockd.h
->>> +++ b/include/linux/lockd/lockd.h
->>> @@ -215,10 +215,11 @@ void		  nlmclnt_next_cookie(struct nlm_cookie  
->>> *);
->>> /*
->>>  * Host cache
->>>  */
->>> -struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr_in *sin,
->>> -					int proto, u32 version,
->>> -					const char *hostname,
->>> -					unsigned int hostname_len);
->>> +struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
->>> +					const size_t salen,
->>> +					const unsigned short protocol,
->>> +					const u32 version,
->>> +					const char *hostname);
->>> struct nlm_host  *nlmsvc_lookup_host(struct svc_rqst *, const char *,
->>> 					unsigned int);
->>> struct rpc_clnt * nlm_bind_host(struct nlm_host *);
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
+> 
+> The multiple strategies stem from the early days when no two
+> adapters did quite the same thing. That said, at least one of
+> them is no longer useful - no adapters support windows today,
+> since the demise of Ammasso, although the kernel API to drive
+> them is still there in the OFA stack below.
+> 
+> I think it's possible that some of the other modes can collapse, but
+> not just now. There's a lot of older hardware out there, and newer
+> hardware may appear to use the old stuff too. 
+> 
+> Another concern I have, frankly, is interoperability. If we collapse
+> the modes, then the temptation to assume both ends have such-
+> and-such a capability increase. If one side tries some RDMA operation
+> that is only supported properly by a certain adapter, it's hard to detect
+> that in a monoculture. Having the option to switch modes can help avert
+> this, by testing for it.
+> 
+> In any case, if the current code doesn't work, it's a bug. Certainly
+> bouncebuffers (non-RDMA mode) should work perfectly and I plan to
+> check it asap.
