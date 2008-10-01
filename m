@@ -1,127 +1,241 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 10/10] svcrdma: Documentation update for the FastReg
-	memory model
-Date: Wed, 1 Oct 2008 12:17:37 -0400
-Message-ID: <20081001161737.GB6001@fieldses.org>
-References: <1221564879-85046-10-git-send-email-tom@opengridcomputing.com> <1221564879-85046-11-git-send-email-tom@opengridcomputing.com> <20080924212102.GD10841@fieldses.org> <48DB939E.4090503@opengridcomputing.com> <20080926234006.GA9889@fieldses.org> <48E197ED.6080409@opengridcomputing.com> <20080930184433.GC12268@fieldses.org> <48E27631.4090202@opengridcomputing.com> <20080930185729.GE12268@fieldses.org> <48E28951.6010700@opengridcomputing.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tom Talpey <Thomas.Talpey@netapp.com>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 08/10] lockd: struct nlm_reboot should contain a full socket address
+Date: Wed, 1 Oct 2008 12:17:02 -0400
+Message-ID: <E908BC09-5443-440E-9402-E2E319A3BD8E@oracle.com>
+References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161811.4963.60224.stgit@ellison.1015granger.net> <20080926230938.GK7138@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44219 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752608AbYJAQRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Oct 2008 12:17:41 -0400
-In-Reply-To: <48E28951.6010700@opengridcomputing.com>
+Received: from agminet01.oracle.com ([141.146.126.228]:58341 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752566AbYJAQRU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Oct 2008 12:17:20 -0400
+In-Reply-To: <20080926230938.GK7138@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, I think this is much more helpful.
-
-On Tue, Sep 30, 2008 at 03:17:21PM -0500, Tom Tucker wrote:
-> +Security
-> +--------
-> +
-> +  NFSRDMA exploits the RDMA capabilities of the IB and iWARP
-> +  transports to more efficiently exchange RPC data between the client
-> +  and the server. This section discusses the security implications of
-> +  the exchange of memory information on the wire when the wire may be
-> +  monitorable by an untrusted application. The identifier that
-> +  encapsulates this memory information is called an RKEY.
-> +
-> +  A principal exploit is that a node on the local network could snoop
-> +  RDMA packets containing RKEY and then forge a packet with this RKEY
-> +  to write and/or read the memory of the peer to which the RKEY
-> +  referred.
-> +
-> +  If the underlying RDMA device is capable of Fast Memory
-> +  Registration, then NFSRDMA is no less secure than TCP with
-> +  auth_unix. However, if the device does not support Fast Memory
-> +  Registration, then such a node could write anywhere in the server's
-> +  memory using the method above. At mount time, the server sends a
-
-The server doesn't really know about mounts, especially not at this
-level, so I assume you mean either server start time or client connect
-time?
-
-> +  string to the message log to indicate whether or not Fast Memory
-> +  Registration is being used. If Fast Memory Registration is being
-> +  used, the string
-> +
-> +	"svcrdma: Using Fast Memory Registration"
-> +
-> +  is logged, otherwise,
-> +
-> +	"svcrdma: Using a Global DMA MR"
-> +
-> +  will be logged.
-
-It'd be nicer to have something that can be queried by a program--a file
-in proc or nfsd, for example--without having to grep through log files.
-(Or is it possible the drivers already export enough information under
-sysfs someplace to figure this out with a simple script?)
-
-Or maybe the non-fast registration stuff should be under a separate
-configuration option entirely?  Distro's could eventually enable only
-the safer configurations and people doing testing could build their own
-kernels with the rest enabled.
-
-My initial impulse is to be a bit scared of the non-fast-registration
-case, but maybe I don't understand how this hardware is deployed.
-
---b.
-
-> +
-> +  The sections below provide additional information on this issue.
-> +
-> +  The NFSRDMA protocol is defined such that a) only the server
-> +  initiates RDMA, and b) only the client's memory is exposed via
-> +  RKEY. This is why the server reads to fetch RPC data from the client
-> +  even though it would be more efficient for the client to write the
-> +  data to the server's memory. This design goal is not entirely
-> +  realized with iWARP, however, because the RKEY (called an STag on
-> +  iWARP) for the data sink of an RDMA_READ is actually placed on the
-> +  wire, and this RKEY has Remote Write permission. This means that the
-> +  server's memory is exposed by virtue of having placed the RKEY for
-> +  its local memory on the wire in order to receive the result of the
-> +  RDMA_READ.
-> +
-> +  By contrast, IB uses an opaque transaction ID# to associate the
-> +  READ_RPL with the READ_REQ and the data sink of an READ_REQ does not
-> +  require remote access. That said, the byzantine node in question
-> +  could forge a packet with this transaction ID and corrupt the target
-> +  memory, however, the scope of the exploit is bounded to the lifetime
-> +  of this single RDMA_READ request and to the memory mapped by the
-> +  data sink of the READ_REQ.
-> +
-> +  The newer RDMA adapters (both iWARP and IB) support "Fast Memory
-> +  Registration". This capability allows memory to be quickly
-> +  registered (i.e. made available for remote access) and de-registered
-> +  by submitting WR on the SQ. These capabilities provide a mechanism
-> +  to reduce the exposure discused above by limiting the scope of the
-> +  exploit. The idea is to create an RKEY that only maps the single RPC
-> +  and whose effective lifetime is only the exchange of this single
-> +  RPC. This is the default memory model that is employed by the server
-> +  when supported by the adapter and by the client when the
-> +  rdma_memreg_strategy is set to 6. Note that the client and server
-> +  may use different memory registration strategies, however,
-> +  performance is better when both the client and server use the
-> +  FastReg memory registration strategy.
-> +
-> +  This approach has two benefits, a) it restricts the domain of the
-> +  exploit to the memory of a single RPC, and b) it limits the duration
-> +  of the exploit to the time it takes to satisfy the RDMA_READ.
-> +
-> +  It is arguable that a one-shot STag/RKEY is no less secure than RPC
-> +  on the TCP transport. Consider that the exact same byzantine
-> +  application could more easily corrupt TCP RPC payload by simply
-> +  forging a packet with the correct TCP sequence number -- in fact
-> +  it's easier than the RDMA exploit because the RDMA exploit requires
-> +  that you correctly forge both the TCP packet and the RDMA
-> +  payload. In addition the duration of the TCP exploit is the lifetime
-> +  of the connection, not the lifetime of a single WR/RPC data transfer.
-> +
-> +  RDMA on IB or iWARP using Fast Reg is no less secure than TCP.
-> +
+On Sep 26, 2008, at Sep 26, 2008, 7:09 PM, J. Bruce Fields wrote:
+> On Wed, Sep 17, 2008 at 11:18:11AM -0500, Chuck Lever wrote:
+>> The XDR decoders for the NSM NOTIFY procedure should construct a full
+>> socket address and store it in the nlm_reboot structure.  In addition
+>> to being able to store larger addresses, this means upper layer
+>> routines get an address family tag so they can distinguish between
+>> AF_INET and AF_INET6 addresses.
+>>
+>> This also keeps potentially large socket addresses off the stack and
+>> instead in dynamically allocated storage.
 >
+> So one way to think of this would be that you're extending the
+> kernel<->statd interface by using the address family of statd's notify
+> call to communicate the address family of the host that rebooted.
+>
+> Do I have that right?
+
+For statd, we're using the same technique that we used when  
+constructing the source address in nlmsvc_lookup_host().  There's no  
+family tag associated with the address because the 16-byte opaque in  
+the on-the-wire format has room only for the sin6_addr part of the  
+address.  The notification downcall for IPv6 peers has to come via  
+IPv6 loopback for this to work.
+
+>
+>
+> --b.
+>
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> fs/lockd/svc4proc.c       |   10 +---------
+>> fs/lockd/svcproc.c        |   10 +---------
+>> fs/lockd/xdr.c            |   28 ++++++++++++++++++++++++++--
+>> fs/lockd/xdr4.c           |   27 +++++++++++++++++++++++++--
+>> include/linux/lockd/xdr.h |    3 ++-
+>> 5 files changed, 55 insertions(+), 23 deletions(-)
+>>
+>> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+>> index 6a5ef9f..e61c05f 100644
+>> --- a/fs/lockd/svc4proc.c
+>> +++ b/fs/lockd/svc4proc.c
+>> @@ -430,8 +430,6 @@ static __be32
+>> nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot  
+>> *argp,
+>> 					      void	        *resp)
+>> {
+>> -	struct sockaddr_in	saddr;
+>> -
+>> 	dprintk("lockd: SM_NOTIFY     called\n");
+>>
+>> 	if (!nlm_privileged_requester(rqstp)) {
+>> @@ -441,13 +439,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp,  
+>> struct nlm_reboot *argp,
+>> 		return rpc_system_err;
+>> 	}
+>>
+>> -	/* Obtain the host pointer for this NFS server and try to
+>> -	 * reclaim all locks we hold on this server.
+>> -	 */
+>> -	memset(&saddr, 0, sizeof(saddr));
+>> -	saddr.sin_family = AF_INET;
+>> -	saddr.sin_addr.s_addr = argp->addr;
+>> -	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
+>> +	nlm_host_rebooted((struct sockaddr *)&argp->addr, argp->addrlen,
+>> 			  argp->mon, argp->len, argp->state);
+>>
+>> 	return rpc_success;
+>> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+>> index 62fcfdb..86a487a 100644
+>> --- a/fs/lockd/svcproc.c
+>> +++ b/fs/lockd/svcproc.c
+>> @@ -462,8 +462,6 @@ static __be32
+>> nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot  
+>> *argp,
+>> 					      void	        *resp)
+>> {
+>> -	struct sockaddr_in	saddr;
+>> -
+>> 	dprintk("lockd: SM_NOTIFY     called\n");
+>>
+>> 	if (!nlm_privileged_requester(rqstp)) {
+>> @@ -473,13 +471,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp,  
+>> struct nlm_reboot *argp,
+>> 		return rpc_system_err;
+>> 	}
+>>
+>> -	/* Obtain the host pointer for this NFS server and try to
+>> -	 * reclaim all locks we hold on this server.
+>> -	 */
+>> -	memset(&saddr, 0, sizeof(saddr));
+>> -	saddr.sin_family = AF_INET;
+>> -	saddr.sin_addr.s_addr = argp->addr;
+>> -	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
+>> +	nlm_host_rebooted((struct sockaddr *)&argp->addr, argp->addrlen,
+>> 			  argp->mon, argp->len, argp->state);
+>>
+>> 	return rpc_success;
+>> diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+>> index 1f22629..92c5695 100644
+>> --- a/fs/lockd/xdr.c
+>> +++ b/fs/lockd/xdr.c
+>> @@ -9,6 +9,7 @@
+>> #include <linux/types.h>
+>> #include <linux/sched.h>
+>> #include <linux/utsname.h>
+>> +#include <linux/in.h>
+>> #include <linux/nfs.h>
+>>
+>> #include <linux/sunrpc/xdr.h>
+>> @@ -346,11 +347,34 @@ nlmsvc_decode_notify(struct svc_rqst *rqstp,  
+>> __be32 *p, struct nlm_args *argp)
+>> int
+>> nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct  
+>> nlm_reboot *argp)
+>> {
+>> +	struct sockaddr_in *sin = (struct sockaddr_in *)&argp->addr;
+>> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&argp->addr;
+>> +
+>> 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len,  
+>> SM_MAXSTRLEN)))
+>> 		return 0;
+>> 	argp->state = ntohl(*p++);
+>> -	/* Preserve the address in network byte order */
+>> -	argp->addr = *p++;
+>> +
+>> +	/* Decode the 16-byte private field */
+>> +	memset(&argp->addr, 0, sizeof(argp->addr));
+>> +	switch (svc_addr(rqstp)->sa_family) {
+>> +	case AF_INET:
+>> +		/* data in recv buffer is already in network byte order */
+>> +		sin->sin_family = AF_INET;
+>> +		sin->sin_addr.s_addr = *p++;
+>> +		argp->addrlen = sizeof(*sin);
+>> +		break;
+>> +	case AF_INET6:
+>> +		sin6->sin6_family = AF_INET6;
+>> +		sin6->sin6_addr.s6_addr32[0] = *p++;
+>> +		sin6->sin6_addr.s6_addr32[1] = *p++;
+>> +		sin6->sin6_addr.s6_addr32[2] = *p++;
+>> +		sin6->sin6_addr.s6_addr32[3] = *p++;
+>> +		argp->addrlen = sizeof(*sin6);
+>> +		break;
+>> +	default:
+>> +		return -EIO;
+>> +	}
+>> +
+>> 	return xdr_argsize_check(rqstp, p);
+>> }
+>>
+>> diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+>> index 50c493a..2009020 100644
+>> --- a/fs/lockd/xdr4.c
+>> +++ b/fs/lockd/xdr4.c
+>> @@ -353,11 +353,34 @@ nlm4svc_decode_notify(struct svc_rqst *rqstp,  
+>> __be32 *p, struct nlm_args *argp)
+>> int
+>> nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct  
+>> nlm_reboot *argp)
+>> {
+>> +	struct sockaddr_in *sin = (struct sockaddr_in *)&argp->addr;
+>> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&argp->addr;
+>> +
+>> 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len,  
+>> SM_MAXSTRLEN)))
+>> 		return 0;
+>> 	argp->state = ntohl(*p++);
+>> -	/* Preserve the address in network byte order */
+>> -	argp->addr  = *p++;
+>> +
+>> +	/* Decode the 16-byte private field */
+>> +	memset(&argp->addr, 0, sizeof(argp->addr));
+>> +	switch (svc_addr(rqstp)->sa_family) {
+>> +	case AF_INET:
+>> +		/* address in recv buffer is already in network byte order */
+>> +		sin->sin_family = AF_INET;
+>> +		sin->sin_addr.s_addr = *p++;
+>> +		argp->addrlen = sizeof(*sin);
+>> +		break;
+>> +	case AF_INET6:
+>> +		sin6->sin6_family = AF_INET6;
+>> +		sin6->sin6_addr.s6_addr32[0] = *p++;
+>> +		sin6->sin6_addr.s6_addr32[1] = *p++;
+>> +		sin6->sin6_addr.s6_addr32[2] = *p++;
+>> +		sin6->sin6_addr.s6_addr32[3] = *p++;
+>> +		argp->addrlen = sizeof(*sin6);
+>> +		break;
+>> +	default:
+>> +		return -EIO;
+>> +	}
+>> +
+>> 	return xdr_argsize_check(rqstp, p);
+>> }
+>>
+>> diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
+>> index d6b3a80..6057b7e 100644
+>> --- a/include/linux/lockd/xdr.h
+>> +++ b/include/linux/lockd/xdr.h
+>> @@ -80,7 +80,8 @@ struct nlm_reboot {
+>> 	char *		mon;
+>> 	unsigned int	len;
+>> 	u32		state;
+>> -	__be32		addr;
+>> +	struct sockaddr_storage	addr;
+>> +	size_t		addrlen;
+>> };
+>>
+>> /*
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
