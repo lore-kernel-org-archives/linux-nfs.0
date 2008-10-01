@@ -1,68 +1,168 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 03/10] lockd: Adjust nlmsvc_lookup_host() to accomodate
-	AF_INET6 addresses
-Date: Wed, 1 Oct 2008 14:00:21 -0400
-Message-ID: <20081001180021.GD6001@fieldses.org>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161735.4963.86248.stgit@ellison.1015granger.net> <20080926221946.GE7138@fieldses.org> <B3FCEBB6-0F3F-404A-95E8-8ECAA8030E8B@oracle.com>
+Subject: Re: [PATCH 06/10] lockd: Add helper to sanity check incoming
+	NOTIFY requests
+Date: Wed, 1 Oct 2008 14:05:32 -0400
+Message-ID: <20081001180532.GE6001@fieldses.org>
+References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161757.4963.82230.stgit@ellison.1015granger.net> <20080926224316.GH7138@fieldses.org> <3DC9A32F-878A-4BA5-A1E5-7EDE6D1083EF@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51315 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:57952 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753310AbYJASAX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Oct 2008 14:00:23 -0400
-In-Reply-To: <B3FCEBB6-0F3F-404A-95E8-8ECAA8030E8B@oracle.com>
+	id S1753328AbYJASFe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Oct 2008 14:05:34 -0400
+In-Reply-To: <3DC9A32F-878A-4BA5-A1E5-7EDE6D1083EF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 01, 2008 at 11:59:08AM -0400, Chuck Lever wrote:
-> On Sep 26, 2008, at Sep 26, 2008, 6:19 PM, J. Bruce Fields wrote:
->> On Wed, Sep 17, 2008 at 11:17:35AM -0500, Chuck Lever wrote:
->>> Fix up nlmsvc_lookup_host() to pass AF_INET6 source addresses to
->>> nlm_lookup_host().
->>>
->>> To keep stack usage down, we use address-family-specific sockaddr_in
->>> and sockaddr_in6 structures instead of sockaddr_storage where
->>> appropriate.  The server-side supports only AF_INET and AF_INET6.
+On Wed, Oct 01, 2008 at 12:01:30PM -0400, Chuck Lever wrote:
+> On Sep 26, 2008, at Sep 26, 2008, 6:43 PM, J. Bruce Fields wrote:
+>> On Wed, Sep 17, 2008 at 11:17:57AM -0500, Chuck Lever wrote:
+>>> The NLM performs a silly test to see that incoming NOTIFY requests  
+>>> are
+>>> relatively secure.  Make sure the test works for both AF_INET and  
+>>> AF_INET6
+>>> addresses.
 >>
->> Looks like there still is one sockaddr_storage on the stack.  That's  
->> 128
->> bytes.  Sounds doable, OK.
->>
->>> +/**
->>> + * nlmsvc_lookup_host - Find an NLM host handle matching a remote  
->>> client
->>> + * @rqstp: incoming NLM request
->>> + * @hostname: name of client host
->>> + * @hostname_len: length of client hostname
->>> + *
->>> + * Returns an nlm_host structure that matches the [client address,
->>> + * transport protocol, NLM version, client hostname] of the passed- 
->>> in
->>> + * NLM request.  If one doesn't already exist in the host cache, a
->>> + * new handle is created and returned.
->>> + *
->>> + * Manufacture a specific source address in case the local system
->>> + * services clients from multiple IP addresses.
->>
->> "Manufacture" makes it sound like we're faking one up somehow, but  
->> we're
->> actually just copying it from the svc_rqst, right?  Maybe make that
->> "store the specific source address..." instead?
+>> Makes sense.  (Why's the test silly?  If it prevents local users from
+>> telling lockd to drop a client's locks, that seems good.)
 >
-> We really are faking it up, in a sense.  The svc_rqst does not store an 
-> address family for our source address, so we use an assumption (that our 
-> source address will always have the same family as the sender's address) 
-> to construct a full sockaddr.
+> I was referring to the port range part of the test.  Anyone who wants  
+> real security will not rely on the port value, but will use SSL or  
+> third-party authentication like Kerberos.
 
-OK, got it.
+Over the loopback interface?
 
-> How about "Construct a sockaddr for a specific source address, in case  
-> the
-> local system has multiple network addresses."
-
-The existing comment's fine.
+This is a local call--if the kernel needs kerberos to decide whether a
+local process is privileged, something's wrong.
 
 --b.
+
+>
+>>
+>>
+>> --b.
+>>
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>> fs/lockd/svc4proc.c         |    6 ++----
+>>> fs/lockd/svcproc.c          |    6 ++----
+>>> include/linux/lockd/lockd.h |   41 +++++++++++++++++++++++++++++++++ 
+>>> ++++++++
+>>> 3 files changed, 45 insertions(+), 8 deletions(-)
+>>>
+>>> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+>>> index 9e1c751..6a5ef9f 100644
+>>> --- a/fs/lockd/svc4proc.c
+>>> +++ b/fs/lockd/svc4proc.c
+>>> @@ -432,11 +432,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp,  
+>>> struct nlm_reboot *argp,
+>>> {
+>>> 	struct sockaddr_in	saddr;
+>>>
+>>> -	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
+>>> -
+>>> 	dprintk("lockd: SM_NOTIFY     called\n");
+>>> -	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
+>>> -	 || ntohs(saddr.sin_port) >= 1024) {
+>>> +
+>>> +	if (!nlm_privileged_requester(rqstp)) {
+>>> 		char buf[RPC_MAX_ADDRBUFLEN];
+>>> 		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
+>>> 				svc_print_addr(rqstp, buf, sizeof(buf)));
+>>> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+>>> index fcb7998..62fcfdb 100644
+>>> --- a/fs/lockd/svcproc.c
+>>> +++ b/fs/lockd/svcproc.c
+>>> @@ -464,11 +464,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp,  
+>>> struct nlm_reboot *argp,
+>>> {
+>>> 	struct sockaddr_in	saddr;
+>>>
+>>> -	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
+>>> -
+>>> 	dprintk("lockd: SM_NOTIFY     called\n");
+>>> -	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
+>>> -	 || ntohs(saddr.sin_port) >= 1024) {
+>>> +
+>>> +	if (!nlm_privileged_requester(rqstp)) {
+>>> 		char buf[RPC_MAX_ADDRBUFLEN];
+>>> 		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
+>>> 				svc_print_addr(rqstp, buf, sizeof(buf)));
+>>> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/ 
+>>> lockd.h
+>>> index 075095f..409eab4 100644
+>>> --- a/include/linux/lockd/lockd.h
+>>> +++ b/include/linux/lockd/lockd.h
+>>> @@ -280,6 +280,47 @@ static inline struct inode  
+>>> *nlmsvc_file_inode(struct nlm_file *file)
+>>> 	return file->f_file->f_path.dentry->d_inode;
+>>> }
+>>>
+>>> +static inline int __nlm_privileged_request4(const struct sockaddr  
+>>> *sap)
+>>> +{
+>>> +	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+>>> +	return (sin->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) &&
+>>> +			(ntohs(sin->sin_port) < 1024);
+>>> +}
+>>> +
+>>> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+>>> +static inline int __nlm_privileged_request6(const struct sockaddr  
+>>> *sap)
+>>> +{
+>>> +	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+>>> +	return (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK) &&
+>>> +			(ntohs(sin6->sin6_port) < 1024);
+>>> +}
+>>> +#else	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+>>> +static inline int __nlm_privileged_request6(const struct sockaddr  
+>>> *sap)
+>>> +{
+>>> +	return 0;
+>>> +}
+>>> +#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+>>> +
+>>> +/*
+>>> + * Ensure incoming requests are suitably "secure"
+>>> + *
+>>> + * Return TRUE if sender is local and is connecting via a  
+>>> privileged port;
+>>> + * otherwise return FALSE.
+>>> + */
+>>> +static inline int nlm_privileged_requester(const struct svc_rqst  
+>>> *rqstp)
+>>> +{
+>>> +	const struct sockaddr *sap = svc_addr(rqstp);
+>>> +
+>>> +	switch (sap->sa_family) {
+>>> +	case AF_INET:
+>>> +		return __nlm_privileged_request4(sap);
+>>> +	case AF_INET6:
+>>> +		return __nlm_privileged_request6(sap);
+>>> +	default:
+>>> +		return 0;
+>>> +	}
+>>> +}
+>>> +
+>>> static inline int __nlm_cmp_addr4(const struct sockaddr *sap1,
+>>> 				  const struct sockaddr *sap2)
+>>> {
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
