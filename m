@@ -1,51 +1,46 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 08/10] lockd: struct nlm_reboot should contain a full
-	socket address
-Date: Wed, 1 Oct 2008 14:18:01 -0400
-Message-ID: <20081001181801.GF6001@fieldses.org>
-References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161811.4963.60224.stgit@ellison.1015granger.net> <20080926230938.GK7138@fieldses.org> <E908BC09-5443-440E-9402-E2E319A3BD8E@oracle.com>
+Subject: Re: [PATCH 01/10] lockd: Support non-AF_INET addresses in
+	nlm_lookup_host()
+Date: Wed, 1 Oct 2008 14:21:25 -0400
+Message-ID: <20081001182125.GG6001@fieldses.org>
+References: <20080917161337.4963.74674.stgit@ellison.1015granger.net> <20080917161720.4963.42788.stgit@ellison.1015granger.net> <20080926215324.GC7138@fieldses.org> <C23C367A-ECD8-424C-A3AA-3DF6F5886CDF@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57549 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:52633 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753408AbYJASSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Oct 2008 14:18:02 -0400
-In-Reply-To: <E908BC09-5443-440E-9402-E2E319A3BD8E@oracle.com>
+	id S1753957AbYJASV1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Oct 2008 14:21:27 -0400
+In-Reply-To: <C23C367A-ECD8-424C-A3AA-3DF6F5886CDF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 01, 2008 at 12:17:02PM -0400, Chuck Lever wrote:
-> On Sep 26, 2008, at Sep 26, 2008, 7:09 PM, J. Bruce Fields wrote:
->> On Wed, Sep 17, 2008 at 11:18:11AM -0500, Chuck Lever wrote:
->>> The XDR decoders for the NSM NOTIFY procedure should construct a full
->>> socket address and store it in the nlm_reboot structure.  In addition
->>> to being able to store larger addresses, this means upper layer
->>> routines get an address family tag so they can distinguish between
->>> AF_INET and AF_INET6 addresses.
->>>
->>> This also keeps potentially large socket addresses off the stack and
->>> instead in dynamically allocated storage.
+On Wed, Oct 01, 2008 at 11:50:27AM -0400, Chuck Lever wrote:
+> On Sep 26, 2008, at Sep 26, 2008, 5:53 PM, J. Bruce Fields wrote:
+>> On Wed, Sep 17, 2008 at 11:17:21AM -0500, Chuck Lever wrote:
+>>> Make nlm_lookup_host() agnostic to address families.  As a clean up, 
+>>> convert
+>>> nlm_lookup_host() to use a single structure instead of nearly a  
+>>> dozen separate
+>>> arguments.
 >>
->> So one way to think of this would be that you're extending the
->> kernel<->statd interface by using the address family of statd's notify
->> call to communicate the address family of the host that rebooted.
->>
->> Do I have that right?
+>> Could you do those two steps as two separate patches, and resend?
 >
-> For statd, we're using the same technique that we used when constructing 
-> the source address in nlmsvc_lookup_host().  There's no family tag 
-> associated with the address because the 16-byte opaque in the on-the-wire 
-> format has room only for the sin6_addr part of the address.
+> I tried that before, but it didn't make sense as two patches.
+>
+> I can try it again.
 
-OK.  It seems a bit tricky, but I can't see why it doesn't work.
+It should be very straightforward; I'd do the cleanup first, so:
+
+	1. Bundle up nlm_lookup_host arguments into a single structure.
+	2. Fix the address fields in that structure.
+
+And it'd make change #2 trivial to verify.
 
 --b.
 
-> The notification downcall for IPv6 peers has to come via IPv6 loopback
-> for this to work.
 >
 >>
 >>
@@ -55,189 +50,187 @@ OK.  It seems a bit tricky, but I can't see why it doesn't work.
 >>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >>> ---
 >>>
->>> fs/lockd/svc4proc.c       |   10 +---------
->>> fs/lockd/svcproc.c        |   10 +---------
->>> fs/lockd/xdr.c            |   28 ++++++++++++++++++++++++++--
->>> fs/lockd/xdr4.c           |   27 +++++++++++++++++++++++++--
->>> include/linux/lockd/xdr.h |    3 ++-
->>> 5 files changed, 55 insertions(+), 23 deletions(-)
+>>> fs/lockd/host.c |   88 ++++++++++++++++++++++++++++++++++ 
+>>> +--------------------
+>>> 1 files changed, 56 insertions(+), 32 deletions(-)
 >>>
->>> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
->>> index 6a5ef9f..e61c05f 100644
->>> --- a/fs/lockd/svc4proc.c
->>> +++ b/fs/lockd/svc4proc.c
->>> @@ -430,8 +430,6 @@ static __be32
->>> nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot  
->>> *argp,
->>> 					      void	        *resp)
+>>> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+>>> index be8f19d..c9d25d1 100644
+>>> --- a/fs/lockd/host.c
+>>> +++ b/fs/lockd/host.c
+>>> @@ -38,6 +38,21 @@ static struct nsm_handle	*nsm_find(const struct  
+>>> sockaddr *sap,
+>>> 						const size_t hostname_len,
+>>> 						const int create);
+>>>
+>>> +#define NLM_SERVER	(0)
+>>> +#define NLM_CLIENT	(1)
+>>> +
+>>> +struct nlm_lookup_host_info {
+>>> +	const int		peer;		/* search for server|client */
+>>> +	const struct sockaddr	*sap;		/* address to search for */
+>>> +	const size_t		salen;		/* it's length */
+>>> +	const unsigned short	protocol;	/* transport to search for*/
+>>> +	const u32		version;	/* NLM version to search for */
+>>> +	const char		*hostname;	/* remote's hostname */
+>>> +	const size_t		hostname_len;	/* it's length */
+>>> +	const struct sockaddr	*src_sap;	/* our address (optional) */
+>>> +	const size_t		src_len;	/* it's length */
+>>> +};
+>>> +
+>>> /*
+>>>  * Hash function must work well on big- and little-endian platforms
+>>>  */
+>>> @@ -121,23 +136,13 @@ static void nlm_display_address(const struct  
+>>> sockaddr *sap,
+>>> /*
+>>>  * Common host lookup routine for server & client
+>>>  */
+>>> -static struct nlm_host *nlm_lookup_host(int server,
+>>> -					const struct sockaddr_in *sin,
+>>> -					int proto, u32 version,
+>>> -					const char *hostname,
+>>> -					unsigned int hostname_len,
+>>> -					const struct sockaddr_in *ssin)
+>>> +static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info 
+>>> *ni)
 >>> {
->>> -	struct sockaddr_in	saddr;
+>>> 	struct hlist_head *chain;
+>>> 	struct hlist_node *pos;
+>>> 	struct nlm_host	*host;
+>>> 	struct nsm_handle *nsm = NULL;
+>>>
+>>> -	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
+>>> -			" my role is %s, hostname=%.*s)\n",
+>>> -			proto, version, server ? "server" : "client",
+>>> -			hostname_len, hostname ? hostname : "<none>");
 >>> -
->>> 	dprintk("lockd: SM_NOTIFY     called\n");
+>>> 	mutex_lock(&nlm_host_mutex);
 >>>
->>> 	if (!nlm_privileged_requester(rqstp)) {
->>> @@ -441,13 +439,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp,  
->>> struct nlm_reboot *argp,
->>> 		return rpc_system_err;
+>>> 	if (time_after_eq(jiffies, next_gc))
+>>> @@ -150,22 +155,22 @@ static struct nlm_host *nlm_lookup_host(int  
+>>> server,
+>>> 	 * different NLM rpc_clients into one single nlm_host object.
+>>> 	 * This would allow us to have one nlm_host per address.
+>>> 	 */
+>>> -	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
+>>> +	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
+>>> 	hlist_for_each_entry(host, pos, chain, h_hash) {
+>>> -		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
+>>> +		if (!nlm_cmp_addr(nlm_addr(host), ni->sap))
+>>> 			continue;
+>>>
+>>> 		/* See if we have an NSM handle for this client */
+>>> 		if (!nsm)
+>>> 			nsm = host->h_nsmhandle;
+>>>
+>>> -		if (host->h_proto != proto)
+>>> +		if (host->h_proto != ni->protocol)
+>>> 			continue;
+>>> -		if (host->h_version != version)
+>>> +		if (host->h_version != ni->version)
+>>> 			continue;
+>>> -		if (host->h_server != server)
+>>> +		if (host->h_server != ni->peer)
+>>> 			continue;
+>>> -		if (!nlm_cmp_addr(nlm_srcaddr(host), (struct sockaddr *)ssin))
+>>> +		if (!nlm_cmp_addr(nlm_srcaddr(host), ni->src_sap))
+>>> 			continue;
+>>>
+>>> 		/* Move to head of hash chain. */
+>>> @@ -186,8 +191,8 @@ static struct nlm_host *nlm_lookup_host(int  
+>>> server,
+>>> 		atomic_inc(&nsm->sm_count);
+>>> 	else {
+>>> 		host = NULL;
+>>> -		nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
+>>> -				hostname, hostname_len, 1);
+>>> +		nsm = nsm_find(ni->sap, ni->salen,
+>>> +					ni->hostname, ni->hostname_len, 1);
+>>> 		if (!nsm) {
+>>> 			dprintk("lockd: nlm_lookup_host failed; "
+>>> 				"no nsm handle\n");
+>>> @@ -202,12 +207,12 @@ static struct nlm_host *nlm_lookup_host(int  
+>>> server,
+>>> 		goto out;
 >>> 	}
->>>
->>> -	/* Obtain the host pointer for this NFS server and try to
->>> -	 * reclaim all locks we hold on this server.
->>> -	 */
->>> -	memset(&saddr, 0, sizeof(saddr));
->>> -	saddr.sin_family = AF_INET;
->>> -	saddr.sin_addr.s_addr = argp->addr;
->>> -	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
->>> +	nlm_host_rebooted((struct sockaddr *)&argp->addr, argp->addrlen,
->>> 			  argp->mon, argp->len, argp->state);
->>>
->>> 	return rpc_success;
->>> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
->>> index 62fcfdb..86a487a 100644
->>> --- a/fs/lockd/svcproc.c
->>> +++ b/fs/lockd/svcproc.c
->>> @@ -462,8 +462,6 @@ static __be32
->>> nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot  
->>> *argp,
->>> 					      void	        *resp)
+>>> 	host->h_name	   = nsm->sm_name;
+>>> -	memcpy(nlm_addr(host), sin, sizeof(*sin));
+>>> -	host->h_addrlen = sizeof(*sin);
+>>> +	memcpy(nlm_addr(host), ni->sap, ni->salen);
+>>> +	host->h_addrlen = ni->salen;
+>>> 	nlm_clear_port(nlm_addr(host));
+>>> -	memcpy(nlm_srcaddr(host), ssin, sizeof(*ssin));
+>>> -	host->h_version    = version;
+>>> -	host->h_proto      = proto;
+>>> +	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
+>>> +	host->h_version    = ni->version;
+>>> +	host->h_proto      = ni->protocol;
+>>> 	host->h_rpcclnt    = NULL;
+>>> 	mutex_init(&host->h_mutex);
+>>> 	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+>>> @@ -218,7 +223,7 @@ static struct nlm_host *nlm_lookup_host(int  
+>>> server,
+>>> 	host->h_state      = 0;			/* pseudo NSM state */
+>>> 	host->h_nsmstate   = 0;			/* real NSM state */
+>>> 	host->h_nsmhandle  = nsm;
+>>> -	host->h_server	   = server;
+>>> +	host->h_server	   = ni->peer;
+>>> 	hlist_add_head(&host->h_hash, chain);
+>>> 	INIT_LIST_HEAD(&host->h_lockowners);
+>>> 	spin_lock_init(&host->h_lock);
+>>> @@ -270,12 +275,22 @@ struct nlm_host *nlmclnt_lookup_host(const  
+>>> struct sockaddr_in *sin,
+>>> 				     const char *hostname,
+>>> 				     unsigned int hostname_len)
 >>> {
->>> -	struct sockaddr_in	saddr;
->>> -
->>> 	dprintk("lockd: SM_NOTIFY     called\n");
+>>> -	const struct sockaddr_in source = {
+>>> -		.sin_family	= AF_UNSPEC,
+>>> +	const struct sockaddr source = {
+>>> +		.sa_family	= AF_UNSPEC,
+>>> +	};
+>>> +	struct nlm_lookup_host_info ni = {
+>>> +		.peer		= NLM_SERVER,
+>>> +		.sap		= (struct sockaddr *)sin,
+>>> +		.salen		= sizeof(*sin),
+>>> +		.protocol	= proto,
+>>> +		.version	= version,
+>>> +		.hostname	= hostname,
+>>> +		.hostname_len	= hostname_len,
+>>> +		.src_sap	= &source,
+>>> +		.src_len	= sizeof(source),
+>>> 	};
 >>>
->>> 	if (!nlm_privileged_requester(rqstp)) {
->>> @@ -473,13 +471,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp,  
->>> struct nlm_reboot *argp,
->>> 		return rpc_system_err;
->>> 	}
->>>
->>> -	/* Obtain the host pointer for this NFS server and try to
->>> -	 * reclaim all locks we hold on this server.
->>> -	 */
->>> -	memset(&saddr, 0, sizeof(saddr));
->>> -	saddr.sin_family = AF_INET;
->>> -	saddr.sin_addr.s_addr = argp->addr;
->>> -	nlm_host_rebooted((struct sockaddr *)&saddr, sizeof(saddr),
->>> +	nlm_host_rebooted((struct sockaddr *)&argp->addr, argp->addrlen,
->>> 			  argp->mon, argp->len, argp->state);
->>>
->>> 	return rpc_success;
->>> diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
->>> index 1f22629..92c5695 100644
->>> --- a/fs/lockd/xdr.c
->>> +++ b/fs/lockd/xdr.c
->>> @@ -9,6 +9,7 @@
->>> #include <linux/types.h>
->>> #include <linux/sched.h>
->>> #include <linux/utsname.h>
->>> +#include <linux/in.h>
->>> #include <linux/nfs.h>
->>>
->>> #include <linux/sunrpc/xdr.h>
->>> @@ -346,11 +347,34 @@ nlmsvc_decode_notify(struct svc_rqst *rqstp,  
->>> __be32 *p, struct nlm_args *argp)
->>> int
->>> nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct  
->>> nlm_reboot *argp)
->>> {
->>> +	struct sockaddr_in *sin = (struct sockaddr_in *)&argp->addr;
->>> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&argp->addr;
->>> +
->>> 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len,  
->>> SM_MAXSTRLEN)))
->>> 		return 0;
->>> 	argp->state = ntohl(*p++);
->>> -	/* Preserve the address in network byte order */
->>> -	argp->addr = *p++;
->>> +
->>> +	/* Decode the 16-byte private field */
->>> +	memset(&argp->addr, 0, sizeof(argp->addr));
->>> +	switch (svc_addr(rqstp)->sa_family) {
->>> +	case AF_INET:
->>> +		/* data in recv buffer is already in network byte order */
->>> +		sin->sin_family = AF_INET;
->>> +		sin->sin_addr.s_addr = *p++;
->>> +		argp->addrlen = sizeof(*sin);
->>> +		break;
->>> +	case AF_INET6:
->>> +		sin6->sin6_family = AF_INET6;
->>> +		sin6->sin6_addr.s6_addr32[0] = *p++;
->>> +		sin6->sin6_addr.s6_addr32[1] = *p++;
->>> +		sin6->sin6_addr.s6_addr32[2] = *p++;
->>> +		sin6->sin6_addr.s6_addr32[3] = *p++;
->>> +		argp->addrlen = sizeof(*sin6);
->>> +		break;
->>> +	default:
->>> +		return -EIO;
->>> +	}
->>> +
->>> 	return xdr_argsize_check(rqstp, p);
+>>> -	return nlm_lookup_host(0, sin, proto, version,
+>>> -			       hostname, hostname_len, &source);
+>>> +	return nlm_lookup_host(&ni);
 >>> }
 >>>
->>> diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
->>> index 50c493a..2009020 100644
->>> --- a/fs/lockd/xdr4.c
->>> +++ b/fs/lockd/xdr4.c
->>> @@ -353,11 +353,34 @@ nlm4svc_decode_notify(struct svc_rqst *rqstp,  
->>> __be32 *p, struct nlm_args *argp)
->>> int
->>> nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct  
->>> nlm_reboot *argp)
->>> {
->>> +	struct sockaddr_in *sin = (struct sockaddr_in *)&argp->addr;
->>> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&argp->addr;
->>> +
->>> 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len,  
->>> SM_MAXSTRLEN)))
->>> 		return 0;
->>> 	argp->state = ntohl(*p++);
->>> -	/* Preserve the address in network byte order */
->>> -	argp->addr  = *p++;
->>> +
->>> +	/* Decode the 16-byte private field */
->>> +	memset(&argp->addr, 0, sizeof(argp->addr));
->>> +	switch (svc_addr(rqstp)->sa_family) {
->>> +	case AF_INET:
->>> +		/* address in recv buffer is already in network byte order */
->>> +		sin->sin_family = AF_INET;
->>> +		sin->sin_addr.s_addr = *p++;
->>> +		argp->addrlen = sizeof(*sin);
->>> +		break;
->>> +	case AF_INET6:
->>> +		sin6->sin6_family = AF_INET6;
->>> +		sin6->sin6_addr.s6_addr32[0] = *p++;
->>> +		sin6->sin6_addr.s6_addr32[1] = *p++;
->>> +		sin6->sin6_addr.s6_addr32[2] = *p++;
->>> +		sin6->sin6_addr.s6_addr32[3] = *p++;
->>> +		argp->addrlen = sizeof(*sin6);
->>> +		break;
->>> +	default:
->>> +		return -EIO;
->>> +	}
->>> +
->>> 	return xdr_argsize_check(rqstp, p);
->>> }
+>>> /*
+>>> @@ -289,10 +304,19 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
+>>> 		.sin_family	= AF_INET,
+>>> 		.sin_addr	= rqstp->rq_daddr.addr,
+>>> 	};
+>>> +	struct nlm_lookup_host_info ni = {
+>>> +		.peer		= NLM_CLIENT,
+>>> +		.sap		= svc_addr(rqstp),
+>>> +		.salen		= rqstp->rq_addrlen,
+>>> +		.protocol	= rqstp->rq_prot,
+>>> +		.version	= rqstp->rq_vers,
+>>> +		.hostname	= hostname,
+>>> +		.hostname_len	= hostname_len,
+>>> +		.src_sap	= (struct sockaddr *)&source,
+>>> +		.src_len	= sizeof(source),
+>>> +	};
 >>>
->>> diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
->>> index d6b3a80..6057b7e 100644
->>> --- a/include/linux/lockd/xdr.h
->>> +++ b/include/linux/lockd/xdr.h
->>> @@ -80,7 +80,8 @@ struct nlm_reboot {
->>> 	char *		mon;
->>> 	unsigned int	len;
->>> 	u32		state;
->>> -	__be32		addr;
->>> +	struct sockaddr_storage	addr;
->>> +	size_t		addrlen;
->>> };
+>>> -	return nlm_lookup_host(1, svc_addr_in(rqstp),
+>>> -			       rqstp->rq_prot, rqstp->rq_vers,
+>>> -			       hostname, hostname_len, &source);
+>>> +	return nlm_lookup_host(&ni);
+>>> }
 >>>
 >>> /*
 >>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
 > -- 
 > Chuck Lever
