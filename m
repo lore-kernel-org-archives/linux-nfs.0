@@ -1,138 +1,74 @@
-From: Tom Talpey <talpey@netapp.com>
-Subject: [UPDATED PATCH 09/14] RPC/RDMA: adhere to protocol for unpadded
-	client trailing write chunks.
-Date: Thu, 09 Oct 2008 15:01:11 -0400
-Message-ID: <20081009190111.13947.42921.stgit@tmt3.nane.netapp.com>
-References: <20081009185643.13947.64733.stgit@tmt3.nane.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 3/3] NFS: SETCLIENTID truncates client ID and netid
+Date: Wed, 1 Oct 2008 11:45:34 -0400
+Message-ID: <85F8F1FB-E86F-4FE3-B816-FC1D8B5ADAF0@oracle.com>
+References: <20080925154814.8353.64762.stgit@manray.1015granger.net> <20080925155712.8353.47707.stgit@manray.1015granger.net> <1222359026.13388.8.camel@localhost> <20080925165821.GA31775@fieldses.org> <25D4D20B-DC01-4864-A583-9A522CB774EC@oracle.com> <20080927000327.GD9889@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [216.240.26.4] ([216.240.26.4]:12342 "EHLO tmt3.nane.netapp.com"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756018AbYJITBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2008 15:01:12 -0400
-Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J1B6r014147
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:01:11 -0400
-In-Reply-To: <20081009185643.13947.64733.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:41882 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754192AbYJAPpr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Oct 2008 11:45:47 -0400
+In-Reply-To: <20080927000327.GD9889@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPC/RDMA protocol allows clients and servers to avoid RDMA
-operations for data which is purely the result of XDR padding.
-On the client, automatically insert the necessary padding for
-such server replies, and optionally don't marshal such chunks.
+On Sep 26, 2008, at Sep 26, 2008, 8:03 PM, J. Bruce Fields wrote:
+> On Thu, Sep 25, 2008 at 02:13:11PM -0400, Chuck Lever wrote:
+>> On Sep 25, 2008, at 12:58 PM, J. Bruce Fields wrote:
+>>> But I'm willing to settle for it and let it be a lesson to us if it
+>>> turns out to cause more problems than expected.
+>>
+>> I will be here to fix it if there is a problem.  In this case, this
+>> whole NFS/IPv6 thing is so complicated that I'm implementing just  
+>> what
+>> is needed as we go along.  We can fill in the niceties at a later  
+>> point.
+>>
+>> /me is taking his cue from "lazy evaluation."
+>
+> OK, fair enough, barring any other objections.
+>
+>> Today, if CONFIG_SUNRPC_REGISTER_V4 is enabled and svc_register()  
+>> can't
+>> contact rpcbind's IPv6 listener and issue a v4 SET request, it  
+>> fails and
+>> the RPC service is shut down.
+>>
+>> The only area that might be trouble is when a sysadmin shuts off ALL
+>> IPv6 in her network configuration, even if the kernel is build with  
+>> IPv6
+>> support.  The network layer should do the right thing and map the  
+>> IPv6
+>> loopback address to the IPv4 loopback address automatically, but I
+>> haven't tested this.
+>>
+>> I'm also not convinced that people will try to install a 2.6 kernel  
+>> on a
+>> distribution that was built for 2.4 or earlier kernels.  There are  
+>> too
+>> many missing pieces in the old distributions (like kernel module
+>> utilities) to make it easy.  So I'm not trying to make this  
+>> compatible
+>> with every distribution since the beginning.
+>
+> Is it 2.4-era distributions that's really the issue?
 
-Signed-off-by: Tom Talpey <talpey@netapp.com>
----
+I'm merely trying to bound the amount of backwards-compatibility that  
+we realistically have to worry about.  It could be more recent than  
+that, even.
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   21 +++++++++++++++++++--
- net/sunrpc/xprtrdma/transport.c |    9 +++++++++
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
- 3 files changed, 33 insertions(+), 2 deletions(-)
+> I thought the userspace rpcbind stuff was still a bit experimental--so
+> that when the switchover is made to a kernel that supports rpcbind v4,
+> the userspace that's required will be more recent than that.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 721dae7..d245c0b 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -118,6 +118,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	}
- 
- 	if (xdrbuf->tail[0].iov_len) {
-+		/* the rpcrdma protocol allows us to omit any trailing
-+		 * xdr pad bytes, saving the server an RDMA operation. */
-+		if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
-+			return n;
- 		if (n == nsegs)
- 			return 0;
- 		seg[n].mr_page = NULL;
-@@ -594,7 +598,7 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __b
-  * Scatter inline received data back into provided iov's.
-  */
- static void
--rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len)
-+rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- {
- 	int i, npages, curlen, olen;
- 	char *destp;
-@@ -660,6 +664,13 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len)
- 	} else
- 		rqst->rq_rcv_buf.tail[0].iov_len = 0;
- 
-+	if (pad) {
-+		/* implicit padding on terminal chunk */
-+		unsigned char *p = rqst->rq_rcv_buf.tail[0].iov_base;
-+		while (pad--)
-+			p[rqst->rq_rcv_buf.tail[0].iov_len++] = 0;
-+	}
-+
- 	if (copy_len)
- 		dprintk("RPC:       %s: %d bytes in"
- 			" %d extra segments (%d lost)\n",
-@@ -794,14 +805,20 @@ repost:
- 			    ((unsigned char *)iptr - (unsigned char *)headerp);
- 			status = rep->rr_len + rdmalen;
- 			r_xprt->rx_stats.total_rdma_reply += rdmalen;
-+			/* special case - last chunk may omit padding */
-+			if (rdmalen &= 3) {
-+				rdmalen = 4 - rdmalen;
-+				status += rdmalen;
-+			}
- 		} else {
- 			/* else ordinary inline */
-+			rdmalen = 0;
- 			iptr = (__be32 *)((unsigned char *)headerp + 28);
- 			rep->rr_len -= 28; /*sizeof *headerp;*/
- 			status = rep->rr_len;
- 		}
- 		/* Fix up the rpc results for upper layer */
--		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len);
-+		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len, rdmalen);
- 		break;
- 
- 	case __constant_htonl(RDMA_NOMSG):
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index ec6d1e7..c7d2380 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -71,6 +71,7 @@ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
- static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
-+                int xprt_rdma_pad_optimize = 0;
- 
- #ifdef RPC_DEBUG
- 
-@@ -136,6 +137,14 @@ static ctl_table xr_tunables_table[] = {
- 		.extra2		= &max_memreg,
- 	},
- 	{
-+		.ctl_name       = CTL_UNNUMBERED,
-+		.procname	= "rdma_pad_optimize",
-+		.data		= &xprt_rdma_pad_optimize,
-+		.maxlen		= sizeof(unsigned int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec,
-+	},
-+	{
- 		.ctl_name = 0,
- 	},
- };
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 2db2344..fde6499 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -280,6 +280,11 @@ struct rpcrdma_xprt {
- #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
- #define rpcx_to_rdmad(x) (rpcx_to_rdmax(x)->rx_data)
- 
-+/* Setting this to 0 ensures interoperability with early servers.
-+ * Setting this to 1 enhances certain unaligned read/write performance.
-+ * Default is 0, see sysctl entry and rpc_rdma.c rpcrdma_convert_iovs() */
-+extern int xprt_rdma_pad_optimize;
-+
- /*
-  * Interface Adapter calls - xprtrdma/verbs.c
-  */
+You can drop libtirpc, rpcbind, and the latest nfs-utils on older  
+distributions without much difficulty.
 
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
