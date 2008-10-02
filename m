@@ -1,161 +1,35 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 10/10] svcrdma: Documentation update for the FastReg	memory
- model
-Date: Wed, 01 Oct 2008 19:38:11 -0500
-Message-ID: <48E417F3.4060105@opengridcomputing.com>
-References: <1221564879-85046-10-git-send-email-tom@opengridcomputing.com> <1221564879-85046-11-git-send-email-tom@opengridcomputing.com> <20080924212102.GD10841@fieldses.org> <48DB939E.4090503@opengridcomputing.com> <20080926234006.GA9889@fieldses.org> <48E197ED.6080409@opengridcomputing.com> <20080930184433.GC12268@fieldses.org> <48E27631.4090202@opengridcomputing.com> <20080930185729.GE12268@fieldses.org> <48E28951.6010700@opengridcomputing.com> <20081001161737.GB6001@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/2] Two missing clean ups for nfs-utils
+Date: Thu, 02 Oct 2008 11:54:06 -0400
+Message-ID: <20081002154752.25618.18842.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Tom Talpey <Thomas.Talpey@netapp.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:59778 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753245AbYJBAiL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Oct 2008 20:38:11 -0400
-In-Reply-To: <20081001161737.GB6001@fieldses.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:14686 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753941AbYJBPyp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2008 11:54:45 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> Thanks, I think this is much more helpful.
-> 
-> On Tue, Sep 30, 2008 at 03:17:21PM -0500, Tom Tucker wrote:
->> +Security
->> +--------
->> +
->> +  NFSRDMA exploits the RDMA capabilities of the IB and iWARP
->> +  transports to more efficiently exchange RPC data between the client
->> +  and the server. This section discusses the security implications of
->> +  the exchange of memory information on the wire when the wire may be
->> +  monitorable by an untrusted application. The identifier that
->> +  encapsulates this memory information is called an RKEY.
->> +
->> +  A principal exploit is that a node on the local network could snoop
->> +  RDMA packets containing RKEY and then forge a packet with this RKEY
->> +  to write and/or read the memory of the peer to which the RKEY
->> +  referred.
->> +
->> +  If the underlying RDMA device is capable of Fast Memory
->> +  Registration, then NFSRDMA is no less secure than TCP with
->> +  auth_unix. However, if the device does not support Fast Memory
->> +  Registration, then such a node could write anywhere in the server's
->> +  memory using the method above. At mount time, the server sends a
-> 
-> The server doesn't really know about mounts, especially not at this
-> level, so I assume you mean either server start time or client connect
-> time?
+Hi Steve-
 
-Right, client connect time, I'll fix. Thanks.
+The following two clean-up patches are not included in your nfs-utils
+git repo, but were sent in my September 5 patch set for nfs-utils.
 
-> 
->> +  string to the message log to indicate whether or not Fast Memory
->> +  Registration is being used. If Fast Memory Registration is being
->> +  used, the string
->> +
->> +	"svcrdma: Using Fast Memory Registration"
->> +
->> +  is logged, otherwise,
->> +
->> +	"svcrdma: Using a Global DMA MR"
->> +
->> +  will be logged.
-> 
-> It'd be nicer to have something that can be queried by a program--a file
-> in proc or nfsd, for example--without having to grep through log files.
-> (Or is it possible the drivers already export enough information under
-> sysfs someplace to figure this out with a simple script?)
+For reference, these were patches 13/19 and 14/19 in that series.
 
-Yes, it's gross. But I was trying to keep it simple for the first go-round and
-since it is conceivable that you have two adapters, one that supports FRMR and
-the other doesn't, you would need a proc file per adapter. All my systems have
-both iWARP and IB adapters in them. So half my connections are DMA MR and the
-other FRMR.
+---
 
-> 
-> Or maybe the non-fast registration stuff should be under a separate
-> configuration option entirely?  Distro's could eventually enable only
-> the safer configurations and people doing testing could build their own
-> kernels with the rest enabled.
+Chuck Lever (2):
+      nfs-utils: make makesock() static
+      nfs-utils: Clean up support/nfs/rpcmisc.c:closedown()
 
-Perhaps, or maybe a module option that specifically disables DMA_MR. Also
-note that with IB the DMA MR is RKEY is not put on the wire so I think I
-need to qualify the warning somewhat.
 
-> 
-> My initial impulse is to be a bit scared of the non-fast-registration
-> case, but maybe I don't understand how this hardware is deployed.
-> 
+ support/nfs/rpcmisc.c |  130 +++++++++++++++++++++++++------------------------
+ 1 files changed, 65 insertions(+), 65 deletions(-)
 
-In practice, I think the exposure is real, but somewhat academic.
-Obviously as this sees wider adoption the likelihood that this could be
-deployed on a network with untrusted hosts grows significantly. Today
-I don't believe that's the case.
-
-I would lean towards the module option and a perhaps a Kconfig option that
-allows you to tweak the default. I also think the policy should be transport
-dependent. IOW, DMA MR is OK for IB, but verboten for iWARP.
-
-Thanks for the feedback,
-Tom
-
-> --b.
-> 
->> +
->> +  The sections below provide additional information on this issue.
->> +
->> +  The NFSRDMA protocol is defined such that a) only the server
->> +  initiates RDMA, and b) only the client's memory is exposed via
->> +  RKEY. This is why the server reads to fetch RPC data from the client
->> +  even though it would be more efficient for the client to write the
->> +  data to the server's memory. This design goal is not entirely
->> +  realized with iWARP, however, because the RKEY (called an STag on
->> +  iWARP) for the data sink of an RDMA_READ is actually placed on the
->> +  wire, and this RKEY has Remote Write permission. This means that the
->> +  server's memory is exposed by virtue of having placed the RKEY for
->> +  its local memory on the wire in order to receive the result of the
->> +  RDMA_READ.
->> +
->> +  By contrast, IB uses an opaque transaction ID# to associate the
->> +  READ_RPL with the READ_REQ and the data sink of an READ_REQ does not
->> +  require remote access. That said, the byzantine node in question
->> +  could forge a packet with this transaction ID and corrupt the target
->> +  memory, however, the scope of the exploit is bounded to the lifetime
->> +  of this single RDMA_READ request and to the memory mapped by the
->> +  data sink of the READ_REQ.
->> +
->> +  The newer RDMA adapters (both iWARP and IB) support "Fast Memory
->> +  Registration". This capability allows memory to be quickly
->> +  registered (i.e. made available for remote access) and de-registered
->> +  by submitting WR on the SQ. These capabilities provide a mechanism
->> +  to reduce the exposure discused above by limiting the scope of the
->> +  exploit. The idea is to create an RKEY that only maps the single RPC
->> +  and whose effective lifetime is only the exchange of this single
->> +  RPC. This is the default memory model that is employed by the server
->> +  when supported by the adapter and by the client when the
->> +  rdma_memreg_strategy is set to 6. Note that the client and server
->> +  may use different memory registration strategies, however,
->> +  performance is better when both the client and server use the
->> +  FastReg memory registration strategy.
->> +
->> +  This approach has two benefits, a) it restricts the domain of the
->> +  exploit to the memory of a single RPC, and b) it limits the duration
->> +  of the exploit to the time it takes to satisfy the RDMA_READ.
->> +
->> +  It is arguable that a one-shot STag/RKEY is no less secure than RPC
->> +  on the TCP transport. Consider that the exact same byzantine
->> +  application could more easily corrupt TCP RPC payload by simply
->> +  forging a packet with the correct TCP sequence number -- in fact
->> +  it's easier than the RDMA exploit because the RDMA exploit requires
->> +  that you correctly forge both the TCP packet and the RDMA
->> +  payload. In addition the duration of the TCP exploit is the lifetime
->> +  of the connection, not the lifetime of a single WR/RPC data transfer.
->> +
->> +  RDMA on IB or iWARP using Fast Reg is no less secure than TCP.
->> +
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-- 
+Chuck Lever
