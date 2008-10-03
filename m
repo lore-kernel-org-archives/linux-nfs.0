@@ -1,141 +1,197 @@
-From: Mike Eisler <email2mre-linuxv4@yahoo.com>
-Subject: Re: netid in the NFS mount command
-Date: Fri, 3 Oct 2008 05:56:35 -0700 (PDT)
-Message-ID: <433830.69599.qm@web38108.mail.mud.yahoo.com>
-References: <BE3BB0EF-ABC9-4BB3-A828-2ACE54220EC9@oracle.com>
-Reply-To: email2mre-linuxv4@yahoo.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/7] NLM: Convert nlm_lookup_host() to use a single argument
+Date: Fri, 03 Oct 2008 12:50:07 -0400
+Message-ID: <20081003165006.10198.9012.stgit@ingres.1015granger.net>
+References: <20081003162856.10198.20451.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from web38108.mail.mud.yahoo.com ([209.191.124.135]:21646 "HELO
-	web38108.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1750813AbYJCM4g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 08:56:36 -0400
-In-Reply-To: <BE3BB0EF-ABC9-4BB3-A828-2ACE54220EC9@oracle.com>
+Received: from rgminet01.oracle.com ([148.87.113.118]:40632 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752975AbYJCQwG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 12:52:06 -0400
+In-Reply-To: <20081003162856.10198.20451.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The nlm_lookup_host() function already has a large number of arguments,
+and I'm about to add a few more.  As a clean up, convert the function
+to use a single data structure argument.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/lockd/host.c |   89 ++++++++++++++++++++++++++++++++++++-------------------
+ 1 files changed, 59 insertions(+), 30 deletions(-)
 
---- On Thu, 9/18/08, Chuck Lever <chuck.lever@oracle.com> wrote:
-
-
-> > But I think there is value in following the Solaris
-> convention
-> > (which I established when I was at Sun in the 1990s
-> working on the
-> > Solaris NFS/TCP stack) because by specifying
-> "proto=tcp6" in the
-> > mount command, this can force the use of TCP over the
-> IPv6 networking
-> > protocol in cases where the same host name is
-> resolvable to both an
-> > IPv4 or IPv6 host address. Of course, one could edit
-> nsswitch.conf  
-> > and /etc/hosts or ipnodes to insert an IPv6-only host
-> name, but that  
-> > is cumbersome.
-> 
-> On the other hand, if a user mounts "server" with
-> "proto=tcp" on  
-> Solaris, and the server drops its IPv4 addresses in favor
-> of IPv6  
-> addresses, client sysadmins will have to be aware of this
-> change, and  
-> modify their mount options.  On Linux, the server can
-> change to IPv6- 
-> only, and the clients will adjust without intervention.
-
-Right, well the mount would fail in the Solaris case, so awareness
-will come quickly. Optimizing for the infrequent case of
-transition to IPv6 doesn't see like the better choice to me.
-
-And if the server supports both IPv4 and IPv6, maybe the client's
-system administrator wants to make sure IPv4 is used, because,
-he's discovered that the IPv6 checksum support for the ethernet
-chips being used on the client and/or server does not exist, or it does
-exist, but the TCP/IP stacks in the client and/or server don't take
-advantage of it, and thus CPU utilization jumps by 25% and performance
-by say 35%.
-
-> 
-> Perhaps for one user that operates both the client and
-> server, this is  
-> not an issue.  However, this does become a problem if a
-> large number  
-> of clients access a server that is being changed in another
->  
-> administrative domain.  Naturally this can be hidden with
-> automounter,  
-> but we wander straight back into the realm of diddling with
->  
-> configuration files, which is cumbersome.  Not to mention
-> that not  
-> everyone chooses to use an automounter.
-> 
-> It seems more natural to me to use an AF_INET6 address to
-> choose NFS  
-> over IPv6, rather than a netid.  One of my interests is to
-
-I think is is unnatural to tell a customer that if he wants to
-force the use IPv6 or IPv4 on the command line, he has to specify
-a IPv4 or IPv6 address.
-
-> keep the  
-> details of AF_INET v. AF_INET6 inconsequential to NFS.  It
-> would be  
-> easy, however, to add a "netid=" mount option in
-> addition to "proto="  
-> where a true netid could be used instead of a protocol
-> name.
-
-I hope you at least do that. It would be nice if the 
-Solaris and Linux mount commands could agree on this in order
-to avoid enraging customers that use both, but so be it.
-
-> 
-> And finally, we had to do something to allow NFS/RDMA on
-> InfiniBand,  
-> which still doesn't have a netid, as you point out. 
-> According to the  
-> man page I have on my OpenSolaris system, it actually does
-> allow  
-> "proto=rdma".
-
-If "rdma" does not have an entry in /etc/netconfig then apparently 
-OpenSolaris is not consistent with the TI-RPC architecture of Solaris.
-
-> > BTW, the terse netid stuff in RFC3530 is being
-> codified in a separate
-> > to-be-approved RFC. You can look at the internet draft
-> at:
-> >
-> http://tools.ietf.org/wg/nfsv4/draft-ietf-nfsv4-rpc-netid/
-> 
-> 
-> I personally am glad of any clarification around netids.
-> 
-> One thing I noticed was this in RFC 1833 (August 1995):
-> 
-> /*
-> * A mapping of (program, version, network ID) to address *
-> * The network identifier (r_netid):
-> * This is a string that represents a local identification
-> for a
-> * network. This is defined by a system administrator based
-> on local
-> * conventions, and cannot be depended on to have the same
-> value on
-> * every system. */
-> 
->  From this, I assumed that netids were not standardized on
-> purpose.   
-> Mike, does your draft address and clarify this statement? 
-> Will your  
-> draft supercede RFC 1833 and subsequent related RFCs?
-
-The netid draft updates RFC 1833, and so "cannot be depended on to have the same value on every system." will no longer be true.
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index be8f19d..1630588 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -38,6 +38,20 @@ static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+ 						const size_t hostname_len,
+ 						const int create);
+ 
++#define NLM_SERVER	(0)
++#define NLM_CLIENT	(1)
++
++struct nlm_lookup_host_info {
++	const int		peer;		/* search for server|client */
++	const struct sockaddr_in *sin;		/* address to search for */
++	const unsigned short	protocol;	/* transport to search for*/
++	const u32		version;	/* NLM version to search for */
++	const char		*hostname;	/* remote's hostname */
++	const size_t		hostname_len;	/* it's length */
++	const struct sockaddr_in *src_sin;	/* our address (optional) */
++	const size_t		src_len;	/* it's length */
++};
++
+ /*
+  * Hash function must work well on big- and little-endian platforms
+  */
+@@ -121,23 +135,13 @@ static void nlm_display_address(const struct sockaddr *sap,
+ /*
+  * Common host lookup routine for server & client
+  */
+-static struct nlm_host *nlm_lookup_host(int server,
+-					const struct sockaddr_in *sin,
+-					int proto, u32 version,
+-					const char *hostname,
+-					unsigned int hostname_len,
+-					const struct sockaddr_in *ssin)
++static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ {
+ 	struct hlist_head *chain;
+ 	struct hlist_node *pos;
+ 	struct nlm_host	*host;
+ 	struct nsm_handle *nsm = NULL;
+ 
+-	dprintk("lockd: nlm_lookup_host(proto=%d, vers=%u,"
+-			" my role is %s, hostname=%.*s)\n",
+-			proto, version, server ? "server" : "client",
+-			hostname_len, hostname ? hostname : "<none>");
+-
+ 	mutex_lock(&nlm_host_mutex);
+ 
+ 	if (time_after_eq(jiffies, next_gc))
+@@ -150,22 +154,23 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 	 * different NLM rpc_clients into one single nlm_host object.
+ 	 * This would allow us to have one nlm_host per address.
+ 	 */
+-	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)sin)];
++	chain = &nlm_hosts[nlm_hash_address((struct sockaddr *)ni->sin)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+-		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)sin))
++		if (!nlm_cmp_addr(nlm_addr(host), (struct sockaddr *)ni->sin))
+ 			continue;
+ 
+ 		/* See if we have an NSM handle for this client */
+ 		if (!nsm)
+ 			nsm = host->h_nsmhandle;
+ 
+-		if (host->h_proto != proto)
++		if (host->h_proto != ni->protocol)
+ 			continue;
+-		if (host->h_version != version)
++		if (host->h_version != ni->version)
+ 			continue;
+-		if (host->h_server != server)
++		if (host->h_server != ni->peer)
+ 			continue;
+-		if (!nlm_cmp_addr(nlm_srcaddr(host), (struct sockaddr *)ssin))
++		if (!nlm_cmp_addr(nlm_srcaddr(host),
++					(struct sockaddr *)ni->src_sin))
+ 			continue;
+ 
+ 		/* Move to head of hash chain. */
+@@ -186,8 +191,9 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 		atomic_inc(&nsm->sm_count);
+ 	else {
+ 		host = NULL;
+-		nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
+-				hostname, hostname_len, 1);
++		nsm = nsm_find((struct sockaddr *)ni->sin,
++				sizeof(struct sockaddr_in),
++				ni->hostname, ni->hostname_len, 1);
+ 		if (!nsm) {
+ 			dprintk("lockd: nlm_lookup_host failed; "
+ 				"no nsm handle\n");
+@@ -202,12 +208,12 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 		goto out;
+ 	}
+ 	host->h_name	   = nsm->sm_name;
+-	memcpy(nlm_addr(host), sin, sizeof(*sin));
+-	host->h_addrlen = sizeof(*sin);
++	memcpy(nlm_addr(host), ni->sin, sizeof(struct sockaddr_in));
++	host->h_addrlen = sizeof(struct sockaddr_in);
+ 	nlm_clear_port(nlm_addr(host));
+-	memcpy(nlm_srcaddr(host), ssin, sizeof(*ssin));
+-	host->h_version    = version;
+-	host->h_proto      = proto;
++	memcpy(nlm_srcaddr(host), ni->src_sin, sizeof(struct sockaddr_in));
++	host->h_version    = ni->version;
++	host->h_proto      = ni->protocol;
+ 	host->h_rpcclnt    = NULL;
+ 	mutex_init(&host->h_mutex);
+ 	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+@@ -218,7 +224,7 @@ static struct nlm_host *nlm_lookup_host(int server,
+ 	host->h_state      = 0;			/* pseudo NSM state */
+ 	host->h_nsmstate   = 0;			/* real NSM state */
+ 	host->h_nsmhandle  = nsm;
+-	host->h_server	   = server;
++	host->h_server	   = ni->peer;
+ 	hlist_add_head(&host->h_hash, chain);
+ 	INIT_LIST_HEAD(&host->h_lockowners);
+ 	spin_lock_init(&host->h_lock);
+@@ -273,9 +279,21 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
+ 	const struct sockaddr_in source = {
+ 		.sin_family	= AF_UNSPEC,
+ 	};
++	struct nlm_lookup_host_info ni = {
++		.peer		= NLM_SERVER,
++		.sin		= sin,
++		.protocol	= proto,
++		.version	= version,
++		.hostname	= hostname,
++		.hostname_len	= hostname_len,
++		.src_sin	= &source,
++	};
+ 
+-	return nlm_lookup_host(0, sin, proto, version,
+-			       hostname, hostname_len, &source);
++	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
++			(hostname ? hostname : "<none>"), version,
++			(proto == IPPROTO_UDP ? "udp" : "tcp"));
++
++	return nlm_lookup_host(&ni);
+ }
+ 
+ /*
+@@ -289,10 +307,21 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
+ 		.sin_family	= AF_INET,
+ 		.sin_addr	= rqstp->rq_daddr.addr,
+ 	};
++	struct nlm_lookup_host_info ni = {
++		.peer		= NLM_CLIENT,
++		.sin		= svc_addr_in(rqstp),
++		.protocol	= rqstp->rq_prot,
++		.version	= rqstp->rq_vers,
++		.hostname	= hostname,
++		.hostname_len	= hostname_len,
++		.src_sin	= &source,
++	};
++
++	dprintk("lockd: %s(host='%*s', vers=%u, proto=%s)\n", __func__,
++			(int)hostname_len, hostname, rqstp->rq_vers,
++			(rqstp->rq_prot == IPPROTO_UDP ? "udp" : "tcp"));
+ 
+-	return nlm_lookup_host(1, svc_addr_in(rqstp),
+-			       rqstp->rq_prot, rqstp->rq_vers,
+-			       hostname, hostname_len, &source);
++	return nlm_lookup_host(&ni);
+ }
+ 
+ /*
 
