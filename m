@@ -1,51 +1,77 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/7] Replacements for last week's patches
-Date: Fri, 03 Oct 2008 12:49:58 -0400
-Message-ID: <20081003162856.10198.20451.stgit@ingres.1015granger.net>
+Subject: [PATCH 7/7] lockd: Remove unused fields in the nlm_reboot structure
+Date: Fri, 03 Oct 2008 12:50:51 -0400
+Message-ID: <20081003165051.10198.52618.stgit@ingres.1015granger.net>
+References: <20081003162856.10198.20451.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:40636 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:40628 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753062AbYJCQwH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 12:52:07 -0400
+	with ESMTP id S1751781AbYJCQwE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 12:52:04 -0400
+In-Reply-To: <20081003162856.10198.20451.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+The nlm_reboot structure is used to store information provided by the
+NSM_NOTIFY procedure.  This procedure is not specified by the NLM or NSM
+protocols, other than to say that the procedure can be used to transmit
+information private to a particular NLM/NSM implementation.
 
-Here's a patch series to replace the patches you reviewed earlier this
-week.  I've addressed the issues you mentioned in your review comments,
-and dropped the NSM-related patches that treat the 16-byte opaque as an
-address, as discussed.
+For Linux, the callback arguments include the name of the monitored host,
+the new NSM state of the host, and a 16-byte private opaque.
 
-The last patches I intend to submit for 2.6.28 will address the lack of
-a client-side UDP lockd listener.  I will propose a fix later today in
-a subsequent patch series.
+As a clean up, remove the unused fields and the server-side XDR logic that
+decodes them.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (7):
-      lockd: Remove unused fields in the nlm_reboot structure
-      lockd: Add helper to sanity check incoming NOTIFY requests
-      lockd: change nlmclnt_grant() to take a "struct sockaddr *"
-      lockd: Adjust nlmsvc_lookup_host() to accomodate AF_INET6 addresses
-      lockd: Adjust nlmclnt_lookup_host() signature to accomodate non-AF_INET
-      lockd: Support non-AF_INET addresses in nlm_lookup_host()
-      NLM: Convert nlm_lookup_host() to use a single argument
+ fs/lockd/xdr.c            |    2 --
+ fs/lockd/xdr4.c           |    2 --
+ include/linux/lockd/xdr.h |    2 --
+ 3 files changed, 0 insertions(+), 6 deletions(-)
 
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 3e459e1..1f22629 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -351,8 +351,6 @@ nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp)
+ 	argp->state = ntohl(*p++);
+ 	/* Preserve the address in network byte order */
+ 	argp->addr = *p++;
+-	argp->vers = *p++;
+-	argp->proto = *p++;
+ 	return xdr_argsize_check(rqstp, p);
+ }
+ 
+diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+index 43ff939..50c493a 100644
+--- a/fs/lockd/xdr4.c
++++ b/fs/lockd/xdr4.c
+@@ -358,8 +358,6 @@ nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp
+ 	argp->state = ntohl(*p++);
+ 	/* Preserve the address in network byte order */
+ 	argp->addr  = *p++;
+-	argp->vers  = *p++;
+-	argp->proto = *p++;
+ 	return xdr_argsize_check(rqstp, p);
+ }
+ 
+diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
+index df18fa0..d6b3a80 100644
+--- a/include/linux/lockd/xdr.h
++++ b/include/linux/lockd/xdr.h
+@@ -81,8 +81,6 @@ struct nlm_reboot {
+ 	unsigned int	len;
+ 	u32		state;
+ 	__be32		addr;
+-	__be32		vers;
+-	__be32		proto;
+ };
+ 
+ /*
 
- fs/lockd/clntlock.c         |   10 +--
- fs/lockd/host.c             |  161 +++++++++++++++++++++++++++++++------------
- fs/lockd/svc4proc.c         |    8 +-
- fs/lockd/svcproc.c          |    8 +-
- fs/lockd/xdr.c              |    2 -
- fs/lockd/xdr4.c             |    2 -
- include/linux/lockd/lockd.h |   56 +++++++++++++--
- include/linux/lockd/xdr.h   |    2 -
- 8 files changed, 176 insertions(+), 73 deletions(-)
-
--- 
-Chuck Lever
