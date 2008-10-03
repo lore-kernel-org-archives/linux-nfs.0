@@ -1,124 +1,215 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 00/12] svcrdma: Fast memory registration support
-Date: Fri,  3 Oct 2008 16:33:37 -0500
-Message-ID: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com>
+Subject: [PATCH 02/12] svcrdma: Add FRMR get/put services
+Date: Fri,  3 Oct 2008 16:33:39 -0500
+Message-ID: <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
+References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com>
+ <1223069629-5267-2-git-send-email-tom@opengridcomputing.com>
 Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org,
 	Tom Tucker <tom@opengridcomputing.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:40967 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:40972 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753376AbYJCVdu (ORCPT
+	by vger.kernel.org with ESMTP id S1753384AbYJCVdu (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 17:33:50 -0400
+In-Reply-To: <1223069629-5267-2-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Bruce:
-
-This updated patchset implements support for Fast Memory Registration
-in the NFS server. The second to last patch has been updated to
-provide better guidance on whether the connection is safe or
-not. Basically the code gives you a qualification string instead of
-expecting the administrator to know how to interpret the memory
-registration strategy and transport idiosyncrasies. The documentation
-has also been updated given your suggestions and the change to the
-informative log message. The string is certainly informative, but may
-be a little long. For this reason, there is a proc file entry to
-disable it.
-
-Fast Memory Regstration is the ability to quickly map a kernel memory
-page list as a logically contiguous memory region from the perspective
-of the adapter. This mapping is created and invalidated using work
-requests posted on the SQ.
-
-There are two benefits of this new memory registration strategy:
-
-- It allows for large amounts of data to be transferred between the
-  client and server with a single work request
-
-- It improves security since the effective lifetime and scope of an
-  RKEY is a single RPC and WR.
-
-The documentation file Documentation/filesystems/nfs-rdma.txt file has
-been updated with information about NFSRDMA security in general and
-how it is affected by the new Fast Memory Registration capability.
-
-This new capability is only enabled if the underlying device advertises
-that it is supported. It is not necessary that both the client and
-server use the same strategy, however, for Fast Memory Registration,
-it improves performance.
-
-These patches are also available here:
-git://git.linux-nfs.org/projects/tomtucker/xprt-switch-2.6.git
+Add services for the allocating, freeing, and unmapping Fast Reg MR. These
+services will be used by the transport connection setup, send and receive
+routines.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
-
-[PATCH 01/12] svcrdma: Add Fast Reg MR Data Types
-
- include/linux/sunrpc/svc_rdma.h |   22 +++++++++++++++++++++-
- 1 files changed, 21 insertions(+), 1 deletions(-)
-
-[PATCH 02/12] svcrdma: Add FRMR get/put services
-
+---
  include/linux/sunrpc/svc_rdma.h          |    3 +
  net/sunrpc/xprtrdma/svc_rdma_transport.c |  122 ++++++++++++++++++++++++++++-
  2 files changed, 120 insertions(+), 5 deletions(-)
 
-[PATCH 03/12] svcrdma: Query device for Fast Reg support during connection setup
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   76 +++++++++++++++++++++++++++--
- 1 files changed, 70 insertions(+), 6 deletions(-)
-
-[PATCH 04/12] svcrdma: Add a service to register a Fast Reg MR with the device
-
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  118 +++++++++++++++++++++---------
- 2 files changed, 84 insertions(+), 35 deletions(-)
-
-[PATCH 05/12] svcrdma: Modify post recv path to use local dma key
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
-
-[PATCH 06/12] svcrdma: Add support to svc_rdma_send to handle chained WR
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 +++++++++++++++++++++--------
- 1 files changed, 21 insertions(+), 8 deletions(-)
-
-[PATCH 07/12] svcrdma: Modify the RPC recv path to use FRMR when available
-
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  187 ++++++++++++++++++++++++++----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +-
- 3 files changed, 171 insertions(+), 22 deletions(-)
-
-[PATCH 08/12] svcrdma: Modify the RPC reply path to use FRMR when available
-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |  263 +++++++++++++++++++++++++-----
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +
- 2 files changed, 225 insertions(+), 40 deletions(-)
-
-[PATCH 09/12] svcrdma: Update svc_rdma_send_error to use DMA LKEY
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 +++++++++--
- 1 files changed, 9 insertions(+), 2 deletions(-)
-
-[PATCH 10/12] svcrdma: Fix IRD/ORD polarity
-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-[PATCH 11/12] svcrdma: Add a message log string to indicate if FastReg is being used
-
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma.c           |    8 ++++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   63 ++++++++++++++++++-----------
- 3 files changed, 48 insertions(+), 24 deletions(-)
-
-[PATCH 12/12] svcrdma: Documentation update for the FastReg memory model
-
- Documentation/filesystems/nfs-rdma.txt |  126 ++++++++++++++++++++++++++++++++
- 1 files changed, 126 insertions(+), 0 deletions(-)
-
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 49e458d..3425268 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -214,6 +214,9 @@ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
+ extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+ extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
+ extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
++extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
++extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
++			      struct svc_rdma_fastreg_mr *);
+ extern void svc_sq_reap(struct svcxprt_rdma *);
+ extern void svc_rq_reap(struct svcxprt_rdma *);
+ extern struct svc_xprt_class svc_rdma_class;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 900cb69..dd170af 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -100,6 +100,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ 	ctxt->xprt = xprt;
+ 	INIT_LIST_HEAD(&ctxt->dto_q);
+ 	ctxt->count = 0;
++	ctxt->frmr = NULL;
+ 	atomic_inc(&xprt->sc_ctxt_used);
+ 	return ctxt;
+ }
+@@ -109,11 +110,19 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
+ 	struct svcxprt_rdma *xprt = ctxt->xprt;
+ 	int i;
+ 	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
+-		atomic_dec(&xprt->sc_dma_used);
+-		ib_dma_unmap_single(xprt->sc_cm_id->device,
+-				    ctxt->sge[i].addr,
+-				    ctxt->sge[i].length,
+-				    ctxt->direction);
++		/*
++		 * Unmap the DMA addr in the SGE if the lkey matches
++		 * the sc_dma_lkey, otherwise, ignore it since it is
++		 * an FRMR lkey and will be unmapped later when the
++		 * last WR that uses it completes.
++		 */
++		if (ctxt->sge[i].lkey == xprt->sc_dma_lkey) {
++			atomic_dec(&xprt->sc_dma_used);
++			ib_dma_unmap_single(xprt->sc_cm_id->device,
++					    ctxt->sge[i].addr,
++					    ctxt->sge[i].length,
++					    ctxt->direction);
++		}
+ 	}
+ }
+ 
+@@ -150,6 +159,7 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
+ 		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+ 	}
+ 	map->count = 0;
++	map->frmr = NULL;
+ 	return map;
+ }
+ 
+@@ -425,10 +435,12 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+ 	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
++	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
+ 	init_waitqueue_head(&cma_xprt->sc_send_wait);
+ 
+ 	spin_lock_init(&cma_xprt->sc_lock);
+ 	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
++	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
+ 
+ 	cma_xprt->sc_ord = svcrdma_ord;
+ 
+@@ -686,6 +698,103 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+ 	return ERR_PTR(ret);
+ }
+ 
++static int rdma_alloc_frmr(struct svcxprt_rdma *xprt)
++{
++	struct ib_mr *mr;
++	struct ib_fast_reg_page_list *pl;
++	struct svc_rdma_fastreg_mr *frmr;
++
++	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
++	if (!mr)
++		goto errout;
++	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
++					 RPCSVC_MAXPAGES);
++	if (!pl) {
++		ib_dereg_mr(mr);
++		goto errout;
++	}
++	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
++	if (!frmr) {
++		ib_dereg_mr(mr);
++		ib_free_fast_reg_page_list(pl);
++		goto errout;
++	}
++	frmr->mr = mr;
++	frmr->page_list = pl;
++	INIT_LIST_HEAD(&frmr->frmr_list);
++	spin_lock_bh(&xprt->sc_frmr_q_lock);
++	list_add(&frmr->frmr_list, &xprt->sc_frmr_q);
++	spin_unlock_bh(&xprt->sc_frmr_q_lock);
++
++	return 0;
++
++ errout:
++	return -ENOMEM;
++}
++
++static void rdma_dealloc_frmr_q(struct svcxprt_rdma *xprt)
++{
++	struct svc_rdma_fastreg_mr *frmr;
++
++	while (!list_empty(&xprt->sc_frmr_q)) {
++		frmr = list_entry(xprt->sc_frmr_q.next,
++				  struct svc_rdma_fastreg_mr, frmr_list);
++		list_del_init(&frmr->frmr_list);
++		ib_dereg_mr(frmr->mr);
++		ib_free_fast_reg_page_list(frmr->page_list);
++		kfree(frmr);
++	}
++}
++
++struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
++{
++	struct svc_rdma_fastreg_mr *frmr = NULL;
++
++	while (1) {
++		spin_lock_bh(&rdma->sc_frmr_q_lock);
++		if (!list_empty(&rdma->sc_frmr_q)) {
++			frmr = list_entry(rdma->sc_frmr_q.next,
++					  struct svc_rdma_fastreg_mr, frmr_list);
++			list_del_init(&frmr->frmr_list);
++		}
++		spin_unlock_bh(&rdma->sc_frmr_q_lock);
++		if (frmr)
++			break;
++		if (rdma_alloc_frmr(rdma))
++			return ERR_PTR(-ENOMEM);
++	}
++	frmr->map_len = 0;
++	frmr->page_list_len = 0;
++
++	return frmr;
++}
++
++static void frmr_unmap_dma(struct svcxprt_rdma *xprt,
++			   struct svc_rdma_fastreg_mr *frmr)
++{
++	int page_no;
++	for (page_no = 0; page_no < frmr->page_list_len; page_no++) {
++		dma_addr_t addr = frmr->page_list->page_list[page_no];
++		if (ib_dma_mapping_error(frmr->mr->device, addr))
++			continue;
++		atomic_dec(&xprt->sc_dma_used);
++		ib_dma_unmap_single(frmr->mr->device, addr, PAGE_SIZE,
++				    frmr->direction);
++	}
++}
++
++void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
++		       struct svc_rdma_fastreg_mr *frmr)
++{
++	if (frmr) {
++		frmr_unmap_dma(rdma, frmr);
++		spin_lock_bh(&rdma->sc_frmr_q_lock);
++		BUG_ON(!list_empty(&frmr->frmr_list));
++		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
++		spin_unlock_bh(&rdma->sc_frmr_q_lock);
++	}
++}
++
+ /*
+  * This is the xpo_recvfrom function for listening endpoints. Its
+  * purpose is to accept incoming connections. The CMA callback handler
+@@ -961,6 +1070,9 @@ static void __svc_rdma_free(struct work_struct *work)
+ 	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
+ 	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
+ 
++	/* De-allocate fastreg mr */
++	rdma_dealloc_frmr_q(rdma);
++
+ 	/* Destroy the QP if present (not a listener) */
+ 	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
+ 		ib_destroy_qp(rdma->sc_qp);
