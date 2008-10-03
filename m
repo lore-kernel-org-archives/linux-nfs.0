@@ -1,95 +1,65 @@
 From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 06/12] svcrdma: Add support to svc_rdma_send to handle chained WR
-Date: Fri,  3 Oct 2008 16:33:43 -0500
-Message-ID: <1223069629-5267-7-git-send-email-tom@opengridcomputing.com>
+Subject: [PATCH 09/12] svcrdma: Update svc_rdma_send_error to use DMA LKEY
+Date: Fri,  3 Oct 2008 16:33:46 -0500
+Message-ID: <1223069629-5267-10-git-send-email-tom@opengridcomputing.com>
 References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com>
  <1223069629-5267-2-git-send-email-tom@opengridcomputing.com>
  <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
  <1223069629-5267-4-git-send-email-tom@opengridcomputing.com>
  <1223069629-5267-5-git-send-email-tom@opengridcomputing.com>
  <1223069629-5267-6-git-send-email-tom@opengridcomputing.com>
+ <1223069629-5267-7-git-send-email-tom@opengridcomputing.com>
+ <1223069629-5267-8-git-send-email-tom@opengridcomputing.com>
+ <1223069629-5267-9-git-send-email-tom@opengridcomputing.com>
 Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org,
 	Tom Tucker <tom@opengridcomputing.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:40982 "EHLO
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:40990 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753409AbYJCVdv (ORCPT
+	by vger.kernel.org with ESMTP id S1753425AbYJCVdv (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 17:33:51 -0400
-In-Reply-To: <1223069629-5267-6-git-send-email-tom@opengridcomputing.com>
+In-Reply-To: <1223069629-5267-9-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-WR can be submitted as linked lists of WR. Update the svc_rdma_send
-routine to handle WR chains. This will be used to submit a WR that
-uses an FRMR with another WR that invalidates the FRMR.
+Update the svc_rdma_send_error code to use the DMA LKEY which is valid
+regardless of the memory registration strategy in use.
 
 Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
 ---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 +++++++++++++++++++++--------
- 1 files changed, 21 insertions(+), 8 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 +++++++++--
+ 1 files changed, 9 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index a144fab..5ea7901 100644
+index 360ff97..36e2cc4 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -1241,17 +1241,23 @@ int svc_rdma_fastreg(struct svcxprt_rdma *xprt,
+@@ -1320,10 +1320,14 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
  
- int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- {
--	struct ib_send_wr *bad_wr;
-+	struct ib_send_wr *bad_wr, *n_wr;
-+	int wr_count;
-+	int i;
- 	int ret;
+ 	/* Prepare SGE for local address */
+-	atomic_inc(&xprt->sc_dma_used);
+ 	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
+ 				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
+-	sge.lkey = xprt->sc_phys_mr->lkey;
++	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
++		put_page(p);
++		return;
++	}
++	atomic_inc(&xprt->sc_dma_used);
++	sge.lkey = xprt->sc_dma_lkey;
+ 	sge.length = length;
  
- 	if (test_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags))
- 		return -ENOTCONN;
- 
- 	BUG_ON(wr->send_flags != IB_SEND_SIGNALED);
-+	wr_count = 1;
-+	for (n_wr = wr->next; n_wr; n_wr = n_wr->next)
-+		wr_count++;
-+
- 	/* If the SQ is full, wait until an SQ entry is available */
- 	while (1) {
- 		spin_lock_bh(&xprt->sc_lock);
--		if (xprt->sc_sq_depth == atomic_read(&xprt->sc_sq_count)) {
-+		if (xprt->sc_sq_depth < atomic_read(&xprt->sc_sq_count) + wr_count) {
- 			spin_unlock_bh(&xprt->sc_lock);
- 			atomic_inc(&rdma_stat_sq_starve);
- 
-@@ -1266,19 +1272,26 @@ int svc_rdma_send(struct svcxprt_rdma *xprt, struct ib_send_wr *wr)
- 				return 0;
- 			continue;
- 		}
--		/* Bumped used SQ WR count and post */
--		svc_xprt_get(&xprt->sc_xprt);
-+		/* Take a transport ref for each WR posted */
-+		for (i = 0; i < wr_count; i++)
-+			svc_xprt_get(&xprt->sc_xprt);
-+
-+		/* Bump used SQ WR count and post */
-+		atomic_add(wr_count, &xprt->sc_sq_count);
- 		ret = ib_post_send(xprt->sc_qp, wr, &bad_wr);
--		if (!ret)
--			atomic_inc(&xprt->sc_sq_count);
--		else {
--			svc_xprt_put(&xprt->sc_xprt);
-+		if (ret) {
-+			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+			atomic_sub(wr_count, &xprt->sc_sq_count);
-+			for (i = 0; i < wr_count; i ++)
-+				svc_xprt_put(&xprt->sc_xprt);
- 			dprintk("svcrdma: failed to post SQ WR rc=%d, "
- 			       "sc_sq_count=%d, sc_sq_depth=%d\n",
- 			       ret, atomic_read(&xprt->sc_sq_count),
- 			       xprt->sc_sq_depth);
- 		}
- 		spin_unlock_bh(&xprt->sc_lock);
-+		if (ret)
-+			wake_up(&xprt->sc_send_wait);
- 		break;
+ 	ctxt = svc_rdma_get_context(xprt);
+@@ -1344,6 +1348,9 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	if (ret) {
+ 		dprintk("svcrdma: Error %d posting send for protocol error\n",
+ 			ret);
++		ib_dma_unmap_page(xprt->sc_cm_id->device,
++				  sge.addr, PAGE_SIZE,
++				  DMA_FROM_DEVICE);
+ 		svc_rdma_put_context(ctxt, 1);
  	}
- 	return ret;
+ }
