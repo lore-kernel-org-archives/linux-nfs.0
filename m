@@ -1,176 +1,87 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH 11/12] svcrdma: Add a message log string to indicate if FastReg is being used
-Date: Fri,  3 Oct 2008 16:33:48 -0500
-Message-ID: <1223069629-5267-12-git-send-email-tom@opengridcomputing.com>
-References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-2-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-4-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-5-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-6-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-7-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-8-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-9-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-10-git-send-email-tom@opengridcomputing.com>
- <1223069629-5267-11-git-send-email-tom@opengridcomputing.com>
-Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org,
-	Tom Tucker <tom@opengridcomputing.com>
-To: bfields@fieldses.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/7] Replacements for last week's patches
+Date: Fri, 3 Oct 2008 17:45:58 -0400
+Message-ID: <20081003214558.GH19057@fieldses.org>
+References: <20081003162856.10198.20451.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:40994 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753376AbYJCVdv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 17:33:51 -0400
-In-Reply-To: <1223069629-5267-11-git-send-email-tom@opengridcomputing.com>
+Received: from mail.fieldses.org ([66.93.2.214]:55168 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752818AbYJCVqA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Oct 2008 17:46:00 -0400
+In-Reply-To: <20081003162856.10198.20451.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a log message that allows the administrator to determine if server memory
-is exposed on a particular client connection. This message can be disabled
-by writing 0 to the /proc/sys/sunrpc/svc_rdma/show_conn_info file.
+On Fri, Oct 03, 2008 at 12:49:58PM -0400, Chuck Lever wrote:
+> Hi Bruce-
+> 
+> Here's a patch series to replace the patches you reviewed earlier this
+> week.  I've addressed the issues you mentioned in your review comments,
+> and dropped the NSM-related patches that treat the 16-byte opaque as an
+> address, as discussed.
+> 
+> The last patches I intend to submit for 2.6.28 will address the lack of
+> a client-side UDP lockd listener.  I will propose a fix later today in
+> a subsequent patch series.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Thanks, applied to for-2.6.28, with the first patch adjusted as follows.
 
----
- include/linux/sunrpc/svc_rdma.h          |    1 +
- net/sunrpc/xprtrdma/svc_rdma.c           |    8 ++++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   63 ++++++++++++++++++-----------
- 3 files changed, 48 insertions(+), 24 deletions(-)
+--b.
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index c14fe86..7ee0a76 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -52,6 +52,7 @@
- extern unsigned int svcrdma_ord;
- extern unsigned int svcrdma_max_requests;
- extern unsigned int svcrdma_max_req_size;
-+extern unsigned int svcrdma_show_conn_info;
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 1630588..3c4dc33 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -38,11 +38,8 @@ static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+ 						const size_t hostname_len,
+ 						const int create);
  
- extern atomic_t rdma_stat_recv;
- extern atomic_t rdma_stat_read;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index 8710117..493e243 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -58,6 +58,7 @@ static unsigned int max_max_requests = 16384;
- unsigned int svcrdma_max_req_size = RPCRDMA_MAX_REQ_SIZE;
- static unsigned int min_max_inline = 4096;
- static unsigned int max_max_inline = 65536;
-+unsigned int svcrdma_show_conn_info = 1;
- 
- atomic_t rdma_stat_recv;
- atomic_t rdma_stat_read;
-@@ -145,6 +146,13 @@ static ctl_table svcrdma_parm_table[] = {
- 		.extra1		= &min_ord,
- 		.extra2		= &max_ord,
- 	},
-+	{
-+		.procname	= "show_conn_info",
-+		.data		= &svcrdma_show_conn_info,
-+		.maxlen		= sizeof(svcrdma_show_conn_info),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec,
-+	},
- 
- 	{
- 		.procname	= "rdma_stat_read",
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index bd17023..3d97032 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -833,6 +833,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	struct rdma_conn_param conn_param;
- 	struct ib_qp_init_attr qp_attr;
- 	struct ib_device_attr devattr;
-+	char *transport_string;
-+	char *security_string;
- 	int dma_mr_acc;
- 	int need_dma_mr;
- 	int ret;
-@@ -981,10 +983,13 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 	/*
- 	 * Determine if a DMA MR is required and if so, what privs are required
- 	 */
-+	security_string = "Safe. Only RPC memory exposed.";
- 	switch (rdma_node_get_transport(newxprt->sc_cm_id->device->node_type)) {
- 	case RDMA_TRANSPORT_IWARP:
-+		transport_string = "iWARP";
- 		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
- 		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
-+			security_string = "Unsafe: Server memory exposed.";
- 			need_dma_mr = 1;
- 			dma_mr_acc =
- 				(IB_ACCESS_LOCAL_WRITE |
-@@ -996,6 +1001,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 			need_dma_mr = 0;
- 		break;
- 	case RDMA_TRANSPORT_IB:
-+		transport_string = "IB";
- 		if (!(devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)) {
- 			need_dma_mr = 1;
- 			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
-@@ -1052,30 +1058,39 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 		goto errout;
- 	}
- 
--	dprintk("svcrdma: new connection %p accepted with the following "
--		"attributes:\n"
--		"    local_ip        : %d.%d.%d.%d\n"
--		"    local_port	     : %d\n"
--		"    remote_ip       : %d.%d.%d.%d\n"
--		"    remote_port     : %d\n"
--		"    max_sge         : %d\n"
--		"    sq_depth        : %d\n"
--		"    max_requests    : %d\n"
--		"    ord             : %d\n",
--		newxprt,
--		NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
--			 route.addr.src_addr)->sin_addr.s_addr),
--		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
--		       route.addr.src_addr)->sin_port),
--		NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
--			 route.addr.dst_addr)->sin_addr.s_addr),
--		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
--		       route.addr.dst_addr)->sin_port),
--		newxprt->sc_max_sge,
--		newxprt->sc_sq_depth,
--		newxprt->sc_max_requests,
--		newxprt->sc_ord);
+-#define NLM_SERVER	(0)
+-#define NLM_CLIENT	(1)
 -
-+	if (!svcrdma_show_conn_info)
-+		goto out;
-+
-+	printk(KERN_INFO "svcrdma: New connection accepted with the following "
-+	       "attributes:\n"
-+	       "    transport       : %s\n"
-+	       "    local_ip        : %d.%d.%d.%d\n"
-+	       "    local_port      : %d\n"
-+	       "    remote_ip       : %d.%d.%d.%d\n"
-+	       "    remote_port     : %d\n"
-+	       "    max_sge         : %d\n"
-+	       "    sq_depth        : %d\n"
-+	       "    max_requests    : %d\n"
-+	       "    ord             : %d\n"
-+	       "    using fastreg?  : %c\n"
-+	       "    memory exposure : %s\n",
-+	       transport_string,
-+	       NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+			route.addr.src_addr)->sin_addr.s_addr),
-+	       ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+		      route.addr.src_addr)->sin_port),
-+	       NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+			route.addr.dst_addr)->sin_addr.s_addr),
-+	       ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
-+		      route.addr.dst_addr)->sin_port),
-+	       newxprt->sc_max_sge,
-+	       newxprt->sc_sq_depth,
-+	       newxprt->sc_max_requests,
-+	       newxprt->sc_ord,
-+	       newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG ? 'Y' : 'N',
-+	       security_string);
-+
-+ out:
- 	return &newxprt->sc_xprt;
- 
-  errout:
+ struct nlm_lookup_host_info {
+-	const int		peer;		/* search for server|client */
++	const int		server;		/* search for server|client */
+ 	const struct sockaddr_in *sin;		/* address to search for */
+ 	const unsigned short	protocol;	/* transport to search for*/
+ 	const u32		version;	/* NLM version to search for */
+@@ -167,7 +164,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 			continue;
+ 		if (host->h_version != ni->version)
+ 			continue;
+-		if (host->h_server != ni->peer)
++		if (host->h_server != ni->server)
+ 			continue;
+ 		if (!nlm_cmp_addr(nlm_srcaddr(host),
+ 					(struct sockaddr *)ni->src_sin))
+@@ -224,7 +221,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 	host->h_state      = 0;			/* pseudo NSM state */
+ 	host->h_nsmstate   = 0;			/* real NSM state */
+ 	host->h_nsmhandle  = nsm;
+-	host->h_server	   = ni->peer;
++	host->h_server	   = ni->server;
+ 	hlist_add_head(&host->h_hash, chain);
+ 	INIT_LIST_HEAD(&host->h_lockowners);
+ 	spin_lock_init(&host->h_lock);
+@@ -280,7 +277,7 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
+ 		.sin_family	= AF_UNSPEC,
+ 	};
+ 	struct nlm_lookup_host_info ni = {
+-		.peer		= NLM_SERVER,
++		.server		= 0,
+ 		.sin		= sin,
+ 		.protocol	= proto,
+ 		.version	= version,
+@@ -308,7 +305,7 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
+ 		.sin_addr	= rqstp->rq_daddr.addr,
+ 	};
+ 	struct nlm_lookup_host_info ni = {
+-		.peer		= NLM_CLIENT,
++		.server		= 1,
+ 		.sin		= svc_addr_in(rqstp),
+ 		.protocol	= rqstp->rq_prot,
+ 		.version	= rqstp->rq_vers,
