@@ -1,125 +1,129 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/7] lockd: Add helper to sanity check incoming NOTIFY requests
-Date: Fri, 03 Oct 2008 12:50:44 -0400
-Message-ID: <20081003165043.10198.17650.stgit@ingres.1015granger.net>
+Subject: [PATCH 3/7] lockd: Adjust nlmclnt_lookup_host() signature to
+	accomodate non-AF_INET
+Date: Fri, 03 Oct 2008 12:50:21 -0400
+Message-ID: <20081003165021.10198.38212.stgit@ingres.1015granger.net>
 References: <20081003162856.10198.20451.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:55101 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752923AbYJCQwG (ORCPT
+Received: from rgminet01.oracle.com ([148.87.113.118]:40635 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753025AbYJCQwG (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 12:52:06 -0400
 In-Reply-To: <20081003162856.10198.20451.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lockd accepts SM_NOTIFY calls only from a privileged process on the
-local system.  If lockd uses an AF_INET6 listener, the sender's address
-(ie the local rpc.statd) will be the IPv6 loopback address, not the
-IPv4 loopback address.
+Pass a struct sockaddr * and a length to nlmclnt_lookup_host() to
+accomodate non-AF_INET family addresses.
 
-Make sure the privilege test in nlmsvc_proc_sm_notify() and
-nlm4svc_proc_sm_notify() works for both AF_INET and AF_INET6 family
-addresses by refactoring the test into a helper and adding support for
-IPv6 addresses.
+As a side benefit, eliminate the hostname_len argument, as the hostname
+is always NUL-terminated.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/svc4proc.c         |    6 ++----
- fs/lockd/svcproc.c          |    6 ++----
- include/linux/lockd/lockd.h |   41 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 45 insertions(+), 8 deletions(-)
+ fs/lockd/clntlock.c         |    5 ++---
+ fs/lockd/host.c             |   32 +++++++++++++++++++++-----------
+ include/linux/lockd/lockd.h |    9 +++++----
+ 3 files changed, 28 insertions(+), 18 deletions(-)
 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 89eb6f9..1ca972d 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -432,11 +432,9 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- {
- 	struct sockaddr_in	saddr;
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 237224a..9eaf306 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -58,10 +58,9 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	if (status < 0)
+ 		return ERR_PTR(status);
  
--	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
--
- 	dprintk("lockd: SM_NOTIFY     called\n");
--	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
--	 || ntohs(saddr.sin_port) >= 1024) {
-+
-+	if (!nlm_privileged_requester(rqstp)) {
- 		char buf[RPC_MAX_ADDRBUFLEN];
- 		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
- 				svc_print_addr(rqstp, buf, sizeof(buf)));
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 361aac2..212e4a3 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -464,11 +464,9 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- {
- 	struct sockaddr_in	saddr;
- 
--	memcpy(&saddr, svc_addr_in(rqstp), sizeof(saddr));
--
- 	dprintk("lockd: SM_NOTIFY     called\n");
--	if (saddr.sin_addr.s_addr != htonl(INADDR_LOOPBACK)
--	 || ntohs(saddr.sin_port) >= 1024) {
-+
-+	if (!nlm_privileged_requester(rqstp)) {
- 		char buf[RPC_MAX_ADDRBUFLEN];
- 		printk(KERN_WARNING "lockd: rejected NSM callback from %s\n",
- 				svc_print_addr(rqstp, buf, sizeof(buf)));
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 165ef7a..888b92c 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -277,6 +277,47 @@ static inline struct inode *nlmsvc_file_inode(struct nlm_file *file)
- 	return file->f_file->f_path.dentry->d_inode;
+-	host = nlmclnt_lookup_host((struct sockaddr_in *)nlm_init->address,
++	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
+ 				   nlm_init->protocol, nlm_version,
+-				   nlm_init->hostname,
+-				   strlen(nlm_init->hostname));
++				   nlm_init->hostname);
+ 	if (host == NULL) {
+ 		lockd_down();
+ 		return ERR_PTR(-ENOLCK);
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 0a0ceb8..95a91e8 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -267,32 +267,42 @@ nlm_destroy_host(struct nlm_host *host)
+ 	kfree(host);
  }
  
-+static inline int __nlm_privileged_request4(const struct sockaddr *sap)
-+{
-+	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-+	return (sin->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) &&
-+			(ntohs(sin->sin_port) < 1024);
-+}
-+
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+static inline int __nlm_privileged_request6(const struct sockaddr *sap)
-+{
-+	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
-+	return (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK) &&
-+			(ntohs(sin6->sin6_port) < 1024);
-+}
-+#else	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
-+static inline int __nlm_privileged_request6(const struct sockaddr *sap)
-+{
-+	return 0;
-+}
-+#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
-+
-+/*
-+ * Ensure incoming requests are from local privileged callers.
+-/*
+- * Find an NLM server handle in the cache. If there is none, create it.
++/**
++ * nlmclnt_lookup_host - Find an NLM host handle matching a remote server
++ * @sap: network address of server
++ * @salen: length of server address
++ * @protocol: transport protocol to use
++ * @version: NLM protocol version
++ * @hostname: '\0'-terminated hostname of server
 + *
-+ * Return TRUE if sender is local and is connecting via a privileged port;
-+ * otherwise return FALSE.
-+ */
-+static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
-+{
-+	const struct sockaddr *sap = svc_addr(rqstp);
-+
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		return __nlm_privileged_request4(sap);
-+	case AF_INET6:
-+		return __nlm_privileged_request6(sap);
-+	default:
-+		return 0;
-+	}
-+}
-+
- static inline int __nlm_cmp_addr4(const struct sockaddr *sap1,
- 				  const struct sockaddr *sap2)
++ * Returns an nlm_host structure that matches the passed-in
++ * [server address, transport protocol, NLM version, server hostname].
++ * If one doesn't already exist in the host cache, a new handle is
++ * created and returned.
+  */
+-struct nlm_host *nlmclnt_lookup_host(const struct sockaddr_in *sin,
+-				     int proto, u32 version,
+-				     const char *hostname,
+-				     unsigned int hostname_len)
++struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
++				     const size_t salen,
++				     const unsigned short protocol,
++				     const u32 version, const char *hostname)
  {
+ 	const struct sockaddr source = {
+ 		.sa_family	= AF_UNSPEC,
+ 	};
+ 	struct nlm_lookup_host_info ni = {
+ 		.peer		= NLM_SERVER,
+-		.sap		= (struct sockaddr *)sin,
+-		.salen		= sizeof(*sin),
+-		.protocol	= proto,
++		.sap		= sap,
++		.salen		= salen,
++		.protocol	= protocol,
+ 		.version	= version,
+ 		.hostname	= hostname,
+-		.hostname_len	= hostname_len,
++		.hostname_len	= strlen(hostname),
+ 		.src_sap	= &source,
+ 		.src_len	= sizeof(source),
+ 	};
+ 
+ 	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
+ 			(hostname ? hostname : "<none>"), version,
+-			(proto == IPPROTO_UDP ? "udp" : "tcp"));
++			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
+ 
+ 	return nlm_lookup_host(&ni);
+ }
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index ec8af11..693d57b 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -215,10 +215,11 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
+ /*
+  * Host cache
+  */
+-struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr_in *sin,
+-					int proto, u32 version,
+-					const char *hostname,
+-					unsigned int hostname_len);
++struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
++					const size_t salen,
++					const unsigned short protocol,
++					const u32 version,
++					const char *hostname);
+ struct nlm_host  *nlmsvc_lookup_host(struct svc_rqst *, const char *,
+ 					unsigned int);
+ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
 
