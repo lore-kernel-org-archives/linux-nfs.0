@@ -1,110 +1,228 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/7] Replacements for last week's patches
-Date: Fri, 3 Oct 2008 17:53:27 -0400
-Message-ID: <17799EFF-FAFA-484A-A826-BF7E168B5788@oracle.com>
-References: <20081003162856.10198.20451.stgit@ingres.1015granger.net> <20081003214558.GH19057@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 02/12] svcrdma: Add FRMR get/put services
+Date: Fri, 03 Oct 2008 20:05:28 -0500
+Message-ID: <48E6C158.8040606@opengridcomputing.com>
+References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com> <1223069629-5267-2-git-send-email-tom@opengridcomputing.com> <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:40866 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753470AbYJCVxk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2008 17:53:40 -0400
-In-Reply-To: <20081003214558.GH19057@fieldses.org>
+Received: from mail.es335.com ([67.65.19.105]:8628 "EHLO mail.es335.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753264AbYJDBFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Oct 2008 21:05:32 -0400
+In-Reply-To: <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 3, 2008, at Oct 3, 2008, 5:45 PM, J. Bruce Fields wrote:
-> On Fri, Oct 03, 2008 at 12:49:58PM -0400, Chuck Lever wrote:
->> Hi Bruce-
->>
->> Here's a patch series to replace the patches you reviewed earlier  
->> this
->> week.  I've addressed the issues you mentioned in your review  
->> comments,
->> and dropped the NSM-related patches that treat the 16-byte opaque  
->> as an
->> address, as discussed.
->>
->> The last patches I intend to submit for 2.6.28 will address the  
->> lack of
->> a client-side UDP lockd listener.  I will propose a fix later today  
->> in
->> a subsequent patch series.
+Bruce:
+
+This patch is missing your simplification. I'll add it and repost.
+
+Tom
+
+Tom Tucker wrote:
+> Add services for the allocating, freeing, and unmapping Fast Reg MR. These
+> services will be used by the transport connection setup, send and receive
+> routines.
 >
-> Thanks, applied to for-2.6.28, with the first patch adjusted as  
-> follows.
-
-OK, thanks.
-
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 >
+> ---
+>  include/linux/sunrpc/svc_rdma.h          |    3 +
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |  122 ++++++++++++++++++++++++++++-
+>  2 files changed, 120 insertions(+), 5 deletions(-)
 >
-> --b.
->
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 1630588..3c4dc33 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -38,11 +38,8 @@ static struct nsm_handle	*nsm_find(const struct  
-> sockaddr *sap,
-> 						const size_t hostname_len,
-> 						const int create);
->
-> -#define NLM_SERVER	(0)
-> -#define NLM_CLIENT	(1)
-> -
-> struct nlm_lookup_host_info {
-> -	const int		peer;		/* search for server|client */
-> +	const int		server;		/* search for server|client */
-> 	const struct sockaddr_in *sin;		/* address to search for */
-> 	const unsigned short	protocol;	/* transport to search for*/
-> 	const u32		version;	/* NLM version to search for */
-> @@ -167,7 +164,7 @@ static struct nlm_host *nlm_lookup_host(struct  
-> nlm_lookup_host_info *ni)
-> 			continue;
-> 		if (host->h_version != ni->version)
-> 			continue;
-> -		if (host->h_server != ni->peer)
-> +		if (host->h_server != ni->server)
-> 			continue;
-> 		if (!nlm_cmp_addr(nlm_srcaddr(host),
-> 					(struct sockaddr *)ni->src_sin))
-> @@ -224,7 +221,7 @@ static struct nlm_host *nlm_lookup_host(struct  
-> nlm_lookup_host_info *ni)
-> 	host->h_state      = 0;			/* pseudo NSM state */
-> 	host->h_nsmstate   = 0;			/* real NSM state */
-> 	host->h_nsmhandle  = nsm;
-> -	host->h_server	   = ni->peer;
-> +	host->h_server	   = ni->server;
-> 	hlist_add_head(&host->h_hash, chain);
-> 	INIT_LIST_HEAD(&host->h_lockowners);
-> 	spin_lock_init(&host->h_lock);
-> @@ -280,7 +277,7 @@ struct nlm_host *nlmclnt_lookup_host(const  
-> struct sockaddr_in *sin,
-> 		.sin_family	= AF_UNSPEC,
-> 	};
-> 	struct nlm_lookup_host_info ni = {
-> -		.peer		= NLM_SERVER,
-> +		.server		= 0,
-> 		.sin		= sin,
-> 		.protocol	= proto,
-> 		.version	= version,
-> @@ -308,7 +305,7 @@ nlmsvc_lookup_host(struct svc_rqst *rqstp,
-> 		.sin_addr	= rqstp->rq_daddr.addr,
-> 	};
-> 	struct nlm_lookup_host_info ni = {
-> -		.peer		= NLM_CLIENT,
-> +		.server		= 1,
-> 		.sin		= svc_addr_in(rqstp),
-> 		.protocol	= rqstp->rq_prot,
-> 		.version	= rqstp->rq_vers,
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index 49e458d..3425268 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -214,6 +214,9 @@ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
+>  extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+>  extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
+>  extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
+> +extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
+> +extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
+> +			      struct svc_rdma_fastreg_mr *);
+>  extern void svc_sq_reap(struct svcxprt_rdma *);
+>  extern void svc_rq_reap(struct svcxprt_rdma *);
+>  extern struct svc_xprt_class svc_rdma_class;
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 900cb69..dd170af 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -100,6 +100,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+>  	ctxt->xprt = xprt;
+>  	INIT_LIST_HEAD(&ctxt->dto_q);
+>  	ctxt->count = 0;
+> +	ctxt->frmr = NULL;
+>  	atomic_inc(&xprt->sc_ctxt_used);
+>  	return ctxt;
+>  }
+> @@ -109,11 +110,19 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
+>  	struct svcxprt_rdma *xprt = ctxt->xprt;
+>  	int i;
+>  	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
+> -		atomic_dec(&xprt->sc_dma_used);
+> -		ib_dma_unmap_single(xprt->sc_cm_id->device,
+> -				    ctxt->sge[i].addr,
+> -				    ctxt->sge[i].length,
+> -				    ctxt->direction);
+> +		/*
+> +		 * Unmap the DMA addr in the SGE if the lkey matches
+> +		 * the sc_dma_lkey, otherwise, ignore it since it is
+> +		 * an FRMR lkey and will be unmapped later when the
+> +		 * last WR that uses it completes.
+> +		 */
+> +		if (ctxt->sge[i].lkey == xprt->sc_dma_lkey) {
+> +			atomic_dec(&xprt->sc_dma_used);
+> +			ib_dma_unmap_single(xprt->sc_cm_id->device,
+> +					    ctxt->sge[i].addr,
+> +					    ctxt->sge[i].length,
+> +					    ctxt->direction);
+> +		}
+>  	}
+>  }
+>  
+> @@ -150,6 +159,7 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
+>  		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+>  	}
+>  	map->count = 0;
+> +	map->frmr = NULL;
+>  	return map;
+>  }
+>  
+> @@ -425,10 +435,12 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+>  	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+>  	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+>  	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
+> +	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
+>  	init_waitqueue_head(&cma_xprt->sc_send_wait);
+>  
+>  	spin_lock_init(&cma_xprt->sc_lock);
+>  	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
+> +	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
+>  
+>  	cma_xprt->sc_ord = svcrdma_ord;
+>  
+> @@ -686,6 +698,103 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+>  	return ERR_PTR(ret);
+>  }
+>  
+> +static int rdma_alloc_frmr(struct svcxprt_rdma *xprt)
+> +{
+> +	struct ib_mr *mr;
+> +	struct ib_fast_reg_page_list *pl;
+> +	struct svc_rdma_fastreg_mr *frmr;
+> +
+> +	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
+> +	if (!mr)
+> +		goto errout;
+> +	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
+> +					 RPCSVC_MAXPAGES);
+> +	if (!pl) {
+> +		ib_dereg_mr(mr);
+> +		goto errout;
+> +	}
+> +	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
+> +	if (!frmr) {
+> +		ib_dereg_mr(mr);
+> +		ib_free_fast_reg_page_list(pl);
+> +		goto errout;
+> +	}
+> +	frmr->mr = mr;
+> +	frmr->page_list = pl;
+> +	INIT_LIST_HEAD(&frmr->frmr_list);
+> +	spin_lock_bh(&xprt->sc_frmr_q_lock);
+> +	list_add(&frmr->frmr_list, &xprt->sc_frmr_q);
+> +	spin_unlock_bh(&xprt->sc_frmr_q_lock);
+> +
+> +	return 0;
+> +
+> + errout:
+> +	return -ENOMEM;
+> +}
+> +
+> +static void rdma_dealloc_frmr_q(struct svcxprt_rdma *xprt)
+> +{
+> +	struct svc_rdma_fastreg_mr *frmr;
+> +
+> +	while (!list_empty(&xprt->sc_frmr_q)) {
+> +		frmr = list_entry(xprt->sc_frmr_q.next,
+> +				  struct svc_rdma_fastreg_mr, frmr_list);
+> +		list_del_init(&frmr->frmr_list);
+> +		ib_dereg_mr(frmr->mr);
+> +		ib_free_fast_reg_page_list(frmr->page_list);
+> +		kfree(frmr);
+> +	}
+> +}
+> +
+> +struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
+> +{
+> +	struct svc_rdma_fastreg_mr *frmr = NULL;
+> +
+> +	while (1) {
+> +		spin_lock_bh(&rdma->sc_frmr_q_lock);
+> +		if (!list_empty(&rdma->sc_frmr_q)) {
+> +			frmr = list_entry(rdma->sc_frmr_q.next,
+> +					  struct svc_rdma_fastreg_mr, frmr_list);
+> +			list_del_init(&frmr->frmr_list);
+> +		}
+> +		spin_unlock_bh(&rdma->sc_frmr_q_lock);
+> +		if (frmr)
+> +			break;
+> +		if (rdma_alloc_frmr(rdma))
+> +			return ERR_PTR(-ENOMEM);
+> +	}
+> +	frmr->map_len = 0;
+> +	frmr->page_list_len = 0;
+> +
+> +	return frmr;
+> +}
+> +
+> +static void frmr_unmap_dma(struct svcxprt_rdma *xprt,
+> +			   struct svc_rdma_fastreg_mr *frmr)
+> +{
+> +	int page_no;
+> +	for (page_no = 0; page_no < frmr->page_list_len; page_no++) {
+> +		dma_addr_t addr = frmr->page_list->page_list[page_no];
+> +		if (ib_dma_mapping_error(frmr->mr->device, addr))
+> +			continue;
+> +		atomic_dec(&xprt->sc_dma_used);
+> +		ib_dma_unmap_single(frmr->mr->device, addr, PAGE_SIZE,
+> +				    frmr->direction);
+> +	}
+> +}
+> +
+> +void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
+> +		       struct svc_rdma_fastreg_mr *frmr)
+> +{
+> +	if (frmr) {
+> +		frmr_unmap_dma(rdma, frmr);
+> +		spin_lock_bh(&rdma->sc_frmr_q_lock);
+> +		BUG_ON(!list_empty(&frmr->frmr_list));
+> +		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
+> +		spin_unlock_bh(&rdma->sc_frmr_q_lock);
+> +	}
+> +}
+> +
+>  /*
+>   * This is the xpo_recvfrom function for listening endpoints. Its
+>   * purpose is to accept incoming connections. The CMA callback handler
+> @@ -961,6 +1070,9 @@ static void __svc_rdma_free(struct work_struct *work)
+>  	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
+>  	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
+>  
+> +	/* De-allocate fastreg mr */
+> +	rdma_dealloc_frmr_q(rdma);
+> +
+>  	/* Destroy the QP if present (not a listener) */
+>  	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
+>  		ib_destroy_qp(rdma->sc_qp);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
