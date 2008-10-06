@@ -1,92 +1,223 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Fwd: [NFS] [patch] rpcgen: include sys/ioctl.h on linux systems
-Date: Mon, 6 Oct 2008 14:10:23 -0400
-Message-ID: <0E680393-D341-4484-80AB-2723E631F0CC@oracle.com>
-References: <200804200649.44542.vapier@gentoo.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: multipart/mixed; boundary=Apple-Mail-2-196287862
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 02/12] svcrdma: Add FRMR get/put services
+Date: Mon, 06 Oct 2008 15:02:56 -0500
+Message-ID: <48EA6EF0.7010808@opengridcomputing.com>
+References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com> <1223069629-5267-2-git-send-email-tom@opengridcomputing.com> <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:22815 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754703AbYJFSKs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2008 14:10:48 -0400
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:57954 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753446AbYJFUC5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2008 16:02:57 -0400
+In-Reply-To: <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Bruce:
 
---Apple-Mail-2-196287862
-Content-Type: text/plain;
-	charset=US-ASCII;
-	format=flowed;
-	delsp=yes
-Content-Transfer-Encoding: 7bit
+I believe that this version of the patch is what you were expecting.
+Thanks for catching this. This is the version that is in my git tree
+as well.
 
-Steve-
+BTW, I've tested these patches with dbench, iozone and Connectathon.
 
-Resending.  Is this valid for nfs-utils 1.1.4?
+Tom
 
-Begin forwarded message:
+From: Tom Tucker <tom@opengridcomputing.com>
+Date: Mon, 6 Oct 2008 14:45:18 -0500
+Subject: [PATCH 02/12] svcrdma: Add FRMR get/put services
 
-> From: Mike Frysinger <vapier@gentoo.org>
-> Date: April 20, 2008 6:49:44 AM GMT-04:00
-> To: nfs@lists.sourceforge.net
-> Subject: [NFS] [patch] rpcgen: include sys/ioctl.h on linux systems
->
-> the rpcgen tool included with nfs-utils will generate calls to  
-> ioctl() but not
-> actually generate the sys/ioctl.h header include.  attached patch  
-> should fix
-> this.
-> -mike
+Add services for the allocating, freeing, and unmapping Fast Reg MR. These
+services will be used by the transport connection setup, send and receive
+routines.
 
---Apple-Mail-2-196287862
-Content-Disposition: attachment;
-	filename=nfs-utils-1.1.2-rpcgen-ioctl.patch
-Content-Type: text/x-diff;
-	x-unix-mode=0666;
-	name="nfs-utils-1.1.2-rpcgen-ioctl.patch"
-Content-Transfer-Encoding: 7bit
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
---- tools/rpcgen/rpc_main.c
-+++ tools/rpcgen/rpc_main.c
-@@ -548,6 +548,9 @@
- #ifndef linux
- 	if( !tirpcflag && inetdflag )
- 	  f_print(fout, "#include <sys/ttycom.h>/* TIOCNOTTY */\n");
-+#else
-+	if( !tirpcflag )
-+	  f_print(fout, "#include <sys/ioctl.h>/* TIOCNOTTY */\n");
- #endif
- 	if( Cflag && (inetdflag || pmflag ) ) {
- 	  f_print(fout, "#ifdef __cplusplus\n");
+---
+  include/linux/sunrpc/svc_rdma.h          |    3 +
+  net/sunrpc/xprtrdma/svc_rdma_transport.c |  116 ++++++++++++++++++++++++++++--
+  2 files changed, 114 insertions(+), 5 deletions(-)
 
---Apple-Mail-2-196287862
-Content-Type: text/plain;
-	charset=US-ASCII;
-	format=flowed;
-	delsp=yes
-Content-Transfer-Encoding: 7bit
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 49e458d..3425268 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -214,6 +214,9 @@ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
+  extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
+  extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
+  extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
++extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
++extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
++			      struct svc_rdma_fastreg_mr *);
+  extern void svc_sq_reap(struct svcxprt_rdma *);
+  extern void svc_rq_reap(struct svcxprt_rdma *);
+  extern struct svc_xprt_class svc_rdma_class;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 900cb69..f0b5c5f 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -100,6 +100,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+  	ctxt->xprt = xprt;
+  	INIT_LIST_HEAD(&ctxt->dto_q);
+  	ctxt->count = 0;
++	ctxt->frmr = NULL;
+  	atomic_inc(&xprt->sc_ctxt_used);
+  	return ctxt;
+  }
+@@ -109,11 +110,19 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
+  	struct svcxprt_rdma *xprt = ctxt->xprt;
+  	int i;
+  	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
+-		atomic_dec(&xprt->sc_dma_used);
+-		ib_dma_unmap_single(xprt->sc_cm_id->device,
+-				    ctxt->sge[i].addr,
+-				    ctxt->sge[i].length,
+-				    ctxt->direction);
++		/*
++		 * Unmap the DMA addr in the SGE if the lkey matches
++		 * the sc_dma_lkey, otherwise, ignore it since it is
++		 * an FRMR lkey and will be unmapped later when the
++		 * last WR that uses it completes.
++		 */
++		if (ctxt->sge[i].lkey == xprt->sc_dma_lkey) {
++			atomic_dec(&xprt->sc_dma_used);
++			ib_dma_unmap_single(xprt->sc_cm_id->device,
++					    ctxt->sge[i].addr,
++					    ctxt->sge[i].length,
++					    ctxt->direction);
++		}
+  	}
+  }
 
-> -------------------------------------------------------------------------
-> This SF.net email is sponsored by the 2008 JavaOne(SM) Conference
-> Don't miss this year's exciting event. There's still time to save  
-> $100.
-> Use priority code J8TL2D2.
-> http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone_______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->    http://vger.kernel.org/vger-lists.html#linux-nfs
+@@ -150,6 +159,7 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
+  		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+  	}
+  	map->count = 0;
++	map->frmr = NULL;
+  	return map;
+  }
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+@@ -425,10 +435,12 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+  	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
+  	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
+  	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
++	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
+  	init_waitqueue_head(&cma_xprt->sc_send_wait);
 
+  	spin_lock_init(&cma_xprt->sc_lock);
+  	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
++	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
 
+  	cma_xprt->sc_ord = svcrdma_ord;
 
+@@ -686,6 +698,97 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
+  	return ERR_PTR(ret);
+  }
 
---Apple-Mail-2-196287862--
++static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
++{
++	struct ib_mr *mr;
++	struct ib_fast_reg_page_list *pl;
++	struct svc_rdma_fastreg_mr *frmr;
++
++	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
++	if (!frmr)
++		goto err;
++
++	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
++	if (!mr)
++		goto err_free_frmr;
++
++	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
++					 RPCSVC_MAXPAGES);
++	if (!pl)
++		goto err_free_mr;
++
++	frmr->mr = mr;
++	frmr->page_list = pl;
++	INIT_LIST_HEAD(&frmr->frmr_list);
++	return frmr;
++
++ err_free_mr:
++	ib_dereg_mr(mr);
++ err_free_frmr:
++	kfree(frmr);
++ err:
++	return ERR_PTR(-ENOMEM);
++}
++
++static void rdma_dealloc_frmr_q(struct svcxprt_rdma *xprt)
++{
++	struct svc_rdma_fastreg_mr *frmr;
++
++	while (!list_empty(&xprt->sc_frmr_q)) {
++		frmr = list_entry(xprt->sc_frmr_q.next,
++				  struct svc_rdma_fastreg_mr, frmr_list);
++		list_del_init(&frmr->frmr_list);
++		ib_dereg_mr(frmr->mr);
++		ib_free_fast_reg_page_list(frmr->page_list);
++		kfree(frmr);
++	}
++}
++
++struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
++{
++	struct svc_rdma_fastreg_mr *frmr = NULL;
++
++	spin_lock_bh(&rdma->sc_frmr_q_lock);
++	if (!list_empty(&rdma->sc_frmr_q)) {
++		frmr = list_entry(rdma->sc_frmr_q.next,
++				  struct svc_rdma_fastreg_mr, frmr_list);
++		list_del_init(&frmr->frmr_list);
++		frmr->map_len = 0;
++		frmr->page_list_len = 0;
++	}
++	spin_unlock_bh(&rdma->sc_frmr_q_lock);
++	if (frmr)
++		return frmr;
++
++	return rdma_alloc_frmr(rdma);
++}
++
++static void frmr_unmap_dma(struct svcxprt_rdma *xprt,
++			   struct svc_rdma_fastreg_mr *frmr)
++{
++	int page_no;
++	for (page_no = 0; page_no < frmr->page_list_len; page_no++) {
++		dma_addr_t addr = frmr->page_list->page_list[page_no];
++		if (ib_dma_mapping_error(frmr->mr->device, addr))
++			continue;
++		atomic_dec(&xprt->sc_dma_used);
++		ib_dma_unmap_single(frmr->mr->device, addr, PAGE_SIZE,
++				    frmr->direction);
++	}
++}
++
++void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
++		       struct svc_rdma_fastreg_mr *frmr)
++{
++	if (frmr) {
++		frmr_unmap_dma(rdma, frmr);
++		spin_lock_bh(&rdma->sc_frmr_q_lock);
++		BUG_ON(!list_empty(&frmr->frmr_list));
++		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
++		spin_unlock_bh(&rdma->sc_frmr_q_lock);
++	}
++}
++
+  /*
+   * This is the xpo_recvfrom function for listening endpoints. Its
+   * purpose is to accept incoming connections. The CMA callback handler
+@@ -961,6 +1064,9 @@ static void __svc_rdma_free(struct work_struct *work)
+  	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
+  	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
+
++	/* De-allocate fastreg mr */
++	rdma_dealloc_frmr_q(rdma);
++
+  	/* Destroy the QP if present (not a listener) */
+  	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
+  		ib_destroy_qp(rdma->sc_qp);
