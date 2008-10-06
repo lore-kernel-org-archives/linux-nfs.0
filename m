@@ -1,91 +1,92 @@
-From: =?UTF-8?Q?An=C3=ADbal?= Monsalve Salazar <anibal@debian.org>
-Subject: Bug#484861: nfs-common: rpc.statd --outgoing-port (-o) option broken
-Date: Sun, 5 Oct 2008 15:51:33 +1100
-Message-ID: <20081005045133.GZ26991@debianrules.debiancolombia.org>
-References: <20080607015302.15770.62792.reportbug@gothic-ave.svl.ibm.com>
-Reply-To: =?UTF-8?Q?An=C3=ADbal?= Monsalve Salazar <anibal@debian.org>, 484861@bugs.debian.org
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="0M7E0x35R+W+EAky"
-Cc: Richard A Nelson <cowboy@debian.org>, 484861@bugs.debian.org
-To: linux-nfs@vger.kernel.org
-Return-path: <bounce-debian-bugs-dist=glddb-debian-bugs-dist=m.gmane.org@lists.debian.org>
-Resent-Message-ID: <handler.484861.B484861.12231823709462@bugs.debian.org>
-In-Reply-To: <20080607015302.15770.62792.reportbug@gothic-ave.svl.ibm.com>
-List-Post: <mailto:debian-bugs-dist@lists.debian.org>
-List-Help: <mailto:debian-bugs-dist-request@lists.debian.org?subject=help>
-List-Subscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=subscribe>
-List-Unsubscribe: <mailto:debian-bugs-dist-request@lists.debian.org?subject=unsubscribe>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Fwd: [NFS] [patch] rpcgen: include sys/ioctl.h on linux systems
+Date: Mon, 6 Oct 2008 14:10:23 -0400
+Message-ID: <0E680393-D341-4484-80AB-2723E631F0CC@oracle.com>
+References: <200804200649.44542.vapier@gentoo.org>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: multipart/mixed; boundary=Apple-Mail-2-196287862
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from agminet01.oracle.com ([141.146.126.228]:22815 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754703AbYJFSKs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2008 14:10:48 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---0M7E0x35R+W+EAky
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+--Apple-Mail-2-196287862
+Content-Type: text/plain;
+	charset=US-ASCII;
+	format=flowed;
+	delsp=yes
+Content-Transfer-Encoding: 7bit
 
-On Sat, Jun 07, 2008 at 01:53:02AM +0000, Richard A Nelson wrote:
->Package: nfs-common
->Version: 1:1.1.2-4
->Severity: important
->
->In a fit of debugging spurious NFS problems I noticed this:
->
-># ps auxw | grep statd
->statd     4136  0.0  0.0   2056   652 ?        Ss   Jun06   0:00
->/sbin/rpc.statd --port 32765 --outgoing-port 32766
->
-># lsof | grep rpc.statd | grep :
->rpc.statd  4136       statd    5u     IPv4      10388 UDP *:920=20
->rpc.statd  4136       statd    7u     IPv4      10396 UDP *:32765=20
->rpc.statd  4136       statd    8u     IPv4      10399 TCP *:32765 (LISTEN)
->
->changing --outgoing-port to -o didn't help.
->
->This is causing issues with my firewalls
+Steve-
 
-Is this a known bug in 1.1.2?
+Resending.  Is this valid for nfs-utils 1.1.4?
 
->-- System Information:
->Debian Release: 4.0
->  APT prefers testing-proposed-updates
->  APT policy: (500, 'testing-proposed-updates'), (500, 'proposed-updates'), (500, 'unstable'), (500, 'testing'), (500, 'stable')
->Architecture: i386 (i686)
+Begin forwarded message:
+
+> From: Mike Frysinger <vapier@gentoo.org>
+> Date: April 20, 2008 6:49:44 AM GMT-04:00
+> To: nfs@lists.sourceforge.net
+> Subject: [NFS] [patch] rpcgen: include sys/ioctl.h on linux systems
 >
->Kernel: Linux 2.6.25.3 (SMP w/2 CPU cores)
->Locale: LANG=3Den_US, LC_CTYPE=3Den_US (charmap=3DISO-8859-1)
->Shell: /bin/sh linked to /bin/bash
->
->Versions of packages nfs-common depends on:
->ii  adduser                     3.108        add and remove users and groups
->ii  initscripts                 2.86.ds1-59  Scripts for initializing and shutt
->ii  libc6                       2.7-12       GNU C Library: Shared libraries
->ii  libcomerr2                  1.40.8-2     common error description library
->ii  libevent1                   1.3e-3       An asynchronous event notification
->ii  libgssglue1                 0.1-2        mechanism-switch gssapi library
->ii  libkrb53                    1.6.dfsg.3-2 MIT Kerberos runtime libraries
->ii  libnfsidmap2                0.20-1       An nfs idmapping library
->ii  librpcsecgss3               0.18-1       allows secure rpc communication us
->ii  libwrap0                    7.6.q-15     Wietse Venema's TCP wrappers libra
->ii  lsb-base                    3.2-12       Linux Standard Base 3.2 init scrip
->ii  netbase                     4.32         Basic TCP/IP networking system
->ii  portmap                     6.0-5.1      RPC port mapper
->ii  ucf                         3.007        Update Configuration File: preserv
->
->nfs-common recommends no packages.
->
->-- no debconf information
+> the rpcgen tool included with nfs-utils will generate calls to  
+> ioctl() but not
+> actually generate the sys/ioctl.h header include.  attached patch  
+> should fix
+> this.
+> -mike
 
---0M7E0x35R+W+EAky
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
+--Apple-Mail-2-196287862
+Content-Disposition: attachment;
+	filename=nfs-utils-1.1.2-rpcgen-ioctl.patch
+Content-Type: text/x-diff;
+	x-unix-mode=0666;
+	name="nfs-utils-1.1.2-rpcgen-ioctl.patch"
+Content-Transfer-Encoding: 7bit
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+--- tools/rpcgen/rpc_main.c
++++ tools/rpcgen/rpc_main.c
+@@ -548,6 +548,9 @@
+ #ifndef linux
+ 	if( !tirpcflag && inetdflag )
+ 	  f_print(fout, "#include <sys/ttycom.h>/* TIOCNOTTY */\n");
++#else
++	if( !tirpcflag )
++	  f_print(fout, "#include <sys/ioctl.h>/* TIOCNOTTY */\n");
+ #endif
+ 	if( Cflag && (inetdflag || pmflag ) ) {
+ 	  f_print(fout, "#ifdef __cplusplus\n");
 
-iEYEARECAAYFAkjoR9IACgkQgY5NIXPNpFX3cACgnjMPfBQC6U+gBy7Yyno3zejJ
-kXgAn3bD37EyAj6Kjo81M6zg89Mu4Bb7
-=nK1s
------END PGP SIGNATURE-----
+--Apple-Mail-2-196287862
+Content-Type: text/plain;
+	charset=US-ASCII;
+	format=flowed;
+	delsp=yes
+Content-Transfer-Encoding: 7bit
 
---0M7E0x35R+W+EAky--
+> -------------------------------------------------------------------------
+> This SF.net email is sponsored by the 2008 JavaOne(SM) Conference
+> Don't miss this year's exciting event. There's still time to save  
+> $100.
+> Use priority code J8TL2D2.
+> http://ad.doubleclick.net/clk;198757673;13503038;p?http://java.sun.com/javaone_______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>    http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
+--Apple-Mail-2-196287862--
