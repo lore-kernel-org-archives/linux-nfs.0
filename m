@@ -1,58 +1,65 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 10/30] NFS: Don't clear nfsi->cache_validity in
-	nfs_check_inode_attributes()
-Date: Tue, 07 Oct 2008 18:19:53 -0400
-Message-ID: <20081007221953.20945.59407.stgit@localhost.localdomain>
+Subject: [PATCH 28/30] NFS: Client mounts hang when exported directory do
+	not exist
+Date: Tue, 07 Oct 2008 18:19:54 -0400
+Message-ID: <20081007221954.20945.86207.stgit@localhost.localdomain>
 References: <20081007221952.20945.69529.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
+Cc: Steve Dickson <steved@redhat.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52974 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4712 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756281AbYJGWcx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Oct 2008 18:32:53 -0400
-Received: from sacexrs02.hq.netapp.com (sacexrs02.hq.netapp.com [10.99.190.106])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m97MWkwC026300
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Oct 2008 15:32:49 -0700 (PDT)
+	id S1755845AbYJGWcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Oct 2008 18:32:48 -0400
 In-Reply-To: <20081007221952.20945.69529.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're merely checking the inode attributes because we suspect that the
-'updated' attributes returned by the RPC call are stale, then we shouldn't
-be doing weak cache consistency updates or clearing the cache_validity
-flags.
+From: Steve Dickson <SteveD@redhat.com>
 
+This patch fixes a regression that was introduced by the string based mounts.
+
+nfs_mount() statically returns -EACCES for every error returned
+by the remote mounted. This is incorrect because -EACCES is
+an non-fatal error to the mount.nfs command. This error causes
+mount.nfs to retry the mount even in the case when the exported
+directory does not exist.
+
+This patch maps the errors returned by the remote mountd into
+valid errno values, exactly how it was done pre-string based
+mounts. By returning the correct errno enables mount.nfs
+to do the right thing.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+[Trond.Myklebust@netapp.com: nfs_stat_to_errno() now correctly returns
+ negative errors, so remove the sign change.]
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/inode.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
+ fs/nfs/mount_clnt.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 697157c..a2f5415 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -905,9 +905,6 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 		return -EIO;
- 	}
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 779d2eb..086a683 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -14,6 +14,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/nfs_fs.h>
++#include "internal.h"
  
--	/* Do atomic weak cache consistency updates */
--	nfs_wcc_update_inode(inode, fattr);
--
- 	if ((fattr->valid & NFS_ATTR_FATTR_V4) != 0 &&
- 			nfsi->change_attr != fattr->change_attr)
- 		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_REVAL_PAGECACHE;
-@@ -936,10 +933,6 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ #ifdef RPC_DEBUG
+ # define NFSDBG_FACILITY	NFSDBG_MOUNT
+@@ -98,7 +99,7 @@ out_call_err:
  
- 	if (invalid != 0)
- 		nfsi->cache_validity |= invalid;
--	else
--		nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_ATIME
--				| NFS_INO_REVAL_PAGECACHE);
+ out_mnt_err:
+ 	dprintk("NFS: MNT server returned result %d\n", result.status);
+-	status = -EACCES;
++	status = nfs_stat_to_errno(result.status);
+ 	goto out;
+ }
  
- 	nfsi->read_cache_jiffies = fattr->time_start;
- 	return 0;
 
