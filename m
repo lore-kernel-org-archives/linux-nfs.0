@@ -1,48 +1,61 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 17/30] nfs: remove an obsolete nfs_flock comment
+Subject: [PATCH 15/30] sunrpc: do not pin sunrpc module in the memory
 Date: Tue, 07 Oct 2008 18:19:53 -0400
-Message-ID: <20081007221953.20945.78589.stgit@localhost.localdomain>
+Message-ID: <20081007221953.20945.77951.stgit@localhost.localdomain>
 References: <20081007221952.20945.69529.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Cc: "Denis V. Lunev" <den@openvz.org>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35670 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52974 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754815AbYJGWco (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Oct 2008 18:32:44 -0400
+	id S1756032AbYJGWcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Oct 2008 18:32:48 -0400
 In-Reply-To: <20081007221952.20945.69529.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: Denis V. Lunev <den@openvz.org>
 
-We *do* now allow bsd flocks over nfs.
+Basically, try_module_get here are pretty useless. Any other module using
+this API will pin sunrpc in memory due using exported symbols.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Denis V. Lunev <den@openvz.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/file.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
+ net/sunrpc/xprt.c |   12 ++++--------
+ 1 files changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 3ddb004..d319b49 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -702,13 +702,6 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
- 			filp->f_path.dentry->d_name.name,
- 			fl->fl_type, fl->fl_flags);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 99a52aa..29e401b 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -108,13 +108,10 @@ int xprt_register_transport(struct xprt_class *transport)
+ 			goto out;
+ 	}
  
--	/*
--	 * No BSD flocks over NFS allowed.
--	 * Note: we could try to fake a POSIX lock request here by
--	 * using ((u32) filp | 0x80000000) or some such as the pid.
--	 * Not sure whether that would be unique, though, or whether
--	 * that would break in other places.
--	 */
- 	if (!(fl->fl_flags & FL_FLOCK))
- 		return -ENOLCK;
+-	result = -EINVAL;
+-	if (try_module_get(THIS_MODULE)) {
+-		list_add_tail(&transport->list, &xprt_list);
+-		printk(KERN_INFO "RPC: Registered %s transport module.\n",
+-			transport->name);
+-		result = 0;
+-	}
++	list_add_tail(&transport->list, &xprt_list);
++	printk(KERN_INFO "RPC: Registered %s transport module.\n",
++	       transport->name);
++	result = 0;
  
+ out:
+ 	spin_unlock(&xprt_list_lock);
+@@ -143,7 +140,6 @@ int xprt_unregister_transport(struct xprt_class *transport)
+ 				"RPC: Unregistered %s transport module.\n",
+ 				transport->name);
+ 			list_del_init(&transport->list);
+-			module_put(THIS_MODULE);
+ 			goto out;
+ 		}
+ 	}
 
