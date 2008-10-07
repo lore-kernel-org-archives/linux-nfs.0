@@ -1,223 +1,114 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 02/12] svcrdma: Add FRMR get/put services
-Date: Mon, 06 Oct 2008 15:02:56 -0500
-Message-ID: <48EA6EF0.7010808@opengridcomputing.com>
-References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com> <1223069629-5267-2-git-send-email-tom@opengridcomputing.com> <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 30/30] sunrpc: fix oops in rpc_create when the mount
+	namespace is unshared
+Date: Tue, 07 Oct 2008 18:19:54 -0400
+Message-ID: <20081007221954.20945.7893.stgit@localhost.localdomain>
+References: <20081007221952.20945.69529.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: text/plain; charset="utf-8"
+Cc: Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	"Serge E. Hallyn" <serue@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:57954 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753446AbYJFUC5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2008 16:02:57 -0400
-In-Reply-To: <1223069629-5267-3-git-send-email-tom@opengridcomputing.com>
+Received: from mx2.netapp.com ([216.240.18.37]:35670 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755882AbYJGWcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Oct 2008 18:32:45 -0400
+In-Reply-To: <20081007221952.20945.69529.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce:
+From: Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
 
-I believe that this version of the patch is what you were expecting.
-Thanks for catching this. This is the version that is in my git tree
-as well.
+On a system with nfs mounts, if a task unshares its mount namespace,
+a oops can occur when the system is rebooted if the task is the last
+to unreference the nfs mount. It will try to create a rpc request
+using utsname() which has been invalidated by free_nsproxy().
 
-BTW, I've tested these patches with dbench, iozone and Connectathon.
+The patch fixes the issue by using the global init_utsname() which is
+always valid. the capability of identifying rpc clients per uts namespace
+stills needs some extra work so this should not be a problem.
 
-Tom
+BUG: unable to handle kernel NULL pointer dereference at 00000004
+IP: [<c024c9ab>] rpc_create+0x332/0x42f
+Oops: 0000 [#1] DEBUG_PAGEALLOC
 
-From: Tom Tucker <tom@opengridcomputing.com>
-Date: Mon, 6 Oct 2008 14:45:18 -0500
-Subject: [PATCH 02/12] svcrdma: Add FRMR get/put services
+Pid: 1857, comm: uts-oops Not tainted (2.6.27-rc5-00319-g7686ad5 #4)
+EIP: 0060:[<c024c9ab>] EFLAGS: 00210287 CPU: 0
+EIP is at rpc_create+0x332/0x42f
+EAX: 00000000 EBX: df26adf0 ECX: c0251887 EDX: 00000001
+ESI: df26ae58 EDI: c02f293c EBP: dda0fc9c ESP: dda0fc2c
+ DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+Process uts-oops (pid: 1857, ti=dda0e000 task=dd9a0778 task.ti=dda0e000)
+Stack: c0104532 dda0fffc dda0fcac dda0e000 dda0e000 dd93b7f0 00000009 c02f2880
+       df26aefc dda0fc68 c01096b7 00000000 c0266ee0 c039a070 c039a070 dda0fc74
+       c012ca67 c039a064 dda0fc8c c012cb20 c03daf74 00000011 00000000 c0275c90
+Call Trace:
+ [<c0104532>] ? dump_trace+0xc2/0xe2
+ [<c01096b7>] ? save_stack_trace+0x1c/0x3a
+ [<c012ca67>] ? save_trace+0x37/0x8c
+ [<c012cb20>] ? add_lock_to_list+0x64/0x96
+ [<c0256fc4>] ? rpcb_register_call+0x62/0xbb
+ [<c02570c8>] ? rpcb_register+0xab/0xb3
+ [<c0252f4d>] ? svc_register+0xb4/0x128
+ [<c0253114>] ? svc_destroy+0xec/0x103
+ [<c02531b2>] ? svc_exit_thread+0x87/0x8d
+ [<c01a75cd>] ? lockd_down+0x61/0x81
+ [<c01a577b>] ? nlmclnt_done+0xd/0xf
+ [<c01941fe>] ? nfs_destroy_server+0x14/0x16
+ [<c0194328>] ? nfs_free_server+0x4c/0xaa
+ [<c019a066>] ? nfs_kill_super+0x23/0x27
+ [<c0158585>] ? deactivate_super+0x3f/0x51
+ [<c01695d1>] ? mntput_no_expire+0x95/0xb4
+ [<c016965b>] ? release_mounts+0x6b/0x7a
+ [<c01696cc>] ? __put_mnt_ns+0x62/0x70
+ [<c0127501>] ? free_nsproxy+0x25/0x80
+ [<c012759a>] ? switch_task_namespaces+0x3e/0x43
+ [<c01275a9>] ? exit_task_namespaces+0xa/0xc
+ [<c0117fed>] ? do_exit+0x4fd/0x666
+ [<c01181b3>] ? do_group_exit+0x5d/0x83
+ [<c011fa8c>] ? get_signal_to_deliver+0x2c8/0x2e0
+ [<c0102630>] ? do_notify_resume+0x69/0x700
+ [<c011d85a>] ? do_sigaction+0x134/0x145
+ [<c0127205>] ? hrtimer_nanosleep+0x8f/0xce
+ [<c0126d1a>] ? hrtimer_wakeup+0x0/0x1c
+ [<c0103488>] ? work_notifysig+0x13/0x1b
+ =======================
+Code: 70 20 68 cb c1 2c c0 e8 75 4e 01 00 8b 83 ac 00 00 00 59 3d 00 f0 ff ff 5f 77 63 eb 57 a1 00 80 2d c0 8b 80 a8 02 00 00 8d 73 68 <8b> 40 04 83 c0 45 e8 41 46 f7 ff ba 20 00 00 00 83 f8 21 0f 4c
+EIP: [<c024c9ab>] rpc_create+0x332/0x42f SS:ESP 0068:dda0fc2c
 
-Add services for the allocating, freeing, and unmapping Fast Reg MR. These
-services will be used by the transport connection setup, send and receive
-routines.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-
+Signed-off-by: Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: "Serge E. Hallyn" <serue@us.ibm.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
-  include/linux/sunrpc/svc_rdma.h          |    3 +
-  net/sunrpc/xprtrdma/svc_rdma_transport.c |  116 ++++++++++++++++++++++++++++--
-  2 files changed, 114 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 49e458d..3425268 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -214,6 +214,9 @@ extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
-  extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
-  extern struct svc_rdma_req_map *svc_rdma_get_req_map(void);
-  extern void svc_rdma_put_req_map(struct svc_rdma_req_map *);
-+extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
-+extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
-+			      struct svc_rdma_fastreg_mr *);
-  extern void svc_sq_reap(struct svcxprt_rdma *);
-  extern void svc_rq_reap(struct svcxprt_rdma *);
-  extern struct svc_xprt_class svc_rdma_class;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 900cb69..f0b5c5f 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -100,6 +100,7 @@ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
-  	ctxt->xprt = xprt;
-  	INIT_LIST_HEAD(&ctxt->dto_q);
-  	ctxt->count = 0;
-+	ctxt->frmr = NULL;
-  	atomic_inc(&xprt->sc_ctxt_used);
-  	return ctxt;
-  }
-@@ -109,11 +110,19 @@ static void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
-  	struct svcxprt_rdma *xprt = ctxt->xprt;
-  	int i;
-  	for (i = 0; i < ctxt->count && ctxt->sge[i].length; i++) {
--		atomic_dec(&xprt->sc_dma_used);
--		ib_dma_unmap_single(xprt->sc_cm_id->device,
--				    ctxt->sge[i].addr,
--				    ctxt->sge[i].length,
--				    ctxt->direction);
-+		/*
-+		 * Unmap the DMA addr in the SGE if the lkey matches
-+		 * the sc_dma_lkey, otherwise, ignore it since it is
-+		 * an FRMR lkey and will be unmapped later when the
-+		 * last WR that uses it completes.
-+		 */
-+		if (ctxt->sge[i].lkey == xprt->sc_dma_lkey) {
-+			atomic_dec(&xprt->sc_dma_used);
-+			ib_dma_unmap_single(xprt->sc_cm_id->device,
-+					    ctxt->sge[i].addr,
-+					    ctxt->sge[i].length,
-+					    ctxt->direction);
-+		}
-  	}
-  }
+ net/sunrpc/clnt.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-@@ -150,6 +159,7 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
-  		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
-  	}
-  	map->count = 0;
-+	map->frmr = NULL;
-  	return map;
-  }
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 76739e9..a59cdf4 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -213,10 +213,10 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 	}
+ 
+ 	/* save the nodename */
+-	clnt->cl_nodelen = strlen(utsname()->nodename);
++	clnt->cl_nodelen = strlen(init_utsname()->nodename);
+ 	if (clnt->cl_nodelen > UNX_MAXNODENAME)
+ 		clnt->cl_nodelen = UNX_MAXNODENAME;
+-	memcpy(clnt->cl_nodename, utsname()->nodename, clnt->cl_nodelen);
++	memcpy(clnt->cl_nodename, init_utsname()->nodename, clnt->cl_nodelen);
+ 	rpc_register_client(clnt);
+ 	return clnt;
+ 
 
-@@ -425,10 +435,12 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
-  	INIT_LIST_HEAD(&cma_xprt->sc_dto_q);
-  	INIT_LIST_HEAD(&cma_xprt->sc_rq_dto_q);
-  	INIT_LIST_HEAD(&cma_xprt->sc_read_complete_q);
-+	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
-  	init_waitqueue_head(&cma_xprt->sc_send_wait);
-
-  	spin_lock_init(&cma_xprt->sc_lock);
-  	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
-+	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
-
-  	cma_xprt->sc_ord = svcrdma_ord;
-
-@@ -686,6 +698,97 @@ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
-  	return ERR_PTR(ret);
-  }
-
-+static struct svc_rdma_fastreg_mr *rdma_alloc_frmr(struct svcxprt_rdma *xprt)
-+{
-+	struct ib_mr *mr;
-+	struct ib_fast_reg_page_list *pl;
-+	struct svc_rdma_fastreg_mr *frmr;
-+
-+	frmr = kmalloc(sizeof(*frmr), GFP_KERNEL);
-+	if (!frmr)
-+		goto err;
-+
-+	mr = ib_alloc_fast_reg_mr(xprt->sc_pd, RPCSVC_MAXPAGES);
-+	if (!mr)
-+		goto err_free_frmr;
-+
-+	pl = ib_alloc_fast_reg_page_list(xprt->sc_cm_id->device,
-+					 RPCSVC_MAXPAGES);
-+	if (!pl)
-+		goto err_free_mr;
-+
-+	frmr->mr = mr;
-+	frmr->page_list = pl;
-+	INIT_LIST_HEAD(&frmr->frmr_list);
-+	return frmr;
-+
-+ err_free_mr:
-+	ib_dereg_mr(mr);
-+ err_free_frmr:
-+	kfree(frmr);
-+ err:
-+	return ERR_PTR(-ENOMEM);
-+}
-+
-+static void rdma_dealloc_frmr_q(struct svcxprt_rdma *xprt)
-+{
-+	struct svc_rdma_fastreg_mr *frmr;
-+
-+	while (!list_empty(&xprt->sc_frmr_q)) {
-+		frmr = list_entry(xprt->sc_frmr_q.next,
-+				  struct svc_rdma_fastreg_mr, frmr_list);
-+		list_del_init(&frmr->frmr_list);
-+		ib_dereg_mr(frmr->mr);
-+		ib_free_fast_reg_page_list(frmr->page_list);
-+		kfree(frmr);
-+	}
-+}
-+
-+struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *rdma)
-+{
-+	struct svc_rdma_fastreg_mr *frmr = NULL;
-+
-+	spin_lock_bh(&rdma->sc_frmr_q_lock);
-+	if (!list_empty(&rdma->sc_frmr_q)) {
-+		frmr = list_entry(rdma->sc_frmr_q.next,
-+				  struct svc_rdma_fastreg_mr, frmr_list);
-+		list_del_init(&frmr->frmr_list);
-+		frmr->map_len = 0;
-+		frmr->page_list_len = 0;
-+	}
-+	spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+	if (frmr)
-+		return frmr;
-+
-+	return rdma_alloc_frmr(rdma);
-+}
-+
-+static void frmr_unmap_dma(struct svcxprt_rdma *xprt,
-+			   struct svc_rdma_fastreg_mr *frmr)
-+{
-+	int page_no;
-+	for (page_no = 0; page_no < frmr->page_list_len; page_no++) {
-+		dma_addr_t addr = frmr->page_list->page_list[page_no];
-+		if (ib_dma_mapping_error(frmr->mr->device, addr))
-+			continue;
-+		atomic_dec(&xprt->sc_dma_used);
-+		ib_dma_unmap_single(frmr->mr->device, addr, PAGE_SIZE,
-+				    frmr->direction);
-+	}
-+}
-+
-+void svc_rdma_put_frmr(struct svcxprt_rdma *rdma,
-+		       struct svc_rdma_fastreg_mr *frmr)
-+{
-+	if (frmr) {
-+		frmr_unmap_dma(rdma, frmr);
-+		spin_lock_bh(&rdma->sc_frmr_q_lock);
-+		BUG_ON(!list_empty(&frmr->frmr_list));
-+		list_add(&frmr->frmr_list, &rdma->sc_frmr_q);
-+		spin_unlock_bh(&rdma->sc_frmr_q_lock);
-+	}
-+}
-+
-  /*
-   * This is the xpo_recvfrom function for listening endpoints. Its
-   * purpose is to accept incoming connections. The CMA callback handler
-@@ -961,6 +1064,9 @@ static void __svc_rdma_free(struct work_struct *work)
-  	WARN_ON(atomic_read(&rdma->sc_ctxt_used) != 0);
-  	WARN_ON(atomic_read(&rdma->sc_dma_used) != 0);
-
-+	/* De-allocate fastreg mr */
-+	rdma_dealloc_frmr_q(rdma);
-+
-  	/* Destroy the QP if present (not a listener) */
-  	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
-  		ib_destroy_qp(rdma->sc_qp);
