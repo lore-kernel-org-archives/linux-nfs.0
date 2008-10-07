@@ -1,147 +1,54 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 20/30] nfs: break up nfs_follow_referral
+Subject: [PATCH 13/30] fix fs/nfs/nfsroot.c compilation
 Date: Tue, 07 Oct 2008 18:19:53 -0400
-Message-ID: <20081007221953.20945.5253.stgit@localhost.localdomain>
+Message-ID: <20081007221953.20945.66202.stgit@localhost.localdomain>
 References: <20081007221952.20945.69529.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Cc: Adrian Bunk <bunk@kernel.org>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4712 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35670 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755913AbYJGWcq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Oct 2008 18:32:46 -0400
+	id S1754905AbYJGWcr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Oct 2008 18:32:47 -0400
 In-Reply-To: <20081007221952.20945.69529.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+From: Adrian Bunk <bunk@kernel.org>
 
-This function is a little longer and more deeply nested than necessary.
+This patch fixes the following compile error caused by
+commit f9247273cb69ba101877e946d2d83044409cc8c5
+(UFS: add const to parser token tabl):
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+<--  snip  -->
+
+...
+  CC      fs/nfs/nfsroot.o
+/home/bunk/linux/kernel-2.6/git/linux-2.6/fs/nfs/nfsroot.c:130: error: tokens causes a section type conflict
+make[3]: *** [fs/nfs/nfsroot.o] Error 1
+
+<--  snip  -->
+
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs4namespace.c |   84 ++++++++++++++++++++++++++----------------------
- 1 files changed, 46 insertions(+), 38 deletions(-)
+ fs/nfs/nfsroot.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index b112857..956cbbc 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -110,6 +110,48 @@ static inline int valid_ipaddr4(const char *buf)
- 	return 0;
- }
+diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+index 46763d1..8478fc2 100644
+--- a/fs/nfs/nfsroot.c
++++ b/fs/nfs/nfsroot.c
+@@ -127,7 +127,7 @@ enum {
+ 	Opt_err
+ };
  
-+static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
-+				     char *page, char *page2,
-+				     const struct nfs4_fs_location *location)
-+{
-+	struct vfsmount *mnt = ERR_PTR(-ENOENT);
-+	char *mnt_path;
-+	unsigned int s = 0;
-+
-+	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
-+	if (IS_ERR(mnt_path))
-+		return mnt;
-+	mountdata->mnt_path = mnt_path;
-+
-+	while (s < location->nservers) {
-+		struct sockaddr_in addr = {
-+			.sin_family	= AF_INET,
-+			.sin_port	= htons(NFS_PORT),
-+		};
-+
-+		if (location->servers[s].len <= 0 ||
-+		    valid_ipaddr4(location->servers[s].data) < 0) {
-+			s++;
-+			continue;
-+		}
-+
-+		mountdata->hostname = location->servers[s].data;
-+		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
-+		mountdata->addr = (struct sockaddr *)&addr;
-+		mountdata->addrlen = sizeof(addr);
-+
-+		snprintf(page, PAGE_SIZE, "%s:%s",
-+				mountdata->hostname,
-+				mountdata->mnt_path);
-+
-+		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
-+		if (!IS_ERR(mnt))
-+			break;
-+		s++;
-+	}
-+	return mnt;
-+}
-+
- /**
-  * nfs_follow_referral - set up mountpoint when hitting a referral on moved error
-  * @mnt_parent - mountpoint of parent directory
-@@ -128,7 +170,6 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 		.authflavor = NFS_SB(mnt_parent->mnt_sb)->client->cl_auth->au_flavor,
- 	};
- 	char *page = NULL, *page2 = NULL;
--	unsigned int s;
- 	int loc, error;
- 
- 	if (locations == NULL || locations->nlocations <= 0)
-@@ -153,9 +194,8 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 	}
- 
- 	loc = 0;
--	while (loc < locations->nlocations && IS_ERR(mnt)) {
-+	while (loc < locations->nlocations) {
- 		const struct nfs4_fs_location *location = &locations->locations[loc];
--		char *mnt_path;
- 
- 		if (location == NULL || location->nservers <= 0 ||
- 		    location->rootpath.ncomponents == 0) {
-@@ -163,41 +203,9 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 			continue;
- 		}
- 
--		mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
--		if (IS_ERR(mnt_path)) {
--			loc++;
--			continue;
--		}
--		mountdata.mnt_path = mnt_path;
--
--		s = 0;
--		while (s < location->nservers) {
--			struct sockaddr_in addr = {
--				.sin_family	= AF_INET,
--				.sin_port	= htons(NFS_PORT),
--			};
--
--			if (location->servers[s].len <= 0 ||
--			    valid_ipaddr4(location->servers[s].data) < 0) {
--				s++;
--				continue;
--			}
--
--			mountdata.hostname = location->servers[s].data;
--			addr.sin_addr.s_addr = in_aton(mountdata.hostname),
--			mountdata.addr = (struct sockaddr *)&addr;
--			mountdata.addrlen = sizeof(addr);
--
--			snprintf(page, PAGE_SIZE, "%s:%s",
--					mountdata.hostname,
--					mountdata.mnt_path);
--
--			mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, &mountdata);
--			if (!IS_ERR(mnt)) {
--				break;
--			}
--			s++;
--		}
-+		mnt = try_location(&mountdata, page, page2, location);
-+		if (!IS_ERR(mnt))
-+			break;
- 		loc++;
- 	}
- 
+-static match_table_t __initdata tokens = {
++static match_table_t __initconst tokens = {
+ 	{Opt_port, "port=%u"},
+ 	{Opt_rsize, "rsize=%u"},
+ 	{Opt_wsize, "wsize=%u"},
 
