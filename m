@@ -1,113 +1,96 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 26/30] SUNRPC: Fix autobind on cloned rpc clients
-Date: Tue, 07 Oct 2008 18:19:54 -0400
-Message-ID: <20081007221954.20945.44434.stgit@localhost.localdomain>
+Subject: [PATCH 07/30] NFS: Fix the NFS attribute update
+Date: Tue, 07 Oct 2008 18:19:53 -0400
+Message-ID: <20081007221953.20945.88069.stgit@localhost.localdomain>
 References: <20081007221952.20945.69529.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35670 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52974 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756332AbYJGWcx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Oct 2008 18:32:53 -0400
+	id S1756206AbYJGWcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Oct 2008 18:32:52 -0400
 Received: from sacexrs02.hq.netapp.com (sacexrs02.hq.netapp.com [10.99.190.106])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m97MWi0j025764
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Oct 2008 15:32:49 -0700 (PDT)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id m97MWi0f025764
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Oct 2008 15:32:48 -0700 (PDT)
 In-Reply-To: <20081007221952.20945.69529.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Despite the fact that cloned rpc clients won't have the cl_autobind flag
-set, they may still find themselves calling rpcb_getport_async(). For this
-to happen, it suffices for a _parent_ rpc_clnt to use autobinding, in which
-case any clone may find itself triggering the !xprt_bound() case in
-call_bind().
+Currently nfs_refresh_inode() will only update the inode metadata if it
+sees that the RPC call that returned the nfs_fattr was started
+after the last update of the inode. This means that if we have parallel
+RPC calls to the same inode (when sending WRITE calls, for instance), we
+may often miss updates.
 
-The correct fix for this is to walk back up the tree of cloned rpc clients,
-in order to find the parent that 'owns' the transport, either because it
-has clnt->cl_autobind set, or because it originally created the
-transport...
+This patch attempts to recover those missed updates by also accepting
+them if the ctime in the nfs_fattr is more recent than the inode's
+cached ctime.
+It also recovers the case where the file size has increased, but the
+ctime has not been updated due to limited ctime resolution.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   36 +++++++++++++++++++++++++++++-------
- 1 files changed, 29 insertions(+), 7 deletions(-)
+ fs/nfs/inode.c |   44 +++++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 41 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 24db2b4..172935b 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -469,6 +469,28 @@ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbi
- 	return rpc_run_task(&task_setup_data);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index f189169..8c514a1 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -948,11 +948,49 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 	return 0;
  }
  
-+/*
-+ * In the case where rpc clients have been cloned, we want to make
-+ * sure that we use the program number/version etc of the actual
-+ * owner of the xprt. To do so, we walk back up the tree of parents
-+ * to find whoever created the transport and/or whoever has the
-+ * autobind flag set.
-+ */
-+static struct rpc_clnt *rpcb_find_transport_owner(struct rpc_clnt *clnt)
-+{
-+	struct rpc_clnt *parent = clnt->cl_parent;
-+
-+	while (parent != clnt) {
-+		if (parent->cl_xprt != clnt->cl_xprt)
-+			break;
-+		if (clnt->cl_autobind)
-+			break;
-+		clnt = parent;
-+		parent = parent->cl_parent;
-+	}
-+	return clnt;
+-static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
++static int nfs_ctime_need_update(const struct inode *inode, const struct nfs_fattr *fattr)
+ {
+-	struct nfs_inode *nfsi = NFS_I(inode);
++	return timespec_compare(&fattr->ctime, &inode->i_ctime) > 0;
 +}
 +
- /**
-  * rpcb_getport_async - obtain the port for a given RPC service on a given host
-  * @task: task that is waiting for portmapper request
-@@ -478,10 +500,10 @@ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbi
-  */
- void rpcb_getport_async(struct rpc_task *task)
- {
--	struct rpc_clnt *clnt = task->tk_client;
-+	struct rpc_clnt *clnt;
- 	struct rpc_procinfo *proc;
- 	u32 bind_version;
--	struct rpc_xprt *xprt = task->tk_xprt;
-+	struct rpc_xprt *xprt;
- 	struct rpc_clnt	*rpcb_clnt;
- 	static struct rpcbind_args *map;
- 	struct rpc_task	*child;
-@@ -490,13 +512,13 @@ void rpcb_getport_async(struct rpc_task *task)
- 	size_t salen;
- 	int status;
++static int nfs_size_need_update(const struct inode *inode, const struct nfs_fattr *fattr)
++{
++	return nfs_size_to_loff_t(fattr->size) > i_size_read(inode);
++}
  
-+	clnt = rpcb_find_transport_owner(task->tk_client);
-+	xprt = clnt->cl_xprt;
+-	if (time_after(fattr->time_start, nfsi->last_updated))
++/**
++ * nfs_inode_attrs_need_update - check if the inode attributes need updating
++ * @inode - pointer to inode
++ * @fattr - attributes
++ *
++ * Attempt to divine whether or not an RPC call reply carrying stale
++ * attributes got scheduled after another call carrying updated ones.
++ *
++ * To do so, the function first assumes that a more recent ctime means
++ * that the attributes in fattr are newer, however it also attempt to
++ * catch the case where ctime either didn't change, or went backwards
++ * (if someone reset the clock on the server) by looking at whether
++ * or not this RPC call was started after the inode was last updated.
++ * Note also the check for jiffy wraparound if the last_updated timestamp
++ * is later than 'jiffies'.
++ *
++ * The function returns 'true' if it thinks the attributes in 'fattr' are
++ * more recent than the ones cached in the inode.
++ *
++ */
++static int nfs_inode_attrs_need_update(const struct inode *inode, const struct nfs_fattr *fattr)
++{
++	const struct nfs_inode *nfsi = NFS_I(inode);
 +
- 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
- 		task->tk_pid, __func__,
- 		clnt->cl_server, clnt->cl_prog, clnt->cl_vers, xprt->prot);
- 
--	/* Autobind on cloned rpc clients is discouraged */
--	BUG_ON(clnt->cl_parent != clnt);
--
- 	/* Put self on the wait queue to ensure we get notified if
- 	 * some other task is already attempting to bind the port */
- 	rpc_sleep_on(&xprt->binding, task, NULL);
-@@ -578,9 +600,9 @@ void rpcb_getport_async(struct rpc_task *task)
- 			task->tk_pid, __func__);
- 		return;
- 	}
--	rpc_put_task(child);
- 
--	task->tk_xprt->stat.bind_count++;
-+	xprt->stat.bind_count++;
-+	rpc_put_task(child);
- 	return;
- 
- bailout_nofree:
++	return nfs_ctime_need_update(inode, fattr) ||
++			nfs_size_need_update(inode, fattr) ||
++			time_after(fattr->time_start, nfsi->last_updated) ||
++			time_after(nfsi->last_updated, jiffies);
++}
++
++static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
++{
++	if (nfs_inode_attrs_need_update(inode, fattr))
+ 		return nfs_update_inode(inode, fattr);
+ 	return nfs_check_inode_attributes(inode, fattr);
+ }
 
