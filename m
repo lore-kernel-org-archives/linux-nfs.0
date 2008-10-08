@@ -1,98 +1,152 @@
 From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
-Subject: Re: [PATCH 02/15] RPC/RDMA: add data types and new FRMR memory
-  registration enum.
-Date: Wed, 08 Oct 2008 13:30:56 -0400
-Message-ID: <RTPCLUEXC1-PRDmcarc00000072@RTPMVEXC1-PRD.hq.netapp.com>
+Subject: Re: [PATCH 05/15] RPC/RDMA: fix connection IRD/ORD setting
+Date: Wed, 08 Oct 2008 13:32:02 -0400
+Message-ID: <RTPCLUEXC1-PRDM3SOl00000073@RTPMVEXC1-PRD.hq.netapp.com>
 References: <20081008154506.1336.59892.stgit@tmt3.nane.netapp.com>
- <20081008154713.1336.41538.stgit@tmt3.nane.netapp.com>
- <1223486623.7361.10.camel@localhost>
+ <20081008154744.1336.20909.stgit@tmt3.nane.netapp.com>
+ <1223486816.7361.12.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Tom Talpey <talpey@netapp.com>, linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29865 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:39589 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754541AbYJHRbd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 13:31:33 -0400
-In-Reply-To: <1223486623.7361.10.camel@localhost>
+	id S1752788AbYJHRdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 13:33:00 -0400
+In-Reply-To: <1223486816.7361.12.camel@localhost>
 References: <20081008154506.1336.59892.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
- <20081008154713.1336.41538.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
- <1223486623.7361.10.camel@localhost>
+ <20081008154744.1336.20909.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
+ <1223486816.7361.12.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 01:23 PM 10/8/2008, Trond Myklebust wrote:
+At 01:26 PM 10/8/2008, Trond Myklebust wrote:
 >On Wed, 2008-10-08 at 11:47 -0400, Tom Talpey wrote:
->> Internal RPC/RDMA structure updates in preparation for FRMR support.
->> 
->> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
->> Signed-off-by: Tom Talpey <talpey@netapp.com>
+>> From: Tom Tucker <talpey@netapp.com>
 >
->Shouldn't there be a
->
->From: Tom Tucker <tom@opengridcomputing.com>
->
->at the top of this email in order to indicate that Tom Tucker is the
->author?
+>Now I'm really confused!
 
-Co-author. Should it have two From lines?
+Ok, that's a bug. :-)
+
+Will fix, after figuring out the format you prefer for joint authors.
 
 Tom.
 
 >
+>> This logic sets the connection parameter that configures the local device
+>> and informs the remote peer how many concurrent incoming RDMA_READ
+>> requests are supported. The original logic didn't really do what was
+>> intended for two reasons:
+>> 
+>> - The max number supported by the device is typically smaller than
+>> any one factor in the calculation used, and
+>> 
+>> - The field in the connection parameter structure where the value is
+>> stored is a u8 and always overflows for the default settings.
+>> 
+>> So what really happens is the value requested for responder resources
+>> is the left over 8 bits from the "desired value". If the desired value
+>> happened to be a multiple of 256, the result was zero and it wouldn't
+>> connect at all.
+>> 
+>> Given the above and the fact that max_requests is almost always larger
+>> than the max responder resources supported by the adapter, this patch
+>> simplifies this logic and simply requests the max supported by the device,
+>> subject to a reasonable limit.
+>> 
+>> This bug was found by Jim Schutt at Sandia.
+>> 
+>> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> Signed-off-by: Tom Talpey <talpey@netapp.com>
 >> ---
 >> 
->>  net/sunrpc/xprtrdma/xprt_rdma.h |    8 +++++++-
->>  1 files changed, 7 insertions(+), 1 deletions(-)
+>>  net/sunrpc/xprtrdma/verbs.c |   51 
+>++++++++++++-------------------------------
+>>  1 files changed, 14 insertions(+), 37 deletions(-)
 >> 
->> diff --git a/include/linux/sunrpc/xprtrdma.h 
->b/include/linux/sunrpc/xprtrdma.h
->> index 4de56b1..55a5d92 100644
->> --- a/include/linux/sunrpc/xprtrdma.h
->> +++ b/include/linux/sunrpc/xprtrdma.h
->> @@ -78,6 +78,7 @@ enum rpcrdma_memreg {
->>  	RPCRDMA_MEMWINDOWS,
->>  	RPCRDMA_MEMWINDOWS_ASYNC,
->>  	RPCRDMA_MTHCAFMR,
->> +	RPCRDMA_FRMR,
->>  	RPCRDMA_ALLPHYSICAL,
->>  	RPCRDMA_LAST
->>  };
->> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h 
->b/net/sunrpc/xprtrdma/xprt_rdma.h
->> index 2427822..05b7898 100644
->> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->> @@ -58,6 +58,8 @@ struct rpcrdma_ia {
->>  	struct rdma_cm_id 	*ri_id;
->>  	struct ib_pd		*ri_pd;
->>  	struct ib_mr		*ri_bind_mem;
->> +	u32			ri_dma_lkey;
->> +	int			ri_have_dma_lkey;
->>  	struct completion	ri_done;
->>  	int			ri_async_rc;
->>  	enum rpcrdma_memreg	ri_memreg_strategy;
->> @@ -156,6 +158,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
->>  			union {
->>  				struct ib_mw	*mw;
->>  				struct ib_fmr	*fmr;
->> +				struct {
->> +					struct ib_fast_reg_page_list *fr_pgl;
->> +					struct ib_mr *fr_mr;
->> +				} frmr;
->>  			} r;
->>  			struct list_head mw_list;
->>  		} *rl_mw;
->> @@ -198,7 +204,7 @@ struct rpcrdma_buffer {
->>  	atomic_t	rb_credits;	/* most recent server credits */
->>  	unsigned long	rb_cwndscale;	/* cached framework rpc_cwndscale */
->>  	int		rb_max_requests;/* client max requests */
->> -	struct list_head rb_mws;	/* optional memory windows/fmrs */
->> +	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
->>  	int		rb_send_index;
->>  	struct rpcrdma_req	**rb_send_bufs;
->>  	int		rb_recv_index;
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 39a1652..e3fe905 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -705,30 +705,13 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, 
+>struct rpcrdma_ia *ia,
+>>  	ep->rep_remote_cma.private_data_len = 0;
+>>  
+>>  	/* Client offers RDMA Read but does not initiate */
+>> -	switch (ia->ri_memreg_strategy) {
+>> -	case RPCRDMA_BOUNCEBUFFERS:
+>> +	ep->rep_remote_cma.initiator_depth = 0;
+>> +	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
+>>  		ep->rep_remote_cma.responder_resources = 0;
+>> -		break;
+>> -	case RPCRDMA_MTHCAFMR:
+>> -	case RPCRDMA_REGISTER:
+>> -	case RPCRDMA_FRMR:
+>> -		ep->rep_remote_cma.responder_resources = cdata->max_requests *
+>> -				(RPCRDMA_MAX_DATA_SEGS / 8);
+>> -		break;
+>> -	case RPCRDMA_MEMWINDOWS:
+>> -	case RPCRDMA_MEMWINDOWS_ASYNC:
+>> -#if RPCRDMA_PERSISTENT_REGISTRATION
+>> -	case RPCRDMA_ALLPHYSICAL:
+>> -#endif
+>> -		ep->rep_remote_cma.responder_resources = cdata->max_requests *
+>> -				(RPCRDMA_MAX_DATA_SEGS / 2);
+>> -		break;
+>> -	default:
+>> -		break;
+>> -	}
+>> -	if (ep->rep_remote_cma.responder_resources > devattr.max_qp_rd_atom)
+>> +	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
+>> +		ep->rep_remote_cma.responder_resources = 32;
+>> +	else
+>>  		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
+>> -	ep->rep_remote_cma.initiator_depth = 0;
+>>  
+>>  	ep->rep_remote_cma.retry_count = 7;
+>>  	ep->rep_remote_cma.flow_control = 0;
+>> @@ -858,14 +841,6 @@ if 
+>(strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
+>>  	}
+>>  }
+>>  
+>> -	/* Theoretically a client initiator_depth > 0 is not needed,
+>> -	* but many peers fail to complete the connection unless they
+>> -	* == responder_resources! */
+>> -	if (ep->rep_remote_cma.initiator_depth !=
+>> -				ep->rep_remote_cma.responder_resources)
+>> -		ep->rep_remote_cma.initiator_depth =
+>> -			ep->rep_remote_cma.responder_resources;
+>> -
+>>  	ep->rep_connected = 0;
+>>  
+>>  	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
+>> @@ -894,14 +869,16 @@ if 
+>(strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
+>>  	if (ep->rep_connected <= 0) {
+>>  		/* Sometimes, the only way to reliably connect to remote
+>>  		* CMs is to use same nonzero values for ORD and IRD. */
+>> -		ep->rep_remote_cma.initiator_depth =
+>> -					ep->rep_remote_cma.responder_resources;
+>> -		if (ep->rep_remote_cma.initiator_depth == 0)
+>> -			++ep->rep_remote_cma.initiator_depth;
+>> -		if (ep->rep_remote_cma.responder_resources == 0)
+>> -			++ep->rep_remote_cma.responder_resources;
+>> -		if (retry_count++ == 0)
+>> +		if (retry_count++ <= RDMA_CONNECT_RETRY_MAX + 1 &&
+>> +		    (ep->rep_remote_cma.responder_resources == 0 ||
+>> +		     ep->rep_remote_cma.initiator_depth !=
+>> +				ep->rep_remote_cma.responder_resources)) {
+>> +			if (ep->rep_remote_cma.responder_resources == 0)
+>> +				ep->rep_remote_cma.responder_resources = 1;
+>> +			ep->rep_remote_cma.initiator_depth =
+>> +				ep->rep_remote_cma.responder_resources;
+>>  			goto retry;
+>> +		}
+>>  		rc = ep->rep_connected;
+>>  	} else {
+>>  		dprintk("RPC:       %s: connected\n", __func__);
 >> 
 >> --
 >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
