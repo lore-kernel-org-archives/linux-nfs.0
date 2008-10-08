@@ -1,67 +1,128 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 25/30] NFS: SETCLIENTID truncates client ID and netid
-Date: Wed, 08 Oct 2008 13:56:29 -0400
-Message-ID: <1223488589.7361.31.camel@localhost>
-References: <20081007221952.20945.69529.stgit@localhost.localdomain>
-	 <20081007221954.20945.76616.stgit@localhost.localdomain>
-	 <09A58E7C-FC68-47C7-9C65-1BBDF255AF26@oracle.com>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: [PATCH 02/15] RPC/RDMA: add data types and new FRMR memory
+  registration enum.
+Date: Wed, 08 Oct 2008 13:58:39 -0400
+Message-ID: <RTPCLUEXC1-PRDR4ZDg00000077@RTPMVEXC1-PRD.hq.netapp.com>
+References: <20081008154506.1336.59892.stgit@tmt3.nane.netapp.com>
+ <20081008154713.1336.41538.stgit@tmt3.nane.netapp.com>
+ <1223486623.7361.10.camel@localhost>
+ <RTPCLUEXC1-PRDmcarc00000072@RTPMVEXC1-PRD.hq.netapp.com>
+ <20081008175519.GA11295@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "Talpey, Thomas" <Thomas.Talpey@netapp.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10863 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20529 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753170AbYJHR4z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 13:56:55 -0400
-In-Reply-To: <09A58E7C-FC68-47C7-9C65-1BBDF255AF26@oracle.com>
+	id S1753635AbYJHR7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 13:59:24 -0400
+In-Reply-To: <20081008175519.GA11295@fieldses.org>
+References: <20081008154506.1336.59892.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
+ <20081008154713.1336.41538.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
+ <1223486623.7361.10.camel@localhost>
+ <RTPCLUEXC1-PRDmcarc00000072-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+ <20081008175519.GA11295@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-10-08 at 10:55 -0400, Chuck Lever wrote:
-> Just a note...
-> 
-> Peter Staubach (I think) suggested NFS4_SETCLIENTID_NAMELEN should be  
-> a slightly smaller value to prevent the compiler from adding wasted  
-> space in the structure to align these fields.
-> 
-> If nothing else, you can safely make NFS4_SETCLIENTID_NAMELEN 127  
-> instead of 128.
+At 01:55 PM 10/8/2008, J. Bruce Fields wrote:
+>On Wed, Oct 08, 2008 at 01:30:56PM -0400, Talpey, Thomas wrote:
+>> At 01:23 PM 10/8/2008, Trond Myklebust wrote:
+>> >On Wed, 2008-10-08 at 11:47 -0400, Tom Talpey wrote:
+>> >> Internal RPC/RDMA structure updates in preparation for FRMR support.
+>> >> 
+>> >> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+>> >> Signed-off-by: Tom Talpey <talpey@netapp.com>
+>> >
+>> >Shouldn't there be a
+>> >
+>> >From: Tom Tucker <tom@opengridcomputing.com>
+>> >
+>> >at the top of this email in order to indicate that Tom Tucker is the
+>> >author?
+>> 
+>> Co-author. Should it have two From lines?
+>
+>Gotta pick one.  I tend to leave whoever got there first as the author.
 
-Done...
----------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Wed, 8 Oct 2008 13:54:52 -0400
-NFS: Save padding bytes in struct nfs4_setclientid
+Well, I threw out more than half of Tom's code, so I took over as primary. :-)
 
-Peter Staubach suggested reducing NFS4_SETCLIENTID_NAMELEN by one byte so
-as to avoid 7 bytes of unnecessary padding.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- include/linux/nfs_xdr.h |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index f6e95bf..6ee6ae3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -672,7 +672,7 @@ struct nfs4_rename_res {
- 	struct nfs_fattr *		new_fattr;
- };
- 
--#define NFS4_SETCLIENTID_NAMELEN	(128)
-+#define NFS4_SETCLIENTID_NAMELEN	(127)
- struct nfs4_setclientid {
- 	const nfs4_verifier *		sc_verifier;
- 	unsigned int			sc_name_len;
+Tom.
 
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+>If it was a pretty involved collaboration I suppose you could even do
+>something cheesy like assinging half the series to one person and half
+>to the other.
+>
+>--b.
+>
+>> 
+>> Tom.
+>> 
+>> >
+>> >> ---
+>> >> 
+>> >>  net/sunrpc/xprtrdma/xprt_rdma.h |    8 +++++++-
+>> >>  1 files changed, 7 insertions(+), 1 deletions(-)
+>> >> 
+>> >> diff --git a/include/linux/sunrpc/xprtrdma.h 
+>> >b/include/linux/sunrpc/xprtrdma.h
+>> >> index 4de56b1..55a5d92 100644
+>> >> --- a/include/linux/sunrpc/xprtrdma.h
+>> >> +++ b/include/linux/sunrpc/xprtrdma.h
+>> >> @@ -78,6 +78,7 @@ enum rpcrdma_memreg {
+>> >>  	RPCRDMA_MEMWINDOWS,
+>> >>  	RPCRDMA_MEMWINDOWS_ASYNC,
+>> >>  	RPCRDMA_MTHCAFMR,
+>> >> +	RPCRDMA_FRMR,
+>> >>  	RPCRDMA_ALLPHYSICAL,
+>> >>  	RPCRDMA_LAST
+>> >>  };
+>> >> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h 
+>> >b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> >> index 2427822..05b7898 100644
+>> >> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> >> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> >> @@ -58,6 +58,8 @@ struct rpcrdma_ia {
+>> >>  	struct rdma_cm_id 	*ri_id;
+>> >>  	struct ib_pd		*ri_pd;
+>> >>  	struct ib_mr		*ri_bind_mem;
+>> >> +	u32			ri_dma_lkey;
+>> >> +	int			ri_have_dma_lkey;
+>> >>  	struct completion	ri_done;
+>> >>  	int			ri_async_rc;
+>> >>  	enum rpcrdma_memreg	ri_memreg_strategy;
+>> >> @@ -156,6 +158,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+>> >>  			union {
+>> >>  				struct ib_mw	*mw;
+>> >>  				struct ib_fmr	*fmr;
+>> >> +				struct {
+>> >> +					struct ib_fast_reg_page_list *fr_pgl;
+>> >> +					struct ib_mr *fr_mr;
+>> >> +				} frmr;
+>> >>  			} r;
+>> >>  			struct list_head mw_list;
+>> >>  		} *rl_mw;
+>> >> @@ -198,7 +204,7 @@ struct rpcrdma_buffer {
+>> >>  	atomic_t	rb_credits;	/* most recent server credits */
+>> >>  	unsigned long	rb_cwndscale;	/* cached framework rpc_cwndscale */
+>> >>  	int		rb_max_requests;/* client max requests */
+>> >> -	struct list_head rb_mws;	/* optional memory windows/fmrs */
+>> >> +	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
+>> >>  	int		rb_send_index;
+>> >>  	struct rpcrdma_req	**rb_send_bufs;
+>> >>  	int		rb_recv_index;
+>> >> 
+>> >> --
+>> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> >> the body of a message to majordomo@vger.kernel.org
+>> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
