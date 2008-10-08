@@ -1,48 +1,30 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [NFS] [patch] rpcgen: include sys/ioctl.h on linux systems
-Date: Wed, 08 Oct 2008 11:08:07 -0400
-Message-ID: <48ECCCD7.4050403@RedHat.com>
-References: <200804200649.44542.vapier@gentoo.org>
+Subject: Re: [PATCH] nfs(5): Clarify behavior of the mountproto= and proto=
+ options
+Date: Wed, 08 Oct 2008 10:58:56 -0400
+Message-ID: <48ECCAB0.7080102@RedHat.com>
+References: <20081002155516.25702.69105.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Mike Frysinger <vapier@gentoo.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org, Thomas.Talpey@netapp.com
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:55150 "EHLO neil.brown.name"
+Received: from mx2.redhat.com ([66.187.237.31]:34124 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753808AbYJHPLI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 11:11:08 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Knagr-0001sK-96
-	for linux-nfs@vger.kernel.org; Thu, 09 Oct 2008 02:11:05 +1100
-In-Reply-To: <200804200649.44542.vapier@gentoo.org>
+	id S1750753AbYJHPA5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 11:00:57 -0400
+In-Reply-To: <20081002155516.25702.69105.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-Mike Frysinger wrote:
-> the rpcgen tool included with nfs-utils will generate calls to ioctl()
-> but not
-> actually generate the sys/ioctl.h header include.  attached patch should
-> fix
-> this.
-> -mike
-Committed....
+Chuck Lever wrote:
+> Document the interaction between the mountproto= and the proto= mount
+> options in a new subsection of nfs(5).
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+Committed...
 
-steved.
-
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+steved
