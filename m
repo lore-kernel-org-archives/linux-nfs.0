@@ -1,122 +1,182 @@
-From: Tom Talpey <talpey@netapp.com>
-Subject: [PATCH 09/15] RPC/RDMA: adhere to protocol for unpadded client
-	trailing write chunks.
-Date: Wed, 08 Oct 2008 11:48:25 -0400
-Message-ID: <20081008154825.1336.79549.stgit@tmt3.nane.netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 03/15] RPC/RDMA: check selected memory registration
+	mode at runtime.
+Date: Wed, 08 Oct 2008 13:22:49 -0400
+Message-ID: <1223486569.7361.8.camel@localhost>
 References: <20081008154506.1336.59892.stgit@tmt3.nane.netapp.com>
+	 <20081008154723.1336.57976.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Tom Talpey <talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [216.240.26.4] ([216.240.26.4]:44118 "EHLO tmt3.nane.netapp.com"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754597AbYJHQWU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 12:22:20 -0400
-Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m98FmPHE001529
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Oct 2008 11:48:25 -0400
-In-Reply-To: <20081008154506.1336.59892.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:48274 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754400AbYJHRWy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 13:22:54 -0400
+In-Reply-To: <20081008154723.1336.57976.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPC/RDMA protocol allows clients and servers to avoid RDMA
-operations for data which is purely the result of XDR padding.
-On the client, automatically insert the necessary padding for
-such server replies, and optionally don't marshal such chunks.
+On Wed, 2008-10-08 at 11:47 -0400, Tom Talpey wrote:
+> At transport creation, check for, and use, any local dma lkey.
+> Then, check that the selected memory registration mode is in fact
+> supported by the RDMA adapter selected for the mount. Fall back
+> to best alternative if not.
+> 
+> Signed-off-by: Tom Talpey <talpey@netapp.com>
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 
-Signed-off-by: Tom Talpey <talpey@netapp.com>
----
+I'm confused... Who is signing off on what? AFAICS, Tom Talpey is the
+author and is the one sending this patch series. Where does Tom Tucker
+come into the picture?
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   22 ++++++++++++++++++++--
- net/sunrpc/xprtrdma/transport.c |    9 +++++++++
- 2 files changed, 29 insertions(+), 2 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 721dae7..c4b8011 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -118,6 +118,11 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	}
- 
- 	if (xdrbuf->tail[0].iov_len) {
-+		/* the rpcrdma protocol allows us to omit any trailing
-+		 * xdr pad bytes, saving the server an RDMA operation. */
-+		extern int xprt_rdma_pad_optimize; /* 0 == old server compat */
-+		if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
-+			return n;
- 		if (n == nsegs)
- 			return 0;
- 		seg[n].mr_page = NULL;
-@@ -594,7 +599,7 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __b
-  * Scatter inline received data back into provided iov's.
-  */
- static void
--rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len)
-+rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- {
- 	int i, npages, curlen, olen;
- 	char *destp;
-@@ -660,6 +665,13 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len)
- 	} else
- 		rqst->rq_rcv_buf.tail[0].iov_len = 0;
- 
-+	if (pad) {
-+		/* implicit padding on terminal chunk */
-+		unsigned char *p = rqst->rq_rcv_buf.tail[0].iov_base;
-+		while (pad--)
-+			p[rqst->rq_rcv_buf.tail[0].iov_len++] = 0;
-+	}
-+
- 	if (copy_len)
- 		dprintk("RPC:       %s: %d bytes in"
- 			" %d extra segments (%d lost)\n",
-@@ -794,14 +806,20 @@ repost:
- 			    ((unsigned char *)iptr - (unsigned char *)headerp);
- 			status = rep->rr_len + rdmalen;
- 			r_xprt->rx_stats.total_rdma_reply += rdmalen;
-+			/* special case - last chunk may omit padding */
-+			if (rdmalen &= 3) {
-+				rdmalen = 4 - rdmalen;
-+				status += rdmalen;
-+			}
- 		} else {
- 			/* else ordinary inline */
-+			rdmalen = 0;
- 			iptr = (__be32 *)((unsigned char *)headerp + 28);
- 			rep->rr_len -= 28; /*sizeof *headerp;*/
- 			status = rep->rr_len;
- 		}
- 		/* Fix up the rpc results for upper layer */
--		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len);
-+		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len, rdmalen);
- 		break;
- 
- 	case __constant_htonl(RDMA_NOMSG):
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index ec6d1e7..c7d2380 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -71,6 +71,7 @@ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
- static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
-+                int xprt_rdma_pad_optimize = 0;
- 
- #ifdef RPC_DEBUG
- 
-@@ -136,6 +137,14 @@ static ctl_table xr_tunables_table[] = {
- 		.extra2		= &max_memreg,
- 	},
- 	{
-+		.ctl_name       = CTL_UNNUMBERED,
-+		.procname	= "rdma_pad_optimize",
-+		.data		= &xprt_rdma_pad_optimize,
-+		.maxlen		= sizeof(unsigned int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec,
-+	},
-+	{
- 		.ctl_name = 0,
- 	},
- };
+> ---
+> 
+>  net/sunrpc/xprtrdma/verbs.c |   95 ++++++++++++++++++++++++++++++++++++-------
+>  1 files changed, 80 insertions(+), 15 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index d04208a..0f3b431 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -423,7 +423,8 @@ rpcrdma_clean_cq(struct ib_cq *cq)
+>  int
+>  rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+>  {
+> -	int rc;
+> +	int rc, mem_priv;
+> +	struct ib_device_attr devattr;
+>  	struct rpcrdma_ia *ia = &xprt->rx_ia;
+>  
+>  	init_completion(&ia->ri_done);
+> @@ -443,6 +444,53 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+>  	}
+>  
+>  	/*
+> +	 * Query the device to determine if the requested memory
+> +	 * registration strategy is supported. If it isn't, set the
+> +	 * strategy to a globally supported model.
+> +	 */
+> +	rc = ib_query_device(ia->ri_id->device, &devattr);
+> +	if (rc) {
+> +		dprintk("RPC:       %s: ib_query_device failed %d\n",
+> +			__func__, rc);
+> +		goto out2;
+> +	}
+> +
+> +	if (devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
+> +		ia->ri_have_dma_lkey = 1;
+> +		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
+> +	}
+> +
+> +	switch (memreg) {
+> +	case RPCRDMA_MEMWINDOWS:
+> +	case RPCRDMA_MEMWINDOWS_ASYNC:
+> +		if (!(devattr.device_cap_flags & IB_DEVICE_MEM_WINDOW)) {
+> +			dprintk("RPC:       %s: MEMWINDOWS registration "
+> +				"specified but not supported by adapter, "
+> +				"using slower RPCRDMA_REGISTER\n",
+> +				__func__);
+> +			memreg = RPCRDMA_REGISTER;
+> +		}
+> +		break;
+> +	case RPCRDMA_MTHCAFMR:
+> +		if (!ia->ri_id->device->alloc_fmr) {
+> +#if RPCRDMA_PERSISTENT_REGISTRATION
+> +			dprintk("RPC:       %s: MTHCAFMR registration "
+> +				"specified but not supported by adapter, "
+> +				"using riskier RPCRDMA_ALLPHYSICAL\n",
+> +				__func__);
+> +			memreg = RPCRDMA_ALLPHYSICAL;
+> +#else
+> +			dprintk("RPC:       %s: MTHCAFMR registration "
+> +				"specified but not supported by adapter, "
+> +				"using slower RPCRDMA_REGISTER\n",
+> +				__func__);
+> +			memreg = RPCRDMA_REGISTER;
+> +#endif
+> +		}
+> +		break;
+> +	}
+> +
+> +	/*
+>  	 * Optionally obtain an underlying physical identity mapping in
+>  	 * order to do a memory window-based bind. This base registration
+>  	 * is protected from remote access - that is enabled only by binding
+> @@ -450,22 +498,27 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+>  	 * revoked after the corresponding completion similar to a storage
+>  	 * adapter.
+>  	 */
+> -	if (memreg > RPCRDMA_REGISTER) {
+> -		int mem_priv = IB_ACCESS_LOCAL_WRITE;
+> -		switch (memreg) {
+> +	switch (memreg) {
+> +	case RPCRDMA_BOUNCEBUFFERS:
+> +	case RPCRDMA_REGISTER:
+> +		break;
+>  #if RPCRDMA_PERSISTENT_REGISTRATION
+> -		case RPCRDMA_ALLPHYSICAL:
+> -			mem_priv |= IB_ACCESS_REMOTE_WRITE;
+> -			mem_priv |= IB_ACCESS_REMOTE_READ;
+> -			break;
+> +	case RPCRDMA_ALLPHYSICAL:
+> +		mem_priv = IB_ACCESS_LOCAL_WRITE |
+> +				IB_ACCESS_REMOTE_WRITE |
+> +				IB_ACCESS_REMOTE_READ;
+> +		goto register_setup;
+>  #endif
+> -		case RPCRDMA_MEMWINDOWS_ASYNC:
+> -		case RPCRDMA_MEMWINDOWS:
+> -			mem_priv |= IB_ACCESS_MW_BIND;
+> -			break;
+> -		default:
+> +	case RPCRDMA_MEMWINDOWS_ASYNC:
+> +	case RPCRDMA_MEMWINDOWS:
+> +		mem_priv = IB_ACCESS_LOCAL_WRITE |
+> +				IB_ACCESS_MW_BIND;
+> +		goto register_setup;
+> +	case RPCRDMA_MTHCAFMR:
+> +		if (ia->ri_have_dma_lkey)
+>  			break;
+> -		}
+> +		mem_priv = IB_ACCESS_LOCAL_WRITE;
+> +	register_setup:
+>  		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
+>  		if (IS_ERR(ia->ri_bind_mem)) {
+>  			printk(KERN_ALERT "%s: ib_get_dma_mr for "
+> @@ -475,7 +528,15 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+>  			memreg = RPCRDMA_REGISTER;
+>  			ia->ri_bind_mem = NULL;
+>  		}
+> +		break;
+> +	default:
+> +		printk(KERN_ERR "%s: invalid memory registration mode %d\n",
+> +				__func__, memreg);
+> +		rc = -EINVAL;
+> +		goto out2;
+>  	}
+> +	dprintk("RPC:       %s: memory registration strategy is %d\n",
+> +		__func__, memreg);
+>  
+>  	/* Else will do memory reg/dereg for each chunk */
+>  	ia->ri_memreg_strategy = memreg;
+> @@ -1248,7 +1309,11 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
+>  			va, len, DMA_BIDIRECTIONAL);
+>  	iov->length = len;
+>  
+> -	if (ia->ri_bind_mem != NULL) {
+> +	if (ia->ri_have_dma_lkey) {
+> +		*mrp = NULL;
+> +		iov->lkey = ia->ri_dma_lkey;
+> +		return 0;
+> +	} else if (ia->ri_bind_mem != NULL) {
+>  		*mrp = NULL;
+>  		iov->lkey = ia->ri_bind_mem->lkey;
+>  		return 0;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
