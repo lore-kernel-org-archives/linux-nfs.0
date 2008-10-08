@@ -1,92 +1,114 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 3/5] nfs: replace while loop by for loops in nfs_follow_referral
-Date: Wed,  8 Oct 2008 15:38:12 -0400
-Message-ID: <1223494694-12778-3-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 1/5] NFS: fix nfs_parse_ip_address() corner case
+Date: Wed,  8 Oct 2008 15:38:10 -0400
+Message-ID: <1223494694-12778-1-git-send-email-bfields@citi.umich.edu>
 References: <20081008193114.GA12386@fieldses.org>
- <1223494694-12778-1-git-send-email-bfields@citi.umich.edu>
- <1223494694-12778-2-git-send-email-bfields@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org,
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:36886 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:36892 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754497AbYJHTiQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754876AbYJHTiQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 8 Oct 2008 15:38:16 -0400
-In-Reply-To: <1223494694-12778-2-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <20081008193114.GA12386@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Whoever wrote this had a bizarre allergy to for loops.
+From: Chuck Lever <chuck.lever@oracle.com>
 
+Bruce observed that nfs_parse_ip_address() will successfully parse an
+IPv6 address that looks like this:
+
+  "::1%"
+
+A scope delimiter is present, but there is no scope ID following it.
+This is harmless, as it would simply set the scope ID to zero.  However,
+in some cases we would like to flag this as an improperly formed
+address.
+
+We are now also careful to reject addresses where garbage follows the
+address (up to the length of the string), instead of ignoring the
+non-address characters; and where the scope ID is nonsense (not a valid
+device name, but also not numeric).  Before, both of these cases would
+result in a harmless zero scope ID.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfs/nfs4namespace.c |   17 +++++------------
- 1 files changed, 5 insertions(+), 12 deletions(-)
+ fs/nfs/super.c |   34 +++++++++++++++++++++++-----------
+ 1 files changed, 23 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 956cbbc..6bcc569 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -116,24 +116,22 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 9abcd2b..c989e71 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -727,17 +727,21 @@ static void nfs_parse_ipv4_address(char *string, size_t str_len,
+ #define IPV6_SCOPE_DELIMITER	'%'
+ 
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+-static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
+-				    const char *delim,
+-				    struct sockaddr_in6 *sin6)
++static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
++				   const char *delim,
++				   struct sockaddr_in6 *sin6)
  {
- 	struct vfsmount *mnt = ERR_PTR(-ENOENT);
- 	char *mnt_path;
--	unsigned int s = 0;
-+	unsigned int s;
+ 	char *p;
+ 	size_t len;
  
- 	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
- 	if (IS_ERR(mnt_path))
- 		return mnt;
- 	mountdata->mnt_path = mnt_path;
+-	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
+-		return ;
++	if ((string + str_len) == delim)
++		return 1;
++
+ 	if (*delim != IPV6_SCOPE_DELIMITER)
+-		return;
++		return 0;
++
++	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
++		return 0;
  
--	while (s < location->nservers) {
-+	for (s = 0; s < location->nservers; s++) {
- 		struct sockaddr_in addr = {
- 			.sin_family	= AF_INET,
- 			.sin_port	= htons(NFS_PORT),
- 		};
+ 	len = (string + str_len) - delim - 1;
+ 	p = kstrndup(delim + 1, len, GFP_KERNEL);
+@@ -750,14 +754,20 @@ static void nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
+ 			scope_id = dev->ifindex;
+ 			dev_put(dev);
+ 		} else {
+-			/* scope_id is set to zero on error */
+-			strict_strtoul(p, 10, &scope_id);
++			if (strict_strtoul(p, 10, &scope_id) == 0) {
++				kfree(p);
++				return 0;
++			}
+ 		}
  
- 		if (location->servers[s].len <= 0 ||
--		    valid_ipaddr4(location->servers[s].data) < 0) {
--			s++;
-+		    valid_ipaddr4(location->servers[s].data) < 0)
- 			continue;
--		}
- 
- 		mountdata->hostname = location->servers[s].data;
- 		addr.sin_addr.s_addr = in_aton(mountdata->hostname),
-@@ -147,7 +145,6 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
- 		mnt = vfs_kern_mount(&nfs4_referral_fs_type, 0, page, mountdata);
- 		if (!IS_ERR(mnt))
- 			break;
--		s++;
+ 		kfree(p);
++
+ 		sin6->sin6_scope_id = scope_id;
+ 		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
++		return 1;
  	}
- 	return mnt;
++
++	return 0;
  }
-@@ -193,20 +190,16 @@ static struct vfsmount *nfs_follow_referral(const struct vfsmount *mnt_parent,
- 		goto out;
+ 
+ static void nfs_parse_ipv6_address(char *string, size_t str_len,
+@@ -773,9 +783,11 @@ static void nfs_parse_ipv6_address(char *string, size_t str_len,
+ 
+ 		sin6->sin6_family = AF_INET6;
+ 		*addr_len = sizeof(*sin6);
+-		if (in6_pton(string, str_len, addr, IPV6_SCOPE_DELIMITER, &delim)) {
+-			nfs_parse_ipv6_scope_id(string, str_len, delim, sin6);
+-			return;
++		if (in6_pton(string, str_len, addr,
++					IPV6_SCOPE_DELIMITER, &delim) != 0) {
++			if (nfs_parse_ipv6_scope_id(string, str_len,
++							delim, sin6) != 0)
++				return;
+ 		}
  	}
  
--	loc = 0;
--	while (loc < locations->nlocations) {
-+	for (loc = 0; loc < locations->nlocations; loc++) {
- 		const struct nfs4_fs_location *location = &locations->locations[loc];
- 
- 		if (location == NULL || location->nservers <= 0 ||
--		    location->rootpath.ncomponents == 0) {
--			loc++;
-+		    location->rootpath.ncomponents == 0)
- 			continue;
--		}
- 
- 		mnt = try_location(&mountdata, page, page2, location);
- 		if (!IS_ERR(mnt))
- 			break;
--		loc++;
- 	}
- 
- out:
 -- 
 1.5.5.rc1
 
