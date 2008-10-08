@@ -1,7 +1,8 @@
 From: Tom Talpey <talpey@netapp.com>
-Subject: [PATCH 06/15] RPC/RDMA: suppress retransmit on RPC/RDMA clients.
-Date: Wed, 08 Oct 2008 11:47:54 -0400
-Message-ID: <20081008154754.1336.69676.stgit@tmt3.nane.netapp.com>
+Subject: [PATCH 02/15] RPC/RDMA: add data types and new FRMR memory
+	registration enum.
+Date: Wed, 08 Oct 2008 11:47:13 -0400
+Message-ID: <20081008154713.1336.41538.stgit@tmt3.nane.netapp.com>
 References: <20081008154506.1336.59892.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,86 +10,67 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from [216.240.26.4] ([216.240.26.4]:44118 "EHLO tmt3.nane.netapp.com"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754569AbYJHQWS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 12:22:18 -0400
+	id S1754478AbYJHQWO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 12:22:14 -0400
 Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m98FlsP0001486
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Oct 2008 11:47:54 -0400
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m98FlDiJ001425
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Oct 2008 11:47:13 -0400
 In-Reply-To: <20081008154506.1336.59892.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An RPC/RDMA client cannot retransmit on an unbroken connection,
-doing so violates its flow control with the server.
+Internal RPC/RDMA structure updates in preparation for FRMR support.
 
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 Signed-off-by: Tom Talpey <talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    2 ++
- net/sunrpc/xprtrdma/transport.c |   16 ++++++++++++----
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 15 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/xprt_rdma.h |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e55427f..721dae7 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -681,6 +681,8 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
- 	struct rpc_xprt *xprt = ep->rep_xprt;
- 
- 	spin_lock_bh(&xprt->transport_lock);
-+	if (++xprt->connect_cookie == 0)	/* maintain a reserved value */
-+		++xprt->connect_cookie;
- 	if (ep->rep_connected > 0) {
- 		if (!xprt_test_and_set_connected(xprt))
- 			xprt_wake_pending_tasks(xprt, 0);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 89970b0..0aefc64 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -587,6 +587,7 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	}
- 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
- out:
-+	req->rl_connect_cookie = 0;	/* our reserved value */
- 	return req->rl_xdr_buf;
- 
- outfail:
-@@ -690,13 +691,20 @@ xprt_rdma_send_request(struct rpc_task *task)
- 		req->rl_reply->rr_xprt = xprt;
- 	}
- 
--	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req)) {
--		xprt_disconnect_done(xprt);
--		return -ENOTCONN;	/* implies disconnect */
--	}
-+	/* Must suppress retransmit to maintain credits */
-+	if (req->rl_connect_cookie == xprt->connect_cookie)
-+		goto drop_connection;
-+	req->rl_connect_cookie = xprt->connect_cookie;
-+
-+	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req))
-+		goto drop_connection;
- 
- 	rqst->rq_bytes_sent = 0;
- 	return 0;
-+
-+drop_connection:
-+	xprt_disconnect_done(xprt);
-+	return -ENOTCONN;	/* implies disconnect */
- }
- 
- static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index 4de56b1..55a5d92 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -78,6 +78,7 @@ enum rpcrdma_memreg {
+ 	RPCRDMA_MEMWINDOWS,
+ 	RPCRDMA_MEMWINDOWS_ASYNC,
+ 	RPCRDMA_MTHCAFMR,
++	RPCRDMA_FRMR,
+ 	RPCRDMA_ALLPHYSICAL,
+ 	RPCRDMA_LAST
+ };
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 05b7898..2db2344 100644
+index 2427822..05b7898 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -181,6 +181,7 @@ struct rpcrdma_req {
- 	size_t 		rl_size;	/* actual length of buffer */
- 	unsigned int	rl_niovs;	/* 0, 2 or 4 */
- 	unsigned int	rl_nchunks;	/* non-zero if chunks */
-+	unsigned int	rl_connect_cookie;	/* retry detection */
- 	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
- 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
- 	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];/* chunk segments */
+@@ -58,6 +58,8 @@ struct rpcrdma_ia {
+ 	struct rdma_cm_id 	*ri_id;
+ 	struct ib_pd		*ri_pd;
+ 	struct ib_mr		*ri_bind_mem;
++	u32			ri_dma_lkey;
++	int			ri_have_dma_lkey;
+ 	struct completion	ri_done;
+ 	int			ri_async_rc;
+ 	enum rpcrdma_memreg	ri_memreg_strategy;
+@@ -156,6 +158,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+ 			union {
+ 				struct ib_mw	*mw;
+ 				struct ib_fmr	*fmr;
++				struct {
++					struct ib_fast_reg_page_list *fr_pgl;
++					struct ib_mr *fr_mr;
++				} frmr;
+ 			} r;
+ 			struct list_head mw_list;
+ 		} *rl_mw;
+@@ -198,7 +204,7 @@ struct rpcrdma_buffer {
+ 	atomic_t	rb_credits;	/* most recent server credits */
+ 	unsigned long	rb_cwndscale;	/* cached framework rpc_cwndscale */
+ 	int		rb_max_requests;/* client max requests */
+-	struct list_head rb_mws;	/* optional memory windows/fmrs */
++	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
+ 	int		rb_send_index;
+ 	struct rpcrdma_req	**rb_send_bufs;
+ 	int		rb_recv_index;
 
