@@ -1,136 +1,191 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 00/12] svcrdma: Fast memory registration support
-Date: Wed, 8 Oct 2008 18:26:47 -0400
-Message-ID: <20081008222647.GE14527@fieldses.org>
-References: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com>
+Subject: Re: [PATCH 11/12] svcrdma: Add a message log string to indicate if
+	FastReg is being used
+Date: Wed, 8 Oct 2008 18:48:40 -0400
+Message-ID: <20081008224840.GF14527@fieldses.org>
+References: <1223069629-5267-3-git-send-email-tom@opengridcomputing.com> <1223069629-5267-4-git-send-email-tom@opengridcomputing.com> <1223069629-5267-5-git-send-email-tom@opengridcomputing.com> <1223069629-5267-6-git-send-email-tom@opengridcomputing.com> <1223069629-5267-7-git-send-email-tom@opengridcomputing.com> <1223069629-5267-8-git-send-email-tom@opengridcomputing.com> <1223069629-5267-9-git-send-email-tom@opengridcomputing.com> <1223069629-5267-10-git-send-email-tom@opengridcomputing.com> <1223069629-5267-11-git-send-email-tom@opengridcomputing.com> <1223069629-5267-12-git-send-email-tom@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
 To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:47595 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:45146 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756043AbYJHW0v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 18:26:51 -0400
-In-Reply-To: <1223069629-5267-1-git-send-email-tom@opengridcomputing.com>
+	id S1754981AbYJHWsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 18:48:43 -0400
+In-Reply-To: <1223069629-5267-12-git-send-email-tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 03, 2008 at 04:33:37PM -0500, Tom Tucker wrote:
-> 
-> Bruce:
-> 
-> This updated patchset implements support for Fast Memory Registration
-> in the NFS server. The second to last patch has been updated to
-> provide better guidance on whether the connection is safe or
-> not. Basically the code gives you a qualification string instead of
-> expecting the administrator to know how to interpret the memory
-> registration strategy and transport idiosyncrasies. The documentation
-> has also been updated given your suggestions and the change to the
-> informative log message. The string is certainly informative, but may
-> be a little long. For this reason, there is a proc file entry to
-> disable it.
+On Fri, Oct 03, 2008 at 04:33:48PM -0500, Tom Tucker wrote:
+> Add a log message that allows the administrator to determine if server memory
+> is exposed on a particular client connection. This message can be disabled
+> by writing 0 to the /proc/sys/sunrpc/svc_rdma/show_conn_info file.
 
-OK, thanks, I've applied the first 10 patches (actually, merged them
-from the for-bfields branch of your git tree).
+I could grudgingly live with the idea of a log message here as a
+temporary fix while we figure out something better, but I'm not happy
+about making it bigger and adding a sysctl.
 
-I'm still a little iffy on patch #11.
+If we just want a hack for now, I'd be inclined to leave this printk a
+dprintk, add the extra information to the dprintk, and tell people to
+turn on transport debugging and watch a client connect.  Ugly, but at
+least it'll be obvious it's not an api that's going to stick around.
+
+Beyond the short-term: is there some other way of getting this
+information from userspace?  Since this is a property of the interface
+device, it'd seem natural to communicate the information in something
+like a sysfs file for the device, or whatever's used to query properties
+of network interfaces.
+
+I'm a bit surprised the information isn't already there.  Aren't
+userspace applications eventually also supposed to be able to use rdma?
+Don't they need to query network interfaces for their capabilities?
 
 --b.
 
 > 
-> Fast Memory Regstration is the ability to quickly map a kernel memory
-> page list as a logically contiguous memory region from the perspective
-> of the adapter. This mapping is created and invalidated using work
-> requests posted on the SQ.
-> 
-> There are two benefits of this new memory registration strategy:
-> 
-> - It allows for large amounts of data to be transferred between the
->   client and server with a single work request
-> 
-> - It improves security since the effective lifetime and scope of an
->   RKEY is a single RPC and WR.
-> 
-> The documentation file Documentation/filesystems/nfs-rdma.txt file has
-> been updated with information about NFSRDMA security in general and
-> how it is affected by the new Fast Memory Registration capability.
-> 
-> This new capability is only enabled if the underlying device advertises
-> that it is supported. It is not necessary that both the client and
-> server use the same strategy, however, for Fast Memory Registration,
-> it improves performance.
-> 
-> These patches are also available here:
-> git://git.linux-nfs.org/projects/tomtucker/xprt-switch-2.6.git
-> 
 > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 > 
-> 
-> [PATCH 01/12] svcrdma: Add Fast Reg MR Data Types
-> 
->  include/linux/sunrpc/svc_rdma.h |   22 +++++++++++++++++++++-
->  1 files changed, 21 insertions(+), 1 deletions(-)
-> 
-> [PATCH 02/12] svcrdma: Add FRMR get/put services
-> 
->  include/linux/sunrpc/svc_rdma.h          |    3 +
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |  122 ++++++++++++++++++++++++++++-
->  2 files changed, 120 insertions(+), 5 deletions(-)
-> 
-> [PATCH 03/12] svcrdma: Query device for Fast Reg support during connection setup
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   76 +++++++++++++++++++++++++++--
->  1 files changed, 70 insertions(+), 6 deletions(-)
-> 
-> [PATCH 04/12] svcrdma: Add a service to register a Fast Reg MR with the device
-> 
->  include/linux/sunrpc/svc_rdma.h          |    1 +
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |  118 +++++++++++++++++++++---------
->  2 files changed, 84 insertions(+), 35 deletions(-)
-> 
-> [PATCH 05/12] svcrdma: Modify post recv path to use local dma key
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   12 +++++++++---
->  1 files changed, 9 insertions(+), 3 deletions(-)
-> 
-> [PATCH 06/12] svcrdma: Add support to svc_rdma_send to handle chained WR
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 +++++++++++++++++++++--------
->  1 files changed, 21 insertions(+), 8 deletions(-)
-> 
-> [PATCH 07/12] svcrdma: Modify the RPC recv path to use FRMR when available
-> 
->  include/linux/sunrpc/svc_rdma.h          |    1 +
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  187 ++++++++++++++++++++++++++----
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 +-
->  3 files changed, 171 insertions(+), 22 deletions(-)
-> 
-> [PATCH 08/12] svcrdma: Modify the RPC reply path to use FRMR when available
-> 
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |  263 +++++++++++++++++++++++++-----
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +
->  2 files changed, 225 insertions(+), 40 deletions(-)
-> 
-> [PATCH 09/12] svcrdma: Update svc_rdma_send_error to use DMA LKEY
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 +++++++++--
->  1 files changed, 9 insertions(+), 2 deletions(-)
-> 
-> [PATCH 10/12] svcrdma: Fix IRD/ORD polarity
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> [PATCH 11/12] svcrdma: Add a message log string to indicate if FastReg is being used
-> 
+> ---
 >  include/linux/sunrpc/svc_rdma.h          |    1 +
 >  net/sunrpc/xprtrdma/svc_rdma.c           |    8 ++++
 >  net/sunrpc/xprtrdma/svc_rdma_transport.c |   63 ++++++++++++++++++-----------
 >  3 files changed, 48 insertions(+), 24 deletions(-)
 > 
-> [PATCH 12/12] svcrdma: Documentation update for the FastReg memory model
-> 
->  Documentation/filesystems/nfs-rdma.txt |  126 ++++++++++++++++++++++++++++++++
->  1 files changed, 126 insertions(+), 0 deletions(-)
-> 
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index c14fe86..7ee0a76 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -52,6 +52,7 @@
+>  extern unsigned int svcrdma_ord;
+>  extern unsigned int svcrdma_max_requests;
+>  extern unsigned int svcrdma_max_req_size;
+> +extern unsigned int svcrdma_show_conn_info;
+>  
+>  extern atomic_t rdma_stat_recv;
+>  extern atomic_t rdma_stat_read;
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+> index 8710117..493e243 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+> @@ -58,6 +58,7 @@ static unsigned int max_max_requests = 16384;
+>  unsigned int svcrdma_max_req_size = RPCRDMA_MAX_REQ_SIZE;
+>  static unsigned int min_max_inline = 4096;
+>  static unsigned int max_max_inline = 65536;
+> +unsigned int svcrdma_show_conn_info = 1;
+>  
+>  atomic_t rdma_stat_recv;
+>  atomic_t rdma_stat_read;
+> @@ -145,6 +146,13 @@ static ctl_table svcrdma_parm_table[] = {
+>  		.extra1		= &min_ord,
+>  		.extra2		= &max_ord,
+>  	},
+> +	{
+> +		.procname	= "show_conn_info",
+> +		.data		= &svcrdma_show_conn_info,
+> +		.maxlen		= sizeof(svcrdma_show_conn_info),
+> +		.mode		= 0644,
+> +		.proc_handler	= &proc_dointvec,
+> +	},
+>  
+>  	{
+>  		.procname	= "rdma_stat_read",
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index bd17023..3d97032 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -833,6 +833,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>  	struct rdma_conn_param conn_param;
+>  	struct ib_qp_init_attr qp_attr;
+>  	struct ib_device_attr devattr;
+> +	char *transport_string;
+> +	char *security_string;
+>  	int dma_mr_acc;
+>  	int need_dma_mr;
+>  	int ret;
+> @@ -981,10 +983,13 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>  	/*
+>  	 * Determine if a DMA MR is required and if so, what privs are required
+>  	 */
+> +	security_string = "Safe. Only RPC memory exposed.";
+>  	switch (rdma_node_get_transport(newxprt->sc_cm_id->device->node_type)) {
+>  	case RDMA_TRANSPORT_IWARP:
+> +		transport_string = "iWARP";
+>  		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
+>  		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
+> +			security_string = "Unsafe: Server memory exposed.";
+>  			need_dma_mr = 1;
+>  			dma_mr_acc =
+>  				(IB_ACCESS_LOCAL_WRITE |
+> @@ -996,6 +1001,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>  			need_dma_mr = 0;
+>  		break;
+>  	case RDMA_TRANSPORT_IB:
+> +		transport_string = "IB";
+>  		if (!(devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)) {
+>  			need_dma_mr = 1;
+>  			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
+> @@ -1052,30 +1058,39 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>  		goto errout;
+>  	}
+>  
+> -	dprintk("svcrdma: new connection %p accepted with the following "
+> -		"attributes:\n"
+> -		"    local_ip        : %d.%d.%d.%d\n"
+> -		"    local_port	     : %d\n"
+> -		"    remote_ip       : %d.%d.%d.%d\n"
+> -		"    remote_port     : %d\n"
+> -		"    max_sge         : %d\n"
+> -		"    sq_depth        : %d\n"
+> -		"    max_requests    : %d\n"
+> -		"    ord             : %d\n",
+> -		newxprt,
+> -		NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> -			 route.addr.src_addr)->sin_addr.s_addr),
+> -		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> -		       route.addr.src_addr)->sin_port),
+> -		NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> -			 route.addr.dst_addr)->sin_addr.s_addr),
+> -		ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> -		       route.addr.dst_addr)->sin_port),
+> -		newxprt->sc_max_sge,
+> -		newxprt->sc_sq_depth,
+> -		newxprt->sc_max_requests,
+> -		newxprt->sc_ord);
+> -
+> +	if (!svcrdma_show_conn_info)
+> +		goto out;
+> +
+> +	printk(KERN_INFO "svcrdma: New connection accepted with the following "
+> +	       "attributes:\n"
+> +	       "    transport       : %s\n"
+> +	       "    local_ip        : %d.%d.%d.%d\n"
+> +	       "    local_port      : %d\n"
+> +	       "    remote_ip       : %d.%d.%d.%d\n"
+> +	       "    remote_port     : %d\n"
+> +	       "    max_sge         : %d\n"
+> +	       "    sq_depth        : %d\n"
+> +	       "    max_requests    : %d\n"
+> +	       "    ord             : %d\n"
+> +	       "    using fastreg?  : %c\n"
+> +	       "    memory exposure : %s\n",
+> +	       transport_string,
+> +	       NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> +			route.addr.src_addr)->sin_addr.s_addr),
+> +	       ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> +		      route.addr.src_addr)->sin_port),
+> +	       NIPQUAD(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> +			route.addr.dst_addr)->sin_addr.s_addr),
+> +	       ntohs(((struct sockaddr_in *)&newxprt->sc_cm_id->
+> +		      route.addr.dst_addr)->sin_port),
+> +	       newxprt->sc_max_sge,
+> +	       newxprt->sc_sq_depth,
+> +	       newxprt->sc_max_requests,
+> +	       newxprt->sc_ord,
+> +	       newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG ? 'Y' : 'N',
+> +	       security_string);
+> +
+> + out:
+>  	return &newxprt->sc_xprt;
+>  
+>   errout:
