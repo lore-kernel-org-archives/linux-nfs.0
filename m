@@ -1,8 +1,8 @@
 From: Tom Talpey <talpey@netapp.com>
-Subject: [PATCH 13/15] RPC/RDMA: harden connection logic against missing/late
-	rdma_cm upcalls.
-Date: Wed, 08 Oct 2008 11:49:06 -0400
-Message-ID: <20081008154906.1336.92261.stgit@tmt3.nane.netapp.com>
+Subject: [PATCH 08/15] RPC/RDMA: avoid an oops due to disconnect racing with
+	async upcalls.
+Date: Wed, 08 Oct 2008 11:48:15 -0400
+Message-ID: <20081008154815.1336.75753.stgit@tmt3.nane.netapp.com>
 References: <20081008154506.1336.59892.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,97 +10,81 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from [216.240.26.4] ([216.240.26.4]:44118 "EHLO tmt3.nane.netapp.com"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754591AbYJHQWT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2008 12:22:19 -0400
+	id S1754539AbYJHQWR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2008 12:22:17 -0400
 Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m98Fn6gA001588
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Oct 2008 11:49:06 -0400
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m98FmFmC001514
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Oct 2008 11:48:15 -0400
 In-Reply-To: <20081008154506.1336.59892.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add defensive timeouts to wait_for_completion() calls in RDMA
-address resolution, and make them interruptible. Fix the timeout
-units to milliseconds (formerly jiffies) and move to private header.
+RDMA disconnects yield an upcall from the RDMA connection manager,
+which can race with rpc transport close, e.g. on ^C of a mount.
+Ensure any rdma cm_id and qp are fully destroyed before continuing.
 
 Signed-off-by: Tom Talpey <talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/verbs.c     |   11 +++++++----
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   20 +++++++++-----------
+ 1 files changed, 9 insertions(+), 11 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
-index 55a5d92..54a379c 100644
---- a/include/linux/sunrpc/xprtrdma.h
-+++ b/include/linux/sunrpc/xprtrdma.h
-@@ -66,9 +66,6 @@
- 
- #define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
- 
--#define RDMA_RESOLVE_TIMEOUT	(5*HZ)	/* TBD 5 seconds */
--#define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
--
- /* memory registration strategies */
- #define RPCRDMA_PERSISTENT_REGISTRATION (1)
- 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9ef7e0d..4076773 100644
+index e3fe905..d94f379 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -284,6 +284,7 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 	switch (event->event) {
- 	case RDMA_CM_EVENT_ADDR_RESOLVED:
- 	case RDMA_CM_EVENT_ROUTE_RESOLVED:
-+		ia->ri_async_rc = 0;
- 		complete(&ia->ri_done);
- 		break;
- 	case RDMA_CM_EVENT_ADDR_ERROR:
-@@ -363,26 +364,28 @@ rpcrdma_create_id(struct rpcrdma_xprt *xprt,
- 		return id;
- 	}
- 
--	ia->ri_async_rc = 0;
-+	ia->ri_async_rc = -ETIMEDOUT;
- 	rc = rdma_resolve_addr(id, NULL, addr, RDMA_RESOLVE_TIMEOUT);
- 	if (rc) {
- 		dprintk("RPC:       %s: rdma_resolve_addr() failed %i\n",
+@@ -565,6 +565,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	return 0;
+ out2:
+ 	rdma_destroy_id(ia->ri_id);
++	ia->ri_id = NULL;
+ out1:
+ 	return rc;
+ }
+@@ -585,15 +586,17 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+ 		dprintk("RPC:       %s: ib_dereg_mr returned %i\n",
  			__func__, rc);
- 		goto out;
  	}
--	wait_for_completion(&ia->ri_done);
-+	wait_for_completion_interruptible_timeout(&ia->ri_done,
-+				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
- 	rc = ia->ri_async_rc;
- 	if (rc)
- 		goto out;
- 
--	ia->ri_async_rc = 0;
-+	ia->ri_async_rc = -ETIMEDOUT;
- 	rc = rdma_resolve_route(id, RDMA_RESOLVE_TIMEOUT);
- 	if (rc) {
- 		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
+-	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id) && ia->ri_id->qp)
+-		rdma_destroy_qp(ia->ri_id);
++	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
++		if (ia->ri_id->qp)
++			rdma_destroy_qp(ia->ri_id);
++		rdma_destroy_id(ia->ri_id);
++		ia->ri_id = NULL;
++	}
+ 	if (ia->ri_pd != NULL && !IS_ERR(ia->ri_pd)) {
+ 		rc = ib_dealloc_pd(ia->ri_pd);
+ 		dprintk("RPC:       %s: ib_dealloc_pd returned %i\n",
  			__func__, rc);
- 		goto out;
  	}
--	wait_for_completion(&ia->ri_done);
-+	wait_for_completion_interruptible_timeout(&ia->ri_done,
-+				msecs_to_jiffies(RDMA_RESOLVE_TIMEOUT) + 1);
- 	rc = ia->ri_async_rc;
- 	if (rc)
- 		goto out;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 2db2344..99bfbf3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -51,6 +51,9 @@
- #include <linux/sunrpc/rpc_rdma.h> 	/* RPC/RDMA protocol */
- #include <linux/sunrpc/xprtrdma.h> 	/* xprt parameters */
+-	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id))
+-		rdma_destroy_id(ia->ri_id);
+ }
  
-+#define RDMA_RESOLVE_TIMEOUT	(5000)	/* 5 seconds */
-+#define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
-+
  /*
-  * Interface Adapter -- one per transport instance
-  */
+@@ -751,21 +754,16 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		if (rc)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+ 				" returned %i\n", __func__, rc);
++		rdma_destroy_qp(ia->ri_id);
++		ia->ri_id->qp = NULL;
+ 	}
+ 
+-	ep->rep_func = NULL;
+-
+ 	/* padding - could be done in rpcrdma_buffer_destroy... */
+ 	if (ep->rep_pad_mr) {
+ 		rpcrdma_deregister_internal(ia, ep->rep_pad_mr, &ep->rep_pad);
+ 		ep->rep_pad_mr = NULL;
+ 	}
+ 
+-	if (ia->ri_id->qp) {
+-		rdma_destroy_qp(ia->ri_id);
+-		ia->ri_id->qp = NULL;
+-	}
+-
+ 	rpcrdma_clean_cq(ep->rep_cq);
+ 	rc = ib_destroy_cq(ep->rep_cq);
+ 	if (rc)
 
