@@ -1,91 +1,78 @@
 From: Tom Talpey <talpey@netapp.com>
-Subject: [UPDATED PATCH 03/14] RPC/RDMA: check selected memory registration
-	mode at runtime.
-Date: Thu, 09 Oct 2008 15:00:09 -0400
-Message-ID: <20081009190009.13947.60890.stgit@tmt3.nane.netapp.com>
+Subject: [UPDATED PATCH 04/14] RPC/RDMA: support FRMR client memory
+	registration.
+Date: Thu, 09 Oct 2008 15:00:20 -0400
+Message-ID: <20081009190020.13947.87924.stgit@tmt3.nane.netapp.com>
 References: <20081009185643.13947.64733.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [216.240.26.4] ([216.240.26.4]:61179 "EHLO tmt3.nane.netapp.com"
+Received: from [216.240.26.4] ([216.240.26.4]:28705 "EHLO tmt3.nane.netapp.com"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755196AbYJITAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2008 15:00:10 -0400
+	id S1756026AbYJITAV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Oct 2008 15:00:21 -0400
 Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J096d014052
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:00:10 -0400
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J0Kw5014066
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:00:20 -0400
 In-Reply-To: <20081009185643.13947.64733.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At transport creation, check for, and use, any local dma lkey.
-Then, check that the selected memory registration mode is in fact
-supported by the RDMA adapter selected for the mount. Fall back
-to best alternative if not.
+Configure, detect and use "fastreg" support from IB/iWARP verbs
+layer to perform RPC/RDMA memory registration.
+
+Make FRMR the default memreg mode (will fall back if not supported
+by the selected RDMA adapter).
+
+This allows full and optimal operation over the cxgb3 adapter, and others.
 
 Signed-off-by: Tom Talpey <talpey@netapp.com>
 Acked-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/xprtrdma/verbs.c |   95 ++++++++++++++++++++++++++++++++++++-------
- 1 files changed, 80 insertions(+), 15 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    6 -
+ net/sunrpc/xprtrdma/verbs.c     |  167 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 167 insertions(+), 6 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index a564c1a..89970b0 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -70,11 +70,7 @@ static unsigned int xprt_rdma_slot_table_entries = RPCRDMA_DEF_SLOT_TABLE;
+ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_inline_write_padding;
+-#if !RPCRDMA_PERSISTENT_REGISTRATION
+-static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_REGISTER; /* FMR? */
+-#else
+-static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_ALLPHYSICAL;
+-#endif
++static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
+ 
+ #ifdef RPC_DEBUG
+ 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index d04208a..0f3b431 100644
+index 0f3b431..39a1652 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -423,7 +423,8 @@ rpcrdma_clean_cq(struct ib_cq *cq)
- int
- rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- {
--	int rc;
-+	int rc, mem_priv;
-+	struct ib_device_attr devattr;
- 	struct rpcrdma_ia *ia = &xprt->rx_ia;
- 
- 	init_completion(&ia->ri_done);
-@@ -443,6 +444,53 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	}
- 
- 	/*
-+	 * Query the device to determine if the requested memory
-+	 * registration strategy is supported. If it isn't, set the
-+	 * strategy to a globally supported model.
-+	 */
-+	rc = ib_query_device(ia->ri_id->device, &devattr);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_query_device failed %d\n",
-+			__func__, rc);
-+		goto out2;
-+	}
-+
-+	if (devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY) {
-+		ia->ri_have_dma_lkey = 1;
-+		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
-+	}
-+
-+	switch (memreg) {
-+	case RPCRDMA_MEMWINDOWS:
-+	case RPCRDMA_MEMWINDOWS_ASYNC:
-+		if (!(devattr.device_cap_flags & IB_DEVICE_MEM_WINDOW)) {
-+			dprintk("RPC:       %s: MEMWINDOWS registration "
-+				"specified but not supported by adapter, "
-+				"using slower RPCRDMA_REGISTER\n",
-+				__func__);
-+			memreg = RPCRDMA_REGISTER;
-+		}
-+		break;
-+	case RPCRDMA_MTHCAFMR:
-+		if (!ia->ri_id->device->alloc_fmr) {
+@@ -488,6 +488,26 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ #endif
+ 		}
+ 		break;
++	case RPCRDMA_FRMR:
++		/* Requires both frmr reg and local dma lkey */
++		if ((devattr.device_cap_flags &
++		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
++		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
 +#if RPCRDMA_PERSISTENT_REGISTRATION
-+			dprintk("RPC:       %s: MTHCAFMR registration "
++			dprintk("RPC:       %s: FRMR registration "
 +				"specified but not supported by adapter, "
 +				"using riskier RPCRDMA_ALLPHYSICAL\n",
 +				__func__);
 +			memreg = RPCRDMA_ALLPHYSICAL;
 +#else
-+			dprintk("RPC:       %s: MTHCAFMR registration "
++			dprintk("RPC:       %s: FRMR registration "
 +				"specified but not supported by adapter, "
 +				"using slower RPCRDMA_REGISTER\n",
 +				__func__);
@@ -93,80 +80,231 @@ index d04208a..0f3b431 100644
 +#endif
 +		}
 +		break;
-+	}
-+
-+	/*
- 	 * Optionally obtain an underlying physical identity mapping in
- 	 * order to do a memory window-based bind. This base registration
- 	 * is protected from remote access - that is enabled only by binding
-@@ -450,22 +498,27 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * revoked after the corresponding completion similar to a storage
- 	 * adapter.
- 	 */
--	if (memreg > RPCRDMA_REGISTER) {
--		int mem_priv = IB_ACCESS_LOCAL_WRITE;
--		switch (memreg) {
-+	switch (memreg) {
-+	case RPCRDMA_BOUNCEBUFFERS:
-+	case RPCRDMA_REGISTER:
-+		break;
- #if RPCRDMA_PERSISTENT_REGISTRATION
--		case RPCRDMA_ALLPHYSICAL:
--			mem_priv |= IB_ACCESS_REMOTE_WRITE;
--			mem_priv |= IB_ACCESS_REMOTE_READ;
--			break;
-+	case RPCRDMA_ALLPHYSICAL:
-+		mem_priv = IB_ACCESS_LOCAL_WRITE |
-+				IB_ACCESS_REMOTE_WRITE |
-+				IB_ACCESS_REMOTE_READ;
-+		goto register_setup;
- #endif
--		case RPCRDMA_MEMWINDOWS_ASYNC:
--		case RPCRDMA_MEMWINDOWS:
--			mem_priv |= IB_ACCESS_MW_BIND;
--			break;
--		default:
-+	case RPCRDMA_MEMWINDOWS_ASYNC:
-+	case RPCRDMA_MEMWINDOWS:
-+		mem_priv = IB_ACCESS_LOCAL_WRITE |
-+				IB_ACCESS_MW_BIND;
-+		goto register_setup;
-+	case RPCRDMA_MTHCAFMR:
-+		if (ia->ri_have_dma_lkey)
- 			break;
--		}
-+		mem_priv = IB_ACCESS_LOCAL_WRITE;
-+	register_setup:
- 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
-@@ -475,7 +528,15 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 			memreg = RPCRDMA_REGISTER;
- 			ia->ri_bind_mem = NULL;
- 		}
-+		break;
-+	default:
-+		printk(KERN_ERR "%s: invalid memory registration mode %d\n",
-+				__func__, memreg);
-+		rc = -EINVAL;
-+		goto out2;
  	}
-+	dprintk("RPC:       %s: memory registration strategy is %d\n",
-+		__func__, memreg);
  
- 	/* Else will do memory reg/dereg for each chunk */
- 	ia->ri_memreg_strategy = memreg;
-@@ -1248,7 +1309,11 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
- 			va, len, DMA_BIDIRECTIONAL);
- 	iov->length = len;
+ 	/*
+@@ -501,6 +521,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	switch (memreg) {
+ 	case RPCRDMA_BOUNCEBUFFERS:
+ 	case RPCRDMA_REGISTER:
++	case RPCRDMA_FRMR:
+ 		break;
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+@@ -602,6 +623,12 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	ep->rep_attr.srq = NULL;
+ 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+ 	switch (ia->ri_memreg_strategy) {
++	case RPCRDMA_FRMR:
++		/* Add room for frmr register and invalidate WRs */
++		ep->rep_attr.cap.max_send_wr *= 3;
++		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr)
++			return -EINVAL;
++		break;
+ 	case RPCRDMA_MEMWINDOWS_ASYNC:
+ 	case RPCRDMA_MEMWINDOWS:
+ 		/* Add room for mw_binds+unbinds - overkill! */
+@@ -684,6 +711,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 		break;
+ 	case RPCRDMA_MTHCAFMR:
+ 	case RPCRDMA_REGISTER:
++	case RPCRDMA_FRMR:
+ 		ep->rep_remote_cma.responder_resources = cdata->max_requests *
+ 				(RPCRDMA_MAX_DATA_SEGS / 8);
+ 		break;
+@@ -935,7 +963,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	 *   2.  arrays of struct rpcrdma_req to fill in pointers
+ 	 *   3.  array of struct rpcrdma_rep for replies
+ 	 *   4.  padding, if any
+-	 *   5.  mw's or fmr's, if any
++	 *   5.  mw's, fmr's or frmr's, if any
+ 	 * Send/recv buffers in req/rep need to be registered
+ 	 */
  
--	if (ia->ri_bind_mem != NULL) {
-+	if (ia->ri_have_dma_lkey) {
-+		*mrp = NULL;
-+		iov->lkey = ia->ri_dma_lkey;
-+		return 0;
-+	} else if (ia->ri_bind_mem != NULL) {
- 		*mrp = NULL;
- 		iov->lkey = ia->ri_bind_mem->lkey;
- 		return 0;
+@@ -943,6 +971,10 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		(sizeof(struct rpcrdma_req *) + sizeof(struct rpcrdma_rep *));
+ 	len += cdata->padding;
+ 	switch (ia->ri_memreg_strategy) {
++	case RPCRDMA_FRMR:
++		len += buf->rb_max_requests * RPCRDMA_MAX_SEGS *
++				sizeof(struct rpcrdma_mw);
++		break;
+ 	case RPCRDMA_MTHCAFMR:
+ 		/* TBD we are perhaps overallocating here */
+ 		len += (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS *
+@@ -991,6 +1023,30 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	INIT_LIST_HEAD(&buf->rb_mws);
+ 	r = (struct rpcrdma_mw *)p;
+ 	switch (ia->ri_memreg_strategy) {
++	case RPCRDMA_FRMR:
++		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
++			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
++							 RPCRDMA_MAX_SEGS);
++			if (IS_ERR(r->r.frmr.fr_mr)) {
++				rc = PTR_ERR(r->r.frmr.fr_mr);
++				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
++					" failed %i\n", __func__, rc);
++				goto out;
++			}
++			r->r.frmr.fr_pgl =
++				ib_alloc_fast_reg_page_list(ia->ri_id->device,
++							    RPCRDMA_MAX_SEGS);
++			if (IS_ERR(r->r.frmr.fr_pgl)) {
++				rc = PTR_ERR(r->r.frmr.fr_pgl);
++				dprintk("RPC:       %s: "
++					"ib_alloc_fast_reg_page_list "
++					"failed %i\n", __func__, rc);
++				goto out;
++			}
++			list_add(&r->mw_list, &buf->rb_mws);
++			++r;
++		}
++		break;
+ 	case RPCRDMA_MTHCAFMR:
+ 		/* TBD we are perhaps overallocating here */
+ 		for (i = (buf->rb_max_requests+1) * RPCRDMA_MAX_SEGS; i; i--) {
+@@ -1126,6 +1182,15 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 					struct rpcrdma_mw, mw_list);
+ 				list_del(&r->mw_list);
+ 				switch (ia->ri_memreg_strategy) {
++				case RPCRDMA_FRMR:
++					rc = ib_dereg_mr(r->r.frmr.fr_mr);
++					if (rc)
++						dprintk("RPC:       %s:"
++							" ib_dereg_mr"
++							" failed %i\n",
++							__func__, rc);
++					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++					break;
+ 				case RPCRDMA_MTHCAFMR:
+ 					rc = ib_dealloc_fmr(r->r.fmr);
+ 					if (rc)
+@@ -1228,6 +1293,7 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
+ 		req->rl_reply = NULL;
+ 	}
+ 	switch (ia->ri_memreg_strategy) {
++	case RPCRDMA_FRMR:
+ 	case RPCRDMA_MTHCAFMR:
+ 	case RPCRDMA_MEMWINDOWS_ASYNC:
+ 	case RPCRDMA_MEMWINDOWS:
+@@ -1391,6 +1457,96 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
+ }
+ 
+ static int
++rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
++			int *nsegs, int writing, struct rpcrdma_ia *ia,
++			struct rpcrdma_xprt *r_xprt)
++{
++	struct rpcrdma_mr_seg *seg1 = seg;
++	struct ib_send_wr frmr_wr, *bad_wr;
++	u8 key;
++	int len, pageoff;
++	int i, rc;
++
++	pageoff = offset_in_page(seg1->mr_offset);
++	seg1->mr_offset -= pageoff;	/* start of page */
++	seg1->mr_len += pageoff;
++	len = -pageoff;
++	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
++		*nsegs = RPCRDMA_MAX_DATA_SEGS;
++	for (i = 0; i < *nsegs;) {
++		rpcrdma_map_one(ia, seg, writing);
++		seg1->mr_chunk.rl_mw->r.frmr.fr_pgl->page_list[i] = seg->mr_dma;
++		len += seg->mr_len;
++		++seg;
++		++i;
++		/* Check for holes */
++		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
++		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
++			break;
++	}
++	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
++		__func__, seg1->mr_chunk.rl_mw, i);
++
++	/* Bump the key */
++	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
++	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
++
++	/* Prepare FRMR WR */
++	memset(&frmr_wr, 0, sizeof frmr_wr);
++	frmr_wr.opcode = IB_WR_FAST_REG_MR;
++	frmr_wr.send_flags = 0;			/* unsignaled */
++	frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
++	frmr_wr.wr.fast_reg.page_list = seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
++	frmr_wr.wr.fast_reg.page_list_len = i;
++	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
++	frmr_wr.wr.fast_reg.length = i << PAGE_SHIFT;
++	frmr_wr.wr.fast_reg.access_flags = (writing ?
++				IB_ACCESS_REMOTE_WRITE : IB_ACCESS_REMOTE_READ);
++	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
++	DECR_CQCOUNT(&r_xprt->rx_ep);
++
++	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
++
++	if (rc) {
++		dprintk("RPC:       %s: failed ib_post_send for register,"
++			" status %i\n", __func__, rc);
++		while (i--)
++			rpcrdma_unmap_one(ia, --seg);
++	} else {
++		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
++		seg1->mr_base = seg1->mr_dma + pageoff;
++		seg1->mr_nsegs = i;
++		seg1->mr_len = len;
++	}
++	*nsegs = i;
++	return rc;
++}
++
++static int
++rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
++			struct rpcrdma_ia *ia, struct rpcrdma_xprt *r_xprt)
++{
++	struct rpcrdma_mr_seg *seg1 = seg;
++	struct ib_send_wr invalidate_wr, *bad_wr;
++	int rc;
++
++	while (seg1->mr_nsegs--)
++		rpcrdma_unmap_one(ia, seg++);
++
++	memset(&invalidate_wr, 0, sizeof invalidate_wr);
++	invalidate_wr.opcode = IB_WR_LOCAL_INV;
++	invalidate_wr.send_flags = 0;			/* unsignaled */
++	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
++	DECR_CQCOUNT(&r_xprt->rx_ep);
++
++	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
++	if (rc)
++		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
++			" status %i\n", __func__, rc);
++	return rc;
++}
++
++static int
+ rpcrdma_register_fmr_external(struct rpcrdma_mr_seg *seg,
+ 			int *nsegs, int writing, struct rpcrdma_ia *ia)
+ {
+@@ -1600,6 +1756,11 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 		break;
+ #endif
+ 
++	/* Registration using frmr registration */
++	case RPCRDMA_FRMR:
++		rc = rpcrdma_register_frmr_external(seg, &nsegs, writing, ia, r_xprt);
++		break;
++
+ 	/* Registration using fmr memory registration */
+ 	case RPCRDMA_MTHCAFMR:
+ 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
+@@ -1639,6 +1800,10 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 		break;
+ #endif
+ 
++	case RPCRDMA_FRMR:
++		rc = rpcrdma_deregister_frmr_external(seg, ia, r_xprt);
++		break;
++
+ 	case RPCRDMA_MTHCAFMR:
+ 		rc = rpcrdma_deregister_fmr_external(seg, ia);
+ 		break;
 
