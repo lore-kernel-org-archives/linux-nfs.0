@@ -1,95 +1,90 @@
 From: Tom Talpey <talpey@netapp.com>
-Subject: [UPDATED PATCH 06/14] RPC/RDMA: suppress retransmit on RPC/RDMA
-	clients.
-Date: Thu, 09 Oct 2008 15:00:40 -0400
-Message-ID: <20081009190040.13947.68506.stgit@tmt3.nane.netapp.com>
+Subject: [UPDATED PATCH 08/14] RPC/RDMA: avoid an oops due to disconnect
+	racing with async upcalls.
+Date: Thu, 09 Oct 2008 15:01:00 -0400
+Message-ID: <20081009190100.13947.59128.stgit@tmt3.nane.netapp.com>
 References: <20081009185643.13947.64733.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [216.240.26.4] ([216.240.26.4]:36696 "EHLO tmt3.nane.netapp.com"
+Received: from [216.240.26.4] ([216.240.26.4]:51755 "EHLO tmt3.nane.netapp.com"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756444AbYJITAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2008 15:00:41 -0400
+	id S1756696AbYJITBC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Oct 2008 15:01:02 -0400
 Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J0et2014094
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:00:40 -0400
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J10hw014123
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:01:01 -0400
 In-Reply-To: <20081009185643.13947.64733.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An RPC/RDMA client cannot retransmit on an unbroken connection,
-doing so violates its flow control with the server.
+RDMA disconnects yield an upcall from the RDMA connection manager,
+which can race with rpc transport close, e.g. on ^C of a mount.
+Ensure any rdma cm_id and qp are fully destroyed before continuing.
 
 Signed-off-by: Tom Talpey <talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    2 ++
- net/sunrpc/xprtrdma/transport.c |   16 ++++++++++++----
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 15 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   20 +++++++++-----------
+ 1 files changed, 9 insertions(+), 11 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e55427f..721dae7 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -681,6 +681,8 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
- 	struct rpc_xprt *xprt = ep->rep_xprt;
- 
- 	spin_lock_bh(&xprt->transport_lock);
-+	if (++xprt->connect_cookie == 0)	/* maintain a reserved value */
-+		++xprt->connect_cookie;
- 	if (ep->rep_connected > 0) {
- 		if (!xprt_test_and_set_connected(xprt))
- 			xprt_wake_pending_tasks(xprt, 0);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 89970b0..0aefc64 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -587,6 +587,7 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	}
- 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
- out:
-+	req->rl_connect_cookie = 0;	/* our reserved value */
- 	return req->rl_xdr_buf;
- 
- outfail:
-@@ -690,13 +691,20 @@ xprt_rdma_send_request(struct rpc_task *task)
- 		req->rl_reply->rr_xprt = xprt;
- 	}
- 
--	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req)) {
--		xprt_disconnect_done(xprt);
--		return -ENOTCONN;	/* implies disconnect */
--	}
-+	/* Must suppress retransmit to maintain credits */
-+	if (req->rl_connect_cookie == xprt->connect_cookie)
-+		goto drop_connection;
-+	req->rl_connect_cookie = xprt->connect_cookie;
-+
-+	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req))
-+		goto drop_connection;
- 
- 	rqst->rq_bytes_sent = 0;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index e3fe905..d94f379 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -565,6 +565,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
  	return 0;
-+
-+drop_connection:
-+	xprt_disconnect_done(xprt);
-+	return -ENOTCONN;	/* implies disconnect */
+ out2:
+ 	rdma_destroy_id(ia->ri_id);
++	ia->ri_id = NULL;
+ out1:
+ 	return rc;
+ }
+@@ -585,15 +586,17 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+ 		dprintk("RPC:       %s: ib_dereg_mr returned %i\n",
+ 			__func__, rc);
+ 	}
+-	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id) && ia->ri_id->qp)
+-		rdma_destroy_qp(ia->ri_id);
++	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
++		if (ia->ri_id->qp)
++			rdma_destroy_qp(ia->ri_id);
++		rdma_destroy_id(ia->ri_id);
++		ia->ri_id = NULL;
++	}
+ 	if (ia->ri_pd != NULL && !IS_ERR(ia->ri_pd)) {
+ 		rc = ib_dealloc_pd(ia->ri_pd);
+ 		dprintk("RPC:       %s: ib_dealloc_pd returned %i\n",
+ 			__func__, rc);
+ 	}
+-	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id))
+-		rdma_destroy_id(ia->ri_id);
  }
  
- static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 05b7898..2db2344 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -181,6 +181,7 @@ struct rpcrdma_req {
- 	size_t 		rl_size;	/* actual length of buffer */
- 	unsigned int	rl_niovs;	/* 0, 2 or 4 */
- 	unsigned int	rl_nchunks;	/* non-zero if chunks */
-+	unsigned int	rl_connect_cookie;	/* retry detection */
- 	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
- 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
- 	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];/* chunk segments */
+ /*
+@@ -751,21 +754,16 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		if (rc)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+ 				" returned %i\n", __func__, rc);
++		rdma_destroy_qp(ia->ri_id);
++		ia->ri_id->qp = NULL;
+ 	}
+ 
+-	ep->rep_func = NULL;
+-
+ 	/* padding - could be done in rpcrdma_buffer_destroy... */
+ 	if (ep->rep_pad_mr) {
+ 		rpcrdma_deregister_internal(ia, ep->rep_pad_mr, &ep->rep_pad);
+ 		ep->rep_pad_mr = NULL;
+ 	}
+ 
+-	if (ia->ri_id->qp) {
+-		rdma_destroy_qp(ia->ri_id);
+-		ia->ri_id->qp = NULL;
+-	}
+-
+ 	rpcrdma_clean_cq(ep->rep_cq);
+ 	rc = ib_destroy_cq(ep->rep_cq);
+ 	if (rc)
 
