@@ -1,87 +1,125 @@
-From: Michal Sojka <sojkam1-jQs2MHkdoM/twjQa/ONI9g@public.gmane.org>
-Subject: Case sensitivity in NFS files
-Date: Thu, 9 Oct 2008 18:39:49 +0200
-Message-ID: <200810091839.49445.sojkam1@fel.cvut.cz>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: connectathon test failures
+Date: Thu, 09 Oct 2008 13:36:13 -0400
+Message-ID: <1223573773.7494.21.camel@localhost>
+References: <20081008225543.GG14527@fieldses.org>
+	 <20081009020300.GA17896@fieldses.org> <20081009021011.GB17896@fieldses.org>
+	 <1223562985.7494.17.camel@localhost>  <20081009155347.GB28785@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from max.feld.cvut.cz ([147.32.192.36]:41324 "EHLO max.feld.cvut.cz"
+Received: from mx2.netapp.com ([216.240.18.37]:23024 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754495AbYJIQvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2008 12:51:04 -0400
+	id S1754026AbYJIRgv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Oct 2008 13:36:51 -0400
+In-Reply-To: <20081009155347.GB28785@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Thu, 2008-10-09 at 11:53 -0400, J. Bruce Fields wrote:
+> On Thu, Oct 09, 2008 at 10:36:25AM -0400, Trond Myklebust wrote:
+> > On Wed, 2008-10-08 at 22:10 -0400, J. Bruce Fields wrote:
+> > > On Wed, Oct 08, 2008 at 10:03:00PM -0400, bfields wrote:
+> > > > On Wed, Oct 08, 2008 at 06:55:43PM -0400, bfields wrote:
+> > > > > I'm getting connectathon test failures with the latest merge of code
+> > > > > from both our trees, linux-to-linux over v3 and v4.
+> > > > > 
+> > > > > I just got this a moment ago, so haven't tried to track it down at all
+> > > > > yet--but I seem to recall in the past this sort of failure has been an
+> > > > > attribute revalidation problem (usually with the ext3 ctime resolution
+> > > > > at least partly to blame).
+> > > > 
+> > > > The failure first happens with d65f557f3 "NFS: Fix
+> > > > nfs_post_op_update_inode_force_wcc()".
+> > > 
+> > > Err, sorry, no: that was the last *good* one!  It's the following one (
+> > > (4dc05efb86 "NFS: Convert __nfs_revalidate_inode() to use
+> > > nfs_refresh_inode()") where the failures start.
+> > 
+> > Hmm... That patch should be correct. I rather suspect a problem with the
+> > updating of nfsi->last_updated.
+> > 
+> > Could you see if something like the following patch helps?
+> 
+> Yep, if I apply this on top of your linux-mm
+> (19d771f3caccaf66ce2fb539319222139e5b4e88) then I can no longer see the
+> failure.
+> 
+> --b.
 
-I'm experiencing strange problem with case sensitivity of files on NFS3 
-filesystem. I want to backup my server to a NAS device. The server is:
-Linux rtime 2.6.25-gentoo-r8 #6 SMP Thu Oct 9 13:00:08 CEST 2008 i686
-and NAS is:
-Linux RtimeBackup 2.6.15 #722 Fri Sep 19 20:23:15 CST 2008 armv5tejl unknown
+OK. Having thought a little bit more about this, I think we can just
+delete the wraparound protection in nfs_update_inode(). We already have
+similar protection in nfs_inode_attrs_need_update()...
 
-I would like to use rdiff-backup tool, which checks for case sensitivity of 
-the target filesystem. The technique it uses to check this is the same as in 
-this file:
+Cheers
+  Trond
+--------------------------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 9 Oct 2008 13:27:55 -0400
+NFS: Fix attribute updates
 
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+This fixes a regression seen when running the Connectathon testsuite
+against an ext3 filesystem. The reason was that the inode was constantly
+being marked as 'just updated' by the jiffy wraparound test.
+This again meant that newer GETATTR calls were failing to pass the
+nfs_inode_attrs_need_update() test unless the changes caused a ctime update
+on the server, since they were perceived as having been started before the
+latest inode update.
 
-int main()
-{
-        int fd;
-        struct stat st;
-        fd = open("A", O_WRONLY|O_CREAT|O_TRUNC, 0666);
-        perror("1. open(A)"); errno=0;
-        if (fd == -1) {
-                exit(1);
-        }
-        close(fd);
-        lstat("A", &st);
-        perror("2. lstat(A)"); errno=0;
-        lstat("a", &st);
-        perror("3. lstat(a)"); errno=0;
-        unlink("a");
-        perror("4. unlink(a)"); errno=0;
-        lstat("A", &st);
-        perror("5. lstat(A)"); errno=0;
-        lstat("a", &st);
-        perror("6. lstat(a)"); errno=0;
-}
+Given that nfs_inode_attrs_need_update() already checks for wraparound
+of nfsi->last_updated, we can drop the buggy "protection" in
+nfs_update_inode().
 
-The expected output of this program is:
+Also make a slight micro-optimisation of nfs_inode_attrs_need_update(): we
+are more often going to see time_after(fattr->time_start, nfsi->last_updated)
+be true, rather than seeing an update of ctime/size, so put that test
+first to ensure that we optimise away the ctime/size tests.
 
-1. open(A): Success
-2. lstat(A): Success
-3. lstat(a): No such file or directory
-4. unlink(a): No such file or directory
-5. lstat(A): Success
-6. lstat(a): No such file or directory
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-On NFS, I sometimes get the following (neither "A" nor "a" files existed 
-before execution):
+ fs/nfs/inode.c |   13 ++++---------
+ 1 files changed, 4 insertions(+), 9 deletions(-)
 
-1. open(A): Success
-2. lstat(A): Success
-3. lstat(a): Success
-4. unlink(a): Success
-5. lstat(A): Stale NFS file handle
-6. lstat(a): No such file or directory
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e25009f..6554281 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -933,10 +933,10 @@ static int nfs_inode_attrs_need_update(const struct inode *inode, const struct n
+ {
+ 	const struct nfs_inode *nfsi = NFS_I(inode);
+ 
+-	return nfs_ctime_need_update(inode, fattr) ||
+-			nfs_size_need_update(inode, fattr) ||
+-			time_after(fattr->time_start, nfsi->last_updated) ||
+-			time_after(nfsi->last_updated, jiffies);
++	return time_after(fattr->time_start, nfsi->last_updated) ||
++		nfs_ctime_need_update(inode, fattr) ||
++		nfs_size_need_update(inode, fattr) ||
++		time_after(nfsi->last_updated, jiffies);
+ }
+ 
+ static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
+@@ -1167,11 +1167,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 				nfsi->attrtimeo = NFS_MAXATTRTIMEO(inode);
+ 			nfsi->attrtimeo_timestamp = now;
+ 		}
+-		/*
+-		 * Avoid jiffy wraparound issues with nfsi->last_updated
+-		 */
+-		if (!time_in_range(nfsi->last_updated, nfsi->read_cache_jiffies, now))
+-			nfsi->last_updated = nfsi->read_cache_jiffies;
+ 	}
+ 	invalid &= ~NFS_INO_INVALID_ATTR;
+ 	/* Don't invalidate the data if we were to blame */
 
-This happens when the program is run for the first time. When I run it for the 
-second time, I get the expected output and file "A" is created. After I 
-remove the A file, I get the "wrong" output again.
 
-Does anybody know, what is causing this behavior?
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Thanks
-Michal
-
-P.S.: Please CC me when replying.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
