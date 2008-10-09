@@ -1,65 +1,77 @@
 From: Tom Talpey <talpey@netapp.com>
-Subject: [UPDATED PATCH 00/14] RPC/RDMA patchset
-Date: Thu, 09 Oct 2008 14:59:39 -0400
-Message-ID: <20081009185643.13947.64733.stgit@tmt3.nane.netapp.com>
+Subject: [UPDATED PATCH 02/14] RPC/RDMA: add data types and new FRMR memory
+	registration enum.
+Date: Thu, 09 Oct 2008 14:59:59 -0400
+Message-ID: <20081009185959.13947.21342.stgit@tmt3.nane.netapp.com>
+References: <20081009185643.13947.64733.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [216.240.26.4] ([216.240.26.4]:15938 "EHLO tmt3.nane.netapp.com"
+Received: from [216.240.26.4] ([216.240.26.4]:22985 "EHLO tmt3.nane.netapp.com"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754894AbYJIS7k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2008 14:59:40 -0400
+	id S1755196AbYJITAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Oct 2008 15:00:00 -0400
 Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99IxdBW014005
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 14:59:39 -0400
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99IxxHO014034
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 14:59:59 -0400
+In-Reply-To: <20081009185643.13947.64733.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following updated series modifies the RPC/RDMA (NFS/RDMA)
-client to support the new rdma "fastreg" memory registration mode,
-which fixes operation on the Chelsio cxgb3 adapter and strengthens
-the safety of others. Additionally, it fixes many smaller issues
-in the code improving its robustness and performance. Except for
-supporting large (>32KB) rpc's, it addresses all known issues in
-the client.
+Internal RPC/RDMA structure updates in preparation for FRMR support.
 
-This updated patchset clarifies the author-vs-acked status of
-the individual patches, tunes the git log text of some, and omits
-the previous patch 12 ("5 second pause") which I'm currently
-working on, as per comments.
-
-This patchset applies to the current nfs-2.6 git;
-	(69849375d6b13e94d08cdc94b49b11fbab454a0e)
-
+Signed-off-by: Tom Talpey <talpey@netapp.com>
+Acked-by: Tom Tucker <tom@opengridcomputing.com>
 ---
 
-Tom Talpey (13):
-      RPC/RDMA: optionally emit useful transport info upon connect/disconnect.
-      RPC/RDMA: reformat a debug printk to keep lines together.
-      RPC/RDMA: harden connection logic against missing/late rdma_cm upcalls.
-      RPC/RDMA: fix connect/reconnect resource leak.
-      RPC/RDMA: return a consistent error, when connect fails.
-      RPC/RDMA: adhere to protocol for unpadded client trailing write chunks.
-      RPC/RDMA: avoid an oops due to disconnect racing with async upcalls.
-      RPC/RDMA: maintain the RPC task bytes-sent statistic.
-      RPC/RDMA: suppress retransmit on RPC/RDMA clients.
-      RPC/RDMA: support FRMR client memory registration.
-      RPC/RDMA: check selected memory registration mode at runtime.
-      RPC/RDMA: add data types and new FRMR memory registration enum.
-      RPC/RDMA: refactor the inline memory registration code.
+ include/linux/sunrpc/xprtrdma.h |    1 +
+ net/sunrpc/xprtrdma/xprt_rdma.h |    8 +++++++-
+ 2 files changed, 8 insertions(+), 1 deletions(-)
 
-Tom Tucker (1):
-      RPC/RDMA: fix connection IRD/ORD setting
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index 4de56b1..55a5d92 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -78,6 +78,7 @@ enum rpcrdma_memreg {
+ 	RPCRDMA_MEMWINDOWS,
+ 	RPCRDMA_MEMWINDOWS_ASYNC,
+ 	RPCRDMA_MTHCAFMR,
++	RPCRDMA_FRMR,
+ 	RPCRDMA_ALLPHYSICAL,
+ 	RPCRDMA_LAST
+ };
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 2427822..05b7898 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -58,6 +58,8 @@ struct rpcrdma_ia {
+ 	struct rdma_cm_id 	*ri_id;
+ 	struct ib_pd		*ri_pd;
+ 	struct ib_mr		*ri_bind_mem;
++	u32			ri_dma_lkey;
++	int			ri_have_dma_lkey;
+ 	struct completion	ri_done;
+ 	int			ri_async_rc;
+ 	enum rpcrdma_memreg	ri_memreg_strategy;
+@@ -156,6 +158,10 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
+ 			union {
+ 				struct ib_mw	*mw;
+ 				struct ib_fmr	*fmr;
++				struct {
++					struct ib_fast_reg_page_list *fr_pgl;
++					struct ib_mr *fr_mr;
++				} frmr;
+ 			} r;
+ 			struct list_head mw_list;
+ 		} *rl_mw;
+@@ -198,7 +204,7 @@ struct rpcrdma_buffer {
+ 	atomic_t	rb_credits;	/* most recent server credits */
+ 	unsigned long	rb_cwndscale;	/* cached framework rpc_cwndscale */
+ 	int		rb_max_requests;/* client max requests */
+-	struct list_head rb_mws;	/* optional memory windows/fmrs */
++	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
+ 	int		rb_send_index;
+ 	struct rpcrdma_req	**rb_send_bufs;
+ 	int		rb_recv_index;
 
-
- include/linux/sunrpc/xprtrdma.h |    4 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   29 +-
- net/sunrpc/xprtrdma/transport.c |   34 +-
- net/sunrpc/xprtrdma/verbs.c     |  735 +++++++++++++++++++++++++++------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   17 +
- 5 files changed, 571 insertions(+), 248 deletions(-)
-
--- 
-
-Tom.
