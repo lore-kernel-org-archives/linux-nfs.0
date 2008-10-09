@@ -1,90 +1,138 @@
 From: Tom Talpey <talpey@netapp.com>
-Subject: [UPDATED PATCH 08/14] RPC/RDMA: avoid an oops due to disconnect
-	racing with async upcalls.
-Date: Thu, 09 Oct 2008 15:01:00 -0400
-Message-ID: <20081009190100.13947.59128.stgit@tmt3.nane.netapp.com>
+Subject: [UPDATED PATCH 09/14] RPC/RDMA: adhere to protocol for unpadded
+	client trailing write chunks.
+Date: Thu, 09 Oct 2008 15:01:11 -0400
+Message-ID: <20081009190111.13947.42921.stgit@tmt3.nane.netapp.com>
 References: <20081009185643.13947.64733.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [216.240.26.4] ([216.240.26.4]:51755 "EHLO tmt3.nane.netapp.com"
+Received: from [216.240.26.4] ([216.240.26.4]:12342 "EHLO tmt3.nane.netapp.com"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756696AbYJITBC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2008 15:01:02 -0400
+	id S1756018AbYJITBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Oct 2008 15:01:12 -0400
 Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
-	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J10hw014123
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:01:01 -0400
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m99J1B6r014147
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Oct 2008 15:01:11 -0400
 In-Reply-To: <20081009185643.13947.64733.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RDMA disconnects yield an upcall from the RDMA connection manager,
-which can race with rpc transport close, e.g. on ^C of a mount.
-Ensure any rdma cm_id and qp are fully destroyed before continuing.
+The RPC/RDMA protocol allows clients and servers to avoid RDMA
+operations for data which is purely the result of XDR padding.
+On the client, automatically insert the necessary padding for
+such server replies, and optionally don't marshal such chunks.
 
 Signed-off-by: Tom Talpey <talpey@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/verbs.c |   20 +++++++++-----------
- 1 files changed, 9 insertions(+), 11 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   21 +++++++++++++++++++--
+ net/sunrpc/xprtrdma/transport.c |    9 +++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++++
+ 3 files changed, 33 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index e3fe905..d94f379 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -565,6 +565,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	return 0;
- out2:
- 	rdma_destroy_id(ia->ri_id);
-+	ia->ri_id = NULL;
- out1:
- 	return rc;
- }
-@@ -585,15 +586,17 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
- 		dprintk("RPC:       %s: ib_dereg_mr returned %i\n",
- 			__func__, rc);
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 721dae7..d245c0b 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -118,6 +118,10 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
  	}
--	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id) && ia->ri_id->qp)
--		rdma_destroy_qp(ia->ri_id);
-+	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
-+		if (ia->ri_id->qp)
-+			rdma_destroy_qp(ia->ri_id);
-+		rdma_destroy_id(ia->ri_id);
-+		ia->ri_id = NULL;
+ 
+ 	if (xdrbuf->tail[0].iov_len) {
++		/* the rpcrdma protocol allows us to omit any trailing
++		 * xdr pad bytes, saving the server an RDMA operation. */
++		if (xdrbuf->tail[0].iov_len < 4 && xprt_rdma_pad_optimize)
++			return n;
+ 		if (n == nsegs)
+ 			return 0;
+ 		seg[n].mr_page = NULL;
+@@ -594,7 +598,7 @@ rpcrdma_count_chunks(struct rpcrdma_rep *rep, unsigned int max, int wrchunk, __b
+  * Scatter inline received data back into provided iov's.
+  */
+ static void
+-rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len)
++rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ {
+ 	int i, npages, curlen, olen;
+ 	char *destp;
+@@ -660,6 +664,13 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len)
+ 	} else
+ 		rqst->rq_rcv_buf.tail[0].iov_len = 0;
+ 
++	if (pad) {
++		/* implicit padding on terminal chunk */
++		unsigned char *p = rqst->rq_rcv_buf.tail[0].iov_base;
++		while (pad--)
++			p[rqst->rq_rcv_buf.tail[0].iov_len++] = 0;
 +	}
- 	if (ia->ri_pd != NULL && !IS_ERR(ia->ri_pd)) {
- 		rc = ib_dealloc_pd(ia->ri_pd);
- 		dprintk("RPC:       %s: ib_dealloc_pd returned %i\n",
- 			__func__, rc);
- 	}
--	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id))
--		rdma_destroy_id(ia->ri_id);
- }
++
+ 	if (copy_len)
+ 		dprintk("RPC:       %s: %d bytes in"
+ 			" %d extra segments (%d lost)\n",
+@@ -794,14 +805,20 @@ repost:
+ 			    ((unsigned char *)iptr - (unsigned char *)headerp);
+ 			status = rep->rr_len + rdmalen;
+ 			r_xprt->rx_stats.total_rdma_reply += rdmalen;
++			/* special case - last chunk may omit padding */
++			if (rdmalen &= 3) {
++				rdmalen = 4 - rdmalen;
++				status += rdmalen;
++			}
+ 		} else {
+ 			/* else ordinary inline */
++			rdmalen = 0;
+ 			iptr = (__be32 *)((unsigned char *)headerp + 28);
+ 			rep->rr_len -= 28; /*sizeof *headerp;*/
+ 			status = rep->rr_len;
+ 		}
+ 		/* Fix up the rpc results for upper layer */
+-		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len);
++		rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len, rdmalen);
+ 		break;
  
+ 	case __constant_htonl(RDMA_NOMSG):
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index ec6d1e7..c7d2380 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -71,6 +71,7 @@ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_inline_write_padding;
+ static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
++                int xprt_rdma_pad_optimize = 0;
+ 
+ #ifdef RPC_DEBUG
+ 
+@@ -136,6 +137,14 @@ static ctl_table xr_tunables_table[] = {
+ 		.extra2		= &max_memreg,
+ 	},
+ 	{
++		.ctl_name       = CTL_UNNUMBERED,
++		.procname	= "rdma_pad_optimize",
++		.data		= &xprt_rdma_pad_optimize,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec,
++	},
++	{
+ 		.ctl_name = 0,
+ 	},
+ };
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 2db2344..fde6499 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -280,6 +280,11 @@ struct rpcrdma_xprt {
+ #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
+ #define rpcx_to_rdmad(x) (rpcx_to_rdmax(x)->rx_data)
+ 
++/* Setting this to 0 ensures interoperability with early servers.
++ * Setting this to 1 enhances certain unaligned read/write performance.
++ * Default is 0, see sysctl entry and rpc_rdma.c rpcrdma_convert_iovs() */
++extern int xprt_rdma_pad_optimize;
++
  /*
-@@ -751,21 +754,16 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		if (rc)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
- 				" returned %i\n", __func__, rc);
-+		rdma_destroy_qp(ia->ri_id);
-+		ia->ri_id->qp = NULL;
- 	}
- 
--	ep->rep_func = NULL;
--
- 	/* padding - could be done in rpcrdma_buffer_destroy... */
- 	if (ep->rep_pad_mr) {
- 		rpcrdma_deregister_internal(ia, ep->rep_pad_mr, &ep->rep_pad);
- 		ep->rep_pad_mr = NULL;
- 	}
- 
--	if (ia->ri_id->qp) {
--		rdma_destroy_qp(ia->ri_id);
--		ia->ri_id->qp = NULL;
--	}
--
- 	rpcrdma_clean_cq(ep->rep_cq);
- 	rc = ib_destroy_cq(ep->rep_cq);
- 	if (rc)
+  * Interface Adapter calls - xprtrdma/verbs.c
+  */
 
