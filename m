@@ -1,110 +1,102 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: cb_recall error handling on server
-Date: Fri, 10 Oct 2008 16:22:53 -0400
-Message-ID: <20081010202253.GD19415@fieldses.org>
-References: <48EF256E.3060806@panasas.com>
+Subject: Re: [PATCH 11/12] svcrdma: Add a message log string to indicate if
+	FastReg is being used
+Date: Fri, 10 Oct 2008 17:02:45 -0400
+Message-ID: <20081010210245.GF19415@fieldses.org>
+References: <1223069629-5267-7-git-send-email-tom@opengridcomputing.com> <1223069629-5267-8-git-send-email-tom@opengridcomputing.com> <1223069629-5267-9-git-send-email-tom@opengridcomputing.com> <1223069629-5267-10-git-send-email-tom@opengridcomputing.com> <1223069629-5267-11-git-send-email-tom@opengridcomputing.com> <1223069629-5267-12-git-send-email-tom@opengridcomputing.com> <20081008224840.GF14527@fieldses.org> <48EDA691.9080108@opengridcomputing.com> <20081009162623.GD28785@fieldses.org> <48EE5193.2090702@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35227 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:51671 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760696AbYJJUXD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Oct 2008 16:23:03 -0400
-In-Reply-To: <48EF256E.3060806@panasas.com>
+	id S1760394AbYJJVCs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Oct 2008 17:02:48 -0400
+In-Reply-To: <48EE5193.2090702@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 10, 2008 at 11:50:38AM +0200, Benny Halevy wrote:
-> Bruce, I was looking into nfsd4_cb_recall and I noticed
-> that in case the first try erred with -EIO we
-> retry via the following path:
-> 
-> 	while (retries--) {
-> 		switch (status) {
-> 		case -EIO:
-> 			/* Network partition? */
-> 			atomic_set(&clp->cl_callback.cb_set, 0);
-> 		case -EBADHANDLE:
-> 		case -NFS4ERR_BAD_STATEID:
-> 			/* Race: client probably got cb_recall
-> 			 * before open reply granting delegation */
-> 			break;
-> 
-> The problem I see is that nobody seem to set clp->cl_callback.cb_set
-> back to one in case the retry succeeds.
+On Thu, Oct 09, 2008 at 01:46:43PM -0500, Tom Tucker wrote:
+> Coming up with a name for the command is probably
+> harder than writing it.
+>
+> Here it is...
 
-This is a bit delicate.
+Neat-o, thanks.
 
-We use cb_set in part to decide when to send nfserr_cb_path_down (see
-nfsd4_renew()).
-
-We depend on the cb_path_down error to notify the client in the case
-where the callback goes down.  So we'd like to make sure the client gets
-that error before we give up and revoke the delegation, which we do
-after a lease period.
-
-If the lease period is l seconds, and we wait t seconds before setting
-cb_set, then we'd better hope the client is polling at least every l-t
-seconds.
-
-So actually we should be setting the timeouts so that first delay (t) is
-small enough that l-t will be larger than any client's polling interval.
-Unfortunately, while clients *are* supposed to renew more frequently
-than l, there's not really any guarantee of how much more frequently.
-
-After this patch I think (looking at the retry settings) we could be
-waiting up to a whole lease period before starting to return
-nfserr_cb_path_down, which is clearly bad.  But even before it the
-delay's probably too big.
-
-The consequences, though, are harsher than necessary currently: one
-timeout and we turn off delegations for that client permanently.  Two
-possible improvements come to mind:
-
-	- Turn off delegations provisionally on the first hint of
-	  trouble, but turn them back on if later retries succeed.
-	- Allow the decision about when to turn off delegations and the
-	  decision about when to return cb_path_down separately, and
-	  maybe do the latter a little sooner.
+Just for fun, I installed libibverbs from Fedora 9, modprobe'd
+ib_uverbs, and tried running this, and got a "libibverbs: Warning:
+couldn't open config directory '/etc/libibverbs.d'."  Is there a HOWTO
+somewhere that I should know about?
 
 --b.
 
-> 
-> How about this:
-> 
-> From: Benny Halevy <bhalevy@panasas.com>
-> Date: Fri, 10 Oct 2008 11:49:12 +0200
-> Subject: [PATCH] nfsd: reset cl_callback.cb_set only if all retries failed
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4callback.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index e198ead..aec4a34 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -467,7 +467,6 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
->  		switch (status) {
->  			case -EIO:
->  				/* Network partition? */
-> -				atomic_set(&clp->cl_callback.cb_set, 0);
->  			case -EBADHANDLE:
->  			case -NFS4ERR_BAD_STATEID:
->  				/* Race: client probably got cb_recall
-> @@ -479,6 +478,8 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
->  		ssleep(2);
->  		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
->  	}
-> +	if (status == -EIO)
-> +		atomic_set(&clp->cl_callback.cb_set, 0);
->  out_put_cred:
->  	/*
->  	 * Success or failure, now we're either waiting for lease expiration
-> -- 
-> 1.6.0.2
-> 
+>
+> #include <stdlib.h>
+> #include <stdio.h>
+> #include <infiniband/verbs.h>
+>
+> #define FAST_REG (1<<21) /* This will be in infiniband/verbs.h in the future */
+>
+> static char *safety_string(struct ibv_device_attr *a, struct ibv_device *dev)
+> {
+>         if (a->device_cap_flags & FAST_REG
+>             || dev->transport_type == IBV_TRANSPORT_IB)
+>                 return "Safe. NFSRDMA exposes only RPC memory.\n";
+>         else
+>                 return "Unsafe. NFSRDMA exposes Server memory.\n";
+> }
+>
+> int main(int argc, char *argv[])
+> {
+>         struct ibv_device **dev_list;
+>         struct ibv_context *context;
+>         struct ibv_device_attr attr;
+>         int dev_count;
+>         int i;
+>
+>         dev_list = ibv_get_device_list(&dev_count);
+>         for (i = 0; dev_list && i < dev_count; i++) {
+>                 printf("%-20s: ", ibv_get_device_name(dev_list[i]));
+>                 context = ibv_open_device(dev_list[i]);
+>                 if (!context) {
+>                         printf("could not open device\n");
+>                         continue;
+>                 }
+>                 if (!ibv_query_device(context, &attr))
+>                         printf("%s\n", safety_string(&attr, dev_list[i]));
+>                 else
+>                         printf("could not query device\n");
+>
+>                 ibv_close_device(context);
+>         }
+>         if (dev_list)
+>                 ibv_free_device_list(dev_list);
+>
+>         exit(0);
+> }
+>
+>> The one drawback is that it wouldn't be able to tell whether the
+>> currently running kernel actually supported fast registration.  Do you
+>> think a guess based on kernel version would be good enough for that?
+>>
+>
+> I do, yes.
+>
+>>> This code makes devices more secure than they used to be. So there is 
+>>> no  negative security regression here. This patchset simply improves 
+>>> the security for newer devices that support the new features.
+>>
+>> Yes, agreed.  Just to be clear, I *have* queued up all but these last
+>> two patches (the printk and documentation patches) for 2.6.28.  
+>>
+>
+> Ok, thanks.
+>
+>> --b.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
