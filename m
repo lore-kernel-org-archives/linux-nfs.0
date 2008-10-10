@@ -1,70 +1,58 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: cb_recall error handling on server
-Date: Fri, 10 Oct 2008 11:50:38 +0200
-Message-ID: <48EF256E.3060806@panasas.com>
+From: Tom Talpey <talpey@netapp.com>
+Subject: [PATCH 1/2] RPC/RDMA: correct the reconnect timer backoff
+Date: Fri, 10 Oct 2008 11:32:34 -0400
+Message-ID: <20081010153234.3983.29110.stgit@tmt3.nane.netapp.com>
+References: <20081010152634.3983.91559.stgit@tmt3.nane.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:3202 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751765AbYJJJuq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Oct 2008 05:50:46 -0400
+Received: from [216.240.26.4] ([216.240.26.4]:10531 "EHLO tmt3.nane.netapp.com"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1758191AbYJJPcg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Oct 2008 11:32:36 -0400
+Received: from tmt3.nane.netapp.com (localhost.localdomain [127.0.0.1])
+	by tmt3.nane.netapp.com (8.14.2/8.14.2) with ESMTP id m9AFWYoe004042
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Oct 2008 11:32:35 -0400
+In-Reply-To: <20081010152634.3983.91559.stgit-pfX4bTJKMULWwzOYslWYilaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce, I was looking into nfsd4_cb_recall and I noticed
-that in case the first try erred with -EIO we
-retry via the following path:
+The RPC/RDMA code had a constant 5-second reconnect backoff, and
+always performed it, even when re-establishing a connection to a
+server after the RPC layer closed it due to being idle. Make it
+an geometric backoff (up to 30 seconds), and don't delay idle
+reconnect.
 
-	while (retries--) {
-		switch (status) {
-		case -EIO:
-			/* Network partition? */
-			atomic_set(&clp->cl_callback.cb_set, 0);
-		case -EBADHANDLE:
-		case -NFS4ERR_BAD_STATEID:
-			/* Race: client probably got cb_recall
-			 * before open reply granting delegation */
-			break;
-
-The problem I see is that nobody seem to set clp->cl_callback.cb_set
-back to one in case the retry succeeds.
-
-How about this:
-
-From: Benny Halevy <bhalevy@panasas.com>
-Date: Fri, 10 Oct 2008 11:49:12 +0200
-Subject: [PATCH] nfsd: reset cl_callback.cb_set only if all retries failed
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Tom Talpey <talpey@netapp.com>
 ---
- fs/nfsd/nfs4callback.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index e198ead..aec4a34 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -467,7 +467,6 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- 		switch (status) {
- 			case -EIO:
- 				/* Network partition? */
--				atomic_set(&clp->cl_callback.cb_set, 0);
- 			case -EBADHANDLE:
- 			case -NFS4ERR_BAD_STATEID:
- 				/* Race: client probably got cb_recall
-@@ -479,6 +478,8 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- 		ssleep(2);
- 		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
- 	}
-+	if (status == -EIO)
-+		atomic_set(&clp->cl_callback.cb_set, 0);
- out_put_cred:
- 	/*
- 	 * Success or failure, now we're either waiting for lease expiration
--- 
-1.6.0.2
+ net/sunrpc/xprtrdma/transport.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index c2da680..9839c3d 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -463,6 +463,8 @@ xprt_rdma_close(struct rpc_xprt *xprt)
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+ 
+ 	dprintk("RPC:       %s: closing\n", __func__);
++	if (r_xprt->rx_ep.rep_connected > 0)
++		xprt->reestablish_timeout = 0;
+ 	xprt_disconnect_done(xprt);
+ 	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
+ }
+@@ -490,6 +492,11 @@ xprt_rdma_connect(struct rpc_task *task)
+ 			/* Reconnect */
+ 			schedule_delayed_work(&r_xprt->rdma_connect,
+ 				xprt->reestablish_timeout);
++			xprt->reestablish_timeout <<= 1;
++			if (xprt->reestablish_timeout > (30 * HZ))
++				xprt->reestablish_timeout = (30 * HZ);
++			else if (xprt->reestablish_timeout < (5 * HZ))
++				xprt->reestablish_timeout = (5 * HZ);
+ 		} else {
+ 			schedule_delayed_work(&r_xprt->rdma_connect, 0);
+ 			if (!RPC_IS_ASYNC(task))
 
