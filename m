@@ -1,33 +1,70 @@
-From: Michal Sojka <sojkam1-jQs2MHkdoM/twjQa/ONI9g@public.gmane.org>
-Subject: Re: Case sensitivity in NFS files
-Date: Fri, 10 Oct 2008 08:38:46 +0200
-Message-ID: <200810100838.46687.sojkam1@fel.cvut.cz>
-References: <200810091839.49445.sojkam1@fel.cvut.cz> <20081009183618.GA31168@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: cb_recall error handling on server
+Date: Fri, 10 Oct 2008 11:50:38 +0200
+Message-ID: <48EF256E.3060806@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from max.feld.cvut.cz ([147.32.192.36]:52100 "EHLO max.feld.cvut.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751889AbYJJGiv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Oct 2008 02:38:51 -0400
-In-Reply-To: <20081009183618.GA31168@fieldses.org>
+Received: from gw-ca.panasas.com ([66.104.249.162]:3202 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751765AbYJJJuq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Oct 2008 05:50:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday 09 of October 2008 20:36:18 J. Bruce Fields wrote:
-> Do you know which filesystem it exports?  I haven't played with exports
-> of case-insensitive filesystems, but the behavior you saw would seem
-> consistent with that:
+Bruce, I was looking into nfsd4_cb_recall and I noticed
+that in case the first try erred with -EIO we
+retry via the following path:
 
-Thanks for your reply. Now I see you are right. The exported filesystem is 
-ext3, so I expected it to be case sensitive, but if I check its behavior form 
-the shell on NAS machine it behaves as case insensitive. Probably there is 
-some patched kernel in the NAS machine. Unfortunately I do not have kernel 
-sources, as they ship them only for $20 on CD by snail mail.
+	while (retries--) {
+		switch (status) {
+		case -EIO:
+			/* Network partition? */
+			atomic_set(&clp->cl_callback.cb_set, 0);
+		case -EBADHANDLE:
+		case -NFS4ERR_BAD_STATEID:
+			/* Race: client probably got cb_recall
+			 * before open reply granting delegation */
+			break;
 
-So this explains the observed behavior. Thanks again.
+The problem I see is that nobody seem to set clp->cl_callback.cb_set
+back to one in case the retry succeeds.
 
-Michal S.
+How about this:
+
+From: Benny Halevy <bhalevy@panasas.com>
+Date: Fri, 10 Oct 2008 11:49:12 +0200
+Subject: [PATCH] nfsd: reset cl_callback.cb_set only if all retries failed
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfs4callback.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index e198ead..aec4a34 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -467,7 +467,6 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 		switch (status) {
+ 			case -EIO:
+ 				/* Network partition? */
+-				atomic_set(&clp->cl_callback.cb_set, 0);
+ 			case -EBADHANDLE:
+ 			case -NFS4ERR_BAD_STATEID:
+ 				/* Race: client probably got cb_recall
+@@ -479,6 +478,8 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 		ssleep(2);
+ 		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
+ 	}
++	if (status == -EIO)
++		atomic_set(&clp->cl_callback.cb_set, 0);
+ out_put_cred:
+ 	/*
+ 	 * Success or failure, now we're either waiting for lease expiration
+-- 
+1.6.0.2
+
