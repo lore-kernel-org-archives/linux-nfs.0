@@ -1,102 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 11/12] svcrdma: Add a message log string to indicate if
-	FastReg is being used
-Date: Fri, 10 Oct 2008 17:02:45 -0400
-Message-ID: <20081010210245.GF19415@fieldses.org>
-References: <1223069629-5267-7-git-send-email-tom@opengridcomputing.com> <1223069629-5267-8-git-send-email-tom@opengridcomputing.com> <1223069629-5267-9-git-send-email-tom@opengridcomputing.com> <1223069629-5267-10-git-send-email-tom@opengridcomputing.com> <1223069629-5267-11-git-send-email-tom@opengridcomputing.com> <1223069629-5267-12-git-send-email-tom@opengridcomputing.com> <20081008224840.GF14527@fieldses.org> <48EDA691.9080108@opengridcomputing.com> <20081009162623.GD28785@fieldses.org> <48EE5193.2090702@opengridcomputing.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 0/3] client-side lockd doesn't start UDP listener
+Date: Mon, 13 Oct 2008 10:15:30 +1100
+Message-ID: <18674.34066.316972.695627@notabene.brown>
+References: <20081003211305.9870.6835.stgit@ingres.1015granger.net>
+	<20081004213625.GA3709@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51671 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:48943 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760394AbYJJVCs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Oct 2008 17:02:48 -0400
-In-Reply-To: <48EE5193.2090702@opengridcomputing.com>
+	id S1754032AbYJLXPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 Oct 2008 19:15:45 -0400
+In-Reply-To: message from J. Bruce Fields on Saturday October 4
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 09, 2008 at 01:46:43PM -0500, Tom Tucker wrote:
-> Coming up with a name for the command is probably
-> harder than writing it.
->
-> Here it is...
+On Saturday October 4, bfields@fieldses.org wrote:
+> On Fri, Oct 03, 2008 at 05:15:14PM -0400, Chuck Lever wrote:
+> > Hi Bruce, Neil-
+> > 
+> > Here's my initial proposal to address the NFSv2/v3 lock recovery issue 
+> > that results from having no UDP lockd listener.
+> > 
+> > Comments?  Did I miss anything?
+> 
+> Looks fine; I can't see any problem.  So I've applied to for-2.6.28.
+> (An ack from Neil would be reassuring, though, if he gets a chance.)
 
-Neat-o, thanks.
+Sorry for my tardiness.  September was a very hectic month for me.
 
-Just for fun, I installed libibverbs from Fedora 9, modprobe'd
-ib_uverbs, and tried running this, and got a "libibverbs: Warning:
-couldn't open config directory '/etc/libibverbs.d'."  Is there a HOWTO
-somewhere that I should know about?
+One consequence of this change is that lockd always listens on TCP
+even if NFSD and NFS are only using UDP.
+Do we care?  I suspect not.
 
---b.
+An alternative fix to the problem would be to always listen on UDP and
+only listen on TCP if it was requested.  This would probably be a
+smaller code change, and might in some sense be more flexible.
 
->
-> #include <stdlib.h>
-> #include <stdio.h>
-> #include <infiniband/verbs.h>
->
-> #define FAST_REG (1<<21) /* This will be in infiniband/verbs.h in the future */
->
-> static char *safety_string(struct ibv_device_attr *a, struct ibv_device *dev)
-> {
->         if (a->device_cap_flags & FAST_REG
->             || dev->transport_type == IBV_TRANSPORT_IB)
->                 return "Safe. NFSRDMA exposes only RPC memory.\n";
->         else
->                 return "Unsafe. NFSRDMA exposes Server memory.\n";
-> }
->
-> int main(int argc, char *argv[])
-> {
->         struct ibv_device **dev_list;
->         struct ibv_context *context;
->         struct ibv_device_attr attr;
->         int dev_count;
->         int i;
->
->         dev_list = ibv_get_device_list(&dev_count);
->         for (i = 0; dev_list && i < dev_count; i++) {
->                 printf("%-20s: ", ibv_get_device_name(dev_list[i]));
->                 context = ibv_open_device(dev_list[i]);
->                 if (!context) {
->                         printf("could not open device\n");
->                         continue;
->                 }
->                 if (!ibv_query_device(context, &attr))
->                         printf("%s\n", safety_string(&attr, dev_list[i]));
->                 else
->                         printf("could not query device\n");
->
->                 ibv_close_device(context);
->         }
->         if (dev_list)
->                 ibv_free_device_list(dev_list);
->
->         exit(0);
-> }
->
->> The one drawback is that it wouldn't be able to tell whether the
->> currently running kernel actually supported fast registration.  Do you
->> think a guess based on kernel version would be good enough for that?
->>
->
-> I do, yes.
->
->>> This code makes devices more secure than they used to be. So there is 
->>> no  negative security regression here. This patchset simply improves 
->>> the security for newer devices that support the new features.
->>
->> Yes, agreed.  Just to be clear, I *have* queued up all but these last
->> two patches (the printk and documentation patches) for 2.6.28.  
->>
->
-> Ok, thanks.
->
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Will we ever want to talk NLM over any other protocol? RDMA?
+Is UDP6 a different protocol in this context?  I suspect not.
+
+I guess I have a small leaning towards just always listening on UDP
+and leaving everything else the same, but it is small, not strong.  So
+unless either of you lean the same way I'm happy to give my
+
+ Acked-By: NeilBrown <neilb@suse.de>
+
+to the current patches.
+
+Thanks,
+NeilBrown
