@@ -1,27 +1,39 @@
-From: David Howells <dhowells@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: nfsd 2.6.28 merge plans
-Date: Tue, 14 Oct 2008 21:33:56 +0100
-Message-ID: <1228.1224016436@redhat.com>
-References: <20081014120753.7f968845.akpm@linux-foundation.org> <20081008232237.GH14527@fieldses.org>
-Cc: dhowells@redhat.com, "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Trond.Myklebust@netapp.com
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:53220 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751760AbYJNUeG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Oct 2008 16:34:06 -0400
-In-Reply-To: <20081014120753.7f968845.akpm@linux-foundation.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Date: Tue, 14 Oct 2008 16:51:44 -0400
+Message-ID: <1224017504.8907.42.camel@localhost>
+References: <20081014120753.7f968845.akpm@linux-foundation.org>
+	 <20081008232237.GH14527@fieldses.org>  <1228.1224016436@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754748AbYJNUwO@vger.kernel.org>
+In-Reply-To: <1228.1224016436@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andrew Morton <akpm@linux-foundation.org> wrote:
+On Tue, 2008-10-14 at 21:33 +0100, David Howells wrote:
+> Andrew Morton <akpm@linux-foundation.org> wrote:
+> 
+> > Is anything happening with David Howells's fscache and cachefiles work over
+> > there?
+> 
+> That's more NFS than NFSD.  I've tried emailing Trond a few times since
+> KS/Plumbers, but I've had no response, so I'm not sure.
+> 
+> David
 
-> Is anything happening with David Howells's fscache and cachefiles work over
-> there?
+I'm happy with the changes that you made after the plumbers conf, so as
+far as the NFS side of the patches is concerned, we should be close to
+ready to merge.
 
-That's more NFS than NFSD.  I've tried emailing Trond a few times since
-KS/Plumbers, but I've had no response, so I'm not sure.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-David
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
