@@ -1,67 +1,34 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: file open for write fails under stress
-Date: Tue, 14 Oct 2008 13:10:32 -0400
-Message-ID: <20081014171032.GA17899@fieldses.org>
-References: <48F3D106.9020203@yadan.net>
+Subject: Re: [PATCH 0/3] client-side lockd doesn't start UDP listener
+Date: Tue, 14 Oct 2008 13:43:39 -0400
+Message-ID: <20081014174339.GD17899@fieldses.org>
+References: <20081003211305.9870.6835.stgit@ingres.1015granger.net> <20081004213625.GA3709@fieldses.org> <18674.34066.316972.695627@notabene.brown> <CCAC2CA2-FEAE-4383-9F7D-F63BBF0E701E@oracle.com> <20081013174613.GH28864@fieldses.org> <668D398B-7814-4831-ABC2-8F8CF1FBE4D0@oracle.com> <18676.27741.921124.742371@notabene.brown> <5ACEC030-6463-445B-9B1B-9220EB3566C5@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Omry Yadan <omry-FZzTFxfWWV5eoWH0uzbU5w@public.gmane.org>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34915 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:51942 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751944AbYJNRKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Oct 2008 13:10:34 -0400
-In-Reply-To: <48F3D106.9020203-FZzTFxfWWV5eoWH0uzbU5w@public.gmane.org>
+	id S1751307AbYJNRno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Oct 2008 13:43:44 -0400
+In-Reply-To: <5ACEC030-6463-445B-9B1B-9220EB3566C5@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 14, 2008 at 12:51:50AM +0200, Omry Yadan wrote:
-> I have an application that open many files for writing very fast, in a
-> way - it can almost be looked as a file system stress test.
-> 
-> 
-> my application is single threaded, and I noticed the following problem
-> when running a single instance of it:
-> 
-> 
-> at some point, after opening (and closing) many files for writing, the
-> application fails to open a file for writing.
+On Tue, Oct 14, 2008 at 11:52:52AM -0400, Chuck Lever wrote:
+> On Oct 14, 2008, at Oct 14, 2008, 5:54 AM, Neil Brown wrote:
+>> I agree that the man page should reflect reality.
+>
+> Several people have said that, but no-one has suggested what specific  
+> parts of the man page are problematic.
 
-Do you know what error exactly the open is failing with?
+Look at, e.g., the text for "-T":
+	Disable rpc.nfsd from accepting TCP connections from clients.
+
+It should probably say lockd is unaffected.  (If that's what we want.)
+
+Also the wording is a little imprecise, since rpc.nfsd itself doesn't
+accept network connections.
 
 --b.
-
-> if I sleep for 1 second and try again, it works.
-> 
-> 
-> my NFS server runs Debian etch 32 bit, with
-> 
-> nfs-kernel-server and nfs-common (1:1.0.10-6+etch.1).
-> 
-> 
-> client is also etch 32.
-> 
-> kernel on both is :2.6.18-6-686 #1 SMP Tue Jun 17 21:31:27 UTC 2008 i686
-> 
-> 
-> both machines are quad core.
-> 
-> 
-> 
-> I tried to mount with tcp and udp, and tried both sync and async export
-> point.
-> 
-> 
-> is this a known issue?
-> 
-> any known workaround that will not require messing up the application
-> with retry logic?
-> 
-> 
->     Omry.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
