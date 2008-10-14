@@ -1,68 +1,46 @@
-From: Omry Yadan <omry-FZzTFxfWWV5eoWH0uzbU5w@public.gmane.org>
-Subject: file open for write fails under stress
-Date: Tue, 14 Oct 2008 00:51:50 +0200
-Message-ID: <48F3D106.9020203@yadan.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 0/3] client-side lockd doesn't start UDP listener
+Date: Tue, 14 Oct 2008 20:54:37 +1100
+Message-ID: <18676.27741.921124.742371@notabene.brown>
+References: <20081003211305.9870.6835.stgit@ingres.1015granger.net>
+	<20081004213625.GA3709@fieldses.org>
+	<18674.34066.316972.695627@notabene.brown>
+	<CCAC2CA2-FEAE-4383-9F7D-F63BBF0E701E@oracle.com>
+	<20081013174613.GH28864@fieldses.org>
+	<668D398B-7814-4831-ABC2-8F8CF1FBE4D0@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from out6.bezeqint.net ([192.115.188.206]:54923 "EHLO
-	out6.bezeqint.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756094AbYJMXBM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2008 19:01:12 -0400
-Received: from yadan.net (bzq-79-177-137-242.red.bezeqint.net [79.177.137.242])
-	by out6.bezeqint.net (Postfix) with ESMTPA id 0181228606
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2008 00:49:29 +0200 (IST)
-Received: from localhost (localhost [127.0.0.1])
-	by yadan.net (Postfix) with ESMTP id 461161F2824
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2008 00:51:54 +0200 (IST)
-Received: from yadan.net ([127.0.0.1])
-	by localhost (home.firefang.net [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id KzBWFS3sQZHs for <linux-nfs@vger.kernel.org>;
-	Tue, 14 Oct 2008 00:51:54 +0200 (IST)
-Received: from [10.0.0.1] (main [10.0.0.1])
-	by yadan.net (Postfix) with ESMTPSA id E87E71F2824
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2008 00:51:53 +0200 (IST)
+Received: from mx2.suse.de ([195.135.220.15]:57377 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755078AbYJNJy3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Oct 2008 05:54:29 -0400
+In-Reply-To: message from Chuck Lever on Monday October 13
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have an application that open many files for writing very fast, in a
-way - it can almost be looked as a file system stress test.
+On Monday October 13, chuck.lever@oracle.com wrote:
+> 
+> NFSD start-up code makes two separate and unconditional calls to  
+> lockd_up(): one for UDP and one for TCP.  So whether or not NFSD  
+> actually honors the "-T" and "-U" flags, lockd certainly does not  
+> honor them in current (unpatched) code.
 
+Not exactly correct.  The calls are not unconditional.
+I assume we are looking at nfsd_init_socks in nfssvc.c
+Note the condition at the top:
+	if (!list_empty(&nfsd_serv->sv_permsocks))
+		return 0;
 
-my application is single threaded, and I noticed the following problem
-when running a single instance of it:
+If a UDP port has previously been created by a write to "portlist",
+then when the first thread is stared, no new sockets will be created,
+and nfsd (and lockd) will just listen on UDP.
 
+So your patches do make a real functional change which is more than
+just "always listen on UDP".
 
-at some point, after opening (and closing) many files for writing, the
-application fails to open a file for writing.
+I agree that the man page should reflect reality.
 
-if I sleep for 1 second and try again, it works.
-
-
-my NFS server runs Debian etch 32 bit, with
-
-nfs-kernel-server and nfs-common (1:1.0.10-6+etch.1).
-
-
-client is also etch 32.
-
-kernel on both is :2.6.18-6-686 #1 SMP Tue Jun 17 21:31:27 UTC 2008 i686
-
-
-both machines are quad core.
-
-
-
-I tried to mount with tcp and udp, and tried both sync and async export
-point.
-
-
-is this a known issue?
-
-any known workaround that will not require messing up the application
-with retry logic?
-
-
-    Omry.
-
+NeilBrown
