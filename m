@@ -1,219 +1,131 @@
 From: andros@netapp.com
-Subject: [PATCH 3/3] NFSD deferral processing
-Date: Wed, 15 Oct 2008 17:00:26 -0400
-Message-ID: <1224104426-12293-4-git-send-email-andros@netapp.com>
+Subject: [PATCH 1/3] SUNRPC add deferral processing callbacks
+Date: Wed, 15 Oct 2008 17:00:24 -0400
+Message-ID: <1224104426-12293-2-git-send-email-andros@netapp.com>
 References: <>
  <1224104426-12293-1-git-send-email-andros@netapp.com>
- <1224104426-12293-2-git-send-email-andros@netapp.com>
- <1224104426-12293-3-git-send-email-andros@netapp.com>
-Cc: bfields@fieldses.org, Andy Adamson <andros@netapp.com>
+Cc: bfields@fieldses.org, Andy Adamson <andros@netapp.com>,
+	Andy Adamson <andros-HgOvQuBEEgQAvxtiuMwx3w@public.gmane.org>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:39118 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753343AbYJOVAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753361AbYJOVAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 15 Oct 2008 17:00:32 -0400
-In-Reply-To: <1224104426-12293-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1224104426-12293-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Use a slab cache for nfsd4_compound_state allocation
+For EOS, NFSD compound RPC deferred processing should restart operation which
+caused the deferral.
 
-Save the struct nfsd4_compound_state and set the save_state callback for
-each request for potential deferral handling.
+Add a callback and a defer_data pointer in svc_rqst to enable svc_defer to
+save partial result state in the deferral request.
 
-If an NFSv4 operation causes a deferral, the save_state callback is called
-by svc_defer which saves the defer_data with the deferral, and sets the
-restore_state deferral callback.
+Add page pointer storage to svc_deferred_req to cache the pages holding the
+partially processed request.
 
-fh_put is called so that the deferral is not referencing the file handles,
-allowing umount of the file system.
+Add callbacks and a defer_data pointer in svc_deferred_request to enable
+svc_deferred_recv to restore and release the partial result state.
 
-Signed-off-by: Andy Adamson<andros@netapp.com>
+Signed-off-by: Andy Adamson<andros-HgOvQuBEEgQAvxtiuMwx3w@public.gmane.org>
 ---
- fs/nfsd/nfs4proc.c        |   47 +++++++++++++++++++-------------------------
- fs/nfsd/nfs4state.c       |   37 +++++++++++++++++++++++++++++++++++
- include/linux/nfsd/xdr4.h |    5 ++++
- 3 files changed, 62 insertions(+), 27 deletions(-)
+ include/linux/sunrpc/svc.h |   10 ++++++++++
+ net/sunrpc/svc_xprt.c      |   20 +++++++++++++++-----
+ 2 files changed, 25 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 1c19ff9..e60b359 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -813,37 +813,13 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
- 		nfsdstats.nfs4_opcount[opnum]++;
- }
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index dc69068..46a4097 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -215,6 +215,9 @@ struct svc_rqst {
+ 	struct svc_cred		rq_cred;	/* auth info */
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
++	/* callback to save deferred request state */
++	void (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
++	void			*rq_defer_data; /* defer state data to save */
  
--static void cstate_free(struct nfsd4_compound_state *cstate)
--{
--	if (cstate == NULL)
--		return;
--	fh_put(&cstate->current_fh);
--	fh_put(&cstate->save_fh);
--	BUG_ON(cstate->replay_owner);
--	kfree(cstate);
--}
--
--static struct nfsd4_compound_state *cstate_alloc(void)
--{
--	struct nfsd4_compound_state *cstate;
--
--	cstate = kmalloc(sizeof(struct nfsd4_compound_state), GFP_KERNEL);
--	if (cstate == NULL)
--		return NULL;
--	fh_init(&cstate->current_fh, NFS4_FHSIZE);
--	fh_init(&cstate->save_fh, NFS4_FHSIZE);
--	cstate->replay_owner = NULL;
--	return cstate;
--}
--
- /*
-  * RPC deferral callbacks
-  */
- static void
- nfsd4_release_deferred_state(struct svc_deferred_req *dreq)
+ 	size_t			rq_xprt_hlen;	/* xprt header len */
+ 	struct xdr_buf		rq_arg;
+@@ -323,6 +326,13 @@ struct svc_deferred_req {
+ 	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
+ 	size_t			xprt_hlen;
++	/* callbacks to restore and release deferred request state
++	 * set in rq_save_state */
++	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
++	void (*release_state)(struct svc_deferred_req *);
++	void			*defer_data; /* defer state data */
++	struct page		*respages[RPCSVC_MAXPAGES];
++	short			resused;
+ 	int			argslen;
+ 	__be32			args[0];
+ };
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index e46c825..531b325 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -876,6 +876,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ 	struct svc_xprt *xprt = dr->xprt;
+ 
+ 	if (too_many) {
++		if (dr->release_state)
++			dr->release_state(dr);
+ 		svc_xprt_put(xprt);
+ 		kfree(dr);
+ 		return;
+@@ -902,10 +904,10 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ static struct cache_deferred_req *svc_defer(struct cache_req *req)
  {
--	nfsd4_clear_respages(dreq->respages, dreq->resused);
--	cstate_free(dreq->defer_data);
-+	nfsd4_cstate_free(dreq->defer_data, dreq);
- }
+ 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
+-	struct svc_deferred_req *dr;
++	struct svc_deferred_req *dr = NULL;
  
- static void
-@@ -926,12 +902,22 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 		goto out;
+ 	if (rqstp->rq_arg.page_len)
+-		return NULL; /* if more than a page, give up FIXME */
++		goto out; /* if more than a page, give up FIXME */
+ 	if (rqstp->rq_deferred) {
+ 		dr = rqstp->rq_deferred;
+ 		rqstp->rq_deferred = NULL;
+@@ -914,9 +916,9 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		size_t size;
+ 		/* FIXME maybe discard if size too large */
+ 		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
+-		dr = kmalloc(size, GFP_KERNEL);
++		dr = kzalloc(size, GFP_KERNEL);
+ 		if (dr == NULL)
+-			return NULL;
++			goto out;
  
- 	status = nfserr_resource;
--	cstate = cstate_alloc();
-+	cstate = nfsd4_cstate_alloc(rqstp);
- 	if (cstate == NULL)
- 		goto out;
+ 		dr->handle.owner = rqstp->rq_server;
+ 		dr->prot = rqstp->rq_prot;
+@@ -935,7 +937,13 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 	dr->xprt = rqstp->rq_xprt;
  
-+	if (rqstp->rq_deferred && rqstp->rq_deferred->defer_data) {
-+		resp->opcnt = cstate->last_op_cnt;
-+		resp->p = cstate->last_op_p;
-+		fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_NOP);
-+		fh_verify(rqstp, &cstate->save_fh, 0, NFSD_MAY_NOP);
-+	}
-+	rqstp->rq_defer_data = cstate;
-+	rqstp->rq_save_state = nfsd4_save_deferred_state;
-+
- 	status = nfs_ok;
- 	while (!status && resp->opcnt < args->opcnt) {
-+		cstate->last_op_p = resp->p;
- 		op = &args->ops[resp->opcnt++];
- 
- 		dprintk("nfsv4 compound op #%d/%d: %d (%s)\n",
-@@ -996,8 +982,15 @@ encode_op:
- 
- 		nfsd4_increment_op_stats(op->opnum);
- 	}
+ 	dr->handle.revisit = svc_revisit;
+-	return &dr->handle;
++	if (rqstp->rq_save_state)
++		rqstp->rq_save_state(rqstp, dr);
++out:
 +	rqstp->rq_defer_data = NULL;
 +	rqstp->rq_save_state = NULL;
 +
-+	if (status == nfserr_dropit) {
-+		cstate->last_op_cnt = resp->opcnt - 1;
-+		return status;
-+	}
- 
--	cstate_free(cstate);
-+	nfsd4_cstate_free(cstate, rqstp->rq_deferred);
- out:
- 	nfsd4_release_compoundargs(args);
- 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f266e45..002a57c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -91,6 +91,7 @@ static struct kmem_cache *stateowner_slab = NULL;
- static struct kmem_cache *file_slab = NULL;
- static struct kmem_cache *stateid_slab = NULL;
- static struct kmem_cache *deleg_slab = NULL;
-+static struct kmem_cache *cstate_slab;
- 
- void
- nfs4_lock_state(void)
-@@ -442,6 +443,37 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir)
- 	return clp;
++	return dr ? &dr->handle: NULL;
  }
  
-+void nfsd4_cstate_free(struct nfsd4_compound_state *cstate,
-+		       struct svc_deferred_req *dreq)
-+{
-+	if (dreq && dreq->release_state)
-+		nfsd4_clear_respages(dreq->respages, dreq->resused);
-+	if (cstate == NULL)
-+		return;
-+	fh_put(&cstate->current_fh);
-+	fh_put(&cstate->save_fh);
-+	BUG_ON(cstate->replay_owner);
-+	kmem_cache_free(cstate_slab, cstate);
-+}
-+
-+struct nfsd4_compound_state *nfsd4_cstate_alloc(struct svc_rqst *rqstp)
-+{
-+	struct nfsd4_compound_state *cstate;
-+
-+	if (rqstp->rq_deferred && rqstp->rq_deferred->defer_data) {
-+		cstate = rqstp->rq_deferred->defer_data;
-+		goto out;
-+	}
-+	cstate = kmem_cache_alloc(cstate_slab, GFP_KERNEL);
-+	if (cstate == NULL)
-+		return NULL;
-+	fh_init(&cstate->current_fh, NFS4_FHSIZE);
-+	fh_init(&cstate->save_fh, NFS4_FHSIZE);
-+	cstate->replay_owner = NULL;
-+out:
-+	return cstate;
-+}
-+
- static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
- {
- 	memcpy(target->cl_verifier.data, source->data,
-@@ -986,6 +1018,7 @@ nfsd4_free_slabs(void)
- 	nfsd4_free_slab(&file_slab);
- 	nfsd4_free_slab(&stateid_slab);
- 	nfsd4_free_slab(&deleg_slab);
-+	nfsd4_free_slab(&cstate_slab);
+ /*
+@@ -959,6 +967,8 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
+ 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_respages    = rqstp->rq_pages;
++	if (dr->restore_state)
++		dr->restore_state(rqstp, dr);
+ 	return (dr->argslen<<2) - dr->xprt_hlen;
  }
  
- static int
-@@ -1007,6 +1040,10 @@ nfsd4_init_slabs(void)
- 			sizeof(struct nfs4_delegation), 0, 0, NULL);
- 	if (deleg_slab == NULL)
- 		goto out_nomem;
-+	cstate_slab = kmem_cache_create("nfsd4_compound_states",
-+			sizeof(struct nfsd4_compound_state), 0, 0, NULL);
-+	if (cstate_slab == NULL)
-+		goto out_nomem;
- 	return 0;
- out_nomem:
- 	nfsd4_free_slabs();
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index f3495ae..3407f4b 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -48,6 +48,8 @@ struct nfsd4_compound_state {
- 	struct svc_fh current_fh;
- 	struct svc_fh save_fh;
- 	struct nfs4_stateowner *replay_owner;
-+	__be32 *last_op_p;
-+	u32 last_op_cnt;
- };
- 
- struct nfsd4_change_info {
-@@ -447,6 +449,9 @@ extern void nfsd4_cache_rqst_pages(struct svc_rqst *rqstp,
- 		struct page **respages, short *resused);
- extern void nfsd4_restore_rqst_pages(struct svc_rqst *rqstp,
- 		struct page **respages, short resused);
-+extern struct nfsd4_compound_state *nfsd4_cstate_alloc(struct svc_rqst *rqstp);
-+extern void nfsd4_cstate_free(struct nfsd4_compound_state *cstate,
-+		struct svc_deferred_req *dreq);
- extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_setclientid *setclid);
 -- 
 1.5.4.3
 
