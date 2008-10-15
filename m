@@ -1,49 +1,40 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] sunrpc: make warning in svc_check_conn_limits() more
-	generic
-Date: Wed, 15 Oct 2008 16:21:02 -0400
-Message-ID: <20081015202102.GC5038@fieldses.org>
-References: <1221225127-6042-1-git-send-email-jlayton@redhat.com> <20080924215742.GG10841@fieldses.org> <20080925162315.6f29d092@tleilax.poochiereds.net> <20081015081457.56ef3778@tleilax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de
-To: Jeff Layton <jlayton@redhat.com>
+From: andros@netapp.com
+Subject: [PATCH 0/3] NFSD EOS deferral
+Date: Wed, 15 Oct 2008 17:00:23 -0400
+Message-ID: <1224104426-12293-1-git-send-email-andros@netapp.com>
+Cc: bfields@fieldses.org
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:59125 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:39118 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753325AbYJOUVG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Oct 2008 16:21:06 -0400
-In-Reply-To: <20081015081457.56ef3778-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id S1752844AbYJOVA2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Oct 2008 17:00:28 -0400
+In-Reply-To: <>
+References: <>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 15, 2008 at 08:14:57AM -0400, Jeff Layton wrote:
-> From the descriptions in those commits, it looks like the check
-> in svc_check_conn_limits was intended to prevent messages from too
-> many sockets overloading the receive buffers.
+Here's a patch set for review - it compiles and seems to work, but I haven't
+done stress testing, nor testing of all of the combinations of deferral cases.
 
-Aren't the receive buffers per-connection?
+A deferral occurs when NFSD needs information from an rpc cache, and an upcall
+is required. Instead of NFSD waiting for the cache to be filled by the upcall,
+the RPC request is inserted back into the receive stream for processing at a
+later time.
 
---b.
+Exactly once semantics require that NFSD compound RPC deferral processing
+restart at the operation that caused the deferral, instead of reprocessing the
+full compound RPC from the start possibly repeating operation processing.
+These patches add three callbacks, a data pointer, and page pointer storage
+to the sunrpc svc deferral architecture that NFSD uses to accomplish this goal.
 
-> We size the UDP receive buffers by the number of threads:
-> 
->     (serv->sv_nrthreads+3) * serv->sv_max_mesg
-> 
-> TCP receive buffers are statically sized fairly small and don't ever
-> seem to change since sv_max_mesg is pretty much set at server
-> creation time:
-> 
->      3 * serv->sv_max_mesg
-> 
-> ...the comments in svc_tcp_recvfrom explain the reason for it.
-> 
-> Given all of this, it seems reasonable to eliminate the check
-> entirely for TCP. For UDP, it looks like we expect that 1 buffer
-> can handle up to 20 connections. I'm not sure where this ratio
-> comes from though...
-> 
-> Anyone else have thoughts on this?
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+Deferrals that do not define the callbacks act as before. Care has been taken
+to ensure that combinations of deferrals - those from the NFSv4 server with
+the callbacks defined, and those from the RPC layer without the callbacks
+defined work together correctly.
+
+Thoughts, comments and suggestions are really appreciated...
+
+-->Andy Adamson <andros@netapp.com>
+
+
