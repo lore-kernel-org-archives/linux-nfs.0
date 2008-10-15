@@ -1,131 +1,61 @@
-From: andros@netapp.com
-Subject: [PATCH 1/3] SUNRPC add deferral processing callbacks
-Date: Wed, 15 Oct 2008 17:00:24 -0400
-Message-ID: <1224104426-12293-2-git-send-email-andros@netapp.com>
-References: <>
- <1224104426-12293-1-git-send-email-andros@netapp.com>
-Cc: bfields@fieldses.org, Andy Adamson <andros@netapp.com>,
-	Andy Adamson <andros-HgOvQuBEEgQAvxtiuMwx3w@public.gmane.org>
-To: linux-nfs@vger.kernel.org
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH/RFC]  Make nfs_file_cred more robust.
+Date: Thu, 16 Oct 2008 09:28:01 +1100
+Message-ID: <18678.28273.285015.747371@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39118 "EHLO mx2.netapp.com"
+Received: from ns.suse.de ([195.135.220.2]:48379 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753361AbYJOVAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Oct 2008 17:00:32 -0400
-In-Reply-To: <1224104426-12293-1-git-send-email-andros@netapp.com>
+	id S1752585AbYJOW2s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Oct 2008 18:28:48 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-For EOS, NFSD compound RPC deferred processing should restart operation which
-caused the deferral.
+Hi Trond,
+ I wonder if you would consider including the following patch which
+ makes nfs_file_cred a little more robust.
 
-Add a callback and a defer_data pointer in svc_rqst to enable svc_defer to
-save partial result state in the deferral request.
+ It isn't strictly needed with current mainline.  However we have a patch
+ set which (among other things) passes a 'struct file' down (via
+ ATTR_FILE) for a chmod call.
+ If chmod is called on e.g. a device special file, this will cause
+ nfs3_proc_setattr to call nfs_file_cred on a 'struct file' which does
+ not have an associated open context or credential.  That goes Oops.
 
-Add page pointer storage to svc_deferred_req to cache the pages holding the
-partially processed request.
+ Thanks for your consideration,
+NeilBrown
 
-Add callbacks and a defer_data pointer in svc_deferred_request to enable
-svc_deferred_recv to restore and release the partial result state.
+--------------
 
-Signed-off-by: Andy Adamson<andros-HgOvQuBEEgQAvxtiuMwx3w@public.gmane.org>
----
- include/linux/sunrpc/svc.h |   10 ++++++++++
- net/sunrpc/svc_xprt.c      |   20 +++++++++++++++-----
- 2 files changed, 25 insertions(+), 5 deletions(-)
+From: NeilBrown <neilb@suse.de>
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index dc69068..46a4097 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -215,6 +215,9 @@ struct svc_rqst {
- 	struct svc_cred		rq_cred;	/* auth info */
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
-+	/* callback to save deferred request state */
-+	void (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
-+	void			*rq_defer_data; /* defer state data to save */
+As not all files have an associated open_context (e.g. device special
+files), it is safest to test for the existence of the open context
+before de-referencing it.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 78a5922..63bf8f0 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -372,8 +372,12 @@ static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
  
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
-@@ -323,6 +326,13 @@ struct svc_deferred_req {
- 	union svc_addr_u	daddr;	/* where reply must come from */
- 	struct cache_deferred_req handle;
- 	size_t			xprt_hlen;
-+	/* callbacks to restore and release deferred request state
-+	 * set in rq_save_state */
-+	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
-+	void (*release_state)(struct svc_deferred_req *);
-+	void			*defer_data; /* defer state data */
-+	struct page		*respages[RPCSVC_MAXPAGES];
-+	short			resused;
- 	int			argslen;
- 	__be32			args[0];
- };
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index e46c825..531b325 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -876,6 +876,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- 	struct svc_xprt *xprt = dr->xprt;
- 
- 	if (too_many) {
-+		if (dr->release_state)
-+			dr->release_state(dr);
- 		svc_xprt_put(xprt);
- 		kfree(dr);
- 		return;
-@@ -902,10 +904,10 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ static inline struct rpc_cred *nfs_file_cred(struct file *file)
  {
- 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
--	struct svc_deferred_req *dr;
-+	struct svc_deferred_req *dr = NULL;
- 
- 	if (rqstp->rq_arg.page_len)
--		return NULL; /* if more than a page, give up FIXME */
-+		goto out; /* if more than a page, give up FIXME */
- 	if (rqstp->rq_deferred) {
- 		dr = rqstp->rq_deferred;
- 		rqstp->rq_deferred = NULL;
-@@ -914,9 +916,9 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 		size_t size;
- 		/* FIXME maybe discard if size too large */
- 		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
--		dr = kmalloc(size, GFP_KERNEL);
-+		dr = kzalloc(size, GFP_KERNEL);
- 		if (dr == NULL)
--			return NULL;
-+			goto out;
- 
- 		dr->handle.owner = rqstp->rq_server;
- 		dr->prot = rqstp->rq_prot;
-@@ -935,7 +937,13 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 	dr->xprt = rqstp->rq_xprt;
- 
- 	dr->handle.revisit = svc_revisit;
--	return &dr->handle;
-+	if (rqstp->rq_save_state)
-+		rqstp->rq_save_state(rqstp, dr);
-+out:
-+	rqstp->rq_defer_data = NULL;
-+	rqstp->rq_save_state = NULL;
-+
-+	return dr ? &dr->handle: NULL;
+-	if (file != NULL)
+-		return nfs_file_open_context(file)->cred;
++	if (file != NULL) {
++		struct nfs_open_context *ctx =
++			nfs_file_open_context(file);
++		if (ctx)
++			return ctx->cred;
++	}
+ 	return NULL;
  }
  
- /*
-@@ -959,6 +967,8 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
- 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
- 	rqstp->rq_daddr       = dr->daddr;
- 	rqstp->rq_respages    = rqstp->rq_pages;
-+	if (dr->restore_state)
-+		dr->restore_state(rqstp, dr);
- 	return (dr->argslen<<2) - dr->xprt_hlen;
- }
- 
--- 
-1.5.4.3
-
