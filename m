@@ -1,39 +1,31 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: David Howells <dhowells@redhat.com>
 Subject: Re: nfsd 2.6.28 merge plans
-Date: Tue, 14 Oct 2008 16:51:44 -0400
-Message-ID: <1224017504.8907.42.camel@localhost>
-References: <20081014120753.7f968845.akpm@linux-foundation.org>
-	 <20081008232237.GH14527@fieldses.org>  <1228.1224016436@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+Date: Wed, 15 Oct 2008 10:17:04 +0100
+Message-ID: <14531.1224062224@redhat.com>
+References: <1224017504.8907.42.camel@localhost> <20081014120753.7f968845.akpm@linux-foundation.org> <20081008232237.GH14527@fieldses.org> <1228.1224016436@redhat.com>
+Cc: dhowells@redhat.com, Andrew Morton <akpm@linux-foundation.org>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754748AbYJNUwO@vger.kernel.org>
-In-Reply-To: <1228.1224016436@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	jmorris@namei.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:46908 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750989AbYJOJRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Oct 2008 05:17:43 -0400
+In-Reply-To: <1224017504.8907.42.camel@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-10-14 at 21:33 +0100, David Howells wrote:
-> Andrew Morton <akpm@linux-foundation.org> wrote:
-> 
-> > Is anything happening with David Howells's fscache and cachefiles work over
-> > there?
-> 
-> That's more NFS than NFSD.  I've tried emailing Trond a few times since
-> KS/Plumbers, but I've had no response, so I'm not sure.
-> 
-> David
 
-I'm happy with the changes that you made after the plumbers conf, so as
-far as the NFS side of the patches is concerned, we should be close to
-ready to merge.
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> I'm happy with the changes that you made after the plumbers conf, so as
+> far as the NFS side of the patches is concerned, we should be close to
+> ready to merge.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+What I'm hoping is that JamesM will pass my creds patches to Linus in this
+merge window - that way you don't need to carry them in your tree as the main
+cachefiles patch requires them to deal with security.
+
+David
