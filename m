@@ -1,117 +1,87 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] sunrpc: make warning in svc_check_conn_limits() more  
-    generic
-Date: Thu, 16 Oct 2008 09:48:43 -0400
-Message-ID: <20081016094843.52786ef8@barsoom.rdu.redhat.com>
-References: <1221225127-6042-1-git-send-email-jlayton@redhat.com>
-	<20080924215742.GG10841@fieldses.org>
-	<20080925162315.6f29d092@tleilax.poochiereds.net>
-	<20081015081457.56ef3778@tleilax.poochiereds.net>
-	<20081015202102.GC5038@fieldses.org>
-	<20081015205118.14de4611@tleilax.poochiereds.net>
-	<fdcfe437d88ecb7d49ea4b2729407dc5.squirrel@neil.brown.name>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Enable NFSv4 callback server to listen on AF_INET6
+	sockets
+Date: Thu, 16 Oct 2008 17:41:11 -0400
+Message-ID: <20081016212513.21561.55647.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: "NeilBrown" <neilb@suse.de>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39155 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751125AbYJPNtK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Oct 2008 09:49:10 -0400
-In-Reply-To: <fdcfe437d88ecb7d49ea4b2729407dc5.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:16630 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754694AbYJPVm3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2008 17:42:29 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 16 Oct 2008 13:08:22 +1100 (EST)
-"NeilBrown" <neilb@suse.de> wrote:
+Allow the NFS callback server to listen for requests via an AF_INET6 or
+AF_INET socket when IPv6 support is present in the kernel.
 
-> On Thu, October 16, 2008 11:51 am, Jeff Layton wrote:
-> > On Wed, 15 Oct 2008 16:21:02 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >
-> >> On Wed, Oct 15, 2008 at 08:14:57AM -0400, Jeff Layton wrote:
-> >> > From the descriptions in those commits, it looks like the check
-> >> > in svc_check_conn_limits was intended to prevent messages from too
-> >> > many sockets overloading the receive buffers.
-> >>
-> >> Aren't the receive buffers per-connection?
-> >>
-> >> --b.
-> >>
-> >
-> > Oof...you're quite right. I misunderstood the code earlier. Thinking
-> > this through a bit more...
-> >
-> > I suppose the main worry is that we have a service with too few
-> > threads and a ton of sockets. We end up in a situation where the
-> > receive buffers aren't getting processed quickly enough and connections
-> > start stalling out.
-> >
-> > I suppose the only real remedy for that is to increase the number of
-> > threads, but that's not an option for services like lockd. So maybe
-> > ignoring this check on single-threaded services is the way to go after
-> > all? I don't see a way to make this auto-tuning based on memory since
-> > that doesn't seem to be what the check is intended to help...
-> 
-> Don't expect too much of the "intent" of this limit.
-> I think it just "seemed like a good idea at the time" with some idea that
-> a denial of service attack could swamp the NFS server with connections
-> if we didn't actively close some when there was a large number of them.
-> 
-> The patch which added the test is
-> http://git.kernel.org/?p=linux/kernel/git/tglx/history.git;a=commitdiff;h=afdb4fa2b04a7e90e0746bc3d031a552656c7709
-> 
-> which says nothing about why.
-> 
-> I found an old Email with a list of things I needed to do to be happy
-> with TCP support and it included:
-> 
-> 
-> - Guard against denial of service - impose some limit on the number of
->   incoming connections, and start randomly dropping connections when
->   this limit is exceeded.
-> 
-> Which again isn't very helpful.
-> 
-> I certainly wasn't thinking about the possibility of lockd getting
-> lots of connections despite being a single-thread service.
-> 
-> Maybe we should use
->  current->signal->rlim[RLIMIT_NOFILE].rlim_cur
-> as a minimum limit.  i.e if the number of connections is below this,
-> allow the connection.  If the number of connections is below the
-> currently calculated value, also allow the connection.
-> Only reject if the number is greater than both of these limits.
-> 
-> One problem there is that I don't think you can adjust the RLIMIT_NOFILE
-> limit for nfsd. It (it think) shares this number with init and all other
-> kernel threads.
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks for the info Neil, that helps clarify this...
+I just pulled from your origin/master branch, and this patch appears to
+be missing from the 2.6.28 merge.  The patch was posted originally in
+late August to linux-nfs.
 
-Using RLIMIT_NOFILE is an interesting idea. From a cursory look at the
-code, the default for RLIMIT_NOFILE looks like it's generally 1024.
-We'll have to figure that this limit will effectively act as a limit on
-the number of concurrent lockd clients. It's not too hard to imagine a
-server with more clients than this (think of a large compute cluster).
+  http://marc.info/?l=linux-nfs&m=121987073015249&w=2
 
-The problem as you mention, is that that limit won't be easily tunable.
-I think we need some mechanism for an admin to tune this limit. It
-doesn't have to be tunable on the fly, but shouldn't require a kernel
-rebuild. We could eliminate this check for single-threaded services
-entirely, but I suppose that leaves the door open for DoS attacks
-against those services.
+Bruce took the others in that series, but I think he may have left this
+one for you since it hits only the client.
 
-Maybe the best thing is to go with Bruce's idea and add a sv_maxconn
-field to the svc_serv struct. We could make that default to the max of
-RLIMIT_NOFILE rlim_cur value or the currently calculated value.
-Eventually we could add a mechanism to allow  someone to tune that
-value. A module parameter would probably be fine for lockd. We might
-even want to set the limit lower for things like the nfsv4 callback
-thread.
+ fs/nfs/callback.c |   19 +++++++++++++++----
+ 1 files changed, 15 insertions(+), 4 deletions(-)
 
-Thoughts?
--- 
-Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 6a09760..c2e9cfd 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -40,6 +40,16 @@ unsigned short nfs_callback_tcpport;
+ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
+ 
++/*
++ * If the kernel has IPv6 support available, always listen for
++ * both AF_INET and AF_INET6 requests.
++ */
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++static const sa_family_t	nfs_callback_family = AF_INET6;
++#else
++static const sa_family_t	nfs_callback_family = AF_INET;
++#endif
++
+ static int param_set_port(const char *val, struct kernel_param *kp)
+ {
+ 	char *endp;
+@@ -106,7 +116,7 @@ int nfs_callback_up(void)
+ 	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+ 		goto out;
+ 	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
+-				AF_INET, NULL);
++				nfs_callback_family, NULL);
+ 	ret = -ENOMEM;
+ 	if (!serv)
+ 		goto out_err;
+@@ -116,7 +126,8 @@ int nfs_callback_up(void)
+ 	if (ret <= 0)
+ 		goto out_err;
+ 	nfs_callback_tcpport = ret;
+-	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
++	dprintk("NFS: Callback listener port = %u (af %u)\n",
++			nfs_callback_tcpport, nfs_callback_family);
+ 
+ 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(nfs_callback_info.rqst)) {
+@@ -149,8 +160,8 @@ out:
+ 	mutex_unlock(&nfs_callback_mutex);
+ 	return ret;
+ out_err:
+-	dprintk("Couldn't create callback socket or server thread; err = %d\n",
+-		ret);
++	dprintk("NFS: Couldn't create callback socket or server thread; "
++		"err = %d\n", ret);
+ 	nfs_callback_info.users--;
+ 	goto out;
+ }
+
