@@ -1,144 +1,136 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/3] SUNRPC add deferral processing callbacks
-Date: Fri, 17 Oct 2008 13:48:03 -0400
-Message-ID: <20081017174803.GC11884@fieldses.org>
-References: <1224104426-12293-1-git-send-email-andros@netapp.com> <1224104426-12293-2-git-send-email-andros@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros-HgOvQuBEEgQAvxtiuMwx3w@public.gmane.org>
-To: andros@netapp.com
+From: Dean Hildebrand <seattleplus@gmail.com>
+Subject: [PATCH 2/2] NFS: Cleanup decode_attr_fs_locations function.
+Date: Fri, 17 Oct 2008 11:17:48 -0700
+Message-ID: <1224267468-775-2-git-send-email-dhildeb@us.ibm.com>
+References: <1224267468-775-1-git-send-email-dhildeb@us.ibm.com>
+Cc: Dean Hildebrand <dhildeb@us.ibm.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:41383 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755625AbYJQRsF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Oct 2008 13:48:05 -0400
-In-Reply-To: <1224104426-12293-2-git-send-email-andros@netapp.com>
+Received: from wf-out-1314.google.com ([209.85.200.169]:29260 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752194AbYJQSR5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2008 14:17:57 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so745036wfd.4
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2008 11:17:55 -0700 (PDT)
+In-Reply-To: <1224267468-775-1-git-send-email-dhildeb@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 15, 2008 at 05:00:24PM -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> For EOS, NFSD compound RPC deferred processing should restart operation which
-> caused the deferral.
-> 
-> Add a callback and a defer_data pointer in svc_rqst to enable svc_defer to
-> save partial result state in the deferral request.
-> 
-> Add page pointer storage to svc_deferred_req to cache the pages holding the
-> partially processed request.
-> 
-> Add callbacks and a defer_data pointer in svc_deferred_request to enable
-> svc_deferred_recv to restore and release the partial result state.
-> 
-> Signed-off-by: Andy Adamson<andros-HgOvQuBEEgQAvxtiuMwx3w@public.gmane.org>
+a) Reduce nesting level of loops.
+b) Use correct data types.
+c) Use nloc and nserv instead of n and m variable names.
+d) Try to clean up formatting of debugging statements.
+e) Move while loops to for loops.
 
-Could you fix the missing space there?
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+---
+ fs/nfs/nfs4xdr.c |   71 +++++++++++++++++++++++++++++-------------------------
+ 1 files changed, 38 insertions(+), 33 deletions(-)
 
-> ---
->  include/linux/sunrpc/svc.h |   10 ++++++++++
->  net/sunrpc/svc_xprt.c      |   20 +++++++++++++++-----
->  2 files changed, 25 insertions(+), 5 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index dc69068..46a4097 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -215,6 +215,9 @@ struct svc_rqst {
->  	struct svc_cred		rq_cred;	/* auth info */
->  	void *			rq_xprt_ctxt;	/* transport specific context ptr */
->  	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
-> +	/* callback to save deferred request state */
-> +	void (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
-> +	void			*rq_defer_data; /* defer state data to save */
->  
->  	size_t			rq_xprt_hlen;	/* xprt header len */
->  	struct xdr_buf		rq_arg;
-> @@ -323,6 +326,13 @@ struct svc_deferred_req {
->  	union svc_addr_u	daddr;	/* where reply must come from */
->  	struct cache_deferred_req handle;
->  	size_t			xprt_hlen;
-> +	/* callbacks to restore and release deferred request state
-> +	 * set in rq_save_state */
-> +	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
-> +	void (*release_state)(struct svc_deferred_req *);
-> +	void			*defer_data; /* defer state data */
-> +	struct page		*respages[RPCSVC_MAXPAGES];
-> +	short			resused;
->  	int			argslen;
->  	__be32			args[0];
->  };
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index e46c825..531b325 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -876,6 +876,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
->  	struct svc_xprt *xprt = dr->xprt;
->  
->  	if (too_many) {
-> +		if (dr->release_state)
-> +			dr->release_state(dr);
->  		svc_xprt_put(xprt);
->  		kfree(dr);
->  		return;
-> @@ -902,10 +904,10 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
->  static struct cache_deferred_req *svc_defer(struct cache_req *req)
->  {
->  	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
-> -	struct svc_deferred_req *dr;
-> +	struct svc_deferred_req *dr = NULL;
->  
->  	if (rqstp->rq_arg.page_len)
-> -		return NULL; /* if more than a page, give up FIXME */
-> +		goto out; /* if more than a page, give up FIXME */
->  	if (rqstp->rq_deferred) {
->  		dr = rqstp->rq_deferred;
->  		rqstp->rq_deferred = NULL;
-> @@ -914,9 +916,9 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
->  		size_t size;
->  		/* FIXME maybe discard if size too large */
->  		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
-> -		dr = kmalloc(size, GFP_KERNEL);
-> +		dr = kzalloc(size, GFP_KERNEL);
->  		if (dr == NULL)
-> -			return NULL;
-> +			goto out;
->  
->  		dr->handle.owner = rqstp->rq_server;
->  		dr->prot = rqstp->rq_prot;
-> @@ -935,7 +937,13 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
->  	dr->xprt = rqstp->rq_xprt;
->  
->  	dr->handle.revisit = svc_revisit;
-> -	return &dr->handle;
-> +	if (rqstp->rq_save_state)
-> +		rqstp->rq_save_state(rqstp, dr);
-> +out:
-> +	rqstp->rq_defer_data = NULL;
-> +	rqstp->rq_save_state = NULL;
-> +
-> +	return dr ? &dr->handle: NULL;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5e59481..0e78fbd 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2560,7 +2560,8 @@ out_eio:
+ 
+ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, struct nfs4_fs_locations *res)
+ {
+-	int n;
++	u32 nloc;
++	unsigned int i;
+ 	__be32 *p;
+ 	int status = -EIO;
+ 
+@@ -2574,53 +2575,57 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 	if (unlikely(status != 0))
+ 		goto out;
+ 	READ_BUF(4);
+-	READ32(n);
+-	if (n <= 0)
++	READ32(nloc);
++	if (nloc <= 0)
+ 		goto out_eio;
+-
+-	if (n > NFS4_FS_LOCATIONS_MAXENTRIES) {
+-		dprintk("%s: using first %u of %d fs locations\n",
+-			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, n);
+-		n = NFS4_FS_LOCATIONS_MAXENTRIES;
++	if (nloc > NFS4_FS_LOCATIONS_MAXENTRIES) {
++		dprintk("%s: using first %u of %u fs locations\n",
++			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, nloc);
++		nloc = NFS4_FS_LOCATIONS_MAXENTRIES;
+ 	} else {
+-		dprintk("%s: using %d fs locations\n",
+-			__func__, n);
++		dprintk("%s: using %u fs locations\n",
++			__func__, nloc);
+ 	}
+ 
+ 	res->nlocations = 0;
+-	while (res->nlocations < n) {
+-		u32 m;
+-		struct nfs4_fs_location *loc = &res->locations[res->nlocations];
++	for (i = 0; i < nloc; i++) {
++		u32 nserv;
++		unsigned int totalserv, j;
++		struct nfs4_fs_location *loc = &res->locations[i];
+ 
+ 		READ_BUF(4);
+-		READ32(m);
++		READ32(nserv);
++
++		totalserv = nserv;
++		if (nserv >  NFS4_FS_LOCATION_MAXSERVERS) {
++			dprintk("%s: Using first %u of %u servers "
++				"returned for location %u\n",
++				__func__, NFS4_FS_LOCATION_MAXSERVERS,
++				nserv, i);
++			nserv = NFS4_FS_LOCATION_MAXSERVERS;
++		}
+ 
+ 		loc->nservers = 0;
+-		dprintk("%s: servers ", __func__);
+-		while (loc->nservers < m) {
++		dprintk("%s: Servers ", __func__);
++		for (j = 0; j < nserv; j++) {
+ 			struct nfs4_string *server = &loc->servers[loc->nservers];
+ 			status = decode_opaque_inline(xdr, &server->len, &server->data);
+ 			if (unlikely(status != 0))
+ 				goto out_eio;
+ 			dprintk("%s ", server->data);
+-			if (loc->nservers < NFS4_FS_LOCATION_MAXSERVERS)
+-				loc->nservers++;
+-			else {
+-				unsigned int i;
+-				dprintk("%s: using first %u of %u servers "
+-					"returned for location %u\n",
+-						__func__,
+-						NFS4_FS_LOCATION_MAXSERVERS,
+-						m, res->nlocations);
+-				for (i = loc->nservers; i < m; i++) {
+-					unsigned int len;
+-					char *data;
+-					status = decode_opaque_inline(xdr, &len, &data);
+-					if (unlikely(status != 0))
+-						goto out_eio;
+-				}
+-			}
++			loc->nservers++;
++		}
++		dprintk("\n");
++
++		/* Decode and ignore overflow servers */
++		for (j = loc->nservers; j < totalserv; j++) {
++			unsigned int len;
++			char *data;
++			status = decode_opaque_inline(xdr, &len, &data);
++			if (unlikely(status != 0))
++				goto out_eio;
+ 		}
++
+ 		status = decode_pathname(xdr, &loc->rootpath);
+ 		if (unlikely(status != 0))
+ 			goto out_eio;
+-- 
+1.5.3.3
 
-I may not be thinking this through clearly, but: I think the correct
-place to initialize rq_defer_data and rq_save_state is not here but at
-the very start of request processing (in svc_recv or at the top of
-svc_process).  We shouldn't depend on svc_defer()--it may never get
-called.
-
---b.
-
->  }
->  
->  /*
-> @@ -959,6 +967,8 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
->  	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
->  	rqstp->rq_daddr       = dr->daddr;
->  	rqstp->rq_respages    = rqstp->rq_pages;
-> +	if (dr->restore_state)
-> +		dr->restore_state(rqstp, dr);
->  	return (dr->argslen<<2) - dr->xprt_hlen;
->  }
->  
-> -- 
-> 1.5.4.3
-> 
