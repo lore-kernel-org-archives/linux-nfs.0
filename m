@@ -1,61 +1,42 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: RPC retransmission of write requests containing bogus data
-Date: Fri, 17 Oct 2008 09:36:39 -0400
-Message-ID: <1224250599.7722.17.camel@localhost>
-References: <1224241273.9053.109.camel@zakaz.uk.xensource.com>
-	 <RTPCLUEXC1-PRDVjCRG000001ab@RTPMVEXC1-PRD.hq.netapp.com>
+Subject: Re: [PATCH] NFS: Enable NFSv4 callback server to listen on
+	AF_INET6 sockets
+Date: Fri, 17 Oct 2008 09:46:45 -0400
+Message-ID: <1224251205.7722.22.camel@localhost>
+References: <20081016212513.21561.55647.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Ian Campbell <Ian.Campbell@citrix.com>, linux-nfs@vger.kernel.org,
-	mchan-dY08KVG/lbpWk0Htik3J/w@public.gmane.org
-To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45578 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25980 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754414AbYJQNhj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Oct 2008 09:37:39 -0400
-In-Reply-To: <RTPCLUEXC1-PRDVjCRG000001ab-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+	id S1753403AbYJQNrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Oct 2008 09:47:40 -0400
+In-Reply-To: <20081016212513.21561.55647.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2008-10-17 at 09:32 -0400, Talpey, Thomas wrote:
-> At 07:01 AM 10/17/2008, Ian Campbell wrote:
-> >(please CC me, I am not currently subscribed to linux-nfs)
-> >...
-> >Presumably in the case of a decent NFS server the XID request cache
-> >would prevent the bogus data actually reaching the disk but on a
-> >non-decent server I suspect it might actually lead to corruption (AIUI
-> >the request cache is not a hard requirement of the NFS protocol?).
-> >Perhaps even a decent server might have timed out the entry in the cache
-> >after such a delay?
+On Thu, 2008-10-16 at 17:41 -0400, Chuck Lever wrote:
+> Allow the NFS callback server to listen for requests via an AF_INET6 or
+> AF_INET socket when IPv6 support is present in the kernel.
 > 
-> Unfortunately no - because 1) your retransmissions are not, in fact,
-> duplicates since the data has changed and 2) no NFSv3 reply cache
-> works perfectly, especially under heavy load. The NFSv4.1 session
-> addresses this, but that's not at issue here.
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
-> This is a really nasty race. The whole thing starts with the dropped
-> TCP segment evidenced at #2 of your trace. Then, the retransmission
-> appears to have been scheduled prior to the write reply making it back
-> to the client through the TCP storm, so the retransmit is actually pending
-> on the wire while the NFS write operation is completed.
+> I just pulled from your origin/master branch, and this patch appears to
+> be missing from the 2.6.28 merge.  The patch was posted originally in
+> late August to linux-nfs.
 > 
-> The fix here is to break the connection before retrying, a long-standing
-> pet peeve of mine that NFSv3 historically does not do. Setting the
-> clnt->cl_discrtry bit in the RPC client struct is all that's required. The
-> NFSv4 client does this by default, btw.
+>   http://marc.info/?l=linux-nfs&m=121987073015249&w=2
 > 
-> Tom.
+> Bruce took the others in that series, but I think he may have left this
+> one for you since it hits only the client.
 
-It's not a perfect fix, which is why we haven't done that for NFSv3.
+I didn't take it at the time because it wouldn't even apply, let alone
+compile, without commit e851db5b05408b89b9a9429a66814b79fabee2a1.
 
-When you break the connection, there is the chance that a reply to a
-non-idempotent request may get lost, and that the server doesn't
-recognise the retransmission due to the above mentioned imperfections
-with the replay cache. In that case, the client may get a downright
-_wrong_ reply (for instance, it may see an EEXIST reply to a mkdir
-request that was actually successful).
-
+I'll push it to Linus later today.
 -- 
 Trond Myklebust
 Linux NFS client maintainer
