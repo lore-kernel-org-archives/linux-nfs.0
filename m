@@ -1,87 +1,70 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Enable NFSv4 callback server to listen on AF_INET6
-	sockets
-Date: Thu, 16 Oct 2008 17:41:11 -0400
-Message-ID: <20081016212513.21561.55647.stgit@manray.1015granger.net>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] sunrpc: make warning in svc_check_conn_limits() more  
+    generic
+Date: Fri, 17 Oct 2008 11:14:29 +1100
+Message-ID: <18679.55525.146056.752860@notabene.brown>
+References: <1221225127-6042-1-git-send-email-jlayton@redhat.com>
+	<20080924215742.GG10841@fieldses.org>
+	<20080925162315.6f29d092@tleilax.poochiereds.net>
+	<20081015081457.56ef3778@tleilax.poochiereds.net>
+	<20081015202102.GC5038@fieldses.org>
+	<20081015205118.14de4611@tleilax.poochiereds.net>
+	<fdcfe437d88ecb7d49ea4b2729407dc5.squirrel@neil.brown.name>
+	<20081016094843.52786ef8@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:16630 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754694AbYJPVm3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2008 17:42:29 -0400
+Received: from mail.suse.de ([195.135.220.2]:33934 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753042AbYJQAOR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Oct 2008 20:14:17 -0400
+In-Reply-To: message from Jeff Layton on Thursday October 16
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the NFS callback server to listen for requests via an AF_INET6 or
-AF_INET socket when IPv6 support is present in the kernel.
+On Thursday October 16, jlayton@redhat.com wrote:
+> 
+> Thanks for the info Neil, that helps clarify this...
+> 
+> Using RLIMIT_NOFILE is an interesting idea. From a cursory look at the
+> code, the default for RLIMIT_NOFILE looks like it's generally 1024.
+> We'll have to figure that this limit will effectively act as a limit on
+> the number of concurrent lockd clients. It's not too hard to imagine a
+> server with more clients than this (think of a large compute cluster).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+If all those clients used UDP, this would not be a problem.  While I
+see the value of TCP for NFS, it doesn't seem as convincing for NLM.
 
-I just pulled from your origin/master branch, and this patch appears to
-be missing from the 2.6.28 merge.  The patch was posted originally in
-late August to linux-nfs.
+But I don't expect we have the luxury of insisting that clients use
+UDP for locking :-(
 
-  http://marc.info/?l=linux-nfs&m=121987073015249&w=2
+> 
+> The problem as you mention, is that that limit won't be easily tunable.
+> I think we need some mechanism for an admin to tune this limit. It
+> doesn't have to be tunable on the fly, but shouldn't require a kernel
+> rebuild. We could eliminate this check for single-threaded services
+> entirely, but I suppose that leaves the door open for DoS attacks
+> against those services.
+> 
+> Maybe the best thing is to go with Bruce's idea and add a sv_maxconn
+> field to the svc_serv struct. We could make that default to the max of
+> RLIMIT_NOFILE rlim_cur value or the currently calculated value.
+> Eventually we could add a mechanism to allow  someone to tune that
+> value. A module parameter would probably be fine for lockd. We might
+> even want to set the limit lower for things like the nfsv4 callback
+> thread.
+> 
+> Thoughts?
 
-Bruce took the others in that series, but I think he may have left this
-one for you since it hits only the client.
+A per-service setting that defaults to something reasonable like your
+suggestions and can be over-ridden by a module parameter sounds like a
+good idea.
+If you change the module parameter via
+ /sys/modules/lockd/parameters/max_connections
+then it wouldn't take effect until the service were stopped and restarted,
+but I expect that is acceptable (and could probably be 'fixed' if really
+needed).
 
- fs/nfs/callback.c |   19 +++++++++++++++----
- 1 files changed, 15 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 6a09760..c2e9cfd 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -40,6 +40,16 @@ unsigned short nfs_callback_tcpport;
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
- 
-+/*
-+ * If the kernel has IPv6 support available, always listen for
-+ * both AF_INET and AF_INET6 requests.
-+ */
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+static const sa_family_t	nfs_callback_family = AF_INET6;
-+#else
-+static const sa_family_t	nfs_callback_family = AF_INET;
-+#endif
-+
- static int param_set_port(const char *val, struct kernel_param *kp)
- {
- 	char *endp;
-@@ -106,7 +116,7 @@ int nfs_callback_up(void)
- 	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
- 		goto out;
- 	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
--				AF_INET, NULL);
-+				nfs_callback_family, NULL);
- 	ret = -ENOMEM;
- 	if (!serv)
- 		goto out_err;
-@@ -116,7 +126,8 @@ int nfs_callback_up(void)
- 	if (ret <= 0)
- 		goto out_err;
- 	nfs_callback_tcpport = ret;
--	dprintk("Callback port = 0x%x\n", nfs_callback_tcpport);
-+	dprintk("NFS: Callback listener port = %u (af %u)\n",
-+			nfs_callback_tcpport, nfs_callback_family);
- 
- 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(nfs_callback_info.rqst)) {
-@@ -149,8 +160,8 @@ out:
- 	mutex_unlock(&nfs_callback_mutex);
- 	return ret;
- out_err:
--	dprintk("Couldn't create callback socket or server thread; err = %d\n",
--		ret);
-+	dprintk("NFS: Couldn't create callback socket or server thread; "
-+		"err = %d\n", ret);
- 	nfs_callback_info.users--;
- 	goto out;
- }
-
+NeilBrown
