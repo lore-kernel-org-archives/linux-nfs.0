@@ -1,85 +1,156 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/2] lockd: set svc_serv->sv_maxconn to a more
-	reasonable value
-Date: Fri, 17 Oct 2008 17:18:33 -0400
-Message-ID: <20081017211833.GF14960@fieldses.org>
-References: <1224267970-15769-1-git-send-email-jlayton@redhat.com> <1224267970-15769-2-git-send-email-jlayton@redhat.com>
+From: Dean Hildebrand <seattleplus@gmail.com>
+Subject: Re: [PATCH 2/2] NFS: Cleanup decode_attr_fs_locations function.
+Date: Fri, 17 Oct 2008 15:01:52 -0700
+Message-ID: <48F90B50.5060605@gmail.com>
+References: <1224267468-775-1-git-send-email-dhildeb@us.ibm.com> <1224267468-775-2-git-send-email-dhildeb@us.ibm.com> <20081017185536.GC13791@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org, Dean Hildebrand <dhildeb@us.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43347 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756649AbYJQVS7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Oct 2008 17:18:59 -0400
-In-Reply-To: <1224267970-15769-2-git-send-email-jlayton@redhat.com>
+Received: from wf-out-1314.google.com ([209.85.200.173]:8407 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753076AbYJQWB4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2008 18:01:56 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so860420wfd.4
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2008 15:01:56 -0700 (PDT)
+In-Reply-To: <20081017185536.GC13791@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 17, 2008 at 02:26:10PM -0400, Jeff Layton wrote:
-> The default method for calculating the number of connections allowed
-> per RPC service arbitrarily limits single-threaded services to 80
-> connections. This is too low for services like lockd and artificially
-> limits the number of TCP clients that it can support.
-> 
-> Have lockd set a default sv_maxconn value to RLIMIT_NOFILE for the
-> lockd thread (usually this will be 1024). Also add a module parameter
-> to allow an admin to set this to an arbitrary value at module load
-> time.
 
-I guess this is OK.
 
-As long as we're picking a number out of thin air, I'd rather we make
-that obvious, instead of making it look like we made some kind of
-sophisticated choice that the poor reader will feel obliged to
-understand.
-
-So I'd be for a default that's just a constant, until someone has a
-better idea.
-
-What would actually happen if we allowed too many connections?  What
-would fail first?  Is there some way to detect that situation and use
-that to drop connections?
-
---b.
-
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/lockd/svc.c |    5 +++++
->  1 files changed, 5 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index c631a83..81c336a 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -61,6 +61,7 @@ static unsigned long		nlm_grace_period;
->  static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
->  static int			nlm_udpport, nlm_tcpport;
->  int				nsm_use_hostnames = 0;
-> +unsigned int			nlm_max_connections;
->  
->  /*
->   * Constants needed for the sysctl interface.
-> @@ -287,6 +288,9 @@ int lockd_up(void)
->  		goto destroy_and_out;
->  	}
->  
-> +	serv->sv_maxconn = nlm_max_connections ? nlm_max_connections :
-> +			    nlmsvc_task->signal->rlim[RLIMIT_NOFILE].rlim_cur;
-> +
->  	/*
->  	 * Note: svc_serv structures have an initial use count of 1,
->  	 * so we exit through here on both success and failure.
-> @@ -484,6 +488,7 @@ module_param_call(nlm_udpport, param_set_port, param_get_int,
->  module_param_call(nlm_tcpport, param_set_port, param_get_int,
->  		  &nlm_tcpport, 0644);
->  module_param(nsm_use_hostnames, bool, 0644);
-> +module_param(nlm_max_connections, uint, 0644);
->  
->  /*
->   * Initialising and terminating the module.
-> -- 
-> 1.5.5.1
-> 
+J. Bruce Fields wrote:
+> On Fri, Oct 17, 2008 at 11:17:48AM -0700, Dean Hildebrand wrote:
+>   
+>> a) Reduce nesting level of loops.
+>> b) Use correct data types.
+>> c) Use nloc and nserv instead of n and m variable names.
+>> d) Try to clean up formatting of debugging statements.
+>> e) Move while loops to for loops.
+>>     
+>
+> Does this also fix a possible infinite loop in the inner loop?
+>   
+Doh, I put that fix in this patch instead of the first.  I will move it 
+to the first. and apply your comments from
+the other email.
+Dean
+>     1
+>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+>> ---
+>>  fs/nfs/nfs4xdr.c |   71 +++++++++++++++++++++++++++++-------------------------
+>>  1 files changed, 38 insertions(+), 33 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index 5e59481..0e78fbd 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -2560,7 +2560,8 @@ out_eio:
+>>  
+>>  static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, struct nfs4_fs_locations *res)
+>>  {
+>> -	int n;
+>> +	u32 nloc;
+>> +	unsigned int i;
+>>  	__be32 *p;
+>>  	int status = -EIO;
+>>  
+>> @@ -2574,53 +2575,57 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+>>  	if (unlikely(status != 0))
+>>  		goto out;
+>>  	READ_BUF(4);
+>> -	READ32(n);
+>> -	if (n <= 0)
+>> +	READ32(nloc);
+>> +	if (nloc <= 0)
+>>  		goto out_eio;
+>> -
+>> -	if (n > NFS4_FS_LOCATIONS_MAXENTRIES) {
+>> -		dprintk("%s: using first %u of %d fs locations\n",
+>> -			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, n);
+>> -		n = NFS4_FS_LOCATIONS_MAXENTRIES;
+>> +	if (nloc > NFS4_FS_LOCATIONS_MAXENTRIES) {
+>> +		dprintk("%s: using first %u of %u fs locations\n",
+>> +			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, nloc);
+>> +		nloc = NFS4_FS_LOCATIONS_MAXENTRIES;
+>>  	} else {
+>> -		dprintk("%s: using %d fs locations\n",
+>> -			__func__, n);
+>> +		dprintk("%s: using %u fs locations\n",
+>> +			__func__, nloc);
+>>  	}
+>>  
+>>  	res->nlocations = 0;
+>> -	while (res->nlocations < n) {
+>> -		u32 m;
+>> -		struct nfs4_fs_location *loc = &res->locations[res->nlocations];
+>> +	for (i = 0; i < nloc; i++) {
+>> +		u32 nserv;
+>> +		unsigned int totalserv, j;
+>> +		struct nfs4_fs_location *loc = &res->locations[i];
+>>  
+>>  		READ_BUF(4);
+>> -		READ32(m);
+>> +		READ32(nserv);
+>> +
+>> +		totalserv = nserv;
+>> +		if (nserv >  NFS4_FS_LOCATION_MAXSERVERS) {
+>> +			dprintk("%s: Using first %u of %u servers "
+>> +				"returned for location %u\n",
+>> +				__func__, NFS4_FS_LOCATION_MAXSERVERS,
+>> +				nserv, i);
+>> +			nserv = NFS4_FS_LOCATION_MAXSERVERS;
+>> +		}
+>>  
+>>  		loc->nservers = 0;
+>> -		dprintk("%s: servers ", __func__);
+>> -		while (loc->nservers < m) {
+>> +		dprintk("%s: Servers ", __func__);
+>> +		for (j = 0; j < nserv; j++) {
+>>  			struct nfs4_string *server = &loc->servers[loc->nservers];
+>>  			status = decode_opaque_inline(xdr, &server->len, &server->data);
+>>  			if (unlikely(status != 0))
+>>  				goto out_eio;
+>>  			dprintk("%s ", server->data);
+>> -			if (loc->nservers < NFS4_FS_LOCATION_MAXSERVERS)
+>> -				loc->nservers++;
+>> -			else {
+>> -				unsigned int i;
+>> -				dprintk("%s: using first %u of %u servers "
+>> -					"returned for location %u\n",
+>> -						__func__,
+>> -						NFS4_FS_LOCATION_MAXSERVERS,
+>> -						m, res->nlocations);
+>> -				for (i = loc->nservers; i < m; i++) {
+>> -					unsigned int len;
+>> -					char *data;
+>> -					status = decode_opaque_inline(xdr, &len, &data);
+>> -					if (unlikely(status != 0))
+>> -						goto out_eio;
+>> -				}
+>> -			}
+>> +			loc->nservers++;
+>> +		}
+>> +		dprintk("\n");
+>> +
+>> +		/* Decode and ignore overflow servers */
+>> +		for (j = loc->nservers; j < totalserv; j++) {
+>> +			unsigned int len;
+>> +			char *data;
+>> +			status = decode_opaque_inline(xdr, &len, &data);
+>> +			if (unlikely(status != 0))
+>> +				goto out_eio;
+>>  		}
+>> +
+>>  		status = decode_pathname(xdr, &loc->rootpath);
+>>  		if (unlikely(status != 0))
+>>  			goto out_eio;
+>> -- 
+>> 1.5.3.3
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>     
