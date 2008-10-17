@@ -1,46 +1,46 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] NFS: Enable NFSv4 callback server to listen on
-	AF_INET6 sockets
-Date: Fri, 17 Oct 2008 09:46:45 -0400
-Message-ID: <1224251205.7722.22.camel@localhost>
-References: <20081016212513.21561.55647.stgit@manray.1015granger.net>
+From: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
+Subject: Re: RPC retransmission of write requests containing bogus data
+Date: Fri, 17 Oct 2008 09:51:01 -0400
+Message-ID: <RTPCLUEXC1-PRDllNY3000001ad@RTPMVEXC1-PRD.hq.netapp.com>
+References: <1224241273.9053.109.camel@zakaz.uk.xensource.com>
+ <RTPCLUEXC1-PRDVjCRG000001ab@RTPMVEXC1-PRD.hq.netapp.com>
+ <1224250599.7722.17.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Ian Campbell <Ian.Campbell@citrix.com>, linux-nfs@vger.kernel.org,
+	mchan-dY08KVG/lbpWk0Htik3J/w@public.gmane.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25980 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:37615 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753403AbYJQNrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Oct 2008 09:47:40 -0400
-In-Reply-To: <20081016212513.21561.55647.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1753855AbYJQNv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Oct 2008 09:51:57 -0400
+In-Reply-To: <1224250599.7722.17.camel@localhost>
+References: <1224241273.9053.109.camel-o4Be2W7LfRlXesXXhkcM7miJhflN2719@public.gmane.org>
+ <RTPCLUEXC1-PRDVjCRG000001ab-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+ <1224250599.7722.17.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-10-16 at 17:41 -0400, Chuck Lever wrote:
-> Allow the NFS callback server to listen for requests via an AF_INET6 or
-> AF_INET socket when IPv6 support is present in the kernel.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> I just pulled from your origin/master branch, and this patch appears to
-> be missing from the 2.6.28 merge.  The patch was posted originally in
-> late August to linux-nfs.
-> 
->   http://marc.info/?l=linux-nfs&m=121987073015249&w=2
-> 
-> Bruce took the others in that series, but I think he may have left this
-> one for you since it hits only the client.
+At 09:36 AM 10/17/2008, Trond Myklebust wrote:
+>On Fri, 2008-10-17 at 09:32 -0400, Talpey, Thomas wrote:
+>> The fix here is to break the connection before retrying, a long-standing
+>> pet peeve of mine that NFSv3 historically does not do. 
+>
+>It's not a perfect fix, which is why we haven't done that for NFSv3.
+>
+>When you break the connection, there is the chance that a reply to a
+>non-idempotent request may get lost, and that the server doesn't
+>recognise the retransmission due to the above mentioned imperfections
+>with the replay cache. In that case, the client may get a downright
+>_wrong_ reply (for instance, it may see an EEXIST reply to a mkdir
+>request that was actually successful).
 
-I didn't take it at the time because it wouldn't even apply, let alone
-compile, without commit e851db5b05408b89b9a9429a66814b79fabee2a1.
+Well, the NFSv4 client will suffer the same issue in the above case.
+So, it's choose your poison. The antidote is to adopt NFSv4.1 asap. ;-) 
 
-I'll push it to Linus later today.
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Sorry about the crossing replies btw. My own transmission was scheduled
+before pulling email to look for other replies! Hmm...
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Tom.
+
