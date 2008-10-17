@@ -1,146 +1,100 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/2] NFS: Cleanup decode_attr_fs_locations function.
-Date: Fri, 17 Oct 2008 14:55:36 -0400
-Message-ID: <20081017185536.GC13791@fieldses.org>
-References: <1224267468-775-1-git-send-email-dhildeb@us.ibm.com> <1224267468-775-2-git-send-email-dhildeb@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: [PATCH 0/3] NFSD EOS deferral
+Date: Fri, 17 Oct 2008 11:59:05 -0700
+Message-ID: <OF9E4C4BA6.37418EC7-ON882574E5.0067FB2B-882574E5.0068487F@us.ibm.com>
+References: <1224104426-12293-1-git-send-email-andros@netapp.com> <20081017174454.GB11884@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Dean Hildebrand <dhildeb@us.ibm.com>
-To: Dean Hildebrand <seattleplus@gmail.com>
+Content-Type: text/plain; charset="US-ASCII"
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:60062 "EHLO fieldses.org"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:59740 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753717AbYJQSzi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Oct 2008 14:55:38 -0400
-In-Reply-To: <1224267468-775-2-git-send-email-dhildeb@us.ibm.com>
+	id S1755171AbYJQS7J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Oct 2008 14:59:09 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e8.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id m9HIu5ql028662
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2008 14:56:05 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9HIx8Y6100096
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2008 14:59:08 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9HIx85P006406
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2008 14:59:08 -0400
+In-Reply-To: <20081017174454.GB11884@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 17, 2008 at 11:17:48AM -0700, Dean Hildebrand wrote:
-> a) Reduce nesting level of loops.
-> b) Use correct data types.
-> c) Use nloc and nserv instead of n and m variable names.
-> d) Try to clean up formatting of debugging statements.
-> e) Move while loops to for loops.
+linux-nfs-owner@vger.kernel.org wrote on 10/17/2008 10:44:54 AM:
 
-Does this also fix a possible infinite loop in the inner loop?
+> "J. Bruce Fields" <bfields@fieldses.org> 
+> 
+> On Wed, Oct 15, 2008 at 05:00:23PM -0400, andros@netapp.com wrote:
+> > Here's a patch set for review - it compiles and seems to work, butI 
+haven't
+> > done stress testing, nor testing of all of the combinations of 
+> deferral cases.
+> > 
+> > A deferral occurs when NFSD needs information from an rpc cache, 
+> and an upcall
+> > is required. Instead of NFSD waiting for the cache to be filled by
+> the upcall,
+> > the RPC request is inserted back into the receive stream for 
+processing at a
+> > later time.
+> > 
+> > Exactly once semantics require that NFSD compound RPC deferral 
+processing
+> > restart at the operation that caused the deferral, instead of 
+> reprocessing the
+> > full compound RPC from the start possibly repeating operation 
+processing.
+> > These patches add three callbacks, a data pointer, and page pointer 
+storage
+> > to the sunrpc svc deferral architecture that NFSD uses to 
+> accomplish this goal.
+> > 
+> > Deferrals that do not define the callbacks act as before. Care hasbeen 
+taken
+> > to ensure that combinations of deferrals - those from the NFSv4 server 
+with
+> > the callbacks defined, and those from the RPC layer without the 
+callbacks
+> > defined work together correctly.
+> > 
+> > Thoughts, comments and suggestions are really appreciated...
+> 
+> Requests longer than a page are still not deferred, so large writes that
+> trigger upcalls still get an ERR_DELAY.  OK, probably no big deal.
+> 
+> I don't think we can apply this until we have some way to track the
+> number and size of deferred requests outstanding and fall back on
+> ERR_DELAY if it's too much.
 
---b.
-
+But I thought that the problem here is that the Linux NFS client doesn't 
+handle this return code properly.
+Marc.
+ 
 > 
-> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-> ---
->  fs/nfs/nfs4xdr.c |   71 +++++++++++++++++++++++++++++-------------------------
->  1 files changed, 38 insertions(+), 33 deletions(-)
+> I do sometimes wonder whether continuing with the current
+> deferred-request approach is best, though:
 > 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 5e59481..0e78fbd 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -2560,7 +2560,8 @@ out_eio:
->  
->  static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, struct nfs4_fs_locations *res)
->  {
-> -	int n;
-> +	u32 nloc;
-> +	unsigned int i;
->  	__be32 *p;
->  	int status = -EIO;
->  
-> @@ -2574,53 +2575,57 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
->  	if (unlikely(status != 0))
->  		goto out;
->  	READ_BUF(4);
-> -	READ32(n);
-> -	if (n <= 0)
-> +	READ32(nloc);
-> +	if (nloc <= 0)
->  		goto out_eio;
-> -
-> -	if (n > NFS4_FS_LOCATIONS_MAXENTRIES) {
-> -		dprintk("%s: using first %u of %d fs locations\n",
-> -			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, n);
-> -		n = NFS4_FS_LOCATIONS_MAXENTRIES;
-> +	if (nloc > NFS4_FS_LOCATIONS_MAXENTRIES) {
-> +		dprintk("%s: using first %u of %u fs locations\n",
-> +			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, nloc);
-> +		nloc = NFS4_FS_LOCATIONS_MAXENTRIES;
->  	} else {
-> -		dprintk("%s: using %d fs locations\n",
-> -			__func__, n);
-> +		dprintk("%s: using %u fs locations\n",
-> +			__func__, nloc);
->  	}
->  
->  	res->nlocations = 0;
-> -	while (res->nlocations < n) {
-> -		u32 m;
-> -		struct nfs4_fs_location *loc = &res->locations[res->nlocations];
-> +	for (i = 0; i < nloc; i++) {
-> +		u32 nserv;
-> +		unsigned int totalserv, j;
-> +		struct nfs4_fs_location *loc = &res->locations[i];
->  
->  		READ_BUF(4);
-> -		READ32(m);
-> +		READ32(nserv);
-> +
-> +		totalserv = nserv;
-> +		if (nserv >  NFS4_FS_LOCATION_MAXSERVERS) {
-> +			dprintk("%s: Using first %u of %u servers "
-> +				"returned for location %u\n",
-> +				__func__, NFS4_FS_LOCATION_MAXSERVERS,
-> +				nserv, i);
-> +			nserv = NFS4_FS_LOCATION_MAXSERVERS;
-> +		}
->  
->  		loc->nservers = 0;
-> -		dprintk("%s: servers ", __func__);
-> -		while (loc->nservers < m) {
-> +		dprintk("%s: Servers ", __func__);
-> +		for (j = 0; j < nserv; j++) {
->  			struct nfs4_string *server = &loc->servers[loc->nservers];
->  			status = decode_opaque_inline(xdr, &server->len, &server->data);
->  			if (unlikely(status != 0))
->  				goto out_eio;
->  			dprintk("%s ", server->data);
-> -			if (loc->nservers < NFS4_FS_LOCATION_MAXSERVERS)
-> -				loc->nservers++;
-> -			else {
-> -				unsigned int i;
-> -				dprintk("%s: using first %u of %u servers "
-> -					"returned for location %u\n",
-> -						__func__,
-> -						NFS4_FS_LOCATION_MAXSERVERS,
-> -						m, res->nlocations);
-> -				for (i = loc->nservers; i < m; i++) {
-> -					unsigned int len;
-> -					char *data;
-> -					status = decode_opaque_inline(xdr, &len, &data);
-> -					if (unlikely(status != 0))
-> -						goto out_eio;
-> -				}
-> -			}
-> +			loc->nservers++;
-> +		}
-> +		dprintk("\n");
-> +
-> +		/* Decode and ignore overflow servers */
-> +		for (j = loc->nservers; j < totalserv; j++) {
-> +			unsigned int len;
-> +			char *data;
-> +			status = decode_opaque_inline(xdr, &len, &data);
-> +			if (unlikely(status != 0))
-> +				goto out_eio;
->  		}
-> +
->  		status = decode_pathname(xdr, &loc->rootpath);
->  		if (unlikely(status != 0))
->  			goto out_eio;
-> -- 
-> 1.5.3.3
+>    - If we're saving out large parts of the request anyway (the
+>      response pages), then maybe we should just keep rqstp's
+>      on the deferred request queue instead of copying to a separate
+>      deferred_request structure.
+>    - Then as long as we're saving all that request data, is there
+>      really significant savings from not keeping a thread around
+>      too?
 > 
+> So I wonder if it'd be better just to let threads sleep (and be more
+> aggressive about starting up new threads if appropriate, and add some
+> other heuristics to avoid a situation where the whole server stalls on a
+> temporarily wedged userspace daemon).
+> 
+> --b.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
