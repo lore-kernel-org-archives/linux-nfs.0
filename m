@@ -1,89 +1,61 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/2] sunrpc: add sv_maxconn field to svc_serv
-Date: Sat, 18 Oct 2008 09:02:46 -0400
-Message-ID: <1224334967-24754-1-git-send-email-jlayton@redhat.com>
+Subject: Re: [PATCH 2/2] lockd: set svc_serv->sv_maxconn to a more
+ reasonable value
+Date: Sat, 18 Oct 2008 09:06:31 -0400
+Message-ID: <20081018090631.14f375d3@tleilax.poochiereds.net>
+References: <1224267970-15769-1-git-send-email-jlayton@redhat.com>
+	<1224267970-15769-2-git-send-email-jlayton@redhat.com>
+	<20081017211833.GF14960@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48586 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:47477 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751296AbYJRNDy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Oct 2008 09:03:54 -0400
+	id S1750884AbYJRNG5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 18 Oct 2008 09:06:57 -0400
+In-Reply-To: <20081017211833.GF14960@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-svc_check_conn_limits() attempts to prevent denial of service attacks
-by having the service close old connections once it reaches a
-threshold. This threshold is based on the number of threads in the
-service:
+On Fri, 17 Oct 2008 17:18:33 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-	(serv->sv_nrthreads + 3) * 20
+> On Fri, Oct 17, 2008 at 02:26:10PM -0400, Jeff Layton wrote:
+> > The default method for calculating the number of connections allowed
+> > per RPC service arbitrarily limits single-threaded services to 80
+> > connections. This is too low for services like lockd and artificially
+> > limits the number of TCP clients that it can support.
+> > 
+> > Have lockd set a default sv_maxconn value to RLIMIT_NOFILE for the
+> > lockd thread (usually this will be 1024). Also add a module parameter
+> > to allow an admin to set this to an arbitrary value at module load
+> > time.
+> 
+> I guess this is OK.
+> 
+> As long as we're picking a number out of thin air, I'd rather we make
+> that obvious, instead of making it look like we made some kind of
+> sophisticated choice that the poor reader will feel obliged to
+> understand.
+> 
+> So I'd be for a default that's just a constant, until someone has a
+> better idea.
+> 
+> What would actually happen if we allowed too many connections?  What
+> would fail first?  Is there some way to detect that situation and use
+> that to drop connections?
+> 
 
-Once we reach this, we drop the oldest connections and a printk pops
-to warn the admin that they should increase the number of threads.
+I've gone ahead and respun these patches. The main changes are:
 
-Increasing the number of threads isn't an option however for services
-like lockd. We don't want to eliminate this check entirely for such
-services but we need some way to increase this limit.
+- fixed the printk in svc_check_conn_limits()
+- changed the default sv_maxconn to just use a constant value and added
+  a comment to clarify that it's basically arbitrary
+- made it so that sv_maxconn is updated in lockd's main loop so this
+  value can be changed on the fly
 
-This patch adds a sv_maxconn field to the svc_serv struct. When it's
-set to 0, we use the current method to calculate the max number of
-connections. RPC services can then set this on an as-needed basis.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc_xprt.c      |   16 ++++++++++++----
- 2 files changed, 13 insertions(+), 4 deletions(-)
-
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 3afe7fb..048da8a 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -61,6 +61,7 @@ struct svc_serv {
- 	unsigned int		sv_max_payload;	/* datagram payload size */
- 	unsigned int		sv_max_mesg;	/* max_payload + 1 page for overheads */
- 	unsigned int		sv_xdrsize;	/* XDR buffer size */
-+	unsigned int		sv_maxconn;	/* max connections allowed */
- 
- 	struct list_head	sv_permsocks;	/* all permanent sockets */
- 	struct list_head	sv_tempsocks;	/* all temporary sockets */
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..264f138 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -525,19 +525,27 @@ int svc_port_is_privileged(struct sockaddr *sin)
-  * The only somewhat efficient mechanism would be if drop old
-  * connections from the same IP first. But right now we don't even
-  * record the client IP in svc_sock.
-+ *
-+ * single-threaded services that expect a lot of clients will probably
-+ * need to set sv_maxconn to override the default value which is based
-+ * on the number of threads
-  */
- static void svc_check_conn_limits(struct svc_serv *serv)
- {
--	if (serv->sv_tmpcnt > (serv->sv_nrthreads+3)*20) {
-+	unsigned int limit = serv->sv_maxconn ? serv->sv_maxconn :
-+				(serv->sv_nrthreads+3) * 20;
-+
-+	if (serv->sv_tmpcnt > limit) {
- 		struct svc_xprt *xprt = NULL;
- 		spin_lock_bh(&serv->sv_lock);
- 		if (!list_empty(&serv->sv_tempsocks)) {
- 			if (net_ratelimit()) {
- 				/* Try to help the admin */
- 				printk(KERN_NOTICE "%s: too many open  "
--				       "connections, consider increasing the "
--				       "number of nfsd threads\n",
--				       serv->sv_name);
-+				       "connections, consider increasing %s\n",
-+				       serv->sv_name, serv->sv_maxconn ?
-+				       "the max number of connections." :
-+				       "the number of threads.");
- 			}
- 			/*
- 			 * Always select the oldest connection. It's not fair,
+Look OK?
 -- 
-1.5.5.1
-
+Jeff Layton <jlayton@redhat.com>
