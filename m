@@ -1,111 +1,73 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: [PATCH 2/2] NFS: Cleanup decode_attr_fs_locations function.
-Date: Fri, 17 Oct 2008 15:52:07 -0700
-Message-ID: <1224283927-4639-2-git-send-email-dhildeb@us.ibm.com>
-References: <1224283927-4639-1-git-send-email-dhildeb@us.ibm.com>
-Cc: Dean Hildebrand <dhildeb@us.ibm.com>
-To: linux-nfs@vger.kernel.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/2] lockd: set svc_serv->sv_maxconn to a more reasonable value
+Date: Sat, 18 Oct 2008 09:02:47 -0400
+Message-ID: <1224334967-24754-2-git-send-email-jlayton@redhat.com>
+References: <1224334967-24754-1-git-send-email-jlayton@redhat.com>
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.228]:40838 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754765AbYJQWwO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2008 18:52:14 -0400
-Received: by rv-out-0506.google.com with SMTP id k40so792184rvb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2008 15:52:13 -0700 (PDT)
-In-Reply-To: <1224283927-4639-1-git-send-email-dhildeb@us.ibm.com>
+Received: from mx2.redhat.com ([66.187.237.31]:48574 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750878AbYJRNDJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 18 Oct 2008 09:03:09 -0400
+In-Reply-To: <1224334967-24754-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-a) Use correct data types.
-b) Use nloc and nserv instead of n and m variable names.
-c) Try to clean up formatting of debugging statements.
-d) Move while loops to for loops.
+The default method for calculating the number of connections allowed
+per RPC service arbitrarily limits single-threaded services to 80
+connections. This is too low for services like lockd and artificially
+limits the number of TCP clients that it can support.
 
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Have lockd set a default sv_maxconn value to 1024 (which is the typical
+default value for RLIMIT_NOFILE. Also add a module parameter to allow an
+admin to set this to an arbitrary value.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4xdr.c |   38 ++++++++++++++++++++------------------
- 1 files changed, 20 insertions(+), 18 deletions(-)
+ fs/lockd/svc.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 0b4c565..b7de923 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2560,7 +2560,8 @@ out_eio:
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index c631a83..e804155 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -62,6 +62,9 @@ static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
+ static int			nlm_udpport, nlm_tcpport;
+ int				nsm_use_hostnames = 0;
  
- static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, struct nfs4_fs_locations *res)
- {
--	int n;
-+	u32 nloc;
-+	unsigned int i;
- 	__be32 *p;
- 	int status = -EIO;
++/* RLIM_NOFILE defaults to 1024. That seems like a reasonable default here. */
++static unsigned int		nlm_max_connections = 1024;
++
+ /*
+  * Constants needed for the sysctl interface.
+  */
+@@ -143,6 +146,9 @@ lockd(void *vrqstp)
+ 		long timeout = MAX_SCHEDULE_TIMEOUT;
+ 		RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
  
-@@ -2574,37 +2575,37 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 	if (unlikely(status != 0))
- 		goto out;
- 	READ_BUF(4);
--	READ32(n);
--	if (n <= 0)
-+	READ32(nloc);
-+	if (nloc <= 0)
- 		goto out_eio;
- 
--	if (n > NFS4_FS_LOCATIONS_MAXENTRIES) {
--		dprintk("\n%s: Using first %u of %d fs locations\n",
--			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, n);
--		n = NFS4_FS_LOCATIONS_MAXENTRIES;
-+	if (nloc > NFS4_FS_LOCATIONS_MAXENTRIES) {
-+		dprintk("\n%s: Using first %u of %u fs locations\n",
-+			__func__, NFS4_FS_LOCATIONS_MAXENTRIES, nloc);
-+		nloc = NFS4_FS_LOCATIONS_MAXENTRIES;
++		/* update sv_maxconn if it has changed */
++		rqstp->rq_server->sv_maxconn = nlm_max_connections;
++
+ 		if (signalled()) {
+ 			flush_signals(current);
+ 			if (nlmsvc_ops) {
+@@ -275,6 +281,7 @@ int lockd_up(void)
  	}
  
- 	res->nlocations = 0;
--	while (res->nlocations < n) {
--		u32 m;
--		unsigned int totalserv, i;
--		struct nfs4_fs_location *loc = &res->locations[res->nlocations];
-+	for (i = 0; i < nloc; i++) {
-+		u32 nserv;
-+		unsigned int totalserv, j;
-+		struct nfs4_fs_location *loc = &res->locations[i];
+ 	svc_sock_update_bufs(serv);
++	serv->sv_maxconn = nlm_max_connections;
  
- 		READ_BUF(4);
--		READ32(m);
-+		READ32(nserv);
+ 	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, serv->sv_name);
+ 	if (IS_ERR(nlmsvc_task)) {
+@@ -484,6 +491,7 @@ module_param_call(nlm_udpport, param_set_port, param_get_int,
+ module_param_call(nlm_tcpport, param_set_port, param_get_int,
+ 		  &nlm_tcpport, 0644);
+ module_param(nsm_use_hostnames, bool, 0644);
++module_param(nlm_max_connections, uint, 0644);
  
--		totalserv = m;
--		if (m >  NFS4_FS_LOCATION_MAXSERVERS) {
-+		totalserv = nserv;
-+		if (nserv >  NFS4_FS_LOCATION_MAXSERVERS) {
- 			dprintk("\n%s: Using first %u of %u servers "
- 				"returned for location %u\n",
- 				__func__, NFS4_FS_LOCATION_MAXSERVERS,
--				m, res->nlocations);
--			m = NFS4_FS_LOCATION_MAXSERVERS;
-+				nserv, i);
-+			nserv = NFS4_FS_LOCATION_MAXSERVERS;
- 		}
- 
- 		loc->nservers = 0;
- 		dprintk("%s: servers ", __func__);
--		while (loc->nservers < m) {
-+		for (j = 0; j < nserv; j++) {
- 			struct nfs4_string *server = &loc->servers[loc->nservers];
- 			status = decode_opaque_inline(xdr, &server->len, &server->data);
- 			if (unlikely(status != 0))
-@@ -2612,9 +2613,10 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
- 			dprintk("%s ", server->data);
- 			loc->nservers++;
- 		}
-+		dprintk("\n");
- 
- 		/* Decode and ignore overflow servers */
--		for (i = loc->nservers; i < totalserv; i++) {
-+		for (j = loc->nservers; j < totalserv; j++) {
- 			unsigned int len;
- 			char *data;
- 			status = decode_opaque_inline(xdr, &len, &data);
+ /*
+  * Initialising and terminating the module.
 -- 
-1.5.3.3
+1.5.5.1
 
