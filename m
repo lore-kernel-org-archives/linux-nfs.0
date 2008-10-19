@@ -1,39 +1,51 @@
-From: Yusuf Goolamabbas <yusufg-lA0CmJ9G6+FWk0Htik3J/w@public.gmane.org>
-Subject: [NFS] OpenSRS blog post alludes to a Linux NFS bug in 2.6.19
-Date: Sun, 19 Oct 2008 11:28:11 +0800
-Message-ID: <20081019032811.GA30801@outblaze.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] OpenSRS blog post alludes to a Linux NFS bug in 2.6.19
+Date: Sun, 19 Oct 2008 12:45:01 -0400
+Message-ID: <1224434701.9433.3.camel@localhost>
+References: <20081019032811.GA30801@outblaze.com>
+	 <20081019064405.0db1e004@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain
+Cc: Yusuf Goolamabbas <yusufg-lA0CmJ9G6+FWk0Htik3J/w@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37486 "EHLO neil.brown.name"
+Received: from mail-out1.uio.no ([129.240.10.57]:49724 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750865AbYJSDtT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Oct 2008 23:49:19 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KrPI4-0001q8-UE
-	for linux-nfs@vger.kernel.org; Sun, 19 Oct 2008 14:49:16 +1100
+	id S1751491AbYJSQpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 19 Oct 2008 12:45:12 -0400
+In-Reply-To: <20081019064405.0db1e004-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Anybody know if this is bug is fixed and if so in which kernel revision.
-Any ideas about its impact on vendor kernels (RHEL/SUSE Enterprise)
+On Sun, 2008-10-19 at 06:44 -0400, Jeff Layton wrote:
+> On Sun, 19 Oct 2008 11:28:11 +0800
+> Yusuf Goolamabbas <yusufg-lA0CmJ9G6+FWk0Htik3J/w@public.gmane.org> wrote:
+> 
+> > Anybody know if this is bug is fixed and if so in which kernel revision.
+> > Any ideas about its impact on vendor kernels (RHEL/SUSE Enterprise)
+> > 
+> > http://opensrs.com/blog/2008/10/technical-debrief-on-october-cluster-a-email-service-issue/
+> > 
+> 
+> I know that more recent RHEL kernels have this fixed. The bug to track it was here:
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=369561
+> 
+> It's also easy to tell if you have a kernel with this problem. Just do
+> a single TCP mount on the client, and then run:
+> 
+> $ rpcinfo -p
+> 
+> ...you should see port registrations for nlockmgr. If you don't see any
+> UDP ones, then the kernel has the problem.
+> 
 
-http://opensrs.com/blog/2008/10/technical-debrief-on-october-cluster-a-email-service-issue/
+Note that the workaround was simply to add 
 
-Regards, Yusuf
+     lockd.nlm_udpport=<unused portnumber>
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+to your kernel bootparameters.
+
+Cheers
+  Trond
 
