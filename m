@@ -1,55 +1,43 @@
-From: Guntsche Michael <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
-Subject: Re: Kerberos authentication Problem with nfs3/4
-Date: Sat, 18 Oct 2008 19:46:21 +0200
-Message-ID: <28F249B0-91A5-4EA5-A12E-F6258B240EDB@it-loops.com>
-References: <20081018153037.GA27982@fieldses.org> <14393409-84DC-42C1-9680-32A2B81A27BA@it-loops.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: bfields@citi.umich.edu
+From: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>
+Subject: mount.nfs should support arbitrary option order
+Date: Sat, 18 Oct 2008 20:46:53 -0400 (EDT)
+Message-ID: <alpine.LNX.1.10.0810182045380.17929@fbirervta.pbzchgretzou.qr>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:47845
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750938AbYJRRq1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Oct 2008 13:46:27 -0400
-In-Reply-To: <14393409-84DC-42C1-9680-32A2B81A27BA-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
+Received: from sovereign.computergmbh.de ([85.214.69.204]:59065 "EHLO
+	sovereign.computergmbh.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751798AbYJSAq5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Oct 2008 20:46:57 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by sovereign.computergmbh.de (Postfix) with ESMTP id 2D2FA1C0989E2
+	for <linux-nfs@vger.kernel.org>; Sat, 18 Oct 2008 20:46:54 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-On Oct 18, 2008, at 17:59, Guntsche Michael wrote:
 
->
->>
->> nfsv4@linux-nfs.org or linux-nfs@vger.kernel.org would be the right
->> place to ask about this.
->>
->> Is it possible you could be hitting this?:
->>
->> 	http://linux-nfs.org/pipermail/nfsv4/2008-October/009365.html
->
-> Apparently this never made it to the list, but only to myself and  
-> Bruce :)
->
-> Coming back to the problem. In my case the domain name and realm are  
-> the same. I'll try to find out, where the problem is triggered  
-> exactly.
->
+currently it seems that mount.nfs only accepts -o as the last portion:
 
-Ok, the problem has been solved. It was a configuration error  
-afterall. The problem was that per default this was set in idmapd.conf
 
-Domain = localdomin
+# mount.nfs -o foo a:/ /
+usage: mount.nfs remotetarget dir [-rvVwfnsih] [-o nfsoptions]
+options:
+        -r              Mount file system readonly
+        -v              Verbose
+        -V              Print version
+        -w              Mount file system read-write
+        -f              Fake mount, do not actually mount
+        -n              Do not update /etc/mtab
+        -s              Tolerate sloppy mount options rather than fail
+        -h              Print this help
+        nfsoptions      Refer to mount.nfs(8) or nfs(5)
 
-The new version if the library read this one first and of course this  
-led to problems. There are two possible solutions here.
+# mount.nfs  a:/ / -o foo
+mount.nfs: an incorrect mount option was specified
 
-* Change the Domain entry in the config file
-* Remove the entry, then a DNS lookup is made
 
-In both cases mounting the export with krb5 works without any problems.
-
-Sorry for putting so much noise on the list.
-
-Kind regards,
-Michael
+It would be nice if options can be specified anywhere. Especially
+hard POSIX puts options first.
