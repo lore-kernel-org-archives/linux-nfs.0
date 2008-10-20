@@ -1,60 +1,61 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Kerberos authentication Problem with nfs3/4
-Date: Sun, 19 Oct 2008 15:50:37 -0400
-Message-ID: <20081019195037.GC8647@fieldses.org>
-References: <20081018153037.GA27982@fieldses.org> <14393409-84DC-42C1-9680-32A2B81A27BA@it-loops.com> <28F249B0-91A5-4EA5-A12E-F6258B240EDB@it-loops.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Guntsche Michael <mike-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
+From: Krishna Kumar <krkumar2@in.ibm.com>
+Subject: [PATCH 2/4] nfsd: Drop reference in expkey_parse error cases
+Date: Mon, 20 Oct 2008 11:44:40 +0530
+Message-ID: <20081020061440.17722.70281.sendpatchset@localhost.localdomain>
+References: <20081020061428.17722.68145.sendpatchset@localhost.localdomain>
+Cc: Krishna Kumar <krkumar2@in.ibm.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33552 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751714AbYJSTuj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 19 Oct 2008 15:50:39 -0400
-In-Reply-To: <28F249B0-91A5-4EA5-A12E-F6258B240EDB-Z92qn3yYq0hWk0Htik3J/w@public.gmane.org>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:51110 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751134AbYJTGOq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2008 02:14:46 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m9K6EhXA016622
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 02:14:43 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9K6EhbG106152
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 00:14:43 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9K6EgYt032090
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 00:14:43 -0600
+In-Reply-To: <20081020061428.17722.68145.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 18, 2008 at 07:46:21PM +0200, Guntsche Michael wrote:
->
-> On Oct 18, 2008, at 17:59, Guntsche Michael wrote:
->
->>
->>>
->>> nfsv4@linux-nfs.org or linux-nfs@vger.kernel.org would be the right
->>> place to ask about this.
->>>
->>> Is it possible you could be hitting this?:
->>>
->>> 	http://linux-nfs.org/pipermail/nfsv4/2008-October/009365.html
->>
->> Apparently this never made it to the list, but only to myself and  
->> Bruce :)
->>
->> Coming back to the problem. In my case the domain name and realm are  
->> the same. I'll try to find out, where the problem is triggered  
->> exactly.
->>
->
-> Ok, the problem has been solved. It was a configuration error afterall. 
-> The problem was that per default this was set in idmapd.conf
->
-> Domain = localdomin
->
-> The new version if the library read this one first and of course this  
-> led to problems. There are two possible solutions here.
->
-> * Change the Domain entry in the config file
-> * Remove the entry, then a DNS lookup is made
->
-> In both cases mounting the export with krb5 works without any problems.
->
-> Sorry for putting so much noise on the list.
+From: Krishna Kumar <krkumar2@in.ibm.com>
 
-It looks like the most recent commit cfc6246a43... from
-git://git.linux-nfs.org/projects/kwc/libnfsidmap.git sets the default to
-get the domain from DNS, so hopefully this will be more likely to work
-out of the box in the future.
+Drop reference to export key on error. Compile tested.
 
---b.
+Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
+---
+ fs/nfsd/export.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff -ruNp linux-2.6.27.org/fs/nfsd/export.c linux-2.6.27.new/fs/nfsd/export.c
+--- linux-2.6.27.org/fs/nfsd/export.c	2008-10-20 10:47:18.000000000 +0530
++++ linux-2.6.27.new/fs/nfsd/export.c	2008-10-20 10:48:36.000000000 +0530
+@@ -151,8 +151,10 @@ static int expkey_parse(struct cache_det
+ 
+ 	/* now we want a pathname, or empty meaning NEGATIVE  */
+ 	err = -EINVAL;
+-	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) < 0)
++	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) < 0) {
++		cache_put(&ek->h, &svc_expkey_cache);
+ 		goto out;
++	}
+ 	dprintk("Path seems to be <%s>\n", buf);
+ 	err = 0;
+ 	if (len == 0) {
+@@ -164,8 +166,10 @@ static int expkey_parse(struct cache_det
+ 	} else {
+ 		struct nameidata nd;
+ 		err = path_lookup(buf, 0, &nd);
+-		if (err)
++		if (err) {
++			cache_put(&ek->h, &svc_expkey_cache);
+ 			goto out;
++		}
+ 
+ 		dprintk("Found the path %s\n", buf);
+ 		key.ek_path = nd.path;
