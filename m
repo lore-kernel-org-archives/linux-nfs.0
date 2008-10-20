@@ -1,52 +1,61 @@
 From: Krishna Kumar <krkumar2@in.ibm.com>
-Subject: [PATCH 4/4] nfsd: Minor cleanup of _get_posix_acl
-Date: Mon, 20 Oct 2008 11:47:21 +0530
-Message-ID: <20081020061721.18370.93671.sendpatchset@localhost.localdomain>
-References: <20081020061709.18370.85373.sendpatchset@localhost.localdomain>
+Subject: [PATCH 1/4] nfsd: Minor cleanup of find_stateid
+Date: Mon, 20 Oct 2008 11:44:28 +0530
+Message-ID: <20081020061428.17722.68145.sendpatchset@localhost.localdomain>
 Cc: Krishna Kumar <krkumar2@in.ibm.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:43782 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751168AbYJTGRZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Oct 2008 02:17:25 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m9K6HODR021892
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 02:17:24 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9K6HOpl083934
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 02:17:24 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9K6HM8o009633
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 02:17:23 -0400
-In-Reply-To: <20081020061709.18370.85373.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from e38.co.us.ibm.com ([32.97.110.159]:41636 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750976AbYJTGOc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2008 02:14:32 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e38.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id m9K6DrBx031592
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 00:13:53 -0600
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9K6EVUs100870
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 00:14:31 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9K6EUM4027921
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2008 00:14:30 -0600
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Krishna Kumar <krkumar2@in.ibm.com>
 
-Rewrite error case to not check twice for !buflen. Compile tested.
+Minor cleanup/rewrite of find_stateid. Compile tested.
 
 Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
 ---
- fs/nfsd/vfs.c |    7 ++++---
+ fs/nfsd/nfs4state.c |    7 ++++---
  1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff -ruNp linux-2.6.27.org/fs/nfsd/vfs.c linux-2.6.27.new/fs/nfsd/vfs.c
---- linux-2.6.27.org/fs/nfsd/vfs.c	2008-10-20 10:47:19.000000000 +0530
-+++ linux-2.6.27.new/fs/nfsd/vfs.c	2008-10-20 10:48:32.000000000 +0530
-@@ -503,10 +503,11 @@ _get_posix_acl(struct dentry *dentry, ch
- 	int buflen;
+diff -ruNp linux-2.6.27.org/fs/nfsd/nfs4state.c linux-2.6.27.new/fs/nfsd/nfs4state.c
+--- linux-2.6.27.org/fs/nfsd/nfs4state.c	2008-10-20 10:47:23.000000000 +0530
++++ linux-2.6.27.new/fs/nfsd/nfs4state.c	2008-10-20 10:48:29.000000000 +0530
+@@ -2421,13 +2421,13 @@ static struct list_head lockstateid_hash
+ static struct nfs4_stateid *
+ find_stateid(stateid_t *stid, int flags)
+ {
+-	struct nfs4_stateid *local = NULL;
++	struct nfs4_stateid *local;
+ 	u32 st_id = stid->si_stateownerid;
+ 	u32 f_id = stid->si_fileid;
+ 	unsigned int hashval;
  
- 	buflen = nfsd_getxattr(dentry, key, &buf);
--	if (!buflen)
--		buflen = -ENODATA;
--	if (buflen <= 0)
-+	if (buflen <= 0) {
-+		if (!buflen)
-+			buflen = -ENODATA;
- 		return ERR_PTR(buflen);
-+	}
- 
- 	pacl = posix_acl_from_xattr(buf, buflen);
- 	kfree(buf);
+ 	dprintk("NFSD: find_stateid flags 0x%x\n",flags);
+-	if ((flags & LOCK_STATE) || (flags & RD_STATE) || (flags & WR_STATE)) {
++	if (flags & (LOCK_STATE | RD_STATE | WR_STATE)) {
+ 		hashval = stateid_hashval(st_id, f_id);
+ 		list_for_each_entry(local, &lockstateid_hashtbl[hashval], st_hash) {
+ 			if ((local->st_stateid.si_stateownerid == st_id) &&
+@@ -2435,7 +2435,8 @@ find_stateid(stateid_t *stid, int flags)
+ 				return local;
+ 		}
+ 	} 
+-	if ((flags & OPEN_STATE) || (flags & RD_STATE) || (flags & WR_STATE)) {
++
++	if (flags & (OPEN_STATE | RD_STATE | WR_STATE)) {
+ 		hashval = stateid_hashval(st_id, f_id);
+ 		list_for_each_entry(local, &stateid_hashtbl[hashval], st_hash) {
+ 			if ((local->st_stateid.si_stateownerid == st_id) &&
