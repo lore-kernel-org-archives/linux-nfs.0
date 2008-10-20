@@ -1,62 +1,61 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 4/4] nfsd: Minor cleanup of _get_posix_acl
-Date: Mon, 20 Oct 2008 17:02:59 -0400
-Message-ID: <20081020210259.GD27702@fieldses.org>
-References: <20081020061709.18370.85373.sendpatchset@localhost.localdomain> <20081020061721.18370.93671.sendpatchset@localhost.localdomain>
+Subject: Re: [PATCH 1/3] SUNRPC add deferral processing callbacks
+Date: Mon, 20 Oct 2008 14:42:19 -0400
+Message-ID: <20081020184219.GA25796@fieldses.org>
+References: <1224104426-12293-1-git-send-email-andros@netapp.com> <1224104426-12293-2-git-send-email-andros@netapp.com> <RTPCLUEXC1-PRDf3sll000001cb@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Krishna Kumar <krkumar2@in.ibm.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57574 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:34724 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752555AbYJTVDB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Oct 2008 17:03:01 -0400
-In-Reply-To: <20081020061721.18370.93671.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1752556AbYJTSmV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Oct 2008 14:42:21 -0400
+In-Reply-To: <RTPCLUEXC1-PRDf3sll000001cb-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 20, 2008 at 11:47:21AM +0530, Krishna Kumar wrote:
-> From: Krishna Kumar <krkumar2@in.ibm.com>
+On Fri, Oct 17, 2008 at 04:35:28PM -0400, Talpey, Thomas wrote:
+> >diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> >index dc69068..46a4097 100644
+> >--- a/include/linux/sunrpc/svc.h
+> >+++ b/include/linux/sunrpc/svc.h
+> >@@ -215,6 +215,9 @@ struct svc_rqst {
+> > 	struct svc_cred		rq_cred;	/* auth info */
+> > 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+> > 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
+> >+	/* callback to save deferred request state */
+> >+	void (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
+> >+	void			*rq_defer_data; /* defer state data to save */
+> > 
+> > 	size_t			rq_xprt_hlen;	/* xprt header len */
+> > 	struct xdr_buf		rq_arg;
+> >@@ -323,6 +326,13 @@ struct svc_deferred_req {
+> > 	union svc_addr_u	daddr;	/* where reply must come from */
+> > 	struct cache_deferred_req handle;
+> > 	size_t			xprt_hlen;
+> >+	/* callbacks to restore and release deferred request state
+> >+	* set in rq_save_state */
+> >+	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
+> >+	void (*release_state)(struct svc_deferred_req *);
+> >+	void			*defer_data; /* defer state data */
+> >+	struct page		*respages[RPCSVC_MAXPAGES];
 > 
-> Rewrite error case to not check twice for !buflen. Compile tested.
+> Is it worthwhile to make this a dynamically allocated pointer? If the max
+> pages size is large (1MB means 256),
 
-Is the current code really a problem?
+So that's a 1k array with 32 bit pointers, a 2k array with 64.  We
+currently allow a  maximum of 300 deferred requests (DFR_MAX in
+net/sunrpc/cache.c).
 
-Possibly more interesting to look into:
+It'd be nice to not turn that into two allocations if the typical case
+only requires one page, so we'd probably want to allow either a single
+page pointer or a dynamically-allocated array.
 
-	- Can nfsd_getxattr actually return NULL?
-	- Why do we need to return ENODATA in that case?
-	  (nfsd_get_posix_acl, for example, seems to just end up
-	  returning -EINVAL in that case.)
+I don't know how much to care.
 
 --b.
 
-> 
-> Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
-> ---
->  fs/nfsd/vfs.c |    7 ++++---
->  1 file changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff -ruNp linux-2.6.27.org/fs/nfsd/vfs.c linux-2.6.27.new/fs/nfsd/vfs.c
-> --- linux-2.6.27.org/fs/nfsd/vfs.c	2008-10-20 10:47:19.000000000 +0530
-> +++ linux-2.6.27.new/fs/nfsd/vfs.c	2008-10-20 10:48:32.000000000 +0530
-> @@ -503,10 +503,11 @@ _get_posix_acl(struct dentry *dentry, ch
->  	int buflen;
->  
->  	buflen = nfsd_getxattr(dentry, key, &buf);
-> -	if (!buflen)
-> -		buflen = -ENODATA;
-> -	if (buflen <= 0)
-> +	if (buflen <= 0) {
-> +		if (!buflen)
-> +			buflen = -ENODATA;
->  		return ERR_PTR(buflen);
-> +	}
->  
->  	pacl = posix_acl_from_xattr(buf, buflen);
->  	kfree(buf);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> it's quite a large array for something
+> that may rarely be so full.
