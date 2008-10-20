@@ -1,144 +1,102 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/4] nfsd: Drop reference in expkey_parse error cases
-Date: Mon, 20 Oct 2008 16:53:20 -0400
-Message-ID: <20081020205320.GB27702@fieldses.org>
-References: <20081020061428.17722.68145.sendpatchset@localhost.localdomain> <20081020061440.17722.70281.sendpatchset@localhost.localdomain>
+Subject: Re: [PATCH 3/3] NFSD deferral processing
+Date: Mon, 20 Oct 2008 13:58:44 -0400
+Message-ID: <20081020175844.GA23927@fieldses.org>
+References: <1224104426-12293-1-git-send-email-andros@netapp.com> <1224104426-12293-2-git-send-email-andros@netapp.com> <1224104426-12293-3-git-send-email-andros@netapp.com> <1224104426-12293-4-git-send-email-andros@netapp.com> <RTPCLUEXC1-PRDNY30k000001cc@RTPMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Krishna Kumar <krkumar2@in.ibm.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+To: "Talpey, Thomas" <Thomas.Talpey@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33395 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:56727 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751832AbYJTUxX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Oct 2008 16:53:23 -0400
-In-Reply-To: <20081020061440.17722.70281.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1751518AbYJTR6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Oct 2008 13:58:47 -0400
+In-Reply-To: <RTPCLUEXC1-PRDNY30k000001cc-rtwIt2gI0FxT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 20, 2008 at 11:44:40AM +0530, Krishna Kumar wrote:
-> From: Krishna Kumar <krkumar2@in.ibm.com>
+On Fri, Oct 17, 2008 at 04:46:50PM -0400, Talpey, Thomas wrote:
+> At 05:00 PM 10/15/2008, andros@netapp.com wrote:
+> >From: Andy Adamson <andros@netapp.com>
+> >
+> >Use a slab cache for nfsd4_compound_state allocation
+> >
+> >Save the struct nfsd4_compound_state and set the save_state callback for
+> >each request for potential deferral handling.
+> >
+> >If an NFSv4 operation causes a deferral, the save_state callback is called
+> >by svc_defer which saves the defer_data with the deferral, and sets the
+> >restore_state deferral callback.
+> >
+> >fh_put is called so that the deferral is not referencing the file handles,
+> >allowing umount of the file system.
 > 
-> Drop reference to export key on error. Compile tested.
+> Can you explain the safety of this? If the COMPOUND starts off with an
+> operation that uses them, what's the implication of one going stale
+> partway through?
 
-Looks correct, thanks!  But adding the export key cleanup to every "goto
-out" is getting a little silly; I've applied your patch, then applied
-the cleanup appended below.
+I suppose it means the compound could get an unexpected STALE error
+partway through.
+
+> Is fh_verify() when the deferral continues enough to
+> ensure the fh is protected until the end of the op?
+
+I'm not sure what you mean.
+
+> There's a comment at the top of fh_verify() that it is "only called at
+> the start of an nfsproc call", with some assumptions, for instance.
+
+That comment could be improved.
 
 --b.
 
-> Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
-> ---
->  fs/nfsd/export.c |    8 ++++++--
->  1 file changed, 6 insertions(+), 2 deletions(-)
-> 
-> diff -ruNp linux-2.6.27.org/fs/nfsd/export.c linux-2.6.27.new/fs/nfsd/export.c
-> --- linux-2.6.27.org/fs/nfsd/export.c	2008-10-20 10:47:18.000000000 +0530
-> +++ linux-2.6.27.new/fs/nfsd/export.c	2008-10-20 10:48:36.000000000 +0530
-> @@ -151,8 +151,10 @@ static int expkey_parse(struct cache_det
->  
->  	/* now we want a pathname, or empty meaning NEGATIVE  */
->  	err = -EINVAL;
-> -	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) < 0)
-> +	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) < 0) {
-> +		cache_put(&ek->h, &svc_expkey_cache);
->  		goto out;
-> +	}
->  	dprintk("Path seems to be <%s>\n", buf);
->  	err = 0;
->  	if (len == 0) {
-> @@ -164,8 +166,10 @@ static int expkey_parse(struct cache_det
->  	} else {
->  		struct nameidata nd;
->  		err = path_lookup(buf, 0, &nd);
-> -		if (err)
-> +		if (err) {
-> +			cache_put(&ek->h, &svc_expkey_cache);
->  			goto out;
-> +		}
->  
->  		dprintk("Found the path %s\n", buf);
->  		key.ek_path = nd.path;
-> --
-
-commit 0264a42d6b12afaaa39dbf407655bb49ed828a1e
+commit 438d5d3ec385e6385856929719322d569de3e148
 Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Mon Oct 20 16:34:21 2008 -0400
+Date:   Mon Oct 20 13:01:59 2008 -0400
 
-    nfsd: clean up expkey_parse error cases
-    
-    We might as well do all of these at the end.  Fix up a couple minor
-    style nits while we're there.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+    nfsd: update fh_verify description
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 7ce2c6e..5cd882b 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -99,7 +99,7 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	int fsidtype;
- 	char *ep;
- 	struct svc_expkey key;
--	struct svc_expkey *ek;
-+	struct svc_expkey *ek = NULL;
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index cd25d91..8cabcfa 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -253,14 +253,32 @@ out:
+ 	return error;
+ }
  
- 	if (mesg[mlen-1] != '\n')
- 		return -EINVAL;
-@@ -107,7 +107,8 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 
- 	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
- 	err = -ENOMEM;
--	if (!buf) goto out;
-+	if (!buf)
-+		goto out;
- 
- 	err = -EINVAL;
- 	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) <= 0)
-@@ -151,38 +152,34 @@ static int expkey_parse(struct cache_detail *cd, char *mesg, int mlen)
- 
- 	/* now we want a pathname, or empty meaning NEGATIVE  */
- 	err = -EINVAL;
--	if ((len=qword_get(&mesg, buf, PAGE_SIZE)) < 0) {
--		cache_put(&ek->h, &svc_expkey_cache);
-+	len = qword_get(&mesg, buf, PAGE_SIZE);
-+	if (len < 0)
- 		goto out;
--	}
- 	dprintk("Path seems to be <%s>\n", buf);
- 	err = 0;
- 	if (len == 0) {
- 		set_bit(CACHE_NEGATIVE, &key.h.flags);
- 		ek = svc_expkey_update(&key, ek);
--		if (ek)
--			cache_put(&ek->h, &svc_expkey_cache);
--		else err = -ENOMEM;
-+		if (!ek)
-+			err = -ENOMEM;
- 	} else {
- 		struct nameidata nd;
- 		err = path_lookup(buf, 0, &nd);
--		if (err) {
--			cache_put(&ek->h, &svc_expkey_cache);
-+		if (err)
- 			goto out;
--		}
- 
- 		dprintk("Found the path %s\n", buf);
- 		key.ek_path = nd.path;
- 
- 		ek = svc_expkey_update(&key, ek);
--		if (ek)
--			cache_put(&ek->h, &svc_expkey_cache);
--		else
-+		if (!ek)
- 			err = -ENOMEM;
- 		path_put(&nd.path);
- 	}
- 	cache_flush();
-  out:
-+	if (ek)
-+		cache_put(&ek->h, &svc_expkey_cache);
- 	if (dom)
- 		auth_domain_put(dom);
- 	kfree(buf);
+-/*
+- * Perform sanity checks on the dentry in a client's file handle.
++/**
++ * fh_verify - filehandle lookup and access checking
++ * @rqstp: pointer to current rpc request
++ * @fhp: filehandle to be verified
++ * @type: expected type of object pointed to by filehandle
++ * @access: type of access needed to object
++ *
++ * Look up a dentry from the on-the-wire filehandle, check the client's
++ * access to the export, and set the current task's credentials.
++ *
++ * Regardless of success or failure of fh_verify(), fh_put() should be
++ * called on @fhp when the caller is finished with the filehandle.
++ *
++ * fh_verify() may be called multiple times on a given filehandle, for
++ * example, when processing an NFSv4 compound.  The first call will look
++ * up a dentry using the on-the-wire filehandle.  Subsequent calls will
++ * skip the lookup and just perform the other checks and possibly change
++ * the current task's credentials.
+  *
+- * Note that the file handle dentry may need to be freed even after
+- * an error return.
++ * @type specifies the type of object expected using one of the S_IF*
++ * constants defined in include/linux/stat.h.  The caller may use zero
++ * to indicate that it doesn't care, or a negative integer to indicate
++ * that it expects something not of the given type.
+  *
+- * This is only called at the start of an nfsproc call, so fhp points to
+- * a svc_fh which is all 0 except for the over-the-wire file handle.
++ * @access is formed from the NFSD_MAY_* constants defined in
++ * include/linux/nfsd/nfsd.h.
+  */
+ __be32
+ fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, int type, int access)
