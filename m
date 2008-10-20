@@ -1,73 +1,193 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/2] lockd: set svc_serv->sv_maxconn to a more
- reasonable value
-Date: Mon, 20 Oct 2008 10:38:25 -0400
-Message-ID: <20081020103825.3e98da06@tleilax.poochiereds.net>
-References: <1224267970-15769-1-git-send-email-jlayton@redhat.com>
-	<1224267970-15769-2-git-send-email-jlayton@redhat.com>
-	<20081017211833.GF14960@fieldses.org>
-	<20081017181057.2b15b458@tleilax.poochiereds.net>
-	<18683.54685.61422.969081@notabene.brown>
+From: Ian Campbell <Ian.Campbell@citrix.com>
+Subject: Re: RPC retransmission of write requests containing bogus data
+Date: Mon, 20 Oct 2008 15:25:08 +0100
+Message-ID: <1224512708.15736.12.camel@zakaz.uk.xensource.com>
+References: <1224241273.9053.109.camel@zakaz.uk.xensource.com>
+	 <1224247725.7722.4.camel@localhost>
+	 <1224248469.9053.119.camel@zakaz.uk.xensource.com>
+	 <1224249772.7722.9.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: multipart/mixed; boundary="=-lPUuSgwiRxToO3Fb1SSp"
+Cc: linux-nfs@vger.kernel.org, mchan-dY08KVG/lbpWk0Htik3J/w@public.gmane.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45044 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751011AbYJTOih (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Oct 2008 10:38:37 -0400
-In-Reply-To: <18683.54685.61422.969081-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Received: from smtp02.citrix.com ([66.165.176.63]:12226 "EHLO
+	SMTP02.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750895AbYJTOZS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2008 10:25:18 -0400
+In-Reply-To: <1224249772.7722.9.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 20 Oct 2008 11:49:33 +1100
-Neil Brown <neilb@suse.de> wrote:
 
-> On Friday October 17, jlayton@redhat.com wrote:
-> > 
-> > I'm OK with that too. I just used this since Neil suggested it. I have
-> > no idea what a reasonable value should really be. I suppose this should
-> > probably be set to the maximum number of clients we expect to support
-> > (assuming 1 connection to lockd from each client).
-> 
-> I suggested it (using the NFILE rlimit) because I was looking for a
-> natural way to make it configurable, and asked myself "how would this
-> be handled by a user-space daemon".  I managed to address one of those
-> questions, but not really the more useful one.
-> 
-> > 
-> > > What would actually happen if we allowed too many connections?  What
-> > > would fail first?  Is there some way to detect that situation and use
-> > > that to drop connections?
+--=-lPUuSgwiRxToO3Fb1SSp
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+
+On Fri, 2008-10-17 at 09:22 -0400, Trond Myklebust wrote:
+> On Fri, 2008-10-17 at 14:01 +0100, Ian Campbell wrote:
+> > On Fri, 2008-10-17 at 08:48 -0400, Trond Myklebust wrote:
+> > > I don't see how this could be an RPC bug. The networking layer is
+> > > supposed to either copy the data sent to the socket, or take a reference
+> > > to any pages that are pushed via the ->sendpage() abi.
 > > > 
+> > > IOW: the pages are supposed to be still referenced by the networking
+> > > layer even if the NFS layer and page cache have dropped their
+> > > references.
 > > 
-> > I'm not clear on this either. Here's my naive take (could be very 
-> > wrong):
+> > The pages are still referenced by the networking layer. The problem is
+> > that the userspace app has been told that the write has completed so it
+> > is free to write new data to those pages.
+> > 
+> > Ian.
 > 
-> I've got no really idea either.
-> But when we are building network-facing software, you need to be
-> cautious and use the "deny unless explicitly permitted" approached.
-> It may be safe to allow an arbitrarily large number of connections.
-> But until you can be certain of that you should fail-safe and impose a
-> limit.
+> OK, I see your point.
 > 
+> Does this happen at all with NFSv4? I ask because the NFSv4 client will
+> always ensure that the TCP connection gets broken before a
+> retransmission. I wouldn't therefore expect any races between a reply to
+> the previous transmission and the new one...
 
-For now, I think we should probably go with the patchset as-is (modulo
-the comment change that Neil suggested), it at least addresses the
-immediate problem of too many lockd connections.
+It does seem to happen with NFSv4 too (see attached).
 
-In the long run, since it's not clear what we're preventing by doing
-this, does it make sense to base the default sv_maxconn on the number
-of threads? In principle, we could have a server that has 2000 clients,
-but they each only rarely touch their NFS mount. In that case, we may
-be able to get by with fewer nfsd's, but we'd want to increase the
-number of allowed connections. The reverse is also true.
+Ian.
 
-Perhaps we should just declare a constant sv_maxconn value for each
-service, give each a way to tune it and use some other scheme (duty
-cycle of nfsd's?) to warn the admin that they should consider increasing
-the number of threads.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--=-lPUuSgwiRxToO3Fb1SSp
+Content-Disposition: attachment; filename=corrupt-over-nfsv4.pcap
+Content-Type: application/octet-stream; name=corrupt-over-nfsv4.pcap
+Content-Transfer-Encoding: base64
+
+1MOyoQIABAAAAAAAAAAAAAAKAAABAAAAhpP8SFTzCwDqBQAA6gUAAAAdCfGEzQAY/v0TOAgARQAF
+3IdkQABABtUQClDhHApQ4uoDXwgBAv2NhaKsfh2AEAwx3nUAAAEBCAoBjmhOAAZ/f4AAELjIi1Bq
+AAAAAAAAAAIAAYajAAAABAAAAAEAAAABAAAAOAAD++wAAAAId2FyY3JhZnQAAAAAAAAAAAAAAAcA
+AAAAAAAAAQAAAAIAAAADAAAABAAAAAYAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAWAAAAEAEA
+AQEAAAAAg3UDADbzvW4AAAAmAAAAAXCH/EgDAAAAAwAAAAAAAAAACGAAAAAAAgAAEACGF63ehhet
+3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63e
+hhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6G
+F63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYX
+rd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet
+3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63e
+hhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6G
+F63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYX
+rd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet
+3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63e
+hhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6G
+F63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYX
+rd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet
+3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63e
+hhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6G
+F63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYX
+rd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet
+3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63e
+hhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6G
+F63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYX
+rd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet
+3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63e
+hhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6GF63ehhet3oYXrd6G
+F63ehhet3oYXrd6GF63ehpP8SJ31CwAyAQAAMgEAAAAY/v0TOAAdCfGEzQgARQABJK1XQABABrPV
+ClDi6gpQ4RwIAQNfoqx+HQL9nkGAGAH1xukAAAEBCAoABn+AAY5oToAAAOzIi1BqAAAAAQAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAWAAAAAAAAACYAAAAAAAAQAAAAAAJwh/xIDw4JAAAA
+AAkAAAAAAAAAAgAQARoAMKI6AAAAkAAAAAFI/JOGAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAA3WDAAABpAAAAAEAAAAQcm9vdEBsb2NhbGRvbWFpbgAAABByb290QGxvY2FsZG9tYWlu
+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
+AAEAAAABAAAAOAAD/BgAAAAId2FyY3JhZnQAAAAAAAAAAAAAAAcAAAAAAAAAAQAAAAIAAAADAAAA
+BAAAAAYAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAecIf8SAQAAACAABC4yItQagAAAAAAAAAC
+AAGGowAAAAQAAAABAAAAAQAAADgAA/woAAAACHdhcmNyYWZ0AAAAAAAAAAAAAAAHAAAAAAAAAAEA
+AAACAAAAAwAAAAQAAAAGAAAACgAAAAAAAAAAAAAAAAAAAAAAAAADAAAAFgAAABABAAEBAAAAAIN1
+AwA2871uAAAAJgAAAAFwh/xIAwAAAAMAAAAAAAAAAAhgAAAAAAIAABAA776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++
+rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t
+3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e
+776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7vvq3e776t3u++rd7v
+vq3e776t3u++rd7vvq3e777Hk/xI0w4MADIBAAAyAQAAABj+/RM4AB0J8YTNCABFAAEkrWxAAEAG
+s8AKUOLqClDhHAgBA1+irH89Av26iYAYAfV19AAAAQEICgAGmOUBjoGzgAAA7MiLUGoAAAABAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAABYAAAAAAAAAJgAAAAAAABAAAAAAAnCH/EgPDgkA
+AAAACQAAAAAAAAACABABGgAwojoAAACQAAAAAUj8k8cAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAADdYMAAAGkAAAAAQAAABByb290QGxvY2FsZG9tYWluAAAAEHJvb3RAbG9jYWxkb21h
+aW4AAAAAAAAAAAAAAAAAEBAAAAAAAEj8h5EAAAAAAAAAAEj8k8cAAAAAAAAAAEj8k8cAAAAA
+
+
+--=-lPUuSgwiRxToO3Fb1SSp--
+
