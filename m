@@ -1,51 +1,59 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/5] rpcbind: Squelch a compiler warning
-Date: Tue, 21 Oct 2008 18:04:48 -0400
-Message-ID: <20081021220448.19488.77889.stgit@manray.1015granger.net>
+Subject: [PATCH 2/5] rpcbind: Squelch a compiler warning
+Date: Tue, 21 Oct 2008 18:04:41 -0400
+Message-ID: <20081021220441.19488.97578.stgit@manray.1015granger.net>
 References: <20081021220247.19488.82225.stgit@manray.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:38520 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:38503 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752109AbYJUWFJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Oct 2008 18:05:09 -0400
+	with ESMTP id S1751850AbYJUWFH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Oct 2008 18:05:07 -0400
 In-Reply-To: <20081021220247.19488.82225.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove a needless pointer-to-integer conversion.  getnameinfo(3) wants
-a size value greater than or equal to offsetof(struct sockaddr_un,
-sun_path).  Since pointers can be different sizes depending on the
-hardware platform, let's make this a simple constant instead.
-
+Include <nss.h> to get a forward declaration of __nss_configure_lookup(=
+).
 This eliminates the compiler warning:
 
-rpcinfo.c: In function =E2=80=98sa_len=E2=80=99:
-rpcinfo.c:666: warning: cast from pointer to integer of different size
-
-when building on x86-64.
+rpcbind.c: In function =E2=80=98main=E2=80=99:
+rpcbind.c:163: warning: implicit declaration of function
+	=E2=80=98__nss_configure_lookup=E2=80=99
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- src/rpcinfo.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ configure.in  |    2 +-
+ src/rpcbind.c |    1 +
+ 2 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/src/rpcinfo.c b/src/rpcinfo.c
-index afd949b..0170f65 100644
---- a/src/rpcinfo.c
-+++ b/src/rpcinfo.c
-@@ -663,7 +663,7 @@ sa_len(struct sockaddr *sa)
-     switch (sa->sa_family)
-     {
-         case AF_LOCAL:
--            salen =3D (socklen_t) (((struct sockaddr_un *) NULL)->sun_=
-path);
-+            salen =3D sizeof (struct sockaddr_un);
-             break;
-         case AF_INET:
-             salen =3D sizeof (struct sockaddr_in);
+diff --git a/configure.in b/configure.in
+index 9ff0bc7..69f4169 100644
+--- a/configure.in
++++ b/configure.in
+@@ -48,7 +48,7 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h \
+                   netinet/in.h stdlib.h string.h \
+                   sys/param.h sys/socket.h \
+                   sys/time.h syslog.h \
+-                  unistd.h])                   =20
++                  unistd.h nss.h])
+=20
+ AC_CHECK_LIB([pthread], [pthread_create])
+ AC_CHECK_LIB([tirpc], [clnt_create])
+diff --git a/src/rpcbind.c b/src/rpcbind.c
+index e0e7ddf..71b372d 100644
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -68,6 +68,7 @@
+ #include <pwd.h>
+ #include <string.h>
+ #include <errno.h>
++#include <nss.h>
+ #include "config.h"
+ #include "rpcbind.h"
+=20
 
