@@ -1,83 +1,38 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH] nfsd: Fix memory leak in nfsd_getxattr (& usage in
 	_get_posix_acl)
-Date: Tue, 21 Oct 2008 18:06:50 -0400
-Message-ID: <20081021220650.GA18610@fieldses.org>
+Date: Tue, 21 Oct 2008 18:13:40 -0400
+Message-ID: <20081021221339.GB18610@fieldses.org>
 References: <20081021105139.13512.67162.sendpatchset@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Krishna Kumar <krkumar2@in.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49615 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:55219 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752127AbYJUWGx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Oct 2008 18:06:53 -0400
+	id S1751648AbYJUWNm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Oct 2008 18:13:42 -0400
 In-Reply-To: <20081021105139.13512.67162.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Tue, Oct 21, 2008 at 04:21:39PM +0530, Krishna Kumar wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> wrote on 10/21/2008 02:32:59 AM:
-> 
-> > Is the current code really a problem?
-> > 
-> > Possibly more interesting to look into:
-> > 
-> >    - Can nfsd_getxattr actually return NULL?
-> 
-> You are right. I think it can return 0, eg any of the filesystem getxattr's.
-> 
-> >    - Why do we need to return ENODATA in that case?
-> >      (nfsd_get_posix_acl, for example, seems to just end up
-> >      returning -EINVAL in that case.)
-> 
-> Did you mean NULL rather than EINVAL (posix_acl_from_xattr returns NULL before
-> EINVAL)?
-
-Whoops, you're right--I missed that.
-
-> 
-> Another thing that seems slightly wrong. Both of the following functions:
-> nfsd_get_posix_acl()
-> {
-> 	...
-> 	size = nfsd_getxattr(fhp->fh_dentry, name, &value);
-> 	if (size < 0)
-> 		return ERR_PTR(size);
-> 	...
-> }
-> _get_posix_acl(struct dentry *dentry, char *key)
-> {
-> 	...
-> 	buflen = nfsd_getxattr(dentry, key, &buf);
-> 	if (!buflen)
-> 		buflen = -ENODATA;
-> 	if (buflen <= 0)
-> 		return ERR_PTR(buflen);
-> 	...
-> }
-> call nfsd_getxattr which can allocate memory but still return < 0. Function
-> allocates buf and calls vfs_getxattr() which fails and leaks memory. The best
-> place to fix this is in nfsd_getxattr in case vfs_getxattr() returns < 0
-> 
-> Does that sound correct? Patch for this follows...
-
-Yes, that sounds correct.  I'll take a look at the patch.
-
---b.
-
-> 
-> thanks,
-> 
-> - KK
-> 
 > From: Krishna Kumar <krkumar2@in.ibm.com>
 > 
 > 1. Fix a memory leak in nfsd_getxattr. nfsd_getxattr should free up memory
 > 	that it allocated if vfs_getxattr fails.
-> 
+
+This part looks fine, thanks.  But could you submit it as a separate
+patch?
+
 > 2. Change _get_posix_acl to return NULL on buflen == 0.
+
+If we do this, then the callers of _get_posix_acl() also need to be
+fixed.  In any case, make it a second patch.
+
+--b.
+
 > 
 > Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
 > ---
