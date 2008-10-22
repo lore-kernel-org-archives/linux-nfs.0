@@ -1,161 +1,77 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Re: [RFC] [PATCH 1/1] tcp-autotuning-on-recv-window-fix
-Date: Wed, 22 Oct 2008 14:30:47 -0700
-Message-ID: <48FF9B87.6050909@gmail.com>
-References: <48FE200A.6070805@citi.umich.edu> <20081022194605.GA4409@fieldses.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 11/12] svcrdma: Add a message log string to indicate if
+ FastReg is being used
+Date: Wed, 22 Oct 2008 16:37:02 -0500
+Message-ID: <48FF9CFE.2040907@opengridcomputing.com>
+References: <1223069629-5267-10-git-send-email-tom@opengridcomputing.com> <1223069629-5267-11-git-send-email-tom@opengridcomputing.com> <1223069629-5267-12-git-send-email-tom@opengridcomputing.com> <20081008224840.GF14527@fieldses.org> <48EDA691.9080108@opengridcomputing.com> <20081009162623.GD28785@fieldses.org> <48EE5193.2090702@opengridcomputing.com> <20081010210245.GF19415@fieldses.org> <48F2AFDA.8000704@opengridcomputing.com> <48F2B054.9040605@opengridcomputing.com> <20081022202345.GC5572@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org
+Cc: thomas.talpey@netapp.com, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.30]:29965 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753331AbYJVVay (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Oct 2008 17:30:54 -0400
-Received: by yw-out-2324.google.com with SMTP id 9so2730ywe.1
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Oct 2008 14:30:52 -0700 (PDT)
-In-Reply-To: <20081022194605.GA4409@fieldses.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:36519 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751011AbYJVVhE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Oct 2008 17:37:04 -0400
+In-Reply-To: <20081022202345.GC5572@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
 J. Bruce Fields wrote:
-> On Tue, Oct 21, 2008 at 02:31:38PM -0400, Olga Kornievskaia wrote:
->   
->> From: Olga Kornievskaia <aglo@citi.umich.edu>
->> Date: Tue, 21 Oct 2008 14:13:47 -0400
->> Subject: [RFC] [PATCH 1/1] tcp-autotuning-on-recv-window-fix
->>
->> This patch allows for the NFSv4 server to make use of TCP autotuning behaviour
->> which was previously disabled by setting sk_userlocks variable. 
->>
->> This patch sets the receive buffers to be big enough to receive the whole 
->> RPC request. This buffer size had to be set for the listening socket and not
->> the accept socket as it was previously done. 
->>     
->
-> The point there being that our previous buffer-size settings were made
-> too late to actually have an affect?
->
->   
->> This patch removes the code that readjust the receive/send buffer sizes for
->> the accepted socket. Previously this code was used to influence the TCP
->> window management behaviour which is no longer needed when autotuning is 
->> enabled. 
->>     
->
-> Could we get a really brief summary of the performance improvement for a
-> high-speed network, to include in the commit message?
->
-> The one remaining worry I recall is that we assume the tcp autotuning
-> never decreases the size of the buffer below the size we initially
-> requested.  Apparently that assumption is true.  There's some worry
-> about whether that's true by design or merely true of the current
-> implementation.
->   
-If it does happen, I assume the fix there is to set the minimum tcp 
-buffer settings big enough for a single request?
+> On Sun, Oct 12, 2008 at 09:20:04PM -0500, Tom Tucker wrote:
+>> Tom Tucker wrote:
+>>> J. Bruce Fields wrote:
+>>>> On Thu, Oct 09, 2008 at 01:46:43PM -0500, Tom Tucker wrote:
+>>>>  
+>>>>> Coming up with a name for the command is probably
+>>>>> harder than writing it.
+>>>>>
+>>>>> Here it is...
+>>>>>     
+>>>> Neat-o, thanks.
+>>>>
+>>>> Just for fun, I installed libibverbs from Fedora 9, modprobe'd
+>>>> ib_uverbs, and tried running this, and got a "libibverbs: Warning:
+>>>> couldn't open config directory '/etc/libibverbs.d'."  Is there a HOWTO
+>>>> somewhere that I should know about?
+>>>>   
+>>> Hmm. Sounds like the Fedora RPM didn't do all the necessary bits. I  
+>>> have a Fedora 9 system,
+>>> I'll see what I get. I typically use the latest OFED distro.
+>>>
+>> I should qualify this. I use the OFED distro for the user-mode bits. For  
+>> kernel bits, I use top of
+>> tree.
+> 
+> I poked around the redhat bugzilla for any reports and didn't find
+> anything....  Is there a package from the OFED distro that I should look
+> at to get the idea?
+> 
 
-In fact, the big impact here I believe is that NFS will finally start 
-using the linux tcp buffer settings (like every other tool).  Is there 
-any way to
-get some documentation out there that this is the case?  Maybe an 
-addition to the website would be the right place for now?
-Dean
-> That doesn't look like a big worry--I'm inclined to apply this patch as
-> is--but moving the sk_{rcv,snd}buf assignments to a simple function in
-> the networking code and documenting the requirements there might be a
-> nice thing to do (as a separate patch).
->
+http://www.openfabrics.org/downloads/OFED/ofed-1.4/OFED-1.4-rc3.tgz
+
+Untar and run ./install.pl
+
+Notes:
+
+1. It has a crippled NFSRDMA port someone did that you definitely don't 
+want to install. It should not be installed by default so, if you select 
+open 2 (HPC), you should be ok.
+
+2. The install is dependent on the running kernel, so you'll want to 
+install it with the test kernel running.
+
+3. I _think_ this thing will overwrite your test kernel's drivers, so 
+you may need to redo 'make modules_install' after installing OFED. I do 
+anyway.
+
+Feel free to ping me if you run into trouble.
+
+Tom
+
 > --b.
->
->   
->> Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
->> ---
->>  net/sunrpc/svcsock.c |   35 +++++++----------------------------
->>  1 files changed, 7 insertions(+), 28 deletions(-)
->>
->> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->> index 3e65719..4bb535e 100644
->> --- a/net/sunrpc/svcsock.c
->> +++ b/net/sunrpc/svcsock.c
->> @@ -349,7 +349,6 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
->>  	lock_sock(sock->sk);
->>  	sock->sk->sk_sndbuf = snd * 2;
->>  	sock->sk->sk_rcvbuf = rcv * 2;
->> -	sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
->>  	release_sock(sock->sk);
->>  #endif
->>  }
->> @@ -801,23 +800,6 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
->>  		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
->>  		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
->>  
->> -	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
->> -		/* sndbuf needs to have room for one request
->> -		 * per thread, otherwise we can stall even when the
->> -		 * network isn't a bottleneck.
->> -		 *
->> -		 * We count all threads rather than threads in a
->> -		 * particular pool, which provides an upper bound
->> -		 * on the number of threads which will access the socket.
->> -		 *
->> -		 * rcvbuf just needs to be able to hold a few requests.
->> -		 * Normally they will be removed from the queue
->> -		 * as soon a a complete request arrives.
->> -		 */
->> -		svc_sock_setbufsize(svsk->sk_sock,
->> -				    (serv->sv_nrthreads+3) * serv->sv_max_mesg,
->> -				    3 * serv->sv_max_mesg);
->> -
->>  	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
->>  
->>  	/* Receive data. If we haven't got the record length yet, get
->> @@ -1065,15 +1047,6 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
->>  
->>  		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
->>  
->> -		/* initialise setting must have enough space to
->> -		 * receive and respond to one request.
->> -		 * svc_tcp_recvfrom will re-adjust if necessary
->> -		 */
->> -		svc_sock_setbufsize(svsk->sk_sock,
->> -				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
->> -				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
->> -
->> -		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
->>  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
->>  		if (sk->sk_state != TCP_ESTABLISHED)
->>  			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
->> @@ -1143,8 +1116,14 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->>  	/* Initialize the socket */
->>  	if (sock->type == SOCK_DGRAM)
->>  		svc_udp_init(svsk, serv);
->> -	else
->> +	else {
->> +		/* initialise setting must have enough space to
->>     
->
-> s/initialise/initial/
->
->   
->> +		 * receive and respond to one request.
->> +		 */
->> +		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
->> +					4 * serv->sv_max_mesg);
->>  		svc_tcp_init(svsk, serv);
->> +	}
->>  
->>  	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
->>  				svsk, svsk->sk_sk);
->> -- 
->> 1.5.0.2
->>
->>     
->
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+
