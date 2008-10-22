@@ -1,56 +1,61 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
-Date: Wed, 22 Oct 2008 13:56:17 -0400
-Message-ID: <20081022175617.GA2495@fieldses.org>
-References: <20081022091207.GA12996@squirrel.roonstrasse.net>
+Subject: Re: [PATCH] nfsd: Fix memory leak in nfsd_getxattr
+Date: Wed, 22 Oct 2008 14:11:57 -0400
+Message-ID: <20081022181157.GB2495@fieldses.org>
+References: <20081022091836.22100.57827.sendpatchset@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+To: Krishna Kumar <krkumar2@in.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33159 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:50970 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752657AbYJVR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2008 13:56:19 -0400
-In-Reply-To: <20081022091207.GA12996-2pNSKKP3PSJxEiad3KpGLI/oZP4lHnOC@public.gmane.org>
+	id S1751331AbYJVSMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2008 14:12:01 -0400
+In-Reply-To: <20081022091836.22100.57827.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 22, 2008 at 11:12:08AM +0200, Max Kellermann wrote:
-> Hi,
+On Wed, Oct 22, 2008 at 02:48:36PM +0530, Krishna Kumar wrote:
+> From: Krishna Kumar <krkumar2@in.ibm.com>
 > 
-> after I was able to fix http://lkml.org/lkml/2008/10/17/147, the
-> server which was already upgraded to 2.6.27.2 still gets very high
-> load.  It is a web server with NFS file storage (NetApp), and while
-> the others in the cluster (kernel 2.6.25) have a load of 1-3, 2.6.27.2
-> gets 30-50.
-> 
-> I did an oprofile, with the following results (server just started,
-> load "only" 5-10):
+> Fix a memory leak in nfsd_getxattr. nfsd_getxattr should free up memory
+> 	that it allocated if vfs_getxattr fails.
 
-Well, there's only 7 patches to net/sunrpc/auth.c between 2.6.25 and
-today, so worst case a 'git bisect v2.6.25..v2.6.27 net/sunrpc/auth.c'
-might not be too bad.
-
-No particular idea why rpcauth_lookup_credcache would be a problem,
-though.
+Thanks!  Applied to for-2.6.28.
 
 --b.
 
 > 
-> 87593    56.1116  (no location information)   vmlinux
-> vmlinux                  rpcauth_lookup_credcache
-> 16037    10.2732  auth_generic.c:0            vmlinux
-> vmlinux                  generic_match
-> 6460      4.1382  (no location information)   php4
-> php4                     (no symbols)
-> 2478      1.5874  (no location information)   libc-2.7.so
-> libc-2.7.so              (no symbols)
-> [...]
+> Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
+> ---
+>  fs/nfsd/vfs.c |    6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
 > 
-> We havn't configured any special authentication method.  It is a NFSv3
-> over UDP mount, but the kernel has NFSv4 and therefore KRB5 enabled.
-> 
-> Any ideas why rpcauth_lookup_credcache() goes overboard with CPU
-> usage?
-> 
-> Max
+> diff -ruNp 2.6.27-org/fs/nfsd/vfs.c 2.6.27-new/fs/nfsd/vfs.c
+> --- 2.6.27-org/fs/nfsd/vfs.c	2008-10-22 14:17:23.000000000 +0530
+> +++ 2.6.27-new/fs/nfsd/vfs.c	2008-10-22 14:19:15.000000000 +0530
+> @@ -411,6 +411,7 @@ out_nfserr:
+>  static ssize_t nfsd_getxattr(struct dentry *dentry, char *key, void **buf)
+>  {
+>  	ssize_t buflen;
+> +	ssize_t ret;
+>  
+>  	buflen = vfs_getxattr(dentry, key, NULL, 0);
+>  	if (buflen <= 0)
+> @@ -420,7 +421,10 @@ static ssize_t nfsd_getxattr(struct dent
+>  	if (!*buf)
+>  		return -ENOMEM;
+>  
+> -	return vfs_getxattr(dentry, key, *buf, buflen);
+> +	ret = vfs_getxattr(dentry, key, *buf, buflen);
+> +	if (ret < 0)
+> +		kfree(*buf);
+> +	return ret;
+>  }
+>  #endif
+>  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
