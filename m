@@ -1,70 +1,56 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: Fix BUG during NFSD shutdown processing
-Date: Wed, 22 Oct 2008 13:37:43 -0400
-Message-ID: <20081022173743.GD1299@fieldses.org>
-References: <20081022171235.5152.7645.stgit@ingres.1015granger.net>
+Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
+Date: Wed, 22 Oct 2008 13:56:17 -0400
+Message-ID: <20081022175617.GA2495@fieldses.org>
+References: <20081022091207.GA12996@squirrel.roonstrasse.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57511 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:33159 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758287AbYJVRho (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2008 13:37:44 -0400
-In-Reply-To: <20081022171235.5152.7645.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752657AbYJVR4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2008 13:56:19 -0400
+In-Reply-To: <20081022091207.GA12996-2pNSKKP3PSJxEiad3KpGLI/oZP4lHnOC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 22, 2008 at 01:12:36PM -0400, Chuck Lever wrote:
-> The Linux NFS server can be started via a user-space write to
-> /proc/fs/nfs/threads or to /proc/fs/nfs/portlist.  In the first case,
-> all default listeners are started (both UDP and TCP).  In the second,
-> a listener is started only for one specified transport.
+On Wed, Oct 22, 2008 at 11:12:08AM +0200, Max Kellermann wrote:
+> Hi,
 > 
-> The NFS server has to make sure lockd stays up until the last listener
-> transport goes away.  To support both start-up interfaces, it should
-> do one lockd_up() for each NFSD listener.
+> after I was able to fix http://lkml.org/lkml/2008/10/17/147, the
+> server which was already upgraded to 2.6.27.2 still gets very high
+> load.  It is a web server with NFS file storage (NetApp), and while
+> the others in the cluster (kernel 2.6.25) have a load of 1-3, 2.6.27.2
+> gets 30-50.
 > 
-> The nfsd_init_socks() function used to do one lockd_up() call for each
-> svc_create_xprt().  Recently commit
-> 26a414092353590ceaa5955bcb53f863d6ea7549 mistakenly changed
-> nfsd_init_socks() to do only one lockd_up() call even though it still
-> does two svc_create_xprt() calls.
-> 
-> The end result is a lockd_down() BUG during NFSD shutdown processing
-> because nfsd_last_threads() does a lockd_down() call for each entry
-> on the sv_permsocks list, but the start-up code doesn't do a matching
-> number of lockd_up() calls.
-> 
-> Add a second lockd_up() in nfsd_init_socks() to make sure the number
-> of lockd_up() calls matches the number of entries on the NFS servers's
-> sv_permsocks list.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> I did an oprofile, with the following results (server just started,
+> load "only" 5-10):
 
-Thanks; applied to for-2.6.28; I'll pass it along to Linus soon.
+Well, there's only 7 patches to net/sunrpc/auth.c between 2.6.25 and
+today, so worst case a 'git bisect v2.6.25..v2.6.27 net/sunrpc/auth.c'
+might not be too bad.
+
+No particular idea why rpcauth_lookup_credcache would be a problem,
+though.
 
 --b.
 
-> ---
 > 
->  fs/nfsd/nfssvc.c |    4 ++++
->  1 files changed, 4 insertions(+), 0 deletions(-)
+> 87593    56.1116  (no location information)   vmlinux
+> vmlinux                  rpcauth_lookup_credcache
+> 16037    10.2732  auth_generic.c:0            vmlinux
+> vmlinux                  generic_match
+> 6460      4.1382  (no location information)   php4
+> php4                     (no symbols)
+> 2478      1.5874  (no location information)   libc-2.7.so
+> libc-2.7.so              (no symbols)
+> [...]
 > 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 59eeb46..07e4f5d 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -249,6 +249,10 @@ static int nfsd_init_socks(int port)
->  	if (error < 0)
->  		return error;
->  
-> +	error = lockd_up();
-> +	if (error < 0)
-> +		return error;
-> +
->  	error = svc_create_xprt(nfsd_serv, "tcp", port,
->  					SVC_SOCK_DEFAULTS);
->  	if (error < 0)
+> We havn't configured any special authentication method.  It is a NFSv3
+> over UDP mount, but the kernel has NFSv4 and therefore KRB5 enabled.
 > 
+> Any ideas why rpcauth_lookup_credcache() goes overboard with CPU
+> usage?
+> 
+> Max
