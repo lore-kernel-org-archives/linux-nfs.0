@@ -1,136 +1,79 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC] [PATCH 1/1] tcp-autotuning-on-recv-window-fix
-Date: Wed, 22 Oct 2008 15:46:05 -0400
-Message-ID: <20081022194605.GA4409@fieldses.org>
-References: <48FE200A.6070805@citi.umich.edu>
+Subject: Re: [PATCH] nfsd: Change error handling in _get_posix_acl and it's
+	callers
+Date: Wed, 22 Oct 2008 16:12:45 -0400
+Message-ID: <20081022201245.GA5572@fieldses.org>
+References: <20081022091836.22100.57827.sendpatchset@localhost.localdomain> <20081022091848.22100.80769.sendpatchset@localhost.localdomain> <20081022181753.GC2495@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+To: Krishna Kumar <krkumar2@in.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:37728 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:50032 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750999AbYJVTqH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2008 15:46:07 -0400
-In-Reply-To: <48FE200A.6070805@citi.umich.edu>
+	id S1759295AbYJVUMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2008 16:12:50 -0400
+In-Reply-To: <20081022181753.GC2495@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 21, 2008 at 02:31:38PM -0400, Olga Kornievskaia wrote:
->
-> From: Olga Kornievskaia <aglo@citi.umich.edu>
-> Date: Tue, 21 Oct 2008 14:13:47 -0400
-> Subject: [RFC] [PATCH 1/1] tcp-autotuning-on-recv-window-fix
+On Wed, Oct 22, 2008 at 02:17:53PM -0400, bfields wrote:
+> On Wed, Oct 22, 2008 at 02:48:48PM +0530, Krishna Kumar wrote:
+> > From: Krishna Kumar <krkumar2@in.ibm.com>
+> > 
+> > Change _get_posix_acl to return NULL on buflen == 0, and change users of
+> > 	this function to handle error cases.
 > 
-> This patch allows for the NFSv4 server to make use of TCP autotuning behaviour
-> which was previously disabled by setting sk_userlocks variable. 
-> 
-> This patch sets the receive buffers to be big enough to receive the whole 
-> RPC request. This buffer size had to be set for the listening socket and not
-> the accept socket as it was previously done. 
+> OK, the code's certainly simpler.  Makes sense.  Applied to for-2.6.29.
 
-The point there being that our previous buffer-size settings were made
-too late to actually have an affect?
+Whoops!  Sorry, spoke to soon--dropped.  This breaks some ACL-related
+newpynfs tests:
 
-> This patch removes the code that readjust the receive/send buffer sizes for
-> the accepted socket. Previously this code was used to influence the TCP
-> window management behaviour which is no longer needed when autotuning is 
-> enabled. 
+	http://www.citi.umich.edu/projects/nfsv4/pynfs/
 
-Could we get a really brief summary of the performance improvement for a
-high-speed network, to include in the commit message?
-
-The one remaining worry I recall is that we assume the tcp autotuning
-never decreases the size of the buffer below the size we initially
-requested.  Apparently that assumption is true.  There's some worry
-about whether that's true by design or merely true of the current
-implementation.
-
-That doesn't look like a big worry--I'm inclined to apply this patch as
-is--but moving the sk_{rcv,snd}buf assignments to a simple function in
-the networking code and documenting the requirements there might be a
-nice thing to do (as a separate patch).
+The assumption that nfsd_getxattr leaves *buf untouched is probably
+wrong.  At the least, there's a race here--something could change
+between the two calls to vfs_getxattr(), though that's not the case I'm
+seeing.  The filesystem may just be giving a high estimate for the
+buflen in the first call.
 
 --b.
 
-> 
-> Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
-> ---
->  net/sunrpc/svcsock.c |   35 +++++++----------------------------
->  1 files changed, 7 insertions(+), 28 deletions(-)
-> 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 3e65719..4bb535e 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -349,7 +349,6 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
->  	lock_sock(sock->sk);
->  	sock->sk->sk_sndbuf = snd * 2;
->  	sock->sk->sk_rcvbuf = rcv * 2;
-> -	sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
->  	release_sock(sock->sk);
->  #endif
->  }
-> @@ -801,23 +800,6 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
->  		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
->  		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
->  
-> -	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
-> -		/* sndbuf needs to have room for one request
-> -		 * per thread, otherwise we can stall even when the
-> -		 * network isn't a bottleneck.
-> -		 *
-> -		 * We count all threads rather than threads in a
-> -		 * particular pool, which provides an upper bound
-> -		 * on the number of threads which will access the socket.
-> -		 *
-> -		 * rcvbuf just needs to be able to hold a few requests.
-> -		 * Normally they will be removed from the queue
-> -		 * as soon a a complete request arrives.
-> -		 */
-> -		svc_sock_setbufsize(svsk->sk_sock,
-> -				    (serv->sv_nrthreads+3) * serv->sv_max_mesg,
-> -				    3 * serv->sv_max_mesg);
-> -
->  	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
->  
->  	/* Receive data. If we haven't got the record length yet, get
-> @@ -1065,15 +1047,6 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
->  
->  		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
->  
-> -		/* initialise setting must have enough space to
-> -		 * receive and respond to one request.
-> -		 * svc_tcp_recvfrom will re-adjust if necessary
-> -		 */
-> -		svc_sock_setbufsize(svsk->sk_sock,
-> -				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
-> -				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
-> -
-> -		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
->  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
->  		if (sk->sk_state != TCP_ESTABLISHED)
->  			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-> @@ -1143,8 +1116,14 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->  	/* Initialize the socket */
->  	if (sock->type == SOCK_DGRAM)
->  		svc_udp_init(svsk, serv);
-> -	else
-> +	else {
-> +		/* initialise setting must have enough space to
-
-s/initialise/initial/
-
-> +		 * receive and respond to one request.
-> +		 */
-> +		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
-> +					4 * serv->sv_max_mesg);
->  		svc_tcp_init(svsk, serv);
-> +	}
->  
->  	dprintk("svc: svc_setup_socket created %p (inet %p)\n",
->  				svsk, svsk->sk_sk);
-> -- 
-> 1.5.0.2
-> 
-
+> >  {
+> >  	void *buf = NULL;
+> > -	struct posix_acl *pacl = NULL;
+> > +	struct posix_acl *pacl;
+> >  	int buflen;
+> >  
+> >  	buflen = nfsd_getxattr(dentry, key, &buf);
+> > -	if (!buflen)
+> > -		buflen = -ENODATA;
+> > -	if (buflen <= 0)
+> > +	if (buflen < 0)
+> >  		return ERR_PTR(buflen);
+> >  
+> >  	pacl = posix_acl_from_xattr(buf, buflen);
+> > @@ -526,7 +524,7 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqst
+> >  	unsigned int flags = 0;
+> >  
+> >  	pacl = _get_posix_acl(dentry, POSIX_ACL_XATTR_ACCESS);
+> > -	if (IS_ERR(pacl) && PTR_ERR(pacl) == -ENODATA)
+> > +	if (!pacl)
+> >  		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+> >  	if (IS_ERR(pacl)) {
+> >  		error = PTR_ERR(pacl);
+> > @@ -536,9 +534,7 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqst
+> >  
+> >  	if (S_ISDIR(inode->i_mode)) {
+> >  		dpacl = _get_posix_acl(dentry, POSIX_ACL_XATTR_DEFAULT);
+> > -		if (IS_ERR(dpacl) && PTR_ERR(dpacl) == -ENODATA)
+> > -			dpacl = NULL;
+> > -		else if (IS_ERR(dpacl)) {
+> > +		if (IS_ERR(dpacl)) {
+> >  			error = PTR_ERR(dpacl);
+> >  			dpacl = NULL;
+> >  			goto out;
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
