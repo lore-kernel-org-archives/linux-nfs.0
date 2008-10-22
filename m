@@ -1,130 +1,194 @@
 From: andros@netapp.com
-Subject: [PATCH 1/3] SUNRPC add deferral processing callbacks
-Date: Wed, 22 Oct 2008 14:12:04 -0400
-Message-ID: <1224699126-3762-2-git-send-email-andros@netapp.com>
+Subject: [PATCH 2/3] NFSD save, restore, and release deferred result pages
+Date: Wed, 22 Oct 2008 14:12:05 -0400
+Message-ID: <1224699126-3762-3-git-send-email-andros@netapp.com>
 References: <>
  <1224699126-3762-1-git-send-email-andros@netapp.com>
+ <1224699126-3762-2-git-send-email-andros@netapp.com>
 Cc: androsadamson@gmail.com, Andy Adamson <andros@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:46927 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753341AbYJVSMR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2008 14:12:17 -0400
-In-Reply-To: <1224699126-3762-1-git-send-email-andros@netapp.com>
+	id S1754182AbYJVSMV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2008 14:12:21 -0400
+In-Reply-To: <1224699126-3762-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-For EOS, NFSD compound RPC deferred processing should restart operation which
-caused the deferral.
+Dynamically allocate the deferred request page pointer array only if
+there are enough deferral pages available.
 
-Add a callback and a defer_data pointer in svc_rqst to enable svc_defer to
-save partial result state in the deferral request.
+Limit the number of available deferral pages to the number of pages in the
+maximum rpc payload. This allows for one deferral at at time of a request
+that requires the maximum payload. Most deferrals require a single page.
 
-Dynamically allocate page pointers in the save state callback.
-A failure to save state will free the deferred request and
-return NULL which signals the cache to return -ETIMEDOUT (NFSERR_DELAY).
+Implement the rq_save_state, resume_state, and release_state RPC deferral
+callbacks.  Save the reply pages in struct svc_deferred_req.
 
-Add page pointer storage to svc_deferred_req to cache the pages holding the
-partially processed request.
-
-Add callbacks and a defer_data pointer in svc_deferred_request to enable
-svc_deferred_recv to restore and release the partial result state.
+Clear the svc_deferred_req respages in the save_state callback to setup
+for another NFSD operation deferral.
 
 Signed-off-by: Andy Adamson<andros@netapp.com>
 ---
- include/linux/sunrpc/svc.h |   10 ++++++++++
- net/sunrpc/svc.c           |    4 ++++
- net/sunrpc/svc_xprt.c      |   10 +++++++++-
- 3 files changed, 23 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4proc.c         |  129 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/sunrpc/svc.h |    1 +
+ 2 files changed, 130 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 3afe7fb..8cc8a74 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -216,6 +216,9 @@ struct svc_rqst {
- 	struct svc_cred		rq_cred;	/* auth info */
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
-+	/* callback to save deferred request state */
-+	int (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
-+	void			*rq_defer_data; /* defer state data to save */
- 
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
-@@ -324,6 +327,13 @@ struct svc_deferred_req {
- 	union svc_addr_u	daddr;	/* where reply must come from */
- 	struct cache_deferred_req handle;
- 	size_t			xprt_hlen;
-+	/* callbacks to restore and release deferred request state
-+	 * set in rq_save_state */
-+	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
-+	void (*release_state)(struct svc_deferred_req *);
-+	void			*defer_data; /* defer state data */
-+	struct page		**respages;
-+	int			respages_used;
- 	int			argslen;
- 	__be32			args[0];
- };
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 54c98d8..8a6c69c 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1024,6 +1024,10 @@ svc_process(struct svc_rqst *rqstp)
- 	/* Will be turned off only in gss privacy case: */
- 	rqstp->rq_splice_ok = 1;
- 
-+	/* Reset deferred processing */
-+	rqstp->rq_defer_data = NULL;
-+	rqstp->rq_save_state = NULL;
-+
- 	/* Setup reply header */
- 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
- 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..0a8d6ab 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -903,6 +903,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- 	struct svc_xprt *xprt = dr->xprt;
- 
- 	if (too_many) {
-+		if (dr->release_state)
-+			dr->release_state(dr);
- 		svc_xprt_put(xprt);
- 		kfree(dr);
- 		return;
-@@ -941,7 +943,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 		size_t size;
- 		/* FIXME maybe discard if size too large */
- 		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
--		dr = kmalloc(size, GFP_KERNEL);
-+		dr = kzalloc(size, GFP_KERNEL);
- 		if (dr == NULL)
- 			return NULL;
- 
-@@ -958,6 +960,10 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base - skip,
- 		       dr->argslen << 2);
- 	}
-+	if (rqstp->rq_save_state && !rqstp->rq_save_state(rqstp, dr)) {
-+		kfree(dr);
-+		return NULL;
-+	}
- 	svc_xprt_get(rqstp->rq_xprt);
- 	dr->xprt = rqstp->rq_xprt;
- 
-@@ -986,6 +992,8 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
- 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
- 	rqstp->rq_daddr       = dr->daddr;
- 	rqstp->rq_respages    = rqstp->rq_pages;
-+	if (dr->restore_state)
-+		dr->restore_state(rqstp, dr);
- 	return (dr->argslen<<2) - dr->xprt_hlen;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 669461e..97f2d25 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -836,6 +836,135 @@ static struct nfsd4_compound_state *cstate_alloc(void)
+ 	return cstate;
  }
  
++/*
++ * RPC deferral callbacks
++ */
++
++void
++nfsd4_move_pages(struct page **topages, struct page **frompages, int count)
++{
++	int i;
++
++	for (i = 0; i < count; i++) {
++		topages[i] = frompages[i];
++		if (!topages[i])
++			continue;
++		get_page(topages[i]);
++	}
++}
++
++void
++nfsd4_cache_rqst_pages(struct svc_rqst *rqstp, struct page **respages,
++		       int *resused)
++{
++	*resused = rqstp->rq_resused;
++	nfsd4_move_pages(respages, rqstp->rq_respages, rqstp->rq_resused);
++}
++
++void
++nfsd4_restore_rqst_pages(struct svc_rqst *rqstp, struct page **respages,
++			 int resused)
++{
++	/* release allocated result pages to be replaced from the cache */
++	svc_free_res_pages(rqstp);
++
++	rqstp->rq_resused = resused;
++	nfsd4_move_pages(rqstp->rq_respages, respages, resused);
++}
++
++static void
++nfsd4_clear_respages(struct page **respages, int resused)
++{
++	int i;
++
++	for (i = 0; i < resused; i++) {
++		if (!respages[i])
++			continue;
++		put_page(respages[i]);
++		respages[i] = NULL;
++	}
++}
++
++/*
++ * Limit the number of pages held by any deferral to the
++ * number of pages in the maximum rpc_payload.
++ */
++static struct page**
++nfsd4_alloc_deferred_respages(struct svc_rqst *rqstp)
++{
++	struct page **new = NULL;
++	u32 maxpages = svc_max_payload(rqstp) >> PAGE_SHIFT;
++
++	new = kcalloc(rqstp->rq_resused, sizeof(struct page *), GFP_KERNEL);
++	if (!new)
++		return new;
++	spin_lock(&nfsd_serv->sv_lock);
++	if (nfsd_serv->sv_defer_pages_used + rqstp->rq_resused <= maxpages) {
++		nfsd_serv->sv_defer_pages_used += rqstp->rq_resused;
++		spin_unlock(&nfsd_serv->sv_lock);
++	} else {
++		spin_unlock(&nfsd_serv->sv_lock);
++		kfree(new);
++		new = NULL;
++	}
++	return new;
++}
++
++void
++nfsd4_return_deferred_respages(struct svc_deferred_req *dreq)
++{
++	nfsd4_clear_respages(dreq->respages, dreq->respages_used);
++	spin_lock(&nfsd_serv->sv_lock);
++	nfsd_serv->sv_defer_pages_used -= dreq->respages_used;
++	spin_unlock(&nfsd_serv->sv_lock);
++	kfree(dreq->respages);
++	dreq->respages = NULL;
++	dreq->respages_used = 0;
++}
++
++static void
++nfsd4_release_deferred_state(struct svc_deferred_req *dreq)
++{
++	nfsd4_return_deferred_respages(dreq);
++	cstate_free(dreq->defer_data);
++}
++
++static void
++nfsd4_restore_deferred_state(struct svc_rqst *rqstp,
++			     struct svc_deferred_req *dreq)
++{
++	nfsd4_restore_rqst_pages(rqstp, dreq->respages, dreq->respages_used);
++	/* Reset defer_data for a NFSD deferral revisit interrupted
++	 * by a non-NFSD deferral */
++	rqstp->rq_defer_data = dreq->defer_data;
++}
++
++static int
++nfsd4_save_deferred_state(struct svc_rqst *rqstp,
++			  struct svc_deferred_req *dreq)
++ {
++	struct nfsd4_compound_state *cstate =
++		(struct nfsd4_compound_state *)rqstp->rq_defer_data;
++
++	/* From NFSD deferral on a previous operation */
++	if (dreq->respages)
++		nfsd4_return_deferred_respages(dreq);
++	dreq->respages = nfsd4_alloc_deferred_respages(rqstp);
++	if (!dreq->respages)
++		return 0;
++	dreq->respages_used = rqstp->rq_resused;
++
++	fh_put(&cstate->current_fh);
++	fh_put(&cstate->save_fh);
++
++	nfsd4_cache_rqst_pages(rqstp, dreq->respages, &dreq->respages_used);
++
++	dreq->defer_data = rqstp->rq_defer_data;
++	dreq->restore_state = nfsd4_restore_deferred_state;
++	dreq->release_state = nfsd4_release_deferred_state;
++	return 1;
++}
++
+ typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+ 			      void *);
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 8cc8a74..bf943b7 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -60,6 +60,7 @@ struct svc_serv {
+ 	unsigned int		sv_nrthreads;	/* # of server threads */
+ 	unsigned int		sv_max_payload;	/* datagram payload size */
+ 	unsigned int		sv_max_mesg;	/* max_payload + 1 page for overheads */
++	unsigned int		sv_defer_pages_used; /* deferred pages held */
+ 	unsigned int		sv_xdrsize;	/* XDR buffer size */
+ 
+ 	struct list_head	sv_permsocks;	/* all permanent sockets */
 -- 
 1.5.4.3
 
