@@ -1,33 +1,42 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: why set send and receive buffers in svc_sock_setbufsize()?
-Date: Thu, 23 Oct 2008 14:48:44 -0400
-Message-ID: <20081023144844.610e294d@barsoom.rdu.redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: why set send and receive buffers in svc_sock_setbufsize()?
+Date: Thu, 23 Oct 2008 14:53:13 -0400
+Message-ID: <20081023185313.GB25666@fieldses.org>
+References: <20081023144844.610e294d@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: smfrench@gmail.com
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, smfrench@gmail.com
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:58964 "EHLO mx2.redhat.com"
+Received: from mail.fieldses.org ([66.93.2.214]:56910 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753132AbYJWSst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2008 14:48:49 -0400
+	id S1751378AbYJWSxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Oct 2008 14:53:14 -0400
+In-Reply-To: <20081023144844.610e294d-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've been reviewing a patch for CIFS, and out of the discussions over
-that patch, there's been the recommendation to not set sk_sndbuf and
-sk_rcvbuf. Apparently, setting these to a value will place a hard limit
-on the buffer sizes for the socket, so there's not much need to set
-these unless we want to limit memory usage to this value for some
-reason.
+On Thu, Oct 23, 2008 at 02:48:44PM -0400, Jeff Layton wrote:
+> I've been reviewing a patch for CIFS, and out of the discussions over
+> that patch, there's been the recommendation to not set sk_sndbuf and
+> sk_rcvbuf. Apparently, setting these to a value will place a hard limit
+> on the buffer sizes for the socket, so there's not much need to set
+> these unless we want to limit memory usage to this value for some
+> reason.
+> 
+> One question is that the sunrpc code sets these values in
+> svc_sock_setbufsize(). What is the reasoning behind this?
+> 
+> If we're doing it to limit memory consumption then that's certainly
+> valid, but if we're doing this to attempt to make sure that we have
+> "enough" buffer space for the expected load then this may be
+> counter-productive.
 
-One question is that the sunrpc code sets these values in
-svc_sock_setbufsize(). What is the reasoning behind this?
+Yep!  See
 
-If we're doing it to limit memory consumption then that's certainly
-valid, but if we're doing this to attempt to make sure that we have
-"enough" buffer space for the expected load then this may be
-counter-productive.
+	http://marc.info/?l=linux-nfs&m=122461390600382&w=2
 
--- 
-Jeff Layton <jlayton@redhat.com>
+and followups; Olga and Jim have found this makes a huge difference to
+performance on fast high-latency networks.
+
+--b.
