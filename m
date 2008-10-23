@@ -1,67 +1,59 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [grumble] connected UDP sockets [grumble] Solaris [grumble]
-Date: Thu, 23 Oct 2008 14:57:15 +1100
-Message-ID: <18687.63003.966163.267177@notabene.brown>
+From: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+Subject: Fwd: NFS 5-minute hangs upon S3 resume using 2.6.27 client
+Date: Wed, 22 Oct 2008 21:02:31 -0700
+Message-ID: <20081023040231.GA13512@zoy.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:35969 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752255AbYJWD5G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2008 23:57:06 -0400
-Received: from Relay1.suse.de (relay-ext.suse.de [195.135.221.8])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 531B44649B
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Oct 2008 05:57:04 +0200 (CEST)
+Received: from server.lespinasse.org ([64.142.28.226]:57917 "EHLO
+	server.lespinasse.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750777AbYJWEhE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2008 00:37:04 -0400
+Received: from michel.lespinasse.org (michel.home.lespinasse.org [10.1.0.1])
+	by server.lespinasse.org (Postfix) with ESMTP id DED352FC1C
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Oct 2008 21:02:31 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I sent this out to LKML earlier but was told this would be a better list.
+This has been mentionned in bugzilla already, but I'd like to draw attention
+before it gets too late for 2.6.28 (or is it already too late ???)
 
-The attentive reader of this mailing list may be aware that I was -
-some time ago - advocating using connected UDP sockets when UDP was
-used to contact the server during a mount. i.e. to talk to portmap and
-mountd.
+The following is a common cause of 5-minute NFS hangs here:
 
-The benefit of this is that errors reported by ICMP (e.g. host
-unreachable / port unreachable) are reported to the application with
-connected sockets, whereas unconnected sockets need to wait for a
-timeout.
+* Client has TCP connections to the NFS server, goes to S3 sleep for few hours.
+* TCP connections die on the server side.
+  (not 100% sure why, do they use some kind of keepalive ???)
+* Client resumes from S3.
+* Client sends NFS requests down its TCP connections, gets back RST packet.
+* [Client hangs for exactly 300 seconds here]
+* Client establishes new TCP connections to the NFS server,
+  and recovers from the hang.
 
-I just discovered that there is a problem with this.  It involves
-multihomed hosts and certain non-Linux operating systems such as
-Solaris (I don't know which version(s)).
+A tcpdump trace is attached at the end of bugzilla bug 11154:
+http://bugzilla.kernel.org/show_bug.cgi?id=11154
 
-In one particular case, the UDP request (portmap lookup I assume) was
-sent from a Linux client to a Solaris server and the reply promptly
-came back from a different IP address (presumably the address of the
-interface that Solaris wanted to route through to get to the client).
-Linux replied to this with an ICMP error.  It couldn't send the reply
-to mount.nfs because mount.nfs had a connected UDP sockets that was
-connected to a different remote address.
+Should the client immediately try to reconnect when its existing connection
+receives an RST packet ? (the 5 minute delay would make sense to me if
+RST was received in reply to a SYN, but I'm not sure about it in the case
+of an existing open TCP connection).
 
-This is arguably a bug in Solaris.  It should reply with a source
-address matching the destination address of the request.  Linux hasn't
-had that bug for years.  But we probably still have to live with it.
+If the 5 minute delay after an RST is necessary, could the client avoid it
+by explicitly closing/reopening its connections using suspend/resume hooks ?
 
-The conclusion is that if we use connected UDP sockets, we will get
-unnecessary timeout talking to certain multihomed hosts, and if we
-don't we will get unnecessary timeouts talking to certain hosts that
-don't support portmap on UDP (for example).
+(I can not work around the issue locally by mounting/unmounting my NFS
+shares around the suspend/resume because rootfs also on NFS...)
 
-I don't suppose there is a middle ground?  A semi-connected socket?
-Or we could have one of each and see which one gets a reply first?
-No, that's just yuck.
+This NFS setup was working fine in 2.6.24. There has been issues with
+2.6.25 and 2.6.26, but I did not confirm if they are the same bug.
+2.6.25 usualy recovers after some variable delay and 2.6.26 usualy
+does not recover. Bugs 11154 and 11061 have more details about this,
+also Ian Campbell has been tracking an NFS issue under load that
+appeared at around the same time.
 
+Hope this helps,
 
-Much as it pains me to say this, maybe we just need to treat UDP as
-legacy for all protocols (PORTMAP, MOUNT, NLM, NSM), not just NFS.
-None of these problems occur with TCP.  TCP does have a slightly
-higher overhead for simple transactions, but it is a cost that is
-unlikely to be noticeable in reality.
-
-
-Thoughts?
-
-NeilBrown (grumble grumble).
+-- 
+Michel "Walken" Lespinasse
+A program is never fully debugged until the last user dies.
