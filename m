@@ -1,46 +1,75 @@
-From: Jim Rees <rees@umich.edu>
-Subject: Re: why set send and receive buffers in svc_sock_setbufsize()?
-Date: Thu, 23 Oct 2008 15:05:33 -0400
-Message-ID: <20081023190533.GA11478@citi.umich.edu>
-References: <20081023144844.610e294d@barsoom.rdu.redhat.com>
+From: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+Subject: Re: Fwd: NFS 5-minute hangs upon S3 resume using 2.6.27 client
+Date: Thu, 23 Oct 2008 12:52:31 -0700
+Message-ID: <20081023195231.GA2090@zoy.org>
+References: <20081023040231.GA13512@zoy.org> <1224776207.7625.7.camel@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, smfrench@gmail.com
-To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mail.umich.edu ([141.211.93.160]:34553 "EHLO
-	skycaptain.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756895AbYJWTFt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2008 15:05:49 -0400
-In-Reply-To: <20081023144844.610e294d-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
+Received: from server.lespinasse.org ([64.142.28.226]:49493 "EHLO
+	server.lespinasse.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758850AbYJWTwd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2008 15:52:33 -0400
+In-Reply-To: <1224776207.7625.7.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton wrote:
+Hi,
 
-  I've been reviewing a patch for CIFS, and out of the discussions over
-  that patch, there's been the recommendation to not set sk_sndbuf and
-  sk_rcvbuf. Apparently, setting these to a value will place a hard limit
-  on the buffer sizes for the socket, so there's not much need to set
-  these unless we want to limit memory usage to this value for some
-  reason.
+On Thu, Oct 23, 2008 at 11:36:47AM -0400, Trond Myklebust wrote:
+> Does the appended patch make a difference?
+> 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Thu, 23 Oct 2008 11:33:59 -0400
+> SUNRPC: Respond promptly to server TCP resets
 
-There are two issues to be aware of.  One is that the socket buffers have to
-be big enough for the tcp congestion window.  In the old days, the
-application would have to know ahead of time how big this is, and call
-setsockopt(), which sets these numbers.
+I applied it over a 2.6.27.3 base, suspended the client for 40 minutes
+and resumed it, logging what happens from the server side. The resume
+went like this:
 
-Now however, the tcp stack "autotunes" the buffer sizes to the correct
-amount.  If you call setsockopt() to set a buffer size, or set sk_*buf, or
-set the SOCK_*BUF_LOCK bits in sk_userlocks, you defeat this autotuning.
-This is almost always a bad idea.
+12:38:53.692785 IP client.329262748 > server.nfs: 100 getattr [|nfs]
+12:38:53.699885 arp who-has client tell server
+12:38:54.123793 IP client.329262748 > server.nfs: 100 getattr [|nfs]
+12:38:54.695888 arp who-has client tell server
+12:38:54.696011 arp reply client is-at 00:19:d1:54:0e:39 (oui Unknown)
+12:38:54.696020 IP server.nfs > client.882: R 2944642919:2944642919(0) win 0
+12:38:54.696024 IP server.nfs > client.882: R 2944642919:2944642919(0) win 0
 
-The other issue is that at least for NFS, the receive buffer must be big
-enough to hold the biggest possible rpc.  If not, a partial rpc will get
-stuck in the buffer and no progress will be made.
+(I'm still concerned about the 3 second delay here...)
 
-Issue one is easy to deal with, just don't muck with the socket internal
-data structure.  The second one is harder.  What's really needed is a new
-api into the tcp layer that will reserve a minimum amount of memory in the
-socket buffer so that receives won't stall.  For now, our patch sets the
-sk_*buf values without setting the lock flags.
+12:38:57.695956 IP client.2 > server.nfs: 0 null
+12:38:57.696004 IP server.nfs > client.2: reply ERR 0 null
+12:38:57.696133 IP client.882 > server.nfs: . ack 931551254 win 183 <nop,nop,timestamp 448858 1116460165>
+12:38:57.696159 IP client.362817180 > server.nfs: 100 getattr [|nfs]
+12:38:57.696179 IP server.nfs > client.882: . ack 64732 win 91 <nop,nop,timestamp 1116460165 448858>
+12:38:57.696189 IP client.346039964 > server.nfs: 100 getattr [|nfs]
+12:38:57.696205 IP server.nfs > client.882: . ack 64832 win 91 <nop,nop,timestamp 1116460165 448858>
+12:38:57.696294 IP client.329262748 > server.nfs: 300 getattr [|nfs]
+12:38:57.696307 IP server.nfs > client.882: . ack 65132 win 108 <nop,nop,timestamp 1116460165 448858>
+12:38:57.765764 IP server.nfs > client.362817180: reply ok 116 getattr [|nfs]
+12:38:57.765833 IP server.nfs > client.346039964: reply ok 116 getattr [|nfs]
+12:38:57.765879 IP client.882 > server.nfs: . ack 931551370 win 183 <nop,nop,timestamp 448875 1116460182>
+12:38:57.765903 IP server.nfs > client.329262748: reply ok 116 getattr [|nfs]
+12:38:57.765909 IP client.882 > server.nfs: . ack 931551486 win 183 <nop,nop,timestamp 448875 1116460182>
+12:38:57.765933 IP server.nfs > client.379594396: reply ok 116
+12:38:57.765953 IP client.882 > server.nfs: . ack 931551602 win 183 <nop,nop,timestamp 448875 1116460182>
+12:38:57.766008 IP client.882 > server.nfs: . ack 931551718 win 183 <nop,nop,timestamp 448875 1116460182>
+12:38:57.766058 IP server.nfs > client.396371612: reply ok 116
+12:38:57.766108 IP client.413148828 > server.nfs: 100 getattr [|nfs]
+12:38:57.766149 IP server.nfs > client.882: . ack 65232 win 108 <nop,nop,timestamp 1116460182 448875>
+12:38:57.766176 IP server.nfs > client.413148828: reply ok 116 getattr [|nfs]
+12:38:57.766274 IP client.882 > server.nfs: . ack 931551950 win 183 <nop,nop,timestamp 448875 1116460182>
+12:38:57.769130 IP client.429926044 > server.nfs: 100 getattr [|nfs]
+12:38:57.769188 IP server.nfs > client.429926044: reply ok 116 getattr [|nfs]
+12:38:57.769418 IP client.446703260 > server.nfs: 100 getattr [|nfs]
+12:38:57.769473 IP server.nfs > client.446703260: reply ok 116 getattr [|nfs]
+
+I'll have more results tonight when I try resuming again. If the delay
+goes to 6 seconds then the issue is probably still there... I'll report
+here either way.
+
+-- 
+Michel "Walken" Lespinasse
+A program is never fully debugged until the last user dies.
