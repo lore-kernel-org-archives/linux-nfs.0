@@ -1,36 +1,33 @@
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-Subject: Re: [RFC] [PATCH 1/1] tcp-autotuning-on-recv-window-fix
-Date: Thu, 23 Oct 2008 14:46:21 -0400
-Message-ID: <4900C67D.6040208@citi.umich.edu>
-References: <48FE200A.6070805@citi.umich.edu> <20081022194605.GA4409@fieldses.org> <49009591.2000306@citi.umich.edu> <20081023175309.GE23838@fieldses.org> <4900C3CE.3030403@citi.umich.edu>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: why set send and receive buffers in svc_sock_setbufsize()?
+Date: Thu, 23 Oct 2008 14:48:44 -0400
+Message-ID: <20081023144844.610e294d@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+Content-Type: text/plain; charset=US-ASCII
+Cc: smfrench@gmail.com
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:41386 "EHLO citi.umich.edu"
+Received: from mx2.redhat.com ([66.187.237.31]:58964 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757498AbYJWSqW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2008 14:46:22 -0400
-In-Reply-To: <4900C3CE.3030403@citi.umich.edu>
+	id S1753132AbYJWSst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Oct 2008 14:48:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I've been reviewing a patch for CIFS, and out of the discussions over
+that patch, there's been the recommendation to not set sk_sndbuf and
+sk_rcvbuf. Apparently, setting these to a value will place a hard limit
+on the buffer sizes for the socket, so there's not much need to set
+these unless we want to limit memory usage to this value for some
+reason.
 
+One question is that the sunrpc code sets these values in
+svc_sock_setbufsize(). What is the reasoning behind this?
 
-Olga Kornievskaia wrote:
->
->
-> J. Bruce Fields wrote:
->> On Thu, Oct 23, 2008 at 11:17:37AM -0400, Olga Kornievskaia wrote:
->>  
->>> J. Bruce Fields wrote:
->>>    
->>>> Could we get a really brief summary of the performance improvement 
->>>> for a
->>>> high-speed network, to include in the commit message?
->>>>         
->>> Here's a pick from some LAN performance #s: w/o 237479Mb/s => w/ 
->>> 343669Mb/s.
-Sorry, wrong units: 237479KB/s and 343669KB/s.
+If we're doing it to limit memory consumption then that's certainly
+valid, but if we're doing this to attempt to make sure that we have
+"enough" buffer space for the expected load then this may be
+counter-productive.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
