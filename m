@@ -1,107 +1,119 @@
-From: Chuck Lever <chuck.lever-MouhYhfBpPxXrIkS9f7CXA@public.gmane.org>
-Subject: Re: [PATCH] NLM: Set address family before calling nlm_host_rebooted()
-Date: Thu, 23 Oct 2008 17:32:54 -0400
-Message-ID: <BF3BC6B3-D58F-43B1-AACD-284DDFA291DC@ORACLE.COM>
-References: <20081023044245.15258.55293.stgit@ingres.1015granger.net> <20081023205820.GB26419@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Fwd: NFS 5-minute hangs upon S3 resume using 2.6.27 client
+Date: Thu, 23 Oct 2008 19:17:59 -0400
+Message-ID: <1224803879.7625.79.camel@localhost>
+References: <20081023040231.GA13512@zoy.org>
+	 <1224776207.7625.7.camel@localhost>  <20081023195231.GA2090@zoy.org>
+Mime-Version: 1.0
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:59714 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751675AbYJWVdJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2008 17:33:09 -0400
-In-Reply-To: <20081023205820.GB26419@fieldses.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:40586 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753080AbYJWXSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Oct 2008 19:18:04 -0400
+In-Reply-To: <20081023195231.GA2090-Y93EPB1FQwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 23, 2008, at Oct 23, 2008, 4:58 PM, J. Bruce Fields wrote:
-> On Thu, Oct 23, 2008 at 12:50:35AM -0400, Chuck Lever wrote:
->> The nlm_host_rebooted() function uses nlm_cmp_addr() to find an
->> nsm_handle that matches the rebooted peer.  In order for this to  
->> work,
->> the passed-in address must have a proper address family.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->
-> Thanks!
->
->> Bruce - since we dropped the remaining NSM IPv6 patches for 2.6.28, I
->> think we need to add this one to make sure lock recovery continues to
->> work.
->
-> So this is a regression?  (If so, when was it introduced?)
+On Thu, 2008-10-23 at 12:52 -0700, Michel Lespinasse wrote:
+> Hi,
+> 
+> On Thu, Oct 23, 2008 at 11:36:47AM -0400, Trond Myklebust wrote:
+> > Does the appended patch make a difference?
+> > 
+> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > Date: Thu, 23 Oct 2008 11:33:59 -0400
+> > SUNRPC: Respond promptly to server TCP resets
+> 
+> I applied it over a 2.6.27.3 base, suspended the client for 40 minutes
+> and resumed it, logging what happens from the server side. The resume
+> went like this:
+> 
+> 12:38:53.692785 IP client.329262748 > server.nfs: 100 getattr [|nfs]
+> 12:38:53.699885 arp who-has client tell server
+> 12:38:54.123793 IP client.329262748 > server.nfs: 100 getattr [|nfs]
+> 12:38:54.695888 arp who-has client tell server
+> 12:38:54.696011 arp reply client is-at 00:19:d1:54:0e:39 (oui Unknown)
+> 12:38:54.696020 IP server.nfs > client.882: R 2944642919:2944642919(0) win 0
+> 12:38:54.696024 IP server.nfs > client.882: R 2944642919:2944642919(0) win 0
+> 
+> (I'm still concerned about the 3 second delay here...)
+> 
+> 12:38:57.695956 IP client.2 > server.nfs: 0 null
 
-I think this was introduced when AF_INET6 support was added to  
-nlm_cmp_addr() in commit 781b61a6.  Before that commit, nlm_cmp_addr()  
-didn't care about the address family; it compared only the  
-sin_addr.s_addr field for equality.
+Does this patch fix that delay?
 
-This is a regression in the sense that it probably broke lock recovery  
-in .28, but I don't think this is a problem in any released kernel.
+Cheers
+  Trond
 
-> Have you tested lock recovery?  I'll see if I can get some sort of  
-> lock
-> recovery test running as part of my default regression tests this
-> weekend....  It seems to be something that hasn't been watched closely
-> enough.
+-------------------------------------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 23 Oct 2008 19:14:55 -0400
+SUNRPC: Fix the setting of xprt->reestablish_timeout when reconnecting
 
-Sankar has a lock recovery test.  He didn't report a problem with lock  
-recovery with the full set of patches I had for 2.6.28.  He never  
-tested what is actually in .28 now, which is missing those NSM patches.
+If the server aborts an established connection, then we should retry
+connecting immediately. Since xprt->reestablish_timeout is not reset unless
+we go through a TCP_FIN_WAIT1 state, we may end waiting.
+The fix is to reset xprt->reestablish_timeout in TCP_ESTABLISHED, and then
+rely on the fact that we set it to non-zero values in all other cases when
+the server closes the connection.
 
-I'm preparing my latest patches for him to try out soon.
+Also fix a race between xs_connect() and xs_tcp_state_change(). The
+value of xprt->reestablish_timeout should be updated before we actually
+attempt the connection.
 
-> --b.
->
->
->>
->> Please consider this one for 2.6.28.
->>
->> fs/lockd/svc4proc.c |    1 +
->> fs/lockd/svcproc.c  |    1 +
->> 2 files changed, 2 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
->> index 014f6ce..4dfdcbc 100644
->> --- a/fs/lockd/svc4proc.c
->> +++ b/fs/lockd/svc4proc.c
->> @@ -434,6 +434,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp,  
->> struct nlm_reboot *argp,
->> 	 * reclaim all locks we hold on this server.
->> 	 */
->> 	memset(&saddr, 0, sizeof(saddr));
->> +	saddr.sin_family = AF_INET;
->> 	saddr.sin_addr.s_addr = argp->addr;
->> 	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
->>
->> diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
->> index 548b0bb..3ca89e2 100644
->> --- a/fs/lockd/svcproc.c
->> +++ b/fs/lockd/svcproc.c
->> @@ -466,6 +466,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp,  
->> struct nlm_reboot *argp,
->> 	 * reclaim all locks we hold on this server.
->> 	 */
->> 	memset(&saddr, 0, sizeof(saddr));
->> +	saddr.sin_family = AF_INET;
->> 	saddr.sin_addr.s_addr = argp->addr;
->> 	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ net/sunrpc/xprtsock.c |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
 
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 0a50361..ac2aa52 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1144,6 +1144,8 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			struct sock_xprt *transport = container_of(xprt,
+ 					struct sock_xprt, xprt);
+ 
++			xprt->reestablish_timeout = 0;
++
+ 			/* Reset TCP record info */
+ 			transport->tcp_offset = 0;
+ 			transport->tcp_reclen = 0;
+@@ -1158,7 +1160,6 @@ static void xs_tcp_state_change(struct sock *sk)
+ 	case TCP_FIN_WAIT1:
+ 		/* The client initiated a shutdown of the socket */
+ 		xprt->connect_cookie++;
+-		xprt->reestablish_timeout = 0;
+ 		set_bit(XPRT_CLOSING, &xprt->state);
+ 		smp_mb__before_clear_bit();
+ 		clear_bit(XPRT_CONNECTED, &xprt->state);
+@@ -1793,6 +1794,7 @@ static void xs_connect(struct rpc_task *task)
+ {
+ 	struct rpc_xprt *xprt = task->tk_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	unsigned long timeout;
+ 
+ 	if (xprt_test_and_set_connecting(xprt))
+ 		return;
+@@ -1801,12 +1803,12 @@ static void xs_connect(struct rpc_task *task)
+ 		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+ 				"seconds\n",
+ 				xprt, xprt->reestablish_timeout / HZ);
+-		queue_delayed_work(rpciod_workqueue,
+-				   &transport->connect_worker,
+-				   xprt->reestablish_timeout);
++		timeout = xprt->reestablish_timeout;
+ 		xprt->reestablish_timeout <<= 1;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
++		queue_delayed_work(rpciod_workqueue,
++				   &transport->connect_worker, timeout);
+ 	} else {
+ 		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+ 		queue_delayed_work(rpciod_workqueue,
 
 
