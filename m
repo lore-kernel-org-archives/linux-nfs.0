@@ -1,44 +1,67 @@
-From: Jim Rees <rees@umich.edu>
-Subject: Re: [RFC] [PATCH 1/1] tcp-autotuning-on-recv-window-fix
-Date: Wed, 22 Oct 2008 19:12:26 -0400
-Message-ID: <20081022231226.GA17362@citi.umich.edu>
-References: <48FE200A.6070805@citi.umich.edu> <20081022194605.GA4409@fieldses.org>
+From: Neil Brown <neilb@suse.de>
+Subject: [grumble] connected UDP sockets [grumble] Solaris [grumble]
+Date: Thu, 23 Oct 2008 14:57:15 +1100
+Message-ID: <18687.63003.966163.267177@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.mail.umich.edu ([141.211.14.81]:56462 "EHLO
-	hackers.mr.itd.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751508AbYJVXMa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Oct 2008 19:12:30 -0400
-In-Reply-To: <20081022194605.GA4409@fieldses.org>
+Received: from ns2.suse.de ([195.135.220.15]:35969 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752255AbYJWD5G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2008 23:57:06 -0400
+Received: from Relay1.suse.de (relay-ext.suse.de [195.135.221.8])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 531B44649B
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Oct 2008 05:57:04 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
 
-  Could we get a really brief summary of the performance improvement for a
-  high-speed network, to include in the commit message?
+The attentive reader of this mailing list may be aware that I was -
+some time ago - advocating using connected UDP sockets when UDP was
+used to contact the server during a mount. i.e. to talk to portmap and
+mountd.
 
-I don't have before and after numbers for this patch.  But an earlier
-version boosted write performance from 432 to 15859 KBps on a transatlantic
-link with 120ms rtt.  That's with 16 slot table entries.
+The benefit of this is that errors reported by ICMP (e.g. host
+unreachable / port unreachable) are reported to the application with
+connected sockets, whereas unconnected sockets need to wait for a
+timeout.
 
-  The one remaining worry I recall is that we assume the tcp autotuning
-  never decreases the size of the buffer below the size we initially
-  requested.  Apparently that assumption is true.  There's some worry
-  about whether that's true by design or merely true of the current
-  implementation.
+I just discovered that there is a problem with this.  It involves
+multihomed hosts and certain non-Linux operating systems such as
+Solaris (I don't know which version(s)).
 
-That's true now but it's mostly an accident of the implementation.
+In one particular case, the UDP request (portmap lookup I assume) was
+sent from a Linux client to a Solaris server and the reply promptly
+came back from a different IP address (presumably the address of the
+interface that Solaris wanted to route through to get to the client).
+Linux replied to this with an ICMP error.  It couldn't send the reply
+to mount.nfs because mount.nfs had a connected UDP sockets that was
+connected to a different remote address.
 
-  That doesn't look like a big worry--I'm inclined to apply this patch as
-  is--but moving the sk_{rcv,snd}buf assignments to a simple function in
-  the networking code and documenting the requirements there might be a
-  nice thing to do (as a separate patch).
+This is arguably a bug in Solaris.  It should reply with a source
+address matching the destination address of the request.  Linux hasn't
+had that bug for years.  But we probably still have to live with it.
 
-That's the right thing to do.  NFS shouldn't be reaching in to the sock
-struct data fields.  I started to write such a patch but got bogged down.
-Should it be a socket function, implemented by all the transports, or a tcp
-only function?
+The conclusion is that if we use connected UDP sockets, we will get
+unnecessary timeout talking to certain multihomed hosts, and if we
+don't we will get unnecessary timeouts talking to certain hosts that
+don't support portmap on UDP (for example).
+
+I don't suppose there is a middle ground?  A semi-connected socket?
+Or we could have one of each and see which one gets a reply first?
+No, that's just yuck.
+
+
+Much as it pains me to say this, maybe we just need to treat UDP as
+legacy for all protocols (PORTMAP, MOUNT, NLM, NSM), not just NFS.
+None of these problems occur with TCP.  TCP does have a slightly
+higher overhead for simple transactions, but it is a cost that is
+unlikely to be noticeable in reality.
+
+
+Thoughts?
+
+NeilBrown (grumble grumble).
