@@ -1,52 +1,40 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Fwd: NFS 5-minute hangs upon S3 resume using 2.6.27 client
-Date: Fri, 24 Oct 2008 08:29:28 -0400
-Message-ID: <1224851368.22672.20.camel@localhost>
-References: <20081023040231.GA13512@zoy.org>
-	 <1224776207.7625.7.camel@localhost> <20081023195231.GA2090@zoy.org>
-	 <1224803879.7625.79.camel@localhost>  <20081024065759.GA2401@zoy.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: NFS intr/nointr: SIGKILL may leave pages locked forever
+Date: Fri, 24 Oct 2008 11:11:32 -0400
+Message-ID: <1A5BADE4-02EB-473A-957A-2329DFBC92B3@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Matthew Wilcox <matthew@wil.cx>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:48845 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750808AbYJXM3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Oct 2008 08:29:32 -0400
-In-Reply-To: <20081024065759.GA2401-Y93EPB1FQwg@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:46074 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753890AbYJXPLp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2008 11:11:45 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-10-23 at 23:57 -0700, Michel Lespinasse wrote:
-> On Thu, Oct 23, 2008 at 07:17:59PM -0400, Trond Myklebust wrote:
-> > > (I'm still concerned about the 3 second delay here...)
-> > Does this patch fix that delay?
-> > 
-> > SUNRPC: Fix the setting of xprt->reestablish_timeout when reconnecting
-> 
-> I applied this on top of the previous patch and it worked - but now I'm
-> not sure if you wanted to test this as an independant patch ???
+Hi Matthew-
 
-It was meant to be applied incrementally on top of the other.
+We are still trying to pursue intr/nointr testing on 2.6.25+ kernels.   
+Looks like this week's kernel version is 2.6.27-rc7, but I will need  
+to confirm that.
 
-> I'm wondering how the code in xs_tcp_state_change() that sets
-> reestablish_timeout back to XS_TCP_INIT_REEST_TO managed to not cause trouble.
-> 
-> 
-> Can I propose a patch too ? mine looks quite similar to your second patch,
-> but with the reestablish_timeout logic hopefully simplified...
-> 
+Since 2.6.25, the problem is the "sql shutdown abort" command, which  
+is designed to trigger an immediate database shutdown, causes the  
+database instance to hang.  It leaves database writer processes stuck  
+in "D" state after it sends a SIGKILL.
 
-This would cause a different regression. The current code is there in
-order to ensure that we apply that exponential backoff if and only if
-the _server_ closes the TCP connection since that would usually indicate
-that it is trying to deal with a resource congestion issue. We don't
-need to back off if we were the ones closing the socket.
+The process backtraces suggest that these processes are waiting for  
+the inode mutex before trying to invalidate the database file's cache  
+(nfs_invalidate_mapping).  There is one process that owns the mutex  
+and is stuck waiting for a page lock in  
+invalidate_inode_pages2_range.  This suggests that the signal is  
+causing some other code path to neglect to unlock that page.
 
-The issue of UDP exponential backoff is moot: the UDP code doesn't use
-xs_connect() at all.
+It's a little out of my league.  Are there ways we can gather more  
+information?
 
-Cheers
-  Trond
-
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
