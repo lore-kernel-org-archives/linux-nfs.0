@@ -1,142 +1,43 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH]: nfsd: Added dprintks to kernel export code
-Date: Fri, 24 Oct 2008 13:34:38 -0400
-Message-ID: <4902072E.6070106@RedHat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
+Date: Fri, 24 Oct 2008 14:09:23 -0400
+Message-ID: <1224871763.22672.33.camel@localhost>
+References: <20081022091207.GA12996@squirrel.roonstrasse.net>
+	 <20081023123628.GA18549@squirrel.roonstrasse.net>
+	 <1224773745.7625.4.camel@localhost>
+	 <20081024083913.GA15197@squirrel.roonstrasse.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59693 "EHLO mx2.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:38723 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754848AbYJXRgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Oct 2008 13:36:19 -0400
+	id S1750832AbYJXSJ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2008 14:09:28 -0400
+In-Reply-To: <20081024083913.GA15197-2pNSKKP3PSJxEiad3KpGLI/oZP4lHnOC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[As requested, here is the debugging portion broken out of
-the 6th patch in the "Dynamic Pseudo Root" patch series.]
+On Fri, 2008-10-24 at 10:39 +0200, Max Kellermann wrote:
+> On 2008/10/23 16:55, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > Can you add a '-v' to the rpc.gssd daemon startup line? I'd like to see
+> > how often you are creating new gss contexts.
+> 
+> There is no rpc.gssd running on any of these servers, we're using
+> plain NFSv3 without (protocol based) authentication.  Do you want me
+> to start it anyway?
 
-Added dprintk to the top and bottom of both expkey_parse() and
-svc_export_parse(). The top dprintks shows what rpc.mountd gave
-to the routines to parse. These match up well with the current
-debugging statements in the rpc.mount routines nfsd_export()
-and nfsd_fh(). 
+Sorry. I misread your email. I read it as saying that you had krb5
+enabled on your mountpoint, but what you really said was just that you
+have compiled up the module.
 
-The bottom two dprintks show when either routine error out. This
-was very useful in debugging why exports failed or hang.
+OK, could you please describe your environment a bit. Do you have lots
+of different users logged in at the same time, or do you perhaps use
+newgrp or su to switch uid/gids a lot on your processes?
+I'm trying to see if there might be a reason for the lookup in the
+credcache being such a heavy duty operation in your setup.
 
-I also added a number dprintks to the sunrpc caching code. Being
-there was exactly one debugging statement through out the entire
-chuck of code, it was literally impossible to tell whats going
-on. This dprintks will show if and when upcalls are made and
-(more importantly) when they are not.
-
-All of these dprintks are not very busy code paths. They only 
-pop when an exported is created or modified.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff -up linux/fs/nfsd/export.c.org linux/fs/nfsd/export.c
---- linux/fs/nfsd/export.c.org	2008-10-24 13:00:36.000000000 -0400
-+++ linux/fs/nfsd/export.c	2008-10-24 12:59:46.000000000 -0400
-@@ -104,6 +104,7 @@ static int expkey_parse(struct cache_det
- 	if (mesg[mlen-1] != '\n')
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
-+	dprintk("expkey_parse: '%s'\n", mesg);
- 
- 	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
- 	err = -ENOMEM;
-@@ -182,6 +183,8 @@ static int expkey_parse(struct cache_det
- 	if (dom)
- 		auth_domain_put(dom);
- 	kfree(buf);
-+	if (err)
-+		dprintk("expkey_parse: err %d\n", err);
- 	return err;
- }
- 
-@@ -353,6 +356,8 @@ static void svc_export_request(struct ca
- 		return;
- 	}
- 	qword_add(bpp, blen, pth);
-+	dprintk("svc_export_request: pth %s\n", pth);
-+
- 	(*bpp)[-1] = '\n';
- }
- 
-@@ -520,6 +525,7 @@ static int svc_export_parse(struct cache
- 	if (mesg[mlen-1] != '\n')
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
-+	dprintk("svc_export_parse: '%s'\n", mesg);
- 
- 	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
- 	err = -ENOMEM;
-@@ -632,6 +638,8 @@ static int svc_export_parse(struct cache
- 	if (dom)
- 		auth_domain_put(dom);
- 	kfree(buf);
-+	if (err)
-+		dprintk("svc_export_parse: err %d\n", err);
- 	return err;
- }
- 
-diff -up linux/net/sunrpc/cache.c.org linux/net/sunrpc/cache.c
---- linux/net/sunrpc/cache.c.org	2008-10-24 13:00:46.000000000 -0400
-+++ linux/net/sunrpc/cache.c	2008-10-14 07:54:01.000000000 -0400
-@@ -215,11 +215,13 @@ int cache_check(struct cache_detail *det
- 		if (rv == -EAGAIN)
- 			rv = -ENOENT;
- 	} else if (rv == -EAGAIN || age > refresh_age/2) {
--		dprintk("RPC:       Want update, refage=%ld, age=%ld\n",
--				refresh_age, age);
-+		dprintk("check_check: upcall: h 0x%p pending %d rv %d\n", 
-+			h, test_bit(CACHE_PENDING, &h->flags), rv);
- 		if (!test_and_set_bit(CACHE_PENDING, &h->flags)) {
- 			switch (cache_make_upcall(detail, h)) {
- 			case -EINVAL:
-+				dprintk("check_check: upcall(-EINVAL): h 0x%p rv %d\n",
-+					h, rv);
- 				clear_bit(CACHE_PENDING, &h->flags);
- 				if (rv == -EAGAIN) {
- 					set_bit(CACHE_NEGATIVE, &h->flags);
-@@ -231,6 +233,8 @@ int cache_check(struct cache_detail *det
- 
- 			case -EAGAIN:
- 				clear_bit(CACHE_PENDING, &h->flags);
-+				dprintk("check_check: upcall(-EAGAIN): h 0x%p flags 0x%lx\n",
-+					h, h->flags);
- 				cache_revisit_request(h);
- 				break;
- 			}
-@@ -560,13 +564,16 @@ static int cache_defer_req(struct cache_
- 		/* too much in the cache, randomly drop this one,
- 		 * or continue and drop the oldest below
- 		 */
--		if (net_random()&1)
-+		if (net_random()&1) {
-+			dprintk("cache_defer_req:  0x%p: dropping request\n", item);
- 			return -ETIMEDOUT;
-+		}
- 	}
- 	dreq = req->defer(req);
--	if (dreq == NULL)
-+	if (dreq == NULL) {
-+		dprintk("cache_defer_req: 0x%p: request timedout\n", item);
- 		return -ETIMEDOUT;
--
-+	}
- 	dreq->item = item;
- 
- 	spin_lock(&cache_defer_lock);
-@@ -596,6 +603,7 @@ static int cache_defer_req(struct cache_
- 		/* must have just been validated... */
- 		cache_revisit_request(item);
- 	}
-+	dprintk("cache_defer_req:  0x%p: request deferred\n", item);
- 	return 0;
- }
- 
+Cheers
+  Trond
 
