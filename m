@@ -1,21 +1,17 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH]:
-Date: Fri, 24 Oct 2008 13:31:57 -0400
-Message-ID: <4902068D.2030201@RedHat.com>
+Subject: [PATCH]: nfsd: Added dprintks to kernel export code
+Date: Fri, 24 Oct 2008 13:34:38 -0400
+Message-ID: <4902072E.6070106@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:59693 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754848AbYJXRgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2008 13:36:19 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 [As requested, here is the debugging portion broken out of
@@ -142,3 +138,5 @@ diff -up linux/net/sunrpc/cache.c.org linux/net/sunrpc/cache.c
 +	dprintk("cache_defer_req:  0x%p: request deferred\n", item);
  	return 0;
  }
+ 
+
