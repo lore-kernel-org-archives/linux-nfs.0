@@ -1,89 +1,70 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
 Subject: Re: Fwd: NFS 5-minute hangs upon S3 resume using 2.6.27 client
-Date: Thu, 23 Oct 2008 19:17:59 -0400
-Message-ID: <1224803879.7625.79.camel@localhost>
-References: <20081023040231.GA13512@zoy.org>
-	 <1224776207.7625.7.camel@localhost>  <20081023195231.GA2090@zoy.org>
+Date: Thu, 23 Oct 2008 23:57:59 -0700
+Message-ID: <20081024065759.GA2401@zoy.org>
+References: <20081023040231.GA13512@zoy.org> <1224776207.7625.7.camel@localhost> <20081023195231.GA2090@zoy.org> <1224803879.7625.79.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:40586 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753080AbYJWXSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2008 19:18:04 -0400
-In-Reply-To: <20081023195231.GA2090-Y93EPB1FQwg@public.gmane.org>
+Received: from server.lespinasse.org ([64.142.28.226]:39103 "EHLO
+	server.lespinasse.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751432AbYJXG6D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2008 02:58:03 -0400
+In-Reply-To: <1224803879.7625.79.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-10-23 at 12:52 -0700, Michel Lespinasse wrote:
-> Hi,
+On Thu, Oct 23, 2008 at 07:17:59PM -0400, Trond Myklebust wrote:
+> > (I'm still concerned about the 3 second delay here...)
+> Does this patch fix that delay?
 > 
-> On Thu, Oct 23, 2008 at 11:36:47AM -0400, Trond Myklebust wrote:
-> > Does the appended patch make a difference?
-> > 
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Date: Thu, 23 Oct 2008 11:33:59 -0400
-> > SUNRPC: Respond promptly to server TCP resets
-> 
-> I applied it over a 2.6.27.3 base, suspended the client for 40 minutes
-> and resumed it, logging what happens from the server side. The resume
-> went like this:
-> 
-> 12:38:53.692785 IP client.329262748 > server.nfs: 100 getattr [|nfs]
-> 12:38:53.699885 arp who-has client tell server
-> 12:38:54.123793 IP client.329262748 > server.nfs: 100 getattr [|nfs]
-> 12:38:54.695888 arp who-has client tell server
-> 12:38:54.696011 arp reply client is-at 00:19:d1:54:0e:39 (oui Unknown)
-> 12:38:54.696020 IP server.nfs > client.882: R 2944642919:2944642919(0) win 0
-> 12:38:54.696024 IP server.nfs > client.882: R 2944642919:2944642919(0) win 0
-> 
-> (I'm still concerned about the 3 second delay here...)
-> 
-> 12:38:57.695956 IP client.2 > server.nfs: 0 null
+> SUNRPC: Fix the setting of xprt->reestablish_timeout when reconnecting
 
-Does this patch fix that delay?
+I applied this on top of the previous patch and it worked - but now I'm
+not sure if you wanted to test this as an independant patch ???
 
-Cheers
-  Trond
+I'm wondering how the code in xs_tcp_state_change() that sets
+reestablish_timeout back to XS_TCP_INIT_REEST_TO managed to not cause trouble.
 
--------------------------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Thu, 23 Oct 2008 19:14:55 -0400
+
+Can I propose a patch too ? mine looks quite similar to your second patch,
+but with the reestablish_timeout logic hopefully simplified...
+
+
+
 SUNRPC: Fix the setting of xprt->reestablish_timeout when reconnecting
 
-If the server aborts an established connection, then we should retry
-connecting immediately. Since xprt->reestablish_timeout is not reset unless
-we go through a TCP_FIN_WAIT1 state, we may end waiting.
-The fix is to reset xprt->reestablish_timeout in TCP_ESTABLISHED, and then
-rely on the fact that we set it to non-zero values in all other cases when
-the server closes the connection.
+The proposed logic works as follows:
 
-Also fix a race between xs_connect() and xs_tcp_state_change(). The
-value of xprt->reestablish_timeout should be updated before we actually
-attempt the connection.
+* The reestablish_timeout is initially set to zero (no delay before the
+  initial connection). It is also reset to zero upon establishing a
+  successful TCP connection (no delay next time we try to reopen the
+  connection, whether it got closed by the client or the server side).
+  This fixes an issue where we would wait 5-minute after receiving an RST
+  from the server rather than retrying immediately (bug 11154).
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+* xs_connect() delays the (re)connection by reestablish_timeout jiffies.
+  reestablish_timeout for the *next* connection attempt is also
+  updated to a nonzero value at that point (constant for UDP case,
+  exponential backoff for TCP case). There used to be an issue where
+  we would apply the exponential backoff even in the UDP case.
+
+Signed-off-by: Michel Lespinasse <walken-Y93EPB1FQwg@public.gmane.org>
 ---
 
- net/sunrpc/xprtsock.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 0a50361..ac2aa52 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1144,6 +1144,8 @@ static void xs_tcp_state_change(struct sock *sk)
- 			struct sock_xprt *transport = container_of(xprt,
- 					struct sock_xprt, xprt);
+--- net/sunrpc/xprtsock.c.orig	2008-10-23 10:43:31.000000000 -0700
++++ net/sunrpc/xprtsock.c	2008-10-23 22:10:50.000000000 -0700
+@@ -1134,6 +1134,7 @@
+ 			transport->tcp_flags =
+ 				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
  
 +			xprt->reestablish_timeout = 0;
-+
- 			/* Reset TCP record info */
- 			transport->tcp_offset = 0;
- 			transport->tcp_reclen = 0;
-@@ -1158,7 +1160,6 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			xprt_wake_pending_tasks(xprt, 0);
+ 		}
+ 		spin_unlock_bh(&xprt->transport_lock);
+@@ -1141,7 +1142,6 @@
  	case TCP_FIN_WAIT1:
  		/* The client initiated a shutdown of the socket */
  		xprt->connect_cookie++;
@@ -91,7 +72,21 @@ index 0a50361..ac2aa52 100644
  		set_bit(XPRT_CLOSING, &xprt->state);
  		smp_mb__before_clear_bit();
  		clear_bit(XPRT_CONNECTED, &xprt->state);
-@@ -1793,6 +1794,7 @@ static void xs_connect(struct rpc_task *task)
+@@ -1154,13 +1154,6 @@
+ 		xprt_force_disconnect(xprt);
+ 	case TCP_SYN_SENT:
+ 		xprt->connect_cookie++;
+-	case TCP_CLOSING:
+-		/*
+-		 * If the server closed down the connection, make sure that
+-		 * we back off before reconnecting
+-		 */
+-		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+-			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+ 		break;
+ 	case TCP_LAST_ACK:
+ 		smp_mb__before_clear_bit();
+@@ -1755,25 +1748,25 @@
  {
  	struct rpc_xprt *xprt = task->tk_xprt;
  	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
@@ -99,21 +94,57 @@ index 0a50361..ac2aa52 100644
  
  	if (xprt_test_and_set_connecting(xprt))
  		return;
-@@ -1801,12 +1803,12 @@ static void xs_connect(struct rpc_task *task)
- 		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
- 				"seconds\n",
- 				xprt, xprt->reestablish_timeout / HZ);
+ 
+-	if (transport->sock != NULL) {
+-		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+-				"seconds\n",
+-				xprt, xprt->reestablish_timeout / HZ);
 -		queue_delayed_work(rpciod_workqueue,
 -				   &transport->connect_worker,
 -				   xprt->reestablish_timeout);
-+		timeout = xprt->reestablish_timeout;
++	timeout = xprt->reestablish_timeout;
++	if (xprt->prot != IPPROTO_TCP)
++		xprt->reestablish_timeout = XS_UDP_REEST_TO;
++	else if (xprt->reestablish_timeout == 0)
++		xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
++	else {
  		xprt->reestablish_timeout <<= 1;
  		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
  			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
-+		queue_delayed_work(rpciod_workqueue,
-+				   &transport->connect_worker, timeout);
- 	} else {
- 		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
- 		queue_delayed_work(rpciod_workqueue,
+-	} else {
+-		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+-		queue_delayed_work(rpciod_workqueue,
+-				   &transport->connect_worker, 0);
+ 	}
++	dprintk("RPC:       xs_connect delayed xprt %p for %lu seconds\n",
++		xprt, timeout / HZ);
++	queue_delayed_work(rpciod_workqueue, &transport->connect_worker,
++			   timeout);
+ }
+ 
+ static void xs_tcp_connect(struct rpc_task *task)
+@@ -1935,7 +1928,7 @@
+ 
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->connect_timeout = XS_UDP_CONN_TO;
+-	xprt->reestablish_timeout = XS_UDP_REEST_TO;
++	xprt->reestablish_timeout = 0;
+ 	xprt->idle_timeout = XS_IDLE_DISC_TO;
+ 
+ 	xprt->ops = &xs_udp_ops;
+@@ -2003,7 +1996,7 @@
+ 
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->connect_timeout = XS_TCP_CONN_TO;
+-	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
++	xprt->reestablish_timeout = 0;
+ 	xprt->idle_timeout = XS_IDLE_DISC_TO;
+ 
+ 	xprt->ops = &xs_tcp_ops;
 
 
+Hope this helps,
+
+-- 
+Michel "Walken" Lespinasse
+A program is never fully debugged until the last user dies.
