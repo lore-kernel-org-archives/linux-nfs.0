@@ -1,132 +1,108 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/14] NSM: Support IPv6 version of mon_name
-Date: Fri, 24 Oct 2008 14:10:09 -0400
-Message-ID: <20081024181009.23810.56793.stgit@ingres.1015granger.net>
+Subject: [PATCH 13/14] NLM: Remove "create" argument from nsm_find()
+Date: Fri, 24 Oct 2008 14:11:23 -0400
+Message-ID: <20081024181123.23810.65076.stgit@ingres.1015granger.net>
 References: <20081024180150.23810.9718.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:41786 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753615AbYJXSL0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2008 14:11:26 -0400
-Received: from agmgw2.us.oracle.com (agmgw2.us.oracle.com [152.68.180.213])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m9OIBJ9S009710
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2008 13:11:20 -0500
-Received: from acsmt355.oracle.com (acsmt355.oracle.com [141.146.40.155])
-	by agmgw2.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id m9O5chwF030536
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2008 12:11:17 -0600
+Received: from rgminet01.oracle.com ([148.87.113.118]:14305 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753169AbYJXSLj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2008 14:11:39 -0400
+Received: from agmgw1.us.oracle.com (agmgw1.us.oracle.com [152.68.180.212])
+	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id m9OIBZ7f008736
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2008 12:11:35 -0600
+Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
+	by agmgw1.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id m9O7nOPV002814
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2008 12:11:35 -0600
 Received: from ingres.1015granger.net (ingres.1015granger.net [127.0.0.1])
-	by ingres.1015granger.net (8.14.2/8.14.2) with ESMTP id m9OIA9bs023909
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2008 14:10:09 -0400
+	by ingres.1015granger.net (8.14.2/8.14.2) with ESMTP id m9OIBNED024049
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2008 14:11:23 -0400
 In-Reply-To: <20081024180150.23810.9718.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the "nsm_use_hostnames" sysctl is set to zero, the kernel's NSM
-provides a presentation format IP address in the mon_name argument of
-SM_MON upcalls.  This is part of the private interface between Linux's
-rpc.statd and the kernel's lockd implementation.  Linux's rpc.statd
-can then resolve this address with DNS as a sanity check.
-
-To support IPv6 addresses for the mon_name argument, just point the
-XDR encoder to the nsm_handle's eye-catcher, which already contains a
-presentation format address string.
-
-Finally, provide some debugging message clean up.
+Clean up: nsm_find() now has only one caller who always sets the
+"create" argument, so it is no longer needed.  Since nsm_find() now
+has a more specific function, pick a more appropriate name for it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |   43 +++++++++++++++----------------------------
- 1 files changed, 15 insertions(+), 28 deletions(-)
+ fs/lockd/host.c             |    4 ++--
+ fs/lockd/mon.c              |   12 ++++--------
+ include/linux/lockd/lockd.h |    6 +++---
+ 3 files changed, 9 insertions(+), 13 deletions(-)
 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 181cb26..db66bfb 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -207,8 +207,8 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 		atomic_inc(&nsm->sm_count);
+ 	else {
+ 		host = NULL;
+-		nsm = nsm_find(ni->sap, ni->salen,
+-				ni->hostname, ni->hostname_len, 1);
++		nsm = nsm_get_handle(ni->sap, ni->salen,
++					ni->hostname, ni->hostname_len);
+ 		if (!nsm) {
+ 			dprintk("lockd: nlm_lookup_host failed; "
+ 				"no nsm handle\n");
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index a5c6ec4..1c058b1 100644
+index 78bc36c..d564b6f 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -18,8 +18,6 @@
- 
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- 
--#define XDR_ADDRBUF_LEN		(20)
--
- static struct rpc_clnt *	nsm_create(void);
- 
- static struct rpc_program	nsm_program;
-@@ -40,7 +38,14 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- {
- 	struct rpc_clnt	*clnt;
- 	int		status;
--	struct nsm_args	args;
-+	struct nsm_args	args = {
-+		.addr		= nsm_addr_in(nsm)->sin_addr.s_addr,
-+		.prog		= NLM_PROGRAM,
-+		.vers		= 3,
-+		.proc		= NLMPROC_NSM_NOTIFY,
-+		.mon_name	= nsm_use_hostnames ?
-+					nsm->sm_name : nsm->sm_addrbuf,
-+	};
- 	struct rpc_message msg = {
- 		.rpc_argp	= &args,
- 		.rpc_resp	= res,
-@@ -49,24 +54,21 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- 	clnt = nsm_create();
- 	if (IS_ERR(clnt)) {
- 		status = PTR_ERR(clnt);
-+		dprintk("lockd: failed to create nsm transport, "
-+				"status=%d\n", status);
- 		goto out;
- 	}
- 
--	memset(&args, 0, sizeof(args));
--	args.mon_name = nsm->sm_name;
--	args.addr = nsm_addr_in(nsm)->sin_addr.s_addr;
--	args.prog = NLM_PROGRAM;
--	args.vers = 3;
--	args.proc = NLMPROC_NSM_NOTIFY;
- 	memset(res, 0, sizeof(*res));
- 
- 	msg.rpc_proc = &clnt->cl_procinfo[proc];
- 	status = rpc_call_sync(clnt, &msg, 0);
- 	if (status < 0)
--		printk(KERN_DEBUG "nsm_mon_unmon: rpc failed, status=%d\n",
--			status);
--	else
-+		dprintk("lockd: nsm rpc failed, status=%d\n", status);
-+	else {
- 		status = 0;
-+		dprintk("lockd: monitoring '%s'\n", args.mon_name);
-+	}
- 	rpc_shutdown_client(clnt);
-  out:
- 	return status;
-@@ -253,25 +255,10 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
- 
- /*
-  * "mon_name" specifies the host to be monitored.
-- *
-- * Linux uses a text version of the IP address of the remote
-- * host as the host identifier (the "mon_name" argument).
-- *
-- * Linux statd always looks up the canonical hostname first for
-- * whatever remote hostname it receives, so this works alright.
-  */
- static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
- {
--	char	buffer[XDR_ADDRBUF_LEN + 1];
--	char	*name = argp->mon_name;
--
--	if (!nsm_use_hostnames) {
--		snprintf(buffer, XDR_ADDRBUF_LEN,
--			 NIPQUAD_FMT, NIPQUAD(argp->addr));
--		name = buffer;
--	}
--
--	return xdr_encode_nsm_string(p, name);
-+	return xdr_encode_nsm_string(p, argp->mon_name);
+@@ -149,17 +149,16 @@ static void nsm_init_private(struct nsm_handle *nsm)
  }
  
+ /**
+- * nsm_find - Find a cached nsm_handle by name or address
++ * nsm_get_handle - Find a cached nsm_handle by name or address
+  * @sap: pointer to socket address of handle to find
+  * @salen: length of socket address
+  * @hostname: pointer to C string containing hostname to find
+  * @hostname_len: length of C string
+- * @create: one means create new handle if not found in cache
+  *
+  */
+-struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+-			    const char *hostname, const size_t hostname_len,
+-			    const int create)
++struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
++				  const size_t salen, const char *hostname,
++				  const size_t hostname_len)
+ {
+ 	struct nsm_handle *nsm = NULL;
+ 	struct nsm_handle *pos;
+@@ -197,9 +196,6 @@ retry:
+ 	}
+ 	spin_unlock(&nsm_lock);
+ 
+-	if (!create)
+-		return NULL;
+-
+ 	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+ 	if (nsm == NULL)
+ 		return NULL;
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 46f5cee..052078c 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -244,10 +244,10 @@ void		  nlm_host_rebooted(struct nlm_reboot *);
  /*
+  * Host monitoring
+  */
+-struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
++struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
++					const size_t salen,
+ 					const char *hostname,
+-					const size_t hostname_len,
+-					const int create);
++					const size_t hostname_len);
+ void		  nsm_release(struct nsm_handle *nsm);
+ int		  nsm_monitor(struct nlm_host *host);
+ int		  nsm_unmonitor(struct nlm_host *host);
 
