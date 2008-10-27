@@ -1,45 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: about NLM/NSM
-Date: Mon, 27 Oct 2008 14:55:15 -0400
-Message-ID: <20081027185515.GB23767@fieldses.org>
-References: <55BA1E9645B3441FA782D9032BDC9288@nrchpcvx1f5w93>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: fs/nfs_common/Makefile: fix the C file name
+Date: Mon, 27 Oct 2008 15:01:53 -0400
+Message-ID: <1225134113.14242.28.camel@heimdal.trondhjem.org>
+References: <20081027170737.GA1027@hack.voiplan.pt>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: hexf <hexiaofeng-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+	Andrew Morton <akpm@osdl.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: =?ISO-8859-1?Q?Am=E9rico?= Wang <xiyou.wangcong@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51347 "EHLO fieldses.org"
+Received: from mail-out2.uio.no ([129.240.10.58]:34272 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751867AbYJ0SzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Oct 2008 14:55:19 -0400
-In-Reply-To: <55BA1E9645B3441FA782D9032BDC9288@nrchpcvx1f5w93>
+	id S1751464AbYJ0TB6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2008 15:01:58 -0400
+In-Reply-To: <20081027170737.GA1027-Tc2f1T0IvFNdsri2l9pqgg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 27, 2008 at 02:49:27PM +0800, hexf wrote:
-> We are using nfsv3. Now we meet a demand. If a client which hold a
-> lock crash, after it reboot, its statd daemon can notify the nfs
-> server to release the lock.  But if this client will not reboot for
-> some reason(or will reboot after a long time), then the lock it
-> holding will not be released.In nfsv3 and nlmv4,it seems there is no
-> time-out mechnism for this situation. How would we solve this
-> question? My colleague advise me to modify the code of NLM/NSM to meet
-> this demand,but is seems quite a complicated work.Can you give me some
-> advice?
+On Mon, 2008-10-27 at 17:07 +0000, Am=C3=A9rico Wang wrote:
+> There's no file named 'nfs_acl.c' in that directory, it is 'nfsacl.c'=
+=2E
+>=20
+> Signed-off-by: WANG Cong <wangcong-va7F5g4oNmbYtjvyW6yDsg@public.gmane.org>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+>=20
+> ---
+> diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
+> index f689ed8..5cb60c5 100644
+> --- a/fs/nfs_common/Makefile
+> +++ b/fs/nfs_common/Makefile
+> @@ -2,6 +2,6 @@
+>  # Makefile for Linux filesystem routines that are shared by client a=
+nd server.
+>  #
+> =20
+> -obj-$(CONFIG_NFS_ACL_SUPPORT) +=3D nfs_acl.o
+> +obj-$(CONFIG_NFS_ACL_SUPPORT) +=3D nfsacl.o
+> =20
+>  nfs_acl-objs :=3D nfsacl.o
 
-It might be possible to modify the server so that it dropped all locks
-from a client it hadn't heard from in a while.  However, nfsv2/v3
-clients are not required to contact the server regularly while they hold
-locks.  So you may end up revoking locks held by perfectly good
-functioning clients.
+NAK. The existing line is correct because the _module_ is called
+nfs_acl.ko.
 
-As an ugly workaround, rebooting the server will clear the problem, as
-it will notify clients to recover their locks on restart, and any dead
-clients will fail to recover their locks.
+  Trond
 
-> And if there are some schemes in nfsv4?
-
-NFSv4 requires clients to contact the server regularly as long as they
-hold any locks.  So NFSv4 does not have this particular problem.
-
---b.
