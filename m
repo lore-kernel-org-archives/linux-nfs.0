@@ -1,38 +1,40 @@
-From: "hexf" <hexiaofeng-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>
-Subject: about NLM/NSM
-Date: Mon, 27 Oct 2008 14:49:27 +0800
-Message-ID: <55BA1E9645B3441FA782D9032BDC9288@nrchpcvx1f5w93>
+From: Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>
+Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
+Date: Mon, 27 Oct 2008 10:58:43 +0100
+Message-ID: <20081027095843.GA10937@squirrel.roonstrasse.net>
+References: <20081022091207.GA12996@squirrel.roonstrasse.net> <20081023123628.GA18549@squirrel.roonstrasse.net> <1224773745.7625.4.camel@localhost> <20081024083913.GA15197@squirrel.roonstrasse.net> <1224871763.22672.33.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="gb2312"
-To: <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [159.226.39.252] ([159.226.39.252]:52491 "EHLO nrchpc.ac.cn"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727AbYJ0Gu3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Oct 2008 02:50:29 -0400
-Received: from nrchpcvx1f5w93 ([159.226.39.251])
-	by nrchpc.ac.cn (8.13.7/8.13.7) with SMTP id m9R77Cru013048
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Oct 2008 15:07:18 +0800
+Received: from smtp4.netcologne.de ([194.8.194.137]:41670 "EHLO
+	smtp4.netcologne.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751559AbYJ0J6q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2008 05:58:46 -0400
+In-Reply-To: <1224871763.22672.33.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpIZWxsbzoNCg0KICAgICBXZSBhcmUgdXNpbmcgbmZzdjMuIE5vdyB3ZSBtZWV0IGEgZGVtYW5k
-LiBJZiBhIGNsaWVudCB3aGljaCBob2xkIGEgbG9jayBjcmFzaCwNCmFmdGVyIGl0IHJlYm9vdCwg
-aXRzIHN0YXRkIGRhZW1vbiBjYW4gbm90aWZ5IHRoZSBuZnMgc2VydmVyIHRvIHJlbGVhc2UgdGhl
-IGxvY2suDQpCdXQgaWYgdGhpcyBjbGllbnQgd2lsbCBub3QgcmVib290IGZvciBzb21lIHJlYXNv
-bihvciB3aWxsIHJlYm9vdCBhZnRlciBhIGxvbmcgdGltZSksDQp0aGVuIHRoZSBsb2NrIGl0IGhv
-bGRpbmcgd2lsbCBub3QgYmUgcmVsZWFzZWQuSW4gbmZzdjMgYW5kIG5sbXY0LGl0IHNlZW1zIHRo
-ZXJlIGlzIG5vIA0KdGltZS1vdXQgbWVjaG5pc20gZm9yIHRoaXMgc2l0dWF0aW9uLiBIb3cgd291
-bGQgd2Ugc29sdmUgdGhpcyBxdWVzdGlvbj8gTXkgY29sbGVhZ3VlDQphZHZpc2UgbWUgdG8gbW9k
-aWZ5IHRoZSBjb2RlIG9mIE5MTS9OU00gdG8gbWVldCB0aGlzIGRlbWFuZCxidXQgaXMgc2VlbXMg
-cXVpdGUgYQ0KY29tcGxpY2F0ZWQgd29yay5DYW4geW91IGdpdmUgbWUgc29tZSBhZHZpY2U/IEFu
-ZCBpZiB0aGVyZSBhcmUgc29tZSBzY2hlbWVzIGluIG5mc3Y0Pw0KDQogIFRoYW5rIHlvdSB2ZXJ5
-IG11Y2gsIGFuZCBiZXN0IHJlZ2FyZHMuDQoNCi0tIA0KSEUgWGlhby1mZW5nDQpUZWw6ICg4Nikx
-MC02MjYwLTA1NDcNCkZheDogKDg2KTEwLTYyNjUtNzI1NQ0KTWFpbGluZzogUC4gTy4gQm94IDI3
-MDQjIEJlaWppbmcNClBvc3Rjb2RlOiAxMDAwODANCk5hdGlvbmFsIFJlc2VhcmNoIENlbnRyZSBm
-b3IgSGlnaCBQZXJmb3JtYW5jZSBDb21wdXRlcnMNCkluc3RpdHV0ZSBvZiBDb21wdXRpbmcgVGVj
-aG5vbG9neSwgQ2hpbmVzZSBBY2FkZW15IG9mIFNjaWVuY2VzDQpOby4gNiwgU291dGggS2V4dWV5
-dWFuIFJvYWQsIEhhaWRpYW4gRGlzdHJpY3QNCkJlaWppbmcsIENoaW5hDQoNCg0K
+On 2008/10/24 20:09, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> OK, could you please describe your environment a bit. Do you have lots
+> of different users logged in at the same time, or do you perhaps use
+> newgrp or su to switch uid/gids a lot on your processes?
+> I'm trying to see if there might be a reason for the lookup in the
+> credcache being such a heavy duty operation in your setup.
 
+It's a web server for shared hosting.  The web space is mounted via
+NFSv3 from a NetApp.  There is a huge number of web sites on this
+cluster.  All web sites are owned by the same UID, and the web server
+runs as a different UID (read-only access).
 
+Each time a CGI starts, its uid is changed to the one "owner" UID
+(similar to mod_suexec, but there's only one UID for all customer
+accounts).  Each time a CGI starts, its chroot (pivot_root) is
+constructed with several bind mounts (in a separate namespace with
+CLONE_NEWNS).
+
+There are no new users or groups being created.  There are only 2 UIDs
+accessing NFS: the webserver (ro) and CGI (rw).
+
+Max
