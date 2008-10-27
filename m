@@ -1,40 +1,98 @@
-From: Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>
-Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
-Date: Mon, 27 Oct 2008 10:58:43 +0100
-Message-ID: <20081027095843.GA10937@squirrel.roonstrasse.net>
-References: <20081022091207.GA12996@squirrel.roonstrasse.net> <20081023123628.GA18549@squirrel.roonstrasse.net> <1224773745.7625.4.camel@localhost> <20081024083913.GA15197@squirrel.roonstrasse.net> <1224871763.22672.33.camel@localhost>
+From: Stephan =?iso-8859-1?Q?Windm=FCller?=
+	<stephan.windmueller-ogaGWlaKng3jEoi5djuKH7NAH6kLmebB@public.gmane.org>
+Subject: Device or resource busy
+Date: Mon, 27 Oct 2008 14:10:34 +0100
+Message-ID: <20081027131034.GC25001@speutel.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/signed; protocol="application/x-pkcs7-signature";
+	micalg=sha1; boundary="qjNfmADvan18RZcF"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp4.netcologne.de ([194.8.194.137]:41670 "EHLO
-	smtp4.netcologne.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751559AbYJ0J6q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2008 05:58:46 -0400
-In-Reply-To: <1224871763.22672.33.camel@localhost>
+Received: from speutel.de ([213.239.215.137]:50690 "EHLO speutel.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751116AbYJ0NrG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Oct 2008 09:47:06 -0400
+Received: from windy by speutel.de with local (Exim 4.63)
+	(envelope-from <stephan.windmueller-ogaGWlaKng3jEoi5djuKH7NAH6kLmebB@public.gmane.org>)
+	id 1KuRre-0001f8-DV
+	for linux-nfs@vger.kernel.org; Mon, 27 Oct 2008 14:10:34 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2008/10/24 20:09, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> OK, could you please describe your environment a bit. Do you have lots
-> of different users logged in at the same time, or do you perhaps use
-> newgrp or su to switch uid/gids a lot on your processes?
-> I'm trying to see if there might be a reason for the lookup in the
-> credcache being such a heavy duty operation in your setup.
 
-It's a web server for shared hosting.  The web space is mounted via
-NFSv3 from a NetApp.  There is a huge number of web sites on this
-cluster.  All web sites are owned by the same UID, and the web server
-runs as a different UID (read-only access).
+--qjNfmADvan18RZcF
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Each time a CGI starts, its uid is changed to the one "owner" UID
-(similar to mod_suexec, but there's only one UID for all customer
-accounts).  Each time a CGI starts, its chroot (pivot_root) is
-constructed with several bind mounts (in a separate namespace with
-CLONE_NEWNS).
+Hello!
 
-There are no new users or groups being created.  There are only 2 UIDs
-accessing NFS: the webserver (ro) and CGI (rw).
+On our Ubuntu (8.04) machine we mount home directories from a Solaris
+server with NFS and autofs. From time to time users complain that they
+are unable to delete any directories. The error message is "Device or
+resource busy".
 
-Max
+When I look with "nfsstat -m", I can see a lot of mount points for each
+user, including the directory which cannot be deleted. One user had a
+total of 200 mounts!
+
+My question is: Why does NFS mount each directory seperately?
+
+Here is an example output for a user:
+
+/ldaphome/username from host:/export/username
+ Flags: rw,vers=3,rsize=1048576,wsize=1048576,hard,intr,
+ proto=tcp,timeo=600,retrans=2,sec=sys,addr=host
+
+TIA
+ Stephan
+
+--qjNfmADvan18RZcF
+Content-Type: application/x-pkcs7-signature
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIIJDQYJKoZIhvcNAQcCoIII/jCCCPoCAQExCzAJBgUrDgMCGgUAMAsGCSqGSIb3DQEHAaCC
+BoQwggM9MIICpqADAgECAhBIcQ0ZGB7TPPXezMGKDaQFMA0GCSqGSIb3DQEBBQUAMGIxCzAJ
+BgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYD
+VQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBDQTAeFw0wODA5MDkxNzIx
+MzlaFw0wOTA5MDkxNzIxMzlaMHsxHzAdBgNVBAMTFlRoYXd0ZSBGcmVlbWFpbCBNZW1iZXIx
+IjAgBgkqhkiG9w0BCQEWE3dpbmR5QHdoaXRlLWhhd2suZGUxNDAyBgkqhkiG9w0BCQEWJXN0
+ZXBoYW4ud2luZG11ZWxsZXJAY3MudHUtZG9ydG11bmQuZGUwggEiMA0GCSqGSIb3DQEBAQUA
+A4IBDwAwggEKAoIBAQDCCn3lTSbxo/3P9UyvE2rxJELiZksbNk4AlVYvqNmU6Sg1gDrPrd72
+muoKPWqsYQs7qauOX0F5ee5znYx8EJv/iPAHnC+U8ZQx/LvsHZuw4JkpRtqB5D/84Snq1WRW
+QA4xhWtn7hiQsDCBeZIMGfTGI91r96+V1sBYnfm/Px7VTQ0Ur4+lxIK2SGA5De3VETsS4aw9
+wORYTgD4vpXs1JfmuNvlpKHAZhps9DnyF9qRW7Of/wh7WAOgxUDoK1YUnYFOHEAJb4eHVdcN
+m+TB17dmKdqVoqyUv1kQJTzaAmHeD3uBzXgZdU6sAeinlABb3j0TNXIkwhFloTOxoin0az1N
+AgMBAAGjVzBVMEUGA1UdEQQ+MDyBE3dpbmR5QHdoaXRlLWhhd2suZGWBJXN0ZXBoYW4ud2lu
+ZG11ZWxsZXJAY3MudHUtZG9ydG11bmQuZGUwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQUF
+AAOBgQAn1zmnTyZUhXAw73M24I9+VnCN3jpbA2BDScktFDLRxwilNJXR3KKuPHciVoYvFYIG
+Jr7u2/Q3d9uYg8La0fOC6MIyIrmaFEGRCVFMEvTt5Ru36miJlIb40pNZPJWeWb+eNCj3mQtv
+rHDHxbcmRe8mI6icVCMwnUqa5kVi9HIvzzCCAz8wggKooAMCAQICAQ0wDQYJKoZIhvcNAQEF
+BQAwgdExCzAJBgNVBAYTAlpBMRUwEwYDVQQIEwxXZXN0ZXJuIENhcGUxEjAQBgNVBAcTCUNh
+cGUgVG93bjEaMBgGA1UEChMRVGhhd3RlIENvbnN1bHRpbmcxKDAmBgNVBAsTH0NlcnRpZmlj
+YXRpb24gU2VydmljZXMgRGl2aXNpb24xJDAiBgNVBAMTG1RoYXd0ZSBQZXJzb25hbCBGcmVl
+bWFpbCBDQTErMCkGCSqGSIb3DQEJARYccGVyc29uYWwtZnJlZW1haWxAdGhhd3RlLmNvbTAe
+Fw0wMzA3MTcwMDAwMDBaFw0xMzA3MTYyMzU5NTlaMGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQK
+ExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29u
+YWwgRnJlZW1haWwgSXNzdWluZyBDQTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAxKY8
+VXNV+065yplaHmjAdQRwnd/p/6Me7L3N9VvyGna9fww6YfK/Uc4B1OVQCjDXAmNaLIkVcI7d
+yfArhVqqP3FWy688Cwfn8R+RNiQqE88r1fOCdz0Dviv+uxg+B79AgAJk16emu59l0cUqVIUP
+SAR/p7bRPGEEQB5kGXJgt/sCAwEAAaOBlDCBkTASBgNVHRMBAf8ECDAGAQH/AgEAMEMGA1Ud
+HwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwudGhhd3RlLmNvbS9UaGF3dGVQZXJzb25hbEZyZWVt
+YWlsQ0EuY3JsMAsGA1UdDwQEAwIBBjApBgNVHREEIjAgpB4wHDEaMBgGA1UEAxMRUHJpdmF0
+ZUxhYmVsMi0xMzgwDQYJKoZIhvcNAQEFBQADgYEASIzRUIPqCy7MDaNmrGcPf6+svsIXoUOW
+lJ1/TCG4+DYfqi2fNi/A9BxQIJNwPP2t4WFiw9k6GX6EsZkbAMUaC4J0niVQlGLH2ydxVyWN
+3amcOY6MIE9lX5Xa9/eH1sYITq726jTlEBpbNU1341YheILcIRk13iSx0x1G/11fZU8xggJR
+MIICTQIBATB2MGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAo
+UHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBD
+QQIQSHENGRge0zz13szBig2kBTAJBgUrDgMCGgUAoIGxMBgGCSqGSIb3DQEJAzELBgkqhkiG
+9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTA4MTAyNzEzMTAzNFowIwYJKoZIhvcNAQkEMRYEFI9a
+EtHG3lHqm3U3ACW5bOli4JTwMFIGCSqGSIb3DQEJDzFFMEMwCgYIKoZIhvcNAwcwDgYIKoZI
+hvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMA0GCSqG
+SIb3DQEBAQUABIIBAF+AlCYzm9j3E8JY67+El7plQ2HWIemZQk16Lk7YfGN6mxhT9Zx2zlLx
+2e+xHp4AONn6mVgw6cDDBkiOXVfr3CLEG+u7XZv64piCyE0r3eRwmld6MyqN9Iqb9rRm1zTX
+Vbq7kXfatLgbF3kWumonxsfMxEH9KQoVb1Zs/3YsNhfk1a0Rz8NUefOeUydthTxHDYuG577d
+Dla0bYkDpUv3jsOoDcpvBo2s1iHLigNwsFMaeQfA5iJYMLHMZstq4uVSKHArd7l9ZDkivISo
+Qwq/8UPFqNbgmm7Eqw0ql6ZMPoijHoxWx7ROs5l1oKBnMYYhlzt7rabZM/rPJHY/LK4rMY0=
+
+--qjNfmADvan18RZcF--
