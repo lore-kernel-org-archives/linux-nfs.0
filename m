@@ -1,27 +1,46 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: about NLM/NSM
-Date: Mon, 27 Oct 2008 18:01:33 -0400
-Message-ID: <20081027220133.GE25467@fieldses.org>
-References: <55BA1E9645B3441FA782D9032BDC9288@nrchpcvx1f5w93> <20081027185515.GB23767@fieldses.org> <49061511.4050304@redhat.com> <20081027201323.GA25467@fieldses.org> <49062F3E.6090206@redhat.com> <20081027211740.GC25467@fieldses.org> <490630AE.4000807@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/5] Fix rpcbind/rpcinfo build warnings
+Date: Tue, 28 Oct 2008 10:15:40 -0400
+Message-ID: <49071E8C.2040408@RedHat.com>
+References: <20081021220247.19488.82225.stgit@manray.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: hexf <hexiaofeng-U4AKAne5IzAR5TUyvShJeg@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34045 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:46436 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751338AbYJ0WBj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Oct 2008 18:01:39 -0400
-In-Reply-To: <490630AE.4000807@redhat.com>
+	id S1751343AbYJ1OWO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2008 10:22:14 -0400
+In-Reply-To: <20081021220247.19488.82225.stgit-meopP2rzCrTwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 27, 2008 at 05:20:46PM -0400, Peter Staubach wrote:
-> For the situation of needing to clear locks belonging to long
-> dead and not returning clients, we could use a variation of
-> Wendy's proposal which works using the client IP as the key.
->
-> It is a rope with a very large and suspicious looking knot on
-> the end though...
 
-Understood, thanks for the clarification!--b.
+
+Chuck Lever wrote:
+> Hi Steve-
+> 
+> Here's a handful of minor fix-ups for rpcbind that eliminate a bunch of
+> warnings from autotool, make, and gcc.
+> 
+> ---
+> 
+> Chuck Lever (5):
+>       rpcbind: Squelch autotool warning
+>       rpcbind: Squelch make warnings
+>       rpcbind: Squelch a compiler warning
+>       rpcbind: Squelch a compiler warning
+>       rpcbind: Squelch a compiler warning
+> 
+> 
+>  configure.in    |    6 +++---
+>  src/Makefile.am |    5 -----
+>  src/rpcbind.c   |    1 +
+>  src/rpcinfo.c   |    2 +-
+>  src/warmstart.c |    1 -
+>  5 files changed, 5 insertions(+), 10 deletions(-)
+> 
+All committed... thanks!
+
+steved.
