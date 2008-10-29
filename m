@@ -1,81 +1,40 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] lockd: convert reclaimer thread to kthread interface
-Date: Wed, 29 Oct 2008 07:15:45 -0400
-Message-ID: <1225278945-15407-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	hch@infradead.org
-To: trond.myklebust@fys.uio.no
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:58331 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752792AbYJ2LPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Oct 2008 07:15:55 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [patch 0/9] writeback data integrity and other fixes (take 3)
+Date: Wed, 29 Oct 2008 12:22:35 +0000
+Message-ID: <20081029122234.GE846@shareable.org>
+References: <20081028144715.683011000@suse.de> <20081028153953.GB3082@wotan.suse.de> <20081028222746.GB4985@disturbed> <20081029001653.GF15599@wotan.suse.de> <20081029031645.GE4985@disturbed> <20081029091203.GA32545@infradead.org> <20081029092143.GA5953@wotan.suse.de> <20081029094417.GA21824@infradead.org> <20081029103029.GC5953@wotan.suse.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+	akpm@linux-foundation.org, xfs@oss.sgi.com,
+	linux-fsdevel@vger.kernel.org, Chris Mason <chris.mason@oracle.com>
+To: Nick Piggin <npiggin@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081029103029.GC5953@wotan.suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-My understanding is that there is a push to turn the kernel_thread
-interface into a non-exported symbol and move all kernel threads to use
-the kthread API. This patch changes lockd to use kthread_run to spawn
-the reclaimer thread.
+Nick Piggin wrote:
+> On Wed, Oct 29, 2008 at 05:44:17AM -0400, Christoph Hellwig wrote:
+> > On Wed, Oct 29, 2008 at 10:21:43AM +0100, Nick Piggin wrote:
+> > > Please do.
+> > 
+> > Well, there's one stumling block I haven't made progress on yet:
+> > 
+> > I've changed the prototype of ->fsync to lose the dentry as we should
+> > always have a valid file struct.  Except that nfsd doesn't on
+> > directories.  So I either need to fake up a file there, or bail out
+> > and add a ->dir_sync export operation that needs just a dentry.
+> 
+> OK. I don't know much about hthat code, but I would think nfsd
+> should look as close to the syscall layer as possible. I guess
+> there must be something prohibitive (some protocol semantics?).
+> 
+> Is there anything that particularly makes it a file operation
+> as opposed to an inode operation?
 
-I've made the assumption here that the extra module references taken
-when we spawn this thread are unnecessary and removed them. I've also
-added a KERN_ERR printk that pops if the thread can't be spawned to warn
-the admin that the locks won't be reclaimed.
+In principle, is fsync() required to flush all dirty data written
+through any file descriptor ever, or just dirty data written through
+the file descriptor used for fsync()?
 
-I consider this patch 2.6.29 material.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/lockd/clntlock.c |   14 +++++++++-----
- 1 files changed, 9 insertions(+), 5 deletions(-)
-
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 8307dd6..fcc2378 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -14,6 +14,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
- #include <linux/smp_lock.h>
-+#include <linux/kthread.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-@@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
- void
- nlmclnt_recovery(struct nlm_host *host)
- {
-+	struct task_struct *task;
-+
- 	if (!host->h_reclaiming++) {
- 		nlm_get_host(host);
--		__module_get(THIS_MODULE);
--		if (kernel_thread(reclaimer, host, CLONE_FS | CLONE_FILES) < 0)
--			module_put(THIS_MODULE);
-+		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
-+		if (IS_ERR(task))
-+			printk(KERN_ERR "lockd: unable to spawn reclaimer "
-+				"thread. Locks for %s won't be reclaimed! "
-+				"(%ld)\n", host->h_name, PTR_ERR(task));
- 	}
- }
- 
-@@ -207,7 +212,6 @@ reclaimer(void *ptr)
- 	struct file_lock *fl, *next;
- 	u32 nsmstate;
- 
--	daemonize("%s-reclaim", host->h_name);
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
-@@ -261,5 +265,5 @@ restart:
- 	nlm_release_host(host);
- 	lockd_down();
- 	unlock_kernel();
--	module_put_and_exit(0);
-+	return 0;
- }
--- 
-1.5.5.1
-
+-- Jamie
