@@ -1,132 +1,116 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 03/14] NSM: Support IPv6 version of mon_name
-Date: Wed, 29 Oct 2008 16:00:18 -0400
-Message-ID: <20081029200018.GB1406@fieldses.org>
-References: <20081024180150.23810.9718.stgit@ingres.1015granger.net> <20081024181009.23810.56793.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 04/14] NSM: Move NSM-related function and variable
+	declarations to lockd.h
+Date: Wed, 29 Oct 2008 16:02:51 -0400
+Message-ID: <20081029200251.GC1406@fieldses.org>
+References: <20081024180150.23810.9718.stgit@ingres.1015granger.net> <20081024181016.23810.69413.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44543 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:56943 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752485AbYJ2UAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Oct 2008 16:00:20 -0400
-In-Reply-To: <20081024181009.23810.56793.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1753176AbYJ2UCw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2008 16:02:52 -0400
+In-Reply-To: <20081024181016.23810.69413.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 24, 2008 at 02:10:09PM -0400, Chuck Lever wrote:
-> When the "nsm_use_hostnames" sysctl is set to zero, the kernel's NSM
-> provides a presentation format IP address in the mon_name argument of
-> SM_MON upcalls.  This is part of the private interface between Linux's
-> rpc.statd and the kernel's lockd implementation.  Linux's rpc.statd
-> can then resolve this address with DNS as a sanity check.
+On Fri, Oct 24, 2008 at 02:10:17PM -0400, Chuck Lever wrote:
+> Clean up: Keep the NSM function declarations together with the
+> declarations already in lockd.h, and modernize the documenting
+> comments.
 
-Have you checked how rpc.statd actually uses this field?
+Do the kerneldoc comments actually currently get processed?  (E.g. does
+'make htmldocs' do anything with them?)  If not, should we fix that?  If
+so, do they produce anything useful?
 
 --b.
 
 > 
-> To support IPv6 addresses for the mon_name argument, just point the
-> XDR encoder to the nsm_handle's eye-catcher, which already contains a
-> presentation format address string.
-> 
-> Finally, provide some debugging message clean up.
-> 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/lockd/mon.c |   43 +++++++++++++++----------------------------
->  1 files changed, 15 insertions(+), 28 deletions(-)
+>  fs/lockd/mon.c                 |   18 ++++++++++--------
+>  include/linux/lockd/lockd.h    |    4 ++++
+>  include/linux/lockd/sm_inter.h |    4 ----
+>  3 files changed, 14 insertions(+), 12 deletions(-)
 > 
 > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index a5c6ec4..1c058b1 100644
+> index 1c058b1..d48ae14 100644
 > --- a/fs/lockd/mon.c
 > +++ b/fs/lockd/mon.c
-> @@ -18,8 +18,6 @@
->  
->  #define NLMDBG_FACILITY		NLMDBG_MONITOR
->  
-> -#define XDR_ADDRBUF_LEN		(20)
-> -
->  static struct rpc_clnt *	nsm_create(void);
->  
->  static struct rpc_program	nsm_program;
-> @@ -40,7 +38,14 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
->  {
->  	struct rpc_clnt	*clnt;
->  	int		status;
-> -	struct nsm_args	args;
-> +	struct nsm_args	args = {
-> +		.addr		= nsm_addr_in(nsm)->sin_addr.s_addr,
-> +		.prog		= NLM_PROGRAM,
-> +		.vers		= 3,
-> +		.proc		= NLMPROC_NSM_NOTIFY,
-> +		.mon_name	= nsm_use_hostnames ?
-> +					nsm->sm_name : nsm->sm_addrbuf,
-> +	};
->  	struct rpc_message msg = {
->  		.rpc_argp	= &args,
->  		.rpc_resp	= res,
-> @@ -49,24 +54,21 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
->  	clnt = nsm_create();
->  	if (IS_ERR(clnt)) {
->  		status = PTR_ERR(clnt);
-> +		dprintk("lockd: failed to create nsm transport, "
-> +				"status=%d\n", status);
->  		goto out;
+> @@ -159,11 +159,12 @@ void nsm_release(struct nsm_handle *nsm)
 >  	}
->  
-> -	memset(&args, 0, sizeof(args));
-> -	args.mon_name = nsm->sm_name;
-> -	args.addr = nsm_addr_in(nsm)->sin_addr.s_addr;
-> -	args.prog = NLM_PROGRAM;
-> -	args.vers = 3;
-> -	args.proc = NLMPROC_NSM_NOTIFY;
->  	memset(res, 0, sizeof(*res));
->  
->  	msg.rpc_proc = &clnt->cl_procinfo[proc];
->  	status = rpc_call_sync(clnt, &msg, 0);
->  	if (status < 0)
-> -		printk(KERN_DEBUG "nsm_mon_unmon: rpc failed, status=%d\n",
-> -			status);
-> -	else
-> +		dprintk("lockd: nsm rpc failed, status=%d\n", status);
-> +	else {
->  		status = 0;
-> +		dprintk("lockd: monitoring '%s'\n", args.mon_name);
-> +	}
->  	rpc_shutdown_client(clnt);
->   out:
->  	return status;
-> @@ -253,25 +255,10 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
->  
->  /*
->   * "mon_name" specifies the host to be monitored.
-> - *
-> - * Linux uses a text version of the IP address of the remote
-> - * host as the host identifier (the "mon_name" argument).
-> - *
-> - * Linux statd always looks up the canonical hostname first for
-> - * whatever remote hostname it receives, so this works alright.
->   */
->  static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
->  {
-> -	char	buffer[XDR_ADDRBUF_LEN + 1];
-> -	char	*name = argp->mon_name;
-> -
-> -	if (!nsm_use_hostnames) {
-> -		snprintf(buffer, XDR_ADDRBUF_LEN,
-> -			 NIPQUAD_FMT, NIPQUAD(argp->addr));
-> -		name = buffer;
-> -	}
-> -
-> -	return xdr_encode_nsm_string(p, name);
-> +	return xdr_encode_nsm_string(p, argp->mon_name);
 >  }
 >  
+> -/*
+> - * Set up monitoring of a remote host
+> +/**
+> + * nsm_monitor - Set up monitoring of a remote host
+> + * @host: pointer to nlm_host representing remote peer to monitor
+> + *
+>   */
+> -int
+> -nsm_monitor(struct nlm_host *host)
+> +int nsm_monitor(struct nlm_host *host)
+>  {
+>  	struct nsm_handle *nsm = host->h_nsmhandle;
+>  	struct nsm_res	res;
+> @@ -184,11 +185,12 @@ nsm_monitor(struct nlm_host *host)
+>  	return status;
+>  }
+>  
+> -/*
+> - * Cease to monitor remote host
+> +/**
+> + * nsm_unmonitor - Cease to monitor remote host
+> + * @host: pointer to nlm_host representing remote peer to stop monitoring
+> + *
+>   */
+> -int
+> -nsm_unmonitor(struct nlm_host *host)
+> +int nsm_unmonitor(struct nlm_host *host)
+>  {
+>  	struct nsm_handle *nsm = host->h_nsmhandle;
+>  	struct nsm_res	res;
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index a45be5d..6dc1043 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -200,7 +200,9 @@ extern struct svc_procedure	nlmsvc_procedures4[];
+>  #endif
+>  extern int			nlmsvc_grace_period;
+>  extern unsigned long		nlmsvc_timeout;
+> +
+>  extern int			nsm_use_hostnames;
+> +extern int			nsm_local_state;
+>  
 >  /*
+>   * Lockd client functions
+> @@ -247,6 +249,8 @@ struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+>  					const size_t hostname_len,
+>  					const int create);
+>  void		  nsm_release(struct nsm_handle *nsm);
+> +int		  nsm_monitor(struct nlm_host *host);
+> +int		  nsm_unmonitor(struct nlm_host *host);
+>  
+>  /*
+>   * This is used in garbage collection and resource reclaim
+> diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
+> index 5a5448b..f75d3ea 100644
+> --- a/include/linux/lockd/sm_inter.h
+> +++ b/include/linux/lockd/sm_inter.h
+> @@ -41,8 +41,4 @@ struct nsm_res {
+>  	u32		state;
+>  };
+>  
+> -int		nsm_monitor(struct nlm_host *);
+> -int		nsm_unmonitor(struct nlm_host *);
+> -extern int	nsm_local_state;
+> -
+>  #endif /* LINUX_LOCKD_SM_INTER_H */
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
