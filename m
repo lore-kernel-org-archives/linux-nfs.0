@@ -1,109 +1,39 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Make sm-notify faster if there are no servers to notify
-Date: Wed, 29 Oct 2008 16:30:32 -0400
-Message-ID: <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com>
-References: <20081029173750.GD31936@fieldses.org> <1225302305994@dmwebmail.dmwebmail.chezphil.org> <20081029184153.GE31936@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 13/14] NLM: Remove "create" argument from nsm_find()
+Date: Wed, 29 Oct 2008 16:48:17 -0400
+Message-ID: <20081029204817.GD1406@fieldses.org>
+References: <20081024180150.23810.9718.stgit@ingres.1015granger.net> <20081024181123.23810.65076.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:14881 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753750AbYJ2Uat (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2008 16:30:49 -0400
-In-Reply-To: <20081029184153.GE31936@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:52145 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752209AbYJ2UsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2008 16:48:19 -0400
+In-Reply-To: <20081024181123.23810.65076.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 29, 2008, at 2:41 PM, J. Bruce Fields wrote:
-> On Wed, Oct 29, 2008 at 05:45:05PM +0000, Phil Endecott wrote:
->> J. Bruce Fields wrote:
->>> On Wed, Oct 29, 2008 at 05:30:03PM +0000, Phil Endecott wrote:
->>>> J. Bruce Fields wrote:
->>>>> On Wed, Oct 29, 2008 at 12:13:20AM +0000, Phil Endecott wrote:
->>>>>> Dear Experts,
->>>>>>
->>>>>> sm-notify was taking a long time while my laptop booted.  This
->>>>>> was odd because I use NFS only rarely - via autofs - on that
->>>>>> machine, and sm-notify actually has no-one to notify most of the
->>>>>> time.  So I have patched it as follows.  Is this a legitimate
->>>>>> thing to do?
->>>>>
->>>>> It looks like your patch was committed to nfs-utils a couple  
->>>>> weeks ago:
->>>>> see c8d18e26d2a53d9036a32c2dafebccaf4ce1634d from
->>>>>
->>>>> 	git://linux-nfs.org/nfs-utils
->>>>>
->>>>> --b.
->>>>
->>>> How curious.  I guess someone saw my Debian bug report.  No mention
->>>> of  it on this list as far as I can see though.
->>>>
->>>> I presume from this that it is considered a safe thing to do.
->>>
->>> It looks right to me.  Hopefully somebody actually has tested this  
->>> on a
->>> client that holds locks when it reboots?
->>
->> Not me.
->
-> Ugh.
->
-> We really need someone doing regular lock recovery tests with both the
-> latest kernel and latest nfs-utils.
->
-> Ideally we'd also have tests that could be easily run by anyone.   
-> Though
-> there may be too many site-specific details involved in writing  
-> scripts
-> that interact with (and reboot) multiple machines.
->
->>> I remember this was one of the things Arjan mentioned having to  
->>> disable
->>> in his "5-second boot" talk at the Linux Plumbers Conference, so  
->>> you're
->>> not the only one to have noticed the problem....
->>
->> Yes; I noticed the huge pause due to the sync() and applied this fix.
->> It was only later that I looked at Arjan's slides (I had to wait  
->> until
->> someone had converted then from PowerPoint to PDF...) and saw that he
->> had the same thing in his bootchart.
->
-> Oh, so the time was all spent in the sync() in nsm_get_state()?
+On Fri, Oct 24, 2008 at 02:11:23PM -0400, Chuck Lever wrote:
+> Clean up: nsm_find() now has only one caller who always sets the
 
-I assume sync() is required because this logic performs a rename as  
-well as a simple write?
+Clearer to say: "now only has one caller, and that caller always
+sets...".
 
-> Anyway, I think the nsm state updating shouldn't matter if you don't
-> even have any peers to notify.
+> "create" argument, so it is no longer needed.  Since nsm_find() now
+> has a more specific function, pick a more appropriate name for it.
+...
+> -struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+> -			    const char *hostname, const size_t hostname_len,
+> -			    const int create)
+> +struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+> +				  const size_t salen, const char *hostname,
+> +				  const size_t hostname_len)
+>  {
 
-It probably does matter.
+Maybe "nsm_create_handle" would be even clearer?  (It doesn't just
+increment a reference counter.)
 
-When a system is initially installed, it likely does not have a state  
-file in /var/lib/nfs.  This may be harmless if it's not present;  
-rpc.statd probably does the right thing in this case.
-
-However, the rest of the logic in nsm_get_state() is needed to bump  
-the system's state value properly after every reboot.  It may be  
-inconsequential if there were no mounts or no NFS clients during the  
-last reboot, but this is subtle.  I wouldn't bet on it.
-
->
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--b.
