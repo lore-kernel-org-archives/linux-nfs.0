@@ -1,72 +1,134 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/14] NLM: Beef up NLM address display function
-Date: Wed, 29 Oct 2008 15:25:14 -0400
-Message-ID: <20081029192514.GA1406@fieldses.org>
-References: <20081024180150.23810.9718.stgit@ingres.1015granger.net> <20081024180954.23810.34150.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 03/14] NSM: Support IPv6 version of mon_name
+Date: Wed, 29 Oct 2008 16:00:18 -0400
+Message-ID: <20081029200018.GB1406@fieldses.org>
+References: <20081024180150.23810.9718.stgit@ingres.1015granger.net> <20081024181009.23810.56793.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:45818 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:44543 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752435AbYJ2TZP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Oct 2008 15:25:15 -0400
-In-Reply-To: <20081024180954.23810.34150.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752485AbYJ2UAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2008 16:00:20 -0400
+In-Reply-To: <20081024181009.23810.56793.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 24, 2008 at 02:09:54PM -0400, Chuck Lever wrote:
-> Add support for IPv6 addresses with a scope ID,
+On Fri, Oct 24, 2008 at 02:10:09PM -0400, Chuck Lever wrote:
+> When the "nsm_use_hostnames" sysctl is set to zero, the kernel's NSM
+> provides a presentation format IP address in the mon_name argument of
+> SM_MON upcalls.  This is part of the private interface between Linux's
+> rpc.statd and the kernel's lockd implementation.  Linux's rpc.statd
+> can then resolve this address with DNS as a sanity check.
 
-I remain a bit confused about scope ID's.  If you tell me they're
-needed, I'll believe you.
-
-> and enable calls from outside of fs/lockd/host.c
-
-Some day of course it'd be nice to collect all the basic "display an
-ipv6 address" code together in one place!
-
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 9fd8889..c7516ae 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -104,29 +104,54 @@ static void nlm_clear_port(struct sockaddr *sap)
->  	}
->  }
->  
-> -static void nlm_display_address(const struct sockaddr *sap,
-...
-> +int nlm_display_address(const struct sockaddr *sap, char *buf,
-
-The return value is never used, even after your other patches.  Do you
-have any plans to use it?
+Have you checked how rpc.statd actually uses this field?
 
 --b.
 
-> +			const size_t len)
-> +{
->  	switch (sap->sa_family) {
->  	case AF_UNSPEC:
-> -		snprintf(buf, len, "unspecified");
-> -		break;
-> +		snprintf(buf, len, "unspecified address");
-> +		return -EAFNOSUPPORT;
->  	case AF_INET:
-> -		snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
-> -		break;
-> +		return nlm_display_ipv4_address(sap, buf, len);
->  	case AF_INET6:
-> -		if (ipv6_addr_v4mapped(&sin6->sin6_addr))
-> -			snprintf(buf, len, NIPQUAD_FMT,
-> -				 NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
-> -		else
-> -			snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
-> -		break;
-> +		return nlm_display_ipv6_address(sap, buf, len);
->  	default:
->  		snprintf(buf, len, "unsupported address family");
-> -		break;
-> +		return -EAFNOSUPPORT;
+> 
+> To support IPv6 addresses for the mon_name argument, just point the
+> XDR encoder to the nsm_handle's eye-catcher, which already contains a
+> presentation format address string.
+> 
+> Finally, provide some debugging message clean up.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/lockd/mon.c |   43 +++++++++++++++----------------------------
+>  1 files changed, 15 insertions(+), 28 deletions(-)
+> 
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index a5c6ec4..1c058b1 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -18,8 +18,6 @@
+>  
+>  #define NLMDBG_FACILITY		NLMDBG_MONITOR
+>  
+> -#define XDR_ADDRBUF_LEN		(20)
+> -
+>  static struct rpc_clnt *	nsm_create(void);
+>  
+>  static struct rpc_program	nsm_program;
+> @@ -40,7 +38,14 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+>  {
+>  	struct rpc_clnt	*clnt;
+>  	int		status;
+> -	struct nsm_args	args;
+> +	struct nsm_args	args = {
+> +		.addr		= nsm_addr_in(nsm)->sin_addr.s_addr,
+> +		.prog		= NLM_PROGRAM,
+> +		.vers		= 3,
+> +		.proc		= NLMPROC_NSM_NOTIFY,
+> +		.mon_name	= nsm_use_hostnames ?
+> +					nsm->sm_name : nsm->sm_addrbuf,
+> +	};
+>  	struct rpc_message msg = {
+>  		.rpc_argp	= &args,
+>  		.rpc_resp	= res,
+> @@ -49,24 +54,21 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+>  	clnt = nsm_create();
+>  	if (IS_ERR(clnt)) {
+>  		status = PTR_ERR(clnt);
+> +		dprintk("lockd: failed to create nsm transport, "
+> +				"status=%d\n", status);
+>  		goto out;
 >  	}
+>  
+> -	memset(&args, 0, sizeof(args));
+> -	args.mon_name = nsm->sm_name;
+> -	args.addr = nsm_addr_in(nsm)->sin_addr.s_addr;
+> -	args.prog = NLM_PROGRAM;
+> -	args.vers = 3;
+> -	args.proc = NLMPROC_NSM_NOTIFY;
+>  	memset(res, 0, sizeof(*res));
+>  
+>  	msg.rpc_proc = &clnt->cl_procinfo[proc];
+>  	status = rpc_call_sync(clnt, &msg, 0);
+>  	if (status < 0)
+> -		printk(KERN_DEBUG "nsm_mon_unmon: rpc failed, status=%d\n",
+> -			status);
+> -	else
+> +		dprintk("lockd: nsm rpc failed, status=%d\n", status);
+> +	else {
+>  		status = 0;
+> +		dprintk("lockd: monitoring '%s'\n", args.mon_name);
+> +	}
+>  	rpc_shutdown_client(clnt);
+>   out:
+>  	return status;
+> @@ -253,25 +255,10 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
+>  
+>  /*
+>   * "mon_name" specifies the host to be monitored.
+> - *
+> - * Linux uses a text version of the IP address of the remote
+> - * host as the host identifier (the "mon_name" argument).
+> - *
+> - * Linux statd always looks up the canonical hostname first for
+> - * whatever remote hostname it receives, so this works alright.
+>   */
+>  static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
+>  {
+> -	char	buffer[XDR_ADDRBUF_LEN + 1];
+> -	char	*name = argp->mon_name;
+> -
+> -	if (!nsm_use_hostnames) {
+> -		snprintf(buffer, XDR_ADDRBUF_LEN,
+> -			 NIPQUAD_FMT, NIPQUAD(argp->addr));
+> -		name = buffer;
+> -	}
+> -
+> -	return xdr_encode_nsm_string(p, name);
+> +	return xdr_encode_nsm_string(p, argp->mon_name);
 >  }
+>  
+>  /*
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
