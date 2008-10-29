@@ -1,89 +1,55 @@
-From: Stephan =?iso-8859-1?Q?Windm=FCller?=
-	<stephan.windmueller-ogaGWlaKng3jEoi5djuKH7NAH6kLmebB@public.gmane.org>
+From: Andy Adamson <andros@netapp.com>
 Subject: Re: Device or resource busy
-Date: Wed, 29 Oct 2008 16:09:27 +0100
-Message-ID: <20081029150927.GE13990@speutel.de>
-References: <20081027131034.GC25001@speutel.de> <1225116112.7842.3.camel@heimdal.trondhjem.org> <20081027142944.GD25001@speutel.de> <1225119712.14242.10.camel@heimdal.trondhjem.org>
+Date: Wed, 29 Oct 2008 11:58:52 -0400
+Message-ID: <1225295932.10717.11.camel@localhost.localdomain>
+References: <20081027131034.GC25001@speutel.de>
+	 <1225116112.7842.3.camel@heimdal.trondhjem.org>
+	 <20081027142944.GD25001@speutel.de>
+	 <1225119712.14242.10.camel@heimdal.trondhjem.org>
+	 <20081029150927.GE13990@speutel.de>
+Reply-To: andros@netapp.com
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/x-pkcs7-signature";
-	micalg=sha1; boundary="JBi0ZxuS5uaEhkUZ"
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=utf-8
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org
+To: Stephan =?ISO-8859-1?Q?Windm=FCller?=
+	<stephan.windmueller-ogaGWlaKng3jEoi5djuKH7NAH6kLmebB@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from speutel.de ([213.239.215.137]:37120 "EHLO speutel.de"
+Received: from mx2.netapp.com ([216.240.18.37]:5055 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752257AbYJ2PJe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Oct 2008 11:09:34 -0400
-In-Reply-To: <1225119712.14242.10.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1752083AbYJ2QAD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2008 12:00:03 -0400
+In-Reply-To: <20081029150927.GE13990-YXCdMCmAy7qELgA04lAiVw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi
 
---JBi0ZxuS5uaEhkUZ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On Wed, 2008-10-29 at 16:09 +0100, Stephan Windm=C3=BCller wrote:
+> On Mon, 27. Oct 2008, Trond Myklebust wrote:
+>=20
+> > As I said earlier, every time you cross from one volume to another =
+(even
+> > if it is on the same server), a mountpoint is automatically created=
+=2E
+>=20
+> How do I "cross from one volume to another"?=20
 
-On Mon, 27. Oct 2008, Trond Myklebust wrote:
+When a user traverses the NFS namespace on the client, and crosses from
+one server volume to another (fsid change) the NFS client software
+automagically does a mount. This is required to avoid inode number
+collisions.
 
-> As I said earlier, every time you cross from one volume to another (even
-> if it is on the same server), a mountpoint is automatically created.
+> Is there something I can
+> test to reproduce this behaviour? It seems that not all users have th=
+is
+> problem.
 
-How do I "cross from one volume to another"? Is there something I can
-test to reproduce this behaviour? It seems that not all users have this
-problem.
+That's because all users don't traverse the file system in the same way=
+=2E
 
-On the server I shared every single home directory instead of
-/export/home. Could this be the cause of the problem?
-
-- Stephan
-
---JBi0ZxuS5uaEhkUZ
-Content-Type: application/x-pkcs7-signature
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIIJDQYJKoZIhvcNAQcCoIII/jCCCPoCAQExCzAJBgUrDgMCGgUAMAsGCSqGSIb3DQEHAaCC
-BoQwggM9MIICpqADAgECAhBIcQ0ZGB7TPPXezMGKDaQFMA0GCSqGSIb3DQEBBQUAMGIxCzAJ
-BgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYD
-VQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBDQTAeFw0wODA5MDkxNzIx
-MzlaFw0wOTA5MDkxNzIxMzlaMHsxHzAdBgNVBAMTFlRoYXd0ZSBGcmVlbWFpbCBNZW1iZXIx
-IjAgBgkqhkiG9w0BCQEWE3dpbmR5QHdoaXRlLWhhd2suZGUxNDAyBgkqhkiG9w0BCQEWJXN0
-ZXBoYW4ud2luZG11ZWxsZXJAY3MudHUtZG9ydG11bmQuZGUwggEiMA0GCSqGSIb3DQEBAQUA
-A4IBDwAwggEKAoIBAQDCCn3lTSbxo/3P9UyvE2rxJELiZksbNk4AlVYvqNmU6Sg1gDrPrd72
-muoKPWqsYQs7qauOX0F5ee5znYx8EJv/iPAHnC+U8ZQx/LvsHZuw4JkpRtqB5D/84Snq1WRW
-QA4xhWtn7hiQsDCBeZIMGfTGI91r96+V1sBYnfm/Px7VTQ0Ur4+lxIK2SGA5De3VETsS4aw9
-wORYTgD4vpXs1JfmuNvlpKHAZhps9DnyF9qRW7Of/wh7WAOgxUDoK1YUnYFOHEAJb4eHVdcN
-m+TB17dmKdqVoqyUv1kQJTzaAmHeD3uBzXgZdU6sAeinlABb3j0TNXIkwhFloTOxoin0az1N
-AgMBAAGjVzBVMEUGA1UdEQQ+MDyBE3dpbmR5QHdoaXRlLWhhd2suZGWBJXN0ZXBoYW4ud2lu
-ZG11ZWxsZXJAY3MudHUtZG9ydG11bmQuZGUwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQUF
-AAOBgQAn1zmnTyZUhXAw73M24I9+VnCN3jpbA2BDScktFDLRxwilNJXR3KKuPHciVoYvFYIG
-Jr7u2/Q3d9uYg8La0fOC6MIyIrmaFEGRCVFMEvTt5Ru36miJlIb40pNZPJWeWb+eNCj3mQtv
-rHDHxbcmRe8mI6icVCMwnUqa5kVi9HIvzzCCAz8wggKooAMCAQICAQ0wDQYJKoZIhvcNAQEF
-BQAwgdExCzAJBgNVBAYTAlpBMRUwEwYDVQQIEwxXZXN0ZXJuIENhcGUxEjAQBgNVBAcTCUNh
-cGUgVG93bjEaMBgGA1UEChMRVGhhd3RlIENvbnN1bHRpbmcxKDAmBgNVBAsTH0NlcnRpZmlj
-YXRpb24gU2VydmljZXMgRGl2aXNpb24xJDAiBgNVBAMTG1RoYXd0ZSBQZXJzb25hbCBGcmVl
-bWFpbCBDQTErMCkGCSqGSIb3DQEJARYccGVyc29uYWwtZnJlZW1haWxAdGhhd3RlLmNvbTAe
-Fw0wMzA3MTcwMDAwMDBaFw0xMzA3MTYyMzU5NTlaMGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQK
-ExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29u
-YWwgRnJlZW1haWwgSXNzdWluZyBDQTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAxKY8
-VXNV+065yplaHmjAdQRwnd/p/6Me7L3N9VvyGna9fww6YfK/Uc4B1OVQCjDXAmNaLIkVcI7d
-yfArhVqqP3FWy688Cwfn8R+RNiQqE88r1fOCdz0Dviv+uxg+B79AgAJk16emu59l0cUqVIUP
-SAR/p7bRPGEEQB5kGXJgt/sCAwEAAaOBlDCBkTASBgNVHRMBAf8ECDAGAQH/AgEAMEMGA1Ud
-HwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwudGhhd3RlLmNvbS9UaGF3dGVQZXJzb25hbEZyZWVt
-YWlsQ0EuY3JsMAsGA1UdDwQEAwIBBjApBgNVHREEIjAgpB4wHDEaMBgGA1UEAxMRUHJpdmF0
-ZUxhYmVsMi0xMzgwDQYJKoZIhvcNAQEFBQADgYEASIzRUIPqCy7MDaNmrGcPf6+svsIXoUOW
-lJ1/TCG4+DYfqi2fNi/A9BxQIJNwPP2t4WFiw9k6GX6EsZkbAMUaC4J0niVQlGLH2ydxVyWN
-3amcOY6MIE9lX5Xa9/eH1sYITq726jTlEBpbNU1341YheILcIRk13iSx0x1G/11fZU8xggJR
-MIICTQIBATB2MGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAo
-UHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBD
-QQIQSHENGRge0zz13szBig2kBTAJBgUrDgMCGgUAoIGxMBgGCSqGSIb3DQEJAzELBgkqhkiG
-9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTA4MTAyOTE1MDkyN1owIwYJKoZIhvcNAQkEMRYEFKWn
-IomzUyZf65l3x83Q2KP3I8RZMFIGCSqGSIb3DQEJDzFFMEMwCgYIKoZIhvcNAwcwDgYIKoZI
-hvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMA0GCSqG
-SIb3DQEBAQUABIIBAJR1NnV7Y34ceEn3YVCmjock0XdJtkO4sQHe9by4sX2AQ3/F5bmEdAdB
-HOSKydK+wBROpo9OGou7YPY6RuWMxWB5ektlaPmbJYQ9IBkNU6hOfQALgFY+0qtnqkjgBYqO
-iMjorQeAzys9AlKTfUke2w3SkW4jKNajGbEQdT9/VQMzKILNB99HbjlBsM6vXjm53nE2hiKF
-r2ILAA2yX26e+zEjwXgrHiS/XUVpiw58w0TMspNGZNsBC4HWh0jl/7eHSKuTkRdZ/l09BaGu
-XGWYqkMBo5mFPjAvEPjLXujOdUrnakHhj9c5q/iFUcpbO6YHXMzzL5hBmygZYD1P9W8kRaY=
-
---JBi0ZxuS5uaEhkUZ--
+>=20
+> On the server I shared every single home directory instead of
+> /export/home. Could this be the cause of the problem?
+>=20
+> - Stephan
