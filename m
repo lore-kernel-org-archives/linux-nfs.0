@@ -1,36 +1,48 @@
-From: julia-bP4QQyzn5QYAvxtiuMwx3w@public.gmane.org
-Subject: Collaboration between 42ads and www.linux-nfs.org
-Date: Tue, 28 Oct 2008 13:44:42 -0700
-Message-ID: <7522bc2fca5bea7912eb44083ba35520@mark-tal.com>
+From: "Phil Endecott" <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>
+Subject: Make sm-notify faster if there are no servers to notify
+Date: Wed, 29 Oct 2008 00:13:20 +0000
+Message-ID: <1225239200402@dmwebmail.dmwebmail.chezphil.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; format="fixed"
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from beacon.lunarmania.com ([67.210.111.15]:35532 "EHLO
-	beacon.lunarmania.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752487AbYJ1VNr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2008 17:13:47 -0400
-Received: from marktal0 by beacon.lunarmania.com with local (Exim 4.69)
-	(envelope-from <marktal0-fcsEuc8Zl8RjORjwGJ68nIH6Mc4MB0Vx@public.gmane.org>)
-	id 1KuvQg-0003vV-1C
-	for linux-nfs@vger.kernel.org; Tue, 28 Oct 2008 13:44:42 -0700
+Received: from japan.chezphil.org ([77.240.5.4]:1430 "EHLO japan.chezphil.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753006AbYJ2ANX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2008 20:13:23 -0400
+Received: from localhost ([127.0.0.1] helo=chezphil.org)
+	by japan.chezphil.org with esmtp (Exim 4.69)
+	(envelope-from <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>)
+	id 1Kuygb-0002eK-F5
+	for linux-nfs@vger.kernel.org; Wed, 29 Oct 2008 00:13:21 +0000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Dear Experts,
 
-I am a marketing adviser at 42ads.com and I have some clients that would like to advertise on www.linux-nfs.org.
+sm-notify was taking a long time while my laptop booted.  This was odd because I 
+use NFS only rarely - via autofs - on that machine, and sm-notify actually has 
+no-one to notify most of the time.  So I have patched it as follows.  Is this a 
+legitimate thing to do?
 
-We are willing to offer you a fixed monthly payment for placing our customers' advertisements on your site. The payment will be done 3 months in advance.
 
-As an established media agency, 42ads.com represents some high profile advertisers who are interested in first-class advertising space. 42ads.com has recently started a special campaign to locate quality sites such as yours.
+diff -ur nfs-utils-1.1.3.orig/utils/statd/sm-notify.c nfs-utils-1.1.3/utils/statd/sm-notify.c
+--- nfs-utils-1.1.3.orig/utils/statd/sm-notify.c	2008-07-27 22:01:45.000000000 +0100
++++ nfs-utils-1.1.3/utils/statd/sm-notify.c	2008-10-13 19:02:54.000000000 +0100
+@@ -169,6 +169,10 @@
+ 	backup_hosts(_SM_DIR_PATH, _SM_BAK_PATH);
+ 	get_hosts(_SM_BAK_PATH);
+ 
++	if (!hosts) {
++		return 0;
++	}
++
+ 	/* Get and update the NSM state. This will call sync() */
+ 	nsm_state = nsm_get_state(opt_update_state);
+ 	set_kernel_nsm_state(nsm_state);
 
-For full details please contact me at julia-bP4QQyzn5QZfmgfxC/sS/w@public.gmane.org
 
-Regards,
-Julia Meyer
-Marketing Adviser
-julia-bP4QQyzn5QYAvxtiuMwx3w@public.gmane.org
 
-To permanently delete yourself from our list, simply reply to this with a blank email and you will never receive any communication from us in the future.
+Regards,  Phil.
+(Please Cc: me in any replies.)
 
