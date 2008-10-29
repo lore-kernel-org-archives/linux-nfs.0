@@ -1,60 +1,89 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [patch 0/9] writeback data integrity and other fixes (take 3)
-Date: Wed, 29 Oct 2008 10:56:36 -0400
-Message-ID: <1225292196.6448.263.camel@think.oraclecorp.com>
-References: <20081028144715.683011000@suse.de>
-	 <20081028153953.GB3082@wotan.suse.de> <20081028222746.GB4985@disturbed>
-	 <20081029001653.GF15599@wotan.suse.de> <20081029031645.GE4985@disturbed>
-	 <20081029091203.GA32545@infradead.org>
-	 <20081029092143.GA5953@wotan.suse.de>
-	 <20081029094417.GA21824@infradead.org>
-	 <20081029103029.GC5953@wotan.suse.de> <20081029122234.GE846@shareable.org>
-	 <490865E3.8070102@gmail.com>
+From: Stephan =?iso-8859-1?Q?Windm=FCller?=
+	<stephan.windmueller-ogaGWlaKng3jEoi5djuKH7NAH6kLmebB@public.gmane.org>
+Subject: Re: Device or resource busy
+Date: Wed, 29 Oct 2008 16:09:27 +0100
+Message-ID: <20081029150927.GE13990@speutel.de>
+References: <20081027131034.GC25001@speutel.de> <1225116112.7842.3.camel@heimdal.trondhjem.org> <20081027142944.GD25001@speutel.de> <1225119712.14242.10.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jamie Lokier <jamie@shareable.org>, Nick Piggin <npiggin@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
-	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org
-To: Ric Wheeler <ricwheeler@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <490865E3.8070102@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: multipart/signed; protocol="application/x-pkcs7-signature";
+	micalg=sha1; boundary="JBi0ZxuS5uaEhkUZ"
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from speutel.de ([213.239.215.137]:37120 "EHLO speutel.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752257AbYJ2PJe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2008 11:09:34 -0400
+In-Reply-To: <1225119712.14242.10.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-10-29 at 09:32 -0400, Ric Wheeler wrote:
-> Jamie Lokier wrote:
 
-> >> Is there anything that particularly makes it a file operation
-> >> as opposed to an inode operation?
-> >>     
-> >
-> > In principle, is fsync() required to flush all dirty data written
-> > through any file descriptor ever, or just dirty data written through
-> > the file descriptor used for fsync()?
-> >
-> > -- Jamie
-> > --
-> >   
-> http://www.opengroup.org/onlinepubs/009695399/functions/fsync.html
-> 
-> Is a pointer to what seems to be the official posix spec for this - it 
-> is definitely per file descriptor, not per file system, etc...
-> 
+--JBi0ZxuS5uaEhkUZ
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Maybe I'm reading Jamie's question wrong, but I think he's saying:
+On Mon, 27. Oct 2008, Trond Myklebust wrote:
 
-/* open exactly the same file twice */
-fd = open("file");
-fd2 = open("file");
+> As I said earlier, every time you cross from one volume to another (even
+> if it is on the same server), a mountpoint is automatically created.
 
-write(fd, "stuff")
-write(fd2, "more stuff")
-fsync(fd);
+How do I "cross from one volume to another"? Is there something I can
+test to reproduce this behaviour? It seems that not all users have this
+problem.
 
-Does the fsync promise "more stuff" will be on disk?  I think the answer
-should be yes.
+On the server I shared every single home directory instead of
+/export/home. Could this be the cause of the problem?
 
--chris
+- Stephan
 
+--JBi0ZxuS5uaEhkUZ
+Content-Type: application/x-pkcs7-signature
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
 
+MIIJDQYJKoZIhvcNAQcCoIII/jCCCPoCAQExCzAJBgUrDgMCGgUAMAsGCSqGSIb3DQEHAaCC
+BoQwggM9MIICpqADAgECAhBIcQ0ZGB7TPPXezMGKDaQFMA0GCSqGSIb3DQEBBQUAMGIxCzAJ
+BgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYD
+VQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBDQTAeFw0wODA5MDkxNzIx
+MzlaFw0wOTA5MDkxNzIxMzlaMHsxHzAdBgNVBAMTFlRoYXd0ZSBGcmVlbWFpbCBNZW1iZXIx
+IjAgBgkqhkiG9w0BCQEWE3dpbmR5QHdoaXRlLWhhd2suZGUxNDAyBgkqhkiG9w0BCQEWJXN0
+ZXBoYW4ud2luZG11ZWxsZXJAY3MudHUtZG9ydG11bmQuZGUwggEiMA0GCSqGSIb3DQEBAQUA
+A4IBDwAwggEKAoIBAQDCCn3lTSbxo/3P9UyvE2rxJELiZksbNk4AlVYvqNmU6Sg1gDrPrd72
+muoKPWqsYQs7qauOX0F5ee5znYx8EJv/iPAHnC+U8ZQx/LvsHZuw4JkpRtqB5D/84Snq1WRW
+QA4xhWtn7hiQsDCBeZIMGfTGI91r96+V1sBYnfm/Px7VTQ0Ur4+lxIK2SGA5De3VETsS4aw9
+wORYTgD4vpXs1JfmuNvlpKHAZhps9DnyF9qRW7Of/wh7WAOgxUDoK1YUnYFOHEAJb4eHVdcN
+m+TB17dmKdqVoqyUv1kQJTzaAmHeD3uBzXgZdU6sAeinlABb3j0TNXIkwhFloTOxoin0az1N
+AgMBAAGjVzBVMEUGA1UdEQQ+MDyBE3dpbmR5QHdoaXRlLWhhd2suZGWBJXN0ZXBoYW4ud2lu
+ZG11ZWxsZXJAY3MudHUtZG9ydG11bmQuZGUwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQUF
+AAOBgQAn1zmnTyZUhXAw73M24I9+VnCN3jpbA2BDScktFDLRxwilNJXR3KKuPHciVoYvFYIG
+Jr7u2/Q3d9uYg8La0fOC6MIyIrmaFEGRCVFMEvTt5Ru36miJlIb40pNZPJWeWb+eNCj3mQtv
+rHDHxbcmRe8mI6icVCMwnUqa5kVi9HIvzzCCAz8wggKooAMCAQICAQ0wDQYJKoZIhvcNAQEF
+BQAwgdExCzAJBgNVBAYTAlpBMRUwEwYDVQQIEwxXZXN0ZXJuIENhcGUxEjAQBgNVBAcTCUNh
+cGUgVG93bjEaMBgGA1UEChMRVGhhd3RlIENvbnN1bHRpbmcxKDAmBgNVBAsTH0NlcnRpZmlj
+YXRpb24gU2VydmljZXMgRGl2aXNpb24xJDAiBgNVBAMTG1RoYXd0ZSBQZXJzb25hbCBGcmVl
+bWFpbCBDQTErMCkGCSqGSIb3DQEJARYccGVyc29uYWwtZnJlZW1haWxAdGhhd3RlLmNvbTAe
+Fw0wMzA3MTcwMDAwMDBaFw0xMzA3MTYyMzU5NTlaMGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQK
+ExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29u
+YWwgRnJlZW1haWwgSXNzdWluZyBDQTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAxKY8
+VXNV+065yplaHmjAdQRwnd/p/6Me7L3N9VvyGna9fww6YfK/Uc4B1OVQCjDXAmNaLIkVcI7d
+yfArhVqqP3FWy688Cwfn8R+RNiQqE88r1fOCdz0Dviv+uxg+B79AgAJk16emu59l0cUqVIUP
+SAR/p7bRPGEEQB5kGXJgt/sCAwEAAaOBlDCBkTASBgNVHRMBAf8ECDAGAQH/AgEAMEMGA1Ud
+HwQ8MDowOKA2oDSGMmh0dHA6Ly9jcmwudGhhd3RlLmNvbS9UaGF3dGVQZXJzb25hbEZyZWVt
+YWlsQ0EuY3JsMAsGA1UdDwQEAwIBBjApBgNVHREEIjAgpB4wHDEaMBgGA1UEAxMRUHJpdmF0
+ZUxhYmVsMi0xMzgwDQYJKoZIhvcNAQEFBQADgYEASIzRUIPqCy7MDaNmrGcPf6+svsIXoUOW
+lJ1/TCG4+DYfqi2fNi/A9BxQIJNwPP2t4WFiw9k6GX6EsZkbAMUaC4J0niVQlGLH2ydxVyWN
+3amcOY6MIE9lX5Xa9/eH1sYITq726jTlEBpbNU1341YheILcIRk13iSx0x1G/11fZU8xggJR
+MIICTQIBATB2MGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAo
+UHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBD
+QQIQSHENGRge0zz13szBig2kBTAJBgUrDgMCGgUAoIGxMBgGCSqGSIb3DQEJAzELBgkqhkiG
+9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTA4MTAyOTE1MDkyN1owIwYJKoZIhvcNAQkEMRYEFKWn
+IomzUyZf65l3x83Q2KP3I8RZMFIGCSqGSIb3DQEJDzFFMEMwCgYIKoZIhvcNAwcwDgYIKoZI
+hvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0GCCqGSIb3DQMCAgEoMA0GCSqG
+SIb3DQEBAQUABIIBAJR1NnV7Y34ceEn3YVCmjock0XdJtkO4sQHe9by4sX2AQ3/F5bmEdAdB
+HOSKydK+wBROpo9OGou7YPY6RuWMxWB5ektlaPmbJYQ9IBkNU6hOfQALgFY+0qtnqkjgBYqO
+iMjorQeAzys9AlKTfUke2w3SkW4jKNajGbEQdT9/VQMzKILNB99HbjlBsM6vXjm53nE2hiKF
+r2ILAA2yX26e+zEjwXgrHiS/XUVpiw58w0TMspNGZNsBC4HWh0jl/7eHSKuTkRdZ/l09BaGu
+XGWYqkMBo5mFPjAvEPjLXujOdUrnakHhj9c5q/iFUcpbO6YHXMzzL5hBmygZYD1P9W8kRaY=
+
+--JBi0ZxuS5uaEhkUZ--
