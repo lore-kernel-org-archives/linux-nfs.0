@@ -1,55 +1,50 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: Device or resource busy
-Date: Wed, 29 Oct 2008 11:58:52 -0400
-Message-ID: <1225295932.10717.11.camel@localhost.localdomain>
-References: <20081027131034.GC25001@speutel.de>
-	 <1225116112.7842.3.camel@heimdal.trondhjem.org>
-	 <20081027142944.GD25001@speutel.de>
-	 <1225119712.14242.10.camel@heimdal.trondhjem.org>
-	 <20081029150927.GE13990@speutel.de>
-Reply-To: andros@netapp.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Stephan =?ISO-8859-1?Q?Windm=FCller?=
-	<stephan.windmueller-ogaGWlaKng3jEoi5djuKH7NAH6kLmebB@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS intr/nointr: SIGKILL may leave pages locked forever
+Date: Wed, 29 Oct 2008 12:38:03 -0400
+Message-ID: <E0B63DDE-B5D0-4DCA-B521-044759E1BFF0@oracle.com>
+References: <1A5BADE4-02EB-473A-957A-2329DFBC92B3@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Matthew Wilcox <matthew@wil.cx>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5055 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752083AbYJ2QAD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2008 12:00:03 -0400
-In-Reply-To: <20081029150927.GE13990-YXCdMCmAy7qELgA04lAiVw@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:59937 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754103AbYJ2QiX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2008 12:38:23 -0400
+In-Reply-To: <1A5BADE4-02EB-473A-957A-2329DFBC92B3@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+On Oct 24, 2008, at 11:11 AM, Chuck Lever wrote:
+> Hi Matthew-
+>
+> We are still trying to pursue intr/nointr testing on 2.6.25+  
+> kernels.  Looks like this week's kernel version is 2.6.27-rc7, but I  
+> will need to confirm that.
+>
+> Since 2.6.25, the problem is the "sql shutdown abort" command, which  
+> is designed to trigger an immediate database shutdown, causes the  
+> database instance to hang.  It leaves database writer processes  
+> stuck in "D" state after it sends a SIGKILL.
+>
+> The process backtraces suggest that these processes are waiting for  
+> the inode mutex before trying to invalidate the database file's  
+> cache (nfs_invalidate_mapping).  There is one process that owns the  
+> mutex and is stuck waiting for a page lock in  
+> invalidate_inode_pages2_range.  This suggests that the signal is  
+> causing some other code path to neglect to unlock that page.
+>
+> It's a little out of my league.  Are there ways we can gather more  
+> information?
 
-On Wed, 2008-10-29 at 16:09 +0100, Stephan Windm=C3=BCller wrote:
-> On Mon, 27. Oct 2008, Trond Myklebust wrote:
->=20
-> > As I said earlier, every time you cross from one volume to another =
-(even
-> > if it is on the same server), a mountpoint is automatically created=
-=2E
->=20
-> How do I "cross from one volume to another"?=20
+As a follow-up, we've found that we don't have this problem on UP NFS  
+clients.  On single processor clients, SIGKILL works correctly and the  
+database shuts down without corrupting its data files.  On SMP  
+clients, the signal results in hung database writers.
 
-When a user traverses the NFS namespace on the client, and crosses from
-one server volume to another (fsid change) the NFS client software
-automagically does a mount. This is required to avoid inode number
-collisions.
+We've confirmed this difference on 2.6.25-rc2 and 2.6.27-rc7.
 
-> Is there something I can
-> test to reproduce this behaviour? It seems that not all users have th=
-is
-> problem.
-
-That's because all users don't traverse the file system in the same way=
-=2E
-
->=20
-> On the server I shared every single home directory instead of
-> /export/home. Could this be the cause of the problem?
->=20
-> - Stephan
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
