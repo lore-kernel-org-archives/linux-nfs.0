@@ -1,59 +1,52 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Make sm-notify faster if there are no servers to notify
-Date: Wed, 29 Oct 2008 17:11:45 -0400
-Message-ID: <20081029211145.GE1406@fieldses.org>
-References: <20081029173750.GD31936@fieldses.org> <1225302305994@dmwebmail.dmwebmail.chezphil.org> <20081029184153.GE31936@fieldses.org> <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [patch 0/9] writeback data integrity and other fixes (take 3)
+Date: Thu, 30 Oct 2008 08:43:47 +1100
+Message-ID: <20081029214347.GI17077@disturbed>
+References: <20081028144715.683011000@suse.de> <20081028153953.GB3082@wotan.suse.de> <20081028222746.GB4985@disturbed> <20081029001653.GF15599@wotan.suse.de> <20081029031645.GE4985@disturbed> <20081029091203.GA32545@infradead.org> <20081029092143.GA5953@wotan.suse.de> <20081029094417.GA21824@infradead.org> <20081029103029.GC5953@wotan.suse.de> <20081029122234.GE846@shareable.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35511 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753572AbYJ2VL5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Oct 2008 17:11:57 -0400
-In-Reply-To: <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: Nick Piggin <npiggin@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
+	xfs@oss.sgi.com, linux-fsdevel@vger.kernel.org,
+	Chris Mason <chris.mason@oracle.com>
+To: Jamie Lokier <jamie@shareable.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081029122234.GE846@shareable.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 29, 2008 at 04:30:32PM -0400, Chuck Lever wrote:
-> I assume sync() is required because this logic performs a rename as well 
-> as a simple write?
+On Wed, Oct 29, 2008 at 12:22:35PM +0000, Jamie Lokier wrote:
+> Nick Piggin wrote:
+> > On Wed, Oct 29, 2008 at 05:44:17AM -0400, Christoph Hellwig wrote:
+> > > On Wed, Oct 29, 2008 at 10:21:43AM +0100, Nick Piggin wrote:
+> > > > Please do.
+> > > 
+> > > Well, there's one stumling block I haven't made progress on yet:
+> > > 
+> > > I've changed the prototype of ->fsync to lose the dentry as we should
+> > > always have a valid file struct.  Except that nfsd doesn't on
+> > > directories.  So I either need to fake up a file there, or bail out
+> > > and add a ->dir_sync export operation that needs just a dentry.
+> > 
+> > OK. I don't know much about hthat code, but I would think nfsd
+> > should look as close to the syscall layer as possible. I guess
+> > there must be something prohibitive (some protocol semantics?).
+> > 
+> > Is there anything that particularly makes it a file operation
+> > as opposed to an inode operation?
+> 
+> In principle, is fsync() required to flush all dirty data written
+> through any file descriptor ever, or just dirty data written through
+> the file descriptor used for fsync()?
 
-I think an fsync() on the containing directory (together with an fsync()
-of the file itself) would do the job if you wanted to avoid the globaly
-sync().  I don't think ext3 is capable of doing anything finer-grained
-than a whole-filesystem sync, though, so this doesn't help many people
-in practice right now.
+fsync() is required to flush the data that is dirty at the time of the
+call, as well as any associated metadata needed to reference that data. It
+doesn't matter who wrote the data in the first place....
 
-In any case, the rename adds an extra level of safety by ensuring the
-nsm state is updated atomically, so we shouldn't get rid of it.
+Cheers,
 
->> Anyway, I think the nsm state updating shouldn't matter if you don't
->> even have any peers to notify.
->
-> It probably does matter.
->
-> When a system is initially installed, it likely does not have a state  
-> file in /var/lib/nfs.  This may be harmless if it's not present;  
-> rpc.statd probably does the right thing in this case.
-
-The "right thing" in that case would be, I guess, to create a state file
-with "0" in it.  It doesn't do that.  So this patch *does* break stuff.
-Oops!
-
-So should we revert it and do something else, or patch statd to create
-a new state file if necessary?
-
-> However, the rest of the logic in nsm_get_state() is needed to bump the 
-> system's state value properly after every reboot.  It may be  
-> inconsequential if there were no mounts or no NFS clients during the  
-> last reboot, but this is subtle.  I wouldn't bet on it.
-
-If the state is only every communicated to hosts by notifications, then
-if we're not notifying, the update of the state can't matter.
-
-(So is that premise correct?)
-
---b.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
