@@ -1,67 +1,87 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
 Subject: Re: stuck/hung nfsv4 mounts
-Date: Mon, 3 Nov 2008 17:47:17 -0500
-Message-ID: <918557D8-C85A-4550-95DA-083739F40EA7@oracle.com>
-References: <1225724721.2247.29.camel@brian-laptop> <1225731544.6958.6.camel@heimdal.trondhjem.org> <20081103172529.GA9008@citi.umich.edu> <1225733834.6958.12.camel@heimdal.trondhjem.org> <2C93A491-1277-42B6-9CED-FC06A85174D5@oracle.com> <490F792D.6010208@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Jim Rees <rees@umich.edu>,
-	"Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Date: Mon, 03 Nov 2008 18:45:01 -0500
+Message-ID: <1225755901.2247.164.camel@brian-laptop>
+References: <1225724721.2247.29.camel@brian-laptop>
+	 <1225731544.6958.6.camel@heimdal.trondhjem.org>
+	 <1225734631.2247.76.camel@brian-laptop>
+	 <4d569c330811031158r26963e0w5bcf8331e0fb14b7@mail.gmail.com>
+	 <1225742958.2247.128.camel@brian-laptop>
+	 <4d569c330811031228r5bb9aefs7a970303910810e2@mail.gmail.com>
+	 <1225746764.2247.133.camel@brian-laptop>
+	 <4d569c330811031433k7ae18d4enfbda349e8f90a951@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:59678 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752044AbYKCWrp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Nov 2008 17:47:45 -0500
-In-Reply-To: <490F792D.6010208@redhat.com>
+Received: from server.klug.on.ca ([205.189.48.131]:4086 "EHLO
+	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752346AbYKCXpE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Nov 2008 18:45:04 -0500
+Received: from linux.interlinx.bc.ca (d193-213-184.home3.cgocable.net [67.193.213.184])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id 7F02C2805
+	for <linux-nfs@vger.kernel.org>; Mon,  3 Nov 2008 18:45:02 -0500 (EST)
+Received: from [10.75.22.172] (brian-laptop.ilinx [10.75.22.172])
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 61960800A
+	for <linux-nfs@vger.kernel.org>; Mon,  3 Nov 2008 18:45:01 -0500 (EST)
+In-Reply-To: <4d569c330811031433k7ae18d4enfbda349e8f90a951-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 3, 2008, at Nov 3, 2008, 5:20 PM, Peter Staubach wrote:
-> Chuck Lever wrote:
->> On Nov 3, 2008, at Nov 3, 2008, 12:37 PM, Trond Myklebust wrote:
->>> On Mon, 2008-11-03 at 12:25 -0500, Jim Rees wrote:
->>>> Trond Myklebust wrote:
->>>>
->>>> BTW: NFSv4 + soft == BAD BAD BAD!
->>>>
->>>> Maybe this combination should be prohibited.  Does it make any  
->>>> sense given
->>>> the stateful nature of v4?
->>>
->>> It might make sense if we were to fix up the granularity of the  
->>> recovery
->>> routines so that we are able to recover all the state associated  
->>> with
->>> just a single open owner or lock owner. Currently we'd have to  
->>> recover
->>> all the state associated with that server.
->>>
->>> IOW: we might be able to fix things up in the future, but right now,
->>> NFSv4+soft is not a good idea.
->>
->> Two cents worth:  Until NFSv4+soft works reasonably well, I  
->> wouldn't have any problem with making "soft" a no-op for nfs4 mounts.
->
-> It may be the right thing to do in the short term, but it will
-> generate calls to support organizations.
+On Mon, 2008-11-03 at 17:33 -0500, Kevin Coffman wrote:
+> 
+> Once again, this is all from librpcsecgss.  No messages originating
+> from rpc.gssd itself here.
 
-As opposed to the support "call" we got today?  ;-)
+Not sure why.  FWIW, 
+> 
+> > Nov  3 15:17:33 linux krb5kdc[5006]: TGS_REQ (1 etypes {1}) 10.75.22.1: ISSUE: authtime 1225740577, etypes {rep=1 tkt=1 ses=1}, brian@ILINX for nfs/linux.interlinx.bc.ca@ILINX
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: leaving poll
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: handling null request
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: sname = brian@ILINX
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: DEBUG: serialize_krb5_ctx: lucid version!
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: doing downcall
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: mech: krb5, hndl len: 4, ctx len 85, timeout: 2147483647, uid: 1001, gid: 1001, num aux grps: 13:
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   1) 1001
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   2) 117
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   3) 1010
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   4) 1011
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   5) 2000
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   6) 29
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   7) 20
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   8) 24
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (   9) 25
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (  10) 30
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (  11) 44
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (  12) 46
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]:   (  13) 111
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: sending null reply
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: writing message: ...
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: finished handling null request
+> > Nov  3 15:17:33 linux rpc.svcgssd[13724]: entering poll
+> 
+> If you can get
+> a packet trace between the client and server during the mount /
+> context negotiation, check the NULL reply from the server for this
+> error code.
 
-> Anyone trying it will
-> wonder why it doesn't work "as it used to".  That sort of thing.
-> When that happens, we will be forced to do something and not at
-> our choice of time.
+Well, this is just it.
 
-I think our petard is hoist either way.  Better to avoid data  
-corruption, by whatever means.
+# mount -t nfs4 -s -o sec=krb5i,rw,intr,rsize=8192,wsize=8192 linux:/home/share /mnt/test
 
-> Perhaps we should deny such mount attempts because at least that
-> would be obvious what was happening?  Perhaps we should also
-> deny NFSv4 mounting over UDP?
+on the client does not result in any NFS4 traffic between the client and
+the server.  In fact if I ^C the above mount and issue it again, I don't
+get another gss/svcgssd upcall.  Is there some kind of caching going on?
+How can I invalidate the cache?  Probably it's moot though given that
+this sequence of events is not resulting in any NFS4 traffic anyway.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+This was all working before last night, then all of a sudden, it
+stopped.  Nothing remarkable happened at the time that
+could/should/would have caused this silliness.  ~sigh~
+
+b.
+
+
