@@ -1,141 +1,73 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] lockd: convert reclaimer thread to kthread interface
-Date: Tue, 4 Nov 2008 13:42:35 -0500
-Message-ID: <20081104134235.0382c873@tleilax.poochiereds.net>
-References: <1225278945-15407-1-git-send-email-jlayton@redhat.com>
-	<20081103131215.75a83236.akpm@linux-foundation.org>
-	<20081103191924.16528bfd@tleilax.poochiereds.net>
-	<1225802508.19864.2.camel@heimdal.trondhjem.org>
+From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
+Subject: Re: gssapi and nfs4
+Date: Tue, 04 Nov 2008 13:53:17 -0500
+Message-ID: <1225824797.2247.345.camel@brian-laptop>
+References: <1225813410.2247.279.camel@brian-laptop>
+	 <89c397150811041000l93b9831w1e8dce2175c6d51f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	hch@infradead.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34539 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751599AbYKDSmp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2008 13:42:45 -0500
-In-Reply-To: <1225802508.19864.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from server.klug.on.ca ([205.189.48.131]:2996 "EHLO
+	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752237AbYKDSxU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2008 13:53:20 -0500
+Received: from linux.interlinx.bc.ca (d193-213-184.home3.cgocable.net [67.193.213.184])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id 20A142803
+	for <linux-nfs@vger.kernel.org>; Tue,  4 Nov 2008 13:53:19 -0500 (EST)
+Received: from [10.75.22.172] (brian-laptop.ilinx [10.75.22.172])
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 645FE800A
+	for <linux-nfs@vger.kernel.org>; Tue,  4 Nov 2008 13:53:17 -0500 (EST)
+In-Reply-To: <89c397150811041000l93b9831w1e8dce2175c6d51f-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 04 Nov 2008 07:41:47 -0500
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+On Tue, 2008-11-04 at 13:00 -0500, William A. (Andy) Adamson wrote:
+> Hi
 
-> On Mon, 2008-11-03 at 19:19 -0500, Jeff Layton wrote:
-> > On Mon, 3 Nov 2008 13:12:15 -0800
-> > Andrew Morton <akpm@linux-foundation.org> wrote:
-> > 
-> > > On Wed, 29 Oct 2008 07:15:45 -0400
-> > > Jeff Layton <jlayton@redhat.com> wrote:
-> > > 
-> > > > My understanding is that there is a push to turn the kernel_thread
-> > > > interface into a non-exported symbol and move all kernel threads to use
-> > > > the kthread API. This patch changes lockd to use kthread_run to spawn
-> > > > the reclaimer thread.
-> > > > 
-> > > > I've made the assumption here that the extra module references taken
-> > > > when we spawn this thread are unnecessary and removed them. I've also
-> > > > added a KERN_ERR printk that pops if the thread can't be spawned to warn
-> > > > the admin that the locks won't be reclaimed.
-> > > > 
-> > > > I consider this patch 2.6.29 material.
-> > > > 
-> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > > ---
-> > > >  fs/lockd/clntlock.c |   14 +++++++++-----
-> > > >  1 files changed, 9 insertions(+), 5 deletions(-)
-> > > > 
-> > > > diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-> > > > index 8307dd6..fcc2378 100644
-> > > > --- a/fs/lockd/clntlock.c
-> > > > +++ b/fs/lockd/clntlock.c
-> > > > @@ -14,6 +14,7 @@
-> > > >  #include <linux/sunrpc/svc.h>
-> > > >  #include <linux/lockd/lockd.h>
-> > > >  #include <linux/smp_lock.h>
-> > > > +#include <linux/kthread.h>
-> > > >  
-> > > >  #define NLMDBG_FACILITY		NLMDBG_CLIENT
-> > > >  
-> > > > @@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
-> > > >  void
-> > > >  nlmclnt_recovery(struct nlm_host *host)
-> > > >  {
-> > > > +	struct task_struct *task;
-> > > > +
-> > > >  	if (!host->h_reclaiming++) {
-> > > >  		nlm_get_host(host);
-> > > > -		__module_get(THIS_MODULE);
-> > > > -		if (kernel_thread(reclaimer, host, CLONE_FS | CLONE_FILES) < 0)
-> > > > -			module_put(THIS_MODULE);
-> > > > +		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
-> > > > +		if (IS_ERR(task))
-> > > > +			printk(KERN_ERR "lockd: unable to spawn reclaimer "
-> > > > +				"thread. Locks for %s won't be reclaimed! "
-> > > > +				"(%ld)\n", host->h_name, PTR_ERR(task));
-> > > >  	}
-> > > >  }
-> > > >  
-> > > > @@ -207,7 +212,6 @@ reclaimer(void *ptr)
-> > > >  	struct file_lock *fl, *next;
-> > > >  	u32 nsmstate;
-> > > >  
-> > > > -	daemonize("%s-reclaim", host->h_name);
-> > > >  	allow_signal(SIGKILL);
-> > > >  
-> > > >  	down_write(&host->h_rwsem);
-> > > > @@ -261,5 +265,5 @@ restart:
-> > > >  	nlm_release_host(host);
-> > > >  	lockd_down();
-> > > >  	unlock_kernel();
-> > > > -	module_put_and_exit(0);
-> > > > +	return 0;
-> > > >  }
-> > > 
-> > > Looks OK to me.  I assume the SIGKILL handling has been carefully tested?
-> > > 
-> > > 
-> > > Is it correct to emit a warning and keep going if the thread didn't
-> > > start?  Or would it be safer&saner to fail the whole mount (or whatever
-> > > syscall we're doing here..)
-> > > 
-> > 
-> > Forgot to answer this part...
-> > 
-> > This thread gets kicked off when the server has rebooted and we need to
-> > reclaim our locks. There isn't a syscall on which we can return an
-> > error to the user.
-> > 
-> > Aside from just warning the admin, I'm not sure what we can do here. We
-> > might be able to start making all syscalls on the mount fail somehow,
-> > but I don't think we have infrastructure for that and that may be
-> > overkill anyway. I suppose we could also go to sleep and try to spawn the
-> > thread again, but there's no guarantee of success there.
+Hello,
+
+> In general, the instructions at the CITI web site will be useful.
 > 
-> We should consider implementing SIGLOST. That is the closest thing that
-> we have to a *NIX standard for signalling that remote filesystem state
-> has been lost.
+> From http://www.citi.umich.edu/projects/nfsv4/linux/using-nfsv4.html:
 > 
+> Mounting and exporting krb5
+> 
+> To mount a filesystem using krb5, provide the "-osec=krb5" option to mount.
 
-Very interesting. I hadn't heard of SIGLOST before, but it does seem
-like something we should implement. CIFS might also be able to use it
-too. CIFS doesn't have a grace period, so lock reclaims are always
-iffy...
+Indeed.
 
-While we're on the subject of signals...
+> To export a filesystem using krb5, add the export option "sec=krb5".
+> (Note: if your kernel is older than 2.6.23, or nfs-utils older than
+> 1.1.1, you will instead need to export to a special client named
+> "gss/krb5".)
 
-Do you have any thoughts/objections to just making the reclaimer thread
-ignore them altogether? That would simplify the code a bit.
+Ahhh.  This, I did not know.
 
-I think I may have been wrong before as well. Now that I look closer,
-I'm not sure that we're actually leaking memory if the reclaimer is
-signaled. The file_locks do end up not being on the h_granted list
-anymore, but I think that just keeps the kernel from attempting to
-reclaim them again (for instance, if a new reclaimer thread is spawned
-after this one exits).
+> So instead of using the old "gss/krb5" which indeed did replace the
+> ip/netmasks list, you can now specify the use of gssapi with an export
+> option, and still set ip/netmasks.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Cool.  I think it's still useful to be able to provide some exports as
+ro (i.e. forced ro by the server) to some machines (and rw to others)
+even with gssapi, yes?
+
+I did notice the bit of text about the single pseudo filesystem.  Given
+that on my server, I exported a number of filesystems, including / to
+privileged (I'm in a very small and trusted environment) clients, it
+seemed natural to just set / to fsid 0.  I also exported the few other
+exports I wanted some nfs4 clients to mount as such:
+
+/               gss/krb5i(rw,insecure,sync,wdelay,no_subtree_check,no_root_squash,fsid=0,crossmnt,anonuid=65534,anongid=65534)
+/home           gss/krb5i(rw,no_root_squash,sync,subtree_check,anonuid=65534,anongid=65534)
+/mnt/data       gss/krb5i(rw,sync,subtree_check,crossmnt,anonuid=65534,anongid=65534)
+/mnt/data/photos gss/krb5i(rw,sync,subtree_check,anonuid=65534,anongid=65534)
+
+where those are all on different filesystems on the server.  I'm
+starting to feel like this is not how it's supposed to be done.
+
+b.
+
+
