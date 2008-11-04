@@ -1,118 +1,141 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: nfs41: sunrpc: handle clnt==NULL in call_status
-Date: Tue, 04 Nov 2008 13:19:23 -0500
-Message-ID: <1225822763.30407.6.camel@heimdal.trondhjem.org>
-References: <49106FCB.1090303@panasas.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] lockd: convert reclaimer thread to kthread interface
+Date: Tue, 4 Nov 2008 13:42:35 -0500
+Message-ID: <20081104134235.0382c873@tleilax.poochiereds.net>
+References: <1225278945-15407-1-git-send-email-jlayton@redhat.com>
+	<20081103131215.75a83236.akpm@linux-foundation.org>
+	<20081103191924.16528bfd@tleilax.poochiereds.net>
+	<1225802508.19864.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	hch@infradead.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:51097 "EHLO mail-out1.uio.no"
+Received: from mx2.redhat.com ([66.187.237.31]:34539 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752242AbYKDSTa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2008 13:19:30 -0500
-In-Reply-To: <49106FCB.1090303@panasas.com>
+	id S1751599AbYKDSmp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Nov 2008 13:42:45 -0500
+In-Reply-To: <1225802508.19864.2.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-11-04 at 17:52 +0200, Benny Halevy wrote:
-> On the following error path task->tk_client == NULL causing NULL deref:
-> 
-> Nov  4 14:14:32 tl1 kernel: Callback slot table overflowed
-> Nov  4 14:14:32 tl1 kernel: BUG: unable to handle kernel NULL pointer dereference at 0000000000000078
-> Nov  4 14:14:32 tl1 kernel: IP: [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: PGD 2f973067 PUD 2f974067 PMD 0
-> Nov  4 14:14:32 tl1 kernel: Oops: 0000 [1] SMP
-> Nov  4 14:14:32 tl1 kernel: CPU 0
-> Nov  4 14:14:32 tl1 kernel: Modules linked in: panfs(P) panlayoutdriver nfslayoutdriver nfsd auth_rpcgss exportfs nfs lockd nfs_acl fuse sunrpc ipv6 cpufreq_ondemand powernow_k8 freq_table dm_mirror dm_log dm_multipath dm_mod snd_hda_intel snd_seq_dummy sr_mod snd_seq_oss cdrom snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd_page_alloc snd_hwdep snd pcspkr serio_raw k8temp hwmon forcedeth soundcore pata_amd sg jedec_probe cfi_probe gen_probe mtd i2c_nforce2 chipreg i2c_core button map_funcs sata_nv ata_generic pata_acpi libata sd_mod scsi_mod ext3 jbd mbcache uhci_hcd ohci_hcd ehci_hcd [last unloaded: scsi_wait_scan]
-> Nov  4 14:14:32 tl1 kernel: Pid: 3405, comm: nfsv4.1-svc Tainted: P          2.6.27-pnfs #1
-> Nov  4 14:14:32 tl1 kernel: RIP: 0010:[<ffffffffa02b4dd2>]  [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: RSP: 0018:ffff88002a70bd60  EFLAGS: 00010246
-> Nov  4 14:14:32 tl1 kernel: RAX: 0000000000000000 RBX: 00000000ffffff95 RCX: 0000000000000000
-> Nov  4 14:14:32 tl1 kernel: RDX: ffff88002a70bd10 RSI: ffff88002fc52dc0 RDI: ffff88002fc52dc0
-> Nov  4 14:14:32 tl1 kernel: RBP: ffff88002a70bd80 R08: ffff88002f9dae40 R09: ffffffff81489e60
-> Nov  4 14:14:32 tl1 kernel: R10: ffff880038497800 R11: ffff88002a70bd30 R12: ffff88002fc52dc0
-> Nov  4 14:14:32 tl1 kernel: R13: 0000000000000000 R14: ffff88002f57fa00 R15: ffff88002fc52e50
-> Nov  4 14:14:32 tl1 kernel: FS:  00007fe78ffac6f0(0000) GS:ffffffff8148da80(0000) knlGS:0000000000000000
-> Nov  4 14:14:32 tl1 kernel: CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-> Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078 CR3: 000000002f971000 CR4: 00000000000006e0
-> Nov  4 14:14:32 tl1 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> Nov  4 14:14:32 tl1 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Nov  4 14:14:32 tl1 kernel: Process nfsv4.1-svc (pid: 3405, threadinfo ffff88002a70a000, task ffff88003694d900)
-> Nov  4 14:14:32 tl1 kernel: Stack:  0000000000000000 ffff88002f57fa00 ffff88002fc52dc0 ffff880030450ce8
-> Nov  4 14:14:32 tl1 kernel: ffff88002a70bdc0 ffffffffa02bb9db ffff88002a70bdf0 ffff88002fc52dc0
-> Nov  4 14:14:32 tl1 kernel: ffff88002f57fa00 ffff88002f57fa00 ffff880030450ce8 ffff88002a734000
-> Nov  4 14:14:32 tl1 kernel: Call Trace:
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bb9db>] __rpc_execute+0x7e/0x21f [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bbba4>] rpc_execute+0x28/0x2c [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02b5596>] rpc_run_bc_task+0x88/0xae [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02c923d>] bc_send+0x35/0x5a [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bdc92>] bc_svc_process+0xf6/0x101 [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff81048a6c>] ? prepare_to_wait+0x5c/0x65
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a4c9>] nfs41_callback_svc+0xda/0x131 [nfs]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff810488a0>] ? autoremove_wake_function+0x0/0x38
-> Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a3ef>] ? nfs41_callback_svc+0x0/0x131 [nfs]
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff81048561>] kthread+0x49/0x76
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf49>] child_rip+0xa/0x11
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff8102a401>] ? pick_next_task_fair+0x93/0xa3
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff81048518>] ? kthread+0x0/0x76
-> Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf3f>] ? child_rip+0x0/0x11
-> Nov  4 14:14:32 tl1 kernel:
-> Nov  4 14:14:32 tl1 kernel:
-> Nov  4 14:14:32 tl1 kernel: Code: e8 7c 70 00 00 49 8b 44 24 20 49 c7 44 24 68 dc 48 2b a0 f6 40 78 02 74 6d 41 8b b6 34 01 00 00 48 8b 78 30 e8 b9 2a 00 00 eb 5b <41> f6 45 78 04 74 13 49 8b 55 30 48 8d 82 80 04 00 00 f0 80 a2
-> Nov  4 14:14:32 tl1 kernel: RIP  [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
-> Nov  4 14:14:32 tl1 kernel: RSP <ffff88002a70bd60>
-> Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078
-> Nov  4 14:14:32 tl1 kernel: ---[ end trace 1584c489f2573aaf ]---
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
-> 
-> Trond, I'm not sure if this can happen without nfs41.
-> However, please consider this patch for upstream since
-> it is safe to do in any case.
-> 
-> Benny
-> 
->  net/sunrpc/clnt.c |    8 +++++---
->  1 files changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 78fc483..b555d9f 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1206,7 +1206,8 @@ call_status(struct rpc_task *task)
->  		break;
->  	case -ECONNREFUSED:
->  	case -ENOTCONN:
-> -		rpc_force_rebind(clnt);
-> +		if (clnt)
-> +			rpc_force_rebind(clnt);
->  		task->tk_action = call_bind;
->  		break;
->  	case -EAGAIN:
-> @@ -1217,9 +1218,10 @@ call_status(struct rpc_task *task)
->  		rpc_exit(task, status);
->  		break;
->  	default:
-> -		if (clnt->cl_chatty)
-> +		if (!clnt || clnt->cl_chatty)
->  			printk("%s: RPC call returned error %d\n",
-> -			       clnt->cl_protname, -status);
-> +			       clnt ? clnt->cl_protname : "<unknown protocol>",
-> +			       -status);
->  		rpc_exit(task, status);
->  	}
->  }
+On Tue, 04 Nov 2008 07:41:47 -0500
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-BIG NACK!
+> On Mon, 2008-11-03 at 19:19 -0500, Jeff Layton wrote:
+> > On Mon, 3 Nov 2008 13:12:15 -0800
+> > Andrew Morton <akpm@linux-foundation.org> wrote:
+> > 
+> > > On Wed, 29 Oct 2008 07:15:45 -0400
+> > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > 
+> > > > My understanding is that there is a push to turn the kernel_thread
+> > > > interface into a non-exported symbol and move all kernel threads to use
+> > > > the kthread API. This patch changes lockd to use kthread_run to spawn
+> > > > the reclaimer thread.
+> > > > 
+> > > > I've made the assumption here that the extra module references taken
+> > > > when we spawn this thread are unnecessary and removed them. I've also
+> > > > added a KERN_ERR printk that pops if the thread can't be spawned to warn
+> > > > the admin that the locks won't be reclaimed.
+> > > > 
+> > > > I consider this patch 2.6.29 material.
+> > > > 
+> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > > ---
+> > > >  fs/lockd/clntlock.c |   14 +++++++++-----
+> > > >  1 files changed, 9 insertions(+), 5 deletions(-)
+> > > > 
+> > > > diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> > > > index 8307dd6..fcc2378 100644
+> > > > --- a/fs/lockd/clntlock.c
+> > > > +++ b/fs/lockd/clntlock.c
+> > > > @@ -14,6 +14,7 @@
+> > > >  #include <linux/sunrpc/svc.h>
+> > > >  #include <linux/lockd/lockd.h>
+> > > >  #include <linux/smp_lock.h>
+> > > > +#include <linux/kthread.h>
+> > > >  
+> > > >  #define NLMDBG_FACILITY		NLMDBG_CLIENT
+> > > >  
+> > > > @@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
+> > > >  void
+> > > >  nlmclnt_recovery(struct nlm_host *host)
+> > > >  {
+> > > > +	struct task_struct *task;
+> > > > +
+> > > >  	if (!host->h_reclaiming++) {
+> > > >  		nlm_get_host(host);
+> > > > -		__module_get(THIS_MODULE);
+> > > > -		if (kernel_thread(reclaimer, host, CLONE_FS | CLONE_FILES) < 0)
+> > > > -			module_put(THIS_MODULE);
+> > > > +		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
+> > > > +		if (IS_ERR(task))
+> > > > +			printk(KERN_ERR "lockd: unable to spawn reclaimer "
+> > > > +				"thread. Locks for %s won't be reclaimed! "
+> > > > +				"(%ld)\n", host->h_name, PTR_ERR(task));
+> > > >  	}
+> > > >  }
+> > > >  
+> > > > @@ -207,7 +212,6 @@ reclaimer(void *ptr)
+> > > >  	struct file_lock *fl, *next;
+> > > >  	u32 nsmstate;
+> > > >  
+> > > > -	daemonize("%s-reclaim", host->h_name);
+> > > >  	allow_signal(SIGKILL);
+> > > >  
+> > > >  	down_write(&host->h_rwsem);
+> > > > @@ -261,5 +265,5 @@ restart:
+> > > >  	nlm_release_host(host);
+> > > >  	lockd_down();
+> > > >  	unlock_kernel();
+> > > > -	module_put_and_exit(0);
+> > > > +	return 0;
+> > > >  }
+> > > 
+> > > Looks OK to me.  I assume the SIGKILL handling has been carefully tested?
+> > > 
+> > > 
+> > > Is it correct to emit a warning and keep going if the thread didn't
+> > > start?  Or would it be safer&saner to fail the whole mount (or whatever
+> > > syscall we're doing here..)
+> > > 
+> > 
+> > Forgot to answer this part...
+> > 
+> > This thread gets kicked off when the server has rebooted and we need to
+> > reclaim our locks. There isn't a syscall on which we can return an
+> > error to the user.
+> > 
+> > Aside from just warning the admin, I'm not sure what we can do here. We
+> > might be able to start making all syscalls on the mount fail somehow,
+> > but I don't think we have infrastructure for that and that may be
+> > overkill anyway. I suppose we could also go to sleep and try to spawn the
+> > thread again, but there's no guarantee of success there.
+> 
+> We should consider implementing SIGLOST. That is the closest thing that
+> we have to a *NIX standard for signalling that remote filesystem state
+> has been lost.
+> 
 
-How does even it make sense for a task to get past call_transmit and
-call_status without having task->tk_client set? This sounds like serious
-borkenness in the nfsv4.1 patches...
+Very interesting. I hadn't heard of SIGLOST before, but it does seem
+like something we should implement. CIFS might also be able to use it
+too. CIFS doesn't have a grace period, so lock reclaims are always
+iffy...
 
-Trond
-...
+While we're on the subject of signals...
 
+Do you have any thoughts/objections to just making the reclaimer thread
+ignore them altogether? That would simplify the code a bit.
+
+I think I may have been wrong before as well. Now that I look closer,
+I'm not sure that we're actually leaking memory if the reclaimer is
+signaled. The file_locks do end up not being on the h_granted list
+anymore, but I think that just keeps the kernel from attempting to
+reclaim them again (for instance, if a new reclaimer thread is spawned
+after this one exits).
+
+-- 
+Jeff Layton <jlayton@redhat.com>
