@@ -1,75 +1,212 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] lockd: convert reclaimer thread to kthread interface
-Date: Tue, 4 Nov 2008 15:38:35 -0500
-Message-ID: <20081104153835.04f4f05e@tleilax.poochiereds.net>
-References: <1225278945-15407-1-git-send-email-jlayton@redhat.com>
-	<20081103131215.75a83236.akpm@linux-foundation.org>
-	<20081103191924.16528bfd@tleilax.poochiereds.net>
-	<1225802508.19864.2.camel@heimdal.trondhjem.org>
-	<20081104134235.0382c873@tleilax.poochiereds.net>
-	<1225826781.30407.11.camel@heimdal.trondhjem.org>
-	<20081104144652.18d2910d@tleilax.poochiereds.net>
-	<1225829834.30407.38.camel@heimdal.trondhjem.org>
+From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Subject: RE: nfs41: sunrpc: handle clnt==NULL in call_status
+Date: Tue, 4 Nov 2008 13:24:32 -0800
+Message-ID: <273FE88A07F5D445824060902F70034402974728@SACMVEXC1-PRD.hq.netapp.com>
+References: <1225822763.30407.6.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	hch@infradead.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "pNFS Mailing List" <pnfs@linux-nfs.org>,
+	"NFS list" <linux-nfs@vger.kernel.org>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
+	"Benny Halevy" <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:47307 "EHLO mx2.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12904 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753513AbYKDUjV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2008 15:39:21 -0500
-In-Reply-To: <1225829834.30407.38.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1756011AbYKDVZy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2008 16:25:54 -0500
+In-Reply-To: <1225822763.30407.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 04 Nov 2008 15:17:14 -0500
-Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-
-> On Tue, 2008-11-04 at 14:46 -0500, Jeff Layton wrote:
-> > On Tue, 04 Nov 2008 14:26:21 -0500
-> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > 
-> > > On Tue, 2008-11-04 at 13:42 -0500, Jeff Layton wrote:
-> > > > While we're on the subject of signals...
-> > > > 
-> > > > Do you have any thoughts/objections to just making the reclaimer thread
-> > > > ignore them altogether? That would simplify the code a bit.
-> > > 
-> > > How does the administrator then get out of the situation where the
-> > > server dies (permanently) in the middle of a reclaim?
-> > > 
-> > 
-> > Erm...Reboot? :)
-> > 
-> > Ok, I'm convinced. I suppose that's a good enough argument for
-> > continuing to allow SIGKILL. I guess the only change we need to make to
-> > this patch for now is to remove the "memory leak" comment (unless there
-> > is a leak and I'm just not seeing it).
+> -----Original Message-----
+> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+> Sent: Tuesday, November 04, 2008 10:19 AM
+> To: Benny Halevy
+> Cc: pNFS Mailing List; NFS list
+> Subject: Re: nfs41: sunrpc: handle clnt==NULL in call_status
 > 
-> Hold on... I'm not saying that I'm absolutely wedded to the idea of
-> SIGKILL. I'm just stating the reason for allowing it in the first place.
+> On Tue, 2008-11-04 at 17:52 +0200, Benny Halevy wrote:
+> > On the following error path task->tk_client == NULL causing NULL
+deref:
+> >
+> > Nov  4 14:14:32 tl1 kernel: Callback slot table overflowed
+> > Nov  4 14:14:32 tl1 kernel: BUG: unable to handle kernel NULL
+pointer
+> dereference at 0000000000000078
+> > Nov  4 14:14:32 tl1 kernel: IP: [<ffffffffa02b4dd2>]
+> call_status+0xe1/0x145 [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: PGD 2f973067 PUD 2f974067 PMD 0
+> > Nov  4 14:14:32 tl1 kernel: Oops: 0000 [1] SMP
+> > Nov  4 14:14:32 tl1 kernel: CPU 0
+> > Nov  4 14:14:32 tl1 kernel: Modules linked in: panfs(P)
+panlayoutdriver
+> nfslayoutdriver nfsd auth_rpcgss exportfs nfs lockd nfs_acl fuse
+sunrpc
+> ipv6 cpufreq_ondemand powernow_k8 freq_table dm_mirror dm_log
+dm_multipath
+> dm_mod snd_hda_intel snd_seq_dummy sr_mod snd_seq_oss cdrom
+> snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss
+> snd_pcm snd_timer snd_page_alloc snd_hwdep snd pcspkr serio_raw k8temp
+> hwmon forcedeth soundcore pata_amd sg jedec_probe cfi_probe gen_probe
+mtd
+> i2c_nforce2 chipreg i2c_core button map_funcs sata_nv ata_generic
+> pata_acpi libata sd_mod scsi_mod ext3 jbd mbcache uhci_hcd ohci_hcd
+> ehci_hcd [last unloaded: scsi_wait_scan]
+> > Nov  4 14:14:32 tl1 kernel: Pid: 3405, comm: nfsv4.1-svc Tainted: P
+> 2.6.27-pnfs #1
+> > Nov  4 14:14:32 tl1 kernel: RIP: 0010:[<ffffffffa02b4dd2>]
+> [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: RSP: 0018:ffff88002a70bd60  EFLAGS:
+00010246
+> > Nov  4 14:14:32 tl1 kernel: RAX: 0000000000000000 RBX:
+00000000ffffff95
+> RCX: 0000000000000000
+> > Nov  4 14:14:32 tl1 kernel: RDX: ffff88002a70bd10 RSI:
+ffff88002fc52dc0
+> RDI: ffff88002fc52dc0
+> > Nov  4 14:14:32 tl1 kernel: RBP: ffff88002a70bd80 R08:
+ffff88002f9dae40
+> R09: ffffffff81489e60
+> > Nov  4 14:14:32 tl1 kernel: R10: ffff880038497800 R11:
+ffff88002a70bd30
+> R12: ffff88002fc52dc0
+> > Nov  4 14:14:32 tl1 kernel: R13: 0000000000000000 R14:
+ffff88002f57fa00
+> R15: ffff88002fc52e50
+> > Nov  4 14:14:32 tl1 kernel: FS:  00007fe78ffac6f0(0000)
+> GS:ffffffff8148da80(0000) knlGS:0000000000000000
+> > Nov  4 14:14:32 tl1 kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
+> 000000008005003b
+> > Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078 CR3:
+000000002f971000
+> CR4: 00000000000006e0
+> > Nov  4 14:14:32 tl1 kernel: DR0: 0000000000000000 DR1:
+0000000000000000
+> DR2: 0000000000000000
+> > Nov  4 14:14:32 tl1 kernel: DR3: 0000000000000000 DR6:
+00000000ffff0ff0
+> DR7: 0000000000000400
+> > Nov  4 14:14:32 tl1 kernel: Process nfsv4.1-svc (pid: 3405,
+threadinfo
+> ffff88002a70a000, task ffff88003694d900)
+> > Nov  4 14:14:32 tl1 kernel: Stack:  0000000000000000
+ffff88002f57fa00
+> ffff88002fc52dc0 ffff880030450ce8
+> > Nov  4 14:14:32 tl1 kernel: ffff88002a70bdc0 ffffffffa02bb9db
+> ffff88002a70bdf0 ffff88002fc52dc0
+> > Nov  4 14:14:32 tl1 kernel: ffff88002f57fa00 ffff88002f57fa00
+> ffff880030450ce8 ffff88002a734000
+> > Nov  4 14:14:32 tl1 kernel: Call Trace:
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bb9db>]
+> __rpc_execute+0x7e/0x21f [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bbba4>]
+rpc_execute+0x28/0x2c
+> [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa02b5596>]
+> rpc_run_bc_task+0x88/0xae [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa02c923d>] bc_send+0x35/0x5a
+> [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bdc92>]
+> bc_svc_process+0xf6/0x101 [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff81048a6c>] ?
+> prepare_to_wait+0x5c/0x65
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a4c9>]
+> nfs41_callback_svc+0xda/0x131 [nfs]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff810488a0>] ?
+> autoremove_wake_function+0x0/0x38
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a3ef>] ?
+> nfs41_callback_svc+0x0/0x131 [nfs]
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff81048561>] kthread+0x49/0x76
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf49>] child_rip+0xa/0x11
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff8102a401>] ?
+> pick_next_task_fair+0x93/0xa3
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff81048518>] ? kthread+0x0/0x76
+> > Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf3f>] ?
+child_rip+0x0/0x11
+> > Nov  4 14:14:32 tl1 kernel:
+> > Nov  4 14:14:32 tl1 kernel:
+> > Nov  4 14:14:32 tl1 kernel: Code: e8 7c 70 00 00 49 8b 44 24 20 49
+c7 44
+> 24 68 dc 48 2b a0 f6 40 78 02 74 6d 41 8b b6 34 01 00 00 48 8b 78 30
+e8 b9
+> 2a 00 00 eb 5b <41> f6 45 78 04 74 13 49 8b 55 30 48 8d 82 80 04 00 00
+f0
+> 80 a2
+> > Nov  4 14:14:32 tl1 kernel: RIP  [<ffffffffa02b4dd2>]
+> call_status+0xe1/0x145 [sunrpc]
+> > Nov  4 14:14:32 tl1 kernel: RSP <ffff88002a70bd60>
+> > Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078
+> > Nov  4 14:14:32 tl1 kernel: ---[ end trace 1584c489f2573aaf ]---
+> >
+> > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> > ---
+> >
+> > Trond, I'm not sure if this can happen without nfs41.
+> > However, please consider this patch for upstream since
+> > it is safe to do in any case.
+> >
+> > Benny
+> >
+> >  net/sunrpc/clnt.c |    8 +++++---
+> >  1 files changed, 5 insertions(+), 3 deletions(-)
+> >
+> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > index 78fc483..b555d9f 100644
+> > --- a/net/sunrpc/clnt.c
+> > +++ b/net/sunrpc/clnt.c
+> > @@ -1206,7 +1206,8 @@ call_status(struct rpc_task *task)
+> >  		break;
+> >  	case -ECONNREFUSED:
+> >  	case -ENOTCONN:
+> > -		rpc_force_rebind(clnt);
+> > +		if (clnt)
+> > +			rpc_force_rebind(clnt);
+> >  		task->tk_action = call_bind;
+> >  		break;
+> >  	case -EAGAIN:
+> > @@ -1217,9 +1218,10 @@ call_status(struct rpc_task *task)
+> >  		rpc_exit(task, status);
+> >  		break;
+> >  	default:
+> > -		if (clnt->cl_chatty)
+> > +		if (!clnt || clnt->cl_chatty)
+> >  			printk("%s: RPC call returned error %d\n",
+> > -			       clnt->cl_protname, -status);
+> > +			       clnt ? clnt->cl_protname : "<unknown
+protocol>",
+> > +			       -status);
+> >  		rpc_exit(task, status);
+> >  	}
+> >  }
 > 
-> All booting NLM servers will have a finite grace period during which
-> lock recovery is allowed, so it is obvious that retrying each RPC call
-> forever is not a good solution. The questions are then "How long do you
-> wait before giving up?" and "What do you do after timing out?".
+> BIG NACK!
 > 
-> One solution may be to let the administrator set a time-out via a
-> sysctl, and then set a policy for how to deal with the failure. A
-> reasonable set of possible policies may be to either retry recovery at a
-> later time, or to wait for a new reboot notification from the server, or
-> at some point to start sending out SIGLOST to the applications...
+> How does even it make sense for a task to get past call_transmit and
+> call_status without having task->tk_client set? This sounds like
+serious
+> borkenness in the nfsv4.1 patches...
+
+The "Callback slot table overflowed" message means we couldn't obtain a
+pre-allocated rpc_rqst to process the callback.  When this occurs, the
+client sets the XPRT_CLOSE_WAIT bit to close the connection.  (As an
+aside, should we be using xprt_force_disconnect() instead?).
+
+This leads me to believe the server exceeded the number of outstanding
+requests allowed on the backchannel (slot count of one at the moment),
+the new request caused us to close the connection and pulled the rug
+from under the callback service.  I'll investigate further.
+
+Is this reproducible?
+
+- ricardo
+
+
+> Trond
+> ...
 > 
-
-Fair enough -- those are good ideas. For now, I think keeping the
-signaling in place is probably reasonable since we do want to allow the
-admin to take down the thread. 
-
-Long term, adding better mechanisms to handle failed lock reclaims is
-something that ought to be on the to-do list.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
