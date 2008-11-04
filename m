@@ -1,103 +1,139 @@
-From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
-Subject: Re: stuck/hung nfsv4 mounts
-Date: Mon, 03 Nov 2008 20:24:39 -0500
-Message-ID: <1225761879.2247.207.camel@brian-laptop>
-References: <1225724721.2247.29.camel@brian-laptop>
-	 <1225731544.6958.6.camel@heimdal.trondhjem.org>
-	 <1225734631.2247.76.camel@brian-laptop>
-	 <4d569c330811031158r26963e0w5bcf8331e0fb14b7@mail.gmail.com>
-	 <1225742958.2247.128.camel@brian-laptop>
-	 <4d569c330811031228r5bb9aefs7a970303910810e2@mail.gmail.com>
-	 <1225746764.2247.133.camel@brian-laptop>
-	 <4d569c330811031433k7ae18d4enfbda349e8f90a951@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] lockd: convert reclaimer thread to kthread interface
+Date: Mon, 3 Nov 2008 22:20:05 -0500
+Message-ID: <6986AC0B-97C8-4FBB-9ED2-7586CCA679D0@fys.uio.no>
+References: <1225278945-15407-1-git-send-email-jlayton@redhat.com> <20081103131215.75a83236.akpm@linux-foundation.org> <20081103191924.16528bfd@tleilax.poochiereds.net>
+Mime-Version: 1.0 (iPhone Mail 5F136)
+Content-Type: text/plain;
+	charset=us-ascii;
+	format=flowed;
+	delsp=yes
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"hch@infradead.org" <hch@infradead.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from server.klug.on.ca ([205.189.48.131]:1961 "EHLO
-	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751703AbYKDBYs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Nov 2008 20:24:48 -0500
-Received: from linux.interlinx.bc.ca (d193-213-184.home3.cgocable.net [67.193.213.184])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by server.klug.on.ca (Postfix) with ESMTP id 3A78B2803
-	for <linux-nfs@vger.kernel.org>; Mon,  3 Nov 2008 20:24:47 -0500 (EST)
-Received: from [10.75.22.172] (brian-laptop.ilinx [10.75.22.172])
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id 0FF02800A
-	for <linux-nfs@vger.kernel.org>; Mon,  3 Nov 2008 20:24:44 -0500 (EST)
-In-Reply-To: <4d569c330811031433k7ae18d4enfbda349e8f90a951-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:37106 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752234AbYKDDUf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Nov 2008 22:20:35 -0500
+In-Reply-To: <20081103191924.16528bfd-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2008-11-03 at 17:33 -0500, Kevin Coffman wrote:
-> If you can get
-> a packet trace between the client and server during the mount /
-> context negotiation, check the NULL reply from the server for this
-> error code.
+On Nov 3, 2008, at 19:19, Jeff Layton <jlayton@redhat.com> wrote:
 
-Here is the NULL Call from client:
-No.     Time            Time Delta  Source                Destination           Protocol Info
-   8868 20:07:43.933888 0.043671    10.75.22.1            10.75.22.3            NFS      V4 NULL Call (Reply In 8870)
+> On Mon, 3 Nov 2008 13:12:15 -0800
+> Andrew Morton <akpm@linux-foundation.org> wrote:
+>
+>> On Wed, 29 Oct 2008 07:15:45 -0400
+>> Jeff Layton <jlayton@redhat.com> wrote:
+>>
+>>> My understanding is that there is a push to turn the kernel_thread
+>>> interface into a non-exported symbol and move all kernel threads  
+>>> to use
+>>> the kthread API. This patch changes lockd to use kthread_run to  
+>>> spawn
+>>> the reclaimer thread.
+>>>
+>>> I've made the assumption here that the extra module references taken
+>>> when we spawn this thread are unnecessary and removed them. I've  
+>>> also
+>>> added a KERN_ERR printk that pops if the thread can't be spawned  
+>>> to warn
+>>> the admin that the locks won't be reclaimed.
+>>>
+>>> I consider this patch 2.6.29 material.
+>>>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> fs/lockd/clntlock.c |   14 +++++++++-----
+>>> 1 files changed, 9 insertions(+), 5 deletions(-)
+>>>
+>>> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+>>> index 8307dd6..fcc2378 100644
+>>> --- a/fs/lockd/clntlock.c
+>>> +++ b/fs/lockd/clntlock.c
+>>> @@ -14,6 +14,7 @@
+>>> #include <linux/sunrpc/svc.h>
+>>> #include <linux/lockd/lockd.h>
+>>> #include <linux/smp_lock.h>
+>>> +#include <linux/kthread.h>
+>>>
+>>> #define NLMDBG_FACILITY        NLMDBG_CLIENT
+>>>
+>>> @@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockaddr  
+>>> *addr, const struct nlm_lock *lock)
+>>> void
+>>> nlmclnt_recovery(struct nlm_host *host)
+>>> {
+>>> +    struct task_struct *task;
+>>> +
+>>>    if (!host->h_reclaiming++) {
+>>>        nlm_get_host(host);
+>>> -        __module_get(THIS_MODULE);
+>>> -        if (kernel_thread(reclaimer, host, CLONE_FS |  
+>>> CLONE_FILES) < 0)
+>>> -            module_put(THIS_MODULE);
+>>> +        task = kthread_run(reclaimer, host, "%s-reclaim", host- 
+>>> >h_name);
+>>> +        if (IS_ERR(task))
+>>> +            printk(KERN_ERR "lockd: unable to spawn reclaimer "
+>>> +                "thread. Locks for %s won't be reclaimed! "
+>>> +                "(%ld)\n", host->h_name, PTR_ERR(task));
+>>>    }
+>>> }
+>>>
+>>> @@ -207,7 +212,6 @@ reclaimer(void *ptr)
+>>>    struct file_lock *fl, *next;
+>>>    u32 nsmstate;
+>>>
+>>> -    daemonize("%s-reclaim", host->h_name);
+>>>    allow_signal(SIGKILL);
+>>>
+>>>    down_write(&host->h_rwsem);
+>>> @@ -261,5 +265,5 @@ restart:
+>>>    nlm_release_host(host);
+>>>    lockd_down();
+>>>    unlock_kernel();
+>>> -    module_put_and_exit(0);
+>>> +    return 0;
+>>> }
+>>
+>> Looks OK to me.  I assume the SIGKILL handling has been carefully  
+>> tested?
+>>
+>>
+>> Is it correct to emit a warning and keep going if the thread didn't
+>> start?  Or would it be safer&saner to fail the whole mount (or  
+>> whatever
+>> syscall we're doing here..)
+>>
+>
+> Forgot to answer this part...
+>
+> This thread gets kicked off when the server has rebooted and we need  
+> to
+> reclaim our locks. There isn't a syscall on which we can return an
+> error to the user.
+>
+> Aside from just warning the admin, I'm not sure what we can do here.  
+> We
+> might be able to start making all syscalls on the mount fail somehow,
+> but I don't think we have infrastructure for that and that may be
+> overkill anyway. I suppose we could also go to sleep and try to  
+> spawn the
+> thread again, but there's no guarantee of success there.
+>>
+>>
+>>
+>>
+>>
+>>
 
-Frame 8868 (606 bytes on wire, 606 bytes captured)
-Ethernet II, Src: AsustekC_e1:65:cc (00:18:f3:e1:65:cc), Dst: Intel_3f:8b:74 (00:d0:b7:3f:8b:74)
-Internet Protocol, Src: 10.75.22.1 (10.75.22.1), Dst: 10.75.22.3 (10.75.22.3)
-Transmission Control Protocol, Src Port: imaps (993), Dst Port: nfs (2049), Seq: 1, Ack: 1, Len: 552
-Remote Procedure Call, Type:Call XID:0x48023eeb
-Network File System
-    [Program Version: 4]
-    [V4 Procedure: NULL (0)]
-    GSS Token: ...
-        GSS Token Length: 483
-        GSS-API Generic Security Service Application Program Interface
-            OID: 1.2.840.113554.1.2.2 (KRB5 - Kerberos 5)
-            krb5_blob: ...
-                krb5_tok_id: KRB5_AP_REQ (0x0001)
-                Kerberos AP-REQ
-                    Pvno: 5
-                    MSG Type: AP-REQ (14)
-                    Padding: 0
-                    APOptions: 20000000 (Mutual required)
-                        .0.. .... .... .... .... .... .... .... = Use Session Key: Do NOT use the session key to encrypt the ticket
-                        ..1. .... .... .... .... .... .... .... = Mutual required: MUTUAL authentication is REQUIRED
-                    Ticket
-                        Tkt-vno: 5
-                        Realm: ILINX
-                        Server Name (Service and Host): nfs/linux.interlinx.bc.ca
-                        enc-part des-cbc-crc
-                    Authenticator des-cbc-crc
+At some point RSN we should implement SIGLOST. That would be the  
+closest thing we have to a *NIX standard for reporting the loss of  
+filesystem state to the application.
 
-Here is the NULL reply from the server:
-
-No.     Time            Time Delta  Source                Destination           Protocol Info
-   8870 20:07:44.062206 0.128081    10.75.22.3            10.75.22.1            NFS      V4 NULL Reply (Call In 8868)
-
-Frame 8870 (262 bytes on wire, 262 bytes captured)
-Ethernet II, Src: Intel_3f:8b:74 (00:d0:b7:3f:8b:74), Dst: AsustekC_e1:65:cc (00:18:f3:e1:65:cc)
-Internet Protocol, Src: 10.75.22.3 (10.75.22.3), Dst: 10.75.22.1 (10.75.22.1)
-Transmission Control Protocol, Src Port: nfs (2049), Dst Port: imaps (993), Seq: 1, Ack: 553, Len: 208
-Remote Procedure Call, Type:Reply XID:0x48023eeb
-Network File System
-    [Program Version: 4]
-    [V4 Procedure: NULL (0)]
-    GSS Context: <DATA>
-    GSS Major Status: 0
-    GSS Minor Status: 0
-    GSS Sequence Window: 128
-    GSS Token: ...
-        GSS Token Length: 114
-        GSS-API Generic Security Service Application Program Interface
-            OID: 1.2.840.113554.1.2.2 (KRB5 - Kerberos 5)
-            krb5_blob: ...
-                krb5_tok_id: KRB5_AP_REP (0x0002)
-                Kerberos AP-REP
-                    Pvno: 5
-                    MSG Type: AP-REP (15)
-                    enc-part des-cbc-crc
-                        Encryption type: des-cbc-crc (1)
-                        enc-part: ...
-
-b.
-
-
+Trond
