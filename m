@@ -1,134 +1,85 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/13] NFSD: Prevent a buffer overflow in svc_xprt_names()
-Date: Wed, 05 Nov 2008 12:28:59 -0500
-Message-ID: <20081105172858.7330.17572.stgit@ingres.1015granger.net>
+Subject: [PATCH 12/13] NFSD: Support IPv6 addresses in write_failover_ip()
+Date: Wed, 05 Nov 2008 12:29:51 -0500
+Message-ID: <20081105172950.7330.38388.stgit@ingres.1015granger.net>
 References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:36931 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:36930 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752674AbYKERaM (ORCPT
+	with ESMTP id S1752669AbYKERaM (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:30:12 -0500
 In-Reply-To: <20081105172351.7330.50739.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The svc_xprt_names() function can overflow its buffer if it's so near
-the end of the passed in buffer that the "name too long" string still
-doesn't fit.  Of course, it could never tell if it was near the end
-of the passed in buffer, since its only caller passes in zero as the
-buffer length.
-
-Let's make this API a little safer.
-
-Change svc_xprt_names() so it *always* checks for a buffer overflow,
-and change its only caller to pass in the correct buffer length.
-
-If svc_xprt_names() does overflow its buffer, just fail with a
-reasonable errno code, instead of trying to write a message at the end
-of the buffer.  I don't like this much, but I can't figure out a safe
-way to return some of the names, *and* an indication that the buffer
-was not long enough.
+In write_failover_ip(), replace the sscanf() with a call to the common
+NFS presentation address parser.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c      |    2 +-
- net/sunrpc/svc_xprt.c |   53 ++++++++++++++++++++++++++++++++++---------------
- 2 files changed, 38 insertions(+), 17 deletions(-)
+ fs/nfsd/nfsctl.c |   22 ++++++++--------------
+ 1 files changed, 8 insertions(+), 14 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index fa6441b..22fc8e5 100644
+index 19db9f4..a8e3f6b 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -887,7 +887,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
- {
- 	if (!nfsd_serv)
- 		return 0;
--	return svc_xprt_names(nfsd_serv, buf, 0);
-+	return svc_xprt_names(nfsd_serv, buf, SIMPLE_TRANSACTION_LIMIT);
- }
+@@ -38,6 +38,7 @@
+ #include <linux/nfsd/xdr.h>
+ #include <linux/nfsd/syscall.h>
+ #include <linux/lockd/lockd.h>
++#include <linux/nfs_addr_parse.h>
  
- /*
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..eb546ce 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1045,36 +1045,57 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
- }
- EXPORT_SYMBOL_GPL(svc_find_xprt);
- 
--/*
-- * Format a buffer with a list of the active transports. A zero for
-- * the buflen parameter disables target buffer overflow checking.
-+static int svc_one_xprt_name(struct svc_xprt *xprt, char *pos, int remaining)
-+{
-+	int len;
-+
-+	len = snprintf(pos, remaining, "%s %u\n",
-+			xprt->xpt_class->xcl_name,
-+			svc_xprt_local_port(xprt));
-+	if (len >= remaining)
-+		return -ENAMETOOLONG;
-+	return len;
-+}
-+
-+/**
-+ * svc_xprt_names - format a buffer with a list of transport names
-+ * @serv: pointer to an RPC service
-+ * @buf: pointer to a buffer to be filled in
-+ * @buflen: length of buffer to be filled in
-+ *
-+ * Fills in @buf with a string containing a list of transport names,
-+ * each name terminated with '\n'.
-+ *
-+ * Returns positive length of the filled-in string on success; otherwise
-+ * a negative errno value is returned if an error occurs.
+ #include <asm/uaccess.h>
+ #include <net/ipv6.h>
+@@ -476,22 +477,18 @@ static ssize_t write_getfd(struct file *file, char *buf, size_t size)
+  *
+  * Input:
+  *			buf:	'\n'-terminated C string containing a
+- *				presentation format IPv4 address
++ *				presentation format IP address
+  *			size:	length of C string in @buf
+  * Output:
+  *	On success:	returns zero if all specified locks were released;
+  *			returns one if one or more locks were not released
+  *	On error:	return code is negative errno value
+- *
+- * Note: Only AF_INET client addresses are passed in
   */
- int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
+ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
  {
- 	struct svc_xprt *xprt;
--	char xprt_str[64];
--	int totlen = 0;
--	int len;
-+	int len, totlen;
-+	char *pos;
+-	struct sockaddr_in sin = {
+-		.sin_family	= AF_INET,
+-	};
+-	int b1, b2, b3, b4;
+-	char c;
++	struct sockaddr_storage address;
++	struct sockaddr *sap = (struct sockaddr *)&address;
++	size_t salen = sizeof(address);
+ 	char *fo_path;
  
- 	/* Sanity check args */
- 	if (!serv)
- 		return 0;
+ 	/* sanity check */
+@@ -505,14 +502,11 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
+ 	if (qword_get(&buf, fo_path, size) < 0)
+ 		return -EINVAL;
  
- 	spin_lock_bh(&serv->sv_lock);
-+
-+	pos = buf;
-+	totlen = 0;
- 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
--		len = snprintf(xprt_str, sizeof(xprt_str),
--			       "%s %d\n", xprt->xpt_class->xcl_name,
--			       svc_xprt_local_port(xprt));
--		/* If the string was truncated, replace with error string */
--		if (len >= sizeof(xprt_str))
--			strcpy(xprt_str, "name-too-long\n");
--		/* Don't overflow buffer */
--		len = strlen(xprt_str);
--		if (buflen && (len + totlen >= buflen))
-+		len = svc_one_xprt_name(xprt, pos, buflen - totlen);
-+		if (len < 0) {
-+			*buf = '\0';
-+			totlen = len;
-+		}
-+		if (len <= 0)
- 			break;
--		strcpy(buf+totlen, xprt_str);
-+
-+		pos += len;
- 		totlen += len;
- 	}
-+
- 	spin_unlock_bh(&serv->sv_lock);
- 	return totlen;
+-	/* get ipv4 address */
+-	if (sscanf(fo_path, NIPQUAD_FMT "%c", &b1, &b2, &b3, &b4, &c) != 4)
+-		return -EINVAL;
+-	if (b1 > 255 || b2 > 255 || b3 > 255 || b4 > 255)
++	nfs_parse_ip_address(fo_path, size, sap, &salen);
++	if (sap->sa_family == AF_UNSPEC)
+ 		return -EINVAL;
+-	sin.sin_addr.s_addr = htonl((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
+ 
+-	return nlmsvc_unlock_all_by_ip((struct sockaddr *)&sin);
++	return nlmsvc_unlock_all_by_ip(sap);
  }
+ 
+ /**
 
