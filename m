@@ -1,76 +1,124 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/18] NLM: nlm_privileged_requester() doesn't recognize
-	mapped loopback address
-Date: Wed, 05 Nov 2008 12:19:27 -0500
-Message-ID: <20081105171926.6773.24815.stgit@ingres.1015granger.net>
+Subject: [PATCH 02/18] NSM: Support IPv6 version of mon_name
+Date: Wed, 05 Nov 2008 12:19:35 -0500
+Message-ID: <20081105171935.6773.85444.stgit@ingres.1015granger.net>
 References: <20081105171300.6773.40121.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:35692 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:35740 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752044AbYKERTw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:19:52 -0500
+	with ESMTP id S1754743AbYKERUH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:20:07 -0500
 In-Reply-To: <20081105171300.6773.40121.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit b85e4676 added the nlm_privileged_requester() helper to check
-whether an RPC request was sent from a local privileged caller.  It
-recognizes IPv4 privileged callers (from "127.0.0.1"), and IPv6
-privileged callers (from "::1").
+When the "nsm_use_hostnames" sysctl is set to zero, the kernel's NSM
+provides a presentation format IP address in the mon_name argument of
+SM_MON upcalls.  This is part of the private interface between Linux's
+rpc.statd and the kernel's lockd implementation.  Linux's rpc.statd
+can then resolve this address with DNS as a sanity check.
 
-However, IPV6_ADDR_LOOPBACK is not set for the mapped IPv4 loopback
-address (::ffff:7f00:0001), so the test breaks when the kernel's RPC
-service is IPv6-enabled but user space is calling via the IPv4
-loopback address.  This is actually the most common case for IPv6-
-enabled RPC services on Linux.
+To support IPv6 addresses for the mon_name argument, just point the
+XDR encoder to the nsm_handle's eye-catcher, which already contains a
+presentation format address string.
 
-Rewrite the IPv6 check to handle the mapped IPv4 loopback address as
-well as a normal IPv6 loopback address. For consistency, rewrite the
-IPv4 check to match the same style as the IPv6 check, which is now
-somewhat more broad than a strict check for 127.0.0.1.
+Finally, provide some debugging message clean up.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/lockd/lockd.h |   17 +++++++++++++----
- 1 files changed, 13 insertions(+), 4 deletions(-)
+ fs/lockd/mon.c |   43 +++++++++++++++----------------------------
+ 1 files changed, 15 insertions(+), 28 deletions(-)
 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index b56d5aa..830148e 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -280,16 +280,25 @@ static inline struct inode *nlmsvc_file_inode(struct nlm_file *file)
- static inline int __nlm_privileged_request4(const struct sockaddr *sap)
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 4e7e958..d03d1ea 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -18,8 +18,6 @@
+ 
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
+ 
+-#define XDR_ADDRBUF_LEN		(20)
+-
+ static struct rpc_clnt *	nsm_create(void);
+ 
+ static struct rpc_program	nsm_program;
+@@ -37,7 +35,14 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
  {
- 	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
--	return (sin->sin_addr.s_addr == htonl(INADDR_LOOPBACK)) &&
--			(ntohs(sin->sin_port) < 1024);
-+
-+	if (ntohs(sin->sin_port) > 1023)
-+		return 0;
-+
-+	return ipv4_is_loopback(sin->sin_addr.s_addr);
+ 	struct rpc_clnt	*clnt;
+ 	int		status;
+-	struct nsm_args	args;
++	struct nsm_args	args = {
++		.addr		= nsm_addr_in(nsm)->sin_addr.s_addr,
++		.prog		= NLM_PROGRAM,
++		.vers		= 3,
++		.proc		= NLMPROC_NSM_NOTIFY,
++		.mon_name	= nsm_use_hostnames ?
++					nsm->sm_name : nsm->sm_addrbuf,
++	};
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &args,
+ 		.rpc_resp	= res,
+@@ -46,24 +51,21 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+ 	clnt = nsm_create();
+ 	if (IS_ERR(clnt)) {
+ 		status = PTR_ERR(clnt);
++		dprintk("lockd: failed to create nsm transport, "
++				"status=%d\n", status);
+ 		goto out;
+ 	}
+ 
+-	memset(&args, 0, sizeof(args));
+-	args.mon_name = nsm->sm_name;
+-	args.addr = nsm_addr_in(nsm)->sin_addr.s_addr;
+-	args.prog = NLM_PROGRAM;
+-	args.vers = 3;
+-	args.proc = NLMPROC_NSM_NOTIFY;
+ 	memset(res, 0, sizeof(*res));
+ 
+ 	msg.rpc_proc = &clnt->cl_procinfo[proc];
+ 	status = rpc_call_sync(clnt, &msg, 0);
+ 	if (status < 0)
+-		printk(KERN_DEBUG "nsm_mon_unmon: rpc failed, status=%d\n",
+-			status);
+-	else
++		dprintk("lockd: nsm rpc failed, status=%d\n", status);
++	else {
+ 		status = 0;
++		dprintk("lockd: monitoring '%s'\n", args.mon_name);
++	}
+ 	rpc_shutdown_client(clnt);
+  out:
+ 	return status;
+@@ -165,25 +167,10 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
+ 
+ /*
+  * "mon_name" specifies the host to be monitored.
+- *
+- * Linux uses a text version of the IP address of the remote
+- * host as the host identifier (the "mon_name" argument).
+- *
+- * Linux statd always looks up the canonical hostname first for
+- * whatever remote hostname it receives, so this works alright.
+  */
+ static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
+ {
+-	char	buffer[XDR_ADDRBUF_LEN + 1];
+-	char	*name = argp->mon_name;
+-
+-	if (!nsm_use_hostnames) {
+-		snprintf(buffer, XDR_ADDRBUF_LEN,
+-			 NIPQUAD_FMT, NIPQUAD(argp->addr));
+-		name = buffer;
+-	}
+-
+-	return xdr_encode_nsm_string(p, name);
++	return xdr_encode_nsm_string(p, argp->mon_name);
  }
  
- #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
- static inline int __nlm_privileged_request6(const struct sockaddr *sap)
- {
- 	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
--	return (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK) &&
--			(ntohs(sin6->sin6_port) < 1024);
-+
-+	if (ntohs(sin6->sin6_port) > 1023)
-+		return 0;
-+
-+	if (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_MAPPED)
-+		return ipv4_is_loopback(sin6->sin6_addr.s6_addr32[3]);
-+
-+	return ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK;
- }
- #else	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
- static inline int __nlm_privileged_request6(const struct sockaddr *sap)
+ /*
 
