@@ -1,162 +1,420 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/13] NFSD: Refactor __write_ports()
-Date: Wed, 05 Nov 2008 12:28:51 -0500
-Message-ID: <20081105172851.7330.48160.stgit@ingres.1015granger.net>
+Subject: [PATCH 11/13] NFS: Move NFS client's IP address parser to nfs_common/
+Date: Wed, 05 Nov 2008 12:29:43 -0500
+Message-ID: <20081105172943.7330.29394.stgit@ingres.1015granger.net>
 References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:42074 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752752AbYKERaN (ORCPT
+Received: from rgminet01.oracle.com ([148.87.113.118]:36932 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752708AbYKERaN (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:30:13 -0500
 In-Reply-To: <20081105172351.7330.50739.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  The __write_ports() function is a twisty little maze of
-"if" statements, all alike.
-
-The /proc/fs/nfsd/portlist file interface has grown in complexity
-since it was first introduced.  Use recently introduced helpers to
-refactor the portlist file's parser function into something easier to
-read and expand.
-
-I don't intend to expand it, but in subsequent patches I will fix a
-few bugs, and introduce IPv6 support.
+The kernel's NFS server also needs to parse presentation format IP
+addresses.  Since both the client and the server can reside in their own
+modules, move the parser logic to nfs_common, which can be used by either.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |  114 ++++++++++--------------------------------------------
- 1 files changed, 21 insertions(+), 93 deletions(-)
+ fs/nfs/internal.h              |    3 -
+ fs/nfs/nfs4namespace.c         |    2 +
+ fs/nfs/super.c                 |  121 -------------------------------
+ fs/nfs_common/Makefile         |    1 
+ fs/nfs_common/nfs_addr_parse.c |  155 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_addr_parse.h |   32 ++++++++
+ 6 files changed, 191 insertions(+), 123 deletions(-)
+ create mode 100644 fs/nfs_common/nfs_addr_parse.c
+ create mode 100644 include/linux/nfs_addr_parse.h
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 0e64d92..fa6441b 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -991,100 +991,28 @@ static ssize_t __write_ports_delxprt(char *buf, size_t size,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e256520..4f484fe 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -153,7 +153,6 @@ extern void nfs4_clear_inode(struct inode *);
+ void nfs_zap_acl_cache(struct inode *inode);
  
- static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- {
--	if (size == 0) {
--		int len = 0;
-+	char transport[16];
-+	int port;
-+
-+	if (size == 0)
-+		return __write_ports_names(buf, size);
-+
-+	if (isdigit(buf[0]))
-+		return __write_ports_addfd(buf, size);
-+
-+	if (buf[0] == '-' && isdigit(buf[1]))
-+		return __write_ports_delfd(buf, size);
-+
-+	if (isalpha(buf[0]))
-+		if (sscanf(buf, "%15s %4u", transport, &port) == 2)
-+			return __write_ports_addxprt(buf, size,
-+							transport, port);
-+
-+	if (buf[0] == '-' && isalpha(buf[1]))
-+		if (sscanf(&buf[1], "%15s %4u", transport, &port) == 2)
-+			return __write_ports_delxprt(buf, size,
-+							transport, port);
- 
--		if (nfsd_serv)
--			len = svc_xprt_names(nfsd_serv, buf, 0);
--		return len;
--	}
--	/* Either a single 'fd' number is written, in which
--	 * case it must be for a socket of a supported family/protocol,
--	 * and we use it as an nfsd socket, or
--	 * A '-' followed by the 'name' of a socket in which case
--	 * we close the socket.
--	 */
--	if (isdigit(buf[0])) {
--		char *mesg = buf;
--		int fd;
--		int err;
--		err = get_int(&mesg, &fd);
--		if (err)
--			return -EINVAL;
--		if (fd < 0)
--			return -EINVAL;
--		err = nfsd_create_serv();
--		if (!err) {
--			err = svc_addsock(nfsd_serv, fd, buf);
--			if (err >= 0) {
--				err = lockd_up();
--				if (err < 0)
--					svc_sock_names(buf+strlen(buf)+1, nfsd_serv, buf);
--			}
--			/* Decrease the count, but don't shutdown the
--			 * the service
--			 */
--			nfsd_serv->sv_nrthreads--;
--		}
--		return err < 0 ? err : 0;
--	}
--	if (buf[0] == '-' && isdigit(buf[1])) {
--		char *toclose = kstrdup(buf+1, GFP_KERNEL);
--		int len = 0;
--		if (!toclose)
--			return -ENOMEM;
--		if (nfsd_serv)
--			len = svc_sock_names(buf, nfsd_serv, toclose);
--		if (len >= 0)
--			lockd_down();
--		kfree(toclose);
--		return len;
--	}
--	/*
--	 * Add a transport listener by writing it's transport name
--	 */
--	if (isalpha(buf[0])) {
--		int err;
--		char transport[16];
--		int port;
--		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
--			err = nfsd_create_serv();
--			if (!err) {
--				err = svc_create_xprt(nfsd_serv,
--						      transport, port,
--						      SVC_SOCK_ANONYMOUS);
--				if (err == -ENOENT)
--					/* Give a reasonable perror msg for
--					 * bad transport string */
--					err = -EPROTONOSUPPORT;
--			}
--			return err < 0 ? err : 0;
--		}
--	}
--	/*
--	 * Remove a transport by writing it's transport name and port number
--	 */
--	if (buf[0] == '-' && isalpha(buf[1])) {
--		struct svc_xprt *xprt;
--		int err = -EINVAL;
--		char transport[16];
--		int port;
--		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
--			if (port == 0)
--				return -EINVAL;
--			if (nfsd_serv) {
--				xprt = svc_find_xprt(nfsd_serv, transport,
--						     AF_UNSPEC, port);
--				if (xprt) {
--					svc_close_xprt(xprt);
--					svc_xprt_put(xprt);
--					err = 0;
--				} else
--					err = -ENOTCONN;
--			}
--			return err < 0 ? err : 0;
--		}
--	}
- 	return -EINVAL;
+ /* super.c */
+-void nfs_parse_ip_address(char *, size_t, struct sockaddr *, size_t *);
+ extern struct file_system_type nfs_xdev_fs_type;
+ #ifdef CONFIG_NFS_V4
+ extern struct file_system_type nfs4_xdev_fs_type;
+@@ -277,8 +276,6 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ 		PAGE_SIZE - 1) >> PAGE_SHIFT;
  }
  
+-#define IPV6_SCOPE_DELIMITER	'%'
+-
+ /*
+  * Set the port number in an address.  Be agnostic about the address
+  * family.
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 30befc3..660fc36 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -15,6 +15,8 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
++#include <linux/nfs_addr_parse.h>
++
+ #include "internal.h"
+ #include "nfs4_fs.h"
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index f48db67..6900734 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -51,6 +51,7 @@
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
++#include <linux/nfs_addr_parse.h>
+ 
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -696,126 +697,6 @@ static int nfs_verify_server_address(struct sockaddr *addr)
+ 	return 0;
+ }
+ 
+-static void nfs_parse_ipv4_address(char *string, size_t str_len,
+-				   struct sockaddr *sap, size_t *addr_len)
+-{
+-	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+-	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
+-
+-	if (str_len <= INET_ADDRSTRLEN) {
+-		dfprintk(MOUNT, "NFS: parsing IPv4 address %*s\n",
+-				(int)str_len, string);
+-
+-		sin->sin_family = AF_INET;
+-		*addr_len = sizeof(*sin);
+-		if (in4_pton(string, str_len, addr, '\0', NULL))
+-			return;
+-	}
+-
+-	sap->sa_family = AF_UNSPEC;
+-	*addr_len = 0;
+-}
+-
+-#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+-static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
+-				   const char *delim,
+-				   struct sockaddr_in6 *sin6)
+-{
+-	char *p;
+-	size_t len;
+-
+-	if ((string + str_len) == delim)
+-		return 1;
+-
+-	if (*delim != IPV6_SCOPE_DELIMITER)
+-		return 0;
+-
+-	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
+-		return 0;
+-
+-	len = (string + str_len) - delim - 1;
+-	p = kstrndup(delim + 1, len, GFP_KERNEL);
+-	if (p) {
+-		unsigned long scope_id = 0;
+-		struct net_device *dev;
+-
+-		dev = dev_get_by_name(&init_net, p);
+-		if (dev != NULL) {
+-			scope_id = dev->ifindex;
+-			dev_put(dev);
+-		} else {
+-			if (strict_strtoul(p, 10, &scope_id) == 0) {
+-				kfree(p);
+-				return 0;
+-			}
+-		}
+-
+-		kfree(p);
+-
+-		sin6->sin6_scope_id = scope_id;
+-		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
+-		return 1;
+-	}
+-
+-	return 0;
+-}
+-
+-static void nfs_parse_ipv6_address(char *string, size_t str_len,
+-				   struct sockaddr *sap, size_t *addr_len)
+-{
+-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+-	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
+-	const char *delim;
+-
+-	if (str_len <= INET6_ADDRSTRLEN) {
+-		dfprintk(MOUNT, "NFS: parsing IPv6 address %*s\n",
+-				(int)str_len, string);
+-
+-		sin6->sin6_family = AF_INET6;
+-		*addr_len = sizeof(*sin6);
+-		if (in6_pton(string, str_len, addr,
+-					IPV6_SCOPE_DELIMITER, &delim) != 0) {
+-			if (nfs_parse_ipv6_scope_id(string, str_len,
+-							delim, sin6) != 0)
+-				return;
+-		}
+-	}
+-
+-	sap->sa_family = AF_UNSPEC;
+-	*addr_len = 0;
+-}
+-#else
+-static void nfs_parse_ipv6_address(char *string, size_t str_len,
+-				   struct sockaddr *sap, size_t *addr_len)
+-{
+-	sap->sa_family = AF_UNSPEC;
+-	*addr_len = 0;
+-}
+-#endif
+-
+-/*
+- * Construct a sockaddr based on the contents of a string that contains
+- * an IP address in presentation format.
+- *
+- * If there is a problem constructing the new sockaddr, set the address
+- * family to AF_UNSPEC.
+- */
+-void nfs_parse_ip_address(char *string, size_t str_len,
+-				 struct sockaddr *sap, size_t *addr_len)
+-{
+-	unsigned int i, colons;
+-
+-	colons = 0;
+-	for (i = 0; i < str_len; i++)
+-		if (string[i] == ':')
+-			colons++;
+-
+-	if (colons >= 2)
+-		nfs_parse_ipv6_address(string, str_len, sap, addr_len);
+-	else
+-		nfs_parse_ipv4_address(string, str_len, sap, addr_len);
+-}
+-
+ /*
+  * Sanity check the NFS transport protocol.
+  *
+diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
+index f689ed8..032b4c5 100644
+--- a/fs/nfs_common/Makefile
++++ b/fs/nfs_common/Makefile
+@@ -2,6 +2,7 @@
+ # Makefile for Linux filesystem routines that are shared by client and server.
+ #
+ 
++obj-$(CONFIG_NFS_COMMON) += nfs_addr_parse.o
+ obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
+ 
+ nfs_acl-objs := nfsacl.o
+diff --git a/fs/nfs_common/nfs_addr_parse.c b/fs/nfs_common/nfs_addr_parse.c
+new file mode 100644
+index 0000000..afb64dd
+--- /dev/null
++++ b/fs/nfs_common/nfs_addr_parse.c
+@@ -0,0 +1,155 @@
++/*
++ * Convert presentation format IP address string to socket
++ * address.
++ *
++ * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++#include <linux/kernel.h>
++#include <linux/string.h>
++#include <linux/errno.h>
++#include <linux/unistd.h>
++
++#include <linux/inet.h>
++#include <linux/in6.h>
++#include <net/ipv6.h>
++#include <linux/netdevice.h>
++
++#include <linux/nfs_addr_parse.h>
++
++static void nfs_parse_ipv4_address(char *buf, size_t buflen,
++				   struct sockaddr *sap, size_t *salenp)
++{
++	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
++
++	if (buflen <= INET_ADDRSTRLEN) {
++		sin->sin_family = AF_INET;
++		*salenp = sizeof(*sin);
++		if (in4_pton(buf, buflen, addr, '\0', NULL))
++			return;
++	}
++
++	sap->sa_family = AF_UNSPEC;
++	*salenp = 0;
++}
++
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++static int nfs_parse_ipv6_scope_id(const char *buf, const size_t buflen,
++				   const char *delim,
++				   struct sockaddr_in6 *sin6)
++{
++	char *p;
++	size_t len;
++
++	if ((buf + buflen) == delim)
++		return 1;
++
++	if (*delim != IPV6_SCOPE_DELIMITER)
++		return 0;
++
++	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
++		return 0;
++
++	len = (buf + buflen) - delim - 1;
++	p = kstrndup(delim + 1, len, GFP_KERNEL);
++	if (p) {
++		unsigned long scope_id = 0;
++		struct net_device *dev;
++
++		dev = dev_get_by_name(&init_net, p);
++		if (dev != NULL) {
++			scope_id = dev->ifindex;
++			dev_put(dev);
++		} else {
++			if (strict_strtoul(p, 10, &scope_id) == 0) {
++				kfree(p);
++				return 0;
++			}
++		}
++
++		kfree(p);
++
++		sin6->sin6_scope_id = scope_id;
++		return 1;
++	}
++
++	return 0;
++}
++
++static void nfs_parse_ipv6_address(char *buf, size_t buflen,
++				   struct sockaddr *sap, size_t *salenp)
++{
++	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
++	const char *delim;
++
++	if (buflen <= INET6_ADDRSTRLEN) {
++		sin6->sin6_family = AF_INET6;
++		*salenp = sizeof(*sin6);
++		if (in6_pton(buf, buflen, addr,
++					IPV6_SCOPE_DELIMITER, &delim) != 0) {
++			if (nfs_parse_ipv6_scope_id(buf, buflen,
++							delim, sin6) != 0)
++				return;
++		}
++	}
++
++	sap->sa_family = AF_UNSPEC;
++	*salenp = 0;
++}
++#else
++static void nfs_parse_ipv6_address(char *buf, size_t buflen,
++				   struct sockaddr *sap, size_t *salenp)
++{
++	sap->sa_family = AF_UNSPEC;
++	*salenp = 0;
++}
++#endif
++
++/**
++ * nfs_parse_ip_address - convert IP address string to sockaddr
++ * @buf: pointer to C string containing presentation format IP address
++ * @buflen: length of @buf in bytes
++ * @sap: pointer to buffer in which to construct sockaddr
++ * @salenp: IN: length of buffer in bytes
++ *	      OUT: size of address in bytes
++ *
++ * Construct a sockaddr based on the contents of a string that contains
++ * an IP address in presentation format.
++ *
++ * If there is a problem constructing the new sockaddr, set the address
++ * family to AF_UNSPEC.
++ */
++void nfs_parse_ip_address(char *buf, size_t buflen,
++			  struct sockaddr *sap, size_t *salenp)
++{
++	unsigned int i, colons;
++
++	colons = 0;
++	for (i = 0; i < buflen; i++)
++		if (buf[i] == ':')
++			colons++;
++
++	if (colons >= 2)
++		nfs_parse_ipv6_address(buf, buflen, sap, salenp);
++	else
++		nfs_parse_ipv4_address(buf, buflen, sap, salenp);
++}
++EXPORT_SYMBOL_GPL(nfs_parse_ip_address);
+diff --git a/include/linux/nfs_addr_parse.h b/include/linux/nfs_addr_parse.h
+new file mode 100644
+index 0000000..484f511
+--- /dev/null
++++ b/include/linux/nfs_addr_parse.h
+@@ -0,0 +1,32 @@
++/*
++ * include/linux/nfs_addr_parse.h
++ *
++ * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public
++ * License along with this program; if not, write to the
++ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 021110-1307, USA.
++ *
++ */
++
++#ifndef __LINUX_NFS_ADDR_PARSE_H
++#define __LINUX_NFS_ADDR_PARSE_H
++
++#define IPV6_SCOPE_DELIMITER	'%'
++
++void		nfs_parse_ip_address(char *buf, size_t buflen,
++					struct sockaddr *sap,
++					size_t *salenp);
++
++#endif	/* __LINUX_NFS_ADDR_PARSE_H */
 
