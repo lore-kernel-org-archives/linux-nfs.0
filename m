@@ -1,46 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 00/18] kernel NSM support for IPv6 (take 2)
-Date: Wed, 5 Nov 2008 15:45:17 -0500
-Message-ID: <20081105204517.GC1455@fieldses.org>
-References: <20081105171300.6773.40121.stgit@ingres.1015granger.net> <20081105194955.GA1455@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 8/8] NLM: allow lockd requests from an unprivileged port
+Date: Wed, 05 Nov 2008 15:46:34 -0500
+Message-ID: <1225917994.16857.42.camel@heimdal.trondhjem.org>
+References: <20081105202040.14469.32458.stgit@ingres.1015granger.net>
+	 <20081105202542.14469.35584.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:46602 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:21300 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752846AbYKEUpT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2008 15:45:19 -0500
-In-Reply-To: <20081105194955.GA1455@fieldses.org>
+	id S1755081AbYKEUrH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2008 15:47:07 -0500
+In-Reply-To: <20081105202542.14469.35584.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 05, 2008 at 02:49:55PM -0500, bfields wrote:
-> By the way, I did some miscellaneous nsm cleanup a few months ago and
-> never got around to sending it out.  I'll pass that along in a moment.
+On Wed, 2008-11-05 at 15:25 -0500, Chuck Lever wrote:
+> If the admin has specified the "noresvport" option for an NFS mount
+> point, the kernel's NFS client uses an unprivileged source port for
+> the main NFS transport.  The kernel's lockd client should use an
+> unprivileged port in this case as well.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 
-For which I meant to send out a cover letter and forgot, sorry!
+error: patch failed: fs/lockd/host.c:44
+error: fs/lockd/host.c: patch does not apply
 
-Anyway, the first four patches are just small cleanup and bugfixing in
-the same area.  The remaining patches split up the client's and server's
-host lists into two separate tables.
 
-They could all use another look-over and some testing; just thought you
-might be interested as long as you're in the neighborhood.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Also todo in vaguely the same area:
-	- nlmsvc_invalidate_all should be done on nfsd shutdown, but
-	  we're doing shutdown per transport for some reason, which
-	  seems dumb.  So fix that reference counting so there's just
-	  one count for the whole server.
-	- it would be nice to be able to shutdown the server
-	  independently of the client; currently there's no way to do
-	  that, as there's no way for sm-notify to distinguish client
-	  from server hosts.  (There may be no solution in the case
-	  where a single host has both client and server relationships
-	  with us--but people probably shouldn't be doing that anyway
-	  (it seems deadlock prone.)
-	- the debugging code in nlm_shutdown_hosts() may be overkill.
-
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
