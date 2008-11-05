@@ -1,104 +1,54 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] lockd: convert reclaimer thread to kthread interface
-Date: Wed,  5 Nov 2008 15:17:42 -0500
-Message-ID: <1225916262-18112-1-git-send-email-jlayton@redhat.com>
-Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/8] Support for "resvport" NFS mount option
+Date: Wed, 05 Nov 2008 15:24:43 -0500
+Message-ID: <20081105202040.14469.32458.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40093 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754673AbYKEUSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2008 15:18:25 -0500
+Received: from agminet01.oracle.com ([141.146.126.228]:42919 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751999AbYKEUZF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 15:25:05 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-My understanding is that there is a push to turn the kernel_thread
-interface into a non-exported symbol and move all kernel threads to use
-the kthread API. This patch changes lockd to use kthread_run to spawn
-the reclaimer thread.
+Hi Trond-
 
-I've made the assumption here that the extra module references taken
-when we spawn this thread are unnecessary and removed them. I've also
-added a KERN_ERR printk that pops if the thread can't be spawned to warn
-the admin that the locks won't be reclaimed.
+I proposed a new mount option called "resvport" a few months back to make sure
+that the NFS client has a mechanism for using unprivileged source ports that
+doesn't break other in-kernel RPC consumers.
 
-In the future, it would be nice to be able to notify userspace that
-locks have been lost (probably by implementing SIGLOST), and adding some
-good policies about how long we should reattempt to reclaim the locks.
+Here's a patch set that implements "resvport" that could be merged in 2.6.29.
+It may require some of my earlier patches to apply cleanly to 2.6.28-rc3, but
+this should give you enough of an idea how I'm approaching this so far.
 
-Finally, I removed a comment about memory leaks that I believe is
-obsolete and added a new one to clarify the result of sending a SIGKILL
-to the reclaimer thread. As best I can tell, doing so doesn't actually
-cause a memory leak.
-
-I consider this patch 2.6.29 material.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/clntlock.c |   21 +++++++++++++++------
- 1 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 8307dd6..94d42cc 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -14,6 +14,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
- #include <linux/smp_lock.h>
-+#include <linux/kthread.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-@@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
- void
- nlmclnt_recovery(struct nlm_host *host)
- {
-+	struct task_struct *task;
-+
- 	if (!host->h_reclaiming++) {
- 		nlm_get_host(host);
--		__module_get(THIS_MODULE);
--		if (kernel_thread(reclaimer, host, CLONE_FS | CLONE_FILES) < 0)
--			module_put(THIS_MODULE);
-+		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
-+		if (IS_ERR(task))
-+			printk(KERN_ERR "lockd: unable to spawn reclaimer "
-+				"thread. Locks for %s won't be reclaimed! "
-+				"(%ld)\n", host->h_name, PTR_ERR(task));
- 	}
- }
- 
-@@ -207,7 +212,6 @@ reclaimer(void *ptr)
- 	struct file_lock *fl, *next;
- 	u32 nsmstate;
- 
--	daemonize("%s-reclaim", host->h_name);
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
-@@ -233,7 +237,12 @@ restart:
- 	list_for_each_entry_safe(fl, next, &host->h_reclaim, fl_u.nfs_fl.list) {
- 		list_del_init(&fl->fl_u.nfs_fl.list);
- 
--		/* Why are we leaking memory here? --okir */
-+		/*
-+		 * sending this thread a SIGKILL will result in any unreclaimed
-+		 * locks being removed from the h_granted list. This means that
-+		 * the kernel will not attempt to reclaim them again if a new
-+		 * reclaimer thread is spawned for this host.
-+		 */
- 		if (signalled())
- 			continue;
- 		if (nlmclnt_reclaim(host, fl) != 0)
-@@ -261,5 +270,5 @@ restart:
- 	nlm_release_host(host);
- 	lockd_down();
- 	unlock_kernel();
--	module_put_and_exit(0);
-+	return 0;
- }
+Chuck Lever (8):
+      NLM: allow lockd requests from an unprivileged port
+      NFS: "[no]resvport" mount option changes mountd client too
+      NFS: add "[no]resvport" mount option
+      NFS: move nfs_server flag initialization
+      NFS: expand flags passed to nfs_create_rpc_client()
+      NFS: introduce nfs_mount_info struct for calling nfs_mount()
+      NFS: Move declaration of nfs_mount() to fs/nfs/internal.h
+      NFS: rename nfs_path variable
+
+
+ fs/lockd/clntlock.c         |    2 +-
+ fs/lockd/host.c             |   10 +++++++++-
+ fs/nfs/client.c             |   35 ++++++++++++++++++++++-------------
+ fs/nfs/internal.h           |   14 ++++++++++++++
+ fs/nfs/mount_clnt.c         |   34 +++++++++++++++-------------------
+ fs/nfs/nfsroot.c            |   27 +++++++++++++++++----------
+ fs/nfs/super.c              |   42 +++++++++++++++++++++++++++---------------
+ include/linux/lockd/bind.h  |    1 +
+ include/linux/lockd/lockd.h |    4 +++-
+ include/linux/nfs_fs.h      |    6 ------
+ include/linux/nfs_mount.h   |    3 ++-
+ 11 files changed, 111 insertions(+), 67 deletions(-)
+
 -- 
-1.5.5.1
-
+Chuck Lever
