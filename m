@@ -1,185 +1,156 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/18] NSM: Move NSM program and procedure numbers to
-	fs/lockd/mon.c
-Date: Wed, 05 Nov 2008 12:20:20 -0500
-Message-ID: <20081105172019.6773.29249.stgit@ingres.1015granger.net>
+Subject: [PATCH 09/18] NSM: Generate "priv" argument to NSMPROC_MON when
+	nsm_handle is created
+Date: Wed, 05 Nov 2008 12:20:27 -0500
+Message-ID: <20081105172027.6773.94970.stgit@ingres.1015granger.net>
 References: <20081105171300.6773.40121.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:36346 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752752AbYKERU4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:20:56 -0500
+Received: from rgminet01.oracle.com ([148.87.113.118]:34109 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752449AbYKERUx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:20:53 -0500
 In-Reply-To: <20081105171300.6773.40121.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Move the RPC program and procedure numbers for NSM into the
-one source file that needs them: fs/lockd/mon.c.
+Construct the "priv" cookie when the nsm_handle is created, and pass
+that to NSMPROC_MON's XDR encoder, instead of creating the "priv"
+cookie in the encoder at call time.
 
-And, as with NLM, NFS, and rpcbind calls, use NSMPROC_FOO instead of
-SM_FOO for NSM procedure numbers.
+This patch should not cause a behavioral change: the contents of the
+cookie remain the same for the time being.
 
-Finally, make a couple of comments more precise: what is referred to
-here as SM_NOTIFY is really the NLM (lockd) call NLMPROC_SM_NOTIFY,
-not NSMPROC_NOTIFY.  The Linux kernel's NSM implementation does not
-support NSMPROC_NOTIFY -- it's handled by rpc.statd and sm-notify
-in user space.
+Collect NSM XDR data type definitions in the same header as NLM XDR
+data type definitions, since lockd uses NSM XDR data types too.  The
+nlm_reboot data structure, for example, is used in both lockd and in
+the NSM implementation.
+
+The new definition of nsm_private is placed in xdr.h, and the
+definition of SM_PRIV_SIZE is placed in the same header.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c                 |   42 ++++++++++++++++++++++++++--------------
- include/linux/lockd/sm_inter.h |    9 ---------
- 2 files changed, 27 insertions(+), 24 deletions(-)
+ fs/lockd/mon.c                 |   30 +++++++++++++++++++-----------
+ include/linux/lockd/lockd.h    |    1 +
+ include/linux/lockd/sm_inter.h |    1 -
+ include/linux/lockd/xdr.h      |    6 ++++++
+ 4 files changed, 26 insertions(+), 12 deletions(-)
 
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 6fafc06..d245856 100644
+index d245856..efbb2ea 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -17,6 +17,18 @@
- 
- 
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
-+#define NSM_PROGRAM		100024
-+#define NSM_VERSION		1
-+
-+enum {
-+	NSMPROC_NULL,
-+	NSMPROC_STAT,
-+	NSMPROC_MON,
-+	NSMPROC_UNMON,
-+	NSMPROC_UNMON_ALL,
-+	NSMPROC_SIMU_CRASH,
-+	NSMPROC_NOTIFY,
-+};
+@@ -31,7 +31,7 @@ enum {
+ };
  
  struct nsm_args {
- 	__be32			addr;		/* remote address */
-@@ -56,7 +68,7 @@ static struct rpc_clnt *nsm_create(void)
- 		.addrsize		= sizeof(sin),
- 		.servername		= "localhost",
- 		.program		= &nsm_program,
--		.version		= SM_VERSION,
-+		.version		= NSM_VERSION,
- 		.authflavor		= RPC_AUTH_NULL,
- 	};
- 
-@@ -64,7 +76,7 @@ static struct rpc_clnt *nsm_create(void)
+-	__be32			addr;		/* remote address */
++	struct nsm_private	*priv;
+ 	u32			prog;		/* RPC callback info */
+ 	u32			vers;
+ 	u32			proc;
+@@ -84,7 +84,7 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+ 	struct rpc_clnt	*clnt;
+ 	int		status;
+ 	struct nsm_args	args = {
+-		.addr		= nsm_addr_in(nsm)->sin_addr.s_addr,
++		.priv		= &nsm->sm_priv,
+ 		.prog		= NLM_PROGRAM,
+ 		.vers		= 3,
+ 		.proc		= NLMPROC_NSM_NOTIFY,
+@@ -175,6 +175,20 @@ int nsm_unmonitor(struct nlm_host *host)
+ 	return status;
  }
  
- /*
-- * Common procedure for SM_MON/SM_UNMON calls
-+ * Common procedure for NSMPROC_MON/NSMPROC_UNMON calls
-  */
- static int
- nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
-@@ -124,7 +136,7 @@ int nsm_monitor(struct nlm_host *host)
- 	if (nsm->sm_monitored)
- 		return 0;
- 
--	status = nsm_mon_unmon(nsm, SM_MON, &res);
-+	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res);
- 
- 	if (status < 0 || res.status != 0)
- 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", host->h_name);
-@@ -152,7 +164,7 @@ int nsm_unmonitor(struct nlm_host *host)
- 	 && nsm->sm_monitored && !nsm->sm_sticky) {
- 		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
- 
--		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
-+		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res);
- 		if (status < 0)
- 			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
- 					host->h_name);
-@@ -290,7 +302,7 @@ static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
- /*
-  * The "my_id" argument specifies the hostname and RPC procedure
-  * to be called when the status manager receives notification
-- * (via the SM_NOTIFY call) that the state of host "mon_name"
-+ * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
-  * has changed.
-  */
- static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
-@@ -308,7 +320,7 @@ static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
- 
- /*
-  * The "mon_id" argument specifies the non-private arguments
-- * of an SM_MON or SM_UNMON call.
-+ * of an NSMPROC_MON or NSMPROC_UNMON call.
-  */
- static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
- {
-@@ -321,8 +333,8 @@ static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
- 
- /*
++/*
++ * Construct a unique cookie to identify this nsm_handle.  It is
++ * passed to our statd via NSMPROC_MON, and returned via
++ * NLMPROC_SM_NOTIFY, in the "priv" field of these requests.
++ *
++ * Linux provides the raw IP address of the monitored host,
++ * left in network byte order.
++ */
++static void nsm_init_private(struct nsm_handle *nsm)
++{
++	__be32 *p = (__be32 *)&nsm->sm_priv.data;
++	*p = nsm_addr_in(nsm)->sin_addr.s_addr;
++}
++
+ /**
+  * nsm_find - Find or create a cached nsm_handle
+  * @sap: pointer to socket address of handle to find
+@@ -251,6 +265,7 @@ retry:
+ 	nsm->sm_name = (char *) (nsm + 1);
+ 	memcpy(nsm->sm_name, hostname, hostname_len);
+ 	nsm->sm_name[hostname_len] = '\0';
++	nsm_init_private(nsm);
+ 	nlm_display_address((struct sockaddr *)&nsm->sm_addr,
+ 				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
+ 	atomic_set(&nsm->sm_count, 1);
+@@ -335,18 +350,11 @@ static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
   * The "priv" argument may contain private information required
-- * by the SM_MON call. This information will be supplied in the
-- * SM_NOTIFY call.
-+ * by the NSMPROC_MON call. This information will be supplied in the
-+ * NLMPROC_SM_NOTIFY call.
-  *
-  * Linux provides the raw IP address of the monitored host,
-  * left in network byte order.
-@@ -389,22 +401,22 @@ xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
- #define SM_unmonres_sz	1
+  * by the NSMPROC_MON call. This information will be supplied in the
+  * NLMPROC_SM_NOTIFY call.
+- *
+- * Linux provides the raw IP address of the monitored host,
+- * left in network byte order.
+  */
+ static __be32 *xdr_encode_priv(__be32 *p, struct nsm_args *argp)
+ {
+-	*p++ = argp->addr;
+-	*p++ = 0;
+-	*p++ = 0;
+-	*p++ = 0;
+-
+-	return p;
++	return xdr_encode_opaque_fixed(p, argp->priv->data,
++						sizeof(argp->priv->data));
+ }
  
- static struct rpc_procinfo	nsm_procedures[] = {
--[SM_MON] = {
--		.p_proc		= SM_MON,
-+[NSMPROC_MON] = {
-+		.p_proc		= NSMPROC_MON,
- 		.p_encode	= (kxdrproc_t) xdr_encode_mon,
- 		.p_decode	= (kxdrproc_t) xdr_decode_stat_res,
- 		.p_arglen	= SM_mon_sz,
- 		.p_replen	= SM_monres_sz,
--		.p_statidx	= SM_MON,
-+		.p_statidx	= NSMPROC_MON,
- 		.p_name		= "MONITOR",
- 	},
--[SM_UNMON] = {
--		.p_proc		= SM_UNMON,
-+[NSMPROC_UNMON] = {
-+		.p_proc		= NSMPROC_UNMON,
- 		.p_encode	= (kxdrproc_t) xdr_encode_unmon,
- 		.p_decode	= (kxdrproc_t) xdr_decode_stat,
- 		.p_arglen	= SM_mon_id_sz,
- 		.p_replen	= SM_unmonres_sz,
--		.p_statidx	= SM_UNMON,
-+		.p_statidx	= NSMPROC_UNMON,
- 		.p_name		= "UNMONITOR",
- 	},
+ static int
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index d8fa8d3..6178fcc 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -82,6 +82,7 @@ struct nsm_handle {
+ 	size_t			sm_addrlen;
+ 	unsigned int		sm_monitored : 1,
+ 				sm_sticky : 1;	/* don't unmonitor */
++	struct nsm_private	sm_priv;
+ 	char			sm_addrbuf[LOCKD_ADDRBUF_SIZE];
  };
-@@ -423,7 +435,7 @@ static struct rpc_stat		nsm_stats;
  
- static struct rpc_program	nsm_program = {
- 		.name		= "statd",
--		.number		= SM_PROGRAM,
-+		.number		= NSM_PROGRAM,
- 		.nrvers		= ARRAY_SIZE(nsm_version),
- 		.version	= nsm_version,
- 		.stats		= &nsm_stats
 diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
-index 29f0206..da72872 100644
+index da72872..7f22d6f 100644
 --- a/include/linux/lockd/sm_inter.h
 +++ b/include/linux/lockd/sm_inter.h
-@@ -9,15 +9,6 @@
- #ifndef LINUX_LOCKD_SM_INTER_H
+@@ -10,6 +10,5 @@
  #define LINUX_LOCKD_SM_INTER_H
  
--#define SM_PROGRAM	100024
--#define SM_VERSION	1
--#define SM_STAT		1
--#define SM_MON		2
--#define SM_UNMON	3
--#define SM_UNMON_ALL	4
--#define SM_SIMU_CRASH	5
--#define SM_NOTIFY	6
--
  #define SM_MAXSTRLEN	1024
- #define SM_PRIV_SIZE	16
+-#define SM_PRIV_SIZE	16
  
+ #endif /* LINUX_LOCKD_SM_INTER_H */
+diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
+index d6b3a80..6b51992 100644
+--- a/include/linux/lockd/xdr.h
++++ b/include/linux/lockd/xdr.h
+@@ -13,6 +13,12 @@
+ #include <linux/nfs.h>
+ #include <linux/sunrpc/xdr.h>
+ 
++#define SM_PRIV_SIZE		16
++
++struct nsm_private {
++	unsigned char		data[SM_PRIV_SIZE];
++};
++
+ struct svc_rqst;
+ 
+ #define NLM_MAXCOOKIELEN    	32
 
