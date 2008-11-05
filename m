@@ -1,61 +1,104 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 12/12] lockd: remove redundant rpc_shutdown_client()
-Date: Wed,  5 Nov 2008 15:06:51 -0500
-Message-ID: <1225915611-2401-12-git-send-email-bfields@citi.umich.edu>
-References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
- <1225915611-2401-1-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-2-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-3-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-4-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-5-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-6-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-7-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-8-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-9-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-10-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-11-git-send-email-bfields@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] lockd: convert reclaimer thread to kthread interface
+Date: Wed,  5 Nov 2008 15:17:42 -0500
+Message-ID: <1225916262-18112-1-git-send-email-jlayton@redhat.com>
+Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:39507 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:40093 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757576AbYKEUG4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2008 15:06:56 -0500
-In-Reply-To: <1225915611-2401-11-git-send-email-bfields@citi.umich.edu>
+	id S1754673AbYKEUSZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2008 15:18:25 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These clients will all be shut down by nlm_destroy_host() when we do
-garbage collection a little later, so this is redundant.
+My understanding is that there is a push to turn the kernel_thread
+interface into a non-exported symbol and move all kernel threads to use
+the kthread API. This patch changes lockd to use kthread_run to spawn
+the reclaimer thread.
 
-XXX: Ask Jeff Layton why he added this again?
+I've made the assumption here that the extra module references taken
+when we spawn this thread are unnecessary and removed them. I've also
+added a KERN_ERR printk that pops if the thread can't be spawned to warn
+the admin that the locks won't be reclaimed.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+In the future, it would be nice to be able to notify userspace that
+locks have been lost (probably by implementing SIGLOST), and adding some
+good policies about how long we should reattempt to reclaim the locks.
+
+Finally, I removed a comment about memory leaks that I believe is
+obsolete and added a new one to clarify the result of sending a SIGKILL
+to the reclaimer thread. As best I can tell, doing so doesn't actually
+cause a memory leak.
+
+I consider this patch 2.6.29 material.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/host.c |    8 +-------
- 1 files changed, 1 insertions(+), 7 deletions(-)
+ fs/lockd/clntlock.c |   21 +++++++++++++++------
+ 1 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 73c2be2..0387c6b 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -602,14 +602,8 @@ static void expire_hosts(struct host_table *table)
- 	struct hlist_node *pos;
- 	struct nlm_host	*host;
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 8307dd6..94d42cc 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -14,6 +14,7 @@
+ #include <linux/sunrpc/svc.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/smp_lock.h>
++#include <linux/kthread.h>
  
--	dprintk("lockd: nuking all hosts...\n");
--	for_each_host(host, pos, chain, table) {
-+	for_each_host(host, pos, chain, table)
- 		host->h_expires = jiffies - 1;
--		if (host->h_rpcclnt) {
--			rpc_shutdown_client(host->h_rpcclnt);
--			host->h_rpcclnt = NULL;
--		}
--	}
+ #define NLMDBG_FACILITY		NLMDBG_CLIENT
+ 
+@@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
+ void
+ nlmclnt_recovery(struct nlm_host *host)
+ {
++	struct task_struct *task;
++
+ 	if (!host->h_reclaiming++) {
+ 		nlm_get_host(host);
+-		__module_get(THIS_MODULE);
+-		if (kernel_thread(reclaimer, host, CLONE_FS | CLONE_FILES) < 0)
+-			module_put(THIS_MODULE);
++		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
++		if (IS_ERR(task))
++			printk(KERN_ERR "lockd: unable to spawn reclaimer "
++				"thread. Locks for %s won't be reclaimed! "
++				"(%ld)\n", host->h_name, PTR_ERR(task));
+ 	}
  }
  
- /*
+@@ -207,7 +212,6 @@ reclaimer(void *ptr)
+ 	struct file_lock *fl, *next;
+ 	u32 nsmstate;
+ 
+-	daemonize("%s-reclaim", host->h_name);
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+@@ -233,7 +237,12 @@ restart:
+ 	list_for_each_entry_safe(fl, next, &host->h_reclaim, fl_u.nfs_fl.list) {
+ 		list_del_init(&fl->fl_u.nfs_fl.list);
+ 
+-		/* Why are we leaking memory here? --okir */
++		/*
++		 * sending this thread a SIGKILL will result in any unreclaimed
++		 * locks being removed from the h_granted list. This means that
++		 * the kernel will not attempt to reclaim them again if a new
++		 * reclaimer thread is spawned for this host.
++		 */
+ 		if (signalled())
+ 			continue;
+ 		if (nlmclnt_reclaim(host, fl) != 0)
+@@ -261,5 +270,5 @@ restart:
+ 	nlm_release_host(host);
+ 	lockd_down();
+ 	unlock_kernel();
+-	module_put_and_exit(0);
++	return 0;
+ }
 -- 
-1.5.5.rc1
+1.5.5.1
 
