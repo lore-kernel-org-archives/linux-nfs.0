@@ -1,168 +1,103 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/18] NLM: Change nlm_host_rebooted() to take a single
-	nlm_reboot argument
-Date: Wed, 05 Nov 2008 12:20:34 -0500
-Message-ID: <20081105172034.6773.64880.stgit@ingres.1015granger.net>
+Subject: [PATCH 11/18] NLM: Decode "priv" argument of NLMPROC_SM_NOTIFY as an
+	opaque
+Date: Wed, 05 Nov 2008 12:20:42 -0500
+Message-ID: <20081105172041.6773.51057.stgit@ingres.1015granger.net>
 References: <20081105171300.6773.40121.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:34178 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:34181 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752826AbYKERVK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:21:10 -0500
+	with ESMTP id S1752836AbYKERVL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:21:11 -0500
 In-Reply-To: <20081105171300.6773.40121.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pass the nlm_reboot data structure directly from the NLMPROC_SM_NOTIFY
-XDR decoders to nlm_host_rebooted().  This eliminates some packing and
-unpacking of the NLMPROC_SM_NOTIFY results, and prepares for passing
-NLMPROC_SM_NOTIFY's "priv" argument directly to nsm_find().
+The NLM XDR decoders for the NLMPROC_SM_NOTIFY procedure should treat
+their "priv" argument truly as an opaque, as defined by the protocol,
+and let the upper layers figure out what is in it.
+
+This will make it easier to modify the contents and interpretation of
+the "priv" argument, and keep knowledge about what's in "priv" local
+to fs/lockd/mon.c.  For now NLM and NSM should behave exactly as they
+did before.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |   31 +++++++++++++++++--------------
- fs/lockd/svc4proc.c         |   11 +----------
- fs/lockd/svcproc.c          |   11 +----------
- include/linux/lockd/lockd.h |    3 +--
- 4 files changed, 20 insertions(+), 36 deletions(-)
+ fs/lockd/host.c           |    3 ++-
+ fs/lockd/xdr.c            |    4 ++--
+ fs/lockd/xdr4.c           |    4 ++--
+ include/linux/lockd/xdr.h |    8 ++++----
+ 4 files changed, 10 insertions(+), 9 deletions(-)
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 50dcf79..7071acb 100644
+index 7071acb..7f82c65 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -489,31 +489,34 @@ void nlm_release_host(struct nlm_host *host)
- 	}
- }
- 
--/*
-- * We were notified that the host indicated by address &sin
-- * has rebooted.
-- * Release all resources held by that peer.
-+/**
-+ * nlm_host_rebooted - Release all resources held by rebooted host
-+ * @info: pointer to decoded results of NLM_SM_NOTIFY call
-+ *
-+ * We were notified that the specified host has rebooted.  Release
-+ * all resources held by that peer.
+@@ -498,9 +498,10 @@ void nlm_release_host(struct nlm_host *host)
   */
--void nlm_host_rebooted(const struct sockaddr_in *sin,
--				const char *hostname,
--				unsigned int hostname_len,
--				u32 new_state)
-+void nlm_host_rebooted(struct nlm_reboot *info)
+ void nlm_host_rebooted(struct nlm_reboot *info)
  {
-+	const struct sockaddr_in sin = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= info->addr,
-+	};
++	__be32 *p = (__be32 *)&info->priv.data;
+ 	const struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+-		.sin_addr.s_addr	= info->addr,
++		.sin_addr.s_addr	= *p,
+ 	};
  	struct hlist_head *chain;
  	struct hlist_node *pos;
- 	struct nsm_handle *nsm;
- 	struct nlm_host	*host;
- 
--	nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
--			hostname, hostname_len, 0);
-+	nsm = nsm_find((struct sockaddr *)&sin, sizeof(sin),
-+			info->mon, info->len, 0);
- 	if (nsm == NULL) {
- 		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
--				hostname_len, hostname);
-+				info->len, info->mon);
- 		return;
- 	}
- 
- 	dprintk("lockd: nlm_host_rebooted(%.*s, %s)\n",
--			hostname_len, hostname, nsm->sm_addrbuf);
-+			info->len, info->mon, nsm->sm_addrbuf);
- 
- 	/* When reclaiming locks on this peer, make sure that
- 	 * we set up a new notification */
-@@ -528,8 +531,8 @@ again:	mutex_lock(&nlm_host_mutex);
- 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
- 		hlist_for_each_entry(host, pos, chain, h_hash) {
- 			if (host->h_nsmhandle == nsm
--			 && host->h_nsmstate != new_state) {
--				host->h_nsmstate = new_state;
-+			 && host->h_nsmstate != info->state) {
-+				host->h_nsmstate = info->state;
- 				host->h_state++;
- 
- 				nlm_get_host(host);
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 4dfdcbc..bb79a53 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -419,8 +419,6 @@ static __be32
- nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 					      void	        *resp)
- {
--	struct sockaddr_in	saddr;
--
- 	dprintk("lockd: SM_NOTIFY     called\n");
- 
- 	if (!nlm_privileged_requester(rqstp)) {
-@@ -430,14 +428,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 		return rpc_system_err;
- 	}
- 
--	/* Obtain the host pointer for this NFS server and try to
--	 * reclaim all locks we hold on this server.
--	 */
--	memset(&saddr, 0, sizeof(saddr));
--	saddr.sin_family = AF_INET;
--	saddr.sin_addr.s_addr = argp->addr;
--	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
--
-+	nlm_host_rebooted(argp);
- 	return rpc_success;
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 1f22629..4cc7d01 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -349,8 +349,8 @@ nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp)
+ 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
+ 		return 0;
+ 	argp->state = ntohl(*p++);
+-	/* Preserve the address in network byte order */
+-	argp->addr = *p++;
++	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
++	p += XDR_QUADLEN(SM_PRIV_SIZE);
+ 	return xdr_argsize_check(rqstp, p);
  }
  
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 3ca89e2..e44310c 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -451,8 +451,6 @@ static __be32
- nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 					      void	        *resp)
- {
--	struct sockaddr_in	saddr;
--
- 	dprintk("lockd: SM_NOTIFY     called\n");
- 
- 	if (!nlm_privileged_requester(rqstp)) {
-@@ -462,14 +460,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 		return rpc_system_err;
- 	}
- 
--	/* Obtain the host pointer for this NFS server and try to
--	 * reclaim all locks we hold on this server.
--	 */
--	memset(&saddr, 0, sizeof(saddr));
--	saddr.sin_family = AF_INET;
--	saddr.sin_addr.s_addr = argp->addr;
--	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
--
-+	nlm_host_rebooted(argp);
- 	return rpc_success;
+diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+index 50c493a..61d1714 100644
+--- a/fs/lockd/xdr4.c
++++ b/fs/lockd/xdr4.c
+@@ -356,8 +356,8 @@ nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp
+ 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
+ 		return 0;
+ 	argp->state = ntohl(*p++);
+-	/* Preserve the address in network byte order */
+-	argp->addr  = *p++;
++	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
++	p += XDR_QUADLEN(SM_PRIV_SIZE);
+ 	return xdr_argsize_check(rqstp, p);
  }
  
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 6178fcc..8f6369d 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -239,8 +239,7 @@ void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
--extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
--					unsigned int, u32);
-+void		  nlm_host_rebooted(struct nlm_reboot *);
+diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
+index 6b51992..6338866 100644
+--- a/include/linux/lockd/xdr.h
++++ b/include/linux/lockd/xdr.h
+@@ -83,10 +83,10 @@ struct nlm_res {
+  * statd callback when client has rebooted
+  */
+ struct nlm_reboot {
+-	char *		mon;
+-	unsigned int	len;
+-	u32		state;
+-	__be32		addr;
++	char			*mon;
++	unsigned int		len;
++	u32			state;
++	struct nsm_private	priv;
+ };
  
  /*
-  * Host monitoring
 
