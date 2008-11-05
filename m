@@ -1,67 +1,47 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 00/18] kernel NSM support for IPv6 (take 2)
-Date: Wed, 5 Nov 2008 16:34:01 -0500
-Message-ID: <61853126-2B02-44C8-B47B-C4CD8618EF0C@oracle.com>
-References: <20081105171300.6773.40121.stgit@ingres.1015granger.net> <20081105194955.GA1455@fieldses.org> <20081105204517.GC1455@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 8/8] NLM: allow lockd requests from an unprivileged port
+Date: Wed, 05 Nov 2008 16:34:32 -0500
+Message-ID: <1225920872.16857.47.camel@heimdal.trondhjem.org>
+References: <20081105202040.14469.32458.stgit@ingres.1015granger.net>
+	 <20081105202542.14469.35584.stgit@ingres.1015granger.net>
+	 <1225917994.16857.42.camel@heimdal.trondhjem.org>
+	 <70C4B893-100A-4047-8038-C401DA44B439@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:62178 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754511AbYKEVeQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 16:34:16 -0500
-In-Reply-To: <20081105204517.GC1455@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:21622 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753227AbYKEVfa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2008 16:35:30 -0500
+In-Reply-To: <70C4B893-100A-4047-8038-C401DA44B439@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 5, 2008, at 3:45 PM, J. Bruce Fields wrote:
-> On Wed, Nov 05, 2008 at 02:49:55PM -0500, bfields wrote:
->> By the way, I did some miscellaneous nsm cleanup a few months ago and
->> never got around to sending it out.  I'll pass that along in a  
->> moment.
->
-> For which I meant to send out a cover letter and forgot, sorry!
+On Wed, 2008-11-05 at 16:25 -0500, Chuck Lever wrote:
+> On Nov 5, 2008, at 3:46 PM, Trond Myklebust wrote:
+> > On Wed, 2008-11-05 at 15:25 -0500, Chuck Lever wrote:
+> >> If the admin has specified the "noresvport" option for an NFS mount
+> >> point, the kernel's NFS client uses an unprivileged source port for
+> >> the main NFS transport.  The kernel's lockd client should use an
+> >> unprivileged port in this case as well.
+> >>
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >
+> > error: patch failed: fs/lockd/host.c:44
+> > error: fs/lockd/host.c: patch does not apply
+> 
+> I mentioned that in the cover letter.  It's another case where patches  
+> I've sent to you depend on patches that Bruce is taking.
 
-These look similar to some prototype patches I've played with to split  
-the host cache, except for the elimination of h_server and sm_sticky,  
-which would be dandy if we can get away with it.  I also went to the  
-trouble of adding a SLAB for the nlm_host structures.
+OK. Dropping that patch...
 
-Basically they look OK to me, except I would rename expire_hosts() as  
-nlm_expire_hosts().
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Would you like me to port these up to 2.6.28 and add an nlm_host SLAB?
-
-> Anyway, the first four patches are just small cleanup and bugfixing in
-> the same area.  The remaining patches split up the client's and  
-> server's
-> host lists into two separate tables.
->
-> They could all use another look-over and some testing; just thought  
-> you
-> might be interested as long as you're in the neighborhood.
->
-> Also todo in vaguely the same area:
-> 	- nlmsvc_invalidate_all should be done on nfsd shutdown, but
-> 	  we're doing shutdown per transport for some reason, which
-> 	  seems dumb.  So fix that reference counting so there's just
-> 	  one count for the whole server.
-> 	- it would be nice to be able to shutdown the server
-> 	  independently of the client; currently there's no way to do
-> 	  that, as there's no way for sm-notify to distinguish client
-> 	  from server hosts.  (There may be no solution in the case
-> 	  where a single host has both client and server relationships
-> 	  with us--but people probably shouldn't be doing that anyway
-> 	  (it seems deadlock prone.)
-> 	- the debugging code in nlm_shutdown_hosts() may be overkill.
->
-> --b.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
