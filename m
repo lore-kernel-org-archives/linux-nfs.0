@@ -1,420 +1,134 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/13] NFS: Move NFS client's IP address parser to nfs_common/
-Date: Wed, 05 Nov 2008 12:29:43 -0500
-Message-ID: <20081105172943.7330.29394.stgit@ingres.1015granger.net>
+Subject: [PATCH 05/13] NFSD: Prevent a buffer overflow in svc_xprt_names()
+Date: Wed, 05 Nov 2008 12:28:59 -0500
+Message-ID: <20081105172858.7330.17572.stgit@ingres.1015granger.net>
 References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:36932 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:36931 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752708AbYKERaN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:30:13 -0500
+	with ESMTP id S1752674AbYKERaM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:30:12 -0500
 In-Reply-To: <20081105172351.7330.50739.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel's NFS server also needs to parse presentation format IP
-addresses.  Since both the client and the server can reside in their own
-modules, move the parser logic to nfs_common, which can be used by either.
+The svc_xprt_names() function can overflow its buffer if it's so near
+the end of the passed in buffer that the "name too long" string still
+doesn't fit.  Of course, it could never tell if it was near the end
+of the passed in buffer, since its only caller passes in zero as the
+buffer length.
+
+Let's make this API a little safer.
+
+Change svc_xprt_names() so it *always* checks for a buffer overflow,
+and change its only caller to pass in the correct buffer length.
+
+If svc_xprt_names() does overflow its buffer, just fail with a
+reasonable errno code, instead of trying to write a message at the end
+of the buffer.  I don't like this much, but I can't figure out a safe
+way to return some of the names, *and* an indication that the buffer
+was not long enough.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h              |    3 -
- fs/nfs/nfs4namespace.c         |    2 +
- fs/nfs/super.c                 |  121 -------------------------------
- fs/nfs_common/Makefile         |    1 
- fs/nfs_common/nfs_addr_parse.c |  155 ++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_addr_parse.h |   32 ++++++++
- 6 files changed, 191 insertions(+), 123 deletions(-)
- create mode 100644 fs/nfs_common/nfs_addr_parse.c
- create mode 100644 include/linux/nfs_addr_parse.h
+ fs/nfsd/nfsctl.c      |    2 +-
+ net/sunrpc/svc_xprt.c |   53 ++++++++++++++++++++++++++++++++++---------------
+ 2 files changed, 38 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index e256520..4f484fe 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -153,7 +153,6 @@ extern void nfs4_clear_inode(struct inode *);
- void nfs_zap_acl_cache(struct inode *inode);
- 
- /* super.c */
--void nfs_parse_ip_address(char *, size_t, struct sockaddr *, size_t *);
- extern struct file_system_type nfs_xdev_fs_type;
- #ifdef CONFIG_NFS_V4
- extern struct file_system_type nfs4_xdev_fs_type;
-@@ -277,8 +276,6 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
- 		PAGE_SIZE - 1) >> PAGE_SHIFT;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index fa6441b..22fc8e5 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -887,7 +887,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
+ {
+ 	if (!nfsd_serv)
+ 		return 0;
+-	return svc_xprt_names(nfsd_serv, buf, 0);
++	return svc_xprt_names(nfsd_serv, buf, SIMPLE_TRANSACTION_LIMIT);
  }
  
--#define IPV6_SCOPE_DELIMITER	'%'
--
  /*
-  * Set the port number in an address.  Be agnostic about the address
-  * family.
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 30befc3..660fc36 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -15,6 +15,8 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/vfs.h>
- #include <linux/inet.h>
-+#include <linux/nfs_addr_parse.h>
-+
- #include "internal.h"
- #include "nfs4_fs.h"
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f48db67..6900734 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -51,6 +51,7 @@
- #include <linux/nfs_xdr.h>
- #include <linux/magic.h>
- #include <linux/parser.h>
-+#include <linux/nfs_addr_parse.h>
- 
- #include <asm/system.h>
- #include <asm/uaccess.h>
-@@ -696,126 +697,6 @@ static int nfs_verify_server_address(struct sockaddr *addr)
- 	return 0;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index bf5b5cd..eb546ce 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1045,36 +1045,57 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
  }
+ EXPORT_SYMBOL_GPL(svc_find_xprt);
  
--static void nfs_parse_ipv4_address(char *string, size_t str_len,
--				   struct sockaddr *sap, size_t *addr_len)
--{
--	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
--	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
--
--	if (str_len <= INET_ADDRSTRLEN) {
--		dfprintk(MOUNT, "NFS: parsing IPv4 address %*s\n",
--				(int)str_len, string);
--
--		sin->sin_family = AF_INET;
--		*addr_len = sizeof(*sin);
--		if (in4_pton(string, str_len, addr, '\0', NULL))
--			return;
--	}
--
--	sap->sa_family = AF_UNSPEC;
--	*addr_len = 0;
--}
--
--#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
--static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
--				   const char *delim,
--				   struct sockaddr_in6 *sin6)
--{
--	char *p;
--	size_t len;
--
--	if ((string + str_len) == delim)
--		return 1;
--
--	if (*delim != IPV6_SCOPE_DELIMITER)
--		return 0;
--
--	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
--		return 0;
--
--	len = (string + str_len) - delim - 1;
--	p = kstrndup(delim + 1, len, GFP_KERNEL);
--	if (p) {
--		unsigned long scope_id = 0;
--		struct net_device *dev;
--
--		dev = dev_get_by_name(&init_net, p);
--		if (dev != NULL) {
--			scope_id = dev->ifindex;
--			dev_put(dev);
--		} else {
--			if (strict_strtoul(p, 10, &scope_id) == 0) {
--				kfree(p);
--				return 0;
--			}
--		}
--
--		kfree(p);
--
--		sin6->sin6_scope_id = scope_id;
--		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
--		return 1;
--	}
--
--	return 0;
--}
--
--static void nfs_parse_ipv6_address(char *string, size_t str_len,
--				   struct sockaddr *sap, size_t *addr_len)
--{
--	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
--	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
--	const char *delim;
--
--	if (str_len <= INET6_ADDRSTRLEN) {
--		dfprintk(MOUNT, "NFS: parsing IPv6 address %*s\n",
--				(int)str_len, string);
--
--		sin6->sin6_family = AF_INET6;
--		*addr_len = sizeof(*sin6);
--		if (in6_pton(string, str_len, addr,
--					IPV6_SCOPE_DELIMITER, &delim) != 0) {
--			if (nfs_parse_ipv6_scope_id(string, str_len,
--							delim, sin6) != 0)
--				return;
--		}
--	}
--
--	sap->sa_family = AF_UNSPEC;
--	*addr_len = 0;
--}
--#else
--static void nfs_parse_ipv6_address(char *string, size_t str_len,
--				   struct sockaddr *sap, size_t *addr_len)
--{
--	sap->sa_family = AF_UNSPEC;
--	*addr_len = 0;
--}
--#endif
--
 -/*
-- * Construct a sockaddr based on the contents of a string that contains
-- * an IP address in presentation format.
-- *
-- * If there is a problem constructing the new sockaddr, set the address
-- * family to AF_UNSPEC.
-- */
--void nfs_parse_ip_address(char *string, size_t str_len,
--				 struct sockaddr *sap, size_t *addr_len)
--{
--	unsigned int i, colons;
--
--	colons = 0;
--	for (i = 0; i < str_len; i++)
--		if (string[i] == ':')
--			colons++;
--
--	if (colons >= 2)
--		nfs_parse_ipv6_address(string, str_len, sap, addr_len);
--	else
--		nfs_parse_ipv4_address(string, str_len, sap, addr_len);
--}
--
- /*
-  * Sanity check the NFS transport protocol.
-  *
-diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
-index f689ed8..032b4c5 100644
---- a/fs/nfs_common/Makefile
-+++ b/fs/nfs_common/Makefile
-@@ -2,6 +2,7 @@
- # Makefile for Linux filesystem routines that are shared by client and server.
- #
- 
-+obj-$(CONFIG_NFS_COMMON) += nfs_addr_parse.o
- obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
- 
- nfs_acl-objs := nfsacl.o
-diff --git a/fs/nfs_common/nfs_addr_parse.c b/fs/nfs_common/nfs_addr_parse.c
-new file mode 100644
-index 0000000..afb64dd
---- /dev/null
-+++ b/fs/nfs_common/nfs_addr_parse.c
-@@ -0,0 +1,155 @@
-+/*
-+ * Convert presentation format IP address string to socket
-+ * address.
-+ *
-+ * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2 of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/string.h>
-+#include <linux/errno.h>
-+#include <linux/unistd.h>
-+
-+#include <linux/inet.h>
-+#include <linux/in6.h>
-+#include <net/ipv6.h>
-+#include <linux/netdevice.h>
-+
-+#include <linux/nfs_addr_parse.h>
-+
-+static void nfs_parse_ipv4_address(char *buf, size_t buflen,
-+				   struct sockaddr *sap, size_t *salenp)
+- * Format a buffer with a list of the active transports. A zero for
+- * the buflen parameter disables target buffer overflow checking.
++static int svc_one_xprt_name(struct svc_xprt *xprt, char *pos, int remaining)
 +{
-+	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-+	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
++	int len;
 +
-+	if (buflen <= INET_ADDRSTRLEN) {
-+		sin->sin_family = AF_INET;
-+		*salenp = sizeof(*sin);
-+		if (in4_pton(buf, buflen, addr, '\0', NULL))
-+			return;
-+	}
-+
-+	sap->sa_family = AF_UNSPEC;
-+	*salenp = 0;
++	len = snprintf(pos, remaining, "%s %u\n",
++			xprt->xpt_class->xcl_name,
++			svc_xprt_local_port(xprt));
++	if (len >= remaining)
++		return -ENAMETOOLONG;
++	return len;
 +}
-+
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+static int nfs_parse_ipv6_scope_id(const char *buf, const size_t buflen,
-+				   const char *delim,
-+				   struct sockaddr_in6 *sin6)
-+{
-+	char *p;
-+	size_t len;
-+
-+	if ((buf + buflen) == delim)
-+		return 1;
-+
-+	if (*delim != IPV6_SCOPE_DELIMITER)
-+		return 0;
-+
-+	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
-+		return 0;
-+
-+	len = (buf + buflen) - delim - 1;
-+	p = kstrndup(delim + 1, len, GFP_KERNEL);
-+	if (p) {
-+		unsigned long scope_id = 0;
-+		struct net_device *dev;
-+
-+		dev = dev_get_by_name(&init_net, p);
-+		if (dev != NULL) {
-+			scope_id = dev->ifindex;
-+			dev_put(dev);
-+		} else {
-+			if (strict_strtoul(p, 10, &scope_id) == 0) {
-+				kfree(p);
-+				return 0;
-+			}
-+		}
-+
-+		kfree(p);
-+
-+		sin6->sin6_scope_id = scope_id;
-+		return 1;
-+	}
-+
-+	return 0;
-+}
-+
-+static void nfs_parse_ipv6_address(char *buf, size_t buflen,
-+				   struct sockaddr *sap, size_t *salenp)
-+{
-+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
-+	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
-+	const char *delim;
-+
-+	if (buflen <= INET6_ADDRSTRLEN) {
-+		sin6->sin6_family = AF_INET6;
-+		*salenp = sizeof(*sin6);
-+		if (in6_pton(buf, buflen, addr,
-+					IPV6_SCOPE_DELIMITER, &delim) != 0) {
-+			if (nfs_parse_ipv6_scope_id(buf, buflen,
-+							delim, sin6) != 0)
-+				return;
-+		}
-+	}
-+
-+	sap->sa_family = AF_UNSPEC;
-+	*salenp = 0;
-+}
-+#else
-+static void nfs_parse_ipv6_address(char *buf, size_t buflen,
-+				   struct sockaddr *sap, size_t *salenp)
-+{
-+	sap->sa_family = AF_UNSPEC;
-+	*salenp = 0;
-+}
-+#endif
 +
 +/**
-+ * nfs_parse_ip_address - convert IP address string to sockaddr
-+ * @buf: pointer to C string containing presentation format IP address
-+ * @buflen: length of @buf in bytes
-+ * @sap: pointer to buffer in which to construct sockaddr
-+ * @salenp: IN: length of buffer in bytes
-+ *	      OUT: size of address in bytes
++ * svc_xprt_names - format a buffer with a list of transport names
++ * @serv: pointer to an RPC service
++ * @buf: pointer to a buffer to be filled in
++ * @buflen: length of buffer to be filled in
 + *
-+ * Construct a sockaddr based on the contents of a string that contains
-+ * an IP address in presentation format.
++ * Fills in @buf with a string containing a list of transport names,
++ * each name terminated with '\n'.
 + *
-+ * If there is a problem constructing the new sockaddr, set the address
-+ * family to AF_UNSPEC.
-+ */
-+void nfs_parse_ip_address(char *buf, size_t buflen,
-+			  struct sockaddr *sap, size_t *salenp)
-+{
-+	unsigned int i, colons;
++ * Returns positive length of the filled-in string on success; otherwise
++ * a negative errno value is returned if an error occurs.
+  */
+ int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
+ {
+ 	struct svc_xprt *xprt;
+-	char xprt_str[64];
+-	int totlen = 0;
+-	int len;
++	int len, totlen;
++	char *pos;
+ 
+ 	/* Sanity check args */
+ 	if (!serv)
+ 		return 0;
+ 
+ 	spin_lock_bh(&serv->sv_lock);
 +
-+	colons = 0;
-+	for (i = 0; i < buflen; i++)
-+		if (buf[i] == ':')
-+			colons++;
++	pos = buf;
++	totlen = 0;
+ 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
+-		len = snprintf(xprt_str, sizeof(xprt_str),
+-			       "%s %d\n", xprt->xpt_class->xcl_name,
+-			       svc_xprt_local_port(xprt));
+-		/* If the string was truncated, replace with error string */
+-		if (len >= sizeof(xprt_str))
+-			strcpy(xprt_str, "name-too-long\n");
+-		/* Don't overflow buffer */
+-		len = strlen(xprt_str);
+-		if (buflen && (len + totlen >= buflen))
++		len = svc_one_xprt_name(xprt, pos, buflen - totlen);
++		if (len < 0) {
++			*buf = '\0';
++			totlen = len;
++		}
++		if (len <= 0)
+ 			break;
+-		strcpy(buf+totlen, xprt_str);
 +
-+	if (colons >= 2)
-+		nfs_parse_ipv6_address(buf, buflen, sap, salenp);
-+	else
-+		nfs_parse_ipv4_address(buf, buflen, sap, salenp);
-+}
-+EXPORT_SYMBOL_GPL(nfs_parse_ip_address);
-diff --git a/include/linux/nfs_addr_parse.h b/include/linux/nfs_addr_parse.h
-new file mode 100644
-index 0000000..484f511
---- /dev/null
-+++ b/include/linux/nfs_addr_parse.h
-@@ -0,0 +1,32 @@
-+/*
-+ * include/linux/nfs_addr_parse.h
-+ *
-+ * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2 of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ */
++		pos += len;
+ 		totlen += len;
+ 	}
 +
-+#ifndef __LINUX_NFS_ADDR_PARSE_H
-+#define __LINUX_NFS_ADDR_PARSE_H
-+
-+#define IPV6_SCOPE_DELIMITER	'%'
-+
-+void		nfs_parse_ip_address(char *buf, size_t buflen,
-+					struct sockaddr *sap,
-+					size_t *salenp);
-+
-+#endif	/* __LINUX_NFS_ADDR_PARSE_H */
+ 	spin_unlock_bh(&serv->sv_lock);
+ 	return totlen;
+ }
 
