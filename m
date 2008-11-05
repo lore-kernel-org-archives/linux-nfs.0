@@ -1,65 +1,60 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/13] kernel server-side IPv6 support
-Date: Wed, 05 Nov 2008 12:28:21 -0500
-Message-ID: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
+Subject: [PATCH 01/13] lockd: Enable NLM use of AF_INET6
+Date: Wed, 05 Nov 2008 12:28:28 -0500
+Message-ID: <20081105172828.7330.81092.stgit@ingres.1015granger.net>
+References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:41575 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752379AbYKER2j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:28:39 -0500
+Received: from rgminet01.oracle.com ([148.87.113.118]:36481 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752423AbYKER2p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:28:45 -0500
+In-Reply-To: <20081105172351.7330.50739.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+If the kernel is configured to support IPv6 and the RPC server can register
+services via rpcbindv4, we are all set to enable IPv6 support for lockd.
 
-Here's the set of patches I've collected so far to enable IPv6 support
-in the kernel's lockd and NFSD implementation.  These require the NSM
-patches I just sent.
-
-Please review and test that IPv4 has not been perturbed.  I've done
-some testing for lockd already.  And, please consider these for 2.6.29.
-
-I will also push the full set up to git.linux-nfs.org later today.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Aime Le Rouzic <aime.le-rouzic@bull.net>
 ---
 
-Aime Le Rouzic (1):
-      NFSD: Support AF_INET6 in svc_addsock() function
+ fs/lockd/svc.c |   13 ++++++++++++-
+ 1 files changed, 12 insertions(+), 1 deletions(-)
 
-Chuck Lever (12):
-      NFSD: Enable NFS server use of AF_INET6
-      NFSD: Support IPv6 addresses in write_failover_ip()
-      NFS: Move NFS client's IP address parser to nfs_common/
-      SUNRPC: Clean up one_sock_name()
-      SUNRPC: Support AF_INET6 in one_sock_name()
-      SUNRPC: Switch one_sock_name() to use snprintf()
-      SUNRPC: pass buffer size to svc_addsock() and svc_sock_names()
-      NFSD: Prevent a buffer overflow in svc_xprt_names()
-      NFSD: Refactor __write_ports()
-      NFSD: Add helper functions for __write_ports()
-      NFSD: Add documenting comments for nfsctl interface
-      lockd: Enable NLM use of AF_INET6
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 50de426..582372d 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -53,6 +53,17 @@ static struct svc_rqst		*nlmsvc_rqst;
+ unsigned long			nlmsvc_timeout;
+ 
+ /*
++ * If the kernel has IPv6 support available, always listen for
++ * both AF_INET and AF_INET6 requests.
++ */
++#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
++	defined(CONFIG_SUNRPC_REGISTER_V4)
++static const sa_family_t	nlmsvc_family = AF_INET6;
++#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
++static const sa_family_t	nlmsvc_family = AF_INET;
++#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
++
++/*
+  * These can be set at insmod time (useful for NFS as root filesystem),
+  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
+  */
+@@ -250,7 +261,7 @@ int lockd_up(void)
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 
+ 	error = -ENOMEM;
+-	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, AF_INET, NULL);
++	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, nlmsvc_family, NULL);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		goto out;
 
-
- fs/lockd/svc.c                 |   13 +
- fs/nfs/internal.h              |    3 
- fs/nfs/nfs4namespace.c         |    2 
- fs/nfs/super.c                 |  121 -------
- fs/nfs_common/Makefile         |    1 
- fs/nfs_common/nfs_addr_parse.c |  155 +++++++++
- fs/nfsd/nfsctl.c               |  723 +++++++++++++++++++++++++++++++++-------
- fs/nfsd/nfssvc.c               |   13 +
- include/linux/nfs_addr_parse.h |   32 ++
- include/linux/sunrpc/svcsock.h |    6 
- net/sunrpc/svc_xprt.c          |   53 ++-
- net/sunrpc/svcsock.c           |   82 ++++-
- 12 files changed, 911 insertions(+), 293 deletions(-)
- create mode 100644 fs/nfs_common/nfs_addr_parse.c
- create mode 100644 include/linux/nfs_addr_parse.h
-
--- 
-Chuck Lever
