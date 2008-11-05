@@ -1,84 +1,157 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 03/12] lockd: fix nsm_unmonitor return value
-Date: Wed, 5 Nov 2008 17:14:03 -0500
-Message-ID: <F2834787-8C32-48D5-85D0-B539DDBFEDC2@oracle.com>
-References: <20081105172351.7330.50739.stgit@ingres.1015granger.net> <1225915611-2401-1-git-send-email-bfields@citi.umich.edu> <1225915611-2401-2-git-send-email-bfields@citi.umich.edu> <1225915611-2401-3-git-send-email-bfields@citi.umich.edu>
+Subject: Re: [PATCH 04/12] lockd: unmonitor only when last host goes away
+Date: Wed, 5 Nov 2008 17:22:45 -0500
+Message-ID: <C9907CEC-8E0B-4671-9758-55404AFBB73D@oracle.com>
+References: <20081105172351.7330.50739.stgit@ingres.1015granger.net> <1225915611-2401-1-git-send-email-bfields@citi.umich.edu> <1225915611-2401-2-git-send-email-bfields@citi.umich.edu> <1225915611-2401-3-git-send-email-bfields@citi.umich.edu> <1225915611-2401-4-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0 (Apple Message framework v929.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:16990 "EHLO
+Received: from agminet01.oracle.com ([141.146.126.228]:19068 "EHLO
 	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752392AbYKEWOL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 17:14:11 -0500
-In-Reply-To: <1225915611-2401-3-git-send-email-bfields@citi.umich.edu>
+	with ESMTP id S1752299AbYKEWWw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 17:22:52 -0500
+In-Reply-To: <1225915611-2401-4-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Nov 5, 2008, at 3:06 PM, J. Bruce Fields wrote:
-> Note that the only caller of nsm_unmonitor has no use for its return
-> value.
+> The sm_sticky logic seems racy;
 
-I noticed this too.
+Can you describe what races you suspect?
 
-It might be cleaner if we passed the nsm_handle by itself as the  
-argument to nsm_{un}monitor.  h_name actually points to the name in  
-the nsm_handle.
-
+> instead just unmonitor before destruction of handle.
 >
->
+> XXX: how to test?
+
+Would this allow the nsm_handle cache to grow large on long-running  
+hosts?
+
+Instead of sm_sticky, maybe we should put a "don't unmonitor" flag in  
+the nlm_host structure instead.
+
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > ---
-> fs/lockd/mon.c                 |    8 +++-----
-> include/linux/lockd/sm_inter.h |    2 +-
-> 2 files changed, 4 insertions(+), 6 deletions(-)
+> fs/lockd/host.c             |   24 ++++++++++++++++++++----
+> fs/lockd/mon.c              |   15 +--------------
+> fs/lockd/svcsubs.c          |    6 ------
+> include/linux/lockd/lockd.h |    3 +--
+> 4 files changed, 22 insertions(+), 26 deletions(-)
 >
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index 4e7e958..480f197 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -97,15 +97,14 @@ nsm_monitor(struct nlm_host *host)
-> /*
->  * Cease to monitor remote host
->  */
-> -int
-> -nsm_unmonitor(struct nlm_host *host)
-> +void nsm_unmonitor(struct nlm_host *host)
-> {
-> 	struct nsm_handle *nsm = host->h_nsmhandle;
-> 	struct nsm_res	res;
-> -	int		status = 0;
-> +	int		status;
->
-> 	if (nsm == NULL)
-> -		return 0;
-> +		return;
-> 	host->h_nsmhandle = NULL;
->
-> 	if (atomic_read(&nsm->sm_count) == 1
-> @@ -120,7 +119,6 @@ nsm_unmonitor(struct nlm_host *host)
-> 			nsm->sm_monitored = 0;
-> 	}
-> 	nsm_release(nsm);
-> -	return status;
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index e9069c2..1a1adb9 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -683,6 +683,10 @@ found:
+> 	return nsm;
 > }
 >
+> +
+> +/* XXX: */
+> +int nsm_mon_unmon(struct nsm_handle *, u32, struct nsm_res *);
+> +
 > /*
-> diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/ 
-> sm_inter.h
-> index 5a5448b..b069598 100644
-> --- a/include/linux/lockd/sm_inter.h
-> +++ b/include/linux/lockd/sm_inter.h
-> @@ -42,7 +42,7 @@ struct nsm_res {
+>  * Release an NSM handle
+>  */
+> @@ -691,9 +695,21 @@ nsm_release(struct nsm_handle *nsm)
+> {
+> 	if (!nsm)
+> 		return;
+> -	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
+> -		list_del(&nsm->sm_link);
+> -		spin_unlock(&nsm_lock);
+> -		kfree(nsm);
+> +	if (!atomic_dec_and_lock(&nsm->sm_count, &nsm_lock))
+> +		return;
+> +	list_del(&nsm->sm_link);
+> +	spin_unlock(&nsm_lock);
+> +	if (nsm->sm_monitored) {
+> +		struct nsm_res res;
+> +		int status;
+> +
+> +		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
+> +		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
+> +		if (status < 0)
+> +			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
+> +					nsm->sm_name);
+> +		else
+> +			nsm->sm_monitored = 0;
+> 	}
+> +	kfree(nsm);
+> }
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 480f197..8cc0e97 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -32,7 +32,7 @@ int				nsm_local_state;
+> /*
+>  * Common procedure for SM_MON/SM_UNMON calls
+>  */
+> -static int
+> +int
+> nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+> {
+> 	struct rpc_clnt	*clnt;
+
+>
+> @@ -100,24 +100,11 @@ nsm_monitor(struct nlm_host *host)
+> void nsm_unmonitor(struct nlm_host *host)
+> {
+> 	struct nsm_handle *nsm = host->h_nsmhandle;
+> -	struct nsm_res	res;
+> -	int		status;
+>
+> 	if (nsm == NULL)
+> 		return;
+> 	host->h_nsmhandle = NULL;
+>
+> -	if (atomic_read(&nsm->sm_count) == 1
+> -	 && nsm->sm_monitored && !nsm->sm_sticky) {
+> -		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
+> -
+> -		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
+> -		if (status < 0)
+> -			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
+> -					host->h_name);
+> -		else
+> -			nsm->sm_monitored = 0;
+> -	}
+> 	nsm_release(nsm);
+> }
+>
+> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> index 9c186f0..0296904 100644
+> --- a/fs/lockd/svcsubs.c
+> +++ b/fs/lockd/svcsubs.c
+> @@ -336,12 +336,6 @@ nlmsvc_is_client(void *data, struct nlm_host  
+> *dummy)
+> 	struct nlm_host *host = data;
+>
+> 	BUG_ON(!host->h_server);
+> -	/* we are destroying locks even though the client
+> -	 * hasn't asked us too, so don't unmonitor the
+> -	 * client
+> -	 */
+> -	if (host->h_nsmhandle)
+> -		host->h_nsmhandle->sm_sticky = 1;
+> 	return 1;
+>
+> }
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index b56d5aa..e1c2690 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -75,8 +75,7 @@ struct nsm_handle {
+> 	char *			sm_name;
+> 	struct sockaddr_storage	sm_addr;
+> 	size_t			sm_addrlen;
+> -	unsigned int		sm_monitored : 1,
+> -				sm_sticky : 1;	/* don't unmonitor */
+> +	unsigned int		sm_monitored : 1;
+> 	char			sm_addrbuf[48];	/* address eyecatcher */
 > };
 >
-> int		nsm_monitor(struct nlm_host *);
-> -int		nsm_unmonitor(struct nlm_host *);
-> +void		nsm_unmonitor(struct nlm_host *);
-> extern int	nsm_local_state;
->
-> #endif /* LINUX_LOCKD_SM_INTER_H */
 > -- 
 > 1.5.5.rc1
 >
