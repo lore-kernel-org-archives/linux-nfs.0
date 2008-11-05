@@ -1,147 +1,46 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/13] SUNRPC: pass buffer size to svc_addsock() and
-	svc_sock_names()
-Date: Wed, 05 Nov 2008 12:29:06 -0500
-Message-ID: <20081105172906.7330.36974.stgit@ingres.1015granger.net>
+Subject: [PATCH 08/13] SUNRPC: Support AF_INET6 in one_sock_name()
+Date: Wed, 05 Nov 2008 12:29:21 -0500
+Message-ID: <20081105172921.7330.75374.stgit@ingres.1015granger.net>
 References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:42046 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752621AbYKERaJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:30:09 -0500
+Received: from rgminet01.oracle.com ([148.87.113.118]:36947 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752826AbYKERaT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:30:19 -0500
 In-Reply-To: <20081105172351.7330.50739.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pass the size of the output buffer to the RPC functions that construct
-the list of socket names in that buffer.  Add documenting comments to
-these functions.
-
-This is a cosmetic change for now.  A subsequent patch will make sure
-the buffer length is passed to one_sock_name(), where the length will
-actually be useful.
+Add an arm to the switch statement in svc_one_sock_name() so it can
+construct the name of PF_INET6 sockets properly.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c               |   12 ++++++++----
- include/linux/sunrpc/svcsock.h |    6 ++++--
- net/sunrpc/svcsock.c           |   34 +++++++++++++++++++++++++++++-----
- 3 files changed, 41 insertions(+), 11 deletions(-)
+ net/sunrpc/svcsock.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 22fc8e5..19db9f4 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -898,7 +898,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
- static ssize_t __write_ports_addfd(char *buf, size_t size)
- {
- 	char *mesg = buf;
--	int fd, err;
-+	int fd, err, len;
- 
- 	err = get_int(&mesg, &fd);
- 	if (err || fd < 0)
-@@ -908,13 +908,16 @@ static ssize_t __write_ports_addfd(char *buf, size_t size)
- 	if (err)
- 		return err;
- 
--	err = svc_addsock(nfsd_serv, fd, buf);
-+	len = SIMPLE_TRANSACTION_LIMIT;
-+	err = svc_addsock(nfsd_serv, fd, buf, len);
- 	if (err < 0)
- 		return err;
-+	len -= err;
- 
- 	err = lockd_up();
- 	if (err < 0)
--		svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
-+		svc_sock_names(nfsd_serv, buf + strlen(buf) + 1,
-+				len - strlen(buf) - 1, buf);
- 
- 	/* Decrease the count, but don't shut down the the service */
- 	nfsd_serv->sv_nrthreads--;
-@@ -935,7 +938,8 @@ static ssize_t __write_ports_delfd(char *buf, size_t size)
- 		return -ENOMEM;
- 
- 	if (nfsd_serv)
--		len = svc_sock_names(buf, nfsd_serv, toclose);
-+		len = svc_sock_names(nfsd_serv, buf,
-+					SIMPLE_TRANSACTION_LIMIT, toclose);
- 	if (len >= 0)
- 		lockd_down();
- 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 483e103..f57ce85 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -38,8 +38,10 @@ int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
--int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
--int		svc_addsock(struct svc_serv *serv, int fd, char *name_return);
-+int		svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
-+					char *toclose);
-+int		svc_addsock(struct svc_serv *serv, int fd, char *name_return,
-+					size_t len);
- void		svc_init_xprt_sock(void);
- void		svc_cleanup_xprt_sock(void);
- 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 95293f5..ee42edd 100644
+index db5eb7d..98cee11 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -263,8 +263,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
- 	return len;
- }
- 
--int
--svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
-+/**
-+ * svc_sock_names - construct a list of listener names in a string
-+ * @serv: pointer to RPC service
-+ * @buf: pointer to a buffer to fill in with socket names
-+ * @buflen: size of the buffer to be filled
-+ * @toclose: pointer to '\0'-terminated C string containing the name
-+ *		of a listener to be closed
-+ *
-+ * Fills in @buf with a '\n'-separated list of names of listener
-+ * sockets.  If @toclose is not NULL, the socket named by @toclose
-+ * is closed, and is not included in the output list.
-+ *
-+ * Returns positive length of the socket name string, or a negative
-+ * errno value on error.
-+ */
-+int svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
-+		   char *toclose)
- {
- 	struct svc_sock *svsk, *closesk = NULL;
- 	int len = 0;
-@@ -1165,9 +1180,18 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	return svsk;
- }
- 
--int svc_addsock(struct svc_serv *serv,
--		int fd,
--		char *name_return)
-+/**
-+ * svc_addsock - add a listener socket to an RPC service
-+ * @serv: pointer to RPC service to which to add a new listener
-+ * @fd: file descriptor of the new listener
-+ * @name_return: pointer to buffer to pass back name of listener
-+ * @len: size of the buffer
-+ *
-+ * Fills in socket name and returns positive length of name if successful.
-+ * Name is terminated with '\n'.  On error, returns a negative errno
-+ * value.
-+ */
-+int svc_addsock(struct svc_serv *serv, int fd, char *name_return, size_t len)
- {
- 	int err = 0;
- 	struct socket *so = sockfd_lookup(fd, &err);
+@@ -256,6 +256,13 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
+ 			      NIPQUAD(inet_sk(svsk->sk_sk)->rcv_saddr),
+ 			      inet_sk(svsk->sk_sk)->num);
+ 		break;
++	case AF_INET6:
++		len = snprintf(buf, remaining, "ipv6 %s " NIP6_FMT " %d\n",
++				svsk->sk_sk->sk_protocol == IPPROTO_UDP ?
++				"udp" : "tcp",
++				NIP6(inet6_sk(svsk->sk_sk)->rcv_saddr),
++				inet_sk(svsk->sk_sk)->num);
++		break;
+ 	default:
+ 		len = snprintf(buf, remaining, "*unknown-%d*\n",
+ 			       svsk->sk_sk->sk_family);
 
