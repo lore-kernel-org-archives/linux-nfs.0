@@ -1,86 +1,146 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 10/12] lockd: move immediate host expiry into separate function
-Date: Wed,  5 Nov 2008 15:06:49 -0500
-Message-ID: <1225915611-2401-10-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 04/12] lockd: unmonitor only when last host goes away
+Date: Wed,  5 Nov 2008 15:06:43 -0500
+Message-ID: <1225915611-2401-4-git-send-email-bfields@citi.umich.edu>
 References: <20081105172351.7330.50739.stgit@ingres.1015granger.net>
  <1225915611-2401-1-git-send-email-bfields@citi.umich.edu>
  <1225915611-2401-2-git-send-email-bfields@citi.umich.edu>
  <1225915611-2401-3-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-4-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-5-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-6-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-7-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-8-git-send-email-bfields@citi.umich.edu>
- <1225915611-2401-9-git-send-email-bfields@citi.umich.edu>
 Cc: linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:39501 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:39489 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757577AbYKEUG4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2008 15:06:56 -0500
-In-Reply-To: <1225915611-2401-9-git-send-email-bfields@citi.umich.edu>
+	id S1757500AbYKEUGz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2008 15:06:55 -0500
+In-Reply-To: <1225915611-2401-3-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This code will later be shared.
+The sm_sticky logic seems racy; instead just unmonitor before
+destruction of handle.
+
+XXX: how to test?
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/lockd/host.c |   27 ++++++++++++++++-----------
- 1 files changed, 16 insertions(+), 11 deletions(-)
+ fs/lockd/host.c             |   24 ++++++++++++++++++++----
+ fs/lockd/mon.c              |   15 +--------------
+ fs/lockd/svcsubs.c          |    6 ------
+ include/linux/lockd/lockd.h |    3 +--
+ 4 files changed, 22 insertions(+), 26 deletions(-)
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index fa006af..588017f 100644
+index e9069c2..1a1adb9 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -593,29 +593,34 @@ static void warn_host_leak(struct host_table *table)
- 	}
+@@ -683,6 +683,10 @@ found:
+ 	return nsm;
  }
  
--/*
-- * Shut down the hosts module.
-- * Note that this routine is called only at server shutdown time.
-- */
--void
--nlm_shutdown_hosts(void)
-+static void expire_hosts(struct host_table *table)
++
++/* XXX: */
++int nsm_mon_unmon(struct nsm_handle *, u32, struct nsm_res *);
++
+ /*
+  * Release an NSM handle
+  */
+@@ -691,9 +695,21 @@ nsm_release(struct nsm_handle *nsm)
  {
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
- 	struct nlm_host	*host;
- 
--	dprintk("lockd: shutting down host module\n");
--	mutex_lock(&nlm_hosts.ht_mutex);
--
--	/* First, make all hosts eligible for gc */
- 	dprintk("lockd: nuking all hosts...\n");
--	for_each_host(host, pos, chain, &nlm_hosts) {
-+	for_each_host(host, pos, chain, table) {
- 		host->h_expires = jiffies - 1;
- 		if (host->h_rpcclnt) {
- 			rpc_shutdown_client(host->h_rpcclnt);
- 			host->h_rpcclnt = NULL;
- 		}
+ 	if (!nsm)
+ 		return;
+-	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
+-		list_del(&nsm->sm_link);
+-		spin_unlock(&nsm_lock);
+-		kfree(nsm);
++	if (!atomic_dec_and_lock(&nsm->sm_count, &nsm_lock))
++		return;
++	list_del(&nsm->sm_link);
++	spin_unlock(&nsm_lock);
++	if (nsm->sm_monitored) {
++		struct nsm_res res;
++		int status;
++
++		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
++		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
++		if (status < 0)
++			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
++					nsm->sm_name);
++		else
++			nsm->sm_monitored = 0;
  	}
-+}
-+
-+/*
-+ * Shut down the hosts module.
-+ * Note that this routine is called only at server shutdown time.
-+ */
-+void
-+nlm_shutdown_hosts(void)
-+{
-+	dprintk("lockd: shutting down host module\n");
-+	mutex_lock(&nlm_hosts.ht_mutex);
-+
-+	/* First, make all hosts eligible for gc */
-+	expire_hosts(&nlm_hosts);
++	kfree(nsm);
+ }
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 480f197..8cc0e97 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -32,7 +32,7 @@ int				nsm_local_state;
+ /*
+  * Common procedure for SM_MON/SM_UNMON calls
+  */
+-static int
++int
+ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+ {
+ 	struct rpc_clnt	*clnt;
+@@ -100,24 +100,11 @@ nsm_monitor(struct nlm_host *host)
+ void nsm_unmonitor(struct nlm_host *host)
+ {
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+-	struct nsm_res	res;
+-	int		status;
  
- 	/* Then, perform a garbage collection pass */
- 	nlm_gc_hosts();
+ 	if (nsm == NULL)
+ 		return;
+ 	host->h_nsmhandle = NULL;
+ 
+-	if (atomic_read(&nsm->sm_count) == 1
+-	 && nsm->sm_monitored && !nsm->sm_sticky) {
+-		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
+-
+-		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
+-		if (status < 0)
+-			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
+-					host->h_name);
+-		else
+-			nsm->sm_monitored = 0;
+-	}
+ 	nsm_release(nsm);
+ }
+ 
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index 9c186f0..0296904 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -336,12 +336,6 @@ nlmsvc_is_client(void *data, struct nlm_host *dummy)
+ 	struct nlm_host *host = data;
+ 
+ 	BUG_ON(!host->h_server);
+-	/* we are destroying locks even though the client
+-	 * hasn't asked us too, so don't unmonitor the
+-	 * client
+-	 */
+-	if (host->h_nsmhandle)
+-		host->h_nsmhandle->sm_sticky = 1;
+ 	return 1;
+ 
+ }
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index b56d5aa..e1c2690 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -75,8 +75,7 @@ struct nsm_handle {
+ 	char *			sm_name;
+ 	struct sockaddr_storage	sm_addr;
+ 	size_t			sm_addrlen;
+-	unsigned int		sm_monitored : 1,
+-				sm_sticky : 1;	/* don't unmonitor */
++	unsigned int		sm_monitored : 1;
+ 	char			sm_addrbuf[48];	/* address eyecatcher */
+ };
+ 
 -- 
 1.5.5.rc1
 
