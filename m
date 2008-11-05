@@ -1,126 +1,88 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 07/12] lockd: reorganize nlm_host_rebooted
-Date: Wed, 5 Nov 2008 17:29:35 -0500
-Message-ID: <4F527BA5-1366-49A7-B4AD-F34BC358F8E7@oracle.com>
-References: <20081105172351.7330.50739.stgit@ingres.1015granger.net> <1225915611-2401-1-git-send-email-bfields@citi.umich.edu> <1225915611-2401-2-git-send-email-bfields@citi.umich.edu> <1225915611-2401-3-git-send-email-bfields@citi.umich.edu> <1225915611-2401-4-git-send-email-bfields@citi.umich.edu> <1225915611-2401-5-git-send-email-bfields@citi.umich.edu> <1225915611-2401-6-git-send-email-bfields@citi.umich.edu> <1225915611-2401-7-git-send-email-bfields@citi.umich.edu>
+Subject: Re: [PATCH 10/12] lockd: move immediate host expiry into separate function
+Date: Wed, 5 Nov 2008 17:33:31 -0500
+Message-ID: <C938CDFE-34D6-4561-AB65-BAB9A24363A4@oracle.com>
+References: <20081105172351.7330.50739.stgit@ingres.1015granger.net> <1225915611-2401-1-git-send-email-bfields@citi.umich.edu> <1225915611-2401-2-git-send-email-bfields@citi.umich.edu> <1225915611-2401-3-git-send-email-bfields@citi.umich.edu> <1225915611-2401-4-git-send-email-bfields@citi.umich.edu> <1225915611-2401-5-git-send-email-bfields@citi.umich.edu> <1225915611-2401-6-git-send-email-bfields@citi.umich.edu> <1225915611-2401-7-git-send-email-bfields@citi.umich.edu> <1225915611-2401-8-git-send-email-bfields@citi.umich.edu> <1225915611-2401-9-git-send-email-bfields@citi.umich.edu> <1225915611-2401-10-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0 (Apple Message framework v929.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:15720 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750887AbYKEW3k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 17:29:40 -0500
-In-Reply-To: <1225915611-2401-7-git-send-email-bfields@citi.umich.edu>
+Received: from acsinet12.oracle.com ([141.146.126.234]:50553 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751866AbYKEWdl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 17:33:41 -0500
+In-Reply-To: <1225915611-2401-10-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Not that this is a performance-critical path...
+
+But it might be cleaner to create a helper that garbage collects a  
+single host, and then call that routine from a loop in both  
+nlm_shutdown_hosts() and nlm_gc_hosts(), instead of using a two pass  
+shutdown.
+
 On Nov 5, 2008, at 3:06 PM, J. Bruce Fields wrote:
-> Minor reorganization; no change in behavior.  This will save some
-> duplicated code after we split apart the client and server host lists.
+
+> This code will later be shared.
 >
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > ---
-> fs/lockd/host.c |   59 ++++++++++++++++++++++++++++++ 
-> +-----------------------
-> 1 files changed, 34 insertions(+), 25 deletions(-)
+> fs/lockd/host.c |   27 ++++++++++++++++-----------
+> 1 files changed, 16 insertions(+), 11 deletions(-)
 >
 > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 1b90b49..bb3bf36 100644
+> index fa006af..588017f 100644
 > --- a/fs/lockd/host.c
 > +++ b/fs/lockd/host.c
-> @@ -482,6 +482,31 @@ void nlm_release_host(struct nlm_host *host)
+> @@ -593,29 +593,34 @@ static void warn_host_leak(struct host_table  
+> *table)
 > 	}
 > }
 >
-> +static struct nlm_host *next_host_state(struct host_table *table,
-> +				struct nsm_handle *nsm,
-> +				u32 new_state)
-> +{
-> +	struct hlist_head *chain;
-> +	struct hlist_node *pos;
-> +	struct nlm_host *host = NULL;
-> +
-> +	mutex_lock(&table->ht_mutex);
-> +	for_each_host(host, pos, chain, table) {
-> +		if (host->h_nsmhandle == nsm
-> +				&& host->h_nsmstate != new_state) {
-> +			host->h_nsmstate = new_state;
-> +			host->h_state++;
-> +
-> +			nlm_get_host(host);
-> +			mutex_unlock(&table->ht_mutex);
-> +			goto out;
-
-If you exit here, you end up calling mutex_unlock() twice.  Instead of  
-"goto out;", you could just "return host;"
-
->
-> +		}
-> +	}
-> +out:
-> +	mutex_unlock(&table->ht_mutex);
-> +	return host;
-> +}
->
-> +
-> /*
->  * We were notified that the host indicated by address &sin
->  * has rebooted.
-> @@ -492,8 +517,6 @@ void nlm_host_rebooted(const struct sockaddr_in  
-> *sin,
-> 				unsigned int hostname_len,
-> 				u32 new_state)
+> -/*
+> - * Shut down the hosts module.
+> - * Note that this routine is called only at server shutdown time.
+> - */
+> -void
+> -nlm_shutdown_hosts(void)
+> +static void expire_hosts(struct host_table *table)
 > {
-> -	struct hlist_head *chain;
-> -	struct hlist_node *pos;
-> 	struct nsm_handle *nsm;
+> 	struct hlist_head *chain;
+> 	struct hlist_node *pos;
 > 	struct nlm_host	*host;
 >
-> @@ -517,31 +540,17 @@ void nlm_host_rebooted(const struct  
-> sockaddr_in *sin,
-> 	 * lock for this.
-> 	 * To avoid processing a host several times, we match the nsmstate.
-> 	 */
-> -again:	mutex_lock(&nlm_hosts.ht_mutex);
+> -	dprintk("lockd: shutting down host module\n");
+> -	mutex_lock(&nlm_hosts.ht_mutex);
+> -
+> -	/* First, make all hosts eligible for gc */
+> 	dprintk("lockd: nuking all hosts...\n");
 > -	for_each_host(host, pos, chain, &nlm_hosts) {
-> -		if (host->h_nsmhandle == nsm
-> -		 && host->h_nsmstate != new_state) {
-> -			host->h_nsmstate = new_state;
-> -			host->h_state++;
-> -
-> -			nlm_get_host(host);
-> -			mutex_unlock(&nlm_hosts.ht_mutex);
-> -
-> -			if (host->h_server) {
-> -				/* We're server for this guy, just ditch
-> -				 * all the locks he held. */
-> -				nlmsvc_free_host_resources(host);
-> -			} else {
-> -				/* He's the server, initiate lock recovery. */
-> -				nlmclnt_recovery(host);
-> -			}
-> -
-> -			nlm_release_host(host);
-> -			goto again;
-> +	while ((host = next_host_state(&nlm_hosts, nsm, new_state)) !=  
-> NULL) {
-> +		if (host->h_server) {
-> +			/* We're server for this guy, just ditch
-> +			 * all the locks he held. */
-> +			nlmsvc_free_host_resources(host);
-> +		} else {
-> +			/* He's the server, initiate lock recovery. */
-> +			nlmclnt_recovery(host);
+> +	for_each_host(host, pos, chain, table) {
+> 		host->h_expires = jiffies - 1;
+> 		if (host->h_rpcclnt) {
+> 			rpc_shutdown_client(host->h_rpcclnt);
+> 			host->h_rpcclnt = NULL;
 > 		}
-> +		nlm_release_host(host);
 > 	}
-> -
-> -	mutex_unlock(&nlm_hosts.ht_mutex);
-> }
+> +}
+> +
+> +/*
+> + * Shut down the hosts module.
+> + * Note that this routine is called only at server shutdown time.
+> + */
+> +void
+> +nlm_shutdown_hosts(void)
+> +{
+> +	dprintk("lockd: shutting down host module\n");
+> +	mutex_lock(&nlm_hosts.ht_mutex);
+> +
+> +	/* First, make all hosts eligible for gc */
+> +	expire_hosts(&nlm_hosts);
 >
-> /*
+> 	/* Then, perform a garbage collection pass */
+> 	nlm_gc_hosts();
 > -- 
 > 1.5.5.rc1
 >
