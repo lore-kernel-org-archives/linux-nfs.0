@@ -1,106 +1,115 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/18] NSM: Move NSM-related function and variable
-	declarations to lockd.h
-Date: Wed, 05 Nov 2008 12:20:05 -0500
-Message-ID: <20081105172005.6773.74231.stgit@ingres.1015granger.net>
+Subject: [PATCH 15/18] NLM: Remove "create" argument from nsm_find()
+Date: Wed, 05 Nov 2008 12:21:11 -0500
+Message-ID: <20081105172111.6773.80023.stgit@ingres.1015granger.net>
 References: <20081105171300.6773.40121.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:34378 "EHLO
+Received: from rgminet01.oracle.com ([148.87.113.118]:34398 "EHLO
 	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752669AbYKERVb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:21:31 -0500
+	with ESMTP id S1752857AbYKERVd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 12:21:33 -0500
 In-Reply-To: <20081105171300.6773.40121.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Keep the NSM function declarations together with the
-declarations already in lockd.h, and modernize the documenting
-comments.
+Clean up: nsm_find() now has only one caller, and that caller
+unconditionally sets the @create argument. Thus the @create
+argument is no longer needed.
+
+Since nsm_find() now has a more specific purpose, pick a more
+appropriate name for it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c                 |   18 ++++++++++--------
- include/linux/lockd/lockd.h    |    4 ++++
- include/linux/lockd/sm_inter.h |    4 ----
- 3 files changed, 14 insertions(+), 12 deletions(-)
+ fs/lockd/host.c             |    4 ++--
+ fs/lockd/mon.c              |   23 +++++++++--------------
+ include/linux/lockd/lockd.h |    6 +++---
+ 3 files changed, 14 insertions(+), 19 deletions(-)
 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index ad2347b..bda5f9e 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -204,8 +204,8 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 		atomic_inc(&nsm->sm_count);
+ 	else {
+ 		host = NULL;
+-		nsm = nsm_find(ni->sap, ni->salen,
+-				ni->hostname, ni->hostname_len, 1);
++		nsm = nsm_get_handle(ni->sap, ni->salen,
++					ni->hostname, ni->hostname_len);
+ 		if (!nsm) {
+ 			dprintk("lockd: nlm_lookup_host failed; "
+ 				"no nsm handle\n");
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 9c9406d..4ffd556 100644
+index 6c5d918..7d80c56 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -93,11 +93,12 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- 	return status;
+@@ -235,24 +235,22 @@ static void nsm_init_private(struct nsm_handle *nsm)
  }
  
--/*
-- * Set up monitoring of a remote host
-+/**
-+ * nsm_monitor - Set up monitoring of a remote host
-+ * @host: pointer to nlm_host of peer to start monitoring
-+ *
+ /**
+- * nsm_find - Find or create a cached nsm_handle
++ * nsm_get_handle - Find or create a cached nsm_handle
+  * @sap: pointer to socket address of handle to find
+  * @salen: length of socket address
+  * @hostname: pointer to C string containing hostname to find
+  * @hostname_len: length of C string
+- * @create: one means create new handle if not found in cache
+  *
+- * Behavior is modulated by the global nsm_use_hostnames variable
+- * and by the @create argument.
++ * Behavior is modulated by the global nsm_use_hostnames variable.
+  *
+- * Returns a cached nsm_handle after bumping its ref count, or if
+- * @create is set, returns a fresh nsm_handle if a handle that
+- * matches @sap and/or @hostname cannot be found in the handle cache.
+- * Returns NULL if an error occurs.
++ * Returns a cached nsm_handle after bumping its ref count, or
++ * returns a fresh nsm_handle if a handle that matches @sap and/or
++ * @hostname cannot be found in the handle cache.  Returns NULL if
++ * an error occurs.
   */
--int
--nsm_monitor(struct nlm_host *host)
-+int nsm_monitor(struct nlm_host *host)
+-struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+-			    const char *hostname, const size_t hostname_len,
+-			    const int create)
++struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
++				  const size_t salen, const char *hostname,
++				  const size_t hostname_len)
  {
- 	struct nsm_handle *nsm = host->h_nsmhandle;
- 	struct nsm_res	res;
-@@ -118,11 +119,12 @@ nsm_monitor(struct nlm_host *host)
- 	return status;
- }
+ 	struct nsm_handle *nsm = NULL;
+ 	struct nsm_handle *pos;
+@@ -298,9 +296,6 @@ retry:
  
--/*
-- * Cease to monitor remote host
-+/**
-+ * nsm_unmonitor - Cease to monitor remote host
-+ * @host: pointer to nlm_host of peer to stop monitoring
-+ *
-  */
--int
--nsm_unmonitor(struct nlm_host *host)
-+int nsm_unmonitor(struct nlm_host *host)
- {
- 	struct nsm_handle *nsm = host->h_nsmhandle;
- 	struct nsm_res	res;
+ 	spin_unlock(&nsm_lock);
+ 
+-	if (!create)
+-		return NULL;
+-
+ 	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+ 	if (nsm == NULL)
+ 		return NULL;
 diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 34f0101..d8fa8d3 100644
+index 09a600e..ad1f848 100644
 --- a/include/linux/lockd/lockd.h
 +++ b/include/linux/lockd/lockd.h
-@@ -200,7 +200,9 @@ extern struct svc_procedure	nlmsvc_procedures4[];
- #endif
- extern int			nlmsvc_grace_period;
- extern unsigned long		nlmsvc_timeout;
-+
- extern int			nsm_use_hostnames;
-+extern int			nsm_local_state;
- 
+@@ -244,10 +244,10 @@ void		  nlm_host_rebooted(struct nlm_reboot *);
  /*
-  * Lockd client functions
-@@ -247,6 +249,8 @@ struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
- 					const size_t hostname_len,
- 					const int create);
+  * Host monitoring
+  */
+-struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
++struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
++					const size_t salen,
+ 					const char *hostname,
+-					const size_t hostname_len,
+-					const int create);
++					const size_t hostname_len);
  void		  nsm_release(struct nsm_handle *nsm);
-+int		  nsm_monitor(struct nlm_host *host);
-+int		  nsm_unmonitor(struct nlm_host *host);
- 
- /*
-  * This is used in garbage collection and resource reclaim
-diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
-index 5a5448b..f75d3ea 100644
---- a/include/linux/lockd/sm_inter.h
-+++ b/include/linux/lockd/sm_inter.h
-@@ -41,8 +41,4 @@ struct nsm_res {
- 	u32		state;
- };
- 
--int		nsm_monitor(struct nlm_host *);
--int		nsm_unmonitor(struct nlm_host *);
--extern int	nsm_local_state;
--
- #endif /* LINUX_LOCKD_SM_INTER_H */
+ int		  nsm_monitor(struct nlm_host *host);
+ int		  nsm_unmonitor(struct nlm_host *host);
 
