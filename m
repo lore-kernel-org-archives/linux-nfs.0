@@ -1,145 +1,225 @@
-From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
-Subject: Re: gssapi and nfs4
-Date: Wed, 05 Nov 2008 00:25:29 -0500
-Message-ID: <1225862729.13506.8.camel@pc.interlinx.bc.ca>
-References: <1225813410.2247.279.camel@brian-laptop>
-	 <89c397150811041000l93b9831w1e8dce2175c6d51f@mail.gmail.com>
-	 <1225824797.2247.345.camel@brian-laptop>
-	 <20081104224817.GB16121@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: nfs41: sunrpc: handle clnt==NULL in call_status
+Date: Wed, 05 Nov 2008 15:12:40 +0200
+Message-ID: <49119BC8.7020701@panasas.com>
+References: <273FE88A07F5D445824060902F70034402974728@SACMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-nmHEMhDRFK0iWtxrK+r7"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from server.klug.on.ca ([205.189.48.131]:1848 "EHLO
-	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750806AbYKEFZk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 00:25:40 -0500
-Received: from linux.interlinx.bc.ca (d193-213-184.home3.cgocable.net [67.193.213.184])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by server.klug.on.ca (Postfix) with ESMTP id 89E712803
-	for <linux-nfs@vger.kernel.org>; Wed,  5 Nov 2008 00:25:38 -0500 (EST)
-Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id 69F45800A
-	for <linux-nfs@vger.kernel.org>; Wed,  5 Nov 2008 00:25:34 -0500 (EST)
-In-Reply-To: <20081104224817.GB16121@fieldses.org>
+Received: from gw-ca.panasas.com ([66.104.249.162]:23635 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751480AbYKENMp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2008 08:12:45 -0500
+In-Reply-To: <273FE88A07F5D445824060902F70034402974728-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Nov. 04, 2008, 23:24 +0200, "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com> wrote:
+>> -----Original Message-----
+>> From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+>> Sent: Tuesday, November 04, 2008 10:19 AM
+>> To: Benny Halevy
+>> Cc: pNFS Mailing List; NFS list
+>> Subject: Re: nfs41: sunrpc: handle clnt==NULL in call_status
+>>
+>> On Tue, 2008-11-04 at 17:52 +0200, Benny Halevy wrote:
+>>> On the following error path task->tk_client == NULL causing NULL
+> deref:
+>>> Nov  4 14:14:32 tl1 kernel: Callback slot table overflowed
+>>> Nov  4 14:14:32 tl1 kernel: BUG: unable to handle kernel NULL
+> pointer
+>> dereference at 0000000000000078
+>>> Nov  4 14:14:32 tl1 kernel: IP: [<ffffffffa02b4dd2>]
+>> call_status+0xe1/0x145 [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: PGD 2f973067 PUD 2f974067 PMD 0
+>>> Nov  4 14:14:32 tl1 kernel: Oops: 0000 [1] SMP
+>>> Nov  4 14:14:32 tl1 kernel: CPU 0
+>>> Nov  4 14:14:32 tl1 kernel: Modules linked in: panfs(P)
+> panlayoutdriver
+>> nfslayoutdriver nfsd auth_rpcgss exportfs nfs lockd nfs_acl fuse
+> sunrpc
+>> ipv6 cpufreq_ondemand powernow_k8 freq_table dm_mirror dm_log
+> dm_multipath
+>> dm_mod snd_hda_intel snd_seq_dummy sr_mod snd_seq_oss cdrom
+>> snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss
+>> snd_pcm snd_timer snd_page_alloc snd_hwdep snd pcspkr serio_raw k8temp
+>> hwmon forcedeth soundcore pata_amd sg jedec_probe cfi_probe gen_probe
+> mtd
+>> i2c_nforce2 chipreg i2c_core button map_funcs sata_nv ata_generic
+>> pata_acpi libata sd_mod scsi_mod ext3 jbd mbcache uhci_hcd ohci_hcd
+>> ehci_hcd [last unloaded: scsi_wait_scan]
+>>> Nov  4 14:14:32 tl1 kernel: Pid: 3405, comm: nfsv4.1-svc Tainted: P
+>> 2.6.27-pnfs #1
+>>> Nov  4 14:14:32 tl1 kernel: RIP: 0010:[<ffffffffa02b4dd2>]
+>> [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: RSP: 0018:ffff88002a70bd60  EFLAGS:
+> 00010246
+>>> Nov  4 14:14:32 tl1 kernel: RAX: 0000000000000000 RBX:
+> 00000000ffffff95
+>> RCX: 0000000000000000
+>>> Nov  4 14:14:32 tl1 kernel: RDX: ffff88002a70bd10 RSI:
+> ffff88002fc52dc0
+>> RDI: ffff88002fc52dc0
+>>> Nov  4 14:14:32 tl1 kernel: RBP: ffff88002a70bd80 R08:
+> ffff88002f9dae40
+>> R09: ffffffff81489e60
+>>> Nov  4 14:14:32 tl1 kernel: R10: ffff880038497800 R11:
+> ffff88002a70bd30
+>> R12: ffff88002fc52dc0
+>>> Nov  4 14:14:32 tl1 kernel: R13: 0000000000000000 R14:
+> ffff88002f57fa00
+>> R15: ffff88002fc52e50
+>>> Nov  4 14:14:32 tl1 kernel: FS:  00007fe78ffac6f0(0000)
+>> GS:ffffffff8148da80(0000) knlGS:0000000000000000
+>>> Nov  4 14:14:32 tl1 kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
+>> 000000008005003b
+>>> Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078 CR3:
+> 000000002f971000
+>> CR4: 00000000000006e0
+>>> Nov  4 14:14:32 tl1 kernel: DR0: 0000000000000000 DR1:
+> 0000000000000000
+>> DR2: 0000000000000000
+>>> Nov  4 14:14:32 tl1 kernel: DR3: 0000000000000000 DR6:
+> 00000000ffff0ff0
+>> DR7: 0000000000000400
+>>> Nov  4 14:14:32 tl1 kernel: Process nfsv4.1-svc (pid: 3405,
+> threadinfo
+>> ffff88002a70a000, task ffff88003694d900)
+>>> Nov  4 14:14:32 tl1 kernel: Stack:  0000000000000000
+> ffff88002f57fa00
+>> ffff88002fc52dc0 ffff880030450ce8
+>>> Nov  4 14:14:32 tl1 kernel: ffff88002a70bdc0 ffffffffa02bb9db
+>> ffff88002a70bdf0 ffff88002fc52dc0
+>>> Nov  4 14:14:32 tl1 kernel: ffff88002f57fa00 ffff88002f57fa00
+>> ffff880030450ce8 ffff88002a734000
+>>> Nov  4 14:14:32 tl1 kernel: Call Trace:
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bb9db>]
+>> __rpc_execute+0x7e/0x21f [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bbba4>]
+> rpc_execute+0x28/0x2c
+>> [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02b5596>]
+>> rpc_run_bc_task+0x88/0xae [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02c923d>] bc_send+0x35/0x5a
+>> [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bdc92>]
+>> bc_svc_process+0xf6/0x101 [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff81048a6c>] ?
+>> prepare_to_wait+0x5c/0x65
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a4c9>]
+>> nfs41_callback_svc+0xda/0x131 [nfs]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff810488a0>] ?
+>> autoremove_wake_function+0x0/0x38
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a3ef>] ?
+>> nfs41_callback_svc+0x0/0x131 [nfs]
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff81048561>] kthread+0x49/0x76
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf49>] child_rip+0xa/0x11
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff8102a401>] ?
+>> pick_next_task_fair+0x93/0xa3
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff81048518>] ? kthread+0x0/0x76
+>>> Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf3f>] ?
+> child_rip+0x0/0x11
+>>> Nov  4 14:14:32 tl1 kernel:
+>>> Nov  4 14:14:32 tl1 kernel:
+>>> Nov  4 14:14:32 tl1 kernel: Code: e8 7c 70 00 00 49 8b 44 24 20 49
+> c7 44
+>> 24 68 dc 48 2b a0 f6 40 78 02 74 6d 41 8b b6 34 01 00 00 48 8b 78 30
+> e8 b9
+>> 2a 00 00 eb 5b <41> f6 45 78 04 74 13 49 8b 55 30 48 8d 82 80 04 00 00
+> f0
+>> 80 a2
+>>> Nov  4 14:14:32 tl1 kernel: RIP  [<ffffffffa02b4dd2>]
+>> call_status+0xe1/0x145 [sunrpc]
+>>> Nov  4 14:14:32 tl1 kernel: RSP <ffff88002a70bd60>
+>>> Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078
+>>> Nov  4 14:14:32 tl1 kernel: ---[ end trace 1584c489f2573aaf ]---
+>>>
+>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>> ---
+>>>
+>>> Trond, I'm not sure if this can happen without nfs41.
+>>> However, please consider this patch for upstream since
+>>> it is safe to do in any case.
+>>>
+>>> Benny
+>>>
+>>>  net/sunrpc/clnt.c |    8 +++++---
+>>>  1 files changed, 5 insertions(+), 3 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>> index 78fc483..b555d9f 100644
+>>> --- a/net/sunrpc/clnt.c
+>>> +++ b/net/sunrpc/clnt.c
+>>> @@ -1206,7 +1206,8 @@ call_status(struct rpc_task *task)
+>>>  		break;
+>>>  	case -ECONNREFUSED:
+>>>  	case -ENOTCONN:
+>>> -		rpc_force_rebind(clnt);
+>>> +		if (clnt)
+>>> +			rpc_force_rebind(clnt);
+>>>  		task->tk_action = call_bind;
+>>>  		break;
+>>>  	case -EAGAIN:
+>>> @@ -1217,9 +1218,10 @@ call_status(struct rpc_task *task)
+>>>  		rpc_exit(task, status);
+>>>  		break;
+>>>  	default:
+>>> -		if (clnt->cl_chatty)
+>>> +		if (!clnt || clnt->cl_chatty)
+>>>  			printk("%s: RPC call returned error %d\n",
+>>> -			       clnt->cl_protname, -status);
+>>> +			       clnt ? clnt->cl_protname : "<unknown
+> protocol>",
+>>> +			       -status);
+>>>  		rpc_exit(task, status);
+>>>  	}
+>>>  }
+>> BIG NACK!
+>>
+>> How does even it make sense for a task to get past call_transmit and
+>> call_status without having task->tk_client set? This sounds like
+> serious
+>> borkenness in the nfsv4.1 patches...
 
---=-nmHEMhDRFK0iWtxrK+r7
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Ricardo, 
 
-On Tue, 2008-11-04 at 17:48 -0500, J. Bruce Fields wrote:=20
->=20
-> You can still vary ro/rw based on machine or security flavor; e.g.
->=20
-> 	/home	foo(sec=3Dkrb5,ro)
-> 	/home	bar(sec=3Dkrb5,rw)
+rpc_run_bc_task sets no task_setup_data.rpc_client when calling rpc_new_task.
+We might be able to use to fore channel rpc client, but
+I'm still concerned that using this path for sending the callback
+replies is wrong.
 
-Excellent.
+> 
+> The "Callback slot table overflowed" message means we couldn't obtain a
+> pre-allocated rpc_rqst to process the callback.  When this occurs, the
+> client sets the XPRT_CLOSE_WAIT bit to close the connection.  (As an
+> aside, should we be using xprt_force_disconnect() instead?).
 
-> or
->=20
-> 	/home	foo(ro,sec=3Dkrb5,rw)
->=20
-> (readable by all users, writeable only by krb5 users).
+could be, but we might be doing the right thing on the client side
+in this case already.
 
-Ahhh.  Very interesting.
+> 
+> This leads me to believe the server exceeded the number of outstanding
+> requests allowed on the backchannel (slot count of one at the moment),
+> the new request caused us to close the connection and pulled the rug
+> from under the callback service.  I'll investigate further.
 
-> This should all
-> be documented by "man exports".
+We simply got ENOTCONN back (see value of RBX)
 
-Yes, it appears to be.  My use of gss/krb5(...) was from some "howto"s
-that I found on the web.  Seems they are tad dated.
+> 
+> Is this reproducible?
 
+Not yet.
 
-> > I did notice the bit of text about the single pseudo filesystem.  Given
-> > that on my server, I exported a number of filesystems, including / to
-> > privileged (I'm in a very small and trusted environment) clients, it
-> > seemed natural to just set / to fsid 0.  I also exported the few other
-> > exports I wanted some nfs4 clients to mount as such:
-> >=20
-> > /               gss/krb5i(rw,insecure,sync,wdelay,no_subtree_check,no_r=
-oot_squash,fsid=3D0,crossmnt,anonuid=3D65534,anongid=3D65534)
-> > /home           gss/krb5i(rw,no_root_squash,sync,subtree_check,anonuid=
-=3D65534,anongid=3D65534)
-> > /mnt/data       gss/krb5i(rw,sync,subtree_check,crossmnt,anonuid=3D6553=
-4,anongid=3D65534)
-> > /mnt/data/photos gss/krb5i(rw,sync,subtree_check,anonuid=3D65534,anongi=
-d=3D65534)
-> >=20
-> > where those are all on different filesystems on the server.  I'm
-> > starting to feel like this is not how it's supposed to be done.
->=20
-> That'll work--but do you really want "/" to be accessible (writeable,
-> even!) over nfs?
+Benny
 
-Writable, probably not, not for most anyway.  A very select few,
-perhaps.  But still, probably not even readable for most.  So how to
-solve?  Not export / as the pseudo filesystem?  Or use an ip/netmask
-that makes it impossible to match, or as the one bit of text I read
-offered, bind mount everything you want to export into your "export"
-tree?  This last option seems a bit cumbersome given that everything I
-want to export is already mounted and available under /.
-
-Is there any way to limit/match on krb5 principals rather than IPs?
-
-So in the situation of exporting / as fsid 0 (but this would be equally
-applicable to an "/export" configuration that bind mounted a filesystem
-under /export and then bind mounted a filesystem under that) given that
-I have other filesystems mounted under / that I want to export as well,
-(i.e. /usr) it's seemed necessary to use the "crossmnt" option on the
-fsid 0 export.  Is this correct?
-
-So if I do export / as fsid=3D0,ro my guess is that I have to also export
-any subdirs that I want to make "rw" separately, and mount them
-separately on the client.  i.e.
-
-/	10.75.22.0/24(sec=3Dkrb5,ro,insecure,sync,wdelay,no_subtree_check,root_sq=
-uash,fsid=3D0,crossmnt)
-/home   10.75.22.0/24(sec=3Dkrb5,rw,no_root_squash,sync,no_subtree_check)
-/d      10.75.22.0/24(sec=3Dkrb5,rw,no_root_squash,sync,no_subtree_check,cr=
-ossmnt)
-/d/sub  pc(sec=3Dkrb5,rw,no_root_squash,sync,no_subtree_check)
-
-and on the clinet:
-
-pc # mount -t nfs4 -o sec=3Dkrb5 server:/ /mnt/server
-pc # mount -t nfs4 -o sec=3Dkrb5 server:/home /mnt/server/home
-pc # mount -t nfs4 -o sec=3Dkrb5 server:/d /d
-pc # mount -t nfs4 -o sec=3Dkrb5 server:/d/sub /d/sub
-
-To have /home rw under /mnt/server.  It would be there but ro without
-the second mount, yes?
-
-It also appears that for the above case of /d and /d/sub I need the
-crossmnt option on /d or I don't see anything in /d/sub even though I've
-exported and mounted it individually.  Does this seem like the expected
-behaviour or a bug?  It's important to be able to do because I might
-want to be able to export /d to certain hosts without giving them access
-to mountpoints within /d as I have done above with /d/sub and pc.  If I
-use crossmnt which my experience is showing I need, then /d/sub is
-exposed to all of 10.75.22.0/24 which is not what I want.
-
-Thanx,
-b.
-
-
-
-
---=-nmHEMhDRFK0iWtxrK+r7
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkkRLi8ACgkQl3EQlGLyuXAqzQCgkBmeqUC9dSJGv6xPNGActR5u
-Q4cAoJ9SjAnZski0caj+hdJCtpi3pK8N
-=udJi
------END PGP SIGNATURE-----
-
---=-nmHEMhDRFK0iWtxrK+r7--
-
+> 
+> - ricardo
+> 
+> 
+>> Trond
+>> ...
+>>
