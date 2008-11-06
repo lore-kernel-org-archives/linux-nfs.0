@@ -1,50 +1,39 @@
-From: Alex Sidorenko <alexandre.sidorenko@hp.com>
-Subject: Re: FLushing cached writes in nfs_getattr() and stat() delay
-Date: Thu, 6 Nov 2008 14:55:21 -0500
-Message-ID: <200811061455.21831.alexandre.sidorenko@hp.com>
-References: <200811061034.06486.asid@hp.com> <200811061422.58920.alexandre.sidorenko@hp.com> <B01C5173-08DF-4EF9-8186-BEBDA8EE9862@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: gssapi and nfs4
+Date: Thu, 6 Nov 2008 16:50:54 -0500
+Message-ID: <20081106215054.GC24916@fieldses.org>
+References: <1225813410.2247.279.camel@brian-laptop> <89c397150811041000l93b9831w1e8dce2175c6d51f@mail.gmail.com> <1225824797.2247.345.camel@brian-laptop> <20081104224817.GB16121@fieldses.org> <1225862729.13506.8.camel@pc.interlinx.bc.ca> <20081105190235.GA969@fieldses.org> <1225912734.3785.40.camel@pc.interlinx.bc.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>,
+	Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from g1t0027.austin.hp.com ([15.216.28.34]:45830 "EHLO
-	g1t0027.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751091AbYKFTzm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Nov 2008 14:55:42 -0500
-In-Reply-To: <B01C5173-08DF-4EF9-8186-BEBDA8EE9862@oracle.com>
+Received: from mail.fieldses.org ([66.93.2.214]:37161 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754781AbYKFVu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Nov 2008 16:50:58 -0500
+In-Reply-To: <1225912734.3785.40.camel-lA68w17JHpfIgqYUaR6mlLDks+cytr/Z@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On November 6, 2008 02:45:34 pm Chuck Lever wrote:
-> There's a difference between an asynchronous RPC request, and an
-> asynchronous write request.
->
-> An async RPC means the process doesn't wait for the request to finish=
-,
-> it can perform other housekeeping.
->
-> An async write means that the client delays sending NFS writes,
-> maintaining the dirty data in its memory. =A0It can send the NFS writ=
-e
-> requests by means of an async RPC if it wishes. =A0A synchronous writ=
-e
-> means that the client will block the application until the server has
-> replied that the dirty data is on the server's disk.
+On Wed, Nov 05, 2008 at 02:18:54PM -0500, Brian J. Murrell wrote:
+> On Wed, 2008-11-05 at 14:02 -0500, J. Bruce Fields wrote:
+> > > It's important to be able to do because I might
+> > > want to be able to export /d to certain hosts without giving them access
+> > > to mountpoints within /d as I have done above with /d/sub and pc.  If I
+> > > use crossmnt which my experience is showing I need, then /d/sub is
+> > > exposed to all of 10.75.22.0/24 which is not what I want.
+> > 
+> > If you add a separate export for /d/sub, I think it should override that
+> > behavior.
+> 
+> That's what I did and still, I have to use crossmnt on /d and that
+> exposes /d/sub it to everyone who gets access to /d where my intention
+> is to only expose /d/sub to the match/limit I put on /d/sub, which is
+> the single host "pc" in my above scneario.
 
-Thank you for clarification. I knew what RPC-async means but for some r=
-eason=20
-forgot what SYNC-write means, sorry for confusion. And yes, I should ha=
-ve=20
-looked at /proc/mounts instead of /etc/mtab
+That sounds like a bug we should fix; I can't volunteer to do it
+currently, though.
 
-Regards,
-Alex
-
---=20
-------------------------------------------------------------------
-Alexandre Sidorenko             email: asid@hp.com
-Global Solutions Engineering:   Unix Networking
-Hewlett-Packard (Canada)
-------------------------------------------------------------------
+--b.
