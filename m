@@ -1,48 +1,66 @@
-From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
-Subject: NFS mount over IPv6 success
-Date: Sun, 9 Nov 2008 17:41:32 +0100
-Message-ID: <20081109164132.GA19615@uio.no>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Make sm-notify faster if there are no servers to notify
+Date: Sun, 9 Nov 2008 14:25:28 -0500
+Message-ID: <20081109192528.GE25568@fieldses.org>
+References: <20081029173750.GD31936@fieldses.org> <1225302305994@dmwebmail.dmwebmail.chezphil.org> <20081029184153.GE31936@fieldses.org> <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com> <20081029211145.GE1406@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:38803 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755358AbYKIQlg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Nov 2008 11:41:36 -0500
-Received: from trofast.ipv6.sesse.net ([2001:700:300:1803:20e:cff:fe36:a766] helo=trofast.sesse.net)
-	by cassarossa.samfundet.no with esmtps (TLS-1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.63)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1KzDLx-0003b5-Q7
-	for linux-nfs@vger.kernel.org; Sun, 09 Nov 2008 17:41:34 +0100
-Received: from root by trofast.sesse.net with local (Exim 4.69)
-	(envelope-from <sesse-BrfabpQBY5qlHtIdYg32fQ@public.gmane.org>)
-	id 1KzDLw-00056o-Kv
-	for linux-nfs@vger.kernel.org; Sun, 09 Nov 2008 17:41:32 +0100
+Received: from mail.fieldses.org ([66.93.2.214]:53157 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755647AbYKITZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Nov 2008 14:25:33 -0500
+In-Reply-To: <20081029211145.GE1406@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Wed, Oct 29, 2008 at 05:11:45PM -0400, bfields wrote:
+> On Wed, Oct 29, 2008 at 04:30:32PM -0400, Chuck Lever wrote:
+> > I assume sync() is required because this logic performs a rename as well 
+> > as a simple write?
+> 
+> I think an fsync() on the containing directory (together with an fsync()
+> of the file itself) would do the job if you wanted to avoid the globaly
+> sync().  I don't think ext3 is capable of doing anything finer-grained
+> than a whole-filesystem sync, though, so this doesn't help many people
+> in practice right now.
+> 
+> In any case, the rename adds an extra level of safety by ensuring the
+> nsm state is updated atomically, so we shouldn't get rid of it.
+> 
+> >> Anyway, I think the nsm state updating shouldn't matter if you don't
+> >> even have any peers to notify.
+> >
+> > It probably does matter.
+> >
+> > When a system is initially installed, it likely does not have a state  
+> > file in /var/lib/nfs.  This may be harmless if it's not present;  
+> > rpc.statd probably does the right thing in this case.
+> 
+> The "right thing" in that case would be, I guess, to create a state file
+> with "0" in it.  It doesn't do that.  So this patch *does* break stuff.
+> Oops!
+> 
+> So should we revert it and do something else, or patch statd to create
+> a new state file if necessary?
 
-I'm sure others have gotten this to work at some point, but it's finally
-gotten to the point where I could get it to work myself, so I thought I could
-share my success story:
+It looks like this still needs to be fixed?  I think it would be good
+enough just to teach rpc.nfsd to create the file if it doesn't exist.
 
- - Vanilla 2.6.28-rc3 client (2.6.26 also worked, although not with NFSv4)
- - Solaris 10 server
- - libtirpc from git (git://git.infradead.org/~steved/libtirpc.git)
- - IPv6-patched nfs-utils from git
-   (git://git.linux-nfs.org/projects/cel/nfs-utils.git)
+--b.
 
-After recompiling (actually making Debian packages of) the client software,
-it was just a matter of mounting. 2.6.26 had some issues with IPv6 address
-literals -- only DNS worked -- but 2.6.28-rc3 did both just fine.
-
-I haven't done extensive testing, but this looks pretty good :-) Now I'm just
-waiting for the server support to get ready in the same way, and then for
-everything to trickle into mainline.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+> 
+> > However, the rest of the logic in nsm_get_state() is needed to bump the 
+> > system's state value properly after every reboot.  It may be  
+> > inconsequential if there were no mounts or no NFS clients during the  
+> > last reboot, but this is subtle.  I wouldn't bet on it.
+> 
+> If the state is only every communicated to hosts by notifications, then
+> if we're not notifying, the update of the state can't matter.
+> 
+> (So is that premise correct?)
+> 
+> --b.
