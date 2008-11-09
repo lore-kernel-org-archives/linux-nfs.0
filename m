@@ -1,85 +1,224 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 5/9] rpc: call release_pipe only on last close
-Date: Sun,  9 Nov 2008 16:04:39 -0500
-Message-ID: <1226264683-28650-6-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 9/9] rpc: implement new upcall
+Date: Sun,  9 Nov 2008 16:04:43 -0500
+Message-ID: <1226264683-28650-10-git-send-email-bfields@citi.umich.edu>
 References: <20081109204621.GD27376@fieldses.org>
  <1226264683-28650-1-git-send-email-bfields@citi.umich.edu>
  <1226264683-28650-2-git-send-email-bfields@citi.umich.edu>
  <1226264683-28650-3-git-send-email-bfields@citi.umich.edu>
  <1226264683-28650-4-git-send-email-bfields@citi.umich.edu>
  <1226264683-28650-5-git-send-email-bfields@citi.umich.edu>
+ <1226264683-28650-6-git-send-email-bfields@citi.umich.edu>
+ <1226264683-28650-7-git-send-email-bfields@citi.umich.edu>
+ <1226264683-28650-8-git-send-email-bfields@citi.umich.edu>
+ <1226264683-28650-9-git-send-email-bfields@citi.umich.edu>
 Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34903 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:34910 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756012AbYKIVEq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Nov 2008 16:04:46 -0500
-In-Reply-To: <1226264683-28650-5-git-send-email-bfields@citi.umich.edu>
+	id S1756062AbYKIVEr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Nov 2008 16:04:47 -0500
+In-Reply-To: <1226264683-28650-9-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I can't see any reason we particularly need to call this until the last
-gssd closes the pipe.
+Implement the new upcall.  We decide which version of the upcall gssd
+will use (new or old), by creating both pipes (the new one named "gssd",
+the old one named after the mechanism (e.g., "krb5")), and then waiting
+to see which version gssd actually opens.
 
-Also, this allows to guarantee that open_pipe and release_pipe are
-called strictly in pairs; open_pipe on the first open, release_pipe on
-the last close.  That'll make it very easy for the gss code to keep
-track of which pipes gssd is using.
+We don't permit pipes of the two different types to be opened at once.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- net/sunrpc/rpc_pipe.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c |   95 +++++++++++++++++++++++++++++++++------
+ 1 files changed, 80 insertions(+), 15 deletions(-)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 4171ab7..712e1ec 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -126,13 +126,14 @@ rpc_close_pipes(struct inode *inode)
- {
- 	struct rpc_inode *rpci = RPC_I(inode);
- 	struct rpc_pipe_ops *ops;
-+	int last_close;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 96c1bab..fbe04cb 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -72,7 +72,13 @@ struct gss_auth {
+ 	struct gss_api_mech *mech;
+ 	enum rpc_gss_svc service;
+ 	struct rpc_clnt *client;
+-	struct dentry *dentry;
++	/*
++	 * There are two upcall pipes; dentry[1], named "gssd", is used
++	 * for the new text-based upcall; dentry[0] is named after the
++	 * mechanism (for example, "krb5") and exists for
++	 * backwards-compatibility with older gssd's.
++	 */
++	struct dentry *dentry[2];
+ };
  
- 	mutex_lock(&inode->i_mutex);
- 	ops = rpci->ops;
- 	if (ops != NULL) {
- 		LIST_HEAD(free_list);
--
- 		spin_lock(&inode->i_lock);
-+		last_close = rpci->nreaders != 0 || rpci->nwriters != 0;
- 		rpci->nreaders = 0;
- 		list_splice_init(&rpci->in_upcall, &free_list);
- 		list_splice_init(&rpci->pipe, &free_list);
-@@ -141,7 +142,7 @@ rpc_close_pipes(struct inode *inode)
- 		spin_unlock(&inode->i_lock);
- 		rpc_purge_list(rpci, &free_list, ops->destroy_msg, -EPIPE);
- 		rpci->nwriters = 0;
--		if (ops->release_pipe)
-+		if (last_close && ops->release_pipe)
- 			ops->release_pipe(inode);
- 		cancel_delayed_work_sync(&rpci->queue_timeout);
- 	}
-@@ -195,6 +196,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
- {
- 	struct rpc_inode *rpci = RPC_I(inode);
- 	struct rpc_pipe_msg *msg;
-+	int last_close;
+ /* pipe_version >= 0 if and only if someone has a pipe open. */
+@@ -227,6 +233,7 @@ err:
+ 	return p;
+ }
  
- 	mutex_lock(&inode->i_mutex);
- 	if (rpci->ops == NULL)
-@@ -221,7 +223,8 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
- 					rpci->ops->destroy_msg, -EAGAIN);
- 		}
++#define UPCALL_BUF_LEN 128
+ 
+ struct gss_upcall_msg {
+ 	atomic_t count;
+@@ -238,6 +245,7 @@ struct gss_upcall_msg {
+ 	struct rpc_wait_queue rpc_waitqueue;
+ 	wait_queue_head_t waitqueue;
+ 	struct gss_cl_ctx *ctx;
++	char databuf[UPCALL_BUF_LEN];
+ };
+ 
+ static int get_pipe_version(void)
+@@ -247,7 +255,7 @@ static int get_pipe_version(void)
+ 	spin_lock(&pipe_version_lock);
+ 	if (pipe_version >= 0) {
+ 		atomic_inc(&pipe_users);
+-		ret = 0;
++		ret = pipe_version;
+ 	} else
+ 		ret = -EAGAIN;
+ 	spin_unlock(&pipe_version_lock);
+@@ -353,6 +361,29 @@ gss_upcall_callback(struct rpc_task *task)
+ 	gss_release_msg(gss_msg);
+ }
+ 
++static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
++{
++	gss_msg->msg.data = &gss_msg->uid;
++	gss_msg->msg.len = sizeof(gss_msg->uid);
++}
++
++static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg)
++{
++	gss_msg->msg.len = sprintf(gss_msg->databuf, "mech=%s uid=%d\n",
++				   gss_msg->auth->mech->gm_name,
++				   gss_msg->uid);
++	gss_msg->msg.data = gss_msg->databuf;
++	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
++}
++
++static void gss_encode_msg(struct gss_upcall_msg *gss_msg)
++{
++	if (pipe_version == 0)
++		gss_encode_v0_msg(gss_msg);
++	else /* pipe_version == 1 */
++		gss_encode_v1_msg(gss_msg);
++}
++
+ static inline struct gss_upcall_msg *
+ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid)
+ {
+@@ -367,13 +398,12 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid)
+ 		kfree(gss_msg);
+ 		return ERR_PTR(vers);
  	}
--	if (rpci->ops->release_pipe)
-+	last_close = rpci->nwriters == 0 && rpci->nreaders == 0;
-+	if (last_close && rpci->ops->release_pipe)
- 		rpci->ops->release_pipe(inode);
- out:
- 	mutex_unlock(&inode->i_mutex);
+-	gss_msg->inode = RPC_I(gss_auth->dentry->d_inode);
++	gss_msg->inode = RPC_I(gss_auth->dentry[vers]->d_inode);
+ 	INIT_LIST_HEAD(&gss_msg->list);
+ 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+ 	init_waitqueue_head(&gss_msg->waitqueue);
+ 	atomic_set(&gss_msg->count, 1);
+-	gss_msg->msg.data = &gss_msg->uid;
+-	gss_msg->msg.len = sizeof(gss_msg->uid);
++	gss_encode_msg(gss_msg);
+ 	gss_msg->uid = uid;
+ 	gss_msg->auth = gss_auth;
+ 	return gss_msg;
+@@ -613,18 +643,40 @@ out:
+ 	return err;
+ }
+ 
++static int gss_pipe_version(struct gss_auth *gss_auth, struct inode *inode)
++{
++	if (gss_auth->dentry[0]->d_inode == inode)
++		return 0;
++	if (gss_auth->dentry[1]->d_inode == inode)
++		return 1;
++	BUG();
++}
++
+ static int
+ gss_pipe_open(struct inode *inode)
+ {
++	struct rpc_inode *rpci = RPC_I(inode);
++	struct rpc_clnt *clnt = rpci->private;
++	struct gss_auth *gss_auth = container_of(clnt->cl_auth,
++				struct gss_auth, rpc_auth);
++	int new_version = gss_pipe_version(gss_auth, inode);
++	int ret = 0;
++
+ 	spin_lock(&pipe_version_lock);
+ 	if (pipe_version < 0) {
+-		pipe_version = 0;
++		/* First open of any gss pipe determines the version: */
++		pipe_version = new_version;
+ 		rpc_wake_up(&pipe_version_rpc_waitqueue);
+ 		wake_up(&pipe_version_waitqueue);
++	} else if (pipe_version != new_version) {
++		/* Trying to open a pipe of a different version */
++		ret = -EBUSY;
++		goto out;
+ 	}
+ 	atomic_inc(&pipe_users);
++out:
+ 	spin_unlock(&pipe_version_lock);
+-	return 0;
++	return ret;
+ }
+ 
+ static void
+@@ -702,20 +754,32 @@ gss_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
+ 	atomic_set(&auth->au_count, 1);
+ 	kref_init(&gss_auth->kref);
+ 
+-	gss_auth->dentry = rpc_mkpipe(clnt->cl_dentry, gss_auth->mech->gm_name,
+-			clnt, &gss_upcall_ops, RPC_PIPE_WAIT_FOR_OPEN);
+-	if (IS_ERR(gss_auth->dentry)) {
+-		err = PTR_ERR(gss_auth->dentry);
++	gss_auth->dentry[0] = rpc_mkpipe(clnt->cl_dentry,
++					 gss_auth->mech->gm_name,
++					 clnt, &gss_upcall_ops,
++					 RPC_PIPE_WAIT_FOR_OPEN);
++	if (IS_ERR(gss_auth->dentry[0])) {
++		err = PTR_ERR(gss_auth->dentry[0]);
+ 		goto err_put_mech;
+ 	}
+ 
++	gss_auth->dentry[1] = rpc_mkpipe(clnt->cl_dentry,
++					 "gssd",
++					 clnt, &gss_upcall_ops,
++					 RPC_PIPE_WAIT_FOR_OPEN);
++	if (IS_ERR(gss_auth->dentry[1])) {
++		err = PTR_ERR(gss_auth->dentry[1]);
++		goto err_unlink_pipe_0;
++	}
+ 	err = rpcauth_init_credcache(auth);
+ 	if (err)
+-		goto err_unlink_pipe;
++		goto err_unlink_pipe_1;
+ 
+ 	return auth;
+-err_unlink_pipe:
+-	rpc_unlink(gss_auth->dentry);
++err_unlink_pipe_1:
++	rpc_unlink(gss_auth->dentry[1]);
++err_unlink_pipe_0:
++	rpc_unlink(gss_auth->dentry[0]);
+ err_put_mech:
+ 	gss_mech_put(gss_auth->mech);
+ err_free:
+@@ -728,7 +792,8 @@ out_dec:
+ static void
+ gss_free(struct gss_auth *gss_auth)
+ {
+-	rpc_unlink(gss_auth->dentry);
++	rpc_unlink(gss_auth->dentry[1]);
++	rpc_unlink(gss_auth->dentry[0]);
+ 	gss_mech_put(gss_auth->mech);
+ 
+ 	kfree(gss_auth);
 -- 
 1.5.5.rc1
 
