@@ -1,43 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 5/5] rpc: add new gssd upcall pipe
-Date: Sun, 9 Nov 2008 15:46:50 -0500
-Message-ID: <20081109204650.GE27376@fieldses.org>
-References: <1213397442-15611-1-git-send-email-bfields@citi.umich.edu> <1213397442-15611-2-git-send-email-bfields@citi.umich.edu> <1213397442-15611-3-git-send-email-bfields@citi.umich.edu> <1213397442-15611-4-git-send-email-bfields@citi.umich.edu> <1213397442-15611-5-git-send-email-bfields@citi.umich.edu> <1213397442-15611-6-git-send-email-bfields@citi.umich.edu> <1213459638.7149.16.camel@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 2/9] rpc: factor out warning code from gss_pipe_destroy_msg
+Date: Sun,  9 Nov 2008 16:04:36 -0500
+Message-ID: <1226264683-28650-3-git-send-email-bfields@citi.umich.edu>
+References: <20081109204621.GD27376@fieldses.org>
+ <1226264683-28650-1-git-send-email-bfields@citi.umich.edu>
+ <1226264683-28650-2-git-send-email-bfields@citi.umich.edu>
+Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:52400 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:34895 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755686AbYKIUqw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Nov 2008 15:46:52 -0500
-In-Reply-To: <1213459638.7149.16.camel@localhost>
+	id S1755919AbYKIVEp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Nov 2008 16:04:45 -0500
+In-Reply-To: <1226264683-28650-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 14, 2008 at 12:07:18PM -0400, Trond Myklebust wrote:
-> On Fri, 2008-06-13 at 18:50 -0400, J. Bruce Fields wrote:
-> > This adds the new text-based gss upcall.  We only allow an open from
-> > either the new pipe or the old one, and use the pipe_open method to
-> > enforce this.
-> > 
-> > If no pipes are open, we provisionally queue messages for the new pipe;
-> > a subsequent open of the old pipe will cause all those messages to be
-> > purged.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > ---
-> 
-> I'm not happy about allowing the gss_auth layer to control timeouts and
-> cancel upcalls either: that caused us way too much grief and bugs in
-> earlier revisions of rpc_pipefs.
-> 
-> Why not rather disallow queueing (i.e. put the task to sleep, and maybe
-> print out a reminder on the console every minute or so) until you are
-> notified by the rpc_pipefs layer that someone has opened the file for
-> reading?
+We'll want to call this from elsewhere soon.  And this is a bit nicer
+anyway.
 
-OK, done.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   23 ++++++++++++++---------
+ 1 files changed, 14 insertions(+), 9 deletions(-)
 
---b.
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 07bb395..1cb4bcc 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -369,6 +369,18 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
+ 	return gss_msg;
+ }
+ 
++static void warn_gssd(void)
++{
++	static unsigned long ratelimit;
++	unsigned long now = jiffies;
++
++	if (time_after(now, ratelimit)) {
++		printk(KERN_WARNING "RPC: AUTH_GSS upcall timed out.\n"
++				"Please check user daemon is running.\n");
++		ratelimit = now + 15*HZ;
++	}
++}
++
+ static inline int
+ gss_refresh_upcall(struct rpc_task *task)
+ {
+@@ -568,21 +580,14 @@ static void
+ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ {
+ 	struct gss_upcall_msg *gss_msg = container_of(msg, struct gss_upcall_msg, msg);
+-	static unsigned long ratelimit;
+ 
+ 	if (msg->errno < 0) {
+ 		dprintk("RPC:       gss_pipe_destroy_msg releasing msg %p\n",
+ 				gss_msg);
+ 		atomic_inc(&gss_msg->count);
+ 		gss_unhash_msg(gss_msg);
+-		if (msg->errno == -ETIMEDOUT) {
+-			unsigned long now = jiffies;
+-			if (time_after(now, ratelimit)) {
+-				printk(KERN_WARNING "RPC: AUTH_GSS upcall timed out.\n"
+-						    "Please check user daemon is running!\n");
+-				ratelimit = now + 15*HZ;
+-			}
+-		}
++		if (msg->errno == -ETIMEDOUT)
++			warn_gssd();
+ 		gss_release_msg(gss_msg);
+ 	}
+ }
+-- 
+1.5.5.rc1
+
