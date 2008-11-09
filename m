@@ -1,66 +1,94 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Make sm-notify faster if there are no servers to notify
-Date: Sun, 9 Nov 2008 14:25:28 -0500
-Message-ID: <20081109192528.GE25568@fieldses.org>
-References: <20081029173750.GD31936@fieldses.org> <1225302305994@dmwebmail.dmwebmail.chezphil.org> <20081029184153.GE31936@fieldses.org> <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com> <20081029211145.GE1406@fieldses.org>
+Subject: nfsd change for 2.6.28
+Date: Sun, 9 Nov 2008 15:23:11 -0500
+Message-ID: <20081109202311.GC27376@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Neil Brown <neilb@suse.de>, Doug Nazar <nazard-9NxrcwDPlTov2OKnPYDugg@public.gmane.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53157 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:49248 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755647AbYKITZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Nov 2008 14:25:33 -0500
-In-Reply-To: <20081029211145.GE1406@fieldses.org>
+	id S1752470AbYKIUXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Nov 2008 15:23:13 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 29, 2008 at 05:11:45PM -0400, bfields wrote:
-> On Wed, Oct 29, 2008 at 04:30:32PM -0400, Chuck Lever wrote:
-> > I assume sync() is required because this logic performs a rename as well 
-> > as a simple write?
-> 
-> I think an fsync() on the containing directory (together with an fsync()
-> of the file itself) would do the job if you wanted to avoid the globaly
-> sync().  I don't think ext3 is capable of doing anything finer-grained
-> than a whole-filesystem sync, though, so this doesn't help many people
-> in practice right now.
-> 
-> In any case, the rename adds an extra level of safety by ensuring the
-> nsm state is updated atomically, so we shouldn't get rid of it.
-> 
-> >> Anyway, I think the nsm state updating shouldn't matter if you don't
-> >> even have any peers to notify.
-> >
-> > It probably does matter.
-> >
-> > When a system is initially installed, it likely does not have a state  
-> > file in /var/lib/nfs.  This may be harmless if it's not present;  
-> > rpc.statd probably does the right thing in this case.
-> 
-> The "right thing" in that case would be, I guess, to create a state file
-> with "0" in it.  It doesn't do that.  So this patch *does* break stuff.
-> Oops!
-> 
-> So should we revert it and do something else, or patch statd to create
-> a new state file if necessary?
+One more readdir fix suitable for 2.6.28 is available from the
+for-2.6.28 branch at:
 
-It looks like this still needs to be fixed?  I think it would be good
-enough just to teach rpc.nfsd to create the file if it doesn't exist.
+  git://linux-nfs.org/~bfields/linux.git for-2.6.28
 
 --b.
 
-> 
-> > However, the rest of the logic in nsm_get_state() is needed to bump the 
-> > system's state value properly after every reboot.  It may be  
-> > inconsequential if there were no mounts or no NFS clients during the  
-> > last reboot, but this is subtle.  I wouldn't bet on it.
-> 
-> If the state is only every communicated to hosts by notifications, then
-> if we're not notifying, the update of the state can't matter.
-> 
-> (So is that premise correct?)
-> 
-> --b.
+Doug Nazar (1):
+      Fix nfsd truncation of readdir results
+
+ fs/nfsd/vfs.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
+
+commit b726e923ea4d216027e466aa602d914e4b4a63af
+Author: Doug Nazar <nazard-9NxrcwDPlTov2OKnPYDugg@public.gmane.org>
+Date:   Wed Nov 5 06:16:28 2008 -0500
+
+    Fix nfsd truncation of readdir results
+    
+    Commit 8d7c4203 "nfsd: fix failure to set eof in readdir in some
+    situations" introduced a bug: on a directory in an exported ext3
+    filesystem with dir_index unset, a READDIR will only return about 250
+    entries, even if the directory was larger.
+    
+    Bisected it back to this commit; reverting it fixes the problem.
+    
+    It turns out that in this case ext3 reads a block at a time, then
+    returns from readdir, which means we can end up with buf.full==0 but
+    with more entries in the directory still to be read.  Before 8d7c4203
+    (but after c002a6c797 "Optimise NFS readdir hack slightly"), this would
+    cause us to return the READDIR result immediately, but with the eof bit
+    unset.  That could cause a performance regression (because the client
+    would need more roundtrips to the server to read the whole directory),
+    but no loss in correctness, since the cleared eof bit caused the client
+    to send another readdir.  After 8d7c4203, the setting of the eof bit
+    made this a correctness problem.
+    
+    So, move nfserr_eof into the loop and remove the buf.full check so that
+    we loop until buf.used==0.  The following seems to do the right thing
+    and reduces the network traffic since we don't return a READDIR result
+    until the buffer is full.
+    
+    Tested on an empty directory & large directory; eof is properly sent and
+    there are no more short buffers.
+    
+    Signed-off-by: Doug Nazar <nazard-9NxrcwDPlTov2OKnPYDugg@public.gmane.org>
+    Cc: David Woodhouse <David.Woodhouse@intel.com>
+    Cc: Al Viro <viro@zeniv.linux.org.uk>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 848a03e..4433c8f 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1875,11 +1875,11 @@ static int nfsd_buffered_readdir(struct file *file, filldir_t func,
+ 		return -ENOMEM;
+ 
+ 	offset = *offsetp;
+-	cdp->err = nfserr_eof; /* will be cleared on successful read */
+ 
+ 	while (1) {
+ 		unsigned int reclen;
+ 
++		cdp->err = nfserr_eof; /* will be cleared on successful read */
+ 		buf.used = 0;
+ 		buf.full = 0;
+ 
+@@ -1912,9 +1912,6 @@ static int nfsd_buffered_readdir(struct file *file, filldir_t func,
+ 			de = (struct buffered_dirent *)((char *)de + reclen);
+ 		}
+ 		offset = vfs_llseek(file, 0, SEEK_CUR);
+-		cdp->err = nfserr_eof;
+-		if (!buf.full)
+-			break;
+ 	}
+ 
+  done:
