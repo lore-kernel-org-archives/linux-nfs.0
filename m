@@ -1,399 +1,232 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 39/85] nfs41: session recovery infrastructure
-Date: Mon, 10 Nov 2008 22:25:03 +0200
-Message-ID: <1226348703-8525-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 41/85] nfs41: lease renewal
+Date: Mon, 10 Nov 2008 22:25:24 +0200
+Message-ID: <1226348724-8592-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:48825 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:48833 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751820AbYKJUZK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:25:10 -0500
+	with ESMTP id S1751839AbYKJUZa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:25:30 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Send a NFSv4.1 SEQUENCE op rather than RENEW that was deprecated in
+minorversion 1.
+Use the nfs_client minorversion to select reboot_recover/
+network_partition_recovery/state_renewal ops.
 
-FIXME: review comment message.
+Note: we use reclaimer to create the nfs41 session before there are any
+cl_superblocks for the nfs_client.
 
-NFSv4.1 session recovery.
-Sessions are created in the "alloc" state and session recovery
-is used to initiate session creation as well.
-
-nfs41: Correctly use new session in exception handling
-
-We will need to handle several layers of session recovery depending on the
-error. As a last resort, we will need to use the big hammer; destroy
-an existing session and create a new one.
-
-The current code creates a new session without destroying the old one.
-Destroy the existing session and initialize a new session before calling
-nfs41_recover_session_sync.
-
-nfs41: correctly expire and validate session
-
-Do not expire session in session_reclaimer error case where the session could
-be ok (create session succeeded) but nfs4_proc_get_lease_time failed. Leave
-the session expiration (as well as new session initialization) to callers.
-
-The session is valid as soon as the create session rpc completes successfully,
-and is not dependant upon a successful nfs4_proc_get_lease_time rpc.
-Move session validation from nfs4_proc_create_session to the success case of
-_nfs4_proc_create_session.
-
-nfs41: add nfs_client pointer to struct nfs4_session
-
-The session is always associated with a struct nfs_client that holds
-the exchange_id results. Add an nfs_client struct backpointer to the session
-and refactor the session recovery routines to only require a struct
-nfs4_sessions parameter.
-
-Signed-off-by: Rahul Iyer <iyer@netapp.com>
-Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/Makefile                        |    1 +
- fs/nfs/client.c                        |    2 +-
- fs/nfs/nfs41_session_recovery.c        |  186 ++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c                      |   17 +++-
- include/linux/nfs41_session_recovery.h |   40 +++++++
- 5 files changed, 242 insertions(+), 4 deletions(-)
- create mode 100644 fs/nfs/nfs41_session_recovery.c
- create mode 100644 include/linux/nfs41_session_recovery.h
+ fs/nfs/nfs4_fs.h    |   11 +++++++-
+ fs/nfs/nfs4proc.c   |   60 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4renewd.c |    5 ++-
+ fs/nfs/nfs4state.c  |   21 +++++++++--------
+ 4 files changed, 81 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index ac6170c..de5ea30 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -14,4 +14,5 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
-+nfs-$(CONFIG_NFS_V4_1)	+= nfs41_session_recovery.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 62bdf31..560b10b 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -38,7 +38,7 @@
- #include <net/ipv6.h>
- #include <linux/nfs_xdr.h>
- #if defined(CONFIG_NFS_V4_1)
--#include <linux/nfs4_session.h>
-+#include <linux/nfs41_session_recovery.h>
- #endif /* CONFIG_NFS_V4_1 */
- 
- #include <asm/system.h>
-diff --git a/fs/nfs/nfs41_session_recovery.c b/fs/nfs/nfs41_session_recovery.c
-new file mode 100644
-index 0000000..39ad45f
---- /dev/null
-+++ b/fs/nfs/nfs41_session_recovery.c
-@@ -0,0 +1,186 @@
-+/*
-+ * NFSv4.1 session recovery code
-+ *
-+ * Author: Rahul Iyer <iyer@netapp.com>
-+ *
-+ * This code is released under GPL. For details see Documentation/COPYING
-+ */
-+
-+#if defined(CONFIG_NFS_V4_1)
-+
-+#include <linux/module.h>
-+#include <linux/kthread.h>
-+#include <linux/in.h>
-+#include <linux/fs.h>
-+#include <linux/sunrpc/xdr.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/nfs3.h>
-+#include <linux/nfs_xdr.h>
-+#include <linux/nfs.h>
-+#include <linux/nfs_fs.h>
-+#include <linux/namei.h>
-+#include <linux/nfs_fs_sb.h>
-+#include <linux/nfs41_session_recovery.h>
-+#include "nfs4_fs.h"
-+#include "internal.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_PROC
-+
-+/*
-+ * Set the session state == valid. Returns previous value of the session state
-+ */
-+int nfs41_set_session_valid(struct nfs4_session *session)
-+{
-+	int ret;
-+	smp_mb__before_clear_bit();
-+	ret = test_and_clear_bit(NFS41_SESSION_ALLOC,
-+				&session->session_state);
-+	smp_mb__after_clear_bit();
-+
-+	return ret;
-+}
-+
-+static int nfs41_start_session_recovery(struct nfs4_session *session)
-+{
-+	int ret;
-+	ret = test_and_set_bit(NFS41_SESSION_RECOVER, &session->session_state);
-+
-+	return ret;
-+}
-+
-+struct reclaimer_arg {
-+	struct nfs4_session *session;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 8cdc3c4..ff367df 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -162,6 +162,11 @@ struct nfs4_exception {
+ struct nfs4_state_recovery_ops {
+ 	int (*recover_open)(struct nfs4_state_owner *, struct nfs4_state *);
+ 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
++	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
 +};
 +
-+static int nfs41_end_session_recovery(struct nfs4_session *session)
-+{
-+	smp_mb__before_clear_bit();
-+	clear_bit(NFS41_SESSION_RECOVER, &session->session_state);
-+	smp_mb__after_clear_bit();
++struct nfs4_state_maintenance_ops {
++	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *);
+ };
+ 
+ extern struct dentry_operations nfs4_dentry_operations;
+@@ -187,8 +192,8 @@ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fh
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
+ 
+-extern struct nfs4_state_recovery_ops nfs4_reboot_recovery_ops;
+-extern struct nfs4_state_recovery_ops nfs4_network_partition_recovery_ops;
++extern struct nfs4_state_recovery_ops *nfs4_reboot_recovery_ops[];
++extern struct nfs4_state_recovery_ops *nfs4_network_partition_recovery_ops[];
+ #if defined(CONFIG_NFS_V4_1)
+ extern int nfs4_setup_sequence(struct nfs_client *clp,
+ 	struct nfs41_sequence_args *args, struct nfs41_sequence_res *res,
+@@ -207,6 +212,8 @@ static inline int nfs4_setup_sequence(struct nfs_client *clp,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++extern struct nfs4_state_maintenance_ops *nfs4_state_renewal_ops[];
 +
-+	/*
-+	 * Wake up sync tasks
-+	 */
-+	wake_up_bit(&session->session_state, NFS41_SESSION_RECOVER);
-+	return 0;
-+}
-+
-+static int nfs41_wait_session_recover_sync(struct nfs4_session *session)
-+{
-+	might_sleep();
-+	return wait_on_bit(&session->session_state, NFS41_SESSION_RECOVER,
-+			   nfs4_wait_bit_killable, TASK_KILLABLE);
-+}
-+
-+static int session_reclaimer(void *arg)
-+{
-+	int ret;
-+	struct reclaimer_arg *rec = (struct reclaimer_arg *)arg;
-+
-+	dprintk("--> %s\n", __func__);
-+	allow_signal(SIGKILL);
-+
-+	ret = nfs4_proc_create_session(rec->session);
-+	if (ret)
-+		goto out_error;
-+
-+out:
-+	nfs41_end_session_recovery(rec->session);
-+	kfree(rec);
-+	module_put_and_exit(0);
-+	dprintk("<-- %s: status=%d\n", __func__, ret);
-+	return ret;
-+out_error:
-+	printk(KERN_WARNING "Error: session recovery failed on "
-+		"NFSv4.1 server with error %d\n", ret);
-+
-+	switch (ret) {
-+	case -NFS4ERR_STALE_CLIENTID:
-+	case -NFS4ERR_STALE_STATEID:
-+	case -NFS4ERR_EXPIRED:
-+		set_bit(NFS4CLNT_LEASE_EXPIRED, &rec->session->clp->cl_state);
-+		break;
-+	}
-+	goto out;
-+}
-+
-+static int nfs41_schedule_session_recovery(struct reclaimer_arg *rec)
-+{
-+	struct task_struct *task;
-+
-+	dprintk("--> %s: spawning session_reclaimer\n", __func__);
-+	__module_get(THIS_MODULE);
-+	task = kthread_run(session_reclaimer, rec, "%llx-session-reclaim",
-+			   *(unsigned long long *)&rec->session->sess_id);
-+
-+	if (!IS_ERR(task)) {
-+		dprintk("<-- %s\n", __func__);
-+		return 0;
-+	}
-+
-+	module_put(THIS_MODULE);
-+	dprintk("--> %s: failed spawning session_reclaimer: error=%ld\n",
-+		__func__, PTR_ERR(task));
-+	return PTR_ERR(task);
-+}
-+
-+/*
-+ * Session recovery
-+ * Called when an op receives a session related error
-+ */
-+int nfs41_recover_session(struct nfs4_session *session)
-+{
-+	struct reclaimer_arg *rec = NULL;
-+	int ret;
-+
-+	dprintk("--> %s: clp=%p session=%p\n", __func__, session->clp, session);
-+
-+	ret = nfs41_start_session_recovery(session);
-+
-+	/*
-+	 * If we get 1, it means some other thread beat us to us here, so we
-+	 * just sit back and wait for completion of the recovery process
-+	 */
-+	if (ret) {
-+		dprintk("%s: session_recovery already started\n", __func__);
-+		ret = 0;
-+		goto out;
-+	}
-+
-+	ret = -ENOMEM;
-+	rec = kmalloc(sizeof(*rec), GFP_KERNEL);
-+	if (!rec)
-+		goto err;
-+	rec->session = session;
-+
-+	ret = nfs41_schedule_session_recovery(rec);
-+	/*
-+	 * We got an error creating the reclaiming thread, so end the recovery
-+	 * and bail out
-+	 */
-+	if (ret)
-+		goto err;
-+out:
-+	dprintk("<-- %s status=%d\n", __func__, ret);
-+	return ret;
-+err:
-+	nfs41_end_session_recovery(session);
-+	kfree(rec);
-+	goto out;
-+}
-+
-+int nfs41_recover_session_sync(struct nfs4_session *session)
-+{
-+	int ret;
-+
-+	dprintk("--> %s\n", __func__);
-+
-+	ret = nfs41_recover_session(session);
-+	if (!ret)
-+		ret = nfs41_wait_session_recover_sync(session);
-+
-+	dprintk("<-- %s: status=%d\n", __func__, ret);
-+	return ret;
-+}
-+
-+#endif /* CONFIG_NFS_V4_1 */
+ extern const u32 nfs4_fattr_bitmap[2];
+ extern const u32 nfs4_statfs_bitmap[2];
+ extern const u32 nfs4_pathconf_bitmap[2];
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 836f4f3..ede017c 100644
+index 41f4f74..f6107b0 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -56,7 +56,7 @@
- #include "iostat.h"
- #if defined(CONFIG_NFS_V4_1)
- #include "callback.h"
--#include <linux/nfs4_session.h>
-+#include <linux/nfs41_session_recovery.h>
+@@ -2966,6 +2966,9 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
+ 	if (time_before(clp->cl_last_renewal,timestamp))
+ 		clp->cl_last_renewal = timestamp;
+ 	spin_unlock(&clp->cl_lock);
++	dprintk("%s calling put_rpccred on rpc_cred %p\n", __func__,
++				task->tk_msg.rpc_cred);
++	put_rpccred(task->tk_msg.rpc_cred);
+ }
+ 
+ static const struct rpc_call_ops nfs4_renew_ops = {
+@@ -4788,14 +4791,67 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp,
+ }
  #endif /* CONFIG_NFS_V4_1 */
  
- #define NFSDBG_FACILITY		NFSDBG_PROC
-@@ -68,7 +68,7 @@ struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *);
--static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception);
-+static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_exception *exception);
- static int nfs4_wait_clnt_recover(struct rpc_clnt *clnt, struct nfs_client *clp);
- static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
-@@ -3280,7 +3280,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- /* This is the error handling routine for processes that are allowed
-  * to sleep.
-  */
--static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
-+static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	int ret = errorcode;
-@@ -4420,6 +4420,8 @@ struct nfs4_session *nfs4_alloc_session(void)
- 	if (!session)
- 		return NULL;
+-struct nfs4_state_recovery_ops nfs4_reboot_recovery_ops = {
++struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+ 	.recover_open	= nfs4_open_reclaim,
+ 	.recover_lock	= nfs4_lock_reclaim,
++	.renew_lease	= nfs4_proc_renew,
+ };
  
-+	nfs41_set_session_alloc(session);
-+
- 	atomic_set(&session->ref_count, 1);
- 
- 	nfs4_init_channel(&session->fore_channel);
-@@ -4538,6 +4540,8 @@ static int _nfs4_proc_create_session(struct nfs4_session *session)
- 					&session->fore_channel.chan_attrs);
- 		nfs4_adjust_channel_attrs(&args.bc_attrs,
- 					&session->back_channel.chan_attrs);
-+		nfs41_set_session_valid(session);	/* Activate session */
-+
- 		/* Increment the clientid slot sequence id */
- 		clp->cl_seqid++;
- 	}
-@@ -4603,6 +4607,10 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
- 
- 	dprintk("--> nfs4_proc_destroy_session\n");
- 
-+	/* session is still being created */
-+	if (nfs41_test_session_alloc(session))
-+		return status;
-+
- 	msg.rpc_proc = nfs4_proc(session->clp, NFSPROC4_CLNT_DESTROY_SESSION);
- 	msg.rpc_argp = session;
- 	msg.rpc_resp = NULL;
-@@ -4641,6 +4649,9 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
- 	server = list_entry(clp->cl_superblocks.next, struct nfs_server,
- 				client_link);
- 
-+	if (nfs41_test_session_alloc(clp->cl_session))
-+		return -NFS4ERR_STALE_CLIENTID;
-+
- 	args.sa_cache_this = 0;
- 
- 	status = _nfs4_call_sync(server, &msg, &args, &res, 0);
-diff --git a/include/linux/nfs41_session_recovery.h b/include/linux/nfs41_session_recovery.h
-new file mode 100644
-index 0000000..2d91e80
---- /dev/null
-+++ b/include/linux/nfs41_session_recovery.h
-@@ -0,0 +1,40 @@
-+/*
-+ * Session Recovery header file
-+ *
-+ * Author: Rahul Iyer <iyer@netapp.com>
-+ *
-+ * This code is released under GPL. For details see Documentation/COPYING
-+ */
-+
-+#ifndef __NFS41_SESSION_RECOVERY_H__
-+#define __NFS41_SESSION_RECOVERY_H__
-+
+-struct nfs4_state_recovery_ops nfs4_network_partition_recovery_ops = {
 +#if defined(CONFIG_NFS_V4_1)
++struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
++	.recover_open	= nfs4_open_reclaim,
++	.recover_lock	= nfs4_lock_reclaim,
++	.renew_lease	= nfs4_proc_sequence,
++};
++#endif /* CONFIG_NFS_V4_1 */
 +
-+/*
-+ * Session state bits
-+ */
-+enum nfs41_session_state {
-+	NFS41_SESSION_ALLOC = 0,
-+	NFS41_SESSION_RECOVER,
++struct nfs4_state_recovery_ops nfs40_network_partition_recovery_ops = {
+ 	.recover_open	= nfs4_open_expired,
+ 	.recover_lock	= nfs4_lock_expired,
++	.renew_lease	= nfs4_proc_renew,
 +};
 +
++#if defined(CONFIG_NFS_V4_1)
++struct nfs4_state_recovery_ops nfs41_network_partition_recovery_ops = {
++	.recover_open	= nfs4_open_expired,
++	.recover_lock	= nfs4_lock_expired,
++	.renew_lease	= nfs4_proc_sequence,
++};
++#endif /* CONFIG_NFS_V4_1 */
++
++struct nfs4_state_maintenance_ops nfs40_state_renewal_ops = {
++	.sched_state_renewal = nfs4_proc_async_renew,
++};
++
++#if defined(CONFIG_NFS_V4_1)
++struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
++	.sched_state_renewal = nfs41_proc_async_sequence,
++};
++#endif
++
 +/*
-+ * Set the session state to alloc
++ * Per minor version reboot and network partition recovery ops
 + */
-+static inline int nfs41_set_session_alloc(struct nfs4_session *session)
-+{
-+	return test_and_set_bit(NFS41_SESSION_ALLOC, &session->session_state);
-+}
 +
-+static inline int nfs41_test_session_alloc(struct nfs4_session *session)
-+{
-+	return test_bit(NFS41_SESSION_ALLOC, &session->session_state);
-+}
++struct nfs4_state_recovery_ops *nfs4_reboot_recovery_ops[] = {
++	&nfs40_reboot_recovery_ops,
++#if defined(CONFIG_NFS_V4_1)
++	&nfs41_reboot_recovery_ops,
++#endif
++};
 +
-+int nfs41_set_session_valid(struct nfs4_session *);
-+int nfs41_recover_session(struct nfs4_session *);
-+int nfs41_recover_session_sync(struct nfs4_session *);
++struct nfs4_state_recovery_ops *nfs4_network_partition_recovery_ops[] = {
++	&nfs40_network_partition_recovery_ops,
++#if defined(CONFIG_NFS_V4_1)
++	&nfs41_network_partition_recovery_ops,
++#endif
++};
 +
-+#endif	/* CONFIG_NFS_V4_1 */
-+#endif	/* __NFS41_SESSION_RECOVERY_H__ */
++struct nfs4_state_maintenance_ops *nfs4_state_renewal_ops[] = {
++	&nfs40_state_renewal_ops,
++#if defined(CONFIG_NFS_V4_1)
++	&nfs41_state_renewal_ops,
++#endif
+ };
+ 
+ static const struct inode_operations nfs4_file_inode_operations = {
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 3305acb..a1bab0c 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -59,12 +59,14 @@
+ void
+ nfs4_renew_state(struct work_struct *work)
+ {
++	struct nfs4_state_maintenance_ops *ops;
+ 	struct nfs_client *clp =
+ 		container_of(work, struct nfs_client, cl_renewd.work);
+ 	struct rpc_cred *cred;
+ 	long lease, timeout;
+ 	unsigned long last, now;
+ 
++	ops = nfs4_state_renewal_ops[clp->cl_minorversion];
+ 	down_read(&clp->cl_sem);
+ 	dprintk("%s: start\n", __func__);
+ 	/* Are there any active superblocks? */
+@@ -86,8 +88,7 @@ nfs4_renew_state(struct work_struct *work)
+ 		}
+ 		spin_unlock(&clp->cl_lock);
+ 		/* Queue an asynchronous RENEW. */
+-		nfs4_proc_async_renew(clp, cred);
+-		put_rpccred(cred);
++		ops->sched_state_renewal(clp, cred);
+ 		timeout = (2 * lease) / 3;
+ 		spin_lock(&clp->cl_lock);
+ 	} else
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 09ca7b1..cf6666d 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -952,24 +952,24 @@ static int reclaimer(void *ptr)
+ 	/* Ensure exclusive access to NFSv4 state */
+ 	down_write(&clp->cl_sem);
+ 	/* Are there any NFS mounts out there? */
+-	if (list_empty(&clp->cl_superblocks))
++	if (clp->cl_minorversion == 0 && list_empty(&clp->cl_superblocks))
+ 		goto out;
+ restart_loop:
+ 	dprintk("%s: starting loop\n", __func__);
+-	ops = &nfs4_network_partition_recovery_ops;
++	ops = nfs4_network_partition_recovery_ops[clp->cl_minorversion];
+ 	/* Are there any open files on this volume? */
+ 	cred = nfs4_get_renew_cred(clp);
+ 	if (cred != NULL) {
+ 		/* Yes there are: try to renew the old lease */
+-		status = nfs4_proc_renew(clp, cred);
++		status = ops->renew_lease(clp, cred);
+ 		put_rpccred(cred);
+ 		switch (status) {
+-			case 0:
+-			case -NFS4ERR_CB_PATH_DOWN:
+-				goto out;
+-			case -NFS4ERR_STALE_CLIENTID:
+-			case -NFS4ERR_LEASE_MOVED:
+-				ops = &nfs4_reboot_recovery_ops;
++		case 0:
++		case -NFS4ERR_CB_PATH_DOWN:
++			goto out;
++		case -NFS4ERR_STALE_CLIENTID:
++		case -NFS4ERR_LEASE_MOVED:
++			ops = nfs4_reboot_recovery_ops[clp->cl_minorversion];
+ 		}
+ 	} else {
+ 		/* "reboot" to ensure we clear all state on the server */
+@@ -998,7 +998,8 @@ restart_loop:
+ 		status = nfs4_reclaim_open_state(ops, sp);
+ 		if (status < 0) {
+ 			if (status == -NFS4ERR_NO_GRACE) {
+-				ops = &nfs4_network_partition_recovery_ops;
++				ops = nfs4_network_partition_recovery_ops[
++							clp->cl_minorversion];
+ 				status = nfs4_reclaim_open_state(ops, sp);
+ 			}
+ 			if (status == -NFS4ERR_STALE_CLIENTID)
 -- 
 1.6.0.2
 
