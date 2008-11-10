@@ -1,70 +1,80 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 82/85] nfs41: cb_sequence protocol level data structures
-Date: Mon, 10 Nov 2008 22:32:51 +0200
-Message-ID: <1226349171-9974-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 83/85] nfs41: cb_sequence proc implementation
+Date: Mon, 10 Nov 2008 22:33:01 +0200
+Message-ID: <1226349181-10008-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:53149 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:53156 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753188AbYKJUc5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:32:57 -0500
+	with ESMTP id S1752315AbYKJUdI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:33:08 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently, just free up any referring calls information.
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/callback.h |   35 +++++++++++++++++++++++++++++++++++
- 1 files changed, 35 insertions(+), 0 deletions(-)
+ fs/nfs/callback.h      |    4 ++++
+ fs/nfs/callback_proc.c |   30 ++++++++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b3ccfe8..5616257 100644
+index 5616257..81a9df6 100644
 --- a/fs/nfs/callback.h
 +++ b/fs/nfs/callback.h
-@@ -70,6 +70,41 @@ struct cb_recallargs {
- 	uint32_t truncate;
- };
+@@ -119,6 +119,10 @@ extern void nfs_callback_down(int minorversion);
+  * so we limit their concurrency to 1.
+  */
+ #define NFS41_BC_MIN_CALLBACKS 1
++#define NFS41_BC_MAX_CALLBACKS 1
++
++extern unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
++				       struct cb_sequenceres *res);
+ #endif /* CONFIG_NFS_V4_1 */
  
+ extern unsigned int nfs_callback_set_tcpport;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index f7e83e2..63b8662 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -101,3 +101,33 @@ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
+ 	return res;
+ }
++
 +#if defined(CONFIG_NFS_V4_1)
 +
-+struct referring_call {
-+	uint32_t			rc_sequenceid;
-+	uint32_t			rc_slotid;
-+};
++/* FIXME: validate args->cbs_{sequence,slot}id */
++/* FIXME: referring calls should be processed */
++unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
++				struct cb_sequenceres *res)
++{
++	int i;
++	unsigned status = 0;
 +
-+struct referring_call_list {
-+	nfs41_sessionid			rcl_sessionid;
-+	uint32_t			rcl_nrefcalls;
-+	struct referring_call 		*rcl_refcalls;
-+};
++	for (i = 0; i < args->csa_nrclists; i++)
++		kfree(args->csa_rclists[i].rcl_refcalls);
++	kfree(args->csa_rclists);
 +
-+struct cb_sequenceargs {
-+	struct sockaddr_in		*csa_addr;
-+	nfs41_sessionid			csa_sessionid;
-+	uint32_t			csa_sequenceid;
-+	uint32_t			csa_slotid;
-+	uint32_t			csa_highestslotid;
-+	uint32_t			csa_cachethis;
-+	uint32_t			csa_nrclists;
-+	struct referring_call_list	*csa_rclists;
-+};
++	memcpy(&res->csr_sessionid, &args->csa_sessionid,
++	       sizeof(res->csr_sessionid));
++	res->csr_sequenceid = args->csa_sequenceid;
++	res->csr_slotid = args->csa_slotid;
++	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS;
++	if (res->csr_highestslotid > args->csa_highestslotid)
++		res->csr_highestslotid = args->csa_highestslotid;
++	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS;
 +
-+struct cb_sequenceres {
-+	uint32_t			csr_status;
-+	nfs41_sessionid			csr_sessionid;
-+	uint32_t			csr_sequenceid;
-+	uint32_t			csr_slotid;
-+	uint32_t			csr_highestslotid;
-+	uint32_t			csr_target_highestslotid;
-+};
++	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
++	res->csr_status = status;
++	return status;
++}
 +
 +#endif /* CONFIG_NFS_V4_1 */
-+
- extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getattrres *res);
- extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy);
- 
 -- 
 1.6.0.2
 
