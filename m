@@ -1,104 +1,212 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 63/85] FIXME: nfs41: sunrpc: handle clnt==NULL in call_status
-Date: Mon, 10 Nov 2008 22:29:28 +0200
-Message-ID: <1226348968-9333-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 64/85] nfs41: Refactor svc_process()
+Date: Mon, 10 Nov 2008 22:29:39 +0200
+Message-ID: <1226348979-9366-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60022 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60027 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752412AbYKJU3f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:29:35 -0500
+	with ESMTP id S1752401AbYKJU3p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:29:45 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FIXME: pending discussion. This patch might not be needed if
-backchannel usage of rpc mechanisms for sending bc_svc
-replies (on the nfs client / callback svc side)
+From: Ricardo Labiaga <ricardo.labiaga@netapp.com>
 
-On the following error path task->tk_client == NULL causing NULL deref:
+net/sunrpc/svc.c:svc_process() is used by the NFSv4 callback service
+to process RPC requests arriving over connections initiated by the
+server.  NFSv4.1 supports callbacks over the backchannel on connections
+initiated by the client.  This patch refactors svc_process() so that
+common code can also be used by the backchannel.
 
-Nov  4 14:14:32 tl1 kernel: Callback slot table overflowed
-Nov  4 14:14:32 tl1 kernel: BUG: unable to handle kernel NULL pointer dereference at 0000000000000078
-Nov  4 14:14:32 tl1 kernel: IP: [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
-Nov  4 14:14:32 tl1 kernel: PGD 2f973067 PUD 2f974067 PMD 0
-Nov  4 14:14:32 tl1 kernel: Oops: 0000 [1] SMP
-Nov  4 14:14:32 tl1 kernel: CPU 0
-Nov  4 14:14:32 tl1 kernel: Modules linked in: panfs(P) panlayoutdriver nfslayoutdriver nfsd auth_rpcgss exportfs nfs lockd nfs_acl fuse sunrpc ipv6 cpufreq_ondemand powernow_k8 freq_table dm_mirror dm_log dm_multipath dm_mod snd_hda_intel snd_seq_dummy sr_mod snd_seq_oss cdrom snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd_page_alloc snd_hwdep snd pcspkr serio_raw k8temp hwmon forcedeth soundcore pata_amd sg jedec_probe cfi_probe gen_probe mtd i2c_nforce2 chipreg i2c_core button map_funcs sata_nv ata_generic pata_acpi libata sd_mod scsi_mod ext3 jbd mbcache uhci_hcd ohci_hcd ehci_hcd [last unloaded: scsi_wait_scan]
-Nov  4 14:14:32 tl1 kernel: Pid: 3405, comm: nfsv4.1-svc Tainted: P          2.6.27-pnfs #1
-Nov  4 14:14:32 tl1 kernel: RIP: 0010:[<ffffffffa02b4dd2>]  [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
-Nov  4 14:14:32 tl1 kernel: RSP: 0018:ffff88002a70bd60  EFLAGS: 00010246
-Nov  4 14:14:32 tl1 kernel: RAX: 0000000000000000 RBX: 00000000ffffff95 RCX: 0000000000000000
-Nov  4 14:14:32 tl1 kernel: RDX: ffff88002a70bd10 RSI: ffff88002fc52dc0 RDI: ffff88002fc52dc0
-Nov  4 14:14:32 tl1 kernel: RBP: ffff88002a70bd80 R08: ffff88002f9dae40 R09: ffffffff81489e60
-Nov  4 14:14:32 tl1 kernel: R10: ffff880038497800 R11: ffff88002a70bd30 R12: ffff88002fc52dc0
-Nov  4 14:14:32 tl1 kernel: R13: 0000000000000000 R14: ffff88002f57fa00 R15: ffff88002fc52e50
-Nov  4 14:14:32 tl1 kernel: FS:  00007fe78ffac6f0(0000) GS:ffffffff8148da80(0000) knlGS:0000000000000000
-Nov  4 14:14:32 tl1 kernel: CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078 CR3: 000000002f971000 CR4: 00000000000006e0
-Nov  4 14:14:32 tl1 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-Nov  4 14:14:32 tl1 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Nov  4 14:14:32 tl1 kernel: Process nfsv4.1-svc (pid: 3405, threadinfo ffff88002a70a000, task ffff88003694d900)
-Nov  4 14:14:32 tl1 kernel: Stack:  0000000000000000 ffff88002f57fa00 ffff88002fc52dc0 ffff880030450ce8
-Nov  4 14:14:32 tl1 kernel: ffff88002a70bdc0 ffffffffa02bb9db ffff88002a70bdf0 ffff88002fc52dc0
-Nov  4 14:14:32 tl1 kernel: ffff88002f57fa00 ffff88002f57fa00 ffff880030450ce8 ffff88002a734000
-Nov  4 14:14:32 tl1 kernel: Call Trace:
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bb9db>] __rpc_execute+0x7e/0x21f [sunrpc]
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bbba4>] rpc_execute+0x28/0x2c [sunrpc]
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa02b5596>] rpc_run_bc_task+0x88/0xae [sunrpc]
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa02c923d>] bc_send+0x35/0x5a [sunrpc]
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa02bdc92>] bc_svc_process+0xf6/0x101 [sunrpc]
-Nov  4 14:14:32 tl1 kernel: [<ffffffff81048a6c>] ? prepare_to_wait+0x5c/0x65
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a4c9>] nfs41_callback_svc+0xda/0x131 [nfs]
-Nov  4 14:14:32 tl1 kernel: [<ffffffff810488a0>] ? autoremove_wake_function+0x0/0x38
-Nov  4 14:14:32 tl1 kernel: [<ffffffffa033a3ef>] ? nfs41_callback_svc+0x0/0x131 [nfs]
-Nov  4 14:14:32 tl1 kernel: [<ffffffff81048561>] kthread+0x49/0x76
-Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf49>] child_rip+0xa/0x11
-Nov  4 14:14:32 tl1 kernel: [<ffffffff8102a401>] ? pick_next_task_fair+0x93/0xa3
-Nov  4 14:14:32 tl1 kernel: [<ffffffff81048518>] ? kthread+0x0/0x76
-Nov  4 14:14:32 tl1 kernel: [<ffffffff8100cf3f>] ? child_rip+0x0/0x11
-Nov  4 14:14:32 tl1 kernel:
-Nov  4 14:14:32 tl1 kernel:
-Nov  4 14:14:32 tl1 kernel: Code: e8 7c 70 00 00 49 8b 44 24 20 49 c7 44 24 68 dc 48 2b a0 f6 40 78 02 74 6d 41 8b b6 34 01 00 00 48 8b 78 30 e8 b9 2a 00 00 eb 5b <41> f6 45 78 04 74 13 49 8b 55 30 48 8d 82 80 04 00 00 f0 80 a2
-Nov  4 14:14:32 tl1 kernel: RIP  [<ffffffffa02b4dd2>] call_status+0xe1/0x145 [sunrpc]
-Nov  4 14:14:32 tl1 kernel: RSP <ffff88002a70bd60>
-Nov  4 14:14:32 tl1 kernel: CR2: 0000000000000078
-Nov  4 14:14:32 tl1 kernel: ---[ end trace 1584c489f2573aaf ]---
-
+Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/clnt.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ fs/nfs/callback.c |   10 +++---
+ net/sunrpc/svc.c  |   80 +++++++++++++++++++++++++++++++++--------------------
+ 2 files changed, 55 insertions(+), 35 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index f5418ac..fcadd8e 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1204,7 +1204,8 @@ call_status(struct rpc_task *task)
- 		break;
- 	case -ECONNREFUSED:
- 	case -ENOTCONN:
--		rpc_force_rebind(clnt);
-+		if (clnt)
-+			rpc_force_rebind(clnt);
- 		task->tk_action = call_bind;
- 		break;
- 	case -EAGAIN:
-@@ -1215,9 +1216,10 @@ call_status(struct rpc_task *task)
- 		rpc_exit(task, status);
- 		break;
- 	default:
--		if (clnt->cl_chatty)
-+		if (!clnt || clnt->cl_chatty)
- 			printk("%s: RPC call returned error %d\n",
--			       clnt->cl_protname, -status);
-+			       clnt ? clnt->cl_protname : "<unknown protocol>",
-+			       -status);
- 		rpc_exit(task, status);
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index e792706..2f5acd3 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -132,7 +132,7 @@ nfs4_callback_up(struct svc_serv *serv)
+ int nfs_callback_up(u32 minorversion, void *args)
+ {
+ 	struct svc_serv *serv = NULL;
+-	struct svc_rqst *rqstp;
++	struct svc_rqst *rqst;
+ 	int (* callback_svc)(void *vrqstp);
+ 	char svc_name[12];
+ 	int ret = 0;
+@@ -150,20 +150,20 @@ int nfs_callback_up(u32 minorversion, void *args)
+ 	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
+ 	 * need to monitor and control them both */
+ 	if (!minorversion) {
+-		rqstp = nfs4_callback_up(serv);
++		rqst = nfs4_callback_up(serv);
+ 		callback_svc = nfs4_callback_svc;
+ 	} else {
+ 		BUG();	/* for now */
  	}
+-	if (IS_ERR(rqstp)) {
+-		ret = PTR_ERR(rqstp);
++	if (IS_ERR(rqst)) {
++		ret = PTR_ERR(rqst);
+ 		goto out_err;
+ 	}
+ 
+ 	svc_sock_update_bufs(serv);
+ 
+ 	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+-	nfs_callback_info.rqst = rqstp;
++	nfs_callback_info.rqst = rqst;
+ 	nfs_callback_info.task = kthread_run(callback_svc,
+ 					     nfs_callback_info.rqst,
+ 					     svc_name);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 54c98d8..e4efeeb 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -985,20 +985,18 @@ svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
  }
+ 
+ /*
+- * Process the RPC request.
++ * Common routine for processing the RPC request.
+  */
+-int
+-svc_process(struct svc_rqst *rqstp)
++static int
++svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ {
+ 	struct svc_program	*progp;
+ 	struct svc_version	*versp = NULL;	/* compiler food */
+ 	struct svc_procedure	*procp = NULL;
+-	struct kvec *		argv = &rqstp->rq_arg.head[0];
+-	struct kvec *		resv = &rqstp->rq_res.head[0];
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	kxdrproc_t		xdr;
+ 	__be32			*statp;
+-	u32			dir, prog, vers, proc;
++	u32			prog, vers, proc;
+ 	__be32			auth_stat, rpc_stat;
+ 	int			auth_res;
+ 	__be32			*reply_statp;
+@@ -1008,36 +1006,19 @@ svc_process(struct svc_rqst *rqstp)
+ 	if (argv->iov_len < 6*4)
+ 		goto err_short_len;
+ 
+-	/* setup response xdr_buf.
+-	 * Initially it has just one page
+-	 */
+-	rqstp->rq_resused = 1;
+-	resv->iov_base = page_address(rqstp->rq_respages[0]);
+-	resv->iov_len = 0;
+-	rqstp->rq_res.pages = rqstp->rq_respages + 1;
+-	rqstp->rq_res.len = 0;
+-	rqstp->rq_res.page_base = 0;
+-	rqstp->rq_res.page_len = 0;
+-	rqstp->rq_res.buflen = PAGE_SIZE;
+-	rqstp->rq_res.tail[0].iov_base = NULL;
+-	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
+ 
+ 	/* Setup reply header */
+ 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
+ 
+-	rqstp->rq_xid = svc_getu32(argv);
+ 	svc_putu32(resv, rqstp->rq_xid);
+ 
+-	dir  = svc_getnl(argv);
+ 	vers = svc_getnl(argv);
+ 
+ 	/* First words of reply: */
+ 	svc_putnl(resv, 1);		/* REPLY */
+ 
+-	if (dir != 0)		/* direction != CALL */
+-		goto err_bad_dir;
+ 	if (vers != 2)		/* RPC version number */
+ 		goto err_bad_rpc;
+ 
+@@ -1161,7 +1142,7 @@ svc_process(struct svc_rqst *rqstp)
+  sendit:
+ 	if (svc_authorise(rqstp))
+ 		goto dropit;
+-	return svc_send(rqstp);
++	return 1;		/* Caller can now send it */
+ 
+  dropit:
+ 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+@@ -1175,12 +1156,6 @@ err_short_len:
+ 
+ 	goto dropit;			/* drop request */
+ 
+-err_bad_dir:
+-	svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
+-
+-	serv->sv_stats->rpcbadfmt++;
+-	goto dropit;			/* drop request */
+-
+ err_bad_rpc:
+ 	serv->sv_stats->rpcbadfmt++;
+ 	svc_putnl(resv, 1);	/* REJECT */
+@@ -1234,6 +1209,51 @@ err_bad:
+ EXPORT_SYMBOL(svc_process);
+ 
+ /*
++ * Process the RPC request.
++ */
++int
++svc_process(struct svc_rqst *rqstp)
++{
++	struct kvec		*argv = &rqstp->rq_arg.head[0];
++	struct kvec		*resv = &rqstp->rq_res.head[0];
++	struct svc_serv		*serv = rqstp->rq_server;
++	u32			dir;
++	int			error;
++
++	/*
++	 * Setup response xdr_buf.
++	 * Initially it has just one page
++	 */
++	rqstp->rq_resused = 1;
++	resv->iov_base = page_address(rqstp->rq_respages[0]);
++	resv->iov_len = 0;
++	rqstp->rq_res.pages = rqstp->rq_respages + 1;
++	rqstp->rq_res.len = 0;
++	rqstp->rq_res.page_base = 0;
++	rqstp->rq_res.page_len = 0;
++	rqstp->rq_res.buflen = PAGE_SIZE;
++	rqstp->rq_res.tail[0].iov_base = NULL;
++	rqstp->rq_res.tail[0].iov_len = 0;
++
++	rqstp->rq_xid = svc_getu32(argv);
++
++	dir  = svc_getnl(argv);
++	if (dir != 0) {
++		/* direction != CALL */
++		svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
++		serv->sv_stats->rpcbadfmt++;
++		svc_drop(rqstp);
++		return 0;
++	}
++
++	error = svc_process_common(rqstp, argv, resv);
++	if (error <= 0)
++		return error;
++
++	return svc_send(rqstp);
++}
++
++/*
+  * Return (transport-specific) limit on the rpc payload.
+  */
+ u32 svc_max_payload(const struct svc_rqst *rqstp)
 -- 
 1.6.0.2
 
