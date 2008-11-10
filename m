@@ -1,102 +1,55 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 65/85] nfs41: Backchannel bc_svc_process()
-Date: Mon, 10 Nov 2008 22:29:50 +0200
-Message-ID: <1226348990-9399-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 68/85] nfs41: sunrpc: add a struct svc_xprt pointer to struct svc_serv for backchannel use
+Date: Mon, 10 Nov 2008 22:30:22 +0200
+Message-ID: <1226349022-9500-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60031 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60043 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752476AbYKJU3z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:29:55 -0500
+	with ESMTP id S1752540AbYKJUa1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:30:27 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+This svc_xprt is passed on to the callback service thread to be later used
+to processes incoming svc_rqst's
 
-Implement the NFSv4.1 backchannel service.  Invokes the common callback
-processing logic svc_process_common() to authenticate the call and
-dispatch the appropriate NFSv4.1 XDR decoder and operation procedure.
-It then invokes bc_send() to send the reply over the same connection.
-bc_send() is implemented in a separate patch.
-
-At this time there is no slot validation or reply cache handling.
-
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/svc.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 49 insertions(+), 0 deletions(-)
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    4 ++++
+ 2 files changed, 5 insertions(+), 0 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 1bb51dc..7653dd3 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -90,6 +90,7 @@ struct svc_serv {
+ 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
+ 						 * entries in the svc_cb_list
+ 						 */
++	struct svc_xprt		*bc_xprt;
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index e4efeeb..906b992 100644
+index 906b992..b84ae54 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -25,6 +25,7 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/bc_xprt.h>
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCDSP
- 
-@@ -1253,6 +1254,54 @@ svc_process(struct svc_rqst *rqstp)
- 	return svc_send(rqstp);
- }
+@@ -489,6 +489,10 @@ svc_destroy(struct svc_serv *serv)
+ 	if (svc_serv_is_pooled(serv))
+ 		svc_pool_map_put();
  
 +#if defined(CONFIG_NFS_V4_1)
-+/*
-+ * Process a backchannel RPC request that arrived over an existing
-+ * outbound connection
-+ */
-+int
-+bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
-+	       struct svc_rqst *rqstp)
-+{
-+	struct kvec	*argv = &rqstp->rq_arg.head[0];
-+	struct kvec	*resv = &rqstp->rq_res.head[0];
-+	int 		error;
-+
-+	/* Build the svc_rqst used by the common processing routine */
-+	rqstp->rq_xid = req->rq_xid;
-+	rqstp->rq_prot = req->rq_xprt->prot;
-+	rqstp->rq_server = serv;
-+
-+	rqstp->rq_addrlen = sizeof(req->rq_xprt->addr);
-+	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
-+	memcpy(&rqstp->rq_arg, &req->rq_private_buf, sizeof(rqstp->rq_arg));
-+	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
-+
-+	/* reset result send buffer "put" position */
-+	resv->iov_len = 0;
-+
-+	if (rqstp->rq_prot != IPPROTO_TCP) {
-+		printk(KERN_ERR "No support for Non-TCP transports!\n");
-+		BUG();
-+	}
-+
-+	/*
-+	 * Skip the next two words because they've already been
-+	 * processed in the trasport
-+	 */
-+	svc_getu32(argv);	/* XID */
-+	svc_getnl(argv);	/* CALLDIR */
-+
-+	error = svc_process_common(rqstp, argv, resv);
-+	if (error <= 0)
-+		return error;
-+
-+	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
-+	return bc_send(req);
-+}
-+EXPORT_SYMBOL(bc_svc_process);
++	svc_sock_destroy(serv->bc_xprt);
 +#endif /* CONFIG_NFS_V4_1 */
 +
- /*
-  * Return (transport-specific) limit on the rpc payload.
-  */
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
 -- 
 1.6.0.2
 
