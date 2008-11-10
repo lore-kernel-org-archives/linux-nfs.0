@@ -1,46 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 5/9] rpc: call release_pipe only on last close
-Date: Mon, 10 Nov 2008 15:17:08 -0500
-Message-ID: <20081110201708.GF19053@fieldses.org>
-References: <1226264683-28650-2-git-send-email-bfields@citi.umich.edu> <1226264683-28650-3-git-send-email-bfields@citi.umich.edu> <1226264683-28650-4-git-send-email-bfields@citi.umich.edu> <1226264683-28650-5-git-send-email-bfields@citi.umich.edu> <1226264683-28650-6-git-send-email-bfields@citi.umich.edu> <1226344297.7599.41.camel@heimdal.trondhjem.org> <20081110194900.GD19053@fieldses.org> <1226347279.7599.47.camel@heimdal.trondhjem.org> <20081110200727.GE19053@fieldses.org> <1226347898.7599.49.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [RFC 01/85] sunrpc: get rid of rpc_rqst.rq_bufsize
+Date: Mon, 10 Nov 2008 21:59:19 +0200
+Message-ID: <1226347159-6561-1-git-send-email-bhalevy@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35139 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750772AbYKJURK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2008 15:17:10 -0500
-In-Reply-To: <1226347898.7599.49.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60686 "EHLO
+	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750938AbYKJUSO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:18:14 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 10, 2008 at 03:11:38PM -0500, Trond Myklebust wrote:
-> On Mon, 2008-11-10 at 15:07 -0500, J. Bruce Fields wrote:
-> 
-> > Again, I'm dealing with that case by calling release_pipe() from
-> > rpc_close_pipes(), just as the current code does--the only change being
-> > to do that only when there are still opens:
-> > 
-> > 		last_close = rpci->nreaders != 0 || rpci->nwriters != 0;
-> >  		rpci->nreaders = 0;
-> > 		...
-> >  		rpci->nwriters = 0;
-> > 		if (last_close && ops->release_pipe)
-> >  			ops->release_pipe(inode);
-> 
-> Which means that if the kernel calls rpc_close_pipes() before gssd has
-> managed to close, then you _NEVER_ call ops->release_pipe()...
+rq_bufsize is not used.
 
-So, I take "before gssd has managed to close" to mean that gssd is still
-holding the file open.  Thus the statement
+Signed-off-by: Mike Sager <Mike.Sager@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/sunrpc/xprt.h |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-	last_close = rpci->nreaders != 0 || rpci->nwriters != 0;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 4d80a11..11fc71d 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -76,8 +76,7 @@ struct rpc_rqst {
+ 	struct list_head	rq_list;
+ 
+ 	__u32 *			rq_buffer;	/* XDR encode buffer */
+-	size_t			rq_bufsize,
+-				rq_callsize,
++	size_t			rq_callsize,
+ 				rq_rcvsize;
+ 
+ 	struct xdr_buf		rq_private_buf;		/* The receive buffer
+-- 
+1.6.0.2
 
-evaluates to true; either nreaders or nwriters must be nonzero.
-
-(And note the open and close code that modifes nreaders and nwriters is
-all serialized with this code by the i_mutex.)
-
---b.
