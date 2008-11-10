@@ -1,148 +1,129 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 40/51] nfsd41: CREATE_EXCLUSIVE4_1
-Date: Mon, 10 Nov 2008 22:54:25 +0200
-Message-ID: <1226350465-11617-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 41/51] sunrpc: Add deferral save and restore state callback
+Date: Mon, 10 Nov 2008 22:54:46 +0200
+Message-ID: <1226350486-11655-1-git-send-email-bhalevy@panasas.com>
 References: <491895A0.3040809@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57441 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57445 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751294AbYKJUyi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:54:38 -0500
+	with ESMTP id S1751885AbYKJUy7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:54:59 -0500
 In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implement the CREATE_EXCLUSIVE4_1 open mode conforming to
-http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
+From: Andy Adamson <andros@netapp.com>
 
-This mode allows the client to atomically create a file
-if it doesn't exist while setting some of its attributes.
+NFSv4 needs to restart deferred processing at the operation which caused the
+deferral.
 
-It must be implemented if the server supports persistent
-reply cache and/or pnfs.
+Add a callback and a defer_data pointer in svc_rqst to enable svc_defer to
+save partial result state in the deferral request.
 
+Add page pointer storage and resused fields to svc_deferred_req to store
+the pointers to the partially processed request.
+
+Add callbacks and a defer_data pointer in svc_deferred_request to enable
+svc_deferred_recv to restore and release the partial result state.
+
+The rq_save_state callback sets the deferral request restore_state callback and
+defer_data.
+
+The svc_deferred_req defer_data and result pages survive multiple deferral
+processing caveat resetting in the save and restore callbacks.
+
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c        |   15 +++++++++++++++
- fs/nfsd/nfs4xdr.c         |   21 +++++++++++++++++++++
- include/linux/nfs4.h      |    8 +++++++-
- include/linux/nfsd/xdr4.h |   10 ++++------
- 4 files changed, 47 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/svc.h |   10 ++++++++++
+ net/sunrpc/svc_xprt.c      |   19 +++++++++++++++----
+ 2 files changed, 25 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 5164040..9401d56 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -93,6 +93,21 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
- 	open->op_truncate = 0;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 7653dd3..d86111f 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -227,6 +227,9 @@ struct svc_rqst {
+ 	struct svc_cred		rq_cred;	/* auth info */
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
++	/* callback to save deferred request state */
++	void (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
++	void			*rq_defer_data; /* defer state data to save */
  
- 	if (open->op_create) {
-+		/* FIXME: check session persistence and pnfs flags.
-+		 * The nfsv4.1 spec requires the following semantics:
-+		 *
-+		 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-+		 * Reply Cache  | server |                 |
-+		 * -------------+--------+-----------------+--------------------
-+		 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-+		 *              |        |                 | (SHOULD)
-+		 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-+		 *              |        |                 | (SHOULD NOT)
-+		 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-+		 * yes          | no     | GUARDED4        | GUARDED4
-+		 * yes          | yes    | GUARDED4        | GUARDED4
-+		 */
+ 	size_t			rq_xprt_hlen;	/* xprt header len */
+ 	struct xdr_buf		rq_arg;
+@@ -335,6 +338,13 @@ struct svc_deferred_req {
+ 	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
+ 	size_t			xprt_hlen;
++	/* callbacks to restore and release deferred request state
++	 * set in rq_save_state */
++	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
++	void (*release_state)(struct svc_deferred_req *);
++	void			*defer_data; /* defer state data */
++	struct page		*respages[RPCSVC_MAXPAGES];
++	short			resused;
+ 	int			argslen;
+ 	__be32			args[0];
+ };
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index bf5b5cd..bf12475 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -903,6 +903,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
+ 	struct svc_xprt *xprt = dr->xprt;
+ 
+ 	if (too_many) {
++		if (dr->release_state)
++			dr->release_state(dr);
+ 		svc_xprt_put(xprt);
+ 		kfree(dr);
+ 		return;
+@@ -941,10 +943,9 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		size_t size;
+ 		/* FIXME maybe discard if size too large */
+ 		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
+-		dr = kmalloc(size, GFP_KERNEL);
++		dr = kzalloc(size, GFP_KERNEL);
+ 		if (dr == NULL)
+-			return NULL;
+-
++			goto out;
+ 		dr->handle.owner = rqstp->rq_server;
+ 		dr->prot = rqstp->rq_prot;
+ 		memcpy(&dr->addr, &rqstp->rq_addr, rqstp->rq_addrlen);
+@@ -958,6 +959,15 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base - skip,
+ 		       dr->argslen << 2);
+ 	}
++	if (rqstp->rq_save_state)
++		rqstp->rq_save_state(rqstp, dr);
++out:
++	/* reset for each deferral */
++	rqstp->rq_defer_data = NULL;
++	rqstp->rq_save_state = NULL;
++	if (dr == NULL)
++		return NULL;
 +
- 		/*
- 		 * Note: create modes (UNCHECKED,GUARDED...) are the same
- 		 * in NFSv4 as in v3.
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 227434c..04a9088 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -264,6 +264,14 @@ static u32 nfsd_attrmask[] = {
- 	NFSD_WRITEABLE_ATTRS_WORD2
- };
+ 	svc_xprt_get(rqstp->rq_xprt);
+ 	dr->xprt = rqstp->rq_xprt;
  
-+#if defined(CONFIG_NFSD_V4_1)
-+static u32 nfsd41_ex_attrmask[] = {
-+	NFSD_SUPPATTR_EXCLCREAT_WORD0,
-+	NFSD_SUPPATTR_EXCLCREAT_WORD1,
-+	NFSD_SUPPATTR_EXCLCREAT_WORD2
-+};
-+#endif /* CONFIG_NFSD_V4_1 */
-+
- static __be32
- nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
- 		   struct iattr *iattr, struct nfs4_acl **acl)
-@@ -690,6 +698,19 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 			READ_BUF(8);
- 			COPYMEM(open->op_verf.data, 8);
- 			break;
-+#if defined(CONFIG_NFSD_V4_1)
-+		case NFS4_CREATE_EXCLUSIVE4_1:
-+			if (argp->minorversion < 1)
-+				goto xdr_error;
-+			READ_BUF(8);
-+			COPYMEM(open->op_verf.data, 8);
-+			status = nfsd4_decode_fattr(argp, open->op_bmval,
-+				nfsd41_ex_attrmask, &open->op_iattr,
-+				&open->op_acl);
-+			if (status)
-+				goto out;
-+			break;
-+#endif /* CONFIG_NFSD_V4_1 */
- 		default:
- 			goto xdr_error;
- 		}
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 5471adf..0aa4971 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -350,7 +350,13 @@ enum opentype4 {
- enum createmode4 {
- 	NFS4_CREATE_UNCHECKED = 0,
- 	NFS4_CREATE_GUARDED = 1,
--	NFS4_CREATE_EXCLUSIVE = 2
-+	NFS4_CREATE_EXCLUSIVE = 2,
-+	/*
-+	 * New to NFSv4.1. If session is persistent,
-+	 * GUARDED4 MUST be used. Otherwise, use
-+	 * EXCLUSIVE4_1 instead of EXCLUSIVE4.
-+	 */
-+	NFS4_CREATE_EXCLUSIVE4_1 = 3
- };
+@@ -986,10 +996,11 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
+ 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
+ 	rqstp->rq_daddr       = dr->daddr;
+ 	rqstp->rq_respages    = rqstp->rq_pages;
++	if (dr->restore_state)
++		dr->restore_state(rqstp, dr);
+ 	return (dr->argslen<<2) - dr->xprt_hlen;
+ }
  
- enum limit_by4 {
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 7812e8c..17b0a3e 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -220,10 +220,8 @@ struct nfsd4_open {
- 	u32		op_create;     	    /* request */
- 	u32		op_createmode;      /* request */
- 	u32		op_bmval[3];        /* request */
--	union {                             /* request */
--		struct iattr	iattr;                      /* UNCHECKED4,GUARDED4 */
--		nfs4_verifier	verf;                                /* EXCLUSIVE4 */
--	} u;
-+	struct iattr	iattr;              /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
-+	nfs4_verifier	verf;               /* EXCLUSIVE4 */
- 	clientid_t	op_clientid;        /* request */
- 	struct xdr_netobj op_owner;           /* request */
- 	u32		op_seqid;           /* request */
-@@ -238,8 +236,8 @@ struct nfsd4_open {
- 	struct nfs4_stateowner *op_stateowner; /* used during processing */
- 	struct nfs4_acl *op_acl;
- };
--#define op_iattr	u.iattr
--#define op_verf		u.verf
-+#define op_iattr	iattr
-+#define op_verf		verf
- 
- struct nfsd4_open_confirm {
- 	stateid_t	oc_req_stateid		/* request */;
+-
+ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+ {
+ 	struct svc_deferred_req *dr = NULL;
 -- 
 1.6.0.2
 
