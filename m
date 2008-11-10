@@ -1,72 +1,88 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 29/51] nfsd: BUG_ON_UNLOCKED_STATE
-Date: Mon, 10 Nov 2008 22:50:36 +0200
-Message-ID: <1226350236-11187-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 30/51] nfsd: lock state around nfs4_put_delegation in nfsd_break_deleg_cb err path
+Date: Mon, 10 Nov 2008 22:50:57 +0200
+Message-ID: <1226350257-11225-1-git-send-email-bhalevy@panasas.com>
 References: <491895A0.3040809@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:44792 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:44797 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774AbYKJUut (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:50:49 -0500
+	with ESMTP id S1752047AbYKJUvL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:51:11 -0500
 In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make sure fi_hash is always traversed and manipulated under the state lock.
+If kthread_run fails we put the client and delegation.  This requires
+the state lock since the fi_hash is manipulated in the process.
+Use nfs4_lock_state_nested as nfsd_break_deleg_cb may be called
+back by the filesystem while under the state lock (e.g. in the close path)
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c |   17 +++++++++++++++++
+ 1 files changed, 17 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1a9d121..7fe074a 100644
+index 7fe074a..0b45680 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -100,6 +100,8 @@ static struct kmem_cache *file_slab = NULL;
- static struct kmem_cache *stateid_slab = NULL;
- static struct kmem_cache *deleg_slab = NULL;
+@@ -94,6 +94,7 @@ static void nfs4_set_recdir(char *recdir);
+  * 	unconfstr_hashtbl[], uncofid_hashtbl[].
+  */
+ static DEFINE_MUTEX(client_mutex);
++static struct thread_info *client_mutex_owner;
  
-+#define BUG_ON_UNLOCKED_STATE() BUG_ON(mutex_trylock(&client_mutex))
-+
- void
+ static struct kmem_cache *stateowner_slab = NULL;
+ static struct kmem_cache *file_slab = NULL;
+@@ -106,14 +107,26 @@ void
  nfs4_lock_state(void)
  {
-@@ -149,6 +151,7 @@ free_nfs4_file(struct kref *kref)
- static inline void
- put_nfs4_file(struct nfs4_file *fi)
- {
-+	BUG_ON_UNLOCKED_STATE();
- 	kref_put(&fi->fi_ref, free_nfs4_file);
+ 	mutex_lock(&client_mutex);
++	client_mutex_owner = current_thread_info();
  }
  
-@@ -554,6 +557,8 @@ expire_client(struct nfs4_client *clp)
- 	dprintk("NFSD: expire_client cl_count %d\n",
- 	                    atomic_read(&clp->cl_count));
- 
-+	BUG_ON_UNLOCKED_STATE();
-+
- 	INIT_LIST_HEAD(&reaplist);
- 	spin_lock(&recall_lock);
- 	while (!list_empty(&clp->cl_delegations)) {
-@@ -1625,6 +1630,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open)
+ void
+ nfs4_unlock_state(void)
  {
- 	struct nfs4_stateowner *so = NULL;
++	BUG_ON(client_mutex_owner != current_thread_info());
++	client_mutex_owner = NULL;
+ 	mutex_unlock(&client_mutex);
+ }
  
-+	BUG_ON_UNLOCKED_STATE();
- 	list_for_each_entry(so, &ownerstr_hashtbl[hashval], so_strhash) {
- 		if (same_owner_str(so, &open->op_owner, &open->op_clientid))
- 			return so;
-@@ -1639,6 +1645,7 @@ find_file(struct inode *ino)
- 	unsigned int hashval = file_hashval(ino);
- 	struct nfs4_file *fp;
++static int
++nfs4_lock_state_nested(void)
++{
++	if (client_mutex_owner == current_thread_info())
++		return 0;
++	nfs4_lock_state();
++	return 1;
++}
++
+ static inline u32
+ opaque_hashval(const void *ptr, int nbytes)
+ {
+@@ -1798,6 +1811,7 @@ void nfsd_break_deleg_cb(struct file_lock *fl)
+ {
+ 	struct nfs4_delegation *dp=  (struct nfs4_delegation *)fl->fl_owner;
+ 	struct task_struct *t;
++	int did_lock;
  
-+	BUG_ON_UNLOCKED_STATE();
- 	list_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
- 		if (fp->fi_inode == ino) {
- 			get_nfs4_file(fp);
+ 	dprintk("NFSD nfsd_break_deleg_cb: dp %p fl %p\n",dp,fl);
+ 	if (!dp)
+@@ -1832,8 +1846,11 @@ void nfsd_break_deleg_cb(struct file_lock *fl)
+ 		printk(KERN_INFO "NFSD: Callback thread failed for "
+ 			"for client (clientid %08x/%08x)\n",
+ 			clp->cl_clientid.cl_boot, clp->cl_clientid.cl_id);
++		did_lock = nfs4_lock_state_nested();
+ 		put_nfs4_client(dp->dl_client);
+ 		nfs4_put_delegation(dp);
++		if (did_lock)
++			nfs4_unlock_state();
+ 	}
+ }
+ 
 -- 
 1.6.0.2
 
