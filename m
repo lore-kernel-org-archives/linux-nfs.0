@@ -1,44 +1,260 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 19/51] nfsd41: add OPEN4_SHARE_ACCESS_WANT nfs4_stateid bmap
-Date: Mon, 10 Nov 2008 22:47:09 +0200
-Message-ID: <1226350029-10810-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 21/51] nfsd41: xdr stubs
+Date: Mon, 10 Nov 2008 22:47:50 +0200
+Message-ID: <1226350070-10886-1-git-send-email-bhalevy@panasas.com>
 References: <491895A0.3040809@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:44747 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:44757 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751484AbYKJUrV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:47:21 -0500
+	with ESMTP id S1752768AbYKJUsE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:48:04 -0500
 In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+define stubs for exchange_id, create_session, destroy_session, and
+sequence.
 
-Separate the access bits from the want bits and enable __set_bit to
-work correctly with st_access_bmap.
-
-Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4xdr.c         |  151 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfsd/xdr4.h |   24 +++++++
+ 2 files changed, 175 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b772469..db79c0c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1186,7 +1186,8 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
- 	stp->st_stateid.si_generation = 0;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = 0;
--	__set_bit(open->op_share_access, &stp->st_access_bmap);
-+	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
-+		  &stp->st_access_bmap);
- 	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
- 	stp->st_openstp = NULL;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 4675339..fc613cd 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1016,6 +1016,36 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+ 	DECODE_TAIL;
  }
+ 
++#if defined(CONFIG_NFSD_V4_1)
++static __be32
++nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
++			 struct nfsd4_exchange_id *clid)
++{
++	return nfserr_opnotsupp;	/* stub */
++}
++
++static __be32
++nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
++			    struct nfsd4_create_session *sess)
++{
++	return nfserr_opnotsupp;	/* stub */
++}
++
++static __be32
++nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
++			     struct nfsd4_destroy_session *destroy_session)
++{
++	return nfserr_opnotsupp;	/* stub */
++}
++
++static __be32
++nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
++		      struct nfsd4_sequence *seq)
++{
++	return nfserr_opnotsupp;	/* stub */
++}
++#endif /* CONFIG_NFSD_V4_1 */
++
+ static __be32
+ nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
+ {
+@@ -1070,6 +1100,69 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
+ };
+ 
++#if defined(CONFIG_NFSD_V4_1)
++static nfsd4_dec nfsd41_dec_ops[] = {
++	[OP_ACCESS]		(nfsd4_dec)nfsd4_decode_access,
++	[OP_CLOSE]		(nfsd4_dec)nfsd4_decode_close,
++	[OP_COMMIT]		(nfsd4_dec)nfsd4_decode_commit,
++	[OP_CREATE]		(nfsd4_dec)nfsd4_decode_create,
++	[OP_DELEGPURGE]		(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_DELEGRETURN]	(nfsd4_dec)nfsd4_decode_delegreturn,
++	[OP_GETATTR]		(nfsd4_dec)nfsd4_decode_getattr,
++	[OP_GETFH]		(nfsd4_dec)nfsd4_decode_noop,
++	[OP_LINK]		(nfsd4_dec)nfsd4_decode_link,
++	[OP_LOCK]		(nfsd4_dec)nfsd4_decode_lock,
++	[OP_LOCKT]		(nfsd4_dec)nfsd4_decode_lockt,
++	[OP_LOCKU]		(nfsd4_dec)nfsd4_decode_locku,
++	[OP_LOOKUP]		(nfsd4_dec)nfsd4_decode_lookup,
++	[OP_LOOKUPP]		(nfsd4_dec)nfsd4_decode_noop,
++	[OP_NVERIFY]		(nfsd4_dec)nfsd4_decode_verify,
++	[OP_OPEN]		(nfsd4_dec)nfsd4_decode_open,
++	[OP_OPENATTR]		(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_OPEN_CONFIRM]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_OPEN_DOWNGRADE]	(nfsd4_dec)nfsd4_decode_open_downgrade,
++	[OP_PUTFH]		(nfsd4_dec)nfsd4_decode_putfh,
++	[OP_PUTPUBFH]		(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_PUTROOTFH]		(nfsd4_dec)nfsd4_decode_noop,
++	[OP_READ]		(nfsd4_dec)nfsd4_decode_read,
++	[OP_READDIR]		(nfsd4_dec)nfsd4_decode_readdir,
++	[OP_READLINK]		(nfsd4_dec)nfsd4_decode_noop,
++	[OP_REMOVE]		(nfsd4_dec)nfsd4_decode_remove,
++	[OP_RENAME]		(nfsd4_dec)nfsd4_decode_rename,
++	[OP_RENEW]		(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_RESTOREFH]		(nfsd4_dec)nfsd4_decode_noop,
++	[OP_SAVEFH]		(nfsd4_dec)nfsd4_decode_noop,
++	[OP_SECINFO]		(nfsd4_dec)nfsd4_decode_secinfo,
++	[OP_SETATTR]		(nfsd4_dec)nfsd4_decode_setattr,
++	[OP_SETCLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_SETCLIENTID_CONFIRM](nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_VERIFY]		(nfsd4_dec)nfsd4_decode_verify,
++	[OP_WRITE]		(nfsd4_dec)nfsd4_decode_write,
++	[OP_RELEASE_LOCKOWNER]	(nfsd4_dec)nfsd4_decode_notsupp,
++
++	/* new operations for NFSv4.1 */
++	[OP_BACKCHANNEL_CTL]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_BIND_CONN_TO_SESSION](nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_EXCHANGE_ID]	(nfsd4_dec)nfsd4_decode_exchange_id,
++	[OP_CREATE_SESSION]	(nfsd4_dec)nfsd4_decode_create_session,
++	[OP_DESTROY_SESSION]	(nfsd4_dec)nfsd4_decode_destroy_session,
++	[OP_FREE_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_GET_DIR_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_GETDEVICEINFO]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_GETDEVICELIST]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_LAYOUTCOMMIT]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_LAYOUTGET]		(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_LAYOUTRETURN]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_SECINFO_NO_NAME]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_SEQUENCE]		(nfsd4_dec)nfsd4_decode_sequence,
++	[OP_SET_SSV]		(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_TEST_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_WANT_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_DESTROY_CLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_RECLAIM_COMPLETE]	(nfsd4_dec)nfsd4_decode_notsupp,
++};
++#endif /* CONFIG_NFSD_V4_1 */
++
+ struct nfsd4_minorversion_ops {
+ 	nfsd4_dec *decoders;
+ 	int nops;
+@@ -1077,6 +1170,9 @@ struct nfsd4_minorversion_ops {
+ 
+ static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+ 	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
++#if defined(CONFIG_NFSD_V4_1)
++	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
++#endif /* CONFIG_NFSD_V4_1 */
+ };
+ 
+ static __be32
+@@ -2591,6 +2687,40 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+ 	return nfserr;
+ }
+ 
++#if defined(CONFIG_NFSD_V4_1)
++static __be32
++nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, int nfserr,
++			 struct nfsd4_exchange_id *exid)
++{
++	/* stub */
++	return nfserr;
++}
++
++static __be32
++nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
++			    struct nfsd4_create_session *sess)
++{
++	/* stub */
++	return nfserr;
++}
++
++static __be32
++nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
++			     struct nfsd4_destroy_session *destroy_session)
++{
++	/* stub */
++	return nfserr;
++}
++
++static __be32
++nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
++		      struct nfsd4_sequence *seq)
++{
++	/* stub */
++	return nfserr;
++}
++#endif /* CONFIG_NFSD_V4_1 */
++
+ static __be32
+ nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+ {
+@@ -2636,6 +2766,27 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_VERIFY]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_WRITE]		= (nfsd4_enc)nfsd4_encode_write,
+ 	[OP_RELEASE_LOCKOWNER]	= (nfsd4_enc)nfsd4_encode_noop,
++#if defined(CONFIG_NFSD_V4_1)
++	[OP_BACKCHANNEL_CTL]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_BIND_CONN_TO_SESSION] = (nfsd4_enc)nfsd4_encode_noop,
++	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
++	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
++	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
++	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_LAYOUTCOMMIT]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_LAYOUTGET]		= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_LAYOUTRETURN]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
++	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
++#endif /* CONFIG_NFSD_V4_1 */
+ };
+ 
+ void
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 81c249c..b864007 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -352,6 +352,24 @@ struct nfsd4_write {
+ 	u32		wr_minorversion;    /* processing */
+ };
+ 
++#if defined(CONFIG_NFSD_V4_1)
++struct nfsd4_exchange_id {
++	int	foo;	/* stub */
++};
++
++struct nfsd4_create_session {
++	int	foo;	/* stub */
++};
++
++struct nfsd4_sequence {
++	int	foo;	/* stub */
++};
++
++struct nfsd4_destroy_session {
++	int	foo;	/* stub */
++};
++#endif /* CONFIG_NFSD_V4_1 */
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	__be32					status;
+@@ -386,6 +404,12 @@ struct nfsd4_op {
+ 		struct nfsd4_verify		verify;
+ 		struct nfsd4_write		write;
+ 		struct nfsd4_release_lockowner	release_lockowner;
++#if defined(CONFIG_NFSD_V4_1)
++		struct nfsd4_exchange_id	exchange_id;
++		struct nfsd4_create_session	create_session;
++		struct nfsd4_destroy_session	destroy_session;
++		struct nfsd4_sequence		sequence;
++#endif /* CONFIG_NFSD_V4_1 */
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
 -- 
 1.6.0.2
 
