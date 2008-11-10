@@ -1,55 +1,66 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 75/85] nfs41: Get the rpc_xprt * from the rpc_rqst instead of the rpc_clnt.
-Date: Mon, 10 Nov 2008 22:31:36 +0200
-Message-ID: <1226349096-9736-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 73/85] nfs41: Setup the backchannel
+Date: Mon, 10 Nov 2008 22:31:15 +0200
+Message-ID: <1226349075-9669-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60072 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60064 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752692AbYKJUbn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:31:43 -0500
+	with ESMTP id S1752650AbYKJUbW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:31:22 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Rahul Iyer <iyer@netapp.com>
+From: Ricardo Labiaga <ricardo.labiaga@netapp.com>
 
-Obtain the rpc_xprt from the rpc_rqst so that calls and callback replies
-can both use the same code path.  A client needs the rpc_xprt in order
-to reply to a callback.
+The NFS v4.1 callback service has already been setup, and
+rpc_xprt->serv points to the svc_serv structure describing it.
+Invoke the xprt_setup_backchannel() initialization to pre-
+allocate the necessary backchannel structures.
 
-Signed-off-by: Rahul Iyer <iyer@netapp.com>
 Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/xprt.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/client.c |    9 ++++++++-
+ 1 files changed, 8 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index cc1e5f2..e71f1be 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -164,8 +164,8 @@ EXPORT_SYMBOL_GPL(xprt_unregister_transport);
-  */
- int xprt_reserve_xprt(struct rpc_task *task)
- {
--	struct rpc_xprt	*xprt = task->tk_xprt;
- 	struct rpc_rqst *req = task->tk_rqstp;
-+	struct rpc_xprt	*xprt = req->rq_xprt;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index dc5b6e7..2a24d43 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -39,6 +39,7 @@
+ #include <linux/nfs_xdr.h>
+ #if defined(CONFIG_NFS_V4_1)
+ #include <linux/nfs41_session_recovery.h>
++#include <linux/sunrpc/bc_xprt.h>
+ #endif /* CONFIG_NFS_V4_1 */
  
- 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state)) {
- 		if (task == xprt->snd_task)
-@@ -837,7 +837,7 @@ out_unlock:
- 
- void xprt_end_transmit(struct rpc_task *task)
- {
--	xprt_release_write(task->tk_xprt, task);
-+	xprt_release_write(task->tk_rqstp->rq_xprt, task);
+ #include <asm/system.h>
+@@ -1125,7 +1126,7 @@ error:
  }
  
- /**
+ /*
+- * Allocate and initialize a session if required
++ * Allocate and initialize a session if required, including its backchannel.
+  */
+ int nfs4_init_session(struct nfs_client *clp, struct rpc_clnt *clnt)
+ {
+@@ -1145,6 +1146,12 @@ int nfs4_init_session(struct nfs_client *clp, struct rpc_clnt *clnt)
+ 		else {
+ 			session->clnt = clnt;
+ 			session->clp = clp;
++
++			error = xprt_setup_backchannel(clnt->cl_xprt,
++					NFS41_BC_MIN_CALLBACKS);
++			if (error < 0)
++				/* nfs4_put session sets the session to NULL */
++				nfs4_put_session(&session);
+ 		}
+ 		clp->cl_session = session;
+ 	}
 -- 
 1.6.0.2
 
