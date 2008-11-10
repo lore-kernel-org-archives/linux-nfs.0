@@ -1,76 +1,125 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 78/85] nfs41: decode minorversion 1 cb_compound header
-Date: Mon, 10 Nov 2008 22:32:08 +0200
-Message-ID: <1226349128-9837-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 80/85] nfs41: consider minorversion in callback_xdr:process_op
+Date: Mon, 10 Nov 2008 22:32:30 +0200
+Message-ID: <1226349150-9905-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:53132 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:53140 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752713AbYKJUcO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:32:14 -0500
+	with ESMTP id S1752898AbYKJUcf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:32:35 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-decode cb_compound header conforming to
-http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
-
-Get rid of cb_compound_hdr_arg.callback_ident
-
-callback_ident is not used anywhere so we shouldn't waste any memory to
-store it.
-
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/callback.h     |    1 -
- fs/nfs/callback_xdr.c |   12 ++++++++----
- 2 files changed, 8 insertions(+), 5 deletions(-)
+ fs/nfs/callback_xdr.c |   63 ++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 50 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index e5ce040..f8325da 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -27,7 +27,6 @@ struct cb_compound_hdr_arg {
- 	unsigned int taglen;
- 	const char *tag;
- 	unsigned int minorversion;
--	unsigned int callback_ident;
- 	unsigned nops;
- };
- 
 diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 91f6f74..e141a7e 100644
+index e141a7e..dd25794 100644
 --- a/fs/nfs/callback_xdr.c
 +++ b/fs/nfs/callback_xdr.c
-@@ -143,18 +143,22 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
- 				__func__, hdr->taglen);
- 		return htonl(NFS4ERR_RESOURCE);
+@@ -359,31 +359,61 @@ out:
+ 	return status;
+ }
+ 
+-static __be32 process_op(struct svc_rqst *rqstp,
++static __be32 process_op(uint32_t minorversion, int nop,
++		struct svc_rqst *rqstp,
+ 		struct xdr_stream *xdr_in, void *argp,
+ 		struct xdr_stream *xdr_out, void *resp)
+ {
+ 	struct callback_op *op = &callback_ops[0];
+ 	unsigned int op_nr = OP_CB_ILLEGAL;
+-	__be32 status = 0;
++	__be32 status;
+ 	long maxlen;
+ 	__be32 res;
+ 
+ 	dprintk("%s: start\n", __func__);
+ 	status = decode_op_hdr(xdr_in, &op_nr);
+-	if (likely(status == 0)) {
++	if (unlikely(status))
++		goto out_illegal;
++
++	dprintk("%s: minorversion=%d nop=%d op_nr=%u\n",
++		__func__, minorversion, nop, op_nr);
++#if defined(CONFIG_NFS_V4_1)
++	if (minorversion == 1) {
+ 		switch (op_nr) {
+-			case OP_CB_GETATTR:
+-			case OP_CB_RECALL:
+-				op = &callback_ops[op_nr];
+-				break;
+-			default:
+-				op_nr = OP_CB_ILLEGAL;
+-				op = &callback_ops[0];
+-				status = htonl(NFS4ERR_OP_ILLEGAL);
++		case OP_CB_GETATTR:
++		case OP_CB_RECALL:
++			op = &callback_ops[op_nr];
++			break;
++
++		case OP_CB_LAYOUTRECALL:
++		case OP_CB_NOTIFY:
++		case OP_CB_PUSH_DELEG:
++		case OP_CB_RECALL_ANY:
++		case OP_CB_RECALLABLE_OBJ_AVAIL:
++		case OP_CB_RECALL_SLOT:
++		case OP_CB_SEQUENCE:
++		case OP_CB_WANTS_CANCELLED:
++		case OP_CB_NOTIFY_LOCK:
++			op = &callback_ops[0];
++			status = htonl(NFS4ERR_NOTSUPP);
++			break;
++		default:
++			goto out_illegal;
+ 		}
+-	}
+ 
++		goto out;
++	}
++#endif /* defined(CONFIG_NFS_V4_1) */
++
++	switch (op_nr) {
++	case OP_CB_GETATTR:
++	case OP_CB_RECALL:
++		op = &callback_ops[op_nr];
++		break;
++	default:
++		goto out_illegal;
++	}
++out:
+ 	maxlen = xdr_out->end - xdr_out->p;
+ 	if (maxlen > 0 && maxlen < PAGE_SIZE) {
+ 		if (likely(status == 0 && op->decode_args != NULL))
+@@ -400,6 +430,12 @@ static __be32 process_op(struct svc_rqst *rqstp,
+ 		status = op->encode_res(rqstp, xdr_out, resp);
+ 	dprintk("%s: done, status = %d\n", __func__, ntohl(status));
+ 	return status;
++
++out_illegal:
++	op_nr = OP_CB_ILLEGAL;
++	op = &callback_ops[0];
++	status = htonl(NFS4ERR_OP_ILLEGAL);
++	goto out;
+ }
+ 
+ /*
+@@ -431,7 +467,8 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 		return rpc_system_err;
+ 
+ 	while (status == 0 && nops != hdr_arg.nops) {
+-		status = process_op(rqstp, &xdr_in, argp, &xdr_out, resp);
++		status = process_op(hdr_arg.minorversion, nops,
++				    rqstp, &xdr_in, argp, &xdr_out, resp);
+ 		nops++;
  	}
--	p = read_buf(xdr, 12);
-+	p = read_buf(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_RESOURCE);
- 	hdr->minorversion = ntohl(*p++);
--	/* Check minor version is zero. */
--	if (hdr->minorversion != 0) {
-+	/* Check minor version is zero or one. */
-+	if (hdr->minorversion <= 1) {
-+		p = read_buf(xdr, 8);
-+		if (unlikely(p == NULL))
-+			return htonl(NFS4ERR_RESOURCE);
-+		p++;	/* skip callback_ident */
-+	} else {
- 		printk(KERN_WARNING "%s: NFSv4 server callback with "
- 			"illegal minor version %u!\n",
- 			__func__, hdr->minorversion);
- 		return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
- 	}
--	hdr->callback_ident = ntohl(*p++);
- 	hdr->nops = ntohl(*p);
- 	dprintk("%s: minorversion %d nops %d\n", __func__,
- 		hdr->minorversion, hdr->nops);
+ 
 -- 
 1.6.0.2
 
