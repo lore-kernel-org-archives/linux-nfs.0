@@ -1,15 +1,15 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 06/51] nfsd41: define nfs41 error codes
-Date: Mon, 10 Nov 2008 22:42:39 +0200
-Message-ID: <1226349759-10318-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 07/51] nfsd41: sessions basic data types
+Date: Mon, 10 Nov 2008 22:43:00 +0200
+Message-ID: <1226349780-10356-1-git-send-email-bhalevy@panasas.com>
 References: <491895A0.3040809@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57188 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57193 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752143AbYKJUmv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:42:51 -0500
+	with ESMTP id S1753435AbYKJUnN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:43:13 -0500
 In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -18,36 +18,122 @@ From: Marc Eshel <eshel@almaden.ibm.com>
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/nfsd/nfsd.h |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c        |   20 ++++++++++++
+ include/linux/nfsd/state.h |   70 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 90 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2126940..9703540 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -251,6 +251,22 @@ void		nfsd_lockd_shutdown(void);
- #define	nfserr_locked		__constant_htonl(NFSERR_LOCKED)
- #define	nfserr_wrongsec		__constant_htonl(NFSERR_WRONGSEC)
- #define	nfserr_replay_me	__constant_htonl(NFSERR_REPLAY_ME)
-+#define	nfserr_badiomode	__constant_htonl(NFSERR_BADIOMODE)
-+#define	nfserr_badlayout	__constant_htonl(NFSERR_BADLAYOUT)
-+#define nfserr_bad_session_digest	__constant_htonl(NFSERR_BAD_SESSION_DIGEST)
-+#define nfserr_badsession	__constant_htonl(NFSERR_BADSESSION)
-+#define nfserr_badslot	__constant_htonl(NFSERR_BADSLOT)
-+#define nfserr_complete_already	__constant_htonl(NFSERR_COMPLETE_ALREADY)
-+#define nfserr_conn_not_bound_to_session	__constant_htonl(NFSERR_CONN_NOT_BOUND_TO_SESSION)
-+#define nfserr_deleg_already_wanted	__constant_htonl(NFSERR_DELEG_ALREADY_WANTED)
-+#define nfserr_dirdeleg_unavail	__constant_htonl(NFSERR_DIRDELEG_UNAVAIL)
-+#define	nfserr_layouttrylater		__constant_htonl(NFSERR_LAYOUTTRYLATER)
-+#define	nfserr_layoutunavailable	__constant_htonl(NFSERR_LAYOUTUNAVAILABLE)
-+#define	nfserr_nomatching_layout	__constant_htonl(NFSERR_NOMATCHING_LAYOUT)
-+#define nfserr_recallconflict	__constant_htonl(NFSERR_RECALLCONFLICT)
-+#define	nfserr_unknown_layouttype	__constant_htonl(NFSERR_UNKNOWN_LAYOUTTYPE)
-+#define	nfserr_seq_misordered		__constant_htonl(NFSERR_SEQ_MISORDERED)
-+#define nfserr_sequence_pos	__constant_htonl(NFSERR_SEQUENCE_POS)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b91a2f1..8c1b5d9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -310,6 +310,26 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+ static struct list_head client_lru;
+ static struct list_head close_lru;
  
- /* error codes for internal use */
- /* if a request fails due to kmalloc failure, it gets dropped.
++#if defined(CONFIG_NFSD_V4_1)
++static void
++destroy_session(struct nfs41_session *ses)
++{
++	list_del(&ses->se_hash);
++	list_del(&ses->se_perclnt);
++	nfs41_put_session(ses);
++}
++
++void
++free_session(struct kref *kref)
++{
++	struct nfs41_session *ses;
++
++	ses = container_of(kref, struct nfs41_session, se_ref);
++	kfree(ses->se_slots);
++	kfree(ses);
++}
++#endif /* CONFIG_NFSD_V4_1 */
++
+ static inline void
+ renew_client(struct nfs4_client *clp)
+ {
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 8f492e3..2f28ad4 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -100,6 +100,76 @@ struct nfs4_callback {
+ 	struct rpc_clnt *       cb_client;
+ };
+ 
++#if defined(CONFIG_NFSD_V4_1)
++/*
++ * nfs41_channel
++ *
++ * for both forward and back channels
++ */
++struct nfs41_channel {
++	u32	ch_headerpad_sz;
++	u32	ch_maxreq_sz;
++	u32	ch_maxresp_sz;
++	u32	ch_maxresp_cached;
++	u32	ch_maxops;
++	u32	ch_maxreqs;	/* number of slots */
++};
++
++/* Maximum number of slots per session - XXX arbitrary */
++#define NFS41_MAX_SLOTS 64
++
++/* slot states */
++enum {
++	NFS4_SLOT_AVAILABLE,
++	NFS4_SLOT_INPROGRESS
++};
++
++/*
++ * nfs41_slot
++ *
++ * for now, just slot sequence number - will hold DRC for this slot.
++ */
++struct nfs41_slot {
++	atomic_t		sl_state;
++	struct nfs41_session	*sl_session;
++	u32			sl_seqid;
++};
++
++/*
++ * nfs41_session
++ */
++struct nfs41_session {
++	struct kref		se_ref;
++	struct list_head	se_hash;	/* hash by sessionid_t */
++	struct list_head	se_perclnt;
++	u32			se_flags;
++	struct nfs4_client	*se_client;	/* for expire_client */
++	nfs41_sessionid		se_sessionid;
++	struct nfs41_channel	se_forward;
++	struct nfs41_slot	*se_slots;	/* forward channel slots */
++};
++
++#define se_fheaderpad_sz	se_forward.ch_headerpad_sz
++#define se_fmaxreq_sz		se_forward.ch_maxreq_sz
++#define se_fmaxresp_sz		se_forward.ch_maxresp_sz
++#define se_fmaxresp_cached	se_forward.ch_maxresp_cached
++#define se_fmaxops		se_forward.ch_maxops
++#define se_fnumslots		se_forward.ch_maxreqs
++
++static inline void
++nfs41_put_session(struct nfs41_session *ses)
++{
++	extern void free_session(struct kref *kref);
++	kref_put(&ses->se_ref, free_session);
++}
++
++static inline void
++nfs41_get_session(struct nfs41_session *ses)
++{
++	kref_get(&ses->se_ref);
++}
++#endif /* CONFIG_NFSD_V4_1 */
++
+ #define HEXDIR_LEN     33 /* hex version of 16 byte md5 of cl_name plus '\0' */
+ 
+ /*
 -- 
 1.6.0.2
 
