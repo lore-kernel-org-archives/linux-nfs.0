@@ -1,65 +1,267 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 17/85] nfs41: fallback to lower minorversion if nfs4_create_server fails
-Date: Mon, 10 Nov 2008 22:20:48 +0200
-Message-ID: <1226348448-7751-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 18/85] nfs41: sessions client infrastructure
+Date: Mon, 10 Nov 2008 22:20:59 +0200
+Message-ID: <1226348459-7784-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60753 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60757 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751450AbYKJUUy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:20:54 -0500
+	with ESMTP id S1751450AbYKJUVG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:21:06 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-retry nfs4_create_server with lower minorversion on minorvers_mismatch error
+From: Andy Adamson <andros@netapp.com>
 
+NFSv4.1 Sessions basic data types, initialization, and destruction.
+
+The session is always associated with a struct nfs_client that holds
+the exchange_id results. Add an nfs_client struct backpointer to the session
+and refactor the session recovery routines to only require a struct
+nfs4_sessions parameter.
+
+Signed-off-by: Rahul Iyer <iyer@netapp.com>
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/client.c |   12 +++++++++++-
- 1 files changed, 11 insertions(+), 1 deletions(-)
+ fs/nfs/client.c              |   40 +++++++++++++++++++++++++++++++++++++
+ fs/nfs/internal.h            |    1 +
+ fs/nfs/nfs4_fs.h             |    4 +++
+ fs/nfs/nfs4proc.c            |   35 ++++++++++++++++++++++++++++++++
+ include/linux/nfs4_session.h |   45 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs_sb.h    |    5 ++++
+ 6 files changed, 130 insertions(+), 0 deletions(-)
+ create mode 100644 include/linux/nfs4_session.h
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 11c845d..0a8a082 100644
+index 0a8a082..80091dc 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
-@@ -1118,15 +1118,17 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
- {
- 	struct nfs_fattr fattr;
- 	struct nfs_server *server;
-+	int minorvers = data->minorversion;
- 	int error;
+@@ -37,6 +37,9 @@
+ #include <linux/in6.h>
+ #include <net/ipv6.h>
+ #include <linux/nfs_xdr.h>
++#if defined(CONFIG_NFS_V4_1)
++#include <linux/nfs4_session.h>
++#endif /* CONFIG_NFS_V4_1 */
  
- 	dprintk("--> nfs4_create_server()\n");
+ #include <asm/system.h>
  
-+retry:
- 	server = nfs_alloc_server();
- 	if (!server)
- 		return ERR_PTR(-ENOMEM);
+@@ -884,6 +887,11 @@ void nfs_free_server(struct nfs_server *server)
+ 	list_del(&server->master_link);
+ 	spin_unlock(&nfs_client_lock);
  
--	server->minorversion = data->minorversion;
-+	server->minorversion = minorvers;
++#ifdef CONFIG_NFS_V4_1
++	if (server->nfs_client->cl_session != NULL)
++		nfs4_put_session(&server->nfs_client->cl_session);
++#endif /* CONFIG_NFS_V4_1 */
++
+ 	if (server->destroy != NULL)
+ 		server->destroy(server);
  
- 	/* set up the general RPC client */
- 	error = nfs4_init_server(server, data);
-@@ -1168,7 +1170,15 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
- 	return server;
- 
- error:
-+	if (server->nfs_client && server->nfs_client->cl_recovery_status)
-+		error = server->nfs_client->cl_recovery_status;
- 	nfs_free_server(server);
-+	if (minorvers > 0 && error == -NFS4ERR_MINOR_VERS_MISMATCH) {
-+		minorvers--;
-+		dprintk("%s: error %d retrying with minorvers=%d\n",
-+			__func__, error, minorvers);
-+		goto retry;
-+	}
- 	dprintk("<-- nfs4_create_server() = error %d\n", error);
- 	return ERR_PTR(error);
+@@ -1110,6 +1118,34 @@ error:
  }
+ 
+ /*
++ * Allocate and initialize a session if required
++ */
++int nfs4_init_session(struct nfs_client *clp, struct rpc_clnt *clnt)
++{
++	int error = 0;
++
++#if defined(CONFIG_NFS_V4_1)
++	if (clp->cl_minorversion) {
++		struct nfs4_session *session = NULL;
++		/*
++		 * Create the session and mark it expired.
++		 * When a SEQUENCE operation encounters the expired session
++		 * it will do session recovery to initialize it.
++		 */
++		session = nfs4_alloc_session();
++		if (!session)
++			error = -ENOMEM;
++		else {
++			session->clnt = clnt;
++			session->clp = clp;
++		}
++		clp->cl_session = session;
++	}
++#endif /* CONFIG_NFS_V4_1 */
++	return error;
++}
++
++/*
+  * Create a version 4 volume record
+  * - keyed on server and FSID
+  */
+@@ -1139,6 +1175,10 @@ retry:
+ 	BUG_ON(!server->nfs_client->rpc_ops);
+ 	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+ 
++	error = nfs4_init_session(server->nfs_client, server->client);
++	if (error)
++		goto error;
++
+ 	/* Probe the root fh to retrieve its FSID */
+ 	error = nfs4_path_walk(server, mntfh, data->nfs_server.export_path);
+ 	if (error < 0)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8386e99..9b2228f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -82,6 +82,7 @@ extern void nfs_free_server(struct nfs_server *server);
+ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   struct nfs_fh *,
+ 					   struct nfs_fattr *);
++extern int nfs4_init_session(struct nfs_client *clp, struct rpc_clnt *clnt);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 5fb7382..4b13945 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -188,6 +188,10 @@ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 
+ extern struct nfs4_state_recovery_ops nfs4_reboot_recovery_ops;
+ extern struct nfs4_state_recovery_ops nfs4_network_partition_recovery_ops;
++#if defined(CONFIG_NFS_V4_1)
++extern void nfs4_put_session(struct nfs4_session **session);
++extern struct nfs4_session *nfs4_alloc_session(void);
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ extern const u32 nfs4_fattr_bitmap[2];
+ extern const u32 nfs4_statfs_bitmap[2];
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f87d4de..8e373e9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -53,6 +53,9 @@
+ #include "delegation.h"
+ #include "internal.h"
+ #include "iostat.h"
++#if defined(CONFIG_NFS_V4_1)
++#include <linux/nfs4_session.h>
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+ 
+@@ -3679,6 +3682,38 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	return status;
+ }
+ 
++#ifdef CONFIG_NFS_V4_1
++struct nfs4_session *nfs4_alloc_session(void)
++{
++	struct nfs4_session *session;
++
++	session = kzalloc(sizeof(struct nfs4_session), GFP_ATOMIC);
++	if (!session)
++		return NULL;
++
++	atomic_set(&session->ref_count, 1);
++
++	return session;
++}
++
++static void nfs4_free_session(struct nfs4_session *session)
++{
++	dprintk("%s: freeing session %p\n", __func__, session);
++	kfree(session);
++}
++
++void nfs4_put_session(struct nfs4_session **session)
++{
++	dprintk("--> nfs4_put_session()\n");
++	if (atomic_dec_and_test(&((*session)->ref_count))) {
++		nfs4_free_session(*session);
++		*session = NULL;
++	}
++	dprintk("<-- nfs4_put_session()\n");
++}
++
++#endif /* CONFIG_NFS_V4_1 */
++
+ struct nfs4_state_recovery_ops nfs4_reboot_recovery_ops = {
+ 	.recover_open	= nfs4_open_reclaim,
+ 	.recover_lock	= nfs4_lock_reclaim,
+diff --git a/include/linux/nfs4_session.h b/include/linux/nfs4_session.h
+new file mode 100644
+index 0000000..36c0f94
+--- /dev/null
++++ b/include/linux/nfs4_session.h
+@@ -0,0 +1,45 @@
++#ifndef _NFS4_SESSIONS_H
++#define _NFS4_SESSIONS_H
++
++#if defined(CONFIG_NFS_V4_1)
++
++#include <linux/nfs4.h>
++#include <linux/smp_lock.h>
++#include <linux/sunrpc/sched.h>
++
++struct nfs4_channel_attrs {
++	u32			headerpadsz;
++	u32			max_rqst_sz;
++	u32			max_resp_sz;
++	u32			max_resp_sz_cached;
++	u32			max_ops;
++	u32			max_reqs;
++	u32			rdma_attrs;
++};
++
++struct nfs4_channel {
++	struct nfs4_channel_attrs 	chan_attrs;
++	struct rpc_clnt 		*rpc_client;
++};
++
++/*
++ * Session related parameters
++ */
++struct nfs4_session {
++	nfs41_sessionid			sess_id;
++	u32				flags;
++	unsigned long			session_state;
++	u32				hash_alg;
++	u32				ssv_len;
++
++	/* The fore and back channel */
++	struct nfs4_channel		fore_channel;
++	struct nfs4_channel		back_channel;
++
++	atomic_t			ref_count;
++	struct rpc_clnt			*clnt;
++	struct nfs_client		*clp;
++};
++
++#endif	/* CONFIG_NFS_V4_1 */
++#endif
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 80e0fc3..15c0aa5 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -7,6 +7,7 @@
+ 
+ #include <asm/atomic.h>
+ 
++struct nfs4_session;
+ struct nfs_iostats;
+ struct nlm_host;
+ 
+@@ -72,6 +73,10 @@ struct nfs_client {
+ 	unsigned char		cl_id_uniquifier;
+ 	u32			cl_minorversion;
+ #endif /* CONFIG_NFS_V4 */
++
++#ifdef CONFIG_NFS_V4_1
++	struct nfs4_session	*cl_session; 	/* sharred session */
++#endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+ #ifdef CONFIG_NFS_V4
 -- 
 1.6.0.2
 
