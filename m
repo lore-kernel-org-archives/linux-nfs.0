@@ -1,74 +1,64 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] export dir thru 2 diff path names
-Date: Mon, 10 Nov 2008 15:44:43 -0500
-Message-ID: <20081110204443.GK19053@fieldses.org>
-References: <491869F0.1000505@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
-	<491882AB.6070908@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
-	<4918859C.6080608@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F3759D@0461-its-exmb02.us.saic.com>
-	<20081110192820.GC19053@fieldses.org>
-	<ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>,
-	nfs@lists.sourceforge.net, Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [RFC 14/51] nfsd41: introduce nfs41_{get,set}_slot_state
+Date: Mon, 10 Nov 2008 22:45:25 +0200
+Message-ID: <1226349925-10621-1-git-send-email-bhalevy@panasas.com>
+References: <491895A0.3040809@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:45894 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753026AbYKJUp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2008 15:45:29 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KzddW-0000FG-TG
-	for linux-nfs@vger.kernel.org; Tue, 11 Nov 2008 07:45:26 +1100
-In-Reply-To: <ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57227 "EHLO
+	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753956AbYKJUpi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:45:38 -0500
+In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 10, 2008 at 03:20:42PM -0500, Chuck Lever wrote:
-> On Nov 10, 2008, at Nov 10, 2008, 2:28 PM, J. Bruce Fields wrote:
->> On Mon, Nov 10, 2008 at 11:28:04AM -0800, Murata, Dennis wrote:
->>> That really is the 64K question.  During my initial testing, I  
->>> exported
->>> the parent directory.  Now I am explicitly exporting the installation
->>> directories, where I see the exportfs message.  In the messages log  
->>> file
->>> on the server the mount request from the client is always the actual
->>> directory.
->>
->> I don't see how this would be "unsafe"--if it works, go for it.
->>
->> One potential trap: it's using the same client list and export options
->> for both, so if you think you can make one of them read-only and one  
->> of
->> them writeable, for example, you'll be disapointed.
->
-> I wonder how this behaves on the client side.  If the same client mounts 
-> both paths, will it recognize that these are the same and use a shared 
-> page cache for both?
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-Yeah, who knows.  I suspect it assumes they're different if the mount
-paths are different.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfs4state.c        |   12 ++++++++++++
+ include/linux/nfsd/state.h |    3 +++
+ 2 files changed, 15 insertions(+), 0 deletions(-)
 
-But for most people's purposes it probably doesn't matter much.  (For
-the purposes people have mentioned so far they don't even need to mount
-both paths from the same client at once.)
-
---b.
-
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index dcb075d..23e83e2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -321,6 +321,18 @@ static struct list_head close_lru;
+ #define SESSION_HASH_SIZE	1031
+ static struct list_head sessionid_hashtbl[SESSION_HASH_SIZE];
+ 
++int
++nfs41_get_slot_state(struct nfs41_slot *slot)
++{
++	return atomic_read(&slot->sl_state);
++}
++
++void
++nfs41_set_slot_state(struct nfs41_slot *slot, int state)
++{
++	atomic_set(&slot->sl_state, state);
++}
++
+ static int
+ hash_sessionid(nfs41_sessionid *sessionid)
+ {
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 7684188..85cdaf1 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -356,6 +356,9 @@ struct nfs4_stateid {
+ 	((err) != nfserr_stale_stateid) &&      \
+ 	((err) != nfserr_bad_stateid))
+ 
++#if defined(CONFIG_NFSD_V4_1)
++extern void nfs41_set_slot_state(struct nfs41_slot *, int);
++#endif /* CONFIG_NFSD_V4_1 */
+ extern __be32 nfs4_preprocess_stateid_op(struct svc_fh *current_fh,
+ 		stateid_t *stateid, int flags, struct file **filp);
+ extern void nfs4_lock_state(void);
+-- 
+1.6.0.2
 
