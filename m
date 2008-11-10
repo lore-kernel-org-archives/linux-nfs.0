@@ -1,277 +1,110 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 51/51] nfsd41: print DRC statistics
-Date: Mon, 10 Nov 2008 22:58:14 +0200
-Message-ID: <1226350694-12043-1-git-send-email-bhalevy@panasas.com>
-References: <491895A0.3040809@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: " J. Bruce Fields" <bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 4/9] rpc: add an rpc_pipe_open method
+Date: Mon, 10 Nov 2008 16:18:56 -0500
+Message-ID: <20081110211856.GL19053@fieldses.org>
+References: <20081109204621.GD27376@fieldses.org> <1226264683-28650-1-git-send-email-bfields@citi.umich.edu> <1226264683-28650-2-git-send-email-bfields@citi.umich.edu> <1226264683-28650-3-git-send-email-bfields@citi.umich.edu> <1226264683-28650-4-git-send-email-bfields@citi.umich.edu> <1226264683-28650-5-git-send-email-bfields@citi.umich.edu> <1226349322.7599.59.camel@heimdal.trondhjem.org> <20081110203757.GI19053@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:44382 "EHLO
-	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750811AbYKJU60 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:58:26 -0500
-In-Reply-To: <491895A0.3040809@panasas.com>
+Received: from mail.fieldses.org ([66.93.2.214]:43385 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753513AbYKJVS6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Nov 2008 16:18:58 -0500
+In-Reply-To: <20081110203757.GI19053@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, Nov 10, 2008 at 03:37:57PM -0500, bfields wrote:
+> On Mon, Nov 10, 2008 at 03:35:22PM -0500, Trond Myklebust wrote:
+> > BTW: This is racy. You have to set first_open _after_ you take the
+> > inode->i_mutex.
+> 
+> Whoops!  Good catch, thanks--fixed.
 
-Add page-use counters to the cache entry. Add a proc file to trigger printing
-the session, slot, and DRC statistics for a client ipv4 address.
+(Updated version follows.)
 
-To print the DRC stats for an IP address:
-  echo "192.168.1.106" > /proc/fs/nfsd/nfsv41_DRC_printstats
+--b.
 
-To reset all slot counters on all clients:
-  echo "0.0.0.0" > /proc/fs/nfsd/nfsv41_DRC_printstats
+commit 7f5c491a32857dc8ba587cc365a2d70024f7b33e
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Fri Nov 7 18:53:24 2008 -0500
 
-Signed-off-by: Andy Adamson<andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4state.c        |   95 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c           |   52 ++++++++++++++++++++++++
- include/linux/nfsd/nfsd.h  |    8 ++++
- include/linux/nfsd/state.h |    4 ++
- 4 files changed, 159 insertions(+), 0 deletions(-)
+    rpc: call release_pipe only on last close
+    
+    I can't see any reason we need to call this until either the kernel or
+    the last gssd closes the pipe.
+    
+    Also, this allows to guarantee that open_pipe and release_pipe are
+    called strictly in pairs; open_pipe on gssd's first open, release_pipe
+    on gssd's last close (or on the close of the kernel side of the pipe, if
+    that comes first).
+    
+    That will make it very easy for the gss code to keep track of which
+    pipes gssd is using.
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0d8fde7..3a8d5c7 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1018,6 +1018,100 @@ nfsd41_set_statp(struct svc_rqst *rqstp, __be32 *statp)
- 	resp->statp = statp;
- }
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 4171ab7..f734103 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -126,13 +126,14 @@ rpc_close_pipes(struct inode *inode)
+ {
+ 	struct rpc_inode *rpci = RPC_I(inode);
+ 	struct rpc_pipe_ops *ops;
++	int still_open;
  
-+static void
-+nfsd4_print_slotstats(struct nfs41_slot *slot)
-+{
-+	struct nfs41_cache_entry *e = &slot->sl_cache_entry;
-+
-+	printk(KERN_INFO " sequence number               %d\n", slot->sl_seqid);
-+	printk(KERN_INFO " pages cached                  %d\n", e->ce_resused);
-+	printk(KERN_INFO " total pages cached            %lu\n",
-+		e->ce_total_pages);
-+	printk(KERN_INFO " lowest # pages per request    %lu\n",
-+		e->ce_lowest_pages);
-+	printk(KERN_INFO " higest # pages per request    %lu\n",
-+		e->ce_highest_pages);
-+}
-+
-+static void
-+nfsd4_reset_slotstats(struct nfs41_slot *slot)
-+{
-+	struct nfs41_cache_entry *e = &slot->sl_cache_entry;
-+
-+	e->ce_total_pages = e->ce_lowest_pages = e->ce_highest_pages = 0;
-+}
-+
-+static void
-+nfsd4_drc_printstats(struct nfs4_client *clp, int reset)
-+{
-+	struct nfs41_session *ses;
-+	struct nfsd_sessionid *id;
-+	int i;
-+
-+	printk(KERN_INFO "\n----- DRC Stats for %u.%u.%u.%u -----\n",
-+		NIPQUAD(clp->cl_addr));
-+	if (reset)
-+		printk(KERN_INFO "         ------ RESET ------\n");
-+	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt) {
-+		id = (struct nfsd_sessionid *)ses;
-+		printk(KERN_INFO " -- Sessionid:[clientid] %x%x [boot]"
-+			"%x [seq] %x -- \n",
-+			id->clientid.cl_boot, id->clientid.cl_id,
-+			id->boot_time, id->sequence);
-+		printk(KERN_INFO "   Forward Channel\n\n");
-+		printk(KERN_INFO "     headerpad          %d\n",
-+			ses->se_fheaderpad_sz);
-+		printk(KERN_INFO "     maxreq size        %d\n",
-+			ses->se_fmaxreq_sz);
-+		printk(KERN_INFO "     maxresp size       %d\n",
-+			ses->se_fmaxresp_sz);
-+		printk(KERN_INFO "     maxresp (numslots) %d\n",
-+			ses->se_fmaxresp_cached);
-+		printk(KERN_INFO "     maxops             %d\n",
-+			ses->se_fmaxops);
-+		for (i = 0; i < ses->se_forward.ch_maxreqs; i++) {
-+			printk(KERN_INFO "\n----- Slot # %d -------\n", i);
-+			if (reset)
-+				nfsd4_reset_slotstats(&ses->se_slots[i]);
-+			else
-+				nfsd4_print_slotstats(&ses->se_slots[i]);
-+		}
-+	}
-+	printk(KERN_INFO "\n\n   Create Session Slot\n\n");
-+	nfsd4_print_slotstats(&clp->cl_slot);
-+	printk(KERN_INFO "\n--------- DRC Slot Stats End ---------\n\n");
-+}
-+
-+void
-+nfsd4_do_drcstats(__be32 ip4addr)
-+{
-+	struct nfs4_client *clp = NULL;
-+	int i;
-+
-+	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
-+		list_for_each_entry(clp, &conf_id_hashtbl[i], cl_idhash) {
-+			if (ip4addr == 0)
-+				nfsd4_drc_printstats(clp, 1);
-+			else if (!memcmp(&clp->cl_addr, &ip4addr,
-+							sizeof(__be32))) {
-+				nfsd4_drc_printstats(clp, 0);
-+				break;
-+			}
-+		}
-+	}
-+}
-+
-+static void
-+nfs4_set_drc_stats(struct svc_rqst *rqstp, struct nfs41_cache_entry *entry)
-+{
-+	if (entry->ce_lowest_pages == 0 ||
-+	    rqstp->rq_resused < entry->ce_lowest_pages)
-+		entry->ce_lowest_pages = rqstp->rq_resused;
-+	if (rqstp->rq_resused > entry->ce_highest_pages)
-+		entry->ce_highest_pages = rqstp->rq_resused;
-+	entry->ce_total_pages += rqstp->rq_resused;
-+}
-+
- /*
-  * Cache the reply pages, clearing the previous pages.
-  * Store the base and length of the rq_req.head[0] page
-@@ -1038,6 +1132,7 @@ nfsd41_set_cache_entry(struct nfsd4_compoundres *resp)
- 	if (resp->opcnt == 1 && resp->status && slot->sl_session)
- 		return;
- 	spin_lock(&entry->ce_lock);
-+	nfs4_set_drc_stats(rqstp, entry);
- 	nfsd4_clear_respages(entry->ce_respages, entry->ce_resused);
- 	nfsd4_cache_rqst_pages(rqstp, entry->ce_respages, &entry->ce_resused);
- 	entry->ce_status = resp->status;
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index e3f9783..e7f850a 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -71,6 +71,9 @@ enum {
- 	NFSD_Leasetime,
- 	NFSD_RecoveryDir,
- #endif
-+#ifdef CONFIG_NFSD_V4_1
-+	NFSD_DRC_print_stats,
-+#endif /* CONFIG_NFSD_V4_1 */
- };
+ 	mutex_lock(&inode->i_mutex);
+ 	ops = rpci->ops;
+ 	if (ops != NULL) {
+ 		LIST_HEAD(free_list);
+-
+ 		spin_lock(&inode->i_lock);
++		still_open = rpci->nreaders != 0 || rpci->nwriters != 0;
+ 		rpci->nreaders = 0;
+ 		list_splice_init(&rpci->in_upcall, &free_list);
+ 		list_splice_init(&rpci->pipe, &free_list);
+@@ -141,7 +142,7 @@ rpc_close_pipes(struct inode *inode)
+ 		spin_unlock(&inode->i_lock);
+ 		rpc_purge_list(rpci, &free_list, ops->destroy_msg, -EPIPE);
+ 		rpci->nwriters = 0;
+-		if (ops->release_pipe)
++		if (still_open && ops->release_pipe)
+ 			ops->release_pipe(inode);
+ 		cancel_delayed_work_sync(&rpci->queue_timeout);
+ 	}
+@@ -169,12 +170,13 @@ static int
+ rpc_pipe_open(struct inode *inode, struct file *filp)
+ {
+ 	struct rpc_inode *rpci = RPC_I(inode);
+-	int first_open = rpci->nreaders == 0 && rpci->nwriters == 0;
++	int first_open;
+ 	int res = -ENXIO;
  
- /*
-@@ -93,6 +96,9 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size);
- static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
- #endif
-+#ifdef CONFIG_NFSD_V4_1
-+static ssize_t write_drcstats(struct file *file, char *buf, size_t size);
-+#endif /* CONFIG_NFSD_V4_1 */
+ 	mutex_lock(&inode->i_mutex);
+ 	if (rpci->ops == NULL)
+ 		goto out;
++	first_open = rpci->nreaders == 0 && rpci->nwriters == 0;
+ 	if (first_open && rpci->ops->open_pipe) {
+ 		res = rpci->ops->open_pipe(inode);
+ 		if (res)
+@@ -195,6 +197,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
+ {
+ 	struct rpc_inode *rpci = RPC_I(inode);
+ 	struct rpc_pipe_msg *msg;
++	int last_close;
  
- static ssize_t failover_unlock_ip(struct file *file, char *buf, size_t size);
- static ssize_t failover_unlock_fs(struct file *file, char *buf, size_t size);
-@@ -117,6 +123,9 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Leasetime] = write_leasetime,
- 	[NFSD_RecoveryDir] = write_recoverydir,
- #endif
-+#ifdef CONFIG_NFSD_V4_1
-+	[NFSD_DRC_print_stats] = write_drcstats,
-+#endif /* CONFIG_NFSD_V4_1 */
- };
- 
- static ssize_t nfsctl_transaction_write(struct file *file, const char __user *buf, size_t size, loff_t *pos)
-@@ -727,6 +736,45 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
- 	return sprintf(buf, "%d\n", nfsd_max_blksize);
- }
- 
-+#ifdef CONFIG_NFSD_V4_1
-+static ssize_t __write_drcstats(struct file *file, char *buf, size_t size)
-+{
-+	char *mesg = buf;
-+	char *ip4addr = NULL;
-+	int len;
-+	__be32 cl_addr = 0;
-+	u8 *addr = (u8 *)&cl_addr;
-+
-+	if (size > 0) {
-+		if (size > PATH_MAX || buf[size-1] != '\n')
-+			return -EINVAL;
-+		buf[size-1] = 0;
-+
-+		ip4addr = mesg;
-+		len = qword_get(&mesg, ip4addr, size);
-+		if (len <= 0)
-+			return -EINVAL;
-+		if (!(in4_pton(ip4addr, len, addr, '\0', NULL)))
-+			return -EINVAL;
-+		nfsd4_do_drcstats(cl_addr);
-+	}
-+	if (!ip4addr)
-+		return 0;
-+	sprintf(buf, "%s\n", ip4addr);
-+	return strlen(buf);
-+}
-+
-+static ssize_t write_drcstats(struct file *file, char *buf, size_t size)
-+{
-+	ssize_t rv;
-+
-+	mutex_lock(&nfsd_mutex);
-+	rv = __write_drcstats(file, buf, size);
-+	mutex_unlock(&nfsd_mutex);
-+	return rv;
-+}
-+
-+#endif /* CONFIG_NFSD_V4_1 */
- #ifdef CONFIG_NFSD_V4
- extern time_t nfs4_leasetime(void);
- 
-@@ -830,6 +878,10 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
- #endif
-+#ifdef CONFIG_NFSD_V4_1
-+		[NFSD_DRC_print_stats] =
-+		   {"nfsv41_DRC_printstats", &transaction_ops, S_IWUSR|S_IRUSR},
-+#endif /* CONFIG_NFSD_V4_1 */
- 		/* last one */ {""}
- 	};
- 	return simple_fill_super(sb, 0x6e667364, nfsd_files);
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index c8bbe94..e31a4f6 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -181,6 +181,14 @@ static inline void nfs4_reset_lease(time_t leasetime) { }
- static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
- #endif
- 
-+#ifdef CONFIG_NFSD_V4_1
-+void nfsd4_do_drcstats(__be32 ip4addr);
-+#else
-+static inline void nfsd4_do_drcstats(__be32 client_ip4addr) {}
-+#endif /* CONFIG_NFSD_V4_1 */
-+
-+
-+
- /*
-  * lockd binding
-  */
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index a336687..03aaba4 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -131,6 +131,10 @@ struct nfs41_cache_entry {
- 	struct kvec	ce_datav; /* encoded NFSv4.1 data in rq_res.head[0] */
- 	struct page	*ce_respages[RPCSVC_MAXPAGES];
- 	short		ce_resused;
-+	/* slot page stats */
-+	unsigned long	ce_total_pages;
-+	unsigned long	ce_lowest_pages;
-+	unsigned long	ce_highest_pages;
- };
- 
- /*
--- 
-1.6.0.2
-
+ 	mutex_lock(&inode->i_mutex);
+ 	if (rpci->ops == NULL)
+@@ -221,7 +224,8 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
+ 					rpci->ops->destroy_msg, -EAGAIN);
+ 		}
+ 	}
+-	if (rpci->ops->release_pipe)
++	last_close = rpci->nwriters == 0 && rpci->nreaders == 0;
++	if (last_close && rpci->ops->release_pipe)
+ 		rpci->ops->release_pipe(inode);
+ out:
+ 	mutex_unlock(&inode->i_mutex);
