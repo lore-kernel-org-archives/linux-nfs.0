@@ -1,54 +1,118 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 09/51] nfsd41: destroy_session when client is expired
-Date: Mon, 10 Nov 2008 22:43:41 +0200
-Message-ID: <1226349821-10431-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 10/51] nfsd41: sessionid hashing
+Date: Mon, 10 Nov 2008 22:44:02 +0200
+Message-ID: <1226349842-10469-1-git-send-email-bhalevy@panasas.com>
 References: <491895A0.3040809@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57203 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57208 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754087AbYKJUny (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:43:54 -0500
+	with ESMTP id S1753896AbYKJUoP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:44:15 -0500
 In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Marc Eshel <eshel@almaden.ibm.com>
 
+Use crc32 of sessionid to look it up on the server.
+Select CRC32 when NFSD_V4_1 is selected in fs/Kconfig.
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |   10 ++++++++++
- 1 files changed, 10 insertions(+), 0 deletions(-)
+ fs/Kconfig          |    1 +
+ fs/nfsd/nfs4state.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+), 0 deletions(-)
 
+diff --git a/fs/Kconfig b/fs/Kconfig
+index aee944e..cb0e3de 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -1320,6 +1320,7 @@ config NFSD_V4
+ config NFSD_V4_1
+ 	bool "NFS server support for NFSv4.1 (EXPERIMENTAL)"
+ 	depends on NFSD_V4 && EXPERIMENTAL
++	select CRC32
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+ 	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS server.
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7406826..bf4d2c2 100644
+index bf4d2c2..0e1bc72 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -414,6 +414,9 @@ expire_client(struct nfs4_client *clp)
- 	struct nfs4_stateowner *sop;
- 	struct nfs4_delegation *dp;
- 	struct list_head reaplist;
-+#if defined(CONFIG_NFSD_V4_1)
-+	struct nfs41_session  *ses;
-+#endif /* CONFIG_NFSD_V4_1 */
+@@ -52,6 +52,7 @@
+ #include <linux/namei.h>
+ #include <linux/swap.h>
+ #include <linux/mutex.h>
++#include <linux/crc32.h>
+ #include <linux/lockd/bind.h>
+ #include <linux/module.h>
  
- 	dprintk("NFSD: expire_client cl_count %d\n",
- 	                    atomic_read(&clp->cl_count));
-@@ -440,6 +443,13 @@ expire_client(struct nfs4_client *clp)
- 		sop = list_entry(clp->cl_openowners.next, struct nfs4_stateowner, so_perclient);
- 		release_stateowner(sop);
+@@ -311,6 +312,52 @@ static struct list_head client_lru;
+ static struct list_head close_lru;
+ 
+ #if defined(CONFIG_NFSD_V4_1)
++/* Use a prime for hash table size */
++#define SESSION_HASH_SIZE	1031
++static struct list_head sessionid_hashtbl[SESSION_HASH_SIZE];
++
++static int
++hash_sessionid(nfs41_sessionid *sessionid)
++{
++	u32 csum = 0;
++	int idx;
++
++	csum = crc32(0, sessionid, sizeof(*sessionid));
++	idx = csum % SESSION_HASH_SIZE;
++	dprintk("%s IDX: %u csum %u\n", __func__, idx, csum);
++	return idx;
++}
++
++static inline void
++dump_sessionid(const char *fn, nfs41_sessionid *sessionid)
++{
++	u32 *ptr = (u32 *)(*sessionid);
++	dprintk("%s: %u:%u:%u:%u\n", fn, ptr[0], ptr[1], ptr[2], ptr[3]);
++}
++
++struct nfs41_session *
++find_in_sessionid_hashtbl(nfs41_sessionid *sessionid)
++{
++	struct nfs41_session *elem;
++	int idx;
++
++	dump_sessionid(__func__, sessionid);
++	idx = hash_sessionid(sessionid);
++	dprintk("%s: idx is %d\n", __func__, idx);
++	/* Search in the appropriate list */
++	list_for_each_entry(elem, &sessionid_hashtbl[idx], se_hash) {
++		dump_sessionid("list traversal", &elem->se_sessionid);
++		if (!memcmp(elem->se_sessionid, sessionid,
++			    sizeof(nfs41_sessionid))) {
++			dprintk("%s: found session %p\n", __func__, elem);
++			return elem;
++		}
++	}
++
++	dprintk("%s: session not found\n", __func__);
++	return NULL;
++}
++
+ static void
+ destroy_session(struct nfs41_session *ses)
+ {
+@@ -3154,6 +3201,10 @@ nfs4_state_init(void)
+ 		INIT_LIST_HEAD(&unconf_str_hashtbl[i]);
+ 		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
  	}
 +#if defined(CONFIG_NFSD_V4_1)
-+	while (!list_empty(&clp->cl_sessions)) {
-+		ses = list_entry(clp->cl_sessions.next, struct nfs41_session,
-+				 se_perclnt);
-+		destroy_session(ses);
-+	}
++	for (i = 0; i < SESSION_HASH_SIZE; i++)
++		INIT_LIST_HEAD(&sessionid_hashtbl[i]);
 +#endif /* CONFIG_NFSD_V4_1 */
- 	put_nfs4_client(clp);
- }
- 
+ 	for (i = 0; i < FILE_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&file_hashtbl[i]);
+ 	}
 -- 
 1.6.0.2
 
