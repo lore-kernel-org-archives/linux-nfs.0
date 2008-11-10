@@ -1,66 +1,124 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 30/85] nfs41: nfs41_call_sync_done
-Date: Mon, 10 Nov 2008 22:23:27 +0200
-Message-ID: <1226348607-8220-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 29/85] nfs41: nfs41_sequence_done
+Date: Mon, 10 Nov 2008 22:23:17 +0200
+Message-ID: <1226348597-8187-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:48788 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:48783 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751251AbYKJUXe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:23:34 -0500
+	with ESMTP id S1750973AbYKJUXW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:23:22 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implement nfs4.1 synchronous rpc_call_done method
-that essentially just calls nfs4_sequence_done, that turns
-around and calls nfs41_sequence_done for minorversion1 rpcs.
+Handle session level errors, update slot sequence id and
+sessions bookeeping, free slot.
 
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |   18 ++++++++++++++++++
- 1 files changed, 18 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c       |   61 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_xdr.h |    3 ++
+ 2 files changed, 64 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 217f891..5d9ca20 100644
+index af9ee0e..217f891 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -489,8 +489,17 @@ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
- 	rpc_call_start(task);
+@@ -296,6 +296,66 @@ nfs41_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot)
+ 	rpc_wake_up_next(&tbl->slot_tbl_waitq);
  }
  
-+static void nfs41_call_sync_done(struct rpc_task *task, void *calldata)
++/* For pNFS filelayout data servers:
++ * the nfs_client is NULL - to signal no lease update.
++ * session is the data server.
++ */
++static void nfs41_sequence_done(struct nfs_client *clp,
++				struct nfs41_sequence_res *res,
++				int rpc_status)
 +{
-+	struct nfs41_call_sync_data *data = calldata;
-+	struct nfs_server *server = data->server;
++	unsigned long timestamp;
++	struct nfs4_slot_table *tbl;
++	struct nfs4_slot *slot;
++	int status = NFS4_OK;
 +
-+	nfs41_sequence_done(server->nfs_client, data->seq_res, task->tk_status);
++	if (res->sr_flags & SEQ4_STATUS_USE_TK_STATUS)
++		status =  rpc_status;
++
++	tbl = &res->sr_session->fore_channel.slot_table;
++	slot = res->sr_slot;
++
++	switch (status) {
++	case NFS4_OK:
++		/*
++		 * The sequence call was successful,
++		 * Update the slot's sequence and client's lease renewal timers
++		 */
++		++slot->seq_nr;
++		if (!clp)
++			break;
++		timestamp = res->sr_renewal_time;
++		spin_lock(&clp->cl_lock);
++		if (time_before(clp->cl_last_renewal, timestamp))
++			clp->cl_last_renewal = timestamp;
++		spin_unlock(&clp->cl_lock);
++		break;
++
++	case -NFS4ERR_BADSESSION:
++	case -NFS4ERR_BADSLOT:
++	case -NFS4ERR_BADXDR:
++	case -NFS4ERR_BAD_HIGH_SLOT:
++	case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
++	case -NFS4ERR_DEADSESSION:
++	case -NFS4ERR_DELAY:
++	case -NFS4ERR_REP_TOO_BIG:
++	case -NFS4ERR_REP_TOO_BIG_TO_CACHE:
++	case -NFS4ERR_REQ_TOO_BIG:
++	case -NFS4ERR_RETRY_UNCACHED_REP:
++	case -NFS4ERR_SEQUENCE_POS:
++	case -NFS4ERR_SEQ_FALSE_RETRY:
++	case -NFS4ERR_SEQ_MISORDERED:
++	case -NFS4ERR_TOO_MANY_OPS:
++		dprintk("%s: status %d\n", __func__, status);
++		break;
++
++	default:
++		printk(KERN_WARNING "%s: Unexpected status %d\n", __func__,
++			status);
++	}
++	nfs41_free_slot(tbl, slot);
 +}
 +
- struct rpc_call_ops nfs41_call_sync_ops = {
- 	.rpc_call_prepare = nfs41_call_sync_prepare,
-+	.rpc_call_done = nfs41_call_sync_done,
+ /*
+  * nfs4_find_slot - efficiently look for a free slot
+  *
+@@ -373,6 +433,7 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ 	dprintk("<-- %s slot=%p slotid=%d seqid=%d\n", __func__,
+ 		slot, slot_idx(tbl, slot), slot->seq_nr);
+ 
++	res->sr_session = session;
+ 	res->sr_slot = slot;
+ 	res->sr_renewal_time = jiffies;
+ 	return 0;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9cefe0d..4144ea2 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -134,8 +134,11 @@ struct nfs41_sequence_args {
+ #define SEQ4_STATUS_RECALLABLE_STATE_REVOKED	0x00000040
+ #define SEQ4_STATUS_LEASE_MOVED			0x00000080
+ #define SEQ4_STATUS_RESTART_RECLAIM_NEEDED	0x00000100
++#define SEQ4_STATUS_USE_TK_STATUS		0x10000000 /* internal error */
+ 
+ struct nfs41_sequence_res {
++	struct nfs4_session	*sr_session;
++	u32			sr_flags;
+ 	struct nfs4_slot	*sr_slot;	/* slot used to send request */
+ 	unsigned long		sr_renewal_time;
  };
- 
- #endif /* CONFIG_NFS_V4_1 */
-@@ -537,6 +546,15 @@ static int _nfs4_call_sync(struct nfs_server *server,
-        _nfs4_call_sync((server), (msg), &(args)->seq_args, \
-                        &(res)->seq_res, (cache_reply))
- 
-+static void nfs4_sequence_done(const struct nfs_server *server,
-+			       struct nfs41_sequence_res *res, int rpc_status)
-+{
-+#ifdef CONFIG_NFS_V4_1
-+	if (server->nfs_client->cl_minorversion)
-+		nfs41_sequence_done(server->nfs_client, res, rpc_status);
-+#endif /* CONFIG_NFS_V4_1 */
-+}
-+
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
 -- 
 1.6.0.2
 
