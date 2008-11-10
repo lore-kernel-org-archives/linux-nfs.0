@@ -1,125 +1,74 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 13/51] FIXME: nfsd41: introduce current_session
-Date: Mon, 10 Nov 2008 22:45:04 +0200
-Message-ID: <1226349904-10582-1-git-send-email-bhalevy@panasas.com>
-References: <491895A0.3040809@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: " J. Bruce Fields" <bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] export dir thru 2 diff path names
+Date: Mon, 10 Nov 2008 15:44:43 -0500
+Message-ID: <20081110204443.GK19053@fieldses.org>
+References: <491869F0.1000505@bnl.gov>
+	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
+	<491882AB.6070908@bnl.gov>
+	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
+	<4918859C.6080608@bnl.gov>
+	<620E93B2E5CC3B46BD811165E3335B8702F3759D@0461-its-exmb02.us.saic.com>
+	<20081110192820.GC19053@fieldses.org>
+	<ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>,
+	nfs@lists.sourceforge.net, Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57223 "EHLO
-	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752591AbYKJUpR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:45:17 -0500
-In-Reply-To: <491895A0.3040809@panasas.com>
+Received: from neil.brown.name ([220.233.11.133]:45894 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753026AbYKJUp3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Nov 2008 15:45:29 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KzddW-0000FG-TG
+	for linux-nfs@vger.kernel.org; Tue, 11 Nov 2008 07:45:26 +1100
+In-Reply-To: <ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Marc Eshel <eshel@almaden.ibm.com>
+On Mon, Nov 10, 2008 at 03:20:42PM -0500, Chuck Lever wrote:
+> On Nov 10, 2008, at Nov 10, 2008, 2:28 PM, J. Bruce Fields wrote:
+>> On Mon, Nov 10, 2008 at 11:28:04AM -0800, Murata, Dennis wrote:
+>>> That really is the 64K question.  During my initial testing, I  
+>>> exported
+>>> the parent directory.  Now I am explicitly exporting the installation
+>>> directories, where I see the exportfs message.  In the messages log  
+>>> file
+>>> on the server the mount request from the client is always the actual
+>>> directory.
+>>
+>> I don't see how this would be "unsafe"--if it works, go for it.
+>>
+>> One potential trap: it's using the same client list and export options
+>> for both, so if you think you can make one of them read-only and one  
+>> of
+>> them writeable, for example, you'll be disapointed.
+>
+> I wonder how this behaves on the client side.  If the same client mounts 
+> both paths, will it recognize that these are the same and use a shared 
+> page cache for both?
 
-FIXME: use a mem pool for current session allocation.
+Yeah, who knows.  I suspect it assumes they're different if the mount
+paths are different.
 
-The current session is allocated and freed for every compound rpc.
-It holds the session id and slot used by this compound.
+But for most people's purposes it probably doesn't matter much.  (For
+the purposes people have mentioned so far they don't even need to mount
+both paths from the same client at once.)
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4proc.c         |   26 ++++++++++++++++++++++++--
- include/linux/nfsd/state.h |   12 ++++++++++++
- include/linux/nfsd/xdr4.h  |    3 +++
- 3 files changed, 39 insertions(+), 2 deletions(-)
+--b.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9fa60a3..bfebeaa 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -861,11 +861,14 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 		    struct nfsd4_compoundargs *args,
- 		    struct nfsd4_compoundres *resp)
- {
--	struct nfsd4_op	*op;
-+	struct nfsd4_op	*op = NULL;
- 	struct nfsd4_operation *opdesc;
- 	struct nfsd4_compound_state *cstate = NULL;
- 	int		slack_bytes;
- 	__be32		status;
-+#if defined(CONFIG_NFSD_V4_1)
-+	struct current_session *current_ses = NULL;
-+#endif /* CONFIG_NFSD_V4_1 */
- 
- 	resp->xbuf = &rqstp->rq_res;
- 	resp->p = rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len;
-@@ -890,6 +893,17 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	if (cstate == NULL)
- 		goto out;
- 
-+#if defined(CONFIG_NFSD_V4_1)
-+	if (args->minorversion == 1) {
-+		/* FIXME: use kmem_cache */
-+		current_ses = kzalloc(sizeof(*current_ses), GFP_KERNEL);
-+		if (current_ses == NULL)
-+			goto out_free;
-+	}
-+	/* DM: current_ses must be NULL for minorversion 0 */
-+	cstate->current_ses = current_ses;
-+#endif /* CONFIG_NFSD_V4_1 */
-+
- 	status = nfs_ok;
- 	while (!status && resp->opcnt < args->opcnt) {
- 		op = &args->ops[resp->opcnt++];
-@@ -961,7 +975,15 @@ encode_op:
- 
- 		nfsd4_increment_op_stats(op->opnum);
- 	}
--
-+out_free:
-+#if defined(CONFIG_NFSD_V4_1)
-+	if (current_ses) {
-+		struct nfs41_slot *cs_slot = current_ses->cs_slot;
-+		if (cs_slot)
-+			nfs41_put_session(cs_slot->sl_session);
-+		kfree(current_ses);
-+	}
-+#endif /* CONFIG_NFSD_V4_1 */
- 	cstate_free(cstate);
- out:
- 	nfsd4_release_compoundargs(args);
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 28c42ea..7684188 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -168,6 +168,18 @@ nfs41_get_session(struct nfs41_session *ses)
- {
- 	kref_get(&ses->se_ref);
- }
-+
-+/* formatted contents of nfs41_sessionid */
-+struct nfsd_sessionid {
-+	clientid_t	clientid;
-+	u32		boot_time;
-+	u32		sequence;
-+};
-+
-+struct current_session {
-+	struct nfsd_sessionid	cs_sid;
-+	struct nfs41_slot	*cs_slot;
-+};
- #endif /* CONFIG_NFSD_V4_1 */
- 
- #define HEXDIR_LEN     33 /* hex version of 16 byte md5 of cl_name plus '\0' */
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 27bd3e3..88f7cd6 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -48,6 +48,9 @@ struct nfsd4_compound_state {
- 	struct svc_fh current_fh;
- 	struct svc_fh save_fh;
- 	struct nfs4_stateowner *replay_owner;
-+#if defined(CONFIG_NFSD_V4_1)
-+	struct current_session *current_ses;
-+#endif /* CONFIG_NFSD_V4_1 */
- };
- 
- struct nfsd4_change_info {
--- 
-1.6.0.2
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
