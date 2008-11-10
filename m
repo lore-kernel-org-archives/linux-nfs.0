@@ -1,212 +1,102 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 64/85] nfs41: Refactor svc_process()
-Date: Mon, 10 Nov 2008 22:29:39 +0200
-Message-ID: <1226348979-9366-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 65/85] nfs41: Backchannel bc_svc_process()
+Date: Mon, 10 Nov 2008 22:29:50 +0200
+Message-ID: <1226348990-9399-1-git-send-email-bhalevy@panasas.com>
 References: <4918920E.3030301@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60027 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60031 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752401AbYKJU3p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:29:45 -0500
+	with ESMTP id S1752476AbYKJU3z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:29:55 -0500
 In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-net/sunrpc/svc.c:svc_process() is used by the NFSv4 callback service
-to process RPC requests arriving over connections initiated by the
-server.  NFSv4.1 supports callbacks over the backchannel on connections
-initiated by the client.  This patch refactors svc_process() so that
-common code can also be used by the backchannel.
+Implement the NFSv4.1 backchannel service.  Invokes the common callback
+processing logic svc_process_common() to authenticate the call and
+dispatch the appropriate NFSv4.1 XDR decoder and operation procedure.
+It then invokes bc_send() to send the reply over the same connection.
+bc_send() is implemented in a separate patch.
 
-Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+At this time there is no slot validation or reply cache handling.
+
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/callback.c |   10 +++---
- net/sunrpc/svc.c  |   80 +++++++++++++++++++++++++++++++++--------------------
- 2 files changed, 55 insertions(+), 35 deletions(-)
+ net/sunrpc/svc.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 49 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index e792706..2f5acd3 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -132,7 +132,7 @@ nfs4_callback_up(struct svc_serv *serv)
- int nfs_callback_up(u32 minorversion, void *args)
- {
- 	struct svc_serv *serv = NULL;
--	struct svc_rqst *rqstp;
-+	struct svc_rqst *rqst;
- 	int (* callback_svc)(void *vrqstp);
- 	char svc_name[12];
- 	int ret = 0;
-@@ -150,20 +150,20 @@ int nfs_callback_up(u32 minorversion, void *args)
- 	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
- 	 * need to monitor and control them both */
- 	if (!minorversion) {
--		rqstp = nfs4_callback_up(serv);
-+		rqst = nfs4_callback_up(serv);
- 		callback_svc = nfs4_callback_svc;
- 	} else {
- 		BUG();	/* for now */
- 	}
--	if (IS_ERR(rqstp)) {
--		ret = PTR_ERR(rqstp);
-+	if (IS_ERR(rqst)) {
-+		ret = PTR_ERR(rqst);
- 		goto out_err;
- 	}
- 
- 	svc_sock_update_bufs(serv);
- 
- 	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
--	nfs_callback_info.rqst = rqstp;
-+	nfs_callback_info.rqst = rqst;
- 	nfs_callback_info.task = kthread_run(callback_svc,
- 					     nfs_callback_info.rqst,
- 					     svc_name);
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 54c98d8..e4efeeb 100644
+index e4efeeb..906b992 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -985,20 +985,18 @@ svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
+@@ -25,6 +25,7 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/bc_xprt.h>
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCDSP
+ 
+@@ -1253,6 +1254,54 @@ svc_process(struct svc_rqst *rqstp)
+ 	return svc_send(rqstp);
  }
  
- /*
-- * Process the RPC request.
-+ * Common routine for processing the RPC request.
-  */
--int
--svc_process(struct svc_rqst *rqstp)
-+static int
-+svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- {
- 	struct svc_program	*progp;
- 	struct svc_version	*versp = NULL;	/* compiler food */
- 	struct svc_procedure	*procp = NULL;
--	struct kvec *		argv = &rqstp->rq_arg.head[0];
--	struct kvec *		resv = &rqstp->rq_res.head[0];
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	kxdrproc_t		xdr;
- 	__be32			*statp;
--	u32			dir, prog, vers, proc;
-+	u32			prog, vers, proc;
- 	__be32			auth_stat, rpc_stat;
- 	int			auth_res;
- 	__be32			*reply_statp;
-@@ -1008,36 +1006,19 @@ svc_process(struct svc_rqst *rqstp)
- 	if (argv->iov_len < 6*4)
- 		goto err_short_len;
- 
--	/* setup response xdr_buf.
--	 * Initially it has just one page
--	 */
--	rqstp->rq_resused = 1;
--	resv->iov_base = page_address(rqstp->rq_respages[0]);
--	resv->iov_len = 0;
--	rqstp->rq_res.pages = rqstp->rq_respages + 1;
--	rqstp->rq_res.len = 0;
--	rqstp->rq_res.page_base = 0;
--	rqstp->rq_res.page_len = 0;
--	rqstp->rq_res.buflen = PAGE_SIZE;
--	rqstp->rq_res.tail[0].iov_base = NULL;
--	rqstp->rq_res.tail[0].iov_len = 0;
- 	/* Will be turned off only in gss privacy case: */
- 	rqstp->rq_splice_ok = 1;
- 
- 	/* Setup reply header */
- 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
- 
--	rqstp->rq_xid = svc_getu32(argv);
- 	svc_putu32(resv, rqstp->rq_xid);
- 
--	dir  = svc_getnl(argv);
- 	vers = svc_getnl(argv);
- 
- 	/* First words of reply: */
- 	svc_putnl(resv, 1);		/* REPLY */
- 
--	if (dir != 0)		/* direction != CALL */
--		goto err_bad_dir;
- 	if (vers != 2)		/* RPC version number */
- 		goto err_bad_rpc;
- 
-@@ -1161,7 +1142,7 @@ svc_process(struct svc_rqst *rqstp)
-  sendit:
- 	if (svc_authorise(rqstp))
- 		goto dropit;
--	return svc_send(rqstp);
-+	return 1;		/* Caller can now send it */
- 
-  dropit:
- 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
-@@ -1175,12 +1156,6 @@ err_short_len:
- 
- 	goto dropit;			/* drop request */
- 
--err_bad_dir:
--	svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
--
--	serv->sv_stats->rpcbadfmt++;
--	goto dropit;			/* drop request */
--
- err_bad_rpc:
- 	serv->sv_stats->rpcbadfmt++;
- 	svc_putnl(resv, 1);	/* REJECT */
-@@ -1234,6 +1209,51 @@ err_bad:
- EXPORT_SYMBOL(svc_process);
- 
- /*
-+ * Process the RPC request.
++#if defined(CONFIG_NFS_V4_1)
++/*
++ * Process a backchannel RPC request that arrived over an existing
++ * outbound connection
 + */
 +int
-+svc_process(struct svc_rqst *rqstp)
++bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
++	       struct svc_rqst *rqstp)
 +{
-+	struct kvec		*argv = &rqstp->rq_arg.head[0];
-+	struct kvec		*resv = &rqstp->rq_res.head[0];
-+	struct svc_serv		*serv = rqstp->rq_server;
-+	u32			dir;
-+	int			error;
++	struct kvec	*argv = &rqstp->rq_arg.head[0];
++	struct kvec	*resv = &rqstp->rq_res.head[0];
++	int 		error;
++
++	/* Build the svc_rqst used by the common processing routine */
++	rqstp->rq_xid = req->rq_xid;
++	rqstp->rq_prot = req->rq_xprt->prot;
++	rqstp->rq_server = serv;
++
++	rqstp->rq_addrlen = sizeof(req->rq_xprt->addr);
++	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
++	memcpy(&rqstp->rq_arg, &req->rq_private_buf, sizeof(rqstp->rq_arg));
++	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
++
++	/* reset result send buffer "put" position */
++	resv->iov_len = 0;
++
++	if (rqstp->rq_prot != IPPROTO_TCP) {
++		printk(KERN_ERR "No support for Non-TCP transports!\n");
++		BUG();
++	}
 +
 +	/*
-+	 * Setup response xdr_buf.
-+	 * Initially it has just one page
++	 * Skip the next two words because they've already been
++	 * processed in the trasport
 +	 */
-+	rqstp->rq_resused = 1;
-+	resv->iov_base = page_address(rqstp->rq_respages[0]);
-+	resv->iov_len = 0;
-+	rqstp->rq_res.pages = rqstp->rq_respages + 1;
-+	rqstp->rq_res.len = 0;
-+	rqstp->rq_res.page_base = 0;
-+	rqstp->rq_res.page_len = 0;
-+	rqstp->rq_res.buflen = PAGE_SIZE;
-+	rqstp->rq_res.tail[0].iov_base = NULL;
-+	rqstp->rq_res.tail[0].iov_len = 0;
-+
-+	rqstp->rq_xid = svc_getu32(argv);
-+
-+	dir  = svc_getnl(argv);
-+	if (dir != 0) {
-+		/* direction != CALL */
-+		svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
-+		serv->sv_stats->rpcbadfmt++;
-+		svc_drop(rqstp);
-+		return 0;
-+	}
++	svc_getu32(argv);	/* XID */
++	svc_getnl(argv);	/* CALLDIR */
 +
 +	error = svc_process_common(rqstp, argv, resv);
 +	if (error <= 0)
 +		return error;
 +
-+	return svc_send(rqstp);
++	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
++	return bc_send(req);
 +}
++EXPORT_SYMBOL(bc_svc_process);
++#endif /* CONFIG_NFS_V4_1 */
 +
-+/*
+ /*
   * Return (transport-specific) limit on the rpc payload.
   */
- u32 svc_max_payload(const struct svc_rqst *rqstp)
 -- 
 1.6.0.2
 
