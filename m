@@ -1,84 +1,103 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
 Subject: Re: [NFS] export dir thru 2 diff path names
-Date: Mon, 10 Nov 2008 11:49:47 -0500
-Message-ID: <20081110164947.GA17050@fieldses.org>
+Date: Mon, 10 Nov 2008 12:05:52 -0500
+Message-ID: <491869F0.1000505@bnl.gov>
 References: <478B90A1.5000900@bnl.gov>
 	<1200330387.7470.11.camel@heimdal.trondhjem.org>
 	<478B9A64.5030903@bnl.gov> <49147E79.6000508@bnl.gov>
 	<20081109155831.GA24508@fieldses.org> <49185984.8010500@bnl.gov>
+	<20081110164947.GA17050@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:44687 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:34047 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753268AbYKJQuo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2008 11:50:44 -0500
+	id S1752759AbYKJRHz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Nov 2008 12:07:55 -0500
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1KzZyL-0007kw-K2
-	for linux-nfs@vger.kernel.org; Tue, 11 Nov 2008 03:50:41 +1100
-In-Reply-To: <49185984.8010500-IGkKxAqZmp0@public.gmane.org>
+	id 1KzaEu-0007oK-4Z
+	for linux-nfs@vger.kernel.org; Tue, 11 Nov 2008 04:07:48 +1100
+In-Reply-To: <20081110164947.GA17050@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 10, 2008 at 10:55:48AM -0500, Sev Binello wrote:
-> Well the simplest approach doesn't work.
-> i.e put symb link and actual path in the export file & try exporting it
-> Exportfs dereferences the link and states that duplicates are not allowed.
-
-OK, makes sense.
-
-You could mount --bind the filesystem at the other location instead of
-symlinking.
-
-The filehandles given to the client will be the same across the two
-exports.  If you mount both from the same client, behavior may vary
-across different clients (for example, as to whether they attempt to
-share caches between the two), but I think it'd work.
-
-(The question "why??!!??" does come to mind, though.)
-
---b.
-
+J. Bruce Fields wrote:
+> On Mon, Nov 10, 2008 at 10:55:48AM -0500, Sev Binello wrote:
+>   
+>> Well the simplest approach doesn't work.
+>> i.e put symb link and actual path in the export file & try exporting it
+>> Exportfs dereferences the link and states that duplicates are not allowed.
+>>     
 >
-> -Sev
+> OK, makes sense.
 >
-> J. Bruce Fields wrote:
->> On Fri, Nov 07, 2008 at 12:44:25PM -0500, Sev Binello wrote:
->>   
->>> Can anyone tell me if it's ok to export the same file system
->>> through 2 different paths ( one is a link) ?
->>>     
+> You could mount --bind the filesystem at the other location instead of
+> symlinking.
+>
+> The filehandles given to the client will be the same across the two
+> exports.  If you mount both from the same client, behavior may vary
+> across different clients (for example, as to whether they attempt to
+> share caches between the two), but I think it'd work.
+>
+> (The question "why??!!??" does come to mind, though.)
+>
+>   
+Need to make a path change to how file systems are mounted and exported 
+on the servers
+This then required a wholesale change to clients so they mount  the 
+correct path.
+ Not an issue for linux.
+But since we don't administer windows pcs and they also mount the same 
+file system,
+wanted to see if we could let them stay the way they were for now.
+
+We're just going to go ahead and  have to coordinate this with windows guys.
+
+-Sev
+> --b.
+>
+>   
+>> -Sev
 >>
->> I actually don't know.  You could try it and tell us what you find
->> out....
+>> J. Bruce Fields wrote:
+>>     
+>>> On Fri, Nov 07, 2008 at 12:44:25PM -0500, Sev Binello wrote:
+>>>   
+>>>       
+>>>> Can anyone tell me if it's ok to export the same file system
+>>>> through 2 different paths ( one is a link) ?
+>>>>     
+>>>>         
+>>> I actually don't know.  You could try it and tell us what you find
+>>> out....
+>>>
+>>> If you're exporting something *containing* the symlink and expecting the
+>>> client to traverse into the filesystem, be aware that symlinks over NFS
+>>> are actually interpreted (and followed) on the client--so they're
+>>> interpreted as *client-side* paths, not server-side.
+>>>
+>>> If the path you're exporting is itself a symlink--it probably depends on
+>>> how nfs-utils treats symlinks found in /etc/exports.  I'd have to try it
+>>> or check the code.
+>>>
+>>> Another way to export the filesystem in two different places would be
+>>> with mount --bind.
+>>>
+>>> --b.
+>>>   
+>>>       
+>> -- 
 >>
->> If you're exporting something *containing* the symlink and expecting the
->> client to traverse into the filesystem, be aware that symlinks over NFS
->> are actually interpreted (and followed) on the client--so they're
->> interpreted as *client-side* paths, not server-side.
+>> Sev Binello
+>> Brookhaven National Laboratory
+>> Upton, New York
+>> 631-344-5647
+>> sev-IGkKxAqZmp0@public.gmane.org
 >>
->> If the path you're exporting is itself a symlink--it probably depends on
->> how nfs-utils treats symlinks found in /etc/exports.  I'd have to try it
->> or check the code.
->>
->> Another way to export the filesystem in two different places would be
->> with mount --bind.
->>
->> --b.
->>   
->
->
-> -- 
->
-> Sev Binello
-> Brookhaven National Laboratory
-> Upton, New York
-> 631-344-5647
-> sev-IGkKxAqZmp0@public.gmane.org
->
+>>     
+
 
 -------------------------------------------------------------------------
 This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
