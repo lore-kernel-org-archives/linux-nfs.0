@@ -1,71 +1,55 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 5/9] rpc: call release_pipe only on last close
-Date: Mon, 10 Nov 2008 15:21:55 -0500
-Message-ID: <1226348515.7599.52.camel@heimdal.trondhjem.org>
-References: <1226264683-28650-2-git-send-email-bfields@citi.umich.edu>
-	 <1226264683-28650-3-git-send-email-bfields@citi.umich.edu>
-	 <1226264683-28650-4-git-send-email-bfields@citi.umich.edu>
-	 <1226264683-28650-5-git-send-email-bfields@citi.umich.edu>
-	 <1226264683-28650-6-git-send-email-bfields@citi.umich.edu>
-	 <1226344297.7599.41.camel@heimdal.trondhjem.org>
-	 <20081110194900.GD19053@fieldses.org>
-	 <1226347279.7599.47.camel@heimdal.trondhjem.org>
-	 <20081110200727.GE19053@fieldses.org>
-	 <1226347898.7599.49.camel@heimdal.trondhjem.org>
-	 <20081110201708.GF19053@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [RFC 25/85] nfs41: make nfs4_wait_bit_killable public
+Date: Mon, 10 Nov 2008 22:22:24 +0200
+Message-ID: <1226348544-8023-1-git-send-email-bhalevy@panasas.com>
+References: <4918920E.3030301@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59473 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751498AbYKJUWR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2008 15:22:17 -0500
-In-Reply-To: <20081110201708.GF19053@fieldses.org>
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:48762 "EHLO
+	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751520AbYKJUWa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:22:30 -0500
+In-Reply-To: <4918920E.3030301@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2008-11-10 at 15:17 -0500, J. Bruce Fields wrote:
-> On Mon, Nov 10, 2008 at 03:11:38PM -0500, Trond Myklebust wrote:
-> > On Mon, 2008-11-10 at 15:07 -0500, J. Bruce Fields wrote:
-> > 
-> > > Again, I'm dealing with that case by calling release_pipe() from
-> > > rpc_close_pipes(), just as the current code does--the only change being
-> > > to do that only when there are still opens:
-> > > 
-> > > 		last_close = rpci->nreaders != 0 || rpci->nwriters != 0;
-> > >  		rpci->nreaders = 0;
-> > > 		...
-> > >  		rpci->nwriters = 0;
-> > > 		if (last_close && ops->release_pipe)
-> > >  			ops->release_pipe(inode);
-> > 
-> > Which means that if the kernel calls rpc_close_pipes() before gssd has
-> > managed to close, then you _NEVER_ call ops->release_pipe()...
-> 
-> So, I take "before gssd has managed to close" to mean that gssd is still
-> holding the file open.  Thus the statement
-> 
-> 	last_close = rpci->nreaders != 0 || rpci->nwriters != 0;
-> 
-> evaluates to true; either nreaders or nwriters must be nonzero.
-> 
-> (And note the open and close code that modifes nreaders and nwriters is
-> all serialized with this code by the i_mutex.)
-> 
-> --b.
+From: Rahul Iyer <iyer@netapp.com>
 
-Exactly... That is a very common situation that happens pretty much
-every time you unmount. The kernel closes the pipe on its side, and
-removes the dentry; it doesn't wait for gssd to close the pipe.
+nfs4_wait_bit_killable to be used by NFSv4.1 session recover logic.
 
-Trond
+Signed-off-by: Rahul Iyer <iyer@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4_fs.h  |    1 +
+ fs/nfs/nfs4proc.c |    2 +-
+ 2 files changed, 2 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index dd3a6d0..bef2fca 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -179,6 +179,7 @@ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struc
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_async_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_renew(struct nfs_client *, struct rpc_cred *);
++extern int nfs4_wait_bit_killable(void *);
+ extern int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait);
+ extern struct dentry *nfs4_atomic_open(struct inode *, struct dentry *, struct nameidata *);
+ extern int nfs4_open_revalidate(struct inode *, struct dentry *, int, struct nameidata *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6418aa8..1cc639e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2929,7 +2929,7 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server)
+ 	return 0;
+ }
+ 
+-static int nfs4_wait_bit_killable(void *word)
++int nfs4_wait_bit_killable(void *word)
+ {
+ 	if (fatal_signal_pending(current))
+ 		return -ERESTARTSYS;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.6.0.2
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
