@@ -1,154 +1,381 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 21/85] nfs41: find slot
-Date: Mon, 10 Nov 2008 22:21:31 +0200
-Message-ID: <1226348491-7885-1-git-send-email-bhalevy@panasas.com>
-References: <4918920E.3030301@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [NFS] export dir thru 2 diff path names
+Date: Mon, 10 Nov 2008 15:20:42 -0500
+Message-ID: <ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
+References: <491869F0.1000505@bnl.gov>
+	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
+	<491882AB.6070908@bnl.gov>
+	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
+	<4918859C.6080608@bnl.gov>
+	<620E93B2E5CC3B46BD811165E3335B8702F3759D@0461-its-exmb02.us.saic.com>
+	<20081110192820.GC19053@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset="us-ascii"
+Cc: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>,
+	nfs@lists.sourceforge.net, Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:60769 "EHLO
-	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751472AbYKJUVj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:21:39 -0500
-In-Reply-To: <4918920E.3030301@panasas.com>
+Received: from neil.brown.name ([220.233.11.133]:53200 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751481AbYKJUV5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Nov 2008 15:21:57 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1KzdGk-00007Z-KM
+	for linux-nfs@vger.kernel.org; Tue, 11 Nov 2008 07:21:54 +1100
+In-Reply-To: <20081110192820.GC19053@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Find a free slot using bitmap-based allocation.
-Use the optimized ffz function to find a zero bit
-in the bitmap that indicates a free slot, starting
-the search from the 'lowest_free_slotid' position.
+On Nov 10, 2008, at Nov 10, 2008, 2:28 PM, J. Bruce Fields wrote:
+> On Mon, Nov 10, 2008 at 11:28:04AM -0800, Murata, Dennis wrote:
+>> That really is the 64K question.  During my initial testing, I  
+>> exported
+>> the parent directory.  Now I am explicitly exporting the installation
+>> directories, where I see the exportfs message.  In the messages log  
+>> file
+>> on the server the mount request from the client is always the actual
+>> directory.
+>
+> I don't see how this would be "unsafe"--if it works, go for it.
+>
+> One potential trap: it's using the same client list and export options
+> for both, so if you think you can make one of them read-only and one  
+> of
+> them writeable, for example, you'll be disapointed.
 
-If found, mark the slot as used in the bitmap, get
-the slot's slotid and seqid, and update max_slotid
-to be used by the SEQUENCE operation.
+I wonder how this behaves on the client side.  If the same client  
+mounts both paths, will it recognize that these are the same and use a  
+shared page cache for both?
 
-Also, update lowest_free_slotid for next search.
+> --b.
+>
+>>
+>> Wayne
+>>
+>>> -----Original Message-----
+>>> From: Sev Binello [mailto:sev-IGkKxAqZmp0@public.gmane.org]
+>>> Sent: Monday, November 10, 2008 1:04 PM
+>>> To: Murata, Dennis
+>>> Cc: J. Bruce Fields; nfs@lists.sourceforge.net
+>>> Subject: Re: [NFS] export dir thru 2 diff path names
+>>>
+>>> Hi -
+>>>    Yeah, I see.
+>>>    So it actually looks like you can do this.
+>>>    I'm not 100% sure if safe --though it looks it -- so I'll
+>>> probably not use it for this application.
+>>>
+>>> Thanks
+>>> -Sev
+>>>
+>>> Murata, Dennis wrote:
+>>>> That is correct, exportfs only shows the actual directory.
+>>> The client
+>>>> seems to be able to mount the directory with either.
+>>>>
+>>>> Wayne
+>>>>
+>>>>
+>>>>> -----Original Message-----
+>>>>> From: Sev Binello [mailto:sev-IGkKxAqZmp0@public.gmane.org]
+>>>>> Sent: Monday, November 10, 2008 12:51 PM
+>>>>> To: Murata, Dennis
+>>>>> Cc: J. Bruce Fields; nfs@lists.sourceforge.net
+>>>>> Subject: Re: [NFS] export dir thru 2 diff path names
+>>>>>
+>>>>> Murata, Dennis wrote:
+>>>>>
+>>>>>> I just tested this on a SL4.7 (RHEL 4.7 variant) using a
+>>>>>>
+>>>>> RHEL 4.4 nfs
+>>>>>
+>>>>>> server.  I did get the messages from exportfs about
+>>>>>>
+>>>>> duplicate export
+>>>>>
+>>>>>> entries.  On the client I was able to mount both the
+>>>>>>
+>>>>> symlink and the
+>>>>>
+>>>>>> actual directory.  They look like separate mounts.  There are two
+>>>>>> entries in /proc/mounts and in /etc/mtab, one with the actual
+>>>>>> directory path, one with the symlink path.  I am using
+>>>>>>
+>>>>> autofs to mount
+>>>>>
+>>>>>> the directories, not hardcoded.  Are you using newer
+>>> distributions?
+>>>>>>
+>>>>>>
+>>>>> I tested on RHEL 4.6.
+>>>>> Interesting that you can still mount either one.
+>>>>> On the server an exportfs only shows the real path as exported.
+>>>>>
+>>>>>
+>>>>>> What problems will I cause by doing this?  I am using the
+>>>>>>
+>>>>> symlink path
+>>>>>
+>>>>>> as the installation path for an application.  The idea is a newer
+>>>>>> version can be installed into a different directory, then after
+>>>>>> testing the symlink will be changed to the new
+>>> installation.  Other
+>>>>>> applications that reference the application will always use the
+>>>>>> symlink path, as well as any user scripts.
+>>>>>>
+>>>>>> Wayne
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>>> -----Original Message-----
+>>>>>>> From: linux-nfs-owner@vger.kernel.org
+>>>>>>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Sev  
+>>>>>>> Binello
+>>>>>>> Sent: Monday, November 10, 2008 11:06 AM
+>>>>>>> To: J. Bruce Fields; nfs@lists.sourceforge.net
+>>>>>>> Subject: Re: [NFS] export dir thru 2 diff path names
+>>>>>>>
+>>>>>>> J. Bruce Fields wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>>> On Mon, Nov 10, 2008 at 10:55:48AM -0500, Sev Binello wrote:
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>> Well the simplest approach doesn't work.
+>>>>>>>>> i.e put symb link and actual path in the export file & try
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>> exporting
+>>>>>>>
+>>>>>>>
+>>>>>>>>> it Exportfs dereferences the link and states that
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>> duplicates are not allowed.
+>>>>>>>
+>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>> OK, makes sense.
+>>>>>>>>
+>>>>>>>> You could mount --bind the filesystem at the other location
+>>>>>>>>
+>>>>>>>>
+>>>>>>> instead of
+>>>>>>>
+>>>>>>>
+>>>>>>>> symlinking.
+>>>>>>>>
+>>>>>>>> The filehandles given to the client will be the same
+>>>>>>>>
+>>>>> across the two
+>>>>>
+>>>>>>>> exports.  If you mount both from the same client,
+>>>>>>>>
+>>>>> behavior may vary
+>>>>>
+>>>>>>>> across different clients (for example, as to whether they
+>>>>>>>>
+>>>>>>>>
+>>>>>>> attempt to
+>>>>>>>
+>>>>>>>
+>>>>>>>> share caches between the two), but I think it'd work.
+>>>>>>>>
+>>>>>>>> (The question "why??!!??" does come to mind, though.)
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>> Need to make a path change to how file systems are mounted and
+>>>>>>> exported on the servers This then required a wholesale change to
+>>>>>>> clients so they mount  the correct path.
+>>>>>>> Not an issue for linux.
+>>>>>>> But since we don't administer windows pcs and they also
+>>> mount the
+>>>>>>> same file system, wanted to see if we could let them
+>>> stay the way
+>>>>>>> they were for now.
+>>>>>>>
+>>>>>>> We're just going to go ahead and  have to coordinate this with
+>>>>>>> windows guys.
+>>>>>>>
+>>>>>>> -Sev
+>>>>>>>
+>>>>>>>
+>>>>>>>> --b.
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>
+>>>>>>>>> -Sev
+>>>>>>>>>
+>>>>>>>>> J. Bruce Fields wrote:
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>> On Fri, Nov 07, 2008 at 12:44:25PM -0500, Sev Binello wrote:
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>>>> Can anyone tell me if it's ok to export the same file system
+>>>>>>>>>>> through 2 different paths ( one is a link) ?
+>>>>>>>>>>>
+>>>>>>>>>>>
+>>>>>>>>>>>
+>>>>>>>>>>>
+>>>>>>>>>> I actually don't know.  You could try it and tell us what
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>> you find
+>>>>>>>
+>>>>>>>
+>>>>>>>>>> out....
+>>>>>>>>>>
+>>>>>>>>>> If you're exporting something *containing* the symlink
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>> and expecting
+>>>>>>>
+>>>>>>>
+>>>>>>>>>> the client to traverse into the filesystem, be aware that
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>> symlinks
+>>>>>>>
+>>>>>>>
+>>>>>>>>>> over NFS are actually interpreted (and followed) on the
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>> client--so
+>>>>>>>
+>>>>>>>
+>>>>>>>>>> they're interpreted as *client-side* paths, not server-side.
+>>>>>>>>>>
+>>>>>>>>>> If the path you're exporting is itself a symlink--it probably
+>>>>>>>>>> depends on how nfs-utils treats symlinks found in
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>> /etc/exports.  I'd
+>>>>>>>
+>>>>>>>
+>>>>>>>>>> have to try it or check the code.
+>>>>>>>>>>
+>>>>>>>>>> Another way to export the filesystem in two different
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>> places would
+>>>>>>>
+>>>>>>>
+>>>>>>>>>> be with mount --bind.
+>>>>>>>>>>
+>>>>>>>>>> --b.
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>> --
+>>>>>>>>>
+>>>>>>>>> Sev Binello
+>>>>>>>>> Brookhaven National Laboratory
+>>>>>>>>> Upton, New York
+>>>>>>>>> 631-344-5647
+>>>>>>>>> sev-IGkKxAqZmp0@public.gmane.org
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>> --------------------------------------------------------------
+>>>>>>> -----------
+>>>>>>> This SF.Net email is sponsored by the Moblin Your Move
+>>> Developer's
+>>>>>>> challenge Build the coolest Linux based applications with
+>>>>>>>
+>>>>> Moblin SDK
+>>>>>
+>>>>>>> & win great prizes Grand prize is a trip for two to an
+>>> Open Source
+>>>>>>> event anywhere in the world
+>>>>>>> http://moblin-contest.org/redirect.php?banner_id=100&url=/
+>>>>>>> _______________________________________________
+>>>>>>> NFS maillist  -  NFS@lists.sourceforge.net
+>>>>>>> https://lists.sourceforge.net/lists/listinfo/nfs
+>>>>>>> _______________________________________________
+>>>>>>> Please note that nfs@lists.sourceforge.net is being  
+>>>>>>> discontinued.
+>>>>>>> Please subscribe to linux-nfs@vger.kernel.org instead.
+>>>>>>>    http://vger.kernel.org/vger-lists.html#linux-nfs
+>>>>>>>
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe
+>>>>>>>
+>>>>> linux-nfs"
+>>>>>
+>>>>>>> in the body of a message to majordomo@vger.kernel.org More
+>>>>>>>
+>>>>> majordomo
+>>>>>
+>>>>>>> info at http://vger.kernel.org/majordomo-info.html
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>> --
+>>>>>
+>>>>> Sev Binello
+>>>>> Brookhaven National Laboratory
+>>>>> Upton, New York
+>>>>> 631-344-5647
+>>>>> sev-IGkKxAqZmp0@public.gmane.org
+>>>>>
+>>>>>
+>>>>>
+>>>
+>>>
+>
+> -------------------------------------------------------------------------
+> This SF.Net email is sponsored by the Moblin Your Move Developer's  
+> challenge
+> Build the coolest Linux based applications with Moblin SDK & win  
+> great prizes
+> Grand prize is a trip for two to an Open Source event anywhere in  
+> the world
+> http://moblin-contest.org/redirect.php?banner_id=100&url=/
+> _______________________________________________
+> NFS maillist  -  NFS@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/nfs
+> _______________________________________________
+> Please note that nfs@lists.sourceforge.net is being discontinued.
+> Please subscribe to linux-nfs@vger.kernel.org instead.
+>    http://vger.kernel.org/vger-lists.html#linux-nfs
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-If no free slot was found the caller has to wait
-for a free slot (outside the scope of this function)
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c            |   88 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4_session.h |    5 ++
- 2 files changed, 93 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 08e7129..4ded3a5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -207,6 +207,94 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
- 	spin_unlock(&clp->cl_lock);
- }
- 
-+#if defined(CONFIG_NFS_V4_1)
-+
-+/*
-+ * idx2bmp - return pointer to bitmap word holding index "idx".
-+ *
-+ * inputs:
-+ * @base	points to bitmap.
-+ * @idx		slot index.
-+ *
-+ * output:
-+ * @bit		optional, *bit set to bit index of "idx" in the returned
-+ *		bitmap word.
-+ */
-+static inline unsigned long *idx2bmp(unsigned long *base, int idx, int *bit)
-+{
-+	base += idx / BITS_PER_LONG;
-+	if (bit)
-+		*bit = idx & (BITS_PER_LONG - 1);
-+	return base;
-+}
-+
-+/*
-+ * bmp2idx - return absolute index of bmp:bit in bitmap.
-+ *
-+ * inputs:
-+ * @base	points to bitmap.
-+ * @bmp		points to bitmap word.
-+ * @bit		bit index in bitmap word.
-+ */
-+static inline int bmp2idx(unsigned long *base, unsigned long *bmp,
-+			  int bit)
-+{
-+	return ((bmp - base) * BITS_PER_LONG) + bit;
-+}
-+
-+/*
-+ * nfs4_find_slot - efficiently look for a free slot
-+ *
-+ * nfs4_find_slot uses the ffz cpu-optimized function to look for an unset
-+ * bit in each word in the bitmap.
-+ * Scan starts at lowest_free_slotid, which is a hint for the free slot,
-+ * as all lower-numbered slots are known to be used.
-+ * If found, we mark the slot as used, update the highest_used_slotid,
-+ * and respectively set up the sequence operation args.
-+ * The lowest_free_slotid is always set to the successive slotid.
-+ * A pointer to the slot's seqid is returned if found, or NULL otherwise.
-+ */
-+static struct nfs4_slot *
-+nfs4_find_slot(struct nfs4_slot_table *tbl, struct rpc_task *task)
-+{
-+	int bit, slotid;
-+	struct nfs4_slot *slot = NULL;
-+	unsigned long *used, u;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
-+	slotid = tbl->lowest_free_slotid;
-+	while (slotid < tbl->max_slots) {
-+		used = idx2bmp(tbl->used_slots, slotid, NULL);
-+		u = *used;
-+		if (u == ~0UL) {
-+			/* all slots marked used in this word */
-+			slotid += BITS_PER_LONG;
-+			continue;
-+		}
-+		/* find first slot marked free in word */
-+		bit = ffz(u);
-+		slotid = bmp2idx(tbl->used_slots, used, bit);
-+		/* mark slot used.  note that we don't do that if
-+		 * slotid >= tbl->max_slots so not to confuse
-+		 * highest_used_slotid algorithm */
-+		if (slotid < tbl->max_slots) {
-+			*used |= (1 << bit);
-+			if (slotid > tbl->highest_used_slotid)
-+				tbl->highest_used_slotid = slotid;
-+			slot = tbl->slots + slotid;
-+			slotid++;	/* for updating lowest_free_slot */
-+		}
-+		break;
-+	}
-+	tbl->lowest_free_slotid = slotid;
-+	spin_unlock(&tbl->slot_tbl_lock);
-+	dprintk("<-- %s slot %p slotid %d\n", __func__,
-+		slot, slot ? slot_idx(tbl, slot) : -1);
-+	return slot;
-+}
-+
-+#endif /* CONFIG_NFS_V4_1 */
-+
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
-diff --git a/include/linux/nfs4_session.h b/include/linux/nfs4_session.h
-index d534269..2960ba9 100644
---- a/include/linux/nfs4_session.h
-+++ b/include/linux/nfs4_session.h
-@@ -33,6 +33,11 @@ struct nfs4_slot_table {
- 						 * op for dynamic resizing */
- };
- 
-+static inline int slot_idx(struct nfs4_slot_table *tbl, struct nfs4_slot *sp)
-+{
-+	return sp - tbl->slots;
-+}
-+
- struct nfs4_channel {
- 	struct nfs4_channel_attrs 	chan_attrs;
- 	struct rpc_clnt 		*rpc_client;
 -- 
-1.6.0.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
