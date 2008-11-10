@@ -1,103 +1,56 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Make sm-notify faster if there are no servers to notify
-Date: Sun, 9 Nov 2008 20:00:48 -0500
-Message-ID: <A734325C-C2A1-4597-8009-532F5B2BAB6A@oracle.com>
-References: <20081029173750.GD31936@fieldses.org> <1225302305994@dmwebmail.dmwebmail.chezphil.org> <20081029184153.GE31936@fieldses.org> <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com> <20081029211145.GE1406@fieldses.org> <20081109192528.GE25568@fieldses.org> <3EC9A304-36A0-465C-B82A-E3011CC8AD20@oracle.com> <20081110005518.GA31166@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
-	Steve Dickson <SteveD@redhat.com>,
+From: Varun Chandramohan <varunc@linux.vnet.ibm.com>
+Subject: Re: NFSD IPv6 support for 2.6.29
+Date: Mon, 10 Nov 2008 10:45:44 +0530
+Message-ID: <4917C380.9040703@linux.vnet.ibm.com>
+References: <9BBD5BD5-C461-43C4-AEB0-69D3E31F92B7@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Le Rouzic <aime.le-rouzic@bull.net>,
 	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:25741 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755309AbYKJBCN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Nov 2008 20:02:13 -0500
-In-Reply-To: <20081110005518.GA31166@fieldses.org>
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:52660 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750721AbYKJFRB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 00:17:01 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAA5Fnku021857
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Nov 2008 16:15:49 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAA5FmKu368804
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Nov 2008 16:15:50 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAA5FetW014138
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Nov 2008 16:15:41 +1100
+In-Reply-To: <9BBD5BD5-C461-43C4-AEB0-69D3E31F92B7@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 9, 2008, at Nov 9, 2008, 7:55 PM, J. Bruce Fields wrote:
-> On Sun, Nov 09, 2008 at 07:52:59PM -0500, Chuck Lever wrote:
->> On Nov 9, 2008, at Nov 9, 2008, 2:25 PM, J. Bruce Fields wrote:
->>> On Wed, Oct 29, 2008 at 05:11:45PM -0400, bfields wrote:
->>>> On Wed, Oct 29, 2008 at 04:30:32PM -0400, Chuck Lever wrote:
->>>>> I assume sync() is required because this logic performs a rename
->>>>> as well
->>>>> as a simple write?
->>>>
->>>> I think an fsync() on the containing directory (together with an
->>>> fsync()
->>>> of the file itself) would do the job if you wanted to avoid the
->>>> globaly
->>>> sync().  I don't think ext3 is capable of doing anything finer-
->>>> grained
->>>> than a whole-filesystem sync, though, so this doesn't help many
->>>> people
->>>> in practice right now.
->>>>
->>>> In any case, the rename adds an extra level of safety by ensuring  
->>>> the
->>>> nsm state is updated atomically, so we shouldn't get rid of it.
->>>>
->>>>>> Anyway, I think the nsm state updating shouldn't matter if you
->>>>>> don't
->>>>>> even have any peers to notify.
->>>>>
->>>>> It probably does matter.
->>>>>
->>>>> When a system is initially installed, it likely does not have a
->>>>> state
->>>>> file in /var/lib/nfs.  This may be harmless if it's not present;
->>>>> rpc.statd probably does the right thing in this case.
->>>>
->>>> The "right thing" in that case would be, I guess, to create a state
->>>> file
->>>> with "0" in it.  It doesn't do that.  So this patch *does* break
->>>> stuff.
->>>> Oops!
->>>>
->>>> So should we revert it and do something else, or patch statd to
->>>> create
->>>> a new state file if necessary?
->>>
->>> It looks like this still needs to be fixed?  I think it would be  
->>> good
->>> enough just to teach rpc.nfsd to create the file if it doesn't  
->>> exist.
-> 			^^^^^^^^
+Chuck Lever wrote:
+> Hi Aime, Varun-
 >
-> (Err, sorry, note I meant rpc.statd, not rpc.nfsd.)
+> Bruce asked me to collect server-side IPv6 patches for upstream.  I've 
+> collected the patches that have been posted on the list, and added 
+> some fixes of my own.
 >
-> --b.
+> Can you have a look at
 >
->> Meh.  I'd rather manage the state file in one place, rather than have
->> multiple user space entities fiddle with it.
+>   http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=summary
+>
+>   tag cel-ipv6-10292008
+>
+> These have been build tested, but I haven't done any run-time testing 
+> yet.
+>
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+Hi Chuck,
 
-Acknowledged.  My comments below still stand, I think.  More testing!   
-Yay!
+                 I just realized that i forgot to update you about the 
+test result of your tree. I found NFSv4 over ipv6 working well. So it 
+can be pulled into the mainline soon.
 
->> I think we should find out exactly what breaks when sm-notify quits
->> early.  Steve hasn't found a problem with the patch already in nfs-
->> utils, but the corner cases here are really narrow.
->>
->> Without a lot of testing (which we currently don't have the resources
->> for), I don't feel 100% positive about sm-notify quitting early.  My
->> preferred solution would involve working around the sync(2) call  
->> instead
->> (ie fixing sm-notify so we don't need it, or somehow doing it in the
->> background so it doesn't hold up the boot-up process).  I think we  
->> will
->> end up waiting until this actually bites someone, but chances are  
->> it will
->> be a long wait.
+Thanks
 
-
-In any event, I will keep this in mind (along with the idea of  
-allowing only client or server peers to be notified of a reboot) as I  
-audit this code for IPv6 support.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Varun
