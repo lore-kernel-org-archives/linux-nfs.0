@@ -1,129 +1,195 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 41/51] sunrpc: Add deferral save and restore state callback
-Date: Mon, 10 Nov 2008 22:54:46 +0200
-Message-ID: <1226350486-11655-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 42/51] nfsd: save and restore defer result pages
+Date: Mon, 10 Nov 2008 22:55:07 +0200
+Message-ID: <1226350507-11694-1-git-send-email-bhalevy@panasas.com>
 References: <491895A0.3040809@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57445 "EHLO
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:57450 "EHLO
 	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751885AbYKJUy7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:54:59 -0500
+	with ESMTP id S1751399AbYKJUzT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 15:55:19 -0500
 In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-NFSv4 needs to restart deferred processing at the operation which caused the
-deferral.
+Implement the rq_save_state, resume_state, and release_state RPC deferral
+callbacks.
 
-Add a callback and a defer_data pointer in svc_rqst to enable svc_defer to
-save partial result state in the deferral request.
+Save the reply pages in struct svc_deferred_req.
 
-Add page pointer storage and resused fields to svc_deferred_req to store
-the pointers to the partially processed request.
-
-Add callbacks and a defer_data pointer in svc_deferred_request to enable
-svc_deferred_recv to restore and release the partial result state.
-
-The rq_save_state callback sets the deferral request restore_state callback and
-defer_data.
-
-The svc_deferred_req defer_data and result pages survive multiple deferral
-processing caveat resetting in the save and restore callbacks.
+Clear the svc_deferred_req respages in the save_state callback to setup
+for another NFSD operation deferral.
 
 Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/sunrpc/svc.h |   10 ++++++++++
- net/sunrpc/svc_xprt.c      |   19 +++++++++++++++----
- 2 files changed, 25 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4proc.c        |   53 +++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4state.c       |   67 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfsd/xdr4.h |    5 +++
+ 3 files changed, 125 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 7653dd3..d86111f 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -227,6 +227,9 @@ struct svc_rqst {
- 	struct svc_cred		rq_cred;	/* auth info */
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
-+	/* callback to save deferred request state */
-+	void (*rq_save_state)(struct svc_rqst *, struct svc_deferred_req *);
-+	void			*rq_defer_data; /* defer state data to save */
- 
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
-@@ -335,6 +338,13 @@ struct svc_deferred_req {
- 	union svc_addr_u	daddr;	/* where reply must come from */
- 	struct cache_deferred_req handle;
- 	size_t			xprt_hlen;
-+	/* callbacks to restore and release deferred request state
-+	 * set in rq_save_state */
-+	void (*restore_state)(struct svc_rqst *, struct svc_deferred_req *);
-+	void (*release_state)(struct svc_deferred_req *);
-+	void			*defer_data; /* defer state data */
-+	struct page		*respages[RPCSVC_MAXPAGES];
-+	short			resused;
- 	int			argslen;
- 	__be32			args[0];
- };
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..bf12475 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -903,6 +903,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- 	struct svc_xprt *xprt = dr->xprt;
- 
- 	if (too_many) {
-+		if (dr->release_state)
-+			dr->release_state(dr);
- 		svc_xprt_put(xprt);
- 		kfree(dr);
- 		return;
-@@ -941,10 +943,9 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 		size_t size;
- 		/* FIXME maybe discard if size too large */
- 		size = sizeof(struct svc_deferred_req) + rqstp->rq_arg.len;
--		dr = kmalloc(size, GFP_KERNEL);
-+		dr = kzalloc(size, GFP_KERNEL);
- 		if (dr == NULL)
--			return NULL;
--
-+			goto out;
- 		dr->handle.owner = rqstp->rq_server;
- 		dr->prot = rqstp->rq_prot;
- 		memcpy(&dr->addr, &rqstp->rq_addr, rqstp->rq_addrlen);
-@@ -958,6 +959,15 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 		memcpy(dr->args, rqstp->rq_arg.head[0].iov_base - skip,
- 		       dr->argslen << 2);
- 	}
-+	if (rqstp->rq_save_state)
-+		rqstp->rq_save_state(rqstp, dr);
-+out:
-+	/* reset for each deferral */
-+	rqstp->rq_defer_data = NULL;
-+	rqstp->rq_save_state = NULL;
-+	if (dr == NULL)
-+		return NULL;
-+
- 	svc_xprt_get(rqstp->rq_xprt);
- 	dr->xprt = rqstp->rq_xprt;
- 
-@@ -986,10 +996,11 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
- 	rqstp->rq_xprt_hlen   = dr->xprt_hlen;
- 	rqstp->rq_daddr       = dr->daddr;
- 	rqstp->rq_respages    = rqstp->rq_pages;
-+	if (dr->restore_state)
-+		dr->restore_state(rqstp, dr);
- 	return (dr->argslen<<2) - dr->xprt_hlen;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9401d56..72fd645 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -883,6 +883,59 @@ static struct nfsd4_compound_state *cstate_alloc(void)
+ 	return cstate;
  }
  
--
- static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
- {
- 	struct svc_deferred_req *dr = NULL;
++/*
++ * RPC restore deferral state callback
++ */
++static void
++nfsd4_release_deferred_state(struct svc_deferred_req *dreq)
++{
++	dprintk("--> %s dreq %p\n", __func__, dreq);
++
++	nfsd4_clear_respages(dreq->respages, dreq->resused);
++	cstate_free(dreq->defer_data); /* kfree the cstate */
++}
++
++/*
++ * RPC restore deferral state callback
++ */
++static void
++nfsd4_restore_deferred_state(struct svc_rqst *rqstp,
++			     struct svc_deferred_req *dreq)
++{
++	dprintk("--> %s rqstp %p dreq %p\n", __func__, rqstp, dreq);
++
++	nfsd4_restore_rqst_pages(rqstp, dreq->respages, dreq->resused);
++
++	/* Reset defer_data for a NFSD deferral revisit interrupted
++	 * by a non-NFSD deferral */
++	rqstp->rq_defer_data = dreq->defer_data;
++}
++
++/*
++ * RPC save deferral state callback
++ */
++static void
++nfsd4_save_deferred_state(struct svc_rqst *rqstp,
++			  struct svc_deferred_req *dreq)
++ {
++	struct nfsd4_compound_state *cstate =
++		(struct nfsd4_compound_state *)rqstp->rq_defer_data;
++
++	dprintk("--> %s dreq %p cstate %p\n", __func__, dreq, cstate);
++
++	fh_put(&cstate->current_fh);
++	fh_put(&cstate->save_fh);
++
++	/* In case of a prior NFSD deferral processing this compound RPC */
++	nfsd4_clear_respages(dreq->respages, dreq->resused);
++
++	nfsd4_cache_rqst_pages(rqstp, dreq->respages, &dreq->resused);
++
++	dreq->defer_data = rqstp->rq_defer_data;
++	dreq->restore_state = nfsd4_restore_deferred_state;
++	dreq->release_state = nfsd4_release_deferred_state;
++}
++
+ typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+ 			      void *);
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9377ad0..ae6de38 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -875,6 +875,73 @@ out_err:
+ 	return;
+ }
+ 
++void
++nfsd4_move_pages(struct page **topages, struct page **frompages, short count)
++{
++	int page_no;
++
++	for (page_no = 0; page_no < count; page_no++) {
++		topages[page_no] = frompages[page_no];
++		if (!topages[page_no])
++			continue;
++		get_page(topages[page_no]);
++	}
++}
++
++/*
++ * Copy the result rq_respages pointers from the request
++ * to respages.
++ *
++ * Hold a reference to the result pages.
++ */
++void
++nfsd4_cache_rqst_pages(struct svc_rqst *rqstp, struct page **respages,
++		       short *resused)
++{
++	dprintk("--> %s rqstp %p\n", __func__, rqstp);
++
++	*resused = rqstp->rq_resused;
++	nfsd4_move_pages(respages, rqstp->rq_respages, rqstp->rq_resused);
++}
++
++/*
++ * Copy the page pointers from respages to the request.
++ *
++ * Deallocate the request result pages which will be replaced from respages.
++ *
++ * Hold a reference to the result pages.
++ */
++void
++nfsd4_restore_rqst_pages(struct svc_rqst *rqstp, struct page **respages,
++			 short resused)
++{
++	dprintk("--> %s rqstp %p\n", __func__, rqstp);
++
++	/* release allocated result pages to be replaced from the cache */
++	svc_free_res_pages(rqstp);
++
++	rqstp->rq_resused = resused;
++	nfsd4_move_pages(rqstp->rq_respages, respages, resused);
++}
++
++/*
++ * Dereference the result pages.
++ */
++void
++nfsd4_clear_respages(struct page **respages, short resused)
++{
++	int page_no;
++
++	dprintk("--> %s\n", __func__);
++
++	for (page_no = 0; page_no < resused; page_no++) {
++		if (!respages[page_no])
++			continue;
++		put_page(respages[page_no]);
++		respages[page_no] = NULL;
++	}
++}
++
+ #if defined(CONFIG_NFSD_V4_1)
+ /*
+  * Set the exchange_id flags returned by the server.
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 17b0a3e..01fb139 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -515,6 +515,11 @@ __be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 			  struct dentry *dentry, __be32 *buffer, int *countp,
+ 			  u32 *bmval, struct svc_rqst *, int ignore_crossmnt,
+ 			  u32 minorversion);
++extern void nfsd4_clear_respages(struct page **respages, short resused);
++extern void nfsd4_cache_rqst_pages(struct svc_rqst *rqstp,
++		struct page **respages, short *resused);
++extern void nfsd4_restore_rqst_pages(struct svc_rqst *rqstp,
++		struct page **respages, short resused);
+ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_setclientid *setclid);
 -- 
 1.6.0.2
 
