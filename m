@@ -1,307 +1,46 @@
-From: Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
-Subject: Re: [NFS] export dir thru 2 diff path names
-Date: Mon, 10 Nov 2008 14:03:56 -0500
-Message-ID: <4918859C.6080608@bnl.gov>
-References: <478B90A1.5000900@bnl.gov><1200330387.7470.11.camel@heimdal.trondhjem.org><478B9A64.5030903@bnl.gov>
-	<49147E79.6000508@bnl.gov><20081109155831.GA24508@fieldses.org>
-	<49185984.8010500@bnl.gov><20081110164947.GA17050@fieldses.org>
-	<491869F0.1000505@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
-	<491882AB.6070908@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 5/9] rpc: call release_pipe only on last close
+Date: Mon, 10 Nov 2008 14:11:37 -0500
+Message-ID: <1226344297.7599.41.camel@heimdal.trondhjem.org>
+References: <20081109204621.GD27376@fieldses.org>
+	 <1226264683-28650-1-git-send-email-bfields@citi.umich.edu>
+	 <1226264683-28650-2-git-send-email-bfields@citi.umich.edu>
+	 <1226264683-28650-3-git-send-email-bfields@citi.umich.edu>
+	 <1226264683-28650-4-git-send-email-bfields@citi.umich.edu>
+	 <1226264683-28650-5-git-send-email-bfields@citi.umich.edu>
+	 <1226264683-28650-6-git-send-email-bfields@citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, nfs@lists.sourceforge.net
-To: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
+Content-Type: text/plain
+Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:60806 "EHLO neil.brown.name"
+Received: from mx2.netapp.com ([216.240.18.37]:61507 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754709AbYKJTEk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2008 14:04:40 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Kzc3y-0008A2-Fe
-	for linux-nfs@vger.kernel.org; Tue, 11 Nov 2008 06:04:38 +1100
-In-Reply-To: <620E93B2E5CC3B46BD811165E3335B8702F37542-9/h0XwadXgnyjpQT3Si/rsM9+qvyE0V4QQ4Iyu8u01E@public.gmane.org>
+	id S1750765AbYKJTMX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Nov 2008 14:12:23 -0500
+In-Reply-To: <1226264683-28650-6-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi -
-    Yeah, I see.
-    So it actually looks like you can do this.
-    I'm not 100% sure if safe --though it looks it -- so I'll probably 
-not use it for this application.
+On Sun, 2008-11-09 at 16:04 -0500, J. Bruce Fields wrote:
+> I can't see any reason we particularly need to call this until the last
+> gssd closes the pipe.
 
-Thanks
--Sev
+There's a very good reason: if we call rpc_close_pipes() then it is
+because the kernel listener is shutting down. At that point, we want to
+return EPIPE for all future read() or write() attempts by gssd.
 
-Murata, Dennis wrote:
-> That is correct, exportfs only shows the actual directory.  The client
-> seems to be able to mount the directory with either.
->
-> Wayne 
->
->   
->> -----Original Message-----
->> From: Sev Binello [mailto:sev-IGkKxAqZmp0@public.gmane.org] 
->> Sent: Monday, November 10, 2008 12:51 PM
->> To: Murata, Dennis
->> Cc: J. Bruce Fields; nfs@lists.sourceforge.net
->> Subject: Re: [NFS] export dir thru 2 diff path names
->>
->> Murata, Dennis wrote:
->>     
->>> I just tested this on a SL4.7 (RHEL 4.7 variant) using a 
->>>       
->> RHEL 4.4 nfs 
->>     
->>> server.  I did get the messages from exportfs about 
->>>       
->> duplicate export 
->>     
->>> entries.  On the client I was able to mount both the 
->>>       
->> symlink and the 
->>     
->>> actual directory.  They look like separate mounts.  There are two 
->>> entries in /proc/mounts and in /etc/mtab, one with the actual 
->>> directory path, one with the symlink path.  I am using 
->>>       
->> autofs to mount 
->>     
->>> the directories, not hardcoded.  Are you using newer distributions?
->>>   
->>>       
->> I tested on RHEL 4.6.
->> Interesting that you can still mount either one.
->> On the server an exportfs only shows the real path as exported.
->>
->>     
->>> What problems will I cause by doing this?  I am using the 
->>>       
->> symlink path 
->>     
->>> as the installation path for an application.  The idea is a newer 
->>> version can be installed into a different directory, then after 
->>> testing the symlink will be changed to the new installation.  Other 
->>> applications that reference the application will always use the 
->>> symlink path, as well as any user scripts.
->>>
->>> Wayne
->>>
->>>   
->>>       
->>>> -----Original Message-----
->>>> From: linux-nfs-owner@vger.kernel.org 
->>>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Sev Binello
->>>> Sent: Monday, November 10, 2008 11:06 AM
->>>> To: J. Bruce Fields; nfs@lists.sourceforge.net
->>>> Subject: Re: [NFS] export dir thru 2 diff path names
->>>>
->>>> J. Bruce Fields wrote:
->>>>     
->>>>         
->>>>> On Mon, Nov 10, 2008 at 10:55:48AM -0500, Sev Binello wrote:
->>>>>   
->>>>>       
->>>>>           
->>>>>> Well the simplest approach doesn't work.
->>>>>> i.e put symb link and actual path in the export file & try
->>>>>>         
->>>>>>             
->>>> exporting
->>>>     
->>>>         
->>>>>> it Exportfs dereferences the link and states that
->>>>>>         
->>>>>>             
->>>> duplicates are not allowed.
->>>>     
->>>>         
->>>>>>     
->>>>>>         
->>>>>>             
->>>>> OK, makes sense.
->>>>>
->>>>> You could mount --bind the filesystem at the other location
->>>>>       
->>>>>           
->>>> instead of
->>>>     
->>>>         
->>>>> symlinking.
->>>>>
->>>>> The filehandles given to the client will be the same 
->>>>>           
->> across the two 
->>     
->>>>> exports.  If you mount both from the same client, 
->>>>>           
->> behavior may vary 
->>     
->>>>> across different clients (for example, as to whether they
->>>>>       
->>>>>           
->>>> attempt to
->>>>     
->>>>         
->>>>> share caches between the two), but I think it'd work.
->>>>>
->>>>> (The question "why??!!??" does come to mind, though.)
->>>>>
->>>>>   
->>>>>       
->>>>>           
->>>> Need to make a path change to how file systems are mounted and 
->>>> exported on the servers This then required a wholesale change to 
->>>> clients so they mount  the correct path.
->>>>  Not an issue for linux.
->>>> But since we don't administer windows pcs and they also mount the 
->>>> same file system, wanted to see if we could let them stay the way 
->>>> they were for now.
->>>>
->>>> We're just going to go ahead and  have to coordinate this with 
->>>> windows guys.
->>>>
->>>> -Sev
->>>>     
->>>>         
->>>>> --b.
->>>>>
->>>>>   
->>>>>       
->>>>>           
->>>>>> -Sev
->>>>>>
->>>>>> J. Bruce Fields wrote:
->>>>>>     
->>>>>>         
->>>>>>             
->>>>>>> On Fri, Nov 07, 2008 at 12:44:25PM -0500, Sev Binello wrote:
->>>>>>>   
->>>>>>>       
->>>>>>>           
->>>>>>>               
->>>>>>>> Can anyone tell me if it's ok to export the same file system 
->>>>>>>> through 2 different paths ( one is a link) ?
->>>>>>>>     
->>>>>>>>         
->>>>>>>>             
->>>>>>>>                 
->>>>>>> I actually don't know.  You could try it and tell us what
->>>>>>>           
->>>>>>>               
->>>> you find
->>>>     
->>>>         
->>>>>>> out....
->>>>>>>
->>>>>>> If you're exporting something *containing* the symlink
->>>>>>>           
->>>>>>>               
->>>> and expecting
->>>>     
->>>>         
->>>>>>> the client to traverse into the filesystem, be aware that
->>>>>>>           
->>>>>>>               
->>>> symlinks
->>>>     
->>>>         
->>>>>>> over NFS are actually interpreted (and followed) on the
->>>>>>>           
->>>>>>>               
->>>> client--so
->>>>     
->>>>         
->>>>>>> they're interpreted as *client-side* paths, not server-side.
->>>>>>>
->>>>>>> If the path you're exporting is itself a symlink--it probably 
->>>>>>> depends on how nfs-utils treats symlinks found in
->>>>>>>           
->>>>>>>               
->>>> /etc/exports.  I'd
->>>>     
->>>>         
->>>>>>> have to try it or check the code.
->>>>>>>
->>>>>>> Another way to export the filesystem in two different
->>>>>>>           
->>>>>>>               
->>>> places would
->>>>     
->>>>         
->>>>>>> be with mount --bind.
->>>>>>>
->>>>>>> --b.
->>>>>>>   
->>>>>>>       
->>>>>>>           
->>>>>>>               
->>>>>> --
->>>>>>
->>>>>> Sev Binello
->>>>>> Brookhaven National Laboratory
->>>>>> Upton, New York
->>>>>> 631-344-5647
->>>>>> sev-IGkKxAqZmp0@public.gmane.org
->>>>>>
->>>>>>     
->>>>>>         
->>>>>>             
->>>> --------------------------------------------------------------
->>>> -----------
->>>> This SF.Net email is sponsored by the Moblin Your Move Developer's 
->>>> challenge Build the coolest Linux based applications with 
->>>>         
->> Moblin SDK 
->>     
->>>> & win great prizes Grand prize is a trip for two to an Open Source 
->>>> event anywhere in the world 
->>>> http://moblin-contest.org/redirect.php?banner_id=100&url=/
->>>> _______________________________________________
->>>> NFS maillist  -  NFS@lists.sourceforge.net 
->>>> https://lists.sourceforge.net/lists/listinfo/nfs
->>>> _______________________________________________
->>>> Please note that nfs@lists.sourceforge.net is being discontinued.
->>>> Please subscribe to linux-nfs@vger.kernel.org instead.
->>>>     http://vger.kernel.org/vger-lists.html#linux-nfs
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe 
->>>>         
->> linux-nfs" 
->>     
->>>> in the body of a message to majordomo@vger.kernel.org More 
->>>>         
->> majordomo 
->>     
->>>> info at http://vger.kernel.org/majordomo-info.html
->>>>
->>>>     
->>>>         
->> -- 
->>
->> Sev Binello
->> Brookhaven National Laboratory
->> Upton, New York
->> 631-344-5647
->> sev-IGkKxAqZmp0@public.gmane.org
->>
->>
->>     
+> Also, this allows to guarantee that open_pipe and release_pipe are
+> called strictly in pairs; open_pipe on the first open, release_pipe on
+> the last close.  That'll make it very easy for the gss code to keep
+> track of which pipes gssd is using.
 
+...unless the gss code is no longer running.
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
