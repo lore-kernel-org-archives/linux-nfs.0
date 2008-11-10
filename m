@@ -1,53 +1,39 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 5/9] rpc: call release_pipe only on last close
-Date: Mon, 10 Nov 2008 16:18:03 -0500
-Message-ID: <1226351883.7599.103.camel@heimdal.trondhjem.org>
-References: <1226264683-28650-4-git-send-email-bfields@citi.umich.edu>
-	 <1226264683-28650-5-git-send-email-bfields@citi.umich.edu>
-	 <1226264683-28650-6-git-send-email-bfields@citi.umich.edu>
-	 <1226344297.7599.41.camel@heimdal.trondhjem.org>
-	 <20081110194900.GD19053@fieldses.org>
-	 <1226347279.7599.47.camel@heimdal.trondhjem.org>
-	 <20081110200727.GE19053@fieldses.org>
-	 <1226347898.7599.49.camel@heimdal.trondhjem.org>
-	 <20081110201708.GF19053@fieldses.org>
-	 <1226348515.7599.52.camel@heimdal.trondhjem.org>
-	 <20081110202640.GG19053@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: aglo@citi.umich.edu, kwc@citi.umich.edu, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [RFC 01/51] nfsd: add etoosmall to nfserrno
+Date: Mon, 10 Nov 2008 22:16:52 +0200
+Message-ID: <1226348212-29657-1-git-send-email-bhalevy@panasas.com>
+References: <491895A0.3040809@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30803 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750973AbYKJVSq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2008 16:18:46 -0500
-In-Reply-To: <20081110202640.GG19053@fieldses.org>
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:33837 "EHLO
+	bh-buildlin2.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750739AbYKJVXF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2008 16:23:05 -0500
+In-Reply-To: <491895A0.3040809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2008-11-10 at 15:26 -0500, J. Bruce Fields wrote:
-> Yep.  And when we're in that situation, last_close is true, so
-> 
-> 	if (last_close && ops->release_pipe)
-> 		ops->release_pipe(inode)
-> 
-> does ensure that calls to the ->open_pipe() and ->release_pipe() methods
-> balance, as originally claimed.
-> 
-> Maybe it'd be clearer to call that variable "still_open", or something?
-> 
-> 	still_open = rpci->nreaders != 0 || rpci->nwriters != 0;
-> 	...
-> 	if (still_open && ops->release_pipe)
-> 		ops->release_pipe(inode)
+From: Dean Hildebrand <dhildeb@us.ibm.com>
 
-Call it 'need_release'. It is definitely confusing right now...
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfsproc.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 5cffeca..6f7f263 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -622,6 +622,7 @@ nfserrno (int errno)
+ 		{ nfserr_badname, -ESRCH },
+ 		{ nfserr_io, -ETXTBSY },
+ 		{ nfserr_notsupp, -EOPNOTSUPP },
++		{ nfserr_toosmall, -ETOOSMALL },
+ 	};
+ 	int	i;
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.6.0.2
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
