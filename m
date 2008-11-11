@@ -1,76 +1,62 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] gssd:  unblock DNOTIFY_SIGNAL in case it was blocked.
-Date: Tue, 11 Nov 2008 14:09:40 -0500
-Message-ID: <20081111190940.GA8775@fieldses.org>
-References: <18712.46537.9006.490726@notabene.brown>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] rpc.gssd: Don't supply the KDC with unsupported encryption
+ types
+Date: Tue, 11 Nov 2008 15:05:10 -0500
+Message-ID: <4919E576.6050301@RedHat.com>
+References: <4919B57C.6050104@RedHat.com> <4d569c330811111033p70264b87r2463e8cb68b985e9@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: kwc@citi.umich.edu, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Kevin Coffman <kwc@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57962 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:50319 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940AbYKKTJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Nov 2008 14:09:42 -0500
-In-Reply-To: <18712.46537.9006.490726-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1751192AbYKKUHH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2008 15:07:07 -0500
+In-Reply-To: <4d569c330811111033p70264b87r2463e8cb68b985e9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 11, 2008 at 09:29:29AM +1100, Neil Brown wrote:
+
+
+Kevin Coffman wrote:
+> Hi Steve,
 > 
-> I have a situation where rpc.gssd appears to not be working.
-> Mount attempts which need to communicate with it block.
+> This patch shouldn't be necessary.
 > 
-> I've narrowed down the problem to that fact that all realtime signals
-> have been blocked.  This means that DNOTIFY_SIGNAL (which is a
-> realtime signal) is never delivered, so gssd never rescans the
-> rpc_pipe/nfs directory.
-> 
-> I haven't figured out why the signals are blocked yet, but having
-> rpc.gssd fail mysteriously in that situation isn't pleasant.
-> 
-> So I wonder what people think of the following patch.  It simply
-> unblocks the signal.  Alternately we can check if it is blocked and
-> warn - I'm not really sure of the significance of blocking all these
-> signals.  Maybe it's wrong to just unblock them.
+> When you say "registers with the KDC", I assume that you mean gets a
+> TGT.  
+I'm not sure what a TGT is... but what I talking about is the AS-REQ and AS-REP
+(output from wireshark):
 
-So we don't know what it is that's doing the blocking?
+Kerberos AS-REQ (from rpc.gssd)
+    Pvno: 5
+    MSG Type: AS-REQ (10)
+    KDC_REQ_BODY
+        Padding: 0
+        KDCOptions: 40000010 (Forwardable, Renewable OK)
+        Client Name (Principal): nfs/HOST.DOMAINNAME
+        Realm: REALM
+        Server Name (Unknown): krbtgt/REALM
+        from: 2008-11-11 12:56:53 (UTC)
+        till: 2008-11-12 12:56:53 (UTC)
+        Nonce: 1226408213
+        Encryption Types: aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96 des3-cbc-sha1 rc4-hmac des-cbc-crc des-cbc-md5 des-cbc-md4 rsa-sha1-cms rsa-md5-cms des-ede3-cbc-env rc2-cbc-env rsa-env
 
-> As an aside, maybe we could change gssd_run to use "ppoll" rather than
-> "poll".  Then it would not have to wake up every 500msec to see if it
-> missed a signal. We would probably have to check kernel version was at
-> least 2.6.16....
+Kerberos AS-REP (From a linux KDC)
+    Pvno: 5
+    MSG Type: AS-REP (11)
+    padata: PA-ENCTYPE-INFO2
+    Client Realm: REALM
+    Client Name (Principal): nfs/HOST.home.DOMAINNAME 
+    Ticket
+    enc-part des-cbc-crc
 
-Yes. (What does glibc itself do in the ppoll library call if the kernel
-doesn't support it?)
+So my point is what if the KDC returns something other that 'des-cbc-crc' in the
+AS-REP since in the AS-REQ we says we support all those encryption types.
 
---b.
+Again this is still all theory since still don't have a functionally 
+non-linux KDC but I'm working on it...
 
-> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> index 84f04e9..b9f3a06 100644
-> --- a/utils/gssd/gssd_main_loop.c
-> +++ b/utils/gssd/gssd_main_loop.c
-> @@ -99,6 +99,7 @@ gssd_run()
->  	int			ret;
->  	struct sigaction	dn_act;
->  	int			fd;
-> +	sigset_t		set;
->  
->  	/* Taken from linux/Documentation/dnotify.txt: */
->  	dn_act.sa_sigaction = dir_notify_handler;
-> @@ -106,6 +107,11 @@ gssd_run()
->  	dn_act.sa_flags = SA_SIGINFO;
->  	sigaction(DNOTIFY_SIGNAL, &dn_act, NULL);
->  
-> +	/* just in case the signal is blocked... */
-> +	sigemptyset(&set);
-> +	sigaddset(&set, DNOTIFY_SIGNAL);
-> +	sigprocmask(SIG_UNBLOCK, &set, NULL);
-> +
->  	if ((fd = open(pipefs_nfsdir, O_RDONLY)) == -1) {
->  		printerr(0, "ERROR: failed to open %s: %s\n",
->  			 pipefs_nfsdir, strerror(errno));
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+steved.
+
