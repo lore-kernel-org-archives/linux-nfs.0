@@ -1,108 +1,76 @@
-From: "Kevin Coffman" <kwc@umich.edu>
-Subject: Re: [PATCH] rpc.gssd: Don't supply the KDC with unsupported encryption types
-Date: Tue, 11 Nov 2008 13:33:50 -0500
-Message-ID: <4d569c330811111033p70264b87r2463e8cb68b985e9@mail.gmail.com>
-References: <4919B57C.6050104@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] gssd:  unblock DNOTIFY_SIGNAL in case it was blocked.
+Date: Tue, 11 Nov 2008 14:09:40 -0500
+Message-ID: <20081111190940.GA8775@fieldses.org>
+References: <18712.46537.9006.490726@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "Steve Dickson" <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rn-out-0910.google.com ([64.233.170.188]:55512 "EHLO
-	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750763AbYKKSdx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2008 13:33:53 -0500
-Received: by rn-out-0910.google.com with SMTP id k40so27862rnd.17
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Nov 2008 10:33:51 -0800 (PST)
-In-Reply-To: <4919B57C.6050104-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:57962 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750940AbYKKTJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2008 14:09:42 -0500
+In-Reply-To: <18712.46537.9006.490726-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve,
+On Tue, Nov 11, 2008 at 09:29:29AM +1100, Neil Brown wrote:
+> 
+> I have a situation where rpc.gssd appears to not be working.
+> Mount attempts which need to communicate with it block.
+> 
+> I've narrowed down the problem to that fact that all realtime signals
+> have been blocked.  This means that DNOTIFY_SIGNAL (which is a
+> realtime signal) is never delivered, so gssd never rescans the
+> rpc_pipe/nfs directory.
+> 
+> I haven't figured out why the signals are blocked yet, but having
+> rpc.gssd fail mysteriously in that situation isn't pleasant.
+> 
+> So I wonder what people think of the following patch.  It simply
+> unblocks the signal.  Alternately we can check if it is blocked and
+> warn - I'm not really sure of the significance of blocking all these
+> signals.  Maybe it's wrong to just unblock them.
 
-This patch shouldn't be necessary.
+So we don't know what it is that's doing the blocking?
 
-When you say "registers with the KDC", I assume that you mean gets a
-TGT.  That transaction doesn't need to (and shouldn't) have encryption
-types limited.  When we get a service ticket to talk to an NFS server,
-we need to limit the encryption types to those supported by the
-kernel.  The current code should be doing that.  If you find that
-isn't the case, let me know.
+> As an aside, maybe we could change gssd_run to use "ppoll" rather than
+> "poll".  Then it would not have to wake up every 500msec to see if it
+> missed a signal. We would probably have to check kernel version was at
+> least 2.6.16....
 
+Yes. (What does glibc itself do in the ppoll library call if the kernel
+doesn't support it?)
 
-K.C.
+--b.
 
-On Tue, Nov 11, 2008 at 11:40 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> Hello,
->
-> It seems when rpc.gssd initially registers with the KDC, it sends
-> a long list of encryption types that are not supported:
->
->      Encryption Types: aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96 des3-cbc-sha1
->                        rc4-hmac des-cbc-crc des-cbc-md5 des-cbc-md4 rsa-sha1-cms
->                        rsa-md5-cms des-ede3-cbc-env rc2-cbc-env rsa-env
->
-> Now the theory is mounts will hang if the KDC (like a Solaris KDC) returns an unsupported
-> encryption type since the client will not know what to do with it. I'm currently
-> trying to test this theory with people that actually have a working Solaris KDC,
-> unfortunately I'm not one of those people...
->
-> But to me, it just makes sense that rpc.gssd should only talk about encryption types
-> it supports. It seems like it would cuts out any and all confusion.The following
-> patch does just that.
->
-> comments?
->
-> steved.
->
->
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Tue Nov 11 11:08:13 EST 2008
->
->        When rpc.gssd registers with the KDC, only talk
->        about the supported encryption types during the
->        initial registration so the KDC will only
->        return supported encryption types.
->
->        Signed-off-by: Steve Dickson <steved@redhat.com>
->
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 77814bc..7f131c9 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -125,6 +125,10 @@
->
->  /* Global list of principals/cache file names for machine credentials */
->  struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
-> +static krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC,
-> +                                   ENCTYPE_DES_CBC_MD5,
-> +                                   ENCTYPE_DES_CBC_MD4 };
-> +static int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
->
->  /*==========================*/
->  /*===  Internal routines ===*/
-> @@ -309,10 +313,6 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec, uid_t uid)
->        u_int maj_stat, min_stat;
->        gss_cred_id_t credh;
->        gss_OID_set_desc  desired_mechs;
-> -       krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC,
-> -                                   ENCTYPE_DES_CBC_MD5,
-> -                                   ENCTYPE_DES_CBC_MD4 };
-> -       int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
->
->        /* We only care about getting a krb5 cred */
->        desired_mechs.count = 1;
-> @@ -412,6 +412,7 @@ gssd_get_single_krb5_cred(krb5_context context,
->
->        krb5_get_init_creds_opt_init(&options);
->        krb5_get_init_creds_opt_set_address_list(&options, NULL);
-> +       krb5_get_init_creds_opt_set_etype_list(&options, enctypes, num_enctypes);
->  #ifdef TEST_SHORT_LIFETIME
->        /* set a short lifetime (for debugging only!) */
->        printerr(0, "WARNING: Using (debug) short machine cred lifetime!\n");
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index 84f04e9..b9f3a06 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -99,6 +99,7 @@ gssd_run()
+>  	int			ret;
+>  	struct sigaction	dn_act;
+>  	int			fd;
+> +	sigset_t		set;
+>  
+>  	/* Taken from linux/Documentation/dnotify.txt: */
+>  	dn_act.sa_sigaction = dir_notify_handler;
+> @@ -106,6 +107,11 @@ gssd_run()
+>  	dn_act.sa_flags = SA_SIGINFO;
+>  	sigaction(DNOTIFY_SIGNAL, &dn_act, NULL);
+>  
+> +	/* just in case the signal is blocked... */
+> +	sigemptyset(&set);
+> +	sigaddset(&set, DNOTIFY_SIGNAL);
+> +	sigprocmask(SIG_UNBLOCK, &set, NULL);
+> +
+>  	if ((fd = open(pipefs_nfsdir, O_RDONLY)) == -1) {
+>  		printerr(0, "ERROR: failed to open %s: %s\n",
+>  			 pipefs_nfsdir, strerror(errno));
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
