@@ -1,107 +1,80 @@
-From: "Kevin Coffman" <kwc@umich.edu>
-Subject: Re: [PATCH] rpc.gssd: Don't supply the KDC with unsupported encryption types
-Date: Tue, 11 Nov 2008 16:01:01 -0500
-Message-ID: <4d569c330811111301r5948b77rd6125ffc0b950d88@mail.gmail.com>
-References: <4919B57C.6050104@RedHat.com>
-	 <4d569c330811111033p70264b87r2463e8cb68b985e9@mail.gmail.com>
-	 <4919E576.6050301@RedHat.com>
+From: "NeilBrown" <neilb@suse.de>
+Subject: Re: [PATCH] gssd:  unblock DNOTIFY_SIGNAL in case it was blocked.
+Date: Wed, 12 Nov 2008 09:20:20 +1100 (EST)
+Message-ID: <ced7f54f33cb02088b6d9c10603c047e.squirrel@neil.brown.name>
+References: <18712.46537.9006.490726@notabene.brown>
+    <20081111190940.GA8775@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "Steve Dickson" <SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from an-out-0708.google.com ([209.85.132.246]:32118 "EHLO
-	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752350AbYKKVBD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2008 16:01:03 -0500
-Received: by an-out-0708.google.com with SMTP id d40so62799and.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Nov 2008 13:01:01 -0800 (PST)
-In-Reply-To: <4919E576.6050301-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from ns2.suse.de ([195.135.220.15]:50652 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751617AbYKKWU3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2008 17:20:29 -0500
+In-Reply-To: <20081111190940.GA8775@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 11, 2008 at 3:05 PM, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> Kevin Coffman wrote:
->> Hi Steve,
+On Wed, November 12, 2008 6:09 am, J. Bruce Fields wrote:
+> On Tue, Nov 11, 2008 at 09:29:29AM +1100, Neil Brown wrote:
 >>
->> This patch shouldn't be necessary.
+>> I have a situation where rpc.gssd appears to not be working.
+>> Mount attempts which need to communicate with it block.
 >>
->> When you say "registers with the KDC", I assume that you mean gets a
->> TGT.
-> I'm not sure what a TGT is... but what I talking about is the AS-REQ and AS-REP
-> (output from wireshark):
+>> I've narrowed down the problem to that fact that all realtime signals
+>> have been blocked.  This means that DNOTIFY_SIGNAL (which is a
+>> realtime signal) is never delivered, so gssd never rescans the
+>> rpc_pipe/nfs directory.
+>>
+>> I haven't figured out why the signals are blocked yet, but having
+>> rpc.gssd fail mysteriously in that situation isn't pleasant.
+>>
+>> So I wonder what people think of the following patch.  It simply
+>> unblocks the signal.  Alternately we can check if it is blocked and
+>> warn - I'm not really sure of the significance of blocking all these
+>> signals.  Maybe it's wrong to just unblock them.
 >
-> Kerberos AS-REQ (from rpc.gssd)
->    Pvno: 5
->    MSG Type: AS-REQ (10)
->    KDC_REQ_BODY
->        Padding: 0
->        KDCOptions: 40000010 (Forwardable, Renewable OK)
->        Client Name (Principal): nfs/HOST.DOMAINNAME
->        Realm: REALM
->        Server Name (Unknown): krbtgt/REALM
->        from: 2008-11-11 12:56:53 (UTC)
->        till: 2008-11-12 12:56:53 (UTC)
->        Nonce: 1226408213
->        Encryption Types: aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96 des3-cbc-sha1 rc4-hmac des-cbc-crc des-cbc-md5 des-cbc-md4 rsa-sha1-cms rsa-md5-cms des-ede3-cbc-env rc2-cbc-env rsa-env
+> So we don't know what it is that's doing the blocking?
+
+That information has just come to hand.  It seems to be kde.
+start_kde (or whatever it is called) and all descendants have these
+signals blocked.  xfce seems to do the same thing.  gnome doesn't.
+
+So if you start rpc.gssd from a terminal window while logged in via
+KDE, it doesn't behave as expected.
+
 >
-> Kerberos AS-REP (From a linux KDC)
->    Pvno: 5
->    MSG Type: AS-REP (11)
->    padata: PA-ENCTYPE-INFO2
->    Client Realm: REALM
->    Client Name (Principal): nfs/HOST.home.DOMAINNAME
->    Ticket
->    enc-part des-cbc-crc
+>> As an aside, maybe we could change gssd_run to use "ppoll" rather than
+>> "poll".  Then it would not have to wake up every 500msec to see if it
+>> missed a signal. We would probably have to check kernel version was at
+>> least 2.6.16....
 >
-> So my point is what if the KDC returns something other that 'des-cbc-crc' in the
-> AS-REP since in the AS-REQ we says we support all those encryption types.
->
-> Again this is still all theory since still don't have a functionally
-> non-linux KDC but I'm working on it...
->
-> steved.
+> Yes. (What does glibc itself do in the ppoll library call if the kernel
+> doesn't support it?)
 
-The AS-REQ (Authentication Service) is a request for a TGT (aka,
-Ticket-Granting-Ticket).  This is a ticket issued by the KDC to a
-principal after verifying her identity (by verifying her password).
-This ticket is good for a period of time, allowing that principal to
-get tickets for other services, such as NFS, without having to use her
-password for every request.  (Her password doesn't even go to the KDC
-for the AS-REQ.  It is used to generate a key locally, which is used
-to encrypt something locally, which is sent in the AS-REQ.)
+Probably tries to fake it and ends up with a racy implementation.  That
+is what it does with pselect.
 
-This is the exchange your patch is limiting to only DES.  That is unnecessary.
+An alternate would be to not use signals at all (generally a very good
+idea) by use inotify instead of dnotify.  But that hasn't always worked
+either.
 
-The tickets for other services (like NFS) (aka Service Tickets) are
-obtained using a TGS-REQ (Ticket Granting Service).  The TGT returned
-in the AS-REP is used to form the TGS request -- to verify it is still
-the same principal.  This is where the code in gssd currently limits
-the encryption types that can be negotiated.  We only want limit the
-encryption types for the session key in the NFS Service Ticket, not
-for all the service tickets obtained using that TGT.  That is also why
-we DO NOT want to have
+Here is a question:  On which kernel did GSS support first become a really
+usable option?  If that is sufficiently recent that it includes either
+ppoll or inotify-on-rpc_pipe, then we could just use the modern technology
+and tell people that rpc.gssd isn't supported on older kernels because
+it doesn't really work anyway.  Would that get us anywhere?
 
-default_tkt_enctypes = des-cbc-crc    # Don't do this!
-default_tgs_enctypes = des-cbc-crc    # Don't do this!
-
-in the /etc/krb5.conf file.  Those limit all negotiations to only using DES.
+Another alternate.  rpc.gssd currently wakes up every 500msec to check
+a global variable that might have been set by a signal arriving.
+There would be little extra cost if doing a 'stat' of the rpc_pipe/nfs
+directory to see if it had changed (is the timestamp updated when a
+change happens?).  This would just be one quick syscall.  Then we could
+be much less dependent on correct delivery of the signal.  We could even
+not use dnotify at all.
 
 
-Also, it shouldn't matter if the KDC is a Linux KDC or a Solaris KDC.
-Modern versions of both KDCs support many encryption types besides
-DES.  (As you can see above.)
+NeilBrown
 
-Now the Solaris NFS client and server can handle more encryption types
-than Linux at the moment.  That is why it is important to limit the
-encryption types to only DES when creating the keytab entry for the
-nfs/<hostname>@REALM principal for Linux machines.  That gives the KDC
-the information it needs to only issue a Service Ticket with only a
-DES session key to a Solaris NFS client when it is going to talk to a
-Linux NFS server.
-
-Hopefully this clears up a little without raising too many more questions!
-
-K.C.
