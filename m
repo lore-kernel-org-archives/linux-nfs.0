@@ -1,34 +1,41 @@
-From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
-Subject: Re: NFS mount over IPv6 success
-Date: Wed, 12 Nov 2008 14:35:53 +0100
-Message-ID: <20081112133553.GA32294@uio.no>
-References: <20081109164132.GA19615@uio.no> <DBEFEF5C-00E2-4C4D-A9D4-81D24632DE34@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: nfs-utils 1.1.2 + knfsd 2.6.27 (.5) breaks fsid= option
+Date: Wed, 12 Nov 2008 08:48:47 -0500
+Message-ID: <491ADEBF.80900@RedHat.com>
+References: <20081112104811.GA15011@janus>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cassarossa.samfundet.no ([129.241.93.19]:39621 "EHLO
-	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752678AbYKLNf7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2008 08:35:59 -0500
-In-Reply-To: <DBEFEF5C-00E2-4C4D-A9D4-81D24632DE34@oracle.com>
+Received: from mx2.redhat.com ([66.187.237.31]:39857 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752075AbYKLNum (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Nov 2008 08:50:42 -0500
+In-Reply-To: <20081112104811.GA15011@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 12, 2008 at 01:00:27AM -0500, Chuck Lever wrote:
-> Keep an eye out for IPv6-related patches for nfs-utils.  The key is to  
-> ensure IPv4 continues to work, especially on Debian which tracks  
-> upstream nfs-utils closely.
+Frank van Maarseveen wrote:
+> Tested on Debian lenny with nfs-kernel-server 1:1.1.2-6lenny1 and a
+> 2.6.27.5 kernel. /etc/exports says:
+> 
+> 	/mp @general(rw,sync,no_root_squash,no_subtree_check,mp,fsid=2886795869)
+> 
+> After actually using it /proc/fs/nfsd/exports says:
+> 
+> 	/mp @general(rw,no_root_squash,sync,wdelay,no_subtree_check,fsid=-1408171427,uuid=db4387a6:bed949d0:8f5ef6a2:6a0c
+> 
+> (yes, 2886795869 == (ulong)-1408171427)
+> However, file handles over the wire now seem to have fsid_type=6
+> (FSID_UUID16) instead of 1 (FSID_NUM) due to this.
 
-We don't plan to incorporate IPv6-specific patches before upstream does (and
-lenny, our upcoming release, is not going to get libtirpc or rpcbind). When
-upstream nfs-utils is ready, you can expect us to configure with
---enable-ipv6 pretty quickly, though :-)
+This is a known problem... The kernel checks UUIDs before FSIDS which cause
+FSIDS to be ignored. There are two outstanding proposals to fix this problem.
+   1) Move two lines in the kernel so FSIDs are checked before UUIDS
+   2) Change mountd to only send down  the FSID or the UUID but
+      not both as it does today.
+ 
+Neither proposal has been accepted... yet...
 
-I still haven't had any success with nfsd on the server side in Linux; it's a
-bit unclear to me what nfs-utils to use in particular.
-
-/* Steinar */
--- 
-Homepage: http://www.sesse.net/
+steved.
