@@ -1,30 +1,34 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
-Subject: nfs-utils 1.1.2 + knfsd 2.6.27 (.5) breaks fsid= option
-Date: Wed, 12 Nov 2008 11:48:11 +0100
-Message-ID: <20081112104811.GA15011@janus>
+From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: NFS mount over IPv6 success
+Date: Wed, 12 Nov 2008 14:35:53 +0100
+Message-ID: <20081112133553.GA32294@uio.no>
+References: <20081109164132.GA19615@uio.no> <DBEFEF5C-00E2-4C4D-A9D4-81D24632DE34@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:41620 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751206AbYKLKsN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2008 05:48:13 -0500
+Received: from cassarossa.samfundet.no ([129.241.93.19]:39621 "EHLO
+	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752678AbYKLNf7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2008 08:35:59 -0500
+In-Reply-To: <DBEFEF5C-00E2-4C4D-A9D4-81D24632DE34@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tested on Debian lenny with nfs-kernel-server 1:1.1.2-6lenny1 and a
-2.6.27.5 kernel. /etc/exports says:
+On Wed, Nov 12, 2008 at 01:00:27AM -0500, Chuck Lever wrote:
+> Keep an eye out for IPv6-related patches for nfs-utils.  The key is to  
+> ensure IPv4 continues to work, especially on Debian which tracks  
+> upstream nfs-utils closely.
 
-	/mp @general(rw,sync,no_root_squash,no_subtree_check,mp,fsid=2886795869)
+We don't plan to incorporate IPv6-specific patches before upstream does (and
+lenny, our upcoming release, is not going to get libtirpc or rpcbind). When
+upstream nfs-utils is ready, you can expect us to configure with
+--enable-ipv6 pretty quickly, though :-)
 
-After actually using it /proc/fs/nfsd/exports says:
+I still haven't had any success with nfsd on the server side in Linux; it's a
+bit unclear to me what nfs-utils to use in particular.
 
-	/mp @general(rw,no_root_squash,sync,wdelay,no_subtree_check,fsid=-1408171427,uuid=db4387a6:bed949d0:8f5ef6a2:6a0c
-
-(yes, 2886795869 == (ulong)-1408171427)
-However, file handles over the wire now seem to have fsid_type=6
-(FSID_UUID16) instead of 1 (FSID_NUM) due to this.
-
+/* Steinar */
 -- 
-Frank
+Homepage: http://www.sesse.net/
