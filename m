@@ -1,41 +1,89 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: nfs-utils 1.1.2 + knfsd 2.6.27 (.5) breaks fsid= option
-Date: Wed, 12 Nov 2008 08:48:47 -0500
-Message-ID: <491ADEBF.80900@RedHat.com>
-References: <20081112104811.GA15011@janus>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Re: NFSD IPv6 support for 2.6.29
+Date: Wed, 12 Nov 2008 17:02:17 +0100
+Message-ID: <491AFE09.2010803@bull.net>
+References: <9BBD5BD5-C461-43C4-AEB0-69D3E31F92B7@oracle.com> <4917C380.9040703@linux.vnet.ibm.com> <C44F9C62-2770-4879-8AC7-B1C8D81F9AB6@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Cc: Varun Chandramohan <varunc@linux.vnet.ibm.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39857 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752075AbYKLNum (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Nov 2008 08:50:42 -0500
-In-Reply-To: <20081112104811.GA15011@janus>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:56193 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752099AbYKLQDn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2008 11:03:43 -0500
+In-Reply-To: <C44F9C62-2770-4879-8AC7-B1C8D81F9AB6@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Frank van Maarseveen wrote:
-> Tested on Debian lenny with nfs-kernel-server 1:1.1.2-6lenny1 and a
-> 2.6.27.5 kernel. /etc/exports says:
-> 
-> 	/mp @general(rw,sync,no_root_squash,no_subtree_check,mp,fsid=2886795869)
-> 
-> After actually using it /proc/fs/nfsd/exports says:
-> 
-> 	/mp @general(rw,no_root_squash,sync,wdelay,no_subtree_check,fsid=-1408171427,uuid=db4387a6:bed949d0:8f5ef6a2:6a0c
-> 
-> (yes, 2886795869 == (ulong)-1408171427)
-> However, file handles over the wire now seem to have fsid_type=6
-> (FSID_UUID16) instead of 1 (FSID_NUM) due to this.
 
-This is a known problem... The kernel checks UUIDs before FSIDS which cause
-FSIDS to be ignored. There are two outstanding proposals to fix this problem.
-   1) Move two lines in the kernel so FSIDs are checked before UUIDS
-   2) Change mountd to only send down  the FSID or the UUID but
-      not both as it does today.
- 
-Neither proposal has been accepted... yet...
+Hi,
+Sorry for not answering earlier but I am back to-day after some days ou=
+t=20
+of my office.
+I plan to do also some run-time  testing with your new tree.
 
-steved.
+Regards
+
+
+
+Chuck Lever a =E9crit :
+
+>
+> On Nov 10, 2008, at 12:15 AM, Varun Chandramohan wrote:
+>
+>> Chuck Lever wrote:
+>>
+>>> Hi Aime, Varun-
+>>>
+>>> Bruce asked me to collect server-side IPv6 patches for upstream.  =20
+>>> I've collected the patches that have been posted on the list, and =20
+>>> added some fixes of my own.
+>>>
+>>> Can you have a look at
+>>>
+>>>  http://git.linux-nfs.org/?p=3Dcel/cel-2.6.git;a=3Dsummary
+>>>
+>>>  tag cel-ipv6-10292008
+>>>
+>>> These have been build tested, but I haven't done any run-time =20
+>>> testing yet.
+>>>
+>>> --=20
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>
+>> Hi Chuck,
+>>
+>>                I just realized that i forgot to update you about the=
+ =20
+>> test result of your tree. I found NFSv4 over ipv6 working well. So =20
+>> it can be pulled into the mainline soon.
+>
+>
+> Thanks for testing!
+>
+> --=20
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> --=20
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+--=20
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic=20
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+=46ax     : 33 (4) 76.29.75.18
+-----------------------------------------------------------------=20
+
