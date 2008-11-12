@@ -1,70 +1,30 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS mount over IPv6 success
-Date: Wed, 12 Nov 2008 01:00:27 -0500
-Message-ID: <DBEFEF5C-00E2-4C4D-A9D4-81D24632DE34@oracle.com>
-References: <20081109164132.GA19615@uio.no>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+From: Frank van Maarseveen <frankvm@frankvm.com>
+Subject: nfs-utils 1.1.2 + knfsd 2.6.27 (.5) breaks fsid= option
+Date: Wed, 12 Nov 2008 11:48:11 +0100
+Message-ID: <20081112104811.GA15011@janus>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:23629 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750961AbYKLGAg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2008 01:00:36 -0500
-In-Reply-To: <20081109164132.GA19615-6Z/AllhyZU4@public.gmane.org>
+Received: from frankvm.xs4all.nl ([80.126.170.174]:41620 "EHLO
+	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751206AbYKLKsN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2008 05:48:13 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steinar-
+Tested on Debian lenny with nfs-kernel-server 1:1.1.2-6lenny1 and a
+2.6.27.5 kernel. /etc/exports says:
 
-Thanks for testing!
+	/mp @general(rw,sync,no_root_squash,no_subtree_check,mp,fsid=2886795869)
 
-Keep an eye out for IPv6-related patches for nfs-utils.  The key is to  
-ensure IPv4 continues to work, especially on Debian which tracks  
-upstream nfs-utils closely.
+After actually using it /proc/fs/nfsd/exports says:
 
-On Nov 9, 2008, at 11:41 AM, Steinar H. Gunderson wrote:
+	/mp @general(rw,no_root_squash,sync,wdelay,no_subtree_check,fsid=-1408171427,uuid=db4387a6:bed949d0:8f5ef6a2:6a0c
 
-> Hi,
->
-> I'm sure others have gotten this to work at some point, but it's  
-> finally
-> gotten to the point where I could get it to work myself, so I  
-> thought I could
-> share my success story:
->
-> - Vanilla 2.6.28-rc3 client (2.6.26 also worked, although not with  
-> NFSv4)
-> - Solaris 10 server
-> - libtirpc from git (git://git.infradead.org/~steved/libtirpc.git)
-> - IPv6-patched nfs-utils from git
->   (git://git.linux-nfs.org/projects/cel/nfs-utils.git)
->
-> After recompiling (actually making Debian packages of) the client  
-> software,
-> it was just a matter of mounting. 2.6.26 had some issues with IPv6  
-> address
-> literals -- only DNS worked -- but 2.6.28-rc3 did both just fine.
->
-> I haven't done extensive testing, but this looks pretty good :-) Now  
-> I'm just
-> waiting for the server support to get ready in the same way, and  
-> then for
-> everything to trickle into mainline.
->
-> /* Steinar */
-> -- 
-> Homepage: http://www.sesse.net/
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+(yes, 2886795869 == (ulong)-1408171427)
+However, file handles over the wire now seem to have fsid_type=6
+(FSID_UUID16) instead of 1 (FSID_NUM) due to this.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+-- 
+Frank
