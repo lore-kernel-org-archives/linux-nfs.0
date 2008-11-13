@@ -1,91 +1,25 @@
-From: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
-Subject: Re: [NFS] export dir thru 2 diff path names
-Date: Wed, 12 Nov 2008 10:04:30 -0800
-Message-ID: <620E93B2E5CC3B46BD811165E3335B8702FD3423@0461-its-exmb02.us.saic.com>
-References: <491869F0.1000505@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
-	<491882AB.6070908@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
-	<4918859C.6080608@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F3759D@0461-its-exmb02.us.saic.com>
-	<20081110192820.GC19053@fieldses.org>
-	<ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
-	<20081110204443.GK19053@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: semi-offline
+Date: Wed, 12 Nov 2008 19:58:03 -0500
+Message-ID: <20081113005803.GB1595@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net, Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	"Chuck Lever" <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:49687 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:60653 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751975AbYKLSC7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Nov 2008 13:02:59 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1L0K3L-0000y1-2m
-	for linux-nfs@vger.kernel.org; Thu, 13 Nov 2008 05:02:55 +1100
-In-Reply-To: <20081110204443.GK19053@fieldses.org>
+	id S1751367AbYKMA6F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Nov 2008 19:58:05 -0500
+Received: from bfields by fieldses.org with local (Exim 4.69)
+	(envelope-from <bfields@fieldses.org>)
+	id 1L0QX5-0000Ve-CN
+	for linux-nfs@vger.kernel.org; Wed, 12 Nov 2008 19:58:03 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One last question for the maintainers and the community.  Is this viewed
-as an undocumented feature or a bug to be fixed?  I would hate to
-recommend use of the exported link, only to have it disabled by an
-updated patch.
+Just an advance apology: I've got meetings, travel, and holidays
+near-continuously through early December, so I may not be very good
+about responding to email.  If it's urgent, feel free to resend and/or
+shout as necessary....
 
-Wayne 
-
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Monday, November 10, 2008 2:45 PM
-> To: Chuck Lever
-> Cc: Murata, Dennis; nfs@lists.sourceforge.net; Sev Binello
-> Subject: Re: [NFS] export dir thru 2 diff path names
-> 
-> On Mon, Nov 10, 2008 at 03:20:42PM -0500, Chuck Lever wrote:
-> > On Nov 10, 2008, at Nov 10, 2008, 2:28 PM, J. Bruce Fields wrote:
-> >> On Mon, Nov 10, 2008 at 11:28:04AM -0800, Murata, Dennis wrote:
-> >>> That really is the 64K question.  During my initial testing, I 
-> >>> exported the parent directory.  Now I am explicitly exporting the 
-> >>> installation directories, where I see the exportfs 
-> message.  In the 
-> >>> messages log file on the server the mount request from 
-> the client is 
-> >>> always the actual directory.
-> >>
-> >> I don't see how this would be "unsafe"--if it works, go for it.
-> >>
-> >> One potential trap: it's using the same client list and export 
-> >> options for both, so if you think you can make one of them 
-> read-only 
-> >> and one of them writeable, for example, you'll be disapointed.
-> >
-> > I wonder how this behaves on the client side.  If the same client 
-> > mounts both paths, will it recognize that these are the 
-> same and use a 
-> > shared page cache for both?
-> 
-> Yeah, who knows.  I suspect it assumes they're different if 
-> the mount paths are different.
-> 
-> But for most people's purposes it probably doesn't matter 
-> much.  (For the purposes people have mentioned so far they 
-> don't even need to mount both paths from the same client at once.)
-> 
-> --b.
-> 
-
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--b.
