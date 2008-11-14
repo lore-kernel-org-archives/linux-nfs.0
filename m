@@ -1,118 +1,44 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] SUNRPC: Avoid spurious wake-up during UDP connect processing
-Date: Thu, 13 Nov 2008 16:14:47 -0500
-Message-ID: <20081113211309.7976.24058.stgit@ingres.1015granger.net>
+From: "Mike Snitzer" <snitzer@gmail.com>
+Subject: help understanding the current (and future) state of NFSv4 locking?
+Date: Fri, 14 Nov 2008 15:34:56 -0500
+Message-ID: <170fa0d20811141234m3faee54dh241b9a374b7201c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:45396 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751192AbYKMVO4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Nov 2008 16:14:56 -0500
+Received: from ik-out-1112.google.com ([66.249.90.179]:52777 "EHLO
+	ik-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751129AbYKNUe7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Nov 2008 15:34:59 -0500
+Received: by ik-out-1112.google.com with SMTP id c29so1344554ika.5
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Nov 2008 12:34:56 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To clear out old state, the UDP connect workers unconditionally invoke
-xs_close() before proceeding with a new connect.  Nowadays this causes
-a spurious wake-up of the task waiting for the connect to complete.
+Hello,
 
-This is a little racey, but usually harmless.  The waiting task
-immediately retries the connect via a call_bind/call_connect sequence,
-which usually finds the transport already in the connected state
-because the connect worker has finished in the background.
+I'd like to understand the state of Linux's NFSv4 server regarding the
+NFSv4 spec's _optional_ ordered blocking lock list implementation.
+Without something like the following patch isn't there still concern
+for NFSv4 clients being starved from ever getting a conflicting lock
+(local POSIX or lockd waiters would race to get it first)?
 
-To avoid a spurious wake-up, factor the xs_close() logic that resets
-the underlying socket into a helper, and have the UDP connect workers
-call that helper instead of xs_close().
+"fair queuing" in Linux's fs/locks.c was developed but the patch was
+never merged upstream:
+http://www.citi.umich.edu/projects/nfsv4/linux/kernel-patches/2.6.13-1/linux-2.6.13-032-locks-posix-fair-queue.dif
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+http://wiki.linux-nfs.org/wiki/index.php/Cluster_Coherent_NFS_and_Byte_Range_Locking
+http://www.eisler.com/2008-05-09/draft-ietf-nfsv4-minorversion1-23.html#blocking_locks
 
- net/sunrpc/xprtsock.c |   44 ++++++++++++++++++++++++++------------------
- 1 files changed, 26 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 0a50361..883dc2f 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -760,23 +760,13 @@ static void xs_restore_old_callbacks(struct sock_xprt *transport, struct sock *s
- 	sk->sk_error_report = transport->old_error_report;
- }
- 
--/**
-- * xs_close - close a socket
-- * @xprt: transport
-- *
-- * This is used when all requests are complete; ie, no DRC state remains
-- * on the server we want to save.
-- */
--static void xs_close(struct rpc_xprt *xprt)
-+static void xs_reset_transport(struct sock_xprt *transport)
- {
--	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	struct socket *sock = transport->sock;
- 	struct sock *sk = transport->inet;
- 
--	if (!sk)
--		goto clear_close_wait;
--
--	dprintk("RPC:       xs_close xprt %p\n", xprt);
-+	if (sk == NULL)
-+		return;
- 
- 	write_lock_bh(&sk->sk_callback_lock);
- 	transport->inet = NULL;
-@@ -790,7 +780,23 @@ static void xs_close(struct rpc_xprt *xprt)
- 	sk->sk_no_check = 0;
- 
- 	sock_release(sock);
--clear_close_wait:
-+}
-+
-+/**
-+ * xs_close - close a socket
-+ * @xprt: transport
-+ *
-+ * This is used when all requests are complete; ie, no DRC state remains
-+ * on the server we want to save.
-+ */
-+static void xs_close(struct rpc_xprt *xprt)
-+{
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-+
-+	dprintk("RPC:       xs_close xprt %p\n", xprt);
-+
-+	xs_reset_transport(transport);
-+
- 	smp_mb__before_clear_bit();
- 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
- 	clear_bit(XPRT_CLOSING, &xprt->state);
-@@ -1530,9 +1536,10 @@ static void xs_udp_connect_worker4(struct work_struct *work)
- 		goto out;
- 
- 	/* Start by resetting any existing state */
--	xs_close(xprt);
-+	xs_reset_transport(transport);
- 
--	if ((err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
-+	err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	if (err < 0) {
- 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
- 		goto out;
- 	}
-@@ -1571,9 +1578,10 @@ static void xs_udp_connect_worker6(struct work_struct *work)
- 		goto out;
- 
- 	/* Start by resetting any existing state */
--	xs_close(xprt);
-+	xs_reset_transport(transport);
- 
--	if ((err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
-+	err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	if (err < 0) {
- 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
- 		goto out;
- 	}
+I'd also like to understand: what Linux NFSv4.1 support is intended
+for the _optional_ CB_NOTIFY_LOCK?:
 
+20.11.  Operation 13: CB_NOTIFY_LOCK - Notify of possible lock availability:
+http://www.eisler.com/2008-05-09/draft-ietf-nfsv4-minorversion1-23.html#OP_CB_NOTIFY_LOCK
+
+Any insight would be appreciated.
+
+Thanks,
+Mike
