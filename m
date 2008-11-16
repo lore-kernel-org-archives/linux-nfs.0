@@ -1,23 +1,24 @@
-From: Frank van Maarseveen <frankvm@frankvm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: nfs-utils 1.1.2 + knfsd 2.6.27 (.5) breaks fsid= option
-Date: Sun, 16 Nov 2008 21:29:35 +0100
-Message-ID: <20081116202935.GA13533@janus>
+Date: Sun, 16 Nov 2008 16:57:00 -0500
+Message-ID: <20081116215700.GB25834@fieldses.org>
 References: <20081112104811.GA15011@janus> <491ADEBF.80900@RedHat.com> <20081116200211.GK21551@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+	Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from frankvm.xs4all.nl ([80.126.170.174]:33980 "EHLO
-	janus.localdomain" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752084AbYKPU3h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Nov 2008 15:29:37 -0500
+Received: from mail.fieldses.org ([66.93.2.214]:34612 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753117AbYKPV5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 16 Nov 2008 16:57:05 -0500
 In-Reply-To: <20081116200211.GK21551@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Nov 16, 2008 at 03:02:11PM -0500, J. Bruce Fields wrote:
+On Sun, Nov 16, 2008 at 03:02:11PM -0500, bfields wrote:
 > On Wed, Nov 12, 2008 at 08:48:47AM -0500, Steve Dickson wrote:
 > > Frank van Maarseveen wrote:
 > > > Tested on Debian lenny with nfs-kernel-server 1:1.1.2-6lenny1 and a
@@ -41,17 +42,12 @@ On Sun, Nov 16, 2008 at 03:02:11PM -0500, J. Bruce Fields wrote:
 > >  
 > > Neither proposal has been accepted... yet...
 > 
-> I'd have a mild preference for the 2nd, but I'd first like to understand
-> why the new behavior is a problem for Frank.
+> I'd have a mild preference for the 2nd,
 
-I'm using a patch originally developed by Wendy Cheng for a per-fsid
-grace period. It could be triggered by:
+Maybe I should take that back--Neil, don't we need to pass down the uuid
+to match the client-provided filehandle type in the case where they're
+giving us uuid-style filehandles?  In that case we need to pass down
+both so the kernel can choose the desired one.  So if we need to fix
+this then that would make SteveD's patch the way to go.
 
-	echo fsid >/proc/fs/nfsd/nlm_grace_fsid
-
-where the mentioned fsid is the same as in /etc/exports. I'm not
-particularly fond of using fsids for this and AFAIK a similar patch for
-per-mountpoint grace period is underway. Correct?
-
--- 
-Frank
+--b.
