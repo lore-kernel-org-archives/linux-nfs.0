@@ -1,155 +1,196 @@
-From: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
-Subject: Re: [NFS] export dir thru 2 diff path names
-Date: Mon, 17 Nov 2008 08:54:14 -0800
-Message-ID: <620E93B2E5CC3B46BD811165E3335B87030B2CD1@0461-its-exmb02.us.saic.com>
-References: <491869F0.1000505@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
-	<491882AB.6070908@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
-	<4918859C.6080608@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F3759D@0461-its-exmb02.us.saic.com>
-	<20081110192820.GC19053@fieldses.org>
-	<ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
-	<20081110204443.GK19053@fieldses.org>
-	<620E93B2E5CC3B46BD811165E3335B8702FD3423@0461-its-exmb02.us.saic.com>
-	<20081116200423.GL21551@fieldses.org>
+From: Le Rouzic <aime.le-rouzic@bull.net>
+Subject: Re: NFSD IPv6 support for 2.6.29
+Date: Mon, 17 Nov 2008 18:52:05 +0100
+Message-ID: <4921AF45.4070009@bull.net>
+References: <9BBD5BD5-C461-43C4-AEB0-69D3E31F92B7@oracle.com> <4917C380.9040703@linux.vnet.ibm.com> <C44F9C62-2770-4879-8AC7-B1C8D81F9AB6@oracle.com> <491AFE09.2010803@bull.net> <2BF8FCDB-0C6D-430E-B2AE-4C293E30A1AE@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Chuck Lever <chuck.lever@oracle.com>, nfs@lists.sourceforge.net,
-	Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------070203030509020307050703"
+Cc: Varun Chandramohan <varunc@linux.vnet.ibm.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37487 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752081AbYKQQwr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Nov 2008 11:52:47 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1L27LA-0004Go-TV
-	for linux-nfs@vger.kernel.org; Tue, 18 Nov 2008 03:52:45 +1100
-In-Reply-To: <20081116200423.GL21551@fieldses.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:54738 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751461AbYKQRwO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 12:52:14 -0500
+In-Reply-To: <2BF8FCDB-0C6D-430E-B2AE-4C293E30A1AE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------070203030509020307050703
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 8bit
 
- > -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Sunday, November 16, 2008 2:04 PM
-> To: Murata, Dennis
-> Cc: Chuck Lever; nfs@lists.sourceforge.net; Sev Binello
-> Subject: Re: [NFS] export dir thru 2 diff path names
-> 
-> On Wed, Nov 12, 2008 at 10:04:30AM -0800, Murata, Dennis wrote:
-> > One last question for the maintainers and the community.  Is this 
-> > viewed as an undocumented feature or a bug to be fixed?
-> 
-> By "this" you mean mountd's current practice of following 
-> symlinks in export points?  If people are using it (and I 
-> can't imagine you're the only ones to try), then I think we 
-> should make it a point to keep it around.  Patches to the 
-> documentation (probably the exports man page, kept in the 
-> nfs-utils code) welcomed.
-> 
-> --b.
-The "following symlinks" is a part of what I am asking, but the other
-point is the idea of exporting a directory with two different path
-names.  I didn't know if the message from exportfs, i.e. duplicated
-export entries, was designed as a warning or an error.  As you pointed
-out, at any particular client workstation the directory would probably
-be mounted by only one of the names, but a different workstation may use
-the other name, so the directory would have to be exported by both names
-from the server.  I am still working out the details, but in my
-situation it may be possible that the directory will only be exported by
-one of the names depending on the stage of the process it is in.
+Chuck Lever a écrit :
 
-Wayne
-> 
-> > I would hate to
-> > recommend use of the exported link, only to have it disabled by an 
-> > updated patch.
-> > 
-> > Wayne
-> > 
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > Sent: Monday, November 10, 2008 2:45 PM
-> > > To: Chuck Lever
-> > > Cc: Murata, Dennis; nfs@lists.sourceforge.net; Sev Binello
-> > > Subject: Re: [NFS] export dir thru 2 diff path names
-> > > 
-> > > On Mon, Nov 10, 2008 at 03:20:42PM -0500, Chuck Lever wrote:
-> > > > On Nov 10, 2008, at Nov 10, 2008, 2:28 PM, J. Bruce 
-> Fields wrote:
-> > > >> On Mon, Nov 10, 2008 at 11:28:04AM -0800, Murata, Dennis wrote:
-> > > >>> That really is the 64K question.  During my initial 
-> testing, I 
-> > > >>> exported the parent directory.  Now I am explicitly exporting 
-> > > >>> the installation directories, where I see the exportfs
-> > > message.  In the
-> > > >>> messages log file on the server the mount request from
-> > > the client is
-> > > >>> always the actual directory.
-> > > >>
-> > > >> I don't see how this would be "unsafe"--if it works, go for it.
-> > > >>
-> > > >> One potential trap: it's using the same client list and export 
-> > > >> options for both, so if you think you can make one of them
-> > > read-only
-> > > >> and one of them writeable, for example, you'll be disapointed.
-> > > >
-> > > > I wonder how this behaves on the client side.  If the 
-> same client 
-> > > > mounts both paths, will it recognize that these are the
-> > > same and use a
-> > > > shared page cache for both?
-> > > 
-> > > Yeah, who knows.  I suspect it assumes they're different if the 
-> > > mount paths are different.
-> > > 
-> > > But for most people's purposes it probably doesn't matter much.  
-> > > (For the purposes people have mentioned so far they don't 
-> even need 
-> > > to mount both paths from the same client at once.)
-> > > 
-> > > --b.
-> > > 
-> > 
-> > 
-> ----------------------------------------------------------------------
-> > --- This SF.Net email is sponsored by the Moblin Your Move 
-> Developer's 
-> > challenge Build the coolest Linux based applications with 
-> Moblin SDK & 
-> > win great prizes Grand prize is a trip for two to an Open 
-> Source event 
-> > anywhere in the world 
-> > http://moblin-contest.org/redirect.php?banner_id=100&url=/
-> > _______________________________________________
-> > NFS maillist  -  NFS@lists.sourceforge.net 
-> > https://lists.sourceforge.net/lists/listinfo/nfs
-> > _______________________________________________
-> > Please note that nfs@lists.sourceforge.net is being discontinued.
-> > Please subscribe to linux-nfs@vger.kernel.org instead.
-> >     http://vger.kernel.org/vger-lists.html#linux-nfs
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" 
-> > in the body of a message to majordomo@vger.kernel.org More 
-> majordomo 
-> > info at  http://vger.kernel.org/majordomo-info.html
-> 
+>>> On Nov 10, 2008, at 12:15 AM, Varun Chandramohan wrote:
+>>>
+>>>> Chuck Lever wrote:
+>>>>
+>>>>> Hi Aime, Varun-
+>>>>>
+>>>>> Bruce asked me to collect server-side IPv6 patches for upstream.
+>>>>> I've collected the patches that have been posted on the list, and
+>>>>> added some fixes of my own.
+>>>>>
+>>>>> Can you have a look at
+>>>>>
+>>>>> http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=summary
+>>>>>
+>>>>> tag cel-ipv6-10292008
+>>>>>
+>>>>> These have been build tested, but I haven't done any run-time
+>>>>> testing yet.
+>>>>>
+>>>>> -- 
+>>>>> Chuck Lever
+>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>
+>>>>
+>>>> Hi Chuck,
+>>>>
+>>>>               I just realized that i forgot to update you about the
+>>>> test result of your tree. I found NFSv4 over ipv6 working well. So
+>>>> it can be pulled into the mainline soon.
+>>>
+ Hi
+I have tested the "tag cel-ipv6-10292008" and some robustness tests
+started simultaneously (connectathon, fsx, iozone, fss_stress, ffsb) have
+been running fine during several hours in IPV6 and IPV4.
+I used the my nfs-utils package based on nfs-utils.1.1.2 
+(http://nfsv4.bullopensource.org/)
 
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Nevertheless I may have missed something during the last mails about IPV6
+but I don't find in your tree changes about IPV6 in fs/nfsd/nfsctl.c
 
+I join the patch I submitted for that.
+
+Best Regards
+
+
+-- 
+-----------------------------------------------------------------
+Company : Bull, Architect of an Open World TM (www.bull.com)
+Name    : Aime Le Rouzic 
+Mail    : Bull - BP 208 - 38432 Echirolles Cedex - France
+E-Mail  : aime.le-rouzic@bull.net
+Phone   : 33 (4) 76.29.75.51
+Fax     : 33 (4) 76.29.75.18
+----------------------------------------------------------------- 
+
+
+--------------070203030509020307050703
+Content-Type: text/plain;
+ name="patch_ipv6overrpcbindv4_nfsctl"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="patch_ipv6overrpcbindv4_nfsctl"
+
+
+ NFSV4 IPV6: Adds AF_INET6 domain processing when AF_INET processing only available in nfsd/nfsctl.c
+
+ ---
+
+ fs/nfsd/nfsctl.c     |   41 +++++++++++++++++++++++++++++++----------
+
+ Signed-off-by: Aime Le Rouzic <aime.le-rouzic@bull.net>
+---
+diff -Nru rpcbindv4/fs/nfsd/nfsctl.c ipv6overrpcbindv4/fs/nfsd/nfsctl.c
+--- rpcbindv4/fs/nfsd/nfsctl.c	2008-09-15 14:50:09.000000000 +0200
++++ ipv6overrpcbindv4/fs/nfsd/nfsctl.c	2008-09-15 15:18:24.000000000 +0200
+@@ -230,6 +230,7 @@
+ {
+ 	struct nfsctl_fsparm *data;
+ 	struct sockaddr_in *sin;
++	struct sockaddr_in6 *sin6;
+ 	struct auth_domain *clp;
+ 	int err = 0;
+ 	struct knfsd_fh *res;
+@@ -239,9 +240,19 @@
+ 		return -EINVAL;
+ 	data = (struct nfsctl_fsparm*)buf;
+ 	err = -EPROTONOSUPPORT;
+-	if (data->gd_addr.sa_family != AF_INET)
++	switch (data->gd_addr.sa_family) {
++	case AF_INET:
++		sin = (struct sockaddr_in *)&data->gd_addr;
++		ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
++		break;
++	case AF_INET6:
++		sin6 = (struct sockaddr_in6 *)&data->gd_addr;
++		ipv6_addr_copy(&in6, &sin6->sin6_addr); 
++		break;
++	default:
+ 		goto out;
+-	sin = (struct sockaddr_in *)&data->gd_addr;
++	}
++
+ 	if (data->gd_maxlen > NFS3_FHSIZE)
+ 		data->gd_maxlen = NFS3_FHSIZE;
+ 
+@@ -249,8 +260,6 @@
+ 
+ 	exp_readlock();
+ 
+-	ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
+-
+ 	clp = auth_unix_lookup(&in6);
+ 	if (!clp)
+ 		err = -EPERM;
+@@ -269,6 +278,7 @@
+ {
+ 	struct nfsctl_fdparm *data;
+ 	struct sockaddr_in *sin;
++	struct sockaddr_in6 *sin6;
+ 	struct auth_domain *clp;
+ 	int err = 0;
+ 	struct knfsd_fh fh;
+@@ -279,20 +289,31 @@
+ 		return -EINVAL;
+ 	data = (struct nfsctl_fdparm*)buf;
+ 	err = -EPROTONOSUPPORT;
+-	if (data->gd_addr.sa_family != AF_INET)
++	if (data->gd_addr.sa_family != AF_INET &&
++	    data->gd_addr.sa_family != AF_INET6)
+ 		goto out;
++
+ 	err = -EINVAL;
+ 	if (data->gd_version < 2 || data->gd_version > NFSSVC_MAXVERS)
+ 		goto out;
+ 
+ 	res = buf;
+-	sin = (struct sockaddr_in *)&data->gd_addr;
+ 	exp_readlock();
+ 
+-	ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
++	switch (data->gd_addr.sa_family) {
++	case AF_INET:
++		sin = (struct sockaddr_in *)&data->gd_addr;
++		ipv6_addr_set_v4mapped(sin->sin_addr.s_addr, &in6);
++		break;
++	case AF_INET6:
++		sin6 = (struct sockaddr_in6 *)&data->gd_addr;
++		ipv6_addr_copy(&in6, &sin6->sin6_addr);
++		break;
++	default:
++		goto out;
++	}
+ 
+-	clp = auth_unix_lookup(&in6);
+-	if (!clp)
++	if (!(clp = auth_unix_lookup(&in6)))
+ 		err = -EPERM;
+ 	else {
+ 		err = exp_rootfh(clp, data->gd_path, &fh, NFS_FHSIZE);
+@@ -305,7 +326,7 @@
+ 		memcpy(res, &fh.fh_base, fh.fh_size);
+ 		err = NFS_FHSIZE;
+ 	}
+- out:
++out:
+ 	return err;
+ }
+
+--------------070203030509020307050703--
