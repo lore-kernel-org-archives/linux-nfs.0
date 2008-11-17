@@ -1,407 +1,512 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 32/51] nfsd41: callback infrastructure
-Date: Mon, 17 Nov 2008 16:12:05 +0200
-Message-ID: <49217BB5.9040307@panasas.com>
-References: <491895A0.3040809@panasas.com> <1226350299-11302-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 38/51] nfsd41: support for 3-word long attribute
+ bitmask
+Date: Mon, 17 Nov 2008 16:13:03 +0200
+Message-ID: <49217BEF.9080804@panasas.com>
+References: <491895A0.3040809@panasas.com> <1226350424-11541-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:11465 "EHLO
+Received: from gw-ca.panasas.com ([66.104.249.162]:13101 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751984AbYKQOMI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:12:08 -0500
-In-Reply-To: <1226350299-11302-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1752020AbYKQONH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:13:07 -0500
+In-Reply-To: <1226350424-11541-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov. 10, 2008, 22:51 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> Keep the xprt used for create_session in cl_cb_xprt.
-> Mark cl_callback.cb_minorversion = 1 and remember
-> the client provided cl_callback.cb_prog rpc program number.
-> Use it to probe the callback path.
+On Nov. 10, 2008, 22:53 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
+> Also, use client minorversion to generate supported attrs
 > 
-> Define xdr sizes and code nfs41 cb_compound header to be able
-> to send a null callback rpc.
-> 
-> Define stubs for other nfs41 callbacks.
-> 
-> Signed-off-by: Andy Adamson<andros@netapp.com>
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-
-review 11-13: unify xdr function like Andy did for the nfs client
-
 > ---
->  fs/nfsd/nfs4callback.c     |  189 +++++++++++++++++++++++++++++++++++++++-----
->  fs/nfsd/nfs4state.c        |   14 +++
->  include/linux/nfsd/state.h |    3 +-
->  3 files changed, 186 insertions(+), 20 deletions(-)
+>  fs/nfsd/nfs4proc.c        |   24 +++++++++----
+>  fs/nfsd/nfs4xdr.c         |   82 ++++++++++++++++++++++++++++++++++++--------
+>  include/linux/nfsd/nfsd.h |   51 +++++++++++++++++++++++++++-
+>  include/linux/nfsd/xdr4.h |   29 +++++++++++----
+>  4 files changed, 154 insertions(+), 32 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index e198ead..b1d2299 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -43,6 +43,7 @@
->  #include <linux/sunrpc/xdr.h>
->  #include <linux/sunrpc/svc.h>
->  #include <linux/sunrpc/clnt.h>
-> +#include <linux/sunrpc/svcsock.h>
->  #include <linux/nfsd/nfsd.h>
->  #include <linux/nfsd/state.h>
->  #include <linux/sunrpc/sched.h>
-> @@ -52,16 +53,24 @@
->  
->  #define NFSPROC4_CB_NULL 0
->  #define NFSPROC4_CB_COMPOUND 1
-> +#define NFS4_STATEID_SIZE 16
-> +
-> +#if defined(CONFIG_NFSD_V4_1)
-> +#define NFS4_CB_PROGRAM 0x40000000
-> +#endif
->  
->  /* Index of predefined Linux callback client operations */
->  
->  enum {
-> -        NFSPROC4_CLNT_CB_NULL = 0,
-> +	NFSPROC4_CLNT_CB_NULL = 0,
->  	NFSPROC4_CLNT_CB_RECALL,
-> +	NFSPROC4_CLNT_CB_SEQUENCE,
->  };
->  
->  enum nfs_cb_opnum4 {
->  	OP_CB_RECALL            = 4,
-> +	OP_CB_LAYOUT            = 5,
-> +	OP_CB_SEQUENCE          = 11,
->  };
->  
->  #define NFS4_MAXTAGLEN		20
-> @@ -77,10 +86,40 @@ enum nfs_cb_opnum4 {
->  #define NFS4_enc_cb_recall_sz		(cb_compound_enc_hdr_sz +       \
->  					1 + enc_stateid_sz +            \
->  					enc_nfs4_fh_sz)
-> -
->  #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
->  					op_dec_sz)
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +#define NFS41_enc_cb_null_sz		0
-> +#define NFS41_dec_cb_null_sz		0
-> +#define cb_compound41_enc_hdr_sz	4
-> +#define cb_compound41_dec_hdr_sz	(3 + (NFS4_MAXTAGLEN >> 2))
-> +#define sessionid_sz			(NFS4_MAX_SESSIONID_LEN >> 2)
-> +#define cb_sequence41_enc_sz		(sessionid_sz + 4 +             \
-> +					1 /* no referring calls list yet */)
-> +#define cb_sequence41_dec_sz		(op_dec_sz + sessionid_sz + 4)
-> +#define NFS41_enc_cb_recall_sz		(cb_compound41_enc_hdr_sz +     \
-> +					cb_sequence41_enc_sz +          \
-> +					1 + enc_stateid_sz +            \
-> +					enc_nfs4_fh_sz)
-> +#define NFS41_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
-> +					cb_sequence41_dec_sz +          \
-> +					op_dec_sz)
-> +#else /* defined(CONFIG_NFSD_V4_1) */
-> +
-> +struct nfs41_cb_sequence;
-> +
-> +#endif /* defined(CONFIG_NFSD_V4_1) */
-> +
-> +struct nfs4_rpc_args {
-> +	void                     *args_op;
-> +	struct nfs41_cb_sequence *args_seq;
-> +};
-> +
-> +struct nfs4_rpc_res {
-> +	struct nfs41_cb_sequence *res_seq;
-> +};
-> +
->  /*
->  * Generic encode routines from fs/nfs/nfs4xdr.c
->  */
-> @@ -135,11 +174,18 @@ xdr_error:                                      \
->  		return -EIO; \
->  	} \
->  } while (0)
-> +#define COPYMEM(x,nbytes) do {			\
-> +	memcpy((x), p, nbytes);			\
-> +	p += XDR_QUADLEN(nbytes);		\
-> +} while (0)
->  
->  struct nfs4_cb_compound_hdr {
-> -	int		status;
-> -	u32		ident;
-> +	/* args */
-> +	u32		ident;		/* minorversion 0 only */
->  	u32		nops;
-> +
-> +	/* res */
-> +	int		status;
->  	u32		taglen;
->  	char *		tag;
->  };
-> @@ -208,7 +254,7 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
->  
->  	RESERVE_SPACE(16);
->  	WRITE32(0);            /* tag length is always 0 */
-> -	WRITE32(NFS4_MINOR_VERSION);
-> +	WRITE32(0);		/* minorversion */
->  	WRITE32(hdr->ident);
->  	WRITE32(hdr->nops);
->  	return 0;
-> @@ -230,6 +276,14 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec)
->  	return 0;
->  }
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +static int
-> +encode_cb_sequence(struct xdr_stream *xdr, struct nfs41_cb_sequence *args)
-> +{
-> +	return -1;	/* stub */
-> +}
-> +#endif /* defined(CONFIG_NFSD_V4_1) */
-> +
->  static int
->  nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 6f6d221..5164040 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -459,6 +459,7 @@ static __be32
+>  nfsd4_getattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	      struct nfsd4_getattr *getattr)
 >  {
-> @@ -255,6 +309,29 @@ nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *a
->  }
+> +	u32 minorversion;
+>  	__be32 status;
 >  
+>  	status = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_NOP);
+> @@ -468,8 +469,10 @@ nfsd4_getattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (getattr->ga_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1)
+>  		return nfserr_inval;
 >  
+> -	getattr->ga_bmval[0] &= NFSD_SUPPORTED_ATTRS_WORD0;
+> -	getattr->ga_bmval[1] &= NFSD_SUPPORTED_ATTRS_WORD1;
+> +	minorversion = nfsd4_compound_minorversion(cstate);
+> +	getattr->ga_bmval[0] &= nfsd_suppattrs0(minorversion);
+> +	getattr->ga_bmval[1] &= nfsd_suppattrs1(minorversion);
+> +	getattr->ga_bmval[2] &= nfsd_suppattrs2(minorversion);
+>  
+>  	getattr->ga_fhp = &cstate->current_fh;
+>  	return nfs_ok;
+> @@ -557,6 +560,7 @@ static __be32
+>  nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	      struct nfsd4_readdir *readdir)
+>  {
+> +	u32 minorversion;
+>  	u64 cookie = readdir->rd_cookie;
+>  	static const nfs4_verifier zeroverf;
+>  
+> @@ -565,8 +569,10 @@ nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (readdir->rd_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1)
+>  		return nfserr_inval;
+>  
+> -	readdir->rd_bmval[0] &= NFSD_SUPPORTED_ATTRS_WORD0;
+> -	readdir->rd_bmval[1] &= NFSD_SUPPORTED_ATTRS_WORD1;
+> +	minorversion = nfsd4_compound_minorversion(cstate);
+> +	readdir->rd_bmval[0] &= nfsd_suppattrs0(minorversion);
+> +	readdir->rd_bmval[1] &= nfsd_suppattrs1(minorversion);
+> +	readdir->rd_bmval[2] &= nfsd_suppattrs2(minorversion);
+>  
+>  	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
+>  	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
+> @@ -754,14 +760,17 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  {
+>  	__be32 *buf, *p;
+>  	int count;
+> +	u32 minorversion;
+>  	__be32 status;
+>  
+>  	status = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_NOP);
+>  	if (status)
+>  		return status;
+>  
+> -	if ((verify->ve_bmval[0] & ~NFSD_SUPPORTED_ATTRS_WORD0)
+> -	    || (verify->ve_bmval[1] & ~NFSD_SUPPORTED_ATTRS_WORD1))
+> +	minorversion = nfsd4_compound_minorversion(cstate);
+> +	if ((verify->ve_bmval[0] & ~nfsd_suppattrs0(minorversion))
+> +	    || (verify->ve_bmval[1] & ~nfsd_suppattrs1(minorversion))
+> +	    || (verify->ve_bmval[2] & ~nfsd_suppattrs2(minorversion)))
+>  		return nfserr_attrnotsupp;
+>  	if ((verify->ve_bmval[0] & FATTR4_WORD0_RDATTR_ERROR)
+>  	    || (verify->ve_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1))
+> @@ -781,7 +790,7 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  				    cstate->current_fh.fh_export,
+>  				    cstate->current_fh.fh_dentry, buf,
+>  				    &count, verify->ve_bmval,
+> -				    rqstp, 0);
+> +				    rqstp, 0, verify->ve_minorversion);
+>  
+>  	/* this means that nfsd4_encode_fattr() ran out of space */
+>  	if (status == nfserr_resource && count == 0)
+> @@ -903,6 +912,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	resp->tag = args->tag;
+>  	resp->opcnt = 0;
+>  	resp->rqstp = rqstp;
+> +	resp->minorversion = args->minorversion;
+>  
+>  	/*
+>  	 * According to RFC3010, this takes precedence over all other errors.
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index e6cad37..89e7b0d 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -237,6 +237,7 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+>  
+>  	bmval[0] = 0;
+>  	bmval[1] = 0;
+> +	bmval[2] = 0;
+>  
+>  	READ_BUF(4);
+>  	READ32(bmlen);
+> @@ -248,13 +249,19 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+>  		READ32(bmval[0]);
+>  	if (bmlen > 1)
+>  		READ32(bmval[1]);
 > +#if defined(CONFIG_NFSD_V4_1)
-> +static int
-> +encode_cb_compound41_hdr(struct xdr_stream *xdr,
-> +			 struct nfs4_cb_compound_hdr *hdr)
-> +{
-> +	u32 *p;
-> +
-> +	RESERVE_SPACE(16);
-> +	WRITE32(0);		/* tag length is always 0 */
-> +	WRITE32(1);		/* minorversion */
-> +	WRITE32(0);		/* callback_ident not used in 4.1 */
-> +	WRITE32(hdr->nops);
-> +	return 0;
-> +}
-> +
-> +static int
-> +nfs41_xdr_enc_cb_recall(struct rpc_rqst *req, u32 *p,
-> +			struct nfs4_rpc_args *rpc_args)
-> +{
-> +	return -1;	/* stub */
-> +}
-> +#endif /* defined(CONFIG_NFSD_V4_1) */
-> +
->  static int
->  decode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr){
->          __be32 *p;
-> @@ -312,6 +389,21 @@ out:
->  	return status;
->  }
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +static int
-> +decode_cb_sequence(struct xdr_stream *xdr, struct nfs41_cb_sequence *res)
-> +{
-> +	return -1;	/* stub */
-> +}
-> +
-> +static int
-> +nfs41_xdr_dec_cb_recall(struct rpc_rqst *rqstp, u32 *p,
-> +			struct nfs4_rpc_res *rpc_res)
-> +{
-> +	return -1;	/* stub */
-> +}
-> +#endif /* defined(CONFIG_NFSD_V4_1) */
-> +
->  /*
->   * RPC procedure tables
->   */
-> @@ -331,32 +423,76 @@ static struct rpc_procinfo     nfs4_cb_procedures[] = {
->      PROC(CB_RECALL,    COMPOUND,   enc_cb_recall,      dec_cb_recall),
->  };
->  
-> -static struct rpc_version       nfs_cb_version4 = {
-> +static struct rpc_version       nfs4_cb_version1 = {
->          .number                 = 1,
->          .nrprocs                = ARRAY_SIZE(nfs4_cb_procedures),
->          .procs                  = nfs4_cb_procedures
->  };
->  
-> -static struct rpc_version *	nfs_cb_version[] = {
-> +static struct rpc_version *nfs4_cb_version[] = {
->  	NULL,
-> -	&nfs_cb_version4,
-> +	&nfs4_cb_version1,
->  };
->  
-> -static struct rpc_program cb_program;
-> +static struct rpc_program nfs4_cb_program;
->  
-> -static struct rpc_stat cb_stats = {
-> -		.program	= &cb_program
-> +static struct rpc_stat nfs4_cb_stats = {
-> +	.program	= &nfs4_cb_program
->  };
->  
->  #define NFS4_CALLBACK 0x40000000
-> -static struct rpc_program cb_program = {
-> -		.name 		= "nfs4_cb",
-> -		.number		= NFS4_CALLBACK,
-> -		.nrvers		= ARRAY_SIZE(nfs_cb_version),
-> -		.version	= nfs_cb_version,
-> -		.stats		= &cb_stats,
-> +static struct rpc_program nfs4_cb_program = {
-> +	.name 		= "nfs4_cb",
-> +	.number		= NFS4_CALLBACK,
-> +	.nrvers		= ARRAY_SIZE(nfs4_cb_version),
-> +	.version	= nfs4_cb_version,
-> +	.stats		= &nfs4_cb_stats,
-> +};
-> +
-> +#if defined(CONFIG_NFSD_V4_1)
-> +#define PROC41(proc, call, argtype, restype)                            \
-> +[NFSPROC4_CLNT_##proc] = {                                              \
-> +	.p_proc   = NFSPROC4_CB_##call,                                 \
-> +	.p_encode = (kxdrproc_t) nfs41_xdr_##argtype,                   \
-> +	.p_decode = (kxdrproc_t) nfs41_xdr_##restype,                   \
-> +	.p_arglen = NFS41_##argtype##_sz,                               \
-> +	.p_replen = NFS41_##restype##_sz,                               \
-> +	.p_statidx = NFSPROC4_CB_##call,                                \
-> +	.p_name   = #proc,                                              \
-> +}
-> +
-> +static struct rpc_procinfo     nfs41_cb_procedures[] = {
-> +	PROC(CB_NULL,        NULL,       enc_cb_null,        dec_cb_null),
-> +	PROC41(CB_RECALL,    COMPOUND,   enc_cb_recall,      dec_cb_recall),
->  };
->  
-> +static struct rpc_version       nfs41_cb_version1 = {
-> +	.number                 = 1,
-> +	.nrprocs                = ARRAY_SIZE(nfs41_cb_procedures),
-> +	.procs                  = nfs41_cb_procedures
-> +};
-> +
-> +static struct rpc_version *nfs41_cb_version[] = {
-> +	NULL,
-> +	&nfs41_cb_version1,
-> +};
-> +
-> +static struct rpc_program nfs41_cb_program;
-> +
-> +static struct rpc_stat nfs41_cb_stats = {
-> +	.program	= &nfs41_cb_program
-> +};
-> +
-> +static struct rpc_program nfs41_cb_program = {
-> +	.name 		= "nfs41_cb",
-> +	.number		= NFS4_CALLBACK,
-> +	.nrvers		= ARRAY_SIZE(nfs41_cb_version),
-> +	.version	= nfs41_cb_version,
-> +	.stats		= &nfs41_cb_stats,
-> +};
-> +
-> +#endif /* defined(CONFIG_NFSD_V4_1) */
-> +
->  /* Reference counting, callback cleanup, etc., all look racy as heck.
->   * And why is cb_set an atomic? */
->  
-> @@ -376,9 +512,9 @@ static int do_probe_callback(void *data)
->  		.address	= (struct sockaddr *)&addr,
->  		.addrsize	= sizeof(addr),
->  		.timeout	= &timeparms,
-> -		.program	= &cb_program,
-> +		.program	= &nfs4_cb_program,
->  		.prognumber	= cb->cb_prog,
-> -		.version	= nfs_cb_version[1]->number,
-> +		.version	= nfs4_cb_version[1]->number,
->  		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
->  		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
->  	};
-> @@ -395,6 +531,20 @@ static int do_probe_callback(void *data)
->  	addr.sin_port = htons(cb->cb_port);
->  	addr.sin_addr.s_addr = htonl(cb->cb_addr);
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +	if (cb->cb_minorversion) {
-> +		BUG_ON(cb->cb_minorversion != 1);
-> +		args.program = &nfs41_cb_program;
-> +		args.version = nfs41_cb_version[1]->number;
-> +		args.bc_sock = container_of(clp->cl_cb_xprt, struct svc_sock,
-> +					    sk_xprt);
+> +	if (bmlen > 2) {
+> +		READ32(bmval[2]);
 > +	}
 > +#endif /* CONFIG_NFSD_V4_1 */
-> +
-> +	dprintk("%s: program %s 0x%x nrvers %u version %u minorversion %u\n",
-> +		__func__, args.program->name, args.prognumber,
-> +		args.program->nrvers, args.version, cb->cb_minorversion);
-> +
->  	/* Create RPC client */
->  	client = rpc_create(&args);
->  	if (IS_ERR(client)) {
-> @@ -413,6 +563,7 @@ static int do_probe_callback(void *data)
->  	put_nfs4_client(clp);
->  	return 0;
->  out_release_client:
-> +	dprintk("NFSD: synchronous CB_NULL failed. status=%d\n", status);
->  	rpc_shutdown_client(client);
->  out_err:
->  	dprintk("NFSD: warning: no callback path to client %.*s\n",
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 55fd003..edac97a 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -39,6 +39,7 @@
->  #include <linux/slab.h>
 >  
->  #include <linux/sunrpc/svc.h>
-> +#include <linux/sunrpc/svcsock.h>
->  #include <linux/nfsd/nfsd.h>
->  #include <linux/nfsd/cache.h>
->  #include <linux/file.h>
-> @@ -544,6 +545,10 @@ static inline void
->  free_client(struct nfs4_client *clp)
->  {
->  	shutdown_callback_client(clp);
-> +#if defined(CONFIG_NFSD_V4_1)
-> +	if (clp->cl_cb_xprt)
-> +		svc_xprt_put(clp->cl_cb_xprt);
-> +#endif /* CONFIG_NFSD_V4_1 */
->  	if (clp->cl_cred.cr_group_info)
->  		put_group_info(clp->cl_cred.cr_group_info);
->  	kfree(clp->cl_name.data);
-> @@ -856,6 +861,8 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
->  	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
->  	                 &cb->cb_addr, &cb->cb_port)))
->  		goto out_err;
-> +
-> +	cb->cb_minorversion = 0;
->  	cb->cb_prog = se->se_callback_prog;
->  	cb->cb_ident = se->se_callback_ident;
->  	return;
-> @@ -1042,6 +1049,13 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		cr_ses->flags &= ~SESSION4_PERSIST;
->  		cr_ses->flags &= ~SESSION4_RDMA;
+>  	DECODE_TAIL;
+>  }
 >  
-> +		if (cr_ses->flags & SESSION4_BACK_CHAN) {
-> +			unconf->cl_cb_xprt = rqstp->rq_xprt;
-> +			svc_xprt_get(unconf->cl_cb_xprt);
-> +			unconf->cl_callback.cb_minorversion = 1;
-> +			unconf->cl_callback.cb_prog = cr_ses->callback_prog;
-> +			nfsd4_probe_callback(unconf);
-> +		}
->  		conf = unconf;
+>  static u32 nfsd_attrmask[] = {
+>  	NFSD_WRITEABLE_ATTRS_WORD0,
+> -	NFSD_WRITEABLE_ATTRS_WORD1
+> +	NFSD_WRITEABLE_ATTRS_WORD1,
+> +	NFSD_WRITEABLE_ATTRS_WORD2
+>  };
+>  
+>  static __be32
+> @@ -275,9 +282,12 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
+>  	 * According to spec, unsupported attributes return ERR_ATTRNOTSUPP;
+>  	 * read-only attributes return ERR_INVAL.
+>  	 */
+> -	if ((bmval[0] & ~NFSD_SUPPORTED_ATTRS_WORD0) || (bmval[1] & ~NFSD_SUPPORTED_ATTRS_WORD1))
+> +	if ((bmval[0] & ~nfsd_suppattrs0(argp->minorversion)) ||
+> +	    (bmval[1] & ~nfsd_suppattrs1(argp->minorversion)) ||
+> +	    (bmval[2] & ~nfsd_suppattrs2(argp->minorversion)))
+>  		return nfserr_attrnotsupp;
+> -	if ((bmval[0] & ~writable[0]) || (bmval[1] & ~writable[1]))
+> +	if ((bmval[0] & ~writable[0]) || (bmval[1] & ~writable[1]) ||
+> +	    (bmval[2] & ~writable[2]))
+>  		return nfserr_inval;
+>  
+>  	READ_BUF(4);
+> @@ -412,6 +422,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
+>  			goto xdr_error;
+>  		}
 >  	}
+> +	BUG_ON(bmval[2]);	/* no such writeable attr supported yet */
+>  	if (len != expected_len)
+>  		goto xdr_error;
 >  
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index 94b5366..918adde 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -94,7 +94,8 @@ struct nfs4_callback {
->  	u32                     cb_addr;
->  	unsigned short          cb_port;
->  	u32                     cb_prog;
-> -	u32                     cb_ident;
-> +	u32			cb_minorversion;
-> +	u32			cb_ident;	/* minorversion 0 only */
->  	/* RPC client info */
->  	atomic_t		cb_set;     /* successful CB_NULL call */
->  	struct rpc_clnt *       cb_client;
+> @@ -796,6 +807,7 @@ nfsd4_decode_readdir(struct nfsd4_compoundargs *argp, struct nfsd4_readdir *read
+>  	COPYMEM(readdir->rd_verf.data, sizeof(readdir->rd_verf.data));
+>  	READ32(readdir->rd_dircount);    /* just in case you needed a useless field... */
+>  	READ32(readdir->rd_maxcount);
+> +	readdir->minorversion = argp->minorversion;
+>  	if ((status = nfsd4_decode_bitmap(argp, readdir->rd_bmval)))
+>  		goto out;
+>  
+> @@ -949,6 +961,7 @@ nfsd4_decode_verify(struct nfsd4_compoundargs *argp, struct nfsd4_verify *verify
+>  	READ32(verify->ve_attrlen);
+>  	READ_BUF(verify->ve_attrlen);
+>  	SAVEMEM(verify->ve_attrval, verify->ve_attrlen);
+> +	verify->ve_minorversion = argp->minorversion;
+>  
+>  	DECODE_TAIL;
+>  }
+> @@ -1738,10 +1751,11 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+>  __be32
+>  nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  		struct dentry *dentry, __be32 *buffer, int *countp, u32 *bmval,
+> -		struct svc_rqst *rqstp, int ignore_crossmnt)
+> +		struct svc_rqst *rqstp, int ignore_crossmnt, u32 minorversion)
+
+review 11-13: no need for the extra arg - we can get to the MV from
+svc_rqst->rq_resp.
+
+>  {
+>  	u32 bmval0 = bmval[0];
+>  	u32 bmval1 = bmval[1];
+> +	u32 bmval2 = bmval[2];
+>  	struct kstat stat;
+>  	struct svc_fh tempfh;
+>  	struct kstatfs statfs;
+> @@ -1757,10 +1771,25 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  	struct nfs4_acl *acl = NULL;
+>  
+>  	BUG_ON(bmval1 & NFSD_WRITEONLY_ATTRS_WORD1);
+> -	BUG_ON(bmval0 & ~NFSD_SUPPORTED_ATTRS_WORD0);
+> -	BUG_ON(bmval1 & ~NFSD_SUPPORTED_ATTRS_WORD1);
+> +	/* FIXME: change warnings back into BUG_ON */;
+
+review 11-13: fix this.
+
+> +	if (bmval0 & ~nfsd_suppattrs0(minorversion)) {
+> +		printk("%s: minorversion=%u bmval0=0x%08x suppattrs0=0x%08x\n",
+> +			__func__, minorversion, bmval0, nfsd_suppattrs0(minorversion));
+> +		WARN_ON(1);
+> +	}
+> +	if (bmval1 & ~nfsd_suppattrs1(minorversion)) {
+> +		printk("%s: minorversion=%u bmval1=0x%08x suppattrs1=0x%08x\n",
+> +			__func__, minorversion, bmval1, nfsd_suppattrs1(minorversion));
+> +		WARN_ON(1);
+> +	}
+> +	if (bmval2 & ~nfsd_suppattrs2(minorversion)) {
+> +		printk("%s: minorversion=%u bmval2=0x%08x suppattrs2=0x%08x\n",
+> +			__func__, minorversion, bmval2, nfsd_suppattrs2(minorversion));
+> +		WARN_ON(1);
+> +	}
+>  
+>  	if (exp->ex_fslocs.migrated) {
+> +		BUG_ON(bmval[2]);
+>  		status = fattr_handle_absent_fs(&bmval0, &bmval1, &rdattr_err);
+>  		if (status)
+>  			goto out;
+> @@ -1806,22 +1835,42 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  	if ((buflen -= 16) < 0)
+>  		goto out_resource;
+>  
+> -	WRITE32(2);
+> -	WRITE32(bmval0);
+> -	WRITE32(bmval1);
+> +	if (unlikely(bmval2)) {
+> +		WRITE32(3);
+> +		WRITE32(bmval0);
+> +		WRITE32(bmval1);
+> +		WRITE32(bmval2);
+> +	} else if (likely(bmval1)) {
+> +		WRITE32(2);
+> +		WRITE32(bmval0);
+> +		WRITE32(bmval1);
+> +	} else {
+> +		WRITE32(1);
+> +		WRITE32(bmval0);
+> +	}
+>  	attrlenp = p++;                /* to be backfilled later */
+>  
+>  	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+> -		u32 word0 = NFSD_SUPPORTED_ATTRS_WORD0;
+> +		u32 word0 = nfsd_suppattrs0(minorversion);
+> +		u32 word1 = nfsd_suppattrs1(minorversion);
+> +		u32 word2 = nfsd_suppattrs2(minorversion);
+> +
+>  		if ((buflen -= 12) < 0)
+>  			goto out_resource;
+>  		if (!aclsupport)
+>  			word0 &= ~FATTR4_WORD0_ACL;
+>  		if (!exp->ex_fslocs.locations)
+>  			word0 &= ~FATTR4_WORD0_FS_LOCATIONS;
+> -		WRITE32(2);
+> -		WRITE32(word0);
+> -		WRITE32(NFSD_SUPPORTED_ATTRS_WORD1);
+> +		if (!word2) {
+> +			WRITE32(2);
+> +			WRITE32(word0);
+> +			WRITE32(word1);
+> +		} else {
+> +			WRITE32(3);
+> +			WRITE32(word0);
+> +			WRITE32(word1);
+> +			WRITE32(word2);
+> +		}
+>  	}
+>  	if (bmval0 & FATTR4_WORD0_TYPE) {
+>  		if ((buflen -= 4) < 0)
+> @@ -2131,6 +2180,8 @@ out_acl:
+>  		}
+>  		WRITE64(stat.ino);
+>  	}
+> +	BUG_ON(bmval2);	/* FIXME: not implemented yet */
+> +
+>  	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
+>  	*countp = p - buffer;
+>  	status = nfs_ok;
+> @@ -2203,7 +2254,8 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+>  
+>  	}
+>  	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
+> -					cd->rd_rqstp, ignore_crossmnt);
+> +					cd->rd_rqstp, ignore_crossmnt,
+> +					cd->minorversion);
+>  out_put:
+>  	dput(dentry);
+>  	exp_put(exp);
+> @@ -2369,7 +2421,7 @@ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  	buflen = resp->end - resp->p - (COMPOUND_ERR_SLACK_SPACE >> 2);
+>  	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
+>  				    resp->p, &buflen, getattr->ga_bmval,
+> -				    resp->rqstp, 0);
+> +				    resp->rqstp, 0, resp->minorversion);
+>  	if (!nfserr)
+>  		resp->p += buflen;
+>  	return nfserr;
+> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+> index ffb7897..46b8110 100644
+> --- a/include/linux/nfsd/nfsd.h
+> +++ b/include/linux/nfsd/nfsd.h
+> @@ -321,7 +321,7 @@ extern struct timeval	nfssvc_boot;
+>   *    TIME_BACKUP   (unlikely to be supported any time soon)
+>   *    TIME_CREATE   (unlikely to be supported any time soon)
+>   */
+> -#define NFSD_SUPPORTED_ATTRS_WORD0                                                          \
+> +#define NFSD4_SUPPORTED_ATTRS_WORD0                                                         \
+>  (FATTR4_WORD0_SUPPORTED_ATTRS   | FATTR4_WORD0_TYPE         | FATTR4_WORD0_FH_EXPIRE_TYPE   \
+>   | FATTR4_WORD0_CHANGE          | FATTR4_WORD0_SIZE         | FATTR4_WORD0_LINK_SUPPORT     \
+>   | FATTR4_WORD0_SYMLINK_SUPPORT | FATTR4_WORD0_NAMED_ATTR   | FATTR4_WORD0_FSID             \
+> @@ -333,7 +333,7 @@ extern struct timeval	nfssvc_boot;
+>   | FATTR4_WORD0_MAXFILESIZE     | FATTR4_WORD0_MAXLINK      | FATTR4_WORD0_MAXNAME          \
+>   | FATTR4_WORD0_MAXREAD         | FATTR4_WORD0_MAXWRITE     | FATTR4_WORD0_ACL)
+>  
+> -#define NFSD_SUPPORTED_ATTRS_WORD1                                                          \
+> +#define NFSD4_SUPPORTED_ATTRS_WORD1                                                         \
+>  (FATTR4_WORD1_MODE              | FATTR4_WORD1_NO_TRUNC     | FATTR4_WORD1_NUMLINKS         \
+>   | FATTR4_WORD1_OWNER	        | FATTR4_WORD1_OWNER_GROUP  | FATTR4_WORD1_RAWDEV           \
+>   | FATTR4_WORD1_SPACE_AVAIL     | FATTR4_WORD1_SPACE_FREE   | FATTR4_WORD1_SPACE_TOTAL      \
+> @@ -341,6 +341,52 @@ extern struct timeval	nfssvc_boot;
+>   | FATTR4_WORD1_TIME_DELTA   | FATTR4_WORD1_TIME_METADATA    \
+>   | FATTR4_WORD1_TIME_MODIFY     | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID)
+>  
+> +#define NFSD4_SUPPORTED_ATTRS_WORD2 0
+> +
+> +#if defined(CONFIG_NFSD_V4_1)
+
+review 11-13: move the #ifdef down to the static inline implementation part.
+
+> +#define NFSD4_1_SUPPORTED_ATTRS_WORD0 \
+> +	NFSD4_SUPPORTED_ATTRS_WORD0
+> +
+> +#define NFSD4_1_SUPPORTED_ATTRS_WORD1 \
+> +	NFSD4_SUPPORTED_ATTRS_WORD1
+> +
+> +#define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
+> +	NFSD4_SUPPORTED_ATTRS_WORD2
+> +
+> +static inline u32 nfsd_suppattrs0(u32 minorversion)
+> +{
+> +	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
+> +			    : NFSD4_SUPPORTED_ATTRS_WORD0;
+> +}
+> +
+> +static inline u32 nfsd_suppattrs1(u32 minorversion)
+> +{
+> +	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD1
+> +			    : NFSD4_SUPPORTED_ATTRS_WORD1;
+> +}
+> +
+> +static inline u32 nfsd_suppattrs2(u32 minorversion)
+> +{
+> +	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
+> +			    : NFSD4_SUPPORTED_ATTRS_WORD2;
+> +}
+> +#else  /* CONFIG_NFSD_V4_1 */
+> +static inline u32 nfsd_suppattrs0(u32 minorversion)
+> +{
+> +	return NFSD4_SUPPORTED_ATTRS_WORD0;
+> +}
+> +
+> +static inline u32 nfsd_suppattrs1(u32 minorversion)
+> +{
+> +	return NFSD4_SUPPORTED_ATTRS_WORD1;
+> +}
+> +
+> +static inline u32 nfsd_suppattrs2(u32 minorversion)
+> +{
+> +	return NFSD4_SUPPORTED_ATTRS_WORD2;
+> +}
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  /* These will return ERR_INVAL if specified in GETATTR or READDIR. */
+>  #define NFSD_WRITEONLY_ATTRS_WORD1							    \
+>  (FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
+> @@ -351,6 +397,7 @@ extern struct timeval	nfssvc_boot;
+>  #define NFSD_WRITEABLE_ATTRS_WORD1                                                          \
+>  (FATTR4_WORD1_MODE              | FATTR4_WORD1_OWNER         | FATTR4_WORD1_OWNER_GROUP     \
+>   | FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
+> +#define NFSD_WRITEABLE_ATTRS_WORD2 0
+>  
+>  #endif /* CONFIG_NFSD_V4 */
+>  
+> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> index d78ba3c..7812e8c 100644
+> --- a/include/linux/nfsd/xdr4.h
+> +++ b/include/linux/nfsd/xdr4.h
+> @@ -53,6 +53,15 @@ struct nfsd4_compound_state {
+>  #endif /* CONFIG_NFSD_V4_1 */
+>  };
+>  
+> +static inline u32 nfsd4_compound_minorversion(struct nfsd4_compound_state *cs)
+> +{
+> +#if defined(CONFIG_NFSD_V4_1)
+> +	return cs->current_ses ? 1 : 0;
+> +#else  /* CONFIG_NFSD_V4_1 */
+> +	return 0;
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +}
+
+review 11-13: need to change when nfsd4_compound_state will move into
+the compound_res structure.
+
+> +
+>  struct nfsd4_change_info {
+>  	u32		atomic;
+>  	u32		before_ctime_sec;
+> @@ -93,7 +102,7 @@ struct nfsd4_create {
+>  			u32 specdata2;
+>  		} dev;    /* NF4BLK, NF4CHR */
+>  	} u;
+> -	u32		cr_bmval[2];        /* request */
+> +	u32		cr_bmval[3];        /* request */
+>  	struct iattr	cr_iattr;           /* request */
+>  	struct nfsd4_change_info  cr_cinfo; /* response */
+>  	struct nfs4_acl *cr_acl;
+> @@ -109,7 +118,7 @@ struct nfsd4_delegreturn {
+>  };
+>  
+>  struct nfsd4_getattr {
+> -	u32		ga_bmval[2];        /* request */
+> +	u32		ga_bmval[3];        /* request */
+>  	struct svc_fh	*ga_fhp;            /* response */
+>  };
+>  
+> @@ -210,7 +219,7 @@ struct nfsd4_open {
+>  	stateid_t       op_delegate_stateid; /* request - response */
+>  	u32		op_create;     	    /* request */
+>  	u32		op_createmode;      /* request */
+> -	u32		op_bmval[2];        /* request */
+> +	u32		op_bmval[3];        /* request */
+>  	union {                             /* request */
+>  		struct iattr	iattr;                      /* UNCHECKED4,GUARDED4 */
+>  		nfs4_verifier	verf;                                /* EXCLUSIVE4 */
+> @@ -265,7 +274,7 @@ struct nfsd4_readdir {
+>  	nfs4_verifier	rd_verf;            /* request */
+>  	u32		rd_dircount;        /* request */
+>  	u32		rd_maxcount;        /* request */
+> -	u32		rd_bmval[2];        /* request */
+> +	u32		rd_bmval[3];        /* request */
+>  	struct svc_rqst *rd_rqstp;          /* response */
+>  	struct svc_fh * rd_fhp;             /* response */
+>  
+> @@ -273,6 +282,7 @@ struct nfsd4_readdir {
+>  	__be32 *		buffer;
+>  	int			buflen;
+>  	__be32 *		offset;
+> +	u32			minorversion;
+
+review 11-13: get rid of this one
+
+>  };
+>  
+>  struct nfsd4_release_lockowner {
+> @@ -308,7 +318,7 @@ struct nfsd4_secinfo {
+>  struct nfsd4_setattr {
+>  	stateid_t	sa_stateid;         /* request */
+>  	u32		sa_minorversion;    /* processing */
+> -	u32		sa_bmval[2];        /* request */
+> +	u32		sa_bmval[3];        /* request */
+>  	struct iattr	sa_iattr;           /* request */
+>  	struct nfs4_acl *sa_acl;
+>  };
+> @@ -334,9 +344,10 @@ struct nfsd4_setclientid_confirm {
+>  
+>  /* also used for NVERIFY */
+>  struct nfsd4_verify {
+> -	u32		ve_bmval[2];        /* request */
+> +	u32		ve_bmval[3];        /* request */
+>  	u32		ve_attrlen;         /* request */
+>  	char *		ve_attrval;         /* request */
+> +	u32		ve_minorversion;
+
+review 11-13: get rid of this one
+
+>  };
+>  
+>  struct nfsd4_write {
+> @@ -479,6 +490,7 @@ struct nfsd4_compoundres {
+>  	char *				tag;
+>  	u32				opcnt;
+>  	__be32 *			tagp; /* where to encode tag and  opcount */
+> +	u32				minorversion;
+>  };
+>  
+>  #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+> @@ -502,8 +514,9 @@ int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
+>  void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
+>  void nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op);
+>  __be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+> -		       struct dentry *dentry, __be32 *buffer, int *countp,
+> -		       u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
+> +			  struct dentry *dentry, __be32 *buffer, int *countp,
+> +			  u32 *bmval, struct svc_rqst *, int ignore_crossmnt,
+> +			  u32 minorversion);
+>  extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *,
+>  		struct nfsd4_setclientid *setclid);
