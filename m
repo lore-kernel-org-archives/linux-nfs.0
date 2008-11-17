@@ -1,51 +1,68 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 01/85] sunrpc: get rid of rpc_rqst.rq_bufsize
-Date: Mon, 17 Nov 2008 15:17:57 +0200
-Message-ID: <49216F05.4090706@panasas.com>
-References: <1226347159-6561-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 03/85] nfs: remove incorrect usage of nfs4 compound
+ response hdr.status
+Date: Mon, 17 Nov 2008 15:24:43 +0200
+Message-ID: <4921709B.6020602@panasas.com>
+References: <4918920E.3030301@panasas.com> <1226347519-6740-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.26]:7440 "EHLO
+Received: from qw-out-2122.google.com ([74.125.92.27]:7136 "EHLO
 	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751232AbYKQNSF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 08:18:05 -0500
-Received: by qw-out-2122.google.com with SMTP id 3so1177320qwe.37
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Nov 2008 05:18:04 -0800 (PST)
-In-Reply-To: <1226347159-6561-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1751232AbYKQNYs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 08:24:48 -0500
+Received: by qw-out-2122.google.com with SMTP id 3so1178437qwe.37
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Nov 2008 05:24:47 -0800 (PST)
+In-Reply-To: <1226347519-6740-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov. 10, 2008, 21:59 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> rq_bufsize is not used.
+On Nov. 10, 2008, 22:05 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
+> 3 call sites look at hdr.status before returning success.
+> hdr.status must be zero in this case so there's no point in this.
 > 
-> Signed-off-by: Mike Sager <Mike.Sager@netapp.com>
+> Currently, hdr.status is correctly processed at decode_op_hdr time
+> if the op status cannot be decoded.
+
+review 11-14: send to Trond
+
+> 
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  include/linux/sunrpc/xprt.h |    3 +--
->  1 files changed, 1 insertions(+), 2 deletions(-)
+>  fs/nfs/nfs4xdr.c |    6 ------
+>  1 files changed, 0 insertions(+), 6 deletions(-)
 > 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 4d80a11..11fc71d 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -76,8 +76,7 @@ struct rpc_rqst {
->  	struct list_head	rq_list;
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index ac2386b..69b5a56 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -4423,8 +4423,6 @@ static int nfs4_xdr_dec_fsinfo(struct rpc_rqst *req, __be32 *p, struct nfs_fsinf
+>  		status = decode_putfh(&xdr);
+>  	if (!status)
+>  		status = decode_fsinfo(&xdr, fsinfo);
+> -	if (!status)
+> -		status = nfs4_stat_to_errno(hdr.status);
+>  	return status;
+>  }
 >  
->  	__u32 *			rq_buffer;	/* XDR encode buffer */
-> -	size_t			rq_bufsize,
-
-review 11-14: this was used in the past as a sanity check.
-find out when/why this functionality was ripped out.
-
-> -				rq_callsize,
-> +	size_t			rq_callsize,
->  				rq_rcvsize;
+> @@ -4513,8 +4511,6 @@ static int nfs4_xdr_dec_setclientid(struct rpc_rqst *req, __be32 *p,
+>  	status = decode_compound_hdr(&xdr, &hdr);
+>  	if (!status)
+>  		status = decode_setclientid(&xdr, clp);
+> -	if (!status)
+> -		status = nfs4_stat_to_errno(hdr.status);
+>  	return status;
+>  }
 >  
->  	struct xdr_buf		rq_private_buf;		/* The receive buffer
-> -- 
-> 1.6.0.1
-> 
+> @@ -4535,8 +4531,6 @@ static int nfs4_xdr_dec_setclientid_confirm(struct rpc_rqst *req, __be32 *p, str
+>  		status = decode_putrootfh(&xdr);
+>  	if (!status)
+>  		status = decode_fsinfo(&xdr, fsinfo);
+> -	if (!status)
+> -		status = nfs4_stat_to_errno(hdr.status);
+>  	return status;
+>  }
+>  
+
