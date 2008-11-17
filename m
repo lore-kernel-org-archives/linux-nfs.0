@@ -1,42 +1,184 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 04/51] nfsd: fix file comment in fs/nfsd/nfs4xdr.c
-Date: Mon, 17 Nov 2008 15:56:50 +0200
-Message-ID: <49217822.70505@panasas.com>
-References: <491895A0.3040809@panasas.com> <1226349717-10242-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 07/51] nfsd41: sessions basic data types
+Date: Mon, 17 Nov 2008 15:57:42 +0200
+Message-ID: <49217856.4050105@panasas.com>
+References: <491895A0.3040809@panasas.com> <1226349780-10356-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:14154 "EHLO
+Received: from gw-ca.panasas.com ([66.104.249.162]:15611 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752064AbYKQN4x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 08:56:53 -0500
-In-Reply-To: <1226349717-10242-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1751962AbYKQN5p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 08:57:45 -0500
+In-Reply-To: <1226349780-10356-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov. 10, 2008, 22:41 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
+On Nov. 10, 2008, 22:43 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
 > From: Marc Eshel <eshel@almaden.ibm.com>
 > 
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-
-review 2008-11-12: delete comment instead.
-also, for new files the policy today is not to have these
-comments at all.
-
 > ---
->  fs/nfsd/nfs4xdr.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+>  fs/nfsd/nfs4state.c        |   20 ++++++++++++
+>  include/linux/nfsd/state.h |   70 ++++++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 90 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index afcdf4b..f7dec05 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1,5 +1,5 @@
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index b91a2f1..8c1b5d9 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -310,6 +310,26 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+>  static struct list_head client_lru;
+>  static struct list_head close_lru;
+>  
+> +#if defined(CONFIG_NFSD_V4_1)
+> +static void
+> +destroy_session(struct nfs41_session *ses)
+> +{
+> +	list_del(&ses->se_hash);
+> +	list_del(&ses->se_perclnt);
+> +	nfs41_put_session(ses);
+> +}
+
+rename to release_session.
+
+> +
+> +void
+> +free_session(struct kref *kref)
+> +{
+> +	struct nfs41_session *ses;
+> +
+> +	ses = container_of(kref, struct nfs41_session, se_ref);
+> +	kfree(ses->se_slots);
+> +	kfree(ses);
+> +}
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  static inline void
+>  renew_client(struct nfs4_client *clp)
+>  {
+> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> index 8f492e3..2f28ad4 100644
+> --- a/include/linux/nfsd/state.h
+> +++ b/include/linux/nfsd/state.h
+> @@ -100,6 +100,76 @@ struct nfs4_callback {
+>  	struct rpc_clnt *       cb_client;
+>  };
+>  
+> +#if defined(CONFIG_NFSD_V4_1)
+> +/*
+> + * nfs41_channel
+> + *
+> + * for both forward and back channels
+
+review 11-12: 
+channel attributes (either forward or backchannel)
+
+> + */
+> +struct nfs41_channel {
+
+review 11-12: naming?
+nfsd4_* for server names and
+nfs4_ for client names
+
+> +	u32	ch_headerpad_sz;
+
+not used, always return zero for now.
+
+> +	u32	ch_maxreq_sz;
+
+we don't have to save that, just reply our max
+based on svc_max_payload. ok to keep it.
+
+> +	u32	ch_maxresp_sz;
+> +	u32	ch_maxresp_cached;
+
+we'll need at least one per-session max. variable
+maybe a global max.
+
+> +	u32	ch_maxops;
+
+todo: nfsd_compoundargs has a max size for the preallocated ops
+array. need to define that in a header file
+use for both nfs4 and nfs41. (preallocated per nfsd thread)
+
+> +	u32	ch_maxreqs;	/* number of slots */
+> +};
+> +
+> +/* Maximum number of slots per session - XXX arbitrary */
+> +#define NFS41_MAX_SLOTS 64
+> +
+> +/* slot states */
+> +enum {
+> +	NFS4_SLOT_AVAILABLE,
+> +	NFS4_SLOT_INPROGRESS
+> +};
+> +
+> +/*
+> + * nfs41_slot
+> + *
+> + * for now, just slot sequence number - will hold DRC for this slot.
+> + */
+> +struct nfs41_slot {
+> +	atomic_t		sl_state;
+
+11-12: use a bitmap for the AVAIL/INPROG state.
+
+> +	struct nfs41_session	*sl_session;
+
+see if we can keep the pointer in the cur_sess struct
+
+> +	u32			sl_seqid;
+> +};
+> +
+> +/*
+> + * nfs41_session
+> + */
+> +struct nfs41_session {
+> +	struct kref		se_ref;
+> +	struct list_head	se_hash;	/* hash by sessionid_t */
+
+s/sessionid_t/sessionid/
+
+> +	struct list_head	se_perclnt;
+> +	u32			se_flags;
+
+unused at the moment.
+
+> +	struct nfs4_client	*se_client;	/* for expire_client */
+> +	nfs41_sessionid		se_sessionid;
+> +	struct nfs41_channel	se_forward;
+
+look into whether we should embed the channel fields here
+if what we use for the fore channel is different enough
+from what we use for the back channel.
+
+> +	struct nfs41_slot	*se_slots;	/* forward channel slots */
+> +};
+> +
+> +#define se_fheaderpad_sz	se_forward.ch_headerpad_sz
+> +#define se_fmaxreq_sz		se_forward.ch_maxreq_sz
+> +#define se_fmaxresp_sz		se_forward.ch_maxresp_sz
+> +#define se_fmaxresp_cached	se_forward.ch_maxresp_cached
+> +#define se_fmaxops		se_forward.ch_maxops
+> +#define se_fnumslots		se_forward.ch_maxreqs
+> +
+> +static inline void
+> +nfs41_put_session(struct nfs41_session *ses)
+> +{
+> +	extern void free_session(struct kref *kref);
+> +	kref_put(&ses->se_ref, free_session);
+> +}
+> +
+> +static inline void
+> +nfs41_get_session(struct nfs41_session *ses)
+> +{
+> +	kref_get(&ses->se_ref);
+> +}
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  #define HEXDIR_LEN     33 /* hex version of 16 byte md5 of cl_name plus '\0' */
+>  
 >  /*
-> - *  fs/nfs/nfs4xdr.c
-> + *  fs/nfsd/nfs4xdr.c
->   *
->   *  Server-side XDR for NFSv4
->   *
