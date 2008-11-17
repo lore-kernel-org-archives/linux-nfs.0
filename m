@@ -1,125 +1,264 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 20/51] nfsd: last_byte_offset
-Date: Mon, 17 Nov 2008 16:06:03 +0200
-Message-ID: <49217A4B.2000007@panasas.com>
-References: <491895A0.3040809@panasas.com> <1226350050-10848-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 21/51] nfsd41: xdr stubs
+Date: Mon, 17 Nov 2008 16:06:44 +0200
+Message-ID: <49217A74.50701@panasas.com>
+References: <491895A0.3040809@panasas.com> <1226350070-10886-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:10063 "EHLO
+Received: from gw-ca.panasas.com ([66.104.249.162]:10994 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752195AbYKQOGI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:06:08 -0500
-In-Reply-To: <1226350050-10848-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1751582AbYKQOGr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:06:47 -0500
+In-Reply-To: <1226350070-10886-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Nov. 10, 2008, 22:47 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> refactor the nfs4 server lock code to use last_byte_offset
-> to compute the last byte covered by the lock.  Check for overflow
-> so that the last byte is set to NFS4_LENGTH_EOF if offset + len
-> wraps around.
-> 
-> Also, use NFS4_LENGTH_EOF for ~(u64)0 where appropriate.
+> define stubs for exchange_id, create_session, destroy_session, and
+> sequence.
 > 
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-
-review 11-12: check what cases are covered by pynfs testing,
-add more cases as Andy captured.
-
-Move this patch forward into the misc. section.
-
 > ---
->  fs/nfsd/nfs4state.c |   42 ++++++++++++++++++++++++++----------------
->  1 files changed, 26 insertions(+), 16 deletions(-)
+>  fs/nfsd/nfs4xdr.c         |  151 +++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/nfsd/xdr4.h |   24 +++++++
+>  2 files changed, 175 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index db79c0c..ca2e3e0 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2544,6 +2544,26 @@ out:
->  #define LOCK_HASH_SIZE             (1 << LOCK_HASH_BITS)
->  #define LOCK_HASH_MASK             (LOCK_HASH_SIZE - 1)
->  
-> +static inline u64
-> +end_offset(u64 start, u64 len)
-> +{
-> +	u64 end;
-> +
-> +	end = start + len;
-> +	return end >= start ? end: NFS4_LENGTH_EOF;
-> +}
-> +
-> +/* last octet in a range */
-> +static inline u64
-> +last_byte_offset(u64 start, u64 len)
-> +{
-> +	u64 end;
-> +
-> +	BUG_ON(!len);
-> +	end = start + len;
-> +	return end > start ? end - 1: NFS4_LENGTH_EOF;
-> +}
-> +
->  #define lockownerid_hashval(id) \
->          ((id) & LOCK_HASH_MASK)
->  
-> @@ -2646,8 +2666,8 @@ nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
->  		deny->ld_clientid.cl_id = 0;
->  	}
->  	deny->ld_start = fl->fl_start;
-> -	deny->ld_length = ~(u64)0;
-> -	if (fl->fl_end != ~(u64)0)
-> +	deny->ld_length = NFS4_LENGTH_EOF;
-> +	if (fl->fl_end != NFS4_LENGTH_EOF)
->  		deny->ld_length = fl->fl_end - fl->fl_start + 1;        
->  	deny->ld_type = NFS4_READ_LT;
->  	if (fl->fl_type != F_RDLCK)
-> @@ -2745,7 +2765,7 @@ out:
->  static int
->  check_lock_length(u64 offset, u64 length)
->  {
-> -	return ((length == 0)  || ((length != ~(u64)0) &&
-> +	return ((length == 0)  || ((length != NFS4_LENGTH_EOF) &&
->  	     LOFF_OVERFLOW(offset, length)));
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 4675339..fc613cd 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1016,6 +1016,36 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+>  	DECODE_TAIL;
 >  }
 >  
-> @@ -2870,11 +2890,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+> +#if defined(CONFIG_NFSD_V4_1)
+> +static __be32
+> +nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+> +			 struct nfsd4_exchange_id *clid)
+> +{
+> +	return nfserr_opnotsupp;	/* stub */
+> +}
+> +
+> +static __be32
+> +nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+> +			    struct nfsd4_create_session *sess)
+> +{
+> +	return nfserr_opnotsupp;	/* stub */
+> +}
+> +
+> +static __be32
+> +nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
+> +			     struct nfsd4_destroy_session *destroy_session)
+> +{
+> +	return nfserr_opnotsupp;	/* stub */
+> +}
+> +
+> +static __be32
+> +nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+> +		      struct nfsd4_sequence *seq)
+> +{
+> +	return nfserr_opnotsupp;	/* stub */
+> +}
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  static __be32
+>  nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
+>  {
+> @@ -1070,6 +1100,69 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
+>  };
 >  
->  	file_lock.fl_start = lock->lk_offset;
-> -	if ((lock->lk_length == ~(u64)0) || 
-> -			LOFF_OVERFLOW(lock->lk_offset, lock->lk_length))
-> -		file_lock.fl_end = ~(u64)0;
-> -	else
-> -		file_lock.fl_end = lock->lk_offset + lock->lk_length - 1;
-> +	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
->  	nfs4_transform_lock_offset(&file_lock);
+> +#if defined(CONFIG_NFSD_V4_1)
+> +static nfsd4_dec nfsd41_dec_ops[] = {
+> +	[OP_ACCESS]		(nfsd4_dec)nfsd4_decode_access,
+> +	[OP_CLOSE]		(nfsd4_dec)nfsd4_decode_close,
+> +	[OP_COMMIT]		(nfsd4_dec)nfsd4_decode_commit,
+> +	[OP_CREATE]		(nfsd4_dec)nfsd4_decode_create,
+> +	[OP_DELEGPURGE]		(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_DELEGRETURN]	(nfsd4_dec)nfsd4_decode_delegreturn,
+> +	[OP_GETATTR]		(nfsd4_dec)nfsd4_decode_getattr,
+> +	[OP_GETFH]		(nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_LINK]		(nfsd4_dec)nfsd4_decode_link,
+> +	[OP_LOCK]		(nfsd4_dec)nfsd4_decode_lock,
+> +	[OP_LOCKT]		(nfsd4_dec)nfsd4_decode_lockt,
+> +	[OP_LOCKU]		(nfsd4_dec)nfsd4_decode_locku,
+> +	[OP_LOOKUP]		(nfsd4_dec)nfsd4_decode_lookup,
+> +	[OP_LOOKUPP]		(nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_NVERIFY]		(nfsd4_dec)nfsd4_decode_verify,
+> +	[OP_OPEN]		(nfsd4_dec)nfsd4_decode_open,
+> +	[OP_OPENATTR]		(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_OPEN_CONFIRM]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_OPEN_DOWNGRADE]	(nfsd4_dec)nfsd4_decode_open_downgrade,
+> +	[OP_PUTFH]		(nfsd4_dec)nfsd4_decode_putfh,
+> +	[OP_PUTPUBFH]		(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_PUTROOTFH]		(nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_READ]		(nfsd4_dec)nfsd4_decode_read,
+> +	[OP_READDIR]		(nfsd4_dec)nfsd4_decode_readdir,
+> +	[OP_READLINK]		(nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_REMOVE]		(nfsd4_dec)nfsd4_decode_remove,
+> +	[OP_RENAME]		(nfsd4_dec)nfsd4_decode_rename,
+> +	[OP_RENEW]		(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_RESTOREFH]		(nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_SAVEFH]		(nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_SECINFO]		(nfsd4_dec)nfsd4_decode_secinfo,
+> +	[OP_SETATTR]		(nfsd4_dec)nfsd4_decode_setattr,
+> +	[OP_SETCLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SETCLIENTID_CONFIRM](nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_VERIFY]		(nfsd4_dec)nfsd4_decode_verify,
+> +	[OP_WRITE]		(nfsd4_dec)nfsd4_decode_write,
+> +	[OP_RELEASE_LOCKOWNER]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +
+> +	/* new operations for NFSv4.1 */
+> +	[OP_BACKCHANNEL_CTL]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_BIND_CONN_TO_SESSION](nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_EXCHANGE_ID]	(nfsd4_dec)nfsd4_decode_exchange_id,
+> +	[OP_CREATE_SESSION]	(nfsd4_dec)nfsd4_decode_create_session,
+> +	[OP_DESTROY_SESSION]	(nfsd4_dec)nfsd4_decode_destroy_session,
+> +	[OP_FREE_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_GET_DIR_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_GETDEVICEINFO]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_GETDEVICELIST]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_LAYOUTCOMMIT]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_LAYOUTGET]		(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_LAYOUTRETURN]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SECINFO_NO_NAME]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SEQUENCE]		(nfsd4_dec)nfsd4_decode_sequence,
+> +	[OP_SET_SSV]		(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_TEST_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_WANT_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_DESTROY_CLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_RECLAIM_COMPLETE]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +};
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  struct nfsd4_minorversion_ops {
+>  	nfsd4_dec *decoders;
+>  	int nops;
+> @@ -1077,6 +1170,9 @@ struct nfsd4_minorversion_ops {
 >  
->  	/*
-> @@ -2978,10 +2994,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+>  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+>  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+> +#if defined(CONFIG_NFSD_V4_1)
+> +	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  };
 >  
->  	file_lock.fl_start = lockt->lt_offset;
-> -	if ((lockt->lt_length == ~(u64)0) || LOFF_OVERFLOW(lockt->lt_offset, lockt->lt_length))
-> -		file_lock.fl_end = ~(u64)0;
-> -	else
-> -		file_lock.fl_end = lockt->lt_offset + lockt->lt_length - 1;
-> +	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
+>  static __be32
+> @@ -2591,6 +2687,40 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+>  	return nfserr;
+>  }
 >  
->  	nfs4_transform_lock_offset(&file_lock);
+> +#if defined(CONFIG_NFSD_V4_1)
+> +static __be32
+> +nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, int nfserr,
+> +			 struct nfsd4_exchange_id *exid)
+> +{
+> +	/* stub */
+> +	return nfserr;
+> +}
+> +
+> +static __be32
+> +nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
+> +			    struct nfsd4_create_session *sess)
+> +{
+> +	/* stub */
+> +	return nfserr;
+> +}
+> +
+> +static __be32
+> +nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+> +			     struct nfsd4_destroy_session *destroy_session)
+> +{
+> +	/* stub */
+> +	return nfserr;
+> +}
+> +
+> +static __be32
+> +nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+> +		      struct nfsd4_sequence *seq)
+> +{
+> +	/* stub */
+> +	return nfserr;
+> +}
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  static __be32
+>  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+>  {
+
+review 11-13: add comment about why we don't need nfsd4_enc_ops
+per minorversion like we do for the decoding vector.
+
+> @@ -2636,6 +2766,27 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>  	[OP_VERIFY]		= (nfsd4_enc)nfsd4_encode_noop,
+>  	[OP_WRITE]		= (nfsd4_enc)nfsd4_encode_write,
+>  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_enc)nfsd4_encode_noop,
+> +#if defined(CONFIG_NFSD_V4_1)
+> +	[OP_BACKCHANNEL_CTL]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_BIND_CONN_TO_SESSION] = (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
+> +	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
+> +	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
+> +	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_LAYOUTCOMMIT]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_LAYOUTGET]		= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_LAYOUTRETURN]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
+> +	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  };
 >  
-> @@ -3045,10 +3058,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	file_lock.fl_lmops = &nfsd_posix_mng_ops;
->  	file_lock.fl_start = locku->lu_offset;
+>  void
+> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> index 81c249c..b864007 100644
+> --- a/include/linux/nfsd/xdr4.h
+> +++ b/include/linux/nfsd/xdr4.h
+> @@ -352,6 +352,24 @@ struct nfsd4_write {
+>  	u32		wr_minorversion;    /* processing */
+>  };
 >  
-> -	if ((locku->lu_length == ~(u64)0) || LOFF_OVERFLOW(locku->lu_offset, locku->lu_length))
-> -		file_lock.fl_end = ~(u64)0;
-> -	else
-> -		file_lock.fl_end = locku->lu_offset + locku->lu_length - 1;
-> +	file_lock.fl_end = last_byte_offset(locku->lu_offset, locku->lu_length);
->  	nfs4_transform_lock_offset(&file_lock);
->  
->  	/*
+> +#if defined(CONFIG_NFSD_V4_1)
+> +struct nfsd4_exchange_id {
+> +	int	foo;	/* stub */
+> +};
+> +
+> +struct nfsd4_create_session {
+> +	int	foo;	/* stub */
+> +};
+> +
+> +struct nfsd4_sequence {
+> +	int	foo;	/* stub */
+> +};
+> +
+> +struct nfsd4_destroy_session {
+> +	int	foo;	/* stub */
+> +};
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+>  struct nfsd4_op {
+>  	int					opnum;
+>  	__be32					status;
+> @@ -386,6 +404,12 @@ struct nfsd4_op {
+>  		struct nfsd4_verify		verify;
+>  		struct nfsd4_write		write;
+>  		struct nfsd4_release_lockowner	release_lockowner;
+> +#if defined(CONFIG_NFSD_V4_1)
+> +		struct nfsd4_exchange_id	exchange_id;
+> +		struct nfsd4_create_session	create_session;
+> +		struct nfsd4_destroy_session	destroy_session;
+> +		struct nfsd4_sequence		sequence;
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  	} u;
+>  	struct nfs4_replay *			replay;
+>  };
