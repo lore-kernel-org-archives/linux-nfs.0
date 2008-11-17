@@ -1,264 +1,147 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 21/51] nfsd41: xdr stubs
-Date: Mon, 17 Nov 2008 16:06:44 +0200
-Message-ID: <49217A74.50701@panasas.com>
-References: <491895A0.3040809@panasas.com> <1226350070-10886-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 22/51] nfsd41: proc stubs
+Date: Mon, 17 Nov 2008 16:07:17 +0200
+Message-ID: <49217A95.7050309@panasas.com>
+References: <491895A0.3040809@panasas.com> <1226350091-10923-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:10994 "EHLO
+Received: from gw-ca.panasas.com ([66.104.249.162]:9406 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751582AbYKQOGr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:06:47 -0500
-In-Reply-To: <1226350070-10886-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1751689AbYKQOHV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:07:21 -0500
+In-Reply-To: <1226350091-10923-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov. 10, 2008, 22:47 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> define stubs for exchange_id, create_session, destroy_session, and
-> sequence.
-> 
+On Nov. 10, 2008, 22:48 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfsd/nfs4xdr.c         |  151 +++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/nfsd/xdr4.h |   24 +++++++
->  2 files changed, 175 insertions(+), 0 deletions(-)
+>  fs/nfsd/nfs4proc.c        |   30 +++++++++++++++++++++++++++++-
+>  fs/nfsd/nfs4state.c       |   34 ++++++++++++++++++++++++++++++++++
+>  include/linux/nfsd/xdr4.h |   14 ++++++++++++++
+>  3 files changed, 77 insertions(+), 1 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 4675339..fc613cd 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1016,6 +1016,36 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
->  	DECODE_TAIL;
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 26aae5d..6f6d221 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1021,7 +1021,13 @@ out:
+>  	return status;
+>  }
+>  
+> -static struct nfsd4_operation nfsd4_ops[OP_RELEASE_LOCKOWNER+1] = {
+> +#if defined(CONFIG_NFSD_V4_1)
+> +#define NFSD4_LAST_OP OP_RECLAIM_COMPLETE
+> +#else /* CONFIG_NFSD_V4_1 */
+> +#define NFSD4_LAST_OP OP_RELEASE_LOCKOWNER
+> +#endif /* CONFIG_NFSD_V4_1 */
+> +
+> +static struct nfsd4_operation nfsd4_ops[NFSD4_LAST_OP+1] = {
+
+review 11-13: get rid of NFSD4_LAST_OP
+
+>  	[OP_ACCESS] = {
+>  		.op_func = (nfsd4op_func)nfsd4_access,
+>  		.op_name = "OP_ACCESS",
+> @@ -1171,6 +1177,28 @@ static struct nfsd4_operation nfsd4_ops[OP_RELEASE_LOCKOWNER+1] = {
+>  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS,
+>  		.op_name = "OP_RELEASE_LOCKOWNER",
+>  	},
+> +#if defined(CONFIG_NFSD_V4_1)
+> +	[OP_EXCHANGE_ID] = {
+> +		.op_func = (nfsd4op_func)nfsd4_exchange_id,
+> +		.op_flags = ALLOWED_WITHOUT_FH,
+> +		.op_name = "OP_EXCHANGE_ID",
+> +	},
+> +	[OP_CREATE_SESSION] = {
+> +		.op_func = (nfsd4op_func)nfsd4_create_session,
+> +		.op_flags = ALLOWED_WITHOUT_FH,
+> +		.op_name = "OP_CREATE_SESSION",
+> +	},
+> +	[OP_DESTROY_SESSION] = {
+> +		.op_func = (nfsd4op_func)nfsd4_destroy_session,
+> +		.op_flags = ALLOWED_WITHOUT_FH,
+> +		.op_name = "OP_DESTROY_SESSION",
+> +	},
+> +	[OP_SEQUENCE] = {
+> +		.op_func = (nfsd4op_func)nfsd4_sequence,
+> +		.op_flags = ALLOWED_WITHOUT_FH,
+> +		.op_name = "OP_SEQUENCE",
+> +	},
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  };
+>  
+>  static const char *nfsd4_op_name(unsigned opnum)
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index ca2e3e0..5c96c39 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -780,6 +780,40 @@ out_err:
+>  	return;
 >  }
 >  
 > +#if defined(CONFIG_NFSD_V4_1)
-> +static __be32
-> +nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
-> +			 struct nfsd4_exchange_id *clid)
+> +__be32
+> +nfsd4_exchange_id(struct svc_rqst *rqstp,
+> +		  struct nfsd4_compound_state *cstate,
+> +		  struct nfsd4_exchange_id *clid)
 > +{
-> +	return nfserr_opnotsupp;	/* stub */
+> +	return -1;	/* stub */
 > +}
 > +
-> +static __be32
-> +nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
-> +			    struct nfsd4_create_session *sess)
+> +__be32
+> +nfsd4_create_session(struct svc_rqst *rqstp,
+> +		     struct nfsd4_compound_state *cstate,
+> +		     struct nfsd4_create_session *cr_ses)
 > +{
-> +	return nfserr_opnotsupp;	/* stub */
+> +	return -1;	/* stub */
 > +}
 > +
-> +static __be32
-> +nfsd4_decode_destroy_session(struct nfsd4_compoundargs *argp,
-> +			     struct nfsd4_destroy_session *destroy_session)
+> +__be32
+> +nfsd4_destroy_session(struct svc_rqst *r,
+> +		      struct nfsd4_compound_state *cstate,
+> +		      struct nfsd4_destroy_session *sessionid)
 > +{
-> +	return nfserr_opnotsupp;	/* stub */
+> +	return -1;	/* stub */
 > +}
 > +
-> +static __be32
-> +nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
-> +		      struct nfsd4_sequence *seq)
+> +__be32
+> +nfsd4_sequence(struct svc_rqst *r,
+> +	       struct nfsd4_compound_state *cstate,
+> +	       struct nfsd4_sequence *seq)
 > +{
-> +	return nfserr_opnotsupp;	/* stub */
-> +}
-> +#endif /* CONFIG_NFSD_V4_1 */
-> +
->  static __be32
->  nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
->  {
-> @@ -1070,6 +1100,69 @@ static nfsd4_dec nfsd4_dec_ops[] = {
->  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
->  };
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +static nfsd4_dec nfsd41_dec_ops[] = {
-> +	[OP_ACCESS]		(nfsd4_dec)nfsd4_decode_access,
-> +	[OP_CLOSE]		(nfsd4_dec)nfsd4_decode_close,
-> +	[OP_COMMIT]		(nfsd4_dec)nfsd4_decode_commit,
-> +	[OP_CREATE]		(nfsd4_dec)nfsd4_decode_create,
-> +	[OP_DELEGPURGE]		(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_DELEGRETURN]	(nfsd4_dec)nfsd4_decode_delegreturn,
-> +	[OP_GETATTR]		(nfsd4_dec)nfsd4_decode_getattr,
-> +	[OP_GETFH]		(nfsd4_dec)nfsd4_decode_noop,
-> +	[OP_LINK]		(nfsd4_dec)nfsd4_decode_link,
-> +	[OP_LOCK]		(nfsd4_dec)nfsd4_decode_lock,
-> +	[OP_LOCKT]		(nfsd4_dec)nfsd4_decode_lockt,
-> +	[OP_LOCKU]		(nfsd4_dec)nfsd4_decode_locku,
-> +	[OP_LOOKUP]		(nfsd4_dec)nfsd4_decode_lookup,
-> +	[OP_LOOKUPP]		(nfsd4_dec)nfsd4_decode_noop,
-> +	[OP_NVERIFY]		(nfsd4_dec)nfsd4_decode_verify,
-> +	[OP_OPEN]		(nfsd4_dec)nfsd4_decode_open,
-> +	[OP_OPENATTR]		(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_OPEN_CONFIRM]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_OPEN_DOWNGRADE]	(nfsd4_dec)nfsd4_decode_open_downgrade,
-> +	[OP_PUTFH]		(nfsd4_dec)nfsd4_decode_putfh,
-> +	[OP_PUTPUBFH]		(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_PUTROOTFH]		(nfsd4_dec)nfsd4_decode_noop,
-> +	[OP_READ]		(nfsd4_dec)nfsd4_decode_read,
-> +	[OP_READDIR]		(nfsd4_dec)nfsd4_decode_readdir,
-> +	[OP_READLINK]		(nfsd4_dec)nfsd4_decode_noop,
-> +	[OP_REMOVE]		(nfsd4_dec)nfsd4_decode_remove,
-> +	[OP_RENAME]		(nfsd4_dec)nfsd4_decode_rename,
-> +	[OP_RENEW]		(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_RESTOREFH]		(nfsd4_dec)nfsd4_decode_noop,
-> +	[OP_SAVEFH]		(nfsd4_dec)nfsd4_decode_noop,
-> +	[OP_SECINFO]		(nfsd4_dec)nfsd4_decode_secinfo,
-> +	[OP_SETATTR]		(nfsd4_dec)nfsd4_decode_setattr,
-> +	[OP_SETCLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_SETCLIENTID_CONFIRM](nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_VERIFY]		(nfsd4_dec)nfsd4_decode_verify,
-> +	[OP_WRITE]		(nfsd4_dec)nfsd4_decode_write,
-> +	[OP_RELEASE_LOCKOWNER]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +
-> +	/* new operations for NFSv4.1 */
-> +	[OP_BACKCHANNEL_CTL]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_BIND_CONN_TO_SESSION](nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_EXCHANGE_ID]	(nfsd4_dec)nfsd4_decode_exchange_id,
-> +	[OP_CREATE_SESSION]	(nfsd4_dec)nfsd4_decode_create_session,
-> +	[OP_DESTROY_SESSION]	(nfsd4_dec)nfsd4_decode_destroy_session,
-> +	[OP_FREE_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_GET_DIR_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_GETDEVICEINFO]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_GETDEVICELIST]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_LAYOUTCOMMIT]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_LAYOUTGET]		(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_LAYOUTRETURN]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_SECINFO_NO_NAME]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_SEQUENCE]		(nfsd4_dec)nfsd4_decode_sequence,
-> +	[OP_SET_SSV]		(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_TEST_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_WANT_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_DESTROY_CLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_RECLAIM_COMPLETE]	(nfsd4_dec)nfsd4_decode_notsupp,
-> +};
-> +#endif /* CONFIG_NFSD_V4_1 */
-> +
->  struct nfsd4_minorversion_ops {
->  	nfsd4_dec *decoders;
->  	int nops;
-> @@ -1077,6 +1170,9 @@ struct nfsd4_minorversion_ops {
->  
->  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
->  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
-> +#if defined(CONFIG_NFSD_V4_1)
-> +	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> +#endif /* CONFIG_NFSD_V4_1 */
->  };
->  
->  static __be32
-> @@ -2591,6 +2687,40 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
->  	return nfserr;
->  }
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +static __be32
-> +nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, int nfserr,
-> +			 struct nfsd4_exchange_id *exid)
-> +{
-> +	/* stub */
-> +	return nfserr;
-> +}
-> +
-> +static __be32
-> +nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
-> +			    struct nfsd4_create_session *sess)
-> +{
-> +	/* stub */
-> +	return nfserr;
-> +}
-> +
-> +static __be32
-> +nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
-> +			     struct nfsd4_destroy_session *destroy_session)
-> +{
-> +	/* stub */
-> +	return nfserr;
-> +}
-> +
-> +static __be32
-> +nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
-> +		      struct nfsd4_sequence *seq)
-> +{
-> +	/* stub */
-> +	return nfserr;
+> +	return -1;	/* stub */
 > +}
 > +#endif /* CONFIG_NFSD_V4_1 */
 > +
->  static __be32
->  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
->  {
-
-review 11-13: add comment about why we don't need nfsd4_enc_ops
-per minorversion like we do for the decoding vector.
-
-> @@ -2636,6 +2766,27 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->  	[OP_VERIFY]		= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_WRITE]		= (nfsd4_enc)nfsd4_encode_write,
->  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_enc)nfsd4_encode_noop,
-> +#if defined(CONFIG_NFSD_V4_1)
-> +	[OP_BACKCHANNEL_CTL]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_BIND_CONN_TO_SESSION] = (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
-> +	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
-> +	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
-> +	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_LAYOUTCOMMIT]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_LAYOUTGET]		= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_LAYOUTRETURN]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
-> +	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
-> +#endif /* CONFIG_NFSD_V4_1 */
->  };
->  
->  void
+>  __be32
+>  nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		  struct nfsd4_setclientid *setclid)
 > diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-> index 81c249c..b864007 100644
+> index b864007..d7dbdab 100644
 > --- a/include/linux/nfsd/xdr4.h
 > +++ b/include/linux/nfsd/xdr4.h
-> @@ -352,6 +352,24 @@ struct nfsd4_write {
->  	u32		wr_minorversion;    /* processing */
->  };
->  
+> @@ -480,6 +480,20 @@ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+>  extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *,
+>  		struct nfsd4_setclientid_confirm *setclientid_confirm);
 > +#if defined(CONFIG_NFSD_V4_1)
-> +struct nfsd4_exchange_id {
-> +	int	foo;	/* stub */
-> +};
-> +
-> +struct nfsd4_create_session {
-> +	int	foo;	/* stub */
-> +};
-> +
-> +struct nfsd4_sequence {
-> +	int	foo;	/* stub */
-> +};
-> +
-> +struct nfsd4_destroy_session {
-> +	int	foo;	/* stub */
-> +};
+> +extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+> +		struct nfsd4_compound_state *,
+> +		struct nfsd4_exchange_id *);
+> +extern __be32 nfsd4_create_session(struct svc_rqst *,
+> +		struct nfsd4_compound_state *,
+> +		struct nfsd4_create_session *);
+> +extern __be32 nfsd4_sequence(struct svc_rqst *,
+> +		struct nfsd4_compound_state *,
+> +		struct nfsd4_sequence *);
+> +extern __be32 nfsd4_destroy_session(struct svc_rqst *,
+> +		struct nfsd4_compound_state *,
+> +		struct nfsd4_destroy_session *);
 > +#endif /* CONFIG_NFSD_V4_1 */
-> +
->  struct nfsd4_op {
->  	int					opnum;
->  	__be32					status;
-> @@ -386,6 +404,12 @@ struct nfsd4_op {
->  		struct nfsd4_verify		verify;
->  		struct nfsd4_write		write;
->  		struct nfsd4_release_lockowner	release_lockowner;
-> +#if defined(CONFIG_NFSD_V4_1)
-> +		struct nfsd4_exchange_id	exchange_id;
-> +		struct nfsd4_create_session	create_session;
-> +		struct nfsd4_destroy_session	destroy_session;
-> +		struct nfsd4_sequence		sequence;
-> +#endif /* CONFIG_NFSD_V4_1 */
->  	} u;
->  	struct nfs4_replay *			replay;
->  };
+>  extern __be32 nfsd4_process_open1(struct nfsd4_open *open);
+>  extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
+>  		struct svc_fh *current_fh, struct nfsd4_open *open);
