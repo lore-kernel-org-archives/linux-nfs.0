@@ -1,151 +1,193 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 40/51] nfsd41: CREATE_EXCLUSIVE4_1
-Date: Mon, 17 Nov 2008 16:13:42 +0200
-Message-ID: <49217C16.6050007@panasas.com>
-References: <491895A0.3040809@panasas.com> <1226350465-11617-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 44/51] nfsd41: slab cache for current session
+Date: Mon, 17 Nov 2008 16:14:19 +0200
+Message-ID: <49217C3B.1020503@panasas.com>
+References: <491895A0.3040809@panasas.com> <1226350548-11768-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 To: pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:12505 "EHLO
+Received: from gw-ca.panasas.com ([66.104.249.162]:11574 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752081AbYKQONp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:13:45 -0500
-In-Reply-To: <1226350465-11617-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1752089AbYKQOOW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2008 09:14:22 -0500
+In-Reply-To: <1226350548-11768-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov. 10, 2008, 22:54 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> Implement the CREATE_EXCLUSIVE4_1 open mode conforming to
-> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
+On Nov. 10, 2008, 22:55 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> This mode allows the client to atomically create a file
-> if it doesn't exist while setting some of its attributes.
+> Use a separate slab cache for the current session so that an NFSv4.1 server
+> responding to NFSv4.0 requests uses only the compound state slab.
 > 
-> It must be implemented if the server supports persistent
-> reply cache and/or pnfs.
-> 
+> Signed-off-by: Andy Adamson<andros@netapp.com>
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+
+review 11-12: just embed struct current_session in
+nfsd4_compound_state and nfsd4_coumpoundres
+
 > ---
->  fs/nfsd/nfs4proc.c        |   15 +++++++++++++++
->  fs/nfsd/nfs4xdr.c         |   21 +++++++++++++++++++++
->  include/linux/nfs4.h      |    8 +++++++-
->  include/linux/nfsd/xdr4.h |   10 ++++------
->  4 files changed, 47 insertions(+), 7 deletions(-)
+>  fs/nfsd/nfs4proc.c        |   36 +++++++++++++++++-------------------
+>  fs/nfsd/nfs4state.c       |   28 ++++++++++++++++++++++++++++
+>  include/linux/nfsd/xdr4.h |    2 ++
+>  3 files changed, 47 insertions(+), 19 deletions(-)
 > 
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 5164040..9401d56 100644
+> index deefba1..eaebe5b 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
-> @@ -93,6 +93,21 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
->  	open->op_truncate = 0;
+> @@ -942,9 +942,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	struct nfsd4_compound_state *cstate = NULL;
+>  	int		slack_bytes;
+>  	__be32		status = nfs_ok;
+> -#if defined(CONFIG_NFSD_V4_1)
+> -	struct current_session *current_ses = NULL;
+> -#endif /* CONFIG_NFSD_V4_1 */
 >  
->  	if (open->op_create) {
-> +		/* FIXME: check session persistence and pnfs flags.
-> +		 * The nfsv4.1 spec requires the following semantics:
-> +		 *
-> +		 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-> +		 * Reply Cache  | server |                 |
-> +		 * -------------+--------+-----------------+--------------------
-> +		 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> +		 *              |        |                 | (SHOULD)
-> +		 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-> +		 *              |        |                 | (SHOULD NOT)
-> +		 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> +		 * yes          | no     | GUARDED4        | GUARDED4
-> +		 * yes          | yes    | GUARDED4        | GUARDED4
-> +		 */
-> +
->  		/*
->  		 * Note: create modes (UNCHECKED,GUARDED...) are the same
->  		 * in NFSv4 as in v3.
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 227434c..04a9088 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -264,6 +264,14 @@ static u32 nfsd_attrmask[] = {
->  	NFSD_WRITEABLE_ATTRS_WORD2
->  };
+>  	resp->xbuf = &rqstp->rq_res;
+>  	resp->p = rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len;
+> @@ -970,6 +967,19 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	if (cstate == NULL)
+>  		goto out;
 >  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +static u32 nfsd41_ex_attrmask[] = {
-> +	NFSD_SUPPATTR_EXCLCREAT_WORD0,
-> +	NFSD_SUPPATTR_EXCLCREAT_WORD1,
-> +	NFSD_SUPPATTR_EXCLCREAT_WORD2
-> +};
+> +#ifdef CONFIG_NFSD_V4_1
+> +	/* cstate->current_ses could be set revisiting a deferal */
+> +	if (args->minorversion == 1 && !cstate->current_ses) {
+> +		cstate->current_ses = nfsd41_current_session_alloc();
+> +		if (cstate->current_ses == NULL) {
+> +			/* still nfserr_resource */
+> +			nfsd4_cstate_free(cstate, rqstp->rq_deferred);
+> +			goto out;
+> +		}
+> +		cstate->current_ses->cs_slot = NULL;
+> +	}
 > +#endif /* CONFIG_NFSD_V4_1 */
 > +
->  static __be32
->  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
->  		   struct iattr *iattr, struct nfs4_acl **acl)
-> @@ -690,6 +698,19 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
->  			READ_BUF(8);
->  			COPYMEM(open->op_verf.data, 8);
->  			break;
-> +#if defined(CONFIG_NFSD_V4_1)
-
-review 11-13: get rid of #ifdef
-
-> +		case NFS4_CREATE_EXCLUSIVE4_1:
-> +			if (argp->minorversion < 1)
-> +				goto xdr_error;
-> +			READ_BUF(8);
-> +			COPYMEM(open->op_verf.data, 8);
-> +			status = nfsd4_decode_fattr(argp, open->op_bmval,
-> +				nfsd41_ex_attrmask, &open->op_iattr,
-> +				&open->op_acl);
-> +			if (status)
-> +				goto out;
-> +			break;
-> +#endif /* CONFIG_NFSD_V4_1 */
->  		default:
->  			goto xdr_error;
+>  	if (rqstp->rq_deferred && rqstp->rq_deferred->defer_data) {
+>  		dprintk("%s Resuming deferred processing\n", __func__);
+>  		resp->opcnt = cstate->last_op_cnt;
+> @@ -985,17 +995,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	rqstp->rq_defer_data = cstate;
+>  	rqstp->rq_save_state = nfsd4_save_deferred_state;
+>  
+> -#if defined(CONFIG_NFSD_V4_1)
+> -	if (args->minorversion == 1) {
+> -		/* FIXME: use kmem_cache */
+> -		current_ses = kzalloc(sizeof(*current_ses), GFP_KERNEL);
+> -		if (current_ses == NULL)
+> -			goto out_free;
+> -	}
+> -	/* DM: current_ses must be NULL for minorversion 0 */
+> -	cstate->current_ses = current_ses;
+> -#endif /* CONFIG_NFSD_V4_1 */
+> -
+>  	status = nfs_ok;
+>  	while (!status && resp->opcnt < args->opcnt) {
+>  		cstate->last_op_p = resp->p;
+> @@ -1081,12 +1080,11 @@ encode_op:
+>  		return status;
+>  	}
+>  
+> -out_free:
+>  #if defined(CONFIG_NFSD_V4_1)
+> -	if (current_ses) {
+> -		struct nfs41_slot *cs_slot = current_ses->cs_slot;
+> +	if (cstate->current_ses) {
+> +		struct nfs41_slot *cs_slot = cstate->current_ses->cs_slot;
+>  		if (cs_slot) {
+> -			if (op && op->status != nfserr_dropit) {
+> +			if (status != nfserr_dropit) {
+>  				dprintk("%s: SET SLOT STATE TO AVAILABLE\n",
+>  					__func__);
+>  				nfs41_set_slot_state(cs_slot,
+> @@ -1094,7 +1092,7 @@ out_free:
+>  			}
+>  			nfs41_put_session(cs_slot->sl_session);
 >  		}
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 5471adf..0aa4971 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -350,7 +350,13 @@ enum opentype4 {
->  enum createmode4 {
->  	NFS4_CREATE_UNCHECKED = 0,
->  	NFS4_CREATE_GUARDED = 1,
-> -	NFS4_CREATE_EXCLUSIVE = 2
-> +	NFS4_CREATE_EXCLUSIVE = 2,
-> +	/*
-> +	 * New to NFSv4.1. If session is persistent,
-> +	 * GUARDED4 MUST be used. Otherwise, use
-> +	 * EXCLUSIVE4_1 instead of EXCLUSIVE4.
-> +	 */
-> +	NFS4_CREATE_EXCLUSIVE4_1 = 3
->  };
+> -		kfree(current_ses);
+> +		nfsd41_current_session_free(cstate->current_ses);
+>  	}
+>  #endif /* CONFIG_NFSD_V4_1 */
+>  	nfsd4_cstate_free(cstate, rqstp->rq_deferred);
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 8fd7704..ba6ab19 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -102,6 +102,9 @@ static struct kmem_cache *file_slab = NULL;
+>  static struct kmem_cache *stateid_slab = NULL;
+>  static struct kmem_cache *deleg_slab = NULL;
+>  static struct kmem_cache *cstate_slab;
+> +#ifdef CONFIG_NFSD_V4_1
+> +static struct kmem_cache *current_session_slab;
+> +#endif /* CONFIG_NFSD_V4_1 */
 >  
->  enum limit_by4 {
+>  #define BUG_ON_UNLOCKED_STATE() BUG_ON(mutex_trylock(&client_mutex))
+>  
+> @@ -479,6 +482,19 @@ free_session(struct kref *kref)
+>  	kfree(ses->se_slots);
+>  	kfree(ses);
+>  }
+> +
+> +void
+> +nfsd41_current_session_free(struct current_session *cses)
+> +{
+> +	kmem_cache_free(current_session_slab, cses);
+> +}
+> +
+> +struct current_session *
+> +nfsd41_current_session_alloc(void)
+> +{
+> +	return kmem_cache_alloc(current_session_slab, GFP_KERNEL);
+> +}
+> +
+>  #endif /* CONFIG_NFSD_V4_1 */
+>  
+>  void
+> @@ -511,6 +527,9 @@ nfsd4_cstate_alloc(struct svc_rqst *rqstp)
+>  	fh_init(&cstate->current_fh, NFS4_FHSIZE);
+>  	fh_init(&cstate->save_fh, NFS4_FHSIZE);
+>  	cstate->replay_owner = NULL;
+> +#ifdef CONFIG_NFSD_V4_1
+> +	cstate->current_ses = NULL;
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  out:
+>  	return cstate;
+>  }
+> @@ -1565,6 +1584,9 @@ nfsd4_free_slabs(void)
+>  	nfsd4_free_slab(&stateid_slab);
+>  	nfsd4_free_slab(&deleg_slab);
+>  	nfsd4_free_slab(&cstate_slab);
+> +#ifdef CONFIG_NFSD_V4_1
+> +	nfsd4_free_slab(&current_session_slab);
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  }
+>  
+>  static int
+> @@ -1590,6 +1612,12 @@ nfsd4_init_slabs(void)
+>  			sizeof(struct nfsd4_compound_state), 0, 0, NULL);
+>  	if (cstate_slab == NULL)
+>  		goto out_nomem;
+> +#ifdef CONFIG_NFSD_V4_1
+> +	current_session_slab = kmem_cache_create("nfsd4_current_sessions",
+> +			sizeof(struct current_session), 0, 0, NULL);
+> +	if (current_session_slab == NULL)
+> +		goto out_nomem;
+> +#endif /* CONFIG_NFSD_V4_1 */
+>  	return 0;
+>  out_nomem:
+>  	nfsd4_free_slabs();
 > diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-> index 7812e8c..17b0a3e 100644
+> index a0b4f00..fc42fba 100644
 > --- a/include/linux/nfsd/xdr4.h
 > +++ b/include/linux/nfsd/xdr4.h
-> @@ -220,10 +220,8 @@ struct nfsd4_open {
->  	u32		op_create;     	    /* request */
->  	u32		op_createmode;      /* request */
->  	u32		op_bmval[3];        /* request */
-> -	union {                             /* request */
-> -		struct iattr	iattr;                      /* UNCHECKED4,GUARDED4 */
-> -		nfs4_verifier	verf;                                /* EXCLUSIVE4 */
-> -	} u;
-> +	struct iattr	iattr;              /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
-> +	nfs4_verifier	verf;               /* EXCLUSIVE4 */
->  	clientid_t	op_clientid;        /* request */
->  	struct xdr_netobj op_owner;           /* request */
->  	u32		op_seqid;           /* request */
-> @@ -238,8 +236,8 @@ struct nfsd4_open {
->  	struct nfs4_stateowner *op_stateowner; /* used during processing */
->  	struct nfs4_acl *op_acl;
->  };
-> -#define op_iattr	u.iattr
-> -#define op_verf		u.verf
-> +#define op_iattr	iattr
-> +#define op_verf		verf
->  
->  struct nfsd4_open_confirm {
->  	stateid_t	oc_req_stateid		/* request */;
+> @@ -532,6 +532,8 @@ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *,
+>  		struct nfsd4_setclientid_confirm *setclientid_confirm);
+>  #if defined(CONFIG_NFSD_V4_1)
+> +extern void nfsd41_current_session_free(struct current_session *cses);
+> +extern struct current_session *nfsd41_current_session_alloc(void);
+>  extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *,
+>  		struct nfsd4_exchange_id *);
