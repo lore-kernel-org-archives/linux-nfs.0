@@ -1,91 +1,70 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] showmount command: support querying IPv6 servers
-Date: Tue, 18 Nov 2008 14:29:51 -0500
-Message-ID: <20081118192951.22516.16635.stgit@ingres.1015granger.net>
+Subject: [PATCH 1/4] showmount command: call nfs_getport instead of local
+	getport
+Date: Tue, 18 Nov 2008 14:29:35 -0500
+Message-ID: <20081118192934.22516.68346.stgit@ingres.1015granger.net>
 References: <20081118192711.22516.2801.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:43146 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752477AbYKRTbB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Nov 2008 14:31:01 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:50881 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753619AbYKRTbG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Nov 2008 14:31:06 -0500
 In-Reply-To: <20081118192711.22516.2801.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce a version of nfs_get_mount_client() that supports AF_INET6 and
-AF_INET server addresses.  If the TI-RPC library is not available when
-the showmount command is built, fall back to the legacy RPC user-space
-API.
+Have the showmount command invoke the shared nfs_getport() function
+instead of its own local version.  This gives the showmount command
+immediate support for querying via rpcbindv3/v4 in addition to
+portmapper, and sets the stage for AF_INET6 support in showmount.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/showmount/showmount.c |   36 ++++++++++++++++++++++++++++++++++++
- 1 files changed, 36 insertions(+), 0 deletions(-)
+ utils/showmount/showmount.c |   14 ++++++++------
+ 1 files changed, 8 insertions(+), 6 deletions(-)
 
 diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
-index 7f5ad3a..17f7d87 100644
+index 959229a..cbc8f1a 100644
 --- a/utils/showmount/showmount.c
 +++ b/utils/showmount/showmount.c
-@@ -50,6 +50,13 @@ static int	aflag = 0;
- static int	dflag = 0;
- static int	eflag = 0;
+@@ -37,6 +37,8 @@
+ #include <mount.h>
+ #include <unistd.h>
  
-+static const char *nfs_sm_pgmtbl[] = {
-+	"showmount",
-+	"mount",
-+	"mountd",
-+	NULL,
-+};
++#include "nfsrpc.h"
 +
- static struct option longopts[] =
- {
- 	{ "all", 0, 0, 'a' },
-@@ -78,6 +85,33 @@ static void usage(FILE *fp, int n)
- 	exit(n);
- }
+ #define TIMEOUT_UDP	3
+ #define TIMEOUT_TCP	10
+ #define TOTAL_TIMEOUT	20
+@@ -352,9 +354,9 @@ int main(int argc, char **argv)
+ 	mclient = NULL;
+ 	msock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+ 	if (msock != -1) {
+-		server_addr.sin_port = getport(&server_addr,
+-					 MOUNTPROG, MOUNTVERS, IPPROTO_TCP);
+-		if (server_addr.sin_port) {
++		if (nfs_getport_ping((struct sockaddr *)&server_addr,
++					sizeof(server_addr), MOUNTPROG,
++					MOUNTVERS, IPPROTO_TCP)) {
+ 			ret = connect_nb(msock, &server_addr, 0);
+ 			if (ret == 0) /* success */
+ 				mclient = clnttcp_create(&server_addr,
+@@ -367,9 +369,9 @@ int main(int argc, char **argv)
+ 	}
  
-+#ifdef HAVE_CLNT_CREATE
-+
-+/*
-+ * Generate an RPC client handle connected to the mountd service
-+ * at @hostname, or die trying.
-+ *
-+ * Supports both AF_INET and AF_INET6 server addresses.
-+ */
-+static CLIENT *nfs_get_mount_client(const char *hostname)
-+{
-+	rpcprog_t program = nfs_getrpcbyname(MOUNTPROG, nfs_sm_pgmtbl);
-+	CLIENT *client;
-+
-+	client = clnt_create(hostname, program, MOUNTVERS, "tcp");
-+	if (client)
-+		return client;
-+
-+	client = clnt_create(hostname, program, MOUNTVERS, "udp");
-+	if (client)
-+		return client;
-+
-+	clnt_pcreateerror("clnt_create");
-+	exit(1);
-+}
-+
-+#else	/* HAVE_CLNT_CREATE */
-+
- /*
-  *  Perform a non-blocking connect on the socket fd.
-  *
-@@ -213,6 +247,8 @@ static CLIENT *nfs_get_mount_client(const char *hostname)
- 	return mclient;
- }
- 
-+#endif	/* HAVE_CLNT_CREATE */
-+
- int main(int argc, char **argv)
- {
- 	char hostname_buf[MAXHOSTLEN];
+ 	if (!mclient) {
+-		server_addr.sin_port = getport(&server_addr,
+-					 MOUNTPROG, MOUNTVERS, IPPROTO_UDP);
+-		if (!server_addr.sin_port) {
++		if (nfs_getport_ping((struct sockaddr *)&server_addr,
++					sizeof(server_addr), MOUNTPROG,
++					MOUNTVERS, IPPROTO_UDP)) {
+ 			clnt_pcreateerror("showmount");
+ 			exit(1);
+ 		}
 
