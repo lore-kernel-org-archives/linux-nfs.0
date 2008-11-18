@@ -1,63 +1,58 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 01/85] sunrpc: get rid of rpc_rqst.rq_bufsize
-Date: Tue, 18 Nov 2008 10:42:13 +0200
-Message-ID: <49227FE5.3070304@panasas.com>
-References: <1226347159-6561-1-git-send-email-bhalevy@panasas.com> <49216F05.4090706@panasas.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/2] First subset of nfs-utils IPv6 support
+Date: Tue, 18 Nov 2008 13:05:24 -0500
+Message-ID: <492303E4.2060101@RedHat.com>
+References: <20081029172134.19663.13493.stgit@ingres.1015granger.net> <4921DE84.2060607@RedHat.com> <03F6107F-8CF2-498F-8095-FD31EA8DEBA1@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Chuck Lever <chuck.lever@oracle.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:19870 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751050AbYKRImS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Nov 2008 03:42:18 -0500
-In-Reply-To: <49216F05.4090706@panasas.com>
+Received: from mx2.redhat.com ([66.187.237.31]:35922 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750810AbYKRSH0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Nov 2008 13:07:26 -0500
+In-Reply-To: <03F6107F-8CF2-498F-8095-FD31EA8DEBA1@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov. 17, 2008, 15:17 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> On Nov. 10, 2008, 21:59 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
->> rq_bufsize is not used.
->>
->> Signed-off-by: Mike Sager <Mike.Sager@netapp.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  include/linux/sunrpc/xprt.h |    3 +--
->>  1 files changed, 1 insertions(+), 2 deletions(-)
->>
->> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
->> index 4d80a11..11fc71d 100644
->> --- a/include/linux/sunrpc/xprt.h
->> +++ b/include/linux/sunrpc/xprt.h
->> @@ -76,8 +76,7 @@ struct rpc_rqst {
->>  	struct list_head	rq_list;
->>  
->>  	__u32 *			rq_buffer;	/* XDR encode buffer */
->> -	size_t			rq_bufsize,
+
+Chuck Lever wrote:
+> On Nov 17, 2008, at Nov 17, 2008, 4:13 PM, Steve Dickson wrote:
+>> Chuck Lever wrote:
+>>> Hi Steve-
+>>>
+>>> I sent these out yesterday, but I haven't seen them on the list or in
+>>> mail archives.  Ah.  It's because I didn't copy the list!  So, here
+>>> goes.
+>>>
+>>> These two patches introduce a set of library functions that replace the
+>>> separate AF_INET-only implementations in each component of nfs-utils
+>>> (mount.nfs, showmount, sm-notify, etc) of GETPORT with a common shared
+>>> implementation that supports both PMAP_GETPORT and RPCB_GETADDR, and
+>>> both AF_INET and AF_INET6.  Subsequent patches will convert each
+>>> component to use these.
+>>>
+>>> These should build and operate correctly on systems without any trace
+>>> of libtirpc libraries or headers.  On such systems, only PMAP_GETPORT
+>>> and AF_INET is supported.
+>>>
+>>> I think these are ready to be included in nfs-utils, so let's start the
+>>> review process.
+>>>
+>>> ---
+>>>
+>>> Chuck Lever (2):
+>>>      nfs-utils: Introduce rpcbind client utility functions
+>>>      nfs-utils: Add AF_INET6-capable API to acquire an RPC CLIENT *
+>> I apologize for the delay... Both committed..
 > 
-> review 11-14: this was used in the past as a sanity check.
-> find out when/why this functionality was ripped out.
-
-Since commit c5a4dd8b7c15927a8fbff83171b57cad675a79b9
-we encode the buffer size "inline", prepending the buffer contents.
-Therefore there is indeed no use of rq_bufsize anymore.
-
-Benny
-
+> Hi Steve-
 > 
->> -				rq_callsize,
->> +	size_t			rq_callsize,
->>  				rq_rcvsize;
->>  
->>  	struct xdr_buf		rq_private_buf;		/* The receive buffer
->> -- 
->> 1.6.0.1
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I don't see the new file support/nfs/getport.c in your tree.  This
+> should have been added by commit 541bf913.
+Its there now... Sorry about that...
+
+steved.
 
