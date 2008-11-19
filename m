@@ -1,104 +1,71 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
-Date: Wed, 19 Nov 2008 17:31:01 -0500
-Message-ID: <1227133861.28898.26.camel@heimdal.trondhjem.org>
-References: <20081022091207.GA12996@squirrel.roonstrasse.net>
-	 <20081023123628.GA18549@squirrel.roonstrasse.net>
-	 <1224773745.7625.4.camel@localhost>
-	 <20081024083913.GA15197@squirrel.roonstrasse.net>
-	 <1224871763.22672.33.camel@localhost>
-	 <20081027095843.GA10937@squirrel.roonstrasse.net>
-	 <1225122503.14242.12.camel@heimdal.trondhjem.org>
-	 <20081117123536.GA16539@squirrel.roonstrasse.net>
+From: "David Mathog" <mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org>
+Subject: nfs-utils, umount -l, and unmount requests
+Date: Wed, 19 Nov 2008 15:54:42 -0800
+Message-ID: <E1L2wsc-0004Rs-2I@mendel.bio.caltech.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>
+Content-Type: text/plain; charset=iso-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:40426 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751092AbYKSWbI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Nov 2008 17:31:08 -0500
-In-Reply-To: <20081117123536.GA16539-2pNSKKP3PSJxEiad3KpGLI/oZP4lHnOC@public.gmane.org>
+Received: from mendel.bio.caltech.edu ([131.215.12.38]:34247 "EHLO
+	mendel.bio.caltech.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752025AbYKTAYH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2008 19:24:07 -0500
+Received: from nobody by mendel.bio.caltech.edu with local (Exim 4.69)
+	(envelope-from <mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org>)
+	id 1L2wsc-0004Rs-2I
+	for linux-nfs@vger.kernel.org; Wed, 19 Nov 2008 15:54:42 -0800
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2008-11-17 at 13:35 +0100, Max Kellermann wrote:
-> On 2008/10/27 16:48, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> > OK. That points a finger at the garbage collector. Does the following
-> > patch help at all?
-> 
-> Hi Trond,
-> 
-> the server's load seems to be a little bit lower with 2.6.27.6 plus
-> your patch, but OProfile still gives me 45% in
-> rpcauth_lookup_credcache().  See:
-> 
-> 1060627  45.1474  (no location information)   rpcauth_lookup_credcache
-> 289362   12.3172  auth_generic.c:0            generic_match
-> 31886     1.3573  page_alloc.c:0              get_page_from_freelist
-> 23932     1.0187  (no location information)   page_fault
-> 22176     0.9440  (no location information)   schedule
-> 14613     0.6220  (no location information)   __d_lookup
-> [...]
-> 
-> Max
-
-Looking at the above, it seems that you're spending an inordinate amount
-of time in generic_match too.
-Could you see if the following patch helps?
-
-Cheers
-  Trond
-
--------------------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-SUNRPC: Fix up generic_match()
-
-Cut down on the number of similar copies of group_info.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- net/sunrpc/auth_generic.c |   20 ++++++++++++++++++--
- 1 files changed, 18 insertions(+), 2 deletions(-)
+[I hope this is the right place to send this.  I tried 
+agud@redhat.com, who is listed on the relevant file's copyright,
+but that mailbox was disabled.]
 
 
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 744b79f..4028502 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -133,13 +133,29 @@ static int
- generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- {
- 	struct generic_cred *gcred = container_of(cred, struct generic_cred, gc_base);
-+	int i;
- 
- 	if (gcred->acred.uid != acred->uid ||
- 	    gcred->acred.gid != acred->gid ||
--	    gcred->acred.group_info != acred->group_info ||
- 	    gcred->acred.machine_cred != acred->machine_cred)
--		return 0;
-+		goto out_nomatch;
-+
-+	/* Optimisation in the case where pointers are identical... */
-+	if (gcred->acred.group_info == acred->group_info)
-+		goto out_match;
-+
-+	/* Slow path... */
-+	if (gcred->acred.group_info->ngroups != acred->group_info->ngroups)
-+		goto out_nomatch;
-+	for (i = 0; i < gcred->acred.group_info->ngroups; i++) {
-+		if (GROUP_AT(gcred->acred.group_info, i) !=
-+				GROUP_AT(acred->group_info, i))
-+			goto out_nomatch;
-+	}
-+out_match:
- 	return 1;
-+out_nomatch:
-+	return 0;
- }
- 
- void __init rpc_init_generic_auth(void)
+This concerns nfsmount.c in nfs-utils-1.1.4.
 
+I spent most of today trying to figure out why after upgrading an NFS
+client machine from Mandriva 2007.1 to 2008.1 suddenly the NFS server
+stopped logging  "authenticated unmount request" messages when the
+client rebooted.  It turned out this was a consequence of the umount
+"-l" flag, which is used in the shutdown scripts and the many recent
+changes in the organization of the umount commands.  Long story short,
+under Mandriva 2007.1 umount looked for umount.nfs, which was not
+present in that release, and then went on to send the unmount request
+itself.  On Mandriva 2008.1, where umount.nfs is present, the ball
+was passed to this program, which promptly dropped it if "-l" had been
+specified.  The NFS directory was unmounted correctly, but the "unmount
+request" was never sent. 
+
+I traced this issue down to these lines of code in nfsumount.c,
+starting at line 351 (some may wrap):
+
+	if (mc) {
+		if (!lazy && strcmp(mc->m.mnt_type, "nfs4") != 0)
+			/* We ignore the error from do_nfs_umount23.
+			 * If the actual umount succeeds (in del_mtab),
+			 * we don't want to signal an error, as that
+			 * could cause /sbin/mount to retry!
+			 */
+			do_nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
+		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
+	} else if (*spec != '/') {
+		if (!lazy)
+			ret = do_nfs_umount23(spec, "tcp,v3");
+	} else
+		ret = del_mtab(NULL, spec);
+	return ret;
+
+Removing the first "!lazy &&" resolved my immediate problem.  What I
+don't understand is why it, and the latter "!lazy", were there in
+the first place.  The do_nfs_umount23() routine seems to be relatively
+harmless, it either sends the message or it doesn't, but either way it
+doesn't seem to do anything to the mount information on the local node.
+So why is it not run if "-l" (lazy) is set?
+
+Thanks,
+
+David Mathog
+mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org
+Manager, Sequence Analysis Facility, Biology Division, Caltech
 
