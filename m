@@ -1,38 +1,78 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 6/8] NFS: add "[no]resvport" mount option
-Date: Thu, 20 Nov 2008 15:10:27 -0500
-Message-ID: <DF3753B3-8EAC-458F-B6B0-42695192846D@oracle.com>
-References: <20081105202040.14469.32458.stgit@ingres.1015granger.net> <20081105202528.14469.59939.stgit@ingres.1015granger.net> <1227209228.7150.3.camel@heimdal.trondhjem.org> <C9F7A2D8-98BD-4B90-8830-5DD397F209D8@oracle.com> <1227210690.7150.5.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: list corruption in locks_start_grace with 2.6.28-rc3
+Date: Thu, 20 Nov 2008 15:37:35 -0500
+Message-ID: <20081120203735.GB30808@fieldses.org>
+References: <x498wrokjj8.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:62987 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756137AbYKTUKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Nov 2008 15:10:34 -0500
-In-Reply-To: <1227210690.7150.5.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:54764 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757402AbYKTUhh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Nov 2008 15:37:37 -0500
+In-Reply-To: <x498wrokjj8.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 20, 2008, at Nov 20, 2008, 2:51 PM, Trond Myklebust wrote:
-> On Thu, 2008-11-20 at 14:42 -0500, Chuck Lever wrote:
->
->> Do you want another version of this patch, or can you fix this  
->> yourself?
->
-> I've already fixed it up, however I would like you to at least make  
-> sure
-> that you run a basic connectathon test before you send me patches. In
-> this case, you would have caught it immediately...
+On Wed, Nov 12, 2008 at 11:15:23AM -0500, Jeff Moyer wrote:
+> Hi,
+> 
+> I'm doing some testing which involves roughly the following:
+> 
+> o mount a file system on the server
+> o start the nfs service
+> - mount the nfs-exported file system from a client
+> - perform a dd from the client
+> - umount the nfs-exported file system from a client
+> o stop the nfs service
+> o unmount the file system on the server
+> 
+> After several iterations of this, varying the number of nfsd threads
+> started, I get the attached backtrace.  I've reproduced it twice, now.
+> 
+> Let me know if I can be of further help.
 
-Everyone makes mistakes.
+Apologies for the delay, and thanks for the report.  Does the following
+help?  (Untested).
 
-Considering the enormous test matrix, the complexity of the work, and  
-the excessive number of projects you and I both work on, I expect you  
-to show a little more empathy for a minor oversight such as this.
+--b.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+commit 77b810d52cc07212c79848b98bb992f0541afefb
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Thu Nov 20 14:36:17 2008 -0600
+
+    nfsd: clean up grace period on early exit
+    
+    If nfsd was shut down before the grace period ended, we could end up
+    with a freed object still on grace_list.  Thanks to Jeff Moyer for
+    reporting the resulting list corruption warnings.
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+    Cc: Jeff Moyer <jmoyer@redhat.com>
+
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index c631a83..56b0767 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -181,6 +181,7 @@ lockd(void *vrqstp)
+ 	}
+ 	flush_signals(current);
+ 	cancel_delayed_work_sync(&grace_period_end);
++	locks_end_grace(&lockd_manager);
+ 	if (nlmsvc_ops)
+ 		nlmsvc_invalidate_all();
+ 	nlm_shutdown_hosts();
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b0bebc5..1a052ac 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3261,6 +3261,7 @@ nfs4_state_shutdown(void)
+ {
+ 	cancel_rearming_delayed_workqueue(laundry_wq, &laundromat_work);
+ 	destroy_workqueue(laundry_wq);
++	locks_end_grace(&nfsd4_manager);
+ 	nfs4_lock_state();
+ 	nfs4_release_reclaim();
+ 	__nfs4_state_shutdown();
