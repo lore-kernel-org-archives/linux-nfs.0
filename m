@@ -1,80 +1,112 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] SUNRPC: Fix a performance regression in the RPC
- authentication code
-Date: Thu, 20 Nov 2008 16:06:21 -0500
-Message-ID: <1227215181.7150.18.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NLM] 2.6.27 broken
+Date: Thu, 20 Nov 2008 17:27:31 -0500
+Message-ID: <20081120222731.GA591@fieldses.org>
+References: <20081115132831.GA11329@janus>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Frank van Maarseveen <frankvm@frankvm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50786 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:57577 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751308AbYKTVH1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Nov 2008 16:07:27 -0500
+	id S1751827AbYKTW1e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Nov 2008 17:27:34 -0500
+In-Reply-To: <20081115132831.GA11329@janus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a regression reported by Max Kellermann whereby kernel profiling
-showed that his clients were spending 45% of their time in
-rpcauth_lookup_credcache.
+On Sat, Nov 15, 2008 at 02:28:31PM +0100, Frank van Maarseveen wrote:
+> Try running multiple instances of attached program on 1 NFS client
+> against a 2.6.27(.5) NFSv3 server:
+> 
+> 	gcc -Wall -Wstrict-prototypes -o lck lck.c
+> 	for i in `seq 30`
+> 	do
+> 		lck &
+> 	done
 
-It turns out that although his processes had identical uid/gid/groups,
-generic_match() was failing to detect this, because the task->group_info
-pointers were not shared. This again lead to the creation of a huge number
-of identical credentials at the RPC layer.
+Or reproduceable using the "flock" utility with:
 
-The regression is fixed by comparing the contents of task->group_info
-if the actual pointers are not identical.
+	for i in `seq 30`
+	do
+		flock /mnt/foo sleep 10
+	done
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+Hm.  What's the last known good server version?
 
- net/sunrpc/auth_generic.c |   20 ++++++++++++++++++--
- 1 files changed, 18 insertions(+), 2 deletions(-)
+--b.
 
+> 
+> Depending on the client linux version one or more processes hang
+> indefinately (on 2.6.22) or receive a ENOLCK (on 2.6.27), printing:
+> 
+> 	lck: fcntl: No locks available
+> 
+> Either way, /proc/locks on the server grows indefinately.
+> 
+> -- 
+> Frank
 
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 744b79f..4028502 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -133,13 +133,29 @@ static int
- generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- {
- 	struct generic_cred *gcred = container_of(cred, struct generic_cred, gc_base);
-+	int i;
- 
- 	if (gcred->acred.uid != acred->uid ||
- 	    gcred->acred.gid != acred->gid ||
--	    gcred->acred.group_info != acred->group_info ||
- 	    gcred->acred.machine_cred != acred->machine_cred)
--		return 0;
-+		goto out_nomatch;
-+
-+	/* Optimisation in the case where pointers are identical... */
-+	if (gcred->acred.group_info == acred->group_info)
-+		goto out_match;
-+
-+	/* Slow path... */
-+	if (gcred->acred.group_info->ngroups != acred->group_info->ngroups)
-+		goto out_nomatch;
-+	for (i = 0; i < gcred->acred.group_info->ngroups; i++) {
-+		if (GROUP_AT(gcred->acred.group_info, i) !=
-+				GROUP_AT(acred->group_info, i))
-+			goto out_nomatch;
-+	}
-+out_match:
- 	return 1;
-+out_nomatch:
-+	return 0;
- }
- 
- void __init rpc_init_generic_auth(void)
+> #include <stdio.h>
+> #include <ctype.h>
+> #include <unistd.h>
+> #include <fcntl.h>
+> #include <errno.h>
+> #include <string.h>
+> #include <stdarg.h>
+> #include <stdlib.h>
+> 
+> void die(const char *fmt, ...) __attribute__((format(printf, 1, 2), noreturn));
+> void die(const char *fmt, ...)
+> {
+> 	va_list	ap;
+> 
+> 	va_start(ap, fmt);
+> 	fprintf(stderr, "lck: ");
+> 	vfprintf(stderr, fmt, ap);
+> 	va_end(ap);
+> 	exit(1);
+> }
+> 
+> int main(int argc, char **argv)
+> {
+> 	struct flock flock = {0};
+> 	int i, d, locktime, cmd;
+> 	const char *name;
+> 
+> 	flock.l_type = F_WRLCK;		/* -w */
+> 	flock.l_whence = SEEK_SET;
+> 	cmd = F_SETLKW;			/* no -t */
+> 	name = NULL;
+> 	locktime = 10;
+> 	for (i = 1; i < argc; ++i) {
+> 		if (strcmp(argv[i], "-r") == 0)
+> 			flock.l_type = F_RDLCK;		/* lock for N readers */
+> 		else if (strcmp(argv[i], "-w") == 0)
+> 			flock.l_type = F_WRLCK;		/* lock for 1 writer */
+> 		else if (strcmp(argv[i], "-t") == 0)
+> 			cmd = F_SETLK;			/* test for a lock, don't wait */
+> 		else if (argv[i][0] == '-')
+> 			die("Usage: lck [-r|-w] [-t] [<filename> [<locktime>]]\n");
+> 		else if (name && isdigit(argv[i][0]))
+> 			locktime = atoi(argv[i]);	/* after acquiring lock, wait locktime seconds */
+> 		else
+> 			name = argv[i];
+> 	}
+> 	if (!name)
+> 		name = "lck-filename";
+> 	d = open(name, O_RDWR|O_CREAT, 0666);
+> 	if (d == -1)
+> 		die("open %s: %s\n", name, strerror(errno));
+> 	if (fcntl(d, cmd, &flock) == -1)
+> 		die("fcntl: %s\n", strerror(errno));
+> 	printf("locked...");
+> 	fflush(NULL);
+> 	sleep(locktime);
+> 	if (close(d))
+> 		die("close: %s\n", strerror(errno));
+> 	printf("unlocked.\n");
+> 	return 0;
+> }
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
