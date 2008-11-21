@@ -1,91 +1,56 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: nfs-utils, umount -l, and unmount requests
-Date: Fri, 21 Nov 2008 09:59:02 -0500
-Message-ID: <B9AA2381-5F9F-4E48-A520-C96F6B755E0D@oracle.com>
-References: <E1L2wsc-0004Rs-2I@mendel.bio.caltech.edu> <492696AD.8040905@RedHat.com>
+Subject: Re: Full IPv6 client and server support (kernel and user commands)
+Date: Fri, 21 Nov 2008 10:10:58 -0500
+Message-ID: <62401FDC-D996-46F5-837E-9CD47D98D869@oracle.com>
+References: <48D39CDE.1040600@bull.net> <48DA228D.9040302@linux.vnet.ibm.com>	<C0657B95-8B13-4D0B-A1D5-B1CDDB1C4AA7@oracle.com>	<48DB4C1C.6000805@bull.net> <48DB5D89.6000407@linux.vnet.ibm.com>	<48DB79A7.2080501@bull.net> <48DB7C51.8000606@linux.vnet.ibm.com>	<54717A2D-9C8B-48EB-AAEF-D6F5FF60E0D5@oracle.com>	<48DC824F.6070701@linux.vnet.ibm.com> <48DC90BD.4070702@bull.net>	<48DCB184.1030406@linux.vnet.ibm.com>	<8B169994-A636-440A-AF7A-7E043D18385E@oracle.com>	<48DDA945.7020800@linux.vnet.ibm.com> <48E06DAC.2030708@linux.vnet.ibm.com> <48E085A7.7040000@bull.net> <48E19A2E.7090005@linux.vnet.ibm.com> <48E62607.80809@bull.net> <48F31FEF.4040907@linux.vnet.ibm.com> <48F347B8.3010201@bull.net> <49269AB3.3020106@RedHat.com>
 Mime-Version: 1.0 (Apple Message framework v929.2)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>,
-	David Mathog <mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org>
+Cc: Le Rouzic <aime.le-rouzic@bull.net>,
+	Varun Chandramohan <varunc@linux.vnet.ibm.com>,
+	Frank S Filz <ffilz@us.ibm.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:23505 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753734AbYKUO7Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2008 09:59:24 -0500
-In-Reply-To: <492696AD.8040905-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:39582 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752433AbYKUPMv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2008 10:12:51 -0500
+In-Reply-To: <49269AB3.3020106-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 21, 2008, at 6:08 AM, Steve Dickson wrote:
-> David Mathog wrote:
->>
->> 	if (mc) {
->> 		if (!lazy && strcmp(mc->m.mnt_type, "nfs4") != 0)
->> 			/* We ignore the error from do_nfs_umount23.
->> 			 * If the actual umount succeeds (in del_mtab),
->> 			 * we don't want to signal an error, as that
->> 			 * could cause /sbin/mount to retry!
->> 			 */
->> 			do_nfs_umount23(mc->m.mnt_fsname, mc->m.mnt_opts);
->> 		ret = del_mtab(mc->m.mnt_fsname, mc->m.mnt_dir);
->> 	} else if (*spec != '/') {
->> 		if (!lazy)
->> 			ret = do_nfs_umount23(spec, "tcp,v3");
->> 	} else
->> 		ret = del_mtab(NULL, spec);
->> 	return ret;
->>
->> Removing the first "!lazy &&" resolved my immediate problem.
+Hi Steve-
 
-Can you explain further what your "immediate problem" was?
+On Nov 21, 2008, at 6:25 AM, Steve Dickson wrote:
+> Le Rouzic wrote:
+>>  Hi,
+>>  My patches are based on Chuck 's ones for nfs-utils and kernel. So
+>> when those from Chuck
+>>  are committed I will need to review mines if always OK.
+>>  Steve Dickson is planning to integrate most of the mount and statd
+>> command changes done by Chuck for IPV6
+>>  in next package nfs-utils-1.1.4.
+> This is done and can be found in git://linux-nfs.org/nfs-utils git
 
->> What I
->> don't understand is why it, and the latter "!lazy", were there in
->> the first place.
-> To quote from the umount(8) man page:
->
->       -l     Lazy unmount. Detach the filesystem from the  
-> filesystem  hierar-
->
->              chy now, and cleanup all references to the filesystem  
-> as soon as
->
->              it is not busy anymore.  (Requires kernel 2.4.11 or  
-> later.)
->
-> Which means in an NFS context that no RPC calls (i.e. call to the  
-> server)
-> can be made that could possibility hang
->
->
->> The do_nfs_umount23() routine seems to be relatively
->> harmless, it either sends the message or it doesn't, but either way  
->> it
->> doesn't seem to do anything to the mount information on the local  
->> node.
->> So why is it not run if "-l" (lazy) is set?
-> Take a closer look... nfs_call_umount() makes a clnt_call() which
-> would hang if the server is down, which is the reason its not called.
->
-> I hope this helps....
+I have the latest version of this repo, and there are only the first  
+two IPv6 patches in there. These two patches only add new shared  
+functionality, none of which is even used yet.  So I have a lot more  
+to send you.
 
-To clarify that, "-l" is used in cases where there are still  
-outstanding NFS RPCs in the kernel for that mount point, but they  
-can't complete because the server isn't available.  Thus the mount  
-point appears busy, and won't umount.  "umount -l" is used here to  
-prevent the system shutdown from hanging.
+Or did I misunderestimate what you meant?
 
-When there may be outstanding NFS requests, the client really  
-shouldn't send the MNT_UMNT.  In general, though, MNT_UMNT is entirely  
-advisory, and the client shouldn't wait for it to complete.  The  
-server maintains a list of clients that have mounted each export, but  
-that list isn't used for anything.  So, it shouldn't matter whether  
-the MNT_UMNT is sent.
+> Also note number of IPv6 orientated changes have been added and
+> will continue to be added  to both the libitrpc and rpcbind git
+> trees found at:
+>
+> git://git.infradead.org/~steved/libtirpc.git
+> git://git.infradead.org/~steved/rpcbind.git
 
-One of the changes I made in my IPv6 patches is to shorten the timeout  
-on that clnt_call().  We could even go so far as to make MNT_UMNT  
-entirely asynchronous and not wait for the reply.
++1
+
+These are pretty much required now to use NFS IPv6 with the latest  
+kernels.
 
 --
 Chuck Lever
