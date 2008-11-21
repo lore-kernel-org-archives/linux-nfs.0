@@ -1,112 +1,58 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NLM] 2.6.27 broken
-Date: Thu, 20 Nov 2008 17:27:31 -0500
-Message-ID: <20081120222731.GA591@fieldses.org>
-References: <20081115132831.GA11329@janus>
+From: "Roman Dalton" <noreplyhere-Sqx0aNeHJbUZ1Rc1l4ySeGu7iY1ah69B@public.gmane.org>
+Subject: [NFS] General Dentists List in America
+Date: Fri, 21 Nov 2008 04:34:07 +0000
+Message-ID: <E1L3NiZ-0003Q3-9J@335xhf1.ch3.sourceforge.com>
+Reply-To: Roman Dalton <mailboxnotchecked-5kKYnjcV2vXR7s880joybQ@public.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: peter-dGWAVnAAe7U0n/F98K4Iww@public.gmane.org, joeek78@hotmail.com, nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org,
+	rick_walker-d+AXes/DfaFzKiIawvo0wdBPR1lH4CV8@public.gmane.org, petru-pvTzG9dT3CftwjQa/ONI9g@public.gmane.org,
+	ludhiana-nqC8Xa10jKezPvhx+Mh6kdBPR1lH4CV8@public.gmane.org, newtrainings@gmail.com,
+	kontakt-aRCsrEPsanx6lmGzAMPh1A@public.gmane.org
+To: john.aiken-4ct+qsaILyTta4EC/59zMFaTQe2KTcn/@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:57577 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:57260 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751827AbYKTW1e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Nov 2008 17:27:34 -0500
-In-Reply-To: <20081115132831.GA11329@janus>
+	id S1752625AbYKUEex (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Nov 2008 23:34:53 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1L3NjH-0006Pj-4x
+	for linux-nfs@vger.kernel.org; Fri, 21 Nov 2008 15:34:51 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 15, 2008 at 02:28:31PM +0100, Frank van Maarseveen wrote:
-> Try running multiple instances of attached program on 1 NFS client
-> against a 2.6.27(.5) NFSv3 server:
-> 
-> 	gcc -Wall -Wstrict-prototypes -o lck lck.c
-> 	for i in `seq 30`
-> 	do
-> 		lck &
-> 	done
 
-Or reproduceable using the "flock" utility with:
 
-	for i in `seq 30`
-	do
-		flock /mnt/foo sleep 10
-	done
+Just Released: for the USA
 
-Hm.  What's the last known good server version?
+--> 164,341 D entists 
+--> 158,048 Postal Addresses
+--> 163,958 Tel #'s
+--> 77,093 Fax Numbers
+--> 45,870 E-Mail Addresses
 
---b.
+for only this week you can take the above with unlimited use rights for $297 - a $594 value
 
-> 
-> Depending on the client linux version one or more processes hang
-> indefinately (on 2.6.22) or receive a ENOLCK (on 2.6.27), printing:
-> 
-> 	lck: fcntl: No locks available
-> 
-> Either way, /proc/locks on the server grows indefinately.
-> 
-> -- 
-> Frank
+Write an email to Dalton-W3yqWAQfaE6Bik42HM7KXg@public.gmane.org for additional info 
 
-> #include <stdio.h>
-> #include <ctype.h>
-> #include <unistd.h>
-> #include <fcntl.h>
-> #include <errno.h>
-> #include <string.h>
-> #include <stdarg.h>
-> #include <stdlib.h>
-> 
-> void die(const char *fmt, ...) __attribute__((format(printf, 1, 2), noreturn));
-> void die(const char *fmt, ...)
-> {
-> 	va_list	ap;
-> 
-> 	va_start(ap, fmt);
-> 	fprintf(stderr, "lck: ");
-> 	vfprintf(stderr, fmt, ap);
-> 	va_end(ap);
-> 	exit(1);
-> }
-> 
-> int main(int argc, char **argv)
-> {
-> 	struct flock flock = {0};
-> 	int i, d, locktime, cmd;
-> 	const char *name;
-> 
-> 	flock.l_type = F_WRLCK;		/* -w */
-> 	flock.l_whence = SEEK_SET;
-> 	cmd = F_SETLKW;			/* no -t */
-> 	name = NULL;
-> 	locktime = 10;
-> 	for (i = 1; i < argc; ++i) {
-> 		if (strcmp(argv[i], "-r") == 0)
-> 			flock.l_type = F_RDLCK;		/* lock for N readers */
-> 		else if (strcmp(argv[i], "-w") == 0)
-> 			flock.l_type = F_WRLCK;		/* lock for 1 writer */
-> 		else if (strcmp(argv[i], "-t") == 0)
-> 			cmd = F_SETLK;			/* test for a lock, don't wait */
-> 		else if (argv[i][0] == '-')
-> 			die("Usage: lck [-r|-w] [-t] [<filename> [<locktime>]]\n");
-> 		else if (name && isdigit(argv[i][0]))
-> 			locktime = atoi(argv[i]);	/* after acquiring lock, wait locktime seconds */
-> 		else
-> 			name = argv[i];
-> 	}
-> 	if (!name)
-> 		name = "lck-filename";
-> 	d = open(name, O_RDWR|O_CREAT, 0666);
-> 	if (d == -1)
-> 		die("open %s: %s\n", name, strerror(errno));
-> 	if (fcntl(d, cmd, &flock) == -1)
-> 		die("fcntl: %s\n", strerror(errno));
-> 	printf("locked...");
-> 	fflush(NULL);
-> 	sleep(locktime);
-> 	if (close(d))
-> 		die("close: %s\n", strerror(errno));
-> 	printf("unlocked.\n");
-> 	return 0;
-> }
+
+
+
+By emailing release-W3yqWAQfaE6Bik42HM7KXg@public.gmane.org you will have your email taken off
+
+
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
