@@ -1,45 +1,82 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Full IPv6 client and server support (kernel and user commands)
-Date: Fri, 21 Nov 2008 10:26:08 -0500
-Message-ID: <4926D310.4070505@RedHat.com>
-References: <48D39CDE.1040600@bull.net> <48DA228D.9040302@linux.vnet.ibm.com>	<C0657B95-8B13-4D0B-A1D5-B1CDDB1C4AA7@oracle.com>	<48DB4C1C.6000805@bull.net> <48DB5D89.6000407@linux.vnet.ibm.com>	<48DB79A7.2080501@bull.net> <48DB7C51.8000606@linux.vnet.ibm.com>	<54717A2D-9C8B-48EB-AAEF-D6F5FF60E0D5@oracle.com>	<48DC824F.6070701@linux.vnet.ibm.com> <48DC90BD.4070702@bull.net>	<48DCB184.1030406@linux.vnet.ibm.com>	<8B169994-A636-440A-AF7A-7E043D18385E@oracle.com>	<48DDA945.7020800@linux.vnet.ibm.com> <48E06DAC.2030708@linux.vnet.ibm.com> <48E085A7.7040000@bull.net> <48E19A2E.7090005@linux.vnet.ibm.com> <48E62607.80809@bull.net> <48F31FEF.4040907@linux.vnet.ibm.com> <48F347B8.3010201@bull.net> <49269AB3.3020106@RedHat.com> <62401FDC-D996-46F5-837E-9CD47D98D869@oracle.com>
+From: "David Mathog" <mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org>
+Subject: Re: nfs-utils, umount -l, and unmount requests
+Date: Fri, 21 Nov 2008 08:58:22 -0800
+Message-ID: <E1L3ZKo-0005DO-74@mendel.bio.caltech.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Le Rouzic <aime.le-rouzic@bull.net>,
-	Varun Chandramohan <varunc@linux.vnet.ibm.com>,
-	Frank S Filz <ffilz@us.ibm.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=iso-8859-1
+To: Chuck Lever <chuck.lever@oracle.com>,
+	Steve Dickson <SteveD@redhat.com>,
+	David Mathog <mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45141 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752692AbYKUP2s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Nov 2008 10:28:48 -0500
-In-Reply-To: <62401FDC-D996-46F5-837E-9CD47D98D869@oracle.com>
+Received: from mendel.bio.caltech.edu ([131.215.12.38]:36328 "EHLO
+	mendel.bio.caltech.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757759AbYKUQ60 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2008 11:58:26 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Chuck Lever wrote:
-> Hi Steve-
+> >> Removing the first "!lazy &&" resolved my immediate problem.
 > 
-> On Nov 21, 2008, at 6:25 AM, Steve Dickson wrote:
->> Le Rouzic wrote:
->>>  Hi,
->>>  My patches are based on Chuck 's ones for nfs-utils and kernel. So
->>> when those from Chuck
->>>  are committed I will need to review mines if always OK.
->>>  Steve Dickson is planning to integrate most of the mount and statd
->>> command changes done by Chuck for IPV6
->>>  in next package nfs-utils-1.1.4.
->> This is done and can be found in git://linux-nfs.org/nfs-utils git
-> 
-> I have the latest version of this repo, and there are only the first two
-> IPv6 patches in there. These two patches only add new shared
-> functionality, none of which is even used yet.  So I have a lot more to
-> send you.
-Bring them on... ;-)
+> Can you explain further what your "immediate problem" was?
 
-steved.
+It was the typical hall of mirrors:
+
+1. upgrade NFS clients Mandriva 2007.1 -> Mandriva 2008.1
+2. change in log files on server when client reboots - no "unmount
+request" messages logged.  Otherwise client shutdown seemed normal.
+3. tracked that to the /etc/rc.d/init.d/netfs script, which came down to
+a "umount -f -l", where the behavior of -l had changed between releases.
+4. tracked the -l behavior through a change in umount (actually two)
+such that in the current version the umount.nfs function is entirely
+dependent on the external program, whereas in the former version it
+would do it itself if that external program was not found.
+5. tracked the -l behavior to the !lazy line in nfsumount.c which was
+mentioned in the first post in this thread.  
+6. removing the "!lazy &&" restored the previous logging behavior by
+the client on shutdown.
+
+
+> To clarify that, "-l" is used in cases where there are still  
+> outstanding NFS RPCs in the kernel for that mount point, but they  
+> can't complete because the server isn't available.  Thus the mount  
+> point appears busy, and won't umount.  "umount -l" is used here to  
+> prevent the system shutdown from hanging.
+> 
+> When there may be outstanding NFS requests, the client really  
+> shouldn't send the MNT_UMNT.  In general, though, MNT_UMNT is entirely  
+> advisory, and the client shouldn't wait for it to complete.
+
+That's what I'm getting at.  But rather than trying to send it, and
+doing so in such a way that it won't lock up if the server is down, it
+sends nothing.  This changes the behavior of a normal shutdown as seen
+from the server side.
+
+> One of the changes I made in my IPv6 patches is to shorten the timeout  
+> on that clnt_call().  We could even go so far as to make MNT_UMNT  
+> entirely asynchronous and not wait for the reply.
+
+That sounds good to me.  If the client makes a "reasonable effort" to
+send the "unmount request" to the server, so that under normal working
+conditions the server will be notified, that should be sufficient.  
+
+
+One thing that bothers me though are these two situations:
+
+dd if=/dev/zero of=/mountpoint/datafile count=1000000 bs=512
+umount -f -l /mountpoint
+
+and
+
+dd if=/dev/zero of=/mountpoint/datafile count=1000000 bs=512 &
+umount -f -l /mountpoint
+
+What happens to the data being written to datafile, does it make it to
+the server, assuming the server is up and working normally?  The client
+mounted /mountpoint with bg,hard,intr,rw.
+
+Thanks,
+
+David Mathog
+mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org
+Manager, Sequence Analysis Facility, Biology Division, Caltech
