@@ -1,222 +1,104 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks
-	(RFC)
-Date: Fri, 21 Nov 2008 20:15:55 -0500
-Message-ID: <20081122011555.GA28485@fieldses.org>
-References: <1227130623-31607-1-git-send-email-jlayton@redhat.com>
+Subject: Re: help understanding the current (and future) state of NFSv4
+	locking?
+Date: Fri, 21 Nov 2008 20:34:49 -0500
+Message-ID: <20081122013449.GB28485@fieldses.org>
+References: <170fa0d20811141234m3faee54dh241b9a374b7201c@mail.gmail.com> <20081116194822.GI21551@fieldses.org> <170fa0d20811171618l140a0e26ycfc58ae7f10e6e0c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, teigland@redhat.com
-To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+To: Mike Snitzer <snitzer@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:35172 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:58235 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755682AbYKVBQA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Nov 2008 20:16:00 -0500
-In-Reply-To: <1227130623-31607-1-git-send-email-jlayton@redhat.com>
+	id S1756642AbYKVBeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Nov 2008 20:34:50 -0500
+In-Reply-To: <170fa0d20811171618l140a0e26ycfc58ae7f10e6e0c-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 19, 2008 at 04:37:03PM -0500, Jeff Layton wrote:
-> Dave Teigland opened a bug stating that he was having some problems with
-> DLM and lockd. Essentially, the problem boiled down to the fact that
-> when you do a posix lock of a region that touches another lock, the VFS
-> will coalesce the locks and return a lock that encompasses the whole
-> range.
+On Mon, Nov 17, 2008 at 07:18:32PM -0500, Mike Snitzer wrote:
+> On Sun, Nov 16, 2008 at 2:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > A real-world test case (showing starvation of v4 clients) would be
+> > interesting if anyone had one.
 > 
-> The problem here is that DLM then does a fl_grant callback to lockd with
-> the new coalesced lock. The fl_grant callback then looks through all
-> of the blocks and eventually returns -ENOENT since none match the
-> coalesced lock.
+> I'm not sure what your definition of "real-world test case" is (so
+> maybe the following is moot) but the attached program (written by a
+> co-worker) can be used to easily illustrate the starvation of v4
+> clients.  The program tests to see how long it takes to lock/unlock a
+> file 1000 times.  If ran locally on the nfs-server against an exported
+> ext3 FS I get a "step time" of 11ms.  Ran from a v3 client: ~390ms.
+> Ran from a v4 client: ~430ms.
 
-Ugh.
+Yeah, it's not surprising that it'd be reproduceable in the presence of
+processes requesting and dropping a lock in a tight loop like that; I
+just wonder under what workloads this would be common, and whether such
+frequent file lock contention would already cause other problems.
 
-> I'm having a very hard time tracking down info about how the fl_grant
-> callback is supposed to work. Is it OK to send an fl_grant callback
-> with a lock that's larger than the one requested? If so, then lockd
-> needs to account for that possibility. Also, what exactly is the
-> purpose of the second arg on fl_grant ("conf" in nlmsvc_grant_deferred)?
-
-It's only used in the case the lock failed, and it can optionally be set
-to a copy of the conflicting lock.
-
-> What follows is a patch that changes nlmsvc_grant_deferred to account
-> for the possibility that it may receive an fl_grant that has already
-> been coalesced. It changes nlmsvc_grant_deferred to walk the entire
-> list of blocks and grant any blocks that are covered by the range of
-> the lock in the grant callback, if doing so will not conflict with an
-> earlier grant.
-
-Hm.  That might work.
-
-> The patch is still very rough and is probably broken in subtle (and
-> maybe overt) ways, but it fixes the reproducer that Dave provided. It's
-> just intended as a starting point for discussion. Can anyone clarify how
-> fl_grant is supposed to work? Who's wrong here? DLM or NLM?
-
-I think this wasn't thought through, apologies.  (It was my
-responsibility to make sure it was!)
-
-I also occasionally think that it would be better to keep any actual
-lock application the caller's responsibility, to the extent that's
-possible--so fl_grant would just be a notification, and it would be up
-to lockd to try the lock again and check the result.  That's more or
-less the way it always worked before, and it seems a simpler model.
-
-Some work in the filesystem would be required to make sure it would be
-ready to return an answer on that second request.
-
-I also think there's a problem with lock cancelling in the current code.
+Time to get a lock 1000 times is still going to be very long even after
+adding the fair queueing for v4, since the client isn't required to poll
+more than once a lease period, if I recall the spec correctly.  So,
+you're right, we should also experiment with the 4.1 lock notification
+callback.
 
 --b.
 
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/lockd/svclock.c          |   58 ++++++++++++++++++++++++++++++++++---------
->  include/linux/lockd/lockd.h |   35 ++++++++++++++++++++++++++
->  2 files changed, 81 insertions(+), 12 deletions(-)
+> ran simultaneously on the nfs-server and the v3 client; local=~30ms, v3=~440ms
+> ran simultaneously on two v3 clients; both v3=~580ms
+> ran simultaneously on the nfs-server and the two v3 clients; both
+> v3=~580ms, but local ranges ~1500ms to ~9300ms
+> ran simultaneously on two v4 clients; v4=~430ms but with frequent
+> interleaved outliers ranging from ~1500ms to ~75000ms
+> ran simultaneously on the nfs-server and the v4 client; local=~11ms, v4=STARVED
+> ran simultaneously on the v3 and the v4 client; v3=~390ms, v4=STARVED
 > 
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index 6063a8e..5ecd1db 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -611,6 +611,35 @@ nlmsvc_cancel_blocked(struct nlm_file *file, struct nlm_lock *lock)
->  }
->  
->  /*
-> + * Would granting this block cause a conflict with one already granted? Check
-> + * by walking the f_blocks list for the file.
-> + */
-> +static int
-> +nlmsvc_check_overlap(struct nlm_block *block)
-> +{
-> +	struct nlm_block *fblock, *next;
-> +
-> +	list_for_each_entry_safe(fblock, next, &block->b_file->f_blocks,
-> +				 b_flist) {
-> +		/* skip myself */
-> +		if (fblock == block)
-> +			continue;
-> +
-> +		/* skip any locks that aren't granted */
-> +		if (!fblock->b_granted)
-> +			continue;
-> +
-> +		/* do block and fblock have any overlap in their ranges? */
-> +		if (nlm_overlapping_locks(&block->b_call->a_args.lock.fl,
-> +					  &fblock->b_call->a_args.lock.fl))
-> +			return 1;
-> +	}
-> +
-> +	/* no conflicts found */
-> +	return 0;
-> +}
-> +
-> +/*
->   * This is a callback from the filesystem for VFS file lock requests.
->   * It will be used if fl_grant is defined and the filesystem can not
->   * respond to the request immediately.
-> @@ -625,9 +654,10 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
->  			     int result)
->  {
->  	block->b_flags |= B_GOT_CALLBACK;
-> -	if (result == 0)
-> -		block->b_granted = 1;
-> -	else
-> +	if (result == 0) {
-> +		if (!nlmsvc_check_overlap(block))
-> +			block->b_granted = 1;
-> +	} else
->  		block->b_flags |= B_TIMED_OUT;
->  	if (conf) {
->  		if (block->b_fl)
-> @@ -643,22 +673,26 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
->  
->  	lock_kernel();
->  	list_for_each_entry(block, &nlm_blocked, b_list) {
-> -		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
-> -			dprintk("lockd: nlmsvc_notify_blocked block %p flags %d\n",
-> -							block, block->b_flags);
-> +		if (nlm_lock_in_range(&block->b_call->a_args.lock.fl, fl)) {
-> +			dprintk("lockd: nlmsvc_notify_blocked block %p flags "
-> +				"%d\n", block, block->b_flags);
-> +
->  			if (block->b_flags & B_QUEUED) {
->  				if (block->b_flags & B_TIMED_OUT) {
-> -					rc = -ENOLCK;
-> -					break;
-> +					if (rc == -ENOENT)
-> +						rc = -ENOLCK;
-> +					continue;
->  				}
-> -				nlmsvc_update_deferred_block(block, conf, result);
-> -			} else if (result == 0)
-> -				block->b_granted = 1;
-> +				nlmsvc_update_deferred_block(block, conf,
-> +							     result);
-> +			} else if (result == 0) {
-> +				if (!nlmsvc_check_overlap(block))
-> +					block->b_granted = 1;
-> +			}
->  
->  			nlmsvc_insert_block(block, 0);
->  			svc_wake_up(block->b_daemon);
->  			rc = 0;
-> -			break;
->  		}
->  	}
->  	unlock_kernel();
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index b56d5aa..aa38d47 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -367,6 +367,41 @@ static inline int nlm_compare_locks(const struct file_lock *fl1,
->  	     &&(fl1->fl_type  == fl2->fl_type || fl2->fl_type == F_UNLCK);
->  }
->  
-> +/*
-> + * Compare two NLM locks.
-> + * When the second lock is of type F_UNLCK, this acts like a wildcard.
-> + * Similar to nlm_compare_locks, but also return true as long as fl1's range
-> + * is completely covered by fl2.
-> + */
-> +static inline int nlm_lock_in_range(const struct file_lock *fl1,
-> +				    const struct file_lock *fl2)
-> +{
-> +	return	fl1->fl_pid   == fl2->fl_pid
-> +	     && fl1->fl_owner == fl2->fl_owner
-> +	     && fl1->fl_start >= fl2->fl_start
-> +	     && fl1->fl_end   <= fl2->fl_end
-> +	     && (fl1->fl_type  == fl2->fl_type || fl2->fl_type == F_UNLCK);
-> +}
-> +
-> +static inline int nlm_overlapping_locks(const struct file_lock *fl1,
-> +					const struct file_lock *fl2)
-> +{
-> +	/* does fl1 completely cover fl2? */
-> +	if (fl1->fl_start <= fl2->fl_start && fl1->fl_end >= fl2->fl_end)
-> +		return 1;
-> +
-> +	/* does fl2 completely cover fl1 */
-> +	if (fl2->fl_start <= fl1->fl_start && fl2->fl_end >= fl1->fl_end)
-> +		return 1;
-> +
-> +	/* does the start or end of fl1 sit inside of fl2? */
-> +	if ((fl1->fl_start >= fl2->fl_start && fl1->fl_start <= fl2->fl_end) ||
-> +	    (fl1->fl_end >= fl2->fl_start && fl1->fl_end <= fl2->fl_end))
-> +		return 1;
-> +
-> +	return 0;
-> +}
-> +
->  extern struct lock_manager_operations nlmsvc_lock_operations;
->  
->  #endif /* __KERNEL__ */
-> -- 
-> 1.5.5.1
+> FYI, "STARVED" above doesn't mean the v4 client _never_ acquires the
+> lock.   It eventually acquires the lock; albeit extremely rarely (e.g.
+> after 5min) because v4 client polling is predisposed to lose the race
+> with either the hyper-active v3 client or the local locker.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Mike
+
+> #include <stdio.h>
+> #include <stdlib.h>
+> #include <unistd.h>
+> #include <fcntl.h>
+> #include <sys/time.h>
+> #include <string.h>
+> #include <errno.h>
+> 
+> #define STEP 1000
+> #define CMD F_SETLKW
+> 
+> int main(int argc, char **argv) {
+> 	struct flock lc_rq = {F_WRLCK, SEEK_CUR, 0, 100, 0};
+> 	int i, ret = 0;
+> 	char str[10];
+> 	unsigned long sleep_timeout = 0;
+> 	struct timeval tv_start, tv_prev, tv_cur;
+> 	int fd1 = open(argv[1], O_RDWR), fd2 = 0;
+> 	off_t start = 0;
+> 
+> 	gettimeofday(&tv_start, NULL);
+> 	tv_cur = tv_prev = tv_start;
+> 
+> 	for (i=0;;i++) {
+> 		lc_rq.l_type = F_WRLCK;
+> 		ret = fcntl(fd1, CMD, &lc_rq);
+> 
+> 		lc_rq.l_type = F_UNLCK;
+> 		ret = fcntl(fd1, CMD, &lc_rq);
+> 
+> 		if (0 == i%STEP) {
+> 			gettimeofday(&tv_cur, NULL);
+> 			printf("i=%d tot time = %dms (step time= %dms)\n", i/STEP,
+> 			       1000*(tv_cur.tv_sec - tv_start.tv_sec) + (tv_cur.tv_usec - tv_start.tv_usec)/1000,
+> 			       1000*(tv_cur.tv_sec - tv_prev.tv_sec) + (tv_cur.tv_usec - tv_prev.tv_usec)/1000);
+> 			tv_prev = tv_cur;
+> 		}
+> 	}
+> 	return 0;
+> }
+> 
+
