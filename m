@@ -1,104 +1,104 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: help understanding the current (and future) state of NFSv4
-	locking?
-Date: Fri, 21 Nov 2008 20:34:49 -0500
-Message-ID: <20081122013449.GB28485@fieldses.org>
-References: <170fa0d20811141234m3faee54dh241b9a374b7201c@mail.gmail.com> <20081116194822.GI21551@fieldses.org> <170fa0d20811171618l140a0e26ycfc58ae7f10e6e0c@mail.gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: list corruption in locks_start_grace with 2.6.28-rc3
+Date: Sat, 22 Nov 2008 09:22:37 -0500
+Message-ID: <20081122092237.1ab81cdb@tleilax.poochiereds.net>
+References: <x498wrokjj8.fsf@segfault.boston.devel.redhat.com>
+	<20081120203735.GB30808@fieldses.org>
+	<x49ej15gktp.fsf@segfault.boston.devel.redhat.com>
+	<20081122005400.GB28094@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Mike Snitzer <snitzer@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Jeff Moyer <jmoyer@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:58235 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:51718 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756642AbYKVBeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Nov 2008 20:34:50 -0500
-In-Reply-To: <170fa0d20811171618l140a0e26ycfc58ae7f10e6e0c-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1758074AbYKVOWr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Nov 2008 09:22:47 -0500
+In-Reply-To: <20081122005400.GB28094@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 17, 2008 at 07:18:32PM -0500, Mike Snitzer wrote:
-> On Sun, Nov 16, 2008 at 2:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > A real-world test case (showing starvation of v4 clients) would be
-> > interesting if anyone had one.
-> 
-> I'm not sure what your definition of "real-world test case" is (so
-> maybe the following is moot) but the attached program (written by a
-> co-worker) can be used to easily illustrate the starvation of v4
-> clients.  The program tests to see how long it takes to lock/unlock a
-> file 1000 times.  If ran locally on the nfs-server against an exported
-> ext3 FS I get a "step time" of 11ms.  Ran from a v3 client: ~390ms.
-> Ran from a v4 client: ~430ms.
+On Fri, 21 Nov 2008 19:54:00 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Yeah, it's not surprising that it'd be reproduceable in the presence of
-processes requesting and dropping a lock in a tight loop like that; I
-just wonder under what workloads this would be common, and whether such
-frequent file lock contention would already cause other problems.
-
-Time to get a lock 1000 times is still going to be very long even after
-adding the fair queueing for v4, since the client isn't required to poll
-more than once a lease period, if I recall the spec correctly.  So,
-you're right, we should also experiment with the 4.1 lock notification
-callback.
-
---b.
-
+> On Fri, Nov 21, 2008 at 10:28:18AM -0500, Jeff Moyer wrote:
+> > "J. Bruce Fields" <bfields@fieldses.org> writes:
+> > 
+> > > On Wed, Nov 12, 2008 at 11:15:23AM -0500, Jeff Moyer wrote:
+> > >> Hi,
+> > >> 
+> > >> I'm doing some testing which involves roughly the following:
+> > >> 
+> > >> o mount a file system on the server
+> > >> o start the nfs service
+> > >> - mount the nfs-exported file system from a client
+> > >> - perform a dd from the client
+> > >> - umount the nfs-exported file system from a client
+> > >> o stop the nfs service
+> > >> o unmount the file system on the server
+> > >> 
+> > >> After several iterations of this, varying the number of nfsd threads
+> > >> started, I get the attached backtrace.  I've reproduced it twice, now.
+> > >> 
+> > >> Let me know if I can be of further help.
+> > >
+> > > Apologies for the delay, and thanks for the report.  Does the following
+> > > help?  (Untested).
+> > 
+> > I get a new and different backtrace with this patch applied.  ;)
+> > I'm testing with 2.6.28-rc5, fyi.
 > 
-> ran simultaneously on the nfs-server and the v3 client; local=~30ms, v3=~440ms
-> ran simultaneously on two v3 clients; both v3=~580ms
-> ran simultaneously on the nfs-server and the two v3 clients; both
-> v3=~580ms, but local ranges ~1500ms to ~9300ms
-> ran simultaneously on two v4 clients; v4=~430ms but with frequent
-> interleaved outliers ranging from ~1500ms to ~75000ms
-> ran simultaneously on the nfs-server and the v4 client; local=~11ms, v4=STARVED
-> ran simultaneously on the v3 and the v4 client; v3=~390ms, v4=STARVED
+> Thanks for the testing....
 > 
-> FYI, "STARVED" above doesn't mean the v4 client _never_ acquires the
-> lock.   It eventually acquires the lock; albeit extremely rarely (e.g.
-> after 5min) because v4 client polling is predisposed to lose the race
-> with either the hyper-active v3 client or the local locker.
+> > 
+> > static inline void __module_get(struct module *module)
+> > {
+> >         if (module) {
+> >                 BUG_ON(module_refcount(module) == 0);      <------------
+> >                 local_inc(&module->ref[get_cpu()].count);
+> >                 put_cpu();
+> >         }
+> > }
+> > 
+> > Called from net/sunrpc/svcexport.c:svc_recv:687
 > 
-> Mike
-
-> #include <stdio.h>
-> #include <stdlib.h>
-> #include <unistd.h>
-> #include <fcntl.h>
-> #include <sys/time.h>
-> #include <string.h>
-> #include <errno.h>
+> You meant svc_xprt.c.  OK.
 > 
-> #define STEP 1000
-> #define CMD F_SETLKW
+> > 
+> >         } else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+> >                 struct svc_xprt *newxpt;
+> >                 newxpt = xprt->xpt_ops->xpo_accept(xprt);
+> >                 if (newxpt) {
+> >                         /*
+> >                          * We know this module_get will succeed because the
+> >                          * listener holds a reference too
+> >                          */
 > 
-> int main(int argc, char **argv) {
-> 	struct flock lc_rq = {F_WRLCK, SEEK_CUR, 0, 100, 0};
-> 	int i, ret = 0;
-> 	char str[10];
-> 	unsigned long sleep_timeout = 0;
-> 	struct timeval tv_start, tv_prev, tv_cur;
-> 	int fd1 = open(argv[1], O_RDWR), fd2 = 0;
-> 	off_t start = 0;
+> So clearly the assumption stated in the comment is wrong.
 > 
-> 	gettimeofday(&tv_start, NULL);
-> 	tv_cur = tv_prev = tv_start;
+> I can't see any relationship between this and the previous bug, but
+> perhaps it was covering this up somehow.
 > 
-> 	for (i=0;;i++) {
-> 		lc_rq.l_type = F_WRLCK;
-> 		ret = fcntl(fd1, CMD, &lc_rq);
+> >                         __module_get(newxpt->xpt_class->xcl_owner);
 > 
-> 		lc_rq.l_type = F_UNLCK;
-> 		ret = fcntl(fd1, CMD, &lc_rq);
-> 
-> 		if (0 == i%STEP) {
-> 			gettimeofday(&tv_cur, NULL);
-> 			printf("i=%d tot time = %dms (step time= %dms)\n", i/STEP,
-> 			       1000*(tv_cur.tv_sec - tv_start.tv_sec) + (tv_cur.tv_usec - tv_start.tv_usec)/1000,
-> 			       1000*(tv_cur.tv_sec - tv_prev.tv_sec) + (tv_cur.tv_usec - tv_prev.tv_usec)/1000);
-> 			tv_prev = tv_cur;
-> 		}
-> 	}
-> 	return 0;
-> }
+> I don't see the problem yet, but I'll look some more....
 > 
 
+FWIW, I've noticed some problems with refcounting when starting and
+stopping nfsd. When you bring it up and take it back down again
+repeatedly (i.e. run "rpc.nfsd 1" and "rpc.nfsd 0"), you'll lose 2
+sunrpc module refs on each cycle.
+
+I suspect the problem Jeff is hitting is due to that. Maybe he was just
+reliably crashing before it got to 0 before. It's on my to-do list once
+I get some other things off my plate. If someone wants to track it down
+first, be my guest :)
+
+I have a little more info in this RHBZ, but haven't had time to nail it
+down yet:
+
+https://bugzilla.redhat.com/show_bug.cgi?id=464123#c10
+
+-- 
+Jeff Layton <jlayton@redhat.com>
