@@ -1,125 +1,127 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: nfs-utils, umount -l, and unmount requests
-Date: Fri, 21 Nov 2008 12:43:06 -0500
-Message-ID: <656A1B3E-1002-4F63-B256-7A394A5A05AD@oracle.com>
-References: <E1L3ZKo-0005DO-74@mendel.bio.caltech.edu>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: David Mathog <mathog-7GExONQZ6ZKVc3sceRu5cw@public.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: list corruption in locks_start_grace with 2.6.28-rc3
+Date: Fri, 21 Nov 2008 19:54:00 -0500
+Message-ID: <20081122005400.GB28094@fieldses.org>
+References: <x498wrokjj8.fsf@segfault.boston.devel.redhat.com> <20081120203735.GB30808@fieldses.org> <x49ej15gktp.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:17507 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751026AbYKURna (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2008 12:43:30 -0500
-In-Reply-To: <E1L3ZKo-0005DO-74-Mlb+9xX7RBA8OKIjkCRLjtKIQNXEaThN@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:55401 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757871AbYKVAyC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Nov 2008 19:54:02 -0500
+In-Reply-To: <x49ej15gktp.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 21, 2008, at Nov 21, 2008, 11:58 AM, David Mathog wrote:
->>>> Removing the first "!lazy &&" resolved my immediate problem.
->>
->> Can you explain further what your "immediate problem" was?
->
-> It was the typical hall of mirrors:
->
-> 1. upgrade NFS clients Mandriva 2007.1 -> Mandriva 2008.1
-> 2. change in log files on server when client reboots - no "unmount
-> request" messages logged.  Otherwise client shutdown seemed normal.
+On Fri, Nov 21, 2008 at 10:28:18AM -0500, Jeff Moyer wrote:
+> "J. Bruce Fields" <bfields@fieldses.org> writes:
+> 
+> > On Wed, Nov 12, 2008 at 11:15:23AM -0500, Jeff Moyer wrote:
+> >> Hi,
+> >> 
+> >> I'm doing some testing which involves roughly the following:
+> >> 
+> >> o mount a file system on the server
+> >> o start the nfs service
+> >> - mount the nfs-exported file system from a client
+> >> - perform a dd from the client
+> >> - umount the nfs-exported file system from a client
+> >> o stop the nfs service
+> >> o unmount the file system on the server
+> >> 
+> >> After several iterations of this, varying the number of nfsd threads
+> >> started, I get the attached backtrace.  I've reproduced it twice, now.
+> >> 
+> >> Let me know if I can be of further help.
+> >
+> > Apologies for the delay, and thanks for the report.  Does the following
+> > help?  (Untested).
+> 
+> I get a new and different backtrace with this patch applied.  ;)
+> I'm testing with 2.6.28-rc5, fyi.
 
-I'm trying to understand why that is a problem.  The only issue here  
-is that "showmount" against the server will display clients that may  
-be no longer mounting its exports.  Otherwise, operationally there is  
-really no difference.
+Thanks for the testing....
 
-MNT_UMNT is advisory.  It is not required, and proper server operation  
-does not depend on it.
+> 
+> static inline void __module_get(struct module *module)
+> {
+>         if (module) {
+>                 BUG_ON(module_refcount(module) == 0);      <------------
+>                 local_inc(&module->ref[get_cpu()].count);
+>                 put_cpu();
+>         }
+> }
+> 
+> Called from net/sunrpc/svcexport.c:svc_recv:687
 
-> 3. tracked that to the /etc/rc.d/init.d/netfs script, which came  
-> down to
-> a "umount -f -l", where the behavior of -l had changed between  
-> releases.
-> 4. tracked the -l behavior through a change in umount (actually two)
-> such that in the current version the umount.nfs function is entirely
-> dependent on the external program, whereas in the former version it
-> would do it itself if that external program was not found.
-> 5. tracked the -l behavior to the !lazy line in nfsumount.c which was
-> mentioned in the first post in this thread.
-> 6. removing the "!lazy &&" restored the previous logging behavior by
-> the client on shutdown.
->
->> To clarify that, "-l" is used in cases where there are still
->> outstanding NFS RPCs in the kernel for that mount point, but they
->> can't complete because the server isn't available.  Thus the mount
->> point appears busy, and won't umount.  "umount -l" is used here to
->> prevent the system shutdown from hanging.
->>
->> When there may be outstanding NFS requests, the client really
->> shouldn't send the MNT_UMNT.  In general, though, MNT_UMNT is  
->> entirely
->> advisory, and the client shouldn't wait for it to complete.
->
-> That's what I'm getting at.  But rather than trying to send it, and
-> doing so in such a way that it won't lock up if the server is down, it
-> sends nothing.  This changes the behavior of a normal shutdown as seen
-> from the server side.
+You meant svc_xprt.c.  OK.
 
-The client shouldn't send MNT_UMNT if it thinks the local file system  
-wasn't actually unmounted.  With "umount -l" the kernel doesn't finish  
-unmounting until all outstanding requests are complete.  Since that's  
-all in the background with "-l", the umount command exits long before  
-that, so it can't know whether to send MNT_UMNT or not.
+> 
+>         } else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+>                 struct svc_xprt *newxpt;
+>                 newxpt = xprt->xpt_ops->xpo_accept(xprt);
+>                 if (newxpt) {
+>                         /*
+>                          * We know this module_get will succeed because the
+>                          * listener holds a reference too
+>                          */
 
-In the normal case (ie "-l" was not specified) the kernel unmounts the  
-NFS file system, then the system call returns and reports success or  
-failure.  The umount command can then assess whether to send the  
-MNT_UMNT call.
+So clearly the assumption stated in the comment is wrong.
 
->> One of the changes I made in my IPv6 patches is to shorten the  
->> timeout
->> on that clnt_call().  We could even go so far as to make MNT_UMNT
->> entirely asynchronous and not wait for the reply.
->
-> That sounds good to me.  If the client makes a "reasonable effort" to
-> send the "unmount request" to the server, so that under normal working
-> conditions the server will be notified, that should be sufficient.
+I can't see any relationship between this and the previous bug, but
+perhaps it was covering this up somehow.
 
-Except when the umount.nfs command can't tell if the kernel has  
-actually unmounted the file system or not.
+>                         __module_get(newxpt->xpt_class->xcl_owner);
 
-> One thing that bothers me though are these two situations:
->
-> dd if=/dev/zero of=/mountpoint/datafile count=1000000 bs=512
-> umount -f -l /mountpoint
->
-> and
->
-> dd if=/dev/zero of=/mountpoint/datafile count=1000000 bs=512 &
-> umount -f -l /mountpoint
->
-> What happens to the data being written to datafile, does it make it to
-> the server, assuming the server is up and working normally?  The  
-> client
-> mounted /mountpoint with bg,hard,intr,rw.
+I don't see the problem yet, but I'll look some more....
 
-I'm not exactly sure how this would work, especially with the presence  
-of "-f".  The exact behavior of these flags has changed over time.
+--b.
 
-But the client should wait for all outstanding I/O to complete and for  
-applications to close all files before the file system is actually  
-unmounted.  "Hard" will cause the client to retry these requests  
-forever.  It may even be the case that the kernel removes that file  
-system from the system's file namespace to prevent other applications  
-from opening files there.
-
-This is why "umount -l" is probably reasonable during shutdown, but  
-perhaps not for normal operation.  During shutdown, any applications  
-left running will be killed by the shutdown script anyway.  My opinion  
-though is that the shutdown script should try a normal umount first,  
-then if it retries, use "umount -l" as a last resort so the rest of  
-shutdown processing can continue in an orderly fashion.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> 
+> Cheers,
+> Jeff
+> 
+>  ------------[ cut here ]------------
+> kernel BUG at include/linux/module.h:394!
+> invalid opcode: 0000 [#1] PREEMPT SMP 
+> last sysfs file: /sys/devices/pci0000:00/0000:00:1e.0/0000:01:04.6/local_cpus
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> CPU 0 
+> Modules linked in: nfsd lockd nfs_acl auth_rpcgss exportfs bridge stp bnep rfcomm l2cap bluetooth sunrpc iptable_filter ip_tables ip6table_filter ip6_tables x_tables ipv6 loop dm_round_robin dm_multipath sg sd_mod crc_t10dif ide_cd_mod cdrom bnx2 serio_raw ipmi_si pcspkr qla2xxx ipmi_msghandler scsi_transport_fc button dm_snapshot dm_zero dm_mirror dm_region_hash dm_log dm_mod shpchp cciss scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd [last unloaded: microcode]
+> Pid: 5733, comm: nfsd Tainted: G        W  2.6.28-rc5 #56
+> RIP: 0010:[<ffffffffa03695a5>]  [<ffffffffa03695a5>] svc_recv+0x41f/0x7a1 [sunrpc]
+> RSP: 0018:ffff8802148b3e60  EFLAGS: 00010246
+> RAX: 0000000000000000 RBX: ffffffffa0382600 RCX: 0000000000000000
+> RDX: 0000000000007f80 RSI: ffff8802148b3d70 RDI: ffffffffa0382600
+> RBP: ffff8802148b3ef0 R08: ffff88021a1f1048 R09: 0000000000000000
+> R10: 0000000000000000 R11: ffff8802148b3c30 R12: ffff8802195f9a50
+> R13: ffff8802195f8000 R14: ffff88021c5904f0 R15: ffff8802299b45b0
+> FS:  0000000000000000(0000) GS:ffffffff80855a00(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+> CR2: 00007f4d05281000 CR3: 000000021f5cc000 CR4: 00000000000006e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process nfsd (pid: 5733, threadinfo ffff8802148b2000, task ffff8802194c8040)
+> Stack:
+>  00000000195f8000 0000000000000000 000000000036ee80 ffff88021ed49930
+>  ffff8802191eb3d8 ffffffffa0487118 0000000000000000 ffff8802194c8040
+>  ffffffff80238e07 0000000000100100 0000000000200200 ffffffff804e2471
+> Call Trace:
+>  [<ffffffff80238e07>] ? default_wake_function+0x0/0xf
+>  [<ffffffff804e2471>] ? __mutex_unlock_slowpath+0x11e/0x127
+>  [<ffffffffa045d773>] nfsd+0xed/0x295 [nfsd]
+>  [<ffffffffa045d686>] ? nfsd+0x0/0x295 [nfsd]
+>  [<ffffffffa045d686>] ? nfsd+0x0/0x295 [nfsd]
+>  [<ffffffff802506a8>] kthread+0x49/0x76
+>  [<ffffffff8020d1d9>] child_rip+0xa/0x11
+>  [<ffffffff8020c6c8>] ? restore_args+0x0/0x30
+>  [<ffffffff8025065f>] ? kthread+0x0/0x76
+>  [<ffffffff8020d1cf>] ? child_rip+0x0/0x11
+> Code: 08 4c 89 f7 ff 50 08 48 85 c0 49 89 c7 0f 84 71 01 00 00 48 8b 00 48 8b 58 08 48 85 db 74 4e 48 89 df e8 17 9b ef df 85 c0 75 04 <0f> 0b eb fe bf 01 00 00 00 e8 9c d6 17 e0 e8 d4 a4 ff df 89 c0 
+> RIP  [<ffffffffa03695a5>] svc_recv+0x41f/0x7a1 [sunrpc]
+>  RSP <ffff8802148b3e60>
+> ---[ end trace 4eaa2a86a8e2da22 ]---
