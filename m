@@ -1,58 +1,40 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NLM: AF_UNSPEC addresses are all equal
-Date: Mon, 24 Nov 2008 13:19:12 -0500
-Message-ID: <20081124181912.GK17862@fieldses.org>
-References: <20081122165521.3765.1127.stgit@ingres.1015granger.net> <F3857F53-32D5-47C6-AE76-D1575F5C7091@oracle.com> <20081124181833.GJ17862@fieldses.org>
+Subject: Re: [PATCH 0/6] SLAB-ify nlm_host cache
+Date: Mon, 24 Nov 2008 13:38:36 -0500
+Message-ID: <20081124183836.GM17862@fieldses.org>
+References: <20081105215042.16549.50065.stgit@ingres.1015granger.net> <1225922196.16857.60.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:50362 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:46508 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750704AbYKXSTO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Nov 2008 13:19:14 -0500
-In-Reply-To: <20081124181833.GJ17862@fieldses.org>
+	id S1750837AbYKXSil (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Nov 2008 13:38:41 -0500
+In-Reply-To: <1225922196.16857.60.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 24, 2008 at 01:18:33PM -0500, bfields wrote:
-> On Sat, Nov 22, 2008 at 09:08:30PM -0500, Chuck Lever wrote:
-> > Hi Bruce-
-> >
-> > On Nov 22, 2008, at Nov 22, 2008, 11:58 AM, Chuck Lever wrote:
-> >> The nlm_cmp_addr() function, which compares two IP addresses, is
-> >> sometimes used to check AF_UNSPEC addresses.  If both addresses are
-> >> AF_UNSPEC, then it should consider them equal -- the contents of an
-> >> AF_UNSPEC address, other than the address family, are
-> >> inconsequential.
-> >>
-> >> This is important because the loop in nlm_lookup_host() always
-> >> compares the h_srcaddr field to the incoming source address.  For
-> >> client nlm_host entries, both are always AF_UNSPEC, and should allow
-> >> the entry match to succeed.  If it always fails, then we create a
-> >> fresh nlm_host entry every time we mount the same server, even if
-> >> all other items in the existing entry (protocol, NLM version, host
-> >> address) match.
-> >>
-> >> These extra entries will eventually expire once the server is
-> >> unmounted, so the impact of this bug, introduced in 2.6.28 with
-> >> commit 781b61a6, should be minor.
-> >>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >> Bruce-
-> >>
-> >> Another minor lockd IPv6 bug fix for 2.6.28.
-> >>
-> >> Alternate fix for this problem is to change nlm_lookup_host() so that
-> >> it compares the srcaddrs only when h_server is set.
-> >
-> > I now have a patch that does this instead, and it seems to make more  
-> > sense to me.
+On Wed, Nov 05, 2008 at 04:56:36PM -0500, Trond Myklebust wrote:
+> On Wed, 2008-11-05 at 16:51 -0500, Chuck Lever wrote:
+> > Here's a set of patches to change the NLM host cache to use a slab.
 > 
-> OK.  (I don't think you've sent it yet?)
+> OK, I'll bite. Why would we care about slabifying the NLM host cache?
 
-Just found it, never mind!
+There's some argument on the 5th patch:
+
+	"Now that we have a couple of large text buffers in the nlm_host
+	struct, the nlm_host cache should use a slab to reduce memory
+	utilization and fragmentation on systems that manage a large
+	number of NLM peers.
+
+	"We keep these hardware cache-aligned to speed up the linked
+	list search in nlm_lookup_host().
+
+	"The overhead of creating a fresh nlm_host entry is also reduced
+	using SLAB's init_once callback instead of using kzalloc()."
+
+Chuck, is there any hope of quantifying those improvements?
 
 --b.
