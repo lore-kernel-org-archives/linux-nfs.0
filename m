@@ -1,56 +1,95 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] svcsock: Add a reference to sunrpc in svc_addsock
-Date: Sun, 23 Nov 2008 08:08:36 -0600
-Message-ID: <1227449316-27946-1-git-send-email-tom@opengridcomputing.com>
-Cc: jlayton@redhat.com, jmoyer@redhat.com, linux-nfs@vger.kernel.org,
-	Tom Tucker <tom@opengridcomputing.com>
-To: tom@opengridcomputing.com, bfields@fieldses.org
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH nfs-utils] Ensure statd gets started if required when non-root user mounts an NFS filesystem.
+Date: Mon, 24 Nov 2008 11:07:19 +1100
+Message-ID: <18729.61495.911485.826997@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:43718 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758210AbYKWOIg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Nov 2008 09:08:36 -0500
+Received: from mx2.suse.de ([195.135.220.15]:53243 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751751AbYKXAHU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 23 Nov 2008 19:07:20 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The svc_addsock function adds transport instances without taking a
-reference on the sunrpc.ko module, however, the generic transport
-destruction code drops a reference when a transport instance
-is destroyed.
 
-Add a try_module_get call to the svc_addsock function for transport
-instances added by this function.
+openSUSE-11.1 betas rely in mount.nfs to start statd when required.
+This helped me discover that it doesn't work when a non-root user is
+mounting a filesystem as the setuid status gets lots.
+This patch fixes it.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Thanks,
+NeilBrown
 
+
+
+>From 78d2001f031553ef90db708d5a7b3fbb9b31a873 Mon Sep 17 00:00:00 2001
+From: Neil Brown <neilb@suse.de>
+Date: Mon, 24 Nov 2008 11:00:19 +1100
+Subject: [PATCH] Ensure statd gets started if required when non-root user mounts an NFS filesystem.
+
+The first time an NFS filesystem is mounted, we start statd from /sbin/mount.nfs.
+If this first time is a non-root user doing the mount, (thanks to e.g. the
+'users' option in /etc/fstab) then we need to be sure that the 'setuid' status
+from mount.nfs is inherited through to rpc.statd so that it runs as root.
+
+There are two places where we loose our setuid status due to the shell
+(/bin/sh) discarding.
+
+1/ mount.nfs uses "system" to run /usr/sbin/start-statd.  This runs a shell
+  which is likely to drop privileges.  So change that code to use
+  'fork' and 'execl' explicitly.
+2/ start-statd is a shell script.  To convince the shell to allow the
+  program to run in privileged mode, we need to add a "-p" flag.
+
+We could just call
+    setuid(getuid())
+at some appropriate time, and it might be worth doing that as well, however
+I think that getting rid of 'system()' is a good idea and once that is
+done, the adding of '-p' is trivial and sufficient.
+
+Signed-off-by: Neil Brown <neilb@suse.de>
 ---
- net/sunrpc/svcsock.c |    9 +++++++--
- 1 files changed, 7 insertions(+), 2 deletions(-)
+ utils/mount/network.c   |   13 ++++++++++++-
+ utils/statd/start-statd |    2 +-
+ 2 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 95293f5..a1951dc 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1183,7 +1183,11 @@ int svc_addsock(struct svc_serv *serv,
- 	else if (so->state > SS_UNCONNECTED)
- 		err = -EISCONN;
- 	else {
--		svsk = svc_setup_socket(serv, so, &err, SVC_SOCK_DEFAULTS);
-+		if (!try_module_get(THIS_MODULE))
-+			err = -ENOENT;
-+		else
-+			svsk = svc_setup_socket(serv, so, &err,
-+						SVC_SOCK_DEFAULTS);
- 		if (svsk) {
- 			struct sockaddr_storage addr;
- 			struct sockaddr *sin = (struct sockaddr *)&addr;
-@@ -1196,7 +1200,8 @@ int svc_addsock(struct svc_serv *serv,
- 			spin_unlock_bh(&serv->sv_lock);
- 			svc_xprt_received(&svsk->sk_xprt);
- 			err = 0;
--		}
-+		} else
-+			module_put(THIS_MODULE);
- 	}
- 	if (err) {
- 		sockfd_put(so);
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 2db694d..541003a 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -705,7 +705,18 @@ int start_statd(void)
+ #ifdef START_STATD
+ 	if (stat(START_STATD, &stb) == 0) {
+ 		if (S_ISREG(stb.st_mode) && (stb.st_mode & S_IXUSR)) {
+-			system(START_STATD);
++			pid_t pid = fork();
++			switch (pid) {
++			case 0: /* child */
++				execl(START_STATD, START_STATD, NULL);
++				exit(1);
++			case -1: /* error */
++				perror("Fork failed");
++				break;
++			default: /* parent */
++				waitpid(pid, NULL,0);
++				break;
++			}
+ 			if (probe_statd())
+ 				return 1;
+ 		}
+diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+index 6e7ea04..c7805ee 100644
+--- a/utils/statd/start-statd
++++ b/utils/statd/start-statd
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/sh -p
+ # nfsmount calls this script when mounting a filesystem with locking
+ # enabled, but when statd does not seem to be running (based on
+ # /var/run/rpc.statd.pid).
+-- 
+1.5.6.5
+
