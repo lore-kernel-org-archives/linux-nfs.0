@@ -1,74 +1,82 @@
-From: Andrew Pollock <apollock@google.com>
-Subject: Patch to prevent rpc.gssd spamming logs when Kerberos credentials are
-	expired
-Date: Tue, 25 Nov 2008 13:22:21 -0800
-Message-ID: <39d46ab50811251322j73574e1cg19a1650c8f567463@mail.gmail.com>
+From: "Kevin Coffman" <kwc@umich.edu>
+Subject: Re: Patch to prevent rpc.gssd spamming logs when Kerberos credentials are expired
+Date: Tue, 25 Nov 2008 17:49:55 -0500
+Message-ID: <4d569c330811251449u3ca7701eu41a633b4a95f3bb4@mail.gmail.com>
+References: <39d46ab50811251322j73574e1cg19a1650c8f567463@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=000e0cd2e33e611772045c8a1b02
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Andrew Pollock" <apollock@google.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:13764 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752222AbYKYVWZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2008 16:22:25 -0500
-Received: from spaceape7.eur.corp.google.com (spaceape7.eur.corp.google.com [172.28.16.141])
-	by smtp-out.google.com with ESMTP id mAPLMNTl026766
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Nov 2008 13:22:24 -0800
-Received: from yx-out-2324.google.com (yxj3.prod.google.com [10.190.3.67])
-	by spaceape7.eur.corp.google.com with ESMTP id mAPLMLBq026638
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Nov 2008 13:22:22 -0800
-Received: by yx-out-2324.google.com with SMTP id 3so104427yxj.21
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Nov 2008 13:22:21 -0800 (PST)
+Received: from yx-out-2324.google.com ([74.125.44.28]:55572 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752322AbYKYWt4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2008 17:49:56 -0500
+Received: by yx-out-2324.google.com with SMTP id 8so118843yxm.1
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Nov 2008 14:49:55 -0800 (PST)
+In-Reply-To: <39d46ab50811251322j73574e1cg19a1650c8f567463-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---000e0cd2e33e611772045c8a1b02
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+On Tue, Nov 25, 2008 at 4:22 PM, Andrew Pollock <apollock@google.com> wrote:
+> Hi,
+>
+> We've seen excessive (disk filling) log spam from rpc.gssd where users
+> mount their home directory via Kerberised NFS, and their Kerberos TGT
+> expires. You get lots of noise like described at
+> https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/293705
+>
+> Attached is the patch that we've been using to address this.
+>
+> regards
+>
+> Andrew
 
-Hi,
+Hi Andrew,
 
-We've seen excessive (disk filling) log spam from rpc.gssd where users
-mount their home directory via Kerberised NFS, and their Kerberos TGT
-expires. You get lots of noise like described at
-https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/293705
+I looked at the referenced bug discussion.  Looking at the supplied
+patch, I suspect you either (1) normally run rpc.gssd with "-v", or
+(2) you are depending on the other part of the original patch that
+decreases verbosity (copied below).  If the latter is true, then
+shouldn't it be sufficient to only change the error messages from
+level 0 to level 1 as I've shown below?
 
-Attached is the patch that we've been using to address this.
+--- nfs-utils-1.1.2.orig/utils/gssd/err_util.c
++++ nfs-utils-1.1.2/utils/gssd/err_util.c
+@@ -49,6 +49,10 @@
+ {
+ 	va_list args;
 
-regards
++	/* Decrease verbosity so we don't log so much */
++	if ((priority - verbosity) > 1)
++		return;
++
+ 	/* Don't bother formatting a message we're never going to print! */
+ 	if (priority > verbosity)
+ 		return;.
 
-Andrew
 
---
-Andrew Pollock
-Google Systems Administrator
 
---000e0cd2e33e611772045c8a1b02
-Content-Type: text/x-diff; charset=US-ASCII; name="101-reduce-verbosity.diff"
-Content-Disposition: attachment; filename="101-reduce-verbosity.diff"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_fnz1zw580
+--- nfs-utils-1.1.2.orig/utils/gssd/gssd_proc.c
++++ nfs-utils-1.1.2/utils/gssd/gssd_proc.c
+@@ -743,7 +743,7 @@
+ 	}
 
-LS0tIG5mcy11dGlscy0xLjEuMi5vcmlnL3V0aWxzL2dzc2QvZ3NzZF9wcm9jLmMKKysrIG5mcy11
-dGlscy0xLjEuMi91dGlscy9nc3NkL2dzc2RfcHJvYy5jCkBAIC00NTMsNyArNDUzLDcgQEAKIAl1
-bnNpZ25lZCBpbnQgdGltZW91dCA9IDA7CiAJaW50CXplcm8gPSAwOwogCi0JcHJpbnRlcnIoMSwg
-ImRvaW5nIGVycm9yIGRvd25jYWxsXG4iKTsKKwlwcmludGVycigyLCAiZG9pbmcgZXJyb3IgZG93
-bmNhbGxcbiIpOwogCiAJaWYgKFdSSVRFX0JZVEVTKCZwLCBlbmQsIHVpZCkpIGdvdG8gb3V0X2Vy
-cjsKIAlpZiAoV1JJVEVfQllURVMoJnAsIGVuZCwgdGltZW91dCkpIGdvdG8gb3V0X2VycjsKQEAg
-LTY3Nyw3ICs2NzcsNyBAQAogCWNoYXIJCQkqKmNjbmFtZTsKIAlpbnQJCQljcmVhdGVfcmVzcCA9
-IC0xOwogCi0JcHJpbnRlcnIoMSwgImhhbmRsaW5nIGtyYjUgdXBjYWxsXG4iKTsKKwlwcmludGVy
-cigyLCAiaGFuZGxpbmcga3JiNSB1cGNhbGxcbiIpOwogCiAJdG9rZW4ubGVuZ3RoID0gMDsKIAl0
-b2tlbi52YWx1ZSA9IE5VTEw7CkBAIC03NDMsNyArNzQzLDcgQEAKIAl9CiAKIAlpZiAoIWF1dGhn
-c3NfZ2V0X3ByaXZhdGVfZGF0YShhdXRoLCAmcGQpKSB7Ci0JCXByaW50ZXJyKDAsICJXQVJOSU5H
-OiBGYWlsZWQgdG8gb2J0YWluIGF1dGhlbnRpY2F0aW9uICIKKwkJcHJpbnRlcnIoMiwgIldBUk5J
-Tkc6IEZhaWxlZCB0byBvYnRhaW4gYXV0aGVudGljYXRpb24gIgogCQkJICAgICJkYXRhIGZvciB1
-c2VyIHdpdGggdWlkICVkIGZvciBzZXJ2ZXIgJXNcbiIsCiAJCQkgdWlkLCBjbHAtPnNlcnZlcm5h
-bWUpOwogCQlnb3RvIG91dF9yZXR1cm5fZXJyb3I7Cm9ubHkgaW4gcGF0Y2gyOgp1bmNoYW5nZWQ6
-Ci0tLSBuZnMtdXRpbHMtMS4xLjIub3JpZy91dGlscy9nc3NkL2dzc191dGlsLmMKKysrIG5mcy11
-dGlscy0xLjEuMi91dGlscy9nc3NkL2dzc191dGlsLmMKQEAgLTEyMiw3ICsxMjIsNyBAQAogCQkJ
-CSJnc3NfZGlzcGxheV9zdGF0dXMgY2FsbGVkIGZyb20gJXNcbiIsIG0pOwogCQkJYnJlYWs7CiAJ
-CX0gZWxzZSB7Ci0JCQlwcmludGVycigwLCAiRVJST1I6IEdTUy1BUEk6ICglcykgZXJyb3IgaW4g
-JXMoKTogJXNcbiIsCisJCQlwcmludGVycigyLCAiRVJST1I6IEdTUy1BUEk6ICglcykgZXJyb3Ig
-aW4gJXMoKTogJXNcbiIsCiAJCQkgICAgdHlwZXN0ciwgbSwgKGNoYXIgKiltc2cudmFsdWUpOwog
-CQl9CiAK
---000e0cd2e33e611772045c8a1b02--
+ 	if (!authgss_get_private_data(auth, &pd)) {
+-		printerr(0, "WARNING: Failed to obtain authentication "
++		printerr(1, "WARNING: Failed to obtain authentication "
+ 			    "data for user with uid %d for server %s\n",
+ 			 uid, clp->servername);
+ 		goto out_return_error;
+only in patch2:
+unchanged:
+--- nfs-utils-1.1.2.orig/utils/gssd/gss_util.c
++++ nfs-utils-1.1.2/utils/gssd/gss_util.c
+@@ -122,7 +122,7 @@
+ 				"gss_display_status called from %s\n", m);
+ 			break;
+ 		} else {
+-			printerr(0, "ERROR: GSS-API: (%s) error in %s(): %s\n",
++			printerr(1, "ERROR: GSS-API: (%s) error in %s(): %s\n",
+ 			    typestr, m, (char *)msg.value);
+ 		}
