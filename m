@@ -1,63 +1,43 @@
-From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
-Subject: Re: [PATCH] NFS regression in 2.6.26?, "task blocked for more than
-	120 seconds"
-Date: Tue, 25 Nov 2008 14:04:37 +0000
-Message-ID: <1227621877.9425.102.camel@zakaz.uk.xensource.com>
-References: <20081017123207.GA14979@rabbit.intern.cm-ag>
-	 <1224484046.23068.14.camel@localhost.localdomain>
-	 <1225539927.2221.3.camel@localhost.localdomain>
-	 <1225546878.4390.3.camel@heimdal.trondhjem.org>
-	 <1227596962.16868.22.camel@localhost.localdomain>
-	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
-	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
-	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/4] Support for IPv6 in the showmount command
+Date: Tue, 25 Nov 2008 09:27:56 -0500
+Message-ID: <492C0B6C.7070104@RedHat.com>
+References: <20081118192711.22516.2801.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
-	linux-kernel@vger.kernel.org, gcosta@redhat.com,
-	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout01-winn.ispmail.ntl.com ([81.103.221.47]:9439 "EHLO
-	mtaout01-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752927AbYKYOE6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2008 09:04:58 -0500
-In-Reply-To: <1227621434.7057.33.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:58495 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750935AbYKYOaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Nov 2008 09:30:15 -0500
+In-Reply-To: <20081118192711.22516.2801.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-11-25 at 08:57 -0500, Trond Myklebust wrote:
-> On Tue, 2008-11-25 at 13:38 +0000, Ian Campbell wrote:
-> > > That would indicate that the server is failing to close the TCP
-> > > connection when the client closes on its end.
-> > > 
-> > > Could you remind me what server you are using?
-> > 
-> > 2.6.25-2-486 which is a Debian package from backports.org, changelog
-> > indicates that it contains 2.6.25.7.
+
+
+Chuck Lever wrote:
+> Hi Steve-
 > 
-> Hmm... It should normally close sockets when the state changes. There
-> might be a race, though...
+> These patches implement support for rpcbind v3/v4 queries and IPv6 NFS
+> servers in the showmount command.  Please consider these for the next
+> release of nfs-utils.
 > 
-> > > Also, does 'netstat -t'
-> > > show connections that are stuck in the CLOSE_WAIT state when you see the
-> > > hang?
-> > 
-> > I'd have to wait for it to reproduce again to be 100% sure but according
-> > to http://lkml.indiana.edu/hypermail/linux/kernel/0808.3/0120.html
-> > I was seeing connections in FIN_WAIT2 but not CLOSE_WAIT.
+> Thanks!
 > 
-> That would be on the client side. I'm talking about the server.
+> ---
+> 
+> Chuck Lever (4):
+>       showmount command: support querying IPv6 servers
+>       showmount command: move logic to acquire RPC client handle out of main()
+>       showmount command: Remove unused local getport() implementation
+>       showmount command: call nfs_getport instead of local getport
+> 
+> 
+>  utils/showmount/showmount.c |  237 +++++++++++++++++--------------------------
+>  1 files changed, 91 insertions(+), 146 deletions(-)
+All four patch have been committed and regression tested... 
 
-Ah, OK. I'll abort my current test of 2.6.26+revert and wait for a repro
-so I can netstat the server, give me a couple of days...
-
-Ian.
--- 
-Ian Campbell
-
-It is more rational to sacrifice one life than six.
-		-- Spock, "The Galileo Seven", stardate 2822.3
-
+steved.
