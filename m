@@ -1,63 +1,62 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS intr/nointr: SIGKILL may leave pages locked forever
-Date: Wed, 26 Nov 2008 11:16:31 -0500
-Message-ID: <A21BBBC8-2C5D-4384-BCCF-A7290D53EB8C@oracle.com>
-References: <1A5BADE4-02EB-473A-957A-2329DFBC92B3@oracle.com> <E0B63DDE-B5D0-4DCA-B521-044759E1BFF0@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Matthew Wilcox <matthew@wil.cx>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754455AbYKZQQz@vger.kernel.org>
-In-Reply-To: <E0B63DDE-B5D0-4DCA-B521-044759E1BFF0@oracle.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: "Elizabeth N Ritter" <Regina-PqZpVsC7ZuIXd2eK3EN7ubNAH6kLmebB@public.gmane.org>
+Subject: [NFS] Comprehensive Healthcare Marketing List
+Date: Wed, 26 Nov 2008 17:36:41 +0000
+Message-ID: <E1L5OJd-0005g7-AX@h25xhf1.ch3.sourceforge.com>
+Reply-To: Elizabeth N Ritter <emailnotchecked-W3yqWAQfaE6Bik42HM7KXg@public.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org, james-UW7ubuoEE6kKlTDg6p0iyA@public.gmane.org,
+	info-LFeGT2/6INXjdjIjlFSW2CgDOeOZ+F6AyTztyo2qNnY@public.gmane.org, bwilliam-oe7qfRrRQfesx2OscRBu2odd74u8MsAO@public.gmane.org,
+	macklinc-rMPiz86vIOZkZI0wD67Jjg@public.gmane.org, riwilliams-nobbX0ypQYQsQv5ZqcSHkQ@public.gmane.org,
+	bald_pete@hotmail.com
+To: rarigk-2x7wxiopNBA@public.gmane.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:51659 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752505AbYKZRh3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Nov 2008 12:37:29 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1L5OKN-0002BG-QB
+	for linux-nfs@vger.kernel.org; Thu, 27 Nov 2008 04:37:27 +1100
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 29, 2008, at 12:38 PM, Chuck Lever wrote:
-> On Oct 24, 2008, at 11:11 AM, Chuck Lever wrote:
->> Hi Matthew-
->>
->> We are still trying to pursue intr/nointr testing on 2.6.25+  
->> kernels.  Looks like this week's kernel version is 2.6.27-rc7, but  
->> I will need to confirm that.
->>
->> Since 2.6.25, the problem is the "sql shutdown abort" command,  
->> which is designed to trigger an immediate database shutdown, causes  
->> the database instance to hang.  It leaves database writer processes  
->> stuck in "D" state after it sends a SIGKILL.
->>
->> The process backtraces suggest that these processes are waiting for  
->> the inode mutex before trying to invalidate the database file's  
->> cache (nfs_invalidate_mapping).  There is one process that owns the  
->> mutex and is stuck waiting for a page lock in  
->> invalidate_inode_pages2_range.  This suggests that the signal is  
->> causing some other code path to neglect to unlock that page.
->>
->> It's a little out of my league.  Are there ways we can gather more  
->> information?
->
-> As a follow-up, we've found that we don't have this problem on UP  
-> NFS clients.  On single processor clients, SIGKILL works correctly  
-> and the database shuts down without corrupting its data files.  On  
-> SMP clients, the signal results in hung database writers.
->
-> We've confirmed this difference on 2.6.25-rc2 and 2.6.27-rc7.
+Certified Medical Doctors in the US 
+
+Medical Doctors in many different specialties
+
+you can sort by many different fields like city, state or zip
+
+Regular price is $494 but this week you only pay: $399
 
 
-Second follow up.  I've constructed a patch that saves the stack  
-backtrace of the page locker.  sysRq-T dumps the backtrace into the  
-kernel log.  On 2.6.27 SMP after the deadlock, this is what we get:
+~~~~~ These lists come at no charge when you order: ~~~~~
 
-kernel: pages waiting in invalidate_inode_pages2_range:
-kernel:   page index 80832
-kernel:       [<c04540b2>] generic_file_aio_read+0x364/0x507
-kernel:       [<f8d26322>] nfs_file_read+0xc6/0xd4 [nfs]
-kernel:       [<c047196f>] do_sync_read+0xab/0xe9
-kernel:       [<c0472085>] vfs_read+0x8a/0x106
-kernel:       [<c047244c>] sys_pread64+0x43/0x5c
-kernel:       [<c0403859>] sysenter_do_call+0x12/0x21
-kernel:       [<ffffffff>] 0xffffffff
+--> Dentists
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--> Veterinarians
+
+--> Physical Therapists
+
+--> Visiting Nurses & RN's
+
+Email us at:: Benitez-Px9Zx9/iZEOakBO8gow8eQ@public.gmane.org
+  
+this offer is only valid until Nov 28, 2008 ==============   To invoke no further correspondence status please send an email to gone-Px9Zx9/iZEOakBO8gow8eQ@public.gmane.org
+
+
+
+-------------------------------------------------------------------------
+This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
+Build the coolest Linux based applications with Moblin SDK & win great prizes
+Grand prize is a trip for two to an Open Source event anywhere in the world
+http://moblin-contest.org/redirect.php?banner_id=100&url=/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
