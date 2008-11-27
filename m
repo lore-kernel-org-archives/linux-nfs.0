@@ -1,66 +1,37 @@
-From: Benny Halevy <bhalevy@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: [PATCH 1/1] NFS: fix ERR_PTR with un mapped NFSv4 error
-Date: Thu, 27 Nov 2008 09:15:24 +0200
-Message-ID: <492E490C.2030109@panasas.com>
+Date: Thu, 27 Nov 2008 15:12:08 -0500
+Message-ID: <1227816728.10634.8.camel@heimdal.trondhjem.org>
 References: <1227739740-5885-1-git-send-email-andros@netapp.com>
+	 <492E490C.2030109@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: andros@netapp.com, Trond.Myklebust@netapp.com
+Content-Type: text/plain
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:22553 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751788AbYK0HPC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Nov 2008 02:15:02 -0500
-In-Reply-To: <1227739740-5885-1-git-send-email-andros@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:23641 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751020AbYK0UOb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Nov 2008 15:14:31 -0500
+In-Reply-To: <492E490C.2030109@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andy, I wonder if this actually needs to be done in
-lower-level functions (e.g. nfs_probe_fsinfo).
-I think that in general we should not let nfs errors
-out of the layer immediately invoking the xdr routines.
+On Thu, 2008-11-27 at 09:15 +0200, Benny Halevy wrote:
+> Andy, I wonder if this actually needs to be done in
+> lower-level functions (e.g. nfs_probe_fsinfo).
+> I think that in general we should not let nfs errors
+> out of the layer immediately invoking the xdr routines.
 
-Benny
+I agree. We're not processing the NFSv4-specific errors at that level,
+so why pass them up in the first place?
 
-On Nov. 27, 2008, 0:49 +0200, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> NFSv4 errors need to be mapped prior to ERR_PTR.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/client.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 7547600..49f06ce 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -1154,7 +1154,7 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
->  error:
->  	nfs_free_server(server);
->  	dprintk("<-- nfs4_create_server() = error %d\n", error);
-> -	return ERR_PTR(error);
-> +	return ERR_PTR(nfs4_map_errors(error));
->  }
->  
->  /*
-> @@ -1231,7 +1231,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
->  error:
->  	nfs_free_server(server);
->  	dprintk("<-- nfs4_create_referral_server() = error %d\n", error);
-> -	return ERR_PTR(error);
-> +	return ERR_PTR(nfs4_map_errors(error));
->  }
->  
->  #endif /* CONFIG_NFS_V4 */
-> @@ -1299,7 +1299,7 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
->  out_free_server:
->  	nfs_free_server(server);
->  	dprintk("<-- nfs_clone_server() = error %d\n", error);
-> -	return ERR_PTR(error);
-> +	return ERR_PTR(nfs4_map_errors(error));
->  }
->  
->  #ifdef CONFIG_PROC_FS
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
