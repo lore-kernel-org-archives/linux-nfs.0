@@ -1,80 +1,73 @@
-From: "Dr. Tilmann Bubeck" <t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org>
-Subject: Re: Is order for "exportfs -r" and rpc.mountd important?
-Date: Fri, 28 Nov 2008 17:05:44 +0100
-Message-ID: <200811281705.45087.t.bubeck@reinform.de>
-References: <200811281541.39272.t.bubeck@reinform.de>
+From: David Liontooth <lionteeth-tj7FKCIresWsTnJN9+BGXg@public.gmane.org>
+Subject: No write access with recent versions of nfs-utils in Debian
+Date: Sun, 30 Nov 2008 14:13:49 -0800
+Message-ID: <4933101D.9000308@cogweb.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw1.reinform.de ([82.141.45.9]:59684 "EHLO
-	mail-out.dmz.loef.reinform.de" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751158AbYK1QVM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Nov 2008 11:21:12 -0500
-Received: from postfix.loef.reinform.de (postfix.loef.reinform.de [10.1.1.39])
-	by mail-out.dmz.loef.reinform.de (Postfix) with ESMTP id 6A4F41485DF
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Nov 2008 17:21:10 +0100 (CET)
-Received: from mail.reinform.de (mail.reinform.de [82.141.45.14])
-	by postfix.loef.reinform.de (Postfix) with ESMTP id F063B1BC14
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Nov 2008 17:21:09 +0100 (CET)
-Received: from loeffel.loef.reinform.de (loeffel.loef.reinform.de [10.1.1.2])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.reinform.de (Postfix) with ESMTPSA id 4E0E763728
-	for <linux-nfs@vger.kernel.org>; Fri, 28 Nov 2008 17:21:09 +0100 (CET)
-In-Reply-To: <200811281541.39272.t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org>
+Received: from weber.sscnet.ucla.edu ([128.97.42.3]:46466 "EHLO
+	weber.sscnet.ucla.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753839AbYK3WrK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Nov 2008 17:47:10 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by weber.sscnet.ucla.edu (8.14.2/8.14.2) with ESMTP id mAUMDuwS019865
+	for <linux-nfs@vger.kernel.org>; Sun, 30 Nov 2008 14:13:56 -0800 (PST)
+Received: from weber.sscnet.ucla.edu ([127.0.0.1])
+ by localhost (weber [127.0.0.1]) (amavisd-new, port 10024) with LMTP
+ id 29584-07 for <linux-nfs@vger.kernel.org>;
+ Sun, 30 Nov 2008 14:13:56 -0800 (PST)
+Received: from TimTi-2.local (ip8061f559.host.ucla.edu [128.97.245.89])
+	by weber.sscnet.ucla.edu (8.14.2/8.14.2) with ESMTP id mAUMDo3T019817
+	for <linux-nfs@vger.kernel.org>; Sun, 30 Nov 2008 14:13:51 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To be more precise: the order between "exportfs -r" and "modprobe nfsd" is 
-important (and not "exportfs -r" and "rpc.mountd").
+This appears to be a Debian-specific issue, so I'm just looking for a 
+pointer from someone who may know about it.
 
-Am Freitag, 28. November 2008 15:41:38 schrieb Dr. Tilmann Bubeck:
-> According to manual page "exportfs -r" has two modes: legacy and new.
-> Fedora 10 seems to use the new mode and mounts /proc/fs/nfsd.
->
-> But they use the following order in /etc/init.d/nfs:
->   exportfs -r
->   rpc.mountd
->
-> This results in /proc/fs/nfsd/exports having all obsolete entries
-> from /var/lib/nfs/rmtab which causes a lot of trouble with stale NFS file
-> handles. This seems to be wrong according to "man exportfs" in new mode.
->
-> If I change the order to
->   rpc.mountd
->   exportfs -r
->
-> then everything is OK and /proc/fs/nfsd/exports only contains the info
-> from /etc/exports and not all stale clients. This seems to be correct
-> according to "man exportfs" in new mode.
->
-> Questions: is this behaviour a bug or at least bad? Shouldn't exportfs
-> being changed, so that when it detects "new" mode it will never feed rmtab
-> into the kernel and rely upon rpc.mountd answering the kernels questions as
-> stated in "man exportfs"?
->
-> If yes, then the order or the programs is irrelevant.
-> If not, should the order of the programs be reversed in Fedora?
->
-> Thanks
->  Till
+I installed Debian sid on a new machine back in July, including the 
+current nfs-common and nfs-kernel-server.  NFS mounts were successful, 
+but did not allow write -- I lost some serious data on one occasion 
+before I noticed the problem.  mount and nfs-utils were upgraded several 
+times since, and never gave the requested write access. I've been 
+assuming the problem was firewall-related and lived with it.
+
+On the other machines in the group, NFS writes worked fine.  I banged my 
+head against the wall for a while today, after finally finding time to 
+look into the problem, and discovered a completely different version of 
+nfs-utils was running on the new machine. After a painful downgrade 
+things work fine again. 
+
+Here's the verbose output of the version that didn't work, nfs-common  
+1:1.1.3-2:
+
+mount -vvv /mnt/cortona1
+mount: fstab path: "/etc/fstab"
+mount: lock path:  "/etc/mtab~"
+mount: temp path:  "/etc/mtab.tmp"
+mount: spec:  "cortona:/tv1"
+mount: node:  "/mnt/cortona1"
+mount: types: "nfs"
+mount: opts:  "noauto,user,exec,rw,rsize=16k,wsize=16k,hard,intr"
+mount: external mount: argv[0] = "/sbin/mount.nfs"
+mount: external mount: argv[1] = "cortona:/tv1"
+mount: external mount: argv[2] = "/mnt/cortona1"
+mount: external mount: argv[3] = "-v"
+mount: external mount: argv[4] = "-o"
+mount: external mount: argv[5] = 
+"rw,nosuid,nodev,noauto,user,rsize=16k,wsize=16k,hard,intr"
+mount.nfs: trying xxx.xxx.xxx.178 prog 100003 vers 3 prot TCP port 2049
+mount.nfs: trying xxx.xxx.xxx.178 prog 100005 vers 3 prot UDP port 32774
+cortona:/tv1 on /mnt/cortona1 type nfs 
+(noauto,user,exec,rw,rsize=16k,wsize=16k,hard,intr)
+tna@roma$ cd /mnt/cortona1
+tna@roma:/mnt/cortona1$ touch one
+touch: cannot touch `one': Permission denied
+
+Downgrading to 1:1.1.0-5 restored proper write access. Is this a 
+familiar-looking problem to someone?
+
+Dave
 
 
-
--- 
-+-------+-------------------------------------------------------------+
-|       | dr. tilmann bubeck               reinform medien- und       |
-|       |                                  informationstechnologie AG |
-| rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
-| form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
-|    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
-|       | email: t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org      http://www.reinform.de     |
-|       +-------------------------------------------------------------+
-|       | pflichtangaben nach paragraph 80, AktG:                     |
-|       | reinform medien- und informationstechnologie AG, stuttgart  |
-|       | handelsregister stuttgart, HRB 23001                        |
-|       | vorstand:     dr. tilmann bubeck (vorsitz), dr. tommy kuhn  |
-|       | aufsichtsrat: frank stege (vorsitz)                         |
-+-------+-------------------------------------------------------------+
