@@ -1,57 +1,47 @@
-From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
-Subject: Re: ipv6 status
-Date: Mon, 01 Dec 2008 13:40:02 -0500
-Message-ID: <1228156802.6497.277.camel@pc.interlinx.bc.ca>
-References: <1228092016.7394.521.camel@pc.interlinx.bc.ca>
-	 <D9F679A4-0664-4977-9DAF-5EC0AF2BADD8@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/4] Make mount.nfs use new getport() function
+Date: Mon, 01 Dec 2008 13:48:33 -0500
+Message-ID: <20081201183616.10436.71066.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-peVMHl/CmQcwiafAFQmL"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+To: steved@redhat.com, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from server.klug.on.ca ([205.189.48.131]:1951 "EHLO
-	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750876AbYLASkF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 13:40:05 -0500
-Received: from linux.interlinx.bc.ca (d193-213-184.home3.cgocable.net [67.193.213.184])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by server.klug.on.ca (Postfix) with ESMTP id A7E382807
-	for <linux-nfs@vger.kernel.org>; Mon,  1 Dec 2008 13:40:04 -0500 (EST)
-Received: from [IPv6:2001:4978:161:0:218:f3ff:fee1:65cc] (pc.interlinx.bc.ca [IPv6:2001:4978:161:0:218:f3ff:fee1:65cc])
-	by linux.interlinx.bc.ca (Postfix) with ESMTP id BAAF086D6
-	for <linux-nfs@vger.kernel.org>; Mon,  1 Dec 2008 13:40:02 -0500 (EST)
-In-Reply-To: <D9F679A4-0664-4977-9DAF-5EC0AF2BADD8@oracle.com>
+Received: from acsinet11.oracle.com ([141.146.126.233]:42956 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751082AbYLAStF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 13:49:05 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Steve-
 
---=-peVMHl/CmQcwiafAFQmL
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Four new IPv6-related patches for mount.nfs.  These replace the
+existing PMAP_GETPORT implementation in utils/mount/network.c with a
+call to the new library functions we just added.
 
-On Mon, 2008-12-01 at 13:33 -0500, Chuck Lever wrote:
->=20
-> There isn't a published roadmap.  Linux developers tend to eschew =20
-> deadlines.
+The probe_statd() function is used by both the legacy and the text-
+based paths, but replacing the mount.nfs command's getport() function
+affects only the *legacy* NFS mount path, not text-based mounts.
 
-Indeed.  :-)
+For anyone testing this code, please try it on pre-2.6.23 kernels,
+or patch mount.nfs to use legacy binary style mounts.  This will
+exercise the new PMAP_GETPORT implementation using all the special
+cases needed by mount.nfs.
 
-Thanx for the update.  Looking forward to it finally finishing.
+The new RPCB_GETADDR implementation will not be used until mount.nfs
+can pass in IPv6 addresses.
 
-b.
+---
+
+Chuck Lever (4):
+      mount command: remove local getport() implementation
+      mount command: Replace clnt_ping() and getport() calls in probe_port()
+      mount command: Use nfs_error() instead of perror()
+      mount command: Use nfs_pmap_getport() in probe_statd()
 
 
---=-peVMHl/CmQcwiafAFQmL
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
+ utils/mount/network.c |  144 +++++++++++++++----------------------------------
+ 1 files changed, 43 insertions(+), 101 deletions(-)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkk0L4IACgkQl3EQlGLyuXAiaACfSxmB9WTgKC1Z3xYZhaX06jnX
-RfwAn0hqT5WdhfNso1UwvN7C5qoyb63g
-=89HO
------END PGP SIGNATURE-----
-
---=-peVMHl/CmQcwiafAFQmL--
-
+-- 
+Chuck Lever
