@@ -1,155 +1,119 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/6] NSM: Serialize SM_MON and SM_UNMON upcalls
-Date: Mon, 01 Dec 2008 13:58:13 -0500
-Message-ID: <20081201185812.10600.92501.stgit@ingres.1015granger.net>
+Subject: [PATCH 4/6] NLM: Clean up nsm_monitor() call
+Date: Mon, 01 Dec 2008 13:57:58 -0500
+Message-ID: <20081201185757.10600.38854.stgit@ingres.1015granger.net>
 References: <20081201185108.10600.21700.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:29733 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752472AbYLAS7H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 13:59:07 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:34033 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751489AbYLAS7r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 13:59:47 -0500
 In-Reply-To: <20081201185108.10600.21700.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The Linux NSM implementation currently does nothing to prevent
-concurrent SM_MON and SM_UNMON upcalls regarding the same peer.  Races
-could cause duplicate SM_MON upcalls for the same peer, or locking
-activity during server shutdown might cause SM_MON and SM_UNMON upcalls
-to occur in an arbitrary order.
+Clean up: A few minor clean-ups for nsm_monitor():
 
-To avoid confusing rpc.statd, add a per-nsm_handle mutex to serialize
-the upcalls.  To prevent duplicate upcalls, the mutex is held while the
-upcall is outstanding, and is not released until we can tell if the
-upcall succeeded.
+ o  Make sure to return an error if the SM_MON call result is not zero.
 
-The nsm_monitor() function is called frequently.  The extra inline
-function mitigates the overhead of taking the mutex.  It is only taken
-if the nsm_handle is not already monitored.
+ o  Remove the BUG_ON() -- the code will die anyway if nsm is NULL.
+
+ o  Use nsm->sm_name instead of host->h_name to be consistent with
+    other functions in fs/lockd/mon.c.
+
+ o  Collect the public declaration of nsm_monitor() in lockd.h with
+    other NSM public function declarations (eg. nsm_release).
+
+ o  Add documenting comments.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |    1 +
- fs/lockd/mon.c              |   23 ++++++++++++++++-------
- include/linux/lockd/lockd.h |   12 +++++++++++-
- 3 files changed, 28 insertions(+), 8 deletions(-)
+ fs/lockd/mon.c                 |   29 ++++++++++++++++++-----------
+ include/linux/lockd/lockd.h    |    4 ++++
+ include/linux/lockd/sm_inter.h |    1 -
+ 3 files changed, 22 insertions(+), 12 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 8d26d0c..bf705d0 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -697,6 +697,7 @@ retry:
- 	nsm->sm_name = (char *) (nsm + 1);
- 	memcpy(nsm->sm_name, hostname, hostname_len);
- 	nsm->sm_name[hostname_len] = '\0';
-+	mutex_init(&nsm->sm_mutex);
- 	nlm_display_address((struct sockaddr *)&nsm->sm_addr,
- 				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
- 	atomic_set(&nsm->sm_count, 1);
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index b76d9b2..301aeb7 100644
+index a606fbb..78d5f59 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -70,8 +70,8 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- }
- 
- /**
-- * nsm_monitor - Notify a peer in case we reboot
-- * @host: pointer to nlm_host of peer to notify
-+ * __nsm_monitor - Notify a peer in case we reboot
-+ * @nsm: pointer to nsm_handle of peer to notify
-  *
-  * If this peer is not already monitored, this function sends an
-  * upcall to the local rpc.statd to record the name/address of
-@@ -80,16 +80,17 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
-  * Returns zero if the peer is monitored by the local rpc.statd;
-  * otherwise a negative errno value is returned.
-  */
--int nsm_monitor(const struct nlm_host *host)
-+int __nsm_monitor(struct nsm_handle *nsm)
- {
--	struct nsm_handle *nsm = host->h_nsmhandle;
- 	struct nsm_res res;
--	int status;
-+	int status = 0;
- 
- 	dprintk("lockd: nsm_monitor(%s)\n", nsm->sm_name);
- 
-+	mutex_lock(&nsm->sm_mutex);
-+
- 	if (nsm->sm_monitored)
--		return 0;
-+		goto out;
- 
- 	/*
- 	 * Choose whether to record the caller_name or IP address of
-@@ -104,6 +105,9 @@ int nsm_monitor(const struct nlm_host *host)
- 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
- 	else
- 		nsm->sm_monitored = 1;
-+
-+out:
-+	mutex_unlock(&nsm->sm_mutex);
+@@ -69,18 +69,24 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
  	return status;
  }
  
-@@ -121,8 +125,10 @@ void nsm_unmonitor(struct nsm_handle *nsm)
+-/*
+- * Set up monitoring of a remote host
++/**
++ * nsm_monitor - Notify a peer in case we reboot
++ * @host: pointer to nlm_host of peer to notify
++ *
++ * If this peer is not already monitored, this function sends an
++ * upcall to the local rpc.statd to record the name/address of
++ * the peer to notify in case we reboot.
++ *
++ * Returns zero if the peer is monitored by the local rpc.statd;
++ * otherwise a negative errno value is returned.
+  */
+-int
+-nsm_monitor(struct nlm_host *host)
++int nsm_monitor(const struct nlm_host *host)
+ {
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+-	struct nsm_res	res;
+-	int		status;
++	struct nsm_res res;
++	int status;
  
- 	dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
+-	dprintk("lockd: nsm_monitor(%s)\n", host->h_name);
+-	BUG_ON(nsm == NULL);
++	dprintk("lockd: nsm_monitor(%s)\n", nsm->sm_name);
  
-+	mutex_lock(&nsm->sm_mutex);
-+
- 	if (!nsm->sm_monitored)
--		return;
-+		goto out;
+ 	if (nsm->sm_monitored)
+ 		return 0;
+@@ -92,9 +98,10 @@ nsm_monitor(struct nlm_host *host)
+ 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
  
- 	if (atomic_read(&nsm->sm_count) == 1 && !nsm->sm_sticky) {
- 		if (nsm_mon_unmon(nsm, SM_UNMON, &res) < 0)
-@@ -131,6 +137,9 @@ void nsm_unmonitor(struct nsm_handle *nsm)
- 		else
- 			nsm->sm_monitored = 0;
- 	}
-+
-+out:
-+	mutex_unlock(&nsm->sm_mutex);
- }
- 
- /*
+ 	status = nsm_mon_unmon(nsm, SM_MON, &res);
+-
+-	if (status < 0 || res.status != 0)
+-		printk(KERN_NOTICE "lockd: cannot monitor %s\n", host->h_name);
++	if (res.status != 0)
++		status = -EIO;
++	if (status < 0)
++		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
+ 	else
+ 		nsm->sm_monitored = 1;
+ 	return status;
 diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index e2fa968..bf6c1c1 100644
+index de9ea7b..4ca6f39 100644
 --- a/include/linux/lockd/lockd.h
 +++ b/include/linux/lockd/lockd.h
-@@ -76,6 +76,7 @@ struct nsm_handle {
- 	char *			sm_mon_name;
- 	unsigned int		sm_monitored : 1,
- 				sm_sticky : 1;	/* don't unmonitor */
-+	struct mutex		sm_mutex;
- 	char			sm_addrbuf[63];	/* presentation address */
- };
+@@ -233,6 +233,10 @@ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
+ 					unsigned int, u32);
+ void		  nsm_release(struct nsm_handle *);
  
-@@ -236,9 +237,18 @@ void		  nsm_release(struct nsm_handle *);
- /*
-  * Host monitoring
-  */
--int		  nsm_monitor(const struct nlm_host *host);
-+int		  __nsm_monitor(struct nsm_handle *nsm);
- void		  nsm_unmonitor(struct nsm_handle *nsm);
++/*
++ * Host monitoring
++ */
++int		  nsm_monitor(const struct nlm_host *host);
  
-+static inline int nsm_monitor(const struct nlm_host *host)
-+{
-+	struct nsm_handle *nsm = host->h_nsmhandle;
-+
-+	if (likely(nsm->sm_monitored))
-+		return 0;
-+	return __nsm_monitor(nsm);
-+}
-+
  /*
   * This is used in garbage collection and resource reclaim
-  * A return value != 0 means destroy the lock/block/share
+diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
+index 5a5448b..546b610 100644
+--- a/include/linux/lockd/sm_inter.h
++++ b/include/linux/lockd/sm_inter.h
+@@ -41,7 +41,6 @@ struct nsm_res {
+ 	u32		state;
+ };
+ 
+-int		nsm_monitor(struct nlm_host *);
+ int		nsm_unmonitor(struct nlm_host *);
+ extern int	nsm_local_state;
+ 
 
