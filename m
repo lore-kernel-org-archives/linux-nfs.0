@@ -1,8 +1,8 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
- than 120 seconds"
-Date: Sun, 30 Nov 2008 19:17:11 -0500
-Message-ID: <1228090631.7112.11.camel@heimdal.trondhjem.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/3] SUNRPC: Ensure the server closes sockets in a
+ timely fashion
+Date: Sun, 30 Nov 2008 19:18:39 -0500
+Message-ID: <1228090719.7112.13.camel@heimdal.trondhjem.org>
 References: <20081017123207.GA14979@rabbit.intern.cm-ag>
 	 <1224484046.23068.14.camel@localhost.localdomain>
 	 <1225539927.2221.3.camel@localhost.localdomain>
@@ -13,6 +13,7 @@ References: <20081017123207.GA14979@rabbit.intern.cm-ag>
 	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
 	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
 	 <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
@@ -22,17 +23,76 @@ Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.
 	Tom Tucker <tom@opengridcomputing.com>
 To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:60253 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:56643 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752834AbYLAARU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Nov 2008 19:17:20 -0500
-In-Reply-To: <1227737539.31008.2.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1752627AbYLAASm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 30 Nov 2008 19:18:42 -0500
+In-Reply-To: <1228090631.7112.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Can you see if the following 3 patches help? They're against 2.6.28-rc6,
-but afaics the problems are pretty much the same on 2.6.26.
+We want to ensure that connected sockets close down the connection when we
+set XPT_CLOSE, so that we don't keep it hanging while cleaning up all the
+stuff that is keeping a reference to the socket.
 
-Cheers
-  Trond
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
+ net/sunrpc/svcsock.c |   21 ++++++++++++++++++++-
+ 1 files changed, 20 insertions(+), 1 deletions(-)
+
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 95293f5..a1b048d 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -59,6 +59,7 @@ static void		svc_udp_data_ready(struct sock *, int);
+ static int		svc_udp_recvfrom(struct svc_rqst *);
+ static int		svc_udp_sendto(struct svc_rqst *);
+ static void		svc_sock_detach(struct svc_xprt *);
++static void		svc_tcp_sock_detach(struct svc_xprt *);
+ static void		svc_sock_free(struct svc_xprt *);
+ 
+ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+@@ -1017,7 +1018,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+ 	.xpo_sendto = svc_tcp_sendto,
+ 	.xpo_release_rqst = svc_release_skb,
+-	.xpo_detach = svc_sock_detach,
++	.xpo_detach = svc_tcp_sock_detach,
+ 	.xpo_free = svc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+ 	.xpo_has_wspace = svc_tcp_has_wspace,
+@@ -1282,6 +1283,24 @@ static void svc_sock_detach(struct svc_xprt *xprt)
+ 	sk->sk_state_change = svsk->sk_ostate;
+ 	sk->sk_data_ready = svsk->sk_odata;
+ 	sk->sk_write_space = svsk->sk_owspace;
++
++	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
++		wake_up_interruptible(sk->sk_sleep);
++}
++
++/*
++ * Disconnect the socket, and reset the callbacks
++ */
++static void svc_tcp_sock_detach(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++
++	dprintk("svc: svc_tcp_sock_detach(%p)\n", svsk);
++
++	svc_sock_detach(xprt);
++
++	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags))
++		kernel_sock_shutdown(svsk->sk_sock, SHUT_RDWR);
+ }
+ 
+ /*
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
