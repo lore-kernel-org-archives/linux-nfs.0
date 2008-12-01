@@ -1,97 +1,144 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] NLM: Support IPv6 scope IDs in nlm_display_address()
-Date: Mon, 01 Dec 2008 13:57:42 -0500
-Message-ID: <20081201185741.10600.7375.stgit@ingres.1015granger.net>
+Subject: [PATCH 5/6] NLM: Clean up nsm_monitor() call
+Date: Mon, 01 Dec 2008 13:58:05 -0500
+Message-ID: <20081201185805.10600.23630.stgit@ingres.1015granger.net>
 References: <20081201185108.10600.21700.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:40682 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752541AbYLAS7v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 13:59:51 -0500
+Received: from rcsinet13.oracle.com ([148.87.113.125]:40444 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752519AbYLAS7s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 13:59:48 -0500
 In-Reply-To: <20081201185108.10600.21700.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Scope ID support is needed since the kernel's NSM implementation is
-about to use these displayed addresses as a mon_name in some cases.
+Clean up: A few minor clean-ups for nsm_unmonitor():
 
-If nsm_use_hostnames is zero, NSM will fail to handle peers that
-contact us via a link-local address without scope ID support.  Link-
-local addresses do not work without an interface ID, which is stored
-in the sockaddr's sin6_scope_id field.
+ o  Arrange dprintk and check of sm_monitored consistently with
+    nsm_monitor().
+
+ o  nsm_unmonitor()'s only caller doesn't care about the return code,
+    so eliminate it (thanks, Bruce).
+
+ o  The nsm_handle's reference count is bumped in nlm_lookup_host()
+    so it should be decremented in nlm_destroy_host() to make it
+    easier to see the balance of these two operations.  For the
+    moment we leave nsm_release() public.
+
+ o  Use nsm->sm_name instead of host->h_name to be consistent with
+    other functions in fs/lockd/mon.c.
+
+ o  Collect the public declaration of nsm_unmonitor() in lockd.h with
+    other NSM public function declarations.
+
+ o  Add documenting comments.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |   31 +++++++++++++++++++++++--------
- include/linux/lockd/lockd.h |    2 +-
- 2 files changed, 24 insertions(+), 9 deletions(-)
+ fs/lockd/host.c                |    7 +++----
+ fs/lockd/mon.c                 |   33 +++++++++++++++------------------
+ include/linux/lockd/lockd.h    |    1 +
+ include/linux/lockd/sm_inter.h |    1 -
+ 4 files changed, 19 insertions(+), 23 deletions(-)
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 68e00c0..cd7edc3 100644
+index cd7edc3..8d26d0c 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -105,22 +105,37 @@ static void nlm_clear_port(struct sockaddr *sap)
- 	}
+@@ -263,10 +263,9 @@ nlm_destroy_host(struct nlm_host *host)
+ 	BUG_ON(!list_empty(&host->h_lockowners));
+ 	BUG_ON(atomic_read(&host->h_count));
+ 
+-	/*
+-	 * Release NSM handle and unmonitor host.
+-	 */
+-	nsm_unmonitor(host);
++	nsm_unmonitor(host->h_nsmhandle);
++	nsm_release(host->h_nsmhandle);
++	host->h_nsmhandle = NULL;
+ 
+ 	clnt = host->h_rpcclnt;
+ 	if (clnt != NULL)
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 78d5f59..b76d9b2 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -107,33 +107,30 @@ int nsm_monitor(const struct nlm_host *host)
+ 	return status;
  }
  
--static void nlm_display_address(const struct sockaddr *sap,
--				char *buf, const size_t len)
-+static void nlm_display_ipv4_address(const struct sockaddr *sap, char *buf,
-+				     const size_t len)
+-/*
+- * Cease to monitor remote host
++/**
++ * nsm_unmonitor - Unregister peer notification
++ * @nsm: pointer to nsm_handle of peer to stop monitoring
++ *
++ * If this peer is monitored, this function sends an upcall to
++ * tell the local rpc.statd not to send this peer a notification
++ * when we reboot.
+  */
+-int
+-nsm_unmonitor(struct nlm_host *host)
++void nsm_unmonitor(struct nsm_handle *nsm)
  {
- 	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-+	snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
-+}
-+
-+static void nlm_display_ipv6_address(const struct sockaddr *sap, char *buf,
-+				     const size_t len)
-+{
- 	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+-	struct nsm_handle *nsm = host->h_nsmhandle;
+-	struct nsm_res	res;
+-	int		status = 0;
++	struct nsm_res res;
  
-+	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
-+		snprintf(buf, len, NIPQUAD_FMT,
-+				NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
-+	else if (sin6->sin6_scope_id != 0)
-+		snprintf(buf, len, NIP6_FMT "%%%u", NIP6(sin6->sin6_addr),
-+				sin6->sin6_scope_id);
-+	else
-+		snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
-+}
-+
-+static void nlm_display_address(const struct sockaddr *sap,
-+				char *buf, const size_t len)
-+{
- 	switch (sap->sa_family) {
- 	case AF_INET:
--		snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
-+		nlm_display_ipv4_address(sap, buf, len);
- 		break;
- 	case AF_INET6:
--		if (ipv6_addr_v4mapped(&sin6->sin6_addr))
--			snprintf(buf, len, NIPQUAD_FMT,
--				 NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
--		else
--			snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
-+		nlm_display_ipv6_address(sap, buf, len);
- 		break;
- 	default:
- 		snprintf(buf, len, "unsupported address family");
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 4467b83..307a8f0 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -75,7 +75,7 @@ struct nsm_handle {
- 	size_t			sm_addrlen;
- 	unsigned int		sm_monitored : 1,
- 				sm_sticky : 1;	/* don't unmonitor */
--	char			sm_addrbuf[48];	/* address eyecatcher */
-+	char			sm_addrbuf[63];	/* presentation address */
- };
+-	if (nsm == NULL)
+-		return 0;
+-	host->h_nsmhandle = NULL;
++	dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
+ 
+-	if (atomic_read(&nsm->sm_count) == 1
+-	 && nsm->sm_monitored && !nsm->sm_sticky) {
+-		dprintk("lockd: nsm_unmonitor(%s)\n", host->h_name);
++	if (!nsm->sm_monitored)
++		return;
+ 
+-		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
+-		if (status < 0)
++	if (atomic_read(&nsm->sm_count) == 1 && !nsm->sm_sticky) {
++		if (nsm_mon_unmon(nsm, SM_UNMON, &res) < 0)
+ 			printk(KERN_NOTICE "lockd: cannot unmonitor %s\n",
+-					host->h_name);
++					nsm->sm_name);
+ 		else
+ 			nsm->sm_monitored = 0;
+ 	}
+-	nsm_release(nsm);
+-	return status;
+ }
  
  /*
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 4ca6f39..e2fa968 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -237,6 +237,7 @@ void		  nsm_release(struct nsm_handle *);
+  * Host monitoring
+  */
+ int		  nsm_monitor(const struct nlm_host *host);
++void		  nsm_unmonitor(struct nsm_handle *nsm);
+ 
+ /*
+  * This is used in garbage collection and resource reclaim
+diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
+index 546b610..896a5e3 100644
+--- a/include/linux/lockd/sm_inter.h
++++ b/include/linux/lockd/sm_inter.h
+@@ -41,7 +41,6 @@ struct nsm_res {
+ 	u32		state;
+ };
+ 
+-int		nsm_unmonitor(struct nlm_host *);
+ extern int	nsm_local_state;
+ 
+ #endif /* LINUX_LOCKD_SM_INTER_H */
 
