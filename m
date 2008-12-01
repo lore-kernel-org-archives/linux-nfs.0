@@ -1,52 +1,52 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
- than 120 seconds"
-Date: Sun, 30 Nov 2008 19:29:40 -0500
-Message-ID: <1228091380.7112.17.camel@heimdal.trondhjem.org>
-References: <20081017123207.GA14979@rabbit.intern.cm-ag>
-	 <1224484046.23068.14.camel@localhost.localdomain>
-	 <1225539927.2221.3.camel@localhost.localdomain>
-	 <1225546878.4390.3.camel@heimdal.trondhjem.org>
-	 <1227596962.16868.22.camel@localhost.localdomain>
-	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
-	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
-	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
-	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
-	 <1227737539.31008.2.camel@localhost.localdomain>
-	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
+Subject: ipv6 status
+Date: Sun, 30 Nov 2008 19:40:16 -0500
+Message-ID: <1228092016.7394.521.camel@pc.interlinx.bc.ca>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
-	linux-kernel@vger.kernel.org, gcosta@redhat.com,
-	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>
-To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-pvHLthelMnHvVmYjGIUu"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55061 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753559AbYLAA3m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Nov 2008 19:29:42 -0500
-In-Reply-To: <1228090631.7112.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from server.klug.on.ca ([205.189.48.131]:2147 "EHLO
+	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751569AbYLAAkT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Nov 2008 19:40:19 -0500
+Received: from linux.interlinx.bc.ca (d193-213-184.home3.cgocable.net [67.193.213.184])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id 035DF2803
+	for <linux-nfs@vger.kernel.org>; Sun, 30 Nov 2008 19:40:17 -0500 (EST)
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id ED79586D6
+	for <linux-nfs@vger.kernel.org>; Sun, 30 Nov 2008 19:40:16 -0500 (EST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2008-11-30 at 19:17 -0500, Trond Myklebust wrote:
-> Can you see if the following 3 patches help? They're against 2.6.28-rc6,
-> but afaics the problems are pretty much the same on 2.6.26.
-> 
-> Cheers
->   Trond
 
-Sorry... I forgot to add that these 3 patches need to be applied to the
-nfs server, not the client.
+--=-pvHLthelMnHvVmYjGIUu
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Hi All,
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+So what exactly is the status of NFS and IPv6 in the most recent (say,
+2.6.24-28) kernels?  Is it present and if so, working?  Feel free to
+simply point me to a roadmap that shows where we are if you like.
+
+Cheers and thanx,
+b.
+
+
+--=-pvHLthelMnHvVmYjGIUu
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkkzMmcACgkQl3EQlGLyuXDpdwCfaDFp5shZ/ni7AUWuD9+7Tr6p
+tl8AniVuTAvWyuqKAH6T6j4wWMOiBTDZ
+=WEUp
+-----END PGP SIGNATURE-----
+
+--=-pvHLthelMnHvVmYjGIUu--
+
