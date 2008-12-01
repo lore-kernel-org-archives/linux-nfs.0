@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/3] SUNRPC: Ensure the server closes sockets in a
- timely fashion
-Date: Sun, 30 Nov 2008 19:18:39 -0500
-Message-ID: <1228090719.7112.13.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 2/3] SUNRPC: We only need to call svc_delete_xprt()
+ once...
+Date: Sun, 30 Nov 2008 19:19:30 -0500
+Message-ID: <1228090770.7112.14.camel@heimdal.trondhjem.org>
 References: <20081017123207.GA14979@rabbit.intern.cm-ag>
 	 <1224484046.23068.14.camel@localhost.localdomain>
 	 <1225539927.2221.3.camel@localhost.localdomain>
@@ -16,78 +16,62 @@ References: <20081017123207.GA14979@rabbit.intern.cm-ag>
 	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
+Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk@cm4all.com>,
 	linux-kernel@vger.kernel.org, gcosta@redhat.com,
-	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	Grant Coady <grant_lkml@dodo.com.au>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Tom Tucker <tom@opengridcomputing.com>
-To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56643 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752627AbYLAASm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Nov 2008 19:18:42 -0500
-In-Reply-To: <1228090631.7112.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+To: Ian Campbell <ijc@hellion.org.uk>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756224AbYLAATs@vger.kernel.org>
+In-Reply-To: <1228090631.7112.11.camel@heimdal.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to ensure that connected sockets close down the connection when we
-set XPT_CLOSE, so that we don't keep it hanging while cleaning up all the
-stuff that is keeping a reference to the socket.
+Use XPT_DEAD to ensure that we only call xpo_detach & friends once.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/svcsock.c |   21 ++++++++++++++++++++-
- 1 files changed, 20 insertions(+), 1 deletions(-)
+ net/sunrpc/svc_xprt.c |   17 +++++++++++------
+ 1 files changed, 11 insertions(+), 6 deletions(-)
 
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 95293f5..a1b048d 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -59,6 +59,7 @@ static void		svc_udp_data_ready(struct sock *, int);
- static int		svc_udp_recvfrom(struct svc_rqst *);
- static int		svc_udp_sendto(struct svc_rqst *);
- static void		svc_sock_detach(struct svc_xprt *);
-+static void		svc_tcp_sock_detach(struct svc_xprt *);
- static void		svc_sock_free(struct svc_xprt *);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index bf5b5cd..a417064 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -838,6 +838,10 @@ void svc_delete_xprt(struct svc_xprt *xprt)
+ {
+ 	struct svc_serv	*serv = xprt->xpt_server;
  
- static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
-@@ -1017,7 +1018,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_recvfrom = svc_tcp_recvfrom,
- 	.xpo_sendto = svc_tcp_sendto,
- 	.xpo_release_rqst = svc_release_skb,
--	.xpo_detach = svc_sock_detach,
-+	.xpo_detach = svc_tcp_sock_detach,
- 	.xpo_free = svc_sock_free,
- 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
- 	.xpo_has_wspace = svc_tcp_has_wspace,
-@@ -1282,6 +1283,24 @@ static void svc_sock_detach(struct svc_xprt *xprt)
- 	sk->sk_state_change = svsk->sk_ostate;
- 	sk->sk_data_ready = svsk->sk_odata;
- 	sk->sk_write_space = svsk->sk_owspace;
++	/* Only do this once */
++	if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags) != 0)
++		return;
 +
-+	if (sk->sk_sleep && waitqueue_active(sk->sk_sleep))
-+		wake_up_interruptible(sk->sk_sleep);
-+}
+ 	dprintk("svc: svc_delete_xprt(%p)\n", xprt);
+ 	xprt->xpt_ops->xpo_detach(xprt);
+ 
+@@ -851,13 +855,14 @@ void svc_delete_xprt(struct svc_xprt *xprt)
+ 	 * while still attached to a queue, the queue itself
+ 	 * is about to be destroyed (in svc_destroy).
+ 	 */
+-	if (!test_and_set_bit(XPT_DEAD, &xprt->xpt_flags)) {
+-		BUG_ON(atomic_read(&xprt->xpt_ref.refcount) < 2);
+-		if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+-			serv->sv_tmpcnt--;
+-		svc_xprt_put(xprt);
+-	}
++	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
++		serv->sv_tmpcnt--;
+ 	spin_unlock_bh(&serv->sv_lock);
 +
-+/*
-+ * Disconnect the socket, and reset the callbacks
-+ */
-+static void svc_tcp_sock_detach(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++	/* FIXME: Is this really needed here? */
++	BUG_ON(atomic_read(&xprt->xpt_ref.refcount) < 2);
 +
-+	dprintk("svc: svc_tcp_sock_detach(%p)\n", svsk);
-+
-+	svc_sock_detach(xprt);
-+
-+	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags))
-+		kernel_sock_shutdown(svsk->sk_sock, SHUT_RDWR);
++	svc_xprt_put(xprt);
  }
  
- /*
+ void svc_close_xprt(struct svc_xprt *xprt)
 
 -- 
 Trond Myklebust
