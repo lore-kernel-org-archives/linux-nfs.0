@@ -1,47 +1,59 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
- than 120 seconds"
-Date: Tue, 02 Dec 2008 13:10:07 -0500
-Message-ID: <1228241407.3090.7.camel@heimdal.trondhjem.org>
-References: <1227596962.16868.22.camel@localhost.localdomain>
-	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
-	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
-	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
-	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
-	 <1227737539.31008.2.camel@localhost.localdomain>
-	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
-	 <1228091380.7112.17.camel@heimdal.trondhjem.org>
-	 <20081202152256.GI47559@fit.vutbr.cz>
-	 <1228232222.3090.5.camel@heimdal.trondhjem.org>
-	 <20081202162625.GM47559@fit.vutbr.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH/RFC] svcgssd always sets an infinite expiry on
+	authentication tokens etc.
+Date: Tue, 2 Dec 2008 18:23:44 -0500
+Message-ID: <20081202232344.GM20616@fieldses.org>
+References: <18740.50457.981544.21225@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>, linux-nfs@vger.kernel.org,
-	Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>, linux-kernel@vger.kernel.org,
-	gcosta@redhat.com, "J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>
-To: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>,
+	Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39191 "EHLO mx2.netapp.com"
+Received: from mail.fieldses.org ([66.93.2.214]:53292 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752571AbYLBSPg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Dec 2008 13:15:36 -0500
-In-Reply-To: <20081202162625.GM47559@fit.vutbr.cz>
+	id S1751027AbYLBXXq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Dec 2008 18:23:46 -0500
+In-Reply-To: <18740.50457.981544.21225-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-12-02 at 17:26 +0100, Kasparek Tomas wrote:
+On Tue, Dec 02, 2008 at 04:18:17PM +1100, Neil Brown wrote:
+>  I have a report of an NFS server which runs out of kernel memory when
+>  it gets heave rpcsec_gss traffic (auth_sys doesn't trigger the
+>  problem so it must be gss related).
+> 
+>  From looking at /proc/slab_allocators it seems that the main user of
+>  memory is the rsc and rsi caches.
+>  It appears entries are inserted into these caches with an expiry of
+>  'forever' so they grow but never shrink.
+>  We should fix this.
 
-> Did tried. The number should be seconds and defaults to 60, These
-> connections are still there after several hours. Changing it to 10 (sec)
-> and same behaviour. (BTW The server did not changed in last several months)
+Yes, definitely a leak.  But it's funny, I have a strong memory of a
+conversation on one of these lists with someone who looked into this
+problem and found that even with some silly artificial tests that
+established as many contexts per second as possible, they weren't able
+to see significant memory consumption--but I can't find the thread now.
 
-Are you seeing the same behaviour with 'netstat -t'?
+Some limit on the size might also be nice depending on what the worst
+case looks like with expiries of about a day.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+--b.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+>  For the rsi (init) cache I assume the entry is only needed once so a
+>  short expiry of (say) one minute should be plenty.
+>  For the rsc (context) cache, the entry could be needed repeatedly
+>  during the lifetime of a 'session'.  However eventually it will
+>  become stale and should be allowed to expire.
+> 
+>  I assume that if the kernel requests a particular entry a second
+>  time, an hour later, it will get the same answer - is that correct?
+> 
+>  In that case, setting the expiry to something largish seems
+>  appropriate.
+> 
+>  Hence the following patch (untested yet - but I will get it tested in
+>  due course).
+> 
+>  Does this seem reasonable?
