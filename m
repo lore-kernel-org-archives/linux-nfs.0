@@ -1,47 +1,47 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/3] AF_INET6 support for probe_bothports()
-Date: Tue, 02 Dec 2008 12:59:44 -0500
-Message-ID: <20081202175403.5206.91389.stgit@ingres.1015granger.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+ than 120 seconds"
+Date: Tue, 02 Dec 2008 13:10:07 -0500
+Message-ID: <1228241407.3090.7.camel@heimdal.trondhjem.org>
+References: <1227596962.16868.22.camel@localhost.localdomain>
+	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
+	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
+	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
+	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
+	 <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228091380.7112.17.camel@heimdal.trondhjem.org>
+	 <20081202152256.GI47559@fit.vutbr.cz>
+	 <1228232222.3090.5.camel@heimdal.trondhjem.org>
+	 <20081202162625.GM47559@fit.vutbr.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain
+Cc: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>, linux-nfs@vger.kernel.org,
+	Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>, linux-kernel@vger.kernel.org,
+	gcosta@redhat.com, "J. Bruce Fields" <bfields@fieldses.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Kasparek Tomas <kasparek@fit.vutbr.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:31736 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754902AbYLBSAl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2008 13:00:41 -0500
+Received: from mx2.netapp.com ([216.240.18.37]:39191 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752571AbYLBSPg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Dec 2008 13:15:36 -0500
+In-Reply-To: <20081202162625.GM47559@fit.vutbr.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+On Tue, 2008-12-02 at 17:26 +0100, Kasparek Tomas wrote:
 
-Here's the next step.
+> Did tried. The number should be seconds and defaults to 60, These
+> connections are still there after several hours. Changing it to 10 (sec)
+> and same behaviour. (BTW The server did not changed in last several months)
 
-This small series of patches rewires probe_bothports() to support
-AF_INET6 addresses, now that the underlying functions can handle them.
-
-Since legacy code in other parts of the mount command still use
-probe_bothports() and the clnt_addr_t data type, I've added a new
-function call to do the IPv6 duties.  The old API still exists and
-continues to support only AF_INET, but under the covers it calls the
-new code.
-
-Again, for the time being, this is used only for the legacy binary
-mount(2) interface.  We will need this for umount later, and that is
-used to support both binary and text-based mounts.
-
----
-
-Chuck Lever (3):
-      mount command: AF_INET6 support for probe_bothports()
-      mount command: support AF_INET6 in probe_nfsport() and probe_mntport()
-      mount command: full support for AF_INET6 addresses in probe_port()
-
-
- utils/mount/network.c |  178 +++++++++++++++++++++++++++++++++++++++----------
- utils/mount/network.h |    3 +
- 2 files changed, 144 insertions(+), 37 deletions(-)
+Are you seeing the same behaviour with 'netstat -t'?
 
 -- 
-Chuck Lever
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
