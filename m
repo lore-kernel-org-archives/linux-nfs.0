@@ -1,141 +1,144 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] mount command: full support for AF_INET6 addresses in
-	probe_port()
-Date: Tue, 02 Dec 2008 12:59:50 -0500
-Message-ID: <20081202175950.5206.21529.stgit@ingres.1015granger.net>
+Subject: [PATCH 2/3] mount command: support AF_INET6 in probe_nfsport() and
+	probe_mntport()
+Date: Tue, 02 Dec 2008 12:59:56 -0500
+Message-ID: <20081202175955.5206.85058.stgit@ingres.1015granger.net>
 References: <20081202175403.5206.91389.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:19464 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754140AbYLBSAc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2008 13:00:32 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:41648 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755932AbYLBSAY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2008 13:00:24 -0500
 In-Reply-To: <20081202175403.5206.91389.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that probe_port() uses an AF_INET6-capable rpcbind query and RPC ping,
-finish updating probe_port() to support AF_INET6 addresses fully.
+Flesh out support for AF_INET6 in the intermediate helper functions
+probe_nfsport() and probe_mntport().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   54 ++++++++++++++++++++++++++++++++++++++++---------
- 1 files changed, 44 insertions(+), 10 deletions(-)
+ utils/mount/network.c |   58 +++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 42 insertions(+), 16 deletions(-)
 
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 0c68993..e50bc28 100644
+index e50bc28..55b2cab 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -160,6 +160,21 @@ static const unsigned long probe_mnt3_first[] = {
- 	0,
- };
+@@ -561,12 +561,22 @@ out_ok:
+ 	return 1;
+ }
  
-+static void nfs_set_port(struct sockaddr *sap, const unsigned short port)
-+{
-+	switch (sap->sa_family) {
-+	case AF_INET:
-+		((struct sockaddr_in *)sap)->sin_port = htons(port);
-+		break;
-+	case AF_INET6:
-+		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
-+		break;
-+	default:
-+		nfs_error(_("%s: unrecognized address family in %s"),
-+			progname, __func__);
-+	}
-+}
-+
- /**
-  * nfs_name_to_address - resolve hostname to an IPv4 or IPv6 socket address
-  * @hostname: pointer to C string containing DNS hostname to resolve
-@@ -474,27 +489,38 @@ static void nfs_pp_debug(const struct sockaddr *sap, const socklen_t salen,
-  * Use the portmapper to discover whether or not the service we want is
-  * available. The lists 'versions' and 'protos' define ordered sequences
-  * of service versions and udp/tcp protocols to probe for.
+-static int probe_nfsport(clnt_addr_t *nfs_server)
++/*
++ * Probe a server's NFS service to determine which versions and
++ * transport protocols are supported.
 + *
 + * Returns 1 if the requested service port is unambiguous and pingable;
 + * @pmap is filled in with the version, port, and transport protocol used
-+ * during the successful ping.  Note that if a port is already specified
-+ * in @pmap and it matches the rpcbind query result, nfs_probe_port() does
-+ * not perform an RPC ping.
++ * during the successful ping.  If all three are already specified, simply
++ * return success without an rpcbind query or RPC ping (we may be trying
++ * to mount an NFS service that is not advertised via rpcbind).
++ *
++ * If an error occurs or the requested service isn't available, zero is
++ * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
++ */
++static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
++				struct pmap *pmap)
+ {
+-	struct sockaddr *sap = (struct sockaddr *)&nfs_server->saddr;
+-	socklen_t salen = sizeof(nfs_server->saddr);
+-	struct pmap *pmap = &nfs_server->pmap;
+-
+ 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
+ 		return 1;
+ 
+@@ -578,12 +588,22 @@ static int probe_nfsport(clnt_addr_t *nfs_server)
+ 					probe_nfs2_only, probe_udp_only);
+ }
+ 
+-static int probe_mntport(clnt_addr_t *mnt_server)
++/*
++ * Probe a server's mountd service to determine which versions and
++ * transport protocols are supported.
++ *
++ * Returns 1 if the requested service port is unambiguous and pingable;
++ * @pmap is filled in with the version, port, and transport protocol used
++ * during the successful ping.  If all three are already specified, simply
++ * return success without an rpcbind query or RPC ping (we may be trying
++ * to mount an NFS service that is not advertised via rpcbind).
 + * 
 + * If an error occurs or the requested service isn't available, zero is
 + * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
-  */
--static int probe_port(clnt_addr_t *server, const unsigned long *versions,
--			const unsigned int *protos)
-+static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
-+			  struct pmap *pmap, const unsigned long *versions,
-+			  const unsigned int *protos)
++ */
++static int nfs_probe_mntport(const struct sockaddr *sap, const socklen_t salen,
++				struct pmap *pmap)
  {
--	const struct sockaddr *saddr = (struct sockaddr *)&server->saddr;
--	const socklen_t salen = sizeof(server->saddr);
--	struct pmap *pmap = &server->pmap;
-+	struct sockaddr_storage address;
-+	struct sockaddr *saddr = (struct sockaddr *)&address;
- 	const unsigned long prog = pmap->pm_prog, *p_vers;
- 	const unsigned int prot = (u_int)pmap->pm_prot, *p_prot;
- 	const u_short port = (u_short) pmap->pm_port;
- 	unsigned long vers = pmap->pm_vers;
- 	unsigned short p_port;
- 
-+	memcpy(saddr, sap, salen);
- 	p_prot = prot ? &prot : protos;
- 	p_vers = vers ? &vers : versions;
- 	rpc_createerr.cf_stat = 0;
-+
- 	for (;;) {
- 		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
- 		if (p_port) {
- 			if (!port || port == p_port) {
--				server->saddr.sin_port = htons(p_port);
-+				nfs_set_port(saddr, p_port);
- 				nfs_pp_debug(saddr, salen, prog, *p_vers,
- 						*p_prot, p_port);
- 				if (nfs_rpc_ping(saddr, salen, prog,
-@@ -537,28 +563,36 @@ out_ok:
- 
- static int probe_nfsport(clnt_addr_t *nfs_server)
- {
-+	struct sockaddr *sap = (struct sockaddr *)&nfs_server->saddr;
-+	socklen_t salen = sizeof(nfs_server->saddr);
- 	struct pmap *pmap = &nfs_server->pmap;
- 
+-	struct sockaddr *sap = (struct sockaddr *)&mnt_server->saddr;
+-	socklen_t salen = sizeof(mnt_server->saddr);
+-	struct pmap *pmap = &mnt_server->pmap;
+-
  	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
  		return 1;
  
- 	if (nfs_mount_data_version >= 4)
--		return probe_port(nfs_server, probe_nfs3_first, probe_tcp_first);
-+		return nfs_probe_port(sap, salen, pmap,
-+					probe_nfs3_first, probe_tcp_first);
- 	else
--		return probe_port(nfs_server, probe_nfs2_only, probe_udp_only);
-+		return nfs_probe_port(sap, salen, pmap,
-+					probe_nfs2_only, probe_udp_only);
+@@ -607,10 +627,13 @@ static int probe_mntport(clnt_addr_t *mnt_server)
+  */
+ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ {
++	struct sockaddr *nfs_saddr = (struct sockaddr *)&nfs_server->saddr;
++	socklen_t nfs_salen = sizeof(nfs_server->saddr);
++	struct sockaddr *mnt_saddr = (struct sockaddr *)&mnt_server->saddr;
++	socklen_t mnt_salen = sizeof(mnt_server->saddr);
+ 	struct pmap *nfs_pmap = &nfs_server->pmap;
+ 	struct pmap *mnt_pmap = &mnt_server->pmap;
+ 	struct pmap save_nfs, save_mnt;
+-	int res;
+ 	const unsigned long *probe_vers;
+ 
+ 	if (mnt_pmap->pm_vers && !nfs_pmap->pm_vers)
+@@ -627,9 +650,9 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ 
+ 	for (; *probe_vers; probe_vers++) {
+ 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+-		if ((res = probe_nfsport(nfs_server) != 0)) {
++		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap) != 0) {
+ 			mnt_pmap->pm_vers = *probe_vers;
+-			if ((res = probe_mntport(mnt_server)) != 0)
++			if (nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap) != 0)
+ 				return 1;
+ 			memcpy(mnt_pmap, &save_mnt, sizeof(*mnt_pmap));
+ 		}
+@@ -647,9 +670,9 @@ out_bad:
+ 	return 0;
+ 
+ version_fixed:
+-	if (!probe_nfsport(nfs_server))
++	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap))
+ 		goto out_bad;
+-	return probe_mntport(mnt_server);
++	return nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap);
  }
  
- static int probe_mntport(clnt_addr_t *mnt_server)
+ static int nfs_probe_statd(void)
+@@ -716,11 +739,14 @@ int start_statd(void)
+  */
+ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
  {
 +	struct sockaddr *sap = (struct sockaddr *)&mnt_server->saddr;
 +	socklen_t salen = sizeof(mnt_server->saddr);
- 	struct pmap *pmap = &mnt_server->pmap;
++	struct pmap *pmap = &mnt_server->pmap;
+ 	CLIENT *clnt;
+ 	enum clnt_stat res = 0;
+ 	int msock;
  
- 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
- 		return 1;
- 
- 	if (nfs_mount_data_version >= 4)
--		return probe_port(mnt_server, probe_mnt3_first, probe_udp_first);
-+		return nfs_probe_port(sap, salen, pmap,
-+					probe_mnt3_first, probe_udp_first);
- 	else
--		return probe_port(mnt_server, probe_mnt1_first, probe_udp_only);
-+		return nfs_probe_port(sap, salen, pmap,
-+					probe_mnt1_first, probe_udp_only);
- }
- 
- /**
+-	if (!probe_mntport(mnt_server))
++	if (!nfs_probe_mntport(sap, salen, pmap))
+ 		return 0;
+ 	clnt = mnt_openclnt(mnt_server, &msock);
+ 	if (!clnt)
 
