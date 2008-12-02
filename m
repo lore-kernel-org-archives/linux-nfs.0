@@ -1,105 +1,77 @@
-From: akpm@linux-foundation.org
-Subject: [patch 1/1] lockd: convert reclaimer thread to kthread interface
-Date: Mon, 01 Dec 2008 14:27:48 -0800
-Message-ID: <200812012227.mB1MRmVg016961@imap1.linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
-	jlayton@redhat.com, bfields@fieldses.org
-To: trond.myklebust@fys.uio.no
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH/RFC] svcgssd always sets an infinite expiry on authentication tokens etc.
+Date: Tue, 2 Dec 2008 16:18:17 +1100
+Message-ID: <18740.50457.981544.21225@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Kevin Coffman <kwc@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38610 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751268AbYLAW2f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2008 17:28:35 -0500
+Received: from ns2.suse.de ([195.135.220.15]:40815 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750729AbYLBFSQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Dec 2008 00:18:16 -0500
+Cc: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
 
-My understanding is that there is a push to turn the kernel_thread
-interface into a non-exported symbol and move all kernel threads to use
-the kthread API. This patch changes lockd to use kthread_run to spawn
-the reclaimer thread.
 
-I've made the assumption here that the extra module references taken
-when we spawn this thread are unnecessary and removed them. I've also
-added a KERN_ERR printk that pops if the thread can't be spawned to warn
-the admin that the locks won't be reclaimed.
+Hi,
+ I have a report of an NFS server which runs out of kernel memory when
+ it gets heave rpcsec_gss traffic (auth_sys doesn't trigger the
+ problem so it must be gss related).
 
-In the future, it would be nice to be able to notify userspace that
-locks have been lost (probably by implementing SIGLOST), and adding some
-good policies about how long we should reattempt to reclaim the locks.
+ From looking at /proc/slab_allocators it seems that the main user of
+ memory is the rsc and rsi caches.
+ It appears entries are inserted into these caches with an expiry of
+ 'forever' so they grow but never shrink.
+ We should fix this.
 
-Finally, I removed a comment about memory leaks that I believe is
-obsolete and added a new one to clarify the result of sending a SIGKILL
-to the reclaimer thread. As best I can tell, doing so doesn't actually
-cause a memory leak.
+ For the rsi (init) cache I assume the entry is only needed once so a
+ short expiry of (say) one minute should be plenty.
+ For the rsc (context) cache, the entry could be needed repeatedly
+ during the lifetime of a 'session'.  However eventually it will
+ become stale and should be allowed to expire.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+ I assume that if the kernel requests a particular entry a second
+ time, an hour later, it will get the same answer - is that correct?
 
- fs/lockd/clntlock.c |   21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+ In that case, setting the expiry to something largish seems
+ appropriate.
 
-diff -puN fs/lockd/clntlock.c~lockd-convert-reclaimer-thread-to-kthread-interface fs/lockd/clntlock.c
---- a/fs/lockd/clntlock.c~lockd-convert-reclaimer-thread-to-kthread-interface
-+++ a/fs/lockd/clntlock.c
-@@ -14,6 +14,7 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
- #include <linux/smp_lock.h>
-+#include <linux/kthread.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-@@ -191,11 +192,15 @@ __be32 nlmclnt_grant(const struct sockad
- void
- nlmclnt_recovery(struct nlm_host *host)
- {
-+	struct task_struct *task;
-+
- 	if (!host->h_reclaiming++) {
- 		nlm_get_host(host);
--		__module_get(THIS_MODULE);
--		if (kernel_thread(reclaimer, host, CLONE_FS | CLONE_FILES) < 0)
--			module_put(THIS_MODULE);
-+		task = kthread_run(reclaimer, host, "%s-reclaim", host->h_name);
-+		if (IS_ERR(task))
-+			printk(KERN_ERR "lockd: unable to spawn reclaimer "
-+				"thread. Locks for %s won't be reclaimed! "
-+				"(%ld)\n", host->h_name, PTR_ERR(task));
+ Hence the following patch (untested yet - but I will get it tested in
+ due course).
+
+ Does this seem reasonable?
+
+Thanks,
+NeilBrown
+
+
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index 794c2f4..088a007 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -86,7 +86,9 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
  	}
- }
+ 	qword_printhex(f, out_handle->value, out_handle->length);
+ 	/* XXX are types OK for the rest of this? */
+-	qword_printint(f, 0x7fffffff); /*XXX need a better timeout */
++
++	/* 'context' could be needed for a while. */
++	qword_printint(f, time(0) + 60*60);
+ 	qword_printint(f, cred->cr_uid);
+ 	qword_printint(f, cred->cr_gid);
+ 	qword_printint(f, cred->cr_ngroups);
+@@ -130,7 +132,8 @@ send_response(FILE *f, gss_buffer_desc *in_handle, gss_buffer_desc *in_token,
  
-@@ -207,7 +212,6 @@ reclaimer(void *ptr)
- 	struct file_lock *fl, *next;
- 	u32 nsmstate;
- 
--	daemonize("%s-reclaim", host->h_name);
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
-@@ -233,7 +237,12 @@ restart:
- 	list_for_each_entry_safe(fl, next, &host->h_reclaim, fl_u.nfs_fl.list) {
- 		list_del_init(&fl->fl_u.nfs_fl.list);
- 
--		/* Why are we leaking memory here? --okir */
-+		/*
-+		 * sending this thread a SIGKILL will result in any unreclaimed
-+		 * locks being removed from the h_granted list. This means that
-+		 * the kernel will not attempt to reclaim them again if a new
-+		 * reclaimer thread is spawned for this host.
-+		 */
- 		if (signalled())
- 			continue;
- 		if (nlmclnt_reclaim(host, fl) != 0)
-@@ -261,5 +270,5 @@ restart:
- 	nlm_release_host(host);
- 	lockd_down();
- 	unlock_kernel();
--	module_put_and_exit(0);
-+	return 0;
- }
-_
+ 	qword_addhex(&bp, &blen, in_handle->value, in_handle->length);
+ 	qword_addhex(&bp, &blen, in_token->value, in_token->length);
+-	qword_addint(&bp, &blen, 0x7fffffff); /*XXX need a better timeout */
++	/* INIT context info will only be needed for a short while */
++	qword_addint(&bp, &blen, time(0) + 60);
+ 	qword_adduint(&bp, &blen, maj_stat);
+ 	qword_adduint(&bp, &blen, min_stat);
+ 	qword_addhex(&bp, &blen, out_handle->value, out_handle->length);
