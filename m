@@ -1,90 +1,90 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Is order for "exportfs -r" and rpc.mountd important?
-Date: Wed, 3 Dec 2008 12:25:18 -0500
-Message-ID: <20081203172518.GD16846@fieldses.org>
-References: <200811281541.39272.t.bubeck@reinform.de> <200811281705.45087.t.bubeck@reinform.de>
+Subject: Re: [PATCH 1/6] NLM: Remove address eye-catcher buffers from
+	nlm_host
+Date: Wed, 3 Dec 2008 14:03:32 -0500
+Message-ID: <20081203190332.GK16846@fieldses.org>
+References: <20081201185108.10600.21700.stgit@ingres.1015granger.net> <20081201185734.10600.88841.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: "Dr. Tilmann Bubeck" <t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org>
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:51292 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:45234 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754357AbYLCRZU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Dec 2008 12:25:20 -0500
-In-Reply-To: <200811281705.45087.t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org>
+	id S1751387AbYLCTDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Dec 2008 14:03:37 -0500
+In-Reply-To: <20081201185734.10600.88841.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 28, 2008 at 05:05:44PM +0100, Dr. Tilmann Bubeck wrote:
-> To be more precise: the order between "exportfs -r" and "modprobe nfsd" is 
-> important (and not "exportfs -r" and "rpc.mountd").
-
-So, I'm confused: what are the before-and-after orders of all three
-(modprobe, exportfs, and rpc.mountd)?
-
+On Mon, Dec 01, 2008 at 01:57:34PM -0500, Chuck Lever wrote:
+> The h_name field in struct nlm_host is a just copy of
+> h_nsmhandle->sm_name.  Likewise, the contents of the h_addrbuf field
+> should be identical to the sm_addrbuf field.
 > 
-> Am Freitag, 28. November 2008 15:41:38 schrieb Dr. Tilmann Bubeck:
-> > According to manual page "exportfs -r" has two modes: legacy and new.
-> > Fedora 10 seems to use the new mode and mounts /proc/fs/nfsd.
-> >
-> > But they use the following order in /etc/init.d/nfs:
-> >   exportfs -r
-> >   rpc.mountd
-> >
-> > This results in /proc/fs/nfsd/exports having all obsolete entries
-> > from /var/lib/nfs/rmtab which causes a lot of trouble with stale NFS file
-> > handles.
+> The h_srcaddrbuf field is used only in one place for debugging.  We can
+> live without this until we get %pI formatting for printk().
+> 
+> Currently these buffers are 48 bytes, but we need to support scope IDs
+> in IPv6 presentation addresses, which means making the buffers even
+> larger.  Instead, let's find ways to eliminate them to save space.
+> 
+> Finally, AF_UNSPEC support is no longer needed in nlm_display_address()
+> now that it is not used for the h_srcaddr field.
 
-What problems exactly?
+As usual, whenever there's a "finally, ..." or "next, ..." I'd like a
+separate patch.
 
-> > This seems to be wrong according to "man exportfs" in new mode.
-> >
-> > If I change the order to
-> >   rpc.mountd
-> >   exportfs -r
-> >
-> > then everything is OK and /proc/fs/nfsd/exports only contains the info
-> > from /etc/exports and not all stale clients. This seems to be correct
-> > according to "man exportfs" in new mode.
-> >
-> > Questions: is this behaviour a bug or at least bad? Shouldn't exportfs
-> > being changed, so that when it detects "new" mode it will never feed rmtab
-> > into the kernel and rely upon rpc.mountd answering the kernels questions as
-> > stated in "man exportfs"?
+Though this is distinct enough it's not really a problem to read.  Leave
+it as is, OK.
 
-That does sound wrong.
+> @@ -232,11 +229,6 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+>  
+>  	nrhosts++;
+>  
+> -	nlm_display_address((struct sockaddr *)&host->h_addr,
+> -				host->h_addrbuf, sizeof(host->h_addrbuf));
+> -	nlm_display_address((struct sockaddr *)&host->h_srcaddr,
+> -				host->h_srcaddrbuf, sizeof(host->h_srcaddrbuf));
+> -
+>  	dprintk("lockd: nlm_lookup_host created host %s\n",
+>  			host->h_name);
+>  
+> @@ -378,8 +370,8 @@ nlm_bind_host(struct nlm_host *host)
+>  {
+>  	struct rpc_clnt	*clnt;
+>  
+> -	dprintk("lockd: nlm_bind_host %s (%s), my addr=%s\n",
+> -			host->h_name, host->h_addrbuf, host->h_srcaddrbuf);
+> +	dprintk("lockd: nlm_bind_host %s (%s)\n",
+> +			host->h_name, host->h_nsmhandle->sm_addrbuf);
 
-Perhaps rmtab should also be cleared on exportfs -r?  I don't really
-understand how rmtab should work.
+Hm, just checking: so the only place I can see h_nsmhandle set NULL is
+in nsm_unmonitor(), which is called only from nlm_destroy_host(),
+shortly before a kfree(host), but before a possible
+rpc_shutdown_client()--and doesn't look like an rpc task could be
+calling rpc_bind_host()?  OK.
+
+And on the creation end, looks like h_nsmhandle is set on host creation.
+So that won't be a NULL deference.  OK, looks fine.  Applied.
 
 --b.
 
-> >
-> > If yes, then the order or the programs is irrelevant.
-> > If not, should the order of the programs be reversed in Fedora?
-> >
-> > Thanks
-> >  Till
+>  
+>  	/* Lock host handle */
+>  	mutex_lock(&host->h_mutex);
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index 23da3fa..4467b83 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -65,9 +65,6 @@ struct nlm_host {
+>  	struct list_head	h_granted;	/* Locks in GRANTED state */
+>  	struct list_head	h_reclaim;	/* Locks in RECLAIM state */
+>  	struct nsm_handle *	h_nsmhandle;	/* NSM status handle */
+> -
+> -	char			h_addrbuf[48],	/* address eyecatchers */
+> -				h_srcaddrbuf[48];
+>  };
+>  
+>  struct nsm_handle {
 > 
-> 
-> 
-> -- 
-> +-------+-------------------------------------------------------------+
-> |       | dr. tilmann bubeck               reinform medien- und       |
-> |       |                                  informationstechnologie AG |
-> | rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
-> | form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
-> |    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
-> |       | email: t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org      http://www.reinform.de     |
-> |       +-------------------------------------------------------------+
-> |       | pflichtangaben nach paragraph 80, AktG:                     |
-> |       | reinform medien- und informationstechnologie AG, stuttgart  |
-> |       | handelsregister stuttgart, HRB 23001                        |
-> |       | vorstand:     dr. tilmann bubeck (vorsitz), dr. tommy kuhn  |
-> |       | aufsichtsrat: frank stege (vorsitz)                         |
-> +-------+-------------------------------------------------------------+
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
