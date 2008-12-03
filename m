@@ -1,100 +1,59 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] export dir thru 2 diff path names
-Date: Wed, 3 Dec 2008 16:46:14 -0500
-Message-ID: <20081203214614.GT16846@fieldses.org>
-References: <491869F0.1000505@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F374A0@0461-its-exmb02.us.saic.com>
-	<491882AB.6070908@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F37542@0461-its-exmb02.us.saic.com>
-	<4918859C.6080608@bnl.gov>
-	<620E93B2E5CC3B46BD811165E3335B8702F3759D@0461-its-exmb02.us.saic.com>
-	<20081110192820.GC19053@fieldses.org>
-	<ED53D02C-E3A1-4989-904C-CBCB4CCD29EE@oracle.com>
-	<20081110204443.GK19053@fieldses.org>
-	<620E93B2E5CC3B46BD811165E3335B8702FD3423@0461-its-exmb02.us.saic.com>
+From: "Kevin Coffman" <kwc@umich.edu>
+Subject: Re: [PATCH/RFC] svcgssd always sets an infinite expiry on authentication tokens etc.
+Date: Wed, 3 Dec 2008 17:26:36 -0500
+Message-ID: <4d569c330812031426hb9a2717wf430bab74781070a@mail.gmail.com>
+References: <18740.50457.981544.21225@notabene.brown>
+	 <4d569c330812012145y2353bc9asd7a0c62fef42ed3a@mail.gmail.com>
+	 <49355C78.6080607@RedHat.com>
+	 <4d569c330812020940n3b8561fexfb97d89a7d5779a4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Chuck Lever <chuck.lever@oracle.com>, nfs@lists.sourceforge.net,
-	Sev Binello <sev-IGkKxAqZmp0@public.gmane.org>
-To: "Murata, Dennis" <DENNIS.MURATA-jTGLxe6cr0Q@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "Neil Brown" <neilb@suse.de>, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: "Steve Dickson" <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:48343 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751672AbYLCVrK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Dec 2008 16:47:10 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1L7zYp-0007MS-Lg
-	for linux-nfs@vger.kernel.org; Thu, 04 Dec 2008 08:47:07 +1100
-In-Reply-To: <620E93B2E5CC3B46BD811165E3335B8702FD3423-9/h0XwadXgnyjpQT3Si/rsM9+qvyE0V4QQ4Iyu8u01E@public.gmane.org>
+Received: from yx-out-2324.google.com ([74.125.44.28]:17066 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752584AbYLCW0i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Dec 2008 17:26:38 -0500
+Received: by yx-out-2324.google.com with SMTP id 8so1577449yxm.1
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Dec 2008 14:26:37 -0800 (PST)
+In-Reply-To: <4d569c330812020940n3b8561fexfb97d89a7d5779a4-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 12, 2008 at 10:04:30AM -0800, Murata, Dennis wrote:
-> One last question for the maintainers and the community.  Is this viewed
-> as an undocumented feature or a bug to be fixed?  I would hate to
-> recommend use of the exported link, only to have it disabled by an
-> updated patch.
+> Dec 2, 2008 at 12:40 PM, Kevin Coffman <kwc@citi.umich.edu> wrote:
+> On Tue, Dec 2, 2008 at 11:04 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>> Kevin Coffman wrote:
+>>> Hi Neil,
+>>> This seems reasonable.
+>>>
+>>> I have a patch somewhere that gets the actual Kerberos expiration that
+>>> could be used for the rsc timeout.  But I think this should be fine
+>>> for now.  (Perhaps at the cost of requiring clients to negotiate a new
+>>> context every hour?)
+>> This question is a bit worrisome, imho... I understand the need to release
+>> memory consumed by dead contexts but on the other hand, renegotiating
+>> contexts every hour on the hours seems a bit costly as well...
+>>
+>> Does it make sense to make this time out configurable? Yes, it would be
+>> a very obscure knob, but in the unlikely event there is a bug in the
+>> renegotiating code or renegotiating simply becomes too costly, I think
+>> it would good to have a way to dial the time out back up as a work-around.
+>>
+>> steved.
+>
+> Hi Steve,
+>
+> Rather than adding another config knob, how 'bout I dust off my patch
+> to get the "right" timeout value?  I should be able to make that
+> available tomorrow.  (I have limited resources to work on this at the
+> moment.)
+>
+> K.C.
 
-Hopefully if it turns out there's some good reason why we'd need to
-disable it, then we can provide some sort of backwards-compatibility
-flag (or at least a warning).
+It took me a bit longer than I anticipated to retrofit my changes for
+this.  I have patches that I will send out for review later tonight or
+tomorrow.
 
---b.
-
-> 
-> Wayne 
-> 
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> > Sent: Monday, November 10, 2008 2:45 PM
-> > To: Chuck Lever
-> > Cc: Murata, Dennis; nfs@lists.sourceforge.net; Sev Binello
-> > Subject: Re: [NFS] export dir thru 2 diff path names
-> > 
-> > On Mon, Nov 10, 2008 at 03:20:42PM -0500, Chuck Lever wrote:
-> > > On Nov 10, 2008, at Nov 10, 2008, 2:28 PM, J. Bruce Fields wrote:
-> > >> On Mon, Nov 10, 2008 at 11:28:04AM -0800, Murata, Dennis wrote:
-> > >>> That really is the 64K question.  During my initial testing, I 
-> > >>> exported the parent directory.  Now I am explicitly exporting the 
-> > >>> installation directories, where I see the exportfs 
-> > message.  In the 
-> > >>> messages log file on the server the mount request from 
-> > the client is 
-> > >>> always the actual directory.
-> > >>
-> > >> I don't see how this would be "unsafe"--if it works, go for it.
-> > >>
-> > >> One potential trap: it's using the same client list and export 
-> > >> options for both, so if you think you can make one of them 
-> > read-only 
-> > >> and one of them writeable, for example, you'll be disapointed.
-> > >
-> > > I wonder how this behaves on the client side.  If the same client 
-> > > mounts both paths, will it recognize that these are the 
-> > same and use a 
-> > > shared page cache for both?
-> > 
-> > Yeah, who knows.  I suspect it assumes they're different if 
-> > the mount paths are different.
-> > 
-> > But for most people's purposes it probably doesn't matter 
-> > much.  (For the purposes people have mentioned so far they 
-> > don't even need to mount both paths from the same client at once.)
-> > 
-> > --b.
-> > 
-
--------------------------------------------------------------------------
-This SF.Net email is sponsored by the Moblin Your Move Developer's challenge
-Build the coolest Linux based applications with Moblin SDK & win great prizes
-Grand prize is a trip for two to an Open Source event anywhere in the world
-http://moblin-contest.org/redirect.php?banner_id=100&url=/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+K.C.
