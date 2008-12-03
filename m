@@ -1,59 +1,90 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH/RFC] svcgssd always sets an infinite expiry on
-	authentication tokens etc.
-Date: Tue, 2 Dec 2008 18:23:44 -0500
-Message-ID: <20081202232344.GM20616@fieldses.org>
-References: <18740.50457.981544.21225@notabene.brown>
+Subject: Re: Is order for "exportfs -r" and rpc.mountd important?
+Date: Wed, 3 Dec 2008 12:25:18 -0500
+Message-ID: <20081203172518.GD16846@fieldses.org>
+References: <200811281541.39272.t.bubeck@reinform.de> <200811281705.45087.t.bubeck@reinform.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>,
-	Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+To: "Dr. Tilmann Bubeck" <t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53292 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:51292 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751027AbYLBXXq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Dec 2008 18:23:46 -0500
-In-Reply-To: <18740.50457.981544.21225-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1754357AbYLCRZU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Dec 2008 12:25:20 -0500
+In-Reply-To: <200811281705.45087.t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 02, 2008 at 04:18:17PM +1100, Neil Brown wrote:
->  I have a report of an NFS server which runs out of kernel memory when
->  it gets heave rpcsec_gss traffic (auth_sys doesn't trigger the
->  problem so it must be gss related).
+On Fri, Nov 28, 2008 at 05:05:44PM +0100, Dr. Tilmann Bubeck wrote:
+> To be more precise: the order between "exportfs -r" and "modprobe nfsd" is 
+> important (and not "exportfs -r" and "rpc.mountd").
+
+So, I'm confused: what are the before-and-after orders of all three
+(modprobe, exportfs, and rpc.mountd)?
+
 > 
->  From looking at /proc/slab_allocators it seems that the main user of
->  memory is the rsc and rsi caches.
->  It appears entries are inserted into these caches with an expiry of
->  'forever' so they grow but never shrink.
->  We should fix this.
+> Am Freitag, 28. November 2008 15:41:38 schrieb Dr. Tilmann Bubeck:
+> > According to manual page "exportfs -r" has two modes: legacy and new.
+> > Fedora 10 seems to use the new mode and mounts /proc/fs/nfsd.
+> >
+> > But they use the following order in /etc/init.d/nfs:
+> >   exportfs -r
+> >   rpc.mountd
+> >
+> > This results in /proc/fs/nfsd/exports having all obsolete entries
+> > from /var/lib/nfs/rmtab which causes a lot of trouble with stale NFS file
+> > handles.
 
-Yes, definitely a leak.  But it's funny, I have a strong memory of a
-conversation on one of these lists with someone who looked into this
-problem and found that even with some silly artificial tests that
-established as many contexts per second as possible, they weren't able
-to see significant memory consumption--but I can't find the thread now.
+What problems exactly?
 
-Some limit on the size might also be nice depending on what the worst
-case looks like with expiries of about a day.
+> > This seems to be wrong according to "man exportfs" in new mode.
+> >
+> > If I change the order to
+> >   rpc.mountd
+> >   exportfs -r
+> >
+> > then everything is OK and /proc/fs/nfsd/exports only contains the info
+> > from /etc/exports and not all stale clients. This seems to be correct
+> > according to "man exportfs" in new mode.
+> >
+> > Questions: is this behaviour a bug or at least bad? Shouldn't exportfs
+> > being changed, so that when it detects "new" mode it will never feed rmtab
+> > into the kernel and rely upon rpc.mountd answering the kernels questions as
+> > stated in "man exportfs"?
+
+That does sound wrong.
+
+Perhaps rmtab should also be cleared on exportfs -r?  I don't really
+understand how rmtab should work.
 
 --b.
 
+> >
+> > If yes, then the order or the programs is irrelevant.
+> > If not, should the order of the programs be reversed in Fedora?
+> >
+> > Thanks
+> >  Till
 > 
->  For the rsi (init) cache I assume the entry is only needed once so a
->  short expiry of (say) one minute should be plenty.
->  For the rsc (context) cache, the entry could be needed repeatedly
->  during the lifetime of a 'session'.  However eventually it will
->  become stale and should be allowed to expire.
 > 
->  I assume that if the kernel requests a particular entry a second
->  time, an hour later, it will get the same answer - is that correct?
 > 
->  In that case, setting the expiry to something largish seems
->  appropriate.
-> 
->  Hence the following patch (untested yet - but I will get it tested in
->  due course).
-> 
->  Does this seem reasonable?
+> -- 
+> +-------+-------------------------------------------------------------+
+> |       | dr. tilmann bubeck               reinform medien- und       |
+> |       |                                  informationstechnologie AG |
+> | rein  | fon  : +49 (711) 7 82 76-52      loeffelstr. 40             |
+> | form  | fax  : +49 (711) 7 82 76-46      70597 stuttgart / germany  |
+> |    AG | cell.: +49 (172) 8 84 29 72      fon: +49 (711) 75 86 56-10 |
+> |       | email: t.bubeck-dx1aEnP5Zukb1SvskN2V4Q@public.gmane.org      http://www.reinform.de     |
+> |       +-------------------------------------------------------------+
+> |       | pflichtangaben nach paragraph 80, AktG:                     |
+> |       | reinform medien- und informationstechnologie AG, stuttgart  |
+> |       | handelsregister stuttgart, HRB 23001                        |
+> |       | vorstand:     dr. tilmann bubeck (vorsitz), dr. tommy kuhn  |
+> |       | aufsichtsrat: frank stege (vorsitz)                         |
+> +-------+-------------------------------------------------------------+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
