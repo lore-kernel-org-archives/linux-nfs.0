@@ -1,30 +1,44 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Curiosities of Linux NFSD file handles
-Date: Thu, 4 Dec 2008 14:35:11 -0500
-Message-ID: <20081204193511.GE7575@fieldses.org>
-References: <19603.1228409217@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/1] NFS: map nfs_probe_fsinfo errors
+Date: Thu, 04 Dec 2008 14:57:45 -0500
+Message-ID: <1228420665.7475.19.camel@heimdal.trondhjem.org>
+References: <1228410550-17040-1-git-send-email-andros@netapp.com>
+	 <1228411011.7475.6.camel@heimdal.trondhjem.org>
+	 <1228411282.7475.9.camel@heimdal.trondhjem.org>
+	 <89c397150812041050u184afda7s2d33bc1aa82b8171@mail.gmail.com>
+	 <1228417616.7475.16.camel@heimdal.trondhjem.org>
+	 <89c397150812041116t74692ca1k5ce2ca87e64b5a2b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: David Howells <dhowells@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <19603.1228409217@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:39048 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751518AbYLDT54 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Dec 2008 14:57:56 -0500
+In-Reply-To: <89c397150812041116t74692ca1k5ce2ca87e64b5a2b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 04, 2008 at 04:46:57PM +0000, David Howells wrote:
-> 
-> I've been poking around in the exportfs code, and I see that the handle decode
-> routines seem to expect that they may be given more data for a handle than the
-> encode_fh() routine produced.
+On Thu, 2008-12-04 at 14:16 -0500, William A. (Andy) Adamson wrote:
+> >> and the one that I saw when I tried to mount a v4.0 server with a v4.1
+> >> client which caused a segfault.
+> >>
+> >> NFS4ERR_MINOR_VERS_MISMATCH.
+> >
+> > Should never happen on a v4.0 client...
 
-Somebody else who understands what you're asking about off the top of
-their heads may be able to pop up and answer this.  But I'm a little
-confused.  Which encode/decode routines exactly, and where do you see
-them making assumptions about the size of the data?
+Hmm...
 
---b.
+That said, it wouldn't harm to add the MINOR_VERS_MISMATCH error to
+nfs_errtbl[]. I suppose the only thing we can do is to map it to EIO,
+but that would be better than letting it slip through the cracks...
 
-> Is this still true?  Or can I assume that the amount of data now given to the
-> decoder will exactly reflect the amount of data obtained from the encoder?
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
