@@ -1,60 +1,114 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/17] NSM: Make sure to return an error if the SM_MON call
-	result is not zero
-Date: Thu, 04 Dec 2008 14:21:15 -0500
-Message-ID: <20081204192115.8039.21501.stgit@ingres.1015granger.net>
+Subject: [PATCH 15/17] NSM: Release nsmhandle in nlm_destroy_host
+Date: Thu, 04 Dec 2008 14:21:31 -0500
+Message-ID: <20081204192131.8039.19250.stgit@ingres.1015granger.net>
 References: <20081204191113.8039.76714.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:17370 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754525AbYLDTVc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Dec 2008 14:21:32 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:50403 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754775AbYLDTVx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Dec 2008 14:21:53 -0500
 In-Reply-To: <20081204191113.8039.76714.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nsm_monitor() function reports an error and does not set sm_monitored
-if the SM_MON upcall reply has a non-zero result code, but nsm_monitor()
-does not return an error to its caller in this case.
+The nsm_handle's reference count is bumped in nlm_lookup_host().  It
+should be decremented in nlm_destroy_host() to make it easier to see
+the balance of these two operations.
 
-Since sm_monitored is not set, the upcall is retried when the next NLM
-request invokes nsm_monitor().  However, that may not come for a while.
-In the meantime, at least one NLM request will potentially proceed
-without the peer being monitored properly.
+Move the nsm_release() call to fs/lockd/host.c.
 
-Have nsm_monitor() return an error if the result code is non-zero.
-This will cause all NLM requests to fail immediately if the upcall
-completed successfully but rpc.statd returned an error.
+The h_nsmhandle pointer is set in nlm_lookup_host(), and never cleared.
+The nlm_destroy_host() function is never called for the same nlm_host
+twice, so h_nsmhandle won't ever be NULL when nsm_unmonitor() is
+called.
 
-This may be inconvenient in some cases (for example if rpc.statd
-cannot complete a proper DNS reverse lookup of the hostname), but will
-make the reboot monitoring service more robust by forcing such issues
-to be corrected by an admin.
+All references to the nlm_host are gone before it is freed.  We can
+skip making h_nsmhandle NULL just before the nlm_host is deallocated.
+
+It's also likely we can remove the h_nsmhandle NULL check in
+nlmsvc_is_client() as well, but we can do that later when rearchitect-
+ing the nlm_host cache.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+ fs/lockd/host.c             |    8 +++-----
+ fs/lockd/mon.c              |    5 -----
+ include/linux/lockd/lockd.h |    1 -
+ 3 files changed, 3 insertions(+), 11 deletions(-)
 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 417e071..316241a 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -37,6 +37,7 @@ static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+ 						const char *hostname,
+ 						const size_t hostname_len,
+ 						const int create);
++static void			nsm_release(struct nsm_handle *nsm);
+ 
+ struct nlm_lookup_host_info {
+ 	const int		server;		/* search for server|client */
+@@ -264,10 +265,8 @@ nlm_destroy_host(struct nlm_host *host)
+ 	BUG_ON(!list_empty(&host->h_lockowners));
+ 	BUG_ON(atomic_read(&host->h_count));
+ 
+-	/*
+-	 * Release NSM handle and unmonitor host.
+-	 */
+ 	nsm_unmonitor(host);
++	nsm_release(host->h_nsmhandle);
+ 
+ 	clnt = host->h_rpcclnt;
+ 	if (clnt != NULL)
+@@ -712,8 +711,7 @@ found:
+ /*
+  * Release an NSM handle
+  */
+-void
+-nsm_release(struct nsm_handle *nsm)
++static void nsm_release(struct nsm_handle *nsm)
+ {
+ 	if (!nsm)
+ 		return;
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index bb5fc1b..07e16b8 100644
+index aaaa08e..15fab22 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -91,8 +91,9 @@ nsm_monitor(struct nlm_host *host)
- 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
+@@ -117,10 +117,6 @@ nsm_unmonitor(struct nlm_host *host)
+ 	struct nsm_res	res;
+ 	int		status = 0;
  
- 	status = nsm_mon_unmon(nsm, SM_MON, &res);
+-	if (nsm == NULL)
+-		return 0;
+-	host->h_nsmhandle = NULL;
 -
--	if (status < 0 || res.status != 0)
-+	if (res.status != 0)
-+		status = -EIO;
-+	if (status < 0)
- 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
- 	else
- 		nsm->sm_monitored = 1;
+ 	if (atomic_read(&nsm->sm_count) == 1
+ 	 && nsm->sm_monitored && !nsm->sm_sticky) {
+ 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
+@@ -132,7 +128,6 @@ nsm_unmonitor(struct nlm_host *host)
+ 		else
+ 			nsm->sm_monitored = 0;
+ 	}
+-	nsm_release(nsm);
+ 	return status;
+ }
+ 
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index f15a4f5..30a6a9c 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -240,7 +240,6 @@ void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
+ 					unsigned int, u32);
+-void		  nsm_release(struct nsm_handle *);
+ 
+ /*
+  * Host monitoring
 
