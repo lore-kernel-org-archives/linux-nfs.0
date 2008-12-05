@@ -1,82 +1,152 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Make sm-notify faster if there are no servers to notify
-Date: Fri, 05 Dec 2008 14:12:27 -0500
-Message-ID: <49397D1B.3000701@RedHat.com>
-References: <1225302305994@dmwebmail.dmwebmail.chezphil.org> <20081029184153.GE31936@fieldses.org> <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com> <20081029211145.GE1406@fieldses.org> <49183A12.7010707@RedHat.com> <20081204211057.GC9593@fieldses.org> <18744.41310.635618.148281@notabene.brown> <20081205035803.GC15115@fieldses.org> <49392C14.7000709@RedHat.com> <20081205163824.GA29227@fieldses.org> <20081205172913.GB29227@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: [PATCH V3] optimize attribute timeouts for "noac" and "actimeo=0"
+Date: Fri, 05 Dec 2008 16:37:05 -0500
+Message-ID: <49399F01.9090409@redhat.com>
+References: <484EE994.5030907@redhat.com> <487390EC.7080403@redhat.com>	 <76bd70e30807100858g58fbf454uc9331035a2bbf264@mail.gmail.com>	 <487649AE.1090909@redhat.com> <1215718184.7126.44.camel@localhost>	 <4877BF39.20102@redhat.com> <1215807540.17983.2.camel@localhost> <4877C17A.7000009@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Neil Brown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
-	Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------060900020602090808030803"
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:49883 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:51003 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753195AbYLETOs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Dec 2008 14:14:48 -0500
-In-Reply-To: <20081205172913.GB29227@fieldses.org>
+	id S1755504AbYLEVhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Dec 2008 16:37:11 -0500
+In-Reply-To: <4877C17A.7000009@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Fri, Dec 05, 2008 at 11:38:24AM -0500, bfields wrote:
->> On Fri, Dec 05, 2008 at 08:26:44AM -0500, Steve Dickson wrote:
->>> J. Bruce Fields wrote:
->>>>> I think it would still be valuable to replace the 'sync' with two
->>>>> 'fsync's, one of the file, one on the directory.
->>>> Sure, may as well.--b.
->>>>
->>> Something similar to this:
->>>
->>> diff -up nfs-utils/utils/statd/sm-notify.c.orig nfs-utils/utils/statd/sm-notify.c
->>> --- nfs-utils/utils/statd/sm-notify.c.orig	2008-11-17 15:06:13.000000000 -0500
->>> +++ nfs-utils/utils/statd/sm-notify.c	2008-12-05 08:21:52.000000000 -0500
->>> @@ -211,12 +211,6 @@ usage:		fprintf(stderr,
->>>  	backup_hosts(_SM_DIR_PATH, _SM_BAK_PATH);
->>>  	get_hosts(_SM_BAK_PATH);
->>>  
->>> -	/* If there are not hosts to notify, just exit */
->>> -	if (!hosts) {
->>> -		nsm_log(LOG_DEBUG, "No hosts to notify; exiting");
->>> -		return 0;
->>> -	}
->> This was still a huge boot-time win in the common case, so now that
->> we've committed to it I'd rather not regress.  Let's just skip the
->> sync()s/fsncy()s in the !hosts case--that looks to me like the simplest
->> correct solution for now.
-> 
-> My argument for correctness: if we don't sync in that case, then on
-> reboot the rename that updates the state will either have happened or
-> (if a crash comes too soon) not.
-> 
-> It is OK for that update to not happen as long as we're assured it
-> happens before the first lock request is made or replied to, or the
-> first monitor request completes, as, in the absence of any notifies,
-> those are the only points at which the new state will be exposed to the
-> outside world.
-Doesn't the sync() have to happen before the file is first
-read by stated. Meaning before statd:main() calls load_state_number()?
+This is a multi-part message in MIME format.
+--------------060900020602090808030803
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-> 
-> The first lock request will also require an upcall to statd.  So we're
-> OK as long as any monitor requests (from either the local kernel or
-> remote peers) do a sync.
-> 
-> And statd should be doing a sync before responding to any monitor
-> request.  As long as the SM_DIR is on the same filesystem as the state
-> file, that would do the job....  But now that I look, I see statd is
-> using an open with O_SYNC to ensure the new statd record hits stable
-> storage.  Which we can't count on being enough.
-> 
-> How about adding an explicit fsync() of the state file (and parent
-> directory) to statd's first succesful creation of a statd record,
-> together with a comment explaining this?  So around about line 194 in
-> utils/statd/monitor.c:sm_mon_1_svc()?
-If we do the sync()/fsync() here we will also have to update MY_STATE
-since that's what is the number used in the RPCs. But also I think
-doing the sync this late be a bit waste since there is real good
-chance the rename has already been sync-ed out by previous sync()
-during boot up... or am I missing something... 
+Hi.
 
-steved.
+I've been looking at a bugzilla which describes a problem where
+a customer was advised to use either the "noac" or "actimeo=0"
+mount options to solve a consistency problem that they were
+seeing in the file attributes.  It turned out that this solution
+did not work reliably for them because sometimes, the local
+attribute cache was believed to be valid and not timed out.
+(With an attribute cache timeout of 0, the cache should always
+appear to be timed out.)
 
+In looking at this situation, it appears to me that the problem
+is that the attribute cache timeout code has an off-by-one
+error in it.  It is assuming that the cache is valid in the
+region, [read_cache_jiffies, read_cache_jiffies + attrtimeo].  The
+cache should be considered valid only in the region,
+[read_cache_jiffies, read_cache_jiffies + attrtimeo).  With this
+change, the options, "noac" and "actimeo=0", work as originally
+expected.
+
+This problem was previously addressed by special casing the
+attrtimeo == 0 case.  However, since the problem is only an off-
+by-one error, the cleaner solution is address the off-by-one
+error and thus, not require the special case.
+
+    Thanx...
+
+        ps
+
+Signed-off-by: Peter Staubach <staubach@redhat.com>
+
+
+--------------060900020602090808030803
+Content-Type: text/plain;
+ name="attrtimeo.devel.3"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="attrtimeo.devel.3"
+
+--- linux-2.6.27.i686/fs/nfs/inode.c.org
++++ linux-2.6.27.i686/fs/nfs/inode.c
+@@ -712,14 +735,7 @@ int nfs_attribute_timeout(struct inode *
+ 
+ 	if (nfs_have_delegation(inode, FMODE_READ))
+ 		return 0;
+-	/*
+-	 * Special case: if the attribute timeout is set to 0, then always
+-	 * 		 treat the cache as having expired (unless holding
+-	 * 		 a delegation).
+-	 */
+-	if (nfsi->attrtimeo == 0)
+-		return 1;
+-	return !time_in_range(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
++	return !time_in_range_open(jiffies, nfsi->read_cache_jiffies, nfsi->read_cache_jiffies + nfsi->attrtimeo);
+ }
+ 
+ /**
+@@ -1182,7 +1198,7 @@ static int nfs_update_inode(struct inode
+ 		nfsi->attrtimeo_timestamp = now;
+ 		nfsi->attr_gencount = nfs_inc_attr_generation_counter();
+ 	} else {
+-		if (!time_in_range(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
++		if (!time_in_range_open(now, nfsi->attrtimeo_timestamp, nfsi->attrtimeo_timestamp + nfsi->attrtimeo)) {
+ 			if ((nfsi->attrtimeo <<= 1) > NFS_MAXATTRTIMEO(inode))
+ 				nfsi->attrtimeo = NFS_MAXATTRTIMEO(inode);
+ 			nfsi->attrtimeo_timestamp = now;
+--- linux-2.6.27.i686/fs/nfs/dir.c.org
++++ linux-2.6.27.i686/fs/nfs/dir.c
+@@ -1794,7 +1794,7 @@ static int nfs_access_get_cached(struct 
+ 	cache = nfs_access_search_rbtree(inode, cred);
+ 	if (cache == NULL)
+ 		goto out;
+-	if (!time_in_range(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
++	if (!time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
+ 		goto out_stale;
+ 	res->jiffies = cache->jiffies;
+ 	res->cred = cache->cred;
+--- linux-2.6.27.i686/include/linux/nfs_fs.h.org
++++ linux-2.6.27.i686/include/linux/nfs_fs.h
+@@ -130,7 +130,10 @@ struct nfs_inode {
+ 	 *
+ 	 * We need to revalidate the cached attrs for this inode if
+ 	 *
+-	 *	jiffies - read_cache_jiffies > attrtimeo
++	 *	jiffies - read_cache_jiffies >= attrtimeo
++	 *
++	 * Please note the comparison is greater than or equal
++	 * so that zero timeout values can be specified.
+ 	 */
+ 	unsigned long		read_cache_jiffies;
+ 	unsigned long		attrtimeo;
+--- linux-2.6.27.i686/include/linux/jiffies.h.org
++++ linux-2.6.27.i686/include/linux/jiffies.h
+@@ -115,10 +115,20 @@ static inline u64 get_jiffies_64(void)
+ 	 ((long)(a) - (long)(b) >= 0))
+ #define time_before_eq(a,b)	time_after_eq(b,a)
+ 
++/*
++ * Calculate whether a is in the range of [b, c].
++ */
+ #define time_in_range(a,b,c) \
+ 	(time_after_eq(a,b) && \
+ 	 time_before_eq(a,c))
+ 
++/*
++ * Calculate whether a is in the range of [b, c).
++ */
++#define time_in_range_open(a,b,c) \
++	(time_after_eq(a,b) && \
++	 time_before(a,c))
++
+ /* Same as above, but does so with platform independent 64bit types.
+  * These must be used when utilizing jiffies_64 (i.e. return value of
+  * get_jiffies_64() */
+--- linux-2.6.27.i686/net/sunrpc/auth.c.org
++++ linux-2.6.27.i686/net/sunrpc/auth.c
+@@ -234,7 +234,7 @@ rpcauth_prune_expired(struct list_head *
+ 	list_for_each_entry_safe(cred, next, &cred_unused, cr_lru) {
+ 
+ 		/* Enforce a 60 second garbage collection moratorium */
+-		if (time_in_range(cred->cr_expire, expired, jiffies) &&
++		if (time_in_range_open(cred->cr_expire, expired, jiffies) &&
+ 		    test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) != 0)
+ 			continue;
+ 
+
+--------------060900020602090808030803--
