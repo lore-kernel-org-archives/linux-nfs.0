@@ -1,112 +1,21 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Make sm-notify faster if there are no servers to notify
-Date: Fri, 5 Dec 2008 22:08:34 -0500
-Message-ID: <20081206030834.GD5464@fieldses.org>
-References: <20081029184153.GE31936@fieldses.org> <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com> <20081029211145.GE1406@fieldses.org> <49183A12.7010707@RedHat.com> <20081204211057.GC9593@fieldses.org> <18744.41310.635618.148281@notabene.brown> <20081205035803.GC15115@fieldses.org> <49392C14.7000709@RedHat.com> <20081205163824.GA29227@fieldses.org> <4939760A.9050304@RedHat.com>
+From: OXFAM GB - UK <lagranny50@cox.net>
+Subject: LUCKY WINNER!
+Date: Sat, 6 Dec 2008 5:44:56 -0500
+Message-ID: <20081206054456.RAO8F.430292.imail__36953.4460166053$1228565275$gmane$org@eastrmwml40>
+Reply-To: terrywilliams79-hfd6tSHDiQjYkQIYctQFYw@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
-	Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=utf-8
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:49107 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756256AbYLFDIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Dec 2008 22:08:43 -0500
-In-Reply-To: <4939760A.9050304-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from eastrmmtai110.cox.net ([68.230.240.29]:43265 "EHLO
+	eastrmmtai110.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754690AbYLFMG2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Dec 2008 07:06:28 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 05, 2008 at 01:42:18PM -0500, Steve Dickson wrote:
-> J. Bruce Fields wrote:
-> > On Fri, Dec 05, 2008 at 08:26:44AM -0500, Steve Dickson wrote:
-> >> J. Bruce Fields wrote:
-> >>>> I think it would still be valuable to replace the 'sync' with two
-> >>>> 'fsync's, one of the file, one on the directory.
-> >>> Sure, may as well.--b.
-> >>>
-> >> Something similar to this:
-> >>
-> >> diff -up nfs-utils/utils/statd/sm-notify.c.orig nfs-utils/utils/statd/sm-notify.c
-> >> --- nfs-utils/utils/statd/sm-notify.c.orig	2008-11-17 15:06:13.000000000 -0500
-> >> +++ nfs-utils/utils/statd/sm-notify.c	2008-12-05 08:21:52.000000000 -0500
-> >> @@ -211,12 +211,6 @@ usage:		fprintf(stderr,
-> >>  	backup_hosts(_SM_DIR_PATH, _SM_BAK_PATH);
-> >>  	get_hosts(_SM_BAK_PATH);
-> >>  
-> >> -	/* If there are not hosts to notify, just exit */
-> >> -	if (!hosts) {
-> >> -		nsm_log(LOG_DEBUG, "No hosts to notify; exiting");
-> >> -		return 0;
-> >> -	}
-> > 
-> > This was still a huge boot-time win in the common case, so now that
-> > we've committed to it I'd rather not regress.  
-> I thought the idea was the state had to be updated even when there
-> are no hosts...
 
-I would prefer to increment the state file even in the absence of hosts
-(it might be useful e.g. to a client that missed a previous grace period
-due to a network problem to know that the current boot instance is later
-than the one it needed to reclaim in).  But I don't believe it's
-necessary.
-
-The more immediate problem is that the state file no longer gets created
-at all on a new system.   (Unless the package install scripts do it.  I
-haven't checked.)
-
-So, we could either make sure the state file gets created some other
-way, or delay the syncs as described before.
-
-> >> @@ -730,13 +725,16 @@ nsm_get_state(int update)
-> >>  				"Failed to write state to %s", newfile);
-> >>  			exit(1);
-> >>  		}
-> >> +		fsync(fd);
-> >>  		close(fd);
-> >> +		fp = opendir(_SM_STATE_PATH);
-> > 
-> > Also, I think you meant to:
-> > 
-> > 		fsync(fp);
-> > 		close(fp);
-> No... I don't think so... the fd is an open() of the new file and the
-> fp is a DIR stream... But there was a cut/paste error... The fsync()
-> of the DIR stream was missing... here is is again...
-
-OK.
-
-> @@ -694,6 +688,7 @@ nsm_get_state(int update)
->  {
->  	char		newfile[PATH_MAX];
->  	int		fd, state;
-> +	DIR 	*fp;
->  
->  	if ((fd = open(_SM_STATE_PATH, O_RDONLY)) < 0) {
->  		if (!opt_quiet) {
-> @@ -730,13 +725,18 @@ nsm_get_state(int update)
->  				"Failed to write state to %s", newfile);
->  			exit(1);
->  		}
-> +		fsync(fd);
->  		close(fd);
-> +		fp = opendir(_SM_STATE_PATH);
->  		if (rename(newfile, _SM_STATE_PATH) < 0) {
->  			nsm_log(LOG_ERR,
->  				"Cannot create %s: %m", _SM_STATE_PATH);
->  			exit(1);
->  		}
-> -		sync();
-
-May as well move that opendir down here where it's used, though.
-
-> +		if (fp != NULL) {
-> +			fsync(dirfd(fp));
-> +			closedir(fp);
-> +		}
->  	}
->  
->  	return state;
-
---b.
+You have been awarded =C3=82=C2=A3850,000 from the OXFAM GB -
+UK the cash/grant donation Promo Contact Dr.Terry Williams.=20
+E-mail (terrywilliams79-hfd6tSHDiQjYkQIYctQFYw@public.gmane.org)
+Qualification Number(OG/N231/E101/BDB)
