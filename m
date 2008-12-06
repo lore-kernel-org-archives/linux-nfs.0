@@ -1,66 +1,51 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 22/27] NSM: Move nsm_addr() to fs/lockd/mon.c
-Date: Fri, 05 Dec 2008 19:04:40 -0500
-Message-ID: <20081206000439.24075.51755.stgit@ingres.1015granger.net>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Make sm-notify faster if there are no servers to notify
+Date: Fri, 5 Dec 2008 21:42:41 -0500
+Message-ID: <20081206024241.GB5464@fieldses.org>
+References: <5AB39614-D03F-43DF-BCD2-2B2501A79D65@oracle.com> <20081029211145.GE1406@fieldses.org> <49183A12.7010707@RedHat.com> <20081204211057.GC9593@fieldses.org> <18744.41310.635618.148281@notabene.brown> <20081205035803.GC15115@fieldses.org> <49392C14.7000709@RedHat.com> <20081205163824.GA29227@fieldses.org> <20081205172913.GB29227@fieldses.org> <6763B58B-6C3B-40FA-84F4-737E93D429A6@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>, Neil Brown <neilb@suse.de>,
+	Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:25931 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755848AbYLFAJn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:09:43 -0500
-In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:56014 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753862AbYLFCmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Dec 2008 21:42:54 -0500
+In-Reply-To: <6763B58B-6C3B-40FA-84F4-737E93D429A6@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: nsm_addr_in() is no longer used, and nsm_addr() is used only in
-fs/lockd/mon.c, so move it there.
+On Fri, Dec 05, 2008 at 01:41:32PM -0500, Chuck Lever wrote:
+> On Dec 5, 2008, at 12:29 PM, J. Bruce Fields wrote:
+>> How about adding an explicit fsync() of the state file (and parent
+>> directory) to statd's first succesful creation of a statd record,
+>> together with a comment explaining this?  So around about line 194 in
+>> utils/statd/monitor.c:sm_mon_1_svc()?
+>>
+>> In fact, we could delete the sync entirely and do the same before the
+>> first notification, and then we wouldn't have to wait for the sync in
+>> the case host records are present either....  (statd would, but  
+>> perhaps
+>> we could still get other work done in the mean time).
+>>
+>> (Am I missing something?)
+>
+> This all might work, but I think we're adding a lot of complexity as a  
+> workaround.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I think you mean the justification is too subtle--the code itself (just
+a couple syncs or fsyncs) is pretty simple.
 
- fs/lockd/mon.c              |    5 +++++
- include/linux/lockd/lockd.h |   10 ----------
- 2 files changed, 5 insertions(+), 10 deletions(-)
+> Someone should fix the real problem, which is the  
+> implementation of sync().
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 97011ee..2e0ec9f 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -53,6 +53,11 @@ static				DEFINE_SPINLOCK(nsm_lock);
-  */
- int				nsm_local_state;
- 
-+static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
-+{
-+	return (struct sockaddr *)&nsm->sm_addr;
-+}
-+
- static void nsm_display_ipv4_address(const struct sockaddr *sap, char *buf,
- 				     const size_t len)
- {
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 8b57467..6ab0449 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -112,16 +112,6 @@ static inline struct sockaddr *nlm_srcaddr(const struct nlm_host *host)
- 	return (struct sockaddr *)&host->h_srcaddr;
- }
- 
--static inline struct sockaddr_in *nsm_addr_in(const struct nsm_handle *handle)
--{
--	return (struct sockaddr_in *)&handle->sm_addr;
--}
--
--static inline struct sockaddr *nsm_addr(const struct nsm_handle *handle)
--{
--	return (struct sockaddr *)&handle->sm_addr;
--}
--
- /*
-  * Map an fl_owner_t into a unique 32-bit "pid"
-  */
+I think you mean of fsync().  My understanding of past discussions on
+the issue is that it's not really fixable on ext3, at least.  So
+default setups will have this problem for a while.
 
+--b.
+
+> That would probably have other benefits too.
