@@ -1,130 +1,56 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/27] NSM: More clean up of nsm_get_handle()
-Date: Fri, 05 Dec 2008 19:04:17 -0500
-Message-ID: <20081206000416.24075.1427.stgit@ingres.1015granger.net>
+Subject: [PATCH 23/27] NSM: Move nsm_use_hostnames to mon.c
+Date: Fri, 05 Dec 2008 19:04:48 -0500
+Message-ID: <20081206000447.24075.95139.stgit@ingres.1015granger.net>
 References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:57125 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754791AbYLFAEv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:04:51 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:17339 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756543AbYLFAG3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:06:29 -0500
 In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: refactor nsm_get_handle() so it is organized the same way that
-nsm_reboot_lookup() is, and get rid of the "goto retry".
+Clean up.
 
-There is an additional micro-optimization here.  This change moves the
-"hostname & nsm_use_hostnames" test out of the list_for_each_entry()
-clause in nsm_get_handle(), since it is loop-invariant.
+Treat the nsm_use_hostnames global variable like nsm_local_state.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |   69 +++++++++++++++++++++++++++++++-------------------------
- 1 files changed, 38 insertions(+), 31 deletions(-)
+ fs/lockd/mon.c |    3 ++-
+ fs/lockd/svc.c |    1 -
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 24857a8..a5f26f3 100644
+index 2e0ec9f..38b8d51 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -214,6 +214,16 @@ static struct nsm_handle *nsm_lookup_hostname(const char *hostname,
- 	return NULL;
- }
+@@ -51,7 +51,8 @@ static				DEFINE_SPINLOCK(nsm_lock);
+ /*
+  * Local NSM state
+  */
+-int				nsm_local_state;
++int	__read_mostly		nsm_local_state;
++int	__read_mostly		nsm_use_hostnames;
  
-+static struct nsm_handle *nsm_lookup_addr(const struct sockaddr *sap)
-+{
-+	struct nsm_handle *nsm;
-+
-+	list_for_each_entry(nsm, &nsm_handles, sm_link)
-+		if (nlm_cmp_addr(nsm_addr(nsm), sap))
-+			return nsm;
-+	return NULL;
-+}
-+
- static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
+ static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
  {
- 	struct nsm_handle *nsm;
-@@ -282,8 +292,7 @@ struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
- 				  const size_t salen, const char *hostname,
- 				  const size_t hostname_len)
- {
--	struct nsm_handle *nsm = NULL;
--	struct nsm_handle *pos;
-+	struct nsm_handle *cached, *new = NULL;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 50de426..8283b0e 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -59,7 +59,6 @@ unsigned long			nlmsvc_timeout;
+ static unsigned long		nlm_grace_period;
+ static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
+ static int			nlm_udpport, nlm_tcpport;
+-int				nsm_use_hostnames = 0;
  
- 	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
- 		if (printk_ratelimit()) {
-@@ -294,39 +303,37 @@ struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
- 		return NULL;
- 	}
- 
--retry:
--	spin_lock(&nsm_lock);
--	list_for_each_entry(pos, &nsm_handles, sm_link) {
--
--		if (hostname && nsm_use_hostnames) {
--			if (strlen(pos->sm_name) != hostname_len
--			 || memcmp(pos->sm_name, hostname, hostname_len))
--				continue;
--		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
--			continue;
--		atomic_inc(&pos->sm_count);
--		spin_unlock(&nsm_lock);
--		kfree(nsm);
--		dprintk("lockd: found nsm_handle for %s (%s), cnt %d\n",
--				pos->sm_name, pos->sm_addrbuf,
--				atomic_read(&pos->sm_count));
--		return pos;
--	}
-+	do {
-+		spin_lock(&nsm_lock);
- 
--	if (nsm) {
--		list_add(&nsm->sm_link, &nsm_handles);
--		spin_unlock(&nsm_lock);
--		dprintk("lockd: created nsm_handle for %s (%s)\n",
--				nsm->sm_name, nsm->sm_addrbuf);
--		return nsm;
--	}
-+		if (nsm_use_hostnames && hostname != NULL)
-+			cached = nsm_lookup_hostname(hostname, hostname_len);
-+		else
-+			cached = nsm_lookup_addr(sap);
-+
-+		if (cached != NULL) {
-+			atomic_inc(&cached->sm_count);
-+			spin_unlock(&nsm_lock);
-+			kfree(new);
-+			dprintk("lockd: found nsm_handle for %s (%s), "
-+					"cnt %d\n", cached->sm_name,
-+					cached->sm_addrbuf,
-+					atomic_read(&cached->sm_count));
-+			return cached;
-+		}
- 
--	spin_unlock(&nsm_lock);
-+		if (new != NULL) {
-+			list_add(&new->sm_link, &nsm_handles);
-+			spin_unlock(&nsm_lock);
-+			dprintk("lockd: created nsm_handle for %s (%s)\n",
-+					new->sm_name, new->sm_addrbuf);
-+			return new;
-+		}
- 
--	nsm = nsm_create_handle(sap, salen, hostname, hostname_len);
--	if (nsm != NULL)
--		goto retry;
-+		spin_unlock(&nsm_lock);
- 
-+		new = nsm_create_handle(sap, salen, hostname, hostname_len);
-+	} while (new != NULL);
- 	return NULL;
- }
- 
+ /*
+  * Constants needed for the sysctl interface.
 
