@@ -1,78 +1,130 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/27] NSM: Add xdr_stream-based XDR encoders
-Date: Fri, 05 Dec 2008 19:02:22 -0500
-Message-ID: <20081206000222.24075.45214.stgit@ingres.1015granger.net>
+Subject: [PATCH 19/27] NSM: More clean up of nsm_get_handle()
+Date: Fri, 05 Dec 2008 19:04:17 -0500
+Message-ID: <20081206000416.24075.1427.stgit@ingres.1015granger.net>
 References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:37158 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754813AbYLFAE5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:04:57 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:57125 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754791AbYLFAEv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:04:51 -0500
 In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce xdr_stream-based XDR decoder functions.  These are more
-careful about preventing RPC buffer overflows.
+Clean up: refactor nsm_get_handle() so it is organized the same way that
+nsm_reboot_lookup() is, and get rid of the "goto retry".
+
+There is an additional micro-optimization here.  This change moves the
+"hostname & nsm_use_hostnames" test out of the list_for_each_entry()
+clause in nsm_get_handle(), since it is loop-invariant.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |   32 ++++++++++++++++++++++++++++++++
- 1 files changed, 32 insertions(+), 0 deletions(-)
+ fs/lockd/mon.c |   69 +++++++++++++++++++++++++++++++-------------------------
+ 1 files changed, 38 insertions(+), 31 deletions(-)
 
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index cf85c0f..0f8e029 100644
+index 24857a8..a5f26f3 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -377,6 +377,23 @@ xdr_decode_stat_res(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
- 	return 0;
+@@ -214,6 +214,16 @@ static struct nsm_handle *nsm_lookup_hostname(const char *hostname,
+ 	return NULL;
  }
  
-+static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
-+			    struct nsm_res *resp)
++static struct nsm_handle *nsm_lookup_addr(const struct sockaddr *sap)
 +{
-+	struct xdr_stream xdr;
++	struct nsm_handle *nsm;
 +
-+	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-+	p = xdr_inline_decode(&xdr, 2 * sizeof(u32));
-+	if (unlikely(p == NULL))
-+		return -EIO;
-+	resp->status = ntohl(*p++);
-+	resp->state = ntohl(*p);
-+
-+	dprintk("lockd: xdr_dec_stat_res status %d state %d\n",
-+			resp->status, resp->state);
-+	return 0;
++	list_for_each_entry(nsm, &nsm_handles, sm_link)
++		if (nlm_cmp_addr(nsm_addr(nsm), sap))
++			return nsm;
++	return NULL;
 +}
 +
- static int
- xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
+ static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
  {
-@@ -384,6 +401,21 @@ xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
- 	return 0;
+ 	struct nsm_handle *nsm;
+@@ -282,8 +292,7 @@ struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+ 				  const size_t salen, const char *hostname,
+ 				  const size_t hostname_len)
+ {
+-	struct nsm_handle *nsm = NULL;
+-	struct nsm_handle *pos;
++	struct nsm_handle *cached, *new = NULL;
+ 
+ 	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+ 		if (printk_ratelimit()) {
+@@ -294,39 +303,37 @@ struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+ 		return NULL;
+ 	}
+ 
+-retry:
+-	spin_lock(&nsm_lock);
+-	list_for_each_entry(pos, &nsm_handles, sm_link) {
+-
+-		if (hostname && nsm_use_hostnames) {
+-			if (strlen(pos->sm_name) != hostname_len
+-			 || memcmp(pos->sm_name, hostname, hostname_len))
+-				continue;
+-		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
+-			continue;
+-		atomic_inc(&pos->sm_count);
+-		spin_unlock(&nsm_lock);
+-		kfree(nsm);
+-		dprintk("lockd: found nsm_handle for %s (%s), cnt %d\n",
+-				pos->sm_name, pos->sm_addrbuf,
+-				atomic_read(&pos->sm_count));
+-		return pos;
+-	}
++	do {
++		spin_lock(&nsm_lock);
+ 
+-	if (nsm) {
+-		list_add(&nsm->sm_link, &nsm_handles);
+-		spin_unlock(&nsm_lock);
+-		dprintk("lockd: created nsm_handle for %s (%s)\n",
+-				nsm->sm_name, nsm->sm_addrbuf);
+-		return nsm;
+-	}
++		if (nsm_use_hostnames && hostname != NULL)
++			cached = nsm_lookup_hostname(hostname, hostname_len);
++		else
++			cached = nsm_lookup_addr(sap);
++
++		if (cached != NULL) {
++			atomic_inc(&cached->sm_count);
++			spin_unlock(&nsm_lock);
++			kfree(new);
++			dprintk("lockd: found nsm_handle for %s (%s), "
++					"cnt %d\n", cached->sm_name,
++					cached->sm_addrbuf,
++					atomic_read(&cached->sm_count));
++			return cached;
++		}
+ 
+-	spin_unlock(&nsm_lock);
++		if (new != NULL) {
++			list_add(&new->sm_link, &nsm_handles);
++			spin_unlock(&nsm_lock);
++			dprintk("lockd: created nsm_handle for %s (%s)\n",
++					new->sm_name, new->sm_addrbuf);
++			return new;
++		}
+ 
+-	nsm = nsm_create_handle(sap, salen, hostname, hostname_len);
+-	if (nsm != NULL)
+-		goto retry;
++		spin_unlock(&nsm_lock);
+ 
++		new = nsm_create_handle(sap, salen, hostname, hostname_len);
++	} while (new != NULL);
+ 	return NULL;
  }
  
-+static int xdr_dec_stat(struct rpc_rqst *rqstp, __be32 *p,
-+			struct nsm_res *resp)
-+{
-+	struct xdr_stream xdr;
-+
-+	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-+	p = xdr_inline_decode(&xdr, sizeof(u32));
-+	if (unlikely(p == NULL))
-+		return -EIO;
-+	resp->state = ntohl(*p);
-+
-+	dprintk("lockd: xdr_dec_stat state %d\n", resp->state);
-+	return 0;
-+}
-+
- #define SM_my_name_sz	(1+XDR_QUADLEN(SM_MAXSTRLEN))
- #define SM_my_id_sz	(SM_my_name_sz+3)
- #define SM_mon_name_sz	(1+XDR_QUADLEN(SM_MAXSTRLEN))
 
