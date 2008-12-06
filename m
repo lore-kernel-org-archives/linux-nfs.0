@@ -1,172 +1,370 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/27] NLM: Change nlm_host_rebooted() to take a single
-	nlm_reboot argument
-Date: Fri, 05 Dec 2008 19:03:31 -0500
-Message-ID: <20081206000331.24075.11688.stgit@ingres.1015granger.net>
+Subject: [PATCH 07/27] NSM: Move nsm_find() to fs/lockd/mon.c
+Date: Fri, 05 Dec 2008 19:02:45 -0500
+Message-ID: <20081206000244.24075.75258.stgit@ingres.1015granger.net>
 References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:30649 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755016AbYLFAFE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:05:04 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:37157 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754807AbYLFAE5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:04:57 -0500
 In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pass the nlm_reboot data structure directly from the NLMPROC_SM_NOTIFY
-XDR decoders to nlm_host_rebooted().  This eliminates some packing and
-unpacking of the NLMPROC_SM_NOTIFY results, and prepares for passing
-these results, including the "priv" cookie, directly to a lookup
-routine in fs/lockd/mon.c.
+The nsm_find() function sets up fresh nsm_handle entries.  This is
+where we will store the "priv" cookie used to lookup nsm_handles during
+reboot recovery.  The cookie will be constructed when nsm_find()
+creates a new nsm_handle.
 
-This patch changes code organization but should not cause any
-behavioral change.
+As much as possible, I would like to keep everything that handles a
+"priv" cookie in fs/lockd/mon.c so that all the smarts are in one
+source file.  That organization should make it pretty simple to see how
+all this works.
+
+To me, it makes more sense than the current arrangement to keep
+nsm_find() with nsm_monitor() and nsm_unmonitor().
+
+So, start reorganizing by moving nsm_find() into fs/lockd/mon.c.  The
+nsm_release() function comes along too, since it shares the nsm_lock
+global variable.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |   31 +++++++++++++++++--------------
- fs/lockd/svc4proc.c         |   11 +----------
- fs/lockd/svcproc.c          |   11 +----------
- include/linux/lockd/lockd.h |    3 +--
- 4 files changed, 20 insertions(+), 36 deletions(-)
+ fs/lockd/host.c             |  129 -----------------------------------------
+ fs/lockd/mon.c              |  134 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/lockd/lockd.h |    6 ++
+ 3 files changed, 140 insertions(+), 129 deletions(-)
 
 diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index dbdeaa8..ed10338 100644
+index 316241a..dbdeaa8 100644
 --- a/fs/lockd/host.c
 +++ b/fs/lockd/host.c
-@@ -444,31 +444,34 @@ void nlm_release_host(struct nlm_host *host)
+@@ -32,12 +32,6 @@ static int			nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
+ 
+ static void			nlm_gc_hosts(void);
+-static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+-						const size_t salen,
+-						const char *hostname,
+-						const size_t hostname_len,
+-						const int create);
+-static void			nsm_release(struct nsm_handle *nsm);
+ 
+ struct nlm_lookup_host_info {
+ 	const int		server;		/* search for server|client */
+@@ -106,44 +100,6 @@ static void nlm_clear_port(struct sockaddr *sap)
  	}
  }
  
--/*
-- * We were notified that the host indicated by address &sin
-- * has rebooted.
-- * Release all resources held by that peer.
-+/**
-+ * nlm_host_rebooted - Release all resources held by rebooted host
-+ * @info: pointer to decoded results of NLM_SM_NOTIFY call
-+ *
-+ * We were notified that the specified host has rebooted.  Release
-+ * all resources held by that peer.
+-static void nlm_display_ipv4_address(const struct sockaddr *sap, char *buf,
+-				     const size_t len)
+-{
+-	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+-	snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
+-}
+-
+-static void nlm_display_ipv6_address(const struct sockaddr *sap, char *buf,
+-				     const size_t len)
+-{
+-	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+-
+-	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
+-		snprintf(buf, len, NIPQUAD_FMT,
+-				NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
+-	else if (sin6->sin6_scope_id != 0)
+-		snprintf(buf, len, NIP6_FMT "%%%u", NIP6(sin6->sin6_addr),
+-				sin6->sin6_scope_id);
+-	else
+-		snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
+-}
+-
+-static void nlm_display_address(const struct sockaddr *sap,
+-				char *buf, const size_t len)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET:
+-		nlm_display_ipv4_address(sap, buf, len);
+-		break;
+-	case AF_INET6:
+-		nlm_display_ipv6_address(sap, buf, len);
+-		break;
+-	default:
+-		snprintf(buf, len, "unsupported address family");
+-		break;
+-	}
+-}
+-
+ /*
+  * Common host lookup routine for server & client
   */
--void nlm_host_rebooted(const struct sockaddr_in *sin,
--				const char *hostname,
--				unsigned int hostname_len,
--				u32 new_state)
-+void nlm_host_rebooted(const struct nlm_reboot *info)
- {
-+	const struct sockaddr_in sin = {
-+		.sin_family		= AF_INET,
-+		.sin_addr.s_addr	= info->addr,
-+	};
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
- 	struct nsm_handle *nsm;
- 	struct nlm_host	*host;
+@@ -636,88 +592,3 @@ nlm_gc_hosts(void)
  
--	nsm = nsm_find((struct sockaddr *)sin, sizeof(*sin),
--			hostname, hostname_len, 0);
-+	nsm = nsm_find((struct sockaddr *)&sin, sizeof(sin),
-+			info->mon, info->len, 0);
- 	if (nsm == NULL) {
- 		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
--				hostname_len, hostname);
-+				info->len, info->mon);
- 		return;
- 	}
- 
- 	dprintk("lockd: nlm_host_rebooted(%.*s, %s)\n",
--			hostname_len, hostname, nsm->sm_addrbuf);
-+			info->len, info->mon, nsm->sm_addrbuf);
- 
- 	/* When reclaiming locks on this peer, make sure that
- 	 * we set up a new notification */
-@@ -483,8 +486,8 @@ again:	mutex_lock(&nlm_host_mutex);
- 	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
- 		hlist_for_each_entry(host, pos, chain, h_hash) {
- 			if (host->h_nsmhandle == nsm
--			 && host->h_nsmstate != new_state) {
--				host->h_nsmstate = new_state;
-+			 && host->h_nsmstate != info->state) {
-+				host->h_nsmstate = info->state;
- 				host->h_state++;
- 
- 				nlm_get_host(host);
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 4dfdcbc..bb79a53 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -419,8 +419,6 @@ static __be32
- nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 					      void	        *resp)
- {
--	struct sockaddr_in	saddr;
--
- 	dprintk("lockd: SM_NOTIFY     called\n");
- 
- 	if (!nlm_privileged_requester(rqstp)) {
-@@ -430,14 +428,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 		return rpc_system_err;
- 	}
- 
--	/* Obtain the host pointer for this NFS server and try to
--	 * reclaim all locks we hold on this server.
--	 */
--	memset(&saddr, 0, sizeof(saddr));
--	saddr.sin_family = AF_INET;
--	saddr.sin_addr.s_addr = argp->addr;
--	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
--
-+	nlm_host_rebooted(argp);
- 	return rpc_success;
+ 	next_gc = jiffies + NLM_HOST_COLLECT;
  }
- 
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 3ca89e2..e44310c 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -451,8 +451,6 @@ static __be32
- nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 					      void	        *resp)
- {
--	struct sockaddr_in	saddr;
 -
- 	dprintk("lockd: SM_NOTIFY     called\n");
- 
- 	if (!nlm_privileged_requester(rqstp)) {
-@@ -462,14 +460,7 @@ nlmsvc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
- 		return rpc_system_err;
- 	}
- 
--	/* Obtain the host pointer for this NFS server and try to
--	 * reclaim all locks we hold on this server.
--	 */
--	memset(&saddr, 0, sizeof(saddr));
--	saddr.sin_family = AF_INET;
--	saddr.sin_addr.s_addr = argp->addr;
--	nlm_host_rebooted(&saddr, argp->mon, argp->len, argp->state);
 -
-+	nlm_host_rebooted(argp);
- 	return rpc_success;
- }
+-/*
+- * Manage NSM handles
+- */
+-static LIST_HEAD(nsm_handles);
+-static DEFINE_SPINLOCK(nsm_lock);
+-
+-static struct nsm_handle *nsm_find(const struct sockaddr *sap,
+-				   const size_t salen,
+-				   const char *hostname,
+-				   const size_t hostname_len,
+-				   const int create)
+-{
+-	struct nsm_handle *nsm = NULL;
+-	struct nsm_handle *pos;
+-
+-	if (!sap)
+-		return NULL;
+-
+-	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+-		if (printk_ratelimit()) {
+-			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
+-					    "in NFS lock request\n",
+-				(int)hostname_len, hostname);
+-		}
+-		return NULL;
+-	}
+-
+-retry:
+-	spin_lock(&nsm_lock);
+-	list_for_each_entry(pos, &nsm_handles, sm_link) {
+-
+-		if (hostname && nsm_use_hostnames) {
+-			if (strlen(pos->sm_name) != hostname_len
+-			 || memcmp(pos->sm_name, hostname, hostname_len))
+-				continue;
+-		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
+-			continue;
+-		atomic_inc(&pos->sm_count);
+-		kfree(nsm);
+-		nsm = pos;
+-		goto found;
+-	}
+-	if (nsm) {
+-		list_add(&nsm->sm_link, &nsm_handles);
+-		goto found;
+-	}
+-	spin_unlock(&nsm_lock);
+-
+-	if (!create)
+-		return NULL;
+-
+-	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+-	if (nsm == NULL)
+-		return NULL;
+-
+-	memcpy(nsm_addr(nsm), sap, salen);
+-	nsm->sm_addrlen = salen;
+-	nsm->sm_name = (char *) (nsm + 1);
+-	memcpy(nsm->sm_name, hostname, hostname_len);
+-	nsm->sm_name[hostname_len] = '\0';
+-	nlm_display_address((struct sockaddr *)&nsm->sm_addr,
+-				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
+-	atomic_set(&nsm->sm_count, 1);
+-	goto retry;
+-
+-found:
+-	spin_unlock(&nsm_lock);
+-	return nsm;
+-}
+-
+-/*
+- * Release an NSM handle
+- */
+-static void nsm_release(struct nsm_handle *nsm)
+-{
+-	if (!nsm)
+-		return;
+-	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
+-		list_del(&nsm->sm_link);
+-		spin_unlock(&nsm_lock);
+-		kfree(nsm);
+-	}
+-}
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 81e1cc1..d5bd847 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -47,12 +47,52 @@ struct nsm_res {
+ static struct rpc_clnt *	nsm_create(void);
  
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 194fa8a..2a3533e 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -239,8 +239,7 @@ void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
- void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
--extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
--					unsigned int, u32);
-+void		  nlm_host_rebooted(const struct nlm_reboot *);
+ static struct rpc_program	nsm_program;
++static				LIST_HEAD(nsm_handles);
++static				DEFINE_SPINLOCK(nsm_lock);
  
  /*
-  * Host monitoring
+  * Local NSM state
+  */
+ int				nsm_local_state;
+ 
++static void nsm_display_ipv4_address(const struct sockaddr *sap, char *buf,
++				     const size_t len)
++{
++	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
++}
++
++static void nsm_display_ipv6_address(const struct sockaddr *sap, char *buf,
++				     const size_t len)
++{
++	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++
++	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
++		snprintf(buf, len, NIPQUAD_FMT,
++				NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
++	else if (sin6->sin6_scope_id != 0)
++		snprintf(buf, len, NIP6_FMT "%%%u", NIP6(sin6->sin6_addr),
++				sin6->sin6_scope_id);
++	else
++		snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
++}
++
++static void nsm_display_address(const struct sockaddr *sap,
++				char *buf, const size_t len)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		nsm_display_ipv4_address(sap, buf, len);
++		break;
++	case AF_INET6:
++		nsm_display_ipv6_address(sap, buf, len);
++		break;
++	default:
++		snprintf(buf, len, "unsupported address family");
++		break;
++	}
++}
++
+ /*
+  * Common procedure for NSMPROC_MON/NSMPROC_UNMON calls
+  */
+@@ -162,6 +202,100 @@ void nsm_unmonitor(const struct nlm_host *host)
+ 	}
+ }
+ 
++/**
++ * nsm_find - Find or create a cached nsm_handle
++ * @sap: pointer to socket address of handle to find
++ * @salen: length of socket address
++ * @hostname: pointer to C string containing hostname to find
++ * @hostname_len: length of C string
++ * @create: one means create new handle if not found in cache
++ *
++ * Behavior is modulated by the global nsm_use_hostnames variable
++ * and by the @create argument.
++ *
++ * Returns a cached nsm_handle after bumping its ref count, or if
++ * @create is set, returns a fresh nsm_handle if a handle that
++ * matches @sap and/or @hostname cannot be found in the handle cache.
++ * Returns NULL if an error occurs.
++ */
++struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
++			    const char *hostname, const size_t hostname_len,
++			    const int create)
++{
++	struct nsm_handle *nsm = NULL;
++	struct nsm_handle *pos;
++
++	if (!sap)
++		return NULL;
++
++	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
++		if (printk_ratelimit()) {
++			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
++					    "in NFS lock request\n",
++				(int)hostname_len, hostname);
++		}
++		return NULL;
++	}
++
++retry:
++	spin_lock(&nsm_lock);
++	list_for_each_entry(pos, &nsm_handles, sm_link) {
++
++		if (hostname && nsm_use_hostnames) {
++			if (strlen(pos->sm_name) != hostname_len
++			 || memcmp(pos->sm_name, hostname, hostname_len))
++				continue;
++		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
++			continue;
++		atomic_inc(&pos->sm_count);
++		kfree(nsm);
++		nsm = pos;
++		goto found;
++	}
++	if (nsm) {
++		list_add(&nsm->sm_link, &nsm_handles);
++		goto found;
++	}
++	spin_unlock(&nsm_lock);
++
++	if (!create)
++		return NULL;
++
++	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
++	if (nsm == NULL)
++		return NULL;
++
++	memcpy(nsm_addr(nsm), sap, salen);
++	nsm->sm_addrlen = salen;
++	nsm->sm_name = (char *) (nsm + 1);
++	memcpy(nsm->sm_name, hostname, hostname_len);
++	nsm->sm_name[hostname_len] = '\0';
++	nsm_display_address((struct sockaddr *)&nsm->sm_addr,
++				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
++	atomic_set(&nsm->sm_count, 1);
++	goto retry;
++
++found:
++	spin_unlock(&nsm_lock);
++	return nsm;
++}
++
++/**
++ * nsm_release - Release an NSM handle
++ * @nsm: pointer to handle to be released
++ *
++ */
++void nsm_release(struct nsm_handle *nsm)
++{
++	if (!nsm)
++		return;
++	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
++		list_del(&nsm->sm_link);
++		spin_unlock(&nsm_lock);
++		kfree(nsm);
++	}
++}
++
+ /*
+  * Create NSM client for the local host
+  */
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 38344bf..8d71536 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -247,6 +247,12 @@ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
+ int		  nsm_monitor(const struct nlm_host *host);
+ void		  nsm_unmonitor(const struct nlm_host *host);
+ 
++struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
++					const char *hostname,
++					const size_t hostname_len,
++					const int create);
++void		  nsm_release(struct nsm_handle *nsm);
++
+ /*
+  * This is used in garbage collection and resource reclaim
+  * A return value != 0 means destroy the lock/block/share
 
