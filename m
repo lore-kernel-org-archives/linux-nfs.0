@@ -1,110 +1,78 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/27] NLM: Decode "priv" argument of NLMPROC_SM_NOTIFY as an
-	opaque
-Date: Fri, 05 Dec 2008 19:03:39 -0500
-Message-ID: <20081206000338.24075.50442.stgit@ingres.1015granger.net>
+Subject: [PATCH 04/27] NSM: Add xdr_stream-based XDR encoders
+Date: Fri, 05 Dec 2008 19:02:22 -0500
+Message-ID: <20081206000222.24075.45214.stgit@ingres.1015granger.net>
 References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:37170 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:37158 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754885AbYLFAFB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:05:01 -0500
+	with ESMTP id S1754813AbYLFAE5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:04:57 -0500
 In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NLM XDR decoders for the NLMPROC_SM_NOTIFY procedure should treat
-their "priv" argument truly as an opaque, as defined by the protocol,
-and let the upper layers figure out what is in it.
-
-This will make it easier to modify the contents and interpretation of
-the "priv" argument, and keep knowledge about what's in "priv" local
-to fs/lockd/mon.c.
-
-For now, the NLM and NSM implementations should behave exactly as they
-did before.
-
-The formation of the address of the rebooted host in
-nlm_host_rebooted() may look a little strange, but it is the inverse
-of how nsm_init_private() forms the private cookie.  Plus, it's
-going away soon anyway.
+Introduce xdr_stream-based XDR decoder functions.  These are more
+careful about preventing RPC buffer overflows.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c           |    3 ++-
- fs/lockd/xdr.c            |    4 ++--
- fs/lockd/xdr4.c           |    4 ++--
- include/linux/lockd/xdr.h |    8 ++++----
- 4 files changed, 10 insertions(+), 9 deletions(-)
+ fs/lockd/mon.c |   32 ++++++++++++++++++++++++++++++++
+ 1 files changed, 32 insertions(+), 0 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index ed10338..dc41e46 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -453,9 +453,10 @@ void nlm_release_host(struct nlm_host *host)
-  */
- void nlm_host_rebooted(const struct nlm_reboot *info)
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index cf85c0f..0f8e029 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -377,6 +377,23 @@ xdr_decode_stat_res(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
+ 	return 0;
+ }
+ 
++static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
++			    struct nsm_res *resp)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	p = xdr_inline_decode(&xdr, 2 * sizeof(u32));
++	if (unlikely(p == NULL))
++		return -EIO;
++	resp->status = ntohl(*p++);
++	resp->state = ntohl(*p);
++
++	dprintk("lockd: xdr_dec_stat_res status %d state %d\n",
++			resp->status, resp->state);
++	return 0;
++}
++
+ static int
+ xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
  {
-+	__be32 *p = (__be32 *)&info->priv.data;
- 	const struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
--		.sin_addr.s_addr	= info->addr,
-+		.sin_addr.s_addr	= *p,
- 	};
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index 1f22629..4cc7d01 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -349,8 +349,8 @@ nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp)
- 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
- 		return 0;
- 	argp->state = ntohl(*p++);
--	/* Preserve the address in network byte order */
--	argp->addr = *p++;
-+	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
-+	p += XDR_QUADLEN(SM_PRIV_SIZE);
- 	return xdr_argsize_check(rqstp, p);
+@@ -384,6 +401,21 @@ xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
+ 	return 0;
  }
  
-diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-index 50c493a..61d1714 100644
---- a/fs/lockd/xdr4.c
-+++ b/fs/lockd/xdr4.c
-@@ -356,8 +356,8 @@ nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp
- 	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
- 		return 0;
- 	argp->state = ntohl(*p++);
--	/* Preserve the address in network byte order */
--	argp->addr  = *p++;
-+	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
-+	p += XDR_QUADLEN(SM_PRIV_SIZE);
- 	return xdr_argsize_check(rqstp, p);
- }
- 
-diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
-index 6b51992..6338866 100644
---- a/include/linux/lockd/xdr.h
-+++ b/include/linux/lockd/xdr.h
-@@ -83,10 +83,10 @@ struct nlm_res {
-  * statd callback when client has rebooted
-  */
- struct nlm_reboot {
--	char *		mon;
--	unsigned int	len;
--	u32		state;
--	__be32		addr;
-+	char			*mon;
-+	unsigned int		len;
-+	u32			state;
-+	struct nsm_private	priv;
- };
- 
- /*
++static int xdr_dec_stat(struct rpc_rqst *rqstp, __be32 *p,
++			struct nsm_res *resp)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	p = xdr_inline_decode(&xdr, sizeof(u32));
++	if (unlikely(p == NULL))
++		return -EIO;
++	resp->state = ntohl(*p);
++
++	dprintk("lockd: xdr_dec_stat state %d\n", resp->state);
++	return 0;
++}
++
+ #define SM_my_name_sz	(1+XDR_QUADLEN(SM_MAXSTRLEN))
+ #define SM_my_id_sz	(SM_my_name_sz+3)
+ #define SM_mon_name_sz	(1+XDR_QUADLEN(SM_MAXSTRLEN))
 
