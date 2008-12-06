@@ -1,120 +1,61 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 20/27] NSM: Replace IP address as our nlm_reboot lookup key
-Date: Fri, 05 Dec 2008 19:04:24 -0500
-Message-ID: <20081206000424.24075.72384.stgit@ingres.1015granger.net>
+Subject: [PATCH 25/27] NLM: nlm_privileged_requester() doesn't recognize
+	mapped loopback address
+Date: Fri, 05 Dec 2008 19:05:02 -0500
+Message-ID: <20081206000502.24075.23832.stgit@ingres.1015granger.net>
 References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:17347 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757450AbYLFAGb (ORCPT
+Received: from rcsinet12.oracle.com ([148.87.113.124]:50181 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757497AbYLFAGb (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:06:31 -0500
 In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NLM provides file locking services for NFS files.  Part of this service
-includes a second protocol, known as NSM, which is a reboot
-notification service.  NLM uses this service to determine when to
-reclaim locks or enter a grace period after a client or server reboots.
+Commit b85e4676 added the nlm_privileged_requester() helper to check
+whether an RPC request was sent from a local privileged caller.  It
+recognizes IPv4 privileged callers (from "127.0.0.1"), and IPv6
+privileged callers (from "::1").
 
-The NLM service (implemented by lockd in the Linux kernel) contacts
-the local NSM service (implemented by rpc.statd in Linux user space)
-via NSM protocol upcalls to register a callback when a particular
-remote peer reboots.
+However, IPV6_ADDR_LOOPBACK is not set for the mapped IPv4 loopback
+address (::ffff:7f00:0001), so the test breaks when the kernel's RPC
+service is IPv6-enabled but user space is calling via the IPv4
+loopback address.  This is actually the most common case for IPv6-
+enabled RPC services on Linux.
 
-To match the callback to the correct remote peer, the NLM service
-constructs a cookie that it passes in the request.  The NSM service
-passes that cookie back to the NLM service when it is notified that
-the given remote peer has indeed rebooted.
-
-Currently on Linux, the cookie is the raw 32-bit IPv4 address of the
-remote peer.  To support IPv6 addresses, which are larger, we could
-use all 16 bytes of the cookie to represent a full IPv6 address,
-although we still can't represent an IPv6 address with a scope ID in
-just 16 bytes.
-
-Instead, to avoid the need for future changes to support additional
-address types, we'll use a manufactured value for the cookie, and use
-that to find the corresponding nsm_handle struct in the kernel during
-the NLMPROC_SM_NOTIFY callback.
-
-This should provide complete support in the kernel's NSM
-implementation for IPv6 hosts, while remaining backwards compatible
-with older rpc.statd implementations.
-
-Note we also deal with another case where nsm_use_hostnames can change
-while there are outstanding notifications, possibly resulting in the
-loss of reboot notifications.  After this patch, the priv cookie is
-always used to lookup rebooted hosts in the kernel.
+Rewrite the IPv6 check to handle the mapped IPv4 loopback address as
+well as a normal IPv6 loopback address.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |   39 ++++++++++++++++++++++++++++++---------
- 1 files changed, 30 insertions(+), 9 deletions(-)
+ include/linux/lockd/lockd.h |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index a5f26f3..4113ed1 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -241,13 +241,38 @@ static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
-  * returned via NLMPROC_SM_NOTIFY, in the "priv" field of these
-  * requests.
-  *
-- * Linux provides the raw IP address of the monitored host,
-- * left in network byte order.
-+ * These cookies are not required to last across reboots, but they
-+ * must be unique for each nsm_handle during the same boot.
-+ * Uniqueness is guaranteed by using the memory address of the
-+ * nsm_handle data structure.  Such memory addresses are only reused
-+ * if the nsm_handle is destroyed by an nsm_release().
-+ *
-+ * A time stamp is added in case rpc.statd returns a stale cookie.
-+ * That would be a bug in rpc.statd, but it would result in some
-+ * client losing its locks inappropriately, which we would like to
-+ * avoid.
-+ *
-+ * For safety, the cookie returned via NLM_SM_NOTIFY is treated as
-+ * an opaque -- the address is not used directly to access the
-+ * associated nsm_handle.  This also means it would be simple to
-+ * change the cookie generator again at some later point without
-+ * having to mess with the nsm_handle lookup code in
-+ * nsm_reboot_lookup().
-+ *
-+ * The cookies are exposed only to local user space via loopback.
-+ * They do not appear on the physical network.  If we want greater
-+ * security for some reason, nsm_init_private() could perform a
-+ * one-way hash to obscure the contents of the cookie.
-  */
- static void nsm_init_private(struct nsm_handle *nsm)
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 6ab0449..80d7e8a 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -299,8 +299,14 @@ static inline int __nlm_privileged_request4(const struct sockaddr *sap)
+ static inline int __nlm_privileged_request6(const struct sockaddr *sap)
  {
--	__be32 *p = (__be32 *)&nsm->sm_priv.data;
--	*p = nsm_addr_in(nsm)->sin_addr.s_addr;
-+	u64 *p = (u64 *)&nsm->sm_priv.data;
-+	struct timeval tv;
+ 	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+-	return (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK) &&
+-			(ntohs(sin6->sin6_port) < 1024);
 +
-+	do_gettimeofday(&tv);
++	if (ntohs(sin6->sin6_port) > 1023)
++		return 0;
 +
-+	*p++ = (unsigned long)nsm;
-+	*p = timeval_to_ns(&tv);
++	if (ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_MAPPED)
++		return ipv4_is_loopback(sin6->sin6_addr.s6_addr32[3]);
++
++	return ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LOOPBACK;
  }
- 
- static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
-@@ -351,11 +376,7 @@ struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info)
- 
- 	spin_lock(&nsm_lock);
- 
--	if (nsm_use_hostnames && info->mon != NULL)
--		cached = nsm_lookup_hostname(info->mon, info->len);
--	else
--		cached = nsm_lookup_priv(&info->priv);
--
-+	cached = nsm_lookup_priv(&info->priv);
- 	if (unlikely(cached == NULL)) {
- 		spin_unlock(&nsm_lock);
- 		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
+ #else	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+ static inline int __nlm_privileged_request6(const struct sockaddr *sap)
 
