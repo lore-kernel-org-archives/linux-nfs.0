@@ -1,56 +1,120 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 23/27] NSM: Move nsm_use_hostnames to mon.c
-Date: Fri, 05 Dec 2008 19:04:48 -0500
-Message-ID: <20081206000447.24075.95139.stgit@ingres.1015granger.net>
+Subject: [PATCH 20/27] NSM: Replace IP address as our nlm_reboot lookup key
+Date: Fri, 05 Dec 2008 19:04:24 -0500
+Message-ID: <20081206000424.24075.72384.stgit@ingres.1015granger.net>
 References: <20081205235557.24075.12511.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:17339 "EHLO
+Received: from acsinet12.oracle.com ([141.146.126.234]:17347 "EHLO
 	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756543AbYLFAG3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:06:29 -0500
+	with ESMTP id S1757450AbYLFAGb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Dec 2008 19:06:31 -0500
 In-Reply-To: <20081205235557.24075.12511.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.
+NLM provides file locking services for NFS files.  Part of this service
+includes a second protocol, known as NSM, which is a reboot
+notification service.  NLM uses this service to determine when to
+reclaim locks or enter a grace period after a client or server reboots.
 
-Treat the nsm_use_hostnames global variable like nsm_local_state.
+The NLM service (implemented by lockd in the Linux kernel) contacts
+the local NSM service (implemented by rpc.statd in Linux user space)
+via NSM protocol upcalls to register a callback when a particular
+remote peer reboots.
+
+To match the callback to the correct remote peer, the NLM service
+constructs a cookie that it passes in the request.  The NSM service
+passes that cookie back to the NLM service when it is notified that
+the given remote peer has indeed rebooted.
+
+Currently on Linux, the cookie is the raw 32-bit IPv4 address of the
+remote peer.  To support IPv6 addresses, which are larger, we could
+use all 16 bytes of the cookie to represent a full IPv6 address,
+although we still can't represent an IPv6 address with a scope ID in
+just 16 bytes.
+
+Instead, to avoid the need for future changes to support additional
+address types, we'll use a manufactured value for the cookie, and use
+that to find the corresponding nsm_handle struct in the kernel during
+the NLMPROC_SM_NOTIFY callback.
+
+This should provide complete support in the kernel's NSM
+implementation for IPv6 hosts, while remaining backwards compatible
+with older rpc.statd implementations.
+
+Note we also deal with another case where nsm_use_hostnames can change
+while there are outstanding notifications, possibly resulting in the
+loss of reboot notifications.  After this patch, the priv cookie is
+always used to lookup rebooted hosts in the kernel.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/mon.c |    3 ++-
- fs/lockd/svc.c |    1 -
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/lockd/mon.c |   39 ++++++++++++++++++++++++++++++---------
+ 1 files changed, 30 insertions(+), 9 deletions(-)
 
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 2e0ec9f..38b8d51 100644
+index a5f26f3..4113ed1 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -51,7 +51,8 @@ static				DEFINE_SPINLOCK(nsm_lock);
- /*
-  * Local NSM state
+@@ -241,13 +241,38 @@ static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
+  * returned via NLMPROC_SM_NOTIFY, in the "priv" field of these
+  * requests.
+  *
+- * Linux provides the raw IP address of the monitored host,
+- * left in network byte order.
++ * These cookies are not required to last across reboots, but they
++ * must be unique for each nsm_handle during the same boot.
++ * Uniqueness is guaranteed by using the memory address of the
++ * nsm_handle data structure.  Such memory addresses are only reused
++ * if the nsm_handle is destroyed by an nsm_release().
++ *
++ * A time stamp is added in case rpc.statd returns a stale cookie.
++ * That would be a bug in rpc.statd, but it would result in some
++ * client losing its locks inappropriately, which we would like to
++ * avoid.
++ *
++ * For safety, the cookie returned via NLM_SM_NOTIFY is treated as
++ * an opaque -- the address is not used directly to access the
++ * associated nsm_handle.  This also means it would be simple to
++ * change the cookie generator again at some later point without
++ * having to mess with the nsm_handle lookup code in
++ * nsm_reboot_lookup().
++ *
++ * The cookies are exposed only to local user space via loopback.
++ * They do not appear on the physical network.  If we want greater
++ * security for some reason, nsm_init_private() could perform a
++ * one-way hash to obscure the contents of the cookie.
   */
--int				nsm_local_state;
-+int	__read_mostly		nsm_local_state;
-+int	__read_mostly		nsm_use_hostnames;
- 
- static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
+ static void nsm_init_private(struct nsm_handle *nsm)
  {
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 50de426..8283b0e 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -59,7 +59,6 @@ unsigned long			nlmsvc_timeout;
- static unsigned long		nlm_grace_period;
- static unsigned long		nlm_timeout = LOCKD_DFLT_TIMEO;
- static int			nlm_udpport, nlm_tcpport;
--int				nsm_use_hostnames = 0;
+-	__be32 *p = (__be32 *)&nsm->sm_priv.data;
+-	*p = nsm_addr_in(nsm)->sin_addr.s_addr;
++	u64 *p = (u64 *)&nsm->sm_priv.data;
++	struct timeval tv;
++
++	do_gettimeofday(&tv);
++
++	*p++ = (unsigned long)nsm;
++	*p = timeval_to_ns(&tv);
+ }
  
- /*
-  * Constants needed for the sysctl interface.
+ static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
+@@ -351,11 +376,7 @@ struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info)
+ 
+ 	spin_lock(&nsm_lock);
+ 
+-	if (nsm_use_hostnames && info->mon != NULL)
+-		cached = nsm_lookup_hostname(info->mon, info->len);
+-	else
+-		cached = nsm_lookup_priv(&info->priv);
+-
++	cached = nsm_lookup_priv(&info->priv);
+ 	if (unlikely(cached == NULL)) {
+ 		spin_unlock(&nsm_lock);
+ 		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
 
