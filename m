@@ -1,73 +1,58 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] statd: not unlinking host files
-Date: Sat, 06 Dec 2008 09:34:25 -0500
-Message-ID: <493A8D71.20603@RedHat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 1/1] NFS: map nfs_probe_fsinfo errors
+Date: Sun, 07 Dec 2008 11:00:56 +0200
+Message-ID: <493B90C8.5000001@panasas.com>
+References: <1228410550-17040-1-git-send-email-andros@netapp.com>	 <1228411011.7475.6.camel@heimdal.trondhjem.org>	 <1228411282.7475.9.camel@heimdal.trondhjem.org>	 <89c397150812041050u184afda7s2d33bc1aa82b8171@mail.gmail.com>	 <1228417616.7475.16.camel@heimdal.trondhjem.org>	 <89c397150812041116t74692ca1k5ce2ca87e64b5a2b@mail.gmail.com>	 <1228420665.7475.19.camel@heimdal.trondhjem.org>	 <89c397150812041231v4eeeb6a4y5106b7db9b53c037@mail.gmail.com> <1228424344.24870.0.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:52566 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756377AbYLFOgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 6 Dec 2008 09:36:47 -0500
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mB6EaaK8005601
-	for <linux-nfs@vger.kernel.org>; Sat, 6 Dec 2008 09:36:36 -0500
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id mB6EaaPn027770
-	for <linux-nfs@vger.kernel.org>; Sat, 6 Dec 2008 09:36:36 -0500
-Received: from [10.16.10.21] (vpn-10-21.bos.redhat.com [10.16.10.21])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id mB6EaZ3Q009130
-	for <linux-nfs@vger.kernel.org>; Sat, 6 Dec 2008 09:36:35 -0500
+Received: from gw-ca.panasas.com ([66.104.249.162]:18762 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751126AbYLGJBF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Dec 2008 04:01:05 -0500
+In-Reply-To: <1228424344.24870.0.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Again working with the state file code, I notice that statd was
-not unlinking hosts files when the kernel sent up the 
-sm_unmon messages. This following patch address the reason why... 
+Trond Myklebust wrote:
+> On Thu, 2008-12-04 at 15:31 -0500, William A. (Andy) Adamson wrote:
+>> How about -EPROTONOSUPPORT?
+> 
+> That's definitely what you should return to the 'mount' command, but not
+> to applications.
 
-Comments?
+That should be possible if we deal with it differently in
+nfs4_proc_sequence() and reclaimer().
 
-steved.
+Benny
 
-commit f8536d0e210a8151900f8c68185927790239eb62
-Author: Steve Dickson <steved@redhat.com>
-Date:   Sat Dec 6 09:30:43 2008 -0500
+> 
+> Cheers
+>   Trond
+> 
+>> On Thu, Dec 4, 2008 at 2:57 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>>> On Thu, 2008-12-04 at 14:16 -0500, William A. (Andy) Adamson wrote:
+>>>>>> and the one that I saw when I tried to mount a v4.0 server with a v4.1
+>>>>>> client which caused a segfault.
+>>>>>>
+>>>>>> NFS4ERR_MINOR_VERS_MISMATCH.
+>>>>> Should never happen on a v4.0 client...
+>>> Hmm...
+>>>
+>>> That said, it wouldn't harm to add the MINOR_VERS_MISMATCH error to
+>>> nfs_errtbl[]. I suppose the only thing we can do is to map it to EIO,
+>>> but that would be better than letting it slip through the cracks...
+>>>
+>>> --
+>>> Trond Myklebust
+>>> Linux NFS client maintainer
+>>>
+>>> NetApp
+>>> Trond.Myklebust@netapp.com
+>>> www.netapp.com
+>>>
 
-    statd: not unlinking host files
-    
-    Statd is not unlinking host files during SM_UNMON and
-    SM_UNMON_ALL calls because the given host is still on the run-time
-    notify list (rtnl) and the check flag is set when xunlink() is
-    called. But the next thing the caller of xunlink() does is
-    remove the host from the rtnl list which means the
-    unlink will never happen.
-    
-    So in cases where xunlink() is immediately follow by a call
-    to nlist_free() (which removes the host from the list) the
-    check flag to xunlink() is not set.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index a6a1d9c..7d6e4da 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -352,7 +352,7 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
- 			/* PRC: do the HA callout: */
- 			ha_callout("del-client", mon_name, my_name, -1);
- 
--			xunlink(SM_DIR, clnt->dns_name, 1);
-+			xunlink(SM_DIR, clnt->dns_name, 0);
- 			nlist_free(&rtnl, clnt);
- 
- 			return (&result);
-@@ -404,7 +404,7 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
- 			temp = NL_NEXT(clnt);
- 			/* PRC: do the HA callout: */
- 			ha_callout("del-client", mon_name, my_name, -1);
--			xunlink(SM_DIR, clnt->dns_name, 1);
-+			xunlink(SM_DIR, clnt->dns_name, 0);
- 			nlist_free(&rtnl, clnt);
- 			++count;
- 			clnt = temp;
