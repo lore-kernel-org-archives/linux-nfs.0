@@ -1,123 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Help! NFS broken
-Date: Mon, 8 Dec 2008 18:38:11 -0500
-Message-ID: <20081208233811.GD24083@fieldses.org>
-References: <bd9320b30812070648x652c8430uf567b9c80cda07a6@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: mike <mike503@gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/3] AF_INET6 support for probe_bothports()
+Date: Mon, 8 Dec 2008 18:38:23 -0500
+Message-ID: <65E633E6-B1BE-4372-8F17-5F19DD05D552@oracle.com>
+References: <20081202175403.5206.91389.stgit@ingres.1015granger.net> <493D253C.2040809@RedHat.com> <2DC7493B-E0E5-43C8-8FD1-A9C0C5EFA821@oracle.com> <493DA5EC.5090805@RedHat.com> <20081208232816.GA18856@uio.no>
+Mime-Version: 1.0 (Apple Message framework v929.2)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59039 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753266AbYLHXjF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2008 18:39:05 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1L9pgr-0007Ns-70
-	for linux-nfs@vger.kernel.org; Tue, 09 Dec 2008 10:39:01 +1100
-In-Reply-To: <bd9320b30812070648x652c8430uf567b9c80cda07a6-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:32336 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753426AbYLHXkS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Dec 2008 18:40:18 -0500
+In-Reply-To: <20081208232816.GA18856-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 07, 2008 at 06:48:52AM -0800, mike wrote:
-> I upgraded my Ubuntu Hardy server to Intrepid the night before last.
-> When I woke up yesterday morning, my main server I use as my ssh
-> gateway into the others was totally messed up.
-> 
-> My server is FreeBSD. I haven't had to touch it since I set it up.
-> 
-> My clients are 6 Ubuntu servers. All are identical in packages,
-> configs (I diff'ed /etc), kernel versions, network setup, etc.
+On Dec 8, 2008, at Dec 8, 2008, 6:28 PM, Steinar H. Gunderson wrote:
+> On Mon, Dec 08, 2008 at 05:55:40PM -0500, Steve Dickson wrote:
+>> Yes... one does pass pointers of struct sockaddr to the majority
+>> of the network system call such as bind().. but conventionally
+>> I've seen a lot of declare struct sockaddr as memory then typecasting
+>> that memory into a struct sockaddr_in pointer...
+>
+> That's just wrong. Don't do that :-) (Where have you seen this, by  
+> the way?)
 
-So the "server" in the first paragraph is an NFS client, and its NFS
-server is the FreeBSD machine?
+The server-side sysctl code defines a data structure shared between  
+nfs-utils and the kernel which has some fields defined as type "struct  
+sockaddr".  That code works because "struct sockaddr_in" and "struct  
+sockaddr" happen to be the same size.
 
-And what are the first symptoms?  Any threads accessing the NFS
-filesystem just hang?  A sysrq-T trace on the client showing where
-they're hanging might be helpful.
+But it is incorrect.  Since those are legacy interfaces and only need  
+to handle IPv4 addresses, they are not worth fixing at this point.
 
---b.
-
-> 
-> Only *one* of the machines is suffering (and of course, one of the
-> most important ones) - and it isn't even one of the busiest.
-> 
-> I've tried downgrading the kernel on the box suffering the issue from
-> 2.6.27-10 to 2.6.27-7, my next attempt will be picking a kernel .deb
-> that was from the previous Ubuntu release...
-> 
-> What is odd is that it works great after reboot and lasts for a couple
-> hours, then stops working. I can umount -l /home and then try to
-> remount it (see below) but it never gets anywhere and eventually dies
-> with a generic message. I tried to strace -f it, and it gave me
-> nothing to work with. The FreeBSD server doesn't give me anything in
-> logs to go off of either. I can ping and ssh between the two no
-> problem at this point still. It's just NFS that is odd. Also I did
-> notice trying to restart services manually and try to debug them that
-> portmap seemed to throw a kernel error in my logs once in a while. But
-> I don't get a connection to portmap when I run the mount command, and
-> I would assume if portmap is required for mounting NFS shares that it
-> would need to contact it. That could totally be irrelevant though.
-> 
-> Any help or insight or request for additional information is
-> appreciated. On-list or off-list is fine. I will pay someone via
-> Paypal who can help me resolve this quickly...
-> 
-> [root@lvs01 ~]# mount -vvvv /home
-> mount: fstab path: "/etc/fstab"
-> mount: mtab path:  "/etc/mtab"
-> mount: lock path:  "/etc/mtab~"
-> mount: temp path:  "/etc/mtab.tmp"
-> mount: spec:  "raid01:/home"
-> mount: node:  "/home"
-> mount: types: "nfs"
-> mount: opts:  "rsize=8192,rsize=8192,tcp,rw,acregmin=30"
-> mount: external mount: argv[0] = "/sbin/mount.nfs"
-> mount: external mount: argv[1] = "raid01:/home"
-> mount: external mount: argv[2] = "/home"
-> mount: external mount: argv[3] = "-v"
-> mount: external mount: argv[4] = "-o"
-> mount: external mount: argv[5] = "rw,rsize=8192,rsize=8192,tcp,acregmin=30"
-> mount.nfs: timeout set for Sun Dec  7 06:36:39 2008
-> mount.nfs: text-based options:
-> 'rsize=8192,rsize=8192,tcp,acregmin=30,addr=10.13.220.94'
-> (just stalls here, normally a connection is near instant. eventually
-> it will die with a generic error message. i can control-C to quit it
-> too, so it's not frozen completely)
-> 
-> 
-> 
-> thanks...
-> 
-> ------------------------------------------------------------------------------
-> SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
-> The future of the web can't happen without you.  Join us at MIX09 to help
-> pave the way to the Next Web now. Learn more and register at
-> http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->     http://vger.kernel.org/vger-lists.html#linux-nfs
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-------------------------------------------------------------------------------
-SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
-The future of the web can't happen without you.  Join us at MIX09 to help
-pave the way to the Next Web now. Learn more and register at
-http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
