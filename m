@@ -1,61 +1,69 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/3] AF_INET6 support for probe_bothports()
-Date: Mon, 08 Dec 2008 08:46:36 -0500
-Message-ID: <493D253C.2040809@RedHat.com>
-References: <20081202175403.5206.91389.stgit@ingres.1015granger.net>
+From: support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org (Project Payday)
+Subject: [NFS] Welcome to Project Payday
+Date: Mon,  8 Dec 2008 08:09:24 -0600 (CST)
+Message-ID: <20081208140924.06FD35985BB@server1.projectpayday.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net (Leslie  Johnson)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45914 "EHLO mx2.redhat.com"
+Received: from neil.brown.name ([220.233.11.133]:45216 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752089AbYLHNsx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2008 08:48:53 -0500
-In-Reply-To: <20081202175403.5206.91389.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752011AbYLHOgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Dec 2008 09:36:25 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1L9hDi-0005mw-EA
+	for linux-nfs@vger.kernel.org; Tue, 09 Dec 2008 01:36:22 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> Hi Steve-
-> 
-> Here's the next step.
-> 
-> This small series of patches rewires probe_bothports() to support
-> AF_INET6 addresses, now that the underlying functions can handle them.
-> 
-> Since legacy code in other parts of the mount command still use
-> probe_bothports() and the clnt_addr_t data type, I've added a new
-> function call to do the IPv6 duties.  The old API still exists and
-> continues to support only AF_INET, but under the covers it calls the
-> new code.
-> 
-> Again, for the time being, this is used only for the legacy binary
-> mount(2) interface.  We will need this for umount later, and that is
-> used to support both binary and text-based mounts.
-> 
-> ---
-> 
-> Chuck Lever (3):
->       mount command: AF_INET6 support for probe_bothports()
->       mount command: support AF_INET6 in probe_nfsport() and probe_mntport()
->       mount command: full support for AF_INET6 addresses in probe_port()
-> 
-Question: in the clnt_addr_t typedef:
+Leslie ,
 
-typedef struct {
-    char **hostname;
-    struct sockaddr_in saddr;
-    struct pmap pmap; 
-} clnt_addr_t;
+Welcome to Project Payday.
 
-Why isn't saddr a struct sockaddr instead of a struct sockaddr_in?
+Your account has been created, and you'll be able to login and get
+started immediately upon completing one free trial sponsor offer.
 
-It seems at the beginning of each routine saddr is always being
-typecast into a struct sockaddr pointer.... So wouldn't be easier
-and cleaner to simply make sadd a struct sockaddr or am I missing
-something?
+*Very Important* To ensure that you receive important updates about
+Project Payday, please add our email - support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org -
+to your address book or email "whitelist".
 
-steved.
+Just so you have it handy, here's your login info:
 
+User ID: 1715217 (or you can use your email address)
+Password: 306657
+
+http://www.projectpayday.com/login.cgi
+
+If you haven't yet completed a sponsor offer, you can do so at:
+
+http://www.projectpayday.com/offers.cgi?uid=1715217
+
+Once you get started, we would love to hear about how you're doing.
+Shoot us an email with your thoughts, feedback, and most importantly
+how much money you're making. 
+
+You can reach us anytime at http://www.projectpayday.com/help.
+
+See you on the other side ...
+
+
+Sincerely,
+
+Angelina McDonald
+Project Payday Support Team
+http://www.projectpayday.com
+
+------------------------------------------------------------------------------
+SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
+The future of the web can't happen without you.  Join us at MIX09 to help
+pave the way to the Next Web now. Learn more and register at
+http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
