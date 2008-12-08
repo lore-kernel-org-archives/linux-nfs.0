@@ -1,69 +1,40 @@
-From: support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org (Project Payday)
-Subject: [NFS] Welcome to Project Payday
-Date: Mon,  8 Dec 2008 08:09:24 -0600 (CST)
-Message-ID: <20081208140924.06FD35985BB@server1.projectpayday.com>
+From: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: [PATCH 0/3] AF_INET6 support for probe_bothports()
+Date: Mon, 8 Dec 2008 16:02:19 +0100
+Message-ID: <20081208150219.GB12390@uio.no>
+References: <20081202175403.5206.91389.stgit@ingres.1015granger.net> <493D253C.2040809@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net (Leslie  Johnson)
+Content-Type: text/plain; charset=utf-8
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:45216 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752011AbYLHOgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2008 09:36:25 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1L9hDi-0005mw-EA
-	for linux-nfs@vger.kernel.org; Tue, 09 Dec 2008 01:36:22 +1100
+Received: from cassarossa.samfundet.no ([129.241.93.19]:32906 "EHLO
+	cassarossa.samfundet.no" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751736AbYLHPDo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Dec 2008 10:03:44 -0500
+In-Reply-To: <493D253C.2040809-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Leslie ,
+On Mon, Dec 08, 2008 at 08:46:36AM -0500, Steve Dickson wrote:
+> typedef struct {
+>     char **hostname;
+>     struct sockaddr_in saddr;
+>     struct pmap pmap; 
+> } clnt_addr_t;
+> 
+> Why isn't saddr a struct sockaddr instead of a struct sockaddr_in?
+> 
+> It seems at the beginning of each routine saddr is always being
+> typecast into a struct sockaddr pointer.... So wouldn't be easier
+> and cleaner to simply make sadd a struct sockaddr or am I missing
+> something?
 
-Welcome to Project Payday.
+I'm sure most people here know this, but still, be careful: If you ever
+intend to store an IPv6 address somewhere, the field in the struct should be
+a sockaddr_storage. sockaddr (or sockaddr_in, for that matter) is not big
+enough to store a sockaddr_in6.
 
-Your account has been created, and you'll be able to login and get
-started immediately upon completing one free trial sponsor offer.
-
-*Very Important* To ensure that you receive important updates about
-Project Payday, please add our email - support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org -
-to your address book or email "whitelist".
-
-Just so you have it handy, here's your login info:
-
-User ID: 1715217 (or you can use your email address)
-Password: 306657
-
-http://www.projectpayday.com/login.cgi
-
-If you haven't yet completed a sponsor offer, you can do so at:
-
-http://www.projectpayday.com/offers.cgi?uid=1715217
-
-Once you get started, we would love to hear about how you're doing.
-Shoot us an email with your thoughts, feedback, and most importantly
-how much money you're making. 
-
-You can reach us anytime at http://www.projectpayday.com/help.
-
-See you on the other side ...
-
-
-Sincerely,
-
-Angelina McDonald
-Project Payday Support Team
-http://www.projectpayday.com
-
-------------------------------------------------------------------------------
-SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
-The future of the web can't happen without you.  Join us at MIX09 to help
-pave the way to the Next Web now. Learn more and register at
-http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+/* Steinar */
+-- 
+Homepage: http://www.sesse.net/
