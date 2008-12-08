@@ -1,66 +1,68 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 13/17] NSM: Make sure to return an error if the SM_MON
-	call result is not zero
-Date: Mon, 8 Dec 2008 17:40:00 -0500
-Message-ID: <20081208224000.GG19417@fieldses.org>
-References: <20081204191113.8039.76714.stgit@ingres.1015granger.net> <20081204192115.8039.21501.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 00/17] First set of patches for 2.6.29 (take 2)
+Date: Mon, 8 Dec 2008 17:47:29 -0500
+Message-ID: <20081208224729.GH19417@fieldses.org>
+References: <20081204191113.8039.76714.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:38495 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:42783 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752949AbYLHWkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2008 17:40:03 -0500
-In-Reply-To: <20081204192115.8039.21501.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752680AbYLHWra (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Dec 2008 17:47:30 -0500
+In-Reply-To: <20081204191113.8039.76714.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 04, 2008 at 02:21:15PM -0500, Chuck Lever wrote:
-> The nsm_monitor() function reports an error and does not set sm_monitored
-> if the SM_MON upcall reply has a non-zero result code, but nsm_monitor()
-> does not return an error to its caller in this case.
+On Thu, Dec 04, 2008 at 02:19:35PM -0500, Chuck Lever wrote:
+> Hi Bruce-
 > 
-> Since sm_monitored is not set, the upcall is retried when the next NLM
-> request invokes nsm_monitor().  However, that may not come for a while.
-> In the meantime, at least one NLM request will potentially proceed
-> without the peer being monitored properly.
+> Thanks for the careful review.
 > 
-> Have nsm_monitor() return an error if the result code is non-zero.
-> This will cause all NLM requests to fail immediately if the upcall
-> completed successfully but rpc.statd returned an error.
+> Here's the second take of the patches I sent Monday.  I think I've
+> addressed your concerns, and have split most of these patches into
+> several smaller ones to facilitate review.  Enough details have
+> changed that it would be worth a second close inspection.
 > 
-> This may be inconvenient in some cases (for example if rpc.statd
-> cannot complete a proper DNS reverse lookup of the hostname), but will
-> make the reboot monitoring service more robust by forcing such issues
-> to be corrected by an admin.
+> Again, these patches add partial support for IPv6 to the kernel's
+> NSM upcall implementation, and introduce various minor clean-ups
+> and bug fixes.  I'd like them to be considered for 2.6.29.
 
-OK, thanks for the additional explanation.
+OK, I've applied this set, and am looking at the second; thanks.
 
 --b.
 
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/lockd/mon.c |    5 +++--
->  1 files changed, 3 insertions(+), 2 deletions(-)
+> Chuck Lever (17):
+>       NSM: Check result of SM_UNMON upcall
+>       NLM: Move the public declaration of nsm_unmonitor() to lockd.h
+>       NSM: Release nsmhandle in nlm_destroy_host
+>       NLM: Move the public declaration of nsm_monitor() to lockd.h
+>       NSM: Make sure to return an error if the SM_MON call result is not zero
+>       NSM: Remove BUG_ON() in nsm_monitor()
+>       NLM: Remove redundant printk() in nlmclnt_lock()
+>       NSM: Use sm_name instead of h_name in nsm_monitor() and nsm_unmonitor()
+>       NSM: Support IPv6 version of mon_name
+>       NSM: Use modern style for sm_name field in nsm_handle
+>       NSM: convert printk(KERN_DEBUG) to a dprintk()
+>       NSM: Use C99 structure initializer to initialize nsm_args
+>       NLM: Add helper to handle IPv4 addresses
+>       NLM: Support IPv6 scope IDs in nlm_display_address()
+>       NLM: Remove AF_UNSPEC arm in nlm_display_address()
+>       NLM: Remove address eye-catcher buffers from nlm_host
+>       NLM: Use modern style for pointer fields in nlm_host
 > 
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index bb5fc1b..07e16b8 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -91,8 +91,9 @@ nsm_monitor(struct nlm_host *host)
->  	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
->  
->  	status = nsm_mon_unmon(nsm, SM_MON, &res);
-> -
-> -	if (status < 0 || res.status != 0)
-> +	if (res.status != 0)
-> +		status = -EIO;
-> +	if (status < 0)
->  		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
->  	else
->  		nsm->sm_monitored = 1;
 > 
+>  fs/lockd/clntproc.c            |    6 +--
+>  fs/lockd/host.c                |   52 ++++++++++++----------
+>  fs/lockd/mon.c                 |   96 ++++++++++++++++++++--------------------
+>  include/linux/lockd/lockd.h    |   29 ++++++++----
+>  include/linux/lockd/sm_inter.h |    2 -
+>  5 files changed, 98 insertions(+), 87 deletions(-)
+> 
+> -- 
+> Chuck Lever
