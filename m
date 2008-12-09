@@ -1,81 +1,42 @@
-From: "Kevin Coffman" <kwc@umich.edu>
-Subject: Re: possible module refcount leak with auth_gss
-Date: Tue, 9 Dec 2008 18:21:08 -0500
-Message-ID: <4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
-References: <20081208102855.30081708@tleilax.poochiereds.net>
-	 <20081208173706.GE16628@fieldses.org>
-	 <20081209153849.6605559a@tleilax.poochiereds.net>
+From: Adesuyan <bobby-ufAfj23ATiXovzDjfJyo/Q@public.gmane.org>
+Subject: NSFproblem lockd: server  not responding, still trying
+Date: Wed, 10 Dec 2008 00:36:27 +0100
+Message-ID: <493F00FB.2060105@aust.edu.ng>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "Jeff Layton" <jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f13.google.com ([209.85.218.13]:33240 "EHLO
-	mail-bw0-f13.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754741AbYLIX1n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Dec 2008 18:27:43 -0500
-Received: by bwz6 with SMTP id 6so534052bwz.13
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2008 15:27:41 -0800 (PST)
-In-Reply-To: <20081209153849.6605559a-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from [77.73.186.34] ([77.73.186.34]:55821 "EHLO aust-abuja.org"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752129AbYLJAEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Dec 2008 19:04:33 -0500
+Received: from [172.20.4.4]
+	by aust-abuja.org with esmtp (Exim 4.69)
+	(envelope-from <bobby-ufAfj23ATiXovzDjfJyo/Q@public.gmane.org>)
+	id 1LACAJ-0001qi-I0
+	for linux-nfs@vger.kernel.org; Wed, 10 Dec 2008 00:38:57 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 9, 2008 at 3:38 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Mon, 8 Dec 2008 12:37:06 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
->
->> On Mon, Dec 08, 2008 at 10:28:55AM -0500, Jeff Layton wrote:
->> > We had someone report a bug against Fedora that they were seeing very
->> > high module reference counts for some krb5 related modules on his nfs
->> > server. For instance:
->> >
->> > # lsmod
->> > Module                  Size  Used by
->> > des_generic            25216  52736
->> > cbc                    12160  52736
->> > rpcsec_gss_krb5        15632  26370
->> >
->> > ...the cbc and des_generic each have roughly 2 module references per
->> > rpcsec_gss_krb5 refcount so I'm assuming that the "lynchpin" here is
->> > the rpcsec_gss_krb5 refcount which seems to be increasing w/o bound.
->>
->> You may want to see this discussion:
->>
->>       http://marc.info/?t=122819524700001&r=1&w=2
->>
->> And these patches:
->>
->>       http://marc.info/?l=linux-nfs&m=122843371318602&w=2
->>
->
-> Doh! I saw that discussion and didn't make the connection. Thanks for
-> pointing that out.
->
->> In addition to increasing the timeouts on those cache entries, perhaps
->> we could flush the contexts on rmmod?  Or change the reference counting
->> somehow--e.g., take a reference only in the presence of export cache
->> entries that mention krb5, and destroy contexts when the last such goes
->> away?
->>
->
-> That sounds like a better scheme than what we have currently. As it stands
-> now, you can't just unplug the module -- you have to wait for the entries
-> in the cache to time out.
->
-> FWIW, I tested out Kevin's patches and it still didn't seem to help. The
-> refcounts never seemed to go down (even after several hours). How long
-> should the context live in the cache with those patches? Until the krb5
-> ticket expires? I'll leave the box in this state until around this time
-> tomorrow to be sure (that's when the ticket expires).
+hi guys
 
-Yes, that should be the normal expiration with my patches.  The
-default ticket lifetime is 10 hours I believe, but that is
-configurable by realm (and service).  You can shorten the lifetime for
-testing by setting an /etc/krb5.conf option.  This example should
-limit lifetimes to 5 minutes (300 seconds) for testing purposes.
-
-[libdefaults]
-ticket_lifetime = 300s
-
-K.C.
+am having some issues with nfs the home directories of all the computers 
+in my school is mounted on the fileserver via nfs mount . for quite some 
+times now users have been experiencing issues with their desktop 
+freezing.   i checked the syslogs and i found this 
+http://pastebin.com/m69dde24e
+    a little googling showed there was a kernel 2.6 bug which happens 
+when you  have had with fast server cards and slow client cards when a
+                   2.6.x kernel is used on the server.
+   the fileserver is on a gigabit card
+    while the client are all on 10/100  so i guess am affected
+   i tried apply the fix in this wiki 
+http://wiki.ltsp.org/twiki/bin/view/Ltsp/NFS#NFS_Server_not_responding
+  but am not sure if i got it right .. or if it applies to the case 
+where one mounts the home directory from the fileserver but the system
+  boots up local (not through the network)
+ someone i met at #linux-nfs suggested i use NFS over TCP on the client 
+i did but it didnt fix the issue am running ubuntu hardy heron on an HP 
+server . any help would be appreciated.this problem has made life very 
+frustrating for staffs of my school because we use only linux it would 
+be a great relive if you guys can help us resolve it. thanks in advance
