@@ -1,120 +1,83 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] statd: not unlinking host files
-Date: Mon, 8 Dec 2008 18:48:22 -0500
-Message-ID: <E1EBCB84-864D-4463-811F-4B2610BCABFA@oracle.com>
-References: <493A8D71.20603@RedHat.com> <20081208233355.GB24083@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: mike <mike503@gmail.com>
+Subject: Re: [NFS] Help! NFS broken
+Date: Mon, 8 Dec 2008 16:12:12 -0800
+Message-ID: <bd9320b30812081612t6f6ec465rb5879051a8509b1f@mail.gmail.com>
+References: <bd9320b30812070648x652c8430uf567b9c80cda07a6@mail.gmail.com>
+	<20081208233811.GD24083@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:54497 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753452AbYLHXso (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Dec 2008 18:48:44 -0500
-In-Reply-To: <20081208233355.GB24083@fieldses.org>
+Received: from neil.brown.name ([220.233.11.133]:35927 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753522AbYLIANJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Dec 2008 19:13:09 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1L9qDq-0008FX-DC
+	for linux-nfs@vger.kernel.org; Tue, 09 Dec 2008 11:13:06 +1100
+In-Reply-To: <20081208233811.GD24083@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 8, 2008, at Dec 8, 2008, 6:33 PM, J. Bruce Fields wrote:
-> On Sat, Dec 06, 2008 at 09:34:25AM -0500, Steve Dickson wrote:
->> Again working with the state file code, I notice that statd was
->> not unlinking hosts files when the kernel sent up the
->> sm_unmon messages. This following patch address the reason why...
->>
->> Comments?
->
-> Bizarre--thanks for catching that.
->
-> But it looks like these are actually the only two callers to xunlink?
-> In which case, we should just ditch the "check" parameter entirely and
-> avoid some confusion....
+On Mon, Dec 8, 2008 at 3:38 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-It looks like xunlink() doesn't check error returns properly either.   
-alloca() is a convenience, but the price is a SIGSEGV if the stack  
-frame can't be extended.
+> So the "server" in the first paragraph is an NFS client, and its NFS
+> server is the FreeBSD machine?
 
-For a system-level daemon like rpc.statd, I would rather see a proper  
-implementation of this using malloc(3) or automatic storage, and  
-ensuring that sprintf doesn't overrun its buffer.  This also makes it  
-possible to track the buffer allocation here using valgrind.  alloca()  
-is a completely inline implementation, according to its man page.
+Yes
 
-I'm not sure why statd has it's own implementation of xstrdup and  
-xmalloc here as well; support/nfs/* already has both of these.  It  
-would be worth getting rid of these too.
+> And what are the first symptoms?  Any threads accessing the NFS
+> filesystem just hang?  A sysrq-T trace on the client showing where
+> they're hanging might be helpful.
 
-> (I wonder how it ever got this way in the first case?)
+Honestly, these are production, and I looked in every place I could
+think for any hints, and I get nothing. I can't really be using this
+to test either. What is odd is identically configured machines (down
+to the same files in /etc, same packages from dpkg -l etc) have no
+issue.
 
-Likely that rpc.statd was integrated into nfs-utils a long time ago  
-from somewhere else that needed the switch argument.
+For a last result, I tried different kernel versions (from Ubuntu):
 
->
->
-> --b.
->
->>
->> steved.
->>
->> commit f8536d0e210a8151900f8c68185927790239eb62
->> Author: Steve Dickson <steved@redhat.com>
->> Date:   Sat Dec 6 09:30:43 2008 -0500
->>
->>    statd: not unlinking host files
->>
->>    Statd is not unlinking host files during SM_UNMON and
->>    SM_UNMON_ALL calls because the given host is still on the run-time
->>    notify list (rtnl) and the check flag is set when xunlink() is
->>    called. But the next thing the caller of xunlink() does is
->>    remove the host from the rtnl list which means the
->>    unlink will never happen.
->>
->>    So in cases where xunlink() is immediately follow by a call
->>    to nlist_free() (which removes the host from the list) the
->>    check flag to xunlink() is not set.
->>
->>    Signed-off-by: Steve Dickson <steved@redhat.com>
->>
->> diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
->> index a6a1d9c..7d6e4da 100644
->> --- a/utils/statd/monitor.c
->> +++ b/utils/statd/monitor.c
->> @@ -352,7 +352,7 @@ sm_unmon_1_svc(struct mon_id *argp, struct  
->> svc_req *rqstp)
->> 			/* PRC: do the HA callout: */
->> 			ha_callout("del-client", mon_name, my_name, -1);
->>
->> -			xunlink(SM_DIR, clnt->dns_name, 1);
->> +			xunlink(SM_DIR, clnt->dns_name, 0);
->> 			nlist_free(&rtnl, clnt);
->>
->> 			return (&result);
->> @@ -404,7 +404,7 @@ sm_unmon_all_1_svc(struct my_id *argp, struct  
->> svc_req *rqstp)
->> 			temp = NL_NEXT(clnt);
->> 			/* PRC: do the HA callout: */
->> 			ha_callout("del-client", mon_name, my_name, -1);
->> -			xunlink(SM_DIR, clnt->dns_name, 1);
->> +			xunlink(SM_DIR, clnt->dns_name, 0);
->> 			nlist_free(&rtnl, clnt);
->> 			++count;
->> 			clnt = temp;
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+linux-image-2.6.27-10-server - broken
+linux-image-2.6.27-7-server - broken
+linux-image-2.6.28-2-server - i think i used this too quick and it was
+broken (I might be wrong and wound up deciding to go back instead of
+forward)
+linux-image-2.6.24-16-server - working for 2 days now, so sticking with it
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Note that all the other nodes (5 of the 6 identical nodes are fine,
+this was the one bad one) are running the default kernel in Intrepid
+at the moment: linux-image-2.6.27-10-server and don't seem to be
+suffering from any issues.
 
+So it seems to be a combination of those kernels + that machine.
+Problem is, that machine's configuration is identical - same
+nfs-utils, portmap, etc, etc. and from my rsync scan, even the
+majority of files (and anything that should be relevant) in /etc are
+identical too.
 
+This might be an Ubuntu bug or something flaky with 2.6.27 (maybe
+2.6.28 too) and NFS in general but I don't know how I can produce any
+worthwhile debugging, especially considering this is in production.
+When I wrote this I saw no fix in place; the kernel downgrade appears
+to be the workaround for now.
 
+Sorry I can't be more help. At the point of this email I had the
+luxury of a broken setup to debug, but now that I've stabilized it I
+have to keep it this way :)
+
+------------------------------------------------------------------------------
+SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
+The future of the web can't happen without you.  Join us at MIX09 to help
+pave the way to the Next Web now. Learn more and register at
+http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
