@@ -1,34 +1,33 @@
-From: Jeremy Sanders <jeremy-rZTbbJwr4dtS98Db7trcLl6hYfS7NtTn@public.gmane.org>
-Subject: FAQ: Updating shared executables
-Date: Tue, 09 Dec 2008 17:10:14 +0000
-Message-ID: <ghm8pm$d6c$1@ger.gmane.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] AF_INET6 support for probe_bothports()
+Date: Tue, 09 Dec 2008 14:17:00 -0500
+Message-ID: <493EC42C.2080901@RedHat.com>
+References: <20081202175403.5206.91389.stgit@ingres.1015granger.net> <493D253C.2040809@RedHat.com> <2DC7493B-E0E5-43C8-8FD1-A9C0C5EFA821@oracle.com> <493DA5EC.5090805@RedHat.com> <20081208232816.GA18856@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:56481 "EHLO ciao.gmane.org"
+Received: from mx2.redhat.com ([66.187.237.31]:43417 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751232AbYLIRPJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Dec 2008 12:15:09 -0500
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1LA6Ao-0006qm-93
-	for linux-nfs@vger.kernel.org; Tue, 09 Dec 2008 17:15:02 +0000
-Received: from xpc17.ast.cam.ac.uk ([131.111.69.96])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2008 17:15:02 +0000
-Received: from jeremy by xpc17.ast.cam.ac.uk with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2008 17:15:02 +0000
+	id S1752677AbYLITTT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Dec 2008 14:19:19 -0500
+In-Reply-To: <20081208232816.GA18856-6Z/AllhyZU4@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi - I notice the FAQ says that the crashes caused by updating shared
-libraries on NFS partitions are due to cash consistency rules (FAQ D9).
-Does NFSv4 fix this issue?
-
-Thanks
-
-Jeremy
 
 
+Steinar H. Gunderson wrote:
+> On Mon, Dec 08, 2008 at 05:55:40PM -0500, Steve Dickson wrote:
+>> Yes... one does pass pointers of struct sockaddr to the majority 
+>> of the network system call such as bind().. but conventionally 
+>> I've seen a lot of declare struct sockaddr as memory then typecasting 
+>> that memory into a struct sockaddr_in pointer...
+> 
+> That's just wrong. Don't do that :-) (Where have you seen this, by the way?)
+I believe all over the RPC code in the glibc... for one place...
+I have not looked at that code for a while so maybe I have
+it backwards... 
+
+steved.
