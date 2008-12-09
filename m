@@ -1,47 +1,108 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 0/3] AF_INET6 support for probe_bothports()
-Date: Tue, 09 Dec 2008 15:31:48 -0500
-Message-ID: <1228854708.30231.20.camel@heimdal.trondhjem.org>
-References: <20081202175403.5206.91389.stgit@ingres.1015granger.net>
-	 <493D253C.2040809@RedHat.com>
-	 <2DC7493B-E0E5-43C8-8FD1-A9C0C5EFA821@oracle.com>
-	 <493DA5EC.5090805@RedHat.com> <20081208232816.GA18856@uio.no>
-	 <493EC42C.2080901@RedHat.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: possible module refcount leak with auth_gss
+Date: Tue, 9 Dec 2008 15:38:49 -0500
+Message-ID: <20081209153849.6605559a@tleilax.poochiereds.net>
+References: <20081208102855.30081708@tleilax.poochiereds.net>
+	<20081208173706.GE16628@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Steinar H. Gunderson" <sgunderson-jG/AHqQBv7lBDgjK7y7TUQ@public.gmane.org>,
-	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:39811 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757202AbYLIUcB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Dec 2008 15:32:01 -0500
-In-Reply-To: <493EC42C.2080901-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20081208173706.GE16628@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2008-12-09 at 14:17 -0500, Steve Dickson wrote:
-> 
-> Steinar H. Gunderson wrote:
-> > On Mon, Dec 08, 2008 at 05:55:40PM -0500, Steve Dickson wrote:
-> >> Yes... one does pass pointers of struct sockaddr to the majority 
-> >> of the network system call such as bind().. but conventionally 
-> >> I've seen a lot of declare struct sockaddr as memory then typecasting 
-> >> that memory into a struct sockaddr_in pointer...
+On Mon, 8 Dec 2008 12:37:06 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Dec 08, 2008 at 10:28:55AM -0500, Jeff Layton wrote:
+> > We had someone report a bug against Fedora that they were seeing very
+> > high module reference counts for some krb5 related modules on his nfs
+> > server. For instance:
 > > 
-> > That's just wrong. Don't do that :-) (Where have you seen this, by the way?)
-> I believe all over the RPC code in the glibc... for one place...
-> I have not looked at that code for a while so maybe I have
-> it backwards... 
+> > # lsmod
+> > Module                  Size  Used by
+> > des_generic            25216  52736 
+> > cbc                    12160  52736 
+> > rpcsec_gss_krb5        15632  26370 
+> > 
+> > ...the cbc and des_generic each have roughly 2 module references per
+> > rpcsec_gss_krb5 refcount so I'm assuming that the "lynchpin" here is
+> > the rpcsec_gss_krb5 refcount which seems to be increasing w/o bound.
+> 
+> You may want to see this discussion:
+> 
+> 	http://marc.info/?t=122819524700001&r=1&w=2
+> 
+> And these patches:
+> 
+> 	http://marc.info/?l=linux-nfs&m=122843371318602&w=2
+> 
 
-No. That sounds correct. struct sockaddr as defined both in the kernel
-and in glibc deliberately contains 14 bytes of padding. The struct
-sockaddr_in is padded so that it is exactly the same size as struct
-sockaddr.
+Doh! I saw that discussion and didn't make the connection. Thanks for
+pointing that out.
 
-They are not, however, large enough to contain a struct sockaddr_in6.
+> In addition to increasing the timeouts on those cache entries, perhaps
+> we could flush the contexts on rmmod?  Or change the reference counting
+> somehow--e.g., take a reference only in the presence of export cache
+> entries that mention krb5, and destroy contexts when the last such goes
+> away?
+> 
 
-Cheers
-  Trond
+That sounds like a better scheme than what we have currently. As it stands
+now, you can't just unplug the module -- you have to wait for the entries
+in the cache to time out.
 
+FWIW, I tested out Kevin's patches and it still didn't seem to help. The
+refcounts never seemed to go down (even after several hours). How long
+should the context live in the cache with those patches? Until the krb5
+ticket expires? I'll leave the box in this state until around this time
+tomorrow to be sure (that's when the ticket expires).
+
+> Also to check: a recent client should be sending destroy_ctx calls on
+> unmount, and a recent server should be acting on them.  Perhaps there's
+> a bug there.  I'd do an unmount, watch the wire to make sure the
+> destroy_ctx calls are really going across (they'll look like NFSv4 NULL
+> calls, with the interesting fields in the cred in the rpc header).  Then
+> take a close look at the destroy_ctx code (see the second occurence of
+> RPC_GSS_PROC_DESTROY in svcauth_gss_accept(), around line 1126).
+> 
+
+I didn't have 2 hosts with recent kernels, so I tested this on a
+machine with a recent kernel mounting itself. The kernel was:
+
+2.6.28-0.121.rc7.git5.fc11.x86_64
+
+(relatively recent pull from Linus tree AFAIK)
+
+On host foo.bar.baz:
+
+# mount -t nfs4 -o sec=krb5 foo.bar.baz:/ /mnt/test
+# umount /mnt/test
+
+The refcount on the module went up by 1 after this. I also did a
+capture on port 2049. During the unmount, I didn't see any RPC activity
+between client and server. The only thing I see is the socket being
+closed:
+
+ 36   1.584397 10.11.231.229 -> 10.11.231.229 TCP 1016 > nfs [FIN, ACK] Seq=1377 Ack=1389 Win=40320 Len=0 TSV=1648278 TSER=1646778
+ 37   1.584551 10.11.231.229 -> 10.11.231.229 TCP nfs > 1016 [FIN, ACK] Seq=1389 Ack=1378 Win=41344 Len=0 TSV=1648278 TSER=1648278
+ 38   1.584614 10.11.231.229 -> 10.11.231.229 TCP 1016 > nfs [ACK] Seq=1378 Ack=1390 Win=40320 Len=0 TSV=1648278 TSER=1648278
+
+It looks like the destroy_ctx isn't working AFAICT. I haven't started
+digging into the code yet to figure out why however.
+
+Thanks for the info so far.
+
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
