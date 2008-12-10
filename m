@@ -1,71 +1,116 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: 2.6.26.3 kernel - progressive slowdown over NFS
-Date: Wed, 10 Dec 2008 13:26:28 -0800
-Message-ID: <20081210132628.55991b93.akpm@linux-foundation.org>
-References: <f4e12c70809091747rd58165ahaa6594a35752c6ef@mail.gmail.com>
-	<slrngjt7b4.d62.davidf+nntp@dog.thdo.woaf.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 14/27] NLM: Decode "priv" argument of NLMPROC_SM_NOTIFY
+	as an opaque
+Date: Wed, 10 Dec 2008 17:29:48 -0500
+Message-ID: <20081210222948.GL1212@fieldses.org>
+References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000338.24075.50442.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, "Ray Lee" <ray-lk-0Cg02Ec9UG4BXFe83j6qeQ@public.gmane.org>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	pkpatel.lists@gmail.com, linux-nfs@vger.kernel.org,
-	Netdev <netdev@vger.kernel.org>
-To: David Flynn <davidf+nntp-p1ML1wbIMYc@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:60798 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756058AbYLJV1O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Dec 2008 16:27:14 -0500
-In-Reply-To: <slrngjt7b4.d62.davidf+nntp-wwhKarxBCNZl29rWeyUsZ16hYfS7NtTn@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:38710 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751567AbYLJW3u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 17:29:50 -0500
+In-Reply-To: <20081206000338.24075.50442.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(cc's restored)
+On Fri, Dec 05, 2008 at 07:03:39PM -0500, Chuck Lever wrote:
+> The NLM XDR decoders for the NLMPROC_SM_NOTIFY procedure should treat
+> their "priv" argument truly as an opaque, as defined by the protocol,
+> and let the upper layers figure out what is in it.
+> 
+> This will make it easier to modify the contents and interpretation of
+> the "priv" argument, and keep knowledge about what's in "priv" local
+> to fs/lockd/mon.c.
+> 
+> For now, the NLM and NSM implementations should behave exactly as they
+> did before.
+> 
+> The formation of the address of the rebooted host in
+> nlm_host_rebooted() may look a little strange, but it is the inverse
+> of how nsm_init_private() forms the private cookie.  Plus, it's
+> going away soon anyway.
 
-Please always do reply-to-all when working with kernel people.  It's
-important.
+OK, applied these four.
 
-Thanks.
+--b.
 
-On Tue, 9 Dec 2008 16:31:32 +0000 (UTC)
-David Flynn <davidf+nntp-p1ML1wbIMYc@public.gmane.org> wrote:
-
-> On 2008-09-10, Priyank Patel <pkpatel.lists@gmail.com> wrote:
-> > We have a simple python program which keeps running a C loop to lstat
-> > NFS mounted directories.  We are seeing some weird behavior w.r.t. the
-> > run-time of this program on 2.6.26.3 kernel vs 2.6.24 kernel.
-> >
-> > The run-time of the following code increases over time on the 2.6.26.3
-> > kernel, whereas remains flat (as expected) on the 2.6.24 kernel.
 > 
-> I'm seeing a similar effect, and ran a benchmark pre and post reboot:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
->  $ strace -T /usr/sbin/bonnie++ -d . -s 0 -f -n 1 >/tmp/bonnie-r44237-netslow 2>&1
->  ...reboot...
->  $ strace -T /usr/sbin/bonnie++ -d . -s 0 -f -n 1 >/tmp/bonnie-r44237-netfast 2>&1
+>  fs/lockd/host.c           |    3 ++-
+>  fs/lockd/xdr.c            |    4 ++--
+>  fs/lockd/xdr4.c           |    4 ++--
+>  include/linux/lockd/xdr.h |    8 ++++----
+>  4 files changed, 10 insertions(+), 9 deletions(-)
 > 
-> Graphs of the operations are avaliable:
->   http://davidf.woaf.net/nfsfail-2.6.26/
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index ed10338..dc41e46 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -453,9 +453,10 @@ void nlm_release_host(struct nlm_host *host)
+>   */
+>  void nlm_host_rebooted(const struct nlm_reboot *info)
+>  {
+> +	__be32 *p = (__be32 *)&info->priv.data;
+>  	const struct sockaddr_in sin = {
+>  		.sin_family		= AF_INET,
+> -		.sin_addr.s_addr	= info->addr,
+> +		.sin_addr.s_addr	= *p,
+>  	};
+>  	struct hlist_head *chain;
+>  	struct hlist_node *pos;
+> diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+> index 1f22629..4cc7d01 100644
+> --- a/fs/lockd/xdr.c
+> +++ b/fs/lockd/xdr.c
+> @@ -349,8 +349,8 @@ nlmsvc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp)
+>  	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
+>  		return 0;
+>  	argp->state = ntohl(*p++);
+> -	/* Preserve the address in network byte order */
+> -	argp->addr = *p++;
+> +	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
+> +	p += XDR_QUADLEN(SM_PRIV_SIZE);
+>  	return xdr_argsize_check(rqstp, p);
+>  }
+>  
+> diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+> index 50c493a..61d1714 100644
+> --- a/fs/lockd/xdr4.c
+> +++ b/fs/lockd/xdr4.c
+> @@ -356,8 +356,8 @@ nlm4svc_decode_reboot(struct svc_rqst *rqstp, __be32 *p, struct nlm_reboot *argp
+>  	if (!(p = xdr_decode_string_inplace(p, &argp->mon, &argp->len, SM_MAXSTRLEN)))
+>  		return 0;
+>  	argp->state = ntohl(*p++);
+> -	/* Preserve the address in network byte order */
+> -	argp->addr  = *p++;
+> +	memcpy(&argp->priv.data, p, sizeof(argp->priv.data));
+> +	p += XDR_QUADLEN(SM_PRIV_SIZE);
+>  	return xdr_argsize_check(rqstp, p);
+>  }
+>  
+> diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
+> index 6b51992..6338866 100644
+> --- a/include/linux/lockd/xdr.h
+> +++ b/include/linux/lockd/xdr.h
+> @@ -83,10 +83,10 @@ struct nlm_res {
+>   * statd callback when client has rebooted
+>   */
+>  struct nlm_reboot {
+> -	char *		mon;
+> -	unsigned int	len;
+> -	u32		state;
+> -	__be32		addr;
+> +	char			*mon;
+> +	unsigned int		len;
+> +	u32			state;
+> +	struct nsm_private	priv;
+>  };
+>  
+>  /*
 > 
-> In particular http://davidf.woaf.net/nfsfail-2.6.26/r44237-stat.pdf
-> 
-> r44237-* was a machine with a 28 day uptime and
-> r44088-* is an identical machine with 14 day uptime.
-> 
-> The graphs show times as recorded by strace for each syscall (points), a
-> cumulative frequency plot is also drawn on the same graph (lines).
-> yellow-orange points/lines are before the reboot, purple afterwards.
-> 
-> The machines are part of a cluster with a r/o nfsroot and common debian
-> stock kernel:
->  Linux r44088 2.6.26-1-amd64 #1 SMP Sat Aug 2 11:15:08 GMT 2008 x86_64 GNU/Linux
-> 
-> Other nfs filesystems are also mounted; all nfs mounts are nfsv3 over udp.
-> 
-> Has this issue been identified or resolved in 2.6.27?
-> 
-> Extra logs can be provided if required.
-> 
-> ..david
-
-
