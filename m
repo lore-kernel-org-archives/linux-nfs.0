@@ -1,63 +1,84 @@
-From: "Ray Lee" <ray-lk-0Cg02Ec9UG4BXFe83j6qeQ@public.gmane.org>
-Subject: Re: Fwd: 2.6.26.3 kernel - progressive slowdown over NFS
-Date: Tue, 9 Dec 2008 17:12:46 -0800
-Message-ID: <2c0942db0812091712l5efa2d2dia9ff2e3d92f81bbc@mail.gmail.com>
-References: <f4e12c70809091747rd58165ahaa6594a35752c6ef@mail.gmail.com>
-	 <2c0942db0812091638o3d0fe68ek70744f6938949b25@mail.gmail.com>
-	 <1228871206.30231.76.camel@heimdal.trondhjem.org>
+From: support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org (Project Payday)
+Subject: [NFS] Leslie, I think you forgot ...
+Date: Wed, 10 Dec 2008 02:15:17 -0600 (CST)
+Message-ID: <20081210081517.82519598B58@server1.projectpayday.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-	Netdev <netdev@vger.kernel.org>
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
-	pkpatel.lists@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net (Leslie Johnson)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f13.google.com ([209.85.218.13]:58132 "EHLO
-	mail-bw0-f13.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753722AbYLJBMx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Dec 2008 20:12:53 -0500
-Received: by bwz6 with SMTP id 6so616340bwz.13
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Dec 2008 17:12:50 -0800 (PST)
-In-Reply-To: <1228871206.30231.76.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:36569 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750736AbYLJIQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 03:16:07 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LAKEk-00064W-FG
+	for linux-nfs@vger.kernel.org; Wed, 10 Dec 2008 19:16:02 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[ sigh, adding back original reporter. Oops.  -- rbl ]
+Leslie,
 
-Priyank Patel, please see Trond's response below and try out the
-suggested patch linked below.
+You created a Project Payday account the other day, but I noticed
+you haven't activated your account. Did you have any questions?
 
-On Tue, Dec 9, 2008 at 5:06 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Tue, 2008-12-09 at 16:38 -0800, Ray Lee wrote:
->> [ adding netdev, linux-nfs to cc: -- rbl ]
->>
->> Hi,
->>
->>
->> We have a simple python program which keeps running a C loop to lstat
->> NFS mounted directories.  We are seeing some weird behavior w.r.t. the
->> run-time of this program on 2.6.26.3 kernel vs 2.6.24 kernel.
->>
->> The run-time of the following code increases over time on the 2.6.26.3
->> kernel, whereas remains flat (as expected) on the 2.6.24 kernel.
->> [See attached graphs - B1.jpg and B2.jpg]  Once the 2.6.26.3 machine
->> gets into this state, we need to restart the box to get back to
->> reasonable run-times.  Is this a known issue ?
->
-> Could you try applying the following patch?
->
-> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=23918b03060f6e572168fdde1798a905679d2e06
->
-> Trond
->
-> PS: note that your 2.6.26 config file has _very_ different memory models
-> and kernel debugging options enabled compared to your 2.6.24 kernel.
-> That may also affect performance.
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
+If you didn't see any sponsor offers you're interested in, take
+another look - we've just added some new ones to choose from.
+
+http://www.projectpayday.com/offers.cgi?uid=1715217
+
+Don't forget ... when you activate your account you will also get
+a complimentary account at our partner site - Survey Scout.
+That's a $35 value!
+
+And remember how we said you can start making money within hours?
+
+We really meant it. There's an entire section in the Training Guide
+that shows you what to do - step-by-step - to make money TODAY.
+
+"I just finished making another $40 today. That's a total of $130 for
+working 2 hours tops!" - M. Vasquez, Worcester, MA
+
+"I have just read through the entire Project Payday guide. It is the
+most well-written, informative and complete information for newbies
+on how to make money online." - C. Penn, Yorba Linda, CA
+
+"Monika, you are forever my friend. In just over 1 day I have already
+made $75, and that is only using Method 1." - G. Pitts, Detroit, MI
+
+We'll always be here to help you every step of the way. In fact, once
+you activate your account I'll personally help you get started.
+
+http://www.projectpayday.com/offers.cgi?uid=1715217
+
+Just activate your account and start going through the Training Guide,
+and I'll be in touch once I see your account is activated.
+
+
+Sincerely,
+
+Angelina McDonald
+Project Payday Support Team
+http://www.projectpayday.com
+
+
+P.S. If you've changed your mind, please use this link to cancel:
+
+http://www.projectpayday.com/cancel.cgi
+
+User ID: 1715217 (or you can use your email address)
+Password: 306657
+
+------------------------------------------------------------------------------
+SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
+The future of the web can't happen without you.  Join us at MIX09 to help
+pave the way to the Next Web now. Learn more and register at
+http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
