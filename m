@@ -1,119 +1,125 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 17/27] NLM: Remove "create" argument from nsm_find()
-Date: Wed, 10 Dec 2008 18:00:57 -0500
-Message-ID: <20081210230057.GO1212@fieldses.org>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000401.24075.77127.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 18/27] NSM: Refactor nsm_handle creation into a helper
+	function
+Date: Wed, 10 Dec 2008 18:28:30 -0500
+Message-ID: <20081210232830.GP1212@fieldses.org>
+References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000409.24075.37859.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:43899 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:35229 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753266AbYLJXA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2008 18:00:58 -0500
-In-Reply-To: <20081206000401.24075.77127.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1753887AbYLJX2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 18:28:32 -0500
+In-Reply-To: <20081206000409.24075.37859.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 05, 2008 at 07:04:01PM -0500, Chuck Lever wrote:
-> Clean up: nsm_find() now has only one caller, and that caller
-> unconditionally sets the @create argument. Thus the @create
-> argument is no longer needed.
+On Fri, Dec 05, 2008 at 07:04:09PM -0500, Chuck Lever wrote:
+> Clean up.
+
+The nsm_create_handle() thing is fine, but
+
 > 
-> Since nsm_find() now has a more specific purpose, pick a more
-> appropriate name for it.
+> We're about to get rid of the "goto retry" in nsm_get_handle().
 
-Thanks, applied.--b.
+I'm not that interested in removing the "goto retry".  I realize tastes
+differ here, but I don't see a great improvement.  The:
 
+	retry:
+		look for something
+		oops, not there, allocate a new one
+		goto retry
+
+pattern is pretty common and I'm comfortable with it.
+
+There's also a few conflicts that result from my dropping the changes
+that move the dprintk's out from under the spinlock, and I'm getting
+lazy....  Could you humor me here and rebase these last 10 patches on my
+latest for-2.6.29:
+
+	git://linux-nfs.org/~bfields/linux.git for-2.6.29
+
+without futzing with this goto?
+
+>From a quick skim the rest of the patches they seem reasonable.  If you
+have more 2.6.29 patches, this'd be a good time to send them along as
+well.
+
+--b.
+
+> To facilitate this, move the nsm_handle initialization logic to
+> a helper function.
+> 
+> Fields are initialized in increasing address order to make efficient
+> use of CPU caches.
 > 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/lockd/host.c             |    4 ++--
->  fs/lockd/mon.c              |   23 +++++++++--------------
->  include/linux/lockd/lockd.h |    6 +++---
->  3 files changed, 14 insertions(+), 19 deletions(-)
+>  fs/lockd/mon.c |   41 ++++++++++++++++++++++++++++-------------
+>  1 files changed, 28 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 230de93..e5a65df 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -159,8 +159,8 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
->  		atomic_inc(&nsm->sm_count);
->  	else {
->  		host = NULL;
-> -		nsm = nsm_find(ni->sap, ni->salen,
-> -				ni->hostname, ni->hostname_len, 1);
-> +		nsm = nsm_get_handle(ni->sap, ni->salen,
-> +					ni->hostname, ni->hostname_len);
->  		if (!nsm) {
->  			dprintk("lockd: nlm_lookup_host failed; "
->  				"no nsm handle\n");
 > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index 65fb904..4267a57 100644
+> index 4267a57..24857a8 100644
 > --- a/fs/lockd/mon.c
 > +++ b/fs/lockd/mon.c
-> @@ -241,24 +241,22 @@ static void nsm_init_private(struct nsm_handle *nsm)
+> @@ -240,6 +240,30 @@ static void nsm_init_private(struct nsm_handle *nsm)
+>  	*p = nsm_addr_in(nsm)->sin_addr.s_addr;
 >  }
 >  
+> +static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
+> +					    const size_t salen,
+> +					    const char *hostname,
+> +					    const size_t hostname_len)
+> +{
+> +	struct nsm_handle *new;
+> +
+> +	new = kzalloc(sizeof(*new) + hostname_len + 1, GFP_KERNEL);
+> +	if (unlikely(new == NULL))
+> +		return NULL;
+> +
+> +	atomic_set(&new->sm_count, 1);
+> +	new->sm_name = (char *)(new + 1);
+> +	memcpy(nsm_addr(new), sap, salen);
+> +	new->sm_addrlen = salen;
+> +	nsm_init_private(new);
+> +	nsm_display_address((const struct sockaddr *)&new->sm_addr,
+> +				new->sm_addrbuf, sizeof(new->sm_addrbuf));
+> +	memcpy(new->sm_name, hostname, hostname_len);
+> +	new->sm_name[hostname_len] = '\0';
+> +
+> +	return new;
+> +}
+> +
 >  /**
-> - * nsm_find - Find or create a cached nsm_handle
-> + * nsm_get_handle - Find or create a cached nsm_handle
+>   * nsm_get_handle - Find or create a cached nsm_handle
 >   * @sap: pointer to socket address of handle to find
->   * @salen: length of socket address
->   * @hostname: pointer to C string containing hostname to find
->   * @hostname_len: length of C string
-> - * @create: one means create new handle if not found in cache
->   *
-> - * Behavior is modulated by the global nsm_use_hostnames variable
-> - * and by the @create argument.
-> + * Behavior is modulated by the global nsm_use_hostnames variable.
->   *
-> - * Returns a cached nsm_handle after bumping its ref count, or if
-> - * @create is set, returns a fresh nsm_handle if a handle that
-> - * matches @sap and/or @hostname cannot be found in the handle cache.
-> - * Returns NULL if an error occurs.
-> + * Returns a cached nsm_handle after bumping its ref count, or
-> + * returns a fresh nsm_handle if a handle that matches @sap and/or
-> + * @hostname cannot be found in the handle cache.  Returns NULL if
-> + * an error occurs.
->   */
-> -struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
-> -			    const char *hostname, const size_t hostname_len,
-> -			    const int create)
-> +struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
-> +				  const size_t salen, const char *hostname,
-> +				  const size_t hostname_len)
->  {
->  	struct nsm_handle *nsm = NULL;
->  	struct nsm_handle *pos;
-> @@ -301,9 +299,6 @@ retry:
+> @@ -299,20 +323,11 @@ retry:
 >  
 >  	spin_unlock(&nsm_lock);
 >  
-> -	if (!create)
+> -	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+> -	if (nsm == NULL)
 > -		return NULL;
-> -
->  	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
->  	if (nsm == NULL)
->  		return NULL;
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index 5e3ad92..1ccd49e 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -247,10 +247,10 @@ void		  nlm_host_rebooted(const struct nlm_reboot *);
->  int		  nsm_monitor(const struct nlm_host *host);
->  void		  nsm_unmonitor(const struct nlm_host *host);
+> +	nsm = nsm_create_handle(sap, salen, hostname, hostname_len);
+> +	if (nsm != NULL)
+> +		goto retry;
 >  
-> -struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
-> +struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
-> +					const size_t salen,
->  					const char *hostname,
-> -					const size_t hostname_len,
-> -					const int create);
-> +					const size_t hostname_len);
->  struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info);
->  void		  nsm_release(struct nsm_handle *nsm);
+> -	memcpy(nsm_addr(nsm), sap, salen);
+> -	nsm->sm_addrlen = salen;
+> -	nsm->sm_name = (char *) (nsm + 1);
+> -	memcpy(nsm->sm_name, hostname, hostname_len);
+> -	nsm->sm_name[hostname_len] = '\0';
+> -	nsm_init_private(nsm);
+> -	nsm_display_address((struct sockaddr *)&nsm->sm_addr,
+> -				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
+> -	atomic_set(&nsm->sm_count, 1);
+> -	goto retry;
+> +	return NULL;
+>  }
 >  
+>  /**
 > 
