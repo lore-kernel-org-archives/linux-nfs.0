@@ -1,318 +1,375 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 03/27] NSM: Add xdr_stream-based XDR encoders
-Date: Wed, 10 Dec 2008 15:54:43 -0500
-Message-ID: <6EDE5D9B-9D02-436D-9BD8-4E4BB10E17E8@oracle.com>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000214.24075.58074.stgit@ingres.1015granger.net> <20081210203533.GB1212@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 07/27] NSM: Move nsm_find() to fs/lockd/mon.c
+Date: Wed, 10 Dec 2008 15:58:14 -0500
+Message-ID: <20081210205814.GF1212@fieldses.org>
+References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000244.24075.75258.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:28455 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754055AbYLJUzF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Dec 2008 15:55:05 -0500
-In-Reply-To: <20081210203533.GB1212@fieldses.org>
+Received: from mail.fieldses.org ([66.93.2.214]:33278 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753521AbYLJU6Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 15:58:16 -0500
+In-Reply-To: <20081206000244.24075.75258.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Dec 10, 2008, at Dec 10, 2008, 3:35 PM, J. Bruce Fields wrote:
-> On Fri, Dec 05, 2008 at 07:02:15PM -0500, Chuck Lever wrote:
->> Introduce xdr_stream-based XDR encoder functions.  These are more
->> careful about preventing RPC buffer overflows.
->
-> Looks fine, thanks; applied, with a superficial patch reorganization:
-> for once this is a patch I think is too small.
->
-> My two rules of thumb:
->
-> 	- Callers for new code should be added at the same time as the
-> 	  new code.
->
-> 	  (Otherwise it's not possible to judge the single patch on its
-> 	  own, because you don't know whether the new (temporarily dead)
-> 	  code is correct until you see it called.)
->
-> 	- When replacing code, I'd rather see the new code added in the
-> 	  same patch that removes the old code.
->
-> 	  (Again, it's easier to judge the single patch on its own if
-> 	  you see the side-by-side old-to-new comparison.)
+On Fri, Dec 05, 2008 at 07:02:45PM -0500, Chuck Lever wrote:
+> The nsm_find() function sets up fresh nsm_handle entries.  This is
+> where we will store the "priv" cookie used to lookup nsm_handles during
+> reboot recovery.  The cookie will be constructed when nsm_find()
+> creates a new nsm_handle.
+> 
+> As much as possible, I would like to keep everything that handles a
+> "priv" cookie in fs/lockd/mon.c so that all the smarts are in one
+> source file.  That organization should make it pretty simple to see how
+> all this works.
+> 
+> To me, it makes more sense than the current arrangement to keep
+> nsm_find() with nsm_monitor() and nsm_unmonitor().
+> 
+> So, start reorganizing by moving nsm_find() into fs/lockd/mon.c.  The
+> nsm_release() function comes along too, since it shares the nsm_lock
+> global variable.
 
-OK... FYI, I broke it up this way because often when we do both in the  
-same patch, the diff is nearly impossible to read.
+OK, haven't thought that organization through myself, but it sounds
+sensible, so I'll trust your judgement; applied.--b.
 
-The kernel patch rules I'm familiar with require that each patch  
-should not break the build or kernel operation, and should be as  
-atomic as possible.
-
-> Neither rule is an absolute.
->
-> In this case I think squashing the following four patches gives a
-> reasonable result; I've applied the below (literally just the
-> composition of the four patches) instead of 3--7.
-
-This looks OK at first glance.
-
-In general making this kind of alteration means I can't do an  
-automated merge when I sync up with 2.6.29.  I will have to check over  
-these changes carefully to see that what I sent you is exactly what  
-was applied, and delete them each separately.
-
-This is an important reason I prefer to make this kind of change  
-myself and resend the patches -- it's one more insulator against  
-operator mistakes and bugs in our tools.  I wish there were a better  
-way to handle this case, but such are the tools we have been provided.
-
-> (If we were to split this up more finely, I'd consider doing encoders
-> separately from decoders, and/or SM_MON separately from SM_UNMON.)
->
-> --b.
->
-> commit fc88c50d16bbc43ab6a90107acbf45a0654d57ee
-> Author: Chuck Lever <chuck.lever@oracle.com>
-> Date:   Fri Dec 5 19:02:15 2008 -0500
->
->    NSM: move to xdr_stream-based XDR encoders and decoders
->
->    Introduce xdr_stream-based XDR encoder and decoder functions,  
-> which are
->    more careful about preventing RPC buffer overflows.
->
->    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/lockd/host.c             |  129 -----------------------------------------
+>  fs/lockd/mon.c              |  134 +++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/lockd/lockd.h |    6 ++
+>  3 files changed, 140 insertions(+), 129 deletions(-)
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 316241a..dbdeaa8 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -32,12 +32,6 @@ static int			nrhosts;
+>  static DEFINE_MUTEX(nlm_host_mutex);
+>  
+>  static void			nlm_gc_hosts(void);
+> -static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+> -						const size_t salen,
+> -						const char *hostname,
+> -						const size_t hostname_len,
+> -						const int create);
+> -static void			nsm_release(struct nsm_handle *nsm);
+>  
+>  struct nlm_lookup_host_info {
+>  	const int		server;		/* search for server|client */
+> @@ -106,44 +100,6 @@ static void nlm_clear_port(struct sockaddr *sap)
+>  	}
+>  }
+>  
+> -static void nlm_display_ipv4_address(const struct sockaddr *sap, char *buf,
+> -				     const size_t len)
+> -{
+> -	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+> -	snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
+> -}
+> -
+> -static void nlm_display_ipv6_address(const struct sockaddr *sap, char *buf,
+> -				     const size_t len)
+> -{
+> -	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+> -
+> -	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
+> -		snprintf(buf, len, NIPQUAD_FMT,
+> -				NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
+> -	else if (sin6->sin6_scope_id != 0)
+> -		snprintf(buf, len, NIP6_FMT "%%%u", NIP6(sin6->sin6_addr),
+> -				sin6->sin6_scope_id);
+> -	else
+> -		snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
+> -}
+> -
+> -static void nlm_display_address(const struct sockaddr *sap,
+> -				char *buf, const size_t len)
+> -{
+> -	switch (sap->sa_family) {
+> -	case AF_INET:
+> -		nlm_display_ipv4_address(sap, buf, len);
+> -		break;
+> -	case AF_INET6:
+> -		nlm_display_ipv6_address(sap, buf, len);
+> -		break;
+> -	default:
+> -		snprintf(buf, len, "unsupported address family");
+> -		break;
+> -	}
+> -}
+> -
+>  /*
+>   * Common host lookup routine for server & client
+>   */
+> @@ -636,88 +592,3 @@ nlm_gc_hosts(void)
+>  
+>  	next_gc = jiffies + NLM_HOST_COLLECT;
+>  }
+> -
+> -
+> -/*
+> - * Manage NSM handles
+> - */
+> -static LIST_HEAD(nsm_handles);
+> -static DEFINE_SPINLOCK(nsm_lock);
+> -
+> -static struct nsm_handle *nsm_find(const struct sockaddr *sap,
+> -				   const size_t salen,
+> -				   const char *hostname,
+> -				   const size_t hostname_len,
+> -				   const int create)
+> -{
+> -	struct nsm_handle *nsm = NULL;
+> -	struct nsm_handle *pos;
+> -
+> -	if (!sap)
+> -		return NULL;
+> -
+> -	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+> -		if (printk_ratelimit()) {
+> -			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
+> -					    "in NFS lock request\n",
+> -				(int)hostname_len, hostname);
+> -		}
+> -		return NULL;
+> -	}
+> -
+> -retry:
+> -	spin_lock(&nsm_lock);
+> -	list_for_each_entry(pos, &nsm_handles, sm_link) {
+> -
+> -		if (hostname && nsm_use_hostnames) {
+> -			if (strlen(pos->sm_name) != hostname_len
+> -			 || memcmp(pos->sm_name, hostname, hostname_len))
+> -				continue;
+> -		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
+> -			continue;
+> -		atomic_inc(&pos->sm_count);
+> -		kfree(nsm);
+> -		nsm = pos;
+> -		goto found;
+> -	}
+> -	if (nsm) {
+> -		list_add(&nsm->sm_link, &nsm_handles);
+> -		goto found;
+> -	}
+> -	spin_unlock(&nsm_lock);
+> -
+> -	if (!create)
+> -		return NULL;
+> -
+> -	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+> -	if (nsm == NULL)
+> -		return NULL;
+> -
+> -	memcpy(nsm_addr(nsm), sap, salen);
+> -	nsm->sm_addrlen = salen;
+> -	nsm->sm_name = (char *) (nsm + 1);
+> -	memcpy(nsm->sm_name, hostname, hostname_len);
+> -	nsm->sm_name[hostname_len] = '\0';
+> -	nlm_display_address((struct sockaddr *)&nsm->sm_addr,
+> -				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
+> -	atomic_set(&nsm->sm_count, 1);
+> -	goto retry;
+> -
+> -found:
+> -	spin_unlock(&nsm_lock);
+> -	return nsm;
+> -}
+> -
+> -/*
+> - * Release an NSM handle
+> - */
+> -static void nsm_release(struct nsm_handle *nsm)
+> -{
+> -	if (!nsm)
+> -		return;
+> -	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
+> -		list_del(&nsm->sm_link);
+> -		spin_unlock(&nsm_lock);
+> -		kfree(nsm);
+> -	}
+> -}
 > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index 0fc9836..81e1cc1 100644
+> index 81e1cc1..d5bd847 100644
 > --- a/fs/lockd/mon.c
 > +++ b/fs/lockd/mon.c
-> @@ -193,21 +193,26 @@ nsm_create(void)
->  * Status Monitor wire protocol.
->  */
->
-> -static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
-> +static int encode_nsm_string(struct xdr_stream *xdr, const char  
-> *string)
-> {
-> -	size_t len = strlen(string);
-> -
-> -	if (len > SM_MAXSTRLEN)
-> -		len = SM_MAXSTRLEN;
-> -	return xdr_encode_opaque(p, string, len);
-> +	const u32 len = strlen(string);
-> +	__be32 *p;
+> @@ -47,12 +47,52 @@ struct nsm_res {
+>  static struct rpc_clnt *	nsm_create(void);
+>  
+>  static struct rpc_program	nsm_program;
+> +static				LIST_HEAD(nsm_handles);
+> +static				DEFINE_SPINLOCK(nsm_lock);
+>  
+>  /*
+>   * Local NSM state
+>   */
+>  int				nsm_local_state;
+>  
+> +static void nsm_display_ipv4_address(const struct sockaddr *sap, char *buf,
+> +				     const size_t len)
+> +{
+> +	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+> +	snprintf(buf, len, NIPQUAD_FMT, NIPQUAD(sin->sin_addr.s_addr));
+> +}
 > +
-> +	if (unlikely(len > SM_MAXSTRLEN))
-> +		return -EIO;
-> +	p = xdr_reserve_space(xdr, sizeof(u32) + len);
-> +	if (unlikely(p == NULL))
-> +		return -EIO;
-> +	xdr_encode_opaque(p, string, len);
-> +	return 0;
-> }
->
-> /*
->  * "mon_name" specifies the host to be monitored.
->  */
-> -static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
-> +static int encode_mon_name(struct xdr_stream *xdr, const struct  
-> nsm_args *argp)
-> {
-> -	return xdr_encode_nsm_string(p, argp->mon_name);
-> +	return encode_nsm_string(xdr, argp->mon_name);
-> }
->
-> /*
-> @@ -216,30 +221,35 @@ static __be32 *xdr_encode_mon_name(__be32 *p,  
-> struct nsm_args *argp)
->  * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
->  * has changed.
->  */
-> -static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
-> +static int encode_my_id(struct xdr_stream *xdr, const struct  
-> nsm_args *argp)
-> {
-> -	p = xdr_encode_nsm_string(p, utsname()->nodename);
-> -	if (!p)
-> -		return ERR_PTR(-EIO);
-> -
-> +	int status;
-> +	__be32 *p;
+> +static void nsm_display_ipv6_address(const struct sockaddr *sap, char *buf,
+> +				     const size_t len)
+> +{
+> +	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
 > +
-> +	status = encode_nsm_string(xdr, utsname()->nodename);
-> +	if (unlikely(status != 0))
-> +		return status;
-> +	p = xdr_reserve_space(xdr, 3 * sizeof(u32));
-> +	if (unlikely(p == NULL))
-> +		return -EIO;
-> 	*p++ = htonl(argp->prog);
-> 	*p++ = htonl(argp->vers);
-> 	*p++ = htonl(argp->proc);
-> -
-> -	return p;
-> +	return 0;
-> }
->
-> /*
->  * The "mon_id" argument specifies the non-private arguments
->  * of an NSMPROC_MON or NSMPROC_UNMON call.
->  */
-> -static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
-> +static int encode_mon_id(struct xdr_stream *xdr, const struct  
-> nsm_args *argp)
-> {
-> -	p = xdr_encode_mon_name(p, argp);
-> -	if (!p)
-> -		return ERR_PTR(-EIO);
-> +	int status;
->
-> -	return xdr_encode_my_id(p, argp);
-> +	status = encode_mon_name(xdr, argp);
-> +	if (unlikely(status != 0))
-> +		return status;
-> +	return encode_my_id(xdr, argp);
-> }
->
-> /*
-> @@ -250,55 +260,71 @@ static __be32 *xdr_encode_mon_id(__be32 *p,  
-> struct nsm_args *argp)
->  * Linux provides the raw IP address of the monitored host,
->  * left in network byte order.
->  */
-> -static __be32 *xdr_encode_priv(__be32 *p, struct nsm_args *argp)
-> +static int encode_priv(struct xdr_stream *xdr, const struct  
-> nsm_args *argp)
-> {
-> +	__be32 *p;
+> +	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
+> +		snprintf(buf, len, NIPQUAD_FMT,
+> +				NIPQUAD(sin6->sin6_addr.s6_addr32[3]));
+> +	else if (sin6->sin6_scope_id != 0)
+> +		snprintf(buf, len, NIP6_FMT "%%%u", NIP6(sin6->sin6_addr),
+> +				sin6->sin6_scope_id);
+> +	else
+> +		snprintf(buf, len, NIP6_FMT, NIP6(sin6->sin6_addr));
+> +}
 > +
-> +	p = xdr_reserve_space(xdr, SM_PRIV_SIZE);
-> +	if (unlikely(p == NULL))
-> +		return -EIO;
-> 	*p++ = argp->addr;
-> 	*p++ = 0;
-> 	*p++ = 0;
-> 	*p++ = 0;
-> -
-> -	return p;
-> +	return 0;
-> }
->
-> -static int
-> -xdr_encode_mon(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args  
-> *argp)
-> +static int xdr_enc_mon(struct rpc_rqst *req, __be32 *p,
-> +		       const struct nsm_args *argp)
-> {
-> -	p = xdr_encode_mon_id(p, argp);
-> -	if (IS_ERR(p))
-> -		return PTR_ERR(p);
-> -
-> -	p = xdr_encode_priv(p, argp);
-> -	if (IS_ERR(p))
-> -		return PTR_ERR(p);
-> +	struct xdr_stream xdr;
-> +	int status;
->
-> -	rqstp->rq_slen = xdr_adjust_iovec(rqstp->rq_svec, p);
-> -	return 0;
-> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-> +	status = encode_mon_id(&xdr, argp);
-> +	if (unlikely(status))
-> +		return status;
-> +	return encode_priv(&xdr, argp);
-> }
->
-> -static int
-> -xdr_encode_unmon(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args  
-> *argp)
-> +static int xdr_enc_unmon(struct rpc_rqst *req, __be32 *p,
-> +			 const struct nsm_args *argp)
-> {
-> -	p = xdr_encode_mon_id(p, argp);
-> -	if (IS_ERR(p))
-> -		return PTR_ERR(p);
-> -	rqstp->rq_slen = xdr_adjust_iovec(rqstp->rq_svec, p);
-> -	return 0;
-> +	struct xdr_stream xdr;
+> +static void nsm_display_address(const struct sockaddr *sap,
+> +				char *buf, const size_t len)
+> +{
+> +	switch (sap->sa_family) {
+> +	case AF_INET:
+> +		nsm_display_ipv4_address(sap, buf, len);
+> +		break;
+> +	case AF_INET6:
+> +		nsm_display_ipv6_address(sap, buf, len);
+> +		break;
+> +	default:
+> +		snprintf(buf, len, "unsupported address family");
+> +		break;
+> +	}
+> +}
 > +
-> +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-> +	return encode_mon_id(&xdr, argp);
-> }
->
-> -static int
-> -xdr_decode_stat_res(struct rpc_rqst *rqstp, __be32 *p, struct  
-> nsm_res *resp)
-> +static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
-> +			    struct nsm_res *resp)
-> {
-> +	struct xdr_stream xdr;
+>  /*
+>   * Common procedure for NSMPROC_MON/NSMPROC_UNMON calls
+>   */
+> @@ -162,6 +202,100 @@ void nsm_unmonitor(const struct nlm_host *host)
+>  	}
+>  }
+>  
+> +/**
+> + * nsm_find - Find or create a cached nsm_handle
+> + * @sap: pointer to socket address of handle to find
+> + * @salen: length of socket address
+> + * @hostname: pointer to C string containing hostname to find
+> + * @hostname_len: length of C string
+> + * @create: one means create new handle if not found in cache
+> + *
+> + * Behavior is modulated by the global nsm_use_hostnames variable
+> + * and by the @create argument.
+> + *
+> + * Returns a cached nsm_handle after bumping its ref count, or if
+> + * @create is set, returns a fresh nsm_handle if a handle that
+> + * matches @sap and/or @hostname cannot be found in the handle cache.
+> + * Returns NULL if an error occurs.
+> + */
+> +struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+> +			    const char *hostname, const size_t hostname_len,
+> +			    const int create)
+> +{
+> +	struct nsm_handle *nsm = NULL;
+> +	struct nsm_handle *pos;
 > +
-> +	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-> +	p = xdr_inline_decode(&xdr, 2 * sizeof(u32));
-> +	if (unlikely(p == NULL))
-> +		return -EIO;
-> 	resp->status = ntohl(*p++);
-> -	resp->state = ntohl(*p++);
-> -	dprintk("nsm: xdr_decode_stat_res status %d state %d\n",
-> +	resp->state = ntohl(*p);
+> +	if (!sap)
+> +		return NULL;
 > +
-> +	dprintk("lockd: xdr_dec_stat_res status %d state %d\n",
-> 			resp->status, resp->state);
-> 	return 0;
-> }
->
-> -static int
-> -xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res  
-> *resp)
-> +static int xdr_dec_stat(struct rpc_rqst *rqstp, __be32 *p,
-> +			struct nsm_res *resp)
-> {
-> -	resp->state = ntohl(*p++);
-> +	struct xdr_stream xdr;
+> +	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+> +		if (printk_ratelimit()) {
+> +			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
+> +					    "in NFS lock request\n",
+> +				(int)hostname_len, hostname);
+> +		}
+> +		return NULL;
+> +	}
 > +
-> +	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-> +	p = xdr_inline_decode(&xdr, sizeof(u32));
-> +	if (unlikely(p == NULL))
-> +		return -EIO;
-> +	resp->state = ntohl(*p);
+> +retry:
+> +	spin_lock(&nsm_lock);
+> +	list_for_each_entry(pos, &nsm_handles, sm_link) {
 > +
-> +	dprintk("lockd: xdr_dec_stat state %d\n", resp->state);
-> 	return 0;
-> }
->
-> @@ -314,8 +340,8 @@ xdr_decode_stat(struct rpc_rqst *rqstp, __be32  
-> *p, struct nsm_res *resp)
-> static struct rpc_procinfo	nsm_procedures[] = {
-> [NSMPROC_MON] = {
-> 		.p_proc		= NSMPROC_MON,
-> -		.p_encode	= (kxdrproc_t) xdr_encode_mon,
-> -		.p_decode	= (kxdrproc_t) xdr_decode_stat_res,
-> +		.p_encode	= (kxdrproc_t)xdr_enc_mon,
-> +		.p_decode	= (kxdrproc_t)xdr_dec_stat_res,
-> 		.p_arglen	= SM_mon_sz,
-> 		.p_replen	= SM_monres_sz,
-> 		.p_statidx	= NSMPROC_MON,
-> @@ -323,8 +349,8 @@ static struct rpc_procinfo	nsm_procedures[] = {
-> 	},
-> [NSMPROC_UNMON] = {
-> 		.p_proc		= NSMPROC_UNMON,
-> -		.p_encode	= (kxdrproc_t) xdr_encode_unmon,
-> -		.p_decode	= (kxdrproc_t) xdr_decode_stat,
-> +		.p_encode	= (kxdrproc_t)xdr_enc_unmon,
-> +		.p_decode	= (kxdrproc_t)xdr_dec_stat,
-> 		.p_arglen	= SM_mon_id_sz,
-> 		.p_replen	= SM_unmonres_sz,
-> 		.p_statidx	= NSMPROC_UNMON,
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> +		if (hostname && nsm_use_hostnames) {
+> +			if (strlen(pos->sm_name) != hostname_len
+> +			 || memcmp(pos->sm_name, hostname, hostname_len))
+> +				continue;
+> +		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
+> +			continue;
+> +		atomic_inc(&pos->sm_count);
+> +		kfree(nsm);
+> +		nsm = pos;
+> +		goto found;
+> +	}
+> +	if (nsm) {
+> +		list_add(&nsm->sm_link, &nsm_handles);
+> +		goto found;
+> +	}
+> +	spin_unlock(&nsm_lock);
+> +
+> +	if (!create)
+> +		return NULL;
+> +
+> +	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+> +	if (nsm == NULL)
+> +		return NULL;
+> +
+> +	memcpy(nsm_addr(nsm), sap, salen);
+> +	nsm->sm_addrlen = salen;
+> +	nsm->sm_name = (char *) (nsm + 1);
+> +	memcpy(nsm->sm_name, hostname, hostname_len);
+> +	nsm->sm_name[hostname_len] = '\0';
+> +	nsm_display_address((struct sockaddr *)&nsm->sm_addr,
+> +				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
+> +	atomic_set(&nsm->sm_count, 1);
+> +	goto retry;
+> +
+> +found:
+> +	spin_unlock(&nsm_lock);
+> +	return nsm;
+> +}
+> +
+> +/**
+> + * nsm_release - Release an NSM handle
+> + * @nsm: pointer to handle to be released
+> + *
+> + */
+> +void nsm_release(struct nsm_handle *nsm)
+> +{
+> +	if (!nsm)
+> +		return;
+> +	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
+> +		list_del(&nsm->sm_link);
+> +		spin_unlock(&nsm_lock);
+> +		kfree(nsm);
+> +	}
+> +}
+> +
+>  /*
+>   * Create NSM client for the local host
+>   */
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index 38344bf..8d71536 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -247,6 +247,12 @@ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
+>  int		  nsm_monitor(const struct nlm_host *host);
+>  void		  nsm_unmonitor(const struct nlm_host *host);
+>  
+> +struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+> +					const char *hostname,
+> +					const size_t hostname_len,
+> +					const int create);
+> +void		  nsm_release(struct nsm_handle *nsm);
+> +
+>  /*
+>   * This is used in garbage collection and resource reclaim
+>   * A return value != 0 means destroy the lock/block/share
+> 
