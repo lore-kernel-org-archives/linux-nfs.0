@@ -1,56 +1,54 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFSD IPv6 support for 2.6.29
-Date: Wed, 10 Dec 2008 11:37:15 -0500
-Message-ID: <20081210163715.GC28263@fieldses.org>
-References: <C44F9C62-2770-4879-8AC7-B1C8D81F9AB6@oracle.com> <491AFE09.2010803@bull.net> <2BF8FCDB-0C6D-430E-B2AE-4C293E30A1AE@oracle.com> <4921AF45.4070009@bull.net> <AF604C91-2F1B-48A3-8E1D-84D5CBBB2856@oracle.com> <493E6680.2050904@bull.net> <9F0B9CDF-DDA7-4752-B08D-EC43A3D664E1@oracle.com> <20081209210407.GE8596@fieldses.org> <493FD6C0.7070906@bull.net> <1228921485.2914.14.camel@heimdal.trondhjem.org>
+Subject: Re: NSFproblem lockd: server  not responding, still trying
+Date: Wed, 10 Dec 2008 13:45:50 -0500
+Message-ID: <20081210184550.GC31558@fieldses.org>
+References: <493F00FB.2060105@aust.edu.ng>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Le Rouzic <aime.le-rouzic@bull.net>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Varun Chandramohan <varunc@linux.vnet.ibm.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Frank S Filz <ffilz@us.ibm.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+To: Adesuyan <bobby-ufAfj23ATiXovzDjfJyo/Q@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:34567 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:39212 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757275AbYLJQh2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2008 11:37:28 -0500
-In-Reply-To: <1228921485.2914.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1754186AbYLJSpw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 13:45:52 -0500
+In-Reply-To: <493F00FB.2060105-ufAfj23ATiXovzDjfJyo/Q@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 10, 2008 at 10:04:45AM -0500, Trond Myklebust wrote:
-> On Wed, 2008-12-10 at 15:48 +0100, Le Rouzic wrote:
-> 
-> >   Hi,
-> >   I joined at this mail two wireshark traces. One when it was working 
-> > (trace_2.6.27-rc3)
-> >   and the other one with the error(trace_2.6.28-rc2).
-> >   It looks to come because the operation NVERIFY which was returned 
-> > NFS_OK before
-> >   now returns NFS4ERR_SAME making AIX retrying the readdir with an 
-> > incremented cookie .
-> 
-> While there may be a server bug here, it definitely is wrong for the AIX
-> client to be sending a READDIR request with a cookie argument of '1'.
-> RFC3530 is adamant that
-> 
->         For READDIR arguments, cookie values of 1 and 2 should not be
->         used and for READDIR results cookie values of 0, 1, and 2 should
->         not be returned.
-> 
-> That said, I'd love to understand why the server replied to the first
-> READDIR request with no entries, and yet with EOF not set. Is it perhaps
-> because the 'dircount' was too small, Bruce?
+On Wed, Dec 10, 2008 at 12:36:27AM +0100, Adesuyan wrote:
+> hi guys
+>
+> am having some issues with nfs the home directories of all the computers  
+> in my school is mounted on the fileserver via nfs mount . for quite some  
+> times now users have been experiencing issues with their desktop  
+> freezing.   i checked the syslogs and i found this  
+> http://pastebin.com/m69dde24e
+>    a little googling showed there was a kernel 2.6 bug which happens  
+> when you  have had with fast server cards and slow client cards when a
+>                   2.6.x kernel is used on the server.
+>   the fileserver is on a gigabit card
+>    while the client are all on 10/100  so i guess am affected
+>   i tried apply the fix in this wiki  
+> http://wiki.ltsp.org/twiki/bin/view/Ltsp/NFS#NFS_Server_not_responding
+>  but am not sure if i got it right .. or if it applies to the case where 
+> one mounts the home directory from the fileserver but the system
+>  boots up local (not through the network)
 
-Oops, my bad--mention of readdir should have reminded me of commit
-b726e923ea4d216027e466aa602d914e4b4a63af "Fix nfsd truncation of readdir
-results", which fixed a problem like that; that went into -rc4, so worth
-retesting with -rc4.
+It's lockd that's not responding, not nfsd, so I don't think the problem
+you're seeing is the one described there.
 
-Also, spurious NFS4ERR_SAME calls are a symptom of the ctime resolution
-problem so worth retrying with a different filesystem with you're using
-ext2/3.
+> someone i met at #linux-nfs suggested i use NFS over TCP on the client
+
+Always good advice, but again probably unrelated.
+
+> i did but it didnt fix the issue am running ubuntu hardy heron on an
+> HP  server .
+
+You're talking here about your nfs server?
 
 --b.
+
+> any help would be appreciated.this problem has made life very  
+> frustrating for staffs of my school because we use only linux it would  
+> be a great relive if you guys can help us resolve it. thanks in advance
