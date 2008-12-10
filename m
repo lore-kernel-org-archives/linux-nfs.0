@@ -1,192 +1,272 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 02/27] NSM: Move NSM program and procedure numbers to
-	fs/lockd/mon.c
-Date: Wed, 10 Dec 2008 15:09:10 -0500
-Message-ID: <20081210200910.GA1212@fieldses.org>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000206.24075.32502.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 03/27] NSM: Add xdr_stream-based XDR encoders
+Date: Wed, 10 Dec 2008 15:35:33 -0500
+Message-ID: <20081210203533.GB1212@fieldses.org>
+References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000214.24075.58074.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:45188 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:48536 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752514AbYLJUJM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2008 15:09:12 -0500
-In-Reply-To: <20081206000206.24075.32502.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752993AbYLJUfg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 15:35:36 -0500
+In-Reply-To: <20081206000214.24075.58074.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 05, 2008 at 07:02:07PM -0500, Chuck Lever wrote:
-> Clean up: Move the RPC program and procedure numbers for NSM into the
-> one source file that needs them: fs/lockd/mon.c.
-> 
-> And, as with NLM, NFS, and rpcbind calls, use NSMPROC_FOO instead of
-> SM_FOO for NSM procedure numbers.
-> 
-> Finally, make a couple of comments more precise: what is referred to
-> here as SM_NOTIFY is really the NLM (lockd) NLMPROC_SM_NOTIFY downcall,
-> not NSMPROC_NOTIFY.
+On Fri, Dec 05, 2008 at 07:02:15PM -0500, Chuck Lever wrote:
+> Introduce xdr_stream-based XDR encoder functions.  These are more
+> careful about preventing RPC buffer overflows.
 
-Yep, the notify downcalls are confusing to sort out; anything to help
-clarify is useful.
+Looks fine, thanks; applied, with a superficial patch reorganization:
+for once this is a patch I think is too small.
 
-Applied these first two patches, thanks.
+My two rules of thumb:
+
+	- Callers for new code should be added at the same time as the
+	  new code.
+
+	  (Otherwise it's not possible to judge the single patch on its
+	  own, because you don't know whether the new (temporarily dead)
+	  code is correct until you see it called.)
+
+	- When replacing code, I'd rather see the new code added in the
+	  same patch that removes the old code.
+
+	  (Again, it's easier to judge the single patch on its own if
+	  you see the side-by-side old-to-new comparison.)
+
+Neither rule is an absolute.
+
+In this case I think squashing the following four patches gives a
+reasonable result; I've applied the below (literally just the
+composition of the four patches) instead of 3--7.
+
+(If we were to split this up more finely, I'd consider doing encoders
+separately from decoders, and/or SM_MON separately from SM_UNMON.)
 
 --b.
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/lockd/mon.c                 |   42 ++++++++++++++++++++++++++--------------
->  include/linux/lockd/sm_inter.h |    9 ---------
->  2 files changed, 27 insertions(+), 24 deletions(-)
-> 
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index 8130883..0fc9836 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -17,6 +17,18 @@
->  
->  
->  #define NLMDBG_FACILITY		NLMDBG_MONITOR
-> +#define NSM_PROGRAM		100024
-> +#define NSM_VERSION		1
-> +
-> +enum {
-> +	NSMPROC_NULL,
-> +	NSMPROC_STAT,
-> +	NSMPROC_MON,
-> +	NSMPROC_UNMON,
-> +	NSMPROC_UNMON_ALL,
-> +	NSMPROC_SIMU_CRASH,
-> +	NSMPROC_NOTIFY,
-> +};
->  
->  struct nsm_args {
->  	__be32			addr;		/* remote address */
-> @@ -42,7 +54,7 @@ static struct rpc_program	nsm_program;
->  int				nsm_local_state;
->  
->  /*
-> - * Common procedure for SM_MON/SM_UNMON calls
-> + * Common procedure for NSMPROC_MON/NSMPROC_UNMON calls
->   */
->  static int
->  nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
-> @@ -111,7 +123,7 @@ int nsm_monitor(const struct nlm_host *host)
->  	 */
->  	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
->  
-> -	status = nsm_mon_unmon(nsm, SM_MON, &res);
-> +	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res);
->  	if (res.status != 0)
->  		status = -EIO;
->  	if (status < 0)
-> @@ -139,7 +151,7 @@ void nsm_unmonitor(const struct nlm_host *host)
->  	 && nsm->sm_monitored && !nsm->sm_sticky) {
->  		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
->  
-> -		status = nsm_mon_unmon(nsm, SM_UNMON, &res);
-> +		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res);
->  		if (res.status != 0)
->  			status = -EIO;
->  		if (status < 0)
-> @@ -167,7 +179,7 @@ nsm_create(void)
->  		.addrsize	= sizeof(sin),
->  		.servername	= "localhost",
->  		.program	= &nsm_program,
-> -		.version	= SM_VERSION,
-> +		.version	= NSM_VERSION,
->  		.authflavor	= RPC_AUTH_NULL,
->  	};
->  
-> @@ -201,7 +213,7 @@ static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
->  /*
->   * The "my_id" argument specifies the hostname and RPC procedure
->   * to be called when the status manager receives notification
-> - * (via the SM_NOTIFY call) that the state of host "mon_name"
-> + * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
->   * has changed.
->   */
->  static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
-> @@ -219,7 +231,7 @@ static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
->  
->  /*
->   * The "mon_id" argument specifies the non-private arguments
-> - * of an SM_MON or SM_UNMON call.
-> + * of an NSMPROC_MON or NSMPROC_UNMON call.
->   */
->  static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
->  {
-> @@ -232,8 +244,8 @@ static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
->  
->  /*
->   * The "priv" argument may contain private information required
-> - * by the SM_MON call. This information will be supplied in the
-> - * SM_NOTIFY call.
-> + * by the NSMPROC_MON call. This information will be supplied in the
-> + * NLMPROC_SM_NOTIFY call.
->   *
->   * Linux provides the raw IP address of the monitored host,
->   * left in network byte order.
-> @@ -300,22 +312,22 @@ xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
->  #define SM_unmonres_sz	1
->  
->  static struct rpc_procinfo	nsm_procedures[] = {
-> -[SM_MON] = {
-> -		.p_proc		= SM_MON,
-> +[NSMPROC_MON] = {
-> +		.p_proc		= NSMPROC_MON,
->  		.p_encode	= (kxdrproc_t) xdr_encode_mon,
->  		.p_decode	= (kxdrproc_t) xdr_decode_stat_res,
->  		.p_arglen	= SM_mon_sz,
->  		.p_replen	= SM_monres_sz,
-> -		.p_statidx	= SM_MON,
-> +		.p_statidx	= NSMPROC_MON,
->  		.p_name		= "MONITOR",
->  	},
-> -[SM_UNMON] = {
-> -		.p_proc		= SM_UNMON,
-> +[NSMPROC_UNMON] = {
-> +		.p_proc		= NSMPROC_UNMON,
->  		.p_encode	= (kxdrproc_t) xdr_encode_unmon,
->  		.p_decode	= (kxdrproc_t) xdr_decode_stat,
->  		.p_arglen	= SM_mon_id_sz,
->  		.p_replen	= SM_unmonres_sz,
-> -		.p_statidx	= SM_UNMON,
-> +		.p_statidx	= NSMPROC_UNMON,
->  		.p_name		= "UNMONITOR",
->  	},
->  };
-> @@ -334,7 +346,7 @@ static struct rpc_stat		nsm_stats;
->  
->  static struct rpc_program	nsm_program = {
->  		.name		= "statd",
-> -		.number		= SM_PROGRAM,
-> +		.number		= NSM_PROGRAM,
->  		.nrvers		= ARRAY_SIZE(nsm_version),
->  		.version	= nsm_version,
->  		.stats		= &nsm_stats
-> diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
-> index dd9d8a5..116bf38 100644
-> --- a/include/linux/lockd/sm_inter.h
-> +++ b/include/linux/lockd/sm_inter.h
-> @@ -9,15 +9,6 @@
->  #ifndef LINUX_LOCKD_SM_INTER_H
->  #define LINUX_LOCKD_SM_INTER_H
->  
-> -#define SM_PROGRAM	100024
-> -#define SM_VERSION	1
-> -#define SM_STAT		1
-> -#define SM_MON		2
-> -#define SM_UNMON	3
-> -#define SM_UNMON_ALL	4
-> -#define SM_SIMU_CRASH	5
-> -#define SM_NOTIFY	6
-> -
->  #define SM_MAXSTRLEN	1024
->  #define SM_PRIV_SIZE	16
->  
-> 
+commit fc88c50d16bbc43ab6a90107acbf45a0654d57ee
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Fri Dec 5 19:02:15 2008 -0500
+
+    NSM: move to xdr_stream-based XDR encoders and decoders
+    
+    Introduce xdr_stream-based XDR encoder and decoder functions, which are
+    more careful about preventing RPC buffer overflows.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 0fc9836..81e1cc1 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -193,21 +193,26 @@ nsm_create(void)
+  * Status Monitor wire protocol.
+  */
+ 
+-static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
++static int encode_nsm_string(struct xdr_stream *xdr, const char *string)
+ {
+-	size_t len = strlen(string);
+-
+-	if (len > SM_MAXSTRLEN)
+-		len = SM_MAXSTRLEN;
+-	return xdr_encode_opaque(p, string, len);
++	const u32 len = strlen(string);
++	__be32 *p;
++
++	if (unlikely(len > SM_MAXSTRLEN))
++		return -EIO;
++	p = xdr_reserve_space(xdr, sizeof(u32) + len);
++	if (unlikely(p == NULL))
++		return -EIO;
++	xdr_encode_opaque(p, string, len);
++	return 0;
+ }
+ 
+ /*
+  * "mon_name" specifies the host to be monitored.
+  */
+-static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
++static int encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+-	return xdr_encode_nsm_string(p, argp->mon_name);
++	return encode_nsm_string(xdr, argp->mon_name);
+ }
+ 
+ /*
+@@ -216,30 +221,35 @@ static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
+  * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
+  * has changed.
+  */
+-static __be32 *xdr_encode_my_id(__be32 *p, struct nsm_args *argp)
++static int encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+-	p = xdr_encode_nsm_string(p, utsname()->nodename);
+-	if (!p)
+-		return ERR_PTR(-EIO);
+-
++	int status;
++	__be32 *p;
++
++	status = encode_nsm_string(xdr, utsname()->nodename);
++	if (unlikely(status != 0))
++		return status;
++	p = xdr_reserve_space(xdr, 3 * sizeof(u32));
++	if (unlikely(p == NULL))
++		return -EIO;
+ 	*p++ = htonl(argp->prog);
+ 	*p++ = htonl(argp->vers);
+ 	*p++ = htonl(argp->proc);
+-
+-	return p;
++	return 0;
+ }
+ 
+ /*
+  * The "mon_id" argument specifies the non-private arguments
+  * of an NSMPROC_MON or NSMPROC_UNMON call.
+  */
+-static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
++static int encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+-	p = xdr_encode_mon_name(p, argp);
+-	if (!p)
+-		return ERR_PTR(-EIO);
++	int status;
+ 
+-	return xdr_encode_my_id(p, argp);
++	status = encode_mon_name(xdr, argp);
++	if (unlikely(status != 0))
++		return status;
++	return encode_my_id(xdr, argp);
+ }
+ 
+ /*
+@@ -250,55 +260,71 @@ static __be32 *xdr_encode_mon_id(__be32 *p, struct nsm_args *argp)
+  * Linux provides the raw IP address of the monitored host,
+  * left in network byte order.
+  */
+-static __be32 *xdr_encode_priv(__be32 *p, struct nsm_args *argp)
++static int encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, SM_PRIV_SIZE);
++	if (unlikely(p == NULL))
++		return -EIO;
+ 	*p++ = argp->addr;
+ 	*p++ = 0;
+ 	*p++ = 0;
+ 	*p++ = 0;
+-
+-	return p;
++	return 0;
+ }
+ 
+-static int
+-xdr_encode_mon(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args *argp)
++static int xdr_enc_mon(struct rpc_rqst *req, __be32 *p,
++		       const struct nsm_args *argp)
+ {
+-	p = xdr_encode_mon_id(p, argp);
+-	if (IS_ERR(p))
+-		return PTR_ERR(p);
+-
+-	p = xdr_encode_priv(p, argp);
+-	if (IS_ERR(p))
+-		return PTR_ERR(p);
++	struct xdr_stream xdr;
++	int status;
+ 
+-	rqstp->rq_slen = xdr_adjust_iovec(rqstp->rq_svec, p);
+-	return 0;
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	status = encode_mon_id(&xdr, argp);
++	if (unlikely(status))
++		return status;
++	return encode_priv(&xdr, argp);
+ }
+ 
+-static int
+-xdr_encode_unmon(struct rpc_rqst *rqstp, __be32 *p, struct nsm_args *argp)
++static int xdr_enc_unmon(struct rpc_rqst *req, __be32 *p,
++			 const struct nsm_args *argp)
+ {
+-	p = xdr_encode_mon_id(p, argp);
+-	if (IS_ERR(p))
+-		return PTR_ERR(p);
+-	rqstp->rq_slen = xdr_adjust_iovec(rqstp->rq_svec, p);
+-	return 0;
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	return encode_mon_id(&xdr, argp);
+ }
+ 
+-static int
+-xdr_decode_stat_res(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
++static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
++			    struct nsm_res *resp)
+ {
++	struct xdr_stream xdr;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	p = xdr_inline_decode(&xdr, 2 * sizeof(u32));
++	if (unlikely(p == NULL))
++		return -EIO;
+ 	resp->status = ntohl(*p++);
+-	resp->state = ntohl(*p++);
+-	dprintk("nsm: xdr_decode_stat_res status %d state %d\n",
++	resp->state = ntohl(*p);
++
++	dprintk("lockd: xdr_dec_stat_res status %d state %d\n",
+ 			resp->status, resp->state);
+ 	return 0;
+ }
+ 
+-static int
+-xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
++static int xdr_dec_stat(struct rpc_rqst *rqstp, __be32 *p,
++			struct nsm_res *resp)
+ {
+-	resp->state = ntohl(*p++);
++	struct xdr_stream xdr;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	p = xdr_inline_decode(&xdr, sizeof(u32));
++	if (unlikely(p == NULL))
++		return -EIO;
++	resp->state = ntohl(*p);
++
++	dprintk("lockd: xdr_dec_stat state %d\n", resp->state);
+ 	return 0;
+ }
+ 
+@@ -314,8 +340,8 @@ xdr_decode_stat(struct rpc_rqst *rqstp, __be32 *p, struct nsm_res *resp)
+ static struct rpc_procinfo	nsm_procedures[] = {
+ [NSMPROC_MON] = {
+ 		.p_proc		= NSMPROC_MON,
+-		.p_encode	= (kxdrproc_t) xdr_encode_mon,
+-		.p_decode	= (kxdrproc_t) xdr_decode_stat_res,
++		.p_encode	= (kxdrproc_t)xdr_enc_mon,
++		.p_decode	= (kxdrproc_t)xdr_dec_stat_res,
+ 		.p_arglen	= SM_mon_sz,
+ 		.p_replen	= SM_monres_sz,
+ 		.p_statidx	= NSMPROC_MON,
+@@ -323,8 +349,8 @@ static struct rpc_procinfo	nsm_procedures[] = {
+ 	},
+ [NSMPROC_UNMON] = {
+ 		.p_proc		= NSMPROC_UNMON,
+-		.p_encode	= (kxdrproc_t) xdr_encode_unmon,
+-		.p_decode	= (kxdrproc_t) xdr_decode_stat,
++		.p_encode	= (kxdrproc_t)xdr_enc_unmon,
++		.p_decode	= (kxdrproc_t)xdr_dec_stat,
+ 		.p_arglen	= SM_mon_id_sz,
+ 		.p_replen	= SM_unmonres_sz,
+ 		.p_statidx	= NSMPROC_UNMON,
