@@ -1,57 +1,98 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFSD IPv6 support for 2.6.29
-Date: Wed, 10 Dec 2008 10:04:45 -0500
-Message-ID: <1228921485.2914.14.camel@heimdal.trondhjem.org>
-References: <9BBD5BD5-C461-43C4-AEB0-69D3E31F92B7@oracle.com>
-	 <4917C380.9040703@linux.vnet.ibm.com>
-	 <C44F9C62-2770-4879-8AC7-B1C8D81F9AB6@oracle.com>
-	 <491AFE09.2010803@bull.net>
-	 <2BF8FCDB-0C6D-430E-B2AE-4C293E30A1AE@oracle.com>
-	 <4921AF45.4070009@bull.net>
-	 <AF604C91-2F1B-48A3-8E1D-84D5CBBB2856@oracle.com>
-	 <493E6680.2050904@bull.net>
-	 <9F0B9CDF-DDA7-4752-B08D-EC43A3D664E1@oracle.com>
-	 <20081209210407.GE8596@fieldses.org>  <493FD6C0.7070906@bull.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: possible module refcount leak with auth_gss
+Date: Wed, 10 Dec 2008 11:25:06 -0500
+Message-ID: <20081210112506.2b2d2c3a@tleilax.poochiereds.net>
+References: <20081208102855.30081708@tleilax.poochiereds.net>
+	<20081208173706.GE16628@fieldses.org>
+	<20081209153849.6605559a@tleilax.poochiereds.net>
+	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Varun Chandramohan <varunc@linux.vnet.ibm.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Frank S Filz <ffilz@us.ibm.com>
-To: Le Rouzic <aime.le-rouzic@bull.net>
+	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "Kevin Coffman" <kwc@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:57188 "EHLO mail-out2.uio.no"
+Received: from mx2.redhat.com ([66.187.237.31]:35905 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752237AbYLJPE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2008 10:04:58 -0500
-In-Reply-To: <493FD6C0.7070906@bull.net>
+	id S1753254AbYLJQZO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 11:25:14 -0500
+In-Reply-To: <4d569c330812091521s6b9405faq910cb94f067f3b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-12-10 at 15:48 +0100, Le Rouzic wrote:
+On Tue, 9 Dec 2008 18:21:08 -0500
+"Kevin Coffman" <kwc@umich.edu> wrote:
 
->   Hi,
->   I joined at this mail two wireshark traces. One when it was working 
-> (trace_2.6.27-rc3)
->   and the other one with the error(trace_2.6.28-rc2).
->   It looks to come because the operation NVERIFY which was returned 
-> NFS_OK before
->   now returns NFS4ERR_SAME making AIX retrying the readdir with an 
-> incremented cookie .
+> On Tue, Dec 9, 2008 at 3:38 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Mon, 8 Dec 2008 12:37:06 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >
+> >> On Mon, Dec 08, 2008 at 10:28:55AM -0500, Jeff Layton wrote:
+> >> > We had someone report a bug against Fedora that they were seeing very
+> >> > high module reference counts for some krb5 related modules on his nfs
+> >> > server. For instance:
+> >> >
+> >> > # lsmod
+> >> > Module                  Size  Used by
+> >> > des_generic            25216  52736
+> >> > cbc                    12160  52736
+> >> > rpcsec_gss_krb5        15632  26370
+> >> >
+> >> > ...the cbc and des_generic each have roughly 2 module references per
+> >> > rpcsec_gss_krb5 refcount so I'm assuming that the "lynchpin" here is
+> >> > the rpcsec_gss_krb5 refcount which seems to be increasing w/o bound.
+> >>
+> >> You may want to see this discussion:
+> >>
+> >>       http://marc.info/?t=122819524700001&r=1&w=2
+> >>
+> >> And these patches:
+> >>
+> >>       http://marc.info/?l=linux-nfs&m=122843371318602&w=2
+> >>
+> >
+> > Doh! I saw that discussion and didn't make the connection. Thanks for
+> > pointing that out.
+> >
+> >> In addition to increasing the timeouts on those cache entries, perhaps
+> >> we could flush the contexts on rmmod?  Or change the reference counting
+> >> somehow--e.g., take a reference only in the presence of export cache
+> >> entries that mention krb5, and destroy contexts when the last such goes
+> >> away?
+> >>
+> >
+> > That sounds like a better scheme than what we have currently. As it stands
+> > now, you can't just unplug the module -- you have to wait for the entries
+> > in the cache to time out.
+> >
+> > FWIW, I tested out Kevin's patches and it still didn't seem to help. The
+> > refcounts never seemed to go down (even after several hours). How long
+> > should the context live in the cache with those patches? Until the krb5
+> > ticket expires? I'll leave the box in this state until around this time
+> > tomorrow to be sure (that's when the ticket expires).
+> 
+> Yes, that should be the normal expiration with my patches.  The
+> default ticket lifetime is 10 hours I believe, but that is
+> configurable by realm (and service).  You can shorten the lifetime for
+> testing by setting an /etc/krb5.conf option.  This example should
+> limit lifetimes to 5 minutes (300 seconds) for testing purposes.
+> 
+> [libdefaults]
+> ticket_lifetime = 300s
+> 
 
-While there may be a server bug here, it definitely is wrong for the AIX
-client to be sending a READDIR request with a cookie argument of '1'.
-RFC3530 is adamant that
+Thanks Kevin,
 
-        For READDIR arguments, cookie values of 1 and 2 should not be
-        used and for READDIR results cookie values of 0, 1, and 2 should
-        not be returned.
+It works. With a nfs-utils that has your patches to properly set the
+cache timeouts it looks like this problem is generally fixed. The module
+refcounts go back to normal once the tickets expire.
 
-That said, I'd love to understand why the server replied to the first
-READDIR request with no entries, and yet with EOF not set. Is it perhaps
-because the 'dircount' was too small, Bruce?
+That said, I think we should have a look at Bruce's suggestion for changing
+the way that the module refcounts are actually handled. It would seem to
+make more sense to hold the reference based on the exports using that auth
+scheme, and to purge the caches on module unload.
 
-Cheers
-  Trond
+Not a huge deal, but probably something we should consider.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
