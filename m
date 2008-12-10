@@ -1,46 +1,56 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: possible module refcount leak with auth_gss
-Date: Wed, 10 Dec 2008 11:31:36 -0500
-Message-ID: <20081210163136.GB28263@fieldses.org>
-References: <20081208102855.30081708@tleilax.poochiereds.net>
-	<20081208173706.GE16628@fieldses.org>
-	<20081209153849.6605559a@tleilax.poochiereds.net>
-	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
-	<20081210112506.2b2d2c3a@tleilax.poochiereds.net>
+Subject: Re: NFSD IPv6 support for 2.6.29
+Date: Wed, 10 Dec 2008 11:37:15 -0500
+Message-ID: <20081210163715.GC28263@fieldses.org>
+References: <C44F9C62-2770-4879-8AC7-B1C8D81F9AB6@oracle.com> <491AFE09.2010803@bull.net> <2BF8FCDB-0C6D-430E-B2AE-4C293E30A1AE@oracle.com> <4921AF45.4070009@bull.net> <AF604C91-2F1B-48A3-8E1D-84D5CBBB2856@oracle.com> <493E6680.2050904@bull.net> <9F0B9CDF-DDA7-4752-B08D-EC43A3D664E1@oracle.com> <20081209210407.GE8596@fieldses.org> <493FD6C0.7070906@bull.net> <1228921485.2914.14.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20081210112506.2b2d2c3a@tleilax.poochiereds.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Le Rouzic <aime.le-rouzic@bull.net>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Varun Chandramohan <varunc@linux.vnet.ibm.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Frank S Filz <ffilz@us.ibm.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:34567 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757275AbYLJQh2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 11:37:28 -0500
+In-Reply-To: <1228921485.2914.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 10, 2008 at 11:25:06AM -0500, Jeff Layton wrote:
-> It works. With a nfs-utils that has your patches to properly set the
-> cache timeouts it looks like this problem is generally fixed. The module
-> refcounts go back to normal once the tickets expire.
+On Wed, Dec 10, 2008 at 10:04:45AM -0500, Trond Myklebust wrote:
+> On Wed, 2008-12-10 at 15:48 +0100, Le Rouzic wrote:
 > 
-> That said, I think we should have a look at Bruce's suggestion for changing
-> the way that the module refcounts are actually handled. It would seem to
-> make more sense to hold the reference based on the exports using that auth
-> scheme, and to purge the caches on module unload.
+> >   Hi,
+> >   I joined at this mail two wireshark traces. One when it was working 
+> > (trace_2.6.27-rc3)
+> >   and the other one with the error(trace_2.6.28-rc2).
+> >   It looks to come because the operation NVERIFY which was returned 
+> > NFS_OK before
+> >   now returns NFS4ERR_SAME making AIX retrying the readdir with an 
+> > incremented cookie .
 > 
-> Not a huge deal, but probably something we should consider.
+> While there may be a server bug here, it definitely is wrong for the AIX
+> client to be sending a READDIR request with a cookie argument of '1'.
+> RFC3530 is adamant that
+> 
+>         For READDIR arguments, cookie values of 1 and 2 should not be
+>         used and for READDIR results cookie values of 0, 1, and 2 should
+>         not be returned.
+> 
+> That said, I'd love to understand why the server replied to the first
+> READDIR request with no entries, and yet with EOF not set. Is it perhaps
+> because the 'dircount' was too small, Bruce?
 
-Yeah.  Since I don't care enough about module unloading, I'm not going
-to work on this now.  But it's unfortunate.
+Oops, my bad--mention of readdir should have reminded me of commit
+b726e923ea4d216027e466aa602d914e4b4a63af "Fix nfsd truncation of readdir
+results", which fixed a problem like that; that went into -rc4, so worth
+retesting with -rc4.
 
-I'm a little more worried about why the RPC_GSS_PROC_DESTROY requests
-aren't working.
+Also, spurious NFS4ERR_SAME calls are a symptom of the ctime resolution
+problem so worth retrying with a different filesystem with you're using
+ext2/3.
 
 --b.
