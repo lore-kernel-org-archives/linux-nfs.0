@@ -1,133 +1,119 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 15/27] NSM: Add nsm_lookup() function
-Date: Wed, 10 Dec 2008 17:58:03 -0500
-Message-ID: <20081210225803.GN1212@fieldses.org>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000346.24075.23426.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 17/27] NLM: Remove "create" argument from nsm_find()
+Date: Wed, 10 Dec 2008 18:00:57 -0500
+Message-ID: <20081210230057.GO1212@fieldses.org>
+References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000401.24075.77127.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:41890 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:43899 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754918AbYLJW6F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2008 17:58:05 -0500
-In-Reply-To: <20081206000346.24075.23426.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1753266AbYLJXA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Dec 2008 18:00:58 -0500
+In-Reply-To: <20081206000401.24075.77127.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 05, 2008 at 07:03:46PM -0500, Chuck Lever wrote:
-> Introduce a new API to fs/lockd/mon.c that allows nlm_host_rebooted()
-> to lookup up nsm_handles via the contents of an nlm_reboot struct.
+On Fri, Dec 05, 2008 at 07:04:01PM -0500, Chuck Lever wrote:
+> Clean up: nsm_find() now has only one caller, and that caller
+> unconditionally sets the @create argument. Thus the @create
+> argument is no longer needed.
 > 
-> The new function is equivalent to calling nsm_find() with @create set
-> to zero, but it takes a struct nlm_reboot instead of separate
-> arguments.
+> Since nsm_find() now has a more specific purpose, pick a more
+> appropriate name for it.
 
-For next time: would prefer this combined with the following patch (on
-the try-to-introduce-new-code-with-its-users principal), but OK for now;
-applied.--b.
+Thanks, applied.--b.
 
 > 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/lockd/mon.c              |   64 +++++++++++++++++++++++++++++++++++++++++++
->  include/linux/lockd/lockd.h |    1 +
->  2 files changed, 65 insertions(+), 0 deletions(-)
+>  fs/lockd/host.c             |    4 ++--
+>  fs/lockd/mon.c              |   23 +++++++++--------------
+>  include/linux/lockd/lockd.h |    6 +++---
+>  3 files changed, 14 insertions(+), 19 deletions(-)
 > 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 230de93..e5a65df 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -159,8 +159,8 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+>  		atomic_inc(&nsm->sm_count);
+>  	else {
+>  		host = NULL;
+> -		nsm = nsm_find(ni->sap, ni->salen,
+> -				ni->hostname, ni->hostname_len, 1);
+> +		nsm = nsm_get_handle(ni->sap, ni->salen,
+> +					ni->hostname, ni->hostname_len);
+>  		if (!nsm) {
+>  			dprintk("lockd: nlm_lookup_host failed; "
+>  				"no nsm handle\n");
 > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index e0a799d..65fb904 100644
+> index 65fb904..4267a57 100644
 > --- a/fs/lockd/mon.c
 > +++ b/fs/lockd/mon.c
-> @@ -202,6 +202,29 @@ void nsm_unmonitor(const struct nlm_host *host)
->  	}
->  }
->  
-> +static struct nsm_handle *nsm_lookup_hostname(const char *hostname,
-> +					      const size_t len)
-> +{
-> +	struct nsm_handle *nsm;
-> +
-> +	list_for_each_entry(nsm, &nsm_handles, sm_link)
-> +		if (strlen(nsm->sm_name) == len &&
-> +		    memcmp(nsm->sm_name, hostname, len) == 0)
-> +			return nsm;
-> +	return NULL;
-> +}
-> +
-> +static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
-> +{
-> +	struct nsm_handle *nsm;
-> +
-> +	list_for_each_entry(nsm, &nsm_handles, sm_link)
-> +		if (memcmp(nsm->sm_priv.data, priv->data,
-> +					sizeof(priv->data)) == 0)
-> +			return nsm;
-> +	return NULL;
-> +}
-> +
->  /*
->   * Construct a unique cookie to match this nsm_handle to this monitored
->   * host.  It is passed to the local rpc.statd via NSMPROC_MON, and
-> @@ -298,6 +321,47 @@ retry:
+> @@ -241,24 +241,22 @@ static void nsm_init_private(struct nsm_handle *nsm)
 >  }
 >  
 >  /**
-> + * nsm_reboot_lookup - match NLMPROC_SM_NOTIFY arguments to an nsm_handle
-> + * @info: pointer to NLMPROC_SM_NOTIFY arguments
-> + *
-> + * Returns a matching nsm_handle if found in the nsm cache; the returned
-> + * nsm_handle's reference count is bumped and sm_monitored is cleared.
-> + * Otherwise returns NULL if some error occurred.
-> + */
-> +struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info)
-> +{
-> +	struct nsm_handle *cached;
-> +
-> +	spin_lock(&nsm_lock);
-> +
-> +	if (nsm_use_hostnames && info->mon != NULL)
-> +		cached = nsm_lookup_hostname(info->mon, info->len);
-> +	else
-> +		cached = nsm_lookup_priv(&info->priv);
-> +
-> +	if (unlikely(cached == NULL)) {
-> +		spin_unlock(&nsm_lock);
-> +		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
-> +				info->len, info->mon);
-> +		return cached;
-> +	}
-> +
-> +	atomic_inc(&cached->sm_count);
-> +	spin_unlock(&nsm_lock);
-> +
-> +	/*
-> +	 * During subsequent lock activity, force a fresh
-> +	 * notification to be set up for this host.
-> +	 */
-> +	cached->sm_monitored = 0;
-> +
-> +	dprintk("lockd: host %s (%s) rebooted, cnt %d\n",
-> +			cached->sm_name, cached->sm_addrbuf,
-> +			atomic_read(&cached->sm_count));
-> +	return cached;
-> +}
-> +
-> +/**
->   * nsm_release - Release an NSM handle
->   * @nsm: pointer to handle to be released
+> - * nsm_find - Find or create a cached nsm_handle
+> + * nsm_get_handle - Find or create a cached nsm_handle
+>   * @sap: pointer to socket address of handle to find
+>   * @salen: length of socket address
+>   * @hostname: pointer to C string containing hostname to find
+>   * @hostname_len: length of C string
+> - * @create: one means create new handle if not found in cache
 >   *
+> - * Behavior is modulated by the global nsm_use_hostnames variable
+> - * and by the @create argument.
+> + * Behavior is modulated by the global nsm_use_hostnames variable.
+>   *
+> - * Returns a cached nsm_handle after bumping its ref count, or if
+> - * @create is set, returns a fresh nsm_handle if a handle that
+> - * matches @sap and/or @hostname cannot be found in the handle cache.
+> - * Returns NULL if an error occurs.
+> + * Returns a cached nsm_handle after bumping its ref count, or
+> + * returns a fresh nsm_handle if a handle that matches @sap and/or
+> + * @hostname cannot be found in the handle cache.  Returns NULL if
+> + * an error occurs.
+>   */
+> -struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+> -			    const char *hostname, const size_t hostname_len,
+> -			    const int create)
+> +struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+> +				  const size_t salen, const char *hostname,
+> +				  const size_t hostname_len)
+>  {
+>  	struct nsm_handle *nsm = NULL;
+>  	struct nsm_handle *pos;
+> @@ -301,9 +299,6 @@ retry:
+>  
+>  	spin_unlock(&nsm_lock);
+>  
+> -	if (!create)
+> -		return NULL;
+> -
+>  	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+>  	if (nsm == NULL)
+>  		return NULL;
 > diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index 2a3533e..5e3ad92 100644
+> index 5e3ad92..1ccd49e 100644
 > --- a/include/linux/lockd/lockd.h
 > +++ b/include/linux/lockd/lockd.h
-> @@ -251,6 +251,7 @@ struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+> @@ -247,10 +247,10 @@ void		  nlm_host_rebooted(const struct nlm_reboot *);
+>  int		  nsm_monitor(const struct nlm_host *host);
+>  void		  nsm_unmonitor(const struct nlm_host *host);
+>  
+> -struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
+> +struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+> +					const size_t salen,
 >  					const char *hostname,
->  					const size_t hostname_len,
->  					const int create);
-> +struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info);
+> -					const size_t hostname_len,
+> -					const int create);
+> +					const size_t hostname_len);
+>  struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info);
 >  void		  nsm_release(struct nsm_handle *nsm);
 >  
->  /*
 > 
