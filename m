@@ -1,115 +1,104 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/11] NLM: Remove "create" argument from nsm_find()
-Date: Thu, 11 Dec 2008 17:55:44 -0500
-Message-ID: <20081211225544.21468.24852.stgit@ingres.1015granger.net>
+Subject: [PATCH 08/11] NSM: Move nsm_create()
+Date: Thu, 11 Dec 2008 17:56:37 -0500
+Message-ID: <20081211225636.21468.36639.stgit@ingres.1015granger.net>
 References: <20081211224543.21468.8939.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:17135 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759423AbYLKW4Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 17:56:16 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:40068 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759017AbYLKW4z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 17:56:55 -0500
 In-Reply-To: <20081211224543.21468.8939.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: nsm_find() now has only one caller, and that caller
-unconditionally sets the @create argument. Thus the @create
-argument is no longer needed.
-
-Since nsm_find() now has a more specific purpose, pick a more
-appropriate name for it.
+Clean up: one last thing... relocate nsm_create() to eliminate the forward
+declaration and group it near the only function that actually uses it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c             |    4 ++--
- fs/lockd/mon.c              |   23 +++++++++--------------
- include/linux/lockd/lockd.h |    6 +++---
- 3 files changed, 14 insertions(+), 19 deletions(-)
+ fs/lockd/mon.c |   51 ++++++++++++++++++++-------------------------------
+ 1 files changed, 20 insertions(+), 31 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 230de93..e5a65df 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -159,8 +159,8 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 		atomic_inc(&nsm->sm_count);
- 	else {
- 		host = NULL;
--		nsm = nsm_find(ni->sap, ni->salen,
--				ni->hostname, ni->hostname_len, 1);
-+		nsm = nsm_get_handle(ni->sap, ni->salen,
-+					ni->hostname, ni->hostname_len);
- 		if (!nsm) {
- 			dprintk("lockd: nlm_lookup_host failed; "
- 				"no nsm handle\n");
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index c6ab263..0dd309d 100644
+index cd8db11..0027843 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -241,24 +241,22 @@ static void nsm_init_private(struct nsm_handle *nsm)
+@@ -44,8 +44,6 @@ struct nsm_res {
+ 	u32			state;
+ };
+ 
+-static struct rpc_clnt *	nsm_create(void);
+-
+ static struct rpc_program	nsm_program;
+ static				LIST_HEAD(nsm_handles);
+ static				DEFINE_SPINLOCK(nsm_lock);
+@@ -99,11 +97,26 @@ static void nsm_display_address(const struct sockaddr *sap,
+ 	}
  }
  
- /**
-- * nsm_find - Find or create a cached nsm_handle
-+ * nsm_get_handle - Find or create a cached nsm_handle
-  * @sap: pointer to socket address of handle to find
-  * @salen: length of socket address
-  * @hostname: pointer to C string containing hostname to find
-  * @hostname_len: length of C string
-- * @create: one means create new handle if not found in cache
-  *
-- * Behavior is modulated by the global nsm_use_hostnames variable
-- * and by the @create argument.
-+ * Behavior is modulated by the global nsm_use_hostnames variable.
-  *
-- * Returns a cached nsm_handle after bumping its ref count, or if
-- * @create is set, returns a fresh nsm_handle if a handle that
-- * matches @sap and/or @hostname cannot be found in the handle cache.
-- * Returns NULL if an error occurs.
-+ * Returns a cached nsm_handle after bumping its ref count, or
-+ * returns a fresh nsm_handle if a handle that matches @sap and/or
-+ * @hostname cannot be found in the handle cache.  Returns NULL if
-+ * an error occurs.
-  */
--struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
--			    const char *hostname, const size_t hostname_len,
--			    const int create)
-+struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
-+				  const size_t salen, const char *hostname,
-+				  const size_t hostname_len)
+-/*
+- * Common procedure for NSMPROC_MON/NSMPROC_UNMON calls
+- */
+-static int
+-nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
++static struct rpc_clnt *nsm_create(void)
++{
++	struct sockaddr_in sin = {
++		.sin_family		= AF_INET,
++		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
++	};
++	struct rpc_create_args args = {
++		.protocol		= XPRT_TRANSPORT_UDP,
++		.address		= (struct sockaddr *)&sin,
++		.addrsize		= sizeof(sin),
++		.servername		= "rpc.statd",
++		.program		= &nsm_program,
++		.version		= NSM_VERSION,
++		.authflavor		= RPC_AUTH_NULL,
++	};
++
++	return rpc_create(&args);
++}
++
++static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
  {
- 	struct nsm_handle *nsm = NULL;
- 	struct nsm_handle *pos;
-@@ -298,9 +296,6 @@ retry:
- 	}
- 	spin_unlock(&nsm_lock);
+ 	struct rpc_clnt	*clnt;
+ 	int		status;
+@@ -410,30 +423,6 @@ void nsm_release(struct nsm_handle *nsm)
+ }
  
--	if (!create)
--		return NULL;
+ /*
+- * Create NSM client for the local host
+- */
+-static struct rpc_clnt *
+-nsm_create(void)
+-{
+-	struct sockaddr_in	sin = {
+-		.sin_family	= AF_INET,
+-		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
+-		.sin_port	= 0,
+-	};
+-	struct rpc_create_args args = {
+-		.protocol	= XPRT_TRANSPORT_UDP,
+-		.address	= (struct sockaddr *)&sin,
+-		.addrsize	= sizeof(sin),
+-		.servername	= "localhost",
+-		.program	= &nsm_program,
+-		.version	= NSM_VERSION,
+-		.authflavor	= RPC_AUTH_NULL,
+-	};
 -
- 	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
- 	if (nsm == NULL)
- 		return NULL;
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 5e3ad92..1ccd49e 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -247,10 +247,10 @@ void		  nlm_host_rebooted(const struct nlm_reboot *);
- int		  nsm_monitor(const struct nlm_host *host);
- void		  nsm_unmonitor(const struct nlm_host *host);
- 
--struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
-+struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
-+					const size_t salen,
- 					const char *hostname,
--					const size_t hostname_len,
--					const int create);
-+					const size_t hostname_len);
- struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info);
- void		  nsm_release(struct nsm_handle *nsm);
- 
+-	return rpc_create(&args);
+-}
+-
+-/*
+  * XDR functions for NSM.
+  *
+  * See http://www.opengroup.org/ for details on the Network
 
