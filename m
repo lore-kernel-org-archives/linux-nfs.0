@@ -1,75 +1,84 @@
-From: "Thomas Garner" <thomas536@gmail.com>
-Subject: Re: more nfsv4 lockups w/ nexenta
-Date: Thu, 11 Dec 2008 16:30:20 -0500
-Message-ID: <9ef864c50812111330v1c9dc200s49dacb5504bbfeca@mail.gmail.com>
-References: <9ef864c50812110940o7ab17a2dvc83ac7653ad6dd21@mail.gmail.com>
-	 <1229018528.6463.23.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Make sm-notify faster if there are no servers to notify
+Date: Thu, 11 Dec 2008 17:44:59 -0500
+Message-ID: <20081211224459.GC24584@fieldses.org>
+References: <49183A12.7010707@RedHat.com> <20081204211057.GC9593@fieldses.org> <18744.41310.635618.148281@notabene.brown> <20081205035803.GC15115@fieldses.org> <49392C14.7000709@RedHat.com> <20081205163824.GA29227@fieldses.org> <20081205172913.GB29227@fieldses.org> <6763B58B-6C3B-40FA-84F4-737E93D429A6@oracle.com> <20081206024241.GB5464@fieldses.org> <CADDDF36-C41E-4171-905B-CD48CB7BCFED@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>, Neil Brown <neilb@suse.de>,
+	Phil Endecott <phil_bnaqb_endecott-wZDNlLIRyE5g9hUCZPvPmw@public.gmane.org>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f13.google.com ([209.85.218.13]:60222 "EHLO
-	mail-bw0-f13.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756983AbYLKVlu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 16:41:50 -0500
-Received: by bwz6 with SMTP id 6so2764418bwz.13
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Dec 2008 13:41:48 -0800 (PST)
-In-Reply-To: <1229018528.6463.23.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.fieldses.org ([66.93.2.214]:37624 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757054AbYLKWpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Dec 2008 17:45:12 -0500
+In-Reply-To: <CADDDF36-C41E-4171-905B-CD48CB7BCFED@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The logs in particular are from Nov, but a lockup today prompted the
-email.  Today's event does not appear to have been due to a reboot or
-server restart (though I'm not as familiar with the intricacies of
-Sun's daemon management), as both seem to have been up since Dec 2:
-
-[root@filer0 ~]# uptime
-  4:25pm  up 9 day(s), 12:23,  2 users,  load average: 0.26, 0.26, 0.27
-[root@filer0 ~]# svcs nfs/server
-STATE          STIME    FMRI
-online         Dec_02   svc:/network/nfs/server:default
-
-I can provide specific info from today (though I'll need to gather
-it).  Just let me know.
-
-Thomas
-
-On Thu, Dec 11, 2008 at 1:02 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Thu, 2008-12-11 at 12:40 -0500, Thomas Garner wrote:
->> I have a Debian client running 2.6.27.5 connecting over nfsv4 to a
->> Nexenta nfs server running b85 (and even with b103) that is
->> experiencing nfs lockups.  The symptoms are basically that nfs stops
->> working (usually first noticed as Firefox locking up, but trying to
->> log in as a user w/ an nfs mounted home dir hangs as well, as does
->> trying to list said nfs mounted home directory).  Trying a `umount -f`
->> doesn't usually resolve the issue.  Unfortunately there are no logs
->> indicating what the issue is, so I've done some preliminary dumps.
->> Here is the relevant portion of the process list:
->>
->>  3295 ?        S<    24:55  \_ [rpciod/0]
->>  3296 ?        S<    46:14  \_ [rpciod/1]
->>  3297 ?        S<    55:17  \_ [rpciod/2]
->>  3298 ?        S<    19:01  \_ [rpciod/3]
->>  3315 ?        R<   185:15  \_ [nfsiod]
->>  4464 ?        D<     0:00  \_ [nfsv4-svc]
->> 25203 ?        S      0:00  \_ [pdflush]
->> 26618 ?        S      0:00  \_ [pdflush]
->> 27343 ?        R<   252:35  \_ [192.168.0.10-re]
->> 27344 ?        D      0:00  \_ [nfsv4-delegretu]
->>
->> I've also put up a /var/log/messages with `rpcdebug -m rpc -s all` and
->> `rpcdebug -m nfs -s all` turned on:
->>
->> http://s120158928.onlinehome.us/messages.2.gz
->>
->> And a `tcpdump -s 0 -w nfs_dump_argento5 -x -i eth0`:
+On Mon, Dec 08, 2008 at 02:50:39PM -0500, Chuck Lever wrote:
+> Hi Bruce-
 >
-> >From the logs, it looks like it is recovery related. Did the server
-> reboot just before the hang?
+> On Dec 5, 2008, at Dec 5, 2008, 9:42 PM, J. Bruce Fields wrote:
+>> On Fri, Dec 05, 2008 at 01:41:32PM -0500, Chuck Lever wrote:
+>>> On Dec 5, 2008, at 12:29 PM, J. Bruce Fields wrote:
+>>>> How about adding an explicit fsync() of the state file (and parent
+>>>> directory) to statd's first succesful creation of a statd record,
+>>>> together with a comment explaining this?  So around about line 194  
+>>>> in
+>>>> utils/statd/monitor.c:sm_mon_1_svc()?
+>>>>
+>>>> In fact, we could delete the sync entirely and do the same before  
+>>>> the
+>>>> first notification, and then we wouldn't have to wait for the sync  
+>>>> in
+>>>> the case host records are present either....  (statd would, but
+>>>> perhaps we could still get other work done in the mean time).
+>>>>
+>>>> (Am I missing something?)
+>>>
+>>> This all might work, but I think we're adding a lot of complexity as 
+>>> a
+>>> workaround.
+>>
+>> I think you mean the justification is too subtle--the code itself  
+>> (just
+>> a couple syncs or fsyncs) is pretty simple.
 >
-> Cheers
->  Trond
+> Let me state it another way.  Your suggested redesign makes assumptions 
+> about the order in which these operations are performed.  Can the code 
+> provide any guarantee that this ordering is always true?  This may have 
+> been feasible when rpc.statd did notification too, but these are now two 
+> separate programs.  Can you think of a way of implementing this where the 
+> ordering dependencies are coded instead of commented?
+
+The existing code requires that we update the on-disk nsm state number
+before doing notification or accepting statd calls.  That's the only
+ordering I'd require.
+
+Maybe I should try to write a patch.
+
+--b.
+
 >
+> It would be significantly less fragile (ie immune to ordering problems  
+> and long-term changes to system start-up and nfs-utils code) and simpler 
+> to understand if sm-notify does whatever syncing it needs, and rpc.statd 
+> does whatever syncing it needs.
 >
+> All I'm saying is this scheme may be easy to break by accident, and any 
+> future problem here is probably not going to show up until someone  
+> really needs this to work right.
+>
+>>> Someone should fix the real problem, which is the
+>>> implementation of sync().
+>>
+>> I think you mean of fsync().  My understanding of past discussions on
+>> the issue is that it's not really fixable on ext3, at least.  So
+>> default setups will have this problem for a while.
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
