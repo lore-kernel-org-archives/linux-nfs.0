@@ -1,197 +1,126 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/11] NSM: Remove include/linux/lockd/sm_inter.h
-Date: Thu, 11 Dec 2008 17:56:14 -0500
-Message-ID: <20081211225614.21468.4218.stgit@ingres.1015granger.net>
+Subject: [PATCH 03/11] NSM: More clean up of nsm_get_handle()
+Date: Thu, 11 Dec 2008 17:55:59 -0500
+Message-ID: <20081211225559.21468.82627.stgit@ingres.1015granger.net>
 References: <20081211224543.21468.8939.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:36963 "EHLO
+Received: from rcsinet12.oracle.com ([148.87.113.124]:37026 "EHLO
 	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758124AbYLKW4n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 17:56:43 -0500
+	with ESMTP id S1759553AbYLKW4t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 17:56:49 -0500
 In-Reply-To: <20081211224543.21468.8939.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The include/linux/lockd/sm_inter.h header is nearly empty
-now.  Remove it.
+Clean up: refactor nsm_get_handle() so it is organized the same way that
+nsm_reboot_lookup() is.
+
+There is an additional micro-optimization here.  This change moves the
+"hostname & nsm_use_hostnames" test out of the list_for_each_entry()
+clause in nsm_get_handle(), since it is loop-invariant.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/clntproc.c            |    1 -
- fs/lockd/host.c                |    1 -
- fs/lockd/mon.c                 |    2 --
- fs/lockd/svc.c                 |    1 -
- fs/lockd/svc4proc.c            |    2 --
- fs/lockd/svcproc.c             |    2 --
- fs/lockd/svcsubs.c             |    1 -
- fs/lockd/xdr.c                 |    1 -
- fs/lockd/xdr4.c                |    1 -
- include/linux/lockd/lockd.h    |    1 +
- include/linux/lockd/sm_inter.h |   16 ----------------
- include/linux/lockd/xdr.h      |    1 +
- 12 files changed, 2 insertions(+), 28 deletions(-)
- delete mode 100644 include/linux/lockd/sm_inter.h
+ fs/lockd/mon.c |   62 ++++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 35 insertions(+), 27 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 5ce42e0..dd79570 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -16,7 +16,6 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
--#include <linux/lockd/sm_inter.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- #define NLMCLNT_GRACE_WAIT	(5*HZ)
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index e5a65df..99d737b 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -15,7 +15,6 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
--#include <linux/lockd/sm_inter.h>
- #include <linux/mutex.h>
- 
- #include <net/ipv6.h>
 diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index e3fe6d7..acda46f 100644
+index f4a201b..6a48b3c 100644
 --- a/fs/lockd/mon.c
 +++ b/fs/lockd/mon.c
-@@ -15,8 +15,6 @@
- #include <linux/sunrpc/xprtsock.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/lockd/lockd.h>
--#include <linux/lockd/sm_inter.h>
+@@ -214,6 +214,16 @@ static struct nsm_handle *nsm_lookup_hostname(const char *hostname,
+ 	return NULL;
+ }
+ 
++static struct nsm_handle *nsm_lookup_addr(const struct sockaddr *sap)
++{
++	struct nsm_handle *nsm;
++
++	list_for_each_entry(nsm, &nsm_handles, sm_link)
++		if (nlm_cmp_addr(nsm_addr(nsm), sap))
++			return nsm;
++	return NULL;
++}
++
+ static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
+ {
+ 	struct nsm_handle *nsm;
+@@ -282,8 +292,7 @@ struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+ 				  const size_t salen, const char *hostname,
+ 				  const size_t hostname_len)
+ {
+-	struct nsm_handle *nsm = NULL;
+-	struct nsm_handle *pos;
++	struct nsm_handle *cached, *new = NULL;
+ 
+ 	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+ 		if (printk_ratelimit()) {
+@@ -296,38 +305,37 @@ struct nsm_handle *nsm_get_handle(const struct sockaddr *sap,
+ 
+ retry:
+ 	spin_lock(&nsm_lock);
+-	list_for_each_entry(pos, &nsm_handles, sm_link) {
 -
+-		if (hostname && nsm_use_hostnames) {
+-			if (strlen(pos->sm_name) != hostname_len
+-			 || memcmp(pos->sm_name, hostname, hostname_len))
+-				continue;
+-		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
+-			continue;
+-		atomic_inc(&pos->sm_count);
+-		kfree(nsm);
+-		nsm = pos;
+-		dprintk("lockd: found nsm_handle for %s (%s), cnt %d\n",
+-				pos->sm_name, pos->sm_addrbuf,
+-				atomic_read(&pos->sm_count));
+-		goto found;
++
++	if (nsm_use_hostnames && hostname != NULL)
++		cached = nsm_lookup_hostname(hostname, hostname_len);
++	else
++		cached = nsm_lookup_addr(sap);
++
++	if (cached != NULL) {
++		atomic_inc(&cached->sm_count);
++		spin_unlock(&nsm_lock);
++		kfree(new);
++		dprintk("lockd: found nsm_handle for %s (%s), "
++				"cnt %d\n", cached->sm_name,
++				cached->sm_addrbuf,
++				atomic_read(&cached->sm_count));
++		return cached;
+ 	}
+-	if (nsm) {
+-		list_add(&nsm->sm_link, &nsm_handles);
++
++	if (new != NULL) {
++		list_add(&new->sm_link, &nsm_handles);
++		spin_unlock(&nsm_lock);
+ 		dprintk("lockd: created nsm_handle for %s (%s)\n",
+-				nsm->sm_name, nsm->sm_addrbuf);
+-		goto found;
++				new->sm_name, new->sm_addrbuf);
++		return new;
+ 	}
++
+ 	spin_unlock(&nsm_lock);
  
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- #define NSM_PROGRAM		100024
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index c631a83..50de426 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -35,7 +35,6 @@
- #include <linux/sunrpc/svcsock.h>
- #include <net/ip.h>
- #include <linux/lockd/lockd.h>
--#include <linux/lockd/sm_inter.h>
- #include <linux/nfs.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVC
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index bb79a53..1725037 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -16,8 +16,6 @@
- #include <linux/nfsd/nfsd.h>
- #include <linux/lockd/lockd.h>
- #include <linux/lockd/share.h>
--#include <linux/lockd/sm_inter.h>
+-	nsm = nsm_create_handle(sap, salen, hostname, hostname_len);
+-	if (unlikely(nsm == NULL))
++	new = nsm_create_handle(sap, salen, hostname, hostname_len);
++	if (unlikely(new == NULL))
+ 		return NULL;
+ 	goto retry;
 -
+-found:
+-	spin_unlock(&nsm_lock);
+-	return nsm;
+ }
  
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index e44310c..3688e55 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -16,8 +16,6 @@
- #include <linux/nfsd/nfsd.h>
- #include <linux/lockd/lockd.h>
- #include <linux/lockd/share.h>
--#include <linux/lockd/sm_inter.h>
--
- 
- #define NLMDBG_FACILITY		NLMDBG_CLIENT
- 
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index 34c2766..9e4d6aa 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -17,7 +17,6 @@
- #include <linux/nfsd/export.h>
- #include <linux/lockd/lockd.h>
- #include <linux/lockd/share.h>
--#include <linux/lockd/sm_inter.h>
- #include <linux/module.h>
- #include <linux/mount.h>
- 
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index 4cc7d01..0336f2b 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -16,7 +16,6 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/stats.h>
- #include <linux/lockd/lockd.h>
--#include <linux/lockd/sm_inter.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_XDR
- 
-diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-index 61d1714..e1d5286 100644
---- a/fs/lockd/xdr4.c
-+++ b/fs/lockd/xdr4.c
-@@ -17,7 +17,6 @@
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/stats.h>
- #include <linux/lockd/lockd.h>
--#include <linux/lockd/sm_inter.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_XDR
- 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 1ccd49e..8b57467 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -205,6 +205,7 @@ extern struct svc_procedure	nlmsvc_procedures4[];
- extern int			nlmsvc_grace_period;
- extern unsigned long		nlmsvc_timeout;
- extern int			nsm_use_hostnames;
-+extern int			nsm_local_state;
- 
- /*
-  * Lockd client functions
-diff --git a/include/linux/lockd/sm_inter.h b/include/linux/lockd/sm_inter.h
-deleted file mode 100644
-index 5cef5a7..0000000
---- a/include/linux/lockd/sm_inter.h
-+++ /dev/null
-@@ -1,16 +0,0 @@
--/*
-- * linux/include/linux/lockd/sm_inter.h
-- *
-- * Declarations for the kernel statd client.
-- *
-- * Copyright (C) 1996, Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
-- */
--
--#ifndef LINUX_LOCKD_SM_INTER_H
--#define LINUX_LOCKD_SM_INTER_H
--
--#define SM_MAXSTRLEN	1024
--
--extern int	nsm_local_state;
--
--#endif /* LINUX_LOCKD_SM_INTER_H */
-diff --git a/include/linux/lockd/xdr.h b/include/linux/lockd/xdr.h
-index 6338866..7dc5b6c 100644
---- a/include/linux/lockd/xdr.h
-+++ b/include/linux/lockd/xdr.h
-@@ -13,6 +13,7 @@
- #include <linux/nfs.h>
- #include <linux/sunrpc/xdr.h>
- 
-+#define SM_MAXSTRLEN		1024
- #define SM_PRIV_SIZE		16
- 
- struct nsm_private {
+ /**
 
