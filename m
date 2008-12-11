@@ -1,53 +1,47 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: more nfsv4 lockups w/ nexenta
-Date: Thu, 11 Dec 2008 13:02:08 -0500
-Message-ID: <1229018528.6463.23.camel@heimdal.trondhjem.org>
-References: <9ef864c50812110940o7ab17a2dvc83ac7653ad6dd21@mail.gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/3] nfs-utils patches
+Date: Thu, 11 Dec 2008 13:33:37 -0500
+Message-ID: <20081211182820.6882.20716.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: Thomas Garner <thomas536@gmail.com>
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:47429 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755416AbYLKSCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Dec 2008 13:02:13 -0500
-In-Reply-To: <9ef864c50812110940o7ab17a2dvc83ac7653ad6dd21-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:45175 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755911AbYLKSeT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 13:34:19 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-12-11 at 12:40 -0500, Thomas Garner wrote:
-> I have a Debian client running 2.6.27.5 connecting over nfsv4 to a
-> Nexenta nfs server running b85 (and even with b103) that is
-> experiencing nfs lockups.  The symptoms are basically that nfs stops
-> working (usually first noticed as Firefox locking up, but trying to
-> log in as a user w/ an nfs mounted home dir hangs as well, as does
-> trying to list said nfs mounted home directory).  Trying a `umount -f`
-> doesn't usually resolve the issue.  Unfortunately there are no logs
-> indicating what the issue is, so I've done some preliminary dumps.
-> Here is the relevant portion of the process list:
-> 
->  3295 ?        S<    24:55  \_ [rpciod/0]
->  3296 ?        S<    46:14  \_ [rpciod/1]
->  3297 ?        S<    55:17  \_ [rpciod/2]
->  3298 ?        S<    19:01  \_ [rpciod/3]
->  3315 ?        R<   185:15  \_ [nfsiod]
->  4464 ?        D<     0:00  \_ [nfsv4-svc]
-> 25203 ?        S      0:00  \_ [pdflush]
-> 26618 ?        S      0:00  \_ [pdflush]
-> 27343 ?        R<   252:35  \_ [192.168.0.10-re]
-> 27344 ?        D      0:00  \_ [nfsv4-delegretu]
-> 
-> I've also put up a /var/log/messages with `rpcdebug -m rpc -s all` and
-> `rpcdebug -m nfs -s all` turned on:
-> 
-> http://s120158928.onlinehome.us/messages.2.gz
-> 
-> And a `tcpdump -s 0 -w nfs_dump_argento5 -x -i eth0`:
+Hi Steve-
 
->From the logs, it looks like it is recovery related. Did the server
-reboot just before the hang?
+Three more patches for nfs-utils in the IPv6 series.
 
-Cheers
-  Trond
+The first is a minor bug fix for the sm-notify command, since we've
+been focusing on that area recently.  It fixes a use-after-free.
 
+The next two don't add new IPv6 functionality, but are prerequisites.
+The first adds a new string parsing API that specifically handles
+mount options that take a numeric value.  The second changes the
+handler for one such option (retry= in this case) to use the new API.
+
+Subsequent patches will make use of this new API to handle mount
+options that are used to fill in pmap structs.
+
+---
+
+Chuck Lever (3):
+      text-based mount command: use po_get_numeric() for handling retry=
+      text-based mount command: add function to parse numeric mount options
+      sm-notify command: fix a use-after-free bug
+
+
+ utils/mount/parse_opt.c |   55 +++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/parse_opt.h |    3 +++
+ utils/mount/stropts.c   |   20 +++++++++--------
+ utils/statd/sm-notify.c |   25 ++++++++++++---------
+ 4 files changed, 83 insertions(+), 20 deletions(-)
+
+-- 
+Chuck Lever
