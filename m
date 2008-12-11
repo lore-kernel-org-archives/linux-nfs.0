@@ -1,131 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 20/27] NSM: Replace IP address as our nlm_reboot lookup
-	key
-Date: Wed, 10 Dec 2008 18:43:34 -0500
-Message-ID: <20081210234334.GQ1212@fieldses.org>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000424.24075.72384.stgit@ingres.1015granger.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] AF_INET6 support for probe_bothports()
+Date: Thu, 11 Dec 2008 11:06:54 -0500
+Message-ID: <49413A9E.1000007@RedHat.com>
+References: <20081202175403.5206.91389.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:44440 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:39755 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756551AbYLJXng (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Dec 2008 18:43:36 -0500
-In-Reply-To: <20081206000424.24075.72384.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1756341AbYLKQLO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Dec 2008 11:11:14 -0500
+In-Reply-To: <20081202175403.5206.91389.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 05, 2008 at 07:04:24PM -0500, Chuck Lever wrote:
-> NLM provides file locking services for NFS files.  Part of this service
-> includes a second protocol, known as NSM, which is a reboot
-> notification service.  NLM uses this service to determine when to
-> reclaim locks or enter a grace period after a client or server reboots.
-> 
-> The NLM service (implemented by lockd in the Linux kernel) contacts
-> the local NSM service (implemented by rpc.statd in Linux user space)
-> via NSM protocol upcalls to register a callback when a particular
-> remote peer reboots.
-> 
-> To match the callback to the correct remote peer, the NLM service
-> constructs a cookie that it passes in the request.  The NSM service
-> passes that cookie back to the NLM service when it is notified that
-> the given remote peer has indeed rebooted.
-> 
-> Currently on Linux, the cookie is the raw 32-bit IPv4 address of the
-> remote peer.  To support IPv6 addresses, which are larger, we could
-> use all 16 bytes of the cookie to represent a full IPv6 address,
-> although we still can't represent an IPv6 address with a scope ID in
-> just 16 bytes.
-> 
-> Instead, to avoid the need for future changes to support additional
-> address types, we'll use a manufactured value for the cookie, and use
-> that to find the corresponding nsm_handle struct in the kernel during
-> the NLMPROC_SM_NOTIFY callback.
-> 
-> This should provide complete support in the kernel's NSM
-> implementation for IPv6 hosts, while remaining backwards compatible
-> with older rpc.statd implementations.
-> 
-> Note we also deal with another case where nsm_use_hostnames can change
-> while there are outstanding notifications, possibly resulting in the
-> loss of reboot notifications.  After this patch, the priv cookie is
-> always used to lookup rebooted hosts in the kernel.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/lockd/mon.c |   39 ++++++++++++++++++++++++++++++---------
->  1 files changed, 30 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index a5f26f3..4113ed1 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -241,13 +241,38 @@ static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
->   * returned via NLMPROC_SM_NOTIFY, in the "priv" field of these
->   * requests.
->   *
-> - * Linux provides the raw IP address of the monitored host,
-> - * left in network byte order.
-> + * These cookies are not required to last across reboots, but they
-> + * must be unique for each nsm_handle during the same boot.
-> + * Uniqueness is guaranteed by using the memory address of the
-> + * nsm_handle data structure.  Such memory addresses are only reused
-> + * if the nsm_handle is destroyed by an nsm_release().
-> + *
-> + * A time stamp is added in case rpc.statd returns a stale cookie.
-> + * That would be a bug in rpc.statd, but it would result in some
-> + * client losing its locks inappropriately, which we would like to
-> + * avoid.
 
-I forget what the arguments were against using a simple counter here.
 
-> + *
-> + * For safety, the cookie returned via NLM_SM_NOTIFY is treated as
-> + * an opaque -- the address is not used directly to access the
-> + * associated nsm_handle.  This also means it would be simple to
-> + * change the cookie generator again at some later point without
-> + * having to mess with the nsm_handle lookup code in
-> + * nsm_reboot_lookup().
-> + *
-> + * The cookies are exposed only to local user space via loopback.
-> + * They do not appear on the physical network.  If we want greater
-> + * security for some reason, nsm_init_private() could perform a
-> + * one-way hash to obscure the contents of the cookie.
->   */
->  static void nsm_init_private(struct nsm_handle *nsm)
->  {
-> -	__be32 *p = (__be32 *)&nsm->sm_priv.data;
-> -	*p = nsm_addr_in(nsm)->sin_addr.s_addr;
-> +	u64 *p = (u64 *)&nsm->sm_priv.data;
-> +	struct timeval tv;
-> +
-> +	do_gettimeofday(&tv);
-
-I see there's a note on do_gettimeofday advising callers to use
-getnstimeofday instead.
-
---b.
-
-> +
-> +	*p++ = (unsigned long)nsm;
-> +	*p = timeval_to_ns(&tv);
->  }
->  
->  static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
-> @@ -351,11 +376,7 @@ struct nsm_handle *nsm_reboot_lookup(const struct nlm_reboot *info)
->  
->  	spin_lock(&nsm_lock);
->  
-> -	if (nsm_use_hostnames && info->mon != NULL)
-> -		cached = nsm_lookup_hostname(info->mon, info->len);
-> -	else
-> -		cached = nsm_lookup_priv(&info->priv);
-> -
-> +	cached = nsm_lookup_priv(&info->priv);
->  	if (unlikely(cached == NULL)) {
->  		spin_unlock(&nsm_lock);
->  		dprintk("lockd: never saw rebooted peer '%.*s' before\n",
+Chuck Lever wrote:
+> Hi Steve-
 > 
+> Here's the next step.
+> 
+> This small series of patches rewires probe_bothports() to support
+> AF_INET6 addresses, now that the underlying functions can handle them.
+> 
+> Since legacy code in other parts of the mount command still use
+> probe_bothports() and the clnt_addr_t data type, I've added a new
+> function call to do the IPv6 duties.  The old API still exists and
+> continues to support only AF_INET, but under the covers it calls the
+> new code.
+> 
+> Again, for the time being, this is used only for the legacy binary
+> mount(2) interface.  We will need this for umount later, and that is
+> used to support both binary and text-based mounts.
+> 
+All three patches have been committed... Again sorry for the delay.
+
+That darn flux capacitor keeps breaking all the time
+which always seems to get in the way...  ;-)
+
+steved.
+
