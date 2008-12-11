@@ -1,50 +1,75 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 18/27] NSM: Refactor nsm_handle creation into a helper
-	function
-Date: Thu, 11 Dec 2008 13:53:01 -0500
-Message-ID: <20081211185301.GA23181@fieldses.org>
-References: <20081205235557.24075.12511.stgit@ingres.1015granger.net> <20081206000409.24075.37859.stgit@ingres.1015granger.net> <20081210232830.GP1212@fieldses.org> <C1536996-3F69-458A-87D9-B7BE91043626@oracle.com>
+From: "Thomas Garner" <thomas536@gmail.com>
+Subject: Re: more nfsv4 lockups w/ nexenta
+Date: Thu, 11 Dec 2008 16:30:20 -0500
+Message-ID: <9ef864c50812111330v1c9dc200s49dacb5504bbfeca@mail.gmail.com>
+References: <9ef864c50812110940o7ab17a2dvc83ac7653ad6dd21@mail.gmail.com>
+	 <1229018528.6463.23.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:50060 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754068AbYLKSxF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Dec 2008 13:53:05 -0500
-In-Reply-To: <C1536996-3F69-458A-87D9-B7BE91043626@oracle.com>
+Received: from mail-bw0-f13.google.com ([209.85.218.13]:60222 "EHLO
+	mail-bw0-f13.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756983AbYLKVlu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 16:41:50 -0500
+Received: by bwz6 with SMTP id 6so2764418bwz.13
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Dec 2008 13:41:48 -0800 (PST)
+In-Reply-To: <1229018528.6463.23.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 11, 2008 at 12:09:49PM -0500, Chuck Lever wrote:
-> On Dec 10, 2008, at Dec 10, 2008, 6:28 PM, J. Bruce Fields wrote:
->> On Fri, Dec 05, 2008 at 07:04:09PM -0500, Chuck Lever wrote:
->>> Clean up.
->>
->> The nsm_create_handle() thing is fine, but
->>
->>>
->>> We're about to get rid of the "goto retry" in nsm_get_handle().
->>
->> I'm not that interested in removing the "goto retry".  I realize  
->> tastes
->> differ here, but I don't see a great improvement.  The:
->>
->> 	retry:
->> 		look for something
->> 		oops, not there, allocate a new one
->> 		goto retry
->>
->> pattern is pretty common and I'm comfortable with it.
->
-> Would we need the retry at all if we replaced nsm_lock with a mutex?   
-> nlm_lookup_host() holds its mutex across a kzalloc() call.  We could do 
-> the same here, and it would make this much more straightforward.
->
-> Is there any real need for the atomic_dec_and_lock in nsm_release(), for 
-> example?  That's not exactly a performance-critical code path.
+The logs in particular are from Nov, but a lockup today prompted the
+email.  Today's event does not appear to have been due to a reboot or
+server restart (though I'm not as familiar with the intricacies of
+Sun's daemon management), as both seem to have been up since Dec 2:
 
-Perhaps not, but I can't see any harm in leaving this as is.
+[root@filer0 ~]# uptime
+  4:25pm  up 9 day(s), 12:23,  2 users,  load average: 0.26, 0.26, 0.27
+[root@filer0 ~]# svcs nfs/server
+STATE          STIME    FMRI
+online         Dec_02   svc:/network/nfs/server:default
 
---b.
+I can provide specific info from today (though I'll need to gather
+it).  Just let me know.
+
+Thomas
+
+On Thu, Dec 11, 2008 at 1:02 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Thu, 2008-12-11 at 12:40 -0500, Thomas Garner wrote:
+>> I have a Debian client running 2.6.27.5 connecting over nfsv4 to a
+>> Nexenta nfs server running b85 (and even with b103) that is
+>> experiencing nfs lockups.  The symptoms are basically that nfs stops
+>> working (usually first noticed as Firefox locking up, but trying to
+>> log in as a user w/ an nfs mounted home dir hangs as well, as does
+>> trying to list said nfs mounted home directory).  Trying a `umount -f`
+>> doesn't usually resolve the issue.  Unfortunately there are no logs
+>> indicating what the issue is, so I've done some preliminary dumps.
+>> Here is the relevant portion of the process list:
+>>
+>>  3295 ?        S<    24:55  \_ [rpciod/0]
+>>  3296 ?        S<    46:14  \_ [rpciod/1]
+>>  3297 ?        S<    55:17  \_ [rpciod/2]
+>>  3298 ?        S<    19:01  \_ [rpciod/3]
+>>  3315 ?        R<   185:15  \_ [nfsiod]
+>>  4464 ?        D<     0:00  \_ [nfsv4-svc]
+>> 25203 ?        S      0:00  \_ [pdflush]
+>> 26618 ?        S      0:00  \_ [pdflush]
+>> 27343 ?        R<   252:35  \_ [192.168.0.10-re]
+>> 27344 ?        D      0:00  \_ [nfsv4-delegretu]
+>>
+>> I've also put up a /var/log/messages with `rpcdebug -m rpc -s all` and
+>> `rpcdebug -m nfs -s all` turned on:
+>>
+>> http://s120158928.onlinehome.us/messages.2.gz
+>>
+>> And a `tcpdump -s 0 -w nfs_dump_argento5 -x -i eth0`:
+>
+> >From the logs, it looks like it is recovery related. Did the server
+> reboot just before the hang?
+>
+> Cheers
+>  Trond
+>
+>
