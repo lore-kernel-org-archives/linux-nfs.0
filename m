@@ -1,60 +1,80 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/11] lockd: Enable NLM use of AF_INET6
-Date: Thu, 11 Dec 2008 17:56:59 -0500
-Message-ID: <20081211225659.21468.77630.stgit@ingres.1015granger.net>
-References: <20081211224543.21468.8939.stgit@ingres.1015granger.net>
+From: support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org (Project Payday)
+Subject: [NFS] Leslie, a new development
+Date: Fri, 12 Dec 2008 03:15:46 -0600 (CST)
+Message-ID: <20081212091546.B548B598774@server1.projectpayday.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net (Leslie Johnson)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:37309 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757695AbYLKW5a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Dec 2008 17:57:30 -0500
-In-Reply-To: <20081211224543.21468.8939.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:44623 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750733AbYLLJQb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Dec 2008 04:16:31 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LB48L-0007in-As
+	for linux-nfs@vger.kernel.org; Fri, 12 Dec 2008 20:16:29 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the kernel is configured to support IPv6 and the RPC server can register
-services via rpcbindv4, we are all set to enable IPv6 support for lockd.
+Leslie,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aime Le Rouzic <aime.le-rouzic@bull.net>
----
+I can't believe I'm about to do this ...
 
- fs/lockd/svc.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+To make a long story short, the more people we have in our private
+Project Payday community the easier it is for everyone to succeed.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 8283b0e..6d289f3 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -53,6 +53,17 @@ static struct svc_rqst		*nlmsvc_rqst;
- unsigned long			nlmsvc_timeout;
- 
- /*
-+ * If the kernel has IPv6 support available, always listen for
-+ * both AF_INET and AF_INET6 requests.
-+ */
-+#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
-+	defined(CONFIG_SUNRPC_REGISTER_V4)
-+static const sa_family_t	nlmsvc_family = AF_INET6;
-+#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-+static const sa_family_t	nlmsvc_family = AF_INET;
-+#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-+
-+/*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
-  */
-@@ -249,7 +260,7 @@ int lockd_up(void)
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
- 
- 	error = -ENOMEM;
--	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, AF_INET, NULL);
-+	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, nlmsvc_family, NULL);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		goto out;
+Because of this, and the fact that my manager is a little crazy, he
+told me to let anyone join Project Payday today for ...
+
+*** NINE DOLLARS ***
+
+And you still get all of the same help and support, as well as the
+a complimentary account at our partner site - Survey Scout.
+(which by itself is a $35 value!)
+
+To get started right now, just use this special link. You even get
+our "no questions asked" 60-Day Moneyback Guarantee ...
+
+http://www.projectpayday.com/cgi-bin/paypal/nd.cgi?uid=1715217
+
+It's going to get a little crazy around here, but it's my job to help
+you get started and this crazy promotion isn't going to change that.
+
+Just look at what a recent new member had to say ...
+
+"I made $40 yesterday. My first day. This is the only program I've
+used that I have actually been able to apply and make money fast.
+Thank you for your help." - J. Thierfeldt, Kennedy, NY
+
+Once I see that you've activated your account I will personally help
+you get started. This is the real deal Leslie...
+
+
+Sincerely,
+
+Angelina McDonald
+Project Payday Support Team
+http://www.projectpayday.com
+
+
+P.S. If you've changed your mind, please use this link to cancel:
+
+http://www.projectpayday.com/cancel.cgi
+
+User ID: 1715217 (or you can use your email address)
+Password: 306657
+
+------------------------------------------------------------------------------
+SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
+The future of the web can't happen without you.  Join us at MIX09 to help
+pave the way to the Next Web now. Learn more and register at
+http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
