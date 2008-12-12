@@ -1,152 +1,147 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/22] NFSD: Add helper functions for __write_ports()
-Date: Fri, 12 Dec 2008 16:57:42 -0500
-Message-ID: <20081212215742.24332.36578.stgit@ingres.1015granger.net>
+Subject: [PATCH 08/22] SUNRPC: pass buffer size to svc_addsock() and
+	svc_sock_names()
+Date: Fri, 12 Dec 2008 16:58:05 -0500
+Message-ID: <20081212215804.24332.24605.stgit@ingres.1015granger.net>
 References: <20081212215340.24332.88416.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: aime.le-rouzic@bull.net, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:58231 "EHLO
+Received: from rcsinet11.oracle.com ([148.87.113.123]:58354 "EHLO
 	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755754AbYLLV6P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2008 16:58:15 -0500
+	with ESMTP id S1753210AbYLLV6f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2008 16:58:35 -0500
 In-Reply-To: <20081212215340.24332.88416.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  I'd like to refactor __write_ports() to make it easier to
-understand and maintain.  Introduce a set of helper functions to
-handle the details of the __write_ports() function.
+Pass the size of the output buffer to the RPC functions that construct
+the list of socket names in that buffer.  Add documenting comments to
+these functions.
 
-New helpers are not used yet.
+This is a cosmetic change for now.  A subsequent patch will make sure
+the buffer length is passed to one_sock_name(), where the length will
+actually be useful.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |  110 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 110 insertions(+), 0 deletions(-)
+ fs/nfsd/nfsctl.c               |   12 ++++++++----
+ include/linux/sunrpc/svcsock.h |    6 ++++--
+ net/sunrpc/svcsock.c           |   34 +++++++++++++++++++++++++++++-----
+ 3 files changed, 41 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 5c75f8a..0e64d92 100644
+index 22fc8e5..19db9f4 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -879,6 +879,116 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
- 	return rv;
+@@ -898,7 +898,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
+ static ssize_t __write_ports_addfd(char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+-	int fd, err;
++	int fd, err, len;
+ 
+ 	err = get_int(&mesg, &fd);
+ 	if (err || fd < 0)
+@@ -908,13 +908,16 @@ static ssize_t __write_ports_addfd(char *buf, size_t size)
+ 	if (err)
+ 		return err;
+ 
+-	err = svc_addsock(nfsd_serv, fd, buf);
++	len = SIMPLE_TRANSACTION_LIMIT;
++	err = svc_addsock(nfsd_serv, fd, buf, len);
+ 	if (err < 0)
+ 		return err;
++	len -= err;
+ 
+ 	err = lockd_up();
+ 	if (err < 0)
+-		svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
++		svc_sock_names(nfsd_serv, buf + strlen(buf) + 1,
++				len - strlen(buf) - 1, buf);
+ 
+ 	/* Decrease the count, but don't shut down the the service */
+ 	nfsd_serv->sv_nrthreads--;
+@@ -935,7 +938,8 @@ static ssize_t __write_ports_delfd(char *buf, size_t size)
+ 		return -ENOMEM;
+ 
+ 	if (nfsd_serv)
+-		len = svc_sock_names(buf, nfsd_serv, toclose);
++		len = svc_sock_names(nfsd_serv, buf,
++					SIMPLE_TRANSACTION_LIMIT, toclose);
+ 	if (len >= 0)
+ 		lockd_down();
+ 
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 483e103..f57ce85 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -38,8 +38,10 @@ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
+ void		svc_drop(struct svc_rqst *);
+ void		svc_sock_update_bufs(struct svc_serv *serv);
+-int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
+-int		svc_addsock(struct svc_serv *serv, int fd, char *name_return);
++int		svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
++					char *toclose);
++int		svc_addsock(struct svc_serv *serv, int fd, char *name_return,
++					size_t len);
+ void		svc_init_xprt_sock(void);
+ void		svc_cleanup_xprt_sock(void);
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index a1951dc..39f5015 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -263,8 +263,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
+ 	return len;
  }
  
-+/*
-+ * Zero-length write.  Return a list of NFSD's current listener
-+ * transports.
+-int
+-svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
++/**
++ * svc_sock_names - construct a list of listener names in a string
++ * @serv: pointer to RPC service
++ * @buf: pointer to a buffer to fill in with socket names
++ * @buflen: size of the buffer to be filled
++ * @toclose: pointer to '\0'-terminated C string containing the name
++ *		of a listener to be closed
++ *
++ * Fills in @buf with a '\n'-separated list of names of listener
++ * sockets.  If @toclose is not NULL, the socket named by @toclose
++ * is closed, and is not included in the output list.
++ *
++ * Returns positive length of the socket name string, or a negative
++ * errno value on error.
 + */
-+static ssize_t __write_ports_names(char *buf, size_t size)
-+{
-+	if (!nfsd_serv)
-+		return 0;
-+	return svc_xprt_names(nfsd_serv, buf, 0);
-+}
-+
-+/*
-+ * A single 'fd' number was written, in which case it must be for
-+ * a socket of a supported family/protocol, and we use it as an
-+ * nfsd listener.
-+ */
-+static ssize_t __write_ports_addfd(char *buf, size_t size)
-+{
-+	char *mesg = buf;
-+	int fd, err;
-+
-+	err = get_int(&mesg, &fd);
-+	if (err || fd < 0)
-+		return -EINVAL;
-+
-+	err = nfsd_create_serv();
-+	if (err)
-+		return err;
-+
-+	err = svc_addsock(nfsd_serv, fd, buf);
-+	if (err < 0)
-+		return err;
-+
-+	err = lockd_up();
-+	if (err < 0)
-+		svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
-+
-+	/* Decrease the count, but don't shut down the the service */
-+	nfsd_serv->sv_nrthreads--;
-+
-+	return err < 0 ? err : 0;
-+}
-+
-+/*
-+ * A '-' followed by the 'name' of a socket means we close the socket.
-+ */
-+static ssize_t __write_ports_delfd(char *buf, size_t size)
-+{
-+	char *toclose;
-+	int len = 0;
-+
-+	toclose = kstrdup(buf + 1, GFP_KERNEL);
-+	if (!toclose)
-+		return -ENOMEM;
-+
-+	if (nfsd_serv)
-+		len = svc_sock_names(buf, nfsd_serv, toclose);
-+	if (len >= 0)
-+		lockd_down();
-+
-+	kfree(toclose);
-+	return len;
-+}
-+
-+/*
-+ * A transport listener is added by writing it's transport name and
-+ * a port number
-+ */
-+static ssize_t __write_ports_addxprt(char *buf, size_t size,
-+				     char *transport, unsigned short port)
-+{
-+	int err;
-+
-+	err = nfsd_create_serv();
-+	if (err)
-+		return err;
-+
-+	err = svc_create_xprt(nfsd_serv, transport, port, SVC_SOCK_ANONYMOUS);
-+	if (err == -ENOENT)
-+		/* Give a reasonable perror msg for
-+		 * bad transport string */
-+		err = -EPROTONOSUPPORT;
-+
-+	return err < 0 ? err : 0;
-+}
-+
-+/*
-+ * A transport listener is removed by writing a "-", it's transport
-+ * name, and it's port number
-+ */
-+static ssize_t __write_ports_delxprt(char *buf, size_t size,
-+				     char *transport, int port)
-+{
-+	struct svc_xprt *xprt;
-+	int err = -EINVAL;
-+
-+	if (port == 0 || nfsd_serv == NULL)
-+		return err;
-+
-+	xprt = svc_find_xprt(nfsd_serv, transport, AF_UNSPEC, port);
-+	if (xprt) {
-+		svc_close_xprt(xprt);
-+		svc_xprt_put(xprt);
-+		err = 0;
-+	} else
-+		err = -ENOTCONN;
-+
-+	return err < 0 ? err : 0;
-+}
-+
- static ssize_t __write_ports(struct file *file, char *buf, size_t size)
++int svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
++		   char *toclose)
  {
- 	if (size == 0) {
+ 	struct svc_sock *svsk, *closesk = NULL;
+ 	int len = 0;
+@@ -1165,9 +1180,18 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	return svsk;
+ }
+ 
+-int svc_addsock(struct svc_serv *serv,
+-		int fd,
+-		char *name_return)
++/**
++ * svc_addsock - add a listener socket to an RPC service
++ * @serv: pointer to RPC service to which to add a new listener
++ * @fd: file descriptor of the new listener
++ * @name_return: pointer to buffer to pass back name of listener
++ * @len: size of the buffer
++ *
++ * Fills in socket name and returns positive length of name if successful.
++ * Name is terminated with '\n'.  On error, returns a negative errno
++ * value.
++ */
++int svc_addsock(struct svc_serv *serv, int fd, char *name_return, size_t len)
+ {
+ 	int err = 0;
+ 	struct socket *so = sockfd_lookup(fd, &err);
 
