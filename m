@@ -1,109 +1,142 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 04/15] rpc: add an rpc_pipe_open method
-Date: Fri, 12 Dec 2008 13:20:24 -0500
-Message-ID: <1229106035-16102-5-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 11/15] rpc: pass target name down to rpc level on callbacks
+Date: Fri, 12 Dec 2008 13:20:31 -0500
+Message-ID: <1229106035-16102-12-git-send-email-bfields@citi.umich.edu>
 References: <1229106035-16102-1-git-send-email-bfields@citi.umich.edu>
  <1229106035-16102-2-git-send-email-bfields@citi.umich.edu>
  <1229106035-16102-3-git-send-email-bfields@citi.umich.edu>
  <1229106035-16102-4-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-5-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-6-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-7-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-8-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-9-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-10-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-11-git-send-email-bfields@citi.umich.edu>
 Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33983 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:34009 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758400AbYLLSUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Dec 2008 13:20:38 -0500
-In-Reply-To: <1229106035-16102-4-git-send-email-bfields@citi.umich.edu>
+	id S1757972AbYLLSUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Dec 2008 13:20:44 -0500
+In-Reply-To: <1229106035-16102-11-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to transition to a new gssd upcall which is text-based and more
-easily extensible.
+From: Olga Kornievskaia <aglo@citi.umich.edu>
 
-To simplify upgrades, as well as testing and debugging, it will help if
-we can upgrade gssd (to a version which understands the new upcall)
-without having to choose at boot (or module-load) time whether we want
-the new or the old upcall.
+The rpc client needs to know the principal that the setclientid was done
+as, so it can tell gssd who to authenticate to.
 
-We will do this by providing two different pipes: one named, as
-currently, after the mechanism (normally "krb5"), and supporting the
-old upcall.  One named "gssd" and supporting the new upcall version.
-
-We allow gssd to indicate which version it supports by its choice of
-which pipe to open.
-
-As we have no interest in supporting *simultaneous* use of both
-versions, we'll forbid opening both pipes at the same time.
-
-So, add a new pipe_open callback to the rpc_pipefs api, which the gss
-code can use to track which pipes have been open, and to refuse opens of
-incompatible pipes.
-
-We only need this to be called on the first open of a given pipe.
-
+Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    1 +
- net/sunrpc/rpc_pipe.c              |   22 +++++++++++++++-------
- 2 files changed, 16 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4callback.c      |    6 ++++++
+ include/linux/sunrpc/clnt.h |    2 ++
+ net/sunrpc/clnt.c           |   16 ++++++++++++++++
+ 3 files changed, 24 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 51b977a..cea764c 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -15,6 +15,7 @@ struct rpc_pipe_ops {
- 	ssize_t (*upcall)(struct file *, struct rpc_pipe_msg *, char __user *, size_t);
- 	ssize_t (*downcall)(struct file *, const char __user *, size_t);
- 	void (*release_pipe)(struct inode *);
-+	int (*open_pipe)(struct inode *);
- 	void (*destroy_msg)(struct rpc_pipe_msg *);
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 094747a..3ca1417 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -384,6 +384,7 @@ static int do_probe_callback(void *data)
+ 		.version	= nfs_cb_version[1]->number,
+ 		.authflavor	= RPC_AUTH_UNIX, /* XXX: need AUTH_GSS... */
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
++		.client_name    = clp->cl_principal,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
+@@ -392,6 +393,11 @@ static int do_probe_callback(void *data)
+ 	struct rpc_clnt *client;
+ 	int status;
+ 
++	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5)) {
++		status = nfserr_cb_path_down;
++		goto out_err;
++	}
++
+ 	/* Initialize address */
+ 	memset(&addr, 0, sizeof(addr));
+ 	addr.sin_family = AF_INET;
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 6f0ee1b..c39a210 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -58,6 +58,7 @@ struct rpc_clnt {
+ 	struct rpc_timeout	cl_timeout_default;
+ 	struct rpc_program *	cl_program;
+ 	char			cl_inline_name[32];
++	char			*cl_principal;	/* target to authenticate to */
  };
  
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 23a2b8f..57342aa 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -169,16 +169,24 @@ static int
- rpc_pipe_open(struct inode *inode, struct file *filp)
- {
- 	struct rpc_inode *rpci = RPC_I(inode);
-+	int first_open;
- 	int res = -ENXIO;
+ /*
+@@ -108,6 +109,7 @@ struct rpc_create_args {
+ 	u32			version;
+ 	rpc_authflavor_t	authflavor;
+ 	unsigned long		flags;
++	char			*client_name;
+ };
  
- 	mutex_lock(&inode->i_mutex);
--	if (rpci->ops != NULL) {
--		if (filp->f_mode & FMODE_READ)
--			rpci->nreaders ++;
--		if (filp->f_mode & FMODE_WRITE)
--			rpci->nwriters ++;
--		res = 0;
-+	if (rpci->ops == NULL)
-+		goto out;
-+	first_open = rpci->nreaders == 0 && rpci->nwriters == 0;
-+	if (first_open && rpci->ops->open_pipe) {
-+		res = rpci->ops->open_pipe(inode);
-+		if (res)
-+			goto out;
+ /* Values for "flags" field */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 4895c34..347f2a2 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -197,6 +197,12 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 
+ 	clnt->cl_rtt = &clnt->cl_rtt_default;
+ 	rpc_init_rtt(&clnt->cl_rtt_default, clnt->cl_timeout->to_initval);
++	clnt->cl_principal = NULL;
++	if (args->client_name) {
++		clnt->cl_principal = kstrdup(args->client_name, GFP_KERNEL);
++		if (!clnt->cl_principal)
++			goto out_no_principal;
++	}
+ 
+ 	kref_init(&clnt->cl_kref);
+ 
+@@ -226,6 +232,8 @@ out_no_auth:
+ 		rpc_put_mount();
  	}
-+	if (filp->f_mode & FMODE_READ)
-+		rpci->nreaders++;
-+	if (filp->f_mode & FMODE_WRITE)
-+		rpci->nwriters++;
-+	res = 0;
-+out:
- 	mutex_unlock(&inode->i_mutex);
- 	return res;
- }
-@@ -748,7 +756,7 @@ rpc_rmdir(struct dentry *dentry)
-  * @name: name of pipe
-  * @private: private data to associate with the pipe, for the caller's use
-  * @ops: operations defining the behavior of the pipe: upcall, downcall,
-- *	release_pipe, and destroy_msg.
-+ *	release_pipe, open_pipe, and destroy_msg.
-  * @flags: rpc_inode flags
-  *
-  * Data is made available for userspace to read by calls to
+ out_no_path:
++	kfree(clnt->cl_principal);
++out_no_principal:
+ 	rpc_free_iostats(clnt->cl_metrics);
+ out_no_stats:
+ 	if (clnt->cl_server != clnt->cl_inline_name)
+@@ -354,6 +362,11 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	new->cl_metrics = rpc_alloc_iostats(clnt);
+ 	if (new->cl_metrics == NULL)
+ 		goto out_no_stats;
++	if (clnt->cl_principal) {
++		new->cl_principal = kstrdup(clnt->cl_principal, GFP_KERNEL);
++		if (new->cl_principal == NULL)
++			goto out_no_principal;
++	}
+ 	kref_init(&new->cl_kref);
+ 	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
+ 	if (err != 0)
+@@ -366,6 +379,8 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 	rpciod_up();
+ 	return new;
+ out_no_path:
++	kfree(new->cl_principal);
++out_no_principal:
+ 	rpc_free_iostats(new->cl_metrics);
+ out_no_stats:
+ 	kfree(new);
+@@ -417,6 +432,7 @@ rpc_free_client(struct kref *kref)
+ out_free:
+ 	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
++	kfree(clnt->cl_principal);
+ 	clnt->cl_metrics = NULL;
+ 	xprt_put(clnt->cl_xprt);
+ 	rpciod_down();
 -- 
 1.5.5.rc1
 
