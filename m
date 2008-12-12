@@ -1,51 +1,85 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/22] NFSD: Prevent buffer overflow in write_maxblksize()
-Date: Fri, 12 Dec 2008 16:59:19 -0500
-Message-ID: <20081212215919.24332.55627.stgit@ingres.1015granger.net>
+Subject: [PATCH 14/22] NFSD: Support IPv6 addresses in write_failover_ip()
+Date: Fri, 12 Dec 2008 16:58:49 -0500
+Message-ID: <20081212215849.24332.49612.stgit@ingres.1015granger.net>
 References: <20081212215340.24332.88416.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: aime.le-rouzic@bull.net, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:58909 "EHLO
+Received: from rcsinet11.oracle.com ([148.87.113.123]:58892 "EHLO
 	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755409AbYLLV7u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2008 16:59:50 -0500
+	with ESMTP id S1755223AbYLLV7q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2008 16:59:46 -0500
 In-Reply-To: <20081212215340.24332.88416.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix up write_maxblksize() to eliminate the slight possibility of
-overflowing its output buffer.
+In write_failover_ip(), replace the sscanf() with a call to the common
+NFS presentation address parser.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+ fs/nfsd/nfsctl.c |   22 ++++++++--------------
+ 1 files changed, 8 insertions(+), 14 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 41e09c6..0fad95c 100644
+index 19db9f4..a8e3f6b 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -1131,6 +1131,7 @@ int nfsd_max_blksize;
- static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
+@@ -38,6 +38,7 @@
+ #include <linux/nfsd/xdr.h>
+ #include <linux/nfsd/syscall.h>
+ #include <linux/lockd/lockd.h>
++#include <linux/nfs_addr_parse.h>
+ 
+ #include <asm/uaccess.h>
+ #include <net/ipv6.h>
+@@ -476,22 +477,18 @@ static ssize_t write_getfd(struct file *file, char *buf, size_t size)
+  *
+  * Input:
+  *			buf:	'\n'-terminated C string containing a
+- *				presentation format IPv4 address
++ *				presentation format IP address
+  *			size:	length of C string in @buf
+  * Output:
+  *	On success:	returns zero if all specified locks were released;
+  *			returns one if one or more locks were not released
+  *	On error:	return code is negative errno value
+- *
+- * Note: Only AF_INET client addresses are passed in
+  */
+ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
  {
- 	char *mesg = buf;
-+
- 	if (size > 0) {
- 		int bsize;
- 		int rv = get_int(&mesg, &bsize);
-@@ -1152,7 +1153,9 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
- 		nfsd_max_blksize = bsize;
- 		mutex_unlock(&nfsd_mutex);
- 	}
--	return sprintf(buf, "%d\n", nfsd_max_blksize);
-+
-+	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
-+							nfsd_max_blksize);
+-	struct sockaddr_in sin = {
+-		.sin_family	= AF_INET,
+-	};
+-	int b1, b2, b3, b4;
+-	char c;
++	struct sockaddr_storage address;
++	struct sockaddr *sap = (struct sockaddr *)&address;
++	size_t salen = sizeof(address);
+ 	char *fo_path;
+ 
+ 	/* sanity check */
+@@ -505,14 +502,11 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
+ 	if (qword_get(&buf, fo_path, size) < 0)
+ 		return -EINVAL;
+ 
+-	/* get ipv4 address */
+-	if (sscanf(fo_path, NIPQUAD_FMT "%c", &b1, &b2, &b3, &b4, &c) != 4)
+-		return -EINVAL;
+-	if (b1 > 255 || b2 > 255 || b3 > 255 || b4 > 255)
++	nfs_parse_ip_address(fo_path, size, sap, &salen);
++	if (sap->sa_family == AF_UNSPEC)
+ 		return -EINVAL;
+-	sin.sin_addr.s_addr = htonl((b1 << 24) | (b2 << 16) | (b3 << 8) | b4);
+ 
+-	return nlmsvc_unlock_all_by_ip((struct sockaddr *)&sin);
++	return nlmsvc_unlock_all_by_ip(sap);
  }
  
- #ifdef CONFIG_NFSD_V4
+ /**
 
