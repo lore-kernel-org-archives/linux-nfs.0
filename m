@@ -1,80 +1,76 @@
-From: support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org (Project Payday)
-Subject: [NFS] Leslie, a new development
-Date: Fri, 12 Dec 2008 03:15:46 -0600 (CST)
-Message-ID: <20081212091546.B548B598774@server1.projectpayday.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net (Leslie Johnson)
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 02/15] rpc: factor out warning code from gss_pipe_destroy_msg
+Date: Fri, 12 Dec 2008 13:20:22 -0500
+Message-ID: <1229106035-16102-3-git-send-email-bfields@citi.umich.edu>
+References: <1229106035-16102-1-git-send-email-bfields@citi.umich.edu>
+ <1229106035-16102-2-git-send-email-bfields@citi.umich.edu>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:44623 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([66.93.2.214]:33982 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750733AbYLLJQb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Dec 2008 04:16:31 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LB48L-0007in-As
-	for linux-nfs@vger.kernel.org; Fri, 12 Dec 2008 20:16:29 +1100
+	id S1758405AbYLLSUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Dec 2008 13:20:38 -0500
+In-Reply-To: <1229106035-16102-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Leslie,
+We'll want to call this from elsewhere soon.  And this is a bit nicer
+anyway.
 
-I can't believe I'm about to do this ...
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   23 ++++++++++++++---------
+ 1 files changed, 14 insertions(+), 9 deletions(-)
 
-To make a long story short, the more people we have in our private
-Project Payday community the easier it is for everyone to succeed.
-
-Because of this, and the fact that my manager is a little crazy, he
-told me to let anyone join Project Payday today for ...
-
-*** NINE DOLLARS ***
-
-And you still get all of the same help and support, as well as the
-a complimentary account at our partner site - Survey Scout.
-(which by itself is a $35 value!)
-
-To get started right now, just use this special link. You even get
-our "no questions asked" 60-Day Moneyback Guarantee ...
-
-http://www.projectpayday.com/cgi-bin/paypal/nd.cgi?uid=1715217
-
-It's going to get a little crazy around here, but it's my job to help
-you get started and this crazy promotion isn't going to change that.
-
-Just look at what a recent new member had to say ...
-
-"I made $40 yesterday. My first day. This is the only program I've
-used that I have actually been able to apply and make money fast.
-Thank you for your help." - J. Thierfeldt, Kennedy, NY
-
-Once I see that you've activated your account I will personally help
-you get started. This is the real deal Leslie...
-
-
-Sincerely,
-
-Angelina McDonald
-Project Payday Support Team
-http://www.projectpayday.com
-
-
-P.S. If you've changed your mind, please use this link to cancel:
-
-http://www.projectpayday.com/cancel.cgi
-
-User ID: 1715217 (or you can use your email address)
-Password: 306657
-
-------------------------------------------------------------------------------
-SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
-The future of the web can't happen without you.  Join us at MIX09 to help
-pave the way to the Next Web now. Learn more and register at
-http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 07bb395..1cb4bcc 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -369,6 +369,18 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
+ 	return gss_msg;
+ }
+ 
++static void warn_gssd(void)
++{
++	static unsigned long ratelimit;
++	unsigned long now = jiffies;
++
++	if (time_after(now, ratelimit)) {
++		printk(KERN_WARNING "RPC: AUTH_GSS upcall timed out.\n"
++				"Please check user daemon is running.\n");
++		ratelimit = now + 15*HZ;
++	}
++}
++
+ static inline int
+ gss_refresh_upcall(struct rpc_task *task)
+ {
+@@ -568,21 +580,14 @@ static void
+ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ {
+ 	struct gss_upcall_msg *gss_msg = container_of(msg, struct gss_upcall_msg, msg);
+-	static unsigned long ratelimit;
+ 
+ 	if (msg->errno < 0) {
+ 		dprintk("RPC:       gss_pipe_destroy_msg releasing msg %p\n",
+ 				gss_msg);
+ 		atomic_inc(&gss_msg->count);
+ 		gss_unhash_msg(gss_msg);
+-		if (msg->errno == -ETIMEDOUT) {
+-			unsigned long now = jiffies;
+-			if (time_after(now, ratelimit)) {
+-				printk(KERN_WARNING "RPC: AUTH_GSS upcall timed out.\n"
+-						    "Please check user daemon is running!\n");
+-				ratelimit = now + 15*HZ;
+-			}
+-		}
++		if (msg->errno == -ETIMEDOUT)
++			warn_gssd();
+ 		gss_release_msg(gss_msg);
+ 	}
+ }
+-- 
+1.5.5.rc1
 
