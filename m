@@ -1,60 +1,56 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/22] NFSD: Enable NFS server use of AF_INET6
-Date: Fri, 12 Dec 2008 16:58:57 -0500
-Message-ID: <20081212215856.24332.69867.stgit@ingres.1015granger.net>
+Subject: [PATCH 16/22] NFSD: Prevent buffer overflow in write_threads()
+Date: Fri, 12 Dec 2008 16:59:04 -0500
+Message-ID: <20081212215904.24332.76206.stgit@ingres.1015granger.net>
 References: <20081212215340.24332.88416.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: aime.le-rouzic@bull.net, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:25545 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755398AbYLLV7u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2008 16:59:50 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:58803 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753133AbYLLV7e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Dec 2008 16:59:34 -0500
 In-Reply-To: <20081212215340.24332.88416.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the kernel is configured to support IPv6 and the RPC server can register
-services via rpcbindv4, we are all set to enable IPv6 support for NFSD.
+Fix up write_threads() to eliminate the small possibility of
+overflowing its output buffer.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Aime Le Rouzic <aime.le-rouzic@bull.net>
 ---
 
- fs/nfsd/nfssvc.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+ fs/nfsd/nfsctl.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 07e4f5d..47e21d0 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -45,6 +45,17 @@ static unsigned long		nfsd_last_call;
- static DEFINE_SPINLOCK(nfsd_call_lock);
- 
- /*
-+ * If the kernel has IPv6 support available, always listen for
-+ * both AF_INET and AF_INET6 requests.
-+ */
-+#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
-+	defined(CONFIG_SUNRPC_REGISTER_V4)
-+static const sa_family_t	nfsd_family = AF_INET6;
-+#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-+static const sa_family_t	nfsd_family = AF_INET;
-+#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index a8e3f6b..f8a2a7f 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -666,9 +666,9 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
+ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+-	int rv;
 +
-+/*
-  * nfsd_mutex protects nfsd_serv -- both the pointer itself and the members
-  * of the svc_serv struct. In particular, ->sv_nrthreads but also to some
-  * extent ->sv_temp_socks and ->sv_permsocks. It also protects nfsdstats.th_cnt
-@@ -229,7 +240,7 @@ int nfsd_create_serv(void)
+ 	if (size > 0) {
+-		int newthreads;
++		int rv, newthreads;
+ 		rv = get_int(&mesg, &newthreads);
+ 		if (rv)
+ 			return rv;
+@@ -678,8 +678,9 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 		if (rv)
+ 			return rv;
+ 	}
+-	sprintf(buf, "%d\n", nfsd_nrthreads());
+-	return strlen(buf);
++
++	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
++							nfsd_nrthreads());
+ }
  
- 	atomic_set(&nfsd_busy, 0);
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
--				      AF_INET,
-+				      nfsd_family,
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
- 	if (nfsd_serv == NULL)
- 		err = -ENOMEM;
+ /**
 
