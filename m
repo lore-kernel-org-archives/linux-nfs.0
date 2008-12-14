@@ -1,80 +1,169 @@
-From: support-lMEFWmXcHdgwD9oyV1fXmQC/G2K4zDHf@public.gmane.org (Project Payday)
-Subject: [NFS] Leslie, does THIS work for you?
-Date: Sun, 14 Dec 2008 04:15:17 -0600 (CST)
-Message-ID: <20081214101517.2DFEA59868B@server1.projectpayday.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 08/22] SUNRPC: pass buffer size to svc_addsock() and	svc_sock_names()
+Date: Sun, 14 Dec 2008 11:33:50 -0600
+Message-ID: <4945437E.3090305@opengridcomputing.com>
+References: <20081212215340.24332.88416.stgit@ingres.1015granger.net> <20081212215804.24332.24605.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net (Leslie Johnson)
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: bfields@fieldses.org, aime.le-rouzic@bull.net,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:53460 "EHLO neil.brown.name"
+Received: from mail.es335.com ([67.65.19.105]:10977 "EHLO mail.es335.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752293AbYLNKQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Dec 2008 05:16:07 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LBo15-0002Lk-So
-	for linux-nfs@vger.kernel.org; Sun, 14 Dec 2008 21:16:03 +1100
+	id S1753549AbYLNRdv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Dec 2008 12:33:51 -0500
+In-Reply-To: <20081212215804.24332.24605.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Leslie,
+Hi Chuck:
 
-You still haven't activated your Project Payday account ...
+This whole svc_addsock business is an artifact of rpc.xxx creating a 
+socket in user mode and then passing the fd down to the kernel via a 
+write to the portlist file. Would it be easier, cleaner, etc... to 
+normalize this whole business to use strings exclusively to create these 
+sockets?
 
-... and that tells me that one of the following must be true:
+E.g. echo "tcp6 2049" > /proc/fs/nfsd/portlist
 
-1. You don't have a credit card or PayPal account
+You could quite simply extend the syntax as well to support listening on 
+specific interfaces.
 
-2. We didn't explain things well enough, so you're hesitant
+Tom
 
-Whatever the reason, there's one last option - and I don't think
-you'll be able to refuse. After all, you ARE curious right?
-
-... and don't worry, NO credit card or payment is required.
-
-Just go to the special link below which is a page of alternate
-sponsor offers. None of them require a credit card or payment.
-
-http://www.projectpayday.com/offersb.cgi?uid=1715217
-
-With these sites, all you need to do is register by entering some
-basic info such as an email address, name and/or zip code.
-
-It will literally just take you a few minutes to do, and then your
-Project Payday account will be activated and you can get started.
-
-And you still get all of the same help and support, as well as the
-a complimentary account at our partner site - Survey Scout.
-(which by itself is a $35 value!)
-
-I can't think of any other reason you wouldn't activate your
-account and get started right now. If there is, let me know ...
-
-
-Sincerely,
-
-Angelina McDonald
-Project Payday Support Team
-http://www.projectpayday.com
-
-
-P.S. If you've changed your mind, please use this link to cancel:
-
-http://www.projectpayday.com/cancel.cgi
-
-User ID: 1715217 (or you can use your email address)
-Password: 306657
-
-------------------------------------------------------------------------------
-SF.Net email is Sponsored by MIX09, March 18-20, 2009 in Las Vegas, Nevada.
-The future of the web can't happen without you.  Join us at MIX09 to help
-pave the way to the Next Web now. Learn more and register at
-http://ad.doubleclick.net/clk;208669438;13503038;i?http://2009.visitmix.com/
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Chuck Lever wrote:
+> Pass the size of the output buffer to the RPC functions that construct
+> the list of socket names in that buffer.  Add documenting comments to
+> these functions.
+>
+> This is a cosmetic change for now.  A subsequent patch will make sure
+> the buffer length is passed to one_sock_name(), where the length will
+> actually be useful.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>
+>  fs/nfsd/nfsctl.c               |   12 ++++++++----
+>  include/linux/sunrpc/svcsock.h |    6 ++++--
+>  net/sunrpc/svcsock.c           |   34 +++++++++++++++++++++++++++++-----
+>  3 files changed, 41 insertions(+), 11 deletions(-)
+>
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 22fc8e5..19db9f4 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -898,7 +898,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
+>  static ssize_t __write_ports_addfd(char *buf, size_t size)
+>  {
+>  	char *mesg = buf;
+> -	int fd, err;
+> +	int fd, err, len;
+>  
+>  	err = get_int(&mesg, &fd);
+>  	if (err || fd < 0)
+> @@ -908,13 +908,16 @@ static ssize_t __write_ports_addfd(char *buf, size_t size)
+>  	if (err)
+>  		return err;
+>  
+> -	err = svc_addsock(nfsd_serv, fd, buf);
+> +	len = SIMPLE_TRANSACTION_LIMIT;
+> +	err = svc_addsock(nfsd_serv, fd, buf, len);
+>  	if (err < 0)
+>  		return err;
+> +	len -= err;
+>  
+>  	err = lockd_up();
+>  	if (err < 0)
+> -		svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
+> +		svc_sock_names(nfsd_serv, buf + strlen(buf) + 1,
+> +				len - strlen(buf) - 1, buf);
+>  
+>  	/* Decrease the count, but don't shut down the the service */
+>  	nfsd_serv->sv_nrthreads--;
+> @@ -935,7 +938,8 @@ static ssize_t __write_ports_delfd(char *buf, size_t size)
+>  		return -ENOMEM;
+>  
+>  	if (nfsd_serv)
+> -		len = svc_sock_names(buf, nfsd_serv, toclose);
+> +		len = svc_sock_names(nfsd_serv, buf,
+> +					SIMPLE_TRANSACTION_LIMIT, toclose);
+>  	if (len >= 0)
+>  		lockd_down();
+>  
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+> index 483e103..f57ce85 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -38,8 +38,10 @@ int		svc_recv(struct svc_rqst *, long);
+>  int		svc_send(struct svc_rqst *);
+>  void		svc_drop(struct svc_rqst *);
+>  void		svc_sock_update_bufs(struct svc_serv *serv);
+> -int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
+> -int		svc_addsock(struct svc_serv *serv, int fd, char *name_return);
+> +int		svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
+> +					char *toclose);
+> +int		svc_addsock(struct svc_serv *serv, int fd, char *name_return,
+> +					size_t len);
+>  void		svc_init_xprt_sock(void);
+>  void		svc_cleanup_xprt_sock(void);
+>  
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index a1951dc..39f5015 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -263,8 +263,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
+>  	return len;
+>  }
+>  
+> -int
+> -svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
+> +/**
+> + * svc_sock_names - construct a list of listener names in a string
+> + * @serv: pointer to RPC service
+> + * @buf: pointer to a buffer to fill in with socket names
+> + * @buflen: size of the buffer to be filled
+> + * @toclose: pointer to '\0'-terminated C string containing the name
+> + *		of a listener to be closed
+> + *
+> + * Fills in @buf with a '\n'-separated list of names of listener
+> + * sockets.  If @toclose is not NULL, the socket named by @toclose
+> + * is closed, and is not included in the output list.
+> + *
+> + * Returns positive length of the socket name string, or a negative
+> + * errno value on error.
+> + */
+> +int svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
+> +		   char *toclose)
+>  {
+>  	struct svc_sock *svsk, *closesk = NULL;
+>  	int len = 0;
+> @@ -1165,9 +1180,18 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>  	return svsk;
+>  }
+>  
+> -int svc_addsock(struct svc_serv *serv,
+> -		int fd,
+> -		char *name_return)
+> +/**
+> + * svc_addsock - add a listener socket to an RPC service
+> + * @serv: pointer to RPC service to which to add a new listener
+> + * @fd: file descriptor of the new listener
+> + * @name_return: pointer to buffer to pass back name of listener
+> + * @len: size of the buffer
+> + *
+> + * Fills in socket name and returns positive length of name if successful.
+> + * Name is terminated with '\n'.  On error, returns a negative errno
+> + * value.
+> + */
+> +int svc_addsock(struct svc_serv *serv, int fd, char *name_return, size_t len)
+>  {
+>  	int err = 0;
+>  	struct socket *so = sockfd_lookup(fd, &err);
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
