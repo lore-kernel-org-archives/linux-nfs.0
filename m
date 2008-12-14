@@ -1,169 +1,91 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 08/22] SUNRPC: pass buffer size to svc_addsock() and	svc_sock_names()
-Date: Sun, 14 Dec 2008 11:33:50 -0600
-Message-ID: <4945437E.3090305@opengridcomputing.com>
-References: <20081212215340.24332.88416.stgit@ingres.1015granger.net> <20081212215804.24332.24605.stgit@ingres.1015granger.net>
+From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Date: Sun, 14 Dec 2008 18:24:05 +0000
+Message-ID: <1229279045.3721.1.camel@localhost.localdomain>
+References: <20081017123207.GA14979@rabbit.intern.cm-ag>
+	 <1224484046.23068.14.camel@localhost.localdomain>
+	 <1225539927.2221.3.camel@localhost.localdomain>
+	 <1225546878.4390.3.camel@heimdal.trondhjem.org>
+	 <1227596962.16868.22.camel@localhost.localdomain>
+	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
+	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
+	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
+	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
+	 <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228169383.20370.3.camel@localhost.localdomain>
+	 <1228565812.10856.30.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Cc: bfields@fieldses.org, aime.le-rouzic@bull.net,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-84U0ymxV8LHT/KQ4Ne6R"
+Cc: linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
+	linux-kernel@vger.kernel.org, gcosta@redhat.com,
+	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.es335.com ([67.65.19.105]:10977 "EHLO mail.es335.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753549AbYLNRdv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Dec 2008 12:33:51 -0500
-In-Reply-To: <20081212215804.24332.24605.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mtaout03-winn.ispmail.ntl.com ([81.103.221.49]:32144 "EHLO
+	mtaout03-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751001AbYLNSYf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Dec 2008 13:24:35 -0500
+In-Reply-To: <1228565812.10856.30.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck:
 
-This whole svc_addsock business is an artifact of rpc.xxx creating a 
-socket in user mode and then passing the fd down to the kernel via a 
-write to the portlist file. Would it be easier, cleaner, etc... to 
-normalize this whole business to use strings exclusively to create these 
-sockets?
+--=-84U0ymxV8LHT/KQ4Ne6R
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-E.g. echo "tcp6 2049" > /proc/fs/nfsd/portlist
+On Sat, 2008-12-06 at 12:16 +0000, Ian Campbell wrote:
+> On Mon, 2008-12-01 at 22:09 +0000, Ian Campbell wrote:
+> > On Sun, 2008-11-30 at 19:17 -0500, Trond Myklebust wrote:=20
+> > > Can you see if the following 3 patches help? They're against 2.6.28-r=
+c6,
+> > > but afaics the problems are pretty much the same on 2.6.26.
+> >=20
+> > Thanks.
+> >=20
+> > The server was actually running 2.6.25.7 but the matching sources have
+> > since been removed the backports.org so I've reproduce with 2.6.26 and
+> > now I'll add the patches.
+>=20
+> Just a small progress report. Anecdotally I thought that unpatched
+> 2.6.26.7 was worse than 2.6.25.7, mostly because it hung twice in the ~1
+> day I was running it where previously it was less frequent than once per
+> day.
+>=20
+> With the patched server the client ran OK for 2.5 days then mysteriously
+> hung, the logs show none of the normal symptoms and my wife reset it
+> before I got home so I've no real clue what happened but I'm inclined to
+> think it was unrelated for now. I'll get back to you in a week or so if
+> the problem hasn't reoccurred.
 
-You could quite simply extend the syntax as well to support listening on 
-specific interfaces.
+$ uptime=20
+ 18:15:29 up 9 days, 22 min,  1 user,  load average: 0.74, 0.64, 0.46
 
-Tom
+This is on the problematic client, so it looks like the server side fix
+has sorted it. Thanks very much Trond.
 
-Chuck Lever wrote:
-> Pass the size of the output buffer to the RPC functions that construct
-> the list of socket names in that buffer.  Add documenting comments to
-> these functions.
->
-> This is a cosmetic change for now.  A subsequent patch will make sure
-> the buffer length is passed to one_sock_name(), where the length will
-> actually be useful.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
->  fs/nfsd/nfsctl.c               |   12 ++++++++----
->  include/linux/sunrpc/svcsock.h |    6 ++++--
->  net/sunrpc/svcsock.c           |   34 +++++++++++++++++++++++++++++-----
->  3 files changed, 41 insertions(+), 11 deletions(-)
->
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 22fc8e5..19db9f4 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -898,7 +898,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
->  static ssize_t __write_ports_addfd(char *buf, size_t size)
->  {
->  	char *mesg = buf;
-> -	int fd, err;
-> +	int fd, err, len;
->  
->  	err = get_int(&mesg, &fd);
->  	if (err || fd < 0)
-> @@ -908,13 +908,16 @@ static ssize_t __write_ports_addfd(char *buf, size_t size)
->  	if (err)
->  		return err;
->  
-> -	err = svc_addsock(nfsd_serv, fd, buf);
-> +	len = SIMPLE_TRANSACTION_LIMIT;
-> +	err = svc_addsock(nfsd_serv, fd, buf, len);
->  	if (err < 0)
->  		return err;
-> +	len -= err;
->  
->  	err = lockd_up();
->  	if (err < 0)
-> -		svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
-> +		svc_sock_names(nfsd_serv, buf + strlen(buf) + 1,
-> +				len - strlen(buf) - 1, buf);
->  
->  	/* Decrease the count, but don't shut down the the service */
->  	nfsd_serv->sv_nrthreads--;
-> @@ -935,7 +938,8 @@ static ssize_t __write_ports_delfd(char *buf, size_t size)
->  		return -ENOMEM;
->  
->  	if (nfsd_serv)
-> -		len = svc_sock_names(buf, nfsd_serv, toclose);
-> +		len = svc_sock_names(nfsd_serv, buf,
-> +					SIMPLE_TRANSACTION_LIMIT, toclose);
->  	if (len >= 0)
->  		lockd_down();
->  
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index 483e103..f57ce85 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -38,8 +38,10 @@ int		svc_recv(struct svc_rqst *, long);
->  int		svc_send(struct svc_rqst *);
->  void		svc_drop(struct svc_rqst *);
->  void		svc_sock_update_bufs(struct svc_serv *serv);
-> -int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
-> -int		svc_addsock(struct svc_serv *serv, int fd, char *name_return);
-> +int		svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
-> +					char *toclose);
-> +int		svc_addsock(struct svc_serv *serv, int fd, char *name_return,
-> +					size_t len);
->  void		svc_init_xprt_sock(void);
->  void		svc_cleanup_xprt_sock(void);
->  
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index a1951dc..39f5015 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -263,8 +263,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
->  	return len;
->  }
->  
-> -int
-> -svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
-> +/**
-> + * svc_sock_names - construct a list of listener names in a string
-> + * @serv: pointer to RPC service
-> + * @buf: pointer to a buffer to fill in with socket names
-> + * @buflen: size of the buffer to be filled
-> + * @toclose: pointer to '\0'-terminated C string containing the name
-> + *		of a listener to be closed
-> + *
-> + * Fills in @buf with a '\n'-separated list of names of listener
-> + * sockets.  If @toclose is not NULL, the socket named by @toclose
-> + * is closed, and is not included in the output list.
-> + *
-> + * Returns positive length of the socket name string, or a negative
-> + * errno value on error.
-> + */
-> +int svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
-> +		   char *toclose)
->  {
->  	struct svc_sock *svsk, *closesk = NULL;
->  	int len = 0;
-> @@ -1165,9 +1180,18 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->  	return svsk;
->  }
->  
-> -int svc_addsock(struct svc_serv *serv,
-> -		int fd,
-> -		char *name_return)
-> +/**
-> + * svc_addsock - add a listener socket to an RPC service
-> + * @serv: pointer to RPC service to which to add a new listener
-> + * @fd: file descriptor of the new listener
-> + * @name_return: pointer to buffer to pass back name of listener
-> + * @len: size of the buffer
-> + *
-> + * Fills in socket name and returns positive length of name if successful.
-> + * Name is terminated with '\n'.  On error, returns a negative errno
-> + * value.
-> + */
-> +int svc_addsock(struct svc_serv *serv, int fd, char *name_return, size_t len)
->  {
->  	int err = 0;
->  	struct socket *so = sockfd_lookup(fd, &err);
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+Ian.
+--=20
+Ian Campbell
+
+You have only to mumble a few words in church to get married and few words
+in your sleep to get divorced.
+
+--=-84U0ymxV8LHT/KQ4Ne6R
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAklFTzYACgkQM0+0qS9rzVnkfACaA+HfZO4cma2BEN0gLS9ImG2i
+RvgAmgPRXKARJCHdV94NRENB8eqHQnnO
+=rzIg
+-----END PGP SIGNATURE-----
+
+--=-84U0ymxV8LHT/KQ4Ne6R--
 
