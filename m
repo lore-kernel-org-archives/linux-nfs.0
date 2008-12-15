@@ -1,37 +1,43 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 6/6] nfsd: get rid of NFSD_VERSION
-Date: Mon, 15 Dec 2008 19:42:24 +0200
-Message-ID: <1229362944-9885-1-git-send-email-bhalevy@panasas.com>
-References: <49469601.7020101@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] nfs-utils: Enabling TCP wrappers
+Date: Mon, 15 Dec 2008 12:56:38 -0500
+Message-ID: <49469A56.1070704@RedHat.com>
+References: <49468BC7.2000907@RedHat.com> <1819C671-5353-45B4-A814-98B1B2A4BEB1@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:53681 "EHLO
-	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755583AbYLORmn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Dec 2008 12:42:43 -0500
-In-Reply-To: <49469601.7020101@panasas.com>
+Received: from mx2.redhat.com ([66.187.237.31]:55977 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750967AbYLOR6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Dec 2008 12:58:54 -0500
+In-Reply-To: <1819C671-5353-45B4-A814-98B1B2A4BEB1@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/nfsd/nfsd.h |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2126940..e19f459 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -23,7 +23,6 @@
- /*
-  * nfsd version
-  */
--#define NFSD_VERSION		"0.5"
- #define NFSD_SUPPORTED_MINOR_VERSION	0
- 
- /*
--- 
-1.6.0.2
+
+Chuck Lever wrote:
+> On Dec 15, 2008, at 11:54 AM, Steve Dickson wrote:
+>> Recently I was asked to re-enable the TCP wrapper calls, that check the
+>> validity of client that communicate with mountd and statd.
+>>
+>> It became very apparent this code had not been used in a while
+>> and was as a bit broken. So this patch set fixes the logic and
+>> tries to make the code scale better.
+>>
+>> The commit blobs in the set are relative to the 'tcpwrap'
+>> branch in the git://linux-nfs.org/~steved/nfs-utils-exp.git
+>> git tree.
+>>
+>> Comments?
+> 
+> A general comment:  This code will need support for IPv6 addresses.
+> 
+> Until it has it, perhaps we should add some logic to configure.ac that
+> prevents the use of tcpwrappers when --enable-ipv6 is in effect.
+Good point...
+
+steved.
 
