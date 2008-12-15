@@ -1,170 +1,204 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 5/6] nfsd: last_byte_offset
-Date: Mon, 15 Dec 2008 13:33:44 -0500
-Message-ID: <B51B6907-263A-420C-AD5B-E5EE1D16E138@oracle.com>
-References: <49469601.7020101@panasas.com> <1229362923-9847-1-git-send-email-bhalevy@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: " J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 08/22] SUNRPC: pass buffer size to svc_addsock() and svc_sock_names()
+Date: Mon, 15 Dec 2008 15:05:42 -0600
+Message-ID: <4946C6A6.4050602@opengridcomputing.com>
+References: <20081212215340.24332.88416.stgit@ingres.1015granger.net> <20081212215804.24332.24605.stgit@ingres.1015granger.net> <4945437E.3090305@opengridcomputing.com> <7998F1F2-05DD-44AB-B023-80C49DABAD9B@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: bfields@fieldses.org, aime.le-rouzic@bull.net,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:56840 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751091AbYLOSeT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Dec 2008 13:34:19 -0500
-In-Reply-To: <1229362923-9847-1-git-send-email-bhalevy@panasas.com>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:57189 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754364AbYLOVFm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Dec 2008 16:05:42 -0500
+In-Reply-To: <7998F1F2-05DD-44AB-B023-80C49DABAD9B@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Benny-
+Chuck Lever wrote:
+> On Dec 14, 2008, at 12:33 PM, Tom Tucker wrote:
+>> Hi Chuck:
+>>
+>> This whole svc_addsock business is an artifact of rpc.xxx creating a 
+>> socket in user mode and then passing the fd down to the kernel via a 
+>> write to the portlist file. Would it be easier, cleaner, etc... to 
+>> normalize this whole business to use strings exclusively to create 
+>> these sockets?
+>>
+>> E.g. echo "tcp6 2049" > /proc/fs/nfsd/portlist
+>>
+>> You could quite simply extend the syntax as well to support listening 
+>> on specific interfaces.
+> 
+> That would be Bruce's decision.  It doesn't seem like a bad idea.
+> 
+> Some folks question the idea of using netids like "tcp6" for kernel 
+> interfaces.  I'm on the fence.  RDMA doesn't have an official netid yet, 
+> for example.
 
-On Dec 15, 2008, at 12:42 PM, Benny Halevy wrote:
-> refactor the nfs4 server lock code to use last_byte_offset
-> to compute the last byte covered by the lock.  Check for overflow
-> so that the last byte is set to NFS4_MAX_UINT64 if offset + len
-> wraps around.
->
-> Also, use NFS4_MAX_UINT64 for ~(u64)0 where appropriate.
+Ok clearly there are (at least) two issues. One is mechanical; how do we 
+get the NFS server side transport instantiated. The second is: what do 
+the "identifiers" represent?
 
-Comments below are more about the existing code than your patch.
+I'm advocating that the mechanism be normalized so that we can get rid 
+of code that duplicates functionality.
 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
-> fs/nfsd/nfs4state.c  |   42 ++++++++++++++++++++++++++----------------
-> include/linux/nfs4.h |    2 ++
-> 2 files changed, 28 insertions(+), 16 deletions(-)
->
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 977ef84..1835538 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2404,6 +2404,26 @@ out:
-> #define LOCK_HASH_SIZE             (1 << LOCK_HASH_BITS)
-> #define LOCK_HASH_MASK             (LOCK_HASH_SIZE - 1)
->
-> +static inline u64
-> +end_offset(u64 start, u64 len)
-> +{
-> +	u64 end;
-> +
-> +	end = start + len;
-> +	return end >= start ? end: NFS4_MAX_UINT64;
-> +}
-> +
-> +/* last octet in a range */
-> +static inline u64
-> +last_byte_offset(u64 start, u64 len)
-> +{
-> +	u64 end;
-> +
-> +	BUG_ON(!len);
-> +	end = start + len;
-> +	return end > start ? end - 1: NFS4_MAX_UINT64;
-> +}
-> +
-> #define lockownerid_hashval(id) \
->         ((id) & LOCK_HASH_MASK)
->
-> @@ -2506,8 +2526,8 @@ nfs4_set_lock_denied(struct file_lock *fl,  
-> struct nfsd4_lock_denied *deny)
-> 		deny->ld_clientid.cl_id = 0;
-> 	}
-> 	deny->ld_start = fl->fl_start;
-> -	deny->ld_length = ~(u64)0;
-> -	if (fl->fl_end != ~(u64)0)
-> +	deny->ld_length = NFS4_MAX_UINT64;
-> +	if (fl->fl_end != NFS4_MAX_UINT64)
+Perhaps this is naive, but could we simply call it an "NFS Transport 
+Identifier" such that the only thing it "means" is the election of the 
+transport provider invoked to instantiate the service?
 
-Someone more expert with the locking code than I am should comment on  
-this... but fl_end is a loff_t (long long) -- not a u64.  The check  
-here should be for OFFSET_MAX, just like it is in lockd, right?  Is  
-"long long" the same width on all hardware architectures?
+> 
+>> Tom
+>>
+>> Chuck Lever wrote:
+>>> Pass the size of the output buffer to the RPC functions that construct
+>>> the list of socket names in that buffer.  Add documenting comments to
+>>> these functions.
+>>>
+>>> This is a cosmetic change for now.  A subsequent patch will make sure
+>>> the buffer length is passed to one_sock_name(), where the length will
+>>> actually be useful.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>> fs/nfsd/nfsctl.c               |   12 ++++++++----
+>>> include/linux/sunrpc/svcsock.h |    6 ++++--
+>>> net/sunrpc/svcsock.c           |   34 +++++++++++++++++++++++++++++-----
+>>> 3 files changed, 41 insertions(+), 11 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>> index 22fc8e5..19db9f4 100644
+>>> --- a/fs/nfsd/nfsctl.c
+>>> +++ b/fs/nfsd/nfsctl.c
+>>> @@ -898,7 +898,7 @@ static ssize_t __write_ports_names(char *buf, 
+>>> size_t size)
+>>> static ssize_t __write_ports_addfd(char *buf, size_t size)
+>>> {
+>>>     char *mesg = buf;
+>>> -    int fd, err;
+>>> +    int fd, err, len;
+>>>      err = get_int(&mesg, &fd);
+>>>     if (err || fd < 0)
+>>> @@ -908,13 +908,16 @@ static ssize_t __write_ports_addfd(char *buf, 
+>>> size_t size)
+>>>     if (err)
+>>>         return err;
+>>> -    err = svc_addsock(nfsd_serv, fd, buf);
+>>> +    len = SIMPLE_TRANSACTION_LIMIT;
+>>> +    err = svc_addsock(nfsd_serv, fd, buf, len);
+>>>     if (err < 0)
+>>>         return err;
+>>> +    len -= err;
+>>>      err = lockd_up();
+>>>     if (err < 0)
+>>> -        svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
+>>> +        svc_sock_names(nfsd_serv, buf + strlen(buf) + 1,
+>>> +                len - strlen(buf) - 1, buf);
+>>>      /* Decrease the count, but don't shut down the the service */
+>>>     nfsd_serv->sv_nrthreads--;
+>>> @@ -935,7 +938,8 @@ static ssize_t __write_ports_delfd(char *buf, 
+>>> size_t size)
+>>>         return -ENOMEM;
+>>>      if (nfsd_serv)
+>>> -        len = svc_sock_names(buf, nfsd_serv, toclose);
+>>> +        len = svc_sock_names(nfsd_serv, buf,
+>>> +                    SIMPLE_TRANSACTION_LIMIT, toclose);
+>>>     if (len >= 0)
+>>>         lockd_down();
+>>> diff --git a/include/linux/sunrpc/svcsock.h 
+>>> b/include/linux/sunrpc/svcsock.h
+>>> index 483e103..f57ce85 100644
+>>> --- a/include/linux/sunrpc/svcsock.h
+>>> +++ b/include/linux/sunrpc/svcsock.h
+>>> @@ -38,8 +38,10 @@ int        svc_recv(struct svc_rqst *, long);
+>>> int        svc_send(struct svc_rqst *);
+>>> void        svc_drop(struct svc_rqst *);
+>>> void        svc_sock_update_bufs(struct svc_serv *serv);
+>>> -int        svc_sock_names(char *buf, struct svc_serv *serv, char 
+>>> *toclose);
+>>> -int        svc_addsock(struct svc_serv *serv, int fd, char 
+>>> *name_return);
+>>> +int        svc_sock_names(struct svc_serv *serv, char *buf, size_t 
+>>> buflen,
+>>> +                    char *toclose);
+>>> +int        svc_addsock(struct svc_serv *serv, int fd, char 
+>>> *name_return,
+>>> +                    size_t len);
+>>> void        svc_init_xprt_sock(void);
+>>> void        svc_cleanup_xprt_sock(void);
+>>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>>> index a1951dc..39f5015 100644
+>>> --- a/net/sunrpc/svcsock.c
+>>> +++ b/net/sunrpc/svcsock.c
+>>> @@ -263,8 +263,23 @@ static int one_sock_name(char *buf, struct 
+>>> svc_sock *svsk)
+>>>     return len;
+>>> }
+>>> -int
+>>> -svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
+>>> +/**
+>>> + * svc_sock_names - construct a list of listener names in a string
+>>> + * @serv: pointer to RPC service
+>>> + * @buf: pointer to a buffer to fill in with socket names
+>>> + * @buflen: size of the buffer to be filled
+>>> + * @toclose: pointer to '\0'-terminated C string containing the name
+>>> + *        of a listener to be closed
+>>> + *
+>>> + * Fills in @buf with a '\n'-separated list of names of listener
+>>> + * sockets.  If @toclose is not NULL, the socket named by @toclose
+>>> + * is closed, and is not included in the output list.
+>>> + *
+>>> + * Returns positive length of the socket name string, or a negative
+>>> + * errno value on error.
+>>> + */
+>>> +int svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
+>>> +           char *toclose)
+>>> {
+>>>     struct svc_sock *svsk, *closesk = NULL;
+>>>     int len = 0;
+>>> @@ -1165,9 +1180,18 @@ static struct svc_sock 
+>>> *svc_setup_socket(struct svc_serv *serv,
+>>>     return svsk;
+>>> }
+>>> -int svc_addsock(struct svc_serv *serv,
+>>> -        int fd,
+>>> -        char *name_return)
+>>> +/**
+>>> + * svc_addsock - add a listener socket to an RPC service
+>>> + * @serv: pointer to RPC service to which to add a new listener
+>>> + * @fd: file descriptor of the new listener
+>>> + * @name_return: pointer to buffer to pass back name of listener
+>>> + * @len: size of the buffer
+>>> + *
+>>> + * Fills in socket name and returns positive length of name if 
+>>> successful.
+>>> + * Name is terminated with '\n'.  On error, returns a negative errno
+>>> + * value.
+>>> + */
+>>> +int svc_addsock(struct svc_serv *serv, int fd, char *name_return, 
+>>> size_t len)
+>>> {
+>>>     int err = 0;
+>>>     struct socket *so = sockfd_lookup(fd, &err);
+>>>
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> 		deny->ld_length = fl->fl_end - fl->fl_start + 1;
-> 	deny->ld_type = NFS4_READ_LT;
-> 	if (fl->fl_type != F_RDLCK)
-> @@ -2604,7 +2624,7 @@ out:
-> static int
-> check_lock_length(u64 offset, u64 length)
-> {
-> -	return ((length == 0)  || ((length != ~(u64)0) &&
-> +	return ((length == 0)  || ((length != NFS4_MAX_UINT64) &&
-> 	     LOFF_OVERFLOW(offset, length)));
-> }
->
-> @@ -2724,11 +2744,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct  
-> nfsd4_compound_state *cstate,
-> 	file_lock.fl_lmops = &nfsd_posix_mng_ops;
->
-> 	file_lock.fl_start = lock->lk_offset;
-> -	if ((lock->lk_length == ~(u64)0) ||
-> -			LOFF_OVERFLOW(lock->lk_offset, lock->lk_length))
-> -		file_lock.fl_end = ~(u64)0;
-> -	else
-> -		file_lock.fl_end = lock->lk_offset + lock->lk_length - 1;
-> +	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock- 
-> >lk_length);
-
-Likewise, I think for proper interoperation with our VFS locking code,  
-last_byte_offset should return a loff_t, and use OFFSET_MAX, not  
-NFS4_MAX_UINT64 for the "biggest value I can think of" return.
-
-This is a common issue for NFS -- the NFS/NLM wire data types for lock  
-range values are u32 and u64, but Linux's internal types are  
-loff_t's.  Our XDR code should manage this conversion and check that  
-the incoming lock ranges can be supported by the implementation.
-
-We don't actually have any unit test cases that check the behavior of  
-this code around the file size and lock range maxima.
-
-> 	nfs4_transform_lock_offset(&file_lock);
->
-> 	/*
-> @@ -2827,10 +2843,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct  
-> nfsd4_compound_state *cstate,
-> 	file_lock.fl_lmops = &nfsd_posix_mng_ops;
->
-> 	file_lock.fl_start = lockt->lt_offset;
-> -	if ((lockt->lt_length == ~(u64)0) || LOFF_OVERFLOW(lockt- 
-> >lt_offset, lockt->lt_length))
-> -		file_lock.fl_end = ~(u64)0;
-> -	else
-> -		file_lock.fl_end = lockt->lt_offset + lockt->lt_length - 1;
-> +	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt- 
-> >lt_length);
->
-> 	nfs4_transform_lock_offset(&file_lock);
->
-> @@ -2894,10 +2907,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct  
-> nfsd4_compound_state *cstate,
-> 	file_lock.fl_lmops = &nfsd_posix_mng_ops;
-> 	file_lock.fl_start = locku->lu_offset;
->
-> -	if ((locku->lu_length == ~(u64)0) || LOFF_OVERFLOW(locku- 
-> >lu_offset, locku->lu_length))
-> -		file_lock.fl_end = ~(u64)0;
-> -	else
-> -		file_lock.fl_end = locku->lu_offset + locku->lu_length - 1;
-> +	file_lock.fl_end = last_byte_offset(locku->lu_offset, locku- 
-> >lu_length);
-> 	nfs4_transform_lock_offset(&file_lock);
->
-> 	/*
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index ea03667..b912311 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -88,6 +88,8 @@
-> #define NFS4_ACE_GENERIC_EXECUTE              0x001200A0
-> #define NFS4_ACE_MASK_ALL                     0x001F01FF
->
-> +#define NFS4_MAX_UINT64	(~(u64)0)
-> +
-> enum nfs4_acl_whotype {
-> 	NFS4_ACL_WHO_NAMED = 0,
-> 	NFS4_ACL_WHO_OWNER,
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
