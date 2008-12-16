@@ -1,120 +1,72 @@
-From: Willy Tarreau <w@1wt.eu>
-Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
-Date: Tue, 16 Dec 2008 22:21:55 +0100
-Message-ID: <20081216212155.GA581@1wt.eu>
-References: <20081022091207.GA12996@squirrel.roonstrasse.net> <20081023123628.GA18549@squirrel.roonstrasse.net> <1224773745.7625.4.camel@localhost> <4946EBFA.60700@atmos.washington.edu> <1229432553.7257.4.camel@heimdal.trondhjem.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: possible module refcount leak with auth_gss
+Date: Tue, 16 Dec 2008 16:45:32 -0500
+Message-ID: <20081216164532.22cab9d6@tleilax.poochiereds.net>
+References: <20081208102855.30081708@tleilax.poochiereds.net>
+	<20081208173706.GE16628@fieldses.org>
+	<20081209153849.6605559a@tleilax.poochiereds.net>
+	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
+	<20081210112506.2b2d2c3a@tleilax.poochiereds.net>
+	<20081210163136.GB28263@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Harry Edmon <harry-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>,
-	Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, stable@kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 1wt.eu ([62.212.114.60]:1090 "EHLO 1wt.eu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750998AbYLPVWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Dec 2008 16:22:36 -0500
-In-Reply-To: <1229432553.7257.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20081210163136.GB28263@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 16, 2008 at 08:02:33AM -0500, Trond Myklebust wrote:
-> On Mon, 2008-12-15 at 15:44 -0800, Harry Edmon wrote:
-> > Trond Myklebust wrote:
-> > > On Thu, 2008-10-23 at 14:36 +0200, Max Kellermann wrote:
-> > >   
-> > >> On 2008/10/22 11:12, Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org> wrote:
-> > >>     
-> > >>> after I was able to fix http://lkml.org/lkml/2008/10/17/147, the
-> > >>> server which was already upgraded to 2.6.27.2 still gets very high
-> > >>> load.  It is a web server with NFS file storage (NetApp), and while
-> > >>> the others in the cluster (kernel 2.6.25) have a load of 1-3, 2.6.27.2
-> > >>> gets 30-50.
-> > >>>
-> > >>> I did an oprofile, with the following results (server just started,
-> > >>> load "only" 5-10):
-> > >>>
-> > >>> 87593    56.1116  (no location information)   vmlinux
-> > >>> vmlinux                  rpcauth_lookup_credcache
-> > >>> 16037    10.2732  auth_generic.c:0            vmlinux
-> > >>> vmlinux                  generic_match
-> > >>> 6460      4.1382  (no location information)   php4
-> > >>> php4                     (no symbols)
-> > >>> 2478      1.5874  (no location information)   libc-2.7.so
-> > >>> libc-2.7.so              (no symbols)
-> > >>> [...]
-> > >>>
-> > >>> We havn't configured any special authentication method.  It is a NFSv3
-> > >>> over UDP mount, but the kernel has NFSv4 and therefore KRB5 enabled.
-> > >>>
-> > >>> Any ideas why rpcauth_lookup_credcache() goes overboard with CPU
-> > >>> usage?
-> > >>>       
-> > >> I have bisected the problem: 98a8e323 is the result ("SUNRPC: Add a
-> > >> helper rpcauth_lookup_generic_cred()").  5c691044 is ok.
-> > >>
-> > >> See the attached oprofile annotation data for both commits.  I guess
-> > >> that the function rpcauth_lookup_credcache() is waiting for a spinlock
-> > >> too often and too long.  Trond, any idea?
-> > >>     
-> > >
-> > > Can you add a '-v' to the rpc.gssd daemon startup line? I'd like to see
-> > > how often you are creating new gss contexts.
-> > >
-> > >   
-> > >> Harry: added you to Cc because your problem sounds similar.
-> > >>     
-> > >
-> > > Harry's problem is should be unrelated. afaik, he is seeing a problem
-> > > with userland RPC code, not kernel rpc code.
-> > >
-> > > Trond
-> > >
-> > >   
-> > I am finally getting some time to look at my problem that I originally 
-> > reported in October (SUNRPC problem with 2.6.26 and beyond), and I am 
-> > seeing the same behavior as Max Kellermann when my machine slows as I 
-> > described earlier.  The system in question is currently running 
-> > 2.6.27.7.  Here is what I see when it is misbehaving:
+On Wed, 10 Dec 2008 11:31:36 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Wed, Dec 10, 2008 at 11:25:06AM -0500, Jeff Layton wrote:
+> > It works. With a nfs-utils that has your patches to properly set the
+> > cache timeouts it looks like this problem is generally fixed. The module
+> > refcounts go back to normal once the tickets expire.
 > > 
-> > samples  %        image name               app name                 
-> > symbol name
-> > 11380517 57.4191  sunrpc.ko                sunrpc                   
-> > rpcauth_lookup_credcache
-> > 3263657  16.4664  sunrpc.ko                sunrpc                   
-> > generic_match
-> > 1081287   5.4555  vmlinux                  vmlinux                  
-> > copy_user_generic_string
-> > 499407    2.5197  vmlinux                  vmlinux                  
-> > __posix_lock_file
-> > [...]
+> > That said, I think we should have a look at Bruce's suggestion for changing
+> > the way that the module refcounts are actually handled. It would seem to
+> > make more sense to hold the reference based on the exports using that auth
+> > scheme, and to purge the caches on module unload.
 > > 
-> > And here is what I see when I stop the programs that are chewing up all 
-> > the system time, and then starting them up again:
-> > 
-> > samples  %        image name               app name                 
-> > symbol name
-> > 6372650  21.7978  vmlinux                  vmlinux                  
-> > copy_user_generic_string
-> > 5401386  18.4755  sunrpc.ko                sunrpc                   
-> > rpcauth_lookup_credcache
-> > 3018753  10.3257  vmlinux                  vmlinux                  
-> > __posix_lock_file
-> > 1050095   3.5919  sunrpc.ko                sunrpc                   
-> > generic_match
-> > 
-> > 
-> > and I am not using Kerberos with NFSv4 (i.e. no rpc.gssd).  Did you ever 
-> > find a solution for this problem with rpcauth_lookup_credcache?
+> > Not a huge deal, but probably something we should consider.
 > 
-> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=23918b03060f6e572168fdde1798a905679d2e06
+> Yeah.  Since I don't care enough about module unloading, I'm not going
+> to work on this now.  But it's unfortunate.
+> 
+> I'm a little more worried about why the RPC_GSS_PROC_DESTROY requests
+> aren't working.
+> 
 
-Trond, this should be included into next stable, right ?
+I took some time today to dig into this. Here's some debug output from
+the RPC_GSS_PROC_DESTROY request on the client:
 
-It's fortunate because I know someone else who recently described me the
-same problem under the same circumstances when migrating from 2.6.22 to
-2.6.27.
+RPC:     0 holding RPCSEC_GSS cred ffff880011579bb8
+RPC:       new task initialized, procpid 2846
+RPC:       allocated task ffff88001e110000
+RPC:    11 __rpc_execute flags=0x281
+RPC:    11 call_start nfs4 proc NULL (async)
+RPC:    11 call_reserve (status 0)
+RPC:    11 call_refresh (status 0)
+RPC:    11 refreshing RPCSEC_GSS cred ffff880011579bb8
+RPC:    11 call_refreshresult (status -13)
+RPC:    11 return 0, status -13
+RPC:    11 release task
+RPC:    11 releasing RPCSEC_GSS cred ffff880011579bb8
 
-Regards,
-Willy
+...looks like we're trying to refresh the credentials before sending the
+call but that's failing. That's as far as I've gotten with it so far
+though.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
