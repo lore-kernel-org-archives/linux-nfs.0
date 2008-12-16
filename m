@@ -1,72 +1,39 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: possible module refcount leak with auth_gss
-Date: Tue, 16 Dec 2008 16:45:32 -0500
-Message-ID: <20081216164532.22cab9d6@tleilax.poochiereds.net>
-References: <20081208102855.30081708@tleilax.poochiereds.net>
-	<20081208173706.GE16628@fieldses.org>
-	<20081209153849.6605559a@tleilax.poochiereds.net>
-	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
-	<20081210112506.2b2d2c3a@tleilax.poochiereds.net>
-	<20081210163136.GB28263@fieldses.org>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
+Date: Tue, 16 Dec 2008 15:21:16 -0800
+Message-ID: <20081216232116.GD6983@kroah.com>
+References: <20081022091207.GA12996@squirrel.roonstrasse.net> <20081023123628.GA18549@squirrel.roonstrasse.net> <1224773745.7625.4.camel@localhost> <4946EBFA.60700@atmos.washington.edu> <1229432553.7257.4.camel@heimdal.trondhjem.org> <20081216212155.GA581@1wt.eu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20081210163136.GB28263@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Harry Edmon <harry-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>,
+	linux-nfs@vger.kernel.org, Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>,
+	linux-kernel@vger.kernel.org, stable@kernel.org
+To: Willy Tarreau <w@1wt.eu>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:51554 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1759085AbYLPX1C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Dec 2008 18:27:02 -0500
+In-Reply-To: <20081216212155.GA581-K+wRfnb2/UA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 10 Dec 2008 11:31:36 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Wed, Dec 10, 2008 at 11:25:06AM -0500, Jeff Layton wrote:
-> > It works. With a nfs-utils that has your patches to properly set the
-> > cache timeouts it looks like this problem is generally fixed. The module
-> > refcounts go back to normal once the tickets expire.
+On Tue, Dec 16, 2008 at 10:21:55PM +0100, Willy Tarreau wrote:
+> On Tue, Dec 16, 2008 at 08:02:33AM -0500, Trond Myklebust wrote:
+> > > and I am not using Kerberos with NFSv4 (i.e. no rpc.gssd).  Did you ever 
+> > > find a solution for this problem with rpcauth_lookup_credcache?
 > > 
-> > That said, I think we should have a look at Bruce's suggestion for changing
-> > the way that the module refcounts are actually handled. It would seem to
-> > make more sense to hold the reference based on the exports using that auth
-> > scheme, and to purge the caches on module unload.
-> > 
-> > Not a huge deal, but probably something we should consider.
+> > http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=23918b03060f6e572168fdde1798a905679d2e06
 > 
-> Yeah.  Since I don't care enough about module unloading, I'm not going
-> to work on this now.  But it's unfortunate.
+> Trond, this should be included into next stable, right ?
 > 
-> I'm a little more worried about why the RPC_GSS_PROC_DESTROY requests
-> aren't working.
-> 
+> It's fortunate because I know someone else who recently described me the
+> same problem under the same circumstances when migrating from 2.6.22 to
+> 2.6.27.
 
-I took some time today to dig into this. Here's some debug output from
-the RPC_GSS_PROC_DESTROY request on the client:
+Now queued up in the 2.6.27-stable queue.
 
-RPC:     0 holding RPCSEC_GSS cred ffff880011579bb8
-RPC:       new task initialized, procpid 2846
-RPC:       allocated task ffff88001e110000
-RPC:    11 __rpc_execute flags=0x281
-RPC:    11 call_start nfs4 proc NULL (async)
-RPC:    11 call_reserve (status 0)
-RPC:    11 call_refresh (status 0)
-RPC:    11 refreshing RPCSEC_GSS cred ffff880011579bb8
-RPC:    11 call_refreshresult (status -13)
-RPC:    11 return 0, status -13
-RPC:    11 release task
-RPC:    11 releasing RPCSEC_GSS cred ffff880011579bb8
+thanks,
 
-...looks like we're trying to refresh the credentials before sending the
-call but that's failing. That's as far as I've gotten with it so far
-though.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+greg k-h
