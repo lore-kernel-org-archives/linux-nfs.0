@@ -1,63 +1,120 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks
- (RFC)
-Date: Tue, 16 Dec 2008 16:11:58 -0500
-Message-ID: <20081216161158.2d173667@tleilax.poochiereds.net>
-References: <1227130623-31607-1-git-send-email-jlayton@redhat.com>
-	<20081122011555.GA28485@fieldses.org>
-	<20081124103313.0c779324@tleilax.poochiereds.net>
-	<20081124170653.GF17862@fieldses.org>
-	<20081213074042.2e8223c3@tleilax.poochiereds.net>
-	<20081216193806.GC18928@fieldses.org>
-	<20081216195635.GD18928@fieldses.org>
+From: Willy Tarreau <w@1wt.eu>
+Subject: Re: High load in 2.6.27, NFS / rpcauth_lookup_credcache()?
+Date: Tue, 16 Dec 2008 22:21:55 +0100
+Message-ID: <20081216212155.GA581@1wt.eu>
+References: <20081022091207.GA12996@squirrel.roonstrasse.net> <20081023123628.GA18549@squirrel.roonstrasse.net> <1224773745.7625.4.camel@localhost> <4946EBFA.60700@atmos.washington.edu> <1229432553.7257.4.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, teigland@redhat.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Harry Edmon <harry-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>,
+	Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org>, linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, stable@kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39771 "EHLO mx2.redhat.com"
+Received: from 1wt.eu ([62.212.114.60]:1090 "EHLO 1wt.eu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751633AbYLPVME (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Dec 2008 16:12:04 -0500
-In-Reply-To: <20081216195635.GD18928@fieldses.org>
+	id S1750998AbYLPVWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Dec 2008 16:22:36 -0500
+In-Reply-To: <1229432553.7257.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 16 Dec 2008 14:56:35 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> > +	if (result == 0) {
-> > +		if (nlmsvc_check_overlap(block))
-> > +			requeue = false;  
+On Tue, Dec 16, 2008 at 08:02:33AM -0500, Trond Myklebust wrote:
+> On Mon, 2008-12-15 at 15:44 -0800, Harry Edmon wrote:
+> > Trond Myklebust wrote:
+> > > On Thu, 2008-10-23 at 14:36 +0200, Max Kellermann wrote:
+> > >   
+> > >> On 2008/10/22 11:12, Max Kellermann <max-hDT0AjmEH7RAfugRpC6u6w@public.gmane.org> wrote:
+> > >>     
+> > >>> after I was able to fix http://lkml.org/lkml/2008/10/17/147, the
+> > >>> server which was already upgraded to 2.6.27.2 still gets very high
+> > >>> load.  It is a web server with NFS file storage (NetApp), and while
+> > >>> the others in the cluster (kernel 2.6.25) have a load of 1-3, 2.6.27.2
+> > >>> gets 30-50.
+> > >>>
+> > >>> I did an oprofile, with the following results (server just started,
+> > >>> load "only" 5-10):
+> > >>>
+> > >>> 87593    56.1116  (no location information)   vmlinux
+> > >>> vmlinux                  rpcauth_lookup_credcache
+> > >>> 16037    10.2732  auth_generic.c:0            vmlinux
+> > >>> vmlinux                  generic_match
+> > >>> 6460      4.1382  (no location information)   php4
+> > >>> php4                     (no symbols)
+> > >>> 2478      1.5874  (no location information)   libc-2.7.so
+> > >>> libc-2.7.so              (no symbols)
+> > >>> [...]
+> > >>>
+> > >>> We havn't configured any special authentication method.  It is a NFSv3
+> > >>> over UDP mount, but the kernel has NFSv4 and therefore KRB5 enabled.
+> > >>>
+> > >>> Any ideas why rpcauth_lookup_credcache() goes overboard with CPU
+> > >>> usage?
+> > >>>       
+> > >> I have bisected the problem: 98a8e323 is the result ("SUNRPC: Add a
+> > >> helper rpcauth_lookup_generic_cred()").  5c691044 is ok.
+> > >>
+> > >> See the attached oprofile annotation data for both commits.  I guess
+> > >> that the function rpcauth_lookup_credcache() is waiting for a spinlock
+> > >> too often and too long.  Trond, any idea?
+> > >>     
+> > >
+> > > Can you add a '-v' to the rpc.gssd daemon startup line? I'd like to see
+> > > how often you are creating new gss contexts.
+> > >
+> > >   
+> > >> Harry: added you to Cc because your problem sounds similar.
+> > >>     
+> > >
+> > > Harry's problem is should be unrelated. afaik, he is seeing a problem
+> > > with userland RPC code, not kernel rpc code.
+> > >
+> > > Trond
+> > >
+> > >   
+> > I am finally getting some time to look at my problem that I originally 
+> > reported in October (SUNRPC problem with 2.6.26 and beyond), and I am 
+> > seeing the same behavior as Max Kellermann when my machine slows as I 
+> > described earlier.  The system in question is currently running 
+> > 2.6.27.7.  Here is what I see when it is misbehaving:
+> > 
+> > samples  %        image name               app name                 
+> > symbol name
+> > 11380517 57.4191  sunrpc.ko                sunrpc                   
+> > rpcauth_lookup_credcache
+> > 3263657  16.4664  sunrpc.ko                sunrpc                   
+> > generic_match
+> > 1081287   5.4555  vmlinux                  vmlinux                  
+> > copy_user_generic_string
+> > 499407    2.5197  vmlinux                  vmlinux                  
+> > __posix_lock_file
+> > [...]
+> > 
+> > And here is what I see when I stop the programs that are chewing up all 
+> > the system time, and then starting them up again:
+> > 
+> > samples  %        image name               app name                 
+> > symbol name
+> > 6372650  21.7978  vmlinux                  vmlinux                  
+> > copy_user_generic_string
+> > 5401386  18.4755  sunrpc.ko                sunrpc                   
+> > rpcauth_lookup_credcache
+> > 3018753  10.3257  vmlinux                  vmlinux                  
+> > __posix_lock_file
+> > 1050095   3.5919  sunrpc.ko                sunrpc                   
+> > generic_match
+> > 
+> > 
+> > and I am not using Kerberos with NFSv4 (i.e. no rpc.gssd).  Did you ever 
+> > find a solution for this problem with rpcauth_lookup_credcache?
 > 
-> So these check_overlap()'s are in attempt to ensure that grants for
-> overlapping ranges get sent back to the client in some given order?
-> What order is that exactly?  (Do we know that the existing order is
-> right?)
-> 
+> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=23918b03060f6e572168fdde1798a905679d2e06
 
-No, the idea was to have this code walk the entire list of blocks and
-grant any block that the lock completely covers. But, I think we need to
-check and make sure that block doesn't conflict with another grant,
-correct? That's what that function is intended to do.
+Trond, this should be included into next stable, right ?
 
-> After thinking a little more: the interface is a lot simpler if it's
-> just a simple request and reply (with the reply for a lock identical to
-> the request).  I believe that's more or less what gfs2 is already do
-> internally, if we look at the posix lock upcalls it's making to
-> userspace.  So it shouldn't be hard to fix gfs2 to hand us back a lock
-> that doesn't take into account any coalescing.  If it needs to keep an
-> extra (unmodified) copy of the lock around, that's OK.
-> 
-> Did you try that and find a reason that doesn't work?
-> 
-> --b.
-> 
+It's fortunate because I know someone else who recently described me the
+same problem under the same circumstances when migrating from 2.6.22 to
+2.6.27.
 
-Agreed. That would be much simpler, I think...
+Regards,
+Willy
 
-I didn't try that, though I did consider it before wandering down the
-rabbit hole. Dave, any thoughts?
-
--- 
-Jeff Layton <jlayton@redhat.com>
