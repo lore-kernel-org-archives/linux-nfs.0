@@ -1,54 +1,64 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NLM] 2.6.27 broken
-Date: Tue, 16 Dec 2008 12:39:23 -0500
-Message-ID: <20081216173923.GE16388@fieldses.org>
-References: <20081115132831.GA11329@janus> <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Date: Tue, 16 Dec 2008 12:55:03 -0500
+Message-ID: <20081216175503.GG16388@fieldses.org>
+References: <1227596962.16868.22.camel@localhost.localdomain> <1227619696.7057.19.camel@heimdal.trondhjem.org> <1227620339.9425.99.camel@zakaz.uk.xensource.com> <1227621434.7057.33.camel@heimdal.trondhjem.org> <1227621877.9425.102.camel@zakaz.uk.xensource.com> <1227737539.31008.2.camel@localhost.localdomain> <1228090631.7112.11.camel@heimdal.trondhjem.org> <1228169383.20370.3.camel@localhost.localdomain> <1228565812.10856.30.camel@localhost.localdomain> <1229279045.3721.1.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-	Miklos Szeredi <mszeredi@suse.cz>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
+	linux-kernel@vger.kernel.org, gcosta@redhat.com,
+	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:53630 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([66.93.2.214]:33388 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757396AbYLPRjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Dec 2008 12:39:25 -0500
-In-Reply-To: <20081128112447.GA25340@janus>
+	id S1751824AbYLPRzP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Dec 2008 12:55:15 -0500
+In-Reply-To: <1229279045.3721.1.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 28, 2008 at 12:24:47PM +0100, Frank van Maarseveen wrote:
-> On Thu, Nov 20, 2008 at 05:27:31PM -0500, J. Bruce Fields wrote:
-> > On Sat, Nov 15, 2008 at 02:28:31PM +0100, Frank van Maarseveen wrote:
-> > > Try running multiple instances of attached program on 1 NFS client
-> > > against a 2.6.27(.5) NFSv3 server:
+On Sun, Dec 14, 2008 at 06:24:05PM +0000, Ian Campbell wrote:
+> On Sat, 2008-12-06 at 12:16 +0000, Ian Campbell wrote:
+> > On Mon, 2008-12-01 at 22:09 +0000, Ian Campbell wrote:
+> > > On Sun, 2008-11-30 at 19:17 -0500, Trond Myklebust wrote: 
+> > > > Can you see if the following 3 patches help? They're against 2.6.28-rc6,
+> > > > but afaics the problems are pretty much the same on 2.6.26.
 > > > 
-> > > 	gcc -Wall -Wstrict-prototypes -o lck lck.c
-> > > 	for i in `seq 30`
-> > > 	do
-> > > 		lck &
-> > > 	done
+> > > Thanks.
+> > > 
+> > > The server was actually running 2.6.25.7 but the matching sources have
+> > > since been removed the backports.org so I've reproduce with 2.6.26 and
+> > > now I'll add the patches.
 > > 
-> > Or reproduceable using the "flock" utility with:
+> > Just a small progress report. Anecdotally I thought that unpatched
+> > 2.6.26.7 was worse than 2.6.25.7, mostly because it hung twice in the ~1
+> > day I was running it where previously it was less frequent than once per
+> > day.
 > > 
-> > 	for i in `seq 30`
-> > 	do
-> > 		flock /mnt/foo sleep 10
-
-(Sorry, note there should be an ampersand at the end there....)
-
-> > 	done
-> > 
-> > Hm.  What's the last known good server version?
+> > With the patched server the client ran OK for 2.5 days then mysteriously
+> > hung, the logs show none of the normal symptoms and my wife reset it
+> > before I got home so I've no real clue what happened but I'm inclined to
+> > think it was unrelated for now. I'll get back to you in a week or so if
+> > the problem hasn't reoccurred.
 > 
-> 2.6.24.4
+> $ uptime 
+>  18:15:29 up 9 days, 22 min,  1 user,  load average: 0.74, 0.64, 0.46
+> 
+> This is on the problematic client, so it looks like the server side fix
+> has sorted it. Thanks very much Trond.
 
-More precisely, it looks like this started with
+Thanks for the testing!  So this was with the following three patches
+applied on the server on top of 2.6.26?
 
-	bde74e4bc64415b142e "locks: add special return value for
-		asynchronous locks"
+	[PATCH 1/3] SUNRPC: Ensure the server closes sockets in a timely fashion
+	[PATCH 2/3] SUNRPC: We only need to call svc_delete_xprt() once...
+	[PATCH 3/3] SUNRPC: svc_xprt_enqueue should not refuse to enqueue 'XPT_DEAD' transports
 
-But I haven't had the chance to look any harder yet.  Miklos?  Is this
-easy for you to reproduce?
+I'll try to take a look at these before I leave for the holidays,
+assuming the versions Trond posted on Nov. 30 are the latest.
 
 --b.
