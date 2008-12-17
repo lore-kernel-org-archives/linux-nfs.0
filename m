@@ -1,151 +1,50 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH] gssd: By default,
-	don't spam syslog when users' credentials expire
-Date: Wed, 17 Dec 2008 12:39:27 -0500
-Message-ID: <20081217173927.3031.53736.stgit@jazz.citi.umich.edu>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/3] SUNRPC: Ensure the server closes sockets in a
+ timely fashion
+Date: Wed, 17 Dec 2008 13:08:16 -0500
+Message-ID: <1229537296.7257.37.camel@heimdal.trondhjem.org>
+References: <20081017123207.GA14979@rabbit.intern.cm-ag>
+	 <1224484046.23068.14.camel@localhost.localdomain>
+	 <1225539927.2221.3.camel@localhost.localdomain>
+	 <1225546878.4390.3.camel@heimdal.trondhjem.org>
+	 <1227596962.16868.22.camel@localhost.localdomain>
+	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
+	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
+	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
+	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
+	 <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228090719.7112.13.camel@heimdal.trondhjem.org>
+	 <49491A50.7000109@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain
+Cc: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>, linux-nfs@vger.kernel.org,
+	Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>, linux-kernel@vger.kernel.org,
+	gcosta@redhat.com, Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:29560 "EHLO citi.umich.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:4678 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751040AbYLQRj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2008 12:39:29 -0500
+	id S1750855AbYLQSNq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 13:13:46 -0500
+In-Reply-To: <49491A50.7000109@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the priority of "common" log messages so that syslog doesn't get
-slammed/spammed when users' credentials expire, or there is another common
-problem which would cause error messages for all context creation requests.
+On Wed, 2008-12-17 at 09:27 -0600, Tom Tucker wrote:
+> > +	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags))
+> > +		kernel_sock_shutdown(svsk->sk_sock, SHUT_RDWR);
+> 
+> How is this different than what happens as an artifact of sock_release?
 
-Note that this will now require that gssd or svcgssd option "-v" is used to
-debug these common cases.
+The point is that it is independent of whether or not something is
+holding a reference to the svc_sock.
 
-Original patch from Andrew Pollock <apollock@google.com>.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
-cc: Andrew Pollock <apollock@google.com>
----
-
- utils/gssd/gss_util.c     |    2 +-
- utils/gssd/gssd_proc.c    |    8 ++++----
- utils/gssd/krb5_util.c    |    6 +++---
- utils/gssd/svcgssd_proc.c |    6 +++---
- 4 files changed, 11 insertions(+), 11 deletions(-)
-
-diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
-index 8a7bcaa..2d66be9 100644
---- a/utils/gssd/gss_util.c
-+++ b/utils/gssd/gss_util.c
-@@ -216,7 +216,7 @@ gssd_acquire_cred(char *server_name)
- 		ignore_maj_stat = gss_display_name(&ignore_min_stat,
- 				target_name, &pbuf, NULL);
- 		if (ignore_maj_stat == GSS_S_COMPLETE) {
--			printerr(0, "Unable to obtain credentials for '%.*s'\n",
-+			printerr(1, "Unable to obtain credentials for '%.*s'\n",
- 				 pbuf.length, pbuf.value);
- 			ignore_maj_stat = gss_release_buffer(&ignore_min_stat,
- 							     &pbuf);
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index cb14d45..91fc8d2 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -448,7 +448,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- 	return 0;
- out_err:
- 	if (buf) free(buf);
--	printerr(0, "Failed to write downcall!\n");
-+	printerr(1, "Failed to write downcall!\n");
- 	return -1;
- }
- 
-@@ -741,14 +741,14 @@ handle_krb5_upcall(struct clnt_info *clp)
- 			}
- 			gssd_free_krb5_machine_cred_list(credlist);
- 			if (!success) {
--				printerr(0, "WARNING: Failed to create krb5 context "
-+				printerr(1, "WARNING: Failed to create krb5 context "
- 					 "for user with uid %d with any "
- 					 "credentials cache for server %s\n",
- 					 uid, clp->servername);
- 				goto out_return_error;
- 			}
- 		} else {
--			printerr(0, "WARNING: Failed to create krb5 context "
-+			printerr(1, "WARNING: Failed to create krb5 context "
- 				 "for user with uid %d for server %s\n",
- 				 uid, clp->servername);
- 			goto out_return_error;
-@@ -756,7 +756,7 @@ handle_krb5_upcall(struct clnt_info *clp)
- 	}
- 
- 	if (!authgss_get_private_data(auth, &pd)) {
--		printerr(0, "WARNING: Failed to obtain authentication "
-+		printerr(1, "WARNING: Failed to obtain authentication "
- 			    "data for user with uid %d for server %s\n",
- 			 uid, clp->servername);
- 		goto out_return_error;
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 77814bc..d4ee631 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -399,7 +399,7 @@ gssd_get_single_krb5_cred(krb5_context context,
- 		goto out;
- 	}
- 	if (krb5_get_init_creds_opt_set_addressless(context, init_opts, 1))
--		printerr(0, "WARNING: Unable to set option for addressless "
-+		printerr(1, "WARNING: Unable to set option for addressless "
- 			 "tickets.  May have problems behind a NAT.\n");
- #ifdef TEST_SHORT_LIFETIME
- 	/* set a short lifetime (for debugging only!) */
-@@ -422,7 +422,7 @@ gssd_get_single_krb5_cred(krb5_context context,
- 
- 	if ((code = krb5_get_init_creds_keytab(context, &my_creds, ple->princ,
- 					       kt, 0, NULL, opts))) {
--		printerr(0, "WARNING: %s while getting initial ticket for "
-+		printerr(1, "WARNING: %s while getting initial ticket for "
- 			 "principal '%s' using keytab '%s'\n",
- 			 gssd_k5_err_msg(context, code),
- 			 pname ? pname : "<unparsable>", kt_name);
-@@ -632,7 +632,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
- 	/* Get full target hostname */
- 	retval = getaddrinfo(inhost, NULL, &hints, &addrs);
- 	if (retval) {
--		printerr(0, "%s while getting full hostname for '%s'\n",
-+		printerr(1, "%s while getting full hostname for '%s'\n",
- 			 gai_strerror(retval), inhost);
- 		goto out;
- 	}
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index f162152..1d13532 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -108,7 +108,7 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 	fclose(f);
- 	return err;
- out_err:
--	printerr(0, "WARNING: downcall failed\n");
-+	printerr(1, "WARNING: downcall failed\n");
- 	return -1;
- }
- 
-@@ -247,7 +247,7 @@ get_ids(gss_name_t client_name, gss_OID mech, struct svc_cred *cred)
- 			res = 0;
- 			goto out_free;
- 		}
--		printerr(0, "WARNING: get_ids: failed to map name '%s' "
-+		printerr(1, "WARNING: get_ids: failed to map name '%s' "
- 			"to uid/gid: %s\n", sname, strerror(-res));
- 		goto out_free;
- 	}
-@@ -380,7 +380,7 @@ handle_nullreq(FILE *f) {
- 		goto continue_needed;
- 	}
- 	else if (maj_stat != GSS_S_COMPLETE) {
--		printerr(0, "WARNING: gss_accept_sec_context failed\n");
-+		printerr(1, "WARNING: gss_accept_sec_context failed\n");
- 		pgsserr("handle_nullreq: gss_accept_sec_context",
- 			maj_stat, min_stat, mech);
- 		goto out_err;
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
