@@ -1,7 +1,7 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: possible module refcount leak with auth_gss
-Date: Wed, 17 Dec 2008 14:34:58 -0500
-Message-ID: <20081217143458.080aa9be@tleilax.poochiereds.net>
+Date: Wed, 17 Dec 2008 14:38:50 -0500
+Message-ID: <1229542730.7257.101.camel@heimdal.trondhjem.org>
 References: <20081208102855.30081708@tleilax.poochiereds.net>
 	<20081208173706.GE16628@fieldses.org>
 	<20081209153849.6605559a@tleilax.poochiereds.net>
@@ -14,7 +14,7 @@ References: <20081208102855.30081708@tleilax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
+	nfsv4@linux-nfs.org, Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfsv4-bounces@linux-nfs.org>
 In-Reply-To: <20081217192047.GL4614@fieldses.org>
@@ -29,9 +29,7 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 17 Dec 2008 14:20:47 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
+On Wed, 2008-12-17 at 14:20 -0500, J. Bruce Fields wrote:
 > On Tue, Dec 16, 2008 at 09:40:51PM -0500, Jeff Layton wrote:
 > > On Tue, 16 Dec 2008 16:45:32 -0500
 > > Jeff Layton <jlayton@redhat.com> wrote:
@@ -64,7 +62,9 @@ On Wed, 17 Dec 2008 14:20:47 -0500
 > >         if (gss_cred->gc_ctx == NULL ||
 > >             test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
 > >                 return 0;
-> > 
+
+Should probably just be a test_bit()
+
 > >         gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
 > >         cred->cr_ops = &gss_nullops;
 > > 
@@ -86,14 +86,8 @@ On Wed, 17 Dec 2008 14:20:47 -0500
 > 
 > Maybe that gss_refresh_null() should just return 0 and pretend the
 > cred's fine, instead of returning -EACCES?
-> 
 
-Possibly -- it does look like this is the only place that those credops
-are used.
+That would be wrong, since we would end up sending GSS_DESTROY requests
+for sessions that are already dead.
 
-What's the reasoning behind clearing the RPCAUTH_CRED_UPTODATE bit
-here? If we don't want to refresh the cred, would it be better to just
-leave it set?
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Trond
