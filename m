@@ -1,44 +1,81 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: possible module refcount leak with auth_gss
-Date: Wed, 17 Dec 2008 14:54:11 -0500
-Message-ID: <1229543651.7257.107.camel@heimdal.trondhjem.org>
-References: <20081208102855.30081708@tleilax.poochiereds.net>
-	<20081208173706.GE16628@fieldses.org>
-	<20081209153849.6605559a@tleilax.poochiereds.net>
-	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
-	<20081210112506.2b2d2c3a@tleilax.poochiereds.net>
-	<20081210163136.GB28263@fieldses.org>
-	<20081216164532.22cab9d6@tleilax.poochiereds.net>
-	<20081216214051.51019f51@tupile.poochiereds.net>
-	<20081217192047.GL4614@fieldses.org>
-	<20081217143458.080aa9be@tleilax.poochiereds.net>
-	<20081217194127.GN4614@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks
+	(RFC)
+Date: Wed, 17 Dec 2008 15:01:56 -0500
+Message-ID: <20081217200156.GO4614@fieldses.org>
+References: <1227130623-31607-1-git-send-email-jlayton@redhat.com> <20081122011555.GA28485@fieldses.org> <20081124103313.0c779324@tleilax.poochiereds.net> <20081124170653.GF17862@fieldses.org> <20081213074042.2e8223c3@tleilax.poochiereds.net> <20081216193806.GC18928@fieldses.org> <20081216195635.GD18928@fieldses.org> <20081216161158.2d173667@tleilax.poochiereds.net> <20081217191453.GA16777@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org, Trond Myklebust <trond@netapp.com>,
-	Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20081217194127.GN4614@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+To: David Teigland <teigland@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([66.93.2.214]:42204 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751056AbYLQUB5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 15:01:57 -0500
+In-Reply-To: <20081217191453.GA16777@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-12-17 at 14:41 -0500, J. Bruce Fields wrote:
-> It looks like the CRED_UPTODATE is just being used as a signal to decide
-> whether the PROC_DESTROY has already been sent; the test_and_clear_bit
-> ensures that the null call is made just once.  Maybe a separate flag
-> would be simpler.
+On Wed, Dec 17, 2008 at 01:14:53PM -0600, David Teigland wrote:
+> On Tue, Dec 16, 2008 at 04:11:58PM -0500, Jeff Layton wrote:
+> > On Tue, 16 Dec 2008 14:56:35 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > After thinking a little more: the interface is a lot simpler if it's
+> > > just a simple request and reply (with the reply for a lock identical to
+> > > the request).  I believe that's more or less what gfs2 is already do
+> > > internally, if we look at the posix lock upcalls it's making to
+> > > userspace.  So it shouldn't be hard to fix gfs2 to hand us back a lock
+> > > that doesn't take into account any coalescing.  If it needs to keep an
+> > > extra (unmodified) copy of the lock around, that's OK.
+> > > 
+> > > Did you try that and find a reason that doesn't work?
+> > > 
+> > > --b.
+> > > 
+> > 
+> > Agreed. That would be much simpler, I think...
+> > 
+> > I didn't try that, though I did consider it before wandering down the
+> > rabbit hole. Dave, any thoughts?
+> 
+> Jeff suggested the following patch, which I've tried and it fixes the
+> problem I was seeing.  It passes the original, unmodified file_lock to
+> notify(), instead of the copy which is passed to (and coalesced by)
+> posix_lock_file().  I'm guessing this was reason for having a copy of the
+> file_lock in the first place, but it was just not used correctly.
 
-Just make a separate gss_destroy_cred() which doesn't call
-gss_destroying_context() and stick it into gss_nullops.
+Yep, that looks much better.  Though actually I suspect what was really
+intended was to use "flc" for the notifies, and "fl" for the
+posix_lock_file().
 
-Trond
+Also, since flc is never actually handed to the posix lock system, I
+think it should be a "shallow" lock copy--so it should be created with
+__locks_copy_lock().  Something like the below?
+
+--b.
+
+diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+index eba87ff..e8d9086 100644
+--- a/fs/dlm/plock.c
++++ b/fs/dlm/plock.c
+@@ -103,7 +103,7 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
+ 		op->info.owner	= (__u64) fl->fl_pid;
+ 		xop->callback	= fl->fl_lmops->fl_grant;
+ 		locks_init_lock(&xop->flc);
+-		locks_copy_lock(&xop->flc, fl);
++		__locks_copy_lock(&xop->flc, fl);
+ 		xop->fl		= fl;
+ 		xop->file	= file;
+ 	} else {
+@@ -173,8 +173,8 @@ static int dlm_plock_callback(struct plock_op *op)
+ 	}
+ 
+ 	/* got fs lock; bookkeep locally as well: */
+-	flc->fl_flags &= ~FL_SLEEP;
+-	if (posix_lock_file(file, flc, NULL)) {
++	fl->fl_flags &= ~FL_SLEEP;
++	if (posix_lock_file(file, fl, NULL)) {
+ 		/*
+ 		 * This can only happen in the case of kmalloc() failure.
+ 		 * The filesystem's own lock is the authoritative lock,
