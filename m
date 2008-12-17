@@ -1,224 +1,151 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 3/3] SUNRPC: svc_xprt_enqueue should not refuse to enqueue
- 'XPT_DEAD' transports
-Date: Wed, 17 Dec 2008 09:35:52 -0600
-Message-ID: <49491C58.9@opengridcomputing.com>
-References: <20081017123207.GA14979@rabbit.intern.cm-ag>	 <1224484046.23068.14.camel@localhost.localdomain>	 <1225539927.2221.3.camel@localhost.localdomain>	 <1225546878.4390.3.camel@heimdal.trondhjem.org>	 <1227596962.16868.22.camel@localhost.localdomain>	 <1227619696.7057.19.camel@heimdal.trondhjem.org>	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>	 <1227621434.7057.33.camel@heimdal.trondhjem.org>	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>	 <1227737539.31008.2.camel@localhost.localdomain>	 <1228090631.7112.11.camel@heimdal.trondhjem.org> <1228090815.7112.15.camel@heimdal.trondhjem.org>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH] gssd: By default,
+	don't spam syslog when users' credentials expire
+Date: Wed, 17 Dec 2008 12:39:27 -0500
+Message-ID: <20081217173927.3031.53736.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Ian Campbell <ijc@hellion.org.uk>, linux-nfs@vger.kernel.org,
-	Max Kellermann <mk@cm4all.com>, linux-kernel@vger.kernel.org,
-	gcosta@redhat.com, Grant Coady <grant_lkml@dodo.com.au>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754146AbYLQPgK@vger.kernel.org>
-In-Reply-To: <1228090815.7112.15.camel@heimdal.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from citi.umich.edu ([141.211.133.111]:29560 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751040AbYLQRj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 12:39:29 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> Aside from being racy (there is nothing preventing someone setting XPT_DEAD
-> after the test in svc_xprt_enqueue, and before XPT_BUSY is set), it is
-> wrong to assume that transports which have called svc_delete_xprt() might
-> not need to be re-enqueued.
+Change the priority of "common" log messages so that syslog doesn't get
+slammed/spammed when users' credentials expire, or there is another common
+problem which would cause error messages for all context creation requests.
 
-This is only true because now you allow transports with XPT_DEAD set to 
-be enqueued -- yes?
+Note that this will now require that gssd or svcgssd option "-v" is used to
+debug these common cases.
 
-> 
-> See the list of deferred requests, which is currently never going to
-> be cleared if the revisit call happens after svc_delete_xprt(). In this
-> case, the deferred request will currently keep a reference to the transport
-> forever.
->
+Original patch from Andrew Pollock <apollock@google.com>.
 
-I agree this is a possibility and it needs to be fixed. I'm concerned 
-that the root cause is still there though. I thought the test case was 
-the client side timing out the connection. Why are there deferred 
-requests sitting on what is presumably an idle connection?
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+cc: Andrew Pollock <apollock@google.com>
+---
 
+ utils/gssd/gss_util.c     |    2 +-
+ utils/gssd/gssd_proc.c    |    8 ++++----
+ utils/gssd/krb5_util.c    |    6 +++---
+ utils/gssd/svcgssd_proc.c |    6 +++---
+ 4 files changed, 11 insertions(+), 11 deletions(-)
 
-> The fix should be to allow dead transports to be enqueued in order to clear
-> the deferred requests, then change the order of processing in svc_recv() so
-> that we pick up deferred requests before we do the XPT_CLOSE processing.
-> 
+diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
+index 8a7bcaa..2d66be9 100644
+--- a/utils/gssd/gss_util.c
++++ b/utils/gssd/gss_util.c
+@@ -216,7 +216,7 @@ gssd_acquire_cred(char *server_name)
+ 		ignore_maj_stat = gss_display_name(&ignore_min_stat,
+ 				target_name, &pbuf, NULL);
+ 		if (ignore_maj_stat == GSS_S_COMPLETE) {
+-			printerr(0, "Unable to obtain credentials for '%.*s'\n",
++			printerr(1, "Unable to obtain credentials for '%.*s'\n",
+ 				 pbuf.length, pbuf.value);
+ 			ignore_maj_stat = gss_release_buffer(&ignore_min_stat,
+ 							     &pbuf);
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index cb14d45..91fc8d2 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -448,7 +448,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	return 0;
+ out_err:
+ 	if (buf) free(buf);
+-	printerr(0, "Failed to write downcall!\n");
++	printerr(1, "Failed to write downcall!\n");
+ 	return -1;
+ }
+ 
+@@ -741,14 +741,14 @@ handle_krb5_upcall(struct clnt_info *clp)
+ 			}
+ 			gssd_free_krb5_machine_cred_list(credlist);
+ 			if (!success) {
+-				printerr(0, "WARNING: Failed to create krb5 context "
++				printerr(1, "WARNING: Failed to create krb5 context "
+ 					 "for user with uid %d with any "
+ 					 "credentials cache for server %s\n",
+ 					 uid, clp->servername);
+ 				goto out_return_error;
+ 			}
+ 		} else {
+-			printerr(0, "WARNING: Failed to create krb5 context "
++			printerr(1, "WARNING: Failed to create krb5 context "
+ 				 "for user with uid %d for server %s\n",
+ 				 uid, clp->servername);
+ 			goto out_return_error;
+@@ -756,7 +756,7 @@ handle_krb5_upcall(struct clnt_info *clp)
+ 	}
+ 
+ 	if (!authgss_get_private_data(auth, &pd)) {
+-		printerr(0, "WARNING: Failed to obtain authentication "
++		printerr(1, "WARNING: Failed to obtain authentication "
+ 			    "data for user with uid %d for server %s\n",
+ 			 uid, clp->servername);
+ 		goto out_return_error;
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 77814bc..d4ee631 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -399,7 +399,7 @@ gssd_get_single_krb5_cred(krb5_context context,
+ 		goto out;
+ 	}
+ 	if (krb5_get_init_creds_opt_set_addressless(context, init_opts, 1))
+-		printerr(0, "WARNING: Unable to set option for addressless "
++		printerr(1, "WARNING: Unable to set option for addressless "
+ 			 "tickets.  May have problems behind a NAT.\n");
+ #ifdef TEST_SHORT_LIFETIME
+ 	/* set a short lifetime (for debugging only!) */
+@@ -422,7 +422,7 @@ gssd_get_single_krb5_cred(krb5_context context,
+ 
+ 	if ((code = krb5_get_init_creds_keytab(context, &my_creds, ple->princ,
+ 					       kt, 0, NULL, opts))) {
+-		printerr(0, "WARNING: %s while getting initial ticket for "
++		printerr(1, "WARNING: %s while getting initial ticket for "
+ 			 "principal '%s' using keytab '%s'\n",
+ 			 gssd_k5_err_msg(context, code),
+ 			 pname ? pname : "<unparsable>", kt_name);
+@@ -632,7 +632,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
+ 	/* Get full target hostname */
+ 	retval = getaddrinfo(inhost, NULL, &hints, &addrs);
+ 	if (retval) {
+-		printerr(0, "%s while getting full hostname for '%s'\n",
++		printerr(1, "%s while getting full hostname for '%s'\n",
+ 			 gai_strerror(retval), inhost);
+ 		goto out;
+ 	}
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index f162152..1d13532 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -108,7 +108,7 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 	fclose(f);
+ 	return err;
+ out_err:
+-	printerr(0, "WARNING: downcall failed\n");
++	printerr(1, "WARNING: downcall failed\n");
+ 	return -1;
+ }
+ 
+@@ -247,7 +247,7 @@ get_ids(gss_name_t client_name, gss_OID mech, struct svc_cred *cred)
+ 			res = 0;
+ 			goto out_free;
+ 		}
+-		printerr(0, "WARNING: get_ids: failed to map name '%s' "
++		printerr(1, "WARNING: get_ids: failed to map name '%s' "
+ 			"to uid/gid: %s\n", sname, strerror(-res));
+ 		goto out_free;
+ 	}
+@@ -380,7 +380,7 @@ handle_nullreq(FILE *f) {
+ 		goto continue_needed;
+ 	}
+ 	else if (maj_stat != GSS_S_COMPLETE) {
+-		printerr(0, "WARNING: gss_accept_sec_context failed\n");
++		printerr(1, "WARNING: gss_accept_sec_context failed\n");
+ 		pgsserr("handle_nullreq: gss_accept_sec_context",
+ 			maj_stat, min_stat, mech);
+ 		goto out_err;
 
-Wouldn't it be simpler to clean up any deferred requests in the close 
-path instead of changing the meaning of XPT_DEAD and dispatching 
-N-threads to do the same?
-
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  net/sunrpc/svc_xprt.c |  124 +++++++++++++++++++++++++++----------------------
->  1 files changed, 69 insertions(+), 55 deletions(-)
-> 
-> 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index a417064..b54cf84 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -297,10 +297,15 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->  	struct svc_serv	*serv = xprt->xpt_server;
->  	struct svc_pool *pool;
->  	struct svc_rqst	*rqstp;
-> +	unsigned long flags;
->  	int cpu;
->  
-> -	if (!(xprt->xpt_flags &
-> -	      ((1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED))))
-> +	flags = xprt->xpt_flags &
-> +		(1UL<<XPT_CONN | 1UL<<XPT_DATA | 1UL<<XPT_CLOSE |
-> +		 1UL<<XPT_DEAD | 1UL<<XPT_DEFERRED);
-> +	if (flags == 0)
-> +		return;
-> +	if ((flags & 1UL<<XPT_DEAD) != 0 && (flags & 1UL<<XPT_DEFERRED) == 0)
->  		return;
->  
->  	cpu = get_cpu();
-> @@ -315,12 +320,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->  		       "svc_xprt_enqueue: "
->  		       "threads and transports both waiting??\n");
->  
-> -	if (test_bit(XPT_DEAD, &xprt->xpt_flags)) {
-> -		/* Don't enqueue dead transports */
-> -		dprintk("svc: transport %p is dead, not enqueued\n", xprt);
-> -		goto out_unlock;
-> -	}
-> -
->  	/* Mark transport as busy. It will remain in this state until
->  	 * the provider calls svc_xprt_received. We update XPT_BUSY
->  	 * atomically because it also guards against trying to enqueue
-> @@ -566,6 +565,7 @@ static void svc_check_conn_limits(struct svc_serv *serv)
->  int svc_recv(struct svc_rqst *rqstp, long timeout)
->  {
->  	struct svc_xprt		*xprt = NULL;
-> +	struct svc_xprt		*newxpt;
->  	struct svc_serv		*serv = rqstp->rq_server;
->  	struct svc_pool		*pool = rqstp->rq_pool;
->  	int			len, i;
-> @@ -673,62 +673,76 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  	spin_unlock_bh(&pool->sp_lock);
->  
->  	len = 0;
-> +
-> +	/*
-> +	 * Deal with deferred requests first, since they need to be
-> +	 * dequeued and dropped if the transport has been closed.
-> +	 */
-> +	rqstp->rq_deferred = svc_deferred_dequeue(xprt);
-> +	if (rqstp->rq_deferred) {
-> +		svc_xprt_received(xprt);
-> +		len = svc_deferred_recv(rqstp);
-> +	}
-> +
->  	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
->  		dprintk("svc_recv: found XPT_CLOSE\n");
->  		svc_delete_xprt(xprt);
-> -	} else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-> -		struct svc_xprt *newxpt;
-> -		newxpt = xprt->xpt_ops->xpo_accept(xprt);
-> -		if (newxpt) {
-> -			/*
-> -			 * We know this module_get will succeed because the
-> -			 * listener holds a reference too
-> -			 */
-> -			__module_get(newxpt->xpt_class->xcl_owner);
-> -			svc_check_conn_limits(xprt->xpt_server);
-> -			spin_lock_bh(&serv->sv_lock);
-> -			set_bit(XPT_TEMP, &newxpt->xpt_flags);
-> -			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
-> -			serv->sv_tmpcnt++;
-> -			if (serv->sv_temptimer.function == NULL) {
-> -				/* setup timer to age temp transports */
-> -				setup_timer(&serv->sv_temptimer,
-> -					    svc_age_temp_xprts,
-> -					    (unsigned long)serv);
-> -				mod_timer(&serv->sv_temptimer,
-> -					  jiffies + svc_conn_age_period * HZ);
-> -			}
-> -			spin_unlock_bh(&serv->sv_lock);
-> -			svc_xprt_received(newxpt);
-> -		}
-> -		svc_xprt_received(xprt);
-> -	} else {
-> -		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
-> -			rqstp, pool->sp_id, xprt,
-> -			atomic_read(&xprt->xpt_ref.refcount));
-> -		rqstp->rq_deferred = svc_deferred_dequeue(xprt);
-> -		if (rqstp->rq_deferred) {
-> -			svc_xprt_received(xprt);
-> -			len = svc_deferred_recv(rqstp);
-> -		} else
-> +		goto drop_request;
-> +	}
-> +
-> +	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-> +		if (len == 0) {
-> +			dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
-> +					rqstp, pool->sp_id, xprt,
-> +					atomic_read(&xprt->xpt_ref.refcount));
->  			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
-> +
-> +			/* No data, incomplete (TCP) read, or accept() */
-> +			if (len == 0 || len == -EAGAIN)
-> +				goto drop_request;
-> +		}
-> +
->  		dprintk("svc: got len=%d\n", len);
-> -	}
->  
-> -	/* No data, incomplete (TCP) read, or accept() */
-> -	if (len == 0 || len == -EAGAIN) {
-> -		rqstp->rq_res.len = 0;
-> -		svc_xprt_release(rqstp);
-> -		return -EAGAIN;
-> +		clear_bit(XPT_OLD, &xprt->xpt_flags);
-> +
-> +		rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-> +		rqstp->rq_chandle.defer = svc_defer;
-> +
-> +		if (serv->sv_stats)
-> +			serv->sv_stats->netcnt++;
-> +		return len;
->  	}
-> -	clear_bit(XPT_OLD, &xprt->xpt_flags);
->  
-> -	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-> -	rqstp->rq_chandle.defer = svc_defer;
-> +	newxpt = xprt->xpt_ops->xpo_accept(xprt);
-> +	if (newxpt) {
-> +		/*
-> +		 * We know this module_get will succeed because the
-> +		 * listener holds a reference too
-> +		 */
-> +		__module_get(newxpt->xpt_class->xcl_owner);
-> +		svc_check_conn_limits(xprt->xpt_server);
-> +		spin_lock_bh(&serv->sv_lock);
-> +		set_bit(XPT_TEMP, &newxpt->xpt_flags);
-> +		list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
-> +		serv->sv_tmpcnt++;
-> +		if (serv->sv_temptimer.function == NULL) {
-> +			/* setup timer to age temp transports */
-> +			setup_timer(&serv->sv_temptimer,
-> +				    svc_age_temp_xprts,
-> +				    (unsigned long)serv);
-> +			mod_timer(&serv->sv_temptimer,
-> +				  jiffies + svc_conn_age_period * HZ);
-> +		}
-> +		spin_unlock_bh(&serv->sv_lock);
-> +		svc_xprt_received(newxpt);
-> +	}
-> +	svc_xprt_received(xprt);
->  
-> -	if (serv->sv_stats)
-> -		serv->sv_stats->netcnt++;
-> -	return len;
-> +drop_request:
-> +	rqstp->rq_res.len = 0;
-> +	svc_xprt_release(rqstp);
-> +	return -EAGAIN;
->  }
->  EXPORT_SYMBOL(svc_recv);
->  
-> 
