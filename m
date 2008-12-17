@@ -1,156 +1,217 @@
-From: "lioupayphone" <lioupayphone@gmail.com>
-Subject: what's the real meaning of fsid?
-Date: Wed, 17 Dec 2008 13:36:12 +0800
-Message-ID: <200812171336070316863@gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 5/6] nfsd: last_byte_offset
+Date: Wed, 17 Dec 2008 12:09:16 +0200
+Message-ID: <4948CFCC.9020709@panasas.com>
+References: <49469601.7020101@panasas.com> <1229362923-9847-1-git-send-email-bhalevy@panasas.com> <B51B6907-263A-420C-AD5B-E5EE1D16E138@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-To: "linux-nfs" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Chuck Lever <chuck.lever@oracle.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Fred Isaman <iisaman@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.188]:52118 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750772AbYLQFgT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Dec 2008 00:36:19 -0500
-Received: by ti-out-0910.google.com with SMTP id b6so2243351tic.23
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Dec 2008 21:36:17 -0800 (PST)
+Received: from gw-ca.panasas.com ([66.104.249.162]:5992 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751577AbYLQKJZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Dec 2008 05:09:25 -0500
+In-Reply-To: <B51B6907-263A-420C-AD5B-E5EE1D16E138@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, everyone. 
+Chuck Lever wrote:
+> Hi Benny-
+> 
+> On Dec 15, 2008, at 12:42 PM, Benny Halevy wrote:
+>> refactor the nfs4 server lock code to use last_byte_offset
+>> to compute the last byte covered by the lock.  Check for overflow
+>> so that the last byte is set to NFS4_MAX_UINT64 if offset + len
+>> wraps around.
+>>
+>> Also, use NFS4_MAX_UINT64 for ~(u64)0 where appropriate.
+> 
+> Comments below are more about the existing code than your patch.
+> 
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>> fs/nfsd/nfs4state.c  |   42 ++++++++++++++++++++++++++----------------
+>> include/linux/nfs4.h |    2 ++
+>> 2 files changed, 28 insertions(+), 16 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 977ef84..1835538 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -2404,6 +2404,26 @@ out:
+>> #define LOCK_HASH_SIZE             (1 << LOCK_HASH_BITS)
+>> #define LOCK_HASH_MASK             (LOCK_HASH_SIZE - 1)
+>>
+>> +static inline u64
+>> +end_offset(u64 start, u64 len)
+>> +{
+>> +	u64 end;
+>> +
+>> +	end = start + len;
+>> +	return end >= start ? end: NFS4_MAX_UINT64;
+>> +}
+>> +
+>> +/* last octet in a range */
+>> +static inline u64
+>> +last_byte_offset(u64 start, u64 len)
+>> +{
+>> +	u64 end;
+>> +
+>> +	BUG_ON(!len);
+>> +	end = start + len;
+>> +	return end > start ? end - 1: NFS4_MAX_UINT64;
+>> +}
+>> +
+>> #define lockownerid_hashval(id) \
+>>         ((id) & LOCK_HASH_MASK)
+>>
+>> @@ -2506,8 +2526,8 @@ nfs4_set_lock_denied(struct file_lock *fl,  
+>> struct nfsd4_lock_denied *deny)
+>> 		deny->ld_clientid.cl_id = 0;
+>> 	}
+>> 	deny->ld_start = fl->fl_start;
+>> -	deny->ld_length = ~(u64)0;
+>> -	if (fl->fl_end != ~(u64)0)
+>> +	deny->ld_length = NFS4_MAX_UINT64;
+>> +	if (fl->fl_end != NFS4_MAX_UINT64)
+> 
+> Someone more expert with the locking code than I am should comment on  
+> this... but fl_end is a loff_t (long long) -- not a u64.  The check  
+> here should be for OFFSET_MAX, just like it is in lockd, right?  Is  
 
-fsid in /etc/exports was used for identifying a file system. if a file system which exported 2 directories, it seems that we should tag the two export entries with same fsid.
+Yes. I think you're right.
+nfsd4_lock calls nfs4_transform_lock_offset right after
+setting fl_end = last_byte_offset()
+and nfs4_transform_lock_offset "truncates" the lock to
+OFFSET_MAX.
 
-eg
-on one machine (server   10.10.37.147,  Centos5.2 with linux2.6.18):
+That said, I wonder if we shouldn't return NFS4ERR_BAD_RANGE
+in nfsd4_lock lock->lk_length != NFS4_MAX_UINT64 &&
+last_byte_offset(lock->lk_offset, lock->lk_length) > (u64)OFFSET_MAX.
+(or just != file_lock.fl_end after nfs4_transform_lock_offset)
 
-#mkfs.ext3 /dev/sdc; mount /dev/sdc /mnt/;mkdir -p /mnt/dir1 /mnt/dir2; touch /mnt/dir1/wall-e /mnt/dir2/eva;
-#echo "/mnt/dir1 *(rw,async,root_squash,fsid=2)" > /etc/exports
-#echo "/mnt/dir2 *(rw,async,root_squash,fsid=2)" >> /etc/exports
-#service nfs start && exportfs -r
+The problem is that rfc3530 seems to refer only to 32-bit wide lock
+ranges and not to signed offsets.
 
-on another machine (client   10.10.37.154):
-#mount  10.10.37.147:/mnt/dir1 /mnt/1/ && mount 10.10.37.147:/mnt/dir2 /mnt/2/
+   Some servers may only support locking for byte offsets that fit
+   within 32 bits.  If the client specifies a range that includes a byte
+   beyond the last byte offset of the 32-bit range, but does not include
+   the last byte offset of the 32-bit and all of the byte offsets beyond
+   it, up to the end of the valid 64-bit range, such a 32-bit server
+   MUST return the error NFS4ERR_BAD_RANGE.
 
-i am puzzled:   on the client (10.10.37.154), i found both "/mnt/1/" and "/mnt/2/" have the same child ---- "wall-e".
+> "long long" the same width on all hardware architectures?
 
-so i browsed the code of 2.6.18 and found: exp_export(), fs/nfsd/export.c . i have taged a comment on this code listed below. please give me some suggestions. thx.
+I think so.  But even if it is, I don't know if that's just
+by chance or by design...
 
-/*
- * Export a file system.
- */
-int
-exp_export(struct nfsctl_export *nxp)
-{
-	svc_client	*clp;
-	struct svc_export	*exp = NULL;
-	struct svc_export	new;
-	struct svc_expkey	*fsid_key = NULL;
-	struct nameidata nd;
-	int		err;
+> 
+>> 		deny->ld_length = fl->fl_end - fl->fl_start + 1;
+>> 	deny->ld_type = NFS4_READ_LT;
+>> 	if (fl->fl_type != F_RDLCK)
+>> @@ -2604,7 +2624,7 @@ out:
+>> static int
+>> check_lock_length(u64 offset, u64 length)
+>> {
+>> -	return ((length == 0)  || ((length != ~(u64)0) &&
+>> +	return ((length == 0)  || ((length != NFS4_MAX_UINT64) &&
+>> 	     LOFF_OVERFLOW(offset, length)));
+>> }
+>>
+>> @@ -2724,11 +2744,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct  
+>> nfsd4_compound_state *cstate,
+>> 	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+>>
+>> 	file_lock.fl_start = lock->lk_offset;
+>> -	if ((lock->lk_length == ~(u64)0) ||
+>> -			LOFF_OVERFLOW(lock->lk_offset, lock->lk_length))
+>> -		file_lock.fl_end = ~(u64)0;
+>> -	else
+>> -		file_lock.fl_end = lock->lk_offset + lock->lk_length - 1;
+>> +	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock- 
+>>> lk_length);
+> 
+> Likewise, I think for proper interoperation with our VFS locking code,  
+> last_byte_offset should return a loff_t, and use OFFSET_MAX, not  
+> NFS4_MAX_UINT64 for the "biggest value I can think of" return.
 
-	/* Consistency check */
-	err = -EINVAL;
-	if (!exp_verify_string(nxp->ex_path, NFS_MAXPATHLEN) ||
-	    !exp_verify_string(nxp->ex_client, NFSCLNT_IDMAX))
-		goto out;
+I actually reuse last_byte_offset in the pnfs code for layout
+ranges too so I prefer to leave it in nfs4 "units" and maybe
+add a wrapper function that does the conversion, possibly with
+range checking, and returning status indicating whether
+information was lost or not.
 
-	dprintk("exp_export called for %s:%s (%x/%ld fl %x).\n",
-			nxp->ex_client, nxp->ex_path,
-			(unsigned)nxp->ex_dev, (long)nxp->ex_ino,
-			nxp->ex_flags);
+> 
+> This is a common issue for NFS -- the NFS/NLM wire data types for lock  
+> range values are u32 and u64, but Linux's internal types are  
+> loff_t's.  Our XDR code should manage this conversion and check that  
+> the incoming lock ranges can be supported by the implementation.
 
-	/* Try to lock the export table for update */
-	exp_writelock();
+I'm not sure if the XDR layer is the right place for that.
+Personally I think this should be checked at a higher layer
+but I don't feel strongly about it.
 
-	/* Look up client info */
-	if (!(clp = auth_domain_find(nxp->ex_client)))
-		goto out_unlock;
+> 
+> We don't actually have any unit test cases that check the behavior of  
+> this code around the file size and lock range maxima.
 
+Fred, how hard would it be to add these cases to the pynfs
+test suite?
 
-	/* Look up the dentry */
-	err = path_lookup(nxp->ex_path, 0, &nd);
-	if (err)
-		goto out_unlock;
-	err = -EINVAL;
+Benny
 
-	exp = exp_get_by_name(clp, nd.mnt, nd.dentry, NULL);
-
-	/* must make sure there won't be an ex_fsid clash */
-	if ((nxp->ex_flags & NFSEXP_FSID) &&
-	    (fsid_key = exp_get_fsid_key(clp, nxp->ex_dev)) &&
-	    !IS_ERR(fsid_key) &&
-	    fsid_key->ek_mnt &&
-		/* 
-		 * --> HERE.  "nd.mnt of "/mnt/dir1" and "/mnt/dir2" are same, but nd.dentry not.
-		 * "(fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry)" will be 1 in such
-		 * a situation. but they are different exp-entries in "/var/lib/nfs/etab"
-		* it should be "(fsid_key->ek_dentry != nd.dentry || fsid_key->ek_mnt != nd.mnt)" ??
-		 */
-	    (fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry) )        
-		goto finish;
-
-	if (exp) {
-		/* just a flags/id/fsid update */
-
-		exp_fsid_unhash(exp);
-		exp->ex_flags    = nxp->ex_flags;
-		exp->ex_anon_uid = nxp->ex_anon_uid;
-		exp->ex_anon_gid = nxp->ex_anon_gid;
-		exp->ex_fsid     = nxp->ex_dev;
-
-		err = exp_fsid_hash(clp, exp);
-		goto finish;
-	}
-
-	err = check_export(nd.dentry->d_inode, nxp->ex_flags);
-	if (err) goto finish;
-
-	err = -ENOMEM;
-
-	dprintk("nfsd: creating export entry %p for client %p\n", exp, clp);
-
-	new.h.expiry_time = NEVER;
-	new.h.flags = 0;
-	new.ex_client = clp;
-	new.ex_mnt = nd.mnt;
-	new.ex_dentry = nd.dentry;
-	new.ex_flags = nxp->ex_flags;
-	new.ex_anon_uid = nxp->ex_anon_uid;
-	new.ex_anon_gid = nxp->ex_anon_gid;
-	new.ex_fsid = nxp->ex_dev;
-
-	exp = svc_export_lookup(&new);
-	if (exp)
-		exp = svc_export_update(&new, exp);
-
-	if (!exp)
-		goto finish;
-
-	if (exp_hash(clp, exp) ||
-	    exp_fsid_hash(clp, exp)) {
-		/* failed to create at least one index */
-		exp_do_unexport(exp);
-		cache_flush();
-		err = -ENOMEM;
-	}
-
-finish:
-	if (exp)
-		exp_put(exp);
-	if (fsid_key && !IS_ERR(fsid_key))
-		cache_put(&fsid_key->h, &svc_expkey_cache);
-	if (clp)
-		auth_domain_put(clp);
-	path_release(&nd);
-out_unlock:
-	exp_writeunlock();
-out:
-	return err;
-}
-	
-	
- 				
-Best Regards! 
-lioupayphone
+> 
+>> 	nfs4_transform_lock_offset(&file_lock);
+>>
+>> 	/*
+>> @@ -2827,10 +2843,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct  
+>> nfsd4_compound_state *cstate,
+>> 	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+>>
+>> 	file_lock.fl_start = lockt->lt_offset;
+>> -	if ((lockt->lt_length == ~(u64)0) || LOFF_OVERFLOW(lockt- 
+>>> lt_offset, lockt->lt_length))
+>> -		file_lock.fl_end = ~(u64)0;
+>> -	else
+>> -		file_lock.fl_end = lockt->lt_offset + lockt->lt_length - 1;
+>> +	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt- 
+>>> lt_length);
+>> 	nfs4_transform_lock_offset(&file_lock);
+>>
+>> @@ -2894,10 +2907,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct  
+>> nfsd4_compound_state *cstate,
+>> 	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+>> 	file_lock.fl_start = locku->lu_offset;
+>>
+>> -	if ((locku->lu_length == ~(u64)0) || LOFF_OVERFLOW(locku- 
+>>> lu_offset, locku->lu_length))
+>> -		file_lock.fl_end = ~(u64)0;
+>> -	else
+>> -		file_lock.fl_end = locku->lu_offset + locku->lu_length - 1;
+>> +	file_lock.fl_end = last_byte_offset(locku->lu_offset, locku- 
+>>> lu_length);
+>> 	nfs4_transform_lock_offset(&file_lock);
+>>
+>> 	/*
+>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>> index ea03667..b912311 100644
+>> --- a/include/linux/nfs4.h
+>> +++ b/include/linux/nfs4.h
+>> @@ -88,6 +88,8 @@
+>> #define NFS4_ACE_GENERIC_EXECUTE              0x001200A0
+>> #define NFS4_ACE_MASK_ALL                     0x001F01FF
+>>
+>> +#define NFS4_MAX_UINT64	(~(u64)0)
+>> +
+>> enum nfs4_acl_whotype {
+>> 	NFS4_ACL_WHO_NAMED = 0,
+>> 	NFS4_ACL_WHO_OWNER,
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
 
 
