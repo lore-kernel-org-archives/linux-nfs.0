@@ -1,67 +1,86 @@
-From: David Teigland <teigland@redhat.com>
-Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks (RFC)
-Date: Wed, 17 Dec 2008 13:14:53 -0600
-Message-ID: <20081217191453.GA16777@redhat.com>
-References: <1227130623-31607-1-git-send-email-jlayton@redhat.com> <20081122011555.GA28485@fieldses.org> <20081124103313.0c779324@tleilax.poochiereds.net> <20081124170653.GF17862@fieldses.org> <20081213074042.2e8223c3@tleilax.poochiereds.net> <20081216193806.GC18928@fieldses.org> <20081216195635.GD18928@fieldses.org> <20081216161158.2d173667@tleilax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: possible module refcount leak with auth_gss
+Date: Wed, 17 Dec 2008 14:20:47 -0500
+Message-ID: <20081217192047.GL4614@fieldses.org>
+References: <20081208102855.30081708@tleilax.poochiereds.net>
+	<20081208173706.GE16628@fieldses.org>
+	<20081209153849.6605559a@tleilax.poochiereds.net>
+	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
+	<20081210112506.2b2d2c3a@tleilax.poochiereds.net>
+	<20081210163136.GB28263@fieldses.org>
+	<20081216164532.22cab9d6@tleilax.poochiereds.net>
+	<20081216214051.51019f51@tupile.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
 To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51653 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751099AbYLQTRa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2008 14:17:30 -0500
-In-Reply-To: <20081216161158.2d173667-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20081216214051.51019f51@tupile.poochiereds.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 16, 2008 at 04:11:58PM -0500, Jeff Layton wrote:
-> On Tue, 16 Dec 2008 14:56:35 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > After thinking a little more: the interface is a lot simpler if it's
-> > just a simple request and reply (with the reply for a lock identical to
-> > the request).  I believe that's more or less what gfs2 is already do
-> > internally, if we look at the posix lock upcalls it's making to
-> > userspace.  So it shouldn't be hard to fix gfs2 to hand us back a lock
-> > that doesn't take into account any coalescing.  If it needs to keep an
-> > extra (unmodified) copy of the lock around, that's OK.
+On Tue, Dec 16, 2008 at 09:40:51PM -0500, Jeff Layton wrote:
+> On Tue, 16 Dec 2008 16:45:32 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
+> > I took some time today to dig into this. Here's some debug output from
+> > the RPC_GSS_PROC_DESTROY request on the client:
 > > 
-> > Did you try that and find a reason that doesn't work?
+> > RPC:     0 holding RPCSEC_GSS cred ffff880011579bb8
+> > RPC:       new task initialized, procpid 2846
+> > RPC:       allocated task ffff88001e110000
+> > RPC:    11 __rpc_execute flags=0x281
+> > RPC:    11 call_start nfs4 proc NULL (async)
+> > RPC:    11 call_reserve (status 0)
+> > RPC:    11 call_refresh (status 0)
+> > RPC:    11 refreshing RPCSEC_GSS cred ffff880011579bb8
+> > RPC:    11 call_refreshresult (status -13)
+> > RPC:    11 return 0, status -13
+> > RPC:    11 release task
+> > RPC:    11 releasing RPCSEC_GSS cred ffff880011579bb8
 > > 
-> > --b.
+> > ...looks like we're trying to refresh the credentials before sending the
+> > call but that's failing. That's as far as I've gotten with it so far
+> > though.
 > > 
 > 
-> Agreed. That would be much simpler, I think...
+> I see why this is occuring, but I'm afraid I don't understand the code
+> well enough to understand why it's written this way...
 > 
-> I didn't try that, though I did consider it before wandering down the
-> rabbit hole. Dave, any thoughts?
+> gss_destroying_context() does this:
+> 
+>         if (gss_cred->gc_ctx == NULL ||
+>             test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
+>                 return 0;
+> 
+>         gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
+>         cred->cr_ops = &gss_nullops;
+> 
+> ...and then it does the rpc NULL call. The problem is that we're clearing
+> RPCAUTH_CRED_UPTODATE and then setting cr_ops to gss_nullops. The rpc
+> call is done, call_reserve checks the RPCAUTH_CRED_UPTODATE bit, and calls
+> call_refresh because it's not set.
+> 
+> call_refresh calls rpcauth_refreshcred which calls the crrefresh op. That's
+> now gss_refresh_null, and that just returns -EACCES. The RPC call then
+> fails w/o ever being sent.
+> 
+> It seems like we either need to not clear the UPTODATE bit for the cred, or
+> not set the cr_ops to the nullops before doing the call. Any thoughts?
 
-Jeff suggested the following patch, which I've tried and it fixes the
-problem I was seeing.  It passes the original, unmodified file_lock to
-notify(), instead of the copy which is passed to (and coalesced by)
-posix_lock_file().  I'm guessing this was reason for having a copy of the
-file_lock in the first place, but it was just not used correctly.
+We certainly shouldn't be really refreshing the cred--that'd end up
+creating a new gss context when what we're trying to do is destroy one.
+So leaving cr_ops set to gss_credops() doesn't sound right.
 
-diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-index eba87ff..502b1ea 100644
---- a/fs/dlm/plock.c
-+++ b/fs/dlm/plock.c
-@@ -168,7 +168,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 	notify = xop->callback;
- 
- 	if (op->info.rv) {
--		notify(flc, NULL, op->info.rv);
-+		notify(fl, NULL, op->info.rv);
- 		goto out;
- 	}
- 
-@@ -187,7 +187,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 			  (unsigned long long)op->info.number, file, fl);
- 	}
- 
--	rv = notify(flc, NULL, 0);
-+	rv = notify(fl, NULL, 0);
- 	if (rv) {
- 		/* XXX: We need to cancel the fs lock here: */
- 		log_print("dlm_plock_callback: lock granted after lock request "
+Maybe that gss_refresh_null() should just return 0 and pretend the
+cred's fine, instead of returning -EACCES?
+
+--b.
