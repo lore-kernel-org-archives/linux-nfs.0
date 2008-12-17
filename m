@@ -1,71 +1,128 @@
-From: David Teigland <teigland@redhat.com>
-Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks (RFC)
-Date: Wed, 17 Dec 2008 15:28:27 -0600
-Message-ID: <20081217212827.GB16777@redhat.com>
-References: <1227130623-31607-1-git-send-email-jlayton@redhat.com> <20081122011555.GA28485@fieldses.org> <20081124103313.0c779324@tleilax.poochiereds.net> <20081124170653.GF17862@fieldses.org> <20081213074042.2e8223c3@tleilax.poochiereds.net> <20081216193806.GC18928@fieldses.org> <20081216195635.GD18928@fieldses.org> <20081216161158.2d173667@tleilax.poochiereds.net> <20081217191453.GA16777@redhat.com> <20081217200156.GO4614@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] statd: not unlinking host files
+Date: Wed, 17 Dec 2008 16:48:19 -0500
+Message-ID: <494973A3.7050809@RedHat.com>
+References: <493A8D71.20603@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:54242 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:37296 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751871AbYLQVbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2008 16:31:05 -0500
-In-Reply-To: <20081217200156.GO4614@fieldses.org>
+	id S1751101AbYLQVua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 16:50:30 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mBHLoU9f021639
+	for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 16:50:30 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id mBHLoTiu007797
+	for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 16:50:29 -0500
+Received: from [10.16.10.38] (vpn-10-38.bos.redhat.com [10.16.10.38])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id mBHLoSFI012351
+	for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 16:50:28 -0500
+In-Reply-To: <493A8D71.20603-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 17, 2008 at 03:01:56PM -0500, J. Bruce Fields wrote:
-> Yep, that looks much better.  Though actually I suspect what was really
-> intended was to use "flc" for the notifies, and "fl" for the
-> posix_lock_file().
-> 
-> Also, since flc is never actually handed to the posix lock system, I
-> think it should be a "shallow" lock copy--so it should be created with
-> __locks_copy_lock().  Something like the below?
+This is the patch I committed....
 
-With this I'm back to seeing the same problem, but with the mismatch in
-the reverse direction.
+steved.
 
-It seems fl points to lockd's file_lock, and that lockd expects notify()
-will be called with a pointer to a file_lock that matches one of its own.
-Based on that I think we'd always pass fl to notify().
+commit bc870150cc2116584aee288d15ac2b9a2f825ff5
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Dec 17 16:41:35 2008 -0500
 
-The question then is whether lockd's file_lock should be coalesced or not.
-If so, we'd pass fl to posix_lock_file().  If not, we'd pass flc to
-posix_lock_file().  In both cases, fl would be passed to notify() and
-would match.  In the former case, I don't see much purpose for flc to even
-exist.  The patch I sent was the later case.
+    statd: not unlinking host files
+    
+    Statd is not unlinking host files during SM_UNMON and
+    SM_UNMON_ALL calls because the given host is still on the run-time
+    notify list (rtnl) and the check flag is set when xunlink() is
+    called. But the next thing the caller of xunlink() does is
+    remove the host from the rtnl list which means the
+    unlink will never happen.
+    
+    So this patch removes the check flag from xunlink() since
+    its not needed and correctly allocates and frees memory
+    used by xunlink().
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
-In the original code, we coalesce flc which then fails to match the
-original (fl) in lockd.  In your patch, we coalesce fl which then fails to
-match the copy of the original (flc).
-
-Dave
-
-> 
-> diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-> index eba87ff..e8d9086 100644
-> --- a/fs/dlm/plock.c
-> +++ b/fs/dlm/plock.c
-> @@ -103,7 +103,7 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
->  		op->info.owner	= (__u64) fl->fl_pid;
->  		xop->callback	= fl->fl_lmops->fl_grant;
->  		locks_init_lock(&xop->flc);
-> -		locks_copy_lock(&xop->flc, fl);
-> +		__locks_copy_lock(&xop->flc, fl);
->  		xop->fl		= fl;
->  		xop->file	= file;
->  	} else {
-> @@ -173,8 +173,8 @@ static int dlm_plock_callback(struct plock_op *op)
->  	}
->  
->  	/* got fs lock; bookkeep locally as well: */
-> -	flc->fl_flags &= ~FL_SLEEP;
-> -	if (posix_lock_file(file, flc, NULL)) {
-> +	fl->fl_flags &= ~FL_SLEEP;
-> +	if (posix_lock_file(file, fl, NULL)) {
->  		/*
->  		 * This can only happen in the case of kmalloc() failure.
->  		 * The filesystem's own lock is the authoritative lock,
+diff --git a/utils/statd/misc.c b/utils/statd/misc.c
+index fd201b4..7256291 100644
+--- a/utils/statd/misc.c
++++ b/utils/statd/misc.c
+@@ -53,23 +53,25 @@ xstrdup (const char *string)
+ 
+ 
+ /*
+- * Call with check=1 to verify that this host is not still on the rtnl
+- * before unlinking file.
++ * Unlinking a file.
+  */
+ void
+-xunlink (char *path, char *host, short int check)
++xunlink (char *path, char *host)
+ {
+-  char *tozap;
++	char *tozap;
+ 
+-  tozap=alloca (strlen(path)+strlen(host)+2);
+-  sprintf (tozap, "%s/%s", path, host);
++	tozap = malloc(strlen(path)+strlen(host)+2);
++	if (tozap == NULL) {
++		note(N_ERROR, "xunlink: malloc failed: errno %d (%s)", 
++			errno, strerror(errno));
++		return;
++	}
++	sprintf (tozap, "%s/%s", path, host);
+ 
+-  if (!check || !nlist_gethost(rtnl, host, 0)) {
+-    if (unlink (tozap) == -1)
+-      note (N_ERROR, "unlink (%s): %s", tozap, strerror (errno));
+-    else
+-      dprintf (N_DEBUG, "Unlinked %s", tozap);
+-  }
+-  else
+-    dprintf (N_DEBUG, "Not unlinking %s--host still monitored.", tozap);
++	if (unlink (tozap) == -1)
++		note(N_ERROR, "unlink (%s): %s", tozap, strerror (errno));
++	else
++		dprintf (N_DEBUG, "Unlinked %s", tozap);
++
++	free(tozap);
+ }
+diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
+index a6a1d9c..24c2531 100644
+--- a/utils/statd/monitor.c
++++ b/utils/statd/monitor.c
+@@ -352,7 +352,7 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
+ 			/* PRC: do the HA callout: */
+ 			ha_callout("del-client", mon_name, my_name, -1);
+ 
+-			xunlink(SM_DIR, clnt->dns_name, 1);
++			xunlink(SM_DIR, clnt->dns_name);
+ 			nlist_free(&rtnl, clnt);
+ 
+ 			return (&result);
+@@ -404,7 +404,7 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
+ 			temp = NL_NEXT(clnt);
+ 			/* PRC: do the HA callout: */
+ 			ha_callout("del-client", mon_name, my_name, -1);
+-			xunlink(SM_DIR, clnt->dns_name, 1);
++			xunlink(SM_DIR, clnt->dns_name);
+ 			nlist_free(&rtnl, clnt);
+ 			++count;
+ 			clnt = temp;
+diff --git a/utils/statd/statd.h b/utils/statd/statd.h
+index 5a6e289..88ba208 100644
+--- a/utils/statd/statd.h
++++ b/utils/statd/statd.h
+@@ -53,7 +53,7 @@ extern int	process_notify_list(void);
+ extern int	process_reply(FD_SET_TYPE *);
+ extern char *	xstrdup(const char *);
+ extern void *	xmalloc(size_t);
+-extern void	xunlink (char *, char *, short int);
++extern void	xunlink (char *, char *);
+ extern void	load_state(void);
+ 
+ /*
