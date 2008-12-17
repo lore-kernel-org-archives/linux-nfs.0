@@ -1,89 +1,67 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 3/3] SUNRPC: svc_xprt_enqueue should not refuse to
- enqueue 'XPT_DEAD' transports
-Date: Wed, 17 Dec 2008 14:07:57 -0500
-Message-ID: <1229540877.7257.97.camel@heimdal.trondhjem.org>
-References: <20081017123207.GA14979@rabbit.intern.cm-ag>
-	 <1224484046.23068.14.camel@localhost.localdomain>
-	 <1225539927.2221.3.camel@localhost.localdomain>
-	 <1225546878.4390.3.camel@heimdal.trondhjem.org>
-	 <1227596962.16868.22.camel@localhost.localdomain>
-	 <1227619696.7057.19.camel@heimdal.trondhjem.org>
-	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>
-	 <1227621434.7057.33.camel@heimdal.trondhjem.org>
-	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
-	 <1227737539.31008.2.camel@localhost.localdomain>
-	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
-	 <1228090815.7112.15.camel@heimdal.trondhjem.org>
-	 <49491C58.9@opengridcomputing.com>
+From: David Teigland <teigland@redhat.com>
+Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks (RFC)
+Date: Wed, 17 Dec 2008 13:14:53 -0600
+Message-ID: <20081217191453.GA16777@redhat.com>
+References: <1227130623-31607-1-git-send-email-jlayton@redhat.com> <20081122011555.GA28485@fieldses.org> <20081124103313.0c779324@tleilax.poochiereds.net> <20081124170653.GF17862@fieldses.org> <20081213074042.2e8223c3@tleilax.poochiereds.net> <20081216193806.GC18928@fieldses.org> <20081216195635.GD18928@fieldses.org> <20081216161158.2d173667@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>, linux-nfs@vger.kernel.org,
-	Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>, linux-kernel@vger.kernel.org,
-	gcosta@redhat.com, Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Tucker <tom@opengridcomputing.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18674 "EHLO mx2.netapp.com"
+Received: from mx2.redhat.com ([66.187.237.31]:51653 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751056AbYLQTIr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2008 14:08:47 -0500
-In-Reply-To: <49491C58.9@opengridcomputing.com>
+	id S1751099AbYLQTRa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 14:17:30 -0500
+In-Reply-To: <20081216161158.2d173667-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2008-12-17 at 09:35 -0600, Tom Tucker wrote:
-> Trond Myklebust wrote:
-> > Aside from being racy (there is nothing preventing someone setting XPT_DEAD
-> > after the test in svc_xprt_enqueue, and before XPT_BUSY is set), it is
-> > wrong to assume that transports which have called svc_delete_xprt() might
-> > not need to be re-enqueued.
-> 
-> This is only true because now you allow transports with XPT_DEAD set to 
-> be enqueued -- yes?
-> 
+On Tue, Dec 16, 2008 at 04:11:58PM -0500, Jeff Layton wrote:
+> On Tue, 16 Dec 2008 14:56:35 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > After thinking a little more: the interface is a lot simpler if it's
+> > just a simple request and reply (with the reply for a lock identical to
+> > the request).  I believe that's more or less what gfs2 is already do
+> > internally, if we look at the posix lock upcalls it's making to
+> > userspace.  So it shouldn't be hard to fix gfs2 to hand us back a lock
+> > that doesn't take into account any coalescing.  If it needs to keep an
+> > extra (unmodified) copy of the lock around, that's OK.
 > > 
-> > See the list of deferred requests, which is currently never going to
-> > be cleared if the revisit call happens after svc_delete_xprt(). In this
-> > case, the deferred request will currently keep a reference to the transport
-> > forever.
-> >
-> 
-> I agree this is a possibility and it needs to be fixed. I'm concerned 
-> that the root cause is still there though. I thought the test case was 
-> the client side timing out the connection. Why are there deferred 
-> requests sitting on what is presumably an idle connection?
-
-I haven't said that they are the cause of this test case. I've said that
-deferred requests hold references to the socket that can obviously
-deadlock. That needs to be fixed regardless of whether or not it is the
-cause here.
-
-There are plenty of situations in which the client may choose to close
-the TCP socket even if there are outstanding requests. One of the most
-common is when the user signals the process, so that an RPC call that
-was partially transmitted (ran out of buffer space) gets cancelled
-before it can finish transmitting. In that case the client has no choice
-but to disconnect and immediately reconnect.
-
-> > The fix should be to allow dead transports to be enqueued in order to clear
-> > the deferred requests, then change the order of processing in svc_recv() so
-> > that we pick up deferred requests before we do the XPT_CLOSE processing.
+> > Did you try that and find a reason that doesn't work?
+> > 
+> > --b.
 > > 
 > 
-> Wouldn't it be simpler to clean up any deferred requests in the close 
-> path instead of changing the meaning of XPT_DEAD and dispatching 
-> N-threads to do the same?
+> Agreed. That would be much simpler, I think...
+> 
+> I didn't try that, though I did consider it before wandering down the
+> rabbit hole. Dave, any thoughts?
 
-AFAICS, deferred requests are the property of the cache until they
-expire or a downcall occurs. I'm not aware of any way to cancel only
-those deferred requests that hold a reference to this particular
-transport.
+Jeff suggested the following patch, which I've tried and it fixes the
+problem I was seeing.  It passes the original, unmodified file_lock to
+notify(), instead of the copy which is passed to (and coalesced by)
+posix_lock_file().  I'm guessing this was reason for having a copy of the
+file_lock in the first place, but it was just not used correctly.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+index eba87ff..502b1ea 100644
+--- a/fs/dlm/plock.c
++++ b/fs/dlm/plock.c
+@@ -168,7 +168,7 @@ static int dlm_plock_callback(struct plock_op *op)
+ 	notify = xop->callback;
+ 
+ 	if (op->info.rv) {
+-		notify(flc, NULL, op->info.rv);
++		notify(fl, NULL, op->info.rv);
+ 		goto out;
+ 	}
+ 
+@@ -187,7 +187,7 @@ static int dlm_plock_callback(struct plock_op *op)
+ 			  (unsigned long long)op->info.number, file, fl);
+ 	}
+ 
+-	rv = notify(flc, NULL, 0);
++	rv = notify(fl, NULL, 0);
+ 	if (rv) {
+ 		/* XXX: We need to cancel the fs lock here: */
+ 		log_print("dlm_plock_callback: lock granted after lock request "
