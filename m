@@ -1,45 +1,48 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: what's the real meaning of fsid?
-Date: Wed, 17 Dec 2008 17:32:07 -0500
-Message-ID: <49497DE7.6050102@RedHat.com>
-References: <200812171336070316863@gmail.com>
+Subject: Re: nfs-utils mountd getfh failed: No such file or directory
+Date: Wed, 17 Dec 2008 17:41:45 -0500
+Message-ID: <49498029.1080307@RedHat.com>
+References: <x6k5a0166x@gzp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: lioupayphone <lioupayphone@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Gabor Z. Papp" <gzp-2g/1Y3AqmNE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34825 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:53011 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752510AbYLQWeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2008 17:34:20 -0500
-In-Reply-To: <200812171336070316863@gmail.com>
+	id S1751440AbYLQWn7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 17:43:59 -0500
+In-Reply-To: <x6k5a0166x@gzp>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-lioupayphone wrote:
-> Hello, everyone. 
+Gabor Z. Papp wrote:
+> Hello,
 > 
-> fsid in /etc/exports was used for identifying a file system. if a file system which exported 2 directories, it seems that we should tag the two export entries with same fsid.
+> I would like to use nfs-utils 1.1.4 (and 1.1.*) in the following environment:
 > 
-> eg
-> on one machine (server   10.10.37.147,  Centos5.2 with linux2.6.18):
+> [kernel]
+> Linux gzp 2.6.27.9-gzp2 #1 Tue Dec 16 15:17:04 CET 2008 i686 GNU/Linux
 > 
-> #mkfs.ext3 /dev/sdc; mount /dev/sdc /mnt/;mkdir -p /mnt/dir1 /mnt/dir2; touch /mnt/dir1/wall-e /mnt/dir2/eva;
-> #echo "/mnt/dir1 *(rw,async,root_squash,fsid=2)" > /etc/exports
-> #echo "/mnt/dir2 *(rw,async,root_squash,fsid=2)" >> /etc/exports
-> #service nfs start && exportfs -r
+> [glibc]
+> GNU C Library stable release version 2.3.6, by Roland McGrath et al.
+> Compiled by GNU CC version 4.1.2.
+> Compiled on a Linux 2.4.34-gzp1 system on 2007-04-04.
 > 
-> on another machine (client   10.10.37.154):
-> #mount  10.10.37.147:/mnt/dir1 /mnt/1/ && mount 10.10.37.147:/mnt/dir2 /mnt/2/
+> But getting this error after trying to mount from remote:
 > 
-> i am puzzled:   on the client (10.10.37.154), i found both "/mnt/1/" and "/mnt/2/" have the same child ---- "wall-e".
+> 2008 Dec 16 15:48:44 <daemon.info> gzp portmap[1843]: connect from 192.168.1.1 to getport(nfs)
+> 2008 Dec 16 15:48:44 <daemon.info> gzp portmap[1844]: connect from 192.168.1.1 to getport(mountd)
+> 2008 Dec 16 15:48:44 <daemon.notice> gzp mountd[1748]: authenticated mount request from 192.168.1.1:835 for /var/archive/sda1 (/var/archive/sda1)
+> 2008 Dec 16 15:48:44 <daemon.warning> gzp mountd[1748]: getfh failed: No such file or directory
 > 
-> so i browsed the code of 2.6.18 and found: exp_export(), fs/nfsd/export.c . i have taged a comment on this code listed below. please give me some suggestions. thx.
-I'm a bit puzzled by "both "/mnt/1/" and "/mnt/2/" have the same child". 
-Do mean they have the same file handle??
+> Found the revelant code in the mountd source, but I don't know what is this error.
+This might be due to the fact that the nfsd module is not loaded when
+mountd is started since it appears mountd is not using the new caching.
+
+Make sure a 'modprobe nfsd' happens before mountd is started...
 
 steved.
-
 
