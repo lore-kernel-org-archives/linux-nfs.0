@@ -1,97 +1,156 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: possible module refcount leak with auth_gss
-Date: Tue, 16 Dec 2008 21:40:51 -0500
-Message-ID: <20081216214051.51019f51@tupile.poochiereds.net>
-References: <20081208102855.30081708@tleilax.poochiereds.net>
-	<20081208173706.GE16628@fieldses.org>
-	<20081209153849.6605559a@tleilax.poochiereds.net>
-	<4d569c330812091521s6b9405faq910cb94f067f3b@mail.gmail.com>
-	<20081210112506.2b2d2c3a@tleilax.poochiereds.net>
-	<20081210163136.GB28263@fieldses.org>
-	<20081216164532.22cab9d6@tleilax.poochiereds.net>
+From: "lioupayphone" <lioupayphone@gmail.com>
+Subject: what's the real meaning of fsid?
+Date: Wed, 17 Dec 2008 13:36:12 +0800
+Message-ID: <200812171336070316863@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Kevin Coffman <kwc@umich.edu>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain;
+	charset="us-ascii"
+To: "linux-nfs" <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:55977 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752596AbYLQClo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Dec 2008 21:41:44 -0500
-In-Reply-To: <20081216164532.22cab9d6-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from ti-out-0910.google.com ([209.85.142.188]:52118 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750772AbYLQFgT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Dec 2008 00:36:19 -0500
+Received: by ti-out-0910.google.com with SMTP id b6so2243351tic.23
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Dec 2008 21:36:17 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 16 Dec 2008 16:45:32 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+Hello, everyone. 
 
-> On Wed, 10 Dec 2008 11:31:36 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Dec 10, 2008 at 11:25:06AM -0500, Jeff Layton wrote:
-> > > It works. With a nfs-utils that has your patches to properly set the
-> > > cache timeouts it looks like this problem is generally fixed. The module
-> > > refcounts go back to normal once the tickets expire.
-> > > 
-> > > That said, I think we should have a look at Bruce's suggestion for changing
-> > > the way that the module refcounts are actually handled. It would seem to
-> > > make more sense to hold the reference based on the exports using that auth
-> > > scheme, and to purge the caches on module unload.
-> > > 
-> > > Not a huge deal, but probably something we should consider.
-> > 
-> > Yeah.  Since I don't care enough about module unloading, I'm not going
-> > to work on this now.  But it's unfortunate.
-> > 
-> > I'm a little more worried about why the RPC_GSS_PROC_DESTROY requests
-> > aren't working.
-> > 
-> 
-> I took some time today to dig into this. Here's some debug output from
-> the RPC_GSS_PROC_DESTROY request on the client:
-> 
-> RPC:     0 holding RPCSEC_GSS cred ffff880011579bb8
-> RPC:       new task initialized, procpid 2846
-> RPC:       allocated task ffff88001e110000
-> RPC:    11 __rpc_execute flags=0x281
-> RPC:    11 call_start nfs4 proc NULL (async)
-> RPC:    11 call_reserve (status 0)
-> RPC:    11 call_refresh (status 0)
-> RPC:    11 refreshing RPCSEC_GSS cred ffff880011579bb8
-> RPC:    11 call_refreshresult (status -13)
-> RPC:    11 return 0, status -13
-> RPC:    11 release task
-> RPC:    11 releasing RPCSEC_GSS cred ffff880011579bb8
-> 
-> ...looks like we're trying to refresh the credentials before sending the
-> call but that's failing. That's as far as I've gotten with it so far
-> though.
-> 
+fsid in /etc/exports was used for identifying a file system. if a file system which exported 2 directories, it seems that we should tag the two export entries with same fsid.
 
-I see why this is occuring, but I'm afraid I don't understand the code
-well enough to understand why it's written this way...
+eg
+on one machine (server   10.10.37.147,  Centos5.2 with linux2.6.18):
 
-gss_destroying_context() does this:
+#mkfs.ext3 /dev/sdc; mount /dev/sdc /mnt/;mkdir -p /mnt/dir1 /mnt/dir2; touch /mnt/dir1/wall-e /mnt/dir2/eva;
+#echo "/mnt/dir1 *(rw,async,root_squash,fsid=2)" > /etc/exports
+#echo "/mnt/dir2 *(rw,async,root_squash,fsid=2)" >> /etc/exports
+#service nfs start && exportfs -r
 
-        if (gss_cred->gc_ctx == NULL ||
-            test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
-                return 0;
+on another machine (client   10.10.37.154):
+#mount  10.10.37.147:/mnt/dir1 /mnt/1/ && mount 10.10.37.147:/mnt/dir2 /mnt/2/
 
-        gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
-        cred->cr_ops = &gss_nullops;
+i am puzzled:   on the client (10.10.37.154), i found both "/mnt/1/" and "/mnt/2/" have the same child ---- "wall-e".
 
-...and then it does the rpc NULL call. The problem is that we're clearing
-RPCAUTH_CRED_UPTODATE and then setting cr_ops to gss_nullops. The rpc
-call is done, call_reserve checks the RPCAUTH_CRED_UPTODATE bit, and calls
-call_refresh because it's not set.
+so i browsed the code of 2.6.18 and found: exp_export(), fs/nfsd/export.c . i have taged a comment on this code listed below. please give me some suggestions. thx.
 
-call_refresh calls rpcauth_refreshcred which calls the crrefresh op. That's
-now gss_refresh_null, and that just returns -EACCES. The RPC call then
-fails w/o ever being sent.
+/*
+ * Export a file system.
+ */
+int
+exp_export(struct nfsctl_export *nxp)
+{
+	svc_client	*clp;
+	struct svc_export	*exp = NULL;
+	struct svc_export	new;
+	struct svc_expkey	*fsid_key = NULL;
+	struct nameidata nd;
+	int		err;
 
-It seems like we either need to not clear the UPTODATE bit for the cred, or
-not set the cr_ops to the nullops before doing the call. Any thoughts?
+	/* Consistency check */
+	err = -EINVAL;
+	if (!exp_verify_string(nxp->ex_path, NFS_MAXPATHLEN) ||
+	    !exp_verify_string(nxp->ex_client, NFSCLNT_IDMAX))
+		goto out;
 
--- 
-Jeff Layton <jlayton@redhat.com>
+	dprintk("exp_export called for %s:%s (%x/%ld fl %x).\n",
+			nxp->ex_client, nxp->ex_path,
+			(unsigned)nxp->ex_dev, (long)nxp->ex_ino,
+			nxp->ex_flags);
+
+	/* Try to lock the export table for update */
+	exp_writelock();
+
+	/* Look up client info */
+	if (!(clp = auth_domain_find(nxp->ex_client)))
+		goto out_unlock;
+
+
+	/* Look up the dentry */
+	err = path_lookup(nxp->ex_path, 0, &nd);
+	if (err)
+		goto out_unlock;
+	err = -EINVAL;
+
+	exp = exp_get_by_name(clp, nd.mnt, nd.dentry, NULL);
+
+	/* must make sure there won't be an ex_fsid clash */
+	if ((nxp->ex_flags & NFSEXP_FSID) &&
+	    (fsid_key = exp_get_fsid_key(clp, nxp->ex_dev)) &&
+	    !IS_ERR(fsid_key) &&
+	    fsid_key->ek_mnt &&
+		/* 
+		 * --> HERE.  "nd.mnt of "/mnt/dir1" and "/mnt/dir2" are same, but nd.dentry not.
+		 * "(fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry)" will be 1 in such
+		 * a situation. but they are different exp-entries in "/var/lib/nfs/etab"
+		* it should be "(fsid_key->ek_dentry != nd.dentry || fsid_key->ek_mnt != nd.mnt)" ??
+		 */
+	    (fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry) )        
+		goto finish;
+
+	if (exp) {
+		/* just a flags/id/fsid update */
+
+		exp_fsid_unhash(exp);
+		exp->ex_flags    = nxp->ex_flags;
+		exp->ex_anon_uid = nxp->ex_anon_uid;
+		exp->ex_anon_gid = nxp->ex_anon_gid;
+		exp->ex_fsid     = nxp->ex_dev;
+
+		err = exp_fsid_hash(clp, exp);
+		goto finish;
+	}
+
+	err = check_export(nd.dentry->d_inode, nxp->ex_flags);
+	if (err) goto finish;
+
+	err = -ENOMEM;
+
+	dprintk("nfsd: creating export entry %p for client %p\n", exp, clp);
+
+	new.h.expiry_time = NEVER;
+	new.h.flags = 0;
+	new.ex_client = clp;
+	new.ex_mnt = nd.mnt;
+	new.ex_dentry = nd.dentry;
+	new.ex_flags = nxp->ex_flags;
+	new.ex_anon_uid = nxp->ex_anon_uid;
+	new.ex_anon_gid = nxp->ex_anon_gid;
+	new.ex_fsid = nxp->ex_dev;
+
+	exp = svc_export_lookup(&new);
+	if (exp)
+		exp = svc_export_update(&new, exp);
+
+	if (!exp)
+		goto finish;
+
+	if (exp_hash(clp, exp) ||
+	    exp_fsid_hash(clp, exp)) {
+		/* failed to create at least one index */
+		exp_do_unexport(exp);
+		cache_flush();
+		err = -ENOMEM;
+	}
+
+finish:
+	if (exp)
+		exp_put(exp);
+	if (fsid_key && !IS_ERR(fsid_key))
+		cache_put(&fsid_key->h, &svc_expkey_cache);
+	if (clp)
+		auth_domain_put(clp);
+	path_release(&nd);
+out_unlock:
+	exp_writeunlock();
+out:
+	return err;
+}
+	
+	
+ 				
+Best Regards! 
+lioupayphone
+
+
