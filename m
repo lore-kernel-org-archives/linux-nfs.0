@@ -1,128 +1,45 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] statd: not unlinking host files
-Date: Wed, 17 Dec 2008 16:48:19 -0500
-Message-ID: <494973A3.7050809@RedHat.com>
-References: <493A8D71.20603@RedHat.com>
+Subject: Re: what's the real meaning of fsid?
+Date: Wed, 17 Dec 2008 17:32:07 -0500
+Message-ID: <49497DE7.6050102@RedHat.com>
+References: <200812171336070316863@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: lioupayphone <lioupayphone@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37296 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:34825 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751101AbYLQVua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Dec 2008 16:50:30 -0500
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mBHLoU9f021639
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 16:50:30 -0500
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id mBHLoTiu007797
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 16:50:29 -0500
-Received: from [10.16.10.38] (vpn-10-38.bos.redhat.com [10.16.10.38])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id mBHLoSFI012351
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 16:50:28 -0500
-In-Reply-To: <493A8D71.20603-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1752510AbYLQWeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 17:34:20 -0500
+In-Reply-To: <200812171336070316863@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the patch I committed....
+
+
+lioupayphone wrote:
+> Hello, everyone. 
+> 
+> fsid in /etc/exports was used for identifying a file system. if a file system which exported 2 directories, it seems that we should tag the two export entries with same fsid.
+> 
+> eg
+> on one machine (server   10.10.37.147,  Centos5.2 with linux2.6.18):
+> 
+> #mkfs.ext3 /dev/sdc; mount /dev/sdc /mnt/;mkdir -p /mnt/dir1 /mnt/dir2; touch /mnt/dir1/wall-e /mnt/dir2/eva;
+> #echo "/mnt/dir1 *(rw,async,root_squash,fsid=2)" > /etc/exports
+> #echo "/mnt/dir2 *(rw,async,root_squash,fsid=2)" >> /etc/exports
+> #service nfs start && exportfs -r
+> 
+> on another machine (client   10.10.37.154):
+> #mount  10.10.37.147:/mnt/dir1 /mnt/1/ && mount 10.10.37.147:/mnt/dir2 /mnt/2/
+> 
+> i am puzzled:   on the client (10.10.37.154), i found both "/mnt/1/" and "/mnt/2/" have the same child ---- "wall-e".
+> 
+> so i browsed the code of 2.6.18 and found: exp_export(), fs/nfsd/export.c . i have taged a comment on this code listed below. please give me some suggestions. thx.
+I'm a bit puzzled by "both "/mnt/1/" and "/mnt/2/" have the same child". 
+Do mean they have the same file handle??
 
 steved.
 
-commit bc870150cc2116584aee288d15ac2b9a2f825ff5
-Author: Steve Dickson <steved@redhat.com>
-Date:   Wed Dec 17 16:41:35 2008 -0500
 
-    statd: not unlinking host files
-    
-    Statd is not unlinking host files during SM_UNMON and
-    SM_UNMON_ALL calls because the given host is still on the run-time
-    notify list (rtnl) and the check flag is set when xunlink() is
-    called. But the next thing the caller of xunlink() does is
-    remove the host from the rtnl list which means the
-    unlink will never happen.
-    
-    So this patch removes the check flag from xunlink() since
-    its not needed and correctly allocates and frees memory
-    used by xunlink().
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/utils/statd/misc.c b/utils/statd/misc.c
-index fd201b4..7256291 100644
---- a/utils/statd/misc.c
-+++ b/utils/statd/misc.c
-@@ -53,23 +53,25 @@ xstrdup (const char *string)
- 
- 
- /*
-- * Call with check=1 to verify that this host is not still on the rtnl
-- * before unlinking file.
-+ * Unlinking a file.
-  */
- void
--xunlink (char *path, char *host, short int check)
-+xunlink (char *path, char *host)
- {
--  char *tozap;
-+	char *tozap;
- 
--  tozap=alloca (strlen(path)+strlen(host)+2);
--  sprintf (tozap, "%s/%s", path, host);
-+	tozap = malloc(strlen(path)+strlen(host)+2);
-+	if (tozap == NULL) {
-+		note(N_ERROR, "xunlink: malloc failed: errno %d (%s)", 
-+			errno, strerror(errno));
-+		return;
-+	}
-+	sprintf (tozap, "%s/%s", path, host);
- 
--  if (!check || !nlist_gethost(rtnl, host, 0)) {
--    if (unlink (tozap) == -1)
--      note (N_ERROR, "unlink (%s): %s", tozap, strerror (errno));
--    else
--      dprintf (N_DEBUG, "Unlinked %s", tozap);
--  }
--  else
--    dprintf (N_DEBUG, "Not unlinking %s--host still monitored.", tozap);
-+	if (unlink (tozap) == -1)
-+		note(N_ERROR, "unlink (%s): %s", tozap, strerror (errno));
-+	else
-+		dprintf (N_DEBUG, "Unlinked %s", tozap);
-+
-+	free(tozap);
- }
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index a6a1d9c..24c2531 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -352,7 +352,7 @@ sm_unmon_1_svc(struct mon_id *argp, struct svc_req *rqstp)
- 			/* PRC: do the HA callout: */
- 			ha_callout("del-client", mon_name, my_name, -1);
- 
--			xunlink(SM_DIR, clnt->dns_name, 1);
-+			xunlink(SM_DIR, clnt->dns_name);
- 			nlist_free(&rtnl, clnt);
- 
- 			return (&result);
-@@ -404,7 +404,7 @@ sm_unmon_all_1_svc(struct my_id *argp, struct svc_req *rqstp)
- 			temp = NL_NEXT(clnt);
- 			/* PRC: do the HA callout: */
- 			ha_callout("del-client", mon_name, my_name, -1);
--			xunlink(SM_DIR, clnt->dns_name, 1);
-+			xunlink(SM_DIR, clnt->dns_name);
- 			nlist_free(&rtnl, clnt);
- 			++count;
- 			clnt = temp;
-diff --git a/utils/statd/statd.h b/utils/statd/statd.h
-index 5a6e289..88ba208 100644
---- a/utils/statd/statd.h
-+++ b/utils/statd/statd.h
-@@ -53,7 +53,7 @@ extern int	process_notify_list(void);
- extern int	process_reply(FD_SET_TYPE *);
- extern char *	xstrdup(const char *);
- extern void *	xmalloc(size_t);
--extern void	xunlink (char *, char *, short int);
-+extern void	xunlink (char *, char *);
- extern void	load_state(void);
- 
- /*
