@@ -1,75 +1,71 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/5] Fix legacy build issues
-Date: Wed, 17 Dec 2008 15:42:34 -0500
-Message-ID: <D592BA80-E74E-426C-8D50-E6E24E02B261@oracle.com>
-References: <20081217203301.14933.81853.stgit@ingres.1015granger.net>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <steved@redhat.com>
+From: David Teigland <teigland@redhat.com>
+Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks (RFC)
+Date: Wed, 17 Dec 2008 15:28:27 -0600
+Message-ID: <20081217212827.GB16777@redhat.com>
+References: <1227130623-31607-1-git-send-email-jlayton@redhat.com> <20081122011555.GA28485@fieldses.org> <20081124103313.0c779324@tleilax.poochiereds.net> <20081124170653.GF17862@fieldses.org> <20081213074042.2e8223c3@tleilax.poochiereds.net> <20081216193806.GC18928@fieldses.org> <20081216195635.GD18928@fieldses.org> <20081216161158.2d173667@tleilax.poochiereds.net> <20081217191453.GA16777@redhat.com> <20081217200156.GO4614@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:61579 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751279AbYLQUnE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Dec 2008 15:43:04 -0500
-In-Reply-To: <20081217203301.14933.81853.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:54242 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751871AbYLQVbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Dec 2008 16:31:05 -0500
+In-Reply-To: <20081217200156.GO4614@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I promise this is the last set for 2008.
+On Wed, Dec 17, 2008 at 03:01:56PM -0500, J. Bruce Fields wrote:
+> Yep, that looks much better.  Though actually I suspect what was really
+> intended was to use "flc" for the notifies, and "fl" for the
+> posix_lock_file().
+> 
+> Also, since flc is never actually handed to the posix lock system, I
+> think it should be a "shallow" lock copy--so it should be created with
+> __locks_copy_lock().  Something like the below?
 
-See you next year. :-)
+With this I'm back to seeing the same problem, but with the mismatch in
+the reverse direction.
 
+It seems fl points to lockd's file_lock, and that lockd expects notify()
+will be called with a pointer to a file_lock that matches one of its own.
+Based on that I think we'd always pass fl to notify().
 
-On Dec 17, 2008, at Dec 17, 2008, 3:37 PM, Chuck Lever wrote:
+The question then is whether lockd's file_lock should be coalesced or not.
+If so, we'd pass fl to posix_lock_file().  If not, we'd pass flc to
+posix_lock_file().  In both cases, fl would be passed to notify() and
+would match.  In the former case, I don't see much purpose for flc to even
+exist.  The patch I sent was the later case.
 
-> Hi Steve-
->
-> Hope your power is restored.
->
-> We discovered some problems building nfs-utils on legacy systems  
-> caused
-> by recent IPv6 updates.  Here are some patches I propose to address
-> those problems.
->
-> Jonathan Andrews has tested the C code introduced by "use  
-> gethostbyname(3)
-> when building on old systems" on his distribution, which includes a  
-> very
-> old version of glibc that doesn't support AI_ADDRCONFIG.  But I was a
-> little challenged by the autoconf magic needed to pull this off.   
-> Please
-> have a close look at that to see if it really does what is needed.
->
-> ---
->
-> Chuck Lever (5):
->      configure: use "--disable-uuid" instead of "--without-uuid"
->      mount command: Random clean up
->      getport: don't use getaddrinfo(3) on old systems
->      mount command: use gethostbyname(3) when building on old systems
->      mount: revert recent fix for build problems on old systems
->
->
-> configure.ac          |   12 ++++++--
-> support/nfs/getport.c |   69 +++++++++++++++++++++++++++++++++++++ 
-> +------
-> utils/mount/network.c |   77 ++++++++++++++++++++++++++++++++++++ 
-> +------------
-> 3 files changed, 127 insertions(+), 31 deletions(-)
->
-> -- 
-> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In the original code, we coalesce flc which then fails to match the
+original (fl) in lockd.  In your patch, we coalesce fl which then fails to
+match the copy of the original (flc).
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Dave
 
-
-
-
+> 
+> diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+> index eba87ff..e8d9086 100644
+> --- a/fs/dlm/plock.c
+> +++ b/fs/dlm/plock.c
+> @@ -103,7 +103,7 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
+>  		op->info.owner	= (__u64) fl->fl_pid;
+>  		xop->callback	= fl->fl_lmops->fl_grant;
+>  		locks_init_lock(&xop->flc);
+> -		locks_copy_lock(&xop->flc, fl);
+> +		__locks_copy_lock(&xop->flc, fl);
+>  		xop->fl		= fl;
+>  		xop->file	= file;
+>  	} else {
+> @@ -173,8 +173,8 @@ static int dlm_plock_callback(struct plock_op *op)
+>  	}
+>  
+>  	/* got fs lock; bookkeep locally as well: */
+> -	flc->fl_flags &= ~FL_SLEEP;
+> -	if (posix_lock_file(file, flc, NULL)) {
+> +	fl->fl_flags &= ~FL_SLEEP;
+> +	if (posix_lock_file(file, fl, NULL)) {
+>  		/*
+>  		 * This can only happen in the case of kmalloc() failure.
+>  		 * The filesystem's own lock is the authoritative lock,
