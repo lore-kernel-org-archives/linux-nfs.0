@@ -1,68 +1,107 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:34480 "EHLO
-	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753419AbYLVRQB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Dec 2008 12:16:01 -0500
-Received: from cassini.mpc.local ([172.16.15.37] helo=moving-picture.com)
-	by moving-picture.com with esmtp (Exim 4.43)
-	id 1LEo2X-0000ND-Sc
-	for linux-nfs@vger.kernel.org; Mon, 22 Dec 2008 16:53:57 +0000
-Message-ID: <494FC625.4040207@moving-picture.com>
-Date: Mon, 22 Dec 2008 16:53:57 +0000
-From: James Pearson <james-p@moving-picture.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: Problems with Mac clients mounting a Linux server behind a firewall
-References: <a92ebfd90812191452l4b10362av5e9c8876335c32bc@mail.gmail.com>
-In-Reply-To: <a92ebfd90812191452l4b10362av5e9c8876335c32bc@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@fys.uio.no
+Subject: [PATCH] sunrpc: fix code that makes auth_gss send destroy_cred
+	message (try #2)
+Date: Thu, 18 Dec 2008 13:22:07 -0500
+Message-Id: <1229624527-14935-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1229624102.7789.36.camel@heimdal.trondhjem.org>
+References: <1229624102.7789.36.camel@heimdal.trondhjem.org>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-James Pearson wrote:
-> I'm not absolutely sure if this is an NFS server issue, but I have an
-> Linux NFS server running CentOS4 that sits behind a firewall - about
-> once a week rpciod ends up using 99% CPU and the machine needs to be
-> rebooted
-> 
-> When it gets into this state, running 'netstat -u -a' shows thousands
-> of entries like:
-> 
-> udp        0      0 *:35071                     *:*
-> udp        0      0 *:34815                     *:*
-> udp        0      0 *:34559                     *:*
-> udp        0      0 *:34303                     *:*
-> udp        0      0 *:34047                     *:*
-> udp        0      0 *:33791                     *:*
-> udp        0      0 *:33535                     *:*
-> udp        0      0 *:33279                     *:*
-> udp        0      0 *:33151                     *:*
-> udp        0      0 *:32895                     *:*
-> 
-> and tcpdump shows lots of udp connection attempts to port 111 on
-> various Macs that are or have mounted the server (via an automounter).
-> The connections don't get through as they are blocked by the firewall.
-> None of these blocked connections are to Linux clients - it's just Mac
-> clients
-> 
-> Is there anything that NFS server-wise that could be cause the server
-> to attempt to contact clients in this way?
+There's a bit of a chicken and egg problem when it comes to destroying
+auth_gss credentials. When we destroy the last instance of a GSSAPI RPC
+credential, we should send a NULL RPC call with a GSS procedure of
+RPCSEC_GSS_DESTROY to hint to the server that it can destroy those
+creds.
 
-Running wireshark over the tcpdump output, all these portmap calls are like:
+This isn't happening because we're setting clearing the uptodate bit on
+the credentials and then setting the operations to the gss_nullops. When
+we go to do the RPC call, we try to refresh the creds. That fails with
+-EACCES and the call fails.
 
-User Datagram Protocol, Src Port: 51947 (51947), Dst Port: sunrpc (111)
-Remote Procedure Call, Type:Call XID:0xacd4150f
-Portmap GETPORT Call NLM(100021) Version:4 UDP
-     [Program Version: 2]
-     [V2 Procedure: GETPORT (3)]
-     Program: NLM (100021)
-     Version: 4
-     Proto: UDP (17)
-     Port: 0
+Fix this by not clearing the UPTODATE bit for the credentials and adding
+a new crdestroy op for gss_nullops that just tears down the cred without
+trying to destroy the context.
 
-Why would an NFS server need to initiate a call to the lockd process on 
-a (MacOS) client?
+The only difference between this patch and the first one is the removal
+of some minor formatting deltas.
 
-Thanks
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   17 ++++++++++++-----
+ 1 files changed, 12 insertions(+), 5 deletions(-)
 
-James Pearson
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 853a414..564385d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -693,7 +693,7 @@ gss_destroying_context(struct rpc_cred *cred)
+ 	struct rpc_task *task;
+ 
+ 	if (gss_cred->gc_ctx == NULL ||
+-	    test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
++	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
+ 		return 0;
+ 
+ 	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
+@@ -757,14 +757,12 @@ gss_free_cred_callback(struct rcu_head *head)
+ }
+ 
+ static void
+-gss_destroy_cred(struct rpc_cred *cred)
++gss_destroy_nullcred(struct rpc_cred *cred)
+ {
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
+ 	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
+ 
+-	if (gss_destroying_context(cred))
+-		return;
+ 	rcu_assign_pointer(gss_cred->gc_ctx, NULL);
+ 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
+ 	if (ctx)
+@@ -772,6 +770,15 @@ gss_destroy_cred(struct rpc_cred *cred)
+ 	kref_put(&gss_auth->kref, gss_free_callback);
+ }
+ 
++static void
++gss_destroy_cred(struct rpc_cred *cred)
++{
++
++	if (gss_destroying_context(cred))
++		return;
++	gss_destroy_nullcred(cred);
++}
++
+ /*
+  * Lookup RPCSEC_GSS cred for the current process
+  */
+@@ -1324,7 +1331,7 @@ static const struct rpc_credops gss_credops = {
+ 
+ static const struct rpc_credops gss_nullops = {
+ 	.cr_name	= "AUTH_GSS",
+-	.crdestroy	= gss_destroy_cred,
++	.crdestroy	= gss_destroy_nullcred,
+ 	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= gss_match,
+ 	.crmarshal	= gss_marshal,
+-- 
+1.5.5.1
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
