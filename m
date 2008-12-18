@@ -1,37 +1,31 @@
-From: "lioupayphone" <lioupayphone@gmail.com>
-Subject: why there is a complex sync between /var/lib/nfs/etab in user-mode and  export_table in kernel mode?
-Date: Thu, 18 Dec 2008 14:34:03 +0800
-Message-ID: <200812181433568806030@gmail.com>
+From: "Gabor Z. Papp" <gzp-2g/1Y3AqmNE@public.gmane.org>
+Subject: Re: nfs-utils mountd getfh failed: No such file or directory
+Date: Thu, 18 Dec 2008 15:36:54 +0100
+Message-ID: <x67i5x4kjd@gzp>
+References: <x6k5a0166x@gzp> <49498029.1080307@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-To: "linux-nfs" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.189]:65245 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751248AbYLRGeH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Dec 2008 01:34:07 -0500
-Received: by ti-out-0910.google.com with SMTP id b6so135203tic.23
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Dec 2008 22:34:05 -0800 (PST)
+Received: from odpn1.odpn.net ([212.40.96.53]:36020 "EHLO odpn1.odpn.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751237AbYLROhB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Dec 2008 09:37:01 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, linux-nfs
+* Steve Dickson <SteveD@redhat.com>:
 
-i found that an entry in /var/lib/nfs/etab (etab for abbr)  was written to exprot_table of kernel-mode via a proc-file when a client requests mnt this entry.                                       
-when the entry in export_table of kernel-mode was expired (eg : reached its expiration time), an upcall machanism is able to make sure that the newly entry from etab of user-mode was written to export_table of kernel-mode. ie, the entry in export_table of kernel-mode was updated by the one of user-mode.
+| > 2008 Dec 16 15:48:44 <daemon.warning> gzp mountd[1748]: getfh failed: No such file or directory
+| > 
+| > Found the revelant code in the mountd source, but I don't know what is this error.
 
-if the content listed above is true, i think linux nfs is too complex. and why not remove the etab from user-mode?
-in a word, i think it is easy to just maintain export_table of kernel-mode. we can directly scan /etc/exports and make up a complete export-entry, then write it to the export_table of kernel-mode. the entries in export_table of kernel-mode would never be expired unless we explicitly remove it from the export_table of kernel-mode (a proc MUST be provided for meeting this requirement).
+| This might be due to the fact that the nfsd module is not loaded when
+| mountd is started since it appears mountd is not using the new caching.
 
-when the server is rebooted and nfsd proc-filesystem is ready, just re-do "scanning the /etc/exports and make up complete export-entries, then write them into export_table of kernel-mode".  
+| Make sure a 'modprobe nfsd' happens before mountd is started...
 
-i aims to 1) remove the complex upcall machanism ,  2) get rid of the couple of /var/lib/nfs/etab in user-mode and export_table in kernel-mode.
-
-anyone can give me some suggestions? or points out what's wrong i am.
-thank you!
- 				
-Best Regards! 
-lioupayphone
-
-
+Thanks, I have found the problem. The exported filesystem wasn't
+mounted and the mountpoint is on 2.6 initrd. Read in the manpage
+that can't be exported via nfs.
