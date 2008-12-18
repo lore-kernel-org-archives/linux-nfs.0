@@ -1,167 +1,82 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: what's the real meaning of fsid?
-Date: Thu, 18 Dec 2008 14:03:55 -0500
-Message-ID: <20081218190355.GA31478@fieldses.org>
-References: <200812171336070316863@gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] nfs-utils: Enabling TCP wrappers
+Date: Thu, 18 Dec 2008 14:59:29 -0500
+Message-ID: <494AABA1.4070006@RedHat.com>
+References: <49468BC7.2000907@RedHat.com> <1819C671-5353-45B4-A814-98B1B2A4BEB1@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: lioupayphone <lioupayphone@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([66.93.2.214]:33235 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:59129 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752044AbYLRTEA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Dec 2008 14:04:00 -0500
-In-Reply-To: <200812171336070316863@gmail.com>
+	id S1753904AbYLRUDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Dec 2008 15:03:43 -0500
+In-Reply-To: <1819C671-5353-45B4-A814-98B1B2A4BEB1@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 17, 2008 at 01:36:12PM +0800, lioupayphone wrote:
-> Hello, everyone. 
+Chuck Lever wrote:
 > 
-> fsid in /etc/exports was used for identifying a file system. if a file system which exported 2 directories, it seems that we should tag the two export entries with same fsid.
+> A general comment:  This code will need support for IPv6 addresses.
 > 
-> eg
-> on one machine (server   10.10.37.147,  Centos5.2 with linux2.6.18):
-> 
-> #mkfs.ext3 /dev/sdc; mount /dev/sdc /mnt/;mkdir -p /mnt/dir1 /mnt/dir2; touch /mnt/dir1/wall-e /mnt/dir2/eva;
-> #echo "/mnt/dir1 *(rw,async,root_squash,fsid=2)" > /etc/exports
-> #echo "/mnt/dir2 *(rw,async,root_squash,fsid=2)" >> /etc/exports
+> Until it has it, perhaps we should add some logic to configure.ac that
+> prevents the use of tcpwrappers when --enable-ipv6 is in effect.
+The following patch does address this concern....
 
-That's an odd thing to do; could you explain what you're trying to
-accomplish?
+comments?
 
---b.
+steved.
 
-> #service nfs start && exportfs -r
-> 
-> on another machine (client   10.10.37.154):
-> #mount  10.10.37.147:/mnt/dir1 /mnt/1/ && mount 10.10.37.147:/mnt/dir2 /mnt/2/
-> 
-> i am puzzled:   on the client (10.10.37.154), i found both "/mnt/1/" and "/mnt/2/" have the same child ---- "wall-e".
-> 
-> so i browsed the code of 2.6.18 and found: exp_export(), fs/nfsd/export.c . i have taged a comment on this code listed below. please give me some suggestions. thx.
-> 
-> /*
->  * Export a file system.
->  */
-> int
-> exp_export(struct nfsctl_export *nxp)
-> {
-> 	svc_client	*clp;
-> 	struct svc_export	*exp = NULL;
-> 	struct svc_export	new;
-> 	struct svc_expkey	*fsid_key = NULL;
-> 	struct nameidata nd;
-> 	int		err;
-> 
-> 	/* Consistency check */
-> 	err = -EINVAL;
-> 	if (!exp_verify_string(nxp->ex_path, NFS_MAXPATHLEN) ||
-> 	    !exp_verify_string(nxp->ex_client, NFSCLNT_IDMAX))
-> 		goto out;
-> 
-> 	dprintk("exp_export called for %s:%s (%x/%ld fl %x).\n",
-> 			nxp->ex_client, nxp->ex_path,
-> 			(unsigned)nxp->ex_dev, (long)nxp->ex_ino,
-> 			nxp->ex_flags);
-> 
-> 	/* Try to lock the export table for update */
-> 	exp_writelock();
-> 
-> 	/* Look up client info */
-> 	if (!(clp = auth_domain_find(nxp->ex_client)))
-> 		goto out_unlock;
-> 
-> 
-> 	/* Look up the dentry */
-> 	err = path_lookup(nxp->ex_path, 0, &nd);
-> 	if (err)
-> 		goto out_unlock;
-> 	err = -EINVAL;
-> 
-> 	exp = exp_get_by_name(clp, nd.mnt, nd.dentry, NULL);
-> 
-> 	/* must make sure there won't be an ex_fsid clash */
-> 	if ((nxp->ex_flags & NFSEXP_FSID) &&
-> 	    (fsid_key = exp_get_fsid_key(clp, nxp->ex_dev)) &&
-> 	    !IS_ERR(fsid_key) &&
-> 	    fsid_key->ek_mnt &&
-> 		/* 
-> 		 * --> HERE.  "nd.mnt of "/mnt/dir1" and "/mnt/dir2" are same, but nd.dentry not.
-> 		 * "(fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry)" will be 1 in such
-> 		 * a situation. but they are different exp-entries in "/var/lib/nfs/etab"
-> 		* it should be "(fsid_key->ek_dentry != nd.dentry || fsid_key->ek_mnt != nd.mnt)" ??
-> 		 */
-> 	    (fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry) )        
-> 		goto finish;
-> 
-> 	if (exp) {
-> 		/* just a flags/id/fsid update */
-> 
-> 		exp_fsid_unhash(exp);
-> 		exp->ex_flags    = nxp->ex_flags;
-> 		exp->ex_anon_uid = nxp->ex_anon_uid;
-> 		exp->ex_anon_gid = nxp->ex_anon_gid;
-> 		exp->ex_fsid     = nxp->ex_dev;
-> 
-> 		err = exp_fsid_hash(clp, exp);
-> 		goto finish;
-> 	}
-> 
-> 	err = check_export(nd.dentry->d_inode, nxp->ex_flags);
-> 	if (err) goto finish;
-> 
-> 	err = -ENOMEM;
-> 
-> 	dprintk("nfsd: creating export entry %p for client %p\n", exp, clp);
-> 
-> 	new.h.expiry_time = NEVER;
-> 	new.h.flags = 0;
-> 	new.ex_client = clp;
-> 	new.ex_mnt = nd.mnt;
-> 	new.ex_dentry = nd.dentry;
-> 	new.ex_flags = nxp->ex_flags;
-> 	new.ex_anon_uid = nxp->ex_anon_uid;
-> 	new.ex_anon_gid = nxp->ex_anon_gid;
-> 	new.ex_fsid = nxp->ex_dev;
-> 
-> 	exp = svc_export_lookup(&new);
-> 	if (exp)
-> 		exp = svc_export_update(&new, exp);
-> 
-> 	if (!exp)
-> 		goto finish;
-> 
-> 	if (exp_hash(clp, exp) ||
-> 	    exp_fsid_hash(clp, exp)) {
-> 		/* failed to create at least one index */
-> 		exp_do_unexport(exp);
-> 		cache_flush();
-> 		err = -ENOMEM;
-> 	}
-> 
-> finish:
-> 	if (exp)
-> 		exp_put(exp);
-> 	if (fsid_key && !IS_ERR(fsid_key))
-> 		cache_put(&fsid_key->h, &svc_expkey_cache);
-> 	if (clp)
-> 		auth_domain_put(clp);
-> 	path_release(&nd);
-> out_unlock:
-> 	exp_writeunlock();
-> out:
-> 	return err;
-> }
-> 	
-> 	
->  				
-> Best Regards! 
-> lioupayphone
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+commit 5526bb225c745d169c070d392402fc1a569f1d15
+Author: Steve Dickson <steved@redhat.com>
+Date:   Thu Dec 18 14:57:52 2008 -0500
+
+    Skip the host access check when IPv6 is enabled and its an IPv6 address.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mountd/mount_dispatch.c b/utils/mountd/mount_dispatch.c
+index f00c0c5..8aa1955 100644
+--- a/utils/mountd/mount_dispatch.c
++++ b/utils/mountd/mount_dispatch.c
+@@ -12,6 +12,8 @@
+ #include "tcpwrapper.h"
+ #endif
+ 
++#include <sys/syslog.h>
++
+ #include "mountd.h"
+ #include "rpcmisc.h"
+ 
+@@ -72,12 +74,29 @@ mount_dispatch(struct svc_req *rqstp, SVCXPRT *transp)
+ 	union mountd_results	result;
+ 
+ #ifdef HAVE_TCP_WRAPPER
++#ifdef IPV6_SUPPORTED
++	static int once = 0;
++
++	if (svc_getcaller(transp)->sin_family != AF_INET) {
++		if (!once) {
++			syslog(LOG_WARNING, 
++				"No IPv6 support in Access Control Library (TCP Wrappers)"); 
++			once++;
++		}
++		goto skipcheck;
++	}
++#endif
+ 	/* remote host authorization check */
+ 	if (!check_default("mountd", svc_getcaller(transp),
+ 			   rqstp->rq_proc, MOUNTPROG)) {
+ 		svcerr_auth (transp, AUTH_FAILED);
+ 		return;
+ 	}
++
++#ifdef IPV6_SUPPORTED
++skipcheck:
++#endif
++
+ #endif
+ 
+ 	rpc_dispatch(rqstp, transp, dtable, number_of(dtable),
