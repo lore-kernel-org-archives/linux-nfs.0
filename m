@@ -1,53 +1,96 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: why there is a complex sync between /var/lib/nfs/etab in user-mode
- and  export_table in kernel mode?
-Date: Thu, 18 Dec 2008 10:51:46 -0500
-Message-ID: <494A7192.9080900@RedHat.com>
-References: <200812181433568806030@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: lioupayphone <lioupayphone@gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] sunrpc: fix code that makes auth_gss send destroy_cred message
+Date: Thu, 18 Dec 2008 12:51:15 -0500
+Message-ID: <1229622675-13596-1-git-send-email-jlayton@redhat.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:52429 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:46400 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750914AbYLRPx7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Dec 2008 10:53:59 -0500
-In-Reply-To: <200812181433568806030@gmail.com>
+	id S1751853AbYLRRvW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Dec 2008 12:51:22 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lioupayphone wrote:
-> Hello, linux-nfs
-> 
-> i found that an entry in /var/lib/nfs/etab (etab for abbr)  was written to exprot_table of kernel-mode via a proc-file when a client requests mnt this entry.                                       
-> when the entry in export_table of kernel-mode was expired (eg : reached its expiration time), an upcall machanism is able to make sure that the newly entry from etab of user-mode was written to export_table of kernel-mode. ie, the entry in export_table of kernel-mode was updated by the one of user-mode.
-> 
-> if the content listed above is true, i think linux nfs is too complex. and why not remove the etab from user-mode?
-> in a word, i think it is easy to just maintain export_table of kernel-mode. we can directly scan /etc/exports and make up a complete export-entry, then write it to the export_table of kernel-mode. the entries in export_table of kernel-mode would never be expired unless we explicitly remove it from the export_table of kernel-mode (a proc MUST be provided for meeting this requirement).
-> 
-> when the server is rebooted and nfsd proc-filesystem is ready, just re-do "scanning the /etc/exports and make up complete export-entries, then write them into export_table of kernel-mode".  
-> 
-> i aims to 1) remove the complex upcall machanism ,  2) get rid of the couple of /var/lib/nfs/etab in user-mode and export_table in kernel-mode.
-> 
-> anyone can give me some suggestions? or points out what's wrong i am.
-The /var/lib/nfs/etab file is the way the exportfs command communicates 
-with the mountd daemon. 'exportfs -ar' causes the exports in /etc/exports
-to be parsed and written to the etab. When a mount request is received
-mountd reads the etab to build its internal export table. Ultimately
-when the mount is successful, the kernel writes the mount to
-/proc/net/rpc/nfsd.export/content.
+There's a bit of a chicken and egg problem when it comes to destroying
+auth_gss credentials. When we destroy the last instance of a GSSAPI RPC
+credential, we should send a NULL RPC call with a GSS procedure of
+RPCSEC_GSS_DESTROY to hint to the server that it can destroy those
+creds.
 
-So that's how the etab fits in the grand scheme of things... 
+This isn't happening because we're setting clearing the uptodate bit on
+the credentials and then setting the operations to the gss_nullops. When
+we go to do the RPC call, we try to refresh the creds. That fails with
+-EACCES and the call fails.
 
-I believe what you are suggesting is simply pumping down
-all the exports in /etc/exports directly to the kernel.
-This ideas has been discussed and I believe the conclusion
-we came to was; why pump down thousands of exports that
-may or may not used. Dynamically building the kernel export
-data just seem to make more sense in our case...
+Fix this by not clearing the UPTODATE bit for the credentials and adding
+a new crdestroy op for gss_nullops that just tears down the cred without
+trying to destroy the context.
 
-I hope this helps...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   23 ++++++++++++++++-------
+ 1 files changed, 16 insertions(+), 7 deletions(-)
 
-steved.
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 853a414..e22fb45 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -693,7 +693,7 @@ gss_destroying_context(struct rpc_cred *cred)
+ 	struct rpc_task *task;
+ 
+ 	if (gss_cred->gc_ctx == NULL ||
+-	    test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
++	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
+ 		return 0;
+ 
+ 	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
+@@ -757,14 +757,14 @@ gss_free_cred_callback(struct rcu_head *head)
+ }
+ 
+ static void
+-gss_destroy_cred(struct rpc_cred *cred)
++gss_destroy_nullcred(struct rpc_cred *cred)
+ {
+-	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+-	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
++	struct gss_cred *gss_cred = container_of(cred, struct gss_cred,
++						 gc_base);
++	struct gss_auth *gss_auth = container_of(cred->cr_auth,
++						 struct gss_auth, rpc_auth);
+ 	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
+ 
+-	if (gss_destroying_context(cred))
+-		return;
+ 	rcu_assign_pointer(gss_cred->gc_ctx, NULL);
+ 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
+ 	if (ctx)
+@@ -772,6 +772,15 @@ gss_destroy_cred(struct rpc_cred *cred)
+ 	kref_put(&gss_auth->kref, gss_free_callback);
+ }
+ 
++static void
++gss_destroy_cred(struct rpc_cred *cred)
++{
++
++	if (gss_destroying_context(cred))
++		return;
++	gss_destroy_nullcred(cred);
++}
++
+ /*
+  * Lookup RPCSEC_GSS cred for the current process
+  */
+@@ -1324,7 +1333,7 @@ static const struct rpc_credops gss_credops = {
+ 
+ static const struct rpc_credops gss_nullops = {
+ 	.cr_name	= "AUTH_GSS",
+-	.crdestroy	= gss_destroy_cred,
++	.crdestroy	= gss_destroy_nullcred,
+ 	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= gss_match,
+ 	.crmarshal	= gss_marshal,
+-- 
+1.5.5.1
 
