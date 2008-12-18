@@ -1,104 +1,167 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] sunrpc: fix code that makes auth_gss send destroy_cred
- message
-Date: Thu, 18 Dec 2008 13:15:02 -0500
-Message-ID: <1229624102.7789.36.camel@heimdal.trondhjem.org>
-References: <1229622675-13596-1-git-send-email-jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: what's the real meaning of fsid?
+Date: Thu, 18 Dec 2008 14:03:55 -0500
+Message-ID: <20081218190355.GA31478@fieldses.org>
+References: <200812171336070316863@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: lioupayphone <lioupayphone@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:38622 "EHLO mail-out1.uio.no"
+Received: from mail.fieldses.org ([66.93.2.214]:33235 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751936AbYLRSPM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Dec 2008 13:15:12 -0500
-In-Reply-To: <1229622675-13596-1-git-send-email-jlayton@redhat.com>
+	id S1752044AbYLRTEA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Dec 2008 14:04:00 -0500
+In-Reply-To: <200812171336070316863@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2008-12-18 at 12:51 -0500, Jeff Layton wrote:
-> There's a bit of a chicken and egg problem when it comes to destroying
-> auth_gss credentials. When we destroy the last instance of a GSSAPI RPC
-> credential, we should send a NULL RPC call with a GSS procedure of
-> RPCSEC_GSS_DESTROY to hint to the server that it can destroy those
-> creds.
+On Wed, Dec 17, 2008 at 01:36:12PM +0800, lioupayphone wrote:
+> Hello, everyone. 
 > 
-> This isn't happening because we're setting clearing the uptodate bit on
-> the credentials and then setting the operations to the gss_nullops. When
-> we go to do the RPC call, we try to refresh the creds. That fails with
-> -EACCES and the call fails.
+> fsid in /etc/exports was used for identifying a file system. if a file system which exported 2 directories, it seems that we should tag the two export entries with same fsid.
 > 
-> Fix this by not clearing the UPTODATE bit for the credentials and adding
-> a new crdestroy op for gss_nullops that just tears down the cred without
-> trying to destroy the context.
+> eg
+> on one machine (server   10.10.37.147,  Centos5.2 with linux2.6.18):
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  net/sunrpc/auth_gss/auth_gss.c |   23 ++++++++++++++++-------
->  1 files changed, 16 insertions(+), 7 deletions(-)
+> #mkfs.ext3 /dev/sdc; mount /dev/sdc /mnt/;mkdir -p /mnt/dir1 /mnt/dir2; touch /mnt/dir1/wall-e /mnt/dir2/eva;
+> #echo "/mnt/dir1 *(rw,async,root_squash,fsid=2)" > /etc/exports
+> #echo "/mnt/dir2 *(rw,async,root_squash,fsid=2)" >> /etc/exports
+
+That's an odd thing to do; could you explain what you're trying to
+accomplish?
+
+--b.
+
+> #service nfs start && exportfs -r
 > 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 853a414..e22fb45 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -693,7 +693,7 @@ gss_destroying_context(struct rpc_cred *cred)
->  	struct rpc_task *task;
->  
->  	if (gss_cred->gc_ctx == NULL ||
-> -	    test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
-> +	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
->  		return 0;
->  
->  	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
-> @@ -757,14 +757,14 @@ gss_free_cred_callback(struct rcu_head *head)
->  }
->  
->  static void
-> -gss_destroy_cred(struct rpc_cred *cred)
-> +gss_destroy_nullcred(struct rpc_cred *cred)
->  {
-> -	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
-> -	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
-> +	struct gss_cred *gss_cred = container_of(cred, struct gss_cred,
-> +						 gc_base);
-
-
-Ugh, ugh, ugh, ugh... It was nice and legible before!
-
-> +	struct gss_auth *gss_auth = container_of(cred->cr_auth,
-> +						 struct gss_auth, rpc_auth);
->  	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
->  
-> -	if (gss_destroying_context(cred))
-> -		return;
->  	rcu_assign_pointer(gss_cred->gc_ctx, NULL);
->  	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
->  	if (ctx)
-> @@ -772,6 +772,15 @@ gss_destroy_cred(struct rpc_cred *cred)
->  	kref_put(&gss_auth->kref, gss_free_callback);
->  }
->  
-> +static void
-> +gss_destroy_cred(struct rpc_cred *cred)
-> +{
-> +
-> +	if (gss_destroying_context(cred))
-> +		return;
-> +	gss_destroy_nullcred(cred);
-> +}
-> +
->  /*
->   * Lookup RPCSEC_GSS cred for the current process
->   */
-> @@ -1324,7 +1333,7 @@ static const struct rpc_credops gss_credops = {
->  
->  static const struct rpc_credops gss_nullops = {
->  	.cr_name	= "AUTH_GSS",
-> -	.crdestroy	= gss_destroy_cred,
-> +	.crdestroy	= gss_destroy_nullcred,
->  	.crbind		= rpcauth_generic_bind_cred,
->  	.crmatch	= gss_match,
->  	.crmarshal	= gss_marshal,
-
+> on another machine (client   10.10.37.154):
+> #mount  10.10.37.147:/mnt/dir1 /mnt/1/ && mount 10.10.37.147:/mnt/dir2 /mnt/2/
+> 
+> i am puzzled:   on the client (10.10.37.154), i found both "/mnt/1/" and "/mnt/2/" have the same child ---- "wall-e".
+> 
+> so i browsed the code of 2.6.18 and found: exp_export(), fs/nfsd/export.c . i have taged a comment on this code listed below. please give me some suggestions. thx.
+> 
+> /*
+>  * Export a file system.
+>  */
+> int
+> exp_export(struct nfsctl_export *nxp)
+> {
+> 	svc_client	*clp;
+> 	struct svc_export	*exp = NULL;
+> 	struct svc_export	new;
+> 	struct svc_expkey	*fsid_key = NULL;
+> 	struct nameidata nd;
+> 	int		err;
+> 
+> 	/* Consistency check */
+> 	err = -EINVAL;
+> 	if (!exp_verify_string(nxp->ex_path, NFS_MAXPATHLEN) ||
+> 	    !exp_verify_string(nxp->ex_client, NFSCLNT_IDMAX))
+> 		goto out;
+> 
+> 	dprintk("exp_export called for %s:%s (%x/%ld fl %x).\n",
+> 			nxp->ex_client, nxp->ex_path,
+> 			(unsigned)nxp->ex_dev, (long)nxp->ex_ino,
+> 			nxp->ex_flags);
+> 
+> 	/* Try to lock the export table for update */
+> 	exp_writelock();
+> 
+> 	/* Look up client info */
+> 	if (!(clp = auth_domain_find(nxp->ex_client)))
+> 		goto out_unlock;
+> 
+> 
+> 	/* Look up the dentry */
+> 	err = path_lookup(nxp->ex_path, 0, &nd);
+> 	if (err)
+> 		goto out_unlock;
+> 	err = -EINVAL;
+> 
+> 	exp = exp_get_by_name(clp, nd.mnt, nd.dentry, NULL);
+> 
+> 	/* must make sure there won't be an ex_fsid clash */
+> 	if ((nxp->ex_flags & NFSEXP_FSID) &&
+> 	    (fsid_key = exp_get_fsid_key(clp, nxp->ex_dev)) &&
+> 	    !IS_ERR(fsid_key) &&
+> 	    fsid_key->ek_mnt &&
+> 		/* 
+> 		 * --> HERE.  "nd.mnt of "/mnt/dir1" and "/mnt/dir2" are same, but nd.dentry not.
+> 		 * "(fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry)" will be 1 in such
+> 		 * a situation. but they are different exp-entries in "/var/lib/nfs/etab"
+> 		* it should be "(fsid_key->ek_dentry != nd.dentry || fsid_key->ek_mnt != nd.mnt)" ??
+> 		 */
+> 	    (fsid_key->ek_mnt != nd.mnt || fsid_key->ek_dentry != nd.dentry) )        
+> 		goto finish;
+> 
+> 	if (exp) {
+> 		/* just a flags/id/fsid update */
+> 
+> 		exp_fsid_unhash(exp);
+> 		exp->ex_flags    = nxp->ex_flags;
+> 		exp->ex_anon_uid = nxp->ex_anon_uid;
+> 		exp->ex_anon_gid = nxp->ex_anon_gid;
+> 		exp->ex_fsid     = nxp->ex_dev;
+> 
+> 		err = exp_fsid_hash(clp, exp);
+> 		goto finish;
+> 	}
+> 
+> 	err = check_export(nd.dentry->d_inode, nxp->ex_flags);
+> 	if (err) goto finish;
+> 
+> 	err = -ENOMEM;
+> 
+> 	dprintk("nfsd: creating export entry %p for client %p\n", exp, clp);
+> 
+> 	new.h.expiry_time = NEVER;
+> 	new.h.flags = 0;
+> 	new.ex_client = clp;
+> 	new.ex_mnt = nd.mnt;
+> 	new.ex_dentry = nd.dentry;
+> 	new.ex_flags = nxp->ex_flags;
+> 	new.ex_anon_uid = nxp->ex_anon_uid;
+> 	new.ex_anon_gid = nxp->ex_anon_gid;
+> 	new.ex_fsid = nxp->ex_dev;
+> 
+> 	exp = svc_export_lookup(&new);
+> 	if (exp)
+> 		exp = svc_export_update(&new, exp);
+> 
+> 	if (!exp)
+> 		goto finish;
+> 
+> 	if (exp_hash(clp, exp) ||
+> 	    exp_fsid_hash(clp, exp)) {
+> 		/* failed to create at least one index */
+> 		exp_do_unexport(exp);
+> 		cache_flush();
+> 		err = -ENOMEM;
+> 	}
+> 
+> finish:
+> 	if (exp)
+> 		exp_put(exp);
+> 	if (fsid_key && !IS_ERR(fsid_key))
+> 		cache_put(&fsid_key->h, &svc_expkey_cache);
+> 	if (clp)
+> 		auth_domain_put(clp);
+> 	path_release(&nd);
+> out_unlock:
+> 	exp_writeunlock();
+> out:
+> 	return err;
+> }
+> 	
+> 	
+>  				
+> Best Regards! 
+> lioupayphone
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
