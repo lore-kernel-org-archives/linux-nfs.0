@@ -1,86 +1,133 @@
-From: "Thomas Garner" <thomas536@gmail.com>
-Subject: Re: more nfsv4 lockups w/ nexenta
-Date: Fri, 19 Dec 2008 11:34:17 -0500
-Message-ID: <9ef864c50812190834p7a63d572s3bd99f964254cc@mail.gmail.com>
-References: <9ef864c50812110940o7ab17a2dvc83ac7653ad6dd21@mail.gmail.com>
-	 <1229018528.6463.23.camel@heimdal.trondhjem.org>
-	 <9ef864c50812111330v1c9dc200s49dacb5504bbfeca@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] nfs-utils: Enabling TCP wrappers
+Date: Fri, 19 Dec 2008 12:00:14 -0500
+Message-ID: <494BD31E.5040800@RedHat.com>
+References: <49468BC7.2000907@RedHat.com> <1819C671-5353-45B4-A814-98B1B2A4BEB1@oracle.com> <494AABA1.4070006@RedHat.com> <04AA0955-045D-432B-B96D-4A21F4889F6D@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "Trond Myklebust" <trond.myklebust@fys.uio.no>
+Cc: Olaf Kirch <okir@suse.de>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.153]:54217 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751361AbYLSQjX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2008 11:39:23 -0500
-Received: by fg-out-1718.google.com with SMTP id 19so420139fgg.17
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2008 08:39:21 -0800 (PST)
-In-Reply-To: <9ef864c50812111330v1c9dc200s49dacb5504bbfeca-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:57452 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751816AbYLSRCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Dec 2008 12:02:31 -0500
+In-Reply-To: <04AA0955-045D-432B-B96D-4A21F4889F6D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This has happened twice since I wrote last.  More debugging from the
-last occurrence:
+Chuck Lever wrote:
+>> @@ -72,12 +74,29 @@ mount_dispatch(struct svc_req *rqstp, SVCXPRT
+>> *transp)
+>>     union mountd_results    result;
+>>
+>> #ifdef HAVE_TCP_WRAPPER
+>> +#ifdef IPV6_SUPPORTED
+>> +    static int once = 0;
+>> +
+>> +    if (svc_getcaller(transp)->sin_family != AF_INET) {
+> 
+> It's not clear to me that svc_getcaller() will ever return a non-AF_INET
+> address.
+> 
+> Should we use svc_getcaller_netbuf() here instead?
+> 
+Here is the same patch using svc_getcaller_netbuf() instead
+of svc_getcaller():
 
-http://s120158928.onlinehome.us/messages.7.gz
-http://s120158928.onlinehome.us/nfs_dump_argento7
+comments?
 
-Thomas
+steved.
 
-On Thu, Dec 11, 2008 at 4:30 PM, Thomas Garner <thomas536@gmail.com> wrote:
-> The logs in particular are from Nov, but a lockup today prompted the
-> email.  Today's event does not appear to have been due to a reboot or
-> server restart (though I'm not as familiar with the intricacies of
-> Sun's daemon management), as both seem to have been up since Dec 2:
->
-> [root@filer0 ~]# uptime
->  4:25pm  up 9 day(s), 12:23,  2 users,  load average: 0.26, 0.26, 0.27
-> [root@filer0 ~]# svcs nfs/server
-> STATE          STIME    FMRI
-> online         Dec_02   svc:/network/nfs/server:default
->
-> I can provide specific info from today (though I'll need to gather
-> it).  Just let me know.
->
-> Thomas
->
-> On Thu, Dec 11, 2008 at 1:02 PM, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
->> On Thu, 2008-12-11 at 12:40 -0500, Thomas Garner wrote:
->>> I have a Debian client running 2.6.27.5 connecting over nfsv4 to a
->>> Nexenta nfs server running b85 (and even with b103) that is
->>> experiencing nfs lockups.  The symptoms are basically that nfs stops
->>> working (usually first noticed as Firefox locking up, but trying to
->>> log in as a user w/ an nfs mounted home dir hangs as well, as does
->>> trying to list said nfs mounted home directory).  Trying a `umount -f`
->>> doesn't usually resolve the issue.  Unfortunately there are no logs
->>> indicating what the issue is, so I've done some preliminary dumps.
->>> Here is the relevant portion of the process list:
->>>
->>>  3295 ?        S<    24:55  \_ [rpciod/0]
->>>  3296 ?        S<    46:14  \_ [rpciod/1]
->>>  3297 ?        S<    55:17  \_ [rpciod/2]
->>>  3298 ?        S<    19:01  \_ [rpciod/3]
->>>  3315 ?        R<   185:15  \_ [nfsiod]
->>>  4464 ?        D<     0:00  \_ [nfsv4-svc]
->>> 25203 ?        S      0:00  \_ [pdflush]
->>> 26618 ?        S      0:00  \_ [pdflush]
->>> 27343 ?        R<   252:35  \_ [192.168.0.10-re]
->>> 27344 ?        D      0:00  \_ [nfsv4-delegretu]
->>>
->>> I've also put up a /var/log/messages with `rpcdebug -m rpc -s all` and
->>> `rpcdebug -m nfs -s all` turned on:
->>>
->>> http://s120158928.onlinehome.us/messages.2.gz
->>>
->>> And a `tcpdump -s 0 -w nfs_dump_argento5 -x -i eth0`:
->>
->> >From the logs, it looks like it is recovery related. Did the server
->> reboot just before the hang?
->>
->> Cheers
->>  Trond
->>
->>
->
+commit 87aef16ecab0ee3b0744d24b0e257e9d108ff4c0
+Author: Steve Dickson <steved@redhat.com>
+Date:   Fri Dec 19 11:58:02 2008 -0500
+
+    Skip the host access check when IPv6 is enabled and its an IPv6 address.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mountd/mount_dispatch.c b/utils/mountd/mount_dispatch.c
+index f00c0c5..9223509 100644
+--- a/utils/mountd/mount_dispatch.c
++++ b/utils/mountd/mount_dispatch.c
+@@ -12,6 +12,8 @@
+ #include "tcpwrapper.h"
+ #endif
+ 
++#include <sys/syslog.h>
++
+ #include "mountd.h"
+ #include "rpcmisc.h"
+ 
+@@ -72,12 +74,32 @@ mount_dispatch(struct svc_req *rqstp, SVCXPRT *transp)
+ 	union mountd_results	result;
+ 
+ #ifdef HAVE_TCP_WRAPPER
++#ifdef IPV6_SUPPORTED
++	struct sockaddr *sa;
++	static int once = 0;
++
++	sa = (struct sockaddr *)svc_getcaller_netbuf(transp)->buf;
++	if (sa->sa_family != AF_INET) {
++		if (!once) {
++			syslog(LOG_WARNING, 
++				"No IPv6 support in Access Control Library (TCP Wrappers)"); 
++			once++;
++		}
++		goto skipcheck;
++	}
++#endif
++
+ 	/* remote host authorization check */
+ 	if (!check_default("mountd", svc_getcaller(transp),
+ 			   rqstp->rq_proc, MOUNTPROG)) {
+ 		svcerr_auth (transp, AUTH_FAILED);
+ 		return;
+ 	}
++
++#ifdef IPV6_SUPPORTED
++skipcheck:
++#endif
++
+ #endif
+ 
+ 	rpc_dispatch(rqstp, transp, dtable, number_of(dtable),
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 321f7a9..78bf6f8 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -88,6 +88,21 @@ extern void simulator (int, char **);
+ static void 
+ sm_prog_1_wrapper (struct svc_req *rqstp, register SVCXPRT *transp)
+ {
++#ifdef IPV6_SUPPORTED
++	struct sockaddr *sa;
++	static int once = 0;
++
++	sa = (struct sockaddr *)svc_getcaller_netbuf(transp)->buf;
++	if (sa->sa_family != AF_INET) {
++		if (!once) {
++			syslog(LOG_WARNING, 
++				"No IPv6 support in Access Control Library (TCP Wrappers)"); 
++			once++;
++		}
++		goto skipcheck;
++	}
++#endif
++
+ 	/* remote host authorization check */
+ 	if (!check_default("statd", svc_getcaller(transp),
+ 				 rqstp->rq_proc, SM_PROG)) {
+@@ -95,6 +110,10 @@ sm_prog_1_wrapper (struct svc_req *rqstp, register SVCXPRT *transp)
+ 		return;
+ 	}
+ 
++#ifdef IPV6_SUPPORTED
++skipcheck:
++#endif
++
+ 	sm_prog_1 (rqstp, transp);
+ }
+ 
