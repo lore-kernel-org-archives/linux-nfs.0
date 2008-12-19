@@ -1,69 +1,69 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/3] nfs-utils: Enabling TCP wrappers
-Date: Thu, 18 Dec 2008 16:21:58 -0500
-Message-ID: <494ABEF6.7070700@RedHat.com>
-References: <49468BC7.2000907@RedHat.com> <1819C671-5353-45B4-A814-98B1B2A4BEB1@oracle.com> <494AABA1.4070006@RedHat.com> <04AA0955-045D-432B-B96D-4A21F4889F6D@oracle.com> <494AB74E.3040403@RedHat.com> <CB549023-9164-4258-91EC-D9E3F2EF74E5@oracle.com>
+From: "lioupayphone" <lioupayphone@gmail.com>
+Subject: Re: Re: why there is a complex sync between /var/lib/nfs/etab in user-modeand  export_table in kernel mode?
+Date: Fri, 19 Dec 2008 22:50:27 +0800
+Message-ID: <200812192250226871692@gmail.com>
+References: <200812181433568806030@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Olaf Kirch <okir@suse.de>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain;
+	charset="iso-8859-1"
+Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+To: "Steve Dickson" <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:36264 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751047AbYLRVYO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Dec 2008 16:24:14 -0500
-In-Reply-To: <CB549023-9164-4258-91EC-D9E3F2EF74E5@oracle.com>
+Received: from ti-out-0910.google.com ([209.85.142.187]:37381 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750749AbYLSOue (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2008 09:50:34 -0500
+Received: by ti-out-0910.google.com with SMTP id b6so674954tic.23
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2008 06:50:32 -0800 (PST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello, Steve Dickson.
+you wrote at 23:54:00 on 2008-12-18 :
+>"Re: why there is a complex sync between /var/lib/nfs/etab in user-modeand  export_table in kernel mode?"
+>lioupayphone wrote:
+>> Hello, linux-nfs
+>> 
+>> i found that an entry in /var/lib/nfs/etab (etab for abbr)  was written to exprot_table of kernel-mode via a proc-file when a client requests mnt this entry.                                       
+>> when the entry in export_table of kernel-mode was expired (eg : reached its expiration time), an upcall machanism is able to make sure that the newly entry from etab of user-mode was written to export_table of kernel-mode. ie, the entry in export_table of kernel-mode was updated by the one of user-mode.
+>> 
+>> if the content listed above is true, i think linux nfs is too complex. and why not remove the etab from user-mode?
+>> in a word, i think it is easy to just maintain export_table of kernel-mode. we can directly scan /etc/exports and make up a complete export-entry, then write it to the export_table of kernel-mode. the entries in export_table of kernel-mode would never be expired unless we explicitly remove it from the export_table of kernel-mode (a proc MUST be provided for meeting this requirement).
+>> 
+>> when the server is rebooted and nfsd proc-filesystem is ready, just re-do "scanning the /etc/exports and make up complete export-entries, then write them into export_table of kernel-mode".  
+>> 
+>> i aims to 1) remove the complex upcall machanism ,  2) get rid of the couple of /var/lib/nfs/etab in user-mode and export_table in kernel-mode.
+>> 
+>> anyone can give me some suggestions? or points out what's wrong i am.
+>The /var/lib/nfs/etab file is the way the exportfs command communicates 
+>with the mountd daemon. 'exportfs -ar' causes the exports in /etc/exports
+>to be parsed and written to the etab. When a mount request is received
+>mountd reads the etab to build its internal export table. Ultimately
+>when the mount is successful, the kernel writes the mount to
+>/proc/net/rpc/nfsd.export/content.
+>
+>So that's how the etab fits in the grand scheme of things... 
+>
+>I believe what you are suggesting is simply pumping down
+>all the exports in /etc/exports directly to the kernel.
+>This ideas has been discussed and I believe the conclusion
+>we came to was; why pump down thousands of exports that
+>may or may not used. Dynamically building the kernel export
+>data just seem to make more sense in our case...
+>
+>I hope this helps...
+:-) thank you very much. i think your comments are very clear and very helpful for me.
+but i still think rpc.mountd is somewhat complex. we all know that a daemon in user-mode is likely to be killed. rpc.mountd is no exception. once rpc.mountd was killed, there are no chance for the export_table to be updated via upcall.
 
+It cannot be denied that putting the etab into kernel mode is wastful for memory. but i still think it is an easy  and stable method.
 
-Chuck Lever wrote:
-> Hi Steve-
-> 
-> On Dec 18, 2008, at Dec 18, 2008, 3:49 PM, Steve Dickson wrote:
->> Chuck Lever wrote:
->>>> @@ -72,12 +74,29 @@ mount_dispatch(struct svc_req *rqstp, SVCXPRT
->>>> *transp)
->>>>    union mountd_results    result;
->>>>
->>>> #ifdef HAVE_TCP_WRAPPER
->>>> +#ifdef IPV6_SUPPORTED
->>>> +    static int once = 0;
->>>> +
->>>> +    if (svc_getcaller(transp)->sin_family != AF_INET) {
->>>
->>> It's not clear to me that svc_getcaller() will ever return a non-AF_INET
->>> address.
->>>
->>> Should we use svc_getcaller_netbuf() here instead?
->> I would if I could but there is no svc_getcaller_netbuf() in the
->> glibc version of RPC...
-> 
-> If IPV6_SUPPORTED is set than libtirpc is required to be available. 
-> nfs-utils won't build with --enable-ipv6 if there's no libtirpc.
-Ah... good point! So something like this should work:
+thanks again. 
+:-)
 
-    sa = (struct sockaddr *)svc_getcaller_netbuf(transp)->buf;
+>
+>steved.
+>
 
-    if (sa->sa_family != AF_INET) {
-
-        if (!once) {
-
-            syslog(LOG_WARNING,
-
-                "No IPv6 support in Access Control Library (TCP
-Wrappers)");
-
-            once++;
-
-        }
-
-        goto skipcheck;
-
-    }
-
-
-steved.
+Best Regards!
+lioupayphone
 
