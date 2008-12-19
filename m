@@ -1,63 +1,47 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] NLM: Clean up flow of control in make_socks() function
-Date: Wed, 31 Dec 2008 16:06:11 -0500
-Message-ID: <20081231210611.4959.84900.stgit@ingres.1015granger.net>
-References: <20081231210449.4959.41094.stgit@ingres.1015granger.net>
+Subject: [PATCH] RFC: backwards compatibility for TI-RPC
+Date: Fri, 19 Dec 2008 10:31:25 -0500
+Message-ID: <20081219152226.32332.5510.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Cc: =okir@suse.de, linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:60184 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751719AbYLaVHD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Dec 2008 16:07:03 -0500
-In-Reply-To: <20081231210449.4959.41094.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from acsinet12.oracle.com ([141.146.126.234]:54977 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214AbYLSPlb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2008 10:41:31 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Use Bruce's preferred control flow style in make_socks().
+Hi Steve, Olaf -
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Normally I don't post a single patch with a cover letter, but this one
+needs some 'splainin'.
+
+I've tracked down a problem where rpc.statd in the latest nfs-utils
+git repo breaks.  Even though rpc.statd hasn't changed yet, it is
+now calling legacy RPC functions in TI-RPC rather than the original
+Linux RPC implementation in glibc.  There appear to be some ABI
+incompatibilities between the two.
+
+I'd like to solicit comments on this approach of addressing this
+problem.  And, more generally, also address the question of whether
+we want to sponsor a more extensive effort to review our recently
+adopted TI-RPC implementation to ensure that we have good ABI
+compatibility with glibc's RPC implementation.  Should we consider
+a strategy of merging these two implementations over time?
+
+Talk amongst yourselves...
+
 ---
 
- fs/lockd/svc.c |   22 ++++++++++++++--------
- 1 files changed, 14 insertions(+), 8 deletions(-)
+Chuck Lever (1):
+      backwards compatibility: fix order of fields in TI-RPC's svc_req
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 955cfac..3fdc83c 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -224,17 +224,23 @@ static int create_lockd_listener(struct svc_serv *serv, char *name,
- static int make_socks(struct svc_serv *serv)
- {
- 	static int warned;
--	int err = 0;
-+	int err;
- 
- 	err = create_lockd_listener(serv, "udp", nlm_udpport);
--	if (err >= 0)
--		err = create_lockd_listener(serv, "tcp", nlm_tcpport);
--	if (err >= 0) {
--		warned = 0;
--		err = 0;
--	} else if (warned++ == 0)
-+	if (err < 0)
-+		goto out_err;
-+
-+	err = create_lockd_listener(serv, "tcp", nlm_tcpport);
-+	if (err < 0)
-+		goto out_err;
-+
-+	warned = 0;
-+	return 0;
-+
-+out_err:
-+	if (warned++ == 0)
- 		printk(KERN_WARNING
--		       "lockd_up: makesock failed, error=%d\n", err);
-+			"lockd_up: makesock failed, error=%d\n", err);
- 	return err;
- }
- 
 
+ tirpc/rpc/svc.h |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+-- 
+Chuck Lever <chuck.lever@oracle.com>
