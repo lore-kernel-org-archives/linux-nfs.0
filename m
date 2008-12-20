@@ -1,49 +1,47 @@
-From: "James Pearson" <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
-Subject: Problems with Mac clients mounting a Linux server behind a firewall
-Date: Fri, 19 Dec 2008 22:52:22 +0000
-Message-ID: <a92ebfd90812191452l4b10362av5e9c8876335c32bc@mail.gmail.com>
-Reply-To: james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] nfs-utils: Enabling TCP wrappers
+Date: Sat, 20 Dec 2008 07:35:13 -0500
+Message-ID: <494CE681.7020001@RedHat.com>
+References: <49468BC7.2000907@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f17.google.com ([209.85.219.17]:38940 "EHLO
-	mail-ew0-f17.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754473AbYLSWwY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Dec 2008 17:52:24 -0500
-Received: by ewy10 with SMTP id 10so1313330ewy.13
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Dec 2008 14:52:22 -0800 (PST)
+Received: from mx2.redhat.com ([66.187.237.31]:33948 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751217AbYLTMh0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 20 Dec 2008 07:37:26 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mBKCbPtE002441
+	for <linux-nfs@vger.kernel.org>; Sat, 20 Dec 2008 07:37:25 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id mBKCbO6l002065
+	for <linux-nfs@vger.kernel.org>; Sat, 20 Dec 2008 07:37:25 -0500
+Received: from [10.16.10.12] (vpn-10-12.bos.redhat.com [10.16.10.12])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id mBKCbOdK015430
+	for <linux-nfs@vger.kernel.org>; Sat, 20 Dec 2008 07:37:24 -0500
+In-Reply-To: <49468BC7.2000907-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm not absolutely sure if this is an NFS server issue, but I have an
-Linux NFS server running CentOS4 that sits behind a firewall - about
-once a week rpciod ends up using 99% CPU and the machine needs to be
-rebooted
 
-When it gets into this state, running 'netstat -u -a' shows thousands
-of entries like:
 
-udp        0      0 *:35071                     *:*
-udp        0      0 *:34815                     *:*
-udp        0      0 *:34559                     *:*
-udp        0      0 *:34303                     *:*
-udp        0      0 *:34047                     *:*
-udp        0      0 *:33791                     *:*
-udp        0      0 *:33535                     *:*
-udp        0      0 *:33279                     *:*
-udp        0      0 *:33151                     *:*
-udp        0      0 *:32895                     *:*
+Steve Dickson wrote:
+> Recently I was asked to re-enable the TCP wrapper calls, that check the
+> validity of client that communicate with mountd and statd.
+> 
+> It became very apparent this code had not been used in a while
+> and was as a bit broken. So this patch set fixes the logic and 
+> tries to make the code scale better. 
+> 
+> The commit blobs in the set are relative to the 'tcpwrap'
+> branch in the git://linux-nfs.org/~steved/nfs-utils-exp.git
+> git tree.
+> 
+The three patches have been tested and committed.
 
-and tcpdump shows lots of udp connection attempts to port 111 on
-various Macs that are or have mounted the server (via an automounter).
-The connections don't get through as they are blocked by the firewall.
-None of these blocked connections are to Linux clients - it's just Mac
-clients
+Note, it was decided the IPv6 patch (the 4th patch)
+was not needed. 
 
-Is there anything that NFS server-wise that could be cause the server
-to attempt to contact clients in this way?
-
-Thanks
-
-James Pearson
+steved.
+ 
