@@ -1,129 +1,131 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 24/69] NFSv4: Add a recovery marking scheme for state owners
-Date: Tue, 23 Dec 2008 18:02:12 -0500
-Message-ID: <20081223230212.13743.80205.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 27/69] NFSv4: Ensure that file unlock requests don't
+ conflict with state recovery
+Date: Tue, 23 Dec 2008 18:02:13 -0500
+Message-ID: <20081223230213.13743.58777.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:44861 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17668 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752461AbYLWXXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2008 18:23:44 -0500
+	id S1752394AbYLWXXp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 18:23:45 -0500
 Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNa7W021304
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNa7Y021304
 	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:40 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The unlock path is currently failing to take the nfs_client->cl_sem read
+lock, and hence the recovery path may see locks disappear from underneath
+it.
+Also ensure that it takes the nfs_inode->rwsem read lock so that it there
+is no conflict with delegation recalls.
+
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs4_fs.h   |    7 +++++++
- fs/nfs/nfs4proc.c  |    2 ++
- fs/nfs/nfs4state.c |   21 +++++++++++++++++----
- 3 files changed, 26 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c  |   26 ++++++++++++++++----------
+ fs/nfs/nfs4state.c |    4 ++++
+ 2 files changed, 20 insertions(+), 10 deletions(-)
 
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 76eda46..a4e7b3f 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -94,12 +94,18 @@ struct nfs4_state_owner {
- 
- 	spinlock_t	     so_lock;
- 	atomic_t	     so_count;
-+	unsigned long	     so_flags;
- 	struct list_head     so_states;
- 	struct list_head     so_delegations;
- 	struct nfs_seqid_counter so_seqid;
- 	struct rpc_sequence  so_sequence;
- };
- 
-+enum {
-+	NFS_OWNER_RECLAIM_REBOOT,
-+	NFS_OWNER_RECLAIM_NOGRACE
-+};
-+
- /*
-  * struct nfs4_state maintains the client-side state for a given
-  * (state_owner,inode) tuple (OPEN) or state_owner (LOCK).
-@@ -166,6 +172,7 @@ struct nfs4_exception {
- };
- 
- struct nfs4_state_recovery_ops {
-+	int owner_flag_bit;
- 	int state_flag_bit;
- 	int (*recover_open)(struct nfs4_state_owner *, struct nfs4_state *);
- 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 780ba00..019c8d6 100644
+index 660c5dc..aec4e47 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3690,12 +3690,14 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- }
+@@ -3273,6 +3273,8 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
  
- struct nfs4_state_recovery_ops nfs4_reboot_recovery_ops = {
-+	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
- 	.state_flag_bit	= NFS_STATE_RECLAIM_REBOOT,
- 	.recover_open	= nfs4_open_reclaim,
- 	.recover_lock	= nfs4_lock_reclaim,
- };
+ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *request)
+ {
++	struct nfs_client *clp = state->owner->so_client;
++	struct nfs_inode *nfsi = NFS_I(state->inode);
+ 	struct nfs_seqid *seqid;
+ 	struct nfs4_lock_state *lsp;
+ 	struct rpc_task *task;
+@@ -3282,8 +3284,15 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
+ 	status = nfs4_set_lock_state(state, request);
+ 	/* Unlock _before_ we do the RPC call */
+ 	request->fl_flags |= FL_EXISTS;
+-	if (do_vfs_lock(request->fl_file, request) == -ENOENT)
++	down_read(&clp->cl_sem);
++	down_read(&nfsi->rwsem);
++	if (do_vfs_lock(request->fl_file, request) == -ENOENT) {
++		up_read(&nfsi->rwsem);
++		up_read(&clp->cl_sem);
+ 		goto out;
++	}
++	up_read(&nfsi->rwsem);
++	up_read(&clp->cl_sem);
+ 	if (status != 0)
+ 		goto out;
+ 	/* Is this a delegated lock? */
+@@ -3510,6 +3519,7 @@ static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request
+ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+ {
+ 	struct nfs_client *clp = state->owner->so_client;
++	struct nfs_inode *nfsi = NFS_I(state->inode);
+ 	unsigned char fl_flags = request->fl_flags;
+ 	int status;
  
- struct nfs4_state_recovery_ops nfs4_nograce_recovery_ops = {
-+	.owner_flag_bit = NFS_OWNER_RECLAIM_NOGRACE,
- 	.state_flag_bit	= NFS_STATE_RECLAIM_NOGRACE,
- 	.recover_open	= nfs4_open_expired,
- 	.recover_lock	= nfs4_lock_expired,
+@@ -3522,18 +3532,13 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	if (status < 0)
+ 		goto out;
+ 	down_read(&clp->cl_sem);
++	down_read(&nfsi->rwsem);
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+-		struct nfs_inode *nfsi = NFS_I(state->inode);
+ 		/* Yes: cache locks! */
+-		down_read(&nfsi->rwsem);
+ 		/* ...but avoid races with delegation recall... */
+-		if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+-			request->fl_flags = fl_flags & ~FL_SLEEP;
+-			status = do_vfs_lock(request->fl_file, request);
+-			up_read(&nfsi->rwsem);
+-			goto out_unlock;
+-		}
+-		up_read(&nfsi->rwsem);
++		request->fl_flags = fl_flags & ~FL_SLEEP;
++		status = do_vfs_lock(request->fl_file, request);
++		goto out_unlock;
+ 	}
+ 	status = _nfs4_do_setlk(state, cmd, request, 0);
+ 	if (status != 0)
+@@ -3543,6 +3548,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	if (do_vfs_lock(request->fl_file, request) < 0)
+ 		printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
+ out_unlock:
++	up_read(&nfsi->rwsem);
+ 	up_read(&clp->cl_sem);
+ out:
+ 	request->fl_flags = fl_flags;
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index a780518..7dcca23 100644
+index beade55..16c9fbd 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -832,6 +832,7 @@ static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_st
- 		clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
- 		return 0;
- 	}
-+	set_bit(NFS_OWNER_RECLAIM_REBOOT, &state->owner->so_flags);
- 	set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
- 	return 1;
- }
-@@ -840,6 +841,7 @@ static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_s
+@@ -849,9 +849,11 @@ static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_s
+ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_recovery_ops *ops)
  {
- 	set_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags);
- 	clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-+	set_bit(NFS_OWNER_RECLAIM_NOGRACE, &state->owner->so_flags);
- 	set_bit(NFS4CLNT_RECLAIM_NOGRACE, &clp->cl_state);
- 	return 1;
- }
-@@ -1043,14 +1045,25 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
- 	struct rb_node *pos;
+ 	struct inode *inode = state->inode;
++	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct file_lock *fl;
  	int status = 0;
  
--	/* Note: list is protected by exclusive lock on cl->cl_sem */
-+restart:
-+	spin_lock(&clp->cl_lock);
- 	for (pos = rb_first(&clp->cl_state_owners); pos != NULL; pos = rb_next(pos)) {
- 		struct nfs4_state_owner *sp = rb_entry(pos, struct nfs4_state_owner, so_client_node);
-+		if (!test_and_clear_bit(ops->owner_flag_bit, &sp->so_flags))
-+			continue;
-+		atomic_inc(&sp->so_count);
-+		spin_unlock(&clp->cl_lock);
- 		status = nfs4_reclaim_open_state(sp, ops);
--		if (status < 0)
--			break;
-+		if (status < 0) {
-+			set_bit(ops->owner_flag_bit, &sp->so_flags);
-+			nfs4_put_state_owner(sp);
-+			nfs4_recovery_handle_error(clp, status);
-+			return status;
-+		}
-+		nfs4_put_state_owner(sp);
-+		goto restart;
++	down_write(&nfsi->rwsem);
+ 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+ 		if (!(fl->fl_flags & (FL_POSIX|FL_FLOCK)))
+ 			continue;
+@@ -874,8 +876,10 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
+ 				goto out_err;
+ 		}
  	}
--	nfs4_recovery_handle_error(clp, status);
-+	spin_unlock(&clp->cl_lock);
++	up_write(&nfsi->rwsem);
+ 	return 0;
+ out_err:
++	up_write(&nfsi->rwsem);
  	return status;
  }
  
