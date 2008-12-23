@@ -1,100 +1,136 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 3/3] SUNRPC: svc_xprt_enqueue should not refuse to enqueue
- 'XPT_DEAD' transports
-Date: Tue, 23 Dec 2008 08:49:04 -0600
-Message-ID: <4950FA60.3060405@opengridcomputing.com>
-References: <20081017123207.GA14979@rabbit.intern.cm-ag>	 <1224484046.23068.14.camel@localhost.localdomain>	 <1225539927.2221.3.camel@localhost.localdomain>	 <1225546878.4390.3.camel@heimdal.trondhjem.org>	 <1227596962.16868.22.camel@localhost.localdomain>	 <1227619696.7057.19.camel@heimdal.trondhjem.org>	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>	 <1227621434.7057.33.camel@heimdal.trondhjem.org>	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>	 <1227737539.31008.2.camel@localhost.localdomain>	 <1228090631.7112.11.camel@heimdal.trondhjem.org>	 <1228090815.7112.15.camel@heimdal.trondhjem.org>	 <49491C58.9@opengridcomputing.com> <1229540877.7257.97.camel@heimdal.trondhjem.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 02/69] SUNRPC: Remove the last remnant of the BKL...
+Date: Tue, 23 Dec 2008 18:02:05 -0500
+Message-ID: <20081223230204.13743.98612.stgit@heimdal.trondhjem.org>
+References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>, linux-nfs@vger.kernel.org,
-	Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>, linux-kernel@vger.kernel.org,
-	gcosta@redhat.com, Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:45861 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751161AbYLWOtH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Dec 2008 09:49:07 -0500
-In-Reply-To: <1229540877.7257.97.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:17668 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752230AbYLWXXk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 18:23:40 -0500
+Received: from sacrsexc2-prd.hq.netapp.com ([10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNaFV006177
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:38 -0800 (PST)
+In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Wed, 2008-12-17 at 09:35 -0600, Tom Tucker wrote:
->   
->> Trond Myklebust wrote:
->>     
->>> Aside from being racy (there is nothing preventing someone setting XPT_DEAD
->>> after the test in svc_xprt_enqueue, and before XPT_BUSY is set), it is
->>> wrong to assume that transports which have called svc_delete_xprt() might
->>> not need to be re-enqueued.
->>>       
->> This is only true because now you allow transports with XPT_DEAD set to 
->> be enqueued -- yes?
->>
->>     
->>> See the list of deferred requests, which is currently never going to
->>> be cleared if the revisit call happens after svc_delete_xprt(). In this
->>> case, the deferred request will currently keep a reference to the transport
->>> forever.
->>>
->>>       
->> I agree this is a possibility and it needs to be fixed. I'm concerned 
->> that the root cause is still there though. I thought the test case was 
->> the client side timing out the connection. Why are there deferred 
->> requests sitting on what is presumably an idle connection?
->>     
->
-> I haven't said that they are the cause of this test case. I've said that
-> deferred requests hold references to the socket that can obviously
-> deadlock. That needs to be fixed regardless of whether or not it is the
-> cause here.
->
-> There are plenty of situations in which the client may choose to close
-> the TCP socket even if there are outstanding requests. One of the most
-> common is when the user signals the process, so that an RPC call that
-> was partially transmitted (ran out of buffer space) gets cancelled
-> before it can finish transmitting. In that case the client has no choice
-> but to disconnect and immediately reconnect.
->
->   
->>> The fix should be to allow dead transports to be enqueued in order to clear
->>> the deferred requests, then change the order of processing in svc_recv() so
->>> that we pick up deferred requests before we do the XPT_CLOSE processing.
->>>
->>>       
->> Wouldn't it be simpler to clean up any deferred requests in the close 
->> path instead of changing the meaning of XPT_DEAD and dispatching 
->> N-threads to do the same?
->>     
->
-> AFAICS, deferred requests are the property of the cache until they
-> expire or a downcall occurs. I'm not aware of any way to cancel only
-> those deferred requests that hold a reference to this particular
-> transport.
->
->   
-Ok, I think you're right, and I think that this fix is correct and makes 
-the symptom go away.
+Somehow, this escaped the previous purge. There should be no need to keep
+any extra locks in the XDR callbacks.
 
-I may be completely confused here, but:
+The NFS client XDR code only writes into private objects, whereas all reads
+of shared objects are confined to fields that do not change, such as
+filehandles...
 
-- The deferred requests should be getting cleaned up by timing out, and 
-that does not not seem to be happening, (Is this true?)
+Ditto for lockd, the NFSv2/v3 client mount code, and rpcbind.
 
-- By releasing the underlying connection prior to releasing the 
-transport that manages it, we've converted the visible resource leek to 
-an invisible one.
+The nfsd XDR code may require the BKL, but since it does a synchronous RPC
+call from a thread that already holds the lock, that issue is moot.
 
-- This has been around forever and changing the client side close 
-behavior graceful exposed this bug,
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-So I'm wondering if what we want to do here is to provide a mechanism 
-for canceling deferred requests for a particular transport. This would 
-provide a mechanism for the generic transport driver to force 
-cancellation of deferred requests when closing.
+ include/linux/sunrpc/xdr.h     |   15 ---------------
+ net/sunrpc/auth.c              |    4 ++--
+ net/sunrpc/auth_gss/auth_gss.c |   10 +++++-----
+ 3 files changed, 7 insertions(+), 22 deletions(-)
 
-Tom
 
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index e4057d7..49e1eb4 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -37,21 +37,6 @@ struct xdr_netobj {
+ typedef int	(*kxdrproc_t)(void *rqstp, __be32 *data, void *obj);
+ 
+ /*
+- * We're still requiring the BKL in the xdr code until it's been
+- * more carefully audited, at which point this wrapper will become
+- * unnecessary.
+- */
+-static inline int rpc_call_xdrproc(kxdrproc_t xdrproc, void *rqstp, __be32 *data, void *obj)
+-{
+-	int ret;
+-
+-	lock_kernel();
+-	ret = xdrproc(rqstp, data, obj);
+-	unlock_kernel();
+-	return ret;
+-}
+-
+-/*
+  * Basic structure for transmission/reception of a client XDR message.
+  * Features a header (for a linear buffer containing RPC headers
+  * and the data payload for short messages), and then an array of
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index cb216b2..6e28744 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -513,7 +513,7 @@ rpcauth_wrap_req(struct rpc_task *task, kxdrproc_t encode, void *rqstp,
+ 	if (cred->cr_ops->crwrap_req)
+ 		return cred->cr_ops->crwrap_req(task, encode, rqstp, data, obj);
+ 	/* By default, we encode the arguments normally. */
+-	return rpc_call_xdrproc(encode, rqstp, data, obj);
++	return encode(rqstp, data, obj);
+ }
+ 
+ int
+@@ -528,7 +528,7 @@ rpcauth_unwrap_resp(struct rpc_task *task, kxdrproc_t decode, void *rqstp,
+ 		return cred->cr_ops->crunwrap_resp(task, decode, rqstp,
+ 						   data, obj);
+ 	/* By default, we decode the arguments normally. */
+-	return rpc_call_xdrproc(decode, rqstp, data, obj);
++	return decode(rqstp, data, obj);
+ }
+ 
+ int
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 853a414..b856159 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1017,7 +1017,7 @@ gss_wrap_req_integ(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
+ 	offset = (u8 *)p - (u8 *)snd_buf->head[0].iov_base;
+ 	*p++ = htonl(rqstp->rq_seqno);
+ 
+-	status = rpc_call_xdrproc(encode, rqstp, p, obj);
++	status = encode(rqstp, p, obj);
+ 	if (status)
+ 		return status;
+ 
+@@ -1111,7 +1111,7 @@ gss_wrap_req_priv(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
+ 	offset = (u8 *)p - (u8 *)snd_buf->head[0].iov_base;
+ 	*p++ = htonl(rqstp->rq_seqno);
+ 
+-	status = rpc_call_xdrproc(encode, rqstp, p, obj);
++	status = encode(rqstp, p, obj);
+ 	if (status)
+ 		return status;
+ 
+@@ -1170,12 +1170,12 @@ gss_wrap_req(struct rpc_task *task,
+ 		/* The spec seems a little ambiguous here, but I think that not
+ 		 * wrapping context destruction requests makes the most sense.
+ 		 */
+-		status = rpc_call_xdrproc(encode, rqstp, p, obj);
++		status = encode(rqstp, p, obj);
+ 		goto out;
+ 	}
+ 	switch (gss_cred->gc_service) {
+ 		case RPC_GSS_SVC_NONE:
+-			status = rpc_call_xdrproc(encode, rqstp, p, obj);
++			status = encode(rqstp, p, obj);
+ 			break;
+ 		case RPC_GSS_SVC_INTEGRITY:
+ 			status = gss_wrap_req_integ(cred, ctx, encode,
+@@ -1291,7 +1291,7 @@ gss_unwrap_resp(struct rpc_task *task,
+ 	cred->cr_auth->au_rslack = cred->cr_auth->au_verfsize + (p - savedp)
+ 						+ (savedlen - head->iov_len);
+ out_decode:
+-	status = rpc_call_xdrproc(decode, rqstp, p, obj);
++	status = decode(rqstp, p, obj);
+ out:
+ 	gss_put_ctx(ctx);
+ 	dprintk("RPC: %5u gss_unwrap_resp returning %d\n", task->tk_pid,
 
