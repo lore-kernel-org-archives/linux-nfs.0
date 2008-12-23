@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 27/69] NFSv4: Ensure that file unlock requests don't
- conflict with state recovery
+Subject: [PATCH 26/69] NFS: Remove the unnecessary argument to
+ nfs4_wait_clnt_recover()
 Date: Tue, 23 Dec 2008 18:02:13 -0500
-Message-ID: <20081223230213.13743.58777.stgit@heimdal.trondhjem.org>
+Message-ID: <20081223230212.13743.52305.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -10,123 +10,206 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:17668 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752394AbYLWXXp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2008 18:23:45 -0500
-Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNa7Y021304
+	id S1752395AbYLWXXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 18:23:44 -0500
+Received: from svlrsexc1-prd.hq.netapp.com ([10.57.115.30])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNbsa006182
 	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:40 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The unlock path is currently failing to take the nfs_client->cl_sem read
-lock, and hence the recovery path may see locks disappear from underneath
-it.
-Also ensure that it takes the nfs_inode->rwsem read lock so that it there
-is no conflict with delegation recalls.
+...and move some code around in order to clear out an unnecessary
+forward declaration.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs4proc.c  |   26 ++++++++++++++++----------
- fs/nfs/nfs4state.c |    4 ++++
- 2 files changed, 20 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4proc.c |  151 ++++++++++++++++++++++++++---------------------------
+ 1 files changed, 75 insertions(+), 76 deletions(-)
 
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 660c5dc..aec4e47 100644
+index 019c8d6..660c5dc 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3273,6 +3273,8 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
+@@ -63,8 +63,6 @@ struct nfs4_opendata;
+ static int _nfs4_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *);
+-static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception);
+-static int nfs4_wait_clnt_recover(struct rpc_clnt *clnt, struct nfs_client *clp);
+ static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
  
- static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
-+	struct nfs_client *clp = state->owner->so_client;
-+	struct nfs_inode *nfsi = NFS_I(state->inode);
- 	struct nfs_seqid *seqid;
- 	struct nfs4_lock_state *lsp;
- 	struct rpc_task *task;
-@@ -3282,8 +3284,15 @@ static int nfs4_proc_unlck(struct nfs4_state *state, int cmd, struct file_lock *
- 	status = nfs4_set_lock_state(state, request);
- 	/* Unlock _before_ we do the RPC call */
- 	request->fl_flags |= FL_EXISTS;
--	if (do_vfs_lock(request->fl_file, request) == -ENOENT)
-+	down_read(&clp->cl_sem);
-+	down_read(&nfsi->rwsem);
-+	if (do_vfs_lock(request->fl_file, request) == -ENOENT) {
-+		up_read(&nfsi->rwsem);
-+		up_read(&clp->cl_sem);
- 		goto out;
-+	}
-+	up_read(&nfsi->rwsem);
-+	up_read(&clp->cl_sem);
- 	if (status != 0)
- 		goto out;
- 	/* Is this a delegated lock? */
-@@ -3510,6 +3519,7 @@ static int nfs4_lock_expired(struct nfs4_state *state, struct file_lock *request
- static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- {
- 	struct nfs_client *clp = state->owner->so_client;
-+	struct nfs_inode *nfsi = NFS_I(state->inode);
- 	unsigned char fl_flags = request->fl_flags;
- 	int status;
- 
-@@ -3522,18 +3532,13 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	if (status < 0)
- 		goto out;
- 	down_read(&clp->cl_sem);
-+	down_read(&nfsi->rwsem);
- 	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
--		struct nfs_inode *nfsi = NFS_I(state->inode);
- 		/* Yes: cache locks! */
--		down_read(&nfsi->rwsem);
- 		/* ...but avoid races with delegation recall... */
--		if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
--			request->fl_flags = fl_flags & ~FL_SLEEP;
--			status = do_vfs_lock(request->fl_file, request);
--			up_read(&nfsi->rwsem);
--			goto out_unlock;
--		}
--		up_read(&nfsi->rwsem);
-+		request->fl_flags = fl_flags & ~FL_SLEEP;
-+		status = do_vfs_lock(request->fl_file, request);
-+		goto out_unlock;
- 	}
- 	status = _nfs4_do_setlk(state, cmd, request, 0);
- 	if (status != 0)
-@@ -3543,6 +3548,7 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	if (do_vfs_lock(request->fl_file, request) < 0)
- 		printk(KERN_WARNING "%s: VFS is out of sync with lock manager!\n", __func__);
- out_unlock:
-+	up_read(&nfsi->rwsem);
- 	up_read(&clp->cl_sem);
- out:
- 	request->fl_flags = fl_flags;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index beade55..16c9fbd 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -849,9 +849,11 @@ static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_s
- static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_recovery_ops *ops)
- {
- 	struct inode *inode = state->inode;
-+	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct file_lock *fl;
- 	int status = 0;
- 
-+	down_write(&nfsi->rwsem);
- 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
- 		if (!(fl->fl_flags & (FL_POSIX|FL_FLOCK)))
- 			continue;
-@@ -874,8 +876,10 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
- 				goto out_err;
- 		}
- 	}
-+	up_write(&nfsi->rwsem);
- 	return 0;
- out_err:
-+	up_write(&nfsi->rwsem);
- 	return status;
+@@ -195,6 +193,80 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 	kunmap_atomic(start, KM_USER0);
  }
  
++static int nfs4_wait_bit_killable(void *word)
++{
++	if (fatal_signal_pending(current))
++		return -ERESTARTSYS;
++	schedule();
++	return 0;
++}
++
++static int nfs4_wait_clnt_recover(struct nfs_client *clp)
++{
++	int res;
++
++	might_sleep();
++
++	rwsem_acquire(&clp->cl_sem.dep_map, 0, 0, _RET_IP_);
++
++	res = wait_on_bit(&clp->cl_state, NFS4CLNT_STATE_RECOVER,
++			nfs4_wait_bit_killable, TASK_KILLABLE);
++
++	rwsem_release(&clp->cl_sem.dep_map, 1, _RET_IP_);
++	return res;
++}
++
++static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
++{
++	int res = 0;
++
++	might_sleep();
++
++	if (*timeout <= 0)
++		*timeout = NFS4_POLL_RETRY_MIN;
++	if (*timeout > NFS4_POLL_RETRY_MAX)
++		*timeout = NFS4_POLL_RETRY_MAX;
++	schedule_timeout_killable(*timeout);
++	if (fatal_signal_pending(current))
++		res = -ERESTARTSYS;
++	*timeout <<= 1;
++	return res;
++}
++
++/* This is the error handling routine for processes that are allowed
++ * to sleep.
++ */
++static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
++{
++	struct nfs_client *clp = server->nfs_client;
++	int ret = errorcode;
++
++	exception->retry = 0;
++	switch(errorcode) {
++		case 0:
++			return 0;
++		case -NFS4ERR_STALE_CLIENTID:
++		case -NFS4ERR_STALE_STATEID:
++		case -NFS4ERR_EXPIRED:
++			nfs4_schedule_state_recovery(clp);
++			ret = nfs4_wait_clnt_recover(clp);
++			if (ret == 0)
++				exception->retry = 1;
++			break;
++		case -NFS4ERR_FILE_OPEN:
++		case -NFS4ERR_GRACE:
++		case -NFS4ERR_DELAY:
++			ret = nfs4_delay(server->client, &exception->timeout);
++			if (ret != 0)
++				break;
++		case -NFS4ERR_OLD_STATEID:
++			exception->retry = 1;
++	}
++	/* We failed to handle the error */
++	return nfs4_map_errors(ret);
++}
++
++
+ static void renew_lease(const struct nfs_server *server, unsigned long timestamp)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+@@ -981,7 +1053,7 @@ static int nfs4_recover_expired_lease(struct nfs_server *server)
+ 	int ret;
+ 
+ 	for (;;) {
+-		ret = nfs4_wait_clnt_recover(server->client, clp);
++		ret = nfs4_wait_clnt_recover(clp);
+ 		if (ret != 0)
+ 			return ret;
+ 		if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) &&
+@@ -2799,79 +2871,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server)
+ 	return 0;
+ }
+ 
+-static int nfs4_wait_bit_killable(void *word)
+-{
+-	if (fatal_signal_pending(current))
+-		return -ERESTARTSYS;
+-	schedule();
+-	return 0;
+-}
+-
+-static int nfs4_wait_clnt_recover(struct rpc_clnt *clnt, struct nfs_client *clp)
+-{
+-	int res;
+-
+-	might_sleep();
+-
+-	rwsem_acquire(&clp->cl_sem.dep_map, 0, 0, _RET_IP_);
+-
+-	res = wait_on_bit(&clp->cl_state, NFS4CLNT_STATE_RECOVER,
+-			nfs4_wait_bit_killable, TASK_KILLABLE);
+-
+-	rwsem_release(&clp->cl_sem.dep_map, 1, _RET_IP_);
+-	return res;
+-}
+-
+-static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+-{
+-	int res = 0;
+-
+-	might_sleep();
+-
+-	if (*timeout <= 0)
+-		*timeout = NFS4_POLL_RETRY_MIN;
+-	if (*timeout > NFS4_POLL_RETRY_MAX)
+-		*timeout = NFS4_POLL_RETRY_MAX;
+-	schedule_timeout_killable(*timeout);
+-	if (fatal_signal_pending(current))
+-		res = -ERESTARTSYS;
+-	*timeout <<= 1;
+-	return res;
+-}
+-
+-/* This is the error handling routine for processes that are allowed
+- * to sleep.
+- */
+-static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
+-{
+-	struct nfs_client *clp = server->nfs_client;
+-	int ret = errorcode;
+-
+-	exception->retry = 0;
+-	switch(errorcode) {
+-		case 0:
+-			return 0;
+-		case -NFS4ERR_STALE_CLIENTID:
+-		case -NFS4ERR_STALE_STATEID:
+-		case -NFS4ERR_EXPIRED:
+-			nfs4_schedule_state_recovery(clp);
+-			ret = nfs4_wait_clnt_recover(server->client, clp);
+-			if (ret == 0)
+-				exception->retry = 1;
+-			break;
+-		case -NFS4ERR_FILE_OPEN:
+-		case -NFS4ERR_GRACE:
+-		case -NFS4ERR_DELAY:
+-			ret = nfs4_delay(server->client, &exception->timeout);
+-			if (ret != 0)
+-				break;
+-		case -NFS4ERR_OLD_STATEID:
+-			exception->retry = 1;
+-	}
+-	/* We failed to handle the error */
+-	return nfs4_map_errors(ret);
+-}
+-
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program, unsigned short port, struct rpc_cred *cred)
+ {
+ 	nfs4_verifier sc_verifier;
 
