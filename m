@@ -1,94 +1,104 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 60/69] rpc: track number of users of the gss upcall pipe
-Date: Tue, 23 Dec 2008 18:02:24 -0500
-Message-ID: <20081223230223.13743.39649.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 45/69] sunrpc: fix code that makes auth_gss send
+ destroy_cred message (try #2)
+Date: Tue, 23 Dec 2008 18:02:19 -0500
+Message-ID: <20081223230218.13743.40905.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1640 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21081 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752762AbYLWXYp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2008 18:24:45 -0500
-Received: from sacrsexc2-prd.hq.netapp.com ([10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNOcm5006401
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:24:40 -0800 (PST)
+	id S1752304AbYLWXYj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 18:24:39 -0500
+Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNOcSW021557
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:24:38 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: \"J. Bruce Fields\" <bfields@citi.umich.edu>
+From: Jeff Layton <jlayton@redhat.com>
 
-Keep a count of the number of pipes open plus the number of messages on
-a pipe.  This count isn't used yet.
+There's a bit of a chicken and egg problem when it comes to destroying
+auth_gss credentials. When we destroy the last instance of a GSSAPI RPC
+credential, we should send a NULL RPC call with a GSS procedure of
+RPCSEC_GSS_DESTROY to hint to the server that it can destroy those
+creds.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+This isn't happening because we're setting clearing the uptodate bit on
+the credentials and then setting the operations to the gss_nullops. When
+we go to do the RPC call, we try to refresh the creds. That fails with
+-EACCES and the call fails.
+
+Fix this by not clearing the UPTODATE bit for the credentials and adding
+a new crdestroy op for gss_nullops that just tears down the cred without
+trying to destroy the context.
+
+The only difference between this patch and the first one is the removal
+of some minor formatting deltas.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/auth_gss/auth_gss.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c |   17 ++++++++++++-----
+ 1 files changed, 12 insertions(+), 5 deletions(-)
 
 
 diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index bc512ff..51aa27d 100644
+index b856159..cb19c9d 100644
 --- a/net/sunrpc/auth_gss/auth_gss.c
 +++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -75,6 +75,8 @@ struct gss_auth {
- 	struct dentry *dentry;
- };
+@@ -693,7 +693,7 @@ gss_destroying_context(struct rpc_cred *cred)
+ 	struct rpc_task *task;
  
-+static atomic_t pipe_users = ATOMIC_INIT(0);
-+
- static void gss_free_ctx(struct gss_cl_ctx *);
- static struct rpc_pipe_ops gss_upcall_ops;
+ 	if (gss_cred->gc_ctx == NULL ||
+-	    test_and_clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
++	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
+ 		return 0;
  
-@@ -237,6 +239,7 @@ gss_release_msg(struct gss_upcall_msg *gss_msg)
- {
- 	if (!atomic_dec_and_test(&gss_msg->count))
- 		return;
-+	atomic_dec(&pipe_users);
- 	BUG_ON(!list_empty(&gss_msg->list));
- 	if (gss_msg->ctx != NULL)
- 		gss_put_ctx(gss_msg->ctx);
-@@ -331,6 +334,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid)
- 	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
- 	if (gss_msg == NULL)
- 		return ERR_PTR(-ENOMEM);
-+	atomic_inc(&pipe_users);
- 	INIT_LIST_HEAD(&gss_msg->list);
- 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
- 	init_waitqueue_head(&gss_msg->waitqueue);
-@@ -555,6 +559,13 @@ out:
- 	return err;
+ 	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
+@@ -757,14 +757,12 @@ gss_free_cred_callback(struct rcu_head *head)
  }
  
-+static int
-+gss_pipe_open(struct inode *inode)
+ static void
+-gss_destroy_cred(struct rpc_cred *cred)
++gss_destroy_nullcred(struct rpc_cred *cred)
+ {
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
+ 	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
+ 
+-	if (gss_destroying_context(cred))
+-		return;
+ 	rcu_assign_pointer(gss_cred->gc_ctx, NULL);
+ 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
+ 	if (ctx)
+@@ -772,6 +770,15 @@ gss_destroy_cred(struct rpc_cred *cred)
+ 	kref_put(&gss_auth->kref, gss_free_callback);
+ }
+ 
++static void
++gss_destroy_cred(struct rpc_cred *cred)
 +{
-+	atomic_inc(&pipe_users);
-+	return 0;
++
++	if (gss_destroying_context(cred))
++		return;
++	gss_destroy_nullcred(cred);
 +}
 +
- static void
- gss_pipe_release(struct inode *inode)
- {
-@@ -574,6 +585,8 @@ gss_pipe_release(struct inode *inode)
- 		spin_lock(&inode->i_lock);
- 	}
- 	spin_unlock(&inode->i_lock);
-+
-+	atomic_dec(&pipe_users);
- }
+ /*
+  * Lookup RPCSEC_GSS cred for the current process
+  */
+@@ -1324,7 +1331,7 @@ static const struct rpc_credops gss_credops = {
  
- static void
-@@ -1349,6 +1362,7 @@ static struct rpc_pipe_ops gss_upcall_ops = {
- 	.upcall		= gss_pipe_upcall,
- 	.downcall	= gss_pipe_downcall,
- 	.destroy_msg	= gss_pipe_destroy_msg,
-+	.open_pipe	= gss_pipe_open,
- 	.release_pipe	= gss_pipe_release,
- };
- 
+ static const struct rpc_credops gss_nullops = {
+ 	.cr_name	= "AUTH_GSS",
+-	.crdestroy	= gss_destroy_cred,
++	.crdestroy	= gss_destroy_nullcred,
+ 	.crbind		= rpcauth_generic_bind_cred,
+ 	.crmatch	= gss_match,
+ 	.crmarshal	= gss_marshal,
 
