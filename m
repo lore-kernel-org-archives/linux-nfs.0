@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 66/69] rpc: allow gss callbacks to client
-Date: Tue, 23 Dec 2008 18:02:26 -0500
-Message-ID: <20081223230226.13743.85492.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 60/69] rpc: track number of users of the gss upcall pipe
+Date: Tue, 23 Dec 2008 18:02:24 -0500
+Message-ID: <20081223230223.13743.39649.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,115 +9,86 @@ To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:1640 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752847AbYLWXYn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2008 18:24:43 -0500
-Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNOcSq021557
+	id S1752762AbYLWXYp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 18:24:45 -0500
+Received: from sacrsexc2-prd.hq.netapp.com ([10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNOcm5006401
 	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:24:40 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Olga Kornievskaia <aglo@citi.umich.edu>
+From: \"J. Bruce Fields\" <bfields@citi.umich.edu>
 
-This patch adds client-side support to allow for callbacks other than
-AUTH_SYS.
+Keep a count of the number of pipes open plus the number of messages on
+a pipe.  This count isn't used yet.
 
-Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/callback.c                 |   36 +++++++++++++++++++++++++++++++-----
- net/sunrpc/auth_gss/svcauth_gss.c |    1 +
- 2 files changed, 32 insertions(+), 5 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index c2e9cfd..3e634f2 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -16,6 +16,7 @@
- #include <linux/mutex.h>
- #include <linux/freezer.h>
- #include <linux/kthread.h>
-+#include <linux/sunrpc/svcauth_gss.h>
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index bc512ff..51aa27d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -75,6 +75,8 @@ struct gss_auth {
+ 	struct dentry *dentry;
+ };
  
- #include <net/inet_sock.h>
++static atomic_t pipe_users = ATOMIC_INIT(0);
++
+ static void gss_free_ctx(struct gss_cl_ctx *);
+ static struct rpc_pipe_ops gss_upcall_ops;
  
-@@ -182,10 +183,34 @@ void nfs_callback_down(void)
- 	mutex_unlock(&nfs_callback_mutex);
+@@ -237,6 +239,7 @@ gss_release_msg(struct gss_upcall_msg *gss_msg)
+ {
+ 	if (!atomic_dec_and_test(&gss_msg->count))
+ 		return;
++	atomic_dec(&pipe_users);
+ 	BUG_ON(!list_empty(&gss_msg->list));
+ 	if (gss_msg->ctx != NULL)
+ 		gss_put_ctx(gss_msg->ctx);
+@@ -331,6 +334,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid)
+ 	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
+ 	if (gss_msg == NULL)
+ 		return ERR_PTR(-ENOMEM);
++	atomic_inc(&pipe_users);
+ 	INIT_LIST_HEAD(&gss_msg->list);
+ 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+ 	init_waitqueue_head(&gss_msg->waitqueue);
+@@ -555,6 +559,13 @@ out:
+ 	return err;
  }
  
-+static int check_gss_callback_principal(struct nfs_client *clp,
-+					struct svc_rqst *rqstp)
++static int
++gss_pipe_open(struct inode *inode)
 +{
-+	struct rpc_clnt *r = clp->cl_rpcclient;
-+	char *p = svc_gss_principal(rqstp);
-+
-+	/*
-+	 * It might just be a normal user principal, in which case
-+	 * userspace won't bother to tell us the name at all.
-+	 */
-+	if (p == NULL)
-+		return SVC_DENIED;
-+
-+	/* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
-+
-+	if (memcmp(p, "nfs@", 4) != 0)
-+		return SVC_DENIED;
-+	p += 4;
-+	if (strcmp(p, r->cl_server) != 0)
-+		return SVC_DENIED;
-+	return SVC_OK;
++	atomic_inc(&pipe_users);
++	return 0;
 +}
 +
- static int nfs_callback_authenticate(struct svc_rqst *rqstp)
+ static void
+ gss_pipe_release(struct inode *inode)
  {
- 	struct nfs_client *clp;
- 	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
-+	int ret = SVC_OK;
- 
- 	/* Don't talk to strangers */
- 	clp = nfs_find_client(svc_addr(rqstp), 4);
-@@ -194,21 +219,22 @@ static int nfs_callback_authenticate(struct svc_rqst *rqstp)
- 
- 	dprintk("%s: %s NFSv4 callback!\n", __func__,
- 			svc_print_addr(rqstp, buf, sizeof(buf)));
--	nfs_put_client(clp);
- 
- 	switch (rqstp->rq_authop->flavour) {
- 		case RPC_AUTH_NULL:
- 			if (rqstp->rq_proc != CB_NULL)
--				return SVC_DENIED;
-+				ret = SVC_DENIED;
- 			break;
- 		case RPC_AUTH_UNIX:
- 			break;
- 		case RPC_AUTH_GSS:
--			/* FIXME: RPCSEC_GSS handling? */
-+			ret = check_gss_callback_principal(clp, rqstp);
-+			break;
- 		default:
--			return SVC_DENIED;
-+			ret = SVC_DENIED;
+@@ -574,6 +585,8 @@ gss_pipe_release(struct inode *inode)
+ 		spin_lock(&inode->i_lock);
  	}
--	return SVC_OK;
-+	nfs_put_client(clp);
-+	return ret;
+ 	spin_unlock(&inode->i_lock);
++
++	atomic_dec(&pipe_users);
  }
  
- /*
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index e9baa6e..2278a50 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -935,6 +935,7 @@ char *svc_gss_principal(struct svc_rqst *rqstp)
- 		return gd->rsci->client_name;
- 	return NULL;
- }
-+EXPORT_SYMBOL_GPL(svc_gss_principal);
+ static void
+@@ -1349,6 +1362,7 @@ static struct rpc_pipe_ops gss_upcall_ops = {
+ 	.upcall		= gss_pipe_upcall,
+ 	.downcall	= gss_pipe_downcall,
+ 	.destroy_msg	= gss_pipe_destroy_msg,
++	.open_pipe	= gss_pipe_open,
+ 	.release_pipe	= gss_pipe_release,
+ };
  
- static int
- svcauth_gss_set_client(struct svc_rqst *rqstp)
 
