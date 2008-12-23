@@ -1,123 +1,128 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 38/69] NFSv4: Fix up delegation callbacks
-Date: Tue, 23 Dec 2008 18:02:16 -0500
-Message-ID: <20081223230216.13743.74734.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 39/69] NFSv4: Convert delegation->type field to fmode_t
+Date: Tue, 23 Dec 2008 18:02:17 -0500
+Message-ID: <20081223230216.13743.78476.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45954 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17668 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752560AbYLWXXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752276AbYLWXXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 23 Dec 2008 18:23:47 -0500
-Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNa7i021304
+Received: from svlrsexc1-prd.hq.netapp.com ([10.57.115.30])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNbsk006182
 	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:42 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, the callback server is listening on IPv6 if it is enabled. This
-means that IPv4 addresses will always be mapped.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/client.c |   57 +++++++++++++++++++++++++++++++++++++------------------
- 1 files changed, 38 insertions(+), 19 deletions(-)
+ fs/nfs/delegation.c     |    2 +-
+ fs/nfs/delegation.h     |    6 +++---
+ fs/nfs/nfs4xdr.c        |    4 ++--
+ include/linux/nfs_fs.h  |    2 +-
+ include/linux/nfs_xdr.h |    4 ++--
+ 5 files changed, 9 insertions(+), 9 deletions(-)
 
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index b643f0e..9b728f3 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -223,31 +223,54 @@ void nfs_put_client(struct nfs_client *clp)
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index e75f2f8..968225a 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -48,7 +48,7 @@ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation)
+ 	set_bit(NFS_DELEGATION_REFERENCED, &delegation->flags);
+ }
+ 
+-int nfs_have_delegation(struct inode *inode, int flags)
++int nfs_have_delegation(struct inode *inode, fmode_t flags)
+ {
+ 	struct nfs_delegation *delegation;
+ 	int ret = 0;
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index 2a74882..09f3837 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -17,7 +17,7 @@ struct nfs_delegation {
+ 	struct rpc_cred *cred;
+ 	struct inode *inode;
+ 	nfs4_stateid stateid;
+-	int type;
++	fmode_t type;
+ 	loff_t maxsize;
+ 	__u64 change_attr;
+ 	unsigned long flags;
+@@ -54,10 +54,10 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl);
+ int nfs4_copy_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
+ 
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+-int nfs_have_delegation(struct inode *inode, int flags);
++int nfs_have_delegation(struct inode *inode, fmode_t flags);
+ 
+ #else
+-static inline int nfs_have_delegation(struct inode *inode, int flags)
++static inline int nfs_have_delegation(struct inode *inode, fmode_t flags)
+ {
+ 	return 0;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index b916297..879911c 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1024,7 +1024,7 @@ static void encode_opentype(struct xdr_stream *xdr, const struct nfs_openargs *a
  	}
  }
  
--static int nfs_sockaddr_match_ipaddr4(const struct sockaddr_in *sa1,
--				 const struct sockaddr_in *sa2)
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+static const struct in6_addr *nfs_map_ipv4_addr(const struct sockaddr *sa, struct in6_addr *addr_mapped)
+-static inline void encode_delegation_type(struct xdr_stream *xdr, int delegation_type)
++static inline void encode_delegation_type(struct xdr_stream *xdr, fmode_t delegation_type)
  {
--	return sa1->sin_addr.s_addr == sa2->sin_addr.s_addr;
-+	switch (sa->sa_family) {
-+		default:
-+			return NULL;
-+		case AF_INET6:
-+			return &((const struct sockaddr_in6 *)sa)->sin6_addr;
-+			break;
-+		case AF_INET:
-+			ipv6_addr_set_v4mapped(((const struct sockaddr_in *)sa)->sin_addr.s_addr,
-+					addr_mapped);
-+			return addr_mapped;
-+	}
+ 	__be32 *p;
+ 
+@@ -1053,7 +1053,7 @@ static inline void encode_claim_null(struct xdr_stream *xdr, const struct qstr *
+ 	encode_string(xdr, name->len, name->name);
  }
  
--static int nfs_sockaddr_match_ipaddr6(const struct sockaddr_in6 *sa1,
--				 const struct sockaddr_in6 *sa2)
-+static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
-+		const struct sockaddr *sa2)
-+{
-+	const struct in6_addr *addr1;
-+	const struct in6_addr *addr2;
-+	struct in6_addr addr1_mapped;
-+	struct in6_addr addr2_mapped;
-+
-+	addr1 = nfs_map_ipv4_addr(sa1, &addr1_mapped);
-+	if (likely(addr1 != NULL)) {
-+		addr2 = nfs_map_ipv4_addr(sa2, &addr2_mapped);
-+		if (likely(addr2 != NULL))
-+			return ipv6_addr_equal(addr1, addr2);
-+	}
-+	return 0;
-+}
-+#else
-+static int nfs_sockaddr_match_ipaddr4(const struct sockaddr_in *sa1,
-+				 const struct sockaddr_in *sa2)
+-static inline void encode_claim_previous(struct xdr_stream *xdr, int type)
++static inline void encode_claim_previous(struct xdr_stream *xdr, fmode_t type)
  {
--	return ipv6_addr_equal(&sa1->sin6_addr, &sa2->sin6_addr);
-+	return sa1->sin_addr.s_addr == sa2->sin_addr.s_addr;
- }
+ 	__be32 *p;
  
- static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
- 				 const struct sockaddr *sa2)
- {
--	switch (sa1->sa_family) {
--	case AF_INET:
--		return nfs_sockaddr_match_ipaddr4((const struct sockaddr_in *)sa1,
--				(const struct sockaddr_in *)sa2);
--	case AF_INET6:
--		return nfs_sockaddr_match_ipaddr6((const struct sockaddr_in6 *)sa1,
--				(const struct sockaddr_in6 *)sa2);
--	}
--	BUG();
-+	if (unlikely(sa1->sa_family != AF_INET || sa2->sa_family != AF_INET))
-+		return 0;
-+	return nfs_sockaddr_match_ipaddr4((const struct sockaddr_in *)sa1,
-+			(const struct sockaddr_in *)sa2);
- }
-+#endif
- 
- /*
-  * Find a client by IP address and protocol version
-@@ -269,8 +292,6 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
- 		if (clp->rpc_ops->version != nfsversion)
- 			continue;
- 
--		if (addr->sa_family != clap->sa_family)
--			continue;
- 		/* Match only the IP address, not the port number */
- 		if (!nfs_sockaddr_match_ipaddr(addr, clap))
- 			continue;
-@@ -304,8 +325,6 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
- 		if (clp->rpc_ops->version != nfsvers)
- 			continue;
- 
--		if (sap->sa_family != clap->sa_family)
--			continue;
- 		/* Match only the IP address, not the port number */
- 		if (!nfs_sockaddr_match_ipaddr(sap, clap))
- 			continue;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index f110772..8d71d7b 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -180,7 +180,7 @@ struct nfs_inode {
+         /* NFSv4 state */
+ 	struct list_head	open_states;
+ 	struct nfs_delegation	*delegation;
+-	int			 delegation_state;
++	fmode_t			 delegation_state;
+ 	struct rw_semaphore	rwsem;
+ #endif /* CONFIG_NFS_V4*/
+ 	struct inode		vfs_inode;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c1c31ac..32c1a0e 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -126,7 +126,7 @@ struct nfs_openargs {
+ 		struct iattr *  attrs;    /* UNCHECKED, GUARDED */
+ 		nfs4_verifier   verifier; /* EXCLUSIVE */
+ 		nfs4_stateid	delegation;		/* CLAIM_DELEGATE_CUR */
+-		int		delegation_type;	/* CLAIM_PREVIOUS */
++		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
+ 	} u;
+ 	const struct qstr *	name;
+ 	const struct nfs_server *server;	 /* Needed for ID mapping */
+@@ -143,7 +143,7 @@ struct nfs_openres {
+ 	struct nfs_fattr *      dir_attr;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+-	int			delegation_type;
++	fmode_t			delegation_type;
+ 	nfs4_stateid		delegation;
+ 	__u32			do_recall;
+ 	__u64			maxsize;
 
