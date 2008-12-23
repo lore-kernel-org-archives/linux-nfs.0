@@ -1,45 +1,267 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: stuck/hung nfsv4 mounts
-Date: Mon, 3 Nov 2008 16:40:44 -0500
-Message-ID: <2C93A491-1277-42B6-9CED-FC06A85174D5@oracle.com>
-References: <1225724721.2247.29.camel@brian-laptop> <1225731544.6958.6.camel@heimdal.trondhjem.org> <20081103172529.GA9008@citi.umich.edu> <1225733834.6958.12.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v929.2)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Jim Rees <rees@umich.edu>,
-	"Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:19258 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752381AbYKCVlF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Nov 2008 16:41:05 -0500
-In-Reply-To: <1225733834.6958.12.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:40377 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751494AbYLWWeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 17:34:37 -0500
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+ than 120 seconds"
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20081216120547.GS47559@fit.vutbr.cz>
+References: <1227621877.9425.102.camel@zakaz.uk.xensource.com>
+	 <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228091380.7112.17.camel@heimdal.trondhjem.org>
+	 <20081202152256.GI47559@fit.vutbr.cz>
+	 <1228232222.3090.5.camel@heimdal.trondhjem.org>
+	 <20081202162625.GM47559@fit.vutbr.cz>
+	 <1228241407.3090.7.camel@heimdal.trondhjem.org>
+	 <20081204102314.GW47559@fit.vutbr.cz>
+	 <1229284201.6463.98.camel@heimdal.trondhjem.org>
+	 <20081216120547.GS47559@fit.vutbr.cz>
+Content-Type: text/plain
+Date: Tue, 23 Dec 2008 17:34:07 -0500
+Message-Id: <1230071647.17701.27.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Nov 3, 2008, at Nov 3, 2008, 12:37 PM, Trond Myklebust wrote:
-> On Mon, 2008-11-03 at 12:25 -0500, Jim Rees wrote:
->> Trond Myklebust wrote:
->>
->>  BTW: NFSv4 + soft == BAD BAD BAD!
->>
->> Maybe this combination should be prohibited.  Does it make any  
->> sense given
->> the stateful nature of v4?
->
-> It might make sense if we were to fix up the granularity of the  
-> recovery
-> routines so that we are able to recover all the state associated with
-> just a single open owner or lock owner. Currently we'd have to recover
-> all the state associated with that server.
->
-> IOW: we might be able to fix things up in the future, but right now,
-> NFSv4+soft is not a good idea.
+On Tue, 2008-12-16 at 13:05 +0100, Kasparek Tomas wrote:
+> Hm, not happy to say that but it still does not work after some time. Now
+> the problem is opposite there are no connections to the server according to
+> netstat on client, just time to time there is
+> 
+> pcnlp1.fit.vutbr.cz.15234 > kazi.fit.vutbr.cz.nfs: 40 null
+> kazi.fit.vutbr.cz.nfs > pcnlp1.fit.vutbr.cz.15234: reply ok 24 null
+> 
+> (kazi is server). Will try to investigate more details.
 
-Two cents worth:  Until NFSv4+soft works reasonably well, I wouldn't  
-have any problem with making "soft" a no-op for nfs4 mounts.
+OK. Here is one more try. I've tightened up some locking issues with the
+previous patch.
+
+Thanks for helping test this!
+
+Cheers
+  Trond
+-----------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Tue, 23 Dec 2008 16:21:25 -0500
+SUNRPC: Add the equivalent of the linger2 timeout to RPC sockets
+
+This avoids us getting stuck in the TCP_FIN_WAIT2 state forever.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/xprtsock.c       |   63 ++++++++++++++++++++++++++++++-------------
+ 2 files changed, 45 insertions(+), 19 deletions(-)
+
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 11fc71d..1a6ecd7 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -259,6 +259,7 @@ void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+ #define XPRT_BOUND		(4)
+ #define XPRT_BINDING		(5)
+ #define XPRT_CLOSING		(6)
++#define XPRT_CONNECTION_ABORT	(7)
+ 
+ static inline void xprt_set_connected(struct rpc_xprt *xprt)
+ {
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 0a50361..dfb0aeb 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -171,6 +171,7 @@ static ctl_table sunrpc_table[] = {
+  */
+ #define XS_TCP_INIT_REEST_TO	(3U * HZ)
+ #define XS_TCP_MAX_REEST_TO	(5U * 60 * HZ)
++#define XS_TCP_LINGER2_TO	(5U * HZ)
+ 
+ /*
+  * TCP idle timeout; client drops the transport socket if it is idle
+@@ -792,6 +793,7 @@ static void xs_close(struct rpc_xprt *xprt)
+ 	sock_release(sock);
+ clear_close_wait:
+ 	smp_mb__before_clear_bit();
++	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	clear_bit(XPRT_CLOSING, &xprt->state);
+ 	smp_mb__after_clear_bit();
+@@ -1126,6 +1128,7 @@ out:
+  */
+ static void xs_tcp_state_change(struct sock *sk)
+ {
++	struct sock_xprt *transport;
+ 	struct rpc_xprt *xprt;
+ 
+ 	read_lock(&sk->sk_callback_lock);
+@@ -1137,13 +1140,12 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			sock_flag(sk, SOCK_DEAD),
+ 			sock_flag(sk, SOCK_ZAPPED));
+ 
++	transport = container_of(xprt, struct sock_xprt, xprt);
++
+ 	switch (sk->sk_state) {
+ 	case TCP_ESTABLISHED:
+ 		spin_lock_bh(&xprt->transport_lock);
+ 		if (!xprt_test_and_set_connected(xprt)) {
+-			struct sock_xprt *transport = container_of(xprt,
+-					struct sock_xprt, xprt);
+-
+ 			/* Reset TCP record info */
+ 			transport->tcp_offset = 0;
+ 			transport->tcp_reclen = 0;
+@@ -1184,7 +1186,24 @@ static void xs_tcp_state_change(struct sock *sk)
+ 		clear_bit(XPRT_CONNECTED, &xprt->state);
+ 		smp_mb__after_clear_bit();
+ 		break;
++	case TCP_FIN_WAIT2:
++		/* Do the equivalent of linger2 handling for dealing with
++		 * broken servers that don't close the socket in a timely
++		 * fashion
++		 */
++		if (!xprt_test_and_set_connecting(xprt)) {
++			set_bit(XPRT_CONNECTION_ABORT, &xprt->state);
++			queue_delayed_work(rpciod_workqueue,
++					&transport->connect_worker,
++					XS_TCP_LINGER2_TO);
++		}
++		break;
+ 	case TCP_CLOSE:
++		if (delayed_work_pending(&transport->connect_worker) &&
++			cancel_delayed_work(&transport->connect_worker)) {
++			clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
++			xprt_clear_connecting(xprt);
++		}
+ 		smp_mb__before_clear_bit();
+ 		clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 		clear_bit(XPRT_CLOSING, &xprt->state);
+@@ -1549,8 +1568,8 @@ static void xs_udp_connect_worker4(struct work_struct *work)
+ 	xs_udp_finish_connecting(xprt, sock);
+ 	status = 0;
+ out:
+-	xprt_wake_pending_tasks(xprt, status);
+ 	xprt_clear_connecting(xprt);
++	xprt_wake_pending_tasks(xprt, status);
+ }
+ 
+ /**
+@@ -1590,8 +1609,8 @@ static void xs_udp_connect_worker6(struct work_struct *work)
+ 	xs_udp_finish_connecting(xprt, sock);
+ 	status = 0;
+ out:
+-	xprt_wake_pending_tasks(xprt, status);
+ 	xprt_clear_connecting(xprt);
++	xprt_wake_pending_tasks(xprt, status);
+ }
+ 
+ /*
+@@ -1675,6 +1694,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ 		goto out;
+ 
+ 	if (!sock) {
++		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 		/* start from scratch */
+ 		if ((err = sock_create_kern(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock)) < 0) {
+ 			dprintk("RPC:       can't create TCP transport socket (%d).\n", -err);
+@@ -1686,10 +1706,14 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ 			sock_release(sock);
+ 			goto out;
+ 		}
+-	} else
++	} else {
+ 		/* "close" the socket, preserving the local port */
+ 		xs_tcp_reuse_connection(xprt);
+ 
++		if (test_and_clear_bit(XPRT_CONNECTION_ABORT, &xprt->state))
++			goto out;
++	}
++
+ 	dprintk("RPC:       worker connecting xprt %p to address: %s\n",
+ 			xprt, xprt->address_strings[RPC_DISPLAY_ALL]);
+ 
+@@ -1701,19 +1725,17 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ 		switch (status) {
+ 			case -EINPROGRESS:
+ 			case -EALREADY:
+-				goto out_clear;
+-			case -ECONNREFUSED:
+-			case -ECONNRESET:
+-				/* retry with existing socket, after a delay */
+ 				break;
+ 			default:
+ 				/* get rid of existing socket, and retry */
+ 				xs_tcp_shutdown(xprt);
++			case -ECONNREFUSED:
++			case -ECONNRESET:
++				/* retry with existing socket, after a delay */
++				xprt_wake_pending_tasks(xprt, status);
+ 		}
+ 	}
+ out:
+-	xprt_wake_pending_tasks(xprt, status);
+-out_clear:
+ 	xprt_clear_connecting(xprt);
+ }
+ 
+@@ -1735,6 +1757,7 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
+ 		goto out;
+ 
+ 	if (!sock) {
++		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 		/* start from scratch */
+ 		if ((err = sock_create_kern(PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock)) < 0) {
+ 			dprintk("RPC:       can't create TCP transport socket (%d).\n", -err);
+@@ -1746,10 +1769,14 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
+ 			sock_release(sock);
+ 			goto out;
+ 		}
+-	} else
++	} else {
+ 		/* "close" the socket, preserving the local port */
+ 		xs_tcp_reuse_connection(xprt);
+ 
++		if (test_and_clear_bit(XPRT_CONNECTION_ABORT, &xprt->state))
++			goto out;
++	}
++
+ 	dprintk("RPC:       worker connecting xprt %p to address: %s\n",
+ 			xprt, xprt->address_strings[RPC_DISPLAY_ALL]);
+ 
+@@ -1760,19 +1787,17 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
+ 		switch (status) {
+ 			case -EINPROGRESS:
+ 			case -EALREADY:
+-				goto out_clear;
+-			case -ECONNREFUSED:
+-			case -ECONNRESET:
+-				/* retry with existing socket, after a delay */
+ 				break;
+ 			default:
+ 				/* get rid of existing socket, and retry */
+ 				xs_tcp_shutdown(xprt);
++			case -ECONNREFUSED:
++			case -ECONNRESET:
++				/* retry with existing socket, after a delay */
++				xprt_wake_pending_tasks(xprt, status);
+ 		}
+ 	}
+ out:
+-	xprt_wake_pending_tasks(xprt, status);
+-out_clear:
+ 	xprt_clear_connecting(xprt);
+ }
+ 
+
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
