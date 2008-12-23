@@ -1,85 +1,82 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 11/69] NFS: expand flags passed to nfs_create_rpc_client()
-Date: Tue, 23 Dec 2008 18:02:08 -0500
-Message-ID: <20081223230208.13743.71684.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 09/69] NFS: Move declaration of nfs_mount() to
+ fs/nfs/internal.h
+Date: Tue, 23 Dec 2008 18:02:07 -0500
+Message-ID: <20081223230207.13743.80834.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17668 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44861 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752326AbYLWXXm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2008 18:23:42 -0500
-Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNa7O021304
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:39 -0800 (PST)
+	id S1752492AbYLWXXp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Dec 2008 18:23:45 -0500
+Received: from sacrsexc2-prd.hq.netapp.com ([10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNaFh006177
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:41 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The nfs_create_rpc_client() function sets up an RPC client for an NFS
-mount point.  Add an option that allows it to set up an RPC transport
-from an unprivileged port.
-
-Instead of having nfs_create_rpc_client()'s callers retain local
-knowledge about how to set up an RPC client, create a couple of flag
-arguments to control the use of RPC_CLNT_CREATE flags.
+Clean up:  The nfs_mount() function is not to be used outside of the
+NFS client.  Move its public declaration to fs/nfs/internal.h.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/client.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
+ fs/nfs/internal.h      |    4 ++++
+ fs/nfs/nfsroot.c       |    2 ++
+ include/linux/nfs_fs.h |    6 ------
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 7547600..d11cdaa 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -470,7 +470,7 @@ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- static int nfs_create_rpc_client(struct nfs_client *clp,
- 				 const struct rpc_timeout *timeparms,
- 				 rpc_authflavor_t flavor,
--				 int flags)
-+				 int discrtry, int noresvport)
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
-@@ -482,9 +482,13 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- 		.program	= &nfs_program,
- 		.version	= clp->rpc_ops->version,
- 		.authflavor	= flavor,
--		.flags		= flags,
- 	};
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index d212ee4..7a38cc7 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -63,6 +63,10 @@ struct nfs_parsed_mount_data {
+ 	struct security_mnt_opts lsm_opts;
+ };
  
-+	if (discrtry)
-+		args.flags |= RPC_CLNT_CREATE_DISCRTRY;
-+	if (noresvport)
-+		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
++/* mount_clnt.c */
++extern int nfs_mount(struct sockaddr *, size_t, char *, char *,
++					int, int, struct nfs_fh *);
 +
- 	if (!IS_ERR(clp->cl_rpcclient))
- 		return 0;
+ /* client.c */
+ extern struct rpc_program nfs_program;
  
-@@ -623,7 +627,7 @@ static int nfs_init_client(struct nfs_client *clp,
- 	 * Create a client RPC handle for doing FSSTAT with UNIX auth only
- 	 * - RFC 2623, sec 2.3.2
- 	 */
--	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX, 0);
-+	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX, 0, 0);
- 	if (error < 0)
- 		goto error;
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
-@@ -979,7 +983,7 @@ static int nfs4_init_client(struct nfs_client *clp,
- 	clp->rpc_ops = &nfs_v4_clientops;
+diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+index f1c0a06..a96e5fd 100644
+--- a/fs/nfs/nfsroot.c
++++ b/fs/nfs/nfsroot.c
+@@ -86,6 +86,8 @@
+ #include <net/ipconfig.h>
+ #include <linux/parser.h>
  
- 	error = nfs_create_rpc_client(clp, timeparms, authflavour,
--					RPC_CLNT_CREATE_DISCRTRY);
-+				      1, 0);
- 	if (error < 0)
- 		goto error;
- 	memcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
++#include "internal.h"
++
+ /* Define this to allow debugging output */
+ #undef NFSROOT_DEBUG
+ #define NFSDBG_FACILITY NFSDBG_ROOT
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 4eaa834..f110772 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -533,12 +533,6 @@ static inline void nfs3_forget_cached_acls(struct inode *inode)
+ #endif /* CONFIG_NFS_V3_ACL */
+ 
+ /*
+- * linux/fs/mount_clnt.c
+- */
+-extern int  nfs_mount(struct sockaddr *, size_t, char *, char *,
+-		      int, int, struct nfs_fh *);
+-
+-/*
+  * inline functions
+  */
+ 
 
