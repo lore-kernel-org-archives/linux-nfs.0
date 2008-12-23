@@ -1,203 +1,157 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 29/69] NFSv4: Add recovery for individual stateids
-Date: Tue, 23 Dec 2008 18:02:14 -0500
-Message-ID: <20081223230213.13743.30643.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 22/69] NFSv4: Remove redundant RENEW calls if we know the
+ lease has expired
+Date: Tue, 23 Dec 2008 18:02:12 -0500
+Message-ID: <20081223230211.13743.71270.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17668 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44861 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752636AbYLWXXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752622AbYLWXXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 23 Dec 2008 18:23:49 -0500
 Received: from sacrsexc2-prd.hq.netapp.com ([10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNaFx006177
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:44 -0800 (PST)
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNaFr006177
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:43 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4 defines a number of state errors which the client does not currently
-handle. Among those we should worry about are:
-  NFS4ERR_ADMIN_REVOKED - the server's administrator revoked our locks
-  			  and/or delegations.
-  NFS4ERR_BAD_STATEID - the client and server are out of sync, possibly
-                        due to a delegation return racing with an OPEN
-			request.
-  NFS4ERR_OPENMODE - the client attempted to do something not sanctioned
-  		     by the open mode of the stateid. Should normally just
-		     occur as a result of a delegation return race.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs4_fs.h   |    2 ++
- fs/nfs/nfs4proc.c  |   37 ++++++++++++++++++++++++++++---------
- fs/nfs/nfs4state.c |    2 +-
- 3 files changed, 31 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4_fs.h   |    1 +
+ fs/nfs/nfs4proc.c  |    3 ++-
+ fs/nfs/nfs4state.c |   47 +++++++++++++++++++++++++++++------------------
+ 3 files changed, 32 insertions(+), 19 deletions(-)
 
 
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a4e7b3f..46cbc0c 100644
+index 1c6fbd1..76eda46 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -169,6 +169,7 @@ struct nfs4_state {
- struct nfs4_exception {
- 	long timeout;
- 	int retry;
-+	struct nfs4_state *state;
- };
+@@ -39,6 +39,7 @@ struct idmap;
  
- struct nfs4_state_recovery_ops {
-@@ -226,6 +227,7 @@ extern void nfs4_close_state(struct path *, struct nfs4_state *, mode_t);
- extern void nfs4_close_sync(struct path *, struct nfs4_state *, mode_t);
- extern void nfs4_state_set_mode_locked(struct nfs4_state *, mode_t);
- extern void nfs4_schedule_state_recovery(struct nfs_client *);
-+extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
- extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
- extern void nfs4_copy_stateid(nfs4_stateid *, struct nfs4_state *, fl_owner_t);
+ enum nfs4_client_state {
+ 	NFS4CLNT_STATE_RECOVER  = 0,
++	NFS4CLNT_CHECK_LEASE,
+ 	NFS4CLNT_LEASE_EXPIRED,
+ 	NFS4CLNT_RECLAIM_REBOOT,
+ 	NFS4CLNT_RECLAIM_NOGRACE,
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 26dcd77..8a2dee9 100644
+index 279ab36..780ba00 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -62,7 +62,7 @@
- struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
--static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *);
-+static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
- static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- 
-@@ -235,12 +235,19 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
- {
- 	struct nfs_client *clp = server->nfs_client;
-+	struct nfs4_state *state = exception->state;
- 	int ret = errorcode;
- 
- 	exception->retry = 0;
- 	switch(errorcode) {
- 		case 0:
- 			return 0;
-+		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_BAD_STATEID:
-+		case -NFS4ERR_OPENMODE:
-+			if (state == NULL)
-+				break;
-+			nfs4_state_mark_reclaim_nograce(clp, state);
- 		case -NFS4ERR_STALE_CLIENTID:
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_EXPIRED:
-@@ -1320,10 +1327,13 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 			renew_lease(server, calldata->timestamp);
+@@ -984,7 +984,8 @@ static int nfs4_recover_expired_lease(struct nfs_server *server)
+ 		ret = nfs4_wait_clnt_recover(server->client, clp);
+ 		if (ret != 0)
+ 			return ret;
+-		if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
++		if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) &&
++		    !test_bit(NFS4CLNT_CHECK_LEASE,&clp->cl_state))
  			break;
- 		case -NFS4ERR_STALE_STATEID:
-+		case -NFS4ERR_OLD_STATEID:
-+		case -NFS4ERR_BAD_STATEID:
- 		case -NFS4ERR_EXPIRED:
--			break;
-+			if (calldata->arg.open_flags == 0)
-+				break;
- 		default:
--			if (nfs4_async_handle_error(task, server) == -EAGAIN) {
-+			if (nfs4_async_handle_error(task, server, state) == -EAGAIN) {
- 				rpc_restart_call(task);
- 				return;
- 			}
-@@ -1418,6 +1428,7 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait)
- 	calldata->arg.seqid = nfs_alloc_seqid(&state->owner->so_seqid);
- 	if (calldata->arg.seqid == NULL)
- 		goto out_free_calldata;
-+	calldata->arg.open_flags = 0;
- 	calldata->arg.bitmask = server->attr_bitmask;
- 	calldata->res.fattr = &calldata->fattr;
- 	calldata->res.seqid = calldata->arg.seqid;
-@@ -2064,7 +2075,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- {
- 	struct nfs_removeres *res = task->tk_msg.rpc_resp;
- 
--	if (nfs4_async_handle_error(task, res->server) == -EAGAIN)
-+	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
- 		return 0;
- 	update_changeattr(dir, &res->cinfo);
- 	nfs_post_op_update_inode(dir, &res->dir_attr);
-@@ -2492,7 +2503,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
--	if (nfs4_async_handle_error(task, server) == -EAGAIN) {
-+	if (nfs4_async_handle_error(task, server, data->args.context->state) == -EAGAIN) {
- 		rpc_restart_call(task);
- 		return -EAGAIN;
+ 		nfs4_schedule_state_recovery(clp);
  	}
-@@ -2513,7 +2524,7 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct inode *inode = data->inode;
- 	
--	if (nfs4_async_handle_error(task, NFS_SERVER(inode)) == -EAGAIN) {
-+	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
- 		rpc_restart_call(task);
- 		return -EAGAIN;
- 	}
-@@ -2539,7 +2550,7 @@ static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct inode *inode = data->inode;
- 	
--	if (nfs4_async_handle_error(task, NFS_SERVER(inode)) == -EAGAIN) {
-+	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
- 		rpc_restart_call(task);
- 		return -EAGAIN;
- 	}
-@@ -2832,13 +2843,19 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
- }
- 
- static int
--nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server)
-+nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server, struct nfs4_state *state)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 
- 	if (!clp || task->tk_status >= 0)
- 		return 0;
- 	switch(task->tk_status) {
-+		case -NFS4ERR_ADMIN_REVOKED:
-+		case -NFS4ERR_BAD_STATEID:
-+		case -NFS4ERR_OPENMODE:
-+			if (state == NULL)
-+				break;
-+			nfs4_state_mark_reclaim_nograce(clp, state);
- 		case -NFS4ERR_STALE_CLIENTID:
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_EXPIRED:
-@@ -3195,11 +3212,13 @@ static void nfs4_locku_done(struct rpc_task *task, void *data)
- 					sizeof(calldata->lsp->ls_stateid.data));
- 			renew_lease(calldata->server, calldata->timestamp);
- 			break;
-+		case -NFS4ERR_BAD_STATEID:
-+		case -NFS4ERR_OLD_STATEID:
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_EXPIRED:
- 			break;
- 		default:
--			if (nfs4_async_handle_error(task, calldata->server) == -EAGAIN)
-+			if (nfs4_async_handle_error(task, calldata->server, NULL) == -EAGAIN)
- 				rpc_restart_call(task);
- 	}
- }
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index ec0cbe0..3d78706 100644
+index e5cd8ca..3cc88a5 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -824,7 +824,7 @@ static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_st
- 	return 1;
+@@ -817,6 +817,8 @@ void nfs4_schedule_state_recovery(struct nfs_client *clp)
+ {
+ 	if (!clp)
+ 		return;
++	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
++		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
+ 	if (test_and_set_bit(NFS4CLNT_STATE_RECOVER, &clp->cl_state) == 0)
+ 		nfs4_recover_state(clp);
+ }
+@@ -1019,6 +1021,23 @@ static void nfs4_state_end_reclaim_nograce(struct nfs_client *clp)
+ 	clear_bit(NFS4CLNT_RECLAIM_NOGRACE, &clp->cl_state);
  }
  
--static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
-+int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
++static void nfs4_recovery_handle_error(struct nfs_client *clp, int error)
++{
++	switch (error) {
++		case -NFS4ERR_CB_PATH_DOWN:
++			set_bit(NFS4CLNT_CB_PATH_DOWN, &clp->cl_state);
++			break;
++		case -NFS4ERR_STALE_CLIENTID:
++		case -NFS4ERR_LEASE_MOVED:
++			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
++			nfs4_state_start_reclaim_reboot(clp);
++			break;
++		case -NFS4ERR_EXPIRED:
++			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
++			nfs4_state_start_reclaim_nograce(clp);
++	}
++}
++
+ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recovery_ops *ops)
  {
- 	set_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags);
- 	clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
+ 	struct rb_node *pos;
+@@ -1031,6 +1050,7 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
+ 		if (status < 0)
+ 			break;
+ 	}
++	nfs4_recovery_handle_error(clp, status);
+ 	return status;
+ }
+ 
+@@ -1045,19 +1065,7 @@ static int nfs4_check_lease(struct nfs_client *clp)
+ 		/* Yes there are: try to renew the old lease */
+ 		status = nfs4_proc_renew(clp, cred);
+ 		put_rpccred(cred);
+-		switch (status) {
+-			case -NFS4ERR_CB_PATH_DOWN:
+-				set_bit(NFS4CLNT_CB_PATH_DOWN, &clp->cl_state);
+-				break;
+-			case -NFS4ERR_STALE_CLIENTID:
+-			case -NFS4ERR_LEASE_MOVED:
+-				set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+-				nfs4_state_start_reclaim_reboot(clp);
+-				break;
+-			case -NFS4ERR_EXPIRED:
+-				set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+-				nfs4_state_start_reclaim_nograce(clp);
+-		}
++		nfs4_recovery_handle_error(clp, status);
+ 		return status;
+ 	}
+ 
+@@ -1095,8 +1103,6 @@ static int reclaimer(void *ptr)
+ 	/* Ensure exclusive access to NFSv4 state */
+ 	down_write(&clp->cl_sem);
+ 	while (!list_empty(&clp->cl_superblocks)) {
+-		status = nfs4_check_lease(clp);
+-
+ 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
+ 			/* We're going to have to re-establish a clientid */
+ 			status = nfs4_reclaim_lease(clp);
+@@ -1106,16 +1112,21 @@ static int reclaimer(void *ptr)
+ 					continue;
+ 				goto out_error;
+ 			}
++			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
++		}
++
++		if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
++			status = nfs4_check_lease(clp);
++			if (status != 0)
++				continue;
+ 		}
+ 
+ 		/* First recover reboot state... */
+ 		if (test_and_clear_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state)) {
+ 			/* Note: list is protected by exclusive lock on cl->cl_sem */
+ 			status = nfs4_do_reclaim(clp, &nfs4_reboot_recovery_ops);
+-			if (status == -NFS4ERR_STALE_CLIENTID) {
+-				set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
++			if (status == -NFS4ERR_STALE_CLIENTID)
+ 				continue;
+-			}
+ 			nfs4_state_end_reclaim_reboot(clp);
+ 			continue;
+ 		}
 
