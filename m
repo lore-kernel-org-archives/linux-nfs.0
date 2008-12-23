@@ -1,85 +1,122 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 14/69] NFS: "[no]resvport" mount option changes mountd
- client too
-Date: Tue, 23 Dec 2008 18:02:09 -0500
-Message-ID: <20081223230209.13743.7435.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 20/69] NFSv4: Callers to nfs4_get_renew_cred() need to hold
+ nfs_client->cl_lock
+Date: Tue, 23 Dec 2008 18:02:11 -0500
+Message-ID: <20081223230211.13743.11816.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29099 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45954 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752332AbYLWXXn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752348AbYLWXXn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 23 Dec 2008 18:23:43 -0500
-Received: from svlrsexc2-prd.hq.netapp.com ([10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNa7Q021304
+Received: from svlrsexc1-prd.hq.netapp.com ([10.57.115.30])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNNbsW006182
 	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:23:39 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Ditto for nfs4_get_setclientid_cred().
 
-If the admin has specified the "noresvport" option for an NFS mount
-point, the kernel's NFS client uses an unprivileged source port for
-the main NFS transport.  The kernel's mountd client should use an
-unprivileged port in this case as well.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/internal.h   |    1 +
- fs/nfs/mount_clnt.c |    4 +++-
- fs/nfs/super.c      |    1 +
- 3 files changed, 5 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4_fs.h    |    2 +-
+ fs/nfs/nfs4renewd.c |    2 +-
+ fs/nfs/nfs4state.c  |   20 +++++++++++++++-----
+ 3 files changed, 17 insertions(+), 7 deletions(-)
 
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 4e98396..340ede8 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -72,6 +72,7 @@ struct nfs_mount_request {
- 	u32			version;
- 	unsigned short		protocol;
- 	struct nfs_fh		*fh;
-+	int			noresvport;
- };
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ea79064..0ac6bbb 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -202,7 +202,7 @@ extern void nfs4_kill_renewd(struct nfs_client *);
+ extern void nfs4_renew_state(struct work_struct *);
  
- extern int nfs_mount(struct nfs_mount_request *info);
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 7e37113..ca905a5 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -50,7 +50,6 @@ int nfs_mount(struct nfs_mount_request *info)
- 		.program	= &mnt_program,
- 		.version	= info->version,
- 		.authflavor	= RPC_AUTH_UNIX,
--		.flags		= 0,
- 	};
- 	struct rpc_clnt		*mnt_clnt;
- 	int			status;
-@@ -59,6 +58,9 @@ int nfs_mount(struct nfs_mount_request *info)
- 		(info->hostname ? info->hostname : "server"),
- 			info->dirpath);
+ /* nfs4state.c */
+-struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp);
++struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
  
-+	if (info->noresvport)
-+		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+ extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
+ extern void nfs4_put_state_owner(struct nfs4_state_owner *);
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 3305acb..9fe8640 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -77,7 +77,7 @@ nfs4_renew_state(struct work_struct *work)
+ 	timeout = (2 * lease) / 3 + (long)last - (long)now;
+ 	/* Are we close to a lease timeout? */
+ 	if (time_after(now, last + lease/3)) {
+-		cred = nfs4_get_renew_cred(clp);
++		cred = nfs4_get_renew_cred_locked(clp);
+ 		if (cred == NULL) {
+ 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ 			spin_unlock(&clp->cl_lock);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 99182b3..300faba 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -71,14 +71,12 @@ static int nfs4_init_client(struct nfs_client *clp, struct rpc_cred *cred)
+ 	return status;
+ }
+ 
+-static struct rpc_cred *nfs4_get_machine_cred(struct nfs_client *clp)
++static struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred = NULL;
+ 
+-	spin_lock(&clp->cl_lock);
+ 	if (clp->cl_machine_cred != NULL)
+ 		cred = get_rpccred(clp->cl_machine_cred);
+-	spin_unlock(&clp->cl_lock);
+ 	return cred;
+ }
+ 
+@@ -94,7 +92,7 @@ static void nfs4_clear_machine_cred(struct nfs_client *clp)
+ 		put_rpccred(cred);
+ }
+ 
+-struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
++struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp)
+ {
+ 	struct nfs4_state_owner *sp;
+ 	struct rb_node *pos;
+@@ -110,13 +108,24 @@ struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
+ 	return cred;
+ }
+ 
++static struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
++{
++	struct rpc_cred *cred;
 +
- 	mnt_clnt = rpc_create(&args);
- 	if (IS_ERR(mnt_clnt))
- 		goto out_clnt_err;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e05a77b..d8e062f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1345,6 +1345,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 		.dirpath	= args->nfs_server.export_path,
- 		.protocol	= args->mount_server.protocol,
- 		.fh		= root_fh,
-+		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
- 	};
- 	int status;
++	spin_lock(&clp->cl_lock);
++	cred = nfs4_get_renew_cred_locked(clp);
++	spin_unlock(&clp->cl_lock);
++	return cred;
++}
++
+ static struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
+ {
+ 	struct nfs4_state_owner *sp;
+ 	struct rb_node *pos;
+ 	struct rpc_cred *cred;
+ 
+-	cred = nfs4_get_machine_cred(clp);
++	spin_lock(&clp->cl_lock);
++	cred = nfs4_get_machine_cred_locked(clp);
+ 	if (cred != NULL)
+ 		goto out;
+ 	pos = rb_first(&clp->cl_state_owners);
+@@ -125,6 +134,7 @@ static struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
+ 		cred = get_rpccred(sp->so_cred);
+ 	}
+ out:
++	spin_unlock(&clp->cl_lock);
+ 	return cred;
+ }
  
 
