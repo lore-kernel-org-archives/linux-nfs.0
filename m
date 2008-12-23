@@ -1,18 +1,18 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 64/69] nfsd: pass client principal name in rsc downcall
-Date: Tue, 23 Dec 2008 18:02:25 -0500
-Message-ID: <20081223230225.13743.44805.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 69/69] rpc: add service field to new upcall
+Date: Tue, 23 Dec 2008 18:02:27 -0500
+Message-ID: <20081223230227.13743.66534.stgit@heimdal.trondhjem.org>
 References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1640 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63750 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753038AbYLWXYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753313AbYLWXYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 23 Dec 2008 18:24:47 -0500
 Received: from sacrsexc1-prd.hq.netapp.com ([10.99.115.27])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNOc0p006400
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNOc0t006400
 	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:24:44 -0800 (PST)
 In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -20,165 +20,101 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <aglo@citi.umich.edu>
 
-Two principals are involved in krb5 authentication: the target, who we
-authenticate *to* (normally the name of the server, like
-nfs/server.citi.umich.edu-1fImKH7ifK/W5BsphJQQlw@public.gmane.org), and the source, we we
-authenticate *as* (normally a user, like bfields-fNArPiWPQCi4O7BPJtRMKQ@public.gmane.org)
+This patch extends the new upcall with a "service" field that currently
+can have 2 values: "*" or "nfs". These values specify matching rules for
+principals in the keytab file. The "*" means that gssd is allowed to use
+"root", "nfs", or "host" keytab entries while the other option requires
+"nfs".
 
-In the case of NFSv4 callbacks, the target of the callback should be the
-source of the client's setclientid call, and the source should be the
-nfs server's own principal.
+Restricting gssd to use the "nfs" principal is needed for when the
+server performs a callback to the client.  The server in this case has
+to authenticate itself as an "nfs" principal.
 
-Therefore we allow svcgssd to pass down the name of the principal that
-just authenticated, so that on setclientid we can store that principal
-name with the new client, to be used later on callbacks.
+We also need "service" field to distiguish between two client-side cases
+both currently using a uid of 0: the case of regular file access by the
+root user, and the case of state-management calls (such as setclientid)
+which should use a keytab for authentication.  (And the upcall should
+fail if an appropriate principal can't be found.)
 
-Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
+Signed-off: Olga Kornievskaia <aglo@citi.umich.edu>
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfsd/nfs4state.c                |   11 +++++++++++
- include/linux/nfsd/state.h         |    1 +
- include/linux/sunrpc/svcauth_gss.h |    1 +
- net/sunrpc/auth_gss/svcauth_gss.c  |   23 +++++++++++++++++++++++
- 4 files changed, 36 insertions(+), 0 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c |   26 ++++++++++++++++----------
+ 1 files changed, 16 insertions(+), 10 deletions(-)
 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1a052ac..f3b9a8d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -54,6 +54,7 @@
- #include <linux/mutex.h>
- #include <linux/lockd/bind.h>
- #include <linux/module.h>
-+#include <linux/sunrpc/svcauth_gss.h>
- 
- #define NFSDDBG_FACILITY                NFSDDBG_PROC
- 
-@@ -377,6 +378,7 @@ free_client(struct nfs4_client *clp)
- 	shutdown_callback_client(clp);
- 	if (clp->cl_cred.cr_group_info)
- 		put_group_info(clp->cl_cred.cr_group_info);
-+	kfree(clp->cl_principal);
- 	kfree(clp->cl_name.data);
- 	kfree(clp);
- }
-@@ -696,6 +698,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	unsigned int 		strhashval;
- 	struct nfs4_client	*conf, *unconf, *new;
- 	__be32 			status;
-+	char			*princ;
- 	char                    dname[HEXDIR_LEN];
- 	
- 	if (!check_name(clname))
-@@ -783,6 +786,14 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	copy_verf(new, &clverifier);
- 	new->cl_addr = sin->sin_addr.s_addr;
-+	princ = svc_gss_principal(rqstp);
-+	if (princ) {
-+		new->cl_principal = kstrdup(princ, GFP_KERNEL);
-+		if (new->cl_principal == NULL) {
-+			free_client(new);
-+			goto out;
-+		}
-+	}
- 	copy_cred(&new->cl_cred, &rqstp->rq_cred);
- 	gen_confirm(new);
- 	gen_callback(new, setclid);
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index d0fe2e3..ce7cbf4 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -124,6 +124,7 @@ struct nfs4_client {
- 	nfs4_verifier		cl_verifier; 	/* generated by client */
- 	time_t                  cl_time;        /* time of last lease renewal */
- 	__be32			cl_addr; 	/* client ipaddress */
-+	char			*cl_principal;	/* setclientid principal name */
- 	struct svc_cred		cl_cred; 	/* setclientid principal */
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
-diff --git a/include/linux/sunrpc/svcauth_gss.h b/include/linux/sunrpc/svcauth_gss.h
-index c9165d9..ca7d725 100644
---- a/include/linux/sunrpc/svcauth_gss.h
-+++ b/include/linux/sunrpc/svcauth_gss.h
-@@ -20,6 +20,7 @@ int gss_svc_init(void);
- void gss_svc_shutdown(void);
- int svcauth_gss_register_pseudoflavor(u32 pseudoflavor, char * name);
- u32 svcauth_gss_flavor(struct auth_domain *dom);
-+char *svc_gss_principal(struct svc_rqst *);
- 
- #endif /* __KERNEL__ */
- #endif /* _LINUX_SUNRPC_SVCAUTH_GSS_H */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 12803da..e9baa6e 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -332,6 +332,7 @@ struct rsc {
- 	struct svc_cred		cred;
- 	struct gss_svc_seq_data	seqdata;
- 	struct gss_ctx		*mechctx;
-+	char			*client_name;
- };
- 
- static struct cache_head *rsc_table[RSC_HASHMAX];
-@@ -346,6 +347,7 @@ static void rsc_free(struct rsc *rsci)
- 		gss_delete_sec_context(&rsci->mechctx);
- 	if (rsci->cred.cr_group_info)
- 		put_group_info(rsci->cred.cr_group_info);
-+	kfree(rsci->client_name);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 1e8cced..e630b38 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -369,7 +369,7 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
  }
  
- static void rsc_put(struct kref *ref)
-@@ -383,6 +385,7 @@ rsc_init(struct cache_head *cnew, struct cache_head *ctmp)
- 	tmp->handle.data = NULL;
- 	new->mechctx = NULL;
- 	new->cred.cr_group_info = NULL;
-+	new->client_name = NULL;
- }
- 
- static void
-@@ -397,6 +400,8 @@ update_rsc(struct cache_head *cnew, struct cache_head *ctmp)
- 	spin_lock_init(&new->seqdata.sd_lock);
- 	new->cred = tmp->cred;
- 	tmp->cred.cr_group_info = NULL;
-+	new->client_name = tmp->client_name;
-+	tmp->client_name = NULL;
- }
- 
- static struct cache_head *
-@@ -486,6 +491,15 @@ static int rsc_parse(struct cache_detail *cd,
- 		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx);
- 		if (status)
- 			goto out;
-+
-+		/* get client name */
-+		len = qword_get(&mesg, buf, mlen);
-+		if (len > 0) {
-+			rsci.client_name = kstrdup(buf, GFP_KERNEL);
-+			if (!rsci.client_name)
-+				goto out;
-+		}
-+
- 	}
- 	rsci.h.expiry_time = expiry;
- 	rscp = rsc_update(&rsci, rscp);
-@@ -913,6 +927,15 @@ struct gss_svc_data {
- 	struct rsc			*rsci;
- };
- 
-+char *svc_gss_principal(struct svc_rqst *rqstp)
-+{
-+	struct gss_svc_data *gd = (struct gss_svc_data *)rqstp->rq_auth_data;
-+
-+	if (gd && gd->rsci)
-+		return gd->rsci->client_name;
-+	return NULL;
-+}
-+
- static int
- svcauth_gss_set_client(struct svc_rqst *rqstp)
+ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+-				struct rpc_clnt *clnt)
++				struct rpc_clnt *clnt, int machine_cred)
  {
+ 	char *p = gss_msg->databuf;
+ 	int len = 0;
+@@ -383,6 +383,15 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
++	if (machine_cred) {
++		len = sprintf(p, "service=* ");
++		p += len;
++		gss_msg->msg.len += len;
++	} else if (!strcmp(clnt->cl_program->name, "nfs4_cb")) {
++		len = sprintf(p, "service=nfs ");
++		p += len;
++		gss_msg->msg.len += len;
++	}
+ 	len = sprintf(p, "\n");
+ 	gss_msg->msg.len += len;
+ 
+@@ -391,16 +400,17 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ }
+ 
+ static void gss_encode_msg(struct gss_upcall_msg *gss_msg,
+-				struct rpc_clnt *clnt)
++				struct rpc_clnt *clnt, int machine_cred)
+ {
+ 	if (pipe_version == 0)
+ 		gss_encode_v0_msg(gss_msg);
+ 	else /* pipe_version == 1 */
+-		gss_encode_v1_msg(gss_msg, clnt);
++		gss_encode_v1_msg(gss_msg, clnt, machine_cred);
+ }
+ 
+ static inline struct gss_upcall_msg *
+-gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt)
++gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt,
++		int machine_cred)
+ {
+ 	struct gss_upcall_msg *gss_msg;
+ 	int vers;
+@@ -420,7 +430,7 @@ gss_alloc_msg(struct gss_auth *gss_auth, uid_t uid, struct rpc_clnt *clnt)
+ 	atomic_set(&gss_msg->count, 1);
+ 	gss_msg->uid = uid;
+ 	gss_msg->auth = gss_auth;
+-	gss_encode_msg(gss_msg, clnt);
++	gss_encode_msg(gss_msg, clnt, machine_cred);
+ 	return gss_msg;
+ }
+ 
+@@ -432,11 +442,7 @@ gss_setup_upcall(struct rpc_clnt *clnt, struct gss_auth *gss_auth, struct rpc_cr
+ 	struct gss_upcall_msg *gss_new, *gss_msg;
+ 	uid_t uid = cred->cr_uid;
+ 
+-	/* Special case: rpc.gssd assumes that uid == 0 implies machine creds */
+-	if (gss_cred->gc_machine_cred != 0)
+-		uid = 0;
+-
+-	gss_new = gss_alloc_msg(gss_auth, uid, clnt);
++	gss_new = gss_alloc_msg(gss_auth, uid, clnt, gss_cred->gc_machine_cred);
+ 	if (IS_ERR(gss_new))
+ 		return gss_new;
+ 	gss_msg = gss_add_msg(gss_auth, gss_new);
 
