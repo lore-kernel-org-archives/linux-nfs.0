@@ -1,42 +1,123 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 42/69] NFS: Use delegations to optimise ACCESS calls
-Date: Tue, 23 Dec 2008 18:23:38 -0500
-Message-ID: <20081223230217.13743.76526.stgit@heimdal.trondhjem.org>
-References: <20081223230158.13743.53992.stgit@heimdal.trondhjem.org>
+From: Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 3/3] SUNRPC: svc_xprt_enqueue should not refuse to enqueue
+ 'XPT_DEAD' transports
+Date: Tue, 23 Dec 2008 17:39:16 -0600
+Message-ID: <495176A4.50307@opengridcomputing.com>
+References: <20081017123207.GA14979@rabbit.intern.cm-ag>	 <1224484046.23068.14.camel@localhost.localdomain>	 <1225539927.2221.3.camel@localhost.localdomain>	 <1225546878.4390.3.camel@heimdal.trondhjem.org>	 <1227596962.16868.22.camel@localhost.localdomain>	 <1227619696.7057.19.camel@heimdal.trondhjem.org>	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>	 <1227621434.7057.33.camel@heimdal.trondhjem.org>	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>	 <1227737539.31008.2.camel@localhost.localdomain>	 <1228090631.7112.11.camel@heimdal.trondhjem.org>	 <1228090815.7112.15.camel@heimdal.trondhjem.org>	 <49491C58.9@opengridcomputing.com> <1229540877.7257.97.camel@heimdal.trondhjem.org> <4950FA60.3060405@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>, linux-nfs@vger.kernel.org,
+	Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>, linux-kernel@vger.kernel.org,
+	gcosta@redhat.com, Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46961 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751251AbYLWX1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Dec 2008 18:27:55 -0500
-Received: from svlrsexc1-prd.hq.netapp.com ([10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id mBNNRg7c006949
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2008 15:27:46 -0800 (PST)
-In-Reply-To: <20081223230158.13743.53992.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:51369 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751548AbYLWXjS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Dec 2008 18:39:18 -0500
+In-Reply-To: <4950FA60.3060405@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
+Tom Tucker wrote:
+> Trond Myklebust wrote:
+>> On Wed, 2008-12-17 at 09:35 -0600, Tom Tucker wrote:
+>>  
+>>> Trond Myklebust wrote:
+>>>    
+>>>> Aside from being racy (there is nothing preventing someone setting 
+>>>> XPT_DEAD
+>>>> after the test in svc_xprt_enqueue, and before XPT_BUSY is set), it is
+>>>> wrong to assume that transports which have called svc_delete_xprt() 
+>>>> might
+>>>> not need to be re-enqueued.
+>>>>       
+>>> This is only true because now you allow transports with XPT_DEAD set 
+>>> to be enqueued -- yes?
+>>>
+>>>    
+>>>> See the list of deferred requests, which is currently never going to
+>>>> be cleared if the revisit call happens after svc_delete_xprt(). In 
+>>>> this
+>>>> case, the deferred request will currently keep a reference to the 
+>>>> transport
+>>>> forever.
+>>>>
+>>>>       
+>>> I agree this is a possibility and it needs to be fixed. I'm 
+>>> concerned that the root cause is still there though. I thought the 
+>>> test case was the client side timing out the connection. Why are 
+>>> there deferred requests sitting on what is presumably an idle 
+>>> connection?
+>>>     
+>>
+>> I haven't said that they are the cause of this test case. I've said that
+>> deferred requests hold references to the socket that can obviously
+>> deadlock. That needs to be fixed regardless of whether or not it is the
+>> cause here.
+>>
+>> There are plenty of situations in which the client may choose to close
+>> the TCP socket even if there are outstanding requests. One of the most
+>> common is when the user signals the process, so that an RPC call that
+>> was partially transmitted (ran out of buffer space) gets cancelled
+>> before it can finish transmitting. In that case the client has no choice
+>> but to disconnect and immediately reconnect.
+>>
+>>  
+>>>> The fix should be to allow dead transports to be enqueued in order 
+>>>> to clear
+>>>> the deferred requests, then change the order of processing in 
+>>>> svc_recv() so
+>>>> that we pick up deferred requests before we do the XPT_CLOSE 
+>>>> processing.
+>>>>
+>>>>       
+>>> Wouldn't it be simpler to clean up any deferred requests in the 
+>>> close path instead of changing the meaning of XPT_DEAD and 
+>>> dispatching N-threads to do the same?
+>>>     
+>>
+>> AFAICS, deferred requests are the property of the cache until they
+>> expire or a downcall occurs. I'm not aware of any way to cancel only
+>> those deferred requests that hold a reference to this particular
+>> transport.
+>>
+>>   
+> Ok, I think you're right, and I think that this fix is correct and 
+> makes the symptom go away.
+>
+> I may be completely confused here, but:
+>
+> - The deferred requests should be getting cleaned up by timing out, 
+> and that does not not seem to be happening, (Is this true?)
+>
+They are getting "cleaned up", but by the time they do the transport is 
+dead, the request has been added to the deferred queue, but it won't get 
+processed because svc_xprt_enqueue won't "schedule" a dead transport.
 
- fs/nfs/dir.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+> - By releasing the underlying connection prior to releasing the 
+> transport that manages it, we've converted the visible resource leek 
+> to an invisible one.
+>
+Not with your changes per the above.
 
+> - This has been around forever and changing the client side close 
+> behavior graceful exposed this bug,
+>
+> So I'm wondering if what we want to do here is to provide a mechanism 
+> for canceling deferred requests for a particular transport. This would 
+> provide a mechanism for the generic transport driver to force 
+> cancellation of deferred requests when closing. 
+This is a new interface and we'd still need to handle requests sitting 
+on the transport's deferred queue. Probably not a good idea.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ff167aa..ed7024c 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1797,7 +1797,8 @@ static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, str
- 	cache = nfs_access_search_rbtree(inode, cred);
- 	if (cache == NULL)
- 		goto out;
--	if (!time_in_range(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
-+	if (!nfs_have_delegation(inode, FMODE_READ) &&
-+	    !time_in_range(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
- 		goto out_stale;
- 	res->jiffies = cache->jiffies;
- 	res->cred = cache->cred;
+> Tom
+>
+>
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
