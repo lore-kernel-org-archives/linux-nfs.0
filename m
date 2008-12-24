@@ -1,26 +1,30 @@
-From: wwg@oracle.com
+From: wengang wang <wen.gang.wang@oracle.com>
 Subject: [PATCH 1/1] nfsd(v2/v3): fix the failure of creation from HPUX client
-Date: Wed, 24 Dec 2008 13:18:41 +0800
-Message-ID: <200812240520.mBO5KB8w009765@acsinet13.oracle.com>
+Date: Wed, 24 Dec 2008 13:36:16 +0800
+Message-ID: <200812240537.mBO5blpr005502@acsinet13.oracle.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet14.oracle.com ([141.146.126.236]:60401 "EHLO
-	acsinet14.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750705AbYLXFUz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2008 00:20:55 -0500
-Received: from acsinet11.oracle.com (acsinet11.oracle.com [141.146.126.233])
-	by acsinet14.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id mBO5O1ec027128
+Received: from rcsinet14.oracle.com ([148.87.113.126]:36944 "EHLO
+	rgminet14.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146AbYLXFib (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Dec 2008 00:38:31 -0500
+Received: from rgminet13.oracle.com (rcsinet13.oracle.com [148.87.113.125])
+	by rgminet14.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id mBO5eGJh021275
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Dec 2008 05:24:02 GMT
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Dec 2008 05:40:17 GMT
 Received: from acsinet13.oracle.com (acsinet13.oracle.com [141.146.126.235])
-	by acsinet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id mBO5KwHQ015428
+	by rgminet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id mBO5brrb024001
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Dec 2008 05:21:00 GMT
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Dec 2008 05:37:55 GMT
 Received: from acsmt707.oracle.com (acsmt707.oracle.com [141.146.40.85])
-	by acsinet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id mBO5KB8w009765
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Dec 2008 05:20:13 GMT
+	by acsinet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id mBO5blpr005502
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Dec 2008 05:37:48 GMT
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+please ignore the email sent from wwg@oracle.com and reply to this post
+if you will.
+thanks.
 
 sometimes HPUX nfs client sends a create request to linux nfs server(v2/v3).
 the dump of the request is like:
