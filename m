@@ -1,141 +1,153 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 07/22] NFSD: Prevent a buffer overflow in
-	svc_xprt_names()
-Date: Wed, 24 Dec 2008 23:32:03 -0500
-Message-ID: <20081225043203.GB17998@fieldses.org>
-References: <20081212215340.24332.88416.stgit@ingres.1015granger.net> <20081212215757.24332.77904.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 08/22] SUNRPC: pass buffer size to svc_addsock() and
+	svc_sock_names()
+Date: Wed, 24 Dec 2008 23:43:06 -0500
+Message-ID: <20081225044306.GC17998@fieldses.org>
+References: <20081212215340.24332.88416.stgit@ingres.1015granger.net> <20081212215804.24332.24605.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: aime.le-rouzic@bull.net, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:50100 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:59835 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751487AbYLYEcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Dec 2008 23:32:06 -0500
-In-Reply-To: <20081212215757.24332.77904.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1751492AbYLYEnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Dec 2008 23:43:09 -0500
+In-Reply-To: <20081212215804.24332.24605.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 12, 2008 at 04:57:57PM -0500, Chuck Lever wrote:
-> The svc_xprt_names() function can overflow its buffer if it's so near
-> the end of the passed in buffer that the "name too long" string still
-> doesn't fit.  Of course, it could never tell if it was near the end
-> of the passed in buffer, since its only caller passes in zero as the
-> buffer length.
-
-Yeah, that's odd; thanks, looks like a reasonable fix.
-
---b.
-
+On Fri, Dec 12, 2008 at 04:58:05PM -0500, Chuck Lever wrote:
+> Pass the size of the output buffer to the RPC functions that construct
+> the list of socket names in that buffer.  Add documenting comments to
+> these functions.
 > 
-> Let's make this API a little safer.
-> 
-> Change svc_xprt_names() so it *always* checks for a buffer overflow,
-> and change its only caller to pass in the correct buffer length.
-> 
-> If svc_xprt_names() does overflow its buffer, just fail with a
-> reasonable errno code, instead of trying to write a message at the end
-> of the buffer.  I don't like this much, but I can't figure out a safe
-> way to return some of the names, *and* an indication that the buffer
-> was not long enough.
+> This is a cosmetic change for now.  A subsequent patch will make sure
+> the buffer length is passed to one_sock_name(), where the length will
+> actually be useful.
 > 
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
 > 
->  fs/nfsd/nfsctl.c      |    2 +-
->  net/sunrpc/svc_xprt.c |   53 ++++++++++++++++++++++++++++++++++---------------
->  2 files changed, 38 insertions(+), 17 deletions(-)
+>  fs/nfsd/nfsctl.c               |   12 ++++++++----
+>  include/linux/sunrpc/svcsock.h |    6 ++++--
+>  net/sunrpc/svcsock.c           |   34 +++++++++++++++++++++++++++++-----
+>  3 files changed, 41 insertions(+), 11 deletions(-)
 > 
 > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index fa6441b..22fc8e5 100644
+> index 22fc8e5..19db9f4 100644
 > --- a/fs/nfsd/nfsctl.c
 > +++ b/fs/nfsd/nfsctl.c
-> @@ -887,7 +887,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
+> @@ -898,7 +898,7 @@ static ssize_t __write_ports_names(char *buf, size_t size)
+>  static ssize_t __write_ports_addfd(char *buf, size_t size)
 >  {
->  	if (!nfsd_serv)
->  		return 0;
-> -	return svc_xprt_names(nfsd_serv, buf, 0);
-> +	return svc_xprt_names(nfsd_serv, buf, SIMPLE_TRANSACTION_LIMIT);
+>  	char *mesg = buf;
+> -	int fd, err;
+> +	int fd, err, len;
+>  
+>  	err = get_int(&mesg, &fd);
+>  	if (err || fd < 0)
+> @@ -908,13 +908,16 @@ static ssize_t __write_ports_addfd(char *buf, size_t size)
+>  	if (err)
+>  		return err;
+>  
+> -	err = svc_addsock(nfsd_serv, fd, buf);
+> +	len = SIMPLE_TRANSACTION_LIMIT;
+> +	err = svc_addsock(nfsd_serv, fd, buf, len);
+>  	if (err < 0)
+>  		return err;
+> +	len -= err;
+>  
+>  	err = lockd_up();
+>  	if (err < 0)
+> -		svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
+> +		svc_sock_names(nfsd_serv, buf + strlen(buf) + 1,
+> +				len - strlen(buf) - 1, buf);
+
+Since you already did len -= err above, aren't you effectly subtracing
+off strlen(buf) twice here?  (And should that "len -= err" actually have
+been a "len -= err + 1"?)
+
+>  
+>  	/* Decrease the count, but don't shut down the the service */
+>  	nfsd_serv->sv_nrthreads--;
+> @@ -935,7 +938,8 @@ static ssize_t __write_ports_delfd(char *buf, size_t size)
+>  		return -ENOMEM;
+>  
+>  	if (nfsd_serv)
+> -		len = svc_sock_names(buf, nfsd_serv, toclose);
+> +		len = svc_sock_names(nfsd_serv, buf,
+> +					SIMPLE_TRANSACTION_LIMIT, toclose);
+>  	if (len >= 0)
+>  		lockd_down();
+>  
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+> index 483e103..f57ce85 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -38,8 +38,10 @@ int		svc_recv(struct svc_rqst *, long);
+>  int		svc_send(struct svc_rqst *);
+>  void		svc_drop(struct svc_rqst *);
+>  void		svc_sock_update_bufs(struct svc_serv *serv);
+> -int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
+> -int		svc_addsock(struct svc_serv *serv, int fd, char *name_return);
+> +int		svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
+> +					char *toclose);
+> +int		svc_addsock(struct svc_serv *serv, int fd, char *name_return,
+> +					size_t len);
+>  void		svc_init_xprt_sock(void);
+>  void		svc_cleanup_xprt_sock(void);
+>  
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index a1951dc..39f5015 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -263,8 +263,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
+>  	return len;
 >  }
 >  
->  /*
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index bf5b5cd..eb546ce 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -1045,36 +1045,57 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
->  }
->  EXPORT_SYMBOL_GPL(svc_find_xprt);
->  
-> -/*
-> - * Format a buffer with a list of the active transports. A zero for
-> - * the buflen parameter disables target buffer overflow checking.
-> +static int svc_one_xprt_name(struct svc_xprt *xprt, char *pos, int remaining)
-> +{
-> +	int len;
-> +
-> +	len = snprintf(pos, remaining, "%s %u\n",
-> +			xprt->xpt_class->xcl_name,
-> +			svc_xprt_local_port(xprt));
-> +	if (len >= remaining)
-> +		return -ENAMETOOLONG;
-> +	return len;
-> +}
-> +
+> -int
+> -svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
 > +/**
-> + * svc_xprt_names - format a buffer with a list of transport names
-> + * @serv: pointer to an RPC service
-> + * @buf: pointer to a buffer to be filled in
-> + * @buflen: length of buffer to be filled in
+> + * svc_sock_names - construct a list of listener names in a string
+> + * @serv: pointer to RPC service
+> + * @buf: pointer to a buffer to fill in with socket names
+> + * @buflen: size of the buffer to be filled
+> + * @toclose: pointer to '\0'-terminated C string containing the name
+> + *		of a listener to be closed
 > + *
-> + * Fills in @buf with a string containing a list of transport names,
-> + * each name terminated with '\n'.
+> + * Fills in @buf with a '\n'-separated list of names of listener
+> + * sockets.  If @toclose is not NULL, the socket named by @toclose
+> + * is closed, and is not included in the output list.
 > + *
-> + * Returns positive length of the filled-in string on success; otherwise
-> + * a negative errno value is returned if an error occurs.
->   */
->  int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
+> + * Returns positive length of the socket name string, or a negative
+> + * errno value on error.
+> + */
+> +int svc_sock_names(struct svc_serv *serv, char *buf, size_t buflen,
+> +		   char *toclose)
 >  {
->  	struct svc_xprt *xprt;
-> -	char xprt_str[64];
-> -	int totlen = 0;
-> -	int len;
-> +	int len, totlen;
-> +	char *pos;
->  
->  	/* Sanity check args */
->  	if (!serv)
->  		return 0;
->  
->  	spin_lock_bh(&serv->sv_lock);
-> +
-> +	pos = buf;
-> +	totlen = 0;
->  	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
-> -		len = snprintf(xprt_str, sizeof(xprt_str),
-> -			       "%s %d\n", xprt->xpt_class->xcl_name,
-> -			       svc_xprt_local_port(xprt));
-> -		/* If the string was truncated, replace with error string */
-> -		if (len >= sizeof(xprt_str))
-> -			strcpy(xprt_str, "name-too-long\n");
-> -		/* Don't overflow buffer */
-> -		len = strlen(xprt_str);
-> -		if (buflen && (len + totlen >= buflen))
-> +		len = svc_one_xprt_name(xprt, pos, buflen - totlen);
-> +		if (len < 0) {
-> +			*buf = '\0';
-> +			totlen = len;
-> +		}
-> +		if (len <= 0)
->  			break;
-> -		strcpy(buf+totlen, xprt_str);
-> +
-> +		pos += len;
->  		totlen += len;
->  	}
-> +
->  	spin_unlock_bh(&serv->sv_lock);
->  	return totlen;
+>  	struct svc_sock *svsk, *closesk = NULL;
+>  	int len = 0;
+> @@ -1165,9 +1180,18 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>  	return svsk;
 >  }
+>  
+> -int svc_addsock(struct svc_serv *serv,
+> -		int fd,
+> -		char *name_return)
+> +/**
+> + * svc_addsock - add a listener socket to an RPC service
+> + * @serv: pointer to RPC service to which to add a new listener
+> + * @fd: file descriptor of the new listener
+> + * @name_return: pointer to buffer to pass back name of listener
+> + * @len: size of the buffer
+> + *
+> + * Fills in socket name and returns positive length of name if successful.
+> + * Name is terminated with '\n'.  On error, returns a negative errno
+> + * value.
+> + */
+> +int svc_addsock(struct svc_serv *serv, int fd, char *name_return, size_t len)
+>  {
+>  	int err = 0;
+>  	struct socket *so = sockfd_lookup(fd, &err);
 > 
