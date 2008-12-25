@@ -1,80 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 00/22] IPv6 support NFSD
-Date: Thu, 25 Dec 2008 00:01:39 -0500
-Message-ID: <20081225050139.GE17998@fieldses.org>
-References: <20081212215340.24332.88416.stgit@ingres.1015granger.net>
+From: =?utf-8?Q?Am=C3=A9rico?= Wang <xiyou.wangcong@gmail.com>
+Subject: [Patch] fs/nfs/nfs4proc.c: make nfs4_map_errors() static
+Date: Thu, 25 Dec 2008 21:55:23 +0000
+Message-ID: <20081225215523.GH3130@hack.private>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: aime.le-rouzic@bull.net, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:46426 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750695AbYLYFBm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Dec 2008 00:01:42 -0500
-In-Reply-To: <20081212215340.24332.88416.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Andrew Morton <akpm@osdl.org>,
+	bfields@fieldses.org
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752094AbYLYN47@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 12, 2008 at 04:57:02PM -0500, Chuck Lever wrote:
-> Hi Bruce-
-> 
-> These 22 patches enable support for IPv6 in the kernel's NFSD.  Please
-> consider them for 2.6.29.
-> 
-> Special thanks to Aime Le Rouzic and the Bull team for their prototype
-> and testing efforts.
 
-Except for comments on specific patches, those look fine, thanks.
-Resend if necessary and I'll take another look.
+nfs4_map_errors() can become static.
 
---b.
+Signed-off-by: WANG Cong <wangcong@zeuux.org>
+Cc: J. Bruce Fields <bfields@fieldses.org>
 
-> 
-> ---
-> 
-> Aime Le Rouzic (1):
->       NFSD: Support AF_INET6 in svc_addsock() function
-> 
-> Chuck Lever (21):
->       NLM: Clean up flow of control in make_socks() function
->       NLM: Refactor make_socks() function
->       NFSD: Prevent buffer overflow in write_recoverydir()
->       NFSD: Prevent buffer overflow in write_leasetime()
->       NFSD: Prevent buffer overflow in write_maxblksize()
->       NFSD: Prevent buffer overflow in write_versions()
->       NFSD: Prevent buffer overflow in write_threads()
->       NFSD: Enable NFS server use of AF_INET6
->       NFSD: Support IPv6 addresses in write_failover_ip()
->       NFS: Move NFS client's IP address parser to nfs_common/
->       SUNRPC: Clean up one_sock_name()
->       SUNRPC: Support AF_INET6 in one_sock_name()
->       SUNRPC: Switch one_sock_name() to use snprintf()
->       SUNRPC: pass buffer size to svc_addsock() and svc_sock_names()
->       NFSD: Prevent a buffer overflow in svc_xprt_names()
->       NFSD: Refactor __write_ports()
->       NFSD: Add helper functions for __write_ports()
->       NFSD: Add documenting comments for nfsctl interface
->       NFSD: Replace open-coded integer with macro
->       NFSD: Fix a handful of coding style issues in write_filehandle()
->       NFSD: clean up failover sysctl function naming
-> 
-> 
->  fs/lockd/svc.c                 |   49 +--
->  fs/nfs/internal.h              |    3 
->  fs/nfs/nfs4namespace.c         |    2 
->  fs/nfs/super.c                 |  121 ------
->  fs/nfs_common/Makefile         |    1 
->  fs/nfs_common/nfs_addr_parse.c |  155 ++++++++
->  fs/nfsd/nfsctl.c               |  773 ++++++++++++++++++++++++++++++++--------
->  fs/nfsd/nfssvc.c               |   13 +
->  include/linux/nfs_addr_parse.h |   32 ++
->  include/linux/sunrpc/svcsock.h |    6 
->  net/sunrpc/svc_xprt.c          |   53 ++-
->  net/sunrpc/svcsock.c           |   82 +++-
->  12 files changed, 960 insertions(+), 330 deletions(-)
->  create mode 100644 fs/nfs_common/nfs_addr_parse.c
->  create mode 100644 include/linux/nfs_addr_parse.h
-> 
-> -- 
-> Chuck Lever
+---
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ea79064..b8fb6a6 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -174,7 +174,6 @@ extern ssize_t nfs4_listxattr(struct dentry *, char *, size_t);
+ 
+ 
+ /* nfs4proc.c */
+-extern int nfs4_map_errors(int err);
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_async_renew(struct nfs_client *, struct rpc_cred *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 83e700a..91e46ec 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -69,7 +69,7 @@ static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
+ 
+ /* Prevent leaks of NFSv4 errors into userland */
+-int nfs4_map_errors(int err)
++static int nfs4_map_errors(int err)
+ {
+ 	if (err < -1000) {
+ 		dprintk("%s could not handle NFSv4 error %d\n",
