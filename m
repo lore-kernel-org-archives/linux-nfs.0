@@ -1,48 +1,368 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/5] recent patches conflict with Harvey's printf formatters
-Date: Mon, 29 Dec 2008 17:20:07 -0500
-Message-ID: <20081229221603.28005.42498.stgit@ingres.1015granger.net>
+Subject: [PATCH 5/5] NSM: Move nsm_find() to fs/lockd/mon.c
+Date: Mon, 29 Dec 2008 17:20:46 -0500
+Message-ID: <20081229222046.28005.56308.stgit@ingres.1015granger.net>
+References: <20081229221603.28005.42498.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:64602 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:64586 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753483AbYL2WVW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Dec 2008 17:21:22 -0500
+	with ESMTP id S1753449AbYL2WVT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Dec 2008 17:21:19 -0500
+In-Reply-To: <20081229221603.28005.42498.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+The nsm_find() function sets up fresh nsm_handle entries.  This is
+where we will store the "priv" cookie used to lookup nsm_handles during
+reboot recovery.  The cookie will be constructed when nsm_find()
+creates a new nsm_handle.
 
-I pulled from Linus's tree today, and found that Harvey's IP address print
-formatters have already been merged.  I had conflicts with some of the NSM
-IPv6 patches I've already sent you that use the old NIP macros.
+As much as possible, I would like to keep everything that handles a
+"priv" cookie in fs/lockd/mon.c so that all the smarts are in one
+source file.  That organization should make it pretty simple to see how
+all this works.
 
-Here are the conflicting patches, updated to use Harvey's new formatters.
-You may have already done some of this work to merge your NFSD tree into
-linux-next, but I did update at least one patch description.
+To me, it makes more sense than the current arrangement to keep
+nsm_find() with nsm_monitor() and nsm_unmonitor().
 
-I have already updated the NFSD patches that are still pending, so you'll
-get those changes when I resend that series.
+So, start reorganizing by moving nsm_find() into fs/lockd/mon.c.  The
+nsm_release() function comes along too, since it shares the nsm_lock
+global variable.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (5):
-      NSM: Move nsm_find() to fs/lockd/mon.c
-      NSM: Support IPv6 version of mon_name
-      NLM: Add helper to handle IPv4 addresses
-      NLM: Support IPv6 scope IDs in nlm_display_address()
-      NLM: Remove AF_UNSPEC arm in nlm_display_address()
+ fs/lockd/host.c             |  128 -----------------------------------------
+ fs/lockd/mon.c              |  133 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/lockd/lockd.h |    6 ++
+ 3 files changed, 139 insertions(+), 128 deletions(-)
 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 1d523c1..dbdeaa8 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -32,12 +32,6 @@ static int			nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
+ 
+ static void			nlm_gc_hosts(void);
+-static struct nsm_handle	*nsm_find(const struct sockaddr *sap,
+-						const size_t salen,
+-						const char *hostname,
+-						const size_t hostname_len,
+-						const int create);
+-static void			nsm_release(struct nsm_handle *nsm);
+ 
+ struct nlm_lookup_host_info {
+ 	const int		server;		/* search for server|client */
+@@ -106,43 +100,6 @@ static void nlm_clear_port(struct sockaddr *sap)
+ 	}
+ }
+ 
+-static void nlm_display_ipv4_address(const struct sockaddr *sap, char *buf,
+-				     const size_t len)
+-{
+-	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+-	snprintf(buf, len, "%pI4", &sin->sin_addr.s_addr);
+-}
+-
+-static void nlm_display_ipv6_address(const struct sockaddr *sap, char *buf,
+-				     const size_t len)
+-{
+-	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+-
+-	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
+-		snprintf(buf, len, "%pI4", &sin6->sin6_addr.s6_addr32[3]);
+-	else if (sin6->sin6_scope_id != 0)
+-		snprintf(buf, len, "%pI6%%%u", &sin6->sin6_addr,
+-				sin6->sin6_scope_id);
+-	else
+-		snprintf(buf, len, "%pI6", &sin6->sin6_addr);
+-}
+-
+-static void nlm_display_address(const struct sockaddr *sap,
+-				char *buf, const size_t len)
+-{
+-	switch (sap->sa_family) {
+-	case AF_INET:
+-		nlm_display_ipv4_address(sap, buf, len);
+-		break;
+-	case AF_INET6:
+-		nlm_display_ipv6_address(sap, buf, len);
+-		break;
+-	default:
+-		snprintf(buf, len, "unsupported address family");
+-		break;
+-	}
+-}
+-
+ /*
+  * Common host lookup routine for server & client
+  */
+@@ -635,88 +592,3 @@ nlm_gc_hosts(void)
+ 
+ 	next_gc = jiffies + NLM_HOST_COLLECT;
+ }
+-
+-
+-/*
+- * Manage NSM handles
+- */
+-static LIST_HEAD(nsm_handles);
+-static DEFINE_SPINLOCK(nsm_lock);
+-
+-static struct nsm_handle *nsm_find(const struct sockaddr *sap,
+-				   const size_t salen,
+-				   const char *hostname,
+-				   const size_t hostname_len,
+-				   const int create)
+-{
+-	struct nsm_handle *nsm = NULL;
+-	struct nsm_handle *pos;
+-
+-	if (!sap)
+-		return NULL;
+-
+-	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
+-		if (printk_ratelimit()) {
+-			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
+-					    "in NFS lock request\n",
+-				(int)hostname_len, hostname);
+-		}
+-		return NULL;
+-	}
+-
+-retry:
+-	spin_lock(&nsm_lock);
+-	list_for_each_entry(pos, &nsm_handles, sm_link) {
+-
+-		if (hostname && nsm_use_hostnames) {
+-			if (strlen(pos->sm_name) != hostname_len
+-			 || memcmp(pos->sm_name, hostname, hostname_len))
+-				continue;
+-		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
+-			continue;
+-		atomic_inc(&pos->sm_count);
+-		kfree(nsm);
+-		nsm = pos;
+-		goto found;
+-	}
+-	if (nsm) {
+-		list_add(&nsm->sm_link, &nsm_handles);
+-		goto found;
+-	}
+-	spin_unlock(&nsm_lock);
+-
+-	if (!create)
+-		return NULL;
+-
+-	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
+-	if (nsm == NULL)
+-		return NULL;
+-
+-	memcpy(nsm_addr(nsm), sap, salen);
+-	nsm->sm_addrlen = salen;
+-	nsm->sm_name = (char *) (nsm + 1);
+-	memcpy(nsm->sm_name, hostname, hostname_len);
+-	nsm->sm_name[hostname_len] = '\0';
+-	nlm_display_address((struct sockaddr *)&nsm->sm_addr,
+-				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
+-	atomic_set(&nsm->sm_count, 1);
+-	goto retry;
+-
+-found:
+-	spin_unlock(&nsm_lock);
+-	return nsm;
+-}
+-
+-/*
+- * Release an NSM handle
+- */
+-static void nsm_release(struct nsm_handle *nsm)
+-{
+-	if (!nsm)
+-		return;
+-	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
+-		list_del(&nsm->sm_link);
+-		spin_unlock(&nsm_lock);
+-		kfree(nsm);
+-	}
+-}
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 81e1cc1..8e68e79 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -47,12 +47,51 @@ struct nsm_res {
+ static struct rpc_clnt *	nsm_create(void);
+ 
+ static struct rpc_program	nsm_program;
++static				LIST_HEAD(nsm_handles);
++static				DEFINE_SPINLOCK(nsm_lock);
+ 
+ /*
+  * Local NSM state
+  */
+ int				nsm_local_state;
+ 
++static void nsm_display_ipv4_address(const struct sockaddr *sap, char *buf,
++				     const size_t len)
++{
++	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	snprintf(buf, len, "%pI4", &sin->sin_addr.s_addr);
++}
++
++static void nsm_display_ipv6_address(const struct sockaddr *sap, char *buf,
++				     const size_t len)
++{
++	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++
++	if (ipv6_addr_v4mapped(&sin6->sin6_addr))
++		snprintf(buf, len, "%pI4", &sin6->sin6_addr.s6_addr32[3]);
++	else if (sin6->sin6_scope_id != 0)
++		snprintf(buf, len, "%pI6%%%u", &sin6->sin6_addr,
++				sin6->sin6_scope_id);
++	else
++		snprintf(buf, len, "%pI6", &sin6->sin6_addr);
++}
++
++static void nsm_display_address(const struct sockaddr *sap,
++				char *buf, const size_t len)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		nsm_display_ipv4_address(sap, buf, len);
++		break;
++	case AF_INET6:
++		nsm_display_ipv6_address(sap, buf, len);
++		break;
++	default:
++		snprintf(buf, len, "unsupported address family");
++		break;
++	}
++}
++
+ /*
+  * Common procedure for NSMPROC_MON/NSMPROC_UNMON calls
+  */
+@@ -162,6 +201,100 @@ void nsm_unmonitor(const struct nlm_host *host)
+ 	}
+ }
+ 
++/**
++ * nsm_find - Find or create a cached nsm_handle
++ * @sap: pointer to socket address of handle to find
++ * @salen: length of socket address
++ * @hostname: pointer to C string containing hostname to find
++ * @hostname_len: length of C string
++ * @create: one means create new handle if not found in cache
++ *
++ * Behavior is modulated by the global nsm_use_hostnames variable
++ * and by the @create argument.
++ *
++ * Returns a cached nsm_handle after bumping its ref count, or if
++ * @create is set, returns a fresh nsm_handle if a handle that
++ * matches @sap and/or @hostname cannot be found in the handle cache.
++ * Returns NULL if an error occurs.
++ */
++struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
++			    const char *hostname, const size_t hostname_len,
++			    const int create)
++{
++	struct nsm_handle *nsm = NULL;
++	struct nsm_handle *pos;
++
++	if (!sap)
++		return NULL;
++
++	if (hostname && memchr(hostname, '/', hostname_len) != NULL) {
++		if (printk_ratelimit()) {
++			printk(KERN_WARNING "Invalid hostname \"%.*s\" "
++					    "in NFS lock request\n",
++				(int)hostname_len, hostname);
++		}
++		return NULL;
++	}
++
++retry:
++	spin_lock(&nsm_lock);
++	list_for_each_entry(pos, &nsm_handles, sm_link) {
++
++		if (hostname && nsm_use_hostnames) {
++			if (strlen(pos->sm_name) != hostname_len
++			 || memcmp(pos->sm_name, hostname, hostname_len))
++				continue;
++		} else if (!nlm_cmp_addr(nsm_addr(pos), sap))
++			continue;
++		atomic_inc(&pos->sm_count);
++		kfree(nsm);
++		nsm = pos;
++		goto found;
++	}
++	if (nsm) {
++		list_add(&nsm->sm_link, &nsm_handles);
++		goto found;
++	}
++	spin_unlock(&nsm_lock);
++
++	if (!create)
++		return NULL;
++
++	nsm = kzalloc(sizeof(*nsm) + hostname_len + 1, GFP_KERNEL);
++	if (nsm == NULL)
++		return NULL;
++
++	memcpy(nsm_addr(nsm), sap, salen);
++	nsm->sm_addrlen = salen;
++	nsm->sm_name = (char *) (nsm + 1);
++	memcpy(nsm->sm_name, hostname, hostname_len);
++	nsm->sm_name[hostname_len] = '\0';
++	nsm_display_address((struct sockaddr *)&nsm->sm_addr,
++				nsm->sm_addrbuf, sizeof(nsm->sm_addrbuf));
++	atomic_set(&nsm->sm_count, 1);
++	goto retry;
++
++found:
++	spin_unlock(&nsm_lock);
++	return nsm;
++}
++
++/**
++ * nsm_release - Release an NSM handle
++ * @nsm: pointer to handle to be released
++ *
++ */
++void nsm_release(struct nsm_handle *nsm)
++{
++	if (!nsm)
++		return;
++	if (atomic_dec_and_lock(&nsm->sm_count, &nsm_lock)) {
++		list_del(&nsm->sm_link);
++		spin_unlock(&nsm_lock);
++		kfree(nsm);
++	}
++}
++
+ /*
+  * Create NSM client for the local host
+  */
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 38344bf..8d71536 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -247,6 +247,12 @@ extern void	  nlm_host_rebooted(const struct sockaddr_in *, const char *,
+ int		  nsm_monitor(const struct nlm_host *host);
+ void		  nsm_unmonitor(const struct nlm_host *host);
+ 
++struct nsm_handle *nsm_find(const struct sockaddr *sap, const size_t salen,
++					const char *hostname,
++					const size_t hostname_len,
++					const int create);
++void		  nsm_release(struct nsm_handle *nsm);
++
+ /*
+  * This is used in garbage collection and resource reclaim
+  * A return value != 0 means destroy the lock/block/share
 
- fs/lockd/clntproc.c            |    6 -
- fs/lockd/host.c                |  121 ------------
- fs/lockd/mon.c                 |  411 +++++++++++++++++++++++++++++-----------
- include/linux/lockd/lockd.h    |   25 ++
- include/linux/lockd/sm_inter.h |   31 ---
- 5 files changed, 322 insertions(+), 272 deletions(-)
-
--- 
-Chuck Lever <chuck.lever@oracle.com>
