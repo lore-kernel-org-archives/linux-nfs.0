@@ -1,59 +1,142 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/5] NLM: Add helper to handle IPv4 addresses
-Date: Mon, 29 Dec 2008 17:20:31 -0500
-Message-ID: <20081229222030.28005.61245.stgit@ingres.1015granger.net>
+Subject: [PATCH 4/5] NSM: Support IPv6 version of mon_name
+Date: Mon, 29 Dec 2008 17:20:39 -0500
+Message-ID: <20081229222038.28005.85888.stgit@ingres.1015granger.net>
 References: <20081229221603.28005.42498.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:54724 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753242AbYL2WVS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Dec 2008 17:21:18 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:43328 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753488AbYL2WVY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Dec 2008 17:21:24 -0500
 In-Reply-To: <20081229221603.28005.42498.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: introduce a helper function to generate IPv4 addresses using
-the same style as the IPv6 helper function we just added.
+The "mon_name" argument of the NSMPROC_MON and NSMPROC_UNMON upcalls
+is a string that contains the hostname or IP address of the remote peer
+to be notified when this host has rebooted.  The sm-notify command uses
+this identifier to contact the peer when we reboot, so it must be
+either a well-qualified DNS hostname or a presentation format IP
+address string.
+
+When the "nsm_use_hostnames" sysctl is set to zero, the kernel's NSM
+provides a presentation format IP address in the "mon_name" argument.
+Otherwise, the "caller_name" argument from NLM requests is used,
+which is usually just the DNS hostname of the peer.
+
+To support IPv6 addresses for the mon_name argument, we use the
+nsm_handle's address eye-catcher, which already contains an appropriate
+presentation format address string.  Using the eye-catcher string
+obviates the need to use a large buffer on the stack to form the
+presentation address string for the upcall.
+
+This patch also addresses a subtle bug.
+
+An NSMPROC_MON request and the subsequent NSMPROC_UNMON request for the
+same peer are required to use the same value for the "mon_name"
+argument.  Otherwise, rpc.statd's NSMPROC_UNMON processing cannot
+locate the database entry for that peer and remove it.
+
+If the setting of nsm_use_hostnames is changed between the time the
+kernel sends an NSMPROC_MON request and the time it sends the
+NSMPROC_UNMON request for the same peer, the "mon_name" argument for
+these two requests may not be the same.  This is because the value of
+"mon_name" is currently chosen at the moment the call is made based on
+the setting of nsm_use_hostnames
+
+To ensure both requests pass identical contents in the "mon_name"
+argument, we now select which string to use for the argument in the
+nsm_monitor() function.  A pointer to this string is saved in the
+nsm_handle so it can be used for a subsequent NSMPROC_UNMON upcall.
+
+NB: There are other potential problems, such as how nlm_host_rebooted()
+might behave if nsm_use_hostnames were changed while hosts are still
+being monitored.  This patch does not attempt to address those
+problems.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/host.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ fs/lockd/mon.c              |   27 ++++++++-------------------
+ include/linux/lockd/lockd.h |    1 +
+ 2 files changed, 9 insertions(+), 19 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 012e49a..780918a 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -105,6 +105,13 @@ static void nlm_clear_port(struct sockaddr *sap)
- 	}
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 497dfea..a606fbb 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -18,8 +18,6 @@
+ 
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
+ 
+-#define XDR_ADDRBUF_LEN		(20)
+-
+ static struct rpc_clnt *	nsm_create(void);
+ 
+ static struct rpc_program	nsm_program;
+@@ -42,7 +40,7 @@ nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+ 		.prog		= NLM_PROGRAM,
+ 		.vers		= 3,
+ 		.proc		= NLMPROC_NSM_NOTIFY,
+-		.mon_name	= nsm->sm_name,
++		.mon_name	= nsm->sm_mon_name,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &args,
+@@ -87,6 +85,12 @@ nsm_monitor(struct nlm_host *host)
+ 	if (nsm->sm_monitored)
+ 		return 0;
+ 
++	/*
++	 * Choose whether to record the caller_name or IP address of
++	 * this peer in the local rpc.statd's database.
++	 */
++	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
++
+ 	status = nsm_mon_unmon(nsm, SM_MON, &res);
+ 
+ 	if (status < 0 || res.status != 0)
+@@ -167,25 +171,10 @@ static __be32 *xdr_encode_nsm_string(__be32 *p, char *string)
+ 
+ /*
+  * "mon_name" specifies the host to be monitored.
+- *
+- * Linux uses a text version of the IP address of the remote
+- * host as the host identifier (the "mon_name" argument).
+- *
+- * Linux statd always looks up the canonical hostname first for
+- * whatever remote hostname it receives, so this works alright.
+  */
+ static __be32 *xdr_encode_mon_name(__be32 *p, struct nsm_args *argp)
+ {
+-	char	buffer[XDR_ADDRBUF_LEN + 1];
+-	char	*name = argp->mon_name;
+-
+-	if (!nsm_use_hostnames) {
+-		snprintf(buffer, XDR_ADDRBUF_LEN,
+-			 "%pI4", &argp->addr);
+-		name = buffer;
+-	}
+-
+-	return xdr_encode_nsm_string(p, name);
++	return xdr_encode_nsm_string(p, argp->mon_name);
  }
  
-+static void nlm_display_ipv4_address(const struct sockaddr *sap, char *buf,
-+				     const size_t len)
-+{
-+	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-+	snprintf(buf, len, "%pI4", &sin->sin_addr.s_addr);
-+}
-+
- static void nlm_display_ipv6_address(const struct sockaddr *sap, char *buf,
- 				     const size_t len)
- {
-@@ -122,11 +129,9 @@ static void nlm_display_ipv6_address(const struct sockaddr *sap, char *buf,
- static void nlm_display_address(const struct sockaddr *sap,
- 				char *buf, const size_t len)
- {
--	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
--
- 	switch (sap->sa_family) {
- 	case AF_INET:
--		snprintf(buf, len, "%pI4", &sin->sin_addr.s_addr);
-+		nlm_display_ipv4_address(sap, buf, len);
- 		break;
- 	case AF_INET6:
- 		nlm_display_ipv6_address(sap, buf, len);
+ /*
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 54dbb45..d3c7247 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -79,6 +79,7 @@ struct nlm_host {
+ struct nsm_handle {
+ 	struct list_head	sm_link;
+ 	atomic_t		sm_count;
++	char			*sm_mon_name;
+ 	char			*sm_name;
+ 	struct sockaddr_storage	sm_addr;
+ 	size_t			sm_addrlen;
 
