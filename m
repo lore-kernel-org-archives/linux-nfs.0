@@ -1,114 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:38887 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751370AbZAMW7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Jan 2009 17:59:04 -0500
-Message-ID: <496D1ACC.7070106@melbourne.sgi.com>
-Date: Wed, 14 Jan 2009 09:50:52 +1100
-From: Greg Banks <gnb@melbourne.sgi.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS ML <linux-nfs@vger.kernel.org>
-Subject: Re: [patch 1/3] knfsd: remove the nfsd thread busy histogram
-References: <20090113102633.719563000@sgi.com> <20090113102653.445100000@sgi.com> <BF9EF754-76CE-41B7-B712-2E96E3D9CA9B@oracle.com>
-In-Reply-To: <BF9EF754-76CE-41B7-B712-2E96E3D9CA9B@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.fieldses.org ([141.211.133.115]:60763 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751615AbZABAgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Jan 2009 19:36:54 -0500
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: Marc Eshel <eshel@almaden.ibm.com>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH] nfsd: do a temporary open for LOCKT
+Date: Thu,  1 Jan 2009 19:36:51 -0500
+Message-Id: <1230856611-32574-3-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1230856611-32574-2-git-send-email-bfields@citi.umich.edu>
+References: <1230856611-32574-1-git-send-email-bfields@citi.umich.edu>
+ <1230856611-32574-2-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Chuck Lever wrote:
-> On Jan 13, 2009, at Jan 13, 2009, 5:26 AM, Greg Banks wrote:
->> Stop gathering the data that feeds the 'th' line in /proc/net/rpc/nfsd
->> because the questionable data provided is not worth the scalability
->> impact of calculating it.  Instead, always report zeroes.  The current
->> approach suffers from three major issues:
->>
->> 1. update_thread_usage() increments buckets by call service
->>   time or call arrival time...in jiffies.  On lightly loaded
->>   machines, call service times are usually < 1 jiffy; on
->>   heavily loaded machines call arrival times will be << 1 jiffy.
->>   So a large portion of the updates to the buckets are rounded
->>   down to zero, and the histogram is undercounting.
->
-> Use ktime_get_real() instead.  This is what the network layer uses.
-IIRC that wasn't available when I wrote the patch (2.6.5 kernel in SLES9
-in late 2005).  I haven't looked at it again since.
+I've got a slight fear that the problem Marc tripped across won't be the
+last that's caused by this hack of faking up a struct file with only
+some fields initialized.  We may as well just do an open, just as we do
+with reads and writes in the v2/v3 case, and get a proper struct file.
 
-Later, I looked at gathering better statistics on thread usage, and I
-investigated real time clock (more precisely, monotonic clock)
-implementations in Linux and came to the sad conclusion that there was
-no API I could call that would be both accurate and efficient on two or
-more platforms, so I gave up.  The HPET hardware timer looked promising
-for a while, but it turned out that a 32b kernel used a global spinlock
-to access the 64b HPET registers, which created the same scalability
-problem I was trying to fix.  Things may have improved since then.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4state.c |   33 ++++++++++++++++++++-------------
+ 1 files changed, 20 insertions(+), 13 deletions(-)
 
-If we had such a clock though, the solution is very simple.  Each nfsd
-maintains two new 64b counters of nanoseconds spent in each of two
-states "busy" and "idle", where "idle" is asleep waiting for a call and
-"busy" is everything else.  These are maintained in svc_recv(). 
-Interfaces are provided for userspace to read an aggregation of these
-counters, per-pool and globally.  Userspace rate-converts the counters;
-the rate of increase of the two counters tells you both how many threads
-there are and how much actual demand on thread time there is.  This is
-how I did it in Irix (SGI  Origin machines had a global distributed
-monotonic clock in hardware).
-
->   You could even steal the start timestamp from the first skbuff in an
-> incoming RPC request.
-
-This would help if we had skbuffs: NFS/RDMA doesn't.
->
-> This problem is made worse on "server" configurations and in virtual
-> guests which may still use HZ=100, though with tickless HZ this is a
-> less frequently seen configuration.
-
-Indeed.
->
->> 2. As seen previously on the nfs mailing list, the format in which
->>   the histogram is presented is cryptic, difficult to explain,
->>   and difficult to use.
->
-> A user space script similar to mountstats that interprets these
-> metrics might help here.
-
-The formatting in the pseudofile isn't the entire problem.  The problem
-is translating the "thread usage histogram" information there into an
-answer to the actual question the sysadmin wants, which is "should I
-configure more nfsds?"
-
->
->> 3. Updating the histogram requires taking a global spinlock and
->>   dirtying the global variables nfsd_last_call, nfsd_busy, and
->>   nfsdstats *twice* on every RPC call, which is a significant
->>   scaling limitation.
->
-> You might fix this by making the global variables into per-CPU
-> variables, then totaling the per-CPU variables only at presentation
-> time (ie when someone cats /proc/net/rpc/nfsd).  That would make the
-> collection logic lockless.
-This is how I fixed some of the other server stats in later patches. 
-IIRC that approach doesn't work for the thread usage histogram because
-it's scaled as it's gathered by a potentially time-varying global number
-so the on-demand totalling might not give correct results.  Also, in the
-presence of multiple thread pools any thread usage information should be
-per-pool not global.  At the time I wrote this patch I concluded that I
-couldn't make the gathering scale and still preserve the exact semantics
-of the data gathered.
-
->
->>
->
-> Yeah.  The real issue here is deciding whether these stats are useful
-> or not; 
-In my experience, not.
-
-> if not, can they be made useable?
-A different form of the data could certainly be made useful.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 83f8e21..800b531 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2770,6 +2770,25 @@ out:
+ }
+ 
+ /*
++ * The NFSv4 spec allows a client to do a LOCKT without holding an OPEN,
++ * so we do a temporary open here just to get an open file to pass to
++ * vfs_test_lock.  (Arguably perhaps test_lock should be done with an
++ * inode operation.)
++ */
++static int nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file_lock *lock)
++{
++	struct file *file;
++	int err;
++
++	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
++	if (err)
++		return err;
++	err = vfs_test_lock(file, lock);
++	nfsd_close(file);
++	return err;
++}
++
++/*
+  * LOCKT operation
+  */
+ __be32
+@@ -2777,7 +2796,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    struct nfsd4_lockt *lockt)
+ {
+ 	struct inode *inode;
+-	struct file file;
+ 	struct file_lock file_lock;
+ 	int error;
+ 	__be32 status;
+@@ -2835,19 +2853,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfs4_transform_lock_offset(&file_lock);
+ 
+-	/*
+-	 * vfs_test_lock uses the struct file _only_ to resolve the inode.
+-	 * since LOCKT doesn't require an OPEN, and therefore a struct
+-	 * file may not exist, pass vfs_test_lock a struct file with
+-	 * only the dentry and i_fop (in case the filesystem defines
+-	 * its own lock method) set.
+-	 */
+-	memset(&file, 0, sizeof (struct file));
+-	file.f_path.dentry = cstate->current_fh.fh_dentry;
+-	file.f_op = inode->i_fop;
+-
+ 	status = nfs_ok;
+-	error = vfs_test_lock(&file, &file_lock);
++	error = nfsd_test_lock(rqstp, &cstate->current_fh, &file_lock);
+ 	if (error) {
+ 		status = nfserrno(error);
+ 		goto out;
 -- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+1.5.5.rc1
 
