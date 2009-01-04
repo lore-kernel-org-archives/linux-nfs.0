@@ -1,92 +1,125 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 3/3] SUNRPC: svc_xprt_enqueue should not refuse to enqueue
- 'XPT_DEAD' transports
-Date: Fri, 02 Jan 2009 15:44:18 -0600
-Message-ID: <495E8AB2.8020805@opengridcomputing.com>
-References: <20081017123207.GA14979@rabbit.intern.cm-ag>	 <1224484046.23068.14.camel@localhost.localdomain>	 <1225539927.2221.3.camel@localhost.localdomain>	 <1225546878.4390.3.camel@heimdal.trondhjem.org>	 <1227596962.16868.22.camel@localhost.localdomain>	 <1227619696.7057.19.camel@heimdal.trondhjem.org>	 <1227620339.9425.99.camel@zakaz.uk.xensource.com>	 <1227621434.7057.33.camel@heimdal.trondhjem.org>	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>	 <1227737539.31008.2.camel@localhost.localdomain>	 <1228090631.7112.11.camel@heimdal.trondhjem.org>	 <1228090815.7112.15.camel@heimdal.trondhjem.org>	 <49491C58.9@opengridcomputing.com> <1229540877.7257.97.camel@heimdal.trondhjem.org>
+From: wengang wang <wen.gang.wang@oracle.com>
+Subject: Re: [PATCH 1/1] nfsd(v2/v3): fix the failure of creation from HPUX
+ client
+Date: Sun, 04 Jan 2009 09:53:12 +0800
+Message-ID: <49601688.2040301@oracle.com>
+References: <200812240537.mBO5blpr005502@acsinet13.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:50811 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758737AbZABVoV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jan 2009 16:44:21 -0500
-In-Reply-To: <1229540877.7257.97.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from rcsinet14.oracle.com ([148.87.113.126]:27642 "EHLO
+	rgminet14.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751222AbZADBz3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Jan 2009 20:55:29 -0500
+Received: from rgminet11.oracle.com (rcsinet11.oracle.com [148.87.113.123])
+	by rgminet14.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n041vVuS001552
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sun, 4 Jan 2009 01:57:32 GMT
+Received: from acsinet13.oracle.com (acsinet13.oracle.com [141.146.126.235])
+	by rgminet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n041tnpu002424
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sun, 4 Jan 2009 01:55:50 GMT
+Received: from acsmt705.oracle.com (acsmt705.oracle.com [141.146.40.83])
+	by acsinet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n041so0D018825
+	for <linux-nfs@vger.kernel.org>; Sun, 4 Jan 2009 01:54:52 GMT
+In-Reply-To: <200812240537.mBO5blpr005502-eiegoW5zEh26xOVM2wN62FaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
+Finally, how about this patch?
+for this problem, the solution is either to fix HPUX or to fix linux.
+are we going to fix linux?
 
-Bruce/Trond:
+any comment is appreciated.
 
-This is an alternative to patches 2 and 3 from Trond's fix. I think 
-Trond's fix is correct, but I believe this approach to be simpler.
+thanks,
+wengang.
 
-From: Tom Tucker <tom@opengridcomputing.com>
-Date: Wed, 31 Dec 2008 17:18:33 -0600
-Subject: [PATCH] svc: Clean up deferred requests on transport destruction
-
-A race between svc_revisit and svc_delete_xprt can result in
-deferred requests holding references on a transport that can never be
-recovered because dead transports are not enqueued for subsequent
-processing.
-
-Check for XPT_DEAD in revisit to clean up completing deferrals on a dead
-transport and sweep a transport's deferred queue to do the same for queued
-but unprocessed deferrals.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
- net/sunrpc/svc_xprt.c |   20 +++++++++++++++-----
- 1 files changed, 15 insertions(+), 5 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..92ca5c6 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -837,6 +837,11 @@ static void svc_age_temp_xprts(unsigned long closure)
- void svc_delete_xprt(struct svc_xprt *xprt)
- {
-        struct svc_serv *serv = xprt->xpt_server;
-+       struct svc_deferred_req *dr;
-+
-+       /* Only do this once */
-+       if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
-+               return;
-
-        dprintk("svc: svc_delete_xprt(%p)\n", xprt);
-        xprt->xpt_ops->xpo_detach(xprt);
-@@ -851,12 +856,16 @@ void svc_delete_xprt(struct svc_xprt *xprt)
-         * while still attached to a queue, the queue itself
-         * is about to be destroyed (in svc_destroy).
-         */
--       if (!test_and_set_bit(XPT_DEAD, &xprt->xpt_flags)) {
--               BUG_ON(atomic_read(&xprt->xpt_ref.refcount) < 2);
--               if (test_bit(XPT_TEMP, &xprt->xpt_flags))
--                       serv->sv_tmpcnt--;
-+       if (test_bit(XPT_TEMP, &xprt->xpt_flags))
-+               serv->sv_tmpcnt--;
-+
-+       for (dr = svc_deferred_dequeue(xprt); dr;
-+            dr = svc_deferred_dequeue(xprt)) {
-                svc_xprt_put(xprt);
-+               kfree(dr);
-        }
-+
-+       svc_xprt_put(xprt);
-        spin_unlock_bh(&serv->sv_lock);
- }
-
-@@ -902,7 +911,8 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
-                container_of(dreq, struct svc_deferred_req, handle);
-        struct svc_xprt *xprt = dr->xprt;
-
--       if (too_many) {
-+       if (too_many || test_bit(XPT_DEAD, &xprt->xpt_flags)) {
-+               dprintk("revisit cancelled\n");
-                svc_xprt_put(xprt);
-                kfree(dr);
-                return;
-
+wengang wang wrote:
+> please ignore the email sent from wwg@oracle.com and reply to this post
+> if you will.
+> thanks.
+>
+> sometimes HPUX nfs client sends a create request to linux nfs server(v2/v3).
+> the dump of the request is like:
+>     obj_attributes
+>         mode: value follows
+>             set_it: value follows (1)
+>             mode: 00
+>         uid: no value
+>             set_it: no value (0)
+>         gid: value follows
+>             set_it: value follows (1)
+>             gid: 8030
+>         size: value follows
+>             set_it: value follows (1)
+>             size: 0
+>         atime: don't change
+>             set_it: don't change (0)
+>         mtime: don't change
+>             set_it: don't change (0)
+>
+> note that mode is 00(havs no rwx privilege even for the owner) and it requires
+> to set size to 0.
+>
+> as current nfsd(v2/v3) implementation, the server does mainly 2 steps:
+> 1) creates the file in mode specified by calling vfs_create().
+> 2) sets attributes for the file by calling nfsd_setattr().
+>
+> at step 2), it finally calls file system specific setattr() function which may
+> fails when checking permission because changing size needs WRITE privilege but
+> it has no since mode is 000.
+>
+> for this case, a new file created, we may simply ignore the request of setting
+> size to 0. so that the WRITE privilege is not needed and finally success.
+>
+> the patch is based on 2.6.27.10.
+>
+> Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
+> --
+>  vfs.c |   20 ++++++++++++++++++++
+>  1 file changed, 20 insertions(+)
+> diff -up ./fs/nfsd/vfs.c.orig ./fs/nfsd/vfs.c
+> --- ./fs/nfsd/vfs.c.orig	2008-12-23 14:11:14.000000000 +0800
+> +++ ./fs/nfsd/vfs.c	2008-12-23 14:54:16.000000000 +0800
+> @@ -1268,6 +1268,16 @@ nfsd_create(struct svc_rqst *rqstp, stru
+>  	switch (type) {
+>  	case S_IFREG:
+>  		host_err = vfs_create(dirp, dchild, iap->ia_mode, NULL);
+> +		/* HPUX client sometimes creates a file in mode 000, and set
+> +		 * size to 0. setting size to 0 may fail for some spcific 
+> +		 * file systems by the permission checking which requires
+> +		 * WRITE privilege but the mode is 000.
+> +		 * we ignore setting size to 0 for the creation, since it's
+> +		 * just 0 after created.
+> +		 * */
+> +		if ((iap->ia_valid & ATTR_SIZE) && (iap->ia_size == 0))
+> +			iap->ia_valid &= ~ATTR_SIZE;
+> +
+>  		break;
+>  	case S_IFDIR:
+>  		host_err = vfs_mkdir(dirp, dchild, iap->ia_mode);
+> @@ -1421,6 +1431,16 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+>  		/* setattr will sync the child (or not) */
+>  	}
+>  
+> +	/* HPUX client sometimes creates a file in mode 000, and set size to 0.
+> +	 * setting size to 0 may fail for some spcific file systems by the
+> +	 * permission checking which requires WRITE privilege but the mode is
+> +	 * 000.
+> +	 * we ignore setting size to 0 for the creation, since it's just 0
+> +	 * after created.
+> +	 * */
+> +	if ((iap->ia_valid & ATTR_SIZE) && (iap->ia_size == 0))
+> +		iap->ia_valid &= ~ATTR_SIZE;
+> +
+>  	if (createmode == NFS3_CREATE_EXCLUSIVE) {
+>  		/* Cram the verifier into atime/mtime */
+>  		iap->ia_valid = ATTR_MTIME|ATTR_ATIME
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
