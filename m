@@ -1,296 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:37390 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752504AbZAMK1A (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Tue, 13 Jan 2009 05:27:00 -0500
-Message-Id: <20090113102653.884405000@sgi.com>
-References: <20090113102633.719563000@sgi.com>
-Date: Tue, 13 Jan 2009 21:26:36 +1100
-From: Greg Banks <gnb@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>,
-        Harshula Jayasuriya <harshula@sgi.com>
-Subject: [patch 3/3] knfsd: add file to export stats about nfsd pools
+Received: from rcsinet11.oracle.com ([148.87.113.123]:29240 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753272AbZAEVyB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Jan 2009 16:54:01 -0500
+Cc: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
+Message-Id: <4F34D959-E087-4736-A00A-49F75708F1C5@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Steve Dickson <SteveD@redhat.com>
+In-Reply-To: <496268F9.8010607@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH] gssd: By default, don't spam syslog when users' credentials expire
+Date: Mon, 5 Jan 2009 16:53:05 -0500
+References: <20081217173927.3031.53736.stgit@jazz.citi.umich.edu> <496268F9.8010607@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add /proc/fs/nfsd/pool_stats to export to userspace various
-statistics about the operation of rpc server thread pools.
+On Jan 5, 2009, at Jan 5, 2009, 3:09 PM, Steve Dickson wrote:
+> Kevin Coffman wrote:
+>> Change the priority of "common" log messages so that syslog doesn't  
+>> get
+>> slammed/spammed when users' credentials expire, or there is another  
+>> common
+>> problem which would cause error messages for all context creation  
+>> requests.
+>>
+>> Note that this will now require that gssd or svcgssd option "-v" is  
+>> used to
+>> debug these common cases.
+>>
+>> Original patch from Andrew Pollock <apollock@google.com>.
+>>
+> Committed...
+>
+> This took a little longer than expected do to a fairly
+> nasty bug in the Fedora 10 installation....
+>
+> The installation process adds both the FQDN and the host name
+> (i.e. the non-FQDN) to the 127.0.0.1 line in /etc/hosts. This
+> causes gethostname() on the FQDN to return 127.0.0.1 instead of
+> DNS IP address... This caused svcgssd to always fail due to
+> the host name not being found in the key tab.
+>
+> Unfortunately it took quite a bit to figure out what host name the
+> kerberos libs were looking since the host name in the key tab was
+> indeed correct... That lib code is definitely lacking when it comes
+> to debug-ability... :-(
+>
+> So buyer bewared... if you recently installed F-10 please check to see
+> if your /etc/hosts file only contains the non-FQDN host name on the
+> 127.0.0.1 line.
 
-This patch is based on a forward-ported version of
-knfsd-add-pool-thread-stats which has been shipping in the SGI
-"Enhanced NFS" product since 2006 and which was previously
-posted:
+I think that's the default configuration for F10 (and probably earlier  
+Fedora releases as well).  The lack of proper /etc/hosts entries also  
+wreaks some havoc with sendmail.
 
-http://article.gmane.org/gmane.linux.nfs/10375
+Moreover, F10's Anaconda no longer allows you to specify a static IP  
+configuration at install time -- network configuration is handled  
+almost entirely via NetworkManager, and any special configuration,  
+other than "use DHCP for every network interface you can find," is now  
+done after the system is installed and running.
 
-It has also been updated thus:
+F10 still includes system-config-network and /etc/init.d/network, but  
+these are unused/disabled by default.  system-config-network doesn't  
+play well with NetworkManager.  There's also no way to specify a fixed  
+IPv6 address.
 
- * moved EXPORT_SYMBOL() to near the function it exports
- * made the new struct struct seq_operations const
- * used SEQ_START_TOKEN instead of ((void *)1)
- * merged fix from SGI PV 990526 "sunrpc: use dprintk instead of
-   printk in svc_pool_stats_*()" by Harshula Jayasuriya.
- * merged fix from SGI PV 964001 "Crash reading pool_stats before
-   nfsds are started".
+While this automatic style of network configuration matches the trend  
+set by Ubuntu, and probably meets the needs of most desktop users, I  
+find it pretty inconvenient for servers (which is mostly how I  
+configure and use Linux these days).
 
-Signed-off-by: Greg Banks <gnb@sgi.com>
-Signed-off-by: Harshula Jayasuriya <harshula@sgi.com>
----
+I would like either a restoration of networking configuration during  
+the installation process, or to have the network management tools work  
+and have decent help facilities and wizards.  Even better if we could  
+have both.
 
- fs/nfsd/nfsctl.c           |   12 ++++
- fs/nfsd/nfssvc.c           |    7 ++
- include/linux/sunrpc/svc.h |   11 +++
- net/sunrpc/svc_xprt.c      |  100 +++++++++++++++++++++++++++++++++-
- 4 files changed, 129 insertions(+), 1 deletion(-)
-
-Index: bfields/fs/nfsd/nfsctl.c
-===================================================================
---- bfields.orig/fs/nfsd/nfsctl.c
-+++ bfields/fs/nfsd/nfsctl.c
-@@ -60,6 +60,7 @@ enum {
- 	NFSD_FO_UnlockFS,
- 	NFSD_Threads,
- 	NFSD_Pool_Threads,
-+	NFSD_Pool_Stats,
- 	NFSD_Versions,
- 	NFSD_Ports,
- 	NFSD_MaxBlkSize,
-@@ -172,6 +173,16 @@ static const struct file_operations expo
- 	.owner		= THIS_MODULE,
- };
- 
-+extern int nfsd_pool_stats_open(struct inode *inode, struct file *file);
-+
-+static struct file_operations pool_stats_operations = {
-+	.open		= nfsd_pool_stats_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= seq_release,
-+	.owner		= THIS_MODULE,
-+};
-+
- /*----------------------------------------------------------------------------*/
- /*
-  * payload - write methods
-@@ -1246,6 +1257,7 @@ static int nfsd_fill_super(struct super_
- 		[NFSD_Fh] = {"filehandle", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
-+		[NFSD_Pool_Stats] = {"pool_stats", &pool_stats_operations, S_IRUGO},
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
-Index: bfields/fs/nfsd/nfssvc.c
-===================================================================
---- bfields.orig/fs/nfsd/nfssvc.c
-+++ bfields/fs/nfsd/nfssvc.c
-@@ -546,3 +546,10 @@ nfsd_dispatch(struct svc_rqst *rqstp, __
- 	nfsd_cache_update(rqstp, proc->pc_cachetype, statp + 1);
- 	return 1;
- }
-+
-+int nfsd_pool_stats_open(struct inode *inode, struct file *file)
-+{
-+	if (nfsd_serv == NULL)
-+		return -ENODEV;
-+	return svc_pool_stats_open(nfsd_serv, file);
-+}
-Index: bfields/include/linux/sunrpc/svc.h
-===================================================================
---- bfields.orig/include/linux/sunrpc/svc.h
-+++ bfields/include/linux/sunrpc/svc.h
-@@ -24,6 +24,15 @@
-  */
- typedef int		(*svc_thread_fn)(void *);
- 
-+/* statistics for svc_pool structures */
-+struct svc_pool_stats {
-+	unsigned long	packets;
-+	unsigned long	sockets_queued;
-+	unsigned long	threads_woken;
-+	unsigned long	overloads_avoided;
-+	unsigned long	threads_timedout;
-+};
-+
- /*
-  *
-  * RPC service thread pool.
-@@ -42,6 +51,7 @@ struct svc_pool {
- 	unsigned int		sp_nrthreads;	/* # of threads in pool */
- 	struct list_head	sp_all_threads;	/* all server threads */
- 	int			sp_nwaking;	/* number of threads woken but not yet active */
-+	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
- } ____cacheline_aligned_in_smp;
- 
- /*
-@@ -396,6 +406,7 @@ struct svc_serv *  svc_create_pooled(str
- 			sa_family_t, void (*shutdown)(struct svc_serv *),
- 			svc_thread_fn, struct module *);
- int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
-+int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
- void		   svc_destroy(struct svc_serv *);
- int		   svc_process(struct svc_rqst *);
- int		   svc_register(const struct svc_serv *, const unsigned short,
-Index: bfields/net/sunrpc/svc_xprt.c
-===================================================================
---- bfields.orig/net/sunrpc/svc_xprt.c
-+++ bfields/net/sunrpc/svc_xprt.c
-@@ -318,6 +318,8 @@ void svc_xprt_enqueue(struct svc_xprt *x
- 		goto out_unlock;
- 	}
- 
-+	pool->sp_stats.packets++;
-+
- 	/* Mark transport as busy. It will remain in this state until
- 	 * the provider calls svc_xprt_received. We update XPT_BUSY
- 	 * atomically because it also guards against trying to enqueue
-@@ -355,6 +357,7 @@ void svc_xprt_enqueue(struct svc_xprt *x
- 	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
- 		/* too many threads are runnable and trying to wake up */
- 		thread_avail = 0;
-+		pool->sp_stats.overloads_avoided++;
- 	}
- 
- 	if (thread_avail) {
-@@ -374,11 +377,13 @@ void svc_xprt_enqueue(struct svc_xprt *x
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
- 		rqstp->rq_waking = 1;
- 		pool->sp_nwaking++;
-+		pool->sp_stats.threads_woken++;
- 		BUG_ON(xprt->xpt_pool != pool);
- 		wake_up(&rqstp->rq_wait);
- 	} else {
- 		dprintk("svc: transport %p put into queue\n", xprt);
- 		list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
-+		pool->sp_stats.sockets_queued++;
- 		BUG_ON(xprt->xpt_pool != pool);
- 	}
- 
-@@ -591,6 +596,7 @@ int svc_recv(struct svc_rqst *rqstp, lon
- 	int			pages;
- 	struct xdr_buf		*arg;
- 	DECLARE_WAITQUEUE(wait, current);
-+	long			time_left;
- 
- 	dprintk("svc: server %p waiting for data (to = %ld)\n",
- 		rqstp, timeout);
-@@ -676,12 +682,14 @@ int svc_recv(struct svc_rqst *rqstp, lon
- 		add_wait_queue(&rqstp->rq_wait, &wait);
- 		spin_unlock_bh(&pool->sp_lock);
- 
--		schedule_timeout(timeout);
-+ 		time_left = schedule_timeout(timeout);
- 
- 		try_to_freeze();
- 
- 		spin_lock_bh(&pool->sp_lock);
- 		remove_wait_queue(&rqstp->rq_wait, &wait);
-+		if (!time_left)
-+			pool->sp_stats.threads_timedout++;
- 
- 		xprt = rqstp->rq_xprt;
- 		if (!xprt) {
-@@ -1103,3 +1111,93 @@ int svc_xprt_names(struct svc_serv *serv
- 	return totlen;
- }
- EXPORT_SYMBOL_GPL(svc_xprt_names);
-+
-+
-+/*----------------------------------------------------------------------------*/
-+
-+static void *svc_pool_stats_start(struct seq_file *m, loff_t *pos)
-+{
-+	unsigned int pidx = (unsigned int)*pos;
-+	struct svc_serv *serv = m->private;
-+
-+	dprintk("svc_pool_stats_start, *pidx=%u\n", pidx);
-+
-+	lock_kernel();
-+	/* bump up the pseudo refcount while traversing */
-+	svc_get(serv);
-+	unlock_kernel();
-+
-+	if (!pidx)
-+		return SEQ_START_TOKEN;
-+	return (pidx > serv->sv_nrpools ? NULL : &serv->sv_pools[pidx-1]);
-+}
-+
-+static void *svc_pool_stats_next(struct seq_file *m, void *p, loff_t *pos)
-+{
-+	struct svc_pool *pool = p;
-+	struct svc_serv *serv = m->private;
-+
-+	dprintk("svc_pool_stats_next, *pos=%llu\n", *pos);
-+
-+	if (p == SEQ_START_TOKEN) {
-+		pool = &serv->sv_pools[0];
-+	} else {
-+		unsigned int pidx = (pool - &serv->sv_pools[0]);
-+		if (pidx < serv->sv_nrpools-1)
-+			pool = &serv->sv_pools[pidx+1];
-+		else
-+			pool = NULL;
-+	}
-+	++*pos;
-+	return pool;
-+}
-+
-+static void svc_pool_stats_stop(struct seq_file *m, void *p)
-+{
-+	struct svc_serv *serv = m->private;
-+
-+	lock_kernel();
-+	/* this function really, really should have been called svc_put() */
-+	svc_destroy(serv);
-+	unlock_kernel();
-+}
-+
-+static int svc_pool_stats_show(struct seq_file *m, void *p)
-+{
-+	struct svc_pool *pool = p;
-+
-+	if (p == SEQ_START_TOKEN) {
-+		seq_puts(m, "# pool packets-arrived sockets-enqueued threads-woken overloads-avoided threads-timedout\n");
-+		return 0;
-+	}
-+
-+	seq_printf(m, "%u %lu %lu %lu %lu %lu\n",
-+		pool->sp_id,
-+		pool->sp_stats.packets,
-+		pool->sp_stats.sockets_queued,
-+		pool->sp_stats.threads_woken,
-+		pool->sp_stats.overloads_avoided,
-+		pool->sp_stats.threads_timedout);
-+
-+	return 0;
-+}
-+
-+static const struct seq_operations svc_pool_stats_seq_ops = {
-+	.start	= svc_pool_stats_start,
-+	.next	= svc_pool_stats_next,
-+	.stop	= svc_pool_stats_stop,
-+	.show	= svc_pool_stats_show,
-+};
-+
-+int svc_pool_stats_open(struct svc_serv *serv, struct file *file)
-+{
-+	int err;
-+
-+	err = seq_open(file, &svc_pool_stats_seq_ops);
-+	if (!err)
-+		((struct seq_file *) file->private_data)->private = serv;
-+	return err;
-+}
-+EXPORT_SYMBOL(svc_pool_stats_open);
-+
-+/*----------------------------------------------------------------------------*/
-
---
 -- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
