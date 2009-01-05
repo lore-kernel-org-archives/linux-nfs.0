@@ -1,63 +1,34 @@
-From: internethustler200908487@gmail.com
-Subject: [NFS] Discover how a 15 year old kid becomes an Internet Hustler!
-Date: Mon, 5 Jan 2009 17:28:36 -0500
-Message-ID: <7dj5ic$esohh@mailer230.plusthree.com>
+From: "  " <UFlRE6mNjE-w8zEjULkfLIivwFItLKOBA@public.gmane.org>
+Subject: [NFS] (no subject)
+Date: Tue, 06 Jan 2009 06:36:48 +0900
+Message-ID: <5446.49104490436$1231198740@news.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-To: weezerfrk19@yahoo.com, stone53-Wuw85uim5zDR7s880joybQ@public.gmane.org,
-	rnorthcutt7101-Wuw85uim5zDR7s880joybQ@public.gmane.org, nfs@lists.sourceforge.net,
-	maan_tarsem@hotmail.com
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:51493 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:56357 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751284AbZAEWcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Jan 2009 17:32:16 -0500
+	id S1751223AbZAEXhf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Jan 2009 18:37:35 -0500
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LJxzZ-00036b-BK
-	for linux-nfs@vger.kernel.org; Tue, 06 Jan 2009 09:32:13 +1100
+	id 1LJz0m-0003Ih-On
+	for linux-nfs@vger.kernel.org; Tue, 06 Jan 2009 10:37:32 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RGlzY292ZXIgaG93IGEgMTUgeWVhciBvbGQga2lkIG1ha2VzIG92ZXIgJDEwMDAgYSB3ZWVrIHdv
-cmtpbmcgb25lIGhvdXIgYSBkYXkgb25saW5lLgoKUGFpZCBhZHZlcnRpc2luZyBpcyBleHRyZW1l
-bHkgY29tcGV0aXRpdmUuCk5ldyBhZHZlcnRpc2VycyBsb3NlIFRPTlMgb2YgbW9uZXkgdHJ5aW5n
-IHRvIGNvbXBldGUgd2l0aCB0aGUgcHJvcy4KCkJsb2dnaW5nIHRha2VzIG1hc3NpdmUgYW1vdW50
-cyBvZiB3b3JrIGJ1dCBwcm92aWRlcyBiYXJlbHkgYW55IGNhc2guIApJdCB0YWtlcyB5ZWFycyBm
-b3IgYSBuZXdiaWUgdG8gZ2V0IGFueXdoZXJlLCB5b3UnZCBiZSBiZXR0ZXIgb2ZmIHdvcmtpbmcg
-YXQgTWNEb25hbGTigJlzLgpUaGF0J3Mgd2h5IEkgaGFkIHRvIGRvIHNvbWV0aGluZyBuZXcgYW5k
-IGRpZmZlcmVudC4KQWZ0ZXIgY291bnRsZXNzIGhvdXJzIG9mIHRyaWFsIGFuZCBlcnJvciwgSSBm
-aW5hbGx5IGZvdW5kIHdoYXQgd29ya3MuIApJIGhhdmUgaW52ZW50ZWQgdGhlIHRyaWNrcyB0byBv
-bmUgdXAgdGhlIGNvbXBldGl0aW9uLiAKSSBoYXZlIGJlZW4gd29ya2luZyBhdCBteSBnb2FsIHNp
-bmNlIDh0aCBncmFkZS4gCkkga25vdyB3aGF0IHdvcmtzIGFuZCB3aGF0IGRvZXNuJ3QgaW4gYnVk
-Z2V0bGVzcyBpbnRlcm5ldCBtYXJrZXRpbmcuCgoKQXBwbHkgaGVyZTo6IGh0dHA6Ly92aXJsLndz
-L2plc3Nob2NrL2ludGVybmV0aHVzdGxlcgoKClNvIHdoeSB0cnVzdCBhIGtpZD8KCldlbGwgaWYg
-YSBraWQgY2FuIGRvIGl0LCB0aGVuIHRoZXJlIGlzIG5vIHJlYXNvbiB5b3UgY2FuJ3QuLi4uLiAK
-UmlnaHQ/IElmIHlvdSBkb24ndCB0cnVzdCBtZSwgdGhlbiB0cnVzdCB0aGUgMTAwJSBtb25leSBi
-YWNrIGd1YXJhbnRlZS4KCgpBcmUgeW91IHN1cmUgdGhpcyBpc24ndCBzb21lIGZhZD8KCk9ubGlu
-ZSB2aWRlb3MgYXJlIG1vcmUgcG9wdWxhciB0aGVuIGV2ZXIuIApFeHBlcnRzIGFncmVlIG92ZXIg
-dGhlIG5leHQgMjAgeWVhcnMgdGhleSB3aWxsIG9ubHkgYmVjb21lIG1vcmUgcG9wdWxhci4gClRo
-aXMgaXMgaGVyZSB0byBzdGF5LgoKQXBwbHkgaGVyZTo6IGh0dHA6Ly92aXJsLndzL2plc3Nob2Nr
-L2ludGVybmV0aHVzdGxlcgoKCldoYXQgaGFwcGVucyBpZiBJIGJ1eSB5b3VyIGd1aWRlIGFuZCBn
-ZXQgc3R1Y2s/CgpJIGhhdmUgYSBjdXN0b21lciBzdXBwb3J0IGVtYWlsIGFkZHJlc3MuIApZb3Ug
-Y2FuIGFzayBtZSBhcyBtYW55IHF1ZXN0aW9ucyBhcyB5b3Ugd2FudC4KCgpEb2VzIHlvdXIgbWV0
-aG9kIHZpb2xhdGUgYW55IHdlYnNpdGUncyBUT1M/Ck5vcGUsIHRoaXMgaXMgbGVnaXQgYXMgaXQg
-Z2V0cy4KCgpBcHBseSBoZXJlOjogaHR0cDovL3Zpcmwud3MvamVzc2hvY2svaW50ZXJuZXRodXN0
-bGVyCgoKSSBkb24ndCB3YW50IHRvIHZpZGVvIHRhcGUgbXlzZWxmOyBkb2VzIHlvdXIgbWV0aG9k
-IHJlcXVpcmUgdGhhdD8KCk5vcGUsIHlvdSBkb24ndCBldmVuIG5lZWQgYSBjYW1lcmEuIApJIHdp
-bGwgZ3VpZGUgeW91IHRocm91Z2ggaXQgYWxsLCB5b3UgZG9uJ3QgZXZlbiBuZWVkIHRvIGJlIHRl
-Y2ggc2F2dnkuCgpBcHBseSBoZXJlOjogaHR0cDovL3Zpcmwud3MvamVzc2hvY2svaW50ZXJuZXRo
-dXN0bGVyCgoKClRvIHlvdXIgU3VjY2VzcywKCkdvZHdpbiBKYWltZXMKaHR0cDovL3Zpcmwud3Mv
-amVzc2hvY2svaW50ZXJuZXRodXN0bGVyCgoKVW5zdWJzY3JpYmU6CklmIHlvdSdyZSBub3QgaW50
-ZXJlc3RlZCBwbGVhc2UgcmVwbHkgdGhpcyBsZXR0ZXIKd2l0aCB0aGVuIHN1YmplY3QgIk5vIFRo
-YW5rcyIsIGFuZCB5b3Ugd2lsbCBiZSBhdXRvbWF0aWNhbGx5CmRlbGV0ZWQgZnJvbSBvdXIgbWFp
-bGxpbmcgbGlzdC4gU29ycnkgZm9yIHRoZSBpbmNvbnZlbmllbmNlLgoKLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5G
-UyBtYWlsbGlzdCAgLSAgTkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNv
-dXJjZWZvcmdlLm5ldC9saXN0cy9saXN0aW5mby9uZnMKX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX18KUGxlYXNlIG5vdGUgdGhhdCBuZnNAbGlzdHMuc291cmNl
-Zm9yZ2UubmV0IGlzIGJlaW5nIGRpc2NvbnRpbnVlZC4KUGxlYXNlIHN1YnNjcmliZSB0byBsaW51
-eC1uZnNAdmdlci5rZXJuZWwub3JnIGluc3RlYWQuCiAgICBodHRwOi8vdmdlci5rZXJuZWwub3Jn
-L3ZnZXItbGlzdHMuaHRtbCNsaW51eC1uZnMK
+
+
+
+
+
+
+------------------------------------------------------------------------------
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
