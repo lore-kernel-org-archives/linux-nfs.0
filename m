@@ -1,100 +1,63 @@
-From: Tom Tucker <tom@opengridcomputing.com>
-Subject: [PATCH] svc: Clean up deferred requests on transport destruction
-Date: Mon, 05 Jan 2009 15:21:19 -0600
-Message-ID: <496279CF.5050807@opengridcomputing.com>
+From: internethustler200908487@gmail.com
+Subject: [NFS] Discover how a 15 year old kid becomes an Internet Hustler!
+Date: Mon, 5 Jan 2009 17:28:36 -0500
+Message-ID: <7dj5ic$esohh@mailer230.plusthree.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+To: weezerfrk19@yahoo.com, stone53-Wuw85uim5zDR7s880joybQ@public.gmane.org,
+	rnorthcutt7101-Wuw85uim5zDR7s880joybQ@public.gmane.org, nfs@lists.sourceforge.net,
+	maan_tarsem@hotmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:55055 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754817AbZAEVVT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Jan 2009 16:21:19 -0500
+Received: from neil.brown.name ([220.233.11.133]:51493 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751284AbZAEWcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Jan 2009 17:32:16 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LJxzZ-00036b-BK
+	for linux-nfs@vger.kernel.org; Tue, 06 Jan 2009 09:32:13 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce,
+RGlzY292ZXIgaG93IGEgMTUgeWVhciBvbGQga2lkIG1ha2VzIG92ZXIgJDEwMDAgYSB3ZWVrIHdv
+cmtpbmcgb25lIGhvdXIgYSBkYXkgb25saW5lLgoKUGFpZCBhZHZlcnRpc2luZyBpcyBleHRyZW1l
+bHkgY29tcGV0aXRpdmUuCk5ldyBhZHZlcnRpc2VycyBsb3NlIFRPTlMgb2YgbW9uZXkgdHJ5aW5n
+IHRvIGNvbXBldGUgd2l0aCB0aGUgcHJvcy4KCkJsb2dnaW5nIHRha2VzIG1hc3NpdmUgYW1vdW50
+cyBvZiB3b3JrIGJ1dCBwcm92aWRlcyBiYXJlbHkgYW55IGNhc2guIApJdCB0YWtlcyB5ZWFycyBm
+b3IgYSBuZXdiaWUgdG8gZ2V0IGFueXdoZXJlLCB5b3UnZCBiZSBiZXR0ZXIgb2ZmIHdvcmtpbmcg
+YXQgTWNEb25hbGTigJlzLgpUaGF0J3Mgd2h5IEkgaGFkIHRvIGRvIHNvbWV0aGluZyBuZXcgYW5k
+IGRpZmZlcmVudC4KQWZ0ZXIgY291bnRsZXNzIGhvdXJzIG9mIHRyaWFsIGFuZCBlcnJvciwgSSBm
+aW5hbGx5IGZvdW5kIHdoYXQgd29ya3MuIApJIGhhdmUgaW52ZW50ZWQgdGhlIHRyaWNrcyB0byBv
+bmUgdXAgdGhlIGNvbXBldGl0aW9uLiAKSSBoYXZlIGJlZW4gd29ya2luZyBhdCBteSBnb2FsIHNp
+bmNlIDh0aCBncmFkZS4gCkkga25vdyB3aGF0IHdvcmtzIGFuZCB3aGF0IGRvZXNuJ3QgaW4gYnVk
+Z2V0bGVzcyBpbnRlcm5ldCBtYXJrZXRpbmcuCgoKQXBwbHkgaGVyZTo6IGh0dHA6Ly92aXJsLndz
+L2plc3Nob2NrL2ludGVybmV0aHVzdGxlcgoKClNvIHdoeSB0cnVzdCBhIGtpZD8KCldlbGwgaWYg
+YSBraWQgY2FuIGRvIGl0LCB0aGVuIHRoZXJlIGlzIG5vIHJlYXNvbiB5b3UgY2FuJ3QuLi4uLiAK
+UmlnaHQ/IElmIHlvdSBkb24ndCB0cnVzdCBtZSwgdGhlbiB0cnVzdCB0aGUgMTAwJSBtb25leSBi
+YWNrIGd1YXJhbnRlZS4KCgpBcmUgeW91IHN1cmUgdGhpcyBpc24ndCBzb21lIGZhZD8KCk9ubGlu
+ZSB2aWRlb3MgYXJlIG1vcmUgcG9wdWxhciB0aGVuIGV2ZXIuIApFeHBlcnRzIGFncmVlIG92ZXIg
+dGhlIG5leHQgMjAgeWVhcnMgdGhleSB3aWxsIG9ubHkgYmVjb21lIG1vcmUgcG9wdWxhci4gClRo
+aXMgaXMgaGVyZSB0byBzdGF5LgoKQXBwbHkgaGVyZTo6IGh0dHA6Ly92aXJsLndzL2plc3Nob2Nr
+L2ludGVybmV0aHVzdGxlcgoKCldoYXQgaGFwcGVucyBpZiBJIGJ1eSB5b3VyIGd1aWRlIGFuZCBn
+ZXQgc3R1Y2s/CgpJIGhhdmUgYSBjdXN0b21lciBzdXBwb3J0IGVtYWlsIGFkZHJlc3MuIApZb3Ug
+Y2FuIGFzayBtZSBhcyBtYW55IHF1ZXN0aW9ucyBhcyB5b3Ugd2FudC4KCgpEb2VzIHlvdXIgbWV0
+aG9kIHZpb2xhdGUgYW55IHdlYnNpdGUncyBUT1M/Ck5vcGUsIHRoaXMgaXMgbGVnaXQgYXMgaXQg
+Z2V0cy4KCgpBcHBseSBoZXJlOjogaHR0cDovL3Zpcmwud3MvamVzc2hvY2svaW50ZXJuZXRodXN0
+bGVyCgoKSSBkb24ndCB3YW50IHRvIHZpZGVvIHRhcGUgbXlzZWxmOyBkb2VzIHlvdXIgbWV0aG9k
+IHJlcXVpcmUgdGhhdD8KCk5vcGUsIHlvdSBkb24ndCBldmVuIG5lZWQgYSBjYW1lcmEuIApJIHdp
+bGwgZ3VpZGUgeW91IHRocm91Z2ggaXQgYWxsLCB5b3UgZG9uJ3QgZXZlbiBuZWVkIHRvIGJlIHRl
+Y2ggc2F2dnkuCgpBcHBseSBoZXJlOjogaHR0cDovL3Zpcmwud3MvamVzc2hvY2svaW50ZXJuZXRo
+dXN0bGVyCgoKClRvIHlvdXIgU3VjY2VzcywKCkdvZHdpbiBKYWltZXMKaHR0cDovL3Zpcmwud3Mv
+amVzc2hvY2svaW50ZXJuZXRodXN0bGVyCgoKVW5zdWJzY3JpYmU6CklmIHlvdSdyZSBub3QgaW50
+ZXJlc3RlZCBwbGVhc2UgcmVwbHkgdGhpcyBsZXR0ZXIKd2l0aCB0aGVuIHN1YmplY3QgIk5vIFRo
+YW5rcyIsIGFuZCB5b3Ugd2lsbCBiZSBhdXRvbWF0aWNhbGx5CmRlbGV0ZWQgZnJvbSBvdXIgbWFp
+bGxpbmcgbGlzdC4gU29ycnkgZm9yIHRoZSBpbmNvbnZlbmllbmNlLgoKLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCk5G
+UyBtYWlsbGlzdCAgLSAgTkZTQGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNv
+dXJjZWZvcmdlLm5ldC9saXN0cy9saXN0aW5mby9uZnMKX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX18KUGxlYXNlIG5vdGUgdGhhdCBuZnNAbGlzdHMuc291cmNl
+Zm9yZ2UubmV0IGlzIGJlaW5nIGRpc2NvbnRpbnVlZC4KUGxlYXNlIHN1YnNjcmliZSB0byBsaW51
+eC1uZnNAdmdlci5rZXJuZWwub3JnIGluc3RlYWQuCiAgICBodHRwOi8vdmdlci5rZXJuZWwub3Jn
+L3ZnZXItbGlzdHMuaHRtbCNsaW51eC1uZnMK
 
-This patch replaces 2/3 of Trond's deferral cleanup patch. This shouldn't
-come across with the white-spaced munged. Please let me know if it does.
-
-Thanks,
-Tom
-
-A race between svc_revisit and svc_delete_xprt can result in
-deferred requests holding references on a transport that can never be
-recovered because dead transports are not enqueued for subsequent
-processing.
-
-Check for XPT_DEAD in revisit to clean up completing deferrals on a dead
-transport and sweep a transport's deferred queue to do the same for queued
-but unprocessed deferrals.
-
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-
----
-  net/sunrpc/svc_xprt.c |   25 ++++++++++++++++++-------
-  1 files changed, 18 insertions(+), 7 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index bf5b5cd..e6e7e25 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -837,6 +837,11 @@ static void svc_age_temp_xprts(unsigned long closure)
-  void svc_delete_xprt(struct svc_xprt *xprt)
-  {
-  	struct svc_serv	*serv = xprt->xpt_server;
-+	struct svc_deferred_req *dr;
-+
-+	/* Only do this once */
-+	if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
-+		return;
-
-  	dprintk("svc: svc_delete_xprt(%p)\n", xprt);
-  	xprt->xpt_ops->xpo_detach(xprt);
-@@ -851,12 +856,16 @@ void svc_delete_xprt(struct svc_xprt *xprt)
-  	 * while still attached to a queue, the queue itself
-  	 * is about to be destroyed (in svc_destroy).
-  	 */
--	if (!test_and_set_bit(XPT_DEAD, &xprt->xpt_flags)) {
--		BUG_ON(atomic_read(&xprt->xpt_ref.refcount) < 2);
--		if (test_bit(XPT_TEMP, &xprt->xpt_flags))
--			serv->sv_tmpcnt--;
-+	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
-+		serv->sv_tmpcnt--;
-+
-+	for (dr = svc_deferred_dequeue(xprt); dr;
-+	     dr = svc_deferred_dequeue(xprt)) {
-  		svc_xprt_put(xprt);
-+		kfree(dr);
-  	}
-+
-+	svc_xprt_put(xprt);
-  	spin_unlock_bh(&serv->sv_lock);
-  }
-
-@@ -902,17 +911,19 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
-  		container_of(dreq, struct svc_deferred_req, handle);
-  	struct svc_xprt *xprt = dr->xprt;
-
--	if (too_many) {
-+	spin_lock(&xprt->xpt_lock);
-+	set_bit(XPT_DEFERRED, &xprt->xpt_flags);
-+	if (too_many || test_bit(XPT_DEAD, &xprt->xpt_flags)) {
-+		spin_unlock(&xprt->xpt_lock);
-+		dprintk("revisit canceled\n");
-  		svc_xprt_put(xprt);
-  		kfree(dr);
-  		return;
-  	}
-  	dprintk("revisit queued\n");
-  	dr->xprt = NULL;
--	spin_lock(&xprt->xpt_lock);
-  	list_add(&dr->handle.recent, &xprt->xpt_deferred);
-  	spin_unlock(&xprt->xpt_lock);
--	set_bit(XPT_DEFERRED, &xprt->xpt_flags);
-  	svc_xprt_enqueue(xprt);
-  	svc_xprt_put(xprt);
-  }
