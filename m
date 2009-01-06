@@ -1,65 +1,68 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: fix double-lock of i_mutex on nfsv4 recovery
-	directory
-Date: Tue, 6 Jan 2009 12:58:29 -0500
-Message-ID: <20090106175828.GH2386@fieldses.org>
-References: <20090106100246.GA13742@alice> <20090106172914.GG2386@fieldses.org>
+From: Shiela <debbucks200908487@gmail.com>
+Subject: [NFS] Please don\'t share this. You could be making huge weekly
+	income
+Date: Tue, 06 Jan 2009 11:17:54 -0700
+Message-ID: <E1LKGv3-0000Oy-Ed@h25xhf1.ch3.sourceforge.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, hch@lst.de, neilb@suse.de
-To: Eric Sesterhenn <snakebyte@gmx.de>
+Content-Type: text/plain; charset="us-ascii"
+To: weezerfrk19@yahoo.com, stone53-Wuw85uim5zDR7s880joybQ@public.gmane.org,
+	rnorthcutt7101-Wuw85uim5zDR7s880joybQ@public.gmane.org, nfs@lists.sourceforge.net,
+	maan_tarsem@hotmail.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:42800 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:36955 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751308AbZAFR6d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2009 12:58:33 -0500
-In-Reply-To: <20090106172914.GG2386@fieldses.org>
+	id S1754515AbZAFSpc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 13:45:32 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LKGvh-0006k2-Qy
+	for linux-nfs@vger.kernel.org; Wed, 07 Jan 2009 05:45:29 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 06, 2009 at 12:29:14PM -0500, bfields wrote:
-> From: J. Bruce Fields <bfields@citi.umich.edu>
-> 
-> This mutex should be unnecessary, and as of 4c728ef583b3d "add a
-> vfs_fsync helper" it triggers a lockdep warning.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/nfsd/nfs4recover.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> On Tue, Jan 06, 2009 at 11:02:47AM +0100, Eric Sesterhenn wrote:
-> > hi,
-> > 
-> > with todays -git i see the following lockdep warning, that wasnt there
-> > yesterday. It occurs after booting the box.
-> 
-> Thanks.  The much-hated recovery code strikes again.  I think this
-> should do it?
 
-No, then we just run into a deadlocks in unlink, create, or any of the
-other nfsd operations that want the parent lock to cover more than just
-the sync.  So 4c728ef583b3d just doesn't work for nfsd.
+Hi,
 
---b.
+We have a special work at home offer just for you.
+You can get up to $300-700 weekly.
 
-> 
-> --b.
-> 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index 74f7b67..9fb5a10 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -127,9 +127,7 @@ out_no_tfm:
->  static void
->  nfsd4_sync_rec_dir(void)
->  {
-> -	mutex_lock(&rec_dir.dentry->d_inode->i_mutex);
->  	nfsd_sync_dir(rec_dir.dentry);
-> -	mutex_unlock(&rec_dir.dentry->d_inode->i_mutex);
->  }
->  
->  int
-> -- 
-> 1.5.5.rc1
-> 
+This is an exclusive, personalized offer. Please don\\\'t
+
+forward
+
+this message or share with friends, it is strictly limited
+
+offer.
+
+
+Apply here: http://eezurl.com/?debbucks09
+
+
+Your partner in Success,
+
+Sheila
+
+
+--------------------------------------------------------------
+
+-
+P.S. Please send email to 39millionaires@gmail.com with
+
+\\\"STOP\\\"
+if you are no longer interested so we can gladly remove you
+
+from our list.
+
+------------------------------------------------------------------------------
+Check out the new SourceForge.net Marketplace.
+It is the best place to buy or sell services for
+just about anything Open Source.
+http://p.sf.net/sfu/Xq1LFB
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
