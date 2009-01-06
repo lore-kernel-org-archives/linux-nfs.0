@@ -1,138 +1,76 @@
-From: Matt Helsley <matthltc@us.ibm.com>
-Subject: [RFC][PATCH 1/4] Remove useless utsname.h includes
-Date: Mon, 05 Jan 2009 17:13:15 -0800
-Message-ID: <20090106011314.800370762@us.ibm.com>
-References: <20090106011314.534653345@us.ibm.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
-	Matt Helsley <matthltc@us.ibm.com>
-To: Linux Containers <containers@lists.linux-foundation.org>
+From: Eric Sesterhenn <snakebyte@gmx.de>
+Subject: (unknown)
+Date: Tue, 6 Jan 2009 11:02:47 +0100
+Message-ID: <20090106100246.GA13742@alice>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: bfields@fieldses.org, hch@lst.de, neilb@suse.de
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:44177 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751202AbZAFBNU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Jan 2009 20:13:20 -0500
+Received: from mail.gmx.net ([213.165.64.20]:45566 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1750830AbZAFKCw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 05:02:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As best I can tell these #includes aren't needed in these files.
+hi,
 
-Signed-off-by: Matt Helsley <matthltc@us.ibm.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+with todays -git i see the following lockdep warning, that wasnt there
+yesterday. It occurs after booting the box.
 
----
- fs/lockd/xdr.c      |    1 -
- fs/lockd/xdr4.c     |    1 -
- fs/nfs/nfs2xdr.c    |    1 -
- fs/nfs/nfs3proc.c   |    1 -
- fs/nfs/nfs4proc.c   |    1 -
- fs/nfs/nfs4xdr.c    |    1 -
- fs/nfs/proc.c       |    1 -
- fs/nfsd/nfs4idmap.c |    1 -
- 8 files changed, 8 deletions(-)
+[   83.741022] Installing knfsd (copyright (C) 1996 okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org).
+[   84.115838] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state
+recovery directory
+[   84.133473] NFSD: starting 90-second grace period
+[  174.132715] 
+[  174.132724] =============================================
+[  174.133004] [ INFO: possible recursive locking detected ]
+[  174.133133] 2.6.28 #85
+[  174.133232] ---------------------------------------------
+[  174.133428] nfsd4/3693 is trying to acquire lock:
+[  174.133548]  (&type->i_mutex_dir_key#2){--..}, at: [<c01c4212>]
+vfs_fsync+0x62/0xe0
+[  174.133991] 
+[  174.133994] but task is already holding lock:
+[  174.134251]  (&type->i_mutex_dir_key#2){--..}, at: [<d1c224f7>]
+nfsd4_sync_rec_dir+0x17/0x40 [nfsd]
+[  174.134774] 
+[  174.134777] other info that might help us debug this:
+[  174.134983] 4 locks held by nfsd4/3693:
+[  174.135151]  #0:  (nfsd4){--..}, at: [<c0139d4a>]
+run_workqueue+0x7a/0x1e0
+[  174.135539]  #1:  ((laundromat_work).work){--..}, at: [<c0139d4a>]
+run_workqueue+0x7a/0x1e0
+[  174.135968]  #2:  (client_mutex){--..}, at: [<d1c1e9f6>]
+laundromat_main+0x26/0x2a0 [nfsd]
+[  174.136021]  #3:  (&type->i_mutex_dir_key#2){--..}, at: [<d1c224f7>]
+nfsd4_sync_rec_dir+0x17/0x40 [nfsd]
+[  174.136021] 
+[  174.136021] stack backtrace:
+[  174.136021] Pid: 3693, comm: nfsd4 Not tainted 2.6.28 #85
+[  174.136021] Call Trace:
+[  174.136021]  [<c05abdb6>] ? printk+0x18/0x1a
+[  174.136021]  [<c014f626>] __lock_acquire+0xe76/0x1110
+[  174.136021]  [<c014f934>] lock_acquire+0x74/0xa0
+[  174.136021]  [<c01c4212>] ? vfs_fsync+0x62/0xe0
+[  174.136021]  [<c05acfac>] mutex_lock_nested+0x8c/0x2c0
+[  174.136021]  [<c01c4212>] ? vfs_fsync+0x62/0xe0
+[  174.136021]  [<c01c4212>] ? vfs_fsync+0x62/0xe0
+[  174.136021]  [<c01c4212>] vfs_fsync+0x62/0xe0
+[  174.136021]  [<d1c074be>] nfsd_sync_dir+0xe/0x10 [nfsd]
+[  174.136021]  [<d1c22501>] nfsd4_sync_rec_dir+0x21/0x40 [nfsd]
+[  174.136021]  [<d1c22595>] nfsd4_recdir_purge_old+0x75/0x80 [nfsd]
+[  174.136021]  [<d1c1ea1e>] laundromat_main+0x4e/0x2a0 [nfsd]
+[  174.136021]  [<c0139d4a>] ? run_workqueue+0x7a/0x1e0
+[  174.136021]  [<c0139dac>] run_workqueue+0xdc/0x1e0
+[  174.136021]  [<c0139d4a>] ? run_workqueue+0x7a/0x1e0
+[  174.136021]  [<d1c1e9d0>] ? laundromat_main+0x0/0x2a0 [nfsd]
+[  174.136021]  [<c013a1a7>] worker_thread+0x87/0xf0
+[  174.136021]  [<c013dac0>] ? autoremove_wake_function+0x0/0x50
+[  174.136021]  [<c013a120>] ? worker_thread+0x0/0xf0
+[  174.136021]  [<c013d80a>] kthread+0x3a/0x70
+[  174.136021]  [<c013d7d0>] ? kthread+0x0/0x70
+[  174.136021]  [<c0103cf3>] kernel_thread_helper+0x7/0x14
 
-Index: linux-2.6.28/fs/lockd/xdr.c
-===================================================================
---- linux-2.6.28.orig/fs/lockd/xdr.c
-+++ linux-2.6.28/fs/lockd/xdr.c
-@@ -8,7 +8,6 @@
- 
- #include <linux/types.h>
- #include <linux/sched.h>
--#include <linux/utsname.h>
- #include <linux/nfs.h>
- 
- #include <linux/sunrpc/xdr.h>
-Index: linux-2.6.28/fs/lockd/xdr4.c
-===================================================================
---- linux-2.6.28.orig/fs/lockd/xdr4.c
-+++ linux-2.6.28/fs/lockd/xdr4.c
-@@ -9,7 +9,6 @@
- 
- #include <linux/types.h>
- #include <linux/sched.h>
--#include <linux/utsname.h>
- #include <linux/nfs.h>
- 
- #include <linux/sunrpc/xdr.h>
-Index: linux-2.6.28/fs/nfs/proc.c
-===================================================================
---- linux-2.6.28.orig/fs/nfs/proc.c
-+++ linux-2.6.28/fs/nfs/proc.c
-@@ -32,7 +32,6 @@
- #include <linux/slab.h>
- #include <linux/time.h>
- #include <linux/mm.h>
--#include <linux/utsname.h>
- #include <linux/errno.h>
- #include <linux/string.h>
- #include <linux/in.h>
-Index: linux-2.6.28/fs/nfs/nfs2xdr.c
-===================================================================
---- linux-2.6.28.orig/fs/nfs/nfs2xdr.c
-+++ linux-2.6.28/fs/nfs/nfs2xdr.c
-@@ -13,7 +13,6 @@
- #include <linux/time.h>
- #include <linux/mm.h>
- #include <linux/slab.h>
--#include <linux/utsname.h>
- #include <linux/errno.h>
- #include <linux/string.h>
- #include <linux/in.h>
-Index: linux-2.6.28/fs/nfs/nfs3proc.c
-===================================================================
---- linux-2.6.28.orig/fs/nfs/nfs3proc.c
-+++ linux-2.6.28/fs/nfs/nfs3proc.c
-@@ -7,7 +7,6 @@
-  */
- 
- #include <linux/mm.h>
--#include <linux/utsname.h>
- #include <linux/errno.h>
- #include <linux/string.h>
- #include <linux/sunrpc/clnt.h>
-Index: linux-2.6.28/fs/nfs/nfs4proc.c
-===================================================================
---- linux-2.6.28.orig/fs/nfs/nfs4proc.c
-+++ linux-2.6.28/fs/nfs/nfs4proc.c
-@@ -36,7 +36,6 @@
-  */
- 
- #include <linux/mm.h>
--#include <linux/utsname.h>
- #include <linux/delay.h>
- #include <linux/errno.h>
- #include <linux/string.h>
-Index: linux-2.6.28/fs/nfs/nfs4xdr.c
-===================================================================
---- linux-2.6.28.orig/fs/nfs/nfs4xdr.c
-+++ linux-2.6.28/fs/nfs/nfs4xdr.c
-@@ -39,7 +39,6 @@
- #include <linux/time.h>
- #include <linux/mm.h>
- #include <linux/slab.h>
--#include <linux/utsname.h>
- #include <linux/errno.h>
- #include <linux/string.h>
- #include <linux/in.h>
-Index: linux-2.6.28/fs/nfsd/nfs4idmap.c
-===================================================================
---- linux-2.6.28.orig/fs/nfsd/nfs4idmap.c
-+++ linux-2.6.28/fs/nfsd/nfs4idmap.c
-@@ -38,7 +38,6 @@
- #include <linux/init.h>
- 
- #include <linux/mm.h>
--#include <linux/utsname.h>
- #include <linux/errno.h>
- #include <linux/string.h>
- #include <linux/sunrpc/clnt.h>
-
--- 
+Greetings, Eric
