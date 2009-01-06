@@ -1,66 +1,133 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: nfsd stuckage
-Date: Tue, 6 Jan 2009 14:56:12 -0800
-Message-ID: <20090106145612.d4d9948d.akpm@linux-foundation.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfsd stuckage
+Date: Tue, 6 Jan 2009 18:02:44 -0500
+Message-ID: <20090106230244.GB13785@fieldses.org>
+References: <20090106145612.d4d9948d.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Neil Brown <neilb@suse.de>, Eric Sesterhenn <snakebyte@gmx.de>,
+	hch@lst.de
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:46590 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751017AbZAFW5L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2009 17:57:11 -0500
+Received: from mail.fieldses.org ([141.211.133.115]:40749 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751136AbZAFXCr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 18:02:47 -0500
+In-Reply-To: <20090106145612.d4d9948d.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jan 06, 2009 at 02:56:12PM -0800, Andrew Morton wrote:
+> 
+> I just built current mainline plus the just-sent 266 -mm patches.
+> 
+> The machine failed to power off when hit with `halt -pfn'.  dmesg output:
 
-I just built current mainline plus the just-sent 266 -mm patches.
+Christoph, can you live with this for now?
 
-The machine failed to power off when hit with `halt -pfn'.  dmesg output:
+--b.
 
-[   37.087037] calling  rfcomm_init+0x0/0xb6 [rfcomm] @ 3946
-[   37.087294] initcall rfcomm_init+0x0/0xb6 [rfcomm] returned 0 after 72 usecs
-[   37.505855] calling  hidp_init+0x0/0x5e [hidp] @ 4046
-[   37.506072] initcall hidp_init+0x0/0x5e [hidp] returned 0 after 28 usecs
-[   37.636638] calling  init_autofs4_fs+0x0/0x23 [autofs4] @ 4081
-[   37.636990] initcall init_autofs4_fs+0x0/0x23 [autofs4] returned 0 after 54 usecs
-[   39.630075] calling  init_nlm+0x0/0x22 [lockd] @ 4264
-[   39.630321] initcall init_nlm+0x0/0x22 [lockd] returned 0 after 59 usecs
-[   39.690077] calling  init_rpcsec_gss+0x0/0x4a [auth_rpcgss] @ 4264
-[   39.690281] initcall init_rpcsec_gss+0x0/0x4a [auth_rpcgss] returned 0 after 12 usecs
-[   39.834034] calling  init_nfsd+0x0/0xe2 [nfsd] @ 4302
-[   39.834471] initcall init_nfsd+0x0/0xe2 [nfsd] returned 0 after 236 usecs
-[   39.924213] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-[  672.162677] INFO: task nfsd4:4324 blocked for more than 480 seconds.
-[  672.162706] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-[  672.162725]  ffff880251df1d60 0000000000000046 ffff88025e1c0580 ffff8802488013d8
-[  672.162753]  ffff880251df1d20 ffff88024c49a7a0 ffff88025e088760 ffff88024c49ab18
-[  672.162834]  000000002807ee00 00000000ffff59ec ffff880251df1d50 0000000000000282
-[  672.162865] Call Trace:
-[  672.162880]  [<ffffffff8052a1d8>] __mutex_lock_slowpath+0x6a/0xac
-[  672.162895]  [<ffffffff8052a0c5>] mutex_lock+0x2c/0x30
-[  672.162908]  [<ffffffff802c4747>] vfs_fsync+0x63/0xa9
-[  672.162933]  [<ffffffffa048c74c>] nfsd_sync_dir+0x10/0x12 [nfsd]
-[  672.162960]  [<ffffffffa04a5427>] nfsd4_sync_rec_dir+0x27/0x40 [nfsd]
-[  672.162984]  [<ffffffffa04a592a>] nfsd4_recdir_purge_old+0x3d/0x6a [nfsd]
-[  672.163023]  [<ffffffffa04a1745>] laundromat_main+0x62/0x225 [nfsd]
-[  672.163049]  [<ffffffffa04a16e3>] ? laundromat_main+0x0/0x225 [nfsd]
-[  672.163064]  [<ffffffff8024b4a7>] run_workqueue+0x8d/0x124
-[  672.163076]  [<ffffffff8024b5e0>] ? worker_thread+0x0/0xe5
-[  672.163089]  [<ffffffff8024b6b8>] worker_thread+0xd8/0xe5
-[  672.163102]  [<ffffffff8024e8cc>] ? autoremove_wake_function+0x0/0x36
-[  672.163115]  [<ffffffff8024b5e0>] ? worker_thread+0x0/0xe5
-[  672.163127]  [<ffffffff8024e5e0>] kthread+0x44/0x6b
-[  672.163140]  [<ffffffff8020cfba>] child_rip+0xa/0x20
-[  672.163151]  [<ffffffff8024e59c>] ? kthread+0x0/0x6b
-[  672.163162]  [<ffffffff8020cfb0>] ? child_rip+0x0/0x20
-[ 1204.739381] INFO: task nfsd4:4324 blocked for more than 480 seconds.
-[ 1204.739415] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-[ 1204.739436]  ffff880251df1d60 0000000000000046 ffff88025e1c0580 ffff8802488013d8
-[ 1204.739523]  ffff880251df1d20 ffff88024c49a7a0 ffff88025e088760 ffff88024c49ab18
-[ 1204.739551]  000000002807ee00 00000000ffff59ec ffff880251df1d50 0000000000000282
-[ 1204.739579] Call Trace:
+commit 33e3950dc2eae7484e79685083c304d93013e3ec
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Tue Jan 6 13:37:03 2009 -0500
 
-This didn't happen in linux-next a week or so ago.
+    nfsd: fix double-locks of directory mutex
+    
+    A number of nfsd operations depend on the i_mutex to cover more code
+    than just the fsync, so the approach of 4c728ef583b3d8 "add a vfs_fsync
+    helper" doesn't work for nfsd.  Revert the parts of those patches that
+    touch nfsd, and remove the logic from vfs_nfsd that was needed only for
+    the special case of nfsd.
+    
+    Reported-by: Eric Sesterhenn <snakebyte@gmx.de>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 44aa92a..6e50aaa 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -744,16 +744,44 @@ nfsd_close(struct file *filp)
+ 	fput(filp);
+ }
+ 
++/*
++ * Sync a file
++ * As this calls fsync (not fdatasync) there is no need for a write_inode
++ * after it.
++ */
++static inline int nfsd_dosync(struct file *filp, struct dentry *dp,
++			      const struct file_operations *fop)
++{
++	struct inode *inode = dp->d_inode;
++	int (*fsync) (struct file *, struct dentry *, int);
++	int err;
++
++	err = filemap_fdatawrite(inode->i_mapping);
++	if (err == 0 && fop && (fsync = fop->fsync))
++		err = fsync(filp, dp, 0);
++	if (err == 0)
++		err = filemap_fdatawait(inode->i_mapping);
++
++	return err;
++}
++
+ static int
+ nfsd_sync(struct file *filp)
+ {
+-	return vfs_fsync(filp, filp->f_path.dentry, 0);
++        int err;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	dprintk("nfsd: sync file %s\n", filp->f_path.dentry->d_name.name);
++	mutex_lock(&inode->i_mutex);
++	err=nfsd_dosync(filp, filp->f_path.dentry, filp->f_op);
++	mutex_unlock(&inode->i_mutex);
++
++	return err;
+ }
+ 
+ int
+-nfsd_sync_dir(struct dentry *dentry)
++nfsd_sync_dir(struct dentry *dp)
+ {
+-	return vfs_fsync(NULL, dentry, 0);
++	return nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
+ }
+ 
+ /*
+diff --git a/fs/sync.c b/fs/sync.c
+index 0921d6d..8e0a656 100644
+--- a/fs/sync.c
++++ b/fs/sync.c
+@@ -83,10 +83,6 @@ int file_fsync(struct file *filp, struct dentry *dentry, int datasync)
+  *
+  * Write back data and metadata for @file to disk.  If @datasync is
+  * set only metadata needed to access modified file data is written.
+- *
+- * In case this function is called from nfsd @file may be %NULL and
+- * only @dentry is set.  This can only happen when the filesystem
+- * implements the export_operations API.
+  */
+ int vfs_fsync(struct file *file, struct dentry *dentry, int datasync)
+ {
+@@ -94,18 +90,8 @@ int vfs_fsync(struct file *file, struct dentry *dentry, int datasync)
+ 	struct address_space *mapping;
+ 	int err, ret;
+ 
+-	/*
+-	 * Get mapping and operations from the file in case we have
+-	 * as file, or get the default values for them in case we
+-	 * don't have a struct file available.  Damn nfsd..
+-	 */
+-	if (file) {
+-		mapping = file->f_mapping;
+-		fop = file->f_op;
+-	} else {
+-		mapping = dentry->d_inode->i_mapping;
+-		fop = dentry->d_inode->i_fop;
+-	}
++	mapping = file->f_mapping;
++	fop = file->f_op;
+ 
+ 	if (!fop || !fop->fsync) {
+ 		ret = -EINVAL;
