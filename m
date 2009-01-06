@@ -1,68 +1,138 @@
-From: Shiela <debbucks200908487@gmail.com>
-Subject: [NFS] Please don\'t share this. You could be making huge weekly
-	income
-Date: Tue, 06 Jan 2009 11:17:54 -0700
-Message-ID: <E1LKGv3-0000Oy-Ed@h25xhf1.ch3.sourceforge.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] nfsd: fix double-lock of i_mutex on nfsv4 recovery
+	directory
+Date: Tue, 6 Jan 2009 14:23:01 -0500
+Message-ID: <20090106192301.GA5901@fieldses.org>
+References: <20090106100246.GA13742@alice> <20090106172914.GG2386@fieldses.org> <20090106175828.GH2386@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: weezerfrk19@yahoo.com, stone53-Wuw85uim5zDR7s880joybQ@public.gmane.org,
-	rnorthcutt7101-Wuw85uim5zDR7s880joybQ@public.gmane.org, nfs@lists.sourceforge.net,
-	maan_tarsem@hotmail.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, hch@lst.de, neilb@suse.de
+To: Eric Sesterhenn <snakebyte@gmx.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:36955 "EHLO neil.brown.name"
+Received: from mail.fieldses.org ([141.211.133.115]:52068 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754515AbZAFSpc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2009 13:45:32 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LKGvh-0006k2-Qy
-	for linux-nfs@vger.kernel.org; Wed, 07 Jan 2009 05:45:29 +1100
+	id S1751355AbZAFTXE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 14:23:04 -0500
+In-Reply-To: <20090106175828.GH2386@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jan 06, 2009 at 12:58:29PM -0500, bfields wrote:
+> No, then we just run into a deadlocks in unlink, create, or any of the
+> other nfsd operations that want the parent lock to cover more than just
+> the sync.  So 4c728ef583b3d just doesn't work for nfsd.
 
-Hi,
+We could add another nfsd exception to vfs_sync() by taking the i_mutex
+only in the "file != NULL" case.  Perhaps there'd be some advantage to
+having nfsd's peculiarity noted in the common code; I don't have
+terifically strong feelings either way.
 
-We have a special work at home offer just for you.
-You can get up to $300-700 weekly.
+However I'm inclined to think that at that point the special cases get
+out of hand and that it would be better to keep this back in the nfsd
+code itself.  The following (tested this time) seems to work.
 
-This is an exclusive, personalized offer. Please don\\\'t
+--b.
 
-forward
+commit 33e3950dc2eae7484e79685083c304d93013e3ec
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Tue Jan 6 13:37:03 2009 -0500
 
-this message or share with friends, it is strictly limited
+    nfsd: fix double-locks of directory mutex
+    
+    A number of nfsd operations depend on the i_mutex to cover more code
+    than just the fsync, so the approach of 4c728ef583b3d8 "add a vfs_fsync
+    helper" doesn't work for nfsd.  Revert the parts of those patches that
+    touch nfsd, and remove the logic from vfs_nfsd that was needed only for
+    the special case of nfsd.
+    
+    Reported-by: Eric Sesterhenn <snakebyte@gmx.de>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-offer.
-
-
-Apply here: http://eezurl.com/?debbucks09
-
-
-Your partner in Success,
-
-Sheila
-
-
---------------------------------------------------------------
-
--
-P.S. Please send email to 39millionaires@gmail.com with
-
-\\\"STOP\\\"
-if you are no longer interested so we can gladly remove you
-
-from our list.
-
-------------------------------------------------------------------------------
-Check out the new SourceForge.net Marketplace.
-It is the best place to buy or sell services for
-just about anything Open Source.
-http://p.sf.net/sfu/Xq1LFB
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 44aa92a..6e50aaa 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -744,16 +744,44 @@ nfsd_close(struct file *filp)
+ 	fput(filp);
+ }
+ 
++/*
++ * Sync a file
++ * As this calls fsync (not fdatasync) there is no need for a write_inode
++ * after it.
++ */
++static inline int nfsd_dosync(struct file *filp, struct dentry *dp,
++			      const struct file_operations *fop)
++{
++	struct inode *inode = dp->d_inode;
++	int (*fsync) (struct file *, struct dentry *, int);
++	int err;
++
++	err = filemap_fdatawrite(inode->i_mapping);
++	if (err == 0 && fop && (fsync = fop->fsync))
++		err = fsync(filp, dp, 0);
++	if (err == 0)
++		err = filemap_fdatawait(inode->i_mapping);
++
++	return err;
++}
++
+ static int
+ nfsd_sync(struct file *filp)
+ {
+-	return vfs_fsync(filp, filp->f_path.dentry, 0);
++        int err;
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	dprintk("nfsd: sync file %s\n", filp->f_path.dentry->d_name.name);
++	mutex_lock(&inode->i_mutex);
++	err=nfsd_dosync(filp, filp->f_path.dentry, filp->f_op);
++	mutex_unlock(&inode->i_mutex);
++
++	return err;
+ }
+ 
+ int
+-nfsd_sync_dir(struct dentry *dentry)
++nfsd_sync_dir(struct dentry *dp)
+ {
+-	return vfs_fsync(NULL, dentry, 0);
++	return nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
+ }
+ 
+ /*
+diff --git a/fs/sync.c b/fs/sync.c
+index 0921d6d..8e0a656 100644
+--- a/fs/sync.c
++++ b/fs/sync.c
+@@ -83,10 +83,6 @@ int file_fsync(struct file *filp, struct dentry *dentry, int datasync)
+  *
+  * Write back data and metadata for @file to disk.  If @datasync is
+  * set only metadata needed to access modified file data is written.
+- *
+- * In case this function is called from nfsd @file may be %NULL and
+- * only @dentry is set.  This can only happen when the filesystem
+- * implements the export_operations API.
+  */
+ int vfs_fsync(struct file *file, struct dentry *dentry, int datasync)
+ {
+@@ -94,18 +90,8 @@ int vfs_fsync(struct file *file, struct dentry *dentry, int datasync)
+ 	struct address_space *mapping;
+ 	int err, ret;
+ 
+-	/*
+-	 * Get mapping and operations from the file in case we have
+-	 * as file, or get the default values for them in case we
+-	 * don't have a struct file available.  Damn nfsd..
+-	 */
+-	if (file) {
+-		mapping = file->f_mapping;
+-		fop = file->f_op;
+-	} else {
+-		mapping = dentry->d_inode->i_mapping;
+-		fop = dentry->d_inode->i_fop;
+-	}
++	mapping = file->f_mapping;
++	fop = file->f_op;
+ 
+ 	if (!fop || !fop->fsync) {
+ 		ret = -EINVAL;
