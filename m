@@ -1,63 +1,50 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/3] showmount command: Quiesce warning when TI-RPC is disabled
-Date: Tue, 06 Jan 2009 18:22:54 -0500
-Message-ID: <20090106232254.24661.4504.stgit@ingres.1015granger.net>
+Subject: [PATCH 1/3] configure: Remove inet_ntop(3) check from configure.ac
+Date: Tue, 06 Jan 2009 18:22:44 -0500
+Message-ID: <20090106232244.24661.66031.stgit@ingres.1015granger.net>
 References: <20090106231909.24661.92964.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:19751 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754107AbZAFXYn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2009 18:24:43 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:63228 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754759AbZAFXYs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2009 18:24:48 -0500
 In-Reply-To: <20090106231909.24661.92964.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make sure nfs_sm_pgmtbl is not compiled if TI-RPC functions are not
-available.  This quiesces the following compiler warning:
-
-  showmount.c:53: warning: =E2=80=98nfs_sm_pgmtbl=E2=80=99 defined but =
-not used
+nfs-utils no longer uses inet_ntop(3) so remove checks for it from
+configure.ac.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/showmount/showmount.c |   14 +++++++-------
- 1 files changed, 7 insertions(+), 7 deletions(-)
+ configure.ac |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
-index 17f7d87..2695c51 100644
---- a/utils/showmount/showmount.c
-+++ b/utils/showmount/showmount.c
-@@ -50,13 +50,6 @@ static int	aflag =3D 0;
- static int	dflag =3D 0;
- static int	eflag =3D 0;
-=20
--static const char *nfs_sm_pgmtbl[] =3D {
--	"showmount",
--	"mount",
--	"mountd",
--	NULL,
--};
--
- static struct option longopts[] =3D
- {
- 	{ "all", 0, 0, 'a' },
-@@ -87,6 +80,13 @@ static void usage(FILE *fp, int n)
-=20
- #ifdef HAVE_CLNT_CREATE
-=20
-+static const char *nfs_sm_pgmtbl[] =3D {
-+	"showmount",
-+	"mount",
-+	"mountd",
-+	NULL,
-+};
-+
- /*
-  * Generate an RPC client handle connected to the mountd service
-  * at @hostname, or die trying.
+diff --git a/configure.ac b/configure.ac
+index 7140f48..4448743 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -252,8 +252,6 @@ AC_CHECK_DECL([AI_ADDRCONFIG],
+               [ #include <netdb.h> ] )
+ 
+ if test "$enable_ipv6" = yes; then
+-  AC_CHECK_FUNC(inet_ntop, , ,
+-               AC_MSG_ERROR(Function 'inet_ntop' not found.))
+   AC_CHECK_FUNC(getnameinfo, , ,
+                AC_MSG_ERROR(Function 'getnameinfo' not found.))
+   AC_CHECK_LIB(tirpc, clnt_tli_create, ,
+@@ -309,7 +307,7 @@ AC_FUNC_STAT
+ AC_FUNC_VPRINTF
+ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
+                gethostbyaddr gethostbyname gethostname getmntent \
+-               inet_ntop getnameinfo getrpcbyname \
++               getnameinfo getrpcbyname \
+                bindresvport_sa getnetconfig \
+                clnt_create clnt_create_timed \
+                clnt_tli_create clnt_vc_create clnt_dg_create xdr_rpcb \
 
