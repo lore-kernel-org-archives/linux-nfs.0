@@ -1,49 +1,101 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: fix double-lock of i_mutex on nfsv4 recovery
-	directory
-Date: Tue, 6 Jan 2009 15:07:51 -0500
-Message-ID: <20090106200751.GC5901@fieldses.org>
-References: <20090106100246.GA13742@alice> <20090106172914.GG2386@fieldses.org> <20090106175828.GH2386@fieldses.org> <20090106192301.GA5901@fieldses.org> <20090106193256.GA13367@infradead.org>
+Subject: Re: [RFC][PATCH 2/4] sunrpc: Use utsnamespaces
+Date: Tue, 6 Jan 2009 15:20:46 -0500
+Message-ID: <20090106202046.GF5901@fieldses.org>
+References: <20090106011314.534653345@us.ibm.com> <20090106011314.961946803@us.ibm.com> <20090106200229.GA17031@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sesterhenn <snakebyte@gmx.de>, linux-nfs@vger.kernel.org,
-	hch@lst.de, neilb@suse.de
-To: Christoph Hellwig <hch@infradead.org>
+Cc: Matt Helsley <matthltc@us.ibm.com>,
+	Linux Containers <containers@lists.linux-foundation.org>,
+	linux-nfs@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>,
+	Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
+To: "Serge E. Hallyn" <serue@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:56604 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:45972 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751572AbZAFUHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2009 15:07:54 -0500
-In-Reply-To: <20090106193256.GA13367@infradead.org>
+	id S1751869AbZAFUUy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 15:20:54 -0500
+In-Reply-To: <20090106200229.GA17031@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 06, 2009 at 02:32:56PM -0500, Christoph Hellwig wrote:
-> On Tue, Jan 06, 2009 at 02:23:01PM -0500, J. Bruce Fields wrote:
-> > On Tue, Jan 06, 2009 at 12:58:29PM -0500, bfields wrote:
-> > > No, then we just run into a deadlocks in unlink, create, or any of the
-> > > other nfsd operations that want the parent lock to cover more than just
-> > > the sync.  So 4c728ef583b3d just doesn't work for nfsd.
-> > 
-> > We could add another nfsd exception to vfs_sync() by taking the i_mutex
-> > only in the "file != NULL" case.  Perhaps there'd be some advantage to
-> > having nfsd's peculiarity noted in the common code; I don't have
-> > terifically strong feelings either way.
-> > 
-> > However I'm inclined to think that at that point the special cases get
-> > out of hand and that it would be better to keep this back in the nfsd
-> > code itself.  The following (tested this time) seems to work.
+On Tue, Jan 06, 2009 at 02:02:29PM -0600, Serge E. Hallyn wrote:
+> Quoting Matt Helsley (matthltc@us.ibm.com):
+> > We can often specify the UTS namespace to use when starting an RPC client.
+> > However sometimes no UTS namespace is available (specifically during system
+> > shutdown as the last NFS mount in a container is unmounted) so fall
+> > back to the initial UTS namespace.
 > 
-> Sorry, this is not going to do it.  i_mutex is going to move into
-> ->fsync soon unless we kill it entirely pretty soon.  And for the
-> cases of stckable filesystems what you do (aswell as the <= 2.6.28 case)
-> is broken, as the NFS locking scheme can't apply to the lower stacked
-> filesystem.
+> So what happens if we take this patch and do nothing else?
+> 
+> The only potential problem situation will be rpc requests
+> made on behalf of a container in which the last task has
+> exited, right?  So let's say a container did an nfs mount
+> and then exits, causing an nfs umount request.
+> 
+> That umount request will now be sent with the wrong nodename.
+> Does that actually cause problems, will the server use the
+> nodename to try and determine the client sending the request?
 
-We need an immediate fix for the regression--nfsd (all versions) just
-doesn't work at all in mainline right now.  My apologies for not having
-seen that earlier.
-
-A more complete solution is going to take more than a day or two.
+This is just the machine name in the auth_unix credential?  The linux
+server ignores that completely (for the purpose of auth_unix
+authenication, it identifies clients only by source ip address).  I
+suspect other servers also ignore it, but I don't know.
 
 --b.
+
+> 
+> thanks,
+> -serge
+> 
+> > Signed-off-by: Matt Helsley <matthltc@us.ibm.com>
+> > Cc: Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
+> > Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+> > Cc: linux-nfs@vger.kernel.org
+> > Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+> > Cc: Chuck Lever <chuck.lever@oracle.com>
+> > Cc: Eric W. Biederman <ebiederm@xmission.com>
+> > Cc: Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>
+> > 
+> > ---
+> >  net/sunrpc/clnt.c |    7 +++++--
+> >  1 file changed, 5 insertions(+), 2 deletions(-)
+> > 
+> > Index: linux-2.6.28/net/sunrpc/clnt.c
+> > ===================================================================
+> > --- linux-2.6.28.orig/net/sunrpc/clnt.c
+> > +++ linux-2.6.28/net/sunrpc/clnt.c
+> > @@ -128,6 +128,7 @@ static struct rpc_clnt * rpc_new_client(
+> >  	struct rpc_version	*version;
+> >  	struct rpc_clnt		*clnt = NULL;
+> >  	struct rpc_auth		*auth;
+> > +	struct new_utsname	*uts_ns = init_utsname();
+> >  	int err;
+> >  	size_t len;
+> > 
+> > @@ -213,10 +214,12 @@ static struct rpc_clnt * rpc_new_client(
+> >  	}
+> > 
+> >  	/* save the nodename */
+> > -	clnt->cl_nodelen = strlen(init_utsname()->nodename);
+> > +	if (current->nsproxy != NULL)
+> > +		uts_ns = utsname();
+> > +	clnt->cl_nodelen = strlen(uts_ns->nodename);
+> >  	if (clnt->cl_nodelen > UNX_MAXNODENAME)
+> >  		clnt->cl_nodelen = UNX_MAXNODENAME;
+> > -	memcpy(clnt->cl_nodename, init_utsname()->nodename, clnt->cl_nodelen);
+> > +	memcpy(clnt->cl_nodename, uts_ns->nodename, clnt->cl_nodelen);
+> >  	rpc_register_client(clnt);
+> >  	return clnt;
+> > 
+> > 
+> > -- 
+> > _______________________________________________
+> > Containers mailing list
+> > Containers@lists.linux-foundation.org
+> > https://lists.linux-foundation.org/mailman/listinfo/containers
