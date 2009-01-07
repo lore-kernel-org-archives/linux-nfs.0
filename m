@@ -1,40 +1,71 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
-	than 120 seconds"
-Date: Wed, 7 Jan 2009 17:21:15 -0500
-Message-ID: <20090107222115.GI965@fieldses.org>
-References: <1227620339.9425.99.camel@zakaz.uk.xensource.com> <1227621434.7057.33.camel@heimdal.trondhjem.org> <1227621877.9425.102.camel@zakaz.uk.xensource.com> <1227737539.31008.2.camel@localhost.localdomain> <1228090631.7112.11.camel@heimdal.trondhjem.org> <1228169383.20370.3.camel@localhost.localdomain> <1228565812.10856.30.camel@localhost.localdomain> <1229279045.3721.1.camel@localhost.localdomain> <20081216175503.GG16388@fieldses.org> <1229452775.3721.25.camel@localhost.localdomain>
+Subject: Re: [PATCH] NFSD: FIDs need to take precedence over UUIDs
+Date: Wed, 7 Jan 2009 17:23:32 -0500
+Message-ID: <20090107222332.GJ965@fieldses.org>
+References: <49652496.2000008@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
-	linux-kernel@vger.kernel.org, gcosta@redhat.com,
-	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
-	Tom Tucker <tom@opengridcomputing.com>
-To: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:37187 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:37193 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757742AbZAGWVZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Jan 2009 17:21:25 -0500
-In-Reply-To: <1229452775.3721.25.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+	id S1762519AbZAGWXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jan 2009 17:23:35 -0500
+In-Reply-To: <49652496.2000008-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 16, 2008 at 06:39:35PM +0000, Ian Campbell wrote:
-> That's right, it was actually 2.6.26.7 FWIW.
+Applied, thanks.--b.
+
+On Wed, Jan 07, 2009 at 04:54:30PM -0500, Steve Dickson wrote:
+> [ Resent per Bruce's request]
 > 
-> > I'll try to take a look at these before I leave for the holidays,
-> > assuming the versions Trond posted on Nov. 30 are the latest.
+> Talking with Neil and Bruce, it seems somewhere down the
+> line UUIDs started to taking precedence over the setting 
+> fsid= export option when composing file handles which is wrong. 
+> This patch restores fsids taking precedence over UUIDs during
+> file handing composing.
 > 
-> Thanks.
-
-Sorry for getting behind.
-
-If you got a chance to retest with the for-2.6.29 branch at
-
-	git://linux-nfs.org/~bfields/linux.git for-2.6.29
-
-that'd be great; that's what I intend to send to Linus.
-
---b.
+> One side note, this also can be done from mountd. 
+> See "[PATCH 5/9] Dynamic Pseudo Root - Release 3"
+>  (http://linux-nfs.org/pipermail/nfsv4/2008-November/009459.html)
+> Either way will work...
+> 
+> steved.
+> 
+> 
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Thu Feb 14 15:48:20 EST 2008
+> 
+>     When determining the fsid_type in fh_compose(), the setting of 
+>     the FID via fsid= export option needs to take precedence over
+>     using the UUID device id. 
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff -up linux-2.6.24.i686/fs/nfsd/nfsfh.c.orig linux-2.6.24.i686/fs/nfsd/nfsfh.c
+> --- linux-2.6.24.i686/fs/nfsd/nfsfh.c.orig	2008-02-14 12:52:46.000000000 -0500
+> +++ linux-2.6.24.i686/fs/nfsd/nfsfh.c	2008-02-14 14:13:09.000000000 -0500
+> @@ -410,6 +410,8 @@ fh_compose(struct svc_fh *fhp, struct sv
+>  				goto retry;
+>  			break;
+>  		}
+> +	} else if (exp->ex_flags & NFSEXP_FSID) {
+> +		fsid_type = FSID_NUM;
+>  	} else if (exp->ex_uuid) {
+>  		if (fhp->fh_maxsize >= 64) {
+>  			if (root_export)
+> @@ -422,9 +424,7 @@ fh_compose(struct svc_fh *fhp, struct sv
+>  			else
+>  				fsid_type = FSID_UUID4_INUM;
+>  		}
+> -	} else if (exp->ex_flags & NFSEXP_FSID)
+> -		fsid_type = FSID_NUM;
+> -	else if (!old_valid_dev(ex_dev))
+> +	} else if (!old_valid_dev(ex_dev))
+>  		/* for newer device numbers, we must use a newer fsid format */
+>  		fsid_type = FSID_ENCODE_DEV;
+>  	else
+> 
+> 
