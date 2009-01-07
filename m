@@ -1,71 +1,35 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: FIDs need to take precedence over UUIDs
-Date: Wed, 7 Jan 2009 17:23:32 -0500
-Message-ID: <20090107222332.GJ965@fieldses.org>
-References: <49652496.2000008@RedHat.com>
+Subject: Re: [PATCH 0/6] NFSD: minor cleanups for 2.6.29
+Date: Wed, 7 Jan 2009 17:38:49 -0500
+Message-ID: <20090107223849.GL965@fieldses.org>
+References: <49469601.7020101@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pnfs mailing list <pnfs@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:37193 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:56977 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762519AbZAGWXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Jan 2009 17:23:35 -0500
-In-Reply-To: <49652496.2000008-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S932427AbZAGWiw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jan 2009 17:38:52 -0500
+In-Reply-To: <49469601.7020101@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applied, thanks.--b.
+On Mon, Dec 15, 2008 at 07:38:09PM +0200, Benny Halevy wrote:
+> Bruce,  following are half a dozen patches
+> from the nfs41/pnfs tree
+> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd-for-2.6.29
 
-On Wed, Jan 07, 2009 at 04:54:30PM -0500, Steve Dickson wrote:
-> [ Resent per Bruce's request]
+Thanks, applied.--b.
+
 > 
-> Talking with Neil and Bruce, it seems somewhere down the
-> line UUIDs started to taking precedence over the setting 
-> fsid= export option when composing file handles which is wrong. 
-> This patch restores fsids taking precedence over UUIDs during
-> file handing composing.
+> [PATCH 1/6] nfsd: add etoosmall to nfserrno
+> [PATCH 2/6] nfsd: dprint each op status in nfsd4_proc_compound
+> [PATCH 3/6] nfsd: git rid of nfs4_cb_null_ops declaration
+> [PATCH 4/6] nfsd: delete wrong file comment from nfsd/nfs4xdr.c
+> [PATCH 5/6] nfsd: last_byte_offset
+> [PATCH 6/6] nfsd: get rid of NFSD_VERSION
 > 
-> One side note, this also can be done from mountd. 
-> See "[PATCH 5/9] Dynamic Pseudo Root - Release 3"
->  (http://linux-nfs.org/pipermail/nfsv4/2008-November/009459.html)
-> Either way will work...
-> 
-> steved.
-> 
-> 
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Thu Feb 14 15:48:20 EST 2008
-> 
->     When determining the fsid_type in fh_compose(), the setting of 
->     the FID via fsid= export option needs to take precedence over
->     using the UUID device id. 
->     
->     Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff -up linux-2.6.24.i686/fs/nfsd/nfsfh.c.orig linux-2.6.24.i686/fs/nfsd/nfsfh.c
-> --- linux-2.6.24.i686/fs/nfsd/nfsfh.c.orig	2008-02-14 12:52:46.000000000 -0500
-> +++ linux-2.6.24.i686/fs/nfsd/nfsfh.c	2008-02-14 14:13:09.000000000 -0500
-> @@ -410,6 +410,8 @@ fh_compose(struct svc_fh *fhp, struct sv
->  				goto retry;
->  			break;
->  		}
-> +	} else if (exp->ex_flags & NFSEXP_FSID) {
-> +		fsid_type = FSID_NUM;
->  	} else if (exp->ex_uuid) {
->  		if (fhp->fh_maxsize >= 64) {
->  			if (root_export)
-> @@ -422,9 +424,7 @@ fh_compose(struct svc_fh *fhp, struct sv
->  			else
->  				fsid_type = FSID_UUID4_INUM;
->  		}
-> -	} else if (exp->ex_flags & NFSEXP_FSID)
-> -		fsid_type = FSID_NUM;
-> -	else if (!old_valid_dev(ex_dev))
-> +	} else if (!old_valid_dev(ex_dev))
->  		/* for newer device numbers, we must use a newer fsid format */
->  		fsid_type = FSID_ENCODE_DEV;
->  	else
-> 
-> 
+> Benny
