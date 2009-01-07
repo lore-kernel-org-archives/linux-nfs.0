@@ -1,50 +1,59 @@
-From: Matt Helsley <matthltc@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [RFC][PATCH 2/4] sunrpc: Use utsnamespaces
-Date: Tue, 06 Jan 2009 17:22:43 -0800
-Message-ID: <1231291363.14345.266.camel@localhost>
-References: <ae2fa56f38f87da3a90ab6fe39954b2b.squirrel@webmail.uio.no>
-	 <1231289847.14345.243.camel@localhost>
-	 <1231290153.11487.34.camel@heimdal.trondhjem.org>
+Date: Tue, 6 Jan 2009 20:44:22 -0500
+Message-ID: <20090107014422.GA17913@fieldses.org>
+References: <20090106200229.GA17031@us.ibm.com> <1231274682.20316.65.camel@heimdal.trondhjem.org> <20090106215831.GE18147@us.ibm.com> <m1eizg11fy.fsf@frodo.ebiederm.org> <1231283734.8041.6.camel@heimdal.trondhjem.org> <20090106233238.GD13785@fieldses.org> <1231284943.8041.8.camel@heimdal.trondhjem.org> <1231287607.11487.0.camel@heimdal.trondhjem.org> <20090107002608.GK13785@fieldses.org> <1231288706.11487.15.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Serge E. Hallyn" <serue@us.ibm.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+	"Serge E. Hallyn" <serue@us.ibm.com>,
+	Matt Helsley <matthltc@us.ibm.com>,
 	Linux Containers <containers@lists.linux-foundation.org>,
 	linux-nfs@vger.kernel.org,
 	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
 	Chuck Lever <chuck.lever@oracle.com>,
-	"Eric W. Biederman" <ebiederm@xmission.com>,
 	Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>,
 	Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:36286 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751072AbZAGBW6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2009 20:22:58 -0500
-In-Reply-To: <1231290153.11487.34.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:42638 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757329AbZAGBoh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 20:44:37 -0500
+In-Reply-To: <1231288706.11487.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-01-06 at 20:02 -0500, Trond Myklebust wrote:
-> On Tue, 2009-01-06 at 16:57 -0800, Matt Helsley wrote:
-> > On Tue, 2009-01-06 at 19:39 -0500, trond.myklebust@fys.uio.no wrote:
-> > > On Tue, 2009-01-06 at 16:08 -0800, Matt Helsley wrote:
-> > > > IMHO This seems more incorrect than trying to use a more proximal
-> > > namespace.
-> > > 
-> > > You have yet to explain why.
+On Tue, Jan 06, 2009 at 07:38:26PM -0500, Trond Myklebust wrote:
+> On Tue, 2009-01-06 at 19:26 -0500, J. Bruce Fields wrote:
+> > On Tue, Jan 06, 2009 at 07:20:07PM -0500, Trond Myklebust wrote:
+> > > As for the NFSv4 clientid, I can't see how you would ever want to use
+> > > anything other than the init->utsname(), since the requirement is only
+> > > that the clientid string be unique and preserved across reboots. The
+> > > server isn't allowed to interpret the contents of the clientid string.
+> > > Ditto for the RPCSEC_GSS machine creds that are used to establish the
+> > > clientid.
 > > 
-> > Yes, I know I have to explain why. If you would please have a little
-> > more patience you might see I have replied to your original request for
-> > an explanation -- I *just* sent it out. If I don't see it show up soon
-> > I'll resend it as a reply here. OK?
+> > If people eventually expect to be able to, say, migrate a container to
+> > another host while using an nfs mount as their storage, then they'd need
+> > the name to be that of the container, not of the host.
 > 
-> Sorry if you saw the request twice. My mail server at uio.no appears to
-> be on the blink, so I switched to the netapp account...
+> Why?
+>
+> > Obviously we'd also need to ensure the container got its own nfsv4
+> > client state, etc., etc., and it sounds like we're far from that.
+> 
+> Again, why? Are you seriously proposing a plan to transport all NFS and
+> locking state directly from one kernel to another?
 
-Ahhh, ok. Sorry I misinterpretted that..
+If people seem to think they can do live process and container
+migration:
 
-Cheers,
-	-Matt Helsley
+	http://ols.fedoraproject.org/OLS/Reprints-2008/mirkin-reprint.pdf
 
+then moving the NFS state strikes me as not the greatest of their
+troubles.
+
+I'm not volunteering!
+
+--b.
