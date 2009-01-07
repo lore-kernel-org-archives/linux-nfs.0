@@ -1,20 +1,21 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
 Subject: Re: [RFC][PATCH 2/4] sunrpc: Use utsnamespaces
-Date: Tue, 06 Jan 2009 20:50:25 -0500
-Message-ID: <1231293025.11487.43.camel@heimdal.trondhjem.org>
+Date: Tue, 06 Jan 2009 18:37:14 -0800
+Message-ID: <m1r63fzvs5.fsf@frodo.ebiederm.org>
 References: <20090106200229.GA17031@us.ibm.com>
-	 <1231274682.20316.65.camel@heimdal.trondhjem.org>
-	 <20090106215831.GE18147@us.ibm.com> <m1eizg11fy.fsf@frodo.ebiederm.org>
-	 <1231283734.8041.6.camel@heimdal.trondhjem.org>
-	 <20090106233238.GD13785@fieldses.org>
-	 <1231284943.8041.8.camel@heimdal.trondhjem.org>
-	 <1231287607.11487.0.camel@heimdal.trondhjem.org>
-	 <20090107002608.GK13785@fieldses.org>
-	 <1231288706.11487.15.camel@heimdal.trondhjem.org>
-	 <20090107014422.GA17913@fieldses.org>
+	<1231274682.20316.65.camel@heimdal.trondhjem.org>
+	<20090106215831.GE18147@us.ibm.com>
+	<m1eizg11fy.fsf@frodo.ebiederm.org>
+	<1231283734.8041.6.camel@heimdal.trondhjem.org>
+	<20090106233238.GD13785@fieldses.org>
+	<1231284943.8041.8.camel@heimdal.trondhjem.org>
+	<1231287607.11487.0.camel@heimdal.trondhjem.org>
+	<20090107002608.GK13785@fieldses.org>
+	<1231288706.11487.15.camel@heimdal.trondhjem.org>
+	<20090107014422.GA17913@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
 	"Serge E. Hallyn" <serue@us.ibm.com>,
 	Matt Helsley <matthltc@us.ibm.com>,
 	Linux Containers <containers@lists.linux-foundation.org>,
@@ -25,33 +26,42 @@ Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
 	Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9668 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752652AbZAGBup (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2009 20:50:45 -0500
-In-Reply-To: <20090107014422.GA17913@fieldses.org>
+Received: from out02.mta.xmission.com ([166.70.13.232]:44824 "EHLO
+	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755197AbZAGCrn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2009 21:47:43 -0500
+In-Reply-To: <20090107014422.GA17913@fieldses.org> (J. Bruce Fields's message
+	of "Tue, 6 Jan 2009 20:44:22 -0500")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-01-06 at 20:44 -0500, J. Bruce Fields wrote:
-> > Again, why? Are you seriously proposing a plan to transport all NFS and
-> > locking state directly from one kernel to another?
-> 
+"J. Bruce Fields" <bfields@fieldses.org> writes:
+
 > If people seem to think they can do live process and container
 > migration:
-> 
+>
 > 	http://ols.fedoraproject.org/OLS/Reprints-2008/mirkin-reprint.pdf
-> 
+>
 > then moving the NFS state strikes me as not the greatest of their
 > troubles.
+>
+> I'm not volunteering!
 
-ROTFL...
+Reasonable.  There are a lot easier cases than NFS, and migration is
+not the biggest use case.
 
+A lot of this work we can do incrementally and simply not support
+doing everything in a container.  Which is where we are today.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+The whole hostname in NFS packets isn't something that makes much sense
+to me in the first place, so I can't comment on a good use case for that.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Sorting out the details so we can get NFS working in multiple network namespaces
+makes a lot of sense to me.   It allows things like VPNing into work isolating the
+VPN process in a network namespace, and still being able to use all of the kernel
+networking including NFS like normal sounds fun to me.
+
+There may also be some fun things you can do with testing having both an NFS
+server and the client on the same box and not go through the loopback device.
+
+Eric
