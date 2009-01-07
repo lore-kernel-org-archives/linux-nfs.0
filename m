@@ -1,119 +1,56 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [patch 5/5] Add a (not built) module to test the dprintk module.
-Date: Mon, 19 Jan 2009 17:40:23 +1100
-Message-ID: <20090119064912.595383000@sgi.com>
-References: <20090119064018.442220000@sgi.com>
-Cc: "Frank Ch. Eigler" <fche@redhat.com>
-To: Linux NFS ML <linux-nfs@vger.kernel.org>
+From: "Serge E. Hallyn" <serue@us.ibm.com>
+Subject: Re: [RFC][PATCH 2/4] sunrpc: Use utsnamespaces
+Date: Tue, 6 Jan 2009 18:01:32 -0600
+Message-ID: <20090107000132.GA22261@us.ibm.com>
+References: <20090106011314.534653345@us.ibm.com> <20090106011314.961946803@us.ibm.com> <20090106200229.GA17031@us.ibm.com> <FB1BAB9F-25D4-449F-A66D-D1CC705F3741@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Matt Helsley <matthltc@us.ibm.com>,
+	Linux Containers <containers@lists.linux-foundation.org>,
+	linux-nfs@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	"Eric W. Biederman" <ebiederm@xmission.com>,
+	Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>,
+	Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:57093 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753291AbZASGtY (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Mon, 19 Jan 2009 01:49:24 -0500
+Received: from e38.co.us.ibm.com ([32.97.110.159]:34202 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752388AbZAGABf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jan 2009 19:01:35 -0500
+In-Reply-To: <FB1BAB9F-25D4-449F-A66D-D1CC705F3741@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Not to be applied, test code only.
+Quoting Chuck Lever (chuck.lever@oracle.com):
+> On Jan 6, 2009, at Jan 6, 2009, 3:02 PM, Serge E. Hallyn wrote:
+>> Quoting Matt Helsley (matthltc@us.ibm.com):
+>>> We can often specify the UTS namespace to use when starting an RPC  
+>>> client.
+>>> However sometimes no UTS namespace is available (specifically during 
+>>> system
+>>> shutdown as the last NFS mount in a container is unmounted) so fall
+>>> back to the initial UTS namespace.
+>>
+>> So what happens if we take this patch and do nothing else?
+>
+> I thought the point of this was to prevent incorrect container nodenames 
+> from leaking onto the network.
 
-Signed-off-by: Greg Banks <gnb@sgi.com>
----
+But define incorrect.  If container B does an nfs mount, container c
+is launched with a tree in that mount, container B dies, and container C
+umounts it.  Should the umount belong to container B (for having
+mounted it), container C (for having umount it), or the init_utsname
+(for being the physical host/kernel)?
 
- kernel/Makefile       |    3 +
- kernel/test-dprintk.c |   69 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 72 insertions(+)
+I get the feeling that consensus on this thread is that init_utsname
+is actually the best choice, but OTOH if I have 3 containers on my
+host, for apache, mysql, and postfix servers, and each is doing
+nfs mounts from a physically remote machine, maybe I care about
+having them report separate nodenames?
 
-Index: bfields/kernel/test-dprintk.c
-===================================================================
---- /dev/null
-+++ bfields/kernel/test-dprintk.c
-@@ -0,0 +1,69 @@
-+#include <linux/kernel.h>
-+#include <linux/module.h>
-+#include <linux/types.h>
-+#include <linux/proc_fs.h>
-+#include <asm/uaccess.h>
-+#include <linux/dprintk.h>
-+
-+int foo(int x)
-+{
-+	dprintk("foo: x=%d\n", x);
-+	return x+42;
-+}
-+
-+int bar(int x)
-+{
-+	dprintk("bar: x=%d\n", x);
-+	return x-3;
-+}
-+
-+static ssize_t exp_write(struct file *file, const char __user *ubuf,
-+		         size_t len, loff_t *offp)
-+{
-+	char tmp[8];
-+
-+	if (*offp != 0 || len == 0)
-+		return 0;
-+	if (len > sizeof(tmp))
-+		len = sizeof(tmp);
-+
-+	if (copy_from_user(tmp, ubuf, len))
-+		return -EFAULT;
-+
-+	switch (tmp[0]) {
-+	case 'f': foo(100); break;
-+	case 'b': bar(100); break;
-+	}
-+
-+	*offp += len;
-+	return len;
-+}
-+
-+static struct file_operations exp_fops = {
-+	.write = exp_write,
-+};
-+
-+static int __init exp_init(void)
-+{
-+	struct proc_dir_entry *pde;
-+
-+	printk("exp_init:\n");
-+
-+	pde = create_proc_entry("foobar", 0200, &proc_root);
-+	if (pde != NULL)
-+		pde->proc_fops = &exp_fops;
-+
-+	return 0;
-+}
-+
-+static void __exit exp_cleanup(void)
-+{
-+	printk("exp_cleanup:\n");
-+	remove_proc_entry("foobar", &proc_root);
-+}
-+
-+MODULE_LICENSE("GPL");
-+module_init(exp_init);
-+module_exit(exp_cleanup);
-+
-+/* vim:set ai sw=8 sts=8: */
-Index: bfields/kernel/Makefile
-===================================================================
---- bfields.orig/kernel/Makefile
-+++ bfields/kernel/Makefile
-@@ -91,6 +91,9 @@ obj-$(CONFIG_SMP) += sched_cpupri.o
- obj-$(CONFIG_SLOW_WORK) += slow-work.o
- obj-$(CONFIG_DPRINTK) += dprintk.o
- 
-+# Uncomment this to build a module for testing dprintk.ko
-+# obj-m += test-dprintk.o
-+
- ifneq ($(CONFIG_SCHED_OMIT_FRAME_POINTER),y)
- # According to Alan Modra <alan-HpYC8cTCicIJY7gZg3T8ig@public.gmane.org>, the -fno-omit-frame-pointer is
- # needed for x86 only.  Why this used to be enabled for all architectures is beyond
+(that's a question, I really don't know...)
 
---
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+-serge
