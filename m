@@ -1,117 +1,59 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfsd stuckage
-Date: Tue, 6 Jan 2009 19:15:01 -0500
-Message-ID: <20090107001501.GH13785@fieldses.org>
-References: <20090106145612.d4d9948d.akpm@linux-foundation.org> <20090106230244.GB13785@fieldses.org> <20090106230356.GA31520@lst.de> <20090106230551.GC13785@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [RFC][PATCH 2/4] sunrpc: Use utsnamespaces
+Date: Tue, 06 Jan 2009 19:20:07 -0500
+Message-ID: <1231287607.11487.0.camel@heimdal.trondhjem.org>
+References: <20090106011314.534653345@us.ibm.com>
+	 <20090106011314.961946803@us.ibm.com> <20090106200229.GA17031@us.ibm.com>
+	 <1231274682.20316.65.camel@heimdal.trondhjem.org>
+	 <20090106215831.GE18147@us.ibm.com> <m1eizg11fy.fsf@frodo.ebiederm.org>
+	 <1231283734.8041.6.camel@heimdal.trondhjem.org>
+	 <20090106233238.GD13785@fieldses.org>
+	 <1231284943.8041.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Neil Brown <neilb@suse.de>, Eric Sesterhenn <snakebyte@gmx.de>
-To: Christoph Hellwig <hch@lst.de>
+Content-Type: text/plain
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+	"Serge E. Hallyn" <serue@us.ibm.com>,
+	Matt Helsley <matthltc@us.ibm.com>,
+	Linux Containers <containers@lists.linux-foundation.org>,
+	linux-nfs@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Linux Containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>,
+	Cedric Le Goater <clg-NmTC/0ZBporQT0dZR+AlfA@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:38165 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:50162 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751572AbZAGAPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2009 19:15:07 -0500
-In-Reply-To: <20090106230551.GC13785@fieldses.org>
+	id S1752096AbZAGAU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Jan 2009 19:20:28 -0500
+In-Reply-To: <1231284943.8041.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 06, 2009 at 06:05:51PM -0500, bfields wrote:
-> On Wed, Jan 07, 2009 at 12:03:56AM +0100, Christoph Hellwig wrote:
-> > On Tue, Jan 06, 2009 at 06:02:44PM -0500, J. Bruce Fields wrote:
-> > > On Tue, Jan 06, 2009 at 02:56:12PM -0800, Andrew Morton wrote:
-> > > > 
-> > > > I just built current mainline plus the just-sent 266 -mm patches.
-> > > > 
-> > > > The machine failed to power off when hit with `halt -pfn'.  dmesg output:
-> > > 
-> > > Christoph, can you live with this for now?
-> > 
-> > nfsd part is well, livable.  But the fs/sync.c is buggy as stackable
-> > filesystems can call vfs_fsync with a NULL pointer due to nfs calling it
-> > that way, so please drop that hunk.
-> 
-> Whoops, OK, I didn't understand that.  I'll drop that hunk, retest, then
-> submit--should take a few minutes.
+On Tue, 2009-01-06 at 18:35 -0500, Trond Myklebust wrote:
+> So how does tracking it in a shared structure like the rpc_client help?
+> If you consider it to be part of the cred, then it needs to be tracked
+> in the cred...
 
-So this works for me--and I guess I may as well submit it in a pull
-request.  But: it sounds like we still have a regression for ecryptfs?
-(Since on ecryptfs export nfsd will still try to get the mutex twice on
-create, unlink, etc.)  Maybe we should just revert
-4c728ef583b3d82266584da5cb068294c09df31e entirely for now?
+OK. If people really want to track this, then you could add a reference
+to the current->nsproxy to the struct rpc_cred and struct auth_cred, and
+ensure that the unx_marshal and unx_match routines do the right thing
+w.r.t. that reference (if it exists).
+However such a patch had better be accompanied with a _really_
+convincing argument for why containers need this...
 
---b.
+As for the NFSv4 clientid, I can't see how you would ever want to use
+anything other than the init->utsname(), since the requirement is only
+that the clientid string be unique and preserved across reboots. The
+server isn't allowed to interpret the contents of the clientid string.
+Ditto for the RPCSEC_GSS machine creds that are used to establish the
+clientid.
 
-commit 3fbc5c762bd9f9ff52fe7b5b09398a3cff0e8415
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Tue Jan 6 13:37:03 2009 -0500
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-    nfsd: fix double-locks of directory mutex
-    
-    A number of nfsd operations depend on the i_mutex to cover more code
-    than just the fsync, so the approach of 4c728ef583b3d8 "add a vfs_fsync
-    helper" doesn't work for nfsd.  Revert the parts of those patches that
-    touch nfsd.
-    
-    Note: we can't, however, remove the logic from vfs_fsync that was needed
-    only for the special case of nfsd, because a vfs_fsync(NULL,...) call
-    can still result indirectly from a stackable filesystem that was called
-    by nfsd.
-    
-    Reported-by: Eric Sesterhenn <snakebyte@gmx.de>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 44aa92a..6e50aaa 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -744,16 +744,44 @@ nfsd_close(struct file *filp)
- 	fput(filp);
- }
- 
-+/*
-+ * Sync a file
-+ * As this calls fsync (not fdatasync) there is no need for a write_inode
-+ * after it.
-+ */
-+static inline int nfsd_dosync(struct file *filp, struct dentry *dp,
-+			      const struct file_operations *fop)
-+{
-+	struct inode *inode = dp->d_inode;
-+	int (*fsync) (struct file *, struct dentry *, int);
-+	int err;
-+
-+	err = filemap_fdatawrite(inode->i_mapping);
-+	if (err == 0 && fop && (fsync = fop->fsync))
-+		err = fsync(filp, dp, 0);
-+	if (err == 0)
-+		err = filemap_fdatawait(inode->i_mapping);
-+
-+	return err;
-+}
-+
- static int
- nfsd_sync(struct file *filp)
- {
--	return vfs_fsync(filp, filp->f_path.dentry, 0);
-+        int err;
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	dprintk("nfsd: sync file %s\n", filp->f_path.dentry->d_name.name);
-+	mutex_lock(&inode->i_mutex);
-+	err=nfsd_dosync(filp, filp->f_path.dentry, filp->f_op);
-+	mutex_unlock(&inode->i_mutex);
-+
-+	return err;
- }
- 
- int
--nfsd_sync_dir(struct dentry *dentry)
-+nfsd_sync_dir(struct dentry *dp)
- {
--	return vfs_fsync(NULL, dentry, 0);
-+	return nfsd_dosync(NULL, dp, dp->d_inode->i_fop);
- }
- 
- /*
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
