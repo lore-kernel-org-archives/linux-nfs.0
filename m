@@ -1,31 +1,43 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: nfsd stuckage
-Date: Wed, 7 Jan 2009 12:22:39 -0500
-Message-ID: <20090107172238.GA15127@infradead.org>
-References: <20090106145612.d4d9948d.akpm@linux-foundation.org> <20090106230244.GB13785@fieldses.org> <20090106230356.GA31520@lst.de> <20090106230551.GC13785@fieldses.org> <20090107001501.GH13785@fieldses.org> <20090106162328.1b4511a6.akpm@linux-foundation.org> <20090107002816.GL13785@fieldses.org> <20090107074256.GA5102@infradead.org> <20090107165639.GA28489@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] Three more nfs-utils clean ups
+Date: Wed, 07 Jan 2009 12:54:20 -0500
+Message-ID: <4964EC4C.6000908@RedHat.com>
+References: <20090106231909.24661.92964.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>, hch@lst.de,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	neilb@suse.de, snakebyte@gmx.de
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:56833 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752775AbZAGRWo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jan 2009 12:22:44 -0500
-In-Reply-To: <20090107165639.GA28489@fieldses.org>
+Received: from mx2.redhat.com ([66.187.237.31]:33976 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752654AbZAGR4i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Jan 2009 12:56:38 -0500
+In-Reply-To: <20090106231909.24661.92964.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 07, 2009 at 11:56:39AM -0500, J. Bruce Fields wrote:
-> OK.  Mind if we just revert the whole commit for now?  With the
-> double-lock regression is still there for ecryptfs exports, then I'd
-> rather do a simple revert of the whole patch and not try to pick out
-> just the fs/nfsd/vfs.c part.
 
-Umm, exporting ecryptfs would previously take the lower i_mutex in
-the ecryptfs fsync method and now does in vfs_fsync, there should
-be no changed in behaviour.
 
+Chuck Lever wrote:
+> Hi Steve-
+> 
+> While digging through the last set of bugs in 2008, I constructed
+> these three fairly simple patches.  The middle one is probably the
+> most interesting, as it provides a little more flexibility about
+> how nfs-utils is built when libtirpc is present on the build system.
+> 
+> ---
+> 
+> Chuck Lever (3):
+>       showmount command: Quiesce warning when TI-RPC is disabled
+>       configure: Add new build option "--enable-tirpc"
+>       configure: Remove inet_ntop(3) check from configure.ac
+> 
+> 
+>  configure.ac                |   34 +++++++++++++++++++++++-----------
+>  utils/showmount/showmount.c |   14 +++++++-------
+>  2 files changed, 30 insertions(+), 18 deletions(-)
+> 
+Committed...
+
+steved.
