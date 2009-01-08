@@ -1,66 +1,115 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 06/14] sunrpc: Gather forward declarations of static functions in cache.c.
-Date: Thu, 08 Jan 2009 19:25:16 +1100
-Message-ID: <20090108082603.660311000@sgi.com>
+Subject: [patch 09/14] sunrpc: Remove the global lock queue_io_mutex.
+Date: Thu, 08 Jan 2009 19:25:19 +1100
+Message-ID: <20090108082604.299840000@sgi.com>
 References: <20090108082510.050854000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:54354 "EHLO relay.sgi.com"
+Received: from relay3.sgi.com ([192.48.171.31]:44996 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753431AbZAHI0O (ORCPT
+	id S1753389AbZAHI0L (ORCPT
 	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2009 03:26:14 -0500
+	Thu, 8 Jan 2009 03:26:11 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Previously these forward declarations were scattered throughout
-the code.  This makes the cache code easier to read.
+This lock was used for two different purposes in two places.  The use
+in cache_read() is redundant because cd->queue_lock is also taken
+and can be removed without harm.  The use in cache_write() protects a
+global buffer which can be eliminated and replaced with a temporarily
+allocated page; this also removes an unnecessary global bottleneck
+when multiple rpc.mountd threads are writing down into the kernel.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- net/sunrpc/cache.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ net/sunrpc/cache.c |   34 +++++++++++++++-------------------
+ 1 file changed, 15 insertions(+), 19 deletions(-)
 
 Index: bfields/net/sunrpc/cache.c
 ===================================================================
 --- bfields.orig/net/sunrpc/cache.c
 +++ bfields/net/sunrpc/cache.c
-@@ -36,6 +36,9 @@
+@@ -674,8 +674,6 @@ void cache_clean_deferred(void *owner)
+  *
+  */
  
- static int cache_defer_req(struct cache_req *req, struct cache_head *h);
- static void cache_revisit_request(struct cache_head *h);
-+static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h);
-+static void cache_remove_queued(struct cache_detail *cd, struct cache_head *h);
-+static void do_cache_clean(struct work_struct *work);
+-static DEFINE_MUTEX(queue_io_mutex);
+-
+ struct cache_queue {
+ 	struct list_head	list;
+ 	int			reader;	/* if 0, then request */
+@@ -703,8 +701,6 @@ cache_read(struct file *filp, char __use
+ 	if (count == 0)
+ 		return 0;
  
- static void cache_init(struct cache_head *h)
- {
-@@ -101,7 +104,6 @@ struct cache_head *sunrpc_cache_lookup(s
- EXPORT_SYMBOL(sunrpc_cache_lookup);
- 
- 
--static void cache_remove_queued(struct cache_detail *cd, struct cache_head *h);
- 
- static int cache_fresh_locked(struct cache_head *h, time_t expiry)
- {
-@@ -175,7 +177,6 @@ struct cache_head *sunrpc_cache_update(s
+-	mutex_lock(&queue_io_mutex); /* protect against multiple concurrent
+-			      * readers on this file */
+  again:
+ 	spin_lock(&cd->queue_lock);
+ 	/* need to find next request */
+@@ -716,7 +712,6 @@ cache_read(struct file *filp, char __use
+ 	}
+ 	if (rp->q.list.next == &cd->queue) {
+ 		spin_unlock(&cd->queue_lock);
+-		mutex_unlock(&queue_io_mutex);
+ 		BUG_ON(rp->offset);
+ 		return 0;
+ 	}
+@@ -763,37 +758,38 @@ cache_read(struct file *filp, char __use
+ 	}
+ 	if (err == -EAGAIN)
+ 		goto again;
+-	mutex_unlock(&queue_io_mutex);
+ 	return err ? err :  count;
  }
- EXPORT_SYMBOL(sunrpc_cache_update);
  
--static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h);
- /*
-  * This is the generic cache management routine for all
-  * the authentication caches.
-@@ -288,7 +289,6 @@ static const struct file_operations cach
- static const struct file_operations content_file_operations;
- static const struct file_operations cache_flush_operations;
+-static char write_buf[8192]; /* protected by queue_io_mutex */
+-
+ static ssize_t
+ cache_write(struct file *filp, const char __user *buf, size_t count,
+ 	    loff_t *ppos)
+ {
+ 	int err;
+ 	struct cache_detail *cd = PDE(filp->f_path.dentry->d_inode)->data;
++	char *tmp;
++	int tmp_size = PAGE_SIZE;
  
--static void do_cache_clean(struct work_struct *work);
- static DECLARE_DELAYED_WORK(cache_cleaner, do_cache_clean);
+ 	if (count == 0)
+ 		return 0;
+-	if (count >= sizeof(write_buf))
++	if (count >= tmp_size)
+ 		return -EINVAL;
  
- static void remove_cache_proc_entries(struct cache_detail *cd)
+-	mutex_lock(&queue_io_mutex);
++	tmp = kmalloc(tmp_size, GFP_KERNEL);
++	if (!tmp)
++		return -ENOMEM;
+ 
+-	if (copy_from_user(write_buf, buf, count)) {
+-		mutex_unlock(&queue_io_mutex);
+-		return -EFAULT;
+-	}
+-	write_buf[count] = '\0';
++	err = -EFAULT;
++	if (copy_from_user(tmp, buf, count))
++		goto out;
++
++	tmp[count] = '\0';
++	err = -EINVAL;
+ 	if (cd->cache_parse)
+-		err = cd->cache_parse(cd, write_buf, count);
+-	else
+-		err = -EINVAL;
++		err = cd->cache_parse(cd, tmp, count);
+ 
+-	mutex_unlock(&queue_io_mutex);
++out:
++	kfree(tmp);
+ 	return err ? err : count;
+ }
+ 
 
 --
 -- 
