@@ -1,43 +1,47 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [patch 04/14] sunrpc: Minor indentation cleanup in cache.c
-Date: Thu, 08 Jan 2009 19:25:14 +1100
-Message-ID: <20090108082603.233757000@sgi.com>
-References: <20090108082510.050854000@sgi.com>
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: wengang wang <wen.gang.wang@oracle.com>
+Subject: [PATCH 1/1] rpc.statd: fix the failure of SM_DIR creation
+Date: Thu,  8 Jan 2009 21:44:16 +0800
+Message-ID: <200901081345.n08Dje4F025471@rgminet15.oracle.com>
+Cc: greg.marsden@oracle.com
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:50387 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751695AbZAHI0W (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2009 03:26:22 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:32280 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755693AbZAHNpq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2009 08:45:46 -0500
+Received: from rgminet15.oracle.com (rcsinet15.oracle.com [148.87.113.117])
+	by acsinet12.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n08DjDoo004322
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Jan 2009 13:45:14 GMT
+Received: from acsmt705.oracle.com (acsmt705.oracle.com [141.146.40.83])
+	by rgminet15.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n08Dje4F025471
+	for <linux-nfs@vger.kernel.org>; Thu, 8 Jan 2009 13:45:41 GMT
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Greg Banks <gnb@sgi.com>
----
+Please let me if here is not the place talking about rpc.statd.
 
- net/sunrpc/cache.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+this's going to talk about rpc.statd.
+in case SM_DIR doesn't exist, it may not be created.
+according code in shuffle_dirs(), since st is not initailized, whether
+the SM_DIR is created depends on the thread stack of rpc.statd.
+the fix is to insert a memset() before calling stat().
 
-Index: bfields/net/sunrpc/cache.c
-===================================================================
---- bfields.orig/net/sunrpc/cache.c
-+++ bfields/net/sunrpc/cache.c
-@@ -1045,8 +1045,8 @@ static int cache_make_upcall(struct cach
- 
- 	if (atomic_read(&cd->readers) == 0 &&
- 	    cd->last_close < get_seconds() - 30) {
--			warn_no_listener(cd);
--			return -EINVAL;
-+		warn_no_listener(cd);
-+		return -EINVAL;
- 	}
- 
- 	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+#the patch is against nfs-utils 1.0.9
 
+Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
 --
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+ state.c |    2 ++
+ 1 file changed, 2 insertions(+)
+diff -up ./utils/statd/state.c.orig ./utils/statd/state.c
+--- ./utils/statd/state.c.orig	2009-01-08 20:32:44.000000000 +0800
++++ ./utils/statd/state.c	2009-01-08 20:33:07.000000000 +0800
+@@ -89,6 +89,8 @@ shuffle_dirs (void)
+   char *src, *dst;
+   int len1, len2, len;
+   
++  memset (&st, 0, sizeof st);
++
+   if (stat (SM_DIR, &st) == -1 && errno != ENOENT)
+     die ("stat (%s): %s", SM_DIR, strerror (errno));
+ 
