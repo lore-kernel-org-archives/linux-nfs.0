@@ -1,37 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:38152 "EHLO relay.sgi.com"
+Received: from relay3.sgi.com ([192.48.171.31]:44985 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757340AbZAMXMO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Jan 2009 18:12:14 -0500
-Message-ID: <496D1DE5.8050607@melbourne.sgi.com>
-Date: Wed, 14 Jan 2009 10:04:05 +1100
-From: Greg Banks <gnb@melbourne.sgi.com>
-To: Peter Staubach <staubach@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS ML <linux-nfs@vger.kernel.org>
-Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with enormous
- load averages
-References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com> <496CA61C.5050208@redhat.com> <496D1294.1060407@melbourne.sgi.com> <496D1735.40903@redhat.com>
-In-Reply-To: <496D1735.40903@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751848AbZAHI0H (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 8 Jan 2009 03:26:07 -0500
+Message-Id: <20090108082510.050854000@sgi.com>
+Date: Thu, 08 Jan 2009 19:25:10 +1100
+From: Greg Banks <gnb@sgi.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
+Subject: [patch 00/14] sunrpc: Sunrpc cache cleanups and upcall rework
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Peter Staubach wrote:
-> Greg Banks wrote:
->
-> It would be interesting to get some better information regarding
-> some of the measurable performance ramifications such as SFS
-> though.  
-My NFS server work got SpecSFS to the condition of being disk subsystem
-bound instead of CPU bound, at which point it was the XFS folks' problem.
-> The Linux NFS server has not had much attention paid to
-> it 
-It's had attention paid to it, just not yet published :-(
+G'day,
+
+These patches are a snapshot of in-progress work to fix problems with
+the sunrpc upcall mechanism which are triggered under load when using
+multi-threaded rpc.mountd.  These are currently a hot issue with one
+of SGI's customers (SGI PV988959).
+
+The early patches in the series are cleanups with zero logic changes.
+
+The patches have been lightly tested, by mounting and running the
+cthon04 tests.  They have not been shipped or used in the field.
 
 -- 
 Greg Banks, P.Engineer, SGI Australian Software Group.
 the brightly coloured sporks of revolution.
 I don't speak for SGI.
-
