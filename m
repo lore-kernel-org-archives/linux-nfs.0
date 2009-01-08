@@ -1,403 +1,190 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch 10/14] sunrpc: Reorganise the queuing of cache upcalls.
-Date: Thu, 8 Jan 2009 14:57:49 -0500
-Message-ID: <20090108195747.GB19312@fieldses.org>
-References: <20090108082510.050854000@sgi.com> <20090108082604.517918000@sgi.com>
+Subject: nfs client lockdep warning
+Date: Thu, 8 Jan 2009 15:36:58 -0500
+Message-ID: <20090108203658.GE19312@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb@sgi.com>
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:48843 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:57722 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757777AbZAHT5x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2009 14:57:53 -0500
-In-Reply-To: <20090108082604.517918000@sgi.com>
+	id S1753146AbZAHUhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Jan 2009 15:37:00 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 08, 2009 at 07:25:20PM +1100, Greg Banks wrote:
-> Instead of a single list which confusingly contains a mixture of
-> cache_request and cache_reader structures in various states, use two
-> separate lists.
-> 
-> Both new lists contain cache_request structures, the cache_reader
-> structure is eliminated.  It's only purpose was to hold state which
-> supports partial reads of upcalls from userspace.  However the
-> implementation of partial reads is broken in the presence of the
-> multi-threaded rpc.mountd, in two different ways.
-> 
-> Firstly, the kernel code assumes that each reader uses a separate
-> struct file; because rpc.mountd fork()s *after* opening the cache
-> file descriptor this is not true.  Thus the single struct file and
-> the single rp->offset field are shared between multiple threads.
-> Unfortunately rp->offset is not maintained in a safe manner.  This can
-> lead to the BUG_ON() in cache_read() being tripped.
-
-Hm, have you seen this happen?
-
-All the current upcalls are small enough (and mountd's default read
-buffer large enough) that messages should always be read in one gulp.
-
-> 
-> Secondly, even if the kernel code worked perfectly it's sharing
-> a single offset between multiple reading rpc.mountd threads.
-
-I made what I suspect is a similar patch a while ago and never got
-around to submitting it.  (Arrgh!  Bad me!)  Appended below if it's of
-any use to you to compare.  (Happy to apply either your patch or mine
-depending which looks better; I haven't tried to compare carefully.)
+I'm seeing this on my test client; I haven't tried to investigate.
 
 --b.
 
-commit f948255274fdc8b5932ad4e88d5610c6ea3de9f7
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Wed Dec 5 14:52:51 2007 -0500
-
-    sunrpc: simplify dispatching of upcalls to file descriptors
-    
-    If you want to handle a lot of upcall requests, especially requests that
-    may take a while (e.g. because they require talking to ldap or kerberos
-    servers, or spinning up a newly accessed disk), then you need to process
-    upcalls in parallel.
-    
-    When there are multiple requests available for processing, we'd prefer
-    not to hand the same request to multiple readers, as that either wastes
-    resources (or requires upcall-processing to detect such cases itself).
-    
-    The current code keeps a single list containing all open file
-    descriptors and requests.  Each file descriptor is advanced through the
-    list until it finds a request.  Multiple requests may find the same
-    request at once, and requests are left on the list until they are
-    responded to.  Under this scheme the likelihood of two readers getting
-    the same request is high.
-    
-    You can mitigate the problem by reading from a single file descriptor
-    that's shared between processes (as mountd currently does), but that
-    requires the read to always provide a buffer large enough to get the
-    whole request in one atomic read.  That's less practical for gss
-    init_sec_context calls, which could vary in size from a few hundred
-    bytes to 100k or so.
-    
-    So, instead move processes that are being read out off the common list
-    of requests into the file descriptor's private area, and move them to
-    the end of the list after they're read.
-    
-    That makes it a little less likely they'll be re-read by another process
-    immediately.
-    
-    This also simplifies the code.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 636c8e0..5512fbb 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -670,39 +670,31 @@ void cache_clean_deferred(void *owner)
-  * On write, an update request is processed.
-  * Poll works if anything to read, and always allows write.
-  *
-- * Implemented by linked list of requests.  Each open file has
-- * a ->private that also exists in this list.  New requests are added
-- * to the end and may wakeup and preceding readers.
-- * New readers are added to the head.  If, on read, an item is found with
-- * CACHE_UPCALLING clear, we free it from the list.
-- *
-+ * Keep a list of requests associated with each cache descriptor.
-+ * On read from an open file descriptor, pick the request at the
-+ * head of the list and move it to the file descriptor's private area.
-+ * After it is read, return it to the tail of the list.  Keep requests
-+ * on the list until we notice that they have been responded to (at
-+ * which point CACHE_PENDING is cleared).
-  */
- 
- static DEFINE_SPINLOCK(queue_lock);
- static DEFINE_MUTEX(queue_io_mutex);
- 
--struct cache_queue {
--	struct list_head	list;
--	int			reader;	/* if 0, then request */
--};
- struct cache_request {
--	struct cache_queue	q;
-+	struct list_head	list;
- 	struct cache_head	*item;
- 	char			* buf;
-+	int			offset;
- 	int			len;
--	int			readers;
--};
--struct cache_reader {
--	struct cache_queue	q;
--	int			offset;	/* if non-0, we have a refcnt on next request */
- };
- 
- static ssize_t
- cache_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
- {
--	struct cache_reader *rp = filp->private_data;
--	struct cache_request *rq;
-+	struct cache_request *rq = filp->private_data;
- 	struct cache_detail *cd = PDE(filp->f_path.dentry->d_inode)->data;
-+	struct list_head *queue = &cd->queue;
- 	int err;
- 
- 	if (count == 0)
-@@ -711,60 +703,45 @@ cache_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
- 	mutex_lock(&queue_io_mutex); /* protect against multiple concurrent
- 			      * readers on this file */
-  again:
--	spin_lock(&queue_lock);
--	/* need to find next request */
--	while (rp->q.list.next != &cd->queue &&
--	       list_entry(rp->q.list.next, struct cache_queue, list)
--	       ->reader) {
--		struct list_head *next = rp->q.list.next;
--		list_move(&rp->q.list, next);
-+	if (rq == NULL) {
-+		if (!list_empty(queue)) {
-+			spin_lock(&queue_lock);
-+			rq = list_first_entry(queue, struct cache_request,
-+						list);
-+			list_del_init(&rq->list);
-+			filp->private_data = rq;
-+			spin_unlock(&queue_lock);
-+		}
- 	}
--	if (rp->q.list.next == &cd->queue) {
--		spin_unlock(&queue_lock);
-+	if (rq == NULL) {
- 		mutex_unlock(&queue_io_mutex);
--		BUG_ON(rp->offset);
--		return 0;
-+		return -EAGAIN;
- 	}
--	rq = container_of(rp->q.list.next, struct cache_request, q.list);
--	BUG_ON(rq->q.reader);
--	if (rp->offset == 0)
--		rq->readers++;
--	spin_unlock(&queue_lock);
- 
--	if (rp->offset == 0 && !test_bit(CACHE_PENDING, &rq->item->flags)) {
-+	if (!test_bit(CACHE_PENDING, &rq->item->flags))
- 		err = -EAGAIN;
--		spin_lock(&queue_lock);
--		list_move(&rp->q.list, &rq->q.list);
--		spin_unlock(&queue_lock);
--	} else {
--		if (rp->offset + count > rq->len)
--			count = rq->len - rp->offset;
-+	else {
-+		if (rq->offset + count > rq->len)
-+			count = rq->len - rq->offset;
- 		err = -EFAULT;
--		if (copy_to_user(buf, rq->buf + rp->offset, count))
-+		if (copy_to_user(buf, rq->buf + rq->offset, count))
- 			goto out;
--		rp->offset += count;
--		if (rp->offset >= rq->len) {
--			rp->offset = 0;
--			spin_lock(&queue_lock);
--			list_move(&rp->q.list, &rq->q.list);
--			spin_unlock(&queue_lock);
--		}
-+		rq->offset += count;
-+		if (rq->offset >= rq->len)
-+			rq->offset = 0;
- 		err = 0;
- 	}
-  out:
--	if (rp->offset == 0) {
--		/* need to release rq */
-+	if (rq->offset == 0) {
-+		filp->private_data = NULL;
- 		spin_lock(&queue_lock);
--		rq->readers--;
--		if (rq->readers == 0 &&
--		    !test_bit(CACHE_PENDING, &rq->item->flags)) {
--			list_del(&rq->q.list);
--			spin_unlock(&queue_lock);
-+		if (!test_bit(CACHE_PENDING, &rq->item->flags)) {
- 			cache_put(rq->item, cd);
- 			kfree(rq->buf);
- 			kfree(rq);
- 		} else
--			spin_unlock(&queue_lock);
-+			list_add_tail(&rq->list, queue);
-+		spin_unlock(&queue_lock);
- 	}
- 	if (err == -EAGAIN)
- 		goto again;
-@@ -808,26 +785,19 @@ static unsigned int
- cache_poll(struct file *filp, poll_table *wait)
- {
- 	unsigned int mask;
--	struct cache_reader *rp = filp->private_data;
--	struct cache_queue *cq;
- 	struct cache_detail *cd = PDE(filp->f_path.dentry->d_inode)->data;
-+	struct list_head *queue = &cd->queue;
- 
- 	poll_wait(filp, &queue_wait, wait);
- 
- 	/* alway allow write */
- 	mask = POLL_OUT | POLLWRNORM;
- 
--	if (!rp)
--		return mask;
--
- 	spin_lock(&queue_lock);
- 
--	for (cq= &rp->q; &cq->list != &cd->queue;
--	     cq = list_entry(cq->list.next, struct cache_queue, list))
--		if (!cq->reader) {
--			mask |= POLLIN | POLLRDNORM;
--			break;
--		}
-+	if (filp->private_data || !list_empty(queue))
-+		mask |= POLLIN | POLLRDNORM;
-+
- 	spin_unlock(&queue_lock);
- 	return mask;
- }
-@@ -837,11 +807,11 @@ cache_ioctl(struct inode *ino, struct file *filp,
- 	    unsigned int cmd, unsigned long arg)
- {
- 	int len = 0;
--	struct cache_reader *rp = filp->private_data;
--	struct cache_queue *cq;
-+	struct cache_request *rq = filp->private_data;
- 	struct cache_detail *cd = PDE(ino)->data;
-+	struct list_head *queue = &cd->queue;
- 
--	if (cmd != FIONREAD || !rp)
-+	if (cmd != FIONREAD)
- 		return -EINVAL;
- 
- 	spin_lock(&queue_lock);
-@@ -849,14 +819,11 @@ cache_ioctl(struct inode *ino, struct file *filp,
- 	/* only find the length remaining in current request,
- 	 * or the length of the next request
- 	 */
--	for (cq= &rp->q; &cq->list != &cd->queue;
--	     cq = list_entry(cq->list.next, struct cache_queue, list))
--		if (!cq->reader) {
--			struct cache_request *cr =
--				container_of(cq, struct cache_request, q);
--			len = cr->len - rp->offset;
--			break;
--		}
-+	if (!rq)
-+		rq = list_first_entry(queue, struct cache_request, list);
-+	if (rq)
-+		len = rq->len - rq->offset;
-+
- 	spin_unlock(&queue_lock);
- 
- 	return put_user(len, (int __user *)arg);
-@@ -865,51 +832,33 @@ cache_ioctl(struct inode *ino, struct file *filp,
- static int
- cache_open(struct inode *inode, struct file *filp)
- {
--	struct cache_reader *rp = NULL;
--
- 	nonseekable_open(inode, filp);
- 	if (filp->f_mode & FMODE_READ) {
- 		struct cache_detail *cd = PDE(inode)->data;
- 
--		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
--		if (!rp)
--			return -ENOMEM;
--		rp->offset = 0;
--		rp->q.reader = 1;
- 		atomic_inc(&cd->readers);
--		spin_lock(&queue_lock);
--		list_add(&rp->q.list, &cd->queue);
--		spin_unlock(&queue_lock);
- 	}
--	filp->private_data = rp;
-+	filp->private_data = NULL;
- 	return 0;
- }
- 
- static int
- cache_release(struct inode *inode, struct file *filp)
- {
--	struct cache_reader *rp = filp->private_data;
-+	struct cache_request *rq = filp->private_data;
- 	struct cache_detail *cd = PDE(inode)->data;
-+	struct list_head *queue = &cd->queue;
-+
-+	filp->private_data = NULL;
- 
--	if (rp) {
-+	if (rq) {
-+		rq->offset = 0;
- 		spin_lock(&queue_lock);
--		if (rp->offset) {
--			struct cache_queue *cq;
--			for (cq= &rp->q; &cq->list != &cd->queue;
--			     cq = list_entry(cq->list.next, struct cache_queue, list))
--				if (!cq->reader) {
--					container_of(cq, struct cache_request, q)
--						->readers--;
--					break;
--				}
--			rp->offset = 0;
--		}
--		list_del(&rp->q.list);
-+		list_add_tail(&rq->list, queue);
- 		spin_unlock(&queue_lock);
- 
--		filp->private_data = NULL;
--		kfree(rp);
--
-+	}
-+	if (filp->f_mode & FMODE_READ) {
- 		cd->last_close = get_seconds();
- 		atomic_dec(&cd->readers);
- 	}
-@@ -932,20 +881,15 @@ static const struct file_operations cache_file_operations = {
- 
- static void queue_loose(struct cache_detail *detail, struct cache_head *ch)
- {
--	struct cache_queue *cq;
-+	struct cache_request *rq;
- 	spin_lock(&queue_lock);
--	list_for_each_entry(cq, &detail->queue, list)
--		if (!cq->reader) {
--			struct cache_request *cr = container_of(cq, struct cache_request, q);
--			if (cr->item != ch)
--				continue;
--			if (cr->readers != 0)
--				continue;
--			list_del(&cr->q.list);
-+	list_for_each_entry(rq, &detail->queue, list)
-+		if (rq->item  == ch) {
-+			list_del(&rq->list);
- 			spin_unlock(&queue_lock);
--			cache_put(cr->item, detail);
--			kfree(cr->buf);
--			kfree(cr);
-+			cache_put(rq->item, detail);
-+			kfree(rq->buf);
-+			kfree(rq);
- 			return;
- 		}
- 	spin_unlock(&queue_lock);
-@@ -1074,13 +1018,12 @@ static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h)
- 		kfree(crq);
- 		return -EAGAIN;
- 	}
--	crq->q.reader = 0;
- 	crq->item = cache_get(h);
- 	crq->buf = buf;
- 	crq->len = PAGE_SIZE - len;
--	crq->readers = 0;
-+	crq->offset = 0;
- 	spin_lock(&queue_lock);
--	list_add_tail(&crq->q.list, &detail->queue);
-+	list_add_tail(&crq->list, &detail->queue);
- 	spin_unlock(&queue_lock);
- 	wake_up(&queue_wait);
- 	return 0;
+Jan  8 15:29:17 ying3 kernel: =======================================================
+Jan  8 15:29:17 ying3 kernel: [ INFO: possible circular locking dependency detected ]
+Jan  8 15:29:17 ying3 kernel: 2.6.28-07532-g393a64e #71
+Jan  8 15:29:17 ying3 kernel: -------------------------------------------------------
+Jan  8 15:29:17 ying3 kernel: tlocklfs/3527 is trying to acquire lock:
+Jan  8 15:29:17 ying3 kernel:  (sk_lock-AF_INET-RPC){--..}, at: [<c076609c>] tcp_sendmsg+0x1c/0xa80
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: but task is already holding lock:
+Jan  8 15:29:17 ying3 kernel:  (&mm->mmap_sem){----}, at: [<c0835fb7>] do_page_fault+0xc7/0x820
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: which lock already depends on the new lock.
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: the existing dependency chain (in reverse order) is:
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: -> #1 (&mm->mmap_sem){----}:
+Jan  8 15:29:17 ying3 kernel:        [<c024900d>] __lock_acquire+0xfcd/0x18e0
+Jan  8 15:29:17 ying3 kernel:        [<c024997c>] lock_acquire+0x5c/0x80
+Jan  8 15:29:17 ying3 kernel:        [<c027dffb>] might_fault+0x7b/0xa0
+Jan  8 15:29:17 ying3 kernel:        [<c054bb26>] copy_from_user+0x36/0x90
+Jan  8 15:29:17 ying3 kernel:        [<c0737800>] memcpy_fromiovecend+0x60/0x90
+Jan  8 15:29:17 ying3 kernel:        [<c075ce9f>] ip_generic_getfrag+0x9f/0xb0
+Jan  8 15:29:17 ying3 kernel:        [<c075cb6b>] ip_append_data+0x6bb/0x950
+Jan  8 15:29:17 ying3 kernel:        [<c077cb0d>] udp_sendmsg+0x2bd/0x680
+Jan  8 15:29:17 ying3 kernel:        [<c07835f9>] inet_sendmsg+0x39/0x70
+Jan  8 15:29:17 ying3 kernel:        [<c072f0e6>] sock_sendmsg+0xd6/0x100
+Jan  8 15:29:17 ying3 kernel:        [<c072f485>] kernel_sendmsg+0x35/0x50
+Jan  8 15:29:17 ying3 kernel:        [<c07da698>] xs_send_kvec+0xa8/0xb0
+Jan  8 15:29:17 ying3 kernel:        [<c07da711>] xs_sendpages+0x71/0x210
+Jan  8 15:29:17 ying3 kernel:        [<c07dab30>] xs_udp_send_request+0x40/0x120
+Jan  8 15:29:17 ying3 kernel:        [<c07d91ff>] xprt_transmit+0x6f/0x280
+Jan  8 15:29:17 ying3 kernel:        [<c07d6c1f>] call_transmit+0x17f/0x250
+Jan  8 15:29:17 ying3 kernel:        [<c07dda13>] __rpc_execute+0x73/0x250
+Jan  8 15:29:17 ying3 kernel:        [<c07ddc0e>] rpc_execute+0x1e/0x30
+Jan  8 15:29:17 ying3 kernel:        [<c07d7705>] rpc_run_task+0x35/0x70
+Jan  8 15:29:17 ying3 kernel:        [<c07d7860>] rpc_call_sync+0x40/0x70
+Jan  8 15:29:17 ying3 kernel:        [<c07e5312>] rpcb_register_call+0xa2/0xd0
+Jan  8 15:29:17 ying3 kernel:        [<c07e53d2>] rpcb_register+0x92/0xe0
+Jan  8 15:29:17 ying3 kernel:        [<c07e0446>] svc_unregister+0x66/0xe0
+Jan  8 15:29:17 ying3 kernel:        [<c07e0c66>] __svc_create+0x1c6/0x1f0
+Jan  8 15:29:17 ying3 kernel:        [<c07e0e13>] svc_create+0x23/0x30
+Jan  8 15:29:17 ying3 kernel:        [<c0396293>] nfs_callback_up+0x73/0x1b0
+Jan  8 15:29:17 ying3 kernel:        [<c036bb95>] nfs_get_client+0x2d5/0x410
+Jan  8 15:29:17 ying3 kernel:        [<c036bd15>] nfs4_set_client+0x45/0x1e0
+Jan  8 15:29:17 ying3 kernel:        [<c036c57e>] nfs4_create_server+0xae/0x430
+Jan  8 15:29:17 ying3 kernel:        [<c0376fda>] nfs4_get_sb+0x34a/0x5d0
+Jan  8 15:29:17 ying3 kernel:        [<c029663e>] vfs_kern_mount+0x5e/0x130
+Jan  8 15:29:17 ying3 kernel:        [<c029676e>] do_kern_mount+0x3e/0xe0
+Jan  8 15:29:17 ying3 kernel:        [<c02aca44>] do_mount+0x434/0x7b0
+Jan  8 15:29:17 ying3 kernel:        [<c02ace51>] sys_mount+0x91/0xc0
+Jan  8 15:29:17 ying3 kernel:        [<c02034c5>] sysenter_do_call+0x12/0x35
+Jan  8 15:29:17 ying3 kernel:        [<ffffffff>] 0xffffffff
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: -> #0 (sk_lock-AF_INET-RPC){--..}:
+Jan  8 15:29:17 ying3 kernel:        [<c024923d>] __lock_acquire+0x11fd/0x18e0
+Jan  8 15:29:17 ying3 kernel:        [<c024997c>] lock_acquire+0x5c/0x80
+Jan  8 15:29:17 ying3 kernel:        [<c0731574>] lock_sock_nested+0xc4/0xe0
+Jan  8 15:29:17 ying3 kernel:        [<c076609c>] tcp_sendmsg+0x1c/0xa80
+Jan  8 15:29:17 ying3 kernel:        [<c072f0e6>] sock_sendmsg+0xd6/0x100
+Jan  8 15:29:17 ying3 kernel:        [<c072f485>] kernel_sendmsg+0x35/0x50
+Jan  8 15:29:17 ying3 kernel:        [<c07da698>] xs_send_kvec+0xa8/0xb0
+Jan  8 15:29:17 ying3 kernel:        [<c07da711>] xs_sendpages+0x71/0x210
+Jan  8 15:29:17 ying3 kernel:        [<c07da9d8>] xs_tcp_send_request+0x58/0x170
+Jan  8 15:29:17 ying3 kernel:        [<c07d91ff>] xprt_transmit+0x6f/0x280
+Jan  8 15:29:17 ying3 kernel:        [<c07d6c1f>] call_transmit+0x17f/0x250
+Jan  8 15:29:17 ying3 kernel:        [<c07dda13>] __rpc_execute+0x73/0x250
+Jan  8 15:29:17 ying3 kernel:        [<c07ddc0e>] rpc_execute+0x1e/0x30
+Jan  8 15:29:17 ying3 kernel:        [<c07d7705>] rpc_run_task+0x35/0x70
+Jan  8 15:29:17 ying3 kernel:        [<c037c924>] nfs_read_rpcsetup+0x174/0x1f0
+Jan  8 15:29:17 ying3 kernel:        [<c037ce8e>] nfs_pagein_one+0x9e/0xe0
+Jan  8 15:29:17 ying3 kernel:        [<c037a73a>] nfs_pageio_doio+0x3a/0x80
+Jan  8 15:29:17 ying3 kernel:        [<c037a78d>] nfs_pageio_complete+0xd/0x10
+Jan  8 15:29:17 ying3 kernel:        [<c037c21c>] nfs_readpages+0xec/0x1d0
+Jan  8 15:29:17 ying3 kernel:        [<c02735cc>] __do_page_cache_readahead+0x1bc/0x280
+Jan  8 15:29:17 ying3 kernel:        [<c02736e0>] do_page_cache_readahead+0x50/0x70
+Jan  8 15:29:17 ying3 kernel:        [<c026b82f>] filemap_fault+0x31f/0x470
+Jan  8 15:29:17 ying3 kernel:        [<c027e370>] __do_fault+0x40/0x3d0
+Jan  8 15:29:17 ying3 kernel:        [<c027ff91>] handle_mm_fault+0x111/0x610
+Jan  8 15:29:17 ying3 kernel:        [<c0836105>] do_page_fault+0x215/0x820
+Jan  8 15:29:17 ying3 kernel:        [<c0834347>] error_code+0x6f/0x74
+Jan  8 15:29:17 ying3 kernel:        [<c02caff5>] load_elf_binary+0x8e5/0x1a20
+Jan  8 15:29:17 ying3 kernel:        [<c02990a3>] search_binary_handler+0x173/0x2f0
+Jan  8 15:29:17 ying3 kernel:        [<c029a31d>] do_execve+0x1cd/0x220
+Jan  8 15:29:17 ying3 kernel:        [<c0201793>] sys_execve+0x43/0x70
+Jan  8 15:29:17 ying3 kernel:        [<c02034c5>] sysenter_do_call+0x12/0x35
+Jan  8 15:29:17 ying3 kernel:        [<ffffffff>] 0xffffffff
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: other info that might help us debug this:
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: 2 locks held by tlocklfs/3527:
+Jan  8 15:29:17 ying3 kernel:  #0:  (&p->cred_exec_mutex){--..}, at: [<c029a1bb>] do_execve+0x6b/0x220
+Jan  8 15:29:17 ying3 kernel:  #1:  (&mm->mmap_sem){----}, at: [<c0835fb7>] do_page_fault+0xc7/0x820
+Jan  8 15:29:17 ying3 kernel: 
+Jan  8 15:29:17 ying3 kernel: stack backtrace:
+Jan  8 15:29:17 ying3 kernel: Pid: 3527, comm: tlocklfs Not tainted 2.6.28-07532-g393a64e #71
+Jan  8 15:29:17 ying3 kernel: Call Trace:
+Jan  8 15:29:17 ying3 kernel:  [<c083091a>] ? printk+0x1d/0x1f
+Jan  8 15:29:17 ying3 kernel:  [<c0247c18>] print_circular_bug_tail+0xc8/0xd0
+Jan  8 15:29:17 ying3 kernel:  [<c024923d>] __lock_acquire+0x11fd/0x18e0
+Jan  8 15:29:17 ying3 kernel:  [<c07314dc>] ? lock_sock_nested+0x2c/0xe0
+Jan  8 15:29:17 ying3 kernel:  [<c024997c>] lock_acquire+0x5c/0x80
+Jan  8 15:29:17 ying3 kernel:  [<c076609c>] ? tcp_sendmsg+0x1c/0xa80
+Jan  8 15:29:17 ying3 kernel:  [<c0731574>] lock_sock_nested+0xc4/0xe0
+Jan  8 15:29:17 ying3 kernel:  [<c076609c>] ? tcp_sendmsg+0x1c/0xa80
+Jan  8 15:29:17 ying3 kernel:  [<c0270934>] ? free_hot_cold_page+0x174/0x2a0
+Jan  8 15:29:17 ying3 kernel:  [<c076609c>] tcp_sendmsg+0x1c/0xa80
+Jan  8 15:29:17 ying3 kernel:  [<c02451aa>] ? find_usage_backwards+0xaa/0x120
+Jan  8 15:29:17 ying3 kernel:  [<c0270b86>] ? free_pages+0x46/0x50
+Jan  8 15:29:17 ying3 kernel:  [<c02451aa>] ? find_usage_backwards+0xaa/0x120
+Jan  8 15:29:17 ying3 kernel:  [<c02451aa>] ? find_usage_backwards+0xaa/0x120
+Jan  8 15:29:17 ying3 kernel:  [<c072f0e6>] sock_sendmsg+0xd6/0x100
+Jan  8 15:29:17 ying3 kernel:  [<c0239280>] ? autoremove_wake_function+0x0/0x50
+Jan  8 15:29:17 ying3 kernel:  [<c0248ea0>] ? __lock_acquire+0xe60/0x18e0
+Jan  8 15:29:17 ying3 kernel:  [<c0248ea0>] ? __lock_acquire+0xe60/0x18e0
+Jan  8 15:29:17 ying3 kernel:  [<c072f485>] kernel_sendmsg+0x35/0x50
+Jan  8 15:29:17 ying3 kernel:  [<c07da698>] xs_send_kvec+0xa8/0xb0
+Jan  8 15:29:17 ying3 kernel:  [<c07da711>] xs_sendpages+0x71/0x210
+Jan  8 15:29:17 ying3 kernel:  [<c055020f>] ? debug_object_deactivate+0xbf/0x100
+Jan  8 15:29:17 ying3 kernel:  [<c07da9d8>] xs_tcp_send_request+0x58/0x170
+Jan  8 15:29:17 ying3 kernel:  [<c07d91ff>] xprt_transmit+0x6f/0x280
+Jan  8 15:29:17 ying3 kernel:  [<c0392760>] ? nfs4_xdr_enc_read+0x0/0x110
+Jan  8 15:29:17 ying3 kernel:  [<c07d6c1f>] call_transmit+0x17f/0x250
+Jan  8 15:29:17 ying3 kernel:  [<c07dda13>] __rpc_execute+0x73/0x250
+Jan  8 15:29:17 ying3 kernel:  [<c0833a9c>] ? _spin_unlock+0x2c/0x50
+Jan  8 15:29:17 ying3 kernel:  [<c07dd297>] ? rpc_set_active+0x67/0x80
+Jan  8 15:29:17 ying3 kernel:  [<c07ddc0e>] rpc_execute+0x1e/0x30
+Jan  8 15:29:17 ying3 kernel:  [<c07d7705>] rpc_run_task+0x35/0x70
+Jan  8 15:29:17 ying3 kernel:  [<c037c924>] nfs_read_rpcsetup+0x174/0x1f0
+Jan  8 15:29:17 ying3 kernel:  [<c0290b61>] ? kmem_cache_alloc+0xd1/0x140
+Jan  8 15:29:17 ying3 kernel:  [<c026d583>] ? mempool_alloc_slab+0x13/0x20
+Jan  8 15:29:17 ying3 last message repeated 2 times
+Jan  8 15:29:17 ying3 kernel:  [<c037ce8e>] nfs_pagein_one+0x9e/0xe0
+Jan  8 15:29:17 ying3 kernel:  [<c037a73a>] nfs_pageio_doio+0x3a/0x80
+Jan  8 15:29:17 ying3 kernel:  [<c037a78d>] nfs_pageio_complete+0xd/0x10
+Jan  8 15:29:17 ying3 kernel:  [<c037c21c>] nfs_readpages+0xec/0x1d0
+Jan  8 15:29:17 ying3 kernel:  [<c02711c3>] ? __alloc_pages_internal+0xc3/0x4d0
+Jan  8 15:29:17 ying3 kernel:  [<c037cdf0>] ? nfs_pagein_one+0x0/0xe0
+Jan  8 15:29:17 ying3 kernel:  [<c037c130>] ? nfs_readpages+0x0/0x1d0
+Jan  8 15:29:17 ying3 kernel:  [<c02735cc>] __do_page_cache_readahead+0x1bc/0x280
+Jan  8 15:29:17 ying3 kernel:  [<c02734d5>] ? __do_page_cache_readahead+0xc5/0x280
+Jan  8 15:29:17 ying3 kernel:  [<c02736e0>] do_page_cache_readahead+0x50/0x70
+Jan  8 15:29:17 ying3 kernel:  [<c026b82f>] filemap_fault+0x31f/0x470
+Jan  8 15:29:17 ying3 kernel:  [<c027e370>] __do_fault+0x40/0x3d0
+Jan  8 15:29:17 ying3 kernel:  [<c0833a9c>] ? _spin_unlock+0x2c/0x50
+Jan  8 15:29:17 ying3 kernel:  [<c027ff91>] handle_mm_fault+0x111/0x610
+Jan  8 15:29:17 ying3 kernel:  [<c0835fb7>] ? do_page_fault+0xc7/0x820
+Jan  8 15:29:17 ying3 kernel:  [<c023cd8d>] ? down_read_trylock+0x5d/0x70
+Jan  8 15:29:17 ying3 kernel:  [<c0836105>] do_page_fault+0x215/0x820
+Jan  8 15:29:17 ying3 kernel:  [<c0546741>] ? prio_tree_insert+0x211/0x290
+Jan  8 15:29:17 ying3 kernel:  [<c0833a9c>] ? _spin_unlock+0x2c/0x50
+Jan  8 15:29:17 ying3 kernel:  [<c0283a52>] ? vma_link+0x82/0xa0
+Jan  8 15:29:17 ying3 kernel:  [<c0284fd2>] ? mmap_region+0x2d2/0x4f0
+Jan  8 15:29:17 ying3 kernel:  [<c027dfca>] ? might_fault+0x4a/0xa0
+Jan  8 15:29:17 ying3 kernel:  [<c0835ef0>] ? do_page_fault+0x0/0x820
+Jan  8 15:29:17 ying3 kernel:  [<c0834347>] error_code+0x6f/0x74
+Jan  8 15:29:17 ying3 kernel:  [<c027007b>] ? __free_pages_ok+0x27b/0x480
+Jan  8 15:29:17 ying3 kernel:  [<c054b9b7>] ? clear_user+0x47/0x60
+Jan  8 15:29:17 ying3 kernel:  [<c02caff5>] load_elf_binary+0x8e5/0x1a20
+Jan  8 15:29:17 ying3 kernel:  [<c0247411>] ? mark_held_locks+0x41/0x80
+Jan  8 15:29:17 ying3 kernel:  [<c0833a55>] ? _spin_unlock_irqrestore+0x55/0x70
+Jan  8 15:29:17 ying3 kernel:  [<c0247651>] ? trace_hardirqs_on_caller+0x141/0x1a0
+Jan  8 15:29:17 ying3 kernel:  [<c0298f8f>] ? search_binary_handler+0x5f/0x2f0
+Jan  8 15:29:17 ying3 kernel:  [<c02990a3>] search_binary_handler+0x173/0x2f0
+Jan  8 15:29:17 ying3 kernel:  [<c02ca710>] ? load_elf_binary+0x0/0x1a20
+Jan  8 15:29:17 ying3 kernel:  [<c029a31d>] do_execve+0x1cd/0x220
+Jan  8 15:29:17 ying3 kernel:  [<c0201793>] sys_execve+0x43/0x70
+Jan  8 15:29:17 ying3 kernel:  [<c02034c5>] sysenter_do_call+0x12/0x35
+Jan  8 15:29:26 ying3 kernel: tlocklfs used greatest stack depth: 4252 bytes left
+Jan  8 15:29:55 ying3 kernel: aoe: 00188b809a6e e2.3 v400f has 2048000 sectors
+Jan  8 15:29:55 ying3 kernel:  etherd/e2.3: unknown partition table
