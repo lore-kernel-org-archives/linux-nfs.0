@@ -1,187 +1,283 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/5] text-based mount command: make po_rightmost() work for N
-	options
-Date: Thu, 08 Jan 2009 12:32:42 -0500
-Message-ID: <20090108173241.19893.57156.stgit@ingres.1015granger.net>
+Subject: [PATCH 2/5] text-based mount command: Function to stuff "struct pmap"
+	from mount options
+Date: Thu, 08 Jan 2009 12:32:48 -0500
+Message-ID: <20090108173247.19893.17040.stgit@ingres.1015granger.net>
 References: <20090108172526.19893.91621.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:64539 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751239AbZAHRdQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2009 12:33:16 -0500
+Received: from rcsinet13.oracle.com ([148.87.113.125]:60416 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750814AbZAHRd1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2009 12:33:27 -0500
 In-Reply-To: <20090108172526.19893.91621.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sometimes we need to choose the rightmost option among multiple
-different mount options.  For example, we want to find the rightmost
-of "proto," "tcp," and "udp".  Or, the rightmost of "vers," "nfsvers,"
-"v2," and "v3".
-
-Update po_rightmost() to choose among N options instead of just two.
+Both the text-based mount.nfs command and the umount.nfs command need
+to fill in a pmap structure based on string mount options.  Introduce
+a shared function that can do this.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/parse_opt.c |   28 ++++++++++++++++------------
- utils/mount/parse_opt.h |    9 ++-------
- utils/mount/stropts.c   |   28 +++++++++++++++++++++++-----
- 3 files changed, 41 insertions(+), 24 deletions(-)
+ utils/mount/network.c |  214 +++++++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/network.h |    5 +
+ 2 files changed, 219 insertions(+), 0 deletions(-)
 
-diff --git a/utils/mount/parse_opt.c b/utils/mount/parse_opt.c
-index f61d0dd..4934508 100644
---- a/utils/mount/parse_opt.c
-+++ b/utils/mount/parse_opt.c
-@@ -421,34 +421,38 @@ po_found_t po_get_numeric(struct mount_options *options, char *keyword, long *va
- #endif	/* HAVE_STRTOL */
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index d262e94..91a005c 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -48,6 +48,7 @@
+ #include "nfs_mount.h"
+ #include "mount_constants.h"
+ #include "nfsrpc.h"
++#include "parse_opt.h"
+ #include "network.h"
  
- /**
-- * po_rightmost - determine the relative position of two options
-+ * po_rightmost - determine the relative position of several options
-  * @options: pointer to mount options
-- * @key1: pointer to a C string containing an option keyword
-- * @key2: pointer to a C string containing another option keyword
-+ * @keys: pointer to an array of C strings containing option keywords
-+ *
-+ * This function can be used to determine which of several similar
-+ * options will be the one to take effect.
-  *
-  * The kernel parses the mount option string from left to right.
-  * If an option is specified more than once (for example, "intr"
-  * and "nointr", the rightmost option is the last to be parsed,
-  * and it therefore takes precedence over previous similar options.
-  *
-- * This function can be used to determine which of two similar
-- * options will be the one to take effect.
-+ * This can also distinguish among multiple synonymous options, such
-+ * as "proto=," "udp" and "tcp."
-+ *
-+ * Returns the index into @keys of the option that is rightmost.
-+ * If none of the options are present, returns zero.
-  */
--po_rightmost_t po_rightmost(struct mount_options *options,
--			    char *key1, char *key2)
-+unsigned int po_rightmost(struct mount_options *options, const char *keys[])
- {
- 	struct mount_option *option;
-+	unsigned int i;
+ #define PMAP_TIMEOUT	(10)
+@@ -67,6 +68,33 @@ static const char *nfs_ns_pgmtbl[] = {
+ 	NULL,
+ };
  
- 	if (options) {
- 		for (option = options->tail; option; option = option->prev) {
--			if (key2 && strcmp(option->keyword, key2) == 0)
--				return PO_KEY2_RIGHTMOST;
--			if (key1 && strcmp(option->keyword, key1) == 0)
--				return PO_KEY1_RIGHTMOST;
-+			for (i = 0; keys[i] != NULL; i++)
-+				if (strcmp(option->keyword, keys[i]) == 0)
-+					return i;
- 		}
- 	}
- 
--	return PO_NEITHER_FOUND;
-+	return 0;
- }
- 
- /**
-diff --git a/utils/mount/parse_opt.h b/utils/mount/parse_opt.h
-index 199630f..e132b1c 100644
---- a/utils/mount/parse_opt.h
-+++ b/utils/mount/parse_opt.h
-@@ -35,12 +35,6 @@ typedef enum {
- 	PO_BAD_VALUE = 2,
- } po_found_t;
- 
--typedef enum {
--	PO_KEY1_RIGHTMOST = -1,
--	PO_NEITHER_FOUND = 0,
--	PO_KEY2_RIGHTMOST = 1,
--} po_rightmost_t;
--
- struct mount_options;
- 
- struct mount_options *	po_split(char *);
-@@ -53,7 +47,8 @@ po_found_t		po_contains(struct mount_options *, char *);
- char *			po_get(struct mount_options *, char *);
- po_found_t		po_get_numeric(struct mount_options *,
- 					char *, long *);
--po_rightmost_t		po_rightmost(struct mount_options *, char *, char *);
-+unsigned int		po_rightmost(struct mount_options *,
-+					const char *keys[]);
- po_found_t		po_remove_all(struct mount_options *, char *);
- void			po_destroy(struct mount_options *);
- 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 43791e6..bd127ab 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -224,9 +224,15 @@ static int nfs_fix_mounthost_option(const sa_family_t family,
-  * Returns zero if the "lock" option is in effect, but statd
-  * can't be started.  Otherwise, returns 1.
-  */
-+static const char *nfs_lock_opttbl[] = {
-+	"nolock",
-+	"lock",
++static const char *nfs_mnt_pgmtbl[] = {
++	"mount",
++	"mountd",
 +	NULL,
 +};
 +
- static int nfs_verify_lock_option(struct mount_options *options)
- {
--	if (po_rightmost(options, "nolock", "lock") == PO_KEY1_RIGHTMOST)
-+	if (po_rightmost(options, nfs_lock_opttbl) == 1)
- 		return 1;
- 
- 	if (!start_statd()) {
-@@ -316,6 +322,12 @@ static int nfs_is_permanent_error(int error)
-  * Returns a new group of mount options if successful; otherwise
-  * NULL is returned if some failure occurred.
-  */
++static const char *nfs_nfs_pgmtbl[] = {
++	"nfs",
++	"nfsprog",
++	NULL,
++};
++
 +static const char *nfs_transport_opttbl[] = {
 +	"udp",
 +	"tcp",
++	"proto",
 +	NULL,
 +};
 +
- static struct mount_options *nfs_rewrite_mount_options(char *str)
- {
- 	struct mount_options *options;
-@@ -395,12 +407,12 @@ static struct mount_options *nfs_rewrite_mount_options(char *str)
- 			po_remove_all(options, "proto");
- 		}
- 	}
--	p = po_rightmost(options, "tcp", "udp");
-+	p = po_rightmost(options, nfs_transport_opttbl);
- 	switch (p) {
--	case PO_KEY2_RIGHTMOST:
-+	case 1:
- 		nfs_server.pmap.pm_prot = IPPROTO_UDP;
- 		break;
--	case PO_KEY1_RIGHTMOST:
-+	case 2:
- 		nfs_server.pmap.pm_prot = IPPROTO_TCP;
- 		break;
- 	}
-@@ -722,12 +734,18 @@ static int nfsmount_bg(struct nfsmount_info *mi)
-  *
-  * Returns a valid mount command exit code.
-  */
-+static const char *nfs_background_opttbl[] = {
-+	"bg",
-+	"fg",
++static const char *nfs_version_opttbl[] = {
++	"v2",
++	"v3",
++	"vers",
++	"nfsvers",
 +	NULL,
 +};
 +
- static int nfsmount_start(struct nfsmount_info *mi)
- {
- 	if (!nfs_validate_options(mi))
- 		return EX_FAIL;
+ static const unsigned long nfs_to_mnt[] = {
+ 	0,
+ 	0,
+@@ -1111,3 +1139,189 @@ out_failed:
+ 	return 0;
  
--	if (po_rightmost(mi->options, "bg", "fg") == PO_KEY1_RIGHTMOST)
-+	if (po_rightmost(mi->options, nfs_background_opttbl) == 1)
- 		return nfsmount_bg(mi);
- 	else
- 		return nfsmount_fg(mi);
+ }
++
++/*
++ * "nfsprog" is only supported by the legacy mount command.  The
++ * kernel mount client does not support this option.
++ *
++ * Returns the value set by the nfsprog= option, the value of
++ * the RPC NFS program specified in /etc/rpc, or a baked-in
++ * default program number, if all fails.
++ */
++static rpcprog_t nfs_nfs_program(struct mount_options *options)
++{
++	long tmp;
++
++	if (po_get_numeric(options, "nfsprog", &tmp) == PO_FOUND)
++		if (tmp >= 0)
++			return tmp;
++	return nfs_getrpcbyname(NFSPROG, nfs_nfs_pgmtbl);
++}
++
++
++/*
++ * Returns the RPC version number specified by the given mount
++ * options for the NFS service, or zero if all fails.
++ */
++static rpcvers_t nfs_nfs_version(struct mount_options *options)
++{
++	long tmp;
++
++	switch (po_rightmost(options, nfs_version_opttbl)) {
++	case 1:	/* v2 */
++		return 2;
++	case 2: /* v3 */
++		return 3;
++	case 3:	/* vers */
++		if (po_get_numeric(options, "vers", &tmp) == PO_FOUND)
++			if (tmp >= 2 && tmp <= 3)
++				return tmp;
++		break;
++	case 4: /* nfsvers */
++		if (po_get_numeric(options, "nfsvers", &tmp) == PO_FOUND)
++			if (tmp >= 2 && tmp <= 3)
++				return tmp;
++		break;
++	}
++
++	return 0;
++}
++
++/*
++ * Returns the NFS transport protocol specified by the given mount options
++ *
++ * Returns the IPPROTO_ value specified by the given mount options, or
++ * IPPROTO_UDP if all fails.
++ */
++static unsigned short nfs_nfs_protocol(struct mount_options *options)
++{
++	char *option;
++
++	switch (po_rightmost(options, nfs_transport_opttbl)) {
++	case 1:	/* udp */
++		return IPPROTO_UDP;
++	case 2: /* tcp */
++		return IPPROTO_TCP;
++	case 3: /* proto */
++		option = po_get(options, "proto");
++		if (option) {
++			if (strcmp(option, "tcp") == 0)
++				return IPPROTO_TCP;
++			if (strcmp(option, "udp") == 0)
++				return IPPROTO_UDP;
++		}
++	}
++	return IPPROTO_UDP;
++}
++
++/*
++ * Returns the NFS server's port number specified by the given
++ * mount options, or zero if all fails.  Zero results in a portmap
++ * query to discover the server's mountd service port.
++ *
++ * port=0 will guarantee an rpcbind request precedes the first
++ * NFS RPC so the client can determine the server's port number.
++ */
++static unsigned short nfs_nfs_port(struct mount_options *options)
++{
++	long tmp;
++
++	if (po_get_numeric(options, "port", &tmp) == PO_FOUND)
++		if (tmp >= 0 && tmp <= 65535)
++			return tmp;
++	return 0;
++}
++
++/*
++ * "mountprog" is only supported by the legacy mount command.  The
++ * kernel mount client does not support this option.
++ *
++ * Returns the value set by the mountprog= option, the value of
++ * the RPC mount program specified in /etc/rpc, or a baked-in
++ * default program number, if all fails.
++ */
++static rpcprog_t nfs_mount_program(struct mount_options *options)
++{
++	long tmp;
++
++	if (po_get_numeric(options, "mountprog", &tmp) == PO_FOUND)
++		if (tmp >= 0)
++			return tmp;
++	return nfs_getrpcbyname(MOUNTPROG, nfs_mnt_pgmtbl);
++}
++
++/*
++ * Returns the RPC version number specified by the given mount options,
++ * or the version "3" if all fails.
++ */
++static rpcvers_t nfs_mount_version(struct mount_options *options)
++{
++	long tmp;
++
++	if (po_get_numeric(options, "mountvers", &tmp) == PO_FOUND)
++		if (tmp >= 1 && tmp <= 4)
++			return tmp;
++
++	return nfsvers_to_mnt(nfs_nfs_version(options));
++}
++
++/*
++ * Returns the transport protocol to use for the mount service
++ *
++ * Returns the IPPROTO_ value specified by the mountproto option, or
++ * if that doesn't exist, the IPPROTO_ value specified for NFS
++ * itself.
++ */
++static unsigned short nfs_mount_protocol(struct mount_options *options)
++{
++	char *option;
++
++	option = po_get(options, "mountproto");
++	if (option) {
++		if (strcmp(option, "tcp") == 0)
++			return IPPROTO_TCP;
++		if (strcmp(option, "udp") == 0)
++			return IPPROTO_UDP;
++	}
++
++	return nfs_nfs_version(options);
++}
++
++/*
++ * Returns the mountd server's port number specified by the given
++ * mount options, or zero if all fails.  Zero results in a portmap
++ * query to discover the server's mountd service port.
++ *
++ * port=0 will guarantee an rpcbind request precedes the mount
++ * RPC so the client can determine the server's port number.
++ */
++static unsigned short nfs_mount_port(struct mount_options *options)
++{
++	long tmp;
++
++	if (po_get_numeric(options, "mountport", &tmp) == PO_FOUND)
++		if (tmp >= 0 && tmp <= 65535)
++			return tmp;
++	return 0;
++}
++
++/**
++ * nfs_options2pmap - set up pmap structs based on mount options
++ * @options: pointer to mount options
++ * @nfs_pmap: OUT: pointer to pmap arguments for NFS server
++ * @mnt_pmap: OUT: pointer to pmap arguments for mountd server
++ *
++ */
++void nfs_options2pmap(struct mount_options *options,
++		      struct pmap *nfs_pmap, struct pmap *mnt_pmap)
++{
++	nfs_pmap->pm_prog = nfs_nfs_program(options);
++	nfs_pmap->pm_vers = nfs_nfs_version(options);
++	nfs_pmap->pm_prot = nfs_nfs_protocol(options);
++	nfs_pmap->pm_port = nfs_nfs_port(options);
++
++	mnt_pmap->pm_prog = nfs_mount_program(options);
++	mnt_pmap->pm_vers = nfs_mount_version(options);
++	mnt_pmap->pm_prot = nfs_mount_protocol(options);
++	mnt_pmap->pm_port = nfs_mount_port(options);
++}
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 075093d..25060ab 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -57,6 +57,11 @@ int clnt_ping(struct sockaddr_in *, const unsigned long,
+ 		const unsigned long, const unsigned int,
+ 		struct sockaddr_in *);
+ 
++struct mount_options;
++
++void nfs_options2pmap(struct mount_options *,
++		      struct pmap *, struct pmap *);
++
+ int start_statd(void);
+ 
+ unsigned long nfsvers_to_mnt(const unsigned long);
 
