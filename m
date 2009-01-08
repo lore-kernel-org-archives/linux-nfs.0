@@ -1,122 +1,66 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 12/14] sunrpc: Centralise memory management of cache_requests.
-Date: Thu, 08 Jan 2009 19:25:22 +1100
-Message-ID: <20090108082604.956787000@sgi.com>
+Subject: [patch 06/14] sunrpc: Gather forward declarations of static functions in cache.c.
+Date: Thu, 08 Jan 2009 19:25:16 +1100
+Message-ID: <20090108082603.660311000@sgi.com>
 References: <20090108082510.050854000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:45006 "EHLO relay.sgi.com"
+Received: from relay2.sgi.com ([192.48.179.30]:54354 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753466AbZAHI0P (ORCPT
+	id S1753431AbZAHI0O (ORCPT
 	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2009 03:26:15 -0500
+	Thu, 8 Jan 2009 03:26:14 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Centralise the allocation and freeing of cache_request objects instead
-of doing it in multiple places.  Use a reference count (but not a
-kref, that would require adding a backpointer to the cache_detail in
-the cache_request).
+Previously these forward declarations were scattered throughout
+the code.  This makes the cache code easier to read.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- net/sunrpc/cache.c |   46 +++++++++++++++++++++++++++++++-----------
- 1 file changed, 35 insertions(+), 11 deletions(-)
+ net/sunrpc/cache.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 Index: bfields/net/sunrpc/cache.c
 ===================================================================
 --- bfields.orig/net/sunrpc/cache.c
 +++ bfields/net/sunrpc/cache.c
-@@ -688,11 +688,39 @@ void cache_clean_deferred(void *owner)
+@@ -36,6 +36,9 @@
  
- struct cache_request {
- 	struct list_head	list;
-+	atomic_t		count;
- 	struct cache_head	*item;
- 	int			len;
- 	char			buf[0];
- };
+ static int cache_defer_req(struct cache_req *req, struct cache_head *h);
+ static void cache_revisit_request(struct cache_head *h);
++static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h);
++static void cache_remove_queued(struct cache_detail *cd, struct cache_head *h);
++static void do_cache_clean(struct work_struct *work);
  
-+static void
-+cache_request_put(struct cache_request *rq, struct cache_detail *cd)
-+{
-+	if (atomic_dec_and_test(&rq->count)) {
-+		cache_put(rq->item, cd);
-+		kfree(rq);
-+	}
-+}
-+
-+static struct cache_request *
-+cache_request_get(struct cache_head *h)
-+{
-+	struct cache_request *rq;
-+
-+	rq = kmalloc(PAGE_SIZE, GFP_KERNEL);
-+	if (!rq)
-+		return NULL;
-+
-+	memset(rq, 0, sizeof(*rq));
-+	INIT_LIST_HEAD(&rq->list);
-+	atomic_set(&rq->count, 1);
-+	rq->len = PAGE_SIZE - sizeof(*rq);
-+	rq->item = cache_get(h);
-+
-+	return rq;
-+}
-+
- static ssize_t
- cache_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
+ static void cache_init(struct cache_head *h)
  {
-@@ -740,8 +768,7 @@ cache_read(struct file *filp, char __use
+@@ -101,7 +104,6 @@ struct cache_head *sunrpc_cache_lookup(s
+ EXPORT_SYMBOL(sunrpc_cache_lookup);
  
- error:
- 	/* need to release rq */
--	cache_put(rq->item, cd);
--	kfree(rq);
-+	cache_request_put(rq, cd);
  
- 	return err;
+-static void cache_remove_queued(struct cache_detail *cd, struct cache_head *h);
+ 
+ static int cache_fresh_locked(struct cache_head *h, time_t expiry)
+ {
+@@ -175,7 +177,6 @@ struct cache_head *sunrpc_cache_update(s
  }
-@@ -890,10 +917,8 @@ static void cache_remove_queued(struct c
- 	spin_unlock(&cd->queue_lock);
+ EXPORT_SYMBOL(sunrpc_cache_update);
  
- 	/* if found, destroy */
--	if (rq) {
--		cache_put(rq->item, cd);
--		kfree(rq);
--	}
-+	if (rq)
-+		cache_request_put(rq, cd);
- }
- 
+-static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h);
  /*
-@@ -998,20 +1023,19 @@ static int cache_make_upcall(struct cach
- 		return -EINVAL;
- 	}
+  * This is the generic cache management routine for all
+  * the authentication caches.
+@@ -288,7 +289,6 @@ static const struct file_operations cach
+ static const struct file_operations content_file_operations;
+ static const struct file_operations cache_flush_operations;
  
--	rq = kmalloc(PAGE_SIZE, GFP_KERNEL);
-+	rq = cache_request_get(h);
- 	if (!rq)
- 		return -EAGAIN;
+-static void do_cache_clean(struct work_struct *work);
+ static DECLARE_DELAYED_WORK(cache_cleaner, do_cache_clean);
  
- 	bp = rq->buf;
--	len = PAGE_SIZE - sizeof(*rq);
-+	len = rq->len;
- 	cd->cache_request(cd, h, &bp, &len);
- 
- 	if (len < 0) {
--		kfree(rq);
-+		cache_request_put(rq, cd);
- 		return -EAGAIN;
- 	}
--	rq->item = cache_get(h);
--	rq->len = PAGE_SIZE - sizeof(*rq) - len;
-+	rq->len -= len;
- 	spin_lock(&cd->queue_lock);
- 	list_add_tail(&rq->list, &cd->to_read);
- 	spin_unlock(&cd->queue_lock);
+ static void remove_cache_proc_entries(struct cache_detail *cd)
 
 --
 -- 
