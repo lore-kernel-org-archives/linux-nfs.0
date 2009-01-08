@@ -1,115 +1,113 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 09/14] sunrpc: Remove the global lock queue_io_mutex.
-Date: Thu, 08 Jan 2009 19:25:19 +1100
-Message-ID: <20090108082604.299840000@sgi.com>
+Subject: [patch 11/14] sunrpc: Allocate cache_requests in a single allocation.
+Date: Thu, 08 Jan 2009 19:25:21 +1100
+Message-ID: <20090108082604.735830000@sgi.com>
 References: <20090108082510.050854000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:44996 "EHLO relay.sgi.com"
+Received: from relay3.sgi.com ([192.48.171.31]:44998 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753389AbZAHI0L (ORCPT
+	id S1752359AbZAHI0L (ORCPT
 	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
 	Thu, 8 Jan 2009 03:26:11 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This lock was used for two different purposes in two places.  The use
-in cache_read() is redundant because cd->queue_lock is also taken
-and can be removed without harm.  The use in cache_write() protects a
-global buffer which can be eliminated and replaced with a temporarily
-allocated page; this also removes an unnecessary global bottleneck
-when multiple rpc.mountd threads are writing down into the kernel.
+Allocate the cache_request object and it's buffer in a single
+contiguous memory allocation instead of two separate ones.
+Code trawling shows that none of the users of caches make upcalls
+anywhere near even the small x86 PAGE_SIZE, so we can afford to lose
+a few bytes.  One less allocation makes the code a little simpler.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- net/sunrpc/cache.c |   34 +++++++++++++++-------------------
- 1 file changed, 15 insertions(+), 19 deletions(-)
+ net/sunrpc/cache.c |   28 ++++++++--------------------
+ 1 file changed, 8 insertions(+), 20 deletions(-)
 
 Index: bfields/net/sunrpc/cache.c
 ===================================================================
 --- bfields.orig/net/sunrpc/cache.c
 +++ bfields/net/sunrpc/cache.c
-@@ -674,8 +674,6 @@ void cache_clean_deferred(void *owner)
-  *
-  */
- 
--static DEFINE_MUTEX(queue_io_mutex);
--
- struct cache_queue {
+@@ -689,8 +689,8 @@ void cache_clean_deferred(void *owner)
+ struct cache_request {
  	struct list_head	list;
- 	int			reader;	/* if 0, then request */
-@@ -703,8 +701,6 @@ cache_read(struct file *filp, char __use
- 	if (count == 0)
- 		return 0;
+ 	struct cache_head	*item;
+-	char			* buf;
+ 	int			len;
++	char			buf[0];
+ };
  
--	mutex_lock(&queue_io_mutex); /* protect against multiple concurrent
--			      * readers on this file */
-  again:
- 	spin_lock(&cd->queue_lock);
- 	/* need to find next request */
-@@ -716,7 +712,6 @@ cache_read(struct file *filp, char __use
- 	}
- 	if (rp->q.list.next == &cd->queue) {
- 		spin_unlock(&cd->queue_lock);
--		mutex_unlock(&queue_io_mutex);
- 		BUG_ON(rp->offset);
- 		return 0;
- 	}
-@@ -763,37 +758,38 @@ cache_read(struct file *filp, char __use
- 	}
- 	if (err == -EAGAIN)
- 		goto again;
--	mutex_unlock(&queue_io_mutex);
- 	return err ? err :  count;
- }
- 
--static char write_buf[8192]; /* protected by queue_io_mutex */
--
  static ssize_t
- cache_write(struct file *filp, const char __user *buf, size_t count,
- 	    loff_t *ppos)
- {
- 	int err;
- 	struct cache_detail *cd = PDE(filp->f_path.dentry->d_inode)->data;
-+	char *tmp;
-+	int tmp_size = PAGE_SIZE;
+@@ -741,7 +741,6 @@ cache_read(struct file *filp, char __use
+ error:
+ 	/* need to release rq */
+ 	cache_put(rq->item, cd);
+-	kfree(rq->buf);
+ 	kfree(rq);
  
- 	if (count == 0)
- 		return 0;
--	if (count >= sizeof(write_buf))
-+	if (count >= tmp_size)
- 		return -EINVAL;
- 
--	mutex_lock(&queue_io_mutex);
-+	tmp = kmalloc(tmp_size, GFP_KERNEL);
-+	if (!tmp)
-+		return -ENOMEM;
- 
--	if (copy_from_user(write_buf, buf, count)) {
--		mutex_unlock(&queue_io_mutex);
--		return -EFAULT;
--	}
--	write_buf[count] = '\0';
-+	err = -EFAULT;
-+	if (copy_from_user(tmp, buf, count))
-+		goto out;
-+
-+	tmp[count] = '\0';
-+	err = -EINVAL;
- 	if (cd->cache_parse)
--		err = cd->cache_parse(cd, write_buf, count);
--	else
--		err = -EINVAL;
-+		err = cd->cache_parse(cd, tmp, count);
- 
--	mutex_unlock(&queue_io_mutex);
-+out:
-+	kfree(tmp);
- 	return err ? err : count;
+ 	return err;
+@@ -893,7 +892,6 @@ static void cache_remove_queued(struct c
+ 	/* if found, destroy */
+ 	if (rq) {
+ 		cache_put(rq->item, cd);
+-		kfree(rq->buf);
+ 		kfree(rq);
+ 	}
  }
+@@ -983,15 +981,13 @@ static void warn_no_listener(struct cach
  
+ /*
+  * register an upcall request to user-space.
+- * Each request is at most one page long.
++ * Each request is at most (slightly less than) one page long.
+  */
+ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
+ {
+-
+-	char *buf;
+ 	struct cache_request *rq;
+ 	char *bp;
+-	int len;
++	int len;	/* bytes remaining in the buffer */
+ 
+ 	if (cd->cache_request == NULL)
+ 		return -EINVAL;
+@@ -1002,28 +998,20 @@ static int cache_make_upcall(struct cach
+ 		return -EINVAL;
+ 	}
+ 
+-	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+-	if (!buf)
+-		return -EAGAIN;
+-
+-	rq = kmalloc(sizeof (*rq), GFP_KERNEL);
+-	if (!rq) {
+-		kfree(buf);
++	rq = kmalloc(PAGE_SIZE, GFP_KERNEL);
++	if (!rq)
+ 		return -EAGAIN;
+-	}
+-
+-	bp = buf; len = PAGE_SIZE;
+ 
++	bp = rq->buf;
++	len = PAGE_SIZE - sizeof(*rq);
+ 	cd->cache_request(cd, h, &bp, &len);
+ 
+ 	if (len < 0) {
+-		kfree(buf);
+ 		kfree(rq);
+ 		return -EAGAIN;
+ 	}
+ 	rq->item = cache_get(h);
+-	rq->buf = buf;
+-	rq->len = PAGE_SIZE - len;
++	rq->len = PAGE_SIZE - sizeof(*rq) - len;
+ 	spin_lock(&cd->queue_lock);
+ 	list_add_tail(&rq->list, &cd->to_read);
+ 	spin_unlock(&cd->queue_lock);
 
 --
 -- 
