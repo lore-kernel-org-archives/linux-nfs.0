@@ -1,53 +1,55 @@
-From: Felix Bolte <gockelhahn@hotmail.com>
-Subject: RE: exporting loop devices / fsid issue
-Date: Thu, 8 Jan 2009 17:59:26 +0100
-Message-ID: <BLU106-W451DF9569DB8010229EDAAC9DC0@phx.gbl>
-References: <BLU106-W57D668101BC034E6586C60C9DF0@phx.gbl>
- <20090107205419.GH30538@fieldses.org>
- <BLU106-W41CBED673D264FC30BE28AC9DC0@phx.gbl>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/5] struct pmap stuffing
+Date: Thu, 08 Jan 2009 12:32:35 -0500
+Message-ID: <20090108172526.19893.91621.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from blu0-omc3-s1.blu0.hotmail.com ([65.55.116.76]:40917 "EHLO
-	blu0-omc3-s1.blu0.hotmail.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751692AbZAHQ71 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2009 11:59:27 -0500
-In-Reply-To: <BLU106-W41CBED673D264FC30BE28AC9DC0-MsuGFMq8XAE@public.gmane.org>
+Received: from rcsinet13.oracle.com ([148.87.113.125]:30043 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750814AbZAHRdQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2009 12:33:16 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Steve-
 
-hi again,
+Happy New Year.  Continuing with the IPv6 patch series for the NFS
+mount command, I bring you five more patches.
 
->> Anyway, yes, the composition of the filehandle did change, and it's now
->> calculated from the contents of the filesystem itself using libblkid.
->
-> what was the old behaviour or library, which calculated the fsid from the major/minor device number?
-> can i switch back?
->
-> btw: why was it changed?
+These introduce a new facility for converting a set of NFS mount
+options into a properly filled-in struct pmap, ripe for passing into
+everyday existing functions like nfs_getport().
 
-by writing my last email, i got the right idea ...
+The final patches in today's set use this new facility to correct a
+number of problems with the text-based mount command's NFS version
+detection and fallback logic.
 
-ok, i looked at libblkid ... ( http://linux.die.net/man/3/libblkid ) ...
+The next set of patches will use this new facility to bring IPv6
+support to umount.nfs.
 
-it cannot find any differences between my two files, because they are the same ...
-they will get the same fsid ... thats really bad for me ...
+If you have some unit tests for mount.nfs handling version fallback
+and/or operating in an environment that does not have an accessible
+portmapper on the server, please try them with this series applied.
 
-but libblkid calculates the fsid on the basis of labels or UUIDs ...
-fortunately my images are formatted as ext3, i could change the UUIDs on both images(partitions) with tune2fs
+---
 
-and i have to say ... it is working ... :)
-
-
-
-have a nice day
-
-felix bolte
+Chuck Lever (5):
+      text-based mount command: support AF_INET6 in rewrite_mount_options()
+      text-based mount command: fix mount option rewriting logic
+      text-based mount options: Use new pmap stuffer when rewriting mount options
+      text-based mount command: Function to stuff "struct pmap" from mount options
+      text-based mount command: make po_rightmost() work for N options
 
 
-_________________________________________________________________
-http://redirect.gimas.net/?n=M0901xLSVideo
-Welches Video willst du sehen? Neu! Webweit Videos suchen. Hier starten!
+ utils/mount/network.c   |  214 ++++++++++++++++++++++++++++++++++++++++
+ utils/mount/network.h   |    5 +
+ utils/mount/parse_opt.c |   28 +++--
+ utils/mount/parse_opt.h |    9 --
+ utils/mount/stropts.c   |  253 ++++++++++++++++++++++++++---------------------
+ 5 files changed, 378 insertions(+), 131 deletions(-)
+
+-- 
+Chuck Lever <chuck.lever@oracle.com>
