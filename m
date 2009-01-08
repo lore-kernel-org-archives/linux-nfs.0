@@ -1,211 +1,222 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs client lockdep warning
-Date: Thu, 8 Jan 2009 16:20:56 -0500
-Message-ID: <20090108212056.GF19312@fieldses.org>
-References: <20090108203658.GE19312@fieldses.org> <1231447707.7179.10.camel@heimdal.trondhjem.org>
+From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Date: Thu, 08 Jan 2009 21:22:33 +0000
+Message-ID: <1231449753.21688.12.camel@localhost.localdomain>
+References: <1227621434.7057.33.camel@heimdal.trondhjem.org>
+	 <1227621877.9425.102.camel@zakaz.uk.xensource.com>
+	 <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228169383.20370.3.camel@localhost.localdomain>
+	 <1228565812.10856.30.camel@localhost.localdomain>
+	 <1229279045.3721.1.camel@localhost.localdomain>
+	 <20081216175503.GG16388@fieldses.org>
+	 <1229452775.3721.25.camel@localhost.localdomain>
+	 <20090107222115.GI965@fieldses.org>  <20090108182003.GB17623@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
-To: netdev@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-9dNTFXb8cvzYg0fVFcK3"
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
+	linux-kernel@vger.kernel.org, gcosta@redhat.com,
+	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:53826 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754521AbZAHVU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Jan 2009 16:20:58 -0500
-In-Reply-To: <1231447707.7179.10.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mtaout02-winn.ispmail.ntl.com ([81.103.221.48]:52326 "EHLO
+	mtaout02-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751072AbZAHVW4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jan 2009 16:22:56 -0500
+In-Reply-To: <20090108182003.GB17623@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Is this something known?
 
---b.
+--=-9dNTFXb8cvzYg0fVFcK3
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On Thu, Jan 08, 2009 at 03:48:27PM -0500, Trond Myklebust wrote:
-> Looks more like one for the networking folks. All this appears to be
-> going on deep down in the tcp stack...
-> 
-> Trond
-> 
-> 
-> On Thu, 2009-01-08 at 15:36 -0500, J. Bruce Fields wrote:
-> > I'm seeing this on my test client; I haven't tried to investigate.
-> > 
-> > --b.
-> > 
-> > Jan  8 15:29:17 ying3 kernel: =======================================================
-> > Jan  8 15:29:17 ying3 kernel: [ INFO: possible circular locking dependency detected ]
-> > Jan  8 15:29:17 ying3 kernel: 2.6.28-07532-g393a64e #71
-> > Jan  8 15:29:17 ying3 kernel: -------------------------------------------------------
-> > Jan  8 15:29:17 ying3 kernel: tlocklfs/3527 is trying to acquire lock:
-> > Jan  8 15:29:17 ying3 kernel:  (sk_lock-AF_INET-RPC){--..}, at: [<c076609c>] tcp_sendmsg+0x1c/0xa80
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: but task is already holding lock:
-> > Jan  8 15:29:17 ying3 kernel:  (&mm->mmap_sem){----}, at: [<c0835fb7>] do_page_fault+0xc7/0x820
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: which lock already depends on the new lock.
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: the existing dependency chain (in reverse order) is:
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: -> #1 (&mm->mmap_sem){----}:
-> > Jan  8 15:29:17 ying3 kernel:        [<c024900d>] __lock_acquire+0xfcd/0x18e0
-> > Jan  8 15:29:17 ying3 kernel:        [<c024997c>] lock_acquire+0x5c/0x80
-> > Jan  8 15:29:17 ying3 kernel:        [<c027dffb>] might_fault+0x7b/0xa0
-> > Jan  8 15:29:17 ying3 kernel:        [<c054bb26>] copy_from_user+0x36/0x90
-> > Jan  8 15:29:17 ying3 kernel:        [<c0737800>] memcpy_fromiovecend+0x60/0x90
-> > Jan  8 15:29:17 ying3 kernel:        [<c075ce9f>] ip_generic_getfrag+0x9f/0xb0
-> > Jan  8 15:29:17 ying3 kernel:        [<c075cb6b>] ip_append_data+0x6bb/0x950
-> > Jan  8 15:29:17 ying3 kernel:        [<c077cb0d>] udp_sendmsg+0x2bd/0x680
-> > Jan  8 15:29:17 ying3 kernel:        [<c07835f9>] inet_sendmsg+0x39/0x70
-> > Jan  8 15:29:17 ying3 kernel:        [<c072f0e6>] sock_sendmsg+0xd6/0x100
-> > Jan  8 15:29:17 ying3 kernel:        [<c072f485>] kernel_sendmsg+0x35/0x50
-> > Jan  8 15:29:17 ying3 kernel:        [<c07da698>] xs_send_kvec+0xa8/0xb0
-> > Jan  8 15:29:17 ying3 kernel:        [<c07da711>] xs_sendpages+0x71/0x210
-> > Jan  8 15:29:17 ying3 kernel:        [<c07dab30>] xs_udp_send_request+0x40/0x120
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d91ff>] xprt_transmit+0x6f/0x280
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d6c1f>] call_transmit+0x17f/0x250
-> > Jan  8 15:29:17 ying3 kernel:        [<c07dda13>] __rpc_execute+0x73/0x250
-> > Jan  8 15:29:17 ying3 kernel:        [<c07ddc0e>] rpc_execute+0x1e/0x30
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d7705>] rpc_run_task+0x35/0x70
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d7860>] rpc_call_sync+0x40/0x70
-> > Jan  8 15:29:17 ying3 kernel:        [<c07e5312>] rpcb_register_call+0xa2/0xd0
-> > Jan  8 15:29:17 ying3 kernel:        [<c07e53d2>] rpcb_register+0x92/0xe0
-> > Jan  8 15:29:17 ying3 kernel:        [<c07e0446>] svc_unregister+0x66/0xe0
-> > Jan  8 15:29:17 ying3 kernel:        [<c07e0c66>] __svc_create+0x1c6/0x1f0
-> > Jan  8 15:29:17 ying3 kernel:        [<c07e0e13>] svc_create+0x23/0x30
-> > Jan  8 15:29:17 ying3 kernel:        [<c0396293>] nfs_callback_up+0x73/0x1b0
-> > Jan  8 15:29:17 ying3 kernel:        [<c036bb95>] nfs_get_client+0x2d5/0x410
-> > Jan  8 15:29:17 ying3 kernel:        [<c036bd15>] nfs4_set_client+0x45/0x1e0
-> > Jan  8 15:29:17 ying3 kernel:        [<c036c57e>] nfs4_create_server+0xae/0x430
-> > Jan  8 15:29:17 ying3 kernel:        [<c0376fda>] nfs4_get_sb+0x34a/0x5d0
-> > Jan  8 15:29:17 ying3 kernel:        [<c029663e>] vfs_kern_mount+0x5e/0x130
-> > Jan  8 15:29:17 ying3 kernel:        [<c029676e>] do_kern_mount+0x3e/0xe0
-> > Jan  8 15:29:17 ying3 kernel:        [<c02aca44>] do_mount+0x434/0x7b0
-> > Jan  8 15:29:17 ying3 kernel:        [<c02ace51>] sys_mount+0x91/0xc0
-> > Jan  8 15:29:17 ying3 kernel:        [<c02034c5>] sysenter_do_call+0x12/0x35
-> > Jan  8 15:29:17 ying3 kernel:        [<ffffffff>] 0xffffffff
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: -> #0 (sk_lock-AF_INET-RPC){--..}:
-> > Jan  8 15:29:17 ying3 kernel:        [<c024923d>] __lock_acquire+0x11fd/0x18e0
-> > Jan  8 15:29:17 ying3 kernel:        [<c024997c>] lock_acquire+0x5c/0x80
-> > Jan  8 15:29:17 ying3 kernel:        [<c0731574>] lock_sock_nested+0xc4/0xe0
-> > Jan  8 15:29:17 ying3 kernel:        [<c076609c>] tcp_sendmsg+0x1c/0xa80
-> > Jan  8 15:29:17 ying3 kernel:        [<c072f0e6>] sock_sendmsg+0xd6/0x100
-> > Jan  8 15:29:17 ying3 kernel:        [<c072f485>] kernel_sendmsg+0x35/0x50
-> > Jan  8 15:29:17 ying3 kernel:        [<c07da698>] xs_send_kvec+0xa8/0xb0
-> > Jan  8 15:29:17 ying3 kernel:        [<c07da711>] xs_sendpages+0x71/0x210
-> > Jan  8 15:29:17 ying3 kernel:        [<c07da9d8>] xs_tcp_send_request+0x58/0x170
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d91ff>] xprt_transmit+0x6f/0x280
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d6c1f>] call_transmit+0x17f/0x250
-> > Jan  8 15:29:17 ying3 kernel:        [<c07dda13>] __rpc_execute+0x73/0x250
-> > Jan  8 15:29:17 ying3 kernel:        [<c07ddc0e>] rpc_execute+0x1e/0x30
-> > Jan  8 15:29:17 ying3 kernel:        [<c07d7705>] rpc_run_task+0x35/0x70
-> > Jan  8 15:29:17 ying3 kernel:        [<c037c924>] nfs_read_rpcsetup+0x174/0x1f0
-> > Jan  8 15:29:17 ying3 kernel:        [<c037ce8e>] nfs_pagein_one+0x9e/0xe0
-> > Jan  8 15:29:17 ying3 kernel:        [<c037a73a>] nfs_pageio_doio+0x3a/0x80
-> > Jan  8 15:29:17 ying3 kernel:        [<c037a78d>] nfs_pageio_complete+0xd/0x10
-> > Jan  8 15:29:17 ying3 kernel:        [<c037c21c>] nfs_readpages+0xec/0x1d0
-> > Jan  8 15:29:17 ying3 kernel:        [<c02735cc>] __do_page_cache_readahead+0x1bc/0x280
-> > Jan  8 15:29:17 ying3 kernel:        [<c02736e0>] do_page_cache_readahead+0x50/0x70
-> > Jan  8 15:29:17 ying3 kernel:        [<c026b82f>] filemap_fault+0x31f/0x470
-> > Jan  8 15:29:17 ying3 kernel:        [<c027e370>] __do_fault+0x40/0x3d0
-> > Jan  8 15:29:17 ying3 kernel:        [<c027ff91>] handle_mm_fault+0x111/0x610
-> > Jan  8 15:29:17 ying3 kernel:        [<c0836105>] do_page_fault+0x215/0x820
-> > Jan  8 15:29:17 ying3 kernel:        [<c0834347>] error_code+0x6f/0x74
-> > Jan  8 15:29:17 ying3 kernel:        [<c02caff5>] load_elf_binary+0x8e5/0x1a20
-> > Jan  8 15:29:17 ying3 kernel:        [<c02990a3>] search_binary_handler+0x173/0x2f0
-> > Jan  8 15:29:17 ying3 kernel:        [<c029a31d>] do_execve+0x1cd/0x220
-> > Jan  8 15:29:17 ying3 kernel:        [<c0201793>] sys_execve+0x43/0x70
-> > Jan  8 15:29:17 ying3 kernel:        [<c02034c5>] sysenter_do_call+0x12/0x35
-> > Jan  8 15:29:17 ying3 kernel:        [<ffffffff>] 0xffffffff
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: other info that might help us debug this:
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: 2 locks held by tlocklfs/3527:
-> > Jan  8 15:29:17 ying3 kernel:  #0:  (&p->cred_exec_mutex){--..}, at: [<c029a1bb>] do_execve+0x6b/0x220
-> > Jan  8 15:29:17 ying3 kernel:  #1:  (&mm->mmap_sem){----}, at: [<c0835fb7>] do_page_fault+0xc7/0x820
-> > Jan  8 15:29:17 ying3 kernel: 
-> > Jan  8 15:29:17 ying3 kernel: stack backtrace:
-> > Jan  8 15:29:17 ying3 kernel: Pid: 3527, comm: tlocklfs Not tainted 2.6.28-07532-g393a64e #71
-> > Jan  8 15:29:17 ying3 kernel: Call Trace:
-> > Jan  8 15:29:17 ying3 kernel:  [<c083091a>] ? printk+0x1d/0x1f
-> > Jan  8 15:29:17 ying3 kernel:  [<c0247c18>] print_circular_bug_tail+0xc8/0xd0
-> > Jan  8 15:29:17 ying3 kernel:  [<c024923d>] __lock_acquire+0x11fd/0x18e0
-> > Jan  8 15:29:17 ying3 kernel:  [<c07314dc>] ? lock_sock_nested+0x2c/0xe0
-> > Jan  8 15:29:17 ying3 kernel:  [<c024997c>] lock_acquire+0x5c/0x80
-> > Jan  8 15:29:17 ying3 kernel:  [<c076609c>] ? tcp_sendmsg+0x1c/0xa80
-> > Jan  8 15:29:17 ying3 kernel:  [<c0731574>] lock_sock_nested+0xc4/0xe0
-> > Jan  8 15:29:17 ying3 kernel:  [<c076609c>] ? tcp_sendmsg+0x1c/0xa80
-> > Jan  8 15:29:17 ying3 kernel:  [<c0270934>] ? free_hot_cold_page+0x174/0x2a0
-> > Jan  8 15:29:17 ying3 kernel:  [<c076609c>] tcp_sendmsg+0x1c/0xa80
-> > Jan  8 15:29:17 ying3 kernel:  [<c02451aa>] ? find_usage_backwards+0xaa/0x120
-> > Jan  8 15:29:17 ying3 kernel:  [<c0270b86>] ? free_pages+0x46/0x50
-> > Jan  8 15:29:17 ying3 kernel:  [<c02451aa>] ? find_usage_backwards+0xaa/0x120
-> > Jan  8 15:29:17 ying3 kernel:  [<c02451aa>] ? find_usage_backwards+0xaa/0x120
-> > Jan  8 15:29:17 ying3 kernel:  [<c072f0e6>] sock_sendmsg+0xd6/0x100
-> > Jan  8 15:29:17 ying3 kernel:  [<c0239280>] ? autoremove_wake_function+0x0/0x50
-> > Jan  8 15:29:17 ying3 kernel:  [<c0248ea0>] ? __lock_acquire+0xe60/0x18e0
-> > Jan  8 15:29:17 ying3 kernel:  [<c0248ea0>] ? __lock_acquire+0xe60/0x18e0
-> > Jan  8 15:29:17 ying3 kernel:  [<c072f485>] kernel_sendmsg+0x35/0x50
-> > Jan  8 15:29:17 ying3 kernel:  [<c07da698>] xs_send_kvec+0xa8/0xb0
-> > Jan  8 15:29:17 ying3 kernel:  [<c07da711>] xs_sendpages+0x71/0x210
-> > Jan  8 15:29:17 ying3 kernel:  [<c055020f>] ? debug_object_deactivate+0xbf/0x100
-> > Jan  8 15:29:17 ying3 kernel:  [<c07da9d8>] xs_tcp_send_request+0x58/0x170
-> > Jan  8 15:29:17 ying3 kernel:  [<c07d91ff>] xprt_transmit+0x6f/0x280
-> > Jan  8 15:29:17 ying3 kernel:  [<c0392760>] ? nfs4_xdr_enc_read+0x0/0x110
-> > Jan  8 15:29:17 ying3 kernel:  [<c07d6c1f>] call_transmit+0x17f/0x250
-> > Jan  8 15:29:17 ying3 kernel:  [<c07dda13>] __rpc_execute+0x73/0x250
-> > Jan  8 15:29:17 ying3 kernel:  [<c0833a9c>] ? _spin_unlock+0x2c/0x50
-> > Jan  8 15:29:17 ying3 kernel:  [<c07dd297>] ? rpc_set_active+0x67/0x80
-> > Jan  8 15:29:17 ying3 kernel:  [<c07ddc0e>] rpc_execute+0x1e/0x30
-> > Jan  8 15:29:17 ying3 kernel:  [<c07d7705>] rpc_run_task+0x35/0x70
-> > Jan  8 15:29:17 ying3 kernel:  [<c037c924>] nfs_read_rpcsetup+0x174/0x1f0
-> > Jan  8 15:29:17 ying3 kernel:  [<c0290b61>] ? kmem_cache_alloc+0xd1/0x140
-> > Jan  8 15:29:17 ying3 kernel:  [<c026d583>] ? mempool_alloc_slab+0x13/0x20
-> > Jan  8 15:29:17 ying3 last message repeated 2 times
-> > Jan  8 15:29:17 ying3 kernel:  [<c037ce8e>] nfs_pagein_one+0x9e/0xe0
-> > Jan  8 15:29:17 ying3 kernel:  [<c037a73a>] nfs_pageio_doio+0x3a/0x80
-> > Jan  8 15:29:17 ying3 kernel:  [<c037a78d>] nfs_pageio_complete+0xd/0x10
-> > Jan  8 15:29:17 ying3 kernel:  [<c037c21c>] nfs_readpages+0xec/0x1d0
-> > Jan  8 15:29:17 ying3 kernel:  [<c02711c3>] ? __alloc_pages_internal+0xc3/0x4d0
-> > Jan  8 15:29:17 ying3 kernel:  [<c037cdf0>] ? nfs_pagein_one+0x0/0xe0
-> > Jan  8 15:29:17 ying3 kernel:  [<c037c130>] ? nfs_readpages+0x0/0x1d0
-> > Jan  8 15:29:17 ying3 kernel:  [<c02735cc>] __do_page_cache_readahead+0x1bc/0x280
-> > Jan  8 15:29:17 ying3 kernel:  [<c02734d5>] ? __do_page_cache_readahead+0xc5/0x280
-> > Jan  8 15:29:17 ying3 kernel:  [<c02736e0>] do_page_cache_readahead+0x50/0x70
-> > Jan  8 15:29:17 ying3 kernel:  [<c026b82f>] filemap_fault+0x31f/0x470
-> > Jan  8 15:29:17 ying3 kernel:  [<c027e370>] __do_fault+0x40/0x3d0
-> > Jan  8 15:29:17 ying3 kernel:  [<c0833a9c>] ? _spin_unlock+0x2c/0x50
-> > Jan  8 15:29:17 ying3 kernel:  [<c027ff91>] handle_mm_fault+0x111/0x610
-> > Jan  8 15:29:17 ying3 kernel:  [<c0835fb7>] ? do_page_fault+0xc7/0x820
-> > Jan  8 15:29:17 ying3 kernel:  [<c023cd8d>] ? down_read_trylock+0x5d/0x70
-> > Jan  8 15:29:17 ying3 kernel:  [<c0836105>] do_page_fault+0x215/0x820
-> > Jan  8 15:29:17 ying3 kernel:  [<c0546741>] ? prio_tree_insert+0x211/0x290
-> > Jan  8 15:29:17 ying3 kernel:  [<c0833a9c>] ? _spin_unlock+0x2c/0x50
-> > Jan  8 15:29:17 ying3 kernel:  [<c0283a52>] ? vma_link+0x82/0xa0
-> > Jan  8 15:29:17 ying3 kernel:  [<c0284fd2>] ? mmap_region+0x2d2/0x4f0
-> > Jan  8 15:29:17 ying3 kernel:  [<c027dfca>] ? might_fault+0x4a/0xa0
-> > Jan  8 15:29:17 ying3 kernel:  [<c0835ef0>] ? do_page_fault+0x0/0x820
-> > Jan  8 15:29:17 ying3 kernel:  [<c0834347>] error_code+0x6f/0x74
-> > Jan  8 15:29:17 ying3 kernel:  [<c027007b>] ? __free_pages_ok+0x27b/0x480
-> > Jan  8 15:29:17 ying3 kernel:  [<c054b9b7>] ? clear_user+0x47/0x60
-> > Jan  8 15:29:17 ying3 kernel:  [<c02caff5>] load_elf_binary+0x8e5/0x1a20
-> > Jan  8 15:29:17 ying3 kernel:  [<c0247411>] ? mark_held_locks+0x41/0x80
-> > Jan  8 15:29:17 ying3 kernel:  [<c0833a55>] ? _spin_unlock_irqrestore+0x55/0x70
-> > Jan  8 15:29:17 ying3 kernel:  [<c0247651>] ? trace_hardirqs_on_caller+0x141/0x1a0
-> > Jan  8 15:29:17 ying3 kernel:  [<c0298f8f>] ? search_binary_handler+0x5f/0x2f0
-> > Jan  8 15:29:17 ying3 kernel:  [<c02990a3>] search_binary_handler+0x173/0x2f0
-> > Jan  8 15:29:17 ying3 kernel:  [<c02ca710>] ? load_elf_binary+0x0/0x1a20
-> > Jan  8 15:29:17 ying3 kernel:  [<c029a31d>] do_execve+0x1cd/0x220
-> > Jan  8 15:29:17 ying3 kernel:  [<c0201793>] sys_execve+0x43/0x70
-> > Jan  8 15:29:17 ying3 kernel:  [<c02034c5>] sysenter_do_call+0x12/0x35
-> > Jan  8 15:29:26 ying3 kernel: tlocklfs used greatest stack depth: 4252 bytes left
-> > Jan  8 15:29:55 ying3 kernel: aoe: 00188b809a6e e2.3 v400f has 2048000 sectors
-> > Jan  8 15:29:55 ying3 kernel:  etherd/e2.3: unknown partition table
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+On Thu, 2009-01-08 at 13:20 -0500, J. Bruce Fields wrote:
+> On Wed, Jan 07, 2009 at 05:21:15PM -0500, J. Bruce Fields wrote:
+> > On Tue, Dec 16, 2008 at 06:39:35PM +0000, Ian Campbell wrote:
+> > > That's right, it was actually 2.6.26.7 FWIW.
+> > >=20
+> > > > I'll try to take a look at these before I leave for the holidays,
+> > > > assuming the versions Trond posted on Nov. 30 are the latest.
+> > >=20
+> > > Thanks.
+> >=20
+> > Sorry for getting behind.
+> >=20
+> > If you got a chance to retest with the for-2.6.29 branch at
+> >=20
+> > 	git://linux-nfs.org/~bfields/linux.git for-2.6.29
+> >=20
+> > that'd be great; that's what I intend to send to Linus.
+>=20
+> (Merged now, so testing mainline as of today should work too.)
+
+The server isn't really a machine I want to test random kernels on, is
+there some subset of those changesets which it would be useful for me to
+pull back onto the 2.6.26 kernel I'm using to test? (I can most like
+manage the backporting myself).
+
+These two look like the relevant ones to me but I'm not sure:
+22945e4a1c7454c97f5d8aee1ef526c83fef3223 svc: Clean up deferred requests on=
+ transport destruction
+69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a SUNRPC: Ensure the server closes s=
+ockets in a timely fashion
+
+I think 69b6 was in the set of three I tested previously and the other
+two turned into 2294?
+
+Ian.
+
+Full list 238c6d54830c624f34ac9cf123ac04aebfca5013..nfs-bfields/for-2.6.29:
+db43910cb42285a99f45f7e0a0a32e32d0b61dcf nfsd: get rid of NFSD_VERSION
+87df4de8073f922a1f643b9fa6ba0412d5529ecf nfsd: last_byte_offset
+4e65ebf08951326709817e654c149d0a94982e01 nfsd: delete wrong file comment fr=
+om nfsd/nfs4xdr.c
+df96fcf02a5fd2ae4e9b09e079dd6ef12d10ecd7 nfsd: git rid of nfs4_cb_null_ops =
+declaration
+0407717d8587f60003f4904bff27650cd836c00c nfsd: dprint each op status in nfs=
+d4_proc_compound
+b7aeda40d3010666d2c024c80557b6aa92a1a1ad nfsd: add etoosmall to nfserrno
+30fa8c0157e4591ee2227aaa0b17cd3b0da5e6cb NFSD: FIDs need to take precedence=
+ over UUIDs
+24c3767e41a6a59d32bb45abe899eb194e6bf1b8 SUNRPC: The sunrpc server code sho=
+uld not be used by out-of-tree modules
+22945e4a1c7454c97f5d8aee1ef526c83fef3223 svc: Clean up deferred requests on=
+ transport destruction
+9a8d248e2d2e9c880ac4561f27fea5dc200655bd nfsd: fix double-locks of director=
+y mutex
+2779e3ae39645515cb6c1126634f47c28c9e7190 svc: Move kfree of deferral record=
+ to common code
+f05ef8db1abe68e3f6fc272efee51bc54ce528c5 CRED: Fix NFSD regression
+0dba7c2a9ed3d4a1e58f5d94fffa9f44dbe012e6 NLM: Clean up flow of control in m=
+ake_socks() function
+d3fe5ea7cf815c037c90b1f1464ffc1ab5e8601b NLM: Refactor make_socks() functio=
+n
+55ef1274dddd4de387c54d110e354ffbb6cdc706 nfsd: Ensure nfsv4 calls the under=
+lying filesystem on LOCKT
+69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a SUNRPC: Ensure the server closes s=
+ockets in a timely fashion
+262a09823bb07c6aafb6c1d312cde613d0b90c85 NFSD: Add documenting comments for=
+ nfsctl interface
+9e074856caf13ba83363f73759f5e395f74ccf41 NFSD: Replace open-coded integer w=
+ith macro
+54224f04ae95d86b27c0673cd773ebb120d86876 NFSD: Fix a handful of coding styl=
+e issues in write_filehandle()
+b046ccdc1f8171f6d0129dcc2a28d49187b4bf69 NFSD: clean up failover sysctl fun=
+ction naming
+b064ec038a6180b13e5f89b6a30b42cb5ce8febc lockd: Enable NLM use of AF_INET6
+57ef692588bc225853ca3267ca5b7cea2b07e058 NLM: Rewrite IPv4 privileged reque=
+ster's check
+d1208f70738c91f13b4eadb1b7a694082e439da2 NLM: nlm_privileged_requester() do=
+esn't recognize mapped loopback address
+49b5699b3fc22b363534c509c1b7dba06bc677bf NSM: Move nsm_create()
+b7ba597fb964dfa44284904b3b3d74d44b8e1c42 NSM: Move nsm_use_hostnames to mon=
+.c
+8529bc51d30b8f001734b29b21a51b579c260f5b NSM: Move nsm_addr() to fs/lockd/m=
+on.c
+e6765b83977f07983c7a10e6bbb19d6c7bbfc3a4 NSM: Remove include/linux/lockd/sm=
+_inter.h
+94da7663db26530a8377f7219f8be8bd4d4822c2 NSM: Replace IP address as our nlm=
+_reboot lookup key
+77a3ef33e2de6fc8aabd7cb1700bfef81757c28a NSM: More clean up of nsm_get_hand=
+le()
+b39b897c259fc1fd1998505f2b1d4ec1f115bce1 NSM: Refactor nsm_handle creation =
+into a helper function
+92fd91b998a5216a6d6606704e71d541a180216c NLM: Remove "create" argument from=
+ nsm_find()
+8c7378fd2a5f22016542931b887a2ae98d146eaf NLM: Call nsm_reboot_lookup() inst=
+ead of nsm_find()
+3420a8c4359a189f7d854ed7075d151257415447 NSM: Add nsm_lookup() function
+576df4634e37e46b441fefb91915184edb13bb94 NLM: Decode "priv" argument of NLM=
+PROC_SM_NOTIFY as an opaque
+7fefc9cb9d5f129c238d93166f705c96ca2e7e51 NLM: Change nlm_host_rebooted() to=
+ take a single nlm_reboot argument
+cab2d3c99165abbba2943f1b269003b17fd3b1cb NSM: Encode the new "priv" cookie =
+for NSMPROC_MON requests
+7e44d3bea21fbb9494930d1cd35ca92a9a4a3279 NSM: Generate NSMPROC_MON's "priv"=
+ argument when nsm_handle is created
+05f3a9af58180d24a9decedd71d4587935782d70 NSM: Remove !nsm check from nsm_re=
+lease()
+bc1cc6c4e476b60df48227165990c87a22db6bb7 NSM: Remove NULL pointer check fro=
+m nsm_find()
+5cf1c4b19db99d21d44c2ab457cfd44eb86b4439 NSM: Add dprintk() calls in nsm_fi=
+nd and nsm_release
+67c6d107a689243979a2b5f15244b5261634a924 NSM: Move nsm_find() to fs/lockd/m=
+on.c
+03eb1dcbb799304b58730f4dba65812f49fb305e NSM: move to xdr_stream-based XDR =
+encoders and decoders
+36e8e668d3e6a61848a8921ddeb663b417299fa5 NSM: Move NSM program and procedur=
+e numbers to fs/lockd/mon.c
+9c1bfd037f7ff8badaecb47418f109148d88bf45 NSM: Move NSM-related XDR data str=
+uctures to lockd's xdr.h
+0c7aef4569f8680951b7dee01dddffb9d2f809ff NSM: Check result of SM_UNMON upca=
+ll
+356c3eb466fd1a12afd6448d90fba3922836e5f1 NLM: Move the public declaration o=
+f nsm_unmonitor() to lockd.h
+c8c23c423dec49cb439697d3dc714e1500ff1610 NSM: Release nsmhandle in nlm_dest=
+roy_host
+1e49323c4ab044d05bbc68cf13cadcbd4372468c NLM: Move the public declaration o=
+f nsm_monitor() to lockd.h
+5d254b119823658cc318f88589c6c426b3d0a153 NSM: Make sure to return an error =
+if the SM_MON call result is not zero
+5bc74bef7c9b652f0f2aa9c5a8d5ac86881aba79 NSM: Remove BUG_ON() in nsm_monito=
+r()
+501c1ed3fb5c2648ba1709282c71617910917f66 NLM: Remove redundant printk() in =
+nlmclnt_lock()
+9fee49024ed19d849413df4ab6ec1a1a60aaae94 NSM: Use sm_name instead of h_name=
+ in nsm_monitor() and nsm_unmonitor()
+29ed1407ed81086b778ebf12145b048ac3f7e10e NSM: Support IPv6 version of mon_n=
+ame
+f47534f7f0ac7727e05ec4274b764b181df2cf7f NSM: Use modern style for sm_name =
+field in nsm_handle
+5acf43155d1bcc412d892c73f64044f9a826cde6 NSM: convert printk(KERN_DEBUG) to=
+ a dprintk()
+a4846750f090702e2fb848ac4fe5827bcef34060 NSM: Use C99 structure initializer=
+ to initialize nsm_args
+afb03699dc0a920aed3322ad0e6895533941fb1e NLM: Add helper to handle IPv4 add=
+resses
+bc995801a09d1fead0bec1356bfd836911c8eed7 NLM: Support IPv6 scope IDs in nlm=
+_display_address()
+6999fb4016b2604c2f8a65586bba4a62a4b24ce7 NLM: Remove AF_UNSPEC arm in nlm_d=
+isplay_address()
+1df40b609ad5a622904eb652109c287fe9c93ec5 NLM: Remove address eye-catcher bu=
+ffers from nlm_host
+7538ce1eb656a1477bedd5b1c202226e7abf5e7b NLM: Use modern style for pointer =
+fields in nlm_host
+c72a476b4b7ecadb80185de31236edb303c1a5d0 lockd: set svc_serv->sv_maxconn to=
+ a more reasonable value (try #3)
+c9233eb7b0b11ef176d4bf68da2ce85464b6ec39 sunrpc: add sv_maxconn field to sv=
+c_serv (try #3)
+548eaca46b3cf4419b6c2be839a106d8641ffb70 nfsd: document new filehandle fsid=
+ types
+2bd9e7b62e6e1da3f881c40c73d93e9a212ce6de nfsd: Fix leaked memory in nfs4_ma=
+ke_rec_clidname
+9346eff0dea1e5855fba25c9fe639d92a4db3135 nfsd: Minor cleanup of find_statei=
+d
+b3d47676d474ecd914c72049c87e71e5f0ffe040 nfsd: update fh_verify description
+
+
+--=20
+Ian Campbell
+
+You're definitely on their list.  The question to ask next is what list it =
+is.
+
+--=-9dNTFXb8cvzYg0fVFcK3
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAklmbpkACgkQM0+0qS9rzVlyjQCfaANqR/c6Bky3TJE03i/Hah9W
+I3QAn0BH4XQ4HVXSwyT6jO/IXM1xChxy
+=gRjz
+-----END PGP SIGNATURE-----
+
+--=-9dNTFXb8cvzYg0fVFcK3--
+
