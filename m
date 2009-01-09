@@ -1,65 +1,59 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: nfs client lockdep warning
-Date: Fri, 09 Jan 2009 07:51:08 +0100
-Message-ID: <1231483868.11687.523.camel@twins>
-References: <20090108203658.GE19312@fieldses.org>
-	 <1231447707.7179.10.camel@heimdal.trondhjem.org>
-	 <20090108212056.GF19312@fieldses.org>
-	 <20090109043315.GA12139@gondor.apana.org.au>
-	 <1231480697.11687.522.camel@twins>
-	 <20090109062333.GB13304@gondor.apana.org.au>
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Date: Fri, 9 Jan 2009 15:56:38 +0100
+Message-ID: <20090109145638.GC47559@fit.vutbr.cz>
+References: <1228090631.7112.11.camel@heimdal.trondhjem.org> <1228091380.7112.17.camel@heimdal.trondhjem.org> <20081202152256.GI47559@fit.vutbr.cz> <1228232222.3090.5.camel@heimdal.trondhjem.org> <20081202162625.GM47559@fit.vutbr.cz> <1228241407.3090.7.camel@heimdal.trondhjem.org> <20081204102314.GW47559@fit.vutbr.cz> <1229284201.6463.98.camel@heimdal.trondhjem.org> <20081216120547.GS47559@fit.vutbr.cz> <1230071647.17701.27.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, netdev@vger.kernel.org,
-	linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>,
-	Ingo Molnar <mingo@elte.hu>, Nick Piggin <npiggin@suse.de>
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090109062333.GB13304@gondor.apana.org.au>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from kazi.fit.vutbr.cz ([147.229.8.12]:54433 "EHLO kazi.fit.vutbr.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751074AbZAIO4o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Jan 2009 09:56:44 -0500
+In-Reply-To: <1230071647.17701.27.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-01-09 at 17:23 +1100, Herbert Xu wrote:
-> On Fri, Jan 09, 2009 at 06:58:17AM +0100, Peter Zijlstra wrote:
-> >
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c054bb26>] copy_from_user+0x36/0x90
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c0737800>] memcpy_fromiovecend+0x60/0x90
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c075ce9f>] ip_generic_getfrag+0x9f/0xb0
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c075cb6b>] ip_append_data+0x6bb/0x950
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c077cb0d>] udp_sendmsg+0x2bd/0x680
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07835f9>] inet_sendmsg+0x39/0x70
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c072f0e6>] sock_sendmsg+0xd6/0x100
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c072f485>] kernel_sendmsg+0x35/0x50
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07da698>] xs_send_kvec+0xa8/0xb0
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07da711>] xs_sendpages+0x71/0x210
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07dab30>] xs_udp_send_request+0x40/0x120
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07d91ff>] xprt_transmit+0x6f/0x280
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07d6c1f>] call_transmit+0x17f/0x250
-> > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07dda13>] __rpc_execute+0x73/0x250
+On Tue, Dec 23, 2008 at 05:34:07PM -0500, Trond Myklebust wrote:
+> On Tue, 2008-12-16 at 13:05 +0100, Kasparek Tomas wrote:
+> > Hm, not happy to say that but it still does not work after some time. Now
+> > the problem is opposite there are no connections to the server according to
+> > netstat on client, just time to time there is
 > > 
-> > Is there anything pinning that user-space page, if not its free to
-> > fault, which would mean its a real warning... 
+> > pcnlp1.fit.vutbr.cz.15234 > kazi.fit.vutbr.cz.nfs: 40 null
+> > kazi.fit.vutbr.cz.nfs > pcnlp1.fit.vutbr.cz.15234: reply ok 24 null
+> > 
+> > (kazi is server). Will try to investigate more details.
 > 
-> It's kernel memory, not user memory.  See xs_udp_send_request in
-> net/sunrpc.
+> OK. Here is one more try. I've tightened up some locking issues with the
+> previous patch.
 
-Ahh, so something like this ought to fix it I think...
+Did tried this new version. Applied it to 2.6.27.10, but the behaviour is
+the same like with the first version - when old mounts are removed by amd
+new one are not created, fter a while, there are no sockets on the client
+and just CLOSED sockets on server. Client is issuing null RPC checks each
+30sec and they are OK, but no other communication between client and server
+takes place.
 
-Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
----
-diff --git a/mm/memory.c b/mm/memory.c
-index 7b9db65..a2ed52e 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -3079,6 +3079,9 @@ void print_vma_addr(char *prefix, unsigned long ip)
- #ifdef CONFIG_PROVE_LOCKING
- void might_fault(void)
- {
-+	if (get_fs() == KERNEL_DS)
-+		return;
-+
- 	might_sleep();
- 	/*
- 	 * it would be nicer only to annotate paths which are not under
+15:45:41.238796 IP pcnlp1.897490 > kazi.nfs: 40 null
+15:45:41.239009 IP kazi.nfs > pcnlp1.897490: reply ok 24 null
 
+
+I will try to get more info, but if you have some idea where to look or
+what to try, it will be helpful.
+
+Thanks for your help
+
+--   
+
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 1, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
+
+  jabber: tomas.kasparek-2ASvDZBniIelVyrhU4qvOw@public.gmane.org
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
 
