@@ -1,94 +1,74 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [patch 10/14] sunrpc: Reorganise the queuing of cache upcalls.
-Date: Fri, 9 Jan 2009 11:53:38 -0500
-Message-ID: <9D49048E-5F75-42A3-99C9-319A54010E64@oracle.com>
-References: <20090108082510.050854000@sgi.com> <20090108082604.517918000@sgi.com> <20090108195747.GB19312@fieldses.org> <4966B92F.8060008@melbourne.sgi.com> <20090109025716.GA25831@fieldses.org> <4966C0AB.7000604@melbourne.sgi.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS ML <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+ than 120 seconds"
+Date: Fri, 09 Jan 2009 12:59:26 -0500
+Message-ID: <1231523966.7179.67.camel@heimdal.trondhjem.org>
+References: <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228091380.7112.17.camel@heimdal.trondhjem.org>
+	 <20081202152256.GI47559@fit.vutbr.cz>
+	 <1228232222.3090.5.camel@heimdal.trondhjem.org>
+	 <20081202162625.GM47559@fit.vutbr.cz>
+	 <1228241407.3090.7.camel@heimdal.trondhjem.org>
+	 <20081204102314.GW47559@fit.vutbr.cz>
+	 <1229284201.6463.98.camel@heimdal.trondhjem.org>
+	 <20081216120547.GS47559@fit.vutbr.cz>
+	 <1230071647.17701.27.camel@heimdal.trondhjem.org>
+	 <20090109145638.GC47559@fit.vutbr.cz>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Kasparek Tomas <kasparek@fit.vutbr.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:32449 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751072AbZAIQyL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jan 2009 11:54:11 -0500
-In-Reply-To: <4966C0AB.7000604-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:10354 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751345AbZAISHC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Jan 2009 13:07:02 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n09I06MY013425
+	for <linux-nfs@vger.kernel.org>; Fri, 9 Jan 2009 10:00:06 -0800 (PST)
+In-Reply-To: <20090109145638.GC47559@fit.vutbr.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 8, 2009, at Jan 8, 2009, 10:12 PM, Greg Banks wrote:
-> J. Bruce Fields wrote:
->> On Fri, Jan 09, 2009 at 01:40:47PM +1100, Greg Banks wrote:
->>
->>> J. Bruce Fields wrote:
->>>
->>>> [...]
->>>>
->>>>    whole request in one atomic read.  That's less practical for gss
->>>>    init_sec_context calls, which could vary in size from a few  
->>>> hundred
->>>>    bytes to 100k or so.
->>>>
->>>>
->>> I'm confused -- doesn't the current cache_make_upcall() code  
->>> allocate a
->>> buffer of length PAGE_SIZE and not allow it to be resized?
->>>
->>
->> Yeah, sorry for the confusion: this was written as cleanup in
->> preparation for patches to support larger gss init_sec_context calls
->> needed for spkm3, which I'm told likes to send across entire  
->> certificate
->> trains in the initial NULL calls.  (But the spkm3 work is stalled for
->> now).
->>
-> Aha.
->
-> So if at some point in the future we actually need to send 100K in an
-> upcall, I think we have two options:
->
-> a) support partial reads but do so properly:
-> - track offset in the cache_request
-> - also track reader's pid in the cache request so partially read
-> requests are matched to threads
-> - handle multiple requests being in a state where they have been
-> partially read
-> - handle the case where a thread dies after doing a partial read but
-> before finishing, so the request is left dangling
-> - handle the similar case where a thread does a partial read then  
-> fails
-> to ever finish the read without dying
-> - handle both the "multiple struct files, 1 thread per struct file"  
-> and
-> "1 struct file, multiple threads" cases cleanly
->
-> b) don't support partial reads but require userspace to do larger full
-> reads.  I don't think 100K is too much to ask.
+On Fri, 2009-01-09 at 15:56 +0100, Kasparek Tomas wrote:
+> On Tue, Dec 23, 2008 at 05:34:07PM -0500, Trond Myklebust wrote:
+> > On Tue, 2008-12-16 at 13:05 +0100, Kasparek Tomas wrote:
+> > > Hm, not happy to say that but it still does not work after some time. Now
+> > > the problem is opposite there are no connections to the server according to
+> > > netstat on client, just time to time there is
+> > > 
+> > > pcnlp1.fit.vutbr.cz.15234 > kazi.fit.vutbr.cz.nfs: 40 null
+> > > kazi.fit.vutbr.cz.nfs > pcnlp1.fit.vutbr.cz.15234: reply ok 24 null
+> > > 
+> > > (kazi is server). Will try to investigate more details.
+> > 
+> > OK. Here is one more try. I've tightened up some locking issues with the
+> > previous patch.
+> 
+> Did tried this new version. Applied it to 2.6.27.10, but the behaviour is
+> the same like with the first version - when old mounts are removed by amd
+> new one are not created, fter a while, there are no sockets on the client
+> and just CLOSED sockets on server. Client is issuing null RPC checks each
+> 30sec and they are OK, but no other communication between client and server
+> takes place.
+> 
+> 15:45:41.238796 IP pcnlp1.897490 > kazi.nfs: 40 null
+> 15:45:41.239009 IP kazi.nfs > pcnlp1.897490: reply ok 24 null
+> 
+> 
+> I will try to get more info, but if you have some idea where to look or
+> what to try, it will be helpful.
+> 
+> Thanks for your help
 
-How about:
-
-c) Use an mmap like API to avoid copying 100K of data between user  
-space and kernel.
-
-> My patch does most of what we need for option b).  Yours does some of
-> what we need for option a).  Certainly a) is a lot more complex.
->
-> -- 
-> Greg Banks, P.Engineer, SGI Australian Software Group.
-> the brightly coloured sporks of revolution.
-> I don't speak for SGI.
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Wait. You're using amd when testing? Could you please rather retry using
+just a static mount? amd has historically had way too many bugs
+(particularly w.r.t. tcp) to be considered a reliable test.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
