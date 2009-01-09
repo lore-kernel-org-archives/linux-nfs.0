@@ -1,74 +1,147 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs client lockdep warning
-Date: Fri, 9 Jan 2009 15:29:39 -0500
-Message-ID: <20090109202939.GA5466@fieldses.org>
-References: <20090108203658.GE19312@fieldses.org> <1231447707.7179.10.camel@heimdal.trondhjem.org> <20090108212056.GF19312@fieldses.org> <20090109043315.GA12139@gondor.apana.org.au> <1231480697.11687.522.camel@twins> <20090109062333.GB13304@gondor.apana.org.au> <1231483868.11687.523.camel@twins>
+Subject: Re: [patch 10/14] sunrpc: Reorganise the queuing of cache upcalls.
+Date: Fri, 9 Jan 2009 16:29:21 -0500
+Message-ID: <20090109212921.GC5466@fieldses.org>
+References: <20090108082510.050854000@sgi.com> <20090108082604.517918000@sgi.com> <20090108195747.GB19312@fieldses.org> <4966B92F.8060008@melbourne.sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>, netdev@vger.kernel.org,
-	linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>,
-	Ingo Molnar <mingo@elte.hu>, Nick Piggin <npiggin@suse.de>
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
+To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:57770 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:44982 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751821AbZAIU3u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Jan 2009 15:29:50 -0500
-In-Reply-To: <1231483868.11687.523.camel@twins>
+	id S1757499AbZAIV3X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Jan 2009 16:29:23 -0500
+In-Reply-To: <4966B92F.8060008-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 09, 2009 at 07:51:08AM +0100, Peter Zijlstra wrote:
-> On Fri, 2009-01-09 at 17:23 +1100, Herbert Xu wrote:
-> > On Fri, Jan 09, 2009 at 06:58:17AM +0100, Peter Zijlstra wrote:
-> > >
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c054bb26>] copy_from_user+0x36/0x90
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c0737800>] memcpy_fromiovecend+0x60/0x90
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c075ce9f>] ip_generic_getfrag+0x9f/0xb0
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c075cb6b>] ip_append_data+0x6bb/0x950
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c077cb0d>] udp_sendmsg+0x2bd/0x680
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07835f9>] inet_sendmsg+0x39/0x70
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c072f0e6>] sock_sendmsg+0xd6/0x100
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c072f485>] kernel_sendmsg+0x35/0x50
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07da698>] xs_send_kvec+0xa8/0xb0
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07da711>] xs_sendpages+0x71/0x210
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07dab30>] xs_udp_send_request+0x40/0x120
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07d91ff>] xprt_transmit+0x6f/0x280
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07d6c1f>] call_transmit+0x17f/0x250
-> > > > > > > Jan  8 15:29:17 ying3 kernel:        [<c07dda13>] __rpc_execute+0x73/0x250
-> > > 
-> > > Is there anything pinning that user-space page, if not its free to
-> > > fault, which would mean its a real warning... 
-> > 
-> > It's kernel memory, not user memory.  See xs_udp_send_request in
-> > net/sunrpc.
+On Fri, Jan 09, 2009 at 01:40:47PM +1100, Greg Banks wrote:
+> J. Bruce Fields wrote:
+> >   Appended below if it's of
+> > any use to you to compare.  (Happy to apply either your patch or mine
+> > depending which looks better; I haven't tried to compare carefully.)
+> >   
 > 
-> Ahh, so something like this ought to fix it I think...
+> Ok, I'll take a look at yours.
+
+Thanks for doing this, by the way.
+
+> >  static ssize_t
+> >  cache_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
+> >  {
+> > -	struct cache_reader *rp = filp->private_data;
+> > -	struct cache_request *rq;
+> > +	struct cache_request *rq = filp->private_data;
+> >  	struct cache_detail *cd = PDE(filp->f_path.dentry->d_inode)->data;
+> > +	struct list_head *queue = &cd->queue;
+> >  	int err;
+> >  
+> >  	if (count == 0)
+> > @@ -711,60 +703,45 @@ cache_read(struct file *filp, char __user *buf, size_t count, loff_t *ppos)
+> >  	mutex_lock(&queue_io_mutex); /* protect against multiple concurrent
+> >  			      * readers on this file */
+> >   
 > 
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> ---
-> diff --git a/mm/memory.c b/mm/memory.c
-> index 7b9db65..a2ed52e 100644
-> --- a/mm/memory.c
-> +++ b/mm/memory.c
-> @@ -3079,6 +3079,9 @@ void print_vma_addr(char *prefix, unsigned long ip)
->  #ifdef CONFIG_PROVE_LOCKING
->  void might_fault(void)
->  {
-> +	if (get_fs() == KERNEL_DS)
+> Ah, so you still have a single global lock which is serialising all
+> reads and writes to all caches.
 
-Looks like that should be
+Yes, making this per-cd seems sensible (though if the problem is
+typically a single cache (auth_unix) then I don't know how significant a
+help it is).
 
-	if ((segment_eq(get_fs(), KERNEL_DS))
+> Also, I think you'd want to sample filp->private_data after taking
+> queue_io_mutex.
 
-?  Anyway, with that, sure, that eliminates the lockdep warning.
+Whoops, yes.
+
+> > +	if (rq == NULL) {
+> >  		mutex_unlock(&queue_io_mutex);
+> > -		BUG_ON(rp->offset);
+> >   
+> 
+> Good riddance to that BUG_ON().
+> > -		return 0;
+> > +		return -EAGAIN;
+> >  	}
+> > -	rq = container_of(rp->q.list.next, struct cache_request, q.list);
+> > -	BUG_ON(rq->q.reader);
+> > -	if (rp->offset == 0)
+> > -		rq->readers++;
+> > -	spin_unlock(&queue_lock);
+> >  
+> > -	if (rp->offset == 0 && !test_bit(CACHE_PENDING, &rq->item->flags)) {
+> > +	if (!test_bit(CACHE_PENDING, &rq->item->flags))
+> >  		err = -EAGAIN;
+> > -		spin_lock(&queue_lock);
+> > -		list_move(&rp->q.list, &rq->q.list);
+> > -		spin_unlock(&queue_lock);
+> > -	} else {
+> > -		if (rp->offset + count > rq->len)
+> > -			count = rq->len - rp->offset;
+> > +	else {
+> > +		if (rq->offset + count > rq->len)
+> > +			count = rq->len - rq->offset;
+> >  		err = -EFAULT;
+> > -		if (copy_to_user(buf, rq->buf + rp->offset, count))
+> > +		if (copy_to_user(buf, rq->buf + rq->offset, count))
+> >  			goto out;
+> >   
+> 
+> Ok, so you try to keep partial read support but move the offset into the
+> upcall request itself.  Interesting idea.
+> 
+> I think partial reads are Just Too Hard to do properly, i.e. without
+> risk of racy message corruption under all combinations of message size
+> and userspace behaviour .  In particular I think your code will corrupt
+> upcall data if multiple userspace threads race to do partial reads on
+> the same struct file (as rpc.mountd is doing at SGI's customer sites).
+
+Yes, but what mountd's doing is just dumb, as far as I can tell; is
+there any real reason not to just keep a separate open for each thread?
+
+If we just tell userland to keep a number of opens equal to the number
+of concurrent upcalls it wants to handle, and then all of this becomes
+very easy.
+
+Forget sharing a single struct file between tasks that do too-small
+reads: we should make sure that we don't oops, but that's all.
+
+> For the same reasons I think the FIONREAD support is utterly pointless
+> (even though I preserved it).
+> 
+> But I still don't understand how this 100K message size number for gssd
+> can happen?  If that's really necessary then the design equation changes
+> considerably.  This seems to be the most significant difference between
+> our patches.
+
+So, the somewhat depressing situation with spkm3, which was to be the
+public-key-based gss mechanism for nfs: we (citi) implemented it (modulo
+this problem and maybe one or two others), but found some problems along
+the way that required revising the spec.  I think there might have been
+an implementation for one other platform too.  But the ietf seems to
+have given up on spkm3, and instead is likely to pursue a new mechanism,
+pku2u.  Nobody's implementing that yet.  Consulting my local expert, it
+sounds like pku2u will have some more reasonable bound on init-sec-ctx
+token sizes.  (Not sure if it'll be under a page, without checking, but
+it shouldn't be much more than that, anyway).
+
+So: the immediate pressure for larger upcalls is probably gone.  And
+anyway more changes would be required (the ascii-hex encoding and
+upcall-downcall matching are very wasteful in this case, etc.), so we'd
+likely end up using a different mechanism.
+
+That said, I think it's easy enough to handle just the case of multiple
+reads on unshared struct files that it might make sense to keep that
+piece.
+
+> A smaller issue is that you keep a single list and use the value of the
+> CACHE_PENDING bit to tell the difference between states.  I think this
+> could be made to work; however my technique of using two lists makes
+> most of the code even simpler at the small cost of having to do two list
+> searches in queue_loose().
+
+OK.  When exactly do they get moved between lists?  I'll take a look at
+the code.
 
 --b.
-
-> +		return;
-> +
->  	might_sleep();
->  	/*
->  	 * it would be nicer only to annotate paths which are not under
-> 
-> 
