@@ -1,73 +1,132 @@
-From: Jaswinder Singh Rajput <jaswinder@kernel.org>
-Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Fri, 23 Jan 2009 21:34:18 +0530
-Message-ID: <1232726658.3504.22.camel@localhost.localdomain>
-References: <1232223441.3966.22.camel@localhost.localdomain>
-	 <1232228261.27094.0.camel@macbook.infradead.org>
-	 <20090117221932.GA4956@uranus.ravnborg.org>  <49725B1E.604@kernel.org>
-	 <1232498319.3123.34.camel@localhost.localdomain>
-	 <1232726359.3504.18.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Sam Ravnborg <sam@ravnborg.org>,
-	David Woodhouse <dwmw2@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-	dbrownell@users.sourceforge.net, netdev@vger.kernel.org,
-	greg@kroah.com, linux-usb@vger.kernel.org,
-	linux-mtd@lists.infradead.org, tiwai@suse.de,
-	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: "H. Peter Anvin" <hpa@kernel.org>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <1232726359.3504.18.camel@localhost.localdomain>
-Sender: linux-raid-owner@vger.kernel.org
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH] nfsd4: split lockstateid/openstateid release logic
+Date: Sun, 11 Jan 2009 18:52:27 -0500
+Message-ID: <1231717949-31908-2-git-send-email-bfields@citi.umich.edu>
+References: <1231717949-31908-1-git-send-email-bfields@citi.umich.edu>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:45572 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752075AbZAKXwb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Jan 2009 18:52:31 -0500
+In-Reply-To: <1231717949-31908-1-git-send-email-bfields@citi.umich.edu>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-01-23 at 21:29 +0530, Jaswinder Singh Rajput wrote:
-> On Wed, 2009-01-21 at 06:08 +0530, Jaswinder Singh Rajput wrote:
-> > On Sat, 2009-01-17 at 14:26 -0800, H. Peter Anvin wrote:
-> > > Sam Ravnborg wrote:
-> > > >>>  
-> > > >> That patch looks wrong, and unnecessary. It was fine before.
-> > > > Nope - include/linux/dvb/audio.h failed to include linux/types.h
-> > > > despite the fact that is uses __u32 etc.
-> > > > 
-> > > > But why the _kernel_ should include a userspace header is
-> > > > much more questionable.
-> > > > 
-> > > 
-> > > <stdint.h> is one of a handful of headers provided by gcc itself.
-> > > 
-> > 
-> > Should I reintroduce my patch to solve this warning of 'make headers_check':
-> >  usr/include/linux/dvb/audio.h:133: found __[us]{8,16,32,64} type without #include <linux/types.h>
-> > 
-> > diff --git a/include/linux/dvb/audio.h b/include/linux/dvb/audio.h
-> > index 89412e1..758a48c 100644
-> > --- a/include/linux/dvb/audio.h
-> > +++ b/include/linux/dvb/audio.h
-> > @@ -24,9 +24,8 @@
-> >  #ifndef _DVBAUDIO_H_
-> >  #define _DVBAUDIO_H_
-> >  
-> > -#ifdef __KERNEL__
-> >  #include <linux/types.h>
-> > -#else
-> > +#ifndef __KERNEL__
-> >  #include <stdint.h>
-> >  #endif
-> > 
-> 
-> It seems one have objection for this. So I will again insert this in my
-> new patchset.
-> 
+The flags here attempt to make the code more general, but I find it
+actually just adds confusion.
 
-oops, s/seems one/seems no one ;-)
+I think it's clearer to separate the logic for the open and lock cases
+entirely.  And eventually we may want to separate the stateowner and
+stateid types as well, as many of the fields aren't shared between the
+lock and open cases.
 
---
-JSR
+Also move to eliminate forward references.
+
+Start with the stateid's.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4state.c |   49 ++++++++++++++++++++++++++-----------------------
+ 1 files changed, 26 insertions(+), 23 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 88db7d3..6b8e5a9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -119,7 +119,6 @@ opaque_hashval(const void *ptr, int nbytes)
+ 
+ /* forward declarations */
+ static void release_stateowner(struct nfs4_stateowner *sop);
+-static void release_stateid(struct nfs4_stateid *stp, int flags);
+ 
+ /*
+  * Delegation state
+@@ -311,6 +310,28 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+ static struct list_head client_lru;
+ static struct list_head close_lru;
+ 
++static void release_generic_stateid(struct nfs4_stateid *stp)
++{
++	list_del(&stp->st_hash);
++	list_del(&stp->st_perfile);
++	list_del(&stp->st_perstateowner);
++	put_nfs4_file(stp->st_file);
++	kmem_cache_free(stateid_slab, stp);
++}
++
++static void release_lock_stateid(struct nfs4_stateid *stp)
++{
++	locks_remove_posix(stp->st_vfs_file, (fl_owner_t)stp->st_stateowner);
++	release_generic_stateid(stp);
++}
++
++static void release_open_stateid(struct nfs4_stateid *stp)
++{
++	release_stateid_lockowners(stp);
++	nfsd_close(stp->st_vfs_file);
++	release_generic_stateid(stp);
++}
++
+ static inline void
+ renew_client(struct nfs4_client *clp)
+ {
+@@ -1065,9 +1086,9 @@ unhash_stateowner(struct nfs4_stateowner *sop)
+ 		stp = list_entry(sop->so_stateids.next,
+ 			struct nfs4_stateid, st_perstateowner);
+ 		if (sop->so_is_open_owner)
+-			release_stateid(stp, OPEN_STATE);
++			release_open_stateid(stp);
+ 		else
+-			release_stateid(stp, LOCK_STATE);
++			release_lock_stateid(stp);
+ 	}
+ }
+ 
+@@ -1106,24 +1127,6 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
+ }
+ 
+ static void
+-release_stateid(struct nfs4_stateid *stp, int flags)
+-{
+-	struct file *filp = stp->st_vfs_file;
+-
+-	list_del(&stp->st_hash);
+-	list_del(&stp->st_perfile);
+-	list_del(&stp->st_perstateowner);
+-	if (flags & OPEN_STATE) {
+-		release_stateid_lockowners(stp);
+-		stp->st_vfs_file = NULL;
+-		nfsd_close(filp);
+-	} else if (flags & LOCK_STATE)
+-		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
+-	put_nfs4_file(stp->st_file);
+-	kmem_cache_free(stateid_slab, stp);
+-}
+-
+-static void
+ move_to_close_lru(struct nfs4_stateowner *sop)
+ {
+ 	dprintk("NFSD: move_to_close_lru nfs4_stateowner %p\n", sop);
+@@ -1764,7 +1767,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		init_stateid(stp, fp, open);
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status) {
+-			release_stateid(stp, OPEN_STATE);
++			release_open_stateid(stp);
+ 			goto out;
+ 		}
+ 	}
+@@ -2373,7 +2376,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 
+ 	/* release_stateid() calls nfsd_close() if needed */
+-	release_stateid(stp, OPEN_STATE);
++	release_open_stateid(stp);
+ 
+ 	/* place unused nfs4_stateowners on so_close_lru list to be
+ 	 * released by the laundromat service after the lease period
+-- 
+1.5.5.rc1
 
