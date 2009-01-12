@@ -1,44 +1,111 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: nfs client lockdep warning
-Date: Mon, 12 Jan 2009 13:10:39 +0100
-Message-ID: <20090112121039.GA27332@elte.hu>
-References: <20090108203658.GE19312@fieldses.org> <1231447707.7179.10.camel@heimdal.trondhjem.org> <20090108212056.GF19312@fieldses.org> <20090109043315.GA12139@gondor.apana.org.au> <1231480697.11687.522.camel@twins> <20090109062333.GB13304@gondor.apana.org.au> <1231483868.11687.523.camel@twins> <20090109202939.GA5466@fieldses.org> <1231761731.4371.7.camel@laptop>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>,
-	netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Trond Myklebust <trond@netapp.com>,
-	Nick Piggin <npiggin@suse.de>
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+From: wengang wang <wen.gang.wang@oracle.com>
+Subject: [PATCH 1/1] nfsd(v2/v3): fix the failure of creation from HPUX client --revised
+Date: Mon, 12 Jan 2009 20:14:46 +0800
+Message-ID: <200901121216.n0CCGYMx001106@acsinet13.oracle.com>
+Cc: greg.marsden@oracle.com
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.mail.elte.hu ([157.181.151.9]:35545 "EHLO mx2.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751316AbZALMLD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Jan 2009 07:11:03 -0500
-In-Reply-To: <1231761731.4371.7.camel@laptop>
+Received: from acsinet11.oracle.com ([141.146.126.233]:34289 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751219AbZALMQA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jan 2009 07:16:00 -0500
+Received: from acsinet13.oracle.com (acsinet13.oracle.com [141.146.126.235])
+	by acsinet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n0CCHYTd026791
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Jan 2009 12:17:35 GMT
+Received: from acsmt701.oracle.com (acsmt701.oracle.com [141.146.40.71])
+	by acsinet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n0CCGYMx001106
+	for <linux-nfs@vger.kernel.org>; Mon, 12 Jan 2009 12:16:35 GMT
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+for descriptions for the problem and solution please see my former post with
+Subject "nfsd(v2/v3): fix the failure of creation from HPUX client".
 
-* Peter Zijlstra <a.p.zijlstra@chello.nl> wrote:
+comparing with former post, this patch puts the trick to nfsd_create_setattr().
 
-> Subject: lockdep,mm: fix might_fault() annotation
-> 
-> Some code (nfs/sunrpc) uses socket ops on kernel memory while holding
-> the mmap_sem, this is safe because kernel memory doesn't get paged out,
-> therefore we'll never actually fault, and the might_fault() annotations
-> will generate false positives.
-> 
-> Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+the patch is based on 2.6.27.10.
 
-applied to tip/core/urgent, thanks guys!
-
-I also added a:
-
- Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
-
-line as we always want to preserve the chain of bug reports and attribute 
-them.
-
-	Ingo
+Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
+--
+ vfs.c |   20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
+diff -up ./fs/nfsd/vfs.c.orig ./fs/nfsd/vfs.c
+--- ./fs/nfsd/vfs.c.orig	2008-12-23 14:11:14.000000000 +0800
++++ ./fs/nfsd/vfs.c	2009-01-12 19:35:13.000000000 +0800
+@@ -1155,7 +1155,7 @@ nfsd_commit(struct svc_rqst *rqstp, stru
+ 
+ static __be32
+ nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
+-			struct iattr *iap)
++			struct iattr *iap, int newfile)
+ {
+ 	/*
+ 	 * Mode has already been set earlier in create:
+@@ -1168,6 +1168,16 @@ nfsd_create_setattr(struct svc_rqst *rqs
+ 	 */
+ 	if (current->fsuid != 0)
+ 		iap->ia_valid &= ~(ATTR_UID|ATTR_GID);
++	/*
++	 * HPUX client sometimes creates a file in mode 000, and set
++	 * size to 0. setting size to 0 may fail for some spcific
++	 * file systems by the permission checking which requires
++	 * WRITE privilege but the mode is 000.
++	 * we ignore setting size to 0 for the creation, since it's
++	 * just 0 after created.
++	 * */
++	if (newfile && (iap->ia_valid & ATTR_SIZE) && (iap->ia_size == 0))
++		iap->ia_valid &= ~ATTR_SIZE;
+ 	if (iap->ia_valid)
+ 		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
+ 	return 0;
+@@ -1191,6 +1201,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+ 	__be32		err;
+ 	__be32		err2;
+ 	int		host_err;
++	int		newfile = 0;
+ 
+ 	err = nfserr_perm;
+ 	if (!flen)
+@@ -1268,6 +1279,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+ 	switch (type) {
+ 	case S_IFREG:
+ 		host_err = vfs_create(dirp, dchild, iap->ia_mode, NULL);
++		newfile = 1;
+ 		break;
+ 	case S_IFDIR:
+ 		host_err = vfs_mkdir(dirp, dchild, iap->ia_mode);
+@@ -1289,7 +1301,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+ 		write_inode_now(dchild->d_inode, 1);
+ 	}
+ 
+-	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
++	err2 = nfsd_create_setattr(rqstp, resfhp, iap, newfile);
+ 	if (err2)
+ 		err = err2;
+ 	mnt_drop_write(fhp->fh_export->ex_path.mnt);
+@@ -1324,6 +1336,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+ 	__be32		err2;
+ 	int		host_err;
+ 	__u32		v_mtime=0, v_atime=0;
++	int		newfile = 0;
+ 
+ 	err = nfserr_perm;
+ 	if (!flen)
+@@ -1415,6 +1428,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+ 	}
+ 	if (created)
+ 		*created = 1;
++	newfile = 1;
+ 
+ 	if (EX_ISSYNC(fhp->fh_export)) {
+ 		err = nfserrno(nfsd_sync_dir(dentry));
+@@ -1433,7 +1447,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+ 	}
+ 
+  set_attr:
+-	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
++	err2 = nfsd_create_setattr(rqstp, resfhp, iap, newfile);
+ 	if (err2)
+ 		err = err2;
+ 
