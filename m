@@ -1,169 +1,149 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd4: split lockstateid/openstateid release logic
-Date: Mon, 12 Jan 2009 11:20:15 -0500
-Message-ID: <20090112162014.GB24322@fieldses.org>
-References: <1231717949-31908-1-git-send-email-bfields@citi.umich.edu> <1231717949-31908-2-git-send-email-bfields@citi.umich.edu> <496B04D5.1030809@panasas.com>
+Subject: Re: [basic] nfsd failing to start
+Date: Mon, 12 Jan 2009 12:24:18 -0500
+Message-ID: <20090112172418.GC24322@fieldses.org>
+References: <87zlhxy102.fsf@newsguy.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+To: Harry P <reader-kFrNdAxtuftBDgjK7y7TUQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51802 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:40541 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752649AbZALQUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Jan 2009 11:20:18 -0500
-In-Reply-To: <496B04D5.1030809@panasas.com>
+	id S1752822AbZALRYV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Jan 2009 12:24:21 -0500
+In-Reply-To: <87zlhxy102.fsf-kFrNdAxtuftBDgjK7y7TUQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 12, 2009 at 10:52:37AM +0200, Benny Halevy wrote:
-> static void unhash_generic_stateid(struct nfs4_stateid *stp)
-> {
-> 	list_del(&stp->st_hash);
-> 	list_del(&stp->st_perfile);
-> 	list_del(&stp->st_perstateowner);
-> }
+On Sun, Jan 11, 2009 at 03:41:01PM -0600, Harry P wrote:
+> NOTE: This is a repost of a message posted on gentoo.user list
 > 
-> static void free_generic_stateid(struct nfs4_stateid *stp)
-> {
-> 	put_nfs4_file(stp->st_file);
-> 	kmem_cache_free(stateid_slab, stp);
-> }
+> I've apparently forgotten whatever little I may have known about
+> setting up nfs from having used it long ago.
 > 
-> static void release_open_stateid(struct nfs4_stateid *stp)
-> {
-> 	struct file *filp = stp->st_vfs_file;
+> I found a brief help page on google that I used to get this far along
+> at:
+> http://linux-bsd-sharing.blogspot.com/2008/09/howto-setup-nfs-server-on-gentoo.html
 > 
-> 	release_stateid_lockowners(stp);
-> 	unhash_generic_stateid(stp);
-> 	nfsd_close(filep);
-> 	free_generic_stateid(stp);
-> }
+> Its very brief and has no debugging info.  
+> 
+> Also I see nothing about debugging in /etc/conf.d/nfs either.
+> 
+> After setting all nfs related kernel items and booting the kernel.
+> (The setting are inlined toward the end of this message)
+> Checking that mods appears to be installed and running.  Making sure
+> portmapper is running.
+> 
+> Then when I try to start nfsd service it fails, producing these
+> messages in sysklogd:
+> 
+> Jan [...] nfsd[29077]: nfssvc: Protocol not supported
+> Jan [...' : RPC: failed to contact local rpcbind server (errno 5).
 
-Thanks, makes sense to me; so:
+Hm, maybe it's the portmap version:
+
+> 
+> Only one of the nfssvc lines appear but the RPC line appears several
+> times. 
+> 
+> I got the impression from google that nfssvc was related to nfs4 so
+> may not mean too much ... but then I'm really not sure what it might
+> mean.
+> 
+> I don't really know what info would be helpfull but have included
+> output from emerge, rpcinfo, lsmod and related kernel settings:
+> 
+> Installed nfs related pkgs
+>  [...]
+> Sat Jan 10 18:30:11 2009 >>> net-libs/libnfsidmap-0.21-r1
+> Sat Jan 10 18:30:30 2009 >>> net-nds/portmap-6.0
+> Sat Jan 10 18:31:20 2009 >>> dev-libs/libevent-1.4.9
+> Sat Jan 10 18:32:39 2009 >>> net-fs/nfs-utils-1.1.4
+> 
+> =====     *     =====     *     =====     *     =====
+> 
+> kernel:
+> # grep 'NFS\|RPC' .config
+> 
+>   # CONFIG_AF_RXRPC is not set
+>   CONFIG_NFS_FS=m
+>   CONFIG_NFS_V3=y
+>   CONFIG_NFS_V3_ACL=y
+>   CONFIG_NFS_V4=y
+>   CONFIG_NFSD=m
+>   CONFIG_NFSD_V2_ACL=y
+>   CONFIG_NFSD_V3=y
+>   CONFIG_NFSD_V3_ACL=y
+>   CONFIG_NFSD_V4=y
+>   CONFIG_NFS_ACL_SUPPORT=m
+>   CONFIG_NFS_COMMON=y
+>   CONFIG_SUNRPC=m
+>   CONFIG_SUNRPC_GSS=m
+>   CONFIG_SUNRPC_REGISTER_V4=y
+
+>From the config help test: "If you enable this option, you must run a
+portmapper daemon that supports rpcbind protocol version 4."
+
+Chuck, what's the minimum userland required to support this?
 
 --b.
 
-commit cef099ecffe597a4c1c4cb6073190e87433ced61
-Author: J. Bruce Fields <bfields@citi.umich.edu>
-Date:   Sun Jan 11 14:27:17 2009 -0500
-
-    nfsd4: split lockstateid/openstateid release logic
-    
-    The flags here attempt to make the code more general, but I find it
-    actually just adds confusion.
-    
-    I think it's clearer to separate the logic for the open and lock cases
-    entirely.  And eventually we may want to separate the stateowner and
-    stateid types as well, as many of the fields aren't shared between the
-    lock and open cases.
-    
-    Also move to eliminate forward references.
-    
-    Start with the stateid's.
-    
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-    Reviewed-by: Benny Halevy <bhalevy@panasas.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 88db7d3..bccc28d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -119,7 +119,6 @@ opaque_hashval(const void *ptr, int nbytes)
- 
- /* forward declarations */
- static void release_stateowner(struct nfs4_stateowner *sop);
--static void release_stateid(struct nfs4_stateid *stp, int flags);
- 
- /*
-  * Delegation state
-@@ -311,6 +310,34 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
- static struct list_head client_lru;
- static struct list_head close_lru;
- 
-+static void unhash_generic_stateid(struct nfs4_stateid *stp)
-+{
-+	list_del(&stp->st_hash);
-+	list_del(&stp->st_perfile);
-+	list_del(&stp->st_perstateowner);
-+}
-+
-+static void free_generic_stateid(struct nfs4_stateid *stp)
-+{
-+	put_nfs4_file(stp->st_file);
-+	kmem_cache_free(stateid_slab, stp);
-+}
-+
-+static void release_lock_stateid(struct nfs4_stateid *stp)
-+{
-+	unhash_generic_stateid(stp);
-+	locks_remove_posix(stp->st_vfs_file, (fl_owner_t)stp->st_stateowner);
-+	free_generic_stateid(stp);
-+}
-+
-+static void release_open_stateid(struct nfs4_stateid *stp)
-+{
-+	unhash_generic_stateid(stp);
-+	release_stateid_lockowners(stp);
-+	nfsd_close(stp->st_vfs_file);
-+	free_generic_stateid(stp);
-+}
-+
- static inline void
- renew_client(struct nfs4_client *clp)
- {
-@@ -1065,9 +1092,9 @@ unhash_stateowner(struct nfs4_stateowner *sop)
- 		stp = list_entry(sop->so_stateids.next,
- 			struct nfs4_stateid, st_perstateowner);
- 		if (sop->so_is_open_owner)
--			release_stateid(stp, OPEN_STATE);
-+			release_open_stateid(stp);
- 		else
--			release_stateid(stp, LOCK_STATE);
-+			release_lock_stateid(stp);
- 	}
- }
- 
-@@ -1106,24 +1133,6 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
- }
- 
- static void
--release_stateid(struct nfs4_stateid *stp, int flags)
--{
--	struct file *filp = stp->st_vfs_file;
--
--	list_del(&stp->st_hash);
--	list_del(&stp->st_perfile);
--	list_del(&stp->st_perstateowner);
--	if (flags & OPEN_STATE) {
--		release_stateid_lockowners(stp);
--		stp->st_vfs_file = NULL;
--		nfsd_close(filp);
--	} else if (flags & LOCK_STATE)
--		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
--	put_nfs4_file(stp->st_file);
--	kmem_cache_free(stateid_slab, stp);
--}
--
--static void
- move_to_close_lru(struct nfs4_stateowner *sop)
- {
- 	dprintk("NFSD: move_to_close_lru nfs4_stateowner %p\n", sop);
-@@ -1764,7 +1773,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		init_stateid(stp, fp, open);
- 		status = nfsd4_truncate(rqstp, current_fh, open);
- 		if (status) {
--			release_stateid(stp, OPEN_STATE);
-+			release_open_stateid(stp);
- 			goto out;
- 		}
- 	}
-@@ -2373,7 +2382,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
- 
- 	/* release_stateid() calls nfsd_close() if needed */
--	release_stateid(stp, OPEN_STATE);
-+	release_open_stateid(stp);
- 
- 	/* place unused nfs4_stateowners on so_close_lru list to be
- 	 * released by the laundromat service after the lease period
+>   CONFIG_RPCSEC_GSS_KRB5=m
+>   # CONFIG_RPCSEC_GSS_SPKM3 is not set
+> 
+> =====     *     =====     *     =====     *     =====
+>  
+> # rpcinfo -p localhost
+>    program vers proto   port
+>     100000    2   tcp    111  portmapper
+>     100000    2   udp    111  portmapper
+>     100024    1   udp  34971  status
+>     100024    1   tcp  43460  status
+>     100005    1   udp  34365  mountd
+>     100005    1   tcp  44349  mountd
+>     100005    2   udp  34365  mountd
+>     100005    2   tcp  44349  mountd
+>     100005    3   udp  34365  mountd
+>     100005    3   tcp  44349  mountd
+> 
+> =====     *     =====     *     =====     *     =====
+>  
+> lsmod
+> 
+> Module                  Size  Used by
+> nfs                   206772  0 
+> nfsd                  185008  9 
+> lockd                  55160  2 nfs,nfsd
+> nfs_acl                 2688  2 nfs,nfsd
+> auth_rpcgss            28548  1 nfsd
+> sunrpc                144584  9 nfs,nfsd,lockd,nfs_acl,auth_rpcgss
+> exportfs                3456  1 nfsd
+> fuse                   42268  0 
+> usbhid                 13588  0 
+> usbmouse                3712  0 
+> usbkbd                  4992  0 
+> floppy                 45348  0 
+> pcspkr                  2176  0 
+> i2c_i801                7952  0 
+> r8169                  26500  0 
+> i2c_core               17680  1 i2c_i801
+> mii                     4224  1 r8169
+> snd_intel8x0           25500  0 
+> snd_ac97_codec         88352  1 snd_intel8x0
+> ehci_hcd               28684  0 
+> uhci_hcd               18444  0 
+> ac97_bus                1536  1 snd_ac97_codec
+> snd_pcm                48008  2 snd_intel8x0,snd_ac97_codec
+> snd_timer              15364  1 snd_pcm
+> snd                    34788  4 snd_intel8x0,snd_ac97_codec,snd_pcm,snd_timer
+> usbcore               104760  6 usbhid,usbmouse,usbkbd,ehci_hcd,uhci_hcd
+> snd_page_alloc          7304  2 snd_intel8x0,snd_pcm
+> intel_agp              22588  1 
+> agpgart                25520  1 intel_agp
+> button                  5904  0 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
