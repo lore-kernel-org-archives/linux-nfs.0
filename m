@@ -1,63 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.29]:54794 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752056AbZAZS72 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jan 2009 13:59:28 -0500
-Received: by yw-out-2324.google.com with SMTP id 9so2625398ywe.1
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2009 10:59:27 -0800 (PST)
-In-Reply-To: <1232994250.3310.221.camel@wf>
-References: <1232994250.3310.221.camel@wf>
-Date: Mon, 26 Jan 2009 13:59:27 -0500
-Message-ID: <4d569c330901261059x70913131j4dc1dec4809bc1f4@mail.gmail.com>
-Subject: Re: nfs4 with sec=krb5, mount times out
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Julius <commercials@gmx.net>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from acsinet12.oracle.com ([141.146.126.234]:17059 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752332AbZALV37 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jan 2009 16:29:59 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <766DB6AD-DAD2-4C33-B11C-28A0D638A9D2@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+In-Reply-To: <87vdskxmdc.fsf@newsguy.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [basic] nfsd failing to start
+Date: Mon, 12 Jan 2009 16:29:48 -0500
+References: <87zlhxy102.fsf@newsguy.com> <20090112172418.GC24322@fieldses.org> <87vdskxmdc.fsf@newsguy.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Jan 26, 2009 at 1:24 PM, Julius <commercials@gmx.net> wrote:
-> Hi,
+On Jan 12, 2009, at 4:09 PM, Harry P wrote:
+> "J. Bruce Fields" <bfields@fieldses.org>
+> writes:
 >
+>>>  CONFIG_NFS_FS=m
+>>>  CONFIG_NFS_V3=y
+>>>  CONFIG_NFS_V3_ACL=y
+>>>  CONFIG_NFS_V4=y
+>>>  CONFIG_NFSD=m
+>>>  CONFIG_NFSD_V2_ACL=y
+>>>  CONFIG_NFSD_V3=y
+>>>  CONFIG_NFSD_V3_ACL=y
+>>>  CONFIG_NFSD_V4=y
+>>>  CONFIG_NFS_ACL_SUPPORT=m
+>>>  CONFIG_NFS_COMMON=y
+>>>  CONFIG_SUNRPC=m
+>>>  CONFIG_SUNRPC_GSS=m
+>>>  CONFIG_SUNRPC_REGISTER_V4=y
+>>
+>> From the config help test: "If you enable this option, you must run a
+>> portmapper daemon that supports rpcbind protocol version 4."
 >
-> i can mount my nfsv4 share without kerberos security without
-> problems.../etc/fstab:
->
-> night_crawler.localdomain.de:/music /home/metalfan/nfs4-mount   nfs4    user
-> 0       0
->
->
-> but adding "sec=krb5" to the options list results in:
->
->
-> mount -v nfs4-mount/
-> mount.nfs4: timeout set for Mon Jan 26 15:44:05 2009
-> mount.nfs4: text-based options:
-> 'sec=krb5,clientaddr=141.x.x.x,addr=141.x.x.x
-> mount.nfs4: mount(2): Connection timed out
->
->
-> I read somewhere on the mailing list that only des-cbc-crc is supported
-> for nfs4, its the only keytype for my user metalfan.
-> "kinit metalfan" was run before attempting to mount.
-> i can use gssapi to connect to night_crawlers sshd with my local user,
-> which also does the nfs4 mount.
->
-> krb5-kdc.log and krb5-default.log do not show any connections.
-> Where do you start troubleshooting?
+> Thanks, with your clue I commented all nfs and SunRPC 4 related lines
+> recompiled and rebooted... started up with no problems.
 
-First step would be to verify that rpc.gssd is running on your client
-machine, and rpc.svcgssd is running on your server machine.
-You need to generate a keytab for your server (with only a des-cbc-crc
-key).  (nfs/<f.q.h.n>@<REALM>)
-You likely need to generate a keytab for your client as well.
+Clearly, setting the Kconfig default to N is not enough to prevent  
+this problem.  I don't understand why this option is getting enabled  
+without any other intervention on the part of kernel builders.  Maybe  
+we need to update arch/defconfig?
 
-If all those are done, send output of rpc.gssd and rpc.svcgssd
-(running with option -vvv).
+It's on my immediate to-do list to see if the compile-time and run- 
+time behavior in this area can be improved.
 
-I would point you at our FAQ page, but the web server is sadly still
-down at the moment.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-K.C.
+
+
