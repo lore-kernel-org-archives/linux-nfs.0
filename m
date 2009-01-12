@@ -1,63 +1,169 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH,RFC] more graceful sunrpc cache updates for HA
-Date: Mon, 12 Jan 2009 10:51:46 -0500
-Message-ID: <20090112155146.GA24322@fieldses.org>
-References: <496B1A7E.80807@melbourne.sgi.com>
+Subject: Re: [PATCH] nfsd4: split lockstateid/openstateid release logic
+Date: Mon, 12 Jan 2009 11:20:15 -0500
+Message-ID: <20090112162014.GB24322@fieldses.org>
+References: <1231717949-31908-1-git-send-email-bfields@citi.umich.edu> <1231717949-31908-2-git-send-email-bfields@citi.umich.edu> <496B04D5.1030809@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Neil Brown <neilb@suse.de>, NFS list <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:39681 "EHLO fieldses.org"
+Received: from mail.fieldses.org ([141.211.133.115]:51802 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752382AbZALPvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Jan 2009 10:51:52 -0500
-In-Reply-To: <496B1A7E.80807-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+	id S1752649AbZALQUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Jan 2009 11:20:18 -0500
+In-Reply-To: <496B04D5.1030809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 12, 2009 at 09:25:02PM +1100, Greg Banks wrote:
-> The kernel keeps an effectively global generation number (genid). 
-> Interfaces are provided to userspace to allow querying the genid, and to
-> allow atomically incrementing and querying the genid.  After exportfs
-> makes a change to etab it asks the kernel to increment the genid.  When
-> mountd wants to know if the etab has changed, it checks the genid and
-> re-reads etab if the genid has changed since the last read.  The export
-> updates that mountd writes into the kernel are tagged with the genid
-> that mountd thinks they belong to, and this is stored in the cache
-> entry.  Missing is a hunk to make cache_fresh() compare the genids of
-> the entry and the cache_detail and if they differ start an upcall (but
-> *not* consider the entry invalid, i.e. behave like the age >
-> refresh_age/2 case).
-
-So the result is just to give userspace a way to tell the kernel that it
-should start making upcalls without yet dropping the existing cache
-entries?
-
-I'd like to guarantee that nfsd behavior reflects the updated exports
-by the time exportfs returns.  From your description, it doesn't sound
-like you're trying to meet such a guarantee?  Or is there some way for
-exportfs to wait till it sees the updates made?
-
-It also might be possible to teach exportfs and/or mountd how to write
-the "diff" between the current kernel exports and the new exports into
-the export cache.
-
-> a) allow large NFS calls to be deferred, up to the maximum wsize rather
-> than just a page, or
+On Mon, Jan 12, 2009 at 10:52:37AM +0200, Benny Halevy wrote:
+> static void unhash_generic_stateid(struct nfs4_stateid *stp)
+> {
+> 	list_del(&stp->st_hash);
+> 	list_del(&stp->st_perfile);
+> 	list_del(&stp->st_perstateowner);
+> }
 > 
-> b) change call deferral to always block the calling thread instead of
-> using a deferral record and returning -EAGAIN
+> static void free_generic_stateid(struct nfs4_stateid *stp)
+> {
+> 	put_nfs4_file(stp->st_file);
+> 	kmem_cache_free(stateid_slab, stp);
+> }
+> 
+> static void release_open_stateid(struct nfs4_stateid *stp)
+> {
+> 	struct file *filp = stp->st_vfs_file;
+> 
+> 	release_stateid_lockowners(stp);
+> 	unhash_generic_stateid(stp);
+> 	nfsd_close(filep);
+> 	free_generic_stateid(stp);
+> }
 
-Any deferral method sufficient to handle reads and writes already
-requires saving a fair amount of state, so I wonder whether the extra
-overhead just to keep another thread around is worth the trouble of
-avoiding....
+Thanks, makes sense to me; so:
 
 --b.
 
-> Both approaches have interesting and potentially frightening side
-> effects, but could be made to work.  I've discussed option b) with
-> Bruce, and I understand the NFSv4.1 guys have their own reasons for
-> wanting to do something like that.  Maybe the above will help explain
-> why the current call deferral behaviour gives me the irrits :-)
+commit cef099ecffe597a4c1c4cb6073190e87433ced61
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Sun Jan 11 14:27:17 2009 -0500
+
+    nfsd4: split lockstateid/openstateid release logic
+    
+    The flags here attempt to make the code more general, but I find it
+    actually just adds confusion.
+    
+    I think it's clearer to separate the logic for the open and lock cases
+    entirely.  And eventually we may want to separate the stateowner and
+    stateid types as well, as many of the fields aren't shared between the
+    lock and open cases.
+    
+    Also move to eliminate forward references.
+    
+    Start with the stateid's.
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+    Reviewed-by: Benny Halevy <bhalevy@panasas.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 88db7d3..bccc28d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -119,7 +119,6 @@ opaque_hashval(const void *ptr, int nbytes)
+ 
+ /* forward declarations */
+ static void release_stateowner(struct nfs4_stateowner *sop);
+-static void release_stateid(struct nfs4_stateid *stp, int flags);
+ 
+ /*
+  * Delegation state
+@@ -311,6 +310,34 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+ static struct list_head client_lru;
+ static struct list_head close_lru;
+ 
++static void unhash_generic_stateid(struct nfs4_stateid *stp)
++{
++	list_del(&stp->st_hash);
++	list_del(&stp->st_perfile);
++	list_del(&stp->st_perstateowner);
++}
++
++static void free_generic_stateid(struct nfs4_stateid *stp)
++{
++	put_nfs4_file(stp->st_file);
++	kmem_cache_free(stateid_slab, stp);
++}
++
++static void release_lock_stateid(struct nfs4_stateid *stp)
++{
++	unhash_generic_stateid(stp);
++	locks_remove_posix(stp->st_vfs_file, (fl_owner_t)stp->st_stateowner);
++	free_generic_stateid(stp);
++}
++
++static void release_open_stateid(struct nfs4_stateid *stp)
++{
++	unhash_generic_stateid(stp);
++	release_stateid_lockowners(stp);
++	nfsd_close(stp->st_vfs_file);
++	free_generic_stateid(stp);
++}
++
+ static inline void
+ renew_client(struct nfs4_client *clp)
+ {
+@@ -1065,9 +1092,9 @@ unhash_stateowner(struct nfs4_stateowner *sop)
+ 		stp = list_entry(sop->so_stateids.next,
+ 			struct nfs4_stateid, st_perstateowner);
+ 		if (sop->so_is_open_owner)
+-			release_stateid(stp, OPEN_STATE);
++			release_open_stateid(stp);
+ 		else
+-			release_stateid(stp, LOCK_STATE);
++			release_lock_stateid(stp);
+ 	}
+ }
+ 
+@@ -1106,24 +1133,6 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
+ }
+ 
+ static void
+-release_stateid(struct nfs4_stateid *stp, int flags)
+-{
+-	struct file *filp = stp->st_vfs_file;
+-
+-	list_del(&stp->st_hash);
+-	list_del(&stp->st_perfile);
+-	list_del(&stp->st_perstateowner);
+-	if (flags & OPEN_STATE) {
+-		release_stateid_lockowners(stp);
+-		stp->st_vfs_file = NULL;
+-		nfsd_close(filp);
+-	} else if (flags & LOCK_STATE)
+-		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
+-	put_nfs4_file(stp->st_file);
+-	kmem_cache_free(stateid_slab, stp);
+-}
+-
+-static void
+ move_to_close_lru(struct nfs4_stateowner *sop)
+ {
+ 	dprintk("NFSD: move_to_close_lru nfs4_stateowner %p\n", sop);
+@@ -1764,7 +1773,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		init_stateid(stp, fp, open);
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status) {
+-			release_stateid(stp, OPEN_STATE);
++			release_open_stateid(stp);
+ 			goto out;
+ 		}
+ 	}
+@@ -2373,7 +2382,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
+ 
+ 	/* release_stateid() calls nfsd_close() if needed */
+-	release_stateid(stp, OPEN_STATE);
++	release_open_stateid(stp);
+ 
+ 	/* place unused nfs4_stateowners on so_close_lru list to be
+ 	 * released by the laundromat service after the lease period
