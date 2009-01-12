@@ -1,169 +1,55 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] nfsd4: split lockstateid/openstateid release logic
-Date: Mon, 12 Jan 2009 10:52:37 +0200
-Message-ID: <496B04D5.1030809@panasas.com>
-References: <1231717949-31908-1-git-send-email-bfields@citi.umich.edu> <1231717949-31908-2-git-send-email-bfields@citi.umich.edu>
+From: Ian Campbell <ijc-KcIKpvwj1kUDXYZnReoRVg@public.gmane.org>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Date: Mon, 12 Jan 2009 09:46:04 +0000
+Message-ID: <1231753564.27350.83.camel@zakaz.uk.xensource.com>
+References: <1227737539.31008.2.camel@localhost.localdomain>
+	 <1228090631.7112.11.camel@heimdal.trondhjem.org>
+	 <1228169383.20370.3.camel@localhost.localdomain>
+	 <1228565812.10856.30.camel@localhost.localdomain>
+	 <1229279045.3721.1.camel@localhost.localdomain>
+	 <20081216175503.GG16388@fieldses.org>
+	 <1229452775.3721.25.camel@localhost.localdomain>
+	 <20090107222115.GI965@fieldses.org> <20090108182003.GB17623@fieldses.org>
+	 <1231449753.21688.12.camel@localhost.localdomain>
+	 <20090108212605.GG19312@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Content-Type: text/plain
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, Max Kellermann <mk-xMchvyqCc6DQT0dZR+AlfA@public.gmane.org>,
+	linux-kernel@vger.kernel.org, gcosta@redhat.com,
+	Grant Coady <grant_lkml-rGYn+TmxqGy6c6uEtOJ/EA@public.gmane.org>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([66.104.249.162]:30775 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750914AbZALIwl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jan 2009 03:52:41 -0500
-In-Reply-To: <1231717949-31908-2-git-send-email-bfields@citi.umich.edu>
+Received: from mtaout02-winn.ispmail.ntl.com ([81.103.221.48]:43979 "EHLO
+	mtaout02-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751411AbZALJq0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jan 2009 04:46:26 -0500
+In-Reply-To: <20090108212605.GG19312@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan. 12, 2009, 1:52 +0200, "J. Bruce Fields" <bfields@citi.umich.edu> wrote:
-> The flags here attempt to make the code more general, but I find it
-> actually just adds confusion.
+On Thu, 2009-01-08 at 16:26 -0500, J. Bruce Fields wrote:
+> On Thu, Jan 08, 2009 at 09:22:33PM +0000, Ian Campbell wrote:
+
+> > These two look like the relevant ones to me but I'm not sure:
+> > 22945e4a1c7454c97f5d8aee1ef526c83fef3223 svc: Clean up deferred requests on transport destruction
+> > 69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a SUNRPC: Ensure the server closes sockets in a timely fashion
+> > 
+> > I think 69b6 was in the set of three I tested previously and the other
+> > two turned into 2294?
 > 
-> I think it's clearer to separate the logic for the open and lock cases
-> entirely.  And eventually we may want to separate the stateowner and
-> stateid types as well, as many of the fields aren't shared between the
-> lock and open cases.
-> 
-> Also move to eliminate forward references.
-> 
-> Start with the stateid's.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/nfsd/nfs4state.c |   49 ++++++++++++++++++++++++++-----------------------
->  1 files changed, 26 insertions(+), 23 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 88db7d3..6b8e5a9 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -119,7 +119,6 @@ opaque_hashval(const void *ptr, int nbytes)
->  
->  /* forward declarations */
->  static void release_stateowner(struct nfs4_stateowner *sop);
-> -static void release_stateid(struct nfs4_stateid *stp, int flags);
->  
->  /*
->   * Delegation state
-> @@ -311,6 +310,28 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
->  static struct list_head client_lru;
->  static struct list_head close_lru;
->  
-> +static void release_generic_stateid(struct nfs4_stateid *stp)
-> +{
-> +	list_del(&stp->st_hash);
-> +	list_del(&stp->st_perfile);
-> +	list_del(&stp->st_perstateowner);
-> +	put_nfs4_file(stp->st_file);
-> +	kmem_cache_free(stateid_slab, stp);
-> +}
-> +
-> +static void release_lock_stateid(struct nfs4_stateid *stp)
-> +{
-> +	locks_remove_posix(stp->st_vfs_file, (fl_owner_t)stp->st_stateowner);
-> +	release_generic_stateid(stp);
-> +}
-> +
-> +static void release_open_stateid(struct nfs4_stateid *stp)
-> +{
-> +	release_stateid_lockowners(stp);
-> +	nfsd_close(stp->st_vfs_file);
-> +	release_generic_stateid(stp);
+> Yep, exactly.--b.
 
-Bruce, previously the state got unhashed before calling nfsd_close.
-In the pnfs world we even go further and release the state lock
-before diving into the filesystem since it may invoke callbacks
-in the close path (recalling layouts in particular).
+OK, I have patched my 2.6.26 kernel with these and it is now running.
+It'll be about a week before I can say with any certainty that the issue
+hasn't recurred.
 
-How about the code below?
-Note that put_nfs4_file still happens in this proposal
-after nfsd_close so not to change the current behavior, though
-it might be possible to swap the order.  I'm not sure about
-the ramifications.
+Ian.
+-- 
+Ian Campbell
+Current Noise: Pitchshifter - Subject To Status
 
-Benny
+Do I have a lifestyle yet?
 
-static void unhash_generic_stateid(struct nfs4_stateid *stp)
-{
-	list_del(&stp->st_hash);
-	list_del(&stp->st_perfile);
-	list_del(&stp->st_perstateowner);
-}
-
-static void free_generic_stateid(struct nfs4_stateid *stp)
-{
-	put_nfs4_file(stp->st_file);
-	kmem_cache_free(stateid_slab, stp);
-}
-
-static void release_open_stateid(struct nfs4_stateid *stp)
-{
-	struct file *filp = stp->st_vfs_file;
-
-	release_stateid_lockowners(stp);
-	unhash_generic_stateid(stp);
-	nfsd_close(filep);
-	free_generic_stateid(stp);
-}
-
-> +}
-> +
->  static inline void
->  renew_client(struct nfs4_client *clp)
->  {
-> @@ -1065,9 +1086,9 @@ unhash_stateowner(struct nfs4_stateowner *sop)
->  		stp = list_entry(sop->so_stateids.next,
->  			struct nfs4_stateid, st_perstateowner);
->  		if (sop->so_is_open_owner)
-> -			release_stateid(stp, OPEN_STATE);
-> +			release_open_stateid(stp);
->  		else
-> -			release_stateid(stp, LOCK_STATE);
-> +			release_lock_stateid(stp);
->  	}
->  }
->  
-> @@ -1106,24 +1127,6 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
->  }
->  
->  static void
-> -release_stateid(struct nfs4_stateid *stp, int flags)
-> -{
-> -	struct file *filp = stp->st_vfs_file;
-> -
-> -	list_del(&stp->st_hash);
-> -	list_del(&stp->st_perfile);
-> -	list_del(&stp->st_perstateowner);
-> -	if (flags & OPEN_STATE) {
-> -		release_stateid_lockowners(stp);
-> -		stp->st_vfs_file = NULL;
-> -		nfsd_close(filp);
-> -	} else if (flags & LOCK_STATE)
-> -		locks_remove_posix(filp, (fl_owner_t) stp->st_stateowner);
-> -	put_nfs4_file(stp->st_file);
-> -	kmem_cache_free(stateid_slab, stp);
-> -}
-> -
-> -static void
->  move_to_close_lru(struct nfs4_stateowner *sop)
->  {
->  	dprintk("NFSD: move_to_close_lru nfs4_stateowner %p\n", sop);
-> @@ -1764,7 +1767,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
->  		init_stateid(stp, fp, open);
->  		status = nfsd4_truncate(rqstp, current_fh, open);
->  		if (status) {
-> -			release_stateid(stp, OPEN_STATE);
-> +			release_open_stateid(stp);
->  			goto out;
->  		}
->  	}
-> @@ -2373,7 +2376,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	memcpy(&close->cl_stateid, &stp->st_stateid, sizeof(stateid_t));
->  
->  	/* release_stateid() calls nfsd_close() if needed */
-> -	release_stateid(stp, OPEN_STATE);
-> +	release_open_stateid(stp);
->  
->  	/* place unused nfs4_stateowners on so_close_lru list to be
->  	 * released by the laundromat service after the lease period
