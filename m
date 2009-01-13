@@ -1,194 +1,60 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/3] SUNRPC: Clearer error message when user space is running portmap
-Date: Tue, 13 Jan 2009 13:26:28 -0500
-Message-ID: <FEC54836-11C4-46C6-9F89-CE3A6825E38C@oracle.com>
-References: <20090113172538.6755.83766.stgit@ingres.1015granger.net> <20090113173156.6755.86231.stgit@ingres.1015granger.net> <1231868640.7036.11.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with enormous
+ load averages
+Date: Tue, 13 Jan 2009 17:35:33 -0500
+Message-ID: <496D1735.40903@redhat.com>
+References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com> <496CA61C.5050208@redhat.com> <496D1294.1060407@melbourne.sgi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS ML <linux-nfs@vger.kernel.org>
+To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:54490 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751189AbZAMS0s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2009 13:26:48 -0500
-In-Reply-To: <1231868640.7036.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:47714 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753305AbZAMWfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Jan 2009 17:35:37 -0500
+In-Reply-To: <496D1294.1060407-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 13, 2009, at Jan 13, 2009, 12:44 PM, Trond Myklebust wrote:
-> On Tue, 2009-01-13 at 12:31 -0500, Chuck Lever wrote:
->> Detect the case where we sent an rpcbind v4 SET but user space  
->> doesn't
->> support rpcbind protocol version 4.
->>
->> When registering an AF_INET service, a warning is sent to the log  
->> once,
->> and we down-shift to version 2.  With AF_INET6, an error is always  
->> sent
->> to the log, and the registration fails.
->>
->> This should help distributors and testers determine why their NFSD
->> service won't start, but normal users/admins should really never see
->> this message unless something very strange has happened.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> net/sunrpc/svc.c |   44 ++++++++++++++++++++++++++++++++++++++------
->> 1 files changed, 38 insertions(+), 6 deletions(-)
->>
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index e93bc55..daed77f 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -736,6 +736,18 @@ static void __svc_rpcb_prog_mismatch_error(void)
->> 	}
->> }
->>
->> +static int __svc_rpcb_cant_register(const char *progname, const  
->> u32 version)
->> +{
->> +	printk(KERN_ERR
->> +		"svc: Could not register an IPv6 listener for %s v%u "
->> +		"with the local portmapper.\n"
->> +		"svc: The kernel tried an rpcbind version 4 request, "
->> +		"but your portmapper\n"
->> +		"svc: does not support rpcbind version 4.",
->> +		progname, version);
->> +	return -EAFNOSUPPORT;
->> +}
+Greg Banks wrote:
+> Peter Staubach wrote:
+>   
+>> Greg Banks wrote:
+>>     
+>>> [...]
+>>> Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients, each with 16
+>>> synthetic client threads simulating an rsync (i.e. recursive directory
+>>> listing) workload[...]
+>>>
+>>> Profiling showed schedule() taking 6.7% of every CPU, and __wake_up()
+>>> taking 5.2%.  This patch drops those contributions to 3.0% and 2.2%.
+>>> Load average was over 120 before the patch, and 20.9 after.
+>>> [...]
+>>>       
+>> Have you measured the impact of these changes for something
+>> like SpecSFS?
+>>     
 >
-> This is ___way___ too intrusive...
+> Not individually.  This patch was part of some work I did in late
+> 2005/early 2006 which was aimed at improving NFS server performance in
+> general.  I do know that the server's SpecSFS numbers jumped by a factor
+> of somewhere over 2x, from embarrassingly bad to publishable, when
+> SpecSFS was re-run after that work.  However at the time I did not have
+> the ability to run SpecSFS myself, it was run by a separate group of
+> people who had dedicated hardware and experience.  So I can't tell what
+> contribution this particular patch made to the overall SpecSFS
+> improvements.  Sorry.
 
-> We already have stuff like the NFSv4 callback channel that  
-> automatically
-> assumes that it should use an IPv6 registration as long as CONFIG_IPV6
-> or CONFIG_IPV6_MODULE are defined.
+That does sound promising though.  :-)
 
-I believe the callback channel service does not register itself with  
-the local portmapper.  This function wouldn't be invoked in that case.
+It would be interesting to get some better information regarding
+some of the measurable performance ramifications such as SFS
+though.  The Linux NFS server has not had much attention paid to
+it and I suspect that it could use some work in the performance
+area.
 
-> Compiling in IPv6 without having an IPv6-capable portmapper should
-> certainly not be flagged as a kernel error.
+    Thanx...
 
-It's an error if the kernel can't register an RPC service that asked  
-to be registered, isn't it?
-
-But the point I _think_ you're making is that enabling kernel IPv6  
-support (outside of RPC) shouldn't cause problems like this.  If  
-CONFIG_SUNRPC_REGISTER_V4 is not set, then IPv6 RPC listeners for  
-lockd and NFSD aren't created at all, even if CONFIG_IPV6 is enabled,  
-and this problem is avoided.
-
-(I think proper dependencies exist to make this work right today, but  
-it's pretty confusing.  An additional CONFIG entry for explicitly  
-enabling lockd and NFSD via IPv6 would make this better understood).
-
-The other problem here is that when registering an IPv6 RPC service,  
-the kernel uses an IPv6 loopback address to test whether the user  
-space portmapper is actually IPv6 enabled.  I expect this is why the  
-new kernel running with the old user space never got "program version  
-mismatch" -- the portmapper wasn't listening on IPv6 to reply to the  
-request.
-
-This was the reason I wanted to use a connected transport for  
-registration upcalls -- then rpcb_v4_register could tell immediately  
-that user space wasn't prepared for kernel IPv6 RPC services, instead  
-of timing out after many seconds.
-
-We can switch to always use IPv4 for the registration upcall to avoid  
-this problem and retain backwards compatibility.  However, this means  
-that the kernel can't detect whether user space is really IPv6  
-enabled.  It can only tell whether rpcbindv4 is supported.  Do we  
-think that is sufficient?  (I'll hazard a guess that the answer is  
-"yes").
-
->> /*
->>  * Register an "inet" protocol family netid with the local
->>  * rpcbind daemon via an rpcbind v4 SET request.
->> @@ -811,10 +823,14 @@ static int __svc_rpcb_register6(const u32  
->> program, const u32 version,
->> /*
->>  * Register a kernel RPC service via rpcbind version 4.
->>  *
->> + * This logic is complicated by the case where user space is not
->> + * running a portmapper that can handle a verison 4 request.
->> + *
->>  * Returns zero on success; a negative errno value is returned
->>  * if any error occurs.
->>  */
->> -static int __svc_register(const u32 program, const u32 version,
->> +static int __svc_register(const char *progname,
->> +			  const u32 program, const u32 version,
->> 			  const sa_family_t family,
->> 			  const unsigned short protocol,
->> 			  const unsigned short port)
->> @@ -823,11 +839,25 @@ static int __svc_register(const u32 program,  
->> const u32 version,
->>
->> 	switch (family) {
->> 	case AF_INET:
->> -		return __svc_rpcb_register4(program, version,
->> -						protocol, port);
->> +		if (__svc_register_version == 4) {
->> +			error = __svc_rpcb_register4(program, version,
->> +							protocol, port);
->> +			if (error != -EPROTONOSUPPORT)
->> +				return error;
->> +		}
->> +
->> +		/* Down-shift. */
->> +		__svc_rpcb_prog_mismatch_error();
->> +		return rpcb_register(program, version, protocol, port);
->> 	case AF_INET6:
->> +		/* This won't work if we don't have version 4. */
->> +		if (__svc_register_version != 4)
->> +			return __svc_rpcb_cant_register(progname, version);
->> +
->> 		error = __svc_rpcb_register6(program, version,
->> 						protocol, port);
->> +		if (error == -EPROTONOSUPPORT)
->> +			return __svc_rpcb_cant_register(progname, version);
->> 		if (error < 0)
->> 			return error;
->>
->> @@ -854,7 +884,8 @@ static int __svc_register(const u32 program,  
->> const u32 version,
->>  * Returns zero on success; a negative errno value is returned
->>  * if any error occurs.
->>  */
->> -static int __svc_register(const u32 program, const u32 version,
->> +static int __svc_register(const char *progname,
->> +			  const u32 program, const u32 version,
->> 			  sa_family_t family,
->> 			  const unsigned short protocol,
->> 			  const unsigned short port)
->> @@ -901,8 +932,9 @@ int svc_register(const struct svc_serv *serv,  
->> const unsigned short proto,
->> 			if (progp->pg_vers[i]->vs_hidden)
->> 				continue;
->>
->> -			error = __svc_register(progp->pg_prog, i,
->> -						serv->sv_family, proto, port);
->> +			error = __svc_register(progp->pg_name, progp->pg_prog,
->> +						i, serv->sv_family,
->> +						proto, port);
->> 			if (error < 0)
->> 				break;
->> 		}
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+       ps
