@@ -1,81 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:29240 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753272AbZAEVyB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Jan 2009 16:54:01 -0500
-Cc: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
-Message-Id: <4F34D959-E087-4736-A00A-49F75708F1C5@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <496268F9.8010607@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH] gssd: By default, don't spam syslog when users' credentials expire
-Date: Mon, 5 Jan 2009 16:53:05 -0500
-References: <20081217173927.3031.53736.stgit@jazz.citi.umich.edu> <496268F9.8010607@RedHat.com>
+Received: from mx2.redhat.com ([66.187.237.31]:47660 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754037AbZAMWbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Jan 2009 17:31:35 -0500
+Message-ID: <496D1642.6060608@redhat.com>
+Date: Tue, 13 Jan 2009 17:31:30 -0500
+From: Peter Staubach <staubach@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: Nick Piggin <nickpiggin@yahoo.com.au>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] out of order WRITE requests
+Content-Type: multipart/mixed;
+ boundary="------------010508010907040906010009"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Jan 5, 2009, at Jan 5, 2009, 3:09 PM, Steve Dickson wrote:
-> Kevin Coffman wrote:
->> Change the priority of "common" log messages so that syslog doesn't  
->> get
->> slammed/spammed when users' credentials expire, or there is another  
->> common
->> problem which would cause error messages for all context creation  
->> requests.
->>
->> Note that this will now require that gssd or svcgssd option "-v" is  
->> used to
->> debug these common cases.
->>
->> Original patch from Andrew Pollock <apollock@google.com>.
->>
-> Committed...
->
-> This took a little longer than expected do to a fairly
-> nasty bug in the Fedora 10 installation....
->
-> The installation process adds both the FQDN and the host name
-> (i.e. the non-FQDN) to the 127.0.0.1 line in /etc/hosts. This
-> causes gethostname() on the FQDN to return 127.0.0.1 instead of
-> DNS IP address... This caused svcgssd to always fail due to
-> the host name not being found in the key tab.
->
-> Unfortunately it took quite a bit to figure out what host name the
-> kerberos libs were looking since the host name in the key tab was
-> indeed correct... That lib code is definitely lacking when it comes
-> to debug-ability... :-(
->
-> So buyer bewared... if you recently installed F-10 please check to see
-> if your /etc/hosts file only contains the non-FQDN host name on the
-> 127.0.0.1 line.
+--------------010508010907040906010009
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-I think that's the default configuration for F10 (and probably earlier  
-Fedora releases as well).  The lack of proper /etc/hosts entries also  
-wreaks some havoc with sendmail.
+Hi.
 
-Moreover, F10's Anaconda no longer allows you to specify a static IP  
-configuration at install time -- network configuration is handled  
-almost entirely via NetworkManager, and any special configuration,  
-other than "use DHCP for every network interface you can find," is now  
-done after the system is installed and running.
+Attached is a patch which addresses a continuing problem with
+the NFS client generating out of order WRITE requests.  While
+this is compliant with all of the current protocol
+specifications, there are servers in the market which can not
+handle out of order WRITE requests very well.  Also, this may
+lead to sub-optimal block allocations in the underlying file
+system on the server.  This may cause the read throughputs to
+be reduced when reading the file from the server.
 
-F10 still includes system-config-network and /etc/init.d/network, but  
-these are unused/disabled by default.  system-config-network doesn't  
-play well with NetworkManager.  There's also no way to specify a fixed  
-IPv6 address.
+There has been a lot of work recently done to address out of
+order issues on a systemic level.  However, the NFS client is
+still susceptible to the problem.  Out of order WRITE
+requests can occur when pdflush is in the middle of writing
+out pages while the process dirtying the pages calls 
+generic_file_buffered_write which calls
+generic_perform_write which calls
+balance_dirty_pages_rate_limited which ends up calling
+writeback_inodes which ends up calling back into the NFS
+client to writes out dirty pages for the same file that
+pdflush happens to be working with.
 
-While this automatic style of network configuration matches the trend  
-set by Ubuntu, and probably meets the needs of most desktop users, I  
-find it pretty inconvenient for servers (which is mostly how I  
-configure and use Linux these days).
+The attached patch supplies synchronization in the NFS client
+code itself.  The entry point in the NFS client for both of
+the code paths mentioned is nfs_writepages, so serializing
+there resolves this issue.
 
-I would like either a restoration of networking configuration during  
-the installation process, or to have the network management tools work  
-and have decent help facilities and wizards.  Even better if we could  
-have both.
+My testing, informal, showed no degradation in WRITE
+throughput.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+    Thanx...
+
+       ps
+
+Signed-off-by: Peter Staubach <staubach@redhat.com>
+
+--------------010508010907040906010009
+Content-Type: text/plain;
+ name="sync_writes.devel"
+Content-Disposition: attachment; filename="sync_writes.devel"
+X-Mozilla-External-Attachment-URL: file:///Users/pgp/Downloads/sync_writes.devel
+X-Mozilla-Altered: AttachmentDetached; date="Wed Jan 14 12:08:29 2009"
+
+The original MIME headers for this attachment are:
+Content-Type: text/plain;
+ name="sync_writes.devel"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="sync_writes.devel"
+
+
+--------------010508010907040906010009--
