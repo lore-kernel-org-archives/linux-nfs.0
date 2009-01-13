@@ -1,92 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:60763 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751615AbZABAgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Jan 2009 19:36:54 -0500
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: Marc Eshel <eshel@almaden.ibm.com>,
-        "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH] nfsd: do a temporary open for LOCKT
-Date: Thu,  1 Jan 2009 19:36:51 -0500
-Message-Id: <1230856611-32574-3-git-send-email-bfields@citi.umich.edu>
-In-Reply-To: <1230856611-32574-2-git-send-email-bfields@citi.umich.edu>
-References: <1230856611-32574-1-git-send-email-bfields@citi.umich.edu>
- <1230856611-32574-2-git-send-email-bfields@citi.umich.edu>
+Received: from relay3.sgi.com ([192.48.171.31]:36205 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755209AbZAMWX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Jan 2009 17:23:58 -0500
+Message-ID: <496D1294.1060407@melbourne.sgi.com>
+Date: Wed, 14 Jan 2009 09:15:48 +1100
+From: Greg Banks <gnb@melbourne.sgi.com>
+To: Peter Staubach <staubach@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS ML <linux-nfs@vger.kernel.org>
+Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with enormous
+ load averages
+References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com> <496CA61C.5050208@redhat.com>
+In-Reply-To: <496CA61C.5050208@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-I've got a slight fear that the problem Marc tripped across won't be the
-last that's caused by this hack of faking up a struct file with only
-some fields initialized.  We may as well just do an open, just as we do
-with reads and writes in the v2/v3 case, and get a proper struct file.
+Peter Staubach wrote:
+> Greg Banks wrote:
+>> [...]
+>> Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients, each with 16
+>> synthetic client threads simulating an rsync (i.e. recursive directory
+>> listing) workload[...]
+>>
+>> Profiling showed schedule() taking 6.7% of every CPU, and __wake_up()
+>> taking 5.2%.  This patch drops those contributions to 3.0% and 2.2%.
+>> Load average was over 120 before the patch, and 20.9 after.
+>> [...]
+>
+> Have you measured the impact of these changes for something
+> like SpecSFS?
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |   33 ++++++++++++++++++++-------------
- 1 files changed, 20 insertions(+), 13 deletions(-)
+Not individually.  This patch was part of some work I did in late
+2005/early 2006 which was aimed at improving NFS server performance in
+general.  I do know that the server's SpecSFS numbers jumped by a factor
+of somewhere over 2x, from embarrassingly bad to publishable, when
+SpecSFS was re-run after that work.  However at the time I did not have
+the ability to run SpecSFS myself, it was run by a separate group of
+people who had dedicated hardware and experience.  So I can't tell what
+contribution this particular patch made to the overall SpecSFS
+improvements.  Sorry.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 83f8e21..800b531 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2770,6 +2770,25 @@ out:
- }
- 
- /*
-+ * The NFSv4 spec allows a client to do a LOCKT without holding an OPEN,
-+ * so we do a temporary open here just to get an open file to pass to
-+ * vfs_test_lock.  (Arguably perhaps test_lock should be done with an
-+ * inode operation.)
-+ */
-+static int nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file_lock *lock)
-+{
-+	struct file *file;
-+	int err;
-+
-+	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
-+	if (err)
-+		return err;
-+	err = vfs_test_lock(file, lock);
-+	nfsd_close(file);
-+	return err;
-+}
-+
-+/*
-  * LOCKT operation
-  */
- __be32
-@@ -2777,7 +2796,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_lockt *lockt)
- {
- 	struct inode *inode;
--	struct file file;
- 	struct file_lock file_lock;
- 	int error;
- 	__be32 status;
-@@ -2835,19 +2853,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	nfs4_transform_lock_offset(&file_lock);
- 
--	/*
--	 * vfs_test_lock uses the struct file _only_ to resolve the inode.
--	 * since LOCKT doesn't require an OPEN, and therefore a struct
--	 * file may not exist, pass vfs_test_lock a struct file with
--	 * only the dentry and i_fop (in case the filesystem defines
--	 * its own lock method) set.
--	 */
--	memset(&file, 0, sizeof (struct file));
--	file.f_path.dentry = cstate->current_fh.fh_dentry;
--	file.f_op = inode->i_fop;
--
- 	status = nfs_ok;
--	error = vfs_test_lock(&file, &file_lock);
-+	error = nfsd_test_lock(rqstp, &cstate->current_fh, &file_lock);
- 	if (error) {
- 		status = nfserrno(error);
- 		goto out;
 -- 
-1.5.5.rc1
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
 
