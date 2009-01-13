@@ -1,51 +1,123 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/3] Detect user space support for rpcbind v4
-Date: Tue, 13 Jan 2009 12:31:33 -0500
-Message-ID: <20090113172538.6755.83766.stgit@ingres.1015granger.net>
+Subject: [PATCH 2/3] SUNRPC: Clearer error message when user space is running
+	portmap
+Date: Tue, 13 Jan 2009 12:31:48 -0500
+Message-ID: <20090113173148.6755.67348.stgit@ingres.1015granger.net>
+References: <20090113172538.6755.83766.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:59240 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752857AbZAMRb6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2009 12:31:58 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:53538 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754266AbZAMRcP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jan 2009 12:32:15 -0500
+In-Reply-To: <20090113172538.6755.83766.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+Detect the case where we sent an rpcbind v4 UNSET but user space
+doesn't support rpcbind protocol version 4.
 
-Here's what I'm considering.
+We down-shift to version 2 and print a warning once in this case.
+Olaf says a v2 UNSET should properly clear all entries in the rpcbind
+database.
 
-If the kernel detects that user space doesn't support rpcbind protocol
-version 4, it falls back to version 2.  If it is trying to register an
-IPv6 RPC service, it fails outright.
+As svc_unregister() is usually done first to clear old portmapper
+entries before trying to set up new ones, a v4 UNSET call will almost
+always be the first to detect an rpcbind protocol version mismatch
+problem.
 
-All of this can be disabled completely in favor of legacy behavior by
-disabling CONFIG_SUNRPC_REGISTER_V4.
-
-In addition, I will add CONFIG options to enable/disable lockd and NFSD
-listening on IPv6 sockets, to prevent all this noise for anyone using
-classic IPv4-only.  These will appear only if CONFIG_SUNRPC_REGISTER_V4
-is enabled.
-
-I haven't yet pursued why the kernel doesn't report the program version
-mismatch to higher layers.  That will be needed to make these changes
-work correctly.
-
-These patches have been compile-tested only.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (3):
-      SUNRPC: Clearer error message when user space is running portmap
-      SUNRPC: Clearer error message when user space is running portmap
-      SUNRPC: Don't use EPROTONOSUPPORT in svc_register()
+ net/sunrpc/svc.c |   51 ++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 44 insertions(+), 7 deletions(-)
 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a278a82..e93bc55 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -721,6 +721,21 @@ EXPORT_SYMBOL_GPL(svc_exit_thread);
+ 
+ #ifdef CONFIG_SUNRPC_REGISTER_V4
+ 
++static u32 __svc_register_version = 4;
++
++static void __svc_rpcb_prog_mismatch_error(void)
++{
++	if (__svc_register_version == 4) {
++		printk(KERN_WARNING
++			"svc: The kernel tried an rpcbind version 4 request, "
++			"but your portmapper\n"
++			"svc: does not support rpcbind version 4.  "
++			"Switching to rpcbind version 2.\n");
++
++		__svc_register_version = 2;
++	}
++}
++
+ /*
+  * Register an "inet" protocol family netid with the local
+  * rpcbind daemon via an rpcbind v4 SET request.
+@@ -896,10 +911,20 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
+ 	return error;
+ }
+ 
++static void __svc_v2_unregister(const u32 program, const u32 version,
++				const char *progname)
++{
++	int error;
++
++	error = rpcb_register(program, version, 0, 0);
++	dprintk("svc: %s(%sv%u), error %d\n",
++			__func__, progname, version, error);
++}
++
+ #ifdef CONFIG_SUNRPC_REGISTER_V4
+ 
+-static void __svc_unregister(const u32 program, const u32 version,
+-			     const char *progname)
++static int __svc_v4_unregister(const u32 program, const u32 version,
++			       const char *progname)
+ {
+ 	struct sockaddr_in6 sin6 = {
+ 		.sin6_family		= AF_INET6,
+@@ -912,6 +937,22 @@ static void __svc_unregister(const u32 program, const u32 version,
+ 				(struct sockaddr *)&sin6, "");
+ 	dprintk("svc: %s(%sv%u), error %d\n",
+ 			__func__, progname, version, error);
++	return error;
++}
++
++static void __svc_unregister(const u32 program, const u32 version,
++			     const char *progname)
++{
++	if (__svc_register_version == 4) {
++		int error = __svc_v4_unregister(program, version, progname);
++		if (error != -EPROTONOSUPPORT)
++			return;
++	}
++
++	__svc_rpcb_prog_mismatch_error();
++
++	/* Olaf says a v2 UNSET _should_ wipe everything */
++	__svc_v2_unregister(program, version, progname);
+ }
+ 
+ #else	/* CONFIG_SUNRPC_REGISTER_V4 */
+@@ -919,11 +960,7 @@ static void __svc_unregister(const u32 program, const u32 version,
+ static void __svc_unregister(const u32 program, const u32 version,
+ 			     const char *progname)
+ {
+-	int error;
+-
+-	error = rpcb_register(program, version, 0, 0);
+-	dprintk("svc: %s(%sv%u), error %d\n",
+-			__func__, progname, version, error);
++	__svc_v2_unregister(program, version, progname);
+ }
+ 
+ #endif	/* CONFIG_SUNRPC_REGISTER_V4 */
 
- net/sunrpc/svc.c |   99 ++++++++++++++++++++++++++++++++++++++++++++++--------
- 1 files changed, 84 insertions(+), 15 deletions(-)
-
--- 
-Chuck Lever <chuck.lever@oracle.com>
