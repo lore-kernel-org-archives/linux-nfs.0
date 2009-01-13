@@ -1,130 +1,78 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [patch 1/3] knfsd: remove the nfsd thread busy histogram
-Date: Tue, 13 Jan 2009 21:26:34 +1100
-Message-ID: <20090113102653.445100000@sgi.com>
-References: <20090113102633.719563000@sgi.com>
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with enormous
+ load averages
+Date: Tue, 13 Jan 2009 09:33:00 -0500
+Message-ID: <496CA61C.5050208@redhat.com>
+References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS ML <linux-nfs@vger.kernel.org>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:37738 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752607AbZAMK1A (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Tue, 13 Jan 2009 05:27:00 -0500
+Received: from mx2.redhat.com ([66.187.237.31]:44621 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755141AbZAMOdG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Jan 2009 09:33:06 -0500
+In-Reply-To: <20090113102653.664553000@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Stop gathering the data that feeds the 'th' line in /proc/net/rpc/nfsd
-because the questionable data provided is not worth the scalability
-impact of calculating it.  Instead, always report zeroes.  The current
-approach suffers from three major issues:
+Greg Banks wrote:
+> Avoid overloading the CPU scheduler with enormous load averages
+> when handling high call-rate NFS loads.  When the knfsd bottom half
+> is made aware of an incoming call by the socket layer, it tries to
+> choose an nfsd thread and wake it up.  As long as there are idle
+> threads, one will be woken up.
+>
+> If there are lot of nfsd threads (a sensible configuration when
+> the server is disk-bound or is running an HSM), there will be many
+> more nfsd threads than CPUs to run them.  Under a high call-rate
+> low service-time workload, the result is that almost every nfsd is
+> runnable, but only a handful are actually able to run.  This situation
+> causes two significant problems:
+>
+> 1. The CPU scheduler takes over 10% of each CPU, which is robbing
+>    the nfsd threads of valuable CPU time.
+>
+> 2. At a high enough load, the nfsd threads starve userspace threads
+>    of CPU time, to the point where daemons like portmap and rpc.mountd
+>    do not schedule for tens of seconds at a time.  Clients attempting
+>    to mount an NFS filesystem timeout at the very first step (opening
+>    a TCP connection to portmap) because portmap cannot wake up from
+>    select() and call accept() in time.
+>
+> Disclaimer: these effects were observed on a SLES9 kernel, modern
+> kernels' schedulers may behave more gracefully.
+>
+> The solution is simple: keep in each svc_pool a counter of the number
+> of threads which have been woken but have not yet run, and do not wake
+> any more if that count reaches an arbitrary small threshold.
+>
+> Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients, each with 16
+> synthetic client threads simulating an rsync (i.e. recursive directory
+> listing) workload reading from an i386 RH9 install image (161480
+> regular files in 10841 directories) on the server.  That tree is small
+> enough to fill in the server's RAM so no disk traffic was involved.
+> This setup gives a sustained call rate in excess of 60000 calls/sec
+> before being CPU-bound on the server.  The server was running 128 nfsds.
+>
+> Profiling showed schedule() taking 6.7% of every CPU, and __wake_up()
+> taking 5.2%.  This patch drops those contributions to 3.0% and 2.2%.
+> Load average was over 120 before the patch, and 20.9 after.
+>
+> This patch is a forward-ported version of knfsd-avoid-nfsd-overload
+> which has been shipping in the SGI "Enhanced NFS" product since 2006.
+> It has been posted before:
+>
+> http://article.gmane.org/gmane.linux.nfs/10374
+>
+> Signed-off-by: Greg Banks <gnb@sgi.com>
+> ---
 
-1. update_thread_usage() increments buckets by call service
-   time or call arrival time...in jiffies.  On lightly loaded
-   machines, call service times are usually < 1 jiffy; on
-   heavily loaded machines call arrival times will be << 1 jiffy.
-   So a large portion of the updates to the buckets are rounded
-   down to zero, and the histogram is undercounting.
+Have you measured the impact of these changes for something
+like SpecSFS?
 
-2. As seen previously on the nfs mailing list, the format in which
-   the histogram is presented is cryptic, difficult to explain,
-   and difficult to use.
+    Thanx...
 
-3. Updating the histogram requires taking a global spinlock and
-   dirtying the global variables nfsd_last_call, nfsd_busy, and
-   nfsdstats *twice* on every RPC call, which is a significant
-   scaling limitation.
-
-Testing on a 4 CPU 4 NIC Altix using 4 IRIX clients each doing
-1K streaming reads at full line rate, shows the stats update code
-(inlined into nfsd()) takes about 1.7% of each CPU.  This patch drops
-the contribution from nfsd() into the profile noise.
-
-This patch is a forward-ported version of knfsd-remove-nfsd-threadstats
-which has been shipping in the SGI "Enhanced NFS" product since 2006.
-In that time, exactly one customer has noticed that the threadstats
-were missing.  It has been previously posted:
-
-http://article.gmane.org/gmane.linux.nfs/10376
-
-and more recently requested to be posted again.
-
-Signed-off-by: Greg Banks <gnb@sgi.com>
----
-
- fs/nfsd/nfssvc.c |   28 ----------------------------
- 1 file changed, 28 deletions(-)
-
-Index: bfields/fs/nfsd/nfssvc.c
-===================================================================
---- bfields.orig/fs/nfsd/nfssvc.c
-+++ bfields/fs/nfsd/nfssvc.c
-@@ -40,9 +40,6 @@
- extern struct svc_program	nfsd_program;
- static int			nfsd(void *vrqstp);
- struct timeval			nfssvc_boot;
--static atomic_t			nfsd_busy;
--static unsigned long		nfsd_last_call;
--static DEFINE_SPINLOCK(nfsd_call_lock);
- 
- /*
-  * nfsd_mutex protects nfsd_serv -- both the pointer itself and the members
-@@ -227,7 +224,6 @@ int nfsd_create_serv(void)
- 			nfsd_max_blksize /= 2;
- 	}
- 
--	atomic_set(&nfsd_busy, 0);
- 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
- 				      AF_INET,
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
-@@ -376,26 +372,6 @@ nfsd_svc(unsigned short port, int nrserv
- 	return error;
- }
- 
--static inline void
--update_thread_usage(int busy_threads)
--{
--	unsigned long prev_call;
--	unsigned long diff;
--	int decile;
--
--	spin_lock(&nfsd_call_lock);
--	prev_call = nfsd_last_call;
--	nfsd_last_call = jiffies;
--	decile = busy_threads*10/nfsdstats.th_cnt;
--	if (decile>0 && decile <= 10) {
--		diff = nfsd_last_call - prev_call;
--		if ( (nfsdstats.th_usage[decile-1] += diff) >= NFSD_USAGE_WRAP)
--			nfsdstats.th_usage[decile-1] -= NFSD_USAGE_WRAP;
--		if (decile == 10)
--			nfsdstats.th_fullcnt++;
--	}
--	spin_unlock(&nfsd_call_lock);
--}
- 
- /*
-  * This is the NFS server kernel thread
-@@ -464,8 +440,6 @@ nfsd(void *vrqstp)
- 			continue;
- 		}
- 
--		update_thread_usage(atomic_read(&nfsd_busy));
--		atomic_inc(&nfsd_busy);
- 
- 		/* Lock the export hash tables for reading. */
- 		exp_readlock();
-@@ -474,8 +448,6 @@ nfsd(void *vrqstp)
- 
- 		/* Unlock export hash tables */
- 		exp_readunlock();
--		update_thread_usage(atomic_read(&nfsd_busy));
--		atomic_dec(&nfsd_busy);
- 	}
- 
- 	/* Clear signals before calling svc_exit_thread() */
-
---
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+       ps
