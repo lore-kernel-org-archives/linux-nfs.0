@@ -1,81 +1,89 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Fri, 16 Jan 2009 11:22:41 -0500
-Message-ID: <4970B451.4080201@RedHat.com>
+Subject: [PATCH 1/5] NFS: Adding trace points to fs/nfs/getroot.c
+Date: Fri, 16 Jan 2009 11:25:33 -0500
+Message-ID: <4970B4FD.4000400@RedHat.com>
+References: <4970B451.4080201@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
+Cc: SystemTAP <systemtap@redhat.com>
 To: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
 	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48429 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:53012 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757976AbZAPQZ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Jan 2009 11:25:26 -0500
+	id S1758008AbZAPQ16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Jan 2009 11:27:58 -0500
+In-Reply-To: <4970B451.4080201-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-Very recently patches were added to the mainline kernel that
-enabled the use of trace points. This patch series takes
-advantage of those patch by introducing trace points 
-to the mounting path of NFS mounts. Its hoped these
-trace points can be used by system administrators to
-identify why NFS mounts are failing or hang in 
-production kernels.
+Added trace points to nfs_get_root() which define 
+when nfs_get_root() is called and if it fails.
 
-IMHO, one general problem with today's "canned" NFS debugging today is it 
-becomes very verbose very quickly.... "I get here" and "I get there" type of 
-debugging statements. Although they help trace the code but very rarely 
-shows/defines what the actual problem was. So what I've try to do is 
-"define the error paths" by putting a trace point at every error exit 
-in hopes to define where and why things broke. 
+Signed-off-by: Steve Dickson <steved@redhat.com>
 
-So the ultimate goal would be to replace all the dprintks with trace points
-but still be able to enable them through the rpcdebug command (although we
-might want to think about splitting the command out into three different 
-commands nfsdebug, nfsddebug, rpcdebug). Since trace points have very little
-overhead, a set of trace points could be enable in production with have
-little or no effect on functionality or performance.
-
-Another advantage with trace points is the type and amount of
-information that can be retrieved. With these trace points, I'm
-passing in the error code as well as the data structure[s] associated
-with that error. This allows the "canned" information that IT people
-would used (via the rpcdebug command which would turn on a group of
-trace points) as well as more detailed information that kernel developers 
-can used (via systemtap scripts which would turn on individual trace
-points).
-
-Patch summary:
-    * fs/nfs/client.c
-
-    * fs/nfs/getroot.c
-
-    * fs/nfs/super.c
-
-      The based files where traces where added.
-
-    * include/trace/nfs.h
-
-    * kernel/trace/Makefile
-
-    * kernel/trace/nfs-trace.c
-
-      The overhead of added the trace points and then converting them
-      into trace marks			.
-
-    * samples/nfs/nfs_mount.stp
-
-      The systemtap script used to access the trace marks. I probably
-      should have documented the file better, but the first three
-      functions in the file are how structures are pulled from the
-      kernel. The rest are probes used to active the trace markers.
-
-
-Comments... Acceptance?? 
-
-steved.
-
-
+--- linux/fs/nfs/getroot.c.orig	2008-12-24 18:26:37.000000000 -0500
++++ linux/fs/nfs/getroot.c	2009-01-15 12:42:16.000000000 -0500
+@@ -32,6 +32,7 @@
+ #include <linux/namei.h>
+ #include <linux/mnt_namespace.h>
+ #include <linux/security.h>
++#include <trace/nfs.h>
+ 
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -40,6 +41,12 @@
+ #include "delegation.h"
+ #include "internal.h"
+ 
++DEFINE_TRACE(nfs_mount_get_root);
++DEFINE_TRACE(nfs_mount_getroot);
++DEFINE_TRACE(nfs_mount_get_root_fhget);
++DEFINE_TRACE(nfs_mount_get_root_dummy_root);
++DEFINE_TRACE(nfs_mount_get_root_alias);
++
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+ /*
+@@ -84,25 +91,30 @@ struct dentry *nfs_get_root(struct super
+ 	struct inode *inode;
+ 	int error;
+ 
++	trace_nfs_mount_get_root(sb, server, mntfh);
++
+ 	/* get the actual root for this mount */
+ 	fsinfo.fattr = &fattr;
+ 
+ 	error = server->nfs_client->rpc_ops->getroot(server, mntfh, &fsinfo);
+ 	if (error < 0) {
+ 		dprintk("nfs_get_root: getattr error = %d\n", -error);
++		trace_nfs_mount_getroot(sb, server, error);
+ 		return ERR_PTR(error);
+ 	}
+ 
+ 	inode = nfs_fhget(sb, mntfh, fsinfo.fattr);
+ 	if (IS_ERR(inode)) {
+ 		dprintk("nfs_get_root: get root inode failed\n");
++		trace_nfs_mount_get_root_fhget(sb, server, error);
+ 		return ERR_CAST(inode);
+ 	}
+ 
+ 	error = nfs_superblock_set_dummy_root(sb, inode);
+-	if (error != 0)
++	if (error != 0) {
++		trace_nfs_mount_get_root_dummy_root(sb, server, error);
+ 		return ERR_PTR(error);
+-
++	}
+ 	/* root dentries normally start off anonymous and get spliced in later
+ 	 * if the dentry tree reaches them; however if the dentry already
+ 	 * exists, we'll pick it up at this point and use it as the root
+@@ -110,6 +122,7 @@ struct dentry *nfs_get_root(struct super
+ 	mntroot = d_obtain_alias(inode);
+ 	if (IS_ERR(mntroot)) {
+ 		dprintk("nfs_get_root: get root dentry failed\n");
++		trace_nfs_mount_get_root_alias(sb, server, PTR_ERR(mntroot));
+ 		return mntroot;
+ 	}
+ 
