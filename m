@@ -1,80 +1,81 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/6] SUNRPC: Simplify svc_unregister()
-Date: Fri, 16 Jan 2009 10:38:57 -0500
-Message-ID: <20090116153856.13042.86491.stgit@ingres.1015granger.net>
-References: <20090116153327.13042.80083.stgit@ingres.1015granger.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Fri, 16 Jan 2009 11:22:41 -0500
+Message-ID: <4970B451.4080201@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org, trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
+To: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:65340 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754505AbZAPPlG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jan 2009 10:41:06 -0500
-In-Reply-To: <20090116153327.13042.80083.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:48429 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757976AbZAPQZ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Jan 2009 11:25:26 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Olaf Kirch says a v2 UNSET should clear all rpcbind entries for an RPC
-service, even those created with a rpcbind v4 SET.  Change
-svc_unregister() to use a v2 UNSET unconditionally.
+Hello,
 
-This simplifies the code in svc_unregister() and provides better
-backwards compatibility with legacy user space that does not support
-rpcbind version 4.
+Very recently patches were added to the mainline kernel that
+enabled the use of trace points. This patch series takes
+advantage of those patch by introducing trace points 
+to the mounting path of NFS mounts. Its hoped these
+trace points can be used by system administrators to
+identify why NFS mounts are failing or hang in 
+production kernels.
 
-This patch is part of a series that addresses
-   http://bugzilla.kernel.org/show_bug.cgi?id=12256
+IMHO, one general problem with today's "canned" NFS debugging today is it 
+becomes very verbose very quickly.... "I get here" and "I get there" type of 
+debugging statements. Although they help trace the code but very rarely 
+shows/defines what the actual problem was. So what I've try to do is 
+"define the error paths" by putting a trace point at every error exit 
+in hopes to define where and why things broke. 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+So the ultimate goal would be to replace all the dprintks with trace points
+but still be able to enable them through the rpcdebug command (although we
+might want to think about splitting the command out into three different 
+commands nfsdebug, nfsddebug, rpcdebug). Since trace points have very little
+overhead, a set of trace points could be enable in production with have
+little or no effect on functionality or performance.
 
- net/sunrpc/svc.c |   26 ++++----------------------
- 1 files changed, 4 insertions(+), 22 deletions(-)
+Another advantage with trace points is the type and amount of
+information that can be retrieved. With these trace points, I'm
+passing in the error code as well as the data structure[s] associated
+with that error. This allows the "canned" information that IT people
+would used (via the rpcdebug command which would turn on a group of
+trace points) as well as more detailed information that kernel developers 
+can used (via systemtap scripts which would turn on individual trace
+points).
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a278a82..8dc4a1e 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -896,26 +896,10 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
- 	return error;
- }
- 
--#ifdef CONFIG_SUNRPC_REGISTER_V4
--
--static void __svc_unregister(const u32 program, const u32 version,
--			     const char *progname)
--{
--	struct sockaddr_in6 sin6 = {
--		.sin6_family		= AF_INET6,
--		.sin6_addr		= IN6ADDR_ANY_INIT,
--		.sin6_port		= 0,
--	};
--	int error;
--
--	error = rpcb_v4_register(program, version,
--				(struct sockaddr *)&sin6, "");
--	dprintk("svc: %s(%sv%u), error %d\n",
--			__func__, progname, version, error);
--}
--
--#else	/* CONFIG_SUNRPC_REGISTER_V4 */
--
-+/*
-+ * Olaf says a v2 UNSET should clear _all_ entries, including any
-+ * registered via a v4 SET
-+ */
- static void __svc_unregister(const u32 program, const u32 version,
- 			     const char *progname)
- {
-@@ -926,8 +910,6 @@ static void __svc_unregister(const u32 program, const u32 version,
- 			__func__, progname, version, error);
- }
- 
--#endif	/* CONFIG_SUNRPC_REGISTER_V4 */
--
- /*
-  * All netids, bind addresses and ports registered for [program, version]
-  * are removed from the local rpcbind database (if the service is not
+Patch summary:
+    * fs/nfs/client.c
+
+    * fs/nfs/getroot.c
+
+    * fs/nfs/super.c
+
+      The based files where traces where added.
+
+    * include/trace/nfs.h
+
+    * kernel/trace/Makefile
+
+    * kernel/trace/nfs-trace.c
+
+      The overhead of added the trace points and then converting them
+      into trace marks			.
+
+    * samples/nfs/nfs_mount.stp
+
+      The systemtap script used to access the trace marks. I probably
+      should have documented the file better, but the first three
+      functions in the file are how structures are pulled from the
+      kernel. The rest are probes used to active the trace markers.
+
+
+Comments... Acceptance?? 
+
+steved.
+
 
