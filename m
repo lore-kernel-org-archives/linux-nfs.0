@@ -1,52 +1,108 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/6] Address kernel bugzilla 12256
-Date: Fri, 16 Jan 2009 10:38:33 -0500
-Message-ID: <20090116153327.13042.80083.stgit@ingres.1015granger.net>
+Subject: [PATCH 5/6] SUNRPC: rpcb_register() should handle errors silently
+Date: Fri, 16 Jan 2009 10:39:11 -0500
+Message-ID: <20090116153911.13042.88774.stgit@ingres.1015granger.net>
+References: <20090116153327.13042.80083.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:57495 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752182AbZAPPjZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jan 2009 10:39:25 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:50562 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757367AbZAPPkm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jan 2009 10:40:42 -0500
+In-Reply-To: <20090116153327.13042.80083.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce, Trond-
+Move error reporting for RPC registration to rpcb_register's caller.
 
-I've tossed out the previous strategy for managing RPC registration
-upcalls.  The kernel now adjusts automatically to whatever the local
-portmap daemon supports.
+This way the caller can recover silently from certain errors, but
+report errors it does not recognize.
 
-If IPv6 is enabled in the kernel, RPC services will get an AF_INET6
-listener, but if the system has a portmapper capable only of rpcbind
-v2, only IPv4 services are registered.
+This patch is part of a series that addresses
+   http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
-We can get rid of CONFIG_SUNRPC_REGISTER_V4 entirely.
-
-I've tested this approach on FC6 (legacy portmap) and F9 (new rpcbind)
-as both client and server.
-
-Thoughts?
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (6):
-      SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
-      SUNRPC: rpcb_register() should handle errors silently
-      SUNRPC: Simplify kernel RPC service registration
-      SUNRPC: Simplify svc_unregister()
-      SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s helpers
-      SUNRPC: Use IPv4 loopback for registering AF_INET6 kernel RPC services
+ net/sunrpc/rpcb_clnt.c |    2 +-
+ net/sunrpc/svc.c       |   22 +++++++++++++++-------
+ 2 files changed, 16 insertions(+), 8 deletions(-)
 
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 0e9150d..888c205 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -187,7 +187,7 @@ static int rpcb_register_call(u32 version, struct rpc_message *msg)
+ 		error = PTR_ERR(rpcb_clnt);
+ 
+ 	if (error < 0) {
+-		printk(KERN_WARNING "RPC: failed to contact local rpcbind "
++		dprintk("RPC:       failed to contact local rpcbind "
+ 				"server (errno %d).\n", -error);
+ 		return error;
+ 	}
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 3cf1b3c..5baac0a 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -818,7 +818,8 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+  * Returns zero on success; a negative errno value is returned
+  * if any error occurs.
+  */
+-static int __svc_register(const u32 program, const u32 version,
++static int __svc_register(const char *progname,
++			  const u32 program, const u32 version,
+ 			  const sa_family_t family,
+ 			  const unsigned short protocol,
+ 			  const unsigned short port)
+@@ -827,13 +828,14 @@ static int __svc_register(const u32 program, const u32 version,
+ 
+ 	switch (family) {
+ 	case AF_INET:
+-		return __svc_rpcb_register4(program, version,
++		error = __svc_rpcb_register4(program, version,
+ 						protocol, port);
++		break;
+ 	case AF_INET6:
+ 		error = __svc_rpcb_register6(program, version,
+ 						protocol, port);
+ 		if (error < 0)
+-			return error;
++			break;
+ 
+ 		/*
+ 		 * Work around bug in some versions of Linux rpcbind
+@@ -844,10 +846,15 @@ static int __svc_register(const u32 program, const u32 version,
+ 		 */
+ 		__svc_rpcb_register4(program, version,
+ 						protocol, port);
+-		return 0;
++		break;
++	default:
++		error = -EAFNOSUPPORT;
+ 	}
+ 
+-	return -EAFNOSUPPORT;
++	if (error < 0)
++		printk(KERN_WARNING "svc: failed to register %sv%u RPC "
++			"service (errno %d).\n", progname, version, -error);
++	return error;
+ }
+ 
+ /**
+@@ -884,8 +891,9 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+ 
+-			error = __svc_register(progp->pg_prog, i,
+-						serv->sv_family, proto, port);
++			error = __svc_register(progp->pg_name, progp->pg_prog,
++						i, serv->sv_family,
++						proto, port);
+ 			if (error < 0)
+ 				break;
+ 		}
 
- fs/Kconfig             |   22 ----------
- fs/lockd/svc.c         |    7 +--
- net/sunrpc/rpcb_clnt.c |   25 +++---------
- net/sunrpc/svc.c       |  102 +++++++++++++++++++++---------------------------
- 4 files changed, 55 insertions(+), 101 deletions(-)
-
--- 
-Chuck Lever <chuck.lever@oracle.com>
