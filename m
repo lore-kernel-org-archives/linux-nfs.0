@@ -1,7 +1,7 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH 3/5] NFS: Adding trace points to nfs/client.c
-Date: Fri, 16 Jan 2009 11:30:09 -0500
-Message-ID: <4970B611.1040300@RedHat.com>
+Subject: [PATCH 4/5] NFS: Convert trace points to trace markers
+Date: Fri, 16 Jan 2009 11:32:14 -0500
+Message-ID: <4970B68E.4090602@RedHat.com>
 References: <4970B451.4080201@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -21,143 +21,261 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Added trace points to a number of client routines 
-used in the mount process. If a routine was only called
-by the the mounting process, the prefix on the trace
-point starts with 'trace_nfs_mount' otherwise the 
-routine name as used as the prefix.
+This the magic that converts the trace points into trace marks
+so systemtap scripts can read the data. There is a good chance
+these interfaces could change, but it should not effect the 
+trace points define in the code.
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 
---- linux/fs/nfs/client.c.orig	2009-01-14 15:54:19.000000000 -0500
-+++ linux/fs/nfs/client.c	2009-01-15 12:40:08.000000000 -0500
-@@ -37,6 +37,7 @@
- #include <linux/in6.h>
- #include <net/ipv6.h>
- #include <linux/nfs_xdr.h>
+--- linux/kernel/trace/Makefile.orig	2009-01-14 15:54:20.000000000 -0500
++++ linux/kernel/trace/Makefile	2009-01-15 12:23:11.000000000 -0500
+@@ -18,7 +18,7 @@ endif
+ obj-$(CONFIG_FUNCTION_TRACER) += libftrace.o
+ obj-$(CONFIG_RING_BUFFER) += ring_buffer.o
+ 
+-obj-$(CONFIG_TRACING) += trace.o
++obj-$(CONFIG_TRACING) += trace.o trace_nfs.o
+ obj-$(CONFIG_CONTEXT_SWITCH_TRACER) += trace_sched_switch.o
+ obj-$(CONFIG_SYSPROF_TRACER) += trace_sysprof.o
+ obj-$(CONFIG_FUNCTION_TRACER) += trace_functions.o
+--- /dev/null	2009-01-08 09:11:53.943261863 -0500
++++ linux/kernel/trace/trace_nfs.c	2009-01-15 12:23:11.000000000 -0500
+@@ -0,0 +1,135 @@
++/*
++ * kernel/trace/nfs-trace.c
++ *
++ * NFS tracepoint probes.
++ */
++
++#include <linux/autoconf.h>
++#include <linux/module.h>
++#include <linux/marker.h>
++
++#include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/xdr.h>
++#include <linux/sunrpc/xprt.h>
++
 +#include <trace/nfs.h>
- 
- #include <asm/system.h>
- 
-@@ -46,6 +47,19 @@
- #include "iostat.h"
- #include "internal.h"
- 
-+DEFINE_TRACE(nfs_create_rpc_client);
-+DEFINE_TRACE(nfs_create_rpc_client_proto);
-+DEFINE_TRACE(nfs_start_lockd);
-+DEFINE_TRACE(nfs_init_server_rpcclient);
-+DEFINE_TRACE(nfs_init_server_rpcclient_clone);
-+DEFINE_TRACE(nfs_init_server_rpcclient_auth);
-+DEFINE_TRACE(nfs_mount_init_clnt);
-+DEFINE_TRACE(nfs_mount_init_srv);
-+DEFINE_TRACE(nfs_probe_fsinfo);
-+DEFINE_TRACE(nfs_probe_fsinfo_setcaps);
-+DEFINE_TRACE(nfs_probe_fsinfo_fsinfo);
-+DEFINE_TRACE(nfs_create_server);
 +
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- static DEFINE_SPINLOCK(nfs_client_lock);
-@@ -507,6 +521,8 @@ static int nfs_create_rpc_client(struct 
- 	if (noresvport)
- 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
- 
-+	trace_nfs_create_rpc_client(clp, timeparms, flavor, args.flags);
++/*
++ * NFS mount probs 
++ */
++void probe_nfs_mount(struct file_system_type *fs_type,
++	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt)
++{
++	trace_mark(nfs_mount, "%p %x %p %p %p", 
++		fs_type, flags, dev_name, raw_data, mnt);
++}
++void probe_nfs_mount_data_null(struct nfs_mount_data *data, int err)
++{
++	trace_mark(nfs_mount_data_null, "%p %d", data, err); 
++}
++void probe_nfs_mount_data_invalvers(struct nfs_mount_data *data, int err)
++{
++	trace_mark(nfs_mount_data_invalvers, "%p %d", data, err); 
++}
++void probe_nfs_mount_data_invalsec(struct nfs_mount_data *data, int err)
++{
++	trace_mark(nfs_mount_data_invalsec, "%p %d", data, err); 
++}
++void probe_nfs_mount_data_nomem(struct nfs_mount_data *data, int err)
++{
++	trace_mark(nfs_mount_data_nomem, "%p %d", data, err); 
++}
++void probe_nfs_mount_data_noaddr(struct nfs_mount_data *data, int err)
++{
++	trace_mark(nfs_mount_data_noaddr, "%p %d", data, err); 
++}
++void probe_nfs_mount_data_badfh(struct nfs_mount_data *data, int err)
++{
++	trace_mark(nfs_mount_data_badfh, "%p %d", data, err); 
++}
++void probe_nfs_mount_init_clnt(struct nfs_client *clp, int error) {
 +
- 	if (!IS_ERR(clp->cl_rpcclient))
- 		return 0;
- 
-@@ -514,6 +530,7 @@ static int nfs_create_rpc_client(struct 
- 	if (IS_ERR(clnt)) {
- 		dprintk("%s: cannot create RPC client. Error = %ld\n",
- 				__func__, PTR_ERR(clnt));
-+		trace_nfs_create_rpc_client_proto(clp, PTR_ERR(clnt));
- 		return PTR_ERR(clnt);
- 	}
- 
-@@ -554,9 +571,10 @@ static int nfs_start_lockd(struct nfs_se
- 		return 0;
- 
- 	host = nlmclnt_init(&nlm_init);
--	if (IS_ERR(host))
-+	if (IS_ERR(host)) {
-+		trace_nfs_start_lockd(server, PTR_ERR(host));
- 		return PTR_ERR(host);
--
-+	}
- 	server->nlm_host = host;
- 	server->destroy = nfs_destroy_server;
- 	return 0;
-@@ -601,9 +619,12 @@ static int nfs_init_server_rpcclient(str
- {
- 	struct nfs_client *clp = server->nfs_client;
- 
-+	trace_nfs_init_server_rpcclient(server, timeo, pseudoflavour);
++	trace_mark(nfs_mount_init_clnt, "%p %d", clp, error);
++}
++void probe_nfs_mount_get_root(struct super_block *sb, 
++	struct nfs_server *server, struct nfs_fh *mntfh)
++{
++	trace_mark(nfs_mount_get_root, "%p %p %p", sb, server, mntfh);
++}
++void probe_nfs__mount_get_root_fhget(struct super_block *sb, 
++	struct nfs_server *server, int error)
++{
++	trace_mark(nfs__mount_get_root_fhget, "%p %p %d", sb, server, error);
++}
++void probe_nfs__mount_get_root_dummy_root(struct super_block *sb, 
++	struct nfs_server *server, int error)
++{
++	trace_mark(nfs__mount_get_root_dummy_root, "%p %p %d", sb, server, error);
++}
++void probe_nfs__mount_get_root_alias(struct super_block *sb, 
++	struct nfs_server *server, int error)
++{
++	trace_mark(nfs__mount_get_root_alias, "%p %p %d", sb, server, error);
++}
 +
- 	server->client = rpc_clone_client(clp->cl_rpcclient);
- 	if (IS_ERR(server->client)) {
- 		dprintk("%s: couldn't create rpc_client!\n", __func__);
-+		trace_nfs_init_server_rpcclient_clone(server, PTR_ERR(server->client));
- 		return PTR_ERR(server->client);
- 	}
- 
-@@ -618,6 +639,7 @@ static int nfs_init_server_rpcclient(str
- 		auth = rpcauth_create(pseudoflavour, server->client);
- 		if (IS_ERR(auth)) {
- 			dprintk("%s: couldn't create credcache!\n", __func__);
-+			trace_nfs_init_server_rpcclient_auth(server, PTR_ERR(auth));
- 			return PTR_ERR(auth);
- 		}
- 	}
-@@ -657,6 +679,7 @@ static int nfs_init_client(struct nfs_cl
- error:
- 	nfs_mark_client_ready(clp, error);
- 	dprintk("<-- nfs_init_client() = xerror %d\n", error);
-+	trace_nfs_mount_init_clnt(clp, error);
- 	return error;
- }
- 
-@@ -688,6 +711,7 @@ static int nfs_init_server(struct nfs_se
- 	clp = nfs_get_client(&cl_init);
- 	if (IS_ERR(clp)) {
- 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
-+		trace_nfs_mount_init_srv(server, PTR_ERR(clp));
- 		return PTR_ERR(clp);
- 	}
- 
-@@ -807,19 +831,23 @@ static int nfs_probe_fsinfo(struct nfs_s
- 	int error;
- 
- 	dprintk("--> nfs_probe_fsinfo()\n");
-+	trace_nfs_probe_fsinfo(server, mntfh, fattr);
- 
- 	if (clp->rpc_ops->set_capabilities != NULL) {
- 		error = clp->rpc_ops->set_capabilities(server, mntfh);
--		if (error < 0)
-+		if (error < 0) {
-+			trace_nfs_probe_fsinfo_setcaps(server, error);
- 			goto out_error;
-+		}
- 	}
- 
- 	fsinfo.fattr = fattr;
- 	nfs_fattr_init(fattr);
- 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
--	if (error < 0)
-+	if (error < 0) {
-+		trace_nfs_probe_fsinfo_fsinfo(server, error);
- 		goto out_error;
--
-+	}
- 	nfs_server_set_fsinfo(server, &fsinfo);
- 	error = bdi_init(&server->backing_dev_info);
- 	if (error)
-@@ -956,6 +984,7 @@ struct nfs_server *nfs_create_server(con
- 	if (!(fattr.valid & NFS_ATTR_FATTR)) {
- 		error = server->nfs_client->rpc_ops->getattr(server, mntfh, &fattr);
- 		if (error < 0) {
-+			trace_nfs_create_server(server, mntfh, error);
- 			dprintk("nfs_create_server: getattr error = %d\n", -error);
- 			goto error;
- 		}
++void probe_nfs_create_rpc_client(struct nfs_client *clp,
++	const struct rpc_timeout *timeo, rpc_authflavor_t flavor,
++	int flags)
++{
++	trace_mark(nfs_create_rpc_client, "%p %p %d %d", 
++		clp, timeo, flavor, flags);
++}
++void probe_nfs_create_rpc_client_proto(struct nfs_client *clp, int error)
++{
++
++	trace_mark(nfs_create_rpc_client_proto, "%p %d", clp, error);
++}
++void probe_nfs_start_lockd(struct nfs_server *server, int error)
++{
++	trace_mark(nfs_start_lockd, "%p %d", server, error);
++}
++void probe_nfs_init_server_rpcclient(struct nfs_server *server, 
++	const struct rpc_timeout *timeo,
++	rpc_authflavor_t flavor)
++{
++	trace_mark(nfs_init_server_rpcclient, "%p %p %d", server, timeo, flavor);
++}
++void probe_nfs_init_server_rpcclient_clone(
++	struct nfs_server *server, int error) 
++{
++	trace_mark(nfs_init_server_rpcclient_clone, "%p %d", server, error);
++}
++void probe_nfs_init_server_rpcclient_auth(
++	struct nfs_server *server, int error)
++{
++	trace_mark(nfs_init_server_rpcclient_auth, "%p %d", server, error);
++}
++void probe_nfs_mount_init_srv(
++	struct nfs_server *server, int error)
++{
++	trace_mark(nfs_mount_init_srv, "%p %d", server, error);
++}
++
++void probe_nfs_probe_fsinfo(struct nfs_server *server, 
++	struct nfs_fh *mntfh, struct nfs_fattr *fattr)
++{
++	trace_mark(nfs_probe_fsinfo, "%p %p %p", server, mntfh, fattr);
++}
++void probe_nfs_probe_fsinfo_setcaps(struct nfs_server *server,
++	struct nfs_fh *mntfh, int error)
++{
++	trace_mark(nfs_probe_fsinfo_setcaps, "%p %p %d", server, mntfh, error);
++}
++void probe_nfs_probe_fsinfo_fsinfo(struct nfs_server *server, int error)
++{
++	trace_mark(nfs_probe_fsinfo_fsinfo, "%p %d", server, error);
++}
++void probe_nfs_create_server(struct nfs_server *server, 
++	struct nfs_fh *mntfh, int error)
++{
++	trace_mark(nfs_create_server, "%p %p %d", server, mntfh, error);
++}
++void probe_nfs_mount_sget(struct nfs_server *server, int error)
++{
++	trace_mark(nfs_mount_sget, "%p %d", server, error);
++}
+--- /dev/null	2009-01-08 09:11:53.943261863 -0500
++++ linux/include/trace/nfs.h	2009-01-15 12:30:45.000000000 -0500
+@@ -0,0 +1,99 @@
++#ifndef _TRACE_NFS_H
++#define _TRACE_NFS_H
++#include <linux/init.h>
++#include <linux/kernel.h>
++
++#include <linux/buffer_head.h>
++#include <linux/tracepoint.h>
++
++#include <linux/nfs_mount.h>
++#include <linux/nfs4.h>
++#include <linux/nfs_xdr.h>
++#include <linux/nfs_fs_sb.h>
++#include <linux/sunrpc/auth.h>
++
++#include <linux/posix_acl.h>
++/*
++ * NFS mounting trace points
++ */
++DECLARE_TRACE(nfs_mount, 
++	TPPROTO(struct file_system_type *fs_type, int flags, 
++		const char *dev_name, void *raw_data, struct vfsmount *mnt),
++	TPARGS(fs_type, flags, dev_name, raw_data, mnt));
++
++DECLARE_TRACE(nfs_mount_data_null, 
++	TPPROTO(struct nfs_mount_data *data, int err), TPARGS(data, err));
++DECLARE_TRACE(nfs_mount_data_invalvers, 
++	TPPROTO(struct nfs_mount_data *data, int err), TPARGS(data, err));
++DECLARE_TRACE(nfs_mount_data_invalsec, 
++	TPPROTO(struct nfs_mount_data *data, int err), TPARGS(data, err));
++DECLARE_TRACE(nfs_mount_data_nomem, 
++	TPPROTO(struct nfs_mount_data *data, int err), TPARGS(data, err));
++DECLARE_TRACE(nfs_mount_data_noaddr, 
++	TPPROTO(struct nfs_mount_data *data, int err), TPARGS(data, err));
++DECLARE_TRACE(nfs_mount_data_badfh, 
++	TPPROTO(struct nfs_mount_data *data, int err), TPARGS(data, err));
++
++DECLARE_TRACE(nfs_mount_get_root, 
++	TPPROTO(struct super_block *sb, struct nfs_server *server, 
++		struct nfs_fh *mntfh),
++	TPARGS(sb, server, mntfh));
++DECLARE_TRACE(nfs_mount_getroot, 
++	TPPROTO(struct super_block *sb, struct nfs_server *server, 
++		int error),
++	TPARGS(sb, server, error));
++DECLARE_TRACE(nfs_mount_get_root_fhget, 
++	TPPROTO(struct super_block *sb, struct nfs_server *server, 
++		int error),
++	TPARGS(sb, server, error));
++DECLARE_TRACE(nfs_mount_get_root_alias, 
++	TPPROTO(struct super_block *sb, struct nfs_server *server, 
++		int error),
++	TPARGS(sb, server, error));
++DECLARE_TRACE(nfs_mount_get_root_dummy_root, 
++	TPPROTO(struct super_block *sb, struct nfs_server *server, 
++		int error),
++	TPARGS(sb, server, error));
++
++DECLARE_TRACE(nfs_create_rpc_client, 
++	TPPROTO(struct nfs_client *clp, const struct rpc_timeout *timeo,
++		rpc_authflavor_t flavor, int flags),
++	TPARGS(clp, timeo, flavor, flags));
++
++DECLARE_TRACE(nfs_create_rpc_client_proto, 
++	TPPROTO(struct nfs_client *clp, int error), 
++	TPARGS(clp,error));
++//DECLARE_TRACE(nfs_create_rpc_client_client, TPPROTO(int error), TPARGS(error));
++DECLARE_TRACE(nfs_mount_init_clnt, 
++	TPPROTO(struct nfs_client *clp, int error), TPARGS(clp, error));
++DECLARE_TRACE(nfs_mount_init_srv, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++
++DECLARE_TRACE(nfs_mount_sget, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++
++DECLARE_TRACE(nfs_init_server_rpcclient, 
++	TPPROTO(struct nfs_server *server, const struct rpc_timeout *timeo, 
++		rpc_authflavor_t flavor),
++	TPARGS(server, timeo, flavor));
++DECLARE_TRACE(nfs_init_server_rpcclient_clone, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++DECLARE_TRACE(nfs_init_server_rpcclient_auth, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++
++DECLARE_TRACE(nfs_start_lockd, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++
++DECLARE_TRACE(nfs_probe_fsinfo, 
++	TPPROTO(struct nfs_server *server, struct nfs_fh *mntfh, 
++		struct nfs_fattr *fattr),
++	TPARGS(server, mntfh, fattr));
++DECLARE_TRACE(nfs_probe_fsinfo_fsinfo, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++DECLARE_TRACE(nfs_probe_fsinfo_setcaps, 
++	TPPROTO(struct nfs_server *server, int error), TPARGS(server, error));
++
++DECLARE_TRACE(nfs_create_server, 
++	TPPROTO(struct nfs_server *server, struct nfs_fh *mntfh, int error),
++	TPARGS(server, mntfh, error));
++#endif
