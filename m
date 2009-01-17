@@ -1,13 +1,12 @@
-From: David Woodhouse <dwmw2@infradead.org>
+From: "H. Peter Anvin" <hpa@kernel.org>
 Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Sun, 18 Jan 2009 09:23:00 +1100
-Message-ID: <1232230980.27094.15.camel@macbook.infradead.org>
-References: <1232223441.3966.22.camel@localhost.localdomain>
-	 <1232228261.27094.0.camel@macbook.infradead.org>
-	 <20090117221932.GA4956@uranus.ravnborg.org>
+Date: Sat, 17 Jan 2009 14:26:38 -0800
+Message-ID: <49725B1E.604@kernel.org>
+References: <1232223441.3966.22.camel@localhost.localdomain> <1232228261.27094.0.camel@macbook.infradead.org> <20090117221932.GA4956@uranus.ravnborg.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jaswinder Singh Rajput <jaswinder@kernel.org>,
+Content-Type: text/plain; charset=UTF-8
+Cc: David Woodhouse <dwmw2@infradead.org>,
+	Jaswinder Singh Rajput <jaswinder@kernel.org>,
 	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
 	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
 	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
@@ -20,19 +19,21 @@ Cc: Jaswinder Singh Rajput <jaswinder@kernel.org>,
 	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>
 To: Sam Ravnborg <sam@ravnborg.org>
-Return-path: <linux-raid-owner@vger.kernel.org>
+Return-path: <linux-media-owner@vger.kernel.org>
 In-Reply-To: <20090117221932.GA4956@uranus.ravnborg.org>
-Sender: linux-raid-owner@vger.kernel.org
+Sender: linux-media-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-01-17 at 23:19 +0100, Sam Ravnborg wrote:
+Sam Ravnborg wrote:
+>>>  
+>> That patch looks wrong, and unnecessary. It was fine before.
 > Nope - include/linux/dvb/audio.h failed to include linux/types.h
 > despite the fact that is uses __u32 etc.
+> 
+> But why the _kernel_ should include a userspace header is
+> much more questionable.
+> 
 
-Er, good point. I saw the <stdint.h> and assumed it was using only
-proper C types... but then it wouldn't have triggered the warning, would
-it? Too much time in tin cans and not enough sleep...
+<stdint.h> is one of a handful of headers provided by gcc itself.
 
--- 
-dwmw2
-
+	-hpa
