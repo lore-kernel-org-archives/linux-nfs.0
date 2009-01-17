@@ -1,34 +1,45 @@
-From: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+From: fche@redhat.com (Frank Ch. Eigler)
 Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Sat, 17 Jan 2009 10:44:31 +1100
-Message-ID: <49711BDF.3010605@melbourne.sgi.com>
-References: <4970B451.4080201@RedHat.com>
+Date: Sat, 17 Jan 2009 11:15:27 -0500
+Message-ID: <y0mmydpucww.fsf@ton.toronto.redhat.com>
+References: <4970B451.4080201@RedHat.com> <49711BDF.3010605@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson
+	<public-SteveD-H+wXaHxf7aLQT0dZR+AlfA-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>,
+	Linux NFSv4 mailing list
+	<public-nfsv4-6DNke4IJHB0gsBAKwltoeQ-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>,
+	Linux NFS Mailing list
+	<public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>,
+	SystemTAP
+	<public-systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>
+To: Greg Banks
+	<public-gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:60854 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755060AbZAPXou (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Fri, 16 Jan 2009 18:44:50 -0500
-In-Reply-To: <4970B451.4080201-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from blaine.gmane.org ([80.91.229.8]:56143 "EHLO hugh.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761763AbZAQQQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 17 Jan 2009 11:16:01 -0500
+Received: from public by hugh.gmane.org with local (Exim 4.63)
+	(envelope-from <public-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>)
+	id 1LODq2-0003fW-BD
+	for linux-nfs@vger.kernel.org; Sat, 17 Jan 2009 17:15:58 +0100
+In-Reply-To: <49711BDF.3010605-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> (Greg Banks's message of "Sat, 17 Jan 2009 10:44:31 +1100")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> So the ultimate goal would be to replace all the dprintks with trace points
-> but still be able to enable them through the rpcdebug command
-I have a patch which changes the definition of the dprintk() macro (but
-*not* dprintk() callsites) to allow enabling and disabling individual
-dprintk() statements through a /proc/ interface.  Would you be
-interested in that?
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+
+Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf-XMD5yJDbdMReXY1tMh2IBg@public.gmane.org> writes:
+
+> I have a patch which changes the definition of the dprintk() macro
+> (but *not* dprintk() callsites) to allow enabling and disabling
+> individual dprintk() statements through a /proc/ interface.  Would
+> you be interested in that?
+
+It would make more sense to me to turn dprintk's into trace_marks, then
+use http://lkml.org/lkml/2008/12/30/297 to control transmission of the
+data to ftrace.
+
+- FChE
 
