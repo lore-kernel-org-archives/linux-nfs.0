@@ -1,39 +1,65 @@
-From: "H. Peter Anvin" <hpa@kernel.org>
-Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Sat, 17 Jan 2009 14:26:38 -0800
-Message-ID: <49725B1E.604@kernel.org>
-References: <1232223441.3966.22.camel@localhost.localdomain> <1232228261.27094.0.camel@macbook.infradead.org> <20090117221932.GA4956@uranus.ravnborg.org>
+From: Katrina <realjoboffer200981676@gmail.com>
+Subject: [NFS] Please don\\\'t share this. You could be making $300-700
+	weekly income.
+Date: Sat, 17 Jan 2009 18:10:58 -0500
+Message-ID: <E1LOKJe-0002Xh-6h@host.paydotcom.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: David Woodhouse <dwmw2@infradead.org>,
-	Jaswinder Singh Rajput <jaswinder@kernel.org>,
-	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-	dbrownell@users.sourceforge.net,
-	spi-devel-general@lists.sourceforge.net, netdev@vger.kernel.org,
-	greg@kroah.com, linux-usb@vger.kernel.org,
-	linux-mtd@lists.infradead.org, tiwai@suse.de,
-	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Sam Ravnborg <sam@ravnborg.org>
-Return-path: <linux-media-owner@vger.kernel.org>
-In-Reply-To: <20090117221932.GA4956@uranus.ravnborg.org>
-Sender: linux-media-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:59481 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756703AbZAQXMI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 17 Jan 2009 18:12:08 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LOKKk-00024d-Da
+	for linux-nfs@vger.kernel.org; Sun, 18 Jan 2009 10:12:06 +1100
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sam Ravnborg wrote:
->>>  
->> That patch looks wrong, and unnecessary. It was fine before.
-> Nope - include/linux/dvb/audio.h failed to include linux/types.h
-> despite the fact that is uses __u32 etc.
-> 
-> But why the _kernel_ should include a userspace header is
-> much more questionable.
-> 
+Hi,
 
-<stdint.h> is one of a handful of headers provided by gcc itself.
+We have a special work at home offer just for you.
+You can get up to $300-700 weekly.
 
-	-hpa
+This is an exclusive, personalized offer. Please don\\\'t
+
+forward
+
+this message or share with friends, it is strictly limited
+
+offer.
+
+
+Apply here: http://eezurl.com/?DataEntryMaster
+
+
+Your partner in Success,
+
+Katrina
+
+
+--------------------------------------------------------------
+
+-
+P.S. Please send  email to 39millionaires@gmail.com with
+
+\\\"STOP\\\"
+if you are no longer interested so we can gladly remove you
+
+from our list.
+
+------------------------------------------------------------------------------
+This SF.net email is sponsored by:
+SourcForge Community
+SourceForge wants to tell your story.
+http://p.sf.net/sfu/sf-spreadtheword
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
