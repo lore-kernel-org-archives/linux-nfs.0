@@ -1,15 +1,12 @@
-From: Jaswinder Singh Rajput <jaswinder@kernel.org>
+From: Kyle McMartin <kyle@infradead.org>
 Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Sun, 18 Jan 2009 09:08:24 +0530
-Message-ID: <1232249904.3097.15.camel@localhost.localdomain>
-References: <1232223441.3966.22.camel@localhost.localdomain>
-	 <1232228261.27094.0.camel@macbook.infradead.org>
-	 <20090117221932.GA4956@uranus.ravnborg.org>
-	 <1232247901.3097.12.camel@localhost.localdomain>
-	 <20090118033339.GA671@bombadil.infradead.org>
+Date: Sat, 17 Jan 2009 23:18:00 -0500
+Message-ID: <20090118041800.GB671@bombadil.infradead.org>
+References: <1232223441.3966.22.camel@localhost.localdomain> <1232228261.27094.0.camel@macbook.infradead.org> <20090117221932.GA4956@uranus.ravnborg.org> <1232247901.3097.12.camel@localhost.localdomain> <20090118033339.GA671@bombadil.infradead.org> <1232249904.3097.15.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Kyle McMartin <kyle@infradead.org>,
+	Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>,
 	David Woodhouse <dwmw2@infradead.org>,
 	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
 	urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org,
@@ -22,31 +19,20 @@ Cc: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>,
 	linux-mtd@lists.infradead.org, tiwai@suse.de,
 	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
 	Andrew Morton <akpm@linux-foundation.org>
-To: Kyle McMartin <kyle@infradead.org>
+To: Jaswinder Singh Rajput <jaswinder@kernel.org>
 Return-path: <linux-usb-owner@vger.kernel.org>
-In-Reply-To: <20090118033339.GA671-PfSpb0PWhxZc2C7mugBRk2EX/6BAtgUQ@public.gmane.org>
+In-Reply-To: <1232249904.3097.15.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-usb-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-01-17 at 22:33 -0500, Kyle McMartin wrote:
-> On Sun, Jan 18, 2009 at 08:35:01AM +0530, Jaswinder Singh Rajput wrote:
-> > Hello Sam, David,
-> > 
-> > /home/jaswinder/jaswinder-git/linux-2.6-tip/usr/include/mtd/jffs2-user.h:20: extern's make no sense in userspace
-> > 
-> 
-> This file is for userspace only, and it makes sense where it's used
-> (mtd-utils.)
-> 
-> In general though, this file doesn't actually depend on the kernel and
-> could be entirely provided from the userspace library.
+On Sun, Jan 18, 2009 at 09:08:24AM +0530, Jaswinder Singh Rajput wrote:
+> If this file is _ONLY_ for userspace and kernel cannot use it then what
+> is the point of keeping this file in kernel headers.
 > 
 
-If this file is _ONLY_ for userspace and kernel cannot use it then what
-is the point of keeping this file in kernel headers.
+There is effectively no point, especially when they reference a variable
+that may or may not exist in the userspace code including it... It seems
+entirely mtd-utils dependent.
 
---
-JSR
-
-
+Dave, will you queue Adrian's patch to nuke it?
 
