@@ -1,58 +1,68 @@
-From: Jaswinder Singh Rajput <jaswinder@kernel.org>
-Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Mon, 19 Jan 2009 08:23:14 +0530
-Message-ID: <1232333594.3129.31.camel@localhost.localdomain>
-References: <1232223441.3966.22.camel@localhost.localdomain>
-	 <20090119112429.78f5dc33.sfr@canb.auug.org.au>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-	dbrownell@users.sourceforge.net,
-	spi-devel-general@lists.sourceforge.net, netdev@vger.kernel.org,
-	greg@kroah.com, linux-usb@vger.kernel.org, dwmw2@infradead.org,
-	linux-mtd@lists.infradead.org, tiwai@suse.de,
-	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Return-path: <linux-media-owner@vger.kernel.org>
-In-Reply-To: <20090119112429.78f5dc33.sfr@canb.auug.org.au>
-Sender: linux-media-owner@vger.kernel.org
+From: Greg Banks <gnb@sgi.com>
+Subject: [patch 2/5] Add apply_modules() which applies a function to each module.
+Date: Mon, 19 Jan 2009 17:40:20 +1100
+Message-ID: <20090119064911.958016000@sgi.com>
+References: <20090119064018.442220000@sgi.com>
+Cc: "Frank Ch. Eigler" <fche@redhat.com>
+To: Linux NFS ML <linux-nfs@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from relay1.sgi.com ([192.48.179.29]:58542 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752099AbZASGtR (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Mon, 19 Jan 2009 01:49:17 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-01-19 at 11:24 +1100, Stephen Rothwell wrote:
-> On Sun, 18 Jan 2009 01:47:21 +0530 Jaswinder Singh Rajput <jaswinder@kernel.org> wrote:
-> >
-> > diff --git a/include/linux/nfsd/stats.h b/include/linux/nfsd/stats.h
-> > index 7678cfb..0b53cfe 100644
-> > --- a/include/linux/nfsd/stats.h
-> > +++ b/include/linux/nfsd/stats.h
-> > @@ -29,9 +29,11 @@ struct nfsd_stats {
-> >  	unsigned int	ra_size;	/* size of ra cache */
-> >  	unsigned int	ra_depth[11];	/* number of times ra entry was found that deep
-> >  					 * in the cache (10percentiles). [10] = not found */
-> > +#ifdef __KERNEL__
-> >  #ifdef CONFIG_NFSD_V4
-> >  	unsigned int	nfs4_opcount[LAST_NFS4_OP + 1];	/* count of individual nfsv4 operations */
-> >  #endif
-> > +#endif /* __KERNEL__ */
-> >  
-> >  };
-> 
-> The only variable in the kernel of type "struct nfsd_stats" is only
-> exported to user mode via procfs, so this whole structure could probably
-> go inside __KERNEL__.  Then looking harder, I wonder if this header
-> should be exported to user mode at all.
-> 
+The new dprintk module needs to apply a particular function
+to each module when the dprintk module loads.
 
-I was in doubt may be this will be used by some userspace utilities.
+Signed-off-by: Greg Banks <gnb@sgi.com>
+---
 
-Once I got confirmation that it is not required in userspace, I will
-remove it :-)
+ include/linux/module.h |    1 +
+ kernel/module.c        |   13 +++++++++++++
+ 2 files changed, 14 insertions(+)
+
+Index: bfields/kernel/module.c
+===================================================================
+--- bfields.orig/kernel/module.c
++++ bfields/kernel/module.c
+@@ -365,6 +365,19 @@ static struct module *find_module(const 
+ 	return NULL;
+ }
+ 
++void apply_modules(void (*func)(struct module*, void *), void *closure)
++{
++	struct module *mod;
++
++	preempt_disable();
++	list_for_each_entry_rcu(mod, &modules, list) {
++		func(mod, closure);
++	}
++	preempt_enable();
++}
++EXPORT_SYMBOL(apply_modules);
++
++
+ #ifdef CONFIG_SMP
+ /* Number of blocks used and allocated. */
+ static unsigned int pcpu_num_used, pcpu_num_allocated;
+Index: bfields/include/linux/module.h
+===================================================================
+--- bfields.orig/include/linux/module.h
++++ bfields/include/linux/module.h
+@@ -475,6 +475,7 @@ extern void module_update_markers(void);
+ 
+ extern void module_update_tracepoints(void);
+ extern int module_get_iter_tracepoints(struct tracepoint_iter *iter);
++extern void apply_modules(void (*func)(struct module*, void *), void *closure);
+ 
+ #else /* !CONFIG_MODULES... */
+ #define EXPORT_SYMBOL(sym)
 
 --
-JSR
-
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
