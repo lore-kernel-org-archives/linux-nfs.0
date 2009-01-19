@@ -1,65 +1,55 @@
-From: Jason Baron <jbaron@redhat.com>
-Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Mon, 19 Jan 2009 14:49:58 -0500
-Message-ID: <20090119194958.GA3108@redhat.com>
-References: <49711BDF.3010605@melbourne.sgi.com> <x49ab9ntlpp.fsf@segfault.boston.devel.redhat.com>
+From: David Teigland <teigland@redhat.com>
+Subject: Re: [PATCH] lockd: handle fl_grant callbacks with coalesced locks (RFC)
+Date: Mon, 19 Jan 2009 16:54:00 -0600
+Message-ID: <20090119225400.GA23086@redhat.com>
+References: <20081122011555.GA28485@fieldses.org> <20081124103313.0c779324@tleilax.poochiereds.net> <20081124170653.GF17862@fieldses.org> <20081213074042.2e8223c3@tleilax.poochiereds.net> <20081216193806.GC18928@fieldses.org> <20081216195635.GD18928@fieldses.org> <20081216161158.2d173667@tleilax.poochiereds.net> <20081217191453.GA16777@redhat.com> <20081217200156.GO4614@fieldses.org> <20090115163014.GA6602@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
-	Steve Dickson <SteveD@redhat.com>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
-To: Jeff Moyer <jmoyer@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59273 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:51395 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751843AbZASTur (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Jan 2009 14:50:47 -0500
-In-Reply-To: <x49ab9ntlpp.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
+	id S1752257AbZASWyL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Jan 2009 17:54:11 -0500
+In-Reply-To: <20090115163014.GA6602@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 19, 2009 at 09:27:30AM -0500, Jeff Moyer wrote:
-> Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> writes:
-> 
-> > Steve Dickson wrote:
-> >> So the ultimate goal would be to replace all the dprintks with trace points
-> >> but still be able to enable them through the rpcdebug command
-> > I have a patch which changes the definition of the dprintk() macro (but
-> > *not* dprintk() callsites) to allow enabling and disabling individual
-> > dprintk() statements through a /proc/ interface.  Would you be
-> > interested in that?
-> 
-> That sounds like duplicated work.  How does it differ from Jason Baron's
-> dynamic printk patches (which I believe are now upstream)?
-> 
-> Cheers,
-> Jeff
+> On Wed, Dec 17, 2008 at 03:01:56PM -0500, J. Bruce Fields wrote:
+> > On Wed, Dec 17, 2008 at 01:14:53PM -0600, David Teigland wrote:
+> > Also, since flc is never actually handed to the posix lock system, I
+> > think it should be a "shallow" lock copy--so it should be created with
+> > __locks_copy_lock().  Something like the below?
 
-indeed. I've implemented a solution in a very similar problem space
-which is now upstream, see:
+> (I'd like to do the s/locks_copy_lock/__locks_copy_lock/ in a separate
+> patch since it's not directly related to fixing the bug.)
 
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=346e15beb5343c2eb8216d820f2ed8f150822b08;hp=33376c1c043c05077b4ac79c33804266f6c45e49
+I haven't looked at why, but s/locks_copy_lock/__locks_copy_lock/ creates
+problems with the file_lock's kept by the vfs.  With two programs doing
+locking on an nfs client I get lots of messages like this on the server:
 
-One of the core fundamental differences that I see is that 'dprintk'
-checks a global variable per dprintk line. Whereas, 'dynamic printk'
-assigns each module a set of bits in a *single* global variable. The
-idea was that if you have thousands of these debug lines throughout the
-kernel, I wanted to have a small footprint.
+dlm: dlm_plock_callback: vfs lock error -11 num 20573 file
+ffff88007e16a818 fl ffff88007dc796b0
+dlm: dlm_plock_callback: vfs lock error -11 num 2055f file
+ffff88007e16a818 fl ffff88007dc796b0
+dlm: dlm_plock_callback: vfs lock error -11 num 2058b file
+ffff880017cf56d0 fl ffff88007e566750
+dlm: dlm_plock_callback: vfs lock error -11 num 2055c file
+ffff88007e16a818 fl ffff88007e566750
 
-The per-dprintk granularity could be implemented on top of the
-per-module approach that i've taken. That is, each dprintk statement
-could activate the module that its associated with when its activated.
-Then, a further per-line variable could be checked.
+(code modified to report the -11 / -EAGAIN)
 
-We should probably move this discussion to lkml, since this probably
-should involve a wider audience. Perhaps, you can re-post your patchset
-there?
+And /proc/locks on the server has entries that look like:
 
-thanks,
+54: POSIX  *NOINODE* WRITE 8682 <none>:0 5 9
+55: POSIX  *NOINODE* READ  8682 <none>:0 0 4
+56: POSIX  *NOINODE* READ  8682 <none>:0 0 4
+57: POSIX  *NOINODE* READ  8682 <none>:0 5 9
+58: POSIX  *NOINODE* READ  8682 <none>:0 5 9
+59: POSIX  *NOINODE* WRITE 8682 <none>:0 0 4
 
--Jason
-
-
+My tests are looking good using the current locks_copy_lock(), so I plan
+to just stick with that.
+Dave
 
