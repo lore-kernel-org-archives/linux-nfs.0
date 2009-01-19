@@ -1,67 +1,30 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 2/5] Add apply_modules() which applies a function to each module.
-Date: Mon, 19 Jan 2009 17:40:20 +1100
-Message-ID: <20090119064911.958016000@sgi.com>
-References: <20090119064018.442220000@sgi.com>
+Subject: [patch 0/5] activate & deactivate dprintks individually and severally
+Date: Mon, 19 Jan 2009 17:40:18 +1100
+Message-ID: <20090119064018.442220000@sgi.com>
 Cc: "Frank Ch. Eigler" <fche@redhat.com>
 To: Linux NFS ML <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:58542 "EHLO relay.sgi.com"
+Received: from relay1.sgi.com ([192.48.179.29]:58544 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752099AbZASGtR (ORCPT
+	id S1752366AbZASGtR (ORCPT
 	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
 	Mon, 19 Jan 2009 01:49:17 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The new dprintk module needs to apply a particular function
-to each module when the dprintk module loads.
+As mentioned in the recent discussion on NFS trace points.
 
-Signed-off-by: Greg Banks <gnb@sgi.com>
----
+This is a forward ported (from 2.6.16), updated, and split version
+of a patch that has been used in SGI's internal development tree for
+the last few months.  It's designed to help field support staff and
+kernel developers debug kernel problems, by enabling them to treat
+dprintks as precise trace points rather than syslog spamming tools.
 
- include/linux/module.h |    1 +
- kernel/module.c        |   13 +++++++++++++
- 2 files changed, 14 insertions(+)
+The very first version of this was used about eighteen months ago
+when debugging NFS/RDMA, which has an enormous number of dprintks
+and no other way to debug it.
 
-Index: bfields/kernel/module.c
-===================================================================
---- bfields.orig/kernel/module.c
-+++ bfields/kernel/module.c
-@@ -365,6 +365,19 @@ static struct module *find_module(const 
- 	return NULL;
- }
- 
-+void apply_modules(void (*func)(struct module*, void *), void *closure)
-+{
-+	struct module *mod;
-+
-+	preempt_disable();
-+	list_for_each_entry_rcu(mod, &modules, list) {
-+		func(mod, closure);
-+	}
-+	preempt_enable();
-+}
-+EXPORT_SYMBOL(apply_modules);
-+
-+
- #ifdef CONFIG_SMP
- /* Number of blocks used and allocated. */
- static unsigned int pcpu_num_used, pcpu_num_allocated;
-Index: bfields/include/linux/module.h
-===================================================================
---- bfields.orig/include/linux/module.h
-+++ bfields/include/linux/module.h
-@@ -475,6 +475,7 @@ extern void module_update_markers(void);
- 
- extern void module_update_tracepoints(void);
- extern int module_get_iter_tracepoints(struct tracepoint_iter *iter);
-+extern void apply_modules(void (*func)(struct module*, void *), void *closure);
- 
- #else /* !CONFIG_MODULES... */
- #define EXPORT_SYMBOL(sym)
-
---
 -- 
 Greg Banks, P.Engineer, SGI Australian Software Group.
 the brightly coloured sporks of revolution.
