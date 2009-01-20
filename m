@@ -1,127 +1,59 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] mountd: Don't do tcp wrapper check when there are no rules
-Date: Tue, 20 Jan 2009 06:22:58 -0500
-Message-ID: <4975B412.9070509@RedHat.com>
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Date: Tue, 20 Jan 2009 16:03:01 +0100
+Message-ID: <20090120150301.GG47559@fit.vutbr.cz>
+References: <20090109145638.GC47559@fit.vutbr.cz> <1231523966.7179.67.camel@heimdal.trondhjem.org> <20090110102458.GG47559@fit.vutbr.cz> <1231603200.29646.5.camel@heimdal.trondhjem.org> <20090112090404.GL47559@fit.vutbr.cz> <1231782009.7322.12.camel@heimdal.trondhjem.org> <1231809446.7322.17.camel@heimdal.trondhjem.org> <20090113152201.GD47559@fit.vutbr.cz> <20090116104802.GF47559@fit.vutbr.cz> <20090118130835.GH47559@fit.vutbr.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33850 "EHLO mx2.redhat.com"
+Received: from kazi.fit.vutbr.cz ([147.229.8.12]:50078 "EHLO kazi.fit.vutbr.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757863AbZATLZY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 Jan 2009 06:25:24 -0500
+	id S1757863AbZATPDG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jan 2009 10:03:06 -0500
+In-Reply-To: <20090118130835.GH47559@fit.vutbr.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Its been point out that if there are are no rules in either 
-/etc/hosts.deny or /etc/hosts.allow there is no need to do any
-validity checking on the incoming address.
+On Sun, Jan 18, 2009 at 02:08:35PM +0100, Kasparek Tomas wrote:
+> > > > The attached 2 patches have been tested using a server that was rigged
+> > > > not to ever close the socket. They appear to work fine on my setup,
+> > > > without the hang that you reported earlier.
+> ...
+> It seems that machines with this new kernel (tried on 10 other machines
+> and the original client) may after few days get into state where they
+> generate huge amounts (10000-100000pkt/s) of packets on another server they
+> use (Linux 2.6.26.62, but the same behaviour with other kernels I tried -
+> 2.6.24.7, 2.6.22.19, 2.6.27.10). It seems packets are quiet small as the
+> flow on server is about 5-10MB/s. (probably) Each packet generates an answer.
+> With this flow it is hard to get more info and the server is production
+> one, so for now I only know it goes from these clients and end on tcp port
+> 2049 on that server. It kills just this server, communication with the
+> previously problematic (FreeBSD machines) is fine now.
 
-Unfortunately there is no interface that will easily
-let me know if there are any rules so I simply read
-in both files looking for non-commented lines.
+Hi all,
 
-steved.
-  
+configrming that the problem is with machines with 2.6.27.10+trond's
+patches. Do not have more info about what's there on network, the only new
+thing I can add is that the client is dead not reacting even on keyborad or
+anything else. Trond, would you have and idea what to try now or what other
+information to find to get any further in this?
 
-commit 5f09a2bacb4bf0a906e2d19931568b91fb6c5088
-Author: Steve Dickson <steved@redhat.com>
-Date:   Tue Jan 20 06:16:56 2009 -0500
+The clients are different machines - Intel x AMD with different boards,
+NICs etc. The server is dead too, but it may recover after some time - I
+can not afford leaving it for longer time to see what happens.
 
-    mountd: Don't do tcp wrapper check when there are no rules
-    
-    If there are no rules in either /etc/hosts.deny or
-    /etc/hosts.allow there is no need to do the host validation.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+Thanks so far.
 
-diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
-index 977dfca..af9813c 100644
---- a/support/misc/tcpwrapper.c
-+++ b/support/misc/tcpwrapper.c
-@@ -34,6 +34,7 @@
- #ifdef HAVE_CONFIG_H
- #include <config.h>
- #endif
-+#include <stdio.h>
- #include <tcpwrapper.h>
- #include <unistd.h>
- #include <string.h>
-@@ -55,6 +56,8 @@
- #include <rpc/rpcent.h>
- #endif
- 
-+static int check_files(void);
-+static int check_rules(void);
- static void logit(int severity, struct sockaddr_in *addr,
- 		  u_long procnum, u_long prognum, char *text);
- static void toggle_verboselog(int sig);
-@@ -263,8 +266,40 @@ void    check_startup(void)
-     (void) signal(SIGINT, toggle_verboselog);
- }
- 
--/* check_files - check to see if either access files have changed */
-+/*
-+ * check_rules - check to see if any entries exist in
-+ * either hosts file.
-+ */
-+int check_rules()
-+{
-+	FILE *fp;
-+	char buf[BUFSIZ];
-+
-+ 	if ((fp = fopen("/etc/hosts.allow", "r")) == NULL)
-+		return 0;
-+
-+	while (fgets(buf, BUFSIZ, fp) != NULL) {
-+		if (buf[0] == '#')
-+			continue;
-+		fclose(fp);
-+		return 1;
-+	}
-+	fclose(fp);
-+
-+	if ((fp = fopen("/etc/hosts.deny", "r")) == NULL)
-+		return 0;
- 
-+	while (fgets(buf, BUFSIZ, fp) != NULL) {
-+		if (buf[0] == '#')
-+			continue;
-+		fclose(fp);
-+		return 1;
-+	}
-+	fclose(fp);
-+	return 0;
-+}
-+  
-+/* check_files - check to see if either access files have changed */
- static int check_files()
- {
- 	static time_t allow_mtime, deny_mtime;
-@@ -306,6 +341,13 @@ u_long  prog;
- 	if (acc && changed == 0)
- 		return (acc->access);
- 
-+	/*
-+	 * See if there are any rules to be applied,
-+	 * if not, no need to check the address
-+	 */
-+	if (check_rules() == 0)
-+		goto done;
-+
- 	if (!(from_local(addr) || good_client(daemon, addr))) {
- 		log_bad_host(addr, proc, prog);
- 		if (acc)
-@@ -317,10 +359,12 @@ u_long  prog;
- 	if (verboselog)
- 		log_client(addr, proc, prog);
- 
-+done:
- 	if (acc)
- 		acc->access = TRUE;
- 	else 
- 		haccess_add(addr, proc, prog, TRUE);
-+
-     return (TRUE);
- }
- 
+--   
+
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 1, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
+
+  jabber: tomas.kasparek-2ASvDZBniIelVyrhU4qvOw@public.gmane.org
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
+
