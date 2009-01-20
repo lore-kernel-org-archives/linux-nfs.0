@@ -1,151 +1,121 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] mountd: Don't do tcp wrapper check when there are no rules
-Date: Tue, 20 Jan 2009 11:03:23 -0500
-Message-ID: <D93E60C8-C089-497F-9783-AA5DBE16A266@oracle.com>
-References: <4975B412.9070509@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+From: "Sachin S. Prabhu" <sprabhu@redhat.com>
+Subject: Memory corruption in nfs3_xdr_setaclargs()
+Date: Tue, 20 Jan 2009 17:14:45 +0000
+Message-ID: <49760685.4030409@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig9CFDC45F3EA6497339AF4BBD"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:35530 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756029AbZATQDw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jan 2009 11:03:52 -0500
-In-Reply-To: <4975B412.9070509-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:47486 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757889AbZATROq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 Jan 2009 12:14:46 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n0KHEkda016177
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2009 12:14:46 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0KHEk1Y009553
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2009 12:14:46 -0500
+Received: from localhost.localdomain (splp.fab.redhat.com [10.33.0.53])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n0KHEjK9027841
+	for <linux-nfs@vger.kernel.org>; Tue, 20 Jan 2009 12:14:46 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 20, 2009, at Jan 20, 2009, 6:22 AM, Steve Dickson wrote:
-> Its been point out that if there are are no rules in either
-> /etc/hosts.deny or /etc/hosts.allow there is no need to do any
-> validity checking on the incoming address.
->
-> Unfortunately there is no interface that will easily
-> let me know if there are any rules so I simply read
-> in both files looking for non-commented lines.
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig9CFDC45F3EA6497339AF4BBD
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-I'm not familiar enough with the syntax of the hosts.* files, but it  
-seems like you need something more sophisticated than this.  A quick  
-skim of hosts.allow(5) and hosts_options(5) isn't illuminating.
+A mistake in calculating the space left in the header in nfs3_xdr_setacla=
+rgs()
+can cause memory corruption when setting a large number of acls.
 
-Are blank lines allowed?  It is permitted to have white space before  
-the "#"?
+Reproducer:
 
-> steved.
->
->
-> commit 5f09a2bacb4bf0a906e2d19931568b91fb6c5088
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Tue Jan 20 06:16:56 2009 -0500
->
->    mountd: Don't do tcp wrapper check when there are no rules
->
->    If there are no rules in either /etc/hosts.deny or
->    /etc/hosts.allow there is no need to do the host validation.
->
->    Signed-off-by: Steve Dickson <steved@redhat.com>
->
-> diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
-> index 977dfca..af9813c 100644
-> --- a/support/misc/tcpwrapper.c
-> +++ b/support/misc/tcpwrapper.c
-> @@ -34,6 +34,7 @@
-> #ifdef HAVE_CONFIG_H
-> #include <config.h>
-> #endif
-> +#include <stdio.h>
-> #include <tcpwrapper.h>
-> #include <unistd.h>
-> #include <string.h>
-> @@ -55,6 +56,8 @@
-> #include <rpc/rpcent.h>
-> #endif
->
-> +static int check_files(void);
-> +static int check_rules(void);
-> static void logit(int severity, struct sockaddr_in *addr,
-> 		  u_long procnum, u_long prognum, char *text);
-> static void toggle_verboselog(int sig);
-> @@ -263,8 +266,40 @@ void    check_startup(void)
->     (void) signal(SIGINT, toggle_verboselog);
-> }
->
-> -/* check_files - check to see if either access files have changed */
-> +/*
-> + * check_rules - check to see if any entries exist in
-> + * either hosts file.
-> + */
-> +int check_rules()
-> +{
-> +	FILE *fp;
-> +	char buf[BUFSIZ];
-> +
-> + 	if ((fp = fopen("/etc/hosts.allow", "r")) == NULL)
-> +		return 0;
-> +
-> +	while (fgets(buf, BUFSIZ, fp) != NULL) {
-> +		if (buf[0] == '#')
-> +			continue;
-> +		fclose(fp);
-> +		return 1;
-> +	}
-> +	fclose(fp);
-> +
-> +	if ((fp = fopen("/etc/hosts.deny", "r")) == NULL)
-> +		return 0;
->
-> +	while (fgets(buf, BUFSIZ, fp) != NULL) {
-> +		if (buf[0] == '#')
-> +			continue;
-> +		fclose(fp);
-> +		return 1;
-> +	}
-> +	fclose(fp);
-> +	return 0;
-> +}
-> +
-> +/* check_files - check to see if either access files have changed */
-> static int check_files()
-> {
-> 	static time_t allow_mtime, deny_mtime;
-> @@ -306,6 +341,13 @@ u_long  prog;
-> 	if (acc && changed == 0)
-> 		return (acc->access);
->
-> +	/*
-> +	 * See if there are any rules to be applied,
-> +	 * if not, no need to check the address
-> +	 */
-> +	if (check_rules() == 0)
-> +		goto done;
-> +
-> 	if (!(from_local(addr) || good_client(daemon, addr))) {
-> 		log_bad_host(addr, proc, prog);
-> 		if (acc)
-> @@ -317,10 +359,12 @@ u_long  prog;
-> 	if (verboselog)
-> 		log_client(addr, proc, prog);
->
-> +done:
-> 	if (acc)
-> 		acc->access = TRUE;
-> 	else
-> 		haccess_add(addr, proc, prog, TRUE);
-> +
->     return (TRUE);
-> }
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Server:
+1) Create directory /test and set mode 777.
+mkdir /test; chmod 777 /test
+2) Add 200 users and set default acl for user on /test
+for i in {1..200}; do echo $i; useradd user$i; setfacl -m d:u:user$i:rwx
+/test;done
+3) Add export /test  in /etc/exports
+/test *(rw)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+On client
+1) Mount server:/test
+mount server:/test /mnt
+2) Create large number of directories on the the share.
+cd/mnt; for i in {1..1000}; do mkdir $i; done
+At this point, the client should crash.
+
+A change in call_header changes the value req->rq_snd_buf->head[0]->iov_l=
+en to
+reflect the exact size of the header.
+[PATCH] RPC: Ensure XDR iovec length is initialized correctly in call_hea=
+der
+334ccfd545bba9690515f2c5c167d5adb161989b
+
+The iov_len is set to the size of the header in  call_header().
+req->rq_slen =3D xdr_adjust_iovec(&req->rq_svec[0], p);
+
+nfs3_xdr_setaclargs() depends on the older behavior and uses this value w=
+hen
+calculating the number of ACLs it can fit into the header.
+
+        /* put as much of the acls into head as possible. */
+        len_in_head =3D min_t(unsigned int, buf->head->iov_len - base, le=
+n);
+        len -=3D len_in_head;
+        req->rq_slen =3D xdr_adjust_iovec(req->rq_svec, p + (len_in_head =
+>> 2));
+
+Since at this stage, iov_len < base, len_in_head will always be set to le=
+n. For
+a large number of ACLs, this will end up over-writing other parts of memo=
+ry on
+the nfs client.
+
+The following patch which set len_in_head to 0 was tested with the reprod=
+ucer
+and was found to fix the problem.
+
+--- fs/nfs/nfs3xdr.c.orig	2009-01-20 15:18:12.000000000 +0000
++++ fs/nfs/nfs3xdr.c	2009-01-20 15:33:45.000000000 +0000
+@@ -691,7 +691,10 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req
+ 	*p++ =3D htonl(args->mask);
+ 	base =3D (char *)p - (char *)buf->head->iov_base;
+ 	/* put as much of the acls into head as possible. */
+-	len_in_head =3D min_t(unsigned int, buf->head->iov_len - base, len);
++	if ( buf->head->iov_len > base )
++		len_in_head =3D min_t(unsigned int, buf->head->iov_len - base, len);
++	else
++		len_in_head =3D 0;
+ 	len -=3D len_in_head;
+ 	req->rq_slen =3D xdr_adjust_iovec(req->rq_svec, p + (len_in_head >> 2))=
+;
+
+Thanks to Kevin Rudd who did the major legwork here to figure the problem=
+ and
+create the patch.
+
+Sachin Prabhu
 
 
+--------------enig9CFDC45F3EA6497339AF4BBD
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+Comment: Using GnuPG with Fedora - http://enigmail.mozdev.org
 
+iEYEARECAAYFAkl2BoUACgkQrGYtZINVEC5oMgCgshuUCirfy0/oeFwkLBv3IWZ8
+fDkAnAoP5h7AET+jX0U6XJgcpdJtGd3e
+=GcHC
+-----END PGP SIGNATURE-----
+
+--------------enig9CFDC45F3EA6497339AF4BBD--
