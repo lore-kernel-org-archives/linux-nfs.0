@@ -1,64 +1,70 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/2] nfsd: only set file_lock.fl_lmops in
-	nfsd4_lockt if a stateowner is found
-Date: Wed, 21 Jan 2009 11:34:51 -0500
-Message-ID: <1232555691-29859-3-git-send-email-jlayton@redhat.com>
-References: <1232555691-29859-1-git-send-email-jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: lkml@vger.kernel.org
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <1232555691-29859-1-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Wed, 21 Jan 2009 11:39:56 -0500
+Message-ID: <49774FDC.5090307@RedHat.com>
+References: <49711BDF.3010605@melbourne.sgi.com>
+	<x49ab9ntlpp.fsf@segfault.boston.devel.redhat.com>
+	<20090121101329.GA4876@in.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	SystemTAP <systemtap@sources.redhat.com>
+To: prasad@linux.vnet.ibm.com
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090121101329.GA4876@in.ibm.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd4_lockt does a search for a lockstateowner when building the lock
-struct to test. If one is found, it'll set fl_owner to it. Regardless of
-whether that happens, it'll also set fl_lmops.
+K.Prasad wrote:
+> On Mon, Jan 19, 2009 at 09:27:30AM -0500, Jeff Moyer wrote:
+>> Greg Banks <gnb@melbourne.sgi.com> writes:
+>>
+>>> Steve Dickson wrote:
+>>>> So the ultimate goal would be to replace all the dprintks with trace points
+>>>> but still be able to enable them through the rpcdebug command
+>>> I have a patch which changes the definition of the dprintk() macro (but
+>>> *not* dprintk() callsites) to allow enabling and disabling individual
+>>> dprintk() statements through a /proc/ interface.  Would you be
+>>> interested in that?
+>> That sounds like duplicated work.  How does it differ from Jason Baron's
+>> dynamic printk patches (which I believe are now upstream)?
+>>
+>> Cheers,
+>> Jeff
+> 
+> Introducing/converting one of the accepted methods of static
+> instrumentation - like tracepoints would help more users (whether
+> in-kernel or otherwise) harness them.
+> 
+> Steve,
+> 	Would it help convert the systemtap script (nfs_mount.stp) in
+> Patch - 5 into a kernel module (perhaps in samples/ directory) to bring
+> an in-kernel user of these tracepoints?
+Well nfs_mount.stp was just an example of how to pull the information
+from the kernel.. I just wanted to complete the loop... but as 
+Christoph pointed out it probably shouldn't been included in the posting.
 
-If a lockstateowner is not found, then we'll have fl_owner set to NULL
-and fl_lmops set pointing to nfsd_posix_mng_ops. Other parts of the
-NFSv4 server code assume that fl_owner will point to a valid
-nfs4_stateowner if fl_lmops is set this way.
+I'm not sure moving the nfs_mount.stp script into kernel 
+would make sense. One of the advantages of trace point and system
+scripts (depending on what is passed up) it allows users to define
+exactly what they need to see.. 
 
-This behavior exposed a bug in DLM's GETLK implementation where it
-wasn't clearing out the fields in the file_lock before filling in
-conflicting lock info. While we were able to fix this in DLM, it
-still seems pointless and dangerous to set the fl_lmops this way
-when we have a NULL lockstateowner.
+For example, a kernel guy might be interested in a particular bit in a flag 
+field which would be meaningless to an IT guy. On the other hand, the IT guy 
+would be interested in the error code. One trace point could supply all the
+information but different systemtap scripts would be need to show the 
+desired information.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4state.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+My point being, if we move things down into the kernel, I think we would
+lose this type of flexibly...
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 88db7d3..07d196a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2867,11 +2867,13 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	lockt->lt_stateowner = find_lockstateowner_str(inode,
- 			&lockt->lt_clientid, &lockt->lt_owner);
--	if (lockt->lt_stateowner)
-+	if (lockt->lt_stateowner) {
- 		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
-+		file_lock.fl_lmops = &nfsd_posix_mng_ops;
-+	}
-+
- 	file_lock.fl_pid = current->tgid;
- 	file_lock.fl_flags = FL_POSIX;
--	file_lock.fl_lmops = &nfsd_posix_mng_ops;
- 
- 	file_lock.fl_start = lockt->lt_offset;
- 	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
--- 
-1.5.5.6
+steved.
