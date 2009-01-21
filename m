@@ -1,20 +1,19 @@
 From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Wed, 21 Jan 2009 14:58:04 -0500
-Message-ID: <49777E4C.2020501@RedHat.com>
-References: <4970B451.4080201@RedHat.com>	
-	<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>	
-	<497757D1.7090908@RedHat.com>	
-	<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>
-	<1232566140.7692.64.camel@heimdal.trondhjem.org>
+Date: Wed, 21 Jan 2009 14:59:21 -0500
+Message-ID: <49777E99.8010207@RedHat.com>
+References: <49711BDF.3010605@melbourne.sgi.com>
+	<x49ab9ntlpp.fsf@segfault.boston.devel.redhat.com>
+	<20090121101329.GA4876@in.ibm.com> <49774FDC.5090307@RedHat.com>
+	<20090121170401.GD4394@ghostprotocols.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	SystemTAP <systemtap@sources.redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	prasad@linux.vnet.ibm.com, SystemTAP <systemtap@sources.redhat.com>
+To: Arnaldo Carvalho de Melo <acme@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1232566140.7692.64.camel@heimdal.trondhjem.org>
+In-Reply-To: <20090121170401.GD4394@ghostprotocols.net>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -26,53 +25,56 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
 
-Trond Myklebust wrote:
-> On Wed, 2009-01-21 at 13:01 -0500, Chuck Lever wrote:
->> `rpcdebug -m nfs -s mount` also enables the dprintks in fs/nfs/ 
->> mount_clnt.c, at least.  As with most dprintk infrastructure in NFS,  
->> it's really aimed at developers and not end users or admins.  The  
->> rpcbind client is also an integral part of the mount process, so I  
->> suggested that too.
+
+Arnaldo Carvalho de Melo wrote:
+> Em Wed, Jan 21, 2009 at 11:39:56AM -0500, Steve Dickson escreveu:
+>> K.Prasad wrote:
+>>> On Mon, Jan 19, 2009 at 09:27:30AM -0500, Jeff Moyer wrote:
+>>>> Greg Banks <gnb@melbourne.sgi.com> writes:
+>>>>
+>>>>> Steve Dickson wrote:
+>>>>>> So the ultimate goal would be to replace all the dprintks with trace points
+>>>>>> but still be able to enable them through the rpcdebug command
+>>>>> I have a patch which changes the definition of the dprintk() macro (but
+>>>>> *not* dprintk() callsites) to allow enabling and disabling individual
+>>>>> dprintk() statements through a /proc/ interface.  Would you be
+>>>>> interested in that?
+>>>> That sounds like duplicated work.  How does it differ from Jason Baron's
+>>>> dynamic printk patches (which I believe are now upstream)?
+>>>>
+>>>> Cheers,
+>>>> Jeff
+>>> Introducing/converting one of the accepted methods of static
+>>> instrumentation - like tracepoints would help more users (whether
+>>> in-kernel or otherwise) harness them.
+>>>
+>>> Steve,
+>>> 	Would it help convert the systemtap script (nfs_mount.stp) in
+>>> Patch - 5 into a kernel module (perhaps in samples/ directory) to bring
+>>> an in-kernel user of these tracepoints?
+>> Well nfs_mount.stp was just an example of how to pull the information
+>> from the kernel.. I just wanted to complete the loop... but as 
+>> Christoph pointed out it probably shouldn't been included in the posting.
+>>
+>> I'm not sure moving the nfs_mount.stp script into kernel 
+>> would make sense. One of the advantages of trace point and system
+>> scripts (depending on what is passed up) it allows users to define
+>> exactly what they need to see.. 
+>>
+>> For example, a kernel guy might be interested in a particular bit in a flag 
+>> field which would be meaningless to an IT guy. On the other hand, the IT guy 
+>> would be interested in the error code. One trace point could supply all the
+>> information but different systemtap scripts would be need to show the 
+>> desired information.
+>>
+>> My point being, if we move things down into the kernel, I think we would
+>> lose this type of flexibly...
 > 
-> This would be my main gripe with suggestions that we convert all the
-> existing dprintks. As Chuck says, they are pretty much a hodgepodge of
-> messages designed to help kernel developers to debug the NFS and RPC
-> code.
-Well as I see it, this is our chance to clean it up... 
-
+> I suggest you provide an ftrace plugin, just like I'm doing with
+> blktrace, see:
 > 
-> If you want something dtrace-like to allow administrators to run scripts
-> to monitor the health of their cluster and troubleshoot performance
-> problems, then you really want to start afresh. That really needs to be
-> designed as a long-term API, and should ideally represent the desired
-> functionality in a manner that is more or less independent of the
-> underlying code (something that is clearly not the case for the current
-> mess of dprintks). 
-I'm not sure how the trace points could independent of the underlying code,
-but I do agree a well designed API would be optimal.... But before we go
-off designing something I think we need to decide with the end game is.
-
-Do we want to trace points:
-    1) at all 
-    2) for debugging 
-    3) for performance
-    4) 2 and 3
-
-Once we get the above nailed down then we can decide how to go...
-
-Also, Greg and Jason Baron (from Red Hat) are off working on 
-improving the dprintk() that are currently exist... I would
-suspect we would want to also tie in with that to see if
-it would be applicable...
-
-
-> Otherwise, scripts will have to be rewritten every
-> time we make some minor tweak or change to the code (i.e. for every
-> kernel release).
-No matter how well we design this, I'm sure there will always be
-a need for tweaks in the user level scripts... but we call always
-leave that up to the nfs-utils maintainer....  (Doh!) 8-)
+> http://lkml.org/lkml/2009/1/20/190
+I agree its something I need to look into...
 
 steved.
