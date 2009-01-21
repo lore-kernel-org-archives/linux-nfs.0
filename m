@@ -1,71 +1,81 @@
-From: Arnaldo Carvalho de Melo <acme@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Wed, 21 Jan 2009 15:04:01 -0200
-Message-ID: <20090121170401.GD4394@ghostprotocols.net>
-References: <49711BDF.3010605@melbourne.sgi.com> <x49ab9ntlpp.fsf@segfault.boston.devel.redhat.com> <20090121101329.GA4876@in.ibm.com> <49774FDC.5090307@RedHat.com>
+Date: Wed, 21 Jan 2009 12:13:53 -0500
+Message-ID: <497757D1.7090908@RedHat.com>
+References: <4970B451.4080201@RedHat.com>
+	<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: prasad@linux.vnet.ibm.com,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40597 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752381AbZAUREJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jan 2009 12:04:09 -0500
-In-Reply-To: <49774FDC.5090307-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+	SystemTAP <systemtap@sources.redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Em Wed, Jan 21, 2009 at 11:39:56AM -0500, Steve Dickson escreveu:
-> K.Prasad wrote:
-> > On Mon, Jan 19, 2009 at 09:27:30AM -0500, Jeff Moyer wrote:
-> >> Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> writes:
-> >>
-> >>> Steve Dickson wrote:
-> >>>> So the ultimate goal would be to replace all the dprintks with trace points
-> >>>> but still be able to enable them through the rpcdebug command
-> >>> I have a patch which changes the definition of the dprintk() macro (but
-> >>> *not* dprintk() callsites) to allow enabling and disabling individual
-> >>> dprintk() statements through a /proc/ interface.  Would you be
-> >>> interested in that?
-> >> That sounds like duplicated work.  How does it differ from Jason Baron's
-> >> dynamic printk patches (which I believe are now upstream)?
-> >>
-> >> Cheers,
-> >> Jeff
-> > 
-> > Introducing/converting one of the accepted methods of static
-> > instrumentation - like tracepoints would help more users (whether
-> > in-kernel or otherwise) harness them.
-> > 
-> > Steve,
-> > 	Would it help convert the systemtap script (nfs_mount.stp) in
-> > Patch - 5 into a kernel module (perhaps in samples/ directory) to bring
-> > an in-kernel user of these tracepoints?
-> Well nfs_mount.stp was just an example of how to pull the information
-> from the kernel.. I just wanted to complete the loop... but as 
-> Christoph pointed out it probably shouldn't been included in the posting.
-> 
-> I'm not sure moving the nfs_mount.stp script into kernel 
-> would make sense. One of the advantages of trace point and system
-> scripts (depending on what is passed up) it allows users to define
-> exactly what they need to see.. 
-> 
-> For example, a kernel guy might be interested in a particular bit in a flag 
-> field which would be meaningless to an IT guy. On the other hand, the IT guy 
-> would be interested in the error code. One trace point could supply all the
-> information but different systemtap scripts would be need to show the 
-> desired information.
-> 
-> My point being, if we move things down into the kernel, I think we would
-> lose this type of flexibly...
+Sorry for the delayed response... That darn flux capacitor broke again! ;-)
+ 
 
-I suggest you provide an ftrace plugin, just like I'm doing with
-blktrace, see:
+Chuck Lever wrote:
+> 
+> I'm all for improving the observability of the NFS client.
+Well, in theory, trace points will also touch the server and all
+of the rpc code... 
 
-http://lkml.org/lkml/2009/1/20/190
+> 
+> But I don't (yet) see the advantage of adding this complexity in the
+> mount path.  Maybe the more complex and asynchronous parts of the NFS
+> client, like the cached read and write paths, are more suitable to this
+> type of tool.
+Well the complexity is, at this point, due to how the trace points
+are tied to and used by the systemtap. I'm hopeful this complexity 
+will die down as time goes on... 
 
-- Arnaldo
+> 
+> Why can't we simply improve the information content of the dprintks?
+The theory is trace point can be turned on, in production kernels, with
+little or no performance issues... 
+
+> Can you give a few real examples of problems that these new trace points
+> can identify that better dprintks wouldn't be able to address?
+They can supply more information that can be used by both a kernel
+guy and an IT guy.... Meaning they can supply detailed structure information
+that a kernel guy would need as well as supplying the simple error code 
+that an IT guy would be interested.
+
+> Generally, what kind of problems do admins face that the dprintks don't
+> handle today, and what are the alternatives to addressing those issues?
+Not being an admin guy, I really don't have an answer for this... but 
+I can say since trace point are not so much of a drag on the system as
+printks are.. with in timing issues using trace point would be a big advantage
+over printks
+
+> 
+> Do admins who run enterprise kernels actually use SystemTap, or do they
+> fall back on network traces and other tried and true troubleshooting
+> methodologies?
+Currently to run systemtap, one need kernel debug info and kernel developer
+info installed on the system. Most productions system don't install those types
+of packages.... But with trace points those type of packages will no longer be 
+needed, so I could definitely see admins using systemtap once its available... 
+Look at Dtrace... people are using that now that its available and fairly stable. 
+ 
+> 
+> If we think the mount path needs such instrumentation, consider updating
+> fs/nfs/mount_clnt.c and net/sunrpc/rpcb_clnt.c as well.
+> 
+I was just following what what was currently being debug when
+'rpcinfo -m nfs -s mount' was set... maybe I missed something...
+I'll take a look...
+
+steved.
