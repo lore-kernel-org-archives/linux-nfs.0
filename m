@@ -1,81 +1,62 @@
-From: "Phrukphicharn, Anuwat" <anuwat@hp.com>
-Subject: [NFS] unsubscribe nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org
-Date: Wed, 21 Jan 2009 07:43:57 +0000
-Message-ID: <CB70D8E772DFE242AB9C89B1B9B153603138088C18@GVW1125EXB.americas.hpqcorp.net>
-References: <3f2c01c97c1a$07dd9b02$46c4247d@[125.36.196.70]>
+From: "K.Prasad" <prasad@linux.vnet.ibm.com>
+Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Wed, 21 Jan 2009 15:43:29 +0530
+Message-ID: <20090121101329.GA4876@in.ibm.com>
+References: <49711BDF.3010605@melbourne.sgi.com> <x49ab9ntlpp.fsf@segfault.boston.devel.redhat.com>
+Reply-To: prasad@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: "nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org" <nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Maneesh Soni <maneesh@in.ibm.com>
+To: Jeff Moyer <jmoyer@redhat.com>, Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:41251 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752661AbZAUIDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jan 2009 03:03:35 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LPY3h-0002Pk-B0
-	for linux-nfs@vger.kernel.org; Wed, 21 Jan 2009 19:03:33 +1100
-In-Reply-To: <3f2c01c97c1a$07dd9b02$46c4247d@[125.36.196.70]>
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:55393 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764274AbZAUKNo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2009 05:13:44 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id n0LAC0Cd018745
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2009 21:12:01 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n0LADxOH4452412
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2009 21:13:59 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n0LADehn025659
+	for <linux-nfs@vger.kernel.org>; Wed, 21 Jan 2009 21:13:41 +1100
+In-Reply-To: <x49ab9ntlpp.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
+On Mon, Jan 19, 2009 at 09:27:30AM -0500, Jeff Moyer wrote:
+> Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org> writes:
+> 
+> > Steve Dickson wrote:
+> >> So the ultimate goal would be to replace all the dprintks with trace points
+> >> but still be able to enable them through the rpcdebug command
+> > I have a patch which changes the definition of the dprintk() macro (but
+> > *not* dprintk() callsites) to allow enabling and disabling individual
+> > dprintk() statements through a /proc/ interface.  Would you be
+> > interested in that?
+> 
+> That sounds like duplicated work.  How does it differ from Jason Baron's
+> dynamic printk patches (which I believe are now upstream)?
+> 
+> Cheers,
+> Jeff
 
-| -----Original Message-----
-| From: Narongrit [mailto:nando-gOBC5zMA0OId8gSulKMZyVaTQe2KTcn/@public.gmane.org] 
-| Sent: Thursday, January 22, 2009 1:46 AM
-| To: nfs-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org
-| Subject: [NFS] [SPAM] Fw: Door-opener !
-| 
-| If you are more than qualified with your experience, but are 
-| lacking that prestigious piece of paper known as a diploma 
-| that is often the passport to success.
-| 
-| We provide a concept that will allow anyone with sufficient 
-| work experience to obtain a fully verifiable University 
-| Degree - Bachelors, Masters or even a Doctorate.
-| 
-| Within four to six weeks, you will be a college graduate.
-| 
-| Many people are doing the work of the person that has the 
-| degree and the person that has the degree is getting all the 
-| money. Don't you think that it is time you were paid fair 
-| compensation for the level of work you are already doing?
-| 
-| This is your chance to finally make the right move and 
-| receive your due benefits.
-| 
-| CALL US TODAY AND GIVE YOUR WORK
-| EXPERIENCE THE CHANCE TO EARN YOU
-| THE HIGHER COMPENSATION YOU DESERVE!
-| 
-| Ring Anytime +1-904-346-1158 
-| 
-| 
-| --------------------------------------------------------------
-| ----------------
-| This SF.net email is sponsored by:
-| SourcForge Community
-| SourceForge wants to tell your story.
-| http://p.sf.net/sfu/sf-spreadtheword
-| _______________________________________________
-| NFS maillist  -  NFS@lists.sourceforge.net 
-| https://lists.sourceforge.net/lists/listinfo/nfs
-| _______________________________________________
-| Please note that nfs@lists.sourceforge.net is being discontinued.
-| Please subscribe to linux-nfs@vger.kernel.org instead.
-|     http://vger.kernel.org/vger-lists.html#linux-nfs
-| 
-------------------------------------------------------------------------------
-This SF.net email is sponsored by:
-SourcForge Community
-SourceForge wants to tell your story.
-http://p.sf.net/sfu/sf-spreadtheword
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Introducing/converting one of the accepted methods of static
+instrumentation - like tracepoints would help more users (whether
+in-kernel or otherwise) harness them.
+
+Steve,
+	Would it help convert the systemtap script (nfs_mount.stp) in
+Patch - 5 into a kernel module (perhaps in samples/ directory) to bring
+an in-kernel user of these tracepoints?
+
+Thanks,
+K.Prasad
 
