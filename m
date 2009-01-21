@@ -1,31 +1,25 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Wed, 21 Jan 2009 17:56:10 -0500
-Message-ID: <1232578570.7692.96.camel@heimdal.trondhjem.org>
-References: <4970B451.4080201@RedHat.com>
-	 <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
-	 <497757D1.7090908@RedHat.com>
-	 <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>
-	 <49777988.6010401@RedHat.com>
-	 <A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com>
-	 <4977A385.8000406@melbourne.sgi.com>
+Date: Wed, 21 Jan 2009 17:56:19 -0500
+Message-ID: <20090121225619.GI4295@fieldses.org>
+References: <4970B451.4080201@RedHat.com> <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com> <497757D1.7090908@RedHat.com> <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com> <49777988.6010401@RedHat.com> <A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com> <4977A385.8000406@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: Chuck Lever <chuck.lever@oracle.com>,
 	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
 	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
 To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:49925 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751503AbZAUW4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jan 2009 17:56:18 -0500
+Received: from mail.fieldses.org ([141.211.133.115]:59923 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753291AbZAUW4U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jan 2009 17:56:20 -0500
 In-Reply-To: <4977A385.8000406-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-01-22 at 09:36 +1100, Greg Banks wrote:
+On Thu, Jan 22, 2009 at 09:36:53AM +1100, Greg Banks wrote:
 > Chuck Lever wrote:
 > >
 > >
@@ -47,11 +41,27 @@ On Thu, 2009-01-22 at 09:36 +1100, Greg Banks wrote:
 > running now, and not the one that was present when the machine was
 > installed.
 
-Which is precisely why dprintk() is such a bad choice as a basis for a
-set of trace points: every new patch and bugfix that the distro applies
-will result in a reshuffling of the trace points as code is cleaned up
-and moved around or removed entirely.
+On the mount case specifically: How far are we from the idea of a mount
+program that can identify most problems itself?  I know its error
+reporting has gotten better....
 
-Cheers
-  Trond
+I suppose the main feedback mount gets right now is an error code from
+the mount system call, and that may be too narrow an interface to cover
+most problems.  Is there some way we can give mount a real interface it
+can use to find out this stuff instead of just dumping more strings into
+the logs?
 
+My main obstacle to judging a solution is that I don't have in mind a
+good list of (say) the top 10 problems that can cause the first mount to
+fail.  Hm:
+
+	- dns lookup of the server fails
+	- server isn't reachable
+	- server isn't running nfs
+	- requested path isn't known to server or isn't exported
+	- export is there, but requires more security
+	- user doesn't have gss credentials
+	- file permissions on the export are wrong
+	...
+
+--b.
