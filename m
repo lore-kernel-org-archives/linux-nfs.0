@@ -1,87 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/2] dlm: initialize file_lock struct in GETLK before
-	copying conflicting lock
-Date: Wed, 21 Jan 2009 18:42:39 -0500
-Message-ID: <20090121234239.GM4295@fieldses.org>
-References: <1232555691-29859-1-git-send-email-jlayton@redhat.com> <1232555691-29859-2-git-send-email-jlayton@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Wed, 21 Jan 2009 18:47:55 -0500
+Message-ID: <1232581675.7692.121.camel@heimdal.trondhjem.org>
+References: <4970B451.4080201@RedHat.com>
+	<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
+	<497757D1.7090908@RedHat.com>
+	<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>
+	<49777988.6010401@RedHat.com>
+	<A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com>
+	<4977A385.8000406@melbourne.sgi.com>
+	<1232578570.7692.96.camel@heimdal.trondhjem.org>
+	<4977AB86.4030603@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: lkml@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1232555691-29859-2-git-send-email-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	SystemTAP <systemtap@sources.redhat.com>
+To: Greg Banks <gnb@melbourne.sgi.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4977AB86.4030603@melbourne.sgi.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 21, 2009 at 11:34:50AM -0500, Jeff Layton wrote:
-> dlm_posix_get fills out the relevant fields in the file_lock before
-> returning when there is a lock conflict, but doesn't clean out any of
-> the other fields in the file_lock.
-> 
-> When nfsd does a NFSv4 lockt call, it sets the fl_lmops to
-> nfsd_posix_mng_ops before calling the lower fs. When the lock comes back
-> after testing a lock on GFS2, it still has that field set. This confuses
-> nfsd into thinking that the file_lock is a nfsd4 lock.
+On Thu, 2009-01-22 at 10:11 +1100, Greg Banks wrote:
+> Trond Myklebust wrote:
+> > On Thu, 2009-01-22 at 09:36 +1100, Greg Banks wrote:
+> >   
+> >> Chuck Lever wrote:
+> >>     
+> >>>
+> >>>       
+> >> It depends on whether distros can be convinced to enable it by default,
+> >> and install by default any necessary userspace infrastructure.   The
+> >> most important thing for field debugging is Just Knowing that you have
+> >> all the bits necessary to perform useful debugging without having to
+> >> find some RPM that matches the kernel that the machine is actually
+> >> running now, and not the one that was present when the machine was
+> >> installed.
+> >>     
+> >
+> > Which is precisely why dprintk() is such a bad choice as a basis for a
+> > set of trace points: every new patch and bugfix that the distro applies
+> > will result in a reshuffling of the trace points as code is cleaned up
+> > and moved around or removed entirely.
+> >   
+> Yes, if the filename and line number were the only information going
+> out.  The dprintk() format is usually enough (ignoring the patchy
+> quality of the current dprintk set)  to give a developer enough clue
+> about which dprintk is which.  Or am I missing something?
 
-I think of the lock system as supporting two types of objects, both
-stored in "struct lock"'s:
+The current dprintk() set was never designed to be anything other than a
+logging tool with a very coarse filter (the bitmask
+in /proc/sys/sunrpc/*_debug). It was designed to be human-readable only
+(no fixed format).
 
-	- Heavyweight locks: these have callbacks set and the filesystem
-	  or lock manager could in theory have some private data
-	  associated with them, so it's important that the appropriate
-	  callbacks be called when they're released or copied.  These
-	  are what are actually passed to posix_lock_file() and kept on
-	  the inode lock lists.
-	- Lightweight locks: just start, end, pid, flags, and type, with
-	  everything zeroed out and/or ignored.
+As I understand it, you are not only proposing to make that filter
+extremely fine (individually addressable trace points), but also to
+enable the application of scripting tools like systemtap and LTTng in
+order to provide bespoke debugging of your customer problems. Have I
+misunderstood you, or is that correct?
 
-I don't see any reason why the lock passed into dlm_posix_get() needs to
-be a heavyweight lock.  In any case, if it were, then dlm_posix_get()
-would need to release the passed-in-lock before initializing the new one
-that it's returning.
-
-The returned lock should probably also be a lightweight lock that's a
-copy of whatever conflicting lock was found; otherwise we need to
-require the caller to for example release the thing correctly.
-
-That's unfortunate for nfsv4 since that doesn't allow returning the
-lockowner information to the client.  But it's not terribly important
-to get that right.
-
-Since gfs2 doesn't report the conflicting lock, I guess we just punt and
-return a copy of the passed-in lock, OK.
-
---b.
-
-> 
-> Fix this by making DLM reinitialize the file_lock before copying the
-> fields from the conflicting lock.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/dlm/plock.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-> index eba87ff..ca46f11 100644
-> --- a/fs/dlm/plock.c
-> +++ b/fs/dlm/plock.c
-> @@ -304,7 +304,9 @@ int dlm_posix_get(dlm_lockspace_t *lockspace, u64 number, struct file *file,
->  	if (rv == -ENOENT)
->  		rv = 0;
->  	else if (rv > 0) {
-> +		locks_init_lock(fl);
->  		fl->fl_type = (op->info.ex) ? F_WRLCK : F_RDLCK;
-> +		fl->fl_flags = FL_POSIX;
->  		fl->fl_pid = op->info.pid;
->  		fl->fl_start = op->info.start;
->  		fl->fl_end = op->info.end;
-> -- 
-> 1.5.5.6
-> 
-> _______________________________________________
-> NFSv4 mailing list
-> NFSv4@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+The question then is how is this going to work out in an environment
+where the individually addressable trace points/dprintk()s pop in and
+out of existence at the whim of a patch, and where the output format is
+similarly volatile?
+IOW: I'm referring to the difference between an interface that was
+designed purely to be interpreted by humans, and one that is designed
+from scratch to be interpreted by scripts.
