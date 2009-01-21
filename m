@@ -1,122 +1,61 @@
-From: "Sachin S. Prabhu" <sprabhu@redhat.com>
-Subject: Re: Memory corruption in nfs3_xdr_setaclargs()
-Date: Wed, 21 Jan 2009 14:55:45 +0000
-Message-ID: <49773771.6070909@redhat.com>
-References: <49760685.4030409@redhat.com> <1232475301.7055.14.camel@heimdal.trondhjem.org>
+From: Jason Baron <jbaron@redhat.com>
+Subject: Re: [patch 0/5] activate & deactivate dprintks individually and
+	severally
+Date: Wed, 21 Jan 2009 10:28:58 -0500
+Message-ID: <20090121152858.GA23953@redhat.com>
+References: <20090120012930.020621000@sgi.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig9A3C369A7369296049E22272"
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59792 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753480AbZAUOzv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Jan 2009 09:55:51 -0500
-In-Reply-To: <1232475301.7055.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 ML <nfsv4@linux-nfs.org>,
+	SystemTAP ML <systemtap@sources.redhat.com>
+To: linux-kernel@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090120012930.020621000@sgi.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enig9A3C369A7369296049E22272
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
+On Tue, Jan 20, 2009 at 12:29:30PM +1100, Greg Banks wrote:
+> 
+> As mentioned in the recent discussion on NFS trace points on the NFS &
+> SystemTap mailing lists.  This patch allows field support staff and
+> kernel developers debug kernel problems, by enabling them to treat
+> dprintks as precise trace points rather than syslog spamming tools.
+> 
+> This is a forward ported (from 2.6.16), updated, and split version
+> of a patch that has been used in SGI's internal development tree for
+> the last few months.  The very first version of this was used about
+> eighteen months ago when debugging NFS/RDMA, which has an enormous
+> number of dprintks and no other way to debug it.
+> 
+> Jason Baron suggested I post it here for review and contrast with
+> his dynamic dprintk feature.
+> 
 
-Trond Myklebust wrote:
-> On Tue, 2009-01-20 at 17:14 +0000, Sachin S. Prabhu wrote:
->> A mistake in calculating the space left in the header in nfs3_xdr_seta=
-clargs()
->> can cause memory corruption when setting a large number of acls.
->>
->> Reproducer:
->>
->> On Server:
->> 1) Create directory /test and set mode 777.
->> mkdir /test; chmod 777 /test
->> 2) Add 200 users and set default acl for user on /test
->> for i in {1..200}; do echo $i; useradd user$i; setfacl -m d:u:user$i:r=
-wx
->> /test;done
->> 3) Add export /test  in /etc/exports
->> /test *(rw)
->>
->> On client
->> 1) Mount server:/test
->> mount server:/test /mnt
->> 2) Create large number of directories on the the share.
->> cd/mnt; for i in {1..1000}; do mkdir $i; done
->> At this point, the client should crash.
->>
->> A change in call_header changes the value req->rq_snd_buf->head[0]->io=
-v_len to
->> reflect the exact size of the header.
->> [PATCH] RPC: Ensure XDR iovec length is initialized correctly in call_=
-header
->> 334ccfd545bba9690515f2c5c167d5adb161989b
->>
->> The iov_len is set to the size of the header in  call_header().
->> req->rq_slen =3D xdr_adjust_iovec(&req->rq_svec[0], p);
->>
->> nfs3_xdr_setaclargs() depends on the older behavior and uses this valu=
-e when
->> calculating the number of ACLs it can fit into the header.
->>
->>         /* put as much of the acls into head as possible. */
->>         len_in_head =3D min_t(unsigned int, buf->head->iov_len - base,=
- len);
->>         len -=3D len_in_head;
->>         req->rq_slen =3D xdr_adjust_iovec(req->rq_svec, p + (len_in_he=
-ad >> 2));
->>
->> Since at this stage, iov_len < base, len_in_head will always be set to=
- len. For
->> a large number of ACLs, this will end up over-writing other parts of m=
-emory on
->> the nfs client.
->>
->> The following patch which set len_in_head to 0 was tested with the rep=
-roducer
->> and was found to fix the problem.
->>
->=20
-> Looks alright. Could you please add a s-o-b line?
->=20
-> Cheers
->   Trond
->=20
+yes, these two patch sets are very similar in the problem that they are
+addressing. For me, one of the core differences, is that 'dprintk' has
+per-debug statement control, while my solution, 'dynamic debug' has a
+more per-module focused control. 'dprintk' thus checks a different
+variable per-debug line to see if its enabled. On the other hand
+'dynamic debug' can check 1 global variable (in the most common cases),
+to see if its enabled or not. I think we can layer per-line check on top
+of the 1 global variable check and have a more efficient solution that
+still allows for fine-grained debugging.
 
-Signed-off-by: Kevin Rudd <solgato@us.ibm.com>
+'dprintk' also has a richer user interface, which allows for file, line,
+module, and statement control. 
 
---- fs/nfs/nfs3xdr.c.orig	2009-01-21 13:09:50.000000000 +0000
-+++ fs/nfs/nfs3xdr.c	2009-01-21 13:12:11.000000000 +0000
-@@ -712,7 +712,10 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req
- 	*p++ =3D htonl(args->mask);
- 	base =3D (char *)p - (char *)buf->head->iov_base;
- 	/* put as much of the acls into head as possible. */
--	len_in_head =3D min_t(unsigned int, buf->head->iov_len - base, len);
-+	if ( buf->head->iov_len > base )
-+		len_in_head =3D min_t(unsigned int, buf->head->iov_len - base, len);
-+	else
-+		len_in_head =3D 0;
- 	len -=3D len_in_head;
- 	req->rq_slen =3D xdr_adjust_iovec(req->rq_svec, p + (len_in_head >> 2))=
-;
+Thus, I think Greg and I can work together and combine the best features
+of both patches. We will re-post a combined solution.
 
+thanks,
 
-
---------------enig9A3C369A7369296049E22272
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Using GnuPG with Fedora - http://enigmail.mozdev.org
-
-iEYEARECAAYFAkl3N3IACgkQrGYtZINVEC59SgCbBx7FePYgmLM413T71uVKBYC9
-GiUAoMhKHuTN31i0JLmB34g6o5+E93dz
-=WCZv
------END PGP SIGNATURE-----
-
---------------enig9A3C369A7369296049E22272--
+-Jason
