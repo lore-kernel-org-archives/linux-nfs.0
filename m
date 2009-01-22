@@ -1,70 +1,67 @@
-From: Arnaldo Carvalho de Melo <acme@redhat.com>
-Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Thu, 22 Jan 2009 15:47:29 -0200
-Message-ID: <20090122174729.GG5184@ghostprotocols.net>
-References: <4970B451.4080201@RedHat.com> <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com> <497757D1.7090908@RedHat.com> <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com> <1232566140.7692.64.camel@heimdal.trondhjem.org> <49777E4C.2020501@RedHat.com> <1232569427.7692.70.camel@heimdal.trondhjem.org> <49786F9F.7030400@RedHat.com> <1232638257.7589.16.camel@heimdal.trondhjem.org> <49789597.8030504@RedHat.com>
+From: David Teigland <teigland@redhat.com>
+Subject: Re: [Cluster-devel] Re: [PATCH 1/2] dlm: initialize file_lock struct in GETLK before copying conflicting lock
+Date: Thu, 22 Jan 2009 12:05:43 -0600
+Message-ID: <20090122180543.GA23796@redhat.com>
+References: <1232555691-29859-1-git-send-email-jlayton@redhat.com> <1232555691-29859-2-git-send-email-jlayton@redhat.com> <20090121234239.GM4295@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,         Chuck Lever <chuck.lever@oracle.com>,         Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,         Linux NFS Mailing list <linux-nfs@vger.kernel.org>,         SystemTAP <systemtap@sources.redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <systemtap-return-11001-gls-systemtap=m.gmane.org@sourceware.org>
-In-Reply-To: <49789597.8030504@RedHat.com>
-List-Unsubscribe: <mailto:systemtap-unsubscribe-gls-systemtap=m.gmane.org@sourceware.org>
-List-Subscribe: <mailto:systemtap-subscribe@sourceware.org>
-List-Post: <mailto:systemtap@sourceware.org>
-List-Help: <mailto:systemtap-help@sourceware.org>, <http://sourceware.org/lists.html#faqs>
-Sender: systemtap-owner@sourceware.org
+Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org, lkml@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090121234239.GM4295@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Em Thu, Jan 22, 2009 at 10:49:43AM -0500, Steve Dickson escreveu:
-> 
-> 
-> Trond Myklebust wrote:
-> > On Thu, 2009-01-22 at 08:07 -0500, Steve Dickson wrote:
-> >>> I think it might be a good idea to flesh out a bit what you mean by
-> >>> "debugging" here. Since you mentioned it in conjunction with the two
-> >>> words "administrators" and "scripts", I assume that you are not talking
-> >>> about kernel code debugging?
-> >> I'm talking debugging for both admins and kernel people...
-> >>
-> >> With trace points and systemtap you can do both.
+On Wed, Jan 21, 2009 at 06:42:39PM -0500, J. Bruce Fields wrote:
+> On Wed, Jan 21, 2009 at 11:34:50AM -0500, Jeff Layton wrote:
+> > dlm_posix_get fills out the relevant fields in the file_lock before
+> > returning when there is a lock conflict, but doesn't clean out any of
+> > the other fields in the file_lock.
 > > 
-> > Yes, but we still need to figure out details of what each type of user
-> > is expecting/wants.
-> Will that be possible? Until we get something in their hands, how will
-> they even know what they want or need.
+> > When nfsd does a NFSv4 lockt call, it sets the fl_lmops to
+> > nfsd_posix_mng_ops before calling the lower fs. When the lock comes back
+> > after testing a lock on GFS2, it still has that field set. This confuses
+> > nfsd into thinking that the file_lock is a nfsd4 lock.
 > 
-> > 
-> > I suspect that when we get down to cases, we will find that a lot of the
-> > tracepoints that administrators find useful will want to be put in the
-> > VFS rather than in the filesystems themselves. If you have tracepoints
-> > in sys_stat() and sys_fstat(), why would you also need a tracepoint in
-> > nfs_getattr()? AFAICS, that would just make scripting ugly...
-> I believe there is an effort to do some type of system call tracing 
-> as we speak and that effort should be followed to ensure there is
-> no duplicate of effort... But in the end, I would think more would be
-> better then less... since each point can be explicitly enabled and disabled
-> a little duplication may not be all that bad..
+> I think of the lock system as supporting two types of objects, both
+> stored in "struct lock"'s:
+> 
+> 	- Heavyweight locks: these have callbacks set and the filesystem
+> 	  or lock manager could in theory have some private data
+> 	  associated with them, so it's important that the appropriate
+> 	  callbacks be called when they're released or copied.  These
+> 	  are what are actually passed to posix_lock_file() and kept on
+> 	  the inode lock lists.
+> 	- Lightweight locks: just start, end, pid, flags, and type, with
+> 	  everything zeroed out and/or ignored.
+> 
+> I don't see any reason why the lock passed into dlm_posix_get() needs to
+> be a heavyweight lock.  In any case, if it were, then dlm_posix_get()
+> would need to release the passed-in-lock before initializing the new one
+> that it's returning.
 
-I believe that the use case scenario here is blktrace, it was done
-before tracepoints were in the kernel, before developers thought that
-not requiring whatever size/complexity userspace binary to grok whatever
-fast/optimum way to relay data so as some userspace tool would
-inteligently process.
+It seems the nfs code is mixing those two types up a bit.  Regardless, the
+rationale I see in Jeff's dlm patch is to make the two different locking paths
+equivalent:
 
-Now we're trying to keep the existing developer assists and augment it
-with other, standardized ways coming for other subsystems, looking at
-how to get the best ways of every trace-me-harder approach previously
-endeavoured.
+Without cfs/dlm,
+nfsd4_lockt -> nfsd_test_lock -> vfs_test_lock -> posix_test_lock
 
-tracepoints, ftrace, etc, are an excellent opportunity for people to go
-from stone age
-print-msg-that-could-be-interesting-to-some-class-of-observer to
-something OS provided, highly optimized.
+With cfs/dlm,
+nfsd4_lockt -> nfsd_test_lock -> vfs_test_lock -> (cfs) -> dlm_posix_get
 
-<expletives deleted>
+When there's a conflict, dlm_posix_get() and posix_test_lock() should do the
+same/equivalent things to the fl they are given.
 
-Erm, what is it that you think should be covered in a from everybody in
-this community tracing perspective point of view?
+posix_test_lock() does __locks_copy_lock() on the fl and then sets the pid.
+dlm_posix_get() isn't using __locks_copy_lock() because it doesn't have a
+conflicting file_lock to copy from.  Jeff's patch does nearly the same thing
+using locks_init_lock() plus the existing assignments.  But, I think the best
+solution may be for dlm_posix_get() to set up a new lightweight file_lock with
+the values we need, and then call __locks_copy_lock() with it, just like
+posix_test_lock().
 
-- Arnaldo
+Dave
+
