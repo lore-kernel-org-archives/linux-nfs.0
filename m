@@ -1,57 +1,49 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Thu, 22 Jan 2009 10:27:47 -0500
-Message-ID: <49789073.1080200@RedHat.com>
-References: <4970B451.4080201@RedHat.com>		<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>		<497757D1.7090908@RedHat.com>		<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>		<49777988.6010401@RedHat.com>		<A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com>		<4977A385.8000406@melbourne.sgi.com>		<1232578570.7692.96.camel@heimdal.trondhjem.org>		<4977AB86.4030603@melbourne.sgi.com>	<1232581675.7692.121.camel@heimdal.trondhjem.org> <4977D431.1020906@melbourne.sgi.com>
+Date: Thu, 22 Jan 2009 10:30:57 -0500
+Message-ID: <1232638257.7589.16.camel@heimdal.trondhjem.org>
+References: <4970B451.4080201@RedHat.com>
+	 <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
+	 <497757D1.7090908@RedHat.com>
+	 <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>
+	 <1232566140.7692.64.camel@heimdal.trondhjem.org>
+	 <49777E4C.2020501@RedHat.com>
+	 <1232569427.7692.70.camel@heimdal.trondhjem.org>
+	 <49786F9F.7030400@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:38080 "EHLO mx2.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:49335 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753242AbZAVPaR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jan 2009 10:30:17 -0500
-In-Reply-To: <4977D431.1020906-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+	id S1753228AbZAVPbK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jan 2009 10:31:10 -0500
+In-Reply-To: <49786F9F.7030400-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greg Banks wrote:
+On Thu, 2009-01-22 at 08:07 -0500, Steve Dickson wrote:
+> > I think it might be a good idea to flesh out a bit what you mean by
+> > "debugging" here. Since you mentioned it in conjunction with the two
+> > words "administrators" and "scripts", I assume that you are not talking
+> > about kernel code debugging?
+> I'm talking debugging for both admins and kernel people...
 > 
-> These are two separate proposals between which we're trying to find some
-> commonality.
-I agree.. a common effort does make the most sense... imho...
+> With trace points and systemtap you can do both.
 
-> 
-> In my proposal, the dprintk()s remain designed primarily for humans
-> (support staff or kernel developers) to read in conjunction with the
-> correct source code, but control is made fine-grain to make the
-> mechanism more controllable.  This can be done regardless of whether
-> trace points are involved and regardless of whether we attempt to
-> support scripts.
-I would think it the "fine-grain control mechanism" could also manage
-trace points as well, true?
+Yes, but we still need to figure out details of what each type of user
+is expecting/wants.
 
-> 
-> Changing dprintk() to add a trace point is just a way to get some trace
-> points with strictly minimum changes to callsites.
-I'm not sure this would be a good idea since, as Trond or Chuck pointed out,
-there is really not rhyme or reason on where the dprintks live today... 
+I suspect that when we get down to cases, we will find that a lot of the
+tracepoints that administrators find useful will want to be put in the
+VFS rather than in the filesystems themselves. If you have tracepoints
+in sys_stat() and sys_fstat(), why would you also need a tracepoint in
+nfs_getattr()? AFAICS, that would just make scripting ugly...
 
-> 
-> Replacing dprintk()s with new trace points has more or less the same
-> result but means more futzing with callsites.
-Well not if the replacements are well thought out and designed, since
-there does not have 1-to-1 replacement... 
- 
-> 
-> The maintenance problem of correlating any kind of instrumentation point
-> in kernel code with scripts living out in userspace exists regardless of
-> how you choose to implement the instrumentation.
-> 
-+1
+Cheers
+  Trond
 
-steved.
