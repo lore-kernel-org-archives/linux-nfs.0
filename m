@@ -1,64 +1,37 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/2] nfsd/dlm: fix knfsd panic when NFSv4 client does
-	GETLK call
-Date: Thu, 22 Jan 2009 14:57:12 -0500
-Message-ID: <20090122195712.GJ15279@fieldses.org>
-References: <1232651764-10799-1-git-send-email-jlayton@redhat.com>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Fri, 23 Jan 2009 09:31:52 +1100
+Message-ID: <4978F3D8.8000104@melbourne.sgi.com>
+References: <4970B451.4080201@RedHat.com>	<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>	<497757D1.7090908@RedHat.com>	<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>	<49777988.6010401@RedHat.com>	<A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com>
+	<49787ACC.8090002@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, cluster-devel@redhat.com,
-	teigland@redhat.com
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1232651764-10799-1-git-send-email-jlayton@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	SystemTAP <systemtap@sources.redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <49787ACC.8090002@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 22, 2009 at 02:16:02PM -0500, Jeff Layton wrote:
-> This patchset fixes a regression due to this patch:
+Steve Dickson wrote:
+>   
+> True... but my point is with trace points and systemtap scripts
+> one has access to BOTH highly technical data (for the developer)
+> and simple error codes (for the admins).... Unlike with printks...
+>   
+Yes, there's a lot more power in trace points.
 
-These look reasonable, thanks.
-
-My testing infrastructure and stuff is still down, so I may be a little
-slow getting these upstream.... Bug me again next week if I haven't done
-anything and you think of it.
-
---b.
-
-> 
-> ----------------[snip]----------------
-> commit 55ef1274dddd4de387c54d110e354ffbb6cdc706
-> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> Date:   Sat Dec 20 11:58:38 2008 -0800
-> 
->     nfsd: Ensure nfsv4 calls the underlying filesystem on LOCKT
-> ----------------[snip]----------------
-> 
-> To reproduce, set up a nfs server that is serving out a GFS2 filesystem.
-> Set a lock locally on a file on the GFS2 export on the server. From a
-> NFSv4 client, do a GETLK against the same file. The server will oops due
-> to a NULL pointer dereference. The fl_lmops will be set, but the
-> fl_owner will be a NULL pointer. The knfsd code does not account for
-> this possibility. It assumes that when fl_lmops is set this way that
-> the fl_owner will point to a valid nfs4_stateowner struct.
-> 
-> In actuality, Bruce's patch is correct, but it exposes a bug in DLM's
-> GETLK codepath. The first patch in this set fixes that.
-> 
-> The second patch fixes knfsd to be a little more careful about the
-> file_lock struct it builds to pass to vfs_test_lock.
-> 
-> Either patch should prevent the panic, though I think applying both
-> patches is the best approach to fixing this.
-> 
-> Jeff Layton (2):
->   dlm: initialize file_lock struct in GETLK before copying conflicting
->     lock
->   nfsd: only set file_lock.fl_lmops in nfsd4_lockt if a stateowner is
->     found
-> 
->  fs/dlm/plock.c      |    2 ++
->  fs/nfsd/nfs4state.c |    1 -
->  2 files changed, 2 insertions(+), 1 deletions(-)
-> 
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
