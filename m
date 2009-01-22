@@ -1,62 +1,39 @@
 From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Thu, 22 Jan 2009 10:49:43 -0500
-Message-ID: <49789597.8030504@RedHat.com>
-References: <4970B451.4080201@RedHat.com>	
-	<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>	
-	<497757D1.7090908@RedHat.com>	
-	<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>	
-	<1232566140.7692.64.camel@heimdal.trondhjem.org>	
-	<49777E4C.2020501@RedHat.com>	
-	<1232569427.7692.70.camel@heimdal.trondhjem.org>	
-	<49786F9F.7030400@RedHat.com>
-	<1232638257.7589.16.camel@heimdal.trondhjem.org>
+Date: Thu, 22 Jan 2009 10:59:49 -0500
+Message-ID: <497897F5.9030005@RedHat.com>
+References: <4970B451.4080201@RedHat.com>	<5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>	<497757D1.7090908@RedHat.com>	<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>	<49777988.6010401@RedHat.com>	<A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com>	<4977A385.8000406@melbourne.sgi.com> <20090121225619.GI4295@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	SystemTAP <systemtap@sources.redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1232638257.7589.16.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:48059 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752378AbZAVQCR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jan 2009 11:02:17 -0500
+In-Reply-To: <20090121225619.GI4295@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Trond Myklebust wrote:
-> On Thu, 2009-01-22 at 08:07 -0500, Steve Dickson wrote:
->>> I think it might be a good idea to flesh out a bit what you mean by
->>> "debugging" here. Since you mentioned it in conjunction with the two
->>> words "administrators" and "scripts", I assume that you are not talking
->>> about kernel code debugging?
->> I'm talking debugging for both admins and kernel people...
->>
->> With trace points and systemtap you can do both.
+J. Bruce Fields wrote:
 > 
-> Yes, but we still need to figure out details of what each type of user
-> is expecting/wants.
-Will that be possible? Until we get something in their hands, how will
-they even know what they want or need.
-
+> On the mount case specifically: How far are we from the idea of a mount
+> program that can identify most problems itself?  I know its error
+> reporting has gotten better....
 > 
-> I suspect that when we get down to cases, we will find that a lot of the
-> tracepoints that administrators find useful will want to be put in the
-> VFS rather than in the filesystems themselves. If you have tracepoints
-> in sys_stat() and sys_fstat(), why would you also need a tracepoint in
-> nfs_getattr()? AFAICS, that would just make scripting ugly...
-I believe there is an effort to do some type of system call tracing 
-as we speak and that effort should be followed to ensure there is
-no duplicate of effort... But in the end, I would think more would be
-better then less... since each point can be explicitly enabled and disabled
-a little duplication may not be all that bad..
+> I suppose the main feedback mount gets right now is an error code from
+> the mount system call, and that may be too narrow an interface to cover
+> most problems.  Is there some way we can give mount a real interface it
+> can use to find out this stuff instead of just dumping more strings into
+> the logs?
+Interesting.... Store something like a reason code (similar to what they have
+in he Kerberos) in somewhere in the proc file system? 
+
+Its seems to me this is a common problem among network file systems... 
 
 steved.
+
