@@ -1,49 +1,61 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Thu, 22 Jan 2009 10:30:57 -0500
-Message-ID: <1232638257.7589.16.camel@heimdal.trondhjem.org>
-References: <4970B451.4080201@RedHat.com>
-	 <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
-	 <497757D1.7090908@RedHat.com>
-	 <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>
-	 <1232566140.7692.64.camel@heimdal.trondhjem.org>
-	 <49777E4C.2020501@RedHat.com>
-	 <1232569427.7692.70.camel@heimdal.trondhjem.org>
-	 <49786F9F.7030400@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>
-To: Steve Dickson <SteveD@redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] sunrpc: don't reset buflen twice in xdr_shrink_pagelen
+Date: Thu, 22 Jan 2009 16:40:29 +0200
+Message-ID: <1232635229-31095-1-git-send-email-bhalevy@panasas.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Benny Halevy <bhalevy@panasas.com>
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:49335 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753228AbZAVPbK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Jan 2009 10:31:10 -0500
-In-Reply-To: <49786F9F.7030400-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from DSL212-235-53-3.bb.netvision.net.il ([212.235.53.3]:50264 "EHLO
+	bh-buildlin1.bhalevy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755828AbZAVPnK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2009 10:43:10 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-01-22 at 08:07 -0500, Steve Dickson wrote:
-> > I think it might be a good idea to flesh out a bit what you mean by
-> > "debugging" here. Since you mentioned it in conjunction with the two
-> > words "administrators" and "scripts", I assume that you are not talking
-> > about kernel code debugging?
-> I'm talking debugging for both admins and kernel people...
-> 
-> With trace points and systemtap you can do both.
+On Jan. 14, 2009, 2:50 +0200, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> The buflen is reset for all cases at the end of xdr_shrink_pagelen.
+> The data left in the tail after xdr_read_pages is not processed when the
+> buflen is incorrectly set.
 
-Yes, but we still need to figure out details of what each type of user
-is expecting/wants.
+Note that in this case we also lose (len - tail->iov_len)
+bytes from the buffered data in pages.
 
-I suspect that when we get down to cases, we will find that a lot of the
-tracepoints that administrators find useful will want to be put in the
-VFS rather than in the filesystems themselves. If you have tracepoints
-in sys_stat() and sys_fstat(), why would you also need a tracepoint in
-nfs_getattr()? AFAICS, that would just make scripting ugly...
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Acked-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/xdr.c |   14 ++++++--------
+ 1 files changed, 6 insertions(+), 8 deletions(-)
 
-Cheers
-  Trond
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 406e26d..6b05601 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -402,16 +402,14 @@ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
+ 
+ 	/* Shift the tail first */
+ 	if (tail->iov_len != 0) {
+-		p = (char *)tail->iov_base + len;
+-		if (tail->iov_len > len) {
+-			copy = tail->iov_len - len;
+-			memmove(p, tail->iov_base, copy);
+-		} else
+-			buf->buflen -= len;
+-		/* Copy from the inlined pages into the tail */
+ 		copy = len;
+-		if (copy > tail->iov_len)
++		if (tail->iov_len > len) {
++			p = (char *)tail->iov_base + len;
++			memmove(p, tail->iov_base, tail->iov_len - len);
++		} else {
+ 			copy = tail->iov_len;
++		}
++		/* Copy from the inlined pages into the tail */
+ 		_copy_from_pages((char *)tail->iov_base,
+ 				buf->pages, buf->page_base + pglen - len,
+ 				copy);
+-- 
+1.6.1
 
