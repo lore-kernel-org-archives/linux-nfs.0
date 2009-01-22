@@ -1,33 +1,24 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/2] nfsd: only set file_lock.fl_lmops
- in nfsd4_lockt if a stateowner is found
-Date: Thu, 22 Jan 2009 14:09:02 -0500
-Message-ID: <20090122140902.0cedf21b@barsoom.rdu.redhat.com>
-References: <1232555691-29859-1-git-send-email-jlayton@redhat.com>
-	<1232555691-29859-3-git-send-email-jlayton@redhat.com>
-	<20090122185232.GC15279@fieldses.org>
-	<20090122135930.1779562c@barsoom.rdu.redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/2] nfsd: only set file_lock.fl_lmops in nfsd4_lockt
+	if a stateowner is found
+Date: Thu, 22 Jan 2009 14:12:03 -0500
+Message-ID: <20090122191203.GD15279@fieldses.org>
+References: <1232555691-29859-1-git-send-email-jlayton@redhat.com> <1232555691-29859-3-git-send-email-jlayton@redhat.com> <20090122185232.GC15279@fieldses.org> <20090122135838.7aa9d9f3@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, cluster-devel@redhat.com, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 To: Jeff Layton <jlayton@redhat.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20090122135930.1779562c@barsoom.rdu.redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:50711 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755457AbZAVTMB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jan 2009 14:12:01 -0500
+In-Reply-To: <20090122135838.7aa9d9f3-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 22 Jan 2009 13:59:30 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
-
+On Thu, Jan 22, 2009 at 01:58:38PM -0500, Jeff Layton wrote:
 > On Thu, 22 Jan 2009 13:52:32 -0500
 > "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
@@ -73,32 +64,18 @@ Jeff Layton <jlayton@redhat.com> wrote:
 > Do we even need to worry about the lockstateowner at all then? If
 > fl_lmops isn't set then I think the fl_owner will be basically ignored
 > by nfs4_set_lock_denied anyway.
-> 
 
-Ahh, nm. I think we do need to set fl_owner so that posix_same_owner
-does the right thing. I'll just get rid of the fl_lmops setting and I
-think that'll be done.
+Yeah, I think nfs4_set_lock_denied should just set dummy values for now.
 
-> > > +	}
-> > > +
-> > >  	file_lock.fl_pid = current->tgid;
-> > >  	file_lock.fl_flags = FL_POSIX;
-> > > -	file_lock.fl_lmops = &nfsd_posix_mng_ops;
-> > >  
-> > >  	file_lock.fl_start = lockt->lt_offset;
-> > >  	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
-> > > -- 
-> > > 1.5.5.6
-> > > 
-> > > _______________________________________________
-> > > NFSv4 mailing list
-> > > NFSv4@linux-nfs.org
-> > > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+If we don't, then nfsd_test_lock is passing back a lock with a pointer
+to a real reference-counted object, and I worry about what happens if
+e.g.  locks are being freed concurrently with our processing of the
+conflicting lock here.
 
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+Our holding the nfs4_state_lock() here may be enough to prevent
+problems, but it seems fragile.
+
+And getting the conflicting lock completely right just isn't that high a
+priority.
+
+--b.
