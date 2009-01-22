@@ -1,88 +1,70 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Cluster-devel] Re: [PATCH 1/2] dlm: initialize file_lock
-	struct in GETLK before copying conflicting lock
-Date: Thu, 22 Jan 2009 13:48:48 -0500
-Message-ID: <20090122184848.GB15279@fieldses.org>
-References: <1232555691-29859-1-git-send-email-jlayton@redhat.com>
-	<1232555691-29859-2-git-send-email-jlayton@redhat.com>
-	<20090121234239.GM4295@fieldses.org>
-	<20090122180543.GA23796@redhat.com>
+Subject: Re: [PATCH 2/2] nfsd: only set file_lock.fl_lmops in nfsd4_lockt
+	if a stateowner is found
+Date: Thu, 22 Jan 2009 13:52:32 -0500
+Message-ID: <20090122185232.GC15279@fieldses.org>
+References: <1232555691-29859-1-git-send-email-jlayton@redhat.com> <1232555691-29859-3-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, lkml@vger.kernel.org,
-	Jeff Layton <jlayton@redhat.com>, nfsv4@linux-nfs.org,
-	cluster-devel@redhat.com, linux-fsdevel@vger.kernel.org
-To: David Teigland <teigland@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090122180543.GA23796@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: lkml@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1232555691-29859-3-git-send-email-jlayton@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 22, 2009 at 12:05:43PM -0600, David Teigland wrote:
-> On Wed, Jan 21, 2009 at 06:42:39PM -0500, J. Bruce Fields wrote:
-> > On Wed, Jan 21, 2009 at 11:34:50AM -0500, Jeff Layton wrote:
-> > > dlm_posix_get fills out the relevant fields in the file_lock before
-> > > returning when there is a lock conflict, but doesn't clean out any of
-> > > the other fields in the file_lock.
-> > > 
-> > > When nfsd does a NFSv4 lockt call, it sets the fl_lmops to
-> > > nfsd_posix_mng_ops before calling the lower fs. When the lock comes back
-> > > after testing a lock on GFS2, it still has that field set. This confuses
-> > > nfsd into thinking that the file_lock is a nfsd4 lock.
-> > 
-> > I think of the lock system as supporting two types of objects, both
-> > stored in "struct lock"'s:
-> > 
-> > 	- Heavyweight locks: these have callbacks set and the filesystem
-> > 	  or lock manager could in theory have some private data
-> > 	  associated with them, so it's important that the appropriate
-> > 	  callbacks be called when they're released or copied.  These
-> > 	  are what are actually passed to posix_lock_file() and kept on
-> > 	  the inode lock lists.
-> > 	- Lightweight locks: just start, end, pid, flags, and type, with
-> > 	  everything zeroed out and/or ignored.
-> > 
-> > I don't see any reason why the lock passed into dlm_posix_get() needs to
-> > be a heavyweight lock.  In any case, if it were, then dlm_posix_get()
-> > would need to release the passed-in-lock before initializing the new one
-> > that it's returning.
+On Wed, Jan 21, 2009 at 11:34:51AM -0500, Jeff Layton wrote:
+> nfsd4_lockt does a search for a lockstateowner when building the lock
+> struct to test. If one is found, it'll set fl_owner to it. Regardless of
+> whether that happens, it'll also set fl_lmops.
 > 
-> It seems the nfs code is mixing those two types up a bit.
-
-There may be more cleanup needed.  (Pointers welcomed.)
-
-> Regardless, the
-> rationale I see in Jeff's dlm patch is to make the two different locking paths
-> equivalent:
+> If a lockstateowner is not found, then we'll have fl_owner set to NULL
+> and fl_lmops set pointing to nfsd_posix_mng_ops. Other parts of the
+> NFSv4 server code assume that fl_owner will point to a valid
+> nfs4_stateowner if fl_lmops is set this way.
 > 
-> Without cfs/dlm,
-> nfsd4_lockt -> nfsd_test_lock -> vfs_test_lock -> posix_test_lock
+> This behavior exposed a bug in DLM's GETLK implementation where it
+> wasn't clearing out the fields in the file_lock before filling in
+> conflicting lock info. While we were able to fix this in DLM, it
+> still seems pointless and dangerous to set the fl_lmops this way
+> when we have a NULL lockstateowner.
 > 
-> With cfs/dlm,
-> nfsd4_lockt -> nfsd_test_lock -> vfs_test_lock -> (cfs) -> dlm_posix_get
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4state.c |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
 > 
-> When there's a conflict, dlm_posix_get() and posix_test_lock() should do the
-> same/equivalent things to the fl they are given.
-> 
-> posix_test_lock() does __locks_copy_lock() on the fl and then sets the pid.
-> dlm_posix_get() isn't using __locks_copy_lock() because it doesn't have a
-> conflicting file_lock to copy from.  Jeff's patch does nearly the same thing
-> using locks_init_lock() plus the existing assignments.
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 88db7d3..07d196a 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2867,11 +2867,13 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  
+>  	lockt->lt_stateowner = find_lockstateowner_str(inode,
+>  			&lockt->lt_clientid, &lockt->lt_owner);
+> -	if (lockt->lt_stateowner)
+> +	if (lockt->lt_stateowner) {
+>  		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
+> +		file_lock.fl_lmops = &nfsd_posix_mng_ops;
 
-Right, and that's fine.
-
-> But, I think the best solution may be for dlm_posix_get() to set up a
-> new lightweight file_lock with the values we need, and then call
-> __locks_copy_lock() with it, just like posix_test_lock().
-
-That sounds like overkill.
+So I think we just shouldn't need this second assignment at all.
 
 --b.
+
+> +	}
+> +
+>  	file_lock.fl_pid = current->tgid;
+>  	file_lock.fl_flags = FL_POSIX;
+> -	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+>  
+>  	file_lock.fl_start = lockt->lt_offset;
+>  	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
+> -- 
+> 1.5.5.6
+> 
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
