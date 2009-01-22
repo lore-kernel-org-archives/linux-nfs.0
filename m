@@ -1,91 +1,36 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/2] nfsd: only set file_lock.fl_lmops
- in nfsd4_lockt if a stateowner is found
-Date: Thu, 22 Jan 2009 13:59:30 -0500
-Message-ID: <20090122135930.1779562c@barsoom.rdu.redhat.com>
-References: <1232555691-29859-1-git-send-email-jlayton@redhat.com>
-	<1232555691-29859-3-git-send-email-jlayton@redhat.com>
-	<20090122185232.GC15279@fieldses.org>
+From: David Teigland <teigland@redhat.com>
+Subject: Re: [Cluster-devel] Re: [PATCH 1/2] dlm: initialize file_lock struct in GETLK before copying conflicting lock
+Date: Thu, 22 Jan 2009 13:03:45 -0600
+Message-ID: <20090122190345.GB23796@redhat.com>
+References: <1232555691-29859-1-git-send-email-jlayton@redhat.com> <1232555691-29859-2-git-send-email-jlayton@redhat.com> <20090121234239.GM4295@fieldses.org> <20090122180543.GA23796@redhat.com> <20090122133733.5d692a09@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20090122185232.GC15279@fieldses.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset=us-ascii
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+	linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	lkml@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:36594 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753164AbZAVTER (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Jan 2009 14:04:17 -0500
+In-Reply-To: <20090122133733.5d692a09-xSBYVWDuneFaJnirhKH9O4GKTjYczspe@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 22 Jan 2009 13:52:32 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Wed, Jan 21, 2009 at 11:34:51AM -0500, Jeff Layton wrote:
-> > nfsd4_lockt does a search for a lockstateowner when building the lock
-> > struct to test. If one is found, it'll set fl_owner to it. Regardless of
-> > whether that happens, it'll also set fl_lmops.
-> > 
-> > If a lockstateowner is not found, then we'll have fl_owner set to NULL
-> > and fl_lmops set pointing to nfsd_posix_mng_ops. Other parts of the
-> > NFSv4 server code assume that fl_owner will point to a valid
-> > nfs4_stateowner if fl_lmops is set this way.
-> > 
-> > This behavior exposed a bug in DLM's GETLK implementation where it
-> > wasn't clearing out the fields in the file_lock before filling in
-> > conflicting lock info. While we were able to fix this in DLM, it
-> > still seems pointless and dangerous to set the fl_lmops this way
-> > when we have a NULL lockstateowner.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4state.c |    6 ++++--
-> >  1 files changed, 4 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 88db7d3..07d196a 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -2867,11 +2867,13 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  
-> >  	lockt->lt_stateowner = find_lockstateowner_str(inode,
-> >  			&lockt->lt_clientid, &lockt->lt_owner);
-> > -	if (lockt->lt_stateowner)
-> > +	if (lockt->lt_stateowner) {
-> >  		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
-> > +		file_lock.fl_lmops = &nfsd_posix_mng_ops;
+On Thu, Jan 22, 2009 at 01:37:33PM -0500, Jeff Layton wrote:
+> > using locks_init_lock() plus the existing assignments.  But, I think the
+> > best solution may be for dlm_posix_get() to set up a new lightweight
+> > file_lock with the values we need, and then call __locks_copy_lock() with
+> > it, just like posix_test_lock().
 > 
-> So I think we just shouldn't need this second assignment at all.
-> 
-> --b.
-> 
+> Why would we want to make another lock here? Is that just to make sure that
+> if new fields are added later that we deal with them appropriately?
 
-Do we even need to worry about the lockstateowner at all then? If
-fl_lmops isn't set then I think the fl_owner will be basically ignored
-by nfs4_set_lock_denied anyway.
+Just so we could use the __locks_copy_lock() function to make the assignments
+for us.  Setting up the fake file_lock just for that purpose might not be
+worth it, though, so I'm happy to stick with the current patch.
 
-> > +	}
-> > +
-> >  	file_lock.fl_pid = current->tgid;
-> >  	file_lock.fl_flags = FL_POSIX;
-> > -	file_lock.fl_lmops = &nfsd_posix_mng_ops;
-> >  
-> >  	file_lock.fl_start = lockt->lt_offset;
-> >  	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
-> > -- 
-> > 1.5.5.6
-> > 
-> > _______________________________________________
-> > NFSv4 mailing list
-> > NFSv4@linux-nfs.org
-> > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+Dave
 
-
--- 
-Jeff Layton <jlayton@redhat.com>
