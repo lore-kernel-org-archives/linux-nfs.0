@@ -1,16 +1,17 @@
-From: Jeff Layton <jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [Cluster-devel] Re: [PATCH 1/2] dlm: initialize file_lock
 	struct in GETLK before copying conflicting lock
-Date: Thu, 22 Jan 2009 13:37:33 -0500
-Message-ID: <20090122133733.5d692a09@barsoom.rdu.redhat.com>
+Date: Thu, 22 Jan 2009 13:48:48 -0500
+Message-ID: <20090122184848.GB15279@fieldses.org>
 References: <1232555691-29859-1-git-send-email-jlayton@redhat.com>
 	<1232555691-29859-2-git-send-email-jlayton@redhat.com>
 	<20090121234239.GM4295@fieldses.org>
 	<20090122180543.GA23796@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: cluster-devel@redhat.com, linux-nfs@vger.kernel.org, lkml@vger.kernel.org,
-	nfsv4@linux-nfs.org, linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, lkml@vger.kernel.org,
+	Jeff Layton <jlayton@redhat.com>, nfsv4@linux-nfs.org,
+	cluster-devel@redhat.com, linux-fsdevel@vger.kernel.org
 To: David Teigland <teigland@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
 In-Reply-To: <20090122180543.GA23796@redhat.com>
@@ -25,9 +26,7 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 22 Jan 2009 12:05:43 -0600
-David Teigland <teigland@redhat.com> wrote:
-
+On Thu, Jan 22, 2009 at 12:05:43PM -0600, David Teigland wrote:
 > On Wed, Jan 21, 2009 at 06:42:39PM -0500, J. Bruce Fields wrote:
 > > On Wed, Jan 21, 2009 at 11:34:50AM -0500, Jeff Layton wrote:
 > > > dlm_posix_get fills out the relevant fields in the file_lock before
@@ -56,7 +55,11 @@ David Teigland <teigland@redhat.com> wrote:
 > > would need to release the passed-in-lock before initializing the new one
 > > that it's returning.
 > 
-> It seems the nfs code is mixing those two types up a bit.  Regardless, the
+> It seems the nfs code is mixing those two types up a bit.
+
+There may be more cleanup needed.  (Pointers welcomed.)
+
+> Regardless, the
 > rationale I see in Jeff's dlm patch is to make the two different locking paths
 > equivalent:
 > 
@@ -72,14 +75,14 @@ David Teigland <teigland@redhat.com> wrote:
 > posix_test_lock() does __locks_copy_lock() on the fl and then sets the pid.
 > dlm_posix_get() isn't using __locks_copy_lock() because it doesn't have a
 > conflicting file_lock to copy from.  Jeff's patch does nearly the same thing
-> using locks_init_lock() plus the existing assignments.  But, I think the best
-> solution may be for dlm_posix_get() to set up a new lightweight file_lock with
-> the values we need, and then call __locks_copy_lock() with it, just like
-> posix_test_lock().
-> 
+> using locks_init_lock() plus the existing assignments.
 
-Why would we want to make another lock here? Is that just to make sure
-that if new fields are added later that we deal with them appropriately?
+Right, and that's fine.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> But, I think the best solution may be for dlm_posix_get() to set up a
+> new lightweight file_lock with the values we need, and then call
+> __locks_copy_lock() with it, just like posix_test_lock().
+
+That sounds like overkill.
+
+--b.
