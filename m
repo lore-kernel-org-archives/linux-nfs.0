@@ -1,7 +1,7 @@
 From: Peter Staubach <staubach@redhat.com>
 Subject: Re: [PATCH] flow control for WRITE requests
-Date: Fri, 23 Jan 2009 16:23:54 -0500
-Message-ID: <497A356A.8000506@redhat.com>
+Date: Fri, 23 Jan 2009 16:29:15 -0500
+Message-ID: <497A36AB.3080907@redhat.com>
 References: <497A162C.1010004@redhat.com> <BE8426F8-1170-4484-A2A0-B7989F3D3EBE@oracle.com> <497A2FED.4080407@redhat.com> <25989A0A-2E69-4761-B6DA-AE1938B1792E@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
@@ -9,10 +9,10 @@ Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
 	NFS list <linux-nfs@vger.kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34360 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:52206 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755412AbZAWVYH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Jan 2009 16:24:07 -0500
+	id S1755183AbZAWV30 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Jan 2009 16:29:26 -0500
 In-Reply-To: <25989A0A-2E69-4761-B6DA-AE1938B1792E@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -51,37 +51,31 @@ Chuck Lever wrote:
 > How about ^C -- any weirdness there?  pages left pinned on the client, 
 > fractured writes on the server, application hangs?
 >
-
-Nope, nothing like that.  Signals should cause things to unwind
-normally.
-
 > Have you tried this patch with a multi-threaded write-intensive async 
 > I/O workload?  I'm sure you know which one I'm referring to.  ;-)
 >
-
-No, probably not.  :-)
-
 > Would it make sense to key the new nfs_max_outstanding_writes sysctl 
 > to the RPC slot table size for that mount point?  Another tunable... 
 > that doesn't self-tune... Ugh.  How did you arrive at the default 
 > value of 16?
 >
 
-Yes, I didn't like the new tunable either.  I needed to be able
-to adjust it though.  For my situation, I had a 48GB memory
-client, but the right value of the tunable seemed to be, 2.
-Sigh.
+Sorry, forgot to answer your last question here.  Mostly,
+I just picked it out of the air?  Other systems default to
+8, but that seemed a little small, so I figured that 16, 32K
+WRITE requests outstanding should be a reasonable amount of
+outstanding data.
 
+Not scientific at all.  I am open to suggestions for
+autotuning, etc.
+
+    Thanx...
+
+       ps
 
 > CITI had been trying to improve write performance on transatlantic 
 > 10Gb links.  Would be useful to test in that environment.
 >
-
-That, I don't know.
-
-       ps
-
-
 >>    Thanx...
 >>
 >>      ps
