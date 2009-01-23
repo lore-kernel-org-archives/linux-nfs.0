@@ -1,81 +1,80 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/6] Address kernel bugzilla 12256
-Date: Fri, 23 Jan 2009 11:45:52 -0500
-Message-ID: <20090123164302.27126.56411.stgit@ingres.1015granger.net>
+Subject: [PATCH 3/6] SUNRPC: Simplify svc_unregister()
+Date: Fri, 23 Jan 2009 11:46:16 -0500
+Message-ID: <20090123164615.27126.53847.stgit@ingres.1015granger.net>
+References: <20090123164302.27126.56411.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:21134 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756386AbZAWQqo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 11:46:44 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:44379 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756622AbZAWQrG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 11:47:06 -0500
+In-Reply-To: <20090123164302.27126.56411.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+Olaf Kirch says a v2 UNSET should clear all rpcbind entries for an RPC
+service, even those created with a rpcbind v4 SET.  Change
+svc_unregister() to use a v2 UNSET unconditionally.
 
-Resend of patchset that addresses kernel bugzilla 12256 ("RPC: failed
-to contact local rpcbind server (errno 5)." if
-CONFIG_SUNRPC_REGISTER_V4 is set to Y").
+This simplifies the code in svc_unregister() and provides better
+backwards compatibility with legacy user space that does not support
+rpcbind version 4.
 
-Steve Dickson also reports this related problem:
+This patch is part of a series that addresses
+   http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
------- cut here ------
-
-On a 2.6.29 kernel that has IPv6 turned off by
-
-   1) adding 'blacklist ipv6' to /etc/modprobe.d/blacklist
-   2) Adding NETWORKING_IPV6=no to /etc/sysconfig/network
-   (note: not clear how much of this is effective since it's unknown
-    if Network Manager even looks at this stuff)
-
-When an ordinary v3 mount is tried:
-
-   mount -v server:/music /mnt/music
-
-It fails in the following way:
-
-mount.nfs: timeout set for Fri Jan 23 07:22:16 2009
-mount.nfs: text-based options: 'addr=10.16.43.237'
-mount.nfs: mount(2): Address family not supported by protocol
-mount.nfs: Address family not supported by protocol
-
-With the following being logged to /var/log/messages:
-
-Jan 23 07:20:16 localhost kernel: RPC: failed to contact local rpcbind
-server (errno 5).
-
------- cut here ------
-
-Steve, you are welcome to confirm that this patchset addresses the
-problem.
-
-I recommend this (or a similar) patch set be merged with 2.6.29-rc as
-a regression fix.  Please also consider submitting this for recent
-stable kernels (hopefully only .28 is affected).
-
-There may be some problems applying this patch set to linux-next, as
-that may have recent patches that split up fs/Kconfig.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (6):
-      SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
-      SUNRPC: rpcb_register() should handle errors silently
-      SUNRPC: Simplify kernel RPC service registration
-      SUNRPC: Simplify svc_unregister()
-      SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s helpers
-      SUNRPC: Use IPv4 loopback for registering AF_INET6 kernel RPC
-              services
+ net/sunrpc/svc.c |   26 ++++----------------------
+ 1 files changed, 4 insertions(+), 22 deletions(-)
 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a278a82..8dc4a1e 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -896,26 +896,10 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
+ 	return error;
+ }
+ 
+-#ifdef CONFIG_SUNRPC_REGISTER_V4
+-
+-static void __svc_unregister(const u32 program, const u32 version,
+-			     const char *progname)
+-{
+-	struct sockaddr_in6 sin6 = {
+-		.sin6_family		= AF_INET6,
+-		.sin6_addr		= IN6ADDR_ANY_INIT,
+-		.sin6_port		= 0,
+-	};
+-	int error;
+-
+-	error = rpcb_v4_register(program, version,
+-				(struct sockaddr *)&sin6, "");
+-	dprintk("svc: %s(%sv%u), error %d\n",
+-			__func__, progname, version, error);
+-}
+-
+-#else	/* CONFIG_SUNRPC_REGISTER_V4 */
+-
++/*
++ * Olaf says a v2 UNSET should clear _all_ entries, including any
++ * registered via a v4 SET
++ */
+ static void __svc_unregister(const u32 program, const u32 version,
+ 			     const char *progname)
+ {
+@@ -926,8 +910,6 @@ static void __svc_unregister(const u32 program, const u32 version,
+ 			__func__, progname, version, error);
+ }
+ 
+-#endif	/* CONFIG_SUNRPC_REGISTER_V4 */
+-
+ /*
+  * All netids, bind addresses and ports registered for [program, version]
+  * are removed from the local rpcbind database (if the service is not
 
- fs/Kconfig             |   22 ----------
- fs/lockd/svc.c         |    7 +--
- net/sunrpc/rpcb_clnt.c |   25 +++---------
- net/sunrpc/svc.c       |  102 +++++++++++++++++++++---------------------------
- 4 files changed, 55 insertions(+), 101 deletions(-)
-
--- 
-Chuck Lever <chuck.lever@oracle.com>
