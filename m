@@ -1,64 +1,56 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH 0/3] nfs-utils: Enabling TCP wrappers Part 2
-Date: Fri, 23 Jan 2009 12:59:10 -0500
-Message-ID: <497A056E.1030606@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Fri, 23 Jan 2009 13:09:59 -0500
+Message-ID: <20090123180959.GA32186@fieldses.org>
+References: <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com> <497757D1.7090908@RedHat.com> <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com> <49777988.6010401@RedHat.com> <A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com> <4977A385.8000406@melbourne.sgi.com> <20090121225619.GI4295@fieldses.org> <497897F5.9030005@RedHat.com> <20090122164503.GC13129@fieldses.org> <4978F91C.4090208@melbourne.sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Steve Dickson <SteveD@redhat.com>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:43734 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756783AbZAWSBf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Jan 2009 13:01:35 -0500
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n0NI1Zdh031773
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:01:35 -0500
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0NI1ZQ1005111
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:01:35 -0500
-Received: from xenhat.boston.devel.redhat.com (vpn-10-54.bos.redhat.com [10.16.10.54])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n0NI1YX6001185
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:01:35 -0500
+Received: from mail.fieldses.org ([141.211.133.115]:35569 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753035AbZAWSJ7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 13:09:59 -0500
+In-Reply-To: <4978F91C.4090208-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that TCP wrapper are actually working as expected, it causing
-problems in configuration that don't support reverse host name
-lookups.
+On Fri, Jan 23, 2009 at 09:54:20AM +1100, Greg Banks wrote:
+> J. Bruce Fields wrote:
+> > On Thu, Jan 22, 2009 at 10:59:49AM -0500, Steve Dickson wrote:
+> >   
+> >> J. Bruce Fields wrote:
+> >>     
+> >>
+> >> Interesting.... Store something like a reason code (similar to what they have
+> >> in he Kerberos)
+> >>     
+> >
+> > Maybe.
+> >
+> >   
+> >> in somewhere in the proc file system? 
+> >>     
+> >
+> > But then I don't know how you'd associate it with a particular mount
+> > attempt.
+> >
+> >
+> >   
+> You could do something truly awful like add a new code in the unused
+> bits of the errno value returned from mount.  It would confuse an
+> unmodified userspace, but reporting "Unknown Error" isn't much less
+> useful than "I/O Error".
 
-For TCP wrappers to actually work correctly, an IP address have to be
-converted into host name, to cover the possibility that host names
-are used in either the /etc/hosts.deny or /etc/hosts.allow files.
-If that IP conversion (i.e. reverse hostname lookup) fails, the
-mount has to failed otherwise it open up a security hole since
-the host name can not be checked.
+There must be cases where the existing error gives us some information,
+but not as much as we'd like, so the "Unknown Error" could be a step
+backwards for unmodified userspace.  An extra mount option (normally
+hidden from the user) could be used to tell the kernel that the
+application doing the mount was capable of handling the new error codes.
+Ugh.
 
-In smaller "at home" configurations, this failure cause a great deal
-of pain since there will never any type of DNS services and for some
-reasons (which were beyond me) adding the IP address to /etc/hosts
-was not an option. So this patch set allows configurations like
-those to, once again, just work, plus it also stop a needless lookup
-when there are no tcp wrapper rules, which is %99.99 of the time.
-
-Patch 01 - I was caching the results of the host access query using 
-           the IP address, program number and produce number which 
-           was creating too many cache entries for a single host.
-           All that's really needed is to has on the the IP address
-           and program number.
-
-Patch 02 - This is a repost of a previous patch that will not
-           do the host access checks if there are no rules in 
-           either hosts.allow or hosts.deny. This version includes
-           the suggestion from Chuck Lever that blank lines should 
-           also be ignored.
-
-Patch 03 - This patch adds a --insecure | -i command line argument that
-           completely turns all of the host access checking. I was a bit
-           hesitant about doing this, but once I saw other daemon having
-           option I figured it would be good to have.
-
-Comments/Issues?
-
-steved.  
-
-  
+--b.
