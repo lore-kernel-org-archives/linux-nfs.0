@@ -1,81 +1,81 @@
-From: Jaswinder Singh Rajput <jaswinder@kernel.org>
-Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Fri, 23 Jan 2009 22:01:44 +0530
-Message-ID: <1232728304.3504.28.camel@localhost.localdomain>
-References: <1232223441.3966.22.camel@localhost.localdomain>
-	 <1232228261.27094.0.camel@macbook.infradead.org>
-	 <20090117221932.GA4956@uranus.ravnborg.org> <49725B1E.604@kernel.org>
-	 <1232498319.3123.34.camel@localhost.localdomain>
-	 <1232726359.3504.18.camel@localhost.localdomain>
-	 <1232726658.3504.22.camel@localhost.localdomain>
-	 <alpine.LSU.2.00.0901231710350.15413@fbirervta.pbzchgretzou.qr>
-	 <20090123162153.GA25766@uranus.ravnborg.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/6] Address kernel bugzilla 12256
+Date: Fri, 23 Jan 2009 11:45:52 -0500
+Message-ID: <20090123164302.27126.56411.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Jan Engelhardt <jengelh@medozas.de>,
-	"H. Peter Anvin" <hpa@kernel.org>,
-	David Woodhouse <dwmw2@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-	dbrownell@users.sourceforge.net, netdev@vger.kernel.org,
-	greg@kroah.com, linux-usb@vger.kernel.org,
-	linux-mtd@lists.infradead.org, tiwai@suse.de,
-	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Sam Ravnborg <sam@ravnborg.org>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090123162153.GA25766@uranus.ravnborg.org>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet13.oracle.com ([148.87.113.125]:21134 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756386AbZAWQqo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 11:46:44 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-01-23 at 17:21 +0100, Sam Ravnborg wrote:
-> On Fri, Jan 23, 2009 at 05:11:13PM +0100, Jan Engelhardt wrote:
-> > 
-> > On Friday 2009-01-23 17:04, Jaswinder Singh Rajput wrote:
-> > >> > diff --git a/include/linux/dvb/audio.h b/include/linux/dvb/audio.h
-> > >> > index 89412e1..758a48c 100644
-> > >> > --- a/include/linux/dvb/audio.h
-> > >> > +++ b/include/linux/dvb/audio.h
-> > >> > @@ -24,9 +24,8 @@
-> > >> >  #ifndef _DVBAUDIO_H_
-> > >> >  #define _DVBAUDIO_H_
-> > >> >  
-> > >> > -#ifdef __KERNEL__
-> > >> >  #include <linux/types.h>
-> > >> > -#else
-> > >> > +#ifndef __KERNEL__
-> > >> >  #include <stdint.h>
-> > >> >  #endif
-> > >> > 
-> > >> 
-> > >> It seems one have objection for this. So I will again insert this in my
-> > >> new patchset.
-> > >> 
-> > >
-> > >oops, s/seems one/seems no one ;-)
-> > 
-> > I had an objection as previously stated -- namely that
-> > <stdint.h> should be included to remain friendly to C++0x
-> > programs which should use <cstdint> instead. Forcing
-> > stdint.h is therefore not nice.
-> 
-> This is fully agreed.
-> Jaswinder - can I ask you to do this change (remove of the stdint.h include)
-> in a follow-up patch. It is two independent changes.
-> You original patch is fine as is.
+Hi Bruce-
 
-So is this OK:
+Resend of patchset that addresses kernel bugzilla 12256 ("RPC: failed
+to contact local rpcbind server (errno 5)." if
+CONFIG_SUNRPC_REGISTER_V4 is set to Y").
 
--#ifdef __KERNEL__
- #include <linux/types.h>
--#else
--#include <stdint.h>
--#endif
--
+Steve Dickson also reports this related problem:
 
---
-JSR
+------ cut here ------
 
+On a 2.6.29 kernel that has IPv6 turned off by
+
+   1) adding 'blacklist ipv6' to /etc/modprobe.d/blacklist
+   2) Adding NETWORKING_IPV6=no to /etc/sysconfig/network
+   (note: not clear how much of this is effective since it's unknown
+    if Network Manager even looks at this stuff)
+
+When an ordinary v3 mount is tried:
+
+   mount -v server:/music /mnt/music
+
+It fails in the following way:
+
+mount.nfs: timeout set for Fri Jan 23 07:22:16 2009
+mount.nfs: text-based options: 'addr=10.16.43.237'
+mount.nfs: mount(2): Address family not supported by protocol
+mount.nfs: Address family not supported by protocol
+
+With the following being logged to /var/log/messages:
+
+Jan 23 07:20:16 localhost kernel: RPC: failed to contact local rpcbind
+server (errno 5).
+
+------ cut here ------
+
+Steve, you are welcome to confirm that this patchset addresses the
+problem.
+
+I recommend this (or a similar) patch set be merged with 2.6.29-rc as
+a regression fix.  Please also consider submitting this for recent
+stable kernels (hopefully only .28 is affected).
+
+There may be some problems applying this patch set to linux-next, as
+that may have recent patches that split up fs/Kconfig.
+
+---
+
+Chuck Lever (6):
+      SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
+      SUNRPC: rpcb_register() should handle errors silently
+      SUNRPC: Simplify kernel RPC service registration
+      SUNRPC: Simplify svc_unregister()
+      SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s helpers
+      SUNRPC: Use IPv4 loopback for registering AF_INET6 kernel RPC
+              services
+
+
+ fs/Kconfig             |   22 ----------
+ fs/lockd/svc.c         |    7 +--
+ net/sunrpc/rpcb_clnt.c |   25 +++---------
+ net/sunrpc/svc.c       |  102 +++++++++++++++++++++---------------------------
+ 4 files changed, 55 insertions(+), 101 deletions(-)
+
+-- 
+Chuck Lever <chuck.lever@oracle.com>
