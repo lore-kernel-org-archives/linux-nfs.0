@@ -1,53 +1,64 @@
-From: Ben Greear <greearb@candelatech.com>
-Subject: Re: PATCH:  Support binding to a local IPv4 address when mounting
- a server.
-Date: Fri, 23 Jan 2009 09:39:21 -0800
-Message-ID: <497A00C9.4010907@candelatech.com>
-References: <4977C580.4040805@candelatech.com> <633CA802-DD5A-4082-B771-C524D367241F@oracle.com> <497805A7.4070205@candelatech.com> <A1D6FF17-95D6-4775-AF60-5D6CD2078B3E@oracle.com> <4978AD75.9090900@candelatech.com> <65D69956-DB67-43A7-9101-9AFB7EC55A9F@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 0/3] nfs-utils: Enabling TCP wrappers Part 2
+Date: Fri, 23 Jan 2009 12:59:10 -0500
+Message-ID: <497A056E.1030606@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org, Patrick McHardy <kaber@trash.net>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:52873 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751102AbZAWRja (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 12:39:30 -0500
-In-Reply-To: <65D69956-DB67-43A7-9101-9AFB7EC55A9F@oracle.com>
+Received: from mx2.redhat.com ([66.187.237.31]:43734 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756783AbZAWSBf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Jan 2009 13:01:35 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n0NI1Zdh031773
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:01:35 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0NI1ZQ1005111
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:01:35 -0500
+Received: from xenhat.boston.devel.redhat.com (vpn-10-54.bos.redhat.com [10.16.10.54])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n0NI1YX6001185
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:01:35 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
+Now that TCP wrapper are actually working as expected, it causing
+problems in configuration that don't support reverse host name
+lookups.
 
->> Why not clientaddr?  That is already used for NFS version 4, and it works
->> just fine for version 3 as well.  I can't think of any reason to have
->> a new variable.
-> 
-> That may make sense for NFSv2/v3, but nfs(5) documents the clientaddr 
-> specifically as the client's NFSv4 callback server address.  Is there 
-> ever a case where we want to specify a NFSv4 callback address that's 
-> different from the source address of your NFSv4 forward channel?  Are we 
-> sure these will always be the same?
-> 
-> Conversely, do we always want to limit our NFSv4 traffic to a single 
-> bind address when clientaddr= is specified?
-> 
-> IMO the coding and documentation overhead for reusing clientaddr would 
-> be the same or greater than creating a new mount option, and the result 
-> would be more confusing.  These two options do different things.  I'd be 
-> interested to hear opinions from others on the list.
-> 
-> "bindaddr=" might be more clear than "localaddr=".  I checked Solaris 
-> 10, but it doesn't seem to have a similar capability.  So, no guidance 
-> there...
+For TCP wrappers to actually work correctly, an IP address have to be
+converted into host name, to cover the possibility that host names
+are used in either the /etc/hosts.deny or /etc/hosts.allow files.
+If that IP conversion (i.e. reverse hostname lookup) fails, the
+mount has to failed otherwise it open up a security hole since
+the host name can not be checked.
 
-Either way is fine with me.  I'll change it to be bindaddr unless
-I hear another opinion.
+In smaller "at home" configurations, this failure cause a great deal
+of pain since there will never any type of DNS services and for some
+reasons (which were beyond me) adding the IP address to /etc/hosts
+was not an option. So this patch set allows configurations like
+those to, once again, just work, plus it also stop a needless lookup
+when there are no tcp wrapper rules, which is %99.99 of the time.
 
-Thanks,
-Ben
+Patch 01 - I was caching the results of the host access query using 
+           the IP address, program number and produce number which 
+           was creating too many cache entries for a single host.
+           All that's really needed is to has on the the IP address
+           and program number.
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Patch 02 - This is a repost of a previous patch that will not
+           do the host access checks if there are no rules in 
+           either hosts.allow or hosts.deny. This version includes
+           the suggestion from Chuck Lever that blank lines should 
+           also be ignored.
 
+Patch 03 - This patch adds a --insecure | -i command line argument that
+           completely turns all of the host access checking. I was a bit
+           hesitant about doing this, but once I saw other daemon having
+           option I figured it would be good to have.
+
+Comments/Issues?
+
+steved.  
+
+  
