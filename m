@@ -1,151 +1,75 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/6] SUNRPC: Simplify kernel RPC service registration
-Date: Fri, 23 Jan 2009 11:46:23 -0500
-Message-ID: <20090123164623.27126.4787.stgit@ingres.1015granger.net>
-References: <20090123164302.27126.56411.stgit@ingres.1015granger.net>
+From: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
+Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
+Date: Fri, 23 Jan 2009 18:09:04 +0100
+Message-ID: <20090123170904.GA26083@uranus.ravnborg.org>
+References: <1232223441.3966.22.camel@localhost.localdomain> <1232228261.27094.0.camel@macbook.infradead.org> <20090117221932.GA4956@uranus.ravnborg.org> <49725B1E.604@kernel.org> <1232498319.3123.34.camel@localhost.localdomain> <1232726359.3504.18.camel@localhost.localdomain> <1232726658.3504.22.camel@localhost.localdomain> <alpine.LSU.2.00.0901231710350.15413@fbirervta.pbzchgretzou.qr> <20090123162153.GA25766@uranus.ravnborg.org> <1232728304.3504.28.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:35275 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756840AbZAWQtG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 11:49:06 -0500
-In-Reply-To: <20090123164302.27126.56411.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>,
+	"H. Peter Anvin" <hpa@kernel.org>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
+	urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org,
+	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
+	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
+	dbrownell@users.sourceforge.net, netdev@vger.kernel.org,
+	greg@kroah.com, linux-usb@vger.kernel.org,
+	linux-mtd@lists.infradead.org, tiwai@suse.de,
+	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jaswinder Singh Rajput <jaswinder@kernel.org>
+Return-path: <linux-usb-owner@vger.kernel.org>
+In-Reply-To: <1232728304.3504.28.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Sender: linux-usb-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel registers RPC services with the local portmapper with an
-rpcbind SET upcall to the local portmapper.  Traditionally, this used
-rpcbind v2, but registering RPC services that support IPv6 requires
-rpcbind v3 or v4.
+On Fri, Jan 23, 2009 at 10:01:44PM +0530, Jaswinder Singh Rajput wrote:
+> On Fri, 2009-01-23 at 17:21 +0100, Sam Ravnborg wrote:
+> > On Fri, Jan 23, 2009 at 05:11:13PM +0100, Jan Engelhardt wrote:
+> > > 
+> > > On Friday 2009-01-23 17:04, Jaswinder Singh Rajput wrote:
+> > > >> > diff --git a/include/linux/dvb/audio.h b/include/linux/dvb/audio.h
+> > > >> > index 89412e1..758a48c 100644
+> > > >> > --- a/include/linux/dvb/audio.h
+> > > >> > +++ b/include/linux/dvb/audio.h
+> > > >> > @@ -24,9 +24,8 @@
+> > > >> >  #ifndef _DVBAUDIO_H_
+> > > >> >  #define _DVBAUDIO_H_
+> > > >> >  
+> > > >> > -#ifdef __KERNEL__
+> > > >> >  #include <linux/types.h>
+> > > >> > -#else
+> > > >> > +#ifndef __KERNEL__
+> > > >> >  #include <stdint.h>
+> > > >> >  #endif
+> > > >> > 
+> > > >> 
+> > > >> It seems one have objection for this. So I will again insert this in my
+> > > >> new patchset.
+> > > >> 
+> > > >
+> > > >oops, s/seems one/seems no one ;-)
+> > > 
+> > > I had an objection as previously stated -- namely that
+> > > <stdint.h> should be included to remain friendly to C++0x
+> > > programs which should use <cstdint> instead. Forcing
+> > > stdint.h is therefore not nice.
+> > 
+> > This is fully agreed.
+> > Jaswinder - can I ask you to do this change (remove of the stdint.h include)
+> > in a follow-up patch. It is two independent changes.
+> > You original patch is fine as is.
+> 
+> So is this OK:
+> 
+> -#ifdef __KERNEL__
+>  #include <linux/types.h>
+> -#else
+> -#include <stdint.h>
+> -#endif
 
-Previously the kernel used the registration upcall to detect whether
-user space supported IPv6 for RPC at all, and fail the service
-creation if it didn't.  This is probably unnecessary paranoia.
+That was what I expected the final change to look like.
+If you want then combine it in one patch.
 
-Since the kernel uses a single listener (either AF_INET or AF_INET6)
-to handle all requests for a particular RPC service, AF_INET6
-listeners handle IPv4 RPC requests too.  If user space doesn't allow
-an AF_INET6 kernel service to be registered, that should be no
-trouble at all for the kernel's AF_INET6 RPC listener -- it just won't
-get any RPC requests via IPv6.  So we don't need to register the
-service for IPv6 if user space doesn't allow it.
-
-So, we try registration via rpcbind v4 first; if that fails, we retry
-with rpcbind v2, and support only IPv4 requests.
-
-This provides complete backwards compatibilty with legacy user space
-that only supports rpcbind v2.  The only down-side is that registering
-a new kernel RPC service may take an extra exchange with the local
-portmapper, but this is an infrequent operation, so it shouldn't
-matter.
-
-This patch is part of a series that addresses
-   http://bugzilla.kernel.org/show_bug.cgi?id=12256
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- net/sunrpc/svc.c |   50 ++++++++++++++++++++++++--------------------------
- 1 files changed, 24 insertions(+), 26 deletions(-)
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 8dc4a1e..3cf1b3c 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -719,8 +719,6 @@ svc_exit_thread(struct svc_rqst *rqstp)
- }
- EXPORT_SYMBOL_GPL(svc_exit_thread);
- 
--#ifdef CONFIG_SUNRPC_REGISTER_V4
--
- /*
-  * Register an "inet" protocol family netid with the local
-  * rpcbind daemon via an rpcbind v4 SET request.
-@@ -741,6 +739,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
- 		.sin_port		= htons(port),
- 	};
- 	char *netid;
-+	int error;
- 
- 	switch (protocol) {
- 	case IPPROTO_UDP:
-@@ -753,8 +752,17 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
- 		return -ENOPROTOOPT;
- 	}
- 
--	return rpcb_v4_register(program, version,
--				(struct sockaddr *)&sin, netid);
-+	error = rpcb_v4_register(program, version,
-+					(struct sockaddr *)&sin, netid);
-+
-+	/*
-+	 * User space didn't support rpcbind v4, so retry this
-+	 * registration request with the legacy rpcbind v2 protocol.
-+	 */
-+	if (error == -EPROTONOSUPPORT)
-+		error = rpcb_register(program, version, protocol, port);
-+
-+	return error;
- }
- 
- /*
-@@ -777,6 +785,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
- 		.sin6_port		= htons(port),
- 	};
- 	char *netid;
-+	int error;
- 
- 	switch (protocol) {
- 	case IPPROTO_UDP:
-@@ -789,8 +798,18 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
- 		return -ENOPROTOOPT;
- 	}
- 
--	return rpcb_v4_register(program, version,
-+	error = rpcb_v4_register(program, version,
- 				(struct sockaddr *)&sin6, netid);
-+
-+	/*
-+	 * User space didn't support registering an IPv6 service,
-+	 * so register this service for IPv4 only, using the legacy
-+	 * rpcbind v2 protocol.
-+	 */
-+	if (error == -EPROTONOSUPPORT)
-+		error = rpcb_register(program, version, protocol, port);
-+
-+	return error;
- }
- 
- /*
-@@ -831,27 +850,6 @@ static int __svc_register(const u32 program, const u32 version,
- 	return -EAFNOSUPPORT;
- }
- 
--#else	/* CONFIG_SUNRPC_REGISTER_V4 */
--
--/*
-- * Register a kernel RPC service via rpcbind version 2.
-- *
-- * Returns zero on success; a negative errno value is returned
-- * if any error occurs.
-- */
--static int __svc_register(const u32 program, const u32 version,
--			  sa_family_t family,
--			  const unsigned short protocol,
--			  const unsigned short port)
--{
--	if (family != AF_INET)
--		return -EAFNOSUPPORT;
--
--	return rpcb_register(program, version, protocol, port);
--}
--
--#endif /* CONFIG_SUNRPC_REGISTER_V4 */
--
- /**
-  * svc_register - register an RPC service with the local portmapper
-  * @serv: svc_serv struct for the service to register
-
+	Sam
