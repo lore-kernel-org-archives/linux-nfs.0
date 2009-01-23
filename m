@@ -1,45 +1,87 @@
-From: "H. Peter Anvin" <hpa@zytor.com>
-Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Fri, 23 Jan 2009 14:01:07 -0800
-Message-ID: <497A3E23.7040606@zytor.com>
-References: <1232223441.3966.22.camel@localhost.localdomain>  <1232228261.27094.0.camel@macbook.infradead.org>  <20090117221932.GA4956@uranus.ravnborg.org>  <49725B1E.604@kernel.org>  <1232498319.3123.34.camel@localhost.localdomain>  <1232726359.3504.18.camel@localhost.localdomain> <1232726658.3504.22.camel@localhost.localdomain> <alpine.LSU.2.00.0901231710350.15413@fbirervta.pbzchgretzou.qr> <497A3793.5090502@zytor.com> <alpine.LSU.2.00.0901232252510.25716@fbirervta.pbzchgretzou.qr>
+From: Greg Banks <gnb@melbourne.sgi.com>
+Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
+Date: Sat, 24 Jan 2009 09:18:07 +1100
+Message-ID: <497A421F.2010501@melbourne.sgi.com>
+References: <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com>
+	<497757D1.7090908@RedHat.com>
+	<F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com>
+	<49777988.6010401@RedHat.com>
+	<A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com>
+	<4977A385.8000406@melbourne.sgi.com>
+	<20090121225619.GI4295@fieldses.org> <497897F5.9030005@RedHat.com>
+	<20090122164503.GC13129@fieldses.org>
+	<4978F91C.4090208@melbourne.sgi.com>
+	<20090123180959.GA32186@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Jaswinder Singh Rajput <jaswinder@kernel.org>,
-	"H. Peter Anvin" <hpa@kernel.org>, Sam Ravnborg <sam@ravnborg.org>,
-	David Woodhouse <dwmw2@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-	dbrownell@users.sourceforge.net, netdev@vger.kernel.org,
-	greg@kroah.com, linux-usb@vger.kernel.org,
-	linux-mtd@lists.infradead.org, tiwai@suse.de,
-	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jan Engelhardt <jengelh@medozas.de>
-Return-path: <linux-raid-owner@vger.kernel.org>
-In-Reply-To: <alpine.LSU.2.00.0901232252510.25716@fbirervta.pbzchgretzou.qr>
-Sender: linux-raid-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+	SystemTAP <systemtap@sources.redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090123180959.GA32186@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jan Engelhardt wrote:
-> 
-> Hm, maybe g++ defaults to std? Because this works without me using
-> "using std;"
-> 
-> #include <cstdint>
-> int main(void)
-> {
-> 	uint32_t x;
-> }
-> 
+J. Bruce Fields wrote:
+> On Fri, Jan 23, 2009 at 09:54:20AM +1100, Greg Banks wrote:
+>   
+>> J. Bruce Fields wrote:
+>>     
+>>> On Thu, Jan 22, 2009 at 10:59:49AM -0500, Steve Dickson wrote:
+>>>   
+>>>       
+>>>> J. Bruce Fields wrote:
+>>>>     
+>>>>
+>>>> Interesting.... Store something like a reason code (similar to what they have
+>>>> in he Kerberos)
+>>>>     
+>>>>         
+>>> Maybe.
+>>>
+>>>   
+>>>       
+>>>> in somewhere in the proc file system? 
+>>>>     
+>>>>         
+>>> But then I don't know how you'd associate it with a particular mount
+>>> attempt.
+>>>
+>>>
+>>>   
+>>>       
+>> You could do something truly awful like add a new code in the unused
+>> bits of the errno value returned from mount.  It would confuse an
+>> unmodified userspace, but reporting "Unknown Error" isn't much less
+>> useful than "I/O Error".
+>>     
+>
+> There must be cases where the existing error gives us some information,
+> but not as much as we'd like, so the "Unknown Error" could be a step
+> backwards for unmodified userspace.  An extra mount option (normally
+> hidden from the user) could be used to tell the kernel that the
+> application doing the mount was capable of handling the new error codes.
+> Ugh.
+>
+>
+>   
+Ugh is right.
 
-Sorry, this was a bit of a surprise... basically the g++ <cstdint> 
-functionally does #include <stdint.h> then exports the symbols into the 
-std namespace, so it puts them into both...
+On further thought, you could use the extra mount option to enable a
+behaviour where the kernel would format into the mount options buffer a
+string describing the reasons for the mount failure.  If the option
+weren't present the kernel could emit that same message via printk().
 
-	-hpa
-
-
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
