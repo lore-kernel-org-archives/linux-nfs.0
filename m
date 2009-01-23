@@ -1,43 +1,54 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] text-based mount command: Fixed typo in  po_rightmost
-Date: Sat, 31 Jan 2009 14:24:37 -0500
-Message-ID: <4984A575.3000207@RedHat.com>
+From: Jan Engelhardt <jengelh@medozas.de>
+Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
+Date: Fri, 23 Jan 2009 17:11:13 +0100 (CET)
+Message-ID: <alpine.LSU.2.00.0901231710350.15413@fbirervta.pbzchgretzou.qr>
+References: <1232223441.3966.22.camel@localhost.localdomain>  <1232228261.27094.0.camel@macbook.infradead.org>  <20090117221932.GA4956@uranus.ravnborg.org>  <49725B1E.604@kernel.org>  <1232498319.3123.34.camel@localhost.localdomain>
+ <1232726359.3504.18.camel@localhost.localdomain> <1232726658.3504.22.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48483 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751508AbZAaT1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 31 Jan 2009 14:27:03 -0500
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n0VJR3aD030367
-	for <linux-nfs@vger.kernel.org>; Sat, 31 Jan 2009 14:27:03 -0500
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0VJR3Yx016963
-	for <linux-nfs@vger.kernel.org>; Sat, 31 Jan 2009 14:27:03 -0500
-Received: from xenhat.boston.devel.redhat.com (vpn-10-19.bos.redhat.com [10.16.10.19])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n0VJR3uM027007
-	for <linux-nfs@vger.kernel.org>; Sat, 31 Jan 2009 14:27:03 -0500
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "H. Peter Anvin" <hpa@kernel.org>, Sam Ravnborg <sam@ravnborg.org>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
+	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
+	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
+	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
+	dbrownell@users.sourceforge.net, netdev@vger.kernel.org,
+	greg@kroah.com, linux-usb@vger.kernel.org,
+	linux-mtd@lists.infradead.org, tiwai@suse.de,
+	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jaswinder Singh Rajput <jaswinder@kernel.org>
+Return-path: <netfilter-owner@vger.kernel.org>
+In-Reply-To: <1232726658.3504.22.camel@localhost.localdomain>
+Sender: netfilter-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fixed typo in po_rightmost() that was cause options like nolock,
-bg, udp, tcp, proto, v2, v3, vers, nfsvers to either be 
-ignored or interrupted 
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+On Friday 2009-01-23 17:04, Jaswinder Singh Rajput wrote:
+>> > diff --git a/include/linux/dvb/audio.h b/include/linux/dvb/audio.h
+>> > index 89412e1..758a48c 100644
+>> > --- a/include/linux/dvb/audio.h
+>> > +++ b/include/linux/dvb/audio.h
+>> > @@ -24,9 +24,8 @@
+>> >  #ifndef _DVBAUDIO_H_
+>> >  #define _DVBAUDIO_H_
+>> >  
+>> > -#ifdef __KERNEL__
+>> >  #include <linux/types.h>
+>> > -#else
+>> > +#ifndef __KERNEL__
+>> >  #include <stdint.h>
+>> >  #endif
+>> > 
+>> 
+>> It seems one have objection for this. So I will again insert this in my
+>> new patchset.
+>> 
+>
+>oops, s/seems one/seems no one ;-)
 
-diff --git a/utils/mount/parse_opt.c b/utils/mount/parse_opt.c
-index 4934508..280f3e5 100644
---- a/utils/mount/parse_opt.c
-+++ b/utils/mount/parse_opt.c
-@@ -448,7 +448,7 @@ unsigned int po_rightmost(struct mount_options *options, const char *keys[])
- 		for (option = options->tail; option; option = option->prev) {
- 			for (i = 0; keys[i] != NULL; i++)
- 				if (strcmp(option->keyword, keys[i]) == 0)
--					return i;
-+					return i+1;
- 		}
- 	}
- 
+I had an objection as previously stated -- namely that
+<stdint.h> should be included to remain friendly to C++0x
+programs which should use <cstdint> instead. Forcing
+stdint.h is therefore not nice.
