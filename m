@@ -1,33 +1,25 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/6] SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s
-	helpers
-Date: Fri, 23 Jan 2009 11:46:08 -0500
-Message-ID: <20090123164608.27126.28088.stgit@ingres.1015granger.net>
+Subject: [PATCH 6/6] SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
+Date: Fri, 23 Jan 2009 11:46:38 -0500
+Message-ID: <20090123164638.27126.40360.stgit@ingres.1015granger.net>
 References: <20090123164302.27126.56411.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:41022 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756830AbZAWQtF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 11:49:05 -0500
+Received: from rcsinet13.oracle.com ([148.87.113.125]:22629 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756850AbZAWQtK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 11:49:10 -0500
 In-Reply-To: <20090123164302.27126.56411.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPC client returns -EPROTONOSUPPORT if there is a protocol version
-mismatch (ie the remote RPC server doesn't support the RPC protocol
-version sent by the client).
-
-Helpers for the svc_register() function return -EPROTONOSUPPORT if they
-don't recognize the passed-in IPPROTO_ value.
-
-These are two entirely different errors.
-
-Have the helpers return -ENOPROTOOPT instead of -ENOPROTOOPT.  This will
-allow callers to determine and report more precisely what the problem is.
+We just augmented the kernel's RPC service registration code so that
+it automatically adjusts to what is supported in user space.  Thus we
+no longer need the kernel configuration option to enable registering
+RPC services with v4 -- it's all done automatically.
 
 This patch is part of a series that addresses
    http://bugzilla.kernel.org/show_bug.cgi?id=12256
@@ -35,29 +27,61 @@ This patch is part of a series that addresses
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/Kconfig     |   22 ----------------------
+ fs/lockd/svc.c |    7 +++----
+ 2 files changed, 3 insertions(+), 26 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index c51fed4..a278a82 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -750,7 +750,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
- 		netid = RPCBIND_NETID_TCP;
- 		break;
- 	default:
--		return -EPROTONOSUPPORT;
-+		return -ENOPROTOOPT;
- 	}
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 51307b0..48ecb85 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -1401,28 +1401,6 @@ config SUNRPC_XPRT_RDMA
  
- 	return rpcb_v4_register(program, version,
-@@ -786,7 +786,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
- 		netid = RPCBIND_NETID_TCP6;
- 		break;
- 	default:
--		return -EPROTONOSUPPORT;
-+		return -ENOPROTOOPT;
- 	}
+ 	  If unsure, say N.
  
- 	return rpcb_v4_register(program, version,
+-config SUNRPC_REGISTER_V4
+-	bool "Register local RPC services via rpcbind v4 (EXPERIMENTAL)"
+-	depends on SUNRPC && EXPERIMENTAL
+-	default n
+-	help
+-	  Sun added support for registering RPC services at an IPv6
+-	  address by creating two new versions of the rpcbind protocol
+-	  (RFC 1833).
+-
+-	  This option enables support in the kernel RPC server for
+-	  registering kernel RPC services via version 4 of the rpcbind
+-	  protocol.  If you enable this option, you must run a portmapper
+-	  daemon that supports rpcbind protocol version 4.
+-
+-	  Serving NFS over IPv6 from knfsd (the kernel's NFS server)
+-	  requires that you enable this option and use a portmapper that
+-	  supports rpcbind version 4.
+-
+-	  If unsure, say N to get traditional behavior (register kernel
+-	  RPC services using only rpcbind version 2).  Distributions
+-	  using the legacy Linux portmapper daemon must say N here.
+-
+ config RPCSEC_GSS_KRB5
+ 	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
+ 	depends on SUNRPC && EXPERIMENTAL
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 64f1c31..cc3bf45 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -56,12 +56,11 @@ unsigned long			nlmsvc_timeout;
+  * If the kernel has IPv6 support available, always listen for
+  * both AF_INET and AF_INET6 requests.
+  */
+-#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
+-	defined(CONFIG_SUNRPC_REGISTER_V4)
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ static const sa_family_t	nlmsvc_family = AF_INET6;
+-#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
++#else	/* CONFIG_IPV6 || CONFIG_IPV6_MODULE */
+ static const sa_family_t	nlmsvc_family = AF_INET;
+-#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
++#endif	/* CONFIG_IPV6 || CONFIG_IPV6_MODULE */
+ 
+ /*
+  * These can be set at insmod time (useful for NFS as root filesystem),
 
