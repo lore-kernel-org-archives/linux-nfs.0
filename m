@@ -1,56 +1,117 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC][PATCH 0/5] NFS: trace points added to mounting path
-Date: Fri, 23 Jan 2009 13:09:59 -0500
-Message-ID: <20090123180959.GA32186@fieldses.org>
-References: <5B2817A2-B0FF-4FB5-9244-9E13C55EF6B2@oracle.com> <497757D1.7090908@RedHat.com> <F4767392-1D53-41C3-B96C-D71E3C4A6836@oracle.com> <49777988.6010401@RedHat.com> <A3A2C7E0-3403-4863-A670-862886AF9EC9@oracle.com> <4977A385.8000406@melbourne.sgi.com> <20090121225619.GI4295@fieldses.org> <497897F5.9030005@RedHat.com> <20090122164503.GC13129@fieldses.org> <4978F91C.4090208@melbourne.sgi.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 1/3] nfs-utils: Hash only on IP address and Program number
+Date: Fri, 23 Jan 2009 13:10:06 -0500
+Message-ID: <497A07FE.9060008@RedHat.com>
+References: <497A056E.1030606@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	SystemTAP <systemtap-R2MHTz/CkKAf7BdofF/totBPR1lH4CV8@public.gmane.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:35569 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753035AbZAWSJ7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 13:09:59 -0500
-In-Reply-To: <4978F91C.4090208-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:46282 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753690AbZAWSMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Jan 2009 13:12:31 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n0NICV9l001543
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:12:31 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0NICVOX008498
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:12:32 -0500
+Received: from xenhat.boston.devel.redhat.com (vpn-10-54.bos.redhat.com [10.16.10.54])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n0NICV5O003113
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2009 13:12:31 -0500
+In-Reply-To: <497A056E.1030606-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 23, 2009 at 09:54:20AM +1100, Greg Banks wrote:
-> J. Bruce Fields wrote:
-> > On Thu, Jan 22, 2009 at 10:59:49AM -0500, Steve Dickson wrote:
-> >   
-> >> J. Bruce Fields wrote:
-> >>     
-> >>
-> >> Interesting.... Store something like a reason code (similar to what they have
-> >> in he Kerberos)
-> >>     
-> >
-> > Maybe.
-> >
-> >   
-> >> in somewhere in the proc file system? 
-> >>     
-> >
-> > But then I don't know how you'd associate it with a particular mount
-> > attempt.
-> >
-> >
-> >   
-> You could do something truly awful like add a new code in the unused
-> bits of the errno value returned from mount.  It would confuse an
-> unmodified userspace, but reporting "Unknown Error" isn't much less
-> useful than "I/O Error".
+commit efc33a7844332bfe9f22b34ccf4035458a9b344a
+Author: Steve Dickson <steved@redhat.com>
+Date:   Fri Jan 23 08:59:19 2009 -0500
 
-There must be cases where the existing error gives us some information,
-but not as much as we'd like, so the "Unknown Error" could be a step
-backwards for unmodified userspace.  An extra mount option (normally
-hidden from the user) could be used to tell the kernel that the
-application doing the mount was capable of handling the new error codes.
-Ugh.
+    Only hash on IP address and Program number. Including the Procedure
+    number only creates needles extra hash entries.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
---b.
+diff --git a/support/misc/tcpwrapper.c b/support/misc/tcpwrapper.c
+index 977dfca..a450ad5 100644
+--- a/support/misc/tcpwrapper.c
++++ b/support/misc/tcpwrapper.c
+@@ -108,8 +108,8 @@ typedef struct _hash_head {
+ 	TAILQ_HEAD(host_list, _haccess_t) h_head;
+ } hash_head;
+ hash_head haccess_tbl[HASH_TABLE_SIZE];
+-static haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long, u_long);
+-static void haccess_add(struct sockaddr_in *addr, u_long, u_long, int);
++static haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long);
++static void haccess_add(struct sockaddr_in *addr, u_long, int);
+ 
+ inline unsigned int strtoint(char *str)
+ {
+@@ -126,11 +126,10 @@ inline int hashint(unsigned int num)
+ {
+ 	return num % HASH_TABLE_SIZE;
+ }
+-#define HASH(_addr, _proc, _prog) \
+-	hashint((strtoint((_addr))+(_proc)+(_prog)))
++#define HASH(_addr, _prog) \
++	hashint((strtoint((_addr))+(_prog)))
+ 
+-void haccess_add(struct sockaddr_in *addr, u_long proc, 
+-	u_long prog, int access)
++void haccess_add(struct sockaddr_in *addr, u_long prog, int access)
+ {
+ 	hash_head *head;
+  	haccess_t *hptr;
+@@ -140,7 +139,7 @@ void haccess_add(struct sockaddr_in *addr, u_long proc,
+ 	if (hptr == NULL)
+ 		return;
+ 
+-	hash = HASH(inet_ntoa(addr->sin_addr), proc, prog);
++	hash = HASH(inet_ntoa(addr->sin_addr), prog);
+ 	head = &(haccess_tbl[hash]);
+ 
+ 	hptr->access = access;
+@@ -151,13 +150,13 @@ void haccess_add(struct sockaddr_in *addr, u_long proc,
+ 	else
+ 		TAILQ_INSERT_TAIL(&head->h_head, hptr, list);
+ }
+-haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long proc, u_long prog)
++haccess_t *haccess_lookup(struct sockaddr_in *addr, u_long prog)
+ {
+ 	hash_head *head;
+  	haccess_t *hptr;
+ 	int hash;
+ 
+-	hash = HASH(inet_ntoa(addr->sin_addr), proc, prog);
++	hash = HASH(inet_ntoa(addr->sin_addr), prog);
+ 	head = &(haccess_tbl[hash]);
+ 
+ 	TAILQ_FOREACH(hptr, &head->h_head, list) {
+@@ -302,7 +301,7 @@ u_long  prog;
+ 	haccess_t *acc = NULL;
+ 	int changed = check_files();
+ 
+-	acc = haccess_lookup(addr, proc, prog);
++	acc = haccess_lookup(addr, prog);
+ 	if (acc && changed == 0)
+ 		return (acc->access);
+ 
+@@ -311,7 +310,7 @@ u_long  prog;
+ 		if (acc)
+ 			acc->access = FALSE;
+ 		else 
+-			haccess_add(addr, proc, prog, FALSE);
++			haccess_add(addr, prog, FALSE);
+ 		return (FALSE);
+ 	}
+ 	if (verboselog)
+@@ -320,7 +319,7 @@ u_long  prog;
+ 	if (acc)
+ 		acc->access = TRUE;
+ 	else 
+-		haccess_add(addr, proc, prog, TRUE);
++		haccess_add(addr, prog, TRUE);
+     return (TRUE);
+ }
+ 
