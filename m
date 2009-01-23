@@ -1,75 +1,177 @@
-From: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
-Subject: Re: [GIT PULL -tip] fix 33 make headers_check warnings
-Date: Fri, 23 Jan 2009 18:09:04 +0100
-Message-ID: <20090123170904.GA26083@uranus.ravnborg.org>
-References: <1232223441.3966.22.camel@localhost.localdomain> <1232228261.27094.0.camel@macbook.infradead.org> <20090117221932.GA4956@uranus.ravnborg.org> <49725B1E.604@kernel.org> <1232498319.3123.34.camel@localhost.localdomain> <1232726359.3504.18.camel@localhost.localdomain> <1232726658.3504.22.camel@localhost.localdomain> <alpine.LSU.2.00.0901231710350.15413@fbirervta.pbzchgretzou.qr> <20090123162153.GA25766@uranus.ravnborg.org> <1232728304.3504.28.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Engelhardt <jengelh-nopoi9nDyk+ELgA04lAiVw@public.gmane.org>,
-	"H. Peter Anvin" <hpa@kernel.org>,
-	David Woodhouse <dwmw2@infradead.org>,
-	Ingo Molnar <mingo@elte.hu>, x86 maintainers <x86@kernel.org>,
-	urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org,
-	linux-media@vger.kernel.org, netfilter-devel@vger.kernel.org,
-	netfilter@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-	dbrownell@users.sourceforge.net, netdev@vger.kernel.org,
-	greg@kroah.com, linux-usb@vger.kernel.org,
-	linux-mtd@lists.infradead.org, tiwai@suse.de,
-	mchehab@infradead.org, LKML <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Jaswinder Singh Rajput <jaswinder@kernel.org>
-Return-path: <linux-usb-owner@vger.kernel.org>
-In-Reply-To: <1232728304.3504.28.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-usb-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: PATCH:  Support binding to a local IPv4 address when mounting a server.
+Date: Fri, 23 Jan 2009 12:18:03 -0500
+Message-ID: <65D69956-DB67-43A7-9101-9AFB7EC55A9F@oracle.com>
+References: <4977C580.4040805@candelatech.com> <633CA802-DD5A-4082-B771-C524D367241F@oracle.com> <497805A7.4070205@candelatech.com> <A1D6FF17-95D6-4775-AF60-5D6CD2078B3E@oracle.com> <4978AD75.9090900@candelatech.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, Patrick McHardy <kaber@trash.net>
+To: Ben Greear <greearb@candelatech.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet13.oracle.com ([148.87.113.125]:18686 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbZAWRSZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jan 2009 12:18:25 -0500
+In-Reply-To: <4978AD75.9090900@candelatech.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 23, 2009 at 10:01:44PM +0530, Jaswinder Singh Rajput wrote:
-> On Fri, 2009-01-23 at 17:21 +0100, Sam Ravnborg wrote:
-> > On Fri, Jan 23, 2009 at 05:11:13PM +0100, Jan Engelhardt wrote:
-> > > 
-> > > On Friday 2009-01-23 17:04, Jaswinder Singh Rajput wrote:
-> > > >> > diff --git a/include/linux/dvb/audio.h b/include/linux/dvb/audio.h
-> > > >> > index 89412e1..758a48c 100644
-> > > >> > --- a/include/linux/dvb/audio.h
-> > > >> > +++ b/include/linux/dvb/audio.h
-> > > >> > @@ -24,9 +24,8 @@
-> > > >> >  #ifndef _DVBAUDIO_H_
-> > > >> >  #define _DVBAUDIO_H_
-> > > >> >  
-> > > >> > -#ifdef __KERNEL__
-> > > >> >  #include <linux/types.h>
-> > > >> > -#else
-> > > >> > +#ifndef __KERNEL__
-> > > >> >  #include <stdint.h>
-> > > >> >  #endif
-> > > >> > 
-> > > >> 
-> > > >> It seems one have objection for this. So I will again insert this in my
-> > > >> new patchset.
-> > > >> 
-> > > >
-> > > >oops, s/seems one/seems no one ;-)
-> > > 
-> > > I had an objection as previously stated -- namely that
-> > > <stdint.h> should be included to remain friendly to C++0x
-> > > programs which should use <cstdint> instead. Forcing
-> > > stdint.h is therefore not nice.
-> > 
-> > This is fully agreed.
-> > Jaswinder - can I ask you to do this change (remove of the stdint.h include)
-> > in a follow-up patch. It is two independent changes.
-> > You original patch is fine as is.
-> 
-> So is this OK:
-> 
-> -#ifdef __KERNEL__
->  #include <linux/types.h>
-> -#else
-> -#include <stdint.h>
-> -#endif
+On Jan 22, 2009, at Jan 22, 2009, 12:31 PM, Ben Greear wrote:
+> Chuck Lever wrote:
+>> On Jan 22, 2009, at Jan 22, 2009, 12:35 AM, Ben Greear wrote:
+>>> Chuck Lever wrote:
+>>>> A handful of generic comments.
+>>>>
+>>>> 1.  This needs to be broken into smaller patches before  
+>>>> submission; preferably before you submit another version for  
+>>>> review.  Take a look at the linux-nfs@vger.kernel.org archives to  
+>>>> see how we handle large changes like this.
+>>>>
+>>>> 2.  You should support local addresses only in the text-based  
+>>>> path (utils/mount/stropts.c) and not in the legacy paths (utils/ 
+>>>> mount/nfs[4]mount.c).  I don't think we're ever going to allow a  
+>>>> version 7 of the mount data structure.
+>>> I could remove the version 7 data field, but what about the other  
+>>> code that creates
+>>> sockets for 'pinging' nfs daemons and such?   Is that code  
+>>> deprecated now?
+>> It's still used for text-based NFSv2/v3 mounts, and unmounts.  The  
+>> mount option rewriting code in stropts.c probably needs to be  
+>> sensitive of the local address too.  That's the piece that uses all  
+>> the getport functions.
+>>> If nothing else, it looks like "probe_bothports" needs a client- 
+>>> addr to pass on
+>>> to methods it calls, and so forth.  That means that other code  
+>>> that calls those
+>>> methods needs to be updated, and thus my huge repetitive patch.
+>> Expanding the synopses of all the getport calls in support/nfs/*.c  
+>> is part of what can be split into separate patches.  I would start  
+>> with support/nfs/rpc_socket.c (the lowest level) and move upwards.
+>
+> I assume each patch would need to compile, so as I change the low
+> level, then I'm going to have to change the rest of the levels until
+> it will compile.  Unless each intermediate patch adds dummy addrs
+> (ie, ADDR_ANY sockaddr structs), and removes the lower level dummy,
+> I don't see how to break this into several patches.  And adding/ 
+> removing
+> dummy code just to break up the patches seems a lot of wasted effort  
+> to me.
 
-That was what I expected the final change to look like.
-If you want then combine it in one patch.
+Passing a NULL pointer for the local bind address would save you some  
+effort here.
 
-	Sam
+The point of breaking this change up is that:
+
+1.  You can do fine-grained unit testing of your changes
+2.  It's easier for us to review a major change like this in small  
+chunks
+3.  It's easier for us to revert the changes selectively if necessary
+4.  It gives more opportunity to document specific features in the  
+description of each patch
+
+Btw, I've found that the convention for naming the variable that  
+points to the local address is "lbaddr," "bind_addr," or "laddr", but  
+not "caddr".  "caddr" usually means "memory address of a character  
+string".  See caddr_t.
+
+I'm sure you can find examples for caddr, but I would prefer "laddr"  
+or something like that.
+
+>> Note that only some of these functions are actually used.  Some are  
+>> included just to provide a complete getport API.
+>> Just an idea: you might consider allowing the passed in local  
+>> sockaddr to point to NULL.  In that case, just default to  
+>> INADDR_ANY.  That might make the upper levels easier to code.
+>
+> I thought this might make it harder to deal with IPv6 v/s IPv4.  If
+> we're always passing in an struct sockaddr then it can have the  
+> appropriate
+> family already set.  This also allows the code to create INADDR_ANY  
+> addresses in just
+> a few places instead of all the low-level methods, and keeps us from  
+> having
+> to do lots of error checking against a null local-addr.
+
+The local bind address family is the same as the remote's address  
+family.  If you pass in a NULL pointer, the code can examine the  
+remote address and choose an ANYADDR of the same family for the bind  
+address, same as it works today in rpc_socket.c:nfs_bind().
+
+This way stropts.c would construct a special local bind address only  
+if the localaddr= mount option was specified; otherwise it just passes  
+in NULL/0.  This also reduces the amount of change needed at legacy  
+callsites.
+
+>>>> 3.  There are some umount-related changes coming up for IPv6 that  
+>>>> will touch the umount paths here; that may require some changes  
+>>>> in your modifications.
+>>> That should be fine.   I tried to make my current patch friendly  
+>>> for IPv6 and want to support local
+>>> IPv6 binding as well.
+>> The upcoming IPv6 support adds a new unmount function that replaces  
+>> the functions that currently support only sockaddr_in.  That new  
+>> function is probably what you would need to modify instead of  
+>> updating the mnt_* functions, which will only be used by the legacy  
+>> part of the mount.nfs command after my patches.
+>
+> Any idea when this will hit the git repository?
+
+It's next in line after Steve merges up what I sent him most  
+recently.  So in the next month or so, I would guess.
+
+>>>   Can you give an example of a user-space command that would use the
+>>> new mount option as you suggest?  Do you do /etc/fstab any  
+>>> different for instance?
+>> Let's call it "localaddr=".  Something like:
+>>  mount -o tcp,vers=3,localaddr=192.168.0.59 server:/export
+>
+> Why not clientaddr?  That is already used for NFS version 4, and it  
+> works
+> just fine for version 3 as well.  I can't think of any reason to have
+> a new variable.
+
+That may make sense for NFSv2/v3, but nfs(5) documents the clientaddr  
+specifically as the client's NFSv4 callback server address.  Is there  
+ever a case where we want to specify a NFSv4 callback address that's  
+different from the source address of your NFSv4 forward channel?  Are  
+we sure these will always be the same?
+
+Conversely, do we always want to limit our NFSv4 traffic to a single  
+bind address when clientaddr= is specified?
+
+IMO the coding and documentation overhead for reusing clientaddr would  
+be the same or greater than creating a new mount option, and the  
+result would be more confusing.  These two options do different  
+things.  I'd be interested to hear opinions from others on the list.
+
+"bindaddr=" might be more clear than "localaddr=".  I checked Solaris  
+10, but it doesn't seem to have a similar capability.  So, no guidance  
+there...
+
+>> I think this address would also need to be passed to the kernel's  
+>> lockd at mount time by expanding the argument list to  
+>> nlmclnt_init() and nlmclnt_lookup_host() in the kernel NFS client.   
+>> I think lockd already has some ability to support a local address,  
+>> but that may be server-side only.
+>
+> I'll look at this as well.  I have a kernel patch that *appears* to  
+> work,
+> but it may still be missing binding in a few of the more obscure  
+> paths.
+>
+>> Still thinking about what needs to be done for NSM/statd.
+>> You will also need to take some care with how NFSv4 generates the  
+>> SETCLIENTID request, which sends the client's IP callback address  
+>> and port to the server.  That will have to take the specified local  
+>> address instead.  Take a look at the logic in stropts.c around the  
+>> clientaddr= option.
+>> If neither localaddr= or clientaddr= is specified, call  
+>> nfs_callback_address().  If clientaddr= is specified, use the value  
+>> of clientaddr=.  If localaddr= is specified, but clientaddr= is  
+>> not, use the localaddr= value.
+>
+> Thanks for the suggestions!
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
