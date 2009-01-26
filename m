@@ -1,51 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:33562 "EHLO mail-out1.uio.no"
+Received: from mail-out2.uio.no ([129.240.10.58]:35181 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751707AbZAFNFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Jan 2009 08:05:05 -0500
-Subject: Re: [RFC][PATCH 4/4] Represent RPC Callers
+	id S1752723AbZAZTOv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Jan 2009 14:14:51 -0500
+Subject: Re: nfs4 with sec=krb5, mount times out
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Matt Helsley <matthltc@us.ibm.com>
-Cc: Linux Containers <containers@lists.linux-foundation.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Cedric Le Goater <clg@fr.ibm.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Linux Containers <containers@lists.osdl.org>
-In-Reply-To: <20090106011315.229045829@us.ibm.com>
-References: <20090106011314.534653345@us.ibm.com>
-	 <20090106011315.229045829@us.ibm.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: Julius <commercials@gmx.net>, NFS list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4d569c330901261059x70913131j4dc1dec4809bc1f4@mail.gmail.com>
+References: <1232994250.3310.221.camel@wf>
+	 <4d569c330901261059x70913131j4dc1dec4809bc1f4@mail.gmail.com>
 Content-Type: text/plain
-Date: Tue, 06 Jan 2009 08:04:22 -0500
-Message-Id: <1231247062.7127.36.camel@heimdal.trondhjem.org>
+Date: Mon, 26 Jan 2009 14:14:44 -0500
+Message-Id: <1232997284.15556.1.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2009-01-05 at 17:13 -0800, Matt Helsley wrote:
-> plain text document attachment (move-rpc-client-nodename-cache.patch)
-> Currently RPC needs to know the nodename (often the same as the hostname) which
-> should be used for UNIX-style authentication and file-lock tracking. Because
-> hostname can change between RPC calls and some sequences of RPC calls may
-> require consistent names between calls RPC currently saves the nodename with
-> the RPC client structure.
+On Mon, 2009-01-26 at 13:59 -0500, Kevin Coffman wrote:
+> On Mon, Jan 26, 2009 at 1:24 PM, Julius <commercials@gmx.net> wrote:
+> > Hi,
+> >
+> >
+> > i can mount my nfsv4 share without kerberos security without
+> > problems.../etc/fstab:
+> >
+> > night_crawler.localdomain.de:/music /home/metalfan/nfs4-mount   nfs4    user
+> > 0       0
+> >
+> >
+> > but adding "sec=krb5" to the options list results in:
+> >
+> >
+> > mount -v nfs4-mount/
+> > mount.nfs4: timeout set for Mon Jan 26 15:44:05 2009
+> > mount.nfs4: text-based options:
+> > 'sec=krb5,clientaddr=141.x.x.x,addr=141.x.x.x
+> > mount.nfs4: mount(2): Connection timed out
+> >
+> >
+> > I read somewhere on the mailing list that only des-cbc-crc is supported
+> > for nfs4, its the only keytype for my user metalfan.
+> > "kinit metalfan" was run before attempting to mount.
+> > i can use gssapi to connect to night_crawlers sshd with my local user,
+> > which also does the nfs4 mount.
+> >
+> > krb5-kdc.log and krb5-default.log do not show any connections.
+> > Where do you start troubleshooting?
 > 
-> This is doesn't always work because RPC clients may be discarded over the
-> lifetime of a higher level service -- like those that compose NFS. Specifically
-> this is known to happen during shutdown.
+> First step would be to verify that rpc.gssd is running on your client
+> machine, and rpc.svcgssd is running on your server machine.
+> You need to generate a keytab for your server (with only a des-cbc-crc
+> key).  (nfs/<f.q.h.n>@<REALM>)
+> You likely need to generate a keytab for your client as well.
 > 
-> Hence RPC should expect the nodename to be saved by the caller when sequences
-> of RPC calls requiring consistent nodenames may be needed (e.g. NFS). To enable
-> this we introduce an RPC caller structure that allows RPC to query the caller
-> for this information.
+> If all those are done, send output of rpc.gssd and rpc.svcgssd
+> (running with option -vvv).
 > 
-> This patch is not complete but is meant to indicate the direction I'm planning
-> on going. I'd like to know if there are any objections or if anyone sees a
-> better way to handle this.
+> I would point you at our FAQ page, but the web server is sadly still
+> down at the moment.
+> 
 
-You're planning on slowing down every RPC call in order to fix a problem
-on client shutdown? Why?
+There is always the wiki...
 
-Trond
+http://wiki.linux-nfs.org/wiki/index.php/Enduser_doc_kerberos
+
+Cheers
+  Trond
 
