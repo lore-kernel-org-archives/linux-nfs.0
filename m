@@ -1,55 +1,48 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfsd: only set file_lock.fl_lmops in nfsd4_lockt if a
-	stateowner is found
-Date: Tue, 27 Jan 2009 18:26:14 -0500
-Message-ID: <20090127232614.GB15170@fieldses.org>
-References: <20090127232058.GC13854@fieldses.org> <20090127232304.GD13854@fieldses.org> <20090127232536.GA15170@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] dlm: initialize file_lock struct in GETLK before
+ copying conflicting lock
+Date: Tue, 27 Jan 2009 18:30:45 -0500
+Message-ID: <20090127183045.58582d21@tleilax.poochiereds.net>
+References: <1232651764-10799-1-git-send-email-jlayton@redhat.com>
+	<1232651764-10799-2-git-send-email-jlayton@redhat.com>
+	<20090127223401.GL9151@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Neil Brown <neilb@suse.de>, Marc Eshel <eshel@almaden.ibm.com>
-To: stable@kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:49143 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751121AbZA0X0O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jan 2009 18:26:14 -0500
-In-Reply-To: <20090127232536.GA15170@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, cluster-devel@redhat.com,
+	teigland@redhat.com
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090127223401.GL9151@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+On Tue, 27 Jan 2009 17:34:01 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-nfsd4_lockt does a search for a lockstateowner when building the lock
-struct to test. If one is found, it'll set fl_owner to it. Regardless of
-whether that happens, it'll also set fl_lmops. Given that this lock is
-basically a "lightweight" lock that's just used for checking conflicts,
-setting fl_lmops is probably not appropriate for it.
+> On Thu, Jan 22, 2009 at 02:16:03PM -0500, Jeff Layton wrote:
+> > dlm_posix_get fills out the relevant fields in the file_lock before
+> > returning when there is a lock conflict, but doesn't clean out any of
+> > the other fields in the file_lock.
+> > 
+> > When nfsd does a NFSv4 lockt call, it sets the fl_lmops to
+> > nfsd_posix_mng_ops before calling the lower fs. When the lock comes back
+> > after testing a lock on GFS2, it still has that field set. This confuses
+> > nfsd into thinking that the file_lock is a nfsd4 lock.
+> > 
+> > Fix this by making DLM reinitialize the file_lock before copying the
+> > fields from the conflicting lock.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> 
+> I'll leave this one to gfs2 people to apply unless I'm told otherwise.
+> 
+> --b.
+> 
 
-This behavior exposed a bug in DLM's GETLK implementation where it
-wasn't clearing out the fields in the file_lock before filling in
-conflicting lock info. While we were able to fix this in DLM, it
-still seems pointless and dangerous to set the fl_lmops this way
-when we may have a NULL lockstateowner.
+That should be fine. Dave T. has taken this into his tree and is
+pushing it to Linus.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields-+qGSg9AQ1cLTsXDwO4sDpg@public.gmane.org>
----
- fs/nfsd/nfs4state.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 88db7d3..b6f60f4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2871,7 +2871,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		file_lock.fl_owner = (fl_owner_t)lockt->lt_stateowner;
- 	file_lock.fl_pid = current->tgid;
- 	file_lock.fl_flags = FL_POSIX;
--	file_lock.fl_lmops = &nfsd_posix_mng_ops;
- 
- 	file_lock.fl_start = lockt->lt_offset;
- 	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
+Thanks,
 -- 
-1.5.6.3
-
+Jeff Layton <jlayton@redhat.com>
