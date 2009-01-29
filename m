@@ -1,72 +1,80 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bugme-new] [Bug 12564] New: poor performance while
- preprocessing source code
-Date: Wed, 28 Jan 2009 17:37:30 -0800
-Message-ID: <20090128173730.9e4b9f0b.akpm@linux-foundation.org>
-References: <bug-12564-10286@http.bugzilla.kernel.org/>
-	<20090128132942.c957a199.akpm@linux-foundation.org>
-	<20090128170506.37161fb6@tleilax.poochiereds.net>
-	<1233190956.21519.13.camel@bluishred.int.infinisim.com>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: Re: [PATCH] : Fix compilation warnings in fs/nfsd/nfs4state.c
+Date: Thu, 29 Jan 2009 08:35:43 +0530
+Message-ID: <ea11fea30901281905x4ad725h244771a16b89ea69@mail.gmail.com>
+References: <ea11fea30901272238t4d11ba15t8bac4cd702ea7440@mail.gmail.com>
+	 <20090128191104.GA6276@fieldses.org>
+	 <8AEAE6B0-5631-4617-AFE7-403460A1A225@oracle.com>
+	 <20090128230144.GJ27039@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: jlayton@redhat.com, bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Steven Patrick <steven-m+eqe7hsN2k@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Chuck Lever <chuck.lever@oracle.com>, kmsmith@umich.edu,
+	kandros@umich.edu, linux-nfs@vger.kernel.org,
+	akpm@linux-foundation.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56598 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751869AbZA2BiT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jan 2009 20:38:19 -0500
-In-Reply-To: <1233190956.21519.13.camel-JOpGwFo0nm2KXcNLy8+eQDu064pCsa3TQQ4Iyu8u01E@public.gmane.org>
+Received: from ti-out-0910.google.com ([209.85.142.185]:35415 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752076AbZA2DFp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jan 2009 22:05:45 -0500
+Received: by ti-out-0910.google.com with SMTP id b6so3481189tic.23
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2009 19:05:43 -0800 (PST)
+In-Reply-To: <20090128230144.GJ27039@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 28 Jan 2009 17:02:36 -0800
-Steven Patrick <steven-m+eqe7hsN2k@public.gmane.org> wrote:
+On Thu, Jan 29, 2009 at 4:31 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Jan 28, 2009 at 05:05:44PM -0500, Chuck Lever wrote:
+>> On Jan 28, 2009, at Jan 28, 2009, 2:11 PM, J. Bruce Fields wrote:
+>>> On Wed, Jan 28, 2009 at 12:08:19PM +0530, Manish Katiyar wrote:
+>>>> Below patch removes the following warning ;-
+>>>> fs/nfsd/nfs4state.c:1657: warning: unused variable 'flp'
+>>>
+>>> I don't believe we want to support a .config with NFS or NFSD turned
+>>> on
+>>> but CONFIG_FILE_LOCKING off.
+>>
+>> In that case, would we want to add a "depends on FILE_LOCKING" to both
+>> CONFIG_NFS and CONFIG_NFSD?
+>
+> Could be.
 
-> On Wed, 2009-01-28 at 17:05 -0500, Jeff Layton wrote:
-> > 
-> > It's a pretty small patch. The obvious question is: "What mount
-> > options
-> > are you using on your NFS mounts?"
-> > 
-> 
->   Well, I didn't think that I was using any NFS mounts.
-> But, it turns out I was in a way.  Apparently, amd does its top
-> level mounts with noac.  So, where this (using an automounted path):
->     cd /h/spo/work
->     make -j 5
-> would be slow.  This (using a non-automounted path):
->     cd /home/spo/work
->     make -j 5
-> showed the faster performance I was expecting.
->   I will mark my bug as invalid and decide what, if anything,
-> I want to do about amd.
->   Thanks for pointing me in the right direction.
-> 
+Yes...that would be a better option. I will rework the changes and
+send an updated patch.
 
-This had me all mystified until I clicked on the bugzilla link:
+Thanks -
+Manish
 
-
-:  ------- Comment  #9 From Trond Myklebust  2009-01-28 13:58:50  [reply] -------
-: 
-: If you are worried about performance, why are you using noac/actimeo=0?
-: 
-: The commit you point to fixed a bug in which the noac/actimeo=0 was
-: using cached metadata in situations where it should have been
-: retrieving the data from the server.  We fully expect a significant
-: performance drop when the client is forced to send more GETATTR
-: requests to the server, and as I said, that was precisely the point of
-: this fix.
-
-Fair enough.
-
-
-
-However.  We surprised one user (yourself), and we will presumably
-surprise others.  Or, worse, we will slow down people's stuff and they
-won't even notice.
-
-Should we perhaps warn people about this?  A mount-time printk telling
-them that moac/actime=0 is slow?
-
+>
+> --b.
+>
+>>
+>>> --b.
+>>>
+>>>> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+>>>> ---
+>>>> fs/nfsd/nfs4state.c |    5 ++++-
+>>>> 1 files changed, 4 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>>> index 69e98ca..2903589 100644
+>>>> --- a/fs/nfsd/nfs4state.c
+>>>> +++ b/fs/nfsd/nfs4state.c
+>>>> @@ -1654,7 +1654,10 @@ nfs4_open_delegation(struct svc_fh *fh, struct
+>>>> nfsd4_open *open, struct nfs4_sta
+>>>>     struct nfs4_delegation *dp;
+>>>>     struct nfs4_stateowner *sop = stp->st_stateowner;
+>>>>     struct nfs4_callback *cb = &sop->so_client->cl_callback;
+>>>> -   struct file_lock fl, *flp = &fl;
+>>>> +   struct file_lock fl;
+>>>> +#ifdef CONFIG_FILE_LOCKING
+>>>> +   struct file_lock *flp = &fl;
+>>>> +#endif
+>>>>     int status, flag = 0;
+>>>>
+>>>>     flag = NFS4_OPEN_DELEGATE_NONE;
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>
