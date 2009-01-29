@@ -1,131 +1,46 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] umount command: remove do_nfs_umount23 function
-Date: Wed, 28 Jan 2009 18:07:54 -0500
-Message-ID: <20090128230754.21484.42620.stgit@ingres.1015granger.net>
-References: <20090128225938.21484.82096.stgit@ingres.1015granger.net>
+From: Steven Patrick <steven-m+eqe7hsN2k@public.gmane.org>
+Subject: Re: [Bugme-new] [Bug 12564] New: poor performance while
+	preprocessing source code
+Date: Wed, 28 Jan 2009 17:02:36 -0800
+Message-ID: <1233190956.21519.13.camel@bluishred.int.infinisim.com>
+References: <bug-12564-10286@http.bugzilla.kernel.org/>
+	 <20090128132942.c957a199.akpm@linux-foundation.org>
+	 <20090128170506.37161fb6@tleilax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:23754 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754780AbZA1XJJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jan 2009 18:09:09 -0500
-In-Reply-To: <20090128225938.21484.82096.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from gw.infinisim.com ([70.143.7.121]:38102 "EHLO mail.infinisim.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751522AbZA2BCh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Jan 2009 20:02:37 -0500
+In-Reply-To: <20090128170506.37161fb6-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove do_nfs_umount23() now that it is unused.
+On Wed, 2009-01-28 at 17:05 -0500, Jeff Layton wrote:
+> 
+> It's a pretty small patch. The obvious question is: "What mount
+> options
+> are you using on your NFS mounts?"
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+  Well, I didn't think that I was using any NFS mounts.
+But, it turns out I was in a way.  Apparently, amd does its top
+level mounts with noac.  So, where this (using an automounted path):
+    cd /h/spo/work
+    make -j 5
+would be slow.  This (using a non-automounted path):
+    cd /home/spo/work
+    make -j 5
+showed the faster performance I was expecting.
+  I will mark my bug as invalid and decide what, if anything,
+I want to do about amd.
+  Thanks for pointing me in the right direction.
 
- utils/mount/nfsumount.c |   93 -----------------------------------------------
- 1 files changed, 0 insertions(+), 93 deletions(-)
+Steven
 
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 04990f0..78ebd4a 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -228,99 +228,6 @@ static int nfs_umount23(const char *devname, char *string)
- 	return result;
- }
- 
--/*
-- * Pick up certain mount options used during the original mount
-- * from /etc/mtab.  The basics include the server's IP address and
-- * the server pathname of the share to unregister.
-- *
-- * These options might also describe the mount port, mount protocol
-- * version, and transport protocol used to punch through a firewall.
-- * We will need this information to get through the firewall again
-- * to do the umount.
-- */
--static int do_nfs_umount23(const char *spec, char *opts)
--{
--	char *hostname;
--	char *dirname;
--	clnt_addr_t mnt_server = { &hostname, };
--	struct mntent mnt = { .mnt_opts = opts };
--	struct pmap *pmap = &mnt_server.pmap;
--	char *p;
--	int result = EX_USAGE;
--
--	if (!nfs_parse_devname(spec, &hostname, &dirname))
--		return result;
--
--#ifdef NFS_MOUNT_DEBUG
--	printf(_("host: %s, directory: %s\n"), hostname, dirname);
--#endif
--
--	if (opts && (p = strstr(opts, "addr="))) {
--		char *q;
--
--		free(hostname);
--		p += 5;
--		q = p;
--		while (*q && *q != ',') q++;
--		hostname = xstrndup(p,q-p);
--	}
--
--	if (opts && (p = strstr(opts, "mounthost="))) {
--		char *q;
--
--		free(hostname);
--		p += 10;
--		q = p;
--		while (*q && *q != ',') q++;
--		hostname = xstrndup(p,q-p);
--	}
--
--	pmap->pm_prog = MOUNTPROG;
--	pmap->pm_vers = 0; /* unknown */
--	if (opts && (p = strstr(opts, "mountprog=")) && isdigit(*(p+10)))
--		pmap->pm_prog = atoi(p+10);
--	if (opts && (p = strstr(opts, "mountport=")) && isdigit(*(p+10)))
--		pmap->pm_port = atoi(p+10);
--	if (opts && hasmntopt(&mnt, "v2"))
--		pmap->pm_vers = nfsvers_to_mnt(2);
--	if (opts && hasmntopt(&mnt, "v3"))
--		pmap->pm_vers = nfsvers_to_mnt(3);
--	if (opts && (p = strstr(opts, "vers=")) && isdigit(*(p+5)))
--		pmap->pm_vers = nfsvers_to_mnt(atoi(p+5));
--	if (opts && (p = strstr(opts, "mountvers=")) && isdigit(*(p+10)))
--		pmap->pm_vers = atoi(p+10);
--	if (opts && (hasmntopt(&mnt, "udp")
--		     || hasmntopt(&mnt, "proto=udp")
--		     || hasmntopt(&mnt, "mountproto=udp")
--		    ))
--		pmap->pm_prot = IPPROTO_UDP;
--	if (opts && (hasmntopt(&mnt, "tcp")
--		     || hasmntopt(&mnt, "proto=tcp")
--		     || hasmntopt(&mnt, "mountproto=tcp")
--		    ))
--		pmap->pm_prot = IPPROTO_TCP;
--
--	if (!nfs_gethostbyname(hostname, &mnt_server.saddr)) {
--		nfs_error(_("%s: DNS resolution of '%s' failed"),
--				progname, hostname);
--		goto out;
--	}
--
--	if (!nfs_call_umount(&mnt_server, &dirname)) {
--		nfs_error(_("%s: Server failed to unmount '%s'"),
--				progname, spec);
--		result = EX_FAIL;
--		goto out;
--	}
--
--	result = EX_SUCCESS;
--
--out:
--	free(hostname);
--	free(dirname);
--	return result;
--}
--
- static struct option umount_longopts[] =
- {
-   { "force", 0, 0, 'f' },
 
