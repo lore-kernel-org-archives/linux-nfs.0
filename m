@@ -1,65 +1,151 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/7] lockd: Use AF_INET6 listener only when IPv6 support is
-	built in
-Date: Fri, 30 Jan 2009 15:10:42 -0500
-Message-ID: <20090130201041.22301.60941.stgit@ingres.1015granger.net>
+Subject: [PATCH 5/7] SUNRPC: Simplify kernel RPC service registration
+Date: Fri, 30 Jan 2009 15:11:12 -0500
+Message-ID: <20090130201111.22301.23964.stgit@ingres.1015granger.net>
 References: <20090130200021.22301.22618.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:46096 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754016AbZA3ULl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:11:41 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:64653 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754095AbZA3ULm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:11:42 -0500
 In-Reply-To: <20090130200021.22301.22618.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apparently a lot of people need to completely disable IPv6 on their
-distribution-built systems, and they do this by blacklisting the
-ipv6 module.  This causes lockd_up(), and thus NFS mounts, to fail
-in all cases (even for IPv4 mounts) if CONFIG_IPV6_MODULE and
-CONFIG_SUNRPC_REGISTER_V4 is set.
+The kernel registers RPC services with the local portmapper with an
+rpcbind SET upcall to the local portmapper.  Traditionally, this used
+rpcbind v2, but registering RPC services that support IPv6 requires
+rpcbind v3 or v4.
 
-As a workaround, change lockd to use an AF_INET6 listener only if IPv6
-is built into the kernel.
+Previously the kernel used the registration upcall to detect whether
+user space supported IPv6 for RPC at all, and fail the service
+creation if it didn't.  This is probably unnecessary paranoia.
 
-This allows IPv6 NFS testing to continue, while supporting legacy IPv4
-NFS as before.  In the meantime, we will pursue a long-term fix so that
-lockd (and eventually NFSD) will be able to handle this case correctly.
+Since the kernel uses a single listener (either AF_INET or AF_INET6)
+to handle all requests for a particular RPC service, AF_INET6
+listeners handle IPv4 RPC requests too.  If user space doesn't allow
+an AF_INET6 kernel service to be registered, that should be no
+trouble at all for the kernel's AF_INET6 RPC listener -- it just won't
+get any RPC requests via IPv6.  So we don't need to register the
+service for IPv6 if user space doesn't allow it.
+
+So, we try registration via rpcbind v4 first; if that fails, we retry
+with rpcbind v2, and support only IPv4 requests.
+
+This provides complete backwards compatibilty with legacy user space
+that only supports rpcbind v2.  The only down-side is that registering
+a new kernel RPC service may take an extra exchange with the local
+portmapper, but this is an infrequent operation, so it shouldn't
+matter.
+
+This patch is part of a series that addresses
+   http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Dickson <steved@redhat.com>
 ---
 
- fs/lockd/svc.c |   11 ++++++-----
- 1 files changed, 6 insertions(+), 5 deletions(-)
+ net/sunrpc/svc.c |   50 ++++++++++++++++++++++++--------------------------
+ 1 files changed, 24 insertions(+), 26 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 64f1c31..39ec7f2 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -54,14 +54,15 @@ unsigned long			nlmsvc_timeout;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 8dc4a1e..3cf1b3c 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -719,8 +719,6 @@ svc_exit_thread(struct svc_rqst *rqstp)
+ }
+ EXPORT_SYMBOL_GPL(svc_exit_thread);
+ 
+-#ifdef CONFIG_SUNRPC_REGISTER_V4
+-
+ /*
+  * Register an "inet" protocol family netid with the local
+  * rpcbind daemon via an rpcbind v4 SET request.
+@@ -741,6 +739,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 		.sin_port		= htons(port),
+ 	};
+ 	char *netid;
++	int error;
+ 
+ 	switch (protocol) {
+ 	case IPPROTO_UDP:
+@@ -753,8 +752,17 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
+ 	}
+ 
+-	return rpcb_v4_register(program, version,
+-				(struct sockaddr *)&sin, netid);
++	error = rpcb_v4_register(program, version,
++					(struct sockaddr *)&sin, netid);
++
++	/*
++	 * User space didn't support rpcbind v4, so retry this
++	 * registration request with the legacy rpcbind v2 protocol.
++	 */
++	if (error == -EPROTONOSUPPORT)
++		error = rpcb_register(program, version, protocol, port);
++
++	return error;
+ }
  
  /*
-  * If the kernel has IPv6 support available, always listen for
-- * both AF_INET and AF_INET6 requests.
-+ * both AF_INET and AF_INET6 requests.  To avoid breaking lockd
-+ * if the ipv6 module was built but has been blacklisted, enable
-+ * this only if IPv6 support is built into the kernel.
-  */
--#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
--	defined(CONFIG_SUNRPC_REGISTER_V4)
-+#if defined(CONFIG_IPV6) && defined(CONFIG_SUNRPC_REGISTER_V4)
- static const sa_family_t	nlmsvc_family = AF_INET6;
--#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-+#else	/* CONFIG_IPV6 && CONFIG_SUNRPC_REGISTER_V4 */
- static const sa_family_t	nlmsvc_family = AF_INET;
--#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-+#endif	/* CONFIG_IPV6 && CONFIG_SUNRPC_REGISTER_V4 */
+@@ -777,6 +785,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 		.sin6_port		= htons(port),
+ 	};
+ 	char *netid;
++	int error;
+ 
+ 	switch (protocol) {
+ 	case IPPROTO_UDP:
+@@ -789,8 +798,18 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
+ 	}
+ 
+-	return rpcb_v4_register(program, version,
++	error = rpcb_v4_register(program, version,
+ 				(struct sockaddr *)&sin6, netid);
++
++	/*
++	 * User space didn't support registering an IPv6 service,
++	 * so register this service for IPv4 only, using the legacy
++	 * rpcbind v2 protocol.
++	 */
++	if (error == -EPROTONOSUPPORT)
++		error = rpcb_register(program, version, protocol, port);
++
++	return error;
+ }
  
  /*
-  * These can be set at insmod time (useful for NFS as root filesystem),
+@@ -831,27 +850,6 @@ static int __svc_register(const u32 program, const u32 version,
+ 	return -EAFNOSUPPORT;
+ }
+ 
+-#else	/* CONFIG_SUNRPC_REGISTER_V4 */
+-
+-/*
+- * Register a kernel RPC service via rpcbind version 2.
+- *
+- * Returns zero on success; a negative errno value is returned
+- * if any error occurs.
+- */
+-static int __svc_register(const u32 program, const u32 version,
+-			  sa_family_t family,
+-			  const unsigned short protocol,
+-			  const unsigned short port)
+-{
+-	if (family != AF_INET)
+-		return -EAFNOSUPPORT;
+-
+-	return rpcb_register(program, version, protocol, port);
+-}
+-
+-#endif /* CONFIG_SUNRPC_REGISTER_V4 */
+-
+ /**
+  * svc_register - register an RPC service with the local portmapper
+  * @serv: svc_serv struct for the service to register
 
