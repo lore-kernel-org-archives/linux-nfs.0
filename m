@@ -1,67 +1,90 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: [Fwd: [CFP] 2009 Linux Storage and Filesystem Workshop]
-Date: Fri, 30 Jan 2009 14:28:45 -0500
-Message-ID: <1233343725.9741.16.camel@heimdal.trondhjem.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/7] Address kernel bugzilla 12256
+Date: Fri, 30 Jan 2009 15:10:32 -0500
+Message-ID: <20090130200021.22301.22618.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:44759 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601AbZA3T2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Jan 2009 14:28:50 -0500
-Received: from mail-mx5.uio.no ([129.240.10.46])
-	by mail-out1.uio.no with esmtp (Exim 4.69)
-	(envelope-from <trond.myklebust@fys.uio.no>)
-	id 1LSz2n-0007FL-2I
-	for linux-nfs@vger.kernel.org; Fri, 30 Jan 2009 20:28:49 +0100
-Received: from c-68-40-183-129.hsd1.mi.comcast.net ([68.40.183.129] helo=[192.168.0.101])
-	by mail-mx5.uio.no with esmtpsa (SSLv3:CAMELLIA256-SHA:256)
-	user trondmy (Exim 4.69)
-	(envelope-from <trond.myklebust@fys.uio.no>)
-	id 1LSz2m-00056M-3f
-	for linux-nfs@vger.kernel.org; Fri, 30 Jan 2009 20:28:48 +0100
+Received: from acsinet11.oracle.com ([141.146.126.233]:21761 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752137AbZA3UK7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:10:59 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
--------- Forwarded Message --------
-From: Zach Brown <zach.brown@oracle.com>
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: [CFP] 2009 Linux Storage and Filesystem Workshop
-Date: 	Fri, 30 Jan 2009 10:55:29 -0800
+Hi Bruce-
 
-Hello storage and filesystem friends,
+Updated patch series to remove the SUNRPC_REGISTER_V4 kernel build
+option.  These address kernel bugzilla 12256 ("RPC: failed to contact
+local rpcbind server (errno 5)." if CONFIG_SUNRPC_REGISTER_V4 is set
+to Y").  Please include them in your for-2.6.30 branch, replacing
+any previous version of this patch series.
 
-This year's storage and filesystem workshop is being held in San
-Francisco on April 6th and 7th.  It's being held on the Monday and
-Tuesday immediately preceding the Linux Foundation Collaboration
-Summit, in the same hotel.
+There may be some problems applying this patch set to linux-next, as
+that may have recent patches that split up fs/Kconfig.
 
-You can find all the details on the workshop's web site:
+Steve Dickson also reports this related problem:
 
-  http://events.linuxfoundation.org/events/lsf-workshop
+------ cut here ------
 
-The workshop focuses on collaboration and discussion.  There will be no
-referred papers and few presentations with slides will be accepted.
+On a 2.6.29 kernel that has IPv6 turned off by
 
-To attend we ask that you use the CFP interface on the web site to
-submit a short proposal for a topic to discuss during the workshop.  The
-program committee will send invitations to the workshop based on these
-proposals.  The CFP and FAQ tabs on the web site describe this in more
-detail.
+  1) adding 'blacklist ipv6' to /etc/modprobe.d/blacklist
+  2) Adding NETWORKING_IPV6=no to /etc/sysconfig/network
+  (note: not clear how much of this is effective since it's unknown
+   if Network Manager even looks at this stuff)
 
-For reference, there are writeups of previous workshops available
-online:
+When an ordinary v3 mount is tried:
 
-http://lwn.net/Articles/226351/
-http://www.usenix.org/publications/login/2008-06/openpdfs/lsf08reports.pdf
+  mount -v server:/music /mnt/music
 
-This year we'll be adding time to the schedule specifically for hands-on
-development with your colleagues.
+It fails in the following way:
 
-Please let me know if there are any questions about the workshop.
+mount.nfs: timeout set for Fri Jan 23 07:22:16 2009
+mount.nfs: text-based options: 'addr=10.16.43.237'
+mount.nfs: mount(2): Address family not supported by protocol
+mount.nfs: Address family not supported by protocol
 
-- z
+With the following being logged to /var/log/messages:
 
+Jan 23 07:20:16 localhost kernel: RPC: failed to contact local rpcbind
+server (errno 5).
 
+------ cut here ------
+
+When CONFIG_SUNRPC_REGISTER_V4 is removed, this exposes a second
+problem, addressed by "lockd: Use AF_INET6 listener only when IPv6
+support is built in."  It turns out that some Linux networking
+infrastructure simply doesn't support IPv6, so it is a popular
+workaround to blacklist the ipv6 module in a distribution-built
+kernel.
+
+Unfortunately, if the module is blacklisted but was built during
+the kernel build, lockd still attempts to create an AF_INET6
+listener, even for IPv4 mounts, and fails.
+
+For now, we'll work around the problem by changing lockd to 
+create AF_INET6 listeners only if IPv6 support is built into the
+kernel, and pursue a long-term fix in the mean time.
+
+---
+
+Chuck Lever (7):
+      SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
+      SUNRPC: rpcb_register() should handle errors silently
+      SUNRPC: Simplify kernel RPC service registration
+      SUNRPC: Simplify svc_unregister()
+      SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s helpers
+      SUNRPC: Use IPv4 loopback for registering AF_INET6 kernel RPC services
+      lockd: Use AF_INET6 listener only when IPv6 support is built in
+
+ fs/lockd/svc.c         |   11 +++--
+ net/sunrpc/Kconfig     |   22 ----------
+ net/sunrpc/rpcb_clnt.c |   25 +++---------
+ net/sunrpc/svc.c       |  102 +++++++++++++++++++++---------------------------
+ 4 files changed, 58 insertions(+), 102 deletions(-)
+
+-- 
+Chuck Lever
