@@ -1,73 +1,67 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH 1/7] lockd: Use AF_INET6 listener only when IPv6
-	support is built in
-Date: Fri, 30 Jan 2009 16:57:01 -0500
-Message-ID: <20090130215701.GJ31166@fieldses.org>
-References: <20090130200021.22301.22618.stgit@ingres.1015granger.net> <20090130201041.22301.60941.stgit@ingres.1015granger.net>
+ support is built in
+Date: Fri, 30 Jan 2009 16:59:00 -0500
+Message-ID: <1233352740.9741.64.camel@heimdal.trondhjem.org>
+References: <20090130200021.22301.22618.stgit@ingres.1015granger.net>
+	 <20090130201041.22301.60941.stgit@ingres.1015granger.net>
+	 <1233347546.9741.31.camel@heimdal.trondhjem.org>
+	 <130964B3-CDE1-440F-B0E0-33620036E239@oracle.com>
+	 <1233350290.9741.42.camel@heimdal.trondhjem.org>
+	 <F0ED35C3-3E01-42E2-BE71-1C1273C1B495@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:53114 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752625AbZA3V5A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 16:57:00 -0500
-In-Reply-To: <20090130201041.22301.60941.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:52288 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752230AbZA3V7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Jan 2009 16:59:07 -0500
+In-Reply-To: <F0ED35C3-3E01-42E2-BE71-1C1273C1B495@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 30, 2009 at 03:10:42PM -0500, Chuck Lever wrote:
-> Apparently a lot of people need to completely disable IPv6 on their
-> distribution-built systems, and they do this by blacklisting the
-> ipv6 module.  This causes lockd_up(), and thus NFS mounts, to fail
-> in all cases (even for IPv4 mounts) if CONFIG_IPV6_MODULE and
-> CONFIG_SUNRPC_REGISTER_V4 is set.
+On Fri, 2009-01-30 at 16:30 -0500, Chuck Lever wrote:
+> > Yes and no. I thought the motivation for doing what you currently
+> do  
+> > was
+> > to avoid mixing AF_INET and AF_INET6 sockets, since the latter  
+> > listen on
+> > both IPv4 (via the IPv4 mapping) and IPv6?
 > 
-> As a workaround, change lockd to use an AF_INET6 listener only if IPv6
-> is built into the kernel.
+> AF_INET6 listeners can receive AF_INET packets too, but don't have  
+> to.  My motivation was to use a single listener so we don't have to  
+> support multiple family listeners for each transport protocol in the  
+> server-side code.  Also, having a separate IPv6-only listener means  
+> that someone can come along and hijack the IPv4 packets on that port.
 > 
-> This allows IPv6 NFS testing to continue, while supporting legacy IPv4
-> NFS as before.  In the meantime, we will pursue a long-term fix so that
-> lockd (and eventually NFSD) will be able to handle this case correctly.
+> It's just less of a headache with one listener.
 
-I'm curious to see what the long-term fix will be here.  (The idea of
-trying to load the module seems reasonable as a start.)  Other than
-that, I looked throught all the patches and they seem fine.
+The ipv6 manpage says that the port spaces are shared. If so, I don't
+see how you can have both an AF_INET socket and an AF_INET6 socket bound
+to the same port.
 
---b.
+> > If so, it sounds to me as if
+> > we _must_ have lockd and the callback server set up IPv6 sockets
+> > whenever they are available.
+> 
+> That's what the code does now.  The problem is exactly what does  
+> "whenever they are available" mean?
+> 
+> Are you suggesting we shouldn't ever fall back to AF_INET?  (I'm OK  
+> with that answer, but would like a discussion).  This means that if I  
+> try an IPv4 mount on a system built with an IPv6 module, but the  
+> module is unloadable, all mounts (even IPv4) fail outright.   
+> Apparently a lot of folks blacklist their IPv6 modules.
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Tested-by: Steve Dickson <steved@redhat.com>
-> ---
-> 
->  fs/lockd/svc.c |   11 ++++++-----
->  1 files changed, 6 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 64f1c31..39ec7f2 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -54,14 +54,15 @@ unsigned long			nlmsvc_timeout;
->  
->  /*
->   * If the kernel has IPv6 support available, always listen for
-> - * both AF_INET and AF_INET6 requests.
-> + * both AF_INET and AF_INET6 requests.  To avoid breaking lockd
-> + * if the ipv6 module was built but has been blacklisted, enable
-> + * this only if IPv6 support is built into the kernel.
->   */
-> -#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
-> -	defined(CONFIG_SUNRPC_REGISTER_V4)
-> +#if defined(CONFIG_IPV6) && defined(CONFIG_SUNRPC_REGISTER_V4)
->  static const sa_family_t	nlmsvc_family = AF_INET6;
-> -#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-> +#else	/* CONFIG_IPV6 && CONFIG_SUNRPC_REGISTER_V4 */
->  static const sa_family_t	nlmsvc_family = AF_INET;
-> -#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
-> +#endif	/* CONFIG_IPV6 && CONFIG_SUNRPC_REGISTER_V4 */
->  
->  /*
->   * These can be set at insmod time (useful for NFS as root filesystem),
-> 
+I'd rather advocate that we try to use AF_INET6 at service set up time,
+then fall back on AF_INET only if the former isn't available. I'm not
+sure that we should allow the user to change the service once it has
+been set up, since it would appear that would force you to close the
+current socket, and then reopen a new one of a different type. That's
+both racy and constitutes an interruption of service.
+
+Cheers
+  Trond
+
