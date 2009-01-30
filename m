@@ -1,63 +1,115 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/7] SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s
-	helpers
-Date: Fri, 30 Jan 2009 15:10:57 -0500
-Message-ID: <20090130201056.22301.22983.stgit@ingres.1015granger.net>
+Subject: [PATCH 2/7] SUNRPC: Use IPv4 loopback for registering AF_INET6 kernel
+	RPC services
+Date: Fri, 30 Jan 2009 15:10:49 -0500
+Message-ID: <20090130201049.22301.84642.stgit@ingres.1015granger.net>
 References: <20090130200021.22301.22618.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:48048 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754514AbZA3ULO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:11:14 -0500
+Received: from rcsinet13.oracle.com ([148.87.113.125]:25434 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754635AbZA3ULP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:11:15 -0500
 In-Reply-To: <20090130200021.22301.22618.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPC client returns -EPROTONOSUPPORT if there is a protocol version
-mismatch (ie the remote RPC server doesn't support the RPC protocol
-version sent by the client).
+The kernel uses an IPv6 loopback address when registering its AF_INET6
+RPC services so that it can tell whether the local portmapper is
+actually IPv6-enabled.
 
-Helpers for the svc_register() function return -EPROTONOSUPPORT if they
-don't recognize the passed-in IPPROTO_ value.
+Since the legacy portmapper doesn't listen on IPv6, however, this
+causes a long timeout on older systems if the kernel happens to try
+creating and registering an AF_INET6 RPC service.  Originally I wanted
+to use a connected transport (either TCP or connected UDP) so that the
+upcall would fail immediately if the portmapper wasn't listening on
+IPv6, but we never agreed on what transport to use.
 
-These are two entirely different errors.
+In the end, it's of little consequence to the kernel whether the local
+portmapper is listening on IPv6.  It's only important whether the
+portmapper supports rpcbind v4.  And the kernel can't tell that at all
+if it is sending requests via IPv6 -- the portmapper will just ignore
+them.
 
-Have the helpers return -ENOPROTOOPT instead of -ENOPROTOOPT.  This will
-allow callers to determine and report more precisely what the problem is.
+So, send all SET/UNSET requests via IPv4 loopback to maintain better
+backwards compatibility between new kernels and legacy user space, and
+prevent multi-second hangs in some cases when the kernel attempts to
+register RPC services.
 
 This patch is part of a series that addresses
+
    http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   23 ++++++-----------------
+ 1 files changed, 6 insertions(+), 17 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index c51fed4..a278a82 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -750,7 +750,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
- 		netid = RPCBIND_NETID_TCP;
- 		break;
- 	default:
--		return -EPROTONOSUPPORT;
-+		return -ENOPROTOOPT;
- 	}
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 03ae007..0e9150d 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -124,12 +124,6 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
+ 	.sin_port		= htons(RPCBIND_PORT),
+ };
  
- 	return rpcb_v4_register(program, version,
-@@ -786,7 +786,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
- 		netid = RPCBIND_NETID_TCP6;
- 		break;
- 	default:
--		return -EPROTONOSUPPORT;
-+		return -ENOPROTOOPT;
- 	}
+-static const struct sockaddr_in6 rpcb_in6addr_loopback = {
+-	.sin6_family		= AF_INET6,
+-	.sin6_addr		= IN6ADDR_LOOPBACK_INIT,
+-	.sin6_port		= htons(RPCBIND_PORT),
+-};
+-
+ static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
+ 					  size_t addrlen, u32 version)
+ {
+@@ -176,9 +170,10 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+ 	return rpc_create(&args);
+ }
  
- 	return rpcb_v4_register(program, version,
+-static int rpcb_register_call(struct sockaddr *addr, size_t addrlen,
+-			      u32 version, struct rpc_message *msg)
++static int rpcb_register_call(u32 version, struct rpc_message *msg)
+ {
++	struct sockaddr *addr = (struct sockaddr *)&rpcb_inaddr_loopback;
++	size_t addrlen = sizeof(rpcb_inaddr_loopback);
+ 	struct rpc_clnt *rpcb_clnt;
+ 	int result, error = 0;
+ 
+@@ -254,9 +249,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	if (port)
+ 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
+ 
+-	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
+-					sizeof(rpcb_inaddr_loopback),
+-					RPCBVERS_2, &msg);
++	return rpcb_register_call(RPCBVERS_2, &msg);
+ }
+ 
+ /*
+@@ -284,9 +277,7 @@ static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
+ 	if (port)
+ 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
+ 
+-	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
+-					sizeof(rpcb_inaddr_loopback),
+-					RPCBVERS_4, msg);
++	return rpcb_register_call(RPCBVERS_4, msg);
+ }
+ 
+ /*
+@@ -318,9 +309,7 @@ static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
+ 	if (port)
+ 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
+ 
+-	return rpcb_register_call((struct sockaddr *)&rpcb_in6addr_loopback,
+-					sizeof(rpcb_in6addr_loopback),
+-					RPCBVERS_4, msg);
++	return rpcb_register_call(RPCBVERS_4, msg);
+ }
+ 
+ /**
 
