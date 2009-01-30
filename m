@@ -1,71 +1,67 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/1] nfs : Define NFS_FS only when FILE_LOCKING is
-	enabled
-Date: Fri, 30 Jan 2009 11:40:56 -0500
-Message-ID: <20090130164056.GA28491@fieldses.org>
-References: <ea11fea30901290722s5d9fe1b4y8f6142bcd137eb2@mail.gmail.com> <ea11fea30901292038h5810bde4lf83470332b6b72c9@mail.gmail.com> <20090130150640.GA22347@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [Fwd: [CFP] 2009 Linux Storage and Filesystem Workshop]
+Date: Fri, 30 Jan 2009 14:28:45 -0500
+Message-ID: <1233343725.9741.16.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:57489 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752584AbZA3Qk4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 11:40:56 -0500
-In-Reply-To: <20090130150640.GA22347@fieldses.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:44759 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751601AbZA3T2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Jan 2009 14:28:50 -0500
+Received: from mail-mx5.uio.no ([129.240.10.46])
+	by mail-out1.uio.no with esmtp (Exim 4.69)
+	(envelope-from <trond.myklebust@fys.uio.no>)
+	id 1LSz2n-0007FL-2I
+	for linux-nfs@vger.kernel.org; Fri, 30 Jan 2009 20:28:49 +0100
+Received: from c-68-40-183-129.hsd1.mi.comcast.net ([68.40.183.129] helo=[192.168.0.101])
+	by mail-mx5.uio.no with esmtpsa (SSLv3:CAMELLIA256-SHA:256)
+	user trondmy (Exim 4.69)
+	(envelope-from <trond.myklebust@fys.uio.no>)
+	id 1LSz2m-00056M-3f
+	for linux-nfs@vger.kernel.org; Fri, 30 Jan 2009 20:28:48 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 30, 2009 at 10:06:40AM -0500, J. Bruce Fields wrote:
-> On Fri, Jan 30, 2009 at 10:08:11AM +0530, Manish Katiyar wrote:
-> > Hi Bruce,
-> > 
-> > I didn't see this one merged in your 2.6.30 tree. Was it missed (since
-> > I had sent it to wrong list by mistake). Please ignore if already
-> > merged.
-> 
-> It should be there at:
-> 
-> 	git://linux-nfs.org/~bfields/linux.git for-2.6.30
+-------- Forwarded Message --------
+From: Zach Brown <zach.brown@oracle.com>
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: [CFP] 2009 Linux Storage and Filesystem Workshop
+Date: 	Fri, 30 Jan 2009 10:55:29 -0800
 
-(Whoops, sorry, didn't notice this was the client-side half.  Trond'll
-get that.)
+Hello storage and filesystem friends,
 
---b.
+This year's storage and filesystem workshop is being held in San
+Francisco on April 6th and 7th.  It's being held on the Monday and
+Tuesday immediately preceding the Linux Foundation Collaboration
+Summit, in the same hotel.
 
-> 
-> --b.
-> 
-> > 
-> > 
-> > Below patch enables NFS_FS only when FILE_LOCKING is enabled.
-> > 
-> > Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> > ---
-> >  fs/nfs/Kconfig |    1 +
-> >  1 files changed, 1 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> > index 36fe20d..e93151e 100644
-> > --- a/fs/nfs/Kconfig
-> > +++ b/fs/nfs/Kconfig
-> > @@ -1,6 +1,7 @@
-> >  config NFS_FS
-> >        tristate "NFS client support"
-> >        depends on INET
-> > +       depends on FILE_LOCKING
-> >        select LOCKD
-> >        select SUNRPC
-> >        select NFS_ACL_SUPPORT if NFS_V3_ACL
-> > --
-> > 1.5.4.3
-> > 
-> > 
-> > Thanks -
-> > Manish
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+You can find all the details on the workshop's web site:
+
+  http://events.linuxfoundation.org/events/lsf-workshop
+
+The workshop focuses on collaboration and discussion.  There will be no
+referred papers and few presentations with slides will be accepted.
+
+To attend we ask that you use the CFP interface on the web site to
+submit a short proposal for a topic to discuss during the workshop.  The
+program committee will send invitations to the workshop based on these
+proposals.  The CFP and FAQ tabs on the web site describe this in more
+detail.
+
+For reference, there are writeups of previous workshops available
+online:
+
+http://lwn.net/Articles/226351/
+http://www.usenix.org/publications/login/2008-06/openpdfs/lsf08reports.pdf
+
+This year we'll be adding time to the schedule specifically for hands-on
+development with your colleagues.
+
+Please let me know if there are any questions about the workshop.
+
+- z
+
+
