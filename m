@@ -1,86 +1,32 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/7] SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
-Date: Fri, 30 Jan 2009 15:11:27 -0500
-Message-ID: <20090130201126.22301.59078.stgit@ingres.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/7] Address kernel bugzilla 12256
+Date: Fri, 30 Jan 2009 15:21:12 -0500
+Message-ID: <20090130202112.GF31166@fieldses.org>
 References: <20090130200021.22301.22618.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:34142 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753987AbZA3ULv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:11:51 -0500
+Received: from mail.fieldses.org ([141.211.133.115]:53439 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752853AbZA3UVL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jan 2009 15:21:11 -0500
 In-Reply-To: <20090130200021.22301.22618.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We just augmented the kernel's RPC service registration code so that
-it automatically adjusts to what is supported in user space.  Thus we
-no longer need the kernel configuration option to enable registering
-RPC services with v4 -- it's all done automatically.
+On Fri, Jan 30, 2009 at 03:10:32PM -0500, Chuck Lever wrote:
+> Updated patch series to remove the SUNRPC_REGISTER_V4 kernel build
+> option.  These address kernel bugzilla 12256 ("RPC: failed to contact
+> local rpcbind server (errno 5)." if CONFIG_SUNRPC_REGISTER_V4 is set
+> to Y").  Please include them in your for-2.6.30 branch, replacing
+> any previous version of this patch series.
+> 
+> There may be some problems applying this patch set to linux-next, as
+> that may have recent patches that split up fs/Kconfig.
 
-This patch is part of a series that addresses
-   http://bugzilla.kernel.org/show_bug.cgi?id=12256
+Actually, those patches are in mainline (and my for-2.6.30 branch);
+would you like to rebase?  It should be trivial.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/lockd/svc.c     |    6 +++---
- net/sunrpc/Kconfig |   22 ----------------------
- 2 files changed, 3 insertions(+), 25 deletions(-)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 39ec7f2..db5acc3 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -58,11 +58,11 @@ unsigned long			nlmsvc_timeout;
-  * if the ipv6 module was built but has been blacklisted, enable
-  * this only if IPv6 support is built into the kernel.
-  */
--#if defined(CONFIG_IPV6) && defined(CONFIG_SUNRPC_REGISTER_V4)
-+#if defined(CONFIG_IPV6)
- static const sa_family_t	nlmsvc_family = AF_INET6;
--#else	/* CONFIG_IPV6 && CONFIG_SUNRPC_REGISTER_V4 */
-+#else	/* CONFIG_IPV6 */
- static const sa_family_t	nlmsvc_family = AF_INET;
--#endif	/* CONFIG_IPV6 && CONFIG_SUNRPC_REGISTER_V4 */
-+#endif	/* CONFIG_IPV6 */
- 
- /*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-index dcef600..45e275a 100644
---- a/net/sunrpc/Kconfig
-+++ b/net/sunrpc/Kconfig
-@@ -17,28 +17,6 @@ config SUNRPC_XPRT_RDMA
- 
- 	  If unsure, say N.
- 
--config SUNRPC_REGISTER_V4
--	bool "Register local RPC services via rpcbind v4 (EXPERIMENTAL)"
--	depends on SUNRPC && EXPERIMENTAL
--	default n
--	help
--	  Sun added support for registering RPC services at an IPv6
--	  address by creating two new versions of the rpcbind protocol
--	  (RFC 1833).
--
--	  This option enables support in the kernel RPC server for
--	  registering kernel RPC services via version 4 of the rpcbind
--	  protocol.  If you enable this option, you must run a portmapper
--	  daemon that supports rpcbind protocol version 4.
--
--	  Serving NFS over IPv6 from knfsd (the kernel's NFS server)
--	  requires that you enable this option and use a portmapper that
--	  supports rpcbind version 4.
--
--	  If unsure, say N to get traditional behavior (register kernel
--	  RPC services using only rpcbind version 2).  Distributions
--	  using the legacy Linux portmapper daemon must say N here.
--
- config RPCSEC_GSS_KRB5
- 	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
- 	depends on SUNRPC && EXPERIMENTAL
-
+--b.
