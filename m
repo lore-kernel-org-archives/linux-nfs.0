@@ -1,185 +1,34 @@
-From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-Subject: [PATCH] Bug 11061, NFS mounts dropped
-Date: Sun, 01 Feb 2009 14:15:27 +1030
-Message-ID: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/7] lockd: Use AF_INET6 listener only when IPv6
+	support is built in
+Date: Sun, 1 Feb 2009 12:18:53 -0500
+Message-ID: <20090201171853.GA29091@fieldses.org>
+References: <20090130200021.22301.22618.stgit@ingres.1015granger.net> <20090130201041.22301.60941.stgit@ingres.1015granger.net> <1233347546.9741.31.camel@heimdal.trondhjem.org> <130964B3-CDE1-440F-B0E0-33620036E239@oracle.com> <1233350290.9741.42.camel@heimdal.trondhjem.org> <F0ED35C3-3E01-42E2-BE71-1C1273C1B495@oracle.com> <1233352740.9741.64.camel@heimdal.trondhjem.org> <59D3726F-FB24-4624-891F-55877239B011@oracle.com> <1233355782.9741.95.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:56920 "EHLO
-	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752042AbZBAEVY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Jan 2009 23:21:24 -0500
-Received: from [10.0.0.2] (sibyl.beware.dropbear.id.au [10.0.0.2])
-	by sibyl.beware.dropbear.id.au (8.14.2/8.14.2) with ESMTP id n113jRlu027507
-	for <linux-nfs@vger.kernel.org>; Sun, 1 Feb 2009 14:15:28 +1030
+Received: from mail.fieldses.org ([141.211.133.115]:47243 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752323AbZBARSy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Feb 2009 12:18:54 -0500
+In-Reply-To: <1233355782.9741.95.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patch is relative to 2.6.29-rc3. The crux of the matter is
-that sock_addr structures can't be reliably compared using memcmp()
-because there are padding bytes in the structure which can't be
-guaranteed to be the same even when the sock_addr structures refer to
-the same thing.
+On Fri, Jan 30, 2009 at 05:49:42PM -0500, Trond Myklebust wrote:
+> That said, I think I'd prefer the single socket solution that we have
+> now. It would certainly make life easier for migration events, and
+> possibly pnfs. In neither of these cases do you know at mount time what
+> kind of callback service you will need later, so setting up an IPv4-only
+> service might turn out wrong.
 
-There have been significant changes to the way address comparison is
-done in client.c since my original patch (Kernel Bug Tracker #11061,
-comment 19). In particular ipv4 addresses are now mapped to ipv6
-addresses for comparison (but only if the kernel is configured for
-IPV6). The conditional compilation blocks were quite big and contained
-duplication. Adding my changes in their original style would have only
-made matters worse. So I have taken to opportunity to clean up. By
-inverting the logic, I was able to reduce the depth of nested ifs,
-reduce the number of trivial helper functions and reduce the size of the
-conditional compilation blocks. This is a mater of opinion of course,
-but I think the result is cleaner and easier to read and maintain.
+If I understand right, that's an argument for grabbing both ipv4 and
+ipv6 ports as early as possible.
 
-This has been tested with kernels configured with and without IPV6.
+I don't think that's incompatible with using separate sockets for each.
+And doing so would simplify adding ipv6 later in situations when it
+isn't initially available.  (But such situations might be rare?)
 
-Log:
-======================
-Clean up address comparison code, replace nfs_sockaddr_match_ipaddr()
-with more generic nfs_sockaddr_match_addr(). Don't compare sock_addr
-structures using memcmp().
-
-Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-======================
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9b728f3..bc38e24 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -223,6 +223,8 @@ void nfs_put_client(struct nfs_client *clp)
- 	}
- }
- 
-+enum nfs_sockaddr_match_flags { nfs_port_nomatch = 0, nfs_port_match };
-+
- #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
- static const struct in6_addr *nfs_map_ipv4_addr(const struct sockaddr *sa, struct in6_addr *addr_mapped)
- {
-@@ -238,40 +240,56 @@ static const struct in6_addr *nfs_map_ipv4_addr(const struct sockaddr *sa, struc
- 			return addr_mapped;
- 	}
- }
-+#endif
- 
--static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
--		const struct sockaddr *sa2)
-+static int nfs_sockaddr_match_addr(const struct sockaddr *sa1,
-+				   const struct sockaddr *sa2,
-+				   enum nfs_sockaddr_match_flags flags)
- {
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
- 	const struct in6_addr *addr1;
- 	const struct in6_addr *addr2;
- 	struct in6_addr addr1_mapped;
- 	struct in6_addr addr2_mapped;
--
-+	
- 	addr1 = nfs_map_ipv4_addr(sa1, &addr1_mapped);
--	if (likely(addr1 != NULL)) {
--		addr2 = nfs_map_ipv4_addr(sa2, &addr2_mapped);
--		if (likely(addr2 != NULL))
--			return ipv6_addr_equal(addr1, addr2);
--	}
--	return 0;
--}
-+	if (unlikely(addr1 == NULL))
-+		return 0;
-+	addr2 = nfs_map_ipv4_addr(sa2, &addr2_mapped);
-+	if (unlikely(addr2 == NULL))
-+		return 0;
-+	if (likely(!ipv6_addr_equal(addr1, addr2)))
-+		return 0;
- #else
--static int nfs_sockaddr_match_ipaddr4(const struct sockaddr_in *sa1,
--				 const struct sockaddr_in *sa2)
--{
--	return sa1->sin_addr.s_addr == sa2->sin_addr.s_addr;
--}
--
--static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
--				 const struct sockaddr *sa2)
--{
- 	if (unlikely(sa1->sa_family != AF_INET || sa2->sa_family != AF_INET))
- 		return 0;
--	return nfs_sockaddr_match_ipaddr4((const struct sockaddr_in *)sa1,
--			(const struct sockaddr_in *)sa2);
--}
-+	if (likely(((const struct sockaddr_in *)sa1)->sin_addr.s_addr !=
-+		   ((const struct sockaddr_in *)sa2)->sin_addr.s_addr))
-+		return 0;
- #endif
- 
-+	if (flags != nfs_port_match)
-+		return 1;
-+
-+	/* match the port */
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	switch (sa1->sa_family) {
-+	default:
-+		return 0;
-+	case AF_INET:
-+		return (((const struct sockaddr_in *)sa1)->sin_port ==
-+			((const struct sockaddr_in *)sa2)->sin_port);
-+	case AF_INET6:
-+		return (((const struct sockaddr_in6 *)sa1)->sin6_port ==
-+			((const struct sockaddr_in6 *)sa2)->sin6_port);
-+	}
-+#else
-+	return (((const struct sockaddr_in *)sa1)->sin_port ==
-+		((const struct sockaddr_in *)sa2)->sin_port);
-+#endif
-+
-+}
-+
- /*
-  * Find a client by IP address and protocol version
-  * - returns NULL if no such client
-@@ -293,7 +311,7 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
- 			continue;
- 
- 		/* Match only the IP address, not the port number */
--		if (!nfs_sockaddr_match_ipaddr(addr, clap))
-+		if (!nfs_sockaddr_match_addr(addr, clap, nfs_port_nomatch))
- 			continue;
- 
- 		atomic_inc(&clp->cl_count);
-@@ -326,7 +344,7 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
- 			continue;
- 
- 		/* Match only the IP address, not the port number */
--		if (!nfs_sockaddr_match_ipaddr(sap, clap))
-+		if (!nfs_sockaddr_match_addr(sap, clap, nfs_port_nomatch))
- 			continue;
- 
- 		atomic_inc(&clp->cl_count);
-@@ -344,8 +362,10 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
- static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *data)
- {
- 	struct nfs_client *clp;
-+	const struct sockaddr *sap = data->addr;
- 
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+	        struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
- 		/* Don't match clients that failed to initialise properly */
- 		if (clp->cl_cons_state < 0)
- 			continue;
-@@ -358,9 +378,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 			continue;
- 
- 		/* Match the full socket address */
--		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
-+		if (!nfs_sockaddr_match_addr(sap, clap, nfs_port_match))
- 			continue;
--
-+		
- 		atomic_inc(&clp->cl_count);
- 		return clp;
- 	}
-
-
-
--- 
-Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-
+--b.
