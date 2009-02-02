@@ -1,34 +1,55 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/7] lockd: Use AF_INET6 listener only when IPv6
-	support is built in
-Date: Sun, 1 Feb 2009 12:18:53 -0500
-Message-ID: <20090201171853.GA29091@fieldses.org>
-References: <20090130200021.22301.22618.stgit@ingres.1015granger.net> <20090130201041.22301.60941.stgit@ingres.1015granger.net> <1233347546.9741.31.camel@heimdal.trondhjem.org> <130964B3-CDE1-440F-B0E0-33620036E239@oracle.com> <1233350290.9741.42.camel@heimdal.trondhjem.org> <F0ED35C3-3E01-42E2-BE71-1C1273C1B495@oracle.com> <1233352740.9741.64.camel@heimdal.trondhjem.org> <59D3726F-FB24-4624-891F-55877239B011@oracle.com> <1233355782.9741.95.camel@heimdal.trondhjem.org>
+From: Toralf =?iso-8859-15?q?F=F6rster?= <toralf.foerster@gmx.de>
+Subject: [NFS] QA Notice: for net-fs/nfs-utils-1.1.3
+Date: Mon, 2 Feb 2009 11:39:25 +0100
+Message-ID: <200902021139.26340.toralf.foerster@gmx.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=iso-8859-15
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:47243 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752323AbZBARSy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Feb 2009 12:18:54 -0500
-In-Reply-To: <1233355782.9741.95.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from neil.brown.name ([220.233.11.133]:44170 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755852AbZBBKkX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Feb 2009 05:40:23 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LTwDx-00007N-J6
+	for linux-nfs@vger.kernel.org; Mon, 02 Feb 2009 21:40:17 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 30, 2009 at 05:49:42PM -0500, Trond Myklebust wrote:
-> That said, I think I'd prefer the single socket solution that we have
-> now. It would certainly make life easier for migration events, and
-> possibly pnfs. In neither of these cases do you know at mount time what
-> kind of callback service you will need later, so setting up an IPv4-only
-> service might turn out wrong.
+Hello,
 
-If I understand right, that's an argument for grabbing both ipv4 and
-ipv6 ports as early as possible.
+I get this during installation under a stable Gentoo system:
 
-I don't think that's incompatible with using separate sockets for each.
-And doing so would simplify adding ipv6 later in situations when it
-isn't initially available.  (But such situations might be rare?)
+ * QA Notice: Package has poor programming practices which may compile
+ *            fine but exhibit random runtime failures.
+ * mount_xdr.c:306: warning: dereferencing type-punned pointer will bre=
+ak=20
+strict-aliasing rules
 
---b.
+ * Please do not file a Gentoo bug and instead report the above QA
+ * issues directly to the upstream developers of this software.
+ * Homepage: http://nfs.sourceforge.net/
+
+
+--=20
+MfG/Sincerely
+
+Toralf F=F6rster
+pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+
+
+-----------------------------------------------------------------------=
+-------
+This SF.net email is sponsored by:
+SourcForge Community
+SourceForge wants to tell your story.
+http://p.sf.net/sfu/sf-spreadtheword
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
