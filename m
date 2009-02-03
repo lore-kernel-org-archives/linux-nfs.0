@@ -1,75 +1,121 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.29, holidays
-Date: Mon, 2 Feb 2009 17:59:04 -0500
-Message-ID: <20090202225904.GF13389@fieldses.org>
-References: <20081222171124.GL4191@fieldses.org> <494FD604.6020502@panasas.com>
-	<20090202225805.GE13389@fieldses.org>
+From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Wed, 04 Feb 2009 08:26:29 +1030
+Message-ID: <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
+	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
+	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
+	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090202225805.GE13389@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:36579 "EHLO
+	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751149AbZBCV4l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Feb 2009 16:56:41 -0500
+In-Reply-To: <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 02, 2009 at 05:58:05PM -0500, J. Bruce Fields wrote:
-> On Mon, Dec 22, 2008 at 08:01:40PM +0200, Benny Halevy wrote:
-> > On Dec. 22, 2008, 19:11 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > I'm leaving town till the new year.  It's likely 2.6.28 will be released
-> > > (and the 2.6.29 merge window open) on Christmas, though the merge window
-> > > will be extended to take into account the holidays:
-> > > 
-> > > 	http://lwn.net/Articles/312154/
-> > > 
-> > > I'll be online at least part of the time, and review outstanding patches
-> > > from Chuck and Benny (and hopefully Steved's export patches).  If you
-> > > have other server stuff pending for 2.6.29, please remind me.
-> > 
-> > Hi Bruce,
-> > 
-> > First, enjoy your vacation!
-> > Regarding 2.6.29, how about the following patch from Alexandros?
-> > http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=commitdiff;h=35bbe2824b991e14877e7ceb6a36f91e2ea78226
-> > I haven't sent it to you for 2.6.29 but I believe it's a good opportunity
-> > to get it in.
-> 
-> Thanks, a little late,
 
-(By which I mean, I'm a little late, obviously your mail wasn't.)
+On Mon, 2009-02-02 at 16:52 -0500, Chuck Lever wrote:
 
---b.
+> Simply define a helper near nfs_sockaddr_match_ipaddr(), included  
+> inside the "#if defined(CONFIG_IPV6)," that handles port comparison,  
+> and call that from nfs_match_client().
+> 
+> Eventually we will probably extract all of this address family- 
+> specific kruft into something that can be shared amongst all of the  
+> NFS-related components, so it will likely end up split out this way in  
+> any event.
 
-> but I've applied that....
-> 
-> I also spent some time trying to figure out what to do about the nfs4
-> server's locking.  The scope of the state lock is a problem, mainly
-> because (at least for me) it's hard to understand what it's protecting
-> at this point.  And of course I worry about performance: I haven't tried
-> to measure lock contention, but it can't be good that the same lock that
-> can be held over disk access (read/write code isn't under it, but lots
-> of lookups and creates are) is also used for simple hash-table lookups.
-> 
-> I got as far as looking at nfsd4_open() and despaired.
-> 
-> A global spinlock or two for the various hash tables, together with a
-> semaphore for each stateowner, to serialize the stateid replay stuff,
-> might do the job.
-> 
-> Anyway, I committed some very minor cleanup of the open code--you can
-> see it at for-2.6.30, if anyone's interested, but didn't get any
-> further.
-> 
-> --b.
-> _______________________________________________
-> NFSv4 mailing list
-> NFSv4@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+OK here is version 2 of the patch. It is half the size of version 1,
+although the resultant client.c is slightly bigger and IMO slightly
+inferior than for version 1, but certainly it is around the margin.
+
+
+Log:
+======================
+Don't compare sock_addr structures using memcmp().
+
+Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+======================
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 9b728f3..ee5e211 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -255,6 +255,22 @@ static int nfs_sockaddr_match_ipaddr(const struct
+sockaddr *sa1,
+ 	}
+ 	return 0;
+ }
++
++static int nfs_sockaddr_match_port(const struct sockaddr *sa1,
++				   const struct sockaddr *sa2)
++{
++	switch (sa1->sa_family) {
++	default:
++		return 0;
++	case AF_INET:
++		return (((const struct sockaddr_in *)sa1)->sin_port ==
++			((const struct sockaddr_in *)sa2)->sin_port);
++	case AF_INET6:
++		return (((const struct sockaddr_in6 *)sa1)->sin6_port ==
++			((const struct sockaddr_in6 *)sa2)->sin6_port);
++	}
++	return 0;
++}
+ #else
+ static int nfs_sockaddr_match_ipaddr4(const struct sockaddr_in *sa1,
+ 				 const struct sockaddr_in *sa2)
+@@ -270,6 +286,13 @@ static int nfs_sockaddr_match_ipaddr(const struct
+sockaddr *sa1,
+ 	return nfs_sockaddr_match_ipaddr4((const struct sockaddr_in *)sa1,
+ 			(const struct sockaddr_in *)sa2);
+ }
++
++static int nfs_sockaddr_match_port(const struct sockaddr *sa1,
++				   const struct sockaddr *sa2)
++{
++	return (((const struct sockaddr_in *)sa1)->sin_port ==
++		((const struct sockaddr_in *)sa2)->sin_port);
++}
+ #endif
+ 
+ /*
+@@ -344,8 +367,10 @@ struct nfs_client *nfs_find_client_next(struct
+nfs_client *clp)
+ static struct nfs_client *nfs_match_client(const struct
+nfs_client_initdata *data)
+ {
+ 	struct nfs_client *clp;
++	const struct sockaddr *sap = data->addr;
+ 
+ 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
++	        struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+@@ -358,9 +383,13 @@ static struct nfs_client *nfs_match_client(const
+struct nfs_client_initdata *dat
+ 			continue;
+ 
+ 		/* Match the full socket address */
+-		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
++		if (!nfs_sockaddr_match_ipaddr(sap, clap))
++			continue;
++		/* including the port number */
++		if (!nfs_sockaddr_match_port(sap, clap))
+ 			continue;
+ 
++
+ 		atomic_inc(&clp->cl_count);
+ 		return clp;
+ 	}
+
+
+-- 
+Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+
