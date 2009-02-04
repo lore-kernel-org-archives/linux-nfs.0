@@ -1,82 +1,97 @@
-From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Thu, 05 Feb 2009 08:11:47 +1030
-Message-ID: <1233783707.13862.121.camel@sibyl.beware.dropbear.id.au>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
-	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
-	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
-	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
-	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
-	 <2A59F69E-7E14-4E20-9F9E-EF9B02326342@oracle.com>
-	 <1233751955.13862.68.camel@sibyl.beware.dropbear.id.au>
-	 <FBF34EE5-293D-43BC-93F8-4305F9312247@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NLM] 2.6.27 broken
+Date: Wed, 4 Feb 2009 18:33:48 -0500
+Message-ID: <20090204233348.GD20917@fieldses.org>
+References: <20081115132831.GA11329@janus> <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus> <20081216173923.GE16388@fieldses.org> <1229456632.6023.1.camel@tucsk> <20081216201610.GE18928@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Miklos Szeredi <mszeredi@suse.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:39703 "EHLO
-	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760206AbZBDVl5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 16:41:57 -0500
-In-Reply-To: <FBF34EE5-293D-43BC-93F8-4305F9312247@oracle.com>
+Received: from mail.fieldses.org ([141.211.133.115]:36113 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751368AbZBDXdq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 18:33:46 -0500
+In-Reply-To: <20081216201610.GE18928@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Wed, 2009-02-04 at 12:43 -0500, Chuck Lever wrote:
-> Hi Ian-
+On Tue, Dec 16, 2008 at 03:16:10PM -0500, bfields wrote:
+> On Tue, Dec 16, 2008 at 08:43:52PM +0100, Miklos Szeredi wrote:
+> > On Tue, 2008-12-16 at 12:39 -0500, J. Bruce Fields wrote:
+> > > More precisely, it looks like this started with
+> > > 
+> > > 	bde74e4bc64415b142e "locks: add special return value for
+> > > 		asynchronous locks"
+> > > 
+> > > But I haven't had the chance to look any harder yet.  Miklos?  Is this
+> > > easy for you to reproduce?
+> > 
+> > Not immediately, at the moment I don't have NFS set up.  But if you
+> > don't beat me to it, I'll look into this.
 > 
-> On Feb 4, 2009, at Feb 4, 2009, 7:52 AM, Ian Dall wrote:
-> > On Tue, 2009-02-03 at 17:16 -0500, Chuck Lever wrote:
-> >> On Feb 3, 2009, at Feb 3, 2009, 4:56 PM, Ian Dall wrote:
-> >>> OK here is version 2 of the patch. It is half the size of version 1,
-> >>> although the resultant client.c is slightly bigger and IMO slightly
-> >>> inferior than for version 1, but certainly it is around the margin.
-> >>
-> >> Why do you think this is inferior?  This way we are checking exactly
-> >> the fields in each sockaddr that need to be checked, and using the
-> >> same equality test that most other parts of the NFS client use.
-> >
-> > There is duplicated code, namely the function headers for
-> > nfs_sockaddr_match_ipaddr() and nfs_sockaddr_match_port().
-> >
-> > Granted this doesn't add to the executable size in any way because of
-> > the conditional compilation, but it is still a potential source of
-> > trouble down the track when one function definition gets changed and
-> > another doesn't and further more, it won't show up unless you test  
-> > both
-> > IPV6 and non IPV6 configurations. Having function headers in two  
-> > places
-> > makes following the code with etags more confusing. And even without
-> > etags you have to scroll up and down to see the two versions of the  
-> > same
-> > function.
-> >
-> > Also nfs_sockaddr_match_ipaddr4() is trivial, taking 7 lines of code
-> > (counting the call and the function definition) to do what can be
-> > expressed in 2 and has additional overhead, albeit small.
-> >
-> > None of these are a big deal, which is way I said *slightly* inferior.
-> >
-> > I'm not exactly sure what you didn't like about my first patch.  
-> > Maybe it
-> > was just too big (fair enough, more to go wrong), or maybe you didn't
-> > like the  test return; test return; ... style, or maybe you didn't  
-> > like
-> > the use of a port_match flag.
+> OK, thanks.  I'll take another look too when I get the chance, so let me
+> know of any partial result.
 > 
-> I think you are trying to address two separate issues here in a single  
-> patch.  Replacing the memcmp() should be done in one patch, and any  
-> code clean up should be done in a second.
+> It may just for example be returning the wrong error to the client on an
+> nlm blocking lock request, so that the client assumes the lock is gone
+> and goes away rather than waiting for a grant request.
 
-Understood. It arose because I it affected the code I was introducing.
-My original patch (on bugzilla, not this list) introduced a single
-function to compare ports. Then after the conditional compilation was
-added, I would have had to add two versions of the same function, which
-seemed bad practice.
+Sorry, I've gotten a bit backlogged, but I finally got back to this.  If
+there's no objections, the following is what I intend to submit.
 
+--b.
 
--- 
-Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+commit cb8b864ea6addd3a3e72fe835aafecec63f06cbd
+Author: J. Bruce Fields <bfields-+qGSg9AQ1cLTsXDwO4sDpg@public.gmane.org>
+Date:   Wed Feb 4 17:35:38 2009 -0500
 
+    lockd: fix regression in lockd's handling of blocked locks
+    
+    If a client requests a blocking lock, is denied, then requests it again,
+    then here in nlmsvc_lock() we will call vfs_lock_file() without FL_SLEEP
+    set, because we've already queued a block and don't need the locks code
+    to do it again.
+    
+    But that means vfs_lock_file() will return -EAGAIN instead of
+    FILE_LOCK_DENIED.  So we still need to translate that -EAGAIN return
+    into a nlm_lck_blocked error in this case, and put ourselves back on
+    lockd's block list.
+    
+    The bug was introduced by bde74e4bc64415b1 "locks: add special return
+    value for asynchronous locks".
+    
+    Thanks to From: Frank van Maarseveen for the report; his original test
+    case was essentially
+    
+    	for i in `seq 30`; do flock /nfsmount/foo sleep 10 & done
+    
+    Cc: Frank van Maarseveen <frankvm@frankvm.com>
+    Cc: Miklos Szeredi <mszeredi@suse.cz>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 6063a8e..763b78a 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -427,7 +427,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			goto out;
+ 		case -EAGAIN:
+ 			ret = nlm_lck_denied;
+-			goto out;
++			break;
+ 		case FILE_LOCK_DEFERRED:
+ 			if (wait)
+ 				break;
+@@ -443,6 +443,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			goto out;
+ 	}
+ 
++	ret = nlm_lck_denied;
++	if (!wait)
++		goto out;
++
+ 	ret = nlm_lck_blocked;
+ 
+ 	/* Append to list of blocked */
