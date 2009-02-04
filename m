@@ -1,40 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs operational access logging
-Date: Wed, 4 Feb 2009 13:05:25 -0500
-Message-ID: <20090204180525.GA20521@fieldses.org>
-References: <OF030A37B3.8E5C3B90-ON48257553.00297914-48257553.0030CDA9@meadvillegroup.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Wed, 04 Feb 2009 13:20:33 -0500
+Message-ID: <1233771633.7161.35.camel@heimdal.trondhjem.org>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
+	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
+	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
+	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
+	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
+	 <1233699391.7161.11.camel@heimdal.trondhjem.org>
+	 <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Alan Tam <alan.tam-SFtwRVCDW+zye9KiRLayRdBPR1lH4CV8@public.gmane.org>
+Content-Type: text/plain
+Cc: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:48658 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751955AbZBDSFW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 13:05:22 -0500
-In-Reply-To: <OF030A37B3.8E5C3B90-ON48257553.00297914-48257553.0030CDA9-SFtwRVCDW+zye9KiRLayRdBPR1lH4CV8@public.gmane.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:54640 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751869AbZBDSUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Feb 2009 13:20:44 -0500
+In-Reply-To: <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 04, 2009 at 04:53:03PM +0800, Alan Tam wrote:
-> Dear,
+On Wed, 2009-02-04 at 10:59 -0500, Chuck Lever wrote:
+> On Feb 3, 2009, at Feb 3, 2009, 5:16 PM, Trond Myklebust wrote:
+> > On Wed, 2009-02-04 at 08:26 +1030, Ian Dall wrote:
+> >> On Mon, 2009-02-02 at 16:52 -0500, Chuck Lever wrote:
+> >>
+> >>> Simply define a helper near nfs_sockaddr_match_ipaddr(), included
+> >>> inside the "#if defined(CONFIG_IPV6)," that handles port comparison,
+> >>> and call that from nfs_match_client().
+> >>>
+> >>> Eventually we will probably extract all of this address family-
+> >>> specific kruft into something that can be shared amongst all of the
+> >>> NFS-related components, so it will likely end up split out this  
+> >>> way in
+> >>> any event.
+> >>
+> >> OK here is version 2 of the patch. It is half the size of version 1,
+> >> although the resultant client.c is slightly bigger and IMO slightly
+> >> inferior than for version 1, but certainly it is around the margin.
 > 
-> Any plan to have the operational file access logging in the linux nfs 
-> server?
+> Trond, how come 9082a5cc doesn't change nfs_match_client() to use  
+> mapped-IPv4 address comparison?  Was that just an oversight, or do  
+> these two functions really require different address comparison methods?
 
-I don't know of anything.
+It wasn't an oversight. I figure that if someone is mounting using a
+mapped IPv4 address, then they want to use an IPv6 socket, hence I
+preferred not to touch nfs_match_client().
 
---b.
+OTOH, nfs_find_client() is used only by the callback channel, which
+doesn't distinguish between requests made over IPv4 and IPv6.
 
-> Solaris has the logging daemon nfslogd, but seems Linux doesn't 
-> have the equivalent.
-> 
-> I have difficulties in having any audit logging on the nfs service.
-> 
-> Best regards,
-> 
-> Alan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers
+  Trond
+
