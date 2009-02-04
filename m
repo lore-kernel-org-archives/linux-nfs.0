@@ -1,207 +1,40 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Wed, 4 Feb 2009 12:43:07 -0500
-Message-ID: <FBF34EE5-293D-43BC-93F8-4305F9312247@oracle.com>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au> <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com> <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au> <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com> <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au> <2A59F69E-7E14-4E20-9F9E-EF9B02326342@oracle.com> <1233751955.13862.68.camel@sibyl.beware.dropbear.id.au>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfs operational access logging
+Date: Wed, 4 Feb 2009 13:05:25 -0500
+Message-ID: <20090204180525.GA20521@fieldses.org>
+References: <OF030A37B3.8E5C3B90-ON48257553.00297914-48257553.0030CDA9@meadvillegroup.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+To: Alan Tam <alan.tam-SFtwRVCDW+zye9KiRLayRdBPR1lH4CV8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:22721 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751166AbZBDRn2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 12:43:28 -0500
-In-Reply-To: <1233751955.13862.68.camel-+Zt617Lp5ASbJVK1MCa92ZvzqaJJnU0YunOrhLTifxA@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:48658 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751955AbZBDSFW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 13:05:22 -0500
+In-Reply-To: <OF030A37B3.8E5C3B90-ON48257553.00297914-48257553.0030CDA9-SFtwRVCDW+zye9KiRLayRdBPR1lH4CV8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ian-
+On Wed, Feb 04, 2009 at 04:53:03PM +0800, Alan Tam wrote:
+> Dear,
+> 
+> Any plan to have the operational file access logging in the linux nfs 
+> server?
 
-On Feb 4, 2009, at Feb 4, 2009, 7:52 AM, Ian Dall wrote:
-> On Tue, 2009-02-03 at 17:16 -0500, Chuck Lever wrote:
->> On Feb 3, 2009, at Feb 3, 2009, 4:56 PM, Ian Dall wrote:
->>> OK here is version 2 of the patch. It is half the size of version 1,
->>> although the resultant client.c is slightly bigger and IMO slightly
->>> inferior than for version 1, but certainly it is around the margin.
->>
->> Why do you think this is inferior?  This way we are checking exactly
->> the fields in each sockaddr that need to be checked, and using the
->> same equality test that most other parts of the NFS client use.
->
-> There is duplicated code, namely the function headers for
-> nfs_sockaddr_match_ipaddr() and nfs_sockaddr_match_port().
->
-> Granted this doesn't add to the executable size in any way because of
-> the conditional compilation, but it is still a potential source of
-> trouble down the track when one function definition gets changed and
-> another doesn't and further more, it won't show up unless you test  
-> both
-> IPV6 and non IPV6 configurations. Having function headers in two  
-> places
-> makes following the code with etags more confusing. And even without
-> etags you have to scroll up and down to see the two versions of the  
-> same
-> function.
->
-> Also nfs_sockaddr_match_ipaddr4() is trivial, taking 7 lines of code
-> (counting the call and the function definition) to do what can be
-> expressed in 2 and has additional overhead, albeit small.
->
-> None of these are a big deal, which is way I said *slightly* inferior.
->
-> I'm not exactly sure what you didn't like about my first patch.  
-> Maybe it
-> was just too big (fair enough, more to go wrong), or maybe you didn't
-> like the  test return; test return; ... style, or maybe you didn't  
-> like
-> the use of a port_match flag.
+I don't know of anything.
 
-I think you are trying to address two separate issues here in a single  
-patch.  Replacing the memcmp() should be done in one patch, and any  
-code clean up should be done in a second.
+--b.
 
-That way we can review and argue the merits of these changes  
-separately; we can (usually) accept or revert them separately if  
-needed; and you can more precisely document each change in the two  
-patch descriptions.
-
-In fact I now see that we may need a separate address comparison  
-function entirely for nfs_match_client.  nfs_find_client is only used  
-in the callback path, so it has to convert cached AF_INET addresses to  
-mapped IPv4 addresses before it can compare them with incoming server  
-addresses, whenever the callback server uses an AF_INET6 listener.
-
-nfs_match_client is used only in the forward mount path.  Does it also  
-require this conversion, or can it use a more straightforward address  
-comparison method (like for example nlm_cmp_addr) ?
-
-> See if you like this one :-) It is small, but not quite minimal. It
-> doesn't change the style of logic, it doesn't use a flag. It does
-> address my concerns about duplicated code, it includes Trond's
-> suggestions and the resulting code is smallest so far (in SLOC).  
-> Granted
-> that less SLOC isn't always better, but in this case it is done by
-> removing duplication and not by making more complicated lines, so IMHO
-> it is a good thing!
-
-Practice has been to keep #ifdef/#else/#endif outside of functions, as  
-that makes the body of the functions easier to read.  Sometimes we  
-have to use two or more such constructions, and that really obfuscates  
-the code; hence the above guideline.
-
-The (slight) downside is that there are two copies of the function's  
-synopsis.  However, we should be testing both configurations before  
-accepting a patch with such conditionals anyway.  So it really doesn't  
-provide any real maintainability advantage to keep a single copy of  
-the synopsis.
-
-> Log:
-> ======================
-> Don't compare sock_addr structures using memcmp(). Reduce  
-> conditionally
-> compiled address comparison code.
-
-IMO your description is too terse.  We can already see that this patch  
-replaces the memcmp.  You should explain why this change is needed.  A  
-reference to bug 11061 in the description would also be a good thing.
-
-> Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-> ======================
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 9b728f3..1c2a319 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -238,10 +238,12 @@ static const struct in6_addr  
-> *nfs_map_ipv4_addr(const struct sockaddr *sa, struc
-> 			return addr_mapped;
-> 	}
-> }
-> +#endif
->
-> static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
-> 		const struct sockaddr *sa2)
-> {
-> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> 	const struct in6_addr *addr1;
-> 	const struct in6_addr *addr2;
-> 	struct in6_addr addr1_mapped;
-> @@ -254,23 +256,32 @@ static int nfs_sockaddr_match_ipaddr(const  
-> struct sockaddr *sa1,
-> 			return ipv6_addr_equal(addr1, addr2);
-> 	}
-> 	return 0;
-> -}
-> #else
-> -static int nfs_sockaddr_match_ipaddr4(const struct sockaddr_in *sa1,
-> -				 const struct sockaddr_in *sa2)
-> -{
-> -	return sa1->sin_addr.s_addr == sa2->sin_addr.s_addr;
-> -}
-> -
-> -static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
-> -				 const struct sockaddr *sa2)
-> -{
-> 	if (unlikely(sa1->sa_family != AF_INET || sa2->sa_family != AF_INET))
-> 		return 0;
-> -	return nfs_sockaddr_match_ipaddr4((const struct sockaddr_in *)sa1,
-> -			(const struct sockaddr_in *)sa2);
-> +	return (((const struct sockaddr_in *)sa1)->sin_addr.s_addr ==
-> +		((const struct sockaddr_in *)sa2)->sin_addr.s_addr))
-> +#endif
-> }
-> +
-> +static int nfs_sockaddr_match_port(const struct sockaddr *sa1,
-> +				   const struct sockaddr *sa2)
-> +{
-> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-> +	switch (sa1->sa_family) {
-> +	case AF_INET:
-> +		return (((const struct sockaddr_in *)sa1)->sin_port ==
-> +			((const struct sockaddr_in *)sa2)->sin_port);
-> +	case AF_INET6:
-> +		return (((const struct sockaddr_in6 *)sa1)->sin6_port ==
-> +			((const struct sockaddr_in6 *)sa2)->sin6_port);
-> +	}
-> +	return 0;
-> +#else
-> +	return (((const struct sockaddr_in *)sa1)->sin_port ==
-> +		((const struct sockaddr_in *)sa2)->sin_port);
-> #endif
-> +}
->
-> /*
->  * Find a client by IP address and protocol version
-> @@ -344,8 +355,10 @@ struct nfs_client *nfs_find_client_next(struct  
-> nfs_client *clp)
-> static struct nfs_client *nfs_match_client(const struct  
-> nfs_client_initdata *data)
-> {
-> 	struct nfs_client *clp;
-> +	const struct sockaddr *sap = data->addr;
->
-> 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-> +	        const struct sockaddr *clap = (struct sockaddr *)&clp- 
-> >cl_addr;
-> 		/* Don't match clients that failed to initialise properly */
-> 		if (clp->cl_cons_state < 0)
-> 			continue;
-> @@ -358,8 +371,12 @@ static struct nfs_client  
-> *nfs_match_client(const struct nfs_client_initdata *dat
-> 			continue;
->
-> 		/* Match the full socket address */
-> -		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
-> +		if (!nfs_sockaddr_match_ipaddr(sap, clap))
-> 			continue;
-> +		/* including the port number */
-> +		if (!nfs_sockaddr_match_port(sap, clap))
-> +			continue;
-> +
->
-> 		atomic_inc(&clp->cl_count);
-> 		return clp;
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> Solaris has the logging daemon nfslogd, but seems Linux doesn't 
+> have the equivalent.
+> 
+> I have difficulties in having any audit logging on the nfs service.
+> 
+> Best regards,
+> 
+> Alan
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
