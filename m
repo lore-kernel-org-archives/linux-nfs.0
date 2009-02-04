@@ -1,97 +1,137 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NLM] 2.6.27 broken
-Date: Wed, 4 Feb 2009 18:33:48 -0500
-Message-ID: <20090204233348.GD20917@fieldses.org>
-References: <20081115132831.GA11329@janus> <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus> <20081216173923.GE16388@fieldses.org> <1229456632.6023.1.camel@tucsk> <20081216201610.GE18928@fieldses.org>
+Subject: Re: [PATCH 1/1] nfsd(v2/v3): fix the failure of creation from HPUX
+	client --revised
+Date: Wed, 4 Feb 2009 18:49:24 -0500
+Message-ID: <20090204234924.GE20917@fieldses.org>
+References: <200901121216.n0CCGYMx001106@acsinet13.oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Frank van Maarseveen <frankvm@frankvm.com>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Miklos Szeredi <mszeredi@suse.cz>
+Cc: linux-nfs@vger.kernel.org, greg.marsden@oracle.com
+To: wengang wang <wen.gang.wang@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:36113 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:48117 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751368AbZBDXdq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 18:33:46 -0500
-In-Reply-To: <20081216201610.GE18928@fieldses.org>
+	with ESMTP id S1756514AbZBDXtU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 18:49:20 -0500
+In-Reply-To: <200901121216.n0CCGYMx001106-eiegoW5zEh26xOVM2wN62FaTQe2KTcn/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 16, 2008 at 03:16:10PM -0500, bfields wrote:
-> On Tue, Dec 16, 2008 at 08:43:52PM +0100, Miklos Szeredi wrote:
-> > On Tue, 2008-12-16 at 12:39 -0500, J. Bruce Fields wrote:
-> > > More precisely, it looks like this started with
-> > > 
-> > > 	bde74e4bc64415b142e "locks: add special return value for
-> > > 		asynchronous locks"
-> > > 
-> > > But I haven't had the chance to look any harder yet.  Miklos?  Is this
-> > > easy for you to reproduce?
-> > 
-> > Not immediately, at the moment I don't have NFS set up.  But if you
-> > don't beat me to it, I'll look into this.
-> 
-> OK, thanks.  I'll take another look too when I get the chance, so let me
-> know of any partial result.
-> 
-> It may just for example be returning the wrong error to the client on an
-> nlm blocking lock request, so that the client assumes the lock is gone
-> and goes away rather than waiting for a grant request.
+On Mon, Jan 12, 2009 at 08:14:46PM +0800, wengang wang wrote:
+> for descriptions for the problem and solution please see my former post with
+> Subject "nfsd(v2/v3): fix the failure of creation from HPUX client".
 
-Sorry, I've gotten a bit backlogged, but I finally got back to this.  If
-there's no objections, the following is what I intend to submit.
+Could you just repeat that introduction each time?  I want to commit it
+with the patch, and that will save me some work hunting down the old
+email.
+
+> comparing with former post, this patch puts the trick to nfsd_create_setattr().
+> 
+> the patch is based on 2.6.27.10.
+> 
+> Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
+> --
+>  vfs.c |   20 +++++++++++++++++---
+>  1 file changed, 17 insertions(+), 3 deletions(-)
+> diff -up ./fs/nfsd/vfs.c.orig ./fs/nfsd/vfs.c
+> --- ./fs/nfsd/vfs.c.orig	2008-12-23 14:11:14.000000000 +0800
+> +++ ./fs/nfsd/vfs.c	2009-01-12 19:35:13.000000000 +0800
+> @@ -1155,7 +1155,7 @@ nfsd_commit(struct svc_rqst *rqstp, stru
+>  
+>  static __be32
+>  nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
+> -			struct iattr *iap)
+> +			struct iattr *iap, int newfile)
+>  {
+>  	/*
+>  	 * Mode has already been set earlier in create:
+> @@ -1168,6 +1168,16 @@ nfsd_create_setattr(struct svc_rqst *rqs
+>  	 */
+>  	if (current->fsuid != 0)
+>  		iap->ia_valid &= ~(ATTR_UID|ATTR_GID);
+> +	/*
+> +	 * HPUX client sometimes creates a file in mode 000, and set
+> +	 * size to 0. setting size to 0 may fail for some spcific
+> +	 * file systems by the permission checking which requires
+> +	 * WRITE privilege but the mode is 000.
+> +	 * we ignore setting size to 0 for the creation, since it's
+> +	 * just 0 after created.
+> +	 * */
+> +	if (newfile && (iap->ia_valid & ATTR_SIZE) && (iap->ia_size == 0))
+> +		iap->ia_valid &= ~ATTR_SIZE;
+
+It seems that all newfile does is tell us whether the net thing that was
+created is a regular file or not.  Does it even make sense to set size
+on other objects?  If not, then why not just make this:
+
+	if (iap->ia_size == 0)
+		iap->ia_valid &= ~ATTR_SIZE;
+
+and remove the need for "newfile"?
+
+Also: I'm curious, can you tell where exactly in the code the permission
+error is getting set?  From a quick look at nfsd_setattr() it appears
+it's doing all permissions checks with NFSD_MAY_OWNER_OVERRIDE, which
+should allow the setting of size, even in the case of mode 0, as long as
+the caller is the owner of the new file.  Is HPUX also trying to set the
+onwer?
 
 --b.
 
-commit cb8b864ea6addd3a3e72fe835aafecec63f06cbd
-Author: J. Bruce Fields <bfields-+qGSg9AQ1cLTsXDwO4sDpg@public.gmane.org>
-Date:   Wed Feb 4 17:35:38 2009 -0500
-
-    lockd: fix regression in lockd's handling of blocked locks
-    
-    If a client requests a blocking lock, is denied, then requests it again,
-    then here in nlmsvc_lock() we will call vfs_lock_file() without FL_SLEEP
-    set, because we've already queued a block and don't need the locks code
-    to do it again.
-    
-    But that means vfs_lock_file() will return -EAGAIN instead of
-    FILE_LOCK_DENIED.  So we still need to translate that -EAGAIN return
-    into a nlm_lck_blocked error in this case, and put ourselves back on
-    lockd's block list.
-    
-    The bug was introduced by bde74e4bc64415b1 "locks: add special return
-    value for asynchronous locks".
-    
-    Thanks to From: Frank van Maarseveen for the report; his original test
-    case was essentially
-    
-    	for i in `seq 30`; do flock /nfsmount/foo sleep 10 & done
-    
-    Cc: Frank van Maarseveen <frankvm@frankvm.com>
-    Cc: Miklos Szeredi <mszeredi@suse.cz>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 6063a8e..763b78a 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -427,7 +427,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			goto out;
- 		case -EAGAIN:
- 			ret = nlm_lck_denied;
--			goto out;
-+			break;
- 		case FILE_LOCK_DEFERRED:
- 			if (wait)
- 				break;
-@@ -443,6 +443,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			goto out;
- 	}
- 
-+	ret = nlm_lck_denied;
-+	if (!wait)
-+		goto out;
-+
- 	ret = nlm_lck_blocked;
- 
- 	/* Append to list of blocked */
+>  	if (iap->ia_valid)
+>  		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
+>  	return 0;
+> @@ -1191,6 +1201,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+>  	__be32		err;
+>  	__be32		err2;
+>  	int		host_err;
+> +	int		newfile = 0;
+>  
+>  	err = nfserr_perm;
+>  	if (!flen)
+> @@ -1268,6 +1279,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+>  	switch (type) {
+>  	case S_IFREG:
+>  		host_err = vfs_create(dirp, dchild, iap->ia_mode, NULL);
+> +		newfile = 1;
+>  		break;
+>  	case S_IFDIR:
+>  		host_err = vfs_mkdir(dirp, dchild, iap->ia_mode);
+> @@ -1289,7 +1301,7 @@ nfsd_create(struct svc_rqst *rqstp, stru
+>  		write_inode_now(dchild->d_inode, 1);
+>  	}
+>  
+> -	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
+> +	err2 = nfsd_create_setattr(rqstp, resfhp, iap, newfile);
+>  	if (err2)
+>  		err = err2;
+>  	mnt_drop_write(fhp->fh_export->ex_path.mnt);
+> @@ -1324,6 +1336,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+>  	__be32		err2;
+>  	int		host_err;
+>  	__u32		v_mtime=0, v_atime=0;
+> +	int		newfile = 0;
+>  
+>  	err = nfserr_perm;
+>  	if (!flen)
+> @@ -1415,6 +1428,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+>  	}
+>  	if (created)
+>  		*created = 1;
+> +	newfile = 1;
+>  
+>  	if (EX_ISSYNC(fhp->fh_export)) {
+>  		err = nfserrno(nfsd_sync_dir(dentry));
+> @@ -1433,7 +1447,7 @@ nfsd_create_v3(struct svc_rqst *rqstp, s
+>  	}
+>  
+>   set_attr:
+> -	err2 = nfsd_create_setattr(rqstp, resfhp, iap);
+> +	err2 = nfsd_create_setattr(rqstp, resfhp, iap, newfile);
+>  	if (err2)
+>  		err = err2;
+>  
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
