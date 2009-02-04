@@ -1,96 +1,82 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: Use AF_INET6 NFSv4 callback listener only if IPv6 is built in
-Date: Wed, 4 Feb 2009 15:09:07 -0500
-Message-ID: <A0EFF4F5-F492-43AA-A1C2-AEC1CACDC036@oracle.com>
-References: <20090204164857.26771.31809.stgit@ingres.1015granger.net> <96EEB7FB-3E36-4F1C-8570-D2A6BB758A79@oracle.com> <1233772405.7161.45.camel@heimdal.trondhjem.org> <8D75C60F-AA91-46B6-B9AA-C679417C4948@oracle.com> <1233776361.7161.67.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Thu, 05 Feb 2009 08:11:47 +1030
+Message-ID: <1233783707.13862.121.camel@sibyl.beware.dropbear.id.au>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
+	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
+	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
+	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
+	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
+	 <2A59F69E-7E14-4E20-9F9E-EF9B02326342@oracle.com>
+	 <1233751955.13862.68.camel@sibyl.beware.dropbear.id.au>
+	 <FBF34EE5-293D-43BC-93F8-4305F9312247@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:41404 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756951AbZBDUJS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 15:09:18 -0500
-In-Reply-To: <1233776361.7161.67.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:39703 "EHLO
+	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1760206AbZBDVl5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Feb 2009 16:41:57 -0500
+In-Reply-To: <FBF34EE5-293D-43BC-93F8-4305F9312247@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Feb 4, 2009, at Feb 4, 2009, 2:39 PM, Trond Myklebust wrote:
-> On Wed, 2009-02-04 at 14:04 -0500, Chuck Lever wrote:
->> On Feb 4, 2009, at Feb 4, 2009, 1:33 PM, Trond Myklebust wrote:
->>> On Wed, 2009-02-04 at 11:56 -0500, Chuck Lever wrote:
->>>> Sorry, "fixing" is a bit too strong.  I mean working around the  
->>>> issue
->>>> until we have a long-term solution.
->>>
->>> This isn't an acceptable workaround, since it causes a regression  
->>> for
->>> those people who do have IPv6 enabled as a module. i.e. me...
->>
->> Don't you just get normal AF_INET callbacks in that case?
->>
->> Is the problem that you are using an IPv6 mount address, and want to
->> ensure your callback service and lockd are listening on AF_INET6?
->> That dependency web is a problem, and for a workaround we can also
->> disable IPv6 mounts if IPv6 support is built as a module.
->>
->>> The real problem here is the existence of serv->sv_family, which
->>> basically means that we need to decide whether or not we want IPv6
->>> functionality when we set up the server, instead of when we set up  
->>> the
->>> transport. Why do we need this in the first place?
->>
->> 1.  we don't want to create an AF_INET6 listener for kernel RPC
->> services that can't yet support it (ie just NFSD at this point).
->
-> I'm not advocating changing all sockets to AF_INET6. I'm advocating
-> adding a socket family parameter to svc_create_xprt() so that
-> IPv6-capable services like nfs_callback_up() can first try to set up
-> service using AF_INET6 socket, then fall back to calling
-> svc_create_xprt() again with AF_INET in case of ipv6 service failure.
 
-I think we're on the same wavelength there, and we can get rid of the  
-nfs_callback_family thingie.
+On Wed, 2009-02-04 at 12:43 -0500, Chuck Lever wrote:
+> Hi Ian-
+> 
+> On Feb 4, 2009, at Feb 4, 2009, 7:52 AM, Ian Dall wrote:
+> > On Tue, 2009-02-03 at 17:16 -0500, Chuck Lever wrote:
+> >> On Feb 3, 2009, at Feb 3, 2009, 4:56 PM, Ian Dall wrote:
+> >>> OK here is version 2 of the patch. It is half the size of version 1,
+> >>> although the resultant client.c is slightly bigger and IMO slightly
+> >>> inferior than for version 1, but certainly it is around the margin.
+> >>
+> >> Why do you think this is inferior?  This way we are checking exactly
+> >> the fields in each sockaddr that need to be checked, and using the
+> >> same equality test that most other parts of the NFS client use.
+> >
+> > There is duplicated code, namely the function headers for
+> > nfs_sockaddr_match_ipaddr() and nfs_sockaddr_match_port().
+> >
+> > Granted this doesn't add to the executable size in any way because of
+> > the conditional compilation, but it is still a potential source of
+> > trouble down the track when one function definition gets changed and
+> > another doesn't and further more, it won't show up unless you test  
+> > both
+> > IPV6 and non IPV6 configurations. Having function headers in two  
+> > places
+> > makes following the code with etags more confusing. And even without
+> > etags you have to scroll up and down to see the two versions of the  
+> > same
+> > function.
+> >
+> > Also nfs_sockaddr_match_ipaddr4() is trivial, taking 7 lines of code
+> > (counting the call and the function definition) to do what can be
+> > expressed in 2 and has additional overhead, albeit small.
+> >
+> > None of these are a big deal, which is way I said *slightly* inferior.
+> >
+> > I'm not exactly sure what you didn't like about my first patch.  
+> > Maybe it
+> > was just too big (fair enough, more to go wrong), or maybe you didn't
+> > like the  test return; test return; ... style, or maybe you didn't  
+> > like
+> > the use of a port_match flag.
+> 
+> I think you are trying to address two separate issues here in a single  
+> patch.  Replacing the memcmp() should be done in one patch, and any  
+> code clean up should be done in a second.
 
-Steve took a similar approach with lockd, but again, we have a web of  
-dependencies that needs to be addressed.  It may be enough that the  
-client will balk at an IPv6 server in a mount request before we even  
-get to the point of a lockd_up/nfs_callback_up.
+Understood. It arose because I it affected the code I was introducing.
+My original patch (on bugzilla, not this list) introduced a single
+function to compare ports. Then after the conditional compilation was
+added, I would have had to add two versions of the same function, which
+seemed bad practice.
 
->> 2.  svc_create() handles rpcbind registration, so it needs to know
->> whether to register both inet and inet6 netids or just inet.  Maybe  
->> we
->> should move the svc_register call to svc_create_xprt() ?
->
-> Where does svc_create() do rpcbind? AFAICS, svc_register is called by
-> svc_setup_socket(), which again is called by svc_create_xprt(). You've
-> got to set up the listening socket before you can register the service
-> with rpcbind, so I can't see how it could be done any other way.
 
-Sorry, I misspoke.
+-- 
+Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
 
-svc_register is invoked with an sv_serv.  Most of these socket setup  
-functions have an sv_serv argument, so it seemed easier to add a field  
-in sv_serv rather than another argument to a bunch of functions.   
-There may be some other reason I did it this way, but I'm not  
-remembering it right at the moment.
-
-In any event, I can look at removing sv_family and using some other  
-mechanism for identifying the address family of the listener.
-
->> 3.  sock_create(AF_INET6) would pin ipv6.ko, but NFSD allows listener
->> sockets to come and go.  I would rather just pin ipv6.ko for the
->> duration, and unpin it in svc_destroy.  Again, svc_create_xprt might
->> be a place to do that.
->
-> It's the obvious place, since that's what creates and destroys the
-> socket.
-
-I want to look at the lifetime of these transports to make sure we  
-don't have gaps where ipv6.ko could be unloaded, with confusing  
-consequences.  Otherwise, this sounds fine.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
