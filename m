@@ -1,554 +1,216 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.10]:54221 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755690AbZBLSfF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Feb 2009 13:35:05 -0500
-Message-ID: <49946BE6.1040005@vlnb.net>
-Date: Thu, 12 Feb 2009 21:35:18 +0300
-From: Vladislav Bolkhovitin <vst@vlnb.net>
-To: Wu Fengguang <wfg@linux.intel.com>, Jens Axboe <jens.axboe@oracle.com>
-CC: Jeff Moyer <jmoyer@redhat.com>, "Vitaly V. Bursov" <vitalyb@telenet.dn.ua>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
-References: <20081112190227.GS26778@kernel.dk> <1226566313.199910.29888@de> <492BDAA9.4090405@vlnb.net> <20081125113048.GB16422@localhost> <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost>
-In-Reply-To: <20081128004830.GA8874@localhost>
-Content-Type: multipart/mixed;
- boundary="------------030909090709030109010503"
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:44363 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753163AbZBEPIj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2009 10:08:39 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id n15F8YGu029014
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Feb 2009 20:38:34 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n15F6DMC4399118
+	for <linux-nfs@vger.kernel.org>; Thu, 5 Feb 2009 20:36:13 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id n15F8Y71024205
+	for <linux-nfs@vger.kernel.org>; Fri, 6 Feb 2009 02:08:34 +1100
+In-Reply-To: <20090204231958.GB20917@fieldses.org>
+References: <20081230104245.9409.30030.sendpatchset@localhost.localdomain> <20090204231958.GB20917@fieldses.org>
+Subject: Re: [RFC PATCH 0/1] nfsd: Improve NFS server performance
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <OF46E14C36.93250375-ON65257554.0050CEC8-65257554.005328DC@in.ibm.com>
+From: Krishna Kumar2 <krkumar2@in.ibm.com>
+Date: Thu, 5 Feb 2009 20:38:19 +0530
+Content-type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------030909090709030109010503
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Hi Bruce,
 
-Wu Fengguang, on 11/28/2008 03:48 AM wrote:
->> Actually, there's one more thing, which should have been mentioned. It
->> is possible that remote clients have several sequential read streams at
->> time together with some "noise" of random requests. A good read-ahead
->> subsystem should handle such case by keeping big read-ahead windows for
->> the sequential streams and don't do any read ahead for the random
->> requests. And all at the same time.
->>
->> Currently on such workloads read ahead will be completely disabled for
->> all the requests. Hence, there is a possibility here to improve
->> performance in 3-5 times or even more by making the workload more linear.
-> 
-> Are you sure? I'd expect such mixed-sequential-random pattern to be
-> handled by the current readahead code pretty well: sequential ones
-> will get large readahead and random ones won't get readahead at all.
+Thanks for your comments (also please refer to REV2 of patch as that is
+much simpler).
 
-No, sorry, my data was outdated. I rechecked and it works quite well now.
+> >
+> > Patch summary:
+> > --------------
+> > Change the readahead caching on the server to a file handle caching
+model.
+> > Since file handles are unique, this patch removes all dependencies on
+the
+> > kernel readahead parameters/implementation and instead caches files
+based
+> > on file handles. This change allows the server to not have to
+open/close
+> > a file multiple times when the client reads it, and results in faster
+lookup
+> > times.
+>
+> I think of open and lookup as fairly fast, so I'm surprised this makes a
+> great difference; do you have profile results or something to confirm
+> that this is in fact what made the difference?
 
-> Attached is the context readahead patch plus a kernel module for
-> readahead tracing and accounting, which will hopefully help clarify the
-> read patterns and readahead behaviors on production workloads. It is
-> based on 2.6.27 for your convenience, but also applies to 2.6.28.
-> 
-> The patch is not targeted for code review, but if anyone are interested,
-> you can take a look at try_context_readahead(). This is the only newly
-> introduced readahead policy, the other majorities are code refactor
-> and tracing facilities.
-> 
-> The newly introduced context readahead policy is disabled by default.
-> To enable it:
->         echo 1 > /sys/block/sda/queue/context_readahead
-> I'm not sure for now whether this parameter will be a long term one, or
-> whether the context readahead policy should be enabled unconditionally.
-> 
-> The readahead accounting stats can be viewed by
->         mount -t debugfs none /sys/kernel/debug
->         cat /sys/kernel/debug/readahead/stats
-> The numbers can be reset by
->         echo > /sys/kernel/debug/readahead/stats
-> 
-> Here is a sample output from my desktop:
-> 
-> % cat /sys/kernel/debug/readahead/stats
-> pattern         count sync_count  eof_count       size async_size     actual
-> none                0          0          0          0          0          0
-> initial0         3009       3009       2033          5          4          2
-> initial            35         35          0          5          4          3
-> subsequent       1294        240        827         52         49         26
-> marker            220          0        109         54         53         29
-> trail               0          0          0          0          0          0
-> oversize            0          0          0          0          0          0
-> reverse             0          0          0          0          0          0
-> stride              0          0          0          0          0          0
-> thrash              0          0          0          0          0          0
-> mmap             2833       2833       1379        142          0         47
-> fadvise             7          7          7          0          0         40
-> random           7621       7621         69          1          0          1
-> all             15019      13745       4424         33          5         12
-> 
-> The readahead/read tracing messages are disabled by default.
-> To enable them:
->         echo 1 > /sys/kernel/debug/readahead/trace_enable
->         echo 1 > /sys/kernel/debug/readahead/read_jprobes
-> They(especially the latter one) will generate a lot of printk messages like:
-> 
-> [  828.151013] readahead-initial0(pid=4644(zsh), dev=00:10(0:10), ino=351452(whoami), req=0+1, ra=0+4-3, async=0) = 4
-> [  828.167853] readahead-mmap(pid=4644(whoami), dev=00:10(0:10), ino=351452(whoami), req=0+0, ra=0+60-0, async=0) = 3
-> [  828.195652] readahead-initial0(pid=4629(zsh), dev=00:10(0:10), ino=115569(zsh_prompt), req=0+128, ra=0+120-60, async=0) = 3
-> [  828.225081] readahead-initial0(pid=4629(zsh), dev=00:10(0:10), ino=342086(.zsh_history), req=0+128, ra=0+120-60, async=0) = 4
-> 
-> [  964.471450] do_generic_file_read(pid=4685(zsh), dev=00:10(0:10), ino=351445(wc), pos=0, count=128)
-> [  964.471544] do_generic_file_read(pid=4685(zsh), dev=00:10(0:10), ino=351445(wc), pos=64, count=448)
-> [  964.471575] do_generic_file_read(pid=4685(zsh), dev=00:10(0:10), ino=351445(wc), pos=512, count=28)
-> [  964.472659] do_generic_file_read(pid=4685(zsh), dev=00:10(0:10), ino=383002(ld-2.7.so), pos=0, count=128)
-> [  964.473431] do_generic_file_read(pid=4685(wc), dev=00:10(0:10), ino=383002(ld-2.7.so), pos=64, count=336)
-> [  964.475639] do_generic_file_read(pid=4685(wc), dev=00:10(0:10), ino=383010(libc-2.7.so), pos=0, count=832)
-> [  964.479037] do_generic_file_read(pid=4685(wc), dev=00:10(0:10), ino=196085(locale.alias), pos=0, count=524288)
-> [  964.479166] do_generic_file_read(pid=4685(wc), dev=00:10(0:10), ino=196085(locale.alias), pos=2586, count=524288)
-> 
-> So please enable them only when necessary.
-> 
-> My recommendation for the double readahead in NFS client and NFS servers,
-> is to keep client side readahead size small and the server side one large.
-> For example, 128K-512K/1M-2M(more for RAID). The NFS client side readahead size
-> is not directly tunable, but setting rsize to a small value does the trick.
-> Currently the NFS magic is readahead_size=N*rsize. The default numbers in my
-> 2.6.28 kernel are rsize=512k, N=15, readahead_size=7680k. The latter is
-> obviously way too large.
+Beyond saving the open/lookup times, the cache is updated only once. Hence
+no
+lock plus update is required for subsequent reads - the code does a single
+lock
+on every read operation instead of two. The time to get the cache is
+approximately the same for old vs new code; but in the new code we get
+file/dentry and svc_exp.
 
-Sorry for such a huge delay. There were many other activities I had to 
-do before + I had to be sure I didn't miss anything.
+I used to have counters in nfsd_open - something like dbg_num_opens,
+dbg_open_jiffies, dgb_close_jiffies, dbg_read_jiffies, dgb_cache_jiffies,
+etc.
+I can reintroduce those debugs and get a run and see how those numbers
+looks
+like, is that what you are looking for?
 
-We didn't use NFS, we used SCST (http://scst.sourceforge.net) with 
-iSCSI-SCST target driver. It has similar to NFS architecture, where N 
-threads (N=5 in this case) handle IO from remote initiators (clients) 
-coming from wire using iSCSI protocol. In addition, SCST has patch 
-called export_alloc_io_context (see 
-http://lkml.org/lkml/2008/12/10/282), which allows for the IO threads 
-queue IO using single IO context, so we can see if context RA can 
-replace grouping IO threads in single IO context.
+> > Also, readahead is automatically taken care of since the file is not
+> > closed while it is getting read (quickly) by the client.
+> >
+> >
+> > Read algo change:
+> > ------------------
+> > The new nfsd_read() is changed to:
+> >    if file {
+> >       Old code
+> >    } else {
+> >       Check if this FH is cached
+> >       if fh && fh has cached file pointer:
+> >          Get file pointer
+> >          Update fields in fhp from cache
+> >          call fh_verify
+> >       else:
+> >          Nothing in the cache, call nfsd_open as usual
+> >
+> >       nfsd_vfs_read
+> >
+> >       if fh {
+> >          If this is a new fh entry:
+> >             Save cached values
+> >          Drop our reference to fh
+> >       } else
+> >          Close file
+> >    }
+>
+> When do items get removed from this cache?
 
-Unfortunately, the results are negative. We find neither any advantages 
-of context RA over current RA implementation, nor possibility for 
-context RA to replace grouping IO threads in single IO context.
+At the first open, the item is kept at the end of a global list (which is
+manipulated by the new daemon). After some jiffies are over, the daemon
+goes through the list till it comes to the first entry that has not
+expired; and frees up all the earlier entries. If the file is being used,
+it is not freed. If file is used after free, a new entry is added to the
+end of the list. So very minimal list manipulation is required - no sorting
+and moving entries in the list.
 
-Setup on the target (server) was the following. 2 SATA drives grouped in 
-md RAID-0 with average local read throughput ~120MB/s ("dd if=/dev/zero 
-of=/dev/md0 bs=1M count=20000" outputs "20971520000 bytes (21 GB) 
-copied, 177,742 s, 118 MB/s"). The md device was partitioned on 3 
-partitions. The first partition was 10% of space in the beginning of the 
-device, the last partition was 10% of space in the end of the device, 
-the middle one was the rest in the middle of the space them. Then the 
-first and the last partitions were exported to the initiator (client). 
-They were /dev/sdb and /dev/sdc on it correspondingly.
+Please let me know if you would like me to write up a small text about how
+this patch works.
 
-Then 4 2.6.27.12 kernels were build:
+> > Performance:
+> > -------------
+> > This patch was tested with clients running 1, 4, 8, 16 --- 256 test
+processes,
+> > each doing reads of different files. Each test includes different I/O
+sizes.
+> > Many individual tests (16% of test cases) got throughput improvement in
+the
+> > 9 to 15% range. The full results are provided at the end of this post.
+>
+> Could you provide details sufficient to reproduce this test if
+> necessary?  (At least: what was the test code, how many clients were
+> used, what was the client and server hardware, and what filesystem was
+> the server exporting?)
 
-1. With all SCST patches
+Sure - I will send the test code in a day (don't have access to the system
+right
+now, sorry. But this is a script that runs a C program that forks and then
+reads
+a file till it is killed and it prints the amount of data read and the
+amount of
+time it ran).
 
-2. With all SCST patches, except export_alloc_io_context
-
-3. With all SCST patches + context RA patch
-
-4. With all SCST patches, except export_alloc_io_context, but with 
-context RA patch.
-
-Memory on both initiator and target was limited to 512MB. Link was 1GbE.
-
-Then for those kernels the following tests were ran:
-
-1. dd if=/dev/sdb of=/dev/null bs=64K count=80000
-
-2. dd if=/dev/sdc of=/dev/null bs=64K count=80000
-
-3. while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done and 
-simultaneously dd if=/dev/sdb of=/dev/null bs=64K count=80000. Results 
-from the latter dd was written. This test allowed to see how well 
-simultaneous reads are handled.
-
-You can find the results in the attachement.
-
-You can see that context RA doesn't improve anything, while grouping IO 
-in single IO context provides almost 100% improvement in throughput.
-
-Additional interesting observation is how badly simultaneous read IO 
-streams are handled, if they aren't grouped in the corresponding IO 
-contexts. In test 3 the result was as low as 4(!)MB/s. Wu, Jens, do you 
-have any explanation on this? Why the inner tracks have so big preference?
-
-Another thing looks suspicious for me. If simultaneous read IO streams 
-are sent and they are grouped in the corresponding IO contexts, dd from 
-sdb has only 20MB/s throughput. Considering that a single stream from it 
-has about 100MB/s, shouldn't that value be at least 30-35MB/s? Is it the 
-same issue as above, but with smaller implication?
+The other details are:
+      #Clients: 1
+      Hardware Configuration (both systems):
+            Two Dual-Core AMD Opteron (4 cpus) at 3GH.
+            1GB memory
+            10gbps private network
+      Filesystem: ext3 (one filesystem)
 
 Thanks,
-Vlad
 
---------------030909090709030109010503
-Content-Type: text/plain;
- name="cfq-scheduler.txt"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="cfq-scheduler.txt"
+- KK
 
-kernel: 2.6.27.12-all_patches - all scst patches
+> > Please review. Any comments or improvement ideas are greatly
+appreciated.
+> >
+> > Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
+> > ---
+> >
+> >       (#Test Processes on Client == #NFSD's on Server)
+> > --------------------------------------------------------------
+> > #Test Processes      Org BW KB/s   New BW KB/s   %
+> > --------------------------------------------------------------
+>
+> What's the second column?
+>
+> > 4   256      48151.09   50328.70   4.52
+> > 4   4096      47700.05   49760.34   4.31
+> > 4   8192      47553.34   48509.00   2.00
+> > 4   16384      48764.87   51208.54   5.01
+> > 4   32768      49306.11   50141.59   1.69
+> > 4   65536      48681.46   49491.32   1.66
+> > 4   131072      48378.02   49971.95   3.29
+> >
+> > 8   256      38906.95   42444.95   9.09
+> > 8   4096      38141.46   42154.24   10.52
+> > 8   8192      37058.55   41241.78   11.28
+> > 8   16384      37446.56   40573.70   8.35
+> > 8   32768      36655.91   42159.85   15.01
+> > 8   65536      38776.11   40619.20   4.75
+> > 8   131072      38187.85   41119.04   7.67
+> >
+> > 16   256      36274.49   36143.00   -0.36
+> > 16   4096      34320.56   37664.35   9.74
+> > 16   8192      35489.65   34555.43   -2.63
+> > 16   16384      35647.32   36289.72   1.80
+> > 16   32768      37037.31   36874.33   -0.44
+> > 16   65536      36388.14   36991.56   1.65
+> > 16   131072      35729.34   37588.85   5.20
+> >
+> > 32   256      30838.89   32811.47   6.39
+> > 32   4096      31291.93   33439.83   6.86
+> > 32   8192      29885.57   33337.10   11.54
+> > 32   16384      30020.23   31795.97   5.91
+> > 32   32768      32805.03   33860.68   3.21
+> > 32   65536      31275.12   32997.34   5.50
+> > 32   131072      33391.85   34209.86   2.44
+> >
+> > 64   256      26729.46   28077.13   5.04
+> > 64   4096      25705.01   27339.37   6.35
+> > 64   8192      27757.06   27488.04   -0.96
+> > 64   16384      22927.44   23938.79   4.41
+> > 64   32768      26956.16   27848.52   3.31
+> > 64   65536      27419.59   29228.76   6.59
+> > 64   131072      27623.29   27651.99   .10
+> >
+> > 128   256      22463.63   22437.45   -.11
+> > 128   4096      22039.69   22554.03   2.33
+> > 128   8192      22218.42   24010.64   8.06
+> > 128   16384      15295.59   16745.28   9.47
+> > 128   32768      23319.54   23450.46   0.56
+> > 128   65536      22942.03   24169.26   5.34
+> > 128   131072      23845.27   23894.14   0.20
+> >
+> > 256   256      15659.17   16266.38   3.87
+> > 256   4096      15614.72   16362.25   4.78
+> > 256   8192      16950.24   17092.50   0.83
+> > 256   16384      9253.25      10274.28   11.03
+> > 256   32768      17872.89   17792.93   -.44
+> > 256   65536      18459.78   18641.68   0.98
+> > 256   131072      19408.01   20538.80   5.82
+> > --------------------------------------------------------------
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-
-#cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-#cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-
-#free
-             total       used       free     shared    buffers     cached
-Mem:        508180     502448       5732          0     430704      27740
--/+ buffers/cache:      44004     464176
-Swap:            0          0          0
-
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 102 MB/s
-	b) 102 MB/s
-	c) 102 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 74,3 MB/s
-	b) 74,5 MB/s
-	c) 74,4 MB/s
-
-Run at the same time:		
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 21,6 MB/s
-	b) 22,8 MB/s
-	c) 24,1 MB/s
-	d) 23,1 MB/s
-	
-------------------------------------------------------------------------
-kernel: 2.6.27.12-except_export_alloc - all scst patches, except export_alloc_io_context.patch
-
-# cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-# cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 48,6 MB/s
-	b) 49,2 MB/s
-	c) 48,9 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 48,3 MB/s
-	b) 48,5 MB/s
-	c) 47,9 MB/s
-
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 4,2 MB/s
-	b) 3,9 MB/s
-	c) 4,1 MB/s
-
-
-	
----------------------------------------------------------------
-kernel: uname -r 2.6.27.12-readahead - all scst patches + readahead-context.patch
-default /dev/md0 readahead = 512
-linux-4dtq:~ #
-linux-4dtq:~ #
-linux-4dtq:~ # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # blockdev --setra 1024 /dev/sda
-linux-4dtq:~ # blockdev --setra 1024 /dev/sdb
-linux-4dtq:~ # echo 1 > /sys/block/sda/queue/context_readahead
-linux-4dtq:~ # echo 1 > /sys/block/sdb/queue/context_readahead
-linux-4dtq:~ # cat /sys/block/sdb/queue/context_readahead
-1
-linux-4dtq:~ # cat /sys/block/sda/queue/context_readahead
-1
-linux-4dtq:~ # blockdev --getra /dev/md0
-256
-linux-4dtq:~ # mdadm --assemble /dev/md0 /dev/sd[ab]
-mdadm: /dev/md/0 has been started with 2 drives.
-linux-4dtq:~ # vgchange -a y
-  3 logical volume(s) in volume group "raid" now active
-linux-4dtq:~ # blockdev --getra /dev/md0
-512
-linux-4dtq:~ # free
-             total       used       free     shared    buffers     cached
-Mem:        508168     104480     403688          0       4516      64632
--/+ buffers/cache:      35332     472836
-Swap:            0          0          0
-
-
-	
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 96,9 MB/s
-	b) 101 MB/s
-	c) 101, MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 73,9 MB/s
-	b) 74,1 MB/s
-	c) 73,3 MB/s
-
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 22,1 MB/s
-	b) 21,6 MB/s
-	c) 21,1 MB/s
-
-	
-	
-	
------------------------------------------------------------------------------------
-kernel: uname -r 2.6.27.12-readahead - all scst patches + readahead-context.patch
-set: /dev/md0 readahead = 1024
-
-linux-4dtq:~ # blockdev --setra 1024 /dev/sdb
-linux-4dtq:~ # blockdev --setra 1024 /dev/sda
-linux-4dtq:~ # blockdev --setra 1024 /dev/md0
-linux-4dtq:~ # echo 1 > /sys/block/sda/queue/context_readahead
-linux-4dtq:~ # echo 1 > /sys/block/sdb/queue/context_readahead
-linux-4dtq:~ # cat /sys/block/sdb/queue/context_readahead
-1
-linux-4dtq:~ # cat /sys/block/sda/queue/context_readahead
-1
-linux-4dtq:~ # mdadm --assemble /dev/md0 /dev/sd[ab]
-mdadm: /dev/md/0 has been started with 2 drives.
-linux-4dtq:~ # vgchange -a y
-  3 logical volume(s) in volume group "raid" now active
-linux-4dtq:~ # blockdev --getra /dev/md0
-1024
-linux-4dtq:~ # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a)  102 MB/s
-	b)  100 MB/s
-	c)  104 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a)  74,1 MB/s
-	b)  73,7 MB/s
-	c)  74,0 MB/s
-
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a)  22,0 MB/s
-	b)  21,5 MB/s
-	c)  22,9 MB/s
-
-------------------------------------------------------------------------
-kernel: uname -r 2.6.27.12-readahead - all scst patches + readahead-context.patch
-set: /dev/md0 readahead = 2048
-
-linux-4dtq:~ # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # echo 1 > /sys/block/sdb/queue/context_readahead
-linux-4dtq:~ # echo 1 > /sys/block/sda/queue/context_readahead
-linux-4dtq:~ # blockdev --setra 1024 /dev/sda
-linux-4dtq:~ # blockdev --setra 1024 /dev/sdb
-linux-4dtq:~ # blockdev --setra 2048 /dev/md0
-linux-4dtq:~ # mdadm --assemble /dev/md0 /dev/sd[ab]
-mdadm: /dev/md/0 has been started with 2 drives.
-linux-4dtq:~ # vgchange -a y
-  3 logical volume(s) in volume group "raid" now active
-linux-4dtq:~ # cat /sys/block/sdb/queue/context_readahead
-1
-linux-4dtq:~ # cat /sys/block/sda/queue/context_readahead
-1
-linux-4dtq:~ # blockdev --getra /dev/md0
-2048
-
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 103 MB/s
-	b) 102 MB/s
-	c) 102 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 73,7 MB/s
-	b) 74,1 MB/s
-	c) 74,3 MB/s
-
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 20,1 MB/s
-	b) 21,5 MB/s
-	c) 21,8 MB/s
-
----------------------------------------------------
-Kernel uname -r: 2.6.27.12-readahead
-readahead set to: 4M
-
-linux-4dtq:~ # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # blockdev --setra 4096 /dev/sda
-linux-4dtq:~ # blockdev --setra 4096 /dev/sdb
-linux-4dtq:~ # blockdev --getra /dev/sdb
-4096
-linux-4dtq:~ # blockdev --getra /dev/sda
-4096
-inux-4dtq:~ # echo 1 > /sys/block/sdb/queue/context_readahead
-linux-4dtq:~ # echo 1 > /sys/block/sda/queue/context_readahead
-linux-4dtq:~ # cat /sys/block/sdb/queue/context_readahead
-1
-linux-4dtq:~ # cat /sys/block/sda/queue/context_readahead
-1
-linux-4dtq:~ # mdadm --assemble /dev/md0 /dev/sd[ab]
-mdadm: /dev/md/0 has been started with 2 drives.
-linux-4dtq:~ # vgchange -a y
-  3 logical volume(s) in volume group "raid" now active
-linux-4dtq:~ # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 99,4 MB/s
-	b) 96,4 MB/s
-	c) 101 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 73,5 MB/s
-	b) 74,3 MB/s
-	c) 73,9 MB/s
-
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 21,0 MB/s
-	b) 19,8 MB/s
-	c) 22,4 MB/s
-
-------------------------------------------------------------------------
-kernel: uname -r 2.6.27.12-except_export+readahead - all scst patches except export_alloc_io_context.patch + readahead-contex.patch
-default /dev/md0 readahead = 512
-
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # blockdev --getra /dev/sda
-1024
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # blockdev --getra /dev/sdb
-1024
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # blockdev --getra /dev/md0
-512
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # cat /sys/block/sdb/queue/context_readahead
-1
-linux-4dtq:/.kernels/scst-kernel-4/scstadmin # cat /sys/block/sda/queue/context_readahead
-1
-
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 47,7 MB/s
-	b) 47,6 MB/s
-	c) 47,6 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 47,6 MB/s
-	b) 47,2 MB/s
-	c) 46,8 MB/s
-
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 3,5 MB/s
-	b) 3,1 MB/s
-	c) 3,5 MB/s
-
------------------------------------------	
-kernel: uname -r: 2.6.27.12-except_export+readahead
-readahead set to: 4M
-
-linux-4dtq:~ # cat /sys/block/sdb/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # cat /sys/block/sda/queue/scheduler
-noop anticipatory deadline [cfq]
-linux-4dtq:~ # echo 1 > /sys/block/sda/queue/context_readahead
-linux-4dtq:~ # echo 1 > /sys/block/sdb/queue/context_readahead
-linux-4dtq:~ # blockdev --setra 4096 /dev/sdb
-linux-4dtq:~ # blockdev --setra 4096 /dev/sda
-linux-4dtq:~ # cat /sys/block/sdb/queue/context_readahead
-1
-linux-4dtq:~ # cat /sys/block/sda/queue/context_readahead
-1
-linux-4dtq:~ # blockdev --getra /dev/sda
-4096
-linux-4dtq:~ # blockdev --getra /dev/sdb
-4096
-linux-4dtq:~ # mdadm --assemble /dev/md0 /dev/sd[ab]
-mdadm: /dev/md/0 has been started with 2 drives.
-linux-4dtq:~ # vgchange -a y
-  3 logical volume(s) in volume group "raid" now active
-linux-4dtq:~ #
-
-scst: Using security group "Default" for initiator "iqn.1996-04.de.suse:01:aadab8bc4be5"
-iscsi-scst: Negotiated parameters: InitialR2T No, ImmediateData Yes, MaxConnections 1, MaxRecvDataSegmentLength 1048576, MaxXmitDataSegmentLength 131072,
-iscsi-scst:     MaxBurstLength 1048576, FirstBurstLength 262144, DefaultTime2Wait 2, DefaultTime2Retain 0,
-iscsi-scst:     MaxOutstandingR2T 1, DataPDUInOrder Yes, DataSequenceInOrder Yes, ErrorRecoveryLevel 0,
-iscsi-scst:     HeaderDigest None, DataDigest None, OFMarker No, IFMarker No, OFMarkInt 2048, IFMarkInt 2048
-
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 49,1 MB/s
-	b) 49,0 MB/s
-	c) 48,7 MB/s
-#dd if=/dev/sdc of=/dev/null bs=64K count=80000
-	a) 47,9 MB/s
-	b) 46,6 MB/s
-	c) 47,2 MB/s
-Run at the same time:	
-#while true; do dd if=/dev/sdc  of=/dev/null bs=64K; done	
-#dd if=/dev/sdb of=/dev/null bs=64K count=80000
-	a) 3,6 MB/s
-	b) 3,4 MB/s
-	c) 3,6 MB/s
-
-
---------------030909090709030109010503--
