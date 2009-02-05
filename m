@@ -1,81 +1,82 @@
-From: Bryan Wu <cooloney@kernel.org>
-Subject: Re: [PATCH] nfs client: kill compile warning on NOMMU machine
-Date: Thu, 5 Feb 2009 17:02:37 +0800
-Message-ID: <386072610902050102r3c3e41a3yfbb424411f2f40dc@mail.gmail.com>
-References: <1225962921-6424-1-git-send-email-cooloney@kernel.org>
+From: Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: [NLM] 2.6.27 broken
+Date: Thu, 05 Feb 2009 11:47:09 +0100
+Message-ID: <1233830829.4965.56.camel@tucsk>
+References: <20081115132831.GA11329@janus>
+	 <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus>
+	 <20081216173923.GE16388@fieldses.org> <1229456632.6023.1.camel@tucsk>
+	 <20081216201610.GE18928@fieldses.org> <20090204233348.GD20917@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-kernel@vger.kernel.org, Bryan Wu <cooloney@kernel.org>
-To: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.236]:36194 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752472AbZBEJCj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2009 04:02:39 -0500
-In-Reply-To: <1225962921-6424-1-git-send-email-cooloney@kernel.org>
+Received: from styx.suse.cz ([82.119.242.94]:58537 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751065AbZBEKrN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Feb 2009 05:47:13 -0500
+In-Reply-To: <20090204233348.GD20917@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi guys,
+On Wed, 2009-02-04 at 18:33 -0500, J. Bruce Fields wrote:
+> On Tue, Dec 16, 2008 at 03:16:10PM -0500, bfields wrote:
+> > On Tue, Dec 16, 2008 at 08:43:52PM +0100, Miklos Szeredi wrote:
+> > > On Tue, 2008-12-16 at 12:39 -0500, J. Bruce Fields wrote:
+> > > > More precisely, it looks like this started with
+> > > > 
+> > > > 	bde74e4bc64415b142e "locks: add special return value for
+> > > > 		asynchronous locks"
+> > > > 
+> > > > But I haven't had the chance to look any harder yet.  Miklos?  Is this
+> > > > easy for you to reproduce?
+> > > 
+> > > Not immediately, at the moment I don't have NFS set up.  But if you
+> > > don't beat me to it, I'll look into this.
+> > 
+> > OK, thanks.  I'll take another look too when I get the chance, so let me
+> > know of any partial result.
+> > 
+> > It may just for example be returning the wrong error to the client on an
+> > nlm blocking lock request, so that the client assumes the lock is gone
+> > and goes away rather than waiting for a grant request.
+> 
+> Sorry, I've gotten a bit backlogged, but I finally got back to this.  If
+> there's no objections, the following is what I intend to submit.
 
-Is it possible to merge this patch?
+OK (though I don't really understand why we make a lock request to the
+VFS _at all_ if we know the lock is already queued???).
 
-Thanks
--Bryan
+But I think at least a comment in the code would be in order, or this
+same mistake might be made again.  Also I think the original code flow
+is somewhat illogical.
 
-On Thu, Nov 6, 2008 at 5:15 PM, Bryan Wu <cooloney@kernel.org> wrote:
-> On nommu machine such as Blackfin, when compling NFS we got an warning about
-> nfs_file_mmap() function defined but not used.
->
-> This patch kills this warning.
->
-> Signed-off-by: Bryan Wu <cooloney@kernel.org>
-> ---
->  fs/nfs/file.c |   16 ++++++++++++----
->  1 files changed, 12 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index d319b49..66b8b8e 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -64,11 +64,7 @@ const struct file_operations nfs_file_operations = {
->        .write          = do_sync_write,
->        .aio_read       = nfs_file_read,
->        .aio_write      = nfs_file_write,
-> -#ifdef CONFIG_MMU
->        .mmap           = nfs_file_mmap,
-> -#else
-> -       .mmap           = generic_file_mmap,
-> -#endif
->        .open           = nfs_file_open,
->        .flush          = nfs_file_flush,
->        .release        = nfs_file_release,
-> @@ -294,6 +290,7 @@ nfs_file_splice_read(struct file *filp, loff_t *ppos,
->        return res;
->  }
->
-> +#ifdef CONFIG_MMU
->  static int
->  nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
->  {
-> @@ -312,6 +309,17 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
->        }
->        return status;
->  }
-> +#else
-> +static int
-> +nfs_file_mmap(struct file *file, struct vm_area_struct *vma)
-> +{
-> +       /* Kill warning: 'nfs_file_vm_ops' defined but not used */
-> +       struct vm_operations_struct *vm_ops;
-> +       vm_ops = &nfs_file_vm_ops;
-> +
-> +       return generic_file_mmap(file, vma);
-> +}
-> +#endif
->
->  /*
->  * Flush any dirty pages for this process, and check for write errors.
-> --
-> 1.5.6.3
->
+How about this (it's essentially the same patch just a bit rearranged,
+the authorship is still yours of course ;)
+
+Thanks,
+Miklos
+
+Index: linux-2.6/fs/lockd/svclock.c
+===================================================================
+--- linux-2.6.orig/fs/lockd/svclock.c	2009-01-26 14:47:48.000000000 +0100
++++ linux-2.6/fs/lockd/svclock.c	2009-02-05 11:42:20.000000000 +0100
+@@ -426,6 +426,13 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
+ 			ret = nlm_granted;
+ 			goto out;
+ 		case -EAGAIN:
++			/*
++			 * If this is a blocking request for an
++			 * already pending lock request then we need
++			 * to put it back on lockd's block list
++			 */
++			if (wait)
++				break;
+ 			ret = nlm_lck_denied;
+ 			goto out;
+ 		case FILE_LOCK_DEFERRED:
+
+
+
+
