@@ -1,110 +1,97 @@
-From: Bryan Wu <cooloney@kernel.org>
-Subject: Re: [PATCH] nfs client: kill compile warning on NOMMU machine
-Date: Fri, 6 Feb 2009 00:24:37 +0800
-Message-ID: <386072610902050824j6eeb8e9asde2c41ac5cf9815a@mail.gmail.com>
-References: <1225962921-6424-1-git-send-email-cooloney@kernel.org>
-	 <386072610902050102r3c3e41a3yfbb424411f2f40dc@mail.gmail.com>
-	 <1233840498.7161.97.camel@heimdal.trondhjem.org>
-	 <1233848265.7161.101.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NLM] 2.6.27 broken
+Date: Thu, 5 Feb 2009 14:52:03 -0500
+Message-ID: <20090205195203.GD9200@fieldses.org>
+References: <20081115132831.GA11329@janus> <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus> <20081216173923.GE16388@fieldses.org> <1229456632.6023.1.camel@tucsk> <20081216201610.GE18928@fieldses.org> <20090204233348.GD20917@fieldses.org> <1233830829.4965.56.camel@tucsk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Miklos Szeredi <mszeredi@suse.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rn-out-0910.google.com ([64.233.170.189]:12835 "EHLO
-	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751568AbZBEQYj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2009 11:24:39 -0500
-In-Reply-To: <1233848265.7161.101.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:51322 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758168AbZBETwA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2009 14:52:00 -0500
+In-Reply-To: <1233830829.4965.56.camel@tucsk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 5, 2009 at 11:37 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2009-02-05 at 08:28 -0500, Trond Myklebust wrote:
->> On Thu, 2009-02-05 at 17:02 +0800, Bryan Wu wrote:
->> > Hi guys,
->> >
->> > Is it possible to merge this patch?
->>
->> NACK. Although it would be nice to get rid of the warning, this patch
->> does so at the price of even further obfuscating the fact that we're
->> just returning -ENOSYS in the no MMU case, and by causing
->> nfs_file_vm_ops (which is currently optimised away) to be compiled in
->> for no good reason at all.
->>
->> Trond
->
-> How about the following compromise: we get rid of the special casing
-> altogether and just always call generic_file_mmap. If the noMMU folks
-> want further optimisations, then they can inline generic_file_mmap(), so
-> that the compiler always takes the 'generic_file_mmap() failed' path.
->
+On Thu, Feb 05, 2009 at 11:47:09AM +0100, Miklos Szeredi wrote:
+> On Wed, 2009-02-04 at 18:33 -0500, J. Bruce Fields wrote:
+> > On Tue, Dec 16, 2008 at 03:16:10PM -0500, bfields wrote:
+> > > On Tue, Dec 16, 2008 at 08:43:52PM +0100, Miklos Szeredi wrote:
+> > > > On Tue, 2008-12-16 at 12:39 -0500, J. Bruce Fields wrote:
+> > > > > More precisely, it looks like this started with
+> > > > > 
+> > > > > 	bde74e4bc64415b142e "locks: add special return value for
+> > > > > 		asynchronous locks"
+> > > > > 
+> > > > > But I haven't had the chance to look any harder yet.  Miklos?  Is this
+> > > > > easy for you to reproduce?
+> > > > 
+> > > > Not immediately, at the moment I don't have NFS set up.  But if you
+> > > > don't beat me to it, I'll look into this.
+> > > 
+> > > OK, thanks.  I'll take another look too when I get the chance, so let me
+> > > know of any partial result.
+> > > 
+> > > It may just for example be returning the wrong error to the client on an
+> > > nlm blocking lock request, so that the client assumes the lock is gone
+> > > and goes away rather than waiting for a grant request.
+> > 
+> > Sorry, I've gotten a bit backlogged, but I finally got back to this.  If
+> > there's no objections, the following is what I intend to submit.
+> 
+> OK (though I don't really understand why we make a lock request to the
+> VFS _at all_ if we know the lock is already queued???).
 
-Beautiful, I do love this one and would like to test it on our platform.
+I think you're right, we might be able to bypass the lock entirely in
+that case, but we'd need to think about it carefully.
 
-Thanks
--Bryan
+> But I think at least a comment in the code would be in order, or this
+> same mistake might be made again.  Also I think the original code flow
+> is somewhat illogical.
 
-> Cheers
->  Trond
-> ------------------------------------------------------------
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Thu, 5 Feb 2009 10:23:36 -0500
-> NFS: Kill the "defined but not used" compile error on nommu machines
->
-> Bryan Wu reports that when compiling NFS on nommu machines he gets a
-> "defined but not used" error on nfs_file_mmap().
->
-> The easiest fix is simply to get rid of the special casing in NFS, and
-> just always call generic_file_mmap() to set up the file.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->
->  fs/nfs/file.c |   12 +++++-------
->  1 files changed, 5 insertions(+), 7 deletions(-)
->
->
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 404c19c..1eab9c9 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -64,11 +64,7 @@ const struct file_operations nfs_file_operations = {
->        .write          = do_sync_write,
->        .aio_read       = nfs_file_read,
->        .aio_write      = nfs_file_write,
-> -#ifdef CONFIG_MMU
->        .mmap           = nfs_file_mmap,
-> -#else
-> -       .mmap           = generic_file_mmap,
-> -#endif
->        .open           = nfs_file_open,
->        .flush          = nfs_file_flush,
->        .release        = nfs_file_release,
-> @@ -304,11 +300,13 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
->        dprintk("NFS: mmap(%s/%s)\n",
->                dentry->d_parent->d_name.name, dentry->d_name.name);
->
-> -       status = nfs_revalidate_mapping(inode, file->f_mapping);
-> +       /* Note: generic_file_mmap() returns ENOSYS on nommu systems
-> +        *       so we call that before revalidating the mapping
-> +        */
-> +       status = generic_file_mmap(file, vma);
->        if (!status) {
->                vma->vm_ops = &nfs_file_vm_ops;
-> -               vma->vm_flags |= VM_CAN_NONLINEAR;
-> -               file_accessed(file);
-> +               status = nfs_revalidate_mapping(inode, file->f_mapping);
->        }
->        return status;
->  }
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+Yeah, I was literally just reverting the problematic lines of your
+previous commit.  I'd rather keep it that way for now, just as a clear
+separation between the revert/bugfix and the cleanup.
+
+> How about this (it's essentially the same patch just a bit rearranged,
+> the authorship is still yours of course ;)
+
+... but would happily queue up the cleanup for 2.6.30.
+
+Actually, I find it strange to have just that single case which breaks,
+so that the code after the switch, which looks like it should be shared,
+actually just applies to one case.  I'd be inclined to just suck
+everything up to "out:" into the -EAGAIN case and then make all cases
+"goto out" (or, equivalently, break).
+
+--b.
+
+> Thanks,
+> Miklos
+> 
+> Index: linux-2.6/fs/lockd/svclock.c
+> ===================================================================
+> --- linux-2.6.orig/fs/lockd/svclock.c	2009-01-26 14:47:48.000000000 +0100
+> +++ linux-2.6/fs/lockd/svclock.c	2009-02-05 11:42:20.000000000 +0100
+> @@ -426,6 +426,13 @@ nlmsvc_lock(struct svc_rqst *rqstp, stru
+>  			ret = nlm_granted;
+>  			goto out;
+>  		case -EAGAIN:
+> +			/*
+> +			 * If this is a blocking request for an
+> +			 * already pending lock request then we need
+> +			 * to put it back on lockd's block list
+> +			 */
+> +			if (wait)
+> +				break;
+>  			ret = nlm_lck_denied;
+>  			goto out;
+>  		case FILE_LOCK_DEFERRED:
+> 
+> 
+> 
+> 
