@@ -1,76 +1,56 @@
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
-	than 120 seconds"
-Date: Fri, 6 Feb 2009 07:35:13 +0100
-Message-ID: <20090206063513.GV47559@fit.vutbr.cz>
-References: <1231603200.29646.5.camel@heimdal.trondhjem.org> <20090112090404.GL47559@fit.vutbr.cz> <1231782009.7322.12.camel@heimdal.trondhjem.org> <1231809446.7322.17.camel@heimdal.trondhjem.org> <20090113152201.GD47559@fit.vutbr.cz> <20090116104802.GF47559@fit.vutbr.cz> <20090118130835.GH47559@fit.vutbr.cz> <20090120150301.GG47559@fit.vutbr.cz> <1232465547.7055.3.camel@heimdal.trondhjem.org> <20090128081852.GJ47559@fit.vutbr.cz>
+From: Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: [NLM] 2.6.27 broken
+Date: Fri, 06 Feb 2009 12:29:58 +0100
+Message-ID: <1233919798.4965.63.camel@tucsk>
+References: <20081115132831.GA11329@janus>
+	 <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus>
+	 <20081216173923.GE16388@fieldses.org> <1229456632.6023.1.camel@tucsk>
+	 <20081216201610.GE18928@fieldses.org> <20090204233348.GD20917@fieldses.org>
+	 <1233830829.4965.56.camel@tucsk>  <20090205195203.GD9200@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain
+Cc: Frank van Maarseveen <frankvm@frankvm.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from kazi.fit.vutbr.cz ([147.229.8.12]:63453 "EHLO kazi.fit.vutbr.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751180AbZBFGfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Feb 2009 01:35:22 -0500
-In-Reply-To: <20090128081852.GJ47559@fit.vutbr.cz>
+Received: from styx.suse.cz ([82.119.242.94]:57765 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752308AbZBFLaB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Feb 2009 06:30:01 -0500
+In-Reply-To: <20090205195203.GD9200@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 28, 2009 at 09:18:52AM +0100, Kasparek Tomas wrote:
-> On Tue, Jan 20, 2009 at 10:32:27AM -0500, Trond Myklebust wrote:
-> > On Tue, 2009-01-20 at 16:03 +0100, Kasparek Tomas wrote:
-> > > On Sun, Jan 18, 2009 at 02:08:35PM +0100, Kasparek Tomas wrote:
-> > > > > > > The attached 2 patches have been tested using a server that was rigged
-> > > > > > > not to ever close the socket. They appear to work fine on my setup,
-> > > > > > > without the hang that you reported earlier.
-> > > > ...
-> > > > It seems that machines with this new kernel (tried on 10 other machines
-> > > > and the original client) may after few days get into state where they
-> > > > generate huge amounts (10000-100000pkt/s) of packets on another server they
-> > > > use (Linux 2.6.26.62, but the same behaviour with other kernels I tried -
-> > > > 2.6.24.7, 2.6.22.19, 2.6.27.10). It seems packets are quiet small as the
-> > > > flow on server is about 5-10MB/s. (probably) Each packet generates an answer.
-> > > > With this flow it is hard to get more info and the server is production
-> > > > one, so for now I only know it goes from these clients and end on tcp port
-> > > > 2049 on that server. It kills just this server, communication with the
-> > > > previously problematic (FreeBSD machines) is fine now.
-> > > 
-> > > patches. Do not have more info about what's there on network, the only new
-> > > thing I can add is that the client is dead not reacting even on keyborad or
-> > > anything else. Trond, would you have and idea what to try now or what other
-> > 
-> > A binary wireshark dump of the traffic between one such client and the
-> > server would help.
+On Thu, 2009-02-05 at 14:52 -0500, J. Bruce Fields wrote:
+> On Thu, Feb 05, 2009 at 11:47:09AM +0100, Miklos Szeredi wrote:
+> > But I think at least a comment in the code would be in order, or this
+> > same mistake might be made again.  Also I think the original code flow
+> > is somewhat illogical.
 > 
-> I tried to get some data several times, but the client is dead and the
-> server is overloaded so much, that I'm unable to get anything reasonable. I
-> did tried to insert another mechine in front of the client as a bridge, but
-> the traffic overloaded it the same way as the server. I will try to figure
-> out how to get some traffic dump, but have no other idea for now.
+> Yeah, I was literally just reverting the problematic lines of your
+> previous commit.  I'd rather keep it that way for now, just as a clear
+> separation between the revert/bugfix and the cleanup.
 
-Hi,
+OK.
 
-as another try, I did upgrade from 2.6.27.10 to 2.6.27.13 (and .14) and it
-looks like the problem disappeared. Righ now I'm running 5 clients with .13
-or .14 and tcpdumps for 3 days without any problem. I will try to stop
-tcpdumps as they can potentially influence behaviour and will confirm the
-state next week.
+> > How about this (it's essentially the same patch just a bit rearranged,
+> > the authorship is still yours of course ;)
+> 
+> ... but would happily queue up the cleanup for 2.6.30.
 
-Thank you very much for all the work you and others from nfs-linux are
-doing!
-(I'm going to test pNFS in short time, so if I can be helpfull in any
-way, let me know).
+Cool.
 
-Bye
+> Actually, I find it strange to have just that single case which breaks,
+> so that the code after the switch, which looks like it should be shared,
+> actually just applies to one case.  I'd be inclined to just suck
+> everything up to "out:" into the -EAGAIN case and then make all cases
+> "goto out" (or, equivalently, break).
 
---   
+Yes, but it needs to be sucked into the FILE_LOCK_DEFERRED case as well.
+It's just two lines and one of them is setting the error value, so it's
+not real duplication.
 
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 1, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
+Thanks,
+Miklos
 
-  jabber: tomas.kasparek-2ASvDZBniIelVyrhU4qvOw@public.gmane.org
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
 
