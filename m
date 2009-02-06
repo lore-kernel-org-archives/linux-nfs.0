@@ -1,50 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NLM] 2.6.27 broken
-Date: Thu, 5 Feb 2009 14:52:19 -0500
-Message-ID: <20090205195219.GE9200@fieldses.org>
-References: <20081115132831.GA11329@janus> <20081120222731.GA591@fieldses.org> <20081128112447.GA25340@janus> <20081216173923.GE16388@fieldses.org> <1229456632.6023.1.camel@tucsk> <20081216201610.GE18928@fieldses.org> <20090204233348.GD20917@fieldses.org> <20090205102153.GA29389@janus>
+From: "Universitetet i Oslo Help Desk" <helpdesk-6Z/AllhyZU4@public.gmane.org>
+Subject: =?iso-8859-1?Q?Kj=E6re_uio.no_konto_Bruker?=
+Date: Fri, 6 Feb 2009 01:17:44 +0100 (CET)
+Message-ID: <31854.41.220.75.3.1233879464.squirrel__16520.842727232$1233880055$gmane$org@webmail.verat.net>
+Reply-To: desk.help500@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Miklos Szeredi <mszeredi@suse.cz>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Frank van Maarseveen <frankvm@frankvm.com>
+Content-Type: text/plain; charset=iso-8859-1
+To: undisclosed-recipients:;
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51325 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755701AbZBETwP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Feb 2009 14:52:15 -0500
-In-Reply-To: <20090205102153.GA29389@janus>
+Received: from olc-12.verat.net ([62.108.127.38]:48062 "EHLO olc-12.verat.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752096AbZBFA0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Feb 2009 19:26:02 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 05, 2009 at 11:21:53AM +0100, Frank van Maarseveen wrote:
-> On Wed, Feb 04, 2009 at 06:33:48PM -0500, J. Bruce Fields wrote:
-> > diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> > index 6063a8e..763b78a 100644
-> > --- a/fs/lockd/svclock.c
-> > +++ b/fs/lockd/svclock.c
-> > @@ -427,7 +427,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
-> >  			goto out;
-> >  		case -EAGAIN:
-> >  			ret = nlm_lck_denied;
-> > -			goto out;
-> > +			break;
-> >  		case FILE_LOCK_DEFERRED:
-> >  			if (wait)
-> >  				break;
-> > @@ -443,6 +443,10 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
-> >  			goto out;
-> >  	}
-> >  
-> > +	ret = nlm_lck_denied;
-> > +	if (!wait)
-> > +		goto out;
-> > +
-> >  	ret = nlm_lck_blocked;
-> >  
-> >  	/* Append to list of blocked */
-> 
-> 
-> fix confirmed, thanks!
+Kj=E6re uio.no konto Bruker,
 
-Good, thanks.--b.
+Det vil v=E6re en generell oppgradering i systemet mellom Februray 2 ti=
+l 20
+2009.P=E5 grunn av anonym registrering av uio.no kontoer og antall
+av sovende kontoer, vil vi kj=F8re denne oppgraderingen for =E5 fastsl=E5
+n=F8yaktige antallet abonnenter vi har i dag.
+
+Du blir bedt om =E5 logge deg inn p=E5 uio.no og bekrefte hvis
+Kontoen er fortsatt gyldig og sender umiddelbart den folowing:
+
+Brukernavn: :................................( Obligatorisk)
+Passord :...................................( Obligatorisk)
+=46=F8dselsdato :..............................( Valgfritt)
+Staten :........................................( Valgfritt)
+
+=46=F8r du sender kontoopplysningene dine til oss, er du r=E5d til =E5 =
+logge inn i
+denne Koblingen nedenfor: https://webmail.uio.no/src/login.php
+
+Merk at hvis kontoen din gj=F8re Login sende oss detaljene eller det be=
+tyr
+det har v=E6rt deleted.beklager den inconvinences dette kan f=F8re til =
+at du
+vi bare pr=F8ver =E5 kontrollere at du ikke mister informasjon i regnsk=
+apet.
+
+Alt du trenger =E5 gj=F8re er =E5 Klikk Svar og levere ut informasjonen=
+ ovenfor,
+Kontoen din vil ikke bli avbrutt og vil fortsette som normalt.
+
+Takk for din oppmerksomhet til denne foresp=F8rselen. Igjen Vi beklager
+eventuelle
+inconveniences. Advarsel! Konto brukere som nekter =E5 oppdatere kontoe=
+n sin
+etter 5 dager etter =E5 ha mottatt denne advarselen, brukeren mister si=
+n konto
+permanent.
+
+2009=A9 Universitetet i Oslo (uio.no)
+
