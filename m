@@ -1,108 +1,71 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: [RFC PATCH 0/1] nfsd: Improve NFS server performance
-Date: Sat, 7 Feb 2009 14:43:55 +0530
-Message-ID: <OFC7146FC3.ABEF6E81-ON65257556.001EB1D9-65257556.0032B679@in.ibm.com>
-References: <20081230104245.9409.30030.sendpatchset@localhost.localdomain> <20090204231958.GB20917@fieldses.org> <OF46E14C36.93250375-ON65257554.0050CEC8-65257554.005328DC@in.ibm.com> <20090205202401.GH9200@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] net/sunrpc/xprtsock.c: some common code found
+Date: Sat, 07 Feb 2009 11:23:24 -0500
+Message-ID: <1234023804.17241.14.camel@heimdal.trondhjem.org>
+References: <20090206.140714.201930500.davem@davemloft.net>
+	 <CAF18546-B024-40C9-8276-8FCD89C98E72@oracle.com>
+	 <Pine.LNX.4.64.0902070040530.31875@wrl-59.cs.helsinki.fi>
+	 <20090206.192243.47948705.davem@davemloft.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: ilpo.jarvinen-pxSi+dnQzZMxHbG02/KK1g@public.gmane.org, chuck.lever@oracle.com,
+	bfields@fieldses.org, trond@netapp.com, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org
+To: David Miller <davem@davemloft.net>,
+	Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:50205 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751936AbZBGJRK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Feb 2009 04:17:10 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id n179H386027100
-	for <linux-nfs@vger.kernel.org>; Sat, 7 Feb 2009 14:47:03 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n179H9tA4505832
-	for <linux-nfs@vger.kernel.org>; Sat, 7 Feb 2009 14:47:09 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id n179H3jp015729
-	for <linux-nfs@vger.kernel.org>; Sat, 7 Feb 2009 20:17:03 +1100
-In-Reply-To: <20090205202401.GH9200@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:28187 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754120AbZBGQXp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Feb 2009 11:23:45 -0500
+In-Reply-To: <20090206.192243.47948705.davem@davemloft.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On Fri, 2009-02-06 at 19:22 -0800, David Miller wrote:
+> From: "Ilpo J=C3=A4rvinen" <ilpo.jarvinen-pxSi+dnQzZMxHbG02/KK1g@public.gmane.org>
+> Date: Sat, 7 Feb 2009 00:58:44 +0200 (EET)
+>=20
+> > I think your "English" is too strict requirement.
+>=20
+> I absolutely and whole-heartedly agree.  This set of
+> requirements is beyond rediculious and will do nothing
+> but deter people from contributing.
+>=20
+> So unless that's what the goal is...
+>=20
+> Anyways, I'll be applying Ilpo's great changes to the
+> net-next-2.6 GIT tree, without putting him through the
+> ringer like this.
 
-> > I used to have counters in nfsd_open - something like dbg_num_opens,
-> > dbg_open_jiffies, dgb_close_jiffies, dbg_read_jiffies,
-> > dgb_cache_jiffies, etc.  I can reintroduce those debugs and get a run
-> > and see how those numbers looks like, is that what you are looking
-> > for?
->
-> I'm not sure what you mean by dbg_open_jiffies--surely a single open of
-> a file already in the dentry cache is too fast to be measurable in
-> jiffies?
+No. I find it quite unacceptable for the networking group to circumvent
+the standard Linux review process in this manner. If you plan to push a
+patch into the sunrpc code against the wishes of the community and
+people that maintain that code then I'll be petitioning Linus to revert
+it on general principle as soon as it hits his tree.
 
-When dbg_number_of_opens is very high, I see a big difference in the open
-times
-for original vs new (almost zero) code. I am running 8, 64, 256, etc,
-processes and each of them reads files upto 500MB (a lot of open/read/close
-per file per process), so the jiffies adds up (contention between parallel
-opens, some processing in open, etc). To clarify this, I will reintroduce
-the debugs and get some values (it was done a long time back and I don't
-remember how much difference was there), and post it along with what the
-debug code is doing.
+Like it or not, the changelog _is_ a part of the patch that is subject
+to review and comment, and while I like the rest of the patch, I will
+support Chuck and Bruce's comments that putting a bunch of diffstat
+output into the changelog is not a substitute for a simple sentence. Al=
+l
+it takes is
 
-> OK, yeah, I just wondered whether you could end up with a reference to a
-> file hanging around indefinitely even after it had been deleted, for
-> example.
+"
+Save 147 lines by moving the common code from xs_udp_write_space() and
+xs_tcp_write_space() into a separate helper.
 
-If client deletes a file, the server immediately locates and removes the
-cached
-entry. If server deletes a file, my original intention was to use inotify
-to
-inform NFS server to delete the cache but that ran into some problems. So
-my
-solution was to fallback to the cache getting deleted by the daemon after
-the
-short timeout, till then the space for the inode is not freed. So in both
-cases,
-references to the file will not hang around indefinitely.
+S-o-b: Ilpo....
+"
 
-> I've heard of someone updating read-only block snapshots by stopping
-> mountd, flushing the export cache, unmounting the old snapshot, then
-> mounting the new one and restarting mountd.  A bit of a hack, but I
-> guess it works, as long as no clients hold locks or NFSv4 opens on the
-> filesystem.
->
-> An open cache may break that by holding references to the filesystem
-> they want to unmount.  But perhaps we should give such users a proper
-> interface that tells nfsd to temporarily drop state it holds on a
-> filesystem, and tell them to use that instead.
+and everyone will be happy. So please stop making a storm in a teacup
+out of this...
 
-I must admit that I am lost in this scenario - I was assuming that the
-filesystem can be unmounted only after nfs services are stopped, hence I
-added
-cache cleanup on nfsd_shutdown. Is there some hook to catch for the unmount
-where I should clean the cache for that filesystem?
+Trond
+--=20
+Trond Myklebust
+Linux NFS client maintainer
 
-> > Please let me know if you would like me to write up a small text about
-how
-> > this patch works.
->
-> Any explanation always welcome.
-
-Sure. I will send this text soon, along with test program.
-
-> > The other details are:
-> >       #Clients: 1
-> >       Hardware Configuration (both systems):
-> >             Two Dual-Core AMD Opteron (4 cpus) at 3GH.
-> >             1GB memory
-> >             10gbps private network
-> >       Filesystem: ext3 (one filesystem)
->
-> OK, thanks!  And what sort of disk on the server?
-
-133 GB ServeRAID (I think ST9146802SS  Seagate disk), containing 256 files,
-each
-of 500MB size.
-
-Thanks,
-
-- KK
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
