@@ -1,156 +1,83 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Mon, 9 Feb 2009 16:11:42 -0500
-Message-ID: <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au> <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com> <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au> <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com> <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au> <1233699391.7161.11.camel@heimdal.trondhjem.org> <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com> <1233771633.7161.35.camel@heimdal.trondhjem.org> <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com> <1233773231.7161.51.camel@heimdal.trondhjem.org> <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: processes in D state too long too often
+Date: Mon, 9 Feb 2009 16:27:51 -0500
+Message-ID: <20090209212751.GK13636@fieldses.org>
+References: <W396157575167661234039767@webmail27>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: "Gary L. Grobe" <gary-QhKe0p0S2m1eoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:46553 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753696AbZBIVMC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Feb 2009 16:12:02 -0500
-In-Reply-To: <1234094116.13862.162.camel-+Zt617Lp5ASbJVK1MCa92ZvzqaJJnU0YunOrhLTifxA@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:37957 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754088AbZBIV1o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Feb 2009 16:27:44 -0500
+In-Reply-To: <W396157575167661234039767@webmail27>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ian-
+(By the way, please try not to start new threads or drop people from the
+cc.)
 
-On Feb 8, 2009, at 6:55 AM, Ian Dall wrote:
-> On Wed, 2009-02-04 at 13:47 -0500, Trond Myklebust wrote:
->> On Wed, 2009-02-04 at 13:44 -0500, Chuck Lever wrote:
->>> Right.  So, then, can nfs_match_client() use the same address
->>> comparison method as nfs_find_client()?  I'm inclined to think
->>> nfs_match_client() can use a more straightforward address comparison
->>> method.
->>
->> It could. We should certainly be checking that the sa_family field
->> matches...
->
-> Based on this, here is a new version of the patch. I've dropped the
-> contentious clean up of the conditional compilation. The match is done
-> in a new function nfs_sockaddr_match(). Even though this function
-> compares IPv4 and IPv6 addresses it compiles and runs OK even when  
-> IPV6
-> is not configured, because the necessary data structures and macros  
-> are
-> still defined.
->
-> When IPV6 is not configured a few bytes (of executable) could be saved
-> by making two versions of nfs_sockaddr_match() conditional on
-> CONFIG_IPV6 but personally I don't think it is worth it.
->
-> Log:
-> ======================
-> sockaddr structures can't be reliably compared using memcmp()
-> because there are padding bytes in the structure which can't be
-> guaranteed to be the same even when the sockaddr structures refer to
-> the same socket.
+On Sat, Feb 07, 2009 at 08:49:27PM +0000, Gary L. Grobe wrote:
+> > Then send us those traces. Please try to avoid wordwrapping them in
+> the email.
+> 
+> Ok, so I run my simulations, and then run the following script. 
+> 
+> --- This was run on the master node
+> echo w > /proc/sysrq-trigger
+> dmesg -c -s 1000000 > foo
+> 
+> I've captured these stuck tasks on both the master and the slave node, on separate runs.
 
-It is also the case that IPv6 socket address structures contain other  
-fields that don't have to match, like sin6_scope_id.  I think that is  
-worth noting in the patch description.
+So the nfsd stacks are all identical:
 
-I don't see anything immediately wrong with this approach, but I made  
-a couple of additional minor comments below.
+> nfsd          D 00000001079318f8     0  5832      2
+>  ffff880837a23c70 0000000000000046 0000000000000000 0000000000000002
+>  ffff88083aef5950 ffff88083cda5790 ffff88083aef5b80 0000000437a23c80
+>  00000000ffffffff 00000001079318fb 0000000000000000 0000000000000000
+> Call Trace:
+>  [<ffffffff8056e8e3>] schedule_timeout+0x8a/0xad
+>  [<ffffffff80237e8b>] process_timeout+0x0/0x5
+>  [<ffffffff8056e8de>] schedule_timeout+0x85/0xad
+>  [<ffffffff80238178>] msleep+0x14/0x1e
+>  [<ffffffff8030235d>] nfsd_vfs_write+0x221/0x2dd
+>  [<ffffffff8028222b>] __dentry_open+0x14c/0x23b
+>  [<ffffffff80302a93>] nfsd_write+0xc5/0xe2
+>  [<ffffffff803003bd>] nfsd_proc_write+0xc5/0xde
+>  [<ffffffff80307ac1>] decode_fh+0x1c/0x45
+>  [<ffffffff802fe8f3>] nfsd_dispatch+0xde/0x1c2
+>  [<ffffffff805456f5>] svc_process+0x408/0x6e7
+>  [<ffffffff8056f920>] __down_read+0x12/0x93
+>  [<ffffffff802fef26>] nfsd+0x1b7/0x285
+>  [<ffffffff802fed6f>] nfsd+0x0/0x285
+>  [<ffffffff80240d34>] kthread+0x47/0x73
+>  [<ffffffff8022bd1d>] schedule_tail+0x27/0x5f
+>  [<ffffffff8020c109>] child_rip+0xa/0x11
+>  [<ffffffff80240ced>] kthread+0x0/0x73
+>  [<ffffffff8020c0ff>] child_rip+0x0/0x11
 
-> Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-> ======================
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 9b728f3..04b11d9 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -272,6 +272,42 @@ static int nfs_sockaddr_match_ipaddr(const  
-> struct sockaddr *sa1,
-> }
-> #endif
->
-> +/* Test if two socket addresses are the same family, ipaddr and  
-> port */
+Presumably that's the msleep(10) in nfsd_vfs_write().
 
-Instead of repeating what the function does, can this comment explain  
-why the NFS client needs to match on the address and port, for example?
+That wouldn't explain the same nfsd thread waiting for several seconds,
+though.  Or was it just that that several seconds during which different
+nfsd threads were stuck in D, not necessarily the same ones?
 
-Explaining why it is different than the existing  
-nfs_sockaddr_match_ipaddr() function would be helpful for future  
-generations.
+What does your /etc/exports file look like on the server, and what are
+the mount options on the client?
 
-> +static int nfs_sockaddr_match(const struct sockaddr *sa1,
-> +			      const struct sockaddr *sa2)
-> +{
-> +	if (sa1->sa_family != sa2->sa_family)
-> +		return 0;
-> +
-> +	switch (sa1->sa_family) {
-> +	case AF_INET:
-> +		{
-> +			const struct sockaddr_in * saddr1 =
-> +				(const struct sockaddr_in *) sa1;
-> +			const struct sockaddr_in * saddr2 =
-> +				(const struct sockaddr_in *) sa2;
-> +			if (likely(saddr1->sin_addr.s_addr !=
-> +				   saddr2->sin_addr.s_addr)) {
-> +				return 0;
-> +			}
-> +			return (saddr1->sin_port == saddr2->sin_port);
-> +		}
+You could try turning off that msleep() with no_wdelay, but it may not
+help.
 
-As a stylistic point, these days we prefer to use a helper function  
-instead of curly braces inside the arms of the switch.  It will also  
-remove the need to fold those lines.
+The more likely explanation is that you just switched to a more recent
+distro where "sync" (as opposed to "async") is the option.  Depending on
+workload, "async" may improve performance a great deal, at the expense
+of possible data corruption on server reboot!
 
-I have used this style in the past, but there is general consensus now  
-that helper functions are easier to read, and are therefore preferred.
+If you're doing a lot of writing and using NFSv2, then switching to
+NFSv3 may give you performance close to the "async" performance without
+the corruption worries.
 
-> +	case AF_INET6:
-> +		{
-> +			const struct sockaddr_in6 * saddr1 =
-> +				(const struct sockaddr_in6 *) sa1;
-> +			const struct sockaddr_in6 * saddr2 =
-> +				(const struct sockaddr_in6 *) sa2;
-> +			if (likely(!ipv6_addr_equal(&saddr1->sin6_addr,
-> +						   &saddr1->sin6_addr))) {
-> +				return 0;
-> +			}
-> +			return (saddr1->sin6_port == saddr2->sin6_port);
-> +		}
-> +	}
-> +	return 0;
-> +}
-> +
-> /*
->  * Find a client by IP address and protocol version
->  * - returns NULL if no such client
-> @@ -344,8 +380,10 @@ struct nfs_client *nfs_find_client_next(struct  
-> nfs_client *clp)
-> static struct nfs_client *nfs_match_client(const struct  
-> nfs_client_initdata *data)
-> {
-> 	struct nfs_client *clp;
-> +	const struct sockaddr *sap = data->addr;
->
-> 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-> +	        const struct sockaddr *clap = (struct sockaddr *)&clp- 
-> >cl_addr;
-> 		/* Don't match clients that failed to initialise properly */
-> 		if (clp->cl_cons_state < 0)
-> 			continue;
-> @@ -358,7 +396,7 @@ static struct nfs_client *nfs_match_client(const  
-> struct nfs_client_initdata *dat
-> 			continue;
->
-> 		/* Match the full socket address */
-> -		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
-> +		if (!nfs_sockaddr_match(sap, clap))
-> 			continue;
->
-> 		atomic_inc(&clp->cl_count);
->
-
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
