@@ -1,161 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:52063 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752493AbZBSG3F (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 19 Feb 2009 01:29:05 -0500
-Message-ID: <499CFB6B.1010902@sgi.com>
-Date: Thu, 19 Feb 2009 17:25:47 +1100
-From: Greg Banks <gnb@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS ML <linux-nfs@vger.kernel.org>
-Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with	enormous
- load averages
-References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com> <20090211231033.GK27686@fieldses.org>
-In-Reply-To: <20090211231033.GK27686@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from neil.brown.name ([220.233.11.133]:57211 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750983AbZBIFQo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Feb 2009 00:16:44 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LWOVc-0003L5-79
+	for linux-nfs@vger.kernel.org; Mon, 09 Feb 2009 16:16:40 +1100
+Message-ID: <498FB7BA.6020402@melbourne.sgi.com>
+Date: Mon, 09 Feb 2009 15:57:30 +1100
+From: Greg Banks <gnb@melbourne.sgi.com>
+To: howard chen <howachen@gmail.com>
+References: <b66ddc900902082040m24aef720ybab2fd6646377246@mail.gmail.com>
+In-Reply-To: <b66ddc900902082040m24aef720ybab2fd6646377246@mail.gmail.com>
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] Advise on NFS performance tunning.
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
-> On Tue, Jan 13, 2009 at 09:26:35PM +1100, Greg Banks wrote:
->   
->> [...] Under a high call-rate
->> low service-time workload, the result is that almost every nfsd is
->> runnable, but only a handful are actually able to run.  This situation
->> causes two significant problems:
->>
->> 1. The CPU scheduler takes over 10% of each CPU, which is robbing
->>    the nfsd threads of valuable CPU time.
->>
->> 2. At a high enough load, the nfsd threads starve userspace threads
->>    of CPU time, to the point where daemons like portmap and rpc.mountd
->>    do not schedule for tens of seconds at a time.  Clients attempting
->>    to mount an NFS filesystem timeout at the very first step (opening
->>    a TCP connection to portmap) because portmap cannot wake up from
->>    select() and call accept() in time.
->>
->> Disclaimer: these effects were observed on a SLES9 kernel, modern
->> kernels' schedulers may behave more gracefully.
->>     
+howard chen wrote:
+> Are there any way I can tune my NFS setup?
 >
-> Yes, googling for "SLES9 kernel"...   Was that really 2.6.5 based?
+> e.g.
 >
-> The scheduler's been through at least one complete rewrite since then,
-> so the obvious question is whether it's wise to apply something that may
-> turn out to have been very specific to an old version of the scheduler.
+> 1. adding more memory to server?
+> 2. adding more memory to client?
+> 3. upgrade to NFS v4?
+> ...
 >
-> It's a simple enough patch, but without any suggestion for how to retest
-> on a more recent kernel, I'm uneasy.
+> NFS mount option:
+> async,noatime,noexec,nosuid,hard,intr,udp,retry=3,rsize=32768,wsize=32768
+> NFS version: 3
 >
 >   
+http://mirror.linux.org.au/pub/linux.conf.au/2008/slides/130-lca2008-nfs-tuning-secrets-d7.odp
 
-Ok, fair enough.  I retested using my local GIT tree, which is cloned
-from yours and was last git-pull'd a couple of days ago.  The test load
-was the same as in my 2005 tests (multiple userspace threads each
-simulating an rsync directory traversal from a 2.4 client, i.e. almost
-entirely ACCESS calls with some READDIRs and GETATTRs, running as fast
-as the server will respond).  This was run on much newer hardware (and a
-different architecture as well: a quad-core Xeon) so the results are not
-directly comparable with my 2005 tests.  However the effect with and
-without the patch can be clearly seen, with otherwise identical hardware
-software and load (I added a sysctl to enable and disable the effect of
-the patch at runtime).
+See in particular slides 27-30, 71-74, 86-88.
 
-A quick summary: the 2.6.29-rc4 CPU scheduler is not magically better
-than the 2.6.5 one and NFS can still benefit from reducing load on it.
+You mention increasing the server's RAM; this might help if you're
+thrashing the server's dentry or pages caches.  Unfortunately I don't
+know of a sensible or easy way to check this, except by comparing the
+working set size to RAM.
 
-Here's a table of measured call rates and steady-state 1-minute load
-averages, before and after the patch, versus number of client load
-threads.   The server was configured with 128 nfsds in the thread pool
-which was under load.  In all cases except the the single CPU in the
-thread pool was 100% busy (I've elided the 8-thread results where that
-wasn't the case).
-
-#threads    before                  after
-            call/sec    loadavg     call/sec    loadavg
---------    --------    -------     --------    -------
-16          57353       10.98       74965        6.11
-24          57787       19.56       79397       13.58
-32          57921       26.00       80746       21.35
-40          57936       35.32       81629       31.73
-48          57930       43.84       81775       42.64
-56          57467       51.05       81411       52.39
-64          57595       57.93       81543       64.61
-
-
-As you can see, the patch improves NFS throughput for this load by up
-to  40%, which is a surprisingly large improvement.  I suspect it's a
-larger improvement because my 2005 tests had multiple CPUs serving NFS
-traffic, and the improvements due to this patch were drowned in various
-SMP effects which are absent from this test.
-
-Also surprising is that the patch improves the reported load average
-number only at higher numbers of client threads; at low client thread
-counts the load average is unchanged or even slightly higher.  The patch
-didn't have that effect back in 2005, so I'm confused by that
-behaviour.  Perhaps the difference is due to changes in the scheduler or
-the accounting that measures load averages?
-
-Profiling at 16 client threads, 32 server threads shows differences in
-the CPU usage in the CPU scheduler itself, with some ACPI effects too. 
-The platform I ran on in 2005 did not support ACPI, so that's new to
-me.  Nevertheless it makes a difference.  Here are the top samples from
-a couple of 30-second flat profiles.
-
-Before:
-
-samples  %        image name               app name                 symbol name
-3013      4.9327  processor.ko             processor                acpi_idle_enter_simple  <---
-2583      4.2287  sunrpc.ko                sunrpc                   svc_recv
-1273      2.0841  e1000e.ko                e1000e                   e1000_irq_enable
-1235      2.0219  sunrpc.ko                sunrpc                   svc_process
-1070      1.7517  e1000e.ko                e1000e                   e1000_intr_msi
-966       1.5815  e1000e.ko                e1000e                   e1000_xmit_frame
-884       1.4472  sunrpc.ko                sunrpc                   svc_xprt_enqueue
-861       1.4096  e1000e.ko                e1000e                   e1000_clean_rx_irq
-774       1.2671  xfs.ko                   xfs                      xfs_iget
-772       1.2639  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   schedule                <---
-726       1.1886  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   sched_clock             <---
-693       1.1345  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   read_hpet               <---
-680       1.1133  sunrpc.ko                sunrpc                   cache_check
-671       1.0985  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_sendpage
-641       1.0494  sunrpc.ko                sunrpc                   sunrpc_cache_lookup
-
-Total % cpu from ACPI & scheduler: 8.5%
-
-After:
-
-samples  %        image name               app name                 symbol name
-5145      5.2163  sunrpc.ko                sunrpc                   svc_recv
-2908      2.9483  processor.ko             processor                acpi_idle_enter_simple  <---
-2731      2.7688  sunrpc.ko                sunrpc                   svc_process
-2092      2.1210  e1000e.ko                e1000e                   e1000_clean_rx_irq
-1988      2.0155  e1000e.ko                e1000e                   e1000_xmit_frame
-1863      1.8888  e1000e.ko                e1000e                   e1000_irq_enable
-1606      1.6282  xfs.ko                   xfs                      xfs_iget
-1514      1.5350  sunrpc.ko                sunrpc                   cache_check
-1389      1.4082  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_recvmsg
-1383      1.4022  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_sendpage
-1310      1.3281  sunrpc.ko                sunrpc                   svc_xprt_enqueue
-1177      1.1933  sunrpc.ko                sunrpc                   sunrpc_cache_lookup
-1142      1.1578  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   get_page_from_freelist
-1135      1.1507  sunrpc.ko                sunrpc                   svc_tcp_recvfrom
-1126      1.1416  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_transmit_skb
-1040      1.0544  e1000e.ko                e1000e                   e1000_intr_msi
-1033      1.0473  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_ack
-1030      1.0443  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   kref_get
-1000      1.0138  nfsd.ko                  nfsd                     fh_verify
-
-Total % cpu from ACPI & scheduler: 2.9%
-
-
-Does that make you less uneasy?
-
+Bumping up actimeo on the client could be a useful way to reduce the
+amount of GETATTR traffic.
 
 -- 
 Greg Banks, P.Engineer, SGI Australian Software Group.
 the brightly coloured sporks of revolution.
 I don't speak for SGI.
+
+
+------------------------------------------------------------------------------
+Create and Deploy Rich Internet Apps outside the browser with Adobe(R)AIR(TM)
+software. With Adobe AIR, Ajax developers can use existing skills and code to
+build responsive, highly engaging applications that combine the power of local
+resources and data with the reach of the web. Download the Adobe AIR SDK and
+Ajax docs to start building applications today-http://p.sf.net/sfu/adobe-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
