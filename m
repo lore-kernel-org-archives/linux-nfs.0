@@ -1,58 +1,127 @@
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
-	than 120 seconds"
-Date: Tue, 10 Feb 2009 08:55:08 +0100
-Message-ID: <20090210075508.GL47559@fit.vutbr.cz>
-References: <20090112090404.GL47559@fit.vutbr.cz> <1231782009.7322.12.camel@heimdal.trondhjem.org> <1231809446.7322.17.camel@heimdal.trondhjem.org> <20090113152201.GD47559@fit.vutbr.cz> <20090116104802.GF47559@fit.vutbr.cz> <20090118130835.GH47559@fit.vutbr.cz> <20090120150301.GG47559@fit.vutbr.cz> <1232465547.7055.3.camel@heimdal.trondhjem.org> <20090128081852.GJ47559@fit.vutbr.cz> <20090206063513.GV47559@fit.vutbr.cz>
+From: "=?ISO-8859-1?Q?Ilpo_J=E4rvinen?=" <ilpo.jarvinen@helsinki.fi>
+Subject: Re: [PATCH] net/sunrpc/xprtsock.c: some common code found
+Date: Tue, 10 Feb 2009 15:12:37 +0200 (EET)
+Message-ID: <Pine.LNX.4.64.0902101417550.31742@wrl-59.cs.helsinki.fi>
+References: <20090206.140714.201930500.davem@davemloft.net>
+ <CAF18546-B024-40C9-8276-8FCD89C98E72@oracle.com>
+ <Pine.LNX.4.64.0902070040530.31875@wrl-59.cs.helsinki.fi>
+ <20090206.192243.47948705.davem@davemloft.net> <1234023804.17241.14.camel@heimdal.trondhjem.org>
+ <Pine.LNX.4.64.0902071831210.2805@wrl-59.cs.helsinki.fi>
+ <20090208052543.GA20689@fieldses.org> <9A7C762F-D2D4-4248-B18A-5FAB973D22A6@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from kazi.fit.vutbr.cz ([147.229.8.12]:51276 "EHLO kazi.fit.vutbr.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750945AbZBJHzP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Feb 2009 02:55:15 -0500
-In-Reply-To: <20090206063513.GV47559@fit.vutbr.cz>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="-696208474-2038977359-1234271557=:31742"
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	David Miller <davem@davemloft.net>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Trond Myklebust <trond@netapp.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Netdev <netdev@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <9A7C762F-D2D4-4248-B18A-5FAB973D22A6@oracle.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 06, 2009 at 07:35:13AM +0100, Kasparek Tomas wrote:
-> > > A binary wireshark dump of the traffic between one such client and the
-> > > server would help.
-> > 
-> > I tried to get some data several times, but the client is dead and the
-> > server is overloaded so much, that I'm unable to get anything reasonable. I
-> > did tried to insert another mechine in front of the client as a bridge, but
-> > the traffic overloaded it the same way as the server. I will try to figure
-> > out how to get some traffic dump, but have no other idea for now.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-> as another try, I did upgrade from 2.6.27.10 to 2.6.27.13 (and .14) and it
-> looks like the problem disappeared. Righ now I'm running 5 clients with .13
-> or .14 and tcpdumps for 3 days without any problem. I will try to stop
-> tcpdumps as they can potentially influence behaviour and will confirm the
-> state next week.
+---696208474-2038977359-1234271557=:31742
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: 8BIT
 
-After 6 days all machines except the first client used are fine and have no
-problems. Based on this I would conclude that:
+On Mon, 9 Feb 2009, Chuck Lever wrote:
 
-- your patch fixes the problem I had
-- there may be something wrong in <2.6.27.13, but it's ok in .13+
-- I finnaly have some tcpdumps from the server concerning the first
-  problematic client, I will try to extract interesting packets and send it
-  here if you or someone else can find anything helpfull there. With .14
-  the client runs much better anyway staying alive for 3 days instead of
-  6-10hours as with .10
+> On Feb 8, 2009, at 12:25 AM, J. Bruce Fields wrote:
+> >On Sat, Feb 07, 2009 at 06:56:03PM +0200, Ilpo Järvinen wrote:
+> > >I personally think that people were honestly just mislead to think that
+> > >diff-funcs output is part of the patch
+> >
+> >Yes, exactly, in my case, that's all it was--the "diff" I thought I saw
+> >in my 2-second skim looked odd, and I figured a comment might have
+> >gotten dropped off in the process of replying and adding cc's--hence the
+> >original question.
+> 
+> I apologize if my request for "English" seemed Anglo-centric.  What I intended
+> was "non-machine-generated" and expressed in the natural language that is
+> usual for Linux kernel patch descriptions, which appears to be English.
 
-Thank you for your support.
+...I still argue that if title gives the same information as that 
+sentence would, the sentence is optional. Some patches don't even have 
+patch description beyond title and there's very little problem with that. 
+As I admitted earlier the title wasn't as good as it should have (and I 
+even sent a followup to please all including even the in body sentence 
+plus the fixed title). Not that I find the title really a problem to sane 
+people who understand that code-duplication is bad and getting rid of it 
+is what one should do in general, as long as it's possible without making 
+a mess out of it.
 
---   
+> I agree with you that the diff output in the patch description was confusing,
+> and yes, after Dave's first comment I understood what the description meant.
+> I believe patch authors owe it to maintainers, who have dozens of patches to
+> review a day, to keep it as simple and easy as possible.  I have tried to work
+> with individual maintainers where possible to improve the legibility of my
+> patches, though at times I have fallen short.
+> 
+> Although interesting, the tool output doesn't seem necessary to justify the
+> proposed change.
 
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 1, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
+I don't understand why a tool output cannot "say" the same as some English 
+sentence... And if a proof that the code blocks that were merged were 
+infact identical (instead of having some hard to spot difference) doesn't 
+seem like useful information to reviewer I don't really know what to say.
 
-  jabber: tomas.kasparek-2ASvDZBniIelVyrhU4qvOw@public.gmane.org
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
+> In addition to crafting a legible description, my suggestions were about
+> cc'ing the proper mailing list, and routing this patch directly to the sunrpc
+> kernel maintainers in the first place, all of which are listed within easy
+> reach in MAINTAINERS.
 
+Please note that I couldn't guess that I'd have to look for another entry 
+after first SUNRPC entry in the MAINTAINERS. So asking outsider to know
+who is who in sunrpc realm is not very likely to be a practical 
+requirement either. And even to add into confusion the latest commits 
+in that particular directory had the last S-o-B line as Bruce's. How could 
+I have guessed? Forgetting to lookup the address from MAINTAINERS into the 
+first mail is something which just happened and I'm certainly guilty to 
+that :-).
+
+...I've had enough down turning experiences with random dev lists listed 
+in the MAINTAINERS (mostly spammy subsriber only ones, nearly infinite 
+response time, etc things) that I mostly ignore them nowadays though this 
+time it would have been vger list so no subscription required madness. 
+Instead I either select lkml or netdev, this time netdev because of 
+the obvious presence under net/ hierarcy.
+
+> But I wonder how we ended up with these two copies of the same logic.  It may
+> be that at some point in the past we had more different logic in the two
+> write_space functions, but I suppose we can split it out again if we ever need
+> to.  Thinking aloud, at some point we may have lost a little history here, or
+> we may have perhaps lost any implicit operational dependencies on other parts
+> of xprtsock.c (like the TCP state logic) that are not expressed in the source
+> code or comments.
+
+Well, this kind of thinking is beyond me and requires more knowledge about 
+internals of the code. IMHO, this kind of speculation changes nothing 
+really, and besides the functions _were_ different to begin with as was
+proven in the patch description :-). ...Would they have been fully 
+identical you would have seen a bit different patch ;-).
+
+If you think there's something wrong, please fix, you're free to do so,
+I don't understand enough. But we don't keep all those #if 0 blocks 
+around either just because somebody thinks that something will get 
+implemented one day (not that you directly made such assertion, probably 
+saying mildy the opposite instead). Ironically, you would have been 
+perfectly happy with the particular functions unless a cleanup patch 
+against them gets made... :-)
+
+> The newly shared code appears to be socket-specific, so it does not 
+> belong in the shared function we already have, xprt_write_space(), which 
+> is meant to be transport-generic.
+
+IMHO, this is the most useful response so far! :-) Usually the hardest 
+obstacles I face with non-familiar code is its structure and naming.
+
+
+-- 
+ i.
+---696208474-2038977359-1234271557=:31742--
