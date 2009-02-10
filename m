@@ -1,48 +1,62 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [patch 0/3] First tranche of SGI Enhanced NFS patches
-Date: Tue, 10 Feb 2009 10:26:46 +1100
-Message-ID: <4990BBB6.4000006@sgi.com>
-References: <20090113102633.719563000@sgi.com> <498FBE0B.1040104@melbourne.sgi.com> <20090209204726.GH13636@fieldses.org>
+From: "Gary L. Grobe" <gary@grobe.net>
+Subject: Re:  processes in D state too long too often
+Date: Tue, 10 Feb 2009 01:04:10 +0000
+Message-ID: <W27744109726791234227850@webmail24>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:58134 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751490AbZBIX33 (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Mon, 9 Feb 2009 18:29:29 -0500
-In-Reply-To: <20090209204726.GH13636@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	"Andrew Morton" <akpm@linux-foundation.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Gary L. Grobe" <gary@grobe.net>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754268AbZBJBEY@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Mon, Feb 09, 2009 at 04:24:27PM +1100, Greg Banks wrote:
->   
->> Bruce, any word on these?  I don't seem to have any specific review
->> items that I need to pay attention to with these patches, and I don't
->> see them in your for-2.6.30 branch, so can I get an ack or a nack or
->> feedback on things that need fixing?
->>     
+>Presumably that's the msleep(10) in nfsd_vfs_write().
 >
-> Sorry, that came around the time of the citi compromise, so I just
-> registered that it had gotten some responses, figured it'd probably be
-> resent, and filed it away....
->   
-Aha.  The conversations didn't result in any specific feedback items or
-improvements that I can see, unless I'm misunderstanding what people
-said.  So I don't have any newer versions of the patches to send.  Do
-you want me to resend anyway?
+>That wouldn't explain the same nfsd thread waiting for several seconds,
+>though.  Or was it just that that several seconds during which different
+>nfsd threads were stuck in D, not necessarily the same ones?
 >
-> We now believe that password-logging ssh and sshd were installed on citi
-> machines as early as November. [...]
+>What does your /etc/exports file look like on the server, and what are
+>the mount options on the client?
+>
+>You could try turning off that msleep() with no_wdelay, but it may not
+>help.
+>
+>The more likely explanation is that you just switched to a more recent
+>distro where "sync" (as opposed to "async") is the option.  Depending on
+>workload, "async" may improve performance a great deal, at the expense
+>of possible data corruption on server reboot!
+>
+>If you're doing a lot of writing and using NFSv2, then switching to
+>NFSv3 may give you performance close to the "async" performance without
+>the corruption worries.
 
-Ouch.  Well, that explains the linux-nfs.org outages.
+Apologies for the unintentional separate thread.
 
+I really think I'm seeing the same nfsd threads going into D for a very short time. Here's what's in /etc/exports ...
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+/diskless/10.0.1.1 10.0.1.1(sync,rw,no_root_squash,no_all_squash,no_subtree_check)
+/diskless/10.0.1.2 10.0.1.2(sync,rw,no_root_squash,no_all_squash,no_subtree_check)
+/diskless/10.0.1.3 10.0.1.3(sync,rw,no_root_squash,no_all_squash,no_subtree_check)
+# ... same lines above for another 80+ nodes
 
+# Common to all slave nodes.
+/usr    10.0.0.0/16(sync,ro,subtree_check,no_root_squash,no_all_squash)
+/opt    10.0.0.0/16(sync,rw,no_subtree_check,no_root_squash,no_all_squash)
+/home   10.0.0.0/16(sync,rw,no_subtree_check,no_root_squash,no_all_squash)
+#/var/log 10.0.0.0/16(sync,rw,subtree_check,no_root_squash,no_all_squash)
+
+Mount options on each client are as follows ...
+
+10.0.0.10:/diskless/10.0.1.1    /   nfs     sync,hard,intr,rw,rsize=8192,wsize=8192 0   0
+10.0.0.10:/opt          /opt    nfs sync,hard,intr,rw,rsize=8192,wsize=8192 0   0
+10.0.0.10:/usr          /usr    nfs sync,hard,intr,ro,rsize=8192,wsize=8192 0   0
+10.0.0.10:/home         /home   nfs sync,hard,intr,rw,rsize=8192,wsize=8192 0   0
+none                    /proc   proc    defaults    0 0
+#10.0.0.10:/var/log     /var/log nfs    sync,hard,intr,rw   0 0
+
+I'm not following turning off the msleep() option. Where are you referring to this from?
+
+I've got NFSv3 enabled and have used this in a previous installation (using the same distro, gentoo) on this same hardware with no issues, and 'sync', and the performance was much better. Something worth noting, I've rolled back my kernel several times now and each time I go back (w/ same vers on master and slave node), the D state time in simulation processes keeps getting better (cut down). I went from 2.6.27-r7 to 2.6.24-r8 and now I'm running 2.6.20-r10, and each one better than the previous (and later) kernel. I was running 2.6.18-r2 in the past, which I'm having difficulties getting at the moment.
