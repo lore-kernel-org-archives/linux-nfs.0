@@ -1,66 +1,41 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:53843 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753220AbZBSGqD (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 19 Feb 2009 01:46:03 -0500
-Message-ID: <499CFF69.3000708@sgi.com>
-Date: Thu, 19 Feb 2009 17:42:49 +1100
-From: Greg Banks <gnb@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS ML <linux-nfs@vger.kernel.org>,
-        Harshula Jayasuriya <harshula@sgi.com>
-Subject: Re: [patch 3/3] knfsd: add file to export stats about nfsd pools
-References: <20090113102633.719563000@sgi.com> <20090113102653.884405000@sgi.com> <20090212171106.GB21445@fieldses.org>
-In-Reply-To: <20090212171106.GB21445@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Message-ID: <49932E72.8060209@garzik.org>
+Date: Wed, 11 Feb 2009 15:00:50 -0500
+From: Jeff Garzik <jeff@garzik.org>
+To: linux-nfs@vger.kernel.org
+Subject: NFS clients' use of fs_locations?
+Cc: nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Tue, Jan 13, 2009 at 09:26:36PM +1100, Greg Banks wrote:
->   
->> Add /proc/fs/nfsd/pool_stats to export to userspace various
->> statistics about the operation of rpc server thread pools.
->>     
->
-> Could you explainw hy these specific statistics (total packets,
-> sockets_queued, threads_woken, overloads_avoided, threads_timedout) are
-> the important ones to capture?  Could you give examples of what sort of
-> problems could be solved using them?
->   
-Actually I originally added these stats to help debug the
-overload-avoiding patch.  Then I thought to use them to drive a
-userspace control loop for controlling the number of nfsds, which I
-never finished writing.
-> As you said, an important question for the sysadmin is "should I
-> configure more nfsds?"  How do they answer that?
->   
-You can work that out, but it's not obvious, i.e. not human-friendly.  
-Firstly, you need to rate convert all the stats.
+According to the NFSv4 spec (section 6.1), regarding fs_locations,
 
-The total_packets stat tells you how many NFS packets are arriving on
-each thread pool.  This is your primary load metric, i.e. with more load
-you want more nfsd threads.
+	On first access of the filesystem, the client should obtain the
+	value of the fs_locations attribute. If, in the future, the
+	client finds the server unresponsive, the client may attempt to
+	use another server specified by fs_locations.
 
-The sockets_queued stat tells you that calls are arriving which are not
-being immediately serviced by threads, i.e. you're either thread-limited
-or CPU-limited rather than network-limited and you might get better
-throughput if there were more nfsd threads.
+Does any known client actually fail over to another fs_location, as 
+described here?
 
-Conversely the overloads_avoided stat tells you if there are more
-threads than can usefully be made runnable on the available CPUs, so
-that adding more nfsd threads is unlikely to be helpful.
+I am implementing the server side of this...  AFAICT Linux barely uses 
+fs_locations, and Solaris just crashes.
 
-The threads_timedout stat will give you a first-level approximation of
-whether there are threads that are completely idle, i.e. don't see any
-calls for the svc_recv() timeout (which I reduced to IIRC 10 sec as part
-of the original version of this patch).  This is a clue that you can now
-reduce the number of threads.
+	Jeff
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
 
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
