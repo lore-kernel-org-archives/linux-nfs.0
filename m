@@ -1,129 +1,184 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch 1/3] knfsd: remove the nfsd thread busy histogram
-Date: Wed, 11 Feb 2009 16:59:47 -0500
-Message-ID: <20090211215947.GH27686@fieldses.org>
-References: <20090113102633.719563000@sgi.com> <20090113102653.445100000@sgi.com> <BF9EF754-76CE-41B7-B712-2E96E3D9CA9B@oracle.com> <496D1ACC.7070106@melbourne.sgi.com>
+Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with
+	enormous load averages
+Date: Wed, 11 Feb 2009 18:10:33 -0500
+Message-ID: <20090211231033.GK27686@fieldses.org>
+References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Linux NFS ML <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
+To: Greg Banks <gnb@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:55433 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:42007 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755842AbZBKV7l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2009 16:59:41 -0500
-In-Reply-To: <496D1ACC.7070106-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+	with ESMTP id S1754249AbZBKXK0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2009 18:10:26 -0500
+In-Reply-To: <20090113102653.664553000@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 14, 2009 at 09:50:52AM +1100, Greg Banks wrote:
-> Chuck Lever wrote:
-> > On Jan 13, 2009, at Jan 13, 2009, 5:26 AM, Greg Banks wrote:
-> >> Stop gathering the data that feeds the 'th' line in /proc/net/rpc/nfsd
-> >> because the questionable data provided is not worth the scalability
-> >> impact of calculating it.  Instead, always report zeroes.  The current
-> >> approach suffers from three major issues:
-> >>
-> >> 1. update_thread_usage() increments buckets by call service
-> >>   time or call arrival time...in jiffies.  On lightly loaded
-> >>   machines, call service times are usually < 1 jiffy; on
-> >>   heavily loaded machines call arrival times will be << 1 jiffy.
-> >>   So a large portion of the updates to the buckets are rounded
-> >>   down to zero, and the histogram is undercounting.
-> >
-> > Use ktime_get_real() instead.  This is what the network layer uses.
-> IIRC that wasn't available when I wrote the patch (2.6.5 kernel in SLES9
-> in late 2005).  I haven't looked at it again since.
+On Tue, Jan 13, 2009 at 09:26:35PM +1100, Greg Banks wrote:
+> Avoid overloading the CPU scheduler with enormous load averages
+> when handling high call-rate NFS loads.  When the knfsd bottom half
+> is made aware of an incoming call by the socket layer, it tries to
+> choose an nfsd thread and wake it up.  As long as there are idle
+> threads, one will be woken up.
 > 
-> Later, I looked at gathering better statistics on thread usage, and I
-> investigated real time clock (more precisely, monotonic clock)
-> implementations in Linux and came to the sad conclusion that there was
-> no API I could call that would be both accurate and efficient on two or
-> more platforms, so I gave up.  The HPET hardware timer looked promising
-> for a while, but it turned out that a 32b kernel used a global spinlock
-> to access the 64b HPET registers, which created the same scalability
-> problem I was trying to fix.  Things may have improved since then.
+> If there are lot of nfsd threads (a sensible configuration when
+> the server is disk-bound or is running an HSM), there will be many
+> more nfsd threads than CPUs to run them.  Under a high call-rate
+> low service-time workload, the result is that almost every nfsd is
+> runnable, but only a handful are actually able to run.  This situation
+> causes two significant problems:
 > 
-> If we had such a clock though, the solution is very simple.  Each nfsd
-> maintains two new 64b counters of nanoseconds spent in each of two
-> states "busy" and "idle", where "idle" is asleep waiting for a call and
-> "busy" is everything else.  These are maintained in svc_recv(). 
-> Interfaces are provided for userspace to read an aggregation of these
-> counters, per-pool and globally.  Userspace rate-converts the counters;
-> the rate of increase of the two counters tells you both how many threads
-> there are and how much actual demand on thread time there is.  This is
-> how I did it in Irix (SGI  Origin machines had a global distributed
-> monotonic clock in hardware).
-
-Is it worth looking into this again now?
-
-> >   You could even steal the start timestamp from the first skbuff in an
-> > incoming RPC request.
+> 1. The CPU scheduler takes over 10% of each CPU, which is robbing
+>    the nfsd threads of valuable CPU time.
 > 
-> This would help if we had skbuffs: NFS/RDMA doesn't.
-> >
-> > This problem is made worse on "server" configurations and in virtual
-> > guests which may still use HZ=100, though with tickless HZ this is a
-> > less frequently seen configuration.
+> 2. At a high enough load, the nfsd threads starve userspace threads
+>    of CPU time, to the point where daemons like portmap and rpc.mountd
+>    do not schedule for tens of seconds at a time.  Clients attempting
+>    to mount an NFS filesystem timeout at the very first step (opening
+>    a TCP connection to portmap) because portmap cannot wake up from
+>    select() and call accept() in time.
 > 
-> Indeed.
-> >
-> >> 2. As seen previously on the nfs mailing list, the format in which
-> >>   the histogram is presented is cryptic, difficult to explain,
-> >>   and difficult to use.
-> >
-> > A user space script similar to mountstats that interprets these
-> > metrics might help here.
-> 
-> The formatting in the pseudofile isn't the entire problem.  The problem
-> is translating the "thread usage histogram" information there into an
-> answer to the actual question the sysadmin wants, which is "should I
-> configure more nfsds?"
+> Disclaimer: these effects were observed on a SLES9 kernel, modern
+> kernels' schedulers may behave more gracefully.
 
-Agreed.
+Yes, googling for "SLES9 kernel"...   Was that really 2.6.5 based?
 
-> >> 3. Updating the histogram requires taking a global spinlock and
-> >>   dirtying the global variables nfsd_last_call, nfsd_busy, and
-> >>   nfsdstats *twice* on every RPC call, which is a significant
-> >>   scaling limitation.
-> >
-> > You might fix this by making the global variables into per-CPU
-> > variables, then totaling the per-CPU variables only at presentation
-> > time (ie when someone cats /proc/net/rpc/nfsd).  That would make the
-> > collection logic lockless.
-> This is how I fixed some of the other server stats in later patches. 
-> IIRC that approach doesn't work for the thread usage histogram because
-> it's scaled as it's gathered by a potentially time-varying global number
-> so the on-demand totalling might not give correct results.
+The scheduler's been through at least one complete rewrite since then,
+so the obvious question is whether it's wise to apply something that may
+turn out to have been very specific to an old version of the scheduler.
 
-Right, so, amuse yourself watching me as I try to remember how the 'th'
-line works: if it's attempting to report, e.g., what length of time 10%
-of the threads are busy, it needs very local knowledge: if you know each
-thread was busy 10 jiffies out of the last 100, you'd still need to know
-whether they were all busy during the *same* 10-jiffy interval, or
-whether that work was spread out more evenly over the 100 jiffies....
+It's a simple enough patch, but without any suggestion for how to retest
+on a more recent kernel, I'm uneasy.
 
 --b.
 
-> Also, in the
-> presence of multiple thread pools any thread usage information should be
-> per-pool not global.  At the time I wrote this patch I concluded that I
-> couldn't make the gathering scale and still preserve the exact semantics
-> of the data gathered.
 > 
-> >
-> >>
-> >
-> > Yeah.  The real issue here is deciding whether these stats are useful
-> > or not; 
-> In my experience, not.
+> The solution is simple: keep in each svc_pool a counter of the number
+> of threads which have been woken but have not yet run, and do not wake
+> any more if that count reaches an arbitrary small threshold.
 > 
-> > if not, can they be made useable?
-> A different form of the data could certainly be made useful.
+> Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients, each with 16
+> synthetic client threads simulating an rsync (i.e. recursive directory
+> listing) workload reading from an i386 RH9 install image (161480
+> regular files in 10841 directories) on the server.  That tree is small
+> enough to fill in the server's RAM so no disk traffic was involved.
+> This setup gives a sustained call rate in excess of 60000 calls/sec
+> before being CPU-bound on the server.  The server was running 128 nfsds.
 > 
+> Profiling showed schedule() taking 6.7% of every CPU, and __wake_up()
+> taking 5.2%.  This patch drops those contributions to 3.0% and 2.2%.
+> Load average was over 120 before the patch, and 20.9 after.
+> 
+> This patch is a forward-ported version of knfsd-avoid-nfsd-overload
+> which has been shipping in the SGI "Enhanced NFS" product since 2006.
+> It has been posted before:
+> 
+> http://article.gmane.org/gmane.linux.nfs/10374
+> 
+> Signed-off-by: Greg Banks <gnb@sgi.com>
+> ---
+> 
+>  include/linux/sunrpc/svc.h |    2 ++
+>  net/sunrpc/svc_xprt.c      |   25 ++++++++++++++++++-------
+>  2 files changed, 20 insertions(+), 7 deletions(-)
+> 
+> Index: bfields/include/linux/sunrpc/svc.h
+> ===================================================================
+> --- bfields.orig/include/linux/sunrpc/svc.h
+> +++ bfields/include/linux/sunrpc/svc.h
+> @@ -41,6 +41,7 @@ struct svc_pool {
+>  	struct list_head	sp_sockets;	/* pending sockets */
+>  	unsigned int		sp_nrthreads;	/* # of threads in pool */
+>  	struct list_head	sp_all_threads;	/* all server threads */
+> +	int			sp_nwaking;	/* number of threads woken but not yet active */
+>  } ____cacheline_aligned_in_smp;
+>  
+>  /*
+> @@ -264,6 +265,7 @@ struct svc_rqst {
+>  						 * cache pages */
+>  	wait_queue_head_t	rq_wait;	/* synchronization */
+>  	struct task_struct	*rq_task;	/* service thread */
+> +	int			rq_waking;	/* 1 if thread is being woken */
+>  };
+>  
+>  /*
+> Index: bfields/net/sunrpc/svc_xprt.c
+> ===================================================================
+> --- bfields.orig/net/sunrpc/svc_xprt.c
+> +++ bfields/net/sunrpc/svc_xprt.c
+> @@ -14,6 +14,8 @@
+>  
+>  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+>  
+> +#define SVC_MAX_WAKING 5
+> +
+>  static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt);
+>  static int svc_deferred_recv(struct svc_rqst *rqstp);
+>  static struct cache_deferred_req *svc_defer(struct cache_req *req);
+> @@ -298,6 +300,7 @@ void svc_xprt_enqueue(struct svc_xprt *x
+>  	struct svc_pool *pool;
+>  	struct svc_rqst	*rqstp;
+>  	int cpu;
+> +	int thread_avail;
+>  
+>  	if (!(xprt->xpt_flags &
+>  	      ((1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED))))
+> @@ -309,12 +312,6 @@ void svc_xprt_enqueue(struct svc_xprt *x
+>  
+>  	spin_lock_bh(&pool->sp_lock);
+>  
+> -	if (!list_empty(&pool->sp_threads) &&
+> -	    !list_empty(&pool->sp_sockets))
+> -		printk(KERN_ERR
+> -		       "svc_xprt_enqueue: "
+> -		       "threads and transports both waiting??\n");
+> -
+>  	if (test_bit(XPT_DEAD, &xprt->xpt_flags)) {
+>  		/* Don't enqueue dead transports */
+>  		dprintk("svc: transport %p is dead, not enqueued\n", xprt);
+> @@ -353,7 +350,14 @@ void svc_xprt_enqueue(struct svc_xprt *x
+>  	}
+>  
+>   process:
+> -	if (!list_empty(&pool->sp_threads)) {
+> +	/* Work out whether threads are available */
+> +	thread_avail = !list_empty(&pool->sp_threads);	/* threads are asleep */
+> +	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
+> +		/* too many threads are runnable and trying to wake up */
+> +		thread_avail = 0;
+> +	}
+> +
+> +	if (thread_avail) {
+>  		rqstp = list_entry(pool->sp_threads.next,
+>  				   struct svc_rqst,
+>  				   rq_list);
+> @@ -368,6 +372,8 @@ void svc_xprt_enqueue(struct svc_xprt *x
+>  		svc_xprt_get(xprt);
+>  		rqstp->rq_reserved = serv->sv_max_mesg;
+>  		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+> +		rqstp->rq_waking = 1;
+> +		pool->sp_nwaking++;
+>  		BUG_ON(xprt->xpt_pool != pool);
+>  		wake_up(&rqstp->rq_wait);
+>  	} else {
+> @@ -633,6 +639,11 @@ int svc_recv(struct svc_rqst *rqstp, lon
+>  		return -EINTR;
+>  
+>  	spin_lock_bh(&pool->sp_lock);
+> +	if (rqstp->rq_waking) {
+> +		rqstp->rq_waking = 0;
+> +		pool->sp_nwaking--;
+> +		BUG_ON(pool->sp_nwaking < 0);
+> +	}
+>  	xprt = svc_xprt_dequeue(pool);
+>  	if (xprt) {
+>  		rqstp->rq_xprt = xprt;
+> 
+> --
 > -- 
 > Greg Banks, P.Engineer, SGI Australian Software Group.
 > the brightly coloured sporks of revolution.
 > I don't speak for SGI.
-> 
