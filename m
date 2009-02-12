@@ -1,184 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with
-	enormous load averages
-Date: Wed, 11 Feb 2009 18:10:33 -0500
-Message-ID: <20090211231033.GK27686@fieldses.org>
-References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com>
+From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Thu, 12 Feb 2009 11:58:03 +1030
+Message-ID: <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
+	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
+	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
+	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
+	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
+	 <1233699391.7161.11.camel@heimdal.trondhjem.org>
+	 <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
+	 <1233771633.7161.35.camel@heimdal.trondhjem.org>
+	 <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com>
+	 <1233773231.7161.51.camel@heimdal.trondhjem.org>
+	 <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au>
+	 <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com>
+	 <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au>
+	 <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb@sgi.com>
+Content-Type: text/plain
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:42007 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754249AbZBKXK0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2009 18:10:26 -0500
-In-Reply-To: <20090113102653.664553000@sgi.com>
+Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:47329 "EHLO
+	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752546AbZBLB2Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Feb 2009 20:28:24 -0500
+In-Reply-To: <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 13, 2009 at 09:26:35PM +1100, Greg Banks wrote:
-> Avoid overloading the CPU scheduler with enormous load averages
-> when handling high call-rate NFS loads.  When the knfsd bottom half
-> is made aware of an incoming call by the socket layer, it tries to
-> choose an nfsd thread and wake it up.  As long as there are idle
-> threads, one will be woken up.
-> 
-> If there are lot of nfsd threads (a sensible configuration when
-> the server is disk-bound or is running an HSM), there will be many
-> more nfsd threads than CPUs to run them.  Under a high call-rate
-> low service-time workload, the result is that almost every nfsd is
-> runnable, but only a handful are actually able to run.  This situation
-> causes two significant problems:
-> 
-> 1. The CPU scheduler takes over 10% of each CPU, which is robbing
->    the nfsd threads of valuable CPU time.
-> 
-> 2. At a high enough load, the nfsd threads starve userspace threads
->    of CPU time, to the point where daemons like portmap and rpc.mountd
->    do not schedule for tens of seconds at a time.  Clients attempting
->    to mount an NFS filesystem timeout at the very first step (opening
->    a TCP connection to portmap) because portmap cannot wake up from
->    select() and call accept() in time.
-> 
-> Disclaimer: these effects were observed on a SLES9 kernel, modern
-> kernels' schedulers may behave more gracefully.
 
-Yes, googling for "SLES9 kernel"...   Was that really 2.6.5 based?
+On Wed, 2009-02-11 at 11:24 -0500, Chuck Lever wrote:
 
-The scheduler's been through at least one complete rewrite since then,
-so the obvious question is whether it's wise to apply something that may
-turn out to have been very specific to an old version of the scheduler.
+> > +	/* Compare scope_id. This may only matter for link local
+> > +	 * addresses, but it is cheap, and should be harmless, to just
+> > +	 * compare it anyway.
+> > +	 */
+> > +	if (saddr1->sin6_scope_id != saddr2->sin6_scope_id)
+> > +		return 0;
+> 
+> I've been thinking about this a bit over the past couple of days.  I'm  
+> not yet sure we need this comparison here, but I also don't think it's  
+> harmless to just leave it in.
 
-It's a simple enough patch, but without any suggestion for how to retest
-on a more recent kernel, I'm uneasy.
+As I understand it, it is allowed for a host to see two identical link
+local addresses which are on different interfaces but refer to different
+servers, so it would need to be in for the case of link local addresses.
+But in other cases it is not clear and unfortunately RFC 3493 if not
+very helpful on the subject. But non link-local addresses should be
+unique so at least it would be safe to not test it in those cases.
 
---b.
+> If you really want to include this particular comparison, it would be  
+> better IMO if you check the equivalence of the scope ID fields only if  
+> the addresses are link-local.
 
+This seems like the safest course of action.
+
+With these changes, the nfs_sockaddr_cmp_ip6 function is starting to
+become significant. I was trying to avoid it, but should it be within a
+
+        #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)  ...
+        #endif
+
+block? Someone wanting a minimal (maybe embedded) kernel might object to
+the "bloat".
+
+> > +	return (saddr1->sin6_port == saddr2->sin6_port);
 > 
-> The solution is simple: keep in each svc_pool a counter of the number
-> of threads which have been woken but have not yet run, and do not wake
-> any more if that count reaches an arbitrary small threshold.
-> 
-> Testing was on a 4 CPU 4 NIC Altix using 4 IRIX clients, each with 16
-> synthetic client threads simulating an rsync (i.e. recursive directory
-> listing) workload reading from an i386 RH9 install image (161480
-> regular files in 10841 directories) on the server.  That tree is small
-> enough to fill in the server's RAM so no disk traffic was involved.
-> This setup gives a sustained call rate in excess of 60000 calls/sec
-> before being CPU-bound on the server.  The server was running 128 nfsds.
-> 
-> Profiling showed schedule() taking 6.7% of every CPU, and __wake_up()
-> taking 5.2%.  This patch drops those contributions to 3.0% and 2.2%.
-> Load average was over 120 before the patch, and 20.9 after.
-> 
-> This patch is a forward-ported version of knfsd-avoid-nfsd-overload
-> which has been shipping in the SGI "Enhanced NFS" product since 2006.
-> It has been posted before:
-> 
-> http://article.gmane.org/gmane.linux.nfs/10374
-> 
-> Signed-off-by: Greg Banks <gnb@sgi.com>
-> ---
-> 
->  include/linux/sunrpc/svc.h |    2 ++
->  net/sunrpc/svc_xprt.c      |   25 ++++++++++++++++++-------
->  2 files changed, 20 insertions(+), 7 deletions(-)
-> 
-> Index: bfields/include/linux/sunrpc/svc.h
-> ===================================================================
-> --- bfields.orig/include/linux/sunrpc/svc.h
-> +++ bfields/include/linux/sunrpc/svc.h
-> @@ -41,6 +41,7 @@ struct svc_pool {
->  	struct list_head	sp_sockets;	/* pending sockets */
->  	unsigned int		sp_nrthreads;	/* # of threads in pool */
->  	struct list_head	sp_all_threads;	/* all server threads */
-> +	int			sp_nwaking;	/* number of threads woken but not yet active */
->  } ____cacheline_aligned_in_smp;
->  
->  /*
-> @@ -264,6 +265,7 @@ struct svc_rqst {
->  						 * cache pages */
->  	wait_queue_head_t	rq_wait;	/* synchronization */
->  	struct task_struct	*rq_task;	/* service thread */
-> +	int			rq_waking;	/* 1 if thread is being woken */
->  };
->  
->  /*
-> Index: bfields/net/sunrpc/svc_xprt.c
-> ===================================================================
-> --- bfields.orig/net/sunrpc/svc_xprt.c
-> +++ bfields/net/sunrpc/svc_xprt.c
-> @@ -14,6 +14,8 @@
->  
->  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
->  
-> +#define SVC_MAX_WAKING 5
-> +
->  static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt);
->  static int svc_deferred_recv(struct svc_rqst *rqstp);
->  static struct cache_deferred_req *svc_defer(struct cache_req *req);
-> @@ -298,6 +300,7 @@ void svc_xprt_enqueue(struct svc_xprt *x
->  	struct svc_pool *pool;
->  	struct svc_rqst	*rqstp;
->  	int cpu;
-> +	int thread_avail;
->  
->  	if (!(xprt->xpt_flags &
->  	      ((1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED))))
-> @@ -309,12 +312,6 @@ void svc_xprt_enqueue(struct svc_xprt *x
->  
->  	spin_lock_bh(&pool->sp_lock);
->  
-> -	if (!list_empty(&pool->sp_threads) &&
-> -	    !list_empty(&pool->sp_sockets))
-> -		printk(KERN_ERR
-> -		       "svc_xprt_enqueue: "
-> -		       "threads and transports both waiting??\n");
-> -
->  	if (test_bit(XPT_DEAD, &xprt->xpt_flags)) {
->  		/* Don't enqueue dead transports */
->  		dprintk("svc: transport %p is dead, not enqueued\n", xprt);
-> @@ -353,7 +350,14 @@ void svc_xprt_enqueue(struct svc_xprt *x
->  	}
->  
->   process:
-> -	if (!list_empty(&pool->sp_threads)) {
-> +	/* Work out whether threads are available */
-> +	thread_avail = !list_empty(&pool->sp_threads);	/* threads are asleep */
-> +	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
-> +		/* too many threads are runnable and trying to wake up */
-> +		thread_avail = 0;
-> +	}
-> +
-> +	if (thread_avail) {
->  		rqstp = list_entry(pool->sp_threads.next,
->  				   struct svc_rqst,
->  				   rq_list);
-> @@ -368,6 +372,8 @@ void svc_xprt_enqueue(struct svc_xprt *x
->  		svc_xprt_get(xprt);
->  		rqstp->rq_reserved = serv->sv_max_mesg;
->  		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-> +		rqstp->rq_waking = 1;
-> +		pool->sp_nwaking++;
->  		BUG_ON(xprt->xpt_pool != pool);
->  		wake_up(&rqstp->rq_wait);
->  	} else {
-> @@ -633,6 +639,11 @@ int svc_recv(struct svc_rqst *rqstp, lon
->  		return -EINTR;
->  
->  	spin_lock_bh(&pool->sp_lock);
-> +	if (rqstp->rq_waking) {
-> +		rqstp->rq_waking = 0;
-> +		pool->sp_nwaking--;
-> +		BUG_ON(pool->sp_nwaking < 0);
-> +	}
->  	xprt = svc_xprt_dequeue(pool);
->  	if (xprt) {
->  		rqstp->rq_xprt = xprt;
-> 
-> --
-> -- 
-> Greg Banks, P.Engineer, SGI Australian Software Group.
-> the brightly coloured sporks of revolution.
-> I don't speak for SGI.
+> The parentheses are not needed here.
+
+I know, but are they frowned upon? AFAIK there is no shortage of
+parentheses and they often make things clearer even when redundant.
+
+> Kernel C coding style frowns on the space between the function name  
+> and the argument list.
+
+Is there a style guide or is it more of an osmosis thing? Stylistically,
+there are lots of things I'd do differently (4 character indents for a
+start) but I try and conform with existing practice. Reading the
+existing code isn't always a good guide though.
+
+-- 
+Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+
