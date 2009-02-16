@@ -1,78 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.21]:40515 "EHLO
-	orsmga101.jf.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752010AbZBMB5Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Feb 2009 20:57:25 -0500
-Date: Fri, 13 Feb 2009 09:57:21 +0800
-From: Wu Fengguang <wfg@linux.intel.com>
-To: Vladislav Bolkhovitin <vst@vlnb.net>
-Cc: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
-        "Vitaly V. Bursov" <vitalyb@telenet.dn.ua>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
-Message-ID: <20090213015721.GA5565@localhost>
-References: <492BDAA9.4090405@vlnb.net> <20081125113048.GB16422@localhost> <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <49946BE6.1040005@vlnb.net>
+Received: from mail-out1.uio.no ([129.240.10.57]:34860 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754796AbZBPM4n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Feb 2009 07:56:43 -0500
+Subject: Re: Tracing down 250ms open/chdir calls
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Carsten Aulbert <carsten.aulbert@aei.mpg.de>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        beowulf@beowulf.org
+In-Reply-To: <49991BE7.1090104@aei.mpg.de>
+References: <49991BE7.1090104@aei.mpg.de>
+Content-Type: text/plain
+Date: Mon, 16 Feb 2009 07:56:38 -0500
+Message-Id: <1234788998.7708.40.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Feb 12, 2009 at 09:35:18PM +0300, Vladislav Bolkhovitin wrote:
-> Sorry for such a huge delay. There were many other activities I had to  
-> do before + I had to be sure I didn't miss anything.
->
-> We didn't use NFS, we used SCST (http://scst.sourceforge.net) with  
-> iSCSI-SCST target driver. It has similar to NFS architecture, where N  
-> threads (N=5 in this case) handle IO from remote initiators (clients)  
-> coming from wire using iSCSI protocol. In addition, SCST has patch  
-> called export_alloc_io_context (see  
-> http://lkml.org/lkml/2008/12/10/282), which allows for the IO threads  
-> queue IO using single IO context, so we can see if context RA can  
-> replace grouping IO threads in single IO context.
->
-> Unfortunately, the results are negative. We find neither any advantages  
-> of context RA over current RA implementation, nor possibility for  
-> context RA to replace grouping IO threads in single IO context.
->
-> Setup on the target (server) was the following. 2 SATA drives grouped in  
-> md RAID-0 with average local read throughput ~120MB/s ("dd if=/dev/zero  
-> of=/dev/md0 bs=1M count=20000" outputs "20971520000 bytes (21 GB)  
-> copied, 177,742 s, 118 MB/s"). The md device was partitioned on 3  
-> partitions. The first partition was 10% of space in the beginning of the  
-> device, the last partition was 10% of space in the end of the device,  
-> the middle one was the rest in the middle of the space them. Then the  
-> first and the last partitions were exported to the initiator (client).  
-> They were /dev/sdb and /dev/sdc on it correspondingly.
+On Mon, 2009-02-16 at 08:55 +0100, Carsten Aulbert wrote:
+> Hi all,
+> 
+> sorry in advance for this vague subject and also the vague email, I'm
+> trying my best to summarize the problem:
+> 
+> On our large cluster we sometimes encounter the problem that our main
+> scheduling processes are often in state D and in the end not capable
+> anymore of pushing work to the cluster.
+> 
+> The head nodes are 8 core boxes with Xeon CPUs and equipped with 16 GB
+> of memory, when certain types of jobs are running we see system loads of
+> about 20-30 which might go up to 80-100 from time to time. Looking at
+> the individual cores they are mostly busy with system tasks (e.g. htop
+> shows 'red' bars).
+> 
+> stat -tt -c showed that several system calls of the scheduler take a
+> long time to complete, most notably open and chdir which took between
+> 180 and 230ms to complete (during our testing). Since most of these open
+> and chdir are via NFSv3 I'm including that list as well. The NFS servers
+> are Sun Fire X4500 boxes running Solaris 10u5 right now.
+> 
+> A standard output line looks like:
+> 93.37   38.997264     230753      169    78      open
+> 
+> i.e. 93.37% of the system-related time was spend in 169 successful open
+> calls which took 230753us/call, thus 39 wall clock seconds were spend in
+> a minute just doing open.
+> 
+> We tried several things to understand the problem, but apart from moving
+> more files (mostly log files of currently running jobs) off NFS we did
+> not move far ahead so far. On
+> https://n0.aei.uni-hannover.de/twiki/bin/view/ATLAS/H2Problems
+> we have summarized some things.
+> 
+> With the help of 'stress' and a tiny program just doing open/putc/close
+> into a single file, I've tried to get a feeling how good or bad things
+> are when compared to other head nodes with different tasks/loads:
+> 
+> https://n0.aei.uni-hannover.de/twiki/bin/view/ATLAS/OpenCloseIotest
+> 
+> (this test may or may not help in the long run, I'm just poking into the
+> dark).
+> 
+> Now my questions:
+> 
+> * Do you have any suggestions how to continue debugging this problem?
+> * Does anyone know how to improve the situation? Next on my agenda would
+> be to try different IO algorithms, any hints which ones should be good
+> for such boxes?
+> * I guess I missed vital information. please let me know if you need
+> more information of the system
+> 
+> Please Cc me from linux-kernel, I'm only on the other two addressed lists.
+> 
+> Cheers and a lot of TIA
+> 
+> Carsten
 
-Vladislav, Thank you for the benchmarks! I'm very interested in
-optimizing your workload and figuring out what happens underneath.
+2.6.27.7 has a known NFS client performance bug due to a change in the
+authentication code. The fix was merged in 2.6.27.9: see the commit
+http://git.kernel.org/?p=linux/kernel/git/stable/linux-2.6.27.y.git&a=commitdiff&h=a0f04d0096bd7edb543576c55f7a0993628f924a
 
-Are the client and server two standalone boxes connected by GBE?
+Cheers
+  Trond
 
-When you set readahead sizes in the benchmarks, you are setting them
-in the server side? I.e. "linux-4dtq" is the SCST server? What's the
-client side readahead size?
-
-It would help a lot to debug readahead if you can provide the
-server side readahead stats and trace log for the worst case.
-This will automatically answer the above questions as well as disclose
-the micro-behavior of readahead:
-
-        mount -t debugfs none /sys/kernel/debug
-
-        echo > /sys/kernel/debug/readahead/stats # reset counters
-        # do benchmark
-        cat /sys/kernel/debug/readahead/stats
-
-        echo 1 > /sys/kernel/debug/readahead/trace_enable
-        # do micro-benchmark, i.e. run the same benchmark for a short time
-        echo 0 > /sys/kernel/debug/readahead/trace_enable
-        dmesg
-
-The above readahead trace should help find out how the client side
-sequential reads convert into server side random reads, and how we can
-prevent that.
-
-Thanks,
-Fengguang
