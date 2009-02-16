@@ -1,49 +1,36 @@
-From: Arto Jantunen <viiru@debian.org>
-Subject: Timeout issue (similar to bugs 11061 and 11154), bisected
-Date: Mon, 16 Feb 2009 13:11:17 +0200
-Message-ID: <87ab8m7i22.fsf@viiru.iki.fi>
+From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
+Subject: Re: Tracing down 250ms open/chdir calls
+Date: Mon, 16 Feb 2009 14:00:48 +0100
+Message-ID: <49996380.1090902@aei.mpg.de>
+References: <49991BE7.1090104@aei.mpg.de> <1234788998.7708.40.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	beowulf-r+SMWMTQ9DpAfugRpC6u6w@public.gmane.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail2.dt-link.fi ([217.152.200.15]:52733 "EHLO mail2.dt-link.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752947AbZBPLhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Feb 2009 06:37:32 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by mail2.dt-link.fi (Postfix) with ESMTP id BAFFF2C1E6820
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Feb 2009 13:11:23 +0200 (EET)
-Received: from mail2.dt-link.fi ([127.0.0.1])
-	by localhost (mail2.dt-link.fi [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id rxTGSWqN16Rr for <linux-nfs@vger.kernel.org>;
-	Mon, 16 Feb 2009 13:11:23 +0200 (EET)
-Received: from ryoko (ryoko.zyrain.org [217.152.200.219])
-	by mail2.dt-link.fi (Postfix) with ESMTP id AD2DC2C1A5B2C
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Feb 2009 13:11:17 +0200 (EET)
+Received: from welcomes-you.com ([85.214.50.128]:33371 "EHLO
+	smtp.welcomes-you.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755667AbZBPNBM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Feb 2009 08:01:12 -0500
+In-Reply-To: <1234788998.7708.40.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond,
 
-(I'm not subscribed, so please CC me on any replies)
+Trond Myklebust schrieb:
+> 2.6.27.7 has a known NFS client performance bug due to a change in the
+> authentication code. The fix was merged in 2.6.27.9: see the commit
+> http://git.kernel.org/?p=linux/kernel/git/stable/linux-2.6.27.y.git&a=commitdiff&h=a0f04d0096bd7edb543576c55f7a0993628f924a
 
-I seem to have hit a NFS bug while upgrading a machine from Debian
-Etch to Debian Lenny. I have a NFS server running FreeBSD 7.0 RC1 and
-a bunch of clients running Linux. The ones running kernel 2.6.18 work
-perfectly, as do the ones running 2.6.24. The one I upgraded to 2.6.26
-fails. After 5-15 minutes of working normally the mount dies and I get
-the usual "nfs: server <server> not responding, still trying" in
-dmesg. The only way I have found to get the mount back is umount -f &&
-mount, waiting does not bring it back.
+Maybe that's also a reason why we don't see it that often anymore -
+although the user load has shifted a bit also. We are running 2.7.27.14
+(and .15 since Friday).
 
-I have tested quite a bunch of different kernel versions, and starting
-from 25 and ending at the git tree last week they all fail in the same
-way. Bisecting tracks the problem to commit
-e06799f958bf7f9f8fae15f0c6f519953fb0257c
+Thanks for letting me know, I'll probably re-run the tests again with a
+newer kernel.
 
-I originally thought that it was the same as bug 11154, but the
-patches attached to that bug do not fix this issue.
+Cheers
 
-Any thoughts, patches, ideas?
-
--- 
-Arto Jantunen
+Carsten
