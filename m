@@ -1,110 +1,180 @@
-From: Carsten Aulbert <carsten.aulbert@aei.mpg.de>
-Subject: Re: Tracing down 250ms open/chdir calls
-Date: Mon, 16 Feb 2009 14:44:13 +0100
-Message-ID: <49996DAD.3000508@aei.mpg.de>
-References: <49991BE7.1090104@aei.mpg.de> <499968F0.8000509@scalableinformatics.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: beowulf@beowulf.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: landman@scalableinformatics.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757873AbZBPNos@vger.kernel.org>
-In-Reply-To: <499968F0.8000509@scalableinformatics.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Mon, 16 Feb 2009 11:24:25 -0500
+Message-ID: <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au> <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com> <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au> <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com> <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au> <1233699391.7161.11.camel@heimdal.trondhjem.org> <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com> <1233771633.7161.35.camel@heimdal.trondhjem.org> <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com> <1233773231.7161.51.camel@heimdal.trondhjem.org> <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au> <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com> <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au> <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com> <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au> <C7F
+ F32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com> <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org
+To: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:51289 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752349AbZBPQYs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Feb 2009 11:24:48 -0500
+In-Reply-To: <1234711952.25265.34.camel-+Zt617Lp5ASbJVK1MCa92ZvzqaJJnU0YunOrhLTifxA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Joe, 
 
-(keeping all lists cross-posted, please shout briefly at me if I fall
-off the line of not being rude):
+On Feb 15, 2009, at 10:32 AM, Ian Dall wrote:
 
-Joe Landman schrieb:
-> 
->   Are you using a "standard" cluster scheduler (SGE, PBS, ...) or a
-> locally written one?
-> 
+> I believe this includes all comments so far. I have also swatted up on
+> Documentation/CodingStyle, and modified the comments somewhat to
+> conform.
 
-We use Condor (http://www.cs.wisc.edu/condor/).
-> 
-> Hmmm...  These are your head nodes?  Not your NFS server nodes?  Sounds
-> like there are a large number of blocked IO processes ... try a
-> 
+There is also a Perl script called scripts/checkpatch.pl that you  
+should run against your patch before submitting.  It can identify and  
+report many common style problems.
 
-Yes, these are the head nodes and not the NFS servers.
+Other than the two issues I mention below, I think this is now pretty  
+close.
 
->     vmstat 1
-> 
-> and look at the "b" column (usually second from left ... or nearly
-> there).  Lots of blocked IO processes can have the affect of introducing
-> significant latency into all system calls.
-> 
+> I really hope this is acceptable now. One proviso. I don't actually  
+> have
+> an IPv6 network so that code path is untested (except that it  
+> compiles).
 
-Right now, (system load 40, but still quite responsive box):
+Unfortunately my IPv6 tunnel provider just dropped off the face of the  
+earth, so I currently don't have any IPv6 hosts to test this either.   
+I will have to figure something out quickly.
 
-vmstat 1
-procs -----------memory---------- ---swap-- -----io---- -system-- ----cpu----
- r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa
- 1  0     60 1748932  49204 7181132    0    0   393   730   15   12  8  4 76 12
- 1  0     60 1738804  49204 7187768    0    0     0   254 3340 11635 15  8 77  0
- 1  0     60 1693220  49216 7193328    0    0     0   306 3118 9296 16  7 77  0
- 1  0     60 1751184  49224 7192924    0    0     0   343 3450 10866 12  9 79  0
- 0  0     60 1754924  49224 7192936    0    0     0   127 2744 6750  5  7 87  2
- 0  0     60 1756932  49240 7187552    0    0     0   532 3289 9673  3  6 91  0
- 0  0     60 1752664  49240 7193776    0    0     0    77 2835 10075  2  7 92  0
- 2  0     60 1754956  49244 7193820    0    0     0   553 3976 14870  4 12 84  0
- 1  0     60 1742032  49252 7206288    0    0     0   193 3588 9133  5  6 89  0
- 1  0     60 1736920  49252 7206316    0    0     0   284 3821 9402  7  7 86  0
- 4  0     60 1742292  49260 7193964    0    0     0   514 4545 12428 17 10 74  0
+> From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+>
+> Addresses: http://bugzilla.kernel.org/show_bug.cgi?id=11061
+>
+> sockaddr structures can't be reliably compared using memcmp() because
+> there are padding bytes in the structure which can't be guaranteed to
+> be the same even when the sockaddr structures refer to the same
+> socket. Instead compare all the relevant fields. In the case of IPv6
+> sin6_flowinfo is not compared because it only affects QoS and
+> sin6_scope_id is only compared if the address is "link local" because
+> "link local" addresses need only be unique to a specific link.
+>
+> Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+>
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 9b728f3..fa4060d 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -273,6 +273,65 @@ static int nfs_sockaddr_match_ipaddr(const  
+> struct sockaddr *sa1,
+> #endif
+>
+> /*
+> + * Test if two ip4 socket addresses refer to the same socket, by
+> + * comparing relevant fields. The padding bytes specifically, are
+> + * not compared.
+> + *
+> + * The caller should ensure both socket addresses are AF_INET.
+> + */
+> +static int nfs_sockaddr_cmp_ip4(const struct sockaddr_in * saddr1,
+> +				const struct sockaddr_in * saddr2)
+> +{
+> +	if (saddr1->sin_addr.s_addr != saddr2->sin_addr.s_addr)
+> +		return 0;
+> +	return saddr1->sin_port == saddr2->sin_port;
+> +}
+> +
+> +/*
+> + * Test if two ip6 socket addresses refer to the same socket by
+> + * comparing relevant fields. The padding bytes specifically, are not
+> + * compared. sin6_flowinfo is not compared because it only affects  
+> QoS
+> + * and sin6_scope_id is only compared if the address is "link local"
+> + * because "link local" addresses need only be unique to a specific
+> + * link. Conversely, ordinary unicast addresses might have different
+> + * sin6_scope_id.
+> + *
+> + * The caller should ensure both socket addresses are AF_INET6.
+> + */
+> +static int nfs_sockaddr_cmp_ip6 (const struct sockaddr_in6 * saddr1,
+> +				 const struct sockaddr_in6 * saddr2)
+> +{
+> +	if (!ipv6_addr_equal(&saddr1->sin6_addr,
+> +			     &saddr1->sin6_addr))
+> +		return 0;
+> +	if (ipv6_addr_scope(&saddr1->sin6_addr) ==  
+> IPV6_ADDR_SCOPE_LINKLOCAL &&
+> +	    saddr1->sin6_scope_id != saddr2->sin6_scope_id)
+> +		return 0;
 
-> Hmmm.... What happens if you make these local to each box?  What are the
-> mount options for the mount points?  We have spoken to other users with
-> performance problems on such servers.  The NFS server/OS combination you
-> indicate above isn't known to be very fast.  This isn't your problem
-> (see later), but it looks like your own data suggests you are giving up
-> nearly an order of magnitude performance using this NFS server/OS
-> combination, likely at a premium price as well.
-> 
+I've thought more about this.  I think we don't want the scope ID  
+comparison here at all.  The scope ID is not really part of an IPv6  
+address.  A unique host address is contained only in the sin6_addr  
+field; the scope ID is simply local routing information.  I can't  
+think of a case where two unique remotes would have identical link- 
+local addresses.
 
-The mount options are pretty standard NFSv3 via tcp, ...:
+So I think we should remove the scope ID check entirely.
 
-s02:/atlashome/USER on /home/USER type nfs (rw,vers=3,rsize=32768,wsize=32768,namlen=255,soft,nointr,nolock,noacl,proto=tcp,
-timeo=600,retrans=2,sec=sys,mountaddr=10.20.20.2,mountvers=3,mountproto=tcp,addr=10.20.20.2)
+I haven't added support for scope IDs in other areas unless it is  
+needed for actually sending an RPC or reporting a problem.   
+nlm_cmp_addr() for example does not have this check, and neither does  
+nfs_sockaddr_match_ipaddr().
 
-> Assuming you aren't using mount options of noac,sync,...  Could you
-> enlighten us as to what mount options are for the head nodes?
-The linux data server are exporting NFS with async, the X4500 should be about the same,
-i.e. we set nocacheflushing for the zpool
+> +	return saddr1->sin6_port == saddr2->sin6_port;
+> +}
+> +
+> +/*
+> + * Test if two socket addresses represent the same actual socket,
+> + * by comparing (only) relevant fields.
+> + */
+> +static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
+> +			    const struct sockaddr *sa2)
+> +{
+> +	if (sa1->sa_family != sa2->sa_family)
+> +		return 0;
+> +
+> +	switch (sa1->sa_family) {
+> +	case AF_INET:
+> +		return nfs_sockaddr_cmp_ip4((const struct sockaddr_in *) sa1,
+> +					    (const struct sockaddr_in *) sa2);
+> +	case AF_INET6:
+> +		return nfs_sockaddr_cmp_ip6((const struct sockaddr_in6 *) sa1,
+> +					    (const struct sockaddr_in6 *) sa2);
 
-> 
-> Also, the way the code is written, you are doing quite a few calls to
-> gettimeofday ... you could probably avoid this with a little re-writing
-> of the main loop.
-> 
+Just a style nit here:  we usually leave out the blank between the  
+type cast and the variable these days.
 
-Well, that proofs that I should never be let near any serious programming - 
-at least not in time critical parts of the codes ;)
+In other areas, I think I placed the casts in the helpers just because  
+it makes the caller easier to read, but that's perhaps optional.
 
-> If you are using noac or sync on your NFS mounts, then this could
-> explain some of the differences you are seeing (certainly the 100/s vs
-> 800/s ... but not likely the 4/s)
-> 
-> However, if you notice that h2 in your table is an apparent outlier,
-> there may be something more systematic going on there.  Since you
-> indicate there is a high load going on while you are testing, this is
-> likely what you need to explore.
-> 
+> +	}
+> +	return 0;
+> +}
+> +
+> +/*
+>  * Find a client by IP address and protocol version
+>  * - returns NULL if no such client
+>  */
+> @@ -344,8 +403,10 @@ struct nfs_client *nfs_find_client_next(struct  
+> nfs_client *clp)
+> static struct nfs_client *nfs_match_client(const struct  
+> nfs_client_initdata *data)
+> {
+> 	struct nfs_client *clp;
+> +	const struct sockaddr *sap = data->addr;
+>
+> 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+> +	        const struct sockaddr *clap = (struct sockaddr *)&clp- 
+> >cl_addr;
+> 		/* Don't match clients that failed to initialise properly */
+> 		if (clp->cl_cons_state < 0)
+> 			continue;
+> @@ -358,7 +419,7 @@ static struct nfs_client *nfs_match_client(const  
+> struct nfs_client_initdata *dat
+> 			continue;
+>
+> 		/* Match the full socket address */
+> -		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
+> +		if (!nfs_sockaddr_cmp(sap, clap))
+> 			continue;
+>
+> 		atomic_inc(&clp->cl_count);
 
-That was my idea as well.
-
-> Grab the atop program.  It is pretty good about letting you explore what
-> is causing load.  That is, despite your x4500's/Solaris combo showing
-> itself not to be a fast NFS server the problem appears to be more likely
-> more localized on the h2 machine than on the NFS machines.
-> 
-> http://freshmeat.net/projects/atop/
-
-I'll try that and will dive again into iotop as well.
-
-Cheers
-
-Carsten
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
