@@ -1,97 +1,49 @@
-From: Wu Fengguang <wfg@linux.intel.com>
-Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
-Date: Mon, 16 Feb 2009 10:34:02 +0800
-Message-ID: <20090216023402.GA6199@localhost>
-References: <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net> <20090213015721.GA5565@localhost> <4995D339.5050502@vlnb.net>
+From: Arto Jantunen <viiru@debian.org>
+Subject: Timeout issue (similar to bugs 11061 and 11154), bisected
+Date: Mon, 16 Feb 2009 13:11:17 +0200
+Message-ID: <87ab8m7i22.fsf@viiru.iki.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
-	"Vitaly V. Bursov" <vitalyb-CNXmb7IdZIXO1JJkmS+EZg@public.gmane.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Vladislav Bolkhovitin <vst-d+Crzxg7Rs0@public.gmane.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:50020 "EHLO mga09.intel.com"
+Received: from mail2.dt-link.fi ([217.152.200.15]:52733 "EHLO mail2.dt-link.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752407AbZBPCeG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 15 Feb 2009 21:34:06 -0500
-In-Reply-To: <4995D339.5050502-d+Crzxg7Rs0@public.gmane.org>
+	id S1752947AbZBPLhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Feb 2009 06:37:32 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by mail2.dt-link.fi (Postfix) with ESMTP id BAFFF2C1E6820
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Feb 2009 13:11:23 +0200 (EET)
+Received: from mail2.dt-link.fi ([127.0.0.1])
+	by localhost (mail2.dt-link.fi [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id rxTGSWqN16Rr for <linux-nfs@vger.kernel.org>;
+	Mon, 16 Feb 2009 13:11:23 +0200 (EET)
+Received: from ryoko (ryoko.zyrain.org [217.152.200.219])
+	by mail2.dt-link.fi (Postfix) with ESMTP id AD2DC2C1A5B2C
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Feb 2009 13:11:17 +0200 (EET)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 13, 2009 at 11:08:25PM +0300, Vladislav Bolkhovitin wrote:
-> Wu Fengguang, on 02/13/2009 04:57 AM wrote:
->> On Thu, Feb 12, 2009 at 09:35:18PM +0300, Vladislav Bolkhovitin wrote:
->>> Sorry for such a huge delay. There were many other activities I had 
->>> to  do before + I had to be sure I didn't miss anything.
->>>
->>> We didn't use NFS, we used SCST (http://scst.sourceforge.net) with   
->>> iSCSI-SCST target driver. It has similar to NFS architecture, where N 
->>>  threads (N=5 in this case) handle IO from remote initiators 
->>> (clients)  coming from wire using iSCSI protocol. In addition, SCST 
->>> has patch  called export_alloc_io_context (see   
->>> http://lkml.org/lkml/2008/12/10/282), which allows for the IO threads 
->>>  queue IO using single IO context, so we can see if context RA can   
->>> replace grouping IO threads in single IO context.
->>>
->>> Unfortunately, the results are negative. We find neither any 
->>> advantages  of context RA over current RA implementation, nor 
->>> possibility for  context RA to replace grouping IO threads in single 
->>> IO context.
->>>
->>> Setup on the target (server) was the following. 2 SATA drives grouped 
->>> in  md RAID-0 with average local read throughput ~120MB/s ("dd 
->>> if=/dev/zero  of=/dev/md0 bs=1M count=20000" outputs "20971520000 
->>> bytes (21 GB)  copied, 177,742 s, 118 MB/s"). The md device was 
->>> partitioned on 3  partitions. The first partition was 10% of space in 
->>> the beginning of the  device, the last partition was 10% of space in 
->>> the end of the device,  the middle one was the rest in the middle of 
->>> the space them. Then the  first and the last partitions were exported 
->>> to the initiator (client).  They were /dev/sdb and /dev/sdc on it 
->>> correspondingly.
->>
->> Vladislav, Thank you for the benchmarks! I'm very interested in
->> optimizing your workload and figuring out what happens underneath.
->>
->> Are the client and server two standalone boxes connected by GBE?
->
-> Yes, they directly connected using GbE.
->
->> When you set readahead sizes in the benchmarks, you are setting them
->> in the server side? I.e. "linux-4dtq" is the SCST server?
->
-> Yes, it's the server. On the client all the parameters were left default.
->
->> What's the
->> client side readahead size?
->
-> Default, i.e. 128K
->
->> It would help a lot to debug readahead if you can provide the
->> server side readahead stats and trace log for the worst case.
->> This will automatically answer the above questions as well as disclose
->> the micro-behavior of readahead:
->>
->>         mount -t debugfs none /sys/kernel/debug
->>
->>         echo > /sys/kernel/debug/readahead/stats # reset counters
->>         # do benchmark
->>         cat /sys/kernel/debug/readahead/stats
->>
->>         echo 1 > /sys/kernel/debug/readahead/trace_enable
->>         # do micro-benchmark, i.e. run the same benchmark for a short time
->>         echo 0 > /sys/kernel/debug/readahead/trace_enable
->>         dmesg
->>
->> The above readahead trace should help find out how the client side
->> sequential reads convert into server side random reads, and how we can
->> prevent that.
->
-> We will do it as soon as we have a free window on that system.
 
-Thank you. For NFS, the client side read/readahead requests will be
-split into units of rsize which will be served by a pool of nfsd
-concurrently and possibly out of order. Does SCST have the same
-process? If so, what's the rsize value for your SCST benchmarks?
+(I'm not subscribed, so please CC me on any replies)
 
-Thanks,
-Fengguang
+I seem to have hit a NFS bug while upgrading a machine from Debian
+Etch to Debian Lenny. I have a NFS server running FreeBSD 7.0 RC1 and
+a bunch of clients running Linux. The ones running kernel 2.6.18 work
+perfectly, as do the ones running 2.6.24. The one I upgraded to 2.6.26
+fails. After 5-15 minutes of working normally the mount dies and I get
+the usual "nfs: server <server> not responding, still trying" in
+dmesg. The only way I have found to get the mount back is umount -f &&
+mount, waiting does not bring it back.
+
+I have tested quite a bunch of different kernel versions, and starting
+from 25 and ending at the git tree last week they all fail in the same
+way. Bisecting tracks the problem to commit
+e06799f958bf7f9f8fae15f0c6f519953fb0257c
+
+I originally thought that it was the same as bug 11154, but the
+patches attached to that bug do not fix this issue.
+
+Any thoughts, patches, ideas?
+
+-- 
+Arto Jantunen
