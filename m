@@ -1,180 +1,51 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Mon, 16 Feb 2009 11:24:25 -0500
-Message-ID: <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au> <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com> <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au> <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com> <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au> <1233699391.7161.11.camel@heimdal.trondhjem.org> <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com> <1233771633.7161.35.camel@heimdal.trondhjem.org> <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com> <1233773231.7161.51.camel@heimdal.trondhjem.org> <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au> <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com> <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au> <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com> <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au> <C7F
- F32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com> <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+From: "John Z. Bohach" <jzb2-t97x8lR6yknby3iVrkZq2A@public.gmane.org>
+Subject: can't modify /etc/exports without blowing away existing clients
+Date: Mon, 16 Feb 2009 12:20:20 -0800
+Message-ID: <200902161220.20474.jzb2@aexorsyst.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="us-ascii"
+Cc: "John Z. Bohach" <jzb2-t97x8lR6yknby3iVrkZq2A@public.gmane.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:51289 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752349AbZBPQYs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Feb 2009 11:24:48 -0500
-In-Reply-To: <1234711952.25265.34.camel-+Zt617Lp5ASbJVK1MCa92ZvzqaJJnU0YunOrhLTifxA@public.gmane.org>
+Received: from host671420017099.direcway.com ([67.142.99.170]:60056 "EHLO
+	aexorsyst.com" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1752210AbZBPU2n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Feb 2009 15:28:43 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-On Feb 15, 2009, at 10:32 AM, Ian Dall wrote:
+When I modify /etc/exports and re-run exportfs -a -r, newly 
+added/removed/modified entries take effect, EXCEPT that all existing 
+clients lose their current mounts.  Existing clients have to umount 
+then mount NFS filesystems that were not even modified.
 
-> I believe this includes all comments so far. I have also swatted up on
-> Documentation/CodingStyle, and modified the comments somewhat to
-> conform.
+Is this intentional behavior?  If I try to manually add a new directory 
+for export, and just use "exportfs -i ..." and specify the new 
+directory to export that way, all existing entries in /etc/exports are 
+gratuitously UNexported, all clients lose their current mounts, and 
+only the one entry specified via the command line of "exportfs -i ..." 
+is exported.  This doesn't seem like intentional behavior?  Or is it 
+just the exportfs program that's broken?
 
-There is also a Perl script called scripts/checkpatch.pl that you  
-should run against your patch before submitting.  It can identify and  
-report many common style problems.
+I'm running linux-2.6.24.4 and using exportfs from nfs-utils-1.1.3 
+though I've noticed this behavior on older versions of both.
 
-Other than the two issues I mention below, I think this is now pretty  
-close.
+Is there some NFS option I'm supposed to use in /etc/fstab on the 
+clients to keep this remount thing from being necessary?  I'm pretty 
+sure I tried both soft and hard mounts.  I'm currently using TCP as the 
+mount transport layer...would UDP fix this issue, I haven't tested 
+that...either way, even with TCP, it would be a big blow against using 
+TCP as the mount transport if umount/mount sequence was required on the 
+clients everytime time the server re-ran exportfs, which is what is 
+happening now.
 
-> I really hope this is acceptable now. One proviso. I don't actually  
-> have
-> an IPv6 network so that code path is untested (except that it  
-> compiles).
+Anybody know what's going on?
 
-Unfortunately my IPv6 tunnel provider just dropped off the face of the  
-earth, so I currently don't have any IPv6 hosts to test this either.   
-I will have to figure something out quickly.
+Thanks,
 
-> From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
->
-> Addresses: http://bugzilla.kernel.org/show_bug.cgi?id=11061
->
-> sockaddr structures can't be reliably compared using memcmp() because
-> there are padding bytes in the structure which can't be guaranteed to
-> be the same even when the sockaddr structures refer to the same
-> socket. Instead compare all the relevant fields. In the case of IPv6
-> sin6_flowinfo is not compared because it only affects QoS and
-> sin6_scope_id is only compared if the address is "link local" because
-> "link local" addresses need only be unique to a specific link.
->
-> Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
->
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 9b728f3..fa4060d 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -273,6 +273,65 @@ static int nfs_sockaddr_match_ipaddr(const  
-> struct sockaddr *sa1,
-> #endif
->
-> /*
-> + * Test if two ip4 socket addresses refer to the same socket, by
-> + * comparing relevant fields. The padding bytes specifically, are
-> + * not compared.
-> + *
-> + * The caller should ensure both socket addresses are AF_INET.
-> + */
-> +static int nfs_sockaddr_cmp_ip4(const struct sockaddr_in * saddr1,
-> +				const struct sockaddr_in * saddr2)
-> +{
-> +	if (saddr1->sin_addr.s_addr != saddr2->sin_addr.s_addr)
-> +		return 0;
-> +	return saddr1->sin_port == saddr2->sin_port;
-> +}
-> +
-> +/*
-> + * Test if two ip6 socket addresses refer to the same socket by
-> + * comparing relevant fields. The padding bytes specifically, are not
-> + * compared. sin6_flowinfo is not compared because it only affects  
-> QoS
-> + * and sin6_scope_id is only compared if the address is "link local"
-> + * because "link local" addresses need only be unique to a specific
-> + * link. Conversely, ordinary unicast addresses might have different
-> + * sin6_scope_id.
-> + *
-> + * The caller should ensure both socket addresses are AF_INET6.
-> + */
-> +static int nfs_sockaddr_cmp_ip6 (const struct sockaddr_in6 * saddr1,
-> +				 const struct sockaddr_in6 * saddr2)
-> +{
-> +	if (!ipv6_addr_equal(&saddr1->sin6_addr,
-> +			     &saddr1->sin6_addr))
-> +		return 0;
-> +	if (ipv6_addr_scope(&saddr1->sin6_addr) ==  
-> IPV6_ADDR_SCOPE_LINKLOCAL &&
-> +	    saddr1->sin6_scope_id != saddr2->sin6_scope_id)
-> +		return 0;
+John
 
-I've thought more about this.  I think we don't want the scope ID  
-comparison here at all.  The scope ID is not really part of an IPv6  
-address.  A unique host address is contained only in the sin6_addr  
-field; the scope ID is simply local routing information.  I can't  
-think of a case where two unique remotes would have identical link- 
-local addresses.
-
-So I think we should remove the scope ID check entirely.
-
-I haven't added support for scope IDs in other areas unless it is  
-needed for actually sending an RPC or reporting a problem.   
-nlm_cmp_addr() for example does not have this check, and neither does  
-nfs_sockaddr_match_ipaddr().
-
-> +	return saddr1->sin6_port == saddr2->sin6_port;
-> +}
-> +
-> +/*
-> + * Test if two socket addresses represent the same actual socket,
-> + * by comparing (only) relevant fields.
-> + */
-> +static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
-> +			    const struct sockaddr *sa2)
-> +{
-> +	if (sa1->sa_family != sa2->sa_family)
-> +		return 0;
-> +
-> +	switch (sa1->sa_family) {
-> +	case AF_INET:
-> +		return nfs_sockaddr_cmp_ip4((const struct sockaddr_in *) sa1,
-> +					    (const struct sockaddr_in *) sa2);
-> +	case AF_INET6:
-> +		return nfs_sockaddr_cmp_ip6((const struct sockaddr_in6 *) sa1,
-> +					    (const struct sockaddr_in6 *) sa2);
-
-Just a style nit here:  we usually leave out the blank between the  
-type cast and the variable these days.
-
-In other areas, I think I placed the casts in the helpers just because  
-it makes the caller easier to read, but that's perhaps optional.
-
-> +	}
-> +	return 0;
-> +}
-> +
-> +/*
->  * Find a client by IP address and protocol version
->  * - returns NULL if no such client
->  */
-> @@ -344,8 +403,10 @@ struct nfs_client *nfs_find_client_next(struct  
-> nfs_client *clp)
-> static struct nfs_client *nfs_match_client(const struct  
-> nfs_client_initdata *data)
-> {
-> 	struct nfs_client *clp;
-> +	const struct sockaddr *sap = data->addr;
->
-> 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-> +	        const struct sockaddr *clap = (struct sockaddr *)&clp- 
-> >cl_addr;
-> 		/* Don't match clients that failed to initialise properly */
-> 		if (clp->cl_cons_state < 0)
-> 			continue;
-> @@ -358,7 +419,7 @@ static struct nfs_client *nfs_match_client(const  
-> struct nfs_client_initdata *dat
-> 			continue;
->
-> 		/* Match the full socket address */
-> -		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
-> +		if (!nfs_sockaddr_cmp(sap, clap))
-> 			continue;
->
-> 		atomic_inc(&clp->cl_count);
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+P.S.:  Please keep me in the CC list, I'm not subscribed to the list.
