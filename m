@@ -1,151 +1,97 @@
-From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Mon, 16 Feb 2009 02:02:32 +1030
-Message-ID: <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
-	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
-	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
-	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
-	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
-	 <1233699391.7161.11.camel@heimdal.trondhjem.org>
-	 <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
-	 <1233771633.7161.35.camel@heimdal.trondhjem.org>
-	 <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com>
-	 <1233773231.7161.51.camel@heimdal.trondhjem.org>
-	 <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au>
-	 <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com>
-	 <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au>
-	 <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com>
-	 <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au>
-	 <C7FF32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com>
+From: Wu Fengguang <wfg@linux.intel.com>
+Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
+Date: Mon, 16 Feb 2009 10:34:02 +0800
+Message-ID: <20090216023402.GA6199@localhost>
+References: <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net> <20090213015721.GA5565@localhost> <4995D339.5050502@vlnb.net>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
+	"Vitaly V. Bursov" <vitalyb-CNXmb7IdZIXO1JJkmS+EZg@public.gmane.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Vladislav Bolkhovitin <vst-d+Crzxg7Rs0@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:51224 "EHLO
-	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751229AbZBOPcz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Feb 2009 10:32:55 -0500
-In-Reply-To: <C7FF32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com>
+Received: from mga09.intel.com ([134.134.136.24]:50020 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752407AbZBPCeG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 15 Feb 2009 21:34:06 -0500
+In-Reply-To: <4995D339.5050502-d+Crzxg7Rs0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I believe this includes all comments so far. I have also swatted up on
-Documentation/CodingStyle, and modified the comments somewhat to
-conform.
+On Fri, Feb 13, 2009 at 11:08:25PM +0300, Vladislav Bolkhovitin wrote:
+> Wu Fengguang, on 02/13/2009 04:57 AM wrote:
+>> On Thu, Feb 12, 2009 at 09:35:18PM +0300, Vladislav Bolkhovitin wrote:
+>>> Sorry for such a huge delay. There were many other activities I had 
+>>> to  do before + I had to be sure I didn't miss anything.
+>>>
+>>> We didn't use NFS, we used SCST (http://scst.sourceforge.net) with   
+>>> iSCSI-SCST target driver. It has similar to NFS architecture, where N 
+>>>  threads (N=5 in this case) handle IO from remote initiators 
+>>> (clients)  coming from wire using iSCSI protocol. In addition, SCST 
+>>> has patch  called export_alloc_io_context (see   
+>>> http://lkml.org/lkml/2008/12/10/282), which allows for the IO threads 
+>>>  queue IO using single IO context, so we can see if context RA can   
+>>> replace grouping IO threads in single IO context.
+>>>
+>>> Unfortunately, the results are negative. We find neither any 
+>>> advantages  of context RA over current RA implementation, nor 
+>>> possibility for  context RA to replace grouping IO threads in single 
+>>> IO context.
+>>>
+>>> Setup on the target (server) was the following. 2 SATA drives grouped 
+>>> in  md RAID-0 with average local read throughput ~120MB/s ("dd 
+>>> if=/dev/zero  of=/dev/md0 bs=1M count=20000" outputs "20971520000 
+>>> bytes (21 GB)  copied, 177,742 s, 118 MB/s"). The md device was 
+>>> partitioned on 3  partitions. The first partition was 10% of space in 
+>>> the beginning of the  device, the last partition was 10% of space in 
+>>> the end of the device,  the middle one was the rest in the middle of 
+>>> the space them. Then the  first and the last partitions were exported 
+>>> to the initiator (client).  They were /dev/sdb and /dev/sdc on it 
+>>> correspondingly.
+>>
+>> Vladislav, Thank you for the benchmarks! I'm very interested in
+>> optimizing your workload and figuring out what happens underneath.
+>>
+>> Are the client and server two standalone boxes connected by GBE?
+>
+> Yes, they directly connected using GbE.
+>
+>> When you set readahead sizes in the benchmarks, you are setting them
+>> in the server side? I.e. "linux-4dtq" is the SCST server?
+>
+> Yes, it's the server. On the client all the parameters were left default.
+>
+>> What's the
+>> client side readahead size?
+>
+> Default, i.e. 128K
+>
+>> It would help a lot to debug readahead if you can provide the
+>> server side readahead stats and trace log for the worst case.
+>> This will automatically answer the above questions as well as disclose
+>> the micro-behavior of readahead:
+>>
+>>         mount -t debugfs none /sys/kernel/debug
+>>
+>>         echo > /sys/kernel/debug/readahead/stats # reset counters
+>>         # do benchmark
+>>         cat /sys/kernel/debug/readahead/stats
+>>
+>>         echo 1 > /sys/kernel/debug/readahead/trace_enable
+>>         # do micro-benchmark, i.e. run the same benchmark for a short time
+>>         echo 0 > /sys/kernel/debug/readahead/trace_enable
+>>         dmesg
+>>
+>> The above readahead trace should help find out how the client side
+>> sequential reads convert into server side random reads, and how we can
+>> prevent that.
+>
+> We will do it as soon as we have a free window on that system.
 
-I really hope this is acceptable now. One proviso. I don't actually have
-an IPv6 network so that code path is untested (except that it compiles).
+Thank you. For NFS, the client side read/readahead requests will be
+split into units of rsize which will be served by a pool of nfsd
+concurrently and possibly out of order. Does SCST have the same
+process? If so, what's the rsize value for your SCST benchmarks?
 
-From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-
-Addresses: http://bugzilla.kernel.org/show_bug.cgi?id=11061
-
-sockaddr structures can't be reliably compared using memcmp() because
-there are padding bytes in the structure which can't be guaranteed to
-be the same even when the sockaddr structures refer to the same
-socket. Instead compare all the relevant fields. In the case of IPv6
-sin6_flowinfo is not compared because it only affects QoS and
-sin6_scope_id is only compared if the address is "link local" because
-"link local" addresses need only be unique to a specific link.
-
-Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9b728f3..fa4060d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -273,6 +273,65 @@ static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
- #endif
- 
- /*
-+ * Test if two ip4 socket addresses refer to the same socket, by
-+ * comparing relevant fields. The padding bytes specifically, are
-+ * not compared.
-+ *
-+ * The caller should ensure both socket addresses are AF_INET.
-+ */
-+static int nfs_sockaddr_cmp_ip4(const struct sockaddr_in * saddr1,
-+				const struct sockaddr_in * saddr2)
-+{
-+	if (saddr1->sin_addr.s_addr != saddr2->sin_addr.s_addr)
-+		return 0;
-+	return saddr1->sin_port == saddr2->sin_port;
-+}
-+
-+/*
-+ * Test if two ip6 socket addresses refer to the same socket by
-+ * comparing relevant fields. The padding bytes specifically, are not
-+ * compared. sin6_flowinfo is not compared because it only affects QoS
-+ * and sin6_scope_id is only compared if the address is "link local"
-+ * because "link local" addresses need only be unique to a specific
-+ * link. Conversely, ordinary unicast addresses might have different
-+ * sin6_scope_id.
-+ *
-+ * The caller should ensure both socket addresses are AF_INET6.
-+ */
-+static int nfs_sockaddr_cmp_ip6 (const struct sockaddr_in6 * saddr1,
-+				 const struct sockaddr_in6 * saddr2)
-+{
-+	if (!ipv6_addr_equal(&saddr1->sin6_addr,
-+			     &saddr1->sin6_addr))
-+		return 0;
-+	if (ipv6_addr_scope(&saddr1->sin6_addr) == IPV6_ADDR_SCOPE_LINKLOCAL &&
-+	    saddr1->sin6_scope_id != saddr2->sin6_scope_id)
-+		return 0;
-+	return saddr1->sin6_port == saddr2->sin6_port;
-+}
-+
-+/*
-+ * Test if two socket addresses represent the same actual socket,
-+ * by comparing (only) relevant fields. 
-+ */
-+static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
-+			    const struct sockaddr *sa2)
-+{
-+	if (sa1->sa_family != sa2->sa_family)
-+		return 0;
-+  
-+	switch (sa1->sa_family) {
-+	case AF_INET:
-+		return nfs_sockaddr_cmp_ip4((const struct sockaddr_in *) sa1,
-+					    (const struct sockaddr_in *) sa2);
-+	case AF_INET6:
-+		return nfs_sockaddr_cmp_ip6((const struct sockaddr_in6 *) sa1,
-+					    (const struct sockaddr_in6 *) sa2);
-+	}
-+	return 0;
-+}
-+
-+/*
-  * Find a client by IP address and protocol version
-  * - returns NULL if no such client
-  */
-@@ -344,8 +403,10 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
- static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *data)
- {
- 	struct nfs_client *clp;
-+	const struct sockaddr *sap = data->addr;
- 
- 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
-+	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
- 		/* Don't match clients that failed to initialise properly */
- 		if (clp->cl_cons_state < 0)
- 			continue;
-@@ -358,7 +419,7 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 			continue;
- 
- 		/* Match the full socket address */
--		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
-+		if (!nfs_sockaddr_cmp(sap, clap))
- 			continue;
- 
- 		atomic_inc(&clp->cl_count);
-
-
-
--- 
-Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-
+Thanks,
+Fengguang
