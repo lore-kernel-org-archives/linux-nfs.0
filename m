@@ -1,121 +1,54 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: Re: [PATCH] NFS: Pagecache usage optimization on nfs
-Date: Wed, 18 Feb 2009 11:22:29 +0900
-Message-ID: <6.0.0.20.2.20090218102926.06b314c0@172.19.0.2>
-References: <6.0.0.20.2.20090217132810.05709598@172.19.0.2>
- <200902172343.13838.nickpiggin@yahoo.com.au>
- <1234880322.8412.124.camel@heimdal.trondhjem.org>
+From: admin <info-QUqhrNcLv1/e5aOfsHch1g@public.gmane.org>
+Subject: [NFS] MEETING
+Date: Tue, 17 Feb 2009 19:49:40 +0100
+Message-ID: <6abb167ff63a9bb80741cab38641a03f@www.ekipate.es>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Nick Piggin <nickpiggin@yahoo.com.au>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1234880322.8412.124.camel@heimdal.trondhjem.org>
-References: <6.0.0.20.2.20090217132810.05709598@172.19.0.2>
- <200902172343.13838.nickpiggin@yahoo.com.au>
- <1234880322.8412.124.camel@heimdal.trondhjem.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: nfs@lists.sourceforge.net
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:59263 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751142AbZBRGcy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Feb 2009 01:32:54 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LZfzI-00070y-7s
+	for linux-nfs@vger.kernel.org; Wed, 18 Feb 2009 17:32:52 +1100
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Estas buscando pareja.
 
-At 23:18 09/02/17, Trond Myklebust wrote:
->On Tue, 2009-02-17 at 23:43 +1100, Nick Piggin wrote:
->> On Tuesday 17 February 2009 15:55:12 Hisashi Hifumi wrote:
->> > Hi, Trond.
->> >
->> > I wrote "is_partially_uptodate" aops for nfs client named
->> > nfs_is_partially_uptodate(). This aops checks that nfs_page is attached to
->> > a page and read IO to a page is within the range between wb_pgbase and
->> > wb_pgbase + wb_bytes of the nfs_page. If this aops succeed, we do not have
->> > to issue actual read IO to NFS server even if a page is not uptodate
->> > because the portion we want to read are uptodate. So with this patch random
->> > read/write mixed workloads or random read after random write workloads can
->> > be optimized and we can get performance improvement.
->> >
->> > I did benchmark test using sysbench.
->> >
->> > sysbench --num-threads=16 --max-requests=100000 --test=fileio
->> > --file-block-size=2K --file-total-size=200M --file-test-mode=rndrw
->> > --file-fsync-freq=0
->> > --file-rw-ratio=0.5 run
->> >
->> > The result was:
->> >
->> > -2.6.29-rc4
->> >
->> > Operations performed:  33356 Read, 66682 Write, 128 Other = 100166 Total
->> > Read 65.148Mb  Written 130.24Mb  Total transferred 195.39Mb  (3.1093Mb/sec)
->> >  1591.97 Requests/sec executed
->> >
->> > Test execution summary:
->> >     total time:                          62.8391s
->> >     total number of events:              100038
->> >     total time taken by event execution: 841.7603
->> >     per-request statistics:
->> >          min:                            0.0000s
->> >          avg:                            0.0084s
->> >          max:                            16.4564s
->> >          approx.  95 percentile:         0.0446s
->> >
->> > Threads fairness:
->> >     events (avg/stddev):           6252.3750/306.48
->> >     execution time (avg/stddev):   52.6100/0.38
->> >
->> >
->> > -2.6.29-rc4 + patch
->> >
->> > Operations performed:  33346 Read, 66662 Write, 128 Other = 100136 Total
->> > Read 65.129Mb  Written 130.2Mb  Total transferred 195.33Mb  (5.0113Mb/sec)
->> >  2565.81 Requests/sec executed
->> >
->> > Test execution summary:
->> >     total time:                          38.9772s
->> >     total number of events:              100008
->> >     total time taken by event execution: 339.6821
->> >     per-request statistics:
->> >          min:                            0.0000s
->> >          avg:                            0.0034s
->> >          max:                            1.6768s
->> >          approx.  95 percentile:         0.0200s
->> >
->> > Threads fairness:
->> >     events (avg/stddev):           6250.5000/302.04
->> >     execution time (avg/stddev):   21.2301/0.45
->> >
->> >
->> > I/O performance was significantly improved by following patch.
->> 
->> OK, but again this is not something too sane to do is it (ask for 2K IO
->> size on 4K page system)? What are the comparison results with 4K IO
->> size? I guess it will help some cases, but it's probably hard to find
->> realistic workloads that see such an improvement.
+ <http://www.ekipate.es/lists/lt.php?id=YR5QCwwMUAEYCFpMBg4CUgE%3D>
 
-2K IO size on 4K page system workload might not be realistic, but
-on architectures that has large page size like powerpc or ia64 , I think
-this patch has significant effect(4K or 8K IO size on 16K page size).
- 
->
->The other thing that worries me about it is that the scheme relies
->entirely on using the page dirtying mechanism to track updated parts of
->a page. You will lose that information as soon as the page cache is
->flushed to disk.
 
-Can we reserve updated parts of a page even after dirty page is flushed
-to HDD? If so we can get better performance number. 
 
->IOW: I would expect those numbers to change greatly if you increase the
->file size to the point where the VM starts evicting the pages.
+--
+To unsubscribe from this list visit
+http://www.ekipate.es/lists/lt.php?id=YR5QCwwMUAIYCFpMBg4CUgE%3D
 
-Yes you are right. I think when the file size goes beyond memory size,
-performance number would decrease. 
+To update your preferences visit
+http://www.ekipate.es/lists/lt.php?id=YR5QCwwMUAMYCFpMBg4CUgE%3D
 
->
->There are plenty of ways in which one can tune the performance of NFS.
->It all depends on the application. For instance, our lack of tracking of
->holes means that we tend to perform very poorly when dealing with reads
->of sparse files such as in the above test. Perhaps that might be
->considered as an alternative idea?
->
+
+
+--
+Powered by PHPlist, www.phplist.com --
+
+
+
+
+------------------------------------------------------------------------------
+Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
+-OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
+-Strategies to boost innovation and cut costs with open source participation
+-Receive a $600 discount off the registration fee with the source code: SFAD
+http://p.sf.net/sfu/XcvMzF8H
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
