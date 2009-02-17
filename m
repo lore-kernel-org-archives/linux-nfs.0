@@ -1,103 +1,86 @@
-From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Tue, 17 Feb 2009 22:33:22 +1030
-Message-ID: <1234872202.14585.33.camel@sibyl.beware.dropbear.id.au>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
-	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
-	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
-	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
-	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
-	 <1233699391.7161.11.camel@heimdal.trondhjem.org>
-	 <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
-	 <1233771633.7161.35.camel@heimdal.trondhjem.org>
-	 <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com>
-	 <1233773231.7161.51.camel@heimdal.trondhjem.org>
-	 <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au>
-	 <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com>
-	 <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au>
-	 <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com>
-	 <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au>
-	 <C7FF32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com>
-	 <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au>
-	 <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: [PATCH] NFS: Pagecache usage optimization on nfs
+Date: Tue, 17 Feb 2009 23:43:13 +1100
+Message-ID: <200902172343.13838.nickpiggin@yahoo.com.au>
+References: <6.0.0.20.2.20090217132810.05709598@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:54465 "EHLO
-	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751382AbZBQMDm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Feb 2009 07:03:42 -0500
-In-Reply-To: <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <6.0.0.20.2.20090217132810.05709598@172.19.0.2>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tuesday 17 February 2009 15:55:12 Hisashi Hifumi wrote:
+> Hi, Trond.
+>
+> I wrote "is_partially_uptodate" aops for nfs client named
+> nfs_is_partially_uptodate(). This aops checks that nfs_page is attached to
+> a page and read IO to a page is within the range between wb_pgbase and
+> wb_pgbase + wb_bytes of the nfs_page. If this aops succeed, we do not have
+> to issue actual read IO to NFS server even if a page is not uptodate
+> because the portion we want to read are uptodate. So with this patch random
+> read/write mixed workloads or random read after random write workloads can
+> be optimized and we can get performance improvement.
+>
+> I did benchmark test using sysbench.
+>
+> sysbench --num-threads=16 --max-requests=100000 --test=fileio
+> --file-block-size=2K --file-total-size=200M --file-test-mode=rndrw
+> --file-fsync-freq=0
+> --file-rw-ratio=0.5 run
+>
+> The result was:
+>
+> -2.6.29-rc4
+>
+> Operations performed:  33356 Read, 66682 Write, 128 Other = 100166 Total
+> Read 65.148Mb  Written 130.24Mb  Total transferred 195.39Mb  (3.1093Mb/sec)
+>  1591.97 Requests/sec executed
+>
+> Test execution summary:
+>     total time:                          62.8391s
+>     total number of events:              100038
+>     total time taken by event execution: 841.7603
+>     per-request statistics:
+>          min:                            0.0000s
+>          avg:                            0.0084s
+>          max:                            16.4564s
+>          approx.  95 percentile:         0.0446s
+>
+> Threads fairness:
+>     events (avg/stddev):           6252.3750/306.48
+>     execution time (avg/stddev):   52.6100/0.38
+>
+>
+> -2.6.29-rc4 + patch
+>
+> Operations performed:  33346 Read, 66662 Write, 128 Other = 100136 Total
+> Read 65.129Mb  Written 130.2Mb  Total transferred 195.33Mb  (5.0113Mb/sec)
+>  2565.81 Requests/sec executed
+>
+> Test execution summary:
+>     total time:                          38.9772s
+>     total number of events:              100008
+>     total time taken by event execution: 339.6821
+>     per-request statistics:
+>          min:                            0.0000s
+>          avg:                            0.0034s
+>          max:                            1.6768s
+>          approx.  95 percentile:         0.0200s
+>
+> Threads fairness:
+>     events (avg/stddev):           6250.5000/302.04
+>     execution time (avg/stddev):   21.2301/0.45
+>
+>
+> I/O performance was significantly improved by following patch.
 
-On Mon, 2009-02-16 at 11:24 -0500, Chuck Lever wrote:
-> On Feb 15, 2009, at 10:32 AM, Ian Dall wrote:
-> 
-> > I believe this includes all comments so far. I have also swatted up on
-> > Documentation/CodingStyle, and modified the comments somewhat to
-> > conform.
-> 
-> There is also a Perl script called scripts/checkpatch.pl that you  
-> should run against your patch before submitting.  It can identify and  
-> report many common style problems.
-
-Thanks for that, it threw up a few white space issues which I have
-fixed.
-
-
-> I've thought more about this.  I think we don't want the scope ID  
-> comparison here at all.  The scope ID is not really part of an IPv6  
-> address.  A unique host address is contained only in the sin6_addr  
-> field; the scope ID is simply local routing information.  I can't  
-> think of a case where two unique remotes would have identical link- 
-> local addresses.
-
-Isn't that exactly what makes link local addresses, well, link local?
-They only have to be unique to the link (which seems to be in practice a
-lan or vlan - a bunch of hosts connected without any routing at the ip
-level). They don't have to be globally unique. A single host can be on
-multiple lans or vlans.
-
-Finding anything authoritative on this is difficult. The RFC's are
-vague. However, following discussion on ietf mail archives, and other
-reasonably reputable sources like documentation from IBM, Sun and
-FreeBSD  makes me think that my interpretation is correct. Indeed, the
-way the BSD crowd seem to do it is to embed the scope_id in the link
-local address (internally to the kernel) and thence forth just compare
-the address. So they treat it *exactly* like part of the address.
-
-See for example:
-
-http://www.freebsd.org/doc/en/books/developers-handbook/ipv6.html section 8.1.1.3.
-
-http://msdn.microsoft.com/en-us/library/ms739166(VS.85).aspx
-
-http://books.google.com/books?id=6nNjcItz6H4C&pg=PA53&lpg=PA53&dq=sin6_scope_id+%22link+local%22&source=bl&ots=MFyiwYwO5I&sig=hZDvlVcJ8hLOwt7EXoL4lEzT4V4&hl=en&ei=eqCaSdiGD8PDkAWskMmZCw&sa=X&oi=book_result&resnum=7&ct=result
-
-Note especially, section 1.8.1 "Since link local addresses may not be
-unique on different links ..."  
-
-The only reasons I can see which would justify omitting the check are:
-
-      * For some reason you could never have a nfs server on a link
-        local address.
-      * Linux already embeds the scope index in the address for link
-        local addresses, internally in the kernel a la BSD. Which I can
-        find no evidence for either in the code or in documentation.
-
-There is also the issue that sin6_scope_id == 0 is interpreted as
-"unspecified" rather than a specific id. However, as far as I can tell,
-the scope_id is only ever unspecified (for link_local addresses) before
-a socket is bound. Once a connection is established, the scope id for
-link local addresses should always be specified. So by the time this
-function is called, the scope_id should be set.
-
-
--- 
-Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+OK, but again this is not something too sane to do is it (ask for 2K IO
+size on 4K page system)? What are the comparison results with 4K IO
+size? I guess it will help some cases, but it's probably hard to find
+realistic workloads that see such an improvement.
 
