@@ -1,63 +1,68 @@
-From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
-Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
-Date: Wed, 18 Feb 2009 08:37:00 +1030
-Message-ID: <1234908420.14585.40.camel@sibyl.beware.dropbear.id.au>
-References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
-	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
-	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
-	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
-	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
-	 <1233699391.7161.11.camel@heimdal.trondhjem.org>
-	 <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
-	 <1233771633.7161.35.camel@heimdal.trondhjem.org>
-	 <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com>
-	 <1233773231.7161.51.camel@heimdal.trondhjem.org>
-	 <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au>
-	 <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com>
-	 <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au>
-	 <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com>
-	 <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au>
-	 <C7FF32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com>
-	 <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au>
-	 <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com>
-	 <1234872202.14585.33.camel@sibyl.bewa! re.dropbear.id.au>
-	 <30C44273-7011-46AD-B79B-FCD06E9F25FE@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [Fwd: [CFP by Mar 1] 2009 Linux Storage and Filesystem Workshop]
+Date: Tue, 17 Feb 2009 17:57:38 -0500
+Message-ID: <1234911458.8412.152.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:52247 "EHLO
-	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751388AbZBQWHT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Feb 2009 17:07:19 -0500
-In-Reply-To: <30C44273-7011-46AD-B79B-FCD06E9F25FE@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:41327 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753803AbZBQW5z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Feb 2009 17:57:55 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+-------- Forwarded Message --------
+Subject: [CFP by Mar 1] 2009 Linux Storage and Filesystem Workshop
+Date: Tue, 17 Feb 2009 14:28:27 -0800
+From: Zach Brown <zach.brown@oracle.com>
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+linux-fsdevel <linux-fsdevel@vger.kernel.org>
 
-On Tue, 2009-02-17 at 12:29 -0500, Chuck Lever wrote:
+This is a reminder that we're accepting proposals for topics for the
+2009 Linux storage and filesystem workshop.  The deadline for proposals
+is March 1, 2009.  That's just under two weeks from now.  Invites will
+be sent out by March 7.
 
-> I think the correct way to proceed here is to address the original  
-> problem without adding the scope ID check, then explore the scope ID  
-> issue separately.  The presenting problem in 11061 affects IPv4  
-> addresses too if I'm not mistaken, and IPv4 is fairly widely deployed,  
-> so it needs to be fixed now.
-Absolutely. Where it bit me, and as far as I know all the the respondents, was with IPv4 networks.
+We have 25 spaces available in each of the storage and filesystem tracks
+so do submit early.
 
-> If scope ID matching is a problem in nfs_match_client, then it is also  
-> an issue for other places in the NFS client, and should be fixed in  
-> all those places at once, in a single patch that documents the scope  
-> ID matching requirement.
+The initial call for proposals follows.
 
-Sounds reasonable. I'll change the comment somehow to indicate why the
-scope_id field is not being compared.
+----
 
-Regards,
+Hello storage and filesystem friends,
 
-Ian
+This year's storage and filesystem workshop is being held in San
+Francisco on April 6th and 7th.  It's being held on the Monday and
+Tuesday immediately preceding the Linux Foundation Collaboration
+Summit, in the same hotel.
 
--- 
-Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+You can find all the details on the workshop's web site:
+
+  http://events.linuxfoundation.org/events/lsf-workshop
+
+The workshop focuses on collaboration and discussion.  There will be no
+refereed papers and few presentations with slides will be accepted.
+
+To attend we ask that you use the CFP interface on the web site to
+submit a short proposal for a topic to discuss during the workshop.  The
+program committee will send invitations to the workshop based on these
+proposals.  The CFP and FAQ tabs on the web site describe this in more
+detail.
+
+For reference, there are writeups of previous workshops available
+online:
+
+http://lwn.net/Articles/226351/
+http://www.usenix.org/publications/login/2008-06/openpdfs/lsf08reports.pdf
+
+This year we'll be adding time to the schedule specifically for hands-on
+development with your colleagues.
+
+Please let me know if there are any questions about the workshop.
+
+- z
+
 
