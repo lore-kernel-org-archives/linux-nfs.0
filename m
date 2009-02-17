@@ -1,54 +1,140 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: can't modify /etc/exports without blowing away existing clients
-Date: Mon, 16 Feb 2009 16:06:41 -0500
-Message-ID: <1234818401.8412.33.camel@heimdal.trondhjem.org>
-References: <200902161220.20474.jzb2@aexorsyst.com>
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: [PATCH] NFS: Pagecache usage optimization on nfs
+Date: Tue, 17 Feb 2009 13:55:12 +0900
+Message-ID: <6.0.0.20.2.20090217132810.05709598@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: "John Z. Bohach" <jzb2-t97x8lR6yknby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:60763 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750783AbZBPVGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Feb 2009 16:06:49 -0500
-In-Reply-To: <200902161220.20474.jzb2-t97x8lR6yknby3iVrkZq2A@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-02-16 at 12:20 -0800, John Z. Bohach wrote:
-> Hello,
-> 
-> When I modify /etc/exports and re-run exportfs -a -r, newly 
-> added/removed/modified entries take effect, EXCEPT that all existing 
-> clients lose their current mounts.  Existing clients have to umount 
-> then mount NFS filesystems that were not even modified.
-> 
-> Is this intentional behavior?  If I try to manually add a new directory 
-> for export, and just use "exportfs -i ..." and specify the new 
-> directory to export that way, all existing entries in /etc/exports are 
-> gratuitously UNexported, all clients lose their current mounts, and 
-> only the one entry specified via the command line of "exportfs -i ..." 
-> is exported.  This doesn't seem like intentional behavior?  Or is it 
-> just the exportfs program that's broken?
-> 
-> I'm running linux-2.6.24.4 and using exportfs from nfs-utils-1.1.3 
-> though I've noticed this behavior on older versions of both.
-> 
-> Is there some NFS option I'm supposed to use in /etc/fstab on the 
-> clients to keep this remount thing from being necessary?  I'm pretty 
-> sure I tried both soft and hard mounts.  I'm currently using TCP as the 
-> mount transport layer...would UDP fix this issue, I haven't tested 
-> that...either way, even with TCP, it would be a big blow against using 
-> TCP as the mount transport if umount/mount sequence was required on the 
-> clients everytime time the server re-ran exportfs, which is what is 
-> happening now.
-> 
-> Anybody know what's going on?
+Hi, Trond.
 
-Does the command 'grep nfsd /proc/mounts' show the 'nfsd' virtual
-filesystem as being mounted on /proc/fs/nfsd?
+I wrote "is_partially_uptodate" aops for nfs client named nfs_is_partially_uptodate().
+This aops checks that nfs_page is attached to a page and read IO to a page is 
+within the range between wb_pgbase and wb_pgbase + wb_bytes of the nfs_page. 
+If this aops succeed, we do not have to issue actual read IO to NFS server 
+even if a page is not uptodate because the portion we want to read are uptodate.
+So with this patch random read/write mixed workloads or random read after random write 
+workloads can be optimized and we can get performance improvement.
+ 
+I did benchmark test using sysbench.
 
-Cheers
-  Trond
+sysbench --num-threads=16 --max-requests=100000 --test=fileio --file-block-size=2K 
+--file-total-size=200M --file-test-mode=rndrw --file-fsync-freq=0 
+--file-rw-ratio=0.5 run
+
+The result was:
+
+-2.6.29-rc4
+
+Operations performed:  33356 Read, 66682 Write, 128 Other = 100166 Total
+Read 65.148Mb  Written 130.24Mb  Total transferred 195.39Mb  (3.1093Mb/sec)
+ 1591.97 Requests/sec executed
+
+Test execution summary:
+    total time:                          62.8391s
+    total number of events:              100038
+    total time taken by event execution: 841.7603
+    per-request statistics:
+         min:                            0.0000s
+         avg:                            0.0084s
+         max:                            16.4564s
+         approx.  95 percentile:         0.0446s
+
+Threads fairness:
+    events (avg/stddev):           6252.3750/306.48
+    execution time (avg/stddev):   52.6100/0.38
+
+
+-2.6.29-rc4 + patch
+
+Operations performed:  33346 Read, 66662 Write, 128 Other = 100136 Total
+Read 65.129Mb  Written 130.2Mb  Total transferred 195.33Mb  (5.0113Mb/sec)
+ 2565.81 Requests/sec executed
+
+Test execution summary:
+    total time:                          38.9772s
+    total number of events:              100008
+    total time taken by event execution: 339.6821
+    per-request statistics:
+         min:                            0.0000s
+         avg:                            0.0034s
+         max:                            1.6768s
+         approx.  95 percentile:         0.0200s
+
+Threads fairness:
+    events (avg/stddev):           6250.5000/302.04
+    execution time (avg/stddev):   21.2301/0.45
+
+
+I/O performance was significantly improved by following patch.
+Please merge my patch.
+Thanks.
+
+Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+
+diff -Nrup linux-2.6.29-rc5.org/fs/nfs/file.c linux-2.6.29-rc5/fs/nfs/file.c
+--- linux-2.6.29-rc5.org/fs/nfs/file.c	2009-02-16 12:31:18.000000000 +0900
++++ linux-2.6.29-rc5/fs/nfs/file.c	2009-02-16 13:05:29.000000000 +0900
+@@ -449,6 +449,7 @@ const struct address_space_operations nf
+ 	.releasepage = nfs_release_page,
+ 	.direct_IO = nfs_direct_IO,
+ 	.launder_page = nfs_launder_page,
++	.is_partially_uptodate = nfs_is_partially_uptodate,
+ };
+ 
+ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+diff -Nrup linux-2.6.29-rc5.org/fs/nfs/read.c linux-2.6.29-rc5/fs/nfs/read.c
+--- linux-2.6.29-rc5.org/fs/nfs/read.c	2009-02-16 12:31:18.000000000 +0900
++++ linux-2.6.29-rc5/fs/nfs/read.c	2009-02-16 13:05:29.000000000 +0900
+@@ -599,6 +599,33 @@ out:
+ 	return ret;
+ }
+ 
++int nfs_is_partially_uptodate(struct page *page, read_descriptor_t *desc,
++				unsigned long from)
++{
++	struct inode *inode = page->mapping->host;
++	unsigned to;
++	struct nfs_page *req = NULL;
++
++	spin_lock(&inode->i_lock);
++	if (PagePrivate(page)) {
++		req = (struct nfs_page *)page_private(page);
++		if (req)
++			kref_get(&req->wb_kref);
++	}
++	spin_unlock(&inode->i_lock);
++	if (!req)
++		return 0;
++
++	to = min_t(unsigned, PAGE_CACHE_SIZE - from, desc->count);
++	to = from + to;
++	if (from >= req->wb_pgbase && to <= req->wb_pgbase + req->wb_bytes) {
++		nfs_release_request(req);
++		return 1;
++	}
++	nfs_release_request(req);
++	return 0;
++}
++
+ int __init nfs_init_readpagecache(void)
+ {
+ 	nfs_rdata_cachep = kmem_cache_create("nfs_read_data",
+diff -Nrup linux-2.6.29-rc5.org/include/linux/nfs_fs.h linux-2.6.29-rc5/include/linux/nfs_fs.h
+--- linux-2.6.29-rc5.org/include/linux/nfs_fs.h	2009-02-16 12:31:18.000000000 +0900
++++ linux-2.6.29-rc5/include/linux/nfs_fs.h	2009-02-16 13:05:29.000000000 +0900
+@@ -506,6 +506,9 @@ extern int  nfs_readpages(struct file *,
+ 		struct list_head *, unsigned);
+ extern int  nfs_readpage_result(struct rpc_task *, struct nfs_read_data *);
+ extern void nfs_readdata_release(void *data);
++extern int  nfs_is_partially_uptodate(struct page *, read_descriptor_t *,
++		unsigned long);
++
+ 
+ /*
+  * Allocate nfs_read_data structures
 
