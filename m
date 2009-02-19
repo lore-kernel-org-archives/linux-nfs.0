@@ -1,64 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from welcomes-you.com ([85.214.50.128]:54602 "EHLO
-	smtp.welcomes-you.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752673AbZB0LOE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Feb 2009 06:14:04 -0500
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by smtp.welcomes-you.com (Postfix) with ESMTP id CF29AC70002
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2009 12:13:59 +0100 (CET)
-Received: from smtp.welcomes-you.com ([127.0.0.1])
-	by localhost (smtp.welcomes-you.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 0J8D9BXRuSrZ for <linux-nfs@vger.kernel.org>;
-	Fri, 27 Feb 2009 12:13:59 +0100 (CET)
-Received: from [10.117.96.106] (unknown [130.75.117.49])
-	by smtp.welcomes-you.com (Postfix) with ESMTP id 4AEFAC70001
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2009 12:13:59 +0100 (CET)
-Message-ID: <49A7CAF0.8000909@aei.mpg.de>
-Date: Fri, 27 Feb 2009 12:13:52 +0100
-From: Carsten Aulbert <carsten.aulbert@aei.mpg.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [NFS] Write stalls over UDP and Gigabit
-References: <200902271204.05099.Thorsten.Meinl@uni-konstanz.de>
-In-Reply-To: <200902271204.05099.Thorsten.Meinl@uni-konstanz.de>
+Received: from relay2.sgi.com ([192.48.179.30]:52063 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752493AbZBSG3F (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 19 Feb 2009 01:29:05 -0500
+Message-ID: <499CFB6B.1010902@sgi.com>
+Date: Thu, 19 Feb 2009 17:25:47 +1100
+From: Greg Banks <gnb@sgi.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS ML <linux-nfs@vger.kernel.org>
+Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with	enormous
+ load averages
+References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com> <20090211231033.GK27686@fieldses.org>
+In-Reply-To: <20090211231033.GK27686@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Thorsten,
+J. Bruce Fields wrote:
+> On Tue, Jan 13, 2009 at 09:26:35PM +1100, Greg Banks wrote:
+>   
+>> [...] Under a high call-rate
+>> low service-time workload, the result is that almost every nfsd is
+>> runnable, but only a handful are actually able to run.  This situation
+>> causes two significant problems:
+>>
+>> 1. The CPU scheduler takes over 10% of each CPU, which is robbing
+>>    the nfsd threads of valuable CPU time.
+>>
+>> 2. At a high enough load, the nfsd threads starve userspace threads
+>>    of CPU time, to the point where daemons like portmap and rpc.mountd
+>>    do not schedule for tens of seconds at a time.  Clients attempting
+>>    to mount an NFS filesystem timeout at the very first step (opening
+>>    a TCP connection to portmap) because portmap cannot wake up from
+>>    select() and call accept() in time.
+>>
+>> Disclaimer: these effects were observed on a SLES9 kernel, modern
+>> kernels' schedulers may behave more gracefully.
+>>     
+>
+> Yes, googling for "SLES9 kernel"...   Was that really 2.6.5 based?
+>
+> The scheduler's been through at least one complete rewrite since then,
+> so the obvious question is whether it's wise to apply something that may
+> turn out to have been very specific to an old version of the scheduler.
+>
+> It's a simple enough patch, but without any suggestion for how to retest
+> on a more recent kernel, I'm uneasy.
+>
+>   
 
-Thorsten Meinl schrieb:
-> Ich have to computer connected via Gigabit Ethernet via just one switch. I did 
-> some experiments with dd from one computer to the other and got only rates of 
-> about 10MB/s. Looking further at it, it looks quite strange: for the first 
-> few seconds the transmission rate is at about 100MB/s which one would expect. 
-> Then it drops down to about 20MB/s and then to only a few megabytes. Using 
-> Wireshark I found out the following (this is a dump from the client that 
-> writes the 10GB file):
-[...]
-> There is a 0.2s delay between packet 311 and 312 and it is totally uncleat to 
-> me what could be the cause, as the reply for the last write call in 303 
-> arrived in 311. So what is NFS waiting for (This situation occurs frequently 
-> and I assume this is the cause of the very low throughput).
-> The server storage system and the network cannot be the problem because using 
-> sshfs I get rates of about 80MB/s and the bottleneck here is the CPU at the 
-> client side.
-> I also tried TCP and there the rates are slightly better but still do not 
-> exceed ~20MB/s.
-> Does anyone have an idea or any hints how I can debug this further? And yes, I 
-> already tried the various suggestions in the FAQs like increasing receive 
-> buffer sizes and such.
+Ok, fair enough.  I retested using my local GIT tree, which is cloned
+from yours and was last git-pull'd a couple of days ago.  The test load
+was the same as in my 2005 tests (multiple userspace threads each
+simulating an rsync directory traversal from a 2.4 client, i.e. almost
+entirely ACCESS calls with some READDIRs and GETATTRs, running as fast
+as the server will respond).  This was run on much newer hardware (and a
+different architecture as well: a quad-core Xeon) so the results are not
+directly comparable with my 2005 tests.  However the effect with and
+without the patch can be clearly seen, with otherwise identical hardware
+software and load (I added a sysctl to enable and disable the effect of
+the patch at runtime).
 
-Just a blind guess. sshfs is using TCP while your NFS setup seems to be
-UDP, so there might be the problem. Maybe your network is temporarily
-congested and the egress switch is notifying the send to back off? There
-should be a specific ethernet frame visible on the server side which I
-guess wireshark should be able to see these pause frames
-(http://en.wikipedia.org/wiki/Pause_frame)
+A quick summary: the 2.6.29-rc4 CPU scheduler is not magically better
+than the 2.6.5 one and NFS can still benefit from reducing load on it.
 
-Sorry if that's not helping much, but that's just my very first quarted
-educated guess.
+Here's a table of measured call rates and steady-state 1-minute load
+averages, before and after the patch, versus number of client load
+threads.   The server was configured with 128 nfsds in the thread pool
+which was under load.  In all cases except the the single CPU in the
+thread pool was 100% busy (I've elided the 8-thread results where that
+wasn't the case).
 
-Cheers
+#threads    before                  after
+            call/sec    loadavg     call/sec    loadavg
+--------    --------    -------     --------    -------
+16          57353       10.98       74965        6.11
+24          57787       19.56       79397       13.58
+32          57921       26.00       80746       21.35
+40          57936       35.32       81629       31.73
+48          57930       43.84       81775       42.64
+56          57467       51.05       81411       52.39
+64          57595       57.93       81543       64.61
 
-Carsten
+
+As you can see, the patch improves NFS throughput for this load by up
+to  40%, which is a surprisingly large improvement.  I suspect it's a
+larger improvement because my 2005 tests had multiple CPUs serving NFS
+traffic, and the improvements due to this patch were drowned in various
+SMP effects which are absent from this test.
+
+Also surprising is that the patch improves the reported load average
+number only at higher numbers of client threads; at low client thread
+counts the load average is unchanged or even slightly higher.  The patch
+didn't have that effect back in 2005, so I'm confused by that
+behaviour.  Perhaps the difference is due to changes in the scheduler or
+the accounting that measures load averages?
+
+Profiling at 16 client threads, 32 server threads shows differences in
+the CPU usage in the CPU scheduler itself, with some ACPI effects too. 
+The platform I ran on in 2005 did not support ACPI, so that's new to
+me.  Nevertheless it makes a difference.  Here are the top samples from
+a couple of 30-second flat profiles.
+
+Before:
+
+samples  %        image name               app name                 symbol name
+3013      4.9327  processor.ko             processor                acpi_idle_enter_simple  <---
+2583      4.2287  sunrpc.ko                sunrpc                   svc_recv
+1273      2.0841  e1000e.ko                e1000e                   e1000_irq_enable
+1235      2.0219  sunrpc.ko                sunrpc                   svc_process
+1070      1.7517  e1000e.ko                e1000e                   e1000_intr_msi
+966       1.5815  e1000e.ko                e1000e                   e1000_xmit_frame
+884       1.4472  sunrpc.ko                sunrpc                   svc_xprt_enqueue
+861       1.4096  e1000e.ko                e1000e                   e1000_clean_rx_irq
+774       1.2671  xfs.ko                   xfs                      xfs_iget
+772       1.2639  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   schedule                <---
+726       1.1886  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   sched_clock             <---
+693       1.1345  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   read_hpet               <---
+680       1.1133  sunrpc.ko                sunrpc                   cache_check
+671       1.0985  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_sendpage
+641       1.0494  sunrpc.ko                sunrpc                   sunrpc_cache_lookup
+
+Total % cpu from ACPI & scheduler: 8.5%
+
+After:
+
+samples  %        image name               app name                 symbol name
+5145      5.2163  sunrpc.ko                sunrpc                   svc_recv
+2908      2.9483  processor.ko             processor                acpi_idle_enter_simple  <---
+2731      2.7688  sunrpc.ko                sunrpc                   svc_process
+2092      2.1210  e1000e.ko                e1000e                   e1000_clean_rx_irq
+1988      2.0155  e1000e.ko                e1000e                   e1000_xmit_frame
+1863      1.8888  e1000e.ko                e1000e                   e1000_irq_enable
+1606      1.6282  xfs.ko                   xfs                      xfs_iget
+1514      1.5350  sunrpc.ko                sunrpc                   cache_check
+1389      1.4082  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_recvmsg
+1383      1.4022  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_sendpage
+1310      1.3281  sunrpc.ko                sunrpc                   svc_xprt_enqueue
+1177      1.1933  sunrpc.ko                sunrpc                   sunrpc_cache_lookup
+1142      1.1578  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   get_page_from_freelist
+1135      1.1507  sunrpc.ko                sunrpc                   svc_tcp_recvfrom
+1126      1.1416  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_transmit_skb
+1040      1.0544  e1000e.ko                e1000e                   e1000_intr_msi
+1033      1.0473  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   tcp_ack
+1030      1.0443  vmlinux-2.6.29-rc4-gnb   vmlinux-2.6.29-rc4-gnb   kref_get
+1000      1.0138  nfsd.ko                  nfsd                     fh_verify
+
+Total % cpu from ACPI & scheduler: 2.9%
+
+
+Does that make you less uneasy?
+
+
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
+
