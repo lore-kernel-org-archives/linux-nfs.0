@@ -1,63 +1,207 @@
-From: Wu Fengguang <wfg@linux.intel.com>
-Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
-Date: Thu, 19 Feb 2009 09:38:33 +0800
-Message-ID: <20090219013833.GB5743@localhost>
-References: <20081125113048.GB16422@localhost> <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net> <499B0979.8050006@vlnb.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
-	"Vitaly V. Bursov" <vitalyb-CNXmb7IdZIXO1JJkmS+EZg@public.gmane.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Vladislav Bolkhovitin <vst-d+Crzxg7Rs0@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Thu, 19 Feb 2009 11:28:41 -0500
+Message-ID: <AAF38BA0-BFC7-4F47-9713-FF642C257141@oracle.com>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au> <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com> <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au> <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com> <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au> <1233699391.7161.11.camel@heimdal.trondhjem.org> <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com> <1233771633.7161.35.camel@heimdal.trondhjem.org> <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com> <1233773231.7161.51.camel@heimdal.trondhjem.org> <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au> <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com> <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au> <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com> <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au> <C7F
+ F32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com> <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au> <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com> <1234872202.14585.33.camel@sibyl.bewa!
+ ! re.dropbear.id.au> <30C44273-7011-46AD-B79B-FCD06E9F25FE@oracle.com> <1234960871.3455.27.camel@sibyl.beware.dropbear.id.au>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga05.intel.com ([192.55.52.89]:30792 "EHLO
-	fmsmga101.fm.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751381AbZBSBio (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Feb 2009 20:38:44 -0500
-In-Reply-To: <499B0979.8050006-d+Crzxg7Rs0@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:58277 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751112AbZBSQ3B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Feb 2009 11:29:01 -0500
+In-Reply-To: <1234960871.3455.27.camel-+Zt617Lp5ASbJVK1MCa92ZvzqaJJnU0YunOrhLTifxA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 17, 2009 at 10:01:13PM +0300, Vladislav Bolkhovitin wrote:
-> Vladislav Bolkhovitin, on 02/12/2009 09:35 PM wrote:
->> Additional interesting observation is how badly simultaneous read IO  
->> streams are handled, if they aren't grouped in the corresponding IO  
->> contexts. In test 3 the result was as low as 4(!)MB/s. Wu, Jens, do you 
->> have any explanation on this? Why the inner tracks have so big 
->> preference?
->
-> I realized, there is another explanation: access becomes about to be  
-> completely random. I checked and it is true. Here is a sample "iostat -x  
-> 3" output on the server:
+I'm still not sure the IPv6 piece is completely correct, but after  
+this patch is applied, IPv4 behavior is definitely better.  Since we  
+can refine the IPv6 behavior as needed in subsequent patches:
 
-Yes it's all about 64K sized reads. Is this the stripe size of md0?
+   Acked-by: Chuck Lever <chuck.lever@oracle.com>
 
-Thanks,
-Fengguang
+On Feb 18, 2009, at Feb 18, 2009, 7:41 AM, Ian Dall wrote:
+> On Tue, 2009-02-17 at 12:29 -0500, Chuck Lever wrote:
+>> Hi Ian-
+>>
+>> On Feb 17, 2009, at Feb 17, 2009, 7:03 AM, Ian Dall wrote:
+>>> On Mon, 2009-02-16 at 11:24 -0500, Chuck Lever wrote:
+>>>>
+>>>> I've thought more about this.  I think we don't want the scope ID
+>>>> comparison here at all.  The scope ID is not really part of an IPv6
+>>>> address.  A unique host address is contained only in the sin6_addr
+>>>> field; the scope ID is simply local routing information.  I can't
+>>>> think of a case where two unique remotes would have identical link-
+>>>> local addresses.
+>>>
+>>> Isn't that exactly what makes link local addresses, well, link  
+>>> local?
+>>
+>> No, an IPv6 address is link-local by virtue of having the
+>> IPV6_ADDR_LINKLOCAL bit set.  Scope IDs came along later.
+>
+> That is just an API and nothing to do with the semantics of "link
+> local". Previously it was unspecified how to denote a link, now  
+> there is
+> a sockaddr field (which is largely undocumented, so not much of a
+> change). There is nothing in the IPv6 standard which says that the
+> kernel has to use sockaddr internally, but clearly it has to keep  
+> track
+> of what link a link local address is on somehow!
+>
+>> Generally the way a link-local address is formed on Linux is by using
+>> the link's MAC address to form a unique 64-bit EUID, and  
+>> concatenating
+>> that to a standard link-local prefix, usually fe80:: .  Each NIC on a
+>> host therefore has it's own link-local address, generally speaking.
+>
+> Yes. But not all hosts on the "link" need be linux. Also, not all lans
+> have to be ethernet.
+>
+>>> http://books.google.com/books?id=6nNjcItz6H4C&pg=PA53&lpg=PA53&dq=sin6_scope_id+%22link+local%22&source=bl&ots=MFyiwYwO5I&sig=hZDvlVcJ8hLOwt7EXoL4lEzT4V4&hl=en&ei=eqCaSdiGD8PDkAWskMmZCw&sa=X&oi=book_result&resnum=7&ct=result
+>>>
+>>> Note especially, section 1.8.1 "Since link local addresses may not  
+>>> be
+>>> unique on different links ..."
+>>
+>> Does that imply that unique hosts can have the same link-local
+>> address, or simply that the same link-local address is permitted to
+>> appear on different links?
+>
+> Both I reckon. It is the address which is link local, not  
+> (necessarilly)
+> the host. But if they are link local addresses on the same host but
+> different links, which are other wise the same, everything else on the
+> network should treat them just as if they were separate hosts. This is
+> no different to a host having two ordinary IP (v4 or v6) addresses.
+>
+> Potentially a host might run two nfs servers listening on two  
+> interfaces
+> on two separate lans with the same link local address, serving up
+> different files. The servers are on the same host, but that should be
+> completely opaque to clients.
+>
+>> I think the correct way to proceed here is to address the original
+>> problem without adding the scope ID check, then explore the scope ID
+>> issue separately.  The presenting problem in 11061 affects IPv4
+>> addresses too if I'm not mistaken, and IPv4 is fairly widely  
+>> deployed,
+>> so it needs to be fixed now.
+>>
+>> If scope ID matching is a problem in nfs_match_client, then it is  
+>> also
+>> an issue for other places in the NFS client, and should be fixed in
+>> all those places at once, in a single patch that documents the scope
+>> ID matching requirement.
+>
+> From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+>
+> Addresses: http://bugzilla.kernel.org/show_bug.cgi?id=11061
+>
+> sockaddr structures can't be reliably compared using memcmp() because
+> there are padding bytes in the structure which can't be guaranteed to
+> be the same even when the sockaddr structures refer to the same
+> socket. Instead compare all the relevant fields. In the case of IPv6
+> sin6_flowinfo is not compared because it only affects QoS and
+> sin6_scope_id is currently not supported.
+>
+> Signed-off-by: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+>
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 9b728f3..9ac4c6b 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -273,6 +273,59 @@ static int nfs_sockaddr_match_ipaddr(const  
+> struct sockaddr *sa1,
+> #endif
+>
+> /*
+> + * Test if two ip4 socket addresses refer to the same socket, by
+> + * comparing relevant fields. The padding bytes specifically, are
+> + * not compared.
+> + *
+> + * The caller should ensure both socket addresses are AF_INET.
+> + */
+> +static int nfs_sockaddr_cmp_ip4(const struct sockaddr_in *saddr1,
+> +				const struct sockaddr_in *saddr2)
+> +{
+> +	if (saddr1->sin_addr.s_addr != saddr2->sin_addr.s_addr)
+> +		return 0;
+> +	return saddr1->sin_port == saddr2->sin_port;
+> +}
+> +
+> +/*
+> + * Test if two ip6 socket addresses refer to the same socket by
+> + * comparing relevant fields. The padding bytes specifically, are not
+> + * compared. sin6_flowinfo is not compared because it only affects  
+> QoS
+> + * and sin6_scope_id is currently not supported.
+> + *
+> + * The caller should ensure both socket addresses are AF_INET6.
+> + */
+> +static int nfs_sockaddr_cmp_ip6(const struct sockaddr_in6 *saddr1,
+> +				const struct sockaddr_in6 *saddr2)
+> +{
+> +	if (!ipv6_addr_equal(&saddr1->sin6_addr,
+> +			     &saddr1->sin6_addr))
+> +		return 0;
+> +	return saddr1->sin6_port == saddr2->sin6_port;
+> +}
+> +
+> +/*
+> + * Test if two socket addresses represent the same actual socket,
+> + * by comparing (only) relevant fields.
+> + */
+> +static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
+> +			    const struct sockaddr *sa2)
+> +{
+> +	if (sa1->sa_family != sa2->sa_family)
+> +		return 0;
+> +
+> +	switch (sa1->sa_family) {
+> +	case AF_INET:
+> +		return nfs_sockaddr_cmp_ip4((const struct sockaddr_in *) sa1,
+> +					    (const struct sockaddr_in *) sa2);
+> +	case AF_INET6:
+> +		return nfs_sockaddr_cmp_ip6((const struct sockaddr_in6 *) sa1,
+> +					    (const struct sockaddr_in6 *) sa2);
+> +	}
+> +	return 0;
+> +}
+> +
+> +/*
+>  * Find a client by IP address and protocol version
+>  * - returns NULL if no such client
+>  */
+> @@ -344,8 +397,10 @@ struct nfs_client *nfs_find_client_next(struct  
+> nfs_client *clp)
+> static struct nfs_client *nfs_match_client(const struct  
+> nfs_client_initdata *data)
+> {
+> 	struct nfs_client *clp;
+> +	const struct sockaddr *sap = data->addr;
+>
+> 	list_for_each_entry(clp, &nfs_client_list, cl_share_link) {
+> +		const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
+> 		/* Don't match clients that failed to initialise properly */
+> 		if (clp->cl_cons_state < 0)
+> 			continue;
+> @@ -358,7 +413,7 @@ static struct nfs_client *nfs_match_client(const  
+> struct nfs_client_initdata *dat
+> 			continue;
+>
+> 		/* Match the full socket address */
+> -		if (memcmp(&clp->cl_addr, data->addr, sizeof(clp->cl_addr)) != 0)
+> +		if (!nfs_sockaddr_cmp(sap, clap))
+> 			continue;
+>
+> 		atomic_inc(&clp->cl_count);
 
-> avg-cpu:  %user   %nice %system %iowait  %steal   %idle
->            0.00    0.00    0.57   26.62    0.00   72.81
->
-> Device:         rrqm/s   wrqm/s     r/s     w/s   rsec/s   wsec/s  
-> avgrq-sz avgqu-sz   await  svctm  %util
-> sda             710.00     0.00   47.33    0.00  6058.67     0.00 128.00  
->    0.12    2.59   2.51  11.87
-> sdb             710.00     0.00   47.33    0.00  6058.67     0.00 128.00  
->    3.99   84.34  21.13 100.00
-> sdc               0.00     0.00    0.00    0.00     0.00     0.00 0.00    
->  0.00    0.00   0.00   0.00
-> sdc1              0.00     0.00    0.00    0.00     0.00     0.00 0.00    
->  0.00    0.00   0.00   0.00
-> sdc2              0.00     0.00    0.00    0.00     0.00     0.00 0.00    
->  0.00    0.00   0.00   0.00
-> md0               0.00     0.00 1514.67    0.00 12117.33     0.00 8.00    
->  0.00    0.00   0.00   0.00
-> dm-0              0.00     0.00  757.33    0.00  6058.67     0.00 8.00    
-> 32.87   43.41   1.32 100.00
-> dm-1              0.00     0.00    0.00    0.00     0.00     0.00 0.00    
->  0.00    0.00   0.00   0.00
-> dm-2              0.00     0.00  757.33    0.00  6058.67     0.00 8.00    
-> 32.79   43.33   1.32 100.00
->
-> Thanks,
-> Vlad
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
