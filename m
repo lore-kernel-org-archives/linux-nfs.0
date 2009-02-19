@@ -1,365 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:47773 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750948AbZBTCS0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Feb 2009 21:18:26 -0500
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>
-Date: Fri, 20 Feb 2009 13:18:18 +1100
-Content-Type: text/plain; charset=us-ascii
-Message-ID: <18846.4842.625445.980681@notabene.brown>
-Cc: linux-nfs@vger.kernel.org
-Subject: Thoughts about cache consistency and directories in particular.
+Received: from relay2.sgi.com ([192.48.179.30]:53843 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753220AbZBSGqD (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 19 Feb 2009 01:46:03 -0500
+Message-ID: <499CFF69.3000708@sgi.com>
+Date: Thu, 19 Feb 2009 17:42:49 +1100
+From: Greg Banks <gnb@sgi.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS ML <linux-nfs@vger.kernel.org>,
+        Harshula Jayasuriya <harshula@sgi.com>
+Subject: Re: [patch 3/3] knfsd: add file to export stats about nfsd pools
+References: <20090113102633.719563000@sgi.com> <20090113102653.884405000@sgi.com> <20090212171106.GB21445@fieldses.org>
+In-Reply-To: <20090212171106.GB21445@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+J. Bruce Fields wrote:
+> On Tue, Jan 13, 2009 at 09:26:36PM +1100, Greg Banks wrote:
+>   
+>> Add /proc/fs/nfsd/pool_stats to export to userspace various
+>> statistics about the operation of rpc server thread pools.
+>>     
+>
+> Could you explainw hy these specific statistics (total packets,
+> sockets_queued, threads_woken, overloads_avoided, threads_timedout) are
+> the important ones to capture?  Could you give examples of what sort of
+> problems could be solved using them?
+>   
+Actually I originally added these stats to help debug the
+overload-avoiding patch.  Then I thought to use them to drive a
+userspace control loop for controlling the number of nfsds, which I
+never finished writing.
+> As you said, an important question for the sysadmin is "should I
+> configure more nfsds?"  How do they answer that?
+>   
+You can work that out, but it's not obvious, i.e. not human-friendly.  
+Firstly, you need to rate convert all the stats.
 
-Hi,
- I've been thinking about cache consistency, particularly of
- directories, in response to a customer who's NFS was getting confused
- by their usage of "rsync -a" without the "--omit-dir-times" flag:
- A client would see an old copy of a directory and never get a more
- up-to-date copy because the mtime appeared not to change.
+The total_packets stat tells you how many NFS packets are arriving on
+each thread pool.  This is your primary load metric, i.e. with more load
+you want more nfsd threads.
 
- This results in a situation where a directory has wrong data cache
- and there is no way to force that cache to be flushed.
+The sockets_queued stat tells you that calls are arriving which are not
+being immediately serviced by threads, i.e. you're either thread-limited
+or CPU-limited rather than network-limited and you might get better
+throughput if there were more nfsd threads.
 
- This contrasts with files where you can always flush the file
- contents by taking a read lock on the file.
+Conversely the overloads_avoided stat tells you if there are more
+threads than can usefully be made runnable on the available CPUs, so
+that adding more nfsd threads is unlikely to be helpful.
 
- I also came up with a simple way to demonstrate a related caching
- anomaly:
+The threads_timedout stat will give you a first-level approximation of
+whether there are threads that are completely idle, i.e. don't see any
+calls for the svc_recv() timeout (which I reduced to IIRC 10 sec as part
+of the original version of this patch).  This is a clue that you can now
+reduce the number of threads.
 
-  - Create a localhost mount
-  - create a directory
-  - "ls -l" the directory via NFS
-  - create a file directly
-  - look again via NFS.
-
-  The directory will appear empty via NFS but it is not.  And this
-  cache anomily does not time out (though memory pressure could
-  eventually remove it).
-
-  There is a script below which reproduces both anomalies (providing
-  /export is exported and /mnt is available).
- 
-
- Can anything be done about this?
-
-
- 1/ The client could flush the cache for a directory when ctime
-    changes as well as when mtime or size change.
-    This would help solve the "rsync -a without --omit-dir-times"
-    problem (and also another weird problem I had reported that
-    involved strange behaviour from an NetApp filer).
-    It might increase the number of READDIR requests in some cases.
-    Would that be enough of an increase to be a real problem?
-    It would be no worse than NFSv4 which - as the Linux NFS server
-    uses ctime to produce the changeattr - refreshes both directories
-    and files when the ctime changes.
-
-
- 2/ The server could lie about the mtime.
-    In particular, if the mtime for a file was the same as the current
-    time - to the granularity of the filesystem storing the file -
-    then reduce the mtime that is reported by the smallest difference that
-    can be reported by the protocol.
-    That would be one microsecond for v2, and one nanosecond for v3
-    and v4.
-
-    This is something I've thought about (and probably muttered about)
-    in various forms at various times over the years, but this time I
-    think I am actually happy with the formulation of the solution and
-    want to push forward with it.
-
-
-
- Option 1, by itself, would mostly resolve the rsync issue and have
- no effect on my little test case.
- Option 2 by itself would have no effect on the rsync issue but would
- nicely resolve my little test cache.
- Together they should significantly reduce the number of caching
- anomalies.
-
- Below is the test script, then two patches, one for NFS and one for
- NFSD.  These can also be pulled from 
-     git://neil.brown.name/linux-2.6 nfs-devel
-
-
- Thoughts?
-
-
-Thanks,
-NeilBrown
-
-
-------------------------------------------------
-mount localhost:/export /mnt
-rm -rf /export/adir
-mkdir /export/adir
-
-for i in `seq 1 100`
-do mkdir /export/adir/$i 
-     ls -l /mnt/adir/$i  > /dev/null 2>&1
-     echo hello > /export/adir/$i/afile ;
-done
-echo -n "Files in directory: "
-find /export/adir | wc -l
-echo -n "Files visible to NFS: "
-find /mnt/adir | wc -l
-
-echo ; echo 
-rm -rf /export/bdir
-mkdir /export/bdir
-> /export/bfile
-touch -r /export/bfile /export/bdir
-sleep 2
-ls -l /mnt/bdir > /dev/null
-sleep 2
-> /export/bdir/bfile
-touch -r /export/bfile /export/bdir
-echo "Files in directory:"
-ls -l /export/bdir
-echo "Files visible to NFS:"
-ls -l /mnt/bdir
-umount /mnt
-------------------------------------------------
-
-
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 1/2] nfs: flush cached directory information slightly more
-	readily.
-Date: Fri, 20 Feb 2009 12:57:07 +1100
-Message-ID: <20090220015706.12400.98909.stgit@notabene.brown>
-User-Agent: StGIT/0.14.2
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-
-If cached directory contents becomes incorrect, there is no way to
-flush the contents.  This contrasts with files where file locking is
-the recommended way to ensure cache consistency between multiple
-applications (a read-lock always flushes the cache).
-
-Also while changes to files often change the size of the file (thus
-triggering a cache flush), changes to directories often do not change
-the apparent size (as the size is often rounded to a block size).
-
-So it is particularly important with directories to avoid the
-possibility of an incorrect cache wherever possible.
-
-When the link count on a directory changes it implies (or should
-imply) a change in the number of child directories, and so a change
-the contents of this directory.  So use that as a trigger to flush
-cached contents.
-
-When the ctime changes but the mtime does not, there are two possible
-reasons.
- 1/ The owner/mode information has been changed.
- 2/ utimes has been used to set the mtime backwards.
-
-In the first case, a data-cache flush is not required.
-In the second case it is.
-
-So on th basis that correctness trumps performance, flush the
-directory contents cache in this case also.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
-
- fs/nfs/inode.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 0c38168..09c1300 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1116,8 +1116,14 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 				nfs_force_lookup_revalidate(inode);
- 		}
- 		/* If ctime has changed we should definitely clear access+acl caches */
--		if (!timespec_equal(&inode->i_ctime, &fattr->ctime))
-+		if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
- 			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
-+			/* and probably clear data for a directory too as utimes can cause
-+			 * havoc with our cache.
-+			 */
-+			if (S_ISDIR(inode->i_mode))
-+				invalid |= NFS_INO_INVALID_DATA;
-+		}
- 	} else if (nfsi->change_attr != fattr->change_attr) {
- 		dprintk("NFS: change_attr change on server for file %s/%ld\n",
- 				inode->i_sb->s_id, inode->i_ino);
-@@ -1151,8 +1157,11 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	    inode->i_gid != fattr->gid)
- 		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
- 
--	if (inode->i_nlink != fattr->nlink)
-+	if (inode->i_nlink != fattr->nlink) {
- 		invalid |= NFS_INO_INVALID_ATTR;
-+		if (S_ISDIR(inode->i_mode))
-+			invalid |= NFS_INO_INVALID_DATA;
-+	}
- 
- 	inode->i_mode = fattr->mode;
- 	inode->i_nlink = fattr->nlink;
-
-
-From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 2/2] nfsd: be creative with 'mtime' so that NFS client can
-	reliably discover changes
-Date: Fri, 20 Feb 2009 12:57:07 +1100
-Message-ID: <20090220015707.12400.80500.stgit@notabene.brown>
-In-Reply-To: <20090220015706.12400.98909.stgit@notabene.brown>
-References: <20090220015706.12400.98909.stgit@notabene.brown>
-User-Agent: StGIT/0.14.2
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-
-For NFSv2 and v3, mtime is used as the main mechanism for cache
-flushing - when mtime changes, we flush the cache.
-
-However with many filesystems the granularity of mtime is one second,
-and multiple changes can occur in one second.
-
-This make it unwise to ever return "now" for the mtime of a file, as
-quite some time later there may have been a change since that mtime
-was returned, but the mtime will still be the same.
-
-So if the mtime is "now" - to the granularity of the filesystem,
-adjust it backwards the smallest possible amount.   This when a
-subsequent GETATTR checks the mtime, it will no longer be 'now', so
-the correct mtime will be returned, and the client will notice that
-the file could have changed.
-
-For NFSv4 we do a similar thing, but rather change the 'changeid'
-attribute which is based on 'ctime'.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
-
- fs/nfsd/nfs3xdr.c         |    2 +-
- fs/nfsd/nfs4xdr.c         |    1 +
- fs/nfsd/nfsxdr.c          |    2 +-
- include/linux/nfsd/xdr.h  |   25 +++++++++++++++++++++++++
- include/linux/nfsd/xdr4.h |   26 ++++++++++++++++++++++++++
- 5 files changed, 54 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 17d0dd9..139500b 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -221,7 +221,7 @@ encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- 		err = vfs_getattr(fhp->fh_export->ex_path.mnt, dentry, &stat);
- 		if (!err) {
- 			*p++ = xdr_one;		/* attributes follow */
--			lease_get_mtime(dentry->d_inode, &stat.mtime);
-+			nfsd_get_mtime(dentry->d_inode, &stat.mtime, 1);
- 			return encode_fattr3(rqstp, p, fhp, &stat);
- 		}
- 	}
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f65953b..6bd7339 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1518,6 +1518,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		 */
- 		if ((buflen -= 8) < 0)
- 			goto out_resource;
-+		nfs4svc_adjust_mtime(fhp, &stat.ctime);
- 		WRITE32(stat.ctime.tv_sec);
- 		WRITE32(stat.ctime.tv_nsec);
- 	}
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index afd08e2..e266d42 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -194,7 +194,7 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	*p++ = htonl((u32) stat->ino);
- 	*p++ = htonl((u32) stat->atime.tv_sec);
- 	*p++ = htonl(stat->atime.tv_nsec ? stat->atime.tv_nsec / 1000 : 0);
--	lease_get_mtime(dentry->d_inode, &time); 
-+	nfsd_get_mtime(dentry->d_inode, &time, 1000); 
- 	*p++ = htonl((u32) time.tv_sec);
- 	*p++ = htonl(time.tv_nsec ? time.tv_nsec / 1000 : 0); 
- 	*p++ = htonl((u32) stat->ctime.tv_sec);
-diff --git a/include/linux/nfsd/xdr.h b/include/linux/nfsd/xdr.h
-index a0132ef..b1a0f5d 100644
---- a/include/linux/nfsd/xdr.h
-+++ b/include/linux/nfsd/xdr.h
-@@ -174,4 +174,29 @@ int nfssvc_release_fhandle(struct svc_rqst *, __be32 *, struct nfsd_fhandle *);
- __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp);
- __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh *fhp);
- 
-+/* NFSv3 and v2 use mtime to guide caching of file/directory contents.
-+ * If a client asks for the mtime of a file and the answer is "now",
-+ * then subsequent changes to the file could happen but never be reflected
-+ * in a changed mtime.
-+ * So in that case, reduce mtime by the smallest value representable in
-+ * the protocol.  A subsequent GETATTR will show the mtime having changed
-+ * slightly so the client will refresh its cache and be sure to get any
-+ * changes.
-+ */
-+static inline void nfsd_get_mtime(struct inode *inode, struct timespec *time, int nanoseconds)
-+{
-+	struct timespec now;
-+	lease_get_mtime(inode, time);
-+	now = current_fs_time(inode->i_sb);
-+	if (time->tv_sec == now.tv_sec &&
-+	    time->tv_nsec == now.tv_nsec) {
-+		if (time->tv_nsec >= nanoseconds)
-+			time->tv_nsec -= nanoseconds;
-+		else {
-+			time->tv_nsec += 1000000000 - nanoseconds;
-+			time->tv_sec -= 1;
-+		}
-+	}
-+}
-+	
- #endif /* LINUX_NFSD_H */
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 27bd3e3..7d2be49 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -422,10 +422,36 @@ struct nfsd4_compoundres {
- #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
- 
- static inline void
-+nfs4svc_adjust_mtime(struct svc_fh *fhp, struct timespec *time)
-+{
-+	/* because we use ctime for caching, and because the granularity
-+	 * of ctime might be fairly large (e.g. 1 second) it is unsafe
-+	 * to ever report 'now' as the changeid - as then we might report
-+	 * two change ids that are the same despite there being a change
-+	 * to the file between them, and then continue to report that
-+	 * same change-id for a long time.
-+	 * So if the changeid would correspond to 'now', change it to
-+	 * one nanosecond ago so that after 'now' as moved on, the client
-+	 * will be able to see a new changeid and will update its cache.
-+	 */
-+	struct timespec now;
-+	now = current_fs_time(fhp->fh_dentry->d_inode->i_sb);
-+	if (time->tv_sec == now.tv_sec &&
-+	    time->tv_nsec == now.tv_nsec) {
-+		if (time->tv_nsec)
-+			time->tv_nsec--;
-+		else {
-+			time->tv_nsec = 999999999;
-+			time->tv_sec --;
-+		}
-+	}
-+}
-+static inline void
- set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
- {
- 	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
- 	cinfo->atomic = 1;
-+	nfs4svc_adjust_mtime(fhp, &fhp->fh_pre_ctime);
- 	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
- 	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
- 	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
-
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
 
