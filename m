@@ -1,79 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from welcomes-you.com ([85.214.50.128]:37102 "EHLO
-	smtp.welcomes-you.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753253AbZBPI35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Feb 2009 03:29:57 -0500
-Message-ID: <49991BE7.1090104@aei.mpg.de>
-Date: Mon, 16 Feb 2009 08:55:19 +0100
-From: Carsten Aulbert <carsten.aulbert@aei.mpg.de>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        beowulf@beowulf.org
-Subject: Tracing down 250ms open/chdir calls
-Content-Type: text/plain; charset=UTF-8
+Received: from mga09.intel.com ([134.134.136.24]:32706 "EHLO mga09.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752418AbZBSBfr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Feb 2009 20:35:47 -0500
+Date: Thu, 19 Feb 2009 09:35:43 +0800
+From: Wu Fengguang <wfg@linux.intel.com>
+To: Vladislav Bolkhovitin <vst@vlnb.net>
+Cc: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
+        "Vitaly V. Bursov" <vitalyb@telenet.dn.ua>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
+Message-ID: <20090219013543.GA5743@localhost>
+References: <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net> <20090213015721.GA5565@localhost> <4995D339.5050502@vlnb.net> <20090216023402.GA6199@localhost> <499B09FB.1070909@vlnb.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <499B09FB.1070909@vlnb.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi all,
+On Tue, Feb 17, 2009 at 10:03:23PM +0300, Vladislav Bolkhovitin wrote:
+> Wu Fengguang, on 02/16/2009 05:34 AM wrote:
+>> On Fri, Feb 13, 2009 at 11:08:25PM +0300, Vladislav Bolkhovitin wrote:
+>>> Wu Fengguang, on 02/13/2009 04:57 AM wrote:
+>>>> On Thu, Feb 12, 2009 at 09:35:18PM +0300, Vladislav Bolkhovitin wrote:
+>>>>> Sorry for such a huge delay. There were many other activities I 
+>>>>> had to  do before + I had to be sure I didn't miss anything.
+>>>>>
+>>>>> We didn't use NFS, we used SCST (http://scst.sourceforge.net) 
+>>>>> with   iSCSI-SCST target driver. It has similar to NFS 
+>>>>> architecture, where N  threads (N=5 in this case) handle IO from 
+>>>>> remote initiators (clients)  coming from wire using iSCSI 
+>>>>> protocol. In addition, SCST has patch  called 
+>>>>> export_alloc_io_context (see    
+>>>>> http://lkml.org/lkml/2008/12/10/282), which allows for the IO 
+>>>>> threads  queue IO using single IO context, so we can see if 
+>>>>> context RA can   replace grouping IO threads in single IO 
+>>>>> context.
+>>>>>
+>>>>> Unfortunately, the results are negative. We find neither any  
+>>>>> advantages  of context RA over current RA implementation, nor  
+>>>>> possibility for  context RA to replace grouping IO threads in 
+>>>>> single IO context.
+>>>>>
+>>>>> Setup on the target (server) was the following. 2 SATA drives 
+>>>>> grouped in  md RAID-0 with average local read throughput ~120MB/s 
+>>>>> ("dd if=/dev/zero  of=/dev/md0 bs=1M count=20000" outputs 
+>>>>> "20971520000 bytes (21 GB)  copied, 177,742 s, 118 MB/s"). The md 
+>>>>> device was partitioned on 3  partitions. The first partition was 
+>>>>> 10% of space in the beginning of the  device, the last partition 
+>>>>> was 10% of space in the end of the device,  the middle one was 
+>>>>> the rest in the middle of the space them. Then the  first and the 
+>>>>> last partitions were exported to the initiator (client).  They 
+>>>>> were /dev/sdb and /dev/sdc on it correspondingly.
+>>>> Vladislav, Thank you for the benchmarks! I'm very interested in
+>>>> optimizing your workload and figuring out what happens underneath.
+>>>>
+>>>> Are the client and server two standalone boxes connected by GBE?
+>>> Yes, they directly connected using GbE.
+>>>
+>>>> When you set readahead sizes in the benchmarks, you are setting them
+>>>> in the server side? I.e. "linux-4dtq" is the SCST server?
+>>> Yes, it's the server. On the client all the parameters were left default.
+>>>
+>>>> What's the
+>>>> client side readahead size?
+>>> Default, i.e. 128K
+>>>
+>>>> It would help a lot to debug readahead if you can provide the
+>>>> server side readahead stats and trace log for the worst case.
+>>>> This will automatically answer the above questions as well as disclose
+>>>> the micro-behavior of readahead:
+>>>>
+>>>>         mount -t debugfs none /sys/kernel/debug
+>>>>
+>>>>         echo > /sys/kernel/debug/readahead/stats # reset counters
+>>>>         # do benchmark
+>>>>         cat /sys/kernel/debug/readahead/stats
+>>>>
+>>>>         echo 1 > /sys/kernel/debug/readahead/trace_enable
+>>>>         # do micro-benchmark, i.e. run the same benchmark for a short time
+>>>>         echo 0 > /sys/kernel/debug/readahead/trace_enable
+>>>>         dmesg
+>>>>
+>>>> The above readahead trace should help find out how the client side
+>>>> sequential reads convert into server side random reads, and how we can
+>>>> prevent that.
+>>> We will do it as soon as we have a free window on that system.
+>>
+>> Thank you. For NFS, the client side read/readahead requests will be
+>> split into units of rsize which will be served by a pool of nfsd
+>> concurrently and possibly out of order. Does SCST have the same
+>> process? If so, what's the rsize value for your SCST benchmarks?
+>
+> No, there is no such splitting in SCST. Client sees raw SCSI disks from  
+> server and what client sends is directly and in full size sent by the  
+> server to its backstorage using regular buffered read()  
+> (fd->f_op->aio_read() followed by  
+> wait_on_retry_sync_kiocb()/wait_on_sync_kiocb() to be precise).
 
-sorry in advance for this vague subject and also the vague email, I'm
-trying my best to summarize the problem:
+Then it's weird that the server is seeing 1-page sized read requests:
 
-On our large cluster we sometimes encounter the problem that our main
-scheduling processes are often in state D and in the end not capable
-anymore of pushing work to the cluster.
+        readahead-marker(pid=3844(vdiskd4_4), dev=00:02(bdev), ino=0(raid-3rd), req=9160+1, ra=9192+32-32, async=1) = 32
+        readahead-marker(pid=3842(vdiskd4_2), dev=00:02(bdev), ino=0(raid-3rd), req=9192+1, ra=9224+32-32, async=1) = 32
+        readahead-marker(pid=3841(vdiskd4_1), dev=00:02(bdev), ino=0(raid-3rd), req=9224+1, ra=9256+32-32, async=1) = 32
+        readahead-marker(pid=3844(vdiskd4_4), dev=00:02(bdev), ino=0(raid-3rd), req=9256+1, ra=9288+32-32, async=1) = 32
 
-The head nodes are 8 core boxes with Xeon CPUs and equipped with 16 GB
-of memory, when certain types of jobs are running we see system loads of
-about 20-30 which might go up to 80-100 from time to time. Looking at
-the individual cores they are mostly busy with system tasks (e.g. htop
-shows 'red' bars).
+Here the first line means a 32-page readahead I/O was submitted for a
+1-page read request.
 
-stat -tt -c showed that several system calls of the scheduler take a
-long time to complete, most notably open and chdir which took between
-180 and 230ms to complete (during our testing). Since most of these open
-and chdir are via NFSv3 I'm including that list as well. The NFS servers
-are Sun Fire X4500 boxes running Solaris 10u5 right now.
+The 1-page read size only adds overheads to CPU/NIC, but not disk I/O.
+The trace shows that readahead is doing a good job, however the
+readahead size is the default 128K, not 2M. That's a big problem.
 
-A standard output line looks like:
-93.37   38.997264     230753      169    78      open
+The command "blockdev --setra 4096 /dev/sda" takes no effect at all.
+Maybe you should put that command after mdadm? i.e.
 
-i.e. 93.37% of the system-related time was spend in 169 successful open
-calls which took 230753us/call, thus 39 wall clock seconds were spend in
-a minute just doing open.
+        linux-4dtq:~ # mdadm --assemble /dev/md0 /dev/sd[ab]
 
-We tried several things to understand the problem, but apart from moving
-more files (mostly log files of currently running jobs) off NFS we did
-not move far ahead so far. On
-https://n0.aei.uni-hannover.de/twiki/bin/view/ATLAS/H2Problems
-we have summarized some things.
+        linux-4dtq:~ # blockdev --setra 4096 /dev/sda
+        linux-4dtq:~ # blockdev --setra 4096 /dev/sdb
 
-With the help of 'stress' and a tiny program just doing open/putc/close
-into a single file, I've tried to get a feeling how good or bad things
-are when compared to other head nodes with different tasks/loads:
-
-https://n0.aei.uni-hannover.de/twiki/bin/view/ATLAS/OpenCloseIotest
-
-(this test may or may not help in the long run, I'm just poking into the
-dark).
-
-Now my questions:
-
-* Do you have any suggestions how to continue debugging this problem?
-* Does anyone know how to improve the situation? Next on my agenda would
-be to try different IO algorithms, any hints which ones should be good
-for such boxes?
-* I guess I missed vital information. please let me know if you need
-more information of the system
-
-Please Cc me from linux-kernel, I'm only on the other two addressed lists.
-
-Cheers and a lot of TIA
-
-Carsten
-
--- 
-Dr. Carsten Aulbert - Max Planck Institute for Gravitational Physics
-Callinstrasse 38, 30167 Hannover, Germany
-Phone/Fax: +49 511 762-17185 / -17193
-http://www.top500.org/system/9234 | http://www.top500.org/connfam/6/list/31
+Thanks,
+Fengguang
