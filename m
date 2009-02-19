@@ -1,43 +1,44 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS4ERR_DENIED becomes EIO?
-Date: Wed, 18 Feb 2009 16:59:59 -0500
-Message-ID: <1234994399.8412.206.camel@heimdal.trondhjem.org>
-References: <499C7B53.5030802@garzik.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] Exportfs and rpc.mountd optimalization (revisited)
+Date: Wed, 18 Feb 2009 19:43:10 -0500
+Message-ID: <499CAB1E.10705@RedHat.com>
+References: <499C5861.6050408@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Jeff Garzik <jeff@garzik.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:45825 "EHLO mail-out1.uio.no"
+Received: from mx2.redhat.com ([66.187.237.31]:45971 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752731AbZBRWAF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Feb 2009 17:00:05 -0500
-In-Reply-To: <499C7B53.5030802@garzik.org>
+	id S1752476AbZBSApu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Feb 2009 19:45:50 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n1J0jgJM027731
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Feb 2009 19:45:46 -0500
+In-Reply-To: <499C5861.6050408-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-02-18 at 16:19 -0500, Jeff Garzik wrote:
-> I think I may have found a tiny NFSv4 client bug.  What I am seeing:
-> 
-> 1. On Linux NFS client (2.6.29-rc2), issue chown(1) to change the owner 
-> of the file (causing SETATTR:OWNER to be issued)
-> 
-> 2. My userland NFS server returns NFS4ERR_DENIED for the SETATTR op
-> 
-> 3. Linux NFS client returns EIO (I/O error) to userland
-> 
-> That was a bit unexpected.  I would have guessed EPERM, perhaps.
-> 
-> 	Jeff
 
-I'd put this down as a server bug, as rfc 3530 really reserves the error
-NFS4ERR_DENIED for the LOCK/LOCKT/LOCKU operations.
 
-In the case of a chown(), I'd expect the server to return NFS4ERR_PERM
-when failing because the caller is not root or the file owner. The
-client will then correctly translate that into an EPERM...
+Steve Dickson wrote:
+> Very long time ago Tomas Richter submitted a patch that added
+> a export hash table to both exportfs and mountd. Very recently 
+> I ran across it and actually used some parts in the recent TCP
+> wrappers patch... 
+> 
+> Looking at the discussion 
+>     http://marc.info/?l=linux-nfs&m=111938362106991&w=2
+> It seem no one took the time to test out the patch.. There
+> was even a Red Hat bug opened on it but for some reason
+> it got closed... Anyway... 
+> 
+> This is a good patch... imho.. It does help with very large exports 
+> at least in my testing... And I'm also hoping the hash table will
+> useful in the pseudo root work... 
+> 
+> Any objections to committing this?? 
+> 
+Committed...
 
-Cheers
-  Trond
-
+steved.
