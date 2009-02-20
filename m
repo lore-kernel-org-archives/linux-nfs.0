@@ -1,156 +1,407 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.21]:48974 "EHLO
-	orsmga101.jf.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751381AbZBSCFp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Feb 2009 21:05:45 -0500
-Date: Thu, 19 Feb 2009 10:05:42 +0800
-From: Wu Fengguang <wfg@linux.intel.com>
-To: Vladislav Bolkhovitin <vst@vlnb.net>
-Cc: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
-        "Vitaly V. Bursov" <vitalyb@telenet.dn.ua>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
-Message-ID: <20090219020542.GC5743@localhost>
-References: <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net> <20090213015721.GA5565@localhost> <499B0994.8040000@vlnb.net>
+Received: from mail.fieldses.org ([141.211.133.115]:37239 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752192AbZBTSYA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Feb 2009 13:24:00 -0500
+Date: Fri, 20 Feb 2009 13:23:50 -0500
+To: Neil Brown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org
+Subject: Re: Thoughts about cache consistency and directories in particular.
+Message-ID: <20090220182350.GB1104@fieldses.org>
+References: <18846.4842.625445.980681@notabene.brown>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <499B0994.8040000@vlnb.net>
+In-Reply-To: <18846.4842.625445.980681@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Feb 17, 2009 at 10:01:40PM +0300, Vladislav Bolkhovitin wrote:
-> Wu Fengguang, on 02/13/2009 04:57 AM wrote:
->> On Thu, Feb 12, 2009 at 09:35:18PM +0300, Vladislav Bolkhovitin wrote:
->>> Sorry for such a huge delay. There were many other activities I had 
->>> to  do before + I had to be sure I didn't miss anything.
->>>
->>> We didn't use NFS, we used SCST (http://scst.sourceforge.net) with   
->>> iSCSI-SCST target driver. It has similar to NFS architecture, where N 
->>>  threads (N=5 in this case) handle IO from remote initiators 
->>> (clients)  coming from wire using iSCSI protocol. In addition, SCST 
->>> has patch  called export_alloc_io_context (see   
->>> http://lkml.org/lkml/2008/12/10/282), which allows for the IO threads 
->>>  queue IO using single IO context, so we can see if context RA can   
->>> replace grouping IO threads in single IO context.
->>>
->>> Unfortunately, the results are negative. We find neither any 
->>> advantages  of context RA over current RA implementation, nor 
->>> possibility for  context RA to replace grouping IO threads in single 
->>> IO context.
->>>
->>> Setup on the target (server) was the following. 2 SATA drives grouped 
->>> in  md RAID-0 with average local read throughput ~120MB/s ("dd 
->>> if=/dev/zero  of=/dev/md0 bs=1M count=20000" outputs "20971520000 
->>> bytes (21 GB)  copied, 177,742 s, 118 MB/s"). The md device was 
->>> partitioned on 3  partitions. The first partition was 10% of space in 
->>> the beginning of the  device, the last partition was 10% of space in 
->>> the end of the device,  the middle one was the rest in the middle of 
->>> the space them. Then the  first and the last partitions were exported 
->>> to the initiator (client).  They were /dev/sdb and /dev/sdc on it 
->>> correspondingly.
->>
->> Vladislav, Thank you for the benchmarks! I'm very interested in
->> optimizing your workload and figuring out what happens underneath.
->>
->> Are the client and server two standalone boxes connected by GBE?
->>
->> When you set readahead sizes in the benchmarks, you are setting them
->> in the server side? I.e. "linux-4dtq" is the SCST server? What's the
->> client side readahead size?
->>
->> It would help a lot to debug readahead if you can provide the
->> server side readahead stats and trace log for the worst case.
->> This will automatically answer the above questions as well as disclose
->> the micro-behavior of readahead:
->>
->>         mount -t debugfs none /sys/kernel/debug
->>
->>         echo > /sys/kernel/debug/readahead/stats # reset counters
->>         # do benchmark
->>         cat /sys/kernel/debug/readahead/stats
->>
->>         echo 1 > /sys/kernel/debug/readahead/trace_enable
->>         # do micro-benchmark, i.e. run the same benchmark for a short time
->>         echo 0 > /sys/kernel/debug/readahead/trace_enable
->>         dmesg
->>
->> The above readahead trace should help find out how the client side
->> sequential reads convert into server side random reads, and how we can
->> prevent that.
->
-> See attached. Could you comment the logs, please, so I will also be able  
-> to read them in the future?
+On Fri, Feb 20, 2009 at 01:18:18PM +1100, Neil Brown wrote:
+> 
+> Hi,
+>  I've been thinking about cache consistency, particularly of
+>  directories, in response to a customer who's NFS was getting confused
+>  by their usage of "rsync -a" without the "--omit-dir-times" flag:
+>  A client would see an old copy of a directory and never get a more
+>  up-to-date copy because the mtime appeared not to change.
+> 
+>  This results in a situation where a directory has wrong data cache
+>  and there is no way to force that cache to be flushed.
+> 
+>  This contrasts with files where you can always flush the file
+>  contents by taking a read lock on the file.
+> 
+>  I also came up with a simple way to demonstrate a related caching
+>  anomaly:
+> 
+>   - Create a localhost mount
+>   - create a directory
+>   - "ls -l" the directory via NFS
+>   - create a file directly
 
-Vladislav, thank you for the logs!
+(And do this within a second (or a jiffy, depending on filesystem) of
+the directory creation?)
 
-The printk format for the following lines is:
+>   - look again via NFS.
 
-+       printk(KERN_DEBUG "readahead-%s(pid=%d(%s), dev=%02x:%02x(%s), "
-+               "ino=%lu(%s), req=%lu+%lu, ra=%lu+%d-%d, async=%d) = %d\n",
-+               ra_pattern_names[pattern],
-+               current->pid, current->comm,
-+               MAJOR(mapping->host->i_sb->s_dev),
-+               MINOR(mapping->host->i_sb->s_dev),
-+               mapping->host->i_sb->s_id,
-+               mapping->host->i_ino,
-+               filp->f_path.dentry->d_name.name,
-+               offset, req_size,
-+               ra->start, ra->size, ra->async_size,
-+               async,
-+               actual);
+> 
+>   The directory will appear empty via NFS but it is not.  And this
+>   cache anomily does not time out (though memory pressure could
+>   eventually remove it).
+> 
+>   There is a script below which reproduces both anomalies (providing
+>   /export is exported and /mnt is available).
+>  
+> 
+>  Can anything be done about this?
+> 
+> 
+>  1/ The client could flush the cache for a directory when ctime
+>     changes as well as when mtime or size change.
+>     This would help solve the "rsync -a without --omit-dir-times"
+>     problem (and also another weird problem I had reported that
+>     involved strange behaviour from an NetApp filer).
+>     It might increase the number of READDIR requests in some cases.
+>     Would that be enough of an increase to be a real problem?
+>     It would be no worse than NFSv4 which - as the Linux NFS server
+>     uses ctime to produce the changeattr - refreshes both directories
+>     and files when the ctime changes.
 
-readahead-marker(pid=3838(vdiskd3_3), dev=00:02(bdev), ino=0(raid-1st), req=10596+1, ra=10628+32-32, async=1) = 32
-readahead-marker(pid=3837(vdiskd3_2), dev=00:02(bdev), ino=0(raid-1st), req=10628+1, ra=10660+32-32, async=1) = 32
-readahead-marker(pid=3835(vdiskd3_0), dev=00:02(bdev), ino=0(raid-1st), req=10660+1, ra=10692+32-32, async=1) = 32
-readahead-marker(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=10692+1, ra=10724+32-32, async=1) = 32
-readahead-marker(pid=3837(vdiskd3_2), dev=00:02(bdev), ino=0(raid-1st), req=10724+1, ra=10756+32-32, async=1) = 32
-readahead-marker(pid=3838(vdiskd3_3), dev=00:02(bdev), ino=0(raid-1st), req=10756+1, ra=10788+32-32, async=1) = 32
-readahead-marker(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=10788+1, ra=10820+32-32, async=1) = 32
-readahead-marker(pid=3835(vdiskd3_0), dev=00:02(bdev), ino=0(raid-1st), req=10820+1, ra=10852+32-32, async=1) = 32
-readahead-marker(pid=3838(vdiskd3_3), dev=00:02(bdev), ino=0(raid-1st), req=10852+1, ra=10884+32-32, async=1) = 32
-readahead-marker(pid=3837(vdiskd3_2), dev=00:02(bdev), ino=0(raid-1st), req=10884+1, ra=10916+32-32, async=1) = 32
-readahead-marker(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=10916+1, ra=10948+32-32, async=1) = 32
-readahead-marker(pid=3836(vdiskd3_1), dev=00:02(bdev), ino=0(raid-1st), req=10948+1, ra=10980+32-32, async=1) = 32
-readahead-marker(pid=3837(vdiskd3_2), dev=00:02(bdev), ino=0(raid-1st), req=10980+1, ra=11012+32-32, async=1) = 32
-readahead-marker(pid=3838(vdiskd3_3), dev=00:02(bdev), ino=0(raid-1st), req=11012+1, ra=11044+32-32, async=1) = 32
-readahead-marker(pid=3836(vdiskd3_1), dev=00:02(bdev), ino=0(raid-1st), req=11044+1, ra=11076+32-32, async=1) = 32
-readahead-subsequent(pid=3836(vdiskd3_1), dev=00:02(bdev), ino=0(raid-1st), req=11076+1, ra=11108+32-32, async=1) = 32
-readahead-marker(pid=3835(vdiskd3_0), dev=00:02(bdev), ino=0(raid-1st), req=11108+1, ra=11140+32-32, async=1) = 32
-readahead-subsequent(pid=3835(vdiskd3_0), dev=00:02(bdev), ino=0(raid-1st), req=11140+1, ra=11172+32-32, async=1) = 32
-readahead-marker(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=11172+1, ra=11204+32-32, async=1) = 32
-readahead-subsequent(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=11204+1, ra=11236+32-32, async=1) = 32
-readahead-marker(pid=3837(vdiskd3_2), dev=00:02(bdev), ino=0(raid-1st), req=11236+1, ra=11268+32-32, async=1) = 32
-readahead-subsequent(pid=3837(vdiskd3_2), dev=00:02(bdev), ino=0(raid-1st), req=11268+1, ra=11300+32-32, async=1) = 32
-readahead-marker(pid=3835(vdiskd3_0), dev=00:02(bdev), ino=0(raid-1st), req=11300+1, ra=11332+32-32, async=1) = 32
-readahead-subsequent(pid=3835(vdiskd3_0), dev=00:02(bdev), ino=0(raid-1st), req=11332+1, ra=11364+32-32, async=1) = 32
-readahead-marker(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=11364+1, ra=11396+32-32, async=1) = 32
-readahead-subsequent(pid=3839(vdiskd3_4), dev=00:02(bdev), ino=0(raid-1st), req=11396+1, ra=11428+32-32, async=1) = 32
+This has come up before, but I can't remember what the argument was
+against it....
 
-The above trace shows that the readahead logic is working pretty well,
-however the max readahead size(32 pages) is way too small. This can
-also be confirmed in the following table, where the average readahead
-request size/async_size and actual readahead I/O size are all 30.
+>  2/ The server could lie about the mtime.
+>     In particular, if the mtime for a file was the same as the current
+>     time - to the granularity of the filesystem storing the file -
+>     then reduce the mtime that is reported by the smallest difference that
+>     can be reported by the protocol.
+>     That would be one microsecond for v2, and one nanosecond for v3
+>     and v4.
 
-linux-4dtq:/ # cat /sys/kernel/debug/readahead/stats
-pattern         count sync_count  eof_count       size async_size     actual
-none                0          0          0          0          0          0
-initial0           71         71         41          4          3          2
-initial            23         23          0          4          3          4
-subsequent       3845          4         21         31         31         31
-marker           4222          0          1         31         31         31
-trail               0          0          0          0          0          0
-oversize            0          0          0          0          0          0
-reverse             0          0          0          0          0          0
-stride              0          0          0          0          0          0
-thrash              0          0          0          0          0          0
-mmap              135        135         15         32          0         17
-fadvise           180        180        180          0          0          1
-random             23         23          2          1          0          1
-all              8499        436        260         30         30         30
-                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
+Assume for simplicity's sake the time granularity is a second, and
+measure time in seconds in the following examples:
 
-I suspect that your main performance problem comes from the small read/readahead size.
-If larger values are used, even the vanilla 2.6.27 kernel will perform well.
+Your proposal offers an improvement in this example (currently,
+subsequent getattrs will not reflect the final modification):
 
-Thanks,
-Fengguang
+	t=0.1 modify
+	t=0.2 getattr
+	t=0.3 modify
+
+Your proposal causes a regression in the following example:
+
+	t=0.1 modify
+	t=0.2 getattr
+	t=1.1 modify 
+	t=1.2 modify
+
+I think the argument you'd like to make is that the regressions are
+rarer than the improvements.  One way to make that argument would be to
+completely characterize the two sets of cases (cases where you get an
+improvement, and cases where you get a regression), and then somehow
+convince us of their relative probabilities.  I think that will be
+difficult, and the result may not be what you expect.
+
+Also, the proposed behavior is more complicated (hence harder to
+explain to users seeing the bug, and perhaps harder to work around?), so
+the bar for the improvement should be set pretty high....
+
+By the way, I have one sadly neglected todo here: ext4 has a real nfsv4
+changeattribute, which needs to be hooked up to the nfsd code.
+
+--b.
+
+>     This is something I've thought about (and probably muttered about)
+>     in various forms at various times over the years, but this time I
+>     think I am actually happy with the formulation of the solution and
+>     want to push forward with it.
+> 
+> 
+> 
+>  Option 1, by itself, would mostly resolve the rsync issue and have
+>  no effect on my little test case.
+>  Option 2 by itself would have no effect on the rsync issue but would
+>  nicely resolve my little test cache.
+>  Together they should significantly reduce the number of caching
+>  anomalies.
+> 
+>  Below is the test script, then two patches, one for NFS and one for
+>  NFSD.  These can also be pulled from 
+>      git://neil.brown.name/linux-2.6 nfs-devel
+> 
+> 
+>  Thoughts?
+> 
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> ------------------------------------------------
+> mount localhost:/export /mnt
+> rm -rf /export/adir
+> mkdir /export/adir
+> 
+> for i in `seq 1 100`
+> do mkdir /export/adir/$i 
+>      ls -l /mnt/adir/$i  > /dev/null 2>&1
+>      echo hello > /export/adir/$i/afile ;
+> done
+> echo -n "Files in directory: "
+> find /export/adir | wc -l
+> echo -n "Files visible to NFS: "
+> find /mnt/adir | wc -l
+> 
+> echo ; echo 
+> rm -rf /export/bdir
+> mkdir /export/bdir
+> > /export/bfile
+> touch -r /export/bfile /export/bdir
+> sleep 2
+> ls -l /mnt/bdir > /dev/null
+> sleep 2
+> > /export/bdir/bfile
+> touch -r /export/bfile /export/bdir
+> echo "Files in directory:"
+> ls -l /export/bdir
+> echo "Files visible to NFS:"
+> ls -l /mnt/bdir
+> umount /mnt
+> ------------------------------------------------
+> 
+> 
+> From: NeilBrown <neilb@suse.de>
+> Subject: [PATCH 1/2] nfs: flush cached directory information slightly more
+> 	readily.
+> Date: Fri, 20 Feb 2009 12:57:07 +1100
+> Message-ID: <20090220015706.12400.98909.stgit@notabene.brown>
+> User-Agent: StGIT/0.14.2
+> MIME-Version: 1.0
+> Content-Type: text/plain; charset="utf-8"
+> Content-Transfer-Encoding: 7bit
+> 
+> If cached directory contents becomes incorrect, there is no way to
+> flush the contents.  This contrasts with files where file locking is
+> the recommended way to ensure cache consistency between multiple
+> applications (a read-lock always flushes the cache).
+> 
+> Also while changes to files often change the size of the file (thus
+> triggering a cache flush), changes to directories often do not change
+> the apparent size (as the size is often rounded to a block size).
+> 
+> So it is particularly important with directories to avoid the
+> possibility of an incorrect cache wherever possible.
+> 
+> When the link count on a directory changes it implies (or should
+> imply) a change in the number of child directories, and so a change
+> the contents of this directory.  So use that as a trigger to flush
+> cached contents.
+> 
+> When the ctime changes but the mtime does not, there are two possible
+> reasons.
+>  1/ The owner/mode information has been changed.
+>  2/ utimes has been used to set the mtime backwards.
+> 
+> In the first case, a data-cache flush is not required.
+> In the second case it is.
+> 
+> So on th basis that correctness trumps performance, flush the
+> directory contents cache in this case also.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+> 
+>  fs/nfs/inode.c |   13 +++++++++++--
+>  1 files changed, 11 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 0c38168..09c1300 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1116,8 +1116,14 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  				nfs_force_lookup_revalidate(inode);
+>  		}
+>  		/* If ctime has changed we should definitely clear access+acl caches */
+> -		if (!timespec_equal(&inode->i_ctime, &fattr->ctime))
+> +		if (!timespec_equal(&inode->i_ctime, &fattr->ctime)) {
+>  			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
+> +			/* and probably clear data for a directory too as utimes can cause
+> +			 * havoc with our cache.
+> +			 */
+> +			if (S_ISDIR(inode->i_mode))
+> +				invalid |= NFS_INO_INVALID_DATA;
+> +		}
+>  	} else if (nfsi->change_attr != fattr->change_attr) {
+>  		dprintk("NFS: change_attr change on server for file %s/%ld\n",
+>  				inode->i_sb->s_id, inode->i_ino);
+> @@ -1151,8 +1157,11 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  	    inode->i_gid != fattr->gid)
+>  		invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
+>  
+> -	if (inode->i_nlink != fattr->nlink)
+> +	if (inode->i_nlink != fattr->nlink) {
+>  		invalid |= NFS_INO_INVALID_ATTR;
+> +		if (S_ISDIR(inode->i_mode))
+> +			invalid |= NFS_INO_INVALID_DATA;
+> +	}
+>  
+>  	inode->i_mode = fattr->mode;
+>  	inode->i_nlink = fattr->nlink;
+> 
+> 
+> From: NeilBrown <neilb@suse.de>
+> Subject: [PATCH 2/2] nfsd: be creative with 'mtime' so that NFS client can
+> 	reliably discover changes
+> Date: Fri, 20 Feb 2009 12:57:07 +1100
+> Message-ID: <20090220015707.12400.80500.stgit@notabene.brown>
+> In-Reply-To: <20090220015706.12400.98909.stgit@notabene.brown>
+> References: <20090220015706.12400.98909.stgit@notabene.brown>
+> User-Agent: StGIT/0.14.2
+> MIME-Version: 1.0
+> Content-Type: text/plain; charset="utf-8"
+> Content-Transfer-Encoding: 7bit
+> 
+> For NFSv2 and v3, mtime is used as the main mechanism for cache
+> flushing - when mtime changes, we flush the cache.
+> 
+> However with many filesystems the granularity of mtime is one second,
+> and multiple changes can occur in one second.
+> 
+> This make it unwise to ever return "now" for the mtime of a file, as
+> quite some time later there may have been a change since that mtime
+> was returned, but the mtime will still be the same.
+> 
+> So if the mtime is "now" - to the granularity of the filesystem,
+> adjust it backwards the smallest possible amount.   This when a
+> subsequent GETATTR checks the mtime, it will no longer be 'now', so
+> the correct mtime will be returned, and the client will notice that
+> the file could have changed.
+> 
+> For NFSv4 we do a similar thing, but rather change the 'changeid'
+> attribute which is based on 'ctime'.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+> 
+>  fs/nfsd/nfs3xdr.c         |    2 +-
+>  fs/nfsd/nfs4xdr.c         |    1 +
+>  fs/nfsd/nfsxdr.c          |    2 +-
+>  include/linux/nfsd/xdr.h  |   25 +++++++++++++++++++++++++
+>  include/linux/nfsd/xdr4.h |   26 ++++++++++++++++++++++++++
+>  5 files changed, 54 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 17d0dd9..139500b 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -221,7 +221,7 @@ encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
+>  		err = vfs_getattr(fhp->fh_export->ex_path.mnt, dentry, &stat);
+>  		if (!err) {
+>  			*p++ = xdr_one;		/* attributes follow */
+> -			lease_get_mtime(dentry->d_inode, &stat.mtime);
+> +			nfsd_get_mtime(dentry->d_inode, &stat.mtime, 1);
+>  			return encode_fattr3(rqstp, p, fhp, &stat);
+>  		}
+>  	}
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index f65953b..6bd7339 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1518,6 +1518,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  		 */
+>  		if ((buflen -= 8) < 0)
+>  			goto out_resource;
+> +		nfs4svc_adjust_mtime(fhp, &stat.ctime);
+>  		WRITE32(stat.ctime.tv_sec);
+>  		WRITE32(stat.ctime.tv_nsec);
+>  	}
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index afd08e2..e266d42 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -194,7 +194,7 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+>  	*p++ = htonl((u32) stat->ino);
+>  	*p++ = htonl((u32) stat->atime.tv_sec);
+>  	*p++ = htonl(stat->atime.tv_nsec ? stat->atime.tv_nsec / 1000 : 0);
+> -	lease_get_mtime(dentry->d_inode, &time); 
+> +	nfsd_get_mtime(dentry->d_inode, &time, 1000); 
+>  	*p++ = htonl((u32) time.tv_sec);
+>  	*p++ = htonl(time.tv_nsec ? time.tv_nsec / 1000 : 0); 
+>  	*p++ = htonl((u32) stat->ctime.tv_sec);
+> diff --git a/include/linux/nfsd/xdr.h b/include/linux/nfsd/xdr.h
+> index a0132ef..b1a0f5d 100644
+> --- a/include/linux/nfsd/xdr.h
+> +++ b/include/linux/nfsd/xdr.h
+> @@ -174,4 +174,29 @@ int nfssvc_release_fhandle(struct svc_rqst *, __be32 *, struct nfsd_fhandle *);
+>  __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp);
+>  __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh *fhp);
+>  
+> +/* NFSv3 and v2 use mtime to guide caching of file/directory contents.
+> + * If a client asks for the mtime of a file and the answer is "now",
+> + * then subsequent changes to the file could happen but never be reflected
+> + * in a changed mtime.
+> + * So in that case, reduce mtime by the smallest value representable in
+> + * the protocol.  A subsequent GETATTR will show the mtime having changed
+> + * slightly so the client will refresh its cache and be sure to get any
+> + * changes.
+> + */
+> +static inline void nfsd_get_mtime(struct inode *inode, struct timespec *time, int nanoseconds)
+> +{
+> +	struct timespec now;
+> +	lease_get_mtime(inode, time);
+> +	now = current_fs_time(inode->i_sb);
+> +	if (time->tv_sec == now.tv_sec &&
+> +	    time->tv_nsec == now.tv_nsec) {
+> +		if (time->tv_nsec >= nanoseconds)
+> +			time->tv_nsec -= nanoseconds;
+> +		else {
+> +			time->tv_nsec += 1000000000 - nanoseconds;
+> +			time->tv_sec -= 1;
+> +		}
+> +	}
+> +}
+> +	
+>  #endif /* LINUX_NFSD_H */
+> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> index 27bd3e3..7d2be49 100644
+> --- a/include/linux/nfsd/xdr4.h
+> +++ b/include/linux/nfsd/xdr4.h
+> @@ -422,10 +422,36 @@ struct nfsd4_compoundres {
+>  #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+>  
+>  static inline void
+> +nfs4svc_adjust_mtime(struct svc_fh *fhp, struct timespec *time)
+> +{
+> +	/* because we use ctime for caching, and because the granularity
+> +	 * of ctime might be fairly large (e.g. 1 second) it is unsafe
+> +	 * to ever report 'now' as the changeid - as then we might report
+> +	 * two change ids that are the same despite there being a change
+> +	 * to the file between them, and then continue to report that
+> +	 * same change-id for a long time.
+> +	 * So if the changeid would correspond to 'now', change it to
+> +	 * one nanosecond ago so that after 'now' as moved on, the client
+> +	 * will be able to see a new changeid and will update its cache.
+> +	 */
+> +	struct timespec now;
+> +	now = current_fs_time(fhp->fh_dentry->d_inode->i_sb);
+> +	if (time->tv_sec == now.tv_sec &&
+> +	    time->tv_nsec == now.tv_nsec) {
+> +		if (time->tv_nsec)
+> +			time->tv_nsec--;
+> +		else {
+> +			time->tv_nsec = 999999999;
+> +			time->tv_sec --;
+> +		}
+> +	}
+> +}
+> +static inline void
+>  set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+>  {
+>  	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
+>  	cinfo->atomic = 1;
+> +	nfs4svc_adjust_mtime(fhp, &fhp->fh_pre_ctime);
+>  	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+>  	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+>  	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+> 
+> 
