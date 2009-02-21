@@ -1,44 +1,48 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Ping: d_obtain_alias
-Date: Sat, 21 Feb 2009 12:40:46 -0500
-Message-ID: <20090221174046.GA27374@infradead.org>
-References: <499FA991.8080909@panasas.com>
+From: Ben Greear <greearb@candelatech.com>
+Subject: Re: PATCH:  Support binding to a local IPv4 address when mounting a server.
+Date: Sat, 21 Feb 2009 10:18:45 -0800
+Message-ID: <nwq8tejci9ktsixmh0qn5kec.1235240325756@email.android.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <499FA991.8080909@panasas.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: multipart/mixed; boundary="----TFINW0ERBPH0PCPB2128LJ3JQKQN94"
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	Patrick McHardy <kaber@trash.net>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.candelatech.com ([208.74.158.172]:39683 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576AbZBUSTj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Feb 2009 13:19:39 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+------TFINW0ERBPH0PCPB2128LJ3JQKQN94
+Content-Type: text/plain;
+ charset=utf-8
+Content-Transfer-Encoding: base64
 
-All the nfs exported filesystem are tied intimately to the kernel,
-so yes, this is an internal export.
+IEkgdGVzdGVkIG5mczQgbGF0ZXIgbGFzdCBuaWdodCBhbmQgaXQgd29ya2VkIGZpbmUuICBXZSds
+bCBjb250aW51ZSB0byB0ZXN0IG1vcmUuLi4uCgpUaGUgcHVycG9zZSBpcyB0byBhbGxvdyBiaW5k
+aW5nIHRvIGEgc3BlY2lmaWMgSVAgb24gYSBtdWx0aSBob21lZCBkZXZpY2UuLi50aGlzIGFsbG93
+cyB0cmlja3Mgd2l0aCByb3V0aW5nIHRhYmxlcywgZm9yIGluc3RhbmNlLi4uCgpUaGFua3MsCkJl
+bgoKVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAZnlzLnVpby5ubz4gd3JvdGU6Cgo+
+T24gRnJpLCAyMDA5LTAyLTIwIGF0IDIzOjQzIC0wODAwLCBCZW4gR3JlZWFyIHdyb3RlOg0KPj4g
+SSByZS13b3JrZWQgdGhlIGtlcm5lbCBuZnMgbG9jYWwtYWRkcmVzcy1iaW5kaW5nIGxvZ2ljIGFn
+YWluc3QgDQo+PiAyLjYuMjktcmM1LiAgSW4gcXVpY2sgdGVzdGluZywNCj4+IHRoaXMgd29ya3Mg
+d2l0aCBJUHY0IGFuZCBORlN2MyBhdCBsZWFzdC4gIEkgY2hhbmdlZCB0aGUgYXR0cmlidXRlIHRv
+IGJlIA0KPj4gY2FsbGVkICdiaW5kYWRkcicNCj4+IGFzIHByZXZpb3VzbHkgc3VnZ2VzdGVkLg0K
+Pg0KPk1vc3Qgb2YgdGhlIGNoYW5nZXMgYXJlIHRvIE5GU3Y0LXNwZWNpZmljIGNvZGUsIGFuZCBJ
+IGRlZmluaXRlbHkgd2FudA0KPnRob3NlIGNvZGUgcGF0aHMgdGVzdGVkIGJlZm9yZSBjb25zaWRl
+cmluZyB0aGlzIHBhdGNoLg0KPg0KPj4gSSBkaWRuJ3QgYWN0dWFsbHkgbWFrZSBhbnkgZnVydGhl
+ciBjaGFuZ2VzIHRvIHRoZSBtb3VudC5uZnMgdG9vbCBhbmQgaXQgDQo+PiB0b29rIHRoZSBiaW5k
+YWRkcj1hLmIuYy5kDQo+PiBqdXN0IGZpbmUsIHNvIG1heWJlIHRoZXJlIGFyZSBubyBjaGFuZ2Vz
+IGF0IGFsbCBuZWVkZWQgaW4gdXNlci1zcGFjZS4NCj4+IA0KPj4gQ29tbWVudHMgJiBzdWdnZXN0
+aW9ucyB3ZWxjb21lLg0KPg0KPlJlbWluZCBtZSBhZ2FpbiB3aGF0IHRoZSBhcHBsaWNhdGlvbiBp
+cz8NCj4NCj5Ucm9uZA0KPg0KPi0tDQo+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
+bmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj50aGUgYm9keSBvZiBhIG1l
+c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPk1vcmUgbWFqb3Jkb21vIGluZm8g
+YXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KCi0tIApTZW50
+IGZyb20gbXkgQW5kcm9pZCBwaG9uZSB3aXRoIEstOS4gUGxlYXNlIGV4Y3VzZSBteSBicmV2aXR5
+Lg==
 
-Non-GPL filesystem are illegal to distribute anyway, so I don't know why
-you even bother.
+------TFINW0ERBPH0PCPB2128LJ3JQKQN94--
 
-On Sat, Feb 21, 2009 at 09:13:21AM +0200, Benny Halevy wrote:
-> Christoph?
-> 
-> On Feb. 16, 2009, 19:31 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> 
-> Christoph,
-> 
-> I see that in 4ea3ada2955e4519befa98ff55dd62d6dfbd1705,
-> you declared d_obtain_alias() as EXPORT_SYMBOL_GPL
-> and that it's supposed to replace d_alloc_anon which
-> was declared as EXPORT_SYMBOL and thus available to any
-> loadable module.
-> 
-> Do you consider d_obtain_alias() an internal API?
-> What exported API non-GPL'ed loadable file systems are
-> supposed to use now for fh_to_dentry?
-> 
-> Benny
----end quoted text---
