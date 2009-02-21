@@ -1,46 +1,44 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: PATCH:  Support binding to a local IPv4 address when mounting
- a server.
-Date: Sat, 21 Feb 2009 09:16:03 -0800
-Message-ID: <1235236563.7312.5.camel@heimdal.trondhjem.org>
-References: <4977C580.4040805@candelatech.com>
-	 <633CA802-DD5A-4082-B771-C524D367241F@oracle.com>
-	 <497805A7.4070205@candelatech.com>
-	 <A1D6FF17-95D6-4775-AF60-5D6CD2078B3E@oracle.com>
-	 <4978AD75.9090900@candelatech.com>
-	 <65D69956-DB67-43A7-9101-9AFB7EC55A9F@oracle.com>
-	 <499FB08B.1070200@candelatech.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Ping: d_obtain_alias
+Date: Sat, 21 Feb 2009 12:40:46 -0500
+Message-ID: <20090221174046.GA27374@infradead.org>
+References: <499FA991.8080909@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-	Patrick McHardy <kaber@trash.net>
-To: Ben Greear <greearb@candelatech.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:34384 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753064AbZBURQO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 21 Feb 2009 12:16:14 -0500
-In-Reply-To: <499FB08B.1070200@candelatech.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <499FA991.8080909@panasas.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-02-20 at 23:43 -0800, Ben Greear wrote:
-> I re-worked the kernel nfs local-address-binding logic against 
-> 2.6.29-rc5.  In quick testing,
-> this works with IPv4 and NFSv3 at least.  I changed the attribute to be 
-> called 'bindaddr'
-> as previously suggested.
 
-Most of the changes are to NFSv4-specific code, and I definitely want
-those code paths tested before considering this patch.
+All the nfs exported filesystem are tied intimately to the kernel,
+so yes, this is an internal export.
 
-> I didn't actually make any further changes to the mount.nfs tool and it 
-> took the bindaddr=a.b.c.d
-> just fine, so maybe there are no changes at all needed in user-space.
+Non-GPL filesystem are illegal to distribute anyway, so I don't know why
+you even bother.
+
+On Sat, Feb 21, 2009 at 09:13:21AM +0200, Benny Halevy wrote:
+> Christoph?
 > 
-> Comments & suggestions welcome.
-
-Remind me again what the application is?
-
-Trond
-
+> On Feb. 16, 2009, 19:31 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
+> 
+> Christoph,
+> 
+> I see that in 4ea3ada2955e4519befa98ff55dd62d6dfbd1705,
+> you declared d_obtain_alias() as EXPORT_SYMBOL_GPL
+> and that it's supposed to replace d_alloc_anon which
+> was declared as EXPORT_SYMBOL and thus available to any
+> loadable module.
+> 
+> Do you consider d_obtain_alias() an internal API?
+> What exported API non-GPL'ed loadable file systems are
+> supposed to use now for fh_to_dentry?
+> 
+> Benny
+---end quoted text---
