@@ -1,219 +1,235 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [PATCH] nfsd: be creative with time stmaps so that NFS client can reliably discover changes
-Date: Sun, 22 Feb 2009 17:59:10 +1100
-Message-ID: <18848.63422.177485.115103@notabene.brown>
+From: Ben Greear <greearb@candelatech.com>
+Subject: Re: PATCH:  Support binding to a local IPv4 address when mounting
+ a server.
+Date: Sat, 21 Feb 2009 23:05:24 -0800
+Message-ID: <49A0F934.8070306@candelatech.com>
+References: <4977C580.4040805@candelatech.com> <633CA802-DD5A-4082-B771-C524D367241F@oracle.com> <497805A7.4070205@candelatech.com> <A1D6FF17-95D6-4775-AF60-5D6CD2078B3E@oracle.com> <4978AD75.9090900@candelatech.com> <65D69956-DB67-43A7-9101-9AFB7EC55A9F@oracle.com> <499FB08B.1070200@candelatech.com> <EF45429F-0B16-47C7-89ED-7C14C44E6E5E@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------030409070906000307040806"
+Cc: linux-nfs@vger.kernel.org, Patrick McHardy <kaber@trash.net>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ns.suse.de ([195.135.220.2]:50673 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239AbZBVG7R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 22 Feb 2009 01:59:17 -0500
+Received: from mail.candelatech.com ([208.74.158.172]:41718 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752149AbZBVHFf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Feb 2009 02:05:35 -0500
+In-Reply-To: <EF45429F-0B16-47C7-89ED-7C14C44E6E5E@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------030409070906000307040806
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hi Bruce,
- here is my current version if the [cm]time fiddling patch for your
- consideration.
- If you like it, you can pull it from
-      git://neil.brown.name/linux-2.6 nfsd-devel
- (or just extract it from the email)
+Chuck Lever wrote:
+> Hi Ben-
+>
+> On Feb 21, 2009, at Feb 21, 2009, 2:43 AM, Ben Greear wrote:
+>> I re-worked the kernel nfs local-address-binding logic against 
+>> 2.6.29-rc5.  In quick testing,
+>> this works with IPv4 and NFSv3 at least.  I changed the attribute to 
+>> be called 'bindaddr'
+>> as previously suggested.
+>>
+>> I didn't actually make any further changes to the mount.nfs tool and 
+>> it took the bindaddr=a.b.c.d
+>> just fine, so maybe there are no changes at all needed in user-space.
+>
+> You probably want the code in support/nfs/getport.c to send requests 
+> from your bindaddr, if the mount command has to contact the server to 
+> renegotiate mount options.
+>
+>> Comments & suggestions welcome.
+>>
+>> Thanks,
+>> Ben
+>>
+>> Signed-Off-By:  Ben Greear<greearb@candelatech.com>
+>>
+>> -- 
+>> Ben Greear <greearb@candelatech.com> Candela Technologies Inc  
+>> http://www.candelatech.com
+>>
+>>
+>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> index 3e634f2..1c7011e 100644
+>> --- a/fs/nfs/callback.c
+>> +++ b/fs/nfs/callback.c
+>> @@ -213,7 +213,7 @@ static int nfs_callback_authenticate(struct 
+>> svc_rqst *rqstp)
+>>     int ret = SVC_OK;
+>>
+>>     /* Don't talk to strangers */
+>> -    clp = nfs_find_client(svc_addr(rqstp), 4);
+>> +    clp = nfs_find_client(svc_daddr(rqstp), svc_addr(rqstp), 4);
+>
+> It's not clear to me why the callback server needs to be aware of the 
+> mount point's bind address.  Can you explain this a little more?  I 
+> would think the bind address would be pertinent for sending callback 
+> service replies, but I don't see code here to do that.
+>
+> Would lockd also need to have this information too (passed in via 
+> nlmclnt_inet)?
+>
+> Would we also want kernel rpcbind requests to be sensitive to the 
+> passed-in bind address?
+
+The attached patch (on top of my other patch) is my attempt at making 
+lockd aware.
+
+I tried running:
+
+cd [my nfs mount directory]
+touch foo
+flock -x foo -c "echo hello"
+
+while sniffing the interface it should be bound to, and I see what I 
+believe is proper output (just the flock part):
+
+300.647123 192.168.1.185 -> 192.168.1.5  NFS V3 GETATTR Call, FH:0x34b21b2e
+300.647460  192.168.1.5 -> 192.168.1.185 NFS V3 GETATTR Reply (Call In 
+133)  Regular File mode:0644 uid:0 gid:0
+300.647650 192.168.1.185 -> 192.168.1.5  TCP 689 > 2049 [ACK] Seq=5409 
+Ack=9565 Win=34560 Len=0
+300.647846 192.168.1.185 -> 192.168.1.5  NFS V3 ACCESS Call, FH:0x34b21b2e
+300.648046  192.168.1.5 -> 192.168.1.185 NFS V3 ACCESS Reply (Call In 136)
+300.648267 192.168.1.185 -> 192.168.1.5  NLM V4 LOCK Call FH:0x34b21b2e 
+svid:3 pos:0-0
+300.648491  192.168.1.5 -> 192.168.1.185 NLM V4 LOCK Reply (Call In 138)
+300.648540 192.168.1.185 -> 192.168.1.5  TCP 839 > 38489 [ACK] Seq=633 
+Ack=121 Win=5888 Len=0
+300.657602 192.168.1.185 -> 192.168.1.5  NLM V4 UNLOCK Call 
+FH:0x34b21b2e svid:3 pos:0-0
+300.657894  192.168.1.5 -> 192.168.1.185 NLM V4 UNLOCK Reply (Call In 141)
+300.687712 192.168.1.185 -> 192.168.1.5  TCP 689 > 2049 [ACK] Seq=5545 
+Ack=9689 Win=34560 Len=0
+300.697678 192.168.1.185 -> 192.168.1.5  TCP 839 > 38489 [ACK] Seq=833 
+Ack=161 Win=5888 Len=0
 
 Thanks,
-NeilBrown
+Ben
 
-
->From 97574eaf53b3acce45379b6df4351bcb1f32936f Mon Sep 17 00:00:00 2001
-From: NeilBrown <neilb@suse.de>
-Date: Sun, 22 Feb 2009 08:19:21 +1100
-Subject: [PATCH] nfsd: be creative with time stmaps so that NFS client can reliably discover changes
-
-For NFS, mtime/ctime are used as the main mechanism for cache
-flushing - when mtime changes, we flush the cache.  This is equally
-true for NFSv4, though the timestamp is hidden in the changeid.
-
-However with many filesystems the granularity of mtime is one second,
-and multiple changes can occur in one second.
-
-This makes it unwise to ever return "now" for the [cm]time of a file,
-as quite some time later there may have been a change since that time
-was returned, but the time will still be the same.
-
-So if a timestamp is "now" - to the granularity of the filesystem,
-adjust it backwards the smallest possible amount.   Then when a
-subsequent GETATTR checks the time, it will no longer be 'now', so
-the correct time will be returned, and the client will notice that
-the file could have changed.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfsd/nfs3xdr.c         |   19 +++++++++++++++----
- fs/nfsd/nfs4xdr.c         |    1 +
- fs/nfsd/nfsxdr.c          |    7 +++++--
- fs/nfsd/vfs.c             |   29 +++++++++++++++++++++++++++++
- include/linux/nfsd/nfsd.h |    3 +++
- include/linux/nfsd/xdr4.h |   13 +++++++++----
- 6 files changed, 62 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 17d0dd9..98d4be0 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -47,6 +47,17 @@ encode_time3(__be32 *p, struct timespec *time)
- }
- 
- static __be32 *
-+encode_adjusted_time3(__be32 *p, struct timespec *time,
-+		      struct svc_fh *fhp, int nanoseconds)
-+{
-+	struct timespec tm = *time;
-+	nfsd_adjust_time(&tm, fhp, 1);
-+	*p++ = htonl((u32) tm.tv_sec);
-+	*p++ = htonl(tm.tv_nsec);
-+	return p;
-+}
-+
-+static __be32 *
- decode_time3(__be32 *p, struct timespec *time)
- {
- 	time->tv_sec = ntohl(*p++);
-@@ -191,8 +202,8 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	p = encode_fsid(p, fhp);
- 	p = xdr_encode_hyper(p, stat->ino);
- 	p = encode_time3(p, &stat->atime);
--	p = encode_time3(p, &stat->mtime);
--	p = encode_time3(p, &stat->ctime);
-+	p = encode_adjusted_time3(p, &stat->mtime, fhp, 1);
-+	p = encode_adjusted_time3(p, &stat->ctime, fhp, 1);
- 
- 	return p;
- }
-@@ -248,8 +259,8 @@ encode_wcc_data(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- 		if (fhp->fh_pre_saved) {
- 			*p++ = xdr_one;
- 			p = xdr_encode_hyper(p, (u64) fhp->fh_pre_size);
--			p = encode_time3(p, &fhp->fh_pre_mtime);
--			p = encode_time3(p, &fhp->fh_pre_ctime);
-+			p = encode_adjusted_time3(p, &fhp->fh_pre_mtime, fhp, 1);
-+			p = encode_adjusted_time3(p, &fhp->fh_pre_ctime, fhp, 1);
- 		} else {
- 			*p++ = xdr_zero;
- 		}
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f65953b..65126be 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1518,6 +1518,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		 */
- 		if ((buflen -= 8) < 0)
- 			goto out_resource;
-+		nfsd_adjust_time(&stat.ctime, fhp, 1);
- 		WRITE32(stat.ctime.tv_sec);
- 		WRITE32(stat.ctime.tv_nsec);
- 	}
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index afd08e2..a7db164 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -195,10 +195,13 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	*p++ = htonl((u32) stat->atime.tv_sec);
- 	*p++ = htonl(stat->atime.tv_nsec ? stat->atime.tv_nsec / 1000 : 0);
- 	lease_get_mtime(dentry->d_inode, &time); 
-+	nfsd_adjust_time(&time, fhp, 1000);
-+	*p++ = htonl((u32) time.tv_sec);
-+	*p++ = htonl(time.tv_nsec ? time.tv_nsec / 1000 : 0); 
-+	time = stat->ctime;
-+	nfsd_adjust_time(&time, fhp, 1000);
- 	*p++ = htonl((u32) time.tv_sec);
- 	*p++ = htonl(time.tv_nsec ? time.tv_nsec / 1000 : 0); 
--	*p++ = htonl((u32) stat->ctime.tv_sec);
--	*p++ = htonl(stat->ctime.tv_nsec ? stat->ctime.tv_nsec / 1000 : 0);
- 
- 	return p;
- }
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6e50aaa..b69f3ea 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -404,6 +404,35 @@ out_nfserr:
- 	goto out;
- }
- 
-+void nfsd_adjust_time(struct timespec *time, struct svc_fh *fhp,
-+		      int nanoseconds)
-+{
-+	/* because we use time stamps for caching, and because the
-+	 * granularity of ctime/mtime might be fairly large (e.g. 1
-+	 * second) it is unsafe to ever report 'now' as a timestamp -
-+	 * as then we might report two timestmaps that are the same
-+	 * despite there being a change to the file between them, and
-+	 * then continue to report that same timestamp for a long
-+	 * time.
-+	 * So if a timestamp would correspond to 'now', change it to
-+	 * one nanosecond/microsecond ago so that after 'now' as moved
-+	 * on, the client will be able to see a new timestamp and will
-+	 * update its cache.
-+	 */
-+	struct timespec now;
-+	now = current_fs_time(fhp->fh_dentry->d_inode->i_sb);
-+	if (time->tv_sec == now.tv_sec &&
-+	    time->tv_nsec == now.tv_nsec) {
-+		if (time->tv_nsec >= nanoseconds)
-+			time->tv_nsec -= nanoseconds;
-+		else {
-+			time->tv_nsec = 1000000000 - nanoseconds;
-+			time->tv_sec -= 1;
-+		}
-+	}
-+}
-+
-+
- #if defined(CONFIG_NFSD_V2_ACL) || \
-     defined(CONFIG_NFSD_V3_ACL) || \
-     defined(CONFIG_NFSD_V4)
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index e19f459..99be485 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -132,6 +132,9 @@ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- int		nfsd_sync_dir(struct dentry *dp);
- 
-+void		nfsd_adjust_time(struct timespec *time, struct svc_fh *fhp,
-+				 int nanoseconds);
-+
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- #ifdef CONFIG_NFSD_V2_ACL
- extern struct svc_version nfsd_acl_version2;
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 27bd3e3..116fe9e 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -424,12 +424,17 @@ struct nfsd4_compoundres {
- static inline void
- set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
- {
-+	struct timespec tm;
- 	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
- 	cinfo->atomic = 1;
--	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
--	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
--	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
--	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-+	tm = fhp->fh_pre_ctime;
-+	nfsd_adjust_time(&tm, fhp, 1);
-+	cinfo->before_ctime_sec = tm.tv_sec;
-+	cinfo->before_ctime_nsec = tm.tv_nsec;
-+	tm = fhp->fh_post_attr.ctime;
-+	nfsd_adjust_time(&tm, fhp, 1);
-+	cinfo->after_ctime_sec = tm.tv_sec;
-+	cinfo->after_ctime_nsec = tm.tv_nsec;
- }
- 
- int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
 -- 
-1.6.1.3
+Ben Greear <greearb@candelatech.com> 
+Candela Technologies Inc  http://www.candelatech.com
 
+
+
+--------------030409070906000307040806
+Content-Type: text/x-patch;
+ name="lockd_bind.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="lockd_bind.patch"
+
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 1f3b0fc..d826c9c 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -59,7 +59,8 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+ 
+-	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
++	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->bindaddr,
++				   nlm_init->addrlen,
+ 				   nlm_init->protocol, nlm_version,
+ 				   nlm_init->hostname, nlm_init->noresvport);
+ 	if (host == NULL) {
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 99d737b..dc8f067 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -244,15 +244,13 @@ nlm_destroy_host(struct nlm_host *host)
+  * created and returned.
+  */
+ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
++				     const struct sockaddr* bindaddr,
+ 				     const size_t salen,
+ 				     const unsigned short protocol,
+ 				     const u32 version,
+ 				     const char *hostname,
+ 				     int noresvport)
+ {
+-	const struct sockaddr source = {
+-		.sa_family	= AF_UNSPEC,
+-	};
+ 	struct nlm_lookup_host_info ni = {
+ 		.server		= 0,
+ 		.sap		= sap,
+@@ -261,8 +259,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		.version	= version,
+ 		.hostname	= hostname,
+ 		.hostname_len	= strlen(hostname),
+-		.src_sap	= &source,
+-		.src_len	= sizeof(source),
++		.src_sap	= bindaddr,
++		.src_len	= salen,
+ 		.noresvport	= noresvport,
+ 	};
+ 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 6cd8bd5..7022868 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -551,6 +551,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ 	struct nlmclnt_initdata nlm_init = {
+ 		.hostname	= clp->cl_hostname,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
++		.bindaddr	= (struct sockaddr*)&clp->bindaddr,
+ 		.addrlen	= clp->cl_addrlen,
+ 		.protocol	= server->flags & NFS_MOUNT_TCP ?
+ 						IPPROTO_TCP : IPPROTO_UDP,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 330d10f..f790f4d 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -45,7 +45,6 @@ struct nfs_parsed_mount_data {
+ 	struct {
+ 		struct sockaddr_storage	address;
+ 		size_t			addrlen;
+-		char			*hostname;
+ 	} bindaddr;
+ 
+ 	struct {
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 90f29bd..bcfb70a 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1268,8 +1268,6 @@ static int nfs_parse_mount_options(char *raw,
+ 			nfs_parse_ip_address(string, strlen(string),
+ 					     (struct sockaddr *)&mnt->bindaddr.address,
+ 					     &mnt->bindaddr.addrlen);
+-			kfree(mnt->bindaddr.hostname);
+-			mnt->bindaddr.hostname = string;
+ 			break;
+ 		case Opt_mounthost:
+ 			string = match_strdup(args);
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index fbc48f8..c1a4b6b 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -38,6 +38,7 @@ extern struct nlmsvc_binding *	nlmsvc_ops;
+ struct nlmclnt_initdata {
+ 	const char		*hostname;
+ 	const struct sockaddr	*address;
++	const struct sockaddr *bindaddr;
+ 	size_t			addrlen;
+ 	unsigned short		protocol;
+ 	u32			nfs_version;
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index aa6fe70..0a06833 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -217,6 +217,7 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
+  * Host cache
+  */
+ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
++				      const struct sockaddr* bindaddr,
+ 					const size_t salen,
+ 					const unsigned short protocol,
+ 					const u32 version,
+
+--------------030409070906000307040806--
