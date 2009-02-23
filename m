@@ -1,69 +1,96 @@
-From: Ben Greear <greearb@candelatech.com>
-Subject: Re: PATCH:  Support binding to a local IPv4 address when mounting
- a server.
-Date: Sun, 22 Feb 2009 15:45:16 -0800
-Message-ID: <49A1E38C.2050607@candelatech.com>
-References: <4977C580.4040805@candelatech.com>	 <633CA802-DD5A-4082-B771-C524D367241F@oracle.com>	 <497805A7.4070205@candelatech.com>	 <A1D6FF17-95D6-4775-AF60-5D6CD2078B3E@oracle.com>	 <4978AD75.9090900@candelatech.com>	 <65D69956-DB67-43A7-9101-9AFB7EC55A9F@oracle.com>	 <499FB08B.1070200@candelatech.com>	 <EF45429F-0B16-47C7-89ED-7C14C44E6E5E@oracle.com>	 <49A0E802.9000209@candelatech.com>	 <1235329791.7331.75.camel@heimdal.trondhjem.org>	 <49A1DD24.9060801@candelatech.com> <1235346094.7331.111.camel@heimdal.trondhjem.org>
+From: "Sachin S. Prabhu" <sprabhu@redhat.com>
+Subject: [PATCH] Inconsistent setattr behaviour
+Date: Mon, 23 Feb 2009 16:22:03 +0000
+Message-ID: <49A2CD2B.50607@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-	Patrick McHardy <kaber@trash.net>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: multipart/mixed;
+ boundary="------------090200040203010700090200"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:57892 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754102AbZBVXp2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Feb 2009 18:45:28 -0500
-In-Reply-To: <1235346094.7331.111.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:54962 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753758AbZBWQWG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Feb 2009 11:22:06 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n1NGM4gt027743
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2009 11:22:04 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n1NGM4fB012462
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2009 11:22:04 -0500
+Received: from localhost.localdomain (splp.fab.redhat.com [10.33.0.53])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n1NGM362006575
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Feb 2009 11:22:04 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Sun, 2009-02-22 at 15:17 -0800, Ben Greear wrote:
->   
->> My specific application is a testing tool that emulates 1000+ unique NFS 
->> clients,
->> primarily for testing  & loading NFS servers.
->> I put each client on a mac-vlan and put them all on the same subnet so 
->> that I don't
->> need any routers between my box and the nfs server.  (We can also put
->> them on different subnets and use different routers, and the specific 
->> source-ip
->> also helps there...)
->>
->> I use routing tricks to enforce that a particular source-IP uses a 
->> specific routing
->> table, and that ties pkts to a specific mac-vlan interface.  The mount 
->> bindaddr
->> option then binds a mount to a specific local IP and thus to a specific 
->> mac-vlan.
->>
->> This shows 1000+ mounts on my test box, and the nfs server sees 1000
->> unique clients (all with different MACs, IPS, etc).
->>     
->
-> Any reason why you couldn't multi-home the server too, and use the
-> destination IP address to control the route on the clients?
->   
-I'm trying to emulate 1000 NFS clients running against a 'normal' NFS 
-server,
-and in that case, the NFS server would have a single (or small number of IP
-addrs), and each client would have a unique IP and MAC.
+This is a multi-part message in MIME format.
+--------------090200040203010700090200
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-Thanks,
-Ben
+There is an inconsistency seen in the behaviour of nfs compared to other local
+filesystems on linux when changing owner or group of a directory. If the
+directory has SUID/SGID flags set, on changing owner or group on the directory,
+the flags are stripped off on nfs. These flags are maintained on other
+filesystems such as ext3.
 
->   Trond
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
+To reproduce on a nfs share or local filesystem, run the following commands
+mkdir test; chmod +s+g test; chown user1 test; ls -ld test
 
+On the nfs share, the flags are stripped and the output seen is
+drwxr-xr-x 2 user1 root 4096 Feb 23  2009 test
 
--- 
-Ben Greear <greearb@candelatech.com> 
-Candela Technologies Inc  http://www.candelatech.com
+On other local filesystems(ex: ext3), the flags are not stripped and the output
+seen is
+drwsr-sr-x 2 user1 root 4096 Feb 23 13:57 test
 
+chown_common() called from sys_chown() will only strip the flags if the inode is
+not a directory.
+static int chown_common(struct dentry * dentry, uid_t user, gid_t group)
+{
+..
+        if (!S_ISDIR(inode->i_mode))
+                newattrs.ia_valid |=
+                        ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+..
+}
 
+See: http://www.opengroup.org/onlinepubs/7990989775/xsh/chown.html
+
+"If the path argument refers to a regular file, the set-user-ID (S_ISUID) and
+set-group-ID (S_ISGID) bits of the file mode are cleared upon successful return
+from chown(), unless the call is made by a process with appropriate privileges,
+in which case it is implementation-dependent whether these bits are altered. If
+chown() is successfully invoked on a file that is not a regular file, these
+bits may be cleared. These bits are defined in <sys/stat.h>."
+
+The behaviour as it stands does not appear to violate POSIX.  However the
+actions performed are inconsistent when comparing ext3 and nfs.
+
+Sachin Prabhu
+
+--------------090200040203010700090200
+Content-Type: text/plain;
+ name="do_not_strip_sguid_for_directories.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="do_not_strip_sguid_for_directories.patch"
+
+Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
+Acked-by: Jeff Layton <jlayton@redhat.com>
+--- linux-2.6.29-rc2/fs/nfsd/vfs.c.orig	2009-02-23 06:45:20.000000000 -0500
++++ linux-2.6.29-rc2/fs/nfsd/vfs.c	2009-02-23 11:10:10.000000000 -0500
+@@ -366,8 +366,9 @@
+ 	}
+ 
+ 	/* Revoke setuid/setgid on chown */
+-	if (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
+-	    ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)) {
++	if (!S_ISDIR(inode->i_mode) &&
++	    (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
++	     ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid))) {
+ 		iap->ia_valid |= ATTR_KILL_PRIV;
+ 		if (iap->ia_valid & ATTR_MODE) {
+ 			/* we're setting mode too, just clear the s*id bits */
+
+--------------090200040203010700090200--
