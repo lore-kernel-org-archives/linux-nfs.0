@@ -1,43 +1,64 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH] EXPORT_SYMBOL(d_obtain_alias) rather than
- EXPORT_SYMBOL_GPL
-Date: Tue, 24 Feb 2009 13:36:33 -0800 (PST)
-Message-ID: <alpine.LFD.2.00.0902241335010.3111@localhost.localdomain>
-References: <499FA991.8080909@panasas.com> <20090221174046.GA27374@infradead.org> <20090221114015.7bb5c9d8.akpm@linux-foundation.org> <alpine.LFD.2.00.0902211146400.3111@localhost.localdomain> <49A4547E.90607@panasas.com>
- <20090224213222.GH28946@ZenIV.linux.org.uk>
+From: Ben Myers <bpm@sgi.com>
+Subject: Re: BUG NULL pointer dereference in SUNRPC xs_udp_send_request
+Date: Tue, 24 Feb 2009 20:39:00 -0600
+Message-ID: <20090225023900.GD15475@sgi.com>
+References: <20090223201108.GB3308@merfinllc.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=us-ascii
+Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, Trond.Myklebust@netapp.com
+To: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38687 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752931AbZBXVhD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Feb 2009 16:37:03 -0500
-In-Reply-To: <20090224213222.GH28946@ZenIV.linux.org.uk>
+Received: from relay2.sgi.com ([192.48.179.30]:49334 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754321AbZBYChI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Feb 2009 21:37:08 -0500
+In-Reply-To: <20090223201108.GB3308-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Aaron,
 
-
-On Tue, 24 Feb 2009, Al Viro wrote:
+On Mon, Feb 23, 2009 at 12:11:09PM -0800, Aaron Straus wrote:
+>   We received the trace below on one of our machines this weekend.   The
+> machine is running vanilla 2.6.27.14.
 > 
-> As an aside, EXPORT_SYMBOL_GPL() is obnoxious shite anyway.  If
-> something is not a safe API, exporting it to default-quality 3rd-party
-> code is bad and while GPL might be many things, it is not a magical
-> "teach average programmer to find his arse without a map" pill.
+>   If I'm reading the trace correctly, it looks like this line of
+> xs_udp_send_request:
+> 
+>    clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
+> 
+>   The machine is x86 (32-bit).  
+> 
+>   Please let me know if you need anything else e.g .config or full
+> dmesg.  
 
-Actually, I have had lawyers tell me it's actually a good idea, and shows 
-"intent".  Intent may not matter for code in the sense that the code does 
-what the code does regardless of what the programmer _intended_ it to do, 
-but it does matter in legal terms.
+That's a coincidence.  I looked at a similar bug today that crashed on
+the same line but a different stack.  My suggestion is:
 
-So don't think of it in technical terms. It's not about good quality or 
-about finding your arse without maps.
+Index: linux/net/sunrpc/xprtsock.c
+===================================================================
+--- linux.orig/net/sunrpc/xprtsock.c
++++ linux/net/sunrpc/xprtsock.c
+@@ -1512,14 +1512,13 @@ static void xs_udp_finish_connecting(str
+                sk->sk_no_check = UDP_CSUM_NORCV;
+                sk->sk_allocation = GFP_ATOMIC;
 
-			Linus
+-               xprt_set_connected(xprt);
+-
+                /* Reset to new socket */
+                transport->sock = sock;
+                transport->inet = sk;
+
+                xs_set_memalloc(xprt);
+
++               xprt_set_connected(xprt);
+                write_unlock_bh(&sk->sk_callback_lock);
+        }
+        xs_udp_do_set_buffer_size(xprt);
+
+Looks like xs_sendpages() returned -ENOTCONN.  The above should sort
+that out by returning earlier in xprt_prepare_transmit() and the rpc
+would be retried by __rpc_execute().
+
+-ben
