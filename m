@@ -1,52 +1,27 @@
-From: Zach Brown <zach.brown@oracle.com>
-Subject: [CFP, 2 days left] 2009 Linux Storage and Filesystem Workshop
-Date: Thu, 26 Feb 2009 11:44:14 -0800
-Message-ID: <49A6F10E.6010100@oracle.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 0/2] NFSD: fix handling of unsupported nfsv4 ops
+Date: Thu, 26 Feb 2009 12:37:22 -0800
+Message-ID: <49A6FD82.6080808@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-scsi@vger.kernel.org, linux-nfs@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: pnfs mailing list <pnfs@linux-nfs.org>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from gw-ca.panasas.com ([66.104.249.162]:9629 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755174AbZBZUh1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Feb 2009 15:37:27 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a reminder that this weekend marks the deadline for accepting
-proposals for the upcoming Linux storage and filesystem workshop.  If
-you want to come contribute to Linux storage then we want to hear from you!
+Both patches fix issues I introduced in 2.6.27.
+The first one is more crucial to get to the 2.6.2{7,8} stable streams
+but while at it, I'd pull both.
+This was triggered in connectathon with the Sun OpenSolaris
+client trying to read extended attrs (when copying a file).
+This translates to a NFS4 OP_OPENATTR which caused our server to barf.
 
-The initial call for proposals follows.
+[PATCH 1/2] NFSD: provide encode routine for OP_OPENATTR
+[PATCH 2/2] NFSD: return nfsv4 error code nfserr_notsupp rather than nfsv[23]'s nfserr_opnotsupp
 
-----
-
-Hello storage and filesystem friends,
-
-This year's storage and filesystem workshop is being held in San
-Francisco on April 6th and 7th.  It's being held on the Monday and
-Tuesday immediately preceding the Linux Foundation Collaboration
-Summit, in the same hotel.
-
-You can find all the details on the workshop's web site:
-
-  http://events.linuxfoundation.org/events/lsf-workshop
-
-The workshop focuses on collaboration and discussion.  There will be no
-refereed papers and few presentations with slides will be accepted.
-
-To attend we ask that you use the CFP interface on the web site to
-submit a short proposal for a topic to discuss during the workshop.  The
-program committee will send invitations to the workshop based on these
-proposals.  The CFP and FAQ tabs on the web site describe this in more
-detail.
-
-For reference, there are writeups of previous workshops available
-online:
-
-http://lwn.net/Articles/226351/
-http://www.usenix.org/publications/login/2008-06/openpdfs/lsf08reports.pdf
-
-This year we'll be adding time to the schedule specifically for hands-on
-development with your colleagues.
-
-Please let me know if there are any questions about the workshop.
-
-- z
+Benny
