@@ -1,69 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:57211 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750983AbZBIFQo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Feb 2009 00:16:44 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LWOVc-0003L5-79
-	for linux-nfs@vger.kernel.org; Mon, 09 Feb 2009 16:16:40 +1100
-Message-ID: <498FB7BA.6020402@melbourne.sgi.com>
-Date: Mon, 09 Feb 2009 15:57:30 +1100
-From: Greg Banks <gnb@melbourne.sgi.com>
-To: howard chen <howachen@gmail.com>
-References: <b66ddc900902082040m24aef720ybab2fd6646377246@mail.gmail.com>
-In-Reply-To: <b66ddc900902082040m24aef720ybab2fd6646377246@mail.gmail.com>
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] Advise on NFS performance tunning.
-Content-Type: text/plain; charset="us-ascii"
+Received: from victor.provo.novell.com ([137.65.250.26]:33022 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750784AbZBZGum (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Feb 2009 01:50:42 -0500
+Message-ID: <49A63BB9.8020401@suse.de>
+Date: Thu, 26 Feb 2009 12:20:33 +0530
+From: Suresh Jayaraman <sjayaraman@suse.de>
+To: Trond.Myklebust@netapp.com
+CC: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+Subject: [PATCH] NFS: Handle -ESTALE error in access()
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-howard chen wrote:
-> Are there any way I can tune my NFS setup?
->
-> e.g.
->
-> 1. adding more memory to server?
-> 2. adding more memory to client?
-> 3. upgrade to NFS v4?
-> ...
->
-> NFS mount option:
-> async,noatime,noexec,nosuid,hard,intr,udp,retry=3,rsize=32768,wsize=32768
-> NFS version: 3
->
->   
-http://mirror.linux.org.au/pub/linux.conf.au/2008/slides/130-lca2008-nfs-tuning-secrets-d7.odp
+Hi Trond,
 
-See in particular slides 27-30, 71-74, 86-88.
+I have been looking at a bugreport where trying to open applications on KDE
+on a NFS mounted home fails temporarily. There have been multiple reports on
+different kernel versions pointing to this common issue:
+http://bugzilla.kernel.org/show_bug.cgi?id=12557
+https://bugs.launchpad.net/ubuntu/+source/linux/+bug/269954
+http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=508866.html
 
-You mention increasing the server's RAM; this might help if you're
-thrashing the server's dentry or pages caches.  Unfortunately I don't
-know of a sensible or easy way to check this, except by comparing the
-working set size to RAM.
+This issue can be reproducible consistently by doing this on a NFS mounted
+home (KDE):
+1. Open 2 xterm sessions
+2. From one of the xterm session, do "ssh -X <remote host>"
+3. "stat ~/.Xauthority" on the remote SSH session 
+4. Close the two xterm sessions
+5. On the server do a "stat ~/.Xauthority"
+6. Now on the client, try to open xterm
+This will fail.
 
-Bumping up actimeo on the client could be a useful way to reduce the
-amount of GETATTR traffic.
+Even if the filehandle had become stale, the NFS client should invalidate
+the cache/inode and should repeat LOOKUP. Looking at the packet capture when
+the failure occurs shows that there were two subsequent ACCESS() calls with
+the same filehandle and both fails with -ESTALE error.
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+I have tested the fix below. Now the client issue a LOOKUP after the
+ACCESS() call fails with -ESTALE. If all this makes sense to you, can you
+consider this for inclusion?
+
+Thanks,
 
 
-------------------------------------------------------------------------------
-Create and Deploy Rich Internet Apps outside the browser with Adobe(R)AIR(TM)
-software. With Adobe AIR, Ajax developers can use existing skills and code to
-build responsive, highly engaging applications that combine the power of local
-resources and data with the reach of the web. Download the Adobe AIR SDK and
-Ajax docs to start building applications today-http://p.sf.net/sfu/adobe-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+If the server returns an -ESTALE error due to stale filehandle in response to
+an ACCESS() call, we need to invalidate the cache and inode so that LOOKUP()
+can be retried. Without this change, the nfs client retries ACCESS() with the
+same filehandle, fails again and could lead to temporary failure of
+applications running on nfs mounted home.
 
+Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+---
+
+ fs/nfs/dir.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e35c819..672368f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1892,8 +1892,14 @@ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
+ 	cache.cred = cred;
+ 	cache.jiffies = jiffies;
+ 	status = NFS_PROTO(inode)->access(inode, &cache);
+-	if (status != 0)
++	if (status != 0) {
++		if (status == -ESTALE) {
++			nfs_zap_caches(inode);
++			if (!S_ISDIR(inode->i_mode))
++				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
++		}
+ 		return status;
++	}
+ 	nfs_access_add_cache(inode, &cache);
+ out:
+ 	if ((mask & ~cache.mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) == 0)
