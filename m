@@ -1,80 +1,76 @@
-From: Aaron Straus <aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org>
-Subject: Re: BUG NULL pointer dereference in SUNRPC xs_udp_send_request
-Date: Wed, 25 Feb 2009 16:17:45 -0800
-Message-ID: <20090226001744.GB7613@merfinllc.com>
-References: <20090223201108.GB3308@merfinllc.com> <20090225023900.GD15475@sgi.com>
+From: chat <chat-31NuXJg9jnsox3rIn2DAYQ@public.gmane.org>
+Subject: [NFS] Your Confirmation Required
+Date: Wed, 25 Feb 2009 21:38:16 -0500
+Message-ID: <cc6115d5abb8c8947ce4c24f43c4084d@medical.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Trond.Myklebust@netapp.com
-To: Ben Myers <bpm@sgi.com>
+Content-Type: text/plain; charset="us-ascii"
+To: douglis-7WuBAv+fczCkVZkbZjKZZw@public.gmane.org, nfs@lists.sourceforge.net,
+	mellon-ZxnkaMAaVeZBDgjK7y7TUQ@public.gmane.org, gim.l.deisher@intel.com,
+	david-3zPpS0IDyyACqOQrDF6SL1pr/1R2p/CL@public.gmane.org, pna-eI9DbtW6PQ2Fxr2TtlUqVg@public.gmane.org,
+	mod-bounce.alt-all-index-BtI67efEdsDk1uMJSBkQmQ@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from quackingmoose.com ([63.73.180.143]:60795 "EHLO
-	penguin.merfinllc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751066AbZBZARr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Feb 2009 19:17:47 -0500
-In-Reply-To: <20090225023900.GD15475@sgi.com>
+Received: from neil.brown.name ([220.233.11.133]:32962 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753830AbZBZKcB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Feb 2009 05:32:01 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LcdX2-0001Id-Bz
+	for linux-nfs@vger.kernel.org; Thu, 26 Feb 2009 21:31:56 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
 
-Thanks for the response.
+www.oxycodon.net
 
-On Feb 24 08:39 PM, Ben Myers wrote:
-> >   If I'm reading the trace correctly, it looks like this line of
-> > xs_udp_send_request:
-> > 
-> >    clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
-> 
-> That's a coincidence.  I looked at a similar bug today that crashed on
-> the same line but a different stack.  My suggestion is:
-> 
-> Index: linux/net/sunrpc/xprtsock.c
-> ===================================================================
-> --- linux.orig/net/sunrpc/xprtsock.c
-> +++ linux/net/sunrpc/xprtsock.c
-> @@ -1512,14 +1512,13 @@ static void xs_udp_finish_connecting(str
->                 sk->sk_no_check = UDP_CSUM_NORCV;
->                 sk->sk_allocation = GFP_ATOMIC;
-> 
-> -               xprt_set_connected(xprt);
-> -
->                 /* Reset to new socket */
->                 transport->sock = sock;
->                 transport->inet = sk;
-> 
->                 xs_set_memalloc(xprt);
-> 
-> +               xprt_set_connected(xprt);
->                 write_unlock_bh(&sk->sk_callback_lock);
->         }
->         xs_udp_do_set_buffer_size(xprt);
-> 
-> Looks like xs_sendpages() returned -ENOTCONN.  The above should sort
-> that out by returning earlier in xprt_prepare_transmit() and the rpc
-> would be retried by __rpc_execute().
+Oxycodone is in a group of drugs called narcotic pain relievers. 
+It is similar to morphine.
 
-I'll start running with it tonight to see if I can trigger the BUG
-again (it was hard to hit).
+Oxycodone is used to treat moderate to severe pain. The extended-release 
+form of this medication is for around-the-clock treatment of pain. It is 
+not for treating pain just after a surgery unless you were already taking 
+oxycodone before the surgery.
 
-Quick question, do we need a barrier between setting the transport->sock
-and the xprt_set_connected(xprt)?  I don't really understand the locking
-on the reader side, so I cannot say...
+You can get OXYCODONE 40mg, 80mg for cheapest price on the WEB!
+www.oxycodon.net
 
-Also, out of curiosity, do you know what changed to introduce the BUG?
-
-Kerneloops doesn't seem to know about it before 2.6.26.3:
-
-  http://www.kerneloops.org/search.php?search=xs_udp_send_request&btnG=Function+Search
-
-Anyway, thanks!
-
-					=a=
+NO RX REQUIRED, FAST & DISCREET SHIPPING, PLAIN PACKAGE.
 
 
 
--- 
-===================
-Aaron Straus
-aaron-bYFJunmd+ZV8UrSeD/g0lQ@public.gmane.org
+
+
+
+
+v dva chasa utra fridman byl dostavlen v soprovozhdenii sledovateley i policeyskih na ploschad grusa v hevrone gde on otkryl ogon po arabam
+delo mastera - dobitsya
+na sedmom meste v bundeslige shalke iz goroda nol-chetyre
+peyte pivo pennoe budet morda zdorovennaya
+odna golova horosho a golova s tulovischem -luchshe
+dlya duraka vse umnye - inakomyslyaschie
+luchshiy vyhod iz rossiyskogo krizisa - sheremetevo 2
+oblozhka     - pyanaya rugan
+zhizn - eto igra zadumana hrenovo no grafika - obaldennaya
+shtirlic vystrelil mulleru v golovu pulya  otskochila  bronevoy - podumal shtirlic  
+esli naveshivaut yarlyk znachit - ocenili
+kruti pedali poka ne dali
+malchik v kakom zooparke ty vospityvalsya
+zhena druga vsegda simpatichnee chem drug zheny
+bolshe vsego zhertv trebuet voennoe iskusstvo
+
+
+
+------------------------------------------------------------------------------
+Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
+-OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
+-Strategies to boost innovation and cut costs with open source participation
+-Receive a $600 discount off the registration fee with the source code: SFAD
+http://p.sf.net/sfu/XcvMzF8H
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
