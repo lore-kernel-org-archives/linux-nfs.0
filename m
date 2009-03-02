@@ -1,52 +1,54 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: [NFS] Using kerberos NFSv4 with Fedora 10
-Date: Mon, 2 Mar 2009 10:46:38 -0500
-Message-ID: <4d569c330903020746i48ea683ped2a7584fb2e45aa@mail.gmail.com>
-References: <49AB946C.5000806@cardiov.ox.ac.uk>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: redundant reverse DNS on NFS mount or umount
+Date: Mon, 2 Mar 2009 12:41:55 -0500
+Message-ID: <20090302174155.GF967@fieldses.org>
+References: <499AD63B.20806@draigBrady.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Chris Rodgers <christopher.rodgers-6Ezq7DgQwRAXSZKaUYBEcQ@public.gmane.org>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: =?utf-8?Q?P=C3=A1draig?= Brady <P@draigBrady.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34935 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755030AbZCBRel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Mar 2009 12:34:41 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LeC2I-0001Yj-TF
-	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2009 04:34:38 +1100
-In-Reply-To: <49AB946C.5000806-6Ezq7DgQwRAXSZKaUYBEcQ@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:37261 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752188AbZCBRl7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Mar 2009 12:41:59 -0500
+In-Reply-To: <499AD63B.20806-V8g9lnOeT5ydJdNcDFJN0w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 2, 2009 at 3:10 AM, Chris Rodgers
-<christopher.rodgers-6Ezq7DgQwRAXSZKaUYBEcQ@public.gmane.org> wrote:
-> Hi,
->
-> I am trying to get two Fedora 10 machines to talk to each other using
-> NFSv4 and sec=krb5p, but I do not seem to be having much luck. I would
-> appreciate any suggestions for trouble shooting.
->
-> Thanks in advance!
->
-> Chris
+On Tue, Feb 17, 2009 at 03:22:35PM +0000, P=C3=A1draig Brady wrote:
+> I've a problem where reverse DNS is being done by the NFS server.
+> This is very problematic when the DNS server goes away.
+> As far as I can see there should be no lookups being performed
+> because I've nothing in /etc/hosts.{allow,deny} and just
+> numeric hosts in /etc/exports.
+>=20
+> I can simulate this easily by putting a bad nameserver in /etc/resolv=
+=2Econf
+> and restarting the nfs server. Any mounts will take then take ages.
+> Others seem to have had this issue as well, but possibly with
+> non numeric names in /etc/exports:
+> http://marc.info/?l=3Dlinux-nfs&m=3D110977757630297&w=3D2
+> http://marc.info/?l=3Dlinux-nfs&m=3D111015343008456&w=3D2
+>=20
+> Here are my config details:
+>=20
+> # rpm -q nfs-utils
+> nfs-utils-1.1.0-6.fc8
+>=20
+> # cat /etc/resolv.conf
+> search company.com
+> nameserver 192.168.2.110
+>=20
+> # cat /etc/exports
+> /home   192.168.2.25(async,rw,all_squash,anonuid=3D500,anongid=3D500)
+>=20
+> Any ideas appreciated.
 
-The client machine must be running rpc.gssd.  I don't see any mention
-of that anywhere in your message.  (/etc/sysconfig/nfs should have
-SECURE_NFS="yes")
+I agree that DNS lookups shouldn't be required in this case.
 
-------------------------------------------------------------------------------
-Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
--OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
--Strategies to boost innovation and cut costs with open source participation
--Receive a $600 discount off the registration fee with the source code: SFAD
-http://p.sf.net/sfu/XcvMzF8H
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+It's rpc.mountd that's responsible for this, so if you can figure out
+where in the mountd code this is happening, it shouldn't be hard to fix=
+=2E
 
+--b.
