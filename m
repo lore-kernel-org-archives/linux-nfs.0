@@ -1,62 +1,52 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: redundant reverse DNS on NFS mount or umount
-Date: Mon, 2 Mar 2009 12:44:17 -0500
-Message-ID: <AE947E73-264F-433C-B428-C8E9F4374A4F@oracle.com>
-References: <499AD63B.20806@draigBrady.com> <20090302174155.GF967@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed	delsp=yes
-Cc: =?ISO-8859-1?Q?P=E1draig_Brady?= <P@draigBrady.com>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org>
+Subject: pread/pwrite bug on linux?
+Date: Mon, 2 Mar 2009 13:53:19 -0800
+Message-ID: <293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
+References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:35052 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753166AbZCBRoi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Mar 2009 12:44:38 -0500
-In-Reply-To: <20090302174155.GF967@fieldses.org>
+Received: from us02smtp2.synopsys.com ([198.182.60.77]:51812 "EHLO
+	alvesta.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754913AbZCBWC5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Mar 2009 17:02:57 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 2, 2009, at Mar 2, 2009, 12:41 PM, J. Bruce Fields wrote:
-> On Tue, Feb 17, 2009 at 03:22:35PM +0000, P=E1draig Brady wrote:
->> I've a problem where reverse DNS is being done by the NFS server.
->> This is very problematic when the DNS server goes away.
->> As far as I can see there should be no lookups being performed
->> because I've nothing in /etc/hosts.{allow,deny} and just
->> numeric hosts in /etc/exports.
->>
->> I can simulate this easily by putting a bad nameserver in /etc/=20
->> resolv.conf
->> and restarting the nfs server. Any mounts will take then take ages.
->> Others seem to have had this issue as well, but possibly with
->> non numeric names in /etc/exports:
->> http://marc.info/?l=3Dlinux-nfs&m=3D110977757630297&w=3D2
->> http://marc.info/?l=3Dlinux-nfs&m=3D111015343008456&w=3D2
->>
->> Here are my config details:
->>
->> # rpm -q nfs-utils
->> nfs-utils-1.1.0-6.fc8
->>
->> # cat /etc/resolv.conf
->> search company.com
->> nameserver 192.168.2.110
->>
->> # cat /etc/exports
->> /home   192.168.2.25(async,rw,all_squash,anonuid=3D500,anongid=3D500=
-)
->>
->> Any ideas appreciated.
->
-> I agree that DNS lookups shouldn't be required in this case.
->
-> It's rpc.mountd that's responsible for this, so if you can figure out
-> where in the mountd code this is happening, it shouldn't be hard to =20
-> fix.
 
-That would most likely be matchhostname().
+Hi All,
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Are there any known bugs with pread/pwrite on RHEL Linux when the disk partition is close to full?
+
+Reduced a complex application fatal down to a simple program just opens a regular file and performs 1M sequential pwrite() of size 8KB blocks; at every 100th write, does a pread() to load the very first 8KB block and validate its content still matching what was originally written.
+
+What I observed are the following when running on different machines and writing/reading to a disk partition nearly full with slightly more than 1GB of free space according to 'df' (the program is the only process accessing the disk) -
+
+* Linux 2.6.9-55.ELsmp #1 SMP Fri Apr 20 16:36:54 EDT 2007 x86_64 x86_64 x86_64 GNU/Linux  (RHEL4)
+
+BEHAVIOR: pwrite() works for many iterations, then pread() suddenly returns data of the requested size but filled with 0's, and strerror shows errno="No such file or directory", condition
+      if(size_to_read != pread(fd, buf, size_to_read, ...)) ...
+is not triggered and application has to check errno immediately after every call to pread.
+
+CONCLUSION: serious bug, why does pread() return the expected size filled with 0? and why doesn't pwrite() fail earlier so application has a chance to bail out and stop pushing more data to the file?
+
+* Linux 2.6.18-8.el5 #1 SMP Fri Jan 26 14:15:14 EST 2007 x86_64 x86_64 x86_64 GNU/Linux (RHEL5)
+
+BEHAVIOR: pwrite() works for much fewer iterations, then pread() errors out again with errno="No such file or directory", and condition (size_to_read!=pread(...)) is asserted at the meantime, which is slightly better but application still very hard to recover.
+
+CONCLUSION: Bug, still, pwrite() should error out earlier if not enough space to commit data, instead of fail on pread() as it's often catastrophic for application to handle.
+
+Interestingly, with Suse Linux Enterprise which has an older kernel version, the behavior seems much more defensive and sane
+
+* Linux 2.6.5-7.244-smp #1 SMP Mon Dec 12 18:32:25 UTC 2005 x86_64 x86_64 x86_64 GNU/Linux
+
+BEHAVIOR: pwrite() works for a few iterations and errors out with errno="Disk quota exceeded" before pread() fails, application easily traps and handles without data lose.
+
+
+Any pointers either to any known bugs or anything I might be missing are highly appreciated!
+
+Thanks
+Qiuyang
+
