@@ -1,52 +1,103 @@
-From: Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org>
-Subject: pread/pwrite bug on linux?
-Date: Mon, 2 Mar 2009 13:53:19 -0800
-Message-ID: <293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
-References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+From: Jon Mason <jon@opengridcomputing.com>
+Subject: [NFS] mount.nfs kernel version check override
+Date: Mon, 2 Mar 2009 17:22:16 -0600
+Message-ID: <20090302232216.GF3867@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="opJtzjQTFsWo+cga"
+Cc: swise@opengridcomputing.com, Jeffrey.C.Becker@nasa.gov
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from us02smtp2.synopsys.com ([198.182.60.77]:51812 "EHLO
-	alvesta.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754913AbZCBWC5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Mar 2009 17:02:57 -0500
+Received: from neil.brown.name ([220.233.11.133]:38524 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752745AbZCBXtJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Mar 2009 18:49:09 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LeHsd-0002QH-C1
+	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2009 10:49:03 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Hi All,
+--opJtzjQTFsWo+cga
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Are there any known bugs with pread/pwrite on RHEL Linux when the disk partition is close to full?
+I am working on backporting NFS-RDMA to older versions of Linux for the
+Open Fabrics Linux kernel stack (OFED).  I have backported NFS-RDMA to
+RHEL5.2 (which has a kernel based on 2.6.18), and others are working on
+backporting to other older kernels.  The issue that I have and they will
+discover is that there is a check in the mount command for kernels
+greater than 2.6.22.  If it is older than this version, it will not pass
+args to the kernel.
 
-Reduced a complex application fatal down to a simple program just opens a regular file and performs 1M sequential pwrite() of size 8KB blocks; at every 100th write, does a pread() to load the very first 8KB block and validate its content still matching what was originally written.
+I have come up with a patch to add an additional flag to the mount
+command to allow this kernel version check to be over-ruled.  Please
+consider adding it to the next release of the nfs-utils.
 
-What I observed are the following when running on different machines and writing/reading to a disk partition nearly full with slightly more than 1GB of free space according to 'df' (the program is the only process accessing the disk) -
+Thanks,
+Jon
 
-* Linux 2.6.9-55.ELsmp #1 SMP Fri Apr 20 16:36:54 EDT 2007 x86_64 x86_64 x86_64 GNU/Linux  (RHEL4)
+--opJtzjQTFsWo+cga
+Content-Type: text/x-diff; charset=us-ascii
+Content-Disposition: attachment; filename="nfs-utils-mount.patch"
 
-BEHAVIOR: pwrite() works for many iterations, then pread() suddenly returns data of the requested size but filled with 0's, and strerror shows errno="No such file or directory", condition
-      if(size_to_read != pread(fd, buf, size_to_read, ...)) ...
-is not triggered and application has to check errno immediately after every call to pread.
+--- utils/mount/mount.c.orig	2008-10-17 09:20:09.000000000 -0500
++++ utils/mount/mount.c	2009-03-02 16:41:44.000000000 -0600
+@@ -331,6 +331,7 @@ void mount_usage(void)
+ 	printf(_("\t-f\t\tFake mount, do not actually mount\n"));
+ 	printf(_("\t-n\t\tDo not update /etc/mtab\n"));
+ 	printf(_("\t-s\t\tTolerate sloppy mount options rather than fail\n"));
++	printf(_("\t-i\t\tIgnore kernel version limitations\n"));
+ 	printf(_("\t-h\t\tPrint this help\n"));
+ 	printf(_("\tnfsoptions\tRefer to mount.nfs(8) or nfs(5)\n\n"));
+ }
+@@ -475,7 +476,7 @@ int main(int argc, char *argv[])
+ 	mount_point = argv[2];
+ 
+ 	argv[2] = argv[0]; /* so that getopt error messages are correct */
+-	while ((c = getopt_long(argc - 2, argv + 2, "rvVwfno:hs",
++	while ((c = getopt_long(argc - 2, argv + 2, "rvVwfno:hsi",
+ 				longopts, NULL)) != -1) {
+ 		switch (c) {
+ 		case 'r':
+@@ -505,6 +506,9 @@ int main(int argc, char *argv[])
+ 		case 's':
+ 			++sloppy;
+ 			break;
++		case 'i':
++			string++;
++			break;
+ 		case 'h':
+ 		default:
+ 			mount_usage();
 
-CONCLUSION: serious bug, why does pread() return the expected size filled with 0? and why doesn't pwrite() fail earlier so application has a chance to bail out and stop pushing more data to the file?
+--opJtzjQTFsWo+cga
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-* Linux 2.6.18-8.el5 #1 SMP Fri Jan 26 14:15:14 EST 2007 x86_64 x86_64 x86_64 GNU/Linux (RHEL5)
+------------------------------------------------------------------------------
+Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
+-OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
+-Strategies to boost innovation and cut costs with open source participation
+-Receive a $600 discount off the registration fee with the source code: SFAD
+http://p.sf.net/sfu/XcvMzF8H
+--opJtzjQTFsWo+cga
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-BEHAVIOR: pwrite() works for much fewer iterations, then pread() errors out again with errno="No such file or directory", and condition (size_to_read!=pread(...)) is asserted at the meantime, which is slightly better but application still very hard to recover.
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-CONCLUSION: Bug, still, pwrite() should error out earlier if not enough space to commit data, instead of fail on pread() as it's often catastrophic for application to handle.
+--opJtzjQTFsWo+cga--
 
-Interestingly, with Suse Linux Enterprise which has an older kernel version, the behavior seems much more defensive and sane
-
-* Linux 2.6.5-7.244-smp #1 SMP Mon Dec 12 18:32:25 UTC 2005 x86_64 x86_64 x86_64 GNU/Linux
-
-BEHAVIOR: pwrite() works for a few iterations and errors out with errno="Disk quota exceeded" before pread() fails, application easily traps and handles without data lose.
-
-
-Any pointers either to any known bugs or anything I might be missing are highly appreciated!
-
-Thanks
-Qiuyang
 
