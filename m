@@ -1,117 +1,107 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/17] SUNRPC: Allow callers to pass rpcb_v4_register a NULL
-	address
-Date: Tue, 03 Mar 2009 17:33:32 -0500
-Message-ID: <20090303223332.2933.48357.stgit@ingres.1015granger.net>
+Subject: [PATCH 17/17] NFS: Start PF_INET6 callback listener only if IPv6
+	support is available
+Date: Tue, 03 Mar 2009 17:34:18 -0500
+Message-ID: <20090303223417.2933.29513.stgit@ingres.1015granger.net>
 References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:31694 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753675AbZCCWfJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:35:09 -0500
+Received: from rcsinet12.oracle.com ([148.87.113.124]:52509 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753660AbZCCWfI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:35:08 -0500
 In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The user space TI-RPC library uses an empty string for the universal
-address when unregistering all target addresses for [program, version].
-The kernel's rpcb client should behave the same way.
+Apparently a lot of people need to disable IPv6 completely on their
+distributor-built systems, which have CONFIG_IPV6_MODULE enabled.
 
-Here, we are switching between several registration methods based on
-the protocol family of the incoming address.  Rename the other rpcbind
-v4 registration functions to make it clear that they, as well, are
-switched on protocol family.  In /etc/netconfig, this is either "inet"
-or "inet6".  The loopback protocol families are not supported in the
-kernel.
+They do this by blacklisting the ipv6.ko module.  This causes the
+creation of the NFSv4 callback service listener to fail if
+CONFIG_IPV6_MODULE is set, but the module cannot be loaded.
+
+Now that the kernel's PF_INET6 RPC listeners are completely separate
+from PF_INET listeners, we can always start PF_INET.  Then the NFS
+client can try to start a PF_INET6 listener, but it isn't required
+to be available.
+
+Note this has the added benefit that NFS callbacks from AF_INET6
+servers will never come from AF_INET remotes.  We no longer have to
+worry about matching mapped IPv4 addresses to AF_INET when comparing
+addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   38 ++++++++++++++++++++++++++++----------
- 1 files changed, 28 insertions(+), 10 deletions(-)
+ fs/nfs/callback.c  |   12 ++++++++++++
+ fs/nfs/callback.h  |    1 +
+ fs/nfs/nfs4state.c |   10 ++++++++--
+ 3 files changed, 21 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 0a3b8f5..cccc676 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -257,8 +257,8 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- /*
-  * Fill in AF_INET family-specific arguments to register
-  */
--static int rpcb_register_netid4(const struct sockaddr *sap,
--				struct rpc_message *msg)
-+static int rpcb_register_inet4(const struct sockaddr *sap,
-+			       struct rpc_message *msg)
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 0ef47df..a886e69 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -38,6 +38,7 @@ static struct svc_program nfs4_callback_program;
+ 
+ unsigned int nfs_callback_set_tcpport;
+ unsigned short nfs_callback_tcpport;
++unsigned short nfs_callback_tcpport6;
+ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
+ 
+@@ -119,6 +120,17 @@ int nfs_callback_up(void)
+ 	dprintk("NFS: Callback listener port = %u (af %u)\n",
+ 			nfs_callback_tcpport, PF_INET);
+ 
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++	ret = svc_create_xprt(serv, "tcp", PF_INET6,
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++	if (ret > 0) {
++		nfs_callback_tcpport6 = ret;
++		dprintk("NFS: Callback listener port = %u (af %u)\n",
++				nfs_callback_tcpport6, PF_INET6);
++	} else if (ret != -EAFNOSUPPORT)
++		goto out_err;
++#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
++
+ 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(nfs_callback_info.rqst)) {
+ 		ret = PTR_ERR(nfs_callback_info.rqst);
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index bb25d21..e110e28 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -72,5 +72,6 @@ extern void nfs_callback_down(void);
+ 
+ extern unsigned int nfs_callback_set_tcpport;
+ extern unsigned short nfs_callback_tcpport;
++extern unsigned short nfs_callback_tcpport6;
+ 
+ #endif /* __LINUX_FS_NFS_CALLBACK_H */
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2022fe4..0298e90 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -62,8 +62,14 @@ static LIST_HEAD(nfs4_clientid_list);
+ 
+ static int nfs4_init_client(struct nfs_client *clp, struct rpc_cred *cred)
  {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
-@@ -285,8 +285,8 @@ static int rpcb_register_netid4(const struct sockaddr *sap,
- /*
-  * Fill in AF_INET6 family-specific arguments to register
-  */
--static int rpcb_register_netid6(const struct sockaddr *sap,
--				struct rpc_message *msg)
-+static int rpcb_register_inet6(const struct sockaddr *sap,
-+			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
-@@ -314,6 +314,20 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
- 	return rpcb_register_call(RPCBVERS_4, msg);
- }
- 
-+static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
-+{
-+	struct rpcbind_args *map = msg->rpc_argp;
+-	int status = nfs4_proc_setclientid(clp, NFS4_CALLBACK,
+-			nfs_callback_tcpport, cred);
++	unsigned short port;
++	int status;
 +
-+	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
-+		"local rpcbind\n",
-+			map->r_prog, map->r_vers, map->r_netid);
++	port = nfs_callback_tcpport;
++	if (clp->cl_addr.ss_family == AF_INET6)
++		port = nfs_callback_tcpport6;
 +
-+	map->r_addr = "";
-+	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
-+
-+	return rpcb_register_call(RPCBVERS_4, msg);
-+}
-+
- /**
-  * rpcb_v4_register - set or unset a port registration with the local rpcbind
-  * @program: RPC program number of service to (un)register
-@@ -331,10 +345,11 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
-  * invoke this function once for each [program, version, address,
-  * netid] tuple they wish to advertise.
-  *
-- * Callers may also unregister RPC services that are no longer
-- * available by setting the port number in the passed-in address
-- * to zero.  Callers pass a netid of "" to unregister all
-- * transport netids associated with [program, version, address].
-+ * Callers may also unregister RPC services that are registered at a
-+ * specific address by setting the port number in @address to zero.
-+ * They may unregister all registered protocol families at once for
-+ * a service by passing a NULL @address argument.  If @netid is ""
-+ * then all netids for [program, version, address] are unregistered.
-  *
-  * This function uses rpcbind protocol version 4 to contact the
-  * local rpcbind daemon.  The local rpcbind daemon must support
-@@ -369,11 +384,14 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 		.rpc_argp	= &map,
- 	};
- 
-+	if (address == NULL)
-+		return rpcb_unregister_all_protofamilies(&msg);
-+
- 	switch (address->sa_family) {
- 	case AF_INET:
--		return rpcb_register_netid4(address, &msg);
-+		return rpcb_register_inet4(address, &msg);
- 	case AF_INET6:
--		return rpcb_register_netid6(address, &msg);
-+		return rpcb_register_inet6(address, &msg);
- 	}
- 
- 	return -EAFNOSUPPORT;
++	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred);
+ 	if (status == 0)
+ 		status = nfs4_proc_setclientid_confirm(clp, cred);
+ 	if (status == 0)
 
