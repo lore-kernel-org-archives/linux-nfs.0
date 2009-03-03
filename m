@@ -1,40 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:49624 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759887AbZCMW3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Mar 2009 18:29:54 -0400
-Subject: Re: Horrible NFS Client Performance During Heavy Server IO
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: David Rees <drees76@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>
-References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-	 <1236978608.7265.41.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131432u43d9ba43nf0456b99aed0f8fd@mail.gmail.com>
-	 <1236980438.7265.47.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>
-Content-Type: text/plain
-Date: Fri, 13 Mar 2009 18:29:49 -0400
-Message-Id: <1236983389.7265.51.camel@heimdal.trondhjem.org>
+Received: from us01smtp2.synopsys.com ([198.182.44.80]:54117 "EHLO
+	kiruna.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751524AbZCCUHj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 15:07:39 -0500
+From: Qiuyang Wu <Qiuyang.Wu@synopsys.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Qiuyang Wu <Qiuyang.Wu@synopsys.com>
+CC: Jeff Moyer <jmoyer@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Tue, 3 Mar 2009 12:07:30 -0800
+Subject: RE: pread/pwrite bug on linux?
+Message-ID: <293BC70BB130E648A6631DB2F05B6E10019D6B288D@US01WXMBX1.internal.synopsys.com>
+References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+	 <293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
+	 <x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
+	 <293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
+ <1236109038.9631.88.camel@heimdal.trondhjem.org>
+In-Reply-To: <1236109038.9631.88.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2009-03-13 at 14:59 -0700, David Rees wrote:
-> And the activity around the time I am reproducing the slowdown:
-> 
-> Server nfs v3:
-> null         getattr      setattr      lookup       access       readlink
-> 0         0% 3503     75% 7         0% 31        0% 1027     22% 0         0%
-> read         write        create       mkdir        symlink      mknod
-> 9         0% 50        1% 6         0% 0         0% 0         0% 0         0%
-> remove       rmdir        rename       link         readdir      readdirplus
-> 2         0% 0         0% 2         0% 0         0% 0         0% 0         0%
-> fsstat       fsinfo       pathconf     commit
-> 0         0% 0         0% 0         0% 13        0%
+Hi Trond,
 
-Is this the result of only doing 2 'dd' copies? That's a lot of GETATTR
-calls for that kind of workload...
+Yes, I did compile it both on 32bit and 64bit, as well as run on both 32bit and 64bit, also tried what you suggested.
+
+Unless there is something else I am missing, the only difference in behavior I saw were the number of iterations pwrite() goes thru before pread() fails... and in all cases, the file size is well under 2GB before pread() failed.
+
+Thanks,
+Qiuyang
+
+
+-----Original Message-----
+From: Trond Myklebust [mailto:trond.myklebust@fys.uio.no]
+Sent: Tuesday, March 03, 2009 11:37 AM
+To: Qiuyang Wu
+Cc: Jeff Moyer; linux-nfs@vger.kernel.org; linux-fsdevel@vger.kernel.org
+Subject: RE: pread/pwrite bug on linux?
+
+On Tue, 2009-03-03 at 10:47 -0800, Qiuyang Wu wrote:
+> Hi Jeff,
+>
+> Attached the sample program. Should be able to compile as-is.
+>
+> Let me know your findings or need additional info.
+>
+> Thanks,
+> Qiuyang
+
+Are you compiling that on a 64-bit system? Otherwise you should note
+that off_t is a signed 32-bit integer. You'd need to compile your test
+program with -D_FILE_OFFSET_BITS=64 in order to make those pwrite()
+calls work correctly past the 2Gb mark.
+You also have potential 32/64-bit issues with the stat_file() routine.
 
 Trond
+
+> -----Original Message-----
+> From: Jeff Moyer [mailto:jmoyer@redhat.com]
+> Sent: Tuesday, March 03, 2009 10:10 AM
+> To: Qiuyang Wu
+> Cc: linux-nfs@vger.kernel.org; linux-fsdevel@vger.kernel.org
+> Subject: Re: pread/pwrite bug on linux?
+>
+> Qiuyang Wu <Qiuyang.Wu@synopsys.com> writes:
+>
+> > Hi All,
+> >
+> > Are there any known bugs with pread/pwrite on RHEL Linux when the disk
+> > partition is close to full?
+> >
+> > Reduced a complex application fatal down to a simple program just
+> > opens a regular file and performs 1M sequential pwrite() of size 8KB
+> > blocks; at every 100th write, does a pread() to load the very first
+> > 8KB block and validate its content still matching what was originally
+> > written.
+>
+> Could you attach your test program, please?
+>
+> > BEHAVIOR: pwrite() works for many iterations, then pread() suddenly
+> > returns data of the requested size but filled with 0's, and strerror
+> > shows errno="No such file or directory", condition
+> >       if(size_to_read != pread(fd, buf, size_to_read, ...)) ...
+> > is not triggered and application has to check errno immediately after
+> > every call to pread.
+>
+> The value of errno is undefined if the pread call did not return -1.
+>
+> Cheers,
+> Jeff
 
