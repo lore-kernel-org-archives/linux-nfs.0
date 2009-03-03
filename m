@@ -1,73 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vps680.inmotionhosting.com ([74.124.198.230]:37139 "EHLO
-	vps680.inmotionhosting.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751667AbZCKVvl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 17:51:41 -0400
-Received: from cpe-98-149-71-108.socal.res.rr.com ([98.149.71.108]:14482 helo=[192.168.2.107])
-	by vps680.inmotionhosting.com with esmtpa (Exim 4.63)
-	(envelope-from <callahan@temerity.us>)
-	id 1LhVXn-0000UL-Tg
-	for linux-nfs@vger.kernel.org; Wed, 11 Mar 2009 14:00:52 -0700
-Message-ID: <49B8186F.5070601@temerity.us>
-Date: Wed, 11 Mar 2009 16:00:47 -0400
-From: Jim Callahan <callahan@temerity.us>
-To: linux-nfs@vger.kernel.org
-Subject: NFS and RPC queues
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:19089 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751876AbZCCOQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2009 09:16:29 -0500
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+ than 120 seconds"
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20090303120848.GV89843@fit.vutbr.cz>
+References: <20090110102458.GG47559@fit.vutbr.cz>
+	 <1231603200.29646.5.camel@heimdal.trondhjem.org>
+	 <20090112090404.GL47559@fit.vutbr.cz>
+	 <1231782009.7322.12.camel@heimdal.trondhjem.org>
+	 <1231809446.7322.17.camel@heimdal.trondhjem.org>
+	 <20090113152201.GD47559@fit.vutbr.cz> <20090116104802.GF47559@fit.vutbr.cz>
+	 <20090118130835.GH47559@fit.vutbr.cz> <20090120150301.GG47559@fit.vutbr.cz>
+	 <1232465547.7055.3.camel@heimdal.trondhjem.org>
+	 <20090303120848.GV89843@fit.vutbr.cz>
+Content-Type: text/plain
+Date: Tue, 03 Mar 2009 09:16:07 -0500
+Message-Id: <1236089767.9631.4.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm trying to diagnose an NFS performance problem and need to know a bit 
-more about how the Linux NFS client works internally.  I've got a single 
-NFS client which is connected to a network appliance file server via 1Gb 
-ethernet.  We've removed all switches between the client and server to 
-remove that variable from the equation.  We have two benchmarking 
-scripts, one which performs generates mostly GETATTR requests and the 
-other which generates mostly READ/WRITE requests from the server.  The 
-file system is mounted using "actimeo=1".  This is required for our 
-purposes since we need file status information which cannot be out of 
-date by more than 1 second.
+On Tue, 2009-03-03 at 13:08 +0100, Kasparek Tomas wrote:
+> On Tue, Jan 20, 2009 at 10:32:27AM -0500, Trond Myklebust wrote:
+> > A binary wireshark dump of the traffic between one such client and the
+> > server would help.
+> 
+> I was able to finally got the tcpdump. I got it from 2.6.27.19 client but
+> after several weeks without problems. I include the file and place it on
+> http://merlin.fit.vutbr.cz/tmp/nfs/dump_kas2_mat.dump_small (have over 1GB
+> of dump, but it's all the time the same SYN+RST packets). The packet rate
+> maxed at 260000pps from two clients.
+> 
+> This dump is taken from server after reset (the server does not respond
+> even to keybord) before clients are disconnected/rebooted. To remind it - all
+> clients seems to work well with reversed
+> e06799f958bf7f9f8fae15f0c6f519953fb0257c
 
-When we run the GETATTR test alone, we see around 6000 requests per 
-second.  When we run one or more of the READ/WRITE tests at the same 
-time from the same host, we see GETATTR performance drop considerably.  
-Here's the average performance based on the number of READ/WRITE 
-threads:  1=500/sec, 2=215/sec, 4=110/sec, 8=45/sec, 16=15/sec.   So 
-there clearly seems to be some interaction between the response times to 
-GETATTR based on the number of READ/WRITE operations going on.  Now, I'd 
-assume that there would be some degradation but considering that GETATTR 
-is a fast operation for the server to perform and the amount of data 
-being send both ways is very small its more than I was expecting.
+Yes. I saw that behaviour when testing at Connectathon last week. When
+one of the servers I was testing against crashed and later came up
+again, the patched client went into that same SYN+RST frenzy. I'm
+planning to look at this now that I'm back at home.
 
-We then tried adding a second network card, connection and NFS mount 
-from the same client to the same file server.  We segregated all GETATTR 
-traffic to use one mount and the READ/WRITE to use the other mount.  
-With this setup, GETATTR request seem to be almost completely unaffected 
-by any amount of READ/WRITE activity.  Interestingly, the READ/WRITE 
-performance was identical as in the one network/mount case.  So this 
-seemed to validate that the GETATTR requests do not require much bandwidth.
-
-We also performed this same set of tests on a different file server 
-which has a completely different architecture and is also much older and 
-it delivered nearly identical results.  This this what make us think it 
-might be an NFS client related problem and not the server at all.
-
-Sorry to be so long winded, but I needed a proper context to ask my 
-questions...
-
-Is the RPC queue used by NFS processed in a serial fashion for each 
-mount to a unique IP address?  One possible explanation is that the 
-GETATTR requests are simply waiting in line behind READ/WRITES in the 
-one network case and that explains the drop in performance.  So does 
-using a different IP address for the second mount create a second RPC 
-queue which is processed in an asynchronous manner?  That might explain 
-the lack of interaction between the GETATTR's and READ/WRITES in our 
-second test...
-
-If this is not the case, can you suggest any theories that might explain 
-this results along with any tests we might perform to validate these 
-theories?  Many thanks in advance for any insights you can provide!
+Cheers
+  Trond
 
 -- 
-Jim Callahan - President - Temerity Software <www.temerity.us>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
