@@ -1,53 +1,72 @@
-From: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>
-Subject: Re: kernel BUG at kernel/workqueue.c:291
-Date: Tue, 03 Mar 2009 08:36:21 +0100
-Message-ID: <49ACDDF5.8040506@aei.mpg.de>
-References: <49A84376.6030800@aei.mpg.de>	<49ABBA44.1060302@aei.mpg.de> <20090302232643.7c7ca284.akpm@linux-foundation.org>
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Subject: 2.6.27.19 lockd waits too long
+Date: Tue, 3 Mar 2009 10:45:14 +0100
+Message-ID: <20090303094514.GT89843@fit.vutbr.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from welcomes-you.com ([85.214.50.128]:43384 "EHLO
-	smtp.welcomes-you.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750800AbZCCHgh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 02:36:37 -0500
-In-Reply-To: <20090302232643.7c7ca284.akpm@linux-foundation.org>
+Received: from kazi.fit.vutbr.cz ([147.229.8.12]:61390 "EHLO kazi.fit.vutbr.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753493AbZCCJpR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2009 04:45:17 -0500
+Received: from kazi.fit.vutbr.cz (localhost [127.0.0.1])
+	by kazi.fit.vutbr.cz (envelope-from kasparek@fit.vutbr.cz) (8.14.3/8.14.3) with ESMTP id n239jFNZ001861
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 3 Mar 2009 10:45:15 +0100 (CET)
+Received: (from kasparek@localhost)
+	by kazi.fit.vutbr.cz (8.14.3/8.13.1/Submit) id n239jE3d001860
+	for linux-nfs@vger.kernel.org; Tue, 3 Mar 2009 10:45:14 +0100 (CET)
+	(envelope-from kasparek@fit.vutbr.cz)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andrew,
+Hi,
 
-Andrew Morton schrieb:
->> in the mean time 43 of our nodes were struck with this error. It seems
->> that the jobs of a certain user can trigger this bug, however I have no
->> clue how to really trigger it manually.
-> 
-> That's a lot of nodes.
-Quite, at least some percentage of the whole system.
-> 
-> Let's cc the NFS developers, see if this rpciod crash is familiar to them?
+after solving previous problem with buggy FreeBSD server, I hit another
+one.
 
-Good idea, I should have done that myself - sorry
+I tryied 2.6.27.19+linger patch on servers and they work well, so I moved
+to clients. On my desktop machine (pckasparek) with the same system (CentOS
+5.2 + 2.6.27.19) the system freezes when running acroread or openoffice. I
+tracked it down to NFS locking of files in $HOME which is NFS3 
+(rw,nodev,intr,hard,rsize=8192,wsize=8192,bg,nfsvers=3,tcp) mounted from
+server (kazi).
 
-I think we were able to pinpoint at least one user's jobs to "generate"
-this, but I need to talk to him, what access patterns are used via NFS here.
+With real application the system is freezed for minutes up to hours (one
+all the night) and gets running when i kill -9 acroread/OOo. I wrote a
+simple test app that basicly does fcntl64(F_GETLK), F_SETLK, F_UNLCK and
+repeats that several times. With this app it wait only before the first
+fcntl call and only for much shorter time (10-30sec). I was able to get
+some hopefully interesting info (included in attachments).
 
-Systems are running Debian Etch,
+- netstat on client and server before and after nfs-lock was run
+- wireshark dump of all packets
+- dmesg from client with sysrq/W - blocked tasks (and lockd: server kazi
+  not responding, still trying messages)
 
-dpkg -l | awk '/(nfs|portmap)/ {print $2 "\t\t" $3}'
-libnfsidmap2            0.18-0
-mountnfs                1.1.3-2
-nfs-common              1.0.10-6+etch.1
-nfs-kernel-server               1.0.10-6+etch.1
-portmap         5-26
+Seems like there is still some trouble in creating new/properly clearing
+old connections between the client and server.
 
+With previous kernel (2.6.24.7) the client run just fine.
 
-If you need more, please let me know! So far the machines are 'on hold',
-i.e. we have not yet rebooted them to be able to find out a little bit
-more. If you(anyone) think we can reboot them and put back into our
-scheduling queue, please let me know, the users are waiting for more cycles.
+Any suggestions what to try? 
 
-Thanks a lot
+Thanks in advance
 
-Carsten
+(was not able to send this mail with attachments, trying this way)
+http://merlin.fit.vutbr.cz/tmp/nfs/netstat-end.txt
+http://merlin.fit.vutbr.cz/tmp/nfs/netstat-start.txt
+http://merlin.fit.vutbr.cz/tmp/nfs/pckaspare-kazi.dump
+http://merlin.fit.vutbr.cz/tmp/nfs/pckasparek-dmesg.txt
+
+--   
+
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 1, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
+
+  jabber: tomas.kasparek-2ASvDZBniIelVyrhU4qvOw@public.gmane.org
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
+
