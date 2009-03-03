@@ -1,153 +1,96 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: Permission denied when mounting NFS (was okay before)
-Date: Tue, 03 Mar 2009 12:04:17 +0200
-Message-ID: <49AD00A1.3050606@panasas.com>
-References: <b66ddc900809260432o4ecfab4fk39b0d06002bae57a@mail.gmail.com> <RTPCLUEXC2-PRDM3SOl0000001f@RTPMVEXC1-PRD.hq.netapp.com> <b66ddc900809260805g71578cacr73a526e87a77e677@mail.gmail.com> <RTPCLUEXC2-PRDNXRPm0000003a@RTPMVEXC1-PRD.hq.netapp.com> <b66ddc900809260857o39c4ef31h75af8e7eaf9448fc@mail.gmail.com> <1222445161.10150.4.camel@localhost> <b66ddc900809260913r6c009658p958d88aa2e1be99e@mail.gmail.com> <RTPCLUEXC2-PRDIIZS20000003d@RTPMVEXC1-PRD.hq.netapp.com> <b66ddc900809282121t6953e068n62870810f1d0874@mail.gmail.com> <b66ddc900809282153yb873d8ayf82f2a61eca9cc18@mail.gmail.com> <20080929172630.GB23212@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: kernel BUG at kernel/workqueue.c:291
+Date: Tue, 03 Mar 2009 10:16:53 -0500
+Message-ID: <1236093413.9631.58.camel@heimdal.trondhjem.org>
+References: <49A84376.6030800@aei.mpg.de> <49ABBA44.1060302@aei.mpg.de>
+	 <20090302232643.7c7ca284.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: howard chen <howachen@gmail.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	Steve Dickson <steved@redhat.com>
+Content-Type: text/plain
+Cc: Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f177.google.com ([209.85.219.177]:52617 "EHLO
-	mail-ew0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751929AbZCCKEY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 05:04:24 -0500
-Received: by ewy25 with SMTP id 25so2261437ewy.37
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Mar 2009 02:04:21 -0800 (PST)
-In-Reply-To: <20080929172630.GB23212@fieldses.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:39990 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753475AbZCCPRC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2009 10:17:02 -0500
+In-Reply-To: <20090302232643.7c7ca284.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep. 29, 2008, 20:26 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Mon, Sep 29, 2008 at 12:53:16PM +0800, howard chen wrote:
->> Hello all,
->>
->> On Mon, Sep 29, 2008 at 12:21 PM, howard chen <howachen@gmail.com> wrote:
->>> Yes, tested, and same error... Also tried "no_root_squash"...
->>>
->>> Really have no idea what is going on...
->>>
->> Problem solved by adding the following line in fstab, according to
->> this site: http://www.linuxforums.org/forum/linux-networking/44779-nfs-permission-denied-error.html
+On Mon, 2009-03-02 at 23:26 -0800, Andrew Morton wrote:
+> On Mon, 02 Mar 2009 11:51:48 +0100 Carsten Aulbert <carsten.aulbert-l1a6w7hxd2yELgA04lAiVw@public.gmane.org> wrote:
 > 
-> Huh.  Surely mountd or knfsd could have given a more helpful error
-> message, at least....
-
-I agree.
-I've just hit this problem again today (running Fedora 9).
-(and I think http://bugzilla.redhat.com/show_bug.cgi?id=218994 might
-be the same thing BTW)
-
-rpc.mountd just prints
-authenticated mount request from 192.168.0.140:669 for /usr0/export
-even when invoked with --debug all.
-
-However it denies access.  Here's tshark -V output:
-
-Remote Procedure Call, Type:Call XID:0xee9360da
-    Fragment header: Last fragment, 124 bytes
-        1... .... .... .... .... .... .... .... = Last Fragment: Yes
-        .000 0000 0000 0000 0000 0000 0111 1100 = Fragment Length: 124
-    XID: 0xee9360da (4002635994)
-    Message Type: Call (0)
-    RPC Version: 2
-    Program: MOUNT (100005)
-    Program Version: 3
-    Procedure: MNT (1)
-    Credentials
-        Flavor: AUTH_UNIX (1)
-        Length: 68
-        Stamp: 0x004235f6
-        Machine Name: pangw.bhalevy.com
-            length: 17
-            contents: pangw.bhalevy.com
-            fill bytes: opaque data
-        UID: 0
-        GID: 0
-        Auxiliary GIDs
-            GID: 0
-            GID: 1
-            GID: 2
-            GID: 3
-            GID: 4
-            GID: 6
-            GID: 10
-    Verifier
-        Flavor: AUTH_NULL (0)
-        Length: 0
-Mount Service
-    [Program Version: 3]
-    [V3 Procedure: MNT (1)]
-    Path: /usr0/export
-        length: 12
-        contents: /usr0/export
-
-...
-Remote Procedure Call, Type:Reply XID:0xee9360da
-    Fragment header: Last fragment, 28 bytes
-        1... .... .... .... .... .... .... .... = Last Fragment: Yes
-        .000 0000 0000 0000 0000 0000 0001 1100 = Fragment Length: 28
-    XID: 0xee9360da (4002635994)
-    Message Type: Reply (1)
-    [Program: MOUNT (100005)]
-    [Program Version: 3]
-    [Procedure: MNT (1)]
-    Reply State: accepted (0)
-    [This is a reply to a request in frame 3474]
-    [Time from request: 0.000868000 seconds]
-    Verifier
-        Flavor: AUTH_NULL (0)
-        Length: 0
-    Accept State: RPC executed successfully (0)
-Mount Service
-    [Program Version: 3]
-    [V3 Procedure: MNT (1)]
-    Status: ERR_ACCESS (13)
-
-Running strace rpc.mountd -F --debug all shows:
-...
-open("/proc/fs/nfsd/filehandle", O_RDWR) = -1 ENOENT (No such file or directory)
-open("/proc/fs/nfs/filehandle", O_RDWR) = -1 ENOENT (No such file or directory)
-
-
+> > Hi again,
+> > 
+> > in the mean time 43 of our nodes were struck with this error. It seems
+> > that the jobs of a certain user can trigger this bug, however I have no
+> > clue how to really trigger it manually.
 > 
->> nfsd /proc/fs/nfsd nfsd auto,defaults 0 0
-
-doping this manually using
-mount -t nfsd nfsd /proc/fs/nfsd
-does the same trick
-
->>
->>
->> This is really funny as I never have this option in my other NFS servers....
->>
->> Anyone know the reason? Redhat's bug?
+> That's a lot of nodes.
 > 
-> It looks like nfsd is supposed to be mounted on load of the nfsd module,
-> by a line in /etc/modprobe.d/modprobe.conf.
-
-Right.
-
-# grep nfsd /etc/modprobe.d/modprobe.conf.dist
-install nfsd /sbin/modprobe --first-time --ignore-install nfsd && { /bin/mount -t nfsd nfsd /proc/fs/nfsd > /dev/null 2>&1 || :; }
-remove nfsd { /bin/umount /proc/fs/nfsd > /dev/null 2>&1 || :; } ; /sbin/modprobe -r --first-time --ignore-remove nfsd
-
+> > My questions:
+> > Is this a know bug for 2.6.27.14 (we can upgrade to .19 if necessary),
+> > but as this file was not modyfied recently, I suspect there is no ready
+> > fix for that.
+> > 
+> > Do you need any more info of our systems (Intel X3220 based Supermirco
+> > systems), the kernel config (deadline scheduler in use,...) or something
+> > else?
 > 
-> (Maybe you built a new kernel with nfsd built-in instead of built as a
-> module?)
+> Let's cc the NFS developers, see if this rpciod crash is familiar to them?
+
+Nope. I've never seen it before.
+
+struct rpc_task does admittedly share storage for the work queue and the
+rpc wait queue links, but if that were to be causing the reported
+corruption, then it would mean that an rpc_task is simultaneously on a
+wait queue and trying to execute on a work queue. I have no history of
+that ever having happened.
+
+Trond
+
+> > Carsten Aulbert schrieb:
+> > > [228704.928037] ------------[ cut here ]------------
+> > > [228704.928224] kernel BUG at kernel/workqueue.c:291!
+> > > [228704.928404] invalid opcode: 0000 [1] SMP
+> > > [228704.928647] CPU 0
+> > > [228704.928852] Modules linked in: lm92 w83793 w83781d hwmon_vid hwmon nfs nfsd lockd nfs_acl auth_rpcgss sunrpc exportfs autofs4 netconsole configfs ipmi_si ipmi_devintf ipmi_watchdog ipmi_poweroff ipmi_msghandler e1000e i2c_i801 8250_pnp 8250 serial_core i2c_core
+> > > [228704.930002] Pid: 1609, comm: rpciod/0 Not tainted 2.6.27.14-nodes #1
+> > > [228704.930002] RIP: 0010:[<ffffffff8023c6db>]  [<ffffffff8023c6db>] run_workqueue+0x6f/0x102
+> > > [228704.930002] RSP: 0018:ffff880214bcdec0  EFLAGS: 00010207
+> > > [228704.930002] RAX: 0000000000000000 RBX: ffff880214b82f40 RCX: ffff880215444418
+> > > [228704.930002] RDX: ffff880187d07d58 RSI: ffff880214bcdee0 RDI: ffff880215444410
+> > > [228704.930002] RBP: ffffffffa0077186 R08: ffff880214bcc000 R09: ffff88021491f808
+> > > [228704.930002] R10: 0000000000000246 R11: ffff880187d07d50 R12: ffff880214ad7d28
+> > > [228704.930002] R13: ffffffff806065a0 R14: ffffffff80607280 R15: 0000000000000000
+> > > [228704.930002] FS:  0000000000000000(0000) GS:ffffffff80636040(0000) knlGS:0000000000000000
+> > > [228704.930002] CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+> > > [228704.930002] CR2: 00007fc056333fd8 CR3: 00000001ed270000 CR4: 00000000000006e0
+> > > [228704.930002] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > > [228704.930002] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > > [228704.930002] Process rpciod/0 (pid: 1609, threadinfo ffff880214bcc000, task ffff880217b08780)
+> > > [228704.930002] Stack:  ffff880214b82f40 ffff880214b82f40 ffff880214b82f58 ffffffff8023cff3
+> > > [228704.930002]  0000000000000000 ffff880217b08780 ffffffff8023f7d7 ffff880214bcdef8
+> > > [228704.930002]  ffff880214bcdef8 ffffffff806065a0 ffffffff80607280 ffff880214b82f40
+> > > [228704.930002] Call Trace:
+> > > [228704.930002]  [<ffffffff8023cff3>] ? worker_thread+0x90/0x9b
+> > > [228704.930002]  [<ffffffff8023f7d7>] ? autoremove_wake_function+0x0/0x2e
+> > > [228704.930002]  [<ffffffff8023cf63>] ? worker_thread+0x0/0x9b
+> > > [228704.930002]  [<ffffffff8023f6c2>] ? kthread+0x47/0x75
+> > > [228704.930002]  [<ffffffff8022afa8>] ? schedule_tail+0x27/0x5f
+> > > [228704.930002]  [<ffffffff8020ccb9>] ? child_rip+0xa/0x11
+> > > [228704.930002]  [<ffffffff8023f67b>] ? kthread+0x0/0x75
+> > > [228704.930002]  [<ffffffff8020ccaf>] ? child_rip+0x0/0x11
+> > > [228704.930002]
+> > > [228704.930002]
+> > > [228704.930002] Code: 6f 18 48 89 7b 30 48 8b 11 48 8b 41 08 48 89 42 08 48 89 10 48 89 49 08 48 89 09 fe 03 fb 48 8b 41 f8 48 83 e0 fc 48 39 d8 74 04 <0f> 0b eb fe f0 80 61 f8 fe ff d5 65 48 8b 04 25 10 00 00 00 8b
+> > > [228704.930002] RIP  [<ffffffff8023c6db>] run_workqueue+0x6f/0x102
+> > > [228704.930002]  RSP <ffff880214bcdec0>
+> > > [228704.941003] ---[ end trace deef6e5387b5a584 ]---
+> > 
+> > Thanks for any input, for reight now I'm quite helpless....
 > 
-> But I thought nfs-utils was supposed to fall back on old behavior when
-> the nfsd filesystem wasn't found.
-
-Doesn't seem so.
-
-Steve: any chance this bug is fixed anywhere?
-
-Benny
-
-> 
-> --b.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
