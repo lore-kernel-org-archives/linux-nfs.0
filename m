@@ -1,41 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:43278 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757946AbZCMCjU (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 12 Mar 2009 22:39:20 -0400
-Message-ID: <49B9C84B.2010506@sgi.com>
-Date: Fri, 13 Mar 2009 13:43:23 +1100
-From: Greg Banks <gnb@sgi.com>
-To: Jim Callahan <callahan@temerity.us>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Best A->B large file copy performance
-References: <49B9780B.2020609@temerity.us>
-In-Reply-To: <49B9780B.2020609@temerity.us>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from kazi.fit.vutbr.cz ([147.229.8.12]:52775 "EHLO kazi.fit.vutbr.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751077AbZCCMIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2009 07:08:55 -0500
+Date: Tue, 3 Mar 2009 13:08:48 +0100
+From: Kasparek Tomas <kasparek@fit.vutbr.cz>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
+	than 120 seconds"
+Message-ID: <20090303120848.GV89843@fit.vutbr.cz>
+References: <20090110102458.GG47559@fit.vutbr.cz> <1231603200.29646.5.camel@heimdal.trondhjem.org> <20090112090404.GL47559@fit.vutbr.cz> <1231782009.7322.12.camel@heimdal.trondhjem.org> <1231809446.7322.17.camel@heimdal.trondhjem.org> <20090113152201.GD47559@fit.vutbr.cz> <20090116104802.GF47559@fit.vutbr.cz> <20090118130835.GH47559@fit.vutbr.cz> <20090120150301.GG47559@fit.vutbr.cz> <1232465547.7055.3.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1232465547.7055.3.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Jim Callahan wrote:
-> I'm trying to determine the most optimal way to have a single NFS
-> client copy large numbers (100-1000) of fairly large (1-50M) files [...]
-I'd like to propose a new rule of thumb:  to be considered "fairly
-large", a file should be larger than the capacity of a USB key which
-could be comfortably swallowed.
+On Tue, Jan 20, 2009 at 10:32:27AM -0500, Trond Myklebust wrote:
+> > > > > > The attached 2 patches have been tested using a server that was rigged
+> > > > > > not to ever close the socket. They appear to work fine on my setup,
+> > > > > > without the hang that you reported earlier.
+> > > ...
+> > > It seems that machines with this new kernel (tried on 10 other machines
+> > > and the original client) may after few days get into state where they
+> > > generate huge amounts (10000-100000pkt/s) of packets on another server they
+> > > use (Linux 2.6.26.62, but the same behaviour with other kernels I tried -
+> > > 2.6.24.7, 2.6.22.19, 2.6.27.10). It seems packets are quiet small as the
+> > > flow on server is about 5-10MB/s. (probably) Each packet generates an answer.
+> > > With this flow it is hard to get more info and the server is production
+> > > one, so for now I only know it goes from these clients and end on tcp port
+> > > 2049 on that server. It kills just this server, communication with the
+> > > previously problematic (FreeBSD machines) is fine now.
 
-> [...] Since the number of permutations of these three settings are
-> large I was hoping that I might get some advise from this list about a
-> range of values we should be investigating and any unpleasant
-> interactions between these levels of settings we should be aware of to
-> narrow our search.  Also, if there are other major factors outside
-> those listed I'd appreciate being pointed in the right direction.
-Try
+> > configrming that the problem is with machines with 2.6.27.10+trond's
+> > patches. Do not have more info about what's there on network, the only new
+> > thing I can add is that the client is dead not reacting even on keyborad or
+> > anything else. Trond, would you have and idea what to try now or what other
+> > information to find to get any further in this?
+> 
+> A binary wireshark dump of the traffic between one such client and the
+> server would help.
 
-http://mirror.linux.org.au/pub/linux.conf.au/2008/slides/130-lca2008-nfs-tuning-secrets-d7.odp
+I was able to finally got the tcpdump. I got it from 2.6.27.19 client but
+after several weeks without problems. I include the file and place it on
+http://merlin.fit.vutbr.cz/tmp/nfs/dump_kas2_mat.dump_small (have over 1GB
+of dump, but it's all the time the same SYN+RST packets). The packet rate
+maxed at 260000pps from two clients.
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+This dump is taken from server after reset (the server does not respond
+even to keybord) before clients are disconnected/rebooted. To remind it - all
+clients seems to work well with reversed
+e06799f958bf7f9f8fae15f0c6f519953fb0257c
+
+(just to be a hint do not mean the patch is wrong)
+
+Thanks in advance
+
+--   
+
+  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
+  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
+  Bozetechova 1, 612 66        Fax:    +420 54114-1270
+  Brno, Czech Republic         Phone:  +420 54114-1220
+
+  jabber: tomas.kasparek@jabber.cz
+  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
 
