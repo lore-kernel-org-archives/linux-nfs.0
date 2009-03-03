@@ -1,107 +1,92 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 17/17] NFS: Start PF_INET6 callback listener only if IPv6
-	support is available
-Date: Tue, 03 Mar 2009 17:34:18 -0500
-Message-ID: <20090303223417.2933.29513.stgit@ingres.1015granger.net>
-References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 0/46] nfs41 sessions infrastructure
+Date: Wed, 04 Mar 2009 01:28:04 +0200
+Message-ID: <49ADBD04.2090002@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:52509 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753660AbZCCWfI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:35:08 -0500
-In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:17136
+	"EHLO natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754177AbZCCXl6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 18:41:58 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apparently a lot of people need to disable IPv6 completely on their
-distributor-built systems, which have CONFIG_IPV6_MODULE enabled.
+Trond,
 
-They do this by blacklisting the ipv6.ko module.  This causes the
-creation of the NFSv4 callback service listener to fail if
-CONFIG_IPV6_MODULE is set, but the module cannot be loaded.
+The following patchset implements infrastructure for nfs41 sessions
+in the kernel's nfs client.  The patches are based on v2.6.29-rc6
+are are supposed to be fully bisactable and ready for review
+and, hopefully, submission upstream.
 
-Now that the kernel's PF_INET6 RPC listeners are completely separate
-from PF_INET listeners, we can always start PF_INET.  Then the NFS
-client can try to start a PF_INET6 listener, but it isn't required
-to be available.
+(To see the whole context, see the full tree for nfs41 and pnfs:
+git://linux-nfs.org/~bhalevy/linux-pnfs.git
+The nfs41-for-2.6.30 branch holds this patchset
+nfs41-latest and pnfs-all-latest are shortcuts for
+the latest nfs41 and pnfs patches, respectively)
 
-Note this has the added benefit that NFS callbacks from AF_INET6
-servers will never come from AF_INET remotes.  We no longer have to
-worry about matching mapped IPv4 addresses to AF_INET when comparing
-addresses.
+"TOC"
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Misc:
+[PATCH 01/46] nfs41: common protocol definitions
+[PATCH 02/46] nfs41: Add Kconfig symbols for NFSv4.1
 
- fs/nfs/callback.c  |   12 ++++++++++++
- fs/nfs/callback.h  |    1 +
- fs/nfs/nfs4state.c |   10 ++++++++--
- 3 files changed, 21 insertions(+), 2 deletions(-)
+Implement the minorversion mount option:
+[PATCH 03/46] nfs41: define NFS4_MAX_MINOR_VERSION based on CONFIG_NFS_V4_1
+[PATCH 04/46] nfs41: nfs_client.cl_minorversion
+[PATCH 05/46] nfs41: add mount command option minorversion
+[PATCH 06/46] nfs41: Use mount minorversion option
+[PATCH 07/46] nfs41: translate NFS4ERR_MINOR_VERS_MISMATCH to EPROTONOSUPPORT
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 0ef47df..a886e69 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -38,6 +38,7 @@ static struct svc_program nfs4_callback_program;
- 
- unsigned int nfs_callback_set_tcpport;
- unsigned short nfs_callback_tcpport;
-+unsigned short nfs_callback_tcpport6;
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
- 
-@@ -119,6 +120,17 @@ int nfs_callback_up(void)
- 	dprintk("NFS: Callback listener port = %u (af %u)\n",
- 			nfs_callback_tcpport, PF_INET);
- 
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	ret = svc_create_xprt(serv, "tcp", PF_INET6,
-+				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-+	if (ret > 0) {
-+		nfs_callback_tcpport6 = ret;
-+		dprintk("NFS: Callback listener port = %u (af %u)\n",
-+				nfs_callback_tcpport6, PF_INET6);
-+	} else if (ret != -EAFNOSUPPORT)
-+		goto out_err;
-+#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
-+
- 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(nfs_callback_info.rqst)) {
- 		ret = PTR_ERR(nfs_callback_info.rqst);
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index bb25d21..e110e28 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -72,5 +72,6 @@ extern void nfs_callback_down(void);
- 
- extern unsigned int nfs_callback_set_tcpport;
- extern unsigned short nfs_callback_tcpport;
-+extern unsigned short nfs_callback_tcpport6;
- 
- #endif /* __LINUX_FS_NFS_CALLBACK_H */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2022fe4..0298e90 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -62,8 +62,14 @@ static LIST_HEAD(nfs4_clientid_list);
- 
- static int nfs4_init_client(struct nfs_client *clp, struct rpc_cred *cred)
- {
--	int status = nfs4_proc_setclientid(clp, NFS4_CALLBACK,
--			nfs_callback_tcpport, cred);
-+	unsigned short port;
-+	int status;
-+
-+	port = nfs_callback_tcpport;
-+	if (clp->cl_addr.ss_family == AF_INET6)
-+		port = nfs_callback_tcpport6;
-+
-+	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred);
- 	if (status == 0)
- 		status = nfs4_proc_setclientid_confirm(clp, cred);
- 	if (status == 0)
 
+Set the stage for adding nfs41 sequence args and res to xdr ops
+args and res data structures:
+[PATCH 08/46] nfs41: client xdr definitions
+[PATCH 09/46] nfs41: sessions client infrastructure
+[PATCH 10/46] nfs41: find slot
+[PATCH 11/46] nfs41: free slot
+[PATCH 12/46] nfs41: use nfs4_server_caps_arg
+[PATCH 13/46] nfs41: use nfs4_readlink_res
+[PATCH 14/46] nfs41: use nfs4_statfs_res
+[PATCH 15/46] nfs41: use nfs4_fsinfo_res
+[PATCH 16/46] nfs41: use nfs4_pathconf_res
+[PATCH 17/46] nfs41: use nfs4_getaclres
+[PATCH 18/46] NFS: get rid of unused xdr decode_setattr(, res) argument
+[PATCH 19/46] nfs41: use nfs4_setaclres
+[PATCH 20/46] nfs41: use nfs4_fs_locations_res
+
+Encode minorversion in compound header:
+[PATCH 21/46] sunrpc: add cl_private field to struct rpc_clnt
+[PATCH 22/46] nfs41: sunrpc: use private void pointer in rpc_clnt
+[PATCH 23/46] nfs41: encode minorversion in compound header
+
+
+xdr scaffolding for sequence x-coding:
+[PATCH 24/46] NFS: fix decode_fs_locations_maxsz
+[PATCH 25/46] NFS: use decode_change_info_maxsz for xdr maxsz calculations
+[PATCH 26/46] NFS: define and initialize compound_hdr.replen
+[PATCH 27/46] NFS: update hdr->replen for every encode op
+[PATCH 28/46] NFS: use dynamically computed compound_hdr.replen for xdr_inline_pages offset
+[PATCH 29/46] nfs41: xdr {encode,decode}_sequence
+
+rpc level support for session:
+[PATCH 30/46] nfs41: stubs for nfs41 procedures
+[PATCH 31/46] nfs41: introduce nfs4_call_sync
+[PATCH 32/46] nfs41: set up seq_res.sr_slotid
+[PATCH 33/46] nfs41: nfs4_setup_sequence
+[PATCH 34/46] nfs41: setup_sequence method
+[PATCH 35/46] nfs41: nfs41_sequence_free_slot
+[PATCH 36/46] nfs41: nfs41_sequence_done
+[PATCH 37/46] nfs41: nfs41_call_sync_done
+[PATCH 38/46] nfs41: close sequence setup/done support
+[PATCH 39/46] nfs41: open sequence setup/done support
+[PATCH 40/46] nfs41: lock sequence setup/done support
+[PATCH 41/46] nfs41: locku sequence setup/done support
+[PATCH 42/46] nfs41: unlink sequence setup/done support
+[PATCH 43/46] nfs41: read sequence setup/done support
+[PATCH 44/46] nfs41 write sequence setup done support
+[PATCH 45/46] nfs41 commit sequence setup done support
+[PATCH 46/46] nfs41 delegreturn sequence setup done support
