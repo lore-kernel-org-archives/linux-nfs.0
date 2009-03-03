@@ -1,65 +1,60 @@
-From: Yang Hongyang <yanghy@cn.fujitsu.com>
-Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
-Date: Tue, 10 Mar 2009 16:22:47 +0800
-Message-ID: <49B62357.3080604@cn.fujitsu.com>
-References: <49B622D1.6060602@cn.fujitsu.com>
+From: Suresh Jayaraman <sjayaraman@suse.de>
+Subject: Re: [NFS] nfsd hangs 2.6.28 through 2.6.28.7
+Date: Tue, 03 Mar 2009 14:55:19 +0530
+Message-ID: <49ACF77F.303@suse.de>
+References: <49AC747F.6010001@atmos.washington.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Cc: linux-nfs@vger.kernel.org
-To: Ni Wenjuan <niwj@cn.fujitsu.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: warren-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:52320 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753096AbZCJIXz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Mar 2009 04:23:55 -0400
-Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
-	by song.cn.fujitsu.com (Postfix) with ESMTP id 0682317012F
-	for <linux-nfs@vger.kernel.org>; Tue, 10 Mar 2009 16:46:15 +0800 (CST)
-Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
-	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id n2A8OsPT026835
-	for <linux-nfs@vger.kernel.org>; Tue, 10 Mar 2009 16:24:54 +0800
-In-Reply-To: <49B622D1.6060602@cn.fujitsu.com>
+Received: from neil.brown.name ([220.233.11.133]:42652 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752787AbZCCJr3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Mar 2009 04:47:29 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LeRDd-0004Zu-RH
+	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2009 20:47:21 +1100
+In-Reply-To: <49AC747F.6010001-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ni Wenjuan wrote:
-> Fix a test in rename operation. rename dir1 into existing,nonempty dir2 should
-> return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPY. RFC says if the target is a
-> directory but not empty, the server will return the error, NFS4ERR_EXIST.
-> 
+David Warren wrote:
+> We are seeing nfsd getting stuck in d wait at boot time. The fix seems
+> to be stopping in single user mode prior to nfs starting, renaming
+> /var/lib/nfs/v4recovery/ and making a new one, then letting the system
+> continue. When it boots and hangs, all processes that touch
+> /var/lib/nfs/v4recovery/ go into D-wait. However, if you rename it and
+(Cc fixed)
 
-SOF && please use git to generate patch.
+Can you get a Sysrq + w output by doing either
+    echo w > /proc/sysrq-trigger
+   (or)
+   Sysrq + w (hold Sysrq key and press 'w')
+and capture dmesg output and attach?
 
-> ------
-> fs/nfsd/nfs4proc.c | 2 +-
-> 1 files changed, 1 insertion(+) ,1 deletion (-)
-> 
-> diff -Nurp fs/nfsd/nfs4proc_orig.c fs/nfsd/nfs4proc.c
-> --- fs/nfsd/nfs4proc_orig.c	2009-02-23 20:28:56.000000000 +0800
-> +++ fs/nfsd/nfs4proc.c	2009-03-05 16:56:56.000000000 +0800
-> 
-> @@ -585,10 +586,11 @@ nfsd4_rename(struct svc_rqst *rqstp, str
->    	status = nfsd_rename(rqstp, save_fh, rename->rn_sname,
->   			     rename->rn_snamelen, current_fh,
->   			     rename->rn_tname, rename->rn_tnamelen);
-> 
->   	/* the underlying filesystem returns different error's than required
->   	 * by NFSv4. both save_fh and current_fh have been verified.. */
->     -	if (status == nfserr_isdir)
->     +	if (status == nfserr_isdir || status == nfserr_notempty)
->   		status = nfserr_exist;
->   	else if ((status == nfserr_notdir) &&
->                     (S_ISDIR(save_fh->fh_dentry->d_inode->i_mode) &&
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+It you could not get a shell, you could try to disable NFS during boot
+and try to start NFS once the machine boots and then try.
+Is the NFS server running inside a Virtual machine?
 
+
+Thanks,
 
 -- 
-Regards
-Yang Hongyang
+Suresh Jayaraman
+
+------------------------------------------------------------------------------
+Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
+-OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
+-Strategies to boost innovation and cut costs with open source participation
+-Receive a $600 discount off the registration fee with the source code: SFAD
+http://p.sf.net/sfu/XcvMzF8H
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
