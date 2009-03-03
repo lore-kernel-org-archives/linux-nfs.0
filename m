@@ -1,99 +1,99 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/17] NFS: Revert creation of IPv6 listeners for lockd and
-	NFSv4 callbacks
-Date: Tue, 03 Mar 2009 17:32:47 -0500
-Message-ID: <20090303223247.2933.28696.stgit@ingres.1015granger.net>
+Subject: [PATCH 14/17] SUNRPC: rpcb_register() should handle errors silently
+Date: Tue, 03 Mar 2009 17:33:55 -0500
+Message-ID: <20090303223355.2933.88085.stgit@ingres.1015granger.net>
 References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:53255 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752853AbZCCWdv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:33:51 -0500
+Received: from acsinet11.oracle.com ([141.146.126.233]:44751 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755013AbZCCWeg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:34:36 -0500
 In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm about to change over to separate AF_INET and AF_INET6 listeners.
-Clear the way by removing the logic in lockd and the NFSv4 callback
-server that creates an AF_INET6 service listener.
+Move error reporting for RPC registration to rpcb_register's caller.
+
+This way the caller can choose to recover silently from certain
+errors, but report errors it does not recognize.  Error reporting
+for kernel RPC service registration is now handled in one place.
+
+This patch is part of a series that addresses
+   http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/svc.c    |   13 +------------
- fs/nfs/callback.c |   14 ++------------
- 2 files changed, 3 insertions(+), 24 deletions(-)
+ net/sunrpc/rpcb_clnt.c |    2 +-
+ net/sunrpc/svc.c       |   18 +++++++++++-------
+ 2 files changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index d309200..566932b 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -53,17 +53,6 @@ static struct svc_rqst		*nlmsvc_rqst;
- unsigned long			nlmsvc_timeout;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index cccc676..42e9b96 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -189,7 +189,7 @@ static int rpcb_register_call(const u32 version, struct rpc_message *msg)
+ 		error = PTR_ERR(rpcb_clnt);
  
- /*
-- * If the kernel has IPv6 support available, always listen for
-- * both AF_INET and AF_INET6 requests.
-- */
--#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
--	defined(CONFIG_SUNRPC_REGISTER_V4)
--static const sa_family_t	nlmsvc_family = AF_INET6;
--#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
--static const sa_family_t	nlmsvc_family = AF_INET;
--#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
--
--/*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
+ 	if (error < 0) {
+-		printk(KERN_WARNING "RPC: failed to contact local rpcbind "
++		dprintk("RPC:       failed to contact local rpcbind "
+ 				"server (errno %d).\n", -error);
+ 		return error;
+ 	}
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 949164d..dc50159 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -818,26 +818,30 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+  * Returns zero on success; a negative errno value is returned
+  * if any error occurs.
   */
-@@ -211,7 +200,7 @@ static int create_lockd_listener(struct svc_serv *serv, char *name,
- 
- 	xprt = svc_find_xprt(serv, name, 0, 0);
- 	if (xprt == NULL)
--		return svc_create_xprt(serv, name, nlmsvc_family,
-+		return svc_create_xprt(serv, name, PF_INET,
- 					port, SVC_SOCK_DEFAULTS);
- 
- 	svc_xprt_put(xprt);
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index ddf4b4a..0ef47df 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -41,16 +41,6 @@ unsigned short nfs_callback_tcpport;
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
- 
--/*
-- * If the kernel has IPv6 support available, always listen for
-- * both AF_INET and AF_INET6 requests.
-- */
--#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
--static const sa_family_t	nfs_callback_family = AF_INET6;
--#else
--static const sa_family_t	nfs_callback_family = AF_INET;
--#endif
--
- static int param_set_port(const char *val, struct kernel_param *kp)
+-static int __svc_register(const u32 program, const u32 version,
++static int __svc_register(const char *progname,
++			  const u32 program, const u32 version,
+ 			  const int family,
+ 			  const unsigned short protocol,
+ 			  const unsigned short port)
  {
- 	char *endp;
-@@ -121,13 +111,13 @@ int nfs_callback_up(void)
- 	if (!serv)
- 		goto out_err;
+-	int error;
++	int error = -EAFNOSUPPORT;
  
--	ret = svc_create_xprt(serv, "tcp", nfs_callback_family,
-+	ret = svc_create_xprt(serv, "tcp", PF_INET,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
- 		goto out_err;
- 	nfs_callback_tcpport = ret;
- 	dprintk("NFS: Callback listener port = %u (af %u)\n",
--			nfs_callback_tcpport, nfs_callback_family);
-+			nfs_callback_tcpport, PF_INET);
+ 	switch (family) {
+ 	case PF_INET:
+-		return __svc_rpcb_register4(program, version,
++		error = __svc_rpcb_register4(program, version,
+ 						protocol, port);
+ 		break;
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ 	case PF_INET6:
+-		return__svc_rpcb_register6(program, version,
++		error = __svc_rpcb_register6(program, version,
+ 						protocol, port);
+ #endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+ 	}
  
- 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(nfs_callback_info.rqst)) {
+-	return -EAFNOSUPPORT;
++	if (error < 0)
++		printk(KERN_WARNING "svc: failed to register %sv%u RPC "
++			"service (errno %d).\n", progname, version, -error);
++	return error;
+ }
+ 
+ /**
+@@ -875,8 +879,8 @@ int svc_register(const struct svc_serv *serv, const int family,
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+ 
+-			error = __svc_register(progp->pg_prog, i,
+-						family, proto, port);
++			error = __svc_register(progp->pg_name, progp->pg_prog,
++						i, family, proto, port);
+ 			if (error < 0)
+ 				break;
+ 		}
 
