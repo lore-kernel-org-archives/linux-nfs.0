@@ -1,93 +1,107 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 10/46] nfs41: find slot
-Date: Wed,  4 Mar 2009 01:53:29 +0200
-Message-ID: <1236124409-3246-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 11/46] nfs41: free slot
+Date: Wed,  4 Mar 2009 01:53:39 +0200
+Message-ID: <1236124419-3271-1-git-send-email-bhalevy@panasas.com>
 References: <49ADBD04.2090002@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:17447
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:17449
 	"EHLO natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754156AbZCCXxl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 18:53:41 -0500
+	by vger.kernel.org with ESMTP id S1755344AbZCCXxv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 18:53:51 -0500
 In-Reply-To: <49ADBD04.2090002@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Find a free slot using bitmap-based allocation.
-Use the optimized ffz function to find a zero bit
-in the bitmap that indicates a free slot, starting
-the search from the 'lowest_free_slotid' position.
+From: Andy Adamson <andros@netapp.com>
 
-If found, mark the slot as used in the bitmap, get
-the slot's slotid and seqid, and update max_slotid
-to be used by the SEQUENCE operation.
+Free a slot in the slot table.
 
-Also, update lowest_free_slotid for next search.
+Mark the slot as free in the bitmap-based allocation table
+by clearing a bit corresponding to the slotid.
 
-If no free slot was found the caller has to wait
-for a free slot (outside the scope of this function)
+Update lowest_free_slotid if freed slotid is lower than that.
+Update highest_used_slotid.  In the case the freed slotid
+equals the highest_used_slotid, scan downwards for the next
+highest used slotid using the optimized fls* functions.
+
+Finally, wake up thread waiting on slot_tbl_waitq for a free slot
+to become available.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: find slot return slotid]
+[nfs41: free slot use slotid]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[use find_first_zero_bit for nfs4_find_slot as per review comment 21/85.]
-[use NFS4_MAX_SLOT_TABLE rather than NFS4_NO_SLOT]
+[nfs41: use find_first_zero_bit for nfs4_find_slot]
+    While at it, obliterate lowest_free_slotid and fix-up related comments.
+    As per review comment 21/85.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: use __clear_bit for nfs4_free_slot]
+    While at it, fix-up function comment.
+    Part of review comment 22/85.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: use find_last_bit in nfs4_free_slot to determine highest used slot.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 [nfs41: rpc_sleep_on slot_tbl_waitq must be called under slot_tbl_lock]
+    Otherwise there's a race (we've hit) with nfs4_free_slot where
+    nfs41_setup_sequence sees a full slot table, unlocks slot_tbl_lock,
+    nfs4_free_slots happen concurrently and call rpc_wake_up_next
+    where there's nobody to wake up yet, context goes back to
+    nfs41_setup_sequence which goes to sleep when the slot table
+    is actually empty now and there's no-one to wake it up anymore.
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |   37 +++++++++++++++++++++++++++++++++++++
- 1 files changed, 37 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c |   36 ++++++++++++++++++++++++++++++++++++
+ 1 files changed, 36 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c12cf91..9bc6bb7 100644
+index 9bc6bb7..fed6cfb 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -279,6 +279,43 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
- 	spin_unlock(&clp->cl_lock);
- }
+@@ -282,6 +282,42 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ #if defined(CONFIG_NFS_V4_1)
  
-+#if defined(CONFIG_NFS_V4_1)
-+
-+/*
-+ * nfs4_find_slot - efficiently look for a free slot
+ /*
++ * nfs4_free_slot - free a slot and efficiently update slot table.
 + *
-+ * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
-+ * If found, we mark the slot as used, update the highest_used_slotid,
-+ * and respectively set up the sequence operation args.
-+ * The slot number is returned if found, or NFS4_MAX_SLOT_TABLE otherwise.
++ * freeing a slot is trivially done by clearing its respective bit
++ * in the bitmap.
++ * If the freed slotid equals highest_used_slotid we want to update it
++ * so that the server would be able to size down the slot table if needed,
++ * otherwise we know that the highest_used_slotid is still in use.
++ * When updating highest_used_slotid there may be "holes" in the bitmap
++ * so we need to scan down from highest_used_slotid to 0 looking for the now
++ * highest slotid in use.
++ * If none found, highest_used_slotid is set to -1.
 + */
-+static u8
-+nfs4_find_slot(struct nfs4_slot_table *tbl, struct rpc_task *task)
++static void
++nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
 +{
-+	int slotid;
-+	u8 ret_id = NFS4_MAX_SLOT_TABLE;
-+	BUILD_BUG_ON((u8)NFS4_MAX_SLOT_TABLE != (int)NFS4_MAX_SLOT_TABLE);
++	int slotid = free_slotid;
 +
 +	spin_lock(&tbl->slot_tbl_lock);
-+	dprintk("--> %s used_slots=%04lx highest_used=%d max_slots=%d\n",
-+		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
-+		tbl->max_slots);
-+	slotid = find_first_zero_bit(tbl->used_slots, tbl->max_slots);
-+	if (slotid >= tbl->max_slots)
-+		goto out;
-+	__set_bit(slotid, tbl->used_slots);
-+	if (slotid > tbl->highest_used_slotid)
-+		tbl->highest_used_slotid = slotid;
-+	ret_id = slotid;
-+out:
-+	dprintk("<-- %s used_slots=%04lx highest_used=%d slotid=%d \n",
-+		__func__, tbl->used_slots[0], tbl->highest_used_slotid, ret_id);
++	/* clear used bit in bitmap */
++	__clear_bit(slotid, tbl->used_slots);
++
++	/* update highest_used_slotid when it is freed */
++	if (slotid == tbl->highest_used_slotid) {
++		slotid = find_last_bit(tbl->used_slots, tbl->max_slots);
++		if (slotid >= 0 && slotid < tbl->max_slots)
++			tbl->highest_used_slotid = slotid;
++		else
++			tbl->highest_used_slotid = -1;
++	}
++	rpc_wake_up_next(&tbl->slot_tbl_waitq);
 +	spin_unlock(&tbl->slot_tbl_lock);
-+	return ret_id;
++	dprintk("%s: free_slotid %u highest_used_slotid %d\n", __func__,
++		free_slotid, tbl->highest_used_slotid);
 +}
 +
-+#endif /* CONFIG_NFS_V4_1 */
-+
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- {
- 	struct nfs_inode *nfsi = NFS_I(dir);
++/*
+  * nfs4_find_slot - efficiently look for a free slot
+  *
+  * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
 -- 
 1.6.1.3
 
