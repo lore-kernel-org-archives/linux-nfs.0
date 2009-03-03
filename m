@@ -1,121 +1,169 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 32/46] nfs41: set up seq_res.sr_slotid
-Date: Wed,  4 Mar 2009 01:59:33 +0200
-Message-ID: <1236124773-3864-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 33/46] nfs41: nfs4_setup_sequence
+Date: Wed,  4 Mar 2009 01:59:44 +0200
+Message-ID: <1236124784-3889-1-git-send-email-bhalevy@panasas.com>
 References: <49ADBD04.2090002@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:17743
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:17670
 	"EHLO natasha.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752284AbZCCX7r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 18:59:47 -0500
+	by vger.kernel.org with ESMTP id S1752284AbZCCX76 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 18:59:58 -0500
 In-Reply-To: <49ADBD04.2090002@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Initialize nfs4_sequence_res sr_slotid to NFS4_MAX_SLOT_TABLE.
+Perform the nfs4_setup_sequence in the rpc_call_prepare state.
 
-[was nfs41: sequence res use slotid]
+If a session slot is not available, we will rpc_sleep_on the
+slot wait queue leaving the tk_action as rpc_call_prepare.
+
+Once we have a session slot, hang on to it even through rpc_restart_calls.
+Ensure the nfs41_sequence_res sr_slot pointer is NULL before rpc_run_task is
+called as nfs41_setup_sequence will only find a new slot if it is NULL.
+
+A future patch will call free slot after any rpc_restart_calls, and handle the
+rpc restart that result from a sequence operation error.
+
+Signed-off-by: Rahul Iyer <iyer@netapp.com>
+[nfs41: sequence res use slotid]
+Signed-off-by: Andy Adamson<andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: simplify nfs4_call_sync]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: nfs4_call_sync]
+[nfs41: check for session not minorversion]
+[nfs41: remove rpc_message from nfs41_call_sync_args]
+[moved NFS4_MAX_SLOT_TABLE logic into nfs41_setup_sequence]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |    5 +++++
- fs/nfs/read.c     |    1 +
- fs/nfs/unlink.c   |    1 +
- fs/nfs/write.c    |    2 ++
- 4 files changed, 9 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c       |   89 +++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/nfs_xdr.h |    2 +-
+ 2 files changed, 88 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3760750..f5e7c72 100644
+index f5e7c72..14d77f7 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -447,6 +447,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
- 	p->o_arg.server = server;
- 	p->o_arg.bitmask = server->attr_bitmask;
- 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
-+	p->o_res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	if (flags & O_EXCL) {
- 		u32 *s = (u32 *) p->o_arg.u.verifier.data;
- 		s[0] = jiffies;
-@@ -1539,6 +1540,7 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, int wait)
- 	calldata->res.fattr = &calldata->fattr;
- 	calldata->res.seqid = calldata->arg.seqid;
- 	calldata->res.server = server;
-+	calldata->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	calldata->path.mnt = mntget(path->mnt);
- 	calldata->path.dentry = dget(path->dentry);
- 
-@@ -3156,6 +3158,7 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 	memcpy(&data->stateid, stateid, sizeof(data->stateid));
- 	data->res.fattr = &data->fattr;
- 	data->res.server = server;
-+	data->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	nfs_fattr_init(data->res.fattr);
- 	data->timestamp = jiffies;
- 	data->rpc_status = 0;
-@@ -3308,6 +3311,7 @@ static struct nfs4_unlockdata *nfs4_alloc_unlockdata(struct file_lock *fl,
- 	p->arg.fl = &p->fl;
- 	p->arg.seqid = seqid;
- 	p->res.seqid = seqid;
-+	p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	p->arg.stateid = &lsp->ls_stateid;
- 	p->lsp = lsp;
- 	atomic_inc(&lsp->ls_count);
-@@ -3480,6 +3484,7 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 	p->arg.lock_owner.clientid = server->nfs_client->cl_clientid;
- 	p->arg.lock_owner.id = lsp->ls_id.id;
- 	p->res.lock_seqid = p->arg.lock_seqid;
-+	p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	p->lsp = lsp;
- 	atomic_inc(&lsp->ls_count);
- 	p->ctx = get_nfs_open_context(ctx);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index f856004..9d72124 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -45,6 +45,7 @@ struct nfs_read_data *nfs_readdata_alloc(unsigned int pagecount)
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
- 		p->npages = pagecount;
-+		p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index ecc2953..83d0ce2 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -241,6 +241,7 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
- 		status = PTR_ERR(data->cred);
- 		goto out_free;
- 	}
-+	data->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 
- 	status = -EBUSY;
- 	spin_lock(&dentry->d_lock);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 9f98458..a48afb4 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -52,6 +52,7 @@ struct nfs_write_data *nfs_commitdata_alloc(void)
- 	if (p) {
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
-+		p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	}
- 	return p;
+@@ -350,14 +350,99 @@ out:
+ 	return ret_id;
  }
-@@ -71,6 +72,7 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
- 		memset(p, 0, sizeof(*p));
- 		INIT_LIST_HEAD(&p->pages);
- 		p->npages = pagecount;
-+		p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 		if (pagecount <= ARRAY_SIZE(p->page_array))
- 			p->pagevec = p->page_array;
- 		else {
+ 
++static int nfs41_setup_sequence(struct nfs4_session *session,
++				struct nfs4_sequence_args *args,
++				struct nfs4_sequence_res *res,
++				int cache_reply,
++				struct rpc_task *task)
++{
++	/* slot already allocated? */
++	if (res->sr_slotid != NFS4_MAX_SLOT_TABLE)
++		return 0;
++
++	memset(res, 0, sizeof(*res));
++	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
++	return 0;
++}
++
++int nfs4_setup_sequence(struct nfs_client *clp,
++			struct nfs4_sequence_args *args,
++			struct nfs4_sequence_res *res,
++			int cache_reply,
++			struct rpc_task *task)
++{
++	int ret = 0;
++
++	dprintk("--> %s clp %p session %p sr_slotid %d\n",
++		__func__, clp, clp->cl_session, res->sr_slotid);
++
++	if (!nfs4_has_session(clp))
++		goto out;
++	ret = nfs41_setup_sequence(clp->cl_session, args, res,
++				   cache_reply, task);
++	if (ret != -EAGAIN) {
++		/* terminate rpc task */
++		task->tk_status = ret;
++		task->tk_action = NULL;
++	}
++out:
++	dprintk("<-- %s status=%d\n", __func__, ret);
++	return ret;
++}
++
++struct nfs41_call_sync_data {
++	struct nfs_server *server;
++	struct nfs4_sequence_args *seq_args;
++	struct nfs4_sequence_res *seq_res;
++	int cache_reply;
++};
++
++static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs41_call_sync_data *data = calldata;
++
++	dprintk("--> %s data->server->session %p\n", __func__,
++		data->server->nfs_client->cl_session);
++	if (nfs4_setup_sequence(data->server->nfs_client, data->seq_args,
++				data->seq_res, data->cache_reply, task))
++		return;
++	rpc_call_start(task);
++}
++
++struct rpc_call_ops nfs41_call_sync_ops = {
++	.rpc_call_prepare = nfs41_call_sync_prepare,
++};
++
+ int _nfs4_call_sync_session(struct nfs_server *server,
+ 			    struct rpc_message *msg,
+ 			    struct nfs4_sequence_args *args,
+ 			    struct nfs4_sequence_res *res,
+ 			    int cache_reply)
+ {
+-	/* in preparation for setting up the sequence op */
+-	return rpc_call_sync(server->client, msg, 0);
++	int ret;
++	struct rpc_task *task;
++	struct nfs41_call_sync_data data = {
++		.server = server,
++		.seq_args = args,
++		.seq_res = res,
++		.cache_reply = cache_reply,
++	};
++	struct rpc_task_setup task_setup = {
++		.rpc_client = server->client,
++		.rpc_message = msg,
++		.callback_ops = &nfs41_call_sync_ops,
++		.callback_data = &data
++	};
++
++	res->sr_slotid = NFS4_MAX_SLOT_TABLE;
++	task = rpc_run_task(&task_setup);
++	if (IS_ERR(task))
++		ret = PTR_ERR(task);
++	else {
++		ret = task->tk_status;
++		rpc_put_task(task);
++	}
++	return ret;
+ }
+ 
+ #endif /* CONFIG_NFS_V4_1 */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 16bef5d..8dcf841 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -134,7 +134,7 @@ struct nfs4_sequence_args {
+ };
+ 
+ struct nfs4_sequence_res {
+-	/* stub */
++	u8			sr_slotid;	/* slot used to send request */
+ };
+ 
+ struct nfs4_get_lease_time_args {
 -- 
 1.6.1.3
 
