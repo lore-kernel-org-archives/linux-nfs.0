@@ -1,104 +1,116 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/17] SUNRPC: Clean up address type casts in
-	rpcb_v4_register()
-Date: Tue, 03 Mar 2009 17:33:17 -0500
-Message-ID: <20090303223317.2933.97106.stgit@ingres.1015granger.net>
+Subject: [PATCH 11/17] SUNRPC: Allow callers to pass rpcb_v4_register a NULL
+	address
+Date: Tue, 03 Mar 2009 17:33:32 -0500
+Message-ID: <20090303223332.2933.48357.stgit@ingres.1015granger.net>
 References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:31714 "EHLO
+Received: from acsinet12.oracle.com ([141.146.126.234]:31694 "EHLO
 	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755032AbZCCWfL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:35:11 -0500
+	with ESMTP id S1753675AbZCCWfJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:35:09 -0500
 In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: move the details of the sockaddr type casting to the helper
-functions.
+The user space TI-RPC library uses an empty string for the universal
+address when unregistering all target addresses for [program, version].
+The kernel's rpcb client should behave the same way.
+
+Here, we are switching between several registration methods based on
+the protocol family of the incoming address.  Rename the other rpcbind
+v4 registration functions to make it clear that they, as well, are
+switched on protocol family.  In /etc/netconfig, this is either "inet"
+or "inet6".  The loopback protocol families are not supported in the
+kernel.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   26 ++++++++++++--------------
- 1 files changed, 12 insertions(+), 14 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   38 ++++++++++++++++++++++++++++----------
+ 1 files changed, 28 insertions(+), 10 deletions(-)
 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 0e9150d..317eb8a 100644
+index 0a3b8f5..cccc676 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -170,7 +170,7 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
- 	return rpc_create(&args);
- }
- 
--static int rpcb_register_call(u32 version, struct rpc_message *msg)
-+static int rpcb_register_call(const u32 version, struct rpc_message *msg)
- {
- 	struct sockaddr *addr = (struct sockaddr *)&rpcb_inaddr_loopback;
- 	size_t addrlen = sizeof(rpcb_inaddr_loopback);
-@@ -255,17 +255,17 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+@@ -257,8 +257,8 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
  /*
   * Fill in AF_INET family-specific arguments to register
   */
--static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
-+static int rpcb_register_netid4(const struct sockaddr *sap,
- 				struct rpc_message *msg)
+-static int rpcb_register_netid4(const struct sockaddr *sap,
+-				struct rpc_message *msg)
++static int rpcb_register_inet4(const struct sockaddr *sap,
++			       struct rpc_message *msg)
  {
-+	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
  	struct rpcbind_args *map = msg->rpc_argp;
--	unsigned short port = ntohs(address_to_register->sin_port);
-+	unsigned short port = ntohs(sin->sin_port);
- 	char buf[32];
- 
- 	/* Construct AF_INET universal address */
- 	snprintf(buf, sizeof(buf), "%pI4.%u.%u",
--		 &address_to_register->sin_addr.s_addr,
--		 port >> 8, port & 0xff);
-+		 &sin->sin_addr.s_addr, port >> 8, port & 0xff);
- 	map->r_addr = buf;
- 
- 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
-@@ -283,21 +283,21 @@ static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
+@@ -285,8 +285,8 @@ static int rpcb_register_netid4(const struct sockaddr *sap,
  /*
   * Fill in AF_INET6 family-specific arguments to register
   */
--static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
-+static int rpcb_register_netid6(const struct sockaddr *sap,
- 				struct rpc_message *msg)
+-static int rpcb_register_netid6(const struct sockaddr *sap,
+-				struct rpc_message *msg)
++static int rpcb_register_inet6(const struct sockaddr *sap,
++			       struct rpc_message *msg)
  {
-+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
  	struct rpcbind_args *map = msg->rpc_argp;
--	unsigned short port = ntohs(address_to_register->sin6_port);
-+	unsigned short port = ntohs(sin6->sin6_port);
- 	char buf[64];
+@@ -314,6 +314,20 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
+ 	return rpcb_register_call(RPCBVERS_4, msg);
+ }
  
- 	/* Construct AF_INET6 universal address */
--	if (ipv6_addr_any(&address_to_register->sin6_addr))
-+	if (ipv6_addr_any(&sin6->sin6_addr))
- 		snprintf(buf, sizeof(buf), "::.%u.%u",
- 				port >> 8, port & 0xff);
- 	else
- 		snprintf(buf, sizeof(buf), "%pI6.%u.%u",
--			 &address_to_register->sin6_addr,
--			 port >> 8, port & 0xff);
-+			 &sin6->sin6_addr, port >> 8, port & 0xff);
- 	map->r_addr = buf;
++static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
++{
++	struct rpcbind_args *map = msg->rpc_argp;
++
++	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
++		"local rpcbind\n",
++			map->r_prog, map->r_vers, map->r_netid);
++
++	map->r_addr = "";
++	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
++
++	return rpcb_register_call(RPCBVERS_4, msg);
++}
++
+ /**
+  * rpcb_v4_register - set or unset a port registration with the local rpcbind
+  * @program: RPC program number of service to (un)register
+@@ -331,10 +345,11 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
+  * invoke this function once for each [program, version, address,
+  * netid] tuple they wish to advertise.
+  *
+- * Callers may also unregister RPC services that are no longer
+- * available by setting the port number in the passed-in address
+- * to zero.  Callers pass a netid of "" to unregister all
+- * transport netids associated with [program, version, address].
++ * Callers may also unregister RPC services that are registered at a
++ * specific address by setting the port number in @address to zero.
++ * They may unregister all registered protocol families at once for
++ * a service by passing a NULL @address argument.  If @netid is ""
++ * then all netids for [program, version, address] are unregistered.
+  *
+  * This function uses rpcbind protocol version 4 to contact the
+  * local rpcbind daemon.  The local rpcbind daemon must support
+@@ -369,11 +384,14 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 		.rpc_argp	= &map,
+ 	};
  
- 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
-@@ -369,11 +369,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 
++	if (address == NULL)
++		return rpcb_unregister_all_protofamilies(&msg);
++
  	switch (address->sa_family) {
  	case AF_INET:
--		return rpcb_register_netid4((struct sockaddr_in *)address,
--					    &msg);
-+		return rpcb_register_netid4(address, &msg);
+-		return rpcb_register_netid4(address, &msg);
++		return rpcb_register_inet4(address, &msg);
  	case AF_INET6:
--		return rpcb_register_netid6((struct sockaddr_in6 *)address,
--					    &msg);
-+		return rpcb_register_netid6(address, &msg);
+-		return rpcb_register_netid6(address, &msg);
++		return rpcb_register_inet6(address, &msg);
  	}
  
  	return -EAFNOSUPPORT;
