@@ -1,63 +1,85 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [NFS] mount.nfs kernel version check override
-Date: Mon, 2 Mar 2009 19:02:10 -0500
-Message-ID: <DBE23047-6345-45CF-9826-86D6F5CAD79B@oracle.com>
-References: <20090302232216.GF3867@opengridcomputing.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	swise@opengridcomputing.com, Jeffrey.C.Becker@nasa.gov
-To: Jon Mason <jon@opengridcomputing.com>
+From: David Warren <warren-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>
+Subject: [NFS] nfsd hangs 2.6.28 through 2.6.28.7
+Date: Mon, 02 Mar 2009 16:06:23 -0800
+Message-ID: <49AC747F.6010001@atmos.washington.edu>
+Reply-To: warren-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="------------030507070307050100080500"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:32786 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759447AbZCCACX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Mar 2009 19:02:23 -0500
-In-Reply-To: <20090302232216.GF3867@opengridcomputing.com>
+Received: from neil.brown.name ([220.233.11.133]:44628 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751491AbZCCAHD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Mar 2009 19:07:03 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LeI9z-0002Sw-36
+	for linux-nfs@vger.kernel.org; Tue, 03 Mar 2009 11:06:59 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cc: corrected.
+This is a multi-part message in MIME format.
+--------------030507070307050100080500
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Mar 2, 2009, at Mar 2, 2009, 6:22 PM, Jon Mason wrote:
-> I am working on backporting NFS-RDMA to older versions of Linux for  
-> the
-> Open Fabrics Linux kernel stack (OFED).  I have backported NFS-RDMA to
-> RHEL5.2 (which has a kernel based on 2.6.18), and others are working  
-> on
-> backporting to other older kernels.  The issue that I have and they  
-> will
-> discover is that there is a check in the mount command for kernels
-> greater than 2.6.22.  If it is older than this version, it will not  
-> pass
-> args to the kernel.
+We are seeing nfsd getting stuck in d wait at boot time. The fix seems 
+to be stopping in single user mode prior to nfs starting, renaming 
+/var/lib/nfs/v4recovery/ and making a new one, then letting the system 
+continue. When it boots and hangs, all processes that touch 
+/var/lib/nfs/v4recovery/ go into D-wait. However, if you rename it and 
+let it boot you can look in the old directory. Any ideas what could be 
+happening?
+Also, is there any documentation on the files in 
+/var/lib/nfs/v4recovery/? We would like to possibly be able to decode 
+the names.
 
-That's because those older kernels don't support text-based mount  
-options.  That will always be true of those upstream kernels.
+--------------030507070307050100080500
+Content-Type: text/x-vcard; charset=utf-8;
+ name="warren.vcf"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="warren.vcf"
 
-> I have come up with a patch to add an additional flag to the mount
-> command to allow this kernel version check to be over-ruled.  Please
-> consider adding it to the next release of the nfs-utils.
+begin:vcard
+fn:David Warren
+n:Warren;David
+org:Atmospheric Sciences
+adr:Dept of Atmospheric Sciences, Box 351640;;University of Washington;Seattle;WA;98195-1640;USA
+email;internet:warren-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org
+title:Software Engineer
+tel;work:206 543-0945
+url:http://www.atmos.washington.edu
+version:2.1
+end:vcard
 
-I am not the maintainer of nfs-utils, however:  In general, features  
-for backports like this are not considered for upstream.  They are  
-usually your responsibility.  In this case, you would maintain your  
-own copy of the mount command (or nfs-utils) that alters the kernel  
-version check as needed.
 
-Also, there used to be a "-i" switch that forced the mount.nfs command  
-to send text-based mount options to the kernel.  The reason it was  
-never taken upstream was because no-one issues the mount.nfs command  
-directly: it's a subcommand that is executed by the mount command.  So  
-there's no way to use it in /etc/fstab, for example.  Not very useful!
+--------------030507070307050100080500
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Finally, the usual practice is to place a proposed patch in the body  
-of an e-mail rather than using an attachment when posting patches.   
-Most people find that easier to manage with patch tools, and can use  
-normal reply quoting when reviewing and commenting on the patch.
+------------------------------------------------------------------------------
+Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
+-OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
+-Strategies to boost innovation and cut costs with open source participation
+-Receive a $600 discount off the registration fee with the source code: SFAD
+http://p.sf.net/sfu/XcvMzF8H
+--------------030507070307050100080500
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Thanks!
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--------------030507070307050100080500--
+
+
