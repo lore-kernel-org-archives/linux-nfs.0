@@ -1,60 +1,174 @@
-From: David Bartley <dtbartle@csclub.uwaterloo.ca>
-Subject: Re: Locked system
-Date: Tue, 3 Mar 2009 16:38:04 -0500
-Message-ID: <e77a196d0903031338q417688a0vb8a5383f4c6f7e79@mail.gmail.com>
-References: <e77a196d0902241947wdaaa021le11d11fd607f60bc@mail.gmail.com>
-	<e77a196d0903021909w78b426f1kcb2a69b6fad58abf@mail.gmail.com>
-	<20090303173443.GI22184@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/17] SUNRPC: Change svc_create_xprt() to take a @family
+	argument
+Date: Tue, 03 Mar 2009 17:32:32 -0500
+Message-ID: <20090303223231.2933.84345.stgit@ingres.1015granger.net>
+References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090303173443.GI22184@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from acsinet12.oracle.com ([141.146.126.234]:52897 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755334AbZCCWdE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:33:04 -0500
+In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 3, 2009 at 12:34 PM, J. Bruce Fields <bfields@fieldses.org> wro=
-te:
-> On Mon, Mar 02, 2009 at 10:09:57PM -0500, David Bartley wrote:
->> Hi,
->>
->> I'm wondering if anybody has had a chance to look at this?
->
-> What's the client kernel version? =A0What's the server? =A0Can you get a
-> network trace? =A0(tcpdump -s0 -wTMP, send us TMP).
+The sv_family field is going away.  Pass a protocol family argument to
+svc_create_xprt() instead of extracting the family from the passed-in
+svc_serv struct.
 
-The client's kernel version is 2.6.27 (2.6.27-11-generic from Ubuntu).
-The server is OpenSolaris. I don't know how to reproduce this, so I
-can't send you a trace.
+We want to pass the listener's protocol family to svc_create_xprt(),
+not to svc_create().  That way, transport creation can be retried if
+no IPv6 support is available on the system at run-time.
 
-Thanks,
-David
+The old way (passing the protocol family to svc_create() ) means we
+would have to destroy the svc_serv and create a new one with PF_INET
+before calling svc_create_xprt() again.
 
->
-> --b.
->
->>
->> Thanks,
->> David
->>
->> On Tue, Feb 24, 2009 at 10:47 PM, David Bartley
->> <dtbartle@csclub.uwaterloo.ca> wrote:
->> > Hello,
->> >
->> > A system I administer partially locked due to an apparent NFS4
->> > problem. I've attached the trace I found in kern.log. Let me know if
->> > you need any additional information.
->> >
->> > -- David
->> >
->
->
+Again, as this is a listener socket and not an address, we make this
+new argument an "int" protocol family, instead of an "sa_family_t."
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/lockd/svc.c                  |    3 ++-
+ fs/nfs/callback.c               |    4 ++--
+ fs/nfsd/nfsctl.c                |    2 +-
+ fs/nfsd/nfssvc.c                |    4 ++--
+ include/linux/sunrpc/svc_xprt.h |    3 ++-
+ net/sunrpc/svc_xprt.c           |   15 +++++++++------
+ 6 files changed, 18 insertions(+), 13 deletions(-)
+
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 64f1c31..390c559 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -211,7 +211,8 @@ static int create_lockd_listener(struct svc_serv *serv, char *name,
+ 
+ 	xprt = svc_find_xprt(serv, name, 0, 0);
+ 	if (xprt == NULL)
+-		return svc_create_xprt(serv, name, port, SVC_SOCK_DEFAULTS);
++		return svc_create_xprt(serv, name, nlmsvc_family,
++					port, SVC_SOCK_DEFAULTS);
+ 
+ 	svc_xprt_put(xprt);
+ 	return 0;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 3e634f2..fb35cab 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -122,8 +122,8 @@ int nfs_callback_up(void)
+ 	if (!serv)
+ 		goto out_err;
+ 
+-	ret = svc_create_xprt(serv, "tcp", nfs_callback_set_tcpport,
+-			      SVC_SOCK_ANONYMOUS);
++	ret = svc_create_xprt(serv, "tcp", nfs_callback_family,
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_err;
+ 	nfs_callback_tcpport = ret;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 3d93b20..817999e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -941,7 +941,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+ 			err = nfsd_create_serv();
+ 			if (!err) {
+ 				err = svc_create_xprt(nfsd_serv,
+-						      transport, port,
++						      transport, PF_INET, port,
+ 						      SVC_SOCK_ANONYMOUS);
+ 				if (err == -ENOENT)
+ 					/* Give a reasonable perror msg for
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 07e4f5d..ab7f249 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -244,7 +244,7 @@ static int nfsd_init_socks(int port)
+ 	if (!list_empty(&nfsd_serv->sv_permsocks))
+ 		return 0;
+ 
+-	error = svc_create_xprt(nfsd_serv, "udp", port,
++	error = svc_create_xprt(nfsd_serv, "udp", PF_INET, port,
+ 					SVC_SOCK_DEFAULTS);
+ 	if (error < 0)
+ 		return error;
+@@ -253,7 +253,7 @@ static int nfsd_init_socks(int port)
+ 	if (error < 0)
+ 		return error;
+ 
+-	error = svc_create_xprt(nfsd_serv, "tcp", port,
++	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
+ 					SVC_SOCK_DEFAULTS);
+ 	if (error < 0)
+ 		return error;
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 0127dac..879c701 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -71,7 +71,8 @@ int	svc_reg_xprt_class(struct svc_xprt_class *);
+ void	svc_unreg_xprt_class(struct svc_xprt_class *);
+ void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
+ 		      struct svc_serv *);
+-int	svc_create_xprt(struct svc_serv *, char *, unsigned short, int);
++int	svc_create_xprt(struct svc_serv *, const char *, const int,
++			const unsigned short, int);
+ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ void	svc_xprt_received(struct svc_xprt *);
+ void	svc_xprt_put(struct svc_xprt *xprt);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index e588df5..3772081 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -161,7 +161,9 @@ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
+ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 					 struct svc_serv *serv,
+-					 unsigned short port, int flags)
++					 const int family,
++					 const unsigned short port,
++					 int flags)
+ {
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+@@ -176,12 +178,12 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 	struct sockaddr *sap;
+ 	size_t len;
+ 
+-	switch (serv->sv_family) {
+-	case AF_INET:
++	switch (family) {
++	case PF_INET:
+ 		sap = (struct sockaddr *)&sin;
+ 		len = sizeof(sin);
+ 		break;
+-	case AF_INET6:
++	case PF_INET6:
+ 		sap = (struct sockaddr *)&sin6;
+ 		len = sizeof(sin6);
+ 		break;
+@@ -192,7 +194,8 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 	return xcl->xcl_ops->xpo_create(serv, sap, len, flags);
+ }
+ 
+-int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
++int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
++		    const int family, const unsigned short port,
+ 		    int flags)
+ {
+ 	struct svc_xprt_class *xcl;
+@@ -209,7 +212,7 @@ int svc_create_xprt(struct svc_serv *serv, char *xprt_name, unsigned short port,
+ 			goto err;
+ 
+ 		spin_unlock(&svc_xprt_class_lock);
+-		newxprt = __svc_xpo_create(xcl, serv, port, flags);
++		newxprt = __svc_xpo_create(xcl, serv, family, port, flags);
+ 		if (IS_ERR(newxprt)) {
+ 			module_put(xcl->xcl_owner);
+ 			return PTR_ERR(newxprt);
+
