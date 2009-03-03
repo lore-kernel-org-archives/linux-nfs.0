@@ -1,62 +1,181 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.174]:34932 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751340AbZCMXFj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 19:05:39 -0400
-Received: by wf-out-1314.google.com with SMTP id 28so704328wfa.4
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 16:05:37 -0700 (PDT)
-In-Reply-To: <1236983389.7265.51.camel@heimdal.trondhjem.org>
-References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-	 <1236978608.7265.41.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131432u43d9ba43nf0456b99aed0f8fd@mail.gmail.com>
-	 <1236980438.7265.47.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>
-	 <1236983389.7265.51.camel@heimdal.trondhjem.org>
-Date: Fri, 13 Mar 2009 16:05:37 -0700
-Message-ID: <72dbd3150903131605m6aec6e41j8d608512b2693ba9@mail.gmail.com>
-Subject: Re: Horrible NFS Client Performance During Heavy Server IO
-From: David Rees <drees76@gmail.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from us01smtp3.synopsys.com ([198.182.44.81]:52369 "EHLO
+	hermes.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751873AbZCCS6p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 13:58:45 -0500
+From: Qiuyang Wu <Qiuyang.Wu@synopsys.com>
+To: Jeff Moyer <jmoyer@redhat.com>, Qiuyang Wu <Qiuyang.Wu@synopsys.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Tue, 3 Mar 2009 10:47:24 -0800
+Subject: RE: pread/pwrite bug on linux?
+Message-ID: <293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
+References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
+ <x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
+Content-Type: multipart/mixed;
+	boundary="_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 13, 2009 at 3:29 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Fri, 2009-03-13 at 14:59 -0700, David Rees wrote:
->> And the activity around the time I am reproducing the slowdown:
->>
->> Server nfs v3:
->> null         getattr      setattr      lookup       access       readlink
->> 0         0% 3503     75% 7         0% 31        0% 1027     22% 0         0%
->> read         write        create       mkdir        symlink      mknod
->> 9         0% 50        1% 6         0% 0         0% 0         0% 0         0%
->> remove       rmdir        rename       link         readdir      readdirplus
->> 2         0% 0         0% 2         0% 0         0% 0         0% 0         0%
->> fsstat       fsinfo       pathconf     commit
->> 0         0% 0         0% 0         0% 13        0%
+--_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+
+Hi Jeff,
+
+Attached the sample program. Should be able to compile as-is.
+
+Let me know your findings or need additional info.
+
+Thanks,
+Qiuyang
+
+-----Original Message-----
+From: Jeff Moyer [mailto:jmoyer@redhat.com]
+Sent: Tuesday, March 03, 2009 10:10 AM
+To: Qiuyang Wu
+Cc: linux-nfs@vger.kernel.org; linux-fsdevel@vger.kernel.org
+Subject: Re: pread/pwrite bug on linux?
+
+Qiuyang Wu <Qiuyang.Wu@synopsys.com> writes:
+
+> Hi All,
 >
-> Is this the result of only doing 2 'dd' copies? That's a lot of GETATTR
-> calls for that kind of workload...
+> Are there any known bugs with pread/pwrite on RHEL Linux when the disk
+> partition is close to full?
+>
+> Reduced a complex application fatal down to a simple program just
+> opens a regular file and performs 1M sequential pwrite() of size 8KB
+> blocks; at every 100th write, does a pread() to load the very first
+> 8KB block and validate its content still matching what was originally
+> written.
 
-No - the client that I have been duplicating this from is also my
-desktop and the NFS server hosts my home directory and it was active
-during the test.
+Could you attach your test program, please?
 
-That's where the extreme slowdown in NFS performance affects me the
-most.  When then heavy IO on the server is going on (even just a
-single process writing as fast as it can), my applications (Firefox,
-Thunderbird, Gnome Terminals, just about anything that accesses the
-NFS mount) will basically lock up and go totally unresponsive while
-they wait for the NFS server to respond.  They will sit unresponsive
-for minutes at a time and are unusable until the heavy IO stops on the
-server.
+> BEHAVIOR: pwrite() works for many iterations, then pread() suddenly
+> returns data of the requested size but filled with 0's, and strerror
+> shows errno=3D"No such file or directory", condition
+>       if(size_to_read !=3D pread(fd, buf, size_to_read, ...)) ...
+> is not triggered and application has to check errno immediately after
+> every call to pread.
 
-I do software development from this machine and I have timed one of my
-project builds with and without the heavy IO on the NFS server - a
-build that normally takes about 20 seconds will take 5 minutes to
-complete (it does read/write a lot of small files).
+The value of errno is undefined if the pread call did not return -1.
 
--Dave
+Cheers,
+Jeff
+
+--_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_
+Content-Type: text/plain; name="io_test.c"
+Content-Description: io_test.c
+Content-Disposition: attachment; filename="io_test.c"; size=5798;
+	creation-date="Tue, 03 Mar 2009 10:43:57 GMT";
+	modification-date="Tue, 03 Mar 2009 10:43:57 GMT"
+Content-Transfer-Encoding: base64
+
+Ci8qKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
+KioqKioqKioqKioqKioqKioqKioqKioKCiAgQUJTVFJBQ1Q6ICAgU2ltcGxlIHByb2dyYW0gdG8g
+dGVzdCBiZWhhdmlvciBvZiBwd3JpdGUvcHJlYWQgY2FsbHMgdW5kZXIKICAgICAgICAgICAgICB0
+aGUgY29uZGl0aW9uIG9mIGluc3VmZmljaWVudCBkaXNrIHNwYWNlLiBFeHBlY3QgdG8gdHJpZ2dl
+cgogICAgICAgICAgICAgIGVycm9yIHdoZW4gcHVzaGluZyBkYXRhIHRvIGRpc2sgd2l0aCBwd3Jp
+dGUsIGluc3RlYWQgb2YgZmFpbGluZwogICAgICAgICAgICAgIG9uIHByZWFkLCB3aGljaCBpbXBs
+aWVzIGRhdGEgbG9zZS4KCiAgICAgICAgICAgICAgVGhlIHByb2dyYW0gZG9lcyB0aGUgZm9sbG93
+aW5nIC0KICAgICAgICAgICAgICAgIC0gcHdyaXRlIHVwIHRvIDFNIHNpemUgOEtCIGNodW5rcyAo
+dG90YWwgfjhHQiBpZiBmaW5pc2hlcykKICAgICAgICAgICAgICAgIC0gVmVyeSBmaXJzdCA4S0Ig
+Y2h1bmsgaXMgc3BlY2lhbGx5IGZpbGxlZCB3aXRoIGludCB2YWx1ZSAxMy4KICAgICAgICAgICAg
+ICAgIC0gYXQgZXZlcnkgMTAwdGggd3JpdGUsIGRvZXMgcHJlYWQgdG8gbG9hZCB0aGUgZmlyc3Qg
+OEtCCiAgICAgICAgICAgICAgICAgIGNodW5rIGFuZCB2YWxpZGF0ZSAocGFydCBvZikgaXRzIGNv
+bnRlbnQuCiAgICAgICAgICAgICAgICAtIGJlZm9yZSBhbmQgYWZ0ZXIgZWFjaCBwcmVhZCwgYWxz
+byB1c2UgZnN0YXQgdG8gc2Fubml0eQogICAgICAgICAgICAgICAgICBjaGVjayBwcm9ncmFtIGlz
+IGluIHN5bmMgd2l0aCB0aGUgZmlsZS4gICAgIAoKICAgICAgICAgICAgICBUbyBjb21waWxlIHdp
+dGggR0NDIChlLmcuIGdjYy00LjIuMikgLQogICAgICAgICAgICAgICAgPmdjYyBpb190ZXN0LmMK
+CiAgICAgICAgICAgICAgVG8gcnVuOgogICAgICAgICAgICAgICAgVGhlIHByb2dyYW0gcmVxdWly
+ZXMgb25lIGFyZyB3aGljaCBpcyB0aGUgcGF0aCB0byBhIGRpcmVjdG9yeQogICAgICAgICAgICAg
+ICAgZm9yIGNyZWF0aW5nIGEgcmVndWxhciBmaWxlIGZvciB3cml0ZS9yZWFkIHRlc3RpbmcuIEV4
+YW1wbGUgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICA+
+YS5vdXQgL3BhdGgvdG8vd3JpdGFibGUvZGlyCgogICAgICAgICAgICAgIFRvIGRlbW9uc3RyYXRl
+IHRoZSBwcm9ibGVtCiAgICAgICAgICAgICAgICAgQ2hvb3NlIGEgZGlzayBwYXJ0aXRpb24gdGhh
+dCBpcyBhbG1vc3QgZnVsbCwgZm9yIGV4YW1wbGUsCiAgICAgICAgICAgICAgICAgdGhlIGZvbGxv
+d2luZyB3aXRoIH4xR0IgYXZhaWxhYmxlIHNwYWNlIC0KCiAgICAgICAgICAgICAgICAgPiBjZCAv
+cmVtb3RlL3Rlc3Rkc2svcXd1CiAgICAgICAgICAgICAgICAgPiBkZiAtayAuCiAgICAgICAgICAg
+ICAgICBGaWxlc3lzdGVtICAgICAgICAgICAxSy1ibG9ja3MgICAgICBVc2VkIEF2YWlsYWJsZSBV
+c2UlIE1vdW50ZWQgb24KICAgICAgICAgICAgICAgIGVtY25zMjAyOi90ZXN0ZHNrICAgIDMxODAz
+MzQwOCAzMTY3NDA1NDQgICAxMjkyODY0IDEwMCUgL3JlbW90ZS90ZXN0ZHNrCiAgICAgICAgICAg
+ICAgICAgPiBhLm91dCAvcmVtb3RlL3Rlc3Rkc2svcXd1CgoKICBISVNUT1JZOgkKICBGZWIgMjQg
+MjAwOSAtIFFpdXlhbmcgV3UgOiBDcmVhdGVkLgoKKioqKioqKioqKioqKioqKioqKioqKioqKioq
+KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqLwoKI2lu
+Y2x1ZGUgPGVycm5vLmg+CiNpbmNsdWRlIDxzdGRpby5oPgojaW5jbHVkZSA8dW5pc3RkLmg+CiNp
+bmNsdWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPGZjbnRsLmg+CiNpbmNsdWRlIDxzdHJpbmcuaD4K
+I2luY2x1ZGUgPHN5cy9zdGF0Lmg+CgojZGVmaW5lIEZJTEVfTkFNRSAgICJyd190ZXN0X2ZpbGUi
+CiNkZWZpbmUgVE9UQUxfV1JJVEUgMTAwMDAwMCAvLyB0b3RhbCBudW1iZXIgb2YgcHdyaXRlcwoj
+ZGVmaW5lIENIVU5LX1NJWkUgIDgxOTIgICAgLy8gYnVmIHNpemUgcGVyIHdyaXRlCiNkZWZpbmUg
+Q01QX1NJWkUgICAgMTAgICAgICAvLyBjb21wYXJlIHRoZSBmaXJzdCAxMCBieXRlcwojZGVmaW5l
+IFJFQURfSU5URVJWIDEwMCAgICAgLy8gcmVhZCBhdCBldmVyeSAxMDAgd3JpdGUKCmNoYXIqIGNo
+ZWNrX2FyZ3MoY2hhciAqZGlyKTsKaW50ICAgcHdyaXRlX3ByZWFkX3Rlc3QoY2hhciAqZm5hbWUp
+Owp2b2lkICBzdGF0X2ZpbGUoY2hhciogb3AsIGludCBmZCwgc2l6ZV90IHNpemUsIG9mZl90IG9m
+ZnNldCk7CmludCAgIGNoZWNrX3ByZWFkKGludCBmZCwgY2hhciogZm5hbWUsIGNoYXIqIGJ1Ziwg
+Y2hhciogcmVmYnVmKTsKCmludCBtYWluKGludCBhcmdjLCBjaGFyKiAqYXJndikKewogIGNoYXIg
+KmZ1bGxfZm5hbWU9TlVMTDsKICAKICBpZihhcmdjICE9IDIpIHsKICAgIHByaW50ZigiVXNhZ2U6
+ICVzIGRpcl9wYXRoIFxuIiwgYXJndlswXSk7CiAgICBleGl0KDEpOwogIH0KCiAgaWYoKGZ1bGxf
+Zm5hbWUgPSBjaGVja19hcmdzKGFyZ3ZbMV0pKSkgewogICAgcHdyaXRlX3ByZWFkX3Rlc3QoZnVs
+bF9mbmFtZSk7CiAgICBmcmVlKGZ1bGxfZm5hbWUpOwogIH0KCiAgZXhpdCgwKTsKfQoKaW50IHB3
+cml0ZV9wcmVhZF90ZXN0KGNoYXIgKmZuYW1lKSB7CiAgaW50ICAgb2s9MTsKICBpbnQgICBmZD0t
+MTsKICBpbnQgICB3X2NvdW50PTA7CiAgb2ZmX3QgY3VyX29mZnNldD0wOwogIGNoYXIgICpidWY9
+TlVMTDsKICBjaGFyICAqcmVmYnVmPU5VTEw7ICAKICAKICBmZCA9IG9wZW4oZm5hbWUsIChPX0NS
+RUFUfE9fUkRXUiksIChTX0lSVVNSfFNfSVdVU1IpICkgOwoKICBpZihmZD09LTEpIHsKICAgIHBy
+aW50ZigiRXJyb3Igb3BlbmluZyAnJXMnIGZvciB3cml0aW5nLlxuIiwgZm5hbWUpOwogICAgZXhp
+dCgtMSk7CiAgfQoKICBidWYgPSBtYWxsb2MoQ0hVTktfU0laRSk7CiAgcmVmYnVmID0gbWFsbG9j
+KENIVU5LX1NJWkUpOwogIG1lbXNldChidWYsIDEzLCBDSFVOS19TSVpFKTsKICBtZW1zZXQocmVm
+YnVmLCAxMywgQ0hVTktfU0laRSk7CgogIHdoaWxlKHdfY291bnQ8VE9UQUxfV1JJVEUpIHsKICAg
+ICsrd19jb3VudDsKICAgIGlmKENIVU5LX1NJWkUgIT0gcHdyaXRlKGZkLCBidWYsIENIVU5LX1NJ
+WkUsIGN1cl9vZmZzZXQpKSB7CiAgICAgIC8qIEp1c3QgIHByaW50IGVycm5vIGFuZCBiYWlsIG91
+dCwgYSBmaWxsZWQgZGlzayBpcyBleHBlY3RlZCBhdCBzb21lIHBvaW50ICovCiAgICAgIHByaW50
+ZigiRXJyb3IgKCVzKSB3cml0aW5nIHRvIGZpbGUgJyVzJy5cbiIsIHN0cmVycm9yKGVycm5vKSwg
+Zm5hbWUpOwogICAgICBvayA9IDA7CiAgICAgIGJyZWFrOyAgCiAgICB9CiAgICAKICAgIGlmKDA9
+PSh3X2NvdW50JVJFQURfSU5URVJWKSkgewogICAgICBwcmludGYoIndyaXRlcz0lOWQgOjoiLCB3
+X2NvdW50KTsKICAgICAgc3RhdF9maWxlKCJhZnRlci1QV1JJVEUiLCBmZCwgQ0hVTktfU0laRSwg
+Y3VyX29mZnNldCk7CiAgICAgIG9rID0gY2hlY2tfcHJlYWQoZmQsIGZuYW1lLCBidWYsIHJlZmJ1
+Zik7CiAgICAgIGlmKCFvaykgYnJlYWs7CiAgICB9CiAgICAKICAgIGN1cl9vZmZzZXQgKz0gQ0hV
+TktfU0laRTsgLy8gaW5jcmVtZW50IGN1cl9vZmZzZXQKICAgIG1lbXNldChidWYsIChpbnQpKHdf
+Y291bnQlMTApLCBDSFVOS19TSVpFKTsgLy8gZmlsbCBidWYgd2l0aCBzb21lIGRhdGEgZm9yIG5l
+eHQgcHdyaXRlCiAgfQogIAogIGZyZWUoYnVmKTsKICBmcmVlKHJlZmJ1Zik7CiAgY2xvc2UoZmQp
+OwogIAogIHJldHVybiBvazsKfQoKaW50IGNoZWNrX3ByZWFkKGludCBmZCwgY2hhciogZm5hbWUs
+IGNoYXIqIGJ1ZiwgY2hhciogcmVmYnVmKQp7CiAgaW50IG9rPTE7CiAgCiAgcHJpbnRmKCJyZWFk
+L2NoZWNrIGZpcnN0IGNodW5rIC4uLlxuIik7ICAgICAgICAKICAKICBtZW1zZXQoYnVmLCAtMSwg
+Q0hVTktfU0laRSk7IC8vcHJlc3QgdGhlIGJ1ZiB0byBzZW50aW5lbCB2YWx1ZXMKICAKICBpZihD
+SFVOS19TSVpFICE9IHByZWFkKGZkLCBidWYsIENIVU5LX1NJWkUsIDApKSB7CiAgICAvKiBQcm9i
+bGVtIGJhaWxpbmcgb3V0IG9uIHByZWFkLCBwcmludHMgZXJybm8gKi8KICAgIHByaW50ZigiRXJy
+b3IgKCVzKSByZWFkaW5nIGZyb20gZmlsZSAnJXMnLlxuIiwgc3RyZXJyb3IoZXJybm8pLCBmbmFt
+ZSk7CiAgICByZXR1cm4gMDsKICB9IGVsc2UgewogICAgc3RhdF9maWxlKCJiZWZvcmUtUFJFQUQi
+LCBmZCwgQ0hVTktfU0laRSwgMCk7CiAgICBpZihtZW1jbXAoYnVmLCByZWZidWYsIENNUF9TSVpF
+KSkgewogICAgICAvKgogICAgICAqKiBrZXkgcHJvYmxlbTogcHJlYWQgYXBwZWFycyBzdWNjZXNz
+ZnVsIGJ1dCBidWYgY29udGFpbiBjb3JydXB0ZWQgZGF0YQogICAgICAqLwogICAgICBpbnQgaT0w
+OwogICAgICBwcmludGYoIi4uLiBkYXRhIEJBRCEgKGVycm5vPSVzKVxuIiwgc3RyZXJyb3IoZXJy
+bm8pKTsKICAgICAgZm9yKGk9MDsgaTxDTVBfU0laRTsgKytpKSB7CiAgICAgICAgcHJpbnRmKCJi
+dWZbJWRdPSVkIHJlZlslZF09JWRcbiIsIGksIGJ1ZltpXSwgaSwgcmVmYnVmW2ldKTsgICAgICAg
+ICAgICAgIAogICAgICB9CiAgICAgIHN0YXRfZmlsZSgiYWZ0ZXItUFJFQUQiLCBmZCwgQ0hVTktf
+U0laRSwgMCk7CiAgICAgIG9rID0gMDsKICAgIH0gZWxzZSB7CiAgICAgIHByaW50ZigiLi4uIGRh
+dGEgT0shLlxuIik7ICAgICAgICAgICAgICAgICAKICAgIH0KICB9CiAgZmZsdXNoKHN0ZG91dCk7
+CiAgcmV0dXJuIG9rOwp9Cgp2b2lkIHN0YXRfZmlsZShjaGFyKiBvcCwgaW50IGZkLCBzaXplX3Qg
+c2l6ZSwgb2ZmX3Qgb2Zmc2V0KQp7ICAKICBzdHJ1Y3Qgc3RhdCBzdGF0czsKICAKICBpZiAoIC0x
+ID09IGZzdGF0KGZkLCAmc3RhdHMpICkgewogICAgcHJpbnRmKCIlczo6ZnN0YXQgZmFpbGVkIVxu
+Iiwgb3ApOwogIH0gZWxzZSB7CiAgICBwcmludGYoIlx0JXM6OiBmZD0lZCwgZnN0YXQuc3o9JWxk
+LCBvZmYvc3o9JWxkLyVsZCA9PiAlbGQhXG4iLAogICAgICAgICAgIG9wLCAoaW50KWZkLCAobG9u
+ZylzdGF0cy5zdF9zaXplLAogICAgICAgICAgIChsb25nKW9mZnNldCwgKGxvbmcpc2l6ZSwgKGxv
+bmcpb2Zmc2V0Kyhsb25nKXNpemUpOwogIH0KICBmZmx1c2goc3Rkb3V0KTsKfQoKY2hhciogY2hl
+Y2tfYXJncyhjaGFyICpkaXIpIHsKICBpbnQgb2s9MTsKICBpbnQgbGVuPTA7CiAgc3RydWN0IHN0
+YXQgc3RhdGJ1ZjsKICBjaGFyICpmdWxsX2ZuYW1lPU5VTEw7CiAgCiAgaWYoc3RhdChkaXIsICZz
+dGF0YnVmKT09LTEpIHsKICAgIHBlcnJvcigic3RhdCBjYWxsIGZhaWxlZCFcbiIpOwogICAgb2sg
+PSAwOwogIH0gZWxzZSB7CiAgICBvayA9IChTX0lTRElSKHN0YXRidWYuc3RfbW9kZSkgJiYgMD09
+YWNjZXNzKGRpciwgV19PSykpOwogIH0KCiAgaWYoIW9rKSB7CiAgICBwcmludGYoIkVycm9yOiBk
+aXJlY3RvcnkgJyVzJyBub3QgYWNjZXNzaWJsZVxuIiwgZGlyKTsKICAgIHJldHVybiBOVUxMOwog
+IH0KICAKICBsZW4gPSBzdHJsZW4oZGlyKSArIHN0cmxlbihGSUxFX05BTUUpICsgMjsKICBmdWxs
+X2ZuYW1lID0gbWFsbG9jKGxlbik7CiAgbWVtc2V0KGZ1bGxfZm5hbWUsIDAsIGxlbik7CiAgc3By
+aW50ZihmdWxsX2ZuYW1lLCAiJXMvJXMiLCBkaXIsIEZJTEVfTkFNRSk7CgogIGlmKGFjY2Vzcyhm
+dWxsX2ZuYW1lLCBGX09LKT09MCkgewogICAgcHJpbnRmKCJFcnJvcjogZmlsZSAnJXMnIGFscmVh
+ZHkgZXhpc3RzLlxuIiwgZnVsbF9mbmFtZSk7CiAgICBmcmVlKGZ1bGxfZm5hbWUpOwogICAgcmV0
+dXJuIE5VTEw7CiAgfQoKICByZXR1cm4gZnVsbF9mbmFtZTsgIAp9Cgo=
+
+--_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_--
