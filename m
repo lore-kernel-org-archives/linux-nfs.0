@@ -1,115 +1,99 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/17] SUNRPC: Use IPv4 loopback for registering AF_INET6
-	kernel RPC services
-Date: Tue, 03 Mar 2009 17:33:02 -0500
-Message-ID: <20090303223302.2933.43311.stgit@ingres.1015granger.net>
+Subject: [PATCH 05/17] NFS: Revert creation of IPv6 listeners for lockd and
+	NFSv4 callbacks
+Date: Tue, 03 Mar 2009 17:32:47 -0500
+Message-ID: <20090303223247.2933.28696.stgit@ingres.1015granger.net>
 References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:53170 "EHLO
+Received: from acsinet12.oracle.com ([141.146.126.234]:53255 "EHLO
 	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755946AbZCCWdj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:33:39 -0500
+	with ESMTP id S1752853AbZCCWdv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:33:51 -0500
 In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel uses an IPv6 loopback address when registering its AF_INET6
-RPC services so that it can tell whether the local portmapper is
-actually IPv6-enabled.
-
-Since the legacy portmapper doesn't listen on IPv6, however, this
-causes a long timeout on older systems if the kernel happens to try
-creating and registering an AF_INET6 RPC service.  Originally I wanted
-to use a connected transport (either TCP or connected UDP) so that the
-upcall would fail immediately if the portmapper wasn't listening on
-IPv6, but we never agreed on what transport to use.
-
-In the end, it's of little consequence to the kernel whether the local
-portmapper is listening on IPv6.  It's only important whether the
-portmapper supports rpcbind v4.  And the kernel can't tell that at all
-if it is sending requests via IPv6 -- the portmapper will just ignore
-them.
-
-So, send both rpcbind v2 and v4 SET/UNSET requests via IPv4 loopback
-to maintain better backwards compatibility between new kernels and
-legacy user space, and prevent multi-second hangs in some cases when
-the kernel attempts to register RPC services.
-
-This patch is part of a series that addresses
-
-   http://bugzilla.kernel.org/show_bug.cgi?id=12256
+I'm about to change over to separate AF_INET and AF_INET6 listeners.
+Clear the way by removing the logic in lockd and the NFSv4 callback
+server that creates an AF_INET6 service listener.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   23 ++++++-----------------
- 1 files changed, 6 insertions(+), 17 deletions(-)
+ fs/lockd/svc.c    |   13 +------------
+ fs/nfs/callback.c |   14 ++------------
+ 2 files changed, 3 insertions(+), 24 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 03ae007..0e9150d 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -124,12 +124,6 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
- 	.sin_port		= htons(RPCBIND_PORT),
- };
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index d309200..566932b 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -53,17 +53,6 @@ static struct svc_rqst		*nlmsvc_rqst;
+ unsigned long			nlmsvc_timeout;
  
--static const struct sockaddr_in6 rpcb_in6addr_loopback = {
--	.sin6_family		= AF_INET6,
--	.sin6_addr		= IN6ADDR_LOOPBACK_INIT,
--	.sin6_port		= htons(RPCBIND_PORT),
--};
+ /*
+- * If the kernel has IPv6 support available, always listen for
+- * both AF_INET and AF_INET6 requests.
+- */
+-#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
+-	defined(CONFIG_SUNRPC_REGISTER_V4)
+-static const sa_family_t	nlmsvc_family = AF_INET6;
+-#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
+-static const sa_family_t	nlmsvc_family = AF_INET;
+-#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
 -
- static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
- 					  size_t addrlen, u32 version)
+-/*
+  * These can be set at insmod time (useful for NFS as root filesystem),
+  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
+  */
+@@ -211,7 +200,7 @@ static int create_lockd_listener(struct svc_serv *serv, char *name,
+ 
+ 	xprt = svc_find_xprt(serv, name, 0, 0);
+ 	if (xprt == NULL)
+-		return svc_create_xprt(serv, name, nlmsvc_family,
++		return svc_create_xprt(serv, name, PF_INET,
+ 					port, SVC_SOCK_DEFAULTS);
+ 
+ 	svc_xprt_put(xprt);
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index ddf4b4a..0ef47df 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -41,16 +41,6 @@ unsigned short nfs_callback_tcpport;
+ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
+ 
+-/*
+- * If the kernel has IPv6 support available, always listen for
+- * both AF_INET and AF_INET6 requests.
+- */
+-#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+-static const sa_family_t	nfs_callback_family = AF_INET6;
+-#else
+-static const sa_family_t	nfs_callback_family = AF_INET;
+-#endif
+-
+ static int param_set_port(const char *val, struct kernel_param *kp)
  {
-@@ -176,9 +170,10 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
- 	return rpc_create(&args);
- }
+ 	char *endp;
+@@ -121,13 +111,13 @@ int nfs_callback_up(void)
+ 	if (!serv)
+ 		goto out_err;
  
--static int rpcb_register_call(struct sockaddr *addr, size_t addrlen,
--			      u32 version, struct rpc_message *msg)
-+static int rpcb_register_call(u32 version, struct rpc_message *msg)
- {
-+	struct sockaddr *addr = (struct sockaddr *)&rpcb_inaddr_loopback;
-+	size_t addrlen = sizeof(rpcb_inaddr_loopback);
- 	struct rpc_clnt *rpcb_clnt;
- 	int result, error = 0;
+-	ret = svc_create_xprt(serv, "tcp", nfs_callback_family,
++	ret = svc_create_xprt(serv, "tcp", PF_INET,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_err;
+ 	nfs_callback_tcpport = ret;
+ 	dprintk("NFS: Callback listener port = %u (af %u)\n",
+-			nfs_callback_tcpport, nfs_callback_family);
++			nfs_callback_tcpport, PF_INET);
  
-@@ -254,9 +249,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	if (port)
- 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
- 
--	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
--					sizeof(rpcb_inaddr_loopback),
--					RPCBVERS_2, &msg);
-+	return rpcb_register_call(RPCBVERS_2, &msg);
- }
- 
- /*
-@@ -284,9 +277,7 @@ static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
--					sizeof(rpcb_inaddr_loopback),
--					RPCBVERS_4, msg);
-+	return rpcb_register_call(RPCBVERS_4, msg);
- }
- 
- /*
-@@ -318,9 +309,7 @@ static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	return rpcb_register_call((struct sockaddr *)&rpcb_in6addr_loopback,
--					sizeof(rpcb_in6addr_loopback),
--					RPCBVERS_4, msg);
-+	return rpcb_register_call(RPCBVERS_4, msg);
- }
- 
- /**
+ 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(nfs_callback_info.rqst)) {
 
