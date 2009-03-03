@@ -1,147 +1,149 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/17] SUNRPC: Pass a family argument to svc_register()
-Date: Tue, 03 Mar 2009 17:32:17 -0500
-Message-ID: <20090303223216.2933.60226.stgit@ingres.1015granger.net>
+Subject: [PATCH 04/17] SUNRPC: Remove @family argument from svc_create() and
+	svc_create_pooled()
+Date: Tue, 03 Mar 2009 17:32:40 -0500
+Message-ID: <20090303223239.2933.94930.stgit@ingres.1015granger.net>
 References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org, steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:63252 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755334AbZCCWdJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:33:09 -0500
+Received: from rcsinet13.oracle.com ([148.87.113.125]:53058 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755002AbZCCWdO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 17:33:14 -0500
 In-Reply-To: <20090303220539.2933.15015.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The sv_family field is going away.  Instead of using sv_family, have
-the svc_register() function take a protocol family argument.
-
-Since this argument represents a protocol family, and not an address
-family, this argument takes an int, as this is what is passed to
-sock_create_kern().
-
-Also make sure svc_register's helpers are checking for PF_FOO instead
-of AF_FOO.  The value of [AP]F_FOO are equivalent; this is simply a
-symbolic change to reflect the semantics of the value stored in that
-variable.
-
-sock_create_kern() should return EPFNOSUPPORT if the passed-in
-protocol family isn't supported, but it uses EAFNOSUPPORT for this
-case.  We will stick with that tradition here, as svc_register()
-is called by the RPC server in the same path as sock_create_kern().
+Since an RPC service listener's protocol family is specified now via
+svc_create_xprt(), it no longer needs to be passed to svc_create() or
+svc_create_pooled().  Remove that argument from the synopsis of those
+functions, and remove the sv_family field from the svc_serv struct.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/svc.h |    4 ++--
- net/sunrpc/svc.c           |   21 +++++++++++----------
- net/sunrpc/svcsock.c       |    2 +-
- 3 files changed, 14 insertions(+), 13 deletions(-)
+ fs/lockd/svc.c             |    2 +-
+ fs/nfs/callback.c          |    3 +--
+ fs/nfsd/nfssvc.c           |    1 -
+ include/linux/sunrpc/svc.h |    5 ++---
+ net/sunrpc/svc.c           |   11 +++++------
+ 5 files changed, 9 insertions(+), 13 deletions(-)
 
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 390c559..d309200 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -275,7 +275,7 @@ int lockd_up(void)
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 
+ 	error = -ENOMEM;
+-	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, nlmsvc_family, NULL);
++	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		goto out;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index fb35cab..ddf4b4a 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -116,8 +116,7 @@ int nfs_callback_up(void)
+ 	mutex_lock(&nfs_callback_mutex);
+ 	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+ 		goto out;
+-	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
+-				nfs_callback_family, NULL);
++	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+ 	ret = -ENOMEM;
+ 	if (!serv)
+ 		goto out_err;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index ab7f249..bc3567b 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -229,7 +229,6 @@ int nfsd_create_serv(void)
+ 
+ 	atomic_set(&nfsd_busy, 0);
+ 	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+-				      AF_INET,
+ 				      nfsd_last_thread, nfsd, THIS_MODULE);
+ 	if (nfsd_serv == NULL)
+ 		err = -ENOMEM;
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 3435d24..1f18fc7 100644
+index 1f18fc7..d3a4c02 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -396,8 +396,8 @@ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+@@ -69,7 +69,6 @@ struct svc_serv {
+ 	struct list_head	sv_tempsocks;	/* all temporary sockets */
+ 	int			sv_tmpcnt;	/* count of temporary sockets */
+ 	struct timer_list	sv_temptimer;	/* timer for aging temporary sockets */
+-	sa_family_t		sv_family;	/* listener's address family */
+ 
+ 	char *			sv_name;	/* service name */
+ 
+@@ -385,13 +384,13 @@ struct svc_procedure {
+ /*
+  * Function prototypes.
+  */
+-struct svc_serv *svc_create(struct svc_program *, unsigned int, sa_family_t,
++struct svc_serv *svc_create(struct svc_program *, unsigned int,
+ 			    void (*shutdown)(struct svc_serv *));
+ struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
+ 					struct svc_pool *pool);
+ void		   svc_exit_thread(struct svc_rqst *);
+ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+-			sa_family_t, void (*shutdown)(struct svc_serv *),
++			void (*shutdown)(struct svc_serv *),
+ 			svc_thread_fn, struct module *);
  int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
  void		   svc_destroy(struct svc_serv *);
- int		   svc_process(struct svc_rqst *);
--int		   svc_register(const struct svc_serv *, const unsigned short,
--				const unsigned short);
-+int		   svc_register(const struct svc_serv *, const int,
-+				const unsigned short, const unsigned short);
- 
- void		   svc_wake_up(struct svc_serv *);
- void		   svc_reserve(struct svc_rqst *rqstp, int space);
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index c51fed4..cefad59 100644
+index cefad59..6cc3c62 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -800,17 +800,17 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
-  * if any error occurs.
+@@ -359,7 +359,7 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
   */
- static int __svc_register(const u32 program, const u32 version,
--			  const sa_family_t family,
-+			  const int family,
- 			  const unsigned short protocol,
- 			  const unsigned short port)
+ static struct svc_serv *
+ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+-	   sa_family_t family, void (*shutdown)(struct svc_serv *serv))
++	     void (*shutdown)(struct svc_serv *serv))
  {
- 	int error;
+ 	struct svc_serv	*serv;
+ 	unsigned int vers;
+@@ -368,7 +368,6 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
  
- 	switch (family) {
--	case AF_INET:
-+	case PF_INET:
- 		return __svc_rpcb_register4(program, version,
- 						protocol, port);
--	case AF_INET6:
-+	case PF_INET6:
- 		error = __svc_rpcb_register6(program, version,
- 						protocol, port);
- 		if (error < 0)
-@@ -840,11 +840,11 @@ static int __svc_register(const u32 program, const u32 version,
-  * if any error occurs.
-  */
- static int __svc_register(const u32 program, const u32 version,
--			  sa_family_t family,
-+			  const int family,
- 			  const unsigned short protocol,
- 			  const unsigned short port)
+ 	if (!(serv = kzalloc(sizeof(*serv), GFP_KERNEL)))
+ 		return NULL;
+-	serv->sv_family    = family;
+ 	serv->sv_name      = prog->pg_name;
+ 	serv->sv_program   = prog;
+ 	serv->sv_nrthreads = 1;
+@@ -427,21 +426,21 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 
+ struct svc_serv *
+ svc_create(struct svc_program *prog, unsigned int bufsize,
+-		sa_family_t family, void (*shutdown)(struct svc_serv *serv))
++	   void (*shutdown)(struct svc_serv *serv))
  {
--	if (family != AF_INET)
-+	if (family != PF_INET)
- 		return -EAFNOSUPPORT;
+-	return __svc_create(prog, bufsize, /*npools*/1, family, shutdown);
++	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
+ }
+ EXPORT_SYMBOL_GPL(svc_create);
  
- 	return rpcb_register(program, version, protocol, port);
-@@ -855,13 +855,14 @@ static int __svc_register(const u32 program, const u32 version,
- /**
-  * svc_register - register an RPC service with the local portmapper
-  * @serv: svc_serv struct for the service to register
-+ * @family: protocol family of service's listener socket
-  * @proto: transport protocol number to advertise
-  * @port: port to advertise
-  *
-- * Service is registered for any address in serv's address family
-+ * Service is registered for any address in the passed-in address family
-  */
--int svc_register(const struct svc_serv *serv, const unsigned short proto,
--		 const unsigned short port)
-+int svc_register(const struct svc_serv *serv, const int family,
-+		 const unsigned short proto, const unsigned short port)
+ struct svc_serv *
+ svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
+-		  sa_family_t family, void (*shutdown)(struct svc_serv *serv),
++		  void (*shutdown)(struct svc_serv *serv),
+ 		  svc_thread_fn func, struct module *mod)
  {
- 	struct svc_program	*progp;
- 	unsigned int		i;
-@@ -879,7 +880,7 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
- 					i,
- 					proto == IPPROTO_UDP?  "udp" : "tcp",
- 					port,
--					serv->sv_family,
-+					family,
- 					progp->pg_vers[i]->vs_hidden?
- 						" (but not telling portmap)" : "");
+ 	struct svc_serv *serv;
+ 	unsigned int npools = svc_pool_map_get();
  
-@@ -887,7 +888,7 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
- 				continue;
+-	serv = __svc_create(prog, bufsize, npools, family, shutdown);
++	serv = __svc_create(prog, bufsize, npools, shutdown);
  
- 			error = __svc_register(progp->pg_prog, i,
--						serv->sv_family, proto, port);
-+						family, proto, port);
- 			if (error < 0)
- 				break;
- 		}
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 5763e64..d00583c 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1122,7 +1122,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 
- 	/* Register socket with portmapper */
- 	if (*errp >= 0 && pmap_register)
--		*errp = svc_register(serv, inet->sk_protocol,
-+		*errp = svc_register(serv, serv->sv_family, inet->sk_protocol,
- 				     ntohs(inet_sk(inet)->sport));
- 
- 	if (*errp < 0) {
+ 	if (serv != NULL) {
+ 		serv->sv_function = func;
 
