@@ -1,47 +1,37 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/2] NFSD: fix handling of unsupported nfsv4 ops
-Date: Wed, 04 Mar 2009 23:11:55 +0200
-Message-ID: <49AEEE9B.2040507@panasas.com>
-References: <49A6FD82.6080808@panasas.com> <20090304210200.GG28951@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Possible bug in nfs-utils source.
+Date: Wed, 04 Mar 2009 17:59:18 -0500
+Message-ID: <49AF07C6.7030003@RedHat.com>
+References: <4977A0EC.3050103@candelatech.com> <2055BE67-5060-4D4E-BB0A-A8E61152A2EC@oracle.com> <4977B71B.4030003@candelatech.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: pnfs mailing list <pnfs@linux-nfs.org>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+To: Ben Greear <greearb@candelatech.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:4219 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750875AbZCDV1O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Mar 2009 16:27:14 -0500
-In-Reply-To: <20090304210200.GG28951@fieldses.org>
+Received: from mx2.redhat.com ([66.187.237.31]:57352 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752509AbZCDXCA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Mar 2009 18:02:00 -0500
+In-Reply-To: <4977B71B.4030003@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 04, 2009, 23:02 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Feb 26, 2009 at 12:37:22PM -0800, Benny Halevy wrote:
->> Both patches fix issues I introduced in 2.6.27.
->> The first one is more crucial to get to the 2.6.2{7,8} stable streams
->> but while at it, I'd pull both.
->> This was triggered in connectathon with the Sun OpenSolaris
->> client trying to read extended attrs (when copying a file).
->> This translates to a NFS4 OP_OPENATTR which caused our server to barf.
-> 
-> Thanks!  But, sorry, somehow I didn't get both of these (probably a
-> screwup on my end); would you mind resending?
 
-Just did.
 
-> 
-> Also, have you checked to make sure there aren't any other holes in our
-> list of operations?
-
-Yup.  OPENATTR was the only hole I found.
-
-Benny
-
-> 
-> --b.
-> 
->> [PATCH 1/2] NFSD: provide encode routine for OP_OPENATTR
->> [PATCH 2/2] NFSD: return nfsv4 error code nfserr_notsupp rather than nfsv[23]'s nfserr_opnotsupp
+Ben Greear wrote:
+> Chuck Lever wrote:
+>> On Jan 21, 2009, at Jan 21, 2009, 5:25 PM, Ben Greear wrote:
+>>> I'm working on adding support to bind to local addresses, and
+>>> I noticed this code in nfs/getport.c
+>>>
+>>> I believe the sizeof should probably be sizeof(*lb_addr) ?
 >>
->> Benny
+>> Yes.  Can you submit a patch to Steve and copy the list?
+> 
+> 
+> The patch is attached.
+> 
+> Signed-Off-By:  Ben Greear <greearb@candelatech.com>
+Committed... 
+
+steved.
