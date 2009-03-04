@@ -1,65 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vps680.inmotionhosting.com ([74.124.198.230]:41664 "EHLO
-	vps680.inmotionhosting.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754196AbZCMWkA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 18:40:00 -0400
-Message-ID: <49BAD2B8.6000005@temerity.us>
-Date: Fri, 13 Mar 2009 17:40:08 -0400
-From: Jim Callahan <callahan@temerity.us>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Best A->B large file copy performance
-References: <49B9780B.2020609@temerity.us> <1236971813.7265.23.camel@heimdal.trondhjem.org>
-In-Reply-To: <1236971813.7265.23.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail.fieldses.org ([141.211.133.115]:43381 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755412AbZCDTdj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Mar 2009 14:33:39 -0500
+Date: Wed, 4 Mar 2009 14:33:37 -0500
+To: Benjamin Coddington <Benjamin.Coddington@uvm.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Don't convert NFS4ERR_RESOURCE to EREMOTEIO
+Message-ID: <20090304193337.GB28951@fieldses.org>
+References: <49AECB96.5010909@uvm.edu> <20090304190156.GA27567@fieldses.org> <49AED5A7.2020502@uvm.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <49AED5A7.2020502@uvm.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond Myklebust wrote:
-> On Thu, 2009-03-12 at 17:00 -0400, Jim Callahan wrote:
->> While I'm on the subject, has there been any discussion about adding an 
->> NFS request that would allow copying files from one location to another 
->> on the same NFS server without requiring a round trip to a client?  Its 
->> not at all uncommon to need to move data around in this manner and it 
->> seems a huge waste of bandwidth to have to send all this data from the 
->> server to the client just to have the client send the data back 
->> unaltered to a different location.  Such a COPY request would be high 
->> level along the lines of RENAME and each server vendor could optimize 
->> this for their particular hardware architecture.  For our particular 
->> application, having such a request would make a huge difference in 
->> performance.
->>     
+On Wed, Mar 04, 2009 at 02:25:27PM -0500, Benjamin Coddington wrote:
+> We have webserver clients on an AIX 5300-08 server and run into brief  
+> periods where the server returns NFS4ERR_RESOURCE on almost every  
+> operation.  The webservers don't handle EREMOTEIO very well, and it  
+> would be preferable for us to retry.
+
+I think that's an AIX bug--they should probably be returning
+NFS4ERR_DELAY--but rfc 3530 wasn't as clear about this as it should have
+been.
+
+--b.
+
 >
-> I don't think anyone has talked about a server-to-server protocol, but I
-> believe there will be a proposal for file copy at the coming IETF
-> meeting. If you want server-to-server, then now is the time to speak up
-> and make the case. You'd probably want to start a thread on
-> nfsv4@ietf.org...
->   
-Thanks for the responses Trond.  I wasn't actually suggesting a 
-server-to-server protocol, but rather an additional client-server 
-protocol request to tell the server to copy files internally.   The idea 
-being that the typical usage of "cp" via NFS is wasting bandwidth 
-transmitting the contents of the source file from the server to client 
-only to have the client send it back unaltered.   If this was instead 
-performed internally on the server itself, it seems to me that it might 
-be dramatically faster and not waste valuable network bandwidth.  The 
-calling convention would be identical to the current RENAME request.  
-The implementation would of course be different in this new COPY request 
-would create a new i-node for the target and then copy all data from he 
-source to target file.   A vendor could choose the most efficient manner 
-for performing this based on their hardware/software architecture.
-
-Thanks for the pointer to nfsv4@ietf.org.  I'll bring this up there as 
-well...
-
-In case you are wondering, we make an application which includes version 
-control features somewhat along the lines of CVS or SVN.  In other 
-words, there is a central repository for checked-in versions and 
-independent scratch areas for users who can have their own copies of 
-files.  So both check-in and check-out operations frequently involve 
-performing a "cp" from file A to B located on the same NFS server.
-
--- 
-Jim Callahan - President - Temerity Software <www.temerity.us>
+> It appeared that the retry, and no seqid increment was already set up,  
+> but never used because of the conversion.
+>
+> Ben
+>
+> J. Bruce Fields wrote:
+>> On Wed, Mar 04, 2009 at 01:42:30PM -0500, Benjamin Coddington wrote:
+>>> Fixes a test in nfs4_proc_setclientid_confirm() which allows the 
+>>> client  to retry an operation when the server returns 
+>>> NFS4ERR_RESOURCE, instead  of returning EREMOTEIO to the user.
+>>
+>> I remember being confused as to whether NFS4ERR_RESOURCE is transitory
+>> (hence worth being retried) or permanent (in which case retrying the
+>> identical compound won't help).  The latter might happen if, for
+>> example, the particular sequence of compounds sent by the client was
+>> just too long or complicated for the server to handle.
+>>
+>> But rfc3530 doesn't explicitly limit NFS4ERR_RESOURCE to that case, and
+>> it appears that other clients:
+>>
+>> 	http://www.nfsv4.org/nfsv4-wg-archive-feb-03-feb-05/0747.html
+>>
+>> retry.  That discussion isn't conclusive, though.  Hm, and there's
+>> further discussion from Mike Eisler here:
+>>
+>> 	http://www.nfsv4-editor.org/cgi-bin/roundup/nfsv4/file7/comp-res.txt
+>>
+>> which suggests it was intended as a permanent error.
+>>
+>> What was the specific case where you hit this?
+>>
+>> --b.
+>>
+>>> ---
+>>> fs/nfs/nfs4xdr.c |    1 -
+>>>  1 files changed, 0 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>> index d1e4c8f..61dda13 100644
+>>> --- a/fs/nfs/nfs4xdr.c
+>>> +++ b/fs/nfs/nfs4xdr.c
+>>> @@ -4522,7 +4522,6 @@ static struct {
+>>>         { NFS4ERR_SERVERFAULT,  -ESERVERFAULT   },
+>>>         { NFS4ERR_BADTYPE,      -EBADTYPE       },
+>>>         { NFS4ERR_LOCKED,       -EAGAIN         },
+>>> -       { NFS4ERR_RESOURCE,     -EREMOTEIO      },
+>>>         { NFS4ERR_SYMLINK,      -ELOOP          },
+>>>         { NFS4ERR_OP_ILLEGAL,   -EOPNOTSUPP     },
+>>>         { NFS4ERR_DEADLOCK,     -EDEADLK        },
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
