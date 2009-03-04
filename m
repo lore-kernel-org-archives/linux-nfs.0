@@ -1,41 +1,44 @@
-From: Benjamin Coddington <Benjamin.Coddington@uvm.edu>
-Subject: [PATCH] Don't convert NFS4ERR_RESOURCE to EREMOTEIO
-Date: Wed, 04 Mar 2009 13:42:30 -0500
-Message-ID: <49AECB96.5010909@uvm.edu>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: pread/pwrite bug on linux?
+Date: Wed, 04 Mar 2009 13:48:09 -0500
+Message-ID: <x49k575jf9y.fsf@segfault.boston.devel.redhat.com>
+References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
+	<x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.uvm.edu ([132.198.101.168]:59473 "EHLO smtp1.uvm.edu"
+Received: from mx2.redhat.com ([66.187.237.31]:52103 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755007AbZCDSmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Mar 2009 13:42:36 -0500
-Received: from planck.local ([132.198.107.214])
-	(authenticated bits=0)
-	by smtp1.uvm.edu (8.14.2/8.14.2) with ESMTP id n24IgUsf011298
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Mar 2009 13:42:31 -0500
+	id S1755112AbZCDSsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Mar 2009 13:48:13 -0500
+In-Reply-To: <293BC70BB130E648A6631DB2F05B6E10019D6B277E-uiPIUNf6hlr3OT/vyeh27fufCSb+aD3WLzEdoUbNIic@public.gmane.org>
+	(Qiuyang Wu's message of "Tue, 3 Mar 2009 10:47:24 -0800")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fixes a test in nfs4_proc_setclientid_confirm() which allows the client 
-to retry an operation when the server returns NFS4ERR_RESOURCE, instead 
-of returning EREMOTEIO to the user.
+Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org> writes:
 
----
-fs/nfs/nfs4xdr.c |    1 -
-  1 files changed, 0 insertions(+), 1 deletions(-)
+> Hi Jeff,
+>
+> Attached the sample program. Should be able to compile as-is.
+>
+> Let me know your findings or need additional info.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d1e4c8f..61dda13 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4522,7 +4522,6 @@ static struct {
-         { NFS4ERR_SERVERFAULT,  -ESERVERFAULT   },
-         { NFS4ERR_BADTYPE,      -EBADTYPE       },
-         { NFS4ERR_LOCKED,       -EAGAIN         },
--       { NFS4ERR_RESOURCE,     -EREMOTEIO      },
-         { NFS4ERR_SYMLINK,      -ELOOP          },
-         { NFS4ERR_OP_ILLEGAL,   -EOPNOTSUPP     },
-         { NFS4ERR_DEADLOCK,     -EDEADLK        },
+I am not able to reproduce the problem.  I tried with a RHEL 4 system,
+using exactly the kernel you listed (2.6.9-55.EL) on an i386 system.  I
+tried against ext2, ext3, and an nfs mount exported from a RHEL 5
+system.  I should note that I modified your program to detect short
+writes and continue instead of reporting a bogus error.  I'll reiterate
+that the value of errno is undefined if the library/system call did not
+return -1.
 
+I noticed that your test case used NFS.  What NFS server were you using?
+Can you think of any other details that might affect the test?
+
+Thanks,
+Jeff
