@@ -1,61 +1,43 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: NFS4ERR_SYMLINK  error
-Date: Thu, 05 Mar 2009 12:09:40 +0200
-Message-ID: <49AFA4E4.50207@panasas.com>
-References: <49AF9C28.8030603@cn.fujitsu.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/6] Further nfs-utils clean ups
+Date: Thu, 05 Mar 2009 06:26:52 -0500
+Message-ID: <49AFB6FC.5080702@RedHat.com>
+References: <20090304234711.28749.7018.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-To: Ni Wenjuan <niwj@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:16370 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753074AbZCEKJo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 05:09:44 -0500
-In-Reply-To: <49AF9C28.8030603@cn.fujitsu.com>
+Received: from mx2.redhat.com ([66.187.237.31]:35569 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750868AbZCEL3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Mar 2009 06:29:32 -0500
+In-Reply-To: <20090304234711.28749.7018.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 05, 2009, 11:32 +0200, Ni Wenjuan <niwj@cn.fujitsu.com> wrote:
-> the result of newpynfs test case of  LINK4a .  if you link with target directoty
->  is a symbole file,it should get NFS4ERR_NOTDIR ,instead got NFS4ERR_SYMLINK.
+
+
+Chuck Lever wrote:
+> Hi Steve-
 > 
-> THE LINK operation  don't list NFS4ERR_SYMLINK as valid errors in the spec. But
-> NFS4ERR_SYMLINK seems like a reasonable error.  Is this an oversight
-> in the spec, or something we need to fix?
-
-Although NFSv4.1 adds NFS4ERR_SYMLINK to LINK's allowed errors list
-(and this might be an indication for it being an oversight in rfc3530),
-NFSv4.0 doesn't allow it so this needs to be fixed.
-
-Can you please test the following patch?
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
-
-git diff --stat -p fs/nfsd/vfs.c
- fs/nfsd/vfs.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6e50aaa..9165b1f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1637,6 +1637,9 @@ out_dput:
- out_unlock:
- 	fh_unlock(ffhp);
- out:
-+	/* nfserr_symlink returned from fh_verify is inappropriate for LINK */
-+	if (err == nfserr_symlink)
-+		err = nfserr_notdir;
- 	return err;
- 
- out_nfserr:
-
-
+> Here are six more patches that clean up various issues to prepare for
+> the widespread use of TI-RPC in nfs-utils.
 > 
+> We discovered a type width mismatch issue between our legacy RPC
+> headers and the TI-RPC run-time that will be addressed in a subsequent
+> patch series by using TI-RPC to build all of nfs-utils.  This issue
+> should be addressed before the next release of nfs-utils is published.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> The idea will be to build nfs-utils with either glibc's legacy RPC
+> implementation and the legacy RPC headers (as it is today in 1.1.3),
+> or with libtirpc and TI-RPC's headers, based on the setting of
+> --enable-tirpc (which defaults to --disable-tirpc).
+> 
+> This further insulates ongoing IPv6 work from folks who need to use
+> today's up-to-date version of nfs-utils, while easily allowing us to
+> test a version built with complete TI-RPC integration.
+> 
+Committed...
+
+steved.
