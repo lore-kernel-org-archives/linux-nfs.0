@@ -1,69 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:3386 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755540AbZCaA25 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Mar 2009 20:28:57 -0400
-Date: Tue, 31 Mar 2009 08:28:38 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Jos Houtman <jos@hyves.nl>
-Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "jens.axboe@oracle.com" <jens.axboe@oracle.com>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Page Cache writeback too slow,   SSD/noop scheduler/ext2
-Message-ID: <20090331002838.GA5895@localhost>
-References: <20090329023238.GA7825@localhost> <C5F6B627.D9D0%jos@hyves.nl>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <C5F6B627.D9D0%jos@hyves.nl>
+Received: from rv-out-0506.google.com ([209.85.198.239]:33156 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752490AbZCERS6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 12:18:58 -0500
+Received: by rv-out-0506.google.com with SMTP id g37so27376rvb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Mar 2009 09:18:55 -0800 (PST)
+Date: Thu, 5 Mar 2009 10:18:55 -0700
+Message-ID: <49e80a6a0903050918y6043e729weba84715fadb0aaf@mail.gmail.com>
+Subject: NFS significantly slow on uncache data, high %iowait, for kernel 2.6
+From: Igor Sola <iglesu@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Mar 31, 2009 at 12:47:19AM +0800, Jos Houtman wrote:
-> 
-> >> Thanx for the patch, but for the next time: How should I apply it?
-> >> it seems to be context aware (@@) and broke on all kernel versions I tried
-> >> 2.6.28/2.6.28.7/2.6.29
-> > 
-> > Do you mean that the patch applies after removing " @@.*$"?
-> 
-> I didn't try that, but this time it worked. So it was probably my error.
-> 
-> > 
-> > You are right. In your case, there are several big dirty files in sdb1,
-> > and the sdb write queue is constantly (almost-)congested. The SSD write
-> > speed is so slow, that in each round of sdb1 writeback, it begins with
-> > an uncongested queue, but quickly fills up after writing some pages.
-> > Hence all the inodes will get redirtied because of (nr_to_write > 0).
-> > 
-> > The following quick fix should solve the slow-writeback-on-congested-SSD
-> > problem. However the writeback sequence is suboptimal: it sync-and-requeue
-> > each file until congested (in your case about 3~600 pages) instead of
-> > until MAX_WRITEBACK_PAGES=1024 pages.
-> 
-> Yeah that fixed it, but performance dropped due to the more constant
-> congestion. So I will need to try some different io schedulers.
+Hi,
 
-Read performance or write performance?
+Apologies in advance if this email is inappropriate for this mailing
+list. If so please let me know of a more suitable one.
 
-> Next to that I was wondering if there are any plans to make sure that not
-> all dirty-files are written back in the same interval.
-> 
-> In my case all database files are written back each 30 seconds, while I
-> would prefer them to be more divided over the interval.
+I noticed a significant performance difference when comparing a
+Centos5 (kernel 2.6.18) or Ubuntu (2.6.27-11) with a RH8 (kernel 2.4).
+All use NFS v3.
+The RH8 nfsd is faster than the 2.6 one even though it runs in an
+older, lower spec machine.
 
-pdflush will wake up every 5s to sync files dirtied more than 30s.
-So the writeback of inodes should be distributed(somehow randomly)
-into these 5s-interval-wakeups due to varied dirty times.
+See test details below
 
-However the distribution may well be uneven in may cases. It seems to
-be conflicting goals for HDD and SSD: one favors somehow small busty
-writeback, another favors smooth writeback streams. I guess the better
-scheme would be bursty pdflush writebacks plus IO scheduler level QoS.
+Centos 5 x86_64 kernel 2.6.18-92.1.22.el5
+
+RH8 2.4.20-30.8.multi_lun.smp #1 SMP  i386 GNU/Linux
+
+1Gb connection between machines
+
+File sizes are 1GB. The read speed of these files in the local machine
+filesystem (server) is around 98MBs in the Centos5 machine and around
+65MBs in the old RH8 machine.
+
+.- First of all I wanted to measure how the network alone performs
+while using NFS.
+So in the server side I run a "cat" command on the 1GB file to
+/dev/null.  At this point the file system has the 1GB file cached in
+memory. In the client side a "cat" on the same file gives me a speed
+of about 113MBs. Which is consistent with the 1Gb network. There is no
+performance hit. So far so good.
+
+
+.- The second test is reading from disk an uncache (in server and
+client) file. In the server and client I made sure I flushed the 1GB
+file from the memory.  Between  Centos5 machines the performance was
+about 35MBs (64% drop from the 98MBs disk read). Between RH8 machines
+the performance was 55MBs (15% drop from the 65MBs)
+
+This second test was repeated for ext2, ext3, xfs with no significant
+differences.
+
+Please note that the %iowait more than doubles when reading the file
+from the NFS partition vs the file system partition in the 2.6 kernels
+
+.- I run a third test just to make sure the problem is somehow related
+to the nfs daemon. I mounted the nfs partition local to the nfs server
+so the network was out the equation. I got the same poor results, no
+difference.
+
+Any ideas are most welcome,
 
 Thanks,
-Fengguang
+
+I.
