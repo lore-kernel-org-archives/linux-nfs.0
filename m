@@ -1,98 +1,93 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/23] SUNRPC: Switch one_sock_name() to use snprintf()
-Date: Thu, 05 Mar 2009 16:33:08 -0500
-Message-ID: <20090305213308.21342.40271.stgit@ingres.1015granger.net>
+Subject: [PATCH 13/23] SUNRPC: pass buffer size to svc_sock_names()
+Date: Thu, 05 Mar 2009 16:33:01 -0500
+Message-ID: <20090305213300.21342.4012.stgit@ingres.1015granger.net>
 References: <20090305212823.21342.38352.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:24554 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754051AbZCEVdY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:33:24 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:35909 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751647AbZCEVdP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:33:15 -0500
 In-Reply-To: <20090305212823.21342.38352.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use snprintf() in one_sock_name() to prevent overflowing the output
-buffer.  If the name doesn't fit in the buffer, the buffer is filled
-in with an empty string, and -ENAMETOOLONG is returned.
+Adjust the synopsis of svc_sock_names() to pass in the size of the
+output buffer.  Add a documenting comment.
+
+This is a cosmetic change for now.  A subsequent patch will make sure
+the buffer length is passed to one_sock_name(), where the length will
+actually be useful.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/svcsock.c |   25 ++++++++++++++++++-------
- 1 files changed, 18 insertions(+), 7 deletions(-)
+ fs/nfsd/nfsctl.c               |    3 ++-
+ include/linux/sunrpc/svcsock.h |    4 +++-
+ net/sunrpc/svcsock.c           |   19 +++++++++++++++++--
+ 3 files changed, 22 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 917578f..69c77ad 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -935,7 +935,8 @@ static ssize_t __write_ports_delfd(char *buf)
+ 		return -ENOMEM;
+ 
+ 	if (nfsd_serv != NULL)
+-		len = svc_sock_names(buf, nfsd_serv, toclose);
++		len = svc_sock_names(nfsd_serv, buf,
++					SIMPLE_TRANSACTION_LIMIT, toclose);
+ 	if (len >= 0)
+ 		lockd_down();
+ 
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index e23241c..8271631 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -38,7 +38,9 @@ int		svc_recv(struct svc_rqst *, long);
+ int		svc_send(struct svc_rqst *);
+ void		svc_drop(struct svc_rqst *);
+ void		svc_sock_update_bufs(struct svc_serv *serv);
+-int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
++int		svc_sock_names(struct svc_serv *serv, char *buf,
++					const size_t buflen,
++					const char *toclose);
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+ 					char *name_return, const size_t len);
+ void		svc_init_xprt_sock(void);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 107b887..a1bf142 100644
+index 61ca2dd..107b887 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -240,22 +240,27 @@ out:
- /*
-  * Report socket names for nfsdfs
-  */
--static int one_sock_name(char *buf, struct svc_sock *svsk)
-+static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
- {
- 	int len;
- 
- 	switch(svsk->sk_sk->sk_family) {
--	case AF_INET:
--		len = sprintf(buf, "ipv4 %s %pI4 %d\n",
-+	case PF_INET:
-+		len = snprintf(buf, remaining, "ipv4 %s %pI4 %d\n",
- 			      svsk->sk_sk->sk_protocol == IPPROTO_UDP ?
- 			      "udp" : "tcp",
- 			      &inet_sk(svsk->sk_sk)->rcv_saddr,
- 			      inet_sk(svsk->sk_sk)->num);
- 		break;
- 	default:
--		len = sprintf(buf, "*unknown-%d*\n",
-+		len = snprintf(buf, remaining, "*unknown-%d*\n",
- 			       svsk->sk_sk->sk_family);
- 	}
-+
-+	if (len >= remaining) {
-+		*buf = '\0';
-+		return -ENAMETOOLONG;
-+	}
+@@ -259,8 +259,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
  	return len;
  }
  
-@@ -282,15 +287,21 @@ int svc_sock_names(struct svc_serv *serv, char *buf, const size_t buflen,
- 
- 	if (!serv)
- 		return 0;
-+
- 	spin_lock_bh(&serv->sv_lock);
- 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list) {
--		int onelen = one_sock_name(buf+len, svsk);
--		if (toclose && strcmp(toclose, buf+len) == 0)
-+		int onelen = svc_one_sock_name(svsk, buf + len, buflen - len);
-+		if (onelen < 0) {
-+			len = onelen;
-+			break;
-+		}
-+		if (toclose && strcmp(toclose, buf + len) == 0)
- 			closesk = svsk;
- 		else
- 			len += onelen;
- 	}
- 	spin_unlock_bh(&serv->sv_lock);
-+
- 	if (closesk)
- 		/* Should unregister with portmap, but you cannot
- 		 * unregister just one protocol...
-@@ -1226,7 +1237,7 @@ int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
- 		sockfd_put(so);
- 		return err;
- 	}
--	return one_sock_name(name_return, svsk);
-+	return svc_one_sock_name(svsk, name_return, len);
- }
- EXPORT_SYMBOL_GPL(svc_addsock);
- 
+-int
+-svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
++/**
++ * svc_sock_names - construct a list of listener names in a string
++ * @serv: pointer to RPC service
++ * @buf: pointer to a buffer to fill in with socket names
++ * @buflen: size of the buffer to be filled
++ * @toclose: pointer to '\0'-terminated C string containing the name
++ *		of a listener to be closed
++ *
++ * Fills in @buf with a '\n'-separated list of names of listener
++ * sockets.  If @toclose is not NULL, the socket named by @toclose
++ * is closed, and is not included in the output list.
++ *
++ * Returns positive length of the socket name string, or a negative
++ * errno value on error.
++ */
++int svc_sock_names(struct svc_serv *serv, char *buf, const size_t buflen,
++		   const char *toclose)
+ {
+ 	struct svc_sock *svsk, *closesk = NULL;
+ 	int len = 0;
 
