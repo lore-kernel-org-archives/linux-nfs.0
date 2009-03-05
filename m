@@ -1,101 +1,45 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/23] NFSD: Refactor transport removal out of __write_ports()
-Date: Thu, 05 Mar 2009 16:31:53 -0500
-Message-ID: <20090305213153.21342.35722.stgit@ingres.1015granger.net>
+Subject: [PATCH 08/23] NFSD: Note an additional requirement when passing TCP
+	sockets to portlist
+Date: Thu, 05 Mar 2009 16:32:23 -0500
+Message-ID: <20090305213223.21342.83475.stgit@ingres.1015granger.net>
 References: <20090305212823.21342.38352.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:25017 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753028AbZCEVct (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:32:49 -0500
+Received: from acsinet12.oracle.com ([141.146.126.234]:35750 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754043AbZCEVc5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:32:57 -0500
 In-Reply-To: <20090305212823.21342.38352.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Refactor transport removal out of __write_ports() to make it
-easier to understand and maintain.
+User space must call listen(3) on SOCK_STREAM sockets passed into
+/proc/fs/nfsd/portlist, otherwise that listener is ignored.  Document
+this.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |   53 +++++++++++++++++++++++++++++------------------------
- 1 files changed, 29 insertions(+), 24 deletions(-)
+ fs/nfsd/nfsctl.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 817999e..c56f50f 100644
+index 0d3efa4..441fbfd 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -879,8 +879,32 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
- 	return rv;
- }
- 
-+/*
-+ * A transport listener is removed by writing a "-", it's transport
-+ * name, and it's port number
-+ */
-+static ssize_t __write_ports_delxprt(const char *transport,
-+				     const unsigned short port)
-+{
-+	struct svc_xprt *xprt;
-+
-+	if (port == 0 || nfsd_serv == NULL)
-+		return -EINVAL;
-+
-+	xprt = svc_find_xprt(nfsd_serv, transport, AF_UNSPEC, port);
-+	if (xprt == NULL)
-+		return -ENOTCONN;
-+
-+	svc_close_xprt(xprt);
-+	svc_xprt_put(xprt);
-+	return 0;
-+}
-+
- static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- {
-+	char transport[16];
-+	int port;
-+
- 	if (size == 0) {
- 		int len = 0;
- 
-@@ -951,30 +975,11 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- 			return err < 0 ? err : 0;
- 		}
- 	}
--	/*
--	 * Remove a transport by writing it's transport name and port number
--	 */
--	if (buf[0] == '-' && isalpha(buf[1])) {
--		struct svc_xprt *xprt;
--		int err = -EINVAL;
--		char transport[16];
--		int port;
--		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
--			if (port == 0)
--				return -EINVAL;
--			if (nfsd_serv) {
--				xprt = svc_find_xprt(nfsd_serv, transport,
--						     AF_UNSPEC, port);
--				if (xprt) {
--					svc_close_xprt(xprt);
--					svc_xprt_put(xprt);
--					err = 0;
--				} else
--					err = -ENOTCONN;
--			}
--			return err < 0 ? err : 0;
--		}
--	}
-+
-+	if (buf[0] == '-' && isalpha(buf[1]))
-+		if (sscanf(&buf[1], "%15s %4u", transport, &port) == 2)
-+			return __write_ports_delxprt(transport, port);
-+
- 	return -EINVAL;
- }
- 
+@@ -1025,7 +1025,9 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+  *			buf:		C string containing an unsigned
+  *					integer value representing a bound
+  *					but unconnected socket that is to be
+- *					used as an NFSD listener
++ *					used as an NFSD listener; listen(3)
++ *					must be called for a SOCK_STREAM
++ *					socket, otherwise it is ignored
+  *			size:		non-zero length of C string in @buf
+  * Output:
+  *	On success:	NFS service is started;
 
