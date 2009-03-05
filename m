@@ -1,95 +1,110 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/23] NFSD: Refactor transport addition out of __write_ports()
-Date: Thu, 05 Mar 2009 16:32:01 -0500
-Message-ID: <20090305213200.21342.93422.stgit@ingres.1015granger.net>
+Subject: [PATCH 07/23] NFSD: Refactor socket creation out of __write_ports()
+Date: Thu, 05 Mar 2009 16:32:16 -0500
+Message-ID: <20090305213215.21342.77130.stgit@ingres.1015granger.net>
 References: <20090305212823.21342.38352.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:24235 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753714AbZCEVcy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:32:54 -0500
+Received: from rcsinet11.oracle.com ([148.87.113.123]:25101 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753976AbZCEVcz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:32:55 -0500
 In-Reply-To: <20090305212823.21342.38352.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Refactor transport addition out of __write_ports() to make
-it easier to understand and maintain.
+Clean up: Refactor the socket creation logic out of __write_ports() to
+make it easier to understand and maintain.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |   49 ++++++++++++++++++++++++++++---------------------
- 1 files changed, 28 insertions(+), 21 deletions(-)
+ fs/nfsd/nfsctl.c |   64 +++++++++++++++++++++++++++++-------------------------
+ 1 files changed, 34 insertions(+), 30 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index c56f50f..72af950 100644
+index 5b99a99..0d3efa4 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -880,6 +880,30 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
+@@ -880,6 +880,37 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
  }
  
  /*
-+ * A transport listener is added by writing it's transport name and
-+ * a port number
++ * A single 'fd' number was written, in which case it must be for
++ * a socket of a supported family/protocol, and we use it as an
++ * nfsd listener.
 + */
-+static ssize_t __write_ports_addxprt(const char *transport,
-+				     const unsigned short port)
++static ssize_t __write_ports_addfd(char *buf)
 +{
-+	int err;
++	char *mesg = buf;
++	int fd, err;
++
++	err = get_int(&mesg, &fd);
++	if (err != 0 || fd < 0)
++		return -EINVAL;
 +
 +	err = nfsd_create_serv();
 +	if (err != 0)
 +		return err;
 +
-+	err = svc_create_xprt(nfsd_serv, transport,
-+				PF_INET, port, SVC_SOCK_ANONYMOUS);
-+	if (err < 0) {
-+		/* Give a reasonable perror msg for bad transport string */
-+		if (err == -ENOENT)
-+			err = -EPROTONOSUPPORT;
-+		return err;
++	err = svc_addsock(nfsd_serv, fd, buf);
++	if (err >= 0) {
++		err = lockd_up();
++		if (err < 0)
++			svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
++
++		/* Decrease the count, but don't shut down the service */
++		nfsd_serv->sv_nrthreads--;
 +	}
-+	return 0;
++
++	return err < 0 ? err : 0;
 +}
 +
 +/*
-  * A transport listener is removed by writing a "-", it's transport
-  * name, and it's port number
+  * A '-' followed by the 'name' of a socket means we close the socket.
   */
-@@ -954,27 +978,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- 		kfree(toclose);
+ static ssize_t __write_ports_delfd(char *buf)
+@@ -957,36 +988,9 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+ 			len = svc_xprt_names(nfsd_serv, buf, 0);
  		return len;
  	}
--	/*
--	 * Add a transport listener by writing it's transport name
+-	/* Either a single 'fd' number is written, in which
+-	 * case it must be for a socket of a supported family/protocol,
+-	 * and we use it as an nfsd socket, or
+-	 * A '-' followed by the 'name' of a socket in which case
+-	 * we close the socket.
 -	 */
--	if (isalpha(buf[0])) {
+-	if (isdigit(buf[0])) {
+-		char *mesg = buf;
+-		int fd;
 -		int err;
--		char transport[16];
--		int port;
--		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
--			err = nfsd_create_serv();
--			if (!err) {
--				err = svc_create_xprt(nfsd_serv,
--						      transport, PF_INET, port,
--						      SVC_SOCK_ANONYMOUS);
--				if (err == -ENOENT)
--					/* Give a reasonable perror msg for
--					 * bad transport string */
--					err = -EPROTONOSUPPORT;
+-		err = get_int(&mesg, &fd);
+-		if (err)
+-			return -EINVAL;
+-		if (fd < 0)
+-			return -EINVAL;
+-		err = nfsd_create_serv();
+-		if (!err) {
+-			err = svc_addsock(nfsd_serv, fd, buf);
+-			if (err >= 0) {
+-				err = lockd_up();
+-				if (err < 0)
+-					svc_sock_names(buf+strlen(buf)+1, nfsd_serv, buf);
 -			}
--			return err < 0 ? err : 0;
+-			/* Decrease the count, but don't shutdown the
+-			 * the service
+-			 */
+-			nfsd_serv->sv_nrthreads--;
 -		}
+-		return err < 0 ? err : 0;
 -	}
 +
-+	if (isalpha(buf[0]))
-+		if (sscanf(buf, "%15s %4u", transport, &port) == 2)
-+			return __write_ports_addxprt(transport, port);
++	if (isdigit(buf[0]))
++		return __write_ports_addfd(buf);
  
- 	if (buf[0] == '-' && isalpha(buf[1]))
- 		if (sscanf(&buf[1], "%15s %4u", transport, &port) == 2)
+ 	if (buf[0] == '-' && isdigit(buf[1]))
+ 		return __write_ports_delfd(buf);
 
