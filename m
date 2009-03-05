@@ -1,62 +1,66 @@
-From: "Kevin W. Rudd" <solgato@us.ibm.com>
-Subject: Re: Memory corruption in nfs3_xdr_setaclargs()
-Date: Thu, 5 Mar 2009 11:49:46 -0800 (PST)
-Message-ID: <alpine.LFD.1.10.0903051135040.3949@w-kevinr.beaverton.ibm.com>
-References: <49760685.4030409@redhat.com>  <1232475301.7055.14.camel@heimdal.trondhjem.org>  <alpine.LFD.1.10.0903050829420.3949@w-kevinr.beaverton.ibm.com> <1236279188.13361.30.camel@heimdal.trondhjem.org>
+From: Tom Talpey <tmtalpey@gmail.com>
+Subject: [PATCH 1/4] SVCRDMA: remove faulty assertions in rpc/rdma chunk
+	validation.
+Date: Thu, 05 Mar 2009 16:17:47 -0500
+Message-ID: <20090305211747.6517.14591.stgit@localhost.localdomain>
+References: <20090305210738.6517.67862.stgit@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, Tom Talpey <tmtalpey@gmail.com>,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:47303 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753892AbZCETtw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Mar 2009 14:49:52 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e3.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id n25JlBnP014647
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Mar 2009 14:47:11 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n25JnorU194528
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Mar 2009 14:49:50 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n25JnnT7002790
-	for <linux-nfs@vger.kernel.org>; Thu, 5 Mar 2009 14:49:50 -0500
-In-Reply-To: <1236279188.13361.30.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from qmta07.westchester.pa.mail.comcast.net ([76.96.62.64]:45340
+	"EHLO QMTA07.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752757AbZCEVRu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:17:50 -0500
+In-Reply-To: <20090305210738.6517.67862.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Certain client-provided RPCRDMA chunk alignments result in an
+additional scatter/gather entry, which triggered nfs/rdma server
+assertions incorrectly. OpenSolaris nfs/rdma client connectathon
+testing was blocked by these in the special/locking section.
 
-On Thu, 5 Mar 2009, Trond Myklebust wrote:
+Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
+Cc: Tom Tucker <tom@opengridcomputing.com>
+---
 
-> Going over that particular procedure reveals a number of bugs that all
-> should be fixed.
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-So true ;-)
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index a3334e3..d0bea98 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -191,7 +191,6 @@ static int map_xdr(struct svcxprt_rdma *xprt,
+ 		   struct xdr_buf *xdr,
+ 		   struct svc_rdma_req_map *vec)
+ {
+-	int sge_max = (xdr->len+PAGE_SIZE-1) / PAGE_SIZE + 3;
+ 	int sge_no;
+ 	u32 sge_bytes;
+ 	u32 page_bytes;
+@@ -235,7 +234,11 @@ static int map_xdr(struct svcxprt_rdma *xprt,
+ 		sge_no++;
+ 	}
+ 
+-	BUG_ON(sge_no > sge_max);
++	dprintk("svcrdma: map_xdr: sge_no %d page_no %d "
++		"page_base %zd page_len %zd head_len %d tail_len %d\n",
++		sge_no, page_no, xdr->page_base, xdr->page_len,
++		xdr->head[0].iov_len, xdr->tail[0].iov_len);
++
+ 	vec->count = sge_no;
+ 	return 0;
+ }
+@@ -579,7 +582,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 			ctxt->sge[page_no+1].length = 0;
+ 	}
+ 	BUG_ON(sge_no > rdma->sc_max_sge);
+-	BUG_ON(sge_no > ctxt->count);
+ 	memset(&send_wr, 0, sizeof send_wr);
+ 	ctxt->wr_op = IB_WR_SEND;
+ 	send_wr.wr_id = (unsigned long)ctxt;
 
-> Trying to estimate how many bytes are free in the header is _WRONG_.
-> That memory is allocated with certain assumptions, which are set in the
-> definition of ACL3_setaclargs_sz. In this case, the assumptions appear
-> to be that we will fit a maximum of 5 ACEs in the header.
-> IOW: the real fix for your corruption problem is simply to set
-> len_in_head to 2*(2+5*3). Currently, the patch supplied by Sachin will
-> always set it to zero.
-
-Does setting len_in_head to 2*(2+5*3) take into account the
-header space already consumed?  The initial patch was just a
-quick-n-dirty way of making sure we didn't overwrite the initial
-buffer, and a mechanism for generating some discussion around the
-other deficiencies in this procedure.  I'll take the blame for
-it being a quick hack to simply take the heat off for a critical
-customer situation :)
-
-> Secondly, doing page allocation in the XDR routine is _WRONG_. For one
-> thing, look at the major memory leak which happens if the client needs
-> to resend the request (which can happen every now and again due to a
-> dropped tcp connection, or all the time due to UDP retransmits).
-> Those pages should have been allocated in nfs3_proc_getacl(), and indeed
-> that is where the wretched things are freed.
-
-That's an issue I hadn't noticed, but this isn't really my area of
-expertice.  Thanks for taking a closer look at this area of code.
-
--Kevin
