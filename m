@@ -1,66 +1,82 @@
 From: Tom Talpey <tmtalpey@gmail.com>
-Subject: [PATCH 1/4] SVCRDMA: remove faulty assertions in rpc/rdma chunk
-	validation.
-Date: Thu, 05 Mar 2009 16:17:47 -0500
-Message-ID: <20090305211747.6517.14591.stgit@localhost.localdomain>
+Subject: [PATCH 2/4] XPRTRDMA: correct an rpc/rdma inline send marshaling error
+Date: Thu, 05 Mar 2009 16:17:53 -0500
+Message-ID: <20090305211753.6517.94091.stgit@localhost.localdomain>
 References: <20090305210738.6517.67862.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org, Tom Talpey <tmtalpey@gmail.com>,
-	Tom Tucker <tom@opengridcomputing.com>
+Cc: linux-nfs@vger.kernel.org, Tom Talpey <tmtalpey@gmail.com>
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qmta07.westchester.pa.mail.comcast.net ([76.96.62.64]:45340
-	"EHLO QMTA07.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752757AbZCEVRu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:17:50 -0500
+Received: from qmta06.westchester.pa.mail.comcast.net ([76.96.62.56]:52484
+	"EHLO QMTA06.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751903AbZCEVR4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:17:56 -0500
 In-Reply-To: <20090305210738.6517.67862.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Certain client-provided RPCRDMA chunk alignments result in an
-additional scatter/gather entry, which triggered nfs/rdma server
-assertions incorrectly. OpenSolaris nfs/rdma client connectathon
-testing was blocked by these in the special/locking section.
+Certain client rpc's which contain both lengthy page-contained
+metadata and a non-empty xdr_tail buffer require careful handling
+to avoid overlapped memory copying. Rearranging of existing rpcrdma
+marshaling code avoids it; this fixes an NFSv4 symlink creation error
+detected with connectathon basic/test8 to multiple servers.
 
 Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
-Cc: Tom Tucker <tom@opengridcomputing.com>
 ---
 
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   26 ++++++++++++++------------
+ 1 files changed, 14 insertions(+), 12 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index a3334e3..d0bea98 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -191,7 +191,6 @@ static int map_xdr(struct svcxprt_rdma *xprt,
- 		   struct xdr_buf *xdr,
- 		   struct svc_rdma_req_map *vec)
- {
--	int sge_max = (xdr->len+PAGE_SIZE-1) / PAGE_SIZE + 3;
- 	int sge_no;
- 	u32 sge_bytes;
- 	u32 page_bytes;
-@@ -235,7 +234,11 @@ static int map_xdr(struct svcxprt_rdma *xprt,
- 		sge_no++;
- 	}
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 14106d2..e5e28d1 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -310,6 +310,19 @@ rpcrdma_inline_pullup(struct rpc_rqst *rqst, int pad)
+ 		__func__, pad, destp, rqst->rq_slen, curlen);
  
--	BUG_ON(sge_no > sge_max);
-+	dprintk("svcrdma: map_xdr: sge_no %d page_no %d "
-+		"page_base %zd page_len %zd head_len %d tail_len %d\n",
-+		sge_no, page_no, xdr->page_base, xdr->page_len,
-+		xdr->head[0].iov_len, xdr->tail[0].iov_len);
+ 	copy_len = rqst->rq_snd_buf.page_len;
 +
- 	vec->count = sge_no;
- 	return 0;
- }
-@@ -579,7 +582,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 			ctxt->sge[page_no+1].length = 0;
++	if (rqst->rq_snd_buf.tail[0].iov_len) {
++		curlen = rqst->rq_snd_buf.tail[0].iov_len;
++		if (destp + copy_len != rqst->rq_snd_buf.tail[0].iov_base) {
++			memmove(destp + copy_len,
++				rqst->rq_snd_buf.tail[0].iov_base, curlen);
++			r_xprt->rx_stats.pullup_copy_count += curlen;
++		}
++		dprintk("RPC:       %s: tail destp 0x%p len %d\n",
++			__func__, destp + copy_len, curlen);
++		rqst->rq_svec[0].iov_len += curlen;
++	}
++
+ 	r_xprt->rx_stats.pullup_copy_count += copy_len;
+ 	npages = PAGE_ALIGN(rqst->rq_snd_buf.page_base+copy_len) >> PAGE_SHIFT;
+ 	for (i = 0; copy_len && i < npages; i++) {
+@@ -332,17 +345,6 @@ rpcrdma_inline_pullup(struct rpc_rqst *rqst, int pad)
+ 		destp += curlen;
+ 		copy_len -= curlen;
  	}
- 	BUG_ON(sge_no > rdma->sc_max_sge);
--	BUG_ON(sge_no > ctxt->count);
- 	memset(&send_wr, 0, sizeof send_wr);
- 	ctxt->wr_op = IB_WR_SEND;
- 	send_wr.wr_id = (unsigned long)ctxt;
+-	if (rqst->rq_snd_buf.tail[0].iov_len) {
+-		curlen = rqst->rq_snd_buf.tail[0].iov_len;
+-		if (destp != rqst->rq_snd_buf.tail[0].iov_base) {
+-			memcpy(destp,
+-				rqst->rq_snd_buf.tail[0].iov_base, curlen);
+-			r_xprt->rx_stats.pullup_copy_count += curlen;
+-		}
+-		dprintk("RPC:       %s: tail destp 0x%p len %d curlen %d\n",
+-			__func__, destp, copy_len, curlen);
+-		rqst->rq_svec[0].iov_len += curlen;
+-	}
+ 	/* header now contains entire send message */
+ 	return pad;
+ }
+@@ -656,7 +658,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 		if (curlen > rqst->rq_rcv_buf.tail[0].iov_len)
+ 			curlen = rqst->rq_rcv_buf.tail[0].iov_len;
+ 		if (rqst->rq_rcv_buf.tail[0].iov_base != srcp)
+-			memcpy(rqst->rq_rcv_buf.tail[0].iov_base, srcp, curlen);
++			memmove(rqst->rq_rcv_buf.tail[0].iov_base, srcp, curlen);
+ 		dprintk("RPC:       %s: tail srcp 0x%p len %d curlen %d\n",
+ 			__func__, srcp, copy_len, curlen);
+ 		rqst->rq_rcv_buf.tail[0].iov_len = curlen;
 
