@@ -1,7 +1,7 @@
 From: Tom Talpey <tmtalpey@gmail.com>
-Subject: [PATCH 3/4] SUNRPC: dynamically load RPC transport modules on-demand
-Date: Thu, 05 Mar 2009 16:17:59 -0500
-Message-ID: <20090305211759.6517.24300.stgit@localhost.localdomain>
+Subject: [PATCH 4/4] NFS: load the rpc/rdma transport module automatically
+Date: Thu, 05 Mar 2009 16:18:05 -0500
+Message-ID: <20090305211805.6517.71207.stgit@localhost.localdomain>
 References: <20090305210738.6517.67862.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,80 +9,60 @@ Cc: linux-nfs@vger.kernel.org, Tom Talpey <tmtalpey@gmail.com>,
 	Chuck Lever <chuck.lever@oracle.com>
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qmta02.westchester.pa.mail.comcast.net ([76.96.62.24]:49084
-	"EHLO QMTA02.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752971AbZCEVSD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:18:03 -0500
+Received: from qmta06.westchester.pa.mail.comcast.net ([76.96.62.56]:52484
+	"EHLO QMTA06.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754205AbZCEVSH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:18:07 -0500
 In-Reply-To: <20090305210738.6517.67862.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide an api to attempt to load any necessary kernel RPC
-client transport module automatically. By convention, the
-desired module name is "xprt"+"transport name". For example,
-when NFS mounting with "-o proto=rdma", attempt to load the
-"xprtrdma" module.
+When mounting an NFS/RDMA server with the "-o proto=rdma" or
+"-o rdma" options, attempt to dynamically load the necessary
+"xprtrdma" client transport module. Doing so improves usability,
+while avoiding a static module dependency and any unnecesary
+resources.
 
 Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
 Cc: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/xprt.c           |   31 +++++++++++++++++++++++++++++++
- 2 files changed, 32 insertions(+), 0 deletions(-)
+ fs/nfs/super.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 11fc71d..2b0d960 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -235,6 +235,7 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
-  */
- int			xprt_register_transport(struct xprt_class *type);
- int			xprt_unregister_transport(struct xprt_class *type);
-+int			xprt_load_transport(const char *);
- void			xprt_set_retrans_timeout_def(struct rpc_task *task);
- void			xprt_set_retrans_timeout_rtt(struct rpc_task *task);
- void			xprt_wake_pending_tasks(struct rpc_xprt *xprt, int status);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 29e401b..3fd4d65 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -152,6 +152,37 @@ out:
- EXPORT_SYMBOL_GPL(xprt_unregister_transport);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index d6686f4..4e7f879 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1018,6 +1018,7 @@ static int nfs_parse_mount_options(char *raw,
+ 		case Opt_rdma:
+ 			mnt->flags |= NFS_MOUNT_TCP; /* for side protocols */
+ 			mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
++			xprt_load_transport(p);
+ 			break;
+ 		case Opt_acl:
+ 			mnt->flags &= ~NFS_MOUNT_NOACL;
+@@ -1190,7 +1191,6 @@ static int nfs_parse_mount_options(char *raw,
+ 				goto out_nomem;
+ 			token = match_token(string,
+ 					    nfs_xprt_protocol_tokens, args);
+-			kfree(string);
  
- /**
-+ * xprt_load_transport - load a transport implementation
-+ * @transport_name: transport to load
-+ *
-+ * Returns:
-+ * 0:		transport successfully loaded
-+ * -ENOENT:	transport module not available
-+ */
-+int xprt_load_transport(const char *transport_name)
-+{
-+	struct xprt_class *t;
-+	char module_name[sizeof t->name + 5];
-+	int result;
-+
-+	result = 0;
-+	spin_lock(&xprt_list_lock);
-+	list_for_each_entry(t, &xprt_list, list) {
-+		if (strcmp(t->name, transport_name) == 0) {
-+			spin_unlock(&xprt_list_lock);
-+			goto out;
-+		}
-+	}
-+	spin_unlock(&xprt_list_lock);
-+	strcpy(module_name, "xprt");
-+	strncat(module_name, transport_name, sizeof t->name);
-+	result = request_module(module_name);
-+out:
-+	return result;
-+}
-+EXPORT_SYMBOL_GPL(xprt_load_transport);
-+
-+/**
-  * xprt_reserve_xprt - serialize write access to transports
-  * @task: task that is requesting access to the transport
-  *
+ 			switch (token) {
+ 			case Opt_xprt_udp:
+@@ -1205,12 +1205,14 @@ static int nfs_parse_mount_options(char *raw,
+ 				/* vector side protocols to TCP */
+ 				mnt->flags |= NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
++				xprt_load_transport(string);
+ 				break;
+ 			default:
+ 				errors++;
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+ 						"transport protocol\n");
+ 			}
++			kfree(string);
+ 			break;
+ 		case Opt_mountproto:
+ 			string = match_strdup(args);
 
