@@ -1,68 +1,54 @@
 From: Tom Talpey <tmtalpey@gmail.com>
-Subject: [PATCH 4/4] NFS: load the rpc/rdma transport module automatically
-Date: Thu, 05 Mar 2009 16:18:05 -0500
-Message-ID: <20090305211805.6517.71207.stgit@localhost.localdomain>
-References: <20090305210738.6517.67862.stgit@localhost.localdomain>
+Subject: [PATCH 0/4] NFS/RDMA Connectathon fixes
+Date: Thu, 05 Mar 2009 16:17:41 -0500
+Message-ID: <20090305210738.6517.67862.stgit@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org, Tom Talpey <tmtalpey@gmail.com>,
-	Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qmta06.westchester.pa.mail.comcast.net ([76.96.62.56]:52484
-	"EHLO QMTA06.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754205AbZCEVSH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:18:07 -0500
-In-Reply-To: <20090305210738.6517.67862.stgit-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from qmta08.westchester.pa.mail.comcast.net ([76.96.62.80]:52694
+	"EHLO QMTA08.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750902AbZCEVXn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:23:43 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When mounting an NFS/RDMA server with the "-o proto=rdma" or
-"-o rdma" options, attempt to dynamically load the necessary
-"xprtrdma" client transport module. Doing so improves usability,
-while avoiding a static module dependency and any unnecesary
-resources.
+The following patch series are the fixes from Connectathon. With
+the first two, we achieved full interop between Linux and OpenSolaris,
+over Infiniband, in both directions. (Linux-to-Linux was also tested
+successfully with both Infiniband and iWARP.)
 
-Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>
+The first patch merely removes a bogus assertion in the server rdma
+chunk manipulation. This was triggered by the slightly different way
+that the OpenSolaris client marshals certain requests.
+
+The second patch fixes a defect in the client chunk marshaling, which
+caused a bad XDR encode in (only) NFSv4 symlink requests.
+
+The third and fourth patches are a usability improvement, to dynamically
+load the xprtrdma client module on-demand when mounting nfs over rdma.
+
+I'm hoping they'll all be acceptable for the 2.6.30 merge window.
+
+Comments are welcome, etc.
+
 ---
 
- fs/nfs/super.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+Tom Talpey (4):
+      NFS: load the rpc/rdma transport module automatically
+      SUNRPC: dynamically load RPC transport modules on-demand
+      XPRTRDMA: correct an rpc/rdma inline send marshaling error
+      SVCRDMA: remove faulty assertions in rpc/rdma chunk validation.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d6686f4..4e7f879 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1018,6 +1018,7 @@ static int nfs_parse_mount_options(char *raw,
- 		case Opt_rdma:
- 			mnt->flags |= NFS_MOUNT_TCP; /* for side protocols */
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
-+			xprt_load_transport(p);
- 			break;
- 		case Opt_acl:
- 			mnt->flags &= ~NFS_MOUNT_NOACL;
-@@ -1190,7 +1191,6 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_nomem;
- 			token = match_token(string,
- 					    nfs_xprt_protocol_tokens, args);
--			kfree(string);
- 
- 			switch (token) {
- 			case Opt_xprt_udp:
-@@ -1205,12 +1205,14 @@ static int nfs_parse_mount_options(char *raw,
- 				/* vector side protocols to TCP */
- 				mnt->flags |= NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
-+				xprt_load_transport(string);
- 				break;
- 			default:
- 				errors++;
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"transport protocol\n");
- 			}
-+			kfree(string);
- 			break;
- 		case Opt_mountproto:
- 			string = match_strdup(args);
 
+ fs/nfs/super.c                        |    4 +++-
+ include/linux/sunrpc/xprt.h           |    1 +
+ net/sunrpc/xprt.c                     |   31 +++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c        |   26 ++++++++++++++------------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |    8 +++++---
+ 5 files changed, 54 insertions(+), 16 deletions(-)
+
+-- 
+
+Tom.
