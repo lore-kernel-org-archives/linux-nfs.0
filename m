@@ -1,90 +1,95 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/23] SUNRPC: Fix return type of svc_addr_len()
-Date: Thu, 05 Mar 2009 16:31:31 -0500
-Message-ID: <20090305213130.21342.26849.stgit@ingres.1015granger.net>
+Subject: [PATCH 03/23] SUNRPC: Clean up svc_find_xprt() calling sequence
+Date: Thu, 05 Mar 2009 16:31:46 -0500
+Message-ID: <20090305213145.21342.14923.stgit@ingres.1015granger.net>
 References: <20090305212823.21342.38352.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:35601 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752185AbZCEVcs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:32:48 -0500
+Received: from rcsinet13.oracle.com ([148.87.113.125]:21903 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753910AbZCEVcz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 16:32:55 -0500
 In-Reply-To: <20090305212823.21342.38352.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The svc_addr_len() helper function can return a negative errno value,
-but its return type is size_t, which is unsigned.
+Clean up: add documentating comment and use appropriate data types for
+svc_find_xprt()'s arguments.
 
-The RDMA transport code passes this return value directly to memset(),
-without checking first if it's negative.  This could cause memset() to
-clobber a large piece of memory if svc_addr_len() has returned an
-error.
+This also eliminates a mixed sign comparison: @port was an int, while
+the return value of svc_xprt_local_port() is an unsigned short.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h          |    3 ++-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++++--
- 2 files changed, 16 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |    3 ++-
+ net/sunrpc/svc_xprt.c           |   19 +++++++++++++------
+ 2 files changed, 15 insertions(+), 7 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 879c701..088d81f 100644
+index 53fbcdb..819257c 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -114,7 +114,7 @@ static inline unsigned short svc_addr_port(struct sockaddr *sa)
- 	return ret;
+@@ -81,7 +81,8 @@ void	svc_close_xprt(struct svc_xprt *xprt);
+ void	svc_delete_xprt(struct svc_xprt *xprt);
+ int	svc_port_is_privileged(struct sockaddr *sin);
+ int	svc_print_xprts(char *buf, int maxlen);
+-struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
++struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
++			const sa_family_t family, const unsigned short port);
+ int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
+ 
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 3772081..9d28051 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1036,7 +1036,13 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+ 	return dr;
  }
  
--static inline size_t svc_addr_len(struct sockaddr *sa)
-+static inline int svc_addr_len(const struct sockaddr *sa)
+-/*
++/**
++ * svc_find_xprt - find an RPC transport instance
++ * @serv: pointer to svc_serv to search
++ * @xcl_name: C string containing transport's class name
++ * @family: Address family of transport's local address
++ * @port: transport's IP port number
++ *
+  * Return the transport instance pointer for the endpoint accepting
+  * connections/peer traffic from the specified transport class,
+  * address family and port.
+@@ -1045,23 +1051,24 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+  * wild-card, and will result in matching the first transport in the
+  * service's list that has a matching class name.
+  */
+-struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+-			       int af, int port)
++struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
++			       const sa_family_t family,
++			       const unsigned short port)
  {
- 	switch (sa->sa_family) {
- 	case AF_INET:
-@@ -122,6 +122,7 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
- 	case AF_INET6:
- 		return sizeof(struct sockaddr_in6);
- 	}
-+
- 	return -EAFNOSUPPORT;
- }
+ 	struct svc_xprt *xprt;
+ 	struct svc_xprt *found = NULL;
  
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 3d810e7..d1ec6f9 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -546,6 +546,7 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
- 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
- 	struct svcxprt_rdma *newxprt;
- 	struct sockaddr *sa;
-+	int len;
+ 	/* Sanity check the args */
+-	if (!serv || !xcl_name)
++	if (serv == NULL || xcl_name == NULL)
+ 		return found;
  
- 	/* Create a new transport */
- 	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
-@@ -563,9 +564,20 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
- 
- 	/* Set the local and remote addresses in the transport */
- 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
--	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-+	len = svc_addr_len(sa);
-+	if (len < 0) {
-+		dprintk("svcrdma: dst_addr has a bad address family\n");
-+		return;
-+	}
-+	svc_xprt_set_remote(&newxprt->sc_xprt, sa, len);
-+
- 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
--	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-+	len = svc_addr_len(sa);
-+	if (len < 0) {
-+		dprintk("svcrdma: src_addr has a bad address family\n");
-+		return;
-+	}
-+	svc_xprt_set_local(&newxprt->sc_xprt, sa, len);
- 
- 	/*
- 	 * Enqueue the new transport on the accept queue of the listening
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
+ 		if (strcmp(xprt->xpt_class->xcl_name, xcl_name))
+ 			continue;
+-		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
++		if (family != AF_UNSPEC && family != xprt->xpt_local.ss_family)
+ 			continue;
+-		if (port && port != svc_xprt_local_port(xprt))
++		if (port != 0 && port != svc_xprt_local_port(xprt))
+ 			continue;
+ 		found = xprt;
+ 		svc_xprt_get(xprt);
 
