@@ -1,70 +1,42 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS4ERR_SYMLINK  error
-Date: Fri, 6 Mar 2009 16:32:34 -0500
-Message-ID: <20090306213234.GB1779@fieldses.org>
-References: <49AF9C28.8030603@cn.fujitsu.com> <49AFA4E4.50207@panasas.com>
+From: "Kevin W. Rudd" <solgato@us.ibm.com>
+Subject: Re: Memory corruption in nfs3_xdr_setaclargs()
+Date: Fri, 6 Mar 2009 14:51:03 -0800 (PST)
+Message-ID: <alpine.LFD.1.10.0903061448560.3949@w-kevinr.beaverton.ibm.com>
+References: <49760685.4030409@redhat.com>  <1232475301.7055.14.camel@heimdal.trondhjem.org>  <alpine.LFD.1.10.0903050829420.3949@w-kevinr.beaverton.ibm.com>  <1236279188.13361.30.camel@heimdal.trondhjem.org>  <alpine.LFD.1.10.0903051135040.3949@w-kevinr.beaverton.ibm.com>
+ <1236370937.7244.52.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:49860 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753344AbZCFVci (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Mar 2009 16:32:38 -0500
-In-Reply-To: <49AFA4E4.50207@panasas.com>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:56355 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752344AbZCFWvI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Mar 2009 17:51:08 -0500
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id n26Mma6Y008522
+	for <linux-nfs@vger.kernel.org>; Fri, 6 Mar 2009 17:48:36 -0500
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n26Mp6hn181572
+	for <linux-nfs@vger.kernel.org>; Fri, 6 Mar 2009 17:51:06 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n26Mp6BA009193
+	for <linux-nfs@vger.kernel.org>; Fri, 6 Mar 2009 17:51:06 -0500
+In-Reply-To: <1236370937.7244.52.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 05, 2009 at 12:09:40PM +0200, Benny Halevy wrote:
-> On Mar. 05, 2009, 11:32 +0200, Ni Wenjuan <niwj@cn.fujitsu.com> wrote:
-> > the result of newpynfs test case of  LINK4a .  if you link with target directoty
-> >  is a symbole file,it should get NFS4ERR_NOTDIR ,instead got NFS4ERR_SYMLINK.
-> > 
-> > THE LINK operation  don't list NFS4ERR_SYMLINK as valid errors in the spec. But
-> > NFS4ERR_SYMLINK seems like a reasonable error.  Is this an oversight
-> > in the spec, or something we need to fix?
-> 
-> Although NFSv4.1 adds NFS4ERR_SYMLINK to LINK's allowed errors list
-> (and this might be an indication for it being an oversight in rfc3530),
 
-The error lists in rfc3530 are known to be incomplete in some cases, so
-before adding an exception like this I'd like something more.  (E.g.:
-does this cause any client or application to fail?  Is there some
-logical reason notdir is a more useful error than symlink?)
+On Fri, 6 Mar 2009, Trond Myklebust wrote:
 
---b.
+>
+> Does the attached patch help?
+>
+> Trond
+>
 
-> NFSv4.0 doesn't allow it so this needs to be fixed.
-> 
-> Can you please test the following patch?
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
-> 
-> git diff --stat -p fs/nfsd/vfs.c
->  fs/nfsd/vfs.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 6e50aaa..9165b1f 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1637,6 +1637,9 @@ out_dput:
->  out_unlock:
->  	fh_unlock(ffhp);
->  out:
-> +	/* nfserr_symlink returned from fh_verify is inappropriate for LINK */
-> +	if (err == nfserr_symlink)
-> +		err = nfserr_notdir;
->  	return err;
->  
->  out_nfserr:
-> 
-> 
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes.  No corruption or issues on my large-ACL-list test system.
+Thanks.
+
+-Kevin
+
