@@ -1,286 +1,484 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: be creative with time stmaps so that NFS client can reliably discover changes
-Date: Fri, 6 Mar 2009 17:12:21 +1100
-Message-ID: <18864.48837.701952.150752@notabene.brown>
-References: <18848.63422.177485.115103@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 17/23] NFS: Move NFS client's IP address parser to nfs_common/
+Date: Fri, 6 Mar 2009 11:16:44 -0500
+Message-ID: <A67BFE40-B680-4AC6-811B-B2F6E54BF6A5@oracle.com>
+References: <20090305212823.21342.38352.stgit@ingres.1015granger.net> <20090305213330.21342.96742.stgit@ingres.1015granger.net> <20090305211001.2fbecabe@tupile.poochiereds.net>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:46052 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751324AbZCFGMf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Mar 2009 01:12:35 -0500
-In-Reply-To: message from Neil Brown on Sunday February 22
+Received: from rcsinet13.oracle.com ([148.87.113.125]:62506 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754130AbZCFQRP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Mar 2009 11:17:15 -0500
+In-Reply-To: <20090305211001.2fbecabe-PC62bkCOHzGdMjc06nkz3ljfA9RmPOcC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sunday February 22, neilb@suse.de wrote:
-> 
-> Hi Bruce,
->  here is my current version if the [cm]time fiddling patch for your
->  consideration.
->  If you like it, you can pull it from
->       git://neil.brown.name/linux-2.6 nfsd-devel
->  (or just extract it from the email)
-> 
+Hi Jeff-
 
-It turned out that there was a problem with that patch.
-Making the mtime of a file appear 1 nanosecond in the past for the first
-second of its existence confuses (at least) tar.
-When tar extracts a symlink that begins with '/', it first creates a
-place-holder file and then when the whole archive has been extracted
-it goes around checking all the place holder files to make sure they
-haven't changed.  If they haven't they are replaced with the symlink.
-This is some kind of protection against malicious tar archives which
-could create a symlink, then install a file through it to some place
-that the users isn't expecting.
+On Mar 5, 2009, at Mar 5, 2009, 9:10 PM, Jeff Layton wrote:
+> On Thu, 05 Mar 2009 16:33:31 -0500
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>> The kernel's NFS server also needs to parse presentation format IP
+>> addresses.  Since both the client and the server can reside in  
+>> their own
+>> modules, move the parser logic to nfs_common, which can be used by  
+>> either.
+>>
+>> I expect other common IPv4/IPv6 helpers to be moved in here at some
+>> later point.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>> fs/nfs/internal.h              |    3 -
+>> fs/nfs/nfs4namespace.c         |    2 +
+>> fs/nfs/super.c                 |  121  
+>> --------------------------------
+>> fs/nfs_common/Makefile         |    1
+>> fs/nfs_common/nfs_addr_parse.c |  151 ++++++++++++++++++++++++++++++ 
+>> ++++++++++
+>> include/linux/nfs_addr_parse.h |   29 ++++++++
+>> 6 files changed, 184 insertions(+), 123 deletions(-)
+>> create mode 100644 fs/nfs_common/nfs_addr_parse.c
+>> create mode 100644 include/linux/nfs_addr_parse.h
+>
+> I like the basic idea here -- moving these helpers into common code.
+> That said, I don't like the fact that this common code ends up in the
+> base kernel.
 
-Anyway, the previous nfsd patch causes tar to think that (almost) all
-those place holder files had been changed and so the symlinks aren't
-extracted.
+Can you explain why?  The only reason you've stated in the past is  
+because it is slightly inconvenient for those who update to a kernel  
+with this code, but build NFS in modules.  In that one case you have  
+to do a full kernel build to pick up these functions.
 
-I guess it isn't unreasonable for an application to expect that the
-mtime of a file isn't going to change unexpectedly.  So there goes
-some of my clever idea.
+Really, this stuff should be in some common place, like net/core/  
+(which is built-in), so these can be shared with, say, NLM, and CIFS,  
+as well.
 
-I think it is still safe to fiddle ctime on directories.  I believe
-ctime is much less frequently checked, and directories are much more
-likely to be changed independently by multiple programs.
+> IMO, a better solution would be a new module
+> (nfs_common.ko maybe?) that contains this code and any other common
+> code that's needed in the future...
 
-Further, directories are the particular need.  If files change
-multiple times in a second it is very likely that their size will
-change as well and that will invalidate cached values.  Also locking
-can be used to force the client to flush the cache where as that is
-not possible with directories.
+Who would load it in that case?  I think putting it in a module would  
+just add unneeded complexity in each of the callers.  Until the amount  
+of code in nfs_common.c is larger than the NFS, NLM, and NFSD logic to  
+"load the common module" you'll need, you don't gain anything.
 
-It is tempting to leave the effect on files but just modify ctime.
-However having been burned by the 'tar' experience I feel like being
-caution.
+Since we are close to the 2.6.30 merge window, I'd prefer to worry  
+about that kind of micro-optimization later.
 
-NFSv4 doesn't suffer these problems as the 'change-id' is sent
-separately from the app-visible [cm]time.  So we do fiddle the time
-on all objects for NFSv4
+>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+>> index 4da6bbd..82d899f 100644
+>> --- a/fs/nfs/internal.h
+>> +++ b/fs/nfs/internal.h
+>> @@ -167,7 +167,6 @@ extern void nfs4_clear_inode(struct inode *);
+>> void nfs_zap_acl_cache(struct inode *inode);
+>>
+>> /* super.c */
+>> -void nfs_parse_ip_address(char *, size_t, struct sockaddr *,  
+>> size_t *);
+>> extern struct file_system_type nfs_xdev_fs_type;
+>> #ifdef CONFIG_NFS_V4
+>> extern struct file_system_type nfs4_xdev_fs_type;
+>> @@ -291,8 +290,6 @@ unsigned int nfs_page_array_len(unsigned int  
+>> base, size_t len)
+>> 		PAGE_SIZE - 1) >> PAGE_SHIFT;
+>> }
+>>
+>> -#define IPV6_SCOPE_DELIMITER	'%'
+>> -
+>> /*
+>>  * Set the port number in an address.  Be agnostic about the address
+>>  * family.
+>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+>> index 30befc3..660fc36 100644
+>> --- a/fs/nfs/nfs4namespace.c
+>> +++ b/fs/nfs/nfs4namespace.c
+>> @@ -15,6 +15,8 @@
+>> #include <linux/sunrpc/clnt.h>
+>> #include <linux/vfs.h>
+>> #include <linux/inet.h>
+>> +#include <linux/nfs_addr_parse.h>
+>> +
+>> #include "internal.h"
+>> #include "nfs4_fs.h"
+>>
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index 520fe6f..bf55e23 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -51,6 +51,7 @@
+>> #include <linux/nfs_xdr.h>
+>> #include <linux/magic.h>
+>> #include <linux/parser.h>
+>> +#include <linux/nfs_addr_parse.h>
+>>
+>> #include <asm/system.h>
+>> #include <asm/uaccess.h>
+>> @@ -697,126 +698,6 @@ static int nfs_verify_server_address(struct  
+>> sockaddr *addr)
+>> 	return 0;
+>> }
+>>
+>> -static void nfs_parse_ipv4_address(char *string, size_t str_len,
+>> -				   struct sockaddr *sap, size_t *addr_len)
+>> -{
+>> -	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+>> -	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
+>> -
+>> -	if (str_len <= INET_ADDRSTRLEN) {
+>> -		dfprintk(MOUNT, "NFS: parsing IPv4 address %*s\n",
+>> -				(int)str_len, string);
+>> -
+>> -		sin->sin_family = AF_INET;
+>> -		*addr_len = sizeof(*sin);
+>> -		if (in4_pton(string, str_len, addr, '\0', NULL))
+>> -			return;
+>> -	}
+>> -
+>> -	sap->sa_family = AF_UNSPEC;
+>> -	*addr_len = 0;
+>> -}
+>> -
+>> -#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+>> -static int nfs_parse_ipv6_scope_id(const char *string, const  
+>> size_t str_len,
+>> -				   const char *delim,
+>> -				   struct sockaddr_in6 *sin6)
+>> -{
+>> -	char *p;
+>> -	size_t len;
+>> -
+>> -	if ((string + str_len) == delim)
+>> -		return 1;
+>> -
+>> -	if (*delim != IPV6_SCOPE_DELIMITER)
+>> -		return 0;
+>> -
+>> -	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
+>> -		return 0;
+>> -
+>> -	len = (string + str_len) - delim - 1;
+>> -	p = kstrndup(delim + 1, len, GFP_KERNEL);
+>> -	if (p) {
+>> -		unsigned long scope_id = 0;
+>> -		struct net_device *dev;
+>> -
+>> -		dev = dev_get_by_name(&init_net, p);
+>> -		if (dev != NULL) {
+>> -			scope_id = dev->ifindex;
+>> -			dev_put(dev);
+>> -		} else {
+>> -			if (strict_strtoul(p, 10, &scope_id) == 0) {
+>> -				kfree(p);
+>> -				return 0;
+>> -			}
+>> -		}
+>> -
+>> -		kfree(p);
+>> -
+>> -		sin6->sin6_scope_id = scope_id;
+>> -		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
+>> -		return 1;
+>> -	}
+>> -
+>> -	return 0;
+>> -}
+>> -
+>> -static void nfs_parse_ipv6_address(char *string, size_t str_len,
+>> -				   struct sockaddr *sap, size_t *addr_len)
+>> -{
+>> -	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+>> -	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
+>> -	const char *delim;
+>> -
+>> -	if (str_len <= INET6_ADDRSTRLEN) {
+>> -		dfprintk(MOUNT, "NFS: parsing IPv6 address %*s\n",
+>> -				(int)str_len, string);
+>> -
+>> -		sin6->sin6_family = AF_INET6;
+>> -		*addr_len = sizeof(*sin6);
+>> -		if (in6_pton(string, str_len, addr,
+>> -					IPV6_SCOPE_DELIMITER, &delim) != 0) {
+>> -			if (nfs_parse_ipv6_scope_id(string, str_len,
+>> -							delim, sin6) != 0)
+>> -				return;
+>> -		}
+>> -	}
+>> -
+>> -	sap->sa_family = AF_UNSPEC;
+>> -	*addr_len = 0;
+>> -}
+>> -#else
+>> -static void nfs_parse_ipv6_address(char *string, size_t str_len,
+>> -				   struct sockaddr *sap, size_t *addr_len)
+>> -{
+>> -	sap->sa_family = AF_UNSPEC;
+>> -	*addr_len = 0;
+>> -}
+>> -#endif
+>> -
+>> -/*
+>> - * Construct a sockaddr based on the contents of a string that  
+>> contains
+>> - * an IP address in presentation format.
+>> - *
+>> - * If there is a problem constructing the new sockaddr, set the  
+>> address
+>> - * family to AF_UNSPEC.
+>> - */
+>> -void nfs_parse_ip_address(char *string, size_t str_len,
+>> -				 struct sockaddr *sap, size_t *addr_len)
+>> -{
+>> -	unsigned int i, colons;
+>> -
+>> -	colons = 0;
+>> -	for (i = 0; i < str_len; i++)
+>> -		if (string[i] == ':')
+>> -			colons++;
+>> -
+>> -	if (colons >= 2)
+>> -		nfs_parse_ipv6_address(string, str_len, sap, addr_len);
+>> -	else
+>> -		nfs_parse_ipv4_address(string, str_len, sap, addr_len);
+>> -}
+>> -
+>> /*
+>>  * Sanity check the NFS transport protocol.
+>>  *
+>> diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
+>> index f689ed8..032b4c5 100644
+>> --- a/fs/nfs_common/Makefile
+>> +++ b/fs/nfs_common/Makefile
+>> @@ -2,6 +2,7 @@
+>> # Makefile for Linux filesystem routines that are shared by client  
+>> and server.
+>> #
+>>
+>> +obj-$(CONFIG_NFS_COMMON) += nfs_addr_parse.o
+>> obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
+>>
+>> nfs_acl-objs := nfsacl.o
+>> diff --git a/fs/nfs_common/nfs_addr_parse.c b/fs/nfs_common/ 
+>> nfs_addr_parse.c
+>> new file mode 100644
+>> index 0000000..529b407
+>> --- /dev/null
+>> +++ b/fs/nfs_common/nfs_addr_parse.c
+>> @@ -0,0 +1,151 @@
+>> +/*
+>> + * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
+>> + *
+>> + * This program is free software; you can redistribute it and/or
+>> + * modify it under the terms of the GNU General Public
+>> + * License as published by the Free Software Foundation; either
+>> + * version 2 of the License, or (at your option) any later version.
+>> + *
+>> + * This program is distributed in the hope that it will be useful,
+>> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+>> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+>> + * General Public License for more details.
+>> + *
+>> + * You should have received a copy of the GNU General Public
+>> + * License along with this program; if not, write to the
+>> + * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+>> + * Boston, MA 021110-1307, USA.
+>> + */
+>> +
+>> +#include <linux/kernel.h>
+>> +#include <linux/string.h>
+>> +#include <linux/errno.h>
+>> +#include <linux/unistd.h>
+>> +
+>> +#include <linux/inet.h>
+>> +#include <linux/in6.h>
+>> +#include <net/ipv6.h>
+>> +#include <linux/netdevice.h>
+>> +
+>> +#include <linux/nfs_addr_parse.h>
+>> +
+>> +static void nfs_parse_ipv4_address(const char *buf, const size_t  
+>> buflen,
+>> +				   struct sockaddr *sap, size_t *salenp)
+>> +{
+>> +	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+>> +	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
+>> +
+>> +	if (buflen <= INET_ADDRSTRLEN) {
+>> +		sin->sin_family = AF_INET;
+>> +		*salenp = sizeof(*sin);
+>> +		if (in4_pton(buf, buflen, addr, '\0', NULL))
+>> +			return;
+>> +	}
+>> +
+>> +	sap->sa_family = AF_UNSPEC;
+>> +	*salenp = 0;
+>> +}
+>> +
+>> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+>> +static int nfs_parse_ipv6_scope_id(const char *buf, const size_t  
+>> buflen,
+>> +				   const char *delim,
+>> +				   struct sockaddr_in6 *sin6)
+>> +{
+>> +	char *p;
+>> +	size_t len;
+>> +
+>> +	if ((buf + buflen) == delim)
+>> +		return 1;
+>> +
+>> +	if (*delim != IPV6_SCOPE_DELIMITER)
+>> +		return 0;
+>> +
+>> +	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
+>> +		return 0;
+>> +
+>> +	len = (buf + buflen) - delim - 1;
+>> +	p = kstrndup(delim + 1, len, GFP_KERNEL);
+>> +	if (p) {
+>> +		unsigned long scope_id = 0;
+>> +		struct net_device *dev;
+>> +
+>> +		dev = dev_get_by_name(&init_net, p);
+>> +		if (dev != NULL) {
+>> +			scope_id = dev->ifindex;
+>> +			dev_put(dev);
+>> +		} else {
+>> +			if (strict_strtoul(p, 10, &scope_id) == 0) {
+>> +				kfree(p);
+>> +				return 0;
+>> +			}
+>> +		}
+>> +
+>> +		kfree(p);
+>> +
+>> +		sin6->sin6_scope_id = scope_id;
+>> +		return 1;
+>> +	}
+>> +
+>> +	return 0;
+>> +}
+>> +
+>> +static void nfs_parse_ipv6_address(const char *buf, const size_t  
+>> buflen,
+>> +				   struct sockaddr *sap, size_t *salenp)
+>> +{
+>> +	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+>> +	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
+>> +	const char *delim;
+>> +
+>> +	if (buflen <= INET6_ADDRSTRLEN) {
+>> +		sin6->sin6_family = AF_INET6;
+>> +		*salenp = sizeof(*sin6);
+>> +		if (in6_pton(buf, buflen, addr,
+>> +					IPV6_SCOPE_DELIMITER, &delim) != 0) {
+>> +			if (nfs_parse_ipv6_scope_id(buf, buflen,
+>> +							delim, sin6) != 0)
+>> +				return;
+>> +		}
+>> +	}
+>> +
+>> +	sap->sa_family = AF_UNSPEC;
+>> +	*salenp = 0;
+>> +}
+>> +#else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+>> +static void nfs_parse_ipv6_address(const char *buf, const size_t  
+>> buflen,
+>> +				   struct sockaddr *sap, size_t *salenp)
+>> +{
+>> +	sap->sa_family = AF_UNSPEC;
+>> +	*salenp = 0;
+>> +}
+>> +#endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+>> +
+>> +/**
+>> + * nfs_parse_ip_address - convert IP address string to sockaddr
+>> + * @buf: C string containing presentation format IP address
+>> + * @buflen: length of @buf in bytes
+>> + * @sap: pointer to buffer in which to construct sockaddr
+>> + * @salenp: IN: length of buffer in bytes
+>> + *	      OUT: size of address in bytes
+>> + *
+>> + * Construct a sockaddr based on the contents of a string that  
+>> contains
+>> + * an IP address in presentation format.
+>> + *
+>> + * If there is a problem constructing the new sockaddr, set the  
+>> address
+>> + * family to AF_UNSPEC.
+>> + */
+>> +void nfs_parse_ip_address(const char *buf, const size_t buflen,
+>> +			  struct sockaddr *sap, size_t *salenp)
+>> +{
+>> +	unsigned int i, colons;
+>> +
+>> +	colons = 0;
+>> +	for (i = 0; i < buflen; i++)
+>> +		if (buf[i] == ':')
+>> +			colons++;
+>> +
+>> +	if (colons >= 2)
+>> +		nfs_parse_ipv6_address(buf, buflen, sap, salenp);
+>> +	else
+>> +		nfs_parse_ipv4_address(buf, buflen, sap, salenp);
+>> +}
+>> +EXPORT_SYMBOL_GPL(nfs_parse_ip_address);
+>> diff --git a/include/linux/nfs_addr_parse.h b/include/linux/ 
+>> nfs_addr_parse.h
+>> new file mode 100644
+>> index 0000000..193c71c
+>> --- /dev/null
+>> +++ b/include/linux/nfs_addr_parse.h
+>> @@ -0,0 +1,29 @@
+>> +/*
+>> + * Copyright (C) 2008 Oracle Corporation.  All rights reserved.
+>> + *
+>> + * This program is free software; you can redistribute it and/or
+>> + * modify it under the terms of the GNU General Public
+>> + * License as published by the Free Software Foundation; either
+>> + * version 2 of the License, or (at your option) any later version.
+>> + *
+>> + * This program is distributed in the hope that it will be useful,
+>> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+>> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+>> + * General Public License for more details.
+>> + *
+>> + * You should have received a copy of the GNU General Public
+>> + * License along with this program; if not, write to the
+>> + * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+>> + * Boston, MA 021110-1307, USA.
+>> + *
+>> + */
+>> +
+>> +#ifndef __LINUX_NFS_ADDR_PARSE_H
+>> +#define __LINUX_NFS_ADDR_PARSE_H
+>> +
+>> +#define IPV6_SCOPE_DELIMITER	'%'
+>> +
+>> +void	nfs_parse_ip_address(const char *buf, const size_t buflen,
+>> +				struct sockaddr *sap, size_t *salenp);
+>> +
+>> +#endif	/* !__LINUX_NFS_ADDR_PARSE_H */
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+>
+> -- 
+> Jeff Layton <jlayton@redhat.com>
 
-If you like, that patch can still be pulled from
-       git://neil.brown.name/linux-2.6 nfsd-devel
-
-Thanks for your consideration,
-NeilBrown
-
-
->From 1f0adead843604a24e926eb2f934a9fd91401deb Mon Sep 17 00:00:00 2001
-From: NeilBrown <neilb@suse.de>
-Date: Fri, 6 Mar 2009 17:09:32 +1100
-Subject: [PATCH] nfsd: be creative with time stamps so that NFS clients can reliably discover changes
-
-For NFS, mtime/ctime are used as the main mechanism for cache flushing
-- when the time stamp changes, we flush the cache.  This is equally
-true for NFSv4, though the timestamp is hidden in the changeid.
-
-However with many filesystems the granularity of time stamps is one
-second, and multiple changes can occur in one second.
-
-This makes it unwise to ever return "now" for the [cm]time of a file,
-as quite some time later there may have been a change since that time
-was returned, but the time will still be the same.
-
-However, some applications can get confused if they create a file,
-check the timestamp, and then a little while later, find that the
-timestamp has changed.
-
-This is most likely to be a problem for files, and for the mtime.
-So if we just fiddle the ctime on directories we are fairly safe
-and still benefit (files are less of an issue as locking can be used
-to ensure consistency, and file sizes very often change when the
-contents change, unlike directories).
-
-So if the ctime on a directory is "now" - to the granularity of the
-filesystem, adjust it backwards the smallest possible amount.  Then
-when a subsequent GETATTR checks the time, it will no longer be 'now',
-so the correct time will be returned, and the client will notice that
-the file could have changed.
-
-This removes a possible directory cache consistency problem were a
-client can cache an old version of a directories contents and never
-discover that it is out-of-date (because neither ctime nor mtime
-change).  The client must use ctime to validate directory caches for
-this to work.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfsd/nfs3xdr.c         |   15 +++++++++++++--
- fs/nfsd/nfs4xdr.c         |    1 +
- fs/nfsd/nfsxdr.c          |    6 ++++--
- fs/nfsd/vfs.c             |   44 ++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfsd/nfsd.h |    3 +++
- include/linux/nfsd/xdr4.h |   13 +++++++++----
- 6 files changed, 74 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 17d0dd9..e5f0097 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -47,6 +47,17 @@ encode_time3(__be32 *p, struct timespec *time)
- }
- 
- static __be32 *
-+encode_adjusted_time3(__be32 *p, struct timespec *time,
-+		      struct svc_fh *fhp)
-+{
-+	struct timespec tm = *time;
-+	nfsd_adjust_time(&tm, fhp, 1);
-+	*p++ = htonl((u32) tm.tv_sec);
-+	*p++ = htonl(tm.tv_nsec);
-+	return p;
-+}
-+
-+static __be32 *
- decode_time3(__be32 *p, struct timespec *time)
- {
- 	time->tv_sec = ntohl(*p++);
-@@ -192,7 +203,7 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	p = xdr_encode_hyper(p, stat->ino);
- 	p = encode_time3(p, &stat->atime);
- 	p = encode_time3(p, &stat->mtime);
--	p = encode_time3(p, &stat->ctime);
-+	p = encode_adjusted_time3(p, &stat->ctime, fhp);
- 
- 	return p;
- }
-@@ -249,7 +260,7 @@ encode_wcc_data(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- 			*p++ = xdr_one;
- 			p = xdr_encode_hyper(p, (u64) fhp->fh_pre_size);
- 			p = encode_time3(p, &fhp->fh_pre_mtime);
--			p = encode_time3(p, &fhp->fh_pre_ctime);
-+			p = encode_adjusted_time3(p, &fhp->fh_pre_ctime, fhp);
- 		} else {
- 			*p++ = xdr_zero;
- 		}
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f65953b..95511b8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1518,6 +1518,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		 */
- 		if ((buflen -= 8) < 0)
- 			goto out_resource;
-+		nfsd_adjust_time(&stat.ctime, fhp, 0);
- 		WRITE32(stat.ctime.tv_sec);
- 		WRITE32(stat.ctime.tv_nsec);
- 	}
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index afd08e2..ac28b0e 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -197,8 +197,10 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	lease_get_mtime(dentry->d_inode, &time); 
- 	*p++ = htonl((u32) time.tv_sec);
- 	*p++ = htonl(time.tv_nsec ? time.tv_nsec / 1000 : 0); 
--	*p++ = htonl((u32) stat->ctime.tv_sec);
--	*p++ = htonl(stat->ctime.tv_nsec ? stat->ctime.tv_nsec / 1000 : 0);
-+	time = stat->ctime;
-+	nfsd_adjust_time(&time, fhp, 1000);
-+	*p++ = htonl((u32) time.tv_sec);
-+	*p++ = htonl(time.tv_nsec ? time.tv_nsec / 1000 : 0); 
- 
- 	return p;
- }
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6e50aaa..cd4d3ba 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -404,6 +404,50 @@ out_nfserr:
- 	goto out;
- }
- 
-+void nfsd_adjust_time(struct timespec *time, struct svc_fh *fhp,
-+		      int nanoseconds)
-+{
-+	/* because we use time stamps for caching, and because the
-+	 * granularity of ctime might be fairly large (e.g. 1
-+	 * second) it is unsafe to ever report 'now' as a timestamp -
-+	 * as then we might report two timestmaps that are the same
-+	 * despite there being a change to the file between them, and
-+	 * then continue to report that same timestamp for a long
-+	 * time.
-+	 * So if a timestamp would correspond to 'now', change it to
-+	 * one nanosecond/microsecond ago so that after 'now' as moved
-+	 * on, the client will be able to see a new timestamp and will
-+	 * update its cache.
-+	 *
-+	 * Note that we only do this for directories, and only for 
-+	 * the 'ctime'.
-+	 * Applications can get confused if times change unexpectedly.
-+	 * ctime on directories is the least likely to confuse, and is
-+	 * sufficient to remove most consequences of low-resolution
-+	 * time stamps.
-+	 *
-+	 * We use a special nanoseconds value of '0' for NFSv4 to tell
-+	 * us to skip the directory check.
-+	 */
-+	struct timespec now;
-+
-+	if (nanoseconds && !S_ISDIR(fhp->fh_dentry->d_inode->i_mode))
-+		return;
-+	if (!nanoseconds)
-+		nanoseconds = 1;
-+	now = current_fs_time(fhp->fh_dentry->d_inode->i_sb);
-+	if (time->tv_sec == now.tv_sec &&
-+	    time->tv_nsec == now.tv_nsec) {
-+		if (time->tv_nsec >= nanoseconds)
-+			time->tv_nsec -= nanoseconds;
-+		else {
-+			time->tv_nsec = 1000000000 - nanoseconds;
-+			time->tv_sec -= 1;
-+		}
-+	}
-+}
-+
-+
- #if defined(CONFIG_NFSD_V2_ACL) || \
-     defined(CONFIG_NFSD_V3_ACL) || \
-     defined(CONFIG_NFSD_V4)
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index e19f459..99be485 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -132,6 +132,9 @@ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- int		nfsd_sync_dir(struct dentry *dp);
- 
-+void		nfsd_adjust_time(struct timespec *time, struct svc_fh *fhp,
-+				 int nanoseconds);
-+
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- #ifdef CONFIG_NFSD_V2_ACL
- extern struct svc_version nfsd_acl_version2;
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 27bd3e3..34f14da 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -424,12 +424,17 @@ struct nfsd4_compoundres {
- static inline void
- set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
- {
-+	struct timespec tm;
- 	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
- 	cinfo->atomic = 1;
--	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
--	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
--	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
--	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-+	tm = fhp->fh_pre_ctime;
-+	nfsd_adjust_time(&tm, fhp, 0);
-+	cinfo->before_ctime_sec = tm.tv_sec;
-+	cinfo->before_ctime_nsec = tm.tv_nsec;
-+	tm = fhp->fh_post_attr.ctime;
-+	nfsd_adjust_time(&tm, fhp, 0);
-+	cinfo->after_ctime_sec = tm.tv_sec;
-+	cinfo->after_ctime_nsec = tm.tv_nsec;
- }
- 
- int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
 -- 
-1.6.1.3
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
