@@ -1,59 +1,41 @@
-From: howard chen <howachen@gmail.com>
-Subject: [NFS] Performance advise in intranet
-Date: Sat, 7 Mar 2009 17:44:57 +0800
-Message-ID: <b66ddc900903070144w6bb83d84r878aebe702bf57d6@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/3] nfs-utils: NULL-terminate buffer after read in read_service_info
+Date: Sat,  7 Mar 2009 07:45:27 -0500
+Message-ID: <1236429928-4680-3-git-send-email-jlayton@redhat.com>
+References: <1236429928-4680-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	chuck.lever@oracle.com
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:39225 "EHLO neil.brown.name"
+Received: from mx2.redhat.com ([66.187.237.31]:55531 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752776AbZCGJrb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 7 Mar 2009 04:47:31 -0500
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Lft7w-000616-57
-	for linux-nfs@vger.kernel.org; Sat, 07 Mar 2009 20:47:28 +1100
+	id S1754231AbZCGMph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Mar 2009 07:45:37 -0500
+In-Reply-To: <1236429928-4680-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Valgrind complains that we're passing an unintialized buffer to
+sscanf here. The main problem seems to be that we're not ensuring
+that the buffer is NULL terminated before we pass it off.
 
-Consider I have using NFS in intranet enviornment, network is fast
-(Gigabit) and stable/reliable.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/gssd/gssd_proc.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-My NFS server is connected to 6 hosts running as web server, the web
-site files are stored in NFS.
-
-I want to find some ways to enhance to performance
-
-My Case:
-a. Both read and write are intensive
-b. File are small, normally less than 100KB
-c. Server using NFS3, NFS getattr is around 40%
-
-So..
-
-1. Is setting of a a larger MTU always help? Some people say setting
-very large MTU (e.g. 9000)  can help performance boost in giga
-ethnernet.
-
-2. Is using NFS4 help?
-
-
-Thanks.
-
-------------------------------------------------------------------------------
-Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
--OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
--Strategies to boost innovation and cut costs with open source participation
--Receive a $600 discount off the registration fee with the source code: SFAD
-http://p.sf.net/sfu/XcvMzF8H
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index d0d3f7f..0ebdfcd 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -133,6 +133,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 	if ((nbytes = read(fd, buf, INFOBUFLEN)) == -1)
+ 		goto fail;
+ 	close(fd);
++	buf[nbytes] = '\0';
+ 
+ 	numfields = sscanf(buf,"RPC server: %127s\n"
+ 		   "service: %127s %15s version %15s\n"
+-- 
+1.6.0.6
 
