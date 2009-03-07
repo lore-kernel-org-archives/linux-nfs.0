@@ -1,42 +1,59 @@
-From: "Kevin W. Rudd" <solgato@us.ibm.com>
-Subject: Re: Memory corruption in nfs3_xdr_setaclargs()
-Date: Fri, 6 Mar 2009 14:51:03 -0800 (PST)
-Message-ID: <alpine.LFD.1.10.0903061448560.3949@w-kevinr.beaverton.ibm.com>
-References: <49760685.4030409@redhat.com>  <1232475301.7055.14.camel@heimdal.trondhjem.org>  <alpine.LFD.1.10.0903050829420.3949@w-kevinr.beaverton.ibm.com>  <1236279188.13361.30.camel@heimdal.trondhjem.org>  <alpine.LFD.1.10.0903051135040.3949@w-kevinr.beaverton.ibm.com>
- <1236370937.7244.52.camel@heimdal.trondhjem.org>
+From: howard chen <howachen@gmail.com>
+Subject: [NFS] Performance advise in intranet
+Date: Sat, 7 Mar 2009 17:44:57 +0800
+Message-ID: <b66ddc900903070144w6bb83d84r878aebe702bf57d6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:56355 "EHLO e2.ny.us.ibm.com"
+Received: from neil.brown.name ([220.233.11.133]:39225 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752344AbZCFWvI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Mar 2009 17:51:08 -0500
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id n26Mma6Y008522
-	for <linux-nfs@vger.kernel.org>; Fri, 6 Mar 2009 17:48:36 -0500
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n26Mp6hn181572
-	for <linux-nfs@vger.kernel.org>; Fri, 6 Mar 2009 17:51:06 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n26Mp6BA009193
-	for <linux-nfs@vger.kernel.org>; Fri, 6 Mar 2009 17:51:06 -0500
-In-Reply-To: <1236370937.7244.52.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1752776AbZCGJrb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 7 Mar 2009 04:47:31 -0500
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Lft7w-000616-57
+	for linux-nfs@vger.kernel.org; Sat, 07 Mar 2009 20:47:28 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-On Fri, 6 Mar 2009, Trond Myklebust wrote:
+Consider I have using NFS in intranet enviornment, network is fast
+(Gigabit) and stable/reliable.
 
->
-> Does the attached patch help?
->
-> Trond
->
+My NFS server is connected to 6 hosts running as web server, the web
+site files are stored in NFS.
 
-Yes.  No corruption or issues on my large-ACL-list test system.
+I want to find some ways to enhance to performance
+
+My Case:
+a. Both read and write are intensive
+b. File are small, normally less than 100KB
+c. Server using NFS3, NFS getattr is around 40%
+
+So..
+
+1. Is setting of a a larger MTU always help? Some people say setting
+very large MTU (e.g. 9000)  can help performance boost in giga
+ethnernet.
+
+2. Is using NFS4 help?
+
+
 Thanks.
 
--Kevin
+------------------------------------------------------------------------------
+Open Source Business Conference (OSBC), March 24-25, 2009, San Francisco, CA
+-OSBC tackles the biggest issue in open source: Open Sourcing the Enterprise
+-Strategies to boost innovation and cut costs with open source participation
+-Receive a $600 discount off the registration fee with the source code: SFAD
+http://p.sf.net/sfu/XcvMzF8H
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
