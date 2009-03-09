@@ -1,80 +1,56 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: NFS4ERR_SYMLINK  error
-Date: Sat, 07 Mar 2009 20:59:16 +0200
-Message-ID: <49B2C404.3060907@panasas.com>
-References: <49AF9C28.8030603@cn.fujitsu.com> <49AFA4E4.50207@panasas.com> <20090306213234.GB1779@fieldses.org>
+From: Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+Subject: Re: [PATCH] Bug 11061, NFS mounts dropped
+Date: Mon, 09 Mar 2009 17:36:48 +1030
+Message-ID: <1236582408.32505.5.camel@sibyl.beware.dropbear.id.au>
+References: <1233459927.3112.54.camel@sibyl.beware.dropbear.id.au>
+	 <BD6791E5-9D82-4D42-8016-4731792CA5DA@oracle.com>
+	 <1233610918.3077.50.camel@sibyl.beware.dropbear.id.au>
+	 <157D0C13-65A3-412D-A266-EDFCF487F632@oracle.com>
+	 <1233698189.13862.16.camel@sibyl.beware.dropbear.id.au>
+	 <1233699391.7161.11.camel@heimdal.trondhjem.org>
+	 <91CE7AFB-2B15-4223-BE43-DF95ABC4B195@oracle.com>
+	 <1233771633.7161.35.camel@heimdal.trondhjem.org>
+	 <5552ED43-5E9C-4136-823D-DDDCF129DFAC@oracle.com>
+	 <1233773231.7161.51.camel@heimdal.trondhjem.org>
+	 <1234094116.13862.162.camel@sibyl.beware.dropbear.id.au>
+	 <7ED0098B-1D71-4E43-A8E4-D5859F13DD38@oracle.com>
+	 <1234355861.13862.239.camel@sibyl.beware.dropbear.id.au>
+	 <985DCB56-4365-40FC-B48D-43C28742908F@oracle.com>
+	 <1234402083.13862.273.camel@sibyl.beware.dropbear.id.au>
+	 <C7FF32B1-AF6D-470B-96DB-4BD77E90C50C@oracle.com>
+	 <1234711952.25265.34.camel@sibyl.beware.dropbear.id.au>
+	 <5E2B57AC-1977-449B-B595-354717A6ECD3@oracle.com>
+	 <1234872202.14585.33.camel@sibyl.bewa! ! re.dropbear.id.au>
+	 <30C44273-7011-46AD-B79B-FCD06E9F25FE@oracle.com>
+	 <1234960871.3455.27.camel@sibyl.beware.dropbear.id.au>
+	 <AAF38BA0-BFC7-4F47-9713-FF642C257141@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:16980 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753806AbZCGTAV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Mar 2009 14:00:21 -0500
-In-Reply-To: <20090306213234.GB1779@fieldses.org>
+Received: from 60-242-66-41.static.tpgi.com.au ([60.242.66.41]:36747 "EHLO
+	sibyl.beware.dropbear.id.au" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751803AbZCIHHO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 03:07:14 -0400
+In-Reply-To: <AAF38BA0-BFC7-4F47-9713-FF642C257141@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 06, 2009, 23:32 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Mar 05, 2009 at 12:09:40PM +0200, Benny Halevy wrote:
->> On Mar. 05, 2009, 11:32 +0200, Ni Wenjuan <niwj@cn.fujitsu.com> wrote:
->>> the result of newpynfs test case of  LINK4a .  if you link with target directoty
->>>  is a symbole file,it should get NFS4ERR_NOTDIR ,instead got NFS4ERR_SYMLINK.
->>>
->>> THE LINK operation  don't list NFS4ERR_SYMLINK as valid errors in the spec. But
->>> NFS4ERR_SYMLINK seems like a reasonable error.  Is this an oversight
->>> in the spec, or something we need to fix?
->> Although NFSv4.1 adds NFS4ERR_SYMLINK to LINK's allowed errors list
->> (and this might be an indication for it being an oversight in rfc3530),
+On Thu, 2009-02-19 at 11:28 -0500, Chuck Lever wrote:
+> I'm still not sure the IPv6 piece is completely correct, but after  
+> this patch is applied, IPv4 behavior is definitely better.  Since we  
+> can refine the IPv6 behavior as needed in subsequent patches:
 > 
-> The error lists in rfc3530 are known to be incomplete in some cases, so
-> before adding an exception like this I'd like something more.  (E.g.:
-> does this cause any client or application to fail?  Is there some
-> logical reason notdir is a more useful error than symlink?)
+>    Acked-by: Chuck Lever <chuck.lever@oracle.com>
 
-FWIW, the linux nfs client translates NFS4ERR_SYMLINK to -ELOOP
-which is awkward and less descriptive to the app / user than
--ENOTDIR.  That said, I don't think a careful client implementation
-should ever get NFS4ERR_SYMLINK if it stats the directory it operates
-on before sending the link op (or lookup, create, rename, etc.) to make
-sure it is indeed a directory, right?.
+What happens now? Is there anything more I need to do?
 
-Benny
+Regards,
+Ian
 
-> 
-> --b.
-> 
->> NFSv4.0 doesn't allow it so this needs to be fixed.
->>
->> Can you please test the following patch?
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>
->> git diff --stat -p fs/nfsd/vfs.c
->>  fs/nfsd/vfs.c |    3 +++
->>  1 files changed, 3 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 6e50aaa..9165b1f 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -1637,6 +1637,9 @@ out_dput:
->>  out_unlock:
->>  	fh_unlock(ffhp);
->>  out:
->> +	/* nfserr_symlink returned from fh_verify is inappropriate for LINK */
->> +	if (err == nfserr_symlink)
->> +		err = nfserr_notdir;
->>  	return err;
->>  
->>  out_nfserr:
->>
->>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Ian Dall <ian-Xg6/AsmM8Z5B3Ne2BGzF6laj5H9X9Tb+@public.gmane.org>
+
