@@ -1,91 +1,122 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 10/23] NFSD: move lockd_up() before svc_addsock()
-Date: Mon, 9 Mar 2009 14:19:51 -0400
-Message-ID: <20090309181951.GC9408@fieldses.org>
-References: <20090305212823.21342.38352.stgit@ingres.1015granger.net> <20090305213238.21342.13075.stgit@ingres.1015granger.net> <565D1A54-1E66-46B0-B57A-E7108BC12E9D@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] SUNRPC: Avoid spurious wake-up during UDP connect
+	processing
+Date: Mon, 09 Mar 2009 14:20:26 -0400
+Message-ID: <20090309182026.14860.17424.stgit@ingres.1015granger.net>
+References: <20090309181917.14860.88916.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:38610 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753804AbZCISTx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 14:19:53 -0400
-In-Reply-To: <565D1A54-1E66-46B0-B57A-E7108BC12E9D@oracle.com>
+Received: from acsinet12.oracle.com ([141.146.126.234]:52485 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751743AbZCISU7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 14:20:59 -0400
+In-Reply-To: <20090309181917.14860.88916.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 09, 2009 at 02:15:11PM -0400, Chuck Lever wrote:
->
-> On Mar 5, 2009, at Mar 5, 2009, 4:32 PM, Chuck Lever wrote:
->
->> Clean up.
->>
->> A couple of years ago, a series of commits, finishing with commit
->> 5680c446, swapped the order of the lockd_up() and svc_addsock() calls
->> in __write_ports().  At that time lockd_up() needed to know the
->> transport protocol of the passed-in socket to start a listener on the
->> same transport protocol.
->>
->> These days, lockd_up() doesn't take a protocol argument; it always
->> starts both a UDP and TCP listener.  It's now more straightforward to
->> try the lockd_up() first, then do a lockd_down() if the svc_addsock()
->> fails.
->>
->> Careful review of this code shows that the svc_sock_names() call is
->> used only to close the just-opened socket in case lockd_up() fails.
->> So it is no longer needed if lockd_up() is done first.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> fs/nfsd/nfsctl.c |   19 ++++++++++---------
->> 1 files changed, 10 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index 80f773b..aa60191 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -908,17 +908,18 @@ static ssize_t __write_ports_addfd(char *buf)
->> 	if (err != 0)
->> 		return err;
->>
->> -	err = svc_addsock(nfsd_serv, fd, buf);
->> -	if (err >= 0) {
->> -		err = lockd_up();
->> -		if (err < 0)
->> -			svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
->> +	err = lockd_up();
->> +	if (err != 0)
->> +		goto out;
->>
->> -		/* Decrease the count, but don't shut down the service */
->> -		nfsd_serv->sv_nrthreads--;
->> -	}
->> +	err = svc_addsock(nfsd_serv, fd, buf);
->> +	if (err != 0)
->
-> Found the "lockd: no users" BUG... this line needs to be "if (err < 0)".  
-> Fix tested by Jeff Layton.
+To clear out old state, the UDP connect workers unconditionally invoke
+xs_close() before proceeding with a new connect.  Nowadays this causes
+a spurious wake-up of the task waiting for the connect to complete.
 
-OK, good.  Will you resend that one patch at some point?  Are there any
-known problems left with that series?
+This is a little racey, but usually harmless.  The waiting task
+immediately retries the connect via a call_bind/call_connect sequence,
+which usually finds the transport already in the connected state
+because the connect worker has finished in the background.
 
---b.
+To avoid a spurious wake-up, factor the xs_close() logic that resets
+the underlying socket into a helper, and have the UDP connect workers
+call that helper instead of xs_close().
 
->
->> +		lockd_down();
->>
->> -	return err < 0 ? err : 0;
->> +out:
->> +	/* Decrease the count, but don't shut down the service */
->> +	nfsd_serv->sv_nrthreads--;
->> +	return err;
->> }
->>
->> /*
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/xprtsock.c |   45 +++++++++++++++++++++++++++------------------
+ 1 files changed, 27 insertions(+), 18 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 5cbb404..b3f839b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -757,23 +757,13 @@ static void xs_restore_old_callbacks(struct sock_xprt *transport, struct sock *s
+ 	sk->sk_error_report = transport->old_error_report;
+ }
+ 
+-/**
+- * xs_close - close a socket
+- * @xprt: transport
+- *
+- * This is used when all requests are complete; ie, no DRC state remains
+- * on the server we want to save.
+- */
+-static void xs_close(struct rpc_xprt *xprt)
++static void xs_reset_transport(struct sock_xprt *transport)
+ {
+-	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct socket *sock = transport->sock;
+ 	struct sock *sk = transport->inet;
+ 
+-	if (!sk)
+-		goto clear_close_wait;
+-
+-	dprintk("RPC:       xs_close xprt %p\n", xprt);
++	if (sk == NULL)
++		return;
+ 
+ 	write_lock_bh(&sk->sk_callback_lock);
+ 	transport->inet = NULL;
+@@ -787,7 +777,24 @@ static void xs_close(struct rpc_xprt *xprt)
+ 	sk->sk_no_check = 0;
+ 
+ 	sock_release(sock);
+-clear_close_wait:
++}
++
++/**
++ * xs_close - close a socket
++ * @xprt: transport
++ *
++ * This is used when all requests are complete; ie, no DRC state remains
++ * on the server we want to save.
++ */
++static void xs_close(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt,
++									xprt);
++
++	dprintk("RPC:       xs_close xprt %p\n", xprt);
++
++	xs_reset_transport(transport);
++
+ 	smp_mb__before_clear_bit();
+ 	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ 	clear_bit(XPRT_CLOSING, &xprt->state);
+@@ -1527,9 +1534,10 @@ static void xs_udp_connect_worker4(struct work_struct *work)
+ 		goto out;
+ 
+ 	/* Start by resetting any existing state */
+-	xs_close(xprt);
++	xs_reset_transport(transport);
+ 
+-	if ((err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
++	err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
++	if (err < 0) {
+ 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+ 		goto out;
+ 	}
+@@ -1568,9 +1576,10 @@ static void xs_udp_connect_worker6(struct work_struct *work)
+ 		goto out;
+ 
+ 	/* Start by resetting any existing state */
+-	xs_close(xprt);
++	xs_reset_transport(transport);
+ 
+-	if ((err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock)) < 0) {
++	err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock);
++	if (err < 0) {
+ 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+ 		goto out;
+ 	}
+
