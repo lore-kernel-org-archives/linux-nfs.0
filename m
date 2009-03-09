@@ -1,52 +1,84 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS4ERR_SYMLINK  error
-Date: Mon, 9 Mar 2009 14:06:43 -0400
-Message-ID: <20090309180643.GB9408@fieldses.org>
-References: <49AF9C28.8030603@cn.fujitsu.com> <49AFA4E4.50207@panasas.com> <20090306213234.GB1779@fieldses.org> <49B2C404.3060907@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 10/23] NFSD: move lockd_up() before svc_addsock()
+Date: Mon, 9 Mar 2009 14:15:11 -0400
+Message-ID: <565D1A54-1E66-46B0-B57A-E7108BC12E9D@oracle.com>
+References: <20090305212823.21342.38352.stgit@ingres.1015granger.net> <20090305213238.21342.13075.stgit@ingres.1015granger.net>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:58798 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754652AbZCISGt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 14:06:49 -0400
-In-Reply-To: <49B2C404.3060907@panasas.com>
+Received: from acsinet12.oracle.com ([141.146.126.234]:61713 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751973AbZCISP0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 14:15:26 -0400
+In-Reply-To: <20090305213238.21342.13075.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 07, 2009 at 08:59:16PM +0200, Benny Halevy wrote:
-> On Mar. 06, 2009, 23:32 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Thu, Mar 05, 2009 at 12:09:40PM +0200, Benny Halevy wrote:
-> >> On Mar. 05, 2009, 11:32 +0200, Ni Wenjuan <niwj@cn.fujitsu.com> wrote:
-> >>> the result of newpynfs test case of  LINK4a .  if you link with target directoty
-> >>>  is a symbole file,it should get NFS4ERR_NOTDIR ,instead got NFS4ERR_SYMLINK.
-> >>>
-> >>> THE LINK operation  don't list NFS4ERR_SYMLINK as valid errors in the spec. But
-> >>> NFS4ERR_SYMLINK seems like a reasonable error.  Is this an oversight
-> >>> in the spec, or something we need to fix?
-> >> Although NFSv4.1 adds NFS4ERR_SYMLINK to LINK's allowed errors list
-> >> (and this might be an indication for it being an oversight in rfc3530),
-> > 
-> > The error lists in rfc3530 are known to be incomplete in some cases, so
-> > before adding an exception like this I'd like something more.  (E.g.:
-> > does this cause any client or application to fail?  Is there some
-> > logical reason notdir is a more useful error than symlink?)
-> 
-> FWIW, the linux nfs client translates NFS4ERR_SYMLINK to -ELOOP
-> which is awkward and less descriptive to the app / user than
-> -ENOTDIR.
 
-Hm, OK.  If we fix this will -ELOOP then become reasonable for our
-remaining NFS4ERR_SYMLINK returns?
+On Mar 5, 2009, at Mar 5, 2009, 4:32 PM, Chuck Lever wrote:
 
-> That said, I don't think a careful client implementation
-> should ever get NFS4ERR_SYMLINK if it stats the directory it operates
-> on before sending the link op (or lookup, create, rename, etc.) to make
-> sure it is indeed a directory, right?.
+> Clean up.
+>
+> A couple of years ago, a series of commits, finishing with commit
+> 5680c446, swapped the order of the lockd_up() and svc_addsock() calls
+> in __write_ports().  At that time lockd_up() needed to know the
+> transport protocol of the passed-in socket to start a listener on the
+> same transport protocol.
+>
+> These days, lockd_up() doesn't take a protocol argument; it always
+> starts both a UDP and TCP listener.  It's now more straightforward to
+> try the lockd_up() first, then do a lockd_down() if the svc_addsock()
+> fails.
+>
+> Careful review of this code shows that the svc_sock_names() call is
+> used only to close the just-opened socket in case lockd_up() fails.
+> So it is no longer needed if lockd_up() is done first.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>
+> fs/nfsd/nfsctl.c |   19 ++++++++++---------
+> 1 files changed, 10 insertions(+), 9 deletions(-)
+>
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 80f773b..aa60191 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -908,17 +908,18 @@ static ssize_t __write_ports_addfd(char *buf)
+> 	if (err != 0)
+> 		return err;
+>
+> -	err = svc_addsock(nfsd_serv, fd, buf);
+> -	if (err >= 0) {
+> -		err = lockd_up();
+> -		if (err < 0)
+> -			svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
+> +	err = lockd_up();
+> +	if (err != 0)
+> +		goto out;
+>
+> -		/* Decrease the count, but don't shut down the service */
+> -		nfsd_serv->sv_nrthreads--;
+> -	}
+> +	err = svc_addsock(nfsd_serv, fd, buf);
+> +	if (err != 0)
 
-That sounds racy.
+Found the "lockd: no users" BUG... this line needs to be "if (err <  
+0)".  Fix tested by Jeff Layton.
 
---b.
+> +		lockd_down();
+>
+> -	return err < 0 ? err : 0;
+> +out:
+> +	/* Decrease the count, but don't shut down the service */
+> +	nfsd_serv->sv_nrthreads--;
+> +	return err;
+> }
+>
+> /*
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
