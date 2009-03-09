@@ -1,115 +1,61 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 10/23] NFSD: move lockd_up() before svc_addsock()
-Date: Mon, 9 Mar 2009 14:24:28 -0400
-Message-ID: <87ACE9B1-F0D9-4423-BEE2-56112E14F056@oracle.com>
-References: <20090305212823.21342.38352.stgit@ingres.1015granger.net> <20090305213238.21342.13075.stgit@ingres.1015granger.net> <565D1A54-1E66-46B0-B57A-E7108BC12E9D@oracle.com> <20090309181951.GC9408@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:17758 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751227AbZCISYo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 14:24:44 -0400
-In-Reply-To: <20090309181951.GC9408@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [Patch 0/9] NFS Mount Configuration File
+Date: Mon, 09 Mar 2009 16:44:34 -0400
+Message-ID: <49B57FB2.9020000@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 9, 2009, at Mar 9, 2009, 2:19 PM, J. Bruce Fields wrote:
-> On Mon, Mar 09, 2009 at 02:15:11PM -0400, Chuck Lever wrote:
->>
->> On Mar 5, 2009, at Mar 5, 2009, 4:32 PM, Chuck Lever wrote:
->>
->>> Clean up.
->>>
->>> A couple of years ago, a series of commits, finishing with commit
->>> 5680c446, swapped the order of the lockd_up() and svc_addsock()  
->>> calls
->>> in __write_ports().  At that time lockd_up() needed to know the
->>> transport protocol of the passed-in socket to start a listener on  
->>> the
->>> same transport protocol.
->>>
->>> These days, lockd_up() doesn't take a protocol argument; it always
->>> starts both a UDP and TCP listener.  It's now more straightforward  
->>> to
->>> try the lockd_up() first, then do a lockd_down() if the  
->>> svc_addsock()
->>> fails.
->>>
->>> Careful review of this code shows that the svc_sock_names() call is
->>> used only to close the just-opened socket in case lockd_up() fails.
->>> So it is no longer needed if lockd_up() is done first.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> fs/nfsd/nfsctl.c |   19 ++++++++++---------
->>> 1 files changed, 10 insertions(+), 9 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>> index 80f773b..aa60191 100644
->>> --- a/fs/nfsd/nfsctl.c
->>> +++ b/fs/nfsd/nfsctl.c
->>> @@ -908,17 +908,18 @@ static ssize_t __write_ports_addfd(char *buf)
->>> 	if (err != 0)
->>> 		return err;
->>>
->>> -	err = svc_addsock(nfsd_serv, fd, buf);
->>> -	if (err >= 0) {
->>> -		err = lockd_up();
->>> -		if (err < 0)
->>> -			svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
->>> +	err = lockd_up();
->>> +	if (err != 0)
->>> +		goto out;
->>>
->>> -		/* Decrease the count, but don't shut down the service */
->>> -		nfsd_serv->sv_nrthreads--;
->>> -	}
->>> +	err = svc_addsock(nfsd_serv, fd, buf);
->>> +	if (err != 0)
->>
->> Found the "lockd: no users" BUG... this line needs to be "if (err <  
->> 0)".
->> Fix tested by Jeff Layton.
->
-> OK, good.  Will you resend that one patch at some point?
+Hello,
 
-There is a later patch that won't apply with this change, but the fix- 
-up is trivial.  It might be easier if I just send the whole set again,  
-but I would like to send them with the multiple-address-family- 
-listeners patches that I posted for your review last week.  I haven't  
-heard your thoughts on those.
+The following patch set introduces a configuration file where 
+mount options can be define. The options in the file can be 
+applied globally or per server or per mount point. 
 
-> Are there any
-> known problems left with that series?
+The patch set reuses the configuration parsing code that
+idmapd uses. I did added a couple enhancements like ignoring
+blanks in certain definitions as well as at the beginning of 
+assignment statements.
 
-None that I have found.
+There are man pages include in the patch set but in a
+nut shell, the configuration file has three basic types
+of sections. A global section, server section and mount point
+section. There can only be one global section and multiple 
+server and mount point sections.
 
-> --b.
->
->>
->>> +		lockd_down();
->>>
->>> -	return err < 0 ? err : 0;
->>> +out:
->>> +	/* Decrease the count, but don't shut down the service */
->>> +	nfsd_serv->sv_nrthreads--;
->>> +	return err;
->>> }
->>>
->>> /*
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
+The mount command prioritize these sections in the following
+way:
+     * Options on the command line are always used.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+     * Options defined in the mount point section are used
+       as long a the options are not in the command line options.
 
+     * Options defined in the server section are used as long as
+       they are not defined on the command line or in the mount point
+       section.
 
+     * Options defined in the global section are used as long as the
+       options are not on the command line or in the mount point section
+       or in the server section.
 
+This is the first step toward moving the default NFS version from 3 to 4
+on the client. Having a configuration file which allows users to define
+the maximum and minimum NFS versions that should be negotiated is the
+right thing to do... IMHO.. Even though this patch does not does not 
+do that, it does lay the ground work for that type of functionality.
 
+Comments?
+
+steved.
