@@ -1,84 +1,36 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 10/23] NFSD: move lockd_up() before svc_addsock()
-Date: Mon, 9 Mar 2009 14:15:11 -0400
-Message-ID: <565D1A54-1E66-46B0-B57A-E7108BC12E9D@oracle.com>
-References: <20090305212823.21342.38352.stgit@ingres.1015granger.net> <20090305213238.21342.13075.stgit@ingres.1015granger.net>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS4ERR_SYMLINK  error
+Date: Mon, 09 Mar 2009 14:18:21 -0400
+Message-ID: <1236622701.7234.34.camel@heimdal.trondhjem.org>
+References: <49AF9C28.8030603@cn.fujitsu.com> <49AFA4E4.50207@panasas.com>
+	 <20090306213234.GB1779@fieldses.org> <49B2C404.3060907@panasas.com>
+	 <20090309180643.GB9408@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:61713 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751973AbZCISP0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Mar 2009 14:15:26 -0400
-In-Reply-To: <20090305213238.21342.13075.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:34211 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751101AbZCISSd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Mar 2009 14:18:33 -0400
+In-Reply-To: <20090309180643.GB9408@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 2009-03-09 at 14:06 -0400, J. Bruce Fields wrote:
+> > That said, I don't think a careful client implementation
+> > should ever get NFS4ERR_SYMLINK if it stats the directory it operates
+> > on before sending the link op (or lookup, create, rename, etc.) to make
+> > sure it is indeed a directory, right?.
+> 
+> That sounds racy.
 
-On Mar 5, 2009, at Mar 5, 2009, 4:32 PM, Chuck Lever wrote:
+The LINK op identifies the target directory by its filehandle, so I
+can't see that there can be any race: the server isn't supposed to be
+able to morph a directory into a symlink without changing its
+filehandle.
 
-> Clean up.
->
-> A couple of years ago, a series of commits, finishing with commit
-> 5680c446, swapped the order of the lockd_up() and svc_addsock() calls
-> in __write_ports().  At that time lockd_up() needed to know the
-> transport protocol of the passed-in socket to start a listener on the
-> same transport protocol.
->
-> These days, lockd_up() doesn't take a protocol argument; it always
-> starts both a UDP and TCP listener.  It's now more straightforward to
-> try the lockd_up() first, then do a lockd_down() if the svc_addsock()
-> fails.
->
-> Careful review of this code shows that the svc_sock_names() call is
-> used only to close the just-opened socket in case lockd_up() fails.
-> So it is no longer needed if lockd_up() is done first.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
-> fs/nfsd/nfsctl.c |   19 ++++++++++---------
-> 1 files changed, 10 insertions(+), 9 deletions(-)
->
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 80f773b..aa60191 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -908,17 +908,18 @@ static ssize_t __write_ports_addfd(char *buf)
-> 	if (err != 0)
-> 		return err;
->
-> -	err = svc_addsock(nfsd_serv, fd, buf);
-> -	if (err >= 0) {
-> -		err = lockd_up();
-> -		if (err < 0)
-> -			svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
-> +	err = lockd_up();
-> +	if (err != 0)
-> +		goto out;
->
-> -		/* Decrease the count, but don't shut down the service */
-> -		nfsd_serv->sv_nrthreads--;
-> -	}
-> +	err = svc_addsock(nfsd_serv, fd, buf);
-> +	if (err != 0)
+Trond
 
-Found the "lockd: no users" BUG... this line needs to be "if (err <  
-0)".  Fix tested by Jeff Layton.
-
-> +		lockd_down();
->
-> -	return err < 0 ? err : 0;
-> +out:
-> +	/* Decrease the count, but don't shut down the service */
-> +	nfsd_serv->sv_nrthreads--;
-> +	return err;
-> }
->
-> /*
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
