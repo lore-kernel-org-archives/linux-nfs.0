@@ -1,37 +1,59 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH 2/2] nfsstat: Add --list flag
-Date: Wed, 18 Mar 2009 13:43:20 +1100
-Message-ID: <49C05FC8.6010503@sgi.com>
-References: <49BF2478.8080600@sgi.com> <1237275989-16421-1-git-send-email-kevin.constantine@disneyanimation.com> <1237275989-16421-2-git-send-email-kevin.constantine@disneyanimation.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] nfs-utils: NULL-terminate buffer after read in
+	read_service_info (try #2)
+Date: Tue, 10 Mar 2009 12:18:10 -0400
+Message-ID: <1236701890-9111-1-git-send-email-jlayton@redhat.com>
+References: <1236429928-4680-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
-To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:41335 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753241AbZCRCdy (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Tue, 17 Mar 2009 22:33:54 -0400
-In-Reply-To: <1237275989-16421-2-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: steved@redhat.com
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1236429928-4680-1-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Kevin Constantine wrote:
-> nfsstat.c: Adds the --list flag to print information in a list format instead of the standard multi-column format
-> nfsstat.man: Updates the manpage to include the --list flag.
->
-> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-> ---
->  utils/nfsstat/nfsstat.c   |   80 +++++++++++++++++++++++++++++++++++++++++++--
->  utils/nfsstat/nfsstat.man |    3 ++
->  2 files changed, 80 insertions(+), 3 deletions(-)
->   
-Acked-by: Greg Banks <gnb@sgi.com>
+Valgrind complains that we're passing an unintialized buffer to sscanf
+here. The main problem seems to be that we're not ensuring that the
+buffer is NULL terminated before we pass it off.
 
+This is the second version of this patch, the first one did not increase
+the buffer allocation by 1 which could have led to clobbering the next
+byte on the stack if nbytes == INFOBUFLEN.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/gssd/gssd_proc.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 295c37d..fb97a13 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -107,7 +107,7 @@ static int
+ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		  int *prog, int *vers, char **protocol, int *port) {
+ #define INFOBUFLEN 256
+-	char		buf[INFOBUFLEN];
++	char		buf[INFOBUFLEN + 1];
+ 	static char	dummy[128];
+ 	int		nbytes;
+ 	static char	service[128];
+@@ -132,6 +132,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 	if ((nbytes = read(fd, buf, INFOBUFLEN)) == -1)
+ 		goto fail;
+ 	close(fd);
++	buf[nbytes] = '\0';
+ 
+ 	numfields = sscanf(buf,"RPC server: %127s\n"
+ 		   "service: %127s %15s version %15s\n"
 -- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
-
+1.6.0.6
