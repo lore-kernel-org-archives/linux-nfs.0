@@ -1,84 +1,38 @@
-From: Yang Hongyang <yanghy@cn.fujitsu.com>
-Subject: Re: [PATCH 01/14] nfsd4: trivial preprocess_stateid_op cleanup
-Date: Wed, 11 Mar 2009 10:09:42 +0800
-Message-ID: <49B71D66.1000500@cn.fujitsu.com>
-References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: pread/pwrite bug on linux?
+Date: Wed, 11 Mar 2009 10:43:56 -0400
+Message-ID: <x49mybsyv9v.fsf@segfault.boston.devel.redhat.com>
+References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
+	<x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
+	<x49k575jf9y.fsf@segfault.boston.devel.redhat.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D89830F@US01WXMBX1.internal.synopsys.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49187 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753987AbZCKCK4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Mar 2009 22:10:56 -0400
-In-Reply-To: <1236731222-3294-2-git-send-email-bfields@fieldses.org>
+Received: from mx2.redhat.com ([66.187.237.31]:35661 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751635AbZCKOoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 10:44:00 -0400
+In-Reply-To: <293BC70BB130E648A6631DB2F05B6E10019D89830F-uiPIUNf6hlr3OT/vyeh27fufCSb+aD3WLzEdoUbNIic@public.gmane.org>
+	(Qiuyang Wu's message of "Tue, 10 Mar 2009 17:37:07 -0700")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reviewed patch 1-8.
+Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org> writes:
 
-J. Bruce Fields wrote:
-> From: J. Bruce Fields <bfields@citi.umich.edu>
-> 
-> Remove a couple redundant comments, adjust style; no change in behavior.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/nfsd/nfs4state.c |   14 ++++++++------
->  1 files changed, 8 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 7f616e9..b7e2f25 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2072,21 +2072,21 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
->  	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
->  		return check_special_stateids(current_fh, stateid, flags);
->  
-> -	/* STALE STATEID */
->  	status = nfserr_stale_stateid;
->  	if (STALE_STATEID(stateid)) 
->  		goto out;
->  
-> -	/* BAD STATEID */
->  	status = nfserr_bad_stateid;
->  	if (!stateid->si_fileid) { /* delegation stateid */
-> -		if(!(dp = find_delegation_stateid(ino, stateid))) {
-> +		dp = find_delegation_stateid(ino, stateid);
-> +		if (!dp) {
->  			dprintk("NFSD: delegation stateid not found\n");
->  			goto out;
->  		}
->  		stidp = &dp->dl_stateid;
->  	} else { /* open or lock stateid */
-> -		if (!(stp = find_stateid(stateid, flags))) {
-> +		stp = find_stateid(stateid, flags);
-> +		if (!stp) {
->  			dprintk("NFSD: open or lock stateid not found\n");
->  			goto out;
->  		}
-> @@ -2100,13 +2100,15 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
->  	if (status)
->  		goto out;
->  	if (stp) {
-> -		if ((status = nfs4_check_openmode(stp,flags)))
-> +		status = nfs4_check_openmode(stp, flags);
-> +		if (status)
->  			goto out;
->  		renew_client(stp->st_stateowner->so_client);
->  		if (filpp)
->  			*filpp = stp->st_vfs_file;
->  	} else {
-> -		if ((status = nfs4_check_delegmode(dp, flags)))
-> +		status = nfs4_check_delegmode(dp, flags);
-> +		if (status)
->  			goto out;
->  		renew_client(dp->dl_client);
->  		if (flags & DELEG_RET)
+> Thanks for the responses.
+>
+> Just FYI that the bug was acknowledged, also it seems RH v5.3 does not have the problem...
 
+I'm sorry, but I don't understand what you mean.  Do you mean that the
+bug was found and fixed, or just someone agreed that it exists, or
+something else?  If there was a Red Hat bugzilla for it, I'd love to
+know the number.
 
--- 
-Regards
-Yang Hongyang
+Thanks!
+Jeff
