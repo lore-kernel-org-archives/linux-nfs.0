@@ -1,58 +1,42 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 10/17] SUNRPC: Use "0" as r_owner
-Date: Wed, 11 Mar 2009 15:06:47 -0400
-Message-ID: <20090311190647.GG13540@fieldses.org>
-References: <20090303220539.2933.15015.stgit@ingres.1015granger.net> <20090303223324.2933.57002.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 03/14] nfsd4: remove redundant "if" in
+	nfs4_preprocess_stateid_op
+Date: Wed, 11 Mar 2009 15:49:43 -0400
+Message-ID: <20090311194943.GI13540@fieldses.org>
+References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org> <1236731222-3294-3-git-send-email-bfields@fieldses.org> <1236731222-3294-4-git-send-email-bfields@fieldses.org> <49B7100E.2000209@cn.fujitsu.com> <20090311012346.GB4495@fieldses.org> <49B7133E.10804@cn.fujitsu.com> <49B7FD6B.5060203@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, steved@redhat.com,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Yang Hongyang <yanghy@cn.fujitsu.com>, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:40779 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:54509 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752544AbZCKTGx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 15:06:53 -0400
-In-Reply-To: <20090303223324.2933.57002.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	with ESMTP id S1751101AbZCKTtw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 15:49:52 -0400
+In-Reply-To: <49B7FD6B.5060203@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 03, 2009 at 05:33:25PM -0500, Chuck Lever wrote:
-> It turns out that, despite the spec, rpcbind interprets the string
+On Wed, Mar 11, 2009 at 08:05:31PM +0200, Benny Halevy wrote:
+> On Mar. 11, 2009, 3:26 +0200, Yang Hongyang <yanghy@cn.fujitsu.com> wrote:
+> > J. Bruce Fields wrote:
+> >> On Wed, Mar 11, 2009 at 09:12:46AM +0800, Yang Hongyang wrote:
+> >>> J. Bruce Fields wrote:
+> >>>> From: J. Bruce Fields <bfields@citi.umich.edu>
+> >>>>
+> >>>> Note that we exit this first big "if" with stp == NULL iff we took the
+> >>>                                                                                         ^^ typo
+> >> The "iff"?  That's short for "if and only if".  I can try to get out of
+> >> the "iff" habit if it's too obscure.
+> > 
+> > Sorry for mis-understanding,My pool englishT_T Maybe "if and only if"
+> > are more understandable.
+> 
+> Although using this iffy math/cs school lingo does not seem too obscure
+> to me (one can find it easily on the net, e.g.
+> http://www.tfd.com/?Word=iff), as a non-native English speaker I'd be
+> inclined to simplify commentary language as much as possible and
+> refrain from using acronyms if they are not obvious to the linux
+> developers community.
 
-Should someone be fixing rpcbind too?
-
---b.
-
-> passed in the r_owner argument for SET and UNSET requests.  It expects
-> it to be a numeric UID, rather than an arbitrary string.
-> 
-> Change the kernel's r_owner string to be "0".
-> 
-> This is a documentation change only.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/rpcb_clnt.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> index 317eb8a..0a3b8f5 100644
-> --- a/net/sunrpc/rpcb_clnt.c
-> +++ b/net/sunrpc/rpcb_clnt.c
-> @@ -63,9 +63,11 @@ enum {
->   * r_owner
->   *
->   * The "owner" is allowed to unset a service in the rpcbind database.
-> - * We always use the following (arbitrary) fixed string.
-> + * rpcbind maps this string to a local user name via a passwd lookup
-> + * for AF_LOCAL SET/UNSET requests, but via the network (ie how the
-> + * kernel registers its services) it is pretty much ignored.
->   */
-> -#define RPCB_OWNER_STRING	"rpcb"
-> +#define RPCB_OWNER_STRING	"0"
->  #define RPCB_MAXOWNERLEN	sizeof(RPCB_OWNER_STRING)
->  
->  static void			rpcb_getport_done(struct rpc_task *, void *);
-> 
+OK.--b.
