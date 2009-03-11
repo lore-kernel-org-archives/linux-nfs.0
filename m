@@ -1,94 +1,64 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 17/30] SUNRPC: dynamically load RPC transport modules
- on-demand
-Date: Wed, 11 Mar 2009 14:41:08 -0400
-Message-ID: <20090311184108.5578.78707.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 20/30] SUNRPC: Ensure we set XPRT_CLOSING only after we've
+ sent a tcp FIN...
+Date: Wed, 11 Mar 2009 14:41:09 -0400
+Message-ID: <20090311184109.5578.12028.stgit@heimdal.trondhjem.org>
 References: <20090311184105.5578.22131.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: Tom Talpey <tmtalpey@gmail.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51671 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54975 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754366AbZCKSoJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:44:09 -0400
+	id S1753691AbZCKSpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:45:14 -0400
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIj5jK022182
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:45:12 -0700 (PDT)
 In-Reply-To: <20090311184105.5578.22131.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Talpey <tmtalpey@gmail.com>
+...so that we can distinguish between when we need to shutdown and when we
+don't. Also remove the call to xs_tcp_shutdown() from xs_tcp_connect(),
+since xprt_connect() makes the same test.
 
-Provide an api to attempt to load any necessary kernel RPC
-client transport module automatically. By convention, the
-desired module name is "xprt"+"transport name". For example,
-when NFS mounting with "-o proto=rdma", attempt to load the
-"xprtrdma" module.
-
-Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/xprt.c           |   31 +++++++++++++++++++++++++++++++
- 2 files changed, 32 insertions(+), 0 deletions(-)
+ net/sunrpc/xprtsock.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 11fc71d..2b0d960 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -235,6 +235,7 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
-  */
- int			xprt_register_transport(struct xprt_class *type);
- int			xprt_unregister_transport(struct xprt_class *type);
-+int			xprt_load_transport(const char *);
- void			xprt_set_retrans_timeout_def(struct rpc_task *task);
- void			xprt_set_retrans_timeout_rtt(struct rpc_task *task);
- void			xprt_wake_pending_tasks(struct rpc_xprt *xprt, int status);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 62098d1..d1afec6 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -152,6 +152,37 @@ out:
- EXPORT_SYMBOL_GPL(xprt_unregister_transport);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 1127eb9..cb4bd93 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1180,7 +1180,6 @@ static void xs_tcp_state_change(struct sock *sk)
+ 		break;
+ 	case TCP_CLOSE_WAIT:
+ 		/* The server initiated a shutdown of the socket */
+-		set_bit(XPRT_CLOSING, &xprt->state);
+ 		xprt_force_disconnect(xprt);
+ 	case TCP_SYN_SENT:
+ 		xprt->connect_cookie++;
+@@ -1193,6 +1192,7 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+ 		break;
+ 	case TCP_LAST_ACK:
++		set_bit(XPRT_CLOSING, &xprt->state);
+ 		smp_mb__before_clear_bit();
+ 		clear_bit(XPRT_CONNECTED, &xprt->state);
+ 		smp_mb__after_clear_bit();
+@@ -1836,9 +1836,6 @@ static void xs_tcp_connect(struct rpc_task *task)
+ {
+ 	struct rpc_xprt *xprt = task->tk_xprt;
  
- /**
-+ * xprt_load_transport - load a transport implementation
-+ * @transport_name: transport to load
-+ *
-+ * Returns:
-+ * 0:		transport successfully loaded
-+ * -ENOENT:	transport module not available
-+ */
-+int xprt_load_transport(const char *transport_name)
-+{
-+	struct xprt_class *t;
-+	char module_name[sizeof t->name + 5];
-+	int result;
-+
-+	result = 0;
-+	spin_lock(&xprt_list_lock);
-+	list_for_each_entry(t, &xprt_list, list) {
-+		if (strcmp(t->name, transport_name) == 0) {
-+			spin_unlock(&xprt_list_lock);
-+			goto out;
-+		}
-+	}
-+	spin_unlock(&xprt_list_lock);
-+	strcpy(module_name, "xprt");
-+	strncat(module_name, transport_name, sizeof t->name);
-+	result = request_module(module_name);
-+out:
-+	return result;
-+}
-+EXPORT_SYMBOL_GPL(xprt_load_transport);
-+
-+/**
-  * xprt_reserve_xprt - serialize write access to transports
-  * @task: task that is requesting access to the transport
-  *
+-	/* Initiate graceful shutdown of the socket if not already done */
+-	if (test_bit(XPRT_CONNECTED, &xprt->state))
+-		xs_tcp_shutdown(xprt);
+ 	/* Exit if we need to wait for socket shutdown to complete */
+ 	if (test_bit(XPRT_CLOSING, &xprt->state))
+ 		return;
 
