@@ -1,72 +1,75 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 08/17] SUNRPC: Don't return EPROTONOSUPPORT in
-	svc_register()'s helpers
-Date: Wed, 11 Mar 2009 14:32:21 -0400
-Message-ID: <20090311183221.GF13540@fieldses.org>
-References: <20090303220539.2933.15015.stgit@ingres.1015granger.net> <20090303223309.2933.51773.stgit@ingres.1015granger.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 06/30] NFS: Shrink the struct nfs_fattr
+Date: Wed, 11 Mar 2009 14:41:07 -0400
+Message-ID: <20090311184106.5578.87232.stgit@heimdal.trondhjem.org>
+References: <20090311184105.5578.22131.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, steved@redhat.com,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51988 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753280AbZCKSc2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 14:32:28 -0400
-In-Reply-To: <20090303223309.2933.51773.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:54011 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754391AbZCKSoK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:44:10 -0400
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIi45G012186
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:44:08 -0700 (PDT)
+In-Reply-To: <20090311184105.5578.22131.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 03, 2009 at 05:33:10PM -0500, Chuck Lever wrote:
-> The RPC client returns -EPROTONOSUPPORT if there is a protocol version
-> mismatch (ie the remote RPC server doesn't support the RPC protocol
-> version sent by the client).
-> 
-> Helpers for the svc_register() function return -EPROTONOSUPPORT if they
-> don't recognize the passed-in IPPROTO_ value.
-> 
-> These are two entirely different failure modes.
-> 
-> Have the helpers return -ENOPROTOOPT instead of -ENOPROTOOPT.  This will
-						   ^^^^^^^^^^^
-						   should be
-						   -EPROTONOSUPPORT?
+We don't need the bitmap[] field anymore, since the 'valid' field tells us
+all we need to know about which attributes were filled in...
+Also move the pre-op attributes in order to improve the structure packing.
 
---b.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-> allow callers to determine more precisely what the underlying problem is,
-> and decide to report or recover appropriately.
-> 
-> This patch is part of a series that addresses
->    http://bugzilla.kernel.org/show_bug.cgi?id=12256
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/svc.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 6cc3c62..c89f04e 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -749,7 +749,7 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
->  		netid = RPCBIND_NETID_TCP;
->  		break;
->  	default:
-> -		return -EPROTONOSUPPORT;
-> +		return -ENOPROTOOPT;
->  	}
->  
->  	return rpcb_v4_register(program, version,
-> @@ -785,7 +785,7 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
->  		netid = RPCBIND_NETID_TCP6;
->  		break;
->  	default:
-> -		return -EPROTONOSUPPORT;
-> +		return -ENOPROTOOPT;
->  	}
->  
->  	return rpcb_v4_register(program, version,
-> 
+ fs/nfs/nfs4xdr.c        |    3 ---
+ include/linux/nfs_xdr.h |    7 +++----
+ 2 files changed, 3 insertions(+), 7 deletions(-)
+
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 7d220da..9f1df83 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3002,9 +3002,6 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr, cons
+ 	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
+ 		goto xdr_error;
+ 
+-	fattr->bitmap[0] = bitmap[0];
+-	fattr->bitmap[1] = bitmap[1];
+-
+ 	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
+ 		goto xdr_error;
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index b99295e..6013acb 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -28,9 +28,6 @@ static inline int nfs_fsid_equal(const struct nfs_fsid *a, const struct nfs_fsid
+ 
+ struct nfs_fattr {
+ 	unsigned int		valid;		/* which fields are valid */
+-	__u64			pre_size;	/* pre_op_attr.size	  */
+-	struct timespec		pre_mtime;	/* pre_op_attr.mtime	  */
+-	struct timespec		pre_ctime;	/* pre_op_attr.ctime	  */
+ 	enum nfs_ftype		type;		/* always use NFSv2 types */
+ 	__u32			mode;
+ 	__u32			nlink;
+@@ -52,9 +49,11 @@ struct nfs_fattr {
+ 	struct timespec		atime;
+ 	struct timespec		mtime;
+ 	struct timespec		ctime;
+-	__u32			bitmap[2];	/* NFSv4 returned attribute bitmap */
+ 	__u64			change_attr;	/* NFSv4 change attribute */
+ 	__u64			pre_change_attr;/* pre-op NFSv4 change attribute */
++	__u64			pre_size;	/* pre_op_attr.size	  */
++	struct timespec		pre_mtime;	/* pre_op_attr.mtime	  */
++	struct timespec		pre_ctime;	/* pre_op_attr.ctime	  */
+ 	unsigned long		time_start;
+ 	unsigned long		gencount;
+ };
+
