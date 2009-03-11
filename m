@@ -1,287 +1,72 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/6] nfs-utils: skip getaddrinfo in create_auth_rpc_client unless we need port
-Date: Wed, 11 Mar 2009 18:09:11 -0400
-Message-ID: <7350E3A4-435F-4041-B18E-5453FB2F1B59@oracle.com>
-References: <1236789782-8867-1-git-send-email-jlayton@redhat.com> <1236789782-8867-4-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, kwc@citi.umich.edu
-To: Jeff Layton <jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
+Date: Wed, 11 Mar 2009 19:46:13 -0400
+Message-ID: <20090311234613.GA21273@fieldses.org>
+References: <49B622D1.6060602@cn.fujitsu.com> <49B62357.3080604@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
+To: Yang Hongyang <yanghy@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:62799 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751417AbZCKWJl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 18:09:41 -0400
-In-Reply-To: <1236789782-8867-4-git-send-email-jlayton@redhat.com>
+Received: from mail.fieldses.org ([141.211.133.115]:42049 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750928AbZCKXqP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 19:46:15 -0400
+In-Reply-To: <49B62357.3080604@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 11, 2009, at 12:42 PM, Jeff Layton wrote:
-> We already have the server's address from the upcall, so we don't  
-> really
-> need to look it up again. Move the getaddrinfo call in
-> create_auth_rpc_client to a new function. Skip it if we already have  
-> the
-> port in the sockaddr that we saved from the info in the upcall. If
-> we need to get the port, don't bother looking up the hostname, just do
-> the getaddrinfo with AI_NUMERICHOST set.
->
-> This should reduce the amount of lookups that are needed.
->
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> utils/gssd/gssd_proc.c |  137 ++++++++++++++++++++++++++++ 
-> +------------------
-> 1 files changed, 84 insertions(+), 53 deletions(-)
->
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 4f05040..349ed99 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -553,6 +553,80 @@ out_err:
-> }
->
-> /*
-> + * Determine the port from the servicename and set the right field  
-> in the
-> + * sockaddr. This is mostly a no-op with newer kernels that send  
-> the port
-> + * in the upcall. Returns true on success and false on failure.
-> + */
-> +static int
-> +populate_port(struct sockaddr_storage *ss, char *servicename, int  
-> socktype,
-> +	      int protocol)
+On Tue, Mar 10, 2009 at 04:22:47PM +0800, Yang Hongyang wrote:
+> Ni Wenjuan wrote:
+> > Fix a test in rename operation. rename dir1 into existing,nonempty dir2 should
+> > return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPY. RFC says if the target is a
+> > directory but not empty, the server will return the error, NFS4ERR_EXIST.
+> > 
+> 
+> SOF && please use git to generate patch.
 
-Pointers to socket addresses are "struct sockaddr *" not "struct  
-sockaddr_storage *".
+Also, when you resend--could send any server patches to me (in addition
+to the linux-nfs list)?  
 
-> +{
-> +	struct sockaddr_in	*s4 = (struct sockaddr_in *) ss;
-> +	struct addrinfo		ai_hints, *a = NULL;
-> +	char			node[INET_ADDRSTRLEN];
-> +	char			service[64];
-> +	char			*at_sign;
-> +	int			errcode;
-> +
-> +	memset(&ai_hints, '\0', sizeof(ai_hints));
+The content of the patch looks ok, thanks.
 
-A C99 structure initializer would zero the structure, and you can  
-initialize the fields at the same time.
+--b.
 
-> +
-> +	switch (ss->ss_family) {
-> +	case AF_INET:
-> +		if (s4->sin_port != 0) {
-> +			printerr(2, "DEBUG: port already set to %d\n",
-> +				 ntohs(s4->sin_port));
-> +			return 1;
-> +		}
-> +		if (!inet_ntop(AF_INET, &s4->sin_addr, node,
-> +				sizeof(struct sockaddr_in)))
-> +			return 0;
-
-I know you are copying this mostly verbatim, but I'm not sure exactly  
-what this is doing.  You can pass a C string containing the port  
-number, or a C string containing the service name, to getaddrinfo(3)  
-and have it fill in the port, I think.
-
-> +		break;
-> +	default:
-> +		printerr(0, "ERROR: unsupported address family %d\n",
-> +			    ss->ss_family);
-> +		return 0;
-> +	}
-> +
-> +	/* extract the service name from clp->servicename */
-> +	if ((at_sign = strchr(servicename, '@')) == NULL) {
-> +		printerr(0, "WARNING: servicename (%s) not formatted as "
-> +			"expected with service@host\n", servicename);
-> +		return 0;
-> +	}
-> +	if ((at_sign - servicename) >= sizeof(service)) {
-> +		printerr(0, "WARNING: service portion of servicename (%s) "
-> +			"is too long!\n", servicename);
-> +		return 0;
-> +	}
-> +	strncpy(service, servicename, at_sign - servicename);
-> +	service[at_sign - servicename] = '\0';
-> +
-> +	ai_hints.ai_family = ss->ss_family;
-> +	ai_hints.ai_socktype = socktype;
-> +	ai_hints.ai_protocol = protocol;
-> +	ai_hints.ai_flags |= AI_NUMERICHOST;
-
-I don't think we need to fill in ai_socktype.
-
-AI_NUMERICHOST means we're not doing a DNS resolution here at all,  
-we're just building a sockaddr.
-
-> +
-> +	errcode = getaddrinfo(node, service, &ai_hints, &a);
-> +	if (errcode) {
-> +		printerr(0, "WARNING: Error from getaddrinfo for service "
-> +			 "'%s': %s\n", service, gai_strerror(errcode));
-
-If the error code is EAI_SYSTEM then you should use strerror(errno).   
-I usually use a switch statement to sort this out.
-
-> +		return 0;
-> +	}
-> +
-> +	/* XXX: walk all of the returned addrinfo list until we get port? */
-
-Not sure we need to look at more than the first result.   
-getaddrinfo(3) ought to fill in the port of all the returned addrinfo  
-structures.
-
->
-> +	if (a->ai_family == AF_INET) {
-> +		s4->sin_port = ((struct sockaddr_in *) a->ai_addr)->sin_port;
-> +	} else {
-> +		printerr(0, "ERROR: unrecognized address family returned by "
-> +			 "getaddrinfo %d\n", a->ai_family,
-> +			 gai_strerror(errcode));
-> +	}
-> +
-> +	freeaddrinfo(a);
-> +	return 1;
-> +}
-> +
-> +/*
->  * Create an RPC connection and establish an authenticated
->  * gss context with a server.
->  */
-> @@ -567,14 +641,11 @@ int create_auth_rpc_client(struct clnt_info  
-> *clp,
-> 	AUTH			*auth = NULL;
-> 	uid_t			save_uid = -1;
-> 	int			retval = -1;
-> -	int			errcode;
-> 	OM_uint32		min_stat;
-> 	char			rpc_errmsg[1024];
-> 	int			sockp = RPC_ANYSOCK;
-> 	int			sendsz = 32768, recvsz = 32768;
-> -	struct addrinfo		ai_hints, *a = NULL;
-> -	char			service[64];
-> -	char			*at_sign;
-> +	int			socktype, protocol;
->
-> 	/* Create the context as the user (not as root) */
-> 	save_uid = geteuid();
-> @@ -628,15 +699,12 @@ int create_auth_rpc_client(struct clnt_info  
-> *clp,
-> 	printerr(2, "creating %s client for server %s\n", clp->protocol,
-> 			clp->servername);
->
-> -	memset(&ai_hints, '\0', sizeof(ai_hints));
-> -	ai_hints.ai_family = PF_INET;
-> -	ai_hints.ai_flags |= AI_CANONNAME;
-> 	if ((strcmp(clp->protocol, "tcp")) == 0) {
-> -		ai_hints.ai_socktype = SOCK_STREAM;
-> -		ai_hints.ai_protocol = IPPROTO_TCP;
-> +		socktype = SOCK_STREAM;
-> +		protocol = IPPROTO_TCP;
-> 	} else if ((strcmp(clp->protocol, "udp")) == 0) {
-> -		ai_hints.ai_socktype = SOCK_DGRAM;
-> -		ai_hints.ai_protocol = IPPROTO_UDP;
-> +		socktype = SOCK_DGRAM;
-> +		protocol = IPPROTO_UDP;
-> 	} else {
-> 		printerr(0, "WARNING: unrecognized protocol, '%s', requested "
-> 			 "for connection to server %s for user with uid %d\n",
-> @@ -644,39 +712,12 @@ int create_auth_rpc_client(struct clnt_info  
-> *clp,
-> 		goto out_fail;
-> 	}
->
->
-> -	/* extract the service name from clp->servicename */
-> -	if ((at_sign = strchr(clp->servicename, '@')) == NULL) {
-> -		printerr(0, "WARNING: servicename (%s) not formatted as "
-> -			"expected with service@host\n", clp->servicename);
-> +	if (!populate_port(clp->addr, clp->servicename, socktype, protocol))
-> 		goto out_fail;
-> -	}
-> -	if ((at_sign - clp->servicename) >= sizeof(service)) {
-> -		printerr(0, "WARNING: service portion of servicename (%s) "
-> -			"is too long!\n", clp->servicename);
-> -		goto out_fail;
-> -	}
-> -	strncpy(service, clp->servicename, at_sign - clp->servicename);
-> -	service[at_sign - clp->servicename] = '\0';
->
-> -	errcode = getaddrinfo(clp->servername, service, &ai_hints, &a);
-> -	if (errcode) {
-> -		printerr(0, "WARNING: Error from getaddrinfo for server "
-> -			 "'%s': %s\n", clp->servername, gai_strerror(errcode));
-> -		goto out_fail;
-> -	}
-> -
-> -	if (a == NULL) {
-> -		printerr(0, "WARNING: No address information found for "
-> -			 "connection to server %s for user with uid %d\n",
-> -			 clp->servername, uid);
-> -		goto out_fail;
-> -	}
-> -	if (((struct sockaddr_in *) clp->addr)->sin_port != 0)
-> -		((struct sockaddr_in *) a->ai_addr)->sin_port =
-> -				((struct sockaddr_in *) clp->addr)->sin_port;
-> -	if (a->ai_protocol == IPPROTO_TCP) {
-> +	if (protocol == IPPROTO_TCP) {
-> 		if ((rpc_clnt = clnttcp_create(
-> -					(struct sockaddr_in *) a->ai_addr,
-> +					(struct sockaddr_in *) clp->addr,
-> 					clp->prog, clp->vers, &sockp,
-> 					sendsz, recvsz)) == NULL) {
-> 			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-> @@ -687,10 +728,10 @@ int create_auth_rpc_client(struct clnt_info  
-> *clp,
-> 				 clnt_spcreateerror(rpc_errmsg));
-> 			goto out_fail;
-> 		}
-> -	} else if (a->ai_protocol == IPPROTO_UDP) {
-> +	} else if (protocol == IPPROTO_UDP) {
-> 		const struct timeval timeout = {5, 0};
-> 		if ((rpc_clnt = clntudp_bufcreate(
-> -					(struct sockaddr_in *) a->ai_addr,
-> +					(struct sockaddr_in *) clp->addr,
-> 					clp->prog, clp->vers, timeout,
-> 					&sockp, sendsz, recvsz)) == NULL) {
-> 			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-> @@ -701,16 +742,7 @@ int create_auth_rpc_client(struct clnt_info *clp,
-> 				 clnt_spcreateerror(rpc_errmsg));
-> 			goto out_fail;
-> 		}
-> -	} else {
-> -		/* Shouldn't happen! */
-> -		printerr(0, "ERROR: requested protocol '%s', but "
-> -			 "got addrinfo with protocol %d\n",
-> -			 clp->protocol, a->ai_protocol);
-> -		goto out_fail;
-> 	}
-> -	/* We're done with this */
-> -	freeaddrinfo(a);
-> -	a = NULL;
->
-> 	printerr(2, "creating context with server %s\n", clp->servicename);
-> 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
-> @@ -732,7 +764,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
->   out:
-> 	if (sec.cred != GSS_C_NO_CREDENTIAL)
-> 		gss_release_cred(&min_stat, &sec.cred);
-> -  	if (a != NULL) freeaddrinfo(a);
-> 	/* Restore euid to original value */
-> 	if ((save_uid != -1) && (setfsuid(save_uid) != uid)) {
-> 		printerr(0, "WARNING: Failed to restore fsuid"
+> 
+> > ------
+> > fs/nfsd/nfs4proc.c | 2 +-
+> > 1 files changed, 1 insertion(+) ,1 deletion (-)
+> > 
+> > diff -Nurp fs/nfsd/nfs4proc_orig.c fs/nfsd/nfs4proc.c
+> > --- fs/nfsd/nfs4proc_orig.c	2009-02-23 20:28:56.000000000 +0800
+> > +++ fs/nfsd/nfs4proc.c	2009-03-05 16:56:56.000000000 +0800
+> > 
+> > @@ -585,10 +586,11 @@ nfsd4_rename(struct svc_rqst *rqstp, str
+> >    	status = nfsd_rename(rqstp, save_fh, rename->rn_sname,
+> >   			     rename->rn_snamelen, current_fh,
+> >   			     rename->rn_tname, rename->rn_tnamelen);
+> > 
+> >   	/* the underlying filesystem returns different error's than required
+> >   	 * by NFSv4. both save_fh and current_fh have been verified.. */
+> >     -	if (status == nfserr_isdir)
+> >     +	if (status == nfserr_isdir || status == nfserr_notempty)
+> >   		status = nfserr_exist;
+> >   	else if ((status == nfserr_notdir) &&
+> >                     (S_ISDIR(save_fh->fh_dentry->d_inode->i_mode) &&
+> > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> 
+> 
 > -- 
-> 1.6.0.6
->
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> Regards
+> Yang Hongyang
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
