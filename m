@@ -1,102 +1,61 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 03/14] nfsd4: remove redundant "if" in	nfs4_preprocess_stateid_op
-Date: Wed, 11 Mar 2009 20:05:31 +0200
-Message-ID: <49B7FD6B.5060203@panasas.com>
-References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org> <1236731222-3294-3-git-send-email-bfields@fieldses.org> <1236731222-3294-4-git-send-email-bfields@fieldses.org> <49B7100E.2000209@cn.fujitsu.com> <20090311012346.GB4495@fieldses.org> <49B7133E.10804@cn.fujitsu.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 4/9] NLM: Shrink the IPv4-only version of nlm_cmp_addr()
+Date: Wed, 11 Mar 2009 14:25:25 -0400
+Message-ID: <20090311182525.403.26768.stgit@heimdal.trondhjem.org>
+References: <20090311182525.403.42026.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Yang Hongyang <yanghy@cn.fujitsu.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:11484 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751342AbZCKSFg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 14:05:36 -0400
-In-Reply-To: <49B7133E.10804@cn.fujitsu.com>
+Received: from mx2.netapp.com ([216.240.18.37]:52465 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755140AbZCKS3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:29:47 -0400
+In-Reply-To: <20090311182525.403.42026.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 11, 2009, 3:26 +0200, Yang Hongyang <yanghy@cn.fujitsu.com> wrote:
-> J. Bruce Fields wrote:
->> On Wed, Mar 11, 2009 at 09:12:46AM +0800, Yang Hongyang wrote:
->>> J. Bruce Fields wrote:
->>>> From: J. Bruce Fields <bfields@citi.umich.edu>
->>>>
->>>> Note that we exit this first big "if" with stp == NULL iff we took the
->>>                                                                                         ^^ typo
->> The "iff"?  That's short for "if and only if".  I can try to get out of
->> the "iff" habit if it's too obscure.
-> 
-> Sorry for mis-understanding,My pool englishT_T Maybe "if and only if"
-> are more understandable.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Although using this iffy math/cs school lingo does not seem too obscure
-to me (one can find it easily on the net, e.g.
-http://www.tfd.com/?Word=iff), as a non-native English speaker I'd be
-inclined to simplify commentary language as much as possible and
-refrain from using acronyms if they are not obvious to the linux
-developers community.
+Clean up/micro-optimatization:  Make the AF_INET-only version of
+nlm_cmp_addr() smaller.  This matches the style of
+nlm_privileged_requester(), and makes the AF_INET-only version of
+nlm_cmp_addr() nearly the same size as it was before IPv6 support.
 
-Benny
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
 
-> 
->> --b.
->>
->>>> first branch; therefore, the second "if" is redundant, and we can just
->>>> combine the two, simplifying the logic.
->>>>
->>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->>>> ---
->>>>  fs/nfsd/nfs4state.c |   19 ++++++++-----------
->>>>  1 files changed, 8 insertions(+), 11 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>>> index d6ca2be..16fcb65 100644
->>>> --- a/fs/nfsd/nfs4state.c
->>>> +++ b/fs/nfsd/nfs4state.c
->>>> @@ -2087,6 +2087,14 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
->>>>  		status = check_stateid_generation(stateid, stidp);
->>>>  		if (status)
->>>>  			goto out;
->>>> +		status = nfs4_check_delegmode(dp, flags);
->>>> +		if (status)
->>>> +			goto out;
->>>> +		renew_client(dp->dl_client);
->>>> +		if (flags & DELEG_RET)
->>>> +			unhash_delegation(dp);
->>>> +		if (filpp)
->>>> +			*filpp = dp->dl_vfs_file;
->>>>  	} else { /* open or lock stateid */
->>>>  		stp = find_stateid(stateid, flags);
->>>>  		if (!stp) {
->>>> @@ -2101,23 +2109,12 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
->>>>  		status = check_stateid_generation(stateid, stidp);
->>>>  		if (status)
->>>>  			goto out;
->>>> -	}
->>>> -	if (stp) {
->>>>  		status = nfs4_check_openmode(stp, flags);
->>>>  		if (status)
->>>>  			goto out;
->>>>  		renew_client(stp->st_stateowner->so_client);
->>>>  		if (filpp)
->>>>  			*filpp = stp->st_vfs_file;
->>>> -	} else {
->>>> -		status = nfs4_check_delegmode(dp, flags);
->>>> -		if (status)
->>>> -			goto out;
->>>> -		renew_client(dp->dl_client);
->>>> -		if (flags & DELEG_RET)
->>>> -			unhash_delegation(dp);
->>>> -		if (filpp)
->>>> -			*filpp = dp->dl_vfs_file;
->>>>  	}
->>>>  	status = nfs_ok;
->>>>  out:
->>> -- 
->>> Regards
->>> Yang Hongyang
->>
-> 
-> 
+ include/linux/lockd/lockd.h |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
+
+
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index aa6fe70..51855df 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -346,6 +346,7 @@ static inline int __nlm_cmp_addr4(const struct sockaddr *sap1,
+ 	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+ }
+ 
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
+ 				  const struct sockaddr *sap2)
+ {
+@@ -353,6 +354,13 @@ static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
+ 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+ 	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
+ }
++#else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
++static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
++				  const struct sockaddr *sap2)
++{
++	return 0;
++}
++#endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+ 
+ /*
+  * Compare two host addresses
+
