@@ -1,69 +1,90 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 14/30] NFS: Kill the "defined but not used" compile error
- on nommu machines
-Date: Wed, 11 Mar 2009 14:41:08 -0400
-Message-ID: <20090311184108.5578.47203.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 26/30] SUNRPC: Ensure that xs_nospace return values are
+ propagated
+Date: Wed, 11 Mar 2009 14:41:10 -0400
+Message-ID: <20090311184110.5578.28078.stgit@heimdal.trondhjem.org>
 References: <20090311184105.5578.22131.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24945 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54975 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752482AbZCKSoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:44:12 -0400
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIi3YM021751
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:44:09 -0700 (PDT)
+	id S1754161AbZCKSpU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:45:20 -0400
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIj6i3022202
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:45:17 -0700 (PDT)
 In-Reply-To: <20090311184105.5578.22131.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bryan Wu reports that when compiling NFS on nommu machines he gets a
-"defined but not used" error on nfs_file_mmap().
-
-The easiest fix is simply to get rid of the special casing in NFS, and
-just always call generic_file_mmap() to set up the file.
+If xs_nospace() finds that the socket has disconnected, it attempts to
+return ENOTCONN, however that value is then squashed by the callers.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/file.c |   12 +++++-------
- 1 files changed, 5 insertions(+), 7 deletions(-)
+ net/sunrpc/xprtsock.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 404c19c..1eab9c9 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -64,11 +64,7 @@ const struct file_operations nfs_file_operations = {
- 	.write		= do_sync_write,
- 	.aio_read	= nfs_file_read,
- 	.aio_write	= nfs_file_write,
--#ifdef CONFIG_MMU
- 	.mmap		= nfs_file_mmap,
--#else
--	.mmap		= generic_file_mmap,
--#endif
- 	.open		= nfs_file_open,
- 	.flush		= nfs_file_flush,
- 	.release	= nfs_file_release,
-@@ -304,11 +300,13 @@ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
- 	dprintk("NFS: mmap(%s/%s)\n",
- 		dentry->d_parent->d_name.name, dentry->d_name.name);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 9f3e615..2e07067 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -521,11 +521,12 @@ static void xs_nospace_callback(struct rpc_task *task)
+  * @task: task to put to sleep
+  *
+  */
+-static void xs_nospace(struct rpc_task *task)
++static int xs_nospace(struct rpc_task *task)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	int ret = 0;
  
--	status = nfs_revalidate_mapping(inode, file->f_mapping);
-+	/* Note: generic_file_mmap() returns ENOSYS on nommu systems
-+	 *       so we call that before revalidating the mapping
-+	 */
-+	status = generic_file_mmap(file, vma);
- 	if (!status) {
- 		vma->vm_ops = &nfs_file_vm_ops;
--		vma->vm_flags |= VM_CAN_NONLINEAR;
--		file_accessed(file);
-+		status = nfs_revalidate_mapping(inode, file->f_mapping);
+ 	dprintk("RPC: %5u xmit incomplete (%u left of %u)\n",
+ 			task->tk_pid, req->rq_slen - req->rq_bytes_sent,
+@@ -537,6 +538,7 @@ static void xs_nospace(struct rpc_task *task)
+ 	/* Don't race with disconnect */
+ 	if (xprt_connected(xprt)) {
+ 		if (test_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags)) {
++			ret = -EAGAIN;
+ 			/*
+ 			 * Notify TCP that we're limited by the application
+ 			 * window size
+@@ -548,10 +550,11 @@ static void xs_nospace(struct rpc_task *task)
+ 		}
+ 	} else {
+ 		clear_bit(SOCK_ASYNC_NOSPACE, &transport->sock->flags);
+-		task->tk_status = -ENOTCONN;
++		ret = -ENOTCONN;
  	}
- 	return status;
+ 
+ 	spin_unlock_bh(&xprt->transport_lock);
++	return ret;
  }
+ 
+ /**
+@@ -603,7 +606,7 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 		/* Should we call xs_close() here? */
+ 		break;
+ 	case -EAGAIN:
+-		xs_nospace(task);
++		status = xs_nospace(task);
+ 		break;
+ 	default:
+ 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
+@@ -706,7 +709,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 		/* Should we call xs_close() here? */
+ 		break;
+ 	case -EAGAIN:
+-		xs_nospace(task);
++		status = xs_nospace(task);
+ 		break;
+ 	default:
+ 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
 
