@@ -1,64 +1,146 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 20/30] SUNRPC: Ensure we set XPRT_CLOSING only after we've
- sent a tcp FIN...
-Date: Wed, 11 Mar 2009 14:41:09 -0400
-Message-ID: <20090311184109.5578.12028.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 08/30] NFSv4: Clean up decode_getfattr()
+Date: Wed, 11 Mar 2009 14:41:07 -0400
+Message-ID: <20090311184107.5578.98147.stgit@heimdal.trondhjem.org>
 References: <20090311184105.5578.22131.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:54975 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22652 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753691AbZCKSpO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:45:14 -0400
+	id S1754448AbZCKSoP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:44:15 -0400
 Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIj5jK022182
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:45:12 -0700 (PDT)
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIi3rG021754
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:44:12 -0700 (PDT)
 In-Reply-To: <20090311184105.5578.22131.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...so that we can distinguish between when we need to shutdown and when we
-don't. Also remove the call to xs_tcp_shutdown() from xs_tcp_connect(),
-since xprt_connect() makes the same test.
-
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/xprtsock.c |    5 +----
- 1 files changed, 1 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4xdr.c |   78 +++++++++++++++++++++++++++++++++++++++---------------
+ 1 files changed, 57 insertions(+), 21 deletions(-)
 
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 1127eb9..cb4bd93 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1180,7 +1180,6 @@ static void xs_tcp_state_change(struct sock *sk)
- 		break;
- 	case TCP_CLOSE_WAIT:
- 		/* The server initiated a shutdown of the socket */
--		set_bit(XPRT_CLOSING, &xprt->state);
- 		xprt_force_disconnect(xprt);
- 	case TCP_SYN_SENT:
- 		xprt->connect_cookie++;
-@@ -1193,6 +1192,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
- 		break;
- 	case TCP_LAST_ACK:
-+		set_bit(XPRT_CLOSING, &xprt->state);
- 		smp_mb__before_clear_bit();
- 		clear_bit(XPRT_CONNECTED, &xprt->state);
- 		smp_mb__after_clear_bit();
-@@ -1836,9 +1836,6 @@ static void xs_tcp_connect(struct rpc_task *task)
- {
- 	struct rpc_xprt *xprt = task->tk_xprt;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c1906d2..43c6e50 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2996,55 +2996,91 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr, cons
+ 	umode_t fmode = 0;
+ 	uint64_t fileid;
  
--	/* Initiate graceful shutdown of the socket if not already done */
--	if (test_bit(XPRT_CONNECTED, &xprt->state))
--		xs_tcp_shutdown(xprt);
- 	/* Exit if we need to wait for socket shutdown to complete */
- 	if (test_bit(XPRT_CLOSING, &xprt->state))
- 		return;
+-	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
++	status = decode_op_hdr(xdr, OP_GETATTR);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
++
++	status = decode_attr_bitmap(xdr, bitmap);
++	if (status < 0)
+ 		goto xdr_error;
+ 
+-	if ((status = decode_attr_length(xdr, &attrlen, &savep)) != 0)
++	status = decode_attr_length(xdr, &attrlen, &savep);
++	if (status < 0)
+ 		goto xdr_error;
+ 
+ 
+-	if ((status = decode_attr_type(xdr, bitmap, &type)) != 0)
++	status = decode_attr_type(xdr, bitmap, &type);
++	if (status < 0)
+ 		goto xdr_error;
+ 	fattr->mode = nfs_type2fmt[type];
+ 
+-	if ((status = decode_attr_change(xdr, bitmap, &fattr->change_attr)) != 0)
++	status = decode_attr_change(xdr, bitmap, &fattr->change_attr);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_size(xdr, bitmap, &fattr->size)) != 0)
++
++	status = decode_attr_size(xdr, bitmap, &fattr->size);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_fsid(xdr, bitmap, &fattr->fsid)) != 0)
++
++	status = decode_attr_fsid(xdr, bitmap, &fattr->fsid);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_fileid(xdr, bitmap, &fattr->fileid)) != 0)
++
++	status = decode_attr_fileid(xdr, bitmap, &fattr->fileid);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_fs_locations(xdr, bitmap, container_of(fattr,
++
++	status = decode_attr_fs_locations(xdr, bitmap, container_of(fattr,
+ 						struct nfs4_fs_locations,
+-						fattr))) != 0)
++						fattr));
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_mode(xdr, bitmap, &fmode)) != 0)
++
++	status = decode_attr_mode(xdr, bitmap, &fmode);
++	if (status < 0)
+ 		goto xdr_error;
+ 	fattr->mode |= fmode;
+-	if ((status = decode_attr_nlink(xdr, bitmap, &fattr->nlink)) != 0)
++
++	status = decode_attr_nlink(xdr, bitmap, &fattr->nlink);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_owner(xdr, bitmap, server->nfs_client, &fattr->uid)) != 0)
++
++	status = decode_attr_owner(xdr, bitmap, server->nfs_client, &fattr->uid);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_group(xdr, bitmap, server->nfs_client, &fattr->gid)) != 0)
++
++	status = decode_attr_group(xdr, bitmap, server->nfs_client, &fattr->gid);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_rdev(xdr, bitmap, &fattr->rdev)) != 0)
++
++	status = decode_attr_rdev(xdr, bitmap, &fattr->rdev);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_space_used(xdr, bitmap, &fattr->du.nfs3.used)) != 0)
++
++	status = decode_attr_space_used(xdr, bitmap, &fattr->du.nfs3.used);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_time_access(xdr, bitmap, &fattr->atime)) != 0)
++
++	status = decode_attr_time_access(xdr, bitmap, &fattr->atime);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_time_metadata(xdr, bitmap, &fattr->ctime)) != 0)
++
++	status = decode_attr_time_metadata(xdr, bitmap, &fattr->ctime);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_time_modify(xdr, bitmap, &fattr->mtime)) != 0)
++
++	status = decode_attr_time_modify(xdr, bitmap, &fattr->mtime);
++	if (status < 0)
+ 		goto xdr_error;
+-	if ((status = decode_attr_mounted_on_fileid(xdr, bitmap, &fileid)) != 0)
++
++	status = decode_attr_mounted_on_fileid(xdr, bitmap, &fileid);
++	if (status < 0)
+ 		goto xdr_error;
+ 	if (fattr->fileid == 0 && fileid != 0)
+ 		fattr->fileid = fileid;
+-	if ((status = verify_attr_len(xdr, savep, attrlen)) == 0)
++
++	status = verify_attr_len(xdr, savep, attrlen);
++	if (status == 0)
+ 		fattr->valid = NFS_ATTR_FATTR_V4;
+ xdr_error:
+ 	dprintk("%s: xdr returned %d\n", __func__, -status);
 
