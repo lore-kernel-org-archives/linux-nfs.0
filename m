@@ -1,235 +1,63 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 3/6] nfs-utils: skip getaddrinfo in create_auth_rpc_client unless we need port
-Date: Wed, 11 Mar 2009 12:42:59 -0400
-Message-ID: <1236789782-8867-4-git-send-email-jlayton@redhat.com>
-References: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 0/6] nfs-utils: convert gssd to TI-RPC and add IPv6 support (RFC)
+Date: Wed, 11 Mar 2009 12:42:56 -0400
+Message-ID: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
 Cc: kwc@citi.umich.edu, chuck.lever@oracle.com
 To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:32906 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:32907 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752097AbZCKQnO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752191AbZCKQnO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 11 Mar 2009 12:43:14 -0400
-In-Reply-To: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We already have the server's address from the upcall, so we don't really
-need to look it up again. Move the getaddrinfo call in
-create_auth_rpc_client to a new function. Skip it if we already have the
-port in the sockaddr that we saved from the info in the upcall. If
-we need to get the port, don't bother looking up the hostname, just do
-the getaddrinfo with AI_NUMERICHOST set.
+This patchset is a first draft at adding support for IPv6 to rpc.gssd.
+It's based on Chuck Lever's latest nfs-utils git tree. Some of the
+needed infrastructure for this is not yet in mainline nfs-utils, so this
+isn't really ready for inclusion yet. I'm just posting it to solicit
+feedback.
 
-This should reduce the amount of lookups that are needed.
+In order to do this, we first have to convert rpc.gssd to use TI-RPC.
+The first 5 patches do this and abstract out some of the code to make
+this easier. Once that support is in place, the last patch in the series
+actually adds the (fairly minimal) changes to add IPv6 support.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/gssd/gssd_proc.c |  137 +++++++++++++++++++++++++++++------------------
- 1 files changed, 84 insertions(+), 53 deletions(-)
+The series should be fully bisectable, but I've only really tested the
+end result for anything other than to see if it compiles. With this
+series on top of Chuck's tree, I've been able to mount an OpenSolaris
+server using NFSv4+IPv6+krb5 auth
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 4f05040..349ed99 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -553,6 +553,80 @@ out_err:
- }
- 
- /*
-+ * Determine the port from the servicename and set the right field in the
-+ * sockaddr. This is mostly a no-op with newer kernels that send the port
-+ * in the upcall. Returns true on success and false on failure.
-+ */
-+static int
-+populate_port(struct sockaddr_storage *ss, char *servicename, int socktype,
-+	      int protocol)
-+{
-+	struct sockaddr_in	*s4 = (struct sockaddr_in *) ss;
-+	struct addrinfo		ai_hints, *a = NULL;
-+	char			node[INET_ADDRSTRLEN];
-+	char			service[64];
-+	char			*at_sign;
-+	int			errcode;
-+
-+	memset(&ai_hints, '\0', sizeof(ai_hints));
-+
-+	switch (ss->ss_family) {
-+	case AF_INET:
-+		if (s4->sin_port != 0) {
-+			printerr(2, "DEBUG: port already set to %d\n",
-+				 ntohs(s4->sin_port));
-+			return 1;
-+		}
-+		if (!inet_ntop(AF_INET, &s4->sin_addr, node,
-+				sizeof(struct sockaddr_in)))
-+			return 0;
-+		break;
-+	default:
-+		printerr(0, "ERROR: unsupported address family %d\n",
-+			    ss->ss_family);
-+		return 0;
-+	}
-+
-+	/* extract the service name from clp->servicename */
-+	if ((at_sign = strchr(servicename, '@')) == NULL) {
-+		printerr(0, "WARNING: servicename (%s) not formatted as "
-+			"expected with service@host\n", servicename);
-+		return 0;
-+	}
-+	if ((at_sign - servicename) >= sizeof(service)) {
-+		printerr(0, "WARNING: service portion of servicename (%s) "
-+			"is too long!\n", servicename);
-+		return 0;
-+	}
-+	strncpy(service, servicename, at_sign - servicename);
-+	service[at_sign - servicename] = '\0';
-+
-+	ai_hints.ai_family = ss->ss_family;
-+	ai_hints.ai_socktype = socktype;
-+	ai_hints.ai_protocol = protocol;
-+	ai_hints.ai_flags |= AI_NUMERICHOST;
-+
-+	errcode = getaddrinfo(node, service, &ai_hints, &a);
-+	if (errcode) {
-+		printerr(0, "WARNING: Error from getaddrinfo for service "
-+			 "'%s': %s\n", service, gai_strerror(errcode));
-+		return 0;
-+	}
-+
-+	/* XXX: walk all of the returned addrinfo list until we get port? */
-+	if (a->ai_family == AF_INET) {
-+		s4->sin_port = ((struct sockaddr_in *) a->ai_addr)->sin_port;
-+	} else {
-+		printerr(0, "ERROR: unrecognized address family returned by "
-+			 "getaddrinfo %d\n", a->ai_family,
-+			 gai_strerror(errcode));
-+	}
-+
-+	freeaddrinfo(a);
-+	return 1;
-+}
-+
-+/*
-  * Create an RPC connection and establish an authenticated
-  * gss context with a server.
-  */
-@@ -567,14 +641,11 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 	AUTH			*auth = NULL;
- 	uid_t			save_uid = -1;
- 	int			retval = -1;
--	int			errcode;
- 	OM_uint32		min_stat;
- 	char			rpc_errmsg[1024];
- 	int			sockp = RPC_ANYSOCK;
- 	int			sendsz = 32768, recvsz = 32768;
--	struct addrinfo		ai_hints, *a = NULL;
--	char			service[64];
--	char			*at_sign;
-+	int			socktype, protocol;
- 
- 	/* Create the context as the user (not as root) */
- 	save_uid = geteuid();
-@@ -628,15 +699,12 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 	printerr(2, "creating %s client for server %s\n", clp->protocol,
- 			clp->servername);
- 
--	memset(&ai_hints, '\0', sizeof(ai_hints));
--	ai_hints.ai_family = PF_INET;
--	ai_hints.ai_flags |= AI_CANONNAME;
- 	if ((strcmp(clp->protocol, "tcp")) == 0) {
--		ai_hints.ai_socktype = SOCK_STREAM;
--		ai_hints.ai_protocol = IPPROTO_TCP;
-+		socktype = SOCK_STREAM;
-+		protocol = IPPROTO_TCP;
- 	} else if ((strcmp(clp->protocol, "udp")) == 0) {
--		ai_hints.ai_socktype = SOCK_DGRAM;
--		ai_hints.ai_protocol = IPPROTO_UDP;
-+		socktype = SOCK_DGRAM;
-+		protocol = IPPROTO_UDP;
- 	} else {
- 		printerr(0, "WARNING: unrecognized protocol, '%s', requested "
- 			 "for connection to server %s for user with uid %d\n",
-@@ -644,39 +712,12 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 		goto out_fail;
- 	}
- 
--	/* extract the service name from clp->servicename */
--	if ((at_sign = strchr(clp->servicename, '@')) == NULL) {
--		printerr(0, "WARNING: servicename (%s) not formatted as "
--			"expected with service@host\n", clp->servicename);
-+	if (!populate_port(clp->addr, clp->servicename, socktype, protocol))
- 		goto out_fail;
--	}
--	if ((at_sign - clp->servicename) >= sizeof(service)) {
--		printerr(0, "WARNING: service portion of servicename (%s) "
--			"is too long!\n", clp->servicename);
--		goto out_fail;
--	}
--	strncpy(service, clp->servicename, at_sign - clp->servicename);
--	service[at_sign - clp->servicename] = '\0';
- 
--	errcode = getaddrinfo(clp->servername, service, &ai_hints, &a);
--	if (errcode) {
--		printerr(0, "WARNING: Error from getaddrinfo for server "
--			 "'%s': %s\n", clp->servername, gai_strerror(errcode));
--		goto out_fail;
--	}
--
--	if (a == NULL) {
--		printerr(0, "WARNING: No address information found for "
--			 "connection to server %s for user with uid %d\n",
--			 clp->servername, uid);
--		goto out_fail;
--	}
--	if (((struct sockaddr_in *) clp->addr)->sin_port != 0)
--		((struct sockaddr_in *) a->ai_addr)->sin_port =
--				((struct sockaddr_in *) clp->addr)->sin_port;
--	if (a->ai_protocol == IPPROTO_TCP) {
-+	if (protocol == IPPROTO_TCP) {
- 		if ((rpc_clnt = clnttcp_create(
--					(struct sockaddr_in *) a->ai_addr,
-+					(struct sockaddr_in *) clp->addr,
- 					clp->prog, clp->vers, &sockp,
- 					sendsz, recvsz)) == NULL) {
- 			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-@@ -687,10 +728,10 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 				 clnt_spcreateerror(rpc_errmsg));
- 			goto out_fail;
- 		}
--	} else if (a->ai_protocol == IPPROTO_UDP) {
-+	} else if (protocol == IPPROTO_UDP) {
- 		const struct timeval timeout = {5, 0};
- 		if ((rpc_clnt = clntudp_bufcreate(
--					(struct sockaddr_in *) a->ai_addr,
-+					(struct sockaddr_in *) clp->addr,
- 					clp->prog, clp->vers, timeout,
- 					&sockp, sendsz, recvsz)) == NULL) {
- 			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-@@ -701,16 +742,7 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 				 clnt_spcreateerror(rpc_errmsg));
- 			goto out_fail;
- 		}
--	} else {
--		/* Shouldn't happen! */
--		printerr(0, "ERROR: requested protocol '%s', but "
--			 "got addrinfo with protocol %d\n",
--			 clp->protocol, a->ai_protocol);
--		goto out_fail;
- 	}
--	/* We're done with this */
--	freeaddrinfo(a);
--	a = NULL;
- 
- 	printerr(2, "creating context with server %s\n", clp->servicename);
- 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
-@@ -732,7 +764,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
-   out:
- 	if (sec.cred != GSS_C_NO_CREDENTIAL)
- 		gss_release_cred(&min_stat, &sec.cred);
--  	if (a != NULL) freeaddrinfo(a);
- 	/* Restore euid to original value */
- 	if ((save_uid != -1) && (setfsuid(save_uid) != uid)) {
- 		printerr(0, "WARNING: Failed to restore fsuid"
--- 
-1.6.0.6
+There's one other significant change in here as well. The current code
+does what seems to be an unnecessary lookup on every upcall. It goes
+something like this:
+
+1) kernel calls gssd and hands it an address
+2) we take that address and reverse-resolve it to a hostname
+3) we store that hostname
+4) we resolve that hostname back to an address for RPC client creation
+
+Obviously, this could be more efficient. This set changes it so that we
+store the address that we get from the upcall and skip the second
+lookup.  I have no hard numbers yet, but it seems obvious that it should
+improve upcall performance.
+
+My main question here is -- is this OK? I don't see any need for us to
+resolve the address forward and backward like we do. We do this sort of
+thing in some places (statd, for instance) but the need is a little
+clearer there.
+
+Jeff Layton (6):
+  nfs-utils: make getnameinfo() required for --enable-gss
+  nfs-utils: store the address given in the upcall for later use
+  nfs-utils: skip getaddrinfo in create_auth_rpc_client unless we need
+    port
+  nfs-utils: split out gssd rpc client creation into separate function
+  nfs-utils: when TIRPC is enabled, use new API to create RPC client
+  nfs-utils: add IPv6 code to gssd
+
+ configure.ac           |    2 +
+ utils/gssd/gssd.h      |    2 +-
+ utils/gssd/gssd_proc.c |  417 +++++++++++++++++++++++++++++++++++++-----------
+ 3 files changed, 328 insertions(+), 93 deletions(-)
 
