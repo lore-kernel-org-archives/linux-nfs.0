@@ -1,38 +1,133 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: pread/pwrite bug on linux?
-Date: Wed, 11 Mar 2009 10:43:56 -0400
-Message-ID: <x49mybsyv9v.fsf@segfault.boston.devel.redhat.com>
-References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
-	<293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
-	<x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
-	<293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
-	<x49k575jf9y.fsf@segfault.boston.devel.redhat.com>
-	<293BC70BB130E648A6631DB2F05B6E10019D89830F@US01WXMBX1.internal.synopsys.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-To: Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 4/6] nfs-utils: split out gssd rpc client creation into separate function
+Date: Wed, 11 Mar 2009 12:43:00 -0400
+Message-ID: <1236789782-8867-5-git-send-email-jlayton@redhat.com>
+References: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
+Cc: kwc@citi.umich.edu, chuck.lever@oracle.com
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35661 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:32904 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751635AbZCKOoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 10:44:00 -0400
-In-Reply-To: <293BC70BB130E648A6631DB2F05B6E10019D89830F-uiPIUNf6hlr3OT/vyeh27fufCSb+aD3WLzEdoUbNIic@public.gmane.org>
-	(Qiuyang Wu's message of "Tue, 10 Mar 2009 17:37:07 -0700")
+	id S1751698AbZCKQnN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 12:43:13 -0400
+In-Reply-To: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org> writes:
+Abstract out the actual RPC client creation functions. This will allow
+us to create a new TI-RPC enabled client creation function in a later
+patch.
 
-> Thanks for the responses.
->
-> Just FYI that the bug was acknowledged, also it seems RH v5.3 does not have the problem...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/gssd/gssd_proc.c |   80 +++++++++++++++++++++++++++++------------------
+ 1 files changed, 49 insertions(+), 31 deletions(-)
 
-I'm sorry, but I don't understand what you mean.  Do you mean that the
-bug was found and fixed, or just someone agreed that it exists, or
-something else?  If there was a Red Hat bugzilla for it, I'd love to
-know the number.
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 349ed99..5cf2445 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -552,6 +552,52 @@ out_err:
+ 	return -1;
+ }
+ 
++static CLIENT *
++create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
++{
++	CLIENT			*rpc_clnt = NULL;
++	char			rpc_errmsg[1024];
++	int			sockp = RPC_ANYSOCK;
++	int			sendsz = 32768, recvsz = 32768;
++	const struct timeval 	timeout = {5, 0};
++
++	switch(protocol) {
++	case IPPROTO_TCP:
++		if ((rpc_clnt = clnttcp_create(
++					(struct sockaddr_in *) clp->addr,
++					clp->prog, clp->vers, &sockp,
++					sendsz, recvsz)) == NULL) {
++			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
++				 "WARNING: can't create tcp rpc_clnt "
++				 "for server %s for user with uid %d",
++				 clp->servername, uid);
++			printerr(0, "%s\n",
++				 clnt_spcreateerror(rpc_errmsg));
++		}
++		break;
++	case IPPROTO_UDP:
++		if ((rpc_clnt = clntudp_bufcreate(
++					(struct sockaddr_in *) clp->addr,
++					clp->prog, clp->vers, timeout,
++					&sockp, sendsz, recvsz)) == NULL) {
++			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
++				 "WARNING: can't create udp rpc_clnt "
++				 "for server %s for user with uid %d",
++				 clp->servername, uid);
++			printerr(0, "%s\n",
++				 clnt_spcreateerror(rpc_errmsg));
++		}
++		break;
++	default:
++		/* Shouldn't happen! */
++		printerr(0, "ERROR: requested protocol '%s', but "
++			 "got addrinfo with protocol %d\n",
++			 clp->protocol, protocol);
++	}
++
++	return rpc_clnt;
++}
++
+ /*
+  * Determine the port from the servicename and set the right field in the
+  * sockaddr. This is mostly a no-op with newer kernels that send the port
+@@ -642,9 +688,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	uid_t			save_uid = -1;
+ 	int			retval = -1;
+ 	OM_uint32		min_stat;
+-	char			rpc_errmsg[1024];
+-	int			sockp = RPC_ANYSOCK;
+-	int			sendsz = 32768, recvsz = 32768;
+ 	int			socktype, protocol;
+ 
+ 	/* Create the context as the user (not as root) */
+@@ -715,34 +758,9 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	if (!populate_port(clp->addr, clp->servicename, socktype, protocol))
+ 		goto out_fail;
+ 
+-	if (protocol == IPPROTO_TCP) {
+-		if ((rpc_clnt = clnttcp_create(
+-					(struct sockaddr_in *) clp->addr,
+-					clp->prog, clp->vers, &sockp,
+-					sendsz, recvsz)) == NULL) {
+-			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
+-				 "WARNING: can't create tcp rpc_clnt "
+-				 "for server %s for user with uid %d",
+-				 clp->servername, uid);
+-			printerr(0, "%s\n",
+-				 clnt_spcreateerror(rpc_errmsg));
+-			goto out_fail;
+-		}
+-	} else if (protocol == IPPROTO_UDP) {
+-		const struct timeval timeout = {5, 0};
+-		if ((rpc_clnt = clntudp_bufcreate(
+-					(struct sockaddr_in *) clp->addr,
+-					clp->prog, clp->vers, timeout,
+-					&sockp, sendsz, recvsz)) == NULL) {
+-			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
+-				 "WARNING: can't create udp rpc_clnt "
+-				 "for server %s for user with uid %d",
+-				 clp->servername, uid);
+-			printerr(0, "%s\n",
+-				 clnt_spcreateerror(rpc_errmsg));
+-			goto out_fail;
+-		}
+-	}
++	rpc_clnt = create_rpc_client(clp, protocol, uid);
++	if (!rpc_clnt)
++		goto out_fail;
+ 
+ 	printerr(2, "creating context with server %s\n", clp->servicename);
+ 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
+-- 
+1.6.0.6
 
-Thanks!
-Jeff
