@@ -1,87 +1,49 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 6/9] NFS: Handle -ESTALE error in access()
-Date: Wed, 11 Mar 2009 14:25:26 -0400
-Message-ID: <20090311182526.403.93610.stgit@heimdal.trondhjem.org>
-References: <20090311182525.403.42026.stgit@heimdal.trondhjem.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 08/14] nfsd4: fail when delegreturn gets a non-delegation
+ stateid
+Date: Wed, 11 Mar 2009 20:29:52 +0200
+Message-ID: <49B80320.6080507@panasas.com>
+References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org> <1236731222-3294-3-git-send-email-bfields@fieldses.org> <1236731222-3294-4-git-send-email-bfields@fieldses.org> <1236731222-3294-5-git-send-email-bfields@fieldses.org> <1236731222-3294-6-git-send-email-bfields@fieldses.org> <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org> <1236731222-3294-9-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: Suresh Jayaraman <sjayaraman@suse.de>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52465 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753020AbZCKS3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:29:52 -0400
-In-Reply-To: <20090311182525.403.42026.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:15919 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755366AbZCKS34 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 14:29:56 -0400
+In-Reply-To: <1236731222-3294-9-git-send-email-bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Suresh Jayaraman <sjayaraman@suse.de>
+On Mar. 11, 2009, 2:26 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> From: J. Bruce Fields <bfields@citi.umich.edu>
+> 
+> Previous cleanup reveals an obvious (though harmless) bug: when
+> delegreturn gets a stateid that isn't for a delegation, it should return
+> an error rather than doing nothing.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> ---
+>  fs/nfsd/nfs4state.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index de1d68a..4a92d1e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2418,7 +2418,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	status = nfserr_stale_stateid;
+>  	if (STALE_STATEID(stateid)) 
+>  		goto out;
+> -	status = nfs_ok;
+> +	status = nfserr_bad_stateid;
+>  	if (is_delegation_stateid(stateid))
+>  		goto out;
+>  	status = nfserr_bad_stateid;
 
-Hi Trond,
+This assignment is redundant now, isn't it?
 
-I have been looking at a bugreport where trying to open applications on KDE
-on a NFS mounted home fails temporarily. There have been multiple reports on
-different kernel versions pointing to this common issue:
-http://bugzilla.kernel.org/show_bug.cgi?id=12557
-https://bugs.launchpad.net/ubuntu/+source/linux/+bug/269954
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=508866.html
-
-This issue can be reproducible consistently by doing this on a NFS mounted
-home (KDE):
-1. Open 2 xterm sessions
-2. From one of the xterm session, do "ssh -X <remote host>"
-3. "stat ~/.Xauthority" on the remote SSH session
-4. Close the two xterm sessions
-5. On the server do a "stat ~/.Xauthority"
-6. Now on the client, try to open xterm
-This will fail.
-
-Even if the filehandle had become stale, the NFS client should invalidate
-the cache/inode and should repeat LOOKUP. Looking at the packet capture when
-the failure occurs shows that there were two subsequent ACCESS() calls with
-the same filehandle and both fails with -ESTALE error.
-
-I have tested the fix below. Now the client issue a LOOKUP after the
-ACCESS() call fails with -ESTALE. If all this makes sense to you, can you
-consider this for inclusion?
-
-Thanks,
-
-
-If the server returns an -ESTALE error due to stale filehandle in response to
-an ACCESS() call, we need to invalidate the cache and inode so that LOOKUP()
-can be retried. Without this change, the nfs client retries ACCESS() with the
-same filehandle, fails again and could lead to temporary failure of
-applications running on nfs mounted home.
-
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/dir.c |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
-
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e35c819..672368f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1892,8 +1892,14 @@ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
- 	cache.cred = cred;
- 	cache.jiffies = jiffies;
- 	status = NFS_PROTO(inode)->access(inode, &cache);
--	if (status != 0)
-+	if (status != 0) {
-+		if (status == -ESTALE) {
-+			nfs_zap_caches(inode);
-+			if (!S_ISDIR(inode->i_mode))
-+				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
-+		}
- 		return status;
-+	}
- 	nfs_access_add_cache(inode, &cache);
- out:
- 	if ((mask & ~cache.mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) == 0)
-
+Benny
