@@ -1,133 +1,122 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/6] nfs-utils: split out gssd rpc client creation into separate function
-Date: Wed, 11 Mar 2009 12:43:00 -0400
-Message-ID: <1236789782-8867-5-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 5/6] nfs-utils: when TIRPC is enabled, use new API to create RPC client
+Date: Wed, 11 Mar 2009 12:43:01 -0400
+Message-ID: <1236789782-8867-6-git-send-email-jlayton@redhat.com>
 References: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
 Cc: kwc@citi.umich.edu, chuck.lever@oracle.com
 To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:32904 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:32908 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751698AbZCKQnN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 12:43:13 -0400
+	id S1752319AbZCKQnO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 12:43:14 -0400
 In-Reply-To: <1236789782-8867-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Abstract out the actual RPC client creation functions. This will allow
-us to create a new TI-RPC enabled client creation function in a later
-patch.
+When we add IPv6 code, we'll need to use the newer API to create
+the rpc client. Add a new rpc client creation function that's
+conditionally compiled in whenever TIRPC is enabled.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/gssd/gssd_proc.c |   80 +++++++++++++++++++++++++++++------------------
- 1 files changed, 49 insertions(+), 31 deletions(-)
+ utils/gssd/gssd_proc.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 76 insertions(+), 0 deletions(-)
 
 diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 349ed99..5cf2445 100644
+index 5cf2445..1e3dabc 100644
 --- a/utils/gssd/gssd_proc.c
 +++ b/utils/gssd/gssd_proc.c
-@@ -552,6 +552,52 @@ out_err:
+@@ -552,6 +552,81 @@ out_err:
  	return -1;
  }
  
++#ifdef HAVE_LIBTIRPC
 +static CLIENT *
 +create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
 +{
 +	CLIENT			*rpc_clnt = NULL;
 +	char			rpc_errmsg[1024];
-+	int			sockp = RPC_ANYSOCK;
 +	int			sendsz = 32768, recvsz = 32768;
-+	const struct timeval 	timeout = {5, 0};
++	struct netconfig	*nc = NULL;
++	struct netbuf		nb;
++	const struct timeval	timeout = {5, 0};
++	void 			*handle = NULL;
++	char			*nc_protofmly;
++	struct protoent		*proto;
 +
-+	switch(protocol) {
-+	case IPPROTO_TCP:
-+		if ((rpc_clnt = clnttcp_create(
-+					(struct sockaddr_in *) clp->addr,
-+					clp->prog, clp->vers, &sockp,
-+					sendsz, recvsz)) == NULL) {
-+			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-+				 "WARNING: can't create tcp rpc_clnt "
-+				 "for server %s for user with uid %d",
-+				 clp->servername, uid);
-+			printerr(0, "%s\n",
-+				 clnt_spcreateerror(rpc_errmsg));
-+		}
-+		break;
-+	case IPPROTO_UDP:
-+		if ((rpc_clnt = clntudp_bufcreate(
-+					(struct sockaddr_in *) clp->addr,
-+					clp->prog, clp->vers, timeout,
-+					&sockp, sendsz, recvsz)) == NULL) {
-+			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-+				 "WARNING: can't create udp rpc_clnt "
-+				 "for server %s for user with uid %d",
-+				 clp->servername, uid);
-+			printerr(0, "%s\n",
-+				 clnt_spcreateerror(rpc_errmsg));
-+		}
-+		break;
-+	default:
-+		/* Shouldn't happen! */
-+		printerr(0, "ERROR: requested protocol '%s', but "
-+			 "got addrinfo with protocol %d\n",
-+			 clp->protocol, protocol);
++	proto = getprotobynumber(protocol);
++	if (proto == NULL) {
++		printerr(0, "ERROR: can't resolve %d to protocol\n",
++			 protocol);
++		goto out;
 +	}
 +
++	switch(clp->addr->ss_family) {
++	case AF_INET:
++		nc_protofmly = NC_INET;
++		nb.len = nb.maxlen = sizeof(struct sockaddr_in);
++		break;
++	default:
++		printerr(0, "ERROR: unsupported address family %d\n",
++			    clp->addr->ss_family);
++		goto out;
++	}
++
++	handle = setnetconfig();
++	while ((nc = getnetconfig(handle)) != NULL) {
++
++		if (nc->nc_protofmly != NULL &&
++		    strcmp(nc->nc_protofmly, nc_protofmly) != 0)
++			continue;
++		if (nc->nc_proto != NULL &&
++		    strcmp(nc->nc_proto, proto->p_name) != 0)
++			continue;
++
++		break;
++	}
++
++	if (!nc) {
++		printerr(0, "ERROR: unable to find netconfig entry for "
++			    "addr family %d and proto %d\n",
++			    clp->addr->ss_family, protocol);
++		goto out;
++	}
++
++	nb.buf = clp->addr;
++
++	rpc_clnt = clnt_tli_create(RPC_ANYFD, nc, &nb, clp->prog, clp->vers,
++				   sendsz, recvsz);
++	if (!rpc_clnt) {
++		snprintf(rpc_errmsg, sizeof(rpc_errmsg),
++			 "ERROR: unable to create %s RPC client for %s with "
++			 "uid %d", clp->protocol, clp->servername, uid);
++		printerr(0, "%s\n", clnt_spcreateerror(rpc_errmsg));
++		goto out;
++	}
++
++	/* set retry timeout for connectionless transports */
++	if (nc->nc_semantics == NC_TPI_CLTS)
++		clnt_control(rpc_clnt, CLSET_RETRY_TIMEOUT, (void *) &timeout);
++out:
++	if (handle)
++		endnetconfig(handle);
 +	return rpc_clnt;
 +}
 +
++#else  /* HAVE_LIBTIRPC */
++
+ static CLIENT *
+ create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
+ {
+@@ -597,6 +672,7 @@ create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
+ 
+ 	return rpc_clnt;
+ }
++#endif /* HAVE_LIBTIRPC */
+ 
  /*
   * Determine the port from the servicename and set the right field in the
-  * sockaddr. This is mostly a no-op with newer kernels that send the port
-@@ -642,9 +688,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 	uid_t			save_uid = -1;
- 	int			retval = -1;
- 	OM_uint32		min_stat;
--	char			rpc_errmsg[1024];
--	int			sockp = RPC_ANYSOCK;
--	int			sendsz = 32768, recvsz = 32768;
- 	int			socktype, protocol;
- 
- 	/* Create the context as the user (not as root) */
-@@ -715,34 +758,9 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 	if (!populate_port(clp->addr, clp->servicename, socktype, protocol))
- 		goto out_fail;
- 
--	if (protocol == IPPROTO_TCP) {
--		if ((rpc_clnt = clnttcp_create(
--					(struct sockaddr_in *) clp->addr,
--					clp->prog, clp->vers, &sockp,
--					sendsz, recvsz)) == NULL) {
--			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
--				 "WARNING: can't create tcp rpc_clnt "
--				 "for server %s for user with uid %d",
--				 clp->servername, uid);
--			printerr(0, "%s\n",
--				 clnt_spcreateerror(rpc_errmsg));
--			goto out_fail;
--		}
--	} else if (protocol == IPPROTO_UDP) {
--		const struct timeval timeout = {5, 0};
--		if ((rpc_clnt = clntudp_bufcreate(
--					(struct sockaddr_in *) clp->addr,
--					clp->prog, clp->vers, timeout,
--					&sockp, sendsz, recvsz)) == NULL) {
--			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
--				 "WARNING: can't create udp rpc_clnt "
--				 "for server %s for user with uid %d",
--				 clp->servername, uid);
--			printerr(0, "%s\n",
--				 clnt_spcreateerror(rpc_errmsg));
--			goto out_fail;
--		}
--	}
-+	rpc_clnt = create_rpc_client(clp, protocol, uid);
-+	if (!rpc_clnt)
-+		goto out_fail;
- 
- 	printerr(2, "creating context with server %s\n", clp->servicename);
- 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
 -- 
 1.6.0.6
 
