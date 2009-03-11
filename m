@@ -1,75 +1,128 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 03/14] nfsd4: remove redundant "if" in nfs4_preprocess_stateid_op
-Date: Tue, 10 Mar 2009 20:26:51 -0400
-Message-ID: <1236731222-3294-4-git-send-email-bfields@fieldses.org>
+Subject: [PATCH 07/14] nfsd4: separate delegreturn case from preprocess_stateid_op
+Date: Tue, 10 Mar 2009 20:26:55 -0400
+Message-ID: <1236731222-3294-8-git-send-email-bfields@fieldses.org>
 References: <1236731222-3294-1-git-send-email-bfields@fieldses.org>
  <1236731222-3294-2-git-send-email-bfields@fieldses.org>
  <1236731222-3294-3-git-send-email-bfields@fieldses.org>
+ <1236731222-3294-4-git-send-email-bfields@fieldses.org>
+ <1236731222-3294-5-git-send-email-bfields@fieldses.org>
+ <1236731222-3294-6-git-send-email-bfields@fieldses.org>
+ <1236731222-3294-7-git-send-email-bfields@fieldses.org>
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:44033 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:44046 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751921AbZCKA1F (ORCPT
+	with ESMTP id S1752322AbZCKA1F (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Mar 2009 20:27:05 -0400
-In-Reply-To: <1236731222-3294-3-git-send-email-bfields@fieldses.org>
+In-Reply-To: <1236731222-3294-7-git-send-email-bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Note that we exit this first big "if" with stp == NULL iff we took the
-first branch; therefore, the second "if" is redundant, and we can just
-combine the two, simplifying the logic.
+Delegreturn is enough a special case for preprocess_stateid_op to
+warrant just open-coding it in delegreturn.
+
+There should be no change in behavior here; we're just reshuffling code.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4state.c |   19 ++++++++-----------
- 1 files changed, 8 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c        |   40 ++++++++++++++++++++++++++++------------
+ include/linux/nfsd/state.h |    1 -
+ 2 files changed, 28 insertions(+), 13 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d6ca2be..16fcb65 100644
+index d555585..de1d68a 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2087,6 +2087,14 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
- 		status = check_stateid_generation(stateid, stidp);
+@@ -2000,10 +2000,7 @@ out:
+ static inline __be32
+ check_special_stateids(svc_fh *current_fh, stateid_t *stateid, int flags)
+ {
+-	/* Trying to call delegreturn with a special stateid? Yuch: */
+-	if (!(flags & (RD_STATE | WR_STATE)))
+-		return nfserr_bad_stateid;
+-	else if (ONE_STATEID(stateid) && (flags & RD_STATE))
++	if (ONE_STATEID(stateid) && (flags & RD_STATE))
+ 		return nfs_ok;
+ 	else if (locks_in_grace()) {
+ 		/* Answer in remaining cases depends on existance of
+@@ -2024,8 +2021,7 @@ check_special_stateids(svc_fh *current_fh, stateid_t *stateid, int flags)
+ static inline int
+ io_during_grace_disallowed(struct inode *inode, int flags)
+ {
+-	return locks_in_grace() && (flags & (RD_STATE | WR_STATE))
+-		&& mandatory_lock(inode);
++	return locks_in_grace() && mandatory_lock(inode);
+ }
+ 
+ static int check_stateid_generation(stateid_t *in, stateid_t *ref)
+@@ -2089,8 +2085,6 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
  		if (status)
  			goto out;
-+		status = nfs4_check_delegmode(dp, flags);
-+		if (status)
-+			goto out;
-+		renew_client(dp->dl_client);
-+		if (flags & DELEG_RET)
-+			unhash_delegation(dp);
-+		if (filpp)
-+			*filpp = dp->dl_vfs_file;
- 	} else { /* open or lock stateid */
- 		stp = find_stateid(stateid, flags);
- 		if (!stp) {
-@@ -2101,23 +2109,12 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
- 		status = check_stateid_generation(stateid, stidp);
- 		if (status)
- 			goto out;
--	}
--	if (stp) {
- 		status = nfs4_check_openmode(stp, flags);
- 		if (status)
- 			goto out;
- 		renew_client(stp->st_stateowner->so_client);
- 		if (filpp)
- 			*filpp = stp->st_vfs_file;
--	} else {
--		status = nfs4_check_delegmode(dp, flags);
--		if (status)
--			goto out;
--		renew_client(dp->dl_client);
+ 		renew_client(dp->dl_client);
 -		if (flags & DELEG_RET)
 -			unhash_delegation(dp);
--		if (filpp)
--			*filpp = dp->dl_vfs_file;
- 	}
- 	status = nfs_ok;
+ 		if (filpp)
+ 			*filpp = dp->dl_vfs_file;
+ 	} else { /* open or lock stateid */
+@@ -2408,16 +2402,38 @@ __be32
+ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		  struct nfsd4_delegreturn *dr)
+ {
++	struct nfs4_delegation *dp;
++	stateid_t *stateid = &dr->dr_stateid;
++	struct inode *inode;
+ 	__be32 status;
+ 
+ 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
+-		goto out;
++		return status;
++	inode = cstate->current_fh.fh_dentry->d_inode;
+ 
+ 	nfs4_lock_state();
+-	status = nfs4_preprocess_stateid_op(&cstate->current_fh,
+-					    &dr->dr_stateid, DELEG_RET, NULL);
+-	nfs4_unlock_state();
++	status = nfserr_bad_stateid;
++	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
++		goto out;
++	status = nfserr_stale_stateid;
++	if (STALE_STATEID(stateid)) 
++		goto out;
++	status = nfs_ok;
++	if (is_delegation_stateid(stateid))
++		goto out;
++	status = nfserr_bad_stateid;
++	dp = find_delegation_stateid(inode, stateid);
++	if (!dp)
++		goto out;
++	status = check_stateid_generation(stateid, &dp->dl_stateid);
++	if (status)
++		goto out;
++	renew_client(dp->dl_client);
++
++	unhash_delegation(dp);
  out:
++	nfs4_unlock_state();
++
+ 	return status;
+ }
+ 
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 1130d53..c9311a1 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -263,7 +263,6 @@ struct nfs4_stateid {
+ #define RD_STATE	        0x00000010
+ #define WR_STATE	        0x00000020
+ #define CLOSE_STATE             0x00000040
+-#define DELEG_RET               0x00000080
+ 
+ #define seqid_mutating_err(err)                       \
+ 	(((err) != nfserr_stale_clientid) &&    \
 -- 
 1.6.0.4
 
