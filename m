@@ -1,131 +1,56 @@
 From: Yang Hongyang <yanghy@cn.fujitsu.com>
-Subject: Re: [PATCH 07/14] nfsd4: separate delegreturn case from preprocess_stateid_op
-Date: Wed, 11 Mar 2009 09:47:26 +0800
-Message-ID: <49B7182E.6080103@cn.fujitsu.com>
-References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org> <1236731222-3294-3-git-send-email-bfields@fieldses.org> <1236731222-3294-4-git-send-email-bfields@fieldses.org> <1236731222-3294-5-git-send-email-bfields@fieldses.org> <1236731222-3294-6-git-send-email-bfields@fieldses.org> <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org>
+Subject: Re: [PATCH 08/14] nfsd4: fail when delegreturn gets a non-delegation
+ stateid
+Date: Wed, 11 Mar 2009 09:52:22 +0800
+Message-ID: <49B71956.5030305@cn.fujitsu.com>
+References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org> <1236731222-3294-3-git-send-email-bfields@fieldses.org> <1236731222-3294-4-git-send-email-bfields@fieldses.org> <1236731222-3294-5-git-send-email-bfields@fieldses.org> <1236731222-3294-6-git-send-email-bfields@fieldses.org> <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org> <1236731222-3294-9-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:63638 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:53776 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754121AbZCKBsf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Mar 2009 21:48:35 -0400
-In-Reply-To: <1236731222-3294-8-git-send-email-bfields@fieldses.org>
+	id S1754279AbZCKBx3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 10 Mar 2009 21:53:29 -0400
+In-Reply-To: <1236731222-3294-9-git-send-email-bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 J. Bruce Fields wrote:
 > From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> Delegreturn is enough a special case for preprocess_stateid_op to
-> warrant just open-coding it in delegreturn.
-> 
-> There should be no change in behavior here; we're just reshuffling code.
+> Previous cleanup reveals an obvious (though harmless) bug: when
+> delegreturn gets a stateid that isn't for a delegation, it should return
+> an error rather than doing nothing.
 > 
 > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 > ---
->  fs/nfsd/nfs4state.c        |   40 ++++++++++++++++++++++++++++------------
->  include/linux/nfsd/state.h |    1 -
->  2 files changed, 28 insertions(+), 13 deletions(-)
+>  fs/nfsd/nfs4state.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
 > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index d555585..de1d68a 100644
+> index de1d68a..4a92d1e 100644
 > --- a/fs/nfsd/nfs4state.c
 > +++ b/fs/nfsd/nfs4state.c
-> @@ -2000,10 +2000,7 @@ out:
->  static inline __be32
->  check_special_stateids(svc_fh *current_fh, stateid_t *stateid, int flags)
->  {
-> -	/* Trying to call delegreturn with a special stateid? Yuch: */
-> -	if (!(flags & (RD_STATE | WR_STATE)))
-> -		return nfserr_bad_stateid;
-> -	else if (ONE_STATEID(stateid) && (flags & RD_STATE))
-> +	if (ONE_STATEID(stateid) && (flags & RD_STATE))
->  		return nfs_ok;
->  	else if (locks_in_grace()) {
->  		/* Answer in remaining cases depends on existance of
-> @@ -2024,8 +2021,7 @@ check_special_stateids(svc_fh *current_fh, stateid_t *stateid, int flags)
->  static inline int
->  io_during_grace_disallowed(struct inode *inode, int flags)
->  {
-> -	return locks_in_grace() && (flags & (RD_STATE | WR_STATE))
-> -		&& mandatory_lock(inode);
-> +	return locks_in_grace() && mandatory_lock(inode);
->  }
->  
->  static int check_stateid_generation(stateid_t *in, stateid_t *ref)
-> @@ -2089,8 +2085,6 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
->  		if (status)
->  			goto out;
->  		renew_client(dp->dl_client);
-> -		if (flags & DELEG_RET)
-> -			unhash_delegation(dp);
->  		if (filpp)
->  			*filpp = dp->dl_vfs_file;
->  	} else { /* open or lock stateid */
-> @@ -2408,16 +2402,38 @@ __be32
->  nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		  struct nfsd4_delegreturn *dr)
->  {
-> +	struct nfs4_delegation *dp;
-> +	stateid_t *stateid = &dr->dr_stateid;
-> +	struct inode *inode;
->  	__be32 status;
->  
->  	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
-
-adjust style:
-          status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)
-          if (status)
-
-> -		goto out;
-> +		return status;
-> +	inode = cstate->current_fh.fh_dentry->d_inode;
->  
->  	nfs4_lock_state();
-> -	status = nfs4_preprocess_stateid_op(&cstate->current_fh,
-> -					    &dr->dr_stateid, DELEG_RET, NULL);
-> -	nfs4_unlock_state();
+> @@ -2418,7 +2418,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	status = nfserr_stale_stateid;
+>  	if (STALE_STATEID(stateid)) 
+>  		goto out;
+> -	status = nfs_ok;
 > +	status = nfserr_bad_stateid;
-> +	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-> +		goto out;
-> +	status = nfserr_stale_stateid;
-> +	if (STALE_STATEID(stateid)) 
-> +		goto out;
-> +	status = nfs_ok;
-> +	if (is_delegation_stateid(stateid))
-> +		goto out;
-> +	status = nfserr_bad_stateid;
-> +	dp = find_delegation_stateid(inode, stateid);
-> +	if (!dp)
-> +		goto out;
-> +	status = check_stateid_generation(stateid, &dp->dl_stateid);
-> +	if (status)
-> +		goto out;
-> +	renew_client(dp->dl_client);
-> +
-> +	unhash_delegation(dp);
->  out:
-> +	nfs4_unlock_state();
-> +
->  	return status;
->  }
->  
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index 1130d53..c9311a1 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -263,7 +263,6 @@ struct nfs4_stateid {
->  #define RD_STATE	        0x00000010
->  #define WR_STATE	        0x00000020
->  #define CLOSE_STATE             0x00000040
-> -#define DELEG_RET               0x00000080
->  
->  #define seqid_mutating_err(err)                       \
->  	(((err) != nfserr_stale_clientid) &&    \
+
+this should be done in patch 7?
+
+>  	if (is_delegation_stateid(stateid))
+>  		goto out;
+
+confused!
+if (is_delegation_stateid(stateid)) means a stateid is for a delegation right?
+Are we prefered if (!(is_delegation_stateid(stateid)))?
+
+>  	status = nfserr_bad_stateid;
 
 
 -- 
