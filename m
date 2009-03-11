@@ -1,189 +1,87 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 3/9] NFSv3: Fix posix ACL code
+Subject: [PATCH 2/9] NFS: Fix misparsing of nfsv4 fs_locations attribute
+ (take 2)
 Date: Wed, 11 Mar 2009 14:25:25 -0400
-Message-ID: <20090311182525.403.95900.stgit@heimdal.trondhjem.org>
+Message-ID: <20090311182525.403.55308.stgit@heimdal.trondhjem.org>
 References: <20090311182525.403.42026.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20542 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52465 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755306AbZCKS3x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:29:53 -0400
-Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIThdt008167
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:29:51 -0700 (PDT)
+	id S1755384AbZCKS3v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:29:51 -0400
+Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIThEw008166
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:29:49 -0700 (PDT)
 In-Reply-To: <20090311182525.403.42026.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a memory leak due to allocation in the XDR layer. In cases where the
-RPC call needs to be retransmitted, we end up allocating new pages without
-clearing the old ones. Fix this by moving the allocation into
-nfs3_proc_setacls().
-
-Also fix an issue discovered by Kevin Rudd, whereby the amount of memory
-reserved for the acls in the xdr_buf->head was miscalculated, and causing
-corruption.
+The changeset ea31a4437c59219bf3ea946d58984b01a45a289c (nfs: Fix
+misparsing of nfsv4 fs_locations attribute) causes the mountpath that is
+calculated at the beginning of try_location() to be clobbered when we
+later strncpy a non-nul terminated hostname using an incorrect buffer
+length.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/nfs/nfs3acl.c        |   27 +++++++++++++++++++++------
- fs/nfs/nfs3xdr.c        |   34 +++++++++++++---------------------
- include/linux/nfs_xdr.h |    2 ++
- include/linux/nfsacl.h  |    3 +++
- 4 files changed, 39 insertions(+), 27 deletions(-)
+ fs/nfs/nfs4namespace.c |   15 ++++++++-------
+ 1 files changed, 8 insertions(+), 7 deletions(-)
 
 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index cef6255..6bbf0e6 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -292,7 +292,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_fattr fattr;
--	struct page *pages[NFSACL_MAXPAGES] = { };
-+	struct page *pages[NFSACL_MAXPAGES];
- 	struct nfs3_setaclargs args = {
- 		.inode = inode,
- 		.mask = NFS_ACL,
-@@ -303,7 +303,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 		.rpc_argp	= &args,
- 		.rpc_resp	= &fattr,
- 	};
--	int status, count;
-+	int status;
- 
- 	status = -EOPNOTSUPP;
- 	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
-@@ -319,6 +319,20 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 	if (S_ISDIR(inode->i_mode)) {
- 		args.mask |= NFS_DFACL;
- 		args.acl_default = dfacl;
-+		args.len = nfsacl_size(acl, dfacl);
-+	} else
-+		args.len = nfsacl_size(acl, NULL);
-+
-+	if (args.len > NFS_ACL_INLINE_BUFSIZE) {
-+		unsigned int npages = 1 + ((args.len - 1) >> PAGE_SHIFT);
-+
-+		status = -ENOMEM;
-+		do {
-+			args.pages[args.npages] = alloc_page(GFP_KERNEL);
-+			if (args.pages[args.npages] == NULL)
-+				goto out_freepages;
-+			args.npages++;
-+		} while (args.npages < npages);
- 	}
- 
- 	dprintk("NFS call setacl\n");
-@@ -329,10 +343,6 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 	nfs_zap_acl_cache(inode);
- 	dprintk("NFS reply setacl: %d\n", status);
- 
--	/* pages may have been allocated at the xdr layer. */
--	for (count = 0; count < NFSACL_MAXPAGES && args.pages[count]; count++)
--		__free_page(args.pages[count]);
--
- 	switch (status) {
- 		case 0:
- 			status = nfs_refresh_inode(inode, &fattr);
-@@ -346,6 +356,11 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 		case -ENOTSUPP:
- 			status = -EOPNOTSUPP;
- 	}
-+out_freepages:
-+	while (args.npages != 0) {
-+		args.npages--;
-+		__free_page(args.pages[args.npages]);
-+	}
- out:
- 	return status;
- }
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 11cddde..6cdeacf 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -82,8 +82,10 @@
- #define NFS3_commitres_sz	(1+NFS3_wcc_data_sz+2)
- 
- #define ACL3_getaclargs_sz	(NFS3_fh_sz+1)
--#define ACL3_setaclargs_sz	(NFS3_fh_sz+1+2*(2+5*3))
--#define ACL3_getaclres_sz	(1+NFS3_post_op_attr_sz+1+2*(2+5*3))
-+#define ACL3_setaclargs_sz	(NFS3_fh_sz+1+ \
-+				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
-+#define ACL3_getaclres_sz	(1+NFS3_post_op_attr_sz+1+ \
-+				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
- #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 30befc3..2a2a0a7 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -21,7 +21,9 @@
+ #define NFSDBG_FACILITY		NFSDBG_VFS
  
  /*
-@@ -703,28 +705,18 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
-                    struct nfs3_setaclargs *args)
+- * Check if fs_root is valid
++ * Convert the NFSv4 pathname components into a standard posix path.
++ *
++ * Note that the resulting string will be placed at the end of the buffer
+  */
+ static inline char *nfs4_pathname_string(const struct nfs4_pathname *pathname,
+ 					 char *buffer, ssize_t buflen)
+@@ -99,21 +101,20 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
  {
- 	struct xdr_buf *buf = &req->rq_snd_buf;
--	unsigned int base, len_in_head, len = nfsacl_size(
--		(args->mask & NFS_ACL)   ? args->acl_access  : NULL,
--		(args->mask & NFS_DFACL) ? args->acl_default : NULL);
--	int count, err;
-+	unsigned int base;
-+	int err;
+ 	struct vfsmount *mnt = ERR_PTR(-ENOENT);
+ 	char *mnt_path;
+-	int page2len;
++	unsigned int maxbuflen;
+ 	unsigned int s;
  
- 	p = xdr_encode_fhandle(p, NFS_FH(args->inode));
- 	*p++ = htonl(args->mask);
--	base = (char *)p - (char *)buf->head->iov_base;
--	/* put as much of the acls into head as possible. */
--	len_in_head = min_t(unsigned int, buf->head->iov_len - base, len);
--	len -= len_in_head;
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p + (len_in_head >> 2));
--
--	for (count = 0; (count << PAGE_SHIFT) < len; count++) {
--		args->pages[count] = alloc_page(GFP_KERNEL);
--		if (!args->pages[count]) {
--			while (count)
--				__free_page(args->pages[--count]);
--			return -ENOMEM;
--		}
--	}
--	xdr_encode_pages(buf, args->pages, 0, len);
-+	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
-+	base = req->rq_slen;
-+
-+	if (args->npages != 0)
-+		xdr_encode_pages(buf, args->pages, 0, args->len);
-+	else
-+		req->rq_slen += args->len;
+ 	mnt_path = nfs4_pathname_string(&location->rootpath, page2, PAGE_SIZE);
+ 	if (IS_ERR(mnt_path))
+ 		return mnt;
+ 	mountdata->mnt_path = mnt_path;
+-	page2 += strlen(mnt_path) + 1;
+-	page2len = PAGE_SIZE - strlen(mnt_path) - 1;
++	maxbuflen = mnt_path - 1 - page2;
  
- 	err = nfsacl_encode(buf, base, args->inode,
- 			    (args->mask & NFS_ACL) ?
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a550b52..2e5f000 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -406,6 +406,8 @@ struct nfs3_setaclargs {
- 	int			mask;
- 	struct posix_acl *	acl_access;
- 	struct posix_acl *	acl_default;
-+	size_t			len;
-+	unsigned int		npages;
- 	struct page **		pages;
- };
+ 	for (s = 0; s < location->nservers; s++) {
+ 		const struct nfs4_string *buf = &location->servers[s];
+ 		struct sockaddr_storage addr;
  
-diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
-index 54487a9..43011b6 100644
---- a/include/linux/nfsacl.h
-+++ b/include/linux/nfsacl.h
-@@ -37,6 +37,9 @@
- #define NFSACL_MAXPAGES		((2*(8+12*NFS_ACL_MAX_ENTRIES) + PAGE_SIZE-1) \
- 				 >> PAGE_SHIFT)
+-		if (buf->len <= 0 || buf->len >= PAGE_SIZE)
++		if (buf->len <= 0 || buf->len >= maxbuflen)
+ 			continue;
  
-+#define NFS_ACL_MAX_ENTRIES_INLINE	(5)
-+#define NFS_ACL_INLINE_BUFSIZE	((2*(2+3*NFS_ACL_MAX_ENTRIES_INLINE)) << 2)
-+
- static inline unsigned int
- nfsacl_size(struct posix_acl *acl_access, struct posix_acl *acl_default)
- {
+ 		mountdata->addr = (struct sockaddr *)&addr;
+@@ -126,8 +127,8 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
+ 			continue;
+ 		nfs_set_port(mountdata->addr, NFS_PORT);
+ 
+-		strncpy(page2, buf->data, page2len);
+-		page2[page2len] = '\0';
++		memcpy(page2, buf->data, buf->len);
++		page2[buf->len] = '\0';
+ 		mountdata->hostname = page2;
+ 
+ 		snprintf(page, PAGE_SIZE, "%s:%s",
 
