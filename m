@@ -1,70 +1,189 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 8/9] SUNRPC: Fix an Oops due to socket not set up yet...
-Date: Wed, 11 Mar 2009 14:25:26 -0400
-Message-ID: <20090311182526.403.88514.stgit@heimdal.trondhjem.org>
+Subject: [PATCH 3/9] NFSv3: Fix posix ACL code
+Date: Wed, 11 Mar 2009 14:25:25 -0400
+Message-ID: <20090311182525.403.95900.stgit@heimdal.trondhjem.org>
 References: <20090311182525.403.42026.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52465 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20542 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755321AbZCKS3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:29:52 -0400
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIThF2008166
+	id S1755306AbZCKS3x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:29:53 -0400
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n2BIThdt008167
 	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 11:29:51 -0700 (PDT)
 In-Reply-To: <20090311182525.403.42026.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We can Oops in both xs_udp_send_request() and xs_tcp_send_request() if the
-call to xs_sendpages() returns an error due to the socket not yet being
-set up.
-Deal with that situation by returning a new error: ENOTSOCK, so that we
-know to avoid dereferencing transport->sock.
+Fix a memory leak due to allocation in the XDR layer. In cases where the
+RPC call needs to be retransmitted, we end up allocating new pages without
+clearing the old ones. Fix this by moving the allocation into
+nfs3_proc_setacls().
+
+Also fix an issue discovered by Kevin Rudd, whereby the amount of memory
+reserved for the acls in the xdr_buf->head was miscalculated, and causing
+corruption.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/xprtsock.c |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+ fs/nfs/nfs3acl.c        |   27 +++++++++++++++++++++------
+ fs/nfs/nfs3xdr.c        |   34 +++++++++++++---------------------
+ include/linux/nfs_xdr.h |    2 ++
+ include/linux/nfsacl.h  |    3 +++
+ 4 files changed, 39 insertions(+), 27 deletions(-)
 
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 5cbb404..a71fefd 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -467,7 +467,7 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	int err, sent = 0;
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index cef6255..6bbf0e6 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -292,7 +292,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct nfs_fattr fattr;
+-	struct page *pages[NFSACL_MAXPAGES] = { };
++	struct page *pages[NFSACL_MAXPAGES];
+ 	struct nfs3_setaclargs args = {
+ 		.inode = inode,
+ 		.mask = NFS_ACL,
+@@ -303,7 +303,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 		.rpc_argp	= &args,
+ 		.rpc_resp	= &fattr,
+ 	};
+-	int status, count;
++	int status;
  
- 	if (unlikely(!sock))
--		return -ENOTCONN;
-+		return -ENOTSOCK;
- 
- 	clear_bit(SOCK_ASYNC_NOSPACE, &sock->flags);
- 	if (base != 0) {
-@@ -594,6 +594,10 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 	status = -EOPNOTSUPP;
+ 	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
+@@ -319,6 +319,20 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	if (S_ISDIR(inode->i_mode)) {
+ 		args.mask |= NFS_DFACL;
+ 		args.acl_default = dfacl;
++		args.len = nfsacl_size(acl, dfacl);
++	} else
++		args.len = nfsacl_size(acl, NULL);
++
++	if (args.len > NFS_ACL_INLINE_BUFSIZE) {
++		unsigned int npages = 1 + ((args.len - 1) >> PAGE_SHIFT);
++
++		status = -ENOMEM;
++		do {
++			args.pages[args.npages] = alloc_page(GFP_KERNEL);
++			if (args.pages[args.npages] == NULL)
++				goto out_freepages;
++			args.npages++;
++		} while (args.npages < npages);
  	}
  
- 	switch (status) {
-+	case -ENOTSOCK:
-+		status = -ENOTCONN;
-+		/* Should we call xs_close() here? */
-+		break;
- 	case -EAGAIN:
- 		xs_nospace(task);
- 		break;
-@@ -693,6 +697,10 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	}
+ 	dprintk("NFS call setacl\n");
+@@ -329,10 +343,6 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	nfs_zap_acl_cache(inode);
+ 	dprintk("NFS reply setacl: %d\n", status);
  
+-	/* pages may have been allocated at the xdr layer. */
+-	for (count = 0; count < NFSACL_MAXPAGES && args.pages[count]; count++)
+-		__free_page(args.pages[count]);
+-
  	switch (status) {
-+	case -ENOTSOCK:
-+		status = -ENOTCONN;
-+		/* Should we call xs_close() here? */
-+		break;
- 	case -EAGAIN:
- 		xs_nospace(task);
- 		break;
+ 		case 0:
+ 			status = nfs_refresh_inode(inode, &fattr);
+@@ -346,6 +356,11 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 		case -ENOTSUPP:
+ 			status = -EOPNOTSUPP;
+ 	}
++out_freepages:
++	while (args.npages != 0) {
++		args.npages--;
++		__free_page(args.pages[args.npages]);
++	}
+ out:
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 11cddde..6cdeacf 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -82,8 +82,10 @@
+ #define NFS3_commitres_sz	(1+NFS3_wcc_data_sz+2)
+ 
+ #define ACL3_getaclargs_sz	(NFS3_fh_sz+1)
+-#define ACL3_setaclargs_sz	(NFS3_fh_sz+1+2*(2+5*3))
+-#define ACL3_getaclres_sz	(1+NFS3_post_op_attr_sz+1+2*(2+5*3))
++#define ACL3_setaclargs_sz	(NFS3_fh_sz+1+ \
++				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
++#define ACL3_getaclres_sz	(1+NFS3_post_op_attr_sz+1+ \
++				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+ #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
+ 
+ /*
+@@ -703,28 +705,18 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+                    struct nfs3_setaclargs *args)
+ {
+ 	struct xdr_buf *buf = &req->rq_snd_buf;
+-	unsigned int base, len_in_head, len = nfsacl_size(
+-		(args->mask & NFS_ACL)   ? args->acl_access  : NULL,
+-		(args->mask & NFS_DFACL) ? args->acl_default : NULL);
+-	int count, err;
++	unsigned int base;
++	int err;
+ 
+ 	p = xdr_encode_fhandle(p, NFS_FH(args->inode));
+ 	*p++ = htonl(args->mask);
+-	base = (char *)p - (char *)buf->head->iov_base;
+-	/* put as much of the acls into head as possible. */
+-	len_in_head = min_t(unsigned int, buf->head->iov_len - base, len);
+-	len -= len_in_head;
+-	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p + (len_in_head >> 2));
+-
+-	for (count = 0; (count << PAGE_SHIFT) < len; count++) {
+-		args->pages[count] = alloc_page(GFP_KERNEL);
+-		if (!args->pages[count]) {
+-			while (count)
+-				__free_page(args->pages[--count]);
+-			return -ENOMEM;
+-		}
+-	}
+-	xdr_encode_pages(buf, args->pages, 0, len);
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++	base = req->rq_slen;
++
++	if (args->npages != 0)
++		xdr_encode_pages(buf, args->pages, 0, args->len);
++	else
++		req->rq_slen += args->len;
+ 
+ 	err = nfsacl_encode(buf, base, args->inode,
+ 			    (args->mask & NFS_ACL) ?
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a550b52..2e5f000 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -406,6 +406,8 @@ struct nfs3_setaclargs {
+ 	int			mask;
+ 	struct posix_acl *	acl_access;
+ 	struct posix_acl *	acl_default;
++	size_t			len;
++	unsigned int		npages;
+ 	struct page **		pages;
+ };
+ 
+diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
+index 54487a9..43011b6 100644
+--- a/include/linux/nfsacl.h
++++ b/include/linux/nfsacl.h
+@@ -37,6 +37,9 @@
+ #define NFSACL_MAXPAGES		((2*(8+12*NFS_ACL_MAX_ENTRIES) + PAGE_SIZE-1) \
+ 				 >> PAGE_SHIFT)
+ 
++#define NFS_ACL_MAX_ENTRIES_INLINE	(5)
++#define NFS_ACL_INLINE_BUFSIZE	((2*(2+3*NFS_ACL_MAX_ENTRIES_INLINE)) << 2)
++
+ static inline unsigned int
+ nfsacl_size(struct posix_acl *acl_access, struct posix_acl *acl_default)
+ {
 
