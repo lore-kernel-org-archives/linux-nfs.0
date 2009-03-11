@@ -1,71 +1,94 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 15/30] SVCRDMA: remove faulty assertions in rpc/rdma chunk
- validation.
+Subject: [PATCH 17/30] SUNRPC: dynamically load RPC transport modules
+ on-demand
 Date: Wed, 11 Mar 2009 14:41:08 -0400
-Message-ID: <20090311184108.5578.80559.stgit@heimdal.trondhjem.org>
+Message-ID: <20090311184108.5578.78707.stgit@heimdal.trondhjem.org>
 References: <20090311184105.5578.22131.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: Tom Talpey <tmtalpey@gmail.com>,
-	Tom Tucker <tom@opengridcomputing.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
 	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43206 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51671 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754192AbZCKSoG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Mar 2009 14:44:06 -0400
+	id S1754366AbZCKSoJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Mar 2009 14:44:09 -0400
 In-Reply-To: <20090311184105.5578.22131.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Tom Talpey <tmtalpey@gmail.com>
 
-Certain client-provided RPCRDMA chunk alignments result in an
-additional scatter/gather entry, which triggered nfs/rdma server
-assertions incorrectly. OpenSolaris nfs/rdma client connectathon
-testing was blocked by these in the special/locking section.
+Provide an api to attempt to load any necessary kernel RPC
+client transport module automatically. By convention, the
+desired module name is "xprt"+"transport name". For example,
+when NFS mounting with "-o proto=rdma", attempt to load the
+"xprtrdma" module.
 
 Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
-Cc: Tom Tucker <tom@opengridcomputing.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |    8 +++++---
- 1 files changed, 5 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/xprt.c           |   31 +++++++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+), 0 deletions(-)
 
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index a3334e3..d0bea98 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -191,7 +191,6 @@ static int map_xdr(struct svcxprt_rdma *xprt,
- 		   struct xdr_buf *xdr,
- 		   struct svc_rdma_req_map *vec)
- {
--	int sge_max = (xdr->len+PAGE_SIZE-1) / PAGE_SIZE + 3;
- 	int sge_no;
- 	u32 sge_bytes;
- 	u32 page_bytes;
-@@ -235,7 +234,11 @@ static int map_xdr(struct svcxprt_rdma *xprt,
- 		sge_no++;
- 	}
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 11fc71d..2b0d960 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -235,6 +235,7 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
+  */
+ int			xprt_register_transport(struct xprt_class *type);
+ int			xprt_unregister_transport(struct xprt_class *type);
++int			xprt_load_transport(const char *);
+ void			xprt_set_retrans_timeout_def(struct rpc_task *task);
+ void			xprt_set_retrans_timeout_rtt(struct rpc_task *task);
+ void			xprt_wake_pending_tasks(struct rpc_xprt *xprt, int status);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 62098d1..d1afec6 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -152,6 +152,37 @@ out:
+ EXPORT_SYMBOL_GPL(xprt_unregister_transport);
  
--	BUG_ON(sge_no > sge_max);
-+	dprintk("svcrdma: map_xdr: sge_no %d page_no %d "
-+		"page_base %zd page_len %zd head_len %d tail_len %d\n",
-+		sge_no, page_no, xdr->page_base, xdr->page_len,
-+		xdr->head[0].iov_len, xdr->tail[0].iov_len);
+ /**
++ * xprt_load_transport - load a transport implementation
++ * @transport_name: transport to load
++ *
++ * Returns:
++ * 0:		transport successfully loaded
++ * -ENOENT:	transport module not available
++ */
++int xprt_load_transport(const char *transport_name)
++{
++	struct xprt_class *t;
++	char module_name[sizeof t->name + 5];
++	int result;
 +
- 	vec->count = sge_no;
- 	return 0;
- }
-@@ -579,7 +582,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 			ctxt->sge[page_no+1].length = 0;
- 	}
- 	BUG_ON(sge_no > rdma->sc_max_sge);
--	BUG_ON(sge_no > ctxt->count);
- 	memset(&send_wr, 0, sizeof send_wr);
- 	ctxt->wr_op = IB_WR_SEND;
- 	send_wr.wr_id = (unsigned long)ctxt;
++	result = 0;
++	spin_lock(&xprt_list_lock);
++	list_for_each_entry(t, &xprt_list, list) {
++		if (strcmp(t->name, transport_name) == 0) {
++			spin_unlock(&xprt_list_lock);
++			goto out;
++		}
++	}
++	spin_unlock(&xprt_list_lock);
++	strcpy(module_name, "xprt");
++	strncat(module_name, transport_name, sizeof t->name);
++	result = request_module(module_name);
++out:
++	return result;
++}
++EXPORT_SYMBOL_GPL(xprt_load_transport);
++
++/**
+  * xprt_reserve_xprt - serialize write access to transports
+  * @task: task that is requesting access to the transport
+  *
 
