@@ -1,77 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:49699 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751549AbZCMTQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Mar 2009 15:16:59 -0400
-Subject: Re: Best A->B large file copy performance
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jim Callahan <callahan@temerity.us>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <49B9780B.2020609@temerity.us>
-References: <49B9780B.2020609@temerity.us>
-Content-Type: text/plain
-Date: Fri, 13 Mar 2009 15:16:53 -0400
-Message-Id: <1236971813.7265.23.camel@heimdal.trondhjem.org>
+Received: from vps680.inmotionhosting.com ([74.124.198.230]:37139 "EHLO
+	vps680.inmotionhosting.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751667AbZCKVvl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 17:51:41 -0400
+Received: from cpe-98-149-71-108.socal.res.rr.com ([98.149.71.108]:14482 helo=[192.168.2.107])
+	by vps680.inmotionhosting.com with esmtpa (Exim 4.63)
+	(envelope-from <callahan@temerity.us>)
+	id 1LhVXn-0000UL-Tg
+	for linux-nfs@vger.kernel.org; Wed, 11 Mar 2009 14:00:52 -0700
+Message-ID: <49B8186F.5070601@temerity.us>
+Date: Wed, 11 Mar 2009 16:00:47 -0400
+From: Jim Callahan <callahan@temerity.us>
+To: linux-nfs@vger.kernel.org
+Subject: NFS and RPC queues
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2009-03-12 at 17:00 -0400, Jim Callahan wrote:
-> I'm trying to determine the most optimal way to have a single NFS client 
-> copy large numbers (100-1000) of fairly large (1-50M) files from one 
-> location on an file server to another location on the same file server.  
-> There seem to be several API layers which influence this:
-> 
-> 1. Number of OS level processes performing the copy in parallel.
-> 2. Record size used buy the C-library read()/write() calls from these 
-> processes.
-> 3. NFS client rsize/wsize settings.
-> 4. Ethernet MTU size.
-> 5. Bandwidth of the ethernet network and switches.
-> 
-> So far we've played around with larger MTU and rsize/wsize settings 
-> without seeing a huge difference.  Since we have been using "cp" to 
-> perform (1), we've not tweaked the record size at all at this point.   
-> My suspicion is that we should be carefully coordinating the sizes 
-> specified in for the layers 2, 3 and 4.  Perhaps we should be using "dd" 
-> instead of "cp" so we can control the record size being used.   Since 
-> the number of permutations of these three settings are large I was 
-> hoping that I might get some advise from this list about a range of 
-> values we should be investigating and any unpleasant interactions 
-> between these levels of settings we should be aware of to narrow our 
-> search.  Also, if there are other major factors outside those listed I'd 
-> appreciate being pointed in the right direction.
+I'm trying to diagnose an NFS performance problem and need to know a bit 
+more about how the Linux NFS client works internally.  I've got a single 
+NFS client which is connected to a network appliance file server via 1Gb 
+ethernet.  We've removed all switches between the client and server to 
+remove that variable from the equation.  We have two benchmarking 
+scripts, one which performs generates mostly GETATTR requests and the 
+other which generates mostly READ/WRITE requests from the server.  The 
+file system is mounted using "actimeo=1".  This is required for our 
+purposes since we need file status information which cannot be out of 
+date by more than 1 second.
 
-MTU, and rsize/wsize settings shouldn't matter much unless you're using
-a UDP connection. I'd recommend just using the default r/wsize
-negotiated by the client and server, and then whatever MTU is most
-convenient for the other applications you may have.
+When we run the GETATTR test alone, we see around 6000 requests per 
+second.  When we run one or more of the READ/WRITE tests at the same 
+time from the same host, we see GETATTR performance drop considerably.  
+Here's the average performance based on the number of READ/WRITE 
+threads:  1=500/sec, 2=215/sec, 4=110/sec, 8=45/sec, 16=15/sec.   So 
+there clearly seems to be some interaction between the response times to 
+GETATTR based on the number of READ/WRITE operations going on.  Now, I'd 
+assume that there would be some degradation but considering that GETATTR 
+is a fast operation for the server to perform and the amount of data 
+being send both ways is very small its more than I was expecting.
 
-Bandwidth and switch quality do matter (a lot). Particularly so if you
-have many clients...
+We then tried adding a second network card, connection and NFS mount 
+from the same client to the same file server.  We segregated all GETATTR 
+traffic to use one mount and the READ/WRITE to use the other mount.  
+With this setup, GETATTR request seem to be almost completely unaffected 
+by any amount of READ/WRITE activity.  Interestingly, the READ/WRITE 
+performance was identical as in the one network/mount case.  So this 
+seemed to validate that the GETATTR requests do not require much bandwidth.
 
-If you're just copying and not interested in using the file or its
-contents afterwards, then you might consider using direct i/o instead of
-ordinary cached i/o.
+We also performed this same set of tests on a different file server 
+which has a completely different architecture and is also much older and 
+it delivered nearly identical results.  This this what make us think it 
+might be an NFS client related problem and not the server at all.
 
-> While I'm on the subject, has there been any discussion about adding an 
-> NFS request that would allow copying files from one location to another 
-> on the same NFS server without requiring a round trip to a client?  Its 
-> not at all uncommon to need to move data around in this manner and it 
-> seems a huge waste of bandwidth to have to send all this data from the 
-> server to the client just to have the client send the data back 
-> unaltered to a different location.  Such a COPY request would be high 
-> level along the lines of RENAME and each server vendor could optimize 
-> this for their particular hardware architecture.  For our particular 
-> application, having such a request would make a huge difference in 
-> performance.
+Sorry to be so long winded, but I needed a proper context to ask my 
+questions...
 
-I don't think anyone has talked about a server-to-server protocol, but I
-believe there will be a proposal for file copy at the coming IETF
-meeting. If you want server-to-server, then now is the time to speak up
-and make the case. You'd probably want to start a thread on
-nfsv4@ietf.org...
+Is the RPC queue used by NFS processed in a serial fashion for each 
+mount to a unique IP address?  One possible explanation is that the 
+GETATTR requests are simply waiting in line behind READ/WRITES in the 
+one network case and that explains the drop in performance.  So does 
+using a different IP address for the second mount create a second RPC 
+queue which is processed in an asynchronous manner?  That might explain 
+the lack of interaction between the GETATTR's and READ/WRITES in our 
+second test...
 
-Cheers
-  Trond
+If this is not the case, can you suggest any theories that might explain 
+this results along with any tests we might perform to validate these 
+theories?  Many thanks in advance for any insights you can provide!
 
+-- 
+Jim Callahan - President - Temerity Software <www.temerity.us>
