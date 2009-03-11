@@ -1,63 +1,58 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 04/14] nfsd4: remove unneeded local variable
-Date: Tue, 10 Mar 2009 20:26:52 -0400
-Message-ID: <1236731222-3294-5-git-send-email-bfields@fieldses.org>
-References: <1236731222-3294-1-git-send-email-bfields@fieldses.org>
- <1236731222-3294-2-git-send-email-bfields@fieldses.org>
- <1236731222-3294-3-git-send-email-bfields@fieldses.org>
- <1236731222-3294-4-git-send-email-bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: linux-nfs@vger.kernel.org
+From: Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org>
+Subject: RE: pread/pwrite bug on linux?
+Date: Tue, 10 Mar 2009 17:37:07 -0700
+Message-ID: <293BC70BB130E648A6631DB2F05B6E10019D89830F@US01WXMBX1.internal.synopsys.com>
+References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
+	<x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
+	<293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
+ <x49k575jf9y.fsf@segfault.boston.devel.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:44035 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751696AbZCKA1F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Mar 2009 20:27:05 -0400
-In-Reply-To: <1236731222-3294-4-git-send-email-bfields@fieldses.org>
+Received: from us01smtp2.synopsys.com ([198.182.44.80]:56454 "EHLO
+	kiruna.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751272AbZCKAhR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Mar 2009 20:37:17 -0400
+In-Reply-To: <x49k575jf9y.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
 
-We no longer need stidp.
+Thanks for the responses.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |    7 ++-----
- 1 files changed, 2 insertions(+), 5 deletions(-)
+Just FYI that the bug was acknowledged, also it seems RH v5.3 does not have the problem...
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 16fcb65..099938e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2056,7 +2056,6 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
- {
- 	struct nfs4_stateid *stp = NULL;
- 	struct nfs4_delegation *dp = NULL;
--	stateid_t *stidp;
- 	struct inode *ino = current_fh->fh_dentry->d_inode;
- 	__be32 status;
- 
-@@ -2083,8 +2082,7 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
- 			dprintk("NFSD: delegation stateid not found\n");
- 			goto out;
- 		}
--		stidp = &dp->dl_stateid;
--		status = check_stateid_generation(stateid, stidp);
-+		status = check_stateid_generation(stateid, &dp->dl_stateid);
- 		if (status)
- 			goto out;
- 		status = nfs4_check_delegmode(dp, flags);
-@@ -2105,8 +2103,7 @@ nfs4_preprocess_stateid_op(struct svc_fh *current_fh, stateid_t *stateid, int fl
- 			goto out;
- 		if (!stp->st_stateowner->so_confirmed)
- 			goto out;
--		stidp = &stp->st_stateid;
--		status = check_stateid_generation(stateid, stidp);
-+		status = check_stateid_generation(stateid, &stp->st_stateid);
- 		if (status)
- 			goto out;
- 		status = nfs4_check_openmode(stp, flags);
--- 
-1.6.0.4
 
+
+-----Original Message-----
+From: Jeff Moyer [mailto:jmoyer@redhat.com]
+Sent: Wednesday, March 04, 2009 10:48 AM
+To: Qiuyang Wu
+Cc: linux-nfs@vger.kernel.org; linux-fsdevel@vger.kernel.org
+Subject: Re: pread/pwrite bug on linux?
+
+Qiuyang Wu <Qiuyang.Wu-HKixBCOQz3hWk0Htik3J/w@public.gmane.org> writes:
+
+> Hi Jeff,
+>
+> Attached the sample program. Should be able to compile as-is.
+>
+> Let me know your findings or need additional info.
+
+I am not able to reproduce the problem.  I tried with a RHEL 4 system,
+using exactly the kernel you listed (2.6.9-55.EL) on an i386 system.  I
+tried against ext2, ext3, and an nfs mount exported from a RHEL 5
+system.  I should note that I modified your program to detect short
+writes and continue instead of reporting a bogus error.  I'll reiterate
+that the value of errno is undefined if the library/system call did not
+return -1.
+
+I noticed that your test case used NFS.  What NFS server were you using?
+Can you think of any other details that might affect the test?
+
+Thanks,
+Jeff
