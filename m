@@ -1,115 +1,116 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/40] SUNRPC: Use IPv4 loopback for registering AF_INET6
-	kernel RPC services
-Date: Thu, 12 Mar 2009 12:08:14 -0400
-Message-ID: <20090312160813.16019.9071.stgit@ingres.1015granger.net>
-References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfsstat --sleep=#
+Date: Thu, 12 Mar 2009 12:24:59 -0400
+Message-ID: <20090312162459.GC2081@fieldses.org>
+References: <49B86744.6060105@disney.com> <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com> <20090312155055.GB2081@fieldses.org> <65B488F7-A902-4126-8E05-65622991D78C@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org, trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset=us-ascii
+Cc: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>,
+	linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:21931 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756836AbZCLQJX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:23 -0400
-In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:46393 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757444AbZCLQZD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:25:03 -0400
+In-Reply-To: <65B488F7-A902-4126-8E05-65622991D78C@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel uses an IPv6 loopback address when registering its AF_INET6
-RPC services so that it can tell whether the local portmapper is
-actually IPv6-enabled.
+On Thu, Mar 12, 2009 at 12:08:57PM -0400, Chuck Lever wrote:
+> On Mar 12, 2009, at Mar 12, 2009, 11:50 AM, J. Bruce Fields wrote:
+>> On Thu, Mar 12, 2009 at 10:00:34AM -0400, Chuck Lever wrote:
+>>> Hi Kevin-
+>>>
+>>> man watch(1)
+>>
+>> What would you watch?
+>
+> For example:
+>
+>   watch -n3 nfsstat -c
+>
+> You can also use the "-d" option to highlight the differences between  
+> the current sample and the previous sample.
 
-Since the legacy portmapper doesn't listen on IPv6, however, this
-causes a long timeout on older systems if the kernel happens to try
-creating and registering an AF_INET6 RPC service.  Originally I wanted
-to use a connected transport (either TCP or connected UDP) so that the
-upcall would fail immediately if the portmapper wasn't listening on
-IPv6, but we never agreed on what transport to use.
+He was asking for deltas; the above only gives cumulative totals.
 
-In the end, it's of little consequence to the kernel whether the local
-portmapper is listening on IPv6.  It's only important whether the
-portmapper supports rpcbind v4.  And the kernel can't tell that at all
-if it is sending requests via IPv6 -- the portmapper will just ignore
-them.
+There's no accurate one-line solution using the existing nfsstat
+commandline, but it should be easy to add.
 
-So, send both rpcbind v2 and v4 SET/UNSET requests via IPv4 loopback
-to maintain better backwards compatibility between new kernels and
-legacy user space, and prevent multi-second hangs in some cases when
-the kernel attempts to register RPC services.
+--b.
 
-This patch is part of a series that addresses
-
-   http://bugzilla.kernel.org/show_bug.cgi?id=12256
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- net/sunrpc/rpcb_clnt.c |   23 ++++++-----------------
- 1 files changed, 6 insertions(+), 17 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 03ae007..0e9150d 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -124,12 +124,6 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
- 	.sin_port		= htons(RPCBIND_PORT),
- };
- 
--static const struct sockaddr_in6 rpcb_in6addr_loopback = {
--	.sin6_family		= AF_INET6,
--	.sin6_addr		= IN6ADDR_LOOPBACK_INIT,
--	.sin6_port		= htons(RPCBIND_PORT),
--};
--
- static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
- 					  size_t addrlen, u32 version)
- {
-@@ -176,9 +170,10 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
- 	return rpc_create(&args);
- }
- 
--static int rpcb_register_call(struct sockaddr *addr, size_t addrlen,
--			      u32 version, struct rpc_message *msg)
-+static int rpcb_register_call(u32 version, struct rpc_message *msg)
- {
-+	struct sockaddr *addr = (struct sockaddr *)&rpcb_inaddr_loopback;
-+	size_t addrlen = sizeof(rpcb_inaddr_loopback);
- 	struct rpc_clnt *rpcb_clnt;
- 	int result, error = 0;
- 
-@@ -254,9 +249,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- 	if (port)
- 		msg.rpc_proc = &rpcb_procedures2[RPCBPROC_SET];
- 
--	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
--					sizeof(rpcb_inaddr_loopback),
--					RPCBVERS_2, &msg);
-+	return rpcb_register_call(RPCBVERS_2, &msg);
- }
- 
- /*
-@@ -284,9 +277,7 @@ static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	return rpcb_register_call((struct sockaddr *)&rpcb_inaddr_loopback,
--					sizeof(rpcb_inaddr_loopback),
--					RPCBVERS_4, msg);
-+	return rpcb_register_call(RPCBVERS_4, msg);
- }
- 
- /*
-@@ -318,9 +309,7 @@ static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
- 	if (port)
- 		msg->rpc_proc = &rpcb_procedures4[RPCBPROC_SET];
- 
--	return rpcb_register_call((struct sockaddr *)&rpcb_in6addr_loopback,
--					sizeof(rpcb_in6addr_loopback),
--					RPCBVERS_4, msg);
-+	return rpcb_register_call(RPCBVERS_4, msg);
- }
- 
- /**
-
+>
+>> --b.
+>>
+>>>
+>>> On Mar 11, 2009, at Mar 11, 2009, 9:37 PM, Kevin Constantine wrote:
+>>>
+>>>> I'd really like to have a way to output the nfsstat counters at
+>>>> regular intervals (every 3 seconds) where the output is the  
+>>>> difference
+>>>> between 3 seconds ago and now.  Frequently I'll run a test and  
+>>>> want to
+>>>> watch the nfs call profile throughout the course of the test.
+>>>>
+>>>> Does something like this already exist?
+>>>> Are there objections to seeing a feature like this?
+>>>>
+>>>> I'm thinking something like:
+>>>> nfsstat --sleep=1
+>>>>
+>>>> nfs v3 call:   Server   Client
+>>>>      total:        0     3476
+>>>>       null:        0        0
+>>>>    getattr:        0     1679
+>>>>    setattr:        0        0
+>>>>     lookup:        0      839
+>>>>     access:        0      839
+>>>>   readlink:        0        0
+>>>>       read:        0        0
+>>>>      write:        0        0
+>>>>     create:        0        0
+>>>>      mkdir:        0        0
+>>>>    symlink:        0        0
+>>>>      mknod:        0        0
+>>>>     remove:        0        0
+>>>>      rmdir:        0        0
+>>>>     rename:        0        0
+>>>>       link:        0        0
+>>>>    readdir:        0        0
+>>>> readdirplus:        0        0
+>>>>     fsstat:        0      119
+>>>>     fsinfo:        0        0
+>>>>   pathconf:        0        0
+>>>>     commit:        0        0
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>>>> in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> -- 
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>>
+>>>
+>>>
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+>>> in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
