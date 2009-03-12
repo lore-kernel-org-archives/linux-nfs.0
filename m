@@ -1,125 +1,102 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/40] SUNRPC: Clean up static inline functions in svc_xprt.h
-Date: Thu, 12 Mar 2009 12:07:14 -0400
-Message-ID: <20090312160713.16019.56290.stgit@ingres.1015granger.net>
+Subject: [PATCH 08/40] NFS: Revert creation of IPv6 listeners for lockd and
+	NFSv4 callbacks
+Date: Thu, 12 Mar 2009 12:07:59 -0400
+Message-ID: <20090312160758.16019.97073.stgit@ingres.1015granger.net>
 References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:61304 "EHLO
+Received: from rcsinet13.oracle.com ([148.87.113.125]:62060 "EHLO
 	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753304AbZCLQIN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:13 -0400
+	with ESMTP id S1754843AbZCLQIp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:45 -0400
 In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  Enable the use of const arguments in higher level svc_ APIs
-by adding const to the arguments of the helper functions in svc_xprt.h
+We're about to convert over to using separate PF_INET and PF_INET6
+listeners, instead of a single PF_INET6 listener that also receives
+AF_INET requests and maps them to AF_INET6.
+
+Clear the way by removing the logic in lockd and the NFSv4 callback
+server that creates an AF_INET6 service listener.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |   46 ++++++++++++++++++++++-----------------
- 1 files changed, 26 insertions(+), 20 deletions(-)
+ fs/lockd/svc.c    |   13 +------------
+ fs/nfs/callback.c |   14 ++------------
+ 2 files changed, 3 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index c2aa8cd..ee21e8a 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -88,29 +88,32 @@ static inline void svc_xprt_get(struct svc_xprt *xprt)
- 	kref_get(&xprt->xpt_ref);
- }
- static inline void svc_xprt_set_local(struct svc_xprt *xprt,
--				      struct sockaddr *sa, int salen)
-+				      const struct sockaddr *sa,
-+				      const size_t salen)
- {
- 	memcpy(&xprt->xpt_local, sa, salen);
- 	xprt->xpt_locallen = salen;
- }
- static inline void svc_xprt_set_remote(struct svc_xprt *xprt,
--				       struct sockaddr *sa, int salen)
-+				       const struct sockaddr *sa,
-+				       const size_t salen)
- {
- 	memcpy(&xprt->xpt_remote, sa, salen);
- 	xprt->xpt_remotelen = salen;
- }
--static inline unsigned short svc_addr_port(struct sockaddr *sa)
-+static inline unsigned short svc_addr_port(const struct sockaddr *sa)
- {
--	unsigned short ret = 0;
-+	const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
-+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
-+
- 	switch (sa->sa_family) {
- 	case AF_INET:
--		ret = ntohs(((struct sockaddr_in *)sa)->sin_port);
--		break;
-+		return ntohs(sin->sin_port);
- 	case AF_INET6:
--		ret = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
--		break;
-+		return ntohs(sin6->sin6_port);
- 	}
--	return ret;
-+
-+	return 0;
- }
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index d309200..566932b 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -53,17 +53,6 @@ static struct svc_rqst		*nlmsvc_rqst;
+ unsigned long			nlmsvc_timeout;
  
- static inline int svc_addr_len(const struct sockaddr *sa)
-@@ -125,36 +128,39 @@ static inline int svc_addr_len(const struct sockaddr *sa)
- 	return -EAFNOSUPPORT;
- }
+ /*
+- * If the kernel has IPv6 support available, always listen for
+- * both AF_INET and AF_INET6 requests.
+- */
+-#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
+-	defined(CONFIG_SUNRPC_REGISTER_V4)
+-static const sa_family_t	nlmsvc_family = AF_INET6;
+-#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
+-static const sa_family_t	nlmsvc_family = AF_INET;
+-#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
+-
+-/*
+  * These can be set at insmod time (useful for NFS as root filesystem),
+  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
+  */
+@@ -211,7 +200,7 @@ static int create_lockd_listener(struct svc_serv *serv, char *name,
  
--static inline unsigned short svc_xprt_local_port(struct svc_xprt *xprt)
-+static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
+ 	xprt = svc_find_xprt(serv, name, 0, 0);
+ 	if (xprt == NULL)
+-		return svc_create_xprt(serv, name, nlmsvc_family,
++		return svc_create_xprt(serv, name, PF_INET,
+ 					port, SVC_SOCK_DEFAULTS);
+ 
+ 	svc_xprt_put(xprt);
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index ddf4b4a..0ef47df 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -41,16 +41,6 @@ unsigned short nfs_callback_tcpport;
+ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
+ 
+-/*
+- * If the kernel has IPv6 support available, always listen for
+- * both AF_INET and AF_INET6 requests.
+- */
+-#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+-static const sa_family_t	nfs_callback_family = AF_INET6;
+-#else
+-static const sa_family_t	nfs_callback_family = AF_INET;
+-#endif
+-
+ static int param_set_port(const char *val, struct kernel_param *kp)
  {
--	return svc_addr_port((struct sockaddr *)&xprt->xpt_local);
-+	return svc_addr_port((const struct sockaddr *)&xprt->xpt_local);
- }
+ 	char *endp;
+@@ -121,13 +111,13 @@ int nfs_callback_up(void)
+ 	if (!serv)
+ 		goto out_err;
  
--static inline unsigned short svc_xprt_remote_port(struct svc_xprt *xprt)
-+static inline unsigned short svc_xprt_remote_port(const struct svc_xprt *xprt)
- {
--	return svc_addr_port((struct sockaddr *)&xprt->xpt_remote);
-+	return svc_addr_port((const struct sockaddr *)&xprt->xpt_remote);
- }
+-	ret = svc_create_xprt(serv, "tcp", nfs_callback_family,
++	ret = svc_create_xprt(serv, "tcp", PF_INET,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_err;
+ 	nfs_callback_tcpport = ret;
+ 	dprintk("NFS: Callback listener port = %u (af %u)\n",
+-			nfs_callback_tcpport, nfs_callback_family);
++			nfs_callback_tcpport, PF_INET);
  
--static inline char *__svc_print_addr(struct sockaddr *addr,
--				     char *buf, size_t len)
-+static inline char *__svc_print_addr(const struct sockaddr *addr,
-+				     char *buf, const size_t len)
- {
-+	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
-+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
-+
- 	switch (addr->sa_family) {
- 	case AF_INET:
--		snprintf(buf, len, "%pI4, port=%u",
--			&((struct sockaddr_in *)addr)->sin_addr,
--			ntohs(((struct sockaddr_in *) addr)->sin_port));
-+		snprintf(buf, len, "%pI4, port=%u", &sin->sin_addr,
-+			ntohs(sin->sin_port));
- 		break;
- 
- 	case AF_INET6:
- 		snprintf(buf, len, "%pI6, port=%u",
--			 &((struct sockaddr_in6 *)addr)->sin6_addr,
--			ntohs(((struct sockaddr_in6 *) addr)->sin6_port));
-+			 &sin6->sin6_addr,
-+			ntohs(sin6->sin6_port));
- 		break;
- 
- 	default:
- 		snprintf(buf, len, "unknown address type: %d", addr->sa_family);
- 		break;
- 	}
-+
- 	return buf;
- }
- #endif /* SUNRPC_SVC_XPRT_H */
+ 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(nfs_callback_info.rqst)) {
 
