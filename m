@@ -1,119 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59740 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751069AbZCWV17 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Mar 2009 17:27:59 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LlrgZ-0006NP-Ra
-	for linux-nfs@vger.kernel.org; Tue, 24 Mar 2009 08:27:55 +1100
-Message-ID: <49C7FF2A.60405@shadlen.org>
-Date: Mon, 23 Mar 2009 14:29:14 -0700
-From: Maria McKinley <maria@shadlen.org>
-To: Paul Collins <paul@burly.ondioline.org>
-References: <49C43847.9080206@shadlen.org>
-	<874oxnllie.fsf@burly.wgtn.ondioline.org>
-In-Reply-To: <874oxnllie.fsf@burly.wgtn.ondioline.org>
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] problem with rpc.statd
-Content-Type: text/plain; charset="us-ascii"
+Received: from vps680.inmotionhosting.com ([74.124.198.230]:39311 "EHLO
+	vps680.inmotionhosting.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750809AbZCLVJt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 17:09:49 -0400
+Message-ID: <49B96C0F.3060405@temerity.us>
+Date: Thu, 12 Mar 2009 16:09:51 -0400
+From: Jim Callahan <callahan@temerity.us>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS and RPC queues
+References: <49B8186F.5070601@temerity.us> <1236809248.12697.44.camel@heimdal.trondhjem.org>
+In-Reply-To: <1236809248.12697.44.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Paul Collins wrote:
-> Maria McKinley <maria@shadlen.org> writes:
-> 
->> Things work well up until it is time to mount the file system from
->> fstab (ie, it mounts everything ro, makes it all the way through init 
->> and gives me a command prompt). The rw mount is not happening because 
->> rpc.statd never starts. If I try to start rpc.statd by hand, it 
->> complains that: Opening /var/run/rpc.statd.pid failed: Read-only file 
->> system. Since I am mounting the root directory over nfs, it makes sense 
->> for this file to be read-only until rpc.statd starts and  Is there any 
->> way I can start statd without a pid file until I get the root file 
->> system mounted rw? Or something else to try?
-> 
-> Try setting RAMRUN=yes in /etc/default/rcS, which will mount a tmpfs on
-> /var/run early in the boot process.  I think I read something about
-> defaulting this to yes being a release goal for squeeze, so there may be
-> lenny packages that won't like this.
-> 
+Trond Myklebust wrote:
+> Jim Callahan wrote:
+>   
+>> I'm trying to diagnose an NFS performance problem and need to know a bit 
+>> more about how the Linux NFS client works internally.  I've got a single 
+>> NFS client which is connected to a network appliance file server via 1Gb 
+>>     
+>                                      NetApp ?
+>   
+Actually, not.   Its one of the other supposedly high performance 
+commercial products though...  I'd rather not say which at this time in 
+the interest of encouraging their help resolving this.
 
-Thank you so much, that got rpc.statd started! NFS is still not behaving 
-quite right, unfortunately. The /etc/fstab file:
+>> ...
+>>
+>> Is the RPC queue used by NFS processed in a serial fashion for each 
+>> mount to a unique IP address?  One possible explanation is that the 
+>> GETATTR requests are simply waiting in line behind READ/WRITES in the 
+>> one network case and that explains the drop in performance.  So does 
+>> using a different IP address for the second mount create a second RPC 
+>> queue which is processed in an asynchronous manner?  That might explain 
+>> the lack of interaction between the GETATTR's and READ/WRITES in our 
+>> second test...
+>>     
+>
+> Try increasing the value of the sunrpc.tcp_slot_table_entries sysctl
+> entry on the Linux client. That sysctl controls the maximum number of
+> simultaneous RPC messages that are allowed on the TCP connection.
+>
+> The default is 16, but it can be increased to 128. Just make sure that
+> you umount all NFS partitions before changing it. (Doing 'mount
+> -oremount' won't work...)
+>
+> Trond
+>   
+Thanks for clearing up what "sunrpc.tcp_slot_table_entries" meant.   Its 
+odd however that even with a default size of 16 we should still see 
+contention between only two OS level processes generating NFS requests 
+though.  Shouldn't that only be using 2 of the 16 entries?  Even our 
+worse case would only generate 17 processes running in parallel.  Or do 
+I misunderstand the granularity?   If I have an NFS rsize/wsize of 32k 
+and perform a C read()/write() of 64k, this will get chunked into two 
+32k READ/WRITE NFS requests, correct?  But do both of these low level 
+requests from a single process and read()/write() call get run in 
+parallel if there are at least 2 slots in the RPC table available?  In 
+other words, is there an interaction between the rsize/wsize and the 
+number of slots in the RPC table that are used for a single C 
+read()/write()?  Would increasing the rsize/wsize for files larger than 
+this size lead to less utilization of the RPC table and therefore less 
+contention?
 
-# /etc/fstab: static file system information.
-#
-# <file system> <mount point>   <type>  <options>    <dump>     <pass>
-10.208.108.18:/tftpboot/oscar  /  nfs 
-rw,rsize=8192,wsize=8192,nfsvers=3       0       0
-proc            /proc           proc    defaults        0       0
-10.208.108.18:/usr  /usr  nfs  rw,rsize=8192,wsize=8192,nfsvers=3 
-0       0
-/dev/fd0        /floppy         auto    defaults,user,noauto    0       0
-/dev/cdrom      /cdrom          iso9660 defaults,ro,user,noauto 0       0
-10.208.108.12:/home      /home   nfs 
-rw,rsize=8192,wsize=8192,nfsvers=3,nosuid,nodev,async 0       0
-10.208.108.12:/lab       /lab    nfs 
-rw,rsize=8192,wsize=8192,nfsvers=3,nosuid,nodev 0       0
+Also, can someone please answer whether there is an RPC request table 
+for each NFS mount to a different IP address or one shared table for all 
+mounts?  I'd like to have a better understanding of why running our 
+GETATTR requests down a different mount would eliminate the contention 
+with the READ/WRITE requests going down the other mount.
 
-But, this is not how things are being mounted:
-root@oscar:/# df -h
-Filesystem            Size  Used Avail Use% Mounted on
-/dev/hda1              19G  854M   17G   5% /
-tmpfs                 1.9G     0  1.9G   0% /lib/init/rw
-udev                   10M   64K   10M   1% /dev
-tmpfs                 1.9G     0  1.9G   0% /dev/shm
-df: `/tftpboot': No such file or directory
-/dev/hda6              19G  854M   17G   5% /tmp
-/dev/hda7              33G   11G   21G  34% /usr
-/dev/hda2              19G  854M   17G   5% /var
-rpc_pipefs             19G  854M   17G   5% /var/lib/nfs/rpc_pipefs
-10.208.108.12:/lab     19G  854M   17G   5% /lab
-10.208.108.12:/home    19G  854M   17G   5% /home
+We'll definitely be bumping up the "sunrpc.tcp_slot_table_entries" to 
+128 and re-running our tests though.  Thanks for the help so far...
 
-For some reason, it looks like things are being mounted locally, even 
-though they cannot be (no local hard drive). The /lab and /home 
-directories are actually not being mounted, they are empty. And all of 
-the directories appear to be read-only.
-
-If I try to remount, I get this:
-root@oscar:/# mount -a
-can't create lock file /etc/mtab~2820: Read-only file system (use -n 
-flag to override)
-root@oscar:/# mount -an
-mount.nfs: /usr is busy or already mounted
-
-It does not appear to even try to remount /lab or /home, and /  is still 
-read only, even if I try to mount it by hand:
-
-root@oscar:/# mount.nfs 10.208.108.18:/tftpboot/oscar / -v -rw -n -o 
-rsize=8192,wsize=8192
-mount.nfs: trying 10.208.108.18 prog 100003 vers 3 prot TCP port 2049
-mount.nfs: trying 10.208.108.18 prog 100005 vers 3 prot UDP port 44350
-10.208.108.18:/tftpboot/oscar on / type nfs (rsize=8192,wsize=8192)
-root@oscar:/# touch /tmp/test
-touch: cannot touch `/tmp/test': Read-only file system
-
-Any ideas would be appreciated.
-
-cheers,
-maria
-
-
-
-------------------------------------------------------------------------------
-Apps built with the Adobe(R) Flex(R) framework and Flex Builder(TM) are
-powering Web 2.0 with engaging, cross-platform capabilities. Quickly and
-easily build your RIAs with Flex Builder, the Eclipse(TM)based development
-software that enables intelligent coding and step-through debugging.
-Download the free 60 day trial. http://p.sf.net/sfu/www-adobe-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-- 
+Jim Callahan - President - Temerity Software <www.temerity.us>
