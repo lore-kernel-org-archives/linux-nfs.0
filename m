@@ -1,181 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us01smtp3.synopsys.com ([198.182.44.81]:52369 "EHLO
-	hermes.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751873AbZCCS6p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Mar 2009 13:58:45 -0500
-From: Qiuyang Wu <Qiuyang.Wu@synopsys.com>
-To: Jeff Moyer <jmoyer@redhat.com>, Qiuyang Wu <Qiuyang.Wu@synopsys.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Date: Tue, 3 Mar 2009 10:47:24 -0800
-Subject: RE: pread/pwrite bug on linux?
-Message-ID: <293BC70BB130E648A6631DB2F05B6E10019D6B277E@US01WXMBX1.internal.synopsys.com>
-References: <b9ec419f0903021120g62814b6embe8eeaf354f8b535@mail.gmail.com>
-	<293BC70BB130E648A6631DB2F05B6E10019D6B224C@US01WXMBX1.internal.synopsys.com>
- <x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
-In-Reply-To: <x491vtebhq2.fsf@segfault.boston.devel.redhat.com>
-Content-Type: multipart/mixed;
-	boundary="_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_"
+Received: from relay3.sgi.com ([192.48.171.31]:52179 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755472AbZCLQPY (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 12 Mar 2009 12:15:24 -0400
+Message-ID: <49B9360F.9060903@sgi.com>
+Date: Fri, 13 Mar 2009 03:19:27 +1100
+From: Greg Banks <gnb@sgi.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Kevin Constantine <Kevin.Constantine@disneyanimation.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: nfsstat --sleep=#
+References: <49B86744.6060105@disney.com> <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com>
+In-Reply-To: <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-Hi Jeff,
-
-Attached the sample program. Should be able to compile as-is.
-
-Let me know your findings or need additional info.
-
-Thanks,
-Qiuyang
-
------Original Message-----
-From: Jeff Moyer [mailto:jmoyer@redhat.com]
-Sent: Tuesday, March 03, 2009 10:10 AM
-To: Qiuyang Wu
-Cc: linux-nfs@vger.kernel.org; linux-fsdevel@vger.kernel.org
-Subject: Re: pread/pwrite bug on linux?
-
-Qiuyang Wu <Qiuyang.Wu@synopsys.com> writes:
-
-> Hi All,
+Chuck Lever wrote:
+> Hi Kevin-
 >
-> Are there any known bugs with pread/pwrite on RHEL Linux when the disk
-> partition is close to full?
->
-> Reduced a complex application fatal down to a simple program just
-> opens a regular file and performs 1M sequential pwrite() of size 8KB
-> blocks; at every 100th write, does a pread() to load the very first
-> 8KB block and validate its content still matching what was originally
-> written.
+> man watch(1)
+Watch + today's nfsstat isn't smart enough to tell you deltas, or do
+rate conversion.  However...
 
-Could you attach your test program, please?
+http://oss.sgi.com/projects/pcp/
+ 
+PCP includes a gui tool which gives you rate conversion and graphical
+presentation with history and automatic scaling of any metrics.  Plus
+you can do archive recording and playback, and remote access. Supported
+metrics include the existing server stats (but not the client-side
+per-server stats).
 
-> BEHAVIOR: pwrite() works for many iterations, then pread() suddenly
-> returns data of the requested size but filled with 0's, and strerror
-> shows errno=3D"No such file or directory", condition
->       if(size_to_read !=3D pread(fd, buf, size_to_read, ...)) ...
-> is not triggered and application has to check errno immediately after
-> every call to pread.
+In the absence of a useful tool like PCP, some time ago I did write a
+patch add some of those features (rate conversion in particular) to
+nfsstat.  The patch gives nfsstat a mode where it behaves like "vmstat
+1" or "iostat 1", i.e. textually reports deltas or rates continuously in
+a loop with a controllable interval.  I dug it up earlier today but
+unfortunately it won't apply anymore (due to changes for the
+implementation of the --sleep mode).  I won't have time to work on it
+just now, but I can post it if anyone cares to mine it for ideas.
 
-The value of errno is undefined if the pread call did not return -1.
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
 
-Cheers,
-Jeff
-
---_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_
-Content-Type: text/plain; name="io_test.c"
-Content-Description: io_test.c
-Content-Disposition: attachment; filename="io_test.c"; size=5798;
-	creation-date="Tue, 03 Mar 2009 10:43:57 GMT";
-	modification-date="Tue, 03 Mar 2009 10:43:57 GMT"
-Content-Transfer-Encoding: base64
-
-Ci8qKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKioqKioqKioKCiAgQUJTVFJBQ1Q6ICAgU2ltcGxlIHByb2dyYW0gdG8g
-dGVzdCBiZWhhdmlvciBvZiBwd3JpdGUvcHJlYWQgY2FsbHMgdW5kZXIKICAgICAgICAgICAgICB0
-aGUgY29uZGl0aW9uIG9mIGluc3VmZmljaWVudCBkaXNrIHNwYWNlLiBFeHBlY3QgdG8gdHJpZ2dl
-cgogICAgICAgICAgICAgIGVycm9yIHdoZW4gcHVzaGluZyBkYXRhIHRvIGRpc2sgd2l0aCBwd3Jp
-dGUsIGluc3RlYWQgb2YgZmFpbGluZwogICAgICAgICAgICAgIG9uIHByZWFkLCB3aGljaCBpbXBs
-aWVzIGRhdGEgbG9zZS4KCiAgICAgICAgICAgICAgVGhlIHByb2dyYW0gZG9lcyB0aGUgZm9sbG93
-aW5nIC0KICAgICAgICAgICAgICAgIC0gcHdyaXRlIHVwIHRvIDFNIHNpemUgOEtCIGNodW5rcyAo
-dG90YWwgfjhHQiBpZiBmaW5pc2hlcykKICAgICAgICAgICAgICAgIC0gVmVyeSBmaXJzdCA4S0Ig
-Y2h1bmsgaXMgc3BlY2lhbGx5IGZpbGxlZCB3aXRoIGludCB2YWx1ZSAxMy4KICAgICAgICAgICAg
-ICAgIC0gYXQgZXZlcnkgMTAwdGggd3JpdGUsIGRvZXMgcHJlYWQgdG8gbG9hZCB0aGUgZmlyc3Qg
-OEtCCiAgICAgICAgICAgICAgICAgIGNodW5rIGFuZCB2YWxpZGF0ZSAocGFydCBvZikgaXRzIGNv
-bnRlbnQuCiAgICAgICAgICAgICAgICAtIGJlZm9yZSBhbmQgYWZ0ZXIgZWFjaCBwcmVhZCwgYWxz
-byB1c2UgZnN0YXQgdG8gc2Fubml0eQogICAgICAgICAgICAgICAgICBjaGVjayBwcm9ncmFtIGlz
-IGluIHN5bmMgd2l0aCB0aGUgZmlsZS4gICAgIAoKICAgICAgICAgICAgICBUbyBjb21waWxlIHdp
-dGggR0NDIChlLmcuIGdjYy00LjIuMikgLQogICAgICAgICAgICAgICAgPmdjYyBpb190ZXN0LmMK
-CiAgICAgICAgICAgICAgVG8gcnVuOgogICAgICAgICAgICAgICAgVGhlIHByb2dyYW0gcmVxdWly
-ZXMgb25lIGFyZyB3aGljaCBpcyB0aGUgcGF0aCB0byBhIGRpcmVjdG9yeQogICAgICAgICAgICAg
-ICAgZm9yIGNyZWF0aW5nIGEgcmVndWxhciBmaWxlIGZvciB3cml0ZS9yZWFkIHRlc3RpbmcuIEV4
-YW1wbGUgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICA+
-YS5vdXQgL3BhdGgvdG8vd3JpdGFibGUvZGlyCgogICAgICAgICAgICAgIFRvIGRlbW9uc3RyYXRl
-IHRoZSBwcm9ibGVtCiAgICAgICAgICAgICAgICAgQ2hvb3NlIGEgZGlzayBwYXJ0aXRpb24gdGhh
-dCBpcyBhbG1vc3QgZnVsbCwgZm9yIGV4YW1wbGUsCiAgICAgICAgICAgICAgICAgdGhlIGZvbGxv
-d2luZyB3aXRoIH4xR0IgYXZhaWxhYmxlIHNwYWNlIC0KCiAgICAgICAgICAgICAgICAgPiBjZCAv
-cmVtb3RlL3Rlc3Rkc2svcXd1CiAgICAgICAgICAgICAgICAgPiBkZiAtayAuCiAgICAgICAgICAg
-ICAgICBGaWxlc3lzdGVtICAgICAgICAgICAxSy1ibG9ja3MgICAgICBVc2VkIEF2YWlsYWJsZSBV
-c2UlIE1vdW50ZWQgb24KICAgICAgICAgICAgICAgIGVtY25zMjAyOi90ZXN0ZHNrICAgIDMxODAz
-MzQwOCAzMTY3NDA1NDQgICAxMjkyODY0IDEwMCUgL3JlbW90ZS90ZXN0ZHNrCiAgICAgICAgICAg
-ICAgICAgPiBhLm91dCAvcmVtb3RlL3Rlc3Rkc2svcXd1CgoKICBISVNUT1JZOgkKICBGZWIgMjQg
-MjAwOSAtIFFpdXlhbmcgV3UgOiBDcmVhdGVkLgoKKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqLwoKI2lu
-Y2x1ZGUgPGVycm5vLmg+CiNpbmNsdWRlIDxzdGRpby5oPgojaW5jbHVkZSA8dW5pc3RkLmg+CiNp
-bmNsdWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPGZjbnRsLmg+CiNpbmNsdWRlIDxzdHJpbmcuaD4K
-I2luY2x1ZGUgPHN5cy9zdGF0Lmg+CgojZGVmaW5lIEZJTEVfTkFNRSAgICJyd190ZXN0X2ZpbGUi
-CiNkZWZpbmUgVE9UQUxfV1JJVEUgMTAwMDAwMCAvLyB0b3RhbCBudW1iZXIgb2YgcHdyaXRlcwoj
-ZGVmaW5lIENIVU5LX1NJWkUgIDgxOTIgICAgLy8gYnVmIHNpemUgcGVyIHdyaXRlCiNkZWZpbmUg
-Q01QX1NJWkUgICAgMTAgICAgICAvLyBjb21wYXJlIHRoZSBmaXJzdCAxMCBieXRlcwojZGVmaW5l
-IFJFQURfSU5URVJWIDEwMCAgICAgLy8gcmVhZCBhdCBldmVyeSAxMDAgd3JpdGUKCmNoYXIqIGNo
-ZWNrX2FyZ3MoY2hhciAqZGlyKTsKaW50ICAgcHdyaXRlX3ByZWFkX3Rlc3QoY2hhciAqZm5hbWUp
-Owp2b2lkICBzdGF0X2ZpbGUoY2hhciogb3AsIGludCBmZCwgc2l6ZV90IHNpemUsIG9mZl90IG9m
-ZnNldCk7CmludCAgIGNoZWNrX3ByZWFkKGludCBmZCwgY2hhciogZm5hbWUsIGNoYXIqIGJ1Ziwg
-Y2hhciogcmVmYnVmKTsKCmludCBtYWluKGludCBhcmdjLCBjaGFyKiAqYXJndikKewogIGNoYXIg
-KmZ1bGxfZm5hbWU9TlVMTDsKICAKICBpZihhcmdjICE9IDIpIHsKICAgIHByaW50ZigiVXNhZ2U6
-ICVzIGRpcl9wYXRoIFxuIiwgYXJndlswXSk7CiAgICBleGl0KDEpOwogIH0KCiAgaWYoKGZ1bGxf
-Zm5hbWUgPSBjaGVja19hcmdzKGFyZ3ZbMV0pKSkgewogICAgcHdyaXRlX3ByZWFkX3Rlc3QoZnVs
-bF9mbmFtZSk7CiAgICBmcmVlKGZ1bGxfZm5hbWUpOwogIH0KCiAgZXhpdCgwKTsKfQoKaW50IHB3
-cml0ZV9wcmVhZF90ZXN0KGNoYXIgKmZuYW1lKSB7CiAgaW50ICAgb2s9MTsKICBpbnQgICBmZD0t
-MTsKICBpbnQgICB3X2NvdW50PTA7CiAgb2ZmX3QgY3VyX29mZnNldD0wOwogIGNoYXIgICpidWY9
-TlVMTDsKICBjaGFyICAqcmVmYnVmPU5VTEw7ICAKICAKICBmZCA9IG9wZW4oZm5hbWUsIChPX0NS
-RUFUfE9fUkRXUiksIChTX0lSVVNSfFNfSVdVU1IpICkgOwoKICBpZihmZD09LTEpIHsKICAgIHBy
-aW50ZigiRXJyb3Igb3BlbmluZyAnJXMnIGZvciB3cml0aW5nLlxuIiwgZm5hbWUpOwogICAgZXhp
-dCgtMSk7CiAgfQoKICBidWYgPSBtYWxsb2MoQ0hVTktfU0laRSk7CiAgcmVmYnVmID0gbWFsbG9j
-KENIVU5LX1NJWkUpOwogIG1lbXNldChidWYsIDEzLCBDSFVOS19TSVpFKTsKICBtZW1zZXQocmVm
-YnVmLCAxMywgQ0hVTktfU0laRSk7CgogIHdoaWxlKHdfY291bnQ8VE9UQUxfV1JJVEUpIHsKICAg
-ICsrd19jb3VudDsKICAgIGlmKENIVU5LX1NJWkUgIT0gcHdyaXRlKGZkLCBidWYsIENIVU5LX1NJ
-WkUsIGN1cl9vZmZzZXQpKSB7CiAgICAgIC8qIEp1c3QgIHByaW50IGVycm5vIGFuZCBiYWlsIG91
-dCwgYSBmaWxsZWQgZGlzayBpcyBleHBlY3RlZCBhdCBzb21lIHBvaW50ICovCiAgICAgIHByaW50
-ZigiRXJyb3IgKCVzKSB3cml0aW5nIHRvIGZpbGUgJyVzJy5cbiIsIHN0cmVycm9yKGVycm5vKSwg
-Zm5hbWUpOwogICAgICBvayA9IDA7CiAgICAgIGJyZWFrOyAgCiAgICB9CiAgICAKICAgIGlmKDA9
-PSh3X2NvdW50JVJFQURfSU5URVJWKSkgewogICAgICBwcmludGYoIndyaXRlcz0lOWQgOjoiLCB3
-X2NvdW50KTsKICAgICAgc3RhdF9maWxlKCJhZnRlci1QV1JJVEUiLCBmZCwgQ0hVTktfU0laRSwg
-Y3VyX29mZnNldCk7CiAgICAgIG9rID0gY2hlY2tfcHJlYWQoZmQsIGZuYW1lLCBidWYsIHJlZmJ1
-Zik7CiAgICAgIGlmKCFvaykgYnJlYWs7CiAgICB9CiAgICAKICAgIGN1cl9vZmZzZXQgKz0gQ0hV
-TktfU0laRTsgLy8gaW5jcmVtZW50IGN1cl9vZmZzZXQKICAgIG1lbXNldChidWYsIChpbnQpKHdf
-Y291bnQlMTApLCBDSFVOS19TSVpFKTsgLy8gZmlsbCBidWYgd2l0aCBzb21lIGRhdGEgZm9yIG5l
-eHQgcHdyaXRlCiAgfQogIAogIGZyZWUoYnVmKTsKICBmcmVlKHJlZmJ1Zik7CiAgY2xvc2UoZmQp
-OwogIAogIHJldHVybiBvazsKfQoKaW50IGNoZWNrX3ByZWFkKGludCBmZCwgY2hhciogZm5hbWUs
-IGNoYXIqIGJ1ZiwgY2hhciogcmVmYnVmKQp7CiAgaW50IG9rPTE7CiAgCiAgcHJpbnRmKCJyZWFk
-L2NoZWNrIGZpcnN0IGNodW5rIC4uLlxuIik7ICAgICAgICAKICAKICBtZW1zZXQoYnVmLCAtMSwg
-Q0hVTktfU0laRSk7IC8vcHJlc3QgdGhlIGJ1ZiB0byBzZW50aW5lbCB2YWx1ZXMKICAKICBpZihD
-SFVOS19TSVpFICE9IHByZWFkKGZkLCBidWYsIENIVU5LX1NJWkUsIDApKSB7CiAgICAvKiBQcm9i
-bGVtIGJhaWxpbmcgb3V0IG9uIHByZWFkLCBwcmludHMgZXJybm8gKi8KICAgIHByaW50ZigiRXJy
-b3IgKCVzKSByZWFkaW5nIGZyb20gZmlsZSAnJXMnLlxuIiwgc3RyZXJyb3IoZXJybm8pLCBmbmFt
-ZSk7CiAgICByZXR1cm4gMDsKICB9IGVsc2UgewogICAgc3RhdF9maWxlKCJiZWZvcmUtUFJFQUQi
-LCBmZCwgQ0hVTktfU0laRSwgMCk7CiAgICBpZihtZW1jbXAoYnVmLCByZWZidWYsIENNUF9TSVpF
-KSkgewogICAgICAvKgogICAgICAqKiBrZXkgcHJvYmxlbTogcHJlYWQgYXBwZWFycyBzdWNjZXNz
-ZnVsIGJ1dCBidWYgY29udGFpbiBjb3JydXB0ZWQgZGF0YQogICAgICAqLwogICAgICBpbnQgaT0w
-OwogICAgICBwcmludGYoIi4uLiBkYXRhIEJBRCEgKGVycm5vPSVzKVxuIiwgc3RyZXJyb3IoZXJy
-bm8pKTsKICAgICAgZm9yKGk9MDsgaTxDTVBfU0laRTsgKytpKSB7CiAgICAgICAgcHJpbnRmKCJi
-dWZbJWRdPSVkIHJlZlslZF09JWRcbiIsIGksIGJ1ZltpXSwgaSwgcmVmYnVmW2ldKTsgICAgICAg
-ICAgICAgIAogICAgICB9CiAgICAgIHN0YXRfZmlsZSgiYWZ0ZXItUFJFQUQiLCBmZCwgQ0hVTktf
-U0laRSwgMCk7CiAgICAgIG9rID0gMDsKICAgIH0gZWxzZSB7CiAgICAgIHByaW50ZigiLi4uIGRh
-dGEgT0shLlxuIik7ICAgICAgICAgICAgICAgICAKICAgIH0KICB9CiAgZmZsdXNoKHN0ZG91dCk7
-CiAgcmV0dXJuIG9rOwp9Cgp2b2lkIHN0YXRfZmlsZShjaGFyKiBvcCwgaW50IGZkLCBzaXplX3Qg
-c2l6ZSwgb2ZmX3Qgb2Zmc2V0KQp7ICAKICBzdHJ1Y3Qgc3RhdCBzdGF0czsKICAKICBpZiAoIC0x
-ID09IGZzdGF0KGZkLCAmc3RhdHMpICkgewogICAgcHJpbnRmKCIlczo6ZnN0YXQgZmFpbGVkIVxu
-Iiwgb3ApOwogIH0gZWxzZSB7CiAgICBwcmludGYoIlx0JXM6OiBmZD0lZCwgZnN0YXQuc3o9JWxk
-LCBvZmYvc3o9JWxkLyVsZCA9PiAlbGQhXG4iLAogICAgICAgICAgIG9wLCAoaW50KWZkLCAobG9u
-ZylzdGF0cy5zdF9zaXplLAogICAgICAgICAgIChsb25nKW9mZnNldCwgKGxvbmcpc2l6ZSwgKGxv
-bmcpb2Zmc2V0Kyhsb25nKXNpemUpOwogIH0KICBmZmx1c2goc3Rkb3V0KTsKfQoKY2hhciogY2hl
-Y2tfYXJncyhjaGFyICpkaXIpIHsKICBpbnQgb2s9MTsKICBpbnQgbGVuPTA7CiAgc3RydWN0IHN0
-YXQgc3RhdGJ1ZjsKICBjaGFyICpmdWxsX2ZuYW1lPU5VTEw7CiAgCiAgaWYoc3RhdChkaXIsICZz
-dGF0YnVmKT09LTEpIHsKICAgIHBlcnJvcigic3RhdCBjYWxsIGZhaWxlZCFcbiIpOwogICAgb2sg
-PSAwOwogIH0gZWxzZSB7CiAgICBvayA9IChTX0lTRElSKHN0YXRidWYuc3RfbW9kZSkgJiYgMD09
-YWNjZXNzKGRpciwgV19PSykpOwogIH0KCiAgaWYoIW9rKSB7CiAgICBwcmludGYoIkVycm9yOiBk
-aXJlY3RvcnkgJyVzJyBub3QgYWNjZXNzaWJsZVxuIiwgZGlyKTsKICAgIHJldHVybiBOVUxMOwog
-IH0KICAKICBsZW4gPSBzdHJsZW4oZGlyKSArIHN0cmxlbihGSUxFX05BTUUpICsgMjsKICBmdWxs
-X2ZuYW1lID0gbWFsbG9jKGxlbik7CiAgbWVtc2V0KGZ1bGxfZm5hbWUsIDAsIGxlbik7CiAgc3By
-aW50ZihmdWxsX2ZuYW1lLCAiJXMvJXMiLCBkaXIsIEZJTEVfTkFNRSk7CgogIGlmKGFjY2Vzcyhm
-dWxsX2ZuYW1lLCBGX09LKT09MCkgewogICAgcHJpbnRmKCJFcnJvcjogZmlsZSAnJXMnIGFscmVh
-ZHkgZXhpc3RzLlxuIiwgZnVsbF9mbmFtZSk7CiAgICBmcmVlKGZ1bGxfZm5hbWUpOwogICAgcmV0
-dXJuIE5VTEw7CiAgfQoKICByZXR1cm4gZnVsbF9mbmFtZTsgIAp9Cgo=
-
---_002_293BC70BB130E648A6631DB2F05B6E10019D6B277EUS01WXMBX1int_--
