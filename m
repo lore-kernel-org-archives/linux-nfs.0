@@ -1,106 +1,103 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/40] SUNRPC: Clean up address type casts in
-	rpcb_v4_register()
-Date: Thu, 12 Mar 2009 12:08:29 -0400
-Message-ID: <20090312160829.16019.30071.stgit@ingres.1015granger.net>
-References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org, trond.myklebust@fys.uio.no
+Subject: Re: nfsstat --sleep=#
+Date: Thu, 12 Mar 2009 12:08:57 -0400
+Message-ID: <65B488F7-A902-4126-8E05-65622991D78C@oracle.com>
+References: <49B86744.6060105@disney.com> <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com> <20090312155055.GB2081@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:25180 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:25183 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755132AbZCLQJO (ORCPT
+	with ESMTP id S1756817AbZCLQJO (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:14 -0400
-In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+In-Reply-To: <20090312155055.GB2081@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Simplify rpcb_v4_register() and its helpers by moving the
-details of sockaddr type casting to rpcb_v4_register()'s helper
-functions.
+On Mar 12, 2009, at Mar 12, 2009, 11:50 AM, J. Bruce Fields wrote:
+> On Thu, Mar 12, 2009 at 10:00:34AM -0400, Chuck Lever wrote:
+>> Hi Kevin-
+>>
+>> man watch(1)
+>
+> What would you watch?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+For example:
 
- net/sunrpc/rpcb_clnt.c |   26 ++++++++++++--------------
- 1 files changed, 12 insertions(+), 14 deletions(-)
+   watch -n3 nfsstat -c
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 0e9150d..317eb8a 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -170,7 +170,7 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
- 	return rpc_create(&args);
- }
- 
--static int rpcb_register_call(u32 version, struct rpc_message *msg)
-+static int rpcb_register_call(const u32 version, struct rpc_message *msg)
- {
- 	struct sockaddr *addr = (struct sockaddr *)&rpcb_inaddr_loopback;
- 	size_t addrlen = sizeof(rpcb_inaddr_loopback);
-@@ -255,17 +255,17 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- /*
-  * Fill in AF_INET family-specific arguments to register
-  */
--static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
-+static int rpcb_register_netid4(const struct sockaddr *sap,
- 				struct rpc_message *msg)
- {
-+	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
--	unsigned short port = ntohs(address_to_register->sin_port);
-+	unsigned short port = ntohs(sin->sin_port);
- 	char buf[32];
- 
- 	/* Construct AF_INET universal address */
- 	snprintf(buf, sizeof(buf), "%pI4.%u.%u",
--		 &address_to_register->sin_addr.s_addr,
--		 port >> 8, port & 0xff);
-+		 &sin->sin_addr.s_addr, port >> 8, port & 0xff);
- 	map->r_addr = buf;
- 
- 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
-@@ -283,21 +283,21 @@ static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
- /*
-  * Fill in AF_INET6 family-specific arguments to register
-  */
--static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
-+static int rpcb_register_netid6(const struct sockaddr *sap,
- 				struct rpc_message *msg)
- {
-+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
--	unsigned short port = ntohs(address_to_register->sin6_port);
-+	unsigned short port = ntohs(sin6->sin6_port);
- 	char buf[64];
- 
- 	/* Construct AF_INET6 universal address */
--	if (ipv6_addr_any(&address_to_register->sin6_addr))
-+	if (ipv6_addr_any(&sin6->sin6_addr))
- 		snprintf(buf, sizeof(buf), "::.%u.%u",
- 				port >> 8, port & 0xff);
- 	else
- 		snprintf(buf, sizeof(buf), "%pI6.%u.%u",
--			 &address_to_register->sin6_addr,
--			 port >> 8, port & 0xff);
-+			 &sin6->sin6_addr, port >> 8, port & 0xff);
- 	map->r_addr = buf;
- 
- 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
-@@ -369,11 +369,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 
- 	switch (address->sa_family) {
- 	case AF_INET:
--		return rpcb_register_netid4((struct sockaddr_in *)address,
--					    &msg);
-+		return rpcb_register_netid4(address, &msg);
- 	case AF_INET6:
--		return rpcb_register_netid6((struct sockaddr_in6 *)address,
--					    &msg);
-+		return rpcb_register_netid6(address, &msg);
- 	}
- 
- 	return -EAFNOSUPPORT;
+You can also use the "-d" option to highlight the differences between  
+the current sample and the previous sample.
+
+> --b.
+>
+>>
+>> On Mar 11, 2009, at Mar 11, 2009, 9:37 PM, Kevin Constantine wrote:
+>>
+>>> I'd really like to have a way to output the nfsstat counters at
+>>> regular intervals (every 3 seconds) where the output is the  
+>>> difference
+>>> between 3 seconds ago and now.  Frequently I'll run a test and  
+>>> want to
+>>> watch the nfs call profile throughout the course of the test.
+>>>
+>>> Does something like this already exist?
+>>> Are there objections to seeing a feature like this?
+>>>
+>>> I'm thinking something like:
+>>> nfsstat --sleep=1
+>>>
+>>> nfs v3 call:   Server   Client
+>>>      total:        0     3476
+>>>       null:        0        0
+>>>    getattr:        0     1679
+>>>    setattr:        0        0
+>>>     lookup:        0      839
+>>>     access:        0      839
+>>>   readlink:        0        0
+>>>       read:        0        0
+>>>      write:        0        0
+>>>     create:        0        0
+>>>      mkdir:        0        0
+>>>    symlink:        0        0
+>>>      mknod:        0        0
+>>>     remove:        0        0
+>>>      rmdir:        0        0
+>>>     rename:        0        0
+>>>       link:        0        0
+>>>    readdir:        0        0
+>>> readdirplus:        0        0
+>>>     fsstat:        0      119
+>>>     fsinfo:        0        0
+>>>   pathconf:        0        0
+>>>     commit:        0        0
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>>> in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
