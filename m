@@ -1,102 +1,106 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/40] NFS: Revert creation of IPv6 listeners for lockd and
-	NFSv4 callbacks
-Date: Thu, 12 Mar 2009 12:07:59 -0400
-Message-ID: <20090312160758.16019.97073.stgit@ingres.1015granger.net>
+Subject: [PATCH 12/40] SUNRPC: Clean up address type casts in
+	rpcb_v4_register()
+Date: Thu, 12 Mar 2009 12:08:29 -0400
+Message-ID: <20090312160829.16019.30071.stgit@ingres.1015granger.net>
 References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:62060 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754843AbZCLQIp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:45 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:25180 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755132AbZCLQJO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:14 -0400
 In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We're about to convert over to using separate PF_INET and PF_INET6
-listeners, instead of a single PF_INET6 listener that also receives
-AF_INET requests and maps them to AF_INET6.
-
-Clear the way by removing the logic in lockd and the NFSv4 callback
-server that creates an AF_INET6 service listener.
+Clean up: Simplify rpcb_v4_register() and its helpers by moving the
+details of sockaddr type casting to rpcb_v4_register()'s helper
+functions.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/svc.c    |   13 +------------
- fs/nfs/callback.c |   14 ++------------
- 2 files changed, 3 insertions(+), 24 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   26 ++++++++++++--------------
+ 1 files changed, 12 insertions(+), 14 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index d309200..566932b 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -53,17 +53,6 @@ static struct svc_rqst		*nlmsvc_rqst;
- unsigned long			nlmsvc_timeout;
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 0e9150d..317eb8a 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -170,7 +170,7 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+ 	return rpc_create(&args);
+ }
  
- /*
-- * If the kernel has IPv6 support available, always listen for
-- * both AF_INET and AF_INET6 requests.
-- */
--#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
--	defined(CONFIG_SUNRPC_REGISTER_V4)
--static const sa_family_t	nlmsvc_family = AF_INET6;
--#else	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
--static const sa_family_t	nlmsvc_family = AF_INET;
--#endif	/* (CONFIG_IPV6 || CONFIG_IPV6_MODULE) && CONFIG_SUNRPC_REGISTER_V4 */
--
--/*
-  * These can be set at insmod time (useful for NFS as root filesystem),
-  * and also changed through the sysctl interface.  -- Jamie Lokier, Aug 2003
-  */
-@@ -211,7 +200,7 @@ static int create_lockd_listener(struct svc_serv *serv, char *name,
- 
- 	xprt = svc_find_xprt(serv, name, 0, 0);
- 	if (xprt == NULL)
--		return svc_create_xprt(serv, name, nlmsvc_family,
-+		return svc_create_xprt(serv, name, PF_INET,
- 					port, SVC_SOCK_DEFAULTS);
- 
- 	svc_xprt_put(xprt);
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index ddf4b4a..0ef47df 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -41,16 +41,6 @@ unsigned short nfs_callback_tcpport;
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
- 
--/*
-- * If the kernel has IPv6 support available, always listen for
-- * both AF_INET and AF_INET6 requests.
-- */
--#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
--static const sa_family_t	nfs_callback_family = AF_INET6;
--#else
--static const sa_family_t	nfs_callback_family = AF_INET;
--#endif
--
- static int param_set_port(const char *val, struct kernel_param *kp)
+-static int rpcb_register_call(u32 version, struct rpc_message *msg)
++static int rpcb_register_call(const u32 version, struct rpc_message *msg)
  {
- 	char *endp;
-@@ -121,13 +111,13 @@ int nfs_callback_up(void)
- 	if (!serv)
- 		goto out_err;
+ 	struct sockaddr *addr = (struct sockaddr *)&rpcb_inaddr_loopback;
+ 	size_t addrlen = sizeof(rpcb_inaddr_loopback);
+@@ -255,17 +255,17 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ /*
+  * Fill in AF_INET family-specific arguments to register
+  */
+-static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
++static int rpcb_register_netid4(const struct sockaddr *sap,
+ 				struct rpc_message *msg)
+ {
++	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+-	unsigned short port = ntohs(address_to_register->sin_port);
++	unsigned short port = ntohs(sin->sin_port);
+ 	char buf[32];
  
--	ret = svc_create_xprt(serv, "tcp", nfs_callback_family,
-+	ret = svc_create_xprt(serv, "tcp", PF_INET,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret <= 0)
- 		goto out_err;
- 	nfs_callback_tcpport = ret;
- 	dprintk("NFS: Callback listener port = %u (af %u)\n",
--			nfs_callback_tcpport, nfs_callback_family);
-+			nfs_callback_tcpport, PF_INET);
+ 	/* Construct AF_INET universal address */
+ 	snprintf(buf, sizeof(buf), "%pI4.%u.%u",
+-		 &address_to_register->sin_addr.s_addr,
+-		 port >> 8, port & 0xff);
++		 &sin->sin_addr.s_addr, port >> 8, port & 0xff);
+ 	map->r_addr = buf;
  
- 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(nfs_callback_info.rqst)) {
+ 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
+@@ -283,21 +283,21 @@ static int rpcb_register_netid4(struct sockaddr_in *address_to_register,
+ /*
+  * Fill in AF_INET6 family-specific arguments to register
+  */
+-static int rpcb_register_netid6(struct sockaddr_in6 *address_to_register,
++static int rpcb_register_netid6(const struct sockaddr *sap,
+ 				struct rpc_message *msg)
+ {
++	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+-	unsigned short port = ntohs(address_to_register->sin6_port);
++	unsigned short port = ntohs(sin6->sin6_port);
+ 	char buf[64];
+ 
+ 	/* Construct AF_INET6 universal address */
+-	if (ipv6_addr_any(&address_to_register->sin6_addr))
++	if (ipv6_addr_any(&sin6->sin6_addr))
+ 		snprintf(buf, sizeof(buf), "::.%u.%u",
+ 				port >> 8, port & 0xff);
+ 	else
+ 		snprintf(buf, sizeof(buf), "%pI6.%u.%u",
+-			 &address_to_register->sin6_addr,
+-			 port >> 8, port & 0xff);
++			 &sin6->sin6_addr, port >> 8, port & 0xff);
+ 	map->r_addr = buf;
+ 
+ 	dprintk("RPC:       %sregistering [%u, %u, %s, '%s'] with "
+@@ -369,11 +369,9 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 
+ 	switch (address->sa_family) {
+ 	case AF_INET:
+-		return rpcb_register_netid4((struct sockaddr_in *)address,
+-					    &msg);
++		return rpcb_register_netid4(address, &msg);
+ 	case AF_INET6:
+-		return rpcb_register_netid6((struct sockaddr_in6 *)address,
+-					    &msg);
++		return rpcb_register_netid6(address, &msg);
+ 	}
+ 
+ 	return -EAFNOSUPPORT;
 
