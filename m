@@ -1,103 +1,118 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: nfsstat --sleep=#
-Date: Thu, 12 Mar 2009 12:08:57 -0400
-Message-ID: <65B488F7-A902-4126-8E05-65622991D78C@oracle.com>
-References: <49B86744.6060105@disney.com> <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com> <20090312155055.GB2081@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 14/40] SUNRPC: Allow callers to pass rpcb_v4_register a NULL
+	address
+Date: Thu, 12 Mar 2009 12:08:44 -0400
+Message-ID: <20090312160844.16019.10332.stgit@ingres.1015granger.net>
+References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:25183 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756817AbZCLQJO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:14 -0400
-In-Reply-To: <20090312155055.GB2081@fieldses.org>
+Received: from acsinet12.oracle.com ([141.146.126.234]:47868 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756817AbZCLQJW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:22 -0400
+In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 12, 2009, at Mar 12, 2009, 11:50 AM, J. Bruce Fields wrote:
-> On Thu, Mar 12, 2009 at 10:00:34AM -0400, Chuck Lever wrote:
->> Hi Kevin-
->>
->> man watch(1)
->
-> What would you watch?
+The user space TI-RPC library uses an empty string for the universal
+address when unregistering all target addresses for [program, version].
+The kernel's rpcb client should behave the same way.
 
-For example:
+Here, we are switching between several registration methods based on
+the protocol family of the incoming address.  Rename the other rpcbind
+v4 registration functions to make it clear that they, as well, are
+switched on protocol family.  In /etc/netconfig, this is either "inet"
+or "inet6".
 
-   watch -n3 nfsstat -c
+NB: The loopback protocol families are not supported in the kernel.
 
-You can also use the "-d" option to highlight the differences between  
-the current sample and the previous sample.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> --b.
->
->>
->> On Mar 11, 2009, at Mar 11, 2009, 9:37 PM, Kevin Constantine wrote:
->>
->>> I'd really like to have a way to output the nfsstat counters at
->>> regular intervals (every 3 seconds) where the output is the  
->>> difference
->>> between 3 seconds ago and now.  Frequently I'll run a test and  
->>> want to
->>> watch the nfs call profile throughout the course of the test.
->>>
->>> Does something like this already exist?
->>> Are there objections to seeing a feature like this?
->>>
->>> I'm thinking something like:
->>> nfsstat --sleep=1
->>>
->>> nfs v3 call:   Server   Client
->>>      total:        0     3476
->>>       null:        0        0
->>>    getattr:        0     1679
->>>    setattr:        0        0
->>>     lookup:        0      839
->>>     access:        0      839
->>>   readlink:        0        0
->>>       read:        0        0
->>>      write:        0        0
->>>     create:        0        0
->>>      mkdir:        0        0
->>>    symlink:        0        0
->>>      mknod:        0        0
->>>     remove:        0        0
->>>      rmdir:        0        0
->>>     rename:        0        0
->>>       link:        0        0
->>>    readdir:        0        0
->>> readdirplus:        0        0
->>>     fsstat:        0      119
->>>     fsinfo:        0        0
->>>   pathconf:        0        0
->>>     commit:        0        0
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->>> in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ net/sunrpc/rpcb_clnt.c |   38 ++++++++++++++++++++++++++++----------
+ 1 files changed, 28 insertions(+), 10 deletions(-)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 4e86dfe..4a7a8ae 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -262,8 +262,8 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ /*
+  * Fill in AF_INET family-specific arguments to register
+  */
+-static int rpcb_register_netid4(const struct sockaddr *sap,
+-				struct rpc_message *msg)
++static int rpcb_register_inet4(const struct sockaddr *sap,
++			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+@@ -290,8 +290,8 @@ static int rpcb_register_netid4(const struct sockaddr *sap,
+ /*
+  * Fill in AF_INET6 family-specific arguments to register
+  */
+-static int rpcb_register_netid6(const struct sockaddr *sap,
+-				struct rpc_message *msg)
++static int rpcb_register_inet6(const struct sockaddr *sap,
++			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+@@ -319,6 +319,20 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
+ 	return rpcb_register_call(RPCBVERS_4, msg);
+ }
+ 
++static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
++{
++	struct rpcbind_args *map = msg->rpc_argp;
++
++	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
++		"local rpcbind\n",
++			map->r_prog, map->r_vers, map->r_netid);
++
++	map->r_addr = "";
++	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
++
++	return rpcb_register_call(RPCBVERS_4, msg);
++}
++
+ /**
+  * rpcb_v4_register - set or unset a port registration with the local rpcbind
+  * @program: RPC program number of service to (un)register
+@@ -336,10 +350,11 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
+  * invoke this function once for each [program, version, address,
+  * netid] tuple they wish to advertise.
+  *
+- * Callers may also unregister RPC services that are no longer
+- * available by setting the port number in the passed-in address
+- * to zero.  Callers pass a netid of "" to unregister all
+- * transport netids associated with [program, version, address].
++ * Callers may also unregister RPC services that are registered at a
++ * specific address by setting the port number in @address to zero.
++ * They may unregister all registered protocol families at once for
++ * a service by passing a NULL @address argument.  If @netid is ""
++ * then all netids for [program, version, address] are unregistered.
+  *
+  * This function uses rpcbind protocol version 4 to contact the
+  * local rpcbind daemon.  The local rpcbind daemon must support
+@@ -374,11 +389,14 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 		.rpc_argp	= &map,
+ 	};
+ 
++	if (address == NULL)
++		return rpcb_unregister_all_protofamilies(&msg);
++
+ 	switch (address->sa_family) {
+ 	case AF_INET:
+-		return rpcb_register_netid4(address, &msg);
++		return rpcb_register_inet4(address, &msg);
+ 	case AF_INET6:
+-		return rpcb_register_netid6(address, &msg);
++		return rpcb_register_inet6(address, &msg);
+ 	}
+ 
+ 	return -EAFNOSUPPORT;
 
