@@ -1,71 +1,90 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/40] SUNRPC: rpcbind actually interprets r_owner string
-Date: Thu, 12 Mar 2009 12:08:37 -0400
-Message-ID: <20090312160836.16019.55413.stgit@ingres.1015granger.net>
+Subject: [PATCH 01/40] SUNRPC: Fix return type of svc_addr_len()
+Date: Thu, 12 Mar 2009 12:07:06 -0400
+Message-ID: <20090312160706.16019.81338.stgit@ingres.1015granger.net>
 References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:25245 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755132AbZCLQJR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:17 -0400
+Received: from acsinet12.oracle.com ([141.146.126.234]:46778 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753195AbZCLQIM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:12 -0400
 In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RFC 1833 has little to say about the contents of r_owner; it only
-specifies that it is a string, and states that it is used to control
-who can UNSET an entry.
+The svc_addr_len() helper function can return a negative errno value,
+but its return type is size_t, which is unsigned.
 
-Our port of rpcbind (from Sun) assumes this string contains a numeric
-UID value, not alphabetical or symbolic characters, but checks this
-value only for AF_LOCAL RPCB_SET or RPCB_UNSET requests.  In all other
-cases, rpcbind ignores the contents of the r_owner string.
-
-The reference user space implementation of rpcb_set(3) uses a numeric
-UID for all SET/UNSET requests (even via the network) and an empty
-string for all other requests.  We emulate that behavior here to
-maintain bug-for-bug compatibility.
+The RDMA transport code passes this return value directly to memset(),
+without checking first if it's negative.  This could cause memset() to
+clobber a large piece of memory if svc_addr_len() has returned an
+error.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   13 ++++++++++---
- 1 files changed, 10 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc_xprt.h          |    3 ++-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 317eb8a..4e86dfe 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -63,9 +63,16 @@ enum {
-  * r_owner
-  *
-  * The "owner" is allowed to unset a service in the rpcbind database.
-- * We always use the following (arbitrary) fixed string.
-+ *
-+ * For AF_LOCAL SET/UNSET requests, rpcbind treats this string as a
-+ * UID which it maps to a local user name via a password lookup.
-+ * In all other cases it is ignored.
-+ *
-+ * For SET/UNSET requests, user space provides a value, even for
-+ * network requests, and GETADDR uses an empty string.  We follow
-+ * those precedents here.
-  */
--#define RPCB_OWNER_STRING	"rpcb"
-+#define RPCB_OWNER_STRING	"0"
- #define RPCB_MAXOWNERLEN	sizeof(RPCB_OWNER_STRING)
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 0127dac..c2aa8cd 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -113,7 +113,7 @@ static inline unsigned short svc_addr_port(struct sockaddr *sa)
+ 	return ret;
+ }
  
- static void			rpcb_getport_done(struct rpc_task *, void *);
-@@ -566,7 +573,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	map->r_xprt = xprt_get(xprt);
- 	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
- 	map->r_addr = rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR);
--	map->r_owner = RPCB_OWNER_STRING;	/* ignored for GETADDR */
-+	map->r_owner = "";
- 	map->r_status = -EIO;
+-static inline size_t svc_addr_len(struct sockaddr *sa)
++static inline int svc_addr_len(const struct sockaddr *sa)
+ {
+ 	switch (sa->sa_family) {
+ 	case AF_INET:
+@@ -121,6 +121,7 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
+ 	case AF_INET6:
+ 		return sizeof(struct sockaddr_in6);
+ 	}
++
+ 	return -EAFNOSUPPORT;
+ }
  
- 	child = rpcb_call_async(rpcb_clnt, map, proc);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 3d810e7..d1ec6f9 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -546,6 +546,7 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+ 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+ 	struct svcxprt_rdma *newxprt;
+ 	struct sockaddr *sa;
++	int len;
+ 
+ 	/* Create a new transport */
+ 	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
+@@ -563,9 +564,20 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+ 
+ 	/* Set the local and remote addresses in the transport */
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+-	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
++	len = svc_addr_len(sa);
++	if (len < 0) {
++		dprintk("svcrdma: dst_addr has a bad address family\n");
++		return;
++	}
++	svc_xprt_set_remote(&newxprt->sc_xprt, sa, len);
++
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
+-	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
++	len = svc_addr_len(sa);
++	if (len < 0) {
++		dprintk("svcrdma: src_addr has a bad address family\n");
++		return;
++	}
++	svc_xprt_set_local(&newxprt->sc_xprt, sa, len);
+ 
+ 	/*
+ 	 * Enqueue the new transport on the accept queue of the listening
 
