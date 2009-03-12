@@ -1,102 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.238]:6158 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754095AbZCQG2j convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2009 02:28:39 -0400
-Received: by rv-out-0506.google.com with SMTP id g37so1985075rvb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2009 23:28:37 -0700 (PDT)
-In-Reply-To: <49BF2D0B.6060108@sgi.com>
-References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-	 <1236978608.7265.41.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131432u43d9ba43nf0456b99aed0f8fd@mail.gmail.com>
-	 <1236980438.7265.47.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>
-	 <1236983389.7265.51.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131605m6aec6e41j8d608512b2693ba9@mail.gmail.com>
-	 <49BF2D0B.6060108@sgi.com>
-Date: Mon, 16 Mar 2009 23:28:37 -0700
-Message-ID: <72dbd3150903162328x5ad7d874u125e7437faa40718@mail.gmail.com>
-Subject: Re: Horrible NFS Client Performance During Heavy Server IO
-From: David Rees <drees76@gmail.com>
-To: Greg Banks <gnb@sgi.com>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from vps680.inmotionhosting.com ([74.124.198.230]:39424 "EHLO
+	vps680.inmotionhosting.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751678AbZCLWA4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 18:00:56 -0400
+Received: from cpe-98-149-71-108.socal.res.rr.com ([98.149.71.108]:12845 helo=[192.168.2.107])
+	by vps680.inmotionhosting.com with esmtpa (Exim 4.63)
+	(envelope-from <callahan@temerity.us>)
+	id 1LhsxS-0000Oo-KL
+	for linux-nfs@vger.kernel.org; Thu, 12 Mar 2009 15:00:54 -0700
+Message-ID: <49B9780B.2020609@temerity.us>
+Date: Thu, 12 Mar 2009 17:00:59 -0400
+From: Jim Callahan <callahan@temerity.us>
+To: linux-nfs@vger.kernel.org
+Subject: Best A->B large file copy performance
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Mar 16, 2009 at 9:54 PM, Greg Banks <gnb@sgi.com> wrote:
-> David, could you try your test case with this command running on the server?
->
-> tethereal -i eth0 -f 'port 2049' -z rpc,rtt,100003,3 -w /dev/null
->
-> and ^C it when you've done.  You should see a table by RPC call with
-> minimum maximum and average "roundtrip times" (actually as they're
-> measured on the server, they should be server response times).  This
-> should tell you which calls are slow and whether it's all those calls or
-> only a few outliers.
+I'm trying to determine the most optimal way to have a single NFS client 
+copy large numbers (100-1000) of fairly large (1-50M) files from one 
+location on an file server to another location on the same file server.  
+There seem to be several API layers which influence this:
 
-OK, filtering out the empty lines, I ran the test (note that I
-modified it slightly, details later) with and without the server side
-large write running:
+1. Number of OS level processes performing the copy in parallel.
+2. Record size used buy the C-library read()/write() calls from these 
+processes.
+3. NFS client rsize/wsize settings.
+4. Ethernet MTU size.
+5. Bandwidth of the ethernet network and switches.
 
-Without:
+So far we've played around with larger MTU and rsize/wsize settings 
+without seeing a huge difference.  Since we have been using "cp" to 
+perform (1), we've not tweaked the record size at all at this point.   
+My suspicion is that we should be carefully coordinating the sizes 
+specified in for the layers 2, 3 and 4.  Perhaps we should be using "dd" 
+instead of "cp" so we can control the record size being used.   Since 
+the number of permutations of these three settings are large I was 
+hoping that I might get some advise from this list about a range of 
+values we should be investigating and any unpleasant interactions 
+between these levels of settings we should be aware of to narrow our 
+search.  Also, if there are other major factors outside those listed I'd 
+appreciate being pointed in the right direction.
 
-Procedure        Calls   Min RTT   Max RTT   Avg RTT
-GETATTR              3   0.00006   0.00133   0.00048
-SETATTR              1   0.03878   0.03878   0.03878
-ACCESS               9   0.00006   0.00232   0.00049
-COMMIT               1   1.13381   1.13381   1.13381
+---
 
-With:
-Procedure        Calls   Min RTT   Max RTT   Avg RTT
-GETATTR              1   0.00016   0.00016   0.00016
-SETATTR              1  30.14662  30.14662  30.14662
-ACCESS               8   0.00005   0.00544   0.00154
-COMMIT               1   0.34472   0.34472   0.34472
+While I'm on the subject, has there been any discussion about adding an 
+NFS request that would allow copying files from one location to another 
+on the same NFS server without requiring a round trip to a client?  Its 
+not at all uncommon to need to move data around in this manner and it 
+seems a huge waste of bandwidth to have to send all this data from the 
+server to the client just to have the client send the data back 
+unaltered to a different location.  Such a COPY request would be high 
+level along the lines of RENAME and each server vendor could optimize 
+this for their particular hardware architecture.  For our particular 
+application, having such a request would make a huge difference in 
+performance.
 
-> Another experiment worth trying is a local filesystem load fairness test
-> on the server (no NFS client involved).  This will tell you whether the
-> nfsd's IO priority is an issue, or if you're just seeing an IO
-> scheduling issue.
->
-> 1.  echo 3 > /proc/sys/vm/drop_caches
-> 2.  time find /your/home/some/dir -ls > /dev/null (choose a directory
-> tree with a few hundred files)
-> 3.  echo 3 > /proc/sys/vm/drop_caches
-> 4.  start your large writes
-> 5.  time find /your/home/some/dir -ls > /dev/null
-
-This test actually returned similar response times with or without the
-big server write running.  Which led me to thinking that this isn't
-even a NFS problem - it actually appears to be a VM or
-filesystem(ext3) problem.
-
-Here's the test case again:
-
-1. On the server, write out a large file:
-dd if=/dev/zero of=bigfile bs=1M count=5000
-
-2. On the client, write out a small file:
-dd if=/dev/zero of=smallfile bs=4k count=1
-
-Now, I just ran #2 both on a NFS client and on the local server -
-response time was the same, about 45 seconds.
-
-So it appears that my combination of server (older dual Xeon 3Ghz, 8GB
-RAM, SATA RAID1) lets too much dirty data accumulate creating a huge
-backlog of data to be written to the journal and leaving small,
-latency sensitive writes go very slowly.  I seem to remember reading
-about this problem before - oh yeah:
-
-http://lwn.net/Articles/216853/
-on top of this newer bug:
-http://bugzilla.kernel.org/show_bug.cgi?id=12309
-http://lkml.org/lkml/2009/1/16/487
-
-I'm off to go hack dirty_ratio and dirty_background_ratio for now
-until this bug gets fixed and ext4 appears to fully stabilize. :-)
-
-Thanks for your help, guys.
-
--Dave
+-- 
+Jim Callahan - President - Temerity Software <www.temerity.us>
