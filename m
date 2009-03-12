@@ -1,92 +1,71 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/40] SUNRPC: Clean up svc_find_xprt() calling sequence
-Date: Thu, 12 Mar 2009 12:07:21 -0400
-Message-ID: <20090312160721.16019.89653.stgit@ingres.1015granger.net>
+Subject: [PATCH 13/40] SUNRPC: rpcbind actually interprets r_owner string
+Date: Thu, 12 Mar 2009 12:08:37 -0400
+Message-ID: <20090312160836.16019.55413.stgit@ingres.1015granger.net>
 References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:46806 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754214AbZCLQIN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:13 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:25245 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755132AbZCLQJR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:09:17 -0400
 In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: add documentating comment and use appropriate data types for
-svc_find_xprt()'s arguments.
+RFC 1833 has little to say about the contents of r_owner; it only
+specifies that it is a string, and states that it is used to control
+who can UNSET an entry.
 
-This also eliminates a mixed sign comparison: @port was an int, while
-the return value of svc_xprt_local_port() is an unsigned short.
+Our port of rpcbind (from Sun) assumes this string contains a numeric
+UID value, not alphabetical or symbolic characters, but checks this
+value only for AF_LOCAL RPCB_SET or RPCB_UNSET requests.  In all other
+cases, rpcbind ignores the contents of the r_owner string.
+
+The reference user space implementation of rpcb_set(3) uses a numeric
+UID for all SET/UNSET requests (even via the network) and an empty
+string for all other requests.  We emulate that behavior here to
+maintain bug-for-bug compatibility.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h |    3 ++-
- net/sunrpc/svc_xprt.c           |   16 +++++++++++-----
- 2 files changed, 13 insertions(+), 6 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   13 ++++++++++---
+ 1 files changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index ee21e8a..167e4b5 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -80,7 +80,8 @@ void	svc_close_xprt(struct svc_xprt *xprt);
- void	svc_delete_xprt(struct svc_xprt *xprt);
- int	svc_port_is_privileged(struct sockaddr *sin);
- int	svc_print_xprts(char *buf, int maxlen);
--struct	svc_xprt *svc_find_xprt(struct svc_serv *, char *, int, int);
-+struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
-+			const sa_family_t af, const unsigned short port);
- int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
- 
- static inline void svc_xprt_get(struct svc_xprt *xprt)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index e588df5..c947c93 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1033,7 +1033,13 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
- 	return dr;
- }
- 
--/*
-+/**
-+ * svc_find_xprt - find an RPC transport instance
-+ * @serv: pointer to svc_serv to search
-+ * @xcl_name: C string containing transport's class name
-+ * @af: Address family of transport's local address
-+ * @port: transport's IP port number
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index 317eb8a..4e86dfe 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -63,9 +63,16 @@ enum {
+  * r_owner
+  *
+  * The "owner" is allowed to unset a service in the rpcbind database.
+- * We always use the following (arbitrary) fixed string.
 + *
-  * Return the transport instance pointer for the endpoint accepting
-  * connections/peer traffic from the specified transport class,
-  * address family and port.
-@@ -1042,14 +1048,14 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
-  * wild-card, and will result in matching the first transport in the
-  * service's list that has a matching class name.
++ * For AF_LOCAL SET/UNSET requests, rpcbind treats this string as a
++ * UID which it maps to a local user name via a password lookup.
++ * In all other cases it is ignored.
++ *
++ * For SET/UNSET requests, user space provides a value, even for
++ * network requests, and GETADDR uses an empty string.  We follow
++ * those precedents here.
   */
--struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
--			       int af, int port)
-+struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
-+			       const sa_family_t af, const unsigned short port)
- {
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *found = NULL;
+-#define RPCB_OWNER_STRING	"rpcb"
++#define RPCB_OWNER_STRING	"0"
+ #define RPCB_MAXOWNERLEN	sizeof(RPCB_OWNER_STRING)
  
- 	/* Sanity check the args */
--	if (!serv || !xcl_name)
-+	if (serv == NULL || xcl_name == NULL)
- 		return found;
+ static void			rpcb_getport_done(struct rpc_task *, void *);
+@@ -566,7 +573,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	map->r_xprt = xprt_get(xprt);
+ 	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
+ 	map->r_addr = rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR);
+-	map->r_owner = RPCB_OWNER_STRING;	/* ignored for GETADDR */
++	map->r_owner = "";
+ 	map->r_status = -EIO;
  
- 	spin_lock_bh(&serv->sv_lock);
-@@ -1058,7 +1064,7 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
- 			continue;
- 		if (af != AF_UNSPEC && af != xprt->xpt_local.ss_family)
- 			continue;
--		if (port && port != svc_xprt_local_port(xprt))
-+		if (port != 0 && port != svc_xprt_local_port(xprt))
- 			continue;
- 		found = xprt;
- 		svc_xprt_get(xprt);
+ 	child = rpcb_call_async(rpcb_clnt, map, proc);
 
