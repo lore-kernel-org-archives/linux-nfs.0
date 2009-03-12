@@ -1,148 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 12/14] nfsd4: remove use of mutex for file_hashtable
-Date: Wed, 11 Mar 2009 20:05:40 -0400
-Message-ID: <20090312000540.GB21854@fieldses.org>
-References: <1236731222-3294-5-git-send-email-bfields@fieldses.org> <1236731222-3294-6-git-send-email-bfields@fieldses.org> <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org> <1236731222-3294-9-git-send-email-bfields@fieldses.org> <1236731222-3294-10-git-send-email-bfields@fieldses.org> <1236731222-3294-11-git-send-email-bfields@fieldses.org> <1236731222-3294-12-git-send-email-bfields@fieldses.org> <1236731222-3294-13-git-send-email-bfields@fieldses.org> <49B8085E.5080808@panasas.com>
+From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Subject: nfsstat --sleep=#
+Date: Wed, 11 Mar 2009 18:37:08 -0700
+Message-ID: <49B86744.6060105@disney.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org,
-	Alexandros Batsakis <batsakis@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:58993 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752604AbZCLAFm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 20:05:42 -0400
-In-Reply-To: <49B8085E.5080808@panasas.com>
+Received: from mailgate1.disneyanimation.com ([12.188.26.101]:3295 "EHLO
+	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753474AbZCLBqf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 21:46:35 -0400
+Received: from ling.fas.fa.disney.com (ling.fas.fa.disney.com [172.30.192.99])
+	by mailhub.fa.disney.com (Postfix) with ESMTP id 9DAC01253BC
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 18:46:33 -0700 (PDT)
+Received: from beaver.fas.fa.disney.com (beaver.fas.fa.disney.com [172.30.160.222])
+	by ling.fas.fa.disney.com (Postfix) with ESMTP id 911C8E0979
+	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 18:46:33 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 11, 2009 at 08:52:14PM +0200, Benny Halevy wrote:
-> On Mar. 11, 2009, 2:27 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > From: J. Bruce Fields <bfields@citi.umich.edu>
-> > 
-> > As part of reducing the scope of the client_mutex, and in order to
-> > remove the need for mutexes from the callback code (so that callbacks
-> > can be done as asynchronous rpc calls), move manipulations of the
-> > file_hashtable under the recall_lock.
-> > 
-> > Update the relevant comments while we're here.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> > Cc: Alexandros Batsakis <batsakis@netapp.com>
-> > ---
-> >  fs/nfsd/nfs4callback.c |    2 --
-> >  fs/nfsd/nfs4state.c    |   29 +++++++++++++++++------------
-> >  2 files changed, 17 insertions(+), 14 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> > index 3fd7136..5dcd38e 100644
-> > --- a/fs/nfsd/nfs4callback.c
-> > +++ b/fs/nfsd/nfs4callback.c
-> > @@ -491,8 +491,6 @@ out_put_cred:
-> >  	 * or deleg_return.
-> >  	 */
-> >  	put_nfs4_client(clp);
-> > -	nfs4_lock_state();
-> >  	nfs4_put_delegation(dp);
-> > -	nfs4_unlock_state();
-> >  	return;
-> >  }
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 56e81f9..2f4cb9a 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -78,14 +78,18 @@ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, state
-> >  static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
-> >  static void nfs4_set_recdir(char *recdir);
-> >  
-> > -/* Locking:
-> > - *
-> > - * client_mutex:
-> > - * 	protects clientid_hashtbl[], clientstr_hashtbl[],
-> > - * 	unconfstr_hashtbl[], uncofid_hashtbl[].
-> > - */
-> > +/* Locking: */
-> > +
-> > +/* Currently used for almost all code touching nfsv4 state: */
-> >  static DEFINE_MUTEX(client_mutex);
-> >  
-> > +/*
-> > + * Currently used for the del_recall_lru and file hash table.  In an
-> > + * effort to decrease the scope of the client_mutex, this spinlock may
-> > + * eventually cover more:
-> > + */
-> > +static DEFINE_SPINLOCK(recall_lock);
-> > +
-> >  static struct kmem_cache *stateowner_slab = NULL;
-> >  static struct kmem_cache *file_slab = NULL;
-> >  static struct kmem_cache *stateid_slab = NULL;
-> > @@ -116,19 +120,15 @@ opaque_hashval(const void *ptr, int nbytes)
-> >  	return x;
-> >  }
-> >  
-> > -/*
-> > - * Delegation state
-> > - */
-> > -
-> > -/* recall_lock protects the del_recall_lru */
-> > -static DEFINE_SPINLOCK(recall_lock);
-> >  static struct list_head del_recall_lru;
-> >  
-> >  static void
-> >  free_nfs4_file(struct kref *kref)
-> >  {
-> >  	struct nfs4_file *fp = container_of(kref, struct nfs4_file, fi_ref);
-> > +	spin_lock(&recall_lock);
-> >  	list_del(&fp->fi_hash);
-> > +	spin_unlock(&recall_lock);
-> >  	iput(fp->fi_inode);
-> >  	kmem_cache_free(file_slab, fp);
-> >  }
-> > @@ -1004,7 +1004,9 @@ alloc_init_file(struct inode *ino)
-> >  		INIT_LIST_HEAD(&fp->fi_hash);
-> >  		INIT_LIST_HEAD(&fp->fi_stateids);
-> >  		INIT_LIST_HEAD(&fp->fi_delegations);
-> > +		spin_lock(&recall_lock);
-> >  		list_add(&fp->fi_hash, &file_hashtbl[hashval]);
-> > +		spin_unlock(&recall_lock);
-> >  		fp->fi_inode = igrab(ino);
-> >  		fp->fi_id = current_fileid++;
-> >  		fp->fi_had_conflict = false;
-> > @@ -1177,12 +1179,15 @@ find_file(struct inode *ino)
-> >  	unsigned int hashval = file_hashval(ino);
-> >  	struct nfs4_file *fp;
-> >  
-> > +	spin_lock(&recall_lock);
-> >  	list_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
-> >  		if (fp->fi_inode == ino) {
-> > +			spin_unlock(&recall_lock);
-> 
-> Hmm, I'm afraid there's a race here since potentially
-> you could take the reference on the file after it has been freed.
-> find_file should call get_nfs4_file if and only if it's still hashed,
-> i.e. atomically with looking it up on the list.
-> 
-> On the same lines, the lock should be taken in put_nfs4_file
-> rather than in free_nfs4_file.
-> 
-> That being said, I'm not sure we're unhashing the file in the right
-> place... it's too late for me right now but my hunch is that open
-> should alloc_init the nfs4_file as done today and close should unhash
-> it (under the recall spinlock), and then put it.
-> put_nfs4_file can stay the same and free_nfs4_file should just do the
-> iput and kmem_cache_free.
-> 
-> The main difference is that find_file will fail finding the nfs4_file
-> struct after close.  (get_nfs4_file in find_file should still happen
-> under the lock though)
+I'd really like to have a way to output the nfsstat counters at regular 
+intervals (every 3 seconds) where the output is the difference between 3 
+seconds ago and now.  Frequently I'll run a test and want to watch the 
+nfs call profile throughout the course of the test.
 
-It's probably better for the nfs4_file to be visible longer, but either
-is correct.
+Does something like this already exist?
+Are there objections to seeing a feature like this?
 
-The only reason the delegation has a reference on this is to keep track
-of which files have seen conflicts.  Maybe there's some better way.
+I'm thinking something like:
+nfsstat --sleep=1
 
-Thanks for catching this....
+  nfs v3 call:   Server   Client
+        total:        0     3476
+         null:        0        0
+      getattr:        0     1679
+      setattr:        0        0
+       lookup:        0      839
+       access:        0      839
+     readlink:        0        0
+         read:        0        0
+        write:        0        0
+       create:        0        0
+        mkdir:        0        0
+      symlink:        0        0
+        mknod:        0        0
+       remove:        0        0
+        rmdir:        0        0
+       rename:        0        0
+         link:        0        0
+      readdir:        0        0
+  readdirplus:        0        0
+       fsstat:        0      119
+       fsinfo:        0        0
+     pathconf:        0        0
+       commit:        0        0
 
---b.
