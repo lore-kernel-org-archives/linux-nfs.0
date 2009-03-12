@@ -1,128 +1,145 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/40] Proposed patches for 2.6.30
-Date: Thu, 12 Mar 2009 12:06:56 -0400
-Message-ID: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
+Subject: [PATCH 04/40] SUNRPC: Pass a family argument to svc_register()
+Date: Thu, 12 Mar 2009 12:07:29 -0400
+Message-ID: <20090312160728.16019.5642.stgit@ingres.1015granger.net>
+References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:29906 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751641AbZCLQHp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:07:45 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:18601 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752866AbZCLQIG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:06 -0400
+In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce, Trond-
+The sv_family field is going away.  Instead of using sv_family, have
+the svc_register() function take a protocol family argument.
 
-Here are the IPv6-related patches I'd like to propose for inclusion
-in 2.6.30.  These include fixes for IPv6 support in the kernel's
-rpcbind client, in lockd, and in the NFSv4 callback server, plus a
-lot of clean up.  Many of these have had some revision since the
-patches you [Bruce] looked at yesterday (which were sent a couple of
-weeks ago).
+Since this argument represents a protocol family, and not an address
+family, this argument takes an int, as this is what is passed to
+sock_create_kern().  Also make sure svc_register's helpers are
+checking for PF_FOO instead of AF_FOO.  The value of [AP]F_FOO are
+equivalent; this is simply a symbolic change to reflect the semantics
+of the value stored in that variable.
 
-I'm reserving the final few NFSD IPv6 patches until we have user space
-IPv6 support on the server side and we can start testing.
+sock_create_kern() should return EPFNOSUPPORT if the passed-in
+protocol family isn't supported, but it uses EAFNOSUPPORT for this
+case.  We will stick with that tradition here, as svc_register()
+is called by the RPC server in the same path as sock_create_kern().
 
-Note that there are two patches Trond sent for 2.6.29-rc that don't
-seem to be in Linus' tree yet.  That may cause a little heartburn if
-you try to add these to your tree today.  However, since 2.6.30 is
-imminent, I thought it best to present these for review now.
-
-The main feature of these patches is that the single address family
-listener strategy is abandoned in favor of using separate listeners
-for AF_INET and AF_INET6.  This has two main benefits:
-
- 1.  Kernel RPC servers no longer have to deal with mapped v4 addresses
-     coming from the network layer, and
-
- 2.  PF_INET listeners are always started; PF_INET6 listeners are
-     started if possible.  This allows people to disable IPv6
-     support cleanly by blacklisting ipv6.ko, but should have no
-     affect on normal IPv4 operation.
-
-This new scheme can be used to add support for additional address
-families, unlike the single-listener-per-af scheme.
-
-We also get rid of CONFIG_SUNRPC_REGISTER_V4 entirely.  The kernel can
-handle either portmapper or rpcbind in user space automatically now.
-
-These have seen light testing, and previous versions of this patch set
-have been exercised at Connectathon.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (40):
-      NFSD: Prevent buffer overflow in write_recoverydir()
-      NFSD: Prevent buffer overflow in write_leasetime()
-      NFSD: Prevent buffer overflow in write_maxblksize()
-      NFSD: Prevent buffer overflow in write_versions()
-      NFSD: Prevent buffer overflow in write_threads()
-      NFSD: Support IPv6 addresses in write_failover_ip()
-      NFS: Move NFS client's IP address parser to nfs_common/
-      SUNRPC: Clean up one_sock_name()
-      SUNRPC: Support PF_INET6 in one_sock_name()
-      SUNRPC: Switch one_sock_name() to use snprintf()
-      SUNRPC: pass buffer size to svc_sock_names()
-      SUNRPC: pass buffer size to svc_addsock()
-      NFSD: Prevent a buffer overflow in svc_xprt_names()
-      NFSD: move lockd_up() before svc_addsock()
-      NFSD: Finish refactoring __write_ports()
-      NFSD: Note an additional requirement when passing TCP sockets to portlist
-      NFSD: Refactor socket creation out of __write_ports()
-      NFSD: Refactor portlist socket closing into a helper
-      NFSD: Refactor transport addition out of __write_ports()
-      NFSD: Refactor transport removal out of __write_ports()
-      NFS: Start PF_INET6 callback listener only if IPv6 support is available
-      lockd: Start PF_INET6 listener only if IPv6 support is available
-      SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
-      SUNRPC: rpcb_register() should handle errors silently
-      SUNRPC: Simplify kernel RPC service registration
-      SUNRPC: Simplify svc_unregister()
-      SUNRPC: Allow callers to pass rpcb_v4_register a NULL address
-      SUNRPC: rpcbind actually interprets r_owner string
-      SUNRPC: Clean up address type casts in rpcb_v4_register()
-      SUNRPC: Don't return EPROTONOSUPPORT in svc_register()'s helpers
-      SUNRPC: Use IPv4 loopback for registering AF_INET6 kernel RPC services
-      SUNRPC: Set IPV6ONLY flag on PF_INET6 RPC listener sockets
-      NFS: Revert creation of IPv6 listeners for lockd and NFSv4 callbacks
-      SUNRPC: Remove @family argument from svc_create() and svc_create_pooled()
-      SUNRPC: Change svc_create_xprt() to take a @family argument
-      SUNRPC: svc_setup_socket() gets protocol family from socket
-      SUNRPC: Pass a family argument to svc_register()
-      SUNRPC: Clean up svc_find_xprt() calling sequence
-      SUNRPC: Clean up static inline functions in svc_xprt.h
-      SUNRPC: Fix return type of svc_addr_len()
+ include/linux/sunrpc/svc.h |    4 ++--
+ net/sunrpc/svc.c           |   21 +++++++++++----------
+ net/sunrpc/svcsock.c       |    2 +-
+ 3 files changed, 14 insertions(+), 13 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 3435d24..1f18fc7 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -396,8 +396,8 @@ struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+ void		   svc_destroy(struct svc_serv *);
+ int		   svc_process(struct svc_rqst *);
+-int		   svc_register(const struct svc_serv *, const unsigned short,
+-				const unsigned short);
++int		   svc_register(const struct svc_serv *, const int,
++				const unsigned short, const unsigned short);
+ 
+ void		   svc_wake_up(struct svc_serv *);
+ void		   svc_reserve(struct svc_rqst *rqstp, int space);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index c51fed4..41bc36e 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -800,17 +800,17 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+  * if any error occurs.
+  */
+ static int __svc_register(const u32 program, const u32 version,
+-			  const sa_family_t family,
++			  const int family,
+ 			  const unsigned short protocol,
+ 			  const unsigned short port)
+ {
+ 	int error;
+ 
+ 	switch (family) {
+-	case AF_INET:
++	case PF_INET:
+ 		return __svc_rpcb_register4(program, version,
+ 						protocol, port);
+-	case AF_INET6:
++	case PF_INET6:
+ 		error = __svc_rpcb_register6(program, version,
+ 						protocol, port);
+ 		if (error < 0)
+@@ -840,11 +840,11 @@ static int __svc_register(const u32 program, const u32 version,
+  * if any error occurs.
+  */
+ static int __svc_register(const u32 program, const u32 version,
+-			  sa_family_t family,
++			  const int family,
+ 			  const unsigned short protocol,
+ 			  const unsigned short port)
+ {
+-	if (family != AF_INET)
++	if (family != PF_INET)
+ 		return -EAFNOSUPPORT;
+ 
+ 	return rpcb_register(program, version, protocol, port);
+@@ -855,13 +855,14 @@ static int __svc_register(const u32 program, const u32 version,
+ /**
+  * svc_register - register an RPC service with the local portmapper
+  * @serv: svc_serv struct for the service to register
++ * @family: protocol family of service's listener socket
+  * @proto: transport protocol number to advertise
+  * @port: port to advertise
+  *
+- * Service is registered for any address in serv's address family
++ * Service is registered for any address in the passed-in protocol family
+  */
+-int svc_register(const struct svc_serv *serv, const unsigned short proto,
+-		 const unsigned short port)
++int svc_register(const struct svc_serv *serv, const int family,
++		 const unsigned short proto, const unsigned short port)
+ {
+ 	struct svc_program	*progp;
+ 	unsigned int		i;
+@@ -879,7 +880,7 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
+ 					i,
+ 					proto == IPPROTO_UDP?  "udp" : "tcp",
+ 					port,
+-					serv->sv_family,
++					family,
+ 					progp->pg_vers[i]->vs_hidden?
+ 						" (but not telling portmap)" : "");
+ 
+@@ -887,7 +888,7 @@ int svc_register(const struct svc_serv *serv, const unsigned short proto,
+ 				continue;
+ 
+ 			error = __svc_register(progp->pg_prog, i,
+-						serv->sv_family, proto, port);
++						family, proto, port);
+ 			if (error < 0)
+ 				break;
+ 		}
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 5763e64..d00583c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1122,7 +1122,7 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 
+ 	/* Register socket with portmapper */
+ 	if (*errp >= 0 && pmap_register)
+-		*errp = svc_register(serv, inet->sk_protocol,
++		*errp = svc_register(serv, serv->sv_family, inet->sk_protocol,
+ 				     ntohs(inet_sk(inet)->sport));
+ 
+ 	if (*errp < 0) {
 
- fs/lockd/clntlock.c                      |   51 -----
- fs/lockd/svc.c                           |   42 ++--
- fs/nfs/callback.c                        |   31 ++-
- fs/nfs/callback.h                        |    1 
- fs/nfs/client.c                          |   69 +++----
- fs/nfs/internal.h                        |    3 
- fs/nfs/nfs4namespace.c                   |    2 
- fs/nfs/nfs4state.c                       |   10 +
- fs/nfs/super.c                           |  121 ------------
- fs/nfs_common/Makefile                   |    1 
- fs/nfs_common/nfs_addr_parse.c           |  151 +++++++++++++++
- fs/nfsd/nfsctl.c                         |  298 +++++++++++++++++-------------
- fs/nfsd/nfssvc.c                         |    5 -
- include/linux/nfs_addr_parse.h           |   29 +++
- include/linux/sunrpc/svc.h               |    9 -
- include/linux/sunrpc/svc_xprt.h          |   57 +++---
- include/linux/sunrpc/svcsock.h           |    7 +
- net/sunrpc/Kconfig                       |   22 --
- net/sunrpc/rpcb_clnt.c                   |   92 +++++----
- net/sunrpc/svc.c                         |  158 +++++++---------
- net/sunrpc/svc_xprt.c                    |   87 ++++++---
- net/sunrpc/svcsock.c                     |   94 +++++++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 +-
- 23 files changed, 743 insertions(+), 613 deletions(-)
- create mode 100644 fs/nfs_common/nfs_addr_parse.c
- create mode 100644 include/linux/nfs_addr_parse.h
-
--- 
-Chuck Lever
