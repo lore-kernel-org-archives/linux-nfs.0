@@ -1,90 +1,125 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/40] SUNRPC: Fix return type of svc_addr_len()
-Date: Thu, 12 Mar 2009 12:07:06 -0400
-Message-ID: <20090312160706.16019.81338.stgit@ingres.1015granger.net>
+Subject: [PATCH 02/40] SUNRPC: Clean up static inline functions in svc_xprt.h
+Date: Thu, 12 Mar 2009 12:07:14 -0400
+Message-ID: <20090312160713.16019.56290.stgit@ingres.1015granger.net>
 References: <20090312155609.16019.86499.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org, trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:46778 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753195AbZCLQIM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:12 -0400
+Received: from rcsinet13.oracle.com ([148.87.113.125]:61304 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbZCLQIN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 12:08:13 -0400
 In-Reply-To: <20090312155609.16019.86499.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The svc_addr_len() helper function can return a negative errno value,
-but its return type is size_t, which is unsigned.
-
-The RDMA transport code passes this return value directly to memset(),
-without checking first if it's negative.  This could cause memset() to
-clobber a large piece of memory if svc_addr_len() has returned an
-error.
+Clean up:  Enable the use of const arguments in higher level svc_ APIs
+by adding const to the arguments of the helper functions in svc_xprt.h
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/svc_xprt.h          |    3 ++-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++++--
- 2 files changed, 16 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc_xprt.h |   46 ++++++++++++++++++++++-----------------
+ 1 files changed, 26 insertions(+), 20 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 0127dac..c2aa8cd 100644
+index c2aa8cd..ee21e8a 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -113,7 +113,7 @@ static inline unsigned short svc_addr_port(struct sockaddr *sa)
- 	return ret;
+@@ -88,29 +88,32 @@ static inline void svc_xprt_get(struct svc_xprt *xprt)
+ 	kref_get(&xprt->xpt_ref);
  }
- 
--static inline size_t svc_addr_len(struct sockaddr *sa)
-+static inline int svc_addr_len(const struct sockaddr *sa)
+ static inline void svc_xprt_set_local(struct svc_xprt *xprt,
+-				      struct sockaddr *sa, int salen)
++				      const struct sockaddr *sa,
++				      const size_t salen)
  {
+ 	memcpy(&xprt->xpt_local, sa, salen);
+ 	xprt->xpt_locallen = salen;
+ }
+ static inline void svc_xprt_set_remote(struct svc_xprt *xprt,
+-				       struct sockaddr *sa, int salen)
++				       const struct sockaddr *sa,
++				       const size_t salen)
+ {
+ 	memcpy(&xprt->xpt_remote, sa, salen);
+ 	xprt->xpt_remotelen = salen;
+ }
+-static inline unsigned short svc_addr_port(struct sockaddr *sa)
++static inline unsigned short svc_addr_port(const struct sockaddr *sa)
+ {
+-	unsigned short ret = 0;
++	const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
++	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
++
  	switch (sa->sa_family) {
  	case AF_INET:
-@@ -121,6 +121,7 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
+-		ret = ntohs(((struct sockaddr_in *)sa)->sin_port);
+-		break;
++		return ntohs(sin->sin_port);
  	case AF_INET6:
- 		return sizeof(struct sockaddr_in6);
+-		ret = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
+-		break;
++		return ntohs(sin6->sin6_port);
  	}
+-	return ret;
 +
++	return 0;
+ }
+ 
+ static inline int svc_addr_len(const struct sockaddr *sa)
+@@ -125,36 +128,39 @@ static inline int svc_addr_len(const struct sockaddr *sa)
  	return -EAFNOSUPPORT;
  }
  
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 3d810e7..d1ec6f9 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -546,6 +546,7 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
- 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
- 	struct svcxprt_rdma *newxprt;
- 	struct sockaddr *sa;
-+	int len;
+-static inline unsigned short svc_xprt_local_port(struct svc_xprt *xprt)
++static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
+ {
+-	return svc_addr_port((struct sockaddr *)&xprt->xpt_local);
++	return svc_addr_port((const struct sockaddr *)&xprt->xpt_local);
+ }
  
- 	/* Create a new transport */
- 	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
-@@ -563,9 +564,20 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+-static inline unsigned short svc_xprt_remote_port(struct svc_xprt *xprt)
++static inline unsigned short svc_xprt_remote_port(const struct svc_xprt *xprt)
+ {
+-	return svc_addr_port((struct sockaddr *)&xprt->xpt_remote);
++	return svc_addr_port((const struct sockaddr *)&xprt->xpt_remote);
+ }
  
- 	/* Set the local and remote addresses in the transport */
- 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
--	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-+	len = svc_addr_len(sa);
-+	if (len < 0) {
-+		dprintk("svcrdma: dst_addr has a bad address family\n");
-+		return;
-+	}
-+	svc_xprt_set_remote(&newxprt->sc_xprt, sa, len);
+-static inline char *__svc_print_addr(struct sockaddr *addr,
+-				     char *buf, size_t len)
++static inline char *__svc_print_addr(const struct sockaddr *addr,
++				     char *buf, const size_t len)
+ {
++	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
++	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
 +
- 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
--	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
-+	len = svc_addr_len(sa);
-+	if (len < 0) {
-+		dprintk("svcrdma: src_addr has a bad address family\n");
-+		return;
-+	}
-+	svc_xprt_set_local(&newxprt->sc_xprt, sa, len);
+ 	switch (addr->sa_family) {
+ 	case AF_INET:
+-		snprintf(buf, len, "%pI4, port=%u",
+-			&((struct sockaddr_in *)addr)->sin_addr,
+-			ntohs(((struct sockaddr_in *) addr)->sin_port));
++		snprintf(buf, len, "%pI4, port=%u", &sin->sin_addr,
++			ntohs(sin->sin_port));
+ 		break;
  
- 	/*
- 	 * Enqueue the new transport on the accept queue of the listening
+ 	case AF_INET6:
+ 		snprintf(buf, len, "%pI6, port=%u",
+-			 &((struct sockaddr_in6 *)addr)->sin6_addr,
+-			ntohs(((struct sockaddr_in6 *) addr)->sin6_port));
++			 &sin6->sin6_addr,
++			ntohs(sin6->sin6_port));
+ 		break;
+ 
+ 	default:
+ 		snprintf(buf, len, "unknown address type: %d", addr->sa_family);
+ 		break;
+ 	}
++
+ 	return buf;
+ }
+ #endif /* SUNRPC_SVC_XPRT_H */
 
