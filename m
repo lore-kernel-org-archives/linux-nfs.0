@@ -1,49 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.171.31]:52179 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755472AbZCLQPY (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 12 Mar 2009 12:15:24 -0400
-Message-ID: <49B9360F.9060903@sgi.com>
-Date: Fri, 13 Mar 2009 03:19:27 +1100
-From: Greg Banks <gnb@sgi.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Kevin Constantine <Kevin.Constantine@disneyanimation.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: nfsstat --sleep=#
-References: <49B86744.6060105@disney.com> <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com>
-In-Reply-To: <ADDF97BC-8B6A-4EFC-9242-C1454B8F423C@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:64917 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750809AbZCLVa7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Mar 2009 17:30:59 -0400
+Subject: Re: NFS and RPC queues
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Callahan <callahan@temerity.us>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <49B96C0F.3060405@temerity.us>
+References: <49B8186F.5070601@temerity.us>
+	 <1236809248.12697.44.camel@heimdal.trondhjem.org>
+	 <49B96C0F.3060405@temerity.us>
+Content-Type: text/plain
+Date: Thu, 12 Mar 2009 17:30:47 -0400
+Message-Id: <1236893447.7179.53.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Chuck Lever wrote:
-> Hi Kevin-
->
-> man watch(1)
-Watch + today's nfsstat isn't smart enough to tell you deltas, or do
-rate conversion.  However...
+On Thu, 2009-03-12 at 16:09 -0400, Jim Callahan wrote:
+> Thanks for clearing up what "sunrpc.tcp_slot_table_entries" meant.   Its 
+> odd however that even with a default size of 16 we should still see 
+> contention between only two OS level processes generating NFS requests 
+> though.  Shouldn't that only be using 2 of the 16 entries?  Even our 
+> worse case would only generate 17 processes running in parallel.  Or do 
+> I misunderstand the granularity?   If I have an NFS rsize/wsize of 32k 
+> and perform a C read()/write() of 64k, this will get chunked into two 
+> 32k READ/WRITE NFS requests, correct?  But do both of these low level 
+> requests from a single process and read()/write() call get run in 
+> parallel if there are at least 2 slots in the RPC table available?  In 
+> other words, is there an interaction between the rsize/wsize and the 
+> number of slots in the RPC table that are used for a single C 
+> read()/write()?  Would increasing the rsize/wsize for files larger than 
+> this size lead to less utilization of the RPC table and therefore less 
+> contention?
 
-http://oss.sgi.com/projects/pcp/
- 
-PCP includes a gui tool which gives you rate conversion and graphical
-presentation with history and automatic scaling of any metrics.  Plus
-you can do archive recording and playback, and remote access. Supported
-metrics include the existing server stats (but not the client-side
-per-server stats).
+The kernel readahead algorithm will cause a single process to create
+more than 1 on-the-wire READ request at a time: the process won't wait
+for the first READ request to complete before sending the next. The
+different READ requests will execute in parallel, and will contend for
+slots.
 
-In the absence of a useful tool like PCP, some time ago I did write a
-patch add some of those features (rate conversion in particular) to
-nfsstat.  The patch gives nfsstat a mode where it behaves like "vmstat
-1" or "iostat 1", i.e. textually reports deltas or rates continuously in
-a loop with a controllable interval.  I dug it up earlier today but
-unfortunately it won't apply anymore (due to changes for the
-implementation of the --sleep mode).  I won't have time to work on it
-just now, but I can post it if anyone cares to mine it for ideas.
+Write-behind does the same for WRITE requests.
+
+You should note, however, that a single process is not allowed to use
+more than 16 slots before it has to allow other processes access to the
+slot table (however if no other processes have outstanding RPC requests,
+then the it is allowed to hog the whole table).
+
+> Also, can someone please answer whether there is an RPC request table 
+> for each NFS mount to a different IP address or one shared table for all 
+> mounts?  I'd like to have a better understanding of why running our 
+> GETATTR requests down a different mount would eliminate the contention 
+> with the READ/WRITE requests going down the other mount.
+
+That depends on which kernel you are running. More recent kernels will
+tend to multiplex traffic through a slot table that is shared between
+all mounts to a single IP address.
+Mounts to different IP addresses will, however never share a slot table.
 
 -- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
