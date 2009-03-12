@@ -1,103 +1,107 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 14/14] nfsd4: move rpc_client setup to a separate function
-Date: Thu, 12 Mar 2009 12:59:04 +0200
-Message-ID: <49B8EAF8.40402@panasas.com>
-References: <1236731222-3294-1-git-send-email-bfields@fieldses.org> <1236731222-3294-2-git-send-email-bfields@fieldses.org> <1236731222-3294-3-git-send-email-bfields@fieldses.org> <1236731222-3294-4-git-send-email-bfields@fieldses.org> <1236731222-3294-5-git-send-email-bfields@fieldses.org> <1236731222-3294-6-git-send-email-bfields@fieldses.org> <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org> <1236731222-3294-9-git-send-email-bfields@fieldses.org> <1236731222-3294-10-git-send-email-bfields@fieldses.org> <1236731222-3294-11-git-send-email-bfields@fieldses.org> <1236731222-3294-12-git-send-email-bfields@fieldses.org> <1236731222-3294-13-git-send-email-bfields@fieldses.org> <1236731222-3294-14-git-send-email-bfields@fieldses.org>
-  <1236731222-3294-15-git-send-email-bfields@fieldses.org>
+From: Igor Zhbanov <izh1979@gmail.com>
+Subject: VFS, NFS security bug? Should CAP_MKNOD and CAP_LINUX_IMMUTABLE be
+	added to CAP_FS_MASK?
+Date: Thu, 12 Mar 2009 15:25:39 +0300
+Message-ID: <f44001920903120525h1a62b641p4a7894d86a41192b@mail.gmail.com>
+References: <f44001920903110553t52ce0ba7l4ba97213e1c51873@mail.gmail.com>
+	 <f44001920903120446k47590437q95242f7a55c11d57@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:30264 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752877AbZCLK7J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 06:59:09 -0400
-In-Reply-To: <1236731222-3294-15-git-send-email-bfields@fieldses.org>
+Received: from mail-fx0-f176.google.com ([209.85.220.176]:50417 "EHLO
+	mail-fx0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753926AbZCLMZo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 08:25:44 -0400
+Received: by fxm24 with SMTP id 24so364175fxm.37
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Mar 2009 05:25:39 -0700 (PDT)
+In-Reply-To: <f44001920903120446k47590437q95242f7a55c11d57-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 11, 2009, 2:27 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> From: J. Bruce Fields <bfields@citi.umich.edu>
-> 
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> ---
->  fs/nfsd/nfs4callback.c |   33 ++++++++++++++++++++++-----------
->  1 files changed, 22 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index c979af7..1d58ac7 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -361,9 +361,8 @@ static struct rpc_program cb_program = {
->  /* Reference counting, callback cleanup, etc., all look racy as heck.
->   * And why is cb_set an atomic? */
->  
-> -static int do_probe_callback(void *data)
-> +static struct rpc_clnt *setup_callback_client(struct nfs4_client *clp)
->  {
-> -	struct nfs4_client *clp = data;
->  	struct sockaddr_in	addr;
->  	struct nfs4_callback    *cb = &clp->cl_callback;
->  	struct rpc_timeout	timeparms = {
-> @@ -384,15 +383,10 @@ static int do_probe_callback(void *data)
->  		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
->  		.client_name    = clp->cl_principal,
->  	};
-> -	struct rpc_message msg = {
-> -		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
-> -		.rpc_argp       = clp,
-> -	};
->  	struct rpc_clnt *client;
-> -	int status = -EINVAL;
->  
->  	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
-> -		goto out_err;
-> +		return ERR_PTR(-EINVAL);
->  
->  	/* Initialize address */
->  	memset(&addr, 0, sizeof(addr));
-> @@ -402,9 +396,26 @@ static int do_probe_callback(void *data)
->  
->  	/* Create RPC client */
->  	client = rpc_create(&args);
-> -	if (IS_ERR(client)) {
-> -		dprintk("NFSD: couldn't create callback client: %d\n",
-> +	if (IS_ERR(client))
-> +		dprintk("NFSD: couldn't create callback client: %ld\n",
->  			PTR_ERR(client));
-> +	return client;
-> +
-> +}
-> +
-> +static int do_probe_callback(void *data)
-> +{
-> +	struct nfs4_client *clp = data;
-> +	struct nfs4_callback    *cb = &clp->cl_callback;
-> +	struct rpc_message msg = {
-> +		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
-> +		.rpc_argp       = clp,
-> +	};
-> +	struct rpc_clnt *client;
-> +	int status;
-> +
-> +	client = setup_callback_client(clp);
-> +	if (IS_ERR(client)) {
->  		status = PTR_ERR(client);
->  		goto out_err;
->  	}
-> @@ -421,7 +432,7 @@ static int do_probe_callback(void *data)
->  out_release_client:
->  	rpc_shutdown_client(client);
->  out_err:
-> -	dprintk("NFSD: warning: no callback path to client %.*: error %ds\n",
-> +	dprintk("NFSD: warning: no callback path to client %.*s: error %ds\n"
+Hello!
 
-Cool, that just leaves the trailing 's' to be cleaned up.
+(I have sent this letter to linux-kernel and linux-fsdevel mailing
+lists but don't know where to send better.)
 
-Benny
+It seems that CAP_MKNOD and CAP_LINUX_IMMUTABLE were forgotten to be
+added to CAP_FS_MASK_B0 in linux-2.6.x and to CAP_FS_MASK in
+linux-2.4.x. Both capabilities affects file system and can be
+considered file system capabilities.
 
->  		(int)clp->cl_name.len, clp->cl_name.data, status);
->  	put_nfs4_client(clp);
->  	return 0;
+Let's look at linux-2.6.x.
+
+In include/linux/capability.h CAP_FS_SET is defined to contain
+following capabilities:
+CAP_CHOWN, CAP_DAC_OVERRIDE, CAP_DAC_READ_SEARCH, CAP_FOWNER,
+CAP_FSETID and CAP_MAC_OVERRIDE.
+
+And CAP_NFSD_SET is defined to be the same plus CAP_SYS_RESOURCE.
+
+So, both CAP_FS_SET and CAP_NFSD_SET doesn't include CAP_MKNOD and
+CAP_LINUX_IMMUTABLE.
+
+Also include/linux/capability.h there are cap_drop_fs_set(...),
+cap_raise_fs_set(...),
+cap_drop_nfsd_set(...) and cap_raise_nfsd_set(...) inline functions that return
+corresponding capabilities sets.
+
+Let's look how these functions are used.
+
+In file fs/nfsd/auth.c function nfsd_setuser(...) calls
+cap_raise_nfsd_set(...) and
+cap_drop_nfsd_set(...) to add/exclude corresponding capabilities to/from
+effective set of current nfsd process.
+
+And in file security/commoncap.c function cap_task_post_setuid(...) calls
+cap_drop_fs_set(...) and cap_raise_fs_set(...) to change effective set
+of current task
+when (current->fsuid != old_ruid).
+
+In linux-2.4.x the story is the same.
+
+In file include/linux/capability.h CAP_FS_MASK is defined to contain
+CAP_CHOWN, CAP_DAC_OVERRIDE, CAP_DAC_READ_SEARCH, CAP_FOWNER, CAP_FSETID
+capabilities.
+
+And in file fs/nfsd/auth.c CAP_NFSD_MASK is defined to be same as CAP_FS_MASK
+plus CAP_SYS_RESOURCE.
+
+In file fs/nfsd/auth.c function nfsd_setuser(...) uses CAP_NFSD_MASK
+to add/exclude corresponding capabilities to/from effective set of current
+nfsd process.
+
+And CAP_FS_MASK used in file kernel/sys.c in function sys_setfsuid(...)
+to add/exclude corresponding capabilities to/from effective set of current task.
+
+This can be exploited (and I have succesfully tried it).
+
+Suppose you have NFS-share exported even with root_squash option.
+If one client was compromised, local root can set CAP_MKNOD to some
+local user's process. Then that user can execute mknod to create a device
+that will be owned by that user, e.g. block device file for /dev/hda hard drive.
+
+And he can create that device file on NFS-share (even exported with root_squash
+option). After that he can someway (ssh, cgi) execute code on another nfs client
+or the server to modify it's filesystem. It will be possible because
+he owns that
+device file on nfs share.
+
+The problem is because CAP_MKNOD allows that user to successfully execute
+vfs_mknod(...) function on local host, and that function will call corresponding
+function in nfs module which sends request to NFS server. And nfsd will not
+drop CAP_MKNOD in nfsd_setuser(...) function when impersonating to that user.
+
+Of course, NFS-shares can be mounted with nodev option, but they should be
+placed on separate partition on NFS-server, so even on server that partition
+is mounted with nodev option too.
+
+Also this potentially can be exploited whet some root-setuid binary
+calls setfsuid(...)
+function to drop privileges, but CAP_MKNOD will not be dropped.
+
+So I suggest to add CAP_MKNOD and CAP_LINUX_IMMUTABLE to CAP_FS_MASK
+in linux-2.4.x and to CAP_FS_MASK_B0 in linux-2.6.x.
+
+What do you think? Should CAP_FS_MASK be fixed or it is just NFS problem and
+one need to fix CAP_NFSD_SET (and CAP_NFSD_MASK in linux-2.4)?
