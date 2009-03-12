@@ -1,58 +1,153 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: The next step: nfsvers=4
-Date: Fri, 20 Mar 2009 07:50:09 -0400
-Message-ID: <49C382F1.6080205@RedHat.com>
-References: <49C2704F.5050303@RedHat.com> <7A24DF798E223B4C9864E8F92E8C93EC026043D3@SACMVEXC1-PRD.hq.netapp.com> <855593AD-7541-443F-BA92-491EC32FEDFB@oracle.com> <49C28201.1020301@panasas.com> <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 12/14] nfsd4: remove use of mutex for file_hashtable
+Date: Thu, 12 Mar 2009 12:49:25 +0200
+Message-ID: <49B8E8B5.4010205@panasas.com>
+References: <1236731222-3294-5-git-send-email-bfields@fieldses.org> <1236731222-3294-6-git-send-email-bfields@fieldses.org> <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org> <1236731222-3294-9-git-send-email-bfields@fieldses.org> <1236731222-3294-10-git-send-email-bfields@fieldses.org> <1236731222-3294-11-git-send-email-bfields@fieldses.org> <1236731222-3294-12-git-send-email-bfields@fieldses.org> <1236731222-3294-13-git-send-email-bfields@fieldses.org> <49B8085E.5080808@panasas.com> <20090312000540.GB21854@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org,
+	Alexandros Batsakis <batsakis@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:46257 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751704AbZCTLxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Mar 2009 07:53:14 -0400
-In-Reply-To: <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com>
+Received: from gw-ca.panasas.com ([209.116.51.66]:30536 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755666AbZCLKta (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 06:49:30 -0400
+In-Reply-To: <20090312000540.GB21854@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> If no vers= is specified and only NFSv4 is available on the server, but
-> something like "nocto" shows up on the command line mount options, do we:
+On Mar. 12, 2009, 2:05 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Wed, Mar 11, 2009 at 08:52:14PM +0200, Benny Halevy wrote:
+>> On Mar. 11, 2009, 2:27 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>> From: J. Bruce Fields <bfields@citi.umich.edu>
+>>>
+>>> As part of reducing the scope of the client_mutex, and in order to
+>>> remove the need for mutexes from the callback code (so that callbacks
+>>> can be done as asynchronous rpc calls), move manipulations of the
+>>> file_hashtable under the recall_lock.
+>>>
+>>> Update the relevant comments while we're here.
+>>>
+>>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>>> Cc: Alexandros Batsakis <batsakis@netapp.com>
+>>> ---
+>>>  fs/nfsd/nfs4callback.c |    2 --
+>>>  fs/nfsd/nfs4state.c    |   29 +++++++++++++++++------------
+>>>  2 files changed, 17 insertions(+), 14 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+>>> index 3fd7136..5dcd38e 100644
+>>> --- a/fs/nfsd/nfs4callback.c
+>>> +++ b/fs/nfsd/nfs4callback.c
+>>> @@ -491,8 +491,6 @@ out_put_cred:
+>>>  	 * or deleg_return.
+>>>  	 */
+>>>  	put_nfs4_client(clp);
+>>> -	nfs4_lock_state();
+>>>  	nfs4_put_delegation(dp);
+>>> -	nfs4_unlock_state();
+>>>  	return;
+>>>  }
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index 56e81f9..2f4cb9a 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -78,14 +78,18 @@ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, state
+>>>  static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+>>>  static void nfs4_set_recdir(char *recdir);
+>>>  
+>>> -/* Locking:
+>>> - *
+>>> - * client_mutex:
+>>> - * 	protects clientid_hashtbl[], clientstr_hashtbl[],
+>>> - * 	unconfstr_hashtbl[], uncofid_hashtbl[].
+>>> - */
+>>> +/* Locking: */
+>>> +
+>>> +/* Currently used for almost all code touching nfsv4 state: */
+>>>  static DEFINE_MUTEX(client_mutex);
+>>>  
+>>> +/*
+>>> + * Currently used for the del_recall_lru and file hash table.  In an
+>>> + * effort to decrease the scope of the client_mutex, this spinlock may
+>>> + * eventually cover more:
+>>> + */
+>>> +static DEFINE_SPINLOCK(recall_lock);
+>>> +
+>>>  static struct kmem_cache *stateowner_slab = NULL;
+>>>  static struct kmem_cache *file_slab = NULL;
+>>>  static struct kmem_cache *stateid_slab = NULL;
+>>> @@ -116,19 +120,15 @@ opaque_hashval(const void *ptr, int nbytes)
+>>>  	return x;
+>>>  }
+>>>  
+>>> -/*
+>>> - * Delegation state
+>>> - */
+>>> -
+>>> -/* recall_lock protects the del_recall_lru */
+>>> -static DEFINE_SPINLOCK(recall_lock);
+>>>  static struct list_head del_recall_lru;
+>>>  
+>>>  static void
+>>>  free_nfs4_file(struct kref *kref)
+>>>  {
+>>>  	struct nfs4_file *fp = container_of(kref, struct nfs4_file, fi_ref);
+>>> +	spin_lock(&recall_lock);
+>>>  	list_del(&fp->fi_hash);
+>>> +	spin_unlock(&recall_lock);
+>>>  	iput(fp->fi_inode);
+>>>  	kmem_cache_free(file_slab, fp);
+>>>  }
+>>> @@ -1004,7 +1004,9 @@ alloc_init_file(struct inode *ino)
+>>>  		INIT_LIST_HEAD(&fp->fi_hash);
+>>>  		INIT_LIST_HEAD(&fp->fi_stateids);
+>>>  		INIT_LIST_HEAD(&fp->fi_delegations);
+>>> +		spin_lock(&recall_lock);
+>>>  		list_add(&fp->fi_hash, &file_hashtbl[hashval]);
+>>> +		spin_unlock(&recall_lock);
+>>>  		fp->fi_inode = igrab(ino);
+>>>  		fp->fi_id = current_fileid++;
+>>>  		fp->fi_had_conflict = false;
+>>> @@ -1177,12 +1179,15 @@ find_file(struct inode *ino)
+>>>  	unsigned int hashval = file_hashval(ino);
+>>>  	struct nfs4_file *fp;
+>>>  
+>>> +	spin_lock(&recall_lock);
+>>>  	list_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
+>>>  		if (fp->fi_inode == ino) {
+>>> +			spin_unlock(&recall_lock);
+>> Hmm, I'm afraid there's a race here since potentially
+>> you could take the reference on the file after it has been freed.
+>> find_file should call get_nfs4_file if and only if it's still hashed,
+>> i.e. atomically with looking it up on the list.
+>>
+>> On the same lines, the lock should be taken in put_nfs4_file
+>> rather than in free_nfs4_file.
+>>
+>> That being said, I'm not sure we're unhashing the file in the right
+>> place... it's too late for me right now but my hunch is that open
+>> should alloc_init the nfs4_file as done today and close should unhash
+>> it (under the recall spinlock), and then put it.
+>> put_nfs4_file can stay the same and free_nfs4_file should just do the
+>> iput and kmem_cache_free.
+>>
+>> The main difference is that find_file will fail finding the nfs4_file
+>> struct after close.  (get_nfs4_file in find_file should still happen
+>> under the lock though)
 > 
-> a) fail the mount, or
-> b) ignore the nocto option
-I would say ignore this particular option... since, in a sense, v4 give you this option
-by default due to delegations... but point well taken... The mapping of
-v3 to v4 and visa versa will have to be addressed... I would guess in the mount
-command...  
- 
-> 
-> a) seems like the least surprising behavior.
-> 
-> What about "proto=udp" ?  Linux supports UDP for NFSv4, though other
-> server implementations probably don't.  If that's specified on a mount
-> command line without a vers= option, what version should we choose?
-I think people just want things to work... so if they specify only UDP
-and the server supports V4, we give them V4/TCP. If they REALLY want 
-UDP, they would have to specify 'nfsvers=3,udp'.
+> It's probably better for the nfs4_file to be visible longer, but either
+> is correct.
 
-Or, if there was an mount configuration file, they could specify the
-MAX_VERSION to be 3 and then -o udp mounts work as expected...
+I see. What matters is the stateids associated with the file.
+
+Benny
 
 > 
->> For implementing more complex policies, maybe we can extend
->> the command syntax to accept a range and/or an ordered list
->> of versions to try.
+> The only reason the delegation has a reference on this is to keep track
+> of which files have seen conflicts.  Maybe there's some better way.
 > 
-> Steve mentioned /etc/default/nfs on Solaris.  I could see
-> /etc/sysconfig/nfs on Linux containing a couple of lines defining the
-> range of allowable NFS versions, if we think this is necessary.  This is
-> a simple pre-existing file, and has little potential for introducing
-> negative side-effects.
-The /etc/sysconfig/nfs is a distro only file... Meaning I know of only 
-one distro that uses that file.. So I would tend to shy away from putting
-anything in that... 
-
-steved.
+> Thanks for catching this....
+> 
+> --b.
