@@ -1,68 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from iad2.emailsrvr.com ([207.97.227.212]:56030 "EHLO
-	smtp161.iad.emailsrvr.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753772AbZCLBMg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2009 21:12:36 -0400
-Received: from relay26.relay.iad.mlsrvr.com (localhost [127.0.0.1])
-	by relay26.relay.iad.mlsrvr.com (SMTP Server) with ESMTP id 25FAF1B41D5
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 20:57:32 -0400 (EDT)
-Received: by relay26.relay.iad.mlsrvr.com (Authenticated sender: alfred-AT-von-campe.com) with ESMTPSA id 13B591B41D2
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Mar 2009 20:57:31 -0400 (EDT)
-Message-Id: <96B48952-DA6E-457C-AFAF-B8A96A29CDF1@von-campe.com>
-Content-Type: text/plain; charset=US-ASCII; delsp=yes; format=flowed
-To: linux-nfs@vger.kernel.org
-From: Alfred von Campe <alfred@von-campe.com>
-Subject: Intermittent NFS problems with NetApp server
-Date: Wed, 11 Mar 2009 20:57:30 -0400
+Received: from wf-out-1314.google.com ([209.85.200.174]:34932 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751340AbZCMXFj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 19:05:39 -0400
+Received: by wf-out-1314.google.com with SMTP id 28so704328wfa.4
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 16:05:37 -0700 (PDT)
+In-Reply-To: <1236983389.7265.51.camel@heimdal.trondhjem.org>
+References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
+	 <1236978608.7265.41.camel@heimdal.trondhjem.org>
+	 <72dbd3150903131432u43d9ba43nf0456b99aed0f8fd@mail.gmail.com>
+	 <1236980438.7265.47.camel@heimdal.trondhjem.org>
+	 <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>
+	 <1236983389.7265.51.camel@heimdal.trondhjem.org>
+Date: Fri, 13 Mar 2009 16:05:37 -0700
+Message-ID: <72dbd3150903131605m6aec6e41j8d608512b2693ba9@mail.gmail.com>
+Subject: Re: Horrible NFS Client Performance During Heavy Server IO
+From: David Rees <drees76@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I've been experiencing some intermittent problems accessing at NetApp
-server via NFS and automount.  I'm running CentOS 5.2 (fully updated)
-on all my servers and workstations.  Usually, everything is working
-just fine, when suddenly we get the following error:
+On Fri, Mar 13, 2009 at 3:29 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Fri, 2009-03-13 at 14:59 -0700, David Rees wrote:
+>> And the activity around the time I am reproducing the slowdown:
+>>
+>> Server nfs v3:
+>> null         getattr      setattr      lookup       access       readlink
+>> 0         0% 3503     75% 7         0% 31        0% 1027     22% 0         0%
+>> read         write        create       mkdir        symlink      mknod
+>> 9         0% 50        1% 6         0% 0         0% 0         0% 0         0%
+>> remove       rmdir        rename       link         readdir      readdirplus
+>> 2         0% 0         0% 2         0% 0         0% 0         0% 0         0%
+>> fsstat       fsinfo       pathconf     commit
+>> 0         0% 0         0% 0         0% 13        0%
+>
+> Is this the result of only doing 2 'dd' copies? That's a lot of GETATTR
+> calls for that kind of workload...
 
-    /bin/sh: /home/epd/srcref/swtools/Crontabs/ 
-run_release_requests.sh: Permission denied
+No - the client that I have been duplicating this from is also my
+desktop and the NFS server hosts my home directory and it was active
+during the test.
 
-This is actually an email from cron because we try to run that shell
-script every minute (yes, the crontab entry is * * * * * /home/epd/
-srcref/swtools/Crontabs/run_release_requests.sh), and /home/epd is an
-automounted directory.  Here is its map entry:
+That's where the extreme slowdown in NFS performance affects me the
+most.  When then heavy IO on the server is going on (even just a
+single process writing as fast as it can), my applications (Firefox,
+Thunderbird, Gnome Terminals, just about anything that accesses the
+NFS mount) will basically lock up and go totally unresponsive while
+they wait for the NFS server to respond.  They will sit unresponsive
+for minutes at a time and are unusable until the heavy IO stops on the
+server.
 
-    epd -rw,nointr,rsize=32768,wsize=32768 XXXXXX:/epd
+I do software development from this machine and I have timed one of my
+project builds with and without the heavy IO on the NFS server - a
+build that normally takes about 20 seconds will take 5 minutes to
+complete (it does read/write a lot of small files).
 
-When this is happening, other users can successfully access that
-directory on the server.  The directory is actually mounted
-correctly, and unmounting doesn't fix the issue.  Furthermore, the
-same user that is being denied access, can successfully access that
-directory on a different server.  The problem usually lasts about 20
-minutes and then resolves itself.  We have been pulling our hair out
-trying to debug this problem, because it's intermittent and the debug
-window is fairly short.
-
-Recently we have been getting help from one of the NetApp admins, and
-he ran a command on the NetApp that produced the following warning:
-
-    The TCP receive window advertised by NFS client XXXXXXX is 5888.
-    This is less than the recommended value of 32768 bytes.
-    You should increase the TCP receive buffer size for NFS on the  
-client.
-
-Some googling around got me to check these values for TCP:
-
-    # sysctl net.ipv4.tcp_mem
-    net.ipv4.tcp_mem = 98304        131072  196608
-    # sysctl net.ipv4.tcp_rmem
-    net.ipv4.tcp_rmem = 4096        87380   4194304
-    # sysctl net.ipv4.tcp_wmem
-    net.ipv4.tcp_wmem = 4096        16384   4194304
-
-So these seem fine to me (i.e., the max is greater than 32768).  Is
-there an NFS (as opposed to TCP) setting I should be tweaking?  Any
-ideas why the NetApp is issuing those warnings?  Any other
-suggestions on how to debug this problem?
-
-Thanks,
-Alfred
+-Dave
