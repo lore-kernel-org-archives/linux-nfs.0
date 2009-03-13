@@ -1,39 +1,149 @@
-From: Brian Wince <bwince-gvzKVTG1yJJBDgjK7y7TUQ@public.gmane.org>
-Subject: issues with project quota over nfs
-Date: Fri, 13 Mar 2009 09:59:26 -0700
-Message-ID: <AD300F292705ED4089373955E129C1780491E77D@RBSJX.ad.redback.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 12/14] nfsd4: remove use of mutex for file_hashtable
+Date: Fri, 13 Mar 2009 13:18:31 -0400
+Message-ID: <20090313171831.GA26916@fieldses.org>
+References: <1236731222-3294-7-git-send-email-bfields@fieldses.org> <1236731222-3294-8-git-send-email-bfields@fieldses.org> <1236731222-3294-9-git-send-email-bfields@fieldses.org> <1236731222-3294-10-git-send-email-bfields@fieldses.org> <1236731222-3294-11-git-send-email-bfields@fieldses.org> <1236731222-3294-12-git-send-email-bfields@fieldses.org> <1236731222-3294-13-git-send-email-bfields@fieldses.org> <49B8085E.5080808@panasas.com> <20090312000540.GB21854@fieldses.org> <49B8E8B5.4010205@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org,
+	Alexandros Batsakis <batsakis@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mgate.redback.com ([155.53.3.41]:8107 "EHLO mgate.redback.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760713AbZCMRI5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 13:08:57 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by prattle.redback.com (Postfix) with ESMTP id F04BD979EFA
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 09:59:27 -0700 (PDT)
-Received: from prattle.redback.com ([127.0.0.1])
- by localhost (prattle [127.0.0.1]) (amavisd-new, port 10024) with ESMTP
- id 30181-09 for <linux-nfs@vger.kernel.org>;
- Fri, 13 Mar 2009 09:59:27 -0700 (PDT)
-Received: from rbsjx.ad.redback.com (rbsjxh1.redback.com [155.53.14.105])
-	by prattle.redback.com (Postfix) with ESMTP id DBF42979EF9
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 09:59:27 -0700 (PDT)
+Received: from mail.fieldses.org ([141.211.133.115]:57542 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753212AbZCMRSi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 13:18:38 -0400
+In-Reply-To: <49B8E8B5.4010205@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All,
-We have a Quad-core server running gentoo 2.6.27-r7 that is used as an nfs server for a xfs partition.
-We are using project quota's on directories within this partition and exporting this.
-When a client tries to untar in the dir with project quotas set and reaches the quota limit the load on the NFS server goes up dramatically and stays like this for a few minutes after the tar has gone through trying to write all of it files and failing due to quota limit exceeded.
- 
-Is this a known issue and if so is there anything that can be done to resolve this.
- 
-We do not see this issue if on the locally mounted partition. This only happens over NFS.
- 
-Please let me know if you need more information or if this should be addressed on a different list.
- 
-TIA,
+On Thu, Mar 12, 2009 at 12:49:25PM +0200, Benny Halevy wrote:
+> On Mar. 12, 2009, 2:05 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Wed, Mar 11, 2009 at 08:52:14PM +0200, Benny Halevy wrote:
+> >> On Mar. 11, 2009, 2:27 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >>> From: J. Bruce Fields <bfields@citi.umich.edu>
+> >>>
+> >>> As part of reducing the scope of the client_mutex, and in order to
+> >>> remove the need for mutexes from the callback code (so that callbacks
+> >>> can be done as asynchronous rpc calls), move manipulations of the
+> >>> file_hashtable under the recall_lock.
+> >>>
+> >>> Update the relevant comments while we're here.
+> >>>
+> >>> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> >>> Cc: Alexandros Batsakis <batsakis@netapp.com>
+> >>> ---
+> >>>  fs/nfsd/nfs4callback.c |    2 --
+> >>>  fs/nfsd/nfs4state.c    |   29 +++++++++++++++++------------
+> >>>  2 files changed, 17 insertions(+), 14 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >>> index 3fd7136..5dcd38e 100644
+> >>> --- a/fs/nfsd/nfs4callback.c
+> >>> +++ b/fs/nfsd/nfs4callback.c
+> >>> @@ -491,8 +491,6 @@ out_put_cred:
+> >>>  	 * or deleg_return.
+> >>>  	 */
+> >>>  	put_nfs4_client(clp);
+> >>> -	nfs4_lock_state();
+> >>>  	nfs4_put_delegation(dp);
+> >>> -	nfs4_unlock_state();
+> >>>  	return;
+> >>>  }
+> >>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >>> index 56e81f9..2f4cb9a 100644
+> >>> --- a/fs/nfsd/nfs4state.c
+> >>> +++ b/fs/nfsd/nfs4state.c
+> >>> @@ -78,14 +78,18 @@ static struct nfs4_delegation * find_delegation_stateid(struct inode *ino, state
+> >>>  static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+> >>>  static void nfs4_set_recdir(char *recdir);
+> >>>  
+> >>> -/* Locking:
+> >>> - *
+> >>> - * client_mutex:
+> >>> - * 	protects clientid_hashtbl[], clientstr_hashtbl[],
+> >>> - * 	unconfstr_hashtbl[], uncofid_hashtbl[].
+> >>> - */
+> >>> +/* Locking: */
+> >>> +
+> >>> +/* Currently used for almost all code touching nfsv4 state: */
+> >>>  static DEFINE_MUTEX(client_mutex);
+> >>>  
+> >>> +/*
+> >>> + * Currently used for the del_recall_lru and file hash table.  In an
+> >>> + * effort to decrease the scope of the client_mutex, this spinlock may
+> >>> + * eventually cover more:
+> >>> + */
+> >>> +static DEFINE_SPINLOCK(recall_lock);
+> >>> +
+> >>>  static struct kmem_cache *stateowner_slab = NULL;
+> >>>  static struct kmem_cache *file_slab = NULL;
+> >>>  static struct kmem_cache *stateid_slab = NULL;
+> >>> @@ -116,19 +120,15 @@ opaque_hashval(const void *ptr, int nbytes)
+> >>>  	return x;
+> >>>  }
+> >>>  
+> >>> -/*
+> >>> - * Delegation state
+> >>> - */
+> >>> -
+> >>> -/* recall_lock protects the del_recall_lru */
+> >>> -static DEFINE_SPINLOCK(recall_lock);
+> >>>  static struct list_head del_recall_lru;
+> >>>  
+> >>>  static void
+> >>>  free_nfs4_file(struct kref *kref)
+> >>>  {
+> >>>  	struct nfs4_file *fp = container_of(kref, struct nfs4_file, fi_ref);
+> >>> +	spin_lock(&recall_lock);
+> >>>  	list_del(&fp->fi_hash);
+> >>> +	spin_unlock(&recall_lock);
+> >>>  	iput(fp->fi_inode);
+> >>>  	kmem_cache_free(file_slab, fp);
+> >>>  }
+> >>> @@ -1004,7 +1004,9 @@ alloc_init_file(struct inode *ino)
+> >>>  		INIT_LIST_HEAD(&fp->fi_hash);
+> >>>  		INIT_LIST_HEAD(&fp->fi_stateids);
+> >>>  		INIT_LIST_HEAD(&fp->fi_delegations);
+> >>> +		spin_lock(&recall_lock);
+> >>>  		list_add(&fp->fi_hash, &file_hashtbl[hashval]);
+> >>> +		spin_unlock(&recall_lock);
+> >>>  		fp->fi_inode = igrab(ino);
+> >>>  		fp->fi_id = current_fileid++;
+> >>>  		fp->fi_had_conflict = false;
+> >>> @@ -1177,12 +1179,15 @@ find_file(struct inode *ino)
+> >>>  	unsigned int hashval = file_hashval(ino);
+> >>>  	struct nfs4_file *fp;
+> >>>  
+> >>> +	spin_lock(&recall_lock);
+> >>>  	list_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
+> >>>  		if (fp->fi_inode == ino) {
+> >>> +			spin_unlock(&recall_lock);
+> >> Hmm, I'm afraid there's a race here since potentially
+> >> you could take the reference on the file after it has been freed.
+> >> find_file should call get_nfs4_file if and only if it's still hashed,
+> >> i.e. atomically with looking it up on the list.
+> >>
+> >> On the same lines, the lock should be taken in put_nfs4_file
+> >> rather than in free_nfs4_file.
+> >>
+> >> That being said, I'm not sure we're unhashing the file in the right
+> >> place... it's too late for me right now but my hunch is that open
+> >> should alloc_init the nfs4_file as done today and close should unhash
+> >> it (under the recall spinlock), and then put it.
+> >> put_nfs4_file can stay the same and free_nfs4_file should just do the
+> >> iput and kmem_cache_free.
+> >>
+> >> The main difference is that find_file will fail finding the nfs4_file
+> >> struct after close.  (get_nfs4_file in find_file should still happen
+> >> under the lock though)
+> > 
+> > It's probably better for the nfs4_file to be visible longer, but either
+> > is correct.
+> 
+> I see. What matters is the stateids associated with the file.
 
-Brian
+Right.  So for now I'm taking your first suggestion.  Thanks again for
+the review.
+
+--b.
