@@ -1,59 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.175]:1408 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751549AbZCMUmC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 16:42:02 -0400
-Received: by wf-out-1314.google.com with SMTP id 28so638114wfa.4
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 13:42:00 -0700 (PDT)
-Date: Fri, 13 Mar 2009 13:36:22 -0700
-Message-ID: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-Subject: Horrible NFS Client Performance During Heavy Server IO
-From: David Rees <drees76@gmail.com>
-To: linux-nfs@vger.kernel.org
+Received: from relay2.sgi.com ([192.48.179.30]:43278 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1757946AbZCMCjU (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 12 Mar 2009 22:39:20 -0400
+Message-ID: <49B9C84B.2010506@sgi.com>
+Date: Fri, 13 Mar 2009 13:43:23 +1100
+From: Greg Banks <gnb@sgi.com>
+To: Jim Callahan <callahan@temerity.us>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Best A->B large file copy performance
+References: <49B9780B.2020609@temerity.us>
+In-Reply-To: <49B9780B.2020609@temerity.us>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I've been trying to troubleshoot/tune around a problem I have been
-experiencing where if the NFS server is under heavy write load (the
-disks are saturated), client side NFS performance drops to nearly 0.
-As soon as the load is lifted so that there is no significant IO wait
-time on the server, the clients start acting responsively again.
+Jim Callahan wrote:
+> I'm trying to determine the most optimal way to have a single NFS
+> client copy large numbers (100-1000) of fairly large (1-50M) files [...]
+I'd like to propose a new rule of thumb:  to be considered "fairly
+large", a file should be larger than the capacity of a USB key which
+could be comfortably swallowed.
 
-Server setup:
-Fedora 9 kernel 2.6.27.15-78.2.23.fc9.x86_64
-NFS tuning - none
-Disk system - 230GB SATA RAID1 array on a basic AACRAID adapter
-Dual XEONs, 8GB RAM
-Network GigE
+> [...] Since the number of permutations of these three settings are
+> large I was hoping that I might get some advise from this list about a
+> range of values we should be investigating and any unpleasant
+> interactions between these levels of settings we should be aware of to
+> narrow our search.  Also, if there are other major factors outside
+> those listed I'd appreciate being pointed in the right direction.
+Try
 
-Client setup:
-Fedora 10 kernel 2.6.27.19-170.2.35.fc10.x86_64
-NFS tuning - none
-Network GigE
+http://mirror.linux.org.au/pub/linux.conf.au/2008/slides/130-lca2008-nfs-tuning-secrets-d7.odp
 
-Things I have tried:
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
 
-I have tried playing with the disk scheduler, switching to deadline
-from cfq = no difference.
-I have tried playing with rsize/wsize settings on the client = no difference.
-
-Steps to reproduce:
-
-1. Write a big file to the same partition that is exported on the server:
-dd if=/dev/zero of=/opt/export/bigfile bs=1M count=5000 conv=fdatasync
-2. Write a small file to the same partition from the client:
-dd if=/dev/zero of=/opt/export/bigfile bs=16k count=8 conf=fdatasync
-
-I am seeing slightly less than 2kBps (yes, 1000-2000 bytes per second)
-from the client while this is happening.
-
-It really looks like the nfs daemons on the server just get no
-priority when compared to the local process.
-
-Any ideas?  This is something I have noticed for quite some time.
-Only thing I can think of trying is to upgrade the disk array so that
-the disks are no longer a bottleneck.
-
--Dave
