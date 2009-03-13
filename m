@@ -1,66 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.230]:41206 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754195AbZCMV7t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 17:59:49 -0400
-Received: by rv-out-0506.google.com with SMTP id g9so798977rvb.5
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 14:59:48 -0700 (PDT)
-In-Reply-To: <1236980438.7265.47.camel@heimdal.trondhjem.org>
-References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-	 <1236978608.7265.41.camel@heimdal.trondhjem.org>
-	 <72dbd3150903131432u43d9ba43nf0456b99aed0f8fd@mail.gmail.com>
-	 <1236980438.7265.47.camel@heimdal.trondhjem.org>
-Date: Fri, 13 Mar 2009 14:59:47 -0700
-Message-ID: <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>
-Subject: Re: Horrible NFS Client Performance During Heavy Server IO
+Received: from wf-out-1314.google.com ([209.85.200.175]:1408 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751549AbZCMUmC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Mar 2009 16:42:02 -0400
+Received: by wf-out-1314.google.com with SMTP id 28so638114wfa.4
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Mar 2009 13:42:00 -0700 (PDT)
+Date: Fri, 13 Mar 2009 13:36:22 -0700
+Message-ID: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
+Subject: Horrible NFS Client Performance During Heavy Server IO
 From: David Rees <drees76@gmail.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org
+To: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 13, 2009 at 2:40 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> Do you perhaps see a lot of sockets connected to port 2049 and that are
-> not in the TCP_ESTABLISHED state when you do 'netstat -nt' on the
-> server?
+I've been trying to troubleshoot/tune around a problem I have been
+experiencing where if the NFS server is under heavy write load (the
+disks are saturated), client side NFS performance drops to nearly 0.
+As soon as the load is lifted so that there is no significant IO wait
+time on the server, the clients start acting responsively again.
 
-Only one tcp socket from the client to the server (no other clients
-need to be active when running the testcase).
+Server setup:
+Fedora 9 kernel 2.6.27.15-78.2.23.fc9.x86_64
+NFS tuning - none
+Disk system - 230GB SATA RAID1 array on a basic AACRAID adapter
+Dual XEONs, 8GB RAM
+Network GigE
 
-> What is the ratio of 'write' to 'commit' operations when you look at the
-> 'nfsstat -s' output (also on the server)?
+Client setup:
+Fedora 10 kernel 2.6.27.19-170.2.35.fc10.x86_64
+NFS tuning - none
+Network GigE
 
-It appears to be about 3-4 to 1 writes to commits.  By far the
-heaviest activity is with getattr calls with 60-75% of the activity.
+Things I have tried:
 
-# nfsstat -s
-Server rpc stats:
-calls      badcalls   badauth    badclnt    xdrcall
-21044536   0          0          0          0
+I have tried playing with the disk scheduler, switching to deadline
+from cfq = no difference.
+I have tried playing with rsize/wsize settings on the client = no difference.
 
-Server nfs v3:
-null         getattr      setattr      lookup       access       readlink
-30        0% 12977249 61% 267095    1% 1201529   5% 3030825  14% 4816      0%
-read         write        create       mkdir        symlink      mknod
-722160    3% 1369511   6% 242484    1% 2852      0% 103       0% 1         0%
-remove       rmdir        rename       link         readdir      readdirplus
-218097    1% 4354      0% 189125    0% 284       0% 1569      0% 139267    0%
-fsstat       fsinfo       pathconf     commit
-3930      0% 554       0% 272       0% 610240    2%
+Steps to reproduce:
 
-And the activity around the time I am reproducing the slowdown:
+1. Write a big file to the same partition that is exported on the server:
+dd if=/dev/zero of=/opt/export/bigfile bs=1M count=5000 conv=fdatasync
+2. Write a small file to the same partition from the client:
+dd if=/dev/zero of=/opt/export/bigfile bs=16k count=8 conf=fdatasync
 
-Server nfs v3:
-null         getattr      setattr      lookup       access       readlink
-0         0% 3503     75% 7         0% 31        0% 1027     22% 0         0%
-read         write        create       mkdir        symlink      mknod
-9         0% 50        1% 6         0% 0         0% 0         0% 0         0%
-remove       rmdir        rename       link         readdir      readdirplus
-2         0% 0         0% 2         0% 0         0% 0         0% 0         0%
-fsstat       fsinfo       pathconf     commit
-0         0% 0         0% 0         0% 13        0%
+I am seeing slightly less than 2kBps (yes, 1000-2000 bytes per second)
+from the client while this is happening.
+
+It really looks like the nfs daemons on the server just get no
+priority when compared to the local process.
+
+Any ideas?  This is something I have noticed for quite some time.
+Only thing I can think of trying is to upgrade the disk array so that
+the disks are no longer a bottleneck.
 
 -Dave
