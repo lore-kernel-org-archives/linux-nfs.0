@@ -1,71 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.239]:33156 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752490AbZCERS6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Mar 2009 12:18:58 -0500
-Received: by rv-out-0506.google.com with SMTP id g37so27376rvb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Mar 2009 09:18:55 -0800 (PST)
-Date: Thu, 5 Mar 2009 10:18:55 -0700
-Message-ID: <49e80a6a0903050918y6043e729weba84715fadb0aaf@mail.gmail.com>
-Subject: NFS significantly slow on uncache data, high %iowait, for kernel 2.6
-From: Igor Sola <iglesu@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out2.uio.no ([129.240.10.58]:39193 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752339AbZCMVKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Mar 2009 17:10:14 -0400
+Subject: Re: Horrible NFS Client Performance During Heavy Server IO
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: David Rees <drees76@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
+References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
+Content-Type: text/plain
+Date: Fri, 13 Mar 2009 17:10:08 -0400
+Message-Id: <1236978608.7265.41.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Fri, 2009-03-13 at 13:36 -0700, David Rees wrote:
+> I've been trying to troubleshoot/tune around a problem I have been
+> experiencing where if the NFS server is under heavy write load (the
+> disks are saturated), client side NFS performance drops to nearly 0.
+> As soon as the load is lifted so that there is no significant IO wait
+> time on the server, the clients start acting responsively again.
+> 
+> Server setup:
+> Fedora 9 kernel 2.6.27.15-78.2.23.fc9.x86_64
+> NFS tuning - none
+> Disk system - 230GB SATA RAID1 array on a basic AACRAID adapter
+> Dual XEONs, 8GB RAM
+> Network GigE
+> 
+> Client setup:
+> Fedora 10 kernel 2.6.27.19-170.2.35.fc10.x86_64
+> NFS tuning - none
+> Network GigE
+> 
+> Things I have tried:
+> 
+> I have tried playing with the disk scheduler, switching to deadline
+> from cfq = no difference.
+> I have tried playing with rsize/wsize settings on the client = no difference.
+> 
+> Steps to reproduce:
+> 
+> 1. Write a big file to the same partition that is exported on the server:
+> dd if=/dev/zero of=/opt/export/bigfile bs=1M count=5000 conv=fdatasync
+> 2. Write a small file to the same partition from the client:
+> dd if=/dev/zero of=/opt/export/bigfile bs=16k count=8 conf=fdatasync
 
-Apologies in advance if this email is inappropriate for this mailing
-list. If so please let me know of a more suitable one.
+You don't need conv=fdatasync when writing to NFS. The close-to-open
+cache consistency automatically guarantees fdatasync on close().
 
-I noticed a significant performance difference when comparing a
-Centos5 (kernel 2.6.18) or Ubuntu (2.6.27-11) with a RH8 (kernel 2.4).
-All use NFS v3.
-The RH8 nfsd is faster than the 2.6 one even though it runs in an
-older, lower spec machine.
+> I am seeing slightly less than 2kBps (yes, 1000-2000 bytes per second)
+> from the client while this is happening.
 
-See test details below
+UDP transport, or TCP? If the former, then definitely switch to the
+latter, since you're probably pounding the server with unnecessary RPC
+retries while it is busy with the I/O.
 
-Centos 5 x86_64 kernel 2.6.18-92.1.22.el5
+For the same reason, also make sure that -otimeo=600 (the default for
+TCP).
 
-RH8 2.4.20-30.8.multi_lun.smp #1 SMP  i386 GNU/Linux
+Trond
 
-1Gb connection between machines
-
-File sizes are 1GB. The read speed of these files in the local machine
-filesystem (server) is around 98MBs in the Centos5 machine and around
-65MBs in the old RH8 machine.
-
-.- First of all I wanted to measure how the network alone performs
-while using NFS.
-So in the server side I run a "cat" command on the 1GB file to
-/dev/null.  At this point the file system has the 1GB file cached in
-memory. In the client side a "cat" on the same file gives me a speed
-of about 113MBs. Which is consistent with the 1Gb network. There is no
-performance hit. So far so good.
-
-
-.- The second test is reading from disk an uncache (in server and
-client) file. In the server and client I made sure I flushed the 1GB
-file from the memory.  Between  Centos5 machines the performance was
-about 35MBs (64% drop from the 98MBs disk read). Between RH8 machines
-the performance was 55MBs (15% drop from the 65MBs)
-
-This second test was repeated for ext2, ext3, xfs with no significant
-differences.
-
-Please note that the %iowait more than doubles when reading the file
-from the NFS partition vs the file system partition in the 2.6 kernels
-
-.- I run a third test just to make sure the problem is somehow related
-to the nfs daemon. I mounted the nfs partition local to the nfs server
-so the network was out the equation. I got the same poor results, no
-difference.
-
-Any ideas are most welcome,
-
-Thanks,
-
-I.
