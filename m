@@ -1,80 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vps680.inmotionhosting.com ([74.124.198.230]:39311 "EHLO
-	vps680.inmotionhosting.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750809AbZCLVJt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2009 17:09:49 -0400
-Message-ID: <49B96C0F.3060405@temerity.us>
-Date: Thu, 12 Mar 2009 16:09:51 -0400
-From: Jim Callahan <callahan@temerity.us>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS and RPC queues
-References: <49B8186F.5070601@temerity.us> <1236809248.12697.44.camel@heimdal.trondhjem.org>
-In-Reply-To: <1236809248.12697.44.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:58901 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752237AbZCNET6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 14 Mar 2009 00:19:58 -0400
+Subject: Re: [PATCH 29/30] SUNRPC: Add a sysctl to control the duration of
+ the socket linger timeout
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20090314031937.GA7166@fieldses.org>
+References: <20090311184105.5578.22131.stgit@heimdal.trondhjem.org>
+	 <20090311184110.5578.89380.stgit@heimdal.trondhjem.org>
+	 <20090314031937.GA7166@fieldses.org>
+Content-Type: text/plain
+Date: Sat, 14 Mar 2009 00:18:56 -0400
+Message-Id: <1237004336.7265.103.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond Myklebust wrote:
-> Jim Callahan wrote:
->   
->> I'm trying to diagnose an NFS performance problem and need to know a bit 
->> more about how the Linux NFS client works internally.  I've got a single 
->> NFS client which is connected to a network appliance file server via 1Gb 
->>     
->                                      NetApp ?
->   
-Actually, not.   Its one of the other supposedly high performance 
-commercial products though...  I'd rather not say which at this time in 
-the interest of encouraging their help resolving this.
+On Fri, 2009-03-13 at 23:19 -0400, J. Bruce Fields wrote:
+> Out of curiosity: how would a user decide what to set this to?
 
->> ...
->>
->> Is the RPC queue used by NFS processed in a serial fashion for each 
->> mount to a unique IP address?  One possible explanation is that the 
->> GETATTR requests are simply waiting in line behind READ/WRITES in the 
->> one network case and that explains the drop in performance.  So does 
->> using a different IP address for the second mount create a second RPC 
->> queue which is processed in an asynchronous manner?  That might explain 
->> the lack of interaction between the GETATTR's and READ/WRITES in our 
->> second test...
->>     
->
-> Try increasing the value of the sunrpc.tcp_slot_table_entries sysctl
-> entry on the Linux client. That sysctl controls the maximum number of
-> simultaneous RPC messages that are allowed on the TCP connection.
->
-> The default is 16, but it can be increased to 128. Just make sure that
-> you umount all NFS partitions before changing it. (Doing 'mount
-> -oremount' won't work...)
->
-> Trond
->   
-Thanks for clearing up what "sunrpc.tcp_slot_table_entries" meant.   Its 
-odd however that even with a default size of 16 we should still see 
-contention between only two OS level processes generating NFS requests 
-though.  Shouldn't that only be using 2 of the 16 entries?  Even our 
-worse case would only generate 17 processes running in parallel.  Or do 
-I misunderstand the granularity?   If I have an NFS rsize/wsize of 32k 
-and perform a C read()/write() of 64k, this will get chunked into two 
-32k READ/WRITE NFS requests, correct?  But do both of these low level 
-requests from a single process and read()/write() call get run in 
-parallel if there are at least 2 slots in the RPC table available?  In 
-other words, is there an interaction between the rsize/wsize and the 
-number of slots in the RPC table that are used for a single C 
-read()/write()?  Would increasing the rsize/wsize for files larger than 
-this size lead to less utilization of the RPC table and therefore less 
-contention?
+Most people would want to set it to a large value. The only ones who
+would really care would be those who have broken servers, and they would
+probably want to tune it so as to provide a decent interactive response
+when pressing ^C....
 
-Also, can someone please answer whether there is an RPC request table 
-for each NFS mount to a different IP address or one shared table for all 
-mounts?  I'd like to have a better understanding of why running our 
-GETATTR requests down a different mount would eliminate the contention 
-with the READ/WRITE requests going down the other mount.
+Trond
 
-We'll definitely be bumping up the "sunrpc.tcp_slot_table_entries" to 
-128 and re-running our tests though.  Thanks for the help so far...
 
+> --b.
+> 
+> On Wed, Mar 11, 2009 at 02:41:10PM -0400, Trond Myklebust wrote:
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> > 
+> >  net/sunrpc/xprtsock.c |   13 +++++++++++--
+> >  1 files changed, 11 insertions(+), 2 deletions(-)
+> > 
+> > 
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index b51f58b..42222b4 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -50,6 +50,7 @@ unsigned int xprt_min_resvport = RPC_DEF_MIN_RESVPORT;
+> >  unsigned int xprt_max_resvport = RPC_DEF_MAX_RESVPORT;
+> >  
+> >  #define XS_TCP_LINGER_TO	(15U * HZ)
+> > +static unsigned int xs_tcp_fin_timeout __read_mostly = XS_TCP_LINGER_TO;
+> >  
+> >  /*
+> >   * We can register our own files under /proc/sys/sunrpc by
+> > @@ -119,6 +120,14 @@ static ctl_table xs_tunables_table[] = {
+> >  		.extra2		= &xprt_max_resvport_limit
+> >  	},
+> >  	{
+> > +		.procname	= "tcp_fin_timeout",
+> > +		.data		= &xs_tcp_fin_timeout,
+> > +		.maxlen		= sizeof(xs_tcp_fin_timeout),
+> > +		.mode		= 0644,
+> > +		.proc_handler	= &proc_dointvec_jiffies,
+> > +		.strategy	= sysctl_jiffies
+> > +	},
+> > +	{
+> >  		.ctl_name = 0,
+> >  	},
+> >  };
+> > @@ -1222,7 +1231,7 @@ static void xs_tcp_state_change(struct sock *sk)
+> >  		clear_bit(XPRT_CONNECTED, &xprt->state);
+> >  		clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+> >  		smp_mb__after_clear_bit();
+> > -		xs_tcp_schedule_linger_timeout(xprt, XS_TCP_LINGER_TO);
+> > +		xs_tcp_schedule_linger_timeout(xprt, xs_tcp_fin_timeout);
+> >  		break;
+> >  	case TCP_CLOSE_WAIT:
+> >  		/* The server initiated a shutdown of the socket */
+> > @@ -1239,7 +1248,7 @@ static void xs_tcp_state_change(struct sock *sk)
+> >  		break;
+> >  	case TCP_LAST_ACK:
+> >  		set_bit(XPRT_CLOSING, &xprt->state);
+> > -		xs_tcp_schedule_linger_timeout(xprt, XS_TCP_LINGER_TO);
+> > +		xs_tcp_schedule_linger_timeout(xprt, xs_tcp_fin_timeout);
+> >  		smp_mb__before_clear_bit();
+> >  		clear_bit(XPRT_CONNECTED, &xprt->state);
+> >  		smp_mb__after_clear_bit();
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-Jim Callahan - President - Temerity Software <www.temerity.us>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
