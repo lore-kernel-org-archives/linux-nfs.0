@@ -1,208 +1,70 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: [PATCH 2/2] nfsstat: Add --list flag
-Date: Mon, 16 Mar 2009 10:45:56 -0700
-Message-ID: <1237225556-27691-2-git-send-email-kevin.constantine@disneyanimation.com>
-References: <1237225556-27691-1-git-send-email-kevin.constantine@disneyanimation.com>
-Cc: steved@redhat.com, Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfs-utils: fix AC_CHECK_FUNC calls in configure.ac
+Date: Mon, 16 Mar 2009 14:51:14 -0400
+Message-ID: <20090316185007.13728.1047.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: jlayton@redhat.com, linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([12.188.26.101]:42517 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1761029AbZCPRz3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2009 13:55:29 -0400
-In-Reply-To: <1237225556-27691-1-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:25079 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752743AbZCPSwL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2009 14:52:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsstat.c: Adds the --list flag to print information in a list format instead of the standard multi-column format
-nfsstat.man: Updates the manpage to include the --list flag.
+From: Jeff Layton <jlayton@redhat.com>
 
-Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+AC_CHECK_FUNC and AC_CHECK_FUNCS take 3 args. Any ones beyond that are
+ignored. In several places, we're passing the "action-if-not-found" in
+as the 4th arg so it's being ignored.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- utils/nfsstat/nfsstat.c   |   87 ++++++++++++++++++++++++++++++--------------
- utils/nfsstat/nfsstat.man |    3 ++
- 2 files changed, 62 insertions(+), 28 deletions(-)
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index c25580c..51aea8d 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -176,7 +176,7 @@ static void		print_callstats(const char *, const char **,
- 					unsigned int *, unsigned int);
- static void		print_callstats_list(const char *, const char **,
-                         		unsigned int *, unsigned int *, 
--		                        unsigned int);
-+		                        unsigned int, unsigned int);
- static int		parse_raw_statfile(const char *, struct statinfo *);
- static int 		parse_pretty_statfile(const char *, struct statinfo *);
+Steve-
+
+Thanks for committing the other patches.  Here's one more nit that Jeff
+found recently.
+
+ aclocal/ipv6.m4 |    2 +-
+ configure.ac    |    6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/aclocal/ipv6.m4 b/aclocal/ipv6.m4
+index 0564b3e..ba9dcc2 100644
+--- a/aclocal/ipv6.m4
++++ b/aclocal/ipv6.m4
+@@ -15,7 +15,7 @@ AC_DEFUN([AC_IPV6], [
+     fi
  
-@@ -257,6 +257,7 @@ static struct option longopts[] =
- 	{ "version", 0, 0, '\2' },
- 	{ "sleep", 2, 0, 'Z' },
- 	{ "since", 1, 0, 'S' },
-+	{ "list", 0, 0, 'l' },
- 	{ NULL, 0, 0, 0 }
- };
+     dnl IPv6-enabled networking functions required for IPv6
+-    AC_CHECK_FUNCS([getnameinfo bindresvport_sa], , ,
++    AC_CHECK_FUNCS([getnameinfo bindresvport_sa], ,
+                    [AC_MSG_ERROR([Missing functions needed for IPv6.])])
  
-@@ -269,6 +270,7 @@ main(int argc, char **argv)
- 			opt_prt = 0,
- 			opt_sleep = 0,
- 			sleep_time = 0,
-+			opt_list = 0,
- 			opt_since = 0;
- 	int		c;
- 	char           *progname,
-@@ -290,7 +292,7 @@ main(int argc, char **argv)
- 	else
- 		progname = argv[0];
+     dnl Need to detect presence of IPv6 networking at run time via
+diff --git a/configure.ac b/configure.ac
+index e34b7e2..f942238 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -185,13 +185,13 @@ AC_CHECK_FUNC([connect], ,
+               [AC_CHECK_LIB([socket], [connect], [LIBSOCKET="-lsocket"],
+                     [AC_MSG_ERROR([Function 'socket' not found.])], [$LIBNSL])])
  
--	while ((c = getopt_long(argc, argv, "234acmno:Z::S:vrsz\1\2", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "234acmno:Z::S:vrszl\1\2", longopts, NULL)) != EOF) {
- 		switch (c) {
- 		case 'a':
- 			fprintf(stderr, "nfsstat: nfs acls are not yet supported.\n");
-@@ -348,6 +350,9 @@ main(int argc, char **argv)
- 		case 's':
- 			opt_srv = 1;
- 			break;
-+		case 'l':
-+			opt_list = 1;
-+			break;
- 		case 'z':
- 			fprintf(stderr, "nfsstat: zeroing of nfs statistics "
- 					"not yet supported\n");
-@@ -428,15 +433,24 @@ main(int argc, char **argv)
- 				get_stats(NFSCLTSTAT, clientinfo_tmp, &opt_clt, opt_srv, 0);
- 				diff_stats(clientinfo_tmp, clientinfo, 0);
- 			}
--			print_stats_list(opt_prt);
-+			if (opt_list) {
-+				print_stats_list(opt_prt);
-+			} else {
-+				print_server_stats(opt_srv, opt_prt);
-+				print_client_stats(opt_clt, opt_prt);
-+			}		
- 			fflush(stdout);
+-AC_CHECK_FUNC([getaddrinfo], , ,
++AC_CHECK_FUNC([getaddrinfo], ,
+               [AC_MSG_ERROR([Function 'getaddrinfo' not found.])])
  
- 			update_old_counters(clientinfo_tmp, clientinfo);
- 			sleep(sleep_time);
- 		}	
- 	} else {
--		print_server_stats(opt_srv, opt_prt);
--		print_client_stats(opt_clt, opt_prt);
-+		if (opt_list) {
-+			print_stats_list(opt_prt);
-+		} else {
-+			print_server_stats(opt_srv, opt_prt);
-+			print_client_stats(opt_clt, opt_prt);
-+		}
- 	}
+-AC_CHECK_FUNC([getrpcbynumber], , ,
++AC_CHECK_FUNC([getrpcbynumber], ,
+               [AC_MSG_ERROR([Function 'getrpcbynumber' not found.])])
  
- 	return 0;
-@@ -568,29 +582,31 @@ print_stats_list(int opt_prt)
- 			print_callstats_list(
- 			"nfs v2 stats:",
- 			nfsv2name, srvproc2info + 1, cltproc2info + 1,  
--			sizeof(nfsv2name)/sizeof(char *)
-+			sizeof(nfsv2name)/sizeof(char *), 2
- 			);
- 			printf("\n");
- 		if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc3info)))
- 			print_callstats_list(
- 			"nfs v3 stats:",
- 			nfsv3name, srvproc3info + 1, cltproc3info + 1, 
--			sizeof(nfsv3name)/sizeof(char *)
-+			sizeof(nfsv3name)/sizeof(char *), 3
- 			);
- 			printf("\n");
- 		if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
--				print_callstats(
--				LABEL_srvproc4,
--				nfssrvproc4name, srvproc4info + 1, sizeof(nfssrvproc4name)/sizeof(char *)
--				);
--				print_callstats(
--				LABEL_srvproc4ops,
--				nfssrvproc4opname, srvproc4opsinfo + 1, sizeof(nfssrvproc4opname)/sizeof(char *)
--				);
--				print_callstats(
--				LABEL_cltproc4,
--				nfscltproc4name, cltproc4info + 1,  sizeof(nfscltproc4name)/sizeof(char *)
--				);
-+			/* Pass 0 as the clientproc#info to avoid having to write a whole new function
-+				to handle nfsv4 since the client server calls aren't named the same */
-+			print_callstats_list(
-+			LABEL_srvproc4,
-+			nfssrvproc4name, srvproc4info + 1, 0, sizeof(nfssrvproc4name)/sizeof(char *), 4
-+			);
-+			print_callstats_list(
-+			LABEL_srvproc4ops,
-+			nfssrvproc4opname, srvproc4opsinfo + 1, 0, sizeof(nfssrvproc4opname)/sizeof(char *), 4
-+			);
-+			print_callstats_list(
-+			LABEL_cltproc4,
-+			nfscltproc4name, cltproc4info + 1,  0, sizeof(nfscltproc4name)/sizeof(char *), 4
-+			);
- 		}
- 	}
- }
-@@ -648,19 +664,34 @@ print_callstats(const char *hdr, const char **names,
- static void
- print_callstats_list(const char *hdr, const char **names,
- 		 	unsigned int *srvinfo, unsigned int *cltinfo, 
--			unsigned int nr)
-+			unsigned int nr, unsigned int nfsvers)
- {
- 	unsigned long long	srvtotal, clttotal;
- 	int			i;
+-AC_CHECK_FUNC([getservbyname], , ,
++AC_CHECK_FUNC([getservbyname], ,
+               [AC_MSG_ERROR([Function 'getservbyname' not found.])])
  
--	for (i = 0, srvtotal = 0, clttotal = 0; i < nr; i++) {
--		srvtotal += srvinfo[i];
--		clttotal += cltinfo[i];
--	}
--	printf("%13s %8s %8s\n", hdr, "Server", "Client");
--	printf("%12s: %8llu %8llu \n", "total", srvtotal, clttotal);
--	for (i = 0; i < nr; i++) {
--			printf("%12s: %8u %8u \n", names[i], srvinfo[i], cltinfo[i]);
-+	if (nfsvers < 4) {
-+		for (i = 0, srvtotal = 0, clttotal = 0; i < nr; i++) {
-+			srvtotal += srvinfo[i];
-+			clttotal += cltinfo[i];
-+		}
-+		printf("%13s %8s %8s\n", hdr, "Server", "Client");
-+		printf("%12s: %8llu %8llu \n", "total", srvtotal, clttotal);
-+		for (i = 0; i < nr; i++) {
-+				printf("%12s: %8u %8u \n", names[i], srvinfo[i], cltinfo[i]);
-+		}
-+	} else {
-+		/* nfsv4's client and server calls aren't named the same, so we'll print them out
-+		*	separately.  Everything will be passed in as srvinfo.  Ignore cltinfo which
-+		*	will be passed in as 0
-+		*/
-+		for (i = 0, srvtotal = 0; i < nr; i++)
-+			srvtotal += srvinfo[i];
-+		printf("%13s %8s\n", hdr, "Calls");
-+		printf("%12s: %8llu \n", "total", srvtotal);
-+		for (i = 0; i < nr; i++) {
-+				printf("%12s: %8u \n", names[i], srvinfo[i]);
-+		}
-+		printf("\n");
- 	}
- 		
- }
-diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
-index 461b2c0..52215a9 100644
---- a/utils/nfsstat/nfsstat.man
-+++ b/utils/nfsstat/nfsstat.man
-@@ -72,6 +72,9 @@ Display all of the above facilities.
- .B \-v, \-\-verbose
- This is equivalent to \fB\-o all\fR.
- .TP
-+.B \-l, \-\-list
-+Print information in list form.
-+.TP
- .BI "\-S, \-\-since " file
- Instead of printing current statistics, 
- .B nfsstat
--- 
-1.6.0.4.761.g47577
+ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
 
