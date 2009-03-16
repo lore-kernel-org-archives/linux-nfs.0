@@ -1,49 +1,53 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: [patch 2/3] knfsd: avoid overloading the CPU scheduler with	enormous
- load averages
-Date: Mon, 16 Mar 2009 14:10:06 +1100
-Message-ID: <49BDC30E.7000508@sgi.com>
-References: <20090113102633.719563000@sgi.com> <20090113102653.664553000@sgi.com> <20090211231033.GK27686@fieldses.org> <499CFB6B.1010902@sgi.com> <20090315212112.GB27568@fieldses.org>
+Subject: Re: [patch 3/3] knfsd: add file to export stats about nfsd pools
+Date: Mon, 16 Mar 2009 14:21:02 +1100
+Message-ID: <49BDC59E.9040406@sgi.com>
+References: <20090113102633.719563000@sgi.com> <20090113102653.884405000@sgi.com> <20090212171106.GB21445@fieldses.org> <499CFF69.3000708@sgi.com> <20090315212534.GC27568@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:59655 "EHLO relay.sgi.com"
+Received: from relay3.sgi.com ([192.48.171.31]:56057 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753692AbZCPDFZ (ORCPT
+	id S1753555AbZCPDQU (ORCPT
 	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Sun, 15 Mar 2009 23:05:25 -0400
-In-Reply-To: <20090315212112.GB27568@fieldses.org>
+	Sun, 15 Mar 2009 23:16:20 -0400
+In-Reply-To: <20090315212534.GC27568@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 J. Bruce Fields wrote:
-> On Thu, Feb 19, 2009 at 05:25:47PM +1100, Greg Banks wrote:
+> On Thu, Feb 19, 2009 at 05:42:49PM +1100, Greg Banks wrote:
 >   
 >> J. Bruce Fields wrote:
 >>     
->>> On Tue, Jan 13, 2009 at 09:26:35PM +1100, Greg Banks wrote:  
+>>> On Tue, Jan 13, 2009 at 09:26:36PM +1100, Greg Banks wrote:
+>>>   
 >>>       
->>> [...]
->>> It's a simple enough patch, but without any suggestion for how to retest
->>> on a more recent kernel, I'm uneasy.
+>>> As you said, an important question for the sysadmin is "should I
+>>> configure more nfsds?"  How do they answer that?
+>>>   
 >>>       
->> [...]
->>
->> Does that make you less uneasy?
+>> You can work that out, [...]
 >>     
 >
-> Yes, thanks!
+> OK, thanks, that makes sense, but: it would be really fantastic if we
+> could update and/or replace some of the howto's and faq's that are out
+> there.  
+
+Fair enough.
+
+After I composed the above reply, I wondered whether the right thing to
+do would have been to add that text to a new file somewhere in
+Documentation/.  Would that suit as an interim measure while I look at
+howtos and faqs?  I mention this because I'll be adding more new stats
+in the next tranche of patches.
 >
-> Queued up for 2.6.30, barring objections. 
-Thanks.
->  But perhaps we should pass on
-> the patch and your results to people who know the scheduler better and
-> see if they can explain e.g. the loadavg numbers.
+> Queued up this and the old-stats removal for 2.6.30.
 >   
-If you like.  Personally I'm happy with assuming that it's because nfsd
-is putting an unnaturally harsh load on the scheduler.
+
+Thanks.
 
 -- 
 Greg Banks, P.Engineer, SGI Australian Software Group.
