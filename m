@@ -1,65 +1,51 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH next-20090316] sunrpc: fix build breakage
-Date: Mon, 16 Mar 2009 09:04:40 -0400
-Message-ID: <1237208680.7229.14.camel@heimdal.trondhjem.org>
-References: <20090316125140.GA3095@orion>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [patch 3/3] knfsd: add file to export stats about nfsd pools
+Date: Mon, 16 Mar 2009 09:37:31 -0400
+Message-ID: <20090316133731.GA8598@fieldses.org>
+References: <20090113102633.719563000@sgi.com> <20090113102653.884405000@sgi.com> <20090212171106.GB21445@fieldses.org> <499CFF69.3000708@sgi.com> <20090315212534.GC27568@fieldses.org> <49BDC59E.9040406@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-next@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Alexander Beregalov <a.beregalov@gmail.com>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20090316125140.GA3095@orion>
-Sender: linux-next-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
+To: Greg Banks <gnb@sgi.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:39000 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753548AbZCPNhd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Mar 2009 09:37:33 -0400
+In-Reply-To: <49BDC59E.9040406@sgi.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-03-16 at 15:51 +0300, Alexander Beregalov wrote:
-> net/sunrpc/clnt.c: In function 'call_bind_status':
-> net/sunrpc/clnt.c:994: error: 'struct rpc_task' has no member named
-> 'tk_pid'
-> net/sunrpc/clnt.c: In function 'call_connect_status':
-> net/sunrpc/clnt.c:1051: error: 'struct rpc_task' has no member named
-> 'tk_pid'
+On Mon, Mar 16, 2009 at 02:21:02PM +1100, Greg Banks wrote:
+> J. Bruce Fields wrote:
+> > On Thu, Feb 19, 2009 at 05:42:49PM +1100, Greg Banks wrote:
+> >   
+> >> J. Bruce Fields wrote:
+> >>     
+> >>> On Tue, Jan 13, 2009 at 09:26:36PM +1100, Greg Banks wrote:
+> >>>   
+> >>>       
+> >>> As you said, an important question for the sysadmin is "should I
+> >>> configure more nfsds?"  How do they answer that?
+> >>>   
+> >>>       
+> >> You can work that out, [...]
+> >>     
+> >
+> > OK, thanks, that makes sense, but: it would be really fantastic if we
+> > could update and/or replace some of the howto's and faq's that are out
+> > there.  
 > 
-> rpc_task has tk_pid if RPC_DEBUG is defined.
+> Fair enough.
 > 
-> Signed-off-by: Alexander Beregalov <a.beregalov@gmail.com>
-> ---
-> 
->  net/sunrpc/clnt.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index efd0c7b..68cb91a 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -990,7 +990,7 @@ call_bind_status(struct rpc_task *task)
->  		return;
->  	default:
->  		if (net_ratelimit())
-> -			printk("RPC: %5u unrecognized rpcbind error (%d)\n",
-> +			dprintk("RPC: %5u unrecognized rpcbind error (%d)\n",
->  					task->tk_pid, -task->tk_status);
->  	}
->  
-> @@ -1047,7 +1047,7 @@ call_connect_status(struct rpc_task *task)
->  		break;
->  	default:
->  		if (net_ratelimit())
-> -			printk("RPC: %5u unrecognized connect error (%d)\n",
-> +			dprintk("RPC: %5u unrecognized connect error (%d)\n",
->  					task->tk_pid, status);
->  		rpc_exit(task, -EIO);
->  	}
+> After I composed the above reply, I wondered whether the right thing to
+> do would have been to add that text to a new file somewhere in
+> Documentation/.  Would that suit as an interim measure while I look at
+> howtos and faqs?
 
-No, that's not right. The intention is to always report errors that are
-fatal and are due to unforeseen circumstances. Your patch means that
-those reports are suppressed entirely when RPC_DEBUG is undefined.
+Yep, I think that's a great idea.
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> I mention this because I'll be adding more new stats
+> in the next tranche of patches.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+OK!--b.
