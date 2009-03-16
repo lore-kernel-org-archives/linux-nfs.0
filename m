@@ -1,50 +1,51 @@
-From: James Morris <jmorris@namei.org>
-Subject: Re: [PATCH] nfsv3: convert xattrs to generic xattr API
-Date: Mon, 16 Mar 2009 09:52:43 +1100 (EST)
-Message-ID: <alpine.LRH.2.00.0903160942050.25038@tundra.namei.org>
-References: <alpine.LRH.2.00.0903101253190.22273@tundra.namei.org> <20090315073033.GA3008@infradead.org>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: issues with project quota over nfs
+Date: Mon, 16 Mar 2009 14:03:37 +1100
+Message-ID: <49BDC189.10104@sgi.com>
+References: <AD300F292705ED4089373955E129C1780491E77D@RBSJX.ad.redback.com> <20090315205516.GB26627@fieldses.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:3233 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751859AbZCOWyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 15 Mar 2009 18:54:21 -0400
-In-Reply-To: <20090315073033.GA3008@infradead.org>
+Received: from relay3.sgi.com ([192.48.171.31]:39295 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752604AbZCPC6z (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Sun, 15 Mar 2009 22:58:55 -0400
+In-Reply-To: <20090315205516.GB26627@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 15 Mar 2009, Christoph Hellwig wrote:
+J. Bruce Fields wrote:
+> On Fri, Mar 13, 2009 at 09:59:26AM -0700, Brian Wince wrote:
+>   
+>> All,
+>> We have a Quad-core server running gentoo 2.6.27-r7 that is used as an nfs server for a xfs partition.
+>> We are using project quota's on directories within this partition and exporting this.
+>> When a client tries to untar in the dir with project quotas set and reaches the quota limit the load on the NFS server goes up dramatically and stays like this for a few minutes after the tar has gone through trying to write all of it files and failing due to quota limit exceeded.
+>>  
+>> Is this a known issue and if so is there anything that can be done to resolve this.
+>>  
+>> We do not see this issue if on the locally mounted partition. This only happens over NFS.
+>>  
+>> Please let me know if you need more information or if this should be addressed on a different list.
+>>     
+>
+> It doesn't sounds familiar to me.  Might also be worth cc:'ing xfs
+> people.
+>
+>
+>   
+Oh dear.  Brian asked it there frst, and I redirected him here.  In the
+absence of network traces, it smelt to me like the old client problem
+where errors like ENOSPC or EDQUOT during writeback were only returned
+to the app on close() and not the next write(), thus causing clients
+which exceed  quota during long streaming writes pointlessly to send a
+lot of data to the server all of which is dropped on the server.
 
-> On Tue, Mar 10, 2009 at 01:11:50PM +1100, James Morris wrote:
-> > Recently, I've been working on an implementation of an xattr protocol for 
-> > NFSv3 (based on the Irix stuff).
-> > 
-> > The first logical step is to convert the existing xattr use to the generic 
-> > xattr API code.  I figured this might be a useful change in its own right, 
-> > per the patch below.  It seems to work ok with various hand-made tests of 
-> > ACL operations and xattr syscalls.
-> > 
-> > Please review (and apply if it looks ok).
-> 
-> The get/srt bits looks good to me, bu I really don't see the point
-> of using generic_listxattr.
-
-I think it's clearer and cleaner to convert all of the ops over to the 
-generic API, rather than, say, leaving in #ifdefs and similar code just 
-for listxattr.
-
-Also, this is part of preparation for adding other xattr handlers to the 
-NFS client code.  The current xattr functions assume that ACLs are the 
-only types attributes being managed, and the generic handler code for 
-listxattr is necessary to manage others.
-
-If it's not acceptable as-is, I'll just batch it up with the rest of the 
-changes later.
-
-- James
 -- 
-James Morris
-<jmorris@namei.org>
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
+
