@@ -1,202 +1,39 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: [PATCH 2/2] nfsstat: Add --list flag
-Date: Tue, 17 Mar 2009 00:46:29 -0700
-Message-ID: <1237275989-16421-2-git-send-email-kevin.constantine@disneyanimation.com>
-References: <49BF2478.8080600@sgi.com>
- <1237275989-16421-1-git-send-email-kevin.constantine@disneyanimation.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
-To: gnb@sgi.com
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] nfsv3: convert xattrs to generic xattr API
+Date: Tue, 17 Mar 2009 03:47:42 -0400
+Message-ID: <20090317074742.GB3331@infradead.org>
+References: <alpine.LRH.2.00.0903101253190.22273@tundra.namei.org> <20090315073033.GA3008@infradead.org> <alpine.LRH.2.00.0903160942050.25038@tundra.namei.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+	Trond.Myklebust@netapp.com
+To: James Morris <jmorris@namei.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([12.188.26.101]:1313 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754831AbZCQHqc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2009 03:46:32 -0400
-In-Reply-To: <1237275989-16421-1-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:49651 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753667AbZCQHrp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2009 03:47:45 -0400
+In-Reply-To: <alpine.LRH.2.00.0903160942050.25038-CK9fWmtY32x9JUWOpEiw7w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsstat.c: Adds the --list flag to print information in a list format instead of the standard multi-column format
-nfsstat.man: Updates the manpage to include the --list flag.
+On Mon, Mar 16, 2009 at 09:52:43AM +1100, James Morris wrote:
+> I think it's clearer and cleaner to convert all of the ops over to the 
+> generic API, rather than, say, leaving in #ifdefs and similar code just 
+> for listxattr.
+> 
+> Also, this is part of preparation for adding other xattr handlers to the 
+> NFS client code.  The current xattr functions assume that ACLs are the 
+> only types attributes being managed, and the generic handler code for 
+> listxattr is necessary to manage others.
+> 
+> If it's not acceptable as-is, I'll just batch it up with the rest of the 
+> changes later.
 
-Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
----
- utils/nfsstat/nfsstat.c   |   80 +++++++++++++++++++++++++++++++++++++++++++--
- utils/nfsstat/nfsstat.man |    3 ++
- 2 files changed, 80 insertions(+), 3 deletions(-)
-
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index a447cf9..630bf14 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -170,10 +170,13 @@ DECLARE_CLT(cltinfo, _old);
- static void		print_all_stats(int, int, int);
- static void		print_server_stats(int, int);
- static void		print_client_stats(int, int);
-+static void		print_stats_list(int);
- static void		print_numbers(const char *, unsigned int *,
- 					unsigned int);
- static void		print_callstats(const char *, const char **,
- 					unsigned int *, unsigned int);
-+static void		print_callstats_list(const char *, const char **,
-+					unsigned int *, unsigned int);
- static int		parse_raw_statfile(const char *, struct statinfo *);
- static int 		parse_pretty_statfile(const char *, struct statinfo *);
- 
-@@ -232,6 +235,7 @@ void usage(char *name)
-           		    If # is provided, stats will be output every\n\
- 			    # seconds.\n\
-   -S, --since file	Shows difference between current stats and those in 'file'\n\
-+  -l, --list		Prints stats in list format\n\
-   --version		Show program version\n\
-   --help		What you just did\n\
- \n", name);
-@@ -254,6 +258,7 @@ static struct option longopts[] =
- 	{ "version", 0, 0, '\2' },
- 	{ "sleep", 2, 0, 'Z' },
- 	{ "since", 1, 0, 'S' },
-+	{ "list", 0, 0, 'l' },
- 	{ NULL, 0, 0, 0 }
- };
- 
-@@ -266,6 +271,7 @@ main(int argc, char **argv)
- 			opt_prt = 0,
- 			opt_sleep = 0,
- 			sleep_time = 0,
-+			opt_list =0,
- 			opt_since = 0;
- 	int		c;
- 	char           *progname,
-@@ -287,7 +293,7 @@ main(int argc, char **argv)
- 	else
- 		progname = argv[0];
- 
--	while ((c = getopt_long(argc, argv, "234acmno:Z::S:vrsz\1\2", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "234acmno:Z::S:vrslz\1\2", longopts, NULL)) != EOF) {
- 		switch (c) {
- 		case 'a':
- 			fprintf(stderr, "nfsstat: nfs acls are not yet supported.\n");
-@@ -345,6 +351,9 @@ main(int argc, char **argv)
- 		case 's':
- 			opt_srv = 1;
- 			break;
-+		case 'l':
-+			opt_list = 1;
-+			break;
- 		case 'z':
- 			fprintf(stderr, "nfsstat: zeroing of nfs statistics "
- 					"not yet supported\n");
-@@ -425,7 +434,11 @@ main(int argc, char **argv)
- 				get_stats(NFSCLTSTAT, clientinfo_tmp, &opt_clt, opt_srv, 0);
- 				diff_stats(clientinfo_tmp, clientinfo, 0);
- 			}
--			print_all_stats(opt_srv, opt_clt, opt_prt);
-+			if (opt_list) {
-+				print_stats_list(opt_prt);
-+			} else {
-+				print_all_stats(opt_srv, opt_clt, opt_prt);
-+			}
- 			printf("\n\n");
- 			fflush(stdout);
- 
-@@ -433,7 +446,11 @@ main(int argc, char **argv)
- 			sleep(sleep_time);
- 		}	
- 	} else {
--		print_all_stats(opt_srv, opt_clt, opt_prt);
-+		if (opt_list) {
-+			print_stats_list(opt_prt);
-+		} else {
-+			print_all_stats(opt_srv, opt_clt, opt_prt);
-+		}
- 	}
- 
- 	return 0;
-@@ -564,6 +581,44 @@ print_client_stats(int opt_clt, int opt_prt)
- 	}
- }
- 
-+static void
-+print_stats_list(int opt_prt) 
-+{
-+	if (opt_prt & PRNT_CALLS) {
-+		if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
-+			print_callstats_list(
-+			"nfs v2 server",
-+			nfsv2name, srvproc2info + 1, sizeof(nfsv2name)/sizeof(char *));
-+			printf("\n");
-+			print_callstats_list(
-+			"nfs v2 client",
-+			nfsv2name, cltproc2info + 1,  sizeof(nfsv2name)/sizeof(char *));
-+		}
-+		if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
-+			print_callstats_list(
-+			"nfs v3 server",
-+			nfsv3name, srvproc3info + 1, sizeof(nfsv3name)/sizeof(char *));
-+			printf("\n");
-+			print_callstats_list(
-+			"nfs v3 client",
-+			nfsv3name, cltproc3info + 1, sizeof(nfsv3name)/sizeof(char *));
-+		}
-+		if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
-+			print_callstats_list(
-+			"nfs v4 server",
-+			nfssrvproc4name, srvproc4info + 1, sizeof(nfssrvproc4name)/sizeof(char *));
-+			printf("\n");
-+			print_callstats_list(
-+			"nfs v4 ops",
-+			nfssrvproc4opname, srvproc4opsinfo + 1, sizeof(nfssrvproc4opname)/sizeof(char *));
-+			printf("\n");
-+			print_callstats_list(
-+			"nfs v4 client",
-+			nfscltproc4name, cltproc4info + 1,  sizeof(nfscltproc4name)/sizeof(char *));
-+		}
-+	}
-+}
-+
- static statinfo *
- get_stat_info(const char *sp, struct statinfo *statp)
- {
-@@ -614,6 +669,25 @@ print_callstats(const char *hdr, const char **names,
- 	printf("\n");
- }
- 
-+static void
-+print_callstats_list(const char *hdr, const char **names,
-+		 	unsigned int *callinfo, unsigned int nr)
-+{
-+	unsigned long long	calltotal;
-+	int			i;
-+
-+	for (i = 0, calltotal = 0; i < nr; i++) {
-+		calltotal += callinfo[i];
-+	}
-+	printf("%13s %13s %8llu \n", hdr, "total:", calltotal);
-+	printf("------------- ------------- --------\n");
-+	for (i = 0; i < nr; i++) {
-+			printf("%13s %12s: %8u \n", hdr, names[i], callinfo[i]);
-+	}
-+		
-+}
-+
-+
- /* returns 0 on success, 1 otherwise */
- static int
- parse_raw_statfile(const char *name, struct statinfo *statp)
-diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
-index 461b2c0..52215a9 100644
---- a/utils/nfsstat/nfsstat.man
-+++ b/utils/nfsstat/nfsstat.man
-@@ -72,6 +72,9 @@ Display all of the above facilities.
- .B \-v, \-\-verbose
- This is equivalent to \fB\-o all\fR.
- .TP
-+.B \-l, \-\-list
-+Print information in list form.
-+.TP
- .BI "\-S, \-\-since " file
- Instead of printing current statistics, 
- .B nfsstat
--- 
-1.6.0.4.761.g47577
+Honestly I think the "generic" listxattr implementation doesn't buy
+us anything as it just calls all handlers in a loop.  But I'm not going
+to NACK the patch for that, I have some greater plans in that area, it
+just means touching one more place once the day comes.  And the work
+to deal with list is more then offset by having get/set use the generic
+helpers :)
 
