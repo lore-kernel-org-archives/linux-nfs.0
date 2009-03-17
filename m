@@ -1,112 +1,123 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: Re: [PATCH 2/2] nfsstat: Add --list flag
-Date: Tue, 17 Mar 2009 09:33:34 -0700
-Message-ID: <49BFD0DE.5070106@disney.com>
-References: <1237225556-27691-1-git-send-email-kevin.constantine@disneyanimation.com> <1237225556-27691-2-git-send-email-kevin.constantine@disneyanimation.com> <49BF2478.8080600@sgi.com> <49BF9460.4050108@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Patch 0/9] NFS Mount Configuration File
+Date: Tue, 17 Mar 2009 15:44:38 -0400
+Message-ID: <49BFFDA6.8090500@RedHat.com>
+References: <49B57FB2.9020000@RedHat.com> <A359B7ED-198B-4C3E-96B1-F4B2D5D3582B@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Greg Banks <gnb@sgi.com>, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([12.188.26.101]:53576 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753672AbZCQQdh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Mar 2009 12:33:37 -0400
-In-Reply-To: <49BF9460.4050108-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mx1.redhat.com ([66.187.233.31]:45355 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753287AbZCQTre (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Mar 2009 15:47:34 -0400
+In-Reply-To: <A359B7ED-198B-4C3E-96B1-F4B2D5D3582B@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> Thanks Greg for taking a look... 
+Sorry for the delayed response... 
+
+Chuck Lever wrote:
+> Hi Steve-
 > 
-> Greg Banks wrote:
->> Kevin Constantine wrote:
+> On Mar 9, 2009, at Mar 9, 2009, 4:44 PM, Steve Dickson wrote:
+>> Hello,
 >>
->> Maybe you can smooth out this difference, and make the code simpler and
->> cleaner, by making the output always be exactly two columns, one for the
->> label and one for the value.  Then your earlier quoted example would be
->> something like
+>> The following patch set introduces a configuration file where
+>> mount options can be define. The options in the file can be
+>> applied globally or per server or per mount point.
 >>
->>        nfs v3 client total:   213
->>         nfs v3 client null:     0
-[...]
->>  nfs v3 client readdirplus:     0
->>       nfs v3 client fsstat:   126
->>       nfs v3 client fsinfo:     0
->>     nfs v3 client pathconf:     0
->>       nfs v3 client commit:     0 
->>        nfs v3 server total:     0
->>         nfs v3 server null:     0
-[...]
->>       nfs v3 server commit:     0
-> Question... Now why are we *not* using the information from /proc/self/mountstats
-> and doing this per mount?
+>> The patch set reuses the configuration parsing code that
+>> idmapd uses. I did added a couple enhancements like ignoring
+>> blanks in certain definitions as well as at the beginning of
+>> assignment statements.
+>>
+>> There are man pages include in the patch set but in a
+>> nut shell, the configuration file has three basic types
+>> of sections. A global section, server section and mount point
+>> section. There can only be one global section and multiple
+>> server and mount point sections.
+>>
+>> The mount command prioritize these sections in the following
+>> way:
+>>     * Options on the command line are always used.
+>>
+>>     * Options defined in the mount point section are used
+>>       as long a the options are not in the command line options.
+>>
+>>     * Options defined in the server section are used as long as
+>>       they are not defined on the command line or in the mount point
+>>       section.
+>>
+>>     * Options defined in the global section are used as long as the
+>>       options are not on the command line or in the mount point section
+>>       or in the server section.
 > 
-nfsstat is already parsing /proc/net/rpc/nfs[d].  Re-writing it to parse 
-/proc/self/mountstats seems like it should be a separate undertaking.
+> This can become challenging to troubleshoot if there are these
+> semi-hidden options (cf. selinux).
+Why? 'mount -v' clearly shows what options are being used and then 
+of course 'cat /proc/mounts' will show all the mount options.
 
-> Also, can I assume (not looking at the patches yet) that this same type info
-> will be available v2 and v4?
 > 
-Yes.  v2 and v4 will look the same.  Here's the new format.
-
-nfs v3 server        total:        0
-------------- ------------- --------
-nfs v3 server         null:        0
-nfs v3 server      getattr:        0
-nfs v3 server      setattr:        0
-nfs v3 server       lookup:        0
-nfs v3 server       access:        0
-nfs v3 server     readlink:        0
-nfs v3 server         read:        0
-nfs v3 server        write:        0
-nfs v3 server       create:        0
-nfs v3 server        mkdir:        0
-nfs v3 server      symlink:        0
-nfs v3 server        mknod:        0
-nfs v3 server       remove:        0
-nfs v3 server        rmdir:        0
-nfs v3 server       rename:        0
-nfs v3 server         link:        0
-nfs v3 server      readdir:        0
-nfs v3 server  readdirplus:        0
-nfs v3 server       fsstat:        0
-nfs v3 server       fsinfo:        0
-nfs v3 server     pathconf:        0
-nfs v3 server       commit:        0
-
-nfs v3 client        total:      203
-------------- ------------- --------
-nfs v3 client         null:        0
-nfs v3 client      getattr:       23
-nfs v3 client      setattr:        7
-nfs v3 client       lookup:        7
-nfs v3 client       access:        0
-nfs v3 client     readlink:        0
-nfs v3 client         read:        7
-nfs v3 client        write:       21
-nfs v3 client       create:        7
-nfs v3 client        mkdir:        0
-nfs v3 client      symlink:        0
-nfs v3 client        mknod:        0
-nfs v3 client       remove:        7
-nfs v3 client        rmdir:        0
-nfs v3 client       rename:        0
-nfs v3 client         link:        0
-nfs v3 client      readdir:        0
-nfs v3 client  readdirplus:        0
-nfs v3 client       fsstat:      124
-nfs v3 client       fsinfo:        0
-nfs v3 client     pathconf:        0
-nfs v3 client       commit:        0
-
-> Finally, does it really make sense to show a stats with zero occurrences?
-> Why not just show what has happen instead of including what has not happen?
+> I don't get why the per-mount section is even needed -- currently, the
+> mount options in /etc/fstab are used automatically if no options are
+> specified on the command line.
+Sure... this is option redundant with /etc/fstab but why not allow people
+configure all the NFS mounts in one spot? Why make them edit different files?
+Plus it was just really easy to do... 
+ 
 > 
-The reason I left the zeroed stats in the display is so that the output 
-stats fairly constant with the values being the only information that 
-changes.  If lines are popping in and out, it makes it difficult to keep 
-an eye on what you really care about.
-> steved.
->  
->  
+> Is there a specific use case you have in mind for the per-mount
+> section?  
+Not really... I figure would handy allow different options on
+different file system to the same server...
+
+> You just want a user to say "-o noac" and she will get all the
+> remaining options in the per-mount section too?  
+Yes.. the per-mount section will be added on to the command line options.
+
+> I guess that means you also need to know when to specify the opposite to 
+> turn off the options listed in this section (like using "-o ac" if noac 
+> is contained in this section).  So again, that doesn't seem like especially 
+> helpful behaviour in some cases.
+Not sure I understand your point... but regardless setting 'ac=true' will 
+cause the '-o ac' option to be added and 'ac=false' will cause the
+'-o noac' option to be added... 
+ 
+> 
+> This scheme doesn't allow conditional options: "always use retrans=10 if
+> proto=udp was specified, but retrans=2 if proto=tcp was specified."
+True.. conditional options are not supported... until there is a demand
+for them... 
+
+> 
+>> This is the first step toward moving the default NFS version from 3 to 4
+>> on the client.
+> 
+> I would think that the _only_ step is to implement the version fallback
+> logic; ie. if the server doesn't support NFSv4, then use NFSv3, then
+> NFSv2.  Why can't an admin simply specify a fixed NFS version
+> (nfsvers=3) if there is a problem with NFSv4?  
+They can... Nfsvers=3. When that is set, there will be no negotiation  
+
+
+> It seems to me that if the admin hasn't specified nfsvers=, then she does 
+> not care which NFS version is used.
+True. And then the highest version the server supports
+will be negotiated. Having a Max/Min version will allow a the
+client to control that negotiation... Say the want v4 but not
+v4.1 ? Or may they only v41? 
+
+> 
+>> Having a configuration file which allows users to define
+>> the maximum and minimum NFS versions that should be negotiated is the
+>> right thing to do... IMHO.. Even though this patch does not does not
+>> do that, it does lay the ground work for that type of functionality
+Well I think most admins do want complete control over which NFS
+version will or will not be used... esp when it comes to v4 and v4.1
+
+thanks!
+
+steved.
