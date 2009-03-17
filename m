@@ -1,78 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp2.uvm.edu ([132.198.101.169]:59433 "EHLO smtp2.uvm.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752410AbZCDTZf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Mar 2009 14:25:35 -0500
-Message-ID: <49AED5A7.2020502@uvm.edu>
-Date: Wed, 04 Mar 2009 14:25:27 -0500
-From: Benjamin Coddington <Benjamin.Coddington@uvm.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Don't convert NFS4ERR_RESOURCE to EREMOTEIO
-References: <49AECB96.5010909@uvm.edu> <20090304190156.GA27567@fieldses.org>
-In-Reply-To: <20090304190156.GA27567@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from relay1.sgi.com ([192.48.179.29]:40951 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751134AbZCQEt4 (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Tue, 17 Mar 2009 00:49:56 -0400
+Message-ID: <49BF2D0B.6060108@sgi.com>
+Date: Tue, 17 Mar 2009 15:54:35 +1100
+From: Greg Banks <gnb@sgi.com>
+To: David Rees <drees76@gmail.com>
+CC: Trond Myklebust <trond.myklebust@fys.uio.no>, linux-nfs@vger.kernel.org
+Subject: Re: Horrible NFS Client Performance During Heavy Server IO
+References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>	 <1236978608.7265.41.camel@heimdal.trondhjem.org>	 <72dbd3150903131432u43d9ba43nf0456b99aed0f8fd@mail.gmail.com>	 <1236980438.7265.47.camel@heimdal.trondhjem.org>	 <72dbd3150903131459u273d8e8nc9e966eae01848f7@mail.gmail.com>	 <1236983389.7265.51.camel@heimdal.trondhjem.org> <72dbd3150903131605m6aec6e41j8d608512b2693ba9@mail.gmail.com>
+In-Reply-To: <72dbd3150903131605m6aec6e41j8d608512b2693ba9@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We have webserver clients on an AIX 5300-08 server and run into brief 
-periods where the server returns NFS4ERR_RESOURCE on almost every 
-operation.  The webservers don't handle EREMOTEIO very well, and it 
-would be preferable for us to retry.
+David Rees wrote:
+> On Fri, Mar 13, 2009 at 3:29 PM, Trond Myklebust
+> <trond.myklebust@fys.uio.no> wrote:
+>   
+>> On Fri, 2009-03-13 at 14:59 -0700, David Rees wrote:
+>>     
+>>> And the activity around the time I am reproducing the slowdown:
+>>>
+>>> Server nfs v3:
+>>> null         getattr      setattr      lookup       access       readlink
+>>> 0         0% 3503     75% 7         0% 31        0% 1027     22% 0         0%
+>>> read         write        create       mkdir        symlink      mknod
+>>> 9         0% 50        1% 6         0% 0         0% 0         0% 0         0%
+>>> remove       rmdir        rename       link         readdir      readdirplus
+>>> 2         0% 0         0% 2         0% 0         0% 0         0% 0         0%
+>>> fsstat       fsinfo       pathconf     commit
+>>> 0         0% 0         0% 0         0% 13        0%
+>>>       
+>> Is this the result of only doing 2 'dd' copies? That's a lot of GETATTR
+>> calls for that kind of workload...
+>>     
+>
+> No - the client that I have been duplicating this from is also my
+> desktop and the NFS server hosts my home directory and it was active
+> during the test.
+>
+> That's where the extreme slowdown in NFS performance affects me the
+> most.  When then heavy IO on the server is going on (even just a
+> single process writing as fast as it can), my applications (Firefox,
+> Thunderbird, Gnome Terminals, just about anything that accesses the
+> NFS mount) will basically lock up and go totally unresponsive while
+> they wait for the NFS server to respond.  They will sit unresponsive
+> for minutes at a time and are unusable until the heavy IO stops on the
+> server.
+>
+> I do software development from this machine and I have timed one of my
+> project builds with and without the heavy IO on the NFS server - a
+> build that normally takes about 20 seconds will take 5 minutes to
+> complete (it does read/write a lot of small files).
+>   
+David, could you try your test case with this command running on the server?
 
-It appeared that the retry, and no seqid increment was already set up, 
-but never used because of the conversion.
+tethereal -i eth0 -f 'port 2049' -z rpc,rtt,100003,3 -w /dev/null
 
-Ben
+and ^C it when you've done.  You should see a table by RPC call with
+minimum maximum and average "roundtrip times" (actually as they're
+measured on the server, they should be server response times).  This
+should tell you which calls are slow and whether it's all those calls or
+only a few outliers.
 
-J. Bruce Fields wrote:
-> On Wed, Mar 04, 2009 at 01:42:30PM -0500, Benjamin Coddington wrote:
->> Fixes a test in nfs4_proc_setclientid_confirm() which allows the client  
->> to retry an operation when the server returns NFS4ERR_RESOURCE, instead  
->> of returning EREMOTEIO to the user.
-> 
-> I remember being confused as to whether NFS4ERR_RESOURCE is transitory
-> (hence worth being retried) or permanent (in which case retrying the
-> identical compound won't help).  The latter might happen if, for
-> example, the particular sequence of compounds sent by the client was
-> just too long or complicated for the server to handle.
-> 
-> But rfc3530 doesn't explicitly limit NFS4ERR_RESOURCE to that case, and
-> it appears that other clients:
-> 
-> 	http://www.nfsv4.org/nfsv4-wg-archive-feb-03-feb-05/0747.html
-> 
-> retry.  That discussion isn't conclusive, though.  Hm, and there's
-> further discussion from Mike Eisler here:
-> 
-> 	http://www.nfsv4-editor.org/cgi-bin/roundup/nfsv4/file7/comp-res.txt
-> 
-> which suggests it was intended as a permanent error.
-> 
-> What was the specific case where you hit this?
-> 
-> --b.
-> 
->> ---
->> fs/nfs/nfs4xdr.c |    1 -
->>  1 files changed, 0 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> index d1e4c8f..61dda13 100644
->> --- a/fs/nfs/nfs4xdr.c
->> +++ b/fs/nfs/nfs4xdr.c
->> @@ -4522,7 +4522,6 @@ static struct {
->>         { NFS4ERR_SERVERFAULT,  -ESERVERFAULT   },
->>         { NFS4ERR_BADTYPE,      -EBADTYPE       },
->>         { NFS4ERR_LOCKED,       -EAGAIN         },
->> -       { NFS4ERR_RESOURCE,     -EREMOTEIO      },
->>         { NFS4ERR_SYMLINK,      -ELOOP          },
->>         { NFS4ERR_OP_ILLEGAL,   -EOPNOTSUPP     },
->>         { NFS4ERR_DEADLOCK,     -EDEADLK        },
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Another experiment worth trying is a local filesystem load fairness test
+on the server (no NFS client involved).  This will tell you whether the
+nfsd's IO priority is an issue, or if you're just seeing an IO
+scheduling issue.
+
+1.  echo 3 > /proc/sys/vm/drop_caches
+2.  time find /your/home/some/dir -ls > /dev/null (choose a directory
+tree with a few hundred files)
+3.  echo 3 > /proc/sys/vm/drop_caches
+4.  start your large writes
+5.  time find /your/home/some/dir -ls > /dev/null
+
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
+
