@@ -1,50 +1,37 @@
-From: Ni Wenjuan <niwj@cn.fujitsu.com>
-Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
-Date: Wed, 18 Mar 2009 09:55:47 +0800
-Message-ID: <49C054A3.9010402@cn.fujitsu.com>
-References: <49B8A224.6070803@cn.fujitsu.com>
+From: Greg Banks <gnb@sgi.com>
+Subject: Re: [PATCH 2/2] nfsstat: Add --list flag
+Date: Wed, 18 Mar 2009 13:43:20 +1100
+Message-ID: <49C05FC8.6010503@sgi.com>
+References: <49BF2478.8080600@sgi.com> <1237275989-16421-1-git-send-email-kevin.constantine@disneyanimation.com> <1237275989-16421-2-git-send-email-kevin.constantine@disneyanimation.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:51922 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751790AbZCRB4a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Mar 2009 21:56:30 -0400
-In-Reply-To: <49B8A224.6070803@cn.fujitsu.com>
+Received: from relay1.sgi.com ([192.48.179.29]:41335 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753241AbZCRCdy (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Tue, 17 Mar 2009 22:33:54 -0400
+In-Reply-To: <1237275989-16421-2-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ni Wenjuan =D0=B4=B5=C0:
-> Fix a test in rename operation. rename dir1 into existing,nonempty di=
-r2 should
-> return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPTY. RFC says if the t=
-arget is a
-> directory but not empty, the server will return the error, NFS4ERR_EX=
-IST.
->=20
-> Signed-off-by:Ni Wenjuan  <niwj@cn.fujitsu.com>
->=20
+Kevin Constantine wrote:
+> nfsstat.c: Adds the --list flag to print information in a list format instead of the standard multi-column format
+> nfsstat.man: Updates the manpage to include the --list flag.
+>
+> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 > ---
->  fs/nfsd/nfs4proc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 9fa60a3..c1e2e22 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -605,7 +605,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct
-> nfsd4_compound_state *cstate,
->=20
->  	/* the underlying filesystem returns different error's than require=
-d
->  	 * by NFSv4. both save_fh and current_fh have been verified.. */
-> -	if (status =3D=3D nfserr_isdir)
-> +	if (status =3D=3D nfserr_isdir || status =3D=3D nfserr_notempty)
->  		status =3D nfserr_exist;
->  	else if ((status =3D=3D nfserr_notdir) &&
->                    (S_ISDIR(cstate->save_fh.fh_dentry->d_inode->i_mod=
-e) &&
+>  utils/nfsstat/nfsstat.c   |   80 +++++++++++++++++++++++++++++++++++++++++++--
+>  utils/nfsstat/nfsstat.man |    3 ++
+>  2 files changed, 80 insertions(+), 3 deletions(-)
+>   
+Acked-by: Greg Banks <gnb@sgi.com>
 
-Bruce ,do you think this patch is ok ?   Can it be accepted?
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
 
