@@ -1,80 +1,101 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Inconsistent setattr behaviour
-Date: Wed, 18 Mar 2009 17:39:17 -0400
-Message-ID: <20090318213917.GD18894@fieldses.org>
-References: <49A2CD2B.50607@redhat.com>
+Subject: Re: [PATCH 01/40] SUNRPC: Fix return type of svc_addr_len()
+Date: Wed, 18 Mar 2009 18:08:52 -0400
+Message-ID: <20090318220852.GE18894@fieldses.org>
+References: <20090312155609.16019.86499.stgit@ingres.1015granger.net> <20090312160706.16019.81338.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: "Sachin S. Prabhu" <sprabhu@redhat.com>
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:34983 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:52390 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753643AbZCRVjT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 17:39:19 -0400
-In-Reply-To: <49A2CD2B.50607@redhat.com>
+	with ESMTP id S1753593AbZCRWI7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 18:08:59 -0400
+In-Reply-To: <20090312160706.16019.81338.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 23, 2009 at 04:22:03PM +0000, Sachin S. Prabhu wrote:
-> There is an inconsistency seen in the behaviour of nfs compared to other local
-> filesystems on linux when changing owner or group of a directory. If the
-> directory has SUID/SGID flags set, on changing owner or group on the directory,
-> the flags are stripped off on nfs. These flags are maintained on other
-> filesystems such as ext3.
+On Thu, Mar 12, 2009 at 12:07:06PM -0400, Chuck Lever wrote:
+> The svc_addr_len() helper function can return a negative errno value,
+> but its return type is size_t, which is unsigned.
 > 
-> To reproduce on a nfs share or local filesystem, run the following commands
-> mkdir test; chmod +s+g test; chown user1 test; ls -ld test
-> 
-> On the nfs share, the flags are stripped and the output seen is
-> drwxr-xr-x 2 user1 root 4096 Feb 23  2009 test
-> 
-> On other local filesystems(ex: ext3), the flags are not stripped and the output
-> seen is
-> drwsr-sr-x 2 user1 root 4096 Feb 23 13:57 test
-> 
-> chown_common() called from sys_chown() will only strip the flags if the inode is
-> not a directory.
-> static int chown_common(struct dentry * dentry, uid_t user, gid_t group)
-> {
-> ..
->         if (!S_ISDIR(inode->i_mode))
->                 newattrs.ia_valid |=
->                         ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
-> ..
-> }
-> 
-> See: http://www.opengroup.org/onlinepubs/7990989775/xsh/chown.html
-> 
-> "If the path argument refers to a regular file, the set-user-ID (S_ISUID) and
-> set-group-ID (S_ISGID) bits of the file mode are cleared upon successful return
-> from chown(), unless the call is made by a process with appropriate privileges,
-> in which case it is implementation-dependent whether these bits are altered. If
-> chown() is successfully invoked on a file that is not a regular file, these
-> bits may be cleared. These bits are defined in <sys/stat.h>."
-> 
-> The behaviour as it stands does not appear to violate POSIX.  However the
-> actions performed are inconsistent when comparing ext3 and nfs.
+> The RDMA transport code passes this return value directly to memset(),
+> without checking first if it's negative.  This could cause memset() to
+> clobber a large piece of memory if svc_addr_len() has returned an
+> error.
 
-Makes sense, thanks!--applied for 2.6.30.--b.
+Is this something that can in fact happen, and if so, in what
+circumstances?  And what ends up happening to the -EAFNOSUPPORT error?
+
+Tracing up through the callers, I get lost somewhere in the ib code.
+Maybe Tom can rescue me....
+
+--b.
 
 > 
-> Sachin Prabhu
-
-> Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
-> Acked-by: Jeff Layton <jlayton@redhat.com>
-> --- linux-2.6.29-rc2/fs/nfsd/vfs.c.orig	2009-02-23 06:45:20.000000000 -0500
-> +++ linux-2.6.29-rc2/fs/nfsd/vfs.c	2009-02-23 11:10:10.000000000 -0500
-> @@ -366,8 +366,9 @@
->  	}
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  include/linux/sunrpc/svc_xprt.h          |    3 ++-
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++++--
+>  2 files changed, 16 insertions(+), 3 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index 0127dac..c2aa8cd 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -113,7 +113,7 @@ static inline unsigned short svc_addr_port(struct sockaddr *sa)
+>  	return ret;
+>  }
 >  
->  	/* Revoke setuid/setgid on chown */
-> -	if (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
-> -	    ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)) {
-> +	if (!S_ISDIR(inode->i_mode) &&
-> +	    (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
-> +	     ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid))) {
->  		iap->ia_valid |= ATTR_KILL_PRIV;
->  		if (iap->ia_valid & ATTR_MODE) {
->  			/* we're setting mode too, just clear the s*id bits */
-
+> -static inline size_t svc_addr_len(struct sockaddr *sa)
+> +static inline int svc_addr_len(const struct sockaddr *sa)
+>  {
+>  	switch (sa->sa_family) {
+>  	case AF_INET:
+> @@ -121,6 +121,7 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
+>  	case AF_INET6:
+>  		return sizeof(struct sockaddr_in6);
+>  	}
+> +
+>  	return -EAFNOSUPPORT;
+>  }
+>  
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 3d810e7..d1ec6f9 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -546,6 +546,7 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+>  	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+>  	struct svcxprt_rdma *newxprt;
+>  	struct sockaddr *sa;
+> +	int len;
+>  
+>  	/* Create a new transport */
+>  	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
+> @@ -563,9 +564,20 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+>  
+>  	/* Set the local and remote addresses in the transport */
+>  	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+> -	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
+> +	len = svc_addr_len(sa);
+> +	if (len < 0) {
+> +		dprintk("svcrdma: dst_addr has a bad address family\n");
+> +		return;
+> +	}
+> +	svc_xprt_set_remote(&newxprt->sc_xprt, sa, len);
+> +
+>  	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
+> -	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
+> +	len = svc_addr_len(sa);
+> +	if (len < 0) {
+> +		dprintk("svcrdma: src_addr has a bad address family\n");
+> +		return;
+> +	}
+> +	svc_xprt_set_local(&newxprt->sc_xprt, sa, len);
+>  
+>  	/*
+>  	 * Enqueue the new transport on the accept queue of the listening
+> 
