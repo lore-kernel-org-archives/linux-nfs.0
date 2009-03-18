@@ -1,83 +1,73 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: nfsd should drop CAP_MKNOD for non-root
-Date: Wed, 18 Mar 2009 13:32:21 -0400
-Message-ID: <20090318173221.GA16077@fieldses.org>
-References: <1237393292-14934-1-git-send-email-bfields@fieldses.org> <1237393292-14934-2-git-send-email-bfields@fieldses.org> <1237393292-14934-3-git-send-email-bfields@fieldses.org> <20090318170843.GA29045@us.ibm.com>
+From: Alex Bremer <albremer@googlemail.com>
+Subject: NFS4 ACL <-> Posix ACL
+Date: Wed, 18 Mar 2009 18:42:10 +0100
+Message-ID: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Igor Zhbanov <izh1979@gmail.com>, stable@kernel.org
-To: "Serge E. Hallyn" <serue@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:53955 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751533AbZCRRc1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 13:32:27 -0400
-In-Reply-To: <20090318170843.GA29045@us.ibm.com>
+Received: from ey-out-2122.google.com ([74.125.78.25]:42356 "EHLO
+	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752421AbZCRRmN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 13:42:13 -0400
+Received: by ey-out-2122.google.com with SMTP id 4so34557eyf.37
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Mar 2009 10:42:10 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 18, 2009 at 12:08:43PM -0500, Serge E. Hallyn wrote:
-> Quoting J. Bruce Fields (bfields@fieldses.org):
-> > From: J. Bruce Fields <bfields@citi.umich.edu>
-> > 
-> > Since creating a device node is normally an operation requiring special
-> > privilege, Igor Zhbanov points out that it is surprising (to say the
-> > least) that a client can, for example, create a device node on a
-> > filesystem exported with root_squash.
-> > 
-> > So, make sure CAP_MKNOD is among the capabilities dropped when an nfsd
-> > thread handles a request from a non-root user.
-> > 
-> > Reported-by: Igor Zhbanov <izh1979@gmail.com>
-> > Cc: stable@kernel.org
-> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-> 
-> Acked-by: Serge Hallyn <serue@us.ibm.com>
-> 
-> I assume CAP_LINUX_IMMUTABLE simply does not apply to nfs?
+Hello,
 
-Right.  We shouldn't care how it's set.
+I have a working NFS4 installation (kerberos + ldap) but some trouble
+understanding all these ACL mappings. On my server (ubuntu 8.04) the
+ext3 filesystems are mounted with the "acl" option and setting Posix
+ACLs works quite well.
 
-> And, you're adding CAP_FS_MASK_B1 in anticipation of labeled nfs?
+On the client side (ubuntu 8.10) my libacl seems to lack NFSv4 ACL
+support and therefore I can't see the acl list. However I installed
+nfs4 acl tools and now I can see the ACL permissions of a
+file/directory.
 
-That's unchanged (would have been clearer if I hadn't re-line-wrapped in
-the same patch).
+Using Posix ACLs on the server I added a default mask so that newly
+created files/directories in the public area are group-writeable. This
+works quite well on the server and this used to work with NFS3 (which
+supports POSIX ACLs) on the client side, too. However on a client
+using NFS4, these Posix-ACLs don't seem to get mapped to NFS4-ACLs.
 
-> Though, I was going to send a patch later today or tomorrow (figure I
-> should do some ltp testing) adding CAP_MKNOD to the whole
-> CAP_FS_MASK_B0 (and CAP_LINUX_IMMUTABLE and CAP_FS_MASK_B1 to
-> CAP_FS_SET).  That will conflict with this one.
+Here are the ACLs:
+-----------------
+server> getfacl test/
 
-OK, feel free to revert this at that point if necessary.
+user::rwx
+group::rwx
+other::---
+default:user::rwx
+default:group::rwx
+default:other::---
 
---b.
+server> touch test/tmp
+server> ls -l test/tmp
+-rw-rw---- 1 albremer domusers 0 2009-03-18 18:32 test/tmp
+---------------
+client> nfs4_getfacl test/
 
-> 
-> thanks,
-> -serge
-> 
-> > ---
-> >  include/linux/capability.h |    6 ++++--
-> >  1 files changed, 4 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/include/linux/capability.h b/include/linux/capability.h
-> > index 1b98725..4864a43 100644
-> > --- a/include/linux/capability.h
-> > +++ b/include/linux/capability.h
-> > @@ -393,8 +393,10 @@ struct cpu_vfs_cap_data {
-> >  # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
-> >  # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
-> >  # define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
-> > -# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0|CAP_TO_MASK(CAP_SYS_RESOURCE), \
-> > -					CAP_FS_MASK_B1 } })
-> > +# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
-> > +					    | CAP_TO_MASK(CAP_SYS_RESOURCE) \
-> > +					    | CAP_TO_MASK(CAP_MKNOD), \
-> > +					    CAP_FS_MASK_B1 } })
-> > 
-> >  #endif /* _KERNEL_CAPABILITY_U32S != 2 */
-> > 
-> > -- 
-> > 1.6.0.4
+A::OWNER@:rwaDxtTcCy
+A::GROUP@:rwaDxtcy
+A::EVERYONE@:tcy
+A:fdi:OWNER@:rwaDxtTcCy
+A:fdi:GROUP@:rwaDxtcy
+A:fdi:EVERYONE@:tcy
+
+client> touch test/tmp
+client> ls -l test/tmp
+-rw-r----- 1 albremer domusers 0 2009-03-18 18:32 test/tmp
+---------------
+
+Can anybody tell me what is wrong here? Is there any mapping between
+NFS4-ACLs and Posix-ACLs on the server side or are they handled
+seperately?
+
+Another question: If I add the mount option "user_xattr" to the nfs4
+exported filesystems, on the client side all permissions are shown as
+"nobody:nogroup". Why is that?
+
+Alex
