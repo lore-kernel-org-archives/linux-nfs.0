@@ -1,80 +1,62 @@
-From: "Serge E. Hallyn" <serue@us.ibm.com>
-Subject: [RFC PATCH] CAP_FS_MASK: add some long-missing capabilities to
-	cap_fs_mask
-Date: Wed, 18 Mar 2009 15:42:51 -0500
-Message-ID: <20090318204251.GA608@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 12/14] nfsd4: remove use of mutex for file_hashtable
+Date: Wed, 18 Mar 2009 17:03:29 -0400
+Message-ID: <20090318210329.GC18894@fieldses.org>
+References: <1236731222-3294-10-git-send-email-bfields@fieldses.org> <1236731222-3294-11-git-send-email-bfields@fieldses.org> <1236731222-3294-12-git-send-email-bfields@fieldses.org> <1236731222-3294-13-git-send-email-bfields@fieldses.org> <49B8085E.5080808@panasas.com> <20090312000540.GB21854@fieldses.org> <49B8E8B5.4010205@panasas.com> <20090313171831.GA26916@fieldses.org> <20090318202859.GA18894@fieldses.org> <49C15C49.9070105@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: mtk.manpages@gmail.com, Stephen Smalley <sds@epoch.ncsc.mil>,
-	Andrew Morgan <morgan@kernel.org>,
-	linux-security-module@vger.kernel.org,
-	lkml <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-	Igor Zhbanov <izh1979@gmail.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org,
-	linux-api@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-Sender: linux-security-module-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	Alexandros Batsakis <batsakis@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:33892 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752206AbZCRVDb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 17:03:31 -0400
+In-Reply-To: <49C15C49.9070105@panasas.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When POSIX capabilities were introduced during the 2.1 Linux
-cycle, the fs mask, which represents the capabilities which having
-fsuid==0 is supposed to grant, did not include CAP_MKNOD and
-CAP_LINUX_IMMUTABLE.  However, before capabilities the privilege
-to call these did in fact depend upon fsuid==0.
+On Wed, Mar 18, 2009 at 10:40:41PM +0200, Benny Halevy wrote:
+> On Mar. 18, 2009, 22:28 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >  static inline void
+> >  put_nfs4_file(struct nfs4_file *fi)
+> >  {
+> > -	kref_put(&fi->fi_ref, free_nfs4_file);
+> 
+> missing spin_lock(&recall_lock);?
+> 
+> 
+> > +	if (atomic_dec_and_lock(&fi->fi_ref, &recall_lock)) {
+> > +		list_del(&fi->fi_hash);
+> > +		spin_unlock(&recall_lock);
+> > +		iput(fi->fi_inode);
+> > +		kmem_cache_free(file_slab, fi);
+> > +	}
+> 
+> 	} else {
+> 		spin_unlock(&recall_lock);
+> 	}
+> 
+> or am I missing something?
 
-This patch introduces those capabilities into the fsmask,
-restoring the old behavior.
+>From include/linux/spinlock.h:
 
-See the thread starting at http://lkml.org/lkml/2009/3/11/157 for
-reference.
+/**
+ * atomic_dec_and_lock - lock on reaching reference count zero
+ * @atomic: the atomic counter
+ * @lock: the spinlock in question
+ *
+ * Decrements @atomic by 1.  If the result is 0, returns true and locks
+ * @lock.  Returns false for all other cases.
+ */
 
-Note that if this fix is deemed valid, then earlier kernel versions (2.4
-and 2.2) ought to be fixed too.
+So it's useful for cases such as this, when a reference-counted object
+is reachable from some data structure visible to others, and you want to
+remove it from that structure on dropping the last reference (as opposed
+to keeping one reference for the structure itself, and requiring the
+object to be explicitly removed).
 
-Reported-by: Igor Zhbanov <izh1979@gmail.com>
-Signed-off-by: Serge E. Hallyn <serue@us.ibm.com>
----
- include/linux/capability.h |   18 +++++++++++++++++-
- 1 files changed, 17 insertions(+), 1 deletions(-)
+(Unless I'm missing something else.)
 
-diff --git a/include/linux/capability.h b/include/linux/capability.h
-index 1b98725..eae98b1 100644
---- a/include/linux/capability.h
-+++ b/include/linux/capability.h
-@@ -377,7 +377,21 @@ struct cpu_vfs_cap_data {
- #define CAP_FOR_EACH_U32(__capi)  \
- 	for (__capi = 0; __capi < _KERNEL_CAPABILITY_U32S; ++__capi)
- 
-+/*
-+ * CAP_FS_MASK and CAP_NFSD_MASKS:
-+ *
-+ * The fs mask is all the privileges that fsuid==0 historically meant.
-+ * At one time in the past, that included CAP_MKNOD and CAP_LINUX_IMMUTABLE.
-+ *
-+ * It has never meant setting security.* and trusted.* xattrs.
-+ *
-+ * We could also define fsmask as follows:
-+ *    1. CAP_FS_MASK is the privilege to bypass all fs-related DAC permissions
-+ *    2. The security.* and trusted.* xattrs are fs-related MAC permissions
-+ */
-+
- # define CAP_FS_MASK_B0     (CAP_TO_MASK(CAP_CHOWN)		\
-+			    | CAP_TO_MASK(CAP_MKNOD)		\
- 			    | CAP_TO_MASK(CAP_DAC_OVERRIDE)	\
- 			    | CAP_TO_MASK(CAP_DAC_READ_SEARCH)	\
- 			    | CAP_TO_MASK(CAP_FOWNER)		\
-@@ -392,7 +406,9 @@ struct cpu_vfs_cap_data {
- # define CAP_EMPTY_SET    ((kernel_cap_t){{ 0, 0 }})
- # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
- # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
--# define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
-+# define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0 \
-+					| CAP_TO_MASK(CAP_LINUX_IMMUTABLE), \
-+					CAP_FS_MASK_B1 } })
- # define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0|CAP_TO_MASK(CAP_SYS_RESOURCE), \
- 					CAP_FS_MASK_B1 } })
- 
--- 
-1.5.4.3
-
+--b.
