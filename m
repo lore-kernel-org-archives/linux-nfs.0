@@ -1,130 +1,73 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 02/40] SUNRPC: Clean up static inline functions in
-	svc_xprt.h
-Date: Wed, 18 Mar 2009 18:13:49 -0400
-Message-ID: <20090318221349.GF18894@fieldses.org>
-References: <20090312155609.16019.86499.stgit@ingres.1015granger.net> <20090312160713.16019.56290.stgit@ingres.1015granger.net>
+From: James Morris <jmorris@namei.org>
+Subject: Re: [PATCH] nfsd: nfsd should drop CAP_MKNOD for non-root
+Date: Thu, 19 Mar 2009 09:21:01 +1100 (EST)
+Message-ID: <alpine.LRH.2.00.0903190920340.15412@tundra.namei.org>
+References: <1237393292-14934-1-git-send-email-bfields@fieldses.org> <1237393292-14934-2-git-send-email-bfields@fieldses.org> <1237393292-14934-3-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Igor Zhbanov <izh1979@gmail.com>,
+	Serge Hallyn <serue@us.ibm.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:43100 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754441AbZCRWNy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 18:13:54 -0400
-In-Reply-To: <20090312160713.16019.56290.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from tundra.namei.org ([65.99.196.166]:1560 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758040AbZCRW2e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Mar 2009 18:28:34 -0400
+In-Reply-To: <1237393292-14934-3-git-send-email-bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 12, 2009 at 12:07:14PM -0400, Chuck Lever wrote:
-> Clean up:  Enable the use of const arguments in higher level svc_ APIs
-> by adding const to the arguments of the helper functions in svc_xprt.h
+On Wed, 18 Mar 2009, J. Bruce Fields wrote:
 
-OK--applied.--b.
-
+> From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Since creating a device node is normally an operation requiring special
+> privilege, Igor Zhbanov points out that it is surprising (to say the
+> least) that a client can, for example, create a device node on a
+> filesystem exported with root_squash.
+> 
+> So, make sure CAP_MKNOD is among the capabilities dropped when an nfsd
+> thread handles a request from a non-root user.
+> 
+> Reported-by: Igor Zhbanov <izh1979@gmail.com>
+> Cc: stable@kernel.org
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+Acked-by: James Morris <jmorris@namei.org>
+
 > ---
+>  include/linux/capability.h |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
 > 
->  include/linux/sunrpc/svc_xprt.h |   46 ++++++++++++++++++++++-----------------
->  1 files changed, 26 insertions(+), 20 deletions(-)
+> diff --git a/include/linux/capability.h b/include/linux/capability.h
+> index 1b98725..4864a43 100644
+> --- a/include/linux/capability.h
+> +++ b/include/linux/capability.h
+> @@ -393,8 +393,10 @@ struct cpu_vfs_cap_data {
+>  # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
+>  # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
+>  # define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
+> -# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0|CAP_TO_MASK(CAP_SYS_RESOURCE), \
+> -					CAP_FS_MASK_B1 } })
+> +# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
+> +					    | CAP_TO_MASK(CAP_SYS_RESOURCE) \
+> +					    | CAP_TO_MASK(CAP_MKNOD), \
+> +					    CAP_FS_MASK_B1 } })
+>  
+>  #endif /* _KERNEL_CAPABILITY_U32S != 2 */
+>  
+> -- 
+> 1.6.0.4
 > 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index c2aa8cd..ee21e8a 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -88,29 +88,32 @@ static inline void svc_xprt_get(struct svc_xprt *xprt)
->  	kref_get(&xprt->xpt_ref);
->  }
->  static inline void svc_xprt_set_local(struct svc_xprt *xprt,
-> -				      struct sockaddr *sa, int salen)
-> +				      const struct sockaddr *sa,
-> +				      const size_t salen)
->  {
->  	memcpy(&xprt->xpt_local, sa, salen);
->  	xprt->xpt_locallen = salen;
->  }
->  static inline void svc_xprt_set_remote(struct svc_xprt *xprt,
-> -				       struct sockaddr *sa, int salen)
-> +				       const struct sockaddr *sa,
-> +				       const size_t salen)
->  {
->  	memcpy(&xprt->xpt_remote, sa, salen);
->  	xprt->xpt_remotelen = salen;
->  }
-> -static inline unsigned short svc_addr_port(struct sockaddr *sa)
-> +static inline unsigned short svc_addr_port(const struct sockaddr *sa)
->  {
-> -	unsigned short ret = 0;
-> +	const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
-> +	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
-> +
->  	switch (sa->sa_family) {
->  	case AF_INET:
-> -		ret = ntohs(((struct sockaddr_in *)sa)->sin_port);
-> -		break;
-> +		return ntohs(sin->sin_port);
->  	case AF_INET6:
-> -		ret = ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
-> -		break;
-> +		return ntohs(sin6->sin6_port);
->  	}
-> -	return ret;
-> +
-> +	return 0;
->  }
->  
->  static inline int svc_addr_len(const struct sockaddr *sa)
-> @@ -125,36 +128,39 @@ static inline int svc_addr_len(const struct sockaddr *sa)
->  	return -EAFNOSUPPORT;
->  }
->  
-> -static inline unsigned short svc_xprt_local_port(struct svc_xprt *xprt)
-> +static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
->  {
-> -	return svc_addr_port((struct sockaddr *)&xprt->xpt_local);
-> +	return svc_addr_port((const struct sockaddr *)&xprt->xpt_local);
->  }
->  
-> -static inline unsigned short svc_xprt_remote_port(struct svc_xprt *xprt)
-> +static inline unsigned short svc_xprt_remote_port(const struct svc_xprt *xprt)
->  {
-> -	return svc_addr_port((struct sockaddr *)&xprt->xpt_remote);
-> +	return svc_addr_port((const struct sockaddr *)&xprt->xpt_remote);
->  }
->  
-> -static inline char *__svc_print_addr(struct sockaddr *addr,
-> -				     char *buf, size_t len)
-> +static inline char *__svc_print_addr(const struct sockaddr *addr,
-> +				     char *buf, const size_t len)
->  {
-> +	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
-> +	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
-> +
->  	switch (addr->sa_family) {
->  	case AF_INET:
-> -		snprintf(buf, len, "%pI4, port=%u",
-> -			&((struct sockaddr_in *)addr)->sin_addr,
-> -			ntohs(((struct sockaddr_in *) addr)->sin_port));
-> +		snprintf(buf, len, "%pI4, port=%u", &sin->sin_addr,
-> +			ntohs(sin->sin_port));
->  		break;
->  
->  	case AF_INET6:
->  		snprintf(buf, len, "%pI6, port=%u",
-> -			 &((struct sockaddr_in6 *)addr)->sin6_addr,
-> -			ntohs(((struct sockaddr_in6 *) addr)->sin6_port));
-> +			 &sin6->sin6_addr,
-> +			ntohs(sin6->sin6_port));
->  		break;
->  
->  	default:
->  		snprintf(buf, len, "unknown address type: %d", addr->sa_family);
->  		break;
->  	}
-> +
->  	return buf;
->  }
->  #endif /* SUNRPC_SVC_XPRT_H */
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+
+-- 
+James Morris
+<jmorris@namei.org>
