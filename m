@@ -1,55 +1,80 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Option noac not working correctly?
-Date: Wed, 18 Mar 2009 17:34:38 -0400
-Message-ID: <1237412078.8714.21.camel@heimdal.trondhjem.org>
-References: <49C106DD.2080008@bull.net>
-	<1237389003.7275.9.camel@heimdal.trondhjem.org>
-	<49C12461.8040001@bull.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Inconsistent setattr behaviour
+Date: Wed, 18 Mar 2009 17:39:17 -0400
+Message-ID: <20090318213917.GD18894@fieldses.org>
+References: <49A2CD2B.50607@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <49C12461.8040001@bull.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: "Sachin S. Prabhu" <sprabhu@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:34983 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753643AbZCRVjT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 17:39:19 -0400
+In-Reply-To: <49A2CD2B.50607@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-03-18 at 17:42 +0100, Diego Moreno wrote:
-> Thanks for your quick reply Trond. I've seen the only way to pass my 
-> test is using (for kernel 2.6.29-rc8): -olookupcache=positive,noac. If I 
-> use -olookupcache=positive or -olookupcache=all or 
-> -olookupcache=all,noac my test doesn't pass.
+On Mon, Feb 23, 2009 at 04:22:03PM +0000, Sachin S. Prabhu wrote:
+> There is an inconsistency seen in the behaviour of nfs compared to other local
+> filesystems on linux when changing owner or group of a directory. If the
+> directory has SUID/SGID flags set, on changing owner or group on the directory,
+> the flags are stripped off on nfs. These flags are maintained on other
+> filesystems such as ext3.
+> 
+> To reproduce on a nfs share or local filesystem, run the following commands
+> mkdir test; chmod +s+g test; chown user1 test; ls -ld test
+> 
+> On the nfs share, the flags are stripped and the output seen is
+> drwxr-xr-x 2 user1 root 4096 Feb 23  2009 test
+> 
+> On other local filesystems(ex: ext3), the flags are not stripped and the output
+> seen is
+> drwsr-sr-x 2 user1 root 4096 Feb 23 13:57 test
+> 
+> chown_common() called from sys_chown() will only strip the flags if the inode is
+> not a directory.
+> static int chown_common(struct dentry * dentry, uid_t user, gid_t group)
+> {
+> ..
+>         if (!S_ISDIR(inode->i_mode))
+>                 newattrs.ia_valid |=
+>                         ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+> ..
+> }
+> 
+> See: http://www.opengroup.org/onlinepubs/7990989775/xsh/chown.html
+> 
+> "If the path argument refers to a regular file, the set-user-ID (S_ISUID) and
+> set-group-ID (S_ISGID) bits of the file mode are cleared upon successful return
+> from chown(), unless the call is made by a process with appropriate privileges,
+> in which case it is implementation-dependent whether these bits are altered. If
+> chown() is successfully invoked on a file that is not a regular file, these
+> bits may be cleared. These bits are defined in <sys/stat.h>."
+> 
+> The behaviour as it stands does not appear to violate POSIX.  However the
+> actions performed are inconsistent when comparing ext3 and nfs.
 
-Sorry. You're right... The -olookupcache option only affects lookup of
-new files (and I should have said "-olookupcache=positive" or
-"-olookupcache=none").
-In this test case you are, however doing an 'ls', not a lookup. The
-resulting opendir() call will always check if the directory has changed
-or not on the NFS server (irrespective of whether or not you use
-'noac'). The decision on whether or not to rely on the cached readdir
-data then depends entirely on whether or not the server returns a new
-value for the NFSv4 change_attribute or the mtime.
+Makes sense, thanks!--applied for 2.6.30.--b.
 
-The problem therefore is, as I indicated earlier, that the server is
-telling the client that nothing changed because it has too poor mtime
-resolution...
+> 
+> Sachin Prabhu
 
-> BTW, is there any way of passing this test for a kernel like 2.6.27 
-> (there is no lookupcache mount option). In kernels like 2.6.19 or 2.6.20 
-> I think I passed my test just using noac option. These kernels where the 
-> first kernels with the patch (commit 
-> b0b539739fe9b7d75002412a787cfdf4efddbc33) treating the special case of 
-> nfsi->attrtimeo==0. That means 'noac' or/and actimeo=0 mount options.
+> Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
+> Acked-by: Jeff Layton <jlayton@redhat.com>
+> --- linux-2.6.29-rc2/fs/nfsd/vfs.c.orig	2009-02-23 06:45:20.000000000 -0500
+> +++ linux-2.6.29-rc2/fs/nfsd/vfs.c	2009-02-23 11:10:10.000000000 -0500
+> @@ -366,8 +366,9 @@
+>  	}
+>  
+>  	/* Revoke setuid/setgid on chown */
+> -	if (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
+> -	    ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid)) {
+> +	if (!S_ISDIR(inode->i_mode) &&
+> +	    (((iap->ia_valid & ATTR_UID) && iap->ia_uid != inode->i_uid) ||
+> +	     ((iap->ia_valid & ATTR_GID) && iap->ia_gid != inode->i_gid))) {
+>  		iap->ia_valid |= ATTR_KILL_PRIV;
+>  		if (iap->ia_valid & ATTR_MODE) {
+>  			/* we're setting mode too, just clear the s*id bits */
 
-'noac' cannot fix this problem.
-
-Cheers
-  Trond
