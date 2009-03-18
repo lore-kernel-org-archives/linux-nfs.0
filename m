@@ -1,81 +1,70 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Option noac not working correctly?
-Date: Wed, 18 Mar 2009 11:10:03 -0400
-Message-ID: <1237389003.7275.9.camel@heimdal.trondhjem.org>
-References: <49C106DD.2080008@bull.net>
+From: Randy Dunlap <randy.dunlap@oracle.com>
+Subject: Re: [PATCH next-20090316] sunrpc: fix build breakage
+Date: Wed, 18 Mar 2009 08:56:28 -0700
+Message-ID: <20090318085628.36eea73c.randy.dunlap@oracle.com>
+References: <20090316125140.GA3095@orion>
+	<1237208680.7229.14.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Alexander Beregalov <a.beregalov@gmail.com>,
+	linux-next@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:44069 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752945AbZCRPKK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2009 11:10:10 -0400
-In-Reply-To: <49C106DD.2080008@bull.net>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:49634 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751472AbZCRPyS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 11:54:18 -0400
+In-Reply-To: <1237208680.7229.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-03-18 at 15:36 +0100, Diego Moreno wrote:
-> Hello everyone,
-> 
-> I've been testing the noac mount option in several kernels (2.6.27.10, 
-> 2.6.29-rc8) for NFSv3 and NFSv4. The next commands do not work properly:
-> 
-> rm -f /export/B; ls -l /tmp/nfs_client_tcp/B ; uname -a > /export/B; ls 
-> -l /tmp/nfs_client_tcp/B
-> 
-> Result is usually:
-> 
-> ls: /tmp/nfs_client_tcp/B: No such file or directory
-> ls: /tmp/nfs_client_tcp/B: No such file or directory
-> 
-> Actually the result should be always:
-> 
-> ls: /tmp/nfs_client_tcp/B: No such file or directory
-> -rw-r--r-- 1 root root 89 Mar 18 14:02 /tmp/nfs_client_tcp/B
-> 
-> Network traces show me that client is not making any lookup in the 
-> server for the second 'ls'. A client with noac option should always make 
-> a lookup on server, isn't it?
-> 
-> My /etc/exports file:
-> 
-> /export  *(rw,fsid=0,insecure,no_subtree_check)
-> 
-> Relevant information from cat /proc/mounts:
-> 
-> pwrd:/ /tmp/nfs_client_tcp nfs4 
-> rw,sync,vers=4,rsize=1048576,wsize=1048576,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,nointr,noac,proto=tcp,timeo=600,retrans=2,sec=sys
-> 
-> NFS debug trace of the second ls command:
-> 
-> NFS call  access
-> NFS: nfs_update_inode(0:17/2 ct=2 info=0x6)
-> NFS reply access: 0
-> NFS: permission(0:17/2), mask=0x1, res=0
-> NFS: revalidating (0:17/2)
-> NFS call  getattr
-> NFS reply getattr: 0
-> NFS: nfs_update_inode(0:17/2 ct=2 info=0x6)
-> NFS: nfs3_forget_cached_acls(0:17/2)
-> NFS: (0:17/2) revalidation complete
-> NFS: nfs_lookup_revalidate(/B) is valid
-> NFS: dentry_delete(/B, 8)
-> 
-> Is there anything I'm not doing well? Is this a known bug for the last 
-> kernel version? Thanks,
+On Mon, 16 Mar 2009 09:04:40 -0400 Trond Myklebust wrote:
 
-The above behaviour is perfectly correct _if_ the mtime
-on /tmp/nfs_client_tcp doesn't change between your 'rm' and the creation
-of B. Given that most Linux filesystems have poor (1 second) resolution
-on mtime, then for it not to change in the above test is an extremely
-likely event.
+> On Mon, 2009-03-16 at 15:51 +0300, Alexander Beregalov wrote:
+> > net/sunrpc/clnt.c: In function 'call_bind_status':
+> > net/sunrpc/clnt.c:994: error: 'struct rpc_task' has no member named
+> > 'tk_pid'
+> > net/sunrpc/clnt.c: In function 'call_connect_status':
+> > net/sunrpc/clnt.c:1051: error: 'struct rpc_task' has no member named
+> > 'tk_pid'
+> > 
+> > rpc_task has tk_pid if RPC_DEBUG is defined.
+> > 
+> > Signed-off-by: Alexander Beregalov <a.beregalov@gmail.com>
+> > ---
+> > 
+> >  net/sunrpc/clnt.c |    4 ++--
+> >  1 files changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > index efd0c7b..68cb91a 100644
+> > --- a/net/sunrpc/clnt.c
+> > +++ b/net/sunrpc/clnt.c
+> > @@ -990,7 +990,7 @@ call_bind_status(struct rpc_task *task)
+> >  		return;
+> >  	default:
+> >  		if (net_ratelimit())
+> > -			printk("RPC: %5u unrecognized rpcbind error (%d)\n",
+> > +			dprintk("RPC: %5u unrecognized rpcbind error (%d)\n",
+> >  					task->tk_pid, -task->tk_status);
+> >  	}
+> >  
+> > @@ -1047,7 +1047,7 @@ call_connect_status(struct rpc_task *task)
+> >  		break;
+> >  	default:
+> >  		if (net_ratelimit())
+> > -			printk("RPC: %5u unrecognized connect error (%d)\n",
+> > +			dprintk("RPC: %5u unrecognized connect error (%d)\n",
+> >  					task->tk_pid, status);
+> >  		rpc_exit(task, -EIO);
+> >  	}
+> 
+> No, that's not right. The intention is to always report errors that are
+> fatal and are due to unforeseen circumstances. Your patch means that
+> those reports are suppressed entirely when RPC_DEBUG is undefined.
 
-Note that there is a better option for controlling lookup behaviour in
-newer kernels: -olookupcache=all or -olookupcache=positive should both
-cause your test above to pass irrespective of whether or not mtime
-changed.
 
-Trond
+nevertheless, the build breakage is still around in linux-next 20090318...
 
+---
+~Randy
