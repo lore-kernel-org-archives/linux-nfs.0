@@ -1,50 +1,50 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [Patch 0/9] NFS Mount Configuration File
-Date: Tue, 17 Mar 2009 16:36:26 -0400
-Message-ID: <44E15D54-622B-42BA-8EB9-FE73B99D8067@oracle.com>
-References: <49B57FB2.9020000@RedHat.com>
-	<A359B7ED-198B-4C3E-96B1-F4B2D5D3582B@oracle.com>
-	<49BFFDA6.8090500@RedHat.com>
-	<C0503E0B-59F4-46BA-9430-08C34B2F693E@oracle.com>
-	<20090317202501.GD32331@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090317202501.GD32331@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Ni Wenjuan <niwj@cn.fujitsu.com>
+Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
+Date: Wed, 18 Mar 2009 09:55:47 +0800
+Message-ID: <49C054A3.9010402@cn.fujitsu.com>
+References: <49B8A224.6070803@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=GB2312
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:51922 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751790AbZCRB4a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Mar 2009 21:56:30 -0400
+In-Reply-To: <49B8A224.6070803@cn.fujitsu.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 17, 2009, at Mar 17, 2009, 4:25 PM, J. Bruce Fields wrote:
-> On Tue, Mar 17, 2009 at 04:17:05PM -0400, Chuck Lever wrote:
->> I think the problem I have with this (besides the complexity) is that
->> if we must add more ways of avoiding NFSv4, then is NFSv4 really  
->> ready
->> to be made the default?
->
-> Even given the best possible client and server implementation, there  
-> are
-> enough user-visible not-completely-backwards-compatible changes in the
-> protocol (ACLs, string names, etc.) that silently substituting v4  
-> can't
-> be the right thing for every case.
+Ni Wenjuan =D0=B4=B5=C0:
+> Fix a test in rename operation. rename dir1 into existing,nonempty di=
+r2 should
+> return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPTY. RFC says if the t=
+arget is a
+> directory but not empty, the server will return the error, NFS4ERR_EX=
+IST.
+>=20
+> Signed-off-by:Ni Wenjuan  <niwj@cn.fujitsu.com>
+>=20
+> ---
+>  fs/nfsd/nfs4proc.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 9fa60a3..c1e2e22 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -605,7 +605,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct
+> nfsd4_compound_state *cstate,
+>=20
+>  	/* the underlying filesystem returns different error's than require=
+d
+>  	 * by NFSv4. both save_fh and current_fh have been verified.. */
+> -	if (status =3D=3D nfserr_isdir)
+> +	if (status =3D=3D nfserr_isdir || status =3D=3D nfserr_notempty)
+>  		status =3D nfserr_exist;
+>  	else if ((status =3D=3D nfserr_notdir) &&
+>                    (S_ISDIR(cstate->save_fh.fh_dentry->d_inode->i_mod=
+e) &&
 
-For the cases where it isn't right, why is simply adding "vers=3" not  
-an appropriate workaround?
+Bruce ,do you think this patch is ok ?   Can it be accepted?
 
-It would be nice to have a working list of areas where there are going  
-to be issues, so we and our users can be prepared for the transition.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
