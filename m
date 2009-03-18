@@ -1,73 +1,51 @@
-From: James Morris <jmorris@namei.org>
-Subject: Re: [PATCH] nfsd: nfsd should drop CAP_MKNOD for non-root
-Date: Thu, 19 Mar 2009 09:21:01 +1100 (EST)
-Message-ID: <alpine.LRH.2.00.0903190920340.15412@tundra.namei.org>
-References: <1237393292-14934-1-git-send-email-bfields@fieldses.org> <1237393292-14934-2-git-send-email-bfields@fieldses.org> <1237393292-14934-3-git-send-email-bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 03/40] SUNRPC: Clean up svc_find_xprt() calling sequence
+Date: Wed, 18 Mar 2009 18:34:09 -0400
+Message-ID: <20090318223409.GG18894@fieldses.org>
+References: <20090312155609.16019.86499.stgit@ingres.1015granger.net> <20090312160721.16019.89653.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Igor Zhbanov <izh1979@gmail.com>,
-	Serge Hallyn <serue@us.ibm.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:1560 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758040AbZCRW2e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Mar 2009 18:28:34 -0400
-In-Reply-To: <1237393292-14934-3-git-send-email-bfields@fieldses.org>
+Received: from mail.fieldses.org ([141.211.133.115]:38493 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752030AbZCRWeN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 18:34:13 -0400
+In-Reply-To: <20090312160721.16019.89653.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 18 Mar 2009, J. Bruce Fields wrote:
+On Thu, Mar 12, 2009 at 12:07:21PM -0400, Chuck Lever wrote:
+> Clean up: add documentating comment and use appropriate data types for
+> svc_find_xprt()'s arguments.
+> 
+> This also eliminates a mixed sign comparison: @port was an int, while
+> the return value of svc_xprt_local_port() is an unsigned short.
 
-> From: J. Bruce Fields <bfields@citi.umich.edu>
-> 
-> Since creating a device node is normally an operation requiring special
-> privilege, Igor Zhbanov points out that it is surprising (to say the
-> least) that a client can, for example, create a device node on a
-> filesystem exported with root_squash.
-> 
-> So, make sure CAP_MKNOD is among the capabilities dropped when an nfsd
-> thread handles a request from a non-root user.
-> 
-> Reported-by: Igor Zhbanov <izh1979@gmail.com>
-> Cc: stable@kernel.org
-> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+OK.  Applied, though:
 
-Acked-by: James Morris <jmorris@namei.org>
-
-> ---
->  include/linux/capability.h |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/include/linux/capability.h b/include/linux/capability.h
-> index 1b98725..4864a43 100644
-> --- a/include/linux/capability.h
-> +++ b/include/linux/capability.h
-> @@ -393,8 +393,10 @@ struct cpu_vfs_cap_data {
->  # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
->  # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
->  # define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
-> -# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0|CAP_TO_MASK(CAP_SYS_RESOURCE), \
-> -					CAP_FS_MASK_B1 } })
-> +# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
-> +					    | CAP_TO_MASK(CAP_SYS_RESOURCE) \
-> +					    | CAP_TO_MASK(CAP_MKNOD), \
-> +					    CAP_FS_MASK_B1 } })
+> @@ -1042,14 +1048,14 @@ static struct svc_deferred_req *svc_deferred_dequeue(struct svc_xprt *xprt)
+>   * wild-card, and will result in matching the first transport in the
+>   * service's list that has a matching class name.
+>   */
+> -struct svc_xprt *svc_find_xprt(struct svc_serv *serv, char *xcl_name,
+> -			       int af, int port)
+> +struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+> +			       const sa_family_t af, const unsigned short port)
+>  {
+>  	struct svc_xprt *xprt;
+>  	struct svc_xprt *found = NULL;
 >  
->  #endif /* _KERNEL_CAPABILITY_U32S != 2 */
->  
-> -- 
-> 1.6.0.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>  	/* Sanity check the args */
+> -	if (!serv || !xcl_name)
+> +	if (serv == NULL || xcl_name == NULL)
+>  		return found;
 
--- 
-James Morris
-<jmorris@namei.org>
+Maybe that's better, maybe not, I don't know, but: let's make allowances
+for *some* variation in individual style.
+
+Applying as-is, but in future, I'd rather that level of decision be left
+to the preferences of whoever wrote the code.
+
+--b.
