@@ -1,51 +1,56 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS4ERR_SYMLINK  error
-Date: Wed, 18 Mar 2009 19:06:21 -0400
-Message-ID: <20090318230621.GK18894@fieldses.org>
-References: <49AF9C28.8030603@cn.fujitsu.com> <49AFA4E4.50207@panasas.com> <20090306213234.GB1779@fieldses.org> <49B2C404.3060907@panasas.com> <20090309180643.GB9408@fieldses.org> <49BA15B3.2040904@cn.fujitsu.com>
+Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
+Date: Wed, 18 Mar 2009 19:10:02 -0400
+Message-ID: <20090318231002.GL18894@fieldses.org>
+References: <49B8A224.6070803@cn.fujitsu.com> <49C054A3.9010402@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-To: Yang Hongyang <yanghy@cn.fujitsu.com>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org
+To: Ni Wenjuan <niwj@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:55560 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:55038 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753836AbZCRXG3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 19:06:29 -0400
-In-Reply-To: <49BA15B3.2040904@cn.fujitsu.com>
+	with ESMTP id S1754275AbZCRXKE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 19:10:04 -0400
+In-Reply-To: <49C054A3.9010402@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 13, 2009 at 04:13:39PM +0800, Yang Hongyang wrote:
-> J. Bruce Fields wrote:
-> > On Sat, Mar 07, 2009 at 08:59:16PM +0200, Benny Halevy wrote:
-> >> On Mar. 06, 2009, 23:32 +0200, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>> On Thu, Mar 05, 2009 at 12:09:40PM +0200, Benny Halevy wrote:
-> >>>> On Mar. 05, 2009, 11:32 +0200, Ni Wenjuan <niwj@cn.fujitsu.com> wrote:
-> >>>>> the result of newpynfs test case of  LINK4a .  if you link with target directoty
-> >>>>>  is a symbole file,it should get NFS4ERR_NOTDIR ,instead got NFS4ERR_SYMLINK.
-> >>>>>
-> >>>>> THE LINK operation  don't list NFS4ERR_SYMLINK as valid errors in the spec. But
-> >>>>> NFS4ERR_SYMLINK seems like a reasonable error.  Is this an oversight
-> >>>>> in the spec, or something we need to fix?
-> >>>> Although NFSv4.1 adds NFS4ERR_SYMLINK to LINK's allowed errors list
-> >>>> (and this might be an indication for it being an oversight in rfc3530),
-> >>> The error lists in rfc3530 are known to be incomplete in some cases, so
-> >>> before adding an exception like this I'd like something more.  (E.g.:
-> >>> does this cause any client or application to fail?  Is there some
-> >>> logical reason notdir is a more useful error than symlink?)
-> >> FWIW, the linux nfs client translates NFS4ERR_SYMLINK to -ELOOP
-> >> which is awkward and less descriptive to the app / user than
-> >> -ENOTDIR.
-> > 
-> > Hm, OK.  If we fix this will -ELOOP then become reasonable for our
-> > remaining NFS4ERR_SYMLINK returns?
-> 
-> Bruce,Do you think we do not need to fix this?
+On Wed, Mar 18, 2009 at 09:55:47AM +0800, Ni Wenjuan wrote:
+> Ni Wenjuan =E5=86=99=E9=81=93:
+> > Fix a test in rename operation. rename dir1 into existing,nonempty =
+dir2 should
+> > return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPTY. RFC says if the=
+ target is a
+> > directory but not empty, the server will return the error, NFS4ERR_=
+EXIST.
+> >=20
+> > Signed-off-by:Ni Wenjuan  <niwj@cn.fujitsu.com>
+> >=20
+> > ---
+> >  fs/nfsd/nfs4proc.c |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> >=20
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index 9fa60a3..c1e2e22 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -605,7 +605,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct
+> > nfsd4_compound_state *cstate,
+> >=20
+> >  	/* the underlying filesystem returns different error's than requi=
+red
+> >  	 * by NFSv4. both save_fh and current_fh have been verified.. */
+> > -	if (status =3D=3D nfserr_isdir)
+> > +	if (status =3D=3D nfserr_isdir || status =3D=3D nfserr_notempty)
+> >  		status =3D nfserr_exist;
+> >  	else if ((status =3D=3D nfserr_notdir) &&
+> >                    (S_ISDIR(cstate->save_fh.fh_dentry->d_inode->i_m=
+ode) &&
+>=20
+> Bruce ,do you think this patch is ok ?   Can it be accepted?
 
-Given the spec and the client behavior, I guess it sounds reasonable to
-fix it, if Benny could just resend with a new comment and signed-off-by.
+OK.  Did you already post this patch?  Sorry, I can't seem to find it.
+Could you repost in the standard format?
 
 --b.
