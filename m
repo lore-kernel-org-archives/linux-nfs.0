@@ -1,104 +1,73 @@
-From: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
-Subject: Re: Option noac not working correctly?
-Date: Wed, 18 Mar 2009 17:42:09 +0100
-Message-ID: <49C12461.8040001@bull.net>
-References: <49C106DD.2080008@bull.net>
-	<1237389003.7275.9.camel@heimdal.trondhjem.org>
+From: "Serge E. Hallyn" <serue@us.ibm.com>
+Subject: Re: [PATCH] nfsd: nfsd should drop CAP_MKNOD for non-root
+Date: Wed, 18 Mar 2009 12:08:43 -0500
+Message-ID: <20090318170843.GA29045@us.ibm.com>
+References: <1237393292-14934-1-git-send-email-bfields@fieldses.org> <1237393292-14934-2-git-send-email-bfields@fieldses.org> <1237393292-14934-3-git-send-email-bfields@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1237389003.7275.9.camel@heimdal.trondhjem.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Igor Zhbanov <izh1979@gmail.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:52801 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753866AbZCRRIv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 13:08:51 -0400
+In-Reply-To: <1237393292-14934-3-git-send-email-bfields@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Trond Myklebust wrote:
-> On Wed, 2009-03-18 at 15:36 +0100, Diego Moreno wrote:
->> Hello everyone,
->>
->> I've been testing the noac mount option in several kernels (2.6.27.10, 
->> 2.6.29-rc8) for NFSv3 and NFSv4. The next commands do not work properly:
->>
->> rm -f /export/B; ls -l /tmp/nfs_client_tcp/B ; uname -a > /export/B; ls 
->> -l /tmp/nfs_client_tcp/B
->>
->> Result is usually:
->>
->> ls: /tmp/nfs_client_tcp/B: No such file or directory
->> ls: /tmp/nfs_client_tcp/B: No such file or directory
->>
->> Actually the result should be always:
->>
->> ls: /tmp/nfs_client_tcp/B: No such file or directory
->> -rw-r--r-- 1 root root 89 Mar 18 14:02 /tmp/nfs_client_tcp/B
->>
->> Network traces show me that client is not making any lookup in the 
->> server for the second 'ls'. A client with noac option should always make 
->> a lookup on server, isn't it?
->>
->> My /etc/exports file:
->>
->> /export  *(rw,fsid=0,insecure,no_subtree_check)
->>
->> Relevant information from cat /proc/mounts:
->>
->> pwrd:/ /tmp/nfs_client_tcp nfs4 
->> rw,sync,vers=4,rsize=1048576,wsize=1048576,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,nointr,noac,proto=tcp,timeo=600,retrans=2,sec=sys
->>
->> NFS debug trace of the second ls command:
->>
->> NFS call  access
->> NFS: nfs_update_inode(0:17/2 ct=2 info=0x6)
->> NFS reply access: 0
->> NFS: permission(0:17/2), mask=0x1, res=0
->> NFS: revalidating (0:17/2)
->> NFS call  getattr
->> NFS reply getattr: 0
->> NFS: nfs_update_inode(0:17/2 ct=2 info=0x6)
->> NFS: nfs3_forget_cached_acls(0:17/2)
->> NFS: (0:17/2) revalidation complete
->> NFS: nfs_lookup_revalidate(/B) is valid
->> NFS: dentry_delete(/B, 8)
->>
->> Is there anything I'm not doing well? Is this a known bug for the last 
->> kernel version? Thanks,
+Quoting J. Bruce Fields (bfields@fieldses.org):
+> From: J. Bruce Fields <bfields@citi.umich.edu>
 > 
-> The above behaviour is perfectly correct _if_ the mtime
-> on /tmp/nfs_client_tcp doesn't change between your 'rm' and the creation
-> of B. Given that most Linux filesystems have poor (1 second) resolution
-> on mtime, then for it not to change in the above test is an extremely
-> likely event.
+> Since creating a device node is normally an operation requiring special
+> privilege, Igor Zhbanov points out that it is surprising (to say the
+> least) that a client can, for example, create a device node on a
+> filesystem exported with root_squash.
 > 
-> Note that there is a better option for controlling lookup behaviour in
-> newer kernels: -olookupcache=all or -olookupcache=positive should both
-> cause your test above to pass irrespective of whether or not mtime
-> changed.
+> So, make sure CAP_MKNOD is among the capabilities dropped when an nfsd
+> thread handles a request from a non-root user.
 > 
-> Trond
+> Reported-by: Igor Zhbanov <izh1979@gmail.com>
+> Cc: stable@kernel.org
+> Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-Thanks for your quick reply Trond. I've seen the only way to pass my 
-test is using (for kernel 2.6.29-rc8): -olookupcache=positive,noac. If I 
-use -olookupcache=positive or -olookupcache=all or 
--olookupcache=all,noac my test doesn't pass.
+Acked-by: Serge Hallyn <serue@us.ibm.com>
 
-BTW, is there any way of passing this test for a kernel like 2.6.27 
-(there is no lookupcache mount option). In kernels like 2.6.19 or 2.6.20 
-I think I passed my test just using noac option. These kernels where the 
-first kernels with the patch (commit 
-b0b539739fe9b7d75002412a787cfdf4efddbc33) treating the special case of 
-nfsi->attrtimeo==0. That means 'noac' or/and actimeo=0 mount options.
+I assume CAP_LINUX_IMMUTABLE simply does not apply to nfs?
 
-Thanks,
+And, you're adding CAP_FS_MASK_B1 in anticipation of labeled nfs?
 
-Diego
+Though, I was going to send a patch later today or tomorrow (figure I
+should do some ltp testing) adding CAP_MKNOD to the whole
+CAP_FS_MASK_B0 (and CAP_LINUX_IMMUTABLE and CAP_FS_MASK_B1 to
+CAP_FS_SET).  That will conflict with this one.
+
+thanks,
+-serge
+
+> ---
+>  include/linux/capability.h |    6 ++++--
+>  1 files changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/capability.h b/include/linux/capability.h
+> index 1b98725..4864a43 100644
+> --- a/include/linux/capability.h
+> +++ b/include/linux/capability.h
+> @@ -393,8 +393,10 @@ struct cpu_vfs_cap_data {
+>  # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
+>  # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
+>  # define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
+> -# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0|CAP_TO_MASK(CAP_SYS_RESOURCE), \
+> -					CAP_FS_MASK_B1 } })
+> +# define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
+> +					    | CAP_TO_MASK(CAP_SYS_RESOURCE) \
+> +					    | CAP_TO_MASK(CAP_MKNOD), \
+> +					    CAP_FS_MASK_B1 } })
+> 
+>  #endif /* _KERNEL_CAPABILITY_U32S != 2 */
+> 
+> -- 
+> 1.6.0.4
