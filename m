@@ -1,59 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
-Date: Thu, 19 Mar 2009 15:47:22 -0400
-Message-ID: <20090319194722.GA5499@fieldses.org>
-References: <49C193B1.8040608@cn.fujitsu.com>
+From: Ben Myers <bpm@sgi.com>
+Subject: Re: [PATCH] mountd: use separate lockfiles
+Date: Thu, 19 Mar 2009 14:53:57 -0500
+Message-ID: <20090319195357.GH26378@sgi.com>
+References: <20090319172841.GF26378@sgi.com> <1237485682.7534.39.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Ni Wenjuan <niwj@cn.fujitsu.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:53041 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758124AbZCSTrY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 15:47:24 -0400
-In-Reply-To: <49C193B1.8040608@cn.fujitsu.com>
+Received: from relay3.sgi.com ([192.48.171.31]:37254 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751711AbZCSTvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2009 15:51:46 -0400
+In-Reply-To: <1237485682.7534.39.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 19, 2009 at 08:37:05AM +0800, Ni Wenjuan wrote:
-> Fix a test in rename operation. rename dir1 into existing,nonempty dir2 should
-> return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPTY. RFC says if the target is a
-> directory but not empty, the server will return the error, NFS4ERR_EXIST.
+Hi Trond,
 
-On a second look: could you double-check the client behavior?:
-Currently
+On Thu, Mar 19, 2009 at 02:01:21PM -0400, Trond Myklebust wrote:
+> On Thu, 2009-03-19 at 12:28 -0500, Ben Myers wrote:
+> > @@ -58,12 +59,17 @@ xflock(char *fname, char *type)
+> >  	struct flock	fl = { readonly? F_RDLCK : F_WRLCK, SEEK_SET, 0, 0, 0 };
+> >  	int		fd;
+> >  
+> > -	if (readonly)
+> > -		fd = open(fname, O_RDONLY);
+> > -	else
+> > -		fd = open(fname, (O_RDWR|O_CREAT), mode);
+> > +again:
+> > +	fd = open(fname, readonly ? O_RDONLY : (O_RDWR|O_CREAT), 0600);
+> > +	if (fd < 0 && readonly && errno == ENOENT) {
+> > +		/* create a new lockfile */
+> > +		fd = open(fname, O_RDONLY|O_CREAT, 0600);
+> 
+> I don't see how you expect to get EEXIST with a non-exclusive create.
+>
+> Why do you need a second call to open() in the first place? How is this
+> better than just doing
+> 
+> 	if (readonly)
+> 		fd = open(fname, O_RDONLY|O_CREAT, 0600);
+> 	else
+> 		fd = open(fname, O_RDWR|O_CREAT, 0600);
+>
+> ...or, since these are now all private lockfiles, and so we shouldn't
+> need to care much about read-only vs read-write
 
-	mkdir subdir
-	mkdir -p todir/subdir
-	touch todir/subdir/foo
-	mv subdir todir/
+My O_RDONLY|O_CREAT open was failing with EACCES because of a problem
+somewhere between my chair and keyboard.  Compounding that, I mistakenly
+jumped to the conclusion that the errno was EEXIST.  ;(
 
-results (as in the local case) in "Directory not empty".  What happens
-after applying this patch?
+I'll give it another try.
 
---b.
-
->
-> Signed-off-by:Ni Wenjuan  <niwj@cn.fujitsu.com>
->
-> ---
->  fs/nfsd/nfs4proc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 9fa60a3..c1e2e22 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -605,7 +605,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct
-> nfsd4_compound_state *cstate,
->
->  	/* the underlying filesystem returns different error's than required
->  	 * by NFSv4. both save_fh and current_fh have been verified.. */
-> -	if (status == nfserr_isdir)
-> +	if (status == nfserr_isdir || status == nfserr_notempty)
->  		status = nfserr_exist;
->  	else if ((status == nfserr_notdir) &&
->                    (S_ISDIR(cstate->save_fh.fh_dentry->d_inode->i_mode) &&
-> -- 
->
+-Ben
