@@ -1,71 +1,118 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/23] SUNRPC: rpcbind actually interprets r_owner string
-Date: Wed, 18 Mar 2009 20:47:14 -0400
-Message-ID: <20090319004713.32404.63163.stgit@ingres.1015granger.net>
+Subject: [PATCH 16/23] SUNRPC: Allow callers to pass rpcb_v4_register a NULL
+	address
+Date: Wed, 18 Mar 2009 20:47:21 -0400
+Message-ID: <20090319004721.32404.33555.stgit@ingres.1015granger.net>
 References: <20090319004024.32404.68289.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no, bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:26579 "EHLO
+Received: from rcsinet13.oracle.com ([148.87.113.125]:26651 "EHLO
 	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755378AbZCSAsd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:48:33 -0400
+	with ESMTP id S1755815AbZCSAsl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:48:41 -0400
 In-Reply-To: <20090319004024.32404.68289.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RFC 1833 has little to say about the contents of r_owner; it only
-specifies that it is a string, and states that it is used to control
-who can UNSET an entry.
+The user space TI-RPC library uses an empty string for the universal
+address when unregistering all target addresses for [program, version].
+The kernel's rpcb client should behave the same way.
 
-Our port of rpcbind (from Sun) assumes this string contains a numeric
-UID value, not alphabetical or symbolic characters, but checks this
-value only for AF_LOCAL RPCB_SET or RPCB_UNSET requests.  In all other
-cases, rpcbind ignores the contents of the r_owner string.
+Here, we are switching between several registration methods based on
+the protocol family of the incoming address.  Rename the other rpcbind
+v4 registration functions to make it clear that they, as well, are
+switched on protocol family.  In /etc/netconfig, this is either "inet"
+or "inet6".
 
-The reference user space implementation of rpcb_set(3) uses a numeric
-UID for all SET/UNSET requests (even via the network) and an empty
-string for all other requests.  We emulate that behavior here to
-maintain bug-for-bug compatibility.
+NB: The loopback protocol families are not supported in the kernel.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   13 ++++++++++---
- 1 files changed, 10 insertions(+), 3 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   38 ++++++++++++++++++++++++++++----------
+ 1 files changed, 28 insertions(+), 10 deletions(-)
 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 44d0732..d550d0b 100644
+index d550d0b..8ea8907 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -63,9 +63,16 @@ enum {
-  * r_owner
-  *
-  * The "owner" is allowed to unset a service in the rpcbind database.
-- * We always use the following (arbitrary) fixed string.
-+ *
-+ * For AF_LOCAL SET/UNSET requests, rpcbind treats this string as a
-+ * UID which it maps to a local user name via a password lookup.
-+ * In all other cases it is ignored.
-+ *
-+ * For SET/UNSET requests, user space provides a value, even for
-+ * network requests, and GETADDR uses an empty string.  We follow
-+ * those precedents here.
+@@ -262,8 +262,8 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ /*
+  * Fill in AF_INET family-specific arguments to register
   */
--#define RPCB_OWNER_STRING	"rpcb"
-+#define RPCB_OWNER_STRING	"0"
- #define RPCB_MAXOWNERLEN	sizeof(RPCB_OWNER_STRING)
+-static int rpcb_register_netid4(const struct sockaddr *sap,
+-				struct rpc_message *msg)
++static int rpcb_register_inet4(const struct sockaddr *sap,
++			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+@@ -290,8 +290,8 @@ static int rpcb_register_netid4(const struct sockaddr *sap,
+ /*
+  * Fill in AF_INET6 family-specific arguments to register
+  */
+-static int rpcb_register_netid6(const struct sockaddr *sap,
+-				struct rpc_message *msg)
++static int rpcb_register_inet6(const struct sockaddr *sap,
++			       struct rpc_message *msg)
+ {
+ 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
+ 	struct rpcbind_args *map = msg->rpc_argp;
+@@ -319,6 +319,20 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
+ 	return rpcb_register_call(RPCBVERS_4, msg);
+ }
  
- static void			rpcb_getport_done(struct rpc_task *, void *);
-@@ -566,7 +573,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 	map->r_xprt = xprt_get(xprt);
- 	map->r_netid = rpc_peeraddr2str(clnt, RPC_DISPLAY_NETID);
- 	map->r_addr = rpc_peeraddr2str(rpcb_clnt, RPC_DISPLAY_UNIVERSAL_ADDR);
--	map->r_owner = RPCB_OWNER_STRING;	/* ignored for GETADDR */
-+	map->r_owner = "";
- 	map->r_status = -EIO;
++static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
++{
++	struct rpcbind_args *map = msg->rpc_argp;
++
++	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
++		"local rpcbind\n",
++			map->r_prog, map->r_vers, map->r_netid);
++
++	map->r_addr = "";
++	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
++
++	return rpcb_register_call(RPCBVERS_4, msg);
++}
++
+ /**
+  * rpcb_v4_register - set or unset a port registration with the local rpcbind
+  * @program: RPC program number of service to (un)register
+@@ -336,10 +350,11 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
+  * invoke this function once for each [program, version, address,
+  * netid] tuple they wish to advertise.
+  *
+- * Callers may also unregister RPC services that are no longer
+- * available by setting the port number in the passed-in address
+- * to zero.  Callers pass a netid of "" to unregister all
+- * transport netids associated with [program, version, address].
++ * Callers may also unregister RPC services that are registered at a
++ * specific address by setting the port number in @address to zero.
++ * They may unregister all registered protocol families at once for
++ * a service by passing a NULL @address argument.  If @netid is ""
++ * then all netids for [program, version, address] are unregistered.
+  *
+  * This function uses rpcbind protocol version 4 to contact the
+  * local rpcbind daemon.  The local rpcbind daemon must support
+@@ -374,11 +389,14 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 		.rpc_argp	= &map,
+ 	};
  
- 	child = rpcb_call_async(rpcb_clnt, map, proc);
++	if (address == NULL)
++		return rpcb_unregister_all_protofamilies(&msg);
++
+ 	switch (address->sa_family) {
+ 	case AF_INET:
+-		return rpcb_register_netid4(address, &msg);
++		return rpcb_register_inet4(address, &msg);
+ 	case AF_INET6:
+-		return rpcb_register_netid6(address, &msg);
++		return rpcb_register_inet6(address, &msg);
+ 	}
+ 
+ 	return -EAFNOSUPPORT;
 
