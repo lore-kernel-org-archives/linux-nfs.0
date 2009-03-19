@@ -1,141 +1,305 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFSD: do not return nfserr_symlink for the LINK
-	operation
-Date: Thu, 19 Mar 2009 16:15:25 -0400
-Message-ID: <20090319201525.GA6055@fieldses.org>
-References: <20090309180643.GB9408@fieldses.org> <49BA15B3.2040904@cn.fujitsu.com> <20090318230621.GK18894@fieldses.org> <49C1EB55.8060700@panasas.com> <49C1ED5B.6040000@cn.fujitsu.com> <49C1EE65.7010008@panasas.com> <49C1FFC7.6070709@cn.fujitsu.com> <49C20F6F.2040704@panasas.com> <49C21485.5070306@cn.fujitsu.com> <20090319200035.GC5499@fieldses.org>
+From: Ben Myers <bpm@sgi.com>
+Subject: [PATCH] mountd: use separate lockfiles
+Date: Thu, 19 Mar 2009 17:14:58 -0500
+Message-ID: <20090319221458.GI26378@sgi.com>
+References: <20090319172841.GF26378@sgi.com> <1237485682.7534.39.camel@heimdal.trondhjem.org> <20090319195357.GH26378@sgi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-To: Yang Hongyang <yanghy@cn.fujitsu.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:49146 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752631AbZCSUPa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 16:15:30 -0400
-In-Reply-To: <20090319200035.GC5499@fieldses.org>
+Received: from relay2.sgi.com ([192.48.179.30]:44125 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753029AbZCSWMr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2009 18:12:47 -0400
+In-Reply-To: <20090319195357.GH26378@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 19, 2009 at 04:00:35PM -0400, bfields wrote:
-> On Thu, Mar 19, 2009 at 05:46:45PM +0800, Yang Hongyang wrote:
-> > v1->v2:update some code style problem
-> > -------------------------
-> > 
-> > There are four placees that returned inappropriate err nfserr_symlink accroding to 
-> > newpynfs test #LINK4a#LOOKP2a#OPCF3a#SATT12a.nfserr_symlink do not listed
-> > in these operations's err list in the spec.
-> > For LINK and LOOKUPP operation,nfserr_notdir should be returned.
-> > For OPEN_CONFIRM and SETATTR operation,nfserr_inval should be returned.
+Hey Trond,
+
+On Thu, Mar 19, 2009 at 02:53:57PM -0500, Ben Myers wrote:
+> On Thu, Mar 19, 2009 at 02:01:21PM -0400, Trond Myklebust wrote:
+> > Why do you need a second call to open() in the first place?
 > 
-> I thought Benny found that this also caused the linux client to return a
-> better error in one of these cases--could you confirm that and add a
-> mention of it in the commit message?
-> 
-> (I'm reluctant to take patches like this based *only* on the spec
-> language, partly because rfc 3530 is known to have a few oversights in
-> the error listings.)
-> 
-> I definitely appreciate people going through the pynfs tests and
-> investigating the results, but I don't want patch whose only
-> justification is that they quiet pynfs--we need to think about the
-> likely effect on real clients too.
+> I'll give it another try.
 
-Also, for example:
+Here it is again.  It works just fine without the second open.
 
-> > @@ -2234,8 +2234,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  			cstate->current_fh.fh_dentry->d_name.name);
-> >  
-> >  	status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0);
-> > -	if (status)
-> > +	if (status) {
-> > +		/* nfserr_symlink returned is inappropriate for OPEN_CONFIRM */
-> > +		if (status == nfserr_symlink)
-> > +			status = nfserr_inval;
-> >  		return status;
-> > +	}
-
-open_confirm is done with the same filehandle that was returned from a
-previous OPEN.  But an OPEN should never return the filehandle for a
-symlink.  That means for us to reach this case, either the client or our
-filesystem has a very serious bug.  Therefore, I'm not convinced that
-getting the error return correct in this case is worth the trouble.
-
---b.
-
-By the way, I have some old notes on the pynfs tests, below; they may be
-wrong, or out of date, but perhaps they're of some use.
+Thanks,
+	Ben
 
 
---fixme:
+>From 1687f7a02cd34f76d5e6c461ca7d7bb56f3826d6 Mon Sep 17 00:00:00 2001
+From: Ben Myers <bpm@sgi.com>
+Date: Thu, 19 Mar 2009 16:44:54 -0500
+Subject: [PATCH] Mountd should use separate lockfiles
 
-CID6: returning EXPIRED on OPEN with unconfirmed client, should return STALE.
-(Why?)
+Mountd keeps file descriptors used for locks separate from those used for io
+and seems to assume that the lock will only be released on close of the file
+descriptor that was used with fcntl.  Actually the lock is released when any
+file descriptor for that file is closed.  When setexportent() is called after
+xflock() he closes and reopens the io file descriptor and defeats the lock.
 
---bugs, but probably not important:
+This patch fixes that by using a separate file for locking, cleaning them up
+when finished.
 
-OPCF3a, LINK4a, LOOKP2a, SATT12a: These 4 operations don't seem to
-support NFS4ERR_SYMLINK, so we shouldn't be returning it.  This error
-appears to be intentionally just for LOOKUP and OPEN, probably to help
-implement O_NOFOLLOW or something.  It's fh_verify that's producing this
-error.  There are some special cases in nfs4proc.c that map this error
-to einval, but we should probably figure out some better way to deal
-with this than special casing every other fh_verify error return....
+Signed-off-by: Ben Myers <bpm@sgi.com>
+---
+ support/export/rmtab.c   |    2 +-
+ support/export/xtab.c    |   24 +++++++++++++-----------
+ support/include/nfslib.h |    9 +++++++++
+ support/nfs/xio.c        |   11 +++++++----
+ utils/mountd/mountd.c    |   10 ++++++++++
+ utils/mountd/rmtab.c     |    8 ++++----
+ 6 files changed, 44 insertions(+), 20 deletions(-)
 
-CR14: create of dir with / in the name should return BADNAME or BADCHAR, not
-INVAL.
+diff --git a/support/export/rmtab.c b/support/export/rmtab.c
+index e11a22a..b49e1aa 100644
+--- a/support/export/rmtab.c
++++ b/support/export/rmtab.c
+@@ -57,7 +57,7 @@ rmtab_read(void)
+ 		   file. */
+ 		int	lockid;
+ 		FILE	*fp;
+-		if ((lockid = xflock(_PATH_RMTAB, "w")) < 0)
++		if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+ 			return -1;
+ 		rewindrmtabent();
+ 		if (!(fp = fsetrmtabent(_PATH_RMTABTMP, "w"))) {
+diff --git a/support/export/xtab.c b/support/export/xtab.c
+index 510765a..3b1dcce 100644
+--- a/support/export/xtab.c
++++ b/support/export/xtab.c
+@@ -23,7 +23,7 @@
+ static void cond_rename(char *newfile, char *oldfile);
+ 
+ static int
+-xtab_read(char *xtab, int is_export)
++xtab_read(char *xtab, char *lockfn, int is_export)
+ {
+     /* is_export == 0  => reading /proc/fs/nfs/exports - we know these things are exported to kernel
+      * is_export == 1  => reading /var/lib/nfs/etab - these things are allowed to be exported
+@@ -33,7 +33,7 @@ xtab_read(char *xtab, int is_export)
+ 	nfs_export		*exp;
+ 	int			lockid;
+ 
+-	if ((lockid = xflock(xtab, "r")) < 0)
++	if ((lockid = xflock(lockfn, "r")) < 0)
+ 		return 0;
+ 	setexportent(xtab, "r");
+ 	while ((xp = getexportent(is_export==0, 0)) != NULL) {
+@@ -66,18 +66,20 @@ xtab_mount_read(void)
+ 	int fd;
+ 	if ((fd=open(_PATH_PROC_EXPORTS, O_RDONLY))>=0) {
+ 		close(fd);
+-		return xtab_read(_PATH_PROC_EXPORTS, 0);
++		return xtab_read(_PATH_PROC_EXPORTS,
++				 _PATH_PROC_EXPORTS, 0);
+ 	} else if ((fd=open(_PATH_PROC_EXPORTS_ALT, O_RDONLY) >= 0)) {
+ 		close(fd);
+-		return xtab_read(_PATH_PROC_EXPORTS_ALT, 0);
++		return xtab_read(_PATH_PROC_EXPORTS_ALT,
++				 _PATH_PROC_EXPORTS_ALT, 0);
+ 	} else
+-		return xtab_read(_PATH_XTAB, 2);
++		return xtab_read(_PATH_XTAB, _PATH_XTABLCK, 2);
+ }
+ 
+ int
+ xtab_export_read(void)
+ {
+-	return xtab_read(_PATH_ETAB, 1);
++	return xtab_read(_PATH_ETAB, _PATH_ETABLCK, 1);
+ }
+ 
+ /*
+@@ -87,13 +89,13 @@ xtab_export_read(void)
+  * fix the auth_reload logic as well...
+  */
+ static int
+-xtab_write(char *xtab, char *xtabtmp, int is_export)
++xtab_write(char *xtab, char *xtabtmp, char *lockfn, int is_export)
+ {
+ 	struct exportent	xe;
+ 	nfs_export		*exp;
+ 	int			lockid, i;
+ 
+-	if ((lockid = xflock(xtab, "w")) < 0) {
++	if ((lockid = xflock(lockfn, "w")) < 0) {
+ 		xlog(L_ERROR, "can't lock %s for writing", xtab);
+ 		return 0;
+ 	}
+@@ -124,13 +126,13 @@ xtab_write(char *xtab, char *xtabtmp, int is_export)
+ int
+ xtab_export_write()
+ {
+-	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, 1);
++	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, _PATH_ETABLCK, 1);
+ }
+ 
+ int
+ xtab_mount_write()
+ {
+-	return xtab_write(_PATH_XTAB, _PATH_XTABTMP, 0);
++	return xtab_write(_PATH_XTAB, _PATH_XTABTMP, _PATH_XTABLCK, 0);
+ }
+ 
+ void
+@@ -139,7 +141,7 @@ xtab_append(nfs_export *exp)
+ 	struct exportent xe;
+ 	int		lockid;
+ 
+-	if ((lockid = xflock(_PATH_XTAB, "w")) < 0)
++	if ((lockid = xflock(_PATH_XTABLCK, "w")) < 0)
+ 		return;
+ 	setexportent(_PATH_XTAB, "a");
+ 	xe = exp->m_export;
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index a51d79d..9d0d39d 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -34,18 +34,27 @@
+ #ifndef _PATH_XTABTMP
+ #define _PATH_XTABTMP		NFS_STATEDIR "/xtab.tmp"
+ #endif
++#ifndef _PATH_XTABLCK
++#define _PATH_XTABLCK		NFS_STATEDIR "/.xtab.lock"
++#endif
+ #ifndef _PATH_ETAB
+ #define _PATH_ETAB		NFS_STATEDIR "/etab"
+ #endif
+ #ifndef _PATH_ETABTMP
+ #define _PATH_ETABTMP		NFS_STATEDIR "/etab.tmp"
+ #endif
++#ifndef _PATH_ETABLCK
++#define _PATH_ETABLCK		NFS_STATEDIR "/.etab.lock"
++#endif
+ #ifndef _PATH_RMTAB
+ #define _PATH_RMTAB		NFS_STATEDIR "/rmtab"
+ #endif
+ #ifndef _PATH_RMTABTMP
+ #define _PATH_RMTABTMP		_PATH_RMTAB ".tmp"
+ #endif
++#ifndef _PATH_RMTABLCK
++#define _PATH_RMTABLCK		NFS_STATEDIR "/.rmtab.lock"
++#endif
+ #ifndef _PATH_PROC_EXPORTS
+ #define	_PATH_PROC_EXPORTS	"/proc/fs/nfs/exports"
+ #define	_PATH_PROC_EXPORTS_ALT	"/proc/fs/nfsd/exports"
+diff --git a/support/nfs/xio.c b/support/nfs/xio.c
+index f21f5f0..e126799 100644
+--- a/support/nfs/xio.c
++++ b/support/nfs/xio.c
+@@ -17,6 +17,7 @@
+ #include <ctype.h>
+ #include <signal.h>
+ #include <unistd.h>
++#include <errno.h>
+ #include "xmalloc.h"
+ #include "xlog.h"
+ #include "xio.h"
+@@ -59,11 +60,12 @@ xflock(char *fname, char *type)
+ 	int		fd;
+ 
+ 	if (readonly)
+-		fd = open(fname, O_RDONLY);
++		fd = open(fname, (O_RDONLY|O_CREAT), 0600);
+ 	else
+-		fd = open(fname, (O_RDWR|O_CREAT), mode);
++		fd = open(fname, (O_RDWR|O_CREAT), 0600);
+ 	if (fd < 0) {
+-		xlog(L_WARNING, "could not open %s for locking", fname);
++		xlog(L_WARNING, "could not open %s for locking: %s",
++				fname, strerror(errno));
+ 		return -1;
+ 	}
+ 
+@@ -74,7 +76,8 @@ xflock(char *fname, char *type)
+ 	alarm(10);
+ 	if (fcntl(fd, F_SETLKW, &fl) < 0) {
+ 		alarm(0);
+-		xlog(L_WARNING, "failed to lock %s", fname);
++		xlog(L_WARNING, "failed to lock %s: %s",
++				fname, strerror(errno));
+ 		close(fd);
+ 		fd = 0;
+ 	} else {
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 8084359..25d292b 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -88,6 +88,14 @@ unregister_services (void)
+ 		pmap_unset (MOUNTPROG, MOUNTVERS_NFSV3);
+ }
+ 
++static void
++cleanup_lockfiles (void)
++{
++	unlink(_PATH_XTABLCK);
++	unlink(_PATH_ETABLCK);
++	unlink(_PATH_RMTABLCK);
++}
++
+ /* Wait for all worker child processes to exit and reap them */
+ static void
+ wait_for_workers (void)
+@@ -154,6 +162,7 @@ fork_workers(void)
+ 	/* in parent */
+ 	wait_for_workers();
+ 	unregister_services();
++	cleanup_lockfiles();
+ 	xlog(L_NOTICE, "mountd: no more workers, exiting\n");
+ 	exit(0);
+ }
+@@ -170,6 +179,7 @@ killer (int sig)
+ 		kill(0, SIGTERM);
+ 		wait_for_workers();
+ 	}
++	cleanup_lockfiles();
+ 	xlog (L_FATAL, "Caught signal %d, un-registering and exiting.", sig);
+ }
+ 
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index 5787ed6..c371f8d 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -58,7 +58,7 @@ mountlist_add(char *host, const char *path)
+ 	int		lockid;
+ 	long		pos;
+ 
+-	if ((lockid = xflock(_PATH_RMTAB, "a")) < 0)
++	if ((lockid = xflock(_PATH_RMTABLCK, "a")) < 0)
+ 		return;
+ 	setrmtabent("r+");
+ 	while ((rep = getrmtabent(1, &pos)) != NULL) {
+@@ -98,7 +98,7 @@ mountlist_del(char *hname, const char *path)
+ 	int		lockid;
+ 	int		match;
+ 
+-	if ((lockid = xflock(_PATH_RMTAB, "w")) < 0)
++	if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+ 		return;
+ 	if (!setrmtabent("r")) {
+ 		xfunlock(lockid);
+@@ -139,7 +139,7 @@ mountlist_del_all(struct sockaddr_in *sin)
+ 	FILE		*fp;
+ 	int		lockid;
+ 
+-	if ((lockid = xflock(_PATH_RMTAB, "w")) < 0)
++	if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+ 		return;
+ 	if (!(hp = gethostbyaddr((char *)&addr, sizeof(addr), AF_INET))) {
+ 		xlog(L_ERROR, "can't get hostname of %s", inet_ntoa(addr));
+@@ -188,7 +188,7 @@ mountlist_list(void)
+ 	struct in_addr		addr;
+ 	struct hostent		*he;
+ 
+-	if ((lockid = xflock(_PATH_RMTAB, "r")) < 0)
++	if ((lockid = xflock(_PATH_RMTABLCK, "r")) < 0)
+ 		return NULL;
+ 	if (stat(_PATH_RMTAB, &stb) < 0) {
+ 		xlog(L_ERROR, "can't stat %s", _PATH_RMTAB);
+-- 
+1.6.2.1.214.ge986c.dirty
 
-CR13, LINK9, RNM11, CR13, LINK9, RNM11: We're returning the wrong error on use
-of '.' as a filename.
-
-CR12, OPEN15: attempt to set acl on create should return
-NFS4ERR_ATTRNOTSUPP on fs that doesn't support acls, instead it returns
-OK.
-
---might care:
-
-LOOK6, LOOK9, OPEN17, RDDR11, RDDR12: permitting operations on directories of
-mode 0.  This is probably a result of some logic that allows certain requests
-on files and directories whose permissions would otherwise deny it, if the
-requester is the owner of the file or directory.  I'm not sure this is a big
-deal; the client can enforce this requirement, and there's no big security
-hole as long as the owner could chmod the file anyway.
-
-OPEN17: similar to above, but this on open of a file.  This seems odd.
-
-
---probably don't care:
-
-COMP6: should return RESOURCE not GARBAGE_ARGS on a compound with 150 ops.
-
-WRT5: connection reset doing a big write.
-
-LINK8, OPEN13, RM5, RNM8, RNM9, LOOK7: these result from our decision to
-continue treating filenames as opaque for now instead of insisting on utf-8 as
-the spec requires.
-
---bugs, out of scope for now:
-
-SATT14: change attribute not affected by SETATTR(mode): this is another
-symptom of the ext2/3 time resolution problem.
-
-RNM16: RENAME dir1 into existing, nonempty dir2 should return NFS4ERR_EXIST,
-instead got NFS4ERR_NOTEMPTY
-
-
---I consider these dealt with:
-
-SATT8: Andy thought we should be picky about something here where I thought we
-should just allow it; as a result I've been reluctant to either submit or drop
-the patch that make us less picky.  I've given up and dropped it.  Python
-should stop complaining.
-
-LOCK8c: we're allowing nonzero lockseqid's in the open_to_lockowner struct; see
-discussion on this list last week.  This test should probably be removed or at
-least not run by default.
-
-COMP3: Python is checking whether tags are utf-8 or not.  Could we just remove
-or disable this test?  It is true that the spec requires this, but it's a very
-silly requirement since tags are only debugging aids anyway.
