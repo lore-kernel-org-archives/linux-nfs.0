@@ -1,118 +1,66 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/23] SUNRPC: Allow callers to pass rpcb_v4_register a NULL
-	address
-Date: Wed, 18 Mar 2009 20:47:21 -0400
-Message-ID: <20090319004721.32404.33555.stgit@ingres.1015granger.net>
+Subject: [PATCH 20/23] SUNRPC: Remove CONFIG_SUNRPC_REGISTER_V4
+Date: Wed, 18 Mar 2009 20:47:51 -0400
+Message-ID: <20090319004751.32404.28608.stgit@ingres.1015granger.net>
 References: <20090319004024.32404.68289.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no, bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:26651 "EHLO
+Received: from rcsinet13.oracle.com ([148.87.113.125]:26640 "EHLO
 	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755815AbZCSAsl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:48:41 -0400
+	with ESMTP id S1755768AbZCSAsk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:48:40 -0400
 In-Reply-To: <20090319004024.32404.68289.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The user space TI-RPC library uses an empty string for the universal
-address when unregistering all target addresses for [program, version].
-The kernel's rpcb client should behave the same way.
+We just augmented the kernel's RPC service registration code so that
+it automatically adjusts to what is supported in user space.  Thus we
+no longer need the kernel configuration option to enable registering
+RPC services with v4 -- it's all done automatically.
 
-Here, we are switching between several registration methods based on
-the protocol family of the incoming address.  Rename the other rpcbind
-v4 registration functions to make it clear that they, as well, are
-switched on protocol family.  In /etc/netconfig, this is either "inet"
-or "inet6".
-
-NB: The loopback protocol families are not supported in the kernel.
+This patch is part of a series that addresses
+   http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   38 ++++++++++++++++++++++++++++----------
- 1 files changed, 28 insertions(+), 10 deletions(-)
+ net/sunrpc/Kconfig |   22 ----------------------
+ 1 files changed, 0 insertions(+), 22 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index d550d0b..8ea8907 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -262,8 +262,8 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
- /*
-  * Fill in AF_INET family-specific arguments to register
-  */
--static int rpcb_register_netid4(const struct sockaddr *sap,
--				struct rpc_message *msg)
-+static int rpcb_register_inet4(const struct sockaddr *sap,
-+			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
-@@ -290,8 +290,8 @@ static int rpcb_register_netid4(const struct sockaddr *sap,
- /*
-  * Fill in AF_INET6 family-specific arguments to register
-  */
--static int rpcb_register_netid6(const struct sockaddr *sap,
--				struct rpc_message *msg)
-+static int rpcb_register_inet6(const struct sockaddr *sap,
-+			       struct rpc_message *msg)
- {
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
- 	struct rpcbind_args *map = msg->rpc_argp;
-@@ -319,6 +319,20 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
- 	return rpcb_register_call(RPCBVERS_4, msg);
- }
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index 5592883..afd91c7 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -17,28 +17,6 @@ config SUNRPC_XPRT_RDMA
  
-+static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
-+{
-+	struct rpcbind_args *map = msg->rpc_argp;
-+
-+	dprintk("RPC:       unregistering [%u, %u, '%s'] with "
-+		"local rpcbind\n",
-+			map->r_prog, map->r_vers, map->r_netid);
-+
-+	map->r_addr = "";
-+	msg->rpc_proc = &rpcb_procedures4[RPCBPROC_UNSET];
-+
-+	return rpcb_register_call(RPCBVERS_4, msg);
-+}
-+
- /**
-  * rpcb_v4_register - set or unset a port registration with the local rpcbind
-  * @program: RPC program number of service to (un)register
-@@ -336,10 +350,11 @@ static int rpcb_register_netid6(const struct sockaddr *sap,
-  * invoke this function once for each [program, version, address,
-  * netid] tuple they wish to advertise.
-  *
-- * Callers may also unregister RPC services that are no longer
-- * available by setting the port number in the passed-in address
-- * to zero.  Callers pass a netid of "" to unregister all
-- * transport netids associated with [program, version, address].
-+ * Callers may also unregister RPC services that are registered at a
-+ * specific address by setting the port number in @address to zero.
-+ * They may unregister all registered protocol families at once for
-+ * a service by passing a NULL @address argument.  If @netid is ""
-+ * then all netids for [program, version, address] are unregistered.
-  *
-  * This function uses rpcbind protocol version 4 to contact the
-  * local rpcbind daemon.  The local rpcbind daemon must support
-@@ -374,11 +389,14 @@ int rpcb_v4_register(const u32 program, const u32 version,
- 		.rpc_argp	= &map,
- 	};
+ 	  If unsure, say N.
  
-+	if (address == NULL)
-+		return rpcb_unregister_all_protofamilies(&msg);
-+
- 	switch (address->sa_family) {
- 	case AF_INET:
--		return rpcb_register_netid4(address, &msg);
-+		return rpcb_register_inet4(address, &msg);
- 	case AF_INET6:
--		return rpcb_register_netid6(address, &msg);
-+		return rpcb_register_inet6(address, &msg);
- 	}
- 
- 	return -EAFNOSUPPORT;
+-config SUNRPC_REGISTER_V4
+-	bool "Register local RPC services via rpcbind v4 (EXPERIMENTAL)"
+-	depends on SUNRPC && EXPERIMENTAL
+-	default n
+-	help
+-	  Sun added support for registering RPC services at an IPv6
+-	  address by creating two new versions of the rpcbind protocol
+-	  (RFC 1833).
+-
+-	  This option enables support in the kernel RPC server for
+-	  registering kernel RPC services via version 4 of the rpcbind
+-	  protocol.  If you enable this option, you must run a portmapper
+-	  daemon that supports rpcbind protocol version 4.
+-
+-	  Serving NFS over IPv6 from knfsd (the kernel's NFS server)
+-	  requires that you enable this option and use a portmapper that
+-	  supports rpcbind version 4.
+-
+-	  If unsure, say N to get traditional behavior (register kernel
+-	  RPC services using only rpcbind version 2).  Distributions
+-	  using the legacy Linux portmapper daemon must say N here.
+-
+ config RPCSEC_GSS_KRB5
+ 	tristate "Secure RPC: Kerberos V mechanism (EXPERIMENTAL)"
+ 	depends on SUNRPC && EXPERIMENTAL
 
