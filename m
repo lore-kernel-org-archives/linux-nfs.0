@@ -1,61 +1,110 @@
-From: Tom Talpey <tmtalpey@gmail.com>
-Subject: Re: The next step: nfsvers=4
-Date: Thu, 19 Mar 2009 14:41:36 -0400
-Message-ID: <49c29203.85c2f10a.098d.17b5@mx.google.com>
-References: <49C2704F.5050303@RedHat.com>
- <7A24DF798E223B4C9864E8F92E8C93EC026043D3@SACMVEXC1-PRD.hq.netapp.com>
- <855593AD-7541-443F-BA92-491EC32FEDFB@oracle.com>
- <49C28201.1020301@panasas.com>
- <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFS4 ACL <-> Posix ACL
+Date: Thu, 19 Mar 2009 15:35:14 -0400
+Message-ID: <20090319193514.GE3072@fieldses.org>
+References: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Steve Dickson <SteveD@redhat.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Alex Bremer <albremer@googlemail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.26]:42374 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755017AbZCSSmO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 14:42:14 -0400
-Received: by qw-out-2122.google.com with SMTP id 8so567289qwh.37
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2009 11:42:11 -0700 (PDT)
-In-Reply-To: <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com>
+Received: from mail.fieldses.org ([141.211.133.115]:46078 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752958AbZCSTfS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 15:35:18 -0400
+In-Reply-To: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 02:13 PM 3/19/2009, Chuck Lever wrote:
->On Mar 19, 2009, at Mar 19, 2009, 1:33 PM, Benny Halevy wrote:
->> I think that if no version is specified all versions that
->> the client supports should be tried, highest first.
->> Otherwise mount.nfs should try only the specified version.
->
->One nit is that the set of mount options supported by nfs4 is  
->different than the set supported by nfs.  clientaddr= is supported by  
->nfs4, but not by nfs, for example.  I believe that nocto is not  
->supported by nfs4.  The mountproto option is only supported by nfs.
->
->If no vers= is specified and only NFSv4 is available on the server,  
->but something like "nocto" shows up on the command line mount options,  
->do we:
->
->a) fail the mount, or
->b) ignore the nocto option
->
->a) seems like the least surprising behavior.
+On Wed, Mar 18, 2009 at 06:42:10PM +0100, Alex Bremer wrote:
+> Hello,
+> 
+> I have a working NFS4 installation (kerberos + ldap) but some trouble
+> understanding all these ACL mappings. On my server (ubuntu 8.04) the
+> ext3 filesystems are mounted with the "acl" option and setting Posix
+> ACLs works quite well.
+> 
+> On the client side (ubuntu 8.10) my libacl seems to lack NFSv4 ACL
+> support and therefore I can't see the acl list. However I installed
+> nfs4 acl tools and now I can see the ACL permissions of a
+> file/directory.
+> 
+> Using Posix ACLs on the server I added a default mask so that newly
+> created files/directories in the public area are group-writeable. This
+> works quite well on the server and this used to work with NFS3 (which
+> supports POSIX ACLs) on the client side, too. However on a client
+> using NFS4, these Posix-ACLs don't seem to get mapped to NFS4-ACLs.
 
-I think the "sloppy" option might be relevant here too.
+Actually, they do; what's happening (I believe--this is partly just
+memory based on last time I looked at something like this) is more
+subtle: the umask is being overridden by inheritance in the v2/v3 case,
+and not in the v4 case.
 
-While we're on the subject of sloppy, what about the automounter?
-It has always been an issue to deploy automounter maps which are
-shared by diverse client populations - there are significant issues
-for older Linux clients, and newer Solaris ones for that matter, with
-NFSv4.
+Posix default acls are supposed to override the umask.  This is tricky
+for NFS, since the umask isn't sent over the wire on file creation,
+leaving the client and server no way to distinguish the create mode from
+the umask.  The v2/v3 client currently works around this by doing the
+whole inheritance calculation on the client (reading the directory's
+acl, then explicitly setting the new child's acl based on it).  The v4
+client doesn't do that.  So:
 
-I would strongly suggest touching and/or changing as few options as
-possible, and paying close attention to the results with legacy or
-generic configurations on new kernels. The more lenient, the better
-IMO, except where specific options require specific actions.
+> Here are the ACLs:
+> -----------------
+> server> getfacl test/
+> 
+> user::rwx
+> group::rwx
+> other::---
+> default:user::rwx
+> default:group::rwx
+> default:other::---
+> 
+> server> touch test/tmp
+> server> ls -l test/tmp
+> -rw-rw---- 1 albremer domusers 0 2009-03-18 18:32 test/tmp
+> ---------------
+> client> nfs4_getfacl test/
+> 
+> A::OWNER@:rwaDxtTcCy
+> A::GROUP@:rwaDxtcy
+> A::EVERYONE@:tcy
+> A:fdi:OWNER@:rwaDxtTcCy
+> A:fdi:GROUP@:rwaDxtcy
+> A:fdi:EVERYONE@:tcy
+> 
+> client> touch test/tmp
+> client> ls -l test/tmp
+> -rw-r----- 1 albremer domusers 0 2009-03-18 18:32 test/tmp
+> ---------------
 
-Tom.
+If you do a getfacl on the server you'll probably see that it looks
+like:
 
+# file: test/tmp
+# owner: root
+# group: root
+user::rw-
+group::rwx                      #effective:r--
+mask::r--
+other::---
+
+So note the "group" bits are set correctly, but the mask is limiting
+permissions as a result of the open that created the file setting the
+file to 644 (based on a 022 umask).
+
+> Can anybody tell me what is wrong here? Is there any mapping between
+> NFS4-ACLs and Posix-ACLs on the server side or are they handled
+> seperately?
+
+There are no nfsv4 acls on the filesystem at all, so everything is done
+by mapping to and from the filesystem's posix acls.
+
+> Another question: If I add the mount option "user_xattr" to the nfs4
+> exported filesystems, on the client side all permissions are shown as
+> "nobody:nogroup". Why is that?
+
+That's bizarre.  Neither server nor client nor idmapd should be using
+user extended attributes at all.  Are you sure you something else wasn't
+changed at the same time?
+
+--b.
