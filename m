@@ -1,7 +1,7 @@
 From: Yang Hongyang <yanghy@cn.fujitsu.com>
 Subject: Re: [PATCH] NFSD: do not return nfserr_symlink for the LINK operation
-Date: Thu, 19 Mar 2009 17:34:05 +0800
-Message-ID: <49C2118D.3020906@cn.fujitsu.com>
+Date: Thu, 19 Mar 2009 17:46:45 +0800
+Message-ID: <49C21485.5070306@cn.fujitsu.com>
 References: <49AF9C28.8030603@cn.fujitsu.com> <49AFA4E4.50207@panasas.com> <20090306213234.GB1779@fieldses.org> <49B2C404.3060907@panasas.com> <20090309180643.GB9408@fieldses.org> <49BA15B3.2040904@cn.fujitsu.com> <20090318230621.GK18894@fieldses.org> <49C1EB55.8060700@panasas.com> <49C1ED5B.6040000@cn.fujitsu.com> <49C1EE65.7010008@panasas.com> <49C1FFC7.6070709@cn.fujitsu.com> <49C20F6F.2040704@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
@@ -10,10 +10,10 @@ Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	Ni Wenjuan <niwj@cn.fujitsu.com>, linux-nfs@vger.kernel.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:52696 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:55696 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752571AbZCSJe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Mar 2009 05:34:58 -0400
+	id S1754564AbZCSJrl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2009 05:47:41 -0400
 In-Reply-To: <49C20F6F.2040704@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -45,85 +45,91 @@ Benny Halevy wrote:
 > 
 > Is the issue with SETATTR limited to length-changing ones?
 > Is so, I think it should be indicated in the commit message.
-
-By the way,you can add SOF if you agree with the patch:)
-
 > 
 > Other than that, minor style nit: there seems to be missing
 > space character before all closing comments "*/"...
 > 
 > Benny
 > 
->> Signed-off-by: Yang Hongyang <yanghy@cn.fujitsu.com>
->>
->> ---
->>  fs/nfsd/nfs4proc.c  |    6 +++++-
->>  fs/nfsd/nfs4state.c |    6 +++++-
->>  fs/nfsd/vfs.c       |    6 ++++++
->>  3 files changed, 16 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index 9fa60a3..d25e7cf 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -493,8 +493,12 @@ nfsd4_lookupp(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  		return nfserr_noent;
->>  	}
->>  	fh_put(&tmp_fh);
->> -	return nfsd_lookup(rqstp, &cstate->current_fh,
->> +	ret = nfsd_lookup(rqstp, &cstate->current_fh,
->>  			   "..", 2, &cstate->current_fh);
->> +	/* nfserr_symlink returned is inappropriate for LOOKUPP*/
->> +	if (ret == nfserr_symlink)
->> +		ret = nfserr_notdir;
->> +	return ret;
->>  }
->>  
->>  static __be32
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index b6f60f4..fe274fc 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -2234,8 +2234,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  			cstate->current_fh.fh_dentry->d_name.name);
->>  
->>  	status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0);
->> -	if (status)
->> +	if (status) {
->> +		/* nfserr_symlink returned is inappropriate for OPEN_CONFIRM*/
->> +		if (status == nfserr_symlink)
->> +			status = nfserr_inval;
->>  		return status;
->> +	}
->>  
->>  	nfs4_lock_state();
->>  
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 6e50aaa..69eba75 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -397,6 +397,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->>  		if (EX_ISSYNC(fhp->fh_export))
->>  			write_inode_now(inode, 1);
->>  out:
->> +	/* nfserr_symlink returned is inappropriate for SETATTR*/
->> +	if (err == nfserr_symlink)
->> +		err = nfserr_inval;
->>  	return err;
->>  
->>  out_nfserr:
->> @@ -1637,6 +1640,9 @@ out_dput:
->>  out_unlock:
->>  	fh_unlock(ffhp);
->>  out:
->> +	/* nfserr_symlink returned is inappropriate for LINK*/
->> +	if (err == nfserr_symlink)
->> +		err = nfserr_notdir;
->>  	return err;
->>  
->>  out_nfserr:
-> 
-> 
+v1->v2:update some code style problem
+-------------------------
+
+There are four placees that returned inappropriate err nfserr_symlink accroding to 
+newpynfs test #LINK4a#LOOKP2a#OPCF3a#SATT12a.nfserr_symlink do not listed
+in these operations's err list in the spec.
+For LINK and LOOKUPP operation,nfserr_notdir should be returned.
+For OPEN_CONFIRM and SETATTR operation,nfserr_inval should be returned.
+
+Signed-off-by: Yang Hongyang <yanghy@cn.fujitsu.com>
+
+---
+ fs/nfsd/nfs4proc.c  |    6 +++++-
+ fs/nfsd/nfs4state.c |    6 +++++-
+ fs/nfsd/vfs.c       |    6 ++++++
+ 3 files changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9fa60a3..9aaecaa 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -493,8 +493,12 @@ nfsd4_lookupp(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_noent;
+ 	}
+ 	fh_put(&tmp_fh);
+-	return nfsd_lookup(rqstp, &cstate->current_fh,
++	ret = nfsd_lookup(rqstp, &cstate->current_fh,
+ 			   "..", 2, &cstate->current_fh);
++	/* nfserr_symlink returned is inappropriate for LOOKUPP */
++	if (ret == nfserr_symlink)
++		ret = nfserr_notdir;
++	return ret;
+ }
+ 
+ static __be32
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b6f60f4..28e4688 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2234,8 +2234,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			cstate->current_fh.fh_dentry->d_name.name);
+ 
+ 	status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0);
+-	if (status)
++	if (status) {
++		/* nfserr_symlink returned is inappropriate for OPEN_CONFIRM */
++		if (status == nfserr_symlink)
++			status = nfserr_inval;
+ 		return status;
++	}
+ 
+ 	nfs4_lock_state();
+ 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6e50aaa..015a655 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -397,6 +397,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 		if (EX_ISSYNC(fhp->fh_export))
+ 			write_inode_now(inode, 1);
+ out:
++	/* nfserr_symlink returned is inappropriate for SETATTR */
++	if (err == nfserr_symlink)
++		err = nfserr_inval;
+ 	return err;
+ 
+ out_nfserr:
+@@ -1637,6 +1640,9 @@ out_dput:
+ out_unlock:
+ 	fh_unlock(ffhp);
+ out:
++	/* nfserr_symlink returned is inappropriate for LINK */
++	if (err == nfserr_symlink)
++		err = nfserr_notdir;
+ 	return err;
+ 
+ out_nfserr:
+-- 
+1.6.0.3
 
 
 -- 
