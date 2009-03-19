@@ -1,83 +1,40 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: atomic rename buggy on NFS?
-Date: Thu, 19 Mar 2009 10:09:57 -0400
-Message-ID: <1237471797.7534.1.camel@heimdal.trondhjem.org>
-References: <alpine.OSF.1.99.0903191403140.384018@replicant.hut.fi>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [Patch 0/9] NFS Mount Configuration File
+Date: Thu, 19 Mar 2009 11:45:00 -0400
+Message-ID: <20090319154500.GC870@fieldses.org>
+References: <49B57FB2.9020000@RedHat.com> <A359B7ED-198B-4C3E-96B1-F4B2D5D3582B@oracle.com> <49BFFDA6.8090500@RedHat.com> <C0503E0B-59F4-46BA-9430-08C34B2F693E@oracle.com> <49C0F20C.6030208@RedHat.com> <6B0D5E55-637D-4C99-B79D-57BB3D5B2E0B@oracle.com> <49C13928.8040806@RedHat.com> <49C228D3.4070005@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Timo Aaltonen <tjaalton@cc.hut.fi>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <alpine.OSF.1.99.0903191403140.384018@replicant.hut.fi>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:49350 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751886AbZCSPpG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 11:45:06 -0400
+In-Reply-To: <49C228D3.4070005-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-03-19 at 14:23 +0200, Timo Aaltonen wrote:
-> * http://bugzilla.gnome.org/show_bug.cgi?id=575684
-> 
+On Thu, Mar 19, 2009 at 07:13:23AM -0400, Steve Dickson wrote:
+> Steve Dickson wrote:
+> > Chuck Lever wrote:
+> >> Are we giving our users real tools for managing the transition, like tools to convert ACLs?
+> > Yes, I'm trying giving them a configuration file that they use to define the defaults
+> > that work best in their environments. A tool to convert ACLS? Please see nfs4-acl-tools
+> > tar ball on the CITI web page... Remember, patches are always welcome! :-)
+> > 
+> >> Our defaults should be settings that work well out of the box in most environments.
+> >> If that isn't the case yet for NFSv4, then we shouldn't make it the default.
+> > Believe me.. with all the push back I'm getting from both the client and 
+> > server side... I being to think the Linux community simply does not want 
+> > move forward... but unfortunately I can accept that as option... which 
+> > the the reason I will continue to push for changes that will move us forward... 
+> This comment was uncalled for and I hope it does not imped on the productive
+> dialogue we were having...    
 
-Does the appended patch fix it?
+Don't worry about it!  Your persistance is appreciated....
 
-Cheers
-  Trond
--------------------------------------------------------------------------
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: NFS: Fix the notifications when renaming onto an existing file
-
-NFS appears to be returning an unnecessary "delete" notification when
-we're doing an atomic rename. See
-
-  http://bugzilla.gnome.org/show_bug.cgi?id=575684
-
-The fix is to get rid of the redundant call to d_delete().
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- fs/nfs/dir.c |    9 ++++-----
- 1 files changed, 4 insertions(+), 5 deletions(-)
-
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 672368f..3b2f697 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1624,8 +1624,7 @@ static int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		} else if (atomic_read(&new_dentry->d_count) > 1)
- 			/* dentry still busy? */
- 			goto out;
--	} else
--		nfs_drop_nlink(new_inode);
-+	}
- 
- go_ahead:
- 	/*
-@@ -1638,10 +1637,8 @@ go_ahead:
- 	}
- 	nfs_inode_return_delegation(old_inode);
- 
--	if (new_inode != NULL) {
-+	if (new_inode != NULL)
- 		nfs_inode_return_delegation(new_inode);
--		d_delete(new_dentry);
--	}
- 
- 	error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
- 					   new_dir, &new_dentry->d_name);
-@@ -1650,6 +1647,8 @@ out:
- 	if (rehash)
- 		d_rehash(rehash);
- 	if (!error) {
-+		if (new_inode != NULL)
-+			nfs_drop_nlink(new_inode);
- 		d_move(old_dentry, new_dentry);
- 		nfs_set_verifier(new_dentry,
- 					nfs_save_change_attribute(new_dir));
+--b.
