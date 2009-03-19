@@ -1,67 +1,90 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/23] SUNRPC: Don't flag empty RPCB_GETADDR reply as bogus
-Date: Wed, 18 Mar 2009 20:45:28 -0400
-Message-ID: <20090319004527.32404.75166.stgit@ingres.1015granger.net>
+Subject: [PATCH 02/23] SUNRPC: Fix return type of svc_addr_len()
+Date: Wed, 18 Mar 2009 20:45:36 -0400
+Message-ID: <20090319004535.32404.37120.stgit@ingres.1015granger.net>
 References: <20090319004024.32404.68289.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no, bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:17042 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756856AbZCSAqa (ORCPT
+Received: from rcsinet11.oracle.com ([148.87.113.123]:34395 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755838AbZCSAqa (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:46:30 -0400
 In-Reply-To: <20090319004024.32404.68289.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In 2007, commit e65fe3976f594603ed7b1b4a99d3e9b867f573ea added
-additional sanity checking to rpcb_decode_getaddr() to make sure we
-were getting a reply that was long enough to be an actual universal
-address.  If the uaddr string isn't long enough, the XDR decoder
-returns EIO.
+The svc_addr_len() helper function can return a negative errno value,
+but its return type is size_t, which is unsigned.
 
-However, an empty string is a valid RPCB_GETADDR response if the
-requested service isn't registered.  Moreover, "::.n.m" is also a
-valid RPCB_GETADDR response for IPv6 addresses that is shorter
-than rpcb_decode_getaddr()'s lower limit of 11.  So this sanity
-check introduced a regression for rpcbind requests against IPv6
-remotes.
+The RDMA transport code passes this return value directly to memset(),
+without checking first if it's negative.  This could cause memset() to
+clobber a large piece of memory if svc_addr_len() has returned an
+error.
 
-So revert the lower bound check added by commit
-e65fe3976f594603ed7b1b4a99d3e9b867f573ea, and add an explicit check
-for an empty uaddr string, similar to libtirpc's rpcb_getaddr(3).
-
-Pointed-out-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc_xprt.h          |    3 ++-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++++--
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 03ae007..2caa7ed 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -703,11 +703,16 @@ static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
- 	*portp = 0;
- 	addr_len = ntohl(*p++);
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 0127dac..c2aa8cd 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -113,7 +113,7 @@ static inline unsigned short svc_addr_port(struct sockaddr *sa)
+ 	return ret;
+ }
  
-+	if (addr_len == 0) {
-+		dprintk("RPC:       rpcb_decode_getaddr: "
-+					"service is not registered\n");
-+		return 0;
-+	}
+-static inline size_t svc_addr_len(struct sockaddr *sa)
++static inline int svc_addr_len(const struct sockaddr *sa)
+ {
+ 	switch (sa->sa_family) {
+ 	case AF_INET:
+@@ -121,6 +121,7 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
+ 	case AF_INET6:
+ 		return sizeof(struct sockaddr_in6);
+ 	}
 +
- 	/*
--	 * Simple sanity check.  The smallest possible universal
--	 * address is an IPv4 address string containing 11 bytes.
-+	 * Simple sanity check.
- 	 */
--	if (addr_len < 11 || addr_len > RPCBIND_MAXUADDRLEN)
-+	if (addr_len > RPCBIND_MAXUADDRLEN)
- 		goto out_err;
+ 	return -EAFNOSUPPORT;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 3d810e7..d1ec6f9 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -546,6 +546,7 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+ 	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+ 	struct svcxprt_rdma *newxprt;
+ 	struct sockaddr *sa;
++	int len;
+ 
+ 	/* Create a new transport */
+ 	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
+@@ -563,9 +564,20 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+ 
+ 	/* Set the local and remote addresses in the transport */
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+-	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
++	len = svc_addr_len(sa);
++	if (len < 0) {
++		dprintk("svcrdma: dst_addr has a bad address family\n");
++		return;
++	}
++	svc_xprt_set_remote(&newxprt->sc_xprt, sa, len);
++
+ 	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
+-	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
++	len = svc_addr_len(sa);
++	if (len < 0) {
++		dprintk("svcrdma: src_addr has a bad address family\n");
++		return;
++	}
++	svc_xprt_set_local(&newxprt->sc_xprt, sa, len);
  
  	/*
+ 	 * Enqueue the new transport on the accept queue of the listening
 
