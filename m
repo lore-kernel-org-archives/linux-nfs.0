@@ -1,71 +1,56 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: RE: The next step: nfsvers=4
-Date: Thu, 19 Mar 2009 09:34:36 -0700
-Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC026043D3@SACMVEXC1-PRD.hq.netapp.com>
-References: <49C2704F.5050303@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-To: "Steve Dickson" <SteveD@redhat.com>,
-	"linux NFS Mailing list" <linux-nfs@vger.kernel.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7996 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755431AbZCSQfM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 12:35:12 -0400
-In-Reply-To: <49C2704F.5050303-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [Patch 0/9] NFS Mount Configuration File
+Date: Thu, 19 Mar 2009 12:37:34 -0400
+Message-ID: <E0D0AAB2-04FA-44CE-B3AE-FD8161FDE748@oracle.com>
+References: <49B57FB2.9020000@RedHat.com>	<A359B7ED-198B-4C3E-96B1-F4B2D5D3582B@oracle.com>	<49BFFDA6.8090500@RedHat.com>	<C0503E0B-59F4-46BA-9430-08C34B2F693E@oracle.com>	<49C0F20C.6030208@RedHat.com>	<6B0D5E55-637D-4C99-B79D-57BB3D5B2E0B@oracle.com>
+	<49C13928.8040806@RedHat.com> <49C228D3.4070005@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <49C228D3.4070005@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
+On Mar 19, 2009, at Mar 19, 2009, 7:13 AM, Steve Dickson wrote:
+> Steve Dickson wrote:
+>> Chuck Lever wrote:
+>>> Our defaults should be settings that work well out of the box in  
+>>> most environments.
+>>> If that isn't the case yet for NFSv4, then we shouldn't make it  
+>>> the default.
+>> Believe me.. with all the push back I'm getting from both the  
+>> client and
+>> server side... I being to think the Linux community simply does not  
+>> want
+>> move forward... but unfortunately I can accept that as option...  
+>> which
+>> the the reason I will continue to push for changes that will move  
+>> us forward...
+> This comment was uncalled for and I hope it does not imped on the  
+> productive
+> dialogue we were having...
 
-> -----Original Message-----
-> From: Steve Dickson [mailto:SteveD@redhat.com] 
-> Sent: Thursday, March 19, 2009 9:18 AM
-> To: linux NFS Mailing list
-> Subject: The next step: nfsvers=4
-> 
-> As I see it, the next step to seamlessly move to V4 as the 
-> default is to make 'mount -o nfsvers=4' actually do a v4 mount... 
-> 
-> There are two obvious place we can make this change.
-> In the kernel and/or in the mount command... 
-> 
-> Looking at the kernel, since v3 and v4 truly two different 
-> file systems its seems a bit late for the nfs_get_sb() to all 
-> of sudden have to change file system type. Meaning when 
-> nfs_get_sb() sees the "nfsvers=4" somehow it would have to 
-> back out and call nfs4_get_sb(), which obviously is a bit hacky.... 
-> 
-> Now I guess we could have one nfs_get_sb() for both v3 and v4.
-> Where the nfs_get_sb() could peek into the options data to 
-> see which version is needed. This would also mean the mount 
-> command would always have to set a version so when the "nfsvers=" 
-> options is not set, the kernel would know which version to use.
-> Again, this feels a bit hacky as well but doable... 
-> 
-> At least to me, what seems like the best option is to have 
-> the mount.nfs binary early on intercept "nfsvers=4" option 
-> and then change the fs_type to "nfs4", which would allow 
-> everything to "trickle down" as it does today... Again to me, 
-> that seem like the least intrusive way to do it...
-> 
-> Comments? Is there other ways?
+I should have made it clear that I don't have any problem with having  
+NFSv4 as the default.  My interest is that our NFSv4 implementation is  
+ready for our users when it becomes the default, and our development  
+team has a reasonably good understanding of what the problems will  
+be.  When NFSv4 becomes the default, I want it to be a step forward.
 
-Whichever way it's done, if v4 becomes the default, don't forget to also
-make the default behavior be that the system will fall back and try a v3
-mount if v4 isn't available.  Otherwise you'll break a huge percentage
-of your user base.  Of course then you also have to deal with the
-semantics of how to specifify "only v4" vs. "try v4 first and fall
-back".
+I currently don't see the benefit a mount config file would add for an  
+NFSv4 transition.  It's something we will have to live with for a long  
+while, so I think we should take the time and effort to get it right.
 
-> 
-> steved.
-> 
->  
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in the body of a message to 
-> majordomo@vger.kernel.org More majordomo info at  
-> http://vger.kernel.org/majordomo-info.html
-> 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
