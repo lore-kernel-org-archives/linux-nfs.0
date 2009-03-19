@@ -1,103 +1,198 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 22/23] NFS: Start PF_INET6 callback listener only if IPv6
-	support is available
-Date: Wed, 18 Mar 2009 20:48:06 -0400
-Message-ID: <20090319004806.32404.67873.stgit@ingres.1015granger.net>
+Subject: [PATCH 18/23] SUNRPC: Simplify kernel RPC service registration
+Date: Wed, 18 Mar 2009 20:47:36 -0400
+Message-ID: <20090319004736.32404.89436.stgit@ingres.1015granger.net>
 References: <20090319004024.32404.68289.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no, bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:34980 "EHLO
+Received: from rcsinet11.oracle.com ([148.87.113.123]:34997 "EHLO
 	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755768AbZCSAse (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:48:34 -0400
+	with ESMTP id S1755926AbZCSAsh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Mar 2009 20:48:37 -0400
 In-Reply-To: <20090319004024.32404.68289.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apparently a lot of people need to disable IPv6 completely on their
-distributor-built systems, which have CONFIG_IPV6_MODULE enabled at
-build time.
+The kernel registers RPC services with the local portmapper with an
+rpcbind SET upcall to the local portmapper.  Traditionally, this used
+rpcbind v2 (PMAP), but registering RPC services that support IPv6
+requires rpcbind v3 or v4.
 
-They do this by blacklisting the ipv6.ko module.  This causes the
-creation of the NFSv4 callback service listener to fail if
-CONFIG_IPV6_MODULE is set, but the module cannot be loaded.
+Since we now want separate PF_INET and PF_INET6 listeners for each
+kernel RPC service, svc_register() will do only one of those
+registrations at a time.
 
-Now that the kernel's PF_INET6 RPC listeners are completely separate
-from PF_INET listeners, we can always start PF_INET.  Then the NFS
-client can try to start a PF_INET6 listener, but it isn't required
-to be available.
+For PF_INET, it tries an rpcb v4 SET upcall first; if that fails, it
+does a legacy portmap SET.  This makes it entirely backwards
+compatible with legacy user space, but allows a proper v4 SET to be
+used if rpcbind is available.
+
+For PF_INET6, it does an rpcb v4 SET upcall.  If that fails, it fails
+the registration, and thus the transport creation.  This let's the
+kernel detect if user space is able to support IPv6 RPC services, and
+thus whether it should maintain a PF_INET6 listener for each service
+at all.
+
+This provides complete backwards compatibilty with legacy user space
+that only supports rpcbind v2.  The only down-side is that registering
+a new kernel RPC service may take an extra exchange with the local
+portmapper on legacy systems, but this is an infrequent operation and
+is done over UDP (no lingering sockets in TIMEWAIT), so it shouldn't
+be consequential.
+
+This patch is part of a series that addresses
+   http://bugzilla.kernel.org/show_bug.cgi?id=12256
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/callback.c  |   12 ++++++++++++
- fs/nfs/callback.h  |    1 +
- fs/nfs/nfs4state.c |   10 ++++++++--
- 3 files changed, 21 insertions(+), 2 deletions(-)
+ net/sunrpc/svc.c |   79 +++++++++++++++++++++++-------------------------------
+ 1 files changed, 34 insertions(+), 45 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 0ef47df..a886e69 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -38,6 +38,7 @@ static struct svc_program nfs4_callback_program;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index bd0ee31..142f647 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -718,8 +718,6 @@ svc_exit_thread(struct svc_rqst *rqstp)
+ }
+ EXPORT_SYMBOL_GPL(svc_exit_thread);
  
- unsigned int nfs_callback_set_tcpport;
- unsigned short nfs_callback_tcpport;
-+unsigned short nfs_callback_tcpport6;
- static const int nfs_set_port_min = 0;
- static const int nfs_set_port_max = 65535;
+-#ifdef CONFIG_SUNRPC_REGISTER_V4
+-
+ /*
+  * Register an "inet" protocol family netid with the local
+  * rpcbind daemon via an rpcbind v4 SET request.
+@@ -734,12 +732,13 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 				const unsigned short protocol,
+ 				const unsigned short port)
+ {
+-	struct sockaddr_in sin = {
++	const struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+ 		.sin_addr.s_addr	= htonl(INADDR_ANY),
+ 		.sin_port		= htons(port),
+ 	};
+-	char *netid;
++	const char *netid;
++	int error;
  
-@@ -119,6 +120,17 @@ int nfs_callback_up(void)
- 	dprintk("NFS: Callback listener port = %u (af %u)\n",
- 			nfs_callback_tcpport, PF_INET);
+ 	switch (protocol) {
+ 	case IPPROTO_UDP:
+@@ -752,10 +751,20 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
+ 	}
+ 
+-	return rpcb_v4_register(program, version,
+-				(struct sockaddr *)&sin, netid);
++	error = rpcb_v4_register(program, version,
++					(const struct sockaddr *)&sin, netid);
++
++	/*
++	 * User space didn't support rpcbind v4, so retry this
++	 * registration request with the legacy rpcbind v2 protocol.
++	 */
++	if (error == -EPROTONOSUPPORT)
++		error = rpcb_register(program, version, protocol, port);
++
++	return error;
+ }
  
 +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+	ret = svc_create_xprt(serv, "tcp", PF_INET6,
-+				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-+	if (ret > 0) {
-+		nfs_callback_tcpport6 = ret;
-+		dprintk("NFS: Callback listener port = %u (af %u)\n",
-+				nfs_callback_tcpport6, PF_INET6);
-+	} else if (ret != -EAFNOSUPPORT)
-+		goto out_err;
-+#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
-+
- 	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(nfs_callback_info.rqst)) {
- 		ret = PTR_ERR(nfs_callback_info.rqst);
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index bb25d21..e110e28 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -72,5 +72,6 @@ extern void nfs_callback_down(void);
- 
- extern unsigned int nfs_callback_set_tcpport;
- extern unsigned short nfs_callback_tcpport;
-+extern unsigned short nfs_callback_tcpport6;
- 
- #endif /* __LINUX_FS_NFS_CALLBACK_H */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2022fe4..0298e90 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -62,8 +62,14 @@ static LIST_HEAD(nfs4_clientid_list);
- 
- static int nfs4_init_client(struct nfs_client *clp, struct rpc_cred *cred)
+ /*
+  * Register an "inet6" protocol family netid with the local
+  * rpcbind daemon via an rpcbind v4 SET request.
+@@ -770,12 +779,13 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 				const unsigned short protocol,
+ 				const unsigned short port)
  {
--	int status = nfs4_proc_setclientid(clp, NFS4_CALLBACK,
--			nfs_callback_tcpport, cred);
-+	unsigned short port;
-+	int status;
+-	struct sockaddr_in6 sin6 = {
++	const struct sockaddr_in6 sin6 = {
+ 		.sin6_family		= AF_INET6,
+ 		.sin6_addr		= IN6ADDR_ANY_INIT,
+ 		.sin6_port		= htons(port),
+ 	};
+-	char *netid;
++	const char *netid;
++	int error;
+ 
+ 	switch (protocol) {
+ 	case IPPROTO_UDP:
+@@ -788,9 +798,19 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 		return -ENOPROTOOPT;
+ 	}
+ 
+-	return rpcb_v4_register(program, version,
+-				(struct sockaddr *)&sin6, netid);
++	error = rpcb_v4_register(program, version,
++					(const struct sockaddr *)&sin6, netid);
 +
-+	port = nfs_callback_tcpport;
-+	if (clp->cl_addr.ss_family == AF_INET6)
-+		port = nfs_callback_tcpport6;
++	/*
++	 * User space didn't support rpcbind version 4, so we won't
++	 * use a PF_INET6 listener.
++	 */
++	if (error == -EPROTONOSUPPORT)
++		error = -EAFNOSUPPORT;
 +
-+	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred);
- 	if (status == 0)
- 		status = nfs4_proc_setclientid_confirm(clp, cred);
- 	if (status == 0)
++	return error;
+ }
++#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+ 
+ /*
+  * Register a kernel RPC service via rpcbind version 4.
+@@ -809,48 +829,17 @@ static int __svc_register(const u32 program, const u32 version,
+ 	case PF_INET:
+ 		return __svc_rpcb_register4(program, version,
+ 						protocol, port);
++		break;
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ 	case PF_INET6:
+-		error = __svc_rpcb_register6(program, version,
++		return__svc_rpcb_register6(program, version,
+ 						protocol, port);
+-		if (error < 0)
+-			return error;
+-
+-		/*
+-		 * Work around bug in some versions of Linux rpcbind
+-		 * which don't allow registration of both inet and
+-		 * inet6 netids.
+-		 *
+-		 * Error return ignored for now.
+-		 */
+-		__svc_rpcb_register4(program, version,
+-						protocol, port);
+-		return 0;
++#endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+ 	}
+ 
+ 	return -EAFNOSUPPORT;
+ }
+ 
+-#else	/* CONFIG_SUNRPC_REGISTER_V4 */
+-
+-/*
+- * Register a kernel RPC service via rpcbind version 2.
+- *
+- * Returns zero on success; a negative errno value is returned
+- * if any error occurs.
+- */
+-static int __svc_register(const u32 program, const u32 version,
+-			  const int family,
+-			  const unsigned short protocol,
+-			  const unsigned short port)
+-{
+-	if (family != PF_INET)
+-		return -EAFNOSUPPORT;
+-
+-	return rpcb_register(program, version, protocol, port);
+-}
+-
+-#endif /* CONFIG_SUNRPC_REGISTER_V4 */
+-
+ /**
+  * svc_register - register an RPC service with the local portmapper
+  * @serv: svc_serv struct for the service to register
 
