@@ -1,40 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Patch 0/9] NFS Mount Configuration File
-Date: Thu, 19 Mar 2009 11:45:00 -0400
-Message-ID: <20090319154500.GC870@fieldses.org>
-References: <49B57FB2.9020000@RedHat.com> <A359B7ED-198B-4C3E-96B1-F4B2D5D3582B@oracle.com> <49BFFDA6.8090500@RedHat.com> <C0503E0B-59F4-46BA-9430-08C34B2F693E@oracle.com> <49C0F20C.6030208@RedHat.com> <6B0D5E55-637D-4C99-B79D-57BB3D5B2E0B@oracle.com> <49C13928.8040806@RedHat.com> <49C228D3.4070005@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: The next step: nfsvers=4
+Date: Thu, 19 Mar 2009 12:18:23 -0400
+Message-ID: <49C2704F.5050303@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:49350 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751886AbZCSPpG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Mar 2009 11:45:06 -0400
-In-Reply-To: <49C228D3.4070005-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:35871 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751066AbZCSQVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Mar 2009 12:21:08 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2JGL7We026720
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2009 12:21:07 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2JGL4Fi013920
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2009 12:21:05 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-58.bos.redhat.com [10.16.10.58])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2JGL5Sl013250
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2009 12:21:06 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 19, 2009 at 07:13:23AM -0400, Steve Dickson wrote:
-> Steve Dickson wrote:
-> > Chuck Lever wrote:
-> >> Are we giving our users real tools for managing the transition, like tools to convert ACLs?
-> > Yes, I'm trying giving them a configuration file that they use to define the defaults
-> > that work best in their environments. A tool to convert ACLS? Please see nfs4-acl-tools
-> > tar ball on the CITI web page... Remember, patches are always welcome! :-)
-> > 
-> >> Our defaults should be settings that work well out of the box in most environments.
-> >> If that isn't the case yet for NFSv4, then we shouldn't make it the default.
-> > Believe me.. with all the push back I'm getting from both the client and 
-> > server side... I being to think the Linux community simply does not want 
-> > move forward... but unfortunately I can accept that as option... which 
-> > the the reason I will continue to push for changes that will move us forward... 
-> This comment was uncalled for and I hope it does not imped on the productive
-> dialogue we were having...    
+As I see it, the next step to seamlessly move to V4 as 
+the default is to make 'mount -o nfsvers=4' actually 
+do a v4 mount... 
 
-Don't worry about it!  Your persistance is appreciated....
+There are two obvious place we can make this change.
+In the kernel and/or in the mount command... 
 
---b.
+Looking at the kernel, since v3 and v4 truly two different
+file systems its seems a bit late for the nfs_get_sb()
+to all of sudden have to change file system type. Meaning
+when nfs_get_sb() sees the "nfsvers=4" somehow it would
+have to back out and call nfs4_get_sb(), which obviously 
+is a bit hacky.... 
+
+Now I guess we could have one nfs_get_sb() for both v3 and v4.
+Where the nfs_get_sb() could peek into the options data to
+see which version is needed. This would also mean the mount 
+command would always have to set a version so when the "nfsvers=" 
+options is not set, the kernel would know which version to use.
+Again, this feels a bit hacky as well but doable... 
+
+At least to me, what seems like the best option is to have 
+the mount.nfs binary early on intercept "nfsvers=4" option
+and then change the fs_type to "nfs4", which would allow
+everything to "trickle down" as it does today... Again to
+me, that seem like the least intrusive way to do it...
+
+Comments? Is there other ways?
+
+steved.
+
+ 
