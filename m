@@ -1,102 +1,32 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 33/47] nfsd: cleanup nfs4.0 callback encode routines
-Date: Sat, 28 Mar 2009 11:34:02 +0300
-Message-ID: <1238229242-11298-1-git-send-email-bhalevy@panasas.com>
-References: <49CDDFC2.4070402@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: " J. Bruce Fields" <bfields@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: The next step: nfsvers=4
+Date: Fri, 20 Mar 2009 07:55:45 -0400
+Message-ID: <49C38441.5060201@RedHat.com>
+References: <49C2704F.5050303@RedHat.com> <7A24DF798E223B4C9864E8F92E8C93EC026043D3@SACMVEXC1-PRD.hq.netapp.com> <855593AD-7541-443F-BA92-491EC32FEDFB@oracle.com> <49C28201.1020301@panasas.com> <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com> <49c29203.85c2f10a.098d.17b5@mx.google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Benny Halevy <bhalevy@panasas.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Tom Talpey <tmtalpey@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:19935 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756386AbZC1IeK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:34:10 -0400
-In-Reply-To: <49CDDFC2.4070402@panasas.com>
+Received: from mx2.redhat.com ([66.187.237.31]:45549 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752353AbZCTL6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Mar 2009 07:58:37 -0400
+In-Reply-To: <49c29203.85c2f10a.098d.17b5-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Tom Talpey wrote:
+> 
+> I would strongly suggest touching and/or changing as few options as
+> possible, and paying close attention to the results with legacy or
+> generic configurations on new kernels. The more lenient, the better
+> IMO, except where specific options require specific actions.
+I agree with this... Being "backwards compatible" is imperative.
+And allowing people to configure things to best fit their 
+environment is something else we should maintain and possibly 
+improve on...
 
-Mimic the client and prepare to share the back channel xdr with NFSv4.1.
-Bump the number of operations in each encode routine, then backfill the
-number of operations.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4callback.c |   24 ++++++++++++++++--------
- 1 files changed, 16 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 290289b..7129b0c 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -140,8 +140,9 @@ struct nfs4_cb_compound_hdr {
- 	int		status;
- 	u32		ident;
- 	u32		nops;
-+	__be32		*nops_p;
- 	u32		taglen;
--	char *		tag;
-+	char		*tag;
- };
- 
- static struct {
-@@ -201,7 +202,7 @@ nfs_cb_stat_to_errno(int stat)
-  * XDR encode
-  */
- 
--static int
-+static void
- encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
- {
- 	__be32 * p;
-@@ -210,12 +211,18 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
- 	WRITE32(0);            /* tag length is always 0 */
- 	WRITE32(NFS4_MINOR_VERSION);
- 	WRITE32(hdr->ident);
-+	hdr->nops_p = p;
- 	WRITE32(hdr->nops);
--	return 0;
- }
- 
--static int
--encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec)
-+static void encode_cb_nops(struct nfs4_cb_compound_hdr *hdr)
-+{
-+	*hdr->nops_p = htonl(hdr->nops);
-+}
-+
-+static void
-+encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec,
-+		 struct nfs4_cb_compound_hdr *hdr)
- {
- 	__be32 *p;
- 	int len = cb_rec->cbr_fh.fh_size;
-@@ -227,7 +234,7 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec)
- 	WRITE32(cb_rec->cbr_trunc);
- 	WRITE32(len);
- 	WRITEMEM(&cb_rec->cbr_fh.fh_base, len);
--	return 0;
-+	hdr->nops++;
- }
- 
- static int
-@@ -246,12 +253,13 @@ nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *a
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = args->cbr_ident,
--		.nops   = 1,
- 	};
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_cb_compound_hdr(&xdr, &hdr);
--	return (encode_cb_recall(&xdr, args));
-+	encode_cb_recall(&xdr, args, &hdr);
-+	encode_cb_nops(&hdr);
-+	return 0;
- }
- 
- 
--- 
-1.6.2.1
-
+steved.   
