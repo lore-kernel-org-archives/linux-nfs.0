@@ -1,131 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:22701 "EHLO mga03.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756055AbZC2CdD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Mar 2009 22:33:03 -0400
-Date: Sun, 29 Mar 2009 10:32:38 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Jos Houtman <jos@hyves.nl>
-Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "jens.axboe@oracle.com" <jens.axboe@oracle.com>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "hch@infradead.org" <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Page Cache writeback too slow,   SSD/noop scheduler/ext2
-Message-ID: <20090329023238.GA7825@localhost>
-References: <20090325052637.GA5912@localhost> <C5F2C492.D4A8%jos@hyves.nl>
-Content-Type: multipart/mixed; boundary="17pEHd4RhPHOinZp"
-In-Reply-To: <C5F2C492.D4A8%jos@hyves.nl>
+Received: from moutng.kundenserver.de ([212.227.126.188]:53762 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757384AbZCTIw5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2009 04:52:57 -0400
+Message-ID: <49C3598E.4010704@vlnb.net>
+Date: Fri, 20 Mar 2009 11:53:34 +0300
+From: Vladislav Bolkhovitin <vst@vlnb.net>
+To: Wu Fengguang <wfg@linux.intel.com>
+CC: Jens Axboe <jens.axboe@oracle.com>, Jeff Moyer <jmoyer@redhat.com>,
+        "Vitaly V. Bursov" <vitalyb@telenet.dn.ua>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        lukasz.jurewicz@gmail.com
+Subject: Re: Slow file transfer speeds with CFQ IO scheduler in some cases
+References: <492BE47B.3010802@vlnb.net> <20081125114908.GA16545@localhost> <492BE97A.3050606@vlnb.net> <492BEAE8.9050809@vlnb.net> <20081125121534.GA16778@localhost> <492EDCFB.7080302@vlnb.net> <20081128004830.GA8874@localhost> <49946BE6.1040005@vlnb.net> <20090213015721.GA5565@localhost> <499B0994.8040000@vlnb.net> <20090219020542.GC5743@localhost> <49C2846D.5030500@vlnb.net>
+In-Reply-To: <49C2846D.5030500@vlnb.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---17pEHd4RhPHOinZp
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Vladislav Bolkhovitin, on 03/19/2009 08:44 PM wrote:
+>   6. Unexpected result. In case, when all IO threads work in the same IO 
+> context with CFQ increasing RA size *decreases* throughput. I think this 
+> is, because RA requests performed as single big READ requests, while 
+> requests coming from remote clients are much smaller in size (up to 
+> 256K), so, when the read by RA data transferred to the remote client on 
+> 100MB/s speed, the backstorage media gets rotated a bit, so the next 
+> read request must wait the rotation latency (~0.1ms on 7200RPM).
+                                                ^^^^^^^^^^^^^^^^^
+Oops, it's RP*M*, hence the full rotation latency is in 60 times more, 
+i.e. 8.3 ms.
 
-On Sat, Mar 28, 2009 at 12:59:43AM +0800, Jos Houtman wrote:
-> Hi,
-> 
-> >> 
-> >> kupdate surely should just continue to keep trying to write back pages
-> >> so long as there are more old pages to clean, and the queue isn't
-> >> congested. That seems to be the intention anyway: MAX_WRITEBACK_PAGES
-> >> is just the number to write back in a single call, but you see
-> >> nr_to_write is set to the number of dirty pages in the system.
-> 
-> And when it's congested it should just wait a little bit before continuing.
->  
-> >> On your system, what must be happening is more_io is not being set.
-> >> The logic in fs/fs-writeback.c might be busted.
-> 
-> I don't know about more_io, but I agree that the logic seems busted.
-> 
-> > 
-> > Hi Jos,
-> > 
-> > I prepared a debugging patch for 2.6.28. (I cannot observe writeback
-> > problems on my local ext2 mount.)
-> 
-> Thanx for the patch, but for the next time: How should I apply it?
-> it seems to be context aware (@@) and broke on all kernel versions I tried
-> 2.6.28/2.6.28.7/2.6.29
+Sorry,
+Vlad
 
-Do you mean that the patch applies after removing " @@.*$"?
-
-To be safe, I created the patch with quilt as well as git, for 2.6.29.
-
-> Because I saw the patch only a few hour ago and didn't want to block on your
-> reply I decided to patch it manually and in the process ported it to 2.6.29.
-> 
-> As for the information the patch provided: It is most helpful.
-> 
-> Attached you will find a list of files containing dirty pages and the count
-> of there dirty pages, there is also a dmesg output where I trace the
-> writeback for 40 seconds.
-
-They helped, thank you!
-
-> I did some testing on my own using printk's and what I saw is that for the
-> inodes located on sdb1 (the database) a lot of times they would pass
-> http://lxr.linux.no/linux+v2.6.29/fs/fs-writeback.c#L335
-> And then redirty_tail would be called, I haven't had the time to dig deeper,
-> but that is my primary suspect for the moment.
-
-You are right. In your case, there are several big dirty files in sdb1,
-and the sdb write queue is constantly (almost-)congested. The SSD write
-speed is so slow, that in each round of sdb1 writeback, it begins with
-an uncongested queue, but quickly fills up after writing some pages.
-Hence all the inodes will get redirtied because of (nr_to_write > 0).
-
-The following quick fix should solve the slow-writeback-on-congested-SSD
-problem. However the writeback sequence is suboptimal: it sync-and-requeue
-each file until congested (in your case about 3~600 pages) instead of
-until MAX_WRITEBACK_PAGES=1024 pages.
-
-A more complete fix would be turning MAX_WRITEBACK_PAGES into an exact
-per-file limit. It has been sitting in my todo list for quite a while...
-
-Thanks,
-Fengguang
-
----
- fs/fs-writeback.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
---- mm.orig/fs/fs-writeback.c
-+++ mm/fs/fs-writeback.c
-@@ -325,7 +325,8 @@ __sync_single_inode(struct inode *inode,
- 				 * soon as the queue becomes uncongested.
- 				 */
- 				inode->i_state |= I_DIRTY_PAGES;
--				if (wbc->nr_to_write <= 0) {
-+				if (wbc->nr_to_write <= 0 ||
-+				    wbc->encountered_congestion) {
- 					/*
- 					 * slice used up: queue for next turn
- 					 */
-
---17pEHd4RhPHOinZp
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="writeback-requeue-congestion-quickfix.patch"
-
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index e3fe991..da5f88d 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -325,7 +325,8 @@ __sync_single_inode(struct inode *inode, struct writeback_control *wbc)
- 				 * soon as the queue becomes uncongested.
- 				 */
- 				inode->i_state |= I_DIRTY_PAGES;
--				if (wbc->nr_to_write <= 0) {
-+				if (wbc->nr_to_write <= 0 ||
-+				    wbc->encountered_congestion) {
- 					/*
- 					 * slice used up: queue for next turn
- 					 */
-
---17pEHd4RhPHOinZp--
