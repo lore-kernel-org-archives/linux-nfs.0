@@ -1,96 +1,92 @@
-From: "Serge E. Hallyn" <serue@us.ibm.com>
-Subject: [PATCH] add some long-missing capabilities to fs_mask
-Date: Fri, 20 Mar 2009 13:37:45 -0500
-Message-ID: <20090320183745.GA9352@us.ibm.com>
+From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Subject: RE: The next step: nfsvers=4
+Date: Fri, 20 Mar 2009 11:50:02 -0700
+Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC026940A0@SACMVEXC1-PRD.hq.netapp.com>
+References: <49C2704F.5050303@RedHat.com> <7A24DF798E223B4C9864E8F92E8C93EC026043D3@SACMVEXC1-PRD.hq.netapp.com> <855593AD-7541-443F-BA92-491EC32FEDFB@oracle.com> <49C28201.1020301@panasas.com> <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com> <49C382F1.6080205@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: mtk.manpages@gmail.com, Stephen Smalley <sds-FVV4AS6k8l2W8mdqIt43Ew@public.gmane.org>,
-	Andrew Morgan <morgan@kernel.org>,
-	linux-security-module@vger.kernel.org,
-	lkml <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-	Igor Zhbanov <izh1979@gmail.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org,
-	linux-api@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Benny Halevy" <bhalevy@panasas.com>,
+	"Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+To: "Steve Dickson" <SteveD@redhat.com>,
+	"Chuck Lever" <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:58789 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755065AbZCTSh7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2009 14:37:59 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:47960 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751586AbZCTSu0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2009 14:50:26 -0400
+In-Reply-To: <49C382F1.6080205-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-( resubmitting without RFC tag, and updated against J. Bruce
-Fields' patch since that has been applied upstream )
-
-When POSIX capabilities were introduced during the 2.1 Linux
-cycle, the fs mask, which represents the capabilities which having
-fsuid==0 is supposed to grant, did not include CAP_MKNOD and
-CAP_LINUX_IMMUTABLE.  However, before capabilities the privilege
-to call these did in fact depend upon fsuid==0.
-
-This patch introduces those capabilities into the fsmask,
-restoring the old behavior.
-
-See the thread starting at http://lkml.org/lkml/2009/3/11/157 for
-reference.
-
-Note that if this fix is deemed valid, then earlier kernel versions (2.4
-and 2.2) ought to be fixed too.
-
-Changelog:
-	[Mar 20] Updated against J. Bruce Fields' patch
-
-Reported-by: Igor Zhbanov <izh1979@gmail.com>
-Signed-off-by: Serge E. Hallyn <serue@us.ibm.com>
-Cc: stable@kernel.org
-Cc: J. Bruce Fields <bfields@citi.umich.edu>
----
- include/linux/capability.h |   22 +++++++++++++++++++---
- 1 files changed, 19 insertions(+), 3 deletions(-)
-
-diff --git a/include/linux/capability.h b/include/linux/capability.h
-index 4864a43..959998a 100644
---- a/include/linux/capability.h
-+++ b/include/linux/capability.h
-@@ -377,7 +377,21 @@ struct cpu_vfs_cap_data {
- #define CAP_FOR_EACH_U32(__capi)  \
- 	for (__capi = 0; __capi < _KERNEL_CAPABILITY_U32S; ++__capi)
  
-+/*
-+ * CAP_FS_MASK and CAP_NFSD_MASKS:
-+ *
-+ * The fs mask is all the privileges that fsuid==0 historically meant.
-+ * At one time in the past, that included CAP_MKNOD and CAP_LINUX_IMMUTABLE.
-+ *
-+ * It has never meant setting security.* and trusted.* xattrs.
-+ *
-+ * We could also define fsmask as follows:
-+ *   1. CAP_FS_MASK is the privilege to bypass all fs-related DAC permissions
-+ *   2. The security.* and trusted.* xattrs are fs-related MAC permissions
-+ */
-+
- # define CAP_FS_MASK_B0     (CAP_TO_MASK(CAP_CHOWN)		\
-+			    | CAP_TO_MASK(CAP_MKNOD)		\
- 			    | CAP_TO_MASK(CAP_DAC_OVERRIDE)	\
- 			    | CAP_TO_MASK(CAP_DAC_READ_SEARCH)	\
- 			    | CAP_TO_MASK(CAP_FOWNER)		\
-@@ -393,10 +407,12 @@ struct cpu_vfs_cap_data {
- # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
- # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
- # define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
-+# define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0 \
-+				    | CAP_TO_MASK(CAP_LINUX_IMMUTABLE), \
-+				    CAP_FS_MASK_B1 } })
- # define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
--					    | CAP_TO_MASK(CAP_SYS_RESOURCE) \
--					    | CAP_TO_MASK(CAP_MKNOD), \
--					    CAP_FS_MASK_B1 } })
-+				    | CAP_TO_MASK(CAP_SYS_RESOURCE), \
-+				    CAP_FS_MASK_B1 } })
- 
- #endif /* _KERNEL_CAPABILITY_U32S != 2 */
- 
--- 
-1.5.4.3
 
+> -----Original Message-----
+> From: Steve Dickson [mailto:SteveD@redhat.com] 
+> Sent: Friday, March 20, 2009 4:50 AM
+> To: Chuck Lever
+> Cc: Benny Halevy; Linux NFS Mailing List
+> Subject: Re: The next step: nfsvers=4
+> 
+> Chuck Lever wrote:
+> > If no vers= is specified and only NFSv4 is available on the server, 
+> > but something like "nocto" shows up on the command line 
+> mount options, do we:
+> > 
+> > a) fail the mount, or
+> > b) ignore the nocto option
+> I would say ignore this particular option... since, in a 
+> sense, v4 give you this option by default due to 
+> delegations... but point well taken... The mapping of
+> v3 to v4 and visa versa will have to be addressed... I would 
+> guess in the mount command...  
+>  
+> > 
+> > a) seems like the least surprising behavior.
+> > 
+> > What about "proto=udp" ?  Linux supports UDP for NFSv4, 
+> though other 
+> > server implementations probably don't.  If that's specified 
+> on a mount 
+> > command line without a vers= option, what version should we choose?
+> I think people just want things to work... so if they specify 
+> only UDP and the server supports V4, we give them V4/TCP. If 
+> they REALLY want UDP, they would have to specify 'nfsvers=3,udp'.
+
+But, and this is a poor example, they REALLY want v4 and UDP?  There
+should be consistency in the way rules are applied.  If specifying
+vers=x requires the mount to match version x exactly, then imho, proto=y
+should only succeed with protocol y.  There should be a way for the user
+to specify exactly what they want, and fail if they can't have it.
+Similarly, if someone specifies sec=krb5p, you wouldn't want to fall
+back to sec=sys :-)
+
+> 
+> Or, if there was an mount configuration file, they could 
+> specify the MAX_VERSION to be 3 and then -o udp mounts work 
+> as expected...
+> 
+> > 
+> >> For implementing more complex policies, maybe we can extend the 
+> >> command syntax to accept a range and/or an ordered list of 
+> versions 
+> >> to try.
+> > 
+> > Steve mentioned /etc/default/nfs on Solaris.  I could see 
+> > /etc/sysconfig/nfs on Linux containing a couple of lines 
+> defining the 
+> > range of allowable NFS versions, if we think this is 
+> necessary.  This 
+> > is a simple pre-existing file, and has little potential for 
+> > introducing negative side-effects.
+> The /etc/sysconfig/nfs is a distro only file... Meaning I 
+> know of only one distro that uses that file.. So I would tend 
+> to shy away from putting anything in that... 
+> 
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe 
+> linux-nfs" in the body of a message to 
+> majordomo@vger.kernel.org More majordomo info at  
+> http://vger.kernel.org/majordomo-info.html
+> 
