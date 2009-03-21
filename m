@@ -1,92 +1,65 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: RE: The next step: nfsvers=4
-Date: Fri, 20 Mar 2009 11:50:02 -0700
-Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC026940A0@SACMVEXC1-PRD.hq.netapp.com>
-References: <49C2704F.5050303@RedHat.com> <7A24DF798E223B4C9864E8F92E8C93EC026043D3@SACMVEXC1-PRD.hq.netapp.com> <855593AD-7541-443F-BA92-491EC32FEDFB@oracle.com> <49C28201.1020301@panasas.com> <1FF921B7-4A44-49D7-8E01-1DAC5D18C1AB@oracle.com> <49C382F1.6080205@RedHat.com>
+From: Maria McKinley <maria-3uEUQlRWSvdAfugRpC6u6w@public.gmane.org>
+Subject: [NFS] problem with rpc.statd
+Date: Fri, 20 Mar 2009 17:43:51 -0700
+Message-ID: <49C43847.9080206@shadlen.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Benny Halevy" <bhalevy@panasas.com>,
-	"Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-To: "Steve Dickson" <SteveD@redhat.com>,
-	"Chuck Lever" <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47960 "EHLO mx2.netapp.com"
+Received: from neil.brown.name ([220.233.11.133]:37494 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751586AbZCTSu0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Mar 2009 14:50:26 -0400
-In-Reply-To: <49C382F1.6080205-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1755441AbZCUApV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Mar 2009 20:45:21 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1LkpKr-0000F7-23
+	for linux-nfs@vger.kernel.org; Sat, 21 Mar 2009 11:45:13 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- 
+Hello all,
 
-> -----Original Message-----
-> From: Steve Dickson [mailto:SteveD@redhat.com] 
-> Sent: Friday, March 20, 2009 4:50 AM
-> To: Chuck Lever
-> Cc: Benny Halevy; Linux NFS Mailing List
-> Subject: Re: The next step: nfsvers=4
-> 
-> Chuck Lever wrote:
-> > If no vers= is specified and only NFSv4 is available on the server, 
-> > but something like "nocto" shows up on the command line 
-> mount options, do we:
-> > 
-> > a) fail the mount, or
-> > b) ignore the nocto option
-> I would say ignore this particular option... since, in a 
-> sense, v4 give you this option by default due to 
-> delegations... but point well taken... The mapping of
-> v3 to v4 and visa versa will have to be addressed... I would 
-> guess in the mount command...  
->  
-> > 
-> > a) seems like the least surprising behavior.
-> > 
-> > What about "proto=udp" ?  Linux supports UDP for NFSv4, 
-> though other 
-> > server implementations probably don't.  If that's specified 
-> on a mount 
-> > command line without a vers= option, what version should we choose?
-> I think people just want things to work... so if they specify 
-> only UDP and the server supports V4, we give them V4/TCP. If 
-> they REALLY want UDP, they would have to specify 'nfsvers=3,udp'.
+I hope this is an appropriate place to post this, as I am running out of 
+ideas.
 
-But, and this is a poor example, they REALLY want v4 and UDP?  There
-should be consistency in the way rules are applied.  If specifying
-vers=x requires the mount to match version x exactly, then imho, proto=y
-should only succeed with protocol y.  There should be a way for the user
-to specify exactly what they want, and fail if they can't have it.
-Similarly, if someone specifies sec=krb5p, you wouldn't want to fall
-back to sec=sys :-)
+I have a machine that I am attempting to boot over the network. I have
+compiled a kernel for it, Debian Lenny Linux version 2.6.26, with nfs
+file system and root file system support. For a complete rundown on how
+I have created the setup, please see:
 
-> 
-> Or, if there was an mount configuration file, they could 
-> specify the MAX_VERSION to be 3 and then -o udp mounts work 
-> as expected...
-> 
-> > 
-> >> For implementing more complex policies, maybe we can extend the 
-> >> command syntax to accept a range and/or an ordered list of 
-> versions 
-> >> to try.
-> > 
-> > Steve mentioned /etc/default/nfs on Solaris.  I could see 
-> > /etc/sysconfig/nfs on Linux containing a couple of lines 
-> defining the 
-> > range of allowable NFS versions, if we think this is 
-> necessary.  This 
-> > is a simple pre-existing file, and has little potential for 
-> > introducing negative side-effects.
-> The /etc/sysconfig/nfs is a distro only file... Meaning I 
-> know of only one distro that uses that file.. So I would tend 
-> to shy away from putting anything in that... 
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in the body of a message to 
-> majordomo@vger.kernel.org More majordomo info at  
-> http://vger.kernel.org/majordomo-info.html
-> 
+http://www.shadlen.org/~maria/pmwiki/Work/Gpxe
+
+Things work well up until it is time to mount the file system from
+fstab (ie, it mounts everything ro, makes it all the way through init 
+and gives me a command prompt). The rw mount is not happening because 
+rpc.statd never starts. If I try to start rpc.statd by hand, it 
+complains that: Opening /var/run/rpc.statd.pid failed: Read-only file 
+system. Since I am mounting the root directory over nfs, it makes sense 
+for this file to be read-only until rpc.statd starts and  Is there any 
+way I can start statd without a pid file until I get the root file 
+system mounted rw? Or something else to try?
+
+I had a similar setup working with an earlier version of nfs-common, but 
+it broke when I upgraded recently. Currently using nfs-common 
+1:1.1.2-6lenny1
+
+thank you for any direction anyone can point me, as I am about at my 
+wit's end...
+
+cheers,
+maria
+
+------------------------------------------------------------------------------
+Apps built with the Adobe(R) Flex(R) framework and Flex Builder(TM) are
+powering Web 2.0 with engaging, cross-platform capabilities. Quickly and
+easily build your RIAs with Flex Builder, the Eclipse(TM)based development
+software that enables intelligent coding and step-through debugging.
+Download the free 60 day trial. http://p.sf.net/sfu/www-adobe-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
