@@ -1,299 +1,95 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils: Removed a number of warn_unused_result warnings
-Date: Mon, 23 Mar 2009 10:08:06 -0400
-Message-ID: <49C797C6.8030102@RedHat.com>
+From: Mathieu Desnoyers <compudj-vdFpqfd5riKZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
+Subject: Re: [Patch] ltt-relay-alloc mmap support (due to NFS lack of
+	splice support)
+Date: Mon, 23 Mar 2009 13:58:20 -0400
+Message-ID: <20090323175820.GH24084@Krystal>
+References: <91e0b5050903170224k51c4895eq8a1491da7a7a9741@mail.gmail.com> <20090320152857.GB30019@Krystal> <91e0b5050903230534g57d1ef8byd14a1fb5ca807192@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: Ingo Molnar <mingo@elte.hu>,
+	ltt-dev <ltt-dev-33AaDErTWvBVxDZ2/Zk0YoryAYyacSEB@public.gmane.org>,
+	linux-kernel@vger.kernel.org, linux-embedded@vger.kernel.org,
+	linux-nfs@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+	Nick Piggin <npiggin@suse.de>
+To: Masahiro Tamori <masahiro.tamori@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39557 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751779AbZCWOKz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Mar 2009 10:10:55 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2NEAsMS022820
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 10:10:54 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2NEAmJp023998
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 10:10:49 -0400
-Received: from xenhat.boston.devel.redhat.com (vpn-10-39.bos.redhat.com [10.16.10.39])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2NEAp1s016842
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 10:10:52 -0400
+Received: from tomts36-srv.bellnexxia.net ([209.226.175.93]:57216 "EHLO
+	tomts36-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755678AbZCWR61 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Mar 2009 13:58:27 -0400
+In-Reply-To: <91e0b5050903230534g57d1ef8byd14a1fb5ca807192-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here is a patch that removes a number of annoying 'warn_unused_result' 
-warnings that have recently popped up in Fedora builds.
+* Masahiro Tamori (masahiro.tamori@gmail.com) wrote:
+> 2009/3/21 Mathieu Desnoyers <mathieu.desnoyers-scC8bbJcJLCw5LPnMra/2Q@public.gmane.org>:
+> > * Masahiro Tamori (masahiro.tamori@gmail.com) wrote:
+[...]
+> >> Our customer will use NFS to store trace data not storage device f=
+or
+> >> embedded devices.
+> >> Since newer lttng use splice() even if NFS can not support splice(=
+),
+> >> I create a patch to support to mmap of ltt-relay-alloc.
+> >>
+[...]
+> >> ltt-relay-alloc mmap support
+> >>
+> >> Splice syscall does not support NFS. We can not save trace data to
+> >> NFS directory. If this feature is enabled, you can use mmap()
+> >> instead of splice().
+> >>
+> >
+> >
+> > Hi Masahiro,
+> >
+> > Maybe we should consider implementing splice() support in NFS inste=
+ad ?
+> >
+> > I removed the mmap support from the ltt-relay-alloc files because s=
+plice
+> > is more efficient and does not require to vmap the pages. =A0Unless=
+ there
+> > is a strong argument telling what in NFS makes it impossible to
+> > implement splice(), I don't really see the gain in putting back the
+> > old mmap() mechanism we had.
+> >
+> > Maybe the NFS people will have some information about this ?
+> >
+> > Thanks,
+> >
+> > Mathieu
+> >
+>=20
+> Hello Mathieu,
+>=20
+> I think that the best solution is NFS can support splice() even if
+> it cannot zero copy.
+>=20
+> The splice() will be used by any other tools, hence NFS should suppor=
+t
+> it sooner or later.
+>=20
+> If technical issue is remained to support splice() in NFS,
+> we should support mmap in LTTng until the problem is resolved.
+> Embedded people will want to use LTTng with NFS,
+> though this is a bad choice.
+>=20
+> Thank you,
+> Masahiro Tamori
+>=20
 
-Its probably a good thing to log these failures, but there is 
-really not much we can do about them so I've logged the failures
-as warnings... 
+There was a LKML thread on NFS splice support back in 2006 :
 
-This exercise also illuminates all the different ways there
-are to call syslog()... We really need to looking into creating
-exactly one way for all apps in nfs-utils to log messages to
-syslog().. Yeah.. Yeah... I know... Patches are welcome! ;-)
+http://lkml.indiana.edu/hypermail/linux/kernel/0603.3/2102.html
 
-steved.
-  
+I don't know what happened with this ? I have tested NFS v2 and v3 and
+have seen they do not support splice, but haven't tested NFSv4.
 
-In recent Fedora builds, the '-D _FORTIFY_SOURCE=2' compile
-flag has been set. This cause warnings to be generated when 
-return values from reads/writes (and other calls) are not 
-checked. The patch address those warnings. 
+Mathieu
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
-------------------------------------------
-
-diff -up nfs-utils-1.1.5/support/nfs/cacheio.c.orig nfs-utils-1.1.5/support/nfs/cacheio.c
---- nfs-utils-1.1.5/support/nfs/cacheio.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/support/nfs/cacheio.c	2009-03-23 09:41:54.000000000 -0400
-@@ -24,6 +24,7 @@
- #include <sys/stat.h>
- #include <fcntl.h>
- #include <time.h>
-+#include <errno.h>
- 
- void qword_add(char **bpp, int *lp, char *str)
- {
-@@ -125,7 +126,10 @@ void qword_print(FILE *f, char *str)
- 	char *bp = qword_buf;
- 	int len = sizeof(qword_buf);
- 	qword_add(&bp, &len, str);
--	fwrite(qword_buf, bp-qword_buf, 1, f);
-+	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
-+		xlog_warn("qword_print: fwrite failed: errno %d (%s)",
-+			errno, strerror(errno));
-+	}
- }
- 
- void qword_printhex(FILE *f, char *str, int slen)
-@@ -133,7 +137,10 @@ void qword_printhex(FILE *f, char *str, 
- 	char *bp = qword_buf;
- 	int len = sizeof(qword_buf);
- 	qword_addhex(&bp, &len, str, slen);
--	fwrite(qword_buf, bp-qword_buf, 1, f);
-+	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
-+		xlog_warn("qword_printhex: fwrite failed: errno %d (%s)",
-+			errno, strerror(errno));
-+	}
- }
- 
- void qword_printint(FILE *f, int num)
-@@ -318,7 +325,10 @@ cache_flush(int force)
- 		sprintf(path, "/proc/net/rpc/%s/flush", cachelist[c]);
- 		fd = open(path, O_RDWR);
- 		if (fd >= 0) {
--			write(fd, stime, strlen(stime));
-+			if (write(fd, stime, strlen(stime)) != strlen(stime)) {
-+				xlog_warn("Writing to '%s' failed: errno %d (%s)",
-+				path, errno, strerror(errno));
-+			}
- 			close(fd);
- 		}
- 	}
-diff -up nfs-utils-1.1.5/tools/locktest/testlk.c.orig nfs-utils-1.1.5/tools/locktest/testlk.c
---- nfs-utils-1.1.5/tools/locktest/testlk.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/tools/locktest/testlk.c	2009-03-23 08:33:10.000000000 -0400
-@@ -81,7 +81,7 @@ main(int argc, char **argv)
- 		if (fl.l_type == F_UNLCK) {
- 			printf("%s: no conflicting lock\n", fname);
- 		} else {
--			printf("%s: conflicting lock by %d on (%ld;%ld)\n",
-+			printf("%s: conflicting lock by %d on (%lld;%lld)\n",
- 				fname, fl.l_pid, fl.l_start, fl.l_len);
- 		}
- 		return 0;
-diff -up nfs-utils-1.1.5/utils/gssd/svcgssd.c.orig nfs-utils-1.1.5/utils/gssd/svcgssd.c
---- nfs-utils-1.1.5/utils/gssd/svcgssd.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/utils/gssd/svcgssd.c	2009-03-23 08:49:49.000000000 -0400
-@@ -132,7 +132,11 @@ release_parent(void)
- 	int status;
- 
- 	if (pipefds[1] > 0) {
--		write(pipefds[1], &status, 1);
-+		if (write(pipefds[1], &status, 1) != 1) {
-+			printerr(1, 
-+				"WARN: writing to parent pipe failed: errno %d (%s)\n",
-+				errno, strerror(errno));
-+		}
- 		close(pipefds[1]);
- 		pipefds[1] = -1;
- 	}
-diff -up nfs-utils-1.1.5/utils/idmapd/idmapd.c.orig nfs-utils-1.1.5/utils/idmapd/idmapd.c
---- nfs-utils-1.1.5/utils/idmapd/idmapd.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/utils/idmapd/idmapd.c	2009-03-23 08:53:44.000000000 -0400
-@@ -169,7 +169,10 @@ flush_nfsd_cache(char *path, time_t now)
- 	fd = open(path, O_RDWR);
- 	if (fd == -1)
- 		return -1;
--	write(fd, stime, strlen(stime));
-+	if (write(fd, stime, strlen(stime)) != strlen(stime)) {
-+		errx(1, "Flushing nfsd cache failed: errno %d (%s)",
-+			errno, strerror(errno));
-+	}
- 	close(fd);
- 	return 0;
- }
-@@ -988,7 +991,10 @@ release_parent(void)
- 	int status;
- 
- 	if (pipefds[1] > 0) {
--		write(pipefds[1], &status, 1);
-+		if (write(pipefds[1], &status, 1) != 1) {
-+			err(1, "Writing to parent pipe failed: errno %d (%s)\n",
-+				errno, strerror(errno));
-+		}
- 		close(pipefds[1]);
- 		pipefds[1] = -1;
- 	}
-diff -up nfs-utils-1.1.5/utils/mount/fstab.c.orig nfs-utils-1.1.5/utils/mount/fstab.c
---- nfs-utils-1.1.5/utils/mount/fstab.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/utils/mount/fstab.c	2009-03-23 08:44:42.000000000 -0400
-@@ -546,8 +546,12 @@ update_mtab (const char *dir, struct mnt
- 	   * from the present mtab before renaming.
- 	   */
- 	    struct stat sbuf;
--	    if (stat (MOUNTED, &sbuf) == 0)
--		chown (MOUNTED_TEMP, sbuf.st_uid, sbuf.st_gid);
-+	    if (stat (MOUNTED, &sbuf) == 0) {
-+			if (chown (MOUNTED_TEMP, sbuf.st_uid, sbuf.st_gid) < 0) {
-+				nfs_error(_("%s: error changing owner of %s: %s"),
-+					progname, MOUNTED_TEMP, strerror (errno));
-+			}
-+		}
- 	}
- 
- 	/* rename mtemp to mtab */
-diff -up nfs-utils-1.1.5/utils/statd/monitor.c.orig nfs-utils-1.1.5/utils/statd/monitor.c
---- nfs-utils-1.1.5/utils/statd/monitor.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/utils/statd/monitor.c	2009-03-23 09:25:20.000000000 -0400
-@@ -204,7 +204,10 @@ sm_mon_1_svc(struct mon *argp, struct sv
- 			e += sprintf(e, "%02x", 0xff & (argp->priv[i]));
- 		if (e+1-buf != LINELEN) abort();
- 		e += sprintf(e, " %s %s\n", mon_name, my_name);
--		write(fd, buf, e-buf);
-+		if (write(fd, buf, e-buf) != (e-buf)) {
-+			note(N_WARNING, "writing to %s failed: errno %d (%s)",
-+				path, errno, strerror(errno));
-+		}
- 	}
- 
- 	free(path);
-diff -up nfs-utils-1.1.5/utils/statd/sm-notify.c.orig nfs-utils-1.1.5/utils/statd/sm-notify.c
---- nfs-utils-1.1.5/utils/statd/sm-notify.c.orig	2009-03-23 08:26:22.000000000 -0400
-+++ nfs-utils-1.1.5/utils/statd/sm-notify.c	2009-03-23 08:58:36.000000000 -0400
-@@ -784,7 +784,10 @@ static int record_pid(void)
- 	fd = open("/var/run/sm-notify.pid", O_CREAT|O_EXCL|O_WRONLY, 0600);
- 	if (fd < 0)
- 		return 0;
--	write(fd, pid, strlen(pid));
-+	if (write(fd, pid, strlen(pid)) != strlen(pid))  {
-+		nsm_log(LOG_WARNING, "Writing to pid file failed: errno %d(%s)",
-+			errno, strerror(errno));
-+	}
- 	close(fd);
- 	return 1;
- }
-@@ -820,12 +823,16 @@ static void drop_privs(void)
- static void set_kernel_nsm_state(int state)
- {
- 	int fd;
-+	const char *file = "/proc/sys/fs/nfs/nsm_local_state";
- 
--	fd = open("/proc/sys/fs/nfs/nsm_local_state",O_WRONLY);
-+	fd = open(file ,O_WRONLY);
- 	if (fd >= 0) {
- 		char buf[20];
- 		snprintf(buf, sizeof(buf), "%d", state);
--		write(fd, buf, strlen(buf));
-+		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-+			nsm_log(LOG_WARNING, "Writing to '%s' failed: errno %d (%s)",
-+				file, errno, strerror(errno));
-+		}
- 		close(fd);
- 	}
- }
-diff -up nfs-utils-1.1.5/utils/statd/statd.c.orig nfs-utils-1.1.5/utils/statd/statd.c
---- nfs-utils-1.1.5/utils/statd/statd.c.orig	2009-03-05 06:42:56.000000000 -0500
-+++ nfs-utils-1.1.5/utils/statd/statd.c	2009-03-23 09:21:27.000000000 -0400
-@@ -179,14 +179,20 @@ static void create_pidfile(void)
- 		    pidfile, strerror(errno));
- 	fprintf(fp, "%d\n", getpid());
- 	pidfd = dup(fileno(fp));
--	if (fclose(fp) < 0)
--		note(N_WARNING, "Flushing pid file failed.\n");
-+	if (fclose(fp) < 0) {
-+		note(N_WARNING, "Flushing pid file failed: errno %d (%s)\n",
-+			errno, strerror(errno));
-+	}
- }
- 
- static void truncate_pidfile(void)
- {
--	if (pidfd >= 0)
--		ftruncate(pidfd, 0);
-+	if (pidfd >= 0) {
-+		if (ftruncate(pidfd, 0) < 0) {
-+			note(N_WARNING, "truncating pid file failed: errno %d (%s)\n",
-+				errno, strerror(errno));
-+		}
-+	}
- }
- 
- static void drop_privs(void)
-@@ -207,9 +213,12 @@ static void drop_privs(void)
- 	/* better chown the pid file before dropping, as if it
- 	 * if over nfs we might loose access
- 	 */
--	if (pidfd >= 0)
--		fchown(pidfd, st.st_uid, st.st_gid);
--
-+	if (pidfd >= 0) {
-+		if (fchown(pidfd, st.st_uid, st.st_gid) < 0) {
-+			note(N_ERROR, "Unable to change owner of %s: %d (%s)",
-+					SM_DIR, strerror (errno));
-+		}
-+	}
- 	setgroups(0, NULL);
- 	if (setgid(st.st_gid) == -1
- 	    || setuid(st.st_uid) == -1) {
-@@ -495,7 +504,10 @@ int main (int argc, char **argv)
- 	/* If we got this far, we have successfully started, so notify parent */
- 	if (pipefds[1] > 0) {
- 		status = 0;
--		write(pipefds[1], &status, 1);
-+		if (write(pipefds[1], &status, 1) != 1) {
-+			note(N_WARNING, "writing to parent pipe failed: errno %d (%s)\n",
-+				errno, strerror(errno));
-+		}
- 		close(pipefds[1]);
- 		pipefds[1] = -1;
- 	}
-@@ -534,17 +546,23 @@ static void
- load_state_number(void)
- {
- 	int fd;
-+	const char *file = "/proc/sys/fs/nfs/nsm_local_state";
- 
- 	if ((fd = open(SM_STAT_PATH, O_RDONLY)) == -1)
- 		return;
- 
--	read(fd, &MY_STATE, sizeof(MY_STATE));
-+	if (read(fd, &MY_STATE, sizeof(MY_STATE)) != sizeof(MY_STATE)) {
-+		note(N_WARNING, "Unable to read state from '%s': errno %d (%s)",
-+				SM_STAT_PATH, errno, strerror(errno));
-+	}
- 	close(fd);
--	fd = open("/proc/sys/fs/nfs/nsm_local_state",O_WRONLY);
-+	fd = open(file, O_WRONLY);
- 	if (fd >= 0) {
- 		char buf[20];
- 		snprintf(buf, sizeof(buf), "%d", MY_STATE);
--		write(fd, buf, strlen(buf));
-+		if (write(fd, buf, strlen(buf)) != strlen(buf))
-+			note(N_WARNING, "Writing to '%s' failed: errno %d (%s)",
-+				file, errno, strerror(errno));
- 		close(fd);
- 	}
- 
+--=20
+Mathieu Desnoyers
+OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE =
+9A68
