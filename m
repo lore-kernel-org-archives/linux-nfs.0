@@ -1,74 +1,299 @@
-From: Alex Bremer <albremer@googlemail.com>
-Subject: Re: NFS4 ACL <-> Posix ACL
-Date: Mon, 23 Mar 2009 14:46:46 +0100
-Message-ID: <7f62dcb30903230646u183c79e0i4366edebe32654d5@mail.gmail.com>
-References: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com>
-	 <20090319193514.GE3072@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] nfs-utils: Removed a number of warn_unused_result warnings
+Date: Mon, 23 Mar 2009 10:08:06 -0400
+Message-ID: <49C797C6.8030102@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f165.google.com ([209.85.219.165]:43385 "EHLO
-	mail-ew0-f165.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750815AbZCWNqu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2009 09:46:50 -0400
-Received: by ewy9 with SMTP id 9so1625946ewy.37
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 06:46:46 -0700 (PDT)
-In-Reply-To: <20090319193514.GE3072@fieldses.org>
+Received: from mx2.redhat.com ([66.187.237.31]:39557 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751779AbZCWOKz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Mar 2009 10:10:55 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2NEAsMS022820
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 10:10:54 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2NEAmJp023998
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 10:10:49 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-39.bos.redhat.com [10.16.10.39])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2NEAp1s016842
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 10:10:52 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2009/3/19, J. Bruce Fields <bfields@fieldses.org>:
-> On Wed, Mar 18, 2009 at 06:42:10PM +0100, Alex Bremer wrote:
->> However on a client
->> using NFS4, these Posix-ACLs don't seem to get mapped to NFS4-ACLs.
->
-> Actually, they do; what's happening (I believe--this is partly just
-> memory based on last time I looked at something like this) is more
-> subtle: the umask is being overridden by inheritance in the v2/v3 case,
-> and not in the v4 case.
->
-> Posix default acls are supposed to override the umask.  This is tricky
-> for NFS, since the umask isn't sent over the wire on file creation,
-> leaving the client and server no way to distinguish the create mode from
-> the umask.  The v2/v3 client currently works around this by doing the
-> whole inheritance calculation on the client (reading the directory's
-> acl, then explicitly setting the new child's acl based on it).  The v4
-> client doesn't do that.  So:
+Here is a patch that removes a number of annoying 'warn_unused_result' 
+warnings that have recently popped up in Fedora builds.
 
-So is there any way to make newly created files group writeable except
-for setting the umask of each user to 002? Setting the umask to 002 is
-not an option for us, but all files in the public area have to be
-group writeable. Is there maybe a mount option to set the umask or a
-server sided option which enforces the group writeable flag?
+Its probably a good thing to log these failures, but there is 
+really not much we can do about them so I've logged the failures
+as warnings... 
 
-I would expect that my use case is not that uncommon and that many
-companys have the exact same problem. Would the inheritance work if we
-used a fully NFS4-ACL compatible filesystem? Is there any for Linux?
-How do other people share public files with NFS4? If there is no other
-way than setting the users's umask to 002, this would practically
-limit the use of NFS4 to private shares like home directories. I can't
-tell my users to change the permissions after creating a file. Some of
-them do not even know what permissions are.
+This exercise also illuminates all the different ways there
+are to call syslog()... We really need to looking into creating
+exactly one way for all apps in nfs-utils to log messages to
+syslog().. Yeah.. Yeah... I know... Patches are welcome! ;-)
 
-> There are no nfsv4 acls on the filesystem at all, so everything is done
-> by mapping to and from the filesystem's posix acls.
+steved.
+  
 
-So I guess there is no NFS4-ACL compliant filesystem for linux either? :-(
+In recent Fedora builds, the '-D _FORTIFY_SOURCE=2' compile
+flag has been set. This cause warnings to be generated when 
+return values from reads/writes (and other calls) are not 
+checked. The patch address those warnings. 
 
->> Another question: If I add the mount option "user_xattr" to the nfs4
->> exported filesystems, on the client side all permissions are shown as
->> "nobody:nogroup". Why is that?
->
-> That's bizarre.  Neither server nor client nor idmapd should be using
-> user extended attributes at all.  Are you sure you something else wasn't
-> changed at the same time?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+------------------------------------------
 
-Oh, you are right. I just gave it another try and now it works. Don't
-know what happened. Last time I tried it, the only thing I changed was
-the user_xattr mount option and I got all owner:group entries as
-nobody:nogroup. I changed the flag back and it worked again. Now it
-even works with user_xattr on.
-
-Alex
+diff -up nfs-utils-1.1.5/support/nfs/cacheio.c.orig nfs-utils-1.1.5/support/nfs/cacheio.c
+--- nfs-utils-1.1.5/support/nfs/cacheio.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/support/nfs/cacheio.c	2009-03-23 09:41:54.000000000 -0400
+@@ -24,6 +24,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <time.h>
++#include <errno.h>
+ 
+ void qword_add(char **bpp, int *lp, char *str)
+ {
+@@ -125,7 +126,10 @@ void qword_print(FILE *f, char *str)
+ 	char *bp = qword_buf;
+ 	int len = sizeof(qword_buf);
+ 	qword_add(&bp, &len, str);
+-	fwrite(qword_buf, bp-qword_buf, 1, f);
++	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
++		xlog_warn("qword_print: fwrite failed: errno %d (%s)",
++			errno, strerror(errno));
++	}
+ }
+ 
+ void qword_printhex(FILE *f, char *str, int slen)
+@@ -133,7 +137,10 @@ void qword_printhex(FILE *f, char *str, 
+ 	char *bp = qword_buf;
+ 	int len = sizeof(qword_buf);
+ 	qword_addhex(&bp, &len, str, slen);
+-	fwrite(qword_buf, bp-qword_buf, 1, f);
++	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
++		xlog_warn("qword_printhex: fwrite failed: errno %d (%s)",
++			errno, strerror(errno));
++	}
+ }
+ 
+ void qword_printint(FILE *f, int num)
+@@ -318,7 +325,10 @@ cache_flush(int force)
+ 		sprintf(path, "/proc/net/rpc/%s/flush", cachelist[c]);
+ 		fd = open(path, O_RDWR);
+ 		if (fd >= 0) {
+-			write(fd, stime, strlen(stime));
++			if (write(fd, stime, strlen(stime)) != strlen(stime)) {
++				xlog_warn("Writing to '%s' failed: errno %d (%s)",
++				path, errno, strerror(errno));
++			}
+ 			close(fd);
+ 		}
+ 	}
+diff -up nfs-utils-1.1.5/tools/locktest/testlk.c.orig nfs-utils-1.1.5/tools/locktest/testlk.c
+--- nfs-utils-1.1.5/tools/locktest/testlk.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/tools/locktest/testlk.c	2009-03-23 08:33:10.000000000 -0400
+@@ -81,7 +81,7 @@ main(int argc, char **argv)
+ 		if (fl.l_type == F_UNLCK) {
+ 			printf("%s: no conflicting lock\n", fname);
+ 		} else {
+-			printf("%s: conflicting lock by %d on (%ld;%ld)\n",
++			printf("%s: conflicting lock by %d on (%lld;%lld)\n",
+ 				fname, fl.l_pid, fl.l_start, fl.l_len);
+ 		}
+ 		return 0;
+diff -up nfs-utils-1.1.5/utils/gssd/svcgssd.c.orig nfs-utils-1.1.5/utils/gssd/svcgssd.c
+--- nfs-utils-1.1.5/utils/gssd/svcgssd.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/utils/gssd/svcgssd.c	2009-03-23 08:49:49.000000000 -0400
+@@ -132,7 +132,11 @@ release_parent(void)
+ 	int status;
+ 
+ 	if (pipefds[1] > 0) {
+-		write(pipefds[1], &status, 1);
++		if (write(pipefds[1], &status, 1) != 1) {
++			printerr(1, 
++				"WARN: writing to parent pipe failed: errno %d (%s)\n",
++				errno, strerror(errno));
++		}
+ 		close(pipefds[1]);
+ 		pipefds[1] = -1;
+ 	}
+diff -up nfs-utils-1.1.5/utils/idmapd/idmapd.c.orig nfs-utils-1.1.5/utils/idmapd/idmapd.c
+--- nfs-utils-1.1.5/utils/idmapd/idmapd.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/utils/idmapd/idmapd.c	2009-03-23 08:53:44.000000000 -0400
+@@ -169,7 +169,10 @@ flush_nfsd_cache(char *path, time_t now)
+ 	fd = open(path, O_RDWR);
+ 	if (fd == -1)
+ 		return -1;
+-	write(fd, stime, strlen(stime));
++	if (write(fd, stime, strlen(stime)) != strlen(stime)) {
++		errx(1, "Flushing nfsd cache failed: errno %d (%s)",
++			errno, strerror(errno));
++	}
+ 	close(fd);
+ 	return 0;
+ }
+@@ -988,7 +991,10 @@ release_parent(void)
+ 	int status;
+ 
+ 	if (pipefds[1] > 0) {
+-		write(pipefds[1], &status, 1);
++		if (write(pipefds[1], &status, 1) != 1) {
++			err(1, "Writing to parent pipe failed: errno %d (%s)\n",
++				errno, strerror(errno));
++		}
+ 		close(pipefds[1]);
+ 		pipefds[1] = -1;
+ 	}
+diff -up nfs-utils-1.1.5/utils/mount/fstab.c.orig nfs-utils-1.1.5/utils/mount/fstab.c
+--- nfs-utils-1.1.5/utils/mount/fstab.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/utils/mount/fstab.c	2009-03-23 08:44:42.000000000 -0400
+@@ -546,8 +546,12 @@ update_mtab (const char *dir, struct mnt
+ 	   * from the present mtab before renaming.
+ 	   */
+ 	    struct stat sbuf;
+-	    if (stat (MOUNTED, &sbuf) == 0)
+-		chown (MOUNTED_TEMP, sbuf.st_uid, sbuf.st_gid);
++	    if (stat (MOUNTED, &sbuf) == 0) {
++			if (chown (MOUNTED_TEMP, sbuf.st_uid, sbuf.st_gid) < 0) {
++				nfs_error(_("%s: error changing owner of %s: %s"),
++					progname, MOUNTED_TEMP, strerror (errno));
++			}
++		}
+ 	}
+ 
+ 	/* rename mtemp to mtab */
+diff -up nfs-utils-1.1.5/utils/statd/monitor.c.orig nfs-utils-1.1.5/utils/statd/monitor.c
+--- nfs-utils-1.1.5/utils/statd/monitor.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/utils/statd/monitor.c	2009-03-23 09:25:20.000000000 -0400
+@@ -204,7 +204,10 @@ sm_mon_1_svc(struct mon *argp, struct sv
+ 			e += sprintf(e, "%02x", 0xff & (argp->priv[i]));
+ 		if (e+1-buf != LINELEN) abort();
+ 		e += sprintf(e, " %s %s\n", mon_name, my_name);
+-		write(fd, buf, e-buf);
++		if (write(fd, buf, e-buf) != (e-buf)) {
++			note(N_WARNING, "writing to %s failed: errno %d (%s)",
++				path, errno, strerror(errno));
++		}
+ 	}
+ 
+ 	free(path);
+diff -up nfs-utils-1.1.5/utils/statd/sm-notify.c.orig nfs-utils-1.1.5/utils/statd/sm-notify.c
+--- nfs-utils-1.1.5/utils/statd/sm-notify.c.orig	2009-03-23 08:26:22.000000000 -0400
++++ nfs-utils-1.1.5/utils/statd/sm-notify.c	2009-03-23 08:58:36.000000000 -0400
+@@ -784,7 +784,10 @@ static int record_pid(void)
+ 	fd = open("/var/run/sm-notify.pid", O_CREAT|O_EXCL|O_WRONLY, 0600);
+ 	if (fd < 0)
+ 		return 0;
+-	write(fd, pid, strlen(pid));
++	if (write(fd, pid, strlen(pid)) != strlen(pid))  {
++		nsm_log(LOG_WARNING, "Writing to pid file failed: errno %d(%s)",
++			errno, strerror(errno));
++	}
+ 	close(fd);
+ 	return 1;
+ }
+@@ -820,12 +823,16 @@ static void drop_privs(void)
+ static void set_kernel_nsm_state(int state)
+ {
+ 	int fd;
++	const char *file = "/proc/sys/fs/nfs/nsm_local_state";
+ 
+-	fd = open("/proc/sys/fs/nfs/nsm_local_state",O_WRONLY);
++	fd = open(file ,O_WRONLY);
+ 	if (fd >= 0) {
+ 		char buf[20];
+ 		snprintf(buf, sizeof(buf), "%d", state);
+-		write(fd, buf, strlen(buf));
++		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
++			nsm_log(LOG_WARNING, "Writing to '%s' failed: errno %d (%s)",
++				file, errno, strerror(errno));
++		}
+ 		close(fd);
+ 	}
+ }
+diff -up nfs-utils-1.1.5/utils/statd/statd.c.orig nfs-utils-1.1.5/utils/statd/statd.c
+--- nfs-utils-1.1.5/utils/statd/statd.c.orig	2009-03-05 06:42:56.000000000 -0500
++++ nfs-utils-1.1.5/utils/statd/statd.c	2009-03-23 09:21:27.000000000 -0400
+@@ -179,14 +179,20 @@ static void create_pidfile(void)
+ 		    pidfile, strerror(errno));
+ 	fprintf(fp, "%d\n", getpid());
+ 	pidfd = dup(fileno(fp));
+-	if (fclose(fp) < 0)
+-		note(N_WARNING, "Flushing pid file failed.\n");
++	if (fclose(fp) < 0) {
++		note(N_WARNING, "Flushing pid file failed: errno %d (%s)\n",
++			errno, strerror(errno));
++	}
+ }
+ 
+ static void truncate_pidfile(void)
+ {
+-	if (pidfd >= 0)
+-		ftruncate(pidfd, 0);
++	if (pidfd >= 0) {
++		if (ftruncate(pidfd, 0) < 0) {
++			note(N_WARNING, "truncating pid file failed: errno %d (%s)\n",
++				errno, strerror(errno));
++		}
++	}
+ }
+ 
+ static void drop_privs(void)
+@@ -207,9 +213,12 @@ static void drop_privs(void)
+ 	/* better chown the pid file before dropping, as if it
+ 	 * if over nfs we might loose access
+ 	 */
+-	if (pidfd >= 0)
+-		fchown(pidfd, st.st_uid, st.st_gid);
+-
++	if (pidfd >= 0) {
++		if (fchown(pidfd, st.st_uid, st.st_gid) < 0) {
++			note(N_ERROR, "Unable to change owner of %s: %d (%s)",
++					SM_DIR, strerror (errno));
++		}
++	}
+ 	setgroups(0, NULL);
+ 	if (setgid(st.st_gid) == -1
+ 	    || setuid(st.st_uid) == -1) {
+@@ -495,7 +504,10 @@ int main (int argc, char **argv)
+ 	/* If we got this far, we have successfully started, so notify parent */
+ 	if (pipefds[1] > 0) {
+ 		status = 0;
+-		write(pipefds[1], &status, 1);
++		if (write(pipefds[1], &status, 1) != 1) {
++			note(N_WARNING, "writing to parent pipe failed: errno %d (%s)\n",
++				errno, strerror(errno));
++		}
+ 		close(pipefds[1]);
+ 		pipefds[1] = -1;
+ 	}
+@@ -534,17 +546,23 @@ static void
+ load_state_number(void)
+ {
+ 	int fd;
++	const char *file = "/proc/sys/fs/nfs/nsm_local_state";
+ 
+ 	if ((fd = open(SM_STAT_PATH, O_RDONLY)) == -1)
+ 		return;
+ 
+-	read(fd, &MY_STATE, sizeof(MY_STATE));
++	if (read(fd, &MY_STATE, sizeof(MY_STATE)) != sizeof(MY_STATE)) {
++		note(N_WARNING, "Unable to read state from '%s': errno %d (%s)",
++				SM_STAT_PATH, errno, strerror(errno));
++	}
+ 	close(fd);
+-	fd = open("/proc/sys/fs/nfs/nsm_local_state",O_WRONLY);
++	fd = open(file, O_WRONLY);
+ 	if (fd >= 0) {
+ 		char buf[20];
+ 		snprintf(buf, sizeof(buf), "%d", MY_STATE);
+-		write(fd, buf, strlen(buf));
++		if (write(fd, buf, strlen(buf)) != strlen(buf))
++			note(N_WARNING, "Writing to '%s' failed: errno %d (%s)",
++				file, errno, strerror(errno));
+ 		close(fd);
+ 	}
+ 
