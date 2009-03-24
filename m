@@ -1,58 +1,82 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: NFS4 ACL <-> Posix ACL
-Date: Tue, 24 Mar 2009 18:34:43 -0400
-Message-ID: <20090324223443.GQ19389@fieldses.org>
-References: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com> <20090319193514.GE3072@fieldses.org> <7f62dcb30903230646u183c79e0i4366edebe32654d5@mail.gmail.com> <20090323213304.GG1067@fieldses.org> <7f62dcb30903231856h7a17cea5ud7a22796ddfb6383@mail.gmail.com> <20090324201002.GF19389@fieldses.org> <1237931047.7516.15.camel@heimdal.trondhjem.org> <20090324221537.GO19389@fieldses.org> <1237933367.7516.27.camel@heimdal.trondhjem.org>
+Date: Tue, 24 Mar 2009 18:39:09 -0400
+Message-ID: <20090324223909.GR19389@fieldses.org>
+References: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com> <20090319193514.GE3072@fieldses.org> <7f62dcb30903230646u183c79e0i4366edebe32654d5@mail.gmail.com> <20090323213304.GG1067@fieldses.org> <7f62dcb30903231856h7a17cea5ud7a22796ddfb6383@mail.gmail.com> <20090324201002.GF19389@fieldses.org> <1237931047.7516.15.camel@heimdal.trondhjem.org> <20090324222100.GP19389@fieldses.org> <1237933686.7516.31.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Bremer <albremer@googlemail.com>, linux-nfs@vger.kernel.org
+Cc: Alex Bremer <albremer@googlemail.com>, linux-nfs@vger.kernel.org,
+	Andreas Gruenbacher <agruen@suse.de>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:52954 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:52962 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753813AbZCXWes (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2009 18:34:48 -0400
-In-Reply-To: <1237933367.7516.27.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	with ESMTP id S1751992AbZCXWjL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2009 18:39:11 -0400
+In-Reply-To: <1237933686.7516.31.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 24, 2009 at 06:22:47PM -0400, Trond Myklebust wrote:
-> On Tue, 2009-03-24 at 18:15 -0400, J. Bruce Fields wrote:
+On Tue, Mar 24, 2009 at 06:28:06PM -0400, Trond Myklebust wrote:
+> On Tue, 2009-03-24 at 18:21 -0400, J. Bruce Fields wrote:
 > > On Tue, Mar 24, 2009 at 05:44:07PM -0400, Trond Myklebust wrote:
 > > > On Tue, 2009-03-24 at 16:10 -0400, J. Bruce Fields wrote:
 > > > > On Tue, Mar 24, 2009 at 02:56:25AM +0100, Alex Bremer wrote:
-> > > > > >> How do other people share public files with NFS4? If there is no other
-> > > > > >> way than setting the users's umask to 002, this would practically
-> > > > > >> limit the use of NFS4 to private shares like home directories.
+> > > > > 2009/3/23, J. Bruce Fields <bfields@fieldses.org>:
+> > > > > >> So is there any way to make newly created files group writeable except
+> > > > > >> for setting the umask of each user to 002?
 > > > > > >
-> > > > > > I don't understand why--can't you use the user-private-group trick?:
-> > ...
-> > > > > - we actually have directories where files should only be group readable.
+> > > > > > I think that's the only option.
+> > > > > >
+> > > > > > And that looks hard to fix; if we were going to implement the same
+> > > > > > "inheritance overrides umask" exception as we do for posix acls, either:
+> > > > > >
+> > > > > > 	- The server would have to know about the umask; this would
+> > > > > > 	  require a protocol change.  (But it might not be that hard;
+> > > > > > 	  you could have a write-only "set the mode to this, but only in
+> > > > > > 	  the absence of inheritance" attribute.)
+> > > > > > 	- The client would have to do the inheritance itself, as it does
+> > > > > > 	  with posix acls.  This is perhaps not impossible, but it's
+> > > > > > 	  much more complicated with v4 acls.
+> > > > > >
+> > > > > > Hm.  Another odd option: do the open with the create mode + umask, as we
+> > > > > > currently do, then do a subsequent setattr to the create mode if the
+> > > > > > create mode is more generous and if the client detects inheritable acls
+> > > > > > on the parent directory.
+> > > > > 
+> > > > > Why so complicated? Of course these options would be the nicest way to
+> > > > > do it as it allows to set different permission inheritances on each
+> > > > > directory. However for many use cases it would be enough if one could
+> > > > > set the permissions on a share basis. A simple umask mount-option
+> > > > > would already help a lot. This way administrators could enforce a
+> > > > > umask on a share.
 > > > > 
-> > > > I don't get it--why not set an inheritable acl on those directories that
-> > > > permits only read to the group?
+> > > > I don't know what to think of a umask mount option.  That's a question
+> > > > for Trond.
 > > > 
-> > > That only works if the client actually respects the acl...
+> > > Ugh, no. We already have too many mount options, and this suggestion
+> > > doesn't even fix any problems.
+> > > 
+> > > The correct thing to do is to check for acl support on the server, and
+> > > then check directories for inheritance aces before we decide to create a
+> > > file.
 > > 
-> > I don't understand.  ACL enforcement and inheritance are both done on
-> > the server side.
-> > 
-> > The problem is just that the umask is applied on the client side.  But
-> > if the umask is 002, and an inheritable ACL permits only read, then the
-> > result of inheritance and umask-application will be an ACL that permits
-> > reads (and only reads) to the group owner (and to any named users and
-> > groups).
+> > OK, so if we find an inheritable ace on the file, then we just skip
+> > sending the umask in the mode that's sent on open.
+
+Sorry, I meant "the inheritable ace on the parent directory" in the
+above.
+
+> No. That would violate the spec. I meant that the client needs to check
+> if the server supports acls, and then needs to check those acls on the
+> directory in which it wants to create the file.
 > 
-> The client currently always sends a mode. My interpretation of RFC3530
-> is that this will always override the inherited ACL (see the discussion
-> in OP_OPEN and OP_CREATE w.r.t. the createattrs field).
+> In order to avoid any races, it probably needs to send the inherited ACL
+> in the createattrs field. Otherwise, if a user were to remove the
+> inherited ACL before the client sends the OPEN/CREATE, then the server
+> would no longer have an ACL to set on the file...
 
-Depends on what you mean by "override".  It shouldn't be replacing the
-inherited ACL wholesale; see 6.4.3.
-
-And I don't think we'd want to *entirely* stop sending the mode.
-
-With POSIX ACLs the compromise is to ignore the umask, but continue to
-respect the creat()/open() mode.
+Either that, or send the umask-less mode and let the server do the
+inheritance calculation.
 
 --b.
