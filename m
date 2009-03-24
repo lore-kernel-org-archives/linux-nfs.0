@@ -1,134 +1,106 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS4 ACL <-> Posix ACL
-Date: Tue, 24 Mar 2009 16:10:02 -0400
-Message-ID: <20090324201002.GF19389@fieldses.org>
-References: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com> <20090319193514.GE3072@fieldses.org> <7f62dcb30903230646u183c79e0i4366edebe32654d5@mail.gmail.com> <20090323213304.GG1067@fieldses.org> <7f62dcb30903231856h7a17cea5ud7a22796ddfb6383@mail.gmail.com>
+Subject: Re: [PATCH 02/23] SUNRPC: Fix return type of svc_addr_len()
+Date: Tue, 24 Mar 2009 16:32:06 -0400
+Message-ID: <20090324203206.GH19389@fieldses.org>
+References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004535.32404.37120.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>
-To: Alex Bremer <albremer@googlemail.com>
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
+	Tom Tucker <tom@opengridcomputing.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:53630 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:44845 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754673AbZCXUKE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2009 16:10:04 -0400
-In-Reply-To: <7f62dcb30903231856h7a17cea5ud7a22796ddfb6383-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	with ESMTP id S1754796AbZCXUcM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2009 16:32:12 -0400
+In-Reply-To: <20090319004535.32404.37120.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 24, 2009 at 02:56:25AM +0100, Alex Bremer wrote:
-> 2009/3/23, J. Bruce Fields <bfields@fieldses.org>:
-> >> So is there any way to make newly created files group writeable except
-> >> for setting the umask of each user to 002?
-> >
-> > I think that's the only option.
-> >
-> > And that looks hard to fix; if we were going to implement the same
-> > "inheritance overrides umask" exception as we do for posix acls, either:
-> >
-> > 	- The server would have to know about the umask; this would
-> > 	  require a protocol change.  (But it might not be that hard;
-> > 	  you could have a write-only "set the mode to this, but only in
-> > 	  the absence of inheritance" attribute.)
-> > 	- The client would have to do the inheritance itself, as it does
-> > 	  with posix acls.  This is perhaps not impossible, but it's
-> > 	  much more complicated with v4 acls.
-> >
-> > Hm.  Another odd option: do the open with the create mode + umask, as we
-> > currently do, then do a subsequent setattr to the create mode if the
-> > create mode is more generous and if the client detects inheritable acls
-> > on the parent directory.
+On Wed, Mar 18, 2009 at 08:45:36PM -0400, Chuck Lever wrote:
+> The svc_addr_len() helper function can return a negative errno value,
+> but its return type is size_t, which is unsigned.
 > 
-> Why so complicated? Of course these options would be the nicest way to
-> do it as it allows to set different permission inheritances on each
-> directory. However for many use cases it would be enough if one could
-> set the permissions on a share basis. A simple umask mount-option
-> would already help a lot. This way administrators could enforce a
-> umask on a share.
+> The RDMA transport code passes this return value directly to memset(),
+> without checking first if it's negative.  This could cause memset() to
+> clobber a large piece of memory if svc_addr_len() has returned an
+> error.
 
-I don't know what to think of a umask mount option.  That's a question
-for Trond.
+I'd still like to understand when this can happen, to better understand
+how the error should be handled.
 
-> One of the problems with setting a global umask on a user basis is
-> that it can be override very easily. If a user doesn't like the fact
-> that all files are group writeable he can easily change it and then he
-> usually forgets to set write-permissions manually when writing public
-> files. As a consequence other users who want to write that file come
-> to me to have the permissions reset as they can not even tell who is
-> the owner of the file and ask him. :-)
+Also:
+
 > 
-> >> Setting the umask to 002 is
-> >> not an option for us, but all files in the public area have to be
-> >> group writeable. Is there maybe a mount option to set the umask or a
-> >> server sided option which enforces the group writeable flag?
-> >>
-> >> I would expect that my use case is not that uncommon and that many
-> >> companys have the exact same problem. Would the inheritance work if we
-> >> used a fully NFS4-ACL compatible filesystem?
-> >
-> > No, and I suspect non-linux servers all have similar behavior in this
-> > respect.
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
-> Unix servery yes, but on windows using NTFS you can inherit permissions.
+>  include/linux/sunrpc/svc_xprt.h          |    3 ++-
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   16 ++++++++++++++--
+>  2 files changed, 16 insertions(+), 3 deletions(-)
 > 
-> With PosixACLs Unix finally got permission inheritance too and this is
-> a blessing for administrators. The normal unix filesystem permissions
-> are good enough for many use cases but in a company with many users
-> and many different groups they do not fit. The simple case of allowing
-> users of two different groups access to a directory without giving
-> others rx access forces you to create a third group with all the users
-> of both groups. Adding new users gets a pain in the ass as you have to
-> add them to more and more groups just to get the permissions right.
-> 
-> So Posix ACLs are really great for admins. From an admin's point of
-> view I can't understand why the NFS4-ACLs - which are actually
-> supperior to PosixACLs - still depend on the user's umask. I
-> understand the problems you have from a programmers point of view but
-> if I set a d:group:mask on a directory I expect that these permissions
-> get inherited on the client side, too - like it was with NFS3+ACL.
-> 
-> Don't understand me wrong: I don't want to flame here - I appritiate
-> your work and I love NFS as it is damn fast. I just want to show you
-> what an admin's expectation is. People who use PosixACLs are used to
-> inheritance (if they set a default group or mask), windows people are
-> used to it anyway and nobody would expect that when using NFS4 it all
-> comes down to the user's umask settings. Especially as it was already
-> working with NFS3. I know that NFS3+ACL is a totally different topic
-> then NFS4+ACL but many user's won't care - especially as they do not
-> have any advantage from NFS4ACLs as they are mapped to PosixACLs
-> anyway.
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index 0127dac..c2aa8cd 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -113,7 +113,7 @@ static inline unsigned short svc_addr_port(struct sockaddr *sa)
+>  	return ret;
+>  }
+>  
+> -static inline size_t svc_addr_len(struct sockaddr *sa)
+> +static inline int svc_addr_len(const struct sockaddr *sa)
+>  {
+>  	switch (sa->sa_family) {
+>  	case AF_INET:
+> @@ -121,6 +121,7 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
+>  	case AF_INET6:
+>  		return sizeof(struct sockaddr_in6);
+>  	}
+> +
+>  	return -EAFNOSUPPORT;
+>  }
+>  
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 3d810e7..d1ec6f9 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -546,6 +546,7 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+>  	struct svcxprt_rdma *listen_xprt = new_cma_id->context;
+>  	struct svcxprt_rdma *newxprt;
+>  	struct sockaddr *sa;
+> +	int len;
+>  
+>  	/* Create a new transport */
+>  	newxprt = rdma_create_xprt(listen_xprt->sc_xprt.xpt_server, 0);
+> @@ -563,9 +564,20 @@ static void handle_connect_req(struct rdma_cm_id *new_cma_id, size_t client_ird)
+>  
+>  	/* Set the local and remote addresses in the transport */
+>  	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
+> -	svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
+> +	len = svc_addr_len(sa);
+> +	if (len < 0) {
+> +		dprintk("svcrdma: dst_addr has a bad address family\n");
+> +		return;
 
-I appreciate the problem--if nothing else this is a subtle change that
-other admins will also hit, and that will be hard for them to diagnose.
+we're probably leaking something here.
 
-I just don't see a really good solution.
-
-> I really hate the security risks I have to take for NFS3
- 
-Are you aware that rpcsec_gss/krb5 still works for v3?
-
-There are a few holes left (sideband protocols, notably mount, still use
-auth_sys), but it might be enough for your purposes.
-
-> but in my
-> case I guess I have to revert the public shares back to NFS3. It would
-> be really great if you could think about implementing a umask
-> mount-option to allow enforced share based umask settings.
-> 
-> 
-> >> How do other people share public files with NFS4? If there is no other
-> >> way than setting the users's umask to 002, this would practically
-> >> limit the use of NFS4 to private shares like home directories.
-> >
-> > I don't understand why--can't you use the user-private-group trick?:
-> 
-> - umask setting can be overriden easily - see above
-
-I'm surprised people fool with their umasks that much, but OK.
-
-> - we actually have directories where files should only be group readable.
-
-I don't get it--why not set an inheritable acl on those directories that
-permits only read to the group?
+I don't want to fix this until it's understood well enough to fix it
+correctly.
 
 --b.
+
+> +	}
+> +	svc_xprt_set_remote(&newxprt->sc_xprt, sa, len);
+> +
+>  	sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.src_addr;
+> -	svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
+> +	len = svc_addr_len(sa);
+> +	if (len < 0) {
+> +		dprintk("svcrdma: src_addr has a bad address family\n");
+> +		return;
+> +	}
+> +	svc_xprt_set_local(&newxprt->sc_xprt, sa, len);
+>  
+>  	/*
+>  	 * Enqueue the new transport on the accept queue of the listening
+> 
