@@ -1,93 +1,117 @@
-From: "Serge E. Hallyn" <serue@us.ibm.com>
-Subject: [PATCH] add some long-missing capabilities to fs_mask
-Date: Mon, 23 Mar 2009 17:46:21 -0500
-Message-ID: <20090323224621.GA22552@us.ibm.com>
+From: Alex Bremer <albremer@googlemail.com>
+Subject: Re: NFS4 ACL <-> Posix ACL
+Date: Tue, 24 Mar 2009 02:56:25 +0100
+Message-ID: <7f62dcb30903231856h7a17cea5ud7a22796ddfb6383@mail.gmail.com>
+References: <7f62dcb30903181042n42bae0bbk99f5c91fce6e9e82@mail.gmail.com>
+	 <20090319193514.GE3072@fieldses.org>
+	 <7f62dcb30903230646u183c79e0i4366edebe32654d5@mail.gmail.com>
+	 <20090323213304.GG1067@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: mtk.manpages@gmail.com, Stephen Smalley <sds-FVV4AS6k8l2W8mdqIt43Ew@public.gmane.org>,
-	Andrew Morgan <morgan@kernel.org>,
-	linux-security-module@vger.kernel.org,
-	lkml <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-	Igor Zhbanov <izh1979@gmail.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org,
-	linux-api@vger.kernel.org, Chris Wright <chrisw-69jw2NvuJkxg9hUCZPvPmw@public.gmane.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-api-owner@vger.kernel.org>
-Sender: linux-api-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-ew0-f165.google.com ([209.85.219.165]:64968 "EHLO
+	mail-ew0-f165.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753335AbZCXB42 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Mar 2009 21:56:28 -0400
+Received: by ewy9 with SMTP id 9so1894161ewy.37
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2009 18:56:25 -0700 (PDT)
+In-Reply-To: <20090323213304.GG1067@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(Sorry, the version I sent Friday had a duplicate CAP_FS_SET define)
+2009/3/23, J. Bruce Fields <bfields@fieldses.org>:
+>> So is there any way to make newly created files group writeable except
+>> for setting the umask of each user to 002?
+>
+> I think that's the only option.
+>
+> And that looks hard to fix; if we were going to implement the same
+> "inheritance overrides umask" exception as we do for posix acls, either:
+>
+> 	- The server would have to know about the umask; this would
+> 	  require a protocol change.  (But it might not be that hard;
+> 	  you could have a write-only "set the mode to this, but only in
+> 	  the absence of inheritance" attribute.)
+> 	- The client would have to do the inheritance itself, as it does
+> 	  with posix acls.  This is perhaps not impossible, but it's
+> 	  much more complicated with v4 acls.
+>
+> Hm.  Another odd option: do the open with the create mode + umask, as we
+> currently do, then do a subsequent setattr to the create mode if the
+> create mode is more generous and if the client detects inheritable acls
+> on the parent directory.
 
-When POSIX capabilities were introduced during the 2.1 Linux
-cycle, the fs mask, which represents the capabilities which having
-fsuid==0 is supposed to grant, did not include CAP_MKNOD and
-CAP_LINUX_IMMUTABLE.  However, before capabilities the privilege
-to call these did in fact depend upon fsuid==0.
+Why so complicated? Of course these options would be the nicest way to
+do it as it allows to set different permission inheritances on each
+directory. However for many use cases it would be enough if one could
+set the permissions on a share basis. A simple umask mount-option
+would already help a lot. This way administrators could enforce a
+umask on a share.
 
-This patch introduces those capabilities into the fsmask,
-restoring the old behavior.
+One of the problems with setting a global umask on a user basis is
+that it can be override very easily. If a user doesn't like the fact
+that all files are group writeable he can easily change it and then he
+usually forgets to set write-permissions manually when writing public
+files. As a consequence other users who want to write that file come
+to me to have the permissions reset as they can not even tell who is
+the owner of the file and ask him. :-)
 
-See the thread starting at http://lkml.org/lkml/2009/3/11/157 for
-reference.
+>> Setting the umask to 002 is
+>> not an option for us, but all files in the public area have to be
+>> group writeable. Is there maybe a mount option to set the umask or a
+>> server sided option which enforces the group writeable flag?
+>>
+>> I would expect that my use case is not that uncommon and that many
+>> companys have the exact same problem. Would the inheritance work if we
+>> used a fully NFS4-ACL compatible filesystem?
+>
+> No, and I suspect non-linux servers all have similar behavior in this
+> respect.
 
-Note that if this fix is deemed valid, then earlier kernel versions (2.4
-and 2.2) ought to be fixed too.
+Unix servery yes, but on windows using NTFS you can inherit permissions.
 
-Changelog:
-	[Mar 23] Actually delete old CAP_FS_SET definition...
-	[Mar 20] Updated against J. Bruce Fields's patch
+With PosixACLs Unix finally got permission inheritance too and this is
+a blessing for administrators. The normal unix filesystem permissions
+are good enough for many use cases but in a company with many users
+and many different groups they do not fit. The simple case of allowing
+users of two different groups access to a directory without giving
+others rx access forces you to create a third group with all the users
+of both groups. Adding new users gets a pain in the ass as you have to
+add them to more and more groups just to get the permissions right.
 
-Reported-by: Igor Zhbanov <izh1979@gmail.com>
-Signed-off-by: Serge E. Hallyn <serue@us.ibm.com>
-Cc: stable@kernel.org
-Cc: J. Bruce Fields <bfields@citi.umich.edu>
----
- include/linux/capability.h |   23 +++++++++++++++++++----
- 1 files changed, 19 insertions(+), 4 deletions(-)
+So Posix ACLs are really great for admins. From an admin's point of
+view I can't understand why the NFS4-ACLs - which are actually
+supperior to PosixACLs - still depend on the user's umask. I
+understand the problems you have from a programmers point of view but
+if I set a d:group:mask on a directory I expect that these permissions
+get inherited on the client side, too - like it was with NFS3+ACL.
 
-diff --git a/include/linux/capability.h b/include/linux/capability.h
-index 4864a43..c302110 100644
---- a/include/linux/capability.h
-+++ b/include/linux/capability.h
-@@ -377,7 +377,21 @@ struct cpu_vfs_cap_data {
- #define CAP_FOR_EACH_U32(__capi)  \
- 	for (__capi = 0; __capi < _KERNEL_CAPABILITY_U32S; ++__capi)
- 
-+/*
-+ * CAP_FS_MASK and CAP_NFSD_MASKS:
-+ *
-+ * The fs mask is all the privileges that fsuid==0 historically meant.
-+ * At one time in the past, that included CAP_MKNOD and CAP_LINUX_IMMUTABLE.
-+ *
-+ * It has never meant setting security.* and trusted.* xattrs.
-+ *
-+ * We could also define fsmask as follows:
-+ *   1. CAP_FS_MASK is the privilege to bypass all fs-related DAC permissions
-+ *   2. The security.* and trusted.* xattrs are fs-related MAC permissions
-+ */
-+
- # define CAP_FS_MASK_B0     (CAP_TO_MASK(CAP_CHOWN)		\
-+			    | CAP_TO_MASK(CAP_MKNOD)		\
- 			    | CAP_TO_MASK(CAP_DAC_OVERRIDE)	\
- 			    | CAP_TO_MASK(CAP_DAC_READ_SEARCH)	\
- 			    | CAP_TO_MASK(CAP_FOWNER)		\
-@@ -392,11 +406,12 @@ struct cpu_vfs_cap_data {
- # define CAP_EMPTY_SET    ((kernel_cap_t){{ 0, 0 }})
- # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
- # define CAP_INIT_EFF_SET ((kernel_cap_t){{ ~CAP_TO_MASK(CAP_SETPCAP), ~0 }})
--# define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0, CAP_FS_MASK_B1 } })
-+# define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0 \
-+				    | CAP_TO_MASK(CAP_LINUX_IMMUTABLE), \
-+				    CAP_FS_MASK_B1 } })
- # define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
--					    | CAP_TO_MASK(CAP_SYS_RESOURCE) \
--					    | CAP_TO_MASK(CAP_MKNOD), \
--					    CAP_FS_MASK_B1 } })
-+				    | CAP_TO_MASK(CAP_SYS_RESOURCE), \
-+				    CAP_FS_MASK_B1 } })
- 
- #endif /* _KERNEL_CAPABILITY_U32S != 2 */
- 
--- 
-1.5.4.3
+Don't understand me wrong: I don't want to flame here - I appritiate
+your work and I love NFS as it is damn fast. I just want to show you
+what an admin's expectation is. People who use PosixACLs are used to
+inheritance (if they set a default group or mask), windows people are
+used to it anyway and nobody would expect that when using NFS4 it all
+comes down to the user's umask settings. Especially as it was already
+working with NFS3. I know that NFS3+ACL is a totally different topic
+then NFS4+ACL but many user's won't care - especially as they do not
+have any advantage from NFS4ACLs as they are mapped to PosixACLs
+anyway.
 
+I really hate the security risks I have to take for NFS3 but in my
+case I guess I have to revert the public shares back to NFS3. It would
+be really great if you could think about implementing a umask
+mount-option to allow enforced share based umask settings.
+
+
+>> How do other people share public files with NFS4? If there is no other
+>> way than setting the users's umask to 002, this would practically
+>> limit the use of NFS4 to private shares like home directories.
+>
+> I don't understand why--can't you use the user-private-group trick?:
+
+- umask setting can be overriden easily - see above
+- we actually have directories where files should only be group readable.
+
+Alex
