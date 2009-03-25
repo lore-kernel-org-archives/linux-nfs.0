@@ -1,95 +1,54 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Kernel panic by nfs-client and selinux
-Date: Wed, 25 Mar 2009 15:40:01 -0400
-Message-ID: <1238010001.26487.15.camel@heimdal.trondhjem.org>
-References: <49C9F7A5.6060106@s3group.cz>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
+ to empty s_dirty list
+Date: Wed, 25 Mar 2009 16:07:02 -0400
+Message-ID: <1238011622.5676.3.camel@think.oraclecorp.com>
+References: <1237840233-11045-1-git-send-email-jlayton@redhat.com>
+	 <20090324135720.GA25314@localhost>
+	 <20090324102806.4f38fd26@tleilax.poochiereds.net>
+	 <20090324104657.6907b19e@tleilax.poochiereds.net>
+	 <20090325012829.GA7506@localhost>
+	 <20090324221528.2bb7c50b@tleilax.poochiereds.net>
+	 <20090325025037.GA17374@localhost>
+	 <20090325075110.028f0d1d@tleilax.poochiereds.net>
+	 <20090325121742.GA22869@localhost>  <20090325165500.GA6047@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Ondrej Valousek <webserv-K2D8ygZuxnnrBKCeMvbIDA@public.gmane.org>
+Cc: Wu Fengguang <fengguang.wu@intel.com>,
+	Jeff Layton <jlayton@redhat.com>, Ian Kent <raven@themaw.net>,
+	Dave Chinner <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"jens.axboe@oracle.com" <jens.axboe@oracle.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "hch@infradead.org" <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:39666 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601AbZCYTkH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Mar 2009 15:40:07 -0400
-In-Reply-To: <49C9F7A5.6060106-K2D8ygZuxnnrBKCeMvbIDA@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:60523 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751133AbZCYUJB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2009 16:09:01 -0400
+In-Reply-To: <20090325165500.GA6047@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-03-25 at 10:21 +0100, Ondrej Valousek wrote:
-> Hi list,
-> Just wondering if this rings any bell? Backtrace:
+On Wed, 2009-03-25 at 12:55 -0400, hch@infradead.org wrote:
+> On Wed, Mar 25, 2009 at 08:17:43PM +0800, Wu Fengguang wrote:
+> > Now there are now two possible solutions:
+> > - unconditionally update dirtied_when in redirty_tail();
+> > - keep dirtied_when and redirty inodes to a new dedicated queue.
+> > The first one involves less code, the second one allows more flexible timing.
+> > 
+> > NFS/XFS could be a good starting point for discussing the
+> > requirements, so that we can reach a suitable solution.
 > 
-> SELinux: initialized (dev 0:1d, type nfs4), uses genfs_contexts
-> Unable to handle kernel paging request at ffff8801e09b6000 RIP:
->  [<ffffffff80261b9e>] copy_page+0x32/0xe4
-> PGD 1f4a067 PUD 2d52067 PMD 2e57067 PTE 0
-> Oops: 0000 [1] SMP
-> last sysfs file: 
-> /devices/pci0000:00/0000:00:1c.0/0000:04:00.0/0000:05:00.0/irq
-> CPU 0
-> Modules linked in: hfsplus loop tun xt_physdev netloop netbk blktap 
-> blkbk ipt_MASQUERADE iptable_nat ip_nat xt_state ip_conntrack nfnetlink 
-> ipt_REJECT xt_tcpudp iptable_filter i
-> p_tables x_tables bridge ipmi_devintf ipmi_si ipmi_msghandler dell_rbu 
-> nfsd exportfs autofs4 hidp nfs lockd fscache nfs_acl rfcomm l2cap 
-> bluetooth rpcsec_gss_krb5 auth_rpcgss de
-> s sunrpc ipv6 xfrm_nalgo crypto_api mptctl dm_multipath video sbs 
-> backlight i2c_ec i2c_core button battery asus_acpi ac parport_pc lp 
-> parport st joydev sr_mod ide_cd i5000_edac
-> edac_mc pcspkr aic7xxx cdrom bnx2 serial_core serio_raw shpchp 
-> dm_snapshot dm_zero dm_mirror dm_mod mppVhba(U) usb_storage ata_piix 
-> libata mptsas mptscsih scsi_transport_sas mpt
-> base aic79xx scsi_transport_spi megaraid_sas mppUpper(U) sg sd_mod 
-> scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
-> Pid: 6640, comm: smbd Tainted: G      2.6.18-92.1.17.el5xen #1
-> RIP: e030:[<ffffffff80261b9e>]  [<ffffffff80261b9e>] copy_page+0x32/0xe4
-> RSP: e02b:ffff8801e09b59f8  EFLAGS: 00010202
-> RAX: 0000000000000246 RBX: 00007fffdaa61c38 RCX: 0000000000000025
-> RDX: 000000000000e02b RSI: ffff8801e09b5fe8 RDI: ffff880193182540
-> RBP: ffffffff885ba9a0 R08: 00007fffdaa63530 R09: 00007fffdaa62d30
-> R10: 0000000000000004 R11: 00002b0bd27f2135 R12: 0000000000000033
-> R13: ffff880193182000 R14: ffff880193182000 R15: ffff880156642fd5
-> FS:  00002b0bd3a1fb70(0000) GS:ffffffff805af000(0000) knlGS:0000000000000000
-> CS:  e033 DS: 0000 ES: 0000
-> Process smbd (pid: 6640, threadinfo ffff8801e09b4000, task ffff880161dc2860)
-> Stack:  ffff88014f08bec0  ffff8801e09b5aa8  ffff880193182000  
-> ffffffff80315001
->  ffff8801e09b5aa8  ffff88014f08bec0  ffffffff885ba9a0  ffff88014f08bec0
->  ffffffff885ba9a0  ffff8801e09b5aa8
-> Call Trace:
->  [<ffffffff80315001>] selinux_sb_copy_data+0x23/0x1c5
->  [<ffffffff802d0101>] vfs_kern_mount+0x79/0x11a
->  [<ffffffff8858dc70>] :nfs:nfs_do_submount+0xc0/0xdb
->  [<ffffffff8858dd92>] :nfs:nfs_follow_mountpoint+0xe3/0x1d9
->  [<ffffffff8031295e>] avc_has_perm+0x43/0x55
->  [<ffffffff8858108e>] :nfs:nfs_access_get_cached+0xab/0xfa
->  [<ffffffff80317c28>] selinux_inode_follow_link+0x5f/0x6a
->  [<ffffffff8020a79a>] __link_path_walk+0xb71/0xf42
->  [<ffffffff8020eb09>] link_path_walk+0x5c/0xe5
->  [<ffffffff8858c99a>] :nfs:nfs_sync_inode_wait+0x83/0x1db
->  [<ffffffff8020cf46>] do_path_lookup+0x270/0x2e8
->  [<ffffffff80212bcc>] getname+0x15b/0x1c1
->  [<ffffffff8022415b>] __user_walk_fd+0x37/0x4c
->  [<ffffffff8022905f>] vfs_stat_fd+0x1b/0x4a
->  [<ffffffff80223f01>] sys_newstat+0x19/0x31
->  [<ffffffff80260295>] tracesys+0x47/0xb2
->  [<ffffffff802602f5>] tracesys+0xa7/0xb2
-> 
-> Happens on RHEL-5 with both 2.6.18-92.1.17.el5xen and 2.6.18-128.el5xen 
-> kernels. Happens occasionally with the first one and frequently with the 
-> latter one (shipped with RHEL 5.3).
-> Just wondering if it is more likely some issue with NFS or SELinux....
-> Many thanks
-> Ondrej
+> Note that the XFS requirement also applies to all filesystems that
+> perform some sort of metadata updats on I/O completeion.  That includes
+> at least ext4, btrfs and most likely the cluster filesystems too.
 
-It looks like an issue with the copying of the selinux context string
-from the binary NFS mount data. It shouldn't be an issue with recent
-kernels, since they don't appear to have the 'Binary mount data: just
-copy' case in selinux_sb_copy_data().
+btrfs at least doesn't dirty the inode on I/O completion.  It just puts
+the changes directly into the btree blocks.
 
-Have you filed a bugzilla entry for it with Red Hat?
+-chris
 
-Cheers
-  Trond
 
