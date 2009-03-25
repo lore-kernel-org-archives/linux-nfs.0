@@ -1,65 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:39193 "EHLO mail-out2.uio.no"
+Received: from mx2.redhat.com ([66.187.237.31]:37364 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752339AbZCMVKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Mar 2009 17:10:14 -0400
-Subject: Re: Horrible NFS Client Performance During Heavy Server IO
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: David Rees <drees76@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-References: <72dbd3150903131336m78526d4ao1308052d6233b70@mail.gmail.com>
-Content-Type: text/plain
-Date: Fri, 13 Mar 2009 17:10:08 -0400
-Message-Id: <1236978608.7265.41.camel@heimdal.trondhjem.org>
+	id S1750863AbZCYSzz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Mar 2009 14:55:55 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2PItrgN032121
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2009 14:55:53 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2PItlMx028553
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2009 14:55:47 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-42.bos.redhat.com [10.16.10.42])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2PItq2Z016492
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Mar 2009 14:55:53 -0400
+Message-ID: <49CA7D93.9050608@RedHat.com>
+Date: Wed, 25 Mar 2009 14:53:07 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Making crossmnt a default export option
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2009-03-13 at 13:36 -0700, David Rees wrote:
-> I've been trying to troubleshoot/tune around a problem I have been
-> experiencing where if the NFS server is under heavy write load (the
-> disks are saturated), client side NFS performance drops to nearly 0.
-> As soon as the load is lifted so that there is no significant IO wait
-> time on the server, the clients start acting responsively again.
-> 
-> Server setup:
-> Fedora 9 kernel 2.6.27.15-78.2.23.fc9.x86_64
-> NFS tuning - none
-> Disk system - 230GB SATA RAID1 array on a basic AACRAID adapter
-> Dual XEONs, 8GB RAM
-> Network GigE
-> 
-> Client setup:
-> Fedora 10 kernel 2.6.27.19-170.2.35.fc10.x86_64
-> NFS tuning - none
-> Network GigE
-> 
-> Things I have tried:
-> 
-> I have tried playing with the disk scheduler, switching to deadline
-> from cfq = no difference.
-> I have tried playing with rsize/wsize settings on the client = no difference.
-> 
-> Steps to reproduce:
-> 
-> 1. Write a big file to the same partition that is exported on the server:
-> dd if=/dev/zero of=/opt/export/bigfile bs=1M count=5000 conv=fdatasync
-> 2. Write a small file to the same partition from the client:
-> dd if=/dev/zero of=/opt/export/bigfile bs=16k count=8 conf=fdatasync
+Hello,
 
-You don't need conv=fdatasync when writing to NFS. The close-to-open
-cache consistency automatically guarantees fdatasync on close().
+What would be the ramifications of turning on the crossmnt
+option on by default? Currently the the default is nocrossmnt.
 
-> I am seeing slightly less than 2kBps (yes, 1000-2000 bytes per second)
-> from the client while this is happening.
+In my recent work with pseudo exports, it has become very apparent
+that having the crossmnt always set, especially with multi file
+system exports, allows mount to "just work"!
 
-UDP transport, or TCP? If the former, then definitely switch to the
-latter, since you're probably pounding the server with unnecessary RPC
-retries while it is busy with the I/O.
+So historically what is the reason for not allowing the clients
+to always cross file systems? Is it a security issue? 
+And again, what would be the ramifications always allowing, by
+default, clients to cross file systems?
 
-For the same reason, also make sure that -otimeo=600 (the default for
-TCP).
-
-Trond
-
+steved.
+     
