@@ -1,12 +1,23 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
+From: Jeff Layton <jlayton@redhat.com>
 Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
-	to empty s_dirty list
-Date: Wed, 25 Mar 2009 21:44:57 +0800
-Message-ID: <20090325134457.GA5222@localhost>
-References: <20090324102806.4f38fd26@tleilax.poochiereds.net> <20090324104657.6907b19e@tleilax.poochiereds.net> <20090325012829.GA7506@localhost> <20090324221528.2bb7c50b@tleilax.poochiereds.net> <20090325025037.GA17374@localhost> <20090325075110.028f0d1d@tleilax.poochiereds.net> <20090325121742.GA22869@localhost> <20090325091325.17c997fd@tleilax.poochiereds.net> <49CA2F41.8030804@themaw.net> <49CA33E7.6090309@themaw.net>
+ to empty s_dirty list
+Date: Wed, 25 Mar 2009 10:00:49 -0400
+Message-ID: <20090325100049.0cc4de87@tleilax.poochiereds.net>
+References: <1237840233-11045-1-git-send-email-jlayton@redhat.com>
+	<20090324135720.GA25314@localhost>
+	<20090324102806.4f38fd26@tleilax.poochiereds.net>
+	<20090324104657.6907b19e@tleilax.poochiereds.net>
+	<20090325012829.GA7506@localhost>
+	<20090324221528.2bb7c50b@tleilax.poochiereds.net>
+	<20090325025037.GA17374@localhost>
+	<20090325075110.028f0d1d@tleilax.poochiereds.net>
+	<20090325121742.GA22869@localhost>
+	<20090325091325.17c997fd@tleilax.poochiereds.net>
+	<49CA2F41.8030804@themaw.net>
+	<49CA33E7.6090309@themaw.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Layton <jlayton@redhat.com>,
+Content-Type: text/plain; charset=US-ASCII
+Cc: Wu Fengguang <fengguang.wu@intel.com>,
 	Dave Chinner <david@fromorbit.com>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
@@ -15,12 +26,14 @@ Cc: Jeff Layton <jlayton@redhat.com>,
 	"hch@infradead.org" <hch@infradead.org>,
 	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 To: Ian Kent <raven@themaw.net>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761477AbZCYOCa@vger.kernel.org>
 In-Reply-To: <49CA33E7.6090309@themaw.net>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 25, 2009 at 09:38:47PM +0800, Ian Kent wrote:
+On Wed, 25 Mar 2009 22:38:47 +0900
+Ian Kent <raven@themaw.net> wrote:
+
 > Ian Kent wrote:
 > > Jeff Layton wrote:
 > >> On Wed, 25 Mar 2009 20:17:43 +0800
@@ -102,24 +115,26 @@ On Wed, Mar 25, 2009 at 09:38:47PM +0800, Ian Kent wrote:
 > > 
 > > Yes, I was looking at that bit of code but, so far, I think it won't be
 > > called for the case we are trying to describe.
-
-You mean this case?
-
-                } else if (inode->i_state & I_DIRTY) {
-                        /*
-                         * Someone redirtied the inode while were writing back
-                         * the pages.
-                         */
-                        redirty_tail(inode);
-                } else if (atomic_read(&inode->i_count)) {
-
-Sure we can replace the redirty_tail() with requeue_io_wait().
-
+> 
 > I take that back.
 > As Jeff pointed out I haven't seen these patches and can't seem to find
 > them in my fsdevel list folder, Wu can you send me a copy please?
+> 
 
-OK, wait a minute...
+Actually, I think you were right. We still have this check in
+generic_sync_sb_inodes() even with Wu's January 2008 patches:
 
-Thanks,
-Fengguang
+	/* Was this inode dirtied after sync_sb_inodes was called? */
+	if (time_after(inode->dirtied_when, start))
+		break;
+
+...this check is the crux of the problem. We're assuming that the
+dirtied_when value will never appear to be in the future. If we change
+this check so that it's checking that dirtied_when is between "start"
+and "now", then this problem basically goes away.
+
+We'll probably also need to change the test in move_expired_inodes
+too, unless Wu's changes go in.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
