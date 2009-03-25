@@ -1,73 +1,190 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFS4 ACL <-> Posix ACL
-Date: Tue, 24 Mar 2009 19:57:46 -0400
-Message-ID: <20090324235746.GA26452@fieldses.org>
-References: <20090323213304.GG1067@fieldses.org> <7f62dcb30903231856h7a17cea5ud7a22796ddfb6383@mail.gmail.com> <20090324201002.GF19389@fieldses.org> <1237931047.7516.15.camel@heimdal.trondhjem.org> <20090324221537.GO19389@fieldses.org> <1237933367.7516.27.camel@heimdal.trondhjem.org> <20090324223443.GQ19389@fieldses.org> <1237935281.7516.40.camel@heimdal.trondhjem.org> <20090324230209.GX19389@fieldses.org> <1237936852.7516.50.camel@heimdal.trondhjem.org>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
+	to empty s_dirty list
+Date: Wed, 25 Mar 2009 09:28:29 +0800
+Message-ID: <20090325012829.GA7506@localhost>
+References: <1237840233-11045-1-git-send-email-jlayton@redhat.com> <20090324135720.GA25314@localhost> <20090324102806.4f38fd26@tleilax.poochiereds.net> <20090324104657.6907b19e@tleilax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Bremer <albremer@googlemail.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51870 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755833AbZCXX5t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Mar 2009 19:57:49 -0400
-In-Reply-To: <1237936852.7516.50.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: Ian Kent <raven@themaw.net>, Dave Chinner <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"jens.axboe@oracle.com" <jens.axboe@oracle.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"hch@infradead.org" <hch@infradead.org>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090324104657.6907b19e@tleilax.poochiereds.net>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 24, 2009 at 07:20:52PM -0400, Trond Myklebust wrote:
-> On Tue, 2009-03-24 at 19:02 -0400, J. Bruce Fields wrote:
-> > On Tue, Mar 24, 2009 at 06:54:41PM -0400, Trond Myklebust wrote:
-> > > On Tue, 2009-03-24 at 18:34 -0400, J. Bruce Fields wrote:
-> > > > On Tue, Mar 24, 2009 at 06:22:47PM -0400, Trond Myklebust wrote:
-> > > > > On Tue, 2009-03-24 at 18:15 -0400, J. Bruce Fields wrote:
-> > > > > > On Tue, Mar 24, 2009 at 05:44:07PM -0400, Trond Myklebust wrote:
-> > > > > > > On Tue, 2009-03-24 at 16:10 -0400, J. Bruce Fields wrote:
-> > > > > > > > On Tue, Mar 24, 2009 at 02:56:25AM +0100, Alex Bremer wrote:
-> > > > > > > > > >> How do other people share public files with NFS4? If there is no other
-> > > > > > > > > >> way than setting the users's umask to 002, this would practically
-> > > > > > > > > >> limit the use of NFS4 to private shares like home directories.
-> > > > > > > > > >
-> > > > > > > > > > I don't understand why--can't you use the user-private-group trick?:
-> > > > > > ...
-> > > > > > > > > - we actually have directories where files should only be group readable.
-> > > > > > > > 
-> > > > > > > > I don't get it--why not set an inheritable acl on those directories that
-> > > > > > > > permits only read to the group?
-> > > > > > > 
-> > > > > > > That only works if the client actually respects the acl...
-> > > > > > 
-> > > > > > I don't understand.  ACL enforcement and inheritance are both done on
-> > > > > > the server side.
-> > > > > > 
-> > > > > > The problem is just that the umask is applied on the client side.  But
-> > > > > > if the umask is 002, and an inheritable ACL permits only read, then the
-> > > > > > result of inheritance and umask-application will be an ACL that permits
-> > > > > > reads (and only reads) to the group owner (and to any named users and
-> > > > > > groups).
-> > > > > 
-> > > > > The client currently always sends a mode. My interpretation of RFC3530
-> > > > > is that this will always override the inherited ACL (see the discussion
-> > > > > in OP_OPEN and OP_CREATE w.r.t. the createattrs field).
-> > > > 
-> > > > Depends on what you mean by "override".  It shouldn't be replacing the
-> > > > inherited ACL wholesale; see 6.4.3.
-> > > 
-> > > That is the v4.1 draft, which is hardly normative for NFSv4.0 servers.
-> > > Note, however, that in the v4.1 case too, the server is required to
-> > > replace the OWNER@, GROUP@ and EVERYONE@ fields when the client sends a
-> > > mode attribute (afaics from 6.4.1.1).
-> > 
-> > Sure, but there's no need to blow away ACEs for named users and
-> > groups--anyone that cares about posix should be restricting them to
-> > grant no more than the mode group bits, but that's all.
+Hi Jeff,
+
+On Tue, Mar 24, 2009 at 10:46:57PM +0800, Jeff Layton wrote:
+> On Tue, 24 Mar 2009 10:28:06 -0400
+> Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> The client still needs to know whether or not it should apply the umask.
-> I therefore don't see how changing server behaviour to the above can
-> solve the problem in practice.
+> > On Tue, 24 Mar 2009 21:57:20 +0800
+> > Wu Fengguang <fengguang.wu@intel.com> wrote:
+> > 
+> > > Hi Jeff,
+> > > 
+> > > On Mon, Mar 23, 2009 at 04:30:33PM -0400, Jeff Layton wrote:
+> > > > This may be a problem on other filesystems too, but the reproducer I
+> > > > have involves NFS.
+> > > > 
+> > > > On NFS, the __mark_inode_dirty() call after writing back the inode is
+> > > > done in the rpc_release handler for COMMIT calls. This call is done
+> > > > asynchronously after the call completes.
+> > > > 
+> > > > Because there's no real coordination between __mark_inode_dirty() and
+> > > > __sync_single_inode(), it's often the case that these two calls will
+> > > > race and __mark_inode_dirty() will get called while I_SYNC is still set.
+> > > > When this happens, __sync_single_inode() should detect that the inode
+> > > > was redirtied while we were flushing it and call redirty_tail() to put
+> > > > it back on the s_dirty list.
+> > > > 
+> > > > When redirty_tail() puts it back on the list, it only resets the
+> > > > dirtied_when value if it's necessary to maintain the list order. Given
+> > > > the right situation (the right I/O patterns and a lot of luck), this
+> > > > could result in dirtied_when never getting updated on an inode that's
+> > > > constantly being redirtied while pdflush is writing it back.
+> > > > 
+> > > > Since dirtied_when is based on jiffies, it's possible for it to persist
+> > > > across 2 sign-bit flips of jiffies. When that happens, the time_after()
+> > > > check in sync_sb_inodes no longer works correctly and writeouts by
+> > > > pdflush of this inode and any inodes after it on the list stop.
+> > > > 
+> > > > This patch fixes this by resetting the dirtied_when value on an inode
+> > > > when we're adding it back onto an empty s_dirty list. Since we generally
+> > > > write inodes from oldest to newest dirtied_when values, this has the
+> > > > effect of making it so that these inodes don't end up with dirtied_when
+> > > > values that are frozen.
+> > > > 
+> > > > I've also taken the liberty of fixing up the comments a bit and changed
+> > > > the !time_after_eq() check in redirty_tail to be time_before().  That
+> > > > should be functionally equivalent but I think it's more readable.
+> > > > 
+> > > > I wish this were just a theoretical problem, but we've had a customer
+> > > > hit a variant of it in an older kernel. Newer upstream kernels have a
+> > > > number of changes that make this problem less likely. As best I can tell
+> > > > though, there is nothing that really prevents it.
+> > > > 
+> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > > ---
+> > > >  fs/fs-writeback.c |   22 +++++++++++++++++-----
+> > > >  1 files changed, 17 insertions(+), 5 deletions(-)
+> > > > 
+> > > > diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> > > > index e3fe991..bd2a7ff 100644
+> > > > --- a/fs/fs-writeback.c
+> > > > +++ b/fs/fs-writeback.c
+> > > > @@ -184,19 +184,31 @@ static int write_inode(struct inode *inode, int sync)
+> > > >   * furthest end of its superblock's dirty-inode list.
+> > > >   *
+> > > >   * Before stamping the inode's ->dirtied_when, we check to see whether it is
+> > > > - * already the most-recently-dirtied inode on the s_dirty list.  If that is
+> > > > - * the case then the inode must have been redirtied while it was being written
+> > > > - * out and we don't reset its dirtied_when.
+> > > > + * "newer" or equal to that of the most-recently-dirtied inode on the s_dirty
+> > > > + * list. If that is the case then we don't need to restamp it to maintain the
+> > > > + * order of the list.
+> > > > + *
+> > > > + * If s_dirty is empty however, then we need to go ahead and update
+> > > > + * dirtied_when for the inode. Not doing so will mean that inodes that are
+> > > > + * constantly being redirtied can end up with "stuck" dirtied_when values if
+> > > > + * they happen to consistently be the first one to go back on the list.
+> > > > + *
+> > > > + * Since we're using jiffies values in that field, letting dirtied_when grow
+> > > > + * too old will be problematic if jiffies wraps. It may also be causing
+> > > > + * pdflush to flush the inode too often since it'll always look like it was
+> > > > + * dirtied a long time ago.
+> > > >   */
+> > > >  static void redirty_tail(struct inode *inode)
+> > > >  {
+> > > >  	struct super_block *sb = inode->i_sb;
+> > > >  
+> > > > -	if (!list_empty(&sb->s_dirty)) {
+> > > > +	if (list_empty(&sb->s_dirty)) {
+> > > > +		inode->dirtied_when = jiffies;
+> > > > +	} else {
+> > > >  		struct inode *tail_inode;
+> > > >  
+> > > >  		tail_inode = list_entry(sb->s_dirty.next, struct inode, i_list);
+> > > > -		if (!time_after_eq(inode->dirtied_when,
+> > > > +		if (time_before(inode->dirtied_when,
+> > > >  				tail_inode->dirtied_when))
+> > > >  			inode->dirtied_when = jiffies;
+> > > >  	}
+> > > 
+> > > I'm afraid you patch is equivalent to the following one.
+> > > Because once the first inode's dirtied_when is set to jiffies,
+> > > in order to keep the list in order, the following ones (mostly)
+> > > will also be updated. A domino effect.
+> > > 
+> > > Thanks,
+> > > Fengguang
+> > > 
+> > 
+> > Good point. One of our other engineers proposed a similar patch
+> > originally. I considered it but wasn't clear whether there could be a
+> > situation where unconditionally resetting dirtied_when would be a
+> > problem. Now that I think about it though, I think you're right...
+> > 
+> > So maybe something like the patch below is the right thing to do? Or,
+> > maybe when we believe that the inode was fully cleaned and then
+> > redirtied, we'd just unconditionally stamp dirtied_when. Something like
+> > this maybe?
+> > 
+> > diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> > index bd2a7ff..596c96e 100644
+> > --- a/fs/fs-writeback.c
+> > +++ b/fs/fs-writeback.c
+> > @@ -364,7 +364,8 @@ __sync_single_inode(struct inode *inode, struct writeback_control *wbc)
+> >  			 * Someone redirtied the inode while were writing back
+> >  			 * the pages.
+> >  			 */
+> > -			redirty_tail(inode);
+> > +			inode->dirtied_when = jiffies;
+> > +			list_move(&inode->i_list, &sb->s_dirty);
+> >  		} else if (atomic_read(&inode->i_count)) {
+> >  			/*
+> >  			 * The inode is clean, inuse
+> 
+> Hmm...though it is still possible that you could consistently race in
+> such a way that after writepages(), I_DIRTY is never set but the
+> PAGECACHE_TAG_DIRTY is still set on the mapping. And then we'd be back
+> to the same problem of a stuck dirtied_when value.
+ 
+Jeff, did you spot real impacts of stuck dirtied_when?
+Or it's simply possible in theory?
 
-Yeah, throwing out the umaskless-mode doesn't help unless it we also
-have something like the mode_set_masked.
+IMHO it requires extremely strong conditions to happen: It takes
+months to wrap around the value, during that period it takes only
+one _single_ newly dirtied inode to refresh the stuck dirtied_when. 
 
---b.
+However...
+
+> So maybe someone can explain to me why we take such great pains to
+> preserve the dirtied_when value when we're putting the inode back on
+> the tail of s_dirty? Why not just unconditionally reset it?
+
+...I see no obvious reasons against unconditionally resetting dirtied_when.
+
+(a) Delaying an inode's writeback for 30s maybe too long - its blocking
+condition may well go away within 1s. (b) And it would be very undesirable
+if one big file is repeatedly redirtied hence its writeback being
+delayed considerably.
+
+However, redirty_tail() currently only tries to speedup writeback-after-redirty
+in a _best effort_ way. It at best partially hides the above issues,
+if there are any. In particular, if (b) is possible, the bug should
+already show up at least in some situations.
+
+For XFS, immediately sync of redirtied inode is actually discouraged:
+
+        http://lkml.org/lkml/2008/1/16/491
+
+
+Thanks,
+Fengguang
