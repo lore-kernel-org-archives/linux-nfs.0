@@ -1,64 +1,72 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 02/23] SUNRPC: Fix return type of svc_addr_len()
-Date: Thu, 26 Mar 2009 12:03:14 -0400
-Message-ID: <762B6D1D-78A9-4C29-9095-3F40C95C6B5B@oracle.com>
-References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004535.32404.37120.stgit@ingres.1015granger.net> <20090324203206.GH19389@fieldses.org> <B9961123-78C4-414A-BC5D-84BDC85771B7@oracle.com> <49CB3233.4070106@sgi.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb@sgi.com>
+From: Giulio Troccoli <Giulio.Troccoli-xnMMdYoS6WpEKMMhf/gKZA@public.gmane.org>
+Subject: [NFS] Compileing nfs-utils 1.1.5 on RHEL4 fails in tcpwrapper.c
+Date: Thu, 26 Mar 2009 16:37:54 +0000
+Message-ID: <6680A70380E6BA44A2D94ED7085718EE066A08079D@ln1exc03>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Giulio Troccoli <Giulio.Troccoli-xnMMdYoS6WpEKMMhf/gKZA@public.gmane.org>
+To: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:30397 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751388AbZCZQDm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 12:03:42 -0400
-In-Reply-To: <49CB3233.4070106@sgi.com>
+Received: from neil.brown.name ([220.233.11.133]:51482 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752650AbZCZQxo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 26 Mar 2009 12:53:44 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Lmspo-00041b-VQ
+	for linux-nfs@vger.kernel.org; Fri, 27 Mar 2009 03:53:41 +1100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 26, 2009, at 3:43 AM, Greg Banks wrote:
-> Chuck Lever wrote:
->> On Mar 24, 2009, at 4:32 PM, J. Bruce Fields wrote:
->>
->>>>
->>>> @@ -563,9 +564,20 @@ static void handle_connect_req(struct
->>>> rdma_cm_id *new_cma_id, size_t client_ird)
->>>>
->>>> /* Set the local and remote addresses in the transport */
->>>> sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
->>>> - svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
->>>> + len = svc_addr_len(sa);
->>>> + if (len < 0) {
->>>> + dprintk("svcrdma: dst_addr has a bad address family\n");
->>>> + return;
->>>
->>> we're probably leaking something here.
-> Just a bit. The svcxprt_rdma, the rdma_cm_id, a bunch of other IB  
-> state...
->>>
->>> I don't want to fix this until it's understood well enough to fix it
->>> correctly.
->>
->> Tom needs respond to this, but I think it would be safe to simply
->> BUG() here.
->
-> My 2c. If I understand the RDMA CM behaviour correctly, it should  
-> not be
-> possible at this point in the code for
-> newxprt->sc_cm_id->route.addr.{src,dst}_addr to be anything but a  
-> valid
-> sockaddr_storages holding the IPv4 or (theoretically) the IPv6 address
-> of the server and client. So I would be happy with a BUG_ON(len < 0).
-> That would also render the leakage moot.
+Hi,
 
-My primary objection is the negative return value from  
-svc_addr_len().  Perhaps it would be safer all around if  
-svc_addr_len() returned zero if it didn't recognize the address family  
-in the passed in sockaddr.
+I want to upgrade nfs-utils from 1.0.6 to 1.1.5, so I have downloaded the source code form sourceforge.net and issue the following ./configure command
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+./configure --disable-nfsv4 --disable-static --with-statduser=rpcuser --disable-gss
+
+Which finishes without errors. But then when I make I get the following
+
+make[2]: Entering directory `/usr/local/src/nfs-utils-1.1.5/support/misc'
+gcc -DHAVE_CONFIG_H -I. -I../../support/include   -I/usr/include -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT tcpwrapper.o -MD -MP -MF .deps/tcpwrapper.Tpo -c -o tcpwrapper.o tcpwrapper.c
+tcpwrapper.c: In function `haccess_add':
+tcpwrapper.c:117: warning: implicit declaration of function `TAILQ_EMPTY'
+tcpwrapper.c:119: error: syntax error before "else"
+tcpwrapper.c: At top level:
+tcpwrapper.c:121: error: syntax error before '}' token
+tcpwrapper.c: In function `haccess_lookup':
+tcpwrapper.c:131: warning: implicit declaration of function `TAILQ_FOREACH'
+tcpwrapper.c:131: error: `list' undeclared (first use in this function)
+tcpwrapper.c:131: error: (Each undeclared identifier is reported only once
+tcpwrapper.c:131: error: for each function it appears in.)
+tcpwrapper.c:131: error: syntax error before '{' token
+make[2]: *** [tcpwrapper.o] Error 1
+make[2]: Leaving directory `/usr/local/src/nfs-utils-1.1.5/support/misc'
+make[1]: *** [all-recursive] Error 1
+make[1]: Leaving directory `/usr/local/src/nfs-utils-1.1.5/support'
+make: *** [all-recursive] Error 1
+
+I have found the TAILQ_ definitions in utils/idmapd/queue.h but most importantly in /usr/include/sys/queue.h which tcpwrapper.c should have picked up.
+
+Can anubody help? I'm not subscribed to the list so please make sure to CC me.
+
+Thanks
+Giulio
+
+
+Linedata Services (UK) Ltd
+Registered Office: Bishopsgate Court, 4-12 Norton Folgate, London, E1 6DB
+Registered in England and Wales No 3027851    VAT Reg No 778499447
+
+
+
+
+
+------------------------------------------------------------------------------
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
