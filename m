@@ -1,55 +1,64 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH 02/23] SUNRPC: Fix return type of svc_addr_len()
-Date: Thu, 26 Mar 2009 18:43:47 +1100
-Message-ID: <49CB3233.4070106@sgi.com>
-References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004535.32404.37120.stgit@ingres.1015granger.net> <20090324203206.GH19389@fieldses.org> <B9961123-78C4-414A-BC5D-84BDC85771B7@oracle.com>
+Subject: Re: [PATCH 15/23] SUNRPC: rpcbind actually interprets r_owner string
+Date: Thu, 26 Mar 2009 19:58:05 +1100
+Message-ID: <49CB439D.5080401@sgi.com>
+References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004713.32404.63163.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Tom Tucker <tom@opengridcomputing.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Cc: trond.myklebust@fys.uio.no, bfields@fieldses.org,
+	linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:50276 "EHLO relay.sgi.com"
+Received: from relay1.sgi.com ([192.48.179.29]:52494 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750911AbZCZHoC (ORCPT
+	id S1755790AbZCZI61 (ORCPT
 	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 26 Mar 2009 03:44:02 -0400
-In-Reply-To: <B9961123-78C4-414A-BC5D-84BDC85771B7@oracle.com>
+	Thu, 26 Mar 2009 04:58:27 -0400
+In-Reply-To: <20090319004713.32404.63163.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Chuck Lever wrote:
-> On Mar 24, 2009, at 4:32 PM, J. Bruce Fields wrote:
 >
->>>
->>> @@ -563,9 +564,20 @@ static void handle_connect_req(struct
->>> rdma_cm_id *new_cma_id, size_t client_ird)
->>>
->>> /* Set the local and remote addresses in the transport */
->>> sa = (struct sockaddr *)&newxprt->sc_cm_id->route.addr.dst_addr;
->>> - svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
->>> + len = svc_addr_len(sa);
->>> + if (len < 0) {
->>> + dprintk("svcrdma: dst_addr has a bad address family\n");
->>> + return;
->>
->> we're probably leaking something here.
-Just a bit. The svcxprt_rdma, the rdma_cm_id, a bunch of other IB state...
->>
->> I don't want to fix this until it's understood well enough to fix it
->> correctly.
->
-> Tom needs respond to this, but I think it would be safe to simply
-> BUG() here.
+> Our port of rpcbind (from Sun) assumes this string contains a numeric
+> UID value, not alphabetical or symbolic characters, but checks this
+> value only for AF_LOCAL RPCB_SET or RPCB_UNSET requests.  In all other
+> cases, rpcbind ignores the contents of the r_owner string.
+>   
 
-My 2c. If I understand the RDMA CM behaviour correctly, it should not be
-possible at this point in the code for
-newxprt->sc_cm_id->route.addr.{src,dst}_addr to be anything but a valid
-sockaddr_storages holding the IPv4 or (theoretically) the IPv6 address
-of the server and client. So I would be happy with a BUG_ON(len < 0).
-That would also render the leakage moot.
+Not that this makes the slightest difference to the usefulness of the
+patch, but it sounds like pretty strange behaviour for an rpcbind server
+to be using an incoming r_owner value off the wire under any circumstances.
+
+If I read the Irix and Solaris rpcbind source correctly, they will
+(sensibly, IMO) ignore incoming r_owner values in all cases.  When an
+owner string is needed (during SET for storing in the internal data
+structure, and during UNSET for checking against the internal data
+structure) it is calculated from SVCXPRT itself and not from anything
+the client sends.  The calculation returns one of:
+
+a) if the transport is over TLI loopback, a numerical representation of
+the peer process UID as reported by the special magical TLI kernel hack
+which reliably returns that, or
+
+b) if the transport is over IP and the peer port is privileged, the
+string "superuser", or
+
+c) otherwise, the string "unknown".
+
+AFAICS the only sensible use for the r_owner field is reporting the
+internally-calculated value back to the client, e.g. for the "rpcinfo
+-s" display.
+
+> The reference user space implementation of rpcb_set(3) uses a numeric
+> UID for all SET/UNSET requests (even via the network) and an empty
+> string for all other requests.  We emulate that behavior here to
+> maintain bug-for-bug compatibility.
+>   
+
+Fair enough.
+
+Reviewed-by: Greg Banks <gnb@sgi.com>
 
 -- 
 Greg Banks, P.Engineer, SGI Australian Software Group.
