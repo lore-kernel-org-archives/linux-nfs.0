@@ -1,51 +1,63 @@
-From: "Serge E. Hallyn" <serue@us.ibm.com>
-Subject: Re: [PATCH 2.4] CAP_FS_MASK: add CAP_LINUX_IMMUTABLE and CAP_MKNOD
-Date: Thu, 26 Mar 2009 08:27:38 -0500
-Message-ID: <20090326132738.GB13639@us.ibm.com>
-References: <20090325173954.GA19299@us.ibm.com> <20090326052958.GC13146@1wt.eu>
+From: Greg Banks <gnb@sgi.com>
+Subject: [PATCH] Fix a build warning about leaking CONFIG_NFSD to userspace.
+Date: Fri, 27 Mar 2009 02:32:47 +1100
+Message-ID: <49CBA01F.6050809@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: mtk.manpages@gmail.com, Stephen Smalley <sds@epoch.ncsc.mil>,
-	Andrew Morgan <morgan@kernel.org>,
-	linux-security-module@vger.kernel.org,
-	lkml <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-	Igor Zhbanov <izh1979@gmail.com>, stable@kernel.org,
-	linux-api@vger.kernel.org, Chris Wright <chrisw@sous-sol.org>
-To: Willy Tarreau <w@1wt.eu>
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <20090326052958.GC13146@1wt.eu>
-Sender: linux-security-module-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from relay1.sgi.com ([192.48.179.29]:41838 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756319AbZCZPdE (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 26 Mar 2009 11:33:04 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quoting Willy Tarreau (w@1wt.eu):
-> Hello,
-> 
-> On Wed, Mar 25, 2009 at 12:39:54PM -0500, Serge E. Hallyn wrote:
-> > When POSIX capabilities were introduced during the 2.1 Linux
-> > cycle, the fs mask, which represents the capabilities which having
-> > fsuid==0 is supposed to grant, did not include CAP_MKNOD and
-> > CAP_LINUX_IMMUTABLE.  However, before capabilities the privilege
-> > to call these did in fact depend upon fsuid==0.
-> > 
-> > This patch introduces those capabilities into the fsmask,
-> > restoring the old behavior.
-> > 
-> > See the thread starting at http://lkml.org/lkml/2009/3/11/157 for
-> > reference.
-> 
-> Thanks to Igor and you for fixing this. The impact did not appear
-> obvious to me at first, to be honnest! I'm queuing the patch for
-> next release.
-> 
-> BTW, I've noticed your other patch for 2.2.26, but it's not worth
-> wasting time on it, as 2.2 has remained unmaintained for years now
-> and people are really discouraged from using it as many holes have
-> never been fixed there.
-> 
-> Cheers,
-> Willy
+Fix a build warning about leaking CONFIG_NFSD to userspace.
 
-Sounds good to me.
+The nfsd_stats data structure does not need to be available to
+userspace; no kernel interface uses it.  So move it inside #ifdef
+__KERNEL__ and the warning goes away.
 
-thanks,
--serge
+Signed-off-by: Greg Banks <gnb@sgi.com>
+---
+
+ include/linux/nfsd/stats.h |    9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+Index: bfields/include/linux/nfsd/stats.h
+===================================================================
+--- bfields.orig/include/linux/nfsd/stats.h
++++ bfields/include/linux/nfsd/stats.h
+@@ -11,6 +11,11 @@
+ 
+ #include <linux/nfs4.h>
+ 
++/* thread usage wraps very million seconds (approx one fortnight) */
++#define	NFSD_USAGE_WRAP	(HZ*1000000)
++
++#ifdef __KERNEL__
++
+ struct nfsd_stats {
+ 	unsigned int	rchits;		/* repcache hits */
+ 	unsigned int	rcmisses;	/* repcache hits */
+@@ -35,10 +40,6 @@ struct nfsd_stats {
+ 
+ };
+ 
+-/* thread usage wraps very million seconds (approx one fortnight) */
+-#define	NFSD_USAGE_WRAP	(HZ*1000000)
+-
+-#ifdef __KERNEL__
+ 
+ extern struct nfsd_stats	nfsdstats;
+ extern struct svc_stat		nfsd_svcstats;
+
+
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
+
