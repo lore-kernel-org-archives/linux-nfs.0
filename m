@@ -1,63 +1,52 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: [PATCH] Fix a build warning about leaking CONFIG_NFSD to userspace.
-Date: Fri, 27 Mar 2009 02:32:47 +1100
-Message-ID: <49CBA01F.6050809@sgi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 15/23] SUNRPC: rpcbind actually interprets r_owner string
+Date: Thu, 26 Mar 2009 11:44:08 -0400
+Message-ID: <994CA980-BA59-4F8E-B510-4079A175BFEF@oracle.com>
+References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004713.32404.63163.stgit@ingres.1015granger.net> <49CB439D.5080401@sgi.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@fys.uio.no, bfields@fieldses.org,
+	linux-nfs@vger.kernel.org
+To: Greg Banks <gnb@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:41838 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756319AbZCZPdE (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 26 Mar 2009 11:33:04 -0400
+Received: from rcsinet11.oracle.com ([148.87.113.123]:59439 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756413AbZCZPoe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 11:44:34 -0400
+In-Reply-To: <49CB439D.5080401@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a build warning about leaking CONFIG_NFSD to userspace.
+On Mar 26, 2009, at 4:58 AM, Greg Banks wrote:
+> Chuck Lever wrote:
+>>
+>> Our port of rpcbind (from Sun) assumes this string contains a numeric
+>> UID value, not alphabetical or symbolic characters, but checks this
+>> value only for AF_LOCAL RPCB_SET or RPCB_UNSET requests.  In all  
+>> other
+>> cases, rpcbind ignores the contents of the r_owner string.
+>
+> Not that this makes the slightest difference to the usefulness of the
+> patch, but it sounds like pretty strange behaviour for an rpcbind  
+> server
+> to be using an incoming r_owner value off the wire under any  
+> circumstances.
 
-The nfsd_stats data structure does not need to be available to
-userspace; no kernel interface uses it.  So move it inside #ifdef
-__KERNEL__ and the warning goes away.
+It's ignored for wire requests.  r_owner is used only for AF_LOCAL  
+requests (ie a local file socket) where the kernel can guarantee the  
+owner.
 
-Signed-off-by: Greg Banks <gnb@sgi.com>
----
+>> The reference user space implementation of rpcb_set(3) uses a numeric
+>> UID for all SET/UNSET requests (even via the network) and an empty
+>> string for all other requests.  We emulate that behavior here to
+>> maintain bug-for-bug compatibility.
+>
+> Fair enough.
+>
+> Reviewed-by: Greg Banks <gnb@sgi.com>
 
- include/linux/nfsd/stats.h |    9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+Thanks.
 
-Index: bfields/include/linux/nfsd/stats.h
-===================================================================
---- bfields.orig/include/linux/nfsd/stats.h
-+++ bfields/include/linux/nfsd/stats.h
-@@ -11,6 +11,11 @@
- 
- #include <linux/nfs4.h>
- 
-+/* thread usage wraps very million seconds (approx one fortnight) */
-+#define	NFSD_USAGE_WRAP	(HZ*1000000)
-+
-+#ifdef __KERNEL__
-+
- struct nfsd_stats {
- 	unsigned int	rchits;		/* repcache hits */
- 	unsigned int	rcmisses;	/* repcache hits */
-@@ -35,10 +40,6 @@ struct nfsd_stats {
- 
- };
- 
--/* thread usage wraps very million seconds (approx one fortnight) */
--#define	NFSD_USAGE_WRAP	(HZ*1000000)
--
--#ifdef __KERNEL__
- 
- extern struct nfsd_stats	nfsdstats;
- extern struct svc_stat		nfsd_svcstats;
-
-
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
