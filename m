@@ -1,124 +1,64 @@
-From: Giulio Troccoli <Giulio.Troccoli-xnMMdYoS6WpEKMMhf/gKZA@public.gmane.org>
-Subject: Re: [NFS] Compileing nfs-utils 1.1.5 on RHEL4 fails in tcpwrapper.c
-Date: Fri, 27 Mar 2009 14:15:36 +0000
-Message-ID: <6680A70380E6BA44A2D94ED7085718EE066A0807AB@ln1exc03>
-References: <6680A70380E6BA44A2D94ED7085718EE066A08079D@ln1exc03>
-	<49CCDBD2.2000709@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: 'Steve Dickson' <SteveD@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 15/23] SUNRPC: rpcbind actually interprets r_owner string
+Date: Fri, 27 Mar 2009 11:36:10 -0400
+Message-ID: <CBF484BB-BF9A-4C0D-A56E-D8DFC394A966@oracle.com>
+References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004713.32404.63163.stgit@ingres.1015granger.net> <49CB439D.5080401@sgi.com> <994CA980-BA59-4F8E-B510-4079A175BFEF@oracle.com> <49CC0D63.8090004@sgi.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@fys.uio.no, bfields@fieldses.org,
+	linux-nfs@vger.kernel.org
+To: Greg Banks <gnb@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:44647 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751864AbZC0ORv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2009 10:17:51 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LnCsV-0005xZ-97
-	for linux-nfs@vger.kernel.org; Sat, 28 Mar 2009 01:17:47 +1100
-In-Reply-To: <49CCDBD2.2000709-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:19482 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756869AbZC0Pgb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2009 11:36:31 -0400
+In-Reply-To: <49CC0D63.8090004@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mar 26, 2009, at 7:18 PM, Greg Banks wrote:
+> Chuck Lever wrote:
+>> On Mar 26, 2009, at 4:58 AM, Greg Banks wrote:
+>>> Chuck Lever wrote:
+>>>>
+>>>> Our port of rpcbind (from Sun) assumes this string contains a  
+>>>> numeric
+>>>> UID value, not alphabetical or symbolic characters, but checks this
+>>>> value only for AF_LOCAL RPCB_SET or RPCB_UNSET requests.  In all  
+>>>> other
+>>>> cases, rpcbind ignores the contents of the r_owner string.
+>>>
+>>> Not that this makes the slightest difference to the usefulness of  
+>>> the
+>>> patch, but it sounds like pretty strange behaviour for an rpcbind  
+>>> server
+>>> to be using an incoming r_owner value off the wire under any
+>>> circumstances.
+>>
+>> It's ignored for wire requests.  r_owner is used only for AF_LOCAL
+>> requests (ie a local file socket) where the kernel can guarantee the
+>> owner.
+>>
+>>
+> Sorry, I'm confused now.  Consider the r_owner field in the rpcb
+> structure whose XDR representation flows through the AF_LOCAL  
+> socket; is
+> that used by rpcbind at all?  I don't understand how the kernel would
+> guarantee that?
 
+The library uses geteuid(2) to generate the r_owner string during  
+RPCB_SET, as I mentioned before.  This is likely legacy behavior.
 
->
+rpcbind then throws this away and uses getsockopt(SO_PEERCRED).  On  
+network sockets I think that's always going to return a uid of -1, but  
+for AF_LOCAL it will have a meaningful value.
 
+I was loose about the use of the term "r_owner" : the r_owner  
+parameter of RPCB_SET is always ignored, but _owner_ _information_ is  
+used for requests coming in via AF_LOCAL.  The rpcb_clnt patch for the  
+kernel is nothing more than a documentation change.
 
-Linedata Services (UK) Ltd
-Registered Office: Bishopsgate Court, 4-12 Norton Folgate, London, E1 6DB
-Registered in England and Wales No 3027851    VAT Reg No 778499447
-
------Original Message-----
-
-
-> From: Steve Dickson [mailto:SteveD@redhat.com]
-> Sent: 27 March 2009 14:00
-> To: Giulio Troccoli
-> Cc: nfs@lists.sourceforge.net
-> Subject: Re: [NFS] Compileing nfs-utils 1.1.5 on RHEL4 fails
-> in tcpwrapper.c
->
->
->
-> Giulio Troccoli wrote:
-> > Hi,
-> >
-> > I want to upgrade nfs-utils from 1.0.6 to 1.1.5, so I have
-> downloaded
-> > the source code form sourceforge.net and issue the following
-> > ./configure command
-> >
-> > ./configure --disable-nfsv4 --disable-static
-> --with-statduser=rpcuser
-> > --disable-gss
-> >
-> > Which finishes without errors. But then when I make I get the
-> > following
-> >
-> > make[2]: Entering directory
-> `/usr/local/src/nfs-utils-1.1.5/support/misc'
-> > gcc -DHAVE_CONFIG_H -I. -I../../support/include
-> -I/usr/include -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe
-> -g -O2 -MT tcpwrapper.o -MD -MP -MF .deps/tcpwrapper.Tpo -c
-> -o tcpwrapper.o tcpwrapper.c
-> > tcpwrapper.c: In function `haccess_add':
-> > tcpwrapper.c:117: warning: implicit declaration of function
-> `TAILQ_EMPTY'
-> > tcpwrapper.c:119: error: syntax error before "else"
-> > tcpwrapper.c: At top level:
-> > tcpwrapper.c:121: error: syntax error before '}' token
-> > tcpwrapper.c: In function `haccess_lookup':
-> > tcpwrapper.c:131: warning: implicit declaration of function
-> `TAILQ_FOREACH'
-> > tcpwrapper.c:131: error: `list' undeclared (first use in this
-> > function)
-> > tcpwrapper.c:131: error: (Each undeclared identifier is
-> reported only
-> > once
-> > tcpwrapper.c:131: error: for each function it appears in.)
-> > tcpwrapper.c:131: error: syntax error before '{' token
-> > make[2]: *** [tcpwrapper.o] Error 1
-> > make[2]: Leaving directory
-> `/usr/local/src/nfs-utils-1.1.5/support/misc'
-> > make[1]: *** [all-recursive] Error 1
-> > make[1]: Leaving directory `/usr/local/src/nfs-utils-1.1.5/support'
-> > make: *** [all-recursive] Error 1
-> >
-> > I have found the TAILQ_ definitions in utils/idmapd/queue.h
-> but most importantly in /usr/include/sys/queue.h which
-> tcpwrapper.c should have picked up.
-> >
-> > Can anubody help? I'm not subscribed to the list so please
-> make sure to CC me.
-> This is a bit strange... What environment are you compiling this in?
-> You can also try the "--without-tcp-wrappers" config flag
->
-> steved.
-
-Thanks Steve, that actually worked, i.e. it compiled. Only now I notice that ./configure --help does mention with package.
-
-Now, before I install the new NFS I'd like to make sure that I built NFS with what I need.
-
-I have a RHEL4 machine that we use for source control. On this server we have an up-to-date copy of the source code. Other building machines (at the moment an AIX and a Solaris) mount the copy of the source code as local file systems. The building area contains sym links to the mounted file system.
-
->From time to time the build failes becuase some files are not available when they are compiled. This is not strictly true, the file is available but the building machine is told it's not.
-
-I'm not sure how to go on investigating and fixing this issue but I thought I would start getting the latest NFS.
-
-I don't know much about NFS and the option I chose for the configure script are just becuase otherwise it didn't compile. So, do you guys think that even without nfsv4, gss and tcp-wrapper I would achive what I need?
-
-Thanks a lot
-Giulio
-
-
-------------------------------------------------------------------------------
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
