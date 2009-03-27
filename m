@@ -1,33 +1,66 @@
-From: Greg Banks <gnb@sgi.com>
-Subject: Re: [PATCH 15/23] SUNRPC: rpcbind actually interprets r_owner string
-Date: Sat, 28 Mar 2009 09:02:07 +1100
-Message-ID: <49CD4CDF.8080806@sgi.com>
-References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004713.32404.63163.stgit@ingres.1015granger.net> <49CB439D.5080401@sgi.com> <994CA980-BA59-4F8E-B510-4079A175BFEF@oracle.com> <49CC0D63.8090004@sgi.com> <CBF484BB-BF9A-4C0D-A56E-D8DFC394A966@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: trond.myklebust@fys.uio.no, bfields@fieldses.org,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:49669 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752193AbZC0WCd (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2009 18:02:33 -0400
-In-Reply-To: <CBF484BB-BF9A-4C0D-A56E-D8DFC394A966@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: hooanon05@yahoo.co.jp
+Subject: Re: Problems with default ACLs over NFS
+Date: Sat, 28 Mar 2009 07:50:55 +0900
+Message-ID: <18513.1238194255@jrobl>
+References: <20090323222427.00bb24e7@werewolf.home> <20090326170513.4e7d377a.akpm@linux-foundation.org>
+Cc: "\"=?ISO-8859-1?Q? \" J. A. _Magall=F3n \" ?=\"" <jamagallon@ono.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+	Trond.Myklebust@netapp.com
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757807AbZC0Wvz@vger.kernel.org>
+In-Reply-To: <20090326170513.4e7d377a.akpm@linux-foundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Mar 26, 2009, at 7:18 PM, Greg Banks wrote:
->
-> rpcbind then throws this away and uses getsockopt(SO_PEERCRED).  On
-> network sockets I think that's always going to return a uid of -1, but
-> for AF_LOCAL it will have a meaningful value.
-Aha.  Unconfused now,  thanks.
 
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
+> On Mon, 23 Mar 2009 22:24:27 +0100 "J.A. Magall__n" <jamagallon@ono.com> wrote:
+> 
+> > Hi all...
+> > 
+> > I have a strange problem with 2.6.29-rc8-git3.
+> > It looks like a kernel bug... ?
+> > 
+> > I have a box with NFS autofs-mounted home directories. Server is a
+> > Solaris 10 system. This worked in previous kernel versions, so I
+> > don't blame Solaris, at this moment.
+> > 
+> > With this acls set in my home:
+	:::
+> > I get this strange message in the linux client:
+> > 
+> > cicely:~> mkdir kk  
+> > mkdir: cannot create directory `kk': Invalid argument
 
+I met a similar problem.
+In linux-2.6.29 with CONFIG_NFS_V3_ACL enabled, 
+when I executed "cp -p /local/ext2/file /nfsv3/file", I got EINVAL too.
+Strace-ing this cp, I found setxsttr() return EINVAL. Before 2.6.29, it
+was EOPNOTSUPPORTED.
+
+Tracing some kernel functions, I observed several thigs.
+- xdr_buf_subsegment() returned -1 due to 'len' is not 0.
+- xdr_encode_word() call from nfsacl_encode() got this -1, and
+  nfsacl_encode/nfs3_xdr_setaclargs/nfs3_proc_setacls/nfs3_proc_setacl/nfs3_setxattr
+  returned -EINVAL.
+
+
+Finally I am afraid this commit might be related to this issue.
+
+commit ae46141ff08f1965b17c531b571953c39ce8b9e2
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Tue Mar 10 20:33:18 2009 -0400
+
+    NFSv3: Fix posix ACL code
+    
+    Fix a memory leak due to allocation in the XDR layer. In cases where the
+    RPC call needs to be retransmitted, we end up allocating new pages without
+    clearing the old ones. Fix this by moving the allocation into
+    nfs3_proc_setacls().
+    
+    Also fix an issue discovered by Kevin Rudd, whereby the amount of memory
+    reserved for the acls in the xdr_buf->head was miscalculated, and causing
+    corruption.
+
+
+
+J. R. Okajima
