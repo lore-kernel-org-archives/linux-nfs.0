@@ -1,104 +1,46 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 31/47] nfsd41: access_valid
-Date: Fri, 27 Mar 2009 06:17:52 +0300
-Message-ID: <1238123872-7899-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 32/47] nfsd41: add OPEN4_SHARE_ACCESS_WANT nfs4_stateid bmap
+Date: Fri, 27 Mar 2009 06:18:02 +0300
+Message-ID: <1238123882-7928-1-git-send-email-bhalevy@panasas.com>
 References: <49CC40E5.2080506@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>,
 	Benny Halevy <bhalevy@panasas.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:23596 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:23402 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756050AbZC0DR6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:17:58 -0400
+	with ESMTP id S1756156AbZC0DSH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:18:07 -0400
 In-Reply-To: <49CC40E5.2080506@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-For nfs41, the open share flags are used also for
-delegation "wants" and "signals".  Check that they are valid.
+Separate the access bits from the want bits and enable __set_bit to
+work correctly with st_access_bmap.
 
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c        |    1 +
- fs/nfsd/nfs4state.c       |   20 +++++++++++++++-----
- include/linux/nfsd/xdr4.h |    1 +
- 3 files changed, 17 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0076bb1..8b4bf5e 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -901,6 +901,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	resp->tag = args->tag;
- 	resp->opcnt = 0;
- 	resp->rqstp = rqstp;
-+	resp->cstate.minorversion = args->minorversion;
- 	resp->cstate.replay_owner = NULL;
- 	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
- 	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 00ad1c2..dbf0d07 100644
+index dbf0d07..8a64981 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1959,11 +1959,21 @@ find_file(struct inode *ino)
- 	return NULL;
+@@ -1905,7 +1905,8 @@ init_stateid(struct nfs4_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *
+ 	stp->st_stateid.si_generation = 0;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+-	__set_bit(open->op_share_access, &stp->st_access_bmap);
++	__set_bit(open->op_share_access & ~NFS4_SHARE_WANT_MASK,
++		  &stp->st_access_bmap);
+ 	__set_bit(open->op_share_deny, &stp->st_deny_bmap);
+ 	stp->st_openstp = NULL;
  }
- 
--static inline int access_valid(u32 x)
-+static inline int access_valid(u32 x, u32 minorversion)
- {
--	if (x < NFS4_SHARE_ACCESS_READ)
-+	if ((x & NFS4_SHARE_ACCESS_MASK) < NFS4_SHARE_ACCESS_READ)
- 		return 0;
--	if (x > NFS4_SHARE_ACCESS_BOTH)
-+	if ((x & NFS4_SHARE_ACCESS_MASK) > NFS4_SHARE_ACCESS_BOTH)
-+		return 0;
-+	x &= ~NFS4_SHARE_ACCESS_MASK;
-+	if (minorversion && x) {
-+		if ((x & NFS4_SHARE_WANT_MASK) > NFS4_SHARE_WANT_CANCEL)
-+			return 0;
-+		if ((x & NFS4_SHARE_WHEN_MASK) > NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED)
-+			return 0;
-+		x &= ~(NFS4_SHARE_WANT_MASK | NFS4_SHARE_WHEN_MASK);
-+	}
-+	if (x)
- 		return 0;
- 	return 1;
- }
-@@ -2511,7 +2521,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	__be32 status;
- 
- 	status = nfserr_inval;
--	if (!access_valid(open->op_share_access)
-+	if (!access_valid(open->op_share_access, resp->cstate.minorversion)
- 			|| !deny_valid(open->op_share_deny))
- 		goto out;
- 	/*
-@@ -3108,7 +3118,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 			(int)cstate->current_fh.fh_dentry->d_name.len,
- 			cstate->current_fh.fh_dentry->d_name.name);
- 
--	if (!access_valid(od->od_share_access)
-+	if (!access_valid(od->od_share_access, cstate->minorversion)
- 			|| !deny_valid(od->od_share_deny))
- 		return nfserr_inval;
- 
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index aafbfdc..881ff67 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
- 	struct nfsd4_slot	*slot;
- 	__be32			*statp;
- 	size_t			iovlen;
-+	u32			minorversion;
- 	u32			status;
- };
- 
 -- 
 1.6.2.1
 
