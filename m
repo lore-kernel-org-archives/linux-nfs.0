@@ -1,100 +1,170 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 35/47] nfsd: minorversion support for the back channel
-Date: Fri, 27 Mar 2009 06:18:41 +0300
-Message-ID: <1238123921-8017-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 37/47] nfsd41: callback infrastructure
+Date: Fri, 27 Mar 2009 06:19:08 +0300
+Message-ID: <1238123948-8076-1-git-send-email-bhalevy@panasas.com>
 References: <49CC40E5.2080506@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>,
 	Benny Halevy <bhalevy@panasas.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:25086 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:15706 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756668AbZC0DSr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:18:47 -0400
+	with ESMTP id S1756403AbZC0DTO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:19:14 -0400
 In-Reply-To: <49CC40E5.2080506@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Prepare to share backchannel code with NFSv4.1.
+Keep the xprt used for create_session in cl_cb_xprt.
+Mark cl_callback.cb_minorversion = 1 and remember
+the client provided cl_callback.cb_prog rpc program number.
+Use it to probe the callback path.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Define xdr sizes and code nfs4_cb_compound header to be able
+to send a null callback rpc.
+
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c     |    7 ++++++-
- fs/nfsd/nfs4state.c        |    1 +
- include/linux/nfsd/state.h |    3 ++-
- 3 files changed, 9 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4callback.c |   35 ++++++++++++++++++++++++++++++++---
+ fs/nfsd/nfs4state.c    |   10 ++++++++++
+ 2 files changed, 42 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7129b0c..d8f2631 100644
+index d8f2631..6b7ef87 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -141,6 +141,7 @@ struct nfs4_cb_compound_hdr {
- 	u32		ident;
+@@ -43,6 +43,7 @@
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/svcsock.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/state.h>
+ #include <linux/sunrpc/sched.h>
+@@ -52,16 +53,19 @@
+ 
+ #define NFSPROC4_CB_NULL 0
+ #define NFSPROC4_CB_COMPOUND 1
++#define NFS4_STATEID_SIZE 16
+ 
+ /* Index of predefined Linux callback client operations */
+ 
+ enum {
+-        NFSPROC4_CLNT_CB_NULL = 0,
++	NFSPROC4_CLNT_CB_NULL = 0,
+ 	NFSPROC4_CLNT_CB_RECALL,
++	NFSPROC4_CLNT_CB_SEQUENCE,
+ };
+ 
+ enum nfs_cb_opnum4 {
+ 	OP_CB_RECALL            = 4,
++	OP_CB_SEQUENCE          = 11,
+ };
+ 
+ #define NFS4_MAXTAGLEN		20
+@@ -70,15 +74,22 @@ enum nfs_cb_opnum4 {
+ #define NFS4_dec_cb_null_sz		0
+ #define cb_compound_enc_hdr_sz		4
+ #define cb_compound_dec_hdr_sz		(3 + (NFS4_MAXTAGLEN >> 2))
++#define sessionid_sz			(NFS4_MAX_SESSIONID_LEN >> 2)
++#define cb_sequence_enc_sz		(sessionid_sz + 4 +             \
++					1 /* no referring calls list yet */)
++#define cb_sequence_dec_sz		(op_dec_sz + sessionid_sz + 4)
++
+ #define op_enc_sz			1
+ #define op_dec_sz			2
+ #define enc_nfs4_fh_sz			(1 + (NFS4_FHSIZE >> 2))
+ #define enc_stateid_sz			(NFS4_STATEID_SIZE >> 2)
+ #define NFS4_enc_cb_recall_sz		(cb_compound_enc_hdr_sz +       \
++					cb_sequence_enc_sz +            \
+ 					1 + enc_stateid_sz +            \
+ 					enc_nfs4_fh_sz)
+ 
+ #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
++					cb_sequence_dec_sz +            \
+ 					op_dec_sz)
+ 
+ /*
+@@ -135,13 +146,19 @@ xdr_error:                                      \
+ 		return -EIO; \
+ 	} \
+ } while (0)
++#define COPYMEM(x, nbytes) do {                \
++	memcpy((x), p, nbytes);                \
++	p += XDR_QUADLEN(nbytes);              \
++} while (0)
+ 
+ struct nfs4_cb_compound_hdr {
+-	int		status;
+-	u32		ident;
++	/* args */
++	u32		ident;	/* minorversion 0 only */
  	u32		nops;
  	__be32		*nops_p;
-+	u32		minorversion;
+ 	u32		minorversion;
++	/* res */
++	int		status;
  	u32		taglen;
  	char		*tag;
  };
-@@ -209,7 +210,7 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
+@@ -405,6 +422,17 @@ static struct rpc_clnt *setup_callback_client(struct nfs4_client *clp)
+ 	addr.sin_family = AF_INET;
+ 	addr.sin_port = htons(cb->cb_port);
+ 	addr.sin_addr.s_addr = htonl(cb->cb_addr);
++#if defined(CONFIG_NFSD_V4_1)
++	if (cb->cb_minorversion) {
++		BUG_ON(cb->cb_minorversion != 1);
++		args.bc_sock = container_of(clp->cl_cb_xprt, struct svc_sock,
++					    sk_xprt);
++	}
++#endif /* CONFIG_NFSD_V4_1 */
++
++	dprintk("%s: program %s 0x%x nrvers %u version %u minorversion %u\n",
++		__func__, args.program->name, args.prognumber,
++		args.program->nrvers, args.version, cb->cb_minorversion);
  
- 	RESERVE_SPACE(16);
- 	WRITE32(0);            /* tag length is always 0 */
--	WRITE32(NFS4_MINOR_VERSION);
-+	WRITE32(hdr->minorversion);
- 	WRITE32(hdr->ident);
- 	hdr->nops_p = p;
- 	WRITE32(hdr->nops);
-@@ -251,8 +252,11 @@ static int
- nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *args)
- {
- 	struct xdr_stream xdr;
-+	struct nfs4_callback *cb =
-+		(struct nfs4_callback *)req->rq_task->tk_client->cl_private;
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = args->cbr_ident,
-+		.minorversion = cb->cb_minorversion,
- 	};
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-@@ -436,6 +440,7 @@ static int do_probe_callback(void *data)
- 		goto out_release_client;
- 
- 	cb->cb_client = client;
-+	client->cl_private = cb;
- 	atomic_set(&cb->cb_set, 1);
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
+@@ -445,6 +473,7 @@ static int do_probe_callback(void *data)
  	put_nfs4_client(clp);
  	return 0;
+ out_release_client:
++	dprintk("NFSD: synchronous CB_NULL failed. status=%d\n", status);
+ 	rpc_shutdown_client(client);
+ out_err:
+ 	dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8a64981..189f1c2 100644
+index 189f1c2..ef1e372 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -994,6 +994,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
- 	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
- 	                 &cb->cb_addr, &cb->cb_port)))
- 		goto out_err;
-+	cb->cb_minorversion = 0;
- 	cb->cb_prog = se->se_callback_prog;
- 	cb->cb_ident = se->se_callback_ident;
- 	return;
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 302557d..b78021a 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -93,7 +93,8 @@ struct nfs4_callback {
- 	u32                     cb_addr;
- 	unsigned short          cb_port;
- 	u32                     cb_prog;
--	u32                     cb_ident;
-+	u32			cb_minorversion;
-+	u32                     cb_ident;	/* minorversion 0 only */
- 	/* RPC client info */
- 	atomic_t		cb_set;     /* successful CB_NULL call */
- 	struct rpc_clnt *       cb_client;
+@@ -663,6 +663,8 @@ free_client(struct nfs4_client *clp)
+ {
+ 	shutdown_callback_client(clp);
+ #if defined(CONFIG_NFSD_V4_1)
++	if (clp->cl_cb_xprt)
++		svc_xprt_put(clp->cl_cb_xprt);
+ 	nfsd4_release_respages(clp->cl_slot.sl_cache_entry.ce_respages,
+ 			     clp->cl_slot.sl_cache_entry.ce_resused);
+ #endif /* CONFIG_NFSD_V4_1 */
+@@ -1411,6 +1413,14 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		cr_ses->flags &= ~SESSION4_PERSIST;
+ 		cr_ses->flags &= ~SESSION4_RDMA;
+ 
++		if (cr_ses->flags & SESSION4_BACK_CHAN) {
++			unconf->cl_cb_xprt = rqstp->rq_xprt;
++			svc_xprt_get(unconf->cl_cb_xprt);
++			unconf->cl_callback.cb_minorversion = 1;
++			unconf->cl_cb_seq_nr = 0;
++			unconf->cl_callback.cb_prog = cr_ses->callback_prog;
++			nfsd4_probe_callback(unconf);
++		}
+ 		conf = unconf;
+ 	} else {
+ 		status = nfserr_stale_clientid;
 -- 
 1.6.2.1
 
