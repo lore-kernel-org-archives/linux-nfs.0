@@ -1,183 +1,56 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 47/47] nfsd41: Documentation/filesystems/nfs41-server.txt
-Date: Fri, 27 Mar 2009 06:23:06 +0300
-Message-ID: <1238124186-8380-1-git-send-email-bhalevy@panasas.com>
-References: <49CC40E5.2080506@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@citi.umich.edu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:25964 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756261AbZC0DXL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:23:11 -0400
-In-Reply-To: <49CC40E5.2080506@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
+ to empty s_dirty list
+Date: Fri, 27 Mar 2009 07:16:33 -0400
+Message-ID: <20090327071633.0c1a0e3a@tleilax.poochiereds.net>
+References: <20090324221528.2bb7c50b@tleilax.poochiereds.net>
+	<20090325025037.GA17374@localhost>
+	<20090325075110.028f0d1d@tleilax.poochiereds.net>
+	<20090325121742.GA22869@localhost>
+	<20090325091325.17c997fd@tleilax.poochiereds.net>
+	<49CA2F41.8030804@themaw.net>
+	<49CA33E7.6090309@themaw.net>
+	<20090325100049.0cc4de87@tleilax.poochiereds.net>
+	<20090325141618.GA5684@localhost>
+	<20090326130327.3206e00b@barsoom.rdu.redhat.com>
+	<20090327021303.GA7547@localhost>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: Ian Kent <raven@themaw.net>, Dave Chinner <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"jens.axboe@oracle.com" <jens.axboe@oracle.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090327021303.GA7547@localhost>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Initial nfs41 server write up describing the status of the linux
-server implementation.
+On Fri, 27 Mar 2009 10:13:03 +0800
+Wu Fengguang <fengguang.wu@intel.com> wrote:
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- Documentation/filesystems/nfs41-server.txt |  148 ++++++++++++++++++++++++++++
- 1 files changed, 148 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/nfs41-server.txt
+> 
+> > They also don't eliminate the problematic check above. Regardless of
+> > whether your or Jens' patches make it in, I think we'll still need
+> > something like the following (untested) patch.
+> > 
+> > If this looks ok, I'll flesh out the comments some and "officially" post
+> > it. Thoughts?
+> 
+> It's good in itself. However with more_io_wait queue, the first two
+> chunks will be eliminated. Mind I carry this patch with my patchset?
+> 
 
-diff --git a/Documentation/filesystems/nfs41-server.txt b/Documentation/filesystems/nfs41-server.txt
-new file mode 100644
-index 0000000..e62cd13
---- /dev/null
-+++ b/Documentation/filesystems/nfs41-server.txt
-@@ -0,0 +1,148 @@
-+NFSv4.1 Server Implementation
-+
-+The NFSv4 minorversion 1 (NFSv4.1) implementation in nfsd is based
-+on the latest NFSv4.1 Internet Draft:
-+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29
-+
-+If you're a developer or just eager to test the code, set
-+CONFIG_NFSD_V4_1 to 'y' in your kernel configuration file.
-+This will allow the server to serve both NFSv4 and NFSv4.1
-+clients concurrently.
-+
-+From the many new features in NFSv4.1 the current implementation
-+focuses on the mandatory-to-implement NFSv4.1 Sessions, providing
-+"exactly once" semantics and better control and throttling of the
-+resources allocated for each client.
-+
-+Other NFSv4.1 features, Parallel NFS operations in particular,
-+are still under development out of tree.
-+See http://wiki.linux-nfs.org/wiki/index.php/PNFS_prototype_design
-+for more information.
-+
-+The table below, taken from the NFSv4.1 document, lists
-+the operations that are mandatory to implement (REQ), optional
-+(OPT), and NFSv4.0 operations that are required not to implement (MNI)
-+in minor version 1.  The first column indicates the operations that
-+are not supported yet by the linux server implementation.
-+
-+The OPTIONAL features identified and their abbreviations are as follows:
-+	pNFS	Parallel NFS
-+	FDELG	File Delegations
-+	DDELG	Directory Delegations
-+
-+The following abbreviations indicate the linux server implementation status.
-+	I	Implemented NFSv4.1 operations.
-+	NS	Not Supported.
-+	NS*	unimplemented optional feature.
-+	P	pNFS features implemented out of tree.
-+	PNS	pNFS features that are not supported yet (out of tree).
-+
-+Operations
-+
-+   +----------------------+------------+--------------+----------------+
-+   | Operation            | REQ, REC,  | Feature      | Definition     |
-+   |                      | OPT, or    | (REQ, REC,   |                |
-+   |                      | MNI        | or OPT)      |                |
-+   +----------------------+------------+--------------+----------------+
-+   | ACCESS               | REQ        |              | Section 18.1   |
-+NS | BACKCHANNEL_CTL      | REQ        |              | Section 18.33  |
-+NS | BIND_CONN_TO_SESSION | REQ        |              | Section 18.34  |
-+   | CLOSE                | REQ        |              | Section 18.2   |
-+   | COMMIT               | REQ        |              | Section 18.3   |
-+   | CREATE               | REQ        |              | Section 18.4   |
-+I  | CREATE_SESSION       | REQ        |              | Section 18.36  |
-+NS*| DELEGPURGE           | OPT        | FDELG (REQ)  | Section 18.5   |
-+   | DELEGRETURN          | OPT        | FDELG,       | Section 18.6   |
-+   |                      |            | DDELG, pNFS  |                |
-+   |                      |            | (REQ)        |                |
-+NS | DESTROY_CLIENTID     | REQ        |              | Section 18.50  |
-+I  | DESTROY_SESSION      | REQ        |              | Section 18.37  |
-+I  | EXCHANGE_ID          | REQ        |              | Section 18.35  |
-+NS | FREE_STATEID         | REQ        |              | Section 18.38  |
-+   | GETATTR              | REQ        |              | Section 18.7   |
-+P  | GETDEVICEINFO        | OPT        | pNFS (REQ)   | Section 18.40  |
-+P  | GETDEVICELIST        | OPT        | pNFS (OPT)   | Section 18.41  |
-+   | GETFH                | REQ        |              | Section 18.8   |
-+NS*| GET_DIR_DELEGATION   | OPT        | DDELG (REQ)  | Section 18.39  |
-+P  | LAYOUTCOMMIT         | OPT        | pNFS (REQ)   | Section 18.42  |
-+P  | LAYOUTGET            | OPT        | pNFS (REQ)   | Section 18.43  |
-+P  | LAYOUTRETURN         | OPT        | pNFS (REQ)   | Section 18.44  |
-+   | LINK                 | OPT        |              | Section 18.9   |
-+   | LOCK                 | REQ        |              | Section 18.10  |
-+   | LOCKT                | REQ        |              | Section 18.11  |
-+   | LOCKU                | REQ        |              | Section 18.12  |
-+   | LOOKUP               | REQ        |              | Section 18.13  |
-+   | LOOKUPP              | REQ        |              | Section 18.14  |
-+   | NVERIFY              | REQ        |              | Section 18.15  |
-+   | OPEN                 | REQ        |              | Section 18.16  |
-+NS*| OPENATTR             | OPT        |              | Section 18.17  |
-+   | OPEN_CONFIRM         | MNI        |              | N/A            |
-+   | OPEN_DOWNGRADE       | REQ        |              | Section 18.18  |
-+   | PUTFH                | REQ        |              | Section 18.19  |
-+   | PUTPUBFH             | REQ        |              | Section 18.20  |
-+   | PUTROOTFH            | REQ        |              | Section 18.21  |
-+   | READ                 | REQ        |              | Section 18.22  |
-+   | READDIR              | REQ        |              | Section 18.23  |
-+   | READLINK             | OPT        |              | Section 18.24  |
-+NS | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-+   | RELEASE_LOCKOWNER    | MNI        |              | N/A            |
-+   | REMOVE               | REQ        |              | Section 18.25  |
-+   | RENAME               | REQ        |              | Section 18.26  |
-+   | RENEW                | MNI        |              | N/A            |
-+   | RESTOREFH            | REQ        |              | Section 18.27  |
-+   | SAVEFH               | REQ        |              | Section 18.28  |
-+   | SECINFO              | REQ        |              | Section 18.29  |
-+NS | SECINFO_NO_NAME      | REC        | pNFS files   | Section 18.45, |
-+   |                      |            | layout (REQ) | Section 13.12  |
-+I  | SEQUENCE             | REQ        |              | Section 18.46  |
-+   | SETATTR              | REQ        |              | Section 18.30  |
-+   | SETCLIENTID          | MNI        |              | N/A            |
-+   | SETCLIENTID_CONFIRM  | MNI        |              | N/A            |
-+NS | SET_SSV              | REQ        |              | Section 18.47  |
-+NS | TEST_STATEID         | REQ        |              | Section 18.48  |
-+   | VERIFY               | REQ        |              | Section 18.31  |
-+NS*| WANT_DELEGATION      | OPT        | FDELG (OPT)  | Section 18.49  |
-+   | WRITE                | REQ        |              | Section 18.32  |
-+
-+Callback Operations
-+
-+   +-------------------------+-----------+-------------+---------------+
-+   | Operation               | REQ, REC, | Feature     | Definition    |
-+   |                         | OPT, or   | (REQ, REC,  |               |
-+   |                         | MNI       | or OPT)     |               |
-+   +-------------------------+-----------+-------------+---------------+
-+   | CB_GETATTR              | OPT       | FDELG (REQ) | Section 20.1  |
-+P  | CB_LAYOUTRECALL         | OPT       | pNFS (REQ)  | Section 20.3  |
-+NS*| CB_NOTIFY               | OPT       | DDELG (REQ) | Section 20.4  |
-+P  | CB_NOTIFY_DEVICEID      | OPT       | pNFS (OPT)  | Section 20.12 |
-+NS*| CB_NOTIFY_LOCK          | OPT       |             | Section 20.11 |
-+NS*| CB_PUSH_DELEG           | OPT       | FDELG (OPT) | Section 20.5  |
-+   | CB_RECALL               | OPT       | FDELG,      | Section 20.2  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS*| CB_RECALL_ANY           | OPT       | FDELG,      | Section 20.6  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS | CB_RECALL_SLOT          | REQ       |             | Section 20.8  |
-+NS*| CB_RECALLABLE_OBJ_AVAIL | OPT       | DDELG, pNFS | Section 20.7  |
-+   |                         |           | (REQ)       |               |
-+I  | CB_SEQUENCE             | OPT       | FDELG,      | Section 20.9  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS*| CB_WANTS_CANCELLED      | OPT       | FDELG,      | Section 20.10 |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+   +-------------------------+-----------+-------------+---------------+
-+
-+Implementation notes:
-+
-+EXCHANGE_ID:
-+* only SP4_NONE state protection supported
-+* implementation ids are ignored
-+
-+CREATE_SESSION:
-+* backchannel attributes are ignored
-+* backchannel security parameters are ignored
-+
-+SEQUENCE:
-+* no support for dynamic slot table renegotiation (optional)
+It makes sense to roll that fix in with the stuff you're doing.
+
+If it's going to be a little while before your patches get taken into
+mainline though, it might not hurt to go ahead and push my patch in as
+an interim fix. It shouldn't change the behavior of the code in the
+normal case of a short-lived dirtied_when value, and should guard
+against major problems when there's a long-lived one.
+
 -- 
-1.6.2.1
-
+Jeff Layton <jlayton@redhat.com>
