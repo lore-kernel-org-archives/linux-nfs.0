@@ -1,125 +1,88 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 42/47] nfsd41: cb_recall callback
-Date: Fri, 27 Mar 2009 06:20:18 +0300
-Message-ID: <1238124018-8227-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 43/47] nfsd41: pass writable attrs mask to nfsd4_decode_fattr
+Date: Fri, 27 Mar 2009 06:20:32 +0300
+Message-ID: <1238124032-8256-1-git-send-email-bhalevy@panasas.com>
 References: <49CC40E5.2080506@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Andy Adamson <andros@netapp.com>,
-	Ricardo Labiaga <ricardo.labiaga@netapp.com>,
 	Benny Halevy <bhalevy@panasas.com>
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:27064 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:23872 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755343AbZC0DUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:20:25 -0400
+	with ESMTP id S1753502AbZC0DUh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 23:20:37 -0400
 In-Reply-To: <49CC40E5.2080506@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+In preparation for EXCLUSIVE4_1
 
-Implement the cb_recall callback conforming to
-http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
-
-Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[Share v4.0 and v4.1 back channel xdr]
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c |   25 +++++++++++++++++++------
- 1 files changed, 19 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4xdr.c |   21 +++++++++++++++------
+ 1 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index dd3b739..0be75e0 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -298,9 +298,11 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a1af3a3..96f3eeb 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -251,9 +251,14 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+ 	DECODE_TAIL;
  }
  
- static int
--nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *args)
-+nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
-+		       struct nfs4_rpc_args *rpc_args)
- {
- 	struct xdr_stream xdr;
-+	struct nfs4_cb_recall *args = rpc_args->args_op;
- 	struct nfs4_callback *cb =
- 		(struct nfs4_callback *)req->rq_task->tk_client->cl_private;
- 	struct nfs4_cb_compound_hdr hdr = {
-@@ -310,6 +312,7 @@ nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *a
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_cb_compound_hdr(&xdr, &hdr);
-+	encode_cb_sequence(&xdr, rpc_args->args_seq, &hdr);
- 	encode_cb_recall(&xdr, args, &hdr);
- 	encode_cb_nops(&hdr);
- 	return 0;
-@@ -421,7 +424,8 @@ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
- }
- 
- static int
--nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
-+nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
-+		       struct nfs4_rpc_res *rpc_res)
- {
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr;
-@@ -431,6 +435,9 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
- 	status = decode_cb_compound_hdr(&xdr, &hdr);
- 	if (status)
- 		goto out;
-+	status = decode_cb_sequence(&xdr, rpc_res->res_seq, rqstp);
-+	if (status)
-+		goto out;
- 	status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
- out:
- 	return status;
-@@ -678,19 +685,23 @@ void
- nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_client;
--	struct rpc_clnt *clnt = clp->cl_callback.cb_client;
- 	struct nfs4_cb_recall *cbr = &dp->dl_recall;
-+	struct nfs4_rpc_args args = {
-+		.args_op = cbr,
-+	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
--		.rpc_argp = cbr,
-+		.rpc_argp = &args,
- 	};
- 	int retries = 1;
- 	int status = 0;
- 
-+	dprintk("%s: dp %p\n", __func__, dp);
++static u32 nfsd_attrmask[] = {
++	NFSD_WRITEABLE_ATTRS_WORD0,
++	NFSD_WRITEABLE_ATTRS_WORD1
++};
 +
- 	cbr->cbr_trunc = 0; /* XXX need to implement truncate optimization */
- 	cbr->cbr_dp = dp;
- 
--	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
-+	status = nfsd4_cb_sync(clp, &msg, RPC_TASK_SOFT);
- 	while (retries--) {
- 		switch (status) {
- 			case -EIO:
-@@ -705,13 +716,15 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- 				goto out_put_cred;
- 		}
- 		ssleep(2);
--		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
-+		status = nfsd4_cb_sync(clp, &msg, RPC_TASK_SOFT);
- 	}
- out_put_cred:
- 	/*
- 	 * Success or failure, now we're either waiting for lease expiration
- 	 * or deleg_return.
+ static __be32
+-nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, struct iattr *iattr,
+-    struct nfs4_acl **acl)
++nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
++		   struct iattr *iattr, struct nfs4_acl **acl)
+ {
+ 	int expected_len, len = 0;
+ 	u32 dummy32;
+@@ -271,7 +276,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, struct iattr *ia
  	 */
-+	dprintk("%s: dp %p dl_flock %p dl_count %d\n",
-+		__func__, dp, dp->dl_flock, atomic_read(&dp->dl_count));
- 	put_nfs4_client(clp);
- 	nfs4_put_delegation(dp);
- 	return;
+ 	if ((bmval[0] & ~NFSD_SUPPORTED_ATTRS_WORD0) || (bmval[1] & ~NFSD_SUPPORTED_ATTRS_WORD1))
+ 		return nfserr_attrnotsupp;
+-	if ((bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0) || (bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1))
++	if ((bmval[0] & ~writable[0]) || (bmval[1] & ~writable[1]))
+ 		return nfserr_inval;
+ 
+ 	READ_BUF(4);
+@@ -499,7 +504,9 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ 	if ((status = check_filename(create->cr_name, create->cr_namelen, nfserr_inval)))
+ 		return status;
+ 
+-	if ((status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr, &create->cr_acl)))
++	status = nfsd4_decode_fattr(argp, create->cr_bmval, nfsd_attrmask,
++				    &create->cr_iattr, &create->cr_acl);
++	if (status)
+ 		goto out;
+ 
+ 	DECODE_TAIL;
+@@ -660,7 +667,9 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 		switch (open->op_createmode) {
+ 		case NFS4_CREATE_UNCHECKED:
+ 		case NFS4_CREATE_GUARDED:
+-			if ((status = nfsd4_decode_fattr(argp, open->op_bmval, &open->op_iattr, &open->op_acl)))
++			status = nfsd4_decode_fattr(argp, open->op_bmval,
++				nfsd_attrmask, &open->op_iattr, &open->op_acl);
++			if (status)
+ 				goto out;
+ 			break;
+ 		case NFS4_CREATE_EXCLUSIVE:
+@@ -859,7 +868,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+ 	status = nfsd4_decode_stateid(argp, &setattr->sa_stateid);
+ 	if (status)
+ 		return status;
+-	return nfsd4_decode_fattr(argp, setattr->sa_bmval,
++	return nfsd4_decode_fattr(argp, setattr->sa_bmval, nfsd_attrmask,
+ 				  &setattr->sa_iattr, &setattr->sa_acl);
+ }
+ 
 -- 
 1.6.2.1
 
