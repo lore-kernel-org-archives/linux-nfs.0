@@ -1,142 +1,92 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
-	to empty s_dirty list
-Date: Fri, 27 Mar 2009 10:13:03 +0800
-Message-ID: <20090327021303.GA7547@localhost>
-References: <20090324221528.2bb7c50b@tleilax.poochiereds.net> <20090325025037.GA17374@localhost> <20090325075110.028f0d1d@tleilax.poochiereds.net> <20090325121742.GA22869@localhost> <20090325091325.17c997fd@tleilax.poochiereds.net> <49CA2F41.8030804@themaw.net> <49CA33E7.6090309@themaw.net> <20090325100049.0cc4de87@tleilax.poochiereds.net> <20090325141618.GA5684@localhost> <20090326130327.3206e00b@barsoom.rdu.redhat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+Date: Fri, 27 Mar 2009 05:58:45 +0300
+Message-ID: <49CC40E5.2080506@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ian Kent <raven@themaw.net>, Dave Chinner <david@fromorbit.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"jens.axboe@oracle.com" <jens.axboe@oracle.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"hch@infradead.org" <hch@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090326130327.3206e00b@barsoom.rdu.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:12210 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753039AbZC0C71 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 22:59:27 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 27, 2009 at 01:03:27AM +0800, Jeff Layton wrote:
-> On Wed, 25 Mar 2009 22:16:18 +0800
-> Wu Fengguang <fengguang.wu@intel.com> wrote:
-> 
-> > > 
-> > > Actually, I think you were right. We still have this check in
-> > > generic_sync_sb_inodes() even with Wu's January 2008 patches:
-> > > 
-> > > 	/* Was this inode dirtied after sync_sb_inodes was called? */
-> > > 	if (time_after(inode->dirtied_when, start))
-> > > 		break;
-> > 
-> > Yeah, ugly code. Jens' per-bdi flush daemons should eliminate it...
-> > 
-> 
-> I had a look over Jens' patches and they seem to be more concerned with
-> how the queues and daemons are organized (per-bdi rather than per-sb).
-> The actual way that inodes flow between the queues and get written out
-> don't look like they really change with his set.
+Hi Bruce,
 
-OK, sorry that I've not carefully reviewed the per-bdi flushing patchset.
+Here's the latest server patches implementing the NFSv4.1
+Sessions features.
 
-> They also don't eliminate the problematic check above. Regardless of
-> whether your or Jens' patches make it in, I think we'll still need
-> something like the following (untested) patch.
-> 
-> If this looks ok, I'll flesh out the comments some and "officially" post
-> it. Thoughts?
+This patchset is based over your for-2.6.30 branch
+and is also available from
+git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
+(tagged as nfsd41-for-2.6.30-2009-03-27)
 
-It's good in itself. However with more_io_wait queue, the first two
-chunks will be eliminated. Mind I carry this patch with my patchset?
+The implementation status highlights are captured in
+Documentation/filesystems/nfs41-server.txt.
+The gist of it is that the implementation is functional
+to the level of passing Connectathon tests with v2,v3,v4,v4.1
+(tested with CONFIG_NFS_V4_1 defined to 'y')
 
-Thanks,
-Fengguang
+The patches are listed below.
 
+Thanks for your review and help with this project so far.
+Kudos to all the contributors (Authors/SOBs: Andy Adamson,
+Dean Hildebrand, Marc Eshel, Mike Sager, Ricardo Labiaga, and
+myself)  This is a pretty significant milestone for us
+(well, the real one will be when all this ends up working
+flawlessly in the kernel. :)
 
-> --------------[snip]-----------------
-> 
-> >From d10adff2d5f9a15d19c438119dbb2c410bd26e3c Mon Sep 17 00:00:00 2001
-> From: Jeff Layton <jlayton@redhat.com>
-> Date: Thu, 26 Mar 2009 12:54:52 -0400
-> Subject: [PATCH] writeback: guard against jiffies wraparound on inode->dirtied_when checks
-> 
-> The dirtied_when value on an inode is supposed to represent the first
-> time that an inode has one of its pages dirtied. This value is in units
-> of jiffies. This value is used in several places in the writeback code
-> to determine when to write out an inode.
-> 
-> The problem is that these checks assume that dirtied_when is updated
-> periodically. But if an inode is continuously being used for I/O it can
-> be persistently marked as dirty and will continue to age. Once the time
-> difference between dirtied_when and the jiffies value it is being
-> compared to is greater than (or equal to) half the maximum of the
-> jiffies type, the logic of the time_*() macros inverts and the opposite
-> of what is needed is returned. On 32-bit architectures that's just under
-> 25 days (assuming HZ == 1000).
-> 
-> As the least-recently dirtied inode, it'll end up being the first one
-> that pdflush will try to write out. sync_sb_inodes does this check
-> however:
-> 
-> 	/* Was this inode dirtied after sync_sb_inodes was called? */
->  	if (time_after(inode->dirtied_when, start))
->  		break;
-> 
-> ...but now dirtied_when appears to be in the future. sync_sb_inodes
-> bails out without attempting to write any dirty inodes.  When this
-> occurs, pdflush will stop writing out inodes for this superblock and
-> nothing will unwedge it until jiffies moves out of the problematic
-> window.
-> 
-> This patch fixes this problem by changing the time_after checks against
-> dirtied_when to also check whether dirtied_when appears to be in the
-> future. If it does, then we consider the value to be in the past.
-> 
-> This should shrink the problematic window to such a small period as not
-> to matter.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/fs-writeback.c |   11 +++++++----
->  1 files changed, 7 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index e3fe991..dba69a5 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -196,8 +196,9 @@ static void redirty_tail(struct inode *inode)
->  		struct inode *tail_inode;
->  
->  		tail_inode = list_entry(sb->s_dirty.next, struct inode, i_list);
-> -		if (!time_after_eq(inode->dirtied_when,
-> -				tail_inode->dirtied_when))
-> +		if (time_before(inode->dirtied_when,
-> +				tail_inode->dirtied_when) ||
-> +		    time_after(inode->dirtied_when, jiffies))
->  			inode->dirtied_when = jiffies;
->  	}
->  	list_move(&inode->i_list, &sb->s_dirty);
-> @@ -231,7 +232,8 @@ static void move_expired_inodes(struct list_head *delaying_queue,
->  		struct inode *inode = list_entry(delaying_queue->prev,
->  						struct inode, i_list);
->  		if (older_than_this &&
-> -			time_after(inode->dirtied_when, *older_than_this))
-> +			time_after(inode->dirtied_when, *older_than_this) &&
-> +			time_before_eq(inode->dirtied_when, jiffies))
->  			break;
->  		list_move(&inode->i_list, dispatch_queue);
->  	}
-> @@ -493,7 +495,8 @@ void generic_sync_sb_inodes(struct super_block *sb,
->  		}
->  
->  		/* Was this inode dirtied after sync_sb_inodes was called? */
-> -		if (time_after(inode->dirtied_when, start))
-> +		if (time_after(inode->dirtied_when, start) &&
-> +		    time_before_eq(inode->dirtied_when, jiffies))
->  			break;
->  
->  		/* Is another pdflush already flushing this queue? */
-> -- 
-> 1.5.5.6
+Benny
+
+[PATCH 01/47] nfsd: don't use the deferral service, return NFS4ERR_DELAY
+[PATCH 02/47] sunrpc: add cl_private field to struct rpc_clnt
+[PATCH 03/47] nfsd: embed nfsd4_current_state in nfsd4_compoundres
+[PATCH 04/47] nfsd: add a struct nfsd4_slot pointer to struct nfsd4_compound_state
+[PATCH 05/47] nfs41: common protocol definitions
+[PATCH 06/47] nfsd41: change NFSERR_REPLAY_ME
+[PATCH 07/47] nfsd41: Add Kconfig symbols for NFSv4.1
+[PATCH 08/47] nfsd41: define nfs41 error codes
+[PATCH 09/47] nfsd41: sessions basic data types
+[PATCH 10/47] nfsd41: introduce nfs4_client cl_sessions list
+[PATCH 11/47] nfsd41: release_session when client is expired
+[PATCH 12/47] nfsd41: sessionid hashing
+[PATCH 13/47] nfsd41: xdr infrastructure
+[PATCH 14/47] nfsd: remove nfsd4_ops array size
+[PATCH 15/47] nfsd41: proc stubs
+[PATCH 16/47] nfsd41: exchange_id operation
+[PATCH 17/47] nfsd41: match clientid establishment method
+[PATCH 18/47] nfsd41: sequence operation
+[PATCH 19/47] nfsd41: enforce NFS4ERR_SEQUENCE_POS operation order rules
+[PATCH 20/47] nfsd41: DRC save, restore, and clear functions
+[PATCH 21/47] nfsd41: hard page limit for DRC
+[PATCH 22/47] nfsd41: nfsd DRC logic
+[PATCH 23/47] nfsd41: clear DRC cache on free_session
+[PATCH 24/47] nfsd41: create_session operation
+[PATCH 25/47] nfsd41: Add a create session replay cache
+[PATCH 26/47] nfsd41: non-page DRC for solo sequence responses
+[PATCH 27/47] nfsd41: destroy_session operation
+[PATCH 28/47] nfsd41: stateid handling
+[PATCH 29/47] nfsd41: check encode size for sessions maxresponse cached
+[PATCH 30/47] nfsd41: clientid handling
+[PATCH 31/47] nfsd41: access_valid
+[PATCH 32/47] nfsd41: add OPEN4_SHARE_ACCESS_WANT nfs4_stateid bmap
+[PATCH 33/47] nfsd41: provide support for minor version 1 at rpc level
+[PATCH 34/47] nfsd: cleanup nfs4.0 callback encode routines
+[PATCH 35/47] nfsd: minorversion support for the back channel
+[PATCH 36/47] nfsd41: sunrpc: Added rpc server-side backchannel handling
+[PATCH 37/47] nfsd41: callback infrastructure
+[PATCH 38/47] nfsd41: Remember the auth flavor to use for callbacks
+[PATCH 39/47] nfsd41: introduce cl_cb_mutex
+[PATCH 40/47] nfsd41: cb_sequence callback
+[PATCH 41/47] nfsd41: introduce nfs4_cb_call_sync for nfs4 and nfs41
+[PATCH 42/47] nfsd41: cb_recall callback
+[PATCH 43/47] nfsd41: pass writable attrs mask to nfsd4_decode_fattr
+[PATCH 44/47] nfsd41: support for 3-word long attribute bitmask
+[PATCH 45/47] nfsd41: SUPPATTR_EXCLCREAT attribute
+[PATCH 46/47] nfsd41: CREATE_EXCLUSIVE4_1
+[PATCH 47/47] nfsd41: Documentation/filesystems/nfs41-server.txt
+
