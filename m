@@ -1,85 +1,142 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: Problems with default ACLs over NFS
-Date: Thu, 26 Mar 2009 17:05:13 -0700
-Message-ID: <20090326170513.4e7d377a.akpm@linux-foundation.org>
-References: <20090323222427.00bb24e7@werewolf.home>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
+	to empty s_dirty list
+Date: Fri, 27 Mar 2009 10:13:03 +0800
+Message-ID: <20090327021303.GA7547@localhost>
+References: <20090324221528.2bb7c50b@tleilax.poochiereds.net> <20090325025037.GA17374@localhost> <20090325075110.028f0d1d@tleilax.poochiereds.net> <20090325121742.GA22869@localhost> <20090325091325.17c997fd@tleilax.poochiereds.net> <49CA2F41.8030804@themaw.net> <49CA33E7.6090309@themaw.net> <20090325100049.0cc4de87@tleilax.poochiereds.net> <20090325141618.GA5684@localhost> <20090326130327.3206e00b@barsoom.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
-To: =?ISO-8859-1?Q? "J.A._Magall=F3n" ?= <jamagallon-sh/6fXdz2Rs@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58952 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932697AbZC0AHE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Mar 2009 20:07:04 -0400
-In-Reply-To: <20090323222427.00bb24e7-BIo4oXGMtDgJmsy6czSMtA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Ian Kent <raven@themaw.net>, Dave Chinner <david@fromorbit.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"jens.axboe@oracle.com" <jens.axboe@oracle.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"hch@infradead.org" <hch@infradead.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090326130327.3206e00b@barsoom.rdu.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(cc linux-nfs)
+On Fri, Mar 27, 2009 at 01:03:27AM +0800, Jeff Layton wrote:
+> On Wed, 25 Mar 2009 22:16:18 +0800
+> Wu Fengguang <fengguang.wu@intel.com> wrote:
+> 
+> > > 
+> > > Actually, I think you were right. We still have this check in
+> > > generic_sync_sb_inodes() even with Wu's January 2008 patches:
+> > > 
+> > > 	/* Was this inode dirtied after sync_sb_inodes was called? */
+> > > 	if (time_after(inode->dirtied_when, start))
+> > > 		break;
+> > 
+> > Yeah, ugly code. Jens' per-bdi flush daemons should eliminate it...
+> > 
+> 
+> I had a look over Jens' patches and they seem to be more concerned with
+> how the queues and daemons are organized (per-bdi rather than per-sb).
+> The actual way that inodes flow between the queues and get written out
+> don't look like they really change with his set.
 
-On Mon, 23 Mar 2009 22:24:27 +0100 "J.A. Magall__n" <jamagallon-sh/6fXdz2Rs@public.gmane.org> wrote:
+OK, sorry that I've not carefully reviewed the per-bdi flushing patchset.
 
-> Hi all...
+> They also don't eliminate the problematic check above. Regardless of
+> whether your or Jens' patches make it in, I think we'll still need
+> something like the following (untested) patch.
 > 
-> I have a strange problem with 2.6.29-rc8-git3.
-> It looks like a kernel bug... ?
-> 
-> I have a box with NFS autofs-mounted home directories. Server is a
-> Solaris 10 system. This worked in previous kernel versions, so I
-> don't blame Solaris, at this moment.
-> 
-> With this acls set in my home:
-> 
-> 
-> prometeo:~> getfacl .  
-> 
-> # file: .
-> # owner: magallon
-> # group: giga
-> user::rwx
-> user:webservd:r-x       #effective:r-x
-> group::--x      #effective:--x
-> mask:r-x
-> other:--x
-> default:user::rwx
-> default:group::--x
-> default:other:--x
-> 
-> I get this strange message in the linux client:
-> 
-> cicely:~> mkdir kk  
-> mkdir: cannot create directory `kk': Invalid argument
-> 
-> But the directory is created, and its ACLs are correct:
-> 
-> prometeo:~> getfacl kk  
-> 
-> # file: kk
-> # owner: magallon
-> # group: giga
-> user::rwx
-> group::--x      #effective:--x
-> other:--x
-> default:user::rwx
-> default:group::--x
-> default:other:--x
-> 
-> If I remove the 'default' entries, the error message goes away.
-> 
-> With strace, I get this:
-> 
-> mkdir("kk", 0777)                       = -1 EINVAL (Invalid argument)
-> 
-> Mount info from /proc/mounts:
-> 
-> ldap:danae-nfs:automountMapName=auto_home,o=diis /home autofs rw,fd=7,pgrp=3165,timeout=600,minproto=5,maxproto=5,indirect 0 0
-> 
-> danae-nfs:/export/home/usuarios/giga/magallon /home/magallon nfs rw,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,nointr,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=155.210.152.202,mountvers=3,mountproto=tcp,addr=155.210.152.202 0 0
-> 
-> It happens the same If I try to create a file with "> kk", or try to cp -r one
-> other dir, but "touch kk" works.
-> 
-> Any idea ?
-> 
+> If this looks ok, I'll flesh out the comments some and "officially" post
+> it. Thoughts?
 
+It's good in itself. However with more_io_wait queue, the first two
+chunks will be eliminated. Mind I carry this patch with my patchset?
+
+Thanks,
+Fengguang
+
+
+> --------------[snip]-----------------
+> 
+> >From d10adff2d5f9a15d19c438119dbb2c410bd26e3c Mon Sep 17 00:00:00 2001
+> From: Jeff Layton <jlayton@redhat.com>
+> Date: Thu, 26 Mar 2009 12:54:52 -0400
+> Subject: [PATCH] writeback: guard against jiffies wraparound on inode->dirtied_when checks
+> 
+> The dirtied_when value on an inode is supposed to represent the first
+> time that an inode has one of its pages dirtied. This value is in units
+> of jiffies. This value is used in several places in the writeback code
+> to determine when to write out an inode.
+> 
+> The problem is that these checks assume that dirtied_when is updated
+> periodically. But if an inode is continuously being used for I/O it can
+> be persistently marked as dirty and will continue to age. Once the time
+> difference between dirtied_when and the jiffies value it is being
+> compared to is greater than (or equal to) half the maximum of the
+> jiffies type, the logic of the time_*() macros inverts and the opposite
+> of what is needed is returned. On 32-bit architectures that's just under
+> 25 days (assuming HZ == 1000).
+> 
+> As the least-recently dirtied inode, it'll end up being the first one
+> that pdflush will try to write out. sync_sb_inodes does this check
+> however:
+> 
+> 	/* Was this inode dirtied after sync_sb_inodes was called? */
+>  	if (time_after(inode->dirtied_when, start))
+>  		break;
+> 
+> ...but now dirtied_when appears to be in the future. sync_sb_inodes
+> bails out without attempting to write any dirty inodes.  When this
+> occurs, pdflush will stop writing out inodes for this superblock and
+> nothing will unwedge it until jiffies moves out of the problematic
+> window.
+> 
+> This patch fixes this problem by changing the time_after checks against
+> dirtied_when to also check whether dirtied_when appears to be in the
+> future. If it does, then we consider the value to be in the past.
+> 
+> This should shrink the problematic window to such a small period as not
+> to matter.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/fs-writeback.c |   11 +++++++----
+>  1 files changed, 7 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+> index e3fe991..dba69a5 100644
+> --- a/fs/fs-writeback.c
+> +++ b/fs/fs-writeback.c
+> @@ -196,8 +196,9 @@ static void redirty_tail(struct inode *inode)
+>  		struct inode *tail_inode;
+>  
+>  		tail_inode = list_entry(sb->s_dirty.next, struct inode, i_list);
+> -		if (!time_after_eq(inode->dirtied_when,
+> -				tail_inode->dirtied_when))
+> +		if (time_before(inode->dirtied_when,
+> +				tail_inode->dirtied_when) ||
+> +		    time_after(inode->dirtied_when, jiffies))
+>  			inode->dirtied_when = jiffies;
+>  	}
+>  	list_move(&inode->i_list, &sb->s_dirty);
+> @@ -231,7 +232,8 @@ static void move_expired_inodes(struct list_head *delaying_queue,
+>  		struct inode *inode = list_entry(delaying_queue->prev,
+>  						struct inode, i_list);
+>  		if (older_than_this &&
+> -			time_after(inode->dirtied_when, *older_than_this))
+> +			time_after(inode->dirtied_when, *older_than_this) &&
+> +			time_before_eq(inode->dirtied_when, jiffies))
+>  			break;
+>  		list_move(&inode->i_list, dispatch_queue);
+>  	}
+> @@ -493,7 +495,8 @@ void generic_sync_sb_inodes(struct super_block *sb,
+>  		}
+>  
+>  		/* Was this inode dirtied after sync_sb_inodes was called? */
+> -		if (time_after(inode->dirtied_when, start))
+> +		if (time_after(inode->dirtied_when, start) &&
+> +		    time_before_eq(inode->dirtied_when, jiffies))
+>  			break;
+>  
+>  		/* Is another pdflush already flushing this queue? */
+> -- 
+> 1.5.5.6
