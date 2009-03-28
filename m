@@ -1,66 +1,61 @@
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 02/47] sunrpc: add cl_private field to struct rpc_clnt
-Date: Fri, 27 Mar 2009 20:39:28 -0400
-Message-ID: <E166DD1F-96CC-4F61-B215-7CE5FCEF20C4@netapp.com>
-References: <49CC40E5.2080506@panasas.com> <1238122908-6967-1-git-send-email-bhalevy@panasas.com> <20090328000552.GJ18222@fieldses.org>
-Mime-Version: 1.0 (iPhone Mail 5H11)
-Content-Type: text/plain;
-	format=flowed;
-	delsp=yes;
-	charset="us-ascii"
-Cc: "Benny Halevy" <bhalevy@panasas.com>, <linux-nfs@vger.kernel.org>,
-	<pnfs@linux-nfs.org>, "Andy Adamson" <andros@netapp.com>,
-	"Trond Myklebust" <trond@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+Date: Fri, 27 Mar 2009 21:17:13 -0400
+Message-ID: <20090328011713.GA26402@fieldses.org>
+References: <49CC40E5.2080506@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33200 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830AbZC1Aj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Mar 2009 20:39:58 -0400
-In-Reply-To: <20090328000552.GJ18222@fieldses.org>
+Received: from mail.fieldses.org ([141.211.133.115]:37198 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751310AbZC1BRR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Mar 2009 21:17:17 -0400
+In-Reply-To: <49CC40E5.2080506@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
+> Hi Bruce,
+> 
+> Here's the latest server patches implementing the NFSv4.1
+> Sessions features.
+> 
+> This patchset is based over your for-2.6.30 branch
+> and is also available from
+> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
 
-On Mar 27, 2009, at 8:06 PM, "J. Bruce Fields" <bfields@fieldses.org>  
-wrote:
+I ran the v4.0 pynfs on that branch and got some new failures:
 
-> On Fri, Mar 27, 2009 at 06:01:48AM +0300, Benny Halevy wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Note: the NFSv4.1 client also uses (and declares) this pointer.
->
-> OK.  Ack from trond?
+ACC3     st_access.testNoFh                                       : FAILURE
+           value=10064 not in enum nfsstat4
+CLOSE7   st_close.testNoCfh                                       : FAILURE
+           value=10064 not in enum nfsstat4
+CMT3     st_commit.testNoFh                                       : FAILURE
+           value=10064 not in enum nfsstat4
+CR8      st_create.testNoFh                                       : FAILURE
+           value=10064 not in enum nfsstat4
 
+Looks like NFS4ERR_SEQUENCE_POS is leaking out to nfsv4 code for some
+reason?
 
-First, someone would need to remind me why it is necessary, and add  
-that justification to the changelog.
+(Some similar results omitted.)
 
-     Trond
->
->
-> --b.
->
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->> include/linux/sunrpc/clnt.h |    1 +
->> 1 files changed, 1 insertions(+), 0 deletions(-)
->>
->> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/ 
->> clnt.h
->> index c39a210..928c547 100644
->> --- a/include/linux/sunrpc/clnt.h
->> +++ b/include/linux/sunrpc/clnt.h
->> @@ -53,6 +53,7 @@ struct rpc_clnt {
->>    char            cl_pathname[30];/* Path in rpc_pipe_fs */
->>    struct vfsmount *    cl_vfsmnt;
->>    struct dentry *        cl_dentry;    /* inode */
->> +    void            *cl_private;    /* private data */
->>    struct rpc_clnt *    cl_parent;    /* Points to parent of clones  
->> */
->>    struct rpc_rtt        cl_rtt_default;
->>    struct rpc_timeout    cl_timeout_default;
->> -- 
->> 1.6.2.1
->>
+Also there's a bunch of stuff like this:
+
+NVF1a    st_nverify.testMandLink                                  : FAILURE
+           NVerifying mandatory attributes against getattr should
+           return NFS4ERR_SAME, instead got NFS4_OK
+NVF1d    st_nverify.testMandDir                                   : FAILURE
+           NVerifying mandatory attributes against getattr should
+           return NFS4ERR_SAME, instead got NFS4_OK
+
+Probably the expansion of the attribute bitmask is exposing some
+preexisting bug in the 4.0 code, but let's try to figure out how to fix
+that.
+
+I haven't investigated either of these any closer yet.
+
+--b.
