@@ -1,43 +1,168 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 38/47] nfsd41: Remember the auth flavor to use for callbacks
-Date: Sat, 28 Mar 2009 11:34:29 +0300
-Message-ID: <1238229269-11454-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 37/47] nfsd41: callback infrastructure
+Date: Sat, 28 Mar 2009 11:34:25 +0300
+Message-ID: <1238229265-11423-1-git-send-email-bhalevy@panasas.com>
 References: <49CDDFC2.4070402@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:19282 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:18472 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756414AbZC1Ieh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:34:37 -0400
+	with ESMTP id S1756408AbZC1Iea (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:34:30 -0400
 In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+From: Andy Adamson <andros@netapp.com>
 
-The callbacks will be sent using the same authentication flavor that
-was used during session creation.  We'll add code to remember the
-principal in the case RPCSEC_GSS in a separate patch.
+Keep the xprt used for create_session in cl_cb_xprt.
+Mark cl_callback.cb_minorversion = 1 and remember
+the client provided cl_callback.cb_prog rpc program number.
+Use it to probe the callback path.
 
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Define xdr sizes and code nfs4_cb_compound header to be able
+to send a null callback rpc.
+
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c |   35 ++++++++++++++++++++++++++++++++---
+ fs/nfsd/nfs4state.c    |   10 ++++++++++
+ 2 files changed, 42 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index d8f2631..6b7ef87 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -43,6 +43,7 @@
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/svcsock.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/state.h>
+ #include <linux/sunrpc/sched.h>
+@@ -52,16 +53,19 @@
+ 
+ #define NFSPROC4_CB_NULL 0
+ #define NFSPROC4_CB_COMPOUND 1
++#define NFS4_STATEID_SIZE 16
+ 
+ /* Index of predefined Linux callback client operations */
+ 
+ enum {
+-        NFSPROC4_CLNT_CB_NULL = 0,
++	NFSPROC4_CLNT_CB_NULL = 0,
+ 	NFSPROC4_CLNT_CB_RECALL,
++	NFSPROC4_CLNT_CB_SEQUENCE,
+ };
+ 
+ enum nfs_cb_opnum4 {
+ 	OP_CB_RECALL            = 4,
++	OP_CB_SEQUENCE          = 11,
+ };
+ 
+ #define NFS4_MAXTAGLEN		20
+@@ -70,15 +74,22 @@ enum nfs_cb_opnum4 {
+ #define NFS4_dec_cb_null_sz		0
+ #define cb_compound_enc_hdr_sz		4
+ #define cb_compound_dec_hdr_sz		(3 + (NFS4_MAXTAGLEN >> 2))
++#define sessionid_sz			(NFS4_MAX_SESSIONID_LEN >> 2)
++#define cb_sequence_enc_sz		(sessionid_sz + 4 +             \
++					1 /* no referring calls list yet */)
++#define cb_sequence_dec_sz		(op_dec_sz + sessionid_sz + 4)
++
+ #define op_enc_sz			1
+ #define op_dec_sz			2
+ #define enc_nfs4_fh_sz			(1 + (NFS4_FHSIZE >> 2))
+ #define enc_stateid_sz			(NFS4_STATEID_SIZE >> 2)
+ #define NFS4_enc_cb_recall_sz		(cb_compound_enc_hdr_sz +       \
++					cb_sequence_enc_sz +            \
+ 					1 + enc_stateid_sz +            \
+ 					enc_nfs4_fh_sz)
+ 
+ #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
++					cb_sequence_dec_sz +            \
+ 					op_dec_sz)
+ 
+ /*
+@@ -135,13 +146,19 @@ xdr_error:                                      \
+ 		return -EIO; \
+ 	} \
+ } while (0)
++#define COPYMEM(x, nbytes) do {                \
++	memcpy((x), p, nbytes);                \
++	p += XDR_QUADLEN(nbytes);              \
++} while (0)
+ 
+ struct nfs4_cb_compound_hdr {
+-	int		status;
+-	u32		ident;
++	/* args */
++	u32		ident;	/* minorversion 0 only */
+ 	u32		nops;
+ 	__be32		*nops_p;
+ 	u32		minorversion;
++	/* res */
++	int		status;
+ 	u32		taglen;
+ 	char		*tag;
+ };
+@@ -405,6 +422,17 @@ static struct rpc_clnt *setup_callback_client(struct nfs4_client *clp)
+ 	addr.sin_family = AF_INET;
+ 	addr.sin_port = htons(cb->cb_port);
+ 	addr.sin_addr.s_addr = htonl(cb->cb_addr);
++#if defined(CONFIG_NFSD_V4_1)
++	if (cb->cb_minorversion) {
++		BUG_ON(cb->cb_minorversion != 1);
++		args.bc_sock = container_of(clp->cl_cb_xprt, struct svc_sock,
++					    sk_xprt);
++	}
++#endif /* CONFIG_NFSD_V4_1 */
++
++	dprintk("%s: program %s 0x%x nrvers %u version %u minorversion %u\n",
++		__func__, args.program->name, args.prognumber,
++		args.program->nrvers, args.version, cb->cb_minorversion);
+ 
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
+@@ -445,6 +473,7 @@ static int do_probe_callback(void *data)
+ 	put_nfs4_client(clp);
+ 	return 0;
+ out_release_client:
++	dprintk("NFSD: synchronous CB_NULL failed. status=%d\n", status);
+ 	rpc_shutdown_client(client);
+ out_err:
+ 	dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ef1e372..eb3d0dc 100644
+index 189f1c2..ef1e372 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1307,6 +1307,7 @@ out_new:
- 	copy_verf(new, &verf);
- 	copy_cred(&new->cl_cred, &rqstp->rq_cred);
- 	new->cl_addr = ip_addr;
-+	new->cl_flavor = rqstp->rq_flavor;
- 	gen_clid(new);
- 	gen_confirm(new);
- 	add_to_unconfirmed(new, strhashval);
+@@ -663,6 +663,8 @@ free_client(struct nfs4_client *clp)
+ {
+ 	shutdown_callback_client(clp);
+ #if defined(CONFIG_NFSD_V4_1)
++	if (clp->cl_cb_xprt)
++		svc_xprt_put(clp->cl_cb_xprt);
+ 	nfsd4_release_respages(clp->cl_slot.sl_cache_entry.ce_respages,
+ 			     clp->cl_slot.sl_cache_entry.ce_resused);
+ #endif /* CONFIG_NFSD_V4_1 */
+@@ -1411,6 +1413,14 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		cr_ses->flags &= ~SESSION4_PERSIST;
+ 		cr_ses->flags &= ~SESSION4_RDMA;
+ 
++		if (cr_ses->flags & SESSION4_BACK_CHAN) {
++			unconf->cl_cb_xprt = rqstp->rq_xprt;
++			svc_xprt_get(unconf->cl_cb_xprt);
++			unconf->cl_callback.cb_minorversion = 1;
++			unconf->cl_cb_seq_nr = 0;
++			unconf->cl_callback.cb_prog = cr_ses->callback_prog;
++			nfsd4_probe_callback(unconf);
++		}
+ 		conf = unconf;
+ 	} else {
+ 		status = nfserr_stale_clientid;
 -- 
 1.6.2.1
 
