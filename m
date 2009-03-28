@@ -1,175 +1,204 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 16/47] nfsd41: match clientid establishment method
-Date: Sat, 28 Mar 2009 11:32:17 +0300
-Message-ID: <1238229137-10764-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 17/47] nfsd41: sequence operation
+Date: Sat, 28 Mar 2009 11:32:21 +0300
+Message-ID: <1238229141-10797-1-git-send-email-bhalevy@panasas.com>
 References: <49CDDFC2.4070402@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:15804 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:14286 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755615AbZC1IcY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:32:24 -0400
+	with ESMTP id S1755689AbZC1Icb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:32:31 -0400
 In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Implement the sequence operation conforming to
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
 
-We need to distinguish between client names provided by NFSv4.0 clients
-SETCLIENTID and those provided by NFSv4.1 via EXCHANGE_ID when looking
-up the clientid by string.
+Check for stale clientid (as derived from the sessionid).
+Enforce slotid range and exactly-once semantics using
+the slotid and seqid.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[nfsd41: use boolean values for use_exchange_id argument]
+If everything went well renew the client lease and
+mark the slot INPROGRESS.
+
+[nfsd41: rename sequence catchthis to cachethis]
+Signed-off-by: Andy Adamson<andros@netapp.com>
+[pulled some code to set cstate->slot from "nfsd DRC logic"]
+[use sessionid_lock spin lock]
+[nfsd41: use bool inuse for slot state]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4recover.c      |    3 ++-
- fs/nfsd/nfs4state.c        |   41 ++++++++++++++++++++++++++++++-----------
- include/linux/nfsd/state.h |    2 +-
- 3 files changed, 33 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c       |   71 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfs4xdr.c         |   32 +++++++++++++++++++-
+ include/linux/nfsd/xdr4.h |   10 ++++++-
+ 3 files changed, 108 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index b11cf8d..3444c00 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -344,7 +344,8 @@ purge_old(struct dentry *parent, struct dentry *child)
- {
- 	int status;
- 
--	if (nfs4_has_reclaimed_state(child->d_name.name))
-+	/* note: we currently use this path only for minorversion 0 */
-+	if (nfs4_has_reclaimed_state(child->d_name.name, false))
- 		return 0;
- 
- 	status = nfsd4_clear_clid_dir(parent, child);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 09c63ff..0c39376 100644
+index 0c39376..a19f292 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -723,25 +723,44 @@ find_unconfirmed_client(clientid_t *clid)
- 	return NULL;
+@@ -1004,6 +1004,32 @@ error:
+ 	return status;
  }
  
-+/*
-+ * Return 1 iff clp's clientid establishment method matches the use_exchange_id
-+ * parameter. Matching is based on the fact the at least one of the
-+ * EXCHGID4_FLAG_USE_{NON_PNFS,PNFS_MDS,PNFS_DS} flags must be set for v4.1
-+ */
-+static inline int
-+match_clientid_establishment(struct nfs4_client *clp, bool use_exchange_id)
++static int
++check_slot_seqid(u32 seqid, struct nfsd4_slot *slot)
 +{
-+#if defined(CONFIG_NFSD_V4_1)
-+	return (clp->cl_exchange_flags != 0) == (use_exchange_id != false);
-+#else  /* CONFIG_NFSD_V4_1 */
-+	return 1;
-+#endif /* CONFIG_NFSD_V4_1 */
++	dprintk("%s enter. seqid %d slot->sl_seqid %d\n", __func__, seqid,
++		slot->sl_seqid);
++
++	/* The slot is in use, and no response has been sent. */
++	if (slot->sl_inuse) {
++		if (seqid == slot->sl_seqid)
++			return nfserr_jukebox;
++		else
++			return nfserr_seq_misordered;
++	}
++	/* Normal */
++	if (likely(seqid == slot->sl_seqid + 1))
++		return nfs_ok;
++	/* Replay */
++	if (seqid == slot->sl_seqid)
++		return nfserr_replay_cache;
++	/* Wraparound */
++	if (seqid == 1 && (slot->sl_seqid + 1) == 0)
++		return nfs_ok;
++	/* Misordered replay or misordered new request */
++	return nfserr_seq_misordered;
 +}
 +
- static struct nfs4_client *
--find_confirmed_client_by_str(const char *dname, unsigned int hashval)
-+find_confirmed_client_by_str(const char *dname, unsigned int hashval,
-+			     bool use_exchange_id)
- {
- 	struct nfs4_client *clp;
- 
- 	list_for_each_entry(clp, &conf_str_hashtbl[hashval], cl_strhash) {
--		if (same_name(clp->cl_recdir, dname))
-+		if (same_name(clp->cl_recdir, dname) &&
-+		    match_clientid_establishment(clp, use_exchange_id))
- 			return clp;
- 	}
- 	return NULL;
+ __be32
+ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		     struct nfsd4_compound_state *cstate,
+@@ -1021,11 +1047,52 @@ nfsd4_destroy_session(struct svc_rqst *r,
  }
  
- static struct nfs4_client *
--find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
-+find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
-+			       bool use_exchange_id)
+ __be32
+-nfsd4_sequence(struct svc_rqst *r,
++nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_compound_state *cstate,
+ 	       struct nfsd4_sequence *seq)
  {
- 	struct nfs4_client *clp;
- 
- 	list_for_each_entry(clp, &unconf_str_hashtbl[hashval], cl_strhash) {
--		if (same_name(clp->cl_recdir, dname))
-+		if (same_name(clp->cl_recdir, dname) &&
-+		    match_clientid_establishment(clp, use_exchange_id))
- 			return clp;
- 	}
- 	return NULL;
-@@ -895,7 +914,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 	nfs4_lock_state();
- 	status = nfs_ok;
- 
--	conf = find_confirmed_client_by_str(dname, strhashval);
-+	conf = find_confirmed_client_by_str(dname, strhashval, true);
- 	if (conf) {
- 		if (!same_verf(&verf, &conf->cl_verifier)) {
- 			/* 18.35.4 case 8 */
-@@ -943,7 +962,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		}
- 	}
- 
--	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
-+	unconf  = find_unconfirmed_client_by_str(dname, strhashval, true);
- 	if (unconf) {
- 		/*
- 		 * Possible retry or client restart.  Per 18.35.4 case 4,
-@@ -1041,7 +1060,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	strhashval = clientstr_hashval(dname);
- 
- 	nfs4_lock_state();
--	conf = find_confirmed_client_by_str(dname, strhashval);
-+	conf = find_confirmed_client_by_str(dname, strhashval, false);
- 	if (conf) {
- 		/* RFC 3530 14.2.33 CASE 0: */
- 		status = nfserr_clid_inuse;
-@@ -1056,7 +1075,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * has a description of SETCLIENTID request processing consisting
- 	 * of 5 bullet points, labeled as CASE0 - CASE4 below.
- 	 */
--	unconf = find_unconfirmed_client_by_str(dname, strhashval);
-+	unconf = find_unconfirmed_client_by_str(dname, strhashval, false);
- 	status = nfserr_resource;
- 	if (!conf) {
- 		/*
-@@ -1211,7 +1230,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			unsigned int hash =
- 				clientstr_hashval(unconf->cl_recdir);
- 			conf = find_confirmed_client_by_str(unconf->cl_recdir,
--									hash);
-+							    hash, false);
- 			if (conf) {
- 				nfsd4_remove_clid_dir(conf);
- 				expire_client(conf);
-@@ -3332,12 +3351,12 @@ alloc_reclaim(void)
+-	return -1;	/* stub */
++	struct nfsd4_session *session;
++	struct nfsd4_slot *slot;
++	int status;
++
++	spin_lock(&sessionid_lock);
++	status = nfserr_badsession;
++	session = find_in_sessionid_hashtbl(&seq->sessionid);
++	if (!session)
++		goto out;
++
++	status = nfserr_badslot;
++	if (seq->slotid >= session->se_fnumslots)
++		goto out;
++
++	slot = &session->se_slots[seq->slotid];
++	dprintk("%s: slotid %d\n", __func__, seq->slotid);
++
++	status = check_slot_seqid(seq->seqid, slot);
++	if (status == nfserr_replay_cache) {
++		cstate->slot = slot;
++		goto replay_cache;
++	}
++	if (status)
++		goto out;
++
++	/* Success! bump slot seqid */
++	slot->sl_inuse = true;
++	slot->sl_seqid = seq->seqid;
++
++	cstate->slot = slot;
++
++replay_cache:
++	/* Renew the clientid on success and on replay.
++	 * Hold a session reference until done processing the compound:
++	 * nfsd4_put_session called only if the cstate slot is set.
++	 */
++	renew_client(session->se_client);
++	nfsd4_get_session(slot->sl_session);
++out:
++	spin_unlock(&sessionid_lock);
++	dprintk("%s: return %d\n", __func__, ntohl(status));
++	return status;
  }
+ #endif /* CONFIG_NFSD_V4_1 */
  
- int
--nfs4_has_reclaimed_state(const char *name)
-+nfs4_has_reclaimed_state(const char *name, bool use_exchange_id)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 840cf6a..c6b490e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1114,7 +1114,16 @@ static __be32
+ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ 		      struct nfsd4_sequence *seq)
  {
- 	unsigned int strhashval = clientstr_hashval(name);
- 	struct nfs4_client *clp;
- 
--	clp = find_confirmed_client_by_str(name, strhashval);
-+	clp = find_confirmed_client_by_str(name, strhashval, use_exchange_id);
- 	return clp ? 1 : 0;
+-	return nfserr_opnotsupp;	/* stub */
++	DECODE_HEAD;
++
++	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
++	COPYMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
++	READ32(seq->seqid);
++	READ32(seq->slotid);
++	READ32(seq->maxslots);
++	READ32(seq->cachethis);
++
++	DECODE_TAIL;
  }
+ #endif /* CONFIG_NFSD_V4_1 */
  
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 5de36a7..feab6ec 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -331,7 +331,7 @@ extern void nfsd4_init_recdir(char *recdir_name);
- extern int nfsd4_recdir_load(void);
- extern void nfsd4_shutdown_recdir(void);
- extern int nfs4_client_to_reclaim(const char *name);
--extern int nfs4_has_reclaimed_state(const char *name);
-+extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
- extern void nfsd4_recdir_purge_old(void);
- extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
- extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
+@@ -2836,7 +2845,26 @@ static __be32
+ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 		      struct nfsd4_sequence *seq)
+ {
+-	/* stub */
++	ENCODE_HEAD;
++
++	if (nfserr)
++		goto out;
++
++	RESERVE_SPACE(NFS4_MAX_SESSIONID_LEN + 20);
++	WRITEMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
++	WRITE32(seq->seqid);
++	WRITE32(seq->slotid);
++	WRITE32(seq->maxslots);
++	/*
++	 * FIXME: for now:
++	 *   target_maxslots = maxslots
++	 *   status_flags = 0
++	 */
++	WRITE32(seq->maxslots);
++	WRITE32(0);
++
++	ADJUST_ARGS();
++out:
+ 	return nfserr;
+ }
+ #endif /* CONFIG_NFSD_V4_1 */
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index ea5a427..9e4d8db 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -362,7 +362,15 @@ struct nfsd4_create_session {
+ };
+ 
+ struct nfsd4_sequence {
+-	int	foo;	/* stub */
++	struct nfs4_sessionid	sessionid;		/* request/response */
++	u32			seqid;			/* request/response */
++	u32			slotid;			/* request/response */
++	u32			maxslots;		/* request/response */
++	u32			cachethis;		/* request */
++#if 0
++	u32			target_maxslots;	/* response */
++	u32			status_flags;		/* response */
++#endif /* not yet */
+ };
+ 
+ struct nfsd4_destroy_session {
 -- 
 1.6.2.1
 
