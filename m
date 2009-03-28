@@ -1,144 +1,101 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 29/47] nfsd41: clientid handling
-Date: Sat, 28 Mar 2009 11:33:41 +0300
-Message-ID: <1238229221-11174-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 30/47] nfsd41: access_valid
+Date: Sat, 28 Mar 2009 11:33:45 +0300
+Message-ID: <1238229225-11205-1-git-send-email-bhalevy@panasas.com>
 References: <49CDDFC2.4070402@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:18560 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:19965 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756260AbZC1Idr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:33:47 -0400
+	with ESMTP id S1756322AbZC1Idu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:33:50 -0400
 In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Extract the clientid from sessionid to set the op_clientid on open.
-Verify that the clid for other stateful ops is zero for minorversion != 0
-Do all other checks for stateful ops without sessions.
+For nfs41, the open share flags are used also for
+delegation "wants" and "signals".  Check that they are valid.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixed whitespace indent]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c  |   12 ++++++++++++
- fs/nfsd/nfs4state.c |   14 ++++++++------
- fs/nfsd/nfs4xdr.c   |    9 +++++++++
- 3 files changed, 29 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4proc.c        |    1 +
+ fs/nfsd/nfs4state.c       |   20 +++++++++++++++-----
+ include/linux/nfsd/xdr4.h |    1 +
+ 3 files changed, 17 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 1d4b2b5..0076bb1 100644
+index 0076bb1..8b4bf5e 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -162,6 +162,15 @@ do_open_fhandle(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_
- 	return status;
- }
- 
-+static void
-+copy_clientid(clientid_t *clid, struct nfsd4_session *session)
-+{
-+	struct nfsd4_sessionid *sid =
-+			(struct nfsd4_sessionid *)session->se_sessionid.data;
-+
-+	clid->cl_boot = sid->clientid.cl_boot;
-+	clid->cl_id = sid->clientid.cl_id;
-+}
- 
- static __be32
- nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-@@ -176,6 +185,9 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
- 		return nfserr_inval;
- 
-+	if (nfsd4_has_session(cstate))
-+		copy_clientid(&open->op_clientid, cstate->slot->sl_session);
-+
- 	nfs4_lock_state();
- 
- 	/* check seqid for replay. set nfs4_owner */
+@@ -901,6 +901,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	resp->tag = args->tag;
+ 	resp->opcnt = 0;
+ 	resp->rqstp = rqstp;
++	resp->cstate.minorversion = args->minorversion;
+ 	resp->cstate.replay_owner = NULL;
+ 	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
+ 	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bf5b214..00ad1c2 100644
+index 00ad1c2..dbf0d07 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -616,8 +616,8 @@ STALE_CLIENTID(clientid_t *clid)
+@@ -1959,11 +1959,21 @@ find_file(struct inode *ino)
+ 	return NULL;
+ }
+ 
+-static inline int access_valid(u32 x)
++static inline int access_valid(u32 x, u32 minorversion)
  {
- 	if (clid->cl_boot == boot_time)
+-	if (x < NFS4_SHARE_ACCESS_READ)
++	if ((x & NFS4_SHARE_ACCESS_MASK) < NFS4_SHARE_ACCESS_READ)
  		return 0;
--	dprintk("NFSD stale clientid (%08x/%08x)\n", 
--			clid->cl_boot, clid->cl_id);
-+	dprintk("NFSD stale clientid (%08x/%08x) boot_time %08lx\n",
-+		clid->cl_boot, clid->cl_id, boot_time);
+-	if (x > NFS4_SHARE_ACCESS_BOTH)
++	if ((x & NFS4_SHARE_ACCESS_MASK) > NFS4_SHARE_ACCESS_BOTH)
++		return 0;
++	x &= ~NFS4_SHARE_ACCESS_MASK;
++	if (minorversion && x) {
++		if ((x & NFS4_SHARE_WANT_MASK) > NFS4_SHARE_WANT_CANCEL)
++			return 0;
++		if ((x & NFS4_SHARE_WHEN_MASK) > NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED)
++			return 0;
++		x &= ~(NFS4_SHARE_WANT_MASK | NFS4_SHARE_WHEN_MASK);
++	}
++	if (x)
+ 		return 0;
  	return 1;
  }
+@@ -2511,7 +2521,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	__be32 status;
  
-@@ -2968,8 +2968,9 @@ nfs4_preprocess_seqid_op(struct svc_fh *current_fh, u32 seqid, stateid_t *statei
- 		if (lock->lk_is_new) {
- 			if (!sop->so_is_open_owner)
- 				return nfserr_bad_stateid;
--			if (!same_clid(&clp->cl_clientid, lockclid))
--			       return nfserr_bad_stateid;
-+			if (!(flags & HAS_SESSION) &&
-+			    !same_clid(&clp->cl_clientid, lockclid))
-+				return nfserr_bad_stateid;
- 			/* stp is the open stateid */
- 			status = nfs4_check_openmode(stp, lkflg);
- 			if (status)
-@@ -3516,7 +3517,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfs4_file *fp;
- 		
- 		status = nfserr_stale_clientid;
--		if (STALE_CLIENTID(&lock->lk_new_clientid))
-+		if (!nfsd4_has_session(cstate) &&
-+		    STALE_CLIENTID(&lock->lk_new_clientid))
- 			goto out;
- 
- 		flags = OPEN_STATE;
-@@ -3678,7 +3680,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	status = nfserr_stale_clientid;
--	if (STALE_CLIENTID(&lockt->lt_clientid))
-+	if (!nfsd4_has_session(cstate) && STALE_CLIENTID(&lockt->lt_clientid))
+ 	status = nfserr_inval;
+-	if (!access_valid(open->op_share_access)
++	if (!access_valid(open->op_share_access, resp->cstate.minorversion)
+ 			|| !deny_valid(open->op_share_deny))
  		goto out;
+ 	/*
+@@ -3108,7 +3118,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 			(int)cstate->current_fh.fh_dentry->d_name.len,
+ 			cstate->current_fh.fh_dentry->d_name.name);
  
- 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0))) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 52ca833..a1af3a3 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -189,6 +189,11 @@ static __be32 *read_buf(struct nfsd4_compoundargs *argp, u32 nbytes)
- 	return p;
- }
+-	if (!access_valid(od->od_share_access)
++	if (!access_valid(od->od_share_access, cstate->minorversion)
+ 			|| !deny_valid(od->od_share_deny))
+ 		return nfserr_inval;
  
-+static int zero_clientid(clientid_t *clid)
-+{
-+	return (clid->cl_boot == 0) && (clid->cl_id == 0);
-+}
-+
- static int
- defer_free(struct nfsd4_compoundargs *argp,
- 		void (*release)(const void *), void *p)
-@@ -584,6 +589,8 @@ nfsd4_decode_lockt(struct nfsd4_compoundargs *argp, struct nfsd4_lockt *lockt)
- 	READ_BUF(lockt->lt_owner.len);
- 	READMEM(lockt->lt_owner.data, lockt->lt_owner.len);
- 
-+	if (argp->minorversion && !zero_clientid(&lockt->lt_clientid))
-+		return nfserr_inval;
- 	DECODE_TAIL;
- }
- 
-@@ -994,6 +1001,8 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
- 	READ_BUF(rlockowner->rl_owner.len);
- 	READMEM(rlockowner->rl_owner.data, rlockowner->rl_owner.len);
- 
-+	if (argp->minorversion && !zero_clientid(&rlockowner->rl_clientid))
-+		return nfserr_inval;
- 	DECODE_TAIL;
- }
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index aafbfdc..881ff67 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
+ 	struct nfsd4_slot	*slot;
+ 	__be32			*statp;
+ 	size_t			iovlen;
++	u32			minorversion;
+ 	u32			status;
+ };
  
 -- 
 1.6.2.1
