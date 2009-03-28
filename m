@@ -1,92 +1,115 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
-Date: Sat, 28 Mar 2009 11:28:50 +0300
-Message-ID: <49CDDFC2.4070402@panasas.com>
-References: <49CC40E5.2080506@panasas.com> <20090328000134.GH18222@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH v2 01/47] nfsd: don't use the deferral service, return NFS4ERR_DELAY
+Date: Sat, 28 Mar 2009 11:30:44 +0300
+Message-ID: <1238229044-7001-1-git-send-email-bhalevy@panasas.com>
+References: <49CDDFC2.4070402@panasas.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:12086 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:14865 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751332AbZC1I2z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:28:55 -0400
-In-Reply-To: <20090328000134.GH18222@fieldses.org>
+	with ESMTP id S1752853AbZC1Iat (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:30:49 -0400
+In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
->> Hi Bruce,
->>
->> Here's the latest server patches implementing the NFSv4.1
->> Sessions features.
->>
->> This patchset is based over your for-2.6.30 branch
->> and is also available from
->> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
-> 
-> There's a few merge conflicts with my current for-2.6.30--probably my
-> fault for not pushing that out recently enough, apologies.  Would you
-> mind updating?
-> 
-> --b.
-> 
+From: Andy Adamson <andros@netapp.com>
 
-Sure. Here's a rebased version with two minor changes (see below)
+On an NFSv4.1 server cache miss that causes an upcall, NFS4ERR_DELAY will be
+returned. It is up to the NFSv4.1 client to resend only the operations that
+have not been processed.
 
-Benny
+Initialize rq_usedeferral to 1 in svc_process(). It sill be turned off in
+nfsd4_proc_compound() only when NFSv4.1 Sessions are used.
 
-[PATCH v2 01/47] nfsd: don't use the deferral service, return NFS4ERR_DELAY
-commit message edited.
+Note: this isn't an adequate solution on its own. It's acceptable as a way
+to get some minimal 4.1 up and working, but we're going to have to find a
+way to avoid returning DELAY in all common cases before 4.1 can really be
+considered ready.
 
-[PATCH v2 02/47] nfsd: embed nfsd4_current_state in nfsd4_compoundres
-[PATCH v2 03/47] nfsd: add a struct nfsd4_slot pointer to struct nfsd4_compound_state
-[PATCH v2 04/47] nfs41: common protocol definitions
-[PATCH v2 05/47] nfsd41: change NFSERR_REPLAY_ME
-[PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
-[PATCH v2 07/47] nfsd41: define nfs41 error codes
-[PATCH v2 08/47] nfsd41: sessions basic data types
-[PATCH v2 09/47] nfsd41: introduce nfs4_client cl_sessions list
-[PATCH v2 10/47] nfsd41: release_session when client is expired
-[PATCH v2 11/47] nfsd41: sessionid hashing
-[PATCH v2 12/47] nfsd41: xdr infrastructure
-[PATCH v2 13/47] nfsd: remove nfsd4_ops array size
-[PATCH v2 14/47] nfsd41: proc stubs
-[PATCH v2 15/47] nfsd41: exchange_id operation
-[PATCH v2 16/47] nfsd41: match clientid establishment method
-[PATCH v2 17/47] nfsd41: sequence operation
-[PATCH v2 18/47] nfsd41: enforce NFS4ERR_SEQUENCE_POS operation order rules
-[PATCH v2 19/47] nfsd41: DRC save, restore, and clear functions
-[PATCH v2 20/47] nfsd41: hard page limit for DRC
-[PATCH v2 21/47] nfsd41: nfsd DRC logic
-[PATCH v2 22/47] nfsd41: clear DRC cache on free_session
-[PATCH v2 23/47] nfsd41: create_session operation
-[PATCH v2 24/47] nfsd41: Add a create session replay cache
-[PATCH v2 25/47] nfsd41: non-page DRC for solo sequence responses
-[PATCH v2 26/47] nfsd41: destroy_session operation
-[PATCH v2 27/47] nfsd41: stateid handling
-[PATCH v2 28/47] nfsd41: check encode size for sessions maxresponse cached
-[PATCH v2 29/47] nfsd41: clientid handling
-[PATCH v2 30/47] nfsd41: access_valid
-[PATCH v2 31/47] nfsd41: add OPEN4_SHARE_ACCESS_WANT nfs4_stateid bmap
-[PATCH v2 32/47] nfsd41: provide support for minor version 1 at rpc level
-[PATCH v2 33/47] nfsd: cleanup nfs4.0 callback encode routines
-[PATCH v2 34/47] sunrpc: add cl_private field to struct rpc_clnt
-patch moved forward, right before first use.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: reverse rq_nodeferral negative logic]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[sunrpc: initialize rq_usedeferral]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfs4proc.c         |    8 ++++++++
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    2 ++
+ net/sunrpc/svc_xprt.c      |    2 +-
+ 4 files changed, 12 insertions(+), 1 deletions(-)
 
-[PATCH v2 35/47] nfsd: minorversion support for the back channel
-[PATCH v2 36/47] nfsd41: sunrpc: Added rpc server-side backchannel handling
-[PATCH v2 37/47] nfsd41: callback infrastructure
-[PATCH v2 38/47] nfsd41: Remember the auth flavor to use for callbacks
-[PATCH v2 39/47] nfsd41: introduce cl_cb_mutex
-[PATCH v2 40/47] nfsd41: cb_sequence callback
-[PATCH v2 41/47] nfsd41: introduce nfs4_cb_call_sync for nfs4 and nfs41
-[PATCH v2 42/47] nfsd41: cb_recall callback
-[PATCH v2 43/47] nfsd41: pass writable attrs mask to nfsd4_decode_fattr
-[PATCH v2 44/47] nfsd41: support for 3-word long attribute bitmask
-[PATCH v2 45/47] nfsd41: SUPPATTR_EXCLCREAT attribute
-[PATCH v2 46/47] nfsd41: CREATE_EXCLUSIVE4_1
-[PATCH v2 47/47] nfsd41: Documentation/filesystems/nfs41-server.txt
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f156b85..7839654 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -873,6 +873,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	resp->tag = args->tag;
+ 	resp->opcnt = 0;
+ 	resp->rqstp = rqstp;
++	/* Use the deferral mechanism only for NFSv4.0 compounds */
++	rqstp->rq_usedeferral = (args->minorversion == 0);
+ 
+ 	/*
+ 	 * According to RFC3010, this takes precedence over all other errors.
+@@ -957,10 +959,16 @@ encode_op:
+ 
+ 		nfsd4_increment_op_stats(op->opnum);
+ 	}
++	if (!rqstp->rq_usedeferral && status == nfserr_dropit) {
++		dprintk("%s Dropit - send NFS4ERR_DELAY\n", __func__);
++		status = nfserr_jukebox;
++	}
+ 
+ 	cstate_free(cstate);
+ out:
+ 	nfsd4_release_compoundargs(args);
++	/* Reset deferral mechanism for RPC deferrals */
++	rqstp->rq_usedeferral = 1;
+ 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
+ 	return status;
+ }
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 9f9f699..815dd58 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -230,6 +230,7 @@ struct svc_rqst {
+ 	struct svc_cred		rq_cred;	/* auth info */
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
++	int			rq_usedeferral;	/* use deferral */
+ 
+ 	size_t			rq_xprt_hlen;	/* xprt header len */
+ 	struct xdr_buf		rq_arg;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index fff09a2..45984cb 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1023,6 +1023,8 @@ svc_process(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
++	/* Will be turned off only when NFSv4 Sessions are used */
++	rqstp->rq_usedeferral = 1;
+ 
+ 	/* Setup reply header */
+ 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 1e66f24..600d091 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -974,7 +974,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
+ 	struct svc_deferred_req *dr;
+ 
+-	if (rqstp->rq_arg.page_len)
++	if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
+ 		return NULL; /* if more than a page, give up FIXME */
+ 	if (rqstp->rq_deferred) {
+ 		dr = rqstp->rq_deferred;
+-- 
+1.6.2.1
+
