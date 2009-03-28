@@ -1,182 +1,90 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 47/47] nfsd41: Documentation/filesystems/nfs41-server.txt
-Date: Sat, 28 Mar 2009 11:35:24 +0300
-Message-ID: <1238229324-11737-1-git-send-email-bhalevy@panasas.com>
-References: <49CDDFC2.4070402@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: " J. Bruce Fields" <bfields@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: lookup_one_len() returning d_count == 0
+Date: Sat, 28 Mar 2009 09:55:37 -0400
+Message-ID: <49CE2C59.7040102@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:13815 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756632AbZC1Ifh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:35:37 -0400
-In-Reply-To: <49CDDFC2.4070402@panasas.com>
+Received: from mx2.redhat.com ([66.187.237.31]:51152 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753024AbZC1N6Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 28 Mar 2009 09:58:25 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2SDwNca004985
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2009 09:58:23 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-47.bos.redhat.com [10.16.10.47])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2SDwN2J004010
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2009 09:58:24 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Initial nfs41 server write up describing the status of the linux
-server implementation.
+In some recent work I'm doing, I am seeing something very 
+strange when using an OpenSolaris client which does a
+NFS v4 mount. Here is the scenario
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- Documentation/filesystems/nfs41-server.txt |  148 ++++++++++++++++++++++++++++
- 1 files changed, 148 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/nfs41-server.txt
+On the server, the exports look like:
 
-diff --git a/Documentation/filesystems/nfs41-server.txt b/Documentation/filesystems/nfs41-server.txt
-new file mode 100644
-index 0000000..e62cd13
---- /dev/null
-+++ b/Documentation/filesystems/nfs41-server.txt
-@@ -0,0 +1,148 @@
-+NFSv4.1 Server Implementation
-+
-+The NFSv4 minorversion 1 (NFSv4.1) implementation in nfsd is based
-+on the latest NFSv4.1 Internet Draft:
-+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29
-+
-+If you're a developer or just eager to test the code, set
-+CONFIG_NFSD_V4_1 to 'y' in your kernel configuration file.
-+This will allow the server to serve both NFSv4 and NFSv4.1
-+clients concurrently.
-+
-+From the many new features in NFSv4.1 the current implementation
-+focuses on the mandatory-to-implement NFSv4.1 Sessions, providing
-+"exactly once" semantics and better control and throttling of the
-+resources allocated for each client.
-+
-+Other NFSv4.1 features, Parallel NFS operations in particular,
-+are still under development out of tree.
-+See http://wiki.linux-nfs.org/wiki/index.php/PNFS_prototype_design
-+for more information.
-+
-+The table below, taken from the NFSv4.1 document, lists
-+the operations that are mandatory to implement (REQ), optional
-+(OPT), and NFSv4.0 operations that are required not to implement (MNI)
-+in minor version 1.  The first column indicates the operations that
-+are not supported yet by the linux server implementation.
-+
-+The OPTIONAL features identified and their abbreviations are as follows:
-+	pNFS	Parallel NFS
-+	FDELG	File Delegations
-+	DDELG	Directory Delegations
-+
-+The following abbreviations indicate the linux server implementation status.
-+	I	Implemented NFSv4.1 operations.
-+	NS	Not Supported.
-+	NS*	unimplemented optional feature.
-+	P	pNFS features implemented out of tree.
-+	PNS	pNFS features that are not supported yet (out of tree).
-+
-+Operations
-+
-+   +----------------------+------------+--------------+----------------+
-+   | Operation            | REQ, REC,  | Feature      | Definition     |
-+   |                      | OPT, or    | (REQ, REC,   |                |
-+   |                      | MNI        | or OPT)      |                |
-+   +----------------------+------------+--------------+----------------+
-+   | ACCESS               | REQ        |              | Section 18.1   |
-+NS | BACKCHANNEL_CTL      | REQ        |              | Section 18.33  |
-+NS | BIND_CONN_TO_SESSION | REQ        |              | Section 18.34  |
-+   | CLOSE                | REQ        |              | Section 18.2   |
-+   | COMMIT               | REQ        |              | Section 18.3   |
-+   | CREATE               | REQ        |              | Section 18.4   |
-+I  | CREATE_SESSION       | REQ        |              | Section 18.36  |
-+NS*| DELEGPURGE           | OPT        | FDELG (REQ)  | Section 18.5   |
-+   | DELEGRETURN          | OPT        | FDELG,       | Section 18.6   |
-+   |                      |            | DDELG, pNFS  |                |
-+   |                      |            | (REQ)        |                |
-+NS | DESTROY_CLIENTID     | REQ        |              | Section 18.50  |
-+I  | DESTROY_SESSION      | REQ        |              | Section 18.37  |
-+I  | EXCHANGE_ID          | REQ        |              | Section 18.35  |
-+NS | FREE_STATEID         | REQ        |              | Section 18.38  |
-+   | GETATTR              | REQ        |              | Section 18.7   |
-+P  | GETDEVICEINFO        | OPT        | pNFS (REQ)   | Section 18.40  |
-+P  | GETDEVICELIST        | OPT        | pNFS (OPT)   | Section 18.41  |
-+   | GETFH                | REQ        |              | Section 18.8   |
-+NS*| GET_DIR_DELEGATION   | OPT        | DDELG (REQ)  | Section 18.39  |
-+P  | LAYOUTCOMMIT         | OPT        | pNFS (REQ)   | Section 18.42  |
-+P  | LAYOUTGET            | OPT        | pNFS (REQ)   | Section 18.43  |
-+P  | LAYOUTRETURN         | OPT        | pNFS (REQ)   | Section 18.44  |
-+   | LINK                 | OPT        |              | Section 18.9   |
-+   | LOCK                 | REQ        |              | Section 18.10  |
-+   | LOCKT                | REQ        |              | Section 18.11  |
-+   | LOCKU                | REQ        |              | Section 18.12  |
-+   | LOOKUP               | REQ        |              | Section 18.13  |
-+   | LOOKUPP              | REQ        |              | Section 18.14  |
-+   | NVERIFY              | REQ        |              | Section 18.15  |
-+   | OPEN                 | REQ        |              | Section 18.16  |
-+NS*| OPENATTR             | OPT        |              | Section 18.17  |
-+   | OPEN_CONFIRM         | MNI        |              | N/A            |
-+   | OPEN_DOWNGRADE       | REQ        |              | Section 18.18  |
-+   | PUTFH                | REQ        |              | Section 18.19  |
-+   | PUTPUBFH             | REQ        |              | Section 18.20  |
-+   | PUTROOTFH            | REQ        |              | Section 18.21  |
-+   | READ                 | REQ        |              | Section 18.22  |
-+   | READDIR              | REQ        |              | Section 18.23  |
-+   | READLINK             | OPT        |              | Section 18.24  |
-+NS | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-+   | RELEASE_LOCKOWNER    | MNI        |              | N/A            |
-+   | REMOVE               | REQ        |              | Section 18.25  |
-+   | RENAME               | REQ        |              | Section 18.26  |
-+   | RENEW                | MNI        |              | N/A            |
-+   | RESTOREFH            | REQ        |              | Section 18.27  |
-+   | SAVEFH               | REQ        |              | Section 18.28  |
-+   | SECINFO              | REQ        |              | Section 18.29  |
-+NS | SECINFO_NO_NAME      | REC        | pNFS files   | Section 18.45, |
-+   |                      |            | layout (REQ) | Section 13.12  |
-+I  | SEQUENCE             | REQ        |              | Section 18.46  |
-+   | SETATTR              | REQ        |              | Section 18.30  |
-+   | SETCLIENTID          | MNI        |              | N/A            |
-+   | SETCLIENTID_CONFIRM  | MNI        |              | N/A            |
-+NS | SET_SSV              | REQ        |              | Section 18.47  |
-+NS | TEST_STATEID         | REQ        |              | Section 18.48  |
-+   | VERIFY               | REQ        |              | Section 18.31  |
-+NS*| WANT_DELEGATION      | OPT        | FDELG (OPT)  | Section 18.49  |
-+   | WRITE                | REQ        |              | Section 18.32  |
-+
-+Callback Operations
-+
-+   +-------------------------+-----------+-------------+---------------+
-+   | Operation               | REQ, REC, | Feature     | Definition    |
-+   |                         | OPT, or   | (REQ, REC,  |               |
-+   |                         | MNI       | or OPT)     |               |
-+   +-------------------------+-----------+-------------+---------------+
-+   | CB_GETATTR              | OPT       | FDELG (REQ) | Section 20.1  |
-+P  | CB_LAYOUTRECALL         | OPT       | pNFS (REQ)  | Section 20.3  |
-+NS*| CB_NOTIFY               | OPT       | DDELG (REQ) | Section 20.4  |
-+P  | CB_NOTIFY_DEVICEID      | OPT       | pNFS (OPT)  | Section 20.12 |
-+NS*| CB_NOTIFY_LOCK          | OPT       |             | Section 20.11 |
-+NS*| CB_PUSH_DELEG           | OPT       | FDELG (OPT) | Section 20.5  |
-+   | CB_RECALL               | OPT       | FDELG,      | Section 20.2  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS*| CB_RECALL_ANY           | OPT       | FDELG,      | Section 20.6  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS | CB_RECALL_SLOT          | REQ       |             | Section 20.8  |
-+NS*| CB_RECALLABLE_OBJ_AVAIL | OPT       | DDELG, pNFS | Section 20.7  |
-+   |                         |           | (REQ)       |               |
-+I  | CB_SEQUENCE             | OPT       | FDELG,      | Section 20.9  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS*| CB_WANTS_CANCELLED      | OPT       | FDELG,      | Section 20.10 |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+   +-------------------------+-----------+-------------+---------------+
-+
-+Implementation notes:
-+
-+EXCHANGE_ID:
-+* only SP4_NONE state protection supported
-+* implementation ids are ignored
-+
-+CREATE_SESSION:
-+* backchannel attributes are ignored
-+* backchannel security parameters are ignored
-+
-+SEQUENCE:
-+* no support for dynamic slot table renegotiation (optional)
--- 
-1.6.2.1
+/fs1          	<world>(rw,wdelay,root_squash,no_subtree_check)
+/fs1/fs2/fs3/fs4/fs5
+		<world>(rw,wdelay,nohide,root_squash,no_subtree_check)
+
+With all the fs? directories being a file system which in turn makes them a 
+mount point.
+
+The client is doing:
+
+mount server:/fs1 /mnt/tmp
+ls /mnt/tmp/fs2/fs3 
+  Which does only returns the fs4 dir as it should.
+
+Now when the client does:
+  ls /mnt/tmp/fs2/fs3/fs4
+
+On the server:
+
+nfsd_lookup_dentry() calls lookup_one_len() like it always does
+but this time the dentry that's return (for fs4) has a d_count == 0
+which cause the first dget() to blow up...
+
+Anybody have any ideas as to why lookup_one_len() would be
+returning a (supposedly valid) dentry with a d_count == 0?
+Is giving out dentrys with a d_count == 0 a valid thing to do?
+
+steved.
+
+P.S. here is what the oops looks like:
+
+kernel BUG at include/linux/dcache.h:334!
+invalid opcode: 0000 [#1] SMP 
+last sysfs file: /sys/module/nfsd/initstate
+Modules linked in: nfsd lockd nfs_acl auth_rpcgss exportfs bridge stp llc bnep sco l2cap bluetooth autofs4 sunrpc ipv6 p4_clockmod uinput ppdev snd_intel8x0 snd_ac97_codec ac97_bus snd_seq_dummy snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore pcspkr snd_page_alloc i2c_i801 firewire_ohci firewire_core iTCO_wdt iTCO_vendor_support crc_itu_t intel_rng e1000 parport_pc parport ata_generic pata_acpi radeon drm i2c_algo_bit i2c_core [last unloaded: nfsd]
+
+Pid: 3554, comm: nfsd Tainted: G        W  (2.6.29-15.fc10.i686.PAE #1)         
+EIP: 0060:[<f9336917>] EFLAGS: 00010246 CPU: 1
+EIP is at nfsd_lookup_dentry+0x259/0x344 [nfsd]
+EAX: 00000000 EBX: f6cbaea0 ECX: f6cbaea0 EDX: f2892800
+ESI: 00010000 EDI: f290f08c EBP: f1095e1c ESP: f1095df4
+ DS: 007b ES: 007b FS: 00d8 GS: 0000 SS: 0068
+Process nfsd (pid: 3554, ti=f1094000 task=f154d500 task.ti=f1094000)
+Stack:
+ f1126120 00014405 00000000 f2892800 00000046 f6cbaea0 f15f73c0 f1095f30
+ f10f65a8 f1095f2c f1095f40 f933de34 00000003 f1095f30 f1095f2c f1126120
+ 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+Call Trace:
+ [<f933de34>] ? nfsd4_secinfo+0x49/0xa0 [nfsd]
+ [<f933efc2>] ? nfsd4_encode_operation+0x57/0x69 [nfsd]
+ [<f933e07c>] ? nfsd4_proc_compound+0x19c/0x2bc [nfsd]
+ [<f933ddeb>] ? nfsd4_secinfo+0x0/0xa0 [nfsd]
+ [<f9331227>] ? nfsd_dispatch+0xd4/0x1a7 [nfsd]
+ [<f8eca07a>] ? svc_process+0x37e/0x58c [sunrpc]
+ [<f933177c>] ? nfsd+0x11e/0x170 [nfsd]
+ [<f933165e>] ? nfsd+0x0/0x170 [nfsd]
+ [<c044bbac>] ? kthread+0x40/0x66
+ [<c044bb6c>] ? kthread+0x0/0x66
+ [<c040a03f>] ? kernel_thread_helper+0x7/0x10
+Code: 0f 84 88 00 00 00 8b 4d ec 8b 55 f0 8b 41 3c 3b 42 20 75 7a 8b 52 1c 85 d2 74 07 8d 42 68 f0 ff 42 68 89 55 e4 8b 01 85 c0 75 04 <0f> 0b eb fe f0 ff 01 89 4d e8 8d 7d e8 8d 5d e4 89 fa 89 d8 e8 
+EIP: [<f9336917>] nfsd_lookup_dentry+0x259/0x344 [nfsd] SS:ESP 0068:f1095df4
+
+
 
