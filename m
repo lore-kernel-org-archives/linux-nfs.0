@@ -1,79 +1,75 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 02/47] sunrpc: add cl_private field to struct rpc_clnt
-Date: Sat, 28 Mar 2009 13:35:53 -0400
-Message-ID: <1238261753.6679.13.camel@heimdal.trondhjem.org>
-References: <49CC40E5.2080506@panasas.com>
-	 <1238122908-6967-1-git-send-email-bhalevy@panasas.com>
-	 <20090328000552.GJ18222@fieldses.org>
-	 <E166DD1F-96CC-4F61-B215-7CE5FCEF20C4@netapp.com>
-	 <49CDDDBB.9060706@panasas.com>
-	 <1238261035.6679.4.camel@heimdal.trondhjem.org>
-	 <49CE5E6D.7080806@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+Date: Sat, 28 Mar 2009 21:32:07 +0300
+Message-ID: <49CE6D27.8020601@panasas.com>
+References: <49CC40E5.2080506@panasas.com> <20090328011713.GA26402@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Andy Adamson <andros@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64769 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752987AbZC1Rgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Mar 2009 13:36:33 -0400
-In-Reply-To: <49CE5E6D.7080806@panasas.com>
+Received: from gw-ca.panasas.com ([209.116.51.66]:12066 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753912AbZC1ScR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 14:32:17 -0400
+In-Reply-To: <20090328011713.GA26402@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-03-28 at 20:29 +0300, Benny Halevy wrote:
-> On Mar. 28, 2009, 20:23 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > On Sat, 2009-03-28 at 11:20 +0300, Benny Halevy wrote:
-> >> On Mar. 28, 2009, 3:39 +0300, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> >>> On Mar 27, 2009, at 8:06 PM, "J. Bruce Fields" <bfields@fieldses.org>  
-> >>> wrote:
-> >>>
-> >>>> On Fri, Mar 27, 2009 at 06:01:48AM +0300, Benny Halevy wrote:
-> >>>>> From: Andy Adamson <andros@netapp.com>
-> >>>>>
-> >>>>> Note: the NFSv4.1 client also uses (and declares) this pointer.
-> >>>> OK.  Ack from trond?
-> >>>
-> >>> First, someone would need to remind me why it is necessary, and add  
-> >>> that justification to the changelog.
-> >> First time this is used in this patchset is here:
-> >> [PATCH 35/47] nfsd: minorversion support for the back channel
-> >>
-> >> The client uses cl_private to determine the minorversion
-> >> (via a struct nfs_client *) to be set in the compound header,
-> >> and to know when to generate a SEQUENCE op.
-> >> Similarly, the server puts a struct nfs4_callback * in
-> >> there for callback compounds' CB_COMPOUND and CB_SEQUENCE.
-> > 
-> > Why would the rpc_client need to know and track minor versions? That is
-> > an NFS protocol specific thing.
+On Mar. 28, 2009, 4:17 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
+>> Hi Bruce,
+>>
+>> Here's the latest server patches implementing the NFSv4.1
+>> Sessions features.
+>>
+>> This patchset is based over your for-2.6.30 branch
+>> and is also available from
+>> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
 > 
-> Agreed.  the rpc_client doesn't know anything about the minor version.
-> This is why we store it in a void *cl_private.
+> I ran the v4.0 pynfs on that branch and got some new failures:
 > 
-> > 
-> > Besides, the caller should always know what minor version it is using.
-> > It shouldn't need a back-pointer in the rpc_client...
-> > 
+> ACC3     st_access.testNoFh                                       : FAILURE
+>            value=10064 not in enum nfsstat4
+> CLOSE7   st_close.testNoCfh                                       : FAILURE
+>            value=10064 not in enum nfsstat4
+> CMT3     st_commit.testNoFh                                       : FAILURE
+>            value=10064 not in enum nfsstat4
+> CR8      st_create.testNoFh                                       : FAILURE
+>            value=10064 not in enum nfsstat4
 > 
-> The back pointer is used in the xdr layer like this:
->  	struct xdr_stream xdr;
-> +	struct nfs_client *clp =
-> +		(struct nfs_client *)req->rq_task->tk_client->cl_private;
->  	struct compound_hdr hdr = {
-> -		.nops = 0,
-> +		.minorversion = clp->cl_minorversion,
->  	};
+> Looks like NFS4ERR_SEQUENCE_POS is leaking out to nfsv4 code for some
+> reason?
 
-Just put that information in the RPC arguments where it _BELONGS_.
+Right, we checked ALLOWED_AS_FIRST_OP for minorversion 0 too.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> 
+> (Some similar results omitted.)
+> 
+> Also there's a bunch of stuff like this:
+> 
+> NVF1a    st_nverify.testMandLink                                  : FAILURE
+>            NVerifying mandatory attributes against getattr should
+>            return NFS4ERR_SAME, instead got NFS4_OK
+> NVF1d    st_nverify.testMandDir                                   : FAILURE
+>            NVerifying mandatory attributes against getattr should
+>            return NFS4ERR_SAME, instead got NFS4_OK
+> 
+> Probably the expansion of the attribute bitmask is exposing some
+> preexisting bug in the 4.0 code, but let's try to figure out how to fix
+> that.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+A change to nfsd4_encode_fattr to encode bitmaps of variable length
+(rather than 2) broke _nfsd4_verify.
+
+> 
+> I haven't investigated either of these any closer yet.
+> 
+> --b.
+
+The following two patches fix these regressions:
+[PATCH 1/2] SQUASHME: nfsd41: do not verify nfserr_sequence_pos for minorversion 0
+[PATCH 2/2] nfsd: dynamically skip encoded fattr bitmap in _nfsd4_verify
+
+Benny
