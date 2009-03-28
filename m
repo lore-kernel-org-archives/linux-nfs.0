@@ -1,49 +1,106 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
-Date: Sat, 28 Mar 2009 11:31:09 +0300
-Message-ID: <1238229069-8636-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 07/47] nfsd41: define nfs41 error codes
+Date: Sat, 28 Mar 2009 11:31:15 +0300
+Message-ID: <1238229075-9010-1-git-send-email-bhalevy@panasas.com>
 References: <49CDDFC2.4070402@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from gw-ca.panasas.com ([209.116.51.66]:15483 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753717AbZC1IcN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:32:13 -0400
+	with ESMTP id S1754224AbZC1IcO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:32:14 -0400
 In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Added CONFIG_NFSD_V4_1 and made it depend upon NFSD_V4 and EXPERIMENTAL
-Indicate that CONFIG_NFS_V4_1 is for NFS developers at the moment
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-At the moment we're expecting folks trying out nfs41 to
-actively participate in the development process by helping us
-debug issues and ideally send patches to fix problems.
+Define all error code present in
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29.
 
-[trailing space fixed]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: clean up error code definitions]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/Kconfig |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
+ include/linux/nfs.h       |    2 --
+ include/linux/nfsd/nfsd.h |   43 ++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 42 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 503b9da..1f2f893 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -79,3 +79,12 @@ config NFSD_V4
- 	  available from http://linux-nfs.org/.
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index 1510a64..214d499 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -109,8 +109,6 @@
+ 	NFSERR_FILE_OPEN = 10046,      /*       v4 */
+ 	NFSERR_ADMIN_REVOKED = 10047,  /*       v4 */
+ 	NFSERR_CB_PATH_DOWN = 10048,   /*       v4 */
+-
+-	NFSERR_REPLAY_ME = 11001,	/* linux internal */
+ };
  
- 	  If unsure, say N.
-+
-+config NFSD_V4_1
-+	bool "NFS server support for NFSv4.1 (DEVELOPER ONLY)"
-+	depends on NFSD_V4 && EXPERIMENTAL
-+	help
-+	  This option enables support for minor version 1 of the NFSv4 protocol
-+	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS server.
-+
-+	  Unless you're an NFS developer, say N.
+ /* NFSv2 file types - beware, these are not the same in NFSv3 */
+diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+index 54beda1..ab9616d 100644
+--- a/include/linux/nfsd/nfsd.h
++++ b/include/linux/nfsd/nfsd.h
+@@ -249,7 +249,44 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_cb_path_down	cpu_to_be32(NFSERR_CB_PATH_DOWN)
+ #define	nfserr_locked		cpu_to_be32(NFSERR_LOCKED)
+ #define	nfserr_wrongsec		cpu_to_be32(NFSERR_WRONGSEC)
+-#define	nfserr_replay_me	cpu_to_be32(NFSERR_REPLAY_ME)
++#define nfserr_badiomode		cpu_to_be32(NFS4ERR_BADIOMODE)
++#define nfserr_badlayout		cpu_to_be32(NFS4ERR_BADLAYOUT)
++#define nfserr_bad_session_digest	cpu_to_be32(NFS4ERR_BAD_SESSION_DIGEST)
++#define nfserr_badsession		cpu_to_be32(NFS4ERR_BADSESSION)
++#define nfserr_badslot			cpu_to_be32(NFS4ERR_BADSLOT)
++#define nfserr_complete_already		cpu_to_be32(NFS4ERR_COMPLETE_ALREADY)
++#define nfserr_conn_not_bound_to_session cpu_to_be32(NFS4ERR_CONN_NOT_BOUND_TO_SESSION)
++#define nfserr_deleg_already_wanted	cpu_to_be32(NFS4ERR_DELEG_ALREADY_WANTED)
++#define nfserr_back_chan_busy		cpu_to_be32(NFS4ERR_BACK_CHAN_BUSY)
++#define nfserr_layouttrylater		cpu_to_be32(NFS4ERR_LAYOUTTRYLATER)
++#define nfserr_layoutunavailable	cpu_to_be32(NFS4ERR_LAYOUTUNAVAILABLE)
++#define nfserr_nomatching_layout	cpu_to_be32(NFS4ERR_NOMATCHING_LAYOUT)
++#define nfserr_recallconflict		cpu_to_be32(NFS4ERR_RECALLCONFLICT)
++#define nfserr_unknown_layouttype	cpu_to_be32(NFS4ERR_UNKNOWN_LAYOUTTYPE)
++#define nfserr_seq_misordered		cpu_to_be32(NFS4ERR_SEQ_MISORDERED)
++#define nfserr_sequence_pos		cpu_to_be32(NFS4ERR_SEQUENCE_POS)
++#define nfserr_req_too_big		cpu_to_be32(NFS4ERR_REQ_TOO_BIG)
++#define nfserr_rep_too_big		cpu_to_be32(NFS4ERR_REP_TOO_BIG)
++#define nfserr_rep_too_big_to_cache	cpu_to_be32(NFS4ERR_REP_TOO_BIG_TO_CACHE)
++#define nfserr_retry_uncached_rep	cpu_to_be32(NFS4ERR_RETRY_UNCACHED_REP)
++#define nfserr_unsafe_compound		cpu_to_be32(NFS4ERR_UNSAFE_COMPOUND)
++#define nfserr_too_many_ops		cpu_to_be32(NFS4ERR_TOO_MANY_OPS)
++#define nfserr_op_not_in_session	cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION)
++#define nfserr_hash_alg_unsupp		cpu_to_be32(NFS4ERR_HASH_ALG_UNSUPP)
++#define nfserr_clientid_busy		cpu_to_be32(NFS4ERR_CLIENTID_BUSY)
++#define nfserr_pnfs_io_hole		cpu_to_be32(NFS4ERR_PNFS_IO_HOLE)
++#define nfserr_seq_false_retry		cpu_to_be32(NFS4ERR_SEQ_FALSE_RETRY)
++#define nfserr_bad_high_slot		cpu_to_be32(NFS4ERR_BAD_HIGH_SLOT)
++#define nfserr_deadsession		cpu_to_be32(NFS4ERR_DEADSESSION)
++#define nfserr_encr_alg_unsupp		cpu_to_be32(NFS4ERR_ENCR_ALG_UNSUPP)
++#define nfserr_pnfs_no_layout		cpu_to_be32(NFS4ERR_PNFS_NO_LAYOUT)
++#define nfserr_not_only_op		cpu_to_be32(NFS4ERR_NOT_ONLY_OP)
++#define nfserr_wrong_cred		cpu_to_be32(NFS4ERR_WRONG_CRED)
++#define nfserr_wrong_type		cpu_to_be32(NFS4ERR_WRONG_TYPE)
++#define nfserr_dirdeleg_unavail		cpu_to_be32(NFS4ERR_DIRDELEG_UNAVAIL)
++#define nfserr_reject_deleg		cpu_to_be32(NFS4ERR_REJECT_DELEG)
++#define nfserr_returnconflict		cpu_to_be32(NFS4ERR_RETURNCONFLICT)
++#define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
+ 
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
+@@ -258,6 +295,10 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_dropit		cpu_to_be32(30000)
+ /* end-of-file indicator in readdir */
+ #define	nfserr_eof		cpu_to_be32(30001)
++/* replay detected */
++#define	nfserr_replay_me	cpu_to_be32(11001)
++/* nfs41 replay detected */
++#define	nfserr_replay_cache	cpu_to_be32(11002)
+ 
+ /* Check for dir entries '.' and '..' */
+ #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
 -- 
 1.6.2.1
 
