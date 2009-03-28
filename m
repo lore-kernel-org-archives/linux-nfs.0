@@ -1,115 +1,140 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 01/47] nfsd: don't use the deferral service, return NFS4ERR_DELAY
-Date: Sat, 28 Mar 2009 11:30:44 +0300
-Message-ID: <1238229044-7001-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 02/47] nfsd: embed nfsd4_current_state in nfsd4_compoundres
+Date: Sat, 28 Mar 2009 11:30:52 +0300
+Message-ID: <1238229052-7600-1-git-send-email-bhalevy@panasas.com>
 References: <49CDDFC2.4070402@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: " J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:14865 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:16819 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752853AbZC1Iat (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:30:49 -0400
+	with ESMTP id S1753309AbZC1Ia6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Mar 2009 04:30:58 -0400
 In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-On an NFSv4.1 server cache miss that causes an upcall, NFS4ERR_DELAY will be
-returned. It is up to the NFSv4.1 client to resend only the operations that
-have not been processed.
+Remove the allocation of struct nfsd4_compound_state.
 
-Initialize rq_usedeferral to 1 in svc_process(). It sill be turned off in
-nfsd4_proc_compound() only when NFSv4.1 Sessions are used.
-
-Note: this isn't an adequate solution on its own. It's acceptable as a way
-to get some minimal 4.1 up and working, but we're going to have to find a
-way to avoid returning DELAY in all common cases before 4.1 can really be
-considered ready.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: reverse rq_nodeferral negative logic]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[sunrpc: initialize rq_usedeferral]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c         |    8 ++++++++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc.c           |    2 ++
- net/sunrpc/svc_xprt.c      |    2 +-
- 4 files changed, 12 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4proc.c        |   40 +++++++++-------------------------------
+ include/linux/nfsd/xdr4.h |    9 +++++----
+ 2 files changed, 14 insertions(+), 35 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f156b85..7839654 100644
+index 7839654..c8e1ad0 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -873,6 +873,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+@@ -809,29 +809,6 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+ 		nfsdstats.nfs4_opcount[opnum]++;
+ }
+ 
+-static void cstate_free(struct nfsd4_compound_state *cstate)
+-{
+-	if (cstate == NULL)
+-		return;
+-	fh_put(&cstate->current_fh);
+-	fh_put(&cstate->save_fh);
+-	BUG_ON(cstate->replay_owner);
+-	kfree(cstate);
+-}
+-
+-static struct nfsd4_compound_state *cstate_alloc(void)
+-{
+-	struct nfsd4_compound_state *cstate;
+-
+-	cstate = kmalloc(sizeof(struct nfsd4_compound_state), GFP_KERNEL);
+-	if (cstate == NULL)
+-		return NULL;
+-	fh_init(&cstate->current_fh, NFS4_FHSIZE);
+-	fh_init(&cstate->save_fh, NFS4_FHSIZE);
+-	cstate->replay_owner = NULL;
+-	return cstate;
+-}
+-
+ typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+ 			      void *);
+ 
+@@ -859,12 +836,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ {
+ 	struct nfsd4_op	*op;
+ 	struct nfsd4_operation *opdesc;
+-	struct nfsd4_compound_state *cstate = NULL;
++	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	int		slack_bytes;
+ 	__be32		status;
+ 
+ 	resp->xbuf = &rqstp->rq_res;
+-	resp->p = rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len;
++	resp->p = rqstp->rq_res.head[0].iov_base +
++						rqstp->rq_res.head[0].iov_len;
+ 	resp->tagp = resp->p;
+ 	/* reserve space for: taglen, tag, and opcnt */
+ 	resp->p += 2 + XDR_QUADLEN(args->taglen);
+@@ -873,6 +851,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
  	resp->tag = args->tag;
  	resp->opcnt = 0;
  	resp->rqstp = rqstp;
-+	/* Use the deferral mechanism only for NFSv4.0 compounds */
-+	rqstp->rq_usedeferral = (args->minorversion == 0);
++	resp->cstate.replay_owner = NULL;
++	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
++	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
+ 	/* Use the deferral mechanism only for NFSv4.0 compounds */
+ 	rqstp->rq_usedeferral = (args->minorversion == 0);
  
- 	/*
- 	 * According to RFC3010, this takes precedence over all other errors.
-@@ -957,10 +959,16 @@ encode_op:
+@@ -883,11 +864,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	if (args->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+ 		goto out;
  
- 		nfsd4_increment_op_stats(op->opnum);
+-	status = nfserr_resource;
+-	cstate = cstate_alloc();
+-	if (cstate == NULL)
+-		goto out;
+-
+ 	status = nfs_ok;
+ 	while (!status && resp->opcnt < args->opcnt) {
+ 		op = &args->ops[resp->opcnt++];
+@@ -964,7 +940,9 @@ encode_op:
+ 		status = nfserr_jukebox;
  	}
-+	if (!rqstp->rq_usedeferral && status == nfserr_dropit) {
-+		dprintk("%s Dropit - send NFS4ERR_DELAY\n", __func__);
-+		status = nfserr_jukebox;
-+	}
  
- 	cstate_free(cstate);
+-	cstate_free(cstate);
++	fh_put(&resp->cstate.current_fh);
++	fh_put(&resp->cstate.save_fh);
++	BUG_ON(resp->cstate.replay_owner);
  out:
  	nfsd4_release_compoundargs(args);
-+	/* Reset deferral mechanism for RPC deferrals */
-+	rqstp->rq_usedeferral = 1;
- 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
- 	return status;
- }
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 9f9f699..815dd58 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -230,6 +230,7 @@ struct svc_rqst {
- 	struct svc_cred		rq_cred;	/* auth info */
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
-+	int			rq_usedeferral;	/* use deferral */
+ 	/* Reset deferral mechanism for RPC deferrals */
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 27bd3e3..fd15ddc 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -45,9 +45,9 @@
+ #define XDR_LEN(n)                     (((n) + 3) & ~3)
  
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index fff09a2..45984cb 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1023,6 +1023,8 @@ svc_process(struct svc_rqst *rqstp)
- 	rqstp->rq_res.tail[0].iov_len = 0;
- 	/* Will be turned off only in gss privacy case: */
- 	rqstp->rq_splice_ok = 1;
-+	/* Will be turned off only when NFSv4 Sessions are used */
-+	rqstp->rq_usedeferral = 1;
+ struct nfsd4_compound_state {
+-	struct svc_fh current_fh;
+-	struct svc_fh save_fh;
+-	struct nfs4_stateowner *replay_owner;
++	struct svc_fh		current_fh;
++	struct svc_fh		save_fh;
++	struct nfs4_stateowner	*replay_owner;
+ };
  
- 	/* Setup reply header */
- 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 1e66f24..600d091 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -974,7 +974,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
- 	struct svc_deferred_req *dr;
+ struct nfsd4_change_info {
+@@ -416,7 +416,8 @@ struct nfsd4_compoundres {
+ 	u32				taglen;
+ 	char *				tag;
+ 	u32				opcnt;
+-	__be32 *			tagp; /* where to encode tag and  opcount */
++	__be32 *			tagp; /* tag, opcount encode location */
++	struct nfsd4_compound_state	cstate;
+ };
  
--	if (rqstp->rq_arg.page_len)
-+	if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
- 		return NULL; /* if more than a page, give up FIXME */
- 	if (rqstp->rq_deferred) {
- 		dr = rqstp->rq_deferred;
+ #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
 -- 
 1.6.2.1
 
