@@ -1,59 +1,102 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: [PATCH] writeback: reset inode dirty time when adding it back
-	to empty s_dirty list
-Date: Sat, 28 Mar 2009 20:44:01 +0800
-Message-ID: <20090328124401.GA12608@localhost>
-References: <20090325075110.028f0d1d@tleilax.poochiereds.net> <20090325121742.GA22869@localhost> <20090325091325.17c997fd@tleilax.poochiereds.net> <49CA2F41.8030804@themaw.net> <49CA33E7.6090309@themaw.net> <20090325100049.0cc4de87@tleilax.poochiereds.net> <20090325141618.GA5684@localhost> <20090326130327.3206e00b@barsoom.rdu.redhat.com> <20090327021303.GA7547@localhost> <20090327071633.0c1a0e3a@tleilax.poochiereds.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 04/46] nfs41: nfs_client.cl_minorversion
+Date: Sun, 29 Mar 2009 12:02:42 -0400
+Message-ID: <1238342562.10999.0.camel@heimdal.trondhjem.org>
+References: <49ADBD04.2090002@panasas.com>
+	 <1236124341-3091-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ian Kent <raven@themaw.net>, Dave Chinner <david@fromorbit.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"jens.axboe@oracle.com" <jens.axboe@oracle.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"hch@infradead.org" <hch@infradead.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:27700 "EHLO mga03.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29617 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751052AbZC2AFr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 28 Mar 2009 20:05:47 -0400
-In-Reply-To: <20090327071633.0c1a0e3a-RtJpwOs3+0O+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+	id S1757807AbZC2QD3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Mar 2009 12:03:29 -0400
+In-Reply-To: <1236124341-3091-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 27, 2009 at 07:16:33PM +0800, Jeff Layton wrote:
-> On Fri, 27 Mar 2009 10:13:03 +0800
-> Wu Fengguang <fengguang.wu@intel.com> wrote:
->
-> >
-> > > They also don't eliminate the problematic check above. Regardless of
-> > > whether your or Jens' patches make it in, I think we'll still need
-> > > something like the following (untested) patch.
-> > >
-> > > If this looks ok, I'll flesh out the comments some and "officially" post
-> > > it. Thoughts?
-> >
-> > It's good in itself. However with more_io_wait queue, the first two
-> > chunks will be eliminated. Mind I carry this patch with my patchset?
-> >
->
-> It makes sense to roll that fix in with the stuff you're doing.
->
-> If it's going to be a little while before your patches get taken into
-> mainline though, it might not hurt to go ahead and push my patch in as
-> an interim fix. It shouldn't change the behavior of the code in the
-> normal case of a short-lived dirtied_when value, and should guard
-> against major problems when there's a long-lived one.
+On Tue, 2009-03-03 at 16:52 -0700, Benny Halevy wrote:
+> This field is set to the nfsv4 minor version for this mount.
+> 
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> 
+> Note: This patch sets the referral to the same minorversion as the
+> current mount. Revisit in future patch.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> [removed cl_minorversion assignment in nfs_set_client]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/client.c           |    9 ++++++---
+>  include/linux/nfs_fs_sb.h |    3 ++-
+>  2 files changed, 8 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 9b728f3..2555e48 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -1036,7 +1036,8 @@ static int nfs4_set_client(struct nfs_server
+> *server,
+>                 const size_t addrlen,
+>                 const char *ip_addr,
+>                 rpc_authflavor_t authflavour,
+> -               int proto, const struct rpc_timeout *timeparms)
+> +               int proto, const struct rpc_timeout *timeparms,
+> +               u32 minorversion)
+>  {
+>         struct nfs_client_initdata cl_init = {
+>                 .hostname = hostname,
+> @@ -1098,7 +1099,8 @@ static int nfs4_init_server(struct nfs_server
+> *server,
+>                         data->client_address,
+>                         data->auth_flavors[0],
+>                         data->nfs_server.protocol,
+> -                       &timeparms);
+> +                       &timeparms,
+> +                       data->minorversion);
 
-I'm afraid my patchset will miss the 2.6.30 merge window, so it makes
-sense to merge your patch first:
+This can't compile. There is no minor version field in the mount
+structure yet.
 
-> From: Jeff Layton <jlayton@redhat.com>
-> Subject: [PATCH] writeback: guard against jiffies wraparound on inode->dirtied_when checks
+>         if (error < 0)
+>                 goto error;
+> 
+> @@ -1216,7 +1218,8 @@ struct nfs_server
+> *nfs4_create_referral_server(struct nfs_clone_mount *data,
+>                                 parent_client->cl_ipaddr,
+>                                 data->authflavor,
+>                                 parent_server->client->cl_xprt->prot,
+> -                               parent_server->client->cl_timeout);
+> +                               parent_server->client->cl_timeout,
+> +                               parent_client->cl_minorversion);
+>         if (error < 0)
+>                 goto error;
+> 
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 9bb81ae..63f8b00 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -63,7 +63,8 @@ struct nfs_client {
+>          */
+>         char                    cl_ipaddr[48];
+>         unsigned char           cl_id_uniquifier;
+> -#endif
+> +       u32                     cl_minorversion;
+> +#endif /* CONFIG_NFS_V4 */
+>  };
+> 
+>  /*
+> --
+> 1.6.1.3
+> 
+> 
+> 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Acked-by: Wu Fengguang <fengguang.wu@intel.com>
-
-Thanks,
-Fengguang
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
