@@ -1,57 +1,77 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 24/46] NFS: fix decode_fs_locations_maxsz
-Date: Sun, 29 Mar 2009 13:40:17 -0400
-Message-ID: <1238348417.23986.1.camel@heimdal.trondhjem.org>
-References: <49ADBD04.2090002@panasas.com>
-	 <1236124672-3656-1-git-send-email-bhalevy@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 19/46] nfs41: use nfs4_setaclres
+Date: Sun, 29 Mar 2009 20:48:22 +0300
+Message-ID: <49CFB466.6070000@panasas.com>
+References: <49ADBD04.2090002@panasas.com>	 <1236124518-3488-1-git-send-email-bhalevy@panasas.com> <1238347823.10999.17.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7354 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751042AbZC2RlE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Mar 2009 13:41:04 -0400
-In-Reply-To: <1236124672-3656-1-git-send-email-bhalevy@panasas.com>
+Received: from gw-ca.panasas.com ([209.116.51.66]:21163 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751245AbZC2Rsf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Mar 2009 13:48:35 -0400
+In-Reply-To: <1238347823.10999.17.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-03-03 at 16:57 -0700, Benny Halevy wrote:
-> need to take into account the getattr reply.
+On Mar. 29, 2009, 20:30 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2009-03-03 at 16:55 -0700, Benny Halevy wrote:
+>> In preparation for nfs41 sequence processing.
+>>
+>> Signed-off-by: Andy Admason <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/nfs4proc.c |    3 ++-
+>>  fs/nfs/nfs4xdr.c  |    3 ++-
+>>  2 files changed, 4 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 1a5fa1d..98b2e89 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2915,10 +2915,11 @@ static int __nfs4_proc_set_acl(struct inode
+>> *inode, const void *buf, size_t bufl
+>>                 .acl_pages      = pages,
+>>                 .acl_len        = buflen,
+>>         };
+>> +       struct nfs_setaclres res;
 > 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/nfs4xdr.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index b60dc56..0e01660 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -239,7 +239,7 @@ static int nfs4_stat_to_errno(int);
->  #define encode_fs_locations_maxsz \
->                                 (encode_getattr_maxsz)
->  #define decode_fs_locations_maxsz \
-> -                               (0)
-> +                               (decode_getattr_maxsz)
+> Where is the definition?
 
-This is a bit excessive. If you look at xdr_enc_fs_locations, you'll see
-that this just needs to decode the OP_GETATTR + status. All the data
-goes into the page.
+It's in "nfs41: client xdr definitions"
+I can move it here if it makes it clearer.
 
->  #define NFS4_enc_compound_sz   (1024)  /* XXX: large enough? */
->  #define NFS4_dec_compound_sz   (1024)  /* XXX: large enough? */
->  #define NFS4_enc_read_sz       (compound_encode_hdr_maxsz + \
-> --
-> 1.6.1.3
-> 
-> 
-> 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Benny
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+>>         struct rpc_message msg = {
+>>                 .rpc_proc       =
+>> &nfs4_procedures[NFSPROC4_CLNT_SETACL],
+>>                 .rpc_argp       = &arg,
+>> -               .rpc_resp       = NULL,
+>> +               .rpc_resp       = &res,
+>>         };
+>>         int ret;
+>>
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index 13320af..5fb452c 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -3911,7 +3911,8 @@ nfs4_xdr_enc_setacl(struct rpc_rqst *req, __be32
+>> *p, struct nfs_setaclargs *args
+>>   * Decode SETACL response
+>>   */
+>>  static int
+>> -nfs4_xdr_dec_setacl(struct rpc_rqst *rqstp, __be32 *p, void *res)
+>> +nfs4_xdr_dec_setacl(struct rpc_rqst *rqstp, __be32 *p,
+>> +                   struct nfs_setaclres *res)
+>>  {
+>>         struct xdr_stream xdr;
+>>         struct compound_hdr hdr;
+>> --
+>> 1.6.1.3
+>>
+>>
+>>
