@@ -1,93 +1,99 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 04/46] nfs41: nfs_client.cl_minorversion
-Date: Sun, 29 Mar 2009 12:02:42 -0400
-Message-ID: <1238342562.10999.0.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 05/46] nfs41: add mount command option minorversion
+Date: Sun, 29 Mar 2009 12:18:21 -0400
+Message-ID: <1238343501.10999.6.camel@heimdal.trondhjem.org>
 References: <49ADBD04.2090002@panasas.com>
-	 <1236124341-3091-1-git-send-email-bhalevy@panasas.com>
+	 <1236124351-3116-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29617 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7580 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757807AbZC2QD3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 29 Mar 2009 12:03:29 -0400
-In-Reply-To: <1236124341-3091-1-git-send-email-bhalevy@panasas.com>
+	id S1751293AbZC2QXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 29 Mar 2009 12:23:32 -0400
+In-Reply-To: <1236124351-3116-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Tue, 2009-03-03 at 16:52 -0700, Benny Halevy wrote:
-> This field is set to the nfsv4 minor version for this mount.
+> From: Mike Sager <sager@netapp.com>
 > 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> mount -t nfs4 -o minorversion=[0|1] specifies whether to use 4.0 or
+> 4.1.
+> By default, the minorversion is set to 0.
 > 
-> Note: This patch sets the referral to the same minorversion as the
-> current mount. Revisit in future patch.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> [removed cl_minorversion assignment in nfs_set_client]
+> Signed-off-by: Mike Sager <sager@netapp.com>
+> [set default minorversion to 0 as per Trond and SteveD's request]
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfs/client.c           |    9 ++++++---
->  include/linux/nfs_fs_sb.h |    3 ++-
->  2 files changed, 8 insertions(+), 4 deletions(-)
+>  fs/nfs/internal.h |    1 +
+>  fs/nfs/super.c    |   10 ++++++++++
+>  2 files changed, 11 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 9b728f3..2555e48 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -1036,7 +1036,8 @@ static int nfs4_set_client(struct nfs_server
-> *server,
->                 const size_t addrlen,
->                 const char *ip_addr,
->                 rpc_authflavor_t authflavour,
-> -               int proto, const struct rpc_timeout *timeparms)
-> +               int proto, const struct rpc_timeout *timeparms,
-> +               u32 minorversion)
->  {
->         struct nfs_client_initdata cl_init = {
->                 .hostname = hostname,
-> @@ -1098,7 +1099,8 @@ static int nfs4_init_server(struct nfs_server
-> *server,
->                         data->client_address,
->                         data->auth_flavors[0],
->                         data->nfs_server.protocol,
-> -                       &timeparms);
-> +                       &timeparms,
-> +                       data->minorversion);
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index 340ede8..73e4d9f 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -41,6 +41,7 @@ struct nfs_parsed_mount_data {
+>         unsigned int            auth_flavor_len;
+>         rpc_authflavor_t        auth_flavors[1];
+>         char                    *client_address;
+> +       unsigned int            minorversion;
+> 
+>         struct {
+>                 struct sockaddr_storage address;
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index d6686f4..5db4e3b 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -88,6 +88,7 @@ enum {
+>         Opt_mountport,
+>         Opt_mountvers,
+>         Opt_nfsvers,
+> +       Opt_minorversion,
+> 
+>         /* Mount options that take string arguments */
+>         Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+> @@ -149,6 +150,7 @@ static const match_table_t nfs_mount_option_tokens
+> = {
+>         { Opt_mountvers, "mountvers=%u" },
+>         { Opt_nfsvers, "nfsvers=%u" },
+>         { Opt_nfsvers, "vers=%u" },
+> +       { Opt_minorversion, "minorversion=%u" },
+> 
+>         { Opt_sec, "sec=%s" },
+>         { Opt_proto, "proto=%s" },
+> @@ -1168,6 +1170,13 @@ static int nfs_parse_mount_options(char *raw,
+>                                 nfs_parse_invalid_value("nfsvers");
+>                         }
+>                         break;
+> +               case Opt_minorversion:
+> +                       if (match_int(args, &option))
+> +                               return 0;
+> +                       if (option < 0 || option >
+> NFS4_MAX_MINOR_VERSION)
+> +                               return 0;
+> +                       mnt->minorversion = option;
 
-This can't compile. There is no minor version field in the mount
-structure yet.
+There is nothing preventing the user from setting this on NFSv2 or
+NFSv3. That will cause nfs_match_client() to get confused. 
 
->         if (error < 0)
->                 goto error;
+> +                       break;
 > 
-> @@ -1216,7 +1218,8 @@ struct nfs_server
-> *nfs4_create_referral_server(struct nfs_clone_mount *data,
->                                 parent_client->cl_ipaddr,
->                                 data->authflavor,
->                                 parent_server->client->cl_xprt->prot,
-> -                               parent_server->client->cl_timeout);
-> +                               parent_server->client->cl_timeout,
-> +                               parent_client->cl_minorversion);
->         if (error < 0)
->                 goto error;
+>                 /*
+>                  * options that take text values
+> @@ -2218,6 +2227,7 @@ static int nfs4_validate_mount_data(void
+> *options,
+>         args->nfs_server.port   = NFS_PORT; /* 2049 unless user set
+> port= */
+>         args->auth_flavors[0]   = RPC_AUTH_UNIX;
+>         args->auth_flavor_len   = 0;
+> +       args->minorversion      = 0;
 > 
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 9bb81ae..63f8b00 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -63,7 +63,8 @@ struct nfs_client {
->          */
->         char                    cl_ipaddr[48];
->         unsigned char           cl_id_uniquifier;
-> -#endif
-> +       u32                     cl_minorversion;
-> +#endif /* CONFIG_NFS_V4 */
->  };
-> 
->  /*
+>         switch (data->version) {
+>         case 1:
 > --
 > 1.6.1.3
 > 
