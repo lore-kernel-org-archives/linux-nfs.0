@@ -1,164 +1,150 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH 28/46] NFS: use dynamically computed	compound_hdr.replen
- for xdr_inline_pages offset
-Date: Sun, 29 Mar 2009 22:30:03 +0300
-Message-ID: <49CFCC3B.8070704@panasas.com>
-References: <49ADBD04.2090002@panasas.com> <1236124723-3761-1-git-send-email-bhalevy@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH v2 02/47] nfsd: embed nfsd4_current_state in
+	nfsd4_compoundres
+Date: Sun, 29 Mar 2009 16:46:22 -0400
+Message-ID: <20090329204622.GA18661@fieldses.org>
+References: <49CDDFC2.4070402@panasas.com> <1238229052-7600-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:28524 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751904AbZC2Tbf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Mar 2009 15:31:35 -0400
-In-Reply-To: <1236124723-3761-1-git-send-email-bhalevy@panasas.com>
+Received: from mail.fieldses.org ([141.211.133.115]:60846 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756662AbZC2Uqc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Mar 2009 16:46:32 -0400
+In-Reply-To: <1238229052-7600-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 04, 2009, 1:58 +0200, Benny Halevy <bhalevy@panasas.com> wrote:
-> As Trond suggested, rather than passing a constant to xdr_inline_pages,
-> keep a running count of the expected reply bytes.  In preparation for
-> nfs41, where additional op sequence are expteced when talking to nfs41
-> servers.
+On Sat, Mar 28, 2009 at 11:30:52AM +0300, Benny Halevy wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> [NFS: cb_compoundhdr.replen is in words not bytes]
+> Remove the allocation of struct nfsd4_compound_state.
+
+Thanks, applied.  (Some minor fixup required as I wanted to apply this
+before #1.)
+
+--b.
+
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfs/nfs4xdr.c |   44 ++++++--------------------------------------
->  1 files changed, 6 insertions(+), 38 deletions(-)
+>  fs/nfsd/nfs4proc.c        |   40 +++++++++-------------------------------
+>  include/linux/nfsd/xdr4.h |    9 +++++----
+>  2 files changed, 14 insertions(+), 35 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index e6f2d84..9cec237 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1757,20 +1757,13 @@ static int nfs4_xdr_enc_readlink(struct rpc_rqst *req, __be32 *p, const struct n
->  	struct compound_hdr hdr = {
->  		.minorversion = clp->cl_minorversion,
->  	};
-> -	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
-> -	unsigned int replen;
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 7839654..c8e1ad0 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -809,29 +809,6 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+>  		nfsdstats.nfs4_opcount[opnum]++;
+>  }
 >  
->  	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
->  	encode_compound_hdr(&xdr, req, &hdr);
->  	encode_putfh(&xdr, args->fh, &hdr);
->  	encode_readlink(&xdr, args, req, &hdr);
+> -static void cstate_free(struct nfsd4_compound_state *cstate)
+> -{
+> -	if (cstate == NULL)
+> -		return;
+> -	fh_put(&cstate->current_fh);
+> -	fh_put(&cstate->save_fh);
+> -	BUG_ON(cstate->replay_owner);
+> -	kfree(cstate);
+> -}
+> -
+> -static struct nfsd4_compound_state *cstate_alloc(void)
+> -{
+> -	struct nfsd4_compound_state *cstate;
+> -
+> -	cstate = kmalloc(sizeof(struct nfsd4_compound_state), GFP_KERNEL);
+> -	if (cstate == NULL)
+> -		return NULL;
+> -	fh_init(&cstate->current_fh, NFS4_FHSIZE);
+> -	fh_init(&cstate->save_fh, NFS4_FHSIZE);
+> -	cstate->replay_owner = NULL;
+> -	return cstate;
+> -}
+> -
+>  typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+>  			      void *);
 >  
-> -	/* set up reply kvec
-> -	 *    toplevel_status + taglen + rescount + OP_PUTFH + status
-> -	 *      + OP_READLINK + status + string length = 8
-> -	 */
-> -	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_readlink_sz) << 2;
-> -	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages,
-> +	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
->  			args->pgbase, args->pglen);
->  	encode_nops(&hdr);
->  	return 0;
-> @@ -1787,23 +1780,16 @@ static int nfs4_xdr_enc_readdir(struct rpc_rqst *req, __be32 *p, const struct nf
->  	struct compound_hdr hdr = {
->  		.minorversion = clp->cl_minorversion,
->  	};
-> -	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
-> -	int replen;
->  
->  	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
->  	encode_compound_hdr(&xdr, req, &hdr);
->  	encode_putfh(&xdr, args->fh, &hdr);
->  	encode_readdir(&xdr, args, req, &hdr);
->  
-> -	/* set up reply kvec
-> -	 *    toplevel_status + taglen + rescount + OP_PUTFH + status
-> -	 *      + OP_READDIR + status + verifer(2)  = 9
-> -	 */
-> -	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_readdir_sz) << 2;
-> -	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages,
-> +	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
->  			 args->pgbase, args->count);
->  	dprintk("%s: inlined page args = (%u, %p, %u, %u)\n",
-> -			__func__, replen, args->pages,
-> +			__func__, hdr.replen << 2, args->pages,
->  			args->pgbase, args->count);
->  	encode_nops(&hdr);
->  	return 0;
-> @@ -1814,26 +1800,19 @@ static int nfs4_xdr_enc_readdir(struct rpc_rqst *req, __be32 *p, const struct nf
->   */
->  static int nfs4_xdr_enc_read(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
+> @@ -859,12 +836,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
 >  {
-> -	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
->  	struct xdr_stream xdr;
->  	struct nfs_client *clp =
->  		(struct nfs_client *)req->rq_task->tk_client->cl_private;
->  	struct compound_hdr hdr = {
->  		.minorversion = clp->cl_minorversion,
->  	};
-> -	int replen;
+>  	struct nfsd4_op	*op;
+>  	struct nfsd4_operation *opdesc;
+> -	struct nfsd4_compound_state *cstate = NULL;
+> +	struct nfsd4_compound_state *cstate = &resp->cstate;
+>  	int		slack_bytes;
+>  	__be32		status;
 >  
->  	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
->  	encode_compound_hdr(&xdr, req, &hdr);
->  	encode_putfh(&xdr, args->fh, &hdr);
->  	encode_read(&xdr, args, &hdr);
+>  	resp->xbuf = &rqstp->rq_res;
+> -	resp->p = rqstp->rq_res.head[0].iov_base + rqstp->rq_res.head[0].iov_len;
+> +	resp->p = rqstp->rq_res.head[0].iov_base +
+> +						rqstp->rq_res.head[0].iov_len;
+>  	resp->tagp = resp->p;
+>  	/* reserve space for: taglen, tag, and opcnt */
+>  	resp->p += 2 + XDR_QUADLEN(args->taglen);
+> @@ -873,6 +851,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	resp->tag = args->tag;
+>  	resp->opcnt = 0;
+>  	resp->rqstp = rqstp;
+> +	resp->cstate.replay_owner = NULL;
+> +	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
+> +	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
+>  	/* Use the deferral mechanism only for NFSv4.0 compounds */
+>  	rqstp->rq_usedeferral = (args->minorversion == 0);
 >  
-> -	/* set up reply kvec
-> -	 *    toplevel status + taglen=0 + rescount + OP_PUTFH + status
-> -	 *       + OP_READ + status + eof + datalen = 9
-> -	 */
-> -	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_read_sz) << 2;
-> -	xdr_inline_pages(&req->rq_rcv_buf, replen,
-> +	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
->  			 args->pages, args->pgbase, args->count);
->  	req->rq_rcv_buf.flags |= XDRBUF_READ;
->  	encode_nops(&hdr);
-> @@ -1869,22 +1848,18 @@ nfs4_xdr_enc_getacl(struct rpc_rqst *req, __be32 *p,
->  		struct nfs_getaclargs *args)
->  {
->  	struct xdr_stream xdr;
-> -	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
->  	struct nfs_client *clp =
->  		(struct nfs_client *)req->rq_task->tk_client->cl_private;
->  	struct compound_hdr hdr = {
->  		.minorversion = clp->cl_minorversion,
->  	};
-> -	int replen;
+> @@ -883,11 +864,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	if (args->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+>  		goto out;
 >  
->  	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
->  	encode_compound_hdr(&xdr, req, &hdr);
->  	encode_putfh(&xdr, args->fh, &hdr);
->  	encode_getattr_two(&xdr, FATTR4_WORD0_ACL, 0, &hdr);
+> -	status = nfserr_resource;
+> -	cstate = cstate_alloc();
+> -	if (cstate == NULL)
+> -		goto out;
+> -
+>  	status = nfs_ok;
+>  	while (!status && resp->opcnt < args->opcnt) {
+>  		op = &args->ops[resp->opcnt++];
+> @@ -964,7 +940,9 @@ encode_op:
+>  		status = nfserr_jukebox;
+>  	}
 >  
-> -	/* set up reply buffer: */
-> -	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_getacl_sz) << 2;
-> -	xdr_inline_pages(&req->rq_rcv_buf, replen,
-> +	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
->  		args->acl_pages, args->acl_pgbase, args->acl_len);
->  	encode_nops(&hdr);
->  	return 0;
-> @@ -2105,8 +2080,6 @@ static int nfs4_xdr_enc_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs
->  	struct compound_hdr hdr = {
->  		.minorversion = clp->cl_minorversion,
->  	};
-> -	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
-> -	int replen;
+> -	cstate_free(cstate);
+> +	fh_put(&resp->cstate.current_fh);
+> +	fh_put(&resp->cstate.save_fh);
+> +	BUG_ON(resp->cstate.replay_owner);
+>  out:
+>  	nfsd4_release_compoundargs(args);
+>  	/* Reset deferral mechanism for RPC deferrals */
+> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> index 27bd3e3..fd15ddc 100644
+> --- a/include/linux/nfsd/xdr4.h
+> +++ b/include/linux/nfsd/xdr4.h
+> @@ -45,9 +45,9 @@
+>  #define XDR_LEN(n)                     (((n) + 3) & ~3)
 >  
->  	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
->  	encode_compound_hdr(&xdr, req, &hdr);
-> @@ -2114,12 +2087,7 @@ static int nfs4_xdr_enc_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs
->  	encode_lookup(&xdr, args->name, &hdr);
-
-To work around the fs_locations issue we can also get hdr.sample
-replen here, right before calling encode_fs_locations.
-
-Benny
-
->  	encode_fs_locations(&xdr, args->bitmask, &hdr);
+>  struct nfsd4_compound_state {
+> -	struct svc_fh current_fh;
+> -	struct svc_fh save_fh;
+> -	struct nfs4_stateowner *replay_owner;
+> +	struct svc_fh		current_fh;
+> +	struct svc_fh		save_fh;
+> +	struct nfs4_stateowner	*replay_owner;
+>  };
 >  
-> -	/* set up reply
-> -	 *   toplevel_status + OP_PUTFH + status
-> -	 *   + OP_LOOKUP + status + OP_GETATTR + status = 7
-> -	 */
-> -	replen = (RPC_REPHDRSIZE + auth->au_rslack + 7) << 2;
-> -	xdr_inline_pages(&req->rq_rcv_buf, replen, &args->page,
-> +	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, &args->page,
->  			0, PAGE_SIZE);
->  	encode_nops(&hdr);
->  	return 0;
+>  struct nfsd4_change_info {
+> @@ -416,7 +416,8 @@ struct nfsd4_compoundres {
+>  	u32				taglen;
+>  	char *				tag;
+>  	u32				opcnt;
+> -	__be32 *			tagp; /* where to encode tag and  opcount */
+> +	__be32 *			tagp; /* tag, opcount encode location */
+> +	struct nfsd4_compound_state	cstate;
+>  };
+>  
+>  #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+> -- 
+> 1.6.2.1
+> 
