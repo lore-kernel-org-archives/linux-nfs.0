@@ -1,55 +1,58 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
 Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
-Date: Mon, 30 Mar 2009 14:59:36 -0400
-Message-ID: <20090330185936.GF31237@fieldses.org>
+Date: Mon, 30 Mar 2009 22:03:39 +0300
+Message-ID: <49D1178B.50408@panasas.com>
 References: <49CC40E5.2080506@panasas.com> <20090328000134.GH18222@fieldses.org> <49CDDFC2.4070402@panasas.com> <20090330183338.GE31237@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: NFS list <linux-nfs@vger.kernel.org>,
 	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	Ricardo Labiaga <ricardo.labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:44236 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757243AbZC3S7m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 14:59:42 -0400
+Received: from gw-ca.panasas.com ([209.116.51.66]:12273 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758912AbZC3TDo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 15:03:44 -0400
 In-Reply-To: <20090330183338.GE31237@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 30, 2009 at 02:33:38PM -0400, bfields wrote:
+
+On Mar. 30, 2009, 21:33 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > On Sat, Mar 28, 2009 at 11:28:50AM +0300, Benny Halevy wrote:
-> > On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
-> > >> Hi Bruce,
-> > >>
-> > >> Here's the latest server patches implementing the NFSv4.1
-> > >> Sessions features.
-> > >>
-> > >> This patchset is based over your for-2.6.30 branch
-> > >> and is also available from
-> > >> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
-> > > 
-> > > There's a few merge conflicts with my current for-2.6.30--probably my
-> > > fault for not pushing that out recently enough, apologies.  Would you
-> > > mind updating?
-> > > 
-> > > --b.
-> > > 
-> > 
-> > Sure. Here's a rebased version with two minor changes (see below)
+>> On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>> On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
+>>>> Hi Bruce,
+>>>>
+>>>> Here's the latest server patches implementing the NFSv4.1
+>>>> Sessions features.
+>>>>
+>>>> This patchset is based over your for-2.6.30 branch
+>>>> and is also available from
+>>>> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
+>>> There's a few merge conflicts with my current for-2.6.30--probably my
+>>> fault for not pushing that out recently enough, apologies.  Would you
+>>> mind updating?
+>>>
+>>> --b.
+>>>
+>> Sure. Here's a rebased version with two minor changes (see below)
 > 
 > On the latest version of nfsd41-for-2.6.30 (a564667..) I'm getting a new NULL
 > dereference in the callback code.  Looks like it probably happened while
 > running connectathon over NFSv4.0 with krb5p.  That's all I've figured out so
+
+Weird. nfs4_xdr_dec_cb_recall+0x4e doesn't seem like a valid IP
+for nfsd.ko @a564667.  Bruce, can you please send me you .config file?
+
+We know the current implementation is still incorrect for krb5,
+but I don't think it's supposed to crash either.
+Ricardo, have you run into this by any chance?
+
+Benny
+
 > far.
-
-Nevermind about the krb5p, that can't be right.  Perhaps
-cbs_minorversion just isn't getting set correctly, and it's trying to
-access an uninitialized cbs_clp?
-
---b.
-
 > 
 > --b.
 > 
