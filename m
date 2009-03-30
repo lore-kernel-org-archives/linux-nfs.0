@@ -1,46 +1,84 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: 3-word attributes encoding
-Date: Mon, 30 Mar 2009 17:37:37 +0300
-Message-ID: <49D0D931.2060808@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: NetworkManager and sm-notify
+Date: Mon, 30 Mar 2009 13:50:47 -0400
+Message-ID: <8F917BB8-7590-434B-B8AF-2447E6622A41@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:16892 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751500AbZC3Ohm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 10:37:42 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:22367 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751489AbZC3RvL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 13:51:11 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce,
+Hi Steve-
 
-As I mentioned in a reply to Trond,
-"nfsd41: support for 3-word long attribute bitmask"
-changes the server fattr encoding logic so it may send
-back a bitmap of length 1, even if the client sent a
-bitmap of length 2, if the second word of the bitmap
-is zero.  Although I think this a valid implementation
-and other servers may do the same, it seems sub-optimal
-for the client's decoding of acl of fs_locations.
+While playing with some sm-notify testing, I discovered this little  
+bug-a-boo on Fedora 10:  If the system uses NetworkManager to  
+configure its network interfaces, sm-notify doesn't work.
 
-It's pretty easy to revert to the old behavior on the server
-by always returning at least two bitmap words, or, if we
-keep the bitmap length, not just the val, in nfsd4_decode_bitmap
-we can return a bitmap of the same length in the reply.
+Mar 30 13:25:43 ingres rpc.statd[1692]: Version 1.1.4 StartingMar 30  
+13:25:43 ingres sm-notify[1694]: Sending Reboot Notification to  
+'tarkus.1015granger.net' failed: errno 101 (Network is unreachable)
+Mar 30 13:25:43 ingres kernel: RPC: Registered udp transport module.
+Mar 30 13:25:43 ingres kernel: RPC: Registered tcp transport module.
+Mar 30 13:25:44 ingres acpid: starting up
+Mar 30 13:25:45 ingres kernel: it87: Found IT8718F chip at 0xe80,  
+revision 5
+Mar 30 13:25:45 ingres kernel: it87: in3 is VCC (+5V)
+Mar 30 13:25:45 ingres kernel: it87: in7 is VCCH (+5V Stand-By)
+Mar 30 13:25:45 ingres acpid: client connected from 1936[68:68]
+Mar 30 13:25:45 ingres sm-notify[1694]: Sending Reboot Notification to  
+'tarkus.1015granger.net' failed: errno 101 (Network is unreachable)
+Mar 30 13:25:45 ingres NetworkManager: <info>  starting...
 
-Let me know what you think...
+...
 
-Other than that,
-git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
-holds version 3 of the nfsd41 patchset, rebased onto your
-update for-2.6.30 branch, and with these cleanup patches squashed-in:
+Mar 30 13:25:49 ingres sm-notify[1694]: Sending Reboot Notification to  
+'tarkus.1015granger.net' failed: errno 101 (Network is unreachable)
+Mar 30 13:25:50 ingres NetworkManager: <info>  (eth0): device state  
+change: 1 -> 2
+Mar 30 13:25:50 ingres NetworkManager: <info>  (eth0): bringing up  
+device.
 
-[PATCH 1/3] SQUASHME: get callback minorversion from fore channel's
-[PATCH 2/3] SQUASHME: nfsd41: use nfsd4_cb_sequence for callback minorversion
-[PATCH 3/3] SQUASHME: Revert "sunrpc: add cl_private field to struct rpc_clnt"
+...
 
-Benny
+Mar 30 13:25:54 ingres NetworkManager: <info>  (eth0): device state  
+change: 7 -> 8
+Mar 30 13:25:54 ingres NetworkManager: <info>  Policy set 'System  
+eth0' (eth0) as default for routing and DNS.
+Mar 30 13:25:54 ingres NetworkManager: <info>  Activation (eth0)  
+successful, device activated.
+Mar 30 13:25:54 ingres NetworkManager: <info>  Activation (eth0) Stage  
+5 of 5 (IP Configure Commit) complete.
+
+...
+
+Then finally:
+
+Mar 30 13:25:57 ingres Backgrounding to notify hosts...
+
+(this comes out after notification is complete because it is done  
+before daemon() and openlog() are called, so it's buffered up).
+
+In this case, I had actually added an entry for 'tarkus' to /etc/hosts  
+by hand, so sm-notify keeps trying until the network comes up.  Before  
+I did that, however, it was attempting to look up 'tarkus' via DNS,  
+and failing immediately; a reboot notification was never sent.
+
+So we have a system boot ordering problem here with NFS and  
+NetworkManager.
+
+I can add more robust retry handling in my sm-notify rewrite that  
+might be able to recover from this... or we could attempt to run sm- 
+notify as part of network bring-up instead of being run by  
+rpc.statd...  I should probably do the former anyway.
+
+Thoughts?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
