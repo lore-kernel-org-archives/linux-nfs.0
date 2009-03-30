@@ -1,184 +1,71 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 16/47] nfsd41: match clientid establishment method
-Date: Mon, 30 Mar 2009 18:07:25 -0400
-Message-ID: <20090330220725.GO31237@fieldses.org>
-References: <49CDDFC2.4070402@panasas.com> <1238229137-10764-1-git-send-email-bhalevy@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 06/17] SUNRPC: Set IPV6ONLY flag on PF_INET6 RPC
+ listenersockets
+Date: Mon, 30 Mar 2009 18:17:47 -0400
+Message-ID: <1238451467.23512.11.camel@heimdal.trondhjem.org>
+References: <20090303220539.2933.15015.stgit@ingres.1015granger.net>
+	 <20090303223254.2933.70364.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain
+Cc: bfields@fieldses.org, steved@redhat.com, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:43730 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761377AbZC3WH0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 18:07:26 -0400
-In-Reply-To: <1238229137-10764-1-git-send-email-bhalevy@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:62086 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753288AbZC3WSV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Mar 2009 18:18:21 -0400
+In-Reply-To: <20090303223254.2933.70364.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 28, 2009 at 11:32:17AM +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Tue, 2009-03-03 at 15:32 -0700, Chuck Lever wrote:
+> We are about to convert to using separate RPC listener sockets for
+> AF_INET and AF_INET6.  This echoes the way IPv6 is handled in user
+> space by TI-RPC, and eliminates the need to worry about mapped IPv4
+> AF_INET6 addresses when doing address comparisons.
 > 
-> We need to distinguish between client names provided by NFSv4.0 clients
-> SETCLIENTID and those provided by NFSv4.1 via EXCHANGE_ID when looking
-> up the clientid by string.
+> Start by setting the IPV6ONLY flag on RPC listener sockets.
 > 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> [nfsd41: use boolean values for use_exchange_id argument]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  fs/nfsd/nfs4recover.c      |    3 ++-
->  fs/nfsd/nfs4state.c        |   41 ++++++++++++++++++++++++++++++-----------
->  include/linux/nfsd/state.h |    2 +-
->  3 files changed, 33 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index b11cf8d..3444c00 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -344,7 +344,8 @@ purge_old(struct dentry *parent, struct dentry *child)
->  {
->  	int status;
->  
-> -	if (nfs4_has_reclaimed_state(child->d_name.name))
-> +	/* note: we currently use this path only for minorversion 0 */
-> +	if (nfs4_has_reclaimed_state(child->d_name.name, false))
->  		return 0;
->  
->  	status = nfsd4_clear_clid_dir(parent, child);
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 09c63ff..0c39376 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -723,25 +723,44 @@ find_unconfirmed_client(clientid_t *clid)
->  	return NULL;
->  }
->  
-> +/*
-> + * Return 1 iff clp's clientid establishment method matches the use_exchange_id
-> + * parameter. Matching is based on the fact the at least one of the
-> + * EXCHGID4_FLAG_USE_{NON_PNFS,PNFS_MDS,PNFS_DS} flags must be set for v4.1
-> + */
-> +static inline int
-> +match_clientid_establishment(struct nfs4_client *clp, bool use_exchange_id)
-> +{
-> +#if defined(CONFIG_NFSD_V4_1)
-> +	return (clp->cl_exchange_flags != 0) == (use_exchange_id != false);
-
-This seems a bit baroque; the "!= false" is a no-op, for one thing,
-isn't it?
-
---b.
-
-> +#else  /* CONFIG_NFSD_V4_1 */
-> +	return 1;
-> +#endif /* CONFIG_NFSD_V4_1 */
-> +}
-> +
->  static struct nfs4_client *
-> -find_confirmed_client_by_str(const char *dname, unsigned int hashval)
-> +find_confirmed_client_by_str(const char *dname, unsigned int hashval,
-> +			     bool use_exchange_id)
->  {
->  	struct nfs4_client *clp;
->  
->  	list_for_each_entry(clp, &conf_str_hashtbl[hashval], cl_strhash) {
-> -		if (same_name(clp->cl_recdir, dname))
-> +		if (same_name(clp->cl_recdir, dname) &&
-> +		    match_clientid_establishment(clp, use_exchange_id))
->  			return clp;
->  	}
->  	return NULL;
->  }
->  
->  static struct nfs4_client *
-> -find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
-> +find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
-> +			       bool use_exchange_id)
->  {
->  	struct nfs4_client *clp;
->  
->  	list_for_each_entry(clp, &unconf_str_hashtbl[hashval], cl_strhash) {
-> -		if (same_name(clp->cl_recdir, dname))
-> +		if (same_name(clp->cl_recdir, dname) &&
-> +		    match_clientid_establishment(clp, use_exchange_id))
->  			return clp;
->  	}
->  	return NULL;
-> @@ -895,7 +914,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
->  	nfs4_lock_state();
->  	status = nfs_ok;
->  
-> -	conf = find_confirmed_client_by_str(dname, strhashval);
-> +	conf = find_confirmed_client_by_str(dname, strhashval, true);
->  	if (conf) {
->  		if (!same_verf(&verf, &conf->cl_verifier)) {
->  			/* 18.35.4 case 8 */
-> @@ -943,7 +962,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
->  		}
->  	}
->  
-> -	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
-> +	unconf  = find_unconfirmed_client_by_str(dname, strhashval, true);
->  	if (unconf) {
->  		/*
->  		 * Possible retry or client restart.  Per 18.35.4 case 4,
-> @@ -1041,7 +1060,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	strhashval = clientstr_hashval(dname);
->  
->  	nfs4_lock_state();
-> -	conf = find_confirmed_client_by_str(dname, strhashval);
-> +	conf = find_confirmed_client_by_str(dname, strhashval, false);
->  	if (conf) {
->  		/* RFC 3530 14.2.33 CASE 0: */
->  		status = nfserr_clid_inuse;
-> @@ -1056,7 +1075,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	 * has a description of SETCLIENTID request processing consisting
->  	 * of 5 bullet points, labeled as CASE0 - CASE4 below.
->  	 */
-> -	unconf = find_unconfirmed_client_by_str(dname, strhashval);
-> +	unconf = find_unconfirmed_client_by_str(dname, strhashval, false);
->  	status = nfserr_resource;
->  	if (!conf) {
->  		/*
-> @@ -1211,7 +1230,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
->  			unsigned int hash =
->  				clientstr_hashval(unconf->cl_recdir);
->  			conf = find_confirmed_client_by_str(unconf->cl_recdir,
-> -									hash);
-> +							    hash, false);
->  			if (conf) {
->  				nfsd4_remove_clid_dir(conf);
->  				expire_client(conf);
-> @@ -3332,12 +3351,12 @@ alloc_reclaim(void)
->  }
->  
->  int
-> -nfs4_has_reclaimed_state(const char *name)
-> +nfs4_has_reclaimed_state(const char *name, bool use_exchange_id)
->  {
->  	unsigned int strhashval = clientstr_hashval(name);
->  	struct nfs4_client *clp;
->  
-> -	clp = find_confirmed_client_by_str(name, strhashval);
-> +	clp = find_confirmed_client_by_str(name, strhashval, use_exchange_id);
->  	return clp ? 1 : 0;
->  }
->  
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index 5de36a7..feab6ec 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -331,7 +331,7 @@ extern void nfsd4_init_recdir(char *recdir_name);
->  extern int nfsd4_recdir_load(void);
->  extern void nfsd4_shutdown_recdir(void);
->  extern int nfs4_client_to_reclaim(const char *name);
-> -extern int nfs4_has_reclaimed_state(const char *name);
-> +extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
->  extern void nfsd4_recdir_purge_old(void);
->  extern int nfsd4_create_clid_dir(struct nfs4_client *clp);
->  extern void nfsd4_remove_clid_dir(struct nfs4_client *clp);
-> -- 
-> 1.6.2.1
+>  net/sunrpc/svcsock.c |   10 ++++------
+>  1 files changed, 4 insertions(+), 6 deletions(-)
 > 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index d00bc33..ac6cd65 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1144,13 +1144,11 @@ static struct svc_sock
+> *svc_setup_socket(struct svc_serv *serv,
+>                 svc_tcp_init(svsk, serv);
+> 
+>         /*
+> -        * We start one listener per sv_serv.  We want AF_INET
+> -        * requests to be automatically shunted to our PF_INET6
+> -        * listener using a mapped IPv4 address.  Make sure
+> -        * no-one starts an equivalent IPv4 listener, which
+> -        * would steal our incoming connections.
+> +        * If this is a PF_INET6 listener, we want to avoid
+> +        * getting requests from IPv4 remotes.  Those should
+> +        * be shunted to a PF_INET listener via rpcbind.
+>          */
+> -       val = 0;
+> +       val = 1;
+>         if (inet->sk_family == PF_INET6)
+			         AF_INET6...
+
+...and this should probably be set before we bind the socket...
+
+>                 kernel_setsockopt(sock, SOL_IPV6, IPV6_V6ONLY,
+>                                         (char *)&val, sizeof(val));
+> 
+> 
+> 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
