@@ -1,70 +1,55 @@
-From: Giulio Troccoli <Giulio.Troccoli-xnMMdYoS6WpEKMMhf/gKZA@public.gmane.org>
-Subject: Re: [NFS] Compileing nfs-utils 1.1.5 on RHEL4 fails in tcpwrapper.c
-Date: Mon, 30 Mar 2009 10:06:34 +0100
-Message-ID: <6680A70380E6BA44A2D94ED7085718EE066A0807B0@ln1exc03>
-References: <6680A70380E6BA44A2D94ED7085718EE066A08079D@ln1exc03>
-	<49CCDBD2.2000709@RedHat.com>
-	<6680A70380E6BA44A2D94ED7085718EE066A0807AB@ln1exc03>
-	<49CD07F5.1070005@RedHat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 24/46] NFS: fix decode_fs_locations_maxsz
+Date: Mon, 30 Mar 2009 14:32:16 +0300
+Message-ID: <49D0ADC0.2020302@panasas.com>
+References: <49ADBD04.2090002@panasas.com>	 <1236124672-3656-1-git-send-email-bhalevy@panasas.com> <1238348417.23986.1.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: 'Steve Dickson' <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:41702 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758266AbZC3JHl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Mar 2009 05:07:41 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LoDSy-0001td-9r
-	for linux-nfs@vger.kernel.org; Mon, 30 Mar 2009 20:07:36 +1100
-In-Reply-To: <49CD07F5.1070005-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:19136 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754238AbZC3LdO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 07:33:14 -0400
+In-Reply-To: <1238348417.23986.1.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mar. 29, 2009, 20:40 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> On Tue, 2009-03-03 at 16:57 -0700, Benny Halevy wrote:
+>> need to take into account the getattr reply.
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/nfs4xdr.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index b60dc56..0e01660 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -239,7 +239,7 @@ static int nfs4_stat_to_errno(int);
+>>  #define encode_fs_locations_maxsz \
+>>                                 (encode_getattr_maxsz)
+>>  #define decode_fs_locations_maxsz \
+>> -                               (0)
+>> +                               (decode_getattr_maxsz)
+> 
+> This is a bit excessive. If you look at xdr_enc_fs_locations, you'll see
+> that this just needs to decode the OP_GETATTR + status. All the data
+> goes into the page.
 
-> > From time to time the build failes becuase some files are not
-> > available when they are compiled. This is not strictly
-> true, the file
-> > is available but the building machine is told it's not.
-> Make sure the time on all the machines are synced with
-> something like ntpd.
+You're right.  I'll revert this patch.
 
-Could you explain to me why the time is important? It might sound as a silly question, but as I see it it's just one portion of a file system in the remote machine mounted on the file system on the building machine.
+Benny
 
-> > I don't know much about NFS and the option I chose for the
-> configure
-> > script are just becuase otherwise it didn't compile. So, do
-> you guys
-> > think that even without nfsv4, gss and tcp-wrapper I would
-> achive what I need?
-> Not clear... There is a very good change running such a new
-> nfs-utils on an legacy release might cause more problem...
-
-Sorry, now that I read it again I see it's not very clear.
-
-The files on the remote machine are only read by the building machine. Nothing is written on the NFS mounted file system by the building machine. NFS is used so that we can share source code among differente building machines. To achive this, do I need nfsv4, gss and tcp-wrapper? In other words, what are nfsv4, gss and tcp-wrapper?
-
-Thanks for your help, it's very much appreciated.
-
-Giulio
-
-
-Linedata Services (UK) Ltd
-Registered Office: Bishopsgate Court, 4-12 Norton Folgate, London, E1 6DB
-Registered in England and Wales No 3027851    VAT Reg No 778499447
-
-
-
-
-
-------------------------------------------------------------------------------
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+>>  #define NFS4_enc_compound_sz   (1024)  /* XXX: large enough? */
+>>  #define NFS4_dec_compound_sz   (1024)  /* XXX: large enough? */
+>>  #define NFS4_enc_read_sz       (compound_encode_hdr_maxsz + \
+>> --
+>> 1.6.1.3
+>>
+>>
+>>
