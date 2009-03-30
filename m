@@ -1,44 +1,46 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/7] SQUASHME: nfs41: use kcalloc to allocate slot table
-Date: Mon, 30 Mar 2009 17:00:33 +0300
-Message-ID: <1238421633-25020-1-git-send-email-bhalevy@panasas.com>
-References: <49D0D025.2080608@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org, andros@netapp.com
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: 3-word attributes encoding
+Date: Mon, 30 Mar 2009 17:37:37 +0300
+Message-ID: <49D0D931.2060808@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:14220 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:16892 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751469AbZC3OAr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 10:00:47 -0400
-In-Reply-To: <49D0D025.2080608@panasas.com>
+	with ESMTP id S1751500AbZC3Ohm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 10:37:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also, change gfp flags to GFP_KERNEL.
+Bruce,
 
-FIXME: move nfs4_init_slot_table's definition
-from "nfs41: sessions client infrastructure"
-to "nfs41: create_session operation"
-and squash this patch there.
+As I mentioned in a reply to Trond,
+"nfsd41: support for 3-word long attribute bitmask"
+changes the server fattr encoding logic so it may send
+back a bitmap of length 1, even if the client sent a
+bitmap of length 2, if the second word of the bitmap
+is zero.  Although I think this a valid implementation
+and other servers may do the same, it seems sub-optimal
+for the client's decoding of acl of fs_locations.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+It's pretty easy to revert to the old behavior on the server
+by always returning at least two bitmap words, or, if we
+keep the bitmap length, not just the val, in nfsd4_decode_bitmap
+we can return a bitmap of the same length in the reply.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7a96e17..e51622a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4470,7 +4470,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
- 
- 	dprintk("--> %s: max_reqs=%u\n", __func__, max_slots);
- 
--	slot = kzalloc(max_slots * sizeof(struct nfs4_slot), GFP_ATOMIC);
-+	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_KERNEL);
- 	if (!slot)
- 		goto out;
- 	for (i = 0; i < max_slots; ++i)
--- 
-1.6.2.1
+Let me know what you think...
 
+Other than that,
+git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
+holds version 3 of the nfsd41 patchset, rebased onto your
+update for-2.6.30 branch, and with these cleanup patches squashed-in:
+
+[PATCH 1/3] SQUASHME: get callback minorversion from fore channel's
+[PATCH 2/3] SQUASHME: nfsd41: use nfsd4_cb_sequence for callback minorversion
+[PATCH 3/3] SQUASHME: Revert "sunrpc: add cl_private field to struct rpc_clnt"
+
+Benny
