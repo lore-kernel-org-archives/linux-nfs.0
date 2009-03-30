@@ -1,53 +1,171 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 07/47] nfsd41: define nfs41 error codes
-Date: Mon, 30 Mar 2009 16:08:59 -0400
-Message-ID: <20090330200859.GJ31237@fieldses.org>
-References: <49CDDFC2.4070402@panasas.com> <1238229075-9010-1-git-send-email-bhalevy@panasas.com> <20090330181640.GD31237@fieldses.org> <49D1249B.4050701@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH v2 11/47] nfsd41: sessionid hashing
+Date: Mon, 30 Mar 2009 23:34:32 +0300
+Message-ID: <49D12CD8.7060807@panasas.com>
+References: <49CDDFC2.4070402@panasas.com> <1238229110-10339-1-git-send-email-bhalevy@panasas.com> <20090330200812.GI31237@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:57628 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752117AbZC3UJB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 16:09:01 -0400
-In-Reply-To: <49D1249B.4050701@panasas.com>
+Received: from gw-ca.panasas.com ([209.116.51.66]:7623 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758251AbZC3Ueh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 16:34:37 -0400
+In-Reply-To: <20090330200812.GI31237@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 30, 2009 at 10:59:23PM +0300, Benny Halevy wrote:
-> On Mar. 30, 2009, 21:16 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Sat, Mar 28, 2009 at 11:31:15AM +0300, Benny Halevy wrote:
-> >> From: Marc Eshel <eshel@almaden.ibm.com>
-> >>
-> >> Define all error code present in
-> >> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29.
-> >>
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> [nfsd41: clean up error code definitions]
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> ---
-> >>  include/linux/nfs.h       |    2 --
-> >>  include/linux/nfsd/nfsd.h |   43 ++++++++++++++++++++++++++++++++++++++++++-
-> >>  2 files changed, 42 insertions(+), 3 deletions(-)
-> >>
-> >> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
-> >> index 1510a64..214d499 100644
-> >> --- a/include/linux/nfs.h
-> >> +++ b/include/linux/nfs.h
-> >> @@ -109,8 +109,6 @@
-> >>  	NFSERR_FILE_OPEN = 10046,      /*       v4 */
-> >>  	NFSERR_ADMIN_REVOKED = 10047,  /*       v4 */
-> >>  	NFSERR_CB_PATH_DOWN = 10048,   /*       v4 */
-> >> -
-> >> -	NFSERR_REPLAY_ME = 11001,	/* linux internal */
-> > 
-> > This renders "[PATCH v2 05/47] nfsd41: change NFSERR_REPLAY_ME" moot;
-> > just drop that previous patch.
+On Mar. 30, 2009, 23:08 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Sat, Mar 28, 2009 at 11:31:50AM +0300, Benny Halevy wrote:
+>> From: Marc Eshel <eshel@almaden.ibm.com>
+>>
+>> Simple sessionid hashing using its monotonically increasing sequence number.
+>>
+>> Locking considerations:
+>> sessionid_hashtbl access is controlled by the sessionid_lock spin lock.
+>> It must be taken for insert, delete, and lookup.
+>> nfsd4_sequence looks up the session id and if the session is found,
+>> it calls nfsd4_get_session (still under the sessionid_lock).
+>> nfsd4_destroy_session calls nfsd4_put_session after unhashing
+>> it, so when the session's kref reaches zero it's going to get freed.
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [we don't use a prime for sessionid hash table size]
+>> [use sessionid_lock spin lock]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4state.c        |   57 +++++++++++++++++++++++++++++++++++++++++++-
+>>  include/linux/nfsd/state.h |    7 +++++
+>>  2 files changed, 63 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index df9d42e..ac4e8f2 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -383,11 +383,62 @@ static void release_openowner(struct nfs4_stateowner *sop)
+>>  }
+>>  
+>>  #if defined(CONFIG_NFSD_V4_1)
+>> +static DEFINE_SPINLOCK(sessionid_lock);
+>> +#define SESSION_HASH_SIZE	512
+>> +static struct list_head sessionid_hashtbl[SESSION_HASH_SIZE];
+>> +
+>> +static inline int
+>> +hash_sessionid(struct nfs4_sessionid *sessionid)
+>> +{
+>> +	struct nfsd4_sessionid *sid = (struct nfsd4_sessionid *)sessionid;
+>> +
+>> +	return sid->sequence % SESSION_HASH_SIZE;
+>> +}
+>> +
+>> +static inline void
+>> +dump_sessionid(const char *fn, struct nfs4_sessionid *sessionid)
+>> +{
+>> +	u32 *ptr = (u32 *)(&sessionid->data[0]);
+>> +	dprintk("%s: %u:%u:%u:%u\n", fn, ptr[0], ptr[1], ptr[2], ptr[3]);
+>> +}
+>> +
+>> +/* caller must hold sessionid_lock */
+>> +static struct nfsd4_session *
+>> +find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid)
+>> +{
+>> +	struct nfsd4_session *elem;
+>> +	int idx;
+>> +
+>> +	dump_sessionid(__func__, sessionid);
+>> +	idx = hash_sessionid(sessionid);
+>> +	dprintk("%s: idx is %d\n", __func__, idx);
+>> +	/* Search in the appropriate list */
+>> +	list_for_each_entry(elem, &sessionid_hashtbl[idx], se_hash) {
+>> +		dump_sessionid("list traversal", &elem->se_sessionid);
+>> +		if (!memcmp(elem->se_sessionid.data, sessionid->data,
+>> +			    NFS4_MAX_SESSIONID_LEN)) {
+>> +			return elem;
+>> +		}
+>> +	}
+>> +
+>> +	dprintk("%s: session not found\n", __func__);
 > 
-> I see you already pulled the former patch into for-2.6.30...
+> Massive dprintk overkill in this function.
 
-Yes.  Should be fixed now, though.
+Yeah, I agree we can get rid of them by now.
 
---b.
+> 
+>> +	return NULL;
+>> +}
+>> +
+>> +/* caller must hold sessionid_lock */
+>>  static void
+>> -release_session(struct nfsd4_session *ses)
+>> +unhash_session(struct nfsd4_session *ses)
+>>  {
+>>  	list_del(&ses->se_hash);
+>>  	list_del(&ses->se_perclnt);
+>> +}
+>> +
+>> +static void
+>> +release_session(struct nfsd4_session *ses)
+>> +{
+>> +	spin_lock(&sessionid_lock);
+>> +	unhash_session(ses);
+>> +	spin_unlock(&sessionid_lock);
+>>  	nfsd4_put_session(ses);
+>>  }
+> 
+> It's not obvious from the names what the difference between
+> release_session() and nfsd4_put_session() is.
+> 
+> How about just renaming release_session() to unhash_session(), and
+> dumping hash_session?  The two list_del()'s don't need their own
+> function.
+
+We call unhash_session on its own later on from destroy_session,
+then we destroy the callback client and finally put the session.
+
+We can embed release_session into expire_client since it's
+its only use though expire_client is hairy enough I'm not
+sure we want to add more stuff into it.  If we're going
+this direction, I'd consider refactoring it and taking
+the many loops it's doing out into their own functions.
+(we'll add a couple more for pNFS - for releasing layouts
+and layoutrecalls)
+
+Benny
+
+> 
+> --b.
+> 
+>>  
+>> @@ -3213,6 +3264,10 @@ nfs4_state_init(void)
+>>  		INIT_LIST_HEAD(&unconf_str_hashtbl[i]);
+>>  		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
+>>  	}
+>> +#if defined(CONFIG_NFSD_V4_1)
+>> +	for (i = 0; i < SESSION_HASH_SIZE; i++)
+>> +		INIT_LIST_HEAD(&sessionid_hashtbl[i]);
+>> +#endif /* CONFIG_NFSD_V4_1 */
+>>  	for (i = 0; i < FILE_HASH_SIZE; i++) {
+>>  		INIT_LIST_HEAD(&file_hashtbl[i]);
+>>  	}
+>> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+>> index 29624b4..7592d7b 100644
+>> --- a/include/linux/nfsd/state.h
+>> +++ b/include/linux/nfsd/state.h
+>> @@ -133,6 +133,13 @@ nfsd4_get_session(struct nfsd4_session *ses)
+>>  	kref_get(&ses->se_ref);
+>>  }
+>>  
+>> +/* formatted contents of nfs4_sessionid */
+>> +struct nfsd4_sessionid {
+>> +	clientid_t	clientid;
+>> +	u32		sequence;
+>> +	u32		reserved;
+>> +};
+>> +
+>>  #define HEXDIR_LEN     33 /* hex version of 16 byte md5 of cl_name plus '\0' */
+>>  
+>>  /*
+>> -- 
+>> 1.6.2.1
+>>
