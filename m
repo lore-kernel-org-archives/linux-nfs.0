@@ -1,115 +1,93 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 07/47] nfsd41: define nfs41 error codes
-Date: Mon, 30 Mar 2009 14:16:40 -0400
-Message-ID: <20090330181640.GD31237@fieldses.org>
-References: <49CDDFC2.4070402@panasas.com> <1238229075-9010-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+Date: Mon, 30 Mar 2009 14:33:38 -0400
+Message-ID: <20090330183338.GE31237@fieldses.org>
+References: <49CC40E5.2080506@panasas.com> <20090328000134.GH18222@fieldses.org> <49CDDFC2.4070402@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:41381 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:53046 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753170AbZC3SQp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 14:16:45 -0400
-In-Reply-To: <1238229075-9010-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1751262AbZC3Sdk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 14:33:40 -0400
+In-Reply-To: <49CDDFC2.4070402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 28, 2009 at 11:31:15AM +0300, Benny Halevy wrote:
-> From: Marc Eshel <eshel@almaden.ibm.com>
+On Sat, Mar 28, 2009 at 11:28:50AM +0300, Benny Halevy wrote:
+> On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
+> >> Hi Bruce,
+> >>
+> >> Here's the latest server patches implementing the NFSv4.1
+> >> Sessions features.
+> >>
+> >> This patchset is based over your for-2.6.30 branch
+> >> and is also available from
+> >> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
+> > 
+> > There's a few merge conflicts with my current for-2.6.30--probably my
+> > fault for not pushing that out recently enough, apologies.  Would you
+> > mind updating?
+> > 
+> > --b.
+> > 
 > 
-> Define all error code present in
-> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29.
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfsd41: clean up error code definitions]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  include/linux/nfs.h       |    2 --
->  include/linux/nfsd/nfsd.h |   43 ++++++++++++++++++++++++++++++++++++++++++-
->  2 files changed, 42 insertions(+), 3 deletions(-)
-> 
-> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
-> index 1510a64..214d499 100644
-> --- a/include/linux/nfs.h
-> +++ b/include/linux/nfs.h
-> @@ -109,8 +109,6 @@
->  	NFSERR_FILE_OPEN = 10046,      /*       v4 */
->  	NFSERR_ADMIN_REVOKED = 10047,  /*       v4 */
->  	NFSERR_CB_PATH_DOWN = 10048,   /*       v4 */
-> -
-> -	NFSERR_REPLAY_ME = 11001,	/* linux internal */
+> Sure. Here's a rebased version with two minor changes (see below)
 
-This renders "[PATCH v2 05/47] nfsd41: change NFSERR_REPLAY_ME" moot;
-just drop that previous patch.
+On the latest version of nfsd41-for-2.6.30 (a564667..) I'm getting a new NULL
+dereference in the callback code.  Looks like it probably happened while
+running connectathon over NFSv4.0 with krb5p.  That's all I've figured out so
+far.
 
 --b.
 
->  };
->  
->  /* NFSv2 file types - beware, these are not the same in NFSv3 */
-> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-> index 54beda1..ab9616d 100644
-> --- a/include/linux/nfsd/nfsd.h
-> +++ b/include/linux/nfsd/nfsd.h
-> @@ -249,7 +249,44 @@ void		nfsd_lockd_shutdown(void);
->  #define	nfserr_cb_path_down	cpu_to_be32(NFSERR_CB_PATH_DOWN)
->  #define	nfserr_locked		cpu_to_be32(NFSERR_LOCKED)
->  #define	nfserr_wrongsec		cpu_to_be32(NFSERR_WRONGSEC)
-> -#define	nfserr_replay_me	cpu_to_be32(NFSERR_REPLAY_ME)
-> +#define nfserr_badiomode		cpu_to_be32(NFS4ERR_BADIOMODE)
-> +#define nfserr_badlayout		cpu_to_be32(NFS4ERR_BADLAYOUT)
-> +#define nfserr_bad_session_digest	cpu_to_be32(NFS4ERR_BAD_SESSION_DIGEST)
-> +#define nfserr_badsession		cpu_to_be32(NFS4ERR_BADSESSION)
-> +#define nfserr_badslot			cpu_to_be32(NFS4ERR_BADSLOT)
-> +#define nfserr_complete_already		cpu_to_be32(NFS4ERR_COMPLETE_ALREADY)
-> +#define nfserr_conn_not_bound_to_session cpu_to_be32(NFS4ERR_CONN_NOT_BOUND_TO_SESSION)
-> +#define nfserr_deleg_already_wanted	cpu_to_be32(NFS4ERR_DELEG_ALREADY_WANTED)
-> +#define nfserr_back_chan_busy		cpu_to_be32(NFS4ERR_BACK_CHAN_BUSY)
-> +#define nfserr_layouttrylater		cpu_to_be32(NFS4ERR_LAYOUTTRYLATER)
-> +#define nfserr_layoutunavailable	cpu_to_be32(NFS4ERR_LAYOUTUNAVAILABLE)
-> +#define nfserr_nomatching_layout	cpu_to_be32(NFS4ERR_NOMATCHING_LAYOUT)
-> +#define nfserr_recallconflict		cpu_to_be32(NFS4ERR_RECALLCONFLICT)
-> +#define nfserr_unknown_layouttype	cpu_to_be32(NFS4ERR_UNKNOWN_LAYOUTTYPE)
-> +#define nfserr_seq_misordered		cpu_to_be32(NFS4ERR_SEQ_MISORDERED)
-> +#define nfserr_sequence_pos		cpu_to_be32(NFS4ERR_SEQUENCE_POS)
-> +#define nfserr_req_too_big		cpu_to_be32(NFS4ERR_REQ_TOO_BIG)
-> +#define nfserr_rep_too_big		cpu_to_be32(NFS4ERR_REP_TOO_BIG)
-> +#define nfserr_rep_too_big_to_cache	cpu_to_be32(NFS4ERR_REP_TOO_BIG_TO_CACHE)
-> +#define nfserr_retry_uncached_rep	cpu_to_be32(NFS4ERR_RETRY_UNCACHED_REP)
-> +#define nfserr_unsafe_compound		cpu_to_be32(NFS4ERR_UNSAFE_COMPOUND)
-> +#define nfserr_too_many_ops		cpu_to_be32(NFS4ERR_TOO_MANY_OPS)
-> +#define nfserr_op_not_in_session	cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION)
-> +#define nfserr_hash_alg_unsupp		cpu_to_be32(NFS4ERR_HASH_ALG_UNSUPP)
-> +#define nfserr_clientid_busy		cpu_to_be32(NFS4ERR_CLIENTID_BUSY)
-> +#define nfserr_pnfs_io_hole		cpu_to_be32(NFS4ERR_PNFS_IO_HOLE)
-> +#define nfserr_seq_false_retry		cpu_to_be32(NFS4ERR_SEQ_FALSE_RETRY)
-> +#define nfserr_bad_high_slot		cpu_to_be32(NFS4ERR_BAD_HIGH_SLOT)
-> +#define nfserr_deadsession		cpu_to_be32(NFS4ERR_DEADSESSION)
-> +#define nfserr_encr_alg_unsupp		cpu_to_be32(NFS4ERR_ENCR_ALG_UNSUPP)
-> +#define nfserr_pnfs_no_layout		cpu_to_be32(NFS4ERR_PNFS_NO_LAYOUT)
-> +#define nfserr_not_only_op		cpu_to_be32(NFS4ERR_NOT_ONLY_OP)
-> +#define nfserr_wrong_cred		cpu_to_be32(NFS4ERR_WRONG_CRED)
-> +#define nfserr_wrong_type		cpu_to_be32(NFS4ERR_WRONG_TYPE)
-> +#define nfserr_dirdeleg_unavail		cpu_to_be32(NFS4ERR_DIRDELEG_UNAVAIL)
-> +#define nfserr_reject_deleg		cpu_to_be32(NFS4ERR_REJECT_DELEG)
-> +#define nfserr_returnconflict		cpu_to_be32(NFS4ERR_RETURNCONFLICT)
-> +#define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
->  
->  /* error codes for internal use */
->  /* if a request fails due to kmalloc failure, it gets dropped.
-> @@ -258,6 +295,10 @@ void		nfsd_lockd_shutdown(void);
->  #define	nfserr_dropit		cpu_to_be32(30000)
->  /* end-of-file indicator in readdir */
->  #define	nfserr_eof		cpu_to_be32(30001)
-> +/* replay detected */
-> +#define	nfserr_replay_me	cpu_to_be32(11001)
-> +/* nfs41 replay detected */
-> +#define	nfserr_replay_cache	cpu_to_be32(11002)
->  
->  /* Check for dir entries '.' and '..' */
->  #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
-> -- 
-> 1.6.2.1
-> 
+BUG: unable to handle kernel NULL pointer dereference at (null)
+IP: [<c03e4e1e>] nfs4_xdr_dec_cb_recall+0x4e/0x200
+*pde = 00000000 
+Oops: 0000 [#1] PREEMPT 
+last sysfs file: /sys/kernel/uevent_seqnum
+Modules linked in:
+
+Pid: 3949, comm: nfs4_cb_recall Not tainted (2.6.29-rc8-00312-ga564667 #39) 
+EIP: 0060:[<c03e4e1e>] EFLAGS: 00010286 CPU: 0
+EIP is at nfs4_xdr_dec_cb_recall+0x4e/0x200
+EAX: c7bb22a0 EBX: c7bb2298 ECX: c7bb22a0 EDX: c7bb22a4
+ESI: 00000000 EDI: c66e3000 EBP: c5281ea4 ESP: c5281e6c
+ DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+Process nfs4_cb_recall (pid: 3949, ti=c5280000 task=c66a6b60 task.ti=c5280000)
+Stack:
+ c66a6b60 00000000 c5281eb4 c086cab4 c0aa0380 00000001 c11bd4a4 c7bb22a4
+ c66e302c c7bb22ac c66e302c 00000000 c6cf14e8 c66e3000 c5281ecc c08199c3
+ c0819aae 00000000 c5281ee8 c5281ef0 c03e4dd0 c6cf14e8 c7bb2298 c03e4dd0
+Call Trace:
+ [<c086cab4>] ? schedule+0x354/0x540
+ [<c08199c3>] ? rpcauth_unwrap_resp+0x63/0x90
+ [<c0819aae>] ? rpcauth_checkverf+0x2e/0x70
+ [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
+ [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
+ [<c08122ce>] ? call_decode+0x1ae/0x820
+ [<c086d125>] ? out_of_line_wait_on_bit+0x65/0x80
+ [<c0818720>] ? rpc_wait_bit_killable+0x0/0x40
+ [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
+ [<c0818e62>] ? __rpc_execute+0x92/0x290
+ [<c086f4fc>] ? _spin_unlock+0x2c/0x50
+ [<c08186c7>] ? rpc_set_active+0x67/0x80
+ [<c081907e>] ? rpc_execute+0x1e/0x30
+ [<c08129e5>] ? rpc_run_task+0x35/0x70
+ [<c0812b40>] ? rpc_call_sync+0x40/0x70
+ [<c03e51e0>] ? nfsd4_cb_recall+0x70/0x130
+ [<c086cab4>] ? schedule+0x354/0x540
+ [<c0247d1b>] ? trace_hardirqs_on+0xb/0x10
+ [<c03dfd40>] ? do_recall+0x0/0x20
+ [<c03dfd54>] ? do_recall+0x14/0x20
+ [<c023941f>] ? kthread+0x3f/0x70
+ [<c02393e0>] ? kthread+0x0/0x70
+ [<c0203b67>] ? kernel_thread_helper+0x7/0x10
+Code: 43 00 ba 08 00 00 00 8d 45 e4 e8 0e c1 43 00 85 c0 74 3a 8b 50 04 8d 45 e4 0f ca 83 c2 04 e8 fa c0 43 00 85 c0 0f 84 8a 00 00 00 <8b> 06 8b 00 85 c0 75 32 ba 04 00 00 00 8d 45 e4 e8 cd fe ff ff 
+EIP: [<c03e4e1e>] nfs4_xdr_dec_cb_recall+0x4e/0x200 SS:ESP 0068:c5281e6c
+---[ end trace 2724475d9856cb6c ]---
+
