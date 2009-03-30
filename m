@@ -1,58 +1,44 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 1/7] SQUASHME: nfs41: remove ifdefs around nfs_client_initdata.minorversion
-Date: Mon, 30 Mar 2009 17:00:30 +0300
-Message-ID: <1238421630-24989-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 2/7] SQUASHME: nfs41: use kcalloc to allocate slot table
+Date: Mon, 30 Mar 2009 17:00:33 +0300
+Message-ID: <1238421633-25020-1-git-send-email-bhalevy@panasas.com>
 References: <49D0D025.2080608@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org, andros@netapp.com
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:15850 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:14220 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750919AbZC3OAq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 10:00:46 -0400
+	with ESMTP id S1751469AbZC3OAr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 10:00:47 -0400
 In-Reply-To: <49D0D025.2080608@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> This is really ugly and unnecessary. Please just remove those ifdefs,
-> and have clp->cl_minorversion data->minorversion always defined, and set
-> to 0.
+Also, change gfp flags to GFP_KERNEL.
 
-squash intto "nfs41: Use mount minorversion option"
+FIXME: move nfs4_init_slot_table's definition
+from "nfs41: sessions client infrastructure"
+to "nfs41: create_session operation"
+and squash this patch there.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/client.c |    6 +-----
- 1 files changed, 1 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index bce02da..870742e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -102,9 +102,7 @@ struct nfs_client_initdata {
- 	size_t addrlen;
- 	const struct nfs_rpc_ops *rpc_ops;
- 	int proto;
--#ifdef CONFIG_NFS_V4
- 	u32 minorversion;
--#endif
- };
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7a96e17..e51622a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4470,7 +4470,7 @@ static int nfs4_init_slot_table(struct nfs4_slot_table *tbl,
  
- /*
-@@ -451,11 +449,9 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 	dprintk("--> %s: max_reqs=%u\n", __func__, max_slots);
  
- 		if (clp->cl_proto != data->proto)
- 			continue;
--#ifdef CONFIG_NFS_V4
--		/* Match minorversion */
-+		/* Match nfsv4 minorversion */
- 		if (clp->cl_minorversion != data->minorversion)
- 			continue;
--#endif
- 		/* Match the full socket address */
- 		if (!nfs_sockaddr_cmp(sap, clap))
- 			continue;
+-	slot = kzalloc(max_slots * sizeof(struct nfs4_slot), GFP_ATOMIC);
++	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_KERNEL);
+ 	if (!slot)
+ 		goto out;
+ 	for (i = 0; i < max_slots; ++i)
 -- 
 1.6.2.1
 
