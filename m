@@ -1,350 +1,173 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 12/29] knfsd: Update per-client & per-export stats from NFSv4
-Date: Wed, 01 Apr 2009 07:28:12 +1100
-Message-ID: <20090331202942.142229000@sgi.com>
+Subject: [patch 29/29] knfsd: make nfsdstats per-CPU
+Date: Wed, 01 Apr 2009 07:28:29 +1100
+Message-ID: <20090331202949.006493000@sgi.com>
 References: <20090331202800.739621000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.185.19.242] ([218.185.19.242]:22578 "EHLO inara.melbourne"
+Received: from [218.185.19.242] ([218.185.19.242]:22582 "EHLO inara.melbourne"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755992AbZCaVCq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2009 17:02:46 -0400
+	id S1761570AbZCaVCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 17:02:40 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add instrumentation to the NFSv4 server procedures.
+Make the global nfsdstats structure per-cpu.  Fields in this struct are
+incremented one times per READ and WRITE NFS call, and also in various
+other more obscure situations.  When the workload is doing READs to
+every nfsd on every CPU, it's a very hot and bouncy cacheline indeed.
 
-Contains code based on a patch from Harshula Jayasuriya <harshula@sgi.com>.
+Tests on a 16 CPU Altix A4700 with 2 10gige Myricom cards, configured
+separately (no bonding).  Workload is 640 client threads doing directory
+traverals with random small reads, from server RAM.
+
+Before
+======
+
+Kernel profile:
+
+  %   cumulative   self              self     total
+ time   samples   samples    calls   1/call   1/call  name
+  5.45   2484.00  2484.00     2883     0.86     1.00  nfsd_ofcache_lookup
+  4.91   4720.00  2236.00     2231     1.00     1.00  spin_unlock_irqrestore
+  2.80   5994.00  1274.00     1262     1.01     1.01  svc_export_put
+  2.74   7242.00  1248.00     3650     0.34     1.00  nfsd_vfs_read	<----
+  2.58   8417.00  1175.00     1281     0.92     1.01  svcauth_unix_set_client
+
+After
+=====
+
+Kernel profile:
+
+  %   cumulative   self              self     total
+ time   samples   samples    calls   1/call   1/call  name
+  5.01   2276.00  2276.00     2666     0.85     1.00  nfsd_ofcache_lookup
+  4.61   4370.00  2094.00     2092     1.00     1.00  ia64_spinlock_contention
+  4.20   6279.00  1909.00     3141     0.61     0.78  svc_sock_enqueue
+  4.03   8108.00  1829.00     1824     1.00     1.00  spin_unlock_irqrestore
+  3.32   9618.00  1510.00     3588     0.42     1.00  spin_lock
+  ...
+  0.54  36665.00   246.00     2211     0.11     1.00  nfsd_vfs_read	<----
+
+In this case, the throughput did not actually improve until the next
+problem was solved (patch knfsd-make-svc-authenticate-scale-2).
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
+Reviewed-by: David Chinner <dgc@sgi.com>
+Reviewed-by: Peter Leckie <pleckie-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
 ---
 
- fs/nfsd/nfs4proc.c  |   40 +++++++++++++++++++++++++++++++++-------
- fs/nfsd/nfs4state.c |   34 ++++++++++++++++++++++++++++++++--
- fs/nfsd/nfs4xdr.c   |    7 +++++++
- 3 files changed, 72 insertions(+), 9 deletions(-)
+ fs/nfsd/nfscache.c         |   19 ++++++++++---------
+ fs/nfsd/stats.c            |   29 ++++++++++++++++++++++++++++-
+ include/linux/nfsd/stats.h |    8 +++++---
+ 3 files changed, 43 insertions(+), 13 deletions(-)
 
-Index: bfields/fs/nfsd/nfs4proc.c
+Index: bfields/fs/nfsd/stats.c
 ===================================================================
---- bfields.orig/fs/nfsd/nfs4proc.c
-+++ bfields/fs/nfsd/nfs4proc.c
-@@ -192,6 +192,9 @@ nfsd4_open(struct svc_rqst *rqstp, struc
- 	   struct nfsd4_open *open)
+--- bfields.orig/fs/nfsd/stats.c
++++ bfields/fs/nfsd/stats.c
+@@ -55,16 +55,51 @@ static inline void nfsd_stats_prefetch(n
+ }
+ 
+ 
+-struct nfsd_stats	nfsdstats;
++struct nfsd_stats	*nfsdstats_percpu;
+ 
+ nfsd_stats_hash_t nfsd_export_stats_hash;
+ nfsd_stats_hash_t nfsd_client_stats_hash;
+ int nfsd_stats_enabled = 1;
+ int nfsd_stats_prune_period = 2*86400;
+ 
++/*
++ * Accumulate all the per-cpu struct nfsd_stats
++ * into one global total for emission to userspace.
++ * Relies on struct nfsd_stats being composed of
++ * unsigned ints without gaps, so it can be treated
++ * as an array of unsigned ints.
++ *
++ * Note: we iterate over all possible CPUs instead
++ * of just the online ones to avoid counters going
++ * backwards when CPUs go offline.
++ *
++ * Note: the rcage field needs to be accumulated as
++ * a minimum across all the CPUs, not a sum.
++ */
++static void nfsd_stat_accum(struct nfsd_stats *sp)
++{
++	unsigned int *usp = (unsigned int *)sp;
++	int cpu;
++	int i;
++	unsigned int rcage = ~0;
++
++	memset(sp, 0, sizeof(*sp));
++	for_each_possible_cpu(cpu) {
++		struct nfsd_stats *csp = per_cpu_ptr(nfsdstats_percpu, cpu);
++		unsigned int *ucsp = (unsigned int *)csp;
++		for (i = 0 ; i < sizeof(*sp)/sizeof(unsigned int) ; i++)
++			usp[i] += ucsp[i];
++		rcage = min_t(unsigned int, rcage, csp->rcage);
++	}
++	sp->rcage = rcage;
++}
++
+ static int nfsd_proc_show(struct seq_file *seq, void *v)
  {
- 	__be32 status;
-+
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_ACCESS);
-+
- 	dprintk("NFSD: nfsd4_open filename %.*s op_stateowner %p\n",
- 		(int)open->op_fname.len, open->op_fname.data,
- 		open->op_stateowner);
-@@ -350,12 +353,16 @@ static __be32
- nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	     struct nfsd4_access *access)
- {
-+	__be32 status;
-+
- 	if (access->ac_req_access & ~NFS3_ACCESS_FULL)
- 		return nfserr_inval;
- 
- 	access->ac_resp_access = access->ac_req_access;
--	return nfsd_access(rqstp, &cstate->current_fh, &access->ac_resp_access,
--			   &access->ac_supported);
-+	status = nfsd_access(rqstp, &cstate->current_fh, &access->ac_resp_access,
-+			     &access->ac_supported);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_ACCESS);
-+	return status;
- }
- 
- static __be32
-@@ -372,6 +379,7 @@ nfsd4_commit(struct svc_rqst *rqstp, str
- 			     commit->co_count);
- 	if (status == nfserr_symlink)
- 		status = nfserr_inval;
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_COMMIT);
- 	return status;
- }
- 
-@@ -452,6 +460,8 @@ nfsd4_create(struct svc_rqst *rqstp, str
- 		status = nfserr_badtype;
- 	}
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_MKINODE);
-+
- 	if (!status) {
- 		fh_unlock(&cstate->current_fh);
- 		set_change_info(&create->cr_cinfo, &cstate->current_fh);
-@@ -480,6 +490,7 @@ nfsd4_getattr(struct svc_rqst *rqstp, st
- 	getattr->ga_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
- 
- 	getattr->ga_fhp = &cstate->current_fh;
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_GETATTR);
- 	return nfs_ok;
- }
- 
-@@ -495,6 +506,7 @@ nfsd4_link(struct svc_rqst *rqstp, struc
- 			   link->li_name, link->li_namelen, &cstate->save_fh);
- 	if (!status)
- 		set_change_info(&link->li_cinfo, &cstate->current_fh);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_MKINODE);
- 	return status;
- }
- 
-@@ -514,17 +526,22 @@ nfsd4_lookupp(struct svc_rqst *rqstp, st
- 		return nfserr_noent;
- 	}
- 	fh_put(&tmp_fh);
--	return nfsd_lookup(rqstp, &cstate->current_fh,
--			   "..", 2, &cstate->current_fh);
-+	ret = nfsd_lookup(rqstp, &cstate->current_fh,
-+			  "..", 2, &cstate->current_fh);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_LOOKUP);
-+	return ret;
- }
- 
- static __be32
- nfsd4_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	     struct nfsd4_lookup *lookup)
- {
--	return nfsd_lookup(rqstp, &cstate->current_fh,
--			   lookup->lo_name, lookup->lo_len,
--			   &cstate->current_fh);
-+	__be32 status;
-+	status = nfsd_lookup(rqstp, &cstate->current_fh,
-+			     lookup->lo_name, lookup->lo_len,
-+			     &cstate->current_fh);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_LOOKUP);
-+	return status;
- }
- 
- static __be32
-@@ -604,6 +621,7 @@ nfsd4_remove(struct svc_rqst *rqstp, str
- 		return nfserr_grace;
- 	status = nfsd_unlink(rqstp, &cstate->current_fh, 0,
- 			     remove->rm_name, remove->rm_namelen);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_REMOVE);
- 	if (status == nfserr_symlink)
- 		return nfserr_notdir;
- 	if (!status) {
-@@ -628,6 +646,8 @@ nfsd4_rename(struct svc_rqst *rqstp, str
- 			     rename->rn_snamelen, &cstate->current_fh,
- 			     rename->rn_tname, rename->rn_tnamelen);
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_MKINODE);
-+
- 	/* the underlying filesystem returns different error's than required
- 	 * by NFSv4. both save_fh and current_fh have been verified.. */
- 	if (status == nfserr_isdir)
-@@ -667,6 +687,7 @@ nfsd4_secinfo(struct svc_rqst *rqstp, st
- 	} else
- 		secinfo->si_exp = exp;
- 	dput(dentry);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_FSINFO);
- 	return err;
- }
- 
-@@ -700,6 +721,7 @@ nfsd4_setattr(struct svc_rqst *rqstp, st
- 		goto out;
- 	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
- 				0, (time_t)0);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_SETATTR);
- out:
- 	mnt_drop_write(cstate->current_fh.fh_export->ex_path.mnt);
- 	return status;
-@@ -751,6 +773,8 @@ nfsd4_write(struct svc_rqst *rqstp, stru
- 
- 	if (status == nfserr_symlink)
- 		status = nfserr_inval;
-+	nfsd_stats_update_write(rqstp, &cstate->current_fh, write->wr_bytes_written,
-+				write->wr_how_written);
- 	return status;
- }
- 
-@@ -809,6 +833,8 @@ _nfsd4_verify(struct svc_rqst *rqstp, st
- 	if (!memcmp(p, verify->ve_attrval, verify->ve_attrlen))
- 		status = nfserr_same;
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_ACCESS);
-+
- out_kfree:
- 	kfree(buf);
- 	return status;
-Index: bfields/fs/nfsd/nfs4state.c
-===================================================================
---- bfields.orig/fs/nfsd/nfs4state.c
-+++ bfields/fs/nfsd/nfs4state.c
-@@ -1217,6 +1217,8 @@ nfsd4_exchange_id(struct svc_rqst *rqstp
- 		.data = exid->id,
- 	};
- 
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
-+
- 	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
- 		" ip_addr=%u flags %x, spa_how %d\n",
- 		__func__, rqstp, exid, clname.len, clname.data,
-@@ -1368,6 +1370,8 @@ nfsd4_create_session(struct svc_rqst *rq
- 	struct nfsd4_slot *slot = NULL;
- 	int status = 0;
- 
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
-+
- 	nfs4_lock_state();
- 	unconf = find_unconfirmed_client(&cr_ses->clientid);
- 	conf = find_confirmed_client(&cr_ses->clientid);
-@@ -1456,6 +1460,8 @@ nfsd4_destroy_session(struct svc_rqst *r
- 	struct nfsd4_session *ses;
- 	u32 status = nfserr_badsession;
- 
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
-+
- 	/* Notes:
- 	 * - The confirmed nfs4_client->cl_sessionid holds destroyed sessinid
- 	 * - Should we return nfserr_back_chan_busy if waiting for
-@@ -1493,6 +1499,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	struct nfsd4_slot *slot;
- 	int status;
- 
-+	/* No nfsd_stats_update() call here, for the same reasons
-+	 * as for PUTFH and GETFH */
-+
- 	if (resp->opcnt != 1)
- 		return nfserr_sequence_pos;
- 
-@@ -1560,7 +1569,9 @@ nfsd4_setclientid(struct svc_rqst *rqstp
- 	__be32 			status;
- 	char			*princ;
- 	char                    dname[HEXDIR_LEN];
--	
-+
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
-+
- 	if (!check_name(clname))
- 		return nfserr_inval;
- 
-@@ -1684,6 +1695,8 @@ nfsd4_setclientid_confirm(struct svc_rqs
- 	clientid_t * clid = &setclientid_confirm->sc_clientid;
- 	__be32 status;
- 
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
-+
- 	if (STALE_CLIENTID(clid))
- 		return nfserr_stale_clientid;
- 	/* 
-@@ -2629,6 +2642,8 @@ nfsd4_renew(struct svc_rqst *rqstp, stru
- 	struct nfs4_client *clp;
- 	__be32 status;
- 
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
-+
- 	nfs4_lock_state();
- 	dprintk("process_renew(%08x/%08x): starting\n", 
- 			clid->cl_boot, clid->cl_id);
-@@ -3057,6 +3072,8 @@ nfsd4_open_confirm(struct svc_rqst *rqst
- 	struct nfs4_stateowner *sop;
- 	struct nfs4_stateid *stp;
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_ACCESS);
-+
- 	dprintk("NFSD: nfsd4_open_confirm on file %.*s\n",
- 			(int)cstate->current_fh.fh_dentry->d_name.len,
- 			cstate->current_fh.fh_dentry->d_name.name);
-@@ -3129,6 +3146,8 @@ nfsd4_open_downgrade(struct svc_rqst *rq
- 	unsigned int share_access;
- 	int flags = OPEN_STATE;
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_ACCESS);
-+
- 	dprintk("NFSD: nfsd4_open_downgrade on file %.*s\n", 
- 			(int)cstate->current_fh.fh_dentry->d_name.len,
- 			cstate->current_fh.fh_dentry->d_name.name);
-@@ -3188,6 +3207,8 @@ nfsd4_close(struct svc_rqst *rqstp, stru
- 	struct nfs4_stateid *stp;
- 	int flags = OPEN_STATE | CLOSE_STATE;
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_ACCESS);
-+
- 	dprintk("NFSD: nfsd4_close on file %.*s\n", 
- 			(int)cstate->current_fh.fh_dentry->d_name.len,
- 			cstate->current_fh.fh_dentry->d_name.name);
-@@ -3259,6 +3280,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp
- 	renew_client(dp->dl_client);
- 
- 	unhash_delegation(dp);
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_FSINFO);
- out:
- 	nfs4_unlock_state();
- 
-@@ -3517,6 +3539,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struc
- 	unsigned int cmd;
- 	int err, flags = 0;
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_LOCKD);
-+
- 	dprintk("NFSD: nfsd4_lock: start=%Ld length=%Ld\n",
- 		(long long) lock->lk_offset,
- 		(long long) lock->lk_length);
-@@ -3695,6 +3719,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, stru
- 	int error;
- 	__be32 status;
- 
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_LOCKD);
-+
- 	if (locks_in_grace())
- 		return nfserr_grace;
- 
-@@ -3768,7 +3794,9 @@ nfsd4_locku(struct svc_rqst *rqstp, stru
- 	struct file_lock file_lock;
- 	__be32 status;
- 	int err, flags = LOCK_STATE;
--						        
-+
-+	nfsd_stats_update(rqstp, &cstate->current_fh, NFSD_STATS_OP_LOCKD);
-+
- 	dprintk("NFSD: nfsd4_locku: start=%Ld length=%Ld\n",
- 		(long long) locku->lu_offset,
- 		(long long) locku->lu_length);
-@@ -3865,6 +3893,8 @@ nfsd4_release_lockowner(struct svc_rqst 
  	int i;
- 	__be32 status;
- 
-+	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_LOCKD);
++	struct nfsd_stats nfsdstats;
 +
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
- 		clid->cl_boot, clid->cl_id);
++	nfsd_stat_accum(&nfsdstats);
  
-Index: bfields/fs/nfsd/nfs4xdr.c
+ 	seq_printf(seq, "rc %u %u %u\nfh %u %u %u %u %u\nio %u %u\n",
+ 		      nfsdstats.rchits,
+@@ -715,6 +750,7 @@ nfsd_stat_init(void)
+ 
+ 	nfsd_stats_hash_init(&nfsd_export_stats_hash, "export");
+ 	nfsd_stats_hash_init(&nfsd_client_stats_hash, "client");
++	nfsdstats_percpu = alloc_percpu(struct nfsd_stats);
+ }
+ 
+ void
+@@ -724,4 +760,5 @@ nfsd_stat_shutdown(void)
+ 
+ 	nfsd_stats_hash_destroy(&nfsd_export_stats_hash);
+ 	nfsd_stats_hash_destroy(&nfsd_client_stats_hash);
++	free_percpu(nfsdstats_percpu);
+ }
+Index: bfields/include/linux/nfsd/stats.h
 ===================================================================
---- bfields.orig/fs/nfsd/nfs4xdr.c
-+++ bfields/fs/nfsd/nfs4xdr.c
-@@ -2641,6 +2641,8 @@ nfsd4_encode_read(struct nfsd4_compoundr
- 			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
- 			&maxcount);
+--- bfields.orig/include/linux/nfsd/stats.h
++++ bfields/include/linux/nfsd/stats.h
+@@ -48,11 +48,17 @@ struct nfsd_stats {
+ 					 * entry reused from the LRU list */
+ };
+ #define NFSD_INC_STAT(field) \
+-	(nfsdstats.field++)
++	(nfsdstats_percpu ? \
++		++(per_cpu_ptr(nfsdstats_percpu, smp_processor_id())->field) : 0)
+ #define NFSD_ADD_STAT(field, v) \
+-	(nfsdstats.field += (v))
++	(nfsdstats_percpu ? \
++		(per_cpu_ptr(nfsdstats_percpu, smp_processor_id())->field) += (v) : 0)
++/* Note that SET_STAT() always proceeds on per-cpu slot 0 to
++ * preserve the value semantics; this means you CANNOT mix
++ * SET_STAT() with INC_STAT() etc */
+ #define NFSD_SET_STAT(field, v) \
+-	(nfsdstats.field = (v))
++	(nfsdstats_percpu ? \
++		(per_cpu_ptr(nfsdstats_percpu, 0)->field) = (v) : 0)
  
-+	nfsd_stats_update_read(read->rd_rqstp, read->rd_fhp, maxcount);
-+
- 	if (nfserr == nfserr_symlink)
- 		nfserr = nfserr_inval;
- 	if (nfserr)
-@@ -2692,6 +2694,7 @@ nfsd4_encode_readlink(struct nfsd4_compo
- 	 * assume that truncation occurred, and return NFS4ERR_RESOURCE.
- 	 */
- 	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, page, &maxcount);
-+	nfsd_stats_update_read(readlink->rl_rqstp, readlink->rl_fhp, maxcount);
- 	if (nfserr == nfserr_isdir)
- 		return nfserr_inval;
- 	if (nfserr)
-@@ -2764,6 +2767,10 @@ nfsd4_encode_readdir(struct nfsd4_compou
- 	nfserr = nfsd_readdir(readdir->rd_rqstp, readdir->rd_fhp,
- 			      &offset,
- 			      &readdir->common, nfsd4_encode_dirent);
-+
-+	nfsd_stats_update(readdir->rd_rqstp, readdir->rd_fhp,
-+			  NFSD_STATS_OP_READDIRP);
-+
- 	if (nfserr == nfs_ok &&
- 	    readdir->common.err == nfserr_toosmall &&
- 	    readdir->buffer == page) 
+ 
+ struct nfsd_op_stats {
+@@ -148,7 +154,7 @@ struct nfsd_stats_hiter {
+ };
+ 
+ 
+-extern struct nfsd_stats	nfsdstats;
++extern struct nfsd_stats	*nfsdstats_percpu;
+ extern nfsd_stats_hash_t	nfsd_export_stats_hash;
+ extern nfsd_stats_hash_t	nfsd_client_stats_hash;
+ 
 
 --
 Greg
