@@ -1,68 +1,70 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] 3-word attributes encoding
-Date: Tue, 31 Mar 2009 21:36:08 +0300
-Message-ID: <49D26298.6070507@panasas.com>
-References: <49D0D931.2060808@panasas.com> <20090331014439.GA7273@fieldses.org>
+Subject: Re: [pnfs] [PATCH 0/9] nfs41 for 2.6.30 session reset fix and cleanup
+Date: Tue, 31 Mar 2009 22:01:03 +0300
+Message-ID: <49D2686F.6040604@panasas.com>
+References: <> <1238455599-12151-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: pnfs@linux-nfs.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:12163 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:23748 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753882AbZCaSgO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 14:36:14 -0400
-In-Reply-To: <20090331014439.GA7273@fieldses.org>
+	with ESMTP id S1753471AbZCaTBK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 15:01:10 -0400
+In-Reply-To: <1238455599-12151-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 31, 2009, 4:44 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Mon, Mar 30, 2009 at 05:37:37PM +0300, Benny Halevy wrote:
->> Bruce,
->>
->> As I mentioned in a reply to Trond,
->> "nfsd41: support for 3-word long attribute bitmask"
->> changes the server fattr encoding logic so it may send
->> back a bitmap of length 1, even if the client sent a
->> bitmap of length 2, if the second word of the bitmap
->> is zero.  Although I think this a valid implementation
->> and other servers may do the same, it seems sub-optimal
->> for the client's decoding of acl of fs_locations.
-> 
-> "suboptimal" means it does some extra memcpy'ing?
+I've merged these and the cleaned up patchset you
+sent for nfs41-for-2.6.30 (with minor edits to 
+commit messages and one checkpatch fix to
+#define nfs4_call_sync.
 
-Yes, I believe so.
-
-> 
->> It's pretty easy to revert to the old behavior on the server
->> by always returning at least two bitmap words, or, if we
->> keep the bitmap length, not just the val, in nfsd4_decode_bitmap
->> we can return a bitmap of the same length in the reply.
-> 
-> Odd thing to have to do, but OK. --b.  
-
-What would you prefer to do?
-Revert to old behavior by returning at least two bitmap words
-or use the args bitmap length for encoding the res?
+This is now available on
+git://linux-nfs.org/~bhalevy/linux-pnfs.git nfs41-for-2.6.30
 
 Benny
 
+On Mar. 31, 2009, 2:26 +0300, andros@netapp.com wrote:
+> This patch series applies to nfs41-for-2.6.30.
 > 
->> Let me know what you think...
->>
->> Other than that,
->> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
->> holds version 3 of the nfsd41 patchset, rebased onto your
->> update for-2.6.30 branch, and with these cleanup patches squashed-in:
->>
->> [PATCH 1/3] SQUASHME: get callback minorversion from fore channel's
->> [PATCH 2/3] SQUASHME: nfsd41: use nfsd4_cb_sequence for callback minorversion
->> [PATCH 3/3] SQUASHME: Revert "sunrpc: add cl_private field to struct rpc_clnt"
->>
->> Benny
->> _______________________________________________
->> pNFS mailing list
->> pNFS@linux-nfs.org
->> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+> These patches clean up nfs41_sequence_done
+> 0001-SQUASHME-nfs41-remove-unused-error-checking-in-nfs.patch
+> 0002-SQUASHME-nfs41-remove-nfs4_has_session-check-in-nfs.patch
+> 0003-SQUASHME-nfs41-remove-nfs_client-pointer-check.patch
+> 
+> These patches clean up session reset errors
+> 0004-SQUASHME-nfs41-_nfs4_async_handle_error-fix-sessio.patch
+> 0005-SQUASHME-nfs41-nfs4_handle_exception-fix-session-re.patch
+> 0006-SQUASHME-nfs41-remove-switch-on-error-from-nfs41_s.patch
+> 
+> This patch fixes session reset which was failing repeated runs of the
+> pynfs testclient SESSIONRESET2 test.
+> 0007-SQUASHME-nfs41-resset-the-session-from-nfs41_setup.patch
+> 
+> These patches add session reset handeling to the state recovery code.
+> 0008-nfs41-session-reset-in-nfs4_recovery_handle_error.patch
+> 0009-nfs41-reset-session-on-nfs4_do_reclaim-session-rese.patch
+> 
+> 
+> Tests:
+> With CONFIG_NFS_V4_1 set:
+> Connectathon passes with v4 and v4.1 mounts.
+> Connectathon basic passes against pynfs server that resets the session every
+> 50th sequenence operation.
+> python testclient REBOOT1 REBOOT2 SESSIONRESET1 pass. SESSIONRESET2 passes
+> with multiple tests (which was failing prior to patch 0007)
+> 
+> With CONFIG_NFS_V4_1 not set:
+> Connectathon passes.
+> 
+> 
+> -->Andy
+> 
+> 
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
