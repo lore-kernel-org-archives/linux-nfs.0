@@ -1,171 +1,191 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 03/29] knfsd: add userspace controls for stats tables
-Date: Wed, 01 Apr 2009 07:28:03 +1100
-Message-ID: <20090331202938.939647000@sgi.com>
+Subject: [patch 11/29] knfsd: Update per-client & per-export stats from NFSv2
+Date: Wed, 01 Apr 2009 07:28:11 +1100
+Message-ID: <20090331202941.779324000@sgi.com>
 References: <20090331202800.739621000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.185.19.242] ([218.185.19.242]:22579 "EHLO inara.melbourne"
+Received: from [218.185.19.242] ([218.185.19.242]:22577 "EHLO inara.melbourne"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1761340AbZCaVCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2009 17:02:40 -0400
+	id S1755610AbZCaVCo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 17:02:44 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add two control files to /proc/fs/nfsd:
-
-* "stats_enabled" can be used to disable or enable the gathering
-   of per-client and per-export statistics in the server.
-
-* "stats_prune_period" can be used to set the period at
-   which the pruning timer runs, in seconds.  Unused stats
-   entries will survive at most twice that time.
+Add instrumentation to the NFSv2 server procedures.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- fs/nfsd/nfsctl.c |   99 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 99 insertions(+)
+ fs/nfsd/nfs2acl.c |    2 ++
+ fs/nfsd/nfsproc.c |   28 ++++++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+)
 
-Index: bfields/fs/nfsd/nfsctl.c
+Index: bfields/fs/nfsd/nfsproc.c
 ===================================================================
---- bfields.orig/fs/nfsd/nfsctl.c
-+++ bfields/fs/nfsd/nfsctl.c
-@@ -64,6 +64,8 @@ enum {
- 	NFSD_Versions,
- 	NFSD_Ports,
- 	NFSD_MaxBlkSize,
-+	NFSD_Stats_Enabled,
-+	NFSD_Stats_Prune_Period,
- 	/*
- 	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
- 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
-@@ -92,6 +94,8 @@ static ssize_t write_pool_threads(struct
- static ssize_t write_versions(struct file *file, char *buf, size_t size);
- static ssize_t write_ports(struct file *file, char *buf, size_t size);
- static ssize_t write_maxblksize(struct file *file, char *buf, size_t size);
-+static ssize_t write_stats_enabled(struct file *file, char *buf, size_t size);
-+static ssize_t write_stats_prune_period(struct file *file, char *buf, size_t size);
- #ifdef CONFIG_NFSD_V4
- static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
-@@ -113,6 +117,8 @@ static ssize_t (*write_op[])(struct file
- 	[NFSD_Versions] = write_versions,
- 	[NFSD_Ports] = write_ports,
- 	[NFSD_MaxBlkSize] = write_maxblksize,
-+	[NFSD_Stats_Enabled] = write_stats_enabled,
-+	[NFSD_Stats_Prune_Period] = write_stats_prune_period,
- #ifdef CONFIG_NFSD_V4
- 	[NFSD_Leasetime] = write_leasetime,
- 	[NFSD_RecoveryDir] = write_recoverydir,
-@@ -1121,6 +1127,97 @@ static ssize_t write_maxblksize(struct f
- 	return sprintf(buf, "%d\n", nfsd_max_blksize);
+--- bfields.orig/fs/nfsd/nfsproc.c
++++ bfields/fs/nfsd/nfsproc.c
+@@ -34,6 +34,7 @@ typedef struct svc_buf	svc_buf;
+ static __be32
+ nfsd_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
+ {
++	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_GETATTR);
+ 	return nfs_ok;
  }
  
-+extern int nfsd_stats_enabled;
-+
-+/**
-+ * write_stats_enabled - Set or report whether per-client/
-+ *			 per-export stats are enabled.
-+ *
-+ * Input:
-+ *			buf:		ignored
-+ *			size:		zero
-+ *
-+ * OR
-+ *
-+ * Input:
-+ * 			buf:		C string containing an unsigned
-+ * 					integer value representing the new value
-+ *			size:		non-zero length of C string in @buf
-+ * Output:
-+ *	On success:	passed-in buffer filled with '\n'-terminated C string
-+ *			containing numeric value of the current setting
-+ *			return code is the size in bytes of the string
-+ *	On error:	return code is zero or a negative errno value
-+ */
-+static ssize_t write_stats_enabled(struct file *file, char *buf, size_t size)
-+{
-+	char *mesg = buf;
-+	if (size > 0) {
-+		int enabled;
-+		int rv = get_int(&mesg, &enabled);
-+		if (rv)
-+			return rv;
-+		/* check `enabled' against allowed range */
-+		if (enabled < 0 || enabled > 1)
-+			return -EINVAL;
-+		/*
-+		 * We can change the enabled flag at any time without
-+		 * locking.  All it controls is whether stats are
-+		 * gathered for new incoming NFS calls.  Old gathered
-+		 * stats still sit around in the hash tables until
-+		 * naturally pruned.
-+		 */
-+		nfsd_stats_enabled = enabled;
-+	}
-+	return sprintf(buf, "%d\n", nfsd_stats_enabled);
-+}
-+
-+extern int nfsd_stats_prune_period;
-+
-+/**
-+ * write_stats_prune_period - Set or report the period for pruning
-+ *			      old per-client/per-export stats entries,
-+ *			      in seconds.
-+ *
-+ * Input:
-+ *			buf:		ignored
-+ *			size:		zero
-+ *
-+ * OR
-+ *
-+ * Input:
-+ * 			buf:		C string containing an unsigned
-+ * 					integer value representing the new value
-+ *			size:		non-zero length of C string in @buf
-+ * Output:
-+ *	On success:	passed-in buffer filled with '\n'-terminated C string
-+ *			containing numeric value of the current setting
-+ *			return code is the size in bytes of the string
-+ *	On error:	return code is zero or a negative errno value
-+ */
-+static ssize_t write_stats_prune_period(struct file *file, char *buf, size_t size)
-+{
-+	char *mesg = buf;
-+	if (size > 0) {
-+		int period;
-+		int rv = get_int(&mesg, &period);
-+		if (rv)
-+			return rv;
-+		/* check `period' against allowed range */
-+		if (period < 10 || period > 14*86400)
-+			return -EINVAL;
-+		/*
-+		 * We can change the period at any time without
-+		 * locking.  All it controls is the timeout on the
-+		 * next run of the prune timer.  This might cause
-+		 * some unexpected behaviour if the period is
-+		 * changed from really high to really low.
-+		 */
-+		nfsd_stats_prune_period = period;
-+	}
-+	return sprintf(buf, "%d\n", nfsd_stats_prune_period);
-+}
-+
- #ifdef CONFIG_NFSD_V4
- extern time_t nfs4_leasetime(void);
+@@ -67,6 +68,8 @@ nfsd_proc_getattr(struct svc_rqst *rqstp
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = fh_verify(rqstp, &resp->fh, 0,
+ 			NFSD_MAY_NOP | NFSD_MAY_BYPASS_GSS_ON_ROOT);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_GETATTR);
+ 	return nfsd_return_attrs(nfserr, resp);
+ }
  
-@@ -1263,6 +1360,8 @@ static int nfsd_fill_super(struct super_
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
-+		[NFSD_Stats_Enabled] = {"stats_enabled", &transaction_ops, S_IWUSR|S_IRUGO},
-+		[NFSD_Stats_Prune_Period] = {"stats_prune_period", &transaction_ops, S_IWUSR|S_IRUGO},
- #ifdef CONFIG_NFSD_V4
- 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
+@@ -85,6 +88,8 @@ nfsd_proc_setattr(struct svc_rqst *rqstp
+ 
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_setattr(rqstp, &resp->fh, &argp->attrs,0, (time_t)0);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_GETATTR);
+ 	return nfsd_return_attrs(nfserr, resp);
+ }
+ 
+@@ -107,6 +112,7 @@ nfsd_proc_lookup(struct svc_rqst *rqstp,
+ 	nfserr = nfsd_lookup(rqstp, &argp->fh, argp->name, argp->len,
+ 				 &resp->fh);
+ 
++	nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_LOOKUP);
+ 	fh_put(&argp->fh);
+ 	return nfsd_return_dirop(nfserr, resp);
+ }
+@@ -126,6 +132,7 @@ nfsd_proc_readlink(struct svc_rqst *rqst
+ 	resp->len = NFS_MAXPATHLEN;
+ 	nfserr = nfsd_readlink(rqstp, &argp->fh, argp->buffer, &resp->len);
+ 
++	nfsd_stats_update_read(rqstp, &argp->fh, resp->len);
+ 	fh_put(&argp->fh);
+ 	return nfserr;
+ }
+@@ -163,6 +170,7 @@ nfsd_proc_read(struct svc_rqst *rqstp, s
+ 				  argp->offset,
+ 			   	  rqstp->rq_vec, argp->vlen,
+ 				  &resp->count);
++	nfsd_stats_update_read(rqstp, &resp->fh, resp->count);
+ 
+ 	if (nfserr) return nfserr;
+ 	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_path.mnt,
+@@ -191,6 +199,7 @@ nfsd_proc_write(struct svc_rqst *rqstp, 
+ 				   rqstp->rq_vec, argp->vlen,
+ 			           &cnt,
+ 				   &stable);
++	nfsd_stats_update_write(rqstp, &resp->fh, cnt, stable);
+ 	return nfsd_return_attrs(nfserr, resp);
+ }
+ 
+@@ -349,6 +358,8 @@ out_unlock:
+ 	fh_unlock(dirfhp);
+ 
+ done:
++	if (!nfserr)
++		nfsd_stats_update(rqstp, dirfhp, NFSD_STATS_OP_MKINODE);
+ 	fh_put(dirfhp);
+ 	return nfsd_return_dirop(nfserr, resp);
+ }
+@@ -364,6 +375,8 @@ nfsd_proc_remove(struct svc_rqst *rqstp,
+ 
+ 	/* Unlink. -SIFDIR means file must not be a directory */
+ 	nfserr = nfsd_unlink(rqstp, &argp->fh, -S_IFDIR, argp->name, argp->len);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_REMOVE);
+ 	fh_put(&argp->fh);
+ 	return nfserr;
+ }
+@@ -381,6 +394,8 @@ nfsd_proc_rename(struct svc_rqst *rqstp,
+ 
+ 	nfserr = nfsd_rename(rqstp, &argp->ffh, argp->fname, argp->flen,
+ 				    &argp->tfh, argp->tname, argp->tlen);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->ffh, NFSD_STATS_OP_MKINODE);
+ 	fh_put(&argp->ffh);
+ 	fh_put(&argp->tfh);
+ 	return nfserr;
+@@ -401,6 +416,8 @@ nfsd_proc_link(struct svc_rqst *rqstp, s
+ 
+ 	nfserr = nfsd_link(rqstp, &argp->tfh, argp->tname, argp->tlen,
+ 				  &argp->ffh);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->ffh, NFSD_STATS_OP_MKINODE);
+ 	fh_put(&argp->ffh);
+ 	fh_put(&argp->tfh);
+ 	return nfserr;
+@@ -425,6 +442,8 @@ nfsd_proc_symlink(struct svc_rqst *rqstp
+ 						 argp->tname, argp->tlen,
+ 				 		 &newfh, &argp->attrs);
+ 
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->ffh, NFSD_STATS_OP_MKINODE);
+ 
+ 	fh_put(&argp->ffh);
+ 	fh_put(&newfh);
+@@ -452,6 +471,8 @@ nfsd_proc_mkdir(struct svc_rqst *rqstp, 
+ 	fh_init(&resp->fh, NFS_FHSIZE);
+ 	nfserr = nfsd_create(rqstp, &argp->fh, argp->name, argp->len,
+ 				    &argp->attrs, S_IFDIR, 0, &resp->fh);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_MKINODE);
+ 	fh_put(&argp->fh);
+ 	return nfsd_return_dirop(nfserr, resp);
+ }
+@@ -468,6 +489,8 @@ nfsd_proc_rmdir(struct svc_rqst *rqstp, 
+ 	dprintk("nfsd: RMDIR    %s %.*s\n", SVCFH_fmt(&argp->fh), argp->len, argp->name);
+ 
+ 	nfserr = nfsd_unlink(rqstp, &argp->fh, S_IFDIR, argp->name, argp->len);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_RMDIR);
+ 	fh_put(&argp->fh);
+ 	return nfserr;
+ }
+@@ -508,6 +531,9 @@ nfsd_proc_readdir(struct svc_rqst *rqstp
+ 	if (resp->offset)
+ 		*resp->offset = htonl(offset);
+ 
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_READDIR);
++
+ 	fh_put(&argp->fh);
+ 	return nfserr;
+ }
+@@ -525,6 +551,8 @@ nfsd_proc_statfs(struct svc_rqst * rqstp
+ 
+ 	nfserr = nfsd_statfs(rqstp, &argp->fh, &resp->stats,
+ 			NFSD_MAY_BYPASS_GSS_ON_ROOT);
++	if (!nfserr)
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_FSINFO);
+ 	fh_put(&argp->fh);
+ 	return nfserr;
+ }
+Index: bfields/fs/nfsd/nfs2acl.c
+===================================================================
+--- bfields.orig/fs/nfsd/nfs2acl.c
++++ bfields/fs/nfsd/nfs2acl.c
+@@ -86,6 +86,7 @@ static __be32 nfsacld_proc_getacl(struct
+ 		resp->acl_default = acl;
+ 	}
+ 
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_XATTR);
+ 	/* resp->acl_{access,default} are released in nfssvc_release_getacl. */
+ 	RETURN_STATUS(0);
+ 
+@@ -123,6 +124,7 @@ static __be32 nfsacld_proc_setacl(struct
+ 	   nfssvc_decode_setaclargs. */
+ 	posix_acl_release(argp->acl_access);
+ 	posix_acl_release(argp->acl_default);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_XATTR);
+ 	return nfserr;
+ }
+ 
 
 --
 Greg
