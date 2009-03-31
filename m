@@ -1,209 +1,231 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 18/29] knfsd: dynamically expand the reply cache
-Date: Wed, 01 Apr 2009 07:28:18 +1100
-Message-ID: <20090331202944.386752000@sgi.com>
+Subject: [patch 10/29] knfsd: Update per-client & per-export stats from NFSv3
+Date: Wed, 01 Apr 2009 07:28:10 +1100
+Message-ID: <20090331202941.423831000@sgi.com>
 References: <20090331202800.739621000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.185.19.242] ([218.185.19.242]:22576 "EHLO inara.melbourne"
+Received: from [218.185.19.242] ([218.185.19.242]:22575 "EHLO inara.melbourne"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1760881AbZCaVCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2009 17:02:40 -0400
+	id S1755487AbZCaVCj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 17:02:39 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the reply cache to expand under nonidempotent NFS call load.
-The current fixed limit on reply cache entries is actually so small
-as to make the reply cache utterly ineffectual (see the comment in
-nfscache.c for details).
-
-This is a simpler version of an older more complicated patch which
-dynamically expanded the hash index using lazy rehashing.  Here we
-allocate a hash index which is too large for the initial size of the
-reply cache, and don't ever resize it.
+Add instrumentation to the NFSv3 server procedures.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- fs/nfsd/nfscache.c |   76 ++++++++++++++++++++++++++++++++++++------
- 1 file changed, 66 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs3acl.c  |    2 ++
+ fs/nfsd/nfs3proc.c |   26 ++++++++++++++++++++++++++
+ 2 files changed, 28 insertions(+)
 
-Index: bfields/fs/nfsd/nfscache.c
+Index: bfields/fs/nfsd/nfs3proc.c
 ===================================================================
---- bfields.orig/fs/nfsd/nfscache.c
-+++ bfields/fs/nfsd/nfscache.c
-@@ -9,7 +9,7 @@
-  *
-  * Copyright (C) 1995, 1996 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
-  *
-- * SMP lock splitting by Greg Banks <gnb@sgi.com>
-+ * Dynamic expansion and SMP lock splitting by Greg Banks <gnb@sgi.com>
-  *     Copyright (c) 2005-2009 Silicon Graphics, Inc.
-  */
- 
-@@ -24,11 +24,21 @@
- #include <linux/nfsd/nfsd.h>
- #include <linux/nfsd/cache.h>
- 
--/* Size of reply cache. Common values are:
-+/* Initial size of reply cache. Common values are:
-  * 4.3BSD:	128
-  * 4.4BSD:	256
-  * Solaris2:	1024
-  * DEC Unix:	512-4096
-+ *
-+ * All these values reflect network packet rates and NFS loads common
-+ * somewhen around 1990, and are utterly inadequate for modern NFS
-+ * servers.  To be at all effective the reply cache needs to hold all
-+ * NFS calls seen by the server for at least a client RPC timeout period
-+ * (typically 1.1 seconds), and to handle weird IP routing issues should
-+ * really hold 120 seconds of traffic.  A modern NFS server can be
-+ * fielding upwards of 10,000 calls per second, which means the default
-+ * cache size of 1024 holds about 102 milliseconds'  traffic, i.e. the
-+ * default size is three orders of magnitude too small.
-  */
- /* number of buckets used to manage LRU lists and cache locks (power of 2) */
- #ifdef CONFIG_SMP
-@@ -36,14 +46,22 @@
- #else
- #define CACHE_NUM_BUCKETS	1
- #endif
--/* number of entries in all LRU lists (power of 2) */
-+/* initial number of entries in all LRU lists (power of 2) */
- #define CACHE_SIZE		(1024)
-+/* largest possible number of entries in all LRU lists (power of 2) */
-+#define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
- /* largest possible number of entries in LRU per bucket */
--#define CACHE_BUCKET_MAX_SIZE	(CACHE_SIZE/CACHE_NUM_BUCKETS)
-+#define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
-+/* number of entries each bucket will expand by */
-+#define CACHE_BUCKET_INCREMENT	(1024/CACHE_NUM_BUCKETS)
- /* log2 of largest desired hash chain length */
- #define MAX_CHAIN_ORDER		2
- /* initial and maximum size of the per-bucket hash table */
--#define HASHSIZE		((CACHE_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
-+#define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
-+/* the cache attempts to expand if an entry younger than this is evicted */
-+#define CACHE_THRESH_AGE	(11 * HZ / 10)  /* in jiffies */
-+/* parameters for rate limiting cache expansion */
-+#define CACHE_RATE_JIFFIES	(HZ/2)
- 
- /*
-  * locking for the reply cache:
-@@ -63,6 +81,9 @@ struct svc_cache_bucket
- 	struct list_head lru;
- 	unsigned int size;
- 	struct hlist_head *hash;
-+	/* parameters for expand rate limiting */
-+	unsigned long last;
-+	unsigned long nhits;
- } ____cacheline_aligned_in_smp;
- 
- static struct svc_cache_bucket	cache_buckets[CACHE_NUM_BUCKETS];
-@@ -90,18 +111,18 @@ static inline u32 request_hash(u32 xid, 
- static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
- 
- /*
-- * Initialise the reply cache data structures.
-+ * Expand (or initialise) the reply cache data structures.
-  * Called without cache_lock, uses it internally.  Returns
-  * 0 on success, an error otherwise.
-  */
--static int nfsd_cache_bucket_init(struct svc_cache_bucket *b, unsigned int num)
-+static int nfsd_cache_bucket_expand(struct svc_cache_bucket *b, unsigned int increment)
+--- bfields.orig/fs/nfsd/nfs3proc.c
++++ bfields/fs/nfsd/nfs3proc.c
+@@ -47,6 +47,7 @@ static int	nfs3_ftypes[] = {
+ static __be32
+ nfsd3_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
  {
- 	struct svc_cacherep *rp;
- 	unsigned int i;
- 	LIST_HEAD(lru);
- 
- 	/* allocate new entries without the lock, keep them on their own list */
--	i = num;
-+	i = increment;
- 	while (i) {
- 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
- 		if (!rp)
-@@ -116,7 +137,7 @@ static int nfsd_cache_bucket_init(struct
- 	/* add the new entries */
- 	spin_lock(&b->lock);
- 
--	b->size = num;
-+	b->size += increment;
- 	list_splice(&lru, &b->lru);
- 
- 	spin_unlock(&b->lock);
-@@ -142,7 +163,7 @@ int nfsd_reply_cache_init(void)
- 
- 		INIT_LIST_HEAD(&b->lru);
- 		spin_lock_init(&b->lock);
--		if (nfsd_cache_bucket_init(b, CACHE_SIZE/CACHE_NUM_BUCKETS))
-+		if (nfsd_cache_bucket_expand(b, CACHE_SIZE/CACHE_NUM_BUCKETS))
- 			goto out_nomem;
- 		b->hash = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
- 		if (!b->hash)
-@@ -189,6 +210,26 @@ static inline void lru_put_end(struct sv
++	nfsd_stats_update(rqstp, NULL, NFSD_STATS_OP_FSINFO);
+ 	return nfs_ok;
  }
  
- /*
-+ * Decide whether it is time to expand the cache.  Returns 1 iff
-+ * the cache is to be expanded.  Called with bucket lock held.
-+ */
-+static int nfsd_cache_expand_ratelimit(struct svc_cache_bucket *b)
-+{
-+	unsigned long now = jiffies;
-+
-+	b->nhits++;
-+	if (b->last == 0) {
-+		b->last = now;
-+	} else if ((now - b->last) > CACHE_RATE_JIFFIES &&
-+		   b->nhits > (b->size >> 4)) {
-+		b->nhits = 0;
-+		b->last = now;
-+		return 1;
-+	}
-+	return 0;
-+}
-+
-+/*
-  * Try to find an entry matching the current call in the cache. When none
-  * is found, we grab the oldest unlocked entry off the LRU list.
-  * Note that no operation within the loop may sleep.
-@@ -207,6 +248,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	struct svc_cache_bucket *b;
- 	unsigned long		age;
- 	int			rtn;
-+	int			expand = 0;
+@@ -73,6 +74,7 @@ nfsd3_proc_getattr(struct svc_rqst *rqst
+ 			  resp->fh.fh_dentry, &resp->stat);
+ 	nfserr = nfserrno(err);
  
- 	rqstp->rq_cacherep = NULL;
- 	if (cache_disabled || type == RC_NOCACHE) {
-@@ -259,6 +301,18 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 		goto out;
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_GETATTR);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -91,6 +93,7 @@ nfsd3_proc_setattr(struct svc_rqst *rqst
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_setattr(rqstp, &resp->fh, &argp->attrs,
+ 			      argp->check_guard, argp->guardtime);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_SETATTR);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -115,6 +118,7 @@ nfsd3_proc_lookup(struct svc_rqst *rqstp
+ 				    argp->name,
+ 				    argp->len,
+ 				    &resp->fh);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_LOOKUP);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -134,6 +138,7 @@ nfsd3_proc_access(struct svc_rqst *rqstp
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	resp->access = argp->access;
+ 	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_ACCESS);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -152,6 +157,7 @@ nfsd3_proc_readlink(struct svc_rqst *rqs
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	resp->len = NFS3_MAXPATHLEN;
+ 	nfserr = nfsd_readlink(rqstp, &resp->fh, argp->buffer, &resp->len);
++	nfsd_stats_update_read(rqstp, &resp->fh, resp->len);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -192,6 +198,8 @@ nfsd3_proc_read(struct svc_rqst *rqstp, 
+ 		resp->eof = (argp->offset + resp->count) >= inode->i_size;
  	}
  
-+	if (rp->c_state != RC_UNUSED) {
-+		/* reusing an existing cache entry */
-+		age = jiffies - rp->c_timestamp;
-+		if (age < CACHE_THRESH_AGE &&
-+		    b->size < CACHE_BUCKET_MAX_SIZE &&
-+		    nfsd_cache_expand_ratelimit(b)) {
-+			expand = CACHE_BUCKET_INCREMENT;
-+			if (b->size + expand > CACHE_BUCKET_MAX_SIZE)
-+				expand = CACHE_BUCKET_MAX_SIZE - b->size;
-+		}
-+	}
++	nfsd_stats_update_read(rqstp, &resp->fh, resp->count);
 +
- 	rqstp->rq_cacherep = rp;
- 	rp->c_state = RC_INPROG;
- 	rp->c_xid = xid;
-@@ -280,6 +334,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	rp->c_type = RC_NOCACHE;
-  out:
- 	spin_unlock(&b->lock);
-+	if (expand)
-+		nfsd_cache_bucket_expand(b, expand);
- 	return rtn;
+ 	RETURN_STATUS(nfserr);
+ }
  
- found_entry:
+@@ -219,6 +227,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp,
+ 				   &cnt,
+ 				   &resp->committed);
+ 	resp->count = cnt;
++	nfsd_stats_update_write(rqstp, &resp->fh, resp->count, resp->committed);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -263,6 +272,7 @@ nfsd3_proc_create(struct svc_rqst *rqstp
+ 				attr, newfhp,
+ 				argp->createmode, argp->verf, NULL, NULL);
+ 
++	nfsd_stats_update(rqstp, dirfhp, NFSD_STATS_OP_MKINODE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -286,6 +296,7 @@ nfsd3_proc_mkdir(struct svc_rqst *rqstp,
+ 	nfserr = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
+ 				    &argp->attrs, S_IFDIR, 0, &resp->fh);
+ 
++	nfsd_stats_update(rqstp, &resp->dirfh, NFSD_STATS_OP_MKINODE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -305,6 +316,7 @@ nfsd3_proc_symlink(struct svc_rqst *rqst
+ 	nfserr = nfsd_symlink(rqstp, &resp->dirfh, argp->fname, argp->flen,
+ 						   argp->tname, argp->tlen,
+ 						   &resp->fh, &argp->attrs);
++	nfsd_stats_update(rqstp, &resp->dirfh, NFSD_STATS_OP_MKINODE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -342,6 +354,7 @@ nfsd3_proc_mknod(struct svc_rqst *rqstp,
+ 	nfserr = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
+ 				    &argp->attrs, type, rdev, &resp->fh);
+ 
++	nfsd_stats_update(rqstp, &resp->dirfh, NFSD_STATS_OP_MKINODE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -362,6 +375,7 @@ nfsd3_proc_remove(struct svc_rqst *rqstp
+ 	/* Unlink. -S_IFDIR means file must not be a directory */
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_unlink(rqstp, &resp->fh, -S_IFDIR, argp->name, argp->len);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_REMOVE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -381,6 +395,7 @@ nfsd3_proc_rmdir(struct svc_rqst *rqstp,
+ 
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_unlink(rqstp, &resp->fh, S_IFDIR, argp->name, argp->len);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_RMDIR);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -403,6 +418,7 @@ nfsd3_proc_rename(struct svc_rqst *rqstp
+ 	fh_copy(&resp->tfh, &argp->tfh);
+ 	nfserr = nfsd_rename(rqstp, &resp->ffh, argp->fname, argp->flen,
+ 				    &resp->tfh, argp->tname, argp->tlen);
++	nfsd_stats_update(rqstp, &resp->ffh, NFSD_STATS_OP_MKINODE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -423,6 +439,7 @@ nfsd3_proc_link(struct svc_rqst *rqstp, 
+ 	fh_copy(&resp->tfh, &argp->tfh);
+ 	nfserr = nfsd_link(rqstp, &resp->tfh, argp->tname, argp->tlen,
+ 				  &resp->fh);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_MKINODE);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -458,6 +475,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqst
+ 	if (resp->offset)
+ 		xdr_encode_hyper(resp->offset, argp->cookie);
+ 
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_READDIR);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -518,6 +536,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *
+ 		}
+ 	}
+ 
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_READDIRP);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+@@ -534,6 +553,7 @@ nfsd3_proc_fsstat(struct svc_rqst * rqst
+ 				SVCFH_fmt(&argp->fh));
+ 
+ 	nfserr = nfsd_statfs(rqstp, &argp->fh, &resp->stats, 0);
++	nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_FSINFO);
+ 	fh_put(&argp->fh);
+ 	RETURN_STATUS(nfserr);
+ }
+@@ -575,6 +595,8 @@ nfsd3_proc_fsinfo(struct svc_rqst * rqst
+ 			resp->f_properties = NFS3_FSF_BILLYBOY;
+ 		}
+ 		resp->f_maxfilesize = sb->s_maxbytes;
++
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_FSINFO);
+ 	}
+ 
+ 	fh_put(&argp->fh);
+@@ -617,6 +639,8 @@ nfsd3_proc_pathconf(struct svc_rqst * rq
+ 			resp->p_case_preserving  = 0;
+ 			break;
+ 		}
++
++		nfsd_stats_update(rqstp, &argp->fh, NFSD_STATS_OP_FSINFO);
+ 	}
+ 
+ 	fh_put(&argp->fh);
+@@ -644,6 +668,8 @@ nfsd3_proc_commit(struct svc_rqst * rqst
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	nfserr = nfsd_commit(rqstp, &resp->fh, argp->offset, argp->count);
+ 
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_COMMIT);
++
+ 	RETURN_STATUS(nfserr);
+ }
+ 
+Index: bfields/fs/nfsd/nfs3acl.c
+===================================================================
+--- bfields.orig/fs/nfsd/nfs3acl.c
++++ bfields/fs/nfsd/nfs3acl.c
+@@ -82,6 +82,7 @@ static __be32 nfsd3_proc_getacl(struct s
+ 		resp->acl_default = acl;
+ 	}
+ 
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_XATTR);
+ 	/* resp->acl_{access,default} are released in nfs3svc_release_getacl. */
+ 	RETURN_STATUS(0);
+ 
+@@ -117,6 +118,7 @@ static __be32 nfsd3_proc_setacl(struct s
+ 	   nfs3svc_decode_setaclargs. */
+ 	posix_acl_release(argp->acl_access);
+ 	posix_acl_release(argp->acl_default);
++	nfsd_stats_update(rqstp, &resp->fh, NFSD_STATS_OP_XATTR);
+ 	RETURN_STATUS(nfserr);
+ }
+ 
 
 --
 Greg
