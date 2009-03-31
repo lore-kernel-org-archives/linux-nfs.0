@@ -1,77 +1,63 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [NFS] Compileing nfs-utils 1.1.5 on RHEL4 fails in tcpwrapper.c
-Date: Tue, 31 Mar 2009 15:50:23 -0400
-Message-ID: <49D273FF.8060701@RedHat.com>
-References: <6680A70380E6BA44A2D94ED7085718EE066A08079D@ln1exc03>
-	<49CCDBD2.2000709@RedHat.com>
-	<6680A70380E6BA44A2D94ED7085718EE066A0807AB@ln1exc03>
-	<49CD07F5.1070005@RedHat.com>
-	<6680A70380E6BA44A2D94ED7085718EE066A0807B0@ln1exc03>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] 3-word attributes encoding
+Date: Tue, 31 Mar 2009 23:00:50 +0300
+Message-ID: <49D27672.9060007@panasas.com>
+References: <49D0D931.2060808@panasas.com> <20090331014439.GA7273@fieldses.org> <49D26298.6070507@panasas.com> <20090331194215.GE20756@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: Giulio Troccoli <Giulio.Troccoli-xnMMdYoS6WpEKMMhf/gKZA@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34839 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752663AbZCaT4F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2009 15:56:05 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Lok3z-0004ym-3V
-	for linux-nfs@vger.kernel.org; Wed, 01 Apr 2009 06:55:59 +1100
-In-Reply-To: <6680A70380E6BA44A2D94ED7085718EE066A0807B0@ln1exc03>
+Received: from gw-ca.panasas.com ([209.116.51.66]:10336 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755222AbZCaUAz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 16:00:55 -0400
+In-Reply-To: <20090331194215.GE20756@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mar. 31, 2009, 22:42 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Tue, Mar 31, 2009 at 09:36:08PM +0300, Benny Halevy wrote:
+>> On Mar. 31, 2009, 4:44 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>> On Mon, Mar 30, 2009 at 05:37:37PM +0300, Benny Halevy wrote:
+>>>> Bruce,
+>>>>
+>>>> As I mentioned in a reply to Trond,
+>>>> "nfsd41: support for 3-word long attribute bitmask"
+>>>> changes the server fattr encoding logic so it may send
+>>>> back a bitmap of length 1, even if the client sent a
+>>>> bitmap of length 2, if the second word of the bitmap
+>>>> is zero.  Although I think this a valid implementation
+>>>> and other servers may do the same, it seems sub-optimal
+>>>> for the client's decoding of acl of fs_locations.
+>>> "suboptimal" means it does some extra memcpy'ing?
+>> Yes, I believe so.
+>>
+>>>> It's pretty easy to revert to the old behavior on the server
+>>>> by always returning at least two bitmap words, or, if we
+>>>> keep the bitmap length, not just the val, in nfsd4_decode_bitmap
+>>>> we can return a bitmap of the same length in the reply.
+>>> Odd thing to have to do, but OK. --b.  
+>> What would you prefer to do?
+>> Revert to old behavior by returning at least two bitmap words
+>> or use the args bitmap length for encoding the res?
+> 
+> Whichever requires the least code?  I don't know.
 
-
-Giulio Troccoli wrote:
->>> From time to time the build failes becuase some files are not
->>> available when they are compiled. This is not strictly
->> true, the file
->>> is available but the building machine is told it's not.
->> Make sure the time on all the machines are synced with
->> something like ntpd.
-> 
-> Could you explain to me why the time is important? It might sound as a silly question, but as I see it it's just one portion of a file system in the remote machine mounted on the file system on the building machine.
-> 
->>> I don't know much about NFS and the option I chose for the
->> configure
->>> script are just becuase otherwise it didn't compile. So, do
->> you guys
->>> think that even without nfsv4, gss and tcp-wrapper I would
->> achive what I need?
->> Not clear... There is a very good change running such a new
->> nfs-utils on an legacy release might cause more problem...
-> 
-> Sorry, now that I read it again I see it's not very clear.
-> 
-> The files on the remote machine are only read by the building machine.
-> Nothing is written on the NFS mounted file system by the building 
-> machine. NFS is used so that we can share source code among 
-> differente building machines. To achive this, do I need nfsv4, gss 
-> and tcp-wrapper? 
-No. You do not need those to achive what your are looking for.
-
-> In other words, what are nfsv4, gss and tcp-wrapper?
-nfsv4 - is the latest NFS protocol version
-gss - used to secure NFS mounts
-tcp-wrapper - is a mechanism to allow or deny hosts access to
-              your NFS server.
+The former seems simpler to code.
 
 > 
-> Thanks for your help, it's very much appreciated.
-np..
+> If the client really needs this, then it needs to be agreed on by more
+> than just the linux server.  It's unfortunate if making this arbitrary
+> undocumented choice of result encoding makes a significant difference to
+> the client's performance.
 
-steved.
+I think that currently it affects only getacl and I have no measurements
+of to what extent the effect of performance is.
 
-------------------------------------------------------------------------------
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Benny
 
+> 
+> --b.
