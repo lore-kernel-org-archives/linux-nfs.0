@@ -1,89 +1,149 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 06/17] SUNRPC: Set IPV6ONLY flag on PF_INET6 RPC listenersockets
-Date: Mon, 30 Mar 2009 18:45:53 -0400
-Message-ID: <407620FA-98FD-4087-99B6-06314EBBB906@oracle.com>
-References: <20090303220539.2933.15015.stgit@ingres.1015granger.net> <20090303223254.2933.70364.stgit@ingres.1015granger.net> <1238451467.23512.11.camel@heimdal.trondhjem.org> <12FE2DFB-2575-4F63-A4E1-69789C34587A@oracle.com> <1238452665.23512.13.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: bfields@fieldses.org, steved@redhat.com, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Subject: RE: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+Date: Mon, 30 Mar 2009 18:27:58 -0700
+Message-ID: <273FE88A07F5D445824060902F70034404F26F24@SACMVEXC1-PRD.hq.netapp.com>
+References: <49D1178B.50408@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "NFS list" <linux-nfs@vger.kernel.org>,
+	"pNFS Mailing List" <pnfs@linux-nfs.org>
+To: "Benny Halevy" <bhalevy@panasas.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:42516 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758870AbZC3WqZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 18:46:25 -0400
-In-Reply-To: <1238452665.23512.13.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:13379 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754492AbZCaB2S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 21:28:18 -0400
+In-Reply-To: <49D1178B.50408@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar 30, 2009, at 6:37 PM, Trond Myklebust wrote:
-> On Mon, 2009-03-30 at 18:28 -0400, Chuck Lever wrote:
->> On Mar 30, 2009, at 6:17 PM, Trond Myklebust wrote:
->>> On Tue, 2009-03-03 at 15:32 -0700, Chuck Lever wrote:
->>>> We are about to convert to using separate RPC listener sockets for
->>>> AF_INET and AF_INET6.  This echoes the way IPv6 is handled in user
->>>> space by TI-RPC, and eliminates the need to worry about mapped IPv4
->>>> AF_INET6 addresses when doing address comparisons.
->>>>
->>>> Start by setting the IPV6ONLY flag on RPC listener sockets.
->>>>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>>
->>>> net/sunrpc/svcsock.c |   10 ++++------
->>>> 1 files changed, 4 insertions(+), 6 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->>>> index d00bc33..ac6cd65 100644
->>>> --- a/net/sunrpc/svcsock.c
->>>> +++ b/net/sunrpc/svcsock.c
->>>> @@ -1144,13 +1144,11 @@ static struct svc_sock
->>>> *svc_setup_socket(struct svc_serv *serv,
->>>>               svc_tcp_init(svsk, serv);
->>>>
->>>>       /*
->>>> -        * We start one listener per sv_serv.  We want AF_INET
->>>> -        * requests to be automatically shunted to our PF_INET6
->>>> -        * listener using a mapped IPv4 address.  Make sure
->>>> -        * no-one starts an equivalent IPv4 listener, which
->>>> -        * would steal our incoming connections.
->>>> +        * If this is a PF_INET6 listener, we want to avoid
->>>> +        * getting requests from IPv4 remotes.  Those should
->>>> +        * be shunted to a PF_INET listener via rpcbind.
->>>>        */
->>>> -       val = 0;
->>>> +       val = 1;
->>>>       if (inet->sk_family == PF_INET6)
->>> 			         AF_INET6...
->>
->> As far as I can tell PF_INET6 and AF_INET6 are interchangeable here.
->> I can find examples of sk_family being set to or compared to either,
->> and I think they always have the same value.  So it's really just a
->> style preference?
->
-> Technically, one is a protocol family, and one is an address family.
-> They just happen to be defined to take the same numerical values.
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@panasas.com]
+> Sent: Monday, March 30, 2009 12:04 PM
+> To: J. Bruce Fields; Labiaga, Ricardo
+> Cc: NFS list; pNFS Mailing List
+> Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+> 
+> 
+> On Mar. 30, 2009, 21:33 +0300, "J. Bruce Fields"
+<bfields@fieldses.org>
+> wrote:
+> > On Sat, Mar 28, 2009 at 11:28:50AM +0300, Benny Halevy wrote:
+> >> On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields"
+<bfields@fieldses.org>
+> wrote:
+> >>> On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
+> >>>> Hi Bruce,
+> >>>>
+> >>>> Here's the latest server patches implementing the NFSv4.1
+> >>>> Sessions features.
+> >>>>
+> >>>> This patchset is based over your for-2.6.30 branch
+> >>>> and is also available from
+> >>>> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
+> >>> There's a few merge conflicts with my current for-2.6.30--probably
+my
+> >>> fault for not pushing that out recently enough, apologies.  Would
+you
+> >>> mind updating?
+> >>>
+> >>> --b.
+> >>>
+> >> Sure. Here's a rebased version with two minor changes (see below)
+> >
+> > On the latest version of nfsd41-for-2.6.30 (a564667..) I'm getting a
+new
+> NULL
+> > dereference in the callback code.  Looks like it probably happened
+while
+> > running connectathon over NFSv4.0 with krb5p.  That's all I've
+figured
+> out so
+> 
+> Weird. nfs4_xdr_dec_cb_recall+0x4e doesn't seem like a valid IP
+> for nfsd.ko @a564667.  Bruce, can you please send me you .config file?
 
-Yes.  Sockets use protocol families, and sockaddrs use address  
-families, AFAICT.  So PF_INET6 is correct in this case, I would think.
+It is indeed a valid instruction for the NFS server callback.  Recall
+that the NFS server uses the client side RPC to send and process
+replies.  nfsd4_cb_recall() initializes
+nfs4_cb_procedures[CB_RECALL].p_decode to nfs4_xdr_dec_cb_recall().
+This is later called by rpcauth_unwrap_resp() which is called by
+call_decode() when the reply to the callback arrives.
 
-But it's pretty inconsistent.  socket(2) returns EAFNOSUPPORT even  
-though it takes a protocol family argument, for example.
+> 
+> We know the current implementation is still incorrect for krb5,
+> but I don't think it's supposed to crash either.
+> Ricardo, have you run into this by any chance?
 
->>> ...and this should probably be set before we bind the socket...
->>
->> Yes, that's probably correct.  I hadn't encountered EADDRINUSE in my
->> testing.
->>
->> Should I send you a fix, or do you have one in mind already?
->>
->>>>               kernel_setsockopt(sock, SOL_IPV6, IPV6_V6ONLY,
->>>>                                       (char *)&val, sizeof(val));
->
-> I'm testing a fix right now...
+I have not run into this, but I have not run this with v4.1 not compiled
+in either.  I believe you nailed the problem in the diff you provided in
+a later email.
 
-OK.
+- ricardo
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> 
+> Benny
+> 
+> > far.
+> >
+> > --b.
+> >
+> > BUG: unable to handle kernel NULL pointer dereference at (null)
+> > IP: [<c03e4e1e>] nfs4_xdr_dec_cb_recall+0x4e/0x200
+> > *pde = 00000000
+> > Oops: 0000 [#1] PREEMPT
+> > last sysfs file: /sys/kernel/uevent_seqnum
+> > Modules linked in:
+> >
+> > Pid: 3949, comm: nfs4_cb_recall Not tainted
+(2.6.29-rc8-00312-ga564667
+> #39)
+> > EIP: 0060:[<c03e4e1e>] EFLAGS: 00010286 CPU: 0
+> > EIP is at nfs4_xdr_dec_cb_recall+0x4e/0x200
+> > EAX: c7bb22a0 EBX: c7bb2298 ECX: c7bb22a0 EDX: c7bb22a4
+> > ESI: 00000000 EDI: c66e3000 EBP: c5281ea4 ESP: c5281e6c
+> >  DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
+> > Process nfs4_cb_recall (pid: 3949, ti=c5280000 task=c66a6b60
+> task.ti=c5280000)
+> > Stack:
+> >  c66a6b60 00000000 c5281eb4 c086cab4 c0aa0380 00000001 c11bd4a4
+c7bb22a4
+> >  c66e302c c7bb22ac c66e302c 00000000 c6cf14e8 c66e3000 c5281ecc
+c08199c3
+> >  c0819aae 00000000 c5281ee8 c5281ef0 c03e4dd0 c6cf14e8 c7bb2298
+c03e4dd0
+> > Call Trace:
+> >  [<c086cab4>] ? schedule+0x354/0x540
+> >  [<c08199c3>] ? rpcauth_unwrap_resp+0x63/0x90
+> >  [<c0819aae>] ? rpcauth_checkverf+0x2e/0x70
+> >  [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
+> >  [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
+> >  [<c08122ce>] ? call_decode+0x1ae/0x820
+> >  [<c086d125>] ? out_of_line_wait_on_bit+0x65/0x80
+> >  [<c0818720>] ? rpc_wait_bit_killable+0x0/0x40
+> >  [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
+> >  [<c0818e62>] ? __rpc_execute+0x92/0x290
+> >  [<c086f4fc>] ? _spin_unlock+0x2c/0x50
+> >  [<c08186c7>] ? rpc_set_active+0x67/0x80
+> >  [<c081907e>] ? rpc_execute+0x1e/0x30
+> >  [<c08129e5>] ? rpc_run_task+0x35/0x70
+> >  [<c0812b40>] ? rpc_call_sync+0x40/0x70
+> >  [<c03e51e0>] ? nfsd4_cb_recall+0x70/0x130
+> >  [<c086cab4>] ? schedule+0x354/0x540
+> >  [<c0247d1b>] ? trace_hardirqs_on+0xb/0x10
+> >  [<c03dfd40>] ? do_recall+0x0/0x20
+> >  [<c03dfd54>] ? do_recall+0x14/0x20
+> >  [<c023941f>] ? kthread+0x3f/0x70
+> >  [<c02393e0>] ? kthread+0x0/0x70
+> >  [<c0203b67>] ? kernel_thread_helper+0x7/0x10
+> > Code: 43 00 ba 08 00 00 00 8d 45 e4 e8 0e c1 43 00 85 c0 74 3a 8b 50
+04
+> 8d 45 e4 0f ca 83 c2 04 e8 fa c0 43 00 85 c0 0f 84 8a 00 00 00 <8b> 06
+8b
+> 00 85 c0 75 32 ba 04 00 00 00 8d 45 e4 e8 cd fe ff ff
+> > EIP: [<c03e4e1e>] nfs4_xdr_dec_cb_recall+0x4e/0x200 SS:ESP
+0068:c5281e6c
+> > ---[ end trace 2724475d9856cb6c ]---
+> >
