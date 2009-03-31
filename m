@@ -1,92 +1,72 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 01/29] knfsd: Add infrastructure for measuring RPC service times.
-Date: Wed, 01 Apr 2009 07:28:01 +1100
-Message-ID: <20090331202937.980076000@sgi.com>
+Subject: [patch 07/29] knfsd: Prefetch the per-export stats entry
+Date: Wed, 01 Apr 2009 07:28:07 +1100
+Message-ID: <20090331202940.423639000@sgi.com>
 References: <20090331202800.739621000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.185.19.242] ([218.185.19.242]:22592 "EHLO inara.melbourne"
+Received: from [218.185.19.242] ([218.185.19.242]:22574 "EHLO inara.melbourne"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1762572AbZCaVCr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2009 17:02:47 -0400
+	id S1757726AbZCaVCe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 17:02:34 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Two new functions; svc_time_mark() remembers the current time
-in a struct svc_time; svc_time_elapsed() calculates and returns
-the time since a svc_time was marked.
+On most large NFS servers, there are very few per-export stats
+entries and each one will be used on multiple CPUs.  This tends to
+make them a contention point on high call rate workloads (which is
+why the per-export and per-client stats are designed to be disabled
+at runtime).  Experiment showed that prefetching the stats entry had
+a small positive benefit on this contention.
+
+If I was to do this properly, the per-export stats objects would
+be stored per-cpu and stitched together on demand for export to
+userspace.  However, that would make the reference counting and
+pruning semantics....interesting.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- include/linux/sunrpc/svc.h |   12 ++++++++++++
- net/sunrpc/svc.c           |   25 +++++++++++++++++++++++++
- 2 files changed, 37 insertions(+)
+ fs/nfsd/stats.c |   11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Index: bfields/include/linux/sunrpc/svc.h
+Index: bfields/fs/nfsd/stats.c
 ===================================================================
---- bfields.orig/include/linux/sunrpc/svc.h
-+++ bfields/include/linux/sunrpc/svc.h
-@@ -18,6 +18,16 @@
- #include <linux/sunrpc/svcauth.h>
- #include <linux/wait.h>
- #include <linux/mm.h>
-+#include <linux/time.h>
-+
-+/*
-+ * Structure used to implement a fast lockless elapsed time measure.
-+ */
-+struct svc_time
-+{
-+	struct timespec	st_spec;
-+};
-+
+--- bfields.orig/fs/nfsd/stats.c
++++ bfields/fs/nfsd/stats.c
+@@ -33,6 +33,7 @@
+ #include <linux/list.h>
+ #include <linux/swap.h>
+ #include <linux/log2.h>
++#include <linux/prefetch.h>
  
- /*
-  * This is the RPC server thread function prototype
-@@ -419,6 +429,8 @@ int		   svc_register(const struct svc_se
- void		   svc_wake_up(struct svc_serv *);
- void		   svc_reserve(struct svc_rqst *rqstp, int space);
- struct svc_pool *  svc_pool_for_cpu(struct svc_serv *serv, int cpu);
-+void		   svc_time_mark(struct svc_time *);
-+int		   svc_time_elapsed(const struct svc_time *, struct timespec *);
- char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/stats.h>
+@@ -44,6 +45,15 @@
+ #define hentry_from_hnode(hn) \
+ 	hlist_entry((hn), nfsd_stats_hentry_t, se_node)
  
- #define	RPC_MAX_ADDRBUFLEN	(63U)
-Index: bfields/net/sunrpc/svc.c
-===================================================================
---- bfields.orig/net/sunrpc/svc.c
-+++ bfields/net/sunrpc/svc.c
-@@ -1232,3 +1232,28 @@ u32 svc_max_payload(const struct svc_rqs
- 	return max;
- }
- EXPORT_SYMBOL_GPL(svc_max_payload);
-+
-+
-+void
-+svc_time_mark(struct svc_time *st)
++static inline void nfsd_stats_prefetch(nfsd_stats_hentry_t *se)
 +{
-+	getnstimeofday(&st->st_spec);
++	unsigned int i;
++
++	for (i = 0 ; i < sizeof(nfsd_stats_hentry_t) ; i += PREFETCH_STRIDE)
++		prefetch((char *)se+i);
 +}
-+EXPORT_SYMBOL(svc_time_mark);
 +
-+int
-+svc_time_elapsed(const struct svc_time *mark, struct timespec *ts)
-+{
-+	struct svc_time now;
 +
-+	svc_time_mark(&now);
-+
-+	if (now.st_spec.tv_sec < mark->st_spec.tv_sec)
-+		return -EINVAL;	/* time going backwards */
-+
-+	*ts = timespec_sub(now.st_spec, mark->st_spec);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(svc_time_elapsed);
-+
+ struct nfsd_stats	nfsdstats;
+ struct svc_stat		nfsd_svcstats = {
+ 	.program	= &nfsd_program,
+@@ -395,6 +405,7 @@ void nfsd_stats_update_op(struct svc_rqs
+ 	    fh->fh_export != NULL &&
+ 	    (se = fh->fh_export->ex_stats) != NULL &&
+ 	    rqstp->rq_export_stats == NULL) {
++	    	nfsd_stats_prefetch(se);
+ 		/*
+ 		 * We want the stats to survive fh_put() of the filehandle
+ 		 * so we can update os_bytes_out and service time in
 
 --
 Greg
