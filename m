@@ -1,54 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:25622 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750738AbZCYTAI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Mar 2009 15:00:08 -0400
-Message-ID: <49CA7EE5.2040905@panasas.com>
-Date: Wed, 25 Mar 2009 20:58:45 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Making crossmnt a default export option
-References: <49CA7D93.9050608@RedHat.com>
-In-Reply-To: <49CA7D93.9050608@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mga14.intel.com ([143.182.124.37]:64915 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753482AbZCaMbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 08:31:35 -0400
+Date: Tue, 31 Mar 2009 20:31:12 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Jos Houtman <jos@hyves.nl>
+Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "jens.axboe@oracle.com" <jens.axboe@oracle.com>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "hch@infradead.org" <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Page Cache writeback too slow,   SSD/noop scheduler/ext2
+Message-ID: <20090331123112.GA15098@localhost>
+References: <C5F6B627.D9D0%jos@hyves.nl> <C5F7D654.DE6F%jos@hyves.nl>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C5F7D654.DE6F%jos@hyves.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mar. 25, 2009, 20:53 +0200, Steve Dickson <SteveD@redhat.com> wrote:
-> Hello,
+On Tue, Mar 31, 2009 at 08:16:52PM +0800, Jos Houtman wrote:
+> > 
+> > Next to that I was wondering if there are any plans to make sure that not
+> > all dirty-files are written back in the same interval.
+> > 
+> > In my case all database files are written back each 30 seconds, while I
+> > would prefer them to be more divided over the interval.
 > 
-> What would be the ramifications of turning on the crossmnt
-> option on by default? Currently the the default is nocrossmnt.
+> There another question I have: does the writeback go through the io
+> scheduler? Because no matter the io scheduler or the tuning done, the
+> writeback algorithm totally starves the reads.
+
+I noticed this annoying writes-starve-reads problem too. I'll look into it.
+
+> See the url below for an example with CFQ, but deadline or noop all show
+> this behaviour:
+> http://94.100.113.33/535450001-535500000/535451701-535451800/535451800_6_L7g
+> t.jpeg
 > 
-> In my recent work with pseudo exports, it has become very apparent
-> that having the crossmnt always set, especially with multi file
-> system exports, allows mount to "just work"!
-> 
-> So historically what is the reason for not allowing the clients
-> to always cross file systems? Is it a security issue? 
-> And again, what would be the ramifications always allowing, by
-> default, clients to cross file systems?
+> Is there anything I can do about this behaviour by creating a better
+> interleaving of the reads and writes?
 
-http://www.ietf.org/rfc/rfc1813.txt:
-3.3.3 Procedure 3: LOOKUP -  Lookup filename
-   IMPLEMENTATION
+I guess it should be handled in the generic block io layer.  Once we
+solved the writes-starve-reads problem, the bursty-writeback behavior
+becomes a no-problem for SSD.
 
-      At first glance, in the case where what.name refers to a
-      mount point on the server, two different replies seem
-      possible. The server can return either the file handle for
-      the underlying directory that is mounted on or the file
-      handle of the root of the mounted directory.  This
-      ambiguity is simply resolved. A server will not allow a
-      LOOKUP operation to cross a mountpoint to the root of a
-      different filesystem, even if the filesystem is exported.
+Thanks,
+Fengguang
 
-
-> 
-> steved.
->      
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
