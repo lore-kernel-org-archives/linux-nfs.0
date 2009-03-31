@@ -1,78 +1,209 @@
-From: Felix Blyakher <felixb@sgi.com>
-Subject: [PATCH] lockd: call locks_release_private to cleanup per-filesystem state
-Date: Tue, 31 Mar 2009 15:12:56 -0500
-Message-ID: <1238530376-28013-1-git-send-email-felixb@sgi.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Felix Blyakher <felixb@sgi.com>
-To: bfields@fieldses.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Greg Banks <gnb@sgi.com>
+Subject: [patch 18/29] knfsd: dynamically expand the reply cache
+Date: Wed, 01 Apr 2009 07:28:18 +1100
+Message-ID: <20090331202944.386752000@sgi.com>
+References: <20090331202800.739621000@sgi.com>
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from [218.185.19.242] ([218.185.19.242]:22576 "EHLO inara.melbourne"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1760881AbZCaVCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 17:02:40 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For every lock request lockd creates a new file_lock object
-in nlmsvc_setgrantargs() by copying the passed in file_lock with
-locks_copy_lock(). A filesystem can attach it's own lock_operations
-vector to the file_lock. It has to be cleaned up at the end of the
-file_lock's life. However, lockd doesn't do it today, yet it
-asserts in nlmclnt_release_lockargs() that the per-filesystem
-state is clean.
-This patch fixes it by exporting locks_release_private() and adding
-it to nlmsvc_freegrantargs(), to be symmetrical to creating a
-file_lock in nlmsvc_setgrantargs().
+Allow the reply cache to expand under nonidempotent NFS call load.
+The current fixed limit on reply cache entries is actually so small
+as to make the reply cache utterly ineffectual (see the comment in
+nfscache.c for details).
 
-Signed-off-by: Felix Blyakher <felixb@sgi.com>
+This is a simpler version of an older more complicated patch which
+dynamically expanded the hash index using lazy rehashing.  Here we
+allocate a hash index which is too large for the initial size of the
+reply cache, and don't ever resize it.
+
+Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
- fs/lockd/svclock.c |    2 ++
- fs/locks.c         |    3 ++-
- include/linux/fs.h |    1 +
- 3 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 763b78a..865504a 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -326,6 +326,8 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
+ fs/nfsd/nfscache.c |   76 ++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 66 insertions(+), 10 deletions(-)
+
+Index: bfields/fs/nfsd/nfscache.c
+===================================================================
+--- bfields.orig/fs/nfsd/nfscache.c
++++ bfields/fs/nfsd/nfscache.c
+@@ -9,7 +9,7 @@
+  *
+  * Copyright (C) 1995, 1996 Olaf Kirch <okir-pn4DOG8n3UYbFoVRYvo4fw@public.gmane.org>
+  *
+- * SMP lock splitting by Greg Banks <gnb@sgi.com>
++ * Dynamic expansion and SMP lock splitting by Greg Banks <gnb@sgi.com>
+  *     Copyright (c) 2005-2009 Silicon Graphics, Inc.
+  */
+ 
+@@ -24,11 +24,21 @@
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/cache.h>
+ 
+-/* Size of reply cache. Common values are:
++/* Initial size of reply cache. Common values are:
+  * 4.3BSD:	128
+  * 4.4BSD:	256
+  * Solaris2:	1024
+  * DEC Unix:	512-4096
++ *
++ * All these values reflect network packet rates and NFS loads common
++ * somewhen around 1990, and are utterly inadequate for modern NFS
++ * servers.  To be at all effective the reply cache needs to hold all
++ * NFS calls seen by the server for at least a client RPC timeout period
++ * (typically 1.1 seconds), and to handle weird IP routing issues should
++ * really hold 120 seconds of traffic.  A modern NFS server can be
++ * fielding upwards of 10,000 calls per second, which means the default
++ * cache size of 1024 holds about 102 milliseconds'  traffic, i.e. the
++ * default size is three orders of magnitude too small.
+  */
+ /* number of buckets used to manage LRU lists and cache locks (power of 2) */
+ #ifdef CONFIG_SMP
+@@ -36,14 +46,22 @@
+ #else
+ #define CACHE_NUM_BUCKETS	1
+ #endif
+-/* number of entries in all LRU lists (power of 2) */
++/* initial number of entries in all LRU lists (power of 2) */
+ #define CACHE_SIZE		(1024)
++/* largest possible number of entries in all LRU lists (power of 2) */
++#define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
+ /* largest possible number of entries in LRU per bucket */
+-#define CACHE_BUCKET_MAX_SIZE	(CACHE_SIZE/CACHE_NUM_BUCKETS)
++#define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
++/* number of entries each bucket will expand by */
++#define CACHE_BUCKET_INCREMENT	(1024/CACHE_NUM_BUCKETS)
+ /* log2 of largest desired hash chain length */
+ #define MAX_CHAIN_ORDER		2
+ /* initial and maximum size of the per-bucket hash table */
+-#define HASHSIZE		((CACHE_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
++#define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
++/* the cache attempts to expand if an entry younger than this is evicted */
++#define CACHE_THRESH_AGE	(11 * HZ / 10)  /* in jiffies */
++/* parameters for rate limiting cache expansion */
++#define CACHE_RATE_JIFFIES	(HZ/2)
+ 
+ /*
+  * locking for the reply cache:
+@@ -63,6 +81,9 @@ struct svc_cache_bucket
+ 	struct list_head lru;
+ 	unsigned int size;
+ 	struct hlist_head *hash;
++	/* parameters for expand rate limiting */
++	unsigned long last;
++	unsigned long nhits;
+ } ____cacheline_aligned_in_smp;
+ 
+ static struct svc_cache_bucket	cache_buckets[CACHE_NUM_BUCKETS];
+@@ -90,18 +111,18 @@ static inline u32 request_hash(u32 xid, 
+ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+ 
+ /*
+- * Initialise the reply cache data structures.
++ * Expand (or initialise) the reply cache data structures.
+  * Called without cache_lock, uses it internally.  Returns
+  * 0 on success, an error otherwise.
+  */
+-static int nfsd_cache_bucket_init(struct svc_cache_bucket *b, unsigned int num)
++static int nfsd_cache_bucket_expand(struct svc_cache_bucket *b, unsigned int increment)
  {
- 	if (call->a_args.lock.oh.data != call->a_owner)
- 		kfree(call->a_args.lock.oh.data);
-+
-+	locks_release_private(&call->a_args.lock.fl);
+ 	struct svc_cacherep *rp;
+ 	unsigned int i;
+ 	LIST_HEAD(lru);
+ 
+ 	/* allocate new entries without the lock, keep them on their own list */
+-	i = num;
++	i = increment;
+ 	while (i) {
+ 		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
+ 		if (!rp)
+@@ -116,7 +137,7 @@ static int nfsd_cache_bucket_init(struct
+ 	/* add the new entries */
+ 	spin_lock(&b->lock);
+ 
+-	b->size = num;
++	b->size += increment;
+ 	list_splice(&lru, &b->lru);
+ 
+ 	spin_unlock(&b->lock);
+@@ -142,7 +163,7 @@ int nfsd_reply_cache_init(void)
+ 
+ 		INIT_LIST_HEAD(&b->lru);
+ 		spin_lock_init(&b->lock);
+-		if (nfsd_cache_bucket_init(b, CACHE_SIZE/CACHE_NUM_BUCKETS))
++		if (nfsd_cache_bucket_expand(b, CACHE_SIZE/CACHE_NUM_BUCKETS))
+ 			goto out_nomem;
+ 		b->hash = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
+ 		if (!b->hash)
+@@ -189,6 +210,26 @@ static inline void lru_put_end(struct sv
  }
  
  /*
-diff --git a/fs/locks.c b/fs/locks.c
-index ec3deea..5b745dc 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -151,7 +151,7 @@ static struct file_lock *locks_alloc_lock(void)
- 	return kmem_cache_alloc(filelock_cache, GFP_KERNEL);
- }
++ * Decide whether it is time to expand the cache.  Returns 1 iff
++ * the cache is to be expanded.  Called with bucket lock held.
++ */
++static int nfsd_cache_expand_ratelimit(struct svc_cache_bucket *b)
++{
++	unsigned long now = jiffies;
++
++	b->nhits++;
++	if (b->last == 0) {
++		b->last = now;
++	} else if ((now - b->last) > CACHE_RATE_JIFFIES &&
++		   b->nhits > (b->size >> 4)) {
++		b->nhits = 0;
++		b->last = now;
++		return 1;
++	}
++	return 0;
++}
++
++/*
+  * Try to find an entry matching the current call in the cache. When none
+  * is found, we grab the oldest unlocked entry off the LRU list.
+  * Note that no operation within the loop may sleep.
+@@ -207,6 +248,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 	struct svc_cache_bucket *b;
+ 	unsigned long		age;
+ 	int			rtn;
++	int			expand = 0;
  
--static void locks_release_private(struct file_lock *fl)
-+void locks_release_private(struct file_lock *fl)
- {
- 	if (fl->fl_ops) {
- 		if (fl->fl_ops->fl_release_private)
-@@ -165,6 +165,7 @@ static void locks_release_private(struct file_lock *fl)
+ 	rqstp->rq_cacherep = NULL;
+ 	if (cache_disabled || type == RC_NOCACHE) {
+@@ -259,6 +301,18 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 		goto out;
  	}
  
- }
-+EXPORT_SYMBOL(locks_release_private);
++	if (rp->c_state != RC_UNUSED) {
++		/* reusing an existing cache entry */
++		age = jiffies - rp->c_timestamp;
++		if (age < CACHE_THRESH_AGE &&
++		    b->size < CACHE_BUCKET_MAX_SIZE &&
++		    nfsd_cache_expand_ratelimit(b)) {
++			expand = CACHE_BUCKET_INCREMENT;
++			if (b->size + expand > CACHE_BUCKET_MAX_SIZE)
++				expand = CACHE_BUCKET_MAX_SIZE - b->size;
++		}
++	}
++
+ 	rqstp->rq_cacherep = rp;
+ 	rp->c_state = RC_INPROG;
+ 	rp->c_xid = xid;
+@@ -280,6 +334,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+ 	rp->c_type = RC_NOCACHE;
+  out:
+ 	spin_unlock(&b->lock);
++	if (expand)
++		nfsd_cache_bucket_expand(b, expand);
+ 	return rtn;
  
- /* Free a lock which is not in use. */
- static void locks_free_lock(struct file_lock *fl)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 92734c0..3aa4ff6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1047,6 +1047,7 @@ extern void locks_copy_lock(struct file_lock *, struct file_lock *);
- extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
- extern void locks_remove_posix(struct file *, fl_owner_t);
- extern void locks_remove_flock(struct file *);
-+extern void locks_release_private(struct file_lock *);
- extern void posix_test_lock(struct file *, struct file_lock *);
- extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
- extern int posix_lock_file_wait(struct file *, struct file_lock *);
--- 
-1.5.4.rc3
+ found_entry:
 
+--
+Greg
