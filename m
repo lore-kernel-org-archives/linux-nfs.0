@@ -1,69 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from kazi.fit.vutbr.cz ([147.229.8.12]:52775 "EHLO kazi.fit.vutbr.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077AbZCCMIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Mar 2009 07:08:55 -0500
-Date: Tue, 3 Mar 2009 13:08:48 +0100
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] NFS regression in 2.6.26?, "task blocked for more
-	than 120 seconds"
-Message-ID: <20090303120848.GV89843@fit.vutbr.cz>
-References: <20090110102458.GG47559@fit.vutbr.cz> <1231603200.29646.5.camel@heimdal.trondhjem.org> <20090112090404.GL47559@fit.vutbr.cz> <1231782009.7322.12.camel@heimdal.trondhjem.org> <1231809446.7322.17.camel@heimdal.trondhjem.org> <20090113152201.GD47559@fit.vutbr.cz> <20090116104802.GF47559@fit.vutbr.cz> <20090118130835.GH47559@fit.vutbr.cz> <20090120150301.GG47559@fit.vutbr.cz> <1232465547.7055.3.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1232465547.7055.3.camel@heimdal.trondhjem.org>
+Received: from exc01vs1.exchange.cysonet.com ([85.158.200.82]:51190 "EHLO
+	exc01vs1.exchange.cysonet.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753130AbZCaMRA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 08:17:00 -0400
+Date: Tue, 31 Mar 2009 14:16:52 +0200
+Subject: Re: Page Cache writeback too slow,   SSD/noop scheduler/ext2
+From: Jos Houtman <jos@hyves.nl>
+To: Jos Houtman <jos@hyves.nl>, Wu Fengguang <fengguang.wu@intel.com>
+CC: Nick Piggin <nickpiggin@yahoo.com.au>, <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>, Dave Chinner <david@fromorbit.com>,
+        <linux-fsdevel@vger.kernel.org>, <jens.axboe@oracle.com>,
+        <akpm@linux-foundation.org>, <hch@infradead.org>,
+        <linux-nfs@vger.kernel.org>
+Message-ID: <C5F7D654.DE6F%jos@hyves.nl>
+In-Reply-To: <C5F6B627.D9D0%jos@hyves.nl>
+Content-type: text/plain;
+	charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jan 20, 2009 at 10:32:27AM -0500, Trond Myklebust wrote:
-> > > > > > The attached 2 patches have been tested using a server that was rigged
-> > > > > > not to ever close the socket. They appear to work fine on my setup,
-> > > > > > without the hang that you reported earlier.
-> > > ...
-> > > It seems that machines with this new kernel (tried on 10 other machines
-> > > and the original client) may after few days get into state where they
-> > > generate huge amounts (10000-100000pkt/s) of packets on another server they
-> > > use (Linux 2.6.26.62, but the same behaviour with other kernels I tried -
-> > > 2.6.24.7, 2.6.22.19, 2.6.27.10). It seems packets are quiet small as the
-> > > flow on server is about 5-10MB/s. (probably) Each packet generates an answer.
-> > > With this flow it is hard to get more info and the server is production
-> > > one, so for now I only know it goes from these clients and end on tcp port
-> > > 2049 on that server. It kills just this server, communication with the
-> > > previously problematic (FreeBSD machines) is fine now.
-
-> > configrming that the problem is with machines with 2.6.27.10+trond's
-> > patches. Do not have more info about what's there on network, the only new
-> > thing I can add is that the client is dead not reacting even on keyborad or
-> > anything else. Trond, would you have and idea what to try now or what other
-> > information to find to get any further in this?
 > 
-> A binary wireshark dump of the traffic between one such client and the
-> server would help.
+> Next to that I was wondering if there are any plans to make sure that not
+> all dirty-files are written back in the same interval.
+> 
+> In my case all database files are written back each 30 seconds, while I
+> would prefer them to be more divided over the interval.
 
-I was able to finally got the tcpdump. I got it from 2.6.27.19 client but
-after several weeks without problems. I include the file and place it on
-http://merlin.fit.vutbr.cz/tmp/nfs/dump_kas2_mat.dump_small (have over 1GB
-of dump, but it's all the time the same SYN+RST packets). The packet rate
-maxed at 260000pps from two clients.
+There another question I have: does the writeback go through the io
+scheduler? Because no matter the io scheduler or the tuning done, the
+writeback algorithm totally starves the reads.
 
-This dump is taken from server after reset (the server does not respond
-even to keybord) before clients are disconnected/rebooted. To remind it - all
-clients seems to work well with reversed
-e06799f958bf7f9f8fae15f0c6f519953fb0257c
+See the url below for an example with CFQ, but deadline or noop all show
+this behaviour:
+http://94.100.113.33/535450001-535500000/535451701-535451800/535451800_6_L7g
+t.jpeg
 
-(just to be a hint do not mean the patch is wrong)
+Is there anything I can do about this behaviour by creating a better
+interleaving of the reads and writes?
 
-Thanks in advance
-
---   
-
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 1, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
-
-  jabber: tomas.kasparek@jabber.cz
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
+Jos
 
