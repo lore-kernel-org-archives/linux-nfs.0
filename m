@@ -1,63 +1,78 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] 3-word attributes encoding
-Date: Tue, 31 Mar 2009 23:00:50 +0300
-Message-ID: <49D27672.9060007@panasas.com>
-References: <49D0D931.2060808@panasas.com> <20090331014439.GA7273@fieldses.org> <49D26298.6070507@panasas.com> <20090331194215.GE20756@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:10336 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755222AbZCaUAz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 16:00:55 -0400
-In-Reply-To: <20090331194215.GE20756@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Felix Blyakher <felixb@sgi.com>
+Subject: [PATCH] lockd: call locks_release_private to cleanup per-filesystem state
+Date: Tue, 31 Mar 2009 15:12:56 -0500
+Message-ID: <1238530376-28013-1-git-send-email-felixb@sgi.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Felix Blyakher <felixb@sgi.com>
+To: bfields@fieldses.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 31, 2009, 22:42 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Tue, Mar 31, 2009 at 09:36:08PM +0300, Benny Halevy wrote:
->> On Mar. 31, 2009, 4:44 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>> On Mon, Mar 30, 2009 at 05:37:37PM +0300, Benny Halevy wrote:
->>>> Bruce,
->>>>
->>>> As I mentioned in a reply to Trond,
->>>> "nfsd41: support for 3-word long attribute bitmask"
->>>> changes the server fattr encoding logic so it may send
->>>> back a bitmap of length 1, even if the client sent a
->>>> bitmap of length 2, if the second word of the bitmap
->>>> is zero.  Although I think this a valid implementation
->>>> and other servers may do the same, it seems sub-optimal
->>>> for the client's decoding of acl of fs_locations.
->>> "suboptimal" means it does some extra memcpy'ing?
->> Yes, I believe so.
->>
->>>> It's pretty easy to revert to the old behavior on the server
->>>> by always returning at least two bitmap words, or, if we
->>>> keep the bitmap length, not just the val, in nfsd4_decode_bitmap
->>>> we can return a bitmap of the same length in the reply.
->>> Odd thing to have to do, but OK. --b.  
->> What would you prefer to do?
->> Revert to old behavior by returning at least two bitmap words
->> or use the args bitmap length for encoding the res?
-> 
-> Whichever requires the least code?  I don't know.
+For every lock request lockd creates a new file_lock object
+in nlmsvc_setgrantargs() by copying the passed in file_lock with
+locks_copy_lock(). A filesystem can attach it's own lock_operations
+vector to the file_lock. It has to be cleaned up at the end of the
+file_lock's life. However, lockd doesn't do it today, yet it
+asserts in nlmclnt_release_lockargs() that the per-filesystem
+state is clean.
+This patch fixes it by exporting locks_release_private() and adding
+it to nlmsvc_freegrantargs(), to be symmetrical to creating a
+file_lock in nlmsvc_setgrantargs().
 
-The former seems simpler to code.
+Signed-off-by: Felix Blyakher <felixb@sgi.com>
+---
+ fs/lockd/svclock.c |    2 ++
+ fs/locks.c         |    3 ++-
+ include/linux/fs.h |    1 +
+ 3 files changed, 5 insertions(+), 1 deletions(-)
 
-> 
-> If the client really needs this, then it needs to be agreed on by more
-> than just the linux server.  It's unfortunate if making this arbitrary
-> undocumented choice of result encoding makes a significant difference to
-> the client's performance.
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 763b78a..865504a 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -326,6 +326,8 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
+ {
+ 	if (call->a_args.lock.oh.data != call->a_owner)
+ 		kfree(call->a_args.lock.oh.data);
++
++	locks_release_private(&call->a_args.lock.fl);
+ }
+ 
+ /*
+diff --git a/fs/locks.c b/fs/locks.c
+index ec3deea..5b745dc 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -151,7 +151,7 @@ static struct file_lock *locks_alloc_lock(void)
+ 	return kmem_cache_alloc(filelock_cache, GFP_KERNEL);
+ }
+ 
+-static void locks_release_private(struct file_lock *fl)
++void locks_release_private(struct file_lock *fl)
+ {
+ 	if (fl->fl_ops) {
+ 		if (fl->fl_ops->fl_release_private)
+@@ -165,6 +165,7 @@ static void locks_release_private(struct file_lock *fl)
+ 	}
+ 
+ }
++EXPORT_SYMBOL(locks_release_private);
+ 
+ /* Free a lock which is not in use. */
+ static void locks_free_lock(struct file_lock *fl)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 92734c0..3aa4ff6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1047,6 +1047,7 @@ extern void locks_copy_lock(struct file_lock *, struct file_lock *);
+ extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
+ extern void locks_remove_posix(struct file *, fl_owner_t);
+ extern void locks_remove_flock(struct file *);
++extern void locks_release_private(struct file_lock *);
+ extern void posix_test_lock(struct file *, struct file_lock *);
+ extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
+ extern int posix_lock_file_wait(struct file *, struct file_lock *);
+-- 
+1.5.4.rc3
 
-I think that currently it affects only getacl and I have no measurements
-of to what extent the effect of performance is.
-
-Benny
-
-> 
-> --b.
