@@ -1,184 +1,123 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 20/29] knfsd: add extended reply cache stats
-Date: Wed, 01 Apr 2009 07:28:20 +1100
-Message-ID: <20090331202945.083092000@sgi.com>
+Subject: [patch 22/29] knfsd: make svc_authenticate() scale
+Date: Wed, 01 Apr 2009 07:28:22 +1100
+Message-ID: <20090331202946.068419000@sgi.com>
 References: <20090331202800.739621000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.185.19.242] ([218.185.19.242]:22577 "EHLO inara.melbourne"
+Received: from [218.185.19.242] ([218.185.19.242]:22579 "EHLO inara.melbourne"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1758821AbZCaVCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 31 Mar 2009 17:02:40 -0400
+	id S1756196AbZCaVCp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 17:02:45 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add more statistics to /proc/net/rpc/nfsd which track the behaviour
-of the reply cache, in particular hashing efficiency and memory usage.
-A new line starting with the keyword "rc2" is added.
+Replace the global spinlock which protects the table of registered
+RPC authentication flavours, with an RCU scheme.  The spinlock was
+taken by nfsd on every CPU for every NFS call, resulting in lots
+of spinlock contention and one very hot and bouncy cacheline.
 
-Note: the nfsdstats structure is currently a global contention point
-in heavy multiprocessor NFS workloads, so this patch will actually
-slow down the reply cache slightly.  That problem is addressed in a
-later patch.
+Tests on a 16 CPU Altix A4700 with 2 10gige Myricom cards, configured
+separately (no bonding).  Workload is 640 client threads doing directory
+traverals with random small reads, from server RAM.
 
-Signed-off-by: Greg Banks <gnb@sgi.com>
+Before: 242 KIOPS, with an oprofile like:
+  %   cumulative   self              self     total
+ time   samples   samples    calls   1/call   1/call  name
+  5.01   2276.00  2276.00     2666     0.85     1.00  nfsd_ofcache_lookup
+  4.61   4370.00  2094.00     2092     1.00     1.00  ia64_spinlock_contention	<----
+  4.20   6279.00  1909.00     3141     0.61     0.78  svc_sock_enqueue
+  4.03   8108.00  1829.00     1824     1.00     1.00  spin_unlock_irqrestore
+  3.32   9618.00  1510.00     3588     0.42     1.00  spin_lock
+
+             2090.00    0.00    2088/2092        spin_lock [22]
+[40]     4.6 2094.00    0.00    2092         ia64_spinlock_contention [40]
+
+             1473.39 2039.32    3501/3588        svc_authenticate [21]
+[22]     7.9 1510.00 2090.00    3588         spin_lock [22]
+
+After: 253 KIOPS, with a oprofile like:
+  %   cumulative   self              self     total
+ time   samples   samples    calls   1/call   1/call  name
+  5.20   2250.00  2250.00     2638     0.85     1.00  nfsd_ofcache_lookup
+  4.31   4117.00  1867.00     1863     1.00     1.00  spin_unlock_irqrestore
+  3.13   5470.00  1353.00     1447     0.94     1.01  svcauth_unix_set_client
+  2.79   6677.00  1207.00     1203     1.00     1.00  exp_readunlock
+  2.77   7875.00  1198.00     1186     1.01     1.01  svc_export_put
+  ...
+  0.03  43095.00    13.00       13     1.00     1.00  ia64_spinlock_contention	<----
+
+Before anyone asks, going to a rwlock_t kept similar performance and
+just turned the time spent spinning on the lock to time spent waiting
+for the cacheline to bounce.
+
+Signed-off-by: Greg Banks <gnb-cP1dWloDopni96+mSzHFpQC/G2K4zDHf@public.gmane.org>
+Reviewed-by: David Chinner <dgc@sgi.com>
 ---
 
- fs/nfsd/nfscache.c         |   17 +++++++++++++++++
- fs/nfsd/stats.c            |   10 ++++++++++
- include/linux/nfsd/stats.h |   10 +++++++++-
- 3 files changed, 36 insertions(+), 1 deletion(-)
+ net/sunrpc/svcauth.c |   26 +++++++++++++++++---------
+ 1 file changed, 17 insertions(+), 9 deletions(-)
 
-Index: bfields/fs/nfsd/stats.c
+Index: bfields/net/sunrpc/svcauth.c
 ===================================================================
---- bfields.orig/fs/nfsd/stats.c
-+++ bfields/fs/nfsd/stats.c
-@@ -107,6 +107,16 @@ static int nfsd_proc_show(struct seq_fil
- 	seq_putc(seq, '\n');
- #endif
+--- bfields.orig/net/sunrpc/svcauth.c
++++ bfields/net/sunrpc/svcauth.c
+@@ -42,17 +42,19 @@ svc_authenticate(struct svc_rqst *rqstp,
+ 	*authp = rpc_auth_ok;
  
-+	/* extended repcache stats */
-+	seq_printf(seq, "rc2 %u %u %u %u %u %u %u\n",
-+			nfsdstats.rcprobes,
-+			nfsdstats.rcexpands,
-+			nfsdstats.rcrehash,
-+			nfsdstats.rcentries,
-+			nfsdstats.rcmem,
-+			nfsdstats.rchashsize,
-+			nfsdstats.rcage);
+ 	flavor = svc_getnl(&rqstp->rq_arg.head[0]);
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		return SVC_DENIED;
+ 
+ 	dprintk("svc: svc_authenticate (%d)\n", flavor);
+ 
+-	spin_lock(&authtab_lock);
+-	if (flavor >= RPC_AUTH_MAXFLAVOR || !(aops = authtab[flavor])
+-			|| !try_module_get(aops->owner)) {
+-		spin_unlock(&authtab_lock);
++	rcu_read_lock();
++	aops = rcu_dereference(authtab[flavor]);
++	if (!aops || !try_module_get(aops->owner)) {
++		rcu_read_unlock();
+ 		*authp = rpc_autherr_badcred;
+ 		return SVC_DENIED;
+ 	}
+-	spin_unlock(&authtab_lock);
++	rcu_read_unlock();
+ 
+ 	rqstp->rq_authop = aops;
+ 	return aops->accept(rqstp, authp);
+@@ -87,9 +89,13 @@ int
+ svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops)
+ {
+ 	int rv = -EINVAL;
 +
- 	return 0;
- }
- 
-Index: bfields/include/linux/nfsd/stats.h
-===================================================================
---- bfields.orig/include/linux/nfsd/stats.h
-+++ bfields/include/linux/nfsd/stats.h
-@@ -37,7 +37,15 @@ struct nfsd_stats {
- #ifdef CONFIG_NFSD_V4
- 	unsigned int	nfs4_opcount[LAST_NFS4_OP + 1];	/* count of individual nfsv4 operations */
- #endif
--
-+	/* extended repcache stats */
-+	unsigned int    rcprobes;       /* counter: walks down hash chains */
-+	unsigned int    rcexpands;      /* counter: when the cache is expanded */
-+	unsigned int    rcrehash;       /* counter: when the cache index is expanded */
-+	unsigned int    rcentries;      /* instant: # entries */
-+	unsigned int    rcmem;          /* instant: bytes of memory used */
-+	unsigned int    rchashsize;     /* instant: # chains in index */
-+	unsigned int    rcage;          /* instant: age in milliseconds of last
-+					 * entry reused from the LRU list */
- };
- 
- struct nfsd_op_stats {
-Index: bfields/fs/nfsd/nfscache.c
-===================================================================
---- bfields.orig/fs/nfsd/nfscache.c
-+++ bfields/fs/nfsd/nfscache.c
-@@ -155,6 +155,8 @@ static int nfsd_cache_bucket_expand(stru
- 	spin_lock(&b->lock);
- 
- 	b->size += increment;
-+	nfsdstats.rcentries += increment;
-+	nfsdstats.rcmem += increment * sizeof(struct svc_cacherep);
- 	list_splice(&lru, &b->lru);
- 
- 	spin_unlock(&b->lock);
-@@ -185,8 +187,11 @@ int nfsd_reply_cache_init(void)
- 		b->hash = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
- 		if (!b->hash)
- 			goto out_nomem;
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		return -EINVAL;
 +
-+		nfsdstats.rcmem += HASHSIZE * sizeof(struct hlist_head);
+ 	spin_lock(&authtab_lock);
+-	if (flavor < RPC_AUTH_MAXFLAVOR && authtab[flavor] == NULL) {
+-		authtab[flavor] = aops;
++	if (authtab[flavor] == NULL) {
++		rcu_assign_pointer(authtab[flavor], aops);
+ 		rv = 0;
  	}
- 
-+	nfsdstats.rchashsize = HASHSIZE;
- 	cache_disabled = 0;
- 	return 0;
- out_nomem:
-@@ -266,6 +271,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	unsigned long		age;
- 	int			rtn;
- 	int			expand = 0;
-+	unsigned int		nprobes = 0;
- 
- 	rqstp->rq_cacherep = NULL;
- 	if (cache_disabled || type == RC_NOCACHE) {
-@@ -282,6 +288,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	rh = &b->hash[h];
- 	age = jiffies - 120*HZ;
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
-+		nprobes++;
- 		if (rp->c_state != RC_UNUSED &&
- 		    xid == rp->c_xid &&
- 		    compare_sockaddr_in(svc_addr_in(rqstp), &rp->c_addr) &&
-@@ -289,10 +296,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 		    proto == rp->c_prot && vers == rp->c_vers &&
- 		    time_after(rp->c_timestamp, age)) {
- 			nfsdstats.rchits++;
-+			nfsdstats.rcprobes += nprobes;
- 			goto found_entry;
- 		}
- 	}
- 	nfsdstats.rcmisses++;
-+	nfsdstats.rcprobes += nprobes;
- 
- 	/* This loop shouldn't take more than a few iterations normally */
- 	{
-@@ -323,12 +332,14 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	if (rp->c_state != RC_UNUSED) {
- 		/* reusing an existing cache entry */
- 		age = jiffies - rp->c_timestamp;
-+		nfsdstats.rcage = age;
- 		if (age < CACHE_THRESH_AGE &&
- 		    b->size < CACHE_BUCKET_MAX_SIZE &&
- 		    nfsd_cache_expand_ratelimit(b)) {
- 			expand = CACHE_BUCKET_INCREMENT;
- 			if (b->size + expand > CACHE_BUCKET_MAX_SIZE)
- 				expand = CACHE_BUCKET_MAX_SIZE - b->size;
-+			nfsdstats.rcexpands++;
- 		}
- 	}
- 
-@@ -349,6 +360,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
- 	if (rp->c_type == RC_REPLBUFF) {
- 		kfree(rp->c_replvec.iov_base);
- 		rp->c_replvec.iov_base = NULL;
-+		nfsdstats.rcmem -= rp->c_replvec.iov_len;
- 	}
- 	rp->c_type = RC_NOCACHE;
-  out:
-@@ -418,6 +430,7 @@ nfsd_cache_update(struct svc_rqst *rqstp
- 	struct kvec	*resv = &rqstp->rq_res.head[0], *cachv;
- 	int		len;
- 	struct svc_cache_bucket *b;
-+	unsigned int	moremem = 0;
- 
- 	if (!(rp = rqstp->rq_cacherep) || cache_disabled)
- 		return;
-@@ -450,6 +463,7 @@ nfsd_cache_update(struct svc_rqst *rqstp
- 		}
- 		cachv->iov_len = len << 2;
- 		memcpy(cachv->iov_base, statp, len << 2);
-+		moremem = len << 2;
- 		break;
- 	}
- 	spin_lock(&b->lock);
-@@ -458,6 +472,8 @@ nfsd_cache_update(struct svc_rqst *rqstp
- 	rp->c_type = cachetype;
- 	rp->c_state = RC_DONE;
- 	rp->c_timestamp = jiffies;
-+	if (moremem)
-+		nfsdstats.rcmem += moremem;
- 	spin_unlock(&b->lock);
- 	return;
- }
-@@ -481,3 +497,4 @@ nfsd_cache_append(struct svc_rqst *rqstp
- 	vec->iov_len += data->iov_len;
- 	return 1;
- }
+ 	spin_unlock(&authtab_lock);
+@@ -100,9 +106,11 @@ EXPORT_SYMBOL_GPL(svc_auth_register);
+ void
+ svc_auth_unregister(rpc_authflavor_t flavor)
+ {
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		return;
 +
+ 	spin_lock(&authtab_lock);
+-	if (flavor < RPC_AUTH_MAXFLAVOR)
+-		authtab[flavor] = NULL;
++	rcu_assign_pointer(authtab[flavor], NULL);
+ 	spin_unlock(&authtab_lock);
+ }
+ EXPORT_SYMBOL_GPL(svc_auth_unregister);
 
 --
 Greg
