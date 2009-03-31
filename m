@@ -1,129 +1,102 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 57/67] nfs41: kick start nfs41 session recovery when handling errors
-Date: Thu,  2 Apr 2009 16:58:40 +0300
-Message-ID: <1238680720-15185-1-git-send-email-bhalevy@panasas.com>
-References: <49D4C1A9.5060900@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Trond.Myklebust@netapp.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:30916 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756977AbZDBN7b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:59:31 -0400
-In-Reply-To: <49D4C1A9.5060900@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/4] VFS: Add a VFS helper function
+ vfs_remote_path_lookup()
+Date: Tue, 31 Mar 2009 18:37:59 -0400
+Message-ID: <1238539079.28445.103.camel@heimdal.trondhjem.org>
+References: <cover.1238525532.git.Trond.Myklebust@netapp.com>
+	 <3f1264127d431f695be25b940b477e3d287edc68.1238525532.git.Trond.Myklebust@netapp.com>
+	 <alpine.LFD.2.00.0903311423280.6474@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+	hch@infradead.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <alpine.LFD.2.00.0903311423280.6474@localhost.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, 2009-03-31 at 14:40 -0700, Linus Torvalds wrote:
+> 
+> On Wed, 11 Mar 2009, Trond Myklebust wrote:
+> >
+> > This patch therefore defines a VFS helper function that sets up a temporary
+> > mount namespace to represent the server namespace, and has the current
+> > task pivot into that prior to doing the path lookup. Upon completion, it
+> > pivots back into the original namespace, and destroys the private one.
+> 
+> This is disgusting.
+> 
+> Why don't you just create the namespace once?
+> 
+> Also, why do you need that disgusting pivot thing, when we could instead 
+> trivially just add a 
+> 
+> 	struct filesystem *fs;
+> 
+> into the nameidata, and then we can initialize it to
+> 
+> 	nd->fs = current->fs
+> 
+> and make all the path walkers use that.
+> 
+> Or we could even try to clean up that horrid AT_FDCWD mess, and drop the 
+> whole "dfd" passing to "do_path_lookup()", and instead do
+> 
+> 	rwlock_t *lock;
+> 	struct path *root, *pwd;
+> 
+> and do
+> 
+> 	nd->lock = &current->fs->lock;
+> 	nd->root = &current->fs->root;
+> 	nd->pwd =  &current->fs->pwd;
+> 
+> to initialize things. Then drop dfd as an argument entirely from 
+> path_lookup_open() and do_path_lookup(), and just have the caller 
+> initialize the nameidata (the only caller that doesn't use fs->pwd 
+> currently is do_filp_open(), which takes that 'dfd' and could just 
+> initialize nd->pwd to the right thing.
 
-Remove checking for any errors that the SEQUENCE operation does not return.
--NFS4ERR_STALE_CLIENTID, NFS4ERR_EXPIRED, NFS4ERR_CB_PATH_DOWN, NFS4ERR_BACK_CHAN_BUSY, NFS4ERR_OP_NOT_IN_SESSION.
+I'd be fine with that.
 
-SEQUENCE operation error recovery is very primative, we only reset the session.
+> I dunno. This is very Al Viroish country, but I really hate how your patch 
+> looks. 99% of it is just working around the fact that you want some very 
+> _slight_ differences to how that special '/' thing is handled.
 
-Remove checking for any errors that are returned by the SEQUENCE operation, but
-that resetting the session won't address.
-NFS4ERR_RETRY_UNCACHED_REP, NFS4ERR_SEQUENCE_POS,NFS4ERR_TOO_MANY_OPS.
+No. The main purpose is to able to look up and walk down an NFSv4 mount
+path, which is a path on the _server_'s file/directory namespace.
+In order to be able to follow any valid mount path that the user
+supplies, we need the ability to follow symlinks, cross mount points and
+even cross NFSv4 referrals (i.e. afs-like junctions that point to paths
+on a different server).
 
-Add error checking for missing SEQUENCE errors that a session reset will
-address.
-NFS4ERR_BAD_HIGH_SLOT, NFS4ERR_DEADSESSION, NFS4ERR_SEQ_FALSE_RETRY.
+Under normal path walking we use the 'follow_link()' method of
+autogenerating mountpoints (see
+Documentation/filesystems/automount-support.txt) when we come across
+mount points or referrals on the server. If you are walking a path that
+is not supposed to be visible to user processes, you therefore need a
+private namespace.
 
-A reset of the session is currently our only response to a SEQUENCE operation
-error. Don't reset the session on errors where a new session won't help.
+> It's not worth doing these kinds of hacks for that.
+> 
+> And I think it's positively _wrong_ to have a function that creates and 
+> destroys the whole "struct fs_struct" and a namespace for just one call. 
+> Even if you don't think it's at all performance-critical, the interface is 
+> too damn ugly. Have separate "create/destroy context" functions, so that 
+> you _can_ do it just once, and have multiple calls in between.
 
-Don't reset the session on errors where a new session won't help.
+That can probably be done, but the main reason for having the namespace
+was to be able, once the sys_mount() is complete, to garbage collect and
+get rid of those autogenerated mount points that are not user visible.
 
-[nfs41: nfs4_async_handle_error update error checking]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: trigger the state manager for session reset]
-    Replace session state bit with nfs_client state bit.  Set the
-    NFS4CLNT_SESSION_SETUP bit upon a session related error in the sync/async
-    error handlers.
-[nfs41: _nfs4_async_handle_error fix session reset error list]
-Sequence operation errors that session reset could help.
-NFS4ERR_BADSESSION
-NFS4ERR_BADSLOT
-NFS4ERR_BAD_HIGH_SLOT
-NFS4ERR_DEADSESSION
-NFS4ERR_CONN_NOT_BOUND_TO_SESSION
-NFS4ERR_SEQ_FALSE_RETRY
-NFS4ERR_SEQ_MISORDERED
-
-Sequence operation errors that a session reset would not help
-
-NFS4ERR_BADXDR
-NFS4ERR_DELAY
-NFS4ERR_REP_TOO_BIG
-NFS4ERR_REP_TOO_BIG_TO_CACHE
-NFS4ERR_REQ_TOO_BIG
-NFS4ERR_RETRY_UNCACHED_REP
-NFS4ERR_SEQUENCE_POS
-NFS4ERR_TOO_MANY_OPS
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[nfs41 nfs4_handle_exception fix session reset error list]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[moved nfs41_sequece_call_done code to nfs41: sequence operation]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c |   32 ++++++++++++++++++++++++++++++++
- 1 files changed, 32 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 984a13a..a9c5b00 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -249,7 +249,25 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
- 			ret = nfs4_wait_clnt_recover(clp);
- 			if (ret == 0)
- 				exception->retry = 1;
-+#if !defined(CONFIG_NFS_V4_1)
- 			break;
-+#else /* !defined(CONFIG_NFS_V4_1) */
-+			if (!nfs4_has_session(server->nfs_client))
-+				break;
-+			/* FALLTHROUGH */
-+		case -NFS4ERR_BADSESSION:
-+		case -NFS4ERR_BADSLOT:
-+		case -NFS4ERR_BAD_HIGH_SLOT:
-+		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
-+		case -NFS4ERR_DEADSESSION:
-+		case -NFS4ERR_SEQ_FALSE_RETRY:
-+		case -NFS4ERR_SEQ_MISORDERED:
-+			dprintk("%s ERROR: %d Reset session\n", __func__,
-+				errorcode);
-+			set_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
-+			exception->retry = 1;
-+			/* FALLTHROUGH */
-+#endif /* !defined(CONFIG_NFS_V4_1) */
- 		case -NFS4ERR_FILE_OPEN:
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
-@@ -3256,6 +3274,20 @@ _nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 				rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
- 			task->tk_status = 0;
- 			return -EAGAIN;
-+#if defined(CONFIG_NFS_V4_1)
-+		case -NFS4ERR_BADSESSION:
-+		case -NFS4ERR_BADSLOT:
-+		case -NFS4ERR_BAD_HIGH_SLOT:
-+		case -NFS4ERR_DEADSESSION:
-+		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
-+		case -NFS4ERR_SEQ_FALSE_RETRY:
-+		case -NFS4ERR_SEQ_MISORDERED:
-+			dprintk("%s ERROR %d, Reset session\n", __func__,
-+				task->tk_status);
-+			set_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state);
-+			task->tk_status = 0;
-+			return -EAGAIN;
-+#endif /* CONFIG_NFS_V4_1 */
- 		case -NFS4ERR_DELAY:
- 			if (server)
- 				nfs_inc_server_stats(server, NFSIOS_DELAY);
+Cheers
+  Trond
 -- 
-1.6.2.1
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
