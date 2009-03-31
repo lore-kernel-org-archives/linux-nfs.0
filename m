@@ -1,114 +1,489 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH v2 04/47] nfs41: common protocol definitions
-Date: Tue, 31 Mar 2009 10:06:07 +0300
-Message-ID: <49D1C0DF.8020103@panasas.com>
-References: <49CDDFC2.4070402@panasas.com> <1238229061-8176-1-git-send-email-bhalevy@panasas.com> <20090330215457.GM31237@fieldses.org>
+Subject: Re: [PATCH v2 15/47] nfsd41: exchange_id operation
+Date: Tue, 31 Mar 2009 10:44:05 +0300
+Message-ID: <49D1C9C5.90400@panasas.com>
+References: <49CDDFC2.4070402@panasas.com> <1238229132-10730-1-git-send-email-bhalevy@panasas.com> <20090330220638.GN31237@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: "J. Bruce Fields" <bfields@fieldses.org>,
-	Mike Sager <sager@netapp.com>
+	Andy Adamson <andros@netapp.com>, Mike Sager <sager@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:16908 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:1930 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754367AbZCaHGM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 03:06:12 -0400
-In-Reply-To: <20090330215457.GM31237@fieldses.org>
+	with ESMTP id S1752312AbZCaHoK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 03:44:10 -0400
+In-Reply-To: <20090330220638.GN31237@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 31, 2009, 0:54 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Sat, Mar 28, 2009 at 11:31:01AM +0300, Benny Halevy wrote:
->> Define all NFSv4.1 common operation and error code constants.
+On Mar. 31, 2009, 1:06 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Sat, Mar 28, 2009 at 11:32:12AM +0300, Benny Halevy wrote:
+>> From: Andy Adamson <andros@netapp.com>
 >>
->> Note that some of the definitions are used by both the nfs41 client
->> and the server code. This patch is duplicated in the nfs41 and nfsd41
->> sessions patchset.
+>> Implement the exchange_id operation confoming to
+>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-28
 >>
->> Signed-off-by: Andy Adamson<andros@netapp.com>
+>> Based on the client provided name, hash a client id.
+>> If a confirmed one is found, compare the op's creds and
+>> verifier.  If the creds match and the verifier is different
+>> then expire the old client (client re-incarnated), otherwise,
+>> if both match, assume it's a replay and ignore it.
+>>
+>> If an unconfirmed client is found, then copy the new creds
+>> and verifer if need update, otherwise assume replay.
+>>
+>> The client is moved to a confirmed state on create_session.
+>>
+>> In the nfs41 branch set the exchange_id flags to
+>> EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_SUPP_MOVED_REFER
+>> (pNFS is not supported, Referrals are supported,
+>> Migration is not.).
+>>
+>> Address various scenarios from section 18.35 of the spec:
+>>
+>> 1. Check for EXCHGID4_FLAG_UPD_CONFIRMED_REC_A and set
+>>    EXCHGID4_FLAG_CONFIRMED_R as appropriate.
+>>
+>> 2. Return error codes per 18.35.4 scenarios.
+>>
+>> 3. Update client records or generate new client ids depending on
+>>    scenario.
+>>
+>> Note: 18.35.4 case 3 probably still needs revisiting.  The handling
+>> seems not quite right.
+>>
 >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> [nfs41: add exchange id flags]
+>> Signed-off-by: Andy Adamosn <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [nfsd41: use utsname for major_id (and copy to server_scope)]
+>> [nfsd41: fix handling of various exchange id scenarios]
 >> Signed-off-by: Mike Sager <sager@netapp.com>
 >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> [removed server-only hunk changing NFSERR_REPLAY_ME]
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> [nfs41: add SEQ4_XX to nfs41-common-protocol]
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> [nfs41: generic error code update]
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 >> ---
->>  include/linux/nfs4.h |  128 +++++++++++++++++++++++++++++++++++++++++++++++++-
->>  1 files changed, 127 insertions(+), 1 deletions(-)
+>>  fs/nfsd/nfs4state.c        |  138 +++++++++++++++++++++++++++++++++++++++++-
+>>  fs/nfsd/nfs4xdr.c          |  146 +++++++++++++++++++++++++++++++++++++++++++-
+>>  include/linux/nfsd/state.h |    2 +
+>>  include/linux/nfsd/xdr4.h  |    8 ++-
+>>  4 files changed, 289 insertions(+), 5 deletions(-)
 >>
->> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->> index b912311..a34683e 100644
->> --- a/include/linux/nfs4.h
->> +++ b/include/linux/nfs4.h
->> @@ -21,6 +21,7 @@
->>  #define NFS4_FHSIZE		128
->>  #define NFS4_MAXPATHLEN		PATH_MAX
->>  #define NFS4_MAXNAMLEN		NAME_MAX
->> +#define NFS4_MAX_SESSIONID_LEN	16
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index bbb7455..09c63ff 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -841,12 +841,148 @@ out_err:
+>>  }
 >>  
->>  #define NFS4_ACCESS_READ        0x0001
->>  #define NFS4_ACCESS_LOOKUP      0x0002
->> @@ -38,6 +39,7 @@
->>  #define NFS4_OPEN_RESULT_CONFIRM 0x0002
->>  #define NFS4_OPEN_RESULT_LOCKTYPE_POSIX 0x0004
->>  
->> +#define NFS4_SHARE_ACCESS_MASK	0x000F
->>  #define NFS4_SHARE_ACCESS_READ	0x0001
->>  #define NFS4_SHARE_ACCESS_WRITE	0x0002
->>  #define NFS4_SHARE_ACCESS_BOTH	0x0003
->> @@ -45,6 +47,19 @@
->>  #define NFS4_SHARE_DENY_WRITE	0x0002
->>  #define NFS4_SHARE_DENY_BOTH	0x0003
->>  
->> +/* nfs41 */
->> +#define NFS4_SHARE_WANT_MASK		0xFF00
->> +#define NFS4_SHARE_WANT_NO_PREFERENCE	0x0000
->> +#define NFS4_SHARE_WANT_READ_DELEG	0x0100
->> +#define NFS4_SHARE_WANT_WRITE_DELEG	0x0200
->> +#define NFS4_SHARE_WANT_ANY_DELEG	0x0300
->> +#define NFS4_SHARE_WANT_NO_DELEG	0x0400
->> +#define NFS4_SHARE_WANT_CANCEL		0x0500
->> +
->> +#define NFS4_SHARE_WHEN_MASK		0xF0000
->> +#define NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL	0x10000
->> +#define NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED		0x20000
->> +
->>  #define NFS4_SET_TO_SERVER_TIME	0
->>  #define NFS4_SET_TO_CLIENT_TIME	1
->>  
->> @@ -88,6 +103,31 @@
->>  #define NFS4_ACE_GENERIC_EXECUTE              0x001200A0
->>  #define NFS4_ACE_MASK_ALL                     0x001F01FF
->>  
->> +#define EXCHGID4_FLAG_SUPP_MOVED_REFER		0x00000001
->> +#define EXCHGID4_FLAG_SUPP_MOVED_MIGR		0x00000002
->> +#define EXCHGID4_FLAG_USE_NON_PNFS		0x00010000
->> +#define EXCHGID4_FLAG_USE_PNFS_MDS		0x00020000
->> +#define EXCHGID4_FLAG_USE_PNFS_DS		0x00040000
->> +#define EXCHGID4_FLAG_UPD_CONFIRMED_REC_A	0x40000000
->> +#define EXCHGID4_FLAG_CONFIRMED_R		0x80000000
+>>  #if defined(CONFIG_NFSD_V4_1)
 >> +/*
->> + * Since the validity of these bits depends on whether
->> + * they're set in the argument or response, have separate
->> + * invalid flag masks for arg (_A) and resp (_R).
+>> + * Set the exchange_id flags returned by the server.
 >> + */
->> +#define EXCHGID4_INVAL_FLAG_MASK_A		0xBFF8FFFC
->> +#define EXCHGID4_INVAL_FLAG_MASK_R		0x7FF8FFFC
+>> +static void
+>> +nfsd4_set_ex_flags(struct nfs4_client *new, struct nfsd4_exchange_id *clid)
+>> +{
+>> +	/* pNFS is not supported */
+>> +	new->cl_exchange_flags |= EXCHGID4_FLAG_USE_NON_PNFS;
+>> +
+>> +	/* Referrals are supported, Migration is not. */
+>> +	new->cl_exchange_flags |= EXCHGID4_FLAG_SUPP_MOVED_REFER;
+>> +
+>> +	/* set the wire flags to return to client. */
+>> +	clid->flags = new->cl_exchange_flags;
 > 
-> Would it be less confusing just to use !EXCHGID_FLAG_MASK_A and
-> !EXCHGID_FLAG_MASK_R everywhere?
+> Hm.  At this point we could do away with cl_exchange_flags and just
+> unconditionally return the above two bits.
+> 
+> I guess this will change with pNFS?  OK.
 
-Fine with me.
-Mike, this code came from you, what do you think?
-Please Ack.  Thanks,
+True.  Also, we also use keep cl_exchange_flags for
+differentiating between 4.0 and 4.1 clientids.
+(see "[PATCH v2 16/47] nfsd41: match clientid establishment method")
+
+> 
+>> +}
+>> +
+>>  __be32
+>>  nfsd4_exchange_id(struct svc_rqst *rqstp,
+>>  		  struct nfsd4_compound_state *cstate,
+>>  		  struct nfsd4_exchange_id *exid)
+>>  {
+>> -	return -1;	/* stub */
+>> +	struct nfs4_client *unconf, *conf, *new;
+>> +	int status;
+>> +	unsigned int		strhashval;
+>> +	char			dname[HEXDIR_LEN];
+>> +	nfs4_verifier		verf = exid->verifier;
+>> +	u32			ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
+>> +	struct xdr_netobj clname = {
+>> +		.len = exid->id_len,
+>> +		.data = exid->id,
+>> +	};
+> 
+> Would it simplify things just to embed an xdr_netobj in
+> nfsd4_exchange_id?
+
+Yeah, looks good to me.
+
+> 
+>> +
+>> +	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
+>> +		" ip_addr=%u flags %x, spa_how %d\n",
+>> +		__func__, rqstp, exid, clname.len, clname.data,
+>> +		ip_addr, exid->flags, exid->spa_how);
+>> +
+>> +	if (!check_name(clname) || (exid->flags & EXCHGID4_INVAL_FLAG_MASK_A))
+>> +		return nfserr_inval;
+>> +
+>> +	/* Currently only support SP4_NONE */
+>> +	if (exid->spa_how != SP4_NONE)
+>> +		return nfserr_encr_alg_unsupp;
+> 
+> Isn't support for the others mandatory?  Let's just make this
+> serverfault, in that case--this is a bug in the server.  It'll be a
+> reminder that we need to fix this....
+
+True. nfserr_encr_alg_unsupp is valid only for ssp_encr_algs.
+Andy, I believe you're the author of this. OK with you to return
+nfserr_serverfault instead?
+
+> 
+>> +
+>> +	status = nfs4_make_rec_clidname(dname, &clname);
+>> +
+>> +	if (status)
+>> +		goto error;
+>> +
+>> +	strhashval = clientstr_hashval(dname);
+>> +
+>> +	nfs4_lock_state();
+>> +	status = nfs_ok;
+>> +
+>> +	conf = find_confirmed_client_by_str(dname, strhashval);
+>> +	if (conf) {
+>> +		if (!same_verf(&verf, &conf->cl_verifier)) {
+>> +			/* 18.35.4 case 8 */
+>> +			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
+>> +				status = nfserr_not_same;
+>> +				goto out;
+>> +			}
+>> +			/* Client reboot: destroy old state */
+>> +			expire_client(conf);
+>> +			goto out_new;
+>> +		}
+>> +		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+>> +			/* 18.35.4 case 9 */
+>> +			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
+>> +				status = nfserr_perm;
+>> +				goto out;
+>> +			}
+>> +			expire_client(conf);
+>> +			goto out_new;
+>> +		}
+>> +		if (ip_addr != conf->cl_addr &&
+> 
+> Why the ip_addr comparison?
+
+Good question.
+IIRC this covers the client restart case (18.35.4 case 5).
+I.e., we got an EXCHANGE_ID updating a confirmed clientid.
+We got this far, meaning it has same ownerid, verifier, and creds
+and EXCHGID4_FLAG_UPD_CONFIRMED_REC_A is not set (or actually
+we don't care as we update the confirmed client either via
+case 3 or case 5 of the spec.).
+
+Still, in case 5, client restart, we can't the client come up
+with a new IP address (say due to, e.g., DHCP :)
 
 Benny
 
 > 
 > --b.
 > 
+>> +		    !(exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A)) {
+>> +			/* Client collision. 18.35.4 case 3 */
+>> +			status = nfserr_clid_inuse;
+>> +			goto out;
+>> +		}
+>> +		/*
+>> +		 * Set bit when the owner id and verifier map to an already
+>> +		 * confirmed client id (18.35.3).
+>> +		 */
+>> +		exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
+>> +
+>> +		/*
+>> +		 * Falling into 18.35.4 case 2, possible router replay.
+>> +		 * Leave confirmed record intact and return same result.
+>> +		 */
+>> +		copy_verf(conf, &verf);
+>> +		new = conf;
+>> +		goto out_copy;
+>> +	} else {
+>> +		/* 18.35.4 case 7 */
+>> +		if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
+>> +			status = nfserr_noent;
+>> +			goto out;
+>> +		}
+>> +	}
+>> +
+>> +	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
+>> +	if (unconf) {
+>> +		/*
+>> +		 * Possible retry or client restart.  Per 18.35.4 case 4,
+>> +		 * a new unconfirmed record should be generated regardless
+>> +		 * of whether any properties have changed.
+>> +		 */
+>> +		expire_client(unconf);
+>> +	}
+>> +
+>> +out_new:
+>> +	/* Normal case */
+>> +	new = create_client(clname, dname);
+>> +	if (new == NULL) {
+>> +		status = nfserr_resource;
+>> +		goto out;
+>> +	}
+>> +
+>> +	copy_verf(new, &verf);
+>> +	copy_cred(&new->cl_cred, &rqstp->rq_cred);
+>> +	new->cl_addr = ip_addr;
+>> +	gen_clid(new);
+>> +	gen_confirm(new);
+>> +	add_to_unconfirmed(new, strhashval);
+>> +out_copy:
+>> +	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
+>> +	exid->clientid.cl_id = new->cl_clientid.cl_id;
+>> +
+>> +	new->cl_seqid = exid->seqid = 1;
+>> +	nfsd4_set_ex_flags(new, exid);
+>> +
+>> +	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
+>> +		new->cl_seqid, new->cl_exchange_flags);
+>> +	status = nfs_ok;
+>> +
+>> +out:
+>> +	nfs4_unlock_state();
+>> +error:
+>> +	dprintk("nfsd4_exchange_id returns %d\n", ntohl(status));
+>> +	return status;
+>>  }
+>>  
+>>  __be32
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index b082d07..840cf6a 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -45,6 +45,7 @@
+>>  #include <linux/fs.h>
+>>  #include <linux/namei.h>
+>>  #include <linux/vfs.h>
+>> +#include <linux/utsname.h>
+>>  #include <linux/sunrpc/xdr.h>
+>>  #include <linux/sunrpc/svc.h>
+>>  #include <linux/sunrpc/clnt.h>
+>> @@ -999,9 +1000,100 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+>>  #if defined(CONFIG_NFSD_V4_1)
+>>  static __be32
+>>  nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+>> -			 struct nfsd4_exchange_id *clid)
+>> +			 struct nfsd4_exchange_id *exid)
+>>  {
+>> -	return nfserr_opnotsupp;	/* stub */
+>> +	int dummy;
+>> +	DECODE_HEAD;
+>> +
+>> +	READ_BUF(NFS4_VERIFIER_SIZE);
+>> +	COPYMEM(exid->verifier.data, NFS4_VERIFIER_SIZE);
+>> +
+>> +	READ_BUF(4);
+>> +	READ32(exid->id_len);
+>> +
+>> +	READ_BUF(exid->id_len);
+>> +	SAVEMEM(exid->id, exid->id_len);
+>> +
+>> +	READ_BUF(4);
+>> +	READ32(exid->flags);
+>> +
+>> +	/* Ignore state_protect4_a */
+>> +	READ_BUF(4);
+>> +	READ32(exid->spa_how);
+>> +	switch (exid->spa_how) {
+>> +	case SP4_NONE:
+>> +		break;
+>> +	case SP4_MACH_CRED:
+>> +		/* spo_must_enforce */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy * 4);
+>> +		p += dummy;
+>> +
+>> +		/* spo_must_allow */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy * 4);
+>> +		p += dummy;
+>> +		break;
+>> +	case SP4_SSV:
+>> +		/* ssp_ops */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy * 4);
+>> +		p += dummy;
+>> +
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy * 4);
+>> +		p += dummy;
+>> +
+>> +		/* ssp_hash_algs<> */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy);
+>> +		p += XDR_QUADLEN(dummy);
+>> +
+>> +		/* ssp_encr_algs<> */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy);
+>> +		p += XDR_QUADLEN(dummy);
+>> +
+>> +		/* ssp_window and ssp_num_gss_handles */
+>> +		READ_BUF(8);
+>> +		READ32(dummy);
+>> +		READ32(dummy);
+>> +		break;
+>> +	default:
+>> +		goto xdr_error;
+>> +	}
+>> +
+>> +	/* Ignore Implementation ID */
+>> +	READ_BUF(4);    /* nfs_impl_id4 array length */
+>> +	READ32(dummy);
+>> +
+>> +	if (dummy > 1)
+>> +		goto xdr_error;
+>> +
+>> +	if (dummy == 1) {
+>> +		/* nii_domain */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy);
+>> +		p += XDR_QUADLEN(dummy);
+>> +
+>> +		/* nii_name */
+>> +		READ_BUF(4);
+>> +		READ32(dummy);
+>> +		READ_BUF(dummy);
+>> +		p += XDR_QUADLEN(dummy);
+>> +
+>> +		/* nii_date */
+>> +		READ_BUF(12);
+>> +		p += 3;
+>> +	}
+>> +	DECODE_TAIL;
+>>  }
+>>  
+>>  static __be32
+>> @@ -2672,7 +2764,55 @@ static __be32
+>>  nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, int nfserr,
+>>  			 struct nfsd4_exchange_id *exid)
+>>  {
+>> -	/* stub */
+>> +	ENCODE_HEAD;
+>> +	char *major_id;
+>> +	char *server_scope;
+>> +	int major_id_sz;
+>> +	int server_scope_sz;
+>> +	uint64_t minor_id = 0;
+>> +
+>> +	if (nfserr)
+>> +		goto out;
+>> +
+>> +	major_id = utsname()->nodename;
+>> +	major_id_sz = strlen(major_id);
+>> +	server_scope = utsname()->nodename;
+>> +	server_scope_sz = strlen(server_scope);
+>> +
+>> +	RESERVE_SPACE(
+>> +		8 /* eir_clientid */ +
+>> +		4 /* eir_sequenceid */ +
+>> +		4 /* eir_flags */ +
+>> +		4 /* spr_how (SP4_NONE) */ +
+>> +		8 /* so_minor_id */ +
+>> +		4 /* so_major_id.len */ +
+>> +		(XDR_QUADLEN(major_id_sz) * 4) +
+>> +		4 /* eir_server_scope.len */ +
+>> +		(XDR_QUADLEN(server_scope_sz) * 4) +
+>> +		4 /* eir_server_impl_id.count (0) */);
+>> +
+>> +	WRITEMEM(&exid->clientid, 8);
+>> +	WRITE32(exid->seqid);
+>> +	WRITE32(exid->flags);
+>> +
+>> +	/* state_protect4_r. Currently only support SP4_NONE */
+>> +	BUG_ON(exid->spa_how != SP4_NONE);
+>> +	WRITE32(exid->spa_how);
+>> +
+>> +	/* The server_owner struct */
+>> +	WRITE64(minor_id);      /* Minor id */
+>> +	/* major id */
+>> +	WRITE32(major_id_sz);
+>> +	WRITEMEM(major_id, major_id_sz);
+>> +
+>> +	/* Server scope */
+>> +	WRITE32(server_scope_sz);
+>> +	WRITEMEM(server_scope, server_scope_sz);
+>> +
+>> +	/* Implementation id */
+>> +	WRITE32(0);	/* zero length nfs_impl_id4 array */
+>> +	ADJUST_ARGS();
+>> +out:
+>>  	return nfserr;
+>>  }
+>>  
+>> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+>> index 7592d7b..5de36a7 100644
+>> --- a/include/linux/nfsd/state.h
+>> +++ b/include/linux/nfsd/state.h
+>> @@ -173,6 +173,8 @@ struct nfs4_client {
+>>  	u32			cl_firststate;	/* recovery dir creation */
+>>  #ifdef CONFIG_NFSD_V4_1
+>>  	struct list_head	cl_sessions;
+>> +	u32			cl_seqid;       /* seqid for create_session */
+>> +	u32			cl_exchange_flags;
+>>  #endif /* CONFIG_NFSD_V4_1 */
+>>  };
+>>  
+>> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+>> index 0148d54..ea5a427 100644
+>> --- a/include/linux/nfsd/xdr4.h
+>> +++ b/include/linux/nfsd/xdr4.h
+>> @@ -348,7 +348,13 @@ struct nfsd4_write {
+>>  
+>>  #if defined(CONFIG_NFSD_V4_1)
+>>  struct nfsd4_exchange_id {
+>> -	int	foo;	/* stub */
+>> +	nfs4_verifier	verifier;
+>> +	u32		id_len;
+>> +	char		*id;
+>> +	u32		flags;
+>> +	clientid_t	clientid;
+>> +	u32		seqid;
+>> +	int		spa_how;
+>>  };
+>>  
+>>  struct nfsd4_create_session {
+>> -- 
+>> 1.6.2.1
+>>
+
+
+-- 
+Benny Halevy
+Software Architect
+Panasas, Inc.
+bhalevy@panasas.com
+Tel/Fax: +972-3-647-8340
+Mobile: +972-54-802-8340
+
+Panasas: The Leader in Parallel Storage
+www.panasas.com
