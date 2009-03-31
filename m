@@ -1,324 +1,365 @@
 From: Greg Banks <gnb@sgi.com>
-Subject: [patch 04/29] knfsd: Add stats updating API
-Date: Wed, 01 Apr 2009 07:28:04 +1100
-Message-ID: <20090331202939.355585000@sgi.com>
+Subject: [patch 02/29] knfsd: Add stats table infrastructure.
+Date: Wed, 01 Apr 2009 07:28:02 +1100
+Message-ID: <20090331202938.445359000@sgi.com>
 References: <20090331202800.739621000@sgi.com>
 Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.185.19.242] ([218.185.19.242]:22572 "EHLO inara.melbourne"
+Received: from [218.185.19.242] ([218.185.19.242]:22571 "EHLO inara.melbourne"
 	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756196AbZCaVCf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1755897AbZCaVCf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 31 Mar 2009 17:02:35 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add APIs for the NFS server code to use to update per-client
-and per-export statistics.  Functions nfsd_stats_pre() and
-nfsd_stats_post() are called before and after each NFS call.  Function
-nfsd_stats_update_op() is provided to update the stats for a particular
-NFS operation, and several convenience wrappers for it are provided.
-
-Note that the NFS server code needs to be instrumented to call the
-nfsd_stats_update_op() function at appropriate times, rather than
-have the generic RPC code do those updates.  This is necessary if we
-are to support per-export stats, because the operation's file handle
-(which tells us the export in use) is not available until after
-NFS-specific XDR decoding.
-
-Note also that the API transparently handles the complex way
-that NFSv4 maps operations to calls, compared to the old simple
-NFSv2/v3 arrangement.  The NFS code just calls nfsd_stats_update_op()
-once for each operation.  The first time this happens in each NFS
-call, some per-call accounting is done as well as per-op accouting.
-The second and subsequent calls to nfsd_stats_update_op() in an NFS
-call will only do per-op accounting.  This is designed to simplify
-the instrumentation needed in each NFS call code.
-
-Also, fill out the struct nfsd_op_stats with the actual counters.
-Note that the "ops" used to store the stats are neither precisely the
-NFSv2/3 calls nor the NFSv4 operations.  Instead they're an abstract
-set of operations, with some NFS operations merged together where
-we're not really interested in the differences (e.g. NFSv3 CREATE,
-MKDIR, SYMLINK, and several other calls are lumped together into a
-"MKINODE" op).  Conversely, the WRITE call is split into two "ops"
-depending on whether it's marked STABLE, because this has a significant
-performance effect.
-
-Contains code based on patches from Harshula Jayasuriya <harshula@sgi.com>
-and Peter Leckie <pleckie@sgi.com>.
+This infrastructure will be used to implement per-client and per-export
+serverside stats.  Multiple stats objects are kept in a hashtable,
+keyed by a string name (e.g. client IP address or export path).
+Old entries are pruned from the table using a timer.  The function
+nfsd_stats_find() can be used to find an entry and create it if
+necessary.
 
 Signed-off-by: Greg Banks <gnb@sgi.com>
 ---
 
- fs/nfsd/nfssvc.c           |    4 +
- fs/nfsd/stats.c            |   97 ++++++++++++++++++++++++++++++
- include/linux/nfsd/stats.h |  107 +++++++++++++++++++++++++++++++++-
- include/linux/sunrpc/svc.h |    1 
- 4 files changed, 208 insertions(+), 1 deletion(-)
+ fs/nfsd/stats.c            |  231 ++++++++++++++++++++++++++++++++++
+ include/linux/nfsd/debug.h |    1 
+ include/linux/nfsd/stats.h |   43 ++++++
+ 3 files changed, 275 insertions(+)
 
 Index: bfields/fs/nfsd/stats.c
 ===================================================================
 --- bfields.orig/fs/nfsd/stats.c
 +++ bfields/fs/nfsd/stats.c
-@@ -328,6 +328,103 @@ out_unlock:
- 	up_write(&sh->sh_sem);
- }
+@@ -29,17 +29,29 @@
+ #include <linux/seq_file.h>
+ #include <linux/stat.h>
+ #include <linux/module.h>
++#include <linux/jhash.h>
++#include <linux/list.h>
++#include <linux/swap.h>
++#include <linux/log2.h>
  
-+static void __nfsd_stats_begin_call(struct svc_rqst *rqstp,
-+				    nfsd_stats_hentry_t *se)
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/stats.h>
+ #include <linux/nfsd/nfsd.h>
+ #include <linux/nfsd/stats.h>
+ 
++#define NFSDDBG_FACILITY		NFSDDBG_STATS
++
++#define hentry_from_hnode(hn) \
++	hlist_entry((hn), nfsd_stats_hentry_t, se_node)
++
+ struct nfsd_stats	nfsdstats;
+ struct svc_stat		nfsd_svcstats = {
+ 	.program	= &nfsd_program,
+ };
+ 
++int nfsd_stats_enabled = 1;
++int nfsd_stats_prune_period = 2*86400;
++
+ static int nfsd_proc_show(struct seq_file *seq, void *v)
+ {
+ 	int i;
+@@ -98,6 +110,225 @@ static const struct file_operations nfsd
+ 	.release = single_release,
+ };
+ 
++
++/*
++ * Stats hash pruning works thus.  A scan is run every prune period.
++ * On every scan, hentries with the OLD flag are detached and
++ * a reference dropped (usually that will be the last reference
++ * and the hentry will be deleted).  Hentries without the OLD flag
++ * have the OLD flag set; the flag is reset in nfsd_stats_get().
++ * So hentries with active traffic in the last 2 prune periods
++ * are not candidates for pruning.
++ */
++static void nfsd_stats_prune(unsigned long closure)
 +{
-+	struct nfsd_op_stats *os = &se->se_data;
++	nfsd_stats_hash_t *sh = (nfsd_stats_hash_t *)closure;
++	unsigned int i;
++	nfsd_stats_hentry_t *se;
++	struct hlist_node *hn, *next;
++	struct hlist_head to_be_dropped = HLIST_HEAD_INIT;
 +
-+	os->os_bytes_in += rqstp->rq_arg.len;
-+}
++	dprintk("nfsd_stats_prune\n");
 +
-+static void __nfsd_stats_end_call(struct svc_rqst *rqstp,
-+				  nfsd_stats_hentry_t *se,
-+				  int tb)
-+{
-+	struct nfsd_op_stats *os = &se->se_data;
-+
-+	if (tb >= 0)
-+		os->os_service_times[tb]++;
-+	os->os_bytes_out += rqstp->rq_res.len;
-+
-+	if (rqstp->rq_prog == NFS_PROGRAM) {
-+		if (rqstp->rq_vers >= 2 && rqstp->rq_vers <= 4)
-+			os->os_versions[rqstp->rq_vers-2]++;
-+	}
-+
-+	switch (rqstp->rq_prot)
-+	{
-+	case IPPROTO_TCP:
-+		os->os_transports[NFSD_STATS_TRANSPORT_TCP]++;
-+		break;
-+	case IPPROTO_UDP:
-+		os->os_transports[NFSD_STATS_TRANSPORT_UDP]++;
-+		break;
-+#if defined(CONFIG_SUNRPC_XPRT_RDMA) || defined(CONFIG_SUNRPC_XPRT_RDMA_MODULE)
-+	case IPPROTO_MAX:
-+		os->os_transports[NFSD_STATS_TRANSPORT_RDMA]++;
-+		break;
-+#endif
-+	}
-+}
-+
-+static void __nfsd_stats_op(struct svc_rqst *rqstp,
-+			    nfsd_stats_hentry_t *se,
-+			    int rbucket, int wbucket, int op)
-+{
-+	struct nfsd_op_stats *os = &se->se_data;
-+
-+	if (rbucket >= 0)
-+		os->os_read_sizes[rbucket]++;
-+	if (wbucket >= 0)
-+		os->os_write_sizes[wbucket]++;
-+
-+	os->os_ops[op]++;
-+}
-+
-+void nfsd_stats_update_op(struct svc_rqst *rqstp, struct svc_fh *fh,
-+			  int rbucket, int wbucket, int op)
-+{
-+	if (!nfsd_stats_enabled)
++	if (!down_write_trylock(&sh->sh_sem)) {
++		/* hash is busy...try again in a second */
++		dprintk("nfsd_stats_prune: busy\n");
++		mod_timer(&sh->sh_prune_timer, jiffies + HZ);
 +		return;
++	}
 +
-+	/* interesting things happen here 2 patches hence */
-+}
-+
-+void nfsd_stats_pre(struct svc_rqst *rqstp)
-+{
-+	svc_time_mark(&rqstp->rq_start_time);
-+}
-+
-+static inline int time_bucket(const struct timespec *ts)
-+{
-+	int i = 0;
-+	unsigned long ns = ts->tv_sec * NSEC_PER_SEC + ts->tv_nsec;
-+
-+	if (ns) {
-+		ns = (ns-1) >> 11;	/* smallest bucket is 256 usec */
-+		while (i < NFSD_STATS_SVCTIME_NUM)
-+		{
-+			if (!ns)
-+				break;
-+			i++;
-+			ns >>= 1;
++	for (i = 0 ; i < sh->sh_size ; i++) {
++		hlist_for_each_entry_safe(se, hn, next, &sh->sh_hash[i], se_node) {
++			if (!test_and_set_bit(NFSD_STATS_HENTRY_OLD, &se->se_flags))
++				continue;
++			hlist_del_init(&se->se_node);
++			hlist_add_head(&se->se_node, &to_be_dropped);
 +		}
 +	}
-+	return i;
++
++	up_write(&sh->sh_sem);
++
++	dprintk("nfsd_stats_prune: deleting\n");
++	hlist_for_each_entry_safe(se, hn, next, &to_be_dropped, se_node)
++		nfsd_stats_put(se);
++
++	mod_timer(&sh->sh_prune_timer, jiffies + nfsd_stats_prune_period * HZ);
 +}
 +
-+void nfsd_stats_post(struct svc_rqst *rqstp)
++/*
++ * Initialise a stats hash.  Array size scales with
++ * server memory, as a loose heuristic for how many
++ * clients or exports a server is likely to have.
++ */
++static void nfsd_stats_hash_init(nfsd_stats_hash_t *sh, const char *which)
 +{
-+	int tb = -1;
-+	struct timespec svctime;
++	unsigned int nbits;
++	unsigned int i;
 +
-+	/* calculate service time and update the stats */
-+	if (svc_time_elapsed(&rqstp->rq_start_time, &svctime) == 0)
-+		tb = time_bucket(&svctime);
++	init_rwsem(&sh->sh_sem);
 +
-+	/* interesting things happen here 2 patches hence */
++	nbits = 5 + ilog2(totalram_pages >> (30-PAGE_SHIFT));
++	sh->sh_size = (1<<nbits);
++	sh->sh_mask = (sh->sh_size-1);
++
++	sh->sh_hash = kmalloc(sizeof(struct hlist_head) * sh->sh_size, GFP_KERNEL);
++	if (sh->sh_hash == NULL) {
++		printk(KERN_ERR "failed to allocate knfsd %s stats hashtable\n", which);
++		/* struggle on... */
++		return;
++	}
++	printk(KERN_INFO "knfsd %s stats hashtable, %u entries\n", which, sh->sh_size);
++
++	for (i = 0 ; i < sh->sh_size ; i++)
++		INIT_HLIST_HEAD(&sh->sh_hash[i]);
++
++	/* start the prune timer */
++	init_timer(&sh->sh_prune_timer);
++	sh->sh_prune_timer.function = nfsd_stats_prune;
++	sh->sh_prune_timer.expires = jiffies + nfsd_stats_prune_period * HZ;
++	sh->sh_prune_timer.data = (unsigned long)sh;
 +}
 +
- 
++/*
++ * Destroy a stats hash.  Drop what should be the last
++ * reference on all hentries, clean up the timer, and
++ * free the hash array.
++ */
++static void nfsd_stats_hash_destroy(nfsd_stats_hash_t *sh)
++{
++	unsigned int i;
++	nfsd_stats_hentry_t *se;
++
++	del_timer_sync(&sh->sh_prune_timer);
++
++	/* drop the last reference for all remaining hentries */
++	for (i = 0 ; i < sh->sh_size ; i++) {
++		struct hlist_head *hh = &sh->sh_hash[i];
++
++		while (hh->first != NULL) {
++			se = hentry_from_hnode(hh->first);
++			BUG_ON(atomic_read(&se->se_refcount) != 1);
++			nfsd_stats_put(se);
++		}
++	}
++
++	if (sh->sh_hash != NULL) {
++		kfree(sh->sh_hash);
++	}
++}
++
++/*
++ * Find and return a hentry for the given name, with a new refcount,
++ * creating it if necessary.  Will only return NULL on OOM or if
++ * stats are disabled.  Does it's own locking using the hash rwsem;
++ * may sleep.
++ */
++nfsd_stats_hentry_t *nfsd_stats_find(nfsd_stats_hash_t *sh,
++				     const char *name, int len)
++{
++	u32 hash;
++	nfsd_stats_hentry_t *se, *new = NULL;
++	struct hlist_node *hn;
++
++	dprintk("nfsd_stats_find: name %s len %d\n", name, len);
++
++	if (!nfsd_stats_enabled || sh->sh_hash == NULL)
++		return NULL;
++
++
++	/* search the hash table */
++	hash = jhash(name, len, 0xfeedbeef) & sh->sh_mask;
++	down_read(&sh->sh_sem);
++	hlist_for_each_entry(se, hn, &sh->sh_hash[hash], se_node) {
++		if (!strcmp(se->se_name, name)) {
++			/* found matching */
++			dprintk("nfsd_stats_find: found %s\n", se->se_name);
++			nfsd_stats_get(se);
++			up_read(&sh->sh_sem);
++			return se;
++		}
++	}
++	up_read(&sh->sh_sem);
++
++	/* not found, create a new one */
++	dprintk("nfsd_stats_find: allocating new for %s\n", name);
++	new = (nfsd_stats_hentry_t *)kmalloc(sizeof(*new), GFP_KERNEL);
++	if (new == NULL)
++		return NULL;
++	/* initialise */
++
++	new->se_name = kmalloc(len+1, GFP_KERNEL);
++	if (new->se_name == NULL) {
++		kfree(new);
++		return NULL;
++	}
++
++	memcpy(new->se_name, name, len+1);
++	atomic_set(&new->se_refcount, 2);/* 1 for the caller, 1 for the hash */
++	new->se_hash = sh;
++	new->se_flags = 0;
++	INIT_HLIST_NODE(&new->se_node);
++	memset(&new->se_data, 0, sizeof(new->se_data));
++
++	/* attach to the hash datastructure */
++
++	/*
++	 * first check to see if we lost a race and some
++	 * other thread already added a matching hentry.
++	 */
++	down_write(&sh->sh_sem);
++	hlist_for_each_entry(se, hn, &sh->sh_hash[hash], se_node) {
++		if (!strcmp(se->se_name, name)) {
++			/* found matching, use that instead */
++			dprintk("nfsd_stats_find: found(2) %s\n", name);
++			kfree(new->se_name);
++			kfree(new);
++			nfsd_stats_get(se);
++			up_write(&sh->sh_sem);
++			return se;
++		}
++	}
++	/* still not there, insert new one into the hash */
++	hlist_add_head(&new->se_node, &sh->sh_hash[hash]);
++
++	up_write(&sh->sh_sem);
++	return new;
++}
++
++/*
++ * Drop a reference to a hentry, deleting the hentry if this
++ * was the last reference.  Does it's own locking using the
++ * hash rwsem; may sleep.
++ */
++void
++nfsd_stats_put(nfsd_stats_hentry_t *se)
++{
++	nfsd_stats_hash_t *sh = se->se_hash;
++
++	if (!atomic_dec_and_test(&se->se_refcount))
++		return;
++
++	/* just dropped the last reference */
++	down_write(&sh->sh_sem);
++
++	if (atomic_read(&se->se_refcount)) {
++		/*
++		 * We lost a race getting the write lock, and
++		 * now there's a reference again.  Whatever.
++		 */
++		goto out_unlock;
++	}
++
++	dprintk("nfsd_stats_put: freeing %s\n", se->se_name);
++	hlist_del(&se->se_node);
++	kfree(se->se_name);
++	kfree(se);
++
++out_unlock:
++	up_write(&sh->sh_sem);
++}
++
++
  void
  nfsd_stat_init(void)
+ {
 Index: bfields/include/linux/nfsd/stats.h
 ===================================================================
 --- bfields.orig/include/linux/nfsd/stats.h
 +++ bfields/include/linux/nfsd/stats.h
-@@ -41,7 +41,60 @@ struct nfsd_stats {
+@@ -40,6 +40,37 @@ struct nfsd_stats {
+ 
  };
  
- struct nfsd_op_stats {
--	/* nothing to see here, yet */
-+#define NFSD_STATS_OP_FSINFO	0	/* includes NULLPROC,FSSTAT,FSINFO,
-+					 * PATHCONF,ROOT(v2),WRITECACHE(v2) */
-+#define NFSD_STATS_OP_MKINODE	1	/* includes CREATE,MKDIR,SYMLINK,
-+					 * MKNOD,RENAME,LINK */
-+#define NFSD_STATS_OP_GETATTR	2
-+#define NFSD_STATS_OP_SETATTR	3
-+#define NFSD_STATS_OP_LOOKUP	4
-+#define NFSD_STATS_OP_ACCESS	5
-+#define NFSD_STATS_OP_READ	6	/* includes READ,READLINK */
-+#define NFSD_STATS_OP_SWRITE	7	/* sync WRITEs */
-+#define NFSD_STATS_OP_AWRITE	8	/* async WRITEs */
-+#define NFSD_STATS_OP_COMMIT	9
-+#define NFSD_STATS_OP_REMOVE	10
-+#define NFSD_STATS_OP_RMDIR	11
-+#define NFSD_STATS_OP_READDIR	12
-+#define NFSD_STATS_OP_READDIRP	13
-+#define NFSD_STATS_OP_XATTR	14	/* includes all NFSACL ops too */
-+#define NFSD_STATS_OP_LOCKD	15	/* all LOCKD ops except: */
-+#define NFSD_STATS_OP_SHARE	16	/* includes LOCKD's SHARE,UNSHARE */
-+#define NFSD_STATS_OP_GRANTED	17	/* includes LOCKD' GRANTED */
-+#define NFSD_STATS_OP_NUM	18
-+	unsigned long	os_ops[NFSD_STATS_OP_NUM];
-+	unsigned long	os_bytes_in;
-+	unsigned long	os_bytes_out;
-+#define NFSD_STATS_SIZE_LE4K		0
-+#define NFSD_STATS_SIZE_LE8K		1
-+#define NFSD_STATS_SIZE_LE16K		2
-+#define NFSD_STATS_SIZE_LE32K		3
-+#define NFSD_STATS_SIZE_LE64K		4
-+#define NFSD_STATS_SIZE_LE128K		5
-+#define NFSD_STATS_SIZE_LE256K		6
-+#define NFSD_STATS_SIZE_LE512K		7
-+#define NFSD_STATS_SIZE_GT512K		8
-+#define NFSD_STATS_SIZE_NUM		9
-+	unsigned long	os_read_sizes[NFSD_STATS_SIZE_NUM];
-+	unsigned long	os_write_sizes[NFSD_STATS_SIZE_NUM];
-+#define NFSD_STATS_TRANSPORT_UDP	0
-+#define NFSD_STATS_TRANSPORT_TCP	1
-+#define NFSD_STATS_TRANSPORT_RDMA	2
-+#define NFSD_STATS_TRANSPORT_NUM	3
-+	unsigned long	os_transports[NFSD_STATS_TRANSPORT_NUM];
-+#define NFSD_STATS_VERSION_V2		0
-+#define NFSD_STATS_VERSION_V3		1
-+#define NFSD_STATS_VERSION_V4		2
-+#define NFSD_STATS_VERSION_NUM		3
-+	unsigned long	os_versions[NFSD_STATS_VERSION_NUM];
-+#define NFSD_STATS_SVCTIME_LE256US	0
-+#define NFSD_STATS_SVCTIME_LE1MS	1
-+#define NFSD_STATS_SVCTIME_LE4MS	2
-+#define NFSD_STATS_SVCTIME_LE16MS	3
-+#define NFSD_STATS_SVCTIME_LE64MS	4
-+#define NFSD_STATS_SVCTIME_GT64MS	5
-+#define NFSD_STATS_SVCTIME_NUM		6
-+	unsigned long	os_service_times[NFSD_STATS_SVCTIME_NUM];
- };
- 
- 
-@@ -88,6 +141,58 @@ nfsd_stats_get(nfsd_stats_hentry_t *se)
- }
- extern void nfsd_stats_put(nfsd_stats_hentry_t *se);
- 
-+extern void nfsd_stats_update_op(struct svc_rqst *rqstp, struct svc_fh *fh,
-+				 int rbucket, int wbucket, int op);
++struct nfsd_op_stats {
++	/* nothing to see here, yet */
++};
 +
-+static inline void nfsd_stats_update(struct svc_rqst *rqstp, struct svc_fh *fh,
-+				     int op)
++
++typedef struct nfsd_stats_hash		nfsd_stats_hash_t;
++typedef struct nfsd_stats_hentry	nfsd_stats_hentry_t;
++
++/* Entry in the export and client stats hashtables */
++struct nfsd_stats_hentry {
++	struct hlist_node	se_node;	/* links hash chains */
++	char			*se_name;
++	atomic_t		se_refcount;	/* 1 for each user + 1 for hash */
++#define NFSD_STATS_HENTRY_OLD	0
++	unsigned long		se_flags;
++	nfsd_stats_hash_t	*se_hash;
++	struct nfsd_op_stats	se_data;
++};
++
++/*
++ * Hashtable structure for export and client stats.
++ * Table width is chosen at boot time to scale with
++ * the size of the server.
++ */
++struct nfsd_stats_hash {
++	struct rw_semaphore	sh_sem;
++	unsigned int		sh_size;
++	unsigned int		sh_mask;
++	struct hlist_head	*sh_hash;
++	struct timer_list	sh_prune_timer;
++};
+ 
+ extern struct nfsd_stats	nfsdstats;
+ extern struct svc_stat		nfsd_svcstats;
+@@ -47,5 +78,17 @@ extern struct svc_stat		nfsd_svcstats;
+ void	nfsd_stat_init(void);
+ void	nfsd_stat_shutdown(void);
+ 
++extern nfsd_stats_hentry_t *nfsd_stats_find(nfsd_stats_hash_t *,
++					    const char *name, int len);
++static inline void
++nfsd_stats_get(nfsd_stats_hentry_t *se)
 +{
-+	nfsd_stats_update_op(rqstp, fh, -1, -1, op);
++	atomic_inc(&se->se_refcount);
++	clear_bit(NFSD_STATS_HENTRY_OLD, &se->se_flags);
 +}
-+
-+static inline int nfsd_stats_size_bucket(unsigned int size)
-+{
-+	int i = 0;
-+
-+	if (size) {
-+		size = (size-1) >> 12;	/* smallest bucket is 4K */
-+		while (i < NFSD_STATS_SIZE_NUM-1)
-+		{
-+			if (!size)
-+				break;
-+			i++;
-+			size >>= 1;
-+		}
-+	}
-+	return i;
-+}
-+
-+static inline void nfsd_stats_update_read(struct svc_rqst *rqstp,
-+					  struct svc_fh *fh,
-+					  unsigned int size)
-+{
-+	nfsd_stats_update_op(rqstp,fh,
-+			     nfsd_stats_size_bucket(size),
-+			     /*wbucket*/-1,
-+			     NFSD_STATS_OP_READ);
-+}
-+
-+static inline void nfsd_stats_update_write(struct svc_rqst *rqstp,
-+					   struct svc_fh *fh,
-+					   unsigned int size, int stable)
-+{
-+	nfsd_stats_update_op(rqstp,fh,
-+			     /*rbucket*/-1,
-+			     nfsd_stats_size_bucket(size),
-+			     (stable ? NFSD_STATS_OP_SWRITE :
-+				       NFSD_STATS_OP_AWRITE));
-+}
-+/* nfsd calls this before servicing a request */
-+void nfsd_stats_pre(struct svc_rqst *rqstp);
-+/* nfsd calls this after servicing a request */
-+void nfsd_stats_post(struct svc_rqst *rqstp);
++extern void nfsd_stats_put(nfsd_stats_hentry_t *se);
 +
 +
- 
- 
++
  #endif /* __KERNEL__ */
-Index: bfields/include/linux/sunrpc/svc.h
+ #endif /* LINUX_NFSD_STATS_H */
+Index: bfields/include/linux/nfsd/debug.h
 ===================================================================
---- bfields.orig/include/linux/sunrpc/svc.h
-+++ bfields/include/linux/sunrpc/svc.h
-@@ -290,6 +290,7 @@ struct svc_rqst {
- 	wait_queue_head_t	rq_wait;	/* synchronization */
- 	struct task_struct	*rq_task;	/* service thread */
- 	int			rq_waking;	/* 1 if thread is being woken */
-+	struct svc_time		rq_start_time;
- };
+--- bfields.orig/include/linux/nfsd/debug.h
++++ bfields/include/linux/nfsd/debug.h
+@@ -32,6 +32,7 @@
+ #define NFSDDBG_REPCACHE	0x0080
+ #define NFSDDBG_XDR		0x0100
+ #define NFSDDBG_LOCKD		0x0200
++#define NFSDDBG_STATS		0x0400
+ #define NFSDDBG_ALL		0x7FFF
+ #define NFSDDBG_NOCHANGE	0xFFFF
  
- /*
-Index: bfields/fs/nfsd/nfssvc.c
-===================================================================
---- bfields.orig/fs/nfsd/nfssvc.c
-+++ bfields/fs/nfsd/nfssvc.c
-@@ -468,8 +468,12 @@ nfsd(void *vrqstp)
- 		/* Lock the export hash tables for reading. */
- 		exp_readlock();
- 
-+		nfsd_stats_pre(rqstp);
-+
- 		svc_process(rqstp);
- 
-+		nfsd_stats_post(rqstp);
-+
- 		/* Unlock export hash tables */
- 		exp_readunlock();
- 	}
 
 --
 Greg
