@@ -1,149 +1,58 @@
-From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
-Subject: RE: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
-Date: Mon, 30 Mar 2009 18:27:58 -0700
-Message-ID: <273FE88A07F5D445824060902F70034404F26F24@SACMVEXC1-PRD.hq.netapp.com>
-References: <49D1178B.50408@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [pnfs] 3-word attributes encoding
+Date: Mon, 30 Mar 2009 21:44:39 -0400
+Message-ID: <20090331014439.GA7273@fieldses.org>
+References: <49D0D931.2060808@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "NFS list" <linux-nfs@vger.kernel.org>,
-	"pNFS Mailing List" <pnfs@linux-nfs.org>
-To: "Benny Halevy" <bhalevy@panasas.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13379 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754492AbZCaB2S convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 21:28:18 -0400
-In-Reply-To: <49D1178B.50408@panasas.com>
+Received: from mail.fieldses.org ([141.211.133.115]:59775 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752961AbZCaBou (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Mar 2009 21:44:50 -0400
+In-Reply-To: <49D0D931.2060808@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@panasas.com]
-> Sent: Monday, March 30, 2009 12:04 PM
-> To: J. Bruce Fields; Labiaga, Ricardo
-> Cc: NFS list; pNFS Mailing List
-> Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
+On Mon, Mar 30, 2009 at 05:37:37PM +0300, Benny Halevy wrote:
+> Bruce,
 > 
-> 
-> On Mar. 30, 2009, 21:33 +0300, "J. Bruce Fields"
-<bfields@fieldses.org>
-> wrote:
-> > On Sat, Mar 28, 2009 at 11:28:50AM +0300, Benny Halevy wrote:
-> >> On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields"
-<bfields@fieldses.org>
-> wrote:
-> >>> On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
-> >>>> Hi Bruce,
-> >>>>
-> >>>> Here's the latest server patches implementing the NFSv4.1
-> >>>> Sessions features.
-> >>>>
-> >>>> This patchset is based over your for-2.6.30 branch
-> >>>> and is also available from
-> >>>> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
-> >>> There's a few merge conflicts with my current for-2.6.30--probably
-my
-> >>> fault for not pushing that out recently enough, apologies.  Would
-you
-> >>> mind updating?
-> >>>
-> >>> --b.
-> >>>
-> >> Sure. Here's a rebased version with two minor changes (see below)
-> >
-> > On the latest version of nfsd41-for-2.6.30 (a564667..) I'm getting a
-new
-> NULL
-> > dereference in the callback code.  Looks like it probably happened
-while
-> > running connectathon over NFSv4.0 with krb5p.  That's all I've
-figured
-> out so
-> 
-> Weird. nfs4_xdr_dec_cb_recall+0x4e doesn't seem like a valid IP
-> for nfsd.ko @a564667.  Bruce, can you please send me you .config file?
+> As I mentioned in a reply to Trond,
+> "nfsd41: support for 3-word long attribute bitmask"
+> changes the server fattr encoding logic so it may send
+> back a bitmap of length 1, even if the client sent a
+> bitmap of length 2, if the second word of the bitmap
+> is zero.  Although I think this a valid implementation
+> and other servers may do the same, it seems sub-optimal
+> for the client's decoding of acl of fs_locations.
 
-It is indeed a valid instruction for the NFS server callback.  Recall
-that the NFS server uses the client side RPC to send and process
-replies.  nfsd4_cb_recall() initializes
-nfs4_cb_procedures[CB_RECALL].p_decode to nfs4_xdr_dec_cb_recall().
-This is later called by rpcauth_unwrap_resp() which is called by
-call_decode() when the reply to the callback arrives.
+"suboptimal" means it does some extra memcpy'ing?
+
+> It's pretty easy to revert to the old behavior on the server
+> by always returning at least two bitmap words, or, if we
+> keep the bitmap length, not just the val, in nfsd4_decode_bitmap
+> we can return a bitmap of the same length in the reply.
+
+Odd thing to have to do, but OK. --b.  
 
 > 
-> We know the current implementation is still incorrect for krb5,
-> but I don't think it's supposed to crash either.
-> Ricardo, have you run into this by any chance?
-
-I have not run into this, but I have not run this with v4.1 not compiled
-in either.  I believe you nailed the problem in the diff you provided in
-a later email.
-
-- ricardo
-
+> Let me know what you think...
+> 
+> Other than that,
+> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
+> holds version 3 of the nfsd41 patchset, rebased onto your
+> update for-2.6.30 branch, and with these cleanup patches squashed-in:
+> 
+> [PATCH 1/3] SQUASHME: get callback minorversion from fore channel's
+> [PATCH 2/3] SQUASHME: nfsd41: use nfsd4_cb_sequence for callback minorversion
+> [PATCH 3/3] SQUASHME: Revert "sunrpc: add cl_private field to struct rpc_clnt"
 > 
 > Benny
-> 
-> > far.
-> >
-> > --b.
-> >
-> > BUG: unable to handle kernel NULL pointer dereference at (null)
-> > IP: [<c03e4e1e>] nfs4_xdr_dec_cb_recall+0x4e/0x200
-> > *pde = 00000000
-> > Oops: 0000 [#1] PREEMPT
-> > last sysfs file: /sys/kernel/uevent_seqnum
-> > Modules linked in:
-> >
-> > Pid: 3949, comm: nfs4_cb_recall Not tainted
-(2.6.29-rc8-00312-ga564667
-> #39)
-> > EIP: 0060:[<c03e4e1e>] EFLAGS: 00010286 CPU: 0
-> > EIP is at nfs4_xdr_dec_cb_recall+0x4e/0x200
-> > EAX: c7bb22a0 EBX: c7bb2298 ECX: c7bb22a0 EDX: c7bb22a4
-> > ESI: 00000000 EDI: c66e3000 EBP: c5281ea4 ESP: c5281e6c
-> >  DS: 007b ES: 007b FS: 0000 GS: 0000 SS: 0068
-> > Process nfs4_cb_recall (pid: 3949, ti=c5280000 task=c66a6b60
-> task.ti=c5280000)
-> > Stack:
-> >  c66a6b60 00000000 c5281eb4 c086cab4 c0aa0380 00000001 c11bd4a4
-c7bb22a4
-> >  c66e302c c7bb22ac c66e302c 00000000 c6cf14e8 c66e3000 c5281ecc
-c08199c3
-> >  c0819aae 00000000 c5281ee8 c5281ef0 c03e4dd0 c6cf14e8 c7bb2298
-c03e4dd0
-> > Call Trace:
-> >  [<c086cab4>] ? schedule+0x354/0x540
-> >  [<c08199c3>] ? rpcauth_unwrap_resp+0x63/0x90
-> >  [<c0819aae>] ? rpcauth_checkverf+0x2e/0x70
-> >  [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
-> >  [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
-> >  [<c08122ce>] ? call_decode+0x1ae/0x820
-> >  [<c086d125>] ? out_of_line_wait_on_bit+0x65/0x80
-> >  [<c0818720>] ? rpc_wait_bit_killable+0x0/0x40
-> >  [<c03e4dd0>] ? nfs4_xdr_dec_cb_recall+0x0/0x200
-> >  [<c0818e62>] ? __rpc_execute+0x92/0x290
-> >  [<c086f4fc>] ? _spin_unlock+0x2c/0x50
-> >  [<c08186c7>] ? rpc_set_active+0x67/0x80
-> >  [<c081907e>] ? rpc_execute+0x1e/0x30
-> >  [<c08129e5>] ? rpc_run_task+0x35/0x70
-> >  [<c0812b40>] ? rpc_call_sync+0x40/0x70
-> >  [<c03e51e0>] ? nfsd4_cb_recall+0x70/0x130
-> >  [<c086cab4>] ? schedule+0x354/0x540
-> >  [<c0247d1b>] ? trace_hardirqs_on+0xb/0x10
-> >  [<c03dfd40>] ? do_recall+0x0/0x20
-> >  [<c03dfd54>] ? do_recall+0x14/0x20
-> >  [<c023941f>] ? kthread+0x3f/0x70
-> >  [<c02393e0>] ? kthread+0x0/0x70
-> >  [<c0203b67>] ? kernel_thread_helper+0x7/0x10
-> > Code: 43 00 ba 08 00 00 00 8d 45 e4 e8 0e c1 43 00 85 c0 74 3a 8b 50
-04
-> 8d 45 e4 0f ca 83 c2 04 e8 fa c0 43 00 85 c0 0f 84 8a 00 00 00 <8b> 06
-8b
-> 00 85 c0 75 32 ba 04 00 00 00 8d 45 e4 e8 cd fe ff ff
-> > EIP: [<c03e4e1e>] nfs4_xdr_dec_cb_recall+0x4e/0x200 SS:ESP
-0068:c5281e6c
-> > ---[ end trace 2724475d9856cb6c ]---
-> >
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
