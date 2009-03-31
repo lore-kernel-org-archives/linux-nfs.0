@@ -1,87 +1,114 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/47] NFSv4.1 Sessions server code for 2.6.30
-Date: Tue, 31 Mar 2009 10:04:02 +0300
-Message-ID: <49D1C062.5040900@panasas.com>
-References: <49CC40E5.2080506@panasas.com> <20090328000134.GH18222@fieldses.org> <49CDDFC2.4070402@panasas.com> <20090330183338.GE31237@fieldses.org> <49D1178B.50408@panasas.com> <20090330190710.GG31237@fieldses.org> <49D11FC7.8030007@panasas.com> <20090330211514.GL31237@fieldses.org>
+Subject: Re: [PATCH v2 04/47] nfs41: common protocol definitions
+Date: Tue, 31 Mar 2009 10:06:07 +0300
+Message-ID: <49D1C0DF.8020103@panasas.com>
+References: <49CDDFC2.4070402@panasas.com> <1238229061-8176-1-git-send-email-bhalevy@panasas.com> <20090330215457.GM31237@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ricardo Labiaga <ricardo.labiaga@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+	Mike Sager <sager@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:9248 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:16908 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751219AbZCaHEH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 03:04:07 -0400
-In-Reply-To: <20090330211514.GL31237@fieldses.org>
+	with ESMTP id S1754367AbZCaHGM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 03:06:12 -0400
+In-Reply-To: <20090330215457.GM31237@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mar. 31, 2009, 0:15 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Mon, Mar 30, 2009 at 10:38:47PM +0300, Benny Halevy wrote:
->> On Mar. 30, 2009, 22:07 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>> On Mon, Mar 30, 2009 at 10:03:39PM +0300, Benny Halevy wrote:
->>>> On Mar. 30, 2009, 21:33 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>>> On Sat, Mar 28, 2009 at 11:28:50AM +0300, Benny Halevy wrote:
->>>>>> On Mar. 28, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>>>>> On Fri, Mar 27, 2009 at 05:58:45AM +0300, Benny Halevy wrote:
->>>>>>>> Hi Bruce,
->>>>>>>>
->>>>>>>> Here's the latest server patches implementing the NFSv4.1
->>>>>>>> Sessions features.
->>>>>>>>
->>>>>>>> This patchset is based over your for-2.6.30 branch
->>>>>>>> and is also available from
->>>>>>>> git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.30
->>>>>>> There's a few merge conflicts with my current for-2.6.30--probably my
->>>>>>> fault for not pushing that out recently enough, apologies.  Would you
->>>>>>> mind updating?
->>>>>>>
->>>>>>> --b.
->>>>>>>
->>>>>> Sure. Here's a rebased version with two minor changes (see below)
->>>>> On the latest version of nfsd41-for-2.6.30 (a564667..) I'm getting a new NULL
->>>>> dereference in the callback code.  Looks like it probably happened while
->>>>> running connectathon over NFSv4.0 with krb5p.  That's all I've figured out so
->>>> Weird. nfs4_xdr_dec_cb_recall+0x4e doesn't seem like a valid IP
->>>> for nfsd.ko @a564667.  Bruce, can you please send me you .config file?
->>> I'm building without CONFIG_NFSD_V4_1 for now; .config appended.
->> It looks like rpc_res would be NULL without CONFIG_NFSD_V4_1.
->> Does the following patch help?
+On Mar. 31, 2009, 0:54 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Sat, Mar 28, 2009 at 11:31:01AM +0300, Benny Halevy wrote:
+>> Define all NFSv4.1 common operation and error code constants.
+>>
+>> Note that some of the definitions are used by both the nfs41 client
+>> and the server code. This patch is duplicated in the nfs41 and nfsd41
+>> sessions patchset.
+>>
+>> Signed-off-by: Andy Adamson<andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [nfs41: add exchange id flags]
+>> Signed-off-by: Mike Sager <sager@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [removed server-only hunk changing NFSERR_REPLAY_ME]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [nfs41: add SEQ4_XX to nfs41-common-protocol]
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [nfs41: generic error code update]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  include/linux/nfs4.h |  128 +++++++++++++++++++++++++++++++++++++++++++++++++-
+>>  1 files changed, 127 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>> index b912311..a34683e 100644
+>> --- a/include/linux/nfs4.h
+>> +++ b/include/linux/nfs4.h
+>> @@ -21,6 +21,7 @@
+>>  #define NFS4_FHSIZE		128
+>>  #define NFS4_MAXPATHLEN		PATH_MAX
+>>  #define NFS4_MAXNAMLEN		NAME_MAX
+>> +#define NFS4_MAX_SESSIONID_LEN	16
+>>  
+>>  #define NFS4_ACCESS_READ        0x0001
+>>  #define NFS4_ACCESS_LOOKUP      0x0002
+>> @@ -38,6 +39,7 @@
+>>  #define NFS4_OPEN_RESULT_CONFIRM 0x0002
+>>  #define NFS4_OPEN_RESULT_LOCKTYPE_POSIX 0x0004
+>>  
+>> +#define NFS4_SHARE_ACCESS_MASK	0x000F
+>>  #define NFS4_SHARE_ACCESS_READ	0x0001
+>>  #define NFS4_SHARE_ACCESS_WRITE	0x0002
+>>  #define NFS4_SHARE_ACCESS_BOTH	0x0003
+>> @@ -45,6 +47,19 @@
+>>  #define NFS4_SHARE_DENY_WRITE	0x0002
+>>  #define NFS4_SHARE_DENY_BOTH	0x0003
+>>  
+>> +/* nfs41 */
+>> +#define NFS4_SHARE_WANT_MASK		0xFF00
+>> +#define NFS4_SHARE_WANT_NO_PREFERENCE	0x0000
+>> +#define NFS4_SHARE_WANT_READ_DELEG	0x0100
+>> +#define NFS4_SHARE_WANT_WRITE_DELEG	0x0200
+>> +#define NFS4_SHARE_WANT_ANY_DELEG	0x0300
+>> +#define NFS4_SHARE_WANT_NO_DELEG	0x0400
+>> +#define NFS4_SHARE_WANT_CANCEL		0x0500
+>> +
+>> +#define NFS4_SHARE_WHEN_MASK		0xF0000
+>> +#define NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL	0x10000
+>> +#define NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED		0x20000
+>> +
+>>  #define NFS4_SET_TO_SERVER_TIME	0
+>>  #define NFS4_SET_TO_CLIENT_TIME	1
+>>  
+>> @@ -88,6 +103,31 @@
+>>  #define NFS4_ACE_GENERIC_EXECUTE              0x001200A0
+>>  #define NFS4_ACE_MASK_ALL                     0x001F01FF
+>>  
+>> +#define EXCHGID4_FLAG_SUPP_MOVED_REFER		0x00000001
+>> +#define EXCHGID4_FLAG_SUPP_MOVED_MIGR		0x00000002
+>> +#define EXCHGID4_FLAG_USE_NON_PNFS		0x00010000
+>> +#define EXCHGID4_FLAG_USE_PNFS_MDS		0x00020000
+>> +#define EXCHGID4_FLAG_USE_PNFS_DS		0x00040000
+>> +#define EXCHGID4_FLAG_UPD_CONFIRMED_REC_A	0x40000000
+>> +#define EXCHGID4_FLAG_CONFIRMED_R		0x80000000
+>> +/*
+>> + * Since the validity of these bits depends on whether
+>> + * they're set in the argument or response, have separate
+>> + * invalid flag masks for arg (_A) and resp (_R).
+>> + */
+>> +#define EXCHGID4_INVAL_FLAG_MASK_A		0xBFF8FFFC
+>> +#define EXCHGID4_INVAL_FLAG_MASK_R		0x7FF8FFFC
 > 
-> Yep!
+> Would it be less confusing just to use !EXCHGID_FLAG_MASK_A and
+> !EXCHGID_FLAG_MASK_R everywhere?
 
-Cool.  I'll add this as a SQUASHME patch.
+Fine with me.
+Mike, this code came from you, what do you think?
+Please Ack.  Thanks,
 
 Benny
 
 > 
 > --b.
 > 
->> Benny
->>
->> git diff --stat -p
->>  fs/nfsd/nfs4callback.c |    8 +++++---
->>  1 files changed, 5 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> index 02e0a61..10c6a80 100644
->> --- a/fs/nfsd/nfs4callback.c
->> +++ b/fs/nfsd/nfs4callback.c
->> @@ -441,9 +441,11 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
->>  	status = decode_cb_compound_hdr(&xdr, &hdr);
->>  	if (status)
->>  		goto out;
->> -	status = decode_cb_sequence(&xdr, rpc_res->res_seq, rqstp);
->> -	if (status)
->> -		goto out;
->> +	if (rpc_res && rpc_res->res_seq) {
->> +		status = decode_cb_sequence(&xdr, rpc_res->res_seq, rqstp);
->> +		if (status)
->> +			goto out;
->> +	}
->>  	status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
->>  out:
->>  	return status;
->>
