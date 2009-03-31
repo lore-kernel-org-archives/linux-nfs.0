@@ -1,58 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] 3-word attributes encoding
-Date: Tue, 31 Mar 2009 15:42:15 -0400
-Message-ID: <20090331194215.GE20756@fieldses.org>
-References: <49D0D931.2060808@panasas.com> <20090331014439.GA7273@fieldses.org> <49D26298.6070507@panasas.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: lookup_one_len() returning d_count == 0
+Date: Tue, 31 Mar 2009 15:40:04 -0400
+Message-ID: <49D27194.50201@RedHat.com>
+References: <49CE2C59.7040102@RedHat.com> <1238261492.6679.9.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:55056 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752717AbZCaTmR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 15:42:17 -0400
-In-Reply-To: <49D26298.6070507@panasas.com>
+Received: from mx2.redhat.com ([66.187.237.31]:43909 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752866AbZCaTm6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Mar 2009 15:42:58 -0400
+In-Reply-To: <1238261492.6679.9.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 31, 2009 at 09:36:08PM +0300, Benny Halevy wrote:
-> On Mar. 31, 2009, 4:44 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Mon, Mar 30, 2009 at 05:37:37PM +0300, Benny Halevy wrote:
-> >> Bruce,
-> >>
-> >> As I mentioned in a reply to Trond,
-> >> "nfsd41: support for 3-word long attribute bitmask"
-> >> changes the server fattr encoding logic so it may send
-> >> back a bitmap of length 1, even if the client sent a
-> >> bitmap of length 2, if the second word of the bitmap
-> >> is zero.  Although I think this a valid implementation
-> >> and other servers may do the same, it seems sub-optimal
-> >> for the client's decoding of acl of fs_locations.
-> > 
-> > "suboptimal" means it does some extra memcpy'ing?
-> 
-> Yes, I believe so.
-> 
-> > 
-> >> It's pretty easy to revert to the old behavior on the server
-> >> by always returning at least two bitmap words, or, if we
-> >> keep the bitmap length, not just the val, in nfsd4_decode_bitmap
-> >> we can return a bitmap of the same length in the reply.
-> > 
-> > Odd thing to have to do, but OK. --b.  
-> 
-> What would you prefer to do?
-> Revert to old behavior by returning at least two bitmap words
-> or use the args bitmap length for encoding the res?
+Trond Myklebust wrote:
+> My guess is that the dentry is being dput() twice somewhere, and so ends
+> up with a d_count==-1. I'd suggest adding a
+> BUG_ON(atomic_read(&dentry->d_count) <= 0) after the 'repeat:' label at
+> the top of dput() in order to try to catch the culprit.
+Thanks for the tip... that worked like a charm... 
 
-Whichever requires the least code?  I don't know.
-
-If the client really needs this, then it needs to be agreed on by more
-than just the linux server.  It's unfortunate if making this arbitrary
-undocumented choice of result encoding makes a significant difference to
-the client's performance.
-
---b.
+steved.
