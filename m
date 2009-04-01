@@ -1,164 +1,126 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH v2 21/47] nfsd41: nfsd DRC logic
-Date: Wed, 1 Apr 2009 15:10:55 -0400
-Message-ID: <20090401191055.GE8899@fieldses.org>
-References: <49CDDFC2.4070402@panasas.com> <1238229164-10922-1-git-send-email-bhalevy@panasas.com> <20090331193044.GD20756@fieldses.org> <89c397150904011201j3cc19794x4a017d4e97bcd8f5@mail.gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 12995] New: NFS mount from avr32 platform
+ crashes on 2.6.29
+Date: Wed, 1 Apr 2009 12:41:13 -0700
+Message-ID: <20090401124113.9026ea09.akpm@linux-foundation.org>
+References: <bug-12995-10286@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
+To: brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:50851 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933228AbZDATK6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 15:10:58 -0400
-In-Reply-To: <89c397150904011201j3cc19794x4a017d4e97bcd8f5-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56341 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S934198AbZDATok (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 15:44:40 -0400
+In-Reply-To: <bug-12995-10286-V0hAGp6uBxO456/isadD/XN4h3HLQggn@public.gmane.org/>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 01, 2009 at 03:01:53PM -0400, William A. (Andy) Adamson wrote:
-> On Tue, Mar 31, 2009 at 3:30 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Sat, Mar 28, 2009 at 11:32:44AM +0300, Benny Halevy wrote:
-> >> From: Andy Adamson <andros@netapp.com>
-> >>
-> >> Replay a request in nfsd4_sequence.
-> >> Add a minorversion to struct nfsd4_compound_state.
-> >>
-> >> Pass the current slot to nfs4svc_encode_compound res via struct
-> >> nfsd4_compoundres to set an NFSv4.1 DRC entry.
-> >>
-> >> Signed-off-by: Andy Adamson<andros@netapp.com>
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> [nfsd41: use bool inuse for slot state]
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> ---
-> >>  fs/nfsd/nfs4proc.c        |    7 +++++++
-> >>  fs/nfsd/nfs4state.c       |    6 ++++++
-> >>  fs/nfsd/nfs4xdr.c         |   13 +++++++++++++
-> >>  include/linux/nfsd/xdr4.h |    1 +
-> >>  4 files changed, 27 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> >> index e703ac2..bdbeb87 100644
-> >> --- a/fs/nfsd/nfs4proc.c
-> >> +++ b/fs/nfsd/nfs4proc.c
-> >> @@ -920,6 +920,12 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
-> >>                       BUG_ON(op->status == nfs_ok);
-> >>
-> >>  encode_op:
-> >> +             /* Only from SEQUENCE or CREATE_SESSION */
-> >> +             if (resp->cstate.status == nfserr_replay_cache) {
-> >> +                     dprintk("%s NFS4.1 replay from cache\n", __func__);
-> >> +                     status = op->status;
-> >> +                     goto out;
-> >> +             }
-> >>               if (op->status == nfserr_replay_me) {
-> >>                       op->replay = &cstate->replay_owner->so_replay;
-> >>                       nfsd4_encode_replay(resp, op);
-> >> @@ -948,6 +954,7 @@ encode_op:
-> >>               status = nfserr_jukebox;
-> >>       }
-> >>
-> >> +     resp->cstate.status = status;
-> >>       fh_put(&resp->cstate.current_fh);
-> >>       fh_put(&resp->cstate.save_fh);
-> >>       BUG_ON(resp->cstate.replay_owner);
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >> index f0ce639..07c869d 100644
-> >> --- a/fs/nfsd/nfs4state.c
-> >> +++ b/fs/nfsd/nfs4state.c
-> >> @@ -997,6 +997,8 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp)
-> >>       }
-> >>
-> >>       resp->rqstp->rq_resused = entry->ce_resused;
-> >> +     resp->opcnt = entry->ce_opcnt;
-> >> +     resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
-> >>       status = entry->ce_status;
-> >>
-> >>       return status;
-> >> @@ -1217,6 +1219,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >>       status = check_slot_seqid(seq->seqid, slot);
-> >>       if (status == nfserr_replay_cache) {
-> >>               cstate->slot = slot;
-> >> +             /* Return the cached reply status and set cstate->status
-> >> +              * for nfsd4_svc_encode_compoundres processing*/
-> >> +             status = nfsd4_replay_cache_entry(resp);
-> >> +             cstate->status = nfserr_replay_cache;
-> >>               goto replay_cache;
-> >>       }
-> >>       if (status)
-> >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> >> index c6b490e..57afb33 100644
-> >> --- a/fs/nfsd/nfs4xdr.c
-> >> +++ b/fs/nfsd/nfs4xdr.c
-> >> @@ -3059,6 +3059,19 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
-> >>               iov = &rqstp->rq_res.head[0];
-> >>       iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
-> >>       BUG_ON(iov->iov_len > PAGE_SIZE);
-> >> +#ifdef CONFIG_NFSD_V4_1
-> >> +     if (resp->cstate.slot != NULL) {
-> >> +             if (resp->cstate.status == nfserr_replay_cache) {
-> >> +                     iov->iov_len = resp->cstate.iovlen;
-> >> +             } else {
-> >> +                     nfsd4_set_cache_entry(resp);
-> >> +                     dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
-> >> +                     resp->cstate.slot->sl_inuse = 0;
-> >> +             }
-> >> +             if (resp->cstate.slot->sl_session)
-> >
-> > There's no way that sl_session could ever be NULL, so this check is
-> > unneeded.
-> 
-> There should have been a comment.
-> CREATE_SESSION sets cstate->slot using the nfs4_client->cl_slot, a
-> single slot which it uses for the CREATE_SESSION replay cache. It does
-> not have a session.
 
-Hm.  In that case, there's no reference count on the client that holds
-the cl_slot structure, so is there anything preventing the cl_slot from
-being freed out from under us  by a concurrent expire_client()?
+(switched to email.  Please respond via emailed reply-to-all, not via the
+bugzilla web interface).
 
-If that's correct: I'm not sure how to solve that problem with a minimum
-of special-casing.
+On Wed, 1 Apr 2009 12:31:51 GMT
+bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org wrote:
 
---b.
+> http://bugzilla.kernel.org/show_bug.cgi?id=12995
+> 
+>            Summary: NFS mount from avr32 platform crashes on 2.6.29
+>            Product: File System
+>            Version: 2.5
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: normal
+>           Priority: P1
+>          Component: NFS
+>         AssignedTo: trond.myklebust@fys.uio.no
+>         ReportedBy: brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org
+>         Regression: No
+> 
+> 
+> The problem turns out to be in the recent(ish) changes in lockd.
+> 
+> Specifically this struct definition
+> 
+> struct nsm_handle {
+>         struct list_head        sm_link;
+>         atomic_t                sm_count;
+>         char                    *sm_mon_name;
+>         char                    *sm_name;
+>         struct sockaddr_storage sm_addr;
+>         size_t                  sm_addrlen;
+>         unsigned int            sm_monitored : 1,
+>                                 sm_sticky : 1;  /* don't unmonitor */
+>         struct nsm_private      sm_priv;
+>         char                    sm_addrbuf[NSM_ADDRBUF];
+> };
+> 
+> results in my avr32 compiler (and my ia64 compiler) in aligning the sm_priv
+> structure (which is a char array) on an odd boundary. The subsequent use
+> of this field typecast to a u64 (nsm_init_private) as part of an nfs mount
+> causes a crash with unaligned access.
+> 
+> The compiler only allocates *one byte* to the two bit bitfield.
+> Moving the bitfield to the end of the structure fixes the problem in my case.
+> It seems to me that one should be very careful with typecasting this sm_priv
+> data to anything with larger alignment but especially to a 64 bit type since
+> (at least on a 64 bit system) this may demand 64 bit alignment.
+> 
+> In any case it looks like (with newer gcc at least) that bitfields are
+> extremely dangerous.
+> 
+> Perhaps the solution is to malloc the nsm_private data and sm_priv is then a
+> pointer to this data. This would guarantee the correct alignment.
+> 
 
-> 
-> 
-> >
-> > While we're at it: let's just eliminate the sl_session pointer from the
-> > slot.  I think all that would be needed would be a pointer to the
-> > session from the cstate, in addition to the pointer to the slot.
-> 
-> OK.
-> 
-> >
-> > --b.
-> >
-> >> +                     nfsd4_put_session(resp->cstate.slot->sl_session);
-> >> +     }
-> >> +#endif /* CONFIG_NFSD_V4_1 */
-> >>       return 1;
-> >>  }
-> >>
-> >> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-> >> index cde8947..5c0d376 100644
-> >> --- a/include/linux/nfsd/xdr4.h
-> >> +++ b/include/linux/nfsd/xdr4.h
-> >> @@ -51,6 +51,7 @@ struct nfsd4_compound_state {
-> >>       /* For sessions DRC */
-> >>       struct nfsd4_slot       *slot;
-> >>       __be32                  *statp;
-> >> +     size_t                  iovlen;
-> >>       u32                     status;
-> >>  };
-> >>
-> >> --
-> >> 1.6.2.1
-> >>
-> > _______________________________________________
-> > pNFS mailing list
-> > pNFS@linux-nfs.org
-> > http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
-> >
+nsm_private is:
+
+struct nsm_private {
+	unsigned char		data[SM_PRIV_SIZE];
+};
+
+so the compiler is permitted to byte-align this.
+
+I assume that some code somewhere is accessing this with a
+larger-than-one-byte typecast?
+
+(Your bug report isn't complete - if it had included the trace then I'd
+know where the crash is occurring!)
+
+If so then something like this:
+
+--- a/include/linux/lockd/xdr.h~a
++++ a/include/linux/lockd/xdr.h
+@@ -9,6 +9,7 @@
+ #ifndef LOCKD_XDR_H
+ #define LOCKD_XDR_H
+ 
++#include <linux/compiler.h>
+ #include <linux/fs.h>
+ #include <linux/nfs.h>
+ #include <linux/sunrpc/xdr.h>
+@@ -16,9 +17,10 @@
+ #define SM_MAXSTRLEN		1024
+ #define SM_PRIV_SIZE		16
+ 
++/* suitable comment about the __aligned goes here */
+ struct nsm_private {
+ 	unsigned char		data[SM_PRIV_SIZE];
+-};
++} __aligned(sizeof(unsigned long));
+ 
+ struct svc_rqst;
+ 
+would be an appropriate fix, as it actually expresses what's going on.
+
+If you agree then please cook up and test a patch?
+
+Please send the patch via email - we very much try to avoid merging
+patches out of bugzilla.
+
+Thanks.
