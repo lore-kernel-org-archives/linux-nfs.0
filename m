@@ -1,128 +1,119 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 5/6] nfs-utils: when TIRPC is enabled,
-	use new API to create RPC client
-Date: Wed,  1 Apr 2009 10:24:04 -0400
-Message-ID: <1238595845-2186-6-git-send-email-jlayton@redhat.com>
-References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 12995] New: NFS mount from avr32 platform
+ crashes on 2.6.29
+Date: Wed, 1 Apr 2009 13:07:26 -0700
+Message-ID: <20090401130726.8a305e43.akpm@linux-foundation.org>
+References: <bug-12995-10286@http.bugzilla.kernel.org/>
+	<20090401124113.9026ea09.akpm@linux-foundation.org>
+	<AD89F6AE-DD50-4D8E-9C94-A403E9AFFC8C@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org, bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org, okir@suse.de,
+	linux-nfs@vger.kernel.org, stable@kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:37200 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755411AbZDAUMl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 16:12:41 -0400
+In-Reply-To: <AD89F6AE-DD50-4D8E-9C94-A403E9AFFC8C@oracle.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we add IPv6 code, we'll need to use the newer API to create
-the rpc client. Add a new rpc client creation function that's
-conditionally compiled in whenever TIRPC is enabled.
+(cc stable)
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/gssd/gssd_proc.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 76 insertions(+), 0 deletions(-)
+On Wed, 1 Apr 2009 15:50:51 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index b88b0c6..2d7b58d 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -537,6 +537,81 @@ out_err:
- 	return -1;
- }
+> >>
+> >> Perhaps the solution is to malloc the nsm_private data and sm_priv  
+> >> is then a
+> >> pointer to this data. This would guarantee the correct alignment.
+> >>
+> >
+> > nsm_private is:
+> >
+> > struct nsm_private {
+> > 	unsigned char		data[SM_PRIV_SIZE];
+> > };
+> >
+> > so the compiler is permitted to byte-align this.
+> >
+> > I assume that some code somewhere is accessing this with a
+> > larger-than-one-byte typecast?
+> 
+> nsm_init_private().
+> 
+> A patch just went upstream for 2.6.30 that addresses that
+
+commit ad5b365c1266b0c9e8e254a3c1cc4ef66bf33cba
+Author:     Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
+AuthorDate: Sat Mar 28 19:55:20 2009 +0000
+Commit:     Trond Myklebust <Trond.Myklebust@netapp.com>
+CommitDate: Wed Apr 1 13:24:14 2009 -0400
+
+    NSM: Fix unaligned accesses in nsm_init_private()
+    
+    This fixes unaligned accesses in nsm_init_private() when
+    creating nlm_reboot keys.
+    
+    Signed-off-by: Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
+    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 5e2c4d5..6d5d4a4 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -16,6 +16,8 @@
+ #include <linux/sunrpc/svc.h>
+ #include <linux/lockd/lockd.h>
  
-+#ifdef HAVE_LIBTIRPC
-+static CLIENT *
-+create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
-+{
-+	CLIENT			*rpc_clnt = NULL;
-+	char			rpc_errmsg[1024];
-+	int			sendsz = 32768, recvsz = 32768;
-+	struct netconfig	*nc = NULL;
-+	struct netbuf		nb;
-+	const struct timeval	timeout = {5, 0};
-+	void 			*handle = NULL;
-+	char			*nc_protofmly;
-+	struct protoent		*proto;
-+	sa_family_t		af = ((struct sockaddr *) &clp->addr)->sa_family;
++#include <asm/unaligned.h>
 +
-+	proto = getprotobynumber(protocol);
-+	if (proto == NULL) {
-+		printerr(0, "ERROR: can't resolve %d to protocol\n",
-+			 protocol);
-+		goto out;
-+	}
-+
-+	switch(af) {
-+	case AF_INET:
-+		nc_protofmly = NC_INET;
-+		nb.len = nb.maxlen = sizeof(struct sockaddr_in);
-+		break;
-+	default:
-+		printerr(0, "ERROR: unsupported address family %hd\n", af);
-+		goto out;
-+	}
-+
-+	handle = setnetconfig();
-+	while ((nc = getnetconfig(handle)) != NULL) {
-+
-+		if (nc->nc_protofmly != NULL &&
-+		    strcmp(nc->nc_protofmly, nc_protofmly) != 0)
-+			continue;
-+		if (nc->nc_proto != NULL &&
-+		    strcmp(nc->nc_proto, proto->p_name) != 0)
-+			continue;
-+
-+		break;
-+	}
-+
-+	if (!nc) {
-+		printerr(0, "ERROR: unable to find netconfig entry for "
-+			    "addr family %hd and proto %d\n",
-+			    af, protocol);
-+		goto out;
-+	}
-+
-+	nb.buf = &clp->addr;
-+
-+	rpc_clnt = clnt_tli_create(RPC_ANYFD, nc, &nb, clp->prog, clp->vers,
-+				   sendsz, recvsz);
-+	if (!rpc_clnt) {
-+		snprintf(rpc_errmsg, sizeof(rpc_errmsg),
-+			 "ERROR: unable to create %s RPC client for %s with "
-+			 "uid %d", clp->protocol, clp->servername, uid);
-+		printerr(0, "%s\n", clnt_spcreateerror(rpc_errmsg));
-+		goto out;
-+	}
-+
-+	/* set retry timeout for connectionless transports */
-+	if (nc->nc_semantics == NC_TPI_CLTS)
-+		clnt_control(rpc_clnt, CLSET_RETRY_TIMEOUT, (void *) &timeout);
-+out:
-+	if (handle)
-+		endnetconfig(handle);
-+	return rpc_clnt;
-+}
-+
-+#else  /* HAVE_LIBTIRPC */
-+
- static CLIENT *
- create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
+ #define NSM_PROGRAM		100024
+ #define NSM_VERSION		1
+@@ -274,10 +276,12 @@ static void nsm_init_private(struct nsm_handle *nsm)
  {
-@@ -582,6 +657,7 @@ create_rpc_client(struct clnt_info *clp, int protocol, uid_t uid)
+ 	u64 *p = (u64 *)&nsm->sm_priv.data;
+ 	struct timespec ts;
++	s64 ns;
  
- 	return rpc_clnt;
+ 	ktime_get_ts(&ts);
+-	*p++ = timespec_to_ns(&ts);
+-	*p = (unsigned long)nsm;
++	ns = timespec_to_ns(&ts);
++	put_unaligned(ns, p);
++	put_unaligned((unsigned long)nsm, p + 1);
  }
-+#endif /* HAVE_LIBTIRPC */
  
- /*
-  * Determine the port from the servicename and set the right field in the
--- 
-1.6.0.6
+ static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
+
+Is this the best way of fixing it?  We'll crash again if some other
+code starts to access .data with non-byte-sized accesses.  What makes
+this especially risky is that the code will pass testing on x86.
+
+__aligned would be one way.  But it would be far far cleaner to just do
+
+
+--- a/include/linux/lockd/xdr.h~a
++++ a/include/linux/lockd/xdr.h
+@@ -17,7 +17,7 @@
+ #define SM_PRIV_SIZE		16
+ 
+ struct nsm_private {
+-	unsigned char		data[SM_PRIV_SIZE];
++	u64 data[SM_PRIV_SIZE/sizeof(u64)];
+ };
+ 
+ struct svc_rqst;
+
+all the typecasting and the put_unaligned()s just go away then.
+
+> but did not mention that it fixed an oops.
+
+That was a fairly significant failing.  Guys, please please do remember
+that we're also maintaining the stable kernels.  When merging a patch
+please always think whether it needs to be backported.
+
