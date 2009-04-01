@@ -1,64 +1,80 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] 3-word attributes encoding
-Date: Wed, 1 Apr 2009 12:19:44 -0400
-Message-ID: <20090401161944.GE5018@fieldses.org>
-References: <49D0D931.2060808@panasas.com> <20090331014439.GA7273@fieldses.org> <49D26298.6070507@panasas.com> <20090331194215.GE20756@fieldses.org> <49D27672.9060007@panasas.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] Please pull the first batch of NFS client changes
+ (and cachefs merge)...
+Date: Wed, 1 Apr 2009 09:43:13 -0700 (PDT)
+Message-ID: <alpine.LFD.2.00.0904010935000.4130@localhost.localdomain>
+References: <1238522824.6577.5.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	dhowells@redhat.com
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:34451 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756057AbZDAQTs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 12:19:48 -0400
-In-Reply-To: <49D27672.9060007@panasas.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48203 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756723AbZDAQrE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 12:47:04 -0400
+In-Reply-To: <1238522824.6577.5.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 31, 2009 at 11:00:50PM +0300, Benny Halevy wrote:
-> On Mar. 31, 2009, 22:42 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Tue, Mar 31, 2009 at 09:36:08PM +0300, Benny Halevy wrote:
-> >> On Mar. 31, 2009, 4:44 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>> On Mon, Mar 30, 2009 at 05:37:37PM +0300, Benny Halevy wrote:
-> >>>> Bruce,
-> >>>>
-> >>>> As I mentioned in a reply to Trond,
-> >>>> "nfsd41: support for 3-word long attribute bitmask"
-> >>>> changes the server fattr encoding logic so it may send
-> >>>> back a bitmap of length 1, even if the client sent a
-> >>>> bitmap of length 2, if the second word of the bitmap
-> >>>> is zero.  Although I think this a valid implementation
-> >>>> and other servers may do the same, it seems sub-optimal
-> >>>> for the client's decoding of acl of fs_locations.
-> >>> "suboptimal" means it does some extra memcpy'ing?
-> >> Yes, I believe so.
-> >>
-> >>>> It's pretty easy to revert to the old behavior on the server
-> >>>> by always returning at least two bitmap words, or, if we
-> >>>> keep the bitmap length, not just the val, in nfsd4_decode_bitmap
-> >>>> we can return a bitmap of the same length in the reply.
-> >>> Odd thing to have to do, but OK. --b.  
-> >> What would you prefer to do?
-> >> Revert to old behavior by returning at least two bitmap words
-> >> or use the args bitmap length for encoding the res?
-> > 
-> > Whichever requires the least code?  I don't know.
-> 
-> The former seems simpler to code.
-> 
-> > 
-> > If the client really needs this, then it needs to be agreed on by more
-> > than just the linux server.  It's unfortunate if making this arbitrary
-> > undocumented choice of result encoding makes a significant difference to
-> > the client's performance.
-> 
-> I think that currently it affects only getacl and I have no measurements
-> of to what extent the effect of performance is.
 
-I'd rather just not worry about it.  If it turns out to be a problem
-then we can try to figure out a less fragile solution.
 
---b.
+On Tue, 31 Mar 2009, Trond Myklebust wrote:
+> 
+> Please pull from the "for-linus" branch of the repository at
+> 
+>    git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git for-linus
+
+I _really_ want fscache to come with way more Acked-by's etc. 
+
+So no, I'm not going to pull this. I want a lot more than just
+
+	Signed-off-by: David Howells <dhowells@redhat.com>
+
+on the 100+ lines of changes to the VM. I want the VM people pinged and 
+asked whether it's ok.
+
+And I also have a stupid trivial complaint:
+
+WTF is up with absolutely inane crap like this:
+
+>  fs/cachefiles/cf-bind.c                           |  286 +++++++
+>  fs/cachefiles/cf-daemon.c                         |  754 ++++++++++++++++++
+>  fs/cachefiles/cf-interface.c                      |  449 +++++++++++
+>  fs/cachefiles/cf-internal.h                       |  360 +++++++++
+>  fs/cachefiles/cf-key.c                            |  159 ++++
+>  fs/cachefiles/cf-main.c                           |  106 +++
+>  fs/cachefiles/cf-namei.c                          |  772 +++++++++++++++++++
+>  fs/cachefiles/cf-proc.c                           |  134 ++++
+>  fs/cachefiles/cf-rdwr.c                           |  853 +++++++++++++++++++++
+>  fs/cachefiles/cf-security.c                       |  116 +++
+>  fs/cachefiles/cf-xattr.c                          |  291 +++++++
+...
+>  fs/fscache/fsc-cache.c                            |  415 ++++++++++
+>  fs/fscache/fsc-cookie.c                           |  498 ++++++++++++
+>  fs/fscache/fsc-fsdef.c                            |  144 ++++
+>  fs/fscache/fsc-histogram.c                        |  109 +++
+>  fs/fscache/fsc-internal.h                         |  380 +++++++++
+>  fs/fscache/fsc-main.c                             |  124 +++
+>  fs/fscache/fsc-netfs.c                            |  103 +++
+>  fs/fscache/fsc-object.c                           |  810 +++++++++++++++++++
+>  fs/fscache/fsc-operation.c                        |  459 +++++++++++
+>  fs/fscache/fsc-page.c                             |  771 +++++++++++++++++++
+>  fs/fscache/fsc-proc.c                             |   68 ++
+>  fs/fscache/fsc-stats.c                            |  212 +++++
+
+What the hell is that "cf-" and "fsc-" prefix? We don't do single-level 
+naming crud. It's already in a directory hierarchy, why the _hell_ does it 
+then add some idiotic extra prefix that is just a (very inferior) copy of 
+that hierarchy?
+
+If you want to write "fscache", write it out. Don't do "fsc". And do it as 
+a directory. But then even an idiot would see that calling it 
+fs/fscache/fscache/proc.c is a bit redundant. So why do you call it 
+fs/fscache/fsc-proc.c?
+
+Gaah. Naming is a bid deal for me, and the above is just crap.
+
+			Linus
