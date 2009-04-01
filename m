@@ -1,160 +1,231 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 28/47] nfsd41: check encode size for sessions
-	maxresponse cached
-Date: Wed, 1 Apr 2009 17:54:44 -0400
-Message-ID: <20090401215444.GG8899@fieldses.org>
-References: <49CDDFC2.4070402@panasas.com> <1238229218-11143-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [PATCH v2 40/47] nfsd41: cb_sequence callback
+Date: Wed, 1 Apr 2009 18:49:32 -0400
+Message-ID: <20090401224932.GJ8899@fieldses.org>
+References: <49CDDFC2.4070402@panasas.com> <1238229281-11516-1-git-send-email-bhalevy@panasas.com> <20090401043932.GC29339@fieldses.org> <49D3293D.6060002@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:32882 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:42312 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934508AbZDAVyt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 17:54:49 -0400
-In-Reply-To: <1238229218-11143-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1753919AbZDAWtd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 18:49:33 -0400
+In-Reply-To: <49D3293D.6060002@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 28, 2009 at 11:33:38AM +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Wed, Apr 01, 2009 at 11:43:41AM +0300, Benny Halevy wrote:
+> On Apr. 01, 2009, 7:39 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Sat, Mar 28, 2009 at 11:34:41AM +0300, Benny Halevy wrote:
+> >> From: Andy Adamson <andros@netapp.com>
+> >>
+> >> Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
+> >>
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> [Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
+> >> Signed-off-by: Andy Adamson <andros@netapp.com>
+> >> [fixed indentation]
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> ---
+> >>  fs/nfsd/nfs4callback.c     |  118 ++++++++++++++++++++++++++++++++++++++++++++
+> >>  include/linux/nfsd/state.h |    7 ++-
+> >>  2 files changed, 124 insertions(+), 1 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >> index 6b7ef87..7ada6b1 100644
+> >> --- a/fs/nfsd/nfs4callback.c
+> >> +++ b/fs/nfsd/nfs4callback.c
+> >> @@ -255,6 +255,29 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec,
+> >>  	hdr->nops++;
+> >>  }
+> >>  
+> >> +static void
+> >> +encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
+> >> +		   struct nfs4_cb_compound_hdr *hdr)
+> >> +{
+> >> +	__be32 *p;
+> >> +
+> >> +	if (hdr->minorversion == 0)
+> >> +		return;
+> >> +
+> >> +	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
+> >> +
+> >> +	WRITE32(OP_CB_SEQUENCE);
+> >> +#ifdef CONFIG_NFSD_V4_1
+> >> +	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
+> >> +	WRITE32(args->cbs_clp->cl_cb_seq_nr);
+> >> +#endif /* CONFIG_NFSD_V4_1 */
+> > 
+> > This whole function should be under CONFIG_NFSD_V4_1.
 > 
-> Calculate the space the compound response has taken after encoding the current
-> operation.
-> 
-> pad: add on 8 bytes for the next operation's op_code and status so that
-> there is room to cache a failure on the next operation.
+> Right.  I wonder how it got to this state.
+> Will fix.
 
-Looks like setattr always has a bitmap regardless of status, so that
-should be at least 12.  There might be some other odd case like that
-too--someone should look through the xdr and check.
+Thanks.  I'm more curious about the mutex question.
 
-> Compare this length to the session se_fmaxresp_cached and return
-> nfserr_rep_too_big_to_cache if the length is too large.
-> 
-> Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
-> will be at least a page and will therefore hold the xdr_buf head.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> [nfsd41: non-page DRC for solo sequence responses]
-> [fixed nfsd4_check_drc_limit cosmetics]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4xdr.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 58 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index a2682e8..52ca833 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3089,6 +3089,61 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->  #endif /* CONFIG_NFSD_V4_1 */
->  };
->  
-> +#if defined(CONFIG_NFSD_V4_1)
-> +/*
-> + * Calculate the total amount of memory that the compound response has taken
-> + * after encoding the current operation.
-> + *
-> + * pad: add on 8 bytes for the next operation's op_code and status so that
-> + * there is room to cache a failure on the next operation.
-> + *
-> + * Compare this length to the session se_fmaxresp_cached.
-> + *
-> + * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
-> + * will be at least a page and will therefore hold the xdr_buf head.
-> + */
-> +static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
-> +{
-> +	int status = 0;
-
-Note that status and the return value should be __be32.
-
-Ditto for anything holding an nfs error or the server side.  I haven't
-been checking for this as I've been reading these.
-
-Probably we should be running sparse regularly (install it, then build
-the kernel with 'make C=1' or 'C=2')--I think it checks for this.
-
-> +	struct xdr_buf *xb = &resp->rqstp->rq_res;
-> +	struct nfsd4_compoundargs *args = resp->rqstp->rq_argp;
-> +	struct nfsd4_session *session = NULL;
-> +	struct nfsd4_slot *slot = resp->cstate.slot;
-> +	u32 length, tlen = 0, pad = 8;
-> +
-> +	if (!nfsd4_has_session(&resp->cstate))
-> +		return status;
-> +
-> +	session = slot->sl_session;
-> +	if (session == NULL || slot->sl_cache_entry.ce_cachethis == 0)
-> +		return status;
-> +
-> +	if (resp->opcnt >= args->opcnt)
-> +		pad = 0; /* this is the last operation */
-> +
-> +	if (xb->page_len == 0) {
-> +		length = (char *)resp->p - (char *)xb->head[0].iov_base + pad;
-> +	} else {
-> +		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
-> +			tlen = (char *)resp->p - (char *)xb->tail[0].iov_base;
-> +
-> +		length = xb->head[0].iov_len + xb->page_len + tlen + pad;
-> +	}
-> +	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
-> +		length, xb->page_len, tlen, pad);
-> +
-> +	if (length <= session->se_fmaxresp_cached)
-> +		return status;
-> +	else
-> +		return nfserr_rep_too_big_to_cache;
-> +}
-> +#else /* CONFIG_NFSD_V4_1 */
-> +static inline int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
-> +{
-> +	return 0;
-> +}
-> +#endif /* CONFIG_NFSD_V4_1 */
-> +
->  void
->  nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
->  {
-> @@ -3105,6 +3160,9 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
->  	BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
->  	       !nfsd4_enc_ops[op->opnum]);
->  	op->status = nfsd4_enc_ops[op->opnum](resp, op->status, &op->u);
-> +	/* nfsd4_check_drc_limit guarantees enough room for error status */
-> +	if (!op->status && nfsd4_check_drc_limit(resp))
-
-Hm, but note you aren't actually using the return value from
-nfsd4_check_drc_limit().
-
-> +		op->status = nfserr_rep_too_big_to_cache;
-
-This means you can end up writing the error after you've already encoded
-a succesful reply.  That doesn't work--the result will be invalid xdr.
-
-I think there's no alternative but to estimate the size of the result
-before actually performing the operation, because once we decide to
-process an operation which the client has asked us to cache, we're
-committed to caching the result.
-
-Maybe add a field to struct nfsd4_operation consisting of a function
-like
-
-	estimate_reply_size(void *arg)
-
-which does the calculation for each op.  Or maybe there's some clever
-way to avoid duplicating a lot of information that's already implicit in
-the xdr-encoding routines.
-
-Am I missing something?
+But I'm inclined to defer the callback changes to 2.6.31, so that's not
+urgent.
 
 --b.
 
->  status:
->  	/*
->  	 * Note: We write the status directly, instead of using WRITE32(),
-> -- 
-> 1.6.2.1
 > 
+> Benny
+> 
+> > 
+> >> +	WRITE32(0);		/* slotid, always 0 */
+> >> +	WRITE32(0);		/* highest slotid always 0 */
+> >> +	WRITE32(0);		/* cachethis always 0 */
+> >> +	WRITE32(0); /* FIXME: support referring_call_lists */
+> >> +	hdr->nops++;
+> >> +}
+> >> +
+> >>  static int
+> >>  nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+> >>  {
+> >> @@ -319,6 +342,69 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
+> >>  	return 0;
+> >>  }
+> >>  
+> >> +/*
+> >> + * Our current back channel implmentation supports a single backchannel
+> >> + * with a single slot.
+> >> + */
+> >> +static int
+> >> +decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+> >> +		   struct rpc_rqst *rqstp)
+> >> +{
+> >> +	struct nfs4_callback *cb =
+> >> +		(struct nfs4_callback *)rqstp->rq_task->tk_client->cl_private;
+> >> +	struct nfs4_sessionid id;
+> >> +	int status;
+> >> +	u32 dummy;
+> >> +	__be32 *p;
+> >> +
+> >> +	if (cb->cb_minorversion == 0)
+> >> +		return 0;
+> >> +
+> >> +	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
+> >> +	if (status)
+> >> +		return status;
+> >> +
+> >> +	/*
+> >> +	 * If the server returns different values for sessionID, slotID or
+> >> +	 * sequence number, the server is looney tunes.
+> >> +	 */
+> >> +	status = -ESERVERFAULT;
+> >> +
+> >> +	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
+> >> +	COPYMEM(id.data, NFS4_MAX_SESSIONID_LEN);
+> >> +#ifdef CONFIG_NFSD_V4_1
+> >> +	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
+> >> +		   NFS4_MAX_SESSIONID_LEN)) {
+> >> +		dprintk("%s Invalid session id\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	READ32(dummy);
+> >> +	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
+> >> +		dprintk("%s Invalid sequence number\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +#endif /* CONFIG_NFSD_V4_1 */
+> > 
+> > Ditto.
+> > 
+> >> +	READ32(dummy); 	/* slotid must be 0 */
+> >> +	if (dummy != 0) {
+> >> +		dprintk("%s Invalid slotid\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	READ32(dummy); 	/* highest slotid must be 0 */
+> >> +	if (dummy != 0) {
+> >> +		dprintk("%s Invalid highest slotid\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	READ32(dummy); 	/* target highest slotid must be 0 */
+> >> +	if (dummy != 0) {
+> >> +		dprintk("%s Invalid target highest slotid\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	status = 0;
+> >> +out:
+> >> +	return status;
+> >> +}
+> >> +
+> >> +
+> >>  static int
+> >>  nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+> >>  {
+> >> @@ -503,6 +589,38 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+> >>  	return;
+> >>  }
+> >>  
+> >> +#if defined(CONFIG_NFSD_V4_1)
+> >> +/*
+> >> + * FIXME: cb_sequence should support referring call lists, cachethis, and
+> >> + * multiple slots
+> >> + */
+> >> +static int
+> >> +nfs41_cb_sequence_setup(struct nfs4_client *clp, struct nfsd4_cb_sequence *args)
+> >> +{
+> >> +	u32 *ptr = (u32 *)clp->cl_sessionid.data;
+> >> +
+> >> +	dprintk("%s: %u:%u:%u:%u\n", __func__,
+> >> +		ptr[0], ptr[1], ptr[2], ptr[3]);
+> >> +
+> >> +	mutex_lock(&clp->cl_cb_mutex);
+> > 
+> > We shouldn't be holding a mutex across a callback.  Why is this needed?
+> > 
+> > --b.
+> > 
+> >> +	args->cbs_clp = clp;
+> >> +	clp->cl_cb_seq_nr++;
+> >> +	return 0;
+> >> +}
+> >> +
+> >> +static void
+> >> +nfs41_cb_sequence_done(struct nfs4_client *clp, struct nfsd4_cb_sequence *res)
+> >> +{
+> >> +	u32 *ptr = (u32 *)clp->cl_sessionid.data;
+> >> +
+> >> +	dprintk("%s: %u:%u:%u:%u\n", __func__,
+> >> +		ptr[0], ptr[1], ptr[2], ptr[3]);
+> >> +
+> >> +	/* FIXME: support multiple callback slots */
+> >> +	mutex_unlock(&clp->cl_cb_mutex);
+> >> +}
+> >> +#endif /* CONFIG_NFSD_V4_1 */
+> >> +
+> >>  /*
+> >>   * called with dp->dl_count inc'ed.
+> >>   */
+> >> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> >> index f2783d4..0ea8c89 100644
+> >> --- a/include/linux/nfsd/state.h
+> >> +++ b/include/linux/nfsd/state.h
+> >> @@ -61,6 +61,10 @@ typedef struct {
+> >>  #define si_stateownerid   si_opaque.so_stateownerid
+> >>  #define si_fileid         si_opaque.so_fileid
+> >>  
+> >> +struct nfsd4_cb_sequence {
+> >> +	/* args/res */
+> >> +	struct nfs4_client	*cbs_clp;
+> >> +};
+> >>  
+> >>  struct nfs4_cb_recall {
+> >>  	u32			cbr_ident;
+> >> @@ -195,7 +199,8 @@ struct nfs4_client {
+> >>  	struct nfsd4_slot	cl_slot;	/* create_session slot */
+> >>  	u32			cl_exchange_flags;
+> >>  	struct nfs4_sessionid	cl_sessionid;
+> >> -
+> >> +	/* We currently support a single back channel with a single slot */
+> >> +	u32			cl_cb_seq_nr;
+> >>  	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
+> >>  	struct mutex		cl_cb_mutex;
+> >>  #endif /* CONFIG_NFSD_V4_1 */
+> >> -- 
+> >> 1.6.2.1
+> >>
