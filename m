@@ -1,42 +1,36 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH 1/4] VFS: Add a VFS helper function
-	vfs_remote_path_lookup()
-Date: Wed, 1 Apr 2009 03:15:54 +0100
-Message-ID: <20090401021554.GV28946@ZenIV.linux.org.uk>
-References: <cover.1238525532.git.Trond.Myklebust@netapp.com> <3f1264127d431f695be25b940b477e3d287edc68.1238525532.git.Trond.Myklebust@netapp.com>
+From: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
+Subject: Re: [patch 00/29] SGI enhancedNFS patches
+Date: Wed, 1 Apr 2009 14:32:00 +1100
+Message-ID: <ac442c870903312032t34630c6dvdbb644cb510f8079@mail.gmail.com>
+References: <20090331202800.739621000@sgi.com>
+	 <20090401002306.GC26583@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, hch@infradead.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Greg Banks <gnb@sgi.com>, Linux NFS ML <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:33175 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753339AbZDACQA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 22:16:00 -0400
-In-Reply-To: <3f1264127d431f695be25b940b477e3d287edc68.1238525532.git.Trond.Myklebust@netapp.com>
+Received: from rv-out-0506.google.com ([209.85.198.232]:32675 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754628AbZDADcC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Mar 2009 23:32:02 -0400
+Received: by rv-out-0506.google.com with SMTP id f9so3368194rvb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2009 20:32:00 -0700 (PDT)
+In-Reply-To: <20090401002306.GC26583@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 11, 2009 at 03:50:33PM -0400, Trond Myklebust wrote:
-> The purpose of this patch is to improve the mount path lookup support for
-> filesystems such as NFSv4, which require you to look up a mount path
-> string in a remote server's namespace.
-> 
-> Traversing such a path is pretty much identical to walking a local path,
-> in that it may involve following symlinks and even following referrals to
-> volumes that reside on other servers. Since the standard VFS path lookup
-> code already supports all these features (using in-kernel automounts for
-> following referrals) it would be nice to be able to reuse that code rather
-> than special case the mount path lookup in the NFS client.
-> 
-> This patch therefore defines a VFS helper function that sets up a temporary
-> mount namespace to represent the server namespace, and has the current
-> task pivot into that prior to doing the path lookup. Upon completion, it
-> pivots back into the original namespace, and destroys the private one.
+On Wed, Apr 1, 2009 at 11:23 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Apr 01, 2009 at 07:28:00AM +1100, Greg Banks wrote:
 
-NAK.  You are relying on too many things about caller (e.g. just what happens
-if you have shared fs_struct?  Does caller guarantee it won't happen?), so
-that's a bloody bad interface.  Open-code that sucker, then let's see what
-to do with surrounding code.  As it stands - no.
+>> Bruce: all of these are potentially candidates for 2.6.30.
+>
+> It's probably too late for 2.6.30 (the 4.1 stuff I've promised to try to
+> make a serious attempt at, but that's it).  I'll publish a for-2.6.31
+> branch as soon as I can....  (But of course anything that looks like a
+> bugfix I'll keep considering for 2.6.30.)
+
+No worries.  I figured as much, but the patches really did need to be
+posted this week.
+
+-- 
+Greg.
