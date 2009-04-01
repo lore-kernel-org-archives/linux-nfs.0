@@ -1,53 +1,76 @@
-From: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
-Subject: Re: [patch 00/29] SGI enhancedNFS patches
-Date: Wed, 1 Apr 2009 17:41:34 +1100
-Message-ID: <ac442c870903312341v77876650ye996a25931cddaa@mail.gmail.com>
-References: <20090331202800.739621000@sgi.com>
-	 <20090401002306.GC26583@fieldses.org>
-	 <ac442c870903312032t34630c6dvdbb644cb510f8079@mail.gmail.com>
-	 <49D30B04.900@garzik.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
+Date: Wed, 01 Apr 2009 11:31:21 +0300
+Message-ID: <49D32659.8040207@panasas.com>
+References: <49CDDFC2.4070402@panasas.com> <1238229069-8636-1-git-send-email-bhalevy@panasas.com> <20090401043301.GA29339@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Greg Banks <gnb@sgi.com>,
-	Linux NFS ML <linux-nfs@vger.kernel.org>
-To: Jeff Garzik <jeff@garzik.org>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.228]:37142 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755864AbZDAGlg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 02:41:36 -0400
-Received: by rv-out-0506.google.com with SMTP id f9so3453791rvb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Mar 2009 23:41:34 -0700 (PDT)
-In-Reply-To: <49D30B04.900@garzik.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:15004 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753469AbZDAIbZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Apr 2009 04:31:25 -0400
+In-Reply-To: <20090401043301.GA29339@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 1, 2009 at 5:34 PM, Jeff Garzik <jeff@garzik.org> wrote:
-> Greg Banks wrote:
->>
->> On Wed, Apr 1, 2009 at 11:23 AM, J. Bruce Fields <bfields@fieldses.org>
->> wrote:
->>>
->>> On Wed, Apr 01, 2009 at 07:28:00AM +1100, Greg Banks wrote:
->>
->>>> Bruce: all of these are potentially candidates for 2.6.30.
->>>
->>> It's probably too late for 2.6.30 (the 4.1 stuff I've promised to try to
->>> make a serious attempt at, but that's it).  I'll publish a for-2.6.31
->>> branch as soon as I can....  (But of course anything that looks like a
->>> bugfix I'll keep considering for 2.6.30.)
->>
->> No worries.  I figured as much, but the patches really did need to be
->> posted this week.
->
-> So, what is enhancedNFS?  Does enhancedNFS comply with current RFCs, or
-> deviate?
->
-> What features does it add?
+On Apr. 01, 2009, 7:33 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Sat, Mar 28, 2009 at 11:31:09AM +0300, Benny Halevy wrote:
+>> Added CONFIG_NFSD_V4_1 and made it depend upon NFSD_V4 and EXPERIMENTAL
+>> Indicate that CONFIG_NFS_V4_1 is for NFS developers at the moment
+> 
+> Stupid question: do we need CONFIG_NFSD_V4_1 at all?  How many people
+> will want to build a kernel with v4.0 but not v4.1?
 
-It uses the same protocols.  The server is faster and more scalable
-and has more statistics to drive the web-based management UI.  The
-name is perhaps poorly chosen.
+That's a good question.  I'd love to get rid of it
+and it seems like like distros, at least RH are going to have it
+configured-in anyway.
 
--- 
-Greg.
+If the main reason to turn 4.1 support off is bugs affecting 4.0
+then I'd much rather fix these bugs rather than hide them.
+
+> 
+> (And: do we have an interface that allows turning off 4.1 at run-time?
+> That's more important than the config option.)
+
+No, it's still on our todo list.  We haven't thought this completely
+through, though.  Where would be the best place to implement that?
+Should this be an export option or an nfsd tunable?
+
+Benny
+
+> 
+> --b.
+> 
+>> At the moment we're expecting folks trying out nfs41 to
+>> actively participate in the development process by helping us
+>> debug issues and ideally send patches to fix problems.
+>>
+>> [trailing space fixed]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/Kconfig |    9 +++++++++
+>>  1 files changed, 9 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+>> index 503b9da..1f2f893 100644
+>> --- a/fs/nfsd/Kconfig
+>> +++ b/fs/nfsd/Kconfig
+>> @@ -79,3 +79,12 @@ config NFSD_V4
+>>  	  available from http://linux-nfs.org/.
+>>  
+>>  	  If unsure, say N.
+>> +
+>> +config NFSD_V4_1
+>> +	bool "NFS server support for NFSv4.1 (DEVELOPER ONLY)"
+>> +	depends on NFSD_V4 && EXPERIMENTAL
+>> +	help
+>> +	  This option enables support for minor version 1 of the NFSv4 protocol
+>> +	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS server.
+>> +
+>> +	  Unless you're an NFS developer, say N.
+>> -- 
+>> 1.6.2.1
+>>
