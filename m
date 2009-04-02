@@ -1,58 +1,124 @@
-From: Miles Bader <miles-mXXj517/zsQ@public.gmane.org>
-Subject: Re: [GIT PULL] Please pull the first batch of NFS client changes (and cachefs merge)...
-Date: Thu, 02 Apr 2009 13:33:40 +0900
-Message-ID: <buoprfv8yjf.fsf@dhlpc061.dev.necel.com>
-References: <alpine.LFD.2.00.0904010935000.4130@localhost.localdomain>
-	<1238522824.6577.5.camel@heimdal.trondhjem.org>
-	<19756.1238606665@redhat.com>
-Reply-To: Miles Bader <miles-mXXj517/zsQ@public.gmane.org>
+From: Suresh Jayaraman <sjayaraman@suse.de>
+Subject: [PATCH] nfs: add support for splice writes
+Date: Thu, 02 Apr 2009 11:51:40 +0530
+Message-ID: <49D45974.2060202@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds
-	<public-torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>,
-	Trond Myklebust
-	<public-Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>,
-	public-linux-nfs-u79uwXL29TY76Z2rM5mHXA-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org,
-	Linux Kernel Mailing List
-	<public-linux-kernel-u79uwXL29TY76Z2rM5mHXA-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>
-To: David Howells
-	<public-dhowells-H+wXaHxf7aLQT0dZR+AlfA-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, mathieu.desnoyers-scC8bbJcJLCw5LPnMra/2Q@public.gmane.org,
+	linux-embedded@vger.kernel.org, compudj-vdFpqfd5riKZ9vWoFJJngh2eb7JE58TQ@public.gmane.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	ltt-dev-33AaDErTWvBVxDZ2/Zk0YoryAYyacSEB@public.gmane.org
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from blaine.gmane.org ([80.91.229.8]:56204 "EHLO hugh.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751369AbZDBEl1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2009 00:41:27 -0400
-Received: from public by hugh.gmane.org with local (Exim 4.63)
-	(envelope-from <public-z5DuStaUktnZ+VzJOa5vwg@public.gmane.org>)
-	id 1LpEjv-0001XB-1I
-	for linux-nfs@vger.kernel.org; Thu, 02 Apr 2009 06:41:19 +0200
-In-Reply-To: <19756.1238606665@redhat.com> (David Howells's message of "Wed,
-	01 Apr 2009 18:24:25 +0100")
+Received: from victor.provo.novell.com ([137.65.250.26]:37444 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755825AbZDBGVw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 02:21:52 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch attempts to add splice writes support. In essence, it just
+calls generic_file_splice_write() after doing a little sanity check.
+This would allow LTTng users that are using NFS to store trace data.
+There could be more applications that could be benefitted too.
 
+I have tested this using the Jens' test program and have found no
+real issues. The test program is inlined below:
 
+/*
+ * splice-out.c: Splice stdout to file
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
-David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA-XMD5yJDbdMReXY1tMh2IBg@public.gmane.org> writes:
->> What the hell is that "cf-" and "fsc-" prefix?
->
-> One editor with many files open all of the same base name (namei.c, proc.c,
-> security.c, xattr.c, page.c for example).
+#define SPLICE_SIZE (64*1024)
 
-If it's emacs, try enabling `uniquify', e.g.:
+int main(int argc, char *argv[])
+{
+        int fd;
 
-   M-x load-library RET uniquify RET
-   M-x customize-variable RET uniquify-buffer-name-style RET
+        if (argc < 2) {
+                printf("%s: outfile\n", argv[0]);
+                return 1;
+        }
 
-It will name your buffers nicely incorporating enough of the leading
-path to make them unique.
+        fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0) {
+                perror("open");
+                return 1;
+        }
 
-[I like the `post-forward' style myself...]
+        do {
+                int ret = splice(STDIN_FILENO, NULL, fd, NULL, SPLICE_SIZE, 0);
 
--Miles
+                if (ret < 0) {
+                        perror("splice");
+                        break;
+                } else if (ret < SPLICE_SIZE)
+                        break;
+        } while (1);
 
--- 
-Inhumanity, n. One of the signal and characteristic qualities of humanity.
+        close(fd);
+        return 0;
+}
 
+Compile with -D _GNU_SOURCE and do something like:
+	echo "some stuff" | ./splice-out <outfile>
+
+Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+---
+ fs/nfs/file.c |   24 ++++++++++++++++++++++++
+ 1 files changed, 24 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 90f292b..13d6a00 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -47,6 +47,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
+ 					size_t count, unsigned int flags);
+ static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
++static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
++					struct file *filp, loff_t *ppos,
++					size_t count, unsigned int flags);
+ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
+ static int  nfs_file_flush(struct file *, fl_owner_t id);
+@@ -76,6 +79,7 @@ const struct file_operations nfs_file_operations = {
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+ 	.splice_read	= nfs_file_splice_read,
++	.splice_write	= nfs_file_splice_write,
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= nfs_setlease,
+ };
+@@ -550,6 +554,26 @@ out_swapfile:
+ 	goto out;
+ }
+ 
++static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
++				     struct file *filp, loff_t *ppos,
++				     size_t count, unsigned int flags)
++{
++	struct dentry *dentry = filp->f_path.dentry;
++	struct inode *inode = dentry->d_inode;
++
++	dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
++		dentry->d_parent->d_name.name, dentry->d_name.name,
++		(unsigned long) count, (unsigned long long) *ppos);
++
++	if (IS_SWAPFILE(inode)) {
++		printk(KERN_INFO "NFS: attempt to write to active swap"
++		       "file!\n");
++		return -EBUSY;
++	}
++
++	return generic_file_splice_write(pipe, filp, ppos, count, flags);
++}
++
+ static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
 
