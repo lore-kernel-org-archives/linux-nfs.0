@@ -1,83 +1,173 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
-Date: Thu, 2 Apr 2009 14:46:29 -0400
-Message-ID: <20090402184629.GF5560@fieldses.org>
-References: <20090402142256.GF24124@fieldses.org> <1238682355.6191.6.camel@heimdal.trondhjem.org> <20090402143141.GG24124@fieldses.org> <49D4E915.40705@panasas.com> <20090402165427.GA32533@fieldses.org> <49D4F9BE.3010102@panasas.com> <49D4FB68.20502@panasas.com> <20090402175517.GA5560@fieldses.org> <20090402175806.GB5560@fieldses.org> <49D506DD.8040705@panasas.com>
+Subject: Re: [PATCH v2 40/47] nfsd41: cb_sequence callback
+Date: Thu, 2 Apr 2009 14:51:07 -0400
+Message-ID: <20090402185107.GG5560@fieldses.org>
+References: <49CDDFC2.4070402@panasas.com> <1238229281-11516-1-git-send-email-bhalevy@panasas.com> <20090401043932.GC29339@fieldses.org> <49D47B9C.9030502@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:34119 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:51514 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753149AbZDBSqe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 14:46:34 -0400
-In-Reply-To: <49D506DD.8040705@panasas.com>
+	with ESMTP id S1758890AbZDBSvJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 14:51:09 -0400
+In-Reply-To: <49D47B9C.9030502@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 02, 2009 at 09:41:33PM +0300, Benny Halevy wrote:
-> On Apr. 02, 2009, 20:58 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Thu, Apr 02, 2009 at 01:55:17PM -0400, bfields wrote:
-> >> On Thu, Apr 02, 2009 at 08:52:40PM +0300, Benny Halevy wrote:
-> >>> On Apr. 02, 2009, 20:45 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
-> >>>> On Apr. 02, 2009, 19:54 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>>> On Thu, Apr 02, 2009 at 07:34:29PM +0300, Benny Halevy wrote:
-> >>>>>> On Apr. 02, 2009, 17:31 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>>>>> On Thu, Apr 02, 2009 at 10:25:55AM -0400, Trond Myklebust wrote:
-> >>>>>>>> On Thu, 2009-04-02 at 10:22 -0400, J. Bruce Fields wrote:
-> >>>>>>>>> On Thu, Apr 02, 2009 at 10:16:40AM -0400, Trond Myklebust wrote:
-> >>>>>>>>>> On Thu, 2009-04-02 at 16:46 +0300, Benny Halevy wrote:
-> >>>>>>>>>>> Trond, please speak up if you want to remove CONFIG_NFS_V4_1 as well.
-> >>>>>>>>>>> On the client side minorversion 1 will be used only if the user
-> >>>>>>>>>>> explicitly asked for it with mount -o minorversion=1.
-> >>>>>>>>>> I'd feel more comfortable with being able to compile it out until the
-> >>>>>>>>>> stability of the code has been established. I'd certainly want to be
-> >>>>>>>>>> able to do that on the server side, since it has no other means to
-> >>>>>>>>>> restrict the protocol version should it turn out that NFSv4.1 has some
-> >>>>>>>>>> fatal condition.
-> >>>>>>>>> I think it's acceptable given an interface that allows choosing the
-> >>>>>>>>> supported minorversion at runtime (and that defaults 4.1 to off).
-> >>>>>>>> Is there such an interface on the server?
-> >>>>>>> That's the patch Benny just posted.  It seems like a pretty simple
-> >>>>>>> extension of the existing version-choosing interface
-> >>>>>>> (/proc/fs/nfsd/versions), though I think the version he posted defaults
-> >>>>>>> 4.1 to on?  I need to take another look.
-> >>>>>> That's right.  This can be changed trivially,
-> >>>>>> but I'll have to find and work the reason why the settings reset on
-> >>>>>> service nfs restart, otherwise it will reset itself.
-> >>>>> Maybe you're starting and stopping the server using distro init scripts
-> >>>>> that load and unload the nfsd module?
-> >>>> I'm using redhat's /etc/init.d/nfs
-> >>>> My impression was that it doesn't unload the nfsd module when the service
-> >>>> is stopped.  However it does run modprobe on "start".  I wonder if that's
-> >>>> causing the module to reload.
-> >>> Hmm, after "stop" nfsd is up and must stay up to keep serving
-> >>> /proc/fs/nfsd/versions.
-> >>>
-> >>> Giving modprobe the --first-time option reports:
-> >>> FATAL: Module nfsd already in kernel.
-> >> Yeah, actually, /proc/fs/nfsd/versions is probably getting written
-> >> somewhere in there.  That may be the effect of the --no-nfs-version
-> >> mountd argument.
+On Thu, Apr 02, 2009 at 11:47:24AM +0300, Benny Halevy wrote:
+> On Apr. 01, 2009, 7:39 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Sat, Mar 28, 2009 at 11:34:41AM +0300, Benny Halevy wrote:
+> >> From: Andy Adamson <andros@netapp.com>
+> >>
+> >> Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
+> >>
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> [Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
+> >> Signed-off-by: Andy Adamson <andros@netapp.com>
+> >> [fixed indentation]
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> ---
+> >>  fs/nfsd/nfs4callback.c     |  118 ++++++++++++++++++++++++++++++++++++++++++++
+> >>  include/linux/nfsd/state.h |    7 ++-
+> >>  2 files changed, 124 insertions(+), 1 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >> index 6b7ef87..7ada6b1 100644
+> >> --- a/fs/nfsd/nfs4callback.c
+> >> +++ b/fs/nfsd/nfs4callback.c
+> >> @@ -255,6 +255,29 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec,
+> >>  	hdr->nops++;
+> >>  }
+> >>  
+> >> +static void
+> >> +encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
+> >> +		   struct nfs4_cb_compound_hdr *hdr)
+> >> +{
+> >> +	__be32 *p;
+> >> +
+> >> +	if (hdr->minorversion == 0)
+> >> +		return;
+> >> +
+> >> +	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
+> >> +
+> >> +	WRITE32(OP_CB_SEQUENCE);
+> >> +#ifdef CONFIG_NFSD_V4_1
+> >> +	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
+> >> +	WRITE32(args->cbs_clp->cl_cb_seq_nr);
+> >> +#endif /* CONFIG_NFSD_V4_1 */
 > > 
-> > Whoops, sorry, rpc.nfsd: it should be the --no-nfs-version argument to
-> > rpc.nfsd.  See nfssvc_versbits() in nfs-utils/support/nfs/nfssvc.c.
+> > This whole function should be under CONFIG_NFSD_V4_1.
+> > 
+> >> +	WRITE32(0);		/* slotid, always 0 */
+> >> +	WRITE32(0);		/* highest slotid always 0 */
+> >> +	WRITE32(0);		/* cachethis always 0 */
+> >> +	WRITE32(0); /* FIXME: support referring_call_lists */
+> >> +	hdr->nops++;
+> >> +}
+> >> +
+> >>  static int
+> >>  nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+> >>  {
+> >> @@ -319,6 +342,69 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
+> >>  	return 0;
+> >>  }
+> >>  
+> >> +/*
+> >> + * Our current back channel implmentation supports a single backchannel
+> >> + * with a single slot.
+> >> + */
+> >> +static int
+> >> +decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+> >> +		   struct rpc_rqst *rqstp)
+> >> +{
+> >> +	struct nfs4_callback *cb =
+> >> +		(struct nfs4_callback *)rqstp->rq_task->tk_client->cl_private;
+> >> +	struct nfs4_sessionid id;
+> >> +	int status;
+> >> +	u32 dummy;
+> >> +	__be32 *p;
+> >> +
+> >> +	if (cb->cb_minorversion == 0)
+> >> +		return 0;
+> >> +
+> >> +	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
+> >> +	if (status)
+> >> +		return status;
+> >> +
+> >> +	/*
+> >> +	 * If the server returns different values for sessionID, slotID or
+> >> +	 * sequence number, the server is looney tunes.
+> >> +	 */
+> >> +	status = -ESERVERFAULT;
+> >> +
+> >> +	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
+> >> +	COPYMEM(id.data, NFS4_MAX_SESSIONID_LEN);
+> >> +#ifdef CONFIG_NFSD_V4_1
+> >> +	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
+> >> +		   NFS4_MAX_SESSIONID_LEN)) {
+> >> +		dprintk("%s Invalid session id\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	READ32(dummy);
+> >> +	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
+> >> +		dprintk("%s Invalid sequence number\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +#endif /* CONFIG_NFSD_V4_1 */
+> > 
+> > Ditto.
+> > 
+> >> +	READ32(dummy); 	/* slotid must be 0 */
+> >> +	if (dummy != 0) {
+> >> +		dprintk("%s Invalid slotid\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	READ32(dummy); 	/* highest slotid must be 0 */
+> >> +	if (dummy != 0) {
+> >> +		dprintk("%s Invalid highest slotid\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	READ32(dummy); 	/* target highest slotid must be 0 */
+> >> +	if (dummy != 0) {
+> >> +		dprintk("%s Invalid target highest slotid\n", __func__);
+> >> +		goto out;
+> >> +	}
+> >> +	status = 0;
+> >> +out:
+> >> +	return status;
+> >> +}
+> >> +
+> >> +
+> >>  static int
+> >>  nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+> >>  {
+> >> @@ -503,6 +589,38 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+> >>  	return;
+> >>  }
+> >>  
+> >> +#if defined(CONFIG_NFSD_V4_1)
+> >> +/*
+> >> + * FIXME: cb_sequence should support referring call lists, cachethis, and
+> >> + * multiple slots
+> >> + */
+> >> +static int
+> >> +nfs41_cb_sequence_setup(struct nfs4_client *clp, struct nfsd4_cb_sequence *args)
+> >> +{
+> >> +	u32 *ptr = (u32 *)clp->cl_sessionid.data;
+> >> +
+> >> +	dprintk("%s: %u:%u:%u:%u\n", __func__,
+> >> +		ptr[0], ptr[1], ptr[2], ptr[3]);
+> >> +
+> >> +	mutex_lock(&clp->cl_cb_mutex);
+> > 
+> > We shouldn't be holding a mutex across a callback.  Why is this needed?
 > 
-> OK. I see that now.
-> It looks like rpc.nfsd's command line syntax is all negative.
-> I.e. all versions are on by default and they can be turned off
-> using the -N option.  I can either add an option to enable minorversion
-> or have it enabled by default and add an option to disable it.
+> Just a simple way to limit concurrency to 1 and not deal with
+> multiple slots on the callback path.
 
-I'm not a big fan of that commandline syntax--seems to me it should give
-a range rather than a list of versions not to support.
-
-For now the important thing is that the kernel default minorversion 1 to
-off.  We can worry about what rpc.nfsd should do later--I guess a
-commandline option to turn on specific minor versions would work....
-Maybe allow --nfs-version as well as --no-nfs-version?
+OK.  We should work out some sort of asynchronous equivalent.  How is
+the client side currently waiting on slots?
 
 --b.
