@@ -1,77 +1,152 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 37/67] nfs41: lock sequence setup/done support
-Date: Thu,  2 Apr 2009 16:55:46 +0300
-Message-ID: <1238680546-14559-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 41/67] nfs41 write sequence setup done support
+Date: Thu,  2 Apr 2009 16:56:31 +0300
+Message-ID: <1238680591-14684-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:30562 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:2072 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754967AbZDBNz6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:55:58 -0400
+	with ESMTP id S1755168AbZDBN4j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:56:39 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Separate nfs4_lock calls from nfs41: sequence setup/done support
+Separate write calls from nfs41: sequence setup/done support
+
+Implement the write rpc_call_prepare method for
+asynchronuos nfs rpcs, call nfs41_setup_sequence from
+respective rpc_call_validate_args methods.
+
 Call nfs4_sequence_done from respective rpc_call_done methods.
 
 Note that we need to pass a pointer to the nfs_server in calls data
 for passing on to nfs4_sequence_done.
 
-Signed-off-by: Andy Adamson<andros@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 [pnfs: client data server write validate and release]
-[use nfs4_sequence_done_free_slot]
-Signed-off-by: Andy Adamson<andros@umich.edu>
+Signed-off-by: Andy Adamson <andros@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[move the nfs4_sequence_free_slot call in nfs_readpage_retry from]
+[nfs41: separate free slot from sequence done
+Signed-off-by: Andy Adamson <andros@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: Support sessions with O_DIRECT.]
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: nfs4_sequence_free_slot use nfs_client for data server]
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |    8 ++++++++
- 1 files changed, 8 insertions(+), 0 deletions(-)
+ fs/nfs/direct.c   |    3 +++
+ fs/nfs/internal.h |    3 +++
+ fs/nfs/nfs4proc.c |    4 ++++
+ fs/nfs/write.c    |   22 ++++++++++++++++++++++
+ 4 files changed, 32 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index c8c53a0..1955bfe 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -676,6 +676,9 @@ out_unlock:
+ }
+ 
+ static const struct rpc_call_ops nfs_write_direct_ops = {
++#if defined(CONFIG_NFS_V4_1)
++	.rpc_call_prepare = nfs_write_prepare,
++#endif /* CONFIG_NFS_V4_1 */
+ 	.rpc_call_done = nfs_direct_write_result,
+ 	.rpc_release = nfs_direct_write_release,
+ };
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 988c8b9..f62bc52 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -209,6 +209,9 @@ extern int nfs4_path_walk(struct nfs_server *server,
+ /* read.c */
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ 
++/* write.c */
++extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
++
+ /* nfs4proc.c */
+ extern int _nfs4_call_sync(struct nfs_server *server,
+ 			   struct rpc_message *msg,
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8654a96..9f1da6c 100644
+index a3e19e9..ba8e419 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3691,6 +3691,7 @@ struct nfs4_lockdata {
- 	unsigned long timestamp;
- 	int rpc_status;
- 	int cancelled;
-+	struct nfs_server *server;
- };
+@@ -2890,6 +2890,10 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	struct inode *inode = data->inode;
+ 	
++	/* slot is freed in nfs_writeback_done */
++	nfs4_sequence_done(NFS_SERVER(inode), &data->res.seq_res,
++			   task->tk_status);
++
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
+ 		rpc_restart_call(task);
+ 		return -EAGAIN;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 035e6fb..195fe76 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -25,6 +25,7 @@
+ #include "delegation.h"
+ #include "internal.h"
+ #include "iostat.h"
++#include "nfs4_fs.h"
  
- static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
-@@ -3718,6 +3719,7 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 	p->res.lock_seqid = p->arg.lock_seqid;
- 	p->res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
- 	p->lsp = lsp;
-+	p->server = server;
- 	atomic_inc(&lsp->ls_count);
- 	p->ctx = get_nfs_open_context(ctx);
- 	memcpy(&p->fl, fl, sizeof(p->fl));
-@@ -3747,6 +3749,9 @@ static void nfs4_lock_prepare(struct rpc_task *task, void *calldata)
- 	} else
- 		data->arg.new_lock_owner = 0;
- 	data->timestamp = jiffies;
-+	if (nfs4_setup_sequence(data->server->nfs_client, &data->arg.seq_args,
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -1050,7 +1051,23 @@ out:
+ 	nfs_writedata_release(calldata);
+ }
+ 
++#if defined(CONFIG_NFS_V4_1)
++void nfs_write_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs_write_data *data = calldata;
++	struct nfs_client *clp = (NFS_SERVER(data->inode))->nfs_client;
++
++	if (nfs4_setup_sequence(clp, &data->args.seq_args,
 +				&data->res.seq_res, 1, task))
 +		return;
- 	rpc_call_start(task);
- 	dprintk("%s: done!, ret = %d\n", __func__, data->rpc_status);
- }
-@@ -3757,6 +3762,9 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
- 
- 	dprintk("%s: begin!\n", __func__);
- 
-+	nfs4_sequence_done_free_slot(data->server, &data->res.seq_res,
-+				     task->tk_status);
++	rpc_call_start(task);
++}
++#endif /* CONFIG_NFS_V4_1 */
 +
- 	data->rpc_status = task->tk_status;
- 	if (RPC_ASSASSINATED(task))
- 		goto out;
+ static const struct rpc_call_ops nfs_write_partial_ops = {
++#if defined(CONFIG_NFS_V4_1)
++	.rpc_call_prepare = nfs_write_prepare,
++#endif /* CONFIG_NFS_V4_1 */
+ 	.rpc_call_done = nfs_writeback_done_partial,
+ 	.rpc_release = nfs_writeback_release_partial,
+ };
+@@ -1113,6 +1130,9 @@ remove_request:
+ }
+ 
+ static const struct rpc_call_ops nfs_write_full_ops = {
++#if defined(CONFIG_NFS_V4_1)
++	.rpc_call_prepare = nfs_write_prepare,
++#endif /* CONFIG_NFS_V4_1 */
+ 	.rpc_call_done = nfs_writeback_done_full,
+ 	.rpc_release = nfs_writeback_release_full,
+ };
+@@ -1195,6 +1215,8 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		/* Can't do anything about it except throw an error. */
+ 		task->tk_status = -EIO;
+ 	}
++	nfs4_sequence_free_slot(NFS_SERVER(data->inode)->nfs_client,
++				&data->res.seq_res);
+ 	return 0;
+ }
+ 
 -- 
 1.6.2.1
 
