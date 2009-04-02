@@ -1,416 +1,229 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 46/67] nfs41: create_session operation
-Date: Thu,  2 Apr 2009 16:57:20 +0300
-Message-ID: <1238680640-14841-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 44/67] nfs41: exchange_id operation
+Date: Thu,  2 Apr 2009 16:56:54 +0300
+Message-ID: <1238680614-14778-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:31461 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:26903 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758330AbZDBN50 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:57:26 -0400
+	with ESMTP id S1758716AbZDBN5O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:57:14 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-Implement the create_session operation conforming to
+Implement the exchange_id operation conforming to
 http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
 
-Set the real fore channel max operations to preserve server resources.
-Note: If the server returns < NFS4_MAX_OPS, the client will very soon
-get an NFS4ERR_TOO_MANY_OPS. A later patch will handle this.
+Unlike NFSv4.0, NFSv4.1 requires machine credentials. RPC_AUTH_GSS machine
+credentials will be passed into the kernel at mount time to be available for
+the exchange_id operation.
 
-Set the max_rqst_sz and max_resp_sz to PAGE_SIZE - we preallocate the buffers.
+RPC_AUTH_UNIX root mounts can use the UNIX root credential. Store the root
+credential in the nfs_client struct.
 
-Set the back channel max_resp_sz_cached to zero to force the client to
-always set csa_cachethis to FALSE because the current implementation
-of the back channel DRC only supports caching the CB_SEQUENCE operation.
+Without a credential, NFSv4.1 state renewal fails.
 
-The client back channel server supports one slot, and desires 2 operations
-per compound.
-
-Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+[nfs41: establish clientid via exchange id only if cred != NULL]
 Signed-off-by: Andy Adamson<andros@umich.edu>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: remove extraneous rpc_clnt pointer]
-Use the struct nfs_client cl_rpcclient.
+[nfsd41: move nfstime4 from under CONFIG_NFS_V4_1]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: nfs4_init_channel_attrs, just use nfs41_create_session_args]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: use rsize and wsize for session channel attributes]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: set channel max operations]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: set back channel attributes]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: obliterate nfs4_adjust_channel_attrs]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: have create_session work on nfs_client]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: move CONFIG_NFS_V4_1 endif]
+[nfs41: do not wait a lease time in exchange id]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 [nfs41: pass *session in seq_args and seq_res]
-[moved nfs4_init_slot_table definition here]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: use kcalloc to allocate slot table]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c       |  172 ++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c        |  189 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |   10 +++
- include/linux/nfs_xdr.h |   12 +++
- 4 files changed, 383 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c          |   61 +++++++++++++++++++
+ fs/nfs/nfs4xdr.c           |  141 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h       |    1 +
+ include/linux/nfs_fs_sb.h  |    6 ++
+ include/linux/nfs_xdr.h    |   43 +++++++++++++
+ include/linux/nfsd/state.h |    1 -
+ 6 files changed, 252 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 926a9d6..4381939 100644
+index ffdc7e8..1391ce1 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -54,6 +54,7 @@
+@@ -48,6 +48,7 @@
+ #include <linux/smp_lock.h>
+ #include <linux/namei.h>
+ #include <linux/mount.h>
++#include <linux/module.h>
+ 
+ #include "nfs4_fs.h"
  #include "delegation.h"
- #include "internal.h"
- #include "iostat.h"
-+#include "callback.h"
+@@ -433,11 +434,13 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ 	spin_unlock(&tbl->slot_tbl_lock);
  
- #define NFSDBG_FACILITY		NFSDBG_PROC
+ 	slot = tbl->slots + slotid;
++	args->sa_session = session;
+ 	args->sa_slotid = slotid;
+ 	args->sa_cache_this = cache_reply;
  
-@@ -4286,6 +4287,50 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
- 	return status;
+ 	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
+ 
++	res->sr_session = session;
+ 	res->sr_slotid = slotid;
+ 	res->sr_renewal_time = jiffies;
+ 	/*
+@@ -4131,6 +4134,64 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
  }
  
+ #ifdef CONFIG_NFS_V4_1
 +/*
-+ * Initialize slot table
++ * nfs4_proc_exchange_id()
++ *
++ * Since the clientid has expired, all compounds using sessions
++ * associated with the stale clientid will be returning
++ * NFS4ERR_BADSESSION in the sequence operation, and will therefore
++ * be in some phase of session reset.
 + */
-+static int nfs4_init_slot_table(struct nfs4_session *session)
++static int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
 +{
-+	struct nfs4_slot_table *tbl = &session->fc_slot_table;
-+	int i, max_slots = session->fc_attrs.max_reqs;
-+	struct nfs4_slot *slot;
-+	int ret = -ENOMEM;
++	nfs4_verifier verifier;
++	struct nfs41_exchange_id_args args = {
++		.client = clp,
++		.flags = clp->cl_exchange_flags,
++	};
++	struct nfs41_exchange_id_res res = {
++		.client = clp,
++	};
++	int status;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_EXCHANGE_ID],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++		.rpc_cred = cred,
++	};
++	__be32 *p;
 +
-+	BUG_ON(max_slots > NFS4_MAX_SLOT_TABLE);
++	dprintk("--> %s\n", __func__);
++	BUG_ON(clp == NULL);
++	p = (u32 *)verifier.data;
++	*p++ = htonl((u32)clp->cl_boot_time.tv_sec);
++	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
++	args.verifier = &verifier;
 +
-+	dprintk("--> %s: max_reqs=%u\n", __func__,
-+		session->fc_attrs.max_reqs);
++	while (1) {
++		args.id_len = scnprintf(args.id, sizeof(args.id),
++					"%s/%s %u",
++					clp->cl_ipaddr,
++					rpc_peeraddr2str(clp->cl_rpcclient,
++							 RPC_DISPLAY_ADDR),
++					clp->cl_id_uniquifier);
 +
-+	slot = kcalloc(max_slots, sizeof(struct nfs4_slot), GFP_KERNEL);
-+	if (!slot)
-+		goto out;
-+	for (i = 0; i < max_slots; ++i)
-+		slot[i].seq_nr = 1;
-+	ret = 0;
++		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
 +
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (tbl->slots != NULL) {
-+		spin_unlock(&tbl->slot_tbl_lock);
-+		dprintk("%s: slot table already initialized. tbl=%p slots=%p\n",
-+			__func__, tbl, tbl->slots);
-+		WARN_ON(1);
-+		goto out_free;
++		if (status != NFS4ERR_CLID_INUSE)
++			break;
++
++		if (signalled())
++			break;
++
++		if (++clp->cl_id_uniquifier == 0)
++			break;
 +	}
-+	tbl->max_slots = max_slots;
-+	tbl->slots = slot;
-+	tbl->highest_used_slotid = -1;  /* no slot is currently used */
-+	spin_unlock(&tbl->slot_tbl_lock);
-+	dprintk("%s: tbl=%p slots=%p max_slots=%d\n", __func__,
-+		tbl, tbl->slots, tbl->max_slots);
-+out:
-+	dprintk("<-- %s: return %d\n", __func__, ret);
-+	return ret;
-+out_free:
-+	kfree(slot);
-+	goto out;
++
++	dprintk("<-- %s status= %d\n", __func__, status);
++	return status;
 +}
 +
  /* Destroy the slot table */
  static void nfs4_destroy_slot_table(struct nfs4_session *session)
  {
-@@ -4317,6 +4362,133 @@ void nfs4_destroy_session(struct nfs4_session *session)
- 	kfree(session);
- }
- 
-+/*
-+ * Initialize the values to be used by the client in CREATE_SESSION
-+ * If nfs4_init_session set the fore channel request and response sizes,
-+ * use them.
-+ *
-+ * Set the back channel max_resp_sz_cached to zero to force the client to
-+ * always set csa_cachethis to FALSE because the current implementation
-+ * of the back channel DRC only supports caching the CB_SEQUENCE operation.
-+ */
-+static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
-+{
-+	struct nfs4_session *session = args->client->cl_session;
-+	unsigned int mxrqst_sz = session->fc_attrs.max_rqst_sz,
-+		     mxresp_sz = session->fc_attrs.max_resp_sz;
-+
-+	if (mxrqst_sz == 0)
-+		mxrqst_sz = NFS_MAX_FILE_IO_SIZE;
-+	if (mxresp_sz == 0)
-+		mxresp_sz = NFS_MAX_FILE_IO_SIZE;
-+	/* Fore channel attributes */
-+	args->fc_attrs.headerpadsz = 0;
-+	args->fc_attrs.max_rqst_sz = mxrqst_sz;
-+	args->fc_attrs.max_resp_sz = mxresp_sz;
-+	args->fc_attrs.max_resp_sz_cached = mxresp_sz;
-+	args->fc_attrs.max_ops = NFS4_MAX_OPS;
-+	args->fc_attrs.max_reqs = session->clp->cl_rpcclient->cl_xprt->max_reqs;
-+
-+	dprintk("%s: Fore Channel : max_rqst_sz=%u max_resp_sz=%u "
-+		"max_resp_sz_cached=%u max_ops=%u max_reqs=%u\n",
-+		__func__,
-+		args->fc_attrs.max_rqst_sz, args->fc_attrs.max_resp_sz,
-+		args->fc_attrs.max_resp_sz_cached, args->fc_attrs.max_ops,
-+		args->fc_attrs.max_reqs);
-+
-+	/* Back channel attributes */
-+	args->bc_attrs.headerpadsz = 0;
-+	args->bc_attrs.max_rqst_sz = PAGE_SIZE;
-+	args->bc_attrs.max_resp_sz = PAGE_SIZE;
-+	args->bc_attrs.max_resp_sz_cached = 0;
-+	args->bc_attrs.max_ops = NFS4_MAX_BACK_CHANNEL_OPS;
-+	args->bc_attrs.max_reqs = 1;
-+
-+	dprintk("%s: Back Channel : max_rqst_sz=%u max_resp_sz=%u "
-+		"max_resp_sz_cached=%u max_ops=%u max_reqs=%u\n",
-+		__func__,
-+		args->bc_attrs.max_rqst_sz, args->bc_attrs.max_resp_sz,
-+		args->bc_attrs.max_resp_sz_cached, args->bc_attrs.max_ops,
-+		args->bc_attrs.max_reqs);
-+}
-+
-+static int _nfs4_proc_create_session(struct nfs_client *clp)
-+{
-+	struct nfs4_session *session = clp->cl_session;
-+	struct nfs41_create_session_args args = {
-+		.client = clp,
-+		.cb_program = NFS4_CALLBACK,
-+	};
-+	struct nfs41_create_session_res res = {
-+		.client = clp,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE_SESSION],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+	int status;
-+
-+	nfs4_init_channel_attrs(&args);
-+	args.flags = (SESSION4_PERSIST);
-+
-+	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, 0);
-+
-+	/* Set the negotiated values in the session's channel_attrs struct */
-+
-+	if (!status) {
-+		/* Increment the clientid slot sequence id */
-+		clp->cl_seqid++;
-+	}
-+
-+	return status;
-+}
-+
-+/*
-+ * Issues a CREATE_SESSION operation to the server.
-+ * It is the responsibility of the caller to verify the session is
-+ * expired before calling this routine.
-+ */
-+int nfs4_proc_create_session(struct nfs_client *clp)
-+{
-+	int status;
-+	unsigned *ptr;
-+	struct nfs_fsinfo fsinfo;
-+	struct nfs4_session *session = clp->cl_session;
-+
-+	dprintk("--> %s clp=%p session=%p\n", __func__, clp, session);
-+
-+	status = _nfs4_proc_create_session(clp);
-+	if (status)
-+		goto out;
-+
-+	/* Init the fore channel */
-+	status = nfs4_init_slot_table(session);
-+	dprintk("fore channel slot table initialization returned %d\n", status);
-+	if (status)
-+		goto out;
-+
-+	ptr = (unsigned *)&session->sess_id.data[0];
-+	dprintk("%s client>seqid %d sessionid %u:%u:%u:%u\n", __func__,
-+		clp->cl_seqid, ptr[0], ptr[1], ptr[2], ptr[3]);
-+
-+	/* Get the lease time */
-+	status = nfs4_proc_get_lease_time(clp, &fsinfo);
-+	if (status == 0) {
-+		/* Update lease time and schedule renewal */
-+		spin_lock(&clp->cl_lock);
-+		clp->cl_lease_time = fsinfo.lease_time * HZ;
-+		clp->cl_last_renewal = jiffies;
-+		clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+		spin_unlock(&clp->cl_lock);
-+
-+		nfs4_schedule_state_renewal(clp);
-+	}
-+out:
-+	dprintk("<-- %s\n", __func__);
-+	return status;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- struct nfs4_state_recovery_ops nfs4_reboot_recovery_ops = {
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 3f88a20..11c210f 100644
+index 5b944cd..31e9998 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -246,6 +246,8 @@ static int nfs4_stat_to_errno(int);
+@@ -246,6 +246,27 @@ static int nfs4_stat_to_errno(int);
  				(0)
  
  #if defined(CONFIG_NFS_V4_1)
-+#define NFS4_MAX_MACHINE_NAME_LEN (64)
-+
- #define encode_exchange_id_maxsz (op_encode_hdr_maxsz + \
- 				encode_verifier_maxsz + \
- 				1 /* co_ownerid.len */ + \
-@@ -267,6 +269,31 @@ static int nfs4_stat_to_errno(int);
- 				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 + \
- 				1 /* eir_server_impl_id array length */ + \
- 				0 /* ignored eir_server_impl_id contents */)
-+#define encode_channel_attrs_maxsz  (6 + 1 /* ca_rdma_ird.len (0) */)
-+#define decode_channel_attrs_maxsz  (6 + \
-+				     1 /* ca_rdma_ird.len */ + \
-+				     1 /* ca_rdma_ird */)
-+#define encode_create_session_maxsz  (op_encode_hdr_maxsz + \
-+				     2 /* csa_clientid */ + \
-+				     1 /* csa_sequence */ + \
-+				     1 /* csa_flags */ + \
-+				     encode_channel_attrs_maxsz + \
-+				     encode_channel_attrs_maxsz + \
-+				     1 /* csa_cb_program */ + \
-+				     1 /* csa_sec_parms.len (1) */ + \
-+				     1 /* cb_secflavor (AUTH_SYS) */ + \
-+				     1 /* stamp */ + \
-+				     1 /* machinename.len */ + \
-+				     XDR_QUADLEN(NFS4_MAX_MACHINE_NAME_LEN) + \
-+				     1 /* uid */ + \
-+				     1 /* gid */ + \
-+				     1 /* gids.len (0) */)
-+#define decode_create_session_maxsz  (op_decode_hdr_maxsz +	\
-+				     XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + \
-+				     1 /* csr_sequence */ + \
-+				     1 /* csr_flags */ + \
-+				     decode_channel_attrs_maxsz + \
-+				     decode_channel_attrs_maxsz)
++#define encode_exchange_id_maxsz (op_encode_hdr_maxsz + \
++				encode_verifier_maxsz + \
++				1 /* co_ownerid.len */ + \
++				XDR_QUADLEN(NFS4_EXCHANGE_ID_LEN) + \
++				1 /* flags */ + \
++				1 /* spa_how */ + \
++				0 /* SP4_NONE (for now) */ + \
++				1 /* zero implemetation id array */)
++#define decode_exchange_id_maxsz (op_decode_hdr_maxsz + \
++				2 /* eir_clientid */ + \
++				1 /* eir_sequenceid */ + \
++				1 /* eir_flags */ + \
++				1 /* spr_how */ + \
++				0 /* SP4_NONE (for now) */ + \
++				2 /* eir_server_owner.so_minor_id */ + \
++				/* eir_server_owner.so_major_id<> */ \
++				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 + \
++				/* eir_server_scope<> */ \
++				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 + \
++				1 /* eir_server_impl_id array length */ + \
++				0 /* ignored eir_server_impl_id contents */)
  #define encode_sequence_maxsz	0 /* stub */
  #define decode_sequence_maxsz	0 /* stub */
  #else /* CONFIG_NFS_V4_1 */
-@@ -622,6 +649,12 @@ static int nfs4_stat_to_errno(int);
- #define NFS4_dec_exchange_id_sz \
- 				(compound_decode_hdr_maxsz + \
- 				 decode_exchange_id_maxsz)
-+#define NFS4_enc_create_session_sz \
+@@ -594,6 +615,14 @@ static int nfs4_stat_to_errno(int);
+ 				 decode_putfh_maxsz + \
+ 				 decode_lookup_maxsz + \
+ 				 decode_fs_locations_maxsz)
++#if defined(CONFIG_NFS_V4_1)
++#define NFS4_enc_exchange_id_sz \
 +				(compound_encode_hdr_maxsz + \
-+				 encode_create_session_maxsz)
-+#define NFS4_dec_create_session_sz \
++				 encode_exchange_id_maxsz)
++#define NFS4_dec_exchange_id_sz \
 +				(compound_decode_hdr_maxsz + \
-+				 decode_create_session_maxsz)
- #define NFS4_enc_get_lease_time_sz	(compound_encode_hdr_maxsz + \
- 					 encode_sequence_maxsz + \
- 					 encode_putrootfh_maxsz + \
-@@ -712,6 +745,7 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
++				 decode_exchange_id_maxsz)
++#endif /* CONFIG_NFS_V4_1 */
  
- static void encode_nops(struct compound_hdr *hdr)
- {
-+	BUG_ON(hdr->nops > NFS4_MAX_OPS);
- 	*hdr->nops_p = htonl(hdr->nops);
+ static const umode_t nfs_type2fmt[] = {
+ 	[NF4BAD] = 0,
+@@ -1455,7 +1484,29 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
+ 	hdr->replen += decode_delegreturn_maxsz;
  }
  
-@@ -1513,6 +1547,68 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 	hdr->nops++;
- 	hdr->replen += decode_exchange_id_maxsz;
- }
-+
-+static void encode_create_session(struct xdr_stream *xdr,
-+				  struct nfs41_create_session_args *args,
-+				  struct compound_hdr *hdr)
++#if defined(CONFIG_NFS_V4_1)
+ /* NFSv4.1 operations */
++static void encode_exchange_id(struct xdr_stream *xdr,
++			       struct nfs41_exchange_id_args *args,
++			       struct compound_hdr *hdr)
 +{
 +	uint32_t *p;
-+	char machine_name[NFS4_MAX_MACHINE_NAME_LEN];
-+	uint32_t len;
-+	struct nfs_client *clp = args->client;
 +
-+	RESERVE_SPACE(4);
-+	WRITE32(OP_CREATE_SESSION);
++	RESERVE_SPACE(4 + sizeof(args->verifier->data));
++	WRITE32(OP_EXCHANGE_ID);
++	WRITEMEM(args->verifier->data, sizeof(args->verifier->data));
 +
-+	RESERVE_SPACE(8);
-+	WRITE64(clp->cl_ex_clid);
++	encode_string(xdr, args->id_len, args->id);
 +
-+	RESERVE_SPACE(8);
-+	WRITE32(clp->cl_seqid);			/*Sequence id */
-+	WRITE32(args->flags);			/*flags */
-+
-+	RESERVE_SPACE(2*28);			/* 2 channel_attrs */
-+	/* Fore Channel */
-+	WRITE32(args->fc_attrs.headerpadsz);	/* header padding size */
-+	WRITE32(args->fc_attrs.max_rqst_sz);	/* max req size */
-+	WRITE32(args->fc_attrs.max_resp_sz);	/* max resp size */
-+	WRITE32(args->fc_attrs.max_resp_sz_cached);	/* Max resp sz cached */
-+	WRITE32(args->fc_attrs.max_ops);	/* max operations */
-+	WRITE32(args->fc_attrs.max_reqs);	/* max requests */
-+	WRITE32(0);				/* rdmachannel_attrs */
-+
-+	/* Back Channel */
-+	WRITE32(args->fc_attrs.headerpadsz);	/* header padding size */
-+	WRITE32(args->bc_attrs.max_rqst_sz);	/* max req size */
-+	WRITE32(args->bc_attrs.max_resp_sz);	/* max resp size */
-+	WRITE32(args->bc_attrs.max_resp_sz_cached);	/* Max resp sz cached */
-+	WRITE32(args->bc_attrs.max_ops);	/* max operations */
-+	WRITE32(args->bc_attrs.max_reqs);	/* max requests */
-+	WRITE32(0);				/* rdmachannel_attrs */
-+
-+	RESERVE_SPACE(4);
-+	WRITE32(args->cb_program);		/* cb_program */
-+
-+	RESERVE_SPACE(4);			/* # of security flavors */
-+	WRITE32(1);
-+
-+	RESERVE_SPACE(4);
-+	WRITE32(RPC_AUTH_UNIX);			/* auth_sys */
-+
-+	/* authsys_parms rfc1831 */
-+	RESERVE_SPACE(4);
-+	WRITE32((u32)clp->cl_boot_time.tv_nsec);	/* stamp */
-+	len = scnprintf(machine_name, sizeof(machine_name), "%s",
-+			clp->cl_ipaddr);
-+	RESERVE_SPACE(16 + len);
-+	WRITE32(len);
-+	WRITEMEM(machine_name, len);
-+	WRITE32(0);				/* UID */
-+	WRITE32(0);				/* GID */
-+	WRITE32(0);				/* No more gids */
++	RESERVE_SPACE(12);
++	WRITE32(args->flags);
++	WRITE32(0);	/* zero length state_protect4_a */
++	WRITE32(0);	/* zero length implementation id array */
 +	hdr->nops++;
-+	hdr->replen += decode_create_session_maxsz;
++	hdr->replen += decode_exchange_id_maxsz;
 +}
- #endif /* CONFIG_NFS_V4_1 */
- 
++#endif /* CONFIG_NFS_V4_1 */
++
  static void encode_sequence(struct xdr_stream *xdr,
-@@ -2241,6 +2337,24 @@ static int nfs4_xdr_enc_exchange_id(struct rpc_rqst *req, uint32_t *p,
+ 			    const struct nfs4_sequence_args *args,
+ 			    struct compound_hdr *hdr)
+@@ -2162,6 +2213,26 @@ static int nfs4_xdr_enc_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs
+ 	return 0;
  }
  
- /*
-+ * a CREATE_SESSION request
++#if defined(CONFIG_NFS_V4_1)
++/*
++ * EXCHANGE_ID request
 + */
-+static int nfs4_xdr_enc_create_session(struct rpc_rqst *req, uint32_t *p,
-+				       struct nfs41_create_session_args *args)
++static int nfs4_xdr_enc_exchange_id(struct rpc_rqst *req, uint32_t *p,
++				    struct nfs41_exchange_id_args *args)
 +{
 +	struct xdr_stream xdr;
 +	struct compound_hdr hdr = {
@@ -419,87 +232,80 @@ index 3f88a20..11c210f 100644
 +
 +	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
 +	encode_compound_hdr(&xdr, req, &hdr);
-+	encode_create_session(&xdr, args, &hdr);
++	encode_exchange_id(&xdr, args, &hdr);
 +	encode_nops(&hdr);
 +	return 0;
 +}
++#endif /* CONFIG_NFS_V4_1 */
 +
-+/*
-  * a GET_LEASE_TIME request
-  */
- static int nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req, uint32_t *p,
-@@ -4023,6 +4137,63 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 
- 	return 0;
+ /*
+  * START OF "GENERIC" DECODE ROUTINES.
+  *   These may look a little ugly since they are imported from a "generic"
+@@ -3877,6 +3948,54 @@ static int decode_delegreturn(struct xdr_stream *xdr)
+ 	return decode_op_hdr(xdr, OP_DELEGRETURN);
  }
-+
-+static int decode_create_session(struct xdr_stream *xdr,
-+				 struct nfs41_create_session_res *res)
+ 
++#if defined(CONFIG_NFS_V4_1)
++static int decode_exchange_id(struct xdr_stream *xdr,
++			      struct nfs41_exchange_id_res *res)
 +{
 +	uint32_t *p;
-+	int status;
-+	u32 nr_attrs;
++	int status, dummy;
 +	struct nfs_client *clp = res->client;
-+	struct nfs4_session *session = clp->cl_session;
 +
-+	status = decode_op_hdr(xdr, OP_CREATE_SESSION);
-+
++	status = decode_op_hdr(xdr, OP_EXCHANGE_ID);
 +	if (status)
 +		return status;
 +
-+	/* sessionid */
-+	READ_BUF(NFS4_MAX_SESSIONID_LEN);
-+	COPYMEM(&session->sess_id, NFS4_MAX_SESSIONID_LEN);
-+
-+	/* seqid, flags */
 +	READ_BUF(8);
++	READ64(clp->cl_ex_clid);
++	READ_BUF(12);
 +	READ32(clp->cl_seqid);
-+	READ32(session->flags);
++	READ32(clp->cl_exchange_flags);
 +
-+	/* Channel attributes */
-+	/* fore channel */
-+	READ_BUF(24);
-+	READ32(session->fc_attrs.headerpadsz);
-+	READ32(session->fc_attrs.max_rqst_sz);
-+	READ32(session->fc_attrs.max_resp_sz);
-+	READ32(session->fc_attrs.max_resp_sz_cached);
-+	READ32(session->fc_attrs.max_ops);
-+	READ32(session->fc_attrs.max_reqs);
-+	READ_BUF(4);
-+	READ32(nr_attrs);
-+	if (nr_attrs == 1) {
-+		READ_BUF(4);
-+		p++; /* skip rdma_attrs */
-+	}
++	/* We ask for SP4_NONE */
++	READ32(dummy);
++	if (dummy != SP4_NONE)
++		return -EIO;
 +
-+	/* back channel */
-+	READ_BUF(24);
-+	READ32(session->bc_attrs.headerpadsz);
-+	READ32(session->bc_attrs.max_rqst_sz);
-+	READ32(session->bc_attrs.max_resp_sz);
-+	READ32(session->bc_attrs.max_resp_sz_cached);
-+	READ32(session->bc_attrs.max_ops);
-+	READ32(session->bc_attrs.max_reqs);
++	/* minor_id */
++	READ_BUF(8);
++	READ64(res->server_owner.minor_id);
++
++	/* Major id */
 +	READ_BUF(4);
-+	READ32(nr_attrs);
-+	if (nr_attrs == 1) {
-+		READ_BUF(4);
-+		p++; /* skip rdma_attrs */
-+	}
++	READ32(res->server_owner.major_id_sz);
++	READ_BUF(res->server_owner.major_id_sz);
++	COPYMEM(res->server_owner.major_id, res->server_owner.major_id_sz);
++
++	/* server_scope */
++	READ_BUF(4);
++	READ32(res->server_scope.server_scope_sz);
++	READ_BUF(res->server_scope.server_scope_sz);
++	COPYMEM(res->server_scope.server_scope,
++		res->server_scope.server_scope_sz);
++	/* Throw away Implementation id array */
++	READ_BUF(4);
++	READ32(dummy);
++	p += XDR_QUADLEN(dummy);
 +
 +	return 0;
 +}
- #endif /* CONFIG_NFS_V4_1 */
- 
++#endif /* CONFIG_NFS_V4_1 */
++
  static int decode_sequence(struct xdr_stream *xdr,
-@@ -4941,6 +5112,23 @@ static int nfs4_xdr_dec_exchange_id(struct rpc_rqst *rqstp, uint32_t *p,
+ 			   struct nfs4_sequence_res *res,
+ 			   struct rpc_rqst *rqstp)
+@@ -4774,6 +4893,25 @@ out:
+ 	return status;
  }
  
- /*
-+ * a CREATE_SESSION request
++#if defined(CONFIG_NFS_V4_1)
++/*
++ * EXCHANGE_ID request
 + */
-+static int nfs4_xdr_dec_create_session(struct rpc_rqst *rqstp, uint32_t *p,
-+				       struct nfs41_create_session_res *res)
++static int nfs4_xdr_dec_exchange_id(struct rpc_rqst *rqstp, uint32_t *p,
++				    void *res)
 +{
 +	struct xdr_stream xdr;
 +	struct compound_hdr hdr;
@@ -508,66 +314,119 @@ index 3f88a20..11c210f 100644
 +	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
 +	status = decode_compound_hdr(&xdr, &hdr);
 +	if (!status)
-+		status = decode_create_session(&xdr, res);
++		status = decode_exchange_id(&xdr, res);
 +	return status;
 +}
++#endif /* CONFIG_NFS_V4_1 */
 +
-+/*
-  * a GET_LEASE_TIME request
-  */
- static int nfs4_xdr_dec_get_lease_time(struct rpc_rqst *rqstp, uint32_t *p,
-@@ -5133,6 +5321,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ __be32 *nfs4_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
+ {
+ 	uint32_t bitmap[2] = {0};
+@@ -4943,6 +5081,9 @@ struct rpc_procinfo	nfs4_procedures[] = {
+   PROC(GETACL,		enc_getacl,	dec_getacl),
+   PROC(SETACL,		enc_setacl,	dec_setacl),
    PROC(FS_LOCATIONS,	enc_fs_locations, dec_fs_locations),
- #if defined(CONFIG_NFS_V4_1)
-   PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
-+  PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
-   PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
- #endif /* CONFIG_NFS_V4_1 */
++#if defined(CONFIG_NFS_V4_1)
++  PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
++#endif /* CONFIG_NFS_V4_1 */
  };
+ 
+ struct rpc_version		nfs_version4 = {
 diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7dc6fa0..d2d6a1b 100644
+index c0c1e8e..7dc6fa0 100644
 --- a/include/linux/nfs4.h
 +++ b/include/linux/nfs4.h
-@@ -131,6 +131,16 @@
+@@ -21,6 +21,7 @@
+ #define NFS4_FHSIZE		128
+ #define NFS4_MAXPATHLEN		PATH_MAX
+ #define NFS4_MAXNAMLEN		NAME_MAX
++#define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
  
- #define NFS4_MAX_UINT64	(~(u64)0)
+ #define NFS4_ACCESS_READ        0x0001
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d541a49..876e5ff 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -78,6 +78,12 @@ struct nfs_client {
+ #endif /* CONFIG_NFS_V4 */
  
-+/* An NFS4 sessions server must support at least NFS4_MAX_OPS operations.
-+ * If a compound requires more operations, adjust NFS4_MAX_OPS accordingly.
-+ */
-+#define NFS4_MAX_OPS   8
-+
-+/* Our NFS4 client back channel server only wants the cb_sequene and the
-+ * actual operation per compound
-+ */
-+#define NFS4_MAX_BACK_CHANNEL_OPS 2
-+
- enum nfs4_acl_whotype {
- 	NFS4_ACL_WHO_NAMED = 0,
- 	NFS4_ACL_WHO_OWNER,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6c75c63..d8bc445 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -929,6 +929,18 @@ struct nfs41_exchange_id_res {
- 	struct server_scope		server_scope;
- 	struct nfs_impl_id4		impl_id;
- };
-+
-+struct nfs41_create_session_args {
-+	struct nfs_client	       *client;
-+	uint32_t			flags;
-+	uint32_t			cb_program;
-+	struct nfs4_channel_attrs	fc_attrs;	/* Fore Channel */
-+	struct nfs4_channel_attrs	bc_attrs;	/* Back Channel */
-+};
-+
-+struct nfs41_create_session_res {
-+	struct nfs_client	       *client;
-+};
+ #ifdef CONFIG_NFS_V4_1
++	/* clientid returned from EXCHANGE_ID, used by session operations */
++	u64			cl_ex_clid;
++	/* The sequence id to use for the next CREATE_SESSION */
++	u32			cl_seqid;
++	/* The flags used for obtaining the clientid during EXCHANGE_ID */
++	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session; 	/* sharred session */
  #endif /* CONFIG_NFS_V4_1 */
  
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 1e00b79..1f22fcd 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -879,6 +879,49 @@ struct nfs4_fs_locations_res {
+ 
+ #endif /* CONFIG_NFS_V4 */
+ 
++struct nfstime4 {
++	u64	seconds;
++	u32	nseconds;
++};
++
++#ifdef CONFIG_NFS_V4_1
++struct nfs_impl_id4 {
++	u32		domain_len;
++	char		*domain;
++	u32		name_len;
++	char		*name;
++	struct nfstime4	date;
++};
++
++#define NFS4_EXCHANGE_ID_LEN	(48)
++struct nfs41_exchange_id_args {
++	struct nfs_client		*client;
++	nfs4_verifier			*verifier;
++	unsigned int 			id_len;
++	char 				id[NFS4_EXCHANGE_ID_LEN];
++	u32				flags;
++};
++
++struct server_owner {
++	uint64_t			minor_id;
++	uint32_t			major_id_sz;
++	char				major_id[NFS4_OPAQUE_LIMIT];
++};
++
++struct server_scope {
++	uint32_t			server_scope_sz;
++	char 				server_scope[NFS4_OPAQUE_LIMIT];
++};
++
++struct nfs41_exchange_id_res {
++	struct nfs_client		*client;
++	u32				flags;
++	struct server_owner		server_owner;
++	struct server_scope		server_scope;
++	struct nfs_impl_id4		impl_id;
++};
++#endif /* CONFIG_NFS_V4_1 */
++
  struct nfs_page;
+ 
+ #define NFS_PAGEVEC_SIZE	(8U)
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 128298c..ec64274 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -41,7 +41,6 @@
+ #include <linux/kref.h>
+ #include <linux/sunrpc/clnt.h>
+ 
+-#define NFS4_OPAQUE_LIMIT 1024
+ typedef struct {
+ 	u32             cl_boot;
+ 	u32             cl_id;
 -- 
 1.6.2.1
 
