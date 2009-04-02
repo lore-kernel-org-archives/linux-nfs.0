@@ -1,142 +1,223 @@
-From: Brian Murphy <brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [Bugme-new] [Bug 12995] New: NFS mount from avr32 platform crashes
- on 2.6.29
-Date: Thu, 02 Apr 2009 09:48:13 +0200
-Message-ID: <49D46DBD.508@thrane.com>
-References: <bug-12995-10286@http.bugzilla.kernel.org/> <20090401124113.9026ea09.akpm@linux-foundation.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH v2 40/47] nfsd41: cb_sequence callback
+Date: Thu, 02 Apr 2009 11:47:24 +0300
+Message-ID: <49D47B9C.9030502@panasas.com>
+References: <49CDDFC2.4070402@panasas.com> <1238229281-11516-1-git-send-email-bhalevy@panasas.com> <20090401043932.GC29339@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: Andrew Morton <akpm@linux-foundation.org>,
-	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.thrane.com ([62.243.36.210]:15993 "EHLO mail.thrane.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752713AbZDBIDS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2009 04:03:18 -0400
-In-Reply-To: <20090401124113.9026ea09.akpm@linux-foundation.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:18499 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753461AbZDBIs5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 04:48:57 -0400
+In-Reply-To: <20090401043932.GC29339@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andrew Morton wrote:
-> (switched to email.  Please respond via emailed reply-to-all, not via the
-> bugzilla web interface).
->
-> On Wed, 1 Apr 2009 12:31:51 GMT
-> bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org wrote:
->
->   
->> http://bugzilla.kernel.org/show_bug.cgi?id=12995
+On Apr. 01, 2009, 7:39 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Sat, Mar 28, 2009 at 11:34:41AM +0300, Benny Halevy wrote:
+>> From: Andy Adamson <andros@netapp.com>
 >>
->>            Summary: NFS mount from avr32 platform crashes on 2.6.29
->>            Product: File System
->>            Version: 2.5
->>           Platform: All
->>         OS/Version: Linux
->>               Tree: Mainline
->>             Status: NEW
->>           Severity: normal
->>           Priority: P1
->>          Component: NFS
->>         AssignedTo: trond.myklebust@fys.uio.no
->>         ReportedBy: brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org
->>         Regression: No
+>> Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
 >>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> [fixed indentation]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4callback.c     |  118 ++++++++++++++++++++++++++++++++++++++++++++
+>>  include/linux/nfsd/state.h |    7 ++-
+>>  2 files changed, 124 insertions(+), 1 deletions(-)
 >>
->> The problem turns out to be in the recent(ish) changes in lockd.
->>
->> Specifically this struct definition
->>
->> struct nsm_handle {
->>         struct list_head        sm_link;
->>         atomic_t                sm_count;
->>         char                    *sm_mon_name;
->>         char                    *sm_name;
->>         struct sockaddr_storage sm_addr;
->>         size_t                  sm_addrlen;
->>         unsigned int            sm_monitored : 1,
->>                                 sm_sticky : 1;  /* don't unmonitor */
->>         struct nsm_private      sm_priv;
->>         char                    sm_addrbuf[NSM_ADDRBUF];
->> };
->>
->> results in my avr32 compiler (and my ia64 compiler) in aligning the sm_priv
->> structure (which is a char array) on an odd boundary. The subsequent use
->> of this field typecast to a u64 (nsm_init_private) as part of an nfs mount
->> causes a crash with unaligned access.
->>
->> The compiler only allocates *one byte* to the two bit bitfield.
->> Moving the bitfield to the end of the structure fixes the problem in my case.
->> It seems to me that one should be very careful with typecasting this sm_priv
->> data to anything with larger alignment but especially to a 64 bit type since
->> (at least on a 64 bit system) this may demand 64 bit alignment.
->>
->> In any case it looks like (with newer gcc at least) that bitfields are
->> extremely dangerous.
->>
->> Perhaps the solution is to malloc the nsm_private data and sm_priv is then a
->> pointer to this data. This would guarantee the correct alignment.
->>
->>     
->
-> nsm_private is:
->
-> struct nsm_private {
-> 	unsigned char		data[SM_PRIV_SIZE];
-> };
->
-> so the compiler is permitted to byte-align this.
->
-> I assume that some code somewhere is accessing this with a
-> larger-than-one-byte typecast?
->
-> (Your bug report isn't complete - if it had included the trace then I'd
-> know where the crash is occurring!)
->
->   
-I wrote where the crash was occuring.
-> If so then something like this:
->
-> --- a/include/linux/lockd/xdr.h~a
-> +++ a/include/linux/lockd/xdr.h
-> @@ -9,6 +9,7 @@
->  #ifndef LOCKD_XDR_H
->  #define LOCKD_XDR_H
->  
-> +#include <linux/compiler.h>
->  #include <linux/fs.h>
->  #include <linux/nfs.h>
->  #include <linux/sunrpc/xdr.h>
-> @@ -16,9 +17,10 @@
->  #define SM_MAXSTRLEN		1024
->  #define SM_PRIV_SIZE		16
->  
-> +/* suitable comment about the __aligned goes here */
->  struct nsm_private {
->  	unsigned char		data[SM_PRIV_SIZE];
-> -};
-> +} __aligned(sizeof(unsigned long));
->  
->  struct svc_rqst;
->  
-> would be an appropriate fix, as it actually expresses what's going on.
->
-> If you agree then please cook up and test a patch?
->
-> Please send the patch via email - we very much try to avoid merging
-> patches out of bugzilla.
->
-> Thanks.
->   
+>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+>> index 6b7ef87..7ada6b1 100644
+>> --- a/fs/nfsd/nfs4callback.c
+>> +++ b/fs/nfsd/nfs4callback.c
+>> @@ -255,6 +255,29 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec,
+>>  	hdr->nops++;
+>>  }
+>>  
+>> +static void
+>> +encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
+>> +		   struct nfs4_cb_compound_hdr *hdr)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	if (hdr->minorversion == 0)
+>> +		return;
+>> +
+>> +	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
+>> +
+>> +	WRITE32(OP_CB_SEQUENCE);
+>> +#ifdef CONFIG_NFSD_V4_1
+>> +	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
+>> +	WRITE32(args->cbs_clp->cl_cb_seq_nr);
+>> +#endif /* CONFIG_NFSD_V4_1 */
+> 
+> This whole function should be under CONFIG_NFSD_V4_1.
+> 
+>> +	WRITE32(0);		/* slotid, always 0 */
+>> +	WRITE32(0);		/* highest slotid always 0 */
+>> +	WRITE32(0);		/* cachethis always 0 */
+>> +	WRITE32(0); /* FIXME: support referring_call_lists */
+>> +	hdr->nops++;
+>> +}
+>> +
+>>  static int
+>>  nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+>>  {
+>> @@ -319,6 +342,69 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
+>>  	return 0;
+>>  }
+>>  
+>> +/*
+>> + * Our current back channel implmentation supports a single backchannel
+>> + * with a single slot.
+>> + */
+>> +static int
+>> +decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
+>> +		   struct rpc_rqst *rqstp)
+>> +{
+>> +	struct nfs4_callback *cb =
+>> +		(struct nfs4_callback *)rqstp->rq_task->tk_client->cl_private;
+>> +	struct nfs4_sessionid id;
+>> +	int status;
+>> +	u32 dummy;
+>> +	__be32 *p;
+>> +
+>> +	if (cb->cb_minorversion == 0)
+>> +		return 0;
+>> +
+>> +	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
+>> +	if (status)
+>> +		return status;
+>> +
+>> +	/*
+>> +	 * If the server returns different values for sessionID, slotID or
+>> +	 * sequence number, the server is looney tunes.
+>> +	 */
+>> +	status = -ESERVERFAULT;
+>> +
+>> +	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
+>> +	COPYMEM(id.data, NFS4_MAX_SESSIONID_LEN);
+>> +#ifdef CONFIG_NFSD_V4_1
+>> +	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
+>> +		   NFS4_MAX_SESSIONID_LEN)) {
+>> +		dprintk("%s Invalid session id\n", __func__);
+>> +		goto out;
+>> +	}
+>> +	READ32(dummy);
+>> +	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
+>> +		dprintk("%s Invalid sequence number\n", __func__);
+>> +		goto out;
+>> +	}
+>> +#endif /* CONFIG_NFSD_V4_1 */
+> 
+> Ditto.
+> 
+>> +	READ32(dummy); 	/* slotid must be 0 */
+>> +	if (dummy != 0) {
+>> +		dprintk("%s Invalid slotid\n", __func__);
+>> +		goto out;
+>> +	}
+>> +	READ32(dummy); 	/* highest slotid must be 0 */
+>> +	if (dummy != 0) {
+>> +		dprintk("%s Invalid highest slotid\n", __func__);
+>> +		goto out;
+>> +	}
+>> +	READ32(dummy); 	/* target highest slotid must be 0 */
+>> +	if (dummy != 0) {
+>> +		dprintk("%s Invalid target highest slotid\n", __func__);
+>> +		goto out;
+>> +	}
+>> +	status = 0;
+>> +out:
+>> +	return status;
+>> +}
+>> +
+>> +
+>>  static int
+>>  nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+>>  {
+>> @@ -503,6 +589,38 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+>>  	return;
+>>  }
+>>  
+>> +#if defined(CONFIG_NFSD_V4_1)
+>> +/*
+>> + * FIXME: cb_sequence should support referring call lists, cachethis, and
+>> + * multiple slots
+>> + */
+>> +static int
+>> +nfs41_cb_sequence_setup(struct nfs4_client *clp, struct nfsd4_cb_sequence *args)
+>> +{
+>> +	u32 *ptr = (u32 *)clp->cl_sessionid.data;
+>> +
+>> +	dprintk("%s: %u:%u:%u:%u\n", __func__,
+>> +		ptr[0], ptr[1], ptr[2], ptr[3]);
+>> +
+>> +	mutex_lock(&clp->cl_cb_mutex);
+> 
+> We shouldn't be holding a mutex across a callback.  Why is this needed?
 
-It seems to me that there is something wrong here. Shouldn't the 
-"private data"
-either be declared as a struct (and no longer private) or be a void 
-pointer, allocated
-by the user of the private data (with malloc).
-Otherwise there will always be problems when the size of the structure 
-placed in
-the private area grows in addition to the alignment issues.
+Just a simple way to limit concurrency to 1 and not deal with
+multiple slots on the callback path.
 
-/Brian
+Benny
+
+> 
+> --b.
+> 
+>> +	args->cbs_clp = clp;
+>> +	clp->cl_cb_seq_nr++;
+>> +	return 0;
+>> +}
+>> +
+>> +static void
+>> +nfs41_cb_sequence_done(struct nfs4_client *clp, struct nfsd4_cb_sequence *res)
+>> +{
+>> +	u32 *ptr = (u32 *)clp->cl_sessionid.data;
+>> +
+>> +	dprintk("%s: %u:%u:%u:%u\n", __func__,
+>> +		ptr[0], ptr[1], ptr[2], ptr[3]);
+>> +
+>> +	/* FIXME: support multiple callback slots */
+>> +	mutex_unlock(&clp->cl_cb_mutex);
+>> +}
+>> +#endif /* CONFIG_NFSD_V4_1 */
+>> +
+>>  /*
+>>   * called with dp->dl_count inc'ed.
+>>   */
+>> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+>> index f2783d4..0ea8c89 100644
+>> --- a/include/linux/nfsd/state.h
+>> +++ b/include/linux/nfsd/state.h
+>> @@ -61,6 +61,10 @@ typedef struct {
+>>  #define si_stateownerid   si_opaque.so_stateownerid
+>>  #define si_fileid         si_opaque.so_fileid
+>>  
+>> +struct nfsd4_cb_sequence {
+>> +	/* args/res */
+>> +	struct nfs4_client	*cbs_clp;
+>> +};
+>>  
+>>  struct nfs4_cb_recall {
+>>  	u32			cbr_ident;
+>> @@ -195,7 +199,8 @@ struct nfs4_client {
+>>  	struct nfsd4_slot	cl_slot;	/* create_session slot */
+>>  	u32			cl_exchange_flags;
+>>  	struct nfs4_sessionid	cl_sessionid;
+>> -
+>> +	/* We currently support a single back channel with a single slot */
+>> +	u32			cl_cb_seq_nr;
+>>  	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
+>>  	struct mutex		cl_cb_mutex;
+>>  #endif /* CONFIG_NFSD_V4_1 */
+>> -- 
+>> 1.6.2.1
+>>
+
