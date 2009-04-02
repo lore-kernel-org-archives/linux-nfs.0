@@ -1,212 +1,139 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
-Date: Thu, 02 Apr 2009 12:18:46 +0300
-Message-ID: <49D482F6.5090000@panasas.com>
-References: <49CDDFC2.4070402@panasas.com>	<1238229069-8636-1-git-send-email-bhalevy@panasas.com>	<20090401043301.GA29339@fieldses.org>	<49D32659.8040207@panasas.com>	<20090401131022.GA4002@fieldses.org> <49D3752E.7060708@panasas.com> <49D38924.9020105@panasas.com>
+From: Masahiro Tamori <masahiro.tamori@gmail.com>
+Subject: Re: [ltt-dev] [PATCH] nfs: add support for splice writes
+Date: Thu, 2 Apr 2009 21:42:05 +0900
+Message-ID: <91e0b5050904020542l6b38d7a6hab6d7ef8b4593425@mail.gmail.com>
+References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal>
+	 <49D45E42.3050502@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-	Steve Dickson <steved@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:14286 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S935608AbZDBJSv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 05:18:51 -0400
-In-Reply-To: <49D38924.9020105@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, ltt-dev@lists.casi.polymtl.ca,
+	Trond.Myklebust@netapp.com, LKML <linux-kernel@vger.kernel.org>,
+	linux-embedded@vger.kernel.org
+To: Suresh Jayaraman <sjayaraman@suse.de>,
+	Mathieu Desnoyers <compudj@krystal.dyndns.org>
+Return-path: <linux-embedded-owner@vger.kernel.org>
+In-Reply-To: <49D45E42.3050502@suse.de>
+Sender: linux-embedded-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 01, 2009, 18:32 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
-> On Apr. 01, 2009, 17:07 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
->> On Apr. 01, 2009, 16:10 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>> On Wed, Apr 01, 2009 at 11:31:21AM +0300, Benny Halevy wrote:
->>>> On Apr. 01, 2009, 7:33 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>>> On Sat, Mar 28, 2009 at 11:31:09AM +0300, Benny Halevy wrote:
->>>>>> Added CONFIG_NFSD_V4_1 and made it depend upon NFSD_V4 and EXPERIMENTAL
->>>>>> Indicate that CONFIG_NFS_V4_1 is for NFS developers at the moment
->>>>> Stupid question: do we need CONFIG_NFSD_V4_1 at all?  How many people
->>>>> will want to build a kernel with v4.0 but not v4.1?
+Hello Suresh and Mathieu,
 
-Bruce,  with the patch below in place, would it be reasonable to
-remove CONFIG_NFSD_V4_1?
-
-Benny
-
->>>> That's a good question.  I'd love to get rid of it
->>>> and it seems like like distros, at least RH are going to have it
->>>> configured-in anyway.
->>>>
->>>> If the main reason to turn 4.1 support off is bugs affecting 4.0
->>>> then I'd much rather fix these bugs rather than hide them.
->>>>
->>>>> (And: do we have an interface that allows turning off 4.1 at run-time?
->>>>> That's more important than the config option.)
->>>> No, it's still on our todo list.  We haven't thought this completely
->>>> through, though.  Where would be the best place to implement that?
->>>> Should this be an export option or an nfsd tunable?
->>> Imitating (or extending, if possible) nfsd/versions would be one way.
->>> See fs/nfsd/nfsctl.c:write_versions.  Cc'ing Steved, as I think that was
->>> originally his work.
+2009/4/2 Suresh Jayaraman <sjayaraman@suse.de>:
+> Mathieu Desnoyers wrote:
+>> * Suresh Jayaraman (sjayaraman@suse.de) wrote:
+>>> This patch attempts to add splice writes support. In essence, it just
+>>> calls generic_file_splice_write() after doing a little sanity check.
+>>> This would allow LTTng users that are using NFS to store trace data.
+>>> There could be more applications that could be benefitted too.
 >>>
->>> --b.
+>>> I have tested this using the Jens' test program and have found no
+>>> real issues. The test program is inlined below:
+>>>
 >>
->> Sounds great.
->> Here's a crude untested patch.  Does that what you mean?
+>> There is just a small checkpatch nit that I'll fix directly in place in
+>> the LTTng tree.
 >>
-> 
-> The following works better.
-> 
-> But I still see a problem with it.
-> This all works nicely when the nfs service is stopped (on Fedora 9)
-> but when I restart it all version return to their defaults.
-> I'm probably doing something wrong...
-> 
-> Benny
-> 
-> git diff --stat -p
->  fs/nfsd/nfs4proc.c        |    2 +-
->  fs/nfsd/nfsctl.c          |   26 +++++++++++++++++++++++---
->  fs/nfsd/nfssvc.c          |   24 ++++++++++++++++++++++++
->  include/linux/nfsd/nfsd.h |    2 ++
->  4 files changed, 50 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index a393d38..7619970 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -943,7 +943,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  	 * According to RFC3010, this takes precedence over all other errors.
->  	 */
->  	status = nfserr_minor_vers_mismatch;
-> -	if (args->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-> +	if (args->minorversion > nfsd_supported_minorversion)
->  		goto out;
->  
->  	if (!nfs41_op_ordering_ok(args)) {
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 4d63010..af16849 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -792,8 +792,9 @@ out_free:
->  static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  {
->  	char *mesg = buf;
-> -	char *vers, sign;
-> +	char *vers, *minorp, sign;
->  	int len, num;
-> +	unsigned minor;
->  	ssize_t tlen = 0;
->  	char *sep;
->  
-> @@ -814,9 +815,20 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  		do {
->  			sign = *vers;
->  			if (sign == '+' || sign == '-')
-> -				num = simple_strtol((vers+1), NULL, 0);
-> +				num = simple_strtol((vers+1), &minorp, 0);
->  			else
-> -				num = simple_strtol(vers, NULL, 0);
-> +				num = simple_strtol(vers, &minorp, 0);
-> +			if (*minorp == '.') {
-> +				if (num < 4)
-> +					return -EINVAL;
-> +				minor = simple_strtoul(minorp+1, NULL, 0);
-> +				if (minor == 0)
-> +					return -EINVAL;
-> +				if (nfsd_minorversion(minor, sign == '-' ?
-> +						     NFSD_CLEAR : NFSD_SET) < 0)
-> +					return -EINVAL;
-> +				goto next;
-> +			}
->  			switch(num) {
->  			case 2:
->  			case 3:
-> @@ -826,6 +838,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  			default:
->  				return -EINVAL;
->  			}
-> +		next:
->  			vers += len + 1;
->  			tlen += len;
->  		} while ((len = qword_get(&mesg, vers, size)) > 0);
-> @@ -844,6 +857,13 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  				       num);
->  			sep = " ";
->  		}
-> +	if (nfsd_vers(4, NFSD_AVAIL))
-> +		for (minor = 1; minor <= NFSD_SUPPORTED_MINOR_VERSION; minor++)
-> +			len += sprintf(buf+len, " %c4.%u",
-> +					(nfsd_vers(4, NFSD_TEST) &&
-> +					 nfsd_minorversion(minor, NFSD_TEST)) ?
-> +						'+' : '-',
-> +					minor);
->  	len += sprintf(buf+len, "\n");
->  	return len;
->  }
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 6ec29c7..5f4cecb 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -121,6 +121,8 @@ struct svc_program		nfsd_program = {
->  
->  };
->  
-> +u32 nfsd_supported_minorversion = NFSD_SUPPORTED_MINOR_VERSION;
-> +
->  int nfsd_vers(int vers, enum vers_op change)
->  {
->  	if (vers < NFSD_MINVERS || vers >= NFSD_NRVERS)
-> @@ -147,6 +149,28 @@ int nfsd_vers(int vers, enum vers_op change)
->  	}
->  	return 0;
->  }
-> +
-> +int nfsd_minorversion(u32 minorversion, enum vers_op change)
-> +{
-> +	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-> +		return -1;
-> +	switch(change) {
-> +	case NFSD_SET:
-> +		nfsd_supported_minorversion = minorversion;
-> +		break;
-> +	case NFSD_CLEAR:
-> +		if (minorversion == 0)
-> +			return -1;
-> +		nfsd_supported_minorversion = minorversion - 1;
-> +		break;
-> +	case NFSD_TEST:
-> +		return minorversion <= nfsd_supported_minorversion;
-> +	case NFSD_AVAIL:
-> +		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
-> +	}
-> +	return 0;
-> +}
-> +
->  /*
->   * Maximum number of nfsd processes
->   */
-> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-> index b9e6682..27b9cf5 100644
-> --- a/include/linux/nfsd/nfsd.h
-> +++ b/include/linux/nfsd/nfsd.h
-> @@ -57,6 +57,7 @@ typedef int (*nfsd_dirop_t)(struct inode *, struct dentry *, int, int);
->  extern struct svc_program	nfsd_program;
->  extern struct svc_version	nfsd_version2, nfsd_version3,
->  				nfsd_version4;
-> +extern u32			nfsd_supported_minorversion;
->  extern struct mutex		nfsd_mutex;
->  extern struct svc_serv		*nfsd_serv;
->  
-> @@ -153,6 +154,7 @@ int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
->  
->  enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
->  int nfsd_vers(int vers, enum vers_op change);
-> +int nfsd_minorversion(u32 minorversion, enum vers_op change);
->  void nfsd_reset_versions(void);
->  int nfsd_create_serv(void);
->  
+>> WARNING: %Ld/%Lu are not-standard C, use %lld/%llu
+>> #93: FILE: fs/nfs/file.c:564:
+>> +   dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+>>
+>> total: 0 errors, 1 warnings, 42 lines checked
+>>
+>
+> Yes, I noticed it. There are quite a few places in nfs code where we
+> happened to use that (that doesn't imply that it shouldn't be fixed), so
+> I thought it's OK.
+>
+>> That's great ! I'll pull it in the LTTng tree so my users can try it.
+>> They currently cannot write LTTng traces to NFS mounts anyway.
+>
+> Yes, please report the test results. Would appreciate it very much.
+>
+>
+> Thanks,
+
+Thank you for creating a patch !!
+
+I tested it, and it works fine.
+
+My environment is following,
+LTTV 0.12.10
+LTTng 0.100
+LTT Control 0.65
+Kernles 2.6.29
+
+LTTng version is old now, but the test is passed on ARM11 target.
+
+Furthermore, I run the splice test and the test is passed too.
+The test code is copied from
+http://kzk9.net/blog/2007/05/splice2.html
+(Japanese page)
+
+Thanks all people who commented this issue.
+
+Best regards,
+Masahiro Tamori
+
+>
+>>>
+>>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>>> index 90f292b..13d6a00 100644
+>>> --- a/fs/nfs/file.c
+>>> +++ b/fs/nfs/file.c
+>>> @@ -47,6 +47,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
+>>>                   size_t count, unsigned int flags);
+>>> static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+>>>               unsigned long nr_segs, loff_t pos);
+>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+>>> +                  struct file *filp, loff_t *ppos,
+>>> +                  size_t count, unsigned int flags);
+>>> static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+>>>               unsigned long nr_segs, loff_t pos);
+>>> static int nfs_file_flush(struct file *, fl_owner_t id);
+>>> @@ -76,6 +79,7 @@ const struct file_operations nfs_file_operations = {
+>>>   .lock      = nfs_lock,
+>>>   .flock     = nfs_flock,
+>>>   .splice_read  = nfs_file_splice_read,
+>>> +  .splice_write  = nfs_file_splice_write,
+>>>   .check_flags  = nfs_check_flags,
+>>>   .setlease    = nfs_setlease,
+>>> };
+>>> @@ -550,6 +554,26 @@ out_swapfile:
+>>>   goto out;
+>>> }
+>>>
+>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+>>> +                 struct file *filp, loff_t *ppos,
+>>> +                 size_t count, unsigned int flags)
+>>> +{
+>>> +  struct dentry *dentry = filp->f_path.dentry;
+>>> +  struct inode *inode = dentry->d_inode;
+>>> +
+>>> +  dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+>>> +      dentry->d_parent->d_name.name, dentry->d_name.name,
+>>> +      (unsigned long) count, (unsigned long long) *ppos);
+>>> +
+>>> +  if (IS_SWAPFILE(inode)) {
+>>> +      printk(KERN_INFO "NFS: attempt to write to active swap"
+>>> +          "file!\n");
+>>> +      return -EBUSY;
+>>> +  }
+>>> +
+>>> +  return generic_file_splice_write(pipe, filp, ppos, count, flags);
+>>> +}
+>>> +
+>>> static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
+>>> {
+>>>   struct inode *inode = filp->f_mapping->host;
+>>>
+>>
+>
+>
+> --
+> Suresh Jayaraman
+>
 > _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+> ltt-dev mailing list
+> ltt-dev@lists.casi.polymtl.ca
+> http://lists.casi.polymtl.ca/cgi-bin/mailman/listinfo/ltt-dev
+>
