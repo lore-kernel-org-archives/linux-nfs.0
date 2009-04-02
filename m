@@ -1,238 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH v2 01/67] nfs41: common protocol definitions
-Date: Thu, 2 Apr 2009 14:10:38 -0400
-Message-ID: <20090402181038.GE5560@fieldses.org>
-References: <49D4C1A9.5060900@panasas.com> <1238680233-13431-1-git-send-email-bhalevy@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
+Date: Thu, 02 Apr 2009 21:41:33 +0300
+Message-ID: <49D506DD.8040705@panasas.com>
+References: <49D4C19F.7090608@panasas.com> <1238681800.6191.5.camel@heimdal.trondhjem.org> <20090402142256.GF24124@fieldses.org> <1238682355.6191.6.camel@heimdal.trondhjem.org> <20090402143141.GG24124@fieldses.org> <49D4E915.40705@panasas.com> <20090402165427.GA32533@fieldses.org> <49D4F9BE.3010102@panasas.com> <49D4FB68.20502@panasas.com> <20090402175517.GA5560@fieldses.org> <20090402175806.GB5560@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Steve Dickson <steved@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:49263 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753820AbZDBSKk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 14:10:40 -0400
-In-Reply-To: <1238680233-13431-1-git-send-email-bhalevy@panasas.com>
+Received: from gw-ca.panasas.com ([209.116.51.66]:13748 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1760484AbZDBSll (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 14:41:41 -0400
+In-Reply-To: <20090402175806.GB5560@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 02, 2009 at 04:50:33PM +0300, Benny Halevy wrote:
-> Define all NFSv4.1 common operation and error code constants.
+On Apr. 02, 2009, 20:58 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Thu, Apr 02, 2009 at 01:55:17PM -0400, bfields wrote:
+>> On Thu, Apr 02, 2009 at 08:52:40PM +0300, Benny Halevy wrote:
+>>> On Apr. 02, 2009, 20:45 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>> On Apr. 02, 2009, 19:54 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>>>> On Thu, Apr 02, 2009 at 07:34:29PM +0300, Benny Halevy wrote:
+>>>>>> On Apr. 02, 2009, 17:31 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>>>>>> On Thu, Apr 02, 2009 at 10:25:55AM -0400, Trond Myklebust wrote:
+>>>>>>>> On Thu, 2009-04-02 at 10:22 -0400, J. Bruce Fields wrote:
+>>>>>>>>> On Thu, Apr 02, 2009 at 10:16:40AM -0400, Trond Myklebust wrote:
+>>>>>>>>>> On Thu, 2009-04-02 at 16:46 +0300, Benny Halevy wrote:
+>>>>>>>>>>> Trond, please speak up if you want to remove CONFIG_NFS_V4_1 as well.
+>>>>>>>>>>> On the client side minorversion 1 will be used only if the user
+>>>>>>>>>>> explicitly asked for it with mount -o minorversion=1.
+>>>>>>>>>> I'd feel more comfortable with being able to compile it out until the
+>>>>>>>>>> stability of the code has been established. I'd certainly want to be
+>>>>>>>>>> able to do that on the server side, since it has no other means to
+>>>>>>>>>> restrict the protocol version should it turn out that NFSv4.1 has some
+>>>>>>>>>> fatal condition.
+>>>>>>>>> I think it's acceptable given an interface that allows choosing the
+>>>>>>>>> supported minorversion at runtime (and that defaults 4.1 to off).
+>>>>>>>> Is there such an interface on the server?
+>>>>>>> That's the patch Benny just posted.  It seems like a pretty simple
+>>>>>>> extension of the existing version-choosing interface
+>>>>>>> (/proc/fs/nfsd/versions), though I think the version he posted defaults
+>>>>>>> 4.1 to on?  I need to take another look.
+>>>>>> That's right.  This can be changed trivially,
+>>>>>> but I'll have to find and work the reason why the settings reset on
+>>>>>> service nfs restart, otherwise it will reset itself.
+>>>>> Maybe you're starting and stopping the server using distro init scripts
+>>>>> that load and unload the nfsd module?
+>>>> I'm using redhat's /etc/init.d/nfs
+>>>> My impression was that it doesn't unload the nfsd module when the service
+>>>> is stopped.  However it does run modprobe on "start".  I wonder if that's
+>>>> causing the module to reload.
+>>> Hmm, after "stop" nfsd is up and must stay up to keep serving
+>>> /proc/fs/nfsd/versions.
+>>>
+>>> Giving modprobe the --first-time option reports:
+>>> FATAL: Module nfsd already in kernel.
+>> Yeah, actually, /proc/fs/nfsd/versions is probably getting written
+>> somewhere in there.  That may be the effect of the --no-nfs-version
+>> mountd argument.
 > 
-> Note that some of the definitions are used by both the nfs41 client
-> and the server code. This patch is duplicated in the nfs41 and nfsd41
-> sessions patchset.
+> Whoops, sorry, rpc.nfsd: it should be the --no-nfs-version argument to
+> rpc.nfsd.  See nfssvc_versbits() in nfs-utils/support/nfs/nfssvc.c.
 
-Oh, and, for what it's worth (and not being sure which route this may go
-in by):
+OK. I see that now.
+It looks like rpc.nfsd's command line syntax is all negative.
+I.e. all versions are on by default and they can be turned off
+using the -N option.  I can either add an option to enable minorversion
+or have it enabled by default and add an option to disable it.
 
-	Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
+Benny
 
---b.
-
-> Signed-off-by: Andy Adamson<andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfs41: add exchange id flags]
-> Signed-off-by: Mike Sager <sager@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [removed server-only hunk changing NFSERR_REPLAY_ME]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfs41: add SEQ4_XX to nfs41-common-protocol]
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfs41: generic error code update]
-> [nfs41: reverse EXCHGID4_INVAL_FLAG_MASK_{A,R}]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  include/linux/nfs4.h |  128 +++++++++++++++++++++++++++++++++++++++++++++++++-
->  1 files changed, 127 insertions(+), 1 deletions(-)
 > 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index b912311..29ed600 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -21,6 +21,7 @@
->  #define NFS4_FHSIZE		128
->  #define NFS4_MAXPATHLEN		PATH_MAX
->  #define NFS4_MAXNAMLEN		NAME_MAX
-> +#define NFS4_MAX_SESSIONID_LEN	16
->  
->  #define NFS4_ACCESS_READ        0x0001
->  #define NFS4_ACCESS_LOOKUP      0x0002
-> @@ -38,6 +39,7 @@
->  #define NFS4_OPEN_RESULT_CONFIRM 0x0002
->  #define NFS4_OPEN_RESULT_LOCKTYPE_POSIX 0x0004
->  
-> +#define NFS4_SHARE_ACCESS_MASK	0x000F
->  #define NFS4_SHARE_ACCESS_READ	0x0001
->  #define NFS4_SHARE_ACCESS_WRITE	0x0002
->  #define NFS4_SHARE_ACCESS_BOTH	0x0003
-> @@ -45,6 +47,19 @@
->  #define NFS4_SHARE_DENY_WRITE	0x0002
->  #define NFS4_SHARE_DENY_BOTH	0x0003
->  
-> +/* nfs41 */
-> +#define NFS4_SHARE_WANT_MASK		0xFF00
-> +#define NFS4_SHARE_WANT_NO_PREFERENCE	0x0000
-> +#define NFS4_SHARE_WANT_READ_DELEG	0x0100
-> +#define NFS4_SHARE_WANT_WRITE_DELEG	0x0200
-> +#define NFS4_SHARE_WANT_ANY_DELEG	0x0300
-> +#define NFS4_SHARE_WANT_NO_DELEG	0x0400
-> +#define NFS4_SHARE_WANT_CANCEL		0x0500
-> +
-> +#define NFS4_SHARE_WHEN_MASK		0xF0000
-> +#define NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL	0x10000
-> +#define NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED		0x20000
-> +
->  #define NFS4_SET_TO_SERVER_TIME	0
->  #define NFS4_SET_TO_CLIENT_TIME	1
->  
-> @@ -88,6 +103,31 @@
->  #define NFS4_ACE_GENERIC_EXECUTE              0x001200A0
->  #define NFS4_ACE_MASK_ALL                     0x001F01FF
->  
-> +#define EXCHGID4_FLAG_SUPP_MOVED_REFER		0x00000001
-> +#define EXCHGID4_FLAG_SUPP_MOVED_MIGR		0x00000002
-> +#define EXCHGID4_FLAG_USE_NON_PNFS		0x00010000
-> +#define EXCHGID4_FLAG_USE_PNFS_MDS		0x00020000
-> +#define EXCHGID4_FLAG_USE_PNFS_DS		0x00040000
-> +#define EXCHGID4_FLAG_UPD_CONFIRMED_REC_A	0x40000000
-> +#define EXCHGID4_FLAG_CONFIRMED_R		0x80000000
-> +/*
-> + * Since the validity of these bits depends on whether
-> + * they're set in the argument or response, have separate
-> + * invalid flag masks for arg (_A) and resp (_R).
-> + */
-> +#define EXCHGID4_FLAG_MASK_A			0x40070003
-> +#define EXCHGID4_FLAG_MASK_R			0x80070003
-> +
-> +#define SEQ4_STATUS_CB_PATH_DOWN		0x00000001
-> +#define SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING	0x00000002
-> +#define SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED	0x00000004
-> +#define SEQ4_STATUS_EXPIRED_ALL_STATE_REVOKED	0x00000008
-> +#define SEQ4_STATUS_EXPIRED_SOME_STATE_REVOKED	0x00000010
-> +#define SEQ4_STATUS_ADMIN_STATE_REVOKED		0x00000020
-> +#define SEQ4_STATUS_RECALLABLE_STATE_REVOKED	0x00000040
-> +#define SEQ4_STATUS_LEASE_MOVED			0x00000080
-> +#define SEQ4_STATUS_RESTART_RECLAIM_NEEDED	0x00000100
-> +
->  #define NFS4_MAX_UINT64	(~(u64)0)
->  
->  enum nfs4_acl_whotype {
-> @@ -154,6 +194,28 @@ enum nfs_opnum4 {
->  	OP_VERIFY = 37,
->  	OP_WRITE = 38,
->  	OP_RELEASE_LOCKOWNER = 39,
-> +
-> +	/* nfs41 */
-> +	OP_BACKCHANNEL_CTL = 40,
-> +	OP_BIND_CONN_TO_SESSION = 41,
-> +	OP_EXCHANGE_ID = 42,
-> +	OP_CREATE_SESSION = 43,
-> +	OP_DESTROY_SESSION = 44,
-> +	OP_FREE_STATEID = 45,
-> +	OP_GET_DIR_DELEGATION = 46,
-> +	OP_GETDEVICEINFO = 47,
-> +	OP_GETDEVICELIST = 48,
-> +	OP_LAYOUTCOMMIT = 49,
-> +	OP_LAYOUTGET = 50,
-> +	OP_LAYOUTRETURN = 51,
-> +	OP_SECINFO_NO_NAME = 52,
-> +	OP_SEQUENCE = 53,
-> +	OP_SET_SSV = 54,
-> +	OP_TEST_STATEID = 55,
-> +	OP_WANT_DELEGATION = 56,
-> +	OP_DESTROY_CLIENTID = 57,
-> +	OP_RECLAIM_COMPLETE = 58,
-> +
->  	OP_ILLEGAL = 10044,
->  };
->  
-> @@ -230,7 +292,48 @@ enum nfsstat4 {
->  	NFS4ERR_DEADLOCK = 10045,
->  	NFS4ERR_FILE_OPEN = 10046,
->  	NFS4ERR_ADMIN_REVOKED = 10047,
-> -	NFS4ERR_CB_PATH_DOWN = 10048
-> +	NFS4ERR_CB_PATH_DOWN = 10048,
-> +
-> +	/* nfs41 */
-> +	NFS4ERR_BADIOMODE	= 10049,
-> +	NFS4ERR_BADLAYOUT	= 10050,
-> +	NFS4ERR_BAD_SESSION_DIGEST = 10051,
-> +	NFS4ERR_BADSESSION	= 10052,
-> +	NFS4ERR_BADSLOT		= 10053,
-> +	NFS4ERR_COMPLETE_ALREADY = 10054,
-> +	NFS4ERR_CONN_NOT_BOUND_TO_SESSION = 10055,
-> +	NFS4ERR_DELEG_ALREADY_WANTED = 10056,
-> +	NFS4ERR_BACK_CHAN_BUSY	= 10057,	/* backchan reqs outstanding */
-> +	NFS4ERR_LAYOUTTRYLATER	= 10058,
-> +	NFS4ERR_LAYOUTUNAVAILABLE = 10059,
-> +	NFS4ERR_NOMATCHING_LAYOUT = 10060,
-> +	NFS4ERR_RECALLCONFLICT	= 10061,
-> +	NFS4ERR_UNKNOWN_LAYOUTTYPE = 10062,
-> +	NFS4ERR_SEQ_MISORDERED = 10063, 	/* unexpected seq.id in req */
-> +	NFS4ERR_SEQUENCE_POS	= 10064,	/* [CB_]SEQ. op not 1st op */
-> +	NFS4ERR_REQ_TOO_BIG	= 10065,	/* request too big */
-> +	NFS4ERR_REP_TOO_BIG	= 10066,	/* reply too big */
-> +	NFS4ERR_REP_TOO_BIG_TO_CACHE = 10067,	/* rep. not all cached */
-> +	NFS4ERR_RETRY_UNCACHED_REP = 10068,	/* retry & rep. uncached */
-> +	NFS4ERR_UNSAFE_COMPOUND = 10069,	/* retry/recovery too hard */
-> +	NFS4ERR_TOO_MANY_OPS	= 10070,	/* too many ops in [CB_]COMP */
-> +	NFS4ERR_OP_NOT_IN_SESSION = 10071,	/* op needs [CB_]SEQ. op */
-> +	NFS4ERR_HASH_ALG_UNSUPP = 10072,	/* hash alg. not supp. */
-> +						/* Error 10073 is unused. */
-> +	NFS4ERR_CLIENTID_BUSY	= 10074,	/* clientid has state */
-> +	NFS4ERR_PNFS_IO_HOLE	= 10075,	/* IO to _SPARSE file hole */
-> +	NFS4ERR_SEQ_FALSE_RETRY	= 10076,	/* retry not origional */
-> +	NFS4ERR_BAD_HIGH_SLOT	= 10077,	/* sequence arg bad */
-> +	NFS4ERR_DEADSESSION	= 10078,	/* persistent session dead */
-> +	NFS4ERR_ENCR_ALG_UNSUPP = 10079,	/* SSV alg mismatch */
-> +	NFS4ERR_PNFS_NO_LAYOUT	= 10080,	/* direct I/O with no layout */
-> +	NFS4ERR_NOT_ONLY_OP	= 10081,	/* bad compound */
-> +	NFS4ERR_WRONG_CRED	= 10082,	/* permissions:state change */
-> +	NFS4ERR_WRONG_TYPE	= 10083,	/* current operation mismatch */
-> +	NFS4ERR_DIRDELEG_UNAVAIL = 10084,	/* no directory delegation */
-> +	NFS4ERR_REJECT_DELEG	= 10085,	/* on callback */
-> +	NFS4ERR_RETURNCONFLICT	= 10086,	/* outstanding layoutreturn */
-> +	NFS4ERR_DELEG_REVOKED	= 10087,	/* deleg./layout revoked */
->  };
->  
->  /*
-> @@ -391,6 +494,29 @@ enum {
->  	NFSPROC4_CLNT_GETACL,
->  	NFSPROC4_CLNT_SETACL,
->  	NFSPROC4_CLNT_FS_LOCATIONS,
-> +
-> +	/* nfs41 */
-> +	NFSPROC4_CLNT_EXCHANGE_ID,
-> +	NFSPROC4_CLNT_CREATE_SESSION,
-> +	NFSPROC4_CLNT_DESTROY_SESSION,
-> +	NFSPROC4_CLNT_SEQUENCE,
-> +	NFSPROC4_CLNT_GET_LEASE_TIME,
-> +};
-> +
-> +/* nfs41 types */
-> +struct nfs4_sessionid {
-> +	unsigned char data[NFS4_MAX_SESSIONID_LEN];
-> +};
-> +
-> +/* Create Session Flags */
-> +#define SESSION4_PERSIST	 0x001
-> +#define SESSION4_BACK_CHAN 	 0x002
-> +#define SESSION4_RDMA		 0x004
-> +
-> +enum state_protect_how4 {
-> +	SP4_NONE	= 0,
-> +	SP4_MACH_CRED	= 1,
-> +	SP4_SSV		= 2
->  };
->  
->  #endif
-> -- 
-> 1.6.2.1
-> 
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+> --b.
