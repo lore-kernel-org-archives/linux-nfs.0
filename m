@@ -1,41 +1,45 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 20/21] SQUASHME: Revert "nfsd41: Add Kconfig symbols for NFSv4.1"
-Date: Fri,  3 Apr 2009 01:38:59 +0300
-Message-ID: <1238711939-22645-1-git-send-email-bhalevy@panasas.com>
-References: <49D53D44.4030102@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: " J. Bruce Fields" <bfields@citi.umich.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 02/23] SUNRPC: Fix return type of svc_addr_len()
+Date: Thu, 2 Apr 2009 18:39:49 -0400
+Message-ID: <20090402223949.GE18195@fieldses.org>
+References: <20090319004024.32404.68289.stgit@ingres.1015granger.net> <20090319004535.32404.37120.stgit@ingres.1015granger.net> <20090324203206.GH19389@fieldses.org> <49D4182F.20104@opengridcomputing.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>, trond.myklebust@fys.uio.no,
+	linux-nfs@vger.kernel.org
+To: Tom Tucker <tom@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:10090 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1762726AbZDBWjF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 18:39:05 -0400
-In-Reply-To: <49D53D44.4030102@panasas.com>
+Received: from mail.fieldses.org ([141.211.133.115]:47794 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761596AbZDBWjy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 18:39:54 -0400
+In-Reply-To: <49D4182F.20104@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 1023bd56e438717f458fc7ce1a0dfd8593a6f82e.
----
- fs/nfsd/Kconfig |    9 ---------
- 1 files changed, 0 insertions(+), 9 deletions(-)
+On Wed, Apr 01, 2009 at 08:43:11PM -0500, Tom Tucker wrote:
+> J. Bruce Fields wrote:
+>> On Wed, Mar 18, 2009 at 08:45:36PM -0400, Chuck Lever wrote:
+>>> The svc_addr_len() helper function can return a negative errno value,
+>>> but its return type is size_t, which is unsigned.
+>>>
+>>> The RDMA transport code passes this return value directly to memset(),
+>>> without checking first if it's negative.  This could cause memset() to
+>>> clobber a large piece of memory if svc_addr_len() has returned an
+>>> error.
+>>
+>> I'd still like to understand when this can happen, to better understand
+>> how the error should be handled.
+>
+>
+> I don't think that the current code base can cause this to occur.
+>
+> My recollection is that this code was added at the time we were  
+> in-flight with the IPv6 integration and I was somewhat uncomfortable bug  
+> checking on an unknown address type, however, this may in fact be the  
+> right thing to do.
+>
+> I think changing the return type to int is fine.
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 1f2f893..503b9da 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -79,12 +79,3 @@ config NFSD_V4
- 	  available from http://linux-nfs.org/.
- 
- 	  If unsure, say N.
--
--config NFSD_V4_1
--	bool "NFS server support for NFSv4.1 (DEVELOPER ONLY)"
--	depends on NFSD_V4 && EXPERIMENTAL
--	help
--	  This option enables support for minor version 1 of the NFSv4 protocol
--	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS server.
--
--	  Unless you're an NFS developer, say N.
--- 
-1.6.2.1
-
+OK, thanks.  So sounds like the consensus is that the return value
+should either trigger a BUG() or just be ignored.--b.
