@@ -1,161 +1,107 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 25/67] NFS: use dynamically computed compound_hdr.replen for xdr_inline_pages offset
-Date: Thu,  2 Apr 2009 16:53:40 +0300
-Message-ID: <1238680420-14183-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 31/67] nfs41: free slot
+Date: Thu,  2 Apr 2009 16:54:37 +0300
+Message-ID: <1238680477-14370-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:32545 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:30675 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752784AbZDBNxt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:53:49 -0400
+	with ESMTP id S1754037AbZDBNyy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:54:54 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As Trond suggested, rather than passing a constant to xdr_inline_pages,
-keep a running count of the expected reply bytes.  In preparation for
-nfs41, where additional op sequence are expteced when talking to nfs41
-servers.
+From: Andy Adamson <andros@netapp.com>
 
-[NFS: cb_compoundhdr.replen is in words not bytes]
+Free a slot in the slot table.
+
+Mark the slot as free in the bitmap-based allocation table
+by clearing a bit corresponding to the slotid.
+
+Update lowest_free_slotid if freed slotid is lower than that.
+Update highest_used_slotid.  In the case the freed slotid
+equals the highest_used_slotid, scan downwards for the next
+highest used slotid using the optimized fls* functions.
+
+Finally, wake up thread waiting on slot_tbl_waitq for a free slot
+to become available.
+
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: get fs_locations replen before encoding the GETATTR]
+[nfs41: free slot use slotid]
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: get getacl replen before encoding the GETATTR]
+[nfs41: use find_first_zero_bit for nfs4_find_slot]
+    While at it, obliterate lowest_free_slotid and fix-up related comments.
+    As per review comment 21/85.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: use __clear_bit for nfs4_free_slot]
+    While at it, fix-up function comment.
+    Part of review comment 22/85.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: use find_last_bit in nfs4_free_slot to determine highest used slot.]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: rpc_sleep_on slot_tbl_waitq must be called under slot_tbl_lock]
+    Otherwise there's a race (we've hit) with nfs4_free_slot where
+    nfs41_setup_sequence sees a full slot table, unlocks slot_tbl_lock,
+    nfs4_free_slots happen concurrently and call rpc_wake_up_next
+    where there's nobody to wake up yet, context goes back to
+    nfs41_setup_sequence which goes to sleep when the slot table
+    is actually empty now and there's no-one to wake it up anymore.
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4xdr.c |   48 ++++++++++--------------------------------------
- 1 files changed, 10 insertions(+), 38 deletions(-)
+ fs/nfs/nfs4proc.c |   36 ++++++++++++++++++++++++++++++++++++
+ 1 files changed, 36 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 746c6a5..6888946 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1721,20 +1721,13 @@ static int nfs4_xdr_enc_readlink(struct rpc_rqst *req, __be32 *p, const struct n
- 	struct compound_hdr hdr = {
- 		.nops = 0,
- 	};
--	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
--	unsigned int replen;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b57b50e..b17c75e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -274,6 +274,42 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ #if defined(CONFIG_NFS_V4_1)
  
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
- 	encode_readlink(&xdr, args, req, &hdr);
- 
--	/* set up reply kvec
--	 *    toplevel_status + taglen + rescount + OP_PUTFH + status
--	 *      + OP_READLINK + status + string length = 8
--	 */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_readlink_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages,
-+	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
- 			args->pgbase, args->pglen);
- 	encode_nops(&hdr);
- 	return 0;
-@@ -1749,23 +1742,16 @@ static int nfs4_xdr_enc_readdir(struct rpc_rqst *req, __be32 *p, const struct nf
- 	struct compound_hdr hdr = {
- 		.nops = 0,
- 	};
--	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
--	int replen;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
- 	encode_readdir(&xdr, args, req, &hdr);
- 
--	/* set up reply kvec
--	 *    toplevel_status + taglen + rescount + OP_PUTFH + status
--	 *      + OP_READDIR + status + verifer(2)  = 9
--	 */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_readdir_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages,
-+	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
- 			 args->pgbase, args->count);
- 	dprintk("%s: inlined page args = (%u, %p, %u, %u)\n",
--			__func__, replen, args->pages,
-+			__func__, hdr.replen << 2, args->pages,
- 			args->pgbase, args->count);
- 	encode_nops(&hdr);
- 	return 0;
-@@ -1776,24 +1762,17 @@ static int nfs4_xdr_enc_readdir(struct rpc_rqst *req, __be32 *p, const struct nf
-  */
- static int nfs4_xdr_enc_read(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
- {
--	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
- 	struct xdr_stream xdr;
- 	struct compound_hdr hdr = {
- 		.nops = 0,
- 	};
--	int replen;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
- 	encode_read(&xdr, args, &hdr);
- 
--	/* set up reply kvec
--	 *    toplevel status + taglen=0 + rescount + OP_PUTFH + status
--	 *       + OP_READ + status + eof + datalen = 9
--	 */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_read_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen,
-+	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
- 			 args->pages, args->pgbase, args->count);
- 	req->rq_rcv_buf.flags |= XDRBUF_READ;
- 	encode_nops(&hdr);
-@@ -1827,20 +1806,18 @@ nfs4_xdr_enc_getacl(struct rpc_rqst *req, __be32 *p,
- 		struct nfs_getaclargs *args)
- {
- 	struct xdr_stream xdr;
--	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
- 	struct compound_hdr hdr = {
- 		.nops   = 0,
- 	};
--	int replen;
-+	uint32_t replen;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
-+	replen = hdr.replen + nfs4_fattr_bitmap_maxsz + 1;
- 	encode_getattr_two(&xdr, FATTR4_WORD0_ACL, 0, &hdr);
- 
--	/* set up reply buffer: */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS4_dec_getacl_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen,
-+	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
- 		args->acl_pages, args->acl_pgbase, args->acl_len);
- 	encode_nops(&hdr);
- 	return 0;
-@@ -2045,21 +2022,16 @@ static int nfs4_xdr_enc_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs
- 	struct compound_hdr hdr = {
- 		.nops = 0,
- 	};
--	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
--	int replen;
-+	uint32_t replen;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_putfh(&xdr, args->dir_fh, &hdr);
- 	encode_lookup(&xdr, args->name, &hdr);
-+	replen = hdr.replen;	/* get the attribute into args->page */
- 	encode_fs_locations(&xdr, args->bitmask, &hdr);
- 
--	/* set up reply
--	 *   toplevel_status + OP_PUTFH + status
--	 *   + OP_LOOKUP + status + OP_GETATTR + status = 7
--	 */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + 7) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, &args->page,
-+	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, &args->page,
- 			0, PAGE_SIZE);
- 	encode_nops(&hdr);
- 	return 0;
+ /*
++ * nfs4_free_slot - free a slot and efficiently update slot table.
++ *
++ * freeing a slot is trivially done by clearing its respective bit
++ * in the bitmap.
++ * If the freed slotid equals highest_used_slotid we want to update it
++ * so that the server would be able to size down the slot table if needed,
++ * otherwise we know that the highest_used_slotid is still in use.
++ * When updating highest_used_slotid there may be "holes" in the bitmap
++ * so we need to scan down from highest_used_slotid to 0 looking for the now
++ * highest slotid in use.
++ * If none found, highest_used_slotid is set to -1.
++ */
++static void
++nfs4_free_slot(struct nfs4_slot_table *tbl, u8 free_slotid)
++{
++	int slotid = free_slotid;
++
++	spin_lock(&tbl->slot_tbl_lock);
++	/* clear used bit in bitmap */
++	__clear_bit(slotid, tbl->used_slots);
++
++	/* update highest_used_slotid when it is freed */
++	if (slotid == tbl->highest_used_slotid) {
++		slotid = find_last_bit(tbl->used_slots, tbl->max_slots);
++		if (slotid >= 0 && slotid < tbl->max_slots)
++			tbl->highest_used_slotid = slotid;
++		else
++			tbl->highest_used_slotid = -1;
++	}
++	rpc_wake_up_next(&tbl->slot_tbl_waitq);
++	spin_unlock(&tbl->slot_tbl_lock);
++	dprintk("%s: free_slotid %u highest_used_slotid %d\n", __func__,
++		free_slotid, tbl->highest_used_slotid);
++}
++
++/*
+  * nfs4_find_slot - efficiently look for a free slot
+  *
+  * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
 -- 
 1.6.2.1
 
