@@ -1,75 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr4.xs4all.nl ([194.109.24.24]:1570 "EHLO
-	smtp-vbr4.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751686AbZDNJR1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Apr 2009 05:17:27 -0400
-Subject: Re: Unexplained NFS mount hangs
-From: Rudy Zijlstra <rudy@grumpydevil.homelinux.org>
-Reply-To: Rudy@grumpydevil.homelinux.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Daniel Stickney <dstickney@pronto.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <1239650707.13583.49.camel@poledra.romunt.nl>
-References: <20090413092406.304d04fb@dstickney2>
-	 <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
-	 <20090413104759.525161b2@dstickney2>
-	 <48017BBF-03BD-4C87-84F1-1D3603273E4F@oracle.com>
-	 <1239650707.13583.49.camel@poledra.romunt.nl>
-Content-Type: text/plain
-Date: Tue, 14 Apr 2009 11:16:23 +0200
-Message-Id: <1239700583.13583.62.camel@poledra.romunt.nl>
+Received: from relay2.sgi.com ([192.48.179.30]:43201 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752327AbZDBO3b (ORCPT
+	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
+	Thu, 2 Apr 2009 10:29:31 -0400
+Message-ID: <49D4CBA0.40408@sgi.com>
+Date: Fri, 03 Apr 2009 01:28:48 +1100
+From: Greg Banks <gnb@sgi.com>
+Reply-To: Greg Banks <gnb@fmeh.org>
+To: NFS list <linux-nfs@vger.kernel.org>,
+        Linux Filesystem list <linux-fsdevel@vger.kernel.org>,
+        XFS OSS list <xfs@oss.sgi.com>,
+        Linux kernel list <linux-kernel@vger.kernel.org>
+Subject: [ANNOUNCE] Filesystem test tools open-sourced by SGI
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Op maandag 13-04-2009 om 21:25 uur [tijdzone +0200], schreef Rudy
-Zijlstra:
-> Op maandag 13-04-2009 om 13:08 uur [tijdzone -0400], schreef Chuck
-> Lever:
-> > On Apr 13, 2009, at 12:47 PM, Daniel Stickney wrote:
-> > 
-> > > On Mon, 13 Apr 2009 12:12:47 -0400
-> > > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > >
-> > >> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
-> > >>> Hi all,
-> > >>>
-> > >>> I am investigating some NFS mount hangs that we have started to see
-> > >>> over the past month on some of our servers. The behavior is that the
-> > >>> client mount hangs and needs to be manually unmounted (forcefully
-> > >>> with 'umount -f') and remounted to make it work. There are about 85
-> > >>> clients mounting a partition over NFS. About 50 of the clients are
-> > >>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
-> > >>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
-> > >>> with kernel 2.6.27 which was compiled from source. The mount hangs
-> > >>> are inconsistent and so far I don't know how to trigger them on
-> > >>> demand. The timing of the hangs as noted by the timestamp in /var/
-> > >>> log/messages varies. Not all of the 35 CentOS clients have their
-> > >>> mounts hang at the same time, and the NFS server continues operating
-> > >>> apparently normally for all other clients. Normally maybe 5 clients
-> > >>> have a mount hang per week, on different days, mostly different
-> > >>> times. Now and then we might see a cluster of a few clien
-> > >>> ts have their mounts hang at the same exact time, but this is not
-> > >>> consistent. In /var/log/messages we see
+G'day,
+
+SGI is releasing to the Open Source community a number of internal
+SGI testing and debugging tools for NFS.  Some of these tools are
+also applicable to filesystems in general.
+
+These tools are being released under the GNU General Public License
+(GPL) version 2, in the hope that the Linux filesystem development
+community may find them useful.  They are provided as-is, without any
+support.  Please do not contact SGI for support on any of these tools.
+
+Some of these tools are unfinished.  Others rely on build
+infrastructure in internal SGI trees which cannot be released.
+The tools are provided as tarball snapshots of internal SGI source
+control trees; for a number of technical reasons it is not possible
+to provide access to those trees or to create external repositories.
+
+The tools are available for download now at
+
+http://oss.sgi.com/projects/nfs/testtools/
+
+A brief description of each tool follows.
+
+Checkstream
+-----------
+
+Simple data corruption testing utilities based on the concept of
+generating a stream of small self-contained records which can be
+decoded in a way which makes certain common data corruption modes
+automatically diagnosable.  Has been useful for automated testing of
+NFS, XFS, and CXFS in SGI.
+
+Weber
+-----
+
+Test load generator for NFS.  Uses multiple threads, multiple sockets
+and multiple IP addresses to simulate loads from many machines,
+thus enabling testing of NFS server setups with larger client counts
+than can be tested with physical infrastructure (or Virtual Machine
+clients).  Has been useful in automated NFS testing and as a pinpoint
+NFS load generator tool for performance development.
+
+NFS PMDA
+--------
+
+PCP Data Agent for extended NFS server statistics.  Exports to PCP
+the new statistics (measuring per-client and per-server performance)
+which are provided by SGI's EnhancedNFS kernel patches.
+
+Samba PMDA
+----------
+
+PCP Data Agent for extended Samba server statistics.  Exports to
+PCP the additional statistics (measuring per-client and per-server
+performance) which are provided by SGI's patches to Samba.
+
+Ddnfs
+-----
+
+Filesystem load generation program designed to simulate the IO
+load placed on an XFS filesystem by the NFS server in response
+to certain NFS loads.  Intended for use in XFS automated testing,
+to test performance and correctness of certain XFS functionality
+not otherwise exercised by the existing XFS test suite, but never
+integrated into XFSQA.
+
+Pmapload
+--------
+
+Test suite for the portmap and rpcbind programs (which are
+NFS infrastructure components based on code open-sourced by Sun
+Microsystems and used by every Unix and Linux).  Developed by SGI to
+test changes imported into those programs from newer Sun source code
+during the NFS on IPv6 work for Irix several years ago.
+
+RPC Exerciser
+-------------
+
+Test suite for the userspace RPC infrastructure libraries, (which
+are NFS infrastructure components based on code open-sourced by Sun
+Microsystems and used by every Unix and Linux).  Developed by SGI to
+test changes imported into those libraries from newer Sun source code
+during the NFS on IPv6 work for Irix several years ago.
+
+Testfs
+------
+
+Linux kernel module which provides an in-memory filesystem which
+forgets all data written to it.  Also can be configured to simulate
+timing behaviour on reads and writes.  This is useful for NFS
+performance testing without a fast disk subsystem.
+
+StReplay
+--------
+
+Program which reads the system call trace of another program (obtained
+using the widely available strace utility) and replays the IO pattern.
+This was intended to be used for automated NFS and XFS testing and
+for NFS and XFS problem diagnosis, but was never completed as the
+author transferred to another team.  Could be the basis for a very
+useful filesystem test tool.
 
 
-> OK, i'll switch to 2.6.30 on all clients once it is out. Prefer to wait
-> for release, as they are production type machines. 
-> 
-> If i get a hang, i'll check with "netstat --ip"
-> 
-
-Just now one of my 2.6.28.7 machines is hanging. 
-netstat results in client status: 
-tcp  0  0 mythm.romunt.nl:1020    repeater.romunt.nl:nfsd FIN_WAIT2
-tcp 76  0 mythm.romunt.nl:6544    repeater.romunt.n:53854 ESTABLISHED
-
- 
-and on the server i find:
-tcp  1  0 repeater.romunt.nl:nfsd mythm.romunt.nl:1020    CLOSE_WAIT 
-tcp  0  0 repeater.romunt.n:53854 mythm.romunt.nl:6544    FIN_WAIT2  
-
-
-Cheers,
-
-Rudy
+-- 
+Greg Banks, P.Engineer, SGI Australian Software Group.
+the brightly coloured sporks of revolution.
+I don't speak for SGI.
 
