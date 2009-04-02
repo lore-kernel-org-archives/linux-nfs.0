@@ -1,77 +1,142 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH v2 16/47] nfsd41: match clientid establishment method
-Date: Thu, 02 Apr 2009 10:22:00 +0300
-Message-ID: <49D46798.6080500@panasas.com>
-References: <49CDDFC2.4070402@panasas.com> <1238229137-10764-1-git-send-email-bhalevy@panasas.com> <20090331030418.GC7653@fieldses.org> <49D1D901.5000706@panasas.com> <3BDF03B5-9772-49DA-82D9-5D2CF70CC501@netapp.com> <20090402000127.GK8899@fieldses.org>
+From: Brian Murphy <brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [Bugme-new] [Bug 12995] New: NFS mount from avr32 platform crashes
+ on 2.6.29
+Date: Thu, 02 Apr 2009 09:48:13 +0200
+Message-ID: <49D46DBD.508@thrane.com>
+References: <bug-12995-10286@http.bugzilla.kernel.org/> <20090401124113.9026ea09.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Andrew Morton <akpm@linux-foundation.org>,
+	bugme-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Olaf Kirch <okir@suse.de>, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:15595 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753092AbZDBHX3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 03:23:29 -0400
-In-Reply-To: <20090402000127.GK8899@fieldses.org>
+Received: from mail.thrane.com ([62.243.36.210]:15993 "EHLO mail.thrane.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752713AbZDBIDS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Apr 2009 04:03:18 -0400
+In-Reply-To: <20090401124113.9026ea09.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 02, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Tue, Mar 31, 2009 at 10:10:48AM -0400, Andy Adamson wrote:
->> On Mar 31, 2009, at 4:49 AM, Benny Halevy wrote:
->>> At any rate, if this is something we need to fix for 4.1
->>> and it does not introduce any regression to 4.0, and if
->>> the fix isn't trivial/simple, I suggest we add a FIXME comment,
->>> and add it to our todo list to defer the solution post
->>> this push effort.
-> 
-> OK, apologies, it's just takes me much too long to catch up with all of
-> you, and make sure I understand these patches.
-> 
-> And I'm conflicted.
-> 
-> On the one hand, submission-time gives a really clear point at which to
-> do review and handle any problems found.  I'm a little worried that some
-> problems will be forgotten once the code is in.
-> 
-> On the other hand, there's a lot of 4.1 development going on and it
-> would be better to see it happening in mainline than out.  I don't see
-> any more v2/v3/v4.0 regressions, and people in general seem willing to
-> track and respond to comments.
-> 
-> On the other other hand, I do at least want to reassure myself that this
-> is a reasonable basis for further development.
+Andrew Morton wrote:
+> (switched to email.  Please respond via emailed reply-to-all, not via the
+> bugzilla web interface).
+>
+> On Wed, 1 Apr 2009 12:31:51 GMT
+> bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org wrote:
+>
+>   
+>> http://bugzilla.kernel.org/show_bug.cgi?id=12995
+>>
+>>            Summary: NFS mount from avr32 platform crashes on 2.6.29
+>>            Product: File System
+>>            Version: 2.5
+>>           Platform: All
+>>         OS/Version: Linux
+>>               Tree: Mainline
+>>             Status: NEW
+>>           Severity: normal
+>>           Priority: P1
+>>          Component: NFS
+>>         AssignedTo: trond.myklebust@fys.uio.no
+>>         ReportedBy: brm-EoLPgbz1DBzQT0dZR+AlfA@public.gmane.org
+>>         Regression: No
+>>
+>>
+>> The problem turns out to be in the recent(ish) changes in lockd.
+>>
+>> Specifically this struct definition
+>>
+>> struct nsm_handle {
+>>         struct list_head        sm_link;
+>>         atomic_t                sm_count;
+>>         char                    *sm_mon_name;
+>>         char                    *sm_name;
+>>         struct sockaddr_storage sm_addr;
+>>         size_t                  sm_addrlen;
+>>         unsigned int            sm_monitored : 1,
+>>                                 sm_sticky : 1;  /* don't unmonitor */
+>>         struct nsm_private      sm_priv;
+>>         char                    sm_addrbuf[NSM_ADDRBUF];
+>> };
+>>
+>> results in my avr32 compiler (and my ia64 compiler) in aligning the sm_priv
+>> structure (which is a char array) on an odd boundary. The subsequent use
+>> of this field typecast to a u64 (nsm_init_private) as part of an nfs mount
+>> causes a crash with unaligned access.
+>>
+>> The compiler only allocates *one byte* to the two bit bitfield.
+>> Moving the bitfield to the end of the structure fixes the problem in my case.
+>> It seems to me that one should be very careful with typecasting this sm_priv
+>> data to anything with larger alignment but especially to a 64 bit type since
+>> (at least on a 64 bit system) this may demand 64 bit alignment.
+>>
+>> In any case it looks like (with newer gcc at least) that bitfields are
+>> extremely dangerous.
+>>
+>> Perhaps the solution is to malloc the nsm_private data and sm_priv is then a
+>> pointer to this data. This would guarantee the correct alignment.
+>>
+>>     
+>
+> nsm_private is:
+>
+> struct nsm_private {
+> 	unsigned char		data[SM_PRIV_SIZE];
+> };
+>
+> so the compiler is permitted to byte-align this.
+>
+> I assume that some code somewhere is accessing this with a
+> larger-than-one-byte typecast?
+>
+> (Your bug report isn't complete - if it had included the trace then I'd
+> know where the crash is occurring!)
+>
+>   
+I wrote where the crash was occuring.
+> If so then something like this:
+>
+> --- a/include/linux/lockd/xdr.h~a
+> +++ a/include/linux/lockd/xdr.h
+> @@ -9,6 +9,7 @@
+>  #ifndef LOCKD_XDR_H
+>  #define LOCKD_XDR_H
+>  
+> +#include <linux/compiler.h>
+>  #include <linux/fs.h>
+>  #include <linux/nfs.h>
+>  #include <linux/sunrpc/xdr.h>
+> @@ -16,9 +17,10 @@
+>  #define SM_MAXSTRLEN		1024
+>  #define SM_PRIV_SIZE		16
+>  
+> +/* suitable comment about the __aligned goes here */
+>  struct nsm_private {
+>  	unsigned char		data[SM_PRIV_SIZE];
+> -};
+> +} __aligned(sizeof(unsigned long));
+>  
+>  struct svc_rqst;
+>  
+> would be an appropriate fix, as it actually expresses what's going on.
+>
+> If you agree then please cook up and test a patch?
+>
+> Please send the patch via email - we very much try to avoid merging
+> patches out of bugzilla.
+>
+> Thanks.
+>   
 
-Absolutely.  I was just trying to set the focus on the top priority, IMO:
-flushing out the interaction with v4.0 and making sure there are no
-regressions. I know that the v4.1 code is far from being perfect, even
-with respect to the spec and I like your idea of at least documenting what
-we have and what we don't, and what needs fixing.
+It seems to me that there is something wrong here. Shouldn't the 
+"private data"
+either be declared as a struct (and no longer private) or be a void 
+pointer, allocated
+by the user of the private data (with malloc).
+Otherwise there will always be problems when the size of the structure 
+placed in
+the private area grows in addition to the alignment issues.
 
-As you said, keeping the code out of tree doesn't make it any
-easier to fix or maintain so getting the new code in, in spite
-of possible flaws with the *new* functionality as long as it's in a good
-enough shape as a starting point, can just accelerate its development.
-
-> 
-> I'd like to put off the callback stuff for now, at least: the addition
-> of a mutex held over the callbacks worries me, and interferes with an
-> ongoing attempt to make all the callback code asynchronous.  And I
-> haven't tried to review the rpc-level code there yet (and haven't seen
-> review of it from Trond).
-
-Understood.
-
-> 
-> Would it be possible to get one last revison of the patch series which
-> stops short of the callback stuff (so, the first 32 patches or so), and
-> fixes the trivial-to-fix stuff?  And would it be possible to do that by
-> (ulp) tomorrow?
-
-I'm on it.
-
-Benny
-
-> 
-> --b.
+/Brian
