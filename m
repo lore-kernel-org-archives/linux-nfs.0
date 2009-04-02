@@ -1,53 +1,47 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 02/67] nfs41: Add Kconfig symbols for NFSv4.1
-Date: Thu,  2 Apr 2009 16:50:37 +0300
-Message-ID: <1238680237-13462-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 03/67] nfs41: define NFS4_MAX_MINOR_VERSION based on CONFIG_NFS_V4_1
+Date: Thu,  2 Apr 2009 16:50:54 +0300
+Message-ID: <1238680254-13494-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:30322 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:1435 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752784AbZDBNu4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:50:56 -0400
+	with ESMTP id S1754037AbZDBNvE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:51:04 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+From: Mike Sager <sager@netapp.com>
 
-Added CONFIG_NFS_V4_1 and made it depend upon CONFIG_NFS_V4 and EXPERIMENTAL.
-Indicate that CONFIG_NFS_V4_1 is for NFS developers at the moment
+If 4.1 isn't supported, NFS4_MAX_MINOR_VERSION will be 0.
 
-At the moment we're expecting folks trying out nfs41 to
-actively participate in the development process by helping us
-debug issues and ideally send patches to fix problems.
-
+Signed-off-by: Mike Sager <sager@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/Kconfig |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
+ include/linux/nfs4.h |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index e67f3ec..5d6d6f4 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -74,6 +74,15 @@ config NFS_V4
- 
- 	  If unsure, say N.
- 
-+config NFS_V4_1
-+	bool "NFS client support for NFSv4.1 (DEVELOPER ONLY)"
-+	depends on NFS_V4 && EXPERIMENTAL
-+	help
-+	  This option enables support for minor version 1 of the NFSv4 protocol
-+	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS client.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 29ed600..c0c1e8e 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -454,6 +454,13 @@ enum lock_type4 {
+ #define NFSPROC4_NULL 0
+ #define NFSPROC4_COMPOUND 1
+ #define NFS4_MINOR_VERSION 0
 +
-+	  Unless you're an NFS developer, say N.
++#if defined(CONFIG_NFS_V4_1)
++#define NFS4_MAX_MINOR_VERSION 1
++#else
++#define NFS4_MAX_MINOR_VERSION 0
++#endif /* CONFIG_NFS_V4_1 */
 +
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
+ #define NFS4_DEBUG 1
+ 
+ /* Index of predefined Linux client operations */
 -- 
 1.6.2.1
 
