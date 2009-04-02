@@ -1,149 +1,137 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 61/67] nfs41: introduce get_state_renewal_cred
-Date: Thu,  2 Apr 2009 16:59:14 +0300
-Message-ID: <1238680754-15310-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 59/67] nfs41: lease renewal
+Date: Thu,  2 Apr 2009 16:59:00 +0300
+Message-ID: <1238680740-15247-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:29679 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:1833 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757242AbZDBN7g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:59:36 -0400
+	with ESMTP id S1756924AbZDBN7e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:59:34 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Send a NFSv4.1 SEQUENCE op rather than RENEW that was deprecated in
+minorversion 1.
+Use the nfs_client minorversion to select reboot_recover/
+network_partition_recovery/state_renewal ops.
 
-Use the machine cred for sending SEQUENCE to renew
-the client's lease.
+Note: we use reclaimer to create the nfs41 session before there are any
+cl_superblocks for the nfs_client.
 
-[revamp patch for new state management design starting 2.6.29]
-[nfs41: support minorversion 1 for nfs4_check_lease]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: get cred in exchange_id when cred arg is NULL]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: use cl_machined_cred instead of cl_ex_cred]
-    Since EXCHANGE_ID insists on using the machine credential, cl_ex_cred is
-    not needed. nfs4_proc_exchange_id() is only called if the machine credential
-    is available. Remove the credential logic from nfs4_proc_exchange_id.
+[nfs41: check for session not minorversion]
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[revamped patch for new nfs4_state_manager design]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: obliterate nfs4_state_recovery_ops.renew_lease method]
+    moved to nfs4_state_maintenance_ops
+[also undid per-minorversion nfs4_state_recovery_ops here]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4_fs.h    |    5 +++++
- fs/nfs/nfs4proc.c   |    3 +++
- fs/nfs/nfs4renewd.c |    2 +-
- fs/nfs/nfs4state.c  |   18 +++++-------------
- 4 files changed, 14 insertions(+), 14 deletions(-)
+ fs/nfs/nfs4_fs.h    |    6 ++++++
+ fs/nfs/nfs4proc.c   |   24 ++++++++++++++++++++++++
+ fs/nfs/nfs4renewd.c |    4 +++-
+ 3 files changed, 33 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c2c54e1..757245e 100644
+index ea59327..43310ee 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -182,6 +182,7 @@ struct nfs4_state_recovery_ops {
- 
- struct nfs4_state_maintenance_ops {
- 	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *);
-+	struct rpc_cred * (*get_state_renewal_cred_locked)(struct nfs_client *);
- 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
+@@ -180,6 +180,10 @@ struct nfs4_state_recovery_ops {
+ 	int (*recover_lock)(struct nfs4_state *, struct file_lock *);
  };
  
-@@ -240,7 +241,11 @@ extern void nfs4_kill_renewd(struct nfs_client *);
- extern void nfs4_renew_state(struct work_struct *);
++struct nfs4_state_maintenance_ops {
++	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *);
++};
++
+ extern struct dentry_operations nfs4_dentry_operations;
+ extern const struct inode_operations nfs4_dir_inode_operations;
  
- /* nfs4state.c */
-+struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
-+#if defined(CONFIG_NFS_V4_1)
-+struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
-+#endif /* CONFIG_NFS_V4_1 */
+@@ -220,6 +224,8 @@ static inline int nfs4_setup_sequence(struct nfs_client *clp,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
  
- extern struct nfs4_state_owner * nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *);
- extern void nfs4_put_state_owner(struct nfs4_state_owner *);
++extern struct nfs4_state_maintenance_ops *nfs4_state_renewal_ops[];
++
+ extern const u32 nfs4_fattr_bitmap[2];
+ extern const u32 nfs4_statfs_bitmap[2];
+ extern const u32 nfs4_pathconf_bitmap[2];
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9d25c0d..fd8a950 100644
+index 3b3d1df..f047185 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -4251,6 +4251,7 @@ static int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+@@ -3031,6 +3031,9 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
+ 	if (time_before(clp->cl_last_renewal,timestamp))
+ 		clp->cl_last_renewal = timestamp;
+ 	spin_unlock(&clp->cl_lock);
++	dprintk("%s calling put_rpccred on rpc_cred %p\n", __func__,
++				task->tk_msg.rpc_cred);
++	put_rpccred(task->tk_msg.rpc_cred);
+ }
  
- 	dprintk("--> %s\n", __func__);
- 	BUG_ON(clp == NULL);
+ static const struct rpc_call_ops nfs4_renew_ops = {
+@@ -4805,6 +4808,27 @@ struct nfs4_state_recovery_ops nfs4_nograce_recovery_ops = {
+ 	.recover_lock	= nfs4_lock_expired,
+ };
+ 
++struct nfs4_state_maintenance_ops nfs40_state_renewal_ops = {
++	.sched_state_renewal = nfs4_proc_async_renew,
++};
 +
- 	p = (u32 *)verifier.data;
- 	*p++ = htonl((u32)clp->cl_boot_time.tv_sec);
- 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
-@@ -4810,12 +4811,14 @@ struct nfs4_state_recovery_ops nfs4_nograce_recovery_ops = {
- 
- struct nfs4_state_maintenance_ops nfs40_state_renewal_ops = {
- 	.sched_state_renewal = nfs4_proc_async_renew,
-+	.get_state_renewal_cred_locked = nfs4_get_renew_cred_locked,
- 	.renew_lease = nfs4_proc_renew,
- };
- 
- #if defined(CONFIG_NFS_V4_1)
- struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
- 	.sched_state_renewal = nfs41_proc_async_sequence,
-+	.get_state_renewal_cred_locked = nfs4_get_machine_cred_locked,
- 	.renew_lease = nfs4_proc_sequence,
- };
- #endif
++#if defined(CONFIG_NFS_V4_1)
++struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
++	.sched_state_renewal = nfs41_proc_async_sequence,
++};
++#endif
++
++/*
++ * Per minor version reboot and network partition recovery ops
++ */
++
++struct nfs4_state_maintenance_ops *nfs4_state_renewal_ops[] = {
++	&nfs40_state_renewal_ops,
++#if defined(CONFIG_NFS_V4_1)
++	&nfs41_state_renewal_ops,
++#endif
++};
++
+ static const struct inode_operations nfs4_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
 diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index 92b43e8..e27c6ce 100644
+index f524e93..92b43e8 100644
 --- a/fs/nfs/nfs4renewd.c
 +++ b/fs/nfs/nfs4renewd.c
-@@ -78,7 +78,7 @@ nfs4_renew_state(struct work_struct *work)
- 	timeout = (2 * lease) / 3 + (long)last - (long)now;
- 	/* Are we close to a lease timeout? */
- 	if (time_after(now, last + lease/3)) {
--		cred = nfs4_get_renew_cred_locked(clp);
-+		cred = ops->get_state_renewal_cred_locked(clp);
- 		spin_unlock(&clp->cl_lock);
- 		if (cred == NULL) {
- 			if (list_empty(&clp->cl_delegations)) {
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index dc5599c..da940ab 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -77,7 +77,7 @@ static int nfs4_init_client(struct nfs_client *clp, struct rpc_cred *cred)
- 	return status;
- }
- 
--static struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
-+struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
+@@ -59,12 +59,14 @@
+ void
+ nfs4_renew_state(struct work_struct *work)
  {
- 	struct rpc_cred *cred = NULL;
++	struct nfs4_state_maintenance_ops *ops;
+ 	struct nfs_client *clp =
+ 		container_of(work, struct nfs_client, cl_renewd.work);
+ 	struct rpc_cred *cred;
+ 	long lease, timeout;
+ 	unsigned long last, now;
  
-@@ -114,17 +114,7 @@ struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp)
- 	return cred;
- }
- 
--static struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
--{
--	struct rpc_cred *cred;
--
--	spin_lock(&clp->cl_lock);
--	cred = nfs4_get_renew_cred_locked(clp);
--	spin_unlock(&clp->cl_lock);
--	return cred;
--}
--
--static struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
-+struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp)
- {
- 	struct nfs4_state_owner *sp;
- 	struct rb_node *pos;
-@@ -1090,7 +1080,9 @@ static int nfs4_check_lease(struct nfs_client *clp)
- 	/* Is the client already known to have an expired lease? */
- 	if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
- 		return 0;
--	cred = nfs4_get_renew_cred(clp);
-+	spin_lock(&clp->cl_lock);
-+	cred = ops->get_state_renewal_cred_locked(clp);
-+	spin_unlock(&clp->cl_lock);
- 	if (cred == NULL) {
- 		cred = nfs4_get_setclientid_cred(clp);
- 		if (cred == NULL)
++	ops = nfs4_state_renewal_ops[clp->cl_minorversion];
+ 	dprintk("%s: start\n", __func__);
+ 	/* Are there any active superblocks? */
+ 	if (list_empty(&clp->cl_superblocks))
+@@ -86,7 +88,7 @@ nfs4_renew_state(struct work_struct *work)
+ 			nfs_expire_all_delegations(clp);
+ 		} else {
+ 			/* Queue an asynchronous RENEW. */
+-			nfs4_proc_async_renew(clp, cred);
++			ops->sched_state_renewal(clp, cred);
+ 			put_rpccred(cred);
+ 		}
+ 		timeout = (2 * lease) / 3;
 -- 
 1.6.2.1
 
