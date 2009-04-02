@@ -1,68 +1,164 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 40/47] nfsd41: cb_sequence callback
-Date: Thu, 2 Apr 2009 16:54:08 -0400
-Message-ID: <20090402205408.GA18195@fieldses.org>
-References: <49CDDFC2.4070402@panasas.com> <1238229281-11516-1-git-send-email-bhalevy@panasas.com> <20090401043932.GC29339@fieldses.org> <49D47B9C.9030502@panasas.com> <20090402185107.GG5560@fieldses.org> <49D50FE8.8020303@panasas.com> <20090402192734.GI5560@fieldses.org> <49D5135F.6040709@panasas.com>
+Subject: Re: [PATCH v2 19/47] nfsd41: DRC save, restore, and clear functions
+Date: Thu, 2 Apr 2009 17:16:34 -0400
+Message-ID: <20090402211634.GB18195@fieldses.org>
+References: <49CDDFC2.4070402@panasas.com> <1238229152-10860-1-git-send-email-bhalevy@panasas.com> <20090331230305.GA23198@fieldses.org> <6E1BC530-12A1-4A17-B608-35C5E5342821@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Ricardo Labiaga <ricardo.labiaga@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: Andy Adamson <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:57580 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:38525 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754522AbZDBUyK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 16:54:10 -0400
-In-Reply-To: <49D5135F.6040709@panasas.com>
+	with ESMTP id S1762411AbZDBVQh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 17:16:37 -0400
+In-Reply-To: <6E1BC530-12A1-4A17-B608-35C5E5342821@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 02, 2009 at 10:34:55PM +0300, Benny Halevy wrote:
-> On Apr. 02, 2009, 22:27 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Thu, Apr 02, 2009 at 10:20:08PM +0300, Benny Halevy wrote:
-> >> On Apr. 02, 2009, 21:51 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>> On Thu, Apr 02, 2009 at 11:47:24AM +0300, Benny Halevy wrote:
-> >>>> On Apr. 01, 2009, 7:39 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>>>> @@ -503,6 +589,38 @@ nfsd4_probe_callback(struct nfs4_client *clp)
-> >>>>>>  	return;
-> >>>>>>  }
-> >>>>>>  
-> >>>>>> +#if defined(CONFIG_NFSD_V4_1)
-> >>>>>> +/*
-> >>>>>> + * FIXME: cb_sequence should support referring call lists, cachethis, and
-> >>>>>> + * multiple slots
-> >>>>>> + */
-> >>>>>> +static int
-> >>>>>> +nfs41_cb_sequence_setup(struct nfs4_client *clp, struct nfsd4_cb_sequence *args)
-> >>>>>> +{
-> >>>>>> +	u32 *ptr = (u32 *)clp->cl_sessionid.data;
-> >>>>>> +
-> >>>>>> +	dprintk("%s: %u:%u:%u:%u\n", __func__,
-> >>>>>> +		ptr[0], ptr[1], ptr[2], ptr[3]);
-> >>>>>> +
-> >>>>>> +	mutex_lock(&clp->cl_cb_mutex);
-> >>>>> We shouldn't be holding a mutex across a callback.  Why is this needed?
-> >>>> Just a simple way to limit concurrency to 1 and not deal with
-> >>>> multiple slots on the callback path.
-> >>> OK.  We should work out some sort of asynchronous equivalent.
-> >> OK.
-> >>
-> >>> How is the client side currently waiting on slots?
-> >> Currently it has a single slot and a single
-> >> (NFS41_BC_MIN_CALLBACKS) preallocated rpc_rqst.
-> >> If it gets more calls than that, concurrently, it will
-> >> drop its end of the line using 
-> >> set_bit(XPRT_CLOSE_WAIT, &xprt->state)
-> >>
-> >> (Ricardo, please keep me honest :)
-> > 
-> > I was wondering about the rpc client as used on the nfs client, not the
-> 
-> you mean rpc client as used on the nfs server? :)
+On Wed, Apr 01, 2009 at 02:23:11PM -0400, Andy Adamson wrote:
+>
+> On Mar 31, 2009, at 7:03 PM, J. Bruce Fields wrote:
+>
+>> This one scares me.
+>>
+>> On Sat, Mar 28, 2009 at 11:32:32AM +0300, Benny Halevy wrote:
+>>> From: Andy Adamson <andros@netapp.com>
+>>>
+>>> Cache all the result pages, including the rpc header in  
+>>> rq_respages[0],
+>>> for a request in the slot table cache entry.
+>>>
+>>> Cache the statp pointer from nfsd_dispatch which points into  
+>>> rq_respages[0]
+>>> just past the rpc header. When setting a cache entry, calculate and  
+>>> save the
+>>> length of the nfs data minus the rpc header for rq_respages[0].
+>>>
+>>> When replaying a cache entry, replace the cached rpc header with the
+>>> replayed request rpc result header, unless there is not enough room  
+>>> in the
+>>> cached results first page. In that case, use the cached rpc header.
+>>>
+>>> The sessions fore channel maxresponse size cached is set to  
+>>> NFSD_PAGES_PER_SLOT
+>>> * PAGE_SIZE. For compounds we are cacheing with operations such as  
+>>> READDIR
+>>> that use the xdr_buf->pages to hold data, we choose to cache the  
+>>> extra page of
+>>> data rather than copying data from xdr_buf->pages into the xdr_buf- 
+>>> >head page.
+>>>
+>>> [nfsd41: limit cache to maxresponsesize_cached]
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>> [nfsd41: mv nfsd4_set_statp under CONFIG_NFSD_V4_1]
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>> ---
+>>> fs/nfsd/nfs4state.c        |  142 ++++++++++++++++++++++++++++++++++ 
+>>> ++++++++++
+>>> fs/nfsd/nfssvc.c           |    4 +
+>>> include/linux/nfsd/cache.h |    5 ++
+>>> include/linux/nfsd/state.h |   13 ++++
+>>> include/linux/nfsd/xdr4.h  |    4 +
+>>> 5 files changed, 168 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index 10eb67b..f0ce639 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -860,6 +860,148 @@ out_err:
+>>> }
+>>>
+>>> #if defined(CONFIG_NFSD_V4_1)
+>>> +void
+>>> +nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp)
+>>> +{
+>>> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+>>> +
+>>> +	resp->cstate.statp = statp;
+>>> +}
+>>> +
+>>> +/*
+>>> + * Dereference the result pages.
+>>> + */
+>>> +static void
+>>> +nfsd4_release_respages(struct page **respages, short resused)
+>>> +{
+>>> +	int page_no;
+>>> +
+>>> +	dprintk("--> %s\n", __func__);
+>>> +	for (page_no = 0; page_no < resused; page_no++) {
+>>> +		if (!respages[page_no])
+>>> +			continue;
+>>> +		put_page(respages[page_no]);
+>>> +		respages[page_no] = NULL;
+>>> +	}
+>>> +}
+>>> +
+>>> +static void
+>>> +nfsd4_move_pages(struct page **topages, struct page **frompages,  
+>>> short count)
+>>
+>> s/move/copy/; we're not removing anything from the source.
+>>
+>>> +{
+>>> +	int page_no;
+>>
+>> As a general matter of style, I'd rather any loop variable in a  
+>> function
+>> this short and simple be named "i".  "j" if you need another....
+>>
+>>> +
+>>> +	for (page_no = 0; page_no < count; page_no++) {
+>>> +		topages[page_no] = frompages[page_no];
+>>> +		if (!topages[page_no])
+>>> +			continue;
+>>> +		get_page(topages[page_no]);
+>>> +	}
+>>> +}
+>>> +
+>>> +/*
+>>> + * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing  
+>>> the previous
+>>> + * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where  
+>>> the total
+>>> + * length of the XDR response is less than se_fmaxresp_cached
+>>> + * (NFSD_PAGES_PER_SLOT * PAGE_SIZE) but the xdr_buf pages is used  
+>>> for a
+>>> + * of the reply (e.g. readdir).
+>>
+>> That comment isn't very clear.
+>>
+>> Is one page really sufficient?  Consider, for example, a 2-byte read
+>> which spans a page boundary:
+>>
+>> 	first page: rpc header, compound header, putfh reply, etc.
+>> 	second page: 1st byte of read data
+>> 	third page: 2nd byte of read data
+>> 	fourth page: 2 bytes of padding, rest of reply.
+>>
+>> That's for a reply of total length less than a page.
+>
+> I didn't realize the VFS returned read data in this manner. I thought a 2 
+> byte read would end up as the first two bytes in the first page of the 
+> iovec presented to vfs_readv. Does the server actually send 4 pages of 
+> data for a two byte read??
 
-I meant the rpc client on the nfs client: when the nfs client sends an
-rpc on the forechannel it has to wait for a session slot.  How does it
-do it (is it putting the rpc task on some queue?), and can the callback
-client (on the nfs server) do the same thing?
+Whoops, sorry, I forgot this question--email's coming out of my ears.
+
+In nfsd_vfs_read() there are two cases, one using splice, and one readv.
+Trace through it and see that in the splice case nfsd_splice_actor() is
+called, which just takes references to pages in the page cache and sets
+page_base and page_len appropriately.  The kvec passed into
+nfsd4_encode_read isn't used in that case.
+
+So, yes, if you do a 2-byte read from offset 1023 into a file (for
+example), I believe you get a case like the above.
+
+And the splice case is important to performance--we shouldn't just
+bypass it for 4.1.
 
 --b.
