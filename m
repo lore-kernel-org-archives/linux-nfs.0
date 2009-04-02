@@ -1,70 +1,88 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH v2 06/47] nfsd41: Add Kconfig symbols for NFSv4.1
-Date: Thu, 2 Apr 2009 13:58:06 -0400
-Message-ID: <20090402175806.GB5560@fieldses.org>
-References: <49D4C19F.7090608@panasas.com> <1238681800.6191.5.camel@heimdal.trondhjem.org> <20090402142256.GF24124@fieldses.org> <1238682355.6191.6.camel@heimdal.trondhjem.org> <20090402143141.GG24124@fieldses.org> <49D4E915.40705@panasas.com> <20090402165427.GA32533@fieldses.org> <49D4F9BE.3010102@panasas.com> <49D4FB68.20502@panasas.com> <20090402175517.GA5560@fieldses.org>
+Subject: Re: NetworkManager and sm-notify
+Date: Thu, 2 Apr 2009 14:03:26 -0400
+Message-ID: <20090402180326.GC5560@fieldses.org>
+References: <8F917BB8-7590-434B-B8AF-2447E6622A41@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Steve Dickson <steved@redhat.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:59200 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:48575 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756265AbZDBR6H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 13:58:07 -0400
-In-Reply-To: <20090402175517.GA5560@fieldses.org>
+	with ESMTP id S1765523AbZDBSDf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 14:03:35 -0400
+In-Reply-To: <8F917BB8-7590-434B-B8AF-2447E6622A41@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 02, 2009 at 01:55:17PM -0400, bfields wrote:
-> On Thu, Apr 02, 2009 at 08:52:40PM +0300, Benny Halevy wrote:
-> > On Apr. 02, 2009, 20:45 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
-> > > On Apr. 02, 2009, 19:54 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > >> On Thu, Apr 02, 2009 at 07:34:29PM +0300, Benny Halevy wrote:
-> > >>> On Apr. 02, 2009, 17:31 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > >>>> On Thu, Apr 02, 2009 at 10:25:55AM -0400, Trond Myklebust wrote:
-> > >>>>> On Thu, 2009-04-02 at 10:22 -0400, J. Bruce Fields wrote:
-> > >>>>>> On Thu, Apr 02, 2009 at 10:16:40AM -0400, Trond Myklebust wrote:
-> > >>>>>>> On Thu, 2009-04-02 at 16:46 +0300, Benny Halevy wrote:
-> > >>>>>>>> Trond, please speak up if you want to remove CONFIG_NFS_V4_1 as well.
-> > >>>>>>>> On the client side minorversion 1 will be used only if the user
-> > >>>>>>>> explicitly asked for it with mount -o minorversion=1.
-> > >>>>>>> I'd feel more comfortable with being able to compile it out until the
-> > >>>>>>> stability of the code has been established. I'd certainly want to be
-> > >>>>>>> able to do that on the server side, since it has no other means to
-> > >>>>>>> restrict the protocol version should it turn out that NFSv4.1 has some
-> > >>>>>>> fatal condition.
-> > >>>>>> I think it's acceptable given an interface that allows choosing the
-> > >>>>>> supported minorversion at runtime (and that defaults 4.1 to off).
-> > >>>>> Is there such an interface on the server?
-> > >>>> That's the patch Benny just posted.  It seems like a pretty simple
-> > >>>> extension of the existing version-choosing interface
-> > >>>> (/proc/fs/nfsd/versions), though I think the version he posted defaults
-> > >>>> 4.1 to on?  I need to take another look.
-> > >>> That's right.  This can be changed trivially,
-> > >>> but I'll have to find and work the reason why the settings reset on
-> > >>> service nfs restart, otherwise it will reset itself.
-> > >> Maybe you're starting and stopping the server using distro init scripts
-> > >> that load and unload the nfsd module?
-> > > 
-> > > I'm using redhat's /etc/init.d/nfs
-> > > My impression was that it doesn't unload the nfsd module when the service
-> > > is stopped.  However it does run modprobe on "start".  I wonder if that's
-> > > causing the module to reload.
-> > 
-> > Hmm, after "stop" nfsd is up and must stay up to keep serving
-> > /proc/fs/nfsd/versions.
-> > 
-> > Giving modprobe the --first-time option reports:
-> > FATAL: Module nfsd already in kernel.
-> 
-> Yeah, actually, /proc/fs/nfsd/versions is probably getting written
-> somewhere in there.  That may be the effect of the --no-nfs-version
-> mountd argument.
+On Mon, Mar 30, 2009 at 01:50:47PM -0400, Chuck Lever wrote:
+> Hi Steve-
+>
+> While playing with some sm-notify testing, I discovered this little  
+> bug-a-boo on Fedora 10:  If the system uses NetworkManager to configure 
+> its network interfaces, sm-notify doesn't work.
+>
+> Mar 30 13:25:43 ingres rpc.statd[1692]: Version 1.1.4 StartingMar 30  
+> 13:25:43 ingres sm-notify[1694]: Sending Reboot Notification to  
+> 'tarkus.1015granger.net' failed: errno 101 (Network is unreachable)
+> Mar 30 13:25:43 ingres kernel: RPC: Registered udp transport module.
+> Mar 30 13:25:43 ingres kernel: RPC: Registered tcp transport module.
+> Mar 30 13:25:44 ingres acpid: starting up
+> Mar 30 13:25:45 ingres kernel: it87: Found IT8718F chip at 0xe80,  
+> revision 5
+> Mar 30 13:25:45 ingres kernel: it87: in3 is VCC (+5V)
+> Mar 30 13:25:45 ingres kernel: it87: in7 is VCCH (+5V Stand-By)
+> Mar 30 13:25:45 ingres acpid: client connected from 1936[68:68]
+> Mar 30 13:25:45 ingres sm-notify[1694]: Sending Reboot Notification to  
+> 'tarkus.1015granger.net' failed: errno 101 (Network is unreachable)
+> Mar 30 13:25:45 ingres NetworkManager: <info>  starting...
+>
+> ...
+>
+> Mar 30 13:25:49 ingres sm-notify[1694]: Sending Reboot Notification to  
+> 'tarkus.1015granger.net' failed: errno 101 (Network is unreachable)
+> Mar 30 13:25:50 ingres NetworkManager: <info>  (eth0): device state  
+> change: 1 -> 2
+> Mar 30 13:25:50 ingres NetworkManager: <info>  (eth0): bringing up  
+> device.
+>
+> ...
+>
+> Mar 30 13:25:54 ingres NetworkManager: <info>  (eth0): device state  
+> change: 7 -> 8
+> Mar 30 13:25:54 ingres NetworkManager: <info>  Policy set 'System eth0' 
+> (eth0) as default for routing and DNS.
+> Mar 30 13:25:54 ingres NetworkManager: <info>  Activation (eth0)  
+> successful, device activated.
+> Mar 30 13:25:54 ingres NetworkManager: <info>  Activation (eth0) Stage 5 
+> of 5 (IP Configure Commit) complete.
+>
+> ...
+>
+> Then finally:
+>
+> Mar 30 13:25:57 ingres Backgrounding to notify hosts...
+>
+> (this comes out after notification is complete because it is done before 
+> daemon() and openlog() are called, so it's buffered up).
+>
+> In this case, I had actually added an entry for 'tarkus' to /etc/hosts  
+> by hand, so sm-notify keeps trying until the network comes up.  Before I 
+> did that, however, it was attempting to look up 'tarkus' via DNS, and 
+> failing immediately; a reboot notification was never sent.
+>
+> So we have a system boot ordering problem here with NFS and  
+> NetworkManager.
+>
+> I can add more robust retry handling in my sm-notify rewrite that might 
+> be able to recover from this... or we could attempt to run sm-notify as 
+> part of network bring-up instead of being run by rpc.statd...
 
-Whoops, sorry, rpc.nfsd: it should be the --no-nfs-version argument to
-rpc.nfsd.  See nfssvc_versbits() in nfs-utils/support/nfs/nfssvc.c.
+(Just make sure it's not called every time network comes up, I guess.)
 
 --b.
+
+> I should 
+> probably do the former anyway.
