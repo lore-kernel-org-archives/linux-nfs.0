@@ -1,110 +1,77 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Re: [PATCH] nfs: add support for splice writes
-Date: Thu, 02 Apr 2009 12:12:10 +0530
-Message-ID: <49D45E42.3050502@suse.de>
-References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH v2 16/47] nfsd41: match clientid establishment method
+Date: Thu, 02 Apr 2009 10:22:00 +0300
+Message-ID: <49D46798.6080500@panasas.com>
+References: <49CDDFC2.4070402@panasas.com> <1238229137-10764-1-git-send-email-bhalevy@panasas.com> <20090331030418.GC7653@fieldses.org> <49D1D901.5000706@panasas.com> <3BDF03B5-9772-49DA-82D9-5D2CF70CC501@netapp.com> <20090402000127.GK8899@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-	linux-embedded@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	ltt-dev-33AaDErTWvBVxDZ2/Zk0YoryAYyacSEB@public.gmane.org
-To: Mathieu Desnoyers <compudj-vdFpqfd5riKZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:50755 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750975AbZDBGmU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 02:42:20 -0400
-In-Reply-To: <20090402063235.GB24846@Krystal>
+Received: from gw-ca.panasas.com ([209.116.51.66]:15595 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753092AbZDBHX3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 03:23:29 -0400
+In-Reply-To: <20090402000127.GK8899@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mathieu Desnoyers wrote:
-> * Suresh Jayaraman (sjayaraman@suse.de) wrote:
->> This patch attempts to add splice writes support. In essence, it just
->> calls generic_file_splice_write() after doing a little sanity check.
->> This would allow LTTng users that are using NFS to store trace data.
->> There could be more applications that could be benefitted too.
->>
->> I have tested this using the Jens' test program and have found no
->> real issues. The test program is inlined below:
->>
+On Apr. 02, 2009, 3:01 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Tue, Mar 31, 2009 at 10:10:48AM -0400, Andy Adamson wrote:
+>> On Mar 31, 2009, at 4:49 AM, Benny Halevy wrote:
+>>> At any rate, if this is something we need to fix for 4.1
+>>> and it does not introduce any regression to 4.0, and if
+>>> the fix isn't trivial/simple, I suggest we add a FIXME comment,
+>>> and add it to our todo list to defer the solution post
+>>> this push effort.
 > 
-> There is just a small checkpatch nit that I'll fix directly in place in
-> the LTTng tree.
+> OK, apologies, it's just takes me much too long to catch up with all of
+> you, and make sure I understand these patches.
 > 
-> WARNING: %Ld/%Lu are not-standard C, use %lld/%llu
-> #93: FILE: fs/nfs/file.c:564:
-> +	dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+> And I'm conflicted.
 > 
-> total: 0 errors, 1 warnings, 42 lines checked
+> On the one hand, submission-time gives a really clear point at which to
+> do review and handle any problems found.  I'm a little worried that some
+> problems will be forgotten once the code is in.
 > 
-
-Yes, I noticed it. There are quite a few places in nfs code where we
-happened to use that (that doesn't imply that it shouldn't be fixed), so
-I thought it's OK.
-
-> That's great ! I'll pull it in the LTTng tree so my users can try it.
-> They currently cannot write LTTng traces to NFS mounts anyway.
-
-Yes, please report the test results. Would appreciate it very much.
-
-
-Thanks,
-
->>
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index 90f292b..13d6a00 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -47,6 +47,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
->>  					size_t count, unsigned int flags);
->>  static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
->>  				unsigned long nr_segs, loff_t pos);
->> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
->> +					struct file *filp, loff_t *ppos,
->> +					size_t count, unsigned int flags);
->>  static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
->>  				unsigned long nr_segs, loff_t pos);
->>  static int  nfs_file_flush(struct file *, fl_owner_t id);
->> @@ -76,6 +79,7 @@ const struct file_operations nfs_file_operations = {
->>  	.lock		= nfs_lock,
->>  	.flock		= nfs_flock,
->>  	.splice_read	= nfs_file_splice_read,
->> +	.splice_write	= nfs_file_splice_write,
->>  	.check_flags	= nfs_check_flags,
->>  	.setlease	= nfs_setlease,
->>  };
->> @@ -550,6 +554,26 @@ out_swapfile:
->>  	goto out;
->>  }
->>  
->> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
->> +				     struct file *filp, loff_t *ppos,
->> +				     size_t count, unsigned int flags)
->> +{
->> +	struct dentry *dentry = filp->f_path.dentry;
->> +	struct inode *inode = dentry->d_inode;
->> +
->> +	dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
->> +		dentry->d_parent->d_name.name, dentry->d_name.name,
->> +		(unsigned long) count, (unsigned long long) *ppos);
->> +
->> +	if (IS_SWAPFILE(inode)) {
->> +		printk(KERN_INFO "NFS: attempt to write to active swap"
->> +		       "file!\n");
->> +		return -EBUSY;
->> +	}
->> +
->> +	return generic_file_splice_write(pipe, filp, ppos, count, flags);
->> +}
->> +
->>  static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
->>  {
->>  	struct inode *inode = filp->f_mapping->host;
->>
+> On the other hand, there's a lot of 4.1 development going on and it
+> would be better to see it happening in mainline than out.  I don't see
+> any more v2/v3/v4.0 regressions, and people in general seem willing to
+> track and respond to comments.
 > 
+> On the other other hand, I do at least want to reassure myself that this
+> is a reasonable basis for further development.
 
+Absolutely.  I was just trying to set the focus on the top priority, IMO:
+flushing out the interaction with v4.0 and making sure there are no
+regressions. I know that the v4.1 code is far from being perfect, even
+with respect to the spec and I like your idea of at least documenting what
+we have and what we don't, and what needs fixing.
 
--- 
-Suresh Jayaraman
+As you said, keeping the code out of tree doesn't make it any
+easier to fix or maintain so getting the new code in, in spite
+of possible flaws with the *new* functionality as long as it's in a good
+enough shape as a starting point, can just accelerate its development.
+
+> 
+> I'd like to put off the callback stuff for now, at least: the addition
+> of a mutex held over the callbacks worries me, and interferes with an
+> ongoing attempt to make all the callback code asynchronous.  And I
+> haven't tried to review the rpc-level code there yet (and haven't seen
+> review of it from Trond).
+
+Understood.
+
+> 
+> Would it be possible to get one last revison of the patch series which
+> stops short of the callback stuff (so, the first 32 patches or so), and
+> fixes the trivial-to-fix stuff?  And would it be possible to do that by
+> (ulp) tomorrow?
+
+I'm on it.
+
+Benny
+
+> 
+> --b.
