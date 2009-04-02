@@ -1,15 +1,15 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 17/67] nfs41: use nfs4_setaclres
-Date: Thu,  2 Apr 2009 16:52:40 +0300
-Message-ID: <1238680360-13931-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 18/67] nfs41: use nfs4_fs_locations_res
+Date: Thu,  2 Apr 2009 16:52:45 +0300
+Message-ID: <1238680365-13962-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:29057 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:31081 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754382AbZDBNwr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:52:47 -0400
+	with ESMTP id S1751327AbZDBNwz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:52:55 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -17,60 +17,73 @@ List-ID: <linux-nfs.vger.kernel.org>
 In preparation for nfs41 sequence processing.
 
 Signed-off-by: Andy Admason <andros@netapp.com>
-[define nfs_setaclres]
+[find nfs4_fs_locations_res]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c       |    3 ++-
- fs/nfs/nfs4xdr.c        |    3 ++-
- include/linux/nfs_xdr.h |    4 ++++
- 3 files changed, 8 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c       |    5 ++++-
+ fs/nfs/nfs4xdr.c        |    6 ++++--
+ include/linux/nfs_xdr.h |    5 +++++
+ 3 files changed, 13 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4270cb4..50ce9ed 100644
+index 50ce9ed..2fa9442 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2845,10 +2845,11 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 		.acl_pages	= pages,
- 		.acl_len	= buflen,
+@@ -3725,10 +3725,13 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		.page = page,
+ 		.bitmask = bitmask,
  	};
-+	struct nfs_setaclres res;
++	struct nfs4_fs_locations_res res = {
++		.fs_locations = fs_locations,
++	};
  	struct rpc_message msg = {
- 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_SETACL],
- 		.rpc_argp	= &arg,
--		.rpc_resp	= NULL,
-+		.rpc_resp	= &res,
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_FS_LOCATIONS],
+ 		.rpc_argp = &args,
+-		.rpc_resp = fs_locations,
++		.rpc_resp = &res,
  	};
- 	int ret;
+ 	int status;
  
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 27dd25d..aa350d5 100644
+index aa350d5..e448e33 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -3996,7 +3996,8 @@ nfs4_xdr_enc_setacl(struct rpc_rqst *req, __be32 *p, struct nfs_setaclargs *args
-  * Decode SETACL response
+@@ -4504,7 +4504,8 @@ out:
+ /*
+  * FS_LOCATIONS request
   */
- static int
--nfs4_xdr_dec_setacl(struct rpc_rqst *rqstp, __be32 *p, void *res)
-+nfs4_xdr_dec_setacl(struct rpc_rqst *rqstp, __be32 *p,
-+		    struct nfs_setaclres *res)
+-static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs4_fs_locations *res)
++static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req, __be32 *p,
++				     struct nfs4_fs_locations_res *res)
  {
  	struct xdr_stream xdr;
  	struct compound_hdr hdr;
+@@ -4519,7 +4520,8 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs
+ 	if ((status = decode_lookup(&xdr)) != 0)
+ 		goto out;
+ 	xdr_enter_page(&xdr, PAGE_SIZE);
+-	status = decode_getfattr(&xdr, &res->fattr, res->server);
++	status = decode_getfattr(&xdr, &res->fs_locations->fattr,
++				 res->fs_locations->server);
+ out:
+ 	return status;
+ }
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b34a66e..d6cb194 100644
+index d6cb194..d32a112 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -436,6 +436,10 @@ struct nfs_setaclargs {
+@@ -867,6 +867,11 @@ struct nfs4_fs_locations_arg {
  	struct nfs4_sequence_args	seq_args;
  };
  
-+struct nfs_setaclres {
++struct nfs4_fs_locations_res {
++	struct nfs4_fs_locations       *fs_locations;
 +	struct nfs4_sequence_res	seq_res;
 +};
 +
- struct nfs_getaclargs {
- 	struct nfs_fh *			fh;
- 	size_t				acl_len;
+ #endif /* CONFIG_NFS_V4 */
+ 
+ struct nfs_page;
 -- 
 1.6.2.1
 
