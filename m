@@ -1,276 +1,363 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v2 24/67] NFS: update hdr->replen for every encode op
-Date: Thu,  2 Apr 2009 16:53:30 +0300
-Message-ID: <1238680410-14150-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v2 23/67] NFS: define and initialize compound_hdr.replen
+Date: Thu,  2 Apr 2009 16:53:24 +0300
+Message-ID: <1238680404-14119-1-git-send-email-bhalevy@panasas.com>
 References: <49D4C1A9.5060900@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:27657 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:29065 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751527AbZDBNxm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:53:42 -0400
+	with ESMTP id S1755793AbZDBNxc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Apr 2009 09:53:32 -0400
 In-Reply-To: <49D4C1A9.5060900@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+replen holds the running count of expected reply bytes.
+repl will then be used by encoding routines for xdr_inline_pages offset
+after which data bytes are to be received directly into the xdr
+buffer pages.
+
+NOTE: According to the nfsv4 and v4.1 RFCs, the replied tag SHOULD be the same
+is the one sent, but this is not required as a MUST for the server to do so.
+The server may screw us if it replies a tag of a different length in the
+compound result.
+
+[NFS: cb_compoundhdr.replen is in words not bytes]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4xdr.c |   31 +++++++++++++++++++++++++++++++
- 1 files changed, 31 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4xdr.c |   77 ++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 43 insertions(+), 34 deletions(-)
 
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c85dbee..746c6a5 100644
+index 487a197..c85dbee 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -749,6 +749,7 @@ static void encode_access(struct xdr_stream *xdr, u32 access, struct compound_hd
- 	WRITE32(OP_ACCESS);
- 	WRITE32(access);
- 	hdr->nops++;
-+	hdr->replen += decode_access_maxsz;
- }
+@@ -545,6 +545,7 @@ struct compound_hdr {
+ 	__be32 *	nops_p;
+ 	uint32_t	taglen;
+ 	char *		tag;
++	uint32_t	replen;		/* expected reply words */
+ };
  
- static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
-@@ -760,6 +761,7 @@ static void encode_close(struct xdr_stream *xdr, const struct nfs_closeargs *arg
- 	WRITE32(arg->seqid->sequence->counter);
- 	WRITEMEM(arg->stateid->data, NFS4_STATEID_SIZE);
- 	hdr->nops++;
-+	hdr->replen += decode_close_maxsz;
- }
- 
- static void encode_commit(struct xdr_stream *xdr, const struct nfs_writeargs *args, struct compound_hdr *hdr)
-@@ -771,6 +773,7 @@ static void encode_commit(struct xdr_stream *xdr, const struct nfs_writeargs *ar
- 	WRITE64(args->offset);
- 	WRITE32(args->count);
- 	hdr->nops++;
-+	hdr->replen += decode_commit_maxsz;
- }
- 
- static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *create, struct compound_hdr *hdr)
-@@ -802,6 +805,7 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
- 	WRITE32(create->name->len);
- 	WRITEMEM(create->name->name, create->name->len);
- 	hdr->nops++;
-+	hdr->replen += decode_create_maxsz;
- 
- 	encode_attrs(xdr, create->attrs, create->server);
- }
-@@ -815,6 +819,7 @@ static void encode_getattr_one(struct xdr_stream *xdr, uint32_t bitmap, struct c
- 	WRITE32(1);
- 	WRITE32(bitmap);
- 	hdr->nops++;
-+	hdr->replen += decode_getattr_maxsz;
- }
- 
- static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm1, struct compound_hdr *hdr)
-@@ -827,6 +832,7 @@ static void encode_getattr_two(struct xdr_stream *xdr, uint32_t bm0, uint32_t bm
- 	WRITE32(bm0);
- 	WRITE32(bm1);
- 	hdr->nops++;
-+	hdr->replen += decode_getattr_maxsz;
- }
- 
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
-@@ -854,6 +860,7 @@ static void encode_getfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	RESERVE_SPACE(4);
- 	WRITE32(OP_GETFH);
- 	hdr->nops++;
-+	hdr->replen += decode_getfh_maxsz;
- }
- 
- static void encode_link(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
-@@ -865,6 +872,7 @@ static void encode_link(struct xdr_stream *xdr, const struct qstr *name, struct
- 	WRITE32(name->len);
- 	WRITEMEM(name->name, name->len);
- 	hdr->nops++;
-+	hdr->replen += decode_link_maxsz;
- }
- 
- static inline int nfs4_lock_type(struct file_lock *fl, int block)
-@@ -912,6 +920,7 @@ static void encode_lock(struct xdr_stream *xdr, const struct nfs_lock_args *args
- 		WRITE32(args->lock_seqid->sequence->counter);
- 	}
- 	hdr->nops++;
-+	hdr->replen += decode_lock_maxsz;
- }
- 
- static void encode_lockt(struct xdr_stream *xdr, const struct nfs_lockt_args *args, struct compound_hdr *hdr)
-@@ -928,6 +937,7 @@ static void encode_lockt(struct xdr_stream *xdr, const struct nfs_lockt_args *ar
- 	WRITEMEM("lock id:", 8);
- 	WRITE64(args->lock_owner.id);
- 	hdr->nops++;
-+	hdr->replen += decode_lockt_maxsz;
- }
- 
- static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *args, struct compound_hdr *hdr)
-@@ -942,6 +952,7 @@ static void encode_locku(struct xdr_stream *xdr, const struct nfs_locku_args *ar
- 	WRITE64(args->fl->fl_start);
- 	WRITE64(nfs4_lock_length(args->fl));
- 	hdr->nops++;
-+	hdr->replen += decode_locku_maxsz;
- }
- 
- static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
-@@ -954,6 +965,7 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
- 	WRITE32(len);
- 	WRITEMEM(name->name, len);
- 	hdr->nops++;
-+	hdr->replen += decode_lookup_maxsz;
- }
- 
- static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
-@@ -1093,6 +1105,7 @@ static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg,
- 		BUG();
- 	}
- 	hdr->nops++;
-+	hdr->replen += decode_open_maxsz;
- }
- 
- static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_confirmargs *arg, struct compound_hdr *hdr)
-@@ -1104,6 +1117,7 @@ static void encode_open_confirm(struct xdr_stream *xdr, const struct nfs_open_co
- 	WRITEMEM(arg->stateid->data, NFS4_STATEID_SIZE);
- 	WRITE32(arg->seqid->sequence->counter);
- 	hdr->nops++;
-+	hdr->replen += decode_open_confirm_maxsz;
- }
- 
- static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_closeargs *arg, struct compound_hdr *hdr)
-@@ -1116,6 +1130,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
- 	WRITE32(arg->seqid->sequence->counter);
- 	encode_share_access(xdr, arg->fmode);
- 	hdr->nops++;
-+	hdr->replen += decode_open_downgrade_maxsz;
- }
- 
- static void
-@@ -1129,6 +1144,7 @@ encode_putfh(struct xdr_stream *xdr, const struct nfs_fh *fh, struct compound_hd
- 	WRITE32(len);
- 	WRITEMEM(fh->data, len);
- 	hdr->nops++;
-+	hdr->replen += decode_putfh_maxsz;
- }
- 
- static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
-@@ -1138,6 +1154,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	RESERVE_SPACE(4);
- 	WRITE32(OP_PUTROOTFH);
- 	hdr->nops++;
-+	hdr->replen += decode_putrootfh_maxsz;
- }
- 
- static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx)
-@@ -1166,6 +1183,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
- 	WRITE64(args->offset);
- 	WRITE32(args->count);
- 	hdr->nops++;
-+	hdr->replen += decode_read_maxsz;
- }
- 
- static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
-@@ -1191,6 +1209,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 	WRITE32(attrs[0] & readdir->bitmask[0]);
- 	WRITE32(attrs[1] & readdir->bitmask[1]);
- 	hdr->nops++;
-+	hdr->replen += decode_readdir_maxsz;
- 	dprintk("%s: cookie = %Lu, verifier = %08x:%08x, bitmap = %08x:%08x\n",
- 			__func__,
- 			(unsigned long long)readdir->cookie,
-@@ -1207,6 +1226,7 @@ static void encode_readlink(struct xdr_stream *xdr, const struct nfs4_readlink *
- 	RESERVE_SPACE(4);
- 	WRITE32(OP_READLINK);
- 	hdr->nops++;
-+	hdr->replen += decode_readlink_maxsz;
- }
- 
- static void encode_remove(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
-@@ -1218,6 +1238,7 @@ static void encode_remove(struct xdr_stream *xdr, const struct qstr *name, struc
- 	WRITE32(name->len);
- 	WRITEMEM(name->name, name->len);
- 	hdr->nops++;
-+	hdr->replen += decode_remove_maxsz;
- }
- 
- static void encode_rename(struct xdr_stream *xdr, const struct qstr *oldname, const struct qstr *newname, struct compound_hdr *hdr)
-@@ -1233,6 +1254,7 @@ static void encode_rename(struct xdr_stream *xdr, const struct qstr *oldname, co
- 	WRITE32(newname->len);
- 	WRITEMEM(newname->name, newname->len);
- 	hdr->nops++;
-+	hdr->replen += decode_rename_maxsz;
- }
- 
- static void encode_renew(struct xdr_stream *xdr, const struct nfs_client *client_stateid, struct compound_hdr *hdr)
-@@ -1243,6 +1265,7 @@ static void encode_renew(struct xdr_stream *xdr, const struct nfs_client *client
- 	WRITE32(OP_RENEW);
- 	WRITE64(client_stateid->cl_clientid);
- 	hdr->nops++;
-+	hdr->replen += decode_renew_maxsz;
- }
- 
- static void
-@@ -1253,6 +1276,7 @@ encode_restorefh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	RESERVE_SPACE(4);
- 	WRITE32(OP_RESTOREFH);
- 	hdr->nops++;
-+	hdr->replen += decode_restorefh_maxsz;
- }
- 
- static int
-@@ -1272,6 +1296,7 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
- 	WRITE32(arg->acl_len);
- 	xdr_write_pages(xdr, arg->acl_pages, arg->acl_pgbase, arg->acl_len);
- 	hdr->nops++;
-+	hdr->replen += decode_setacl_maxsz;
- 	return 0;
- }
- 
-@@ -1283,6 +1308,7 @@ encode_savefh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	RESERVE_SPACE(4);
- 	WRITE32(OP_SAVEFH);
- 	hdr->nops++;
-+	hdr->replen += decode_savefh_maxsz;
- }
- 
- static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs *arg, const struct nfs_server *server, struct compound_hdr *hdr)
-@@ -1293,6 +1319,7 @@ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs
- 	WRITE32(OP_SETATTR);
- 	WRITEMEM(arg->stateid.data, NFS4_STATEID_SIZE);
- 	hdr->nops++;
-+	hdr->replen += decode_setattr_maxsz;
- 	encode_attrs(xdr, arg->iap, server);
- }
- 
-@@ -1312,6 +1339,7 @@ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclie
- 	RESERVE_SPACE(4);
- 	WRITE32(setclientid->sc_cb_ident);
- 	hdr->nops++;
-+	hdr->replen += decode_setclientid_maxsz;
- }
- 
- static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs_client *client_state, struct compound_hdr *hdr)
-@@ -1323,6 +1351,7 @@ static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs_
- 	WRITE64(client_state->cl_clientid);
- 	WRITEMEM(client_state->cl_confirm.data, NFS4_VERIFIER_SIZE);
- 	hdr->nops++;
-+	hdr->replen += decode_setclientid_confirm_maxsz;
- }
- 
- static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *args, struct compound_hdr *hdr)
-@@ -1341,6 +1370,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
- 
- 	xdr_write_pages(xdr, args->pages, args->pgbase, args->count);
- 	hdr->nops++;
-+	hdr->replen += decode_write_maxsz;
- }
- 
- static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *stateid, struct compound_hdr *hdr)
-@@ -1352,6 +1382,7 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
- 	WRITE32(OP_DELEGRETURN);
- 	WRITEMEM(stateid->data, NFS4_STATEID_SIZE);
- 	hdr->nops++;
-+	hdr->replen += decode_delegreturn_maxsz;
- }
  /*
-  * END OF "GENERIC" ENCODE ROUTINES.
+@@ -580,9 +581,17 @@ static void encode_string(struct xdr_stream *xdr, unsigned int len, const char *
+ 	xdr_encode_opaque(p, str, len);
+ }
+ 
+-static void encode_compound_hdr(struct xdr_stream *xdr, struct compound_hdr *hdr)
++static void encode_compound_hdr(struct xdr_stream *xdr,
++				struct rpc_rqst *req,
++				struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
++	struct rpc_auth *auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
++
++	/* initialize running count of expected bytes in reply.
++	 * NOTE: the replied tag SHOULD be the same is the one sent,
++	 * but this is not required as a MUST for the server to do so. */
++	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
+ 
+ 	dprintk("encode_compound: tag=%.*s\n", (int)hdr->taglen, hdr->tag);
+ 	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
+@@ -1359,7 +1368,7 @@ static int nfs4_xdr_enc_access(struct rpc_rqst *req, __be32 *p, const struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_access(&xdr, args->access, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1378,7 +1387,7 @@ static int nfs4_xdr_enc_lookup(struct rpc_rqst *req, __be32 *p, const struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->dir_fh, &hdr);
+ 	encode_lookup(&xdr, args->name, &hdr);
+ 	encode_getfh(&xdr, &hdr);
+@@ -1398,7 +1407,7 @@ static int nfs4_xdr_enc_lookup_root(struct rpc_rqst *req, __be32 *p, const struc
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putrootfh(&xdr, &hdr);
+ 	encode_getfh(&xdr, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1417,7 +1426,7 @@ static int nfs4_xdr_enc_remove(struct rpc_rqst *req, __be32 *p, const struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_remove(&xdr, &args->name, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1436,7 +1445,7 @@ static int nfs4_xdr_enc_rename(struct rpc_rqst *req, __be32 *p, const struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->old_dir, &hdr);
+ 	encode_savefh(&xdr, &hdr);
+ 	encode_putfh(&xdr, args->new_dir, &hdr);
+@@ -1459,7 +1468,7 @@ static int nfs4_xdr_enc_link(struct rpc_rqst *req, __be32 *p, const struct nfs4_
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_savefh(&xdr, &hdr);
+ 	encode_putfh(&xdr, args->dir_fh, &hdr);
+@@ -1482,7 +1491,7 @@ static int nfs4_xdr_enc_create(struct rpc_rqst *req, __be32 *p, const struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->dir_fh, &hdr);
+ 	encode_savefh(&xdr, &hdr);
+ 	encode_create(&xdr, args, &hdr);
+@@ -1513,7 +1522,7 @@ static int nfs4_xdr_enc_getattr(struct rpc_rqst *req, __be32 *p, const struct nf
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+@@ -1531,7 +1540,7 @@ static int nfs4_xdr_enc_close(struct rpc_rqst *req, __be32 *p, struct nfs_closea
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_close(&xdr, args, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1550,7 +1559,7 @@ static int nfs4_xdr_enc_open(struct rpc_rqst *req, __be32 *p, struct nfs_openarg
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_savefh(&xdr, &hdr);
+ 	encode_open(&xdr, args, &hdr);
+@@ -1573,7 +1582,7 @@ static int nfs4_xdr_enc_open_confirm(struct rpc_rqst *req, __be32 *p, struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_open_confirm(&xdr, args, &hdr);
+ 	encode_nops(&hdr);
+@@ -1591,7 +1600,7 @@ static int nfs4_xdr_enc_open_noattr(struct rpc_rqst *req, __be32 *p, struct nfs_
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_open(&xdr, args, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1610,7 +1619,7 @@ static int nfs4_xdr_enc_open_downgrade(struct rpc_rqst *req, __be32 *p, struct n
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_open_downgrade(&xdr, args, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1629,7 +1638,7 @@ static int nfs4_xdr_enc_lock(struct rpc_rqst *req, __be32 *p, struct nfs_lock_ar
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_lock(&xdr, args, &hdr);
+ 	encode_nops(&hdr);
+@@ -1647,7 +1656,7 @@ static int nfs4_xdr_enc_lockt(struct rpc_rqst *req, __be32 *p, struct nfs_lockt_
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_lockt(&xdr, args, &hdr);
+ 	encode_nops(&hdr);
+@@ -1665,7 +1674,7 @@ static int nfs4_xdr_enc_locku(struct rpc_rqst *req, __be32 *p, struct nfs_locku_
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_locku(&xdr, args, &hdr);
+ 	encode_nops(&hdr);
+@@ -1685,7 +1694,7 @@ static int nfs4_xdr_enc_readlink(struct rpc_rqst *req, __be32 *p, const struct n
+ 	unsigned int replen;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_readlink(&xdr, args, req, &hdr);
+ 
+@@ -1713,7 +1722,7 @@ static int nfs4_xdr_enc_readdir(struct rpc_rqst *req, __be32 *p, const struct nf
+ 	int replen;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_readdir(&xdr, args, req, &hdr);
+ 
+@@ -1744,7 +1753,7 @@ static int nfs4_xdr_enc_read(struct rpc_rqst *req, __be32 *p, struct nfs_readarg
+ 	int replen;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_read(&xdr, args, &hdr);
+ 
+@@ -1771,7 +1780,7 @@ static int nfs4_xdr_enc_setattr(struct rpc_rqst *req, __be32 *p, struct nfs_seta
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_setattr(&xdr, args, args->server, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1794,7 +1803,7 @@ nfs4_xdr_enc_getacl(struct rpc_rqst *req, __be32 *p,
+ 	int replen;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_getattr_two(&xdr, FATTR4_WORD0_ACL, 0, &hdr);
+ 
+@@ -1817,7 +1826,7 @@ static int nfs4_xdr_enc_write(struct rpc_rqst *req, __be32 *p, struct nfs_writea
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_write(&xdr, args, &hdr);
+ 	req->rq_snd_buf.flags |= XDRBUF_WRITE;
+@@ -1837,7 +1846,7 @@ static int nfs4_xdr_enc_commit(struct rpc_rqst *req, __be32 *p, struct nfs_write
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_commit(&xdr, args, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -1856,7 +1865,7 @@ static int nfs4_xdr_enc_fsinfo(struct rpc_rqst *req, __be32 *p, struct nfs4_fsin
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_fsinfo(&xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+@@ -1874,7 +1883,7 @@ static int nfs4_xdr_enc_pathconf(struct rpc_rqst *req, __be32 *p, const struct n
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_getattr_one(&xdr, args->bitmask[0] & nfs4_pathconf_bitmap[0],
+ 			   &hdr);
+@@ -1893,7 +1902,7 @@ static int nfs4_xdr_enc_statfs(struct rpc_rqst *req, __be32 *p, const struct nfs
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	encode_getattr_two(&xdr, args->bitmask[0] & nfs4_statfs_bitmap[0],
+ 			   args->bitmask[1] & nfs4_statfs_bitmap[1], &hdr);
+@@ -1913,7 +1922,7 @@ static int nfs4_xdr_enc_server_caps(struct rpc_rqst *req, __be32 *p,
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fhandle, &hdr);
+ 	encode_getattr_one(&xdr, FATTR4_WORD0_SUPPORTED_ATTRS|
+ 			   FATTR4_WORD0_LINK_SUPPORT|
+@@ -1934,7 +1943,7 @@ static int nfs4_xdr_enc_renew(struct rpc_rqst *req, __be32 *p, struct nfs_client
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_renew(&xdr, clp, &hdr);
+ 	encode_nops(&hdr);
+ 	return 0;
+@@ -1951,7 +1960,7 @@ static int nfs4_xdr_enc_setclientid(struct rpc_rqst *req, __be32 *p, struct nfs4
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_setclientid(&xdr, sc, &hdr);
+ 	encode_nops(&hdr);
+ 	return 0;
+@@ -1969,7 +1978,7 @@ static int nfs4_xdr_enc_setclientid_confirm(struct rpc_rqst *req, __be32 *p, str
+ 	const u32 lease_bitmap[2] = { FATTR4_WORD0_LEASE_TIME, 0 };
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_setclientid_confirm(&xdr, clp, &hdr);
+ 	encode_putrootfh(&xdr, &hdr);
+ 	encode_fsinfo(&xdr, lease_bitmap, &hdr);
+@@ -1988,7 +1997,7 @@ static int nfs4_xdr_enc_delegreturn(struct rpc_rqst *req, __be32 *p, const struc
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fhandle, &hdr);
+ 	encode_delegreturn(&xdr, args->stateid, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+@@ -2009,7 +2018,7 @@ static int nfs4_xdr_enc_fs_locations(struct rpc_rqst *req, __be32 *p, struct nfs
+ 	int replen;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->dir_fh, &hdr);
+ 	encode_lookup(&xdr, args->name, &hdr);
+ 	encode_fs_locations(&xdr, args->bitmask, &hdr);
+@@ -3989,7 +3998,7 @@ nfs4_xdr_enc_setacl(struct rpc_rqst *req, __be32 *p, struct nfs_setaclargs *args
+ 	int status;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_compound_hdr(&xdr, &hdr);
++	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	status = encode_setacl(&xdr, args, &hdr);
+ 	encode_nops(&hdr);
 -- 
 1.6.2.1
 
