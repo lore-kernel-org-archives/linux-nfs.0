@@ -1,87 +1,117 @@
-From: Ni Wenjuan <niwj@cn.fujitsu.com>
-Subject: Re: [PATCH] Replace NFS4ERR_NOTEMPY with NFS4ERR_EXIST
-Date: Fri, 03 Apr 2009 13:24:08 +0800
-Message-ID: <49D59D78.2000701@cn.fujitsu.com>
-References: <49B622D1.6060602@cn.fujitsu.com> <49B62357.3080604@cn.fujitsu.com> <20090311234613.GA21273@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Cc: Yang Hongyang <yanghy@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH v3 01/35] nfsd: don't use the deferral service, return NFS4ERR_DELAY
+Date: Fri,  3 Apr 2009 08:27:32 +0300
+Message-ID: <1238736452-17107-1-git-send-email-bhalevy@panasas.com>
+References: <49D599EA.6060705@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:56467 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752429AbZDCFYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Apr 2009 01:24:49 -0400
-In-Reply-To: <20090311234613.GA21273@fieldses.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:26808 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752536AbZDCF1i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:27:38 -0400
+In-Reply-To: <49D599EA.6060705@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> J. Bruce Fields =E5=86=99=E9=81=93:
->> On Thu, Mar 19, 2009 at 08:37:05AM +0800, Ni Wenjuan wrote:
->>> Fix a test in rename operation. rename dir1 into existing,nonempty =
-dir2 should
->>> return  NFS4ERR_EXIST instead got NFS4ERR_NOTEMPTY. RFC says if the=
- target is a
->>> directory but not empty, the server will return the error, NFS4ERR_=
-EXIST.
->>
->> On a second look: could you double-check the client behavior?:
->> Currently
->>
->>     mkdir subdir
->>     mkdir -p todir/subdir
->>     touch todir/subdir/foo
->>     mv subdir todir/
->>
->> results (as in the local case) in "Directory not empty".  What happe=
-ns
->> after applying this patch?
->>
->> --b.
->=20
-> before patch,  if you execute "mv subdir todir/"  ,client (as in the =
-local case) will notices you that cannot move 'subdir' to a subdirector=
-y of itself ,'todir/subdie'.
->=20
-> after applying patch, if you execute "mv subdir todir/"  ,it will not=
-ices you that can't move 'subdir to todir/subdir' :File exists .
->=20
->=20
+From: Andy Adamson <andros@netapp.com>
 
+On an NFSv4.1 server cache miss that causes an upcall, NFS4ERR_DELAY will be
+returned. It is up to the NFSv4.1 client to resend only the operations that
+have not been processed.
 
-Bruce , is there any other problems about this patch?
+Initialize rq_usedeferral to 1 in svc_process(). It sill be turned off in
+nfsd4_proc_compound() only when NFSv4.1 Sessions are used.
 
->>
->>> Signed-off-by:Ni Wenjuan  <niwj@cn.fujitsu.com>
->>>
->>> ---
->>>  fs/nfsd/nfs4proc.c |    2 +-
->>>  1 files changed, 1 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>> index 9fa60a3..c1e2e22 100644
->>> --- a/fs/nfsd/nfs4proc.c
->>> +++ b/fs/nfsd/nfs4proc.c
->>> @@ -605,7 +605,7 @@ nfsd4_rename(struct svc_rqst *rqstp, struct
->>> nfsd4_compound_state *cstate,
->>>
->>>      /* the underlying filesystem returns different error's than re=
-quired
->>>       * by NFSv4. both save_fh and current_fh have been verified.. =
-*/
->>> -    if (status =3D=3D nfserr_isdir)
->>> +    if (status =3D=3D nfserr_isdir || status =3D=3D nfserr_notempt=
-y)
->>>          status =3D nfserr_exist;
->>>      else if ((status =3D=3D nfserr_notdir) &&
->>>                    (S_ISDIR(cstate->save_fh.fh_dentry->d_inode->i_m=
-ode) &&
->>> --=20
->>>
->>
->>
+Note: this isn't an adequate solution on its own. It's acceptable as a way
+to get some minimal 4.1 up and working, but we're going to have to find a
+way to avoid returning DELAY in all common cases before 4.1 can really be
+considered ready.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: reverse rq_nodeferral negative logic]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[sunrpc: initialize rq_usedeferral]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfs4proc.c         |    8 ++++++++
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    2 ++
+ net/sunrpc/svc_xprt.c      |    2 +-
+ 4 files changed, 12 insertions(+), 1 deletions(-)
 
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 249dad9..ded469f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -854,6 +854,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	resp->cstate.replay_owner = NULL;
+ 	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
+ 	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
++	/* Use the deferral mechanism only for NFSv4.0 compounds */
++	rqstp->rq_usedeferral = (args->minorversion == 0);
+ 
+ 	/*
+ 	 * According to RFC3010, this takes precedence over all other errors.
+@@ -933,12 +935,18 @@ encode_op:
+ 
+ 		nfsd4_increment_op_stats(op->opnum);
+ 	}
++	if (!rqstp->rq_usedeferral && status == nfserr_dropit) {
++		dprintk("%s Dropit - send NFS4ERR_DELAY\n", __func__);
++		status = nfserr_jukebox;
++	}
+ 
+ 	fh_put(&resp->cstate.current_fh);
+ 	fh_put(&resp->cstate.save_fh);
+ 	BUG_ON(resp->cstate.replay_owner);
+ out:
+ 	nfsd4_release_compoundargs(args);
++	/* Reset deferral mechanism for RPC deferrals */
++	rqstp->rq_usedeferral = 1;
+ 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
+ 	return status;
+ }
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 9f9f699..815dd58 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -230,6 +230,7 @@ struct svc_rqst {
+ 	struct svc_cred		rq_cred;	/* auth info */
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+ 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
++	int			rq_usedeferral;	/* use deferral */
+ 
+ 	size_t			rq_xprt_hlen;	/* xprt header len */
+ 	struct xdr_buf		rq_arg;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index fff09a2..45984cb 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1023,6 +1023,8 @@ svc_process(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
++	/* Will be turned off only when NFSv4 Sessions are used */
++	rqstp->rq_usedeferral = 1;
+ 
+ 	/* Setup reply header */
+ 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 1e66f24..600d091 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -974,7 +974,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
+ 	struct svc_deferred_req *dr;
+ 
+-	if (rqstp->rq_arg.page_len)
++	if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
+ 		return NULL; /* if more than a page, give up FIXME */
+ 	if (rqstp->rq_deferred) {
+ 		dr = rqstp->rq_deferred;
+-- 
+1.6.2.1
 
