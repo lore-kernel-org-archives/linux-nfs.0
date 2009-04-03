@@ -1,197 +1,171 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v3 35/35] nfsd41: Documentation/filesystems/nfs41-server.txt
-Date: Fri,  3 Apr 2009 08:29:20 +0300
-Message-ID: <1238736560-18173-1-git-send-email-bhalevy@panasas.com>
-References: <49D599EA.6060705@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: " J. Bruce Fields" <bfields@citi.umich.edu>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:27849 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757906AbZDCF32 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:29:28 -0400
-In-Reply-To: <49D599EA.6060705@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Felix Blyakher <felixb@sgi.com>
+Subject: Re: [PATCH] lockd: call locks_release_private to cleanup per-filesystem state
+Date: Fri, 3 Apr 2009 00:56:12 -0500
+Message-ID: <B4947BA8-0B54-4A43-AF11-15C001BA875D@sgi.com>
+References: <1238530376-28013-1-git-send-email-felixb@sgi.com> <20090402224601.GF18195@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090402224601.GF18195@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Initial nfs41 server write up describing the status of the linux
-server implementation.
 
-[nfsd41: document unenforced nfs41 compound ordering rules.]
-[get rid of CONFIG_NFSD_V4_1]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- Documentation/filesystems/nfs41-server.txt |  161 ++++++++++++++++++++++++++++
- 1 files changed, 161 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/nfs41-server.txt
+On Apr 2, 2009, at 5:46 PM, J. Bruce Fields wrote:
 
-diff --git a/Documentation/filesystems/nfs41-server.txt b/Documentation/filesystems/nfs41-server.txt
-new file mode 100644
-index 0000000..05d81cb
---- /dev/null
-+++ b/Documentation/filesystems/nfs41-server.txt
-@@ -0,0 +1,161 @@
-+NFSv4.1 Server Implementation
-+
-+Server support for minorversion 1 can be controlled using the
-+/proc/fs/nfsd/versions control file.  The string output returned
-+by reading this file will contain either "+4.1" or "-4.1"
-+correspondingly.
-+
-+Currently, server support for minorversion 1 is disabled by default.
-+It can be enabled at run time by writing the string "+4.1" to
-+the /proc/fs/nfsd/versions control file.  Note that to write this
-+control file, the nfsd service must be taken down.  Use your user-mode
-+nfs-utils to set this up; see rpc.nfsd(8)
-+
-+The NFSv4 minorversion 1 (NFSv4.1) implementation in nfsd is based
-+on the latest NFSv4.1 Internet Draft:
-+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29
-+
-+From the many new features in NFSv4.1 the current implementation
-+focuses on the mandatory-to-implement NFSv4.1 Sessions, providing
-+"exactly once" semantics and better control and throttling of the
-+resources allocated for each client.
-+
-+Other NFSv4.1 features, Parallel NFS operations in particular,
-+are still under development out of tree.
-+See http://wiki.linux-nfs.org/wiki/index.php/PNFS_prototype_design
-+for more information.
-+
-+The table below, taken from the NFSv4.1 document, lists
-+the operations that are mandatory to implement (REQ), optional
-+(OPT), and NFSv4.0 operations that are required not to implement (MNI)
-+in minor version 1.  The first column indicates the operations that
-+are not supported yet by the linux server implementation.
-+
-+The OPTIONAL features identified and their abbreviations are as follows:
-+	pNFS	Parallel NFS
-+	FDELG	File Delegations
-+	DDELG	Directory Delegations
-+
-+The following abbreviations indicate the linux server implementation status.
-+	I	Implemented NFSv4.1 operations.
-+	NS	Not Supported.
-+	NS*	unimplemented optional feature.
-+	P	pNFS features implemented out of tree.
-+	PNS	pNFS features that are not supported yet (out of tree).
-+
-+Operations
-+
-+   +----------------------+------------+--------------+----------------+
-+   | Operation            | REQ, REC,  | Feature      | Definition     |
-+   |                      | OPT, or    | (REQ, REC,   |                |
-+   |                      | MNI        | or OPT)      |                |
-+   +----------------------+------------+--------------+----------------+
-+   | ACCESS               | REQ        |              | Section 18.1   |
-+NS | BACKCHANNEL_CTL      | REQ        |              | Section 18.33  |
-+NS | BIND_CONN_TO_SESSION | REQ        |              | Section 18.34  |
-+   | CLOSE                | REQ        |              | Section 18.2   |
-+   | COMMIT               | REQ        |              | Section 18.3   |
-+   | CREATE               | REQ        |              | Section 18.4   |
-+I  | CREATE_SESSION       | REQ        |              | Section 18.36  |
-+NS*| DELEGPURGE           | OPT        | FDELG (REQ)  | Section 18.5   |
-+   | DELEGRETURN          | OPT        | FDELG,       | Section 18.6   |
-+   |                      |            | DDELG, pNFS  |                |
-+   |                      |            | (REQ)        |                |
-+NS | DESTROY_CLIENTID     | REQ        |              | Section 18.50  |
-+I  | DESTROY_SESSION      | REQ        |              | Section 18.37  |
-+I  | EXCHANGE_ID          | REQ        |              | Section 18.35  |
-+NS | FREE_STATEID         | REQ        |              | Section 18.38  |
-+   | GETATTR              | REQ        |              | Section 18.7   |
-+P  | GETDEVICEINFO        | OPT        | pNFS (REQ)   | Section 18.40  |
-+P  | GETDEVICELIST        | OPT        | pNFS (OPT)   | Section 18.41  |
-+   | GETFH                | REQ        |              | Section 18.8   |
-+NS*| GET_DIR_DELEGATION   | OPT        | DDELG (REQ)  | Section 18.39  |
-+P  | LAYOUTCOMMIT         | OPT        | pNFS (REQ)   | Section 18.42  |
-+P  | LAYOUTGET            | OPT        | pNFS (REQ)   | Section 18.43  |
-+P  | LAYOUTRETURN         | OPT        | pNFS (REQ)   | Section 18.44  |
-+   | LINK                 | OPT        |              | Section 18.9   |
-+   | LOCK                 | REQ        |              | Section 18.10  |
-+   | LOCKT                | REQ        |              | Section 18.11  |
-+   | LOCKU                | REQ        |              | Section 18.12  |
-+   | LOOKUP               | REQ        |              | Section 18.13  |
-+   | LOOKUPP              | REQ        |              | Section 18.14  |
-+   | NVERIFY              | REQ        |              | Section 18.15  |
-+   | OPEN                 | REQ        |              | Section 18.16  |
-+NS*| OPENATTR             | OPT        |              | Section 18.17  |
-+   | OPEN_CONFIRM         | MNI        |              | N/A            |
-+   | OPEN_DOWNGRADE       | REQ        |              | Section 18.18  |
-+   | PUTFH                | REQ        |              | Section 18.19  |
-+   | PUTPUBFH             | REQ        |              | Section 18.20  |
-+   | PUTROOTFH            | REQ        |              | Section 18.21  |
-+   | READ                 | REQ        |              | Section 18.22  |
-+   | READDIR              | REQ        |              | Section 18.23  |
-+   | READLINK             | OPT        |              | Section 18.24  |
-+NS | RECLAIM_COMPLETE     | REQ        |              | Section 18.51  |
-+   | RELEASE_LOCKOWNER    | MNI        |              | N/A            |
-+   | REMOVE               | REQ        |              | Section 18.25  |
-+   | RENAME               | REQ        |              | Section 18.26  |
-+   | RENEW                | MNI        |              | N/A            |
-+   | RESTOREFH            | REQ        |              | Section 18.27  |
-+   | SAVEFH               | REQ        |              | Section 18.28  |
-+   | SECINFO              | REQ        |              | Section 18.29  |
-+NS | SECINFO_NO_NAME      | REC        | pNFS files   | Section 18.45, |
-+   |                      |            | layout (REQ) | Section 13.12  |
-+I  | SEQUENCE             | REQ        |              | Section 18.46  |
-+   | SETATTR              | REQ        |              | Section 18.30  |
-+   | SETCLIENTID          | MNI        |              | N/A            |
-+   | SETCLIENTID_CONFIRM  | MNI        |              | N/A            |
-+NS | SET_SSV              | REQ        |              | Section 18.47  |
-+NS | TEST_STATEID         | REQ        |              | Section 18.48  |
-+   | VERIFY               | REQ        |              | Section 18.31  |
-+NS*| WANT_DELEGATION      | OPT        | FDELG (OPT)  | Section 18.49  |
-+   | WRITE                | REQ        |              | Section 18.32  |
-+
-+Callback Operations
-+
-+   +-------------------------+-----------+-------------+---------------+
-+   | Operation               | REQ, REC, | Feature     | Definition    |
-+   |                         | OPT, or   | (REQ, REC,  |               |
-+   |                         | MNI       | or OPT)     |               |
-+   +-------------------------+-----------+-------------+---------------+
-+   | CB_GETATTR              | OPT       | FDELG (REQ) | Section 20.1  |
-+P  | CB_LAYOUTRECALL         | OPT       | pNFS (REQ)  | Section 20.3  |
-+NS*| CB_NOTIFY               | OPT       | DDELG (REQ) | Section 20.4  |
-+P  | CB_NOTIFY_DEVICEID      | OPT       | pNFS (OPT)  | Section 20.12 |
-+NS*| CB_NOTIFY_LOCK          | OPT       |             | Section 20.11 |
-+NS*| CB_PUSH_DELEG           | OPT       | FDELG (OPT) | Section 20.5  |
-+   | CB_RECALL               | OPT       | FDELG,      | Section 20.2  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS*| CB_RECALL_ANY           | OPT       | FDELG,      | Section 20.6  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS | CB_RECALL_SLOT          | REQ       |             | Section 20.8  |
-+NS*| CB_RECALLABLE_OBJ_AVAIL | OPT       | DDELG, pNFS | Section 20.7  |
-+   |                         |           | (REQ)       |               |
-+I  | CB_SEQUENCE             | OPT       | FDELG,      | Section 20.9  |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+NS*| CB_WANTS_CANCELLED      | OPT       | FDELG,      | Section 20.10 |
-+   |                         |           | DDELG, pNFS |               |
-+   |                         |           | (REQ)       |               |
-+   +-------------------------+-----------+-------------+---------------+
-+
-+Implementation notes:
-+
-+EXCHANGE_ID:
-+* only SP4_NONE state protection supported
-+* implementation ids are ignored
-+
-+CREATE_SESSION:
-+* backchannel attributes are ignored
-+* backchannel security parameters are ignored
-+
-+SEQUENCE:
-+* no support for dynamic slot table renegotiation (optional)
-+
-+nfsv4.1 COMPOUND rules:
-+The following cases aren't supported yet:
-+* Enforcing of NFS4ERR_NOT_ONLY_OP for: BIND_CONN_TO_SESSION, CREATE_SESSION,
-+  DESTROY_CLIENTID, DESTROY_SESSION, EXCHANGE_ID.
-+* DESTROY_SESSION MUST be the final operation in the COMPOUND request.
-+
--- 
-1.6.2.1
+> On Tue, Mar 31, 2009 at 03:12:56PM -0500, Felix Blyakher wrote:
+>> For every lock request lockd creates a new file_lock object
+>> in nlmsvc_setgrantargs() by copying the passed in file_lock with
+>> locks_copy_lock(). A filesystem can attach it's own lock_operations
+>> vector to the file_lock. It has to be cleaned up at the end of the
+>> file_lock's life. However, lockd doesn't do it today, yet it
+>> asserts in nlmclnt_release_lockargs() that the per-filesystem
+>> state is clean.
+>> This patch fixes it by exporting locks_release_private() and adding
+>> it to nlmsvc_freegrantargs(), to be symmetrical to creating a
+>> file_lock in nlmsvc_setgrantargs().
+>
+> On a quick skim your diagnosis and fix both look correct to me,  
+> thanks.
+
+> I need to take another look and then I'll pass it along.  How did you
+> originally notice this, and has this bug always existed,
+
+AFAICT it's been there always.
+It's just not usual to go that route. To trigger the bug nfs server
+should be running a top of filesystem with its own fl_ops.
+And the kernel must be post 2.6.24, were nfs started calling into
+filesystem callouts. With that setup it's straightforward.
+I did verify the fix by adding simple wrappers to generic posix lock
+functions in fl_ops for xfs. At first I triggered the panic with the
+following backtrace:
+
+lockd[6142]: bugcheck! 0 [1]
+...
+Call Trace:
+  [<a000000100016810>] show_stack+0x50/0xa0
+                                 sp=e0000030ace8f9a0  
+bsp=e0000030ace81350
+  [<a000000100017080>] show_regs+0x820/0x860
+                                 sp=e0000030ace8fb70  
+bsp=e0000030ace812f8
+  [<a00000010003bd60>] die+0x1a0/0x2c0
+                                 sp=e0000030ace8fb70  
+bsp=e0000030ace812b8
+  [<a00000010003bed0>] die_if_kernel+0x50/0x80
+                                 sp=e0000030ace8fb70  
+bsp=e0000030ace81288
+  [<a00000010068e440>] ia64_bad_break+0x220/0x440
+                                 sp=e0000030ace8fb70  
+bsp=e0000030ace81260
+  [<a00000010000c800>] ia64_native_leave_kernel+0x0/0x270
+                                 sp=e0000030ace8fc00  
+bsp=e0000030ace81260
+  [<a000000208132170>] nlm_release_call+0xb0/0x100 [lockd]
+                                 sp=e0000030ace8fdd0  
+bsp=e0000030ace81228
+  [<a0000002081388b0>] nlmsvc_free_block+0x170/0x1e0 [lockd]
+                                 sp=e0000030ace8fdd0  
+bsp=e0000030ace81200
+  [<a0000001003684a0>] kref_put+0xc0/0x100
+                                 sp=e0000030ace8fdd0  
+bsp=e0000030ace811d0
+  [<a00000020813a4c0>] nlmsvc_lock+0x5c0/0x660 [lockd]
+                                 sp=e0000030ace8fdd0  
+bsp=e0000030ace81170
+  [<a0000002081463d0>] nlm4svc_proc_lock+0x150/0x2a0 [lockd]
+                                 sp=e0000030ace8fdd0  
+bsp=e0000030ace81138
+  [<a000000207a3b2a0>] svc_process+0xaa0/0x1be0 [sunrpc]
+                                 sp=e0000030ace8fde0  
+bsp=e0000030ace810e0
+  [<a000000208137200>] lockd+0x340/0x460 [lockd]
+                                 sp=e0000030ace8fdf0  
+bsp=e0000030ace81090
+  [<a0000001000deee0>] kthread+0xc0/0x140
+                                 sp=e0000030ace8fe30  
+bsp=e0000030ace81068
+  [<a000000100014950>] kernel_thread_helper+0xd0/0x100
+                                 sp=e0000030ace8fe30  
+bsp=e0000030ace81040
+  [<a00000010000a4c0>] start_kernel_thread+0x20/0x40
+                                 sp=e0000030ace8fe30  
+bsp=e0000030ace81040
+
+
+
+And then verified it works correctly with the patch.
+
+Felix
+
+> or was there a
+> previous kernel version where this worked?
+>
+>
+> --b.
+>
+>>
+>> Signed-off-by: Felix Blyakher <felixb@sgi.com>
+>> ---
+>> fs/lockd/svclock.c |    2 ++
+>> fs/locks.c         |    3 ++-
+>> include/linux/fs.h |    1 +
+>> 3 files changed, 5 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+>> index 763b78a..865504a 100644
+>> --- a/fs/lockd/svclock.c
+>> +++ b/fs/lockd/svclock.c
+>> @@ -326,6 +326,8 @@ static void nlmsvc_freegrantargs(struct  
+>> nlm_rqst *call)
+>> {
+>> 	if (call->a_args.lock.oh.data != call->a_owner)
+>> 		kfree(call->a_args.lock.oh.data);
+>> +
+>> +	locks_release_private(&call->a_args.lock.fl);
+>> }
+>>
+>> /*
+>> diff --git a/fs/locks.c b/fs/locks.c
+>> index ec3deea..5b745dc 100644
+>> --- a/fs/locks.c
+>> +++ b/fs/locks.c
+>> @@ -151,7 +151,7 @@ static struct file_lock *locks_alloc_lock(void)
+>> 	return kmem_cache_alloc(filelock_cache, GFP_KERNEL);
+>> }
+>>
+>> -static void locks_release_private(struct file_lock *fl)
+>> +void locks_release_private(struct file_lock *fl)
+>> {
+>> 	if (fl->fl_ops) {
+>> 		if (fl->fl_ops->fl_release_private)
+>> @@ -165,6 +165,7 @@ static void locks_release_private(struct  
+>> file_lock *fl)
+>> 	}
+>>
+>> }
+>> +EXPORT_SYMBOL(locks_release_private);
+>>
+>> /* Free a lock which is not in use. */
+>> static void locks_free_lock(struct file_lock *fl)
+>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>> index 92734c0..3aa4ff6 100644
+>> --- a/include/linux/fs.h
+>> +++ b/include/linux/fs.h
+>> @@ -1047,6 +1047,7 @@ extern void locks_copy_lock(struct file_lock  
+>> *, struct file_lock *);
+>> extern void __locks_copy_lock(struct file_lock *, const struct  
+>> file_lock *);
+>> extern void locks_remove_posix(struct file *, fl_owner_t);
+>> extern void locks_remove_flock(struct file *);
+>> +extern void locks_release_private(struct file_lock *);
+>> extern void posix_test_lock(struct file *, struct file_lock *);
+>> extern int posix_lock_file(struct file *, struct file_lock *,  
+>> struct file_lock *);
+>> extern int posix_lock_file_wait(struct file *, struct file_lock *);
+>> -- 
+>> 1.5.4.rc3
+>>
 
