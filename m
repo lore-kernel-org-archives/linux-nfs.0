@@ -1,39 +1,53 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/6] nfs-utils: convert gssd to TI-RPC and add IPv6
- support (try #2)
-Date: Fri, 3 Apr 2009 13:00:39 -0400
-Message-ID: <20090403130039.3ce5df77@tleilax.poochiereds.net>
-References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
-	<49D63436.8010709@RedHat.com>
+From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Subject: Re: [PATCH 1/2] nfsstat.c: Print diff stats every N seconds
+Date: Fri, 03 Apr 2009 10:10:15 -0700
+Message-ID: <49D642F7.3040900@disney.com>
+References: <1237225556-27691-1-git-send-email-kevin.constantine@disneyanimation.com> <49D62A92.5090907@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:44374 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756811AbZDCRAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Apr 2009 13:00:55 -0400
-In-Reply-To: <49D63436.8010709-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mailgate2.disneyanimation.com ([12.188.26.102]:27600 "EHLO
+	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757569AbZDCRKW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 13:10:22 -0400
+In-Reply-To: <49D62A92.5090907-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 03 Apr 2009 12:07:18 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
 
-> I believe Patch 1/6 is missing from this patch set,
-> at least I can't seem to find it.... 
+Steve Dickson wrote:
+> Hey Kevin,
 > 
-> Also, is this the final version? Or will there be another
-> one addressing Chuck's issues.
+> I apologize for taking so long to look at this... but...
 > 
-> steved.
+> Question: I notice that the v3 stats are displayed one
+> way (in list format) and the v4 stats are display in
+> another way (in column format) was this on purpose? 
+> Should they be displayed using the same format? 
 > 
+Steve-
+I re-worked, and re-submitted the patches per some suggestions from 
+Greg.  I've since found an output bug that if --sleep=1 outputs a 
+newline when there's no nfs traffic.  It'd probably just be easiest if I 
+re-send the patches at this point if that works for you.
 
-Yeah, Time-warner cable's mail servers ate about half the series (grrrr).
+-kevin
 
-There'll be another set coming to address Chuck's comments. It'll be a
-little while before I have a chance to work through them all though.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> steved. 
+> 
+> Kevin Constantine wrote:
+>> nfsstat.c: Implemented --sleep[interval] option.
+>> nfsstat.man: Added information about the --sleep option
+>> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+>> ---
+>>  utils/nfsstat/nfsstat.c   |  158 +++++++++++++++++++++++++++++++++++++--------
+>>  utils/nfsstat/nfsstat.man |    6 ++-
+>>  2 files changed, 137 insertions(+), 27 deletions(-)
+>>
+>> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+>> index 1517414..c25580c 100644
+>> --- a/utils/nfsstat/nfsstat.c
+>> +++ b/utils/nfsstat/nfsstat.c
+>> @@ -167,10 +167,16 @@ DECLARE_SRV(srvinfo, _old);
