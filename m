@@ -1,117 +1,106 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v3 01/35] nfsd: don't use the deferral service, return NFS4ERR_DELAY
-Date: Fri,  3 Apr 2009 08:27:32 +0300
-Message-ID: <1238736452-17107-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v3 03/35] nfsd41: define nfs41 error codes
+Date: Fri,  3 Apr 2009 08:27:40 +0300
+Message-ID: <1238736460-17170-1-git-send-email-bhalevy@panasas.com>
 References: <49D599EA.6060705@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:26808 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:29565 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752536AbZDCF1i (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:27:38 -0400
+	with ESMTP id S1753220AbZDCF1p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:27:45 -0400
 In-Reply-To: <49D599EA.6060705@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
 
-On an NFSv4.1 server cache miss that causes an upcall, NFS4ERR_DELAY will be
-returned. It is up to the NFSv4.1 client to resend only the operations that
-have not been processed.
+Define all error code present in
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-29.
 
-Initialize rq_usedeferral to 1 in svc_process(). It sill be turned off in
-nfsd4_proc_compound() only when NFSv4.1 Sessions are used.
-
-Note: this isn't an adequate solution on its own. It's acceptable as a way
-to get some minimal 4.1 up and working, but we're going to have to find a
-way to avoid returning DELAY in all common cases before 4.1 can really be
-considered ready.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: reverse rq_nodeferral negative logic]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[sunrpc: initialize rq_usedeferral]
-Signed-off-by: Andy Adamson <andros@netapp.com>
+[nfsd41: clean up error code definitions]
+[nfsd41: change NFSERR_REPLAY_ME]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c         |    8 ++++++++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc.c           |    2 ++
- net/sunrpc/svc_xprt.c      |    2 +-
- 4 files changed, 12 insertions(+), 1 deletions(-)
+ include/linux/nfs.h       |    1 -
+ include/linux/nfsd/nfsd.h |   43 ++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 42 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 249dad9..ded469f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -854,6 +854,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	resp->cstate.replay_owner = NULL;
- 	fh_init(&resp->cstate.current_fh, NFS4_FHSIZE);
- 	fh_init(&resp->cstate.save_fh, NFS4_FHSIZE);
-+	/* Use the deferral mechanism only for NFSv4.0 compounds */
-+	rqstp->rq_usedeferral = (args->minorversion == 0);
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index 54af92c..214d499 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -109,7 +109,6 @@
+ 	NFSERR_FILE_OPEN = 10046,      /*       v4 */
+ 	NFSERR_ADMIN_REVOKED = 10047,  /*       v4 */
+ 	NFSERR_CB_PATH_DOWN = 10048,   /*       v4 */
+-	NFSERR_REPLAY_ME = 10049	/*       v4 */
+ };
  
- 	/*
- 	 * According to RFC3010, this takes precedence over all other errors.
-@@ -933,12 +935,18 @@ encode_op:
+ /* NFSv2 file types - beware, these are not the same in NFSv3 */
+diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+index 54beda1..ab9616d 100644
+--- a/include/linux/nfsd/nfsd.h
++++ b/include/linux/nfsd/nfsd.h
+@@ -249,7 +249,44 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_cb_path_down	cpu_to_be32(NFSERR_CB_PATH_DOWN)
+ #define	nfserr_locked		cpu_to_be32(NFSERR_LOCKED)
+ #define	nfserr_wrongsec		cpu_to_be32(NFSERR_WRONGSEC)
+-#define	nfserr_replay_me	cpu_to_be32(NFSERR_REPLAY_ME)
++#define nfserr_badiomode		cpu_to_be32(NFS4ERR_BADIOMODE)
++#define nfserr_badlayout		cpu_to_be32(NFS4ERR_BADLAYOUT)
++#define nfserr_bad_session_digest	cpu_to_be32(NFS4ERR_BAD_SESSION_DIGEST)
++#define nfserr_badsession		cpu_to_be32(NFS4ERR_BADSESSION)
++#define nfserr_badslot			cpu_to_be32(NFS4ERR_BADSLOT)
++#define nfserr_complete_already		cpu_to_be32(NFS4ERR_COMPLETE_ALREADY)
++#define nfserr_conn_not_bound_to_session cpu_to_be32(NFS4ERR_CONN_NOT_BOUND_TO_SESSION)
++#define nfserr_deleg_already_wanted	cpu_to_be32(NFS4ERR_DELEG_ALREADY_WANTED)
++#define nfserr_back_chan_busy		cpu_to_be32(NFS4ERR_BACK_CHAN_BUSY)
++#define nfserr_layouttrylater		cpu_to_be32(NFS4ERR_LAYOUTTRYLATER)
++#define nfserr_layoutunavailable	cpu_to_be32(NFS4ERR_LAYOUTUNAVAILABLE)
++#define nfserr_nomatching_layout	cpu_to_be32(NFS4ERR_NOMATCHING_LAYOUT)
++#define nfserr_recallconflict		cpu_to_be32(NFS4ERR_RECALLCONFLICT)
++#define nfserr_unknown_layouttype	cpu_to_be32(NFS4ERR_UNKNOWN_LAYOUTTYPE)
++#define nfserr_seq_misordered		cpu_to_be32(NFS4ERR_SEQ_MISORDERED)
++#define nfserr_sequence_pos		cpu_to_be32(NFS4ERR_SEQUENCE_POS)
++#define nfserr_req_too_big		cpu_to_be32(NFS4ERR_REQ_TOO_BIG)
++#define nfserr_rep_too_big		cpu_to_be32(NFS4ERR_REP_TOO_BIG)
++#define nfserr_rep_too_big_to_cache	cpu_to_be32(NFS4ERR_REP_TOO_BIG_TO_CACHE)
++#define nfserr_retry_uncached_rep	cpu_to_be32(NFS4ERR_RETRY_UNCACHED_REP)
++#define nfserr_unsafe_compound		cpu_to_be32(NFS4ERR_UNSAFE_COMPOUND)
++#define nfserr_too_many_ops		cpu_to_be32(NFS4ERR_TOO_MANY_OPS)
++#define nfserr_op_not_in_session	cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION)
++#define nfserr_hash_alg_unsupp		cpu_to_be32(NFS4ERR_HASH_ALG_UNSUPP)
++#define nfserr_clientid_busy		cpu_to_be32(NFS4ERR_CLIENTID_BUSY)
++#define nfserr_pnfs_io_hole		cpu_to_be32(NFS4ERR_PNFS_IO_HOLE)
++#define nfserr_seq_false_retry		cpu_to_be32(NFS4ERR_SEQ_FALSE_RETRY)
++#define nfserr_bad_high_slot		cpu_to_be32(NFS4ERR_BAD_HIGH_SLOT)
++#define nfserr_deadsession		cpu_to_be32(NFS4ERR_DEADSESSION)
++#define nfserr_encr_alg_unsupp		cpu_to_be32(NFS4ERR_ENCR_ALG_UNSUPP)
++#define nfserr_pnfs_no_layout		cpu_to_be32(NFS4ERR_PNFS_NO_LAYOUT)
++#define nfserr_not_only_op		cpu_to_be32(NFS4ERR_NOT_ONLY_OP)
++#define nfserr_wrong_cred		cpu_to_be32(NFS4ERR_WRONG_CRED)
++#define nfserr_wrong_type		cpu_to_be32(NFS4ERR_WRONG_TYPE)
++#define nfserr_dirdeleg_unavail		cpu_to_be32(NFS4ERR_DIRDELEG_UNAVAIL)
++#define nfserr_reject_deleg		cpu_to_be32(NFS4ERR_REJECT_DELEG)
++#define nfserr_returnconflict		cpu_to_be32(NFS4ERR_RETURNCONFLICT)
++#define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
  
- 		nfsd4_increment_op_stats(op->opnum);
- 	}
-+	if (!rqstp->rq_usedeferral && status == nfserr_dropit) {
-+		dprintk("%s Dropit - send NFS4ERR_DELAY\n", __func__);
-+		status = nfserr_jukebox;
-+	}
+ /* error codes for internal use */
+ /* if a request fails due to kmalloc failure, it gets dropped.
+@@ -258,6 +295,10 @@ void		nfsd_lockd_shutdown(void);
+ #define	nfserr_dropit		cpu_to_be32(30000)
+ /* end-of-file indicator in readdir */
+ #define	nfserr_eof		cpu_to_be32(30001)
++/* replay detected */
++#define	nfserr_replay_me	cpu_to_be32(11001)
++/* nfs41 replay detected */
++#define	nfserr_replay_cache	cpu_to_be32(11002)
  
- 	fh_put(&resp->cstate.current_fh);
- 	fh_put(&resp->cstate.save_fh);
- 	BUG_ON(resp->cstate.replay_owner);
- out:
- 	nfsd4_release_compoundargs(args);
-+	/* Reset deferral mechanism for RPC deferrals */
-+	rqstp->rq_usedeferral = 1;
- 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
- 	return status;
- }
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 9f9f699..815dd58 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -230,6 +230,7 @@ struct svc_rqst {
- 	struct svc_cred		rq_cred;	/* auth info */
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
-+	int			rq_usedeferral;	/* use deferral */
- 
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index fff09a2..45984cb 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1023,6 +1023,8 @@ svc_process(struct svc_rqst *rqstp)
- 	rqstp->rq_res.tail[0].iov_len = 0;
- 	/* Will be turned off only in gss privacy case: */
- 	rqstp->rq_splice_ok = 1;
-+	/* Will be turned off only when NFSv4 Sessions are used */
-+	rqstp->rq_usedeferral = 1;
- 
- 	/* Setup reply header */
- 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 1e66f24..600d091 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -974,7 +974,7 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
- 	struct svc_rqst *rqstp = container_of(req, struct svc_rqst, rq_chandle);
- 	struct svc_deferred_req *dr;
- 
--	if (rqstp->rq_arg.page_len)
-+	if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
- 		return NULL; /* if more than a page, give up FIXME */
- 	if (rqstp->rq_deferred) {
- 		dr = rqstp->rq_deferred;
+ /* Check for dir entries '.' and '..' */
+ #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
 -- 
 1.6.2.1
 
