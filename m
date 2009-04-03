@@ -1,49 +1,39 @@
 From: andros@netapp.com
-Subject: [PATCH 07/22] SQUASHME: nfsd41 remove sl_session from alloc_init_session
-Date: Thu,  2 Apr 2009 20:19:48 -0400
-Message-ID: <1238718003-8764-7-git-send-email-andros@netapp.com>
-References: <1238718003-8764-1-git-send-email-andros@netapp.com>
- <1238718003-8764-2-git-send-email-andros@netapp.com>
- <1238718003-8764-3-git-send-email-andros@netapp.com>
- <1238718003-8764-4-git-send-email-andros@netapp.com>
- <1238718003-8764-5-git-send-email-andros@netapp.com>
- <1238718003-8764-6-git-send-email-andros@netapp.com>
+Subject: [PATCH 01/22] SQUASHME: nfsd41: add nfsd4_session pointer to nfsd4_compound_state
+Date: Thu,  2 Apr 2009 20:19:42 -0400
+Message-ID: <1238718003-8764-1-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:33624 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755854AbZDCAU3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2009 20:20:29 -0400
-In-Reply-To: <1238718003-8764-6-git-send-email-andros@netapp.com>
+	id S1754743AbZDCAUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Apr 2009 20:20:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
 March 31 review by Bruce
-squash into nfsd41: create_session operation
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+ include/linux/nfsd/xdr4.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2b8d3ba..f70c10f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -511,9 +511,6 @@ alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp,
- 	if (!new->se_slots)
- 		goto out_free;
- 
--	for (i = 0; i < new->se_fnumslots; i++)
--		new->se_slots[i].sl_session = new;
--
- 	new->se_client = clp;
- 	gen_sessionid(new);
- 	idx = hash_sessionid(&new->se_sessionid);
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 7ed9955..a895bba 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -49,6 +49,7 @@ struct nfsd4_compound_state {
+ 	struct svc_fh		save_fh;
+ 	struct nfs4_stateowner	*replay_owner;
+ 	/* For sessions DRC */
++	struct nfsd4_session	*session;
+ 	struct nfsd4_slot	*slot;
+ 	__be32			*statp;
+ 	size_t			iovlen;
 -- 
 1.5.4.3
 
