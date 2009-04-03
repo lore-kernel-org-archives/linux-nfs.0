@@ -1,245 +1,40 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: [PATCH 1/2] nfsstat: Print diff stats every N seconds
-Date: Fri,  3 Apr 2009 12:06:31 -0700
-Message-ID: <1238785592-18869-2-git-send-email-kevin.constantine@disneyanimation.com>
-References: <1238785592-18869-1-git-send-email-kevin.constantine@disneyanimation.com>
-Cc: linux-nfs@vger.kernel.org, Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org,
-	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
-To: steved@redhat.com
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH 2.6.30] svcrdma: Fix dma map direction for rdma read targets
+Date: Fri, 03 Apr 2009 15:18:24 -0500
+Message-ID: <20090403201824.18102.62915.stgit@build.ogc.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, tom@opengridcomputing.com
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([12.188.26.101]:61918 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758907AbZDCTGj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 15:06:39 -0400
-In-Reply-To: <1238785592-18869-1-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:55583 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759692AbZDCUS0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 16:18:26 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- nfsstat.c: Implements an optional "interval" argument to --sleep
- nfsstat.man: Explains the use of --sleep[interval]
+The nfs server rdma transport was mapping rdma read target pages for
+TO_DEVICE instead of FROM_DEVICE.  This causes data corruption on non
+cache-coherent systems if frmrs are used.
 
-Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
 ---
- utils/nfsstat/nfsstat.c   |  106 ++++++++++++++++++++++++++++++++++-----------
- utils/nfsstat/nfsstat.man |    6 ++-
- 2 files changed, 85 insertions(+), 27 deletions(-)
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 1517414..453d345 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -167,6 +167,9 @@ DECLARE_SRV(srvinfo, _old);
- DECLARE_CLT(cltinfo);
- DECLARE_CLT(cltinfo, _old);
- 
-+static void		print_all_stats(int, int, int);
-+static void		print_server_stats(int, int);
-+static void		print_client_stats(int, int);
- static void		print_numbers(const char *, unsigned int *,
- 					unsigned int);
- static void		print_callstats(const char *, const char **,
-@@ -183,6 +186,7 @@ static void		get_stats(const char *, struct statinfo *, int *, int,
- static int		has_stats(const unsigned int *);
- static void 		diff_stats(struct statinfo *, struct statinfo *, int);
- static void 		unpause(int);
-+static void 		update_old_counters(struct statinfo *, struct statinfo *);
- 
- static time_t		starttime;
- 
-@@ -207,26 +211,29 @@ void usage(char *name)
- {
- 	printf("Usage: %s [OPTION]...\n\
- \n\
--  -m, --mounts\t\tShow statistics on mounted NFS filesystems\n\
--  -c, --client\t\tShow NFS client statistics\n\
--  -s, --server\t\tShow NFS server statistics\n\
--  -2\t\t\tShow NFS version 2 statistics\n\
--  -3\t\t\tShow NFS version 3 statistics\n\
--  -4\t\t\tShow NFS version 4 statistics\n\
--  -o [facility]\t\tShow statistics on particular facilities.\n\
--     nfs\tNFS protocol information\n\
--     rpc\tGeneral RPC information\n\
--     net\tNetwork layer statistics\n\
--     fh\t\tUsage information on the server's file handle cache\n\
--     rc\t\tUsage information on the server's request reply cache\n\
--     all\tSelect all of the above\n\
--  -v, --verbose, --all\tSame as '-o all'\n\
--  -r, --rpc\t\tShow RPC statistics\n\
--  -n, --nfs\t\tShow NFS statistics\n\
--  -Z, --sleep\t\tSaves stats, pauses, diffs current and saved\n\
--  -S, --since file\tShows difference between current stats and those in 'file'\n\
--  --version\t\tShow program version\n\
--  --help\t\tWhat you just did\n\
-+  -m, --mounts		Show statistics on mounted NFS filesystems\n\
-+  -c, --client		Show NFS client statistics\n\
-+  -s, --server		Show NFS server statistics\n\
-+  -2			Show NFS version 2 statistics\n\
-+  -3			Show NFS version 3 statistics\n\
-+  -4			Show NFS version 4 statistics\n\
-+  -o [facility]		Show statistics on particular facilities.\n\
-+     nfs		NFS protocol information\n\
-+     rpc		General RPC information\n\
-+     net		Network layer statistics\n\
-+     fh			Usage information on the server's file handle cache\n\
-+     rc			Usage information on the server's request reply cache\n\
-+     all		Select all of the above\n\
-+  -v, --verbose, --all	Same as '-o all'\n\
-+  -r, --rpc		Show RPC statistics\n\
-+  -n, --nfs		Show NFS statistics\n\
-+  -Z[#], --sleep[=#]	Collects stats until interrupted.\n\
-+			    Cumulative stats are then printed\n\
-+          		    If # is provided, stats will be output every\n\
-+			    # seconds.\n\
-+  -S, --since file	Shows difference between current stats and those in 'file'\n\
-+  --version		Show program version\n\
-+  --help		What you just did\n\
- \n", name);
- 	exit(0);
- }
-@@ -245,7 +252,7 @@ static struct option longopts[] =
- 	{ "zero", 0, 0, 'z' },
- 	{ "help", 0, 0, '\1' },
- 	{ "version", 0, 0, '\2' },
--	{ "sleep", 0, 0, 'Z' },
-+	{ "sleep", 2, 0, 'Z' },
- 	{ "since", 1, 0, 'S' },
- 	{ NULL, 0, 0, 0 }
- };
-@@ -258,6 +265,7 @@ main(int argc, char **argv)
- 			opt_clt = 0,
- 			opt_prt = 0,
- 			opt_sleep = 0,
-+			sleep_time = 0,
- 			opt_since = 0;
- 	int		c;
- 	char           *progname,
-@@ -279,7 +287,7 @@ main(int argc, char **argv)
- 	else
- 		progname = argv[0];
- 
--	while ((c = getopt_long(argc, argv, "234acmno:ZS:vrsz\1\2", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "234acmno:Z::S:vrsz\1\2", longopts, NULL)) != EOF) {
- 		switch (c) {
- 		case 'a':
- 			fprintf(stderr, "nfsstat: nfs acls are not yet supported.\n");
-@@ -311,6 +319,9 @@ main(int argc, char **argv)
- 			break;
- 		case 'Z':
- 			opt_sleep = 1;
-+			if (optarg) {
-+				sleep_time = atoi(optarg);
-+			}
- 			break;
- 		case 'S':
- 			opt_since = 1;
-@@ -384,7 +395,7 @@ main(int argc, char **argv)
- 	if (opt_clt)
- 		get_stats(clientfile, clientinfo, &opt_clt, opt_srv, 0);
- 
--	if (opt_sleep) {
-+	if (opt_sleep && !sleep_time) {
- 		starttime = time(NULL);
- 		printf("Collecting statistics; press CTRL-C to view results from interval (i.e., from pause to CTRL-C).\n");
- 		if (sigaction(SIGINT, &act, NULL) != 0) {
-@@ -404,7 +415,39 @@ main(int argc, char **argv)
- 			diff_stats(clientinfo_tmp, clientinfo, 0);
- 		}
- 	}
-+	if(sleep_time) {
-+		while(1) {
-+			if (opt_srv) {
-+				get_stats(NFSSRVSTAT, serverinfo_tmp , &opt_srv, opt_clt, 1);
-+				diff_stats(serverinfo_tmp, serverinfo, 1);
-+			}
-+			if (opt_clt) {
-+				get_stats(NFSCLTSTAT, clientinfo_tmp, &opt_clt, opt_srv, 0);
-+				diff_stats(clientinfo_tmp, clientinfo, 0);
-+			}
-+			print_all_stats(opt_srv, opt_clt, opt_prt);
-+			fflush(stdout);
-+
-+			update_old_counters(clientinfo_tmp, clientinfo);
-+			sleep(sleep_time);
-+		}	
-+	} else {
-+		print_all_stats(opt_srv, opt_clt, opt_prt);
-+	}
-+
-+	return 0;
-+}
-+
-+static void
-+print_all_stats (int opt_srv, int opt_clt, int opt_prt)
-+{
-+	print_server_stats(opt_srv, opt_prt);
-+	print_client_stats(opt_clt, opt_prt);
-+}
- 
-+static void 
-+print_server_stats(int opt_srv, int opt_prt) 
-+{
- 	if (opt_srv) {
- 		if (opt_prt & PRNT_NET) {
- 			print_numbers(
-@@ -479,7 +522,10 @@ main(int argc, char **argv)
- 			}
- 		}
- 	}
--
-+}
-+static void
-+print_client_stats(int opt_clt, int opt_prt) 
-+{
- 	if (opt_clt) {
- 		if (opt_prt & PRNT_NET) {
- 			print_numbers(
-@@ -515,8 +561,6 @@ main(int argc, char **argv)
- 				);
- 		}
- 	}
--
--	return 0;
- }
- 
- static statinfo *
-@@ -846,3 +890,13 @@ unpause(int sig)
- 	seconds = (int)time_diff % 60;
- 	printf("Signal received; displaying (only) statistics gathered over the last %d minutes, %d seconds:\n\n", minutes, seconds);
- }
-+
-+static void
-+update_old_counters(struct statinfo *new, struct statinfo *old)
-+{
-+	int z, i;
-+	for (z = 0; old[z].tag; z++) 
-+		for (i = 0; i <= old[z].nrvals; i++) 
-+			old[z].valptr[i] += new[z].valptr[i];
-+
-+}
-diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
-index cb5f89f..461b2c0 100644
---- a/utils/nfsstat/nfsstat.man
-+++ b/utils/nfsstat/nfsstat.man
-@@ -91,7 +91,7 @@ output
- .I file
- are treated as zeroes.
- .TP
--.B \-Z, \-\-sleep
-+.B \-Z[interval], \-\-sleep=[interval]
- Instead of printing current statistics and immediately exiting,
- .B nfsstat
- takes a snapshot of the current statistics and pauses until it receives
-@@ -100,6 +100,10 @@ takes a snapshot of the current statistics and pauses until it receives
- .BR Ctrl-C ),
- at which point it takes another snapshot and displays the difference
- between the two.
-+If \fIinterval\fR is specified, 
-+.B nfsstat
-+will print the number of \fBNFS\fR calls made since the previous report.
-+Stats will be printed repeatedly every \fIinterval\fR seconds.
- .\" --------------------- EXAMPLES -------------------------------
- .SH EXAMPLES
- .TP
--- 
-1.6.2.1
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 629a287..42a6f9f 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -265,7 +265,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
+ 		frmr->page_list->page_list[page_no] =
+ 			ib_dma_map_single(xprt->sc_cm_id->device,
+ 					  page_address(rqstp->rq_arg.pages[page_no]),
+-					  PAGE_SIZE, DMA_TO_DEVICE);
++					  PAGE_SIZE, DMA_FROM_DEVICE);
+ 		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+ 					 frmr->page_list->page_list[page_no]))
+ 			goto fatal_err;
 
