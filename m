@@ -1,169 +1,334 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v3 28/35] nfsd41: control nfsv4.1 svc via /proc/fs/nfsd/versions
-Date: Fri,  3 Apr 2009 08:28:59 +0300
-Message-ID: <1238736539-17955-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v3 32/35] nfsd41: support for 3-word long attribute bitmask
+Date: Fri,  3 Apr 2009 08:29:11 +0300
+Message-ID: <1238736551-18079-1-git-send-email-bhalevy@panasas.com>
 References: <49D599EA.6060705@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:28226 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:22239 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757436AbZDCF3E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:29:04 -0400
+	with ESMTP id S1757867AbZDCF3Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:29:16 -0400
 In-Reply-To: <49D599EA.6060705@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Support enabling and disabling nfsv4.1 via /proc/fs/nfsd/versions
-by writing the strings "+4.1" or "-4.1" correspondingly.
+From: Andy Adamson <andros@netapp.com>
 
-Use user mode nfs-utils (rpc.nfsd option) to enable.
-This will allow us to get rid of CONFIG_NFSD_V4_1
+Also, use client minorversion to generate supported attrs
 
-[nfsd41: disable support for minorversion by default]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4proc.c        |    2 +-
- fs/nfsd/nfsctl.c          |   26 +++++++++++++++++++++++---
- fs/nfsd/nfssvc.c          |   24 ++++++++++++++++++++++++
- include/linux/nfsd/nfsd.h |    2 ++
- 4 files changed, 50 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4proc.c        |   15 +++++++----
+ fs/nfsd/nfs4xdr.c         |   59 +++++++++++++++++++++++++++++++++++---------
+ include/linux/nfsd/nfsd.h |   34 ++++++++++++++++++++++++-
+ include/linux/nfsd/xdr4.h |   12 ++++----
+ 4 files changed, 94 insertions(+), 26 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index db208dd..52bb14d 100644
+index 937853f..e206053 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -921,7 +921,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	 * According to RFC3010, this takes precedence over all other errors.
- 	 */
- 	status = nfserr_minor_vers_mismatch;
--	if (args->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-+	if (args->minorversion > nfsd_supported_minorversion)
- 		goto out;
+@@ -463,8 +463,9 @@ nfsd4_getattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (getattr->ga_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1)
+ 		return nfserr_inval;
  
- 	if (!nfs41_op_ordering_ok(args)) {
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 4adebb6..a9b8c75 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -792,8 +792,9 @@ out_free:
- static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- {
- 	char *mesg = buf;
--	char *vers, sign;
-+	char *vers, *minorp, sign;
- 	int len, num;
-+	unsigned minor;
- 	ssize_t tlen = 0;
- 	char *sep;
+-	getattr->ga_bmval[0] &= NFSD_SUPPORTED_ATTRS_WORD0;
+-	getattr->ga_bmval[1] &= NFSD_SUPPORTED_ATTRS_WORD1;
++	getattr->ga_bmval[0] &= nfsd_suppattrs0(cstate->minorversion);
++	getattr->ga_bmval[1] &= nfsd_suppattrs1(cstate->minorversion);
++	getattr->ga_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
  
-@@ -814,9 +815,20 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 		do {
- 			sign = *vers;
- 			if (sign == '+' || sign == '-')
--				num = simple_strtol((vers+1), NULL, 0);
-+				num = simple_strtol((vers+1), &minorp, 0);
- 			else
--				num = simple_strtol(vers, NULL, 0);
-+				num = simple_strtol(vers, &minorp, 0);
-+			if (*minorp == '.') {
-+				if (num < 4)
-+					return -EINVAL;
-+				minor = simple_strtoul(minorp+1, NULL, 0);
-+				if (minor == 0)
-+					return -EINVAL;
-+				if (nfsd_minorversion(minor, sign == '-' ?
-+						     NFSD_CLEAR : NFSD_SET) < 0)
-+					return -EINVAL;
-+				goto next;
-+			}
- 			switch(num) {
- 			case 2:
- 			case 3:
-@@ -826,6 +838,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 			default:
- 				return -EINVAL;
- 			}
-+		next:
- 			vers += len + 1;
- 			tlen += len;
- 		} while ((len = qword_get(&mesg, vers, size)) > 0);
-@@ -844,6 +857,13 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 				       num);
- 			sep = " ";
- 		}
-+	if (nfsd_vers(4, NFSD_AVAIL))
-+		for (minor = 1; minor <= NFSD_SUPPORTED_MINOR_VERSION; minor++)
-+			len += sprintf(buf+len, " %c4.%u",
-+					(nfsd_vers(4, NFSD_TEST) &&
-+					 nfsd_minorversion(minor, NFSD_TEST)) ?
-+						'+' : '-',
-+					minor);
- 	len += sprintf(buf+len, "\n");
- 	return len;
+ 	getattr->ga_fhp = &cstate->current_fh;
+ 	return nfs_ok;
+@@ -555,8 +556,9 @@ nfsd4_readdir(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (readdir->rd_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1)
+ 		return nfserr_inval;
+ 
+-	readdir->rd_bmval[0] &= NFSD_SUPPORTED_ATTRS_WORD0;
+-	readdir->rd_bmval[1] &= NFSD_SUPPORTED_ATTRS_WORD1;
++	readdir->rd_bmval[0] &= nfsd_suppattrs0(cstate->minorversion);
++	readdir->rd_bmval[1] &= nfsd_suppattrs1(cstate->minorversion);
++	readdir->rd_bmval[2] &= nfsd_suppattrs2(cstate->minorversion);
+ 
+ 	if ((cookie > ~(u32)0) || (cookie == 1) || (cookie == 2) ||
+ 	    (cookie == 0 && memcmp(readdir->rd_verf.data, zeroverf.data, NFS4_VERIFIER_SIZE)))
+@@ -746,8 +748,9 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		return status;
+ 
+-	if ((verify->ve_bmval[0] & ~NFSD_SUPPORTED_ATTRS_WORD0)
+-	    || (verify->ve_bmval[1] & ~NFSD_SUPPORTED_ATTRS_WORD1))
++	if ((verify->ve_bmval[0] & ~nfsd_suppattrs0(cstate->minorversion))
++	    || (verify->ve_bmval[1] & ~nfsd_suppattrs1(cstate->minorversion))
++	    || (verify->ve_bmval[2] & ~nfsd_suppattrs2(cstate->minorversion)))
+ 		return nfserr_attrnotsupp;
+ 	if ((verify->ve_bmval[0] & FATTR4_WORD0_RDATTR_ERROR)
+ 	    || (verify->ve_bmval[1] & NFSD_WRITEONLY_ATTRS_WORD1))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 42f9fb6..70296fe 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -236,6 +236,7 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+ 
+ 	bmval[0] = 0;
+ 	bmval[1] = 0;
++	bmval[2] = 0;
+ 
+ 	READ_BUF(4);
+ 	READ32(bmlen);
+@@ -247,13 +248,16 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+ 		READ32(bmval[0]);
+ 	if (bmlen > 1)
+ 		READ32(bmval[1]);
++	if (bmlen > 2)
++		READ32(bmval[2]);
+ 
+ 	DECODE_TAIL;
  }
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index b53a098..e9d5773 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -121,6 +121,8 @@ struct svc_program		nfsd_program = {
  
+ static u32 nfsd_attrmask[] = {
+ 	NFSD_WRITEABLE_ATTRS_WORD0,
+-	NFSD_WRITEABLE_ATTRS_WORD1
++	NFSD_WRITEABLE_ATTRS_WORD1,
++	NFSD_WRITEABLE_ATTRS_WORD2
  };
  
-+u32 nfsd_supported_minorversion;
-+
- int nfsd_vers(int vers, enum vers_op change)
- {
- 	if (vers < NFSD_MINVERS || vers >= NFSD_NRVERS)
-@@ -147,6 +149,28 @@ int nfsd_vers(int vers, enum vers_op change)
+ static __be32
+@@ -274,9 +278,12 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
+ 	 * According to spec, unsupported attributes return ERR_ATTRNOTSUPP;
+ 	 * read-only attributes return ERR_INVAL.
+ 	 */
+-	if ((bmval[0] & ~NFSD_SUPPORTED_ATTRS_WORD0) || (bmval[1] & ~NFSD_SUPPORTED_ATTRS_WORD1))
++	if ((bmval[0] & ~nfsd_suppattrs0(argp->minorversion)) ||
++	    (bmval[1] & ~nfsd_suppattrs1(argp->minorversion)) ||
++	    (bmval[2] & ~nfsd_suppattrs2(argp->minorversion)))
+ 		return nfserr_attrnotsupp;
+-	if ((bmval[0] & ~writable[0]) || (bmval[1] & ~writable[1]))
++	if ((bmval[0] & ~writable[0]) || (bmval[1] & ~writable[1]) ||
++	    (bmval[2] & ~writable[2]))
+ 		return nfserr_inval;
+ 
+ 	READ_BUF(4);
+@@ -411,6 +418,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval, u32 *writable,
+ 			goto xdr_error;
+ 		}
  	}
- 	return 0;
- }
-+
-+int nfsd_minorversion(u32 minorversion, enum vers_op change)
-+{
-+	if (minorversion > NFSD_SUPPORTED_MINOR_VERSION)
-+		return -1;
-+	switch(change) {
-+	case NFSD_SET:
-+		nfsd_supported_minorversion = minorversion;
-+		break;
-+	case NFSD_CLEAR:
-+		if (minorversion == 0)
-+			return -1;
-+		nfsd_supported_minorversion = minorversion - 1;
-+		break;
-+	case NFSD_TEST:
-+		return minorversion <= nfsd_supported_minorversion;
-+	case NFSD_AVAIL:
-+		return minorversion <= NFSD_SUPPORTED_MINOR_VERSION;
++	BUG_ON(bmval[2]);	/* no such writeable attr supported yet */
+ 	if (len != expected_len)
+ 		goto xdr_error;
+ 
+@@ -1726,6 +1734,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ {
+ 	u32 bmval0 = bmval[0];
+ 	u32 bmval1 = bmval[1];
++	u32 bmval2 = bmval[2];
+ 	struct kstat stat;
+ 	struct svc_fh tempfh;
+ 	struct kstatfs statfs;
+@@ -1739,12 +1748,16 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 	int err;
+ 	int aclsupport = 0;
+ 	struct nfs4_acl *acl = NULL;
++	struct nfsd4_compoundres *resp = rqstp->rq_resp;
++	u32 minorversion = resp->cstate.minorversion;
+ 
+ 	BUG_ON(bmval1 & NFSD_WRITEONLY_ATTRS_WORD1);
+-	BUG_ON(bmval0 & ~NFSD_SUPPORTED_ATTRS_WORD0);
+-	BUG_ON(bmval1 & ~NFSD_SUPPORTED_ATTRS_WORD1);
++	BUG_ON(bmval0 & ~nfsd_suppattrs0(minorversion));
++	BUG_ON(bmval1 & ~nfsd_suppattrs1(minorversion));
++	BUG_ON(bmval2 & ~nfsd_suppattrs2(minorversion));
+ 
+ 	if (exp->ex_fslocs.migrated) {
++		BUG_ON(bmval[2]);
+ 		status = fattr_handle_absent_fs(&bmval0, &bmval1, &rdattr_err);
+ 		if (status)
+ 			goto out;
+@@ -1790,22 +1803,42 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 	if ((buflen -= 16) < 0)
+ 		goto out_resource;
+ 
+-	WRITE32(2);
+-	WRITE32(bmval0);
+-	WRITE32(bmval1);
++	if (unlikely(bmval2)) {
++		WRITE32(3);
++		WRITE32(bmval0);
++		WRITE32(bmval1);
++		WRITE32(bmval2);
++	} else if (likely(bmval1)) {
++		WRITE32(2);
++		WRITE32(bmval0);
++		WRITE32(bmval1);
++	} else {
++		WRITE32(1);
++		WRITE32(bmval0);
 +	}
-+	return 0;
-+}
+ 	attrlenp = p++;                /* to be backfilled later */
+ 
+ 	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+-		u32 word0 = NFSD_SUPPORTED_ATTRS_WORD0;
++		u32 word0 = nfsd_suppattrs0(minorversion);
++		u32 word1 = nfsd_suppattrs1(minorversion);
++		u32 word2 = nfsd_suppattrs2(minorversion);
 +
- /*
-  * Maximum number of nfsd processes
-  */
+ 		if ((buflen -= 12) < 0)
+ 			goto out_resource;
+ 		if (!aclsupport)
+ 			word0 &= ~FATTR4_WORD0_ACL;
+ 		if (!exp->ex_fslocs.locations)
+ 			word0 &= ~FATTR4_WORD0_FS_LOCATIONS;
+-		WRITE32(2);
+-		WRITE32(word0);
+-		WRITE32(NFSD_SUPPORTED_ATTRS_WORD1);
++		if (!word2) {
++			WRITE32(2);
++			WRITE32(word0);
++			WRITE32(word1);
++		} else {
++			WRITE32(3);
++			WRITE32(word0);
++			WRITE32(word1);
++			WRITE32(word2);
++		}
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_TYPE) {
+ 		if ((buflen -= 4) < 0)
+@@ -2115,6 +2148,8 @@ out_acl:
+ 		}
+ 		WRITE64(stat.ino);
+ 	}
++	BUG_ON(bmval2);	/* FIXME: not implemented yet */
++
+ 	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
+ 	*countp = p - buffer;
+ 	status = nfs_ok;
 diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 1f063d4..70339b7 100644
+index 5bed509..69ca788 100644
 --- a/include/linux/nfsd/nfsd.h
 +++ b/include/linux/nfsd/nfsd.h
-@@ -53,6 +53,7 @@ typedef int (*nfsd_dirop_t)(struct inode *, struct dentry *, int, int);
- extern struct svc_program	nfsd_program;
- extern struct svc_version	nfsd_version2, nfsd_version3,
- 				nfsd_version4;
-+extern u32			nfsd_supported_minorversion;
- extern struct mutex		nfsd_mutex;
- extern struct svc_serv		*nfsd_serv;
+@@ -346,7 +346,7 @@ extern struct timeval	nfssvc_boot;
+  *    TIME_BACKUP   (unlikely to be supported any time soon)
+  *    TIME_CREATE   (unlikely to be supported any time soon)
+  */
+-#define NFSD_SUPPORTED_ATTRS_WORD0                                                          \
++#define NFSD4_SUPPORTED_ATTRS_WORD0                                                         \
+ (FATTR4_WORD0_SUPPORTED_ATTRS   | FATTR4_WORD0_TYPE         | FATTR4_WORD0_FH_EXPIRE_TYPE   \
+  | FATTR4_WORD0_CHANGE          | FATTR4_WORD0_SIZE         | FATTR4_WORD0_LINK_SUPPORT     \
+  | FATTR4_WORD0_SYMLINK_SUPPORT | FATTR4_WORD0_NAMED_ATTR   | FATTR4_WORD0_FSID             \
+@@ -358,7 +358,7 @@ extern struct timeval	nfssvc_boot;
+  | FATTR4_WORD0_MAXFILESIZE     | FATTR4_WORD0_MAXLINK      | FATTR4_WORD0_MAXNAME          \
+  | FATTR4_WORD0_MAXREAD         | FATTR4_WORD0_MAXWRITE     | FATTR4_WORD0_ACL)
  
-@@ -149,6 +150,7 @@ int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
+-#define NFSD_SUPPORTED_ATTRS_WORD1                                                          \
++#define NFSD4_SUPPORTED_ATTRS_WORD1                                                         \
+ (FATTR4_WORD1_MODE              | FATTR4_WORD1_NO_TRUNC     | FATTR4_WORD1_NUMLINKS         \
+  | FATTR4_WORD1_OWNER	        | FATTR4_WORD1_OWNER_GROUP  | FATTR4_WORD1_RAWDEV           \
+  | FATTR4_WORD1_SPACE_AVAIL     | FATTR4_WORD1_SPACE_FREE   | FATTR4_WORD1_SPACE_TOTAL      \
+@@ -366,6 +366,35 @@ extern struct timeval	nfssvc_boot;
+  | FATTR4_WORD1_TIME_DELTA   | FATTR4_WORD1_TIME_METADATA    \
+  | FATTR4_WORD1_TIME_MODIFY     | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID)
  
- enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
- int nfsd_vers(int vers, enum vers_op change);
-+int nfsd_minorversion(u32 minorversion, enum vers_op change);
- void nfsd_reset_versions(void);
- int nfsd_create_serv(void);
++#define NFSD4_SUPPORTED_ATTRS_WORD2 0
++
++#define NFSD4_1_SUPPORTED_ATTRS_WORD0 \
++	NFSD4_SUPPORTED_ATTRS_WORD0
++
++#define NFSD4_1_SUPPORTED_ATTRS_WORD1 \
++	NFSD4_SUPPORTED_ATTRS_WORD1
++
++#define NFSD4_1_SUPPORTED_ATTRS_WORD2 \
++	NFSD4_SUPPORTED_ATTRS_WORD2
++
++static inline u32 nfsd_suppattrs0(u32 minorversion)
++{
++	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
++			    : NFSD4_SUPPORTED_ATTRS_WORD0;
++}
++
++static inline u32 nfsd_suppattrs1(u32 minorversion)
++{
++	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD1
++			    : NFSD4_SUPPORTED_ATTRS_WORD1;
++}
++
++static inline u32 nfsd_suppattrs2(u32 minorversion)
++{
++	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD2
++			    : NFSD4_SUPPORTED_ATTRS_WORD2;
++}
++
+ /* These will return ERR_INVAL if specified in GETATTR or READDIR. */
+ #define NFSD_WRITEONLY_ATTRS_WORD1							    \
+ (FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
+@@ -376,6 +405,7 @@ extern struct timeval	nfssvc_boot;
+ #define NFSD_WRITEABLE_ATTRS_WORD1                                                          \
+ (FATTR4_WORD1_MODE              | FATTR4_WORD1_OWNER         | FATTR4_WORD1_OWNER_GROUP     \
+  | FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
++#define NFSD_WRITEABLE_ATTRS_WORD2 0
  
+ #endif /* CONFIG_NFSD_V4 */
+ 
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 5e16935..c07d8fe 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -102,7 +102,7 @@ struct nfsd4_create {
+ 			u32 specdata2;
+ 		} dev;    /* NF4BLK, NF4CHR */
+ 	} u;
+-	u32		cr_bmval[2];        /* request */
++	u32		cr_bmval[3];        /* request */
+ 	struct iattr	cr_iattr;           /* request */
+ 	struct nfsd4_change_info  cr_cinfo; /* response */
+ 	struct nfs4_acl *cr_acl;
+@@ -117,7 +117,7 @@ struct nfsd4_delegreturn {
+ };
+ 
+ struct nfsd4_getattr {
+-	u32		ga_bmval[2];        /* request */
++	u32		ga_bmval[3];        /* request */
+ 	struct svc_fh	*ga_fhp;            /* response */
+ };
+ 
+@@ -218,7 +218,7 @@ struct nfsd4_open {
+ 	stateid_t       op_delegate_stateid; /* request - response */
+ 	u32		op_create;     	    /* request */
+ 	u32		op_createmode;      /* request */
+-	u32		op_bmval[2];        /* request */
++	u32		op_bmval[3];        /* request */
+ 	union {                             /* request */
+ 		struct iattr	iattr;                      /* UNCHECKED4,GUARDED4 */
+ 		nfs4_verifier	verf;                                /* EXCLUSIVE4 */
+@@ -271,7 +271,7 @@ struct nfsd4_readdir {
+ 	nfs4_verifier	rd_verf;            /* request */
+ 	u32		rd_dircount;        /* request */
+ 	u32		rd_maxcount;        /* request */
+-	u32		rd_bmval[2];        /* request */
++	u32		rd_bmval[3];        /* request */
+ 	struct svc_rqst *rd_rqstp;          /* response */
+ 	struct svc_fh * rd_fhp;             /* response */
+ 
+@@ -313,7 +313,7 @@ struct nfsd4_secinfo {
+ 
+ struct nfsd4_setattr {
+ 	stateid_t	sa_stateid;         /* request */
+-	u32		sa_bmval[2];        /* request */
++	u32		sa_bmval[3];        /* request */
+ 	struct iattr	sa_iattr;           /* request */
+ 	struct nfs4_acl *sa_acl;
+ };
+@@ -339,7 +339,7 @@ struct nfsd4_setclientid_confirm {
+ 
+ /* also used for NVERIFY */
+ struct nfsd4_verify {
+-	u32		ve_bmval[2];        /* request */
++	u32		ve_bmval[3];        /* request */
+ 	u32		ve_attrlen;         /* request */
+ 	char *		ve_attrval;         /* request */
+ };
 -- 
 1.6.2.1
 
