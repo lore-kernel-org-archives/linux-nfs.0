@@ -1,114 +1,125 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH v3 15/35] nfsd41: hard page limit for DRC
-Date: Fri,  3 Apr 2009 08:28:18 +0300
-Message-ID: <1238736498-17548-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH v3 16/35] nfsd41: nfsd DRC logic
+Date: Fri,  3 Apr 2009 08:28:22 +0300
+Message-ID: <1238736502-17579-1-git-send-email-bhalevy@panasas.com>
 References: <49D599EA.6060705@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: " J. Bruce Fields" <bfields@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:12217 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:18090 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755362AbZDCF2X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:28:23 -0400
+	with ESMTP id S1754631AbZDCF21 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Apr 2009 01:28:27 -0400
 In-Reply-To: <49D599EA.6060705@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Use no more than 1/128th of the number of free pages at nfsd startup for the
-v4.1 DRC.
+Replay a request in nfsd4_sequence.
+Add a minorversion to struct nfsd4_compound_state.
 
-This is an arbitrary default which should probably end up under the control
-of an administrator.
+Pass the current slot to nfs4svc_encode_compound res via struct
+nfsd4_compoundres to set an NFSv4.1 DRC entry.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[moved added fields in struct svc_serv under CONFIG_NFSD_V4_1]
+Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix set_max_drc calculation of sv_drc_max_pages]
-[moved NFSD_DRC_SIZE_SHIFT's declaration up in header file]
+[nfsd41: use bool inuse for slot state]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: use cstate session in nfs4svc_encode_compoundres]
+[nfsd41 replace nfsd4_set_cache_entry]
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfssvc.c           |   23 +++++++++++++++++++++++
- include/linux/nfsd/nfsd.h  |    3 +++
- include/linux/sunrpc/svc.h |    2 ++
- 3 files changed, 28 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4proc.c        |    7 +++++++
+ fs/nfsd/nfs4state.c       |    6 ++++++
+ fs/nfsd/nfs4xdr.c         |   11 +++++++++++
+ include/linux/nfsd/xdr4.h |    1 +
+ 4 files changed, 25 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index b5168d1..b53a098 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -22,6 +22,7 @@
- #include <linux/freezer.h>
- #include <linux/fs_struct.h>
- #include <linux/kthread.h>
-+#include <linux/swap.h>
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index ec51936..9e2ee75 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -936,6 +936,12 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 			BUG_ON(op->status == nfs_ok);
  
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/stats.h>
-@@ -197,6 +198,26 @@ void nfsd_reset_versions(void)
+ encode_op:
++		/* Only from SEQUENCE or CREATE_SESSION */
++		if (resp->cstate.status == nfserr_replay_cache) {
++			dprintk("%s NFS4.1 replay from cache\n", __func__);
++			status = op->status;
++			goto out;
++		}
+ 		if (op->status == nfserr_replay_me) {
+ 			op->replay = &cstate->replay_owner->so_replay;
+ 			nfsd4_encode_replay(resp, op);
+@@ -964,6 +970,7 @@ encode_op:
+ 		status = nfserr_jukebox;
  	}
+ 
++	resp->cstate.status = status;
+ 	fh_put(&resp->cstate.current_fh);
+ 	fh_put(&resp->cstate.save_fh);
+ 	BUG_ON(resp->cstate.replay_owner);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a37b91d..e20d434 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -989,6 +989,8 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp)
+ 	}
+ 
+ 	resp->rqstp->rq_resused = entry->ce_resused;
++	resp->opcnt = entry->ce_opcnt;
++	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
+ 	status = entry->ce_status;
+ 
+ 	return status;
+@@ -1214,6 +1216,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (status == nfserr_replay_cache) {
+ 		cstate->slot = slot;
+ 		cstate->session = session;
++		/* Return the cached reply status and set cstate->status
++		 * for nfsd4_svc_encode_compoundres processing*/
++		status = nfsd4_replay_cache_entry(resp);
++		cstate->status = nfserr_replay_cache;
+ 		goto replay_cache;
+ 	}
+ 	if (status)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 8556575..09415bc 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3049,6 +3049,17 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 		iov = &rqstp->rq_res.head[0];
+ 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+ 	BUG_ON(iov->iov_len > PAGE_SIZE);
++	if (resp->cstate.slot != NULL) {
++		if (resp->cstate.status == nfserr_replay_cache) {
++			iov->iov_len = resp->cstate.iovlen;
++		} else {
++			nfsd4_store_cache_entry(resp);
++			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
++			resp->cstate.slot->sl_inuse = 0;
++		}
++		if (resp->cstate.session)
++			nfsd4_put_session(resp->cstate.session);
++	}
+ 	return 1;
  }
  
-+/*
-+ * Each session guarantees a negotiated per slot memory cache for replies
-+ * which in turn consumes memory beyond the v2/v3/v4.0 server. A dedicated
-+ * NFSv4.1 server might want to use more memory for a DRC than a machine
-+ * with mutiple services.
-+ *
-+ * Impose a hard limit on the number of pages for the DRC which varies
-+ * according to the machines free pages. This is of course only a default.
-+ *
-+ * For now this is a #defined shift which could be under admin control
-+ * in the future.
-+ */
-+static void set_max_drc(void)
-+{
-+	nfsd_serv->sv_drc_max_pages = nr_free_buffer_pages()
-+						>> NFSD_DRC_SIZE_SHIFT;
-+	nfsd_serv->sv_drc_pages_used = 0;
-+	dprintk("%s svc_drc_max_pages %u\n", __func__,
-+		nfsd_serv->sv_drc_max_pages);
-+}
- 
- int nfsd_create_serv(void)
- {
-@@ -229,6 +250,8 @@ int nfsd_create_serv(void)
- 				      nfsd_last_thread, nfsd, THIS_MODULE);
- 	if (nfsd_serv == NULL)
- 		err = -ENOMEM;
-+	else
-+		set_max_drc();
- 
- 	do_gettimeofday(&nfssvc_boot);		/* record boot time */
- 	return err;
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index ab9616d..1f063d4 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -331,6 +331,9 @@ extern struct timeval	nfssvc_boot;
- #define NFSD_LEASE_TIME                 (nfs4_lease_time())
- #define NFSD_LAUNDROMAT_MINTIMEOUT      10   /* seconds */
- 
-+/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
-+#define NFSD_DRC_SIZE_SHIFT	7
-+
- /*
-  * The following attributes are currently not supported by the NFSv4 server:
-  *    ARCHIVE       (deprecated anyway)
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 815dd58..d209c63 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -95,6 +95,8 @@ struct svc_serv {
- 	struct module *		sv_module;	/* optional module to count when
- 						 * adding threads */
- 	svc_thread_fn		sv_function;	/* main function for threads */
-+	unsigned int		sv_drc_max_pages; /* Total pages for DRC */
-+	unsigned int		sv_drc_pages_used;/* DRC pages used */
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index d091684..69cb467 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
+ 	struct nfsd4_session	*session;
+ 	struct nfsd4_slot	*slot;
+ 	__be32			*statp;
++	size_t			iovlen;
+ 	u32			status;
  };
  
- /*
 -- 
 1.6.2.1
 
