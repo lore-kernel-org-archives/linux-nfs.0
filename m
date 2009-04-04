@@ -1,53 +1,37 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] mountd: use separate lockfiles
-Date: Sat, 04 Apr 2009 07:53:45 -0400
-Message-ID: <49D74A49.6030509@RedHat.com>
-References: <20090319172841.GF26378@sgi.com> <1237485682.7534.39.camel@heimdal.trondhjem.org> <20090319195357.GH26378@sgi.com> <20090319221458.GI26378@sgi.com>
+Subject: Re: [PATCH 1/2] nfsstat: Print diff stats every N seconds
+Date: Sat, 04 Apr 2009 07:55:31 -0400
+Message-ID: <49D74AB3.6090208@RedHat.com>
+References: <1238785592-18869-1-git-send-email-kevin.constantine@disneyanimation.com>	 <1238785592-18869-2-git-send-email-kevin.constantine@disneyanimation.com> <ac442c870904031648v5b40e29avf8c1327c07b4f7ec@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: Ben Myers <bpm@sgi.com>
+Cc: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>,
+	linux-nfs@vger.kernel.org,
+	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+To: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39634 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:39667 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753767AbZDDL4l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 Apr 2009 07:56:41 -0400
-In-Reply-To: <20090319221458.GI26378@sgi.com>
+	id S1754172AbZDDL61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 4 Apr 2009 07:58:27 -0400
+In-Reply-To: <ac442c870904031648v5b40e29avf8c1327c07b4f7ec-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-Ben Myers wrote:
-> Hey Trond,
+Greg Banks wrote:
+> On Sat, Apr 4, 2009 at 6:06 AM, Kevin Constantine
+> <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org> wrote:
+>>  nfsstat.c: Implements an optional "interval" argument to --sleep
+>>  nfsstat.man: Explains the use of --sleep[interval]
+>>
+>> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+>> ---
 > 
-> On Thu, Mar 19, 2009 at 02:53:57PM -0500, Ben Myers wrote:
->> On Thu, Mar 19, 2009 at 02:01:21PM -0400, Trond Myklebust wrote:
->>> Why do you need a second call to open() in the first place?
->> I'll give it another try.
-> 
-> Here it is again.  It works just fine without the second open.
-> 
-> Thanks,
-> 	Ben
-> 
-> 
-> From 1687f7a02cd34f76d5e6c461ca7d7bb56f3826d6 Mon Sep 17 00:00:00 2001
-> From: Ben Myers <bpm@sgi.com>
-> Date: Thu, 19 Mar 2009 16:44:54 -0500
-> Subject: [PATCH] Mountd should use separate lockfiles
-> 
-> Mountd keeps file descriptors used for locks separate from those used for io
-> and seems to assume that the lock will only be released on close of the file
-> descriptor that was used with fcntl.  Actually the lock is released when any
-> file descriptor for that file is closed.  When setexportent() is called after
-> xflock() he closes and reopens the io file descriptor and defeats the lock.
-> 
-> This patch fixes that by using a separate file for locking, cleaning them up
-> when finished.
-> 
-> Signed-off-by: Ben Myers <bpm@sgi.com>
-Committed...
+> Reviewed-By: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
+
+Committed.
 
 steved.
+
