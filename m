@@ -1,43 +1,44 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH v2 0/67] nfs41 client patch for 2.6.30
-Date: Sun, 05 Apr 2009 12:34:14 +0300
-Message-ID: <49D87B16.9030003@panasas.com>
-References: <49D4C1A9.5060900@panasas.com> <1238873829.22935.4.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	Andy Adamson <andros@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/5] nfs-utils: make getnameinfo() required for --enable-gss
+Date: Sun,  5 Apr 2009 09:42:59 -0400
+Message-ID: <1238938983-7347-2-git-send-email-jlayton@redhat.com>
+References: <1238938983-7347-1-git-send-email-jlayton@redhat.com>
+Cc: chuck.lever@oracle.com, kwc@citi.umich.edu
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:28313 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752191AbZDEJeY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Apr 2009 05:34:24 -0400
-In-Reply-To: <1238873829.22935.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:54321 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752365AbZDENnN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 5 Apr 2009 09:43:13 -0400
+In-Reply-To: <1238938983-7347-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 04, 2009, 22:37 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2009-04-02 at 16:46 +0300, Benny Halevy wrote:
->> Trond,
->>
->> I've integrated the latest client patches from Andy
->> (with a few minor changes listed below) and updated
->> git://linux-nfs.org/~bhalevy/linux-pnfs.git
->> branches:
->> 	nfs41-for-next
->> 	nfs41-for-2.6.30
->> 	nfs41
->>
->> nfs41-for-{next,2.6.30} contain all non-backchannel patches
->> rebased onto {v2.6.29,nfs-2.6/for-next} respectively.
-> 
-> 
-> I've rebased it onto the latest mainline tree and put the result out on
-> git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git#nfsv41
-> 
+Systems that are so old that they don't have getnameinfo() in glibc are
+probably also running kernels that are so old that they don't support
+gssapi upcalls anyway.
 
-Thanks!
+Make --enable-gss dependent on the presence of the getnameinfo()
+function.  This allows us to reduce some conditional compilation.
 
-Benny
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ configure.ac |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index e34b7e2..00aee35 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -207,6 +207,8 @@ if test "$enable_nfsv4" = yes; then
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+     AC_RPCSEC_VERSION
++    AC_CHECK_FUNC([getnameinfo], ,
++		  [AC_MSG_ERROR([Function 'getnameinfo' not found.])])
+   fi
+ fi
+ 
+-- 
+1.6.0.6
+
