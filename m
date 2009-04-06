@@ -1,7 +1,7 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 1/3] SQUASHME: nfs41: always define nfs_client.cl_minorversion
-Date: Mon,  6 Apr 2009 10:49:49 +0300
-Message-ID: <1239004189-8675-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 2/3] SQUASHME: nfs41: move nfs4_session_set_rwsize into CONFIG_NFS_V4
+Date: Mon,  6 Apr 2009 10:49:58 +0300
+Message-ID: <1239004198-8708-1-git-send-email-bhalevy@panasas.com>
 References: <49D9B2B9.5010401@panasas.com>
 Cc: Andy Adamson <andros@netapp.com>,
 	Stephen Rothwell <sfr@canb.auug.org.au>,
@@ -9,39 +9,72 @@ Cc: Andy Adamson <andros@netapp.com>,
 	linux-next@vger.kernel.org, pnfs@linux-nfs.org,
 	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-next-owner@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from gw-ca.panasas.com ([209.116.51.66]:3347 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751625AbZDFHuO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 03:50:14 -0400
 In-Reply-To: <49D9B2B9.5010401@panasas.com>
-Sender: linux-next-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to avoid using #ifdef when using it.
+fix compiler warning:
+fs/nfs/client.c:554: warning: 'nfs4_session_set_rwsize' defined but not used
 
 Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/nfs_fs_sb.h |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ fs/nfs/client.c |   30 +++++++++++++++---------------
+ 1 files changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 2ce5ada..0043bf5 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -38,7 +38,7 @@ struct nfs_client {
- 	struct rpc_clnt *	cl_rpcclient;
- 	const struct nfs_rpc_ops *rpc_ops;	/* NFS protocol vector */
- 	int			cl_proto;	/* Network transport protocol */
--
-+	u32			cl_minorversion;/* NFSv4 minorversion */
- 	struct rpc_cred		*cl_machine_cred;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index eb341d3..9999f13 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -551,21 +551,6 @@ int nfs4_check_client_ready(struct nfs_client *clp)
+ }
  
- #ifdef CONFIG_NFS_V4
-@@ -70,7 +70,6 @@ struct nfs_client {
- 	 */
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
--	u32			cl_minorversion;
- 	int		     (* cl_call_sync)(struct nfs_server *server,
- 					      struct rpc_message *msg,
- 					      struct nfs4_sequence_args *args,
+ /*
+- * Session has been established, and the client marked ready.
+- * Set the mount rsize and wsize with negotiated fore channel
+- * attributes which will be bound checked in nfs_server_set_fsinfo.
+- */
+-static void nfs4_session_set_rwsize(struct nfs_server *server)
+-{
+-#ifdef CONFIG_NFS_V4_1
+-	if (!nfs4_has_session(server->nfs_client))
+-		return;
+-	server->rsize = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
+-	server->wsize = server->nfs_client->cl_session->fc_attrs.max_rqst_sz;
+-#endif /* CONFIG_NFS_V4_1 */
+-}
+-
+-/*
+  * Initialise the timeout values for a connection
+  */
+ static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+@@ -1246,6 +1231,21 @@ static void nfs4_init_session(struct nfs_client *clp,
+ }
+ 
+ /*
++ * Session has been established, and the client marked ready.
++ * Set the mount rsize and wsize with negotiated fore channel
++ * attributes which will be bound checked in nfs_server_set_fsinfo.
++ */
++static void nfs4_session_set_rwsize(struct nfs_server *server)
++{
++#ifdef CONFIG_NFS_V4_1
++	if (!nfs4_has_session(server->nfs_client))
++		return;
++	server->rsize = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
++	server->wsize = server->nfs_client->cl_session->fc_attrs.max_rqst_sz;
++#endif /* CONFIG_NFS_V4_1 */
++}
++
++/*
+  * Create a version 4 volume record
+  */
+ static int nfs4_init_server(struct nfs_server *server,
 -- 
 1.6.2.1
+
