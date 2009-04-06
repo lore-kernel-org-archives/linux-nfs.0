@@ -1,154 +1,114 @@
-From: Geert Uytterhoeven <Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org>
-Subject: Re: bus errors on nfs writes in latest git
-Date: Mon, 6 Apr 2009 17:37:03 +0200 (CEST)
-Message-ID: <alpine.LRH.2.00.0904061731260.11076@vixen.sonytel.be>
-References: <20090404161447.GE495@fieldses.org> <1238861949.8114.3.camel@heimdal.trondhjem.org> <1238862470.8114.5.camel@heimdal.trondhjem.org> <20090405202233.GA16937@fieldses.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org, Nick Piggin <npiggin@suse.de>,
-	linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from vervifontaine.sonytel.be ([80.88.33.193]:42470 "EHLO
-	pophost.sonytel.be" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756963AbZDFPhI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 11:37:08 -0400
-In-Reply-To: <20090405202233.GA16937@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 3/6] nfs-utils: skip getaddrinfo in create_auth_rpc_client
+	unless we need port
+Date: Mon, 6 Apr 2009 11:46:33 -0400
+Message-ID: <378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
+References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
+	<1238595845-2186-4-git-send-email-jlayton@redhat.com>
+	<F913F7D5-DCEE-4F40-B9C8-52DC1053A61A@oracle.com>
+	<20090401134739.01b72029@barsoom.rdu.redhat.com>
+	<32D01620-325D-4D82-81EF-8584134BC7DC@oracle.com>
+	<20090403150415.3586bba3@tleilax.poochiereds.net>
+	<194FD47F-E529-48BD-A9BC-4CA39D9A67FB@oracle.com>
+	<20090406112106.6b29e2b0@tleilax.poochiereds.net>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090406112106.6b29e2b0@tleilax.poochiereds.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 5 Apr 2009, J. Bruce Fields wrote:
-> On Sat, Apr 04, 2009 at 12:27:50PM -0400, Trond Myklebust wrote:
-> > On Sat, 2009-04-04 at 12:19 -0400, Trond Myklebust wrote:
-> > > On Sat, 2009-04-04 at 12:14 -0400, J. Bruce Fields wrote:
-> > > > My regular connecthon tests are reporting bus errors on the "wr=
-ite/read
-> > > > 30 MB file" on recent upstream kernels.  I'm travelling and hav=
-en't had
-> > > > a chance to do anything beyond kick off a dumb git-bisect, whic=
-h pointed
-> > > > the blame at the following commit.  Any ideas?
-> >=20
-> > The following patch should fix it.
->=20
-> Thanks--confirmed.  For what it's worth:
->=20
-> 	Tested-by: J. Bruce Fields <bfields@citi.umich.edu>
+On Apr 6, 2009, at 11:21 AM, Jeff Layton wrote:
+> On Mon, 6 Apr 2009 11:03:11 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>> On Apr 3, 2009, at 3:04 PM, Jeff Layton wrote:
+>>> On Wed, 1 Apr 2009 14:01:30 -0400
+>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>>> As far as I understand it, the ai_socktype and ai_protocol fields  
+>>>> are
+>>>> used to return the values needed for subsequent socket(2)/bind(2)
+>>>> system calls.  In this case you are not using these fields from the
+>>>> results...
+>>>>
+>>>> If ai_protocol is zero, then getaddrinfo(3) assumes you want one  
+>>>> copy
+>>>> of the address for each supported protocol type, so it returns  
+>>>> three
+>>>> structures (one for IPPROTO_UDP, one for IPPROTO_TCP, and one  
+>>>> with a
+>>>> zero protocol number).  The contents, except for the socktype and
+>>>> protocol fields, are the same for each.
+>>>
+>>> Hypothetical situation...
+>>>
+>>> Suppose there is a service in /etc/services that has a different  
+>>> port
+>>> number for tcp than for udp:
+>>>
+>>> fooserv		50001/tcp
+>>> fooserv		50002/udp
+>>>
+>>> You're saying that getaddrinfo will return the same port number in  
+>>> all
+>>> of the returned structures? Won't that mean that one of the port
+>>> numbers
+>>> is wrong? That seems broken if so...
+>>
+>> I was trying to describe observed behavior here -- it's pretty
+>> unlikely that there will be different port numbers in these returned
+>> structures.  It's difficult to say precisely how this is supposed to
+>> behave based on the man page or even browsing the glibc source code
+>> for a few minutes.
+>>
+>> It's certainly possible to set up /etc/services as you suggest, but
+>> there is an IANA policy to assign the same port for both transports.
+>> As near as I can tell the reason we have the transport listed in / 
+>> etc/
+>> services at all is because some protocols support only one transport.
+>> So IMO it would be quite unlikely to encounter such a case where the
+>> port number depended on the transport.
+>>
+>>> If that's not the case, then I think we need to at least set the
+>>> ai_protocol in the hints.
+>>
+>> Perhaps that's true.  What are the expected values of @service ?
+>
+> I've only ever seen "nfs" here, but I guess you could use this with
+> others. Maybe "nfsacl" too?
 
-JFYI, I was also seeing bus errors and read() returning EFAULT with cur=
-rent
-mainline on both PS3 (ppc64) and Sequoia (ppc32). So far I only saw it
-happening doing:
-  - apt-get update
-  - apt-get upgrade
-  - apt-get install
+What's even stranger is that one is supposed to use rpcbind to figure  
+out what NFS port to use, not /etc/services.
 
-I tried bisecting it, but unfortunately it was not 100% reproducible.
-So far the oldest version where I saw it fail was 2.6.29-07100-g833bb30=
-=2E
-It _looks_ like 2.6.29-06619-ge5824c9 is OK, but I'm not 100% sure.
+> IANA might not set different port like this, but there's nothing
+> that stops someone from doing this at their site.
 
-At first I didn't think of NFS (I'm indeed using nfsroot), but when sea=
-rching
-for `bus error' I noticed this thread.
+True, but one might expect that setting the NFS service port via  
+rpc.nfsd on the server would make gssd use that port too.  I guess  
+that's why the port number is now passed up from the kernel.
 
-Your patch seems to fix it (I added a printk so I would notice when the=
- bad
-case got triggered), and the commit that introduced the problem lies wi=
-thin
-the works/fails range I discovered, so
+> I agree that it's an unlikely (and somewhat pathological) situation,
+> but it's easy to deal with -- just set the protocol in the hints. I've
+> confirmed that it makes getaddrinfo do the right thing.
 
-Tested-by: Geert Uytterhoeven <Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org>
+That's good.  I think we need to understand exactly what this is  
+supposed to do, though.  Should we use an rpcbind call here instead?   
+This is _rpc_ gssd, after all.  If it's OK as it stands, then I think  
+some comments about why this works this way are in order :-)
 
-Thanks!
+Kevin, can you enlighten us?
 
-With kind regards,
-
-Geert Uytterhoeven
-Software Architect
-
-Sony Techsoft Centre Europe
-The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
-gium
-
-Phone:    +32 (0)2 700 8453
-=46ax:      +32 (0)2 700 8622
-E-mail:   Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org
-Internet: http://www.sony-europe.com/
-
-A division of Sony Europe (Belgium) N.V.
-VAT BE 0413.825.160 =B7 RPR Brussels
-=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
-
-> >=20
-> > Cheers
-> >  Trond
-> > ---------------------------------------------------------------
-> > >From b7a178f4fab331821b8cff384e1954e62aa63e52 Mon Sep 17 00:00:00 =
-2001
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Date: Sat, 4 Apr 2009 12:22:57 -0400
-> > Subject: [PATCH] NFS: Fix the return value in nfs_page_mkwrite()
-> >=20
-> > Commit c2ec175c39f62949438354f603f4aa170846aabb (mm: page_mkwrite c=
-hange
-> > prototype to match fault) exposed a bug in the NFS implementation o=
-f
-> > page_mkwrite. We should be returning 0 on success...
-> >=20
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  fs/nfs/file.c |    2 --
-> >  1 files changed, 0 insertions(+), 2 deletions(-)
-> >=20
-> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > index 3523b89..5a97bcf 100644
-> > --- a/fs/nfs/file.c
-> > +++ b/fs/nfs/file.c
-> > @@ -516,8 +516,6 @@ static int nfs_vm_page_mkwrite(struct vm_area_s=
-truct *vma, struct vm_fault *vmf)
-> >  		goto out_unlock;
-> > =20
-> >  	ret =3D nfs_updatepage(filp, page, 0, pagelen);
-> > -	if (ret =3D=3D 0)
-> > -		ret =3D pagelen;
-> >  out_unlock:
-> >  	unlock_page(page);
-> >  	if (ret)
-> > --=20
-> > 1.6.0.4
-> >=20
-> >=20
-> > --=20
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> >=20
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
-l" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->=20
-
-With kind regards,
-
-Geert Uytterhoeven
-Software Architect
-
-Sony Techsoft Centre Europe
-The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
-gium
-
-Phone:    +32 (0)2 700 8453
-=46ax:      +32 (0)2 700 8622
-E-mail:   Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org
-Internet: http://www.sony-europe.com/
-
-A division of Sony Europe (Belgium) N.V.
-VAT BE 0413.825.160 =B7 RPR Brussels
-=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
