@@ -1,49 +1,77 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/2] SQUASHME: nfsd41: define nfsd4_set_statp as noop for !CONFIG_NFSD_V4
-Date: Mon,  6 Apr 2009 12:00:49 +0300
-Message-ID: <1239008449-8105-1-git-send-email-bhalevy@panasas.com>
-References: <49D9C308.6020500@panasas.com>
-Cc: Alexander Beregalov <a.beregalov@gmail.com>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-next@vger.kernel.org, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@fieldses.org>,
-	Andy Adamson <andros@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:3960 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751407AbZDFJBQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 05:01:16 -0400
-In-Reply-To: <49D9C308.6020500@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 3/6] nfs-utils: skip getaddrinfo in create_auth_rpc_client
+	unless we need port
+Date: Mon, 6 Apr 2009 11:03:11 -0400
+Message-ID: <194FD47F-E529-48BD-A9BC-4CA39D9A67FB@oracle.com>
+References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
+	<1238595845-2186-4-git-send-email-jlayton@redhat.com>
+	<F913F7D5-DCEE-4F40-B9C8-52DC1053A61A@oracle.com>
+	<20090401134739.01b72029@barsoom.rdu.redhat.com>
+	<32D01620-325D-4D82-81EF-8584134BC7DC@oracle.com>
+	<20090403150415.3586bba3@tleilax.poochiereds.net>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090403150415.3586bba3@tleilax.poochiereds.net>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fixes following modpost error:
-ERROR: "nfsd4_set_statp" [fs/nfsd/nfsd.ko] undefined!
+On Apr 3, 2009, at 3:04 PM, Jeff Layton wrote:
+> On Wed, 1 Apr 2009 14:01:30 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>> As far as I understand it, the ai_socktype and ai_protocol fields are
+>> used to return the values needed for subsequent socket(2)/bind(2)
+>> system calls.  In this case you are not using these fields from the
+>> results...
+>>
+>> If ai_protocol is zero, then getaddrinfo(3) assumes you want one copy
+>> of the address for each supported protocol type, so it returns three
+>> structures (one for IPPROTO_UDP, one for IPPROTO_TCP, and one with a
+>> zero protocol number).  The contents, except for the socktype and
+>> protocol fields, are the same for each.
+>
+> Hypothetical situation...
+>
+> Suppose there is a service in /etc/services that has a different port
+> number for tcp than for udp:
+>
+> fooserv		50001/tcp
+> fooserv		50002/udp
+>
+> You're saying that getaddrinfo will return the same port number in all
+> of the returned structures? Won't that mean that one of the port  
+> numbers
+> is wrong? That seems broken if so...
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/nfsd/cache.h |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+I was trying to describe observed behavior here -- it's pretty  
+unlikely that there will be different port numbers in these returned  
+structures.  It's difficult to say precisely how this is supposed to  
+behave based on the man page or even browsing the glibc source code  
+for a few minutes.
 
-diff --git a/include/linux/nfsd/cache.h b/include/linux/nfsd/cache.h
-index a59a2df..5bccaab 100644
---- a/include/linux/nfsd/cache.h
-+++ b/include/linux/nfsd/cache.h
-@@ -75,6 +75,13 @@ int	nfsd_reply_cache_init(void);
- void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *, int);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
-+
-+#ifdef CONFIG_NFSD_V4
- void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
-+#else  /* CONFIG_NFSD_V4 */
-+static inline void nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp)
-+{
-+}
-+#endif /* CONFIG_NFSD_V4 */
- 
- #endif /* NFSCACHE_H */
--- 
-1.6.2.1
+It's certainly possible to set up /etc/services as you suggest, but  
+there is an IANA policy to assign the same port for both transports.   
+As near as I can tell the reason we have the transport listed in /etc/ 
+services at all is because some protocols support only one transport.   
+So IMO it would be quite unlikely to encounter such a case where the  
+port number depended on the transport.
 
+> If that's not the case, then I think we need to at least set the
+> ai_protocol in the hints.
+
+Perhaps that's true.  What are the expected values of @service ?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
