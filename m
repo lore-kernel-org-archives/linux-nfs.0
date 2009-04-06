@@ -1,169 +1,96 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/6] nfs-utils: skip getaddrinfo in create_auth_rpc_client
-	unless we need port
-Date: Mon, 6 Apr 2009 18:59:03 -0400
-Message-ID: <70E52FDD-BF32-4D5B-BF2F-C85DCCD0FD6A@oracle.com>
-References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
-	<1238595845-2186-4-git-send-email-jlayton@redhat.com>
-	<F913F7D5-DCEE-4F40-B9C8-52DC1053A61A@oracle.com>
-	<20090401134739.01b72029@barsoom.rdu.redhat.com>
-	<32D01620-325D-4D82-81EF-8584134BC7DC@oracle.com>
-	<20090403150415.3586bba3@tleilax.poochiereds.net>
-	<194FD47F-E529-48BD-A9BC-4CA39D9A67FB@oracle.com>
-	<20090406112106.6b29e2b0@tleilax.poochiereds.net>
-	<378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
-	<4d569c330904061533r5e2182bai7b777b91563293a@mail.gmail.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Jeff Layton <jlayton@redhat.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4d569c330904061533r5e2182bai7b777b91563293a@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: linux-next: nfs tree build failures
+Date: Mon, 06 Apr 2009 16:34:25 -0700
+Message-ID: <1239060865.6196.2.camel@heimdal.trondhjem.org>
+References: <20090406162905.7d2d7037.sfr@canb.auug.org.au>
+	 <49D9B2B9.5010401@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-next@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <49D9B2B9.5010401@panasas.com>
+Sender: linux-next-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 6, 2009, at 6:33 PM, Kevin Coffman wrote:
-> On Mon, Apr 6, 2009 at 11:46 AM, Chuck Lever  
-> <chuck.lever@oracle.com> wrote:
->> On Apr 6, 2009, at 11:21 AM, Jeff Layton wrote:
->>>
->>> On Mon, 6 Apr 2009 11:03:11 -0400
->>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>> On Apr 3, 2009, at 3:04 PM, Jeff Layton wrote:
->>>>>
->>>>> On Wed, 1 Apr 2009 14:01:30 -0400
->>>>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>
->>>>>> As far as I understand it, the ai_socktype and ai_protocol  
->>>>>> fields are
->>>>>> used to return the values needed for subsequent socket(2)/bind(2)
->>>>>> system calls.  In this case you are not using these fields from  
->>>>>> the
->>>>>> results...
->>>>>>
->>>>>> If ai_protocol is zero, then getaddrinfo(3) assumes you want  
->>>>>> one copy
->>>>>> of the address for each supported protocol type, so it returns  
->>>>>> three
->>>>>> structures (one for IPPROTO_UDP, one for IPPROTO_TCP, and one  
->>>>>> with a
->>>>>> zero protocol number).  The contents, except for the socktype and
->>>>>> protocol fields, are the same for each.
->>>>>
->>>>> Hypothetical situation...
->>>>>
->>>>> Suppose there is a service in /etc/services that has a different  
->>>>> port
->>>>> number for tcp than for udp:
->>>>>
->>>>> fooserv         50001/tcp
->>>>> fooserv         50002/udp
->>>>>
->>>>> You're saying that getaddrinfo will return the same port number  
->>>>> in all
->>>>> of the returned structures? Won't that mean that one of the port
->>>>> numbers
->>>>> is wrong? That seems broken if so...
->>>>
->>>> I was trying to describe observed behavior here -- it's pretty
->>>> unlikely that there will be different port numbers in these  
->>>> returned
->>>> structures.  It's difficult to say precisely how this is supposed  
->>>> to
->>>> behave based on the man page or even browsing the glibc source code
->>>> for a few minutes.
->>>>
->>>> It's certainly possible to set up /etc/services as you suggest, but
->>>> there is an IANA policy to assign the same port for both  
->>>> transports.
->>>> As near as I can tell the reason we have the transport listed in / 
->>>> etc/
->>>> services at all is because some protocols support only one  
->>>> transport.
->>>> So IMO it would be quite unlikely to encounter such a case where  
->>>> the
->>>> port number depended on the transport.
->>>>
->>>>> If that's not the case, then I think we need to at least set the
->>>>> ai_protocol in the hints.
->>>>
->>>> Perhaps that's true.  What are the expected values of @service ?
->>>
->>> I've only ever seen "nfs" here, but I guess you could use this with
->>> others. Maybe "nfsacl" too?
->>
->> What's even stranger is that one is supposed to use rpcbind to  
->> figure out
->> what NFS port to use, not /etc/services.
->>
->>> IANA might not set different port like this, but there's nothing
->>> that stops someone from doing this at their site.
->>
->> True, but one might expect that setting the NFS service port via  
->> rpc.nfsd on
->> the server would make gssd use that port too.  I guess that's why  
->> the port
->> number is now passed up from the kernel.
->>
->>> I agree that it's an unlikely (and somewhat pathological) situation,
->>> but it's easy to deal with -- just set the protocol in the hints.  
->>> I've
->>> confirmed that it makes getaddrinfo do the right thing.
->>
->> That's good.  I think we need to understand exactly what this is  
->> supposed to
->> do, though.  Should we use an rpcbind call here instead?  This is  
->> _rpc_
->> gssd, after all.  If it's OK as it stands, then I think some  
->> comments about
->> why this works this way are in order :-)
->>
->> Kevin, can you enlighten us?
->
-> Here is what I recall.  For v4 we are not supposed to need a
-> portmap/rpcbind call anymore (or at least an "extra" one from gssd).
-> So for cases where we don't get a port number in the upcall, we use
-> the normal port for "nfs".  If we get a port number in the upcall, we
-> use it.  (That may be the normal port, or a different one.  I'm not
-> sure where that value comes from.)
+On Mon, 2009-04-06 at 10:43 +0300, Benny Halevy wrote:
+> On Apr. 06, 2009, 9:29 +0300, Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+> > Hi Trond,
+> > 
+> > Today's linux-next build (powerpc ppc44x_config) failed like this:
+> > 
+> > fs/nfs/client.c: In function 'nfs_match_client':
+> > fs/nfs/client.c:444: error: 'struct nfs_client' has no member named 'cl_minorversion'
+> > 
+> > Caused by commit 10d5a514705f0687cfbb6a080c3562b857e340fe ("nfs41: Use
+> > mount minorversion option").  The existence of cl_minorversion is
+> > controlled by CONFIG_NFS_V4 but the reference is not.
+> 
+> 
+> Stephan,
+> 
+> First, thanks! I apologize for introducing this.
+> This was caused by a late fix to Trond's review comment which
+> apparently was under-tested, as you mentioned.
+> 
+> > 
+> > I added the small patch below for today.
+> 
+> Based on Trond's review comment:
+> http://linux-nfs.org/pipermail/pnfs/2009-March/006938.html
+> 
+> We'd actually want to keep cl_minorversion's usage in the clear
+> and rather move its definition out of the #ifdef.
+> 
+> Please see PATCH 1/3 in reply to this message.
+> 
+> > 
+> > The same build gets this warning as well:
+> > 
+> > fs/nfs/client.c:554: warning: 'nfs4_session_set_rwsize' defined but not used
+> 
+> This one needs to go under CONFIG_NFS_V4.
+> See PATCH 2/2
+> 
+> > 
+> > and then fails like this:
+> > 
+> > fs/built-in.o: In function `nfs_readpage_result_full':
+> > read.c:(.text+0x70d24): undefined reference to `nfs4_restart_rpc'
+> > fs/built-in.o: In function `nfs_readpage_result_partial':
+> > read.c:(.text+0x70e3c): undefined reference to `nfs4_restart_rpc'
+> > fs/built-in.o: In function `nfs_async_unlink_done':
+> > unlink.c:(.text+0x71af0): undefined reference to `nfs4_restart_rpc'
+> > fs/built-in.o: In function `nfs_writeback_done':
+> > (.text+0x72c00): undefined reference to `nfs4_restart_rpc'
+> > 
+> > Caused by commit c105a9f16f11aaa9fcb9f75f8342b89c5d9665cf ("nfs41: use
+> > rpc prepare call state for session reset") which I have reverted for
+> > today.
+> 
+> See PATCH 3/3 that inlines nfs4_restart_rpc's definition.
+> 
+> Benny
 
-I don't have any experience with rpcgss, but I would think using /etc/ 
-services here is incorrect.  If the kernel doesn't provide a port  
-number, then gssd should always do an rpcbind against the server  
-instead of trusting what's in the client's /etc/services.  We are  
-creating a separate RPC client and transport here, after all.
+All squashed into the relevant original patches.
 
-I also think the kernel should pass up the value of the port= mount  
-option.  If that mount option wasn't specified, the value should be  
-zero for NFSv2/v3 mounts (to force an rpcbind) and 2049 for NFSv4  
-mounts (to squelch the rpcbind).
+> > 
+> > Trond, is all this NFS v4.1 stuff that turned up yesterday really 2.6.30
+> > material?  If not, it should be removed from linux-next until after
+> > 2.6.30-rc1 is released.  (and clearly better tested ...)
+> > 
+> > Bruce, I guess the same question applies to the nfsd tree as well.
 
-The two questions we have now are:
+This is code that isn't supposed to significantly affect the existing
+NFS tree unless CONFIG_NFS_V4_1 is set. Since the corresponding NFSd
+code has been merged into 2.6.30, it would be nice to have the client
+code too so that people can start testing, and so that development can
+continue in the mainline tree instead of in the smoky backrooms of the
+linux-nfs.org git trees.
 
-1.  where does the kernel get the port value passed in the upcall?  is  
-it set only if the mount command line had "port=?"  Does the passed-in  
-port value change over the life of the mount?
-
-2.  if a zero port is passed up to gssd, shouldn't it always do an  
-rpcbind?
-
-> I recall there were complaints about the portmap call.  That resulted
-> in:  http://osdir.com/ml/linux.nfsv4/2005-12/msg00025.html
->
-> HTH a little?
->
-> K.C.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Cheers
+  Trond
