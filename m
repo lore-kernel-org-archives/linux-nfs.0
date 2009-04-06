@@ -1,44 +1,74 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] getport.c: fix non-standard C
-Date: Mon, 06 Apr 2009 12:04:24 -0400
-Message-ID: <20090406160411.7179.41228.stgit@ingres.1015granger.net>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 5/5] nfs-utils: add IPv6 code to gssd
+Date: Mon, 6 Apr 2009 12:24:09 -0400
+Message-ID: <20090406122409.192523d2@tleilax.poochiereds.net>
+References: <1238938983-7347-1-git-send-email-jlayton@redhat.com>
+	<1238938983-7347-6-git-send-email-jlayton@redhat.com>
+	<BCFA87B8-22EA-4ABB-87B5-38DAB2621579@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:17050 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751358AbZDFQFj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 12:05:39 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <BCFA87B8-22EA-4ABB-87B5-38DAB2621579@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Squelch a compiler warning in getport.c:
+On Mon, 6 Apr 2009 11:35:21 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-  getport.c:65: warning: =E2=80=98static=E2=80=99 is not at beginning o=
-f declaration
+> On Apr 5, 2009, at 9:43 AM, Jeff Layton wrote:
+> > All of the pieces to handle IPv6 are now in place. Add IPv6-specific
+> > code wrapped in the proper #ifdef's so that IPv6 support works when
+> > it's enabled at build-time.
+> >
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > utils/gssd/gssd_proc.c |   34 ++++++++++++++++++++++++++++++++++
+> > 1 files changed, 34 insertions(+), 0 deletions(-)
+> >
+> > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> > index 1f7dadd..8a595c2 100644
+> > --- a/utils/gssd/gssd_proc.c
+> > +++ b/utils/gssd/gssd_proc.c
+> > @@ -111,10 +111,18 @@ static int
+> > addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const int  
+> > port)
+> > {
+> > 	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
+> > +#ifdef IPV6_SUPPORTED
+> > +	struct sockaddr_in6	*s6 = (struct sockaddr_in6 *) sa;
+> > +#endif /* IPV6_SUPPORTED */
+> >
+> > 	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
+> > 		s4->sin_family = AF_INET;
+> > 		s4->sin_port = htons(port);
+> > +#ifdef IPV6_SUPPORTED
+> > +	} else if (inet_pton(AF_INET6, addr, &s6->sin6_addr)) {
+> > +		s6->sin6_family = AF_INET6;
+> > +		s6->sin6_port = htons(port);
+> > +#endif /* IPV6_SUPPORTED */
+> 
+> Does this support scope IDs?  Do we expect to get a link-local IPv6  
+> address here?
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+It doesn't support scope ID's. The upcall doesn't send the scopeid if
+there's one defined.
 
- support/nfs/getport.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Given that we rely on name resolution to some degree with krb5 auth,
+I'm not sure that it makes much sense to deal with scopeid's here. AAAA
+records in DNS don't have space for them.
 
-diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-index 734d21a..cf1677e 100644
---- a/support/nfs/getport.c
-+++ b/support/nfs/getport.c
-@@ -60,9 +60,9 @@
- #endif	/* !HAVE_LIBTIRPC */
-=20
- #ifdef HAVE_LIBTIRPC
--const static rpcvers_t default_rpcb_version =3D RPCBVERS_4;
-+static const rpcvers_t default_rpcb_version =3D RPCBVERS_4;
- #else	/* !HAVE_LIBTIRPC */
--const static rpcvers_t default_rpcb_version =3D PMAPVERS;
-+static const rpcvers_t default_rpcb_version =3D PMAPVERS;
- #endif	/* !HAVE_LIBTIRPC */
-=20
- #ifdef HAVE_DECL_AI_ADDRCONFIG
+PS: I'll fix the getnameinfo() autoconf patch to do what you suggest...
 
+-- 
+Jeff Layton <jlayton@redhat.com>
