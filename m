@@ -1,202 +1,49 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfsd pull request for 2.6.30
-Date: Mon, 6 Apr 2009 12:51:07 -0400
-Message-ID: <20090406165106.GA31119@fieldses.org>
-References: <20090404160851.GC495@fieldses.org>
+Subject: Re: next-20090406: nfsd build fails
+Date: Mon, 6 Apr 2009 13:11:46 -0400
+Message-ID: <20090406171146.GA32436@fieldses.org>
+References: <a4423d670904060027y44550d99g2cb40ce415dbb048@mail.gmail.com> <49D9C308.6020500@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090404160851.GC495@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Beregalov <a.beregalov@gmail.com>, andros@netapp.com,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-nfs@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:33493 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757357AbZDFRL4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 13:11:56 -0400
+In-Reply-To: <49D9C308.6020500@panasas.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 04, 2009 at 12:08:51PM -0400, bfields wrote:
-> Please pull nfsd-releated changes for 2.6.30 from the for-2.6.30 branch
-> at:
+On Mon, Apr 06, 2009 at 11:53:28AM +0300, Benny Halevy wrote:
+> On Apr. 06, 2009, 10:27 +0300, Alexander Beregalov <a.beregalov@gmail.com> wrote:
+> > Hi
+> > 
+> > fs/nfsd/nfssvc.c: In function 'set_max_drc':
+> > fs/nfsd/nfssvc.c:240: error: 'NFSD_DRC_SIZE_SHIFT' undeclared
+> > 
+> > CONFIG_NFSD_V4 is not set
 > 
-> 	git://linux-nfs.org/~bfields/linux.git for-2.6.30
+> Hi Alexander,
+> 
+> Thanks for reporting this!
+> 
+> Andy, Bruce: please see attached 2 patches fixing compile/link errors
+> with DRC under !defined(CONFIG_NFSD_V4):
+> 
+> [PATCH 1/2] SQUASHEM: nfsd41: define NFSD_DRC_SIZE_SHIFT in set_max_drc
+> [PATCH 2/2] SQUASHME: nfsd41: define nfsd4_set_statp as noop for !CONFIG_NFSD_V4
 
-Note: two compile fixes (for the  !CONFIG_NFSD_V4 case) have been
-committed to the tip of that branch since the original pull request.
+Thanks, applied.
 
-Benny Halevy (2):
-      nfsd41: define NFSD_DRC_SIZE_SHIFT in set_max_drc
-      nfsd41: define nfsd4_set_statp as noop for !CONFIG_NFSD_V4
+Committing on top (not squashing) since I'd rather not rewrite history
+on a branch I've already sent a pull request for.
+
+(In fact, I'll try to stop rebasing those for-next branches at all this
+time around.)
 
 --b.
-
-
-> 
-> This includes the first 4.1 code.  It still needs work, but it's been
-> developed out of tree for a while, and it's high time that we move the
-> development upstream.  It is off by default and shouldn't impact exiting
-> v2/v3/v4.0 behavior.
-> 
-> Also included is some performance work (including new nfsd performance
-> counters and a tcp fix for high bandwidth-delay-product networks), and
-> the usual miscellaneous bugfixes and cleanup.
-> 
-> Thanks to everyone for their work on all of this!
-> 
-> And apologies for getting this in late.  Most of the delay was trying to
-> agree on a reasonable subset of the 4.1 patches to submit.  I hope that
-> starting to focus the 4.1 development more on upstream will make the
-> process go a little smoother in future releases.
-> 
-> --b.
-> 
-> Alexandros Batsakis (1):
->       nfsd: lock state around put client and delegation in nfsd4_cb_recall
-> 
-> Andy Adamson (21):
->       nfsd: embed nfsd4_current_state in nfsd4_compoundres
->       nfsd: don't use the deferral service, return NFS4ERR_DELAY
->       nfsd41: sessions basic data types
->       nfsd41: xdr infrastructure
->       nfsd41: proc stubs
->       nfsd41: exchange_id operation
->       nfsd41: match clientid establishment method
->       nfsd41: enforce NFS4ERR_SEQUENCE_POS operation order rules for minorversion != 0 only.
->       nfsd41: DRC save, restore, and clear functions
->       nfsd41: hard page limit for DRC
->       nfsd41: nfsd DRC logic
->       nfsd41: clear DRC cache on free_session
->       nfsd41: create_session operation
->       nfsd41: Add a create session replay cache
->       nfsd41: non-page DRC for solo sequence responses
->       nfsd41: stateid handling
->       nfsd41: check encode size for sessions maxresponse cached
->       nfsd41: clientid handling
->       nfsd41: access_valid
->       nfsd41: add OPEN4_SHARE_ACCESS_WANT nfs4_stateid bmap
->       nfsd41: support for 3-word long attribute bitmask
-> 
-> Benny Halevy (12):
->       NFSD: return nfsv4 error code nfserr_notsupp rather than nfsv[23]'s nfserr_opnotsupp
->       nfsd: remove nfsd4_ops array size
->       nfs41: common protocol definitions
->       nfsd41: sequence operation
->       nfsd41: destroy_session operation
->       nfsd: pass nfsd4_compound_state* to nfs4_preprocess_{state,seq}id_op
->       nfsd41: control nfsv4.1 svc via /proc/fs/nfsd/versions
->       nfsd41: pass writable attrs mask to nfsd4_decode_fattr
->       nfsd: dynamically skip encoded fattr bitmap in _nfsd4_verify
->       nfsd41: SUPPATTR_EXCLCREAT attribute
->       nfsd41: CREATE_EXCLUSIVE4_1
->       nfsd41: Documentation/filesystems/nfs41-server.txt
-> 
-> Chuck Lever (1):
->       SUNRPC: Clean up static inline functions in svc_xprt.h
-> 
-> David Shaw (1):
->       Short write in nfsd becomes a full write to the client
-> 
-> Greg Banks (5):
->       knfsd: remove the nfsd thread busy histogram
->       knfsd: avoid overloading the CPU scheduler with enormous load averages
->       knfsd: add file to export stats about nfsd pools
->       Document /proc/fs/nfsd/pool_stats
->       Fix a build warning about leaking CONFIG_NFSD to userspace.
-> 
-> Harvey Harrison (1):
->       nfs: replace uses of __constant_{endian}
-> 
-> J. Bruce Fields (25):
->       nfsd4: split lockstateid/openstateid release logic
->       nfsd4: remove a forward declaration
->       nfsd4: split open/lockowner release code
->       nfsd: clarify exclusive create bitmask result.
->       nfsd4: fix misplaced comment
->       nfsd4: use helper for copying filehandles for replay
->       nfsd4: use helper for copying delegation filehandle
->       nfsd4: trivial preprocess_stateid_op cleanup
->       nfsd4: move check_stateid_generation check
->       nfsd4: remove redundant "if" in nfs4_preprocess_stateid_op
->       nfsd4: remove unneeded local variable
->       nfsd4: remove some dprintk's
->       nfsd4: add a helper function to decide if stateid is delegation
->       nfsd4: separate delegreturn case from preprocess_stateid_op
->       nfsd4: fail when delegreturn gets a non-delegation stateid
->       nfsd4: remove unused CHECK_FH flag
->       nfsd4: rename io_during_grace_disallowed
->       nfsd4: put_nfs4_client does not require state lock
->       nfsd4: remove use of mutex for file_hashtable
->       nfsd4: fix do_probe_callback errors
->       nfsd4: move rpc_client setup to a separate function
->       nfsd4: support putpubfh operation
->       nfsd4: don't do lookup within readdir in recovery code
->       nfsd4: remove redundant check from nfsd4_open
->       nfsd4: don't check ip address in setclientid
-> 
-> Manish Katiyar (1):
->       nfsd : Define NFSD only when FILE_LOCKING is enabled
-> 
-> Marc Eshel (5):
->       nfsd41: define nfs41 error codes
->       nfsd41: introduce nfs4_client cl_sessions list
->       nfsd41: release_session when client is expired
->       nfsd41: sessionid hashing
->       nfsd41: provide support for minor version 1 at rpc level
-> 
-> Miklos Szeredi (1):
->       lockd: clean up blocking lock cases of nlsmvc_lock()
-> 
-> Olga Kornievskaia (1):
->       svcrpc: take advantage of tcp autotuning
-> 
-> Qinghuang Feng (1):
->       NFSD: cleanup for nfs3proc.c
-> 
-> Sachin S. Prabhu (1):
->       Inconsistent setattr behaviour
-> 
-> ideawu (1):
->       sunrpc/svc.c: Remove unused line 'rqstp->rq_server = serv;' in svc_process
-> 
-> wengang wang (1):
->       nfsd(v2/v3): fix the failure of creation from HPUX client
-> 
->  Documentation/filesystems/knfsd-stats.txt  |  159 ++++
->  Documentation/filesystems/nfs41-server.txt |  161 ++++
->  fs/lockd/svclock.c                         |   13 +-
->  fs/nfsd/Kconfig                            |    1 +
->  fs/nfsd/nfs3proc.c                         |   10 +-
->  fs/nfsd/nfs4callback.c                     |   47 +-
->  fs/nfsd/nfs4proc.c                         |  246 ++++--
->  fs/nfsd/nfs4recover.c                      |   74 +-
->  fs/nfsd/nfs4state.c                        | 1196 +++++++++++++++++++++++-----
->  fs/nfsd/nfs4xdr.c                          |  633 ++++++++++++++-
->  fs/nfsd/nfsctl.c                           |   38 +-
->  fs/nfsd/nfsproc.c                          |    3 +-
->  fs/nfsd/nfssvc.c                           |   86 ++-
->  fs/nfsd/vfs.c                              |   37 +-
->  include/linux/lockd/xdr.h                  |   12 +-
->  include/linux/lockd/xdr4.h                 |   10 +-
->  include/linux/nfs.h                        |    1 -
->  include/linux/nfs4.h                       |  138 ++++-
->  include/linux/nfsd/cache.h                 |    1 +
->  include/linux/nfsd/nfsd.h                  |  228 ++++--
->  include/linux/nfsd/nfsfh.h                 |    7 +
->  include/linux/nfsd/state.h                 |   84 ++-
->  include/linux/nfsd/stats.h                 |    9 +-
->  include/linux/nfsd/xdr4.h                  |  129 +++-
->  include/linux/sunrpc/svc.h                 |   16 +
->  include/linux/sunrpc/svc_xprt.h            |   46 +-
->  include/linux/sunrpc/xdr.h                 |   42 +-
->  net/sunrpc/svc.c                           |    3 +-
->  net/sunrpc/svc_xprt.c                      |  127 +++-
->  net/sunrpc/svcsock.c                       |   35 +-
->  30 files changed, 3017 insertions(+), 575 deletions(-)
->  create mode 100644 Documentation/filesystems/knfsd-stats.txt
->  create mode 100644 Documentation/filesystems/nfs41-server.txt
