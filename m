@@ -1,252 +1,124 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 2/5] nfs-utils: store the address given in the upcall
- for later use
-Date: Mon, 6 Apr 2009 12:31:43 -0400
-Message-ID: <20090406123143.1d0671e6@tleilax.poochiereds.net>
-References: <1238938983-7347-1-git-send-email-jlayton@redhat.com>
-	<1238938983-7347-3-git-send-email-jlayton@redhat.com>
-	<A1DB402A-E0EA-49BC-99F0-D086FF04B063@oracle.com>
+Subject: Re: [PATCH 3/6] nfs-utils: skip getaddrinfo in
+	create_auth_rpc_client unless we need port
+Date: Mon, 6 Apr 2009 12:33:58 -0400
+Message-ID: <20090406123358.5845f03c@tleilax.poochiereds.net>
+References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
+	<1238595845-2186-4-git-send-email-jlayton@redhat.com>
+	<F913F7D5-DCEE-4F40-B9C8-52DC1053A61A@oracle.com>
+	<20090401134739.01b72029@barsoom.rdu.redhat.com>
+	<32D01620-325D-4D82-81EF-8584134BC7DC@oracle.com>
+	<20090403150415.3586bba3@tleilax.poochiereds.net>
+	<194FD47F-E529-48BD-A9BC-4CA39D9A67FB@oracle.com>
+	<20090406112106.6b29e2b0@tleilax.poochiereds.net>
+	<378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, kwc@citi.umich.edu
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51535 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752439AbZDFQbv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Apr 2009 12:31:51 -0400
-In-Reply-To: <A1DB402A-E0EA-49BC-99F0-D086FF04B063@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 6 Apr 2009 11:35:50 -0400
+On Mon, 6 Apr 2009 11:46:33 -0400
 Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> On Apr 5, 2009, at 9:43 AM, Jeff Layton wrote:
-> > The current upcall could be more efficient. We first convert the  
-> > address
-> > to a hostname, and then later when we set up the RPC client, we do a
-> > hostname lookup to convert it back to an address.
+> On Apr 6, 2009, at 11:21 AM, Jeff Layton wrote:
+> > On Mon, 6 Apr 2009 11:03:11 -0400
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
 > >
-> > Begin to change this by keeping the address in the clnt_info that we  
-> > get
-> > out of the upcall. Since a sockaddr has a port field, we can also
-> > eliminate the port from the clnt_info.
+> >> On Apr 3, 2009, at 3:04 PM, Jeff Layton wrote:
+> >>> On Wed, 1 Apr 2009 14:01:30 -0400
+> >>> Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>
+> >>>> As far as I understand it, the ai_socktype and ai_protocol fields  
+> >>>> are
+> >>>> used to return the values needed for subsequent socket(2)/bind(2)
+> >>>> system calls.  In this case you are not using these fields from the
+> >>>> results...
+> >>>>
+> >>>> If ai_protocol is zero, then getaddrinfo(3) assumes you want one  
+> >>>> copy
+> >>>> of the address for each supported protocol type, so it returns  
+> >>>> three
+> >>>> structures (one for IPPROTO_UDP, one for IPPROTO_TCP, and one  
+> >>>> with a
+> >>>> zero protocol number).  The contents, except for the socktype and
+> >>>> protocol fields, are the same for each.
+> >>>
+> >>> Hypothetical situation...
+> >>>
+> >>> Suppose there is a service in /etc/services that has a different  
+> >>> port
+> >>> number for tcp than for udp:
+> >>>
+> >>> fooserv		50001/tcp
+> >>> fooserv		50002/udp
+> >>>
+> >>> You're saying that getaddrinfo will return the same port number in  
+> >>> all
+> >>> of the returned structures? Won't that mean that one of the port
+> >>> numbers
+> >>> is wrong? That seems broken if so...
+> >>
+> >> I was trying to describe observed behavior here -- it's pretty
+> >> unlikely that there will be different port numbers in these returned
+> >> structures.  It's difficult to say precisely how this is supposed to
+> >> behave based on the man page or even browsing the glibc source code
+> >> for a few minutes.
+> >>
+> >> It's certainly possible to set up /etc/services as you suggest, but
+> >> there is an IANA policy to assign the same port for both transports.
+> >> As near as I can tell the reason we have the transport listed in / 
+> >> etc/
+> >> services at all is because some protocols support only one transport.
+> >> So IMO it would be quite unlikely to encounter such a case where the
+> >> port number depended on the transport.
+> >>
+> >>> If that's not the case, then I think we need to at least set the
+> >>> ai_protocol in the hints.
+> >>
+> >> Perhaps that's true.  What are the expected values of @service ?
 > >
-> > Finally, switch to getnameinfo() instead of gethostbyaddr(). We'll  
-> > need
-> > to use that call anyway when we add support for IPv6.
+> > I've only ever seen "nfs" here, but I guess you could use this with
+> > others. Maybe "nfsacl" too?
 > 
-> gethostbyaddr(3) supports AF_INET6, too, by the way.
+> What's even stranger is that one is supposed to use rpcbind to figure  
+> out what NFS port to use, not /etc/services.
 > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > utils/gssd/gssd.h      |    2 +-
-> > utils/gssd/gssd_proc.c |   92 ++++++++++++++++++++++++++++++++++++++ 
-> > +--------
-> > 2 files changed, 77 insertions(+), 17 deletions(-)
-> >
-> > diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> > index 082039a..3c52f46 100644
-> > --- a/utils/gssd/gssd.h
-> > +++ b/utils/gssd/gssd.h
-> > @@ -83,7 +83,7 @@ struct clnt_info {
-> > 	int			krb5_poll_index;
-> > 	int			spkm3_fd;
-> > 	int			spkm3_poll_index;
-> > -	int			port;
-> > +	struct sockaddr_storage addr;
-> > };
-> >
-> > void init_client_list(void);
-> > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> > index 509946e..be17019 100644
-> > --- a/utils/gssd/gssd_proc.c
-> > +++ b/utils/gssd/gssd_proc.c
-> > @@ -102,10 +102,65 @@ struct pollfd * pollarray;
-> >
-> > int pollsize;  /* the size of pollaray (in pollfd's) */
-> >
-> > +/*
-> > + * convert an address string to a sockaddr_storage struct. Returns  
-> > true
-> > + * on success and false on failure.
+> > IANA might not set different port like this, but there's nothing
+> > that stops someone from doing this at their site.
 > 
-> I usually use the term "presentation address string" since that  
-> specifically means an IP address expressed as a C string.  I guess  
-> that's pretty obvious because you use inet_pton() here.
+> True, but one might expect that setting the NFS service port via  
+> rpc.nfsd on the server would make gssd use that port too.  I guess  
+> that's why the port number is now passed up from the kernel.
 > 
-
-Sounds reasonable.
-
-> > + */
-> > +static int
-> > +addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const  
-> > int port)
-> > +{
-> > +	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
-> > +
-> > +	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
-> > +		s4->sin_family = AF_INET;
-> > +		s4->sin_port = htons(port);
-> > +	} else {
-> > +		printerr(0, "ERROR: unable to convert %s to address\n", addr);
-> > +		return 0;
-> > +	}
+> > I agree that it's an unlikely (and somewhat pathological) situation,
+> > but it's easy to deal with -- just set the protocol in the hints. I've
+> > confirmed that it makes getaddrinfo do the right thing.
 > 
-> I've handled these with a switch statement, as you do later in  
-> populate_port().  It's merely a question about consistent coding  
-> style, but any reason not to take that approach here?
+> That's good.  I think we need to understand exactly what this is  
+> supposed to do, though.  Should we use an rpcbind call here instead?   
+> This is _rpc_ gssd, after all.  If it's OK as it stands, then I think  
+> some comments about why this works this way are in order :-)
 > 
-
-Yes. switch statements are really only suitable when you have a simple
-value to compare against. We're not comparing the address family here
-because it's not yet known. We have to try and convert this opaque
-string to an address first.
-
-In the last patch, I add an "else if" where we try to convert it to an
-ipv6 addr, but we can't really do "try this and if that fails then try
-this" in the context of a switch.
-
-In other places I try to use switches where it's suitable...
-
-> > +
-> > +	return 1;
-> > +}
-> > +
-> > +/*
-> > + * convert a sockaddr to a hostname
-> > + */
-> > +static char *
-> > +sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-> > +{
-> > +	socklen_t		addrlen;
-> > +	int			err;
-> > +	char 			*hostname;
-> > +	char			hbuf[NI_MAXHOST];
-> > +
-> > +	switch (sa->sa_family) {
-> > +	case AF_INET:
-> > +		addrlen = sizeof(struct sockaddr_in);
-> > +		break;
-> > +	default:
-> > +		printerr(0, "ERROR: unrecognized addr family %d\n",
-> > +			 sa->sa_family);
-> > +		return NULL;
-> > +	}
-> > +
-> > +	err = getnameinfo(sa, addrlen, hbuf, sizeof(hbuf), NULL, 0,
-> > +			  NI_NAMEREQD);
-> > +	if (err) {
-> > +		printerr(0, "ERROR: unable to resolve %s to hostname: %s\n",
-> > +			 addr, gai_strerror(err));
-> > +		return NULL;
-> > +	}
-> 
-> getnameinfo(3) can return EAI_SYSTEM, in which case the real error  
-> value is stored in errno  Browsing the gai_strerror(3) implementation  
-> in glibc-2.7 seems to show that it's just a simple static char table  
-> lookup, so it might be good to handle EAI_SYSTEM explicitly here.
-> 
-> Looks like you already do that in populate_port().
+> Kevin, can you enlighten us?
 > 
 
-Good catch. Will fix...
+That's a very good point. It does seem like this should be something
+we resolve with rpcbind instead of locally.
 
-> > +
-> > +	hostname = strdup(hbuf);
-> > +
-> > +	return hostname;
-> > +}
-> > +
-> > /* XXX buffer problems: */
-> > static int
-> > read_service_info(char *info_file_name, char **servicename, char  
-> > **servername,
-> > -		  int *prog, int *vers, char **protocol, int *port) {
-> > +		  int *prog, int *vers, char **protocol,
-> > +		  struct sockaddr *addr) {
-> > #define INFOBUFLEN 256
-> > 	char		buf[INFOBUFLEN + 1];
-> > 	static char	dummy[128];
-> > @@ -117,10 +172,9 @@ read_service_info(char *info_file_name, char  
-> > **servicename, char **servername,
-> > 	char		protoname[16];
-> > 	char		cb_port[128];
-> > 	char		*p;
-> > -	in_addr_t	inaddr;
-> > 	int		fd = -1;
-> > -	struct hostent	*ent = NULL;
-> > 	int		numfields;
-> > +	int		port = 0;
-> >
-> > 	*servicename = *servername = *protocol = NULL;
-> >
-> > @@ -160,21 +214,26 @@ read_service_info(char *info_file_name, char  
-> > **servicename, char **servername,
-> > 	if((*prog != 100003) || ((*vers != 2) && (*vers != 3) && (*vers !=  
-> > 4)))
-> > 		goto fail;
-> >
-> > -	/* create service name */
-> > -	inaddr = inet_addr(address);
-> > -	if (!(ent = gethostbyaddr(&inaddr, sizeof(inaddr), AF_INET))) {
-> > -		printerr(0, "ERROR: can't resolve server %s name\n", address);
-> > -		goto fail;
-> > +	if (cb_port[0] != '\0') {
-> > +		port = atoi(cb_port);
-> > +		if (port < 0 || port > 65535)
-> > +			goto fail;
-> > 	}
-> > -	if (!(*servername = calloc(strlen(ent->h_name) + 1, 1)))
-> > +
-> > +	if (!addrstr_to_sockaddr(addr, address, port))
-> > +		goto fail;
-> > +
-> > +	*servername = sockaddr_to_hostname(addr, address);
-> > +	if (*servername == NULL)
-> > 		goto fail;
-> > -	memcpy(*servername, ent->h_name, strlen(ent->h_name));
-> > -	snprintf(buf, INFOBUFLEN, "%s@%s", service, ent->h_name);
-> > +
-> > +	nbytes = snprintf(buf, INFOBUFLEN, "%s@%s", service, *servername);
-> > +	if (nbytes > INFOBUFLEN)
-> > +		goto fail;
-> > +
-> > 	if (!(*servicename = calloc(strlen(buf) + 1, 1)))
-> > 		goto fail;
-> > 	memcpy(*servicename, buf, strlen(buf));
-> > -	if (cb_port[0] != '\0')
-> > -		*port = atoi(cb_port);
-> >
-> > 	if (!(*protocol = strdup(protoname)))
-> > 		goto fail;
-> > @@ -251,7 +310,7 @@ process_clnt_dir_files(struct clnt_info * clp)
-> > 	if ((clp->servicename == NULL) &&
-> > 	     read_service_info(info_file_name, &clp->servicename,
-> > 				&clp->servername, &clp->prog, &clp->vers,
-> > -				&clp->protocol, &clp->port))
-> > +				&clp->protocol, (struct sockaddr *) &clp->addr))
-> > 		return -1;
-> > 	return 0;
-> > }
-> > @@ -599,8 +658,9 @@ int create_auth_rpc_client(struct clnt_info *clp,
-> > 			 clp->servername, uid);
-> > 		goto out_fail;
-> > 	}
-> > -	if (clp->port)
-> > -		((struct sockaddr_in *)a->ai_addr)->sin_port = htons(clp->port);
-> > +	if (((struct sockaddr_in) clp->addr).sin_port != 0)
-> > +		((struct sockaddr_in *) a->ai_addr)->sin_port =
-> > +				((struct sockaddr_in) clp->addr).sin_port;
-> > 	if (a->ai_protocol == IPPROTO_TCP) {
-> > 		if ((rpc_clnt = clnttcp_create(
-> > 					(struct sockaddr_in *) a->ai_addr,
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-
+This sure would be simpler if we could just depend on having the port
+in the upcall, but I guess that would break backward compatibility.
 
 -- 
 Jeff Layton <jlayton@redhat.com>
