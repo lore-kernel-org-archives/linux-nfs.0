@@ -1,230 +1,154 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 2/5] nfs-utils: store the address given in the upcall for
-	later use
-Date: Mon, 6 Apr 2009 11:35:50 -0400
-Message-ID: <A1DB402A-E0EA-49BC-99F0-D086FF04B063@oracle.com>
-References: <1238938983-7347-1-git-send-email-jlayton@redhat.com>
-	<1238938983-7347-3-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1238938983-7347-3-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Geert Uytterhoeven <Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org>
+Subject: Re: bus errors on nfs writes in latest git
+Date: Mon, 6 Apr 2009 17:37:03 +0200 (CEST)
+Message-ID: <alpine.LRH.2.00.0904061731260.11076@vixen.sonytel.be>
+References: <20090404161447.GE495@fieldses.org> <1238861949.8114.3.camel@heimdal.trondhjem.org> <1238862470.8114.5.camel@heimdal.trondhjem.org> <20090405202233.GA16937@fieldses.org>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, Nick Piggin <npiggin@suse.de>,
+	linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from vervifontaine.sonytel.be ([80.88.33.193]:42470 "EHLO
+	pophost.sonytel.be" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756963AbZDFPhI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 11:37:08 -0400
+In-Reply-To: <20090405202233.GA16937@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 5, 2009, at 9:43 AM, Jeff Layton wrote:
-> The current upcall could be more efficient. We first convert the  
-> address
-> to a hostname, and then later when we set up the RPC client, we do a
-> hostname lookup to convert it back to an address.
->
-> Begin to change this by keeping the address in the clnt_info that we  
-> get
-> out of the upcall. Since a sockaddr has a port field, we can also
-> eliminate the port from the clnt_info.
->
-> Finally, switch to getnameinfo() instead of gethostbyaddr(). We'll  
-> need
-> to use that call anyway when we add support for IPv6.
+On Sun, 5 Apr 2009, J. Bruce Fields wrote:
+> On Sat, Apr 04, 2009 at 12:27:50PM -0400, Trond Myklebust wrote:
+> > On Sat, 2009-04-04 at 12:19 -0400, Trond Myklebust wrote:
+> > > On Sat, 2009-04-04 at 12:14 -0400, J. Bruce Fields wrote:
+> > > > My regular connecthon tests are reporting bus errors on the "wr=
+ite/read
+> > > > 30 MB file" on recent upstream kernels.  I'm travelling and hav=
+en't had
+> > > > a chance to do anything beyond kick off a dumb git-bisect, whic=
+h pointed
+> > > > the blame at the following commit.  Any ideas?
+> >=20
+> > The following patch should fix it.
+>=20
+> Thanks--confirmed.  For what it's worth:
+>=20
+> 	Tested-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-gethostbyaddr(3) supports AF_INET6, too, by the way.
+JFYI, I was also seeing bus errors and read() returning EFAULT with cur=
+rent
+mainline on both PS3 (ppc64) and Sequoia (ppc32). So far I only saw it
+happening doing:
+  - apt-get update
+  - apt-get upgrade
+  - apt-get install
 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> utils/gssd/gssd.h      |    2 +-
-> utils/gssd/gssd_proc.c |   92 ++++++++++++++++++++++++++++++++++++++ 
-> +--------
-> 2 files changed, 77 insertions(+), 17 deletions(-)
->
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index 082039a..3c52f46 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -83,7 +83,7 @@ struct clnt_info {
-> 	int			krb5_poll_index;
-> 	int			spkm3_fd;
-> 	int			spkm3_poll_index;
-> -	int			port;
-> +	struct sockaddr_storage addr;
-> };
->
-> void init_client_list(void);
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 509946e..be17019 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -102,10 +102,65 @@ struct pollfd * pollarray;
->
-> int pollsize;  /* the size of pollaray (in pollfd's) */
->
-> +/*
-> + * convert an address string to a sockaddr_storage struct. Returns  
-> true
-> + * on success and false on failure.
+I tried bisecting it, but unfortunately it was not 100% reproducible.
+So far the oldest version where I saw it fail was 2.6.29-07100-g833bb30=
+=2E
+It _looks_ like 2.6.29-06619-ge5824c9 is OK, but I'm not 100% sure.
 
-I usually use the term "presentation address string" since that  
-specifically means an IP address expressed as a C string.  I guess  
-that's pretty obvious because you use inet_pton() here.
+At first I didn't think of NFS (I'm indeed using nfsroot), but when sea=
+rching
+for `bus error' I noticed this thread.
 
-> + */
-> +static int
-> +addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const  
-> int port)
-> +{
-> +	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
-> +
-> +	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
-> +		s4->sin_family = AF_INET;
-> +		s4->sin_port = htons(port);
-> +	} else {
-> +		printerr(0, "ERROR: unable to convert %s to address\n", addr);
-> +		return 0;
-> +	}
+Your patch seems to fix it (I added a printk so I would notice when the=
+ bad
+case got triggered), and the commit that introduced the problem lies wi=
+thin
+the works/fails range I discovered, so
 
-I've handled these with a switch statement, as you do later in  
-populate_port().  It's merely a question about consistent coding  
-style, but any reason not to take that approach here?
+Tested-by: Geert Uytterhoeven <Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org>
 
-> +
-> +	return 1;
-> +}
-> +
-> +/*
-> + * convert a sockaddr to a hostname
-> + */
-> +static char *
-> +sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-> +{
-> +	socklen_t		addrlen;
-> +	int			err;
-> +	char 			*hostname;
-> +	char			hbuf[NI_MAXHOST];
-> +
-> +	switch (sa->sa_family) {
-> +	case AF_INET:
-> +		addrlen = sizeof(struct sockaddr_in);
-> +		break;
-> +	default:
-> +		printerr(0, "ERROR: unrecognized addr family %d\n",
-> +			 sa->sa_family);
-> +		return NULL;
-> +	}
-> +
-> +	err = getnameinfo(sa, addrlen, hbuf, sizeof(hbuf), NULL, 0,
-> +			  NI_NAMEREQD);
-> +	if (err) {
-> +		printerr(0, "ERROR: unable to resolve %s to hostname: %s\n",
-> +			 addr, gai_strerror(err));
-> +		return NULL;
-> +	}
+Thanks!
 
-getnameinfo(3) can return EAI_SYSTEM, in which case the real error  
-value is stored in errno  Browsing the gai_strerror(3) implementation  
-in glibc-2.7 seems to show that it's just a simple static char table  
-lookup, so it might be good to handle EAI_SYSTEM explicitly here.
+With kind regards,
 
-Looks like you already do that in populate_port().
+Geert Uytterhoeven
+Software Architect
 
-> +
-> +	hostname = strdup(hbuf);
-> +
-> +	return hostname;
-> +}
-> +
-> /* XXX buffer problems: */
-> static int
-> read_service_info(char *info_file_name, char **servicename, char  
-> **servername,
-> -		  int *prog, int *vers, char **protocol, int *port) {
-> +		  int *prog, int *vers, char **protocol,
-> +		  struct sockaddr *addr) {
-> #define INFOBUFLEN 256
-> 	char		buf[INFOBUFLEN + 1];
-> 	static char	dummy[128];
-> @@ -117,10 +172,9 @@ read_service_info(char *info_file_name, char  
-> **servicename, char **servername,
-> 	char		protoname[16];
-> 	char		cb_port[128];
-> 	char		*p;
-> -	in_addr_t	inaddr;
-> 	int		fd = -1;
-> -	struct hostent	*ent = NULL;
-> 	int		numfields;
-> +	int		port = 0;
->
-> 	*servicename = *servername = *protocol = NULL;
->
-> @@ -160,21 +214,26 @@ read_service_info(char *info_file_name, char  
-> **servicename, char **servername,
-> 	if((*prog != 100003) || ((*vers != 2) && (*vers != 3) && (*vers !=  
-> 4)))
-> 		goto fail;
->
-> -	/* create service name */
-> -	inaddr = inet_addr(address);
-> -	if (!(ent = gethostbyaddr(&inaddr, sizeof(inaddr), AF_INET))) {
-> -		printerr(0, "ERROR: can't resolve server %s name\n", address);
-> -		goto fail;
-> +	if (cb_port[0] != '\0') {
-> +		port = atoi(cb_port);
-> +		if (port < 0 || port > 65535)
-> +			goto fail;
-> 	}
-> -	if (!(*servername = calloc(strlen(ent->h_name) + 1, 1)))
-> +
-> +	if (!addrstr_to_sockaddr(addr, address, port))
-> +		goto fail;
-> +
-> +	*servername = sockaddr_to_hostname(addr, address);
-> +	if (*servername == NULL)
-> 		goto fail;
-> -	memcpy(*servername, ent->h_name, strlen(ent->h_name));
-> -	snprintf(buf, INFOBUFLEN, "%s@%s", service, ent->h_name);
-> +
-> +	nbytes = snprintf(buf, INFOBUFLEN, "%s@%s", service, *servername);
-> +	if (nbytes > INFOBUFLEN)
-> +		goto fail;
-> +
-> 	if (!(*servicename = calloc(strlen(buf) + 1, 1)))
-> 		goto fail;
-> 	memcpy(*servicename, buf, strlen(buf));
-> -	if (cb_port[0] != '\0')
-> -		*port = atoi(cb_port);
->
-> 	if (!(*protocol = strdup(protoname)))
-> 		goto fail;
-> @@ -251,7 +310,7 @@ process_clnt_dir_files(struct clnt_info * clp)
-> 	if ((clp->servicename == NULL) &&
-> 	     read_service_info(info_file_name, &clp->servicename,
-> 				&clp->servername, &clp->prog, &clp->vers,
-> -				&clp->protocol, &clp->port))
-> +				&clp->protocol, (struct sockaddr *) &clp->addr))
-> 		return -1;
-> 	return 0;
-> }
-> @@ -599,8 +658,9 @@ int create_auth_rpc_client(struct clnt_info *clp,
-> 			 clp->servername, uid);
-> 		goto out_fail;
-> 	}
-> -	if (clp->port)
-> -		((struct sockaddr_in *)a->ai_addr)->sin_port = htons(clp->port);
-> +	if (((struct sockaddr_in) clp->addr).sin_port != 0)
-> +		((struct sockaddr_in *) a->ai_addr)->sin_port =
-> +				((struct sockaddr_in) clp->addr).sin_port;
-> 	if (a->ai_protocol == IPPROTO_TCP) {
-> 		if ((rpc_clnt = clnttcp_create(
-> 					(struct sockaddr_in *) a->ai_addr,
+Sony Techsoft Centre Europe
+The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
+gium
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Phone:    +32 (0)2 700 8453
+=46ax:      +32 (0)2 700 8622
+E-mail:   Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org
+Internet: http://www.sony-europe.com/
+
+A division of Sony Europe (Belgium) N.V.
+VAT BE 0413.825.160 =B7 RPR Brussels
+=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
+
+> >=20
+> > Cheers
+> >  Trond
+> > ---------------------------------------------------------------
+> > >From b7a178f4fab331821b8cff384e1954e62aa63e52 Mon Sep 17 00:00:00 =
+2001
+> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > Date: Sat, 4 Apr 2009 12:22:57 -0400
+> > Subject: [PATCH] NFS: Fix the return value in nfs_page_mkwrite()
+> >=20
+> > Commit c2ec175c39f62949438354f603f4aa170846aabb (mm: page_mkwrite c=
+hange
+> > prototype to match fault) exposed a bug in the NFS implementation o=
+f
+> > page_mkwrite. We should be returning 0 on success...
+> >=20
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >  fs/nfs/file.c |    2 --
+> >  1 files changed, 0 insertions(+), 2 deletions(-)
+> >=20
+> > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> > index 3523b89..5a97bcf 100644
+> > --- a/fs/nfs/file.c
+> > +++ b/fs/nfs/file.c
+> > @@ -516,8 +516,6 @@ static int nfs_vm_page_mkwrite(struct vm_area_s=
+truct *vma, struct vm_fault *vmf)
+> >  		goto out_unlock;
+> > =20
+> >  	ret =3D nfs_updatepage(filp, page, 0, pagelen);
+> > -	if (ret =3D=3D 0)
+> > -		ret =3D pagelen;
+> >  out_unlock:
+> >  	unlock_page(page);
+> >  	if (ret)
+> > --=20
+> > 1.6.0.4
+> >=20
+> >=20
+> > --=20
+> > Trond Myklebust
+> > Linux NFS client maintainer
+> >=20
+> > NetApp
+> > Trond.Myklebust@netapp.com
+> > www.netapp.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
+l" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+>=20
+
+With kind regards,
+
+Geert Uytterhoeven
+Software Architect
+
+Sony Techsoft Centre Europe
+The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
+gium
+
+Phone:    +32 (0)2 700 8453
+=46ax:      +32 (0)2 700 8622
+E-mail:   Geert.Uytterhoeven-osDt5Q4Chk1BDgjK7y7TUQ@public.gmane.org
+Internet: http://www.sony-europe.com/
+
+A division of Sony Europe (Belgium) N.V.
+VAT BE 0413.825.160 =B7 RPR Brussels
+=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
