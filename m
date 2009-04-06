@@ -1,18 +1,18 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Nick Piggin <npiggin@suse.de>
 Subject: Re: bus errors on nfs writes in latest git
-Date: Sun, 5 Apr 2009 16:22:33 -0400
-Message-ID: <20090405202233.GA16937@fieldses.org>
+Date: Mon, 6 Apr 2009 08:16:40 +0200
+Message-ID: <20090406061640.GA13017@wotan.suse.de>
 References: <20090404161447.GE495@fieldses.org> <1238861949.8114.3.camel@heimdal.trondhjem.org> <1238862470.8114.5.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Nick Piggin <npiggin@suse.de>,
-	linux-kernel@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:52207 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753789AbZDEUWh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Apr 2009 16:22:37 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:54685 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750895AbZDFGQn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Apr 2009 02:16:43 -0400
 In-Reply-To: <1238862470.8114.5.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -26,13 +26,6 @@ On Sat, Apr 04, 2009 at 12:27:50PM -0400, Trond Myklebust wrote:
 > > > the blame at the following commit.  Any ideas?
 > 
 > The following patch should fix it.
-
-Thanks--confirmed.  For what it's worth:
-
-	Tested-by: J. Bruce Fields <bfields@citi.umich.edu>
-
---b.
-
 > 
 > Cheers
 >  Trond
@@ -64,14 +57,6 @@ Thanks--confirmed.  For what it's worth:
 >  out_unlock:
 >  	unlock_page(page);
 >  	if (ret)
-> -- 
-> 1.6.0.4
-> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+
+Thanks, looks good to me.
+
