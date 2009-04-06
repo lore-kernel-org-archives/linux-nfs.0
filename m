@@ -1,142 +1,169 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 3/6] nfs-utils: skip getaddrinfo in create_auth_rpc_client
 	unless we need port
-Date: Mon, 6 Apr 2009 18:33:36 -0400
-Message-ID: <4d569c330904061533r5e2182bai7b777b91563293a@mail.gmail.com>
+Date: Mon, 6 Apr 2009 18:59:03 -0400
+Message-ID: <70E52FDD-BF32-4D5B-BF2F-C85DCCD0FD6A@oracle.com>
 References: <1238595845-2186-1-git-send-email-jlayton@redhat.com>
-	 <1238595845-2186-4-git-send-email-jlayton@redhat.com>
-	 <F913F7D5-DCEE-4F40-B9C8-52DC1053A61A@oracle.com>
-	 <20090401134739.01b72029@barsoom.rdu.redhat.com>
-	 <32D01620-325D-4D82-81EF-8584134BC7DC@oracle.com>
-	 <20090403150415.3586bba3@tleilax.poochiereds.net>
-	 <194FD47F-E529-48BD-A9BC-4CA39D9A67FB@oracle.com>
-	 <20090406112106.6b29e2b0@tleilax.poochiereds.net>
-	 <378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.31]:59044 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758014AbZDFWdi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Apr 2009 18:33:38 -0400
-Received: by yw-out-2324.google.com with SMTP id 5so2344992ywb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Apr 2009 15:33:36 -0700 (PDT)
-In-Reply-To: <378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+	<1238595845-2186-4-git-send-email-jlayton@redhat.com>
+	<F913F7D5-DCEE-4F40-B9C8-52DC1053A61A@oracle.com>
+	<20090401134739.01b72029@barsoom.rdu.redhat.com>
+	<32D01620-325D-4D82-81EF-8584134BC7DC@oracle.com>
+	<20090403150415.3586bba3@tleilax.poochiereds.net>
+	<194FD47F-E529-48BD-A9BC-4CA39D9A67FB@oracle.com>
+	<20090406112106.6b29e2b0@tleilax.poochiereds.net>
+	<378C4858-3AC9-45C2-89D1-DF93F4147262@oracle.com>
+	<4d569c330904061533r5e2182bai7b777b91563293a@mail.gmail.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4d569c330904061533r5e2182bai7b777b91563293a@mail.gmail.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 6, 2009 at 11:46 AM, Chuck Lever <chuck.lever@oracle.com> w=
-rote:
-> On Apr 6, 2009, at 11:21 AM, Jeff Layton wrote:
->>
->> On Mon, 6 Apr 2009 11:03:11 -0400
->> Chuck Lever <chuck.lever@oracle.com> wrote:
->>
->>> On Apr 3, 2009, at 3:04 PM, Jeff Layton wrote:
->>>>
->>>> On Wed, 1 Apr 2009 14:01:30 -0400
->>>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>
->>>>> As far as I understand it, the ai_socktype and ai_protocol fields=
- are
->>>>> used to return the values needed for subsequent socket(2)/bind(2)
->>>>> system calls. =A0In this case you are not using these fields from=
- the
->>>>> results...
+On Apr 6, 2009, at 6:33 PM, Kevin Coffman wrote:
+> On Mon, Apr 6, 2009 at 11:46 AM, Chuck Lever  
+> <chuck.lever@oracle.com> wrote:
+>> On Apr 6, 2009, at 11:21 AM, Jeff Layton wrote:
+>>>
+>>> On Mon, 6 Apr 2009 11:03:11 -0400
+>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>>> On Apr 3, 2009, at 3:04 PM, Jeff Layton wrote:
 >>>>>
->>>>> If ai_protocol is zero, then getaddrinfo(3) assumes you want one =
-copy
->>>>> of the address for each supported protocol type, so it returns th=
-ree
->>>>> structures (one for IPPROTO_UDP, one for IPPROTO_TCP, and one wit=
-h a
->>>>> zero protocol number). =A0The contents, except for the socktype a=
-nd
->>>>> protocol fields, are the same for each.
+>>>>> On Wed, 1 Apr 2009 14:01:30 -0400
+>>>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>
+>>>>>> As far as I understand it, the ai_socktype and ai_protocol  
+>>>>>> fields are
+>>>>>> used to return the values needed for subsequent socket(2)/bind(2)
+>>>>>> system calls.  In this case you are not using these fields from  
+>>>>>> the
+>>>>>> results...
+>>>>>>
+>>>>>> If ai_protocol is zero, then getaddrinfo(3) assumes you want  
+>>>>>> one copy
+>>>>>> of the address for each supported protocol type, so it returns  
+>>>>>> three
+>>>>>> structures (one for IPPROTO_UDP, one for IPPROTO_TCP, and one  
+>>>>>> with a
+>>>>>> zero protocol number).  The contents, except for the socktype and
+>>>>>> protocol fields, are the same for each.
+>>>>>
+>>>>> Hypothetical situation...
+>>>>>
+>>>>> Suppose there is a service in /etc/services that has a different  
+>>>>> port
+>>>>> number for tcp than for udp:
+>>>>>
+>>>>> fooserv         50001/tcp
+>>>>> fooserv         50002/udp
+>>>>>
+>>>>> You're saying that getaddrinfo will return the same port number  
+>>>>> in all
+>>>>> of the returned structures? Won't that mean that one of the port
+>>>>> numbers
+>>>>> is wrong? That seems broken if so...
 >>>>
->>>> Hypothetical situation...
+>>>> I was trying to describe observed behavior here -- it's pretty
+>>>> unlikely that there will be different port numbers in these  
+>>>> returned
+>>>> structures.  It's difficult to say precisely how this is supposed  
+>>>> to
+>>>> behave based on the man page or even browsing the glibc source code
+>>>> for a few minutes.
 >>>>
->>>> Suppose there is a service in /etc/services that has a different p=
-ort
->>>> number for tcp than for udp:
+>>>> It's certainly possible to set up /etc/services as you suggest, but
+>>>> there is an IANA policy to assign the same port for both  
+>>>> transports.
+>>>> As near as I can tell the reason we have the transport listed in / 
+>>>> etc/
+>>>> services at all is because some protocols support only one  
+>>>> transport.
+>>>> So IMO it would be quite unlikely to encounter such a case where  
+>>>> the
+>>>> port number depended on the transport.
 >>>>
->>>> fooserv =A0 =A0 =A0 =A0 50001/tcp
->>>> fooserv =A0 =A0 =A0 =A0 50002/udp
+>>>>> If that's not the case, then I think we need to at least set the
+>>>>> ai_protocol in the hints.
 >>>>
->>>> You're saying that getaddrinfo will return the same port number in=
- all
->>>> of the returned structures? Won't that mean that one of the port
->>>> numbers
->>>> is wrong? That seems broken if so...
+>>>> Perhaps that's true.  What are the expected values of @service ?
 >>>
->>> I was trying to describe observed behavior here -- it's pretty
->>> unlikely that there will be different port numbers in these returne=
-d
->>> structures. =A0It's difficult to say precisely how this is supposed=
- to
->>> behave based on the man page or even browsing the glibc source code
->>> for a few minutes.
->>>
->>> It's certainly possible to set up /etc/services as you suggest, but
->>> there is an IANA policy to assign the same port for both transports=
-=2E
->>> As near as I can tell the reason we have the transport listed in /e=
-tc/
->>> services at all is because some protocols support only one transpor=
-t.
->>> So IMO it would be quite unlikely to encounter such a case where th=
-e
->>> port number depended on the transport.
->>>
->>>> If that's not the case, then I think we need to at least set the
->>>> ai_protocol in the hints.
->>>
->>> Perhaps that's true. =A0What are the expected values of @service ?
+>>> I've only ever seen "nfs" here, but I guess you could use this with
+>>> others. Maybe "nfsacl" too?
 >>
->> I've only ever seen "nfs" here, but I guess you could use this with
->> others. Maybe "nfsacl" too?
+>> What's even stranger is that one is supposed to use rpcbind to  
+>> figure out
+>> what NFS port to use, not /etc/services.
+>>
+>>> IANA might not set different port like this, but there's nothing
+>>> that stops someone from doing this at their site.
+>>
+>> True, but one might expect that setting the NFS service port via  
+>> rpc.nfsd on
+>> the server would make gssd use that port too.  I guess that's why  
+>> the port
+>> number is now passed up from the kernel.
+>>
+>>> I agree that it's an unlikely (and somewhat pathological) situation,
+>>> but it's easy to deal with -- just set the protocol in the hints.  
+>>> I've
+>>> confirmed that it makes getaddrinfo do the right thing.
+>>
+>> That's good.  I think we need to understand exactly what this is  
+>> supposed to
+>> do, though.  Should we use an rpcbind call here instead?  This is  
+>> _rpc_
+>> gssd, after all.  If it's OK as it stands, then I think some  
+>> comments about
+>> why this works this way are in order :-)
+>>
+>> Kevin, can you enlighten us?
 >
-> What's even stranger is that one is supposed to use rpcbind to figure=
- out
-> what NFS port to use, not /etc/services.
->
->> IANA might not set different port like this, but there's nothing
->> that stops someone from doing this at their site.
->
-> True, but one might expect that setting the NFS service port via rpc.=
-nfsd on
-> the server would make gssd use that port too. =A0I guess that's why t=
-he port
-> number is now passed up from the kernel.
->
->> I agree that it's an unlikely (and somewhat pathological) situation,
->> but it's easy to deal with -- just set the protocol in the hints. I'=
-ve
->> confirmed that it makes getaddrinfo do the right thing.
->
-> That's good. =A0I think we need to understand exactly what this is su=
-pposed to
-> do, though. =A0Should we use an rpcbind call here instead? =A0This is=
- _rpc_
-> gssd, after all. =A0If it's OK as it stands, then I think some commen=
-ts about
-> why this works this way are in order :-)
->
-> Kevin, can you enlighten us?
+> Here is what I recall.  For v4 we are not supposed to need a
+> portmap/rpcbind call anymore (or at least an "extra" one from gssd).
+> So for cases where we don't get a port number in the upcall, we use
+> the normal port for "nfs".  If we get a port number in the upcall, we
+> use it.  (That may be the normal port, or a different one.  I'm not
+> sure where that value comes from.)
 
-Here is what I recall.  For v4 we are not supposed to need a
-portmap/rpcbind call anymore (or at least an "extra" one from gssd).
-So for cases where we don't get a port number in the upcall, we use
-the normal port for "nfs".  If we get a port number in the upcall, we
-use it.  (That may be the normal port, or a different one.  I'm not
-sure where that value comes from.)
+I don't have any experience with rpcgss, but I would think using /etc/ 
+services here is incorrect.  If the kernel doesn't provide a port  
+number, then gssd should always do an rpcbind against the server  
+instead of trusting what's in the client's /etc/services.  We are  
+creating a separate RPC client and transport here, after all.
 
-I recall there were complaints about the portmap call.  That resulted
-in:  http://osdir.com/ml/linux.nfsv4/2005-12/msg00025.html
+I also think the kernel should pass up the value of the port= mount  
+option.  If that mount option wasn't specified, the value should be  
+zero for NFSv2/v3 mounts (to force an rpcbind) and 2049 for NFSv4  
+mounts (to squelch the rpcbind).
 
-HTH a little?
+The two questions we have now are:
 
-K.C.
+1.  where does the kernel get the port value passed in the upcall?  is  
+it set only if the mount command line had "port=?"  Does the passed-in  
+port value change over the life of the mount?
+
+2.  if a zero port is passed up to gssd, shouldn't it always do an  
+rpcbind?
+
+> I recall there were complaints about the portmap call.  That resulted
+> in:  http://osdir.com/ml/linux.nfsv4/2005-12/msg00025.html
+>
+> HTH a little?
+>
+> K.C.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
