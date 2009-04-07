@@ -1,96 +1,59 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: linux-next: nfs tree build failures
-Date: Mon, 06 Apr 2009 16:34:25 -0700
-Message-ID: <1239060865.6196.2.camel@heimdal.trondhjem.org>
-References: <20090406162905.7d2d7037.sfr@canb.auug.org.au>
-	 <49D9B2B9.5010401@panasas.com>
+From: James Morris <jmorris@namei.org>
+Subject: [PATCH] nfs: remove unnecessary NFS_INO_INVALID_ACL checks
+Date: Tue, 7 Apr 2009 13:23:20 +1000 (EST)
+Message-ID: <alpine.LRH.2.00.0904071319500.16376@tundra.namei.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-next@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <49D9B2B9.5010401@panasas.com>
-Sender: linux-next-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from tundra.namei.org ([65.99.196.166]:3859 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752185AbZDGDXa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Apr 2009 23:23:30 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-04-06 at 10:43 +0300, Benny Halevy wrote:
-> On Apr. 06, 2009, 9:29 +0300, Stephen Rothwell <sfr@canb.auug.org.au> wrote:
-> > Hi Trond,
-> > 
-> > Today's linux-next build (powerpc ppc44x_config) failed like this:
-> > 
-> > fs/nfs/client.c: In function 'nfs_match_client':
-> > fs/nfs/client.c:444: error: 'struct nfs_client' has no member named 'cl_minorversion'
-> > 
-> > Caused by commit 10d5a514705f0687cfbb6a080c3562b857e340fe ("nfs41: Use
-> > mount minorversion option").  The existence of cl_minorversion is
-> > controlled by CONFIG_NFS_V4 but the reference is not.
-> 
-> 
-> Stephan,
-> 
-> First, thanks! I apologize for introducing this.
-> This was caused by a late fix to Trond's review comment which
-> apparently was under-tested, as you mentioned.
-> 
-> > 
-> > I added the small patch below for today.
-> 
-> Based on Trond's review comment:
-> http://linux-nfs.org/pipermail/pnfs/2009-March/006938.html
-> 
-> We'd actually want to keep cl_minorversion's usage in the clear
-> and rather move its definition out of the #ifdef.
-> 
-> Please see PATCH 1/3 in reply to this message.
-> 
-> > 
-> > The same build gets this warning as well:
-> > 
-> > fs/nfs/client.c:554: warning: 'nfs4_session_set_rwsize' defined but not used
-> 
-> This one needs to go under CONFIG_NFS_V4.
-> See PATCH 2/2
-> 
-> > 
-> > and then fails like this:
-> > 
-> > fs/built-in.o: In function `nfs_readpage_result_full':
-> > read.c:(.text+0x70d24): undefined reference to `nfs4_restart_rpc'
-> > fs/built-in.o: In function `nfs_readpage_result_partial':
-> > read.c:(.text+0x70e3c): undefined reference to `nfs4_restart_rpc'
-> > fs/built-in.o: In function `nfs_async_unlink_done':
-> > unlink.c:(.text+0x71af0): undefined reference to `nfs4_restart_rpc'
-> > fs/built-in.o: In function `nfs_writeback_done':
-> > (.text+0x72c00): undefined reference to `nfs4_restart_rpc'
-> > 
-> > Caused by commit c105a9f16f11aaa9fcb9f75f8342b89c5d9665cf ("nfs41: use
-> > rpc prepare call state for session reset") which I have reverted for
-> > today.
-> 
-> See PATCH 3/3 that inlines nfs4_restart_rpc's definition.
-> 
-> Benny
+Unless I'm mistaken, NFS_INO_INVALID_ACL is being checked twice during 
+getacl calls (i.e. first via nfs_revalidate_inode() and then by each all 
+site).
 
-All squashed into the relevant original patches.
+---
 
-> > 
-> > Trond, is all this NFS v4.1 stuff that turned up yesterday really 2.6.30
-> > material?  If not, it should be removed from linux-next until after
-> > 2.6.30-rc1 is released.  (and clearly better tested ...)
-> > 
-> > Bruce, I guess the same question applies to the nfsd tree as well.
+Remove unnecessary checks for NFS_INO_INVALID_ACL in the NFS v3 & v4
+ACL client code, because this is already checked by nfs_revalidate_inode()
+which is always called just before these points.
+    
+Signed-off-by: James Morris <jmorris@namei.org>
 
-This is code that isn't supposed to significantly affect the existing
-NFS tree unless CONFIG_NFS_V4_1 is set. Since the corresponding NFSd
-code has been merged into 2.6.30, it would be nice to have the client
-code too so that people can start testing, and so that development can
-continue in the mainline tree instead of in the smoky backrooms of the
-linux-nfs.org git trees.
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 6bbf0e6..bac6051 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -207,8 +207,6 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 	status = nfs_revalidate_inode(server, inode);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+-	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
+-		nfs_zap_acl_cache(inode);
+ 	acl = nfs3_get_cached_acl(inode, type);
+ 	if (acl != ERR_PTR(-EAGAIN))
+ 		return acl;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a4d2426..d1c390e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2813,8 +2813,6 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+ 	ret = nfs_revalidate_inode(server, inode);
+ 	if (ret < 0)
+ 		return ret;
+-	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
+-		nfs_zap_acl_cache(inode);
+ 	ret = nfs4_read_cached_acl(inode, buf, buflen);
+ 	if (ret != -ENOENT)
+ 		return ret;
 
-Cheers
-  Trond
+
+-- 
+James Morris
+<jmorris@namei.org>
