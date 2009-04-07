@@ -1,102 +1,81 @@
-From: Tom Talpey <tmtalpey@gmail.com>
-Subject: Re: [PATCH 3/5] nfs-utils: query for remote port using rpcbind
-	instead of getaddrinfo
-Date: Tue, 07 Apr 2009 16:01:31 -0400
-Message-ID: <49dbb129.02045a0a.023b.6bc7@mx.google.com>
-References: <1239117946-7535-1-git-send-email-jlayton@redhat.com>
-	<1239117946-7535-4-git-send-email-jlayton@redhat.com>
-	<41F98279-F000-4C1C-8E44-3568C89FC2BD@oracle.com>
-	<49db7f0d.85c2f10a.5025.ffffb257@mx.google.com>
-	<20090407131151.69203e5e@tleilax.poochiereds.net>
-	<49dbacf3.14025a0a.5898.ffffbaa2@mx.google.com>
-	<20090407155305.5790407c@tleilax.poochiereds.net>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [pnfs] next-20090406: nfsd build fails
+Date: Tue, 7 Apr 2009 16:05:44 -0400
+Message-ID: <89c397150904071305y2581a171qa45e4e78fe8ea3aa@mail.gmail.com>
+References: <a4423d670904060027y44550d99g2cb40ce415dbb048@mail.gmail.com>
+	 <49D9C308.6020500@panasas.com> <20090406171146.GA32436@fieldses.org>
+	 <49DBA132.5000703@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090407155305.5790407c@tleilax.poochiereds.net>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-nfs@vger.kernel.org, pNFS Mailing List <pnfs@linux-nfs.org>,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	Alexander Beregalov <a.beregalov@gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <49DBA132.5000703@panasas.com>
+Sender: linux-next-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 03:53 PM 4/7/2009, Jeff Layton wrote:
->On Tue, 07 Apr 2009 15:43:39 -0400
->Tom Talpey <tmtalpey@gmail.com> wrote:
->
->> At 01:11 PM 4/7/2009, Jeff Layton wrote:
->> >On Tue, 07 Apr 2009 12:27:49 -0400
->> >Tom Talpey <tmtalpey@gmail.com> wrote:
->> >
->> >> At 12:02 PM 4/7/2009, Chuck Lever wrote:
->> >> >
->> >> >On Apr 7, 2009, at 11:25 AM, Jeff Layton wrote:
->> >> >> +	/* Use standard NFS port for NFSv4 */
->> >> >> +	if (program == 100003 && version == 4) {
->> >> >> +		port = 2049;
->> >> >> +		goto set_port;
->> >> >> +	}
->> >> >
->> >> >I think this patch set looks pretty reasonable.  Here's my one  
->> >> >remaining quibble.
->> >> >
->> >> >You can specify "port=" for nfs4 mounts, in which case we want to use  
->> >> >that value here, too, I think.  It would be simpler overall if the  
->> >> 
->> >> *Must* use a port= specification. The 2049 definition is only true for
->> >> NFSv4/TCP, as a counterexample the NFSv4/RDMA IANA binding is
->> >> port 20049. So slamming the port to 2049 would break NFSv4/RDMA.
->> >> 
->> >
->> >rpc.gssd doesn't seem to be rdma-enabled at this point. It only seems
->> >to handle "tcp" and "udp" in the existing code.
->> 
->> Fair enough. But hardwiring 2049 for all transports is going to very
->> problematic. What's the motivation for bypassing the rpcbind query
->> altogether (that "goto set_port" skips over it)? Why not at least
->> try the query first?
+On Tue, Apr 7, 2009 at 2:53 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On Apr. 06, 2009, 20:11 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> On Mon, Apr 06, 2009 at 11:53:28AM +0300, Benny Halevy wrote:
+>>> On Apr. 06, 2009, 10:27 +0300, Alexander Beregalov <a.beregalov@gmail.com> wrote:
+>>>> Hi
+>>>>
+>>>> fs/nfsd/nfssvc.c: In function 'set_max_drc':
+>>>> fs/nfsd/nfssvc.c:240: error: 'NFSD_DRC_SIZE_SHIFT' undeclared
+>>>>
+>>>> CONFIG_NFSD_V4 is not set
+>>> Hi Alexander,
+>>>
+>>> Thanks for reporting this!
+>>>
+>>> Andy, Bruce: please see attached 2 patches fixing compile/link errors
+>>> with DRC under !defined(CONFIG_NFSD_V4):
+>>>
+>>> [PATCH 1/2] SQUASHEM: nfsd41: define NFSD_DRC_SIZE_SHIFT in set_max_drc
+>>> [PATCH 2/2] SQUASHME: nfsd41: define nfsd4_set_statp as noop for !CONFIG_NFSD_V4
 >>
->> >Does libtirpc handle RDMA properly? If so, this might not be too hard
->> >to enable, but I'd probably rather see it in a follow on patchset (and
->> >maybe by someone with more of a clue about RDMA than I currently have).
->> 
->> No, libtirpc doesn't have any RDMA support. But, there's no need for
->> RDMA support in it - only NFS does RDMA, in practice, and currently
->> that's just in-kernel.
->> 
->> My concern is simply that there be a way to specify, or discover a port
->> that isn't 2049 here. If mount.nfs supports it, other nfs-utils should too.
->> 
+>> Thanks, applied.
+>>
+>> Committing on top (not squashing) since I'd rather not rewrite history
+>> on a branch I've already sent a pull request for.
 >
->I forget which version is the cutoff, but newer kernels tell gssd which
->port to use. That hardwiring is only for older kernels that don't send
->the port in the upcall.
-
-Ah - well, if "older" is < 2.6.24, then no problem since those kernels don't
-support NFS/RDMA. There are some backports to earlier kernels, but they
-could address this as part of the backport.
-
+> Cool. Thanks!
+> I wasn't aware that you already sent a pull request already...
+> I got it from mainline now and I'm rebasing and testing
+> the rest of our stuff on top of it.
 >
->Could we try a short-timeout rpcbind call for those older kernels that
->don't send the port? Sure. Is it worth it? I'm not as sure there.
-
-I wouldn't recommend a short timeout, arbitrary numbers rarely work
-the way you might want them to. I guess my opinion is that in the
-absence of any information, a standard rpcbind call is best, before
-concluding a default 2049 is the only option.
-
+>>
+>> (In fact, I'll try to stop rebasing those for-next branches at all this
+>> time around.)
 >
->I'd rather see these people just update their kernels so that this
->isn't needed...
+> I'm with you on that.
+>
+> For 2.6.31, I'd like to send easy-to-swallow patch sets
+> that we can review and agree upon well ahead of the merge window
+> (i.e. start, e.g. with the backchannel stuff shortly after 2.6.30-rc1
+> is cut) and once we're in agreement on it we can put it in linux-next
+> to be visible to others and get some soak time.
 
-Agreed. Would it make sense to log a message when the default 2049
-is used? At least then, there's a chance an admin will know it's needed.
+This sounds good to me. I'm continuing with Bruce's review comments WRT the DRC.
 
-Tom.
+> This will also
+> be a good time to freeze it, so it won't be rebased, unless something
+> important enough requires that.  How does that sound?
+>
+> I think that the same strategy should work for the client side too.
+> Trond what do you think?
+>
+> Benny
+>
+>>
+>> --b.
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+>
