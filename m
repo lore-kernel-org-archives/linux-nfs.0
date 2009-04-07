@@ -1,8 +1,8 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 2/5] nfs-utils: store the address given in the upcall for
-	later use
-Date: Tue,  7 Apr 2009 11:25:43 -0400
-Message-ID: <1239117946-7535-3-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 3/5] nfs-utils: query for remote port using rpcbind instead of
+	getaddrinfo
+Date: Tue,  7 Apr 2009 11:25:44 -0400
+Message-ID: <1239117946-7535-4-git-send-email-jlayton@redhat.com>
 References: <1239117946-7535-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -20,177 +20,220 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current upcall could be more efficient. We first convert the address
-to a hostname, and then later when we set up the RPC client, we do a
-hostname lookup to convert it back to an address.
+We already have the server's address from the upcall, so we don't really
+need to look it up again, and querying the local services DB for the
+port that the remote server is listening on is just plain wrong.
 
-Begin to change this by keeping the address in the clnt_info that we get
-out of the upcall. Since a sockaddr has a port field, we can also
-eliminate the port from the clnt_info.
-
-Finally, switch to getnameinfo() instead of gethostbyaddr(). We'll need
-to use that call anyway when we add support for IPv6.
+Use rpcbind to set the port for the program and version that we were
+given in the upcall. The exception here is NFSv4. Since NFSv4 mounts
+are supposed to use a well-defined port then skip the rpcbind query
+for that and just set the port to the standard one (2049).
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/gssd/gssd.h      |    2 +-
- utils/gssd/gssd_proc.c |   93 +++++++++++++++++++++++++++++++++++++++--------
- 2 files changed, 78 insertions(+), 17 deletions(-)
+ utils/gssd/gssd_proc.c |  126 +++++++++++++++++++++++++++++-------------------
+ 1 files changed, 76 insertions(+), 50 deletions(-)
 
-diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-index 082039a..3c52f46 100644
---- a/utils/gssd/gssd.h
-+++ b/utils/gssd/gssd.h
-@@ -83,7 +83,7 @@ struct clnt_info {
- 	int			krb5_poll_index;
- 	int			spkm3_fd;
- 	int			spkm3_poll_index;
--	int			port;
-+	struct sockaddr_storage addr;
- };
- 
- void init_client_list(void);
 diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 509946e..9d3712b 100644
+index 9d3712b..1571329 100644
 --- a/utils/gssd/gssd_proc.c
 +++ b/utils/gssd/gssd_proc.c
-@@ -102,10 +102,66 @@ struct pollfd * pollarray;
+@@ -72,6 +72,7 @@
+ #include "gss_util.h"
+ #include "krb5_util.h"
+ #include "context.h"
++#include "nfsrpc.h"
  
- int pollsize;  /* the size of pollaray (in pollfd's) */
+ /*
+  * pollarray:
+@@ -541,6 +542,64 @@ out_err:
+ }
  
-+/*
-+ * convert a presentation address string to a sockaddr_storage struct. Returns
-+ * true on success and false on failure.
+ /*
++ * If the port isn't already set, do an rpcbind query to the remote server
++ * using the program and version and get the port. Newer kernels send the
++ * port in the upcall, so this is really only for compatibility with older
++ * ones.
 + */
 +static int
-+addrstr_to_sockaddr(struct sockaddr *sa, const char *addr, const int port)
++populate_port(struct sockaddr *sa, const socklen_t salen,
++	      const rpcprog_t program, const rpcvers_t version,
++	      const unsigned short protocol)
 +{
 +	struct sockaddr_in	*s4 = (struct sockaddr_in *) sa;
++	unsigned short		port;
 +
-+	if (inet_pton(AF_INET, addr, &s4->sin_addr)) {
-+		s4->sin_family = AF_INET;
-+		s4->sin_port = htons(port);
-+	} else {
-+		printerr(0, "ERROR: unable to convert %s to address\n", addr);
++	/*
++	 * Newer kernels send the port in the upcall. If we already have
++	 * the port, there's no need to look it up.
++	 */
++	switch (sa->sa_family) {
++	case AF_INET:
++		if (s4->sin_port != 0) {
++			printerr(2, "DEBUG: port already set to %d\n",
++				 ntohs(s4->sin_port));
++			return 1;
++		}
++		break;
++	default:
++		printerr(0, "ERROR: unsupported address family %d\n",
++			    sa->sa_family);
 +		return 0;
++	}
++
++	/* Use standard NFS port for NFSv4 */
++	if (program == 100003 && version == 4) {
++		port = 2049;
++		goto set_port;
++	}
++
++	port = nfs_getport(sa, salen, program, version, protocol);
++	if (!port) {
++		printerr(0, "ERROR: unable to obtain port for prog %ld "
++			    "vers %ld\n", program, version);
++		return 0;
++	}
++
++set_port:
++	printerr(2, "DEBUG: setting port to %hu for prog %lu vers %lu\n", port,
++		 program, version);
++
++	switch (sa->sa_family) {
++	case AF_INET:
++		s4->sin_port = htons(port);
++		break;
 +	}
 +
 +	return 1;
 +}
 +
 +/*
-+ * convert a sockaddr to a hostname
-+ */
-+static char *
-+sockaddr_to_hostname(const struct sockaddr *sa, const char *addr)
-+{
-+	socklen_t		addrlen;
-+	int			err;
-+	char 			*hostname;
-+	char			hbuf[NI_MAXHOST];
-+
-+	switch (sa->sa_family) {
-+	case AF_INET:
-+		addrlen = sizeof(struct sockaddr_in);
-+		break;
-+	default:
-+		printerr(0, "ERROR: unrecognized addr family %d\n",
-+			 sa->sa_family);
-+		return NULL;
-+	}
-+
-+	err = getnameinfo(sa, addrlen, hbuf, sizeof(hbuf), NULL, 0,
-+			  NI_NAMEREQD);
-+	if (err) {
-+		printerr(0, "ERROR: unable to resolve %s to hostname: %s\n",
-+			 addr, err == EAI_SYSTEM ? strerror(err) :
-+						   gai_strerror(err));
-+		return NULL;
-+	}
-+
-+	hostname = strdup(hbuf);
-+
-+	return hostname;
-+}
-+
- /* XXX buffer problems: */
- static int
- read_service_info(char *info_file_name, char **servicename, char **servername,
--		  int *prog, int *vers, char **protocol, int *port) {
-+		  int *prog, int *vers, char **protocol,
-+		  struct sockaddr *addr) {
- #define INFOBUFLEN 256
- 	char		buf[INFOBUFLEN + 1];
- 	static char	dummy[128];
-@@ -117,10 +173,9 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	char		protoname[16];
- 	char		cb_port[128];
- 	char		*p;
--	in_addr_t	inaddr;
- 	int		fd = -1;
--	struct hostent	*ent = NULL;
- 	int		numfields;
-+	int		port = 0;
+  * Create an RPC connection and establish an authenticated
+  * gss context with a server.
+  */
+@@ -555,14 +614,13 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	AUTH			*auth = NULL;
+ 	uid_t			save_uid = -1;
+ 	int			retval = -1;
+-	int			errcode;
+ 	OM_uint32		min_stat;
+ 	char			rpc_errmsg[1024];
+ 	int			sockp = RPC_ANYSOCK;
+ 	int			sendsz = 32768, recvsz = 32768;
+-	struct addrinfo		ai_hints, *a = NULL;
+-	char			service[64];
+-	char			*at_sign;
++	int			protocol;
++	struct sockaddr		*addr = (struct sockaddr *) &clp->addr;
++	socklen_t		salen;
  
- 	*servicename = *servername = *protocol = NULL;
+ 	/* Create the context as the user (not as root) */
+ 	save_uid = geteuid();
+@@ -616,15 +674,10 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	printerr(2, "creating %s client for server %s\n", clp->protocol,
+ 			clp->servername);
  
-@@ -160,21 +215,26 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
- 	if((*prog != 100003) || ((*vers != 2) && (*vers != 3) && (*vers != 4)))
- 		goto fail;
- 
--	/* create service name */
--	inaddr = inet_addr(address);
--	if (!(ent = gethostbyaddr(&inaddr, sizeof(inaddr), AF_INET))) {
--		printerr(0, "ERROR: can't resolve server %s name\n", address);
--		goto fail;
-+	if (cb_port[0] != '\0') {
-+		port = atoi(cb_port);
-+		if (port < 0 || port > 65535)
-+			goto fail;
- 	}
--	if (!(*servername = calloc(strlen(ent->h_name) + 1, 1)))
-+
-+	if (!addrstr_to_sockaddr(addr, address, port))
-+		goto fail;
-+
-+	*servername = sockaddr_to_hostname(addr, address);
-+	if (*servername == NULL)
- 		goto fail;
--	memcpy(*servername, ent->h_name, strlen(ent->h_name));
--	snprintf(buf, INFOBUFLEN, "%s@%s", service, ent->h_name);
-+
-+	nbytes = snprintf(buf, INFOBUFLEN, "%s@%s", service, *servername);
-+	if (nbytes > INFOBUFLEN)
-+		goto fail;
-+
- 	if (!(*servicename = calloc(strlen(buf) + 1, 1)))
- 		goto fail;
- 	memcpy(*servicename, buf, strlen(buf));
--	if (cb_port[0] != '\0')
--		*port = atoi(cb_port);
- 
- 	if (!(*protocol = strdup(protoname)))
- 		goto fail;
-@@ -251,7 +311,7 @@ process_clnt_dir_files(struct clnt_info * clp)
- 	if ((clp->servicename == NULL) &&
- 	     read_service_info(info_file_name, &clp->servicename,
- 				&clp->servername, &clp->prog, &clp->vers,
--				&clp->protocol, &clp->port))
-+				&clp->protocol, (struct sockaddr *) &clp->addr))
- 		return -1;
- 	return 0;
- }
-@@ -599,8 +659,9 @@ int create_auth_rpc_client(struct clnt_info *clp,
- 			 clp->servername, uid);
+-	memset(&ai_hints, '\0', sizeof(ai_hints));
+-	ai_hints.ai_family = PF_INET;
+-	ai_hints.ai_flags |= AI_CANONNAME;
+ 	if ((strcmp(clp->protocol, "tcp")) == 0) {
+-		ai_hints.ai_socktype = SOCK_STREAM;
+-		ai_hints.ai_protocol = IPPROTO_TCP;
++		protocol = IPPROTO_TCP;
+ 	} else if ((strcmp(clp->protocol, "udp")) == 0) {
+-		ai_hints.ai_socktype = SOCK_DGRAM;
+-		ai_hints.ai_protocol = IPPROTO_UDP;
++		protocol = IPPROTO_UDP;
+ 	} else {
+ 		printerr(0, "WARNING: unrecognized protocol, '%s', requested "
+ 			 "for connection to server %s for user with uid %d\n",
+@@ -632,39 +685,22 @@ int create_auth_rpc_client(struct clnt_info *clp,
  		goto out_fail;
  	}
--	if (clp->port)
--		((struct sockaddr_in *)a->ai_addr)->sin_port = htons(clp->port);
-+	if (((struct sockaddr_in) clp->addr).sin_port != 0)
-+		((struct sockaddr_in *) a->ai_addr)->sin_port =
-+				((struct sockaddr_in) clp->addr).sin_port;
- 	if (a->ai_protocol == IPPROTO_TCP) {
+ 
+-	/* extract the service name from clp->servicename */
+-	if ((at_sign = strchr(clp->servicename, '@')) == NULL) {
+-		printerr(0, "WARNING: servicename (%s) not formatted as "
+-			"expected with service@host\n", clp->servicename);
+-		goto out_fail;
+-	}
+-	if ((at_sign - clp->servicename) >= sizeof(service)) {
+-		printerr(0, "WARNING: service portion of servicename (%s) "
+-			"is too long!\n", clp->servicename);
++	switch (addr->sa_family) {
++	case AF_INET:
++		salen = sizeof(struct sockaddr_in);
++		break;
++	default:
++		printerr(1, "ERROR: Unknown address family %d\n",
++			 addr->sa_family);
+ 		goto out_fail;
+ 	}
+-	strncpy(service, clp->servicename, at_sign - clp->servicename);
+-	service[at_sign - clp->servicename] = '\0';
+ 
+-	errcode = getaddrinfo(clp->servername, service, &ai_hints, &a);
+-	if (errcode) {
+-		printerr(0, "WARNING: Error from getaddrinfo for server "
+-			 "'%s': %s\n", clp->servername, gai_strerror(errcode));
++	if (!populate_port(addr, salen, clp->prog, clp->vers, protocol))
+ 		goto out_fail;
+-	}
+ 
+-	if (a == NULL) {
+-		printerr(0, "WARNING: No address information found for "
+-			 "connection to server %s for user with uid %d\n",
+-			 clp->servername, uid);
+-		goto out_fail;
+-	}
+-	if (((struct sockaddr_in) clp->addr).sin_port != 0)
+-		((struct sockaddr_in *) a->ai_addr)->sin_port =
+-				((struct sockaddr_in) clp->addr).sin_port;
+-	if (a->ai_protocol == IPPROTO_TCP) {
++	if (protocol == IPPROTO_TCP) {
  		if ((rpc_clnt = clnttcp_create(
- 					(struct sockaddr_in *) a->ai_addr,
+-					(struct sockaddr_in *) a->ai_addr,
++					(struct sockaddr_in *) addr,
+ 					clp->prog, clp->vers, &sockp,
+ 					sendsz, recvsz)) == NULL) {
+ 			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
+@@ -675,10 +711,10 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 				 clnt_spcreateerror(rpc_errmsg));
+ 			goto out_fail;
+ 		}
+-	} else if (a->ai_protocol == IPPROTO_UDP) {
++	} else if (protocol == IPPROTO_UDP) {
+ 		const struct timeval timeout = {5, 0};
+ 		if ((rpc_clnt = clntudp_bufcreate(
+-					(struct sockaddr_in *) a->ai_addr,
++					(struct sockaddr_in *) addr,
+ 					clp->prog, clp->vers, timeout,
+ 					&sockp, sendsz, recvsz)) == NULL) {
+ 			snprintf(rpc_errmsg, sizeof(rpc_errmsg),
+@@ -689,16 +725,7 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 				 clnt_spcreateerror(rpc_errmsg));
+ 			goto out_fail;
+ 		}
+-	} else {
+-		/* Shouldn't happen! */
+-		printerr(0, "ERROR: requested protocol '%s', but "
+-			 "got addrinfo with protocol %d\n",
+-			 clp->protocol, a->ai_protocol);
+-		goto out_fail;
+ 	}
+-	/* We're done with this */
+-	freeaddrinfo(a);
+-	a = NULL;
+ 
+ 	printerr(2, "creating context with server %s\n", clp->servicename);
+ 	auth = authgss_create_default(rpc_clnt, clp->servicename, &sec);
+@@ -720,7 +747,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
+   out:
+ 	if (sec.cred != GSS_C_NO_CREDENTIAL)
+ 		gss_release_cred(&min_stat, &sec.cred);
+-  	if (a != NULL) freeaddrinfo(a);
+ 	/* Restore euid to original value */
+ 	if ((save_uid != -1) && (setfsuid(save_uid) != uid)) {
+ 		printerr(0, "WARNING: Failed to restore fsuid"
 -- 
 1.6.0.6
