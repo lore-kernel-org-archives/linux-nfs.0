@@ -1,40 +1,90 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFS: Fix the return value in nfs_page_mkwrite()
-Date: Tue, 07 Apr 2009 13:59:49 -0700
-Message-ID: <1239137989.8424.1.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 3/5] nfs-utils: query for remote port using rpcbind
+	instead of getaddrinfo
+Date: Tue, 7 Apr 2009 19:14:06 -0400
+Message-ID: <20090407231406.GC28733@fieldses.org>
+References: <1239117946-7535-1-git-send-email-jlayton@redhat.com>
+	<1239117946-7535-4-git-send-email-jlayton@redhat.com>
+	<41F98279-F000-4C1C-8E44-3568C89FC2BD@oracle.com>
+	<49db7f0d.85c2f10a.5025.ffffb257@mx.google.com>
+	<20090407131151.69203e5e@tleilax.poochiereds.net>
+	<49dbacf3.14025a0a.5898.ffffbaa2@mx.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3VaTQe2KTcn/@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28861 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753421AbZDGVAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Apr 2009 17:00:34 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: Tom Talpey <tmtalpey@gmail.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <49dbacf3.14025a0a.5898.ffffbaa2@mx.google.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit c2ec175c39f62949438354f603f4aa170846aabb (mm: page_mkwrite change
-prototype to match fault) exposed a bug in the NFS implementation of
-page_mkwrite. We should be returning 0 on success...
+On Tue, Apr 07, 2009 at 03:43:39PM -0400, Tom Talpey wrote:
+> At 01:11 PM 4/7/2009, Jeff Layton wrote:
+> >On Tue, 07 Apr 2009 12:27:49 -0400
+> >Tom Talpey <tmtalpey@gmail.com> wrote:
+> >
+> >> At 12:02 PM 4/7/2009, Chuck Lever wrote:
+> >> >
+> >> >On Apr 7, 2009, at 11:25 AM, Jeff Layton wrote:
+> >> >> +	/* Use standard NFS port for NFSv4 */
+> >> >> +	if (program == 100003 && version == 4) {
+> >> >> +		port = 2049;
+> >> >> +		goto set_port;
+> >> >> +	}
+> >> >
+> >> >I think this patch set looks pretty reasonable.  Here's my one  
+> >> >remaining quibble.
+> >> >
+> >> >You can specify "port=" for nfs4 mounts, in which case we want to use  
+> >> >that value here, too, I think.  It would be simpler overall if the  
+> >> 
+> >> *Must* use a port= specification. The 2049 definition is only true for
+> >> NFSv4/TCP, as a counterexample the NFSv4/RDMA IANA binding is
+> >> port 20049. So slamming the port to 2049 would break NFSv4/RDMA.
+> >> 
+> >
+> >rpc.gssd doesn't seem to be rdma-enabled at this point. It only seems
+> >to handle "tcp" and "udp" in the existing code.
+> 
+> Fair enough. But hardwiring 2049 for all transports is going to very
+> problematic. What's the motivation for bypassing the rpcbind query
+> altogether (that "goto set_port" skips over it)? Why not at least
+> try the query first?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/file.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+We're just doing the rpcsec_gss context initiation.  Normally that would
+be done over an already-established connection--the only reason we don't
+is because our implementation is split between the client and the
+server, so it's more convenient for us to set up a new connection in
+rpc.gssd.  But we really shouldn't be doing an entirely new rpcbind
+call--somebody else already did that for us and is telling us the
+results through the rpc_pipefs info file.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 3523b89..5a97bcf 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -516,8 +516,6 @@ static int nfs_vm_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 		goto out_unlock;
- 
- 	ret = nfs_updatepage(filp, page, 0, pagelen);
--	if (ret == 0)
--		ret = pagelen;
- out_unlock:
- 	unlock_page(page);
- 	if (ret)
--- 
-1.6.0.4
+--b.
+
+> 
+> >Does libtirpc handle RDMA properly? If so, this might not be too hard
+> >to enable, but I'd probably rather see it in a follow on patchset (and
+> >maybe by someone with more of a clue about RDMA than I currently have).
+> 
+> No, libtirpc doesn't have any RDMA support. But, there's no need for
+> RDMA support in it - only NFS does RDMA, in practice, and currently
+> that's just in-kernel.
+> 
+> My concern is simply that there be a way to specify, or discover a port
+> that isn't 2049 here. If mount.nfs supports it, other nfs-utils should too.
+> 
+> Tom.
+> 
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
