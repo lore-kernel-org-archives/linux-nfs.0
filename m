@@ -1,349 +1,88 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH 3/3] nfsstat: Eliminate the displaying zero stats
-Date: Wed, 08 Apr 2009 12:05:08 -0400
-Message-ID: <49DCCB34.4080901@RedHat.com>
-References: <49DCB9DA.5000300@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48391 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752080AbZDHQHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Apr 2009 12:07:54 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n38G7swq027636
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Apr 2009 12:07:54 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n38G7tKl030324
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Apr 2009 12:07:56 -0400
-Received: from xenhat.boston.devel.redhat.com (vpn-10-147.bos.redhat.com [10.16.10.147])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n38G7rQj000896
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Apr 2009 12:07:54 -0400
-In-Reply-To: <49DCB9DA.5000300-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 3/5] nfs-utils: query for remote port using rpcbind
+	instead of getaddrinfo
+Date: Wed, 8 Apr 2009 15:32:43 -0400
+Message-ID: <DDF2F477-FC1E-45D0-A9F6-A4D690F2256B@oracle.com>
+References: <1239117946-7535-1-git-send-email-jlayton@redhat.com>
+	<1239117946-7535-4-git-send-email-jlayton@redhat.com>
+	<41F98279-F000-4C1C-8E44-3568C89FC2BD@oracle.com>
+	<49db7f0d.85c2f10a.5025.ffffb257@mx.google.com>
+	<20090407131151.69203e5e@tleilax.poochiereds.net>
+	<49dbacf3.14025a0a.5898.ffffbaa2@mx.google.com>
+	<20090407231406.GC28733@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090407231406.GC28733@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eliminate the displaying zero stats when the explicit protocol
-is specified (-2, -3, -4) the -Z and or --list options.
-    
-When a particular protocol is specified and either
-the -Z or --list options are used, zeros or blank lines
-are echoed to the screen when there is not any NFS traffic.
-This cause any useful data to be scroll off the screen.
-    
-With this patch only non-zero stats will be shown, which
-makes the output of these options more condensed and
-in turn more useful.
-    
-Signed-off-by: Steve Dickson <steved@redhat.com>
+On Apr 7, 2009, at 7:14 PM, J. Bruce Fields wrote:
+> On Tue, Apr 07, 2009 at 03:43:39PM -0400, Tom Talpey wrote:
+>> At 01:11 PM 4/7/2009, Jeff Layton wrote:
+>>> On Tue, 07 Apr 2009 12:27:49 -0400
+>>> Tom Talpey <tmtalpey@gmail.com> wrote:
+>>>
+>>>> At 12:02 PM 4/7/2009, Chuck Lever wrote:
+>>>>>
+>>>>> On Apr 7, 2009, at 11:25 AM, Jeff Layton wrote:
+>>>>>> +	/* Use standard NFS port for NFSv4 */
+>>>>>> +	if (program == 100003 && version == 4) {
+>>>>>> +		port = 2049;
+>>>>>> +		goto set_port;
+>>>>>> +	}
+>>>>>
+>>>>> I think this patch set looks pretty reasonable.  Here's my one
+>>>>> remaining quibble.
+>>>>>
+>>>>> You can specify "port=" for nfs4 mounts, in which case we want  
+>>>>> to use
+>>>>> that value here, too, I think.  It would be simpler overall if the
+>>>>
+>>>> *Must* use a port= specification. The 2049 definition is only  
+>>>> true for
+>>>> NFSv4/TCP, as a counterexample the NFSv4/RDMA IANA binding is
+>>>> port 20049. So slamming the port to 2049 would break NFSv4/RDMA.
+>>>>
+>>>
+>>> rpc.gssd doesn't seem to be rdma-enabled at this point. It only  
+>>> seems
+>>> to handle "tcp" and "udp" in the existing code.
+>>
+>> Fair enough. But hardwiring 2049 for all transports is going to very
+>> problematic. What's the motivation for bypassing the rpcbind query
+>> altogether (that "goto set_port" skips over it)? Why not at least
+>> try the query first?
+>
+> We're just doing the rpcsec_gss context initiation.  Normally that  
+> would
+> be done over an already-established connection--the only reason we  
+> don't
+> is because our implementation is split between the client and the
+> server, so it's more convenient for us to set up a new connection in
+> rpc.gssd.  But we really shouldn't be doing an entirely new rpcbind
+> call--somebody else already did that for us and is telling us the
+> results through the rpc_pipefs info file.
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index d5bdad7..6d81f66 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -466,79 +466,96 @@ print_all_stats (int opt_srv, int opt_clt, int opt_prt)
- static void 
- print_server_stats(int opt_srv, int opt_prt) 
- {
--	if (opt_srv) {
--		if (opt_prt & PRNT_NET) {
--			print_numbers(
--			LABEL_srvnet
--			"packets    udp        tcp        tcpconn\n",
--			srvnetinfo, 4
--			);
-+	if (!opt_srv)
-+		return;
-+
-+	if (opt_prt & PRNT_NET) {
-+		if (opt_sleep && !has_rpcstats(srvnetinfo, 4)) {
-+		} else {
-+			print_numbers( LABEL_srvnet
-+				"packets    udp        tcp        tcpconn\n",
-+			srvnetinfo, 4);
- 			printf("\n");
- 		}
--		if (opt_prt & PRNT_RPC) {
--			if (!opt_sleep && !has_rpcstats(srvrpcinfo, 5)) {
--				print_numbers(
--				LABEL_srvrpc
-+	}
-+	if (opt_prt & PRNT_RPC) {
-+		if (opt_sleep && !has_rpcstats(srvrpcinfo, 5)) {
-+			;
-+		} else {
-+			print_numbers(LABEL_srvrpc
- 				"calls      badcalls   badauth    badclnt    xdrcall\n",
--				srvrpcinfo, 5
--				);
--				printf("\n");
--			}
-+				srvrpcinfo, 5);
-+			printf("\n");
- 		}
--		if (opt_prt & PRNT_RC) {
--			print_numbers(
--			LABEL_srvrc
--			"hits       misses     nocache\n",
--			srvrcinfo, 3
--			);
-+	}
-+	if (opt_prt & PRNT_RC) {
-+		if (opt_sleep && !has_rpcstats(srvrcinfo, 3)) {
-+			;
-+		} else {
-+			print_numbers(LABEL_srvrc
-+				"hits       misses     nocache\n",
-+				srvrcinfo, 3);
- 			printf("\n");
- 		}
-+	}
- 
--		/*
--		 * 2.2 puts all fh-related info after the 'rc' header
--		 * 2.4 puts all fh-related info after the 'fh' header, but relocates
--		 *     'stale' to the start and swaps dir and nondir :-(  
--		 *     We preseve the 2.2 order
--		 */
--		if (opt_prt & PRNT_FH) {
--			if (get_stat_info("fh", srvinfo)) {	/* >= 2.4 */
--				int t = srvfhinfo[3];
--				srvfhinfo[3]=srvfhinfo[4];
--				srvfhinfo[4]=t;
--				
--				srvfhinfo[5]=srvfhinfo[0]; /* relocate 'stale' */
--				
--				print_numbers(
--					LABEL_srvfh
--					"lookup     anon       ncachedir  ncachedir  stale\n",
--					srvfhinfo + 1, 5);
--			} else					/* < 2.4 */
--				print_numbers(
--					LABEL_srvfh
--					"lookup     anon       ncachedir  ncachedir  stale\n",
--					srvrcinfo + 3, 5);
--			printf("\n");
-+	/*
-+	 * 2.2 puts all fh-related info after the 'rc' header
-+	 * 2.4 puts all fh-related info after the 'fh' header, but relocates
-+	 *     'stale' to the start and swaps dir and nondir :-(  
-+	 *     We preseve the 2.2 order
-+	 */
-+	if (opt_prt & PRNT_FH) {
-+		if (get_stat_info("fh", srvinfo)) {	/* >= 2.4 */
-+			int t = srvfhinfo[3];
-+			srvfhinfo[3]=srvfhinfo[4];
-+			srvfhinfo[4]=t;
-+			
-+			srvfhinfo[5]=srvfhinfo[0]; /* relocate 'stale' */
-+			
-+			print_numbers(
-+				LABEL_srvfh
-+				"lookup     anon       ncachedir  ncachedir  stale\n",
-+				srvfhinfo + 1, 5);
-+		} else					/* < 2.4 */
-+			print_numbers(
-+				LABEL_srvfh
-+				"lookup     anon       ncachedir  ncachedir  stale\n",
-+				srvrcinfo + 3, 5);
-+		printf("\n");
-+	}
-+	if (opt_prt & PRNT_CALLS) {
-+		if ((opt_prt & PRNT_V2) || 
-+				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
-+			if (opt_sleep && !has_stats(srvproc2info)) {
-+				;
-+			} else {
-+				print_callstats(LABEL_srvproc2,
-+					nfsv2name, srvproc2info + 1, 
-+					sizeof(nfsv2name)/sizeof(char *));
-+			}
-+		}
-+		if ((opt_prt & PRNT_V3) || 
-+				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
-+			if (opt_sleep && !has_stats(srvproc3info)) {
-+				;
-+			} else {
-+				print_callstats(LABEL_srvproc3,
-+					nfsv3name, srvproc3info + 1, 
-+					sizeof(nfsv3name)/sizeof(char *));
-+			}
- 		}
--		if (opt_prt & PRNT_CALLS) {
--			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(srvproc2info)))
--				print_callstats(
--				LABEL_srvproc2,
--				nfsv2name, srvproc2info + 1, sizeof(nfsv2name)/sizeof(char *)
--				);
--			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(srvproc3info)))
--				print_callstats(
--				LABEL_srvproc3,
--				nfsv3name, srvproc3info + 1, sizeof(nfsv3name)/sizeof(char *)
--				);
--			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
--				print_callstats(
--				LABEL_srvproc4,
--				nfssrvproc4name, srvproc4info + 1, sizeof(nfssrvproc4name)/sizeof(char *)
--				);
--				print_callstats(
--				LABEL_srvproc4ops,
--				nfssrvproc4opname, srvproc4opsinfo + 1, sizeof(nfssrvproc4opname)/sizeof(char *)
--				);
-+		if ((opt_prt & PRNT_V4) || 
-+				((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
-+			if (opt_sleep && !has_stats(srvproc4info)) {
-+				;
-+			} else {
-+				print_callstats( LABEL_srvproc4,
-+					nfssrvproc4name, srvproc4info + 1, 
-+					sizeof(nfssrvproc4name)/sizeof(char *));
-+				print_callstats(LABEL_srvproc4ops,
-+					nfssrvproc4opname, srvproc4opsinfo + 1, 
-+					sizeof(nfssrvproc4opname)/sizeof(char *));
- 			}
- 		}
- 	}
-@@ -546,41 +563,59 @@ print_server_stats(int opt_srv, int opt_prt)
- static void
- print_client_stats(int opt_clt, int opt_prt) 
- {
--	if (opt_clt) {
--		if (opt_prt & PRNT_NET) {
--			print_numbers(
--			LABEL_cltnet
--			"packets    udp        tcp        tcpconn\n",
--			cltnetinfo, 4
--			);
-+	if (!opt_clt)
-+		return;
-+
-+	if (opt_prt & PRNT_NET) {
-+		if (opt_sleep && !has_rpcstats(cltnetinfo, 4)) {
-+			;
-+		} else { 
-+			print_numbers(LABEL_cltnet
-+				"packets    udp        tcp        tcpconn\n",
-+				cltnetinfo, 4);
- 			printf("\n");
- 		}
--		if (opt_prt & PRNT_RPC) {
--			if (!opt_sleep && !has_rpcstats(cltrpcinfo, 3)) {
--				print_numbers(
--				LABEL_cltrpc
-+	}
-+	if (opt_prt & PRNT_RPC) {
-+		if (opt_sleep && !has_rpcstats(cltrpcinfo, 3)) {
-+			;
-+		} else {
-+			print_numbers(LABEL_cltrpc
- 				"calls      retrans    authrefrsh\n",
--				cltrpcinfo, 3
--				);
--				printf("\n");
-+				cltrpcinfo, 3);
-+			printf("\n");
-+		}
-+	}
-+	if (opt_prt & PRNT_CALLS) {
-+		if ((opt_prt & PRNT_V2) || 
-+				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
-+			if (opt_sleep && !has_stats(cltproc2info)) {
-+				;
-+			} else {
-+				print_callstats(LABEL_cltproc2,
-+					nfsv2name, cltproc2info + 1,  
-+					sizeof(nfsv2name)/sizeof(char *));
-+			}
-+		}
-+		if ((opt_prt & PRNT_V3) || 
-+				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
-+			if (opt_sleep && !has_stats(cltproc3info)) {
-+				;
-+			} else {
-+				print_callstats( LABEL_cltproc3,
-+					nfsv3name, cltproc3info + 1, 
-+					sizeof(nfsv3name)/sizeof(char *));
- 			}
- 		}
--		if (opt_prt & PRNT_CALLS) {
--			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc2info)))
--				print_callstats(
--				LABEL_cltproc2,
--				nfsv2name, cltproc2info + 1,  sizeof(nfsv2name)/sizeof(char *)
--				);
--			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc3info)))
--				print_callstats(
--				LABEL_cltproc3,
--				nfsv3name, cltproc3info + 1, sizeof(nfsv3name)/sizeof(char *)
--				);
--			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc4info)))
--				print_callstats(
--				LABEL_cltproc4,
--				nfscltproc4name, cltproc4info + 1,  sizeof(nfscltproc4name)/sizeof(char *)
--				);
-+		if ((opt_prt & PRNT_V4) || 
-+				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
-+			if (opt_sleep && !has_stats(cltproc4info)) {
-+				;
-+			} else {
-+				print_callstats(LABEL_cltproc4,
-+					nfscltproc4name, cltproc4info + 1,  
-+					sizeof(nfscltproc4name)/sizeof(char *));
-+			}
- 		}
- 	}
- }
-@@ -593,35 +628,28 @@ print_stats_list(int opt_prt)
- 			print_callstats_list(
- 			"nfs v2 server",
- 			nfsv2name, srvproc2info + 1, sizeof(nfsv2name)/sizeof(char *));
--			printf("\n");
- 			print_callstats_list(
- 			"nfs v2 client",
- 			nfsv2name, cltproc2info + 1,  sizeof(nfsv2name)/sizeof(char *));
--			printf("\n");
- 		}
- 		if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
- 			print_callstats_list(
- 			"nfs v3 server",
- 			nfsv3name, srvproc3info + 1, sizeof(nfsv3name)/sizeof(char *));
--			printf("\n");
- 			print_callstats_list(
- 			"nfs v3 client",
- 			nfsv3name, cltproc3info + 1, sizeof(nfsv3name)/sizeof(char *));
--			printf("\n");
- 		}
- 		if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
- 			print_callstats_list(
- 			"nfs v4 server",
- 			nfssrvproc4name, srvproc4info + 1, sizeof(nfssrvproc4name)/sizeof(char *));
--			printf("\n");
- 			print_callstats_list(
- 			"nfs v4 ops",
- 			nfssrvproc4opname, srvproc4opsinfo + 1, sizeof(nfssrvproc4opname)/sizeof(char *));
--			printf("\n");
- 			print_callstats_list(
- 			"nfs v4 client",
- 			nfscltproc4name, cltproc4info + 1,  sizeof(nfscltproc4name)/sizeof(char *));
--			printf("\n");
- 		}
- 	}
- }
-@@ -686,11 +714,15 @@ print_callstats_list(const char *hdr, const char **names,
- 	for (i = 0, calltotal = 0; i < nr; i++) {
- 		calltotal += callinfo[i];
- 	}
-+	if (!calltotal)
-+		return;
- 	printf("%13s %13s %8llu \n", hdr, "total:", calltotal);
- 	printf("------------- ------------- --------\n");
- 	for (i = 0; i < nr; i++) {
--			printf("%13s %12s: %8u \n", hdr, names[i], callinfo[i]);
-+			if (callinfo[i])
-+				printf("%13s %12s: %8u \n", hdr, names[i], callinfo[i]);
- 	}
-+	printf("\n");
- 		
- }
- 
+This is an entirely separate RPC transport being set up for gssd, and  
+there seem to be a lot of cases where the kernel (rightfully) passes a  
+zero for the port number.  In fact, even if the kernel did the rpcbind  
+for gssd at some point in the past, gss doesn't have any information  
+about how old that information is.
+
+So, yes, we do want an rpcbind here.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
