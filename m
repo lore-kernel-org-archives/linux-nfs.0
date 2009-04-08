@@ -1,41 +1,50 @@
-From: Loris Boillet <lb-ROyWabVH00V/SzgSGea1oA@public.gmane.org>
-Subject: rpc.mountd and hotplug: very high CPU usage
-Date: Wed, 8 Apr 2009 10:35:00 +0200
-Message-ID: <200904081035.00351.lb@locatel.dk>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 0/3] nfsstat: Fixing and improving the new --sleep and --list
+ options
+Date: Wed, 08 Apr 2009 10:51:06 -0400
+Message-ID: <49DCB9DA.5000300@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="us-ascii"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from majestix.2m.dk ([194.239.1.200]:47550 "EHLO majestix.2m.dk"
+Received: from mx2.redhat.com ([66.187.237.31]:51268 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753121AbZDHIlK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Apr 2009 04:41:10 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by majestix.2m.dk (Postfix) with ESMTP id AA7BCC10068
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2009 10:35:00 +0200 (CEST)
-Received: from majestix.2m.dk ([127.0.0.1])
-	by localhost (majestix.2m.dk [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id yY-RN8JB-xOJ for <linux-nfs@vger.kernel.org>;
-	Wed,  8 Apr 2009 10:35:00 +0200 (CEST)
-Received: from lblt.local (miraculix.2m.dk [194.239.1.62])
-	by majestix.2m.dk (Postfix) with ESMTP id 95003C10025
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2009 10:35:00 +0200 (CEST)
+	id S932474AbZDHOxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Apr 2009 10:53:53 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n38Erq7S007441
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Apr 2009 10:53:52 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n38ErsZI002060
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Apr 2009 10:53:54 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-147.bos.redhat.com [10.16.10.147])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n38ErqSo009863
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Apr 2009 10:53:52 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Using the new --sleep and --list options to nfsstats,
+I found a server side bug and an annoyance when particular
+protocols where specified. 
 
-I am using hotplug to handle automounting of USB storage devices on an 
-embedded box (superH 4 CPU). The issue is that when I restart the nfs related 
-processes from the hotplug context, rpc.mountd then will eat all of the CPU 
-ressources. The only way I found to stop this is to restart it outside from 
-the hotplug context. I have no idea why it is doing this - I could only check 
-that it's not bash's environment related. The box does not support gdb and I 
-did not investigate on a more classic machine to see if this bug is 
-architecture independant or not. But as I couldn't see this problem reported 
-anywhere I thought I shoud report it somewhere !
+When the --sleep options as used with a particular protocol
+option (i.e. -2, -3 or -4) and there was no traffic, blank
+lines were being echoed to the screen causing useful data
+to be scrolled of the screen.
 
-Cheers,
+Also with the --sleep option, the server stats were not
+being updated which meant the same values would be echoed
+again and again when there was not new server traffic.
 
-Loris
+Finally when using the --sleep and/or --list options, zero 
+stats will not be displayed. I found it much more useful to
+show what happen instead of showing what did not happen. 
+Plus not showing zero stats makes the --list much easier to 
+read and digest as well as keeping useful data from scrolling
+off the screen.
+
+The server side bug was the fact --list didn't on server
+stats. The client stats were being check when the server
+stats should have been.
+
+steved.
