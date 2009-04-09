@@ -1,59 +1,81 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2.6.30] svcrdma: Fix dma map direction for rdma read
-	targets
-Date: Thu, 9 Apr 2009 11:32:24 -0400
-Message-ID: <20090409153224.GB32589@fieldses.org>
-References: <20090403201824.18102.62915.stgit@build.ogc.int> <49D67053.2080105@opengridcomputing.com>
+Subject: Re: next-20090406: nfsd build fails
+Date: Thu, 9 Apr 2009 12:12:06 -0400
+Message-ID: <20090409161206.GE32589@fieldses.org>
+References: <a4423d670904060027y44550d99g2cb40ce415dbb048@mail.gmail.com> <49D9C308.6020500@panasas.com> <20090406171146.GA32436@fieldses.org> <49DBA132.5000703@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Wise <swise@opengridcomputing.com>, linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:45499 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935291AbZDIPcZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2009 11:32:25 -0400
-In-Reply-To: <49D67053.2080105@opengridcomputing.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Alexander Beregalov <a.beregalov@gmail.com>, andros@netapp.com,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-nfs@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <49DBA132.5000703@panasas.com>
+Sender: linux-next-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 03, 2009 at 03:23:47PM -0500, Tom Tucker wrote:
-> Steve Wise wrote:
->> The nfs server rdma transport was mapping rdma read target pages for
->> TO_DEVICE instead of FROM_DEVICE.  This causes data corruption on non
->> cache-coherent systems if frmrs are used.
->>
->> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
->> ---
->>
->>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> index 629a287..42a6f9f 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> @@ -265,7 +265,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
->>  		frmr->page_list->page_list[page_no] =
->>  			ib_dma_map_single(xprt->sc_cm_id->device,
->>  					  page_address(rqstp->rq_arg.pages[page_no]),
->> -					  PAGE_SIZE, DMA_TO_DEVICE);
->> +					  PAGE_SIZE, DMA_FROM_DEVICE);
->
-> FWIW, this looks good to me.
+On Tue, Apr 07, 2009 at 09:53:38PM +0300, Benny Halevy wrote:
+> On Apr. 06, 2009, 20:11 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > On Mon, Apr 06, 2009 at 11:53:28AM +0300, Benny Halevy wrote:
+> >> On Apr. 06, 2009, 10:27 +0300, Alexander Beregalov <a.beregalov@gmail.com> wrote:
+> >>> Hi
+> >>>
+> >>> fs/nfsd/nfssvc.c: In function 'set_max_drc':
+> >>> fs/nfsd/nfssvc.c:240: error: 'NFSD_DRC_SIZE_SHIFT' undeclared
+> >>>
+> >>> CONFIG_NFSD_V4 is not set
+> >> Hi Alexander,
+> >>
+> >> Thanks for reporting this!
+> >>
+> >> Andy, Bruce: please see attached 2 patches fixing compile/link errors
+> >> with DRC under !defined(CONFIG_NFSD_V4):
+> >>
+> >> [PATCH 1/2] SQUASHEM: nfsd41: define NFSD_DRC_SIZE_SHIFT in set_max_drc
+> >> [PATCH 2/2] SQUASHME: nfsd41: define nfsd4_set_statp as noop for !CONFIG_NFSD_V4
+> > 
+> > Thanks, applied.
+> > 
+> > Committing on top (not squashing) since I'd rather not rewrite history
+> > on a branch I've already sent a pull request for.
+> 
+> Cool. Thanks!
+> I wasn't aware that you already sent a pull request already...
+> I got it from mainline now and I'm rebasing and testing
+> the rest of our stuff on top of it.
+> 
+> > 
+> > (In fact, I'll try to stop rebasing those for-next branches at all this
+> > time around.)
+> 
+> I'm with you on that.
+> 
+> For 2.6.31, I'd like to send easy-to-swallow patch sets
+> that we can review and agree upon well ahead of the merge window
+> (i.e. start, e.g. with the backchannel stuff shortly after 2.6.30-rc1
+> is cut) and once we're in agreement on it we can put it in linux-next
+> to be visible to others and get some soak time.  This will also
+> be a good time to freeze it, so it won't be rebased,
 
-Thanks; I'll add an acked-by if you don't object.  Should this go to
-stable as well?
+Note that it's OK to rebase things in -next; so it doesn't have to be
+frozen till it goes into one of our trees.  (And I've tried once or
+twice to maintain the discpline of not rebasing stuff in my tree and
+have failed....  I'll make a better effort this time.)
+
+> unless something
+> important enough requires that.  How does that sound?
+
+Sounds fine.  If you send in things as they're ready, I'll try to turn
+them around a little faster (within a few days or a week anyway).
 
 --b.
 
->
->>  		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
->>  					 frmr->page_list->page_list[page_no]))
->>  			goto fatal_err;
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+> I think that the same strategy should work for the client side too.
+> Trond what do you think?
+> 
+> Benny
+> 
+> > 
+> > --b.
