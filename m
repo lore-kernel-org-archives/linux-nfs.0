@@ -1,68 +1,34 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 3/3] nfsstat: Eliminate the displaying zero stats
-Date: Mon, 13 Apr 2009 17:28:45 -0400
-Message-ID: <49E3AE8D.70302@RedHat.com>
-References: <49DCB9DA.5000300@RedHat.com> <49DCCB34.4080901@RedHat.com> <20090412172340.GD14592@fieldses.org> <49E32B4B.5060704@RedHat.com> <49E3701E.40202@disney.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH] add some long-missing capabilities to fs_mask
+Date: Mon, 13 Apr 2009 14:33:44 -0700 (PDT)
+Message-ID: <alpine.LFD.2.00.0904131433270.26713@localhost.localdomain>
+References: <20090413145614.GA15342@us.ibm.com> <13502.1239656608@turing-police.cc.vt.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: "Serge E. Hallyn" <serue@us.ibm.com>, mtk.manpages@gmail.com,
+	Stephen Smalley <sds-FVV4AS6k8l2W8mdqIt43Ew@public.gmane.org>,
+	Andrew Morgan <morgan@kernel.org>,
+	linux-security-module@vger.kernel.org,
+	lkml <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+	Igor Zhbanov <izh1979@gmail.com>,
+	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org,
+	linux-api@vger.kernel.org, Chris Wright <chrisw-69jw2NvuJkxg9hUCZPvPmw@public.gmane.org>
+To: Valdis.Kletnieks@vt.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48560 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753698AbZDMVbi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Apr 2009 17:31:38 -0400
-In-Reply-To: <49E3701E.40202-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:39802 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752087AbZDMVpJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 17:45:09 -0400
+In-Reply-To: <13502.1239656608-+bZmOdGhbsPr6rcHtW+onFJE71vCis6O@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-Kevin Constantine wrote:
-> Steve Dickson wrote:
->> Hey Bruce,
->>
->> J. Bruce Fields wrote:
->>> On Wed, Apr 08, 2009 at 12:05:08PM -0400, Steve Dickson wrote:
->>>> Eliminate the displaying zero stats when the explicit protocol
->>>> is specified (-2, -3, -4) the -Z and or --list options.
->>>>     When a particular protocol is specified and either
->>>> the -Z or --list options are used, zeros or blank lines
->>>> are echoed to the screen when there is not any NFS traffic.
->>>> This cause any useful data to be scroll off the screen.
->>> Sound like good fixes.
->>>
->>>>     With this patch only non-zero stats will be shown, which
->>>> makes the output of these options more condensed and
->>>> in turn more useful.
->>> Couldn't this make the output harder to parse?  E.g. if you want to know
->>> how many getattr's were sent each second, it might be simpler if you say
->>> a 0 those times when there were no getattrs.
->>>
->> Maybe.. but if one was parsing the output and the parser didn't see a
->> gettr stat, I'm assuming it would not increment the "gettr counter"
->> so it would be know there were zero gettars in that time period..
->> The main reason I did this was, when watching reads and writes, 90% of
->> the output was zeros stats which made very difficult to see the non
->> zero counts (i.e. read and write stats) since they generally got
->> scrolled of the screen...
->> Also note, when the --list option is not used, zero stats are shown in
->> the column output, but granted, the column output
->> is a bit harder to parse than the list output.
->>
->> I guess I could change it so non zero stats are show only the --sleep
->> option is *not* used.... 
+On Mon, 13 Apr 2009, Valdis.Kletnieks@vt.edu wrote:
 > 
-> Dare I suggest another commandline argument?  I didn't really like the
-> idea of leaving out the stats with 0's, but after trying it, the output
-> does look a lot cleaner.  Perhaps giving users the choice would be the
-> way to go.
-hmm.. I'm not sure yet another flag would be good...
+> Wow. How did this manage to stay un-noticed for this long?
 
-I guess I like the idea of having the output show what happen 
-instead of what has not happen... also remember, the non list output
-will show the zeros... But I'm open for compromise... 
+Because nobody uses capabilities?
 
-steved.
- 
+		Linus
