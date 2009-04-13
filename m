@@ -1,70 +1,82 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Unexplained NFS mount hangs
-Date: Mon, 13 Apr 2009 12:38:33 -0400
-Message-ID: <77670947-2C2B-47B9-9D2D-6EA959376D6D@oracle.com>
-References: <20090413092406.304d04fb@dstickney2> <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com> <1239639537.13583.41.camel@poledra.romunt.nl>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Daniel Stickney <dstickney-qmHQv/uhAgPQT0dZR+AlfA@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Rudy-unrZvr96G99ZxllGnIAdI14fjVReZ9Cy2LY78lusg7I@public.gmane.org
+From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Subject: Re: [PATCH 3/3] nfsstat: Eliminate the displaying zero stats
+Date: Mon, 13 Apr 2009 10:02:22 -0700
+Message-ID: <49E3701E.40202@disney.com>
+References: <49DCB9DA.5000300@RedHat.com> <49DCCB34.4080901@RedHat.com> <20090412172340.GD14592@fieldses.org> <49E32B4B.5060704@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:51702 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751827AbZDMQj1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 12:39:27 -0400
-In-Reply-To: <1239639537.13583.41.camel-K4PxneKOXN833zHHb4ZaM2ZHpeb/A1Y/@public.gmane.org>
+Received: from mailgate1.disneyanimation.com ([12.188.26.101]:59960 "EHLO
+	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753804AbZDMRCZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 13:02:25 -0400
+In-Reply-To: <49E32B4B.5060704-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 13, 2009, at 12:18 PM, Rudy Zijlstra wrote:
-> Op maandag 13-04-2009 om 12:12 uur [tijdzone -0400], schreef Chuck
-> Lever:
->> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
->>> Hi all,
->>>
->>> I am investigating some NFS mount hangs that we have started to see
->>> over the past month on some of our servers. The behavior is that the
->>> client mount hangs and needs to be manually unmounted (forcefully
->>> with 'umount -f') and remounted to make it work. There are about 85
->>> clients mounting a partition over NFS. About 50 of the clients are
->>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
->>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
->>> with kernel 2.6.27 which was compiled from source. The mount hangs
->>> are inconsistent and so far I don't know how to trigger them on
->>> demand. The timing of the hangs as noted by the timestamp in /var/
->>> log/messages varies. Not all of the 35 CentOS clients have their
->>> mounts hang at the same time, and the NFS server continues operating
->>> apparently normally for all other clients. Normally maybe 5 clients
->>> have a mount hang per week, on different days, mostly different
->>> times. Now and then we might see a cluster of a few clien
->>> ts have their mounts hang at the same exact time, but this is not
->>> consistent. In /var/log/messages we see
->>>
->>> Apr 12 02:04:12 worker120 kernel: nfs: server broker101 not
->>> responding, still trying
+Steve Dickson wrote:
+> Hey Bruce,
+> 
+> J. Bruce Fields wrote:
+>> On Wed, Apr 08, 2009 at 12:05:08PM -0400, Steve Dickson wrote:
+>>> Eliminate the displaying zero stats when the explicit protocol
+>>> is specified (-2, -3, -4) the -Z and or --list options.
+>>>     
+>>> When a particular protocol is specified and either
+>>> the -Z or --list options are used, zeros or blank lines
+>>> are echoed to the screen when there is not any NFS traffic.
+>>> This cause any useful data to be scroll off the screen.
+>> Sound like good fixes.
 >>
->> Are these NFS/UDP or NFS/TCP mounts?
+>>>     
+>>> With this patch only non-zero stats will be shown, which
+>>> makes the output of these options more condensed and
+>>> in turn more useful.
+>> Couldn't this make the output harder to parse?  E.g. if you want to know
+>> how many getattr's were sent each second, it might be simpler if you say
+>> a 0 those times when there were no getattrs.
 >>
->> If you use a different kernel (say, 2.6.26) on the CentOS systems, do
->> the hangs go away?
->>
->
-> Hi Chuck,
->
-> In my case NFS/TCP.
->
-> I have tried most 2.6.2x kernels, it may take a week or longer for  
-> them
-> to hang, but hang they do :(
->
-> have been fighting with this one since at least 2.6.24, and probably
-> 2.6.22
->
-> The reader that was hanging last week, is running 2.6.26
+> Maybe.. but if one was parsing the output and the parser didn't see a 
+> gettr stat, I'm assuming it would not increment the "gettr counter"
+> so it would be know there were zero gettars in that time period.. 
+> 
+> The main reason I did this was, when watching reads and writes, 90% of 
+> the output was zeros stats which made very difficult to see the non 
+> zero counts (i.e. read and write stats) since they generally got
+> scrolled of the screen... 
+> 
+> Also note, when the --list option is not used, zero stats are 
+> shown in the column output, but granted, the column output
+> is a bit harder to parse than the list output.
+> 
+> I guess I could change it so non zero stats are show only 
+> the --sleep option is *not* used....  
+> 
 
-If you run "netstat --ip" on a client that has a hanging NFS mount  
-point, what does it show?
+Dare I suggest another commandline argument?  I didn't really like the 
+idea of leaving out the stats with 0's, but after trying it, the output 
+does look a lot cleaner.  Perhaps giving users the choice would be the 
+way to go.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+-kevin
+
+> steved.
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+------------------------------------------------------------
+Kevin Constantine
+
+Systems Engineer		t: 818.460.8221
+Walt Disney Animation Studios	e: kevin.constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org
+
+Any sufficiently advanced technology is indistinguishable from magic.
+     - Arthur C. Clarke
