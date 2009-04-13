@@ -1,356 +1,110 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 3/3] nfsstat: Eliminate the displaying zero stats
-Date: Sun, 12 Apr 2009 13:23:40 -0400
-Message-ID: <20090412172340.GD14592@fieldses.org>
-References: <49DCB9DA.5000300@RedHat.com> <49DCCB34.4080901@RedHat.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: NFS BUG_ON in nfs_do_writepage
+Date: Sun, 12 Apr 2009 23:50:10 -0700
+Message-ID: <20090412235010.c8e3475b.akpm@linux-foundation.org>
+References: <alpine.LFD.2.00.0904130145050.4396@centaur.acm.jhu.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: rercola-YxllIAoeIHiVc3sceRu5cw@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:35989 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751087AbZDLRXl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Apr 2009 13:23:41 -0400
-In-Reply-To: <49DCCB34.4080901-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36250 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754783AbZDMGwC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 02:52:02 -0400
+In-Reply-To: <alpine.LFD.2.00.0904130145050.4396-oXDIdeDfJAdjGWUgCh4geJVzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 08, 2009 at 12:05:08PM -0400, Steve Dickson wrote:
-> Eliminate the displaying zero stats when the explicit protocol
-> is specified (-2, -3, -4) the -Z and or --list options.
->     
-> When a particular protocol is specified and either
-> the -Z or --list options are used, zeros or blank lines
-> are echoed to the screen when there is not any NFS traffic.
-> This cause any useful data to be scroll off the screen.
+(cc linux-nfs)
 
-Sound like good fixes.
+On Mon, 13 Apr 2009 01:46:24 -0400 (EDT) rercola-YxllIAoeIHiVc3sceRu5cw@public.gmane.org wrote:
 
->     
-> With this patch only non-zero stats will be shown, which
-> makes the output of these options more condensed and
-> in turn more useful.
-
-Couldn't this make the output harder to parse?  E.g. if you want to know
-how many getattr's were sent each second, it might be simpler if you say
-a 0 those times when there were no getattrs.
-
---b.
-
->     
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> Hi world,
+> I've got a production server that's running as an NFSv4 client, along with 
+> a number of other machines.
 > 
-> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-> index d5bdad7..6d81f66 100644
-> --- a/utils/nfsstat/nfsstat.c
-> +++ b/utils/nfsstat/nfsstat.c
-> @@ -466,79 +466,96 @@ print_all_stats (int opt_srv, int opt_clt, int opt_prt)
->  static void 
->  print_server_stats(int opt_srv, int opt_prt) 
->  {
-> -	if (opt_srv) {
-> -		if (opt_prt & PRNT_NET) {
-> -			print_numbers(
-> -			LABEL_srvnet
-> -			"packets    udp        tcp        tcpconn\n",
-> -			srvnetinfo, 4
-> -			);
-> +	if (!opt_srv)
-> +		return;
-> +
-> +	if (opt_prt & PRNT_NET) {
-> +		if (opt_sleep && !has_rpcstats(srvnetinfo, 4)) {
-> +		} else {
-> +			print_numbers( LABEL_srvnet
-> +				"packets    udp        tcp        tcpconn\n",
-> +			srvnetinfo, 4);
->  			printf("\n");
->  		}
-> -		if (opt_prt & PRNT_RPC) {
-> -			if (!opt_sleep && !has_rpcstats(srvrpcinfo, 5)) {
-> -				print_numbers(
-> -				LABEL_srvrpc
-> +	}
-> +	if (opt_prt & PRNT_RPC) {
-> +		if (opt_sleep && !has_rpcstats(srvrpcinfo, 5)) {
-> +			;
-> +		} else {
-> +			print_numbers(LABEL_srvrpc
->  				"calls      badcalls   badauth    badclnt    xdrcall\n",
-> -				srvrpcinfo, 5
-> -				);
-> -				printf("\n");
-> -			}
-> +				srvrpcinfo, 5);
-> +			printf("\n");
->  		}
-> -		if (opt_prt & PRNT_RC) {
-> -			print_numbers(
-> -			LABEL_srvrc
-> -			"hits       misses     nocache\n",
-> -			srvrcinfo, 3
-> -			);
-> +	}
-> +	if (opt_prt & PRNT_RC) {
-> +		if (opt_sleep && !has_rpcstats(srvrcinfo, 3)) {
-> +			;
-> +		} else {
-> +			print_numbers(LABEL_srvrc
-> +				"hits       misses     nocache\n",
-> +				srvrcinfo, 3);
->  			printf("\n");
->  		}
-> +	}
->  
-> -		/*
-> -		 * 2.2 puts all fh-related info after the 'rc' header
-> -		 * 2.4 puts all fh-related info after the 'fh' header, but relocates
-> -		 *     'stale' to the start and swaps dir and nondir :-(  
-> -		 *     We preseve the 2.2 order
-> -		 */
-> -		if (opt_prt & PRNT_FH) {
-> -			if (get_stat_info("fh", srvinfo)) {	/* >= 2.4 */
-> -				int t = srvfhinfo[3];
-> -				srvfhinfo[3]=srvfhinfo[4];
-> -				srvfhinfo[4]=t;
-> -				
-> -				srvfhinfo[5]=srvfhinfo[0]; /* relocate 'stale' */
-> -				
-> -				print_numbers(
-> -					LABEL_srvfh
-> -					"lookup     anon       ncachedir  ncachedir  stale\n",
-> -					srvfhinfo + 1, 5);
-> -			} else					/* < 2.4 */
-> -				print_numbers(
-> -					LABEL_srvfh
-> -					"lookup     anon       ncachedir  ncachedir  stale\n",
-> -					srvrcinfo + 3, 5);
-> -			printf("\n");
-> +	/*
-> +	 * 2.2 puts all fh-related info after the 'rc' header
-> +	 * 2.4 puts all fh-related info after the 'fh' header, but relocates
-> +	 *     'stale' to the start and swaps dir and nondir :-(  
-> +	 *     We preseve the 2.2 order
-> +	 */
-> +	if (opt_prt & PRNT_FH) {
-> +		if (get_stat_info("fh", srvinfo)) {	/* >= 2.4 */
-> +			int t = srvfhinfo[3];
-> +			srvfhinfo[3]=srvfhinfo[4];
-> +			srvfhinfo[4]=t;
-> +			
-> +			srvfhinfo[5]=srvfhinfo[0]; /* relocate 'stale' */
-> +			
-> +			print_numbers(
-> +				LABEL_srvfh
-> +				"lookup     anon       ncachedir  ncachedir  stale\n",
-> +				srvfhinfo + 1, 5);
-> +		} else					/* < 2.4 */
-> +			print_numbers(
-> +				LABEL_srvfh
-> +				"lookup     anon       ncachedir  ncachedir  stale\n",
-> +				srvrcinfo + 3, 5);
-> +		printf("\n");
-> +	}
-> +	if (opt_prt & PRNT_CALLS) {
-> +		if ((opt_prt & PRNT_V2) || 
-> +				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
-> +			if (opt_sleep && !has_stats(srvproc2info)) {
-> +				;
-> +			} else {
-> +				print_callstats(LABEL_srvproc2,
-> +					nfsv2name, srvproc2info + 1, 
-> +					sizeof(nfsv2name)/sizeof(char *));
-> +			}
-> +		}
-> +		if ((opt_prt & PRNT_V3) || 
-> +				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
-> +			if (opt_sleep && !has_stats(srvproc3info)) {
-> +				;
-> +			} else {
-> +				print_callstats(LABEL_srvproc3,
-> +					nfsv3name, srvproc3info + 1, 
-> +					sizeof(nfsv3name)/sizeof(char *));
-> +			}
->  		}
-> -		if (opt_prt & PRNT_CALLS) {
-> -			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(srvproc2info)))
-> -				print_callstats(
-> -				LABEL_srvproc2,
-> -				nfsv2name, srvproc2info + 1, sizeof(nfsv2name)/sizeof(char *)
-> -				);
-> -			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(srvproc3info)))
-> -				print_callstats(
-> -				LABEL_srvproc3,
-> -				nfsv3name, srvproc3info + 1, sizeof(nfsv3name)/sizeof(char *)
-> -				);
-> -			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
-> -				print_callstats(
-> -				LABEL_srvproc4,
-> -				nfssrvproc4name, srvproc4info + 1, sizeof(nfssrvproc4name)/sizeof(char *)
-> -				);
-> -				print_callstats(
-> -				LABEL_srvproc4ops,
-> -				nfssrvproc4opname, srvproc4opsinfo + 1, sizeof(nfssrvproc4opname)/sizeof(char *)
-> -				);
-> +		if ((opt_prt & PRNT_V4) || 
-> +				((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
-> +			if (opt_sleep && !has_stats(srvproc4info)) {
-> +				;
-> +			} else {
-> +				print_callstats( LABEL_srvproc4,
-> +					nfssrvproc4name, srvproc4info + 1, 
-> +					sizeof(nfssrvproc4name)/sizeof(char *));
-> +				print_callstats(LABEL_srvproc4ops,
-> +					nfssrvproc4opname, srvproc4opsinfo + 1, 
-> +					sizeof(nfssrvproc4opname)/sizeof(char *));
->  			}
->  		}
->  	}
-> @@ -546,41 +563,59 @@ print_server_stats(int opt_srv, int opt_prt)
->  static void
->  print_client_stats(int opt_clt, int opt_prt) 
->  {
-> -	if (opt_clt) {
-> -		if (opt_prt & PRNT_NET) {
-> -			print_numbers(
-> -			LABEL_cltnet
-> -			"packets    udp        tcp        tcpconn\n",
-> -			cltnetinfo, 4
-> -			);
-> +	if (!opt_clt)
-> +		return;
-> +
-> +	if (opt_prt & PRNT_NET) {
-> +		if (opt_sleep && !has_rpcstats(cltnetinfo, 4)) {
-> +			;
-> +		} else { 
-> +			print_numbers(LABEL_cltnet
-> +				"packets    udp        tcp        tcpconn\n",
-> +				cltnetinfo, 4);
->  			printf("\n");
->  		}
-> -		if (opt_prt & PRNT_RPC) {
-> -			if (!opt_sleep && !has_rpcstats(cltrpcinfo, 3)) {
-> -				print_numbers(
-> -				LABEL_cltrpc
-> +	}
-> +	if (opt_prt & PRNT_RPC) {
-> +		if (opt_sleep && !has_rpcstats(cltrpcinfo, 3)) {
-> +			;
-> +		} else {
-> +			print_numbers(LABEL_cltrpc
->  				"calls      retrans    authrefrsh\n",
-> -				cltrpcinfo, 3
-> -				);
-> -				printf("\n");
-> +				cltrpcinfo, 3);
-> +			printf("\n");
-> +		}
-> +	}
-> +	if (opt_prt & PRNT_CALLS) {
-> +		if ((opt_prt & PRNT_V2) || 
-> +				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
-> +			if (opt_sleep && !has_stats(cltproc2info)) {
-> +				;
-> +			} else {
-> +				print_callstats(LABEL_cltproc2,
-> +					nfsv2name, cltproc2info + 1,  
-> +					sizeof(nfsv2name)/sizeof(char *));
-> +			}
-> +		}
-> +		if ((opt_prt & PRNT_V3) || 
-> +				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
-> +			if (opt_sleep && !has_stats(cltproc3info)) {
-> +				;
-> +			} else {
-> +				print_callstats( LABEL_cltproc3,
-> +					nfsv3name, cltproc3info + 1, 
-> +					sizeof(nfsv3name)/sizeof(char *));
->  			}
->  		}
-> -		if (opt_prt & PRNT_CALLS) {
-> -			if ((opt_prt & PRNT_V2) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc2info)))
-> -				print_callstats(
-> -				LABEL_cltproc2,
-> -				nfsv2name, cltproc2info + 1,  sizeof(nfsv2name)/sizeof(char *)
-> -				);
-> -			if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc3info)))
-> -				print_callstats(
-> -				LABEL_cltproc3,
-> -				nfsv3name, cltproc3info + 1, sizeof(nfsv3name)/sizeof(char *)
-> -				);
-> -			if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc4info)))
-> -				print_callstats(
-> -				LABEL_cltproc4,
-> -				nfscltproc4name, cltproc4info + 1,  sizeof(nfscltproc4name)/sizeof(char *)
-> -				);
-> +		if ((opt_prt & PRNT_V4) || 
-> +				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
-> +			if (opt_sleep && !has_stats(cltproc4info)) {
-> +				;
-> +			} else {
-> +				print_callstats(LABEL_cltproc4,
-> +					nfscltproc4name, cltproc4info + 1,  
-> +					sizeof(nfscltproc4name)/sizeof(char *));
-> +			}
->  		}
->  	}
->  }
-> @@ -593,35 +628,28 @@ print_stats_list(int opt_prt)
->  			print_callstats_list(
->  			"nfs v2 server",
->  			nfsv2name, srvproc2info + 1, sizeof(nfsv2name)/sizeof(char *));
-> -			printf("\n");
->  			print_callstats_list(
->  			"nfs v2 client",
->  			nfsv2name, cltproc2info + 1,  sizeof(nfsv2name)/sizeof(char *));
-> -			printf("\n");
->  		}
->  		if ((opt_prt & PRNT_V3) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
->  			print_callstats_list(
->  			"nfs v3 server",
->  			nfsv3name, srvproc3info + 1, sizeof(nfsv3name)/sizeof(char *));
-> -			printf("\n");
->  			print_callstats_list(
->  			"nfs v3 client",
->  			nfsv3name, cltproc3info + 1, sizeof(nfsv3name)/sizeof(char *));
-> -			printf("\n");
->  		}
->  		if ((opt_prt & PRNT_V4) || ((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
->  			print_callstats_list(
->  			"nfs v4 server",
->  			nfssrvproc4name, srvproc4info + 1, sizeof(nfssrvproc4name)/sizeof(char *));
-> -			printf("\n");
->  			print_callstats_list(
->  			"nfs v4 ops",
->  			nfssrvproc4opname, srvproc4opsinfo + 1, sizeof(nfssrvproc4opname)/sizeof(char *));
-> -			printf("\n");
->  			print_callstats_list(
->  			"nfs v4 client",
->  			nfscltproc4name, cltproc4info + 1,  sizeof(nfscltproc4name)/sizeof(char *));
-> -			printf("\n");
->  		}
->  	}
->  }
-> @@ -686,11 +714,15 @@ print_callstats_list(const char *hdr, const char **names,
->  	for (i = 0, calltotal = 0; i < nr; i++) {
->  		calltotal += callinfo[i];
->  	}
-> +	if (!calltotal)
-> +		return;
->  	printf("%13s %13s %8llu \n", hdr, "total:", calltotal);
->  	printf("------------- ------------- --------\n");
->  	for (i = 0; i < nr; i++) {
-> -			printf("%13s %12s: %8u \n", hdr, names[i], callinfo[i]);
-> +			if (callinfo[i])
-> +				printf("%13s %12s: %8u \n", hdr, names[i], callinfo[i]);
->  	}
-> +	printf("\n");
->  		
->  }
->  
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> All the other machines are perfectly happy, but this one is a bit of a 
+> bother. It's got a Core 2 Duo 6700, with a D975XBX2 motherboard and 4 GB 
+> of ECC RAM.
+> 
+> The problem is that, under heavy load, NFS will trip a BUG_ON in 
+> nfs_do_writepage, as follows:
+> ------------[ cut here ]------------
+> kernel BUG at fs/nfs/write.c:252!
+> invalid opcode: 0000 [#1] SMP
+> last sysfs file: /sys/devices/virtual/block/dm-
+> 0/range
+> CPU 0
+> Modules linked in: fuse autofs4 coretemp hwmon nfs lockd nfs_acl 
+> auth_rpcgss sunrpc ipv6 cpufreq_ondemand acpi_cpufreq freq_table kvm_intel 
+> kvm snd_hda_codec_idt snd_hda_intel snd_hda_codec snd_hwdep snd_seq_dummy 
+> snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss 
+> snd_mixer_oss snd_pcm snd_timer usb_storage snd cpia_usb e1000e soundcore 
+> cpia ppdev firewire_ohci snd_page_alloc firewire_core i2c_i801 videodev 
+> parport_pc pcspkr iTCO_wdt i2c_core v4l1_compat crc_itu_t parport 
+> iTCO_vendor_support v4l2_compat_ioctl32 i82975x_edac edac_core raid1
+> Pid: 309, comm: pdflush Not tainted 2.6.29.1 #1
+> RIP: 0010:[<ffffffffa0291a47>]  [<ffffffffa0291a47>] 
+> nfs_do_writepage+0x106/0x1a2 [nfs]
+> RSP: 0018:ffff88012d805af0  EFLAGS: 00010282
+> RAX: 0000000000000001 RBX: ffffe20001f66878 RCX: 0000000000000015
+> RDX: 0000000000600020 RSI: 0000000000000000 RDI: ffff88000155789c
+> RBP: ffff88012d805b20 R08: ffff88012cd53460 R09: 0000000000000004
+> R10: ffff88009d421700 R11: ffffffffa02a98d0 R12: ffff88010253a300
+> R13: ffff88000155789c R14: ffffe20001f66878 R15: ffff88012d805c80
+> FS:  0000000000000000(0000) GS:ffffffff817df000(0000) 
+> knlGS:0000000000000000
+> CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+> CR2: 00000000f7d2b000 CR3: 000000008708a000 CR4: 00000000000026e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process pdflush (pid: 309, threadinfo ffff88012d804000, task 
+> ffff88012e4fdb80)
+> Stack:
+>   ffff88012d805b20 ffffe20001f66878 ffffe20001f66878 0000000000000000
+>   0000000000000001 0000000000000000 ffff88012d805b40 ffffffffa0291f5a
+>   ffffe20001f66878 ffff88012d805e40 ffff88012d805c70 ffffffff810a9c1d
+> Call Trace:
+>   [<ffffffffa0291f5a>] nfs_writepages_callback+0x14/0x25 [nfs]
+>   [<ffffffff810a9c1d>] write_cache_pages+0x261/0x3a4
+>   [<ffffffffa0291f46>] ? nfs_writepages_callback+0x0/0x25 [nfs]
+>   [<ffffffffa0291f1c>] nfs_writepages+0xb5/0xdf [nfs]
+>   [<ffffffffa02932bd>] ? nfs_flush_one+0x0/0xeb [nfs]
+>   [<ffffffff81060f78>] ? bit_waitqueue+0x17/0xa4
+>   [<ffffffff810a9db7>] do_writepages+0x2d/0x3d
+>   [<ffffffff810f4a51>] __writeback_single_inode+0x1b2/0x347
+>   [<ffffffff8100f7d4>] ? __switch_to+0xbe/0x3eb
+>   [<ffffffff810f4ffb>] generic_sync_sb_inodes+0x24a/0x395
+>   [<ffffffff810f5354>] writeback_inodes+0xa9/0x102
+>   [<ffffffff810a9f26>] wb_kupdate+0xa8/0x11e
+>   [<ffffffff810aac9d>] pdflush+0x173/0x236
+>   [<ffffffff810a9e7e>] ? wb_kupdate+0x0/0x11e
+>   [<ffffffff810aab2a>] ? pdflush+0x0/0x236
+>   [<ffffffff810aab2a>] ? pdflush+0x0/0x236
+>   [<ffffffff81060c9e>] kthread+0x4e/0x7b
+>   [<ffffffff810126ca>] child_rip+0xa/0x20
+>   [<ffffffff81011fe7>] ? restore_args+0x0/0x30
+>   [<ffffffff81060c50>] ? kthread+0x0/0x7b
+>   [<ffffffff810126c0>] ? child_rip+0x0/0x20
+> Code: 89 e7 e8 d5 cc ff ff 4c 89 e7 89 c3 e8 2a cd ff ff 85 db 74 a0 e9 83 
+> 00 00 00 41 f6 44 24 40 02 74 0d 4c 89 ef e8 e2 a5 d9 e0 90 <0f> 0b eb fe 
+> 4c 89 f7 e8 f5 7a e1 e0 85 c0 75 49 49 8b 46 18 ba
+> RIP  [<ffffffffa0291a47>] nfs_do_writepage+0x106/0x1a2 [nfs]
+>   RSP <ffff88012d805af0>
+> ---[ end trace 6d60c9b253ebcf15 ]---
+> 
+> 64bit kernel, 32bit userland. 2.6.29.1 vanilla, bug occurred as early as 
+> 2.6.28, bug still occurs with 2.6.30-rc1. I'm running bisect now, but 
+> there's a limit on how often I can reboot a production server, so I'll 
+> report back when I find it.
+> 
+> The unfortunate part, of course, is that when this bug occurs, the 
+> writepage never returns...meaning that the process in question is 
+> permanently locked in la-la-land (AKA state D). This renders this 
+> unfortunate bug a bit...inconvenient.
+> 
+> [No other clients, or the server, report anything interesting when this 
+> happens, AFAICS.]
+> 
+
