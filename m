@@ -1,37 +1,42 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 0/4] nfs-utils: nfsd support for minor version
-Date: Mon, 13 Apr 2009 11:25:08 +0300
-Message-ID: <49E2F6E4.2080501@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 1/4] utils/nfsd: fix -N optarg error printout
+Date: Mon, 13 Apr 2009 11:29:11 +0300
+Message-ID: <1239611351-21604-1-git-send-email-bhalevy@panasas.com>
+References: <49E2F6E4.2080501@panasas.com>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>,
+	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:13899 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:12150 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752352AbZDMI0J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 04:26:09 -0400
+	with ESMTP id S1753348AbZDMI3V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 04:29:21 -0400
+In-Reply-To: <49E2F6E4.2080501@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve, please review the following patch that add support
-for controlling the nfsv4 minor version support via
-/proc/fs/nfsd/versions.
+as currently printed c is the version number, not a string char,
+therefore is should be printed as %d not %c.  That said, just print
+optarg as %s since it might be non-numeric.
 
-[PATCH 1/4] utils/nfsd: fix -N optarg error printout
-	This patch fixes an existing bug.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ utils/nfsd/nfsd.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-[RFC 2/4] utils/nfsd: add support for minorvers4
-	Under-the-cover support for minorvers4
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index aaf8d29..c97c81f 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -86,7 +86,7 @@ main(int argc, char **argv)
+ 				NFSCTL_VERUNSET(versbits, c);
+ 				break;
+ 			default:
+-				fprintf(stderr, "%c: Unsupported version\n", c);
++				fprintf(stderr, "%s: Unsupported version\n", optarg);
+ 				exit(1);
+ 			}
+ 			break;
+-- 
+1.6.2.1
 
-[RFC 3/4] utils/nfsd: add -n --nfs-version option
-	Add a command line option to enable versions
-
-[RFC 3/4] utils/nfsd: enable/disable minorvers4 via command line
-	Extend -n/-N syntax to accept <version>.<minorversion>
-
-Thanks,
-
-Benny
