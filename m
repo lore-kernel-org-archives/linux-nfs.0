@@ -1,45 +1,60 @@
-From: lebarhon <lebarhon@free.fr>
-Subject: [NFS] Translation
-Date: Mon, 13 Apr 2009 10:43:03 +0200
-Message-ID: <49E2FB17.5030804@free.fr>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 3/3] nfsstat: Eliminate the displaying zero stats
+Date: Mon, 13 Apr 2009 08:08:43 -0400
+Message-ID: <49E32B4B.5060704@RedHat.com>
+References: <49DCB9DA.5000300@RedHat.com> <49DCCB34.4080901@RedHat.com> <20090412172340.GD14592@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:38140 "EHLO neil.brown.name"
+Received: from mx2.redhat.com ([66.187.237.31]:52262 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752295AbZDMIok convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 04:44:40 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LtHmP-0005fF-Ja
-	for linux-nfs@vger.kernel.org; Mon, 13 Apr 2009 18:44:37 +1000
+	id S1750730AbZDMMLi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Apr 2009 08:11:38 -0400
+In-Reply-To: <20090412172340.GD14592@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hey Bruce,
 
-I would like to translate the Linux NFS-HOWTO in French if not already=20
-done. Is it possible and is the text up to date ?
-This translation would be done in order to link it to the Mandriva Wiki=
-=2E
+J. Bruce Fields wrote:
+> On Wed, Apr 08, 2009 at 12:05:08PM -0400, Steve Dickson wrote:
+>> Eliminate the displaying zero stats when the explicit protocol
+>> is specified (-2, -3, -4) the -Z and or --list options.
+>>     
+>> When a particular protocol is specified and either
+>> the -Z or --list options are used, zeros or blank lines
+>> are echoed to the screen when there is not any NFS traffic.
+>> This cause any useful data to be scroll off the screen.
+> 
+> Sound like good fixes.
+> 
+>>     
+>> With this patch only non-zero stats will be shown, which
+>> makes the output of these options more condensed and
+>> in turn more useful.
+> 
+> Couldn't this make the output harder to parse?  E.g. if you want to know
+> how many getattr's were sent each second, it might be simpler if you say
+> a 0 those times when there were no getattrs.
+> 
+Maybe.. but if one was parsing the output and the parser didn't see a 
+gettr stat, I'm assuming it would not increment the "gettr counter"
+so it would be know there were zero gettars in that time period.. 
 
-Best regards
+The main reason I did this was, when watching reads and writes, 90% of 
+the output was zeros stats which made very difficult to see the non 
+zero counts (i.e. read and write stats) since they generally got
+scrolled of the screen... 
 
---=20
-Andr=E9-Marie Desmottes
+Also note, when the --list option is not used, zero stats are 
+shown in the column output, but granted, the column output
+is a bit harder to parse than the list output.
 
------------------------------------------------------------------------=
--------
-This SF.net email is sponsored by:
-High Quality Requirements in a Collaborative Environment.
-Download a free trial of Rational Requirements Composer Now!
-http://p.sf.net/sfu/www-ibm-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+I guess I could change it so non zero stats are show only 
+the --sleep option is *not* used....  
+
+steved.
+
 
