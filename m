@@ -1,82 +1,254 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: Re: [PATCH 3/3] nfsstat: Eliminate the displaying zero stats
-Date: Mon, 13 Apr 2009 10:02:22 -0700
-Message-ID: <49E3701E.40202@disney.com>
-References: <49DCB9DA.5000300@RedHat.com> <49DCCB34.4080901@RedHat.com> <20090412172340.GD14592@fieldses.org> <49E32B4B.5060704@RedHat.com>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH 01/03] Add splice02 as a new syscall test in LTP [LKML
+	Subject: nfs: add support for splice writes]
+Date: Mon, 13 Apr 2009 20:01:30 +0200
+Message-ID: <20090413180130.GA5178@kernel.dk>
+References: <20090413125029.23749.31305.sendpatchset@subratamodak.linux.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Suresh Jayaraman <sjayaraman@suse.de>, linux-nfs@vger.kernel.org,
+	ltp-list <ltp-list-TtF/mJH4Jtrk1uMJSBkQmQ@public.gmane.org>,
+	"Deepakraj B. Himavantharaj" <deepakraj@in.ibm.com>
+To: Manas K Nayak <maknayak@in.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([12.188.26.101]:59960 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753804AbZDMRCZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 13:02:25 -0400
-In-Reply-To: <49E32B4B.5060704-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from brick.kernel.dk ([93.163.65.50]:50308 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752171AbZDMSBc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Apr 2009 14:01:32 -0400
+In-Reply-To: <20090413125029.23749.31305.sendpatchset-NRFfyExJdYpgXGGE5LP+UZlqa2bBAFbm0E9HWUfgJXw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> Hey Bruce,
+On Mon, Apr 13 2009, Manas K Nayak wrote:
+> Hi Jens,
 > 
-> J. Bruce Fields wrote:
->> On Wed, Apr 08, 2009 at 12:05:08PM -0400, Steve Dickson wrote:
->>> Eliminate the displaying zero stats when the explicit protocol
->>> is specified (-2, -3, -4) the -Z and or --list options.
->>>     
->>> When a particular protocol is specified and either
->>> the -Z or --list options are used, zeros or blank lines
->>> are echoed to the screen when there is not any NFS traffic.
->>> This cause any useful data to be scroll off the screen.
->> Sound like good fixes.
->>
->>>     
->>> With this patch only non-zero stats will be shown, which
->>> makes the output of these options more condensed and
->>> in turn more useful.
->> Couldn't this make the output harder to parse?  E.g. if you want to know
->> how many getattr's were sent each second, it might be simpler if you say
->> a 0 those times when there were no getattrs.
->>
-> Maybe.. but if one was parsing the output and the parser didn't see a 
-> gettr stat, I'm assuming it would not increment the "gettr counter"
-> so it would be know there were zero gettars in that time period.. 
+> >This patch attempts to add splice writes support. In essence, it just
+> >calls generic_file_splice_write() after doing a little sanity check.
+> >This would allow LTTng users that are using NFS to store trace data.
+> >There could be more applications that could be benefitted too.
+> >
+> >I have tested this using the Jens' test program and have found no
+> >real issues. The test program is inlined below:
+> >
+> >/*
+> > * splice-out.c: Splice stdout to file
+> > */
+> >#include <stdio.h>
+> >#include <stdlib.h>
+> >#include <unistd.h>
+> >#include <fcntl.h>
+> >
+> >#define SPLICE_SIZE (64*1024)
+> >
+> >int main(int argc, char *argv[])
+> >{
+> >       int fd;
+> >
+> >       if (argc < 2) {
+> >               printf("%s: outfile\n", argv[0]);
+> >               return 1;
+> >       }
+> >
+> >       fd = open(argv[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+> >       if (fd < 0) {
+> >               perror("open");
+> >               return 1;
+> >       }
+> >
+> >       do {
+> >               int ret = splice(STDIN_FILENO, NULL, fd, NULL, SPLICE_SIZE, 0);
+> >
+> >               if (ret < 0) {
+> >                       perror("splice");
+> >                       break;
+> >               } else if (ret < SPLICE_SIZE)
+> >                       break;
+> >       } while (1);
+> >
+> >       close(fd);
+> >       return 0;
+> >}
+> >
+> >Compile with -D _GNU_SOURCE and do something like:
+> >       echo "some stuff" | ./splice-out <outfile>
+> >
+> >
 > 
-> The main reason I did this was, when watching reads and writes, 90% of 
-> the output was zeros stats which made very difficult to see the non 
-> zero counts (i.e. read and write stats) since they generally got
-> scrolled of the screen... 
-> 
-> Also note, when the --list option is not used, zero stats are 
-> shown in the column output, but granted, the column output
-> is a bit harder to parse than the list output.
-> 
-> I guess I could change it so non zero stats are show only 
-> the --sleep option is *not* used....  
-> 
+> I picked up this above test program written by you (and referred
+> by Suresh) and ported this to LTP under GPL. If you do not have
+> any objection(s), can we contribute this to LTP ? The following
+> patch will do exactly that.
 
-Dare I suggest another commandline argument?  I didn't really like the 
-idea of leaving out the stats with 0's, but after trying it, the output 
-does look a lot cleaner.  Perhaps giving users the choice would be the 
-way to go.
+Certainly, go ahead!
 
--kevin
-
-> steved.
 > 
+> Original-Author: Jens Axboe <axboe@kernel.dk>,
+> Ported-To-LTP:By: Manas K Nayak <maknayak@in.ibm.com>
+> ---
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --- ltp-full-20090331.orig/testcases/kernel/syscalls/splice/splice02.c	1970-01-01 05:30:00.000000000 +0530
+> +++ ltp-full-20090331/testcases/kernel/syscalls/splice/splice02.c	2009-04-13 16:04:21.000000000 +0530
+> @@ -0,0 +1,145 @@
+> +/******************************************************************************/
+> +/* Copyright (c) Jens Axboe <axboe@kernel.dk>, 2009                           */
+> +/*                                                                            */
+> +/* LKML Reference: http://lkml.org/lkml/2009/4/2/55                           */
+> +/*                                                                            */
+> +/* This program is free software;  you can redistribute it and/or modify      */
+> +/* it under the terms of the GNU General Public License as published by       */
+> +/* the Free Software Foundation; either version 2 of the License, or          */
+> +/* (at your option) any later version.                                        */
+> +/*                                                                            */
+> +/* This program is distributed in the hope that it will be useful,            */
+> +/* but WITHOUT ANY WARRANTY;  without even the implied warranty of            */
+> +/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See                  */
+> +/* the GNU General Public License for more details.                           */
+> +/*                                                                            */
+> +/* You should have received a copy of the GNU General Public License          */
+> +/* along with this program;  if not, write to the Free Software               */
+> +/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA    */
+> +/*                                                                            */
+> +/******************************************************************************/
+> +/******************************************************************************/
+> +/*                                                                            */
+> +/* File:        splice02.c                                                    */
+> +/*                                                                            */
+> +/* Description: This tests the splice() syscall                               */
+> +/*                                                                            */
+> +/* Usage:  <for command-line>                                                 */
+> +/* echo "Test splice()" > <outfile>; splice02 <outfile>                       */
+> +/*                                                                            */
+> +/* Total Tests: 1                                                             */
+> +/*                                                                            */
+> +/* Test Name:   splice02                                                      */
+> +/******************************************************************************/
+> +#define _GNU_SOURCE
+> +#include <stdio.h>
+> +#include <stdlib.h>
+> +#include <unistd.h>
+> +#include <fcntl.h>
+> +
+> +
+> +/* Harness Specific Include Files. */
+> +#include "test.h"
+> +#include "usctest.h"
+> +#include "linux_syscall_numbers.h"
+> +
+> +/* Extern Global Variables */
+> +extern int Tst_count;           /* counter for tst_xxx routines.         */
+> +extern char *TESTDIR;           /* temporary dir created by tst_tmpdir() */
+> +
+> +/* Global Variables */
+> +char *TCID = "splice02";  /* Test program identifier.*/
+> +int  testno;
+> +int  TST_TOTAL = 1;                   /* total number of tests in this file.   */
+> +
+> +/* Extern Global Functions */
+> +/******************************************************************************/
+> +/*                                                                            */
+> +/* Function:    cleanup                                                       */
+> +/*                                                                            */
+> +/* Description: Performs all one time clean up for this test on successful    */
+> +/*              completion,  premature exit or  failure. Closes all temporary */
+> +/*              files, removes all temporary directories exits the test with  */
+> +/*              appropriate return code by calling tst_exit() function.       */
+> +/*                                                                            */
+> +/* Input:       None.                                                         */
+> +/*                                                                            */
+> +/* Output:      None.                                                         */
+> +/*                                                                            */
+> +/* Return:      On failure - Exits calling tst_exit(). Non '0' return code.   */
+> +/*              On success - Exits calling tst_exit(). With '0' return code.  */
+> +/*                                                                            */
+> +/******************************************************************************/
+> +extern void cleanup() {
+> +        /* Remove tmp dir and all files in it */
+> +        TEST_CLEANUP;
+> +        tst_rmdir();
+> +
+> +        /* Exit with appropriate return code. */
+> +        tst_exit();
+> +}
+> +
+> +/* Local  Functions */
+> +/******************************************************************************/
+> +/*                                                                            */
+> +/* Function:    setup                                                         */
+> +/*                                                                            */
+> +/* Description: Performs all one time setup for this test. This function is   */
+> +/*              typically used to capture signals, create temporary dirs      */
+> +/*              and temporary files that may be used in the course of this    */
+> +/*              test.                                                         */
+> +/*                                                                            */
+> +/* Input:       None.                                                         */
+> +/*                                                                            */
+> +/* Output:      None.                                                         */
+> +/*                                                                            */
+> +/* Return:      On failure - Exits by calling cleanup().                      */
+> +/*              On success - returns 0.                                       */
+> +/*                                                                            */
+> +/******************************************************************************/
+> +void setup() {
+> +        /* Capture signals if any */
+> +        /* Create temporary directories */
+> +        TEST_PAUSE;
+> +        tst_tmpdir();
+> +}
+> +
+> +#define SPLICE_SIZE (64*1024)
+> +
+> +int main(int ac, char **av) {
+> +	int fd = 0;
+> +	int ret = 0;
+> +	
+> +        setup();
+> +
+> +        if (ac < 2 ) {
+> +            tst_resm(TFAIL, "%s failed - Usage: %s outfile", TCID, av[0]);
+> +            tst_exit();
+> +	}
+> +	fd=open(av[1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+> +	if(fd < 0 ) {
+> +           tst_resm(TFAIL, "%s failed - errno = %d : %s", TCID, TEST_ERRNO, strerror(TEST_ERRNO));
+> +	   cleanup();
+> +	   tst_exit();
+> +	}
+> +			
+> +        do {
+> +	    ret = splice(STDIN_FILENO, NULL, fd, NULL, SPLICE_SIZE, 0);
+> +	    if (ret < 0) {
+> +            	tst_resm(TFAIL, "%s failed - errno = %d : %s",TCID, TEST_ERRNO, strerror(TEST_ERRNO));
+> +	        cleanup();
+> +		tst_exit();
+> +	    } else
+> +            if (ret < SPLICE_SIZE){
+> +	        cleanup();
+> +	        tst_exit();
+> +	    }
+> +	} while(1);
+> +
+> +	close(fd);
+> +        tst_resm(TPASS, "splice() system call Passed");
+> +        tst_exit();
+> +}
+> +
+> --- ltp-full-20090331.orig/runtest/syscalls	2009-04-13 15:12:15.000000000 +0530
+> +++ ltp-full-20090331/runtest/syscalls	2009-04-13 16:10:26.000000000 +0530
+> @@ -1030,6 +1030,8 @@ sockioctl01 sockioctl01
+>  
+>  #splice test
+>  splice01 splice01
+> +splice02 echo "Test splice02()" > splice02-temp; splice02 splice02-temp
+> +
+>  tee01 tee01
+>  
+>  stat01 stat01
+> 
+> ---
+> Regards--
+> Manas
+> 
 
 -- 
-------------------------------------------------------------
-Kevin Constantine
+Jens Axboe
 
-Systems Engineer		t: 818.460.8221
-Walt Disney Animation Studios	e: kevin.constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org
-
-Any sufficiently advanced technology is indistinguishable from magic.
-     - Arthur C. Clarke
