@@ -1,82 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:40090 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752902AbZDNMbi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Apr 2009 08:31:38 -0400
+Received: from smtp-vbr5.xs4all.nl ([194.109.24.25]:4718 "EHLO
+	smtp-vbr5.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753079AbZDNMis (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Apr 2009 08:38:48 -0400
 Subject: Re: Unexplained NFS mount hangs
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Rudy@grumpydevil.homelinux.org
+From: Rudy Zijlstra <rudy@grumpydevil.homelinux.org>
+Reply-To: Rudy@grumpydevil.homelinux.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Cc: Chuck Lever <chuck.lever@oracle.com>,
         Daniel Stickney <dstickney@pronto.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <1239700583.13583.62.camel@poledra.romunt.nl>
+In-Reply-To: <1239712286.16771.39.camel@heimdal.trondhjem.org>
 References: <20090413092406.304d04fb@dstickney2>
 	 <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
 	 <20090413104759.525161b2@dstickney2>
 	 <48017BBF-03BD-4C87-84F1-1D3603273E4F@oracle.com>
 	 <1239650707.13583.49.camel@poledra.romunt.nl>
 	 <1239700583.13583.62.camel@poledra.romunt.nl>
+	 <1239712286.16771.39.camel@heimdal.trondhjem.org>
 Content-Type: text/plain
-Date: Tue, 14 Apr 2009 08:31:26 -0400
-Message-Id: <1239712286.16771.39.camel@heimdal.trondhjem.org>
+Date: Tue, 14 Apr 2009 14:37:36 +0200
+Message-Id: <1239712656.13583.80.camel@poledra.romunt.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2009-04-14 at 11:16 +0200, Rudy Zijlstra wrote:
-> Op maandag 13-04-2009 om 21:25 uur [tijdzone +0200], schreef Rudy
-> Zijlstra:
-> > Op maandag 13-04-2009 om 13:08 uur [tijdzone -0400], schreef Chuck
-> > Lever:
-> > > On Apr 13, 2009, at 12:47 PM, Daniel Stickney wrote:
+Op dinsdag 14-04-2009 om 08:31 uur [tijdzone -0400], schreef Trond
+Myklebust:
+> On Tue, 2009-04-14 at 11:16 +0200, Rudy Zijlstra wrote:
+> > Op maandag 13-04-2009 om 21:25 uur [tijdzone +0200], schreef Rudy
+> > Zijlstra:
+> > > Op maandag 13-04-2009 om 13:08 uur [tijdzone -0400], schreef Chuck
+> > > Lever:
+> > > > On Apr 13, 2009, at 12:47 PM, Daniel Stickney wrote:
+> > > > 
+> > > > > On Mon, 13 Apr 2009 12:12:47 -0400
+> > > > > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > > > >
+> > > > >> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
+> > > > >>> Hi all,
+> > > > >>>
+> > > > >>> I am investigating some NFS mount hangs that we have started to see
+> > > > >>> over the past month on some of our servers. The behavior is that the
+> > > > >>> client mount hangs and needs to be manually unmounted (forcefully
+> > > > >>> with 'umount -f') and remounted to make it work. There are about 85
+> > > > >>> clients mounting a partition over NFS. About 50 of the clients are
+> > > > >>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
+> > > > >>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
+> > > > >>> with kernel 2.6.27 which was compiled from source. The mount hangs
+> > > > >>> are inconsistent and so far I don't know how to trigger them on
+> > > > >>> demand. The timing of the hangs as noted by the timestamp in /var/
+> > > > >>> log/messages varies. Not all of the 35 CentOS clients have their
+> > > > >>> mounts hang at the same time, and the NFS server continues operating
+> > > > >>> apparently normally for all other clients. Normally maybe 5 clients
+> > > > >>> have a mount hang per week, on different days, mostly different
+> > > > >>> times. Now and then we might see a cluster of a few clien
+> > > > >>> ts have their mounts hang at the same exact time, but this is not
+> > > > >>> consistent. In /var/log/messages we see
+> > 
+> > 
+> > > OK, i'll switch to 2.6.30 on all clients once it is out. Prefer to wait
+> > > for release, as they are production type machines. 
 > > > 
-> > > > On Mon, 13 Apr 2009 12:12:47 -0400
-> > > > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > > >
-> > > >> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
-> > > >>> Hi all,
-> > > >>>
-> > > >>> I am investigating some NFS mount hangs that we have started to see
-> > > >>> over the past month on some of our servers. The behavior is that the
-> > > >>> client mount hangs and needs to be manually unmounted (forcefully
-> > > >>> with 'umount -f') and remounted to make it work. There are about 85
-> > > >>> clients mounting a partition over NFS. About 50 of the clients are
-> > > >>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
-> > > >>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
-> > > >>> with kernel 2.6.27 which was compiled from source. The mount hangs
-> > > >>> are inconsistent and so far I don't know how to trigger them on
-> > > >>> demand. The timing of the hangs as noted by the timestamp in /var/
-> > > >>> log/messages varies. Not all of the 35 CentOS clients have their
-> > > >>> mounts hang at the same time, and the NFS server continues operating
-> > > >>> apparently normally for all other clients. Normally maybe 5 clients
-> > > >>> have a mount hang per week, on different days, mostly different
-> > > >>> times. Now and then we might see a cluster of a few clien
-> > > >>> ts have their mounts hang at the same exact time, but this is not
-> > > >>> consistent. In /var/log/messages we see
-> 
-> 
-> > OK, i'll switch to 2.6.30 on all clients once it is out. Prefer to wait
-> > for release, as they are production type machines. 
+> > > If i get a hang, i'll check with "netstat --ip"
+> > > 
 > > 
-> > If i get a hang, i'll check with "netstat --ip"
+> > Just now one of my 2.6.28.7 machines is hanging. 
+> > netstat results in client status: 
+> > tcp  0  0 mythm.romunt.nl:1020    repeater.romunt.nl:nfsd FIN_WAIT2
+> > tcp 76  0 mythm.romunt.nl:6544    repeater.romunt.n:53854 ESTABLISHED
+> > 
+> >  
+> > and on the server i find:
+> > tcp  1  0 repeater.romunt.nl:nfsd mythm.romunt.nl:1020    CLOSE_WAIT 
+> > tcp  0  0 repeater.romunt.n:53854 mythm.romunt.nl:6544    FIN_WAIT2  
 > > 
 > 
-> Just now one of my 2.6.28.7 machines is hanging. 
-> netstat results in client status: 
-> tcp  0  0 mythm.romunt.nl:1020    repeater.romunt.nl:nfsd FIN_WAIT2
-> tcp 76  0 mythm.romunt.nl:6544    repeater.romunt.n:53854 ESTABLISHED
+> Which shows that the NFS server is failing to close the tcp connection
+> after the client has closed on its side.
 > 
->  
-> and on the server i find:
-> tcp  1  0 repeater.romunt.nl:nfsd mythm.romunt.nl:1020    CLOSE_WAIT 
-> tcp  0  0 repeater.romunt.n:53854 mythm.romunt.nl:6544    FIN_WAIT2  
+> You probably want to apply this patch to your server:
+>     http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a
+> 
+> 
+> Trond
 > 
 
-Which shows that the NFS server is failing to close the tcp connection
-after the client has closed on its side.
+Hi Trond
 
-You probably want to apply this patch to your server:
-    http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a
+Thanks, would an upgrade to 2.6.29.1 also work? 
 
+Thanks,
 
-Trond
+Rudy
 
