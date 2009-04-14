@@ -1,38 +1,47 @@
-From: Rince <rincebrain@gmail.com>
-Subject: Re: NFS BUG_ON in nfs_do_writepage
-Date: Mon, 13 Apr 2009 19:44:26 -0400
-Message-ID: <5da0588e0904131644g131dc816r61884e83bc4cd006@mail.gmail.com>
-References: <alpine.LFD.2.00.0904130145050.4396@centaur.acm.jhu.edu>
-	 <20090412235010.c8e3475b.akpm@linux-foundation.org>
-	 <1239650202.16771.15.camel@heimdal.trondhjem.org>
-	 <5da0588e0904131506k5c58e8ddob9bf38f61da6302a@mail.gmail.com>
+From: thomas62186218-YDxpq3io04c@public.gmane.org
+Subject: NFS and LVM2 issues
+Date: Mon, 13 Apr 2009 22:39:25 -0400
+Message-ID: <8CB8AC15C09B9C4-F68-1088@webmail-dh39.sysops.aol.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset="us-ascii"; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f117.google.com ([209.85.221.117]:65087 "EHLO
-	mail-qy0-f117.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751965AbZDMXo2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 19:44:28 -0400
-In-Reply-To: <5da0588e0904131506k5c58e8ddob9bf38f61da6302a-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from imo-m13.mx.aol.com ([64.12.143.101]:16143 "EHLO
+	imo-m13.mail.aol.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751195AbZDNCs1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 22:48:27 -0400
+Received: from thomas62186218-YDxpq3io04c@public.gmane.org
+	by imo-da03.mx.aol.com  (mail_out_v40_r1.5.) id x.ccf.4e810425 (37166)
+	 for <linux-nfs@vger.kernel.org>; Mon, 13 Apr 2009 22:39:29 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 13, 2009 at 6:06 PM, Rince <rincebrain@gmail.com> wrote:
-> Patch does not apply cleanly to 2.6.30-rc1. Working on this.
+Hi All,
 
-Okay, so I'm having trouble getting this to apply to anything at all.
-I can see it requires a previous patch by Nick, but even in the thread
-it's mentioned that it doesn't apply cleanly.
+I am running into two issues with nfs-kernel-server in Ubuntu Hardy 
+8.0.4 x64. I am running Ubuntu on a quad-core 3.0 GHz server with 8 GB 
+RAM and 12 x SATA 500GB drives.
 
-Is there a canonical form that I can apply somewhere?
+1) I create a 100 GB LVM2 volume and format it with XFS. I create a 
+directory and export it as an NFS share assigned to a VMware ESX 3.5 
+server. I connect successfully from VMware ESX to the NFS share and 
+create an NFS datastore. VMware reports the LVM2 volume capacity as the 
+capacity of the NFS datastore (100 GB). I then resize the LVM2 volume 
+to 200 GB. However, in VMware, it still reports the NFS datastore as 
+100 GB. If I delete the NFS datastore in VMware, and then reestablish 
+it, it still reports the NFS datastore as 100 GB. I have even tried 
+rebooting my Ubuntu server but VMware still reports it as 100 GB. Any 
+ideas?
 
-- Rich
+2) If I continue the above example, I next try to delete my 100 GB LVM2 
+volume. I first delete the NFS directory and remove the NFS export. 
+However, I can never delete the LVM2 volume afterwards. It seems like 
+NFS maintains a lock of some sort on the volume. The only workaround is 
+to reboot the Ubuntu Server altogether, and then I can delete the LVM2 
+volume.
 
-PS: I rather expect my report here to be the same as that Bugzilla
-bug, since I filed it. :)
--- 
+Any insight would be greatly appreciated. Thanks!!
 
-If we were meant to get up early, God would have created us with alarm clocks.
+Sincerely,
+-Thomas
+
