@@ -1,130 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18822 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752922AbZDIW1s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Apr 2009 18:27:48 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: NFS fscache offline mode?
-Date: Thu, 9 Apr 2009 15:27:16 -0700
-Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC02931627@SACMVEXC1-PRD.hq.netapp.com>
-In-Reply-To: <11770.1239312107@redhat.com>
-References: <7A24DF798E223B4C9864E8F92E8C93EC029314E5@SACMVEXC1-PRD.hq.netapp.com> <49dd5b8c.85c2f10a.5f05.1c22@mx.google.com> <1253.1239275671@redhat.com> <11770.1239312107@redhat.com>
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-To: "David Howells" <dhowells@redhat.com>
-Cc: "Tom Talpey" <tmtalpey@gmail.com>, <linux-nfs@vger.kernel.org>
+Received: from smtp-vbr4.xs4all.nl ([194.109.24.24]:1570 "EHLO
+	smtp-vbr4.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751686AbZDNJR1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Apr 2009 05:17:27 -0400
+Subject: Re: Unexplained NFS mount hangs
+From: Rudy Zijlstra <rudy@grumpydevil.homelinux.org>
+Reply-To: Rudy@grumpydevil.homelinux.org
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Daniel Stickney <dstickney@pronto.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <1239650707.13583.49.camel@poledra.romunt.nl>
+References: <20090413092406.304d04fb@dstickney2>
+	 <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
+	 <20090413104759.525161b2@dstickney2>
+	 <48017BBF-03BD-4C87-84F1-1D3603273E4F@oracle.com>
+	 <1239650707.13583.49.camel@poledra.romunt.nl>
+Content-Type: text/plain
+Date: Tue, 14 Apr 2009 11:16:23 +0200
+Message-Id: <1239700583.13583.62.camel@poledra.romunt.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
- 
-
-> -----Original Message-----
-> From: David Howells [mailto:dhowells@redhat.com] 
-> Sent: Thursday, April 09, 2009 2:22 PM
-> To: Muntz, Daniel
-> Cc: dhowells@redhat.com; Tom Talpey; linux-nfs@vger.kernel.org
-> Subject: Re: NFS fscache offline mode?
-> 
-> Muntz, Daniel <Dan.Muntz@netapp.com> wrote:
-> 
-> > It's not _so_ tricky for the read-only case, and is quite 
-> useful (see 
-> > papers by Huston+Honeyman re: disconnected AFS).  For writes, my 
-> > recollection is that you pretty much need human intervention to 
-> > resolve conflicts unless a trivial resolution mechanism is defined.
-> 
-> Oh, I agree that's it's much simpler for read-only, and that 
-> there's no trickiness for files that haven't been modified 
-> locally whilst offline; but if any have, it could then be a problem.
-> 
-> The simplest way is to simply discard local changes upon 
-> reconnection if the backing file has changed.  Isn't that 
-> what we do anyway when in connected mode.
-
-The two trivial cases are: discard changes from disconnected mode, or
-propagate all changes when reconnected.  Doing something more
-intelligent is difficult.  If writes are allowed, you still run the risk
-of evicting something you really wanted in the cache (oops, forgot to
-pin my .bashrc), or getting unexpected disk-full errors.  But, you still
-have something potentially useful if you just make the cache ro when
-disconnected.
-
-> > > In any case, offline mode isn't something that FS-Cache 
-> itself cares 
-> > > about.  It is purely a data store.  The network 
-> filesystems using it 
-> > > must implement offline mode.
+Op maandag 13-04-2009 om 21:25 uur [tijdzone +0200], schreef Rudy
+Zijlstra:
+> Op maandag 13-04-2009 om 13:08 uur [tijdzone -0400], schreef Chuck
+> Lever:
+> > On Apr 13, 2009, at 12:47 PM, Daniel Stickney wrote:
 > > 
-> > That's a bit flippant.  You could just as well say that the 
-> "network" 
-> > file system should implement its own disk cache.  If you're 
-> going to 
-> > cache under the fs, you could also do a lot to hide the 
-> disconnected 
-> > status from the fs, once again, not too bad if you're doing 
-> read-only.
+> > > On Mon, 13 Apr 2009 12:12:47 -0400
+> > > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > >
+> > >> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
+> > >>> Hi all,
+> > >>>
+> > >>> I am investigating some NFS mount hangs that we have started to see
+> > >>> over the past month on some of our servers. The behavior is that the
+> > >>> client mount hangs and needs to be manually unmounted (forcefully
+> > >>> with 'umount -f') and remounted to make it work. There are about 85
+> > >>> clients mounting a partition over NFS. About 50 of the clients are
+> > >>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
+> > >>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
+> > >>> with kernel 2.6.27 which was compiled from source. The mount hangs
+> > >>> are inconsistent and so far I don't know how to trigger them on
+> > >>> demand. The timing of the hangs as noted by the timestamp in /var/
+> > >>> log/messages varies. Not all of the 35 CentOS clients have their
+> > >>> mounts hang at the same time, and the NFS server continues operating
+> > >>> apparently normally for all other clients. Normally maybe 5 clients
+> > >>> have a mount hang per week, on different days, mostly different
+> > >>> times. Now and then we might see a cluster of a few clien
+> > >>> ts have their mounts hang at the same exact time, but this is not
+> > >>> consistent. In /var/log/messages we see
+
+
+> OK, i'll switch to 2.6.30 on all clients once it is out. Prefer to wait
+> for release, as they are production type machines. 
 > 
-> I disagree.  FS-Cache provides or will provide the local 
-> storage required to perform offline operation, the ability to 
-> pin data within that storage, and the ability to tag the 
-> stored data with the metadata required; but in my opinion, 
-> the netfs, be it NFS, AFS or CIFS, must do the actual work of:
+> If i get a hang, i'll check with "netstat --ip"
 > 
->  (1) configuring what must be available for disconnected operation,
 
-You've captured the data and metadata.  I suppose there might be some
-fs-specific hooks needed (e.g., something needed to prevent the nfs
-client from thinking the server is down).  IMHO, it would be really
-handy if a canonical list of such hooks could be made, and FS-Cache
-could handle these similar to how export ops work in NFS--the fs
-supplies routines that FS-Cache calls to make disconnected operation
-work.
+Just now one of my 2.6.28.7 machines is hanging. 
+netstat results in client status: 
+tcp  0  0 mythm.romunt.nl:1020    repeater.romunt.nl:nfsd FIN_WAIT2
+tcp 76  0 mythm.romunt.nl:6544    repeater.romunt.n:53854 ESTABLISHED
 
-> 
->  (2) pulling files into the cache in preparation,
-
-Some trivial fs-agnostic ways to do this: use the system before
-disconnecting, or run a process to walk through the fs catting files
-that you want in disconnected mode (pulling them into the cache).  Just
-out of curiosity, could one 'tar' up the cache on one machine and drop
-it on another and have it work?  There must be enough state on disk so
-that a reboot doesn't invalidate your cache, so I'm guessing this might
-be another way to warm your cache.
-
->
  
->  (3) handling requests from userspace that can't be satisfied 
-> when offline,
+and on the server i find:
+tcp  1  0 repeater.romunt.nl:nfsd mythm.romunt.nl:1020    CLOSE_WAIT 
+tcp  0  0 repeater.romunt.n:53854 mythm.romunt.nl:6544    FIN_WAIT2  
 
-What did you have in mind?
 
->      and
-> 
->  (4) resolving conflicts afterwards.
+Cheers,
 
-If you stick to the ro case, or the two simple conflict resolution
-schemes, then this is not an issue.
+Rudy
 
-> 
-> The netfs knows about the structure of the filesystem; 
-> fscache does not.  The user interacts with the netfs, not 
-> directly with fscache.
-> 
-> > BTW: could we not use the term "network" file system when 
-> discussing 
-> > FS-Cache?  You've also mentioned using it for iso9660, so it's not 
-> > just for network file systems.
-> 
-> All my documents, code and emails are laced with the term 
-> 'netfs' to mean a client of FS-Cache.
-
-That's what 'sed' is for :-)
-
-> 
-> As I have pointed out in my documentation, whilst iso9660 
-> isn't a network filesystem, it can be considered in the same 
-> group for this topic.
-> 
-> David
-> 
