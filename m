@@ -1,109 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:29494 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751607AbZDOO3T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 10:29:19 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <1D9458F7-0AED-478B-BFF6-A612B04FBE2A@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Simon Kirby <sim@hostway.ca>
-In-Reply-To: <20090415004809.GC17195@hostway.ca>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: Write on close behaviour versus slow media and slow network
-Date: Wed, 15 Apr 2009 10:29:06 -0400
-References: <20090415004809.GC17195@hostway.ca>
+Received: from mail-out2.uio.no ([129.240.10.58]:40090 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752902AbZDNMbi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Apr 2009 08:31:38 -0400
+Subject: Re: Unexplained NFS mount hangs
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Rudy@grumpydevil.homelinux.org
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Daniel Stickney <dstickney@pronto.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <1239700583.13583.62.camel@poledra.romunt.nl>
+References: <20090413092406.304d04fb@dstickney2>
+	 <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
+	 <20090413104759.525161b2@dstickney2>
+	 <48017BBF-03BD-4C87-84F1-1D3603273E4F@oracle.com>
+	 <1239650707.13583.49.camel@poledra.romunt.nl>
+	 <1239700583.13583.62.camel@poledra.romunt.nl>
+Content-Type: text/plain
+Date: Tue, 14 Apr 2009 08:31:26 -0400
+Message-Id: <1239712286.16771.39.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Apr 14, 2009, at 8:48 PM, Simon Kirby wrote:
-> Hello!
->
-> I have a usual process of downloading pictures from a flash card (@ 15
-> MB/s or so) and writing them over 100 Mbps Ethernet (@ 12 MB/s or so).
-> One would expect and hope that both the reading and writing could  
-> happen
-> simultaneously to optimize throughput, but the current behaviour on  
-> both
-> NFSv3 and NFSv4 is as follows:
->
-> multiple files loop (copying with "cp"):
-> 	open source, dest
-> 	data copy loop:
-> 		read(source)
-> 		write(dest)
-> 	close(source)
-> 	close(dest)
->
-> The inner loop happens at about the rate of the flash card reader  
-> all the
-> way up to my picture size (12-25 MB).  Then, on close(), rpciod /  
-> the NFS
-> client flushes all data over the network, at the rate which the  
-> network
-> can sustain.
->
-> Overall throughput is therefore about 1/(1/12+1/15) == 6.67 MB/s,  
-> which
-> is not very exciting.
->
-> I find that replacing "cp" with "dd ... bs=131072 oflag=dsync" lets me
-> copy at near network speed, at the expense of slowing down copying  
-> to a
-> local hard drive should I chose to do that instead, and seems to be  
-> more
-> of a workaround than a solution (and it's very sensitive to block size
-> and still slower than network speed).
->
-> Is there any way to convince NFS (or buffer flushing) to start  
-> sooner in
-> this case -- preferrably when there are at least wsize bytes  
-> available to
-> write?  Is there any downside to doing this?
+On Tue, 2009-04-14 at 11:16 +0200, Rudy Zijlstra wrote:
+> Op maandag 13-04-2009 om 21:25 uur [tijdzone +0200], schreef Rudy
+> Zijlstra:
+> > Op maandag 13-04-2009 om 13:08 uur [tijdzone -0400], schreef Chuck
+> > Lever:
+> > > On Apr 13, 2009, at 12:47 PM, Daniel Stickney wrote:
+> > > 
+> > > > On Mon, 13 Apr 2009 12:12:47 -0400
+> > > > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > > >
+> > > >> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
+> > > >>> Hi all,
+> > > >>>
+> > > >>> I am investigating some NFS mount hangs that we have started to see
+> > > >>> over the past month on some of our servers. The behavior is that the
+> > > >>> client mount hangs and needs to be manually unmounted (forcefully
+> > > >>> with 'umount -f') and remounted to make it work. There are about 85
+> > > >>> clients mounting a partition over NFS. About 50 of the clients are
+> > > >>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
+> > > >>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
+> > > >>> with kernel 2.6.27 which was compiled from source. The mount hangs
+> > > >>> are inconsistent and so far I don't know how to trigger them on
+> > > >>> demand. The timing of the hangs as noted by the timestamp in /var/
+> > > >>> log/messages varies. Not all of the 35 CentOS clients have their
+> > > >>> mounts hang at the same time, and the NFS server continues operating
+> > > >>> apparently normally for all other clients. Normally maybe 5 clients
+> > > >>> have a mount hang per week, on different days, mostly different
+> > > >>> times. Now and then we might see a cluster of a few clien
+> > > >>> ts have their mounts hang at the same exact time, but this is not
+> > > >>> consistent. In /var/log/messages we see
+> 
+> 
+> > OK, i'll switch to 2.6.30 on all clients once it is out. Prefer to wait
+> > for release, as they are production type machines. 
+> > 
+> > If i get a hang, i'll check with "netstat --ip"
+> > 
+> 
+> Just now one of my 2.6.28.7 machines is hanging. 
+> netstat results in client status: 
+> tcp  0  0 mythm.romunt.nl:1020    repeater.romunt.nl:nfsd FIN_WAIT2
+> tcp 76  0 mythm.romunt.nl:6544    repeater.romunt.n:53854 ESTABLISHED
+> 
+>  
+> and on the server i find:
+> tcp  1  0 repeater.romunt.nl:nfsd mythm.romunt.nl:1020    CLOSE_WAIT 
+> tcp  0  0 repeater.romunt.n:53854 mythm.romunt.nl:6544    FIN_WAIT2  
+> 
 
-VM/VFS and NFS client both delay writes aggressively.  A page cache  
-flush is forced by the close(2) call, but the client will hold onto  
-dirty data until the last possible moment.  It's kind of a system-wide  
-policy, and yes, we know it's not so good for NFS.
+Which shows that the NFS server is failing to close the tcp connection
+after the client has closed on its side.
 
-There are some VM sysctls that can tune down the maximum amount of  
-dirty writes allowed to be outstanding.  Have a look at /proc/sys/vm/ 
-dirty_ratio and /proc/sys/vm/dirty_background_ratio.  The problem with  
-these is that a) they are system wide, so the settings affect all of  
-your file systems, and 2) it's a ratio, so I don't think you can tune  
-it to flush files smaller than 1% of your system's physical RAM.  On a  
-system with one gigabyte, that means you are still caching about 10MB  
-before starting to flush.  I'm guessing your flash files are smaller  
-than that.
-
-Another solution is to change your application.  Calling  
-sync_file_range(2) in asynchronous mode every so often in your loop  
-might be sufficient to kick the VM into flushing the data sooner.
-
-> Other than some special-case handling with deleting a temporary file
-> before closing it (does that even work?), I don't see how the current
-> behaviour helps performance in _any_ case, even when copying from fast
-> media.
->
-> I looked around the NFS man pages, /proc and /sys and didn't see  
-> anything
-> that might be helpful, but I am interested to find out how things  
-> came to
-> arrive at this implementation.
->
-> Cheers!
->
-> Simon-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+You probably want to apply this patch to your server:
+    http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a
 
 
-
+Trond
 
