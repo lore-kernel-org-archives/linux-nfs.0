@@ -1,210 +1,53 @@
-From: Benjamin Coddington <Benjamin.Coddington@uvm.edu>
-Subject: Re: NFSv4 client crash
-Date: Wed, 15 Apr 2009 07:25:46 -0400
-Message-ID: <49E5C43A.1060503@uvm.edu>
-References: <4733da850904141440s26c73658wcd26485c569a758e@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: klibc's nfsmount failure with 2.6.27.21, while 2.6.25.20 was
+ fine
+Date: Wed, 15 Apr 2009 08:38:34 -0400
+Message-ID: <1239799114.5177.4.camel@heimdal.trondhjem.org>
+References: <200904151250.49372.hpj@urpla.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org, Vasily Tarasov <tarasov-q12XvdSUhMJ7tPAFqOLdPg@public.gmane.org>
-To: Sujay Godbole <sujay@fsl.cs.sunysb.edu>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Hans-Peter Jansen <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.uvm.edu ([132.198.101.168]:49677 "EHLO smtp1.uvm.edu"
+Received: from mail-out2.uio.no ([129.240.10.58]:38304 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752297AbZDOLow (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Apr 2009 07:44:52 -0400
-In-Reply-To: <4733da850904141440s26c73658wcd26485c569a758e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1753286AbZDOMij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Apr 2009 08:38:39 -0400
+In-Reply-To: <200904151250.49372.hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Sujay,  this looks like a problem we had with this kernel.  General 
-advice is to move to a recent kernel.  See the thread at 
-http://marc.info/?t=123749011300001&r=1&w=2.
-
-nfsv4@linux-nfs.org is the best place to report problems w/ the linux 
-client.
-
-Ben
-
-Sujay Godbole wrote:
+On Wed, 2009-04-15 at 12:50 +0200, Hans-Peter Jansen wrote:
 > Hi,
 > 
-> I am not sure this is a right mailing list to report the errors
-> regarding NFsv4 client.  I am running Centos 5.3 NFSv4 client against
-> Solaris 10 (x86 64 bit architecture) NFS server. I received following
-> coredump while running iozone benchmark for 2GB file size. I got this
-> error in  single client as well as multiple client scenario. After the
-> initial dump, machine is extremely slow and I can see keyboard input
-> after a minute.
+> I suffer from a problem, where my diskless environment doesn't work anymore 
+> after upgrading the server from openSUSE 11.0 (2.6.25.20) to openSUSE 11.1 
+> (2.6.27.21).
 > 
-> Here are the details of machine configuration:
-> Distribution : Centos 5.3
-> kernel version : 2.6.18-128.el5
+> The diskless environment gets set up with an customized initrd via pxelinux.
+> The initrd uses klibc's nfsmount, and I've tried both protocols: udp and 
+> tcp. It's not an iptables issue, since I can mount these directories from 
+> other (fully booted) systems just fine. 
 > 
+> Using the debug version of klibc's nfsmount prints these messages:
+> short read: 0 < 28
+> Port for 100003/3[udp]: 0
+> short read: 0 < 28
+> Port for 100005/3[udp]: 0
+> NFS params:
+>   server = xxx.xx.xx.xx, path = "/roroot", version = 3, proto = udp,
+>   mount_port = 627, nfs_port = 2049, flags = 00010282,
+    ^^^^^^^^^^^^^^^^
+
+>   rsize = 0, wsize = 0, timeo = 7, retrans = 3,
+>   acreg (min,max) = (3,60), acdir (min,max) = (30,60),
+>   soft = 0, intr = 1, posix = 0, nocto = 0, noac = 0
 > 
-> Here is the dump :
-> Apr 13 19:57:10 localhost kernel: BUG: soft lockup - CPU#1 stuck for
-> 10s! [192.168.0.104-r:3188]
-> Apr 13 19:57:10 localhost kernel: CPU 1:
-> Apr 13 19:57:10 localhost kernel: Modules linked in: nfs lockd fscache
-> nfs_acl ipv6 xfrm_nalgo crypto_api autofs4 hidp rfcomm l2cap bluetooth
-> sunrpc dm_mirror dm_multipath scsi_dh video hwmon backlight sbs i2c_ec
-> i2c_core button battery asus_acpi acpi_memhotplug ac lp parport_pc
-> parport serio_raw e752x_edac e1000 edac_mc pcspkr sg dm_raid45
-> dm_message dm_region_hash dm_log dm_mod dm_mem_cache ata_piix libata
-> shpchp aacraid sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
-> Apr 13 19:57:10 localhost kernel: Pid: 3188, comm: 192.168.0.104-r Not
-> tainted 2.6.18-128.el5 #1
-> Apr 13 19:57:10 localhost kernel: RIP: 0010:[<ffffffff8844d093>]
-> [<ffffffff8844d093>] :nfs:nfs4_open_expired+0x90/0x16c
-> Apr 13 19:57:10 localhost kernel: RSP: 0018:ffff810032da3e40  EFLAGS: 00000247
-> Apr 13 19:57:10 localhost kernel: RAX: 000000000001a002 RBX:
-> 0000000000000000 RCX: 000000010019e262
-> Apr 13 19:57:10 localhost kernel: RDX: 0000000000000000 RSI:
-> ffff81002b1989c0 RDI: ffff81003f395fd8
-> Apr 13 19:57:10 localhost kernel: RBP: ffff81003e9e29c0 R08:
-> 0000000000000000 R09: ffff810037ddf080
-> Apr 13 19:57:10 localhost kernel: R10: ffff810030850250 R11:
-> fffffffffffffeff R12: ffff810035de4b40
-> Apr 13 19:57:10 localhost kernel: R13: ffff81002b198ac0 R14:
-> 0000000000000004 R15: ffffffff8843703e
-> Apr 13 19:57:10 localhost kernel: FS:  0000000000000000(0000)
-> GS:ffff810037d237c0(0000) knlGS:0000000000000000
-> Apr 13 19:57:10 localhost kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
-> 000000008005003b
-> Apr 13 19:57:10 localhost kernel: CR2: 00002aaaaacd3000 CR3:
-> 000000003d95d000 CR4: 00000000000006e0
-> Apr 13 19:57:10 localhost kernel:
-> Apr 13 19:57:10 localhost kernel: Call Trace:
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff8009d909>]
-> keventd_create_kthread+0x0/0xc4
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff884540b5>]
-> :nfs:nfs4_reclaim_open_state+0x2d/0x150
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff8845437c>]
-> :nfs:reclaimer+0x1a4/0x2ac
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff884541d8>] :nfs:reclaimer+0x0/0x2ac
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff80032360>] kthread+0xfe/0x132
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff8005dfb1>] child_rip+0xa/0x11
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff8009d909>]
-> keventd_create_kthread+0x0/0xc4
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff80032262>] kthread+0x0/0x132
-> Apr 13 19:57:10 localhost kernel:  [<ffffffff8005dfa7>] child_rip+0x0/0x11
-> Apr 13 19:57:10 localhost kernel:
-> Apr 13 19:57:20 localhost kernel: BUG: soft lockup - CPU#1 stuck for
-> 10s! [192.168.0.104-r:3188]
-> Apr 13 19:57:20 localhost kernel: CPU 1:
-> Apr 13 19:57:20 localhost kernel: Modules linked in: nfs lockd fscache
-> nfs_acl ipv6 xfrm_nalgo crypto_api autofs4 hidp rfcomm l2cap bluetooth
-> sunrpc dm_mirror dm_multipath scsi_dh video hwmon backlight sbs i2c_ec
-> i2c_core button battery asus_acpi acpi_memhotplug ac lp parport_pc
-> parport serio_raw e752x_edac e1000 edac_mc pcspkr sg dm_raid45
-> dm_message dm_region_hash dm_log dm_mod dm_mem_cache ata_piix libata
-> shpchp aacraid sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
-> Apr 13 19:57:20 localhost kernel: Pid: 3188, comm: 192.168.0.104-r Not
-> tainted 2.6.18-128.el5 #1
-> Apr 13 19:57:20 localhost kernel: RIP: 0010:[<ffffffff8014c625>]
-> [<ffffffff8014c625>] __list_add+0x32/0x68
-> Apr 13 19:57:20 localhost kernel: RSP: 0018:ffff810032da3d80  EFLAGS: 00000246
-> Apr 13 19:57:20 localhost kernel: RAX: ffff81002b1989c0 RBX:
-> ffff81002b1989c0 RCX: 000000010019e262
-> Apr 13 19:57:20 localhost kernel: RDX: ffff81002b1989c0 RSI:
-> ffff81002b1989c0 RDI: ffff81003f395fd8
-> Apr 13 19:57:20 localhost kernel: RBP: ffffffff882dc746 R08:
-> 0000000000000000 R09: ffff810037ddf080
-> Apr 13 19:57:20 localhost kernel: R10: ffff810030850250 R11:
-> fffffffffffffeff R12: ffff8100308502f8
-> Apr 13 19:57:20 localhost kernel: R13: ffff810030850250 R14:
-> ffff810006403e00 R15: ffff81003effac00
-> Apr 13 19:57:20 localhost kernel: FS:  0000000000000000(0000)
-> GS:ffff810037d237c0(0000) knlGS:0000000000000000
-> Apr 13 19:57:20 localhost kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
-> 000000008005003b
-> Apr 13 19:57:20 localhost kernel: CR2: 00002aaaaacd3000 CR3:
-> 000000003d95d000 CR4: 00000000000006e0
-> Apr 13 19:57:20 localhost kernel:
-> Apr 13 19:57:20 localhost kernel: Call Trace:
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8843703e>]
-> :nfs:nfs_access_get_cached+0xab/0xfa
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8844c2f9>]
-> :nfs:_nfs4_do_access+0x2d/0x85
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8844d06f>]
-> :nfs:nfs4_open_expired+0x6c/0x16c
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8009d909>]
-> keventd_create_kthread+0x0/0xc4
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff884540b5>]
-> :nfs:nfs4_reclaim_open_state+0x2d/0x150
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8845437c>]
-> :nfs:reclaimer+0x1a4/0x2ac
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff884541d8>] :nfs:reclaimer+0x0/0x2ac
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff80032360>] kthread+0xfe/0x132
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8005dfb1>] child_rip+0xa/0x11
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8009d909>]
-> keventd_create_kthread+0x0/0xc4
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff80032262>] kthread+0x0/0x132
-> Apr 13 19:57:20 localhost kernel:  [<ffffffff8005dfa7>] child_rip+0x0/0x11
-> Apr 13 19:57:20 localhost kernel:
-> Apr 13 19:57:30 localhost kernel: BUG: soft lockup - CPU#1 stuck for
-> 10s! [192.168.0.104-r:3188]
-> Apr 13 19:57:30 localhost kernel: CPU 1:
-> Apr 13 19:57:30 localhost kernel: Modules linked in: nfs lockd fscache
-> nfs_acl ipv6 xfrm_nalgo crypto_api autofs4 hidp rfcomm l2cap bluetooth
-> sunrpc dm_mirror dm_multipath scsi_dh video hwmon backlight sbs i2c_ec
-> i2c_core button battery asus_acpi acpi_memhotplug ac lp parport_pc
-> parport serio_raw e752x_edac e1000 edac_mc pcspkr sg dm_raid45
-> dm_message dm_region_hash dm_log dm_mod dm_mem_cache ata_piix libata
-> shpchp aacraid sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
-> Apr 13 19:57:30 localhost kernel: Pid: 3188, comm: 192.168.0.104-r Not
-> tainted 2.6.18-128.el5 #1
-> Apr 13 19:57:30 localhost kernel: RIP: 0010:[<ffffffff8844c2d3>]
-> [<ffffffff8844c2d3>] :nfs:_nfs4_do_access+0x7/0x85
-> Apr 13 19:57:30 localhost kernel: RSP: 0018:ffff810032da3e28  EFLAGS: 00000246
-> Apr 13 19:57:30 localhost kernel: RAX: 000000000001a002 RBX:
-> 0000000000000000 RCX: 000000010019e262
-> Apr 13 19:57:30 localhost kernel: RDX: 0000000000000001 RSI:
-> ffff81003e9e29c0 RDI: ffff81002b198ac0
-> Apr 13 19:57:30 localhost kernel: RBP: ffffffff8843703e R08:
-> 0000000000000000 R09: ffff810037ddf080
-> Apr 13 19:57:30 localhost kernel: R10: ffff810030850250 R11:
-> fffffffffffffeff R12: ffff81003f395fd8
-> Apr 13 19:57:30 localhost kernel: R13: ffff81002b198ac0 R14:
-> ffff81003f395fc0 R15: 0000000000000246
-> Apr 13 19:57:30 localhost kernel: FS:  0000000000000000(0000)
-> GS:ffff810037d237c0(0000) knlGS:0000000000000000
-> Apr 13 19:57:30 localhost kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
-> 000000008005003b
-> Apr 13 19:57:30 localhost kernel: CR2: 00002aaaaacd3000 CR3:
-> 000000003d95d000 CR4: 00000000000006e0
-> Apr 13 19:57:30 localhost kernel:
-> Apr 13 19:57:30 localhost kernel: Call Trace:
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff8844d06f>]
-> :nfs:nfs4_open_expired+0x6c/0x16c
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff8009d909>]
-> keventd_create_kthread+0x0/0xc4
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff884540b5>]
-> :nfs:nfs4_reclaim_open_state+0x2d/0x150
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff8845437c>]
-> :nfs:reclaimer+0x1a4/0x2ac
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff884541d8>] :nfs:reclaimer+0x0/0x2ac
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff80032360>] kthread+0xfe/0x132
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff8005dfb1>] child_rip+0xa/0x11
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff8009d909>]
-> keventd_create_kthread+0x0/0xc4
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff80032262>] kthread+0x0/0x132
-> Apr 13 19:57:30 localhost kernel:  [<ffffffff8005dfa7>] child_rip+0x0/0x11
-> Apr 13 19:57:30 localhost kernel:
-> 
-> ##############################
-> 
-> 
-> Is this the known issue and fixed in later kernel versions ?
-> 
-> 
-> Thank you.
-> 
-> 
-> Regards
-> Sujay
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> tcpdumping the communication shows, that for whatever reason, the client 
+> sends the mount request from source port 798 to destination port 627, but 
+> the server doesn't listen on 627:
+
+The question is why is klibc specifying mount port = 627?
+
+Trond
+
