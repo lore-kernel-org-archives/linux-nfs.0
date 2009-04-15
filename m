@@ -1,102 +1,78 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/19] NFSD: Refactor transport addition out of __write_ports()
-Date: Thu, 23 Apr 2009 19:31:40 -0400
-Message-ID: <20090423233140.17283.32607.stgit@ingres.1015granger.net>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Subject: Re: klibc's nfsmount failure with 2.6.27.21, while 2.6.25.20 was fine
+Date: Wed, 15 Apr 2009 10:36:46 -0400
+Message-ID: <0D024344-54E3-4A09-BE78-3E67667E05E7@oracle.com>
+References: <200904151250.49372.hpj@urpla.net> <1239799114.5177.4.camel@heimdal.trondhjem.org> <200904151548.12291.hpj@urpla.net>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Hans-Peter Jansen <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:64806 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752926AbZDWXc0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:32:26 -0400
-In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from rcsinet13.oracle.com ([148.87.113.125]:37906 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753777AbZDOOhE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 10:37:04 -0400
+In-Reply-To: <200904151548.12291.hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Refactor transport addition out of __write_ports() to make
-it easier to understand and maintain.
+On Apr 15, 2009, at 9:48 AM, Hans-Peter Jansen wrote:
+> Am Mittwoch, 15. April 2009 schrieb Trond Myklebust:
+>> On Wed, 2009-04-15 at 12:50 +0200, Hans-Peter Jansen wrote:
+>>> Hi,
+>>>
+>>> I suffer from a problem, where my diskless environment doesn't work
+>>> anymore after upgrading the server from openSUSE 11.0 (2.6.25.20) to
+>>> openSUSE 11.1 (2.6.27.21).
+>>>
+>>> The diskless environment gets set up with an customized initrd via
+>>> pxelinux. The initrd uses klibc's nfsmount, and I've tried both
+>>> protocols: udp and tcp. It's not an iptables issue, since I can  
+>>> mount
+>>> these directories from other (fully booted) systems just fine.
+>>>
+>>> Using the debug version of klibc's nfsmount prints these messages:
+>>> short read: 0 < 28
+>>> Port for 100003/3[udp]: 0
+>>> short read: 0 < 28
+>>> Port for 100005/3[udp]: 0
+>>> NFS params:
+>>>  server = xxx.xx.xx.xx, path = "/roroot", version = 3, proto = udp,
+>>>  mount_port = 627, nfs_port = 2049, flags = 00010282,
+>>
+>>    ^^^^^^^^^^^^^^^^
+>>
+>>>  rsize = 0, wsize = 0, timeo = 7, retrans = 3,
+>>>  acreg (min,max) = (3,60), acdir (min,max) = (30,60),
+>>>  soft = 0, intr = 1, posix = 0, nocto = 0, noac = 0
+>>>
+>>> tcpdumping the communication shows, that for whatever reason, the
+>>> client sends the mount request from source port 798 to destination  
+>>> port
+>>> 627, but the server doesn't listen on 627:
+>>
+>> The question is why is klibc specifying mount port = 627?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+nfs_root_ports() (in fs/nfs/nfsroot.c) sets the default mountd port to  
+627, I think only if the rpcbind doesn't work.
 
- fs/nfsd/nfsctl.c |   56 ++++++++++++++++++++++++++++++++----------------------
- 1 files changed, 33 insertions(+), 23 deletions(-)
+> Well, this is exactly my problem. That's the mount port, but this  
+> one cannot
+> be set to a manual value, thus the rpc stuff infront of it must have  
+> gone
+> wrong.
+>
+> [Update]
+> Issue solved. It was that silly rpcbind package  
+> (0.1.6+git20080930-5.2),
+> that has gone wrong. Replacing it with portmap  
+> (6.0+git20070716-31.37) did
+> it. Looks like this deserves a new bugzilla record.
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 2c1dce8..748532b 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -911,6 +911,36 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
- }
- 
- /*
-+ * A transport listener is added by writing it's transport name and
-+ * a port number.
-+ */
-+static ssize_t __write_ports_addxprt(char *buf)
-+{
-+	char transport[16];
-+	int port, err;
-+
-+	if (sscanf(buf, "%15s %4u", transport, &port) != 2)
-+		return -EINVAL;
-+
-+	if (port < 1 || port > USHORT_MAX)
-+		return -EINVAL;
-+
-+	err = nfsd_create_serv();
-+	if (err != 0)
-+		return err;
-+
-+	err = svc_create_xprt(nfsd_serv, transport,
-+				PF_INET, port, SVC_SOCK_ANONYMOUS);
-+	if (err < 0) {
-+		/* Give a reasonable perror msg for bad transport string */
-+		if (err == -ENOENT)
-+			err = -EPROTONOSUPPORT;
-+		return err;
-+	}
-+	return 0;
-+}
-+
-+/*
-  * A transport listener is removed by writing a "-", it's transport
-  * name, and it's port number.
-  */
-@@ -986,29 +1016,9 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- 		kfree(toclose);
- 		return len;
- 	}
--	/*
--	 * Add a transport listener by writing it's transport name
--	 */
--	if (isalpha(buf[0])) {
--		int err;
--		char transport[16];
--		int port;
--		if (sscanf(buf, "%15s %4d", transport, &port) == 2) {
--			if (port < 1 || port > 65535)
--				return -EINVAL;
--			err = nfsd_create_serv();
--			if (!err) {
--				err = svc_create_xprt(nfsd_serv,
--						      transport, PF_INET, port,
--						      SVC_SOCK_ANONYMOUS);
--				if (err == -ENOENT)
--					/* Give a reasonable perror msg for
--					 * bad transport string */
--					err = -EPROTONOSUPPORT;
--			}
--			return err < 0 ? err : 0;
--		}
--	}
-+
-+	if (isalpha(buf[0]))
-+		return __write_ports_addxprt(buf);
- 
- 	if (buf[0] == '-' && isalpha(buf[1]))
- 		return __write_ports_delxprt(buf);
+When using rpcbind instead of portmapper, what does the output of  
+"rpcinfo" look like on the server?
 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
