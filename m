@@ -1,37 +1,105 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Exposing cache statistics
-Date: Wed, 15 Apr 2009 16:41:32 -0400
-Message-ID: <1239828092.5177.139.camel@heimdal.trondhjem.org>
-References: <49E643CD.9070809@disney.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: klibc's nfsmount failure with 2.6.27.21, while 2.6.25.20 was fine
+Date: Wed, 15 Apr 2009 16:52:26 -0400
+Message-ID: <889BAE90-0719-4560-B4D3-34376B0FFC4C@oracle.com>
+References: <200904152117.41367.hpj@urpla.net>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed	delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Hans-Peter Jansen <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:54561 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751199AbZDOUlg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Apr 2009 16:41:36 -0400
-In-Reply-To: <49E643CD.9070809-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+Received: from acsinet12.oracle.com ([141.146.126.234]:56872 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752244AbZDOUwh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 16:52:37 -0400
+In-Reply-To: <200904152117.41367.hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-04-15 at 13:30 -0700, Kevin Constantine wrote:
-> Has there been any effort to expose caching statistics to the end user? 
->   On the client-side, it would be useful to see how much data is being 
-> re-used from cache vs data that gets retrieved over the wire.  Similarly 
-> on the server side, it would be nice to see how much data is being 
-> served from cache vs having to pull the data from disk.
-> 
-> Just wondering if anyone started anything to expose this sort of 
-> information.
+On Apr 15, 2009, at 3:17 PM, Hans-Peter Jansen wrote:
+> Am Mittwoch, 15. April 2009 schrieb Chuck Lever:
+>> On Apr 15, 2009, at 1:23 PM, Hans-Peter Jansen wrote:
+>>> Am Mittwoch, 15. April 2009 schrieb Chuck Lever:
+>>>> When using rpcbind instead of portmapper, what does the output of
+>>>> "rpcinfo" look like on the server?
+>>>
+>>> It's dumped in the mail starting this thread.
+>>
+>> I don't see why the client's rpcbind attempt for the server's mountd
+>> service should have failed.
+>
+> For completeness, here's the current rpcinfo view with portmap:
+>
+> # rpcinfo -p 172.16.23.110
+>   Program Vers Proto   Port
+>    100000    2   tcp    111  portmapper
+>    100000    2   udp    111  portmapper
+>    100005    1   udp  54838  mountd
+>    100005    1   tcp  32772  mountd
+>    100005    2   udp  54838  mountd
+>    100005    2   tcp  32772  mountd
+>    100005    3   udp  54838  mountd
+>    100005    3   tcp  32772  mountd
+>    100003    2   udp   2049  nfs
+>    100003    3   udp   2049  nfs
+>    100003    4   udp   2049  nfs
+>    100021    1   udp  35501  nlockmgr
+>    100021    3   udp  35501  nlockmgr
+>    100021    4   udp  35501  nlockmgr
+>    100003    2   tcp   2049  nfs
+>    100003    3   tcp   2049  nfs
+>    100003    4   tcp   2049  nfs
+>    100021    1   tcp  54766  nlockmgr
+>    100021    3   tcp  54766  nlockmgr
+>    100021    4   tcp  54766  nlockmgr
+>    100024    1   udp  44650  status
+>    100024    1   tcp  39765  status
+>
+>
+>> Would it be possible for you to capture a packet trace of the =20
+>> client's
+>> attempt to mount it's root file system?  (You will likely need to do
+>> this for a bugzilla report, anyway).
+>
+> =C4hem, Chuck, may I ask you to look into the initial mail again. The=
+ =20
+> failing
+> case is attached there. Here I've attached the good one. Since I =20
+> couldn't
+> locate any mount attempt in the dump, I've left a few more nfs
+> transactions.
 
-See the nfs-iostat tool in the nfs-utils package:
+The client makes a PMAP_GETPORT request via TCP.  The server's rpcbind =
+=20
+drops the connection without replying after receiving the request.  I =20
+didn't see anything immediately wrong with the request, although =20
+wireshark didn't like it either.  I had to decode it by hand.
 
-   http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=tree;f=tools/nfs-iostat;h=929e303cc762a68dfd01546f5150eb294274164e;hb=refs/heads/master
+Restarting rpcbind usually means you lose all your rpc service =20
+registrations until you restart those services, but it would be worth =20
+trying this: stop the server's rpcbind service, then run rpcbind in a =20
+terminal session with "-d" to see what it thinks the problem is when =20
+it drops the connection.
 
-Note that you need a 2.6.17 kernel or newer.
+Please attach a copy of your /etc/netconfig to reply.
 
-Cheers
-  Trond
+>> Also let us know what's running on your clients (distribution, kerne=
+l
+>> version, etc).
+>
+> Hmm, sure. The client setup is a legacy SuSE 9.3 diskless environment
+> (unfortunately Novell didn't manage to create a distribution with =20
+> similar
+> stability since then..., being a rpm junke, I will soon check Cent-OS
+> (again)).
+>
+> Client (relevant) versions:
+> Kernel: 2.6.11.4
+> Udev (nfsmount): 053
+>
+> Let me know, what more I can provide, please.
 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
