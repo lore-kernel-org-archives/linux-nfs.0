@@ -1,95 +1,78 @@
-From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: [core/kill-the-BKL] nfs3: possible circular locking dependency
-Date: Wed, 15 Apr 2009 22:08:01 +0400
-Message-ID: <a4423d670904151108h39eb3a5fk36d0e5e623e7388f@mail.gmail.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Fix send buffer length calculation in
+ nfs3_xdr_setaclargs()
+Date: Wed, 15 Apr 2009 14:00:56 -0400
+Message-ID: <1239818456.5177.88.camel@heimdal.trondhjem.org>
+References: <49E5EAE6.7000507@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-To: linux-kernel <linux-kernel@vger.kernel.org>,
-	Ingo Molnar <mingo@elte.hu>, linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Suresh Jayaraman <sjayaraman@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f165.google.com ([209.85.219.165]:48148 "EHLO
-	mail-ew0-f165.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752178AbZDOSIE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 14:08:04 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:59565 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752032AbZDOSZK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Apr 2009 14:25:10 -0400
+In-Reply-To: <49E5EAE6.7000507@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+On Wed, 2009-04-15 at 19:40 +0530, Suresh Jayaraman wrote:
+> The recent posixacl fix(commit ae46141ff08f1965b17c531b571953c39ce8b9e2)
+> seems to have introduced a bug that will lead to -EINVAL errors during
+> normal setfacl operations on file or dir. This patch attempts to fix
+> this.
 
-I have pulled core/kill-the-BKL on top of 2.6.30-rc2.
+To start with, your len_in_head is in units of 32-bit _words_, whereas
+len, base, and req->rq_slen are in units of bytes.
 
-device: '0:18': device_add
-
-=======================================================
-[ INFO: possible circular locking dependency detected ]
-2.6.30-rc2-00057-g30aa902-dirty #5
--------------------------------------------------------
-mount.nfs/1740 is trying to acquire lock:
- (kernel_mutex){+.+.+.}, at: [<00000000006f32dc>] lock_kernel+0x28/0x3c
-
-but task is already holding lock:
- (&type->s_umount_key#24/1){+.+.+.}, at: [<00000000004b88a0>] sget+0x228/0x36c
-
-which lock already depends on the new lock.
+Then, 'len' is initialised to the length of the currently encoded part
+of the RPC header before subtracting 'len_in_head'. The resulting number
+is then used both as the length of the page array, and to extend the
+length of the req->rq_svec??? That makes absolutely no sense...
 
 
-the existing dependency chain (in reverse order) is:
+Please check if the following patch fixes things for you.
 
--> #1 (&type->s_umount_key#24/1){+.+.+.}:
-       [<00000000004776d0>] lock_acquire+0x5c/0x74
-       [<0000000000469f5c>] down_write_nested+0x38/0x50
-       [<00000000004b88a0>] sget+0x228/0x36c
-       [<00000000005688fc>] nfs_get_sb+0x80c/0xa7c
-       [<00000000004b7ec8>] vfs_kern_mount+0x44/0xa4
-       [<00000000004b7f84>] do_kern_mount+0x30/0xcc
-       [<00000000004cf300>] do_mount+0x7c8/0x80c
-       [<00000000004ed2a4>] compat_sys_mount+0x224/0x274
-       [<0000000000406154>] linux_sparc_syscall32+0x34/0x40
+Trond
+------------------------------------------------------------
+>From b273b42f8b793a4a446015b50a5c1473553af48b Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Wed, 15 Apr 2009 13:58:45 -0400
+Subject: [PATCH] NFS: Fix the XDR iovec calculation in nfs3_xdr_setaclargs
 
--> #0 (kernel_mutex){+.+.+.}:
-       [<00000000004776d0>] lock_acquire+0x5c/0x74
-       [<00000000006f0ebc>] mutex_lock_nested+0x48/0x380
-       [<00000000006f32dc>] lock_kernel+0x28/0x3c
-       [<00000000006d20ec>] rpc_wait_bit_killable+0x64/0x8c
-       [<00000000006f0620>] __wait_on_bit+0x64/0xc0
-       [<00000000006f06e4>] out_of_line_wait_on_bit+0x68/0x7c
-       [<00000000006d2938>] __rpc_execute+0x150/0x2b4
-       [<00000000006d2ac0>] rpc_execute+0x24/0x34
-       [<00000000006cc338>] rpc_run_task+0x64/0x74
-       [<00000000006cc474>] rpc_call_sync+0x58/0x7c
-       [<00000000005717b0>] nfs3_rpc_wrapper+0x24/0xa0
-       [<0000000000572024>] do_proc_get_root+0x6c/0x10c
-       [<00000000005720dc>] nfs3_proc_get_root+0x18/0x5c
-       [<000000000056401c>] nfs_get_root+0x34/0x17c
-       [<0000000000568adc>] nfs_get_sb+0x9ec/0xa7c
-       [<00000000004b7ec8>] vfs_kern_mount+0x44/0xa4
-       [<00000000004b7f84>] do_kern_mount+0x30/0xcc
-       [<00000000004cf300>] do_mount+0x7c8/0x80c
-       [<00000000004ed2a4>] compat_sys_mount+0x224/0x274
-       [<0000000000406154>] linux_sparc_syscall32+0x34/0x40
+Commit ae46141ff08f1965b17c531b571953c39ce8b9e2 (NFSv3: Fix posix ACL code)
+introduces a bug in the calculation of the XDR header iovec. In the case
+where we are inlining the acls, we need to adjust the length of the iovec
+req->rq_svec, in addition to adjusting the total buffer length.
 
-other info that might help us debug this:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs3xdr.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-1 lock held by mount.nfs/1740:
- #0:  (&type->s_umount_key#24/1){+.+.+.}, at: [<00000000004b88a0>]
-sget+0x228/0x36c
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index e6a1932..35869a4 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -713,7 +713,8 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+ 	if (args->npages != 0)
+ 		xdr_encode_pages(buf, args->pages, 0, args->len);
+ 	else
+-		req->rq_slen += args->len;
++		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
++				p + XDR_QUADLEN(args->len));
+ 
+ 	err = nfsacl_encode(buf, base, args->inode,
+ 			    (args->mask & NFS_ACL) ?
+-- 
+1.6.0.4
 
-stack backtrace:
-Call Trace:
- [00000000004755ac] print_circular_bug_tail+0xfc/0x10c
- [0000000000476e24] __lock_acquire+0x12f0/0x1b40
- [00000000004776d0] lock_acquire+0x5c/0x74
- [00000000006f0ebc] mutex_lock_nested+0x48/0x380
- [00000000006f32dc] lock_kernel+0x28/0x3c
- [00000000006d20ec] rpc_wait_bit_killable+0x64/0x8c
- [00000000006f0620] __wait_on_bit+0x64/0xc0
- [00000000006f06e4] out_of_line_wait_on_bit+0x68/0x7c
- [00000000006d2938] __rpc_execute+0x150/0x2b4
- [00000000006d2ac0] rpc_execute+0x24/0x34
- [00000000006cc338] rpc_run_task+0x64/0x74
- [00000000006cc474] rpc_call_sync+0x58/0x7c
- [00000000005717b0] nfs3_rpc_wrapper+0x24/0xa0
- [0000000000572024] do_proc_get_root+0x6c/0x10c
- [00000000005720dc] nfs3_proc_get_root+0x18/0x5c
- [000000000056401c] nfs_get_root+0x34/0x17c
-device: '0:19': device_add
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
