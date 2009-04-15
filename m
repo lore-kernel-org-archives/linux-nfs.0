@@ -1,25 +1,21 @@
 From: "Hans-Peter Jansen" <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
 Subject: Re: klibc's nfsmount failure with 2.6.27.21, while 2.6.25.20 was fine
-Date: Wed, 15 Apr 2009 21:16:48 +0200
-Message-ID: <200904152116.48337.hpj@urpla.net>
-References: <200904151250.49372.hpj@urpla.net> <200904151923.58709.hpj@urpla.net> <BCC012A8-842D-4699-917C-47ADF25446C7@oracle.com>
+Date: Wed, 15 Apr 2009 21:17:40 +0200
+Message-ID: <200904152117.41367.hpj@urpla.net>
 Mime-Version: 1.0
 Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_gKj5JG3HGO0Gory"
-To: linux-nfs@vger.kernel.org
+  boundary="Boundary-00=_VLj5JWkaFPgg67s"
+To: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.186]:62185 "EHLO
+Received: from moutng.kundenserver.de ([212.227.126.177]:59935 "EHLO
 	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753212AbZDOTQ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 15:16:57 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by tyrex.lisa.loc (Postfix) with ESMTP id 1454AF593480
-	for <linux-nfs@vger.kernel.org>; Wed, 15 Apr 2009 21:16:52 +0200 (CEST)
-In-Reply-To: <BCC012A8-842D-4699-917C-47ADF25446C7@oracle.com>
+	with ESMTP id S1752399AbZDOTRu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 15:17:50 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Boundary-00=_gKj5JG3HGO0Gory
+--Boundary-00=_VLj5JWkaFPgg67s
 Content-Type: text/plain;
   charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
@@ -91,7 +87,7 @@ Let me know, what more I can provide, please.
 THanks,
 Pete
 
---Boundary-00=_gKj5JG3HGO0Gory
+--Boundary-00=_VLj5JWkaFPgg67s
 Content-Type: application/octet-stream;
   name="shark-nfs-mount-ok.dump"
 Content-Transfer-Encoding: base64
@@ -302,4 +298,4 @@ CAEqf89ZWpvUjoAYCDwtyAAAAQEICv/7lgUASoYegAAAZAY21EUAAAAAAAAAAgABhqMAAAADAAAA
 AQAAAAEAAAAcAEGIFgAAAAYobm9uZSkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAEABgHLjKLm
 G7ZFPbLi4rpaQ16hJm21YAAAAAA=
 
---Boundary-00=_gKj5JG3HGO0Gory--
+--Boundary-00=_VLj5JWkaFPgg67s--
