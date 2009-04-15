@@ -1,45 +1,52 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: klibc's nfsmount failure with 2.6.27.21, while 2.6.25.20 was fine
-Date: Wed, 15 Apr 2009 13:35:09 -0400
-Message-ID: <BCC012A8-842D-4699-917C-47ADF25446C7@oracle.com>
-References: <200904151250.49372.hpj@urpla.net> <200904151548.12291.hpj@urpla.net> <0D024344-54E3-4A09-BE78-3E67667E05E7@oracle.com> <200904151923.58709.hpj@urpla.net>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org,
-	Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Hans-Peter Jansen <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] getport.c: fix non-standard C
+Date: Wed, 15 Apr 2009 13:58:44 -0400
+Message-ID: <49E62054.9030804@RedHat.com>
+References: <20090406160411.7179.41228.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:31617 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754286AbZDORf2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 13:35:28 -0400
-In-Reply-To: <200904151923.58709.hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:38436 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752605AbZDOSBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Apr 2009 14:01:38 -0400
+In-Reply-To: <20090406160411.7179.41228.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 15, 2009, at 1:23 PM, Hans-Peter Jansen wrote:
-> Am Mittwoch, 15. April 2009 schrieb Chuck Lever:
->>
->> When using rpcbind instead of portmapper, what does the output of
->> "rpcinfo" look like on the server?
->
-> It's dumped in the mail starting this thread.
 
-I don't see why the client's rpcbind attempt for the server's mountd  
-service should have failed.
 
-Would it be possible for you to capture a packet trace of the client's  
-attempt to mount it's root file system?  (You will likely need to do  
-this for a bugzilla report, anyway).
+Chuck Lever wrote:
+> Squelch a compiler warning in getport.c:
+>=20
+>   getport.c:65: warning: =E2=80=98static=E2=80=99 is not at beginning=
+ of declaration
+>=20
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>=20
+>  support/nfs/getport.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index 734d21a..cf1677e 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -60,9 +60,9 @@
+>  #endif	/* !HAVE_LIBTIRPC */
+> =20
+>  #ifdef HAVE_LIBTIRPC
+> -const static rpcvers_t default_rpcb_version =3D RPCBVERS_4;
+> +static const rpcvers_t default_rpcb_version =3D RPCBVERS_4;
+>  #else	/* !HAVE_LIBTIRPC */
+> -const static rpcvers_t default_rpcb_version =3D PMAPVERS;
+> +static const rpcvers_t default_rpcb_version =3D PMAPVERS;
+>  #endif	/* !HAVE_LIBTIRPC */
+> =20
+>  #ifdef HAVE_DECL_AI_ADDRCONFIG
+>=20
+Committed....
 
-On the server you can use "tcpdump -s0 -w /tmp/raw host " followed by  
-the hostname of your client.  It might be useful to capture both a  
-failed session (with rpcbind) and a working session (with  
-portmapper).  We want the raw (binary) trace dumps, not text output.
-
-Also let us know what's running on your clients (distribution, kernel  
-version, etc).
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+steved.
