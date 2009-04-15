@@ -1,182 +1,210 @@
-From: "Hans-Peter Jansen" <hpj-2x7n3sizJbFeoWH0uzbU5w@public.gmane.org>
-Subject: klibc's nfsmount failure with 2.6.27.21, while 2.6.25.20 was fine
-Date: Wed, 15 Apr 2009 12:50:49 +0200
-Message-ID: <200904151250.49372.hpj@urpla.net>
+From: Benjamin Coddington <Benjamin.Coddington@uvm.edu>
+Subject: Re: NFSv4 client crash
+Date: Wed, 15 Apr 2009 07:25:46 -0400
+Message-ID: <49E5C43A.1060503@uvm.edu>
+References: <4733da850904141440s26c73658wcd26485c569a758e@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: Multipart/Mixed;
-  boundary="Boundary-00=_Jwb5JvWbZrONki3"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-nfs@vger.kernel.org, Vasily Tarasov <tarasov-q12XvdSUhMJ7tPAFqOLdPg@public.gmane.org>
+To: Sujay Godbole <sujay@fsl.cs.sunysb.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.171]:64238 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753123AbZDOKuz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Apr 2009 06:50:55 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by tyrex.lisa.loc (Postfix) with ESMTP id 6BEE2F17E884
-	for <linux-nfs@vger.kernel.org>; Wed, 15 Apr 2009 12:50:53 +0200 (CEST)
+Received: from smtp1.uvm.edu ([132.198.101.168]:49677 "EHLO smtp1.uvm.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752297AbZDOLow (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Apr 2009 07:44:52 -0400
+In-Reply-To: <4733da850904141440s26c73658wcd26485c569a758e-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Boundary-00=_Jwb5JvWbZrONki3
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Hi Sujay,  this looks like a problem we had with this kernel.  General 
+advice is to move to a recent kernel.  See the thread at 
+http://marc.info/?t=123749011300001&r=1&w=2.
 
-Hi,
+nfsv4@linux-nfs.org is the best place to report problems w/ the linux 
+client.
 
-I suffer from a problem, where my diskless environment doesn't work anymore 
-after upgrading the server from openSUSE 11.0 (2.6.25.20) to openSUSE 11.1 
-(2.6.27.21).
+Ben
 
-The diskless environment gets set up with an customized initrd via pxelinux.
-The initrd uses klibc's nfsmount, and I've tried both protocols: udp and 
-tcp. It's not an iptables issue, since I can mount these directories from 
-other (fully booted) systems just fine. 
-
-Using the debug version of klibc's nfsmount prints these messages:
-short read: 0 < 28
-Port for 100003/3[udp]: 0
-short read: 0 < 28
-Port for 100005/3[udp]: 0
-NFS params:
-  server = xxx.xx.xx.xx, path = "/roroot", version = 3, proto = udp,
-  mount_port = 627, nfs_port = 2049, flags = 00010282,
-  rsize = 0, wsize = 0, timeo = 7, retrans = 3,
-  acreg (min,max) = (3,60), acdir (min,max) = (30,60),
-  soft = 0, intr = 1, posix = 0, nocto = 0, noac = 0
-
-tcpdumping the communication shows, that for whatever reason, the client 
-sends the mount request from source port 798 to destination port 627, but 
-the server doesn't listen on 627:
-# rpcinfo -p
-   program vers proto   port  service
-    100000    4   tcp    111  portmapper
-    100000    3   tcp    111  portmapper
-    100000    2   tcp    111  portmapper
-    100000    4   udp    111  portmapper
-    100000    3   udp    111  portmapper
-    100000    2   udp    111  portmapper
-    100005    1   udp  41656  mountd
-    100005    1   tcp  49063  mountd
-    100005    2   udp  41656  mountd
-    100005    2   tcp  49063  mountd
-    100005    3   udp  41656  mountd
-    100005    3   tcp  49063  mountd
-    100003    2   udp   2049  nfs
-    100003    3   udp   2049  nfs
-    100003    4   udp   2049  nfs
-    100021    1   udp  33144  nlockmgr
-    100021    3   udp  33144  nlockmgr
-    100021    4   udp  33144  nlockmgr
-    100003    2   tcp   2049  nfs
-    100003    3   tcp   2049  nfs
-    100003    4   tcp   2049  nfs
-    100021    1   tcp  57268  nlockmgr
-    100021    3   tcp  57268  nlockmgr
-    100021    4   tcp  57268  nlockmgr
-    100024    1   udp  39508  status
-    100024    1   tcp  45430  status
-
-
-I've attached the relevant tcpdump section.
-
-I would be very grateful, if some kind soul could enlight me here, as I'm 
-fully puzzled..
-
-Pete
-
---Boundary-00=_Jwb5JvWbZrONki3
-Content-Type: application/octet-stream;
-  name="shark-nfs-mount.dump"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
-	filename="shark-nfs-mount.dump"
-
-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
-
---Boundary-00=_Jwb5JvWbZrONki3--
+Sujay Godbole wrote:
+> Hi,
+> 
+> I am not sure this is a right mailing list to report the errors
+> regarding NFsv4 client.  I am running Centos 5.3 NFSv4 client against
+> Solaris 10 (x86 64 bit architecture) NFS server. I received following
+> coredump while running iozone benchmark for 2GB file size. I got this
+> error in  single client as well as multiple client scenario. After the
+> initial dump, machine is extremely slow and I can see keyboard input
+> after a minute.
+> 
+> Here are the details of machine configuration:
+> Distribution : Centos 5.3
+> kernel version : 2.6.18-128.el5
+> 
+> 
+> Here is the dump :
+> Apr 13 19:57:10 localhost kernel: BUG: soft lockup - CPU#1 stuck for
+> 10s! [192.168.0.104-r:3188]
+> Apr 13 19:57:10 localhost kernel: CPU 1:
+> Apr 13 19:57:10 localhost kernel: Modules linked in: nfs lockd fscache
+> nfs_acl ipv6 xfrm_nalgo crypto_api autofs4 hidp rfcomm l2cap bluetooth
+> sunrpc dm_mirror dm_multipath scsi_dh video hwmon backlight sbs i2c_ec
+> i2c_core button battery asus_acpi acpi_memhotplug ac lp parport_pc
+> parport serio_raw e752x_edac e1000 edac_mc pcspkr sg dm_raid45
+> dm_message dm_region_hash dm_log dm_mod dm_mem_cache ata_piix libata
+> shpchp aacraid sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
+> Apr 13 19:57:10 localhost kernel: Pid: 3188, comm: 192.168.0.104-r Not
+> tainted 2.6.18-128.el5 #1
+> Apr 13 19:57:10 localhost kernel: RIP: 0010:[<ffffffff8844d093>]
+> [<ffffffff8844d093>] :nfs:nfs4_open_expired+0x90/0x16c
+> Apr 13 19:57:10 localhost kernel: RSP: 0018:ffff810032da3e40  EFLAGS: 00000247
+> Apr 13 19:57:10 localhost kernel: RAX: 000000000001a002 RBX:
+> 0000000000000000 RCX: 000000010019e262
+> Apr 13 19:57:10 localhost kernel: RDX: 0000000000000000 RSI:
+> ffff81002b1989c0 RDI: ffff81003f395fd8
+> Apr 13 19:57:10 localhost kernel: RBP: ffff81003e9e29c0 R08:
+> 0000000000000000 R09: ffff810037ddf080
+> Apr 13 19:57:10 localhost kernel: R10: ffff810030850250 R11:
+> fffffffffffffeff R12: ffff810035de4b40
+> Apr 13 19:57:10 localhost kernel: R13: ffff81002b198ac0 R14:
+> 0000000000000004 R15: ffffffff8843703e
+> Apr 13 19:57:10 localhost kernel: FS:  0000000000000000(0000)
+> GS:ffff810037d237c0(0000) knlGS:0000000000000000
+> Apr 13 19:57:10 localhost kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
+> 000000008005003b
+> Apr 13 19:57:10 localhost kernel: CR2: 00002aaaaacd3000 CR3:
+> 000000003d95d000 CR4: 00000000000006e0
+> Apr 13 19:57:10 localhost kernel:
+> Apr 13 19:57:10 localhost kernel: Call Trace:
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff8009d909>]
+> keventd_create_kthread+0x0/0xc4
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff884540b5>]
+> :nfs:nfs4_reclaim_open_state+0x2d/0x150
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff8845437c>]
+> :nfs:reclaimer+0x1a4/0x2ac
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff884541d8>] :nfs:reclaimer+0x0/0x2ac
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff80032360>] kthread+0xfe/0x132
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff8005dfb1>] child_rip+0xa/0x11
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff8009d909>]
+> keventd_create_kthread+0x0/0xc4
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff80032262>] kthread+0x0/0x132
+> Apr 13 19:57:10 localhost kernel:  [<ffffffff8005dfa7>] child_rip+0x0/0x11
+> Apr 13 19:57:10 localhost kernel:
+> Apr 13 19:57:20 localhost kernel: BUG: soft lockup - CPU#1 stuck for
+> 10s! [192.168.0.104-r:3188]
+> Apr 13 19:57:20 localhost kernel: CPU 1:
+> Apr 13 19:57:20 localhost kernel: Modules linked in: nfs lockd fscache
+> nfs_acl ipv6 xfrm_nalgo crypto_api autofs4 hidp rfcomm l2cap bluetooth
+> sunrpc dm_mirror dm_multipath scsi_dh video hwmon backlight sbs i2c_ec
+> i2c_core button battery asus_acpi acpi_memhotplug ac lp parport_pc
+> parport serio_raw e752x_edac e1000 edac_mc pcspkr sg dm_raid45
+> dm_message dm_region_hash dm_log dm_mod dm_mem_cache ata_piix libata
+> shpchp aacraid sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
+> Apr 13 19:57:20 localhost kernel: Pid: 3188, comm: 192.168.0.104-r Not
+> tainted 2.6.18-128.el5 #1
+> Apr 13 19:57:20 localhost kernel: RIP: 0010:[<ffffffff8014c625>]
+> [<ffffffff8014c625>] __list_add+0x32/0x68
+> Apr 13 19:57:20 localhost kernel: RSP: 0018:ffff810032da3d80  EFLAGS: 00000246
+> Apr 13 19:57:20 localhost kernel: RAX: ffff81002b1989c0 RBX:
+> ffff81002b1989c0 RCX: 000000010019e262
+> Apr 13 19:57:20 localhost kernel: RDX: ffff81002b1989c0 RSI:
+> ffff81002b1989c0 RDI: ffff81003f395fd8
+> Apr 13 19:57:20 localhost kernel: RBP: ffffffff882dc746 R08:
+> 0000000000000000 R09: ffff810037ddf080
+> Apr 13 19:57:20 localhost kernel: R10: ffff810030850250 R11:
+> fffffffffffffeff R12: ffff8100308502f8
+> Apr 13 19:57:20 localhost kernel: R13: ffff810030850250 R14:
+> ffff810006403e00 R15: ffff81003effac00
+> Apr 13 19:57:20 localhost kernel: FS:  0000000000000000(0000)
+> GS:ffff810037d237c0(0000) knlGS:0000000000000000
+> Apr 13 19:57:20 localhost kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
+> 000000008005003b
+> Apr 13 19:57:20 localhost kernel: CR2: 00002aaaaacd3000 CR3:
+> 000000003d95d000 CR4: 00000000000006e0
+> Apr 13 19:57:20 localhost kernel:
+> Apr 13 19:57:20 localhost kernel: Call Trace:
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8843703e>]
+> :nfs:nfs_access_get_cached+0xab/0xfa
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8844c2f9>]
+> :nfs:_nfs4_do_access+0x2d/0x85
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8844d06f>]
+> :nfs:nfs4_open_expired+0x6c/0x16c
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8009d909>]
+> keventd_create_kthread+0x0/0xc4
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff884540b5>]
+> :nfs:nfs4_reclaim_open_state+0x2d/0x150
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8845437c>]
+> :nfs:reclaimer+0x1a4/0x2ac
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff884541d8>] :nfs:reclaimer+0x0/0x2ac
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff80032360>] kthread+0xfe/0x132
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8005dfb1>] child_rip+0xa/0x11
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8009d909>]
+> keventd_create_kthread+0x0/0xc4
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff80032262>] kthread+0x0/0x132
+> Apr 13 19:57:20 localhost kernel:  [<ffffffff8005dfa7>] child_rip+0x0/0x11
+> Apr 13 19:57:20 localhost kernel:
+> Apr 13 19:57:30 localhost kernel: BUG: soft lockup - CPU#1 stuck for
+> 10s! [192.168.0.104-r:3188]
+> Apr 13 19:57:30 localhost kernel: CPU 1:
+> Apr 13 19:57:30 localhost kernel: Modules linked in: nfs lockd fscache
+> nfs_acl ipv6 xfrm_nalgo crypto_api autofs4 hidp rfcomm l2cap bluetooth
+> sunrpc dm_mirror dm_multipath scsi_dh video hwmon backlight sbs i2c_ec
+> i2c_core button battery asus_acpi acpi_memhotplug ac lp parport_pc
+> parport serio_raw e752x_edac e1000 edac_mc pcspkr sg dm_raid45
+> dm_message dm_region_hash dm_log dm_mod dm_mem_cache ata_piix libata
+> shpchp aacraid sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
+> Apr 13 19:57:30 localhost kernel: Pid: 3188, comm: 192.168.0.104-r Not
+> tainted 2.6.18-128.el5 #1
+> Apr 13 19:57:30 localhost kernel: RIP: 0010:[<ffffffff8844c2d3>]
+> [<ffffffff8844c2d3>] :nfs:_nfs4_do_access+0x7/0x85
+> Apr 13 19:57:30 localhost kernel: RSP: 0018:ffff810032da3e28  EFLAGS: 00000246
+> Apr 13 19:57:30 localhost kernel: RAX: 000000000001a002 RBX:
+> 0000000000000000 RCX: 000000010019e262
+> Apr 13 19:57:30 localhost kernel: RDX: 0000000000000001 RSI:
+> ffff81003e9e29c0 RDI: ffff81002b198ac0
+> Apr 13 19:57:30 localhost kernel: RBP: ffffffff8843703e R08:
+> 0000000000000000 R09: ffff810037ddf080
+> Apr 13 19:57:30 localhost kernel: R10: ffff810030850250 R11:
+> fffffffffffffeff R12: ffff81003f395fd8
+> Apr 13 19:57:30 localhost kernel: R13: ffff81002b198ac0 R14:
+> ffff81003f395fc0 R15: 0000000000000246
+> Apr 13 19:57:30 localhost kernel: FS:  0000000000000000(0000)
+> GS:ffff810037d237c0(0000) knlGS:0000000000000000
+> Apr 13 19:57:30 localhost kernel: CS:  0010 DS: 0018 ES: 0018 CR0:
+> 000000008005003b
+> Apr 13 19:57:30 localhost kernel: CR2: 00002aaaaacd3000 CR3:
+> 000000003d95d000 CR4: 00000000000006e0
+> Apr 13 19:57:30 localhost kernel:
+> Apr 13 19:57:30 localhost kernel: Call Trace:
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff8844d06f>]
+> :nfs:nfs4_open_expired+0x6c/0x16c
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff8009d909>]
+> keventd_create_kthread+0x0/0xc4
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff884540b5>]
+> :nfs:nfs4_reclaim_open_state+0x2d/0x150
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff8845437c>]
+> :nfs:reclaimer+0x1a4/0x2ac
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff884541d8>] :nfs:reclaimer+0x0/0x2ac
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff80032360>] kthread+0xfe/0x132
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff8005dfb1>] child_rip+0xa/0x11
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff8009d909>]
+> keventd_create_kthread+0x0/0xc4
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff80032262>] kthread+0x0/0x132
+> Apr 13 19:57:30 localhost kernel:  [<ffffffff8005dfa7>] child_rip+0x0/0x11
+> Apr 13 19:57:30 localhost kernel:
+> 
+> ##############################
+> 
+> 
+> Is this the known issue and fixed in later kernel versions ?
+> 
+> 
+> Thank you.
+> 
+> 
+> Regards
+> Sujay
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
