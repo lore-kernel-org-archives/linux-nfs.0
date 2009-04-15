@@ -1,74 +1,160 @@
-From: Simon Kirby <sim@hostway.ca>
-Subject: rpciod causes workqueue BUG()
-Date: Tue, 14 Apr 2009 17:37:34 -0700
-Message-ID: <20090415003734.GB17195@hostway.ca>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: [RFC][PATCH] vfs: check inode size on no_cached_page
+Date: Wed, 15 Apr 2009 09:36:34 +0800
+Message-ID: <20090415013634.GB6143@localhost>
+References: <20090412071605.GA14058@localhost> <20090414171114.04a47932.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=gb2312
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"xcf-pcTkQGq1WEvM1kAEIRd3EQ@public.gmane.org" <xcf-pcTkQGq1WEvM1kAEIRd3EQ@public.gmane.org>, linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from newpeace.netnation.com ([204.174.223.7]:42028 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751300AbZDOAv2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Apr 2009 20:51:28 -0400
-Received: from sim by peace.netnation.com with local (Exim 4.63)
-	(envelope-from <sim@netnation.com>)
-	id 1Ltt8A-0007ji-T7
-	for linux-nfs@vger.kernel.org; Tue, 14 Apr 2009 17:37:34 -0700
+Received: from mga14.intel.com ([143.182.124.37]:14161 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757600AbZDOBgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Apr 2009 21:36:50 -0400
+In-Reply-To: <20090414171114.04a47932.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-'lo!
+On Wed, Apr 15, 2009 at 08:11:14AM +0800, Andrew Morton wrote:
+> On Sun, 12 Apr 2009 15:16:05 +0800
+> Wu Fengguang <fengguang.wu@intel.com> wrote:
+> 
+> > [This patch may not necessarily be merged, but at least we should
+> >  be aware of the problem.]
+> > 
+> > When user space requests past-EOF data, do_generic_file_read() will
+> > issue a bonus readpage call, which may be unfavorable.
+> > 
+> > do_generic_file_read:
+> >         -> find_page:
+> >         -> find_get_page()             = NULL
+> >         -> page_cache_sync_readahead()
+> >         -> find_get_page()             = NULL
+> >         -> no_cached_page:
+> >         -> readpage:
 
-We saw this in production on one of our shared hosting servers.  This is
-the first time we've seen this particular issue, and it was in the middle
-of the night when nothing special was happening (that we know of).
+> >                 -> nfs_readpage()      = error
+> >         -> readpage_error:
 
-Linux 2.6.28.7 compiled from source (no patches), NFSv3 in this case,
-with lockd fairly well-used.  There is a large number of NFS mounts to an
-HA NFS server (same kernel version).
+Sorry nfs_readpage() will actually return 0 now. See below.
 
-After this occurred, our health-checking systems showed that NFS-touching
-processes seemed to be hanging.  Has this issue been seen before?
+> > 
+> > Reported-by: Xu Chenfeng <xcf-pcTkQGq1WEvM1kAEIRd3EQ@public.gmane.org>
+> > Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
+> > ---
+> >  mm/filemap.c |    5 +++++
+> >  1 file changed, 5 insertions(+)
+> > 
+> > --- mm.orig/mm/filemap.c
+> > +++ mm/mm/filemap.c
+> > @@ -1269,6 +1269,11 @@ readpage_error:
+> >  		goto out;
+> >  
+> >  no_cached_page:
+> > +		isize = i_size_read(inode);
+> > +		end_index = (isize - 1) >> PAGE_CACHE_SHIFT;
+> > +		if (unlikely(!isize || index > end_index))
+> > +			goto out;
+> > +
+> >  		/*
+> >  		 * Ok, it wasn't cached, so we need to create a new
+> >  		 * page..
+> 
+> Is this a problem which needs to be solved?  userspace does something
+> silly and the kernel behaves a bit suboptimally?
+>
+> If thats the only problem here then it's not worth adding fastpath
+> cycles to fix it?
 
-Simon-
+Yeah just some inefficiency in theory, so no fixing is necessary.
 
-...no prior kernel messages for over a day...
-Apr 13 02:54:38 lsh1001 kernel: ------------[ cut here ]------------
-Apr 13 02:54:38 lsh1001 kernel: kernel BUG at kernel/workqueue.c:292!
-Apr 13 02:54:38 lsh1001 kernel: invalid opcode: 0000 [#1] SMP 
-Apr 13 02:54:38 lsh1001 kernel: last sysfs file: /sys/block/sda/stat
-Apr 13 02:54:38 lsh1001 kernel: CPU 0 
-Apr 13 02:54:38 lsh1001 kernel: Modules linked in: nf_conntrack_ftp xt_state xt_owner xt_MARK nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 bnx2 zlib_inflate
-Apr 13 02:54:38 lsh1001 kernel: Pid: 1317, comm: rpciod/0 Not tainted 2.6.28.7-hw #1
-Apr 13 02:54:38 lsh1001 kernel: RIP: 0010:[<ffffffff80251014>]  [<ffffffff80251014>] run_workqueue+0xf4/0x150
-Apr 13 02:54:38 lsh1001 kernel: RSP: 0018:ffff88012f3fbe80  EFLAGS: 00010286
-Apr 13 02:54:38 lsh1001 kernel: RAX: 0000000000000000 RBX: ffff8801286f3c18 RCX: ffff88012f3fa000
-Apr 13 02:54:38 lsh1001 kernel: RDX: ffff8801286f3c18 RSI: ffff88012f3fbec0 RDI: ffff88012f35d200
-Apr 13 02:54:38 lsh1001 kernel: RBP: ffff88012f3fbeb0 R08: ffff88012f3fa000 R09: 0000000000000001
-Apr 13 02:54:38 lsh1001 kernel: R10: 0000000000000001 R11: 0000000000000001 R12: ffff88012f35d200
-Apr 13 02:54:38 lsh1001 kernel: R13: ffff8801286f3c10 R14: ffffffff806706a0 R15: ffff88012f35d208
-Apr 13 02:54:38 lsh1001 kernel: FS:  0000000000000000(0000) GS:ffffffff8098a000(0000) knlGS:0000000000000000
-Apr 13 02:54:38 lsh1001 kernel: CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-Apr 13 02:54:38 lsh1001 kernel: CR2: 0000000000412de0 CR3: 0000000077cbe000 CR4: 00000000000006e0
-Apr 13 02:54:38 lsh1001 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-Apr 13 02:54:38 lsh1001 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Apr 13 02:54:38 lsh1001 kernel: Process rpciod/0 (pid: 1317, threadinfo ffff88012f3fa000, task ffff88012f22aae0)
-Apr 13 02:54:38 lsh1001 kernel: Stack:
-Apr 13 02:54:38 lsh1001 kernel:  ffff88012f3fbeb0 ffff88012f35d218 ffff88012f35d200 ffff88012f3fbec0
-Apr 13 02:54:38 lsh1001 kernel:  ffff88012f35d208 ffff88012f855ef0 ffff88012f3fbf10 ffffffff80251b73
-Apr 13 02:54:38 lsh1001 kernel:  0000000000000000 ffff88012f22aae0 ffffffff80255090 ffff88012f3fbed8
-Apr 13 02:54:38 lsh1001 kernel: Call Trace:
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff80251b73>] worker_thread+0x93/0xd0
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff80255090>] ? autoremove_wake_function+0x0/0x40
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff80251ae0>] ? worker_thread+0x0/0xd0
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff80254c1d>] kthread+0x4d/0x80
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff8020d659>] child_rip+0xa/0x11
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff80254bd0>] ? kthread+0x0/0x80
-Apr 13 02:54:38 lsh1001 kernel:  [<ffffffff8020d64f>] ? child_rip+0x0/0x11
-Apr 13 02:54:38 lsh1001 kernel: Code: 00 00 00 00 75 81 41 ff 4c 24 48 4c 89 e7 e8 74 5a fd ff 90 fb 0f 1f 80 00 00 00 00 48 83 c4 08 5b 41 5c 41 5d 41 5e 41 5f c9 c3 <0f> 0b eb fe 65 48 8b 34 25 00 00 00 00 8b 8e 68 01 00 00 48 c7 
-Apr 13 02:54:38 lsh1001 kernel: RIP  [<ffffffff80251014>] run_workqueue+0xf4/0x150
-Apr 13 02:54:38 lsh1001 kernel:  RSP <ffff88012f3fbe80>
-Apr 13 02:54:38 lsh1001 kernel: ---[ end trace 22021e591705aaa8 ]---
-Apr 13 02:56:38 lsh1001 kernel: lockd: server 10.10.52.220 not responding, still trying
-Apr 13 02:56:38 lsh1001 kernel: lockd: server 10.10.52.220 not responding, still trying
-...no further messages until manual reboot...
+The underlying fs code shall be able to do the right thing - just
+as if a concurrent truncate happened.
+
+The NFS case goes like this:
+
+        nfs_readpage()
+        {
+                # some bonus accountings:
+                nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
+                nfs_add_stats(inode, NFSIOS_READPAGES, 1);
+
+                nfs_readpage_async(page)
+                  nfs_return_empty_page(page)
+                    zero_user(page) # will zero the page
+
+                return 0;
+        }
+
+After it returns 0, do_generic_file_read() will goto page_ok and check
+i_size there, and free the past-EOF page.
+
+I wonder if NFS could be improved to:
+- move the NFSIOS_READPAGES accounting _after_ a successful read
+- return AOP_TRUNCATED_PAGE instead of zeroing the past-EOF page
+The following untested patch demonstrates the ideas.
+
+Thanks,
+Fengguang
+---
+
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 96c4ebf..6688b46 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -76,15 +76,6 @@ void nfs_readdata_release(void *data)
+ 	nfs_readdata_free(rdata);
+ }
+ 
+-static
+-int nfs_return_empty_page(struct page *page)
+-{
+-	zero_user(page, 0, PAGE_CACHE_SIZE);
+-	SetPageUptodate(page);
+-	unlock_page(page);
+-	return 0;
+-}
+-
+ static void nfs_readpage_truncate_uninitialised_page(struct nfs_read_data *data)
+ {
+ 	unsigned int remainder = data->args.count - data->res.count;
+@@ -123,7 +114,8 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+-		return nfs_return_empty_page(page);
++		return AOP_TRUNCATED_PAGE;
++
+ 	new = nfs_create_request(ctx, inode, page, 0, len);
+ 	if (IS_ERR(new)) {
+ 		unlock_page(page);
+@@ -516,7 +508,6 @@ int nfs_readpage(struct file *file, struct page *page)
+ 	dprintk("NFS: nfs_readpage (%p %ld@%lu)\n",
+ 		page, PAGE_CACHE_SIZE, page->index);
+ 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGE);
+-	nfs_add_stats(inode, NFSIOS_READPAGES, 1);
+ 
+ 	/*
+ 	 * Try to flush any pending writes to the file..
+@@ -550,6 +541,8 @@ int nfs_readpage(struct file *file, struct page *page)
+ 	}
+ 
+ 	error = nfs_readpage_async(ctx, inode, page);
++	if (!error)
++		nfs_add_stats(inode, NFSIOS_READPAGES, 1);
+ 
+ out:
+ 	put_nfs_open_context(ctx);
+@@ -575,7 +568,7 @@ readpage_async_filler(void *data, struct page *page)
+ 
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+-		return nfs_return_empty_page(page);
++		return AOP_TRUNCATED_PAGE;
+ 
+ 	new = nfs_create_request(desc->ctx, inode, page, 0, len);
+ 	if (IS_ERR(new))
