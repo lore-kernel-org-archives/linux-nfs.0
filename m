@@ -1,106 +1,70 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: Fix send buffer length calculation in nfs3_xdr_setaclargs()
-Date: Thu, 16 Apr 2009 09:52:42 -0400
-Message-ID: <5E1C743F-6C25-47E6-9658-4868EDFD8771@oracle.com>
-References: <49E5EAE6.7000507@suse.de> <1239818456.5177.88.camel@heimdal.trondhjem.org> <49E6BF7C.8040505@suse.de>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org
-To: Suresh Jayaraman <sjayaraman@suse.de>
+From: Alessio Igor Bogani <abogani-c2gU+FDvWfqonA0d6jMUrA@public.gmane.org>
+Subject: Re: [tree] latest kill-the-BKL tree, v12
+Date: Thu, 16 Apr 2009 16:35:58 +0200
+Message-ID: <63a49ef40904160735w3eab9ea7s3fc5da177ee2ac87@mail.gmail.com>
+References: <1239680065-25013-1-git-send-email-fweisbec@gmail.com>
+	 <20090414045109.GA26908@orion> <20090414090146.GH27003@elte.hu>
+	 <a4423d670904151558r4252c7eamd115793fb36a9163@mail.gmail.com>
+	 <20090415230736.GA22710@elte.hu> <20090415233533.GA5962@nowhere>
+	 <20090416085153.GC9813@elte.hu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Frederic Weisbecker <fweisbec@gmail.com>,
+	Alexander Beregalov <a.beregalov@gmail.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	Jeff Mahoney <jeffm@suse.com>,
+	ReiserFS Development List <reiserfs-devel@vger.kernel.org>,
+	Chris Mason <chris.mason@oracle.com>
+To: Ingo Molnar <mingo@elte.hu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:28010 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752395AbZDPOYf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2009 10:24:35 -0400
-In-Reply-To: <49E6BF7C.8040505@suse.de>
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:42893 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751579AbZDPOgD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2009 10:36:03 -0400
+In-Reply-To: <20090416085153.GC9813@elte.hu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 16, 2009, at 1:17 AM, Suresh Jayaraman wrote:
-> Trond Myklebust wrote:
->> On Wed, 2009-04-15 at 19:40 +0530, Suresh Jayaraman wrote:
->>> The recent posixacl fix(commit  
->>> ae46141ff08f1965b17c531b571953c39ce8b9e2)
->>> seems to have introduced a bug that will lead to -EINVAL errors  
->>> during
->>> normal setfacl operations on file or dir. This patch attempts to fix
->>> this.
->>
->> To start with, your len_in_head is in units of 32-bit _words_,  
->> whereas
->> len, base, and req->rq_slen are in units of bytes.
->>
->> Then, 'len' is initialised to the length of the currently encoded  
->> part
->> of the RPC header before subtracting 'len_in_head'. The resulting  
->> number
->
-> Doh, I got it wrong totally. Thanks for the explaination.
->
-> On a side note, I think it would be nice to add little comments in xdr
-> code to explain non-obvious pieces.
+Dear Sir Molnar,
 
-As an aside, I think implementing this with xdr_streams might have  
-some clarity benefits.
-
->> Please check if the following patch fixes things for you.
+2009/4/16 Ingo Molnar <mingo@elte.hu>:
+[...]
+>> This is still the dependency between bkl and s_umount_key that has
+>> been reported recently. I wonder if this is not a problem in the
+>> fs layer. I should investigate on it.
 >
-> Yes, the below patch fixes the issue for me too.
+> The problem seem to be that this NFS call context:
 >
-> Thanks,
->
->> Trond
->> ------------------------------------------------------------
->>> From b273b42f8b793a4a446015b50a5c1473553af48b Mon Sep 17 00:00:00  
->>> 2001
->> From: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Date: Wed, 15 Apr 2009 13:58:45 -0400
->> Subject: [PATCH] NFS: Fix the XDR iovec calculation in  
->> nfs3_xdr_setaclargs
->>
->> Commit ae46141ff08f1965b17c531b571953c39ce8b9e2 (NFSv3: Fix posix  
->> ACL code)
->> introduces a bug in the calculation of the XDR header iovec. In the  
->> case
->> where we are inlining the acls, we need to adjust the length of the  
->> iovec
->> req->rq_svec, in addition to adjusting the total buffer length.
->>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> ---
->> fs/nfs/nfs3xdr.c |    3 ++-
->> 1 files changed, 2 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
->> index e6a1932..35869a4 100644
->> --- a/fs/nfs/nfs3xdr.c
->> +++ b/fs/nfs/nfs3xdr.c
->> @@ -713,7 +713,8 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req,  
->> __be32 *p,
->> 	if (args->npages != 0)
->> 		xdr_encode_pages(buf, args->pages, 0, args->len);
->> 	else
->> -		req->rq_slen += args->len;
->> +		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
->> +				p + XDR_QUADLEN(args->len));
->>
->> 	err = nfsacl_encode(buf, base, args->inode,
->> 			    (args->mask & NFS_ACL) ?
->
->
-> -- 
-> Suresh Jayaraman
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -> #0 (kernel_mutex){+.+.+.}:
+> =A0 =A0 =A0 [<00000000004776d0>] lock_acquire+0x5c/0x74
+> =A0 =A0 =A0 [<00000000006f0ebc>] mutex_lock_nested+0x48/0x380
+> =A0 =A0 =A0 [<00000000006f32dc>] lock_kernel+0x28/0x3c
+> =A0 =A0 =A0 [<00000000006d20ec>] rpc_wait_bit_killable+0x64/0x8c
+> =A0 =A0 =A0 [<00000000006f0620>] __wait_on_bit+0x64/0xc0
+> =A0 =A0 =A0 [<00000000006f06e4>] out_of_line_wait_on_bit+0x68/0x7c
+> =A0 =A0 =A0 [<00000000006d2938>] __rpc_execute+0x150/0x2b4
+> =A0 =A0 =A0 [<00000000006d2ac0>] rpc_execute+0x24/0x34
+> =A0 =A0 =A0 [<00000000006cc338>] rpc_run_task+0x64/0x74
+> =A0 =A0 =A0 [<00000000006cc474>] rpc_call_sync+0x58/0x7c
+> =A0 =A0 =A0 [<00000000005717b0>] nfs3_rpc_wrapper+0x24/0xa0
+> =A0 =A0 =A0 [<0000000000572024>] do_proc_get_root+0x6c/0x10c
+> =A0 =A0 =A0 [<00000000005720dc>] nfs3_proc_get_root+0x18/0x5c
+> =A0 =A0 =A0 [<000000000056401c>] nfs_get_root+0x34/0x17c
+> =A0 =A0 =A0 [<0000000000568adc>] nfs_get_sb+0x9ec/0xa7c
+> =A0 =A0 =A0 [<00000000004b7ec8>] vfs_kern_mount+0x44/0xa4
+> =A0 =A0 =A0 [<00000000004b7f84>] do_kern_mount+0x30/0xcc
+> =A0 =A0 =A0 [<00000000004cf300>] do_mount+0x7c8/0x80c
+> =A0 =A0 =A0 [<00000000004ed2a4>] compat_sys_mount+0x224/0x274
+> =A0 =A0 =A0 [<0000000000406154>] linux_sparc_syscall32+0x34/0x40
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Proposed patch that i just sent
+(http://marc.info/?l=3Dlinux-kernel&m=3D123989213917572&w=3D2) seems fi=
+x the
+lock dependency.
+I don't know if it is the right way to solve the problem in any case
+but it works on my laptop, at least.
 
-
-
-
+Ciao,
+Alessio
