@@ -1,66 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr3.xs4all.nl ([194.109.24.23]:1558 "EHLO
-	smtp-vbr3.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753462AbZDMQbG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Apr 2009 12:31:06 -0400
-Subject: Re: Unexplained NFS mount hangs
-From: Rudy Zijlstra <rudy@grumpydevil.homelinux.org>
-Reply-To: Rudy@grumpydevil.homelinux.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Daniel Stickney <dstickney@pronto.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
-References: <20090413092406.304d04fb@dstickney2>
-	 <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
-Content-Type: text/plain
-Date: Mon, 13 Apr 2009 18:18:57 +0200
-Message-Id: <1239639537.13583.41.camel@poledra.romunt.nl>
+Received: from acsinet11.oracle.com ([141.146.126.233]:28728 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755431AbZDQP60 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Apr 2009 11:58:26 -0400
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <52A6E4A3-F155-4F7A-85B1-DB2366708003@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
+In-Reply-To: <49E7CE3E.8020006@disney.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: Exposing cache statistics
+Date: Fri, 17 Apr 2009 11:58:02 -0400
+References: <49E643CD.9070809@disney.com> <1239828092.5177.139.camel@heimdal.trondhjem.org> <49E7CE3E.8020006@disney.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Op maandag 13-04-2009 om 12:12 uur [tijdzone -0400], schreef Chuck
-Lever:
-> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
-> > Hi all,
-> >
-> > I am investigating some NFS mount hangs that we have started to see  
-> > over the past month on some of our servers. The behavior is that the  
-> > client mount hangs and needs to be manually unmounted (forcefully  
-> > with 'umount -f') and remounted to make it work. There are about 85  
-> > clients mounting a partition over NFS. About 50 of the clients are  
-> > running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of  
-> > these 50 has ever had this mount hang. The other 35 are CentOS 5.2  
-> > with kernel 2.6.27 which was compiled from source. The mount hangs  
-> > are inconsistent and so far I don't know how to trigger them on  
-> > demand. The timing of the hangs as noted by the timestamp in /var/ 
-> > log/messages varies. Not all of the 35 CentOS clients have their  
-> > mounts hang at the same time, and the NFS server continues operating  
-> > apparently normally for all other clients. Normally maybe 5 clients  
-> > have a mount hang per week, on different days, mostly different  
-> > times. Now and then we might see a cluster of a few clien
-> > ts have their mounts hang at the same exact time, but this is not  
-> > consistent. In /var/log/messages we see
-> >
-> > Apr 12 02:04:12 worker120 kernel: nfs: server broker101 not  
-> > responding, still trying
-> 
-> Are these NFS/UDP or NFS/TCP mounts?
-> 
-> If you use a different kernel (say, 2.6.26) on the CentOS systems, do  
-> the hangs go away?
-> 
 
-Hi Chuck,
+On Apr 16, 2009, at 8:33 PM, Kevin Constantine wrote:
 
-In my case NFS/TCP.
+> Trond Myklebust wrote:
+>> On Wed, 2009-04-15 at 13:30 -0700, Kevin Constantine wrote:
+>>> Has there been any effort to expose caching statistics to the end  
+>>> user?   On the client-side, it would be useful to see how much  
+>>> data is being re-used from cache vs data that gets retrieved over  
+>>> the wire.  Similarly on the server side, it would be nice to see  
+>>> how much data is being served from cache vs having to pull the  
+>>> data from disk.
+>>>
+>>> Just wondering if anyone started anything to expose this sort of  
+>>> information.
+>> See the nfs-iostat tool in the nfs-utils package:
+>>   http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=tree;f=tools/nfs-iostat;h=929e303cc762a68dfd01546f5150eb294274164e;hb=refs/heads/master
+>> Note that you need a 2.6.17 kernel or newer.
+>> Cheers
+>>  Trond
+>
+> Thanks Trond-
+>
+> It seems like nfs-iostat is displaying the number of pages that are  
+> being written to the read/write caches (i'm only looking at the  
+> client-side at the moment), and what I'm interested in is the ratio  
+> of pages being read from cache vs data being fetched from the server.
+>
+> Is there any documentation on the layout of /proc/self/mountstats?
 
-I have tried most 2.6.2x kernels, it may take a week or longer for them
-to hang, but hang they do :(
 
-have been fighting with this one since at least 2.6.24, and probably
-2.6.22
+Take a look at the python code in nfs-iostat or mountstats.  Besides  
+documenting the layout of /proc/self/mountstats, there may also be  
+some code in there that shows how to compute cache hit ratios.
 
-The reader that was hanging last week, is running 2.6.26
+The __print_data_cache_stats function in nfs-iostat does just this for  
+the page cache, but I don't see it called anywhere.
 
-Rudy
+Note these scripts are not finished, which is why they are currently  
+not installed by default.
 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
