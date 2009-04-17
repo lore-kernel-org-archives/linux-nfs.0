@@ -1,34 +1,48 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [RFC 0/4] nfs-utils: nfsd support for minor version
-Date: Thu, 16 Apr 2009 15:18:26 -0400
-Message-ID: <20090416191826.GC1145@fieldses.org>
-References: <49E2F6E4.2080501@panasas.com> <49E769C5.6010902@RedHat.com> <49E7721E.2070601@panasas.com> <49E7753C.4010300@RedHat.com> <20090416182313.GE450@fieldses.org> <49E7809B.2020002@RedHat.com>
+From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Subject: Re: Exposing cache statistics
+Date: Thu, 16 Apr 2009 17:33:02 -0700
+Message-ID: <49E7CE3E.8020006@disney.com>
+References: <49E643CD.9070809@disney.com> <1239828092.5177.139.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:42045 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754549AbZDPTS3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2009 15:18:29 -0400
-In-Reply-To: <49E7809B.2020002-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mailgate2.disneyanimation.com ([12.188.26.102]:18776 "EHLO
+	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759329AbZDQAdD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Apr 2009 20:33:03 -0400
+In-Reply-To: <1239828092.5177.139.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 16, 2009 at 03:01:47PM -0400, Steve Dickson wrote:
-> I do get your point, but as we did with the initial v4 support, 
-> having the support on by default and then having away to turn it
-> off is the correct approach... IMHO... 
+Trond Myklebust wrote:
+> On Wed, 2009-04-15 at 13:30 -0700, Kevin Constantine wrote:
+>> Has there been any effort to expose caching statistics to the end user? 
+>>   On the client-side, it would be useful to see how much data is being 
+>> re-used from cache vs data that gets retrieved over the wire.  Similarly 
+>> on the server side, it would be nice to see how much data is being 
+>> served from cache vs having to pull the data from disk.
+>>
+>> Just wondering if anyone started anything to expose this sort of 
+>> information.
+> 
+> See the nfs-iostat tool in the nfs-utils package:
+> 
+>    http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=tree;f=tools/nfs-iostat;h=929e303cc762a68dfd01546f5150eb294274164e;hb=refs/heads/master
+> 
+> Note that you need a 2.6.17 kernel or newer.
+> 
+> Cheers
+>   Trond
 
-I'd prefer it be off by default, for the obvious safety reasons.  (It's
-under rapid development and particularly likely to have bugs).  The only
-reason we had it on by default before was that we didn't add the
-switching mechanism early enough.  (Well, and because we could keep it
-off in the config.  But I'd rather be able to ship users a kernel that
-supports 4.1 and give them the option of turning it on at runtime, than
-make them build a new kernel.)
+Thanks Trond-
 
---b.
+It seems like nfs-iostat is displaying the number of pages that are 
+being written to the read/write caches (i'm only looking at the 
+client-side at the moment), and what I'm interested in is the ratio of 
+pages being read from cache vs data being fetched from the server.
+
+Is there any documentation on the layout of /proc/self/mountstats?
+
+-kevin
