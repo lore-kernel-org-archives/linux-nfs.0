@@ -1,65 +1,67 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [pnfs] [RFC 0/4] nfs-utils: nfsd support for minor version
-Date: Fri, 17 Apr 2009 08:35:36 -0400
-Message-ID: <49E87798.8090308@RedHat.com>
-References: <49E2F6E4.2080501@panasas.com> <49E769C5.6010902@RedHat.com> <49E7721E.2070601@panasas.com> <49E7753C.4010300@RedHat.com> <20090416182313.GE450@fieldses.org> <49E7809B.2020002@RedHat.com> <20090416191826.GC1145@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Exposing cache statistics
+Date: Fri, 17 Apr 2009 08:54:56 -0400
+Message-ID: <1239972896.5209.13.camel@heimdal.trondhjem.org>
+References: <49E643CD.9070809@disney.com>
+	 <1239828092.5177.139.camel@heimdal.trondhjem.org>
+	 <49E7CE3E.8020006@disney.com>  <49E8626F.6000508@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:41252 "EHLO mx2.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:45283 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760839AbZDQMkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Apr 2009 08:40:31 -0400
-In-Reply-To: <20090416191826.GC1145@fieldses.org>
+	id S1756173AbZDQMzG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Apr 2009 08:55:06 -0400
+In-Reply-To: <49E8626F.6000508-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Apr 16, 2009 at 03:01:47PM -0400, Steve Dickson wrote:
->> I do get your point, but as we did with the initial v4 support, 
->> having the support on by default and then having away to turn it
->> off is the correct approach... IMHO... 
+On Fri, 2009-04-17 at 07:05 -0400, Steve Dickson wrote:
 > 
-> I'd prefer it be off by default, for the obvious safety reasons.  (It's
-> under rapid development and particularly likely to have bugs).  The only
-> reason we had it on by default before was that we didn't add the
-> switching mechanism early enough.  (Well, and because we could keep it
-> off in the config.  But I'd rather be able to ship users a kernel that
-> supports 4.1 and give them the option of turning it on at runtime, than
-> make them build a new kernel.)
-I agree with not making people recompile kernels, which is the whole
-purpose behind the Fedora repos, but do I think you might be a bit 
-too cautious with exposing the technology. 
+> Kevin Constantine wrote:
+> > Trond Myklebust wrote:
+> >> On Wed, 2009-04-15 at 13:30 -0700, Kevin Constantine wrote:
+> >>> Has there been any effort to expose caching statistics to the end
+> >>> user?   On the client-side, it would be useful to see how much data
+> >>> is being re-used from cache vs data that gets retrieved over the
+> >>> wire.  Similarly on the server side, it would be nice to see how much
+> >>> data is being served from cache vs having to pull the data from disk.
+> >>>
+> >>> Just wondering if anyone started anything to expose this sort of
+> >>> information.
+> >>
+> >> See the nfs-iostat tool in the nfs-utils package:
+> >>
+> >>   
+> >> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=tree;f=tools/nfs-iostat;h=929e303cc762a68dfd01546f5150eb294274164e;hb=refs/heads/master
+> >>
+> >>
+> >> Note that you need a 2.6.17 kernel or newer.
+> >>
+> >> Cheers
+> >>   Trond
+> > 
+> > Thanks Trond-
+> > 
+> > It seems like nfs-iostat is displaying the number of pages that are
+> > being written to the read/write caches (i'm only looking at the
+> > client-side at the moment), and what I'm interested in is the ratio of
+> > pages being read from cache vs data being fetched from the server.
+> > 
+> > Is there any documentation on the layout of /proc/self/mountstats?
+> No, unfortunately not... 
 
-One, I've been running the kernels with everything enabled for a while
-now with no problems whatsoever... A few scary looking warnings now and
-then but nothing major. I also spent the majority of my time at Connectathon
-this years testing with kernel that were fully enabled. Not one problem
-WRT regression testing. Plus there is no better way to expose regression 
-problems (early on) than to enable the code.. IMHO... 
+I'd suggest using the python code in nfs-iostat as a reference.
 
-Second, its my understanding that clients have to explicitly  ask
-for 4.1 support. Are there any client out there that default to 
-4.1 support? I would think not since there is only one client out there
-that defaults to V4.0. If there is a client that defaults to 4.1, then we 
-will a knob to turn that support off.
+You should be able to figure out how much data is being read on the wire
+by looking at nfs_stats['serverreadbytes']. Comparing that to the value
+in nfs_stats['normalreadbytes'] (which tells you the total number of
+bytes requested in read() calls) should give you a rough estimate for
+how much data is being read from cache.
 
-Finally, with rpc.nfsd the precedence has already been set that we disable
-versions, not enabled them. For us to start enabling versions with rpc.nfsd
-we would have to come up with another command line flags (similar to Benny's
-patch). This means we would have one flag that enables versions and 
-another that would disable them... talk about confusion... and that's just
-not right... IMHO.... 
+Cheers
+  Trond
 
-So I say, lets stay with the precedence that was already set, enable
-the support by default but have a way to disable it... 
-
-steved.
-
-
-
-   
