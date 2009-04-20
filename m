@@ -1,107 +1,51 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Re: [ltt-dev] [PATCH] nfs: add support for splice writes
-Date: Mon, 20 Apr 2009 21:17:23 +0530
-Message-ID: <49EC990B.1030007@suse.de>
-References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal>	 <49D45E42.3050502@suse.de>	 <91e0b5050904020542l6b38d7a6hab6d7ef8b4593425@mail.gmail.com>	 <49EC0A83.8060802@suse.de> <1240230224.8073.6.camel@heimdal.trondhjem.org>	 <49EC6CB3.8080800@suse.de> <1240237274.13636.9.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [NFS] Translation
+Date: Mon, 20 Apr 2009 13:18:40 -0400
+Message-ID: <20090420171840.GA742@fieldses.org>
+References: <49E2FB17.5030804@free.fr> <20090419210215.GB18110@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Masahiro Tamori <masahiro.tamori@gmail.com>,
-	Mathieu Desnoyers <compudj@krystal.dyndns.org>,
-	linux-nfs@vger.kernel.org, ltt-dev@lists.casi.polymtl.ca,
-	LKML <linux-kernel@vger.kernel.org>,
-	linux-embedded@vger.kernel.org,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756484AbZDTPsj@vger.kernel.org>
-In-Reply-To: <1240237274.13636.9.camel@heimdal.trondhjem.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: lebarhon <lebarhon@free.fr>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:43497 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751630AbZDTRTw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Apr 2009 13:19:52 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1Lvx9p-0001ZQ-9t
+	for linux-nfs@vger.kernel.org; Tue, 21 Apr 2009 03:19:49 +1000
+In-Reply-To: <20090419210215.GB18110@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Mon, 2009-04-20 at 18:08 +0530, Suresh Jayaraman wrote:
->> Trond Myklebust wrote:
->>> On Mon, 2009-04-20 at 11:09 +0530, Suresh Jayaraman wrote:
->>>> Hi Trond,
->>>>
->>>> Do you think this patch is OK? Can this be considered for merging?
->>>>>>>> +
->>>>>>>> +  if (IS_SWAPFILE(inode)) {
->>>>>>>> +      printk(KERN_INFO "NFS: attempt to write to active swap"
->>>>>>>> +          "file!\n");
->>>>>>>> +      return -EBUSY;
->>>>>>>> +  }
->>> I don't know that we really need this. We should sweep through the NFS
->>> code and kill all those IS_SWAPFILE() thingys. Or at least #define
->>> IS_SWAPFILE(a) (0)
->>> ...
->> Hmm.. I'm not sure whether we should kill them now. I think originally,
->> these were added keeping in mind the future NFS swap support. Given that
->> the recent work from Peterz Zilstra on "Swap over NFS" and multiple
->> iterations/review on the same, I think those patches will eventually get
->> merged sooner or later. Perhaps, it's a good idea to #define
->> IS_SWAPFILE(a) 0 than killing them entirely..?
+On Sun, Apr 19, 2009 at 05:02:15PM -0400, J. Bruce Fields wrote:
+> On Mon, Apr 13, 2009 at 10:43:03AM +0200, lebarhon wrote:
+> > Hello,
+> > 
+> > I would like to translate the Linux NFS-HOWTO in French if not already 
+> > done. Is it possible and is the text up to date ?
+> > This translation would be done in order to link it to the Mandriva Wiki.
 > 
-> Why are they needed at all? AFAICS, other filesystems check IS_SWAPFILE
-> when truncating a file, but don't litter their code with all these weird
-> checks for writing, reading, etc.
+> It's not completely up to date unfortunately, no.
 
-Yes, except for afs other filesystems seem to check only during
-truncation.
+By the way, note linux-nfs@vger.kernel.org is the list to use these
+days.
 
-> It's not as if these checks can stop a determined privileged person from
-> writing to the swapfile anyway. All they have to do is go to another
-> client or write directly to the file on the server...
-> 
+--b.
 
-Make sense.
+------------------------------------------------------------------------------
+Stay on top of everything new and different, both inside and 
+around Java (TM) technology - register by April 22, and save
+$200 on the JavaOne (SM) conference, June 2-5, 2009, San Francisco.
+300 plus technical and hands-on sessions. Register today. 
+Use priority code J9JMT32. http://p.sf.net/sfu/p
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-Here is the trimmed version. I think the dprink could be retained
-for debugging issues, if any.
-
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
----
- fs/nfs/file.c |   17 +++++++++++++++++
- 1 files changed, 17 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 5a97bcf..6dfe7df 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -48,6 +48,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
- 					size_t count, unsigned int flags);
- static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
- 				unsigned long nr_segs, loff_t pos);
-+static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
-+					struct file *filp, loff_t *ppos,
-+					size_t count, unsigned int flags);
- static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
- 				unsigned long nr_segs, loff_t pos);
- static int  nfs_file_flush(struct file *, fl_owner_t id);
-@@ -73,6 +76,7 @@ const struct file_operations nfs_file_operations = {
- 	.lock		= nfs_lock,
- 	.flock		= nfs_flock,
- 	.splice_read	= nfs_file_splice_read,
-+	.splice_write	= nfs_file_splice_write,
- 	.check_flags	= nfs_check_flags,
- 	.setlease	= nfs_setlease,
- };
-@@ -587,6 +591,19 @@ out_swapfile:
- 	goto out;
- }
- 
-+static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
-+				     struct file *filp, loff_t *ppos,
-+				     size_t count, unsigned int flags)
-+{
-+	struct dentry *dentry = filp->f_path.dentry;
-+
-+	dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
-+		dentry->d_parent->d_name.name, dentry->d_name.name,
-+		(unsigned long) count, (unsigned long long) *ppos);
-+
-+	return generic_file_splice_write(pipe, filp, ppos, count, flags);
-+}
-+
- static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
- {
- 	struct inode *inode = filp->f_mapping->host;
