@@ -1,89 +1,47 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFS issues with recent kernels [long]
-Date: Mon, 20 Apr 2009 15:07:49 -0400
-Message-ID: <F1250240-F050-47B7-9569-54941AAAD572@oracle.com>
-References: <20090417102659.GC55096@fuchs> <B05C16C7-53B5-4E26-8239-956C600CF452@oracle.com> <20090420091454.GB614@fuchs>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed	delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Guennadi Liakhovetski <g.liakhovetski@gmx.de>
-To: =?ISO-8859-1?Q?Andr=E9_Berger?= <andre.berger-S0/GAf8tV78@public.gmane.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] NFS: Fix the XDR iovec calculation in nfs3_xdr_setaclargs
+Date: Mon, 20 Apr 2009 14:58:35 -0400
+Message-ID: <1240267498.16708.0.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Leonardo Chiquitto <leonardo.lists@gmail.com>,
+	Suresh Jayaraman <sjayaraman@suse.de>
+To: Linus Torvalds <torvalds@linux-foundation.org>, stable@kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:36149 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752308AbZDTTID convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2009 15:08:03 -0400
-In-Reply-To: <20090420091454.GB614@fuchs>
+Received: from mx2.netapp.com ([216.240.18.37]:16231 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756258AbZDTWpq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Apr 2009 18:45:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 20, 2009, at 5:14 AM, Andr=E9 Berger wrote:
-> * Chuck Lever (2009-04-17):
->> Copying linux-nfs@vger.kernel.org, please follow up there.
->
-> OK, here we go. If anyone here doesn't want to receive these
-> messages, please let me know.
->
-> It took me a while to get a tcpdump binary for the dbox2, hence the
-> delay and extensive quotes. The libc6 for tcpdump is itself located
-> on a NFS share.
+Commit ae46141ff08f1965b17c531b571953c39ce8b9e2 (NFSv3: Fix posix ACL code)
+introduces a bug in the calculation of the XDR header iovec. In the case
+where we are inlining the acls, we need to adjust the length of the iovec
+req->rq_svec, in addition to adjusting the total buffer length.
 
-   [ ... ]
+Tested-by: Leonardo Chiquitto <leonardo.lists@gmail.com>
+Tested-by: Suresh Jayaraman <sjayaraman@suse.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+Please apply to 2.6.30-rc2 & 2.6.29-stable...
 
->> You could try capturing a raw packet trace of the initial mount and =
-=20
->> a few
->> reads and write on the share.  The clients negotiate the rsize and =20
->> wsize
->> settings with the server, and the packet dump would expose the =20
->> negotiated
->> values.
->>
->> On your clients, use "tcpdump -s 0 -w /tmp/raw host" followed by =20
->> the DNS
->> name of your server.  Then attach the raw pcap files to e-mail (as =20
->> long as
->> they are less than 100KB or so) and post them to linux-nfs-u79uwXL29Tb/PtFMR13I2A@public.gmane.org=
-el.org
->
-> Here you go. The host "192.168.1.8 hg linkstation" is specified in
-> /etc/hosts.
->
->>> For the sake of completeness, my router is a Linksys WRT54G
->>>
->>> with Tomato firmware
->>>
->>> <http://www.polarcloud.com/tomato_123>
->>>
->>> and a MTU of 1492 throughout the network.
->>>
->>> If there is anything I can do to help troubleshooting, please let m=
-e
->>> know.
+ fs/nfs/nfs3xdr.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-I got two copies of this e-mail.  One has a 24KB PCAP file called =20
-"raw" and the other has a 90KB file called "xap" that does not appear =20
-to be a PCAP file.
-
-I looked at "raw" and it's hard to make sense of it.  I see both UDP =20
-and TCP traffic, and both NFSv2 and NFSv3 requests.  I guess this is =20
-because tcpdump is on NFS.  It would be better if you could copy the =20
-tcpdump binary to a local file system on the client before running the =
-=20
-test to avoid the extra traffic.
-
-You should avoid UDP on this network at all costs, especially if you =20
-want to use large r/wsize.  It's likely that this is the real =20
-performance issue.  Specify "proto=3Dtcp" on your mount command line to=
- =20
-force the use of NFS/TCP.  Otherwise IP packet fragmentation and =20
-reassembly will cause dropped RPC requests, exacerbated by network =20
-link speed mismatches and Ethernet frame collision on the half-duplex =20
-links.
-
-I believe the older 2.4-based NFS clients will use UDP by default.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index e6a1932..35869a4 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -713,7 +713,8 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
+ 	if (args->npages != 0)
+ 		xdr_encode_pages(buf, args->pages, 0, args->len);
+ 	else
+-		req->rq_slen += args->len;
++		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
++				p + XDR_QUADLEN(args->len));
+ 
+ 	err = nfsacl_encode(buf, base, args->inode,
+ 			    (args->mask & NFS_ACL) ?
+-- 
+1.6.0.4
