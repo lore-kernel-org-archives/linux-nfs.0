@@ -1,82 +1,89 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: Re: [NFS] Will NFS client use write-back caching?
-Date: Mon, 20 Apr 2009 10:36:27 -0700
-Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC02A87C5C@SACMVEXC1-PRD.hq.netapp.com>
-References: <b66ddc900904200256yb62b5f7x43ebf70c0ebcdefd@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: "howard chen" <howachen@gmail.com>, <nfs@lists.sourceforge.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS issues with recent kernels [long]
+Date: Mon, 20 Apr 2009 15:07:49 -0400
+Message-ID: <F1250240-F050-47B7-9569-54941AAAD572@oracle.com>
+References: <20090417102659.GC55096@fuchs> <B05C16C7-53B5-4E26-8239-956C600CF452@oracle.com> <20090420091454.GB614@fuchs>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed	delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Guennadi Liakhovetski <g.liakhovetski@gmx.de>
+To: =?ISO-8859-1?Q?Andr=E9_Berger?= <andre.berger-S0/GAf8tV78@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:39180 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753665AbZDTSIF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Apr 2009 14:08:05 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LvxuS-0001jo-2B
-	for linux-nfs@vger.kernel.org; Tue, 21 Apr 2009 04:08:00 +1000
-In-Reply-To: <b66ddc900904200256yb62b5f7x43ebf70c0ebcdefd-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:36149 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752308AbZDTTID convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2009 15:08:03 -0400
+In-Reply-To: <20090420091454.GB614@fuchs>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS will do asynchronous writes by default, i.e., write-back caching.
+On Apr 20, 2009, at 5:14 AM, Andr=E9 Berger wrote:
+> * Chuck Lever (2009-04-17):
+>> Copying linux-nfs@vger.kernel.org, please follow up there.
+>
+> OK, here we go. If anyone here doesn't want to receive these
+> messages, please let me know.
+>
+> It took me a while to get a tcpdump binary for the dbox2, hence the
+> delay and extensive quotes. The libc6 for tcpdump is itself located
+> on a NFS share.
 
-  -Dan 
+   [ ... ]
 
-> -----Original Message-----
-> From: howard chen [mailto:howachen@gmail.com] 
-> Sent: Monday, April 20, 2009 2:56 AM
-> To: nfs@lists.sourceforge.net
-> Subject: [NFS] Will NFS client use write-back caching?
-> 
-> Hello,
-> 
-> My client is running ext3, which default has 5 seconds of 
-> write-back caching, e.g.
-> 
->  cat /proc/sys/vm/dirty_writeback_centisecs
-> 499
-> 
-> Now, if this client connect to a NFS (v3), and write data to 
-> the NFS, will write-back caching used?
-> 
-> Or it will fsync() after every write ?
-> 
-> Thanks.
-> 
-> --------------------------------------------------------------
-> ----------------
-> Stay on top of everything new and different, both inside and 
-> around Java (TM) technology - register by April 22, and save 
-> $200 on the JavaOne (SM) conference, June 2-5, 2009, San Francisco.
-> 300 plus technical and hands-on sessions. Register today. 
-> Use priority code J9JMT32. http://p.sf.net/sfu/p 
-> _______________________________________________
-> NFS maillist  -  NFS@lists.sourceforge.net 
-> https://lists.sourceforge.net/lists/listinfo/nfs
-> _______________________________________________
-> Please note that nfs@lists.sourceforge.net is being discontinued.
-> Please subscribe to linux-nfs@vger.kernel.org instead.
->     http://vger.kernel.org/vger-lists.html#linux-nfs
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in the body of a message to 
-> majordomo@vger.kernel.org More majordomo info at  
-> http://vger.kernel.org/majordomo-info.html
-> 
+>> You could try capturing a raw packet trace of the initial mount and =
+=20
+>> a few
+>> reads and write on the share.  The clients negotiate the rsize and =20
+>> wsize
+>> settings with the server, and the packet dump would expose the =20
+>> negotiated
+>> values.
+>>
+>> On your clients, use "tcpdump -s 0 -w /tmp/raw host" followed by =20
+>> the DNS
+>> name of your server.  Then attach the raw pcap files to e-mail (as =20
+>> long as
+>> they are less than 100KB or so) and post them to linux-nfs-u79uwXL29Tb/PtFMR13I2A@public.gmane.org=
+el.org
+>
+> Here you go. The host "192.168.1.8 hg linkstation" is specified in
+> /etc/hosts.
+>
+>>> For the sake of completeness, my router is a Linksys WRT54G
+>>>
+>>> with Tomato firmware
+>>>
+>>> <http://www.polarcloud.com/tomato_123>
+>>>
+>>> and a MTU of 1492 throughout the network.
+>>>
+>>> If there is anything I can do to help troubleshooting, please let m=
+e
+>>> know.
 
-------------------------------------------------------------------------------
-Stay on top of everything new and different, both inside and 
-around Java (TM) technology - register by April 22, and save
-$200 on the JavaOne (SM) conference, June 2-5, 2009, San Francisco.
-300 plus technical and hands-on sessions. Register today. 
-Use priority code J9JMT32. http://p.sf.net/sfu/p
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+I got two copies of this e-mail.  One has a 24KB PCAP file called =20
+"raw" and the other has a 90KB file called "xap" that does not appear =20
+to be a PCAP file.
 
+I looked at "raw" and it's hard to make sense of it.  I see both UDP =20
+and TCP traffic, and both NFSv2 and NFSv3 requests.  I guess this is =20
+because tcpdump is on NFS.  It would be better if you could copy the =20
+tcpdump binary to a local file system on the client before running the =
+=20
+test to avoid the extra traffic.
+
+You should avoid UDP on this network at all costs, especially if you =20
+want to use large r/wsize.  It's likely that this is the real =20
+performance issue.  Specify "proto=3Dtcp" on your mount command line to=
+ =20
+force the use of NFS/TCP.  Otherwise IP packet fragmentation and =20
+reassembly will cause dropped RPC requests, exacerbated by network =20
+link speed mismatches and Ethernet frame collision on the half-duplex =20
+links.
+
+I believe the older 2.4-based NFS clients will use UDP by default.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
