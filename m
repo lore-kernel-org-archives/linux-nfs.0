@@ -1,55 +1,95 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] Will NFS client use write-back caching?
-Date: Mon, 20 Apr 2009 08:21:52 -0400
-Message-ID: <1240230112.8073.4.camel@heimdal.trondhjem.org>
-References: <b66ddc900904200256yb62b5f7x43ebf70c0ebcdefd@mail.gmail.com>
+Subject: Re: [ltt-dev] [PATCH] nfs: add support for splice writes
+Date: Mon, 20 Apr 2009 10:21:14 -0400
+Message-ID: <1240237274.13636.9.camel@heimdal.trondhjem.org>
+References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal>
+	 <49D45E42.3050502@suse.de>
+	 <91e0b5050904020542l6b38d7a6hab6d7ef8b4593425@mail.gmail.com>
+	 <49EC0A83.8060802@suse.de> <1240230224.8073.6.camel@heimdal.trondhjem.org>
+	 <49EC6CB3.8080800@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: howard chen <howachen@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:36444 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754474AbZDTM5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Apr 2009 08:57:25 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1Lvt3q-0006pF-AW
-	for linux-nfs@vger.kernel.org; Mon, 20 Apr 2009 22:57:22 +1000
-In-Reply-To: <b66ddc900904200256yb62b5f7x43ebf70c0ebcdefd-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Masahiro Tamori <masahiro.tamori@gmail.com>,
+	Mathieu Desnoyers <compudj@krystal.dyndns.org>,
+	linux-nfs@vger.kernel.org, ltt-dev@lists.casi.polymtl.ca,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-embedded@vger.kernel.org,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Suresh Jayaraman <sjayaraman@suse.de>
+Return-path: <linux-embedded-owner@vger.kernel.org>
+In-Reply-To: <49EC6CB3.8080800@suse.de>
+Sender: linux-embedded-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-04-20 at 17:56 +0800, howard chen wrote:
-> Hello,
+On Mon, 2009-04-20 at 18:08 +0530, Suresh Jayaraman wrote:
+> Trond Myklebust wrote:
+> > On Mon, 2009-04-20 at 11:09 +0530, Suresh Jayaraman wrote:
+> >> Hi Trond,
+> >>
+> >> Do you think this patch is OK? Can this be considered for merging?
+> >>
+> >> Thanks,
+> >>
+> >>>>>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> >>>>>> index 90f292b..13d6a00 100644
+> >>>>>> --- a/fs/nfs/file.c
+> >>>>>> +++ b/fs/nfs/file.c
+> >>>>>> @@ -47,6 +47,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
+> >>>>>>                   size_t count, unsigned int flags);
+> >>>>>> static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+> >>>>>>               unsigned long nr_segs, loff_t pos);
+> >>>>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+> >>>>>> +                  struct file *filp, loff_t *ppos,
+> >>>>>> +                  size_t count, unsigned int flags);
+> >>>>>> static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+> >>>>>>               unsigned long nr_segs, loff_t pos);
+> >>>>>> static int nfs_file_flush(struct file *, fl_owner_t id);
+> >>>>>> @@ -76,6 +79,7 @@ const struct file_operations nfs_file_operations = {
+> >>>>>>   .lock      = nfs_lock,
+> >>>>>>   .flock     = nfs_flock,
+> >>>>>>   .splice_read  = nfs_file_splice_read,
+> >>>>>> +  .splice_write  = nfs_file_splice_write,
+> >>>>>>   .check_flags  = nfs_check_flags,
+> >>>>>>   .setlease    = nfs_setlease,
+> >>>>>> };
+> >>>>>> @@ -550,6 +554,26 @@ out_swapfile:
+> >>>>>>   goto out;
+> >>>>>> }
+> >>>>>>
+> >>>>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+> >>>>>> +                 struct file *filp, loff_t *ppos,
+> >>>>>> +                 size_t count, unsigned int flags)
+> >>>>>> +{
+> >>>>>> +  struct dentry *dentry = filp->f_path.dentry;
+> >>>>>> +  struct inode *inode = dentry->d_inode;
+> >>>>>> +
+> >>>>>> +  dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+> >>>>>> +      dentry->d_parent->d_name.name, dentry->d_name.name,
+> >>>>>> +      (unsigned long) count, (unsigned long long) *ppos);
+> >>>>>> +
+> >>>>>> +  if (IS_SWAPFILE(inode)) {
+> >>>>>> +      printk(KERN_INFO "NFS: attempt to write to active swap"
+> >>>>>> +          "file!\n");
+> >>>>>> +      return -EBUSY;
+> >>>>>> +  }
+> > 
+> > I don't know that we really need this. We should sweep through the NFS
+> > code and kill all those IS_SWAPFILE() thingys. Or at least #define
+> > IS_SWAPFILE(a) (0)
+> > ...
 > 
-> My client is running ext3, which default has 5 seconds of write-back
-> caching, e.g.
-> 
->  cat /proc/sys/vm/dirty_writeback_centisecs
-> 499
-> 
-> Now, if this client connect to a NFS (v3), and write data to the NFS,
-> will write-back caching used?
+> Hmm.. I'm not sure whether we should kill them now. I think originally,
+> these were added keeping in mind the future NFS swap support. Given that
+> the recent work from Peterz Zilstra on "Swap over NFS" and multiple
+> iterations/review on the same, I think those patches will eventually get
+> merged sooner or later. Perhaps, it's a good idea to #define
+> IS_SWAPFILE(a) 0 than killing them entirely..?
 
-Yes. However it will always flush out data on close() in order to ensure
-that other clients see the data (see
-http://nfs.sourceforge.net/#faq_a8 ).
+Why are they needed at all? AFAICS, other filesystems check IS_SWAPFILE
+when truncating a file, but don't litter their code with all these weird
+checks for writing, reading, etc.
+It's not as if these checks can stop a determined privileged person from
+writing to the swapfile anyway. All they have to do is go to another
+client or write directly to the file on the server...
 
 Trond
-
-
-------------------------------------------------------------------------------
-Stay on top of everything new and different, both inside and 
-around Java (TM) technology - register by April 22, and save
-$200 on the JavaOne (SM) conference, June 2-5, 2009, San Francisco.
-300 plus technical and hands-on sessions. Register today. 
-Use priority code J9JMT32. http://p.sf.net/sfu/p
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
