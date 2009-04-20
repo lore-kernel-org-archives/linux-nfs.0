@@ -1,48 +1,52 @@
-From: howard chen <howachen@gmail.com>
-Subject: [NFS] Will NFS client use write-back caching?
-Date: Mon, 20 Apr 2009 17:56:20 +0800
-Message-ID: <b66ddc900904200256yb62b5f7x43ebf70c0ebcdefd@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 0/3] Fix umount.nfs
+Date: Mon, 20 Apr 2009 08:11:54 -0400
+Message-ID: <49EC668A.1000404@RedHat.com>
+References: <20090417201021.14555.93852.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:39228 "EHLO neil.brown.name"
+Received: from mx2.redhat.com ([66.187.237.31]:38743 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753518AbZDTJ5a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Apr 2009 05:57:30 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LvqFi-00015u-Ia
-	for linux-nfs@vger.kernel.org; Mon, 20 Apr 2009 19:57:26 +1000
+	id S1754632AbZDTMPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Apr 2009 08:15:13 -0400
+In-Reply-To: <20090417201021.14555.93852.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-My client is running ext3, which default has 5 seconds of write-back
-caching, e.g.
 
- cat /proc/sys/vm/dirty_writeback_centisecs
-499
+Chuck Lever wrote:
+> Hi Steve-
+> 
+> This short series addresses a couple of problems found with
+> umount.nfs.  See RH bugzilla 492598.
+> 
+> After this series is applied, umount.nfs will send UMNT requests from
+> a privileged source port.  This appears to match the behavior of
+> umount.nfs before nfs-utils 1.1.5, and is required when the "secure"
+> export option is used on the server.
+> 
+> A minor problem with the value returned by nfs_mount_protocol() is
+> also addressed.  This might affect umount.nfs and NFSv2/v3
+> version/protocol fallback by sending MNT and UMNT requests using
+> the wrong transport protocol.
+> 
+> ---
+> 
+> Chuck Lever (3):
+>       umount.nfs: Fix return value of nfs_mount_protocol()
+>       umount.nfs: Use a privileged port when sending UMNT requests
+>       support: Provide an API for creating a privileged RPC client
+> 
+> 
+>  support/include/nfsrpc.h |   11 +++-
+>  support/nfs/rpc_socket.c |  140 ++++++++++++++++++++++++++++++++++++++++++++--
+>  utils/mount/network.c    |    4 +
+>  3 files changed, 145 insertions(+), 10 deletions(-)
+> 
+All three patched tested and committed.
 
-Now, if this client connect to a NFS (v3), and write data to the NFS,
-will write-back caching used?
-
-Or it will fsync() after every write ?
-
-Thanks.
-
-------------------------------------------------------------------------------
-Stay on top of everything new and different, both inside and 
-around Java (TM) technology - register by April 22, and save
-$200 on the JavaOne (SM) conference, June 2-5, 2009, San Francisco.
-300 plus technical and hands-on sessions. Register today. 
-Use priority code J9JMT32. http://p.sf.net/sfu/p
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+steved.
