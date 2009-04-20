@@ -1,29 +1,603 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate2.disneyanimation.com ([12.188.26.102]:40833 "EHLO
-	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751126AbZDUCDf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2009 22:03:35 -0400
-From: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
-To: linux-nfs@vger.kernel.org
-Cc: chuck.lever@oracle.com
-Subject: Add data cache statistics to nfs-iostat.py
-Date: Mon, 20 Apr 2009 19:03:32 -0700
-Message-Id: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com>
+Received: from mx2.redhat.com ([66.187.237.31]:36122 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751644AbZDTSKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Apr 2009 14:10:31 -0400
+Message-ID: <49ECB9E6.4010001@RedHat.com>
+Date: Mon, 20 Apr 2009 14:07:34 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+Subject: nfs-utils-1.1.6 released.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The first patch adds a --data flag, and prints a line about data being read by NFS
+My ToDo list went to zero so I figured I would cut quick
+minor maintenance release.
 
-Data Read:     From Server      From Cache           Total   Hit %
-               5676.7534MB     1862.0452MB     7538.7987MB  24.70%
+The tarball can be found at:
 
-The second patch adds a line about write data.  I'm not quire sure about this patch.  I'm seeing oddities where the number of bytes in "NORMALWRITTENBYTES + DIRECTWRITTENBYTES" does not equal SERVERWRITTENBYTES.  In some cases the amount of data written by the app (normalwrittenbytes + directwrittenbytes) is greater than the amount of data written to the server, and in other cases it's less than the amount of data written to the server.  At the moment, i've ascribed that difference to data being written to the local cache and not flushed, but that doesn't make a whole lot of sense.  
+  http://www.kernel.org/pub/linux/utils/nfs/
+  http://sourceforge.net/projects/nfs
 
-Data Written:    To Server        To Cache           Total
-                  5.2221MB        0.1951MB        5.4172MB
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
 
--kevin
+The change log:
 
+commit c062f45deebc20dae5eb8cdb50fb03fb1c252b47
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Sat Apr 18 09:45:46 2009 -0400
+
+    umount.nfs: Fix return value of nfs_mount_protocol()
+    
+    Fix a copy-paste error introduced in nfs_mount_protocol().  It should
+    return an IPPROTO_ number, not an NFS version number.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 879a9b1b2bdd1160571896023d06291a611c4315
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Sat Apr 18 09:44:56 2009 -0400
+
+    umount.nfs: Use a privileged port when sending UMNT	requests
+    
+    Turns out we do actually need to use a privileged port for UMNT.  The
+    Linux rpc.mountd complains if an ephemeral source port is used:
+    
+      Apr 17 15:52:19 ingres mountd[2061]: refused unmount request from
+        192.168.0.59 for /export (/export): illegal port 60932
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 8c94296bc84f3a204f2061c0391a1d2350e4f37e
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Sat Apr 18 09:43:58 2009 -0400
+
+    support: Provide an API for creating a privileged RPC client
+    
+    We needed to guarantee that some RPC programs, such as PMAP, got an
+    unprivileged port, to prevent exhausting the local privileged port
+    space sending RPC requests that don't need such privileges.
+    nfs_get_rpcclient() provides that feature.
+    
+    However, some RPC programs, such as MNT and UMNT, require a privileged
+    port.  So, let's provide an additional API for this that also supports
+    IPv6 and setting a destination port.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 41eb279c2f46ca020bc3b8d17811555f74b99d2e
+Author: Benny Halevy <bhalevy@panasas.com>
+Date:   Wed Apr 15 14:16:08 2009 -0400
+
+    utils/nfsd: fix -N optarg error printout
+    
+    as currently printed c is the version number, not a string char,
+    therefore is should be printed as %d not %c.  That said, just print
+    optarg as %s since it might be non-numeric.
+    
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit d4008af910ba1d527f00f8207fb3f8f5709e943d
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Wed Apr 15 12:52:48 2009 -0400
+
+    getport.c: fix non-standard C
+    
+    Squelch a compiler warning in getport.c:
+    
+      getport.c:65: warning: ¿static¿ is not at beginning of declaration
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit c51d826a201095fb3a7c68c3666e2b795a2b687d
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Wed Apr 15 12:38:40 2009 -0400
+
+    nfs-utils: reverse order of librpcsecgss and libgssglue checks
+    
+    The check that validates the version of librpcsecgss also needs to
+    have libgssglue installed.  Without libgssglue, ./configure complains
+    that it can't find rpcsecgss, even though it's installed.
+    
+    It also turns out that the error message generated by pkg-config is
+    more complete than the one we have in aclocal/rpcsec_vers.m4, so just
+    let those PKG_CHECK_MODULES m4 macros use the default error message.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit b09228c86d4049b11c6ddf9284a637a211993b44
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Wed Apr 15 12:04:06 2009 -0400
+
+    nfs-utils: add IPv6 code to gssd
+    
+    All of the pieces to handle IPv6 are now in place. Add IPv6-specific
+    code wrapped in the proper #ifdef's so that IPv6 support works when
+    it's enabled at build-time.
+    
+    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit afba62a753549ae3c2a713b08163ab84bb622183
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Wed Apr 15 12:01:46 2009 -0400
+
+    nfs-utils: switch gssd to use standard function for getting an RPC client
+    
+    We already have a common function for setting up an RPC client. That
+    function uses the tirpc API when tirpc is enabled and is also already
+    IPv6 enabled. Switch gssd to use it.
+    
+    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit d9c3935de6c82cea687544c5d45d999297da141d
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Wed Apr 15 11:36:07 2009 -0400
+
+    nfs-utils: query for remote port using rpcbind instead of getaddrinfo
+    
+    We already have the server's address from the upcall, so we don't really
+    need to look it up again, and querying the local services DB for the
+    port that the remote server is listening on is just plain wrong.
+    
+    Use rpcbind to set the port for the program and version that we were
+    given in the upcall. The exception here is NFSv4. Since NFSv4 mounts
+    are supposed to use a well-defined port then skip the rpcbind query
+    for that and just set the port to the standard one (2049).
+    
+    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 59189376db057ae08a710cb2b258426230f687d7
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Wed Apr 15 11:34:51 2009 -0400
+
+    nfs-utils: store the address given in the upcall for later use
+    
+    The current upcall could be more efficient. We first convert the address
+    to a hostname, and then later when we set up the RPC client, we do a
+    hostname lookup to convert it back to an address.
+    
+    Begin to change this by keeping the address in the clnt_info that we get
+    out of the upcall. Since a sockaddr has a port field, we can also
+    eliminate the port from the clnt_info.
+    
+    Finally, switch to getnameinfo() instead of gethostbyaddr(). We'll need
+    to use that call anyway when we add support for IPv6.
+    
+    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 4b27decace00754006d854a4bbbaa7dd305cba1c
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Wed Apr 15 10:29:04 2009 -0400
+
+    nfs-utils: make getnameinfo() required for --enable-gss
+    
+    Systems that are so old that they don't have getnameinfo() in glibc are
+    probably also running kernels that are so old that they don't support
+    gssapi upcalls anyway.
+    
+    Make --enable-gss dependent on the presence of the getnameinfo()
+    function.  This allows us to reduce some conditional compilation.
+    
+    Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit fa5352f78533c7ad1d8603c1a4ba08fa82768e6b
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Apr 8 10:26:26 2009 -0400
+
+    The --list option does not work on server stats.
+    
+    The print_stats_list() routine was using the client's
+    stats to decide whether to display any stats. This did
+    not work when there was only server stats.
+    
+    This patch breaks up print_stats_list into two different
+    routines allowing both server and clients stats to be
+    listed.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 500fab45f73c0ba1bc442157ef3d7744f20e6b2a
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Apr 8 09:48:58 2009 -0400
+
+    The server stats were not being updated with the
+    -Z options causing the stats to be incorrect.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit cb81340660112f9296205901b09c0668a480bc47
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Apr 8 09:28:22 2009 -0400
+
+    Eliminate the displaying zero stats when the explicit protocol
+    is specified (-2, -3, -4) the -Z and or --list options.
+    
+    When a particular protocol is specified and either
+    the -Z or --list options are used, zeros or blank lines
+    are echoed to the screen when there is not any NFS traffic.
+    This cause any useful data to be scroll off the screen.
+    
+    With this patch only non-zero stats will be shown, which
+    makes the output of these options more condensed and
+    in turn more useful.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit ca8eb17798fb9b4936a38cc58fe379e9e8d379f9
+Author: Kevin Constantine <kevin.constantine@disneyanimation.com>
+Date:   Sat Apr 4 07:18:26 2009 -0400
+
+    nfsstat: Add --list flag
+    
+    nfsstat.c: Adds the --list flag to print information in a list format
+       instead of the standard multi-column format
+    nfsstat.man: Updates the manpage to include the --list flag.
+    
+    Signed-off-by: Kevin Constantine <kevin.constantine@disneyanimation.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 524cdc4eb1663e5c10d12160e48c45dc81852568
+Author: Steve Dickson <steved@redhat.com>
+Date:   Sat Apr 4 06:46:09 2009 -0400
+
+    Keep the interval output quite when there is no NFS traffic.
+    
+    The  'nfsstat -Z5' command continually outputs the following
+    when there is no NFS traffic.
+    
+    Client rpc stats:
+    calls      retrans    authrefrsh
+    0          0          0
+    
+    This patch adds code that will keep the interval output
+    quite so real results will not be scrolled of the screen
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit d2319b9cabc67d999b16aea2077a4a3c642ec28d
+Author: Kevin Constantine <kevin.constantine@disneyanimation.com>
+Date:   Sat Apr 4 06:29:01 2009 -0400
+
+    nfsstat: Print diff stats every N seconds
+    
+    nfsstat.c: Implements an optional "interval" argument to --sleep
+    nfsstat.man: Explains the use of --sleep[interval]
+    
+    Reviewed-By: Greg Banks <gnb@fmeh.org>
+    Signed-off-by: Kevin Constantine <kevin.constantine@disneyanimation.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 70561910500556c8109ca2e5683a92ed51c82bb7
+Author: Kevin Coffman <kwc@citi.umich.edu>
+Date:   Fri Apr 3 15:20:09 2009 -0400
+
+    cacheio: return any original error from qword_eol
+    
+    If the initial fflush() fails in qword_eol, log the failure
+    and return the indication of the original failure, not the
+    successful cover-up.
+    
+    Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 7de6c8c54ac195d659c8ac2d2ac01ef47c6c3ecd
+Author: Kevin Coffman <kwc@citi.umich.edu>
+Date:   Fri Apr 3 15:18:16 2009 -0400
+
+    svcgssd: check the return code from qword_eol() and log	failures
+    
+    If qword_eol() fails while writing the context information, log
+    an indication of the failure.
+    
+    This addresses at least one cause of the intermittent, and
+    previously undiagnosed, problem of the server returning
+    GSS_S_NO_CONTEXT when a context was seemingly successfully
+    created and sent down to the kernel.  In my case there was a
+    mis-match between kernel and user-land configuration resulting in
+    the proper kernel module not being loaded. Therefore the write
+    of the context failed, but was not logged by svcgssd.  When the
+    kernel goes to find the resulting context, it was really not
+    there and correctly returned GSS_S_NO_CONTEXT to the client.
+    
+    Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit f0ed8401e854e1cbd23b2fb5dca5e88dec2df7c4
+Author: Ben Myers <bpm@sgi.com>
+Date:   Fri Apr 3 15:13:10 2009 -0400
+
+    Mountd should use separate lockfiles
+    
+    Mountd keeps file descriptors used for locks separate from
+    those used for io and seems to assume that the lock will
+    only be released on close of the file descriptor that was used
+    with fcntl.  Actually the lock is released when any file
+    descriptor for that file is closed.  When setexportent() is called
+    after xflock() he closes and reopens the io file descriptor and defeats the
+    lock.
+    
+    This patch fixes that by using a separate file for locking, cleaning
+    them up when finished.
+    
+    Signed-off-by: Ben Myers <bpm@sgi.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit c56152202a3000c69b87f9cb90f40166f1f21275
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Fri Apr 3 15:03:15 2009 -0400
+
+    nfs-utils: fix AC_CHECK_FUNC calls in configure.ac
+    
+    AC_CHECK_FUNC and AC_CHECK_FUNCS take 3 args. Any ones beyond that are
+    ignored. In several places, we're passing the "action-if-not-found" in
+    as the 4th arg so it's being ignored.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 3724317e223d46908aac2405bbd73ea2de4f36e5
+Author: Steve Dickson <steved@redhat.com>
+Date:   Mon Mar 23 17:13:01 2009 -0400
+
+    In recent Fedora builds, the '-D _FORTIFY_SOURCE=2' compile
+    flag has been set. This cause warnings to be generated when
+    return values from reads/writes (and other calls) are not
+    checked. The patch address those warnings.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit d62365079f711b25e73522b2af380abc2a7e2788
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Mon Mar 23 08:13:01 2009 -0400
+
+    Regardless though, it's dangerous to keep invalid pointers around like
+    this. Later code changes may make it more likely for this problem to
+    occur.
+    
+    Also eliminate some unneeded NULL pointer checks before freeing memory.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 38062464a09868ff579b3c3c0b43fcd550ea3c61
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Mon Mar 23 08:12:37 2009 -0400
+
+    gssd: free buffer allocated by gssd_k5_err_msg
+    
+    There's no way for the caller of gssd_k5_err_msg to know whether to free
+    the string it returns. It can call krb5_get_error_message which returns
+    a string that must be freed via krb5_free_error_string. The other ways
+    that it can return a string require that the memory not be freed.
+    
+    Deal with this by copying the string to a new buffer in all cases. Then
+    we can properly free the string allocated by krb5_get_error_message.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 7f1f9985cf510b087e7a817597094acba9143795
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Mon Mar 23 08:12:14 2009 -0400
+
+    gssd: NULL-terminate buffer after read in read_service_info (try #2)
+    
+    Valgrind complains that we're passing an unintialized buffer to sscanf
+    here. The main problem seems to be that we're not ensuring that the
+    buffer is NULL terminated before we pass it off.
+    
+    This is the second version of this patch, the first one did not increase
+    the buffer allocation by 1 which could have led to clobbering the next
+    byte on the stack if nbytes == INFOBUFLEN.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 690b2eb64e44dc96db68900dd17ea4586b51966e
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Mon Mar 23 08:11:41 2009 -0400
+
+    gssd: initialize fakeseed in prepare_krb5_rfc1964_buffer
+    
+    This causes a compiler warning and also means that we're stuffing
+    the buffer with uninitialized junk from the stack. Other places in
+    this code initialize "fakeseed" to 0. Do the same here.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 1a4bbe59d5cf0684c46b329fcc765eac97dab6ba
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:42:44 2009 -0400
+
+    nfs-utils: clean up handling of libgssglue in gssd Makefile
+    
+    From: Jeff Layton <jlayton@redhat.com>
+    
+    Make the pkgconfig check for libgssglue conditional on tirpc being
+    enabled. When it's disabled, the pkgconfig check for librpcsecgss will
+    pull in the gssglue lib and include dir automatically.
+    
+    Also, make sure we include GSSGLUE_CFLAGS and the GSSGLUE_LIBS to the
+    appropriate places in utils/gssd/Makefile.am so that we pick up
+    the gssglue libs when tirpc is enabled.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 336f8bca825416082d62ef38314f3e0b7e8f5cc2
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:40:47 2009 -0400
+
+    nfs-utils: Include legacy or TI-RPC headers, not both
+    
+    Data type incompatibilities between the legacy RPC headers and the
+    TI-RPC headers mean we can't use libtirpc with code that was compiled
+    against the legacy RPC headers.  The definition of rpcprog_t for
+    example is "unsigned long" in the legacy library, but it's "uint32_t"
+    for TI-RPC.  On 32-bit systems, these types happen to have the same
+    width, but on 64-bit systems they don't, making more complex data
+    structures that use these types in fields ABI incompatible.
+    
+    Adopt a new strategy to deal with this issue.  When --enable-tirpc is
+    set, append "-I/usr/include/tirpc" to the compilation steps.  This
+    should cause the compiler to grab the tirpc/ headers instead of the
+    legacy headers.  Now, for TI-RPC builds, the TI-RPC legacy functions
+    and the TI-RPC headers will be used.  On legacy systems, the legacy
+    headers and legacy glibc RPC implementation will be used.
+    
+    A new ./configure option is introduced to allow system integrators to
+    use TI-RPC headers in some other location than /usr/include/tirpc.
+    /usr/include/tirpc remains the default setting for this new option.
+    
+    The gssd implementation presents a few challenges, but it turns out
+    the gssglue library is similar to the auth_gss pieces of TI-RPC.  To
+    avoid similar header incompatibility issues, gssd now uses libtirpc
+    instead of libgssglue if --enable-tirpc is specified.  There may be
+    other issues to tackle with gssd, but for now, we just make sure it
+    builds with --enable-tirpc.
+    
+    Note also: svc_getcaller() is a macro in both cases that points to
+    a sockaddr field in the svc_req structure.  The legacy version points
+    to a sockaddr_in type field, but the TI-RPC version points to a
+    sockaddr_in6 type field.
+    
+    rpc.mountd unconditionally casts the result of svc_getcaller() to a
+    sockaddr_in *.  This should be OK for TI-RPC as well, since rpc.mountd
+    still uses legacy RPC calls (provided by glibc, or emulated by TI-RPC)
+    to set up its listeners, and therefore rpc.mountd callers will always
+    be from AF_INET addresses for now.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 530abf870f5188b2bdd4a9211d7c93fb6ce68854
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:37:09 2009 -0400
+
+    configure: move IPv6 feature checks into aclocal
+    
+    Clean up: for consistency with other local feature checks, move IPv6
+    feature checks into aclocal/
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit fd6a34c83051f82c9064963e24976bf3c47a5422
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:32:49 2009 -0400
+
+    nfs-utils: don't need extra libs to do AC_CHECK_LIBS for librpcsecgss
+    
+    From: Jeff Layton <jlayton@redhat.com>
+    
+    The conftest should work without these extra libs being included.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 617d0ac4e51889506f3afc39f5ef686d5c0e0d15
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:31:27 2009 -0400
+
+    configure: Move rpcsecgss checking into aclocal
+    
+    Clean up: Introduce two more aclocal scripts for handling rpcsecgss
+    dependency checking.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 767773f33c10dfeaf44ef7d6aea0946f5d9d248f
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:30:26 2009 -0400
+
+    configure: pull common nfsidmap and event checks into	aclocal/
+    
+    Clean up: Create an aclocal script for the nfsidmap library and
+    headers checks used for both --enable-gss and --enable-nfsv4.
+    Move libevent checks out too.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit d271666403a87e60bbdee85372b6dcf35c2975ed
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:29:18 2009 -0400
+
+    nfs-utils: replace function-specific switches with	HAVE_LIBTIRPC
+    
+    Instead of switching in TI-RPC-specific logic with a function-specific
+    switch like HAVE_CLNT_VG_CREATE, let's use the more generic
+    HAVE_LIBTIRPC macro everywhere.
+    
+    This simplifies ./configure (always a good thing), and makes it more
+    clear in the source code exactly what the extra conditionally compiled
+    code is for.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 31c4305a67ca434ea5614f5bdb083fbe9acc2f7e
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:28:42 2009 -0400
+
+    configure: move TI-RPC checks into aclocal
+    
+    Define an aclocal test for TI-RPC headers and library, and move the
+    TI-RPC checks earlier in our configure script so other feature checks
+    can use the availability of TI-RPC to decide what to do.
+    
+    Since bindresvport_sa is required just for IPv6 support, move that
+    check to the IPv6 feature tests.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 8b40c0bf17ca3e007721085a3bb627a2abd52777
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon Mar 16 13:26:34 2009 -0400
+
+    configure: add defensive quoting in some function checks
+    
+    Clean up: Add proper m4 quoting in macros that check for the presence
+    of some functions in configure.ac.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+commit 06da4cfd46942acaaa5bd2e7933fd290701d186d
+Author: Steve Dickson <steved@redhat.com>
+Date:   Sun Mar 8 10:10:25 2009 -0400
+
+    Added back the some logging variables which are no
+    longer used but, unfortunately, they are extern-ed by
+    public headers files which are not under the control
+    of this package.
+    
+    Spotted-by: Juergen Daubert <jue@jue.li>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
