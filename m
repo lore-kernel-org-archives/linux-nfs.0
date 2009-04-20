@@ -1,52 +1,142 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/3] Fix umount.nfs
-Date: Mon, 20 Apr 2009 08:11:54 -0400
-Message-ID: <49EC668A.1000404@RedHat.com>
-References: <20090417201021.14555.93852.stgit@ingres.1015granger.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [ltt-dev] [PATCH] nfs: add support for splice writes
+Date: Mon, 20 Apr 2009 08:23:44 -0400
+Message-ID: <1240230224.8073.6.camel@heimdal.trondhjem.org>
+References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal>
+	 <49D45E42.3050502@suse.de>
+	 <91e0b5050904020542l6b38d7a6hab6d7ef8b4593425@mail.gmail.com>
+	 <49EC0A83.8060802@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:38743 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754632AbZDTMPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Apr 2009 08:15:13 -0400
-In-Reply-To: <20090417201021.14555.93852.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Masahiro Tamori <masahiro.tamori@gmail.com>,
+	Mathieu Desnoyers <compudj@krystal.dyndns.org>,
+	linux-nfs@vger.kernel.org, ltt-dev@lists.casi.polymtl.ca,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-embedded@vger.kernel.org
+To: Suresh Jayaraman <sjayaraman@suse.de>
+Return-path: <linux-embedded-owner@vger.kernel.org>
+In-Reply-To: <49EC0A83.8060802@suse.de>
+Sender: linux-embedded-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 2009-04-20 at 11:09 +0530, Suresh Jayaraman wrote:
+> Hi Trond,
+> 
+> Do you think this patch is OK? Can this be considered for merging?
+> 
+> Thanks,
+> 
+> Masahiro Tamori wrote:
+> > Hello Suresh and Mathieu,
+> > 
+> > 2009/4/2 Suresh Jayaraman <sjayaraman@suse.de>:
+> >> Mathieu Desnoyers wrote:
+> >>> * Suresh Jayaraman (sjayaraman@suse.de) wrote:
+> >>>> This patch attempts to add splice writes support. In essence, it just
+> >>>> calls generic_file_splice_write() after doing a little sanity check.
+> >>>> This would allow LTTng users that are using NFS to store trace data.
+> >>>> There could be more applications that could be benefitted too.
+> >>>>
+> >>>> I have tested this using the Jens' test program and have found no
+> >>>> real issues. The test program is inlined below:
+> >>>>
+> >>> There is just a small checkpatch nit that I'll fix directly in place in
+> >>> the LTTng tree.
+> >>>
+> >>> WARNING: %Ld/%Lu are not-standard C, use %lld/%llu
+> >>> #93: FILE: fs/nfs/file.c:564:
+> >>> +   dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+> >>>
+> >>> total: 0 errors, 1 warnings, 42 lines checked
+> >>>
+> >> Yes, I noticed it. There are quite a few places in nfs code where we
+> >> happened to use that (that doesn't imply that it shouldn't be fixed), so
+> >> I thought it's OK.
+> >>
+> >>> That's great ! I'll pull it in the LTTng tree so my users can try it.
+> >>> They currently cannot write LTTng traces to NFS mounts anyway.
+> >> Yes, please report the test results. Would appreciate it very much.
+> >>
+> >>
+> >> Thanks,
+> > 
+> > Thank you for creating a patch !!
+> > 
+> > I tested it, and it works fine.
+> > 
+> > My environment is following,
+> > LTTV 0.12.10
+> > LTTng 0.100
+> > LTT Control 0.65
+> > Kernles 2.6.29
+> > 
+> > LTTng version is old now, but the test is passed on ARM11 target.
+> > 
+> > Furthermore, I run the splice test and the test is passed too.
+> > The test code is copied from
+> > http://kzk9.net/blog/2007/05/splice2.html
+> > (Japanese page)
+> > 
+> > Thanks all people who commented this issue.
+> > 
+> > Best regards,
+> > Masahiro Tamori
+> > 
+> >>>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> >>>> index 90f292b..13d6a00 100644
+> >>>> --- a/fs/nfs/file.c
+> >>>> +++ b/fs/nfs/file.c
+> >>>> @@ -47,6 +47,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
+> >>>>                   size_t count, unsigned int flags);
+> >>>> static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+> >>>>               unsigned long nr_segs, loff_t pos);
+> >>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+> >>>> +                  struct file *filp, loff_t *ppos,
+> >>>> +                  size_t count, unsigned int flags);
+> >>>> static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+> >>>>               unsigned long nr_segs, loff_t pos);
+> >>>> static int nfs_file_flush(struct file *, fl_owner_t id);
+> >>>> @@ -76,6 +79,7 @@ const struct file_operations nfs_file_operations = {
+> >>>>   .lock      = nfs_lock,
+> >>>>   .flock     = nfs_flock,
+> >>>>   .splice_read  = nfs_file_splice_read,
+> >>>> +  .splice_write  = nfs_file_splice_write,
+> >>>>   .check_flags  = nfs_check_flags,
+> >>>>   .setlease    = nfs_setlease,
+> >>>> };
+> >>>> @@ -550,6 +554,26 @@ out_swapfile:
+> >>>>   goto out;
+> >>>> }
+> >>>>
+> >>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+> >>>> +                 struct file *filp, loff_t *ppos,
+> >>>> +                 size_t count, unsigned int flags)
+> >>>> +{
+> >>>> +  struct dentry *dentry = filp->f_path.dentry;
+> >>>> +  struct inode *inode = dentry->d_inode;
+> >>>> +
+> >>>> +  dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+> >>>> +      dentry->d_parent->d_name.name, dentry->d_name.name,
+> >>>> +      (unsigned long) count, (unsigned long long) *ppos);
+> >>>> +
+> >>>> +  if (IS_SWAPFILE(inode)) {
+> >>>> +      printk(KERN_INFO "NFS: attempt to write to active swap"
+> >>>> +          "file!\n");
+> >>>> +      return -EBUSY;
+> >>>> +  }
 
+I don't know that we really need this. We should sweep through the NFS
+code and kill all those IS_SWAPFILE() thingys. Or at least #define
+IS_SWAPFILE(a) (0)
+...
 
-Chuck Lever wrote:
-> Hi Steve-
-> 
-> This short series addresses a couple of problems found with
-> umount.nfs.  See RH bugzilla 492598.
-> 
-> After this series is applied, umount.nfs will send UMNT requests from
-> a privileged source port.  This appears to match the behavior of
-> umount.nfs before nfs-utils 1.1.5, and is required when the "secure"
-> export option is used on the server.
-> 
-> A minor problem with the value returned by nfs_mount_protocol() is
-> also addressed.  This might affect umount.nfs and NFSv2/v3
-> version/protocol fallback by sending MNT and UMNT requests using
-> the wrong transport protocol.
-> 
-> ---
-> 
-> Chuck Lever (3):
->       umount.nfs: Fix return value of nfs_mount_protocol()
->       umount.nfs: Use a privileged port when sending UMNT requests
->       support: Provide an API for creating a privileged RPC client
-> 
-> 
->  support/include/nfsrpc.h |   11 +++-
->  support/nfs/rpc_socket.c |  140 ++++++++++++++++++++++++++++++++++++++++++++--
->  utils/mount/network.c    |    4 +
->  3 files changed, 145 insertions(+), 10 deletions(-)
-> 
-All three patched tested and committed.
+> >>>> +
+> >>>> +  return generic_file_splice_write(pipe, filp, ppos, count, flags);
+> >>>> +}
+> >>>> +
+> >>>> static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
+> >>>> {
+> >>>>   struct inode *inode = filp->f_mapping->host;
+> >>>>
 
-steved.
+Otherwise it looks fine...
