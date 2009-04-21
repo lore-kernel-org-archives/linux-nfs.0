@@ -1,135 +1,71 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 1/2] nfs-iostat.py: Print Data Cache Statistics
-Date: Tue, 21 Apr 2009 14:58:23 -0400
-Message-ID: <8EF2000D-C4D6-4AC2-B37C-221594A515B4@oracle.com>
-References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com> <4EEE5CE8-9A51-4828-8B70-B48A35F46F01@oracle.com> <49EE083C.6010105@disney.com>
+Subject: Re: [ltt-dev] [PATCH] nfs: add support for splice writes
+Date: Tue, 21 Apr 2009 14:48:14 -0400
+Message-ID: <1CCD753F-86BC-4C8D-96CC-FD3B67370B1F@oracle.com>
+References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal> <49D45E42.3050502@suse.de> <91e0b5050904020542l6b38d7a6hab6d7ef8b4593425@mail.gmail.com> <49EC0A83.8060802@suse.de> <1240230224.8073.6.camel@heimdal.trondhjem.org> <49EC6CB3.8080800@suse.de> <1240237274.13636.9.camel@heimdal.trondhjem.org> <49EC990B.1030007@suse.de>  <20090421144810.GA7036@infradead.org> <1240335302.5390.20.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0 (Apple Message framework v930.3)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Suresh Jayaraman <sjayaraman@suse.de>,
+	Masahiro Tamori <masahiro.tamori@gmail.com>,
+	Mathieu Desnoyers <compudj-vdFpqfd5riKZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>,
+	linux-nfs@vger.kernel.org, ltt-dev-33AaDErTWvBVxDZ2/Zk0YoryAYyacSEB@public.gmane.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-embedded@vger.kernel.org,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:21915 "EHLO
+Received: from rcsinet12.oracle.com ([148.87.113.124]:38669 "EHLO
 	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756218AbZDUS6m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 14:58:42 -0400
-In-Reply-To: <49EE083C.6010105-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+	with ESMTP id S1758064AbZDUTt4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 15:49:56 -0400
+In-Reply-To: <1240335302.5390.20.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 21, 2009, at 1:54 PM, Kevin Constantine wrote:
-> Chuck Lever wrote:
->> On Apr 20, 2009, at 10:03 PM, Kevin Constantine wrote:
->>> add --data flag to print data cache statistics
->>> print read cache stats from __print_data_cache_stats
->> It's been a while since I wrote this code... comments below.
->>> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org 
->>> >
->>> ---
->>> tools/nfs-iostat/nfs-iostat.py |   26 ++++++++++++++++++++------
->>> 1 files changed, 20 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
->>> iostat.py
->>> index 9626d42..d331a72 100644
->>> --- a/tools/nfs-iostat/nfs-iostat.py
->>> +++ b/tools/nfs-iostat/nfs-iostat.py
->>> @@ -220,14 +220,20 @@ class DeviceData:
->>>        """Print the data cache hit rate
->>>        """
->>>        nfs_stats = self.__nfs_data
->>> -        app_bytes_read = float(nfs_stats['normalreadbytes'])
->>> +        app_bytes_read = float(nfs_stats['normalreadbytes'] +  
->>> nfs_stats['directreadbytes'])
->>>        if app_bytes_read != 0:
->>> -            client_bytes_read =  
->>> float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
->>> -            ratio = ((app_bytes_read - client_bytes_read) *  
->>> 100) / app_bytes_read
->>> -
->>> +            read_bytes_from_server =  
->>> float(nfs_stats['serverreadbytes'])
->>> +            directio_bytes_from_server =  
->>> float(nfs_stats['directreadbytes'])
->>> +            standard_read_bytes_from_server =  
->>> read_bytes_from_server - directio_bytes_from_server
->>> +            cached_read_bytes = float(app_bytes_read -  
->>> read_bytes_from_server)
->> I'm not sure why you are reversing the sense of this computation.   
->> "directreadbytes" is the count of bytes that applications read with  
->> O_DIRECT.  These are never cached, but they are counted in  
->> "serverreadbytes", so my logic subtracts them before computing the  
->> hit ratio.  Was there some accounting problem you found?  (If there  
->> was, it's worth stating that explicitly in the patch description).
+On Apr 21, 2009, at 1:35 PM, Trond Myklebust wrote:
+> On Tue, 2009-04-21 at 10:48 -0400, Christoph Hellwig wrote:
+>> On Mon, Apr 20, 2009 at 09:17:23PM +0530, Suresh Jayaraman wrote:
+>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+>>> +				     struct file *filp, loff_t *ppos,
+>>> +				     size_t count, unsigned int flags)
+>>> +{
+>>> +	struct dentry *dentry = filp->f_path.dentry;
+>>> +
+>>> +	dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+>>> +		dentry->d_parent->d_name.name, dentry->d_name.name,
+>>> +		(unsigned long) count, (unsigned long long) *ppos);
+>>> +
+>>> +	return generic_file_splice_write(pipe, filp, ppos, count, flags);
+>>> +}
+>>> +
+>>
+>> You need all calls from nfs_file_write, too:
+>>
+>> - most importantly the nfs_revalidate_file_size for O_APPEND
 >
-> Originally you had app_bytes_read = normalreadbytes, but that's not  
-> entirely true, since an app might be reading with O_DIRECT,  
-> therefore app_bytes_read should probably be normal + direct.
+> Isn't O_APPEND illegal for splice_write()? It looks like it is from a
+> quick perusal of do_splice_from().
 >
-> client_bytes_read seemed ambiguous to me, is that bytes being read  
-> by the host client from the server, bytes being read by the nfs  
-> client process?  read_bytes_from_server seemed more logical, but in  
-> the diff block below, I've removed that altogether, and am just left  
-> with cached_read_bytes.
+>> - the nfs_do_fsync for sync writes
+>
+> generic_file_splice_write() calls generic_osync_inode(), which should
+> ensure sync writes even with NFS.
+> The one thing it won't do is propagate NFS write errors back to the
+> caller. If we do care about this, then we should certainly test for
+> nfs_need_sync_write() and then call nfs_do_fsync() (see
+> nfs_file_write()).
+>
+>> - probably the stats increment
+>
+> We should talk to Chuck about this.
 
-I'd rather not change the way the ratio is computed, unless you see a  
-loss of precision.  The way I had it minimizes the possibility of an  
-overflow during the computation.  If you want to rename the variables  
-to clarify it that's OK, I guess.
+I don't know much about the characteristics of splice writes, so you  
+can do one of two things:
 
->>> +            ratio = (cached_read_bytes / app_bytes_read) * 100
->> The other functions use (x * 100) / y -- I seem to recall there are  
->> rounding errors if you do it the way you've done it here, but I  
->> don't remember exactly what the issue was.  But you are changing  
->> this one so it is different than the all the other similar  
->> computations.  Can you state your reason?
->
-> since cached_read_bytes = app_bytes_read - client_bytes_read, i used  
-> (cached_read_bytes / app_bytes_read) * 100, but that is the same as  
-> (cached_read_bytes * 100) / app_bytes_read if you'd rather see that.
-
-The latter usually gives us better precision in the calculated result.
-
-> new diff block below (if it all checks out, i'll send the whole  
-> patch, unless you'd rather just see that.)
->
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
-> iostat.py
-> index 9626d42..7dae659 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -220,14 +220,17 @@ class DeviceData:
->         """Print the data cache hit rate
->         """
->         nfs_stats = self.__nfs_data
-> -        app_bytes_read = float(nfs_stats['normalreadbytes'])
-> +        app_bytes_read = float(nfs_stats['normalreadbytes'] +  
-> nfs_stats['directreadbytes'])
->         if app_bytes_read != 0:
-> -            client_bytes_read = float(nfs_stats['serverreadbytes']  
-> - nfs_stats['directreadbytes'])
-> -            ratio = ((app_bytes_read - client_bytes_read) * 100) /  
-> app_bytes_read
-> -
-> +            cached_read_bytes = float(app_bytes_read -  
-> float(nfs_stats['serverreadbytes']))
-> +            ratio = (cached_read_bytes * 100) / app_bytes_read
->             print
-> -            print 'app bytes: %f  client bytes %f' %  
-> (app_bytes_read, client_bytes_read)
-> -            print 'Data cache hit ratio: %4.2f%%' % ratio
-> +            print '%10s %15s %15s %15s %7s' % ("Data Read:", "From  
-> Server", "From Cache", "Total", "Hit %")
-> +            print '%10s %13.4fMB %13.4fMB %13.4fMB %6.2f%%' % ("", \
-> +                                                
-> float(nfs_stats['serverreadbytes']) / 1024.0 / 1024.0, \
-> +                                               cached_read_bytes /  
-> 1024.0 / 1024.0, \
-> +                                               app_bytes_read /  
-> 1024.0 / 1024.0, \
-> +                                               ratio)
->
->     def __print_attr_cache_stats(self, sample_time):
->         """Print attribute cache efficiency stats
+1.  Create a separate BYTESWRITTEN counter for these
+2.  Lump them into NORMALBYTESWRITTEN if these are effectively cached  
+writes.
 
 --
 Chuck Lever
