@@ -1,95 +1,136 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: Re: [PATCH 2/2] nfs-iostat.py: Added bytes written output
-Date: Tue, 21 Apr 2009 10:57:21 -0700
-Message-ID: <49EE0901.2040704@disney.com>
-References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-3-git-send-email-kevin.constantine@disneyanimation.com> <ABA1CFF5-7104-4ADD-9847-F6B9136D9987@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/2] nfs-iostat.py: Print Data Cache Statistics
+Date: Tue, 21 Apr 2009 14:58:23 -0400
+Message-ID: <8EF2000D-C4D6-4AC2-B37C-221594A515B4@oracle.com>
+References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com> <4EEE5CE8-9A51-4828-8B70-B48A35F46F01@oracle.com> <49EE083C.6010105@disney.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate2.disneyanimation.com ([12.188.26.102]:16222 "EHLO
-	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750970AbZDUR5V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 13:57:21 -0400
-In-Reply-To: <ABA1CFF5-7104-4ADD-9847-F6B9136D9987@oracle.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:21915 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756218AbZDUS6m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 14:58:42 -0400
+In-Reply-To: <49EE083C.6010105-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Apr 20, 2009, at 10:03 PM, Kevin Constantine wrote:
->> Print statistics about bytes written by NFS
->>
->> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
->> ---
->> tools/nfs-iostat/nfs-iostat.py |   10 ++++++++++
->> 1 files changed, 10 insertions(+), 0 deletions(-)
->>
->> diff --git a/tools/nfs-iostat/nfs-iostat.py 
->> b/tools/nfs-iostat/nfs-iostat.py
->> index d331a72..5f2e232 100644
->> --- a/tools/nfs-iostat/nfs-iostat.py
->> +++ b/tools/nfs-iostat/nfs-iostat.py
->> @@ -221,6 +221,7 @@ class DeviceData:
->>         """
->>         nfs_stats = self.__nfs_data
->>         app_bytes_read = float(nfs_stats['normalreadbytes'] + 
->> nfs_stats['directreadbytes'])
->> +        bytes_written_by_app = float(nfs_stats['normalwritebytes'] + 
->> nfs_stats['directwritebytes'])
->>         if app_bytes_read != 0:
->>             read_bytes_from_server = float(nfs_stats['serverreadbytes'])
->>             directio_bytes_from_server = 
->> float(nfs_stats['directreadbytes'])
->> @@ -234,6 +235,15 @@ class DeviceData:
->>                         cached_read_bytes / 1024.0 / 1024.0, \
->>                         app_bytes_read / 1024.0 / 1024.0, \
->>                         ratio)
->> +    if bytes_written_by_app != 0:
->> +        bytes_written_by_nfs = float(nfs_stats['serverwritebytes'])
->> +        cached_write_bytes = float(bytes_written_by_app - 
->> bytes_written_by_nfs);
-> 
-> Again, I don't see why this computation is necessary:  The 
-> "normalwritebytes" statistic is what was written through the client's 
-> cache, and "directwritebytes" counts the number of bytes that were 
-> written via O_DIRECT.
-> 
+On Apr 21, 2009, at 1:54 PM, Kevin Constantine wrote:
+> Chuck Lever wrote:
+>> On Apr 20, 2009, at 10:03 PM, Kevin Constantine wrote:
+>>> add --data flag to print data cache statistics
+>>> print read cache stats from __print_data_cache_stats
+>> It's been a while since I wrote this code... comments below.
+>>> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org 
+>>> >
+>>> ---
+>>> tools/nfs-iostat/nfs-iostat.py |   26 ++++++++++++++++++++------
+>>> 1 files changed, 20 insertions(+), 6 deletions(-)
+>>>
+>>> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
+>>> iostat.py
+>>> index 9626d42..d331a72 100644
+>>> --- a/tools/nfs-iostat/nfs-iostat.py
+>>> +++ b/tools/nfs-iostat/nfs-iostat.py
+>>> @@ -220,14 +220,20 @@ class DeviceData:
+>>>        """Print the data cache hit rate
+>>>        """
+>>>        nfs_stats = self.__nfs_data
+>>> -        app_bytes_read = float(nfs_stats['normalreadbytes'])
+>>> +        app_bytes_read = float(nfs_stats['normalreadbytes'] +  
+>>> nfs_stats['directreadbytes'])
+>>>        if app_bytes_read != 0:
+>>> -            client_bytes_read =  
+>>> float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
+>>> -            ratio = ((app_bytes_read - client_bytes_read) *  
+>>> 100) / app_bytes_read
+>>> -
+>>> +            read_bytes_from_server =  
+>>> float(nfs_stats['serverreadbytes'])
+>>> +            directio_bytes_from_server =  
+>>> float(nfs_stats['directreadbytes'])
+>>> +            standard_read_bytes_from_server =  
+>>> read_bytes_from_server - directio_bytes_from_server
+>>> +            cached_read_bytes = float(app_bytes_read -  
+>>> read_bytes_from_server)
+>> I'm not sure why you are reversing the sense of this computation.   
+>> "directreadbytes" is the count of bytes that applications read with  
+>> O_DIRECT.  These are never cached, but they are counted in  
+>> "serverreadbytes", so my logic subtracts them before computing the  
+>> hit ratio.  Was there some accounting problem you found?  (If there  
+>> was, it's worth stating that explicitly in the patch description).
+>
+> Originally you had app_bytes_read = normalreadbytes, but that's not  
+> entirely true, since an app might be reading with O_DIRECT,  
+> therefore app_bytes_read should probably be normal + direct.
+>
+> client_bytes_read seemed ambiguous to me, is that bytes being read  
+> by the host client from the server, bytes being read by the nfs  
+> client process?  read_bytes_from_server seemed more logical, but in  
+> the diff block below, I've removed that altogether, and am just left  
+> with cached_read_bytes.
 
-As I said in the email preceding these patches:
-"I'm not quire sure about this patch.  I'm seeing oddities where the number of bytes in "NORMALWRITTENBYTES + 
-DIRECTWRITTENBYTES" does not equal SERVERWRITTENBYTES.  In some cases the amount of data written by the app 
-(normalwrittenbytes + directwrittenbytes) is greater than the amount of data written to the server, and in other cases 
-it's less than the amount of data written to the server.  At the moment, i've ascribed that difference to data being 
-written to the local cache and not flushed, but that doesn't make a whole lot of sense."
+I'd rather not change the way the ratio is computed, unless you see a  
+loss of precision.  The way I had it minimizes the possibility of an  
+overflow during the computation.  If you want to rename the variables  
+to clarify it that's OK, I guess.
 
--kevin
+>>> +            ratio = (cached_read_bytes / app_bytes_read) * 100
+>> The other functions use (x * 100) / y -- I seem to recall there are  
+>> rounding errors if you do it the way you've done it here, but I  
+>> don't remember exactly what the issue was.  But you are changing  
+>> this one so it is different than the all the other similar  
+>> computations.  Can you state your reason?
+>
+> since cached_read_bytes = app_bytes_read - client_bytes_read, i used  
+> (cached_read_bytes / app_bytes_read) * 100, but that is the same as  
+> (cached_read_bytes * 100) / app_bytes_read if you'd rather see that.
 
->> +        print
->> +            print '%13s %12s %15s %15s' % ("Data Written:", "To 
->> Server", "To Cache", "Total")
->> +        print '%10s %13.4fMB %13.4fMB %13.4fMB' % ("", \
->> +                            bytes_written_by_nfs / 1024.0 / 1024.0, \
->> +                        cached_write_bytes / 1024.0 / 1024.0, \
->> +                        bytes_written_by_app / 1024.0 / 1024.0)
->>
->>     def __print_attr_cache_stats(self, sample_time):
->>         """Print attribute cache efficiency stats
->> -- 
->> 1.6.2.1
->>
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+The latter usually gives us better precision in the calculated result.
 
--- 
-------------------------------------------------------------
-Kevin Constantine
+> new diff block below (if it all checks out, i'll send the whole  
+> patch, unless you'd rather just see that.)
+>
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
+> iostat.py
+> index 9626d42..7dae659 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -220,14 +220,17 @@ class DeviceData:
+>         """Print the data cache hit rate
+>         """
+>         nfs_stats = self.__nfs_data
+> -        app_bytes_read = float(nfs_stats['normalreadbytes'])
+> +        app_bytes_read = float(nfs_stats['normalreadbytes'] +  
+> nfs_stats['directreadbytes'])
+>         if app_bytes_read != 0:
+> -            client_bytes_read = float(nfs_stats['serverreadbytes']  
+> - nfs_stats['directreadbytes'])
+> -            ratio = ((app_bytes_read - client_bytes_read) * 100) /  
+> app_bytes_read
+> -
+> +            cached_read_bytes = float(app_bytes_read -  
+> float(nfs_stats['serverreadbytes']))
+> +            ratio = (cached_read_bytes * 100) / app_bytes_read
+>             print
+> -            print 'app bytes: %f  client bytes %f' %  
+> (app_bytes_read, client_bytes_read)
+> -            print 'Data cache hit ratio: %4.2f%%' % ratio
+> +            print '%10s %15s %15s %15s %7s' % ("Data Read:", "From  
+> Server", "From Cache", "Total", "Hit %")
+> +            print '%10s %13.4fMB %13.4fMB %13.4fMB %6.2f%%' % ("", \
+> +                                                
+> float(nfs_stats['serverreadbytes']) / 1024.0 / 1024.0, \
+> +                                               cached_read_bytes /  
+> 1024.0 / 1024.0, \
+> +                                               app_bytes_read /  
+> 1024.0 / 1024.0, \
+> +                                               ratio)
+>
+>     def __print_attr_cache_stats(self, sample_time):
+>         """Print attribute cache efficiency stats
 
-Systems Engineer		t: 818.460.8221
-Walt Disney Animation Studios	e: kevin.constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org
-
-Any sufficiently advanced technology is indistinguishable from magic.
-     - Arthur C. Clarke
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
