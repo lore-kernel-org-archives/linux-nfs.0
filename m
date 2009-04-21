@@ -1,128 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay2.sgi.com ([192.48.179.30]:43201 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752327AbZDBO3b (ORCPT
-	<rfc822;@relay.corp.sgi.com:linux-nfs@vger.kernel.org>);
-	Thu, 2 Apr 2009 10:29:31 -0400
-Message-ID: <49D4CBA0.40408@sgi.com>
-Date: Fri, 03 Apr 2009 01:28:48 +1100
-From: Greg Banks <gnb@sgi.com>
-Reply-To: Greg Banks <gnb@fmeh.org>
-To: NFS list <linux-nfs@vger.kernel.org>,
-        Linux Filesystem list <linux-fsdevel@vger.kernel.org>,
-        XFS OSS list <xfs@oss.sgi.com>,
-        Linux kernel list <linux-kernel@vger.kernel.org>
-Subject: [ANNOUNCE] Filesystem test tools open-sourced by SGI
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailgate2.disneyanimation.com ([12.188.26.102]:40833 "EHLO
+	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751126AbZDUCDf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2009 22:03:35 -0400
+From: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
+To: linux-nfs@vger.kernel.org
+Cc: chuck.lever@oracle.com
+Subject: Add data cache statistics to nfs-iostat.py
+Date: Mon, 20 Apr 2009 19:03:32 -0700
+Message-Id: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-G'day,
+The first patch adds a --data flag, and prints a line about data being read by NFS
 
-SGI is releasing to the Open Source community a number of internal
-SGI testing and debugging tools for NFS.  Some of these tools are
-also applicable to filesystems in general.
+Data Read:     From Server      From Cache           Total   Hit %
+               5676.7534MB     1862.0452MB     7538.7987MB  24.70%
 
-These tools are being released under the GNU General Public License
-(GPL) version 2, in the hope that the Linux filesystem development
-community may find them useful.  They are provided as-is, without any
-support.  Please do not contact SGI for support on any of these tools.
+The second patch adds a line about write data.  I'm not quire sure about this patch.  I'm seeing oddities where the number of bytes in "NORMALWRITTENBYTES + DIRECTWRITTENBYTES" does not equal SERVERWRITTENBYTES.  In some cases the amount of data written by the app (normalwrittenbytes + directwrittenbytes) is greater than the amount of data written to the server, and in other cases it's less than the amount of data written to the server.  At the moment, i've ascribed that difference to data being written to the local cache and not flushed, but that doesn't make a whole lot of sense.  
 
-Some of these tools are unfinished.  Others rely on build
-infrastructure in internal SGI trees which cannot be released.
-The tools are provided as tarball snapshots of internal SGI source
-control trees; for a number of technical reasons it is not possible
-to provide access to those trees or to create external repositories.
+Data Written:    To Server        To Cache           Total
+                  5.2221MB        0.1951MB        5.4172MB
 
-The tools are available for download now at
+-kevin
 
-http://oss.sgi.com/projects/nfs/testtools/
-
-A brief description of each tool follows.
-
-Checkstream
------------
-
-Simple data corruption testing utilities based on the concept of
-generating a stream of small self-contained records which can be
-decoded in a way which makes certain common data corruption modes
-automatically diagnosable.  Has been useful for automated testing of
-NFS, XFS, and CXFS in SGI.
-
-Weber
------
-
-Test load generator for NFS.  Uses multiple threads, multiple sockets
-and multiple IP addresses to simulate loads from many machines,
-thus enabling testing of NFS server setups with larger client counts
-than can be tested with physical infrastructure (or Virtual Machine
-clients).  Has been useful in automated NFS testing and as a pinpoint
-NFS load generator tool for performance development.
-
-NFS PMDA
---------
-
-PCP Data Agent for extended NFS server statistics.  Exports to PCP
-the new statistics (measuring per-client and per-server performance)
-which are provided by SGI's EnhancedNFS kernel patches.
-
-Samba PMDA
-----------
-
-PCP Data Agent for extended Samba server statistics.  Exports to
-PCP the additional statistics (measuring per-client and per-server
-performance) which are provided by SGI's patches to Samba.
-
-Ddnfs
------
-
-Filesystem load generation program designed to simulate the IO
-load placed on an XFS filesystem by the NFS server in response
-to certain NFS loads.  Intended for use in XFS automated testing,
-to test performance and correctness of certain XFS functionality
-not otherwise exercised by the existing XFS test suite, but never
-integrated into XFSQA.
-
-Pmapload
---------
-
-Test suite for the portmap and rpcbind programs (which are
-NFS infrastructure components based on code open-sourced by Sun
-Microsystems and used by every Unix and Linux).  Developed by SGI to
-test changes imported into those programs from newer Sun source code
-during the NFS on IPv6 work for Irix several years ago.
-
-RPC Exerciser
--------------
-
-Test suite for the userspace RPC infrastructure libraries, (which
-are NFS infrastructure components based on code open-sourced by Sun
-Microsystems and used by every Unix and Linux).  Developed by SGI to
-test changes imported into those libraries from newer Sun source code
-during the NFS on IPv6 work for Irix several years ago.
-
-Testfs
-------
-
-Linux kernel module which provides an in-memory filesystem which
-forgets all data written to it.  Also can be configured to simulate
-timing behaviour on reads and writes.  This is useful for NFS
-performance testing without a fast disk subsystem.
-
-StReplay
---------
-
-Program which reads the system call trace of another program (obtained
-using the widely available strace utility) and replays the IO pattern.
-This was intended to be used for automated NFS and XFS testing and
-for NFS and XFS problem diagnosis, but was never completed as the
-author transferred to another team.  Could be the basis for a very
-useful filesystem test tool.
-
-
--- 
-Greg Banks, P.Engineer, SGI Australian Software Group.
-the brightly coloured sporks of revolution.
-I don't speak for SGI.
 
