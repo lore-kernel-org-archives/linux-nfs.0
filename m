@@ -1,105 +1,106 @@
-From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: Re: [PATCH 2/2] nfs-iostat.py: Added bytes written output
-Date: Tue, 21 Apr 2009 13:39:26 -0700
-Message-ID: <49EE2EFE.7050300@disney.com>
-References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-3-git-send-email-kevin.constantine@disneyanimation.com> <ABA1CFF5-7104-4ADD-9847-F6B9136D9987@oracle.com> <49EE0901.2040704@disney.com> <981BA943-47FA-433D-A762-B83983E6532A@oracle.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [BUILD FAILURE 03/04] Next April 21 : x86_64 randconfig [fs/nfs/nfs.ko]
+Date: Tue, 21 Apr 2009 23:44:21 +0300
+Message-ID: <49EE3025.7050603@panasas.com>
+References: <1240332715.9110.39.camel@subratamodak.linux.ibm.com>	 <49EE056C.1060605@panasas.com> <1240336172.20441.0.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: subrata@linux.vnet.ibm.com, NFS list <linux-nfs@vger.kernel.org>,
+	Stephen Rothwell <sfr@canb.auug.org.au>,
+	linux-next <linux-next@vger.kernel.org>,
+	sachinp <sachinp@linux.vnet.ibm.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Alexander Beregalov <a.beregalov@gmail.com>,
+	Ingo Molnar <mingo@elte.hu>,
+	Fredric Isaman <iisaman@citi.umich.edu>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Rusty Russell <rusty@rustcorp.com.au>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([12.188.26.101]:64620 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752849AbZDUUj2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 16:39:28 -0400
-In-Reply-To: <981BA943-47FA-433D-A762-B83983E6532A@oracle.com>
+Received: from gw-ca.panasas.com ([209.116.51.66]:32742 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753368AbZDUUog (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 16:44:36 -0400
+In-Reply-To: <1240336172.20441.0.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
-> On Apr 21, 2009, at 1:57 PM, Kevin Constantine wrote:
->> Chuck Lever wrote:
->>> On Apr 20, 2009, at 10:03 PM, Kevin Constantine wrote:
->>>> Print statistics about bytes written by NFS
->>>>
->>>> Signed-off-by: Kevin Constantine 
->>>> <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
->>>> ---
->>>> tools/nfs-iostat/nfs-iostat.py |   10 ++++++++++
->>>> 1 files changed, 10 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/tools/nfs-iostat/nfs-iostat.py 
->>>> b/tools/nfs-iostat/nfs-iostat.py
->>>> index d331a72..5f2e232 100644
->>>> --- a/tools/nfs-iostat/nfs-iostat.py
->>>> +++ b/tools/nfs-iostat/nfs-iostat.py
->>>> @@ -221,6 +221,7 @@ class DeviceData:
->>>>        """
->>>>        nfs_stats = self.__nfs_data
->>>>        app_bytes_read = float(nfs_stats['normalreadbytes'] + 
->>>> nfs_stats['directreadbytes'])
->>>> +        bytes_written_by_app = float(nfs_stats['normalwritebytes'] 
->>>> + nfs_stats['directwritebytes'])
->>>>        if app_bytes_read != 0:
->>>>            read_bytes_from_server = float(nfs_stats['serverreadbytes'])
->>>>            directio_bytes_from_server = 
->>>> float(nfs_stats['directreadbytes'])
->>>> @@ -234,6 +235,15 @@ class DeviceData:
->>>>                        cached_read_bytes / 1024.0 / 1024.0, \
->>>>                        app_bytes_read / 1024.0 / 1024.0, \
->>>>                        ratio)
->>>> +    if bytes_written_by_app != 0:
->>>> +        bytes_written_by_nfs = float(nfs_stats['serverwritebytes'])
->>>> +        cached_write_bytes = float(bytes_written_by_app - 
->>>> bytes_written_by_nfs);
->>> Again, I don't see why this computation is necessary:  The 
->>> "normalwritebytes" statistic is what was written through the client's 
->>> cache, and "directwritebytes" counts the number of bytes that were 
->>> written via O_DIRECT.
+On Apr. 21, 2009, 20:49 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> On Tue, 2009-04-21 at 20:42 +0300, Benny Halevy wrote:
+>> On Apr. 21, 2009, 19:51 +0300, Subrata Modak <subrata@linux.vnet.ibm.com> wrote:
+>>> I think i am observing this for the first time in any randconfig builds:
+>>>
+>>> BUILD   arch/x86/boot/bzImage
+>>> Root device is (8, 3)
+>>> Setup is 13020 bytes (padded to 13312 bytes).
+>>> System is 5625 kB
+>>> CRC a80d60ee
+>>> Kernel: arch/x86/boot/bzImage is ready  (#1)
+>>>   Building modules, stage 2.
+>>>   MODPOST 514 modules
+>>> ERROR: "find_last_bit" [fs/nfs/nfs.ko] undefined!
+>>> make[1]: *** [__modpost] Error 1
+>>> make: *** [modules] Error 2
+>>> ---
+>>>
+>>> Regards--
+>>> Subrata
+>>>
+>> Trond, can you please merge
+>> http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=commitdiff;h=9f32944d1bca79038ef3e9c9a27f11803d093d8e
+>> into your nfsv41 and linux-next branches?
 >>
->> As I said in the email preceding these patches:
->> "I'm not quire sure about this patch.  I'm seeing oddities where the 
->> number of bytes in "NORMALWRITTENBYTES + DIRECTWRITTENBYTES" does not 
->> equal SERVERWRITTENBYTES.  In some cases the amount of data written by 
->> the app (normalwrittenbytes + directwrittenbytes) is greater than the 
->> amount of data written to the server, and in other cases it's less 
->> than the amount of data written to the server.  At the moment, i've 
->> ascribed that difference to data being written to the local cache and 
->> not flushed, but that doesn't make a whole lot of sense."
-> 
-> Our e-mail system may have barfed on my earlier reply, but I would like 
-> to understand why you need this statistic.  What kind of analysis are 
-> you looking for on the write side?
->
-
-As far as writes go, all I really wanted to print is MB being written to 
-the nfs server.  But I noticed along the way that the values don't add 
-up and found it odd.
-
-An application writing data to an nfs server should be getting counted 
-by either normalwrittenbytes, or directwrittenbytes.  The data being 
-written by the nfs by an NFS write request should be counted by 
-serverwrittenbytes.  normal + direct should equal server, but it 
-doesn't, and I'm wondering what happened to those bytes.  Sometimes 
-normal + direct > server, sometimes normal + direct < server.
-
-What I have in the patch doesn't really matter because I don't 
-understand the imbalance in the counters.
-
--kevin
-
+>> I've placed it right before "nfs41: free slot"
+>> in git://git.linux-nfs.org/projects/bhalevy/linux-pnfs.git nfs41-for-2.6.31
 >>
->>>> +        print
->>>> +            print '%13s %12s %15s %15s' % ("Data Written:", "To 
->>>> Server", "To Cache", "Total")
->>>> +        print '%10s %13.4fMB %13.4fMB %13.4fMB' % ("", \
->>>> +                            bytes_written_by_nfs / 1024.0 / 1024.0, \
->>>> +                        cached_write_bytes / 1024.0 / 1024.0, \
->>>> +                        bytes_written_by_app / 1024.0 / 1024.0)
->>>>
->>>>    def __print_attr_cache_stats(self, sample_time):
->>>>        """Print attribute cache efficiency stats
+>> (see also this thread:
+>> http://article.gmane.org/gmane.linux.kernel.next/6951)
 > 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
+> Could we just push that straight into the kernel? It seems like a
+> no-brainer...
+
+Absolutely.  Fred already sent it to the linux-kbuild mailing list
+and got no response, maybe we'll get lucky this time :-)
+Though I'm not sure who should shepherd it in.
+
+Rusty, since this changes your code in lib/Makefile
+can you please ack this patch?
+
+Benny
+
+> 
+> Cheers
+>   Trond
+> 
+
+>From 9f32944d1bca79038ef3e9c9a27f11803d093d8e Mon Sep 17 00:00:00 2001
+From: Fred Isaman <iisaman@citi.umich.edu>
+Date: Thu, 26 Mar 2009 11:22:16 -0400
+Subject: [PATCH] lib: find_last_bit.o needed by a module only, move it from lib to obj
+
+It is possible to configure the kernel such that find_last_bit is
+referenced only by modules, causing linking to fail with
+
+ERROR: "find_last_bit" [fs/nfs/nfs.ko] undefined!
+
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ lib/Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/lib/Makefile b/lib/Makefile
+index d6edd67..33a40e4 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -38,7 +38,7 @@ lib-$(CONFIG_RWSEM_GENERIC_SPINLOCK) += rwsem-spinlock.o
+ lib-$(CONFIG_RWSEM_XCHGADD_ALGORITHM) += rwsem.o
+ lib-$(CONFIG_GENERIC_FIND_FIRST_BIT) += find_next_bit.o
+ lib-$(CONFIG_GENERIC_FIND_NEXT_BIT) += find_next_bit.o
+-lib-$(CONFIG_GENERIC_FIND_LAST_BIT) += find_last_bit.o
++obj-$(CONFIG_GENERIC_FIND_LAST_BIT) += find_last_bit.o
+ obj-$(CONFIG_GENERIC_HWEIGHT) += hweight.o
+ obj-$(CONFIG_LOCK_KERNEL) += kernel_lock.o
+ obj-$(CONFIG_DEBUG_PREEMPT) += smp_processor_id.o
+-- 
+1.6.2.1
+
