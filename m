@@ -1,56 +1,85 @@
-From: Roel Kluin <roel.kluin@gmail.com>
-Subject: non working tests on unsigned f->pseudoflavor
-Date: Tue, 21 Apr 2009 16:08:39 +0200
-Message-ID: <49EDD367.9000709@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org, neilb@suse.de
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/2] nfs-iostat.py: Added bytes written output
+Date: Tue, 21 Apr 2009 10:26:01 -0400
+Message-ID: <ABA1CFF5-7104-4ADD-9847-F6B9136D9987@oracle.com>
+References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-3-git-send-email-kevin.constantine@disneyanimation.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org,
+	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+To: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f176.google.com ([209.85.219.176]:41599 "EHLO
-	mail-ew0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752679AbZDUOIk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 10:08:40 -0400
-Received: by ewy24 with SMTP id 24so1606877ewy.37
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Apr 2009 07:08:39 -0700 (PDT)
+Received: from acsinet12.oracle.com ([141.146.126.234]:41680 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754481AbZDUO0j (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 10:26:39 -0400
+In-Reply-To: <1240279414-30528-3-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-vi include/linux/nfsd/export.h +77
-and note that struct exp_flavor_info f->pseudoflavor in secinfo_parse() is
-unsigned. Should there maybe be a test:
+On Apr 20, 2009, at 10:03 PM, Kevin Constantine wrote:
+> Print statistics about bytes written by NFS
+>
+> Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org 
+> >
+> ---
+> tools/nfs-iostat/nfs-iostat.py |   10 ++++++++++
+> 1 files changed, 10 insertions(+), 0 deletions(-)
+>
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
+> iostat.py
+> index d331a72..5f2e232 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -221,6 +221,7 @@ class DeviceData:
+>         """
+>         nfs_stats = self.__nfs_data
+>         app_bytes_read = float(nfs_stats['normalreadbytes'] +  
+> nfs_stats['directreadbytes'])
+> +        bytes_written_by_app = float(nfs_stats['normalwritebytes']  
+> + nfs_stats['directwritebytes'])
+>         if app_bytes_read != 0:
+>             read_bytes_from_server =  
+> float(nfs_stats['serverreadbytes'])
+>             directio_bytes_from_server =  
+> float(nfs_stats['directreadbytes'])
+> @@ -234,6 +235,15 @@ class DeviceData:
+> 						cached_read_bytes / 1024.0 / 1024.0, \
+> 						app_bytes_read / 1024.0 / 1024.0, \
+> 						ratio)
+> +	if bytes_written_by_app != 0:
+> +	    bytes_written_by_nfs = float(nfs_stats['serverwritebytes'])
+> +	    cached_write_bytes = float(bytes_written_by_app -  
+> bytes_written_by_nfs);
 
-if (f->pseudoflavor > MAX)
+Again, I don't see why this computation is necessary:  The  
+"normalwritebytes" statistic is what was written through the client's  
+cache, and "directwritebytes" counts the number of bytes that were  
+written via O_DIRECT.
 
-(and what should MAX be then?)
+> +	    print
+> +            print '%13s %12s %15s %15s' % ("Data Written:", "To  
+> Server", "To Cache", "Total")
+> +	    print '%10s %13.4fMB %13.4fMB %13.4fMB' % ("", \
+> +	    					bytes_written_by_nfs / 1024.0 / 1024.0, \
+> +						cached_write_bytes / 1024.0 / 1024.0, \
+> +						bytes_written_by_app / 1024.0 / 1024.0)
+>
+>     def __print_attr_cache_stats(self, sample_time):
+>         """Print attribute cache efficiency stats
+> -- 
+> 1.6.2.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Otherwise you may want to apply the cleanup patch below
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Roel
------------------------------->8-------------8<---------------------------------
-Remove redundant tests on unsigned
 
-Signed-off-by: Roel Kluin <roel.kluin@gmail.com> 
----
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 5839b22..f09c3b4 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -463,17 +463,6 @@ static int secinfo_parse(char **mesg, char *buf, struct svc_export *exp)
- 		err = get_int(mesg, &f->pseudoflavor);
- 		if (err)
- 			return err;
--		/*
--		 * Just a quick sanity check; we could also try to check
--		 * whether this pseudoflavor is supported, but at worst
--		 * an unsupported pseudoflavor on the export would just
--		 * be a pseudoflavor that won't match the flavor of any
--		 * authenticated request.  The administrator will
--		 * probably discover the problem when someone fails to
--		 * authenticate.
--		 */
--		if (f->pseudoflavor < 0)
--			return -EINVAL;
- 		err = get_int(mesg, &f->flags);
- 		if (err)
- 			return err;
+
+
