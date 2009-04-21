@@ -1,106 +1,53 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [BUILD FAILURE 03/04] Next April 21 : x86_64 randconfig [fs/nfs/nfs.ko]
-Date: Tue, 21 Apr 2009 23:44:21 +0300
-Message-ID: <49EE3025.7050603@panasas.com>
-References: <1240332715.9110.39.camel@subratamodak.linux.ibm.com>	 <49EE056C.1060605@panasas.com> <1240336172.20441.0.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: subrata@linux.vnet.ibm.com, NFS list <linux-nfs@vger.kernel.org>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	linux-next <linux-next@vger.kernel.org>,
-	sachinp <sachinp@linux.vnet.ibm.com>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Alexander Beregalov <a.beregalov@gmail.com>,
-	Ingo Molnar <mingo@elte.hu>,
-	Fredric Isaman <iisaman@citi.umich.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Rusty Russell <rusty@rustcorp.com.au>
+From: Al Viro <viro-rfM+Q5joDG/XmaaqVzeoHQ@public.gmane.org>
+Subject: [PATCH 1/5] Safer nfsd_cross_mnt()
+Date: Tue, 21 Apr 2009 21:43:41 +0000
+Message-ID: <E1LwNkj-0004WN-AZ@ZenIV.linux.org.uk>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:32742 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753368AbZDUUog (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 16:44:36 -0400
-In-Reply-To: <1240336172.20441.0.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:60956 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751673AbZDUVnm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 17:43:42 -0400
+Received: from viro by ZenIV.linux.org.uk with local (Exim 4.69 #1 (Red Hat Linux))
+	id 1LwNkj-0004WN-AZ
+	for linux-nfs@vger.kernel.org; Tue, 21 Apr 2009 21:43:41 +0000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 21, 2009, 20:49 +0300, Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
-> On Tue, 2009-04-21 at 20:42 +0300, Benny Halevy wrote:
->> On Apr. 21, 2009, 19:51 +0300, Subrata Modak <subrata@linux.vnet.ibm.com> wrote:
->>> I think i am observing this for the first time in any randconfig builds:
->>>
->>> BUILD   arch/x86/boot/bzImage
->>> Root device is (8, 3)
->>> Setup is 13020 bytes (padded to 13312 bytes).
->>> System is 5625 kB
->>> CRC a80d60ee
->>> Kernel: arch/x86/boot/bzImage is ready  (#1)
->>>   Building modules, stage 2.
->>>   MODPOST 514 modules
->>> ERROR: "find_last_bit" [fs/nfs/nfs.ko] undefined!
->>> make[1]: *** [__modpost] Error 1
->>> make: *** [modules] Error 2
->>> ---
->>>
->>> Regards--
->>> Subrata
->>>
->> Trond, can you please merge
->> http://git.linux-nfs.org/?p=bhalevy/linux-pnfs.git;a=commitdiff;h=9f32944d1bca79038ef3e9c9a27f11803d093d8e
->> into your nfsv41 and linux-next branches?
->>
->> I've placed it right before "nfs41: free slot"
->> in git://git.linux-nfs.org/projects/bhalevy/linux-pnfs.git nfs41-for-2.6.31
->>
->> (see also this thread:
->> http://article.gmane.org/gmane.linux.kernel.next/6951)
-> 
-> Could we just push that straight into the kernel? It seems like a
-> no-brainer...
 
-Absolutely.  Fred already sent it to the linux-kbuild mailing list
-and got no response, maybe we'll get lucky this time :-)
-Though I'm not sure who should shepherd it in.
+AFAICS, we have a subtle bug there: if we have crossed mountpoint
+*and* it got mount --move'd away, we'll be holding only one
+reference to fs containing dentry - exp->ex_path.mnt.  IOW, we
+ought to dput() before exp_put().
 
-Rusty, since this changes your code in lib/Makefile
-can you please ack this patch?
-
-Benny
-
-> 
-> Cheers
->   Trond
-> 
-
->From 9f32944d1bca79038ef3e9c9a27f11803d093d8e Mon Sep 17 00:00:00 2001
-From: Fred Isaman <iisaman@citi.umich.edu>
-Date: Thu, 26 Mar 2009 11:22:16 -0400
-Subject: [PATCH] lib: find_last_bit.o needed by a module only, move it from lib to obj
-
-It is possible to configure the kernel such that find_last_bit is
-referenced only by modules, causing linking to fail with
-
-ERROR: "find_last_bit" [fs/nfs/nfs.ko] undefined!
-
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- lib/Makefile |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfsd/vfs.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/lib/Makefile b/lib/Makefile
-index d6edd67..33a40e4 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -38,7 +38,7 @@ lib-$(CONFIG_RWSEM_GENERIC_SPINLOCK) += rwsem-spinlock.o
- lib-$(CONFIG_RWSEM_XCHGADD_ALGORITHM) += rwsem.o
- lib-$(CONFIG_GENERIC_FIND_FIRST_BIT) += find_next_bit.o
- lib-$(CONFIG_GENERIC_FIND_NEXT_BIT) += find_next_bit.o
--lib-$(CONFIG_GENERIC_FIND_LAST_BIT) += find_last_bit.o
-+obj-$(CONFIG_GENERIC_FIND_LAST_BIT) += find_last_bit.o
- obj-$(CONFIG_GENERIC_HWEIGHT) += hweight.o
- obj-$(CONFIG_LOCK_KERNEL) += kernel_lock.o
- obj-$(CONFIG_DEBUG_PREEMPT) += smp_processor_id.o
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index ab93fcf..46e6bd2 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -116,10 +116,15 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
+ 	}
+ 	if ((exp->ex_flags & NFSEXP_CROSSMOUNT) || EX_NOHIDE(exp2)) {
+ 		/* successfully crossed mount point */
+-		exp_put(exp);
+-		*expp = exp2;
++		/*
++		 * This is subtle: dentry is *not* under mnt at this point.
++		 * The only reason we are safe is that original mnt is pinned
++		 * down by exp, so we should dput before putting exp.
++		 */
+ 		dput(dentry);
+ 		*dpp = mounts;
++		exp_put(exp);
++		*expp = exp2;
+ 	} else {
+ 		exp_put(exp2);
+ 		dput(mounts);
 -- 
-1.6.2.1
+1.5.6.5
+
 
