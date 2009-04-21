@@ -1,47 +1,56 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFS: Fix the XDR iovec calculation in nfs3_xdr_setaclargs
-Date: Mon, 20 Apr 2009 14:58:35 -0400
-Message-ID: <1240267498.16708.0.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Leonardo Chiquitto <leonardo.lists@gmail.com>,
-	Suresh Jayaraman <sjayaraman@suse.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>, stable@kernel.org
+From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Subject: [PATCH 2/2] nfs-iostat.py: Added bytes written output
+Date: Mon, 20 Apr 2009 19:03:34 -0700
+Message-ID: <1240279414-30528-3-git-send-email-kevin.constantine@disneyanimation.com>
+References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com>
+ <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com>
+Cc: chuck.lever@oracle.com,
+	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16231 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756258AbZDTWpq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Apr 2009 18:45:46 -0400
+Received: from mailgate1.disneyanimation.com ([12.188.26.101]:44588 "EHLO
+	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752789AbZDUCDg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Apr 2009 22:03:36 -0400
+In-Reply-To: <1240279414-30528-2-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit ae46141ff08f1965b17c531b571953c39ce8b9e2 (NFSv3: Fix posix ACL code)
-introduces a bug in the calculation of the XDR header iovec. In the case
-where we are inlining the acls, we need to adjust the length of the iovec
-req->rq_svec, in addition to adjusting the total buffer length.
+Print statistics about bytes written by NFS
 
-Tested-by: Leonardo Chiquitto <leonardo.lists@gmail.com>
-Tested-by: Suresh Jayaraman <sjayaraman@suse.de>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
 ---
-Please apply to 2.6.30-rc2 & 2.6.29-stable...
+ tools/nfs-iostat/nfs-iostat.py |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
 
- fs/nfs/nfs3xdr.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index e6a1932..35869a4 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -713,7 +713,8 @@ nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
- 	if (args->npages != 0)
- 		xdr_encode_pages(buf, args->pages, 0, args->len);
- 	else
--		req->rq_slen += args->len;
-+		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
-+				p + XDR_QUADLEN(args->len));
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index d331a72..5f2e232 100644
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -221,6 +221,7 @@ class DeviceData:
+         """
+         nfs_stats = self.__nfs_data
+         app_bytes_read = float(nfs_stats['normalreadbytes'] + nfs_stats['directreadbytes'])
++        bytes_written_by_app = float(nfs_stats['normalwritebytes'] + nfs_stats['directwritebytes'])
+         if app_bytes_read != 0:
+             read_bytes_from_server = float(nfs_stats['serverreadbytes'])
+             directio_bytes_from_server = float(nfs_stats['directreadbytes'])
+@@ -234,6 +235,15 @@ class DeviceData:
+ 						cached_read_bytes / 1024.0 / 1024.0, \
+ 						app_bytes_read / 1024.0 / 1024.0, \
+ 						ratio)
++	if bytes_written_by_app != 0:
++	    bytes_written_by_nfs = float(nfs_stats['serverwritebytes'])
++	    cached_write_bytes = float(bytes_written_by_app - bytes_written_by_nfs);
++	    print
++            print '%13s %12s %15s %15s' % ("Data Written:", "To Server", "To Cache", "Total")
++	    print '%10s %13.4fMB %13.4fMB %13.4fMB' % ("", \
++	    					bytes_written_by_nfs / 1024.0 / 1024.0, \
++						cached_write_bytes / 1024.0 / 1024.0, \
++						bytes_written_by_app / 1024.0 / 1024.0)
  
- 	err = nfsacl_encode(buf, base, args->inode,
- 			    (args->mask & NFS_ACL) ?
+     def __print_attr_cache_stats(self, sample_time):
+         """Print attribute cache efficiency stats
 -- 
-1.6.0.4
+1.6.2.1
+
