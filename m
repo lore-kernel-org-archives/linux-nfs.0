@@ -1,57 +1,58 @@
-From: Frank Filz <ffilzlnx@us.ibm.com>
-Subject: [PATCH] Change prognum, versnum, minvers, and maxvers in progping
-	to u_int32_t from u_long
-Date: Wed, 22 Apr 2009 14:45:48 -0700
-Message-ID: <1240436748.2246.9.camel@dyn9047022153>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>
-To: NFS List <linux-nfs@vger.kernel.org>,
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] Change prognum, versnum, minvers, and maxvers in progping to u_int32_t from u_long
+Date: Wed, 22 Apr 2009 17:46:15 -0400
+Message-ID: <AEAEC6BE-769B-4027-B427-041C65BB1EF8@oracle.com>
+References: <1240436748.2246.9.camel@dyn9047022153>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: NFS List <linux-nfs@vger.kernel.org>,
 	libtirpc <libtirpc-devel@lists.sourceforge.net>,
 	Steve Dickson <SteveD@redhat.com>
+To: Frank Filz <ffilzlnx@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:50526 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756076AbZDVVkH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Apr 2009 17:40:07 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id n3MLZYCi015601
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Apr 2009 17:35:34 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3MLe66W194678
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Apr 2009 17:40:06 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3MLe60e001951
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Apr 2009 17:40:06 -0400
+Received: from acsinet12.oracle.com ([141.146.126.234]:16999 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751173AbZDVVrV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 17:47:21 -0400
+In-Reply-To: <1240436748.2246.9.camel@dyn9047022153>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes a problem where "rpcinfo -T transport host prognum" fails on a PPC64
-because CLNT_CONTROL expects the version number to be a 32 bit quantity. u_long
-probably works fine on little endian machines, but won't work on big endian
-machines.
+On Apr 22, 2009, at 5:45 PM, Frank Filz wrote:
+> This fixes a problem where "rpcinfo -T transport host prognum" fails  
+> on a PPC64
+> because CLNT_CONTROL expects the version number to be a 32 bit  
+> quantity. u_long
+> probably works fine on little endian machines, but won't work on big  
+> endian
+> machines.
 
+Hrm.  These variables are unsigned long pretty much everywhere in the  
+legacy RPC code.  And, isn't SPARC big endian?  Is the real problem  
+32- v. 64- bit?
 
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
----
- src/rpcinfo.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+This might be fixed more generically by adding a type cast to  
+CLNT_CONTROL.
 
-diff --git a/src/rpcinfo.c b/src/rpcinfo.c
-index 0170f65..698f4ca 100644
---- a/src/rpcinfo.c
-+++ b/src/rpcinfo.c
-@@ -1591,7 +1591,7 @@ progping (netid, argc, argv)
-   CLIENT *client;
-   struct timeval to;
-   enum clnt_stat rpc_stat;
--  u_long prognum, versnum, minvers, maxvers;
-+  u_int32_t prognum, versnum, minvers, maxvers;
-   struct rpc_err rpcerr;
-   int failure = 0;
-   struct netconfig *nconf;
--- 
-1.5.2.2
+> Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+> ---
+> src/rpcinfo.c |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/src/rpcinfo.c b/src/rpcinfo.c
+> index 0170f65..698f4ca 100644
+> --- a/src/rpcinfo.c
+> +++ b/src/rpcinfo.c
+> @@ -1591,7 +1591,7 @@ progping (netid, argc, argv)
+>   CLIENT *client;
+>   struct timeval to;
+>   enum clnt_stat rpc_stat;
+> -  u_long prognum, versnum, minvers, maxvers;
+> +  u_int32_t prognum, versnum, minvers, maxvers;
+>   struct rpc_err rpcerr;
+>   int failure = 0;
+>   struct netconfig *nconf;
 
-
-
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
