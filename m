@@ -1,114 +1,132 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: [PATCH 2/11] nfsd: ADD new function infrastructure
-Date: Wed, 22 Apr 2009 11:07:45 +0530
-Message-ID: <OF23168751.EE5F7DD1-ON652575A0.00162F2C-652575A0.001EEC27@in.ibm.com>
-References: <20090325133607.16437.33288.sendpatchset@localhost.localdomain> <20090325133647.16437.59567.sendpatchset@localhost.localdomain> <20090422025427.GC29663@fieldses.org>
+From: Suresh Jayaraman <sjayaraman@suse.de>
+Subject: Re: [ltt-dev] [PATCH] nfs: add support for splice writes
+Date: Wed, 22 Apr 2009 14:03:09 +0530
+Message-ID: <49EED645.3090208@suse.de>
+References: <49D45974.2060202@suse.de> <20090402063235.GB24846@Krystal>	 <49D45E42.3050502@suse.de>	 <91e0b5050904020542l6b38d7a6hab6d7ef8b4593425@mail.gmail.com>	 <49EC0A83.8060802@suse.de> <1240230224.8073.6.camel@heimdal.trondhjem.org>	 <49EC6CB3.8080800@suse.de> <1240237274.13636.9.camel@heimdal.trondhjem.org>	 <49EC990B.1030007@suse.de>  <20090421144810.GA7036@infradead.org> <1240335302.5390.20.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: jlayton@redhat.com, Krishna Kumar <krikku@gmail.com>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Masahiro Tamori <masahiro.tamori@gmail.com>,
+	Mathieu Desnoyers <compudj-vdFpqfd5riKZ9vWoFJJngh2eb7JE58TQ@public.gmane.org>,
+	linux-nfs@vger.kernel.org, ltt-dev-33AaDErTWvBVxDZ2/Zk0YoryAYyacSEB@public.gmane.org,
+	LKML <linux-kernel@vger.kernel.org>,
+	linux-embedded@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:57809 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752329AbZDVFiN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 01:38:13 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id n3M5c9KX017123
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Apr 2009 11:08:09 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3M5XwWX4120742
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Apr 2009 11:03:58 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id n3M5c96b013340
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Apr 2009 15:38:09 +1000
-In-Reply-To: <20090422025427.GC29663@fieldses.org>
+Received: from victor.provo.novell.com ([137.65.250.26]:57912 "EHLO
+	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752127AbZDVIdi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 04:33:38 -0400
+In-Reply-To: <1240335302.5390.20.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote on 04/22/2009 08:24:27 AM:
+Trond Myklebust wrote:
+> On Tue, 2009-04-21 at 10:48 -0400, Christoph Hellwig wrote:
+>> On Mon, Apr 20, 2009 at 09:17:23PM +0530, Suresh Jayaraman wrote:
+>>> +static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+>>> +				     struct file *filp, loff_t *ppos,
+>>> +				     size_t count, unsigned int flags)
+>>> +{
+>>> +	struct dentry *dentry = filp->f_path.dentry;
+>>> +
+>>> +	dprintk("NFS splice_write(%s/%s, %lu@%Lu)\n",
+>>> +		dentry->d_parent->d_name.name, dentry->d_name.name,
+>>> +		(unsigned long) count, (unsigned long long) *ppos);
+>>> +
+>>> +	return generic_file_splice_write(pipe, filp, ppos, count, flags);
+>>> +}
+>>> +
+>> You need all calls from nfs_file_write, too:
+>>
+>>  - most importantly the nfs_revalidate_file_size for O_APPEND
+> 
+> Isn't O_APPEND illegal for splice_write()? It looks like it is from a
+> quick perusal of do_splice_from().
 
-> > +static int k_nfsd_thread(void *unused)
-> > +{
-> > +   while (!kthread_should_stop()) {
-> > +      schedule_timeout_interruptible(NFSD_CACHE_JIFFIES);
-> > +
-> > +      if (kthread_should_stop())
-> > +         break;
-> > +
-> > +      daemon_free_entries();
-> > +   }
-> > +   __set_current_state(TASK_RUNNING);
->
-> Is this necessary?  The comment before schedule_timeout() claims "The
-> current task state is guaranteed to be TASK_RUNNING when this routine
-> returns."
+Yes, I would also think so and also from upstream commit
+efc968d450e013049a662d22727cf132618dcb2f.
+I've added a little comment to make his clear.
 
-Right, it is not required.
+>>  - the nfs_do_fsync for sync writes
+> 
+> generic_file_splice_write() calls generic_osync_inode(), which should
+> ensure sync writes even with NFS.
+> The one thing it won't do is propagate NFS write errors back to the
+> caller. If we do care about this, then we should certainly test for
+> nfs_need_sync_write() and then call nfs_do_fsync() (see
+> nfs_file_write()).
 
-> > +static inline struct fhcache *
-> > +nfsd_get_fhcache(__u32 auth)
-> > +{
-> > +   struct fhcache      *fh, **fhp, **ffhp = NULL;
-> > +   int         depth = 0;
-> > +   unsigned int      hash;
-> > +   struct fhcache_hbucket   *fhb;
-> > +
-> > +   if (!auth)
-> > +      return NULL;
-> > +
-> > +   hash = jhash_1word(auth, 0xfeedbeef) & FHPARM_HASH_MASK;
-> > +   fhb = &fhcache_hash[hash];
-> > +
-> > +   spin_lock(&fhb->pb_lock);
-> > +   for (fhp = &fhb->pb_head; (fh = *fhp); fhp = &fh->p_next) {
-> > +      if (fh->p_auth == auth) {
-> > +         /* Same inode */
-> > +         if (unlikely(!fh->p_filp)) {
-> > +            /*
-> > +             * Someone is racing in the same code, and
-> > +             * this is the first reference to this file.
-> > +             */
-> > +            spin_unlock(&fhb->pb_lock);
->
-> The locking seems over-complicated.  But I have to admit, I don't
-> understand it yet.
+I think it makes sense to propagate NFS write errors back.
 
-I have one new lock - k_nfsd_lock, that is used to add/delete the entry to
-nfsd_daemon_free_list. Lock is used by either the daemon, or when an
-operation results in creating or deleting a cache entry (read and
-unlink).
+>>  - probably the stats increment
+> 
+> We should talk to Chuck about this.
+> 
 
->
-> > +            return NULL;
-> > +         }
-> > +
-> > +         /*
-> > +          * Hold an extra reference to dentry/exp since these
-> > +          * are released in fh_put(). 'file' already has an
-> > +          * extra hold from the first lookup which was never
-> > +          * dropped.
->
-> Why not take a reference on the file instead of the dentry?
+Have added it to NORMALBYTESWRITTEN based on Chuck's suggestion.
 
-I am holding an extra reference to file in the first lookup, but unless
-I hold dentry also, it gets freed up by fh_put.
+Here is the updated patch. Does this look OK?
 
-> > +   depth = nfsdstats.ra_size*11/10;
->
-> Help, I'm confused--what's the meaning of this calculation?
+Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+---
+ fs/nfs/file.c |   32 ++++++++++++++++++++++++++++++++
+ 1 files changed, 32 insertions(+), 0 deletions(-)
 
-That is original code, and I also find it confusing :) What I understand is
-that when an entry is not found in the cache, ra_depth[10] is incremented,
-and
-when it is found, ra_depth[0] is incremented (unless the hash table entry
-contains elements in the range of 20-30 or more, then ra_depth[2], [3],
-etc,
-get incremented. It seems to give an indication of the efficiency of the
-hash
-table.
-
-thanks,
-
-- KK
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 5a97bcf..6f2cd67 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -48,6 +48,9 @@ static ssize_t nfs_file_splice_read(struct file *filp, loff_t *ppos,
+ 					size_t count, unsigned int flags);
+ static ssize_t nfs_file_read(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
++static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
++					struct file *filp, loff_t *ppos,
++					size_t count, unsigned int flags);
+ static ssize_t nfs_file_write(struct kiocb *, const struct iovec *iov,
+ 				unsigned long nr_segs, loff_t pos);
+ static int  nfs_file_flush(struct file *, fl_owner_t id);
+@@ -73,6 +76,7 @@ const struct file_operations nfs_file_operations = {
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+ 	.splice_read	= nfs_file_splice_read,
++	.splice_write	= nfs_file_splice_write,
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= nfs_setlease,
+ };
+@@ -587,6 +591,34 @@ out_swapfile:
+ 	goto out;
+ }
+ 
++static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
++				     struct file *filp, loff_t *ppos,
++				     size_t count, unsigned int flags)
++{
++	struct dentry *dentry = filp->f_path.dentry;
++	struct inode *inode = dentry->d_inode;
++	ssize_t ret;
++
++	dprintk("NFS splice_write(%s/%s, %lu@%llu)\n",
++		dentry->d_parent->d_name.name, dentry->d_name.name,
++		(unsigned long) count, (unsigned long long) *ppos);
++
++	/*
++	 * We don't need to worry about O_APPEND as the combination of splice
++	 * and an O_APPEND destination is disallowed.
++	 */
++
++	nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, count);
++
++	ret = generic_file_splice_write(pipe, filp, ppos, count, flags);
++	if (ret >= 0 && nfs_need_sync_write(filp, inode)) {
++		int err = nfs_do_fsync(nfs_file_open_context(filp), inode);
++		if (err < 0)
++			ret = err;
++	}
++	return ret;
++}
++
+ static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
+ {
+ 	struct inode *inode = filp->f_mapping->host;
