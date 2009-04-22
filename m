@@ -1,65 +1,46 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs-utils-1.1.6 released.
-Date: Wed, 22 Apr 2009 11:54:27 -0400
-Message-ID: <20090422155427.GA8712@fieldses.org>
-References: <49ECB9E6.4010001@RedHat.com> <49EDFE21.2000007@arx.net> <49EF3A83.50409@RedHat.com>
+From: James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
+Subject: Support for larger than 32Kb [rw]size in older 2.6 kernels?
+Date: Wed, 22 Apr 2009 17:36:39 +0100
+Message-ID: <49EF4797.2070402@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Thanos Chatziathanassiou <tchatzi-nz9JlX+3IF8@public.gmane.org>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:38493 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751252AbZDVPyb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 11:54:31 -0400
-In-Reply-To: <49EF3A83.50409-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:53227 "EHLO
+	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752317AbZDVRG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 13:06:56 -0400
+Received: from cassini.mpc.local ([172.16.15.37] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.43)
+	id 1LwfR9-0002gp-Bz
+	for linux-nfs@vger.kernel.org; Wed, 22 Apr 2009 17:36:39 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 22, 2009 at 11:40:51AM -0400, Steve Dickson wrote:
-> 
-> 
-> Thanos Chatziathanassiou wrote:
-> > Installed nfs-utils-1.1.6 and I'm facing an issue:
-> > 
-> > on the server:
-> > # cat /etc/exports
-> > /opt/shared/home
-> > 192.168.99.0/255.255.255.0(rw,no_root_squash,no_subtree_check,sync)
-> > 
-> > # cat /var/lib/nfs/etab
-> > /opt/shared/home   
-> > 192.168.99.0/255.255.255.0(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534)
-> > 
-> > 
-> > on the client:
-> > # cat /proc/mounts
-> > nfsip:/opt/shared/home /home nfs
-> > rw,noatime,vers=3,rsize=8192,wsize=8192,hard,intr,proto=udp,timeo=11,retrans=2,addr=nfsip
-> > 0 0
-> > 
-> > however, everyone (including root) gets mapped to uid 65534 despite
-> > no_root_squash and no_all_squash...not very useful for a home directory.
-> > Is there something I'm missing ?
-> Wow... That is very strange... 
+We have a number of machines that use RHEL4 kernels that run 3rd party 
+software/hardware that we can't upgrade to run on newer kernels.
 
-Might be worth looking at the network traffic to see if some change in
-the client or in the mountd security negotiation hasn't caused the
-client to start doing auth_null instead of auth_unix?
+I've managed (I think!) to backport the large [rw]size patch that went 
+into 2.6.16 to the RHEL4 2.6.9 based kernels - taken from:
 
---b.
+<http://www.linux-nfs.org/Linux-2.6.x/2.6.15/linux-2.6.15-30-large_wsize_support.dif>
 
-> 
-> any type of failures in /var/log/messages?
-> 
-> > Also tried to go back to the previous (1.1.1) nfs-utils, but after
-> > ``exportfs -ra'' the the server spit a few of those and all mounts froze
-> > nfs mountd[1115]: /var/lib/nfs/etab:1: unknown keyword "mapping=identity"
-> I don't see a 'mapping' entry in the above 'cat /var/lib/nfs/etab'? 
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Doing some simple tests over NFS using this patch seems to suggest that 
+it works fine.
+
+Although the NFS code between the two kernel is significantly different, 
+  it was fairly straight forward to match up where the changes should go 
+-  however, I don't pretend to fully understand the code, so is there 
+anything that I should be aware of that might cause a problem? i.e. does 
+larger [rw]size depend on anything else that that would have been added 
+to the kernel since 2.6.9?
+
+One thing that isn't in the RHEL4 is 'rpc_max_payload' - which is used 
+as a check on the [rw]size - however, this appears not to be important 
+as the maximum [rw]size I can get is 1Mb, which matches the max [rw]size 
+with more recent kernels.
+
+Thanks
+
+James Pearson
+
