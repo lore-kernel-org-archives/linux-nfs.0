@@ -1,43 +1,52 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 3/3] utils/nfsd: enable nfs minorvers4 by default
-Date: Wed, 22 Apr 2009 15:10:39 +0300
-Message-ID: <1240402239-31824-1-git-send-email-bhalevy@panasas.com>
-References: <49EF0846.5030800@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	Chuck Lever <chuck.lever@oracle.com>
-To: Steve Dickson <steved@redhat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: nfs-utils-1.1.6 released.
+Date: Wed, 22 Apr 2009 11:40:51 -0400
+Message-ID: <49EF3A83.50409@RedHat.com>
+References: <49ECB9E6.4010001@RedHat.com> <49EDFE21.2000007@arx.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Thanos Chatziathanassiou <tchatzi-nz9JlX+3IF8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:2341 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752239AbZDVMLD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 08:11:03 -0400
-In-Reply-To: <49EF0846.5030800@panasas.com>
+Received: from mx2.redhat.com ([66.187.237.31]:58627 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751433AbZDVPnr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Apr 2009 11:43:47 -0400
+In-Reply-To: <49EDFE21.2000007-nz9JlX+3IF8@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Enable support for the maximum minor version (4.1 at the moment)
-by default.  It can be disabled using the -N command line
-option.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- utils/nfsd/nfsd.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index bd23d9d..e3c0094 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -41,7 +41,7 @@ static struct option longopts[] =
- };
- unsigned int protobits = NFSCTL_ALLBITS;
- unsigned int versbits = NFSCTL_ALLBITS;
--int minorvers4;				/* nfsv4 minor version */
-+int minorvers4 = NFSD_MAXMINORVERS4;		/* nfsv4 minor version */
- char *haddr = NULL;
- 
- int
--- 
-1.6.2.1
+Thanos Chatziathanassiou wrote:
+> Installed nfs-utils-1.1.6 and I'm facing an issue:
+> 
+> on the server:
+> # cat /etc/exports
+> /opt/shared/home
+> 192.168.99.0/255.255.255.0(rw,no_root_squash,no_subtree_check,sync)
+> 
+> # cat /var/lib/nfs/etab
+> /opt/shared/home   
+> 192.168.99.0/255.255.255.0(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534)
+> 
+> 
+> on the client:
+> # cat /proc/mounts
+> nfsip:/opt/shared/home /home nfs
+> rw,noatime,vers=3,rsize=8192,wsize=8192,hard,intr,proto=udp,timeo=11,retrans=2,addr=nfsip
+> 0 0
+> 
+> however, everyone (including root) gets mapped to uid 65534 despite
+> no_root_squash and no_all_squash...not very useful for a home directory.
+> Is there something I'm missing ?
+Wow... That is very strange... 
 
+any type of failures in /var/log/messages?
+
+> Also tried to go back to the previous (1.1.1) nfs-utils, but after
+> ``exportfs -ra'' the the server spit a few of those and all mounts froze
+> nfs mountd[1115]: /var/lib/nfs/etab:1: unknown keyword "mapping=identity"
+I don't see a 'mapping' entry in the above 'cat /var/lib/nfs/etab'? 
+
+steved.
