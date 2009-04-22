@@ -1,60 +1,43 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/3] utils/nfsd: disable minorvers4 via command line
-Date: Wed, 22 Apr 2009 15:10:19 +0300
-Message-ID: <1240402219-31791-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 3/3] utils/nfsd: enable nfs minorvers4 by default
+Date: Wed, 22 Apr 2009 15:10:39 +0300
+Message-ID: <1240402239-31824-1-git-send-email-bhalevy@panasas.com>
 References: <49EF0846.5030800@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	Chuck Lever <chuck.lever@oracle.com>
 To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:30616 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:2341 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751646AbZDVMKk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 08:10:40 -0400
+	with ESMTP id S1752239AbZDVMLD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 08:11:03 -0400
 In-Reply-To: <49EF0846.5030800@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Extend -N command line option syntax to accept <version>.<minorversion>
-to disable support for <minorversion>.
-Only 4.1 is currently supported.
+Enable support for the maximum minor version (4.1 at the moment)
+by default.  It can be disabled using the -N command line
+option.
 
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- utils/nfsd/nfsd.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
+ utils/nfsd/nfsd.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index ac264da..bd23d9d 100644
+index bd23d9d..e3c0094 100644
 --- a/utils/nfsd/nfsd.c
 +++ b/utils/nfsd/nfsd.c
-@@ -50,6 +50,7 @@ main(int argc, char **argv)
- 	int	count = 1, c, error, port, fd, found_one;
- 	struct servent *ent;
- 	struct hostent *hp;
-+	char *p;
+@@ -41,7 +41,7 @@ static struct option longopts[] =
+ };
+ unsigned int protobits = NFSCTL_ALLBITS;
+ unsigned int versbits = NFSCTL_ALLBITS;
+-int minorvers4;				/* nfsv4 minor version */
++int minorvers4 = NFSD_MAXMINORVERS4;		/* nfsv4 minor version */
+ char *haddr = NULL;
  
- 	ent = getservbyname ("nfs", "udp");
- 	if (ent != NULL)
-@@ -80,10 +81,14 @@ main(int argc, char **argv)
- 			}
- 			break;
- 		case 'N':
--			switch((c = atoi(optarg))) {
--			case 2:
--			case 3:
-+			switch((c = strtol(optarg, &p, 0))) {
- 			case 4:
-+				if (*p == '.') {
-+					minorvers4 = -atoi(p + 1);
-+					break;
-+				}
-+			case 3:
-+			case 2:
- 				NFSCTL_VERUNSET(versbits, c);
- 				break;
- 			default:
+ int
 -- 
 1.6.2.1
 
