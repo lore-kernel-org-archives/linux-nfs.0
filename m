@@ -1,67 +1,71 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/3] nfs-utils: nfsd support for minor version, take 2
-Date: Wed, 22 Apr 2009 17:54:58 -0400
-Message-ID: <20090422215458.GL9541@fieldses.org>
-References: <49E2F6E4.2080501@panasas.com> <49EF0846.5030800@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <steved@redhat.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-To: Benny Halevy <bhalevy@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] Change prognum, versnum, minvers, and maxvers in progping to u_int32_t from u_long
+Date: Wed, 22 Apr 2009 17:56:54 -0400
+Message-ID: <5FEB87E5-10FA-4586-9E0B-A07139D85A35@oracle.com>
+References: <1240436748.2246.9.camel@dyn9047022153>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: NFS List <linux-nfs@vger.kernel.org>,
+	libtirpc <libtirpc-devel@lists.sourceforge.net>,
+	Steve Dickson <SteveD@redhat.com>
+To: Frank Filz <ffilzlnx@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:35218 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752127AbZDVVzB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 17:55:01 -0400
-In-Reply-To: <49EF0846.5030800@panasas.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:45294 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752369AbZDVV6n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 17:58:43 -0400
+In-Reply-To: <1240436748.2246.9.camel@dyn9047022153>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 22, 2009 at 03:06:30PM +0300, Benny Halevy wrote:
-> Following the discussion we had last week
-> (see http://linux-nfs.org/pipermail/pnfs/2009-April/007283.html)
-> 
-> I made the following changes:
-> * minorvers4 enabled by default.
-> * No new -n option.
-> 
-> This makes minorvers control essentially the same as
-> the major protocol version.  minorvers4 is enabled by default
-> and can be disabled using -N 4.1.
-> 
-> On Fedora, /etc/sysconfig/nfs can be changed as follows
-> to configure the service startup script to disable 4.1:
+On Apr 22, 2009, at 5:45 PM, Frank Filz wrote:
+> This fixes a problem where "rpcinfo -T transport host prognum" fails  
+> on a PPC64
+> because CLNT_CONTROL expects the version number to be a 32 bit  
+> quantity. u_long
+> probably works fine on little endian machines, but won't work on big  
+> endian
+> machines.
+>
+>
+> Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+> ---
+> src/rpcinfo.c |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/src/rpcinfo.c b/src/rpcinfo.c
+> index 0170f65..698f4ca 100644
+> --- a/src/rpcinfo.c
+> +++ b/src/rpcinfo.c
+> @@ -1591,7 +1591,7 @@ progping (netid, argc, argv)
+>   CLIENT *client;
+>   struct timeval to;
+>   enum clnt_stat rpc_stat;
+> -  u_long prognum, versnum, minvers, maxvers;
+> +  u_int32_t prognum, versnum, minvers, maxvers;
 
-Why couldn't nfs-utils just respect the kernel's default and make no
-attempt to set the minor version?  A (possibly undocumented) -P 4.1
-option (or some other name) could be used by testers to specify that
-they want 4.1.  After things have settled down a little we'd change the
-kernel's default, and then only -N 4.1 would be needed.
+Right, looking at the TI-RPC type definitions, we really want:
 
-If I'd known we'd be enabling 4.1 by default in nfs-utils, I wouldn't
-have been so happy about removing the 4.1 config option--how confident
-are we that the 4.1 code to be in 2.6.30 has no security holes?
+   rpcprog_t prognum;
+   rpcvers_t versnum, minvers, maxvers;
 
---b.
+Now, this won't work if rpcinfo is built against the legacy RPC  
+headers in /usr/include.  The TI-RPC headers define these types  
+correctly as u_int32_t, but the legacy headers use u_long.
 
-> 
-> --- /etc/sysconfig/nfs.orig	2009-04-22 14:57:15.000000000 +0300
-> +++ /etc/sysconfig/nfs	2009-04-22 14:46:52.000000000 +0300
-> @@ -26,6 +26,8 @@
->  #RPCNFSDARGS="-N 2 -N 3"
->  # Turn off v4 protocol support
->  #RPCNFSDARGS="-N 4"
-> +# Turn off v4.1 minorversion support
-> +RPCNFSDARGS="-N 4.1"
->  # Number of nfs server processes to be started.
->  # The default is 8. 
->  #RPCNFSDCOUNT=8
-> 
-> The patches in this set are:
-> [PATCH 1/3] utils/nfsd: add support for minorvers4
-> [PATCH 2/3] utils/nfsd: disable minorvers4 via command line
-> [PATCH 3/3] utils/nfsd: enable nfs minorvers4 by default
-> 
-> Benny
+>   struct rpc_err rpcerr;
+>   int failure = 0;
+>   struct netconfig *nconf;
+> -- 
+> 1.5.2.2
+>
+>
+>
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
