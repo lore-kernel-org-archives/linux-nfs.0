@@ -1,83 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/11] nfsd: ADD data structure infrastructure
-Date: Tue, 21 Apr 2009 19:05:55 -0400
-Message-ID: <20090421230555.GJ27411@fieldses.org>
-References: <20090325133607.16437.33288.sendpatchset@localhost.localdomain> <20090325133628.16437.11092.sendpatchset@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Krishna Kumar <krkumar2@in.ibm.com>, jlayton@redhat.com,
-	linux-nfs@vger.kernel.org
-To: Krishna Kumar <krikku@gmail.com>
+From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Subject: [PATCH] nfs-iostat.py: Print Data Cache Statistics
+Date: Tue, 21 Apr 2009 18:42:11 -0700
+Message-ID: <1240364531-11499-1-git-send-email-kevin.constantine@disneyanimation.com>
+References: <8EF2000D-C4D6-4AC2-B37C-221594A515B4@oracle.com>
+Cc: linux-nfs@vger.kernel.org,
+	Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+To: chuck.lever@oracle.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:37564 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752339AbZDUXF7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 19:05:59 -0400
-In-Reply-To: <20090325133628.16437.11092.sendpatchset-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from mailgate2.disneyanimation.com ([12.188.26.102]:10365 "EHLO
+	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751644AbZDVBmM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 21:42:12 -0400
+In-Reply-To: <8EF2000D-C4D6-4AC2-B37C-221594A515B4@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 25, 2009 at 07:06:28PM +0530, Krishna Kumar wrote:
-> From: Krishna Kumar <krkumar2@in.ibm.com>
-> 
-> ADD infrastructure in terms of new structures.
-> 
-> Signed-off-by: Krishna Kumar <krkumar2@in.ibm.com>
-> ---
-> 
->  fs/nfsd/vfs.c |   35 +++++++++++++++++++++++++++++++++++
->  1 file changed, 35 insertions(+)
-> 
-> diff -ruNp org/fs/nfsd/vfs.c new1/fs/nfsd/vfs.c
-> --- org/fs/nfsd/vfs.c	2009-03-25 17:31:39.000000000 +0530
-> +++ new1/fs/nfsd/vfs.c	2009-03-25 17:39:43.000000000 +0530
-> @@ -88,6 +88,41 @@ struct raparm_hbucket {
->  #define RAPARM_HASH_MASK	(RAPARM_HASH_SIZE-1)
->  static struct raparm_hbucket	raparm_hash[RAPARM_HASH_SIZE];
->  
-> +/*
-> + * This is a cache of file handles to quicken file lookup. This also
-> + * helps prevent multiple open/close of a file when a client reads it.
-> + *
-> + * If you increase the number of cached files very much, you'll need to
-> + * add a hash table here.
-> + */
-> +struct fhcache {
-> +	struct fhcache		*p_next;
-> +
-> +	/* Hashed on this parameter */
-> +	__u32			p_auth;
-> +
-> +	/* Cached information */
-> +	struct file		*p_filp;
-> +	struct svc_export	*p_exp;
-> +
-> +	/* Refcount for overwrite */
-> +	atomic_t		p_count;
-> +
-> +	/* When this entry expires */
-> +	unsigned long		p_expires;
-> +
-> +	unsigned int		p_hindex;
-> +};
-> +
-> +struct fhcache_hbucket {
-> +	struct fhcache		*pb_head;
-> +	spinlock_t		pb_lock;
-> +} ____cacheline_aligned_in_smp;
+I rolled the read cache, and write patches into a single patch below.
 
-Hadn't run across __cacheline_aligned_in_smp before--so that just
-assures an fhcache_hbucket gets its own cacheline, so that two cpu's
-taking the spinlock on different buckets won't be fighting over the
-cacheline?
+add --data flag to print data cache statistics
+print read cache stats from __print_data_cache_stats
+print stats about bytes written by NFS
 
---b.
+Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+---
+ tools/nfs-iostat/nfs-iostat.py |   28 ++++++++++++++++++++++------
+ 1 files changed, 22 insertions(+), 6 deletions(-)
 
-> +
-> +#define FHPARM_HASH_BITS	8
-> +#define FHPARM_HASH_SIZE	(1<<FHPARM_HASH_BITS)
-> +#define FHPARM_HASH_MASK	(FHPARM_HASH_SIZE-1)
-> +
->  /* 
->   * Called from nfsd_lookup and encode_dirent. Check if we have crossed 
->   * a mount point.
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index 9626d42..cb3da59 100644
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -220,14 +220,22 @@ class DeviceData:
+         """Print the data cache hit rate
+         """
+         nfs_stats = self.__nfs_data
+-        app_bytes_read = float(nfs_stats['normalreadbytes'])
++        app_bytes_read = float(nfs_stats['normalreadbytes'] + nfs_stats['directreadbytes'])
+         if app_bytes_read != 0:
+-            client_bytes_read = float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
+-            ratio = ((app_bytes_read - client_bytes_read) * 100) / app_bytes_read
+-
++            cached_read_bytes = float(app_bytes_read - float(nfs_stats['serverreadbytes']))
++            ratio = (cached_read_bytes * 100) / app_bytes_read
+             print
+-            print 'app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read)
+-            print 'Data cache hit ratio: %4.2f%%' % ratio
++            print '%10s %15s %15s %15s %7s' % ("Data Read:", "From Server", "From Cache", "Total", "Hit %")
++            print '%10s %13.4fMB %13.4fMB %13.4fMB %6.2f%%' % ("", \
++	    					float(nfs_stats['serverreadbytes']) / 1024.0 / 1024.0, \
++						cached_read_bytes / 1024.0 / 1024.0, \
++						app_bytes_read / 1024.0 / 1024.0, \
++						ratio)
++        bytes_written_by_nfs = float(nfs_stats['serverwritebytes'])
++	if bytes_written_by_nfs != 0:
++	    print
++            print '%13s %12s' % ("Data Written:", "To Server")
++	    print '%10s %13.4fMB' % ("", bytes_written_by_nfs / 1024.0 / 1024.0)
+ 
+     def __print_attr_cache_stats(self, sample_time):
+         """Print attribute cache efficiency stats
+@@ -390,6 +398,10 @@ class DeviceData:
+             self.__print_rpc_op_stats('READ', sample_time)
+             self.__print_rpc_op_stats('WRITE', sample_time)
+             self.__print_page_stats(sample_time)
++        elif which == 4:
++            self.__print_rpc_op_stats('READ', sample_time)
++            self.__print_rpc_op_stats('WRITE', sample_time)
++            self.__print_data_cache_stats()
+ 
+ #
+ # Functions
+@@ -487,6 +499,10 @@ def iostat_command(name):
+         if arg in ['-p', '--page']:
+             which = 3
+             continue
++	
++	if arg in ['--data']:
++	    which = 4
++	    continue
+ 
+         if arg == sys.argv[0]:
+             continue
+-- 
+1.6.2.1
+
