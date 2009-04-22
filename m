@@ -1,125 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:26075 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755175AbZDUUqY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Apr 2009 16:46:24 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <1E320387-FC00-4162-A6F8-645E346CD2B5@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
-In-Reply-To: <49EE2EFE.7050300@disney.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 2/2] nfs-iostat.py: Added bytes written output
-Date: Tue, 21 Apr 2009 16:46:16 -0400
-References: <1240279414-30528-1-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-2-git-send-email-kevin.constantine@disneyanimation.com> <1240279414-30528-3-git-send-email-kevin.constantine@disneyanimation.com> <ABA1CFF5-7104-4ADD-9847-F6B9136D9987@oracle.com> <49EE0901.2040704@disney.com> <981BA943-47FA-433D-A762-B83983E6532A@oracle.com> <49EE2EFE.7050300@disney.com>
+Received: from lucidpixels.com ([75.144.35.66]:54961 "EHLO lucidpixels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750960AbZDVWvW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Apr 2009 18:51:22 -0400
+Date: Wed, 22 Apr 2009 18:51:21 -0400 (EDT)
+From: Justin Piszcz <jpiszcz@lucidpixels.com>
+To: Jesse Brandeburg <jesse.brandeburg@gmail.com>
+cc: Aioanei Rares <krnl.list@gmail.com>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: 2.6.29.1: Pid: 2831, comm: nfsd Not tainted 2.6.29.1 #4
+In-Reply-To: <4807377b0904221541j7e2c4c0bh50d76d494b3cb306@mail.gmail.com>
+Message-ID: <alpine.DEB.2.00.0904221850360.17988@p34.internal.lan>
+References: <alpine.DEB.2.00.0904211202590.10241@p34.internal.lan>  <49EE25FB.9050503@gmail.com> <4807377b0904221541j7e2c4c0bh50d76d494b3cb306@mail.gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Apr 21, 2009, at 4:39 PM, Kevin Constantine wrote:
-> Chuck Lever wrote:
->> On Apr 21, 2009, at 1:57 PM, Kevin Constantine wrote:
->>> Chuck Lever wrote:
->>>> On Apr 20, 2009, at 10:03 PM, Kevin Constantine wrote:
->>>>> Print statistics about bytes written by NFS
->>>>>
->>>>> Signed-off-by: Kevin Constantine <kevin.constantine@disneyanimation.com 
->>>>> >
->>>>> ---
->>>>> tools/nfs-iostat/nfs-iostat.py |   10 ++++++++++
->>>>> 1 files changed, 10 insertions(+), 0 deletions(-)
->>>>>
->>>>> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/ 
->>>>> nfs-iostat.py
->>>>> index d331a72..5f2e232 100644
->>>>> --- a/tools/nfs-iostat/nfs-iostat.py
->>>>> +++ b/tools/nfs-iostat/nfs-iostat.py
->>>>> @@ -221,6 +221,7 @@ class DeviceData:
->>>>>       """
->>>>>       nfs_stats = self.__nfs_data
->>>>>       app_bytes_read = float(nfs_stats['normalreadbytes'] +  
->>>>> nfs_stats['directreadbytes'])
->>>>> +        bytes_written_by_app =  
->>>>> float(nfs_stats['normalwritebytes'] +  
->>>>> nfs_stats['directwritebytes'])
->>>>>       if app_bytes_read != 0:
->>>>>           read_bytes_from_server =  
->>>>> float(nfs_stats['serverreadbytes'])
->>>>>           directio_bytes_from_server =  
->>>>> float(nfs_stats['directreadbytes'])
->>>>> @@ -234,6 +235,15 @@ class DeviceData:
->>>>>                       cached_read_bytes / 1024.0 / 1024.0, \
->>>>>                       app_bytes_read / 1024.0 / 1024.0, \
->>>>>                       ratio)
->>>>> +    if bytes_written_by_app != 0:
->>>>> +        bytes_written_by_nfs =  
->>>>> float(nfs_stats['serverwritebytes'])
->>>>> +        cached_write_bytes = float(bytes_written_by_app -  
->>>>> bytes_written_by_nfs);
->>>> Again, I don't see why this computation is necessary:  The  
->>>> "normalwritebytes" statistic is what was written through the  
->>>> client's cache, and "directwritebytes" counts the number of bytes  
->>>> that were written via O_DIRECT.
->>>
->>> As I said in the email preceding these patches:
->>> "I'm not quire sure about this patch.  I'm seeing oddities where  
->>> the number of bytes in "NORMALWRITTENBYTES + DIRECTWRITTENBYTES"  
->>> does not equal SERVERWRITTENBYTES.  In some cases the amount of  
->>> data written by the app (normalwrittenbytes + directwrittenbytes)  
->>> is greater than the amount of data written to the server, and in  
->>> other cases it's less than the amount of data written to the  
->>> server.  At the moment, i've ascribed that difference to data  
->>> being written to the local cache and not flushed, but that doesn't  
->>> make a whole lot of sense."
->> Our e-mail system may have barfed on my earlier reply, but I would  
->> like to understand why you need this statistic.  What kind of  
->> analysis are you looking for on the write side?
->>
+
+
+On Wed, 22 Apr 2009, Jesse Brandeburg wrote:
+
+> On Tue, Apr 21, 2009 at 1:00 PM, Aioanei Rares <krnl.list@gmail.com> wrote:
+>> Justin Piszcz wrote:
+>>> This has been happening with 2.6.28.(x) and now 2.6.29.(x), can anyone
+>>> suggest the possible root cause of this problem, re: the nfsd page
+>>> allocation
+>>> failures:
 >
-> As far as writes go, all I really wanted to print is MB being  
-> written to the nfs server.  But I noticed along the way that the  
-> values don't add up and found it odd.
+>> Yes, it happened to me too on a Debian unstable machine with more than one
+>> kernel, starting with 2.6.28 until now. I have a feeling it's a
+>> Debian-specific problem rather than a kernel one.
 >
-> An application writing data to an nfs server should be getting  
-> counted by either normalwrittenbytes, or directwrittenbytes.  The  
-> data being written by the nfs by an NFS write request should be  
-> counted by serverwrittenbytes.  normal + direct should equal server,  
-> but it doesn't, and I'm wondering what happened to those bytes.   
-> Sometimes normal + direct > server, sometimes normal + direct <  
-> server.
+> you may both want to try
+> echo 16384 > /proc/sys/vm/min_free_kbytes
 >
-> What I have in the patch doesn't really matter because I don't  
-> understand the imbalance in the counters.
-
-If you want to see how much data is going from the client to the  
-server, use serverwrittenbytes.  No user-space computation is required.
-
-The other two measure data coming in from system calls.  The VFS and  
-the NFS client do some write caching.  The instantaneous sum of these  
-two will not always be the same as what is written on the wire.
-
-> -kevin
+> or some other value depending on your amount of ram.  This change will
+> increase the minimum amount of memory available for network memory
+> allocations, which are called from softirq context to refill the NIC's
+> receive buffers.
 >
->>>
->>>>> +        print
->>>>> +            print '%13s %12s %15s %15s' % ("Data Written:", "To  
->>>>> Server", "To Cache", "Total")
->>>>> +        print '%10s %13.4fMB %13.4fMB %13.4fMB' % ("", \
->>>>> +                            bytes_written_by_nfs / 1024.0 /  
->>>>> 1024.0, \
->>>>> +                        cached_write_bytes / 1024.0 / 1024.0, \
->>>>> +                        bytes_written_by_app / 1024.0 / 1024.0)
->>>>>
->>>>>   def __print_attr_cache_stats(self, sample_time):
->>>>>       """Print attribute cache efficiency stats
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Will give it a shot, the default was already pretty close to the 
+suggestion, 11441, if it recurs, will increase further.
 
+Thanks,
 
-
-
+Justin.
