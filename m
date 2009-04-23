@@ -1,88 +1,107 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/19] SUNRPC: pass buffer size to svc_addsock()
-Date: Thu, 23 Apr 2009 19:32:33 -0400
-Message-ID: <20090423233232.17283.65955.stgit@ingres.1015granger.net>
+Subject: [PATCH 16/19] NFSD: Stricter buffer size checking in write_versions()
+Date: Thu, 23 Apr 2009 19:33:18 -0400
+Message-ID: <20090423233317.17283.36743.stgit@ingres.1015granger.net>
 References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:46574 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755606AbZDWXed (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:33 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:26918 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756164AbZDWXeg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:36 -0400
 In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adjust the synopsis of svc_addsock() to pass in the size of the output
-buffer.  Add a documenting comment.
+While it's not likely today that there are enough NFS versions to
+overflow the output buffer in write_versions(), we should be more
+careful about detecting the end of the buffer.
 
-This is a cosmetic change for now.  A subsequent patch will make sure
-the buffer length is passed to one_sock_name(), where the length will
-actually be useful.
+The number of NFS versions will only increase as NFSv4 minor versions
+are added.
+
+Note that this API doesn't behave the same as portlist.  Here we
+attempt to display as many versions as will fit in the buffer, and do
+not provide any indication that an overflow would have occurred.  I
+don't have any good rationale for that.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c               |    2 +-
- include/linux/sunrpc/svcsock.h |    3 ++-
- net/sunrpc/svcsock.c           |   16 +++++++++++++---
- 3 files changed, 16 insertions(+), 5 deletions(-)
+ fs/nfsd/nfsctl.c |   32 +++++++++++++++++++++++++-------
+ 1 files changed, 25 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 6a1cd90..1f1c215 100644
+index c484346..a152694 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -943,7 +943,7 @@ static ssize_t __write_ports_addfd(char *buf)
- 	if (err != 0)
- 		goto out;
- 
--	err = svc_addsock(nfsd_serv, fd, buf);
-+	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
- 	if (err < 0)
- 		lockd_down();
- 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 483e103..e23241c 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -39,7 +39,8 @@ int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
- int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
--int		svc_addsock(struct svc_serv *serv, int fd, char *name_return);
-+int		svc_addsock(struct svc_serv *serv, const int fd,
-+					char *name_return, const size_t len);
- void		svc_init_xprt_sock(void);
- void		svc_cleanup_xprt_sock(void);
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 8b08328..6bec1e2 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1128,9 +1128,19 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	return svsk;
+@@ -793,7 +793,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+ 	char *vers, *minorp, sign;
+-	int len, num;
++	int len, num, remaining;
+ 	unsigned minor;
+ 	ssize_t tlen = 0;
+ 	char *sep;
+@@ -840,32 +840,50 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
+ 			}
+ 		next:
+ 			vers += len + 1;
+-			tlen += len;
+ 		} while ((len = qword_get(&mesg, vers, size)) > 0);
+ 		/* If all get turned off, turn them back on, as
+ 		 * having no versions is BAD
+ 		 */
+ 		nfsd_reset_versions();
+ 	}
++
+ 	/* Now write current state into reply buffer */
+ 	len = 0;
+ 	sep = "";
++	remaining = SIMPLE_TRANSACTION_LIMIT;
+ 	for (num=2 ; num <= 4 ; num++)
+ 		if (nfsd_vers(num, NFSD_AVAIL)) {
+-			len += sprintf(buf+len, "%s%c%d", sep,
++			len = snprintf(buf, remaining, "%s%c%d", sep,
+ 				       nfsd_vers(num, NFSD_TEST)?'+':'-',
+ 				       num);
+ 			sep = " ";
++
++			if (len > remaining)
++				break;
++			remaining -= len;
++			buf += len;
++			tlen += len;
+ 		}
+ 	if (nfsd_vers(4, NFSD_AVAIL))
+-		for (minor = 1; minor <= NFSD_SUPPORTED_MINOR_VERSION; minor++)
+-			len += sprintf(buf+len, " %c4.%u",
++		for (minor = 1; minor <= NFSD_SUPPORTED_MINOR_VERSION;
++		     minor++) {
++			len = snprintf(buf, remaining, " %c4.%u",
+ 					(nfsd_vers(4, NFSD_TEST) &&
+ 					 nfsd_minorversion(minor, NFSD_TEST)) ?
+ 						'+' : '-',
+ 					minor);
+-	len += sprintf(buf+len, "\n");
+-	return len;
++
++			if (len > remaining)
++				break;
++			remaining -= len;
++			buf += len;
++			tlen += len;
++		}
++
++	len = snprintf(buf, remaining, "\n");
++	if (len > remaining)
++		return -EINVAL;
++	return tlen + len;
  }
  
--int svc_addsock(struct svc_serv *serv,
--		int fd,
--		char *name_return)
-+/**
-+ * svc_addsock - add a listener socket to an RPC service
-+ * @serv: pointer to RPC service to which to add a new listener
-+ * @fd: file descriptor of the new listener
-+ * @name_return: pointer to buffer to fill in with name of listener
-+ * @len: size of the buffer
-+ *
-+ * Fills in socket name and returns positive length of name if successful.
-+ * Name is terminated with '\n'.  On error, returns a negative errno
-+ * value.
-+ */
-+int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
-+		const size_t len)
- {
- 	int err = 0;
- 	struct socket *so = sockfd_lookup(fd, &err);
+ /**
 
