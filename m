@@ -1,93 +1,153 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/19] SUNRPC: pass buffer size to svc_sock_names()
-Date: Thu, 23 Apr 2009 19:32:40 -0400
-Message-ID: <20090423233240.17283.47256.stgit@ingres.1015granger.net>
+Subject: [PATCH 09/19] NFSD: Prevent a buffer overflow in svc_xprt_names()
+Date: Thu, 23 Apr 2009 19:32:25 -0400
+Message-ID: <20090423233225.17283.10176.stgit@ingres.1015granger.net>
 References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:29448 "EHLO
-	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751073AbZDWXe3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:29 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:26845 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753851AbZDWXea (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:30 -0400
 In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adjust the synopsis of svc_sock_names() to pass in the size of the
-output buffer.  Add a documenting comment.
+The svc_xprt_names() function can overflow its buffer if it's so near
+the end of the passed in buffer that the "name too long" string still
+doesn't fit.  Of course, it could never tell if it was near the end
+of the passed in buffer, since its only caller passes in zero as the
+buffer length.
 
-This is a cosmetic change for now.  A subsequent patch will make sure
-the buffer length is passed to one_sock_name(), where the length will
-actually be useful.
+Let's make this API a little safer.
+
+Change svc_xprt_names() so it *always* checks for a buffer overflow,
+and change its only caller to pass in the correct buffer length.
+
+If svc_xprt_names() does overflow its buffer, it now fails with an
+ENAMETOOLONG errno, instead of trying to write a message at the end
+of the buffer.  I don't like this much, but I can't figure out a clean
+way that's always safe to return some of the names, *and* an
+indication that the buffer was not long enough.
+
+The displayed error when doing a 'cat /proc/fs/nfsd/portlist' is
+"File name too long".
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c               |    3 ++-
- include/linux/sunrpc/svcsock.h |    4 +++-
- net/sunrpc/svcsock.c           |   19 +++++++++++++++++--
- 3 files changed, 22 insertions(+), 4 deletions(-)
+ fs/nfsd/nfsctl.c                |    2 +
+ include/linux/sunrpc/svc_xprt.h |    2 +
+ net/sunrpc/svc_xprt.c           |   56 +++++++++++++++++++++++++++------------
+ 3 files changed, 41 insertions(+), 19 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 1f1c215..b64a7fb 100644
+index e051847..6a1cd90 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -966,7 +966,8 @@ static ssize_t __write_ports_delfd(char *buf)
- 		return -ENOMEM;
- 
- 	if (nfsd_serv != NULL)
--		len = svc_sock_names(buf, nfsd_serv, toclose);
-+		len = svc_sock_names(nfsd_serv, buf,
-+					SIMPLE_TRANSACTION_LIMIT, toclose);
- 	if (len >= 0)
- 		lockd_down();
- 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index e23241c..8271631 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -38,7 +38,9 @@ int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
--int		svc_sock_names(char *buf, struct svc_serv *serv, char *toclose);
-+int		svc_sock_names(struct svc_serv *serv, char *buf,
-+					const size_t buflen,
-+					const char *toclose);
- int		svc_addsock(struct svc_serv *serv, const int fd,
- 					char *name_return, const size_t len);
- void		svc_init_xprt_sock(void);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 6bec1e2..032b52e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -259,8 +259,23 @@ static int one_sock_name(char *buf, struct svc_sock *svsk)
- 	return len;
+@@ -918,7 +918,7 @@ static ssize_t __write_ports_names(char *buf)
+ {
+ 	if (nfsd_serv == NULL)
+ 		return 0;
+-	return svc_xprt_names(nfsd_serv, buf, 0);
++	return svc_xprt_names(nfsd_serv, buf, SIMPLE_TRANSACTION_LIMIT);
  }
  
--int
--svc_sock_names(char *buf, struct svc_serv *serv, char *toclose)
-+/**
-+ * svc_sock_names - construct a list of listener names in a string
-+ * @serv: pointer to RPC service
-+ * @buf: pointer to a buffer to fill in with socket names
-+ * @buflen: size of the buffer to be filled
-+ * @toclose: pointer to '\0'-terminated C string containing the name
-+ *		of a listener to be closed
-+ *
-+ * Fills in @buf with a '\n'-separated list of names of listener
-+ * sockets.  If @toclose is not NULL, the socket named by @toclose
-+ * is closed, and is not included in the output list.
-+ *
-+ * Returns positive length of the socket name string, or a negative
-+ * errno value on error.
-+ */
-+int svc_sock_names(struct svc_serv *serv, char *buf, const size_t buflen,
-+		   const char *toclose)
+ /*
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index d790c52..2223ae0 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -83,7 +83,7 @@ int	svc_port_is_privileged(struct sockaddr *sin);
+ int	svc_print_xprts(char *buf, int maxlen);
+ struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+ 			const sa_family_t af, const unsigned short port);
+-int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
++int	svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen);
+ 
+ static inline void svc_xprt_get(struct svc_xprt *xprt)
  {
- 	struct svc_sock *svsk, *closesk = NULL;
- 	int len = 0;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index c200d92..96eb873 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -1097,36 +1097,58 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+ }
+ EXPORT_SYMBOL_GPL(svc_find_xprt);
+ 
+-/*
+- * Format a buffer with a list of the active transports. A zero for
+- * the buflen parameter disables target buffer overflow checking.
++static int svc_one_xprt_name(const struct svc_xprt *xprt,
++			     char *pos, int remaining)
++{
++	int len;
++
++	len = snprintf(pos, remaining, "%s %u\n",
++			xprt->xpt_class->xcl_name,
++			svc_xprt_local_port(xprt));
++	if (len >= remaining)
++		return -ENAMETOOLONG;
++	return len;
++}
++
++/**
++ * svc_xprt_names - format a buffer with a list of transport names
++ * @serv: pointer to an RPC service
++ * @buf: pointer to a buffer to be filled in
++ * @buflen: length of buffer to be filled in
++ *
++ * Fills in @buf with a string containing a list of transport names,
++ * each name terminated with '\n'.
++ *
++ * Returns positive length of the filled-in string on success; otherwise
++ * a negative errno value is returned if an error occurs.
+  */
+-int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
++int svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen)
+ {
+ 	struct svc_xprt *xprt;
+-	char xprt_str[64];
+-	int totlen = 0;
+-	int len;
++	int len, totlen;
++	char *pos;
+ 
+ 	/* Sanity check args */
+ 	if (!serv)
+ 		return 0;
+ 
+ 	spin_lock_bh(&serv->sv_lock);
++
++	pos = buf;
++	totlen = 0;
+ 	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
+-		len = snprintf(xprt_str, sizeof(xprt_str),
+-			       "%s %d\n", xprt->xpt_class->xcl_name,
+-			       svc_xprt_local_port(xprt));
+-		/* If the string was truncated, replace with error string */
+-		if (len >= sizeof(xprt_str))
+-			strcpy(xprt_str, "name-too-long\n");
+-		/* Don't overflow buffer */
+-		len = strlen(xprt_str);
+-		if (buflen && (len + totlen >= buflen))
++		len = svc_one_xprt_name(xprt, pos, buflen - totlen);
++		if (len < 0) {
++			*buf = '\0';
++			totlen = len;
++		}
++		if (len <= 0)
+ 			break;
+-		strcpy(buf+totlen, xprt_str);
++
++		pos += len;
+ 		totlen += len;
+ 	}
++
+ 	spin_unlock_bh(&serv->sv_lock);
+ 	return totlen;
+ }
 
