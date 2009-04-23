@@ -1,102 +1,99 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 05/29] nfsd41: create_session cache hold client
-	reference
-Date: Thu, 23 Apr 2009 19:28:25 -0400
-Message-ID: <20090423232825.GK1906@fieldses.org>
-References: <1240504988-9572-1-git-send-email-andros@netapp.com> <1240504988-9572-2-git-send-email-andros@netapp.com> <1240504988-9572-3-git-send-email-andros@netapp.com> <1240504988-9572-4-git-send-email-andros@netapp.com> <1240504988-9572-5-git-send-email-andros@netapp.com> <1240504988-9572-6-git-send-email-andros@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/19] NFSD: Refactor transport removal out of __write_ports()
+Date: Thu, 23 Apr 2009 19:31:32 -0400
+Message-ID: <20090423233132.17283.22025.stgit@ingres.1015granger.net>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: andros@netapp.com
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:50897 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752590AbZDWX2Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:28:25 -0400
-In-Reply-To: <1240504988-9572-6-git-send-email-andros@netapp.com>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:64779 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752926AbZDWXcX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:32:23 -0400
+In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 12:42:44PM -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> expire_client can be called on a confirmed or unconfirmed client while
-> processing the create session operation and accessing the clientid slot.
+Clean up: Refactor transport removal out of __write_ports() to make it
+easier to understand and maintain.
 
-I don't understand--isn't all that under the state lock for now?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
---b.
+ fs/nfsd/nfsctl.c |   53 +++++++++++++++++++++++++++++------------------------
+ 1 files changed, 29 insertions(+), 24 deletions(-)
 
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfsd/nfs4state.c |   14 ++++++++++----
->  1 files changed, 10 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a585a58..accad58 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1355,6 +1355,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  	conf = find_confirmed_client(&cr_ses->clientid);
->  
->  	if (conf) {
-> +		atomic_inc(&conf->cl_count);
->  		slot = &conf->cl_slot;
->  		status = check_slot_seqid(cr_ses->seqid, slot);
->  		if (status == nfserr_replay_cache) {
-> @@ -1363,27 +1364,30 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  			cstate->status = nfserr_replay_clientid_cache;
->  			/* Return the cached reply status */
->  			status = nfsd4_replay_create_session(resp, slot);
-> -			goto out;
-> +			goto out_put;
->  		} else if (cr_ses->seqid != conf->cl_slot.sl_seqid + 1) {
->  			status = nfserr_seq_misordered;
->  			dprintk("Sequence misordered!\n");
->  			dprintk("Expected seqid= %d but got seqid= %d\n",
->  				slot->sl_seqid, cr_ses->seqid);
-> -			goto out;
-> +			goto out_put;
->  		}
->  		conf->cl_slot.sl_seqid++;
->  	} else if (unconf) {
-> +		atomic_inc(&unconf->cl_count);
->  		slot = &unconf->cl_slot;
->  		status = check_slot_seqid(cr_ses->seqid, slot);
->  		if (status) {
->  			/* an unconfirmed replay returns misordered */
->  			status = nfserr_seq_misordered;
-> -			goto out;
-> +			conf = unconf; /* for put_nfs4_client */
-> +			goto out_put;
->  		}
->  
->  		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->  		    (ip_addr != unconf->cl_addr)) {
->  			status = nfserr_clid_inuse;
-> +			conf = unconf; /* for put_nfs4_client */
->  			goto out_cache;
->  		}
->  
-> @@ -1413,7 +1417,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  
->  	status = alloc_init_session(rqstp, conf, cr_ses);
->  	if (status)
-> -		goto out;
-> +		goto out_put;
->  
->  	memcpy(cr_ses->sessionid.data, conf->cl_sessionid.data,
->  	       NFS4_MAX_SESSIONID_LEN);
-> @@ -1423,6 +1427,8 @@ out_cache:
->  	/* cache solo and embedded create sessions under the state lock */
->  	nfsd4_cache_create_session(cr_ses, slot, status);
->  
-> +out_put:
-> +	put_nfs4_client(conf);
->  out:
->  	nfs4_unlock_state();
->  	dprintk("%s returns %d\n", __func__, ntohl(status));
-> -- 
-> 1.5.4.3
-> 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index af16849..2c1dce8 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -910,6 +910,31 @@ static ssize_t write_versions(struct file *file, char *buf, size_t size)
+ 	return rv;
+ }
+ 
++/*
++ * A transport listener is removed by writing a "-", it's transport
++ * name, and it's port number.
++ */
++static ssize_t __write_ports_delxprt(char *buf)
++{
++	struct svc_xprt *xprt;
++	char transport[16];
++	int port;
++
++	if (sscanf(&buf[1], "%15s %4u", transport, &port) != 2)
++		return -EINVAL;
++
++	if (port < 1 || port > USHORT_MAX || nfsd_serv == NULL)
++		return -EINVAL;
++
++	xprt = svc_find_xprt(nfsd_serv, transport, AF_UNSPEC, port);
++	if (xprt == NULL)
++		return -ENOTCONN;
++
++	svc_close_xprt(xprt);
++	svc_xprt_put(xprt);
++	return 0;
++}
++
+ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+ {
+ 	if (size == 0) {
+@@ -984,30 +1009,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+ 			return err < 0 ? err : 0;
+ 		}
+ 	}
+-	/*
+-	 * Remove a transport by writing it's transport name and port number
+-	 */
+-	if (buf[0] == '-' && isalpha(buf[1])) {
+-		struct svc_xprt *xprt;
+-		int err = -EINVAL;
+-		char transport[16];
+-		int port;
+-		if (sscanf(&buf[1], "%15s %4d", transport, &port) == 2) {
+-			if (port < 1 || port > 65535)
+-				return -EINVAL;
+-			if (nfsd_serv) {
+-				xprt = svc_find_xprt(nfsd_serv, transport,
+-						     AF_UNSPEC, port);
+-				if (xprt) {
+-					svc_close_xprt(xprt);
+-					svc_xprt_put(xprt);
+-					err = 0;
+-				} else
+-					err = -ENOTCONN;
+-			}
+-			return err < 0 ? err : 0;
+-		}
+-	}
++
++	if (buf[0] == '-' && isalpha(buf[1]))
++		return __write_ports_delxprt(buf);
++
+ 	return -EINVAL;
+ }
+ 
+
