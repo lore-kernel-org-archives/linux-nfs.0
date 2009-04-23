@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 27/29] nfsd41: add test for failed sequence operation
-Date: Thu, 23 Apr 2009 12:43:06 -0400
-Message-ID: <1240504988-9572-28-git-send-email-andros@netapp.com>
+Subject: [PATCH 28/29] nfsd41: remove redundant failed sequence check
+Date: Thu, 23 Apr 2009 12:43:07 -0400
+Message-ID: <1240504988-9572-29-git-send-email-andros@netapp.com>
 References: <>
  <1240504988-9572-1-git-send-email-andros@netapp.com>
  <1240504988-9572-2-git-send-email-andros@netapp.com>
@@ -30,55 +30,47 @@ References: <>
  <1240504988-9572-25-git-send-email-andros@netapp.com>
  <1240504988-9572-26-git-send-email-andros@netapp.com>
  <1240504988-9572-27-git-send-email-andros@netapp.com>
+ <1240504988-9572-28-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46174 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3269 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757405AbZDWQng (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Apr 2009 12:43:36 -0400
-In-Reply-To: <1240504988-9572-27-git-send-email-andros@netapp.com>
+	id S1756832AbZDWQnh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Apr 2009 12:43:37 -0400
+In-Reply-To: <1240504988-9572-28-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Failed sequence operations are not cached.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/nfsd/xdr4.h |   10 +++++++++-
- 1 files changed, 9 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4state.c |    7 -------
+ 1 files changed, 0 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index e312601..8255a87 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -472,6 +472,13 @@ struct nfsd4_compoundres {
- 	struct nfsd4_compound_state	cstate;
- };
- 
-+static inline bool nfsd4_is_failed_sequence(struct nfsd4_compoundres *resp)
-+{
-+	struct nfsd4_compoundargs *args = resp->rqstp->rq_argp;
-+	return resp->opcnt == 1 && args->ops[0].opnum == OP_SEQUENCE &&
-+		resp->cstate.status;
-+}
-+
- static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6be72ad..4d211ff 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1008,16 +1008,9 @@ __be32
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
  {
- 	struct nfsd4_compoundargs *args = resp->rqstp->rq_argp;
-@@ -481,7 +488,8 @@ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
- static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
- {
- 	return !resp->cstate.slot->sl_cache_entry.ce_cachethis ||
--			nfsd4_is_solo_sequence(resp);
-+			nfsd4_is_solo_sequence(resp) ||
-+			nfsd4_is_failed_sequence(resp);
- }
+ 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
+-	struct svc_rqst *rqstp = resp->rqstp;
+-	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+-	struct nfsd4_op *op = &args->ops[resp->opcnt];
  
- #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+ 	dprintk("--> %s cachethis %d\n", __func__, entry->ce_cachethis);
+ 
+-	/* Don't cache a failed OP_SEQUENCE. */
+-	if (resp->opcnt == 1 && op->opnum == OP_SEQUENCE && resp->cstate.status)
+-		return 0;
+-
+ 	entry->ce_opcnt = resp->opcnt;
+ 	entry->ce_status = resp->cstate.status;
+ 
 -- 
 1.5.4.3
 
