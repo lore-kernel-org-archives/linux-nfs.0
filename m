@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 28/29] nfsd41: remove redundant failed sequence check
-Date: Thu, 23 Apr 2009 12:43:07 -0400
-Message-ID: <1240504988-9572-29-git-send-email-andros@netapp.com>
+Subject: [PATCH 24/29] nfsd41: support 16 slots per session
+Date: Thu, 23 Apr 2009 12:43:03 -0400
+Message-ID: <1240504988-9572-25-git-send-email-andros@netapp.com>
 References: <>
  <1240504988-9572-1-git-send-email-andros@netapp.com>
  <1240504988-9572-2-git-send-email-andros@netapp.com>
@@ -27,50 +27,42 @@ References: <>
  <1240504988-9572-22-git-send-email-andros@netapp.com>
  <1240504988-9572-23-git-send-email-andros@netapp.com>
  <1240504988-9572-24-git-send-email-andros@netapp.com>
- <1240504988-9572-25-git-send-email-andros@netapp.com>
- <1240504988-9572-26-git-send-email-andros@netapp.com>
- <1240504988-9572-27-git-send-email-andros@netapp.com>
- <1240504988-9572-28-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3269 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46174 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756832AbZDWQnh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Apr 2009 12:43:37 -0400
-In-Reply-To: <1240504988-9572-28-git-send-email-andros@netapp.com>
+	id S1757232AbZDWQnd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Apr 2009 12:43:33 -0400
+In-Reply-To: <1240504988-9572-24-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+128 slots is a bit much without proof that they are needed.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
+ include/linux/nfsd/state.h |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6be72ad..4d211ff 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1008,16 +1008,9 @@ __be32
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
--	struct svc_rqst *rqstp = resp->rqstp;
--	struct nfsd4_compoundargs *args = rqstp->rq_argp;
--	struct nfsd4_op *op = &args->ops[resp->opcnt];
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 29ed755..0dfdb6e 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -105,8 +105,8 @@ struct nfs4_callback {
+ 	struct rpc_clnt *       cb_client;
+ };
  
- 	dprintk("--> %s cachethis %d\n", __func__, entry->ce_cachethis);
- 
--	/* Don't cache a failed OP_SEQUENCE. */
--	if (resp->opcnt == 1 && op->opnum == OP_SEQUENCE && resp->cstate.status)
--		return 0;
--
- 	entry->ce_opcnt = resp->opcnt;
- 	entry->ce_status = resp->cstate.status;
- 
+-/* Maximum number of slots per session. 128 is useful for long haul TCP */
+-#define NFSD_MAX_SLOTS_PER_SESSION	128
++/* Maximum number of slots per session */
++#define NFSD_MAX_SLOTS_PER_SESSION	16
+ /* Maximum number of pages per slot cache entry */
+ #define NFSD_PAGES_PER_SLOT	1
+ /* Size of each slot cache entry */
 -- 
 1.5.4.3
 
