@@ -1,46 +1,74 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 15/19] NFSD: Stricter buffer size checking in
-	write_recoverydir()
-Date: Thu, 23 Apr 2009 19:33:10 -0400
-Message-ID: <20090423233310.17283.14286.stgit@ingres.1015granger.net>
+Subject: [PATCH 08/19] NFSD: move lockd_up() before svc_addsock()
+Date: Thu, 23 Apr 2009 19:32:18 -0400
+Message-ID: <20090423233217.17283.96414.stgit@ingres.1015granger.net>
 References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:46592 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756053AbZDWXeg (ORCPT
+Received: from rcsinet13.oracle.com ([148.87.113.125]:29513 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756106AbZDWXeg (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:36 -0400
 In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While it's not likely a pathname will be longer than
-SIMPLE_TRANSACTION_SIZE, we should be more careful about just
-plopping it into the output buffer without bounds checking.
+Clean up.
+
+A couple of years ago, a series of commits, finishing with commit
+5680c446, swapped the order of the lockd_up() and svc_addsock() calls
+in __write_ports().  At that time lockd_up() needed to know the
+transport protocol of the passed-in socket to start a listener on the
+same transport protocol.
+
+These days, lockd_up() doesn't take a protocol argument; it always
+starts both a UDP and TCP listener.  It's now more straightforward to
+try the lockd_up() first, then do a lockd_down() if the svc_addsock()
+fails.
+
+Careful review of this code shows that the svc_sock_names() call is
+used only to close the just-opened socket in case lockd_up() fails.
+So it is no longer needed if lockd_up() is done first.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+ fs/nfsd/nfsctl.c |   19 ++++++++++---------
+ 1 files changed, 10 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b64a7fb..c484346 100644
+index caf4fdc..e051847 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -1260,8 +1260,9 @@ static ssize_t __write_recoverydir(struct file *file, char *buf, size_t size)
+@@ -939,17 +939,18 @@ static ssize_t __write_ports_addfd(char *buf)
+ 	if (err != 0)
+ 		return err;
  
- 		status = nfs4_reset_recoverydir(recdir);
- 	}
--	sprintf(buf, "%s\n", nfs4_recoverydir());
--	return strlen(buf);
-+
-+	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%s\n",
-+							nfs4_recoverydir());
+-	err = svc_addsock(nfsd_serv, fd, buf);
+-	if (err >= 0) {
+-		err = lockd_up();
+-		if (err < 0)
+-			svc_sock_names(buf + strlen(buf) + 1, nfsd_serv, buf);
++	err = lockd_up();
++	if (err != 0)
++		goto out;
+ 
+-		/* Decrease the count, but don't shut down the service */
+-		nfsd_serv->sv_nrthreads--;
+-	}
++	err = svc_addsock(nfsd_serv, fd, buf);
++	if (err < 0)
++		lockd_down();
+ 
+-	return err < 0 ? err : 0;
++out:
++	/* Decrease the count, but don't shut down the service */
++	nfsd_serv->sv_nrthreads--;
++	return err;
  }
  
- /**
+ /*
 
