@@ -1,45 +1,81 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/19] NFSD: Note an additional requirement when passing TCP
-	sockets to portlist
-Date: Thu, 23 Apr 2009 19:32:03 -0400
-Message-ID: <20090423233202.17283.89678.stgit@ingres.1015granger.net>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
+Subject: [PATCH 00/19] Proposed server-side patches for 2.6.31
+Date: Thu, 23 Apr 2009 19:31:16 -0400
+Message-ID: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:64816 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754287AbZDWXc1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:32:27 -0400
-In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from rcsinet13.oracle.com ([148.87.113.125]:28267 "EHLO
+	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754486AbZDWXc2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:32:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-User space must call listen(3) on SOCK_STREAM sockets passed into
-/proc/fs/nfsd/portlist, otherwise that listener is ignored.  Document
-this.
+Hi Bruce -
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Here are some patches I'd like to propose for 2.6.31.  Please review
+and consider them for linux-next.  They've seen a little testing here
+on x86_64, but they should get some public exercise.
+
+The first 17 are updated versions of patches I submitted for 2.6.30,
+but were dropped at the last minute to simplify things.  They provide
+some clean-up for the nfsctl API, and a little more IPv6 support in
+that area as well, in preparation for full-on IPv6-related changes to
+come.  I think I've addressed earlier review comments.
+
+As usual, it would be most helpful if you would drop the whole series
+if you have issues with any of these patches.
+
+Patch 18 addresses a long-standing problem with our NLM/NSM
+implementation.  If lockd.ko isn't loaded before statd starts up
+(which is the typical case for both our server and client) then
+lockd's NSM state number is never set.  We then end up sending a zero
+state number in all NLM requests.  This is also the case if lockd.ko
+is unloaded and reloaded during normal operation -- the NSM state
+number is reset to zero.  See the patch description for further
+detail.
+
+Patch 19 provides a little more 64-bit alignment clean up in
+nsm_init_private() .
+
+These two are independent of all the others and either or both can be
+applied as you see fit.
+
 ---
 
- fs/nfsd/nfsctl.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+Chuck Lever (19):
+      lockd: clean up 64-bit alignment fix in nsm_init_private()
+      lockd: Update NSM state from SM_MON replies
+      NFSD: Stricter buffer size checking in fs/nfsd/nfsctl.c
+      NFSD: Stricter buffer size checking in write_versions()
+      NFSD: Stricter buffer size checking in write_recoverydir()
+      SUNRPC: Clean up one_sock_name()
+      SUNRPC: Support PF_INET6 in one_sock_name()
+      SUNRPC: Switch one_sock_name() to use snprintf()
+      SUNRPC: pass buffer size to svc_sock_names()
+      SUNRPC: pass buffer size to svc_addsock()
+      NFSD: Prevent a buffer overflow in svc_xprt_names()
+      NFSD: move lockd_up() before svc_addsock()
+      NFSD: Finish refactoring __write_ports()
+      NFSD: Note an additional requirement when passing TCP sockets to portlist
+      NFSD: Refactor socket creation out of __write_ports()
+      NFSD: Refactor portlist socket closing into a helper
+      NFSD: Refactor transport addition out of __write_ports()
+      NFSD: Refactor transport removal out of __write_ports()
+      SUNRPC: Fix error return value of svc_addr_len()
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b6a847f..d491fa9 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1061,7 +1061,9 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-  *			buf:		C string containing an unsigned
-  *					integer value representing a bound
-  *					but unconnected socket that is to be
-- *					used as an NFSD listener
-+ *					used as an NFSD listener; listen(3)
-+ *					must be called for a SOCK_STREAM
-+ *					socket, otherwise it is ignored
-  *			size:		non-zero length of C string in @buf
-  * Output:
-  *	On success:	NFS service is started;
 
+ fs/lockd/clntproc.c             |    2 
+ fs/lockd/mon.c                  |   18 +-
+ fs/nfsd/nfsctl.c                |  284 ++++++++++++++++++++++++---------------
+ include/linux/sunrpc/svc_xprt.h |    7 +
+ include/linux/sunrpc/svcsock.h  |    7 +
+ net/sunrpc/svc_xprt.c           |   56 +++++---
+ net/sunrpc/svcsock.c            |   87 +++++++++---
+ 7 files changed, 299 insertions(+), 162 deletions(-)
+
+-- 
+Chuck Lever <chuck.lever@oracle.com>
