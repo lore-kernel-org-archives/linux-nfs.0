@@ -1,98 +1,98 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/19] lockd: Update NSM state from SM_MON replies
-Date: Thu, 23 Apr 2009 19:33:33 -0400
-Message-ID: <20090423233332.17283.23011.stgit@ingres.1015granger.net>
+Subject: [PATCH 12/19] SUNRPC: Switch one_sock_name() to use snprintf()
+Date: Thu, 23 Apr 2009 19:32:48 -0400
+Message-ID: <20090423233247.17283.89259.stgit@ingres.1015granger.net>
 References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:26871 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:26936 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755347AbZDWXeb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:31 -0400
+	with ESMTP id S1756622AbZDWXej (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:39 -0400
 In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When rpc.statd starts up in user space at boot time, it attempts to
-write the latest NSM local state number into
-/proc/sys/fs/nfs/nsm_local_state.
-
-If lockd.ko isn't loaded yet (as is the case in most configurations),
-that file doesn't exist, thus the kernel's NSM state remains set to
-its initial value of zero during lockd operation.
-
-This is a problem because rpc.statd and lockd use the NSM state number
-to prevent repeated lock recovery on rebooted hosts.  If lockd sends
-a zero NSM state, but then a delayed SM_NOTIFY with a real NSM state
-number is received, there is no way for lockd or rpc.statd to
-distinguish that stale SM_NOTIFY from an actual reboot.  Thus lock
-recovery could be performed after the rebooted host has already
-started reclaiming locks, and those locks will be lost.
-
-We could change /etc/init.d/nfslock so it always modprobes lockd.ko
-before starting rpc.statd.  However, if lockd.ko is ever unloaded
-and reloaded, we are back at square one, since the NSM state is not
-preserved across an unload/reload cycle.  This may happen frequently
-on clients that use automounter.  A period of NFS inactivity causes
-lockd.ko to be unloaded, and the kernel loses its NSM state setting.
-
-Instead, let's use the fact that rpc.statd plants the local system's
-NSM state in every SM_MON (and SM_UNMON) reply.  lockd performs a
-synchronous SM_MON upcall to the local rpc.statd _before_ sending its
-first NLM request to a new remote.  This would permit rpc.statd to
-provide the current NSM state to lockd, even after lockd.ko had been
-unloaded and reloaded.
-
-Note that NLMPROC_LOCK arguments are constructed before the
-nsm_monitor() call, so we have to rearrange argument construction very
-slightly to make this all work out.
+Use snprintf() in one_sock_name() to prevent overflowing the output
+buffer.  If the name doesn't fit in the buffer, the buffer is filled
+in with an empty string, and -ENAMETOOLONG is returned.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/lockd/clntproc.c |    2 +-
- fs/lockd/mon.c      |    6 +++++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ net/sunrpc/svcsock.c |   25 ++++++++++++++++++-------
+ 1 files changed, 18 insertions(+), 7 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index dd79570..f55b900 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -126,7 +126,6 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
- 	struct nlm_lock	*lock = &argp->lock;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 032b52e..61d4a32 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -240,22 +240,27 @@ out:
+ /*
+  * Report socket names for nfsdfs
+  */
+-static int one_sock_name(char *buf, struct svc_sock *svsk)
++static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
+ {
+ 	int len;
  
- 	nlmclnt_next_cookie(&argp->cookie);
--	argp->state   = nsm_local_state;
- 	memcpy(&lock->fh, NFS_FH(fl->fl_file->f_path.dentry->d_inode), sizeof(struct nfs_fh));
- 	lock->caller  = utsname()->nodename;
- 	lock->oh.data = req->a_owner;
-@@ -519,6 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
- 
- 	if (nsm_monitor(host) < 0)
- 		goto out;
-+	req->a_args.state = nsm_local_state;
- 
- 	fl->fl_flags |= FL_ACCESS;
- 	status = do_vfs_lock(fl);
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 6d5d4a4..5017d50 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -188,8 +188,12 @@ int nsm_monitor(const struct nlm_host *host)
- 		status = -EIO;
- 	if (status < 0)
- 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
--	else
-+	else {
- 		nsm->sm_monitored = 1;
-+		nsm_local_state = res.state;
-+		dprintk("lockd: nsm_monitor: NSM state is now %d\n",
-+				nsm_local_state);
+ 	switch(svsk->sk_sk->sk_family) {
+-	case AF_INET:
+-		len = sprintf(buf, "ipv4 %s %pI4 %d\n",
++	case PF_INET:
++		len = snprintf(buf, remaining, "ipv4 %s %pI4 %d\n",
+ 			      svsk->sk_sk->sk_protocol == IPPROTO_UDP ?
+ 			      "udp" : "tcp",
+ 			      &inet_sk(svsk->sk_sk)->rcv_saddr,
+ 			      inet_sk(svsk->sk_sk)->num);
+ 		break;
+ 	default:
+-		len = sprintf(buf, "*unknown-%d*\n",
++		len = snprintf(buf, remaining, "*unknown-%d*\n",
+ 			       svsk->sk_sk->sk_family);
+ 	}
++
++	if (len >= remaining) {
++		*buf = '\0';
++		return -ENAMETOOLONG;
 +	}
- 	return status;
+ 	return len;
  }
+ 
+@@ -282,15 +287,21 @@ int svc_sock_names(struct svc_serv *serv, char *buf, const size_t buflen,
+ 
+ 	if (!serv)
+ 		return 0;
++
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list) {
+-		int onelen = one_sock_name(buf+len, svsk);
+-		if (toclose && strcmp(toclose, buf+len) == 0)
++		int onelen = svc_one_sock_name(svsk, buf + len, buflen - len);
++		if (onelen < 0) {
++			len = onelen;
++			break;
++		}
++		if (toclose && strcmp(toclose, buf + len) == 0)
+ 			closesk = svsk;
+ 		else
+ 			len += onelen;
+ 	}
+ 	spin_unlock_bh(&serv->sv_lock);
++
+ 	if (closesk)
+ 		/* Should unregister with portmap, but you cannot
+ 		 * unregister just one protocol...
+@@ -1195,7 +1206,7 @@ int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
+ 		sockfd_put(so);
+ 		return err;
+ 	}
+-	return one_sock_name(name_return, svsk);
++	return svc_one_sock_name(svsk, name_return, len);
+ }
+ EXPORT_SYMBOL_GPL(svc_addsock);
  
 
