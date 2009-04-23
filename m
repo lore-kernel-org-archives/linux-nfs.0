@@ -1,106 +1,66 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 16/19] NFSD: Stricter buffer size checking in write_versions()
-Date: Thu, 23 Apr 2009 19:33:18 -0400
-Message-ID: <20090423233317.17283.36743.stgit@ingres.1015granger.net>
+Subject: [PATCH 17/19] NFSD: Stricter buffer size checking in fs/nfsd/nfsctl.c
+Date: Thu, 23 Apr 2009 19:33:25 -0400
+Message-ID: <20090423233325.17283.71127.stgit@ingres.1015granger.net>
 References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:26918 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:26838 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756164AbZDWXeg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:36 -0400
+	with ESMTP id S1752812AbZDWXe3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:34:29 -0400
 In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While it's not likely today that there are enough NFS versions to
-overflow the output buffer in write_versions(), we should be more
-careful about detecting the end of the buffer.
-
-The number of NFS versions will only increase as NFSv4 minor versions
-are added.
-
-Note that this API doesn't behave the same as portlist.  Here we
-attempt to display as many versions as will fit in the buffer, and do
-not provide any indication that an overflow would have occurred.  I
-don't have any good rationale for that.
+Clean up: For consistency, handle output buffer size checking in a
+other nfsctl functions the same way it's done for write_versions().
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfsd/nfsctl.c |   32 +++++++++++++++++++++++++-------
- 1 files changed, 25 insertions(+), 7 deletions(-)
+ fs/nfsd/nfsctl.c |   14 +++++++++-----
+ 1 files changed, 9 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index c484346..a152694 100644
+index a152694..877e713 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -793,7 +793,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- {
- 	char *mesg = buf;
- 	char *vers, *minorp, sign;
--	int len, num;
-+	int len, num, remaining;
- 	unsigned minor;
- 	ssize_t tlen = 0;
- 	char *sep;
-@@ -840,32 +840,50 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 			}
- 		next:
- 			vers += len + 1;
--			tlen += len;
- 		} while ((len = qword_get(&mesg, vers, size)) > 0);
- 		/* If all get turned off, turn them back on, as
- 		 * having no versions is BAD
- 		 */
- 		nfsd_reset_versions();
+@@ -695,8 +695,9 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 		if (rv)
+ 			return rv;
  	}
+-	sprintf(buf, "%d\n", nfsd_nrthreads());
+-	return strlen(buf);
 +
- 	/* Now write current state into reply buffer */
- 	len = 0;
- 	sep = "";
-+	remaining = SIMPLE_TRANSACTION_LIMIT;
- 	for (num=2 ; num <= 4 ; num++)
- 		if (nfsd_vers(num, NFSD_AVAIL)) {
--			len += sprintf(buf+len, "%s%c%d", sep,
-+			len = snprintf(buf, remaining, "%s%c%d", sep,
- 				       nfsd_vers(num, NFSD_TEST)?'+':'-',
- 				       num);
- 			sep = " ";
++	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
++							nfsd_nrthreads());
+ }
+ 
+ /**
+@@ -1197,7 +1198,9 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
+ 		nfsd_max_blksize = bsize;
+ 		mutex_unlock(&nfsd_mutex);
+ 	}
+-	return sprintf(buf, "%d\n", nfsd_max_blksize);
 +
-+			if (len > remaining)
-+				break;
-+			remaining -= len;
-+			buf += len;
-+			tlen += len;
- 		}
- 	if (nfsd_vers(4, NFSD_AVAIL))
--		for (minor = 1; minor <= NFSD_SUPPORTED_MINOR_VERSION; minor++)
--			len += sprintf(buf+len, " %c4.%u",
-+		for (minor = 1; minor <= NFSD_SUPPORTED_MINOR_VERSION;
-+		     minor++) {
-+			len = snprintf(buf, remaining, " %c4.%u",
- 					(nfsd_vers(4, NFSD_TEST) &&
- 					 nfsd_minorversion(minor, NFSD_TEST)) ?
- 						'+' : '-',
- 					minor);
--	len += sprintf(buf+len, "\n");
--	return len;
++	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
++							nfsd_max_blksize);
+ }
+ 
+ #ifdef CONFIG_NFSD_V4
+@@ -1221,8 +1224,9 @@ static ssize_t __write_leasetime(struct file *file, char *buf, size_t size)
+ 			return -EINVAL;
+ 		nfs4_reset_lease(lease);
+ 	}
+-	sprintf(buf, "%ld\n", nfs4_lease_time());
+-	return strlen(buf);
 +
-+			if (len > remaining)
-+				break;
-+			remaining -= len;
-+			buf += len;
-+			tlen += len;
-+		}
-+
-+	len = snprintf(buf, remaining, "\n");
-+	if (len > remaining)
-+		return -EINVAL;
-+	return tlen + len;
++	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n",
++							nfs4_lease_time());
  }
  
  /**
