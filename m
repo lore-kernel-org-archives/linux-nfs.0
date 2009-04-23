@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 29/29] nfsd41: remove check for session
-Date: Thu, 23 Apr 2009 12:43:08 -0400
-Message-ID: <1240504988-9572-30-git-send-email-andros@netapp.com>
+Subject: [PATCH 25/29] nfsd41: use the maximum operations per compound in nfsd4_compoundargs
+Date: Thu, 23 Apr 2009 12:43:04 -0400
+Message-ID: <1240504988-9572-26-git-send-email-andros@netapp.com>
 References: <>
  <1240504988-9572-1-git-send-email-andros@netapp.com>
  <1240504988-9572-2-git-send-email-andros@netapp.com>
@@ -28,48 +28,55 @@ References: <>
  <1240504988-9572-23-git-send-email-andros@netapp.com>
  <1240504988-9572-24-git-send-email-andros@netapp.com>
  <1240504988-9572-25-git-send-email-andros@netapp.com>
- <1240504988-9572-26-git-send-email-andros@netapp.com>
- <1240504988-9572-27-git-send-email-andros@netapp.com>
- <1240504988-9572-28-git-send-email-andros@netapp.com>
- <1240504988-9572-29-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:46174 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756654AbZDWQni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Apr 2009 12:43:38 -0400
-In-Reply-To: <1240504988-9572-29-git-send-email-andros@netapp.com>
+	id S1757389AbZDWQne (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Apr 2009 12:43:34 -0400
+In-Reply-To: <1240504988-9572-25-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-CREATE_SESSION replays which used to set the cstate slot but not the session,
-no longer set the cstate slot nor use nfsd4_store_cache_entry.
-The SEQUENCE operation which references the session always set the cstate slot
-and session.
+The size of the nfsd4_op array in nfsd4_compoundargs determines the
+supported maximum number of operations.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4xdr.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ include/linux/nfsd/state.h |    2 +-
+ include/linux/nfsd/xdr4.h  |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1e46525..5d6059a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3365,8 +3365,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
- 			resp->cstate.slot->sl_inuse = 0;
- 		}
--		if (resp->cstate.session)
--			nfsd4_put_session(resp->cstate.session);
-+		nfsd4_put_session(resp->cstate.session);
- 	}
- 	return 1;
- }
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 0dfdb6e..d65ce6f 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -112,7 +112,7 @@ struct nfs4_callback {
+ /* Size of each slot cache entry */
+ #define NFSD_SLOT_CACHE_SIZE           1024
+ /* Maximum number of operations per session compound */
+-#define NFSD_MAX_OPS_PER_COMPOUND	16
++#define NFSD_MAX_OPS_PER_COMPOUND	8
+ 
+ struct nfsd4_cache_entry {
+ 	__be32		ce_status;
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 45ccbc3..e312601 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -455,7 +455,7 @@ struct nfsd4_compoundargs {
+ 	u32				minorversion;
+ 	u32				opcnt;
+ 	struct nfsd4_op			*ops;
+-	struct nfsd4_op			iops[8];
++	struct nfsd4_op			iops[NFSD_MAX_OPS_PER_COMPOUND];
+ };
+ 
+ struct nfsd4_compoundres {
 -- 
 1.5.4.3
 
