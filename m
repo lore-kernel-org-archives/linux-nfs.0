@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 24/29] nfsd41: support 16 slots per session
-Date: Thu, 23 Apr 2009 12:43:03 -0400
-Message-ID: <1240504988-9572-25-git-send-email-andros@netapp.com>
+Subject: [PATCH 23/29] nfsd41: fix nfsd4_store_cache_entry comments
+Date: Thu, 23 Apr 2009 12:43:02 -0400
+Message-ID: <1240504988-9572-24-git-send-email-andros@netapp.com>
 References: <>
  <1240504988-9572-1-git-send-email-andros@netapp.com>
  <1240504988-9572-2-git-send-email-andros@netapp.com>
@@ -26,43 +26,59 @@ References: <>
  <1240504988-9572-21-git-send-email-andros@netapp.com>
  <1240504988-9572-22-git-send-email-andros@netapp.com>
  <1240504988-9572-23-git-send-email-andros@netapp.com>
- <1240504988-9572-24-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:46174 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757232AbZDWQnd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Apr 2009 12:43:33 -0400
-In-Reply-To: <1240504988-9572-24-git-send-email-andros@netapp.com>
+	id S1756832AbZDWQnc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Apr 2009 12:43:32 -0400
+In-Reply-To: <1240504988-9572-23-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-128 slots is a bit much without proof that they are needed.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/nfsd/state.h |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |   16 +++-------------
+ 1 files changed, 3 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 29ed755..0dfdb6e 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -105,8 +105,8 @@ struct nfs4_callback {
- 	struct rpc_clnt *       cb_client;
- };
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index efc9374..1e995ec 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1001,14 +1001,8 @@ out_err:
+ }
  
--/* Maximum number of slots per session. 128 is useful for long haul TCP */
--#define NFSD_MAX_SLOTS_PER_SESSION	128
-+/* Maximum number of slots per session */
-+#define NFSD_MAX_SLOTS_PER_SESSION	16
- /* Maximum number of pages per slot cache entry */
- #define NFSD_PAGES_PER_SLOT	1
- /* Size of each slot cache entry */
+ /*
+- * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
+- * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
+- * length of the XDR response is less than se_fmaxresp_cached
+- * (NFSD_PAGES_PER_SLOT * PAGE_SIZE) but the xdr_buf pages is used for a
+- * of the reply (e.g. readdir).
+- *
+- * Store the base and length of the rq_req.head[0] page
+- * of the NFSv4.1 data, just past the rpc header.
++ * Copy all encoded operation responses past the sequence response into the
++ * slot's cache.
+  */
+ __be32
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+@@ -1027,11 +1021,7 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 	entry->ce_opcnt = resp->opcnt;
+ 	entry->ce_status = resp->cstate.status;
+ 
+-	/*
+-	 * Don't need a page to cache just the sequence operation - the slot
+-	 * does this for us!
+-	 */
+-
++	/* Don't cache the sequence operation, use the slot values on replay. */
+ 	if (nfsd4_not_cached(resp)) {
+ 		entry->ce_datav.iov_len = 0;
+ 		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
 -- 
 1.5.4.3
 
