@@ -1,105 +1,131 @@
-From: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Subject: Re: Fw: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Fri, 24 Apr 2009 01:14:14 +0200
-Message-ID: <20090423231414.GA32422@gradator.net>
-References: <20090422142424.b4105f4c.akpm@linux-foundation.org> <20090422224455.GV15541@mit.edu> <20090422234823.GA24477@gradator.net> <20090423001139.GX15541@mit.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 02/29] nfsd41: encode create_session result into cache
+Date: Thu, 23 Apr 2009 19:21:05 -0400
+Message-ID: <20090423232105.GI1906@fieldses.org>
+References: <1240504988-9572-1-git-send-email-andros@netapp.com> <1240504988-9572-2-git-send-email-andros@netapp.com> <1240504988-9572-3-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="vtzGhvizbBRQ85DL"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from atreides.gradator.net ([212.85.155.42]:45142 "EHLO
-	atreides.gradator.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751212AbZDWXOR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:14:17 -0400
-In-Reply-To: <20090423001139.GX15541@mit.edu>
+Received: from mail.fieldses.org ([141.211.133.115]:45372 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756905AbZDWXVG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:21:06 -0400
+In-Reply-To: <1240504988-9572-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Apr 23, 2009 at 12:42:41PM -0400, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> CREATE_SESSION can be preceeded by a SEQUENCE operation and the
+> create session single slot cache must be maintained. Encode the results of
+> a create session call into the cache at the end of processing.
+> 
+> The create session result will also be encoded into the RPC response, and if
+> it is preceeded by a SEQUENCE operation, will also be encoded into the
+> session slot table cache.
+> 
+> Errors that do not change the create session cache:
+> A create session NFS4ERR_STALE_CLIENTID error means that a client record
+> (and associated create session slot) could not be found and therefore can't
+> be changed.  NFSERR_SEQ_MISORDERED errors do not change the slot cache.
+> 
+> All other errors get cached.
 
---vtzGhvizbBRQ85DL
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Thanks, this all sounds sensible.  (One simple thing I think I was
+confused about: the create_session sequencing is done at a layer above
+sessions; so in the case of a create_session preceded by a sequence, if
+we discover at the point of processing the sequence that this is a
+replay, we use the sequence replay cache and never even get to any
+create_session processing.  OK!)
 
-Hi,
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c       |    6 +++++-
+>  fs/nfsd/nfs4xdr.c         |   19 +++++++++++++++++++
+>  include/linux/nfsd/xdr4.h |    2 ++
+>  3 files changed, 26 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 27ad37f..279b47e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1377,7 +1377,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+>  		    (ip_addr != unconf->cl_addr)) {
 
+Could we apply the patch removing these ip_addr checks before any of
+these patches?  Also I seem to recall expressing some other doubts about
+the correctness of exchange_id and create_session--I'd like to see those
+addressed first, as this builds on those.
 
-On Wed, Apr 22, 2009 at 08:11:39PM -0400, Theodore Tso wrote:
->=20
-> On the server side, that means you also an inode table block look
-> corrupted.  I'm pretty sure that if you used debugfs to examine those
-> blocks you would have seen that the inodes were completely garbaged.
+>  			status = nfserr_clid_inuse;
+> -			goto out;
+> +			goto out_cache;
+>  		}
+>  
+>  		slot = &unconf->cl_slot;
+> @@ -1424,6 +1424,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  	cstate->slot = slot;
+>  	/* Ensure a page is used for the cache */
+>  	slot->sl_cache_entry.ce_cachethis = 1;
 
-Yep, I destroyed all evidences by using badblocks in read-write mode,=20
-but in case of real need of them we just have to put the production back=20
-on the primary array and wait a few days.
+Is this still needed?
 
+--b.
 
-> Depending on the inode size, and assuming a 4k block size, there are
-> typically 128 or 64 inodes in a 4k block,
-
-4k block size
-128 bytes/inode
-
-so 32 inodes per 4k block in our case ?
-
-Since the new default is 256 bytes/inode and values of less than 128 are=20
-not allowed, how is it possible to store 64 or 128 inodes in a 4k block ?
-(Maybe I miss something :p)
-
-
-> so if you were to look at the inodes by inode number, you normally=20
-> find that adjacent inodes are corrupted within a 4k block.  Of course,=20
-> this just tells us what had gotten damaged; whether it was damanged by=20
-> a kernel bug, a memory bug, a hard drive or controller failure (and=20
-> there are multiple types of storage stack failures; complete garbage=20
-> getting written into the right place, and the right data getting=20
-> written into the wrong place).
-
-Yes, this is not going to be easy to find out what is responsible, but=20
-based on the probability of hardware that use to fail easily, let's=20
-point out one of the harddrive :-)
-
-
-> Well, sure, but any amount of corruption is extremely troubling....
-
-Yep ;-)
-
-
-> > By the way, if such corruptions doesn't happen on the backup storage=20
-> > array we can conclude to a hardware problem around the primary one, but=
-,=20
-> > we are not going to be able to conclude before a few weeks.
->=20
-> Good luck!!
-
-Thanks, actually this isn't so bad, we enjoy having backup hardware
-(The things we always consider as useless until we -really- need it --=20
-"Who said like backups ? I heard it from the end of the room." ;-)
-
-By the way, the badblocks check is going to take 12 days considering the=20
-current rate. However I ran some data checks of the raid6 array in the=20
-past, mainly when the filesystem was corrupted and every check=20
-succeeded. Maybe the raid6 driver computed another parity strides by=20
-reading corrupted data.
-
-
-Sylvain
-
---vtzGhvizbBRQ85DL
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFJ8PZGDFub3qtEsS8RAkaxAJwLMpETjfNlSDXI3rufcbOXpDOyKQCg1s83
-Qbhe6ixaJPh7+cdL+h/6vjY=
-=lqe6
------END PGP SIGNATURE-----
-
---vtzGhvizbBRQ85DL--
+> +out_cache:
+> +	/* cache solo and embedded create sessions under the state lock */
+> +	nfsd4_cache_create_session(cr_ses, slot, status);
+> +
+>  out:
+>  	nfs4_unlock_state();
+>  	dprintk("%s returns %d\n", __func__, ntohl(status));
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index b2f8d74..6b34fac 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3046,6 +3046,25 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
+>  	return 0;
+>  }
+>  
+> +/*
+> + * Encode the create_session result into the create session single DRC
+> + * slot cache. Do this for solo or embedded create session operations.
+> + */
+> +void
+> +nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
+> +			   struct nfsd4_slot *slot, int nfserr)
+> +{
+> +	struct nfsd4_cache_entry *entry = &slot->sl_cache_entry;
+> +	__be32 *p = (__be32 *)entry->ce_datav.iov_base;
+> +	struct nfsd4_compoundres tmp = {
+> +		.p = p,
+> +		.end = p + XDR_QUADLEN(CS_MAX_ENC_SZ),
+> +	}, *resp = &tmp;
+> +
+> +	entry->ce_status = nfsd4_encode_create_session(resp, nfserr, cr_ses);
+> +	entry->ce_datav.iov_len = (char *)resp->p - (char *)p;
+> +}
+> +
+>  static __be32
+>  nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+>  			     struct nfsd4_destroy_session *destroy_session)
+> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> index afd4464..cc50ca0 100644
+> --- a/include/linux/nfsd/xdr4.h
+> +++ b/include/linux/nfsd/xdr4.h
+> @@ -517,6 +517,8 @@ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>  extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
+>  extern __be32 nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+>  		struct nfsd4_sequence *seq);
+> +extern void nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
+> +		struct nfsd4_slot *slot, int nfserr);
+>  extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+>  		struct nfsd4_compound_state *,
+>  struct nfsd4_exchange_id *);
+> -- 
+> 1.5.4.3
+> 
