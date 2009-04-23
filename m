@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 22/29] nfsd41: obliterate nfsd41_copy_replay_data
-Date: Thu, 23 Apr 2009 12:43:01 -0400
-Message-ID: <1240504988-9572-23-git-send-email-andros@netapp.com>
+Subject: [PATCH 21/29] nfsd41: remove iovlen field from nfsd4_compound_state
+Date: Thu, 23 Apr 2009 12:43:00 -0400
+Message-ID: <1240504988-9572-22-git-send-email-andros@netapp.com>
 References: <>
  <1240504988-9572-1-git-send-email-andros@netapp.com>
  <1240504988-9572-2-git-send-email-andros@netapp.com>
@@ -24,61 +24,70 @@ References: <>
  <1240504988-9572-19-git-send-email-andros@netapp.com>
  <1240504988-9572-20-git-send-email-andros@netapp.com>
  <1240504988-9572-21-git-send-email-andros@netapp.com>
- <1240504988-9572-22-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:46174 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752725AbZDWQnb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Apr 2009 12:43:31 -0400
-In-Reply-To: <1240504988-9572-22-git-send-email-andros@netapp.com>
+	id S1757389AbZDWQna (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Apr 2009 12:43:30 -0400
+In-Reply-To: <1240504988-9572-21-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Replacing page based drc cache with buffer based drc cache.
+Set resp->p in nfsd4_replay_cache_entry so that the nfs4svc_encode_compoundres
+iov_len calculation is correct.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   15 +++------------
- 1 files changed, 3 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c       |    1 +
+ fs/nfsd/nfs4xdr.c         |    5 +----
+ include/linux/nfsd/xdr4.h |    1 -
+ 3 files changed, 2 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1affb0a..efc9374 100644
+index 8c96451..1affb0a 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1086,8 +1086,8 @@ nfsd4_enc_sequence_replay(struct nfsd4_compoundargs *args,
- }
+@@ -1120,6 +1120,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 	       entry->ce_datav.iov_len);
  
- /*
-- * Keep the first page of the replay. Copy the NFSv4.1 data from the first
-- * cached page.  Replace any futher replay pages from the cache.
-+ * The sequence operation is not cached because we can use the slot and
-+ * session values.
-  */
- __be32
- nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
-@@ -1098,16 +1098,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 	resp->opcnt = entry->ce_opcnt;
++	resp->p = resp->cstate.datap + XDR_QUADLEN(entry->ce_datav.iov_len);
+ 	status = entry->ce_status;
  
- 	dprintk("--> %s entry %p\n", __func__, entry);
- 
--	/*
--	 * If this is just the sequence operation, we did not keep
--	 * a page in the cache entry because we can just use the
--	 * slot info stored in struct nfsd4_sequence that was checked
--	 * against the slot in nfsd4_sequence().
--	 *
--	 * This occurs when seq->cachethis is FALSE, or when the client
--	 * session inactivity timer fires and a solo sequence operation
--	 * is sent (lease renewal).
--	 */
-+	/* Target max slot and flags will be set once they are implemented */
- 	seq->maxslots = resp->cstate.session->se_fchannel.maxreqs;
- 
- 	/* Either returns 0 or nfserr_retry_uncached */
+ 	return status;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f4bba66..1e46525 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3359,10 +3359,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+ 	BUG_ON(iov->iov_len > PAGE_SIZE);
+ 	if (nfsd4_has_session(&resp->cstate)) {
+-		if (resp->cstate.status == nfserr_replay_cache &&
+-				!nfsd4_not_cached(resp)) {
+-			iov->iov_len = resp->cstate.iovlen;
+-		} else {
++		if (resp->cstate.status != nfserr_replay_cache) {
+ 			/* FIXME: return ignored for now. Can have -ENOMEM */
+ 			nfsd4_store_cache_entry(resp);
+ 			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 97f5cee..45ccbc3 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -52,7 +52,6 @@ struct nfsd4_compound_state {
+ 	struct nfsd4_session	*session;
+ 	struct nfsd4_slot	*slot;
+ 	__be32			*datap;
+-	size_t			iovlen;
+ 	u32			minorversion;
+ 	u32			status;
+ };
 -- 
 1.5.4.3
 
