@@ -1,46 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patches] nfsd-affecting part of vfs queue
-Date: Wed, 22 Apr 2009 21:59:16 -0400
-Message-ID: <20090423015916.GA16694@fieldses.org>
-References: <E1LwNkj-0004WL-AW@ZenIV.linux.org.uk> <20090422213415.GJ9541@fieldses.org> <20090422230039.GQ8633@ZenIV.linux.org.uk>
+From: Jean Delvare <khali-PUYAD+kWke1g9hUCZPvPmw@public.gmane.org>
+Subject: Re: [Bug 13034] printk in xs_tcp_setup_socket needs rate limit ...
+  and delay
+Date: Thu, 23 Apr 2009 09:02:07 +0200
+Message-ID: <20090423090207.5d6a1cd9@hyperion.delvare>
+References: <bug-13034-104@http.bugzilla.kernel.org/>
+	<200904222049.n3MKnxZi019947@demeter.kernel.org>
+	<1240433936.9197.9.camel@heimdal.trondhjem.org>
+	<49EF9896.2000301@vmware.com>
+	<1240447977.9197.14.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro-rfM+Q5joDG/XmaaqVzeoHQ@public.gmane.org>, linux-nfs@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Petr Vandrovec <petr@vmware.com>,
+	"bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org"
+	<bugzilla-daemon-590EEB7GvNiWaY/ihj7yzEB+6BGkLq7r@public.gmane.org>,
+	Petr Vandrovec <petr@vandrovec.name>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:48365 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751512AbZDWB7Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Apr 2009 21:59:24 -0400
-In-Reply-To: <20090422230039.GQ8633@ZenIV.linux.org.uk>
+Received: from zone0.gcu-squad.org ([212.85.147.21]:18050 "EHLO
+	services.gcu-squad.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751177AbZDWHDt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 03:03:49 -0400
+In-Reply-To: <1240447977.9197.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 12:00:39AM +0100, Al Viro wrote:
-> On Wed, Apr 22, 2009 at 05:34:15PM -0400, J. Bruce Fields wrote:
-> > On Tue, Apr 21, 2009 at 09:43:41PM +0000, Al Viro wrote:
-> > > 
-> > > Fix for out-order dput() vs. mntput() (in nfsd_cross_mnt()) plus
-> > > several "switch to passing struct path *" ones.  Comments would
-> > > be welcome...
-> > > 
-> > > Entire queue is on git.kernel.org/pub/scm/linux/kernel/git/viro/vfs-2.6.git/
-> > > in "untested".
-> > 
-> > I haven't tested them, but otherwise they look like fine.  Shall queue
-> > them in the nfsd tree?
+On Wed, 22 Apr 2009 20:52:57 -0400, Trond Myklebust wrote:
+> Good! The 5minute idle timeout is the one case where we don't care about
+> preserving the port number (because there are no outstanding NFS
+> requests to replay to the server).
 > 
-> Several patches later in VFS queue depend on those, so I'm definitely keeping
-> them in there; might make sense to duplicate in nfsd tree as well to avoid
-> inter-tree dependencies.  Hell knows, git will cope with that just fine,
-> so linux-next will be OK with that, but -mm used to have problems with such
-> things, IIRC.
+> Jean, are you seeing the same behaviour (i.e. errors only on idle
+> timeout), and is the fix working for you?
 
-OK.  I'll just ignore them unless it becomes a problem.
+I didn't hit the problem since I applied your patch, but that was only
+yesterday so it's too early to draw statistically valid conclusions.
 
-I did boot your tree above (c65d9c93...) and run a test or two without
-seeing any obvious problem.  Feel free to add an
+It is highly possible that the bug was happening on idle timeout, I am
+the only user on this machine and I access the NFS mounts only from
+times to times.
 
-	Acked-by: J. Bruce Fields <bfields@citi.umich.edu>
-
---b.
+-- 
+Jean Delvare
