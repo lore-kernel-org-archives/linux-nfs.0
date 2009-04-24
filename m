@@ -1,57 +1,163 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Fri, 24 Apr 2009 09:31:54 -0400
-Message-ID: <1240579914.4946.19.camel@heimdal.trondhjem.org>
-References: <1240510668.11148.40.camel@heimdal.trondhjem.org>
-	 <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu>
-	 <1240519320.5602.9.camel@heimdal.trondhjem.org>
-	 <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu>
-	 <E1LxFuD-0008M9-1a@pomaz-ex.szeredi.hu>
-	 <1240577989.32585.1.camel@think.oraclecorp.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Miklos Szeredi <miklos@szeredi.hu>, npiggin@suse.de,  linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1240577989.32585.1.camel@think.oraclecorp.com>
-Sender: owner-linux-mm@kvack.org
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: [PATCH 02/29] nfsd41: encode create_session result into cache
+Date: Fri, 24 Apr 2009 09:52:00 -0400
+Message-ID: <DE90DD5A-759C-4DA2-83C7-7072D7071DE1@netapp.com>
+References: <1240504988-9572-1-git-send-email-andros@netapp.com> <1240504988-9572-2-git-send-email-andros@netapp.com> <1240504988-9572-3-git-send-email-andros@netapp.com> <20090423232105.GI1906@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:32607 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753833AbZDXNwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Apr 2009 09:52:04 -0400
+In-Reply-To: <20090423232105.GI1906@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-04-24 at 08:59 -0400, Chris Mason wrote:
-> On Fri, 2009-04-24 at 09:33 +0200, Miklos Szeredi wrote:
-> > On Fri, 24 Apr 2009, Miklos Szeredi wrote:
-> > > Hmm, I guess this is a bit nasty: the VM promises filesystems that
-> > > ->page_mkwrite() will be called when the page is dirtied through a
-> > > mapping, _almost_ all of the time.  Except when munmap happens to race
-> > > with clear_page_dirty_for_io().
-> > > 
-> > > I don't have any ideas how this could be fixed, CC-ing linux-mm...
-> > 
-> > On second thought, we could possibly just ignore the dirty bit in that
-> > case.  Trying to write to a mapping _during_ munmap() will have pretty
-> > undefined results, I don't think any sane application out there should
-> > rely on the results of this.
-> > 
-> > But how knows, the world is a weird place...
-> 
-> It does happen in practice, btrfs has fallback code that triggers the
-> page_mkwrite when it finds a dirty page that wasn't dirtied with help
-> from the FS.
-> 
-> I'd love to get rid of the fallback ;)
 
-So is there any reason why we shouldn't put calls to page_mkwrite in
-zap_pte_range?
+On Apr 23, 2009, at 7:21 PM, J. Bruce Fields wrote:
 
-The only alternative I can think of would be to unmap the page when the
-filesystem starts to write it out in order to force another page fault
-if the user application writes more data into that page.
+> On Thu, Apr 23, 2009 at 12:42:41PM -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> CREATE_SESSION can be preceeded by a SEQUENCE operation and the
+>> create session single slot cache must be maintained. Encode the  
+>> results of
+>> a create session call into the cache at the end of processing.
+>>
+>> The create session result will also be encoded into the RPC  
+>> response, and if
+>> it is preceeded by a SEQUENCE operation, will also be encoded into  
+>> the
+>> session slot table cache.
+>>
+>> Errors that do not change the create session cache:
+>> A create session NFS4ERR_STALE_CLIENTID error means that a client  
+>> record
+>> (and associated create session slot) could not be found and  
+>> therefore can't
+>> be changed.  NFSERR_SEQ_MISORDERED errors do not change the slot  
+>> cache.
+>>
+>> All other errors get cached.
+>
+> Thanks, this all sounds sensible.  (One simple thing I think I was
+> confused about: the create_session sequencing is done at a layer above
+> sessions; so in the case of a create_session preceded by a sequence,  
+> if
+> we discover at the point of processing the sequence that this is a
+> replay, we use the sequence replay cache and never even get to any
+> create_session processing.  OK!)
 
-Cheers
-  Trond
+Yes! The double DRC of a sequence:create_session is a bit confusing.  
+It works correctly because the create session or clientid cache is a  
+single slot. So if there is a sequence replay of a compound with a  
+create session it's safe to replay the create session stored in the  
+sequence slot cache because:  sequence replay -> client did not get  
+the response -> create session slot sequence # was not incremented.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-->Andy
+
+>
+>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfsd/nfs4state.c       |    6 +++++-
+>> fs/nfsd/nfs4xdr.c         |   19 +++++++++++++++++++
+>> include/linux/nfsd/xdr4.h |    2 ++
+>> 3 files changed, 26 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 27ad37f..279b47e 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1377,7 +1377,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>> 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+>> 		    (ip_addr != unconf->cl_addr)) {
+>
+> Could we apply the patch removing these ip_addr checks before any of
+> these patches?  Also I seem to recall expressing some other doubts  
+> about
+> the correctness of exchange_id and create_session--I'd like to see  
+> those
+> addressed first, as this builds on those.
+>
+>> 			status = nfserr_clid_inuse;
+>> -			goto out;
+>> +			goto out_cache;
+>> 		}
+>>
+>> 		slot = &unconf->cl_slot;
+>> @@ -1424,6 +1424,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>> 	cstate->slot = slot;
+>> 	/* Ensure a page is used for the cache */
+>> 	slot->sl_cache_entry.ce_cachethis = 1;
+>
+> Is this still needed?
+>
+> --b.
+>
+>> +out_cache:
+>> +	/* cache solo and embedded create sessions under the state lock */
+>> +	nfsd4_cache_create_session(cr_ses, slot, status);
+>> +
+>> out:
+>> 	nfs4_unlock_state();
+>> 	dprintk("%s returns %d\n", __func__, ntohl(status));
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index b2f8d74..6b34fac 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -3046,6 +3046,25 @@ nfsd4_encode_create_session(struct  
+>> nfsd4_compoundres *resp, int nfserr,
+>> 	return 0;
+>> }
+>>
+>> +/*
+>> + * Encode the create_session result into the create session single  
+>> DRC
+>> + * slot cache. Do this for solo or embedded create session  
+>> operations.
+>> + */
+>> +void
+>> +nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
+>> +			   struct nfsd4_slot *slot, int nfserr)
+>> +{
+>> +	struct nfsd4_cache_entry *entry = &slot->sl_cache_entry;
+>> +	__be32 *p = (__be32 *)entry->ce_datav.iov_base;
+>> +	struct nfsd4_compoundres tmp = {
+>> +		.p = p,
+>> +		.end = p + XDR_QUADLEN(CS_MAX_ENC_SZ),
+>> +	}, *resp = &tmp;
+>> +
+>> +	entry->ce_status = nfsd4_encode_create_session(resp, nfserr,  
+>> cr_ses);
+>> +	entry->ce_datav.iov_len = (char *)resp->p - (char *)p;
+>> +}
+>> +
+>> static __be32
+>> nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int  
+>> nfserr,
+>> 			     struct nfsd4_destroy_session *destroy_session)
+>> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+>> index afd4464..cc50ca0 100644
+>> --- a/include/linux/nfsd/xdr4.h
+>> +++ b/include/linux/nfsd/xdr4.h
+>> @@ -517,6 +517,8 @@ extern __be32 nfsd4_setclientid_confirm(struct  
+>> svc_rqst *rqstp,
+>> extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
+>> extern __be32 nfsd4_replay_cache_entry(struct nfsd4_compoundres  
+>> *resp,
+>> 		struct nfsd4_sequence *seq);
+>> +extern void nfsd4_cache_create_session(struct nfsd4_create_session  
+>> *cr_ses,
+>> +		struct nfsd4_slot *slot, int nfserr);
+>> extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+>> 		struct nfsd4_compound_state *,
+>> struct nfsd4_exchange_id *);
+>> -- 
+>> 1.5.4.3
+>>
+
