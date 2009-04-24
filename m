@@ -1,166 +1,140 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 02/29] nfsd41: encode create_session result into cache
-Date: Fri, 24 Apr 2009 09:56:14 -0400
-Message-ID: <4C6AB9FC-42B3-46DB-BD21-02429C593846@netapp.com>
-References: <1240504988-9572-1-git-send-email-andros@netapp.com> <1240504988-9572-2-git-send-email-andros@netapp.com> <1240504988-9572-3-git-send-email-andros@netapp.com> <20090423232105.GI1906@fieldses.org> <20090423233237.GL1906@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 05/29] nfsd41: create_session cache hold client
+	reference
+Date: Fri, 24 Apr 2009 10:02:45 -0400
+Message-ID: <20090424140245.GB15038@fieldses.org>
+References: <1240504988-9572-1-git-send-email-andros@netapp.com> <1240504988-9572-2-git-send-email-andros@netapp.com> <1240504988-9572-3-git-send-email-andros@netapp.com> <1240504988-9572-4-git-send-email-andros@netapp.com> <1240504988-9572-5-git-send-email-andros@netapp.com> <1240504988-9572-6-git-send-email-andros@netapp.com> <20090423232825.GK1906@fieldses.org> <1D363F53-7E7A-472C-8176-BB8F33A94BDB@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Adamson <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28338 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753868AbZDXN4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Apr 2009 09:56:16 -0400
-In-Reply-To: <20090423233237.GL1906@fieldses.org>
+Received: from mail.fieldses.org ([141.211.133.115]:39342 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759398AbZDXOCq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:02:46 -0400
+In-Reply-To: <1D363F53-7E7A-472C-8176-BB8F33A94BDB@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 23, 2009, at 7:32 PM, J. Bruce Fields wrote:
-
-> On Thu, Apr 23, 2009 at 07:21:05PM -0400, bfields wrote:
->> On Thu, Apr 23, 2009 at 12:42:41PM -0400, andros@netapp.com wrote:
+On Fri, Apr 24, 2009 at 09:52:56AM -0400, Andy Adamson wrote:
+>
+> On Apr 23, 2009, at 7:28 PM, J. Bruce Fields wrote:
+>
+>> On Thu, Apr 23, 2009 at 12:42:44PM -0400, andros@netapp.com wrote:
 >>> From: Andy Adamson <andros@netapp.com>
 >>>
->>> CREATE_SESSION can be preceeded by a SEQUENCE operation and the
->>> create session single slot cache must be maintained. Encode the  
->>> results of
->>> a create session call into the cache at the end of processing.
->>>
->>> The create session result will also be encoded into the RPC  
->>> response, and if
->>> it is preceeded by a SEQUENCE operation, will also be encoded into  
->>> the
->>> session slot table cache.
->>>
->>> Errors that do not change the create session cache:
->>> A create session NFS4ERR_STALE_CLIENTID error means that a client  
->>> record
->>> (and associated create session slot) could not be found and  
->>> therefore can't
->>> be changed.  NFSERR_SEQ_MISORDERED errors do not change the slot  
->>> cache.
->>>
->>> All other errors get cached.
+>>> expire_client can be called on a confirmed or unconfirmed client  
+>>> while
+>>> processing the create session operation and accessing the clientid  
+>>> slot.
 >>
->> Thanks, this all sounds sensible.  (One simple thing I think I was
->> confused about: the create_session sequencing is done at a layer  
->> above
->> sessions; so in the case of a create_session preceded by a  
->> sequence, if
->> we discover at the point of processing the sequence that this is a
->> replay, we use the sequence replay cache and never even get to any
->> create_session processing.  OK!)
->>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfsd/nfs4state.c       |    6 +++++-
->>> fs/nfsd/nfs4xdr.c         |   19 +++++++++++++++++++
->>> include/linux/nfsd/xdr4.h |    2 ++
->>> 3 files changed, 26 insertions(+), 1 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index 27ad37f..279b47e 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -1377,7 +1377,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->>> 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->>> 		    (ip_addr != unconf->cl_addr)) {
->>
->> Could we apply the patch removing these ip_addr checks before any of
->> these patches?  Also I seem to recall expressing some other doubts  
->> about
->> the correctness of exchange_id and create_session--I'd like to see  
->> those
->> addressed first, as this builds on those.
->>
->>> 			status = nfserr_clid_inuse;
->>> -			goto out;
->>> +			goto out_cache;
->>> 		}
->>>
->>> 		slot = &unconf->cl_slot;
->>> @@ -1424,6 +1424,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->>> 	cstate->slot = slot;
->>> 	/* Ensure a page is used for the cache */
->>> 	slot->sl_cache_entry.ce_cachethis = 1;
->>
->> Is this still needed?
+>> I don't understand--isn't all that under the state lock for now?
 >
-> Oh, I see, that's gone in a later patch.  I think that's OK.
+> Yes it is. I now see that expire_client is also always called under the 
+> state lock. Fair enough, this patch can be dropped.
 
-I tried various orderings of adding new functionality and removing the  
-old....
+OK, thanks.  Note this wouldn't be quite right even in the absence of a
+lock, because there'd be nothing to guarantee that conf is still good at
+the time we do the atomic_inc(&conf->cl_count) (what happens if someone
+frees conf before we even get there?
 
--->Andy
+The way this kind of thing often works is:
+
+	acquire some lock
+		search for an object in some common data structure
+		bump the reference count on the found object
+	drop the lock
+
+So the lock protects the object from destruction until we get the
+reference count, and then the reference count protects it after we've
+dropped the lock.
+
+In this case we'll probably eventually transition to a spinlock
+protecting the client hash tables, and then do the above in the
+functions that look up clients, so that the object returned from those
+functions already comes with its own reference taken.
+
+--b.
 
 >
+> -->Andy
 >
-> --b.
->
+>>
 >>
 >> --b.
 >>
->>> +out_cache:
->>> +	/* cache solo and embedded create sessions under the state lock */
->>> +	nfsd4_cache_create_session(cr_ses, slot, status);
->>> +
+>>>
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>> fs/nfsd/nfs4state.c |   14 ++++++++++----
+>>> 1 files changed, 10 insertions(+), 4 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index a585a58..accad58 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -1355,6 +1355,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>>> 	conf = find_confirmed_client(&cr_ses->clientid);
+>>>
+>>> 	if (conf) {
+>>> +		atomic_inc(&conf->cl_count);
+>>> 		slot = &conf->cl_slot;
+>>> 		status = check_slot_seqid(cr_ses->seqid, slot);
+>>> 		if (status == nfserr_replay_cache) {
+>>> @@ -1363,27 +1364,30 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>>> 			cstate->status = nfserr_replay_clientid_cache;
+>>> 			/* Return the cached reply status */
+>>> 			status = nfsd4_replay_create_session(resp, slot);
+>>> -			goto out;
+>>> +			goto out_put;
+>>> 		} else if (cr_ses->seqid != conf->cl_slot.sl_seqid + 1) {
+>>> 			status = nfserr_seq_misordered;
+>>> 			dprintk("Sequence misordered!\n");
+>>> 			dprintk("Expected seqid= %d but got seqid= %d\n",
+>>> 				slot->sl_seqid, cr_ses->seqid);
+>>> -			goto out;
+>>> +			goto out_put;
+>>> 		}
+>>> 		conf->cl_slot.sl_seqid++;
+>>> 	} else if (unconf) {
+>>> +		atomic_inc(&unconf->cl_count);
+>>> 		slot = &unconf->cl_slot;
+>>> 		status = check_slot_seqid(cr_ses->seqid, slot);
+>>> 		if (status) {
+>>> 			/* an unconfirmed replay returns misordered */
+>>> 			status = nfserr_seq_misordered;
+>>> -			goto out;
+>>> +			conf = unconf; /* for put_nfs4_client */
+>>> +			goto out_put;
+>>> 		}
+>>>
+>>> 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+>>> 		    (ip_addr != unconf->cl_addr)) {
+>>> 			status = nfserr_clid_inuse;
+>>> +			conf = unconf; /* for put_nfs4_client */
+>>> 			goto out_cache;
+>>> 		}
+>>>
+>>> @@ -1413,7 +1417,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>>>
+>>> 	status = alloc_init_session(rqstp, conf, cr_ses);
+>>> 	if (status)
+>>> -		goto out;
+>>> +		goto out_put;
+>>>
+>>> 	memcpy(cr_ses->sessionid.data, conf->cl_sessionid.data,
+>>> 	       NFS4_MAX_SESSIONID_LEN);
+>>> @@ -1423,6 +1427,8 @@ out_cache:
+>>> 	/* cache solo and embedded create sessions under the state lock */
+>>> 	nfsd4_cache_create_session(cr_ses, slot, status);
+>>>
+>>> +out_put:
+>>> +	put_nfs4_client(conf);
 >>> out:
 >>> 	nfs4_unlock_state();
 >>> 	dprintk("%s returns %d\n", __func__, ntohl(status));
->>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>> index b2f8d74..6b34fac 100644
->>> --- a/fs/nfsd/nfs4xdr.c
->>> +++ b/fs/nfsd/nfs4xdr.c
->>> @@ -3046,6 +3046,25 @@ nfsd4_encode_create_session(struct  
->>> nfsd4_compoundres *resp, int nfserr,
->>> 	return 0;
->>> }
->>>
->>> +/*
->>> + * Encode the create_session result into the create session  
->>> single DRC
->>> + * slot cache. Do this for solo or embedded create session  
->>> operations.
->>> + */
->>> +void
->>> +nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
->>> +			   struct nfsd4_slot *slot, int nfserr)
->>> +{
->>> +	struct nfsd4_cache_entry *entry = &slot->sl_cache_entry;
->>> +	__be32 *p = (__be32 *)entry->ce_datav.iov_base;
->>> +	struct nfsd4_compoundres tmp = {
->>> +		.p = p,
->>> +		.end = p + XDR_QUADLEN(CS_MAX_ENC_SZ),
->>> +	}, *resp = &tmp;
->>> +
->>> +	entry->ce_status = nfsd4_encode_create_session(resp, nfserr,  
->>> cr_ses);
->>> +	entry->ce_datav.iov_len = (char *)resp->p - (char *)p;
->>> +}
->>> +
->>> static __be32
->>> nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int  
->>> nfserr,
->>> 			     struct nfsd4_destroy_session *destroy_session)
->>> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
->>> index afd4464..cc50ca0 100644
->>> --- a/include/linux/nfsd/xdr4.h
->>> +++ b/include/linux/nfsd/xdr4.h
->>> @@ -517,6 +517,8 @@ extern __be32 nfsd4_setclientid_confirm(struct  
->>> svc_rqst *rqstp,
->>> extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
->>> extern __be32 nfsd4_replay_cache_entry(struct nfsd4_compoundres  
->>> *resp,
->>> 		struct nfsd4_sequence *seq);
->>> +extern void nfsd4_cache_create_session(struct  
->>> nfsd4_create_session *cr_ses,
->>> +		struct nfsd4_slot *slot, int nfserr);
->>> extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
->>> 		struct nfsd4_compound_state *,
->>> struct nfsd4_exchange_id *);
 >>> -- 
 >>> 1.5.4.3
 >>>
-
+>
