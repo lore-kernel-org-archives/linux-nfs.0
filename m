@@ -1,72 +1,57 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: [PATCH 3/11] nfsd: CHANGE old function calls to new calls
-Date: Fri, 24 Apr 2009 22:28:18 +0530
-Message-ID: <OFBB4FF305.DD2B4946-ON652575A2.005CB412-652575A2.005D3AC2@in.ibm.com>
-References: <20090325133607.16437.33288.sendpatchset@localhost.localdomain> <20090325133707.16437.66360.sendpatchset@localhost.localdomain> <20090422200553.GH9541@fieldses.org> <OFB63DF5D6.1A77785C-ON652575A1.004F6726-652575A1.00577C61@in.ibm.com> <20090423223909.GF1906@fieldses.org> <OFC1241E6B.C4476A61-ON652575A2.00207885-652575A2.00598912@in.ibm.com> <20090424162321.GB17365@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
+Date: Fri, 24 Apr 2009 13:00:48 -0400
+Message-ID: <1240592448.4946.35.camel@heimdal.trondhjem.org>
+References: <1240510668.11148.40.camel@heimdal.trondhjem.org>
+	 <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu>
+	 <1240519320.5602.9.camel@heimdal.trondhjem.org>
+	 <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu> <20090424104137.GA7601@sgi.com>
+	 <E1LxMlO-0000sU-1J@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>, jlayton@redhat.com,
-	Krishna Kumar <krikku@gmail.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: holt@sgi.com, npiggin@suse.de, linux-nfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+To: Miklos Szeredi <miklos@szeredi.hu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:52468 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753023AbZDXQ6m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 12:58:42 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id n3OGwbYE027731
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 22:28:37 +0530
-Received: from d28av06.in.ibm.com (d28av06.in.ibm.com [9.184.220.48])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3OGwnhD3100824
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 22:28:49 +0530
-Received: from d28av06.in.ibm.com (loopback [127.0.0.1])
-	by d28av06.in.ibm.com (8.13.1/8.13.3) with ESMTP id n3OH0HtG014942
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 22:30:17 +0530
-In-Reply-To: <20090424162321.GB17365@fieldses.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:48125 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760204AbZDXRAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Apr 2009 13:00:55 -0400
+In-Reply-To: <E1LxMlO-0000sU-1J-8f8m9JG5TPIdUIPVzhDTVZP2KDSNp7ea@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On Fri, 2009-04-24 at 16:52 +0200, Miklos Szeredi wrote:
+> On Fri, 24 Apr 2009, Robin Holt wrote:
+> > I am not sure how you came to this conclusion.  The address_space has
+> > the vma's chained together and protected by the i_mmap_lock.  That is
+> > acquired prior to the cleaning operation.  Additionally, the cleaning
+> > operation walks the process's page tables and will remove/write-protect
+> > the page before releasing the i_mmap_lock.
+> > 
+> > Maybe I misunderstand.  I hope I have not added confusion.
+> 
+> Looking more closely, I think you're right.
+> 
+> I thought that detach_vmas_to_be_unmapped() also removed them from
+> mapping->i_mmap, but that is not the case, it only removes them from
+> the process's mm_struct.  The vma is only removed from ->i_mmap in
+> unmap_region() _after_ zapping the pte's.
+> 
+> This means that while the pte zapping is going on, any page faults
+> will fail but page_mkclean() (and all of rmap) will continue to work.
+> 
+> But then I don't see how we get a dirty pte without also first getting
+> a page fault.  Weird...
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote on 04/24/2009 09:53:21 PM:
+You don't, but unless you unmap the page when you write it out, you will
+not get any further page faults. The VM will just redirty the page
+without calling page_mkwrite().
 
-> > {
-> >       __u32 a = auth[0], b = auth[1], c = auth[2], d = auth[3];
-> >       hash = jhash_3words(a, b, jhash_2words(c, d, 0), 0xfeedbeef) &
-> >                                     FHPARM_HASH_MASK;
-> >       ...
-> >       /*
-> >        * Matching check uses something like:
-> >        * if (fh->p_auth1 == a && fh->p_auth2 == b && fh->p_auth3 == c
-&&
-> > fh->p_auth4 == d)
-> >        */
-> > }
-> >
-> > Is what you had in mind? I am testing some more with this, so far I get
-> > different values for different files and filesystems.
-> >
-> > I am not sure if there is an easier way to do a hash and get the unique
-> > file
-> > associated with the filehandle, this part of the code is very
-complicated.
->
-> Why not just do a hash on the entire filehandle, however long it may be?
+As I said, I think I can fix the NFS problem by simply unmapping the
+page inside ->writepage() whenever we know the write request was
+originally set up by a page fault.
 
-I am not sure how many numbers to hash on, usually the first 4 numbers are
-the
-ino, inode generation, parent inode, parent inode generation, etc, and is a
-unique match. Or filesystems can have their own encode handlers but store
-similar stuff in these indices. I guess a memcmp could also be done if I
-know
-the length of the auth being used.
-
-> (Cc'ing Greg since he says he had some patches which did something
-> similar, and perhaps he could offer a suggestion.)
-
-OK, will wait for response from Greg.
-
-thanks,
-
-- KK
+Cheers
+  Trond
 
