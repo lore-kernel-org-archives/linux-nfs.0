@@ -1,232 +1,89 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] sunrpc: Adding trace points to status routines.
-Date: Fri, 24 Apr 2009 16:08:41 -0400
-Message-ID: <49F21C49.8030101@redhat.com>
-References: <49F1E348.2060309@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] lockd: call locks_release_private to cleanup
+	per-filesystem state
+Date: Fri, 24 Apr 2009 19:01:45 -0400
+Message-ID: <20090424230145.GC22477@fieldses.org>
+References: <1238530376-28013-1-git-send-email-felixb@sgi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux Kernel Mailing list <linux-kernel@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Felix Blyakher <felixb@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:41047 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752567AbZDXUIr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Apr 2009 16:08:47 -0400
-In-Reply-To: <49F1E348.2060309-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:57017 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753427AbZDXXBq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 19:01:46 -0400
+In-Reply-To: <1238530376-28013-1-git-send-email-felixb@sgi.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> Hey Trond,
->
-> Here is a very simple patch that adds three trace points 
-> to the sunrpc state machine. The trace points are strategically
-> placed so they will only be called during error conditions. The 
-> purpose of these trace point is to show processes that are spinning
-> or get hung up in the NFS code and its associated subsystems.
->
-> Case in point. Recently I had a customer that was seeing 
-> rpciod spinning (using %100 of the cpu) for a relative
-> short amount time (actually I think I mentioned this bug
-> to you). 
->
-> Using systemtap scripts that only showed errors in the 
-> rpc status routines, I was able to determine the process was
-> spinning in the bind code. Basically doing an IPv6 bind
-> with no takers (although we are still working on it).
->
-> So it occurred to me, that it would have been very handy to
-> have a light weight mechanism that only showed errors the sunrpc 
-> code was processing. So I ported those systemtap scripts into 
-> trace points.
->
-> Note, we did try to use the existing dprintk() but it took much 
-> much longer for the problem to occur, if at all. Plus when the 
-> problem did happen, the volume of data to sieve through 
-> as a bit daunting.
->
-> An example of the the output is:
->
-> <...>-2684  [001]  1437.010389: call_status: 100003[4]:0 status=-107
->                                routine name: prog[version]:Proc tk_status
->
-> which shows who is failing (i.e. the program number and version) and 
-> what they are trying to do (the procedure number).
->
-> Now there are some common errors like ETIMOUT and EAGAIN, but we can 
-> filter those  out using the 'filer' file that the trace points 
-> system supplies.
->
-> Please consider... I really think light weight information will be
-> very handy... 
->
->   
+Thanks, applied.--b.
 
-I agree.  This information could be very handy at times.
-
-The problem with this whole approach that it is impossible
-to figure out what trace_bind_status() does using cscope or
-tags or any tools like that.  One will have to figure out
-that it is a trace event and then figure out how and where
-it is defined.  Bleah.
-
-    Thanx...
-
-       ps
-
-
-> steved.
+On Tue, Mar 31, 2009 at 03:12:56PM -0500, Felix Blyakher wrote:
+> For every lock request lockd creates a new file_lock object
+> in nlmsvc_setgrantargs() by copying the passed in file_lock with
+> locks_copy_lock(). A filesystem can attach it's own lock_operations
+> vector to the file_lock. It has to be cleaned up at the end of the
+> file_lock's life. However, lockd doesn't do it today, yet it
+> asserts in nlmclnt_release_lockargs() that the per-filesystem
+> state is clean.
+> This patch fixes it by exporting locks_release_private() and adding
+> it to nlmsvc_freegrantargs(), to be symmetrical to creating a
+> file_lock in nlmsvc_setgrantargs().
+> 
+> Signed-off-by: Felix Blyakher <felixb@sgi.com>
+> ---
+>  fs/lockd/svclock.c |    2 ++
+>  fs/locks.c         |    3 ++-
+>  include/linux/fs.h |    1 +
+>  3 files changed, 5 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index 763b78a..865504a 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -326,6 +326,8 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
+>  {
+>  	if (call->a_args.lock.oh.data != call->a_owner)
+>  		kfree(call->a_args.lock.oh.data);
+> +
+> +	locks_release_private(&call->a_args.lock.fl);
+>  }
 >  
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Fri Apr 24 11:12:31 2009 -0400
->
->     Adds three trace points to the status routines in the
->     sunrpc state machine. The trace points will only execute
->     in error conditions.
->     
->     The goal of these trace points it to make it easier to
->     debug process that spin or get hung up in the NFS and
->     related subsystems.
->     
->     Signed-off-by: Steve Dickson <steved@redhat.com>
->
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-> new file mode 100644
-> index 0000000..f502eb4
-> --- /dev/null
-> +++ b/include/trace/events/sunrpc.h
-> @@ -0,0 +1,86 @@
-> +#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
-> +#define _TRACE_SUNRPC_H
-> +
-> +#include <linux/tracepoint.h>
-> +
-> +#undef TRACE_SYSTEM
-> +#define TRACE_SYSTEM sunrpc
-> +
-> +TRACE_EVENT(call_status,
-> +
-> +	TP_PROTO(struct rpc_task *task),
-> +
-> +	TP_ARGS(task),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(u32, cl_prog)
-> +		__field(u32, cl_vers)
-> +		__field(u32, p_proc)
-> +		__field(int, tk_status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->cl_vers = task->tk_client->cl_vers;
-> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->tk_status = task->tk_status;
-> +	),
-> +
-> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-> +);
-> +
-> +TRACE_EVENT(bind_status,
-> +
-> +	TP_PROTO(struct rpc_task *task),
-> +
-> +	TP_ARGS(task),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(u32, cl_prog)
-> +		__field(u32, cl_vers)
-> +		__field(u32, p_proc)
-> +		__field(int, tk_status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->cl_vers = task->tk_client->cl_vers;
-> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->tk_status = task->tk_status;
-> +	),
-> +
-> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-> +);
-> +TRACE_EVENT(connect_status,
-> +
-> +	TP_PROTO(struct rpc_task *task, int status),
-> +
-> +	TP_ARGS(task, status),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(u32, cl_prog)
-> +		__field(u32, cl_vers)
-> +		__field(u32, p_proc)
-> +		__field(int, tk_status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->cl_vers = task->tk_client->cl_vers;
-> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->tk_status = status;
-> +	),
-> +
-> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-> +
-> +);
-> +#endif /* __TRACE_SUNRPC_H */
-> +
-> +/* This part must be outside protection */
-> +#include <trace/define_trace.h>
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 5abab09..b86ee2a 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -37,6 +37,9 @@
->  #include <linux/sunrpc/rpc_pipe_fs.h>
->  #include <linux/sunrpc/metrics.h>
+>  /*
+> diff --git a/fs/locks.c b/fs/locks.c
+> index ec3deea..5b745dc 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -151,7 +151,7 @@ static struct file_lock *locks_alloc_lock(void)
+>  	return kmem_cache_alloc(filelock_cache, GFP_KERNEL);
+>  }
 >  
-> +#include <linux/ftrace.h>
-> +#define CREATE_TRACE_POINTS
-> +#include <trace/events/sunrpc.h>
->  
->  #ifdef RPC_DEBUG
->  # define RPCDBG_FACILITY	RPCDBG_CALL
-> @@ -957,6 +960,7 @@ call_bind_status(struct rpc_task *task)
->  		return;
+> -static void locks_release_private(struct file_lock *fl)
+> +void locks_release_private(struct file_lock *fl)
+>  {
+>  	if (fl->fl_ops) {
+>  		if (fl->fl_ops->fl_release_private)
+> @@ -165,6 +165,7 @@ static void locks_release_private(struct file_lock *fl)
 >  	}
 >  
-> +	trace_bind_status(task);
->  	switch (task->tk_status) {
->  	case -ENOMEM:
->  		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-> @@ -1038,6 +1042,7 @@ call_connect_status(struct rpc_task *task)
->  		return;
->  	}
+>  }
+> +EXPORT_SYMBOL(locks_release_private);
 >  
-> +	trace_connect_status(task, status);
->  	switch (status) {
->  		/* if soft mounted, test if we've timed out */
->  	case -ETIMEDOUT:
-> @@ -1141,6 +1146,7 @@ call_status(struct rpc_task *task)
->  		return;
->  	}
->  
-> +	trace_call_status(task);
->  	task->tk_status = 0;
->  	switch(status) {
->  	case -EHOSTDOWN:
->
->                                         
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
-
+>  /* Free a lock which is not in use. */
+>  static void locks_free_lock(struct file_lock *fl)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 92734c0..3aa4ff6 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1047,6 +1047,7 @@ extern void locks_copy_lock(struct file_lock *, struct file_lock *);
+>  extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
+>  extern void locks_remove_posix(struct file *, fl_owner_t);
+>  extern void locks_remove_flock(struct file *);
+> +extern void locks_release_private(struct file_lock *);
+>  extern void posix_test_lock(struct file *, struct file_lock *);
+>  extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
+>  extern int posix_lock_file_wait(struct file *, struct file_lock *);
+> -- 
+> 1.5.4.rc3
+> 
