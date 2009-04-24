@@ -1,64 +1,35 @@
 From: Miklos Szeredi <miklos@szeredi.hu>
 Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Fri, 24 Apr 2009 09:15:22 +0200
-Message-ID: <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu>
+Date: Fri, 24 Apr 2009 09:33:05 +0200
+Message-ID: <E1LxFuD-0008M9-1a@pomaz-ex.szeredi.hu>
 References: <1240510668.11148.40.camel@heimdal.trondhjem.org>
-	 <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org>
+	 <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu>
 Cc: miklos@szeredi.hu, npiggin@suse.de, linux-nfs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
 To: trond.myklebust@fys.uio.no
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <1240519320.5602.9.camel@heimdal.trondhjem.org> (message from
-	Trond Myklebust on Thu, 23 Apr 2009 16:42:00 -0400)
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fxip-0047f.externet.hu ([88.209.222.127]:38026 "EHLO
+	pomaz-ex.szeredi.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751941AbZDXHdS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 03:33:18 -0400
+In-reply-to: <E1LxFd4-0008Ih-Rd-8f8m9JG5TPIdUIPVzhDTVZP2KDSNp7ea@public.gmane.org> (message from Miklos
+	Szeredi on Fri, 24 Apr 2009 09:15:22 +0200)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 23 Apr 2009, Trond Myklebust wrote:
-> On Thu, 2009-04-23 at 21:52 +0200, Miklos Szeredi wrote:
-> > Now this is mostly done at page fault time, and the pte's are always
-> > being re-protected whenever the PG_dirty flag is cleared (see
-> > page_mkclean()).
-> > 
-> > But in some cases (shmfs being the example I know) pages are not write
-> > protected and so zap_pte_range(), and other functions, still need to
-> > transfer the pte dirtyness to the page flag.
+On Fri, 24 Apr 2009, Miklos Szeredi wrote:
+> Hmm, I guess this is a bit nasty: the VM promises filesystems that
+> ->page_mkwrite() will be called when the page is dirtied through a
+> mapping, _almost_ all of the time.  Except when munmap happens to race
+> with clear_page_dirty_for_io().
 > 
-> My main worry is that this is all happening at munmap() time. There
-> shouldn't be any more page faults after that completes (am I right?), so
-> what other mechanism would transfer the pte dirtyness?
+> I don't have any ideas how this could be fixed, CC-ing linux-mm...
 
-After munmap() a page fault will result in SIGSEGV.  A write access
-during munmap(), when the vma has been removed but the page table is
-still intact is more interesting.  But in that case the write fault
-should also result in a SEGV, because it won't be able to find the
-matching VMA.
+On second thought, we could possibly just ignore the dirty bit in that
+case.  Trying to write to a mapping _during_ munmap() will have pretty
+undefined results, I don't think any sane application out there should
+rely on the results of this.
 
-Now lets see what happens if writeback is started against the page
-during this limbo period.  page_mkclean() is called, which doesn't
-find the vma, so it doesn't re-protect the pte.  But the PG_dirty will
-be cleared regadless.  So AFAICS it can happen that the pte remains
-dirty but the page is clean.
-
-And in that case that set_page_dirty() in zap_pte_range() is
-important, since the page could have been dirtied through the mapping
-after the writeback finished.
-
-> > Not sure how this matters to NFS though.  If the above is correct,
-> > then the set_page_dirty() call in zap_pte_range() should always result
-> > in a no-op, since the PG_dirty flag would already have been set by the
-> > page fault...
-> 
-> If I can ignore the dirty flag on these occasions, then that would be
-> great. That would enable me to get rid of that BUG_ON(PG_CLEAN) in
-> write.c, and close the bug...
-
-I don't think you can ignore the dirty flag...  
-
-Hmm, I guess this is a bit nasty: the VM promises filesystems that
-->page_mkwrite() will be called when the page is dirtied through a
-mapping, _almost_ all of the time.  Except when munmap happens to race
-with clear_page_dirty_for_io().
-
-I don't have any ideas how this could be fixed, CC-ing linux-mm...
+But how knows, the world is a weird place...
 
 Miklos
