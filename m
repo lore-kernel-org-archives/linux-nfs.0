@@ -1,50 +1,55 @@
-From: rishi_nandedkar-/E1597aS9LQxFYw1CcD5bw@public.gmane.org
-Subject: Re: [NFS] nfs_statfs: statfs error = 512 ?
-Date: Fri, 24 Apr 2009 05:35:01 -0400
-Message-ID: <17434173.21240565701916.JavaMail.root@wombat.diezmil.com>
-References: <479763EC.3090601@bnl.gov>
-Reply-To: rishi_nandedkar-/E1597aS9LQxFYw1CcD5bw@public.gmane.org
+From: Robin Holt <holt@sgi.com>
+Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
+Date: Fri, 24 Apr 2009 05:41:37 -0500
+Message-ID: <20090424104137.GA7601@sgi.com>
+References: <1240510668.11148.40.camel@heimdal.trondhjem.org> <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, npiggin@suse.de,
+	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org
+To: Miklos Szeredi <miklos@szeredi.hu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:42939 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752674AbZDXKIE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Apr 2009 06:08:04 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1LxIK9-0003mJ-1Z
-	for linux-nfs@vger.kernel.org; Fri, 24 Apr 2009 20:08:01 +1000
-In-Reply-To: <479763EC.3090601-IGkKxAqZmp0@public.gmane.org>
+Received: from relay1.sgi.com ([192.48.179.29]:43964 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754762AbZDXKll (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Apr 2009 06:41:41 -0400
+In-Reply-To: <E1LxFd4-0008Ih-Rd-8f8m9JG5TPIdUIPVzhDTVZP2KDSNp7ea@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, Apr 24, 2009 at 09:15:22AM +0200, Miklos Szeredi wrote:
+> On Thu, 23 Apr 2009, Trond Myklebust wrote:
+> > On Thu, 2009-04-23 at 21:52 +0200, Miklos Szeredi wrote:
+> > > Now this is mostly done at page fault time, and the pte's are always
+> > > being re-protected whenever the PG_dirty flag is cleared (see
+> > > page_mkclean()).
+> > > 
+> > > But in some cases (shmfs being the example I know) pages are not write
+> > > protected and so zap_pte_range(), and other functions, still need to
+> > > transfer the pte dirtyness to the page flag.
+> > 
+> > My main worry is that this is all happening at munmap() time. There
+> > shouldn't be any more page faults after that completes (am I right?), so
+> > what other mechanism would transfer the pte dirtyness?
+> 
+> After munmap() a page fault will result in SIGSEGV.  A write access
+> during munmap(), when the vma has been removed but the page table is
+> still intact is more interesting.  But in that case the write fault
+> should also result in a SEGV, because it won't be able to find the
+> matching VMA.
+> 
+> Now lets see what happens if writeback is started against the page
+> during this limbo period.  page_mkclean() is called, which doesn't
+> find the vma, so it doesn't re-protect the pte.  But the PG_dirty will
 
-I was getting similaer problem on one of my machine after checking all things for 2 hours finaly i am able to solve issuse.In my case there was problem in switch which i connected on rack.Before doing any thing please check your network connections and switch.
-I hope this will help who are facing this problem
+I am not sure how you came to this conclusion.  The address_space has
+the vma's chained together and protected by the i_mmap_lock.  That is
+acquired prior to the cleaning operation.  Additionally, the cleaning
+operation walks the process's page tables and will remove/write-protect
+the page before releasing the i_mmap_lock.
 
+Maybe I misunderstand.  I hope I have not added confusion.
 
-Thx
-rishi nandedkar
-
-
---
-This message was sent on behalf of rishi_nandedkar-/E1597aS9LQxFYw1CcD5bw@public.gmane.org at openSubscriber.com
-http://www.opensubscriber.com/message/nfs@lists.sourceforge.net/8446204.html
-
-------------------------------------------------------------------------------
-Crystal Reports &#45; New Free Runtime and 30 Day Trial
-Check out the new simplified licensign option that enables unlimited
-royalty&#45;free distribution of the report engine for externally facing 
-server and web deployment.
-http://p.sf.net/sfu/businessobjects
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+Thanks,
+Robin
