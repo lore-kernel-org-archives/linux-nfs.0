@@ -1,44 +1,207 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Fri, 24 Apr 2009 16:52:26 +0200
-Message-ID: <E1LxMlO-0000sU-1J@pomaz-ex.szeredi.hu>
-References: <1240510668.11148.40.camel@heimdal.trondhjem.org> <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu> <20090424104137.GA7601@sgi.com>
-Cc: miklos@szeredi.hu, trond.myklebust@fys.uio.no, npiggin@suse.de,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org
-To: holt@sgi.com
-Return-path: <owner-linux-mm@kvack.org>
-In-reply-to: <20090424104137.GA7601@sgi.com> (message from Robin Holt on Fri,
-	24 Apr 2009 05:41:37 -0500)
-Sender: owner-linux-mm@kvack.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] sunrpc: Adding trace points to status routines.
+Date: Fri, 24 Apr 2009 12:05:28 -0400
+Message-ID: <49F1E348.2060309@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux Kernel Mailing list <linux-kernel@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:59120 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753457AbZDXQI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Apr 2009 12:08:26 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Apr 2009, Robin Holt wrote:
-> I am not sure how you came to this conclusion.  The address_space has
-> the vma's chained together and protected by the i_mmap_lock.  That is
-> acquired prior to the cleaning operation.  Additionally, the cleaning
-> operation walks the process's page tables and will remove/write-protect
-> the page before releasing the i_mmap_lock.
-> 
-> Maybe I misunderstand.  I hope I have not added confusion.
+Hey Trond,
 
-Looking more closely, I think you're right.
+Here is a very simple patch that adds three trace points 
+to the sunrpc state machine. The trace points are strategically
+placed so they will only be called during error conditions. The 
+purpose of these trace point is to show processes that are spinning
+or get hung up in the NFS code and its associated subsystems.
 
-I thought that detach_vmas_to_be_unmapped() also removed them from
-mapping->i_mmap, but that is not the case, it only removes them from
-the process's mm_struct.  The vma is only removed from ->i_mmap in
-unmap_region() _after_ zapping the pte's.
+Case in point. Recently I had a customer that was seeing 
+rpciod spinning (using %100 of the cpu) for a relative
+short amount time (actually I think I mentioned this bug
+to you). 
 
-This means that while the pte zapping is going on, any page faults
-will fail but page_mkclean() (and all of rmap) will continue to work.
+Using systemtap scripts that only showed errors in the 
+rpc status routines, I was able to determine the process was
+spinning in the bind code. Basically doing an IPv6 bind
+with no takers (although we are still working on it).
 
-But then I don't see how we get a dirty pte without also first getting
-a page fault.  Weird...
+So it occurred to me, that it would have been very handy to
+have a light weight mechanism that only showed errors the sunrpc 
+code was processing. So I ported those systemtap scripts into 
+trace points.
 
-Miklos
+Note, we did try to use the existing dprintk() but it took much 
+much longer for the problem to occur, if at all. Plus when the 
+problem did happen, the volume of data to sieve through 
+as a bit daunting.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+An example of the the output is:
+
+<...>-2684  [001]  1437.010389: call_status: 100003[4]:0 status=-107
+                               routine name: prog[version]:Proc tk_status
+
+which shows who is failing (i.e. the program number and version) and 
+what they are trying to do (the procedure number).
+
+Now there are some common errors like ETIMOUT and EAGAIN, but we can 
+filter those  out using the 'filer' file that the trace points 
+system supplies.
+
+Please consider... I really think light weight information will be
+very handy... 
+
+steved.
+ 
+Author: Steve Dickson <steved@redhat.com>
+Date:   Fri Apr 24 11:12:31 2009 -0400
+
+    Adds three trace points to the status routines in the
+    sunrpc state machine. The trace points will only execute
+    in error conditions.
+    
+    The goal of these trace points it to make it easier to
+    debug process that spin or get hung up in the NFS and
+    related subsystems.
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+new file mode 100644
+index 0000000..f502eb4
+--- /dev/null
++++ b/include/trace/events/sunrpc.h
+@@ -0,0 +1,86 @@
++#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SUNRPC_H
++
++#include <linux/tracepoint.h>
++
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sunrpc
++
++TRACE_EVENT(call_status,
++
++	TP_PROTO(struct rpc_task *task),
++
++	TP_ARGS(task),
++
++	TP_STRUCT__entry(
++		__field(u32, cl_prog)
++		__field(u32, cl_vers)
++		__field(u32, p_proc)
++		__field(int, tk_status)
++	),
++
++	TP_fast_assign(
++		__entry->cl_prog = task->tk_client->cl_prog;
++		__entry->cl_vers = task->tk_client->cl_vers;
++		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
++		__entry->cl_prog = task->tk_client->cl_prog;
++		__entry->tk_status = task->tk_status;
++	),
++
++	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
++		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
++);
++
++TRACE_EVENT(bind_status,
++
++	TP_PROTO(struct rpc_task *task),
++
++	TP_ARGS(task),
++
++	TP_STRUCT__entry(
++		__field(u32, cl_prog)
++		__field(u32, cl_vers)
++		__field(u32, p_proc)
++		__field(int, tk_status)
++	),
++
++	TP_fast_assign(
++		__entry->cl_prog = task->tk_client->cl_prog;
++		__entry->cl_vers = task->tk_client->cl_vers;
++		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
++		__entry->cl_prog = task->tk_client->cl_prog;
++		__entry->tk_status = task->tk_status;
++	),
++
++	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
++		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
++);
++TRACE_EVENT(connect_status,
++
++	TP_PROTO(struct rpc_task *task, int status),
++
++	TP_ARGS(task, status),
++
++	TP_STRUCT__entry(
++		__field(u32, cl_prog)
++		__field(u32, cl_vers)
++		__field(u32, p_proc)
++		__field(int, tk_status)
++	),
++
++	TP_fast_assign(
++		__entry->cl_prog = task->tk_client->cl_prog;
++		__entry->cl_vers = task->tk_client->cl_vers;
++		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
++		__entry->cl_prog = task->tk_client->cl_prog;
++		__entry->tk_status = status;
++	),
++
++	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
++		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
++
++);
++#endif /* __TRACE_SUNRPC_H */
++
++/* This part must be outside protection */
++#include <trace/define_trace.h>
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 5abab09..b86ee2a 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -37,6 +37,9 @@
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/metrics.h>
+ 
++#include <linux/ftrace.h>
++#define CREATE_TRACE_POINTS
++#include <trace/events/sunrpc.h>
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_CALL
+@@ -957,6 +960,7 @@ call_bind_status(struct rpc_task *task)
+ 		return;
+ 	}
+ 
++	trace_bind_status(task);
+ 	switch (task->tk_status) {
+ 	case -ENOMEM:
+ 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
+@@ -1038,6 +1042,7 @@ call_connect_status(struct rpc_task *task)
+ 		return;
+ 	}
+ 
++	trace_connect_status(task, status);
+ 	switch (status) {
+ 		/* if soft mounted, test if we've timed out */
+ 	case -ETIMEDOUT:
+@@ -1141,6 +1146,7 @@ call_status(struct rpc_task *task)
+ 		return;
+ 	}
+ 
++	trace_call_status(task);
+ 	task->tk_status = 0;
+ 	switch(status) {
+ 	case -EHOSTDOWN:
+
+                                        
