@@ -1,55 +1,17 @@
-From: Robin Holt <holt@sgi.com>
-Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Fri, 24 Apr 2009 05:41:37 -0500
-Message-ID: <20090424104137.GA7601@sgi.com>
-References: <1240510668.11148.40.camel@heimdal.trondhjem.org> <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu>
+From: "Keith Lynn" <lostdevil-dtLLMJa3t8w@public.gmane.org>
+Subject: Help that breeds arousal victories
+Date: Fri, 24 Apr 2009 21:12:44 +0900
+Message-ID: <20090424211244.6030000@surok.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, npiggin@suse.de,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org
-To: Miklos Szeredi <miklos@szeredi.hu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay1.sgi.com ([192.48.179.29]:43964 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754762AbZDXKll (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Apr 2009 06:41:41 -0400
-In-Reply-To: <E1LxFd4-0008Ih-Rd-8f8m9JG5TPIdUIPVzhDTVZP2KDSNp7ea@public.gmane.org>
+Received: from [211.251.118.2] ([211.251.118.2]:4375 "HELO wergvan"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+	id S1754443AbZDXMfv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Apr 2009 08:35:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 24, 2009 at 09:15:22AM +0200, Miklos Szeredi wrote:
-> On Thu, 23 Apr 2009, Trond Myklebust wrote:
-> > On Thu, 2009-04-23 at 21:52 +0200, Miklos Szeredi wrote:
-> > > Now this is mostly done at page fault time, and the pte's are always
-> > > being re-protected whenever the PG_dirty flag is cleared (see
-> > > page_mkclean()).
-> > > 
-> > > But in some cases (shmfs being the example I know) pages are not write
-> > > protected and so zap_pte_range(), and other functions, still need to
-> > > transfer the pte dirtyness to the page flag.
-> > 
-> > My main worry is that this is all happening at munmap() time. There
-> > shouldn't be any more page faults after that completes (am I right?), so
-> > what other mechanism would transfer the pte dirtyness?
-> 
-> After munmap() a page fault will result in SIGSEGV.  A write access
-> during munmap(), when the vma has been removed but the page table is
-> still intact is more interesting.  But in that case the write fault
-> should also result in a SEGV, because it won't be able to find the
-> matching VMA.
-> 
-> Now lets see what happens if writeback is started against the page
-> during this limbo period.  page_mkclean() is called, which doesn't
-> find the vma, so it doesn't re-protect the pte.  But the PG_dirty will
+Natural way to enhance your male drive. http://zy.zejephess.com/
 
-I am not sure how you came to this conclusion.  The address_space has
-the vma's chained together and protected by the i_mmap_lock.  That is
-acquired prior to the cleaning operation.  Additionally, the cleaning
-operation walks the process's page tables and will remove/write-protect
-the page before releasing the i_mmap_lock.
-
-Maybe I misunderstand.  I hope I have not added confusion.
-
-Thanks,
-Robin
