@@ -1,84 +1,87 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/29] NFSv4.1 Server DRC rewrite
-Date: Thu, 23 Apr 2009 19:41:15 -0400
-Message-ID: <20090423234115.GO1906@fieldses.org>
-References: <1240504988-9572-1-git-send-email-andros@netapp.com>
+From: Wang Chen <wangchen@cn.fujitsu.com>
+Subject: [PATCH] nfs lockd: detect grace_list corruption
+Date: Fri, 24 Apr 2009 11:09:44 +0800
+Message-ID: <49F12D78.2040304@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: andros@netapp.com
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: bfields@fieldses.org, neilb@suse.de, Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51557 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751578AbZDWXlP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Apr 2009 19:41:15 -0400
-In-Reply-To: <1240504988-9572-1-git-send-email-andros@netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:57692 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751992AbZDXDKU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Apr 2009 23:10:20 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 12:42:39PM -0400, andros@netapp.com wrote:
-> This is a rewrite of the NFSv4.1 DRC, switching from a page based cache to
-> a buffer based cache. The logic for the single slot clientid cache has been
-> separated from the session slot logic to handle the CREATE_SESSION call
-> preceeded by a SEQUENCE and all the replay combinations therein.
-> 
-> The session DRC now caches encoded operations with the exception of the
-> SEQUENCE operation which for a replay is encoded with the current slot and
-> session values.  A review of message sizes indicates that a 1024 byte buffer
-> for the operations is more than adequate.
+Although I can't reproduce it now, it really happened that some lock manager
+started grace period but didn't end it.
+This causes an lm entry be left in grace_list, and when service nfs restart,
+the same lm will be added again into the list.
+As you know, adding an entry, which is in the list, to a list will leads to
+list corruption.
 
-Thanks, a quick skim suggests the basic idea's right.... I may not get
-around to looking at this closer soon; let me know if there's a new
-version at some point.
+The following is the dmesg information:
+------------[ cut here ]------------
+WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Hardware name: Presario M2000 (PT365PA#AB2)      
+list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Pid: 23062, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Call Trace:
+[<c042d5b5>] warn_slowpath+0x71/0xa0
+[<c0422a96>] ? update_curr+0x11d/0x125
+[<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+[<c044b270>] ? trace_hardirqs_on+0xb/0xd
+[<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+[<c051c89f>] __list_add+0x27/0x5c
+[<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+[<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+[<c06b8921>] ? lock_kernel+0x1c/0x28
+[<ef8f3558>] lockd+0x64/0x164 [lockd]
+[<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+[<c04227b0>] ? complete+0x34/0x3e
+[<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+[<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+[<c043dd42>] kthread+0x45/0x6b
+[<c043dcfd>] ? kthread+0x0/0x6b
+[<c0403c23>] kernel_thread_helper+0x7/0x10
+---[ end trace fa484bd6d19ade89 ]---
+NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+NFSD: starting 90-second grace period
+------------------------
 
---b.
+To prevent list corruption, don't add entry which is already in the list
+and do WARN.
 
-> 
-> Not addressed is the necessary pre-operation processing estimate of the encoded
-> per operation result to check against the negotiated fore channel maximum
-> response size cached.
-> 
-> I've tested NFSv4.1 mounts using Connectathon and the new pynfs 4.1 tests,
-> where I added two new Clientid cache replay tests [to be submitted]to
-> st_create_session.py.
-> 
-> I've tested NFSv4.0 mounts using Connectathon and the pynfs v4.0 tests.
-> 
-> As always, comments and suggestions welcome.
-> 
-> -->Andy
-> 
-> Clientid single slot cache
-> 0001-nfsd41-add-create-session-slot-buffer-to-struc-nfs4.patch
-> 0002-nfsd41-encode-create_session-result-into-cache.patch
-> 0003-nfsd41-create_session-check-replay-first.patch
-> 0004-nfsd41-replay-solo-and-embedded-create-session.patch
-> 0005-nfsd41-create_session-cache-hold-client-reference.patch
-> 0006-nfsd41-no-nfsd4_release_respages-for-the-clientid-c.patch
-> 0007-nfsd41-slots-are-freed-with-session.patch
-> 
-> Session slot cache
-> 0008-nfsd41-protect-sv_drc_pages_used-with-spinlock.patch
-> 0009-nfsd41-sanity-check-client-drc-maxreqs.patch
-> 0010-nfsd41-change-from-page-to-memory-based-drc-limits.patch
-> 0011-nfsd41-set-the-session-maximum-response-size-cached.patch
-> 0012-nfsd41-allocate-and-use-drc-cache-buffers.patch
-> 0013-nfsd41-free-drc-cache-buffers.patch
-> 0014-nfsd41-obliterate-nfsd4_copy_pages.patch
-> 0015-nfsd41-obliterate-nfsd41_copy_replay_data.patch
-> 0016-nfsd41-obliterate-nfsd4_release_respages.patch
-> 0017-nfsd41-remove-unused-nfsd4_cache_entry-fields.patch
-> 0018-nfsd41-obliterate-nfsd4_set_statp.patch
-> 0019-nfsd41-rename-nfsd4_enc_uncached_replay.patch
-> 0020-nfsd41-encode-replay-sequence-from-the-slot-values.patch
-> 0021-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
-> 0022-nfsd41-obliterate-nfsd41_copy_replay_data.patch
-> 0023-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
-> 0024-nfsd41-support-16-slots-per-session.patch
-> 0025-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
-> 0026-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
-> 0027-nfsd41-add-test-for-failed-sequence-operation.patch
-> 0028-nfsd41-remove-redundant-failed-sequence-check.patch
-> 0029-nfsd41-remove-check-for-session.patch
-> 
-> 
+Signed-off-by: Wang Chen <wangchen@cn.fujitsu.com>
+---
+ fs/lockd/grace.c |   9 ++++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
+
+diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
+index 183cc1f..80becb7 100644
+--- a/fs/lockd/grace.c
++++ b/fs/lockd/grace.c
+@@ -21,8 +21,17 @@ static DEFINE_SPINLOCK(grace_lock);
+  */
+ void locks_start_grace(struct lock_manager *lm)
+ {
++	struct lock_manager *each;
++
+ 	spin_lock(&grace_lock);
++	if (!list_empty(&lm->list)) {
++		WARN(1, "lock manager(%p) exists. locks_start_grace() "
++			"and locks_end_grace() were not called pairly."
++			"\n", lm);
++		goto unlock;
++	}
+ 	list_add(&lm->list, &grace_list);
++unlock:
+ 	spin_unlock(&grace_lock);
+ }
+ EXPORT_SYMBOL_GPL(locks_start_grace);
+-- 
+1.6.0.6
+
+
