@@ -1,117 +1,44 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [pnfs] [PATCH 08/29] nfsd41: protect sv_drc_pages_used with
-	spinlock
-Date: Fri, 24 Apr 2009 10:11:04 -0400
-Message-ID: <89c397150904240711x674aef91oed7cb3c51b70f030@mail.gmail.com>
-References: <1240504988-9572-1-git-send-email-andros@netapp.com>
-	 <1240504988-9572-2-git-send-email-andros@netapp.com>
-	 <1240504988-9572-3-git-send-email-andros@netapp.com>
-	 <1240504988-9572-4-git-send-email-andros@netapp.com>
-	 <1240504988-9572-5-git-send-email-andros@netapp.com>
-	 <1240504988-9572-6-git-send-email-andros@netapp.com>
-	 <1240504988-9572-7-git-send-email-andros@netapp.com>
-	 <1240504988-9572-8-git-send-email-andros@netapp.com>
-	 <1240504988-9572-9-git-send-email-andros@netapp.com>
-	 <20090423233647.GM1906@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.168]:25388 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753192AbZDXOLF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:11:05 -0400
-Received: by wf-out-1314.google.com with SMTP id 26so1008233wfd.4
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:11:04 -0700 (PDT)
-In-Reply-To: <20090423233647.GM1906@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
+Date: Fri, 24 Apr 2009 16:52:26 +0200
+Message-ID: <E1LxMlO-0000sU-1J@pomaz-ex.szeredi.hu>
+References: <1240510668.11148.40.camel@heimdal.trondhjem.org> <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu> <20090424104137.GA7601@sgi.com>
+Cc: miklos@szeredi.hu, trond.myklebust@fys.uio.no, npiggin@suse.de,
+	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org
+To: holt@sgi.com
+Return-path: <owner-linux-mm@kvack.org>
+In-reply-to: <20090424104137.GA7601@sgi.com> (message from Robin Holt on Fri,
+	24 Apr 2009 05:41:37 -0500)
+Sender: owner-linux-mm@kvack.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 7:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Apr 23, 2009 at 12:42:47PM -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Don't use the sv_lock as per March 31 review by bfields.
->
-> If you could remind me (and anyone else) what my complaint was, that'd
-> be helpful.  (OK, I think it's coming back to me.  Still, it's a comment
-> that's not useful to anyone else later.)
+On Fri, 24 Apr 2009, Robin Holt wrote:
+> I am not sure how you came to this conclusion.  The address_space has
+> the vma's chained together and protected by the i_mmap_lock.  That is
+> acquired prior to the cleaning operation.  Additionally, the cleaning
+> operation walks the process's page tables and will remove/write-protect
+> the page before releasing the i_mmap_lock.
+> 
+> Maybe I misunderstand.  I hope I have not added confusion.
 
-OK - I'll avoid this type of comment in the future.
+Looking more closely, I think you're right.
 
->
->>
->> Serialize access to sv_drc_pages_used which changes on session creation.
->
-> So this information is all server-wide?
->
-> Might as well just make it (the lock, and the other sv_drc_* stuff)
-> global, I guess.  It shouldn't be in an rpc-level structure (struct
-> svc_serv) since it's nfs/sessions-specific.
+I thought that detach_vmas_to_be_unmapped() also removed them from
+mapping->i_mmap, but that is not the case, it only removes them from
+the process's mm_struct.  The vma is only removed from ->i_mmap in
+unmap_region() _after_ zapping the pte's.
 
-I see your point. I can make it global.
+This means that while the pte zapping is going on, any page faults
+will fail but page_mkclean() (and all of rmap) will continue to work.
 
--->Andy
+But then I don't see how we get a dirty pte without also first getting
+a page fault.  Weird...
 
->
-> --b.
->
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfsd/nfs4state.c        |    4 ++--
->>  include/linux/sunrpc/svc.h |    1 +
->>  net/sunrpc/svc.c           |    1 +
->>  3 files changed, 4 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 4cc66f3..af21f94 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -427,11 +427,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
->>  {
->>       int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
->>
->> -     spin_lock(&nfsd_serv->sv_lock);
->> +     spin_lock(&nfsd_serv->sv_drc_lock);
->>       if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
->>               np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
->>       nfsd_serv->sv_drc_pages_used += np;
->> -     spin_unlock(&nfsd_serv->sv_lock);
->> +     spin_unlock(&nfsd_serv->sv_drc_lock);
->>
->>       if (np <= 0) {
->>               status = nfserr_resource;
->> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->> index 2a30775..0d2315c 100644
->> --- a/include/linux/sunrpc/svc.h
->> +++ b/include/linux/sunrpc/svc.h
->> @@ -94,6 +94,7 @@ struct svc_serv {
->>       struct module *         sv_module;      /* optional module to count when
->>                                                * adding threads */
->>       svc_thread_fn           sv_function;    /* main function for threads */
->> +     spinlock_t              sv_drc_lock;
->>       unsigned int            sv_drc_max_pages; /* Total pages for DRC */
->>       unsigned int            sv_drc_pages_used;/* DRC pages used */
->>  };
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index 8847add..c25070a 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -394,6 +394,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->>       INIT_LIST_HEAD(&serv->sv_permsocks);
->>       init_timer(&serv->sv_temptimer);
->>       spin_lock_init(&serv->sv_lock);
->> +     spin_lock_init(&serv->sv_drc_lock);
->>
->>       serv->sv_nrpools = npools;
->>       serv->sv_pools =
->> --
->> 1.5.4.3
->>
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
->
+Miklos
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
