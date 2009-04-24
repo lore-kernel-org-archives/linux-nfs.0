@@ -1,89 +1,99 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] lockd: call locks_release_private to cleanup
-	per-filesystem state
-Date: Fri, 24 Apr 2009 19:01:45 -0400
-Message-ID: <20090424230145.GC22477@fieldses.org>
-References: <1238530376-28013-1-git-send-email-felixb@sgi.com>
+Subject: Re: [PATCH] nfs lockd: detect grace_list corruption
+Date: Fri, 24 Apr 2009 19:12:52 -0400
+Message-ID: <20090424231252.GD22477@fieldses.org>
+References: <49F12D78.2040304@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Felix Blyakher <felixb@sgi.com>
+Cc: neilb@suse.de, Trond.Myklebust@netapp.com,
+	linux-nfs@vger.kernel.org
+To: Wang Chen <wangchen@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:57017 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:41215 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753427AbZDXXBq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 19:01:46 -0400
-In-Reply-To: <1238530376-28013-1-git-send-email-felixb@sgi.com>
+	with ESMTP id S1752870AbZDXXM5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 19:12:57 -0400
+In-Reply-To: <49F12D78.2040304@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applied.--b.
+On Fri, Apr 24, 2009 at 11:09:44AM +0800, Wang Chen wrote:
+> Although I can't reproduce it now, it really happened that some lock manager
+> started grace period but didn't end it.
+> This causes an lm entry be left in grace_list, and when service nfs restart,
+> the same lm will be added again into the list.
+> As you know, adding an entry, which is in the list, to a list will leads to
+> list corruption.
 
-On Tue, Mar 31, 2009 at 03:12:56PM -0500, Felix Blyakher wrote:
-> For every lock request lockd creates a new file_lock object
-> in nlmsvc_setgrantargs() by copying the passed in file_lock with
-> locks_copy_lock(). A filesystem can attach it's own lock_operations
-> vector to the file_lock. It has to be cleaned up at the end of the
-> file_lock's life. However, lockd doesn't do it today, yet it
-> asserts in nlmclnt_release_lockargs() that the per-filesystem
-> state is clean.
-> This patch fixes it by exporting locks_release_private() and adding
-> it to nlmsvc_freegrantargs(), to be symmetrical to creating a
-> file_lock in nlmsvc_setgrantargs().
+I'd really like to understand why locks_end_grace() isn't being called.
+I'm probably overlooking something obvious, but I just can't see how
+lockd or nfsd can be shut down right now without locks_end_grace() being
+called.
+
+--b.
+
 > 
-> Signed-off-by: Felix Blyakher <felixb@sgi.com>
+> The following is the dmesg information:
+> ------------[ cut here ]------------
+> WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+> Hardware name: Presario M2000 (PT365PA#AB2)      
+> list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+> Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+> Pid: 23062, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+> Call Trace:
+> [<c042d5b5>] warn_slowpath+0x71/0xa0
+> [<c0422a96>] ? update_curr+0x11d/0x125
+> [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+> [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+> [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+> [<c051c89f>] __list_add+0x27/0x5c
+> [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+> [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+> [<c06b8921>] ? lock_kernel+0x1c/0x28
+> [<ef8f3558>] lockd+0x64/0x164 [lockd]
+> [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+> [<c04227b0>] ? complete+0x34/0x3e
+> [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+> [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+> [<c043dd42>] kthread+0x45/0x6b
+> [<c043dcfd>] ? kthread+0x0/0x6b
+> [<c0403c23>] kernel_thread_helper+0x7/0x10
+> ---[ end trace fa484bd6d19ade89 ]---
+> NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> NFSD: starting 90-second grace period
+> ------------------------
+> 
+> To prevent list corruption, don't add entry which is already in the list
+> and do WARN.
+> 
+> Signed-off-by: Wang Chen <wangchen@cn.fujitsu.com>
 > ---
->  fs/lockd/svclock.c |    2 ++
->  fs/locks.c         |    3 ++-
->  include/linux/fs.h |    1 +
->  3 files changed, 5 insertions(+), 1 deletions(-)
+>  fs/lockd/grace.c |   9 ++++++++++
+>  1 files changed, 9 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index 763b78a..865504a 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -326,6 +326,8 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
+> diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
+> index 183cc1f..80becb7 100644
+> --- a/fs/lockd/grace.c
+> +++ b/fs/lockd/grace.c
+> @@ -21,8 +21,17 @@ static DEFINE_SPINLOCK(grace_lock);
+>   */
+>  void locks_start_grace(struct lock_manager *lm)
 >  {
->  	if (call->a_args.lock.oh.data != call->a_owner)
->  		kfree(call->a_args.lock.oh.data);
+> +	struct lock_manager *each;
 > +
-> +	locks_release_private(&call->a_args.lock.fl);
+>  	spin_lock(&grace_lock);
+> +	if (!list_empty(&lm->list)) {
+> +		WARN(1, "lock manager(%p) exists. locks_start_grace() "
+> +			"and locks_end_grace() were not called pairly."
+> +			"\n", lm);
+> +		goto unlock;
+> +	}
+>  	list_add(&lm->list, &grace_list);
+> +unlock:
+>  	spin_unlock(&grace_lock);
 >  }
->  
->  /*
-> diff --git a/fs/locks.c b/fs/locks.c
-> index ec3deea..5b745dc 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -151,7 +151,7 @@ static struct file_lock *locks_alloc_lock(void)
->  	return kmem_cache_alloc(filelock_cache, GFP_KERNEL);
->  }
->  
-> -static void locks_release_private(struct file_lock *fl)
-> +void locks_release_private(struct file_lock *fl)
->  {
->  	if (fl->fl_ops) {
->  		if (fl->fl_ops->fl_release_private)
-> @@ -165,6 +165,7 @@ static void locks_release_private(struct file_lock *fl)
->  	}
->  
->  }
-> +EXPORT_SYMBOL(locks_release_private);
->  
->  /* Free a lock which is not in use. */
->  static void locks_free_lock(struct file_lock *fl)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 92734c0..3aa4ff6 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1047,6 +1047,7 @@ extern void locks_copy_lock(struct file_lock *, struct file_lock *);
->  extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
->  extern void locks_remove_posix(struct file *, fl_owner_t);
->  extern void locks_remove_flock(struct file *);
-> +extern void locks_release_private(struct file_lock *);
->  extern void posix_test_lock(struct file *, struct file_lock *);
->  extern int posix_lock_file(struct file *, struct file_lock *, struct file_lock *);
->  extern int posix_lock_file_wait(struct file *, struct file_lock *);
+>  EXPORT_SYMBOL_GPL(locks_start_grace);
 > -- 
-> 1.5.4.rc3
+> 1.6.0.6
+> 
 > 
