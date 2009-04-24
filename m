@@ -1,94 +1,114 @@
 From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [pnfs] [PATCH 0/29] NFSv4.1 Server DRC rewrite
-Date: Fri, 24 Apr 2009 10:12:42 -0400
-Message-ID: <89c397150904240712w1335a767mbc562ba16da692c6@mail.gmail.com>
+Subject: Re: [pnfs] [PATCH 08/29] nfsd41: protect sv_drc_pages_used with
+	spinlock
+Date: Fri, 24 Apr 2009 10:11:04 -0400
+Message-ID: <89c397150904240711x674aef91oed7cb3c51b70f030@mail.gmail.com>
 References: <1240504988-9572-1-git-send-email-andros@netapp.com>
-	 <20090423234115.GO1906@fieldses.org>
+	 <1240504988-9572-2-git-send-email-andros@netapp.com>
+	 <1240504988-9572-3-git-send-email-andros@netapp.com>
+	 <1240504988-9572-4-git-send-email-andros@netapp.com>
+	 <1240504988-9572-5-git-send-email-andros@netapp.com>
+	 <1240504988-9572-6-git-send-email-andros@netapp.com>
+	 <1240504988-9572-7-git-send-email-andros@netapp.com>
+	 <1240504988-9572-8-git-send-email-andros@netapp.com>
+	 <1240504988-9572-9-git-send-email-andros@netapp.com>
+	 <20090423233647.GM1906@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.232]:58304 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759019AbZDXOMn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:12:43 -0400
-Received: by rv-out-0506.google.com with SMTP id f9so1020655rvb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:12:42 -0700 (PDT)
-In-Reply-To: <20090423234115.GO1906@fieldses.org>
+Received: from wf-out-1314.google.com ([209.85.200.168]:25388 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753192AbZDXOLF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:11:05 -0400
+Received: by wf-out-1314.google.com with SMTP id 26so1008233wfd.4
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:11:04 -0700 (PDT)
+In-Reply-To: <20090423233647.GM1906@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 7:41 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Apr 23, 2009 at 12:42:39PM -0400, andros@netapp.com wrote:
->> This is a rewrite of the NFSv4.1 DRC, switching from a page based cache to
->> a buffer based cache. The logic for the single slot clientid cache has been
->> separated from the session slot logic to handle the CREATE_SESSION call
->> preceeded by a SEQUENCE and all the replay combinations therein.
+On Thu, Apr 23, 2009 at 7:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Apr 23, 2009 at 12:42:47PM -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
 >>
->> The session DRC now caches encoded operations with the exception of the
->> SEQUENCE operation which for a replay is encoded with the current slot and
->> session values.  A review of message sizes indicates that a 1024 byte buffer
->> for the operations is more than adequate.
+>> Don't use the sv_lock as per March 31 review by bfields.
 >
-> Thanks, a quick skim suggests the basic idea's right.... I may not get
-> around to looking at this closer soon; let me know if there's a new
-> version at some point.
+> If you could remind me (and anyone else) what my complaint was, that'd
+> be helpful.  (OK, I think it's coming back to me.  Still, it's a comment
+> that's not useful to anyone else later.)
 
-OK - Thanks for your time.
+OK - I'll avoid this type of comment in the future.
+
+>
+>>
+>> Serialize access to sv_drc_pages_used which changes on session creation.
+>
+> So this information is all server-wide?
+>
+> Might as well just make it (the lock, and the other sv_drc_* stuff)
+> global, I guess.  It shouldn't be in an rpc-level structure (struct
+> svc_serv) since it's nfs/sessions-specific.
+
+I see your point. I can make it global.
 
 -->Andy
+
 >
 > --b.
 >
 >>
->> Not addressed is the necessary pre-operation processing estimate of the encoded
->> per operation result to check against the negotiated fore channel maximum
->> response size cached.
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfsd/nfs4state.c        |    4 ++--
+>>  include/linux/sunrpc/svc.h |    1 +
+>>  net/sunrpc/svc.c           |    1 +
+>>  3 files changed, 4 insertions(+), 2 deletions(-)
 >>
->> I've tested NFSv4.1 mounts using Connectathon and the new pynfs 4.1 tests,
->> where I added two new Clientid cache replay tests [to be submitted]to
->> st_create_session.py.
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 4cc66f3..af21f94 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -427,11 +427,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+>>  {
+>>       int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
 >>
->> I've tested NFSv4.0 mounts using Connectathon and the pynfs v4.0 tests.
+>> -     spin_lock(&nfsd_serv->sv_lock);
+>> +     spin_lock(&nfsd_serv->sv_drc_lock);
+>>       if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
+>>               np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
+>>       nfsd_serv->sv_drc_pages_used += np;
+>> -     spin_unlock(&nfsd_serv->sv_lock);
+>> +     spin_unlock(&nfsd_serv->sv_drc_lock);
 >>
->> As always, comments and suggestions welcome.
+>>       if (np <= 0) {
+>>               status = nfserr_resource;
+>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>> index 2a30775..0d2315c 100644
+>> --- a/include/linux/sunrpc/svc.h
+>> +++ b/include/linux/sunrpc/svc.h
+>> @@ -94,6 +94,7 @@ struct svc_serv {
+>>       struct module *         sv_module;      /* optional module to count when
+>>                                                * adding threads */
+>>       svc_thread_fn           sv_function;    /* main function for threads */
+>> +     spinlock_t              sv_drc_lock;
+>>       unsigned int            sv_drc_max_pages; /* Total pages for DRC */
+>>       unsigned int            sv_drc_pages_used;/* DRC pages used */
+>>  };
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 8847add..c25070a 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -394,6 +394,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+>>       INIT_LIST_HEAD(&serv->sv_permsocks);
+>>       init_timer(&serv->sv_temptimer);
+>>       spin_lock_init(&serv->sv_lock);
+>> +     spin_lock_init(&serv->sv_drc_lock);
 >>
->> -->Andy
->>
->> Clientid single slot cache
->> 0001-nfsd41-add-create-session-slot-buffer-to-struc-nfs4.patch
->> 0002-nfsd41-encode-create_session-result-into-cache.patch
->> 0003-nfsd41-create_session-check-replay-first.patch
->> 0004-nfsd41-replay-solo-and-embedded-create-session.patch
->> 0005-nfsd41-create_session-cache-hold-client-reference.patch
->> 0006-nfsd41-no-nfsd4_release_respages-for-the-clientid-c.patch
->> 0007-nfsd41-slots-are-freed-with-session.patch
->>
->> Session slot cache
->> 0008-nfsd41-protect-sv_drc_pages_used-with-spinlock.patch
->> 0009-nfsd41-sanity-check-client-drc-maxreqs.patch
->> 0010-nfsd41-change-from-page-to-memory-based-drc-limits.patch
->> 0011-nfsd41-set-the-session-maximum-response-size-cached.patch
->> 0012-nfsd41-allocate-and-use-drc-cache-buffers.patch
->> 0013-nfsd41-free-drc-cache-buffers.patch
->> 0014-nfsd41-obliterate-nfsd4_copy_pages.patch
->> 0015-nfsd41-obliterate-nfsd41_copy_replay_data.patch
->> 0016-nfsd41-obliterate-nfsd4_release_respages.patch
->> 0017-nfsd41-remove-unused-nfsd4_cache_entry-fields.patch
->> 0018-nfsd41-obliterate-nfsd4_set_statp.patch
->> 0019-nfsd41-rename-nfsd4_enc_uncached_replay.patch
->> 0020-nfsd41-encode-replay-sequence-from-the-slot-values.patch
->> 0021-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
->> 0022-nfsd41-obliterate-nfsd41_copy_replay_data.patch
->> 0023-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
->> 0024-nfsd41-support-16-slots-per-session.patch
->> 0025-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
->> 0026-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
->> 0027-nfsd41-add-test-for-failed-sequence-operation.patch
->> 0028-nfsd41-remove-redundant-failed-sequence-check.patch
->> 0029-nfsd41-remove-check-for-session.patch
->>
+>>       serv->sv_nrpools = npools;
+>>       serv->sv_pools =
+>> --
+>> 1.5.4.3
 >>
 > _______________________________________________
 > pNFS mailing list
