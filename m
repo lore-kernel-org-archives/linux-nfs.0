@@ -1,69 +1,94 @@
 From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [pnfs] [PATCH 13/29] nfsd41: free drc cache buffers
-Date: Fri, 24 Apr 2009 10:11:44 -0400
-Message-ID: <89c397150904240711t2c951dcch15435c216f6748ca@mail.gmail.com>
-References: <1240504988-9572-5-git-send-email-andros@netapp.com>
-	 <1240504988-9572-7-git-send-email-andros@netapp.com>
-	 <1240504988-9572-8-git-send-email-andros@netapp.com>
-	 <1240504988-9572-9-git-send-email-andros@netapp.com>
-	 <1240504988-9572-10-git-send-email-andros@netapp.com>
-	 <1240504988-9572-11-git-send-email-andros@netapp.com>
-	 <1240504988-9572-12-git-send-email-andros@netapp.com>
-	 <1240504988-9572-13-git-send-email-andros@netapp.com>
-	 <1240504988-9572-14-git-send-email-andros@netapp.com>
-	 <20090423233944.GN1906@fieldses.org>
+Subject: Re: [pnfs] [PATCH 0/29] NFSv4.1 Server DRC rewrite
+Date: Fri, 24 Apr 2009 10:12:42 -0400
+Message-ID: <89c397150904240712w1335a767mbc562ba16da692c6@mail.gmail.com>
+References: <1240504988-9572-1-git-send-email-andros@netapp.com>
+	 <20090423234115.GO1906@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.174]:28043 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757549AbZDXOLp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:11:45 -0400
-Received: by wf-out-1314.google.com with SMTP id 26so1008475wfd.4
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:11:44 -0700 (PDT)
-In-Reply-To: <20090423233944.GN1906@fieldses.org>
+Received: from rv-out-0506.google.com ([209.85.198.232]:58304 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759019AbZDXOMn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:12:43 -0400
+Received: by rv-out-0506.google.com with SMTP id f9so1020655rvb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:12:42 -0700 (PDT)
+In-Reply-To: <20090423234115.GO1906@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 7:39 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Thu, Apr 23, 2009 at 12:42:52PM -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
+On Thu, Apr 23, 2009 at 7:41 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Apr 23, 2009 at 12:42:39PM -0400, andros@netapp.com wrote:
+>> This is a rewrite of the NFSv4.1 DRC, switching from a page based cache to
+>> a buffer based cache. The logic for the single slot clientid cache has been
+>> separated from the session slot logic to handle the CREATE_SESSION call
+>> preceeded by a SEQUENCE and all the replay combinations therein.
+>>
+>> The session DRC now caches encoded operations with the exception of the
+>> SEQUENCE operation which for a replay is encoded with the current slot and
+>> session values.  A review of message sizes indicates that a 1024 byte buffer
+>> for the operations is more than adequate.
 >
-> This should probably be folded into the last patch.
->
-> (For one reason: looks like applying everything up to the last patch
-> would result in a kernel that leaked memory, since these things never
-> got freed?  The rule here is that applying patches 1...n of any patch
-> series should never introduce any new problems.)
+> Thanks, a quick skim suggests the basic idea's right.... I may not get
+> around to looking at this closer soon; let me know if there's a new
+> version at some point.
 
-OK
+OK - Thanks for your time.
 
+-->Andy
 >
 > --b.
 >
 >>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfsd/nfs4state.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
+>> Not addressed is the necessary pre-operation processing estimate of the encoded
+>> per operation result to check against the negotiated fore channel maximum
+>> response size cached.
 >>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 9e79e0c..787cffe 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -590,7 +590,7 @@ free_session(struct kref *kref)
->>       ses = container_of(kref, struct nfsd4_session, se_ref);
->>       for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
->>               struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
->> -             nfsd4_release_respages(e->ce_respages, e->ce_resused);
->> +             kfree(e->ce_datav.iov_base);
->>       }
->>       kfree(ses);
->>  }
->> --
->> 1.5.4.3
+>> I've tested NFSv4.1 mounts using Connectathon and the new pynfs 4.1 tests,
+>> where I added two new Clientid cache replay tests [to be submitted]to
+>> st_create_session.py.
+>>
+>> I've tested NFSv4.0 mounts using Connectathon and the pynfs v4.0 tests.
+>>
+>> As always, comments and suggestions welcome.
+>>
+>> -->Andy
+>>
+>> Clientid single slot cache
+>> 0001-nfsd41-add-create-session-slot-buffer-to-struc-nfs4.patch
+>> 0002-nfsd41-encode-create_session-result-into-cache.patch
+>> 0003-nfsd41-create_session-check-replay-first.patch
+>> 0004-nfsd41-replay-solo-and-embedded-create-session.patch
+>> 0005-nfsd41-create_session-cache-hold-client-reference.patch
+>> 0006-nfsd41-no-nfsd4_release_respages-for-the-clientid-c.patch
+>> 0007-nfsd41-slots-are-freed-with-session.patch
+>>
+>> Session slot cache
+>> 0008-nfsd41-protect-sv_drc_pages_used-with-spinlock.patch
+>> 0009-nfsd41-sanity-check-client-drc-maxreqs.patch
+>> 0010-nfsd41-change-from-page-to-memory-based-drc-limits.patch
+>> 0011-nfsd41-set-the-session-maximum-response-size-cached.patch
+>> 0012-nfsd41-allocate-and-use-drc-cache-buffers.patch
+>> 0013-nfsd41-free-drc-cache-buffers.patch
+>> 0014-nfsd41-obliterate-nfsd4_copy_pages.patch
+>> 0015-nfsd41-obliterate-nfsd41_copy_replay_data.patch
+>> 0016-nfsd41-obliterate-nfsd4_release_respages.patch
+>> 0017-nfsd41-remove-unused-nfsd4_cache_entry-fields.patch
+>> 0018-nfsd41-obliterate-nfsd4_set_statp.patch
+>> 0019-nfsd41-rename-nfsd4_enc_uncached_replay.patch
+>> 0020-nfsd41-encode-replay-sequence-from-the-slot-values.patch
+>> 0021-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
+>> 0022-nfsd41-obliterate-nfsd41_copy_replay_data.patch
+>> 0023-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
+>> 0024-nfsd41-support-16-slots-per-session.patch
+>> 0025-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
+>> 0026-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
+>> 0027-nfsd41-add-test-for-failed-sequence-operation.patch
+>> 0028-nfsd41-remove-redundant-failed-sequence-check.patch
+>> 0029-nfsd41-remove-check-for-session.patch
+>>
 >>
 > _______________________________________________
 > pNFS mailing list
