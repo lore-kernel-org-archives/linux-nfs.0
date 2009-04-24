@@ -1,159 +1,69 @@
 From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [pnfs] [PATCH 05/29] nfsd41: create_session cache hold client
-	reference
-Date: Fri, 24 Apr 2009 10:06:42 -0400
-Message-ID: <89c397150904240706l7c642f0ds5d6b997117fd84c@mail.gmail.com>
-References: <1240504988-9572-1-git-send-email-andros@netapp.com>
-	 <1240504988-9572-2-git-send-email-andros@netapp.com>
-	 <1240504988-9572-3-git-send-email-andros@netapp.com>
-	 <1240504988-9572-4-git-send-email-andros@netapp.com>
-	 <1240504988-9572-5-git-send-email-andros@netapp.com>
-	 <1240504988-9572-6-git-send-email-andros@netapp.com>
-	 <20090423232825.GK1906@fieldses.org>
-	 <1D363F53-7E7A-472C-8176-BB8F33A94BDB@netapp.com>
-	 <20090424140245.GB15038@fieldses.org>
+Subject: Re: [pnfs] [PATCH 13/29] nfsd41: free drc cache buffers
+Date: Fri, 24 Apr 2009 10:11:44 -0400
+Message-ID: <89c397150904240711t2c951dcch15435c216f6748ca@mail.gmail.com>
+References: <1240504988-9572-5-git-send-email-andros@netapp.com>
+	 <1240504988-9572-7-git-send-email-andros@netapp.com>
+	 <1240504988-9572-8-git-send-email-andros@netapp.com>
+	 <1240504988-9572-9-git-send-email-andros@netapp.com>
+	 <1240504988-9572-10-git-send-email-andros@netapp.com>
+	 <1240504988-9572-11-git-send-email-andros@netapp.com>
+	 <1240504988-9572-12-git-send-email-andros@netapp.com>
+	 <1240504988-9572-13-git-send-email-andros@netapp.com>
+	 <1240504988-9572-14-git-send-email-andros@netapp.com>
+	 <20090423233944.GN1906@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.229]:56037 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757648AbZDXOGn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:06:43 -0400
-Received: by rv-out-0506.google.com with SMTP id f9so1018539rvb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:06:42 -0700 (PDT)
-In-Reply-To: <20090424140245.GB15038@fieldses.org>
+Received: from wf-out-1314.google.com ([209.85.200.174]:28043 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757549AbZDXOLp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Apr 2009 10:11:45 -0400
+Received: by wf-out-1314.google.com with SMTP id 26so1008475wfd.4
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Apr 2009 07:11:44 -0700 (PDT)
+In-Reply-To: <20090423233944.GN1906@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 24, 2009 at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Apr 24, 2009 at 09:52:56AM -0400, Andy Adamson wrote:
->>
->> On Apr 23, 2009, at 7:28 PM, J. Bruce Fields wrote:
->>
->>> On Thu, Apr 23, 2009 at 12:42:44PM -0400, andros@netapp.com wrote:
->>>> From: Andy Adamson <andros@netapp.com>
->>>>
->>>> expire_client can be called on a confirmed or unconfirmed client
->>>> while
->>>> processing the create session operation and accessing the clientid
->>>> slot.
->>>
->>> I don't understand--isn't all that under the state lock for now?
->>
->> Yes it is. I now see that expire_client is also always called under the
->> state lock. Fair enough, this patch can be dropped.
+On Thu, Apr 23, 2009 at 7:39 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Apr 23, 2009 at 12:42:52PM -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
 >
-> OK, thanks.  Note this wouldn't be quite right even in the absence of a
-> lock, because there'd be nothing to guarantee that conf is still good at
-> the time we do the atomic_inc(&conf->cl_count) (what happens if someone
-> frees conf before we even get there?
+> This should probably be folded into the last patch.
 >
-> The way this kind of thing often works is:
->
->        acquire some lock
->                search for an object in some common data structure
->                bump the reference count on the found object
->        drop the lock
->
-> So the lock protects the object from destruction until we get the
-> reference count, and then the reference count protects it after we've
-> dropped the lock.
->
-> In this case we'll probably eventually transition to a spinlock
-> protecting the client hash tables, and then do the above in the
-> functions that look up clients, so that the object returned from those
-> functions already comes with its own reference taken.
+> (For one reason: looks like applying everything up to the last patch
+> would result in a kernel that leaked memory, since these things never
+> got freed?  The rule here is that applying patches 1...n of any patch
+> series should never introduce any new problems.)
 
-
-Got it - thanks
-
--->Andy
+OK
 
 >
 > --b.
 >
 >>
->> -->Andy
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfsd/nfs4state.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
 >>
->>>
->>>
->>> --b.
->>>
->>>>
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> ---
->>>> fs/nfsd/nfs4state.c |   14 ++++++++++----
->>>> 1 files changed, 10 insertions(+), 4 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>>> index a585a58..accad58 100644
->>>> --- a/fs/nfsd/nfs4state.c
->>>> +++ b/fs/nfsd/nfs4state.c
->>>> @@ -1355,6 +1355,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->>>>     conf = find_confirmed_client(&cr_ses->clientid);
->>>>
->>>>     if (conf) {
->>>> +           atomic_inc(&conf->cl_count);
->>>>             slot = &conf->cl_slot;
->>>>             status = check_slot_seqid(cr_ses->seqid, slot);
->>>>             if (status == nfserr_replay_cache) {
->>>> @@ -1363,27 +1364,30 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->>>>                     cstate->status = nfserr_replay_clientid_cache;
->>>>                     /* Return the cached reply status */
->>>>                     status = nfsd4_replay_create_session(resp, slot);
->>>> -                   goto out;
->>>> +                   goto out_put;
->>>>             } else if (cr_ses->seqid != conf->cl_slot.sl_seqid + 1) {
->>>>                     status = nfserr_seq_misordered;
->>>>                     dprintk("Sequence misordered!\n");
->>>>                     dprintk("Expected seqid= %d but got seqid= %d\n",
->>>>                             slot->sl_seqid, cr_ses->seqid);
->>>> -                   goto out;
->>>> +                   goto out_put;
->>>>             }
->>>>             conf->cl_slot.sl_seqid++;
->>>>     } else if (unconf) {
->>>> +           atomic_inc(&unconf->cl_count);
->>>>             slot = &unconf->cl_slot;
->>>>             status = check_slot_seqid(cr_ses->seqid, slot);
->>>>             if (status) {
->>>>                     /* an unconfirmed replay returns misordered */
->>>>                     status = nfserr_seq_misordered;
->>>> -                   goto out;
->>>> +                   conf = unconf; /* for put_nfs4_client */
->>>> +                   goto out_put;
->>>>             }
->>>>
->>>>             if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->>>>                 (ip_addr != unconf->cl_addr)) {
->>>>                     status = nfserr_clid_inuse;
->>>> +                   conf = unconf; /* for put_nfs4_client */
->>>>                     goto out_cache;
->>>>             }
->>>>
->>>> @@ -1413,7 +1417,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->>>>
->>>>     status = alloc_init_session(rqstp, conf, cr_ses);
->>>>     if (status)
->>>> -           goto out;
->>>> +           goto out_put;
->>>>
->>>>     memcpy(cr_ses->sessionid.data, conf->cl_sessionid.data,
->>>>            NFS4_MAX_SESSIONID_LEN);
->>>> @@ -1423,6 +1427,8 @@ out_cache:
->>>>     /* cache solo and embedded create sessions under the state lock */
->>>>     nfsd4_cache_create_session(cr_ses, slot, status);
->>>>
->>>> +out_put:
->>>> +   put_nfs4_client(conf);
->>>> out:
->>>>     nfs4_unlock_state();
->>>>     dprintk("%s returns %d\n", __func__, ntohl(status));
->>>> --
->>>> 1.5.4.3
->>>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 9e79e0c..787cffe 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -590,7 +590,7 @@ free_session(struct kref *kref)
+>>       ses = container_of(kref, struct nfsd4_session, se_ref);
+>>       for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
+>>               struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+>> -             nfsd4_release_respages(e->ce_respages, e->ce_resused);
+>> +             kfree(e->ce_datav.iov_base);
+>>       }
+>>       kfree(ses);
+>>  }
+>> --
+>> 1.5.4.3
 >>
 > _______________________________________________
 > pNFS mailing list
