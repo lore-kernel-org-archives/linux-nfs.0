@@ -1,187 +1,92 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch 03/29] knfsd: add userspace controls for stats tables
-Date: Sat, 25 Apr 2009 18:03:29 -0400
-Message-ID: <20090425220329.GB5088@fieldses.org>
-References: <20090331202800.739621000@sgi.com> <20090331202938.939647000@sgi.com> <20090425215745.GA5088@fieldses.org>
+Subject: Re: [PATCH 00/19] Proposed server-side patches for 2.6.31
+Date: Sat, 25 Apr 2009 18:14:32 -0400
+Message-ID: <20090425221432.GC5088@fieldses.org>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS ML <linux-nfs@vger.kernel.org>
-To: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:43293 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:32880 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752150AbZDYWDa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Apr 2009 18:03:30 -0400
-In-Reply-To: <20090425215745.GA5088@fieldses.org>
+	with ESMTP id S1752713AbZDYWOc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Apr 2009 18:14:32 -0400
+In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pfft, did it again.
+On Thu, Apr 23, 2009 at 07:31:16PM -0400, Chuck Lever wrote:
+> Hi Bruce -
+> 
+> Here are some patches I'd like to propose for 2.6.31.  Please review
+> and consider them for linux-next.  They've seen a little testing here
+> on x86_64, but they should get some public exercise.
+
+I'm a little behind, apologies for any delay--I'll try to give these a
+good reading soon.  Meanwhile--could you put these in a public git tree
+and give me the url?  That'll make it trivial to pull them into -next,
+at least.
 
 --b.
 
-On Sat, Apr 25, 2009 at 05:57:45PM -0400, bfields wrote:
-> On Wed, Apr 01, 2009 at 07:28:03AM +1100, Greg Banks wrote:
-> > Add two control files to /proc/fs/nfsd:
-> > 
-> > * "stats_enabled" can be used to disable or enable the gathering
-> >    of per-client and per-export statistics in the server.
-> > 
-> > * "stats_prune_period" can be used to set the period at
-> >    which the pruning timer runs, in seconds.  Unused stats
-> >    entries will survive at most twice that time.
-> > 
-> > Signed-off-by: Greg Banks <gnb@sgi.com>
-> > ---
-> > 
-> >  fs/nfsd/nfsctl.c |   99 ++++++++++++++++++++++++++++++++++++++++++++
-> >  1 file changed, 99 insertions(+)
-> > 
-> > Index: bfields/fs/nfsd/nfsctl.c
-> > ===================================================================
-> > --- bfields.orig/fs/nfsd/nfsctl.c
-> > +++ bfields/fs/nfsd/nfsctl.c
-> > @@ -64,6 +64,8 @@ enum {
-> >  	NFSD_Versions,
-> >  	NFSD_Ports,
-> >  	NFSD_MaxBlkSize,
-> > +	NFSD_Stats_Enabled,
-> > +	NFSD_Stats_Prune_Period,
-> >  	/*
-> >  	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
-> >  	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
-> > @@ -92,6 +94,8 @@ static ssize_t write_pool_threads(struct
-> >  static ssize_t write_versions(struct file *file, char *buf, size_t size);
-> >  static ssize_t write_ports(struct file *file, char *buf, size_t size);
-> >  static ssize_t write_maxblksize(struct file *file, char *buf, size_t size);
-> > +static ssize_t write_stats_enabled(struct file *file, char *buf, size_t size);
-> > +static ssize_t write_stats_prune_period(struct file *file, char *buf, size_t size);
-> >  #ifdef CONFIG_NFSD_V4
-> >  static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
-> >  static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
-> > @@ -113,6 +117,8 @@ static ssize_t (*write_op[])(struct file
-> >  	[NFSD_Versions] = write_versions,
-> >  	[NFSD_Ports] = write_ports,
-> >  	[NFSD_MaxBlkSize] = write_maxblksize,
-> > +	[NFSD_Stats_Enabled] = write_stats_enabled,
-> > +	[NFSD_Stats_Prune_Period] = write_stats_prune_period,
-> >  #ifdef CONFIG_NFSD_V4
-> >  	[NFSD_Leasetime] = write_leasetime,
-> >  	[NFSD_RecoveryDir] = write_recoverydir,
-> > @@ -1121,6 +1127,97 @@ static ssize_t write_maxblksize(struct f
-> >  	return sprintf(buf, "%d\n", nfsd_max_blksize);
-> >  }
-> >  
-> > +extern int nfsd_stats_enabled;
-> > +
-> > +/**
-> > + * write_stats_enabled - Set or report whether per-client/
-> > + *			 per-export stats are enabled.
-> > + *
-> > + * Input:
-> > + *			buf:		ignored
-> > + *			size:		zero
-> > + *
-> > + * OR
-> > + *
-> > + * Input:
-> > + * 			buf:		C string containing an unsigned
-> > + * 					integer value representing the new value
-> > + *			size:		non-zero length of C string in @buf
-> > + * Output:
-> > + *	On success:	passed-in buffer filled with '\n'-terminated C string
-> > + *			containing numeric value of the current setting
-> > + *			return code is the size in bytes of the string
-> > + *	On error:	return code is zero or a negative errno value
-> > + */
-> > +static ssize_t write_stats_enabled(struct file *file, char *buf, size_t size)
-> > +{
-> > +	char *mesg = buf;
-> > +	if (size > 0) {
-> > +		int enabled;
-> > +		int rv = get_int(&mesg, &enabled);
-> > +		if (rv)
-> > +			return rv;
-> > +		/* check `enabled' against allowed range */
-> > +		if (enabled < 0 || enabled > 1)
-> > +			return -EINVAL;
-> > +		/*
-> > +		 * We can change the enabled flag at any time without
-> > +		 * locking.  All it controls is whether stats are
-> > +		 * gathered for new incoming NFS calls.  Old gathered
-> > +		 * stats still sit around in the hash tables until
-> > +		 * naturally pruned.
-> > +		 */
-> > +		nfsd_stats_enabled = enabled;
-> > +	}
-> > +	return sprintf(buf, "%d\n", nfsd_stats_enabled);
-> > +}
-> > +
-> > +extern int nfsd_stats_prune_period;
-> > +
-> > +/**
-> > + * write_stats_prune_period - Set or report the period for pruning
-> > + *			      old per-client/per-export stats entries,
-> > + *			      in seconds.
-> > + *
-> > + * Input:
-> > + *			buf:		ignored
-> > + *			size:		zero
-> > + *
-> > + * OR
-> > + *
-> > + * Input:
-> > + * 			buf:		C string containing an unsigned
-> > + * 					integer value representing the new value
-> > + *			size:		non-zero length of C string in @buf
-> > + * Output:
-> > + *	On success:	passed-in buffer filled with '\n'-terminated C string
-> > + *			containing numeric value of the current setting
-> > + *			return code is the size in bytes of the string
-> > + *	On error:	return code is zero or a negative errno value
-> > + */
 > 
-> Just an idle remark, don't worry about this for now, but: we might want
-> to rein in this write_*() comment format a little some day.  A lot of
-> the content seems duplicated.
+> The first 17 are updated versions of patches I submitted for 2.6.30,
+> but were dropped at the last minute to simplify things.  They provide
+> some clean-up for the nfsctl API, and a little more IPv6 support in
+> that area as well, in preparation for full-on IPv6-related changes to
+> come.  I think I've addressed earlier review comments.
 > 
-> --b.
+> As usual, it would be most helpful if you would drop the whole series
+> if you have issues with any of these patches.
 > 
-> > +static ssize_t write_stats_prune_period(struct file *file, char *buf, size_t size)
-> > +{
-> > +	char *mesg = buf;
-> > +	if (size > 0) {
-> > +		int period;
-> > +		int rv = get_int(&mesg, &period);
-> > +		if (rv)
-> > +			return rv;
-> > +		/* check `period' against allowed range */
-> > +		if (period < 10 || period > 14*86400)
-> > +			return -EINVAL;
-> > +		/*
-> > +		 * We can change the period at any time without
-> > +		 * locking.  All it controls is the timeout on the
-> > +		 * next run of the prune timer.  This might cause
-> > +		 * some unexpected behaviour if the period is
-> > +		 * changed from really high to really low.
-> > +		 */
-> > +		nfsd_stats_prune_period = period;
-> > +	}
-> > +	return sprintf(buf, "%d\n", nfsd_stats_prune_period);
-> > +}
-> > +
-> >  #ifdef CONFIG_NFSD_V4
-> >  extern time_t nfs4_leasetime(void);
-> >  
-> > @@ -1263,6 +1360,8 @@ static int nfsd_fill_super(struct super_
-> >  		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
-> >  		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
-> >  		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
-> > +		[NFSD_Stats_Enabled] = {"stats_enabled", &transaction_ops, S_IWUSR|S_IRUGO},
-> > +		[NFSD_Stats_Prune_Period] = {"stats_prune_period", &transaction_ops, S_IWUSR|S_IRUGO},
-> >  #ifdef CONFIG_NFSD_V4
-> >  		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
-> >  		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
-> > 
-> > --
-> > Greg
+> Patch 18 addresses a long-standing problem with our NLM/NSM
+> implementation.  If lockd.ko isn't loaded before statd starts up
+> (which is the typical case for both our server and client) then
+> lockd's NSM state number is never set.  We then end up sending a zero
+> state number in all NLM requests.  This is also the case if lockd.ko
+> is unloaded and reloaded during normal operation -- the NSM state
+> number is reset to zero.  See the patch description for further
+> detail.
+> 
+> Patch 19 provides a little more 64-bit alignment clean up in
+> nsm_init_private() .
+> 
+> These two are independent of all the others and either or both can be
+> applied as you see fit.
+> 
+> ---
+> 
+> Chuck Lever (19):
+>       lockd: clean up 64-bit alignment fix in nsm_init_private()
+>       lockd: Update NSM state from SM_MON replies
+>       NFSD: Stricter buffer size checking in fs/nfsd/nfsctl.c
+>       NFSD: Stricter buffer size checking in write_versions()
+>       NFSD: Stricter buffer size checking in write_recoverydir()
+>       SUNRPC: Clean up one_sock_name()
+>       SUNRPC: Support PF_INET6 in one_sock_name()
+>       SUNRPC: Switch one_sock_name() to use snprintf()
+>       SUNRPC: pass buffer size to svc_sock_names()
+>       SUNRPC: pass buffer size to svc_addsock()
+>       NFSD: Prevent a buffer overflow in svc_xprt_names()
+>       NFSD: move lockd_up() before svc_addsock()
+>       NFSD: Finish refactoring __write_ports()
+>       NFSD: Note an additional requirement when passing TCP sockets to portlist
+>       NFSD: Refactor socket creation out of __write_ports()
+>       NFSD: Refactor portlist socket closing into a helper
+>       NFSD: Refactor transport addition out of __write_ports()
+>       NFSD: Refactor transport removal out of __write_ports()
+>       SUNRPC: Fix error return value of svc_addr_len()
+> 
+> 
+>  fs/lockd/clntproc.c             |    2 
+>  fs/lockd/mon.c                  |   18 +-
+>  fs/nfsd/nfsctl.c                |  284 ++++++++++++++++++++++++---------------
+>  include/linux/sunrpc/svc_xprt.h |    7 +
+>  include/linux/sunrpc/svcsock.h  |    7 +
+>  net/sunrpc/svc_xprt.c           |   56 +++++---
+>  net/sunrpc/svcsock.c            |   87 +++++++++---
+>  7 files changed, 299 insertions(+), 162 deletions(-)
+> 
+> -- 
+> Chuck Lever <chuck.lever@oracle.com>
