@@ -1,92 +1,104 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 00/19] Proposed server-side patches for 2.6.31
-Date: Sat, 25 Apr 2009 18:14:32 -0400
-Message-ID: <20090425221432.GC5088@fieldses.org>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net>
+Subject: Re: [PATCH 01/19] SUNRPC: Fix error return value of svc_addr_len()
+Date: Sat, 25 Apr 2009 18:17:06 -0400
+Message-ID: <20090425221706.GD5088@fieldses.org>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233124.17283.40252.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:32880 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:32883 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752713AbZDYWOc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Apr 2009 18:14:32 -0400
-In-Reply-To: <20090423231550.17283.24432.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	with ESMTP id S1752852AbZDYWRG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Apr 2009 18:17:06 -0400
+In-Reply-To: <20090423233124.17283.40252.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 07:31:16PM -0400, Chuck Lever wrote:
-> Hi Bruce -
+On Thu, Apr 23, 2009 at 07:31:25PM -0400, Chuck Lever wrote:
+> The svc_addr_len() helper function returns -EAFNOSUPPORT if it doesn't
+> recognize the address family of the passed-in socket address.  However,
+> the return type of this function is size_t, which means -EAFNOSUPPORT
+> is turned into a very large positive value in this case.
 > 
-> Here are some patches I'd like to propose for 2.6.31.  Please review
-> and consider them for linux-next.  They've seen a little testing here
-> on x86_64, but they should get some public exercise.
+> The check in svc_udp_recvfrom() to see if the return value is less
+> than zero therefore won't work at all.
+> 
+> Additionally, handle_connect_req() passes this value directly to
+> memset().  This could cause memset() to clobber a large chunk of memory
+> if svc_addr_len() has returned an error.  Currently the address family
+> of these addresses, however, is known to be supported long before
+> handle_connect_req() is called, so this isn't a real risk.
+> 
+> Change the error return value of svc_addr_len() to zero, which fits in
+> the range of size_t, and is safer to pass to memset() directly.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  include/linux/sunrpc/svc_xprt.h |    5 +++--
+>  net/sunrpc/svcsock.c            |    7 ++++---
+>  2 files changed, 7 insertions(+), 5 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index 0d9cb6e..d790c52 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -118,7 +118,7 @@ static inline unsigned short svc_addr_port(const struct sockaddr *sa)
+>  	return 0;
+>  }
+>  
+> -static inline size_t svc_addr_len(struct sockaddr *sa)
+> +static inline size_t svc_addr_len(const struct sockaddr *sa)
+>  {
+>  	switch (sa->sa_family) {
+>  	case AF_INET:
+> @@ -126,7 +126,8 @@ static inline size_t svc_addr_len(struct sockaddr *sa)
+>  	case AF_INET6:
+>  		return sizeof(struct sockaddr_in6);
+>  	}
+> -	return -EAFNOSUPPORT;
+> +
 
-I'm a little behind, apologies for any delay--I'll try to give these a
-good reading soon.  Meanwhile--could you put these in a public git tree
-and give me the url?  That'll make it trivial to pull them into -next,
-at least.
+May as well stick a WARN() here too if only as a shorthand way of
+documenting that this isn't meant to happen.
 
 --b.
 
+> +	return 0;
+>  }
+>  
+>  static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index af31988..8b08328 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -426,13 +426,14 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  		long		all[SVC_PKTINFO_SPACE / sizeof(long)];
+>  	} buffer;
+>  	struct cmsghdr *cmh = &buffer.hdr;
+> -	int		err, len;
+>  	struct msghdr msg = {
+>  		.msg_name = svc_addr(rqstp),
+>  		.msg_control = cmh,
+>  		.msg_controllen = sizeof(buffer),
+>  		.msg_flags = MSG_DONTWAIT,
+>  	};
+> +	size_t len;
+> +	int err;
+>  
+>  	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
+>  	    /* udp sockets need large rcvbuf as all pending
+> @@ -464,8 +465,8 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  		return -EAGAIN;
+>  	}
+>  	len = svc_addr_len(svc_addr(rqstp));
+> -	if (len < 0)
+> -		return len;
+> +	if (len == 0)
+> +		return -EAFNOSUPPORT;
+>  	rqstp->rq_addrlen = len;
+>  	if (skb->tstamp.tv64 == 0) {
+>  		skb->tstamp = ktime_get_real();
 > 
-> The first 17 are updated versions of patches I submitted for 2.6.30,
-> but were dropped at the last minute to simplify things.  They provide
-> some clean-up for the nfsctl API, and a little more IPv6 support in
-> that area as well, in preparation for full-on IPv6-related changes to
-> come.  I think I've addressed earlier review comments.
-> 
-> As usual, it would be most helpful if you would drop the whole series
-> if you have issues with any of these patches.
-> 
-> Patch 18 addresses a long-standing problem with our NLM/NSM
-> implementation.  If lockd.ko isn't loaded before statd starts up
-> (which is the typical case for both our server and client) then
-> lockd's NSM state number is never set.  We then end up sending a zero
-> state number in all NLM requests.  This is also the case if lockd.ko
-> is unloaded and reloaded during normal operation -- the NSM state
-> number is reset to zero.  See the patch description for further
-> detail.
-> 
-> Patch 19 provides a little more 64-bit alignment clean up in
-> nsm_init_private() .
-> 
-> These two are independent of all the others and either or both can be
-> applied as you see fit.
-> 
-> ---
-> 
-> Chuck Lever (19):
->       lockd: clean up 64-bit alignment fix in nsm_init_private()
->       lockd: Update NSM state from SM_MON replies
->       NFSD: Stricter buffer size checking in fs/nfsd/nfsctl.c
->       NFSD: Stricter buffer size checking in write_versions()
->       NFSD: Stricter buffer size checking in write_recoverydir()
->       SUNRPC: Clean up one_sock_name()
->       SUNRPC: Support PF_INET6 in one_sock_name()
->       SUNRPC: Switch one_sock_name() to use snprintf()
->       SUNRPC: pass buffer size to svc_sock_names()
->       SUNRPC: pass buffer size to svc_addsock()
->       NFSD: Prevent a buffer overflow in svc_xprt_names()
->       NFSD: move lockd_up() before svc_addsock()
->       NFSD: Finish refactoring __write_ports()
->       NFSD: Note an additional requirement when passing TCP sockets to portlist
->       NFSD: Refactor socket creation out of __write_ports()
->       NFSD: Refactor portlist socket closing into a helper
->       NFSD: Refactor transport addition out of __write_ports()
->       NFSD: Refactor transport removal out of __write_ports()
->       SUNRPC: Fix error return value of svc_addr_len()
-> 
-> 
->  fs/lockd/clntproc.c             |    2 
->  fs/lockd/mon.c                  |   18 +-
->  fs/nfsd/nfsctl.c                |  284 ++++++++++++++++++++++++---------------
->  include/linux/sunrpc/svc_xprt.h |    7 +
->  include/linux/sunrpc/svcsock.h  |    7 +
->  net/sunrpc/svc_xprt.c           |   56 +++++---
->  net/sunrpc/svcsock.c            |   87 +++++++++---
->  7 files changed, 299 insertions(+), 162 deletions(-)
-> 
-> -- 
-> Chuck Lever <chuck.lever@oracle.com>
