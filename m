@@ -1,64 +1,57 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Sat, 25 Apr 2009 07:10:28 +0200
-Message-ID: <20090425051028.GC10088@wotan.suse.de>
-References: <1240510668.11148.40.camel@heimdal.trondhjem.org> <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu> <20090424104137.GA7601@sgi.com> <E1LxMlO-0000sU-1J@pomaz-ex.szeredi.hu> <1240592448.4946.35.camel@heimdal.trondhjem.org>
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are truncated
+ by	the nfs rdma client.
+Date: Sat, 25 Apr 2009 09:11:34 -0500
+Message-ID: <49F31A16.2080806@opengridcomputing.com>
+References: <20090424190510.3134.90405.stgit@build.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Miklos Szeredi <miklos@szeredi.hu>, holt@sgi.com,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: tmtalpey@gmail.com, tom@opengridcomputing.com,
+	linux-nfs@vger.kernel.org, vuhuong@mellanox.com
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41255 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751278AbZDYFKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 25 Apr 2009 01:10:34 -0400
-In-Reply-To: <1240592448.4946.35.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:33088 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751422AbZDYOLg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Apr 2009 10:11:36 -0400
+In-Reply-To: <20090424190510.3134.90405.stgit-T4OLL4TyM9aNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 24, 2009 at 01:00:48PM -0400, Trond Myklebust wrote:
-> On Fri, 2009-04-24 at 16:52 +0200, Miklos Szeredi wrote:
-> > On Fri, 24 Apr 2009, Robin Holt wrote:
-> > > I am not sure how you came to this conclusion.  The address_space has
-> > > the vma's chained together and protected by the i_mmap_lock.  That is
-> > > acquired prior to the cleaning operation.  Additionally, the cleaning
-> > > operation walks the process's page tables and will remove/write-protect
-> > > the page before releasing the i_mmap_lock.
-> > > 
-> > > Maybe I misunderstand.  I hope I have not added confusion.
-> > 
-> > Looking more closely, I think you're right.
-> > 
-> > I thought that detach_vmas_to_be_unmapped() also removed them from
-> > mapping->i_mmap, but that is not the case, it only removes them from
-> > the process's mm_struct.  The vma is only removed from ->i_mmap in
-> > unmap_region() _after_ zapping the pte's.
-> > 
-> > This means that while the pte zapping is going on, any page faults
-> > will fail but page_mkclean() (and all of rmap) will continue to work.
-> > 
-> > But then I don't see how we get a dirty pte without also first getting
-> > a page fault.  Weird...
-> 
-> You don't, but unless you unmap the page when you write it out, you will
-> not get any further page faults. The VM will just redirty the page
-> without calling page_mkwrite().
+Trond,
 
-Why? It should call page_mkwrite...
+There is a similar bug in the server side too.  I'll repost a single 
+patch that fixes both.
 
- 
-> As I said, I think I can fix the NFS problem by simply unmapping the
-> page inside ->writepage() whenever we know the write request was
-> originally set up by a page fault.
+Steve.
 
-The biggest outstanding problem we have remaining is get_user_pages.
-Callers are only required to hold a ref on the page and then they
-can call set_page_dirty at any point after that.
-
-I have a half-done patch somewhere to add a put_user_pages, and then
-we could probably go from there to pinning the fs metadata (whether
-by using the page lock or something else, I don't quite know).
- 
+Steve Wise wrote:
+> A bad cast causes the iova_start, which in this case is a DMA bus address,
+> to be truncated on 32b systems.  No cast is needed.
+>
+> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> ---
+>
+>  net/sunrpc/xprtrdma/verbs.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 3b21e0c..3a374f5 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1489,7 +1489,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	memset(&frmr_wr, 0, sizeof frmr_wr);
+>  	frmr_wr.opcode = IB_WR_FAST_REG_MR;
+>  	frmr_wr.send_flags = 0;			/* unsignaled */
+> -	frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
+> +	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+>  	frmr_wr.wr.fast_reg.page_list = seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
+>  	frmr_wr.wr.fast_reg.page_list_len = i;
+>  	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
