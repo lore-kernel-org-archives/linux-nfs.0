@@ -1,42 +1,74 @@
-From: Krishna Kumar2 <krkumar2@in.ibm.com>
-Subject: Re: [PATCH 3/11] nfsd: CHANGE old function calls to new calls
-Date: Sun, 26 Apr 2009 16:46:50 +0530
-Message-ID: <OF9FC3EADE.4D0D6832-ON652575A4.003DB62E-652575A4.003DF752@in.ibm.com>
-References: <20090325133607.16437.33288.sendpatchset@localhost.localdomain> <20090325133707.16437.66360.sendpatchset@localhost.localdomain> <20090422200553.GH9541@fieldses.org> <OFB63DF5D6.1A77785C-ON652575A1.004F6726-652575A1.00577C61@in.ibm.com> <20090423223909.GF1906@fieldses.org> <OFC1241E6B.C4476A61-ON652575A2.00207885-652575A2.00598912@in.ibm.com> <20090424162321.GB17365@fieldses.org> <OFBB4FF305.DD2B4946-ON652575A2.005CB412-652575A2.005D3AC2@in.ibm.com> <20090424192506.GQ17365@fieldses.org>
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are truncated
+ by	the nfs rdma client.
+Date: Sun, 26 Apr 2009 13:57:10 -0500
+Message-ID: <49F4AE86.4090908@opengridcomputing.com>
+References: <20090424190510.3134.90405.stgit@build.ogc.int> <49F31A16.2080806@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>, jlayton@redhat.com,
-	Krishna Kumar <krikku@gmail.com>, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: tmtalpey@gmail.com, tom@opengridcomputing.com,
+	linux-nfs@vger.kernel.org, vuhuong@mellanox.com
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp09.in.ibm.com ([59.145.155.9]:52639 "EHLO
-	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751159AbZDZLRQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Apr 2009 07:17:16 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp09.in.ibm.com (8.13.1/8.13.1) with ESMTP id n3QAggla030354
-	for <linux-nfs@vger.kernel.org>; Sun, 26 Apr 2009 16:12:42 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3QBH9EP622658
-	for <linux-nfs@vger.kernel.org>; Sun, 26 Apr 2009 16:47:09 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id n3QBH8Jq027738
-	for <linux-nfs@vger.kernel.org>; Sun, 26 Apr 2009 16:47:08 +0530
-In-Reply-To: <20090424192506.GQ17365@fieldses.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:47420 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751288AbZDZS5M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Apr 2009 14:57:12 -0400
+In-Reply-To: <49F31A16.2080806@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote on 04/25/2009 12:55:06 AM:
+Hey Trond,
 
-> Why not use the whole thing?:
+Turns out the server side is fine.  So this patch is good to go.
+
+Thanks,
+
+Steve.
+
+Steve Wise wrote:
+> Trond,
 >
->    fh1->fh_size == fh2->fh_size
->       && memcmp(fh1->fh_base, fh2->fh_base, fh1->fh_size) == 0
-
-OK - so I just add a knfsd_fh in the cache and compare fh's. That
-sounds good, let me test and see what is the result.
-
-thanks,
-
-- KK
+> There is a similar bug in the server side too.  I'll repost a single 
+> patch that fixes both.
+>
+> Steve.
+>
+> Steve Wise wrote:
+>> A bad cast causes the iova_start, which in this case is a DMA bus 
+>> address,
+>> to be truncated on 32b systems.  No cast is needed.
+>>
+>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>> ---
+>>
+>>  net/sunrpc/xprtrdma/verbs.c |    2 +-
+>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 3b21e0c..3a374f5 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -1489,7 +1489,7 @@ rpcrdma_register_frmr_external(struct 
+>> rpcrdma_mr_seg *seg,
+>>      memset(&frmr_wr, 0, sizeof frmr_wr);
+>>      frmr_wr.opcode = IB_WR_FAST_REG_MR;
+>>      frmr_wr.send_flags = 0;            /* unsignaled */
+>> -    frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
+>> +    frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+>>      frmr_wr.wr.fast_reg.page_list = 
+>> seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
+>>      frmr_wr.wr.fast_reg.page_list_len = i;
+>>      frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+>>
+>> -- 
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>   
+>
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
