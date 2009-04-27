@@ -1,133 +1,101 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 01/19] SUNRPC: Fix error return value of svc_addr_len()
-Date: Mon, 27 Apr 2009 12:49:07 -0400
-Message-ID: <130B5E68-8FE2-42F3-BA82-5B67FCAC6ACD@oracle.com>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233124.17283.40252.stgit@ingres.1015granger.net> <20090425221706.GD5088@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are  truncated
+ by	the nfs rdma client.
+Date: Mon, 27 Apr 2009 12:37:25 -0500
+Message-ID: <49F5ED55.1010607@opengridcomputing.com>
+References: <20090424190510.3134.90405.stgit@build.ogc.int> <49F31A16.2080806@opengridcomputing.com> <49F4AE86.4090908@opengridcomputing.com> <49f515a5.1d1e640a.1c82.6677@mx.google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Trond.Myklebust@netapp.com, tom@opengridcomputing.com,
+	linux-nfs@vger.kernel.org, vuhuong@mellanox.com
+To: Tom Talpey <tmtalpey@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:41451 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753197AbZD0Qt0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2009 12:49:26 -0400
-In-Reply-To: <20090425221706.GD5088@fieldses.org>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:51288 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756938AbZD0RhG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2009 13:37:06 -0400
+In-Reply-To: <49f515a5.1d1e640a.1c82.6677-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 25, 2009, at 6:17 PM, J. Bruce Fields wrote:
-> On Thu, Apr 23, 2009 at 07:31:25PM -0400, Chuck Lever wrote:
->> The svc_addr_len() helper function returns -EAFNOSUPPORT if it  
->> doesn't
->> recognize the address family of the passed-in socket address.   
->> However,
->> the return type of this function is size_t, which means -EAFNOSUPPORT
->> is turned into a very large positive value in this case.
+Tom Talpey wrote:
+> At 02:57 PM 4/26/2009, Steve Wise wrote:
+>   
+>> Hey Trond,
 >>
->> The check in svc_udp_recvfrom() to see if the return value is less
->> than zero therefore won't work at all.
->>
->> Additionally, handle_connect_req() passes this value directly to
->> memset().  This could cause memset() to clobber a large chunk of  
->> memory
->> if svc_addr_len() has returned an error.  Currently the address  
->> family
->> of these addresses, however, is known to be supported long before
->> handle_connect_req() is called, so this isn't a real risk.
->>
->> Change the error return value of svc_addr_len() to zero, which fits  
->> in
->> the range of size_t, and is safer to pass to memset() directly.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> include/linux/sunrpc/svc_xprt.h |    5 +++--
->> net/sunrpc/svcsock.c            |    7 ++++---
->> 2 files changed, 7 insertions(+), 5 deletions(-)
->>
->> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
->> svc_xprt.h
->> index 0d9cb6e..d790c52 100644
->> --- a/include/linux/sunrpc/svc_xprt.h
->> +++ b/include/linux/sunrpc/svc_xprt.h
->> @@ -118,7 +118,7 @@ static inline unsigned short  
->> svc_addr_port(const struct sockaddr *sa)
->> 	return 0;
->> }
->>
->> -static inline size_t svc_addr_len(struct sockaddr *sa)
->> +static inline size_t svc_addr_len(const struct sockaddr *sa)
->> {
->> 	switch (sa->sa_family) {
->> 	case AF_INET:
->> @@ -126,7 +126,8 @@ static inline size_t svc_addr_len(struct  
->> sockaddr *sa)
->> 	case AF_INET6:
->> 		return sizeof(struct sockaddr_in6);
->> 	}
->> -	return -EAFNOSUPPORT;
->> +
+>> Turns out the server side is fine.  So this patch is good to go.
+>>     
 >
-> May as well stick a WARN() here too if only as a shorthand way of
-> documenting that this isn't meant to happen.
-
-Sounds reasonable, but:
-
-1.  I thought BUG() was the way to document "shouldn't happen," and
-
-2.  What about all the other static inliney places this "shouldn't  
-happen" ?
-
-I guess we kind of gave up on BUG'ing in all these places.
-
-> --b.
+> I'll ACK the patch, but I do wonder if the code will compile cleanly on all
+> platforms. The iova_start is a u64, whereas the mr_dma is a dma_addr_t,
+> which is variable sized, depending on platform. Would a (u64) cast be a
+> safer patch, warning-wise?
 >
->> +	return 0;
->> }
+>   
+
+Well, if dma_addr_t is smaller, I don't think you'll get a warning, will 
+you?  And if its larger than 64b, then you _want_ the warning, because 
+nothing will work. :)
+
+Its up to you and/or Trond.
+
+Steve.
+
+
+> Tom.
+>
+>   
+>> Thanks,
 >>
->> static inline unsigned short svc_xprt_local_port(const struct  
->> svc_xprt *xprt)
->> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->> index af31988..8b08328 100644
->> --- a/net/sunrpc/svcsock.c
->> +++ b/net/sunrpc/svcsock.c
->> @@ -426,13 +426,14 @@ static int svc_udp_recvfrom(struct svc_rqst  
->> *rqstp)
->> 		long		all[SVC_PKTINFO_SPACE / sizeof(long)];
->> 	} buffer;
->> 	struct cmsghdr *cmh = &buffer.hdr;
->> -	int		err, len;
->> 	struct msghdr msg = {
->> 		.msg_name = svc_addr(rqstp),
->> 		.msg_control = cmh,
->> 		.msg_controllen = sizeof(buffer),
->> 		.msg_flags = MSG_DONTWAIT,
->> 	};
->> +	size_t len;
->> +	int err;
+>> Steve.
 >>
->> 	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
->> 	    /* udp sockets need large rcvbuf as all pending
->> @@ -464,8 +465,8 @@ static int svc_udp_recvfrom(struct svc_rqst  
->> *rqstp)
->> 		return -EAGAIN;
->> 	}
->> 	len = svc_addr_len(svc_addr(rqstp));
->> -	if (len < 0)
->> -		return len;
->> +	if (len == 0)
->> +		return -EAFNOSUPPORT;
->> 	rqstp->rq_addrlen = len;
->> 	if (skb->tstamp.tv64 == 0) {
->> 		skb->tstamp = ktime_get_real();
->>
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+>> Steve Wise wrote:
+>>     
+>>> Trond,
+>>>
+>>> There is a similar bug in the server side too.  I'll repost a single 
+>>> patch that fixes both.
+>>>
+>>> Steve.
+>>>
+>>> Steve Wise wrote:
+>>>       
+>>>> A bad cast causes the iova_start, which in this case is a DMA bus 
+>>>> address,
+>>>> to be truncated on 32b systems.  No cast is needed.
+>>>>
+>>>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>>>> ---
+>>>>
+>>>>  net/sunrpc/xprtrdma/verbs.c |    2 +-
+>>>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>>>> index 3b21e0c..3a374f5 100644
+>>>> --- a/net/sunrpc/xprtrdma/verbs.c
+>>>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>>>> @@ -1489,7 +1489,7 @@ rpcrdma_register_frmr_external(struct 
+>>>> rpcrdma_mr_seg *seg,
+>>>>      memset(&frmr_wr, 0, sizeof frmr_wr);
+>>>>      frmr_wr.opcode = IB_WR_FAST_REG_MR;
+>>>>      frmr_wr.send_flags = 0;            /* unsignaled */
+>>>> -    frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
+>>>> +    frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+>>>>      frmr_wr.wr.fast_reg.page_list = 
+>>>> seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
+>>>>      frmr_wr.wr.fast_reg.page_list_len = i;
+>>>>      frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+>>>>
+>>>> -- 
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>   
+>>>>         
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>       
+>>     
 
