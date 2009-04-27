@@ -1,154 +1,89 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: [PATCH 3/3] readahead: introduce context readahead algorithm
-Date: Mon, 27 Apr 2009 12:48:14 +0800
-Message-ID: <20090427044814.GA9975@localhost>
-References: <20090412071950.166891982@intel.com> <20090412072052.686760755@intel.com> <x49k55mintn.fsf@segfault.boston.devel.redhat.com> <20090415044301.GB9948@localhost> <x49r5ztg5sr.fsf@segfault.boston.devel.redhat.com>
+From: Tom Talpey <tmtalpey@gmail.com>
+Subject: Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are
+  truncated by	the nfs rdma client.
+Date: Sun, 26 Apr 2009 22:17:03 -0400
+Message-ID: <49f515a5.1d1e640a.1c82.6677@mx.google.com>
+References: <20090424190510.3134.90405.stgit@build.ogc.int>
+ <49F31A16.2080806@opengridcomputing.com>
+ <49F4AE86.4090908@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Vladislav Bolkhovitin <vst@vlnb.net>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Neil Brown <neilb@suse.de>
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754598AbZD0Esr@vger.kernel.org>
-In-Reply-To: <x49r5ztg5sr.fsf@segfault.boston.devel.redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Trond.Myklebust@netapp.com, tom@opengridcomputing.com,
+	linux-nfs@vger.kernel.org, vuhuong@mellanox.com
+To: Steve Wise <swise@opengridcomputing.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from yx-out-2324.google.com ([74.125.44.29]:47785 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751790AbZD0CRL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Apr 2009 22:17:11 -0400
+Received: by yx-out-2324.google.com with SMTP id 3so1241653yxj.1
+        for <linux-nfs@vger.kernel.org>; Sun, 26 Apr 2009 19:17:10 -0700 (PDT)
+In-Reply-To: <49F4AE86.4090908@opengridcomputing.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
-
-I did some more NFS readahead tests. Judging from your and mine tests, I can
-say that the context readahead is safe for trivial NFS workloads :-) It is
-behaving in the expected way, and the overheads, if any, are close enough
-to the fluctuating margin.
-
-On Thu, Apr 16, 2009 at 01:55:48AM +0800, Jeff Moyer wrote:
-> Hi, Fengguang,
+At 02:57 PM 4/26/2009, Steve Wise wrote:
+>Hey Trond,
 >
-> Wu Fengguang <fengguang.wu@intel.com> writes:
+>Turns out the server side is fine.  So this patch is good to go.
+
+I'll ACK the patch, but I do wonder if the code will compile cleanly on all
+platforms. The iova_start is a u64, whereas the mr_dma is a dma_addr_t,
+which is variable sized, depending on platform. Would a (u64) cast be a
+safer patch, warning-wise?
+
+Tom.
+
 >
-> >> I tested out your patches.  Below are some basic iozone numbers for a
-> >> single NFS client reading a file.  The iozone command line is:
-> >>
-> >>   iozone -s 2000000 -r 64 -f /mnt/test/testfile -i 1 -w
-> >
-> > Jeff, thank you very much for the testing out!
-> >
-> >> The file system is unmounted after each run to flush the cache.  The
-> >> numbers below reflect only a single run each.  The file system was also
-> >> unmounted on the NFS client after each run.
-> >>
-> >> KEY
-> >> ---
-> >> vanilla:	   2.6.30-rc1
-> >> readahead:	   2.6.30-rc1 + your 10 readahead patches
-> >> context readahead: 2.6.30-rc1 + your 10 readahead patches + the 3
-> >> 		   context readahead patches.
-> >> nfsd's:		   number of NFSD threads on the server
-> >
-> > I guess you are applying the readahead patches to the server side?
+>Thanks,
 >
-> That's right.
+>Steve.
 >
-> > What's the NFS mount options and client/server side readahead size?
-> > The context readahead is pretty sensible to these parameters.
+>Steve Wise wrote:
+>> Trond,
+>>
+>> There is a similar bug in the server side too.  I'll repost a single 
+>> patch that fixes both.
+>>
+>> Steve.
+>>
+>> Steve Wise wrote:
+>>> A bad cast causes the iova_start, which in this case is a DMA bus 
+>>> address,
+>>> to be truncated on 32b systems.  No cast is needed.
+>>>
+>>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>>> ---
+>>>
+>>>  net/sunrpc/xprtrdma/verbs.c |    2 +-
+>>>  1 files changed, 1 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>>> index 3b21e0c..3a374f5 100644
+>>> --- a/net/sunrpc/xprtrdma/verbs.c
+>>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>>> @@ -1489,7 +1489,7 @@ rpcrdma_register_frmr_external(struct 
+>>> rpcrdma_mr_seg *seg,
+>>>      memset(&frmr_wr, 0, sizeof frmr_wr);
+>>>      frmr_wr.opcode = IB_WR_FAST_REG_MR;
+>>>      frmr_wr.send_flags = 0;            /* unsignaled */
+>>> -    frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
+>>> +    frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+>>>      frmr_wr.wr.fast_reg.page_list = 
+>>> seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
+>>>      frmr_wr.wr.fast_reg.page_list_len = i;
+>>>      frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+>>>
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>   
+>>
+>> -- 
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
-> Default options everywhere.
-
-The default options observed in my test platforms:
-        - client: CFQ, kernel 2.6.30-rc3 + linux-2.6-block.git for linus
-        - server: CFQ, kernel 2.6.30-rc2-next-20090417
-is
-        - rsize=256k
-        - NFS readahead size=3840k (= 256k * 15)
-        - sda readahead size=128k
-
-> >> I'll note that the cfq in 2.6.30-rc1 is crippled, and that Jens has a
-> >> patch posted that makes the numbers look at least a little better, but
-> >> that's immaterial to this discussion, I think.
-[snip]
-> > Let me transform them into relative numbers:
-> >
-> >              A     B     C      A..B      A..C
-> > cfq-1      43127 42471 42827    -1.5%     -0.7%
-> > cfq-2      22354 21913 21882    -2.0%     -2.1%
-> > cfq-4      20858 21252 20678    +1.9%     -0.9%
-> > cfq-8      21179 20979 21508    -0.9%     +1.6%
-> >
-> > deadline-1 43732 42801 43040    -2.1%     -1.6%
-> > deadline-2 68059 70158 71173    +3.1%     +4.6%
-> > deadline-4 76659 82068 82407    +7.1%     +7.5%
-> > deadline-8 83231 82406 86583    -1.0%     +4.0%
-> >
-> > Summaries:
-> > 1) the overall numbers are slightly negative for CFQ and looks better
-> >    with deadline.
 >
-> The variance is probably 1-2%.  I'll try to quantify that for you.
 
-I tried to measure the overheads, here is the approach:
-- random read(4K) syscalls on a huge sparse file over NFS
-- server side readahead size=1M, otherwise all default options
-
-The -0.1%, +0.5% differences in time are close enough to the variance.
-
-                  vanilla    +max_sane_readahead()      +mmap readahead
-        run-1     77.01s      77.18                     77.96s
-        run-2     77.18s      77.53                     77.76s
-        run-3     77.93s      77.57                     77.84s
-        run-4     77.76s                                78.16s
-        run-5     77.55s                                77.76s
-        run-6                                           77.90s
-        avg       77.486      77.427                    77.897
-        diff%                 -0.1%                     +0.5%
-
-> > Anyway we have the io context problem for CFQ.  And I'm planning to
-> > dive into the CFQ code and your patch on that :-)
->
-> Jens already reworked the patch and included it in his for-linus branch
-> of the block tree.  So, you can start there.  ;-)
-
-Good news. I'm running with it :-)
-
-> > 2) the single thread case performance consistently dropped by 1-2%.
->
-> > It seems not related to the behavior changes introduced by the mmap
-> > readahead patches and context readahead patches. And looks more like
-> > some overheads created by the code reorganization and the patch
-> > "readahead: apply max_sane_readahead() limit in ondemand_readahead()"
-> > which adds a bit overhead with the call max_sane_readahead().
-> >
-> > I'll try to root cause it.
-
-Then I go on to test sequential reads on real files over NFS.
-
-Again the differences are small enough.
-
-        vanilla        +mmap&context readahead   diff%
-nfsd=1  28.875s        28.770s                   -0.4%
-nfsd=8  42.533s        42.255s                   -0.7%
-
-For the single nfsd case, the readahead sequence is perfect and exactly the
-same before/after the context readahead patch:
-
-[   60.542986] readahead-initial0(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=0+64, ra=0+128-64, async=0) = 128
-[   60.573652] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=64+32, ra=128+256-256, async=1) = 2
-56
-[   60.590312] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=128+32, ra=384+256-256, async=1) =
-256
-[   60.652863] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=384+32, ra=640+256-256, async=1) =
-256
-[   60.713916] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=640+32, ra=896+256-256, async=1) =
-256
-[   60.776168] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=896+32, ra=1152+256-256, async=1) =
- 256
-[   60.837423] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=1152+32, ra=1408+256-256, async=1)
-= 256
-[   60.899360] readahead-subsequent(pid=3124(nfsd), dev=08:02(sda2), ino=129(vmlinux-2.6.29), req=1408+32, ra=1664+256-256, async=1)
-= 256
-
-
-Thanks,
-Fengguang
