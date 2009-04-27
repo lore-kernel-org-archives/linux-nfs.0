@@ -1,142 +1,162 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/19] SUNRPC: Fix error return value of svc_addr_len()
-Date: Mon, 27 Apr 2009 19:51:47 -0400
-Message-ID: <20090427235147.GD5108@fieldses.org>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233124.17283.40252.stgit@ingres.1015granger.net> <20090425221706.GD5088@fieldses.org> <130B5E68-8FE2-42F3-BA82-5B67FCAC6ACD@oracle.com>
+Subject: Re: [PATCH 09/19] NFSD: Prevent a buffer overflow in
+	svc_xprt_names()
+Date: Mon, 27 Apr 2009 19:56:44 -0400
+Message-ID: <20090427235644.GE5108@fieldses.org>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233225.17283.10176.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:60823 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:56504 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755003AbZD0Xvr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2009 19:51:47 -0400
-In-Reply-To: <130B5E68-8FE2-42F3-BA82-5B67FCAC6ACD@oracle.com>
+	with ESMTP id S1755758AbZD0X4o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2009 19:56:44 -0400
+In-Reply-To: <20090423233225.17283.10176.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 27, 2009 at 12:49:07PM -0400, Chuck Lever wrote:
-> On Apr 25, 2009, at 6:17 PM, J. Bruce Fields wrote:
->> On Thu, Apr 23, 2009 at 07:31:25PM -0400, Chuck Lever wrote:
->>> The svc_addr_len() helper function returns -EAFNOSUPPORT if it  
->>> doesn't
->>> recognize the address family of the passed-in socket address.   
->>> However,
->>> the return type of this function is size_t, which means -EAFNOSUPPORT
->>> is turned into a very large positive value in this case.
->>>
->>> The check in svc_udp_recvfrom() to see if the return value is less
->>> than zero therefore won't work at all.
->>>
->>> Additionally, handle_connect_req() passes this value directly to
->>> memset().  This could cause memset() to clobber a large chunk of  
->>> memory
->>> if svc_addr_len() has returned an error.  Currently the address  
->>> family
->>> of these addresses, however, is known to be supported long before
->>> handle_connect_req() is called, so this isn't a real risk.
->>>
->>> Change the error return value of svc_addr_len() to zero, which fits  
->>> in
->>> the range of size_t, and is safer to pass to memset() directly.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> include/linux/sunrpc/svc_xprt.h |    5 +++--
->>> net/sunrpc/svcsock.c            |    7 ++++---
->>> 2 files changed, 7 insertions(+), 5 deletions(-)
->>>
->>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
->>> svc_xprt.h
->>> index 0d9cb6e..d790c52 100644
->>> --- a/include/linux/sunrpc/svc_xprt.h
->>> +++ b/include/linux/sunrpc/svc_xprt.h
->>> @@ -118,7 +118,7 @@ static inline unsigned short svc_addr_port(const 
->>> struct sockaddr *sa)
->>> 	return 0;
->>> }
->>>
->>> -static inline size_t svc_addr_len(struct sockaddr *sa)
->>> +static inline size_t svc_addr_len(const struct sockaddr *sa)
->>> {
->>> 	switch (sa->sa_family) {
->>> 	case AF_INET:
->>> @@ -126,7 +126,8 @@ static inline size_t svc_addr_len(struct  
->>> sockaddr *sa)
->>> 	case AF_INET6:
->>> 		return sizeof(struct sockaddr_in6);
->>> 	}
->>> -	return -EAFNOSUPPORT;
->>> +
->>
->> May as well stick a WARN() here too if only as a shorthand way of
->> documenting that this isn't meant to happen.
->
-> Sounds reasonable, but:
->
-> 1.  I thought BUG() was the way to document "shouldn't happen," and
+On Thu, Apr 23, 2009 at 07:32:25PM -0400, Chuck Lever wrote:
+> The svc_xprt_names() function can overflow its buffer if it's so near
+> the end of the passed in buffer that the "name too long" string still
+> doesn't fit.  Of course, it could never tell if it was near the end
+> of the passed in buffer, since its only caller passes in zero as the
+> buffer length.
+> 
+> Let's make this API a little safer.
+> 
+> Change svc_xprt_names() so it *always* checks for a buffer overflow,
+> and change its only caller to pass in the correct buffer length.
+> 
+> If svc_xprt_names() does overflow its buffer, it now fails with an
+> ENAMETOOLONG errno, instead of trying to write a message at the end
+> of the buffer.  I don't like this much, but I can't figure out a clean
+> way that's always safe to return some of the names, *and* an
+> indication that the buffer was not long enough.
+> 
+> The displayed error when doing a 'cat /proc/fs/nfsd/portlist' is
+> "File name too long".
 
-That'd be OK too.
-
->
-> 2.  What about all the other static inliney places this "shouldn't  
-> happen" ?
-
-Such as?
+Also worth noting that the buffer in question is nearly a page, which
+makes this a bit academic for now.  (Not an objection to the patch, just
+something to note.)
 
 --b.
 
->
-> I guess we kind of gave up on BUG'ing in all these places.
->
->> --b.
->>
->>> +	return 0;
->>> }
->>>
->>> static inline unsigned short svc_xprt_local_port(const struct  
->>> svc_xprt *xprt)
->>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->>> index af31988..8b08328 100644
->>> --- a/net/sunrpc/svcsock.c
->>> +++ b/net/sunrpc/svcsock.c
->>> @@ -426,13 +426,14 @@ static int svc_udp_recvfrom(struct svc_rqst  
->>> *rqstp)
->>> 		long		all[SVC_PKTINFO_SPACE / sizeof(long)];
->>> 	} buffer;
->>> 	struct cmsghdr *cmh = &buffer.hdr;
->>> -	int		err, len;
->>> 	struct msghdr msg = {
->>> 		.msg_name = svc_addr(rqstp),
->>> 		.msg_control = cmh,
->>> 		.msg_controllen = sizeof(buffer),
->>> 		.msg_flags = MSG_DONTWAIT,
->>> 	};
->>> +	size_t len;
->>> +	int err;
->>>
->>> 	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
->>> 	    /* udp sockets need large rcvbuf as all pending
->>> @@ -464,8 +465,8 @@ static int svc_udp_recvfrom(struct svc_rqst  
->>> *rqstp)
->>> 		return -EAGAIN;
->>> 	}
->>> 	len = svc_addr_len(svc_addr(rqstp));
->>> -	if (len < 0)
->>> -		return len;
->>> +	if (len == 0)
->>> +		return -EAFNOSUPPORT;
->>> 	rqstp->rq_addrlen = len;
->>> 	if (skb->tstamp.tv64 == 0) {
->>> 		skb->tstamp = ktime_get_real();
->>>
->
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfsd/nfsctl.c                |    2 +
+>  include/linux/sunrpc/svc_xprt.h |    2 +
+>  net/sunrpc/svc_xprt.c           |   56 +++++++++++++++++++++++++++------------
+>  3 files changed, 41 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index e051847..6a1cd90 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -918,7 +918,7 @@ static ssize_t __write_ports_names(char *buf)
+>  {
+>  	if (nfsd_serv == NULL)
+>  		return 0;
+> -	return svc_xprt_names(nfsd_serv, buf, 0);
+> +	return svc_xprt_names(nfsd_serv, buf, SIMPLE_TRANSACTION_LIMIT);
+>  }
+>  
+>  /*
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index d790c52..2223ae0 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -83,7 +83,7 @@ int	svc_port_is_privileged(struct sockaddr *sin);
+>  int	svc_print_xprts(char *buf, int maxlen);
+>  struct	svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+>  			const sa_family_t af, const unsigned short port);
+> -int	svc_xprt_names(struct svc_serv *serv, char *buf, int buflen);
+> +int	svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen);
+>  
+>  static inline void svc_xprt_get(struct svc_xprt *xprt)
+>  {
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index c200d92..96eb873 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -1097,36 +1097,58 @@ struct svc_xprt *svc_find_xprt(struct svc_serv *serv, const char *xcl_name,
+>  }
+>  EXPORT_SYMBOL_GPL(svc_find_xprt);
+>  
+> -/*
+> - * Format a buffer with a list of the active transports. A zero for
+> - * the buflen parameter disables target buffer overflow checking.
+> +static int svc_one_xprt_name(const struct svc_xprt *xprt,
+> +			     char *pos, int remaining)
+> +{
+> +	int len;
+> +
+> +	len = snprintf(pos, remaining, "%s %u\n",
+> +			xprt->xpt_class->xcl_name,
+> +			svc_xprt_local_port(xprt));
+> +	if (len >= remaining)
+> +		return -ENAMETOOLONG;
+> +	return len;
+> +}
+> +
+> +/**
+> + * svc_xprt_names - format a buffer with a list of transport names
+> + * @serv: pointer to an RPC service
+> + * @buf: pointer to a buffer to be filled in
+> + * @buflen: length of buffer to be filled in
+> + *
+> + * Fills in @buf with a string containing a list of transport names,
+> + * each name terminated with '\n'.
+> + *
+> + * Returns positive length of the filled-in string on success; otherwise
+> + * a negative errno value is returned if an error occurs.
+>   */
+> -int svc_xprt_names(struct svc_serv *serv, char *buf, int buflen)
+> +int svc_xprt_names(struct svc_serv *serv, char *buf, const int buflen)
+>  {
+>  	struct svc_xprt *xprt;
+> -	char xprt_str[64];
+> -	int totlen = 0;
+> -	int len;
+> +	int len, totlen;
+> +	char *pos;
+>  
+>  	/* Sanity check args */
+>  	if (!serv)
+>  		return 0;
+>  
+>  	spin_lock_bh(&serv->sv_lock);
+> +
+> +	pos = buf;
+> +	totlen = 0;
+>  	list_for_each_entry(xprt, &serv->sv_permsocks, xpt_list) {
+> -		len = snprintf(xprt_str, sizeof(xprt_str),
+> -			       "%s %d\n", xprt->xpt_class->xcl_name,
+> -			       svc_xprt_local_port(xprt));
+> -		/* If the string was truncated, replace with error string */
+> -		if (len >= sizeof(xprt_str))
+> -			strcpy(xprt_str, "name-too-long\n");
+> -		/* Don't overflow buffer */
+> -		len = strlen(xprt_str);
+> -		if (buflen && (len + totlen >= buflen))
+> +		len = svc_one_xprt_name(xprt, pos, buflen - totlen);
+> +		if (len < 0) {
+> +			*buf = '\0';
+> +			totlen = len;
+> +		}
+> +		if (len <= 0)
+>  			break;
+> -		strcpy(buf+totlen, xprt_str);
+> +
+> +		pos += len;
+>  		totlen += len;
+>  	}
+> +
+>  	spin_unlock_bh(&serv->sv_lock);
+>  	return totlen;
+>  }
+> 
