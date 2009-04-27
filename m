@@ -1,74 +1,70 @@
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are truncated
- by	the nfs rdma client.
-Date: Sun, 26 Apr 2009 13:57:10 -0500
-Message-ID: <49F4AE86.4090908@opengridcomputing.com>
-References: <20090424190510.3134.90405.stgit@build.ogc.int> <49F31A16.2080806@opengridcomputing.com>
+From: Andrew Savchenko <bircoph@gmail.com>
+Subject: [Bug] NFSv4 fails to work without ipv6 kernel module
+Date: Mon, 27 Apr 2009 19:03:07 +0400
+Message-ID: <200904271903.36379.bircoph@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: tmtalpey@gmail.com, tom@opengridcomputing.com,
-	linux-nfs@vger.kernel.org, vuhuong@mellanox.com
-To: Trond.Myklebust@netapp.com
+Content-Type: multipart/signed;
+  boundary="nextPart1408610.grtFb74At8";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:47420 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751288AbZDZS5M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Apr 2009 14:57:12 -0400
-In-Reply-To: <49F31A16.2080806@opengridcomputing.com>
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:48158 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752343AbZD0PDr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2009 11:03:47 -0400
+Received: by fxm2 with SMTP id 2so2365843fxm.37
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2009 08:03:46 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Trond,
+--nextPart1408610.grtFb74At8
+Content-Type: text/plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Turns out the server side is fine.  So this patch is good to go.
+Hello,
 
-Thanks,
+I have ipv6 support as a module (it may be needed in the recent=20
+future), but currently I want ipv6 to be disabled on my system, so=20
+I blacklisted this module. And here problems begin...
 
-Steve.
+NFSv3 works flawlessly:
+# mount 172.19.0.1:/home/ftp /mnt/nfs/
 
-Steve Wise wrote:
-> Trond,
->
-> There is a similar bug in the server side too.  I'll repost a single 
-> patch that fixes both.
->
-> Steve.
->
-> Steve Wise wrote:
->> A bad cast causes the iova_start, which in this case is a DMA bus 
->> address,
->> to be truncated on 32b systems.  No cast is needed.
->>
->> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
->> ---
->>
->>  net/sunrpc/xprtrdma/verbs.c |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->> index 3b21e0c..3a374f5 100644
->> --- a/net/sunrpc/xprtrdma/verbs.c
->> +++ b/net/sunrpc/xprtrdma/verbs.c
->> @@ -1489,7 +1489,7 @@ rpcrdma_register_frmr_external(struct 
->> rpcrdma_mr_seg *seg,
->>      memset(&frmr_wr, 0, sizeof frmr_wr);
->>      frmr_wr.opcode = IB_WR_FAST_REG_MR;
->>      frmr_wr.send_flags = 0;            /* unsignaled */
->> -    frmr_wr.wr.fast_reg.iova_start = (unsigned long)seg1->mr_dma;
->> +    frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
->>      frmr_wr.wr.fast_reg.page_list = 
->> seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
->>      frmr_wr.wr.fast_reg.page_list_len = i;
->>      frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
->>
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>   
->
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+but NFSv4 fails:
+# mount -t nfs4 172.19.0.1:/ /mnt/nfs/
+mount.nfs4: Cannot allocate memory
 
+After modprobe ipv6 it works:
+# mount -t nfs4 172.19.0.1:/ /mnt/nfs/
+
+I recompiled nfs-utils without ipv6 support, but this doesn't help.
+
+Here is my /etc/exports:
+/home/ftp 172.16.0.0/12
+(ro,async,crossmnt,no_subtree_check,fsid=3D0,all_squash) \
+        127.0.0.1/32
+(ro,async,crossmnt,no_subtree_check,fsid=3D0,all_squash)
+
+I use nfs-utils-1.1.5, I tested this on both vanilla linux kernels=20
+2.6.28.7 and 2.6.28.9.
+
+=2D-=20
+Best regards,
+Andrew
+
+--nextPart1408610.grtFb74At8
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.11 (GNU/Linux)
+
+iEYEABECAAYFAkn1yUgACgkQ2anJBBcsZw1xnACguw9gbp0W8kR3T8ObV57U0C+P
+I+gAoIAJgT1udobsO+cqEMq9cGtBytlR
+=y9Ah
+-----END PGP SIGNATURE-----
+
+--nextPart1408610.grtFb74At8--
