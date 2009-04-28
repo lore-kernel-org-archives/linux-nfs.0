@@ -1,100 +1,218 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/19] SUNRPC: Fix error return value of svc_addr_len()
-Date: Tue, 28 Apr 2009 11:31:36 -0400
-Message-ID: <20090428153136.GG17891@fieldses.org>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233124.17283.40252.stgit@ingres.1015granger.net> <20090425221706.GD5088@fieldses.org> <130B5E68-8FE2-42F3-BA82-5B67FCAC6ACD@oracle.com> <20090427235147.GD5108@fieldses.org> <AB35D779-F289-4F56-ABFC-968E6DDB7D0D@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [patch 03/29] knfsd: add userspace controls for stats tables
+Date: Tue, 28 Apr 2009 11:37:09 -0400
+Message-ID: <4993A7C8-342E-47BE-997A-AF18E5DF41BE@oracle.com>
+References: <20090331202800.739621000@sgi.com> <20090331202938.939647000@sgi.com> <20090425215745.GA5088@fieldses.org> <20090425220329.GB5088@fieldses.org> <A11EACD6-B05E-4A1A-A38C-F65B2DFB77B3@oracle.com> <20090427232225.GB5108@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>, Linux NFS ML <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:52604 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755084AbZD1Pbg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 11:31:36 -0400
-In-Reply-To: <AB35D779-F289-4F56-ABFC-968E6DDB7D0D@oracle.com>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:46510 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755847AbZD1Pha (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 11:37:30 -0400
+In-Reply-To: <20090427232225.GB5108@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 11:28:47AM -0400, Chuck Lever wrote:
->
-> On Apr 27, 2009, at 7:51 PM, J. Bruce Fields wrote:
->
->> On Mon, Apr 27, 2009 at 12:49:07PM -0400, Chuck Lever wrote:
->>> On Apr 25, 2009, at 6:17 PM, J. Bruce Fields wrote:
->>>> On Thu, Apr 23, 2009 at 07:31:25PM -0400, Chuck Lever wrote:
->>>>> The svc_addr_len() helper function returns -EAFNOSUPPORT if it
->>>>> doesn't
->>>>> recognize the address family of the passed-in socket address.
->>>>> However,
->>>>> the return type of this function is size_t, which means - 
->>>>> EAFNOSUPPORT
->>>>> is turned into a very large positive value in this case.
+
+On Apr 27, 2009, at 7:22 PM, J. Bruce Fields wrote:
+
+> On Mon, Apr 27, 2009 at 12:06:18PM -0400, Chuck Lever wrote:
+>> On Apr 25, 2009, at 6:03 PM, J. Bruce Fields wrote:
+>>> Pfft, did it again.
+>>>
+>>> --b.
+>>>
+>>> On Sat, Apr 25, 2009 at 05:57:45PM -0400, bfields wrote:
+>>>> On Wed, Apr 01, 2009 at 07:28:03AM +1100, Greg Banks wrote:
+>>>>> Add two control files to /proc/fs/nfsd:
 >>>>>
->>>>> The check in svc_udp_recvfrom() to see if the return value is less
->>>>> than zero therefore won't work at all.
+>>>>> * "stats_enabled" can be used to disable or enable the gathering
+>>>>>  of per-client and per-export statistics in the server.
 >>>>>
->>>>> Additionally, handle_connect_req() passes this value directly to
->>>>> memset().  This could cause memset() to clobber a large chunk of
->>>>> memory
->>>>> if svc_addr_len() has returned an error.  Currently the address
->>>>> family
->>>>> of these addresses, however, is known to be supported long before
->>>>> handle_connect_req() is called, so this isn't a real risk.
+>>>>> * "stats_prune_period" can be used to set the period at
+>>>>>  which the pruning timer runs, in seconds.  Unused stats
+>>>>>  entries will survive at most twice that time.
 >>>>>
->>>>> Change the error return value of svc_addr_len() to zero, which fits
->>>>> in
->>>>> the range of size_t, and is safer to pass to memset() directly.
->>>>>
->>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> Signed-off-by: Greg Banks <gnb@sgi.com>
 >>>>> ---
 >>>>>
->>>>> include/linux/sunrpc/svc_xprt.h |    5 +++--
->>>>> net/sunrpc/svcsock.c            |    7 ++++---
->>>>> 2 files changed, 7 insertions(+), 5 deletions(-)
+>>>>> fs/nfsd/nfsctl.c |   99 +++++++++++++++++++++++++++++++++++++++++ 
+>>>>> +++
+>>>>> 1 file changed, 99 insertions(+)
 >>>>>
->>>>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/ 
->>>>> sunrpc/
->>>>> svc_xprt.h
->>>>> index 0d9cb6e..d790c52 100644
->>>>> --- a/include/linux/sunrpc/svc_xprt.h
->>>>> +++ b/include/linux/sunrpc/svc_xprt.h
->>>>> @@ -118,7 +118,7 @@ static inline unsigned short  
->>>>> svc_addr_port(const
->>>>> struct sockaddr *sa)
->>>>> 	return 0;
+>>>>> Index: bfields/fs/nfsd/nfsctl.c
+>>>>> = 
+>>>>> ==================================================================
+>>>>> --- bfields.orig/fs/nfsd/nfsctl.c
+>>>>> +++ bfields/fs/nfsd/nfsctl.c
+>>>>> @@ -64,6 +64,8 @@ enum {
+>>>>> 	NFSD_Versions,
+>>>>> 	NFSD_Ports,
+>>>>> 	NFSD_MaxBlkSize,
+>>>>> +	NFSD_Stats_Enabled,
+>>>>> +	NFSD_Stats_Prune_Period,
+>>>>> 	/*
+>>>>> 	 * The below MUST come last.  Otherwise we leave a hole in
+>>>>> nfsd_files[]
+>>>>> 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
+>>>>> @@ -92,6 +94,8 @@ static ssize_t write_pool_threads(struct
+>>>>> static ssize_t write_versions(struct file *file, char *buf, size_t
+>>>>> size);
+>>>>> static ssize_t write_ports(struct file *file, char *buf, size_t
+>>>>> size);
+>>>>> static ssize_t write_maxblksize(struct file *file, char *buf,
+>>>>> size_t size);
+>>>>> +static ssize_t write_stats_enabled(struct file *file, char *buf,
+>>>>> size_t size);
+>>>>> +static ssize_t write_stats_prune_period(struct file *file, char
+>>>>> *buf, size_t size);
+>>>>> #ifdef CONFIG_NFSD_V4
+>>>>> static ssize_t write_leasetime(struct file *file, char *buf,
+>>>>> size_t size);
+>>>>> static ssize_t write_recoverydir(struct file *file, char *buf,
+>>>>> size_t size);
+>>>>> @@ -113,6 +117,8 @@ static ssize_t (*write_op[])(struct file
+>>>>> 	[NFSD_Versions] = write_versions,
+>>>>> 	[NFSD_Ports] = write_ports,
+>>>>> 	[NFSD_MaxBlkSize] = write_maxblksize,
+>>>>> +	[NFSD_Stats_Enabled] = write_stats_enabled,
+>>>>> +	[NFSD_Stats_Prune_Period] = write_stats_prune_period,
+>>>>> #ifdef CONFIG_NFSD_V4
+>>>>> 	[NFSD_Leasetime] = write_leasetime,
+>>>>> 	[NFSD_RecoveryDir] = write_recoverydir,
+>>>>> @@ -1121,6 +1127,97 @@ static ssize_t write_maxblksize(struct f
+>>>>> 	return sprintf(buf, "%d\n", nfsd_max_blksize);
 >>>>> }
 >>>>>
->>>>> -static inline size_t svc_addr_len(struct sockaddr *sa)
->>>>> +static inline size_t svc_addr_len(const struct sockaddr *sa)
->>>>> {
->>>>> 	switch (sa->sa_family) {
->>>>> 	case AF_INET:
->>>>> @@ -126,7 +126,8 @@ static inline size_t svc_addr_len(struct
->>>>> sockaddr *sa)
->>>>> 	case AF_INET6:
->>>>> 		return sizeof(struct sockaddr_in6);
->>>>> 	}
->>>>> -	return -EAFNOSUPPORT;
+>>>>> +extern int nfsd_stats_enabled;
 >>>>> +
+>>>>> +/**
+>>>>> + * write_stats_enabled - Set or report whether per-client/
+>>>>> + *			 per-export stats are enabled.
+>>>>> + *
+>>>>> + * Input:
+>>>>> + *			buf:		ignored
+>>>>> + *			size:		zero
+>>>>> + *
+>>>>> + * OR
+>>>>> + *
+>>>>> + * Input:
+>>>>> + * 			buf:		C string containing an unsigned
+>>>>> + * 					integer value representing the new value
+>>>>> + *			size:		non-zero length of C string in @buf
+>>>>> + * Output:
+>>>>> + *	On success:	passed-in buffer filled with '\n'-terminated C
+>>>>> string
+>>>>> + *			containing numeric value of the current setting
+>>>>> + *			return code is the size in bytes of the string
+>>>>> + *	On error:	return code is zero or a negative errno value
+>>>>> + */
+>>>>> +static ssize_t write_stats_enabled(struct file *file, char *buf,
+>>>>> size_t size)
+>>>>> +{
+>>>>> +	char *mesg = buf;
+>>>>> +	if (size > 0) {
+>>>>> +		int enabled;
+>>>>> +		int rv = get_int(&mesg, &enabled);
+>>>>> +		if (rv)
+>>>>> +			return rv;
+>>>>> +		/* check `enabled' against allowed range */
+>>>>> +		if (enabled < 0 || enabled > 1)
+>>>>> +			return -EINVAL;
+>>>>> +		/*
+>>>>> +		 * We can change the enabled flag at any time without
+>>>>> +		 * locking.  All it controls is whether stats are
+>>>>> +		 * gathered for new incoming NFS calls.  Old gathered
+>>>>> +		 * stats still sit around in the hash tables until
+>>>>> +		 * naturally pruned.
+>>>>> +		 */
+>>>>> +		nfsd_stats_enabled = enabled;
+>>>>> +	}
+>>>>> +	return sprintf(buf, "%d\n", nfsd_stats_enabled);
+>>>>> +}
+>>>>> +
+>>>>> +extern int nfsd_stats_prune_period;
+>>>>> +
+>>>>> +/**
+>>>>> + * write_stats_prune_period - Set or report the period for  
+>>>>> pruning
+>>>>> + *			      old per-client/per-export stats entries,
+>>>>> + *			      in seconds.
+>>>>> + *
+>>>>> + * Input:
+>>>>> + *			buf:		ignored
+>>>>> + *			size:		zero
+>>>>> + *
+>>>>> + * OR
+>>>>> + *
+>>>>> + * Input:
+>>>>> + * 			buf:		C string containing an unsigned
+>>>>> + * 					integer value representing the new value
+>>>>> + *			size:		non-zero length of C string in @buf
+>>>>> + * Output:
+>>>>> + *	On success:	passed-in buffer filled with '\n'-terminated C
+>>>>> string
+>>>>> + *			containing numeric value of the current setting
+>>>>> + *			return code is the size in bytes of the string
+>>>>> + *	On error:	return code is zero or a negative errno value
+>>>>> + */
 >>>>
->>>> May as well stick a WARN() here too if only as a shorthand way of
->>>> documenting that this isn't meant to happen.
->>>
->>> Sounds reasonable, but:
->>>
->>> 1.  I thought BUG() was the way to document "shouldn't happen," and
+>>>> Just an idle remark, don't worry about this for now, but: we might
+>>>> want
+>>>> to rein in this write_*() comment format a little some day.  A  
+>>>> lot of
+>>>> the content seems duplicated.
 >>
->> That'd be OK too.
->>
->>>
->>> 2.  What about all the other static inliney places this "shouldn't
->>> happen" ?
->>
->> Such as?
+>> I disagree.
 >
-> nlm_cmp_addr(), nlm_privileged_requester(), svc_addr_port(),  
-> nfs_sockaddr_match_ipaddr(), nfs_sockaddr_cmp(), nfs_server_get_key(),  
-> nfs_set_port(), nfs_verify_server_address(), and so on.
+> How?  The below seems to be an arguing against *removing* the  
+> comments,
+> or removing information from them, neither of which I'd be in favor  
+> of.
 
-I see.  OK, I'm fine with leaving it as is.--b.
+Then I misunderstood what you meant by "rein in".
+
+The apparent content duplication is because these functions are all  
+slightly different.  What we had before was a single description of  
+the return values at the top of the files that more or less fit each  
+proc file, but didn't precisely fit any but the oldest.
+
+(Responding a bit to Greg) IMO highlighting the differences instead  
+means a person trying to understand this interface has to read the  
+whole damn nfsctl.c file instead of looking at the one piece s/he is  
+interested in.  This is documentation, not code, so I think a little  
+text duplication is OK or even actually preferred.
+
+> --b.
+>
+>> The present nfsctl user space API is entirely ad hoc.
+>>
+>> Although sometimes the behavior is the same, each function/file can
+>> behave slightly differently than the others.  We have to be very
+>> specific about this here because the comments serve as both "user"
+>> documentation and as code/API specification.
+>>
+>> Because this code wasn't adequately documented, features have been  
+>> added
+>> over time without a close examination of the operation of other  
+>> parts of
+>> this code.
+>>
+>> If you really want to simplify the comments, we should consider
+>> simplifying the API first, imo.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
