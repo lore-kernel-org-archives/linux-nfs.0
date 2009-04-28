@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 21/31] nfsd41: obliterate nfsd4_set_statp
-Date: Tue, 28 Apr 2009 12:59:55 -0400
-Message-ID: <1240938005-23778-21-git-send-email-andros@netapp.com>
+Subject: [PATCH 11/31] nfsd41: set the session maximum response size cached
+Date: Tue, 28 Apr 2009 12:59:45 -0400
+Message-ID: <1240938005-23778-11-git-send-email-andros@netapp.com>
 References: <1240938005-23778-1-git-send-email-andros@netapp.com>
  <1240938005-23778-2-git-send-email-andros@netapp.com>
  <1240938005-23778-3-git-send-email-andros@netapp.com>
@@ -12,85 +12,56 @@ References: <1240938005-23778-1-git-send-email-andros@netapp.com>
  <1240938005-23778-8-git-send-email-andros@netapp.com>
  <1240938005-23778-9-git-send-email-andros@netapp.com>
  <1240938005-23778-10-git-send-email-andros@netapp.com>
- <1240938005-23778-11-git-send-email-andros@netapp.com>
- <1240938005-23778-12-git-send-email-andros@netapp.com>
- <1240938005-23778-13-git-send-email-andros@netapp.com>
- <1240938005-23778-14-git-send-email-andros@netapp.com>
- <1240938005-23778-15-git-send-email-andros@netapp.com>
- <1240938005-23778-16-git-send-email-andros@netapp.com>
- <1240938005-23778-17-git-send-email-andros@netapp.com>
- <1240938005-23778-18-git-send-email-andros@netapp.com>
- <1240938005-23778-19-git-send-email-andros@netapp.com>
- <1240938005-23778-20-git-send-email-andros@netapp.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:7762 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757844AbZD1RBH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2009 13:01:07 -0400
-In-Reply-To: <1240938005-23778-20-git-send-email-andros@netapp.com>
+	id S1760498AbZD1RBJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Apr 2009 13:01:09 -0400
+In-Reply-To: <1240938005-23778-10-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Replacing page based drc cache with buffer based drc cache.
+We won't cache the SEQUENCE operation because we can encode it from the session
+slot values.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c       |    8 --------
- fs/nfsd/nfssvc.c          |    4 ----
- include/linux/nfsd/xdr4.h |    1 -
- 3 files changed, 0 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ff43793..b852cab 100644
+index a9e722e..187e1da 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1008,14 +1008,6 @@ out_err:
- 	return;
+@@ -448,6 +448,12 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+ 	}
  }
  
--void
--nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp)
--{
--	struct nfsd4_compoundres *resp = rqstp->rq_resp;
--
--	resp->cstate.statp = statp;
--}
--
++/* rpc header + encoded OP_SEQUENCE reply + NFSD_SLOT_CACHE_SIZE in bytes */
++#define NFSD_MAX_RESPONSE_CACHED  ((RPC_MAX_HEADER_WITH_AUTH + \
++				  2 + /* OP_SEQUENCE header */ \
++				  XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5 + \
++				  XDR_QUADLEN(NFSD_SLOT_CACHE_SIZE)) << 2)
++
  /*
-  * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
-  * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 37633f5..d14adea 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -572,10 +572,6 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- 		+ rqstp->rq_res.head[0].iov_len;
- 	rqstp->rq_res.head[0].iov_len += sizeof(__be32);
+  * fchan holds the client values on input, and the server values on output
+  */
+@@ -469,9 +475,7 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+ 		fchan->maxresp_sz = maxcount;
+ 	session_fchan->maxresp_sz = fchan->maxresp_sz;
  
--	/* NFSv4.1 DRC requires statp */
--	if (rqstp->rq_vers == 4)
--		nfsd4_set_statp(rqstp, statp);
--
- 	/* Now call the procedure handler, and encode NFS status. */
- 	nfserr = proc->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
- 	nfserr = map_new_errors(rqstp->rq_vers, nfserr);
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 967129e..cd51fa8 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -51,7 +51,6 @@ struct nfsd4_compound_state {
- 	/* For sessions DRC */
- 	struct nfsd4_session	*session;
- 	struct nfsd4_slot	*slot;
--	__be32			*statp;
- 	__be32			*datap;
- 	u32			minorversion;
- 	u32			status;
+-	/* Set the max response cached size our default which is
+-	 * a multiple of PAGE_SIZE and small */
+-	session_fchan->maxresp_cached = NFSD_PAGES_PER_SLOT * PAGE_SIZE;
++	session_fchan->maxresp_cached = NFSD_MAX_RESPONSE_CACHED;
+ 	fchan->maxresp_cached = session_fchan->maxresp_cached;
+ 
+ 	/* Use the client's maxops if possible */
 -- 
 1.5.4.3
 
