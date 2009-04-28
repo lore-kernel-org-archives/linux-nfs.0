@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 12/31] nfsd41: use static buffers for sessions DRC
-Date: Tue, 28 Apr 2009 12:59:46 -0400
-Message-ID: <1240938005-23778-12-git-send-email-andros@netapp.com>
+Subject: [PATCH 31/31] nfsd41: only reference the session on non-replay sequence
+Date: Tue, 28 Apr 2009 13:00:05 -0400
+Message-ID: <1240938005-23778-31-git-send-email-andros@netapp.com>
 References: <1240938005-23778-1-git-send-email-andros@netapp.com>
  <1240938005-23778-2-git-send-email-andros@netapp.com>
  <1240938005-23778-3-git-send-email-andros@netapp.com>
@@ -13,120 +13,106 @@ References: <1240938005-23778-1-git-send-email-andros@netapp.com>
  <1240938005-23778-9-git-send-email-andros@netapp.com>
  <1240938005-23778-10-git-send-email-andros@netapp.com>
  <1240938005-23778-11-git-send-email-andros@netapp.com>
+ <1240938005-23778-12-git-send-email-andros@netapp.com>
+ <1240938005-23778-13-git-send-email-andros@netapp.com>
+ <1240938005-23778-14-git-send-email-andros@netapp.com>
+ <1240938005-23778-15-git-send-email-andros@netapp.com>
+ <1240938005-23778-16-git-send-email-andros@netapp.com>
+ <1240938005-23778-17-git-send-email-andros@netapp.com>
+ <1240938005-23778-18-git-send-email-andros@netapp.com>
+ <1240938005-23778-19-git-send-email-andros@netapp.com>
+ <1240938005-23778-20-git-send-email-andros@netapp.com>
+ <1240938005-23778-21-git-send-email-andros@netapp.com>
+ <1240938005-23778-22-git-send-email-andros@netapp.com>
+ <1240938005-23778-23-git-send-email-andros@netapp.com>
+ <1240938005-23778-24-git-send-email-andros@netapp.com>
+ <1240938005-23778-25-git-send-email-andros@netapp.com>
+ <1240938005-23778-26-git-send-email-andros@netapp.com>
+ <1240938005-23778-27-git-send-email-andros@netapp.com>
+ <1240938005-23778-28-git-send-email-andros@netapp.com>
+ <1240938005-23778-29-git-send-email-andros@netapp.com>
+ <1240938005-23778-30-git-send-email-andros@netapp.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:50815 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757973AbZD1RAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2009 13:00:32 -0400
-In-Reply-To: <1240938005-23778-11-git-send-email-andros@netapp.com>
+	id S1759586AbZD1RAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Apr 2009 13:00:42 -0400
+In-Reply-To: <1240938005-23778-30-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Change from page based to memory based NFSv4.1 DRC.
+Solo CREATE_SESSION replays used to share the logic in nfsdsvc_enc_compound_res
+and use nfsd4_store_cache_entry, but not set the cstate session nor take a
+reference on the session. CREATE_SESSION no longer uses nfsd4_store_cache_entry.
 
-We need to allocate memory for the session DRC in the CREATE_SESSION operation
-because of the guarantee to the client that the memory resource is available
-for caching responses.
-
-In preparation to remove struct nfsd4_cache_entry, add static storage to
-struct nfsd4_slot to hold up to NFSD_SLOT_CACH_SIZE of all encoded operation
-data past the encoded sequence operation.
+The SEQUENCE operation only needs to reference the session to call
+nfsd4_store_cache_entry.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c        |    9 +++++++++
- fs/nfsd/nfs4xdr.c          |    1 +
- include/linux/nfsd/state.h |    2 ++
- include/linux/nfsd/xdr4.h  |    1 +
- 4 files changed, 13 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c |    9 ++++-----
+ fs/nfsd/nfs4xdr.c   |   14 ++++++--------
+ 2 files changed, 10 insertions(+), 13 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 187e1da..fecee33 100644
+index 1ea62cd..1407848 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1066,6 +1066,7 @@ nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
- void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
- 	struct svc_rqst *rqstp = resp->rqstp;
- 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-@@ -1090,10 +1091,14 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 	if (nfsd4_not_cached(resp)) {
- 		entry->ce_resused = 0;
- 		entry->ce_rpchdrlen = 0;
-+		slot->sl_datalen = 0;
- 		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
- 			resp->cstate.slot->sl_cache_entry.ce_cachethis);
- 		return;
- 	}
-+	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
-+	memcpy(slot->sl_data, resp->cstate.datap, slot->sl_datalen);
-+
- 	entry->ce_resused = rqstp->rq_resused;
- 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
- 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
-@@ -1141,6 +1146,7 @@ __be32
- nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 			 struct nfsd4_sequence *seq)
- {
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
- 	__be32 status;
+@@ -1435,13 +1435,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	cstate->slot = slot;
+ 	cstate->session = session;
  
-@@ -1161,6 +1167,9 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 		return nfs_ok;
- 	}
- 
-+	/* The sequence operation has been encoded, cstate->datap set. */
-+	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
++	/* Hold a session reference until done caching the response */
++	nfsd4_get_session(session);
 +
- 	if (!nfsd41_copy_replay_data(resp, entry)) {
- 		/*
- 		 * Not enough room to use the replay rpc header, send the
+ replay_cache:
+-	/* Renew the clientid on success and on replay.
+-	 * Hold a session reference until done processing the compound:
+-	 * nfsd4_put_session called only if the cstate slot is set.
+-	 */
++	/* Renew the clientid on success and on replay */
+ 	renew_client(session->se_client);
+-	nfsd4_get_session(session);
+ out:
+ 	spin_unlock(&sessionid_lock);
+ 	dprintk("%s: return %d\n", __func__, ntohl(status));
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 238612e..41ac385 100644
+index 9e8464c..9f98618 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3111,6 +3111,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- 	WRITE32(0);
- 
- 	ADJUST_ARGS();
-+	resp->cstate.datap = p;	/* DRC cache data pointer */
- 	return 0;
+@@ -3343,6 +3343,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	/*
+ 	 * All that remains is to write the tag and operation count...
+ 	 */
++	struct nfsd4_compound_state *cs = &resp->cstate;
+ 	struct kvec *iov;
+ 	p = resp->tagp;
+ 	*p++ = htonl(resp->taglen);
+@@ -3356,14 +3357,11 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 		iov = &rqstp->rq_res.head[0];
+ 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+ 	BUG_ON(iov->iov_len > PAGE_SIZE);
+-	if (nfsd4_has_session(&resp->cstate)) {
+-		if (resp->cstate.status != nfserr_replay_cache) {
+-			nfsd4_store_cache_entry(resp);
+-			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+-			resp->cstate.slot->sl_inuse = 0;
+-		}
+-		if (resp->cstate.session)
+-			nfsd4_put_session(resp->cstate.session);
++	if (nfsd4_has_session(cs) && cs->status != nfserr_replay_cache) {
++		nfsd4_store_cache_entry(resp);
++		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
++		cs->slot->sl_inuse = 0;
++		nfsd4_put_session(cs->session);
+ 	}
+ 	return 1;
  }
- 
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 3580d55..362c684 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -126,6 +126,8 @@ struct nfsd4_cache_entry {
- struct nfsd4_slot {
- 	bool				sl_inuse;
- 	u32				sl_seqid;
-+	u32				sl_datalen;
-+	char				sl_data[NFSD_SLOT_CACHE_SIZE];
- 	struct nfsd4_cache_entry	sl_cache_entry;
- };
- 
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index ac00985..52589ba 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
- 	struct nfsd4_session	*session;
- 	struct nfsd4_slot	*slot;
- 	__be32			*statp;
-+	__be32			*datap;
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
 -- 
 1.5.4.3
 
