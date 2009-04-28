@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 16/31] nfsd41: obliterate nfsd4_copy_pages
-Date: Tue, 28 Apr 2009 12:59:50 -0400
-Message-ID: <1240938005-23778-16-git-send-email-andros@netapp.com>
+Subject: [PATCH 27/31] nfsd41: use the maximum operations per compound in nfsd4_compoundargs
+Date: Tue, 28 Apr 2009 13:00:01 -0400
+Message-ID: <1240938005-23778-27-git-send-email-andros@netapp.com>
 References: <1240938005-23778-1-git-send-email-andros@netapp.com>
  <1240938005-23778-2-git-send-email-andros@netapp.com>
  <1240938005-23778-3-git-send-email-andros@netapp.com>
@@ -17,78 +17,67 @@ References: <1240938005-23778-1-git-send-email-andros@netapp.com>
  <1240938005-23778-13-git-send-email-andros@netapp.com>
  <1240938005-23778-14-git-send-email-andros@netapp.com>
  <1240938005-23778-15-git-send-email-andros@netapp.com>
+ <1240938005-23778-16-git-send-email-andros@netapp.com>
+ <1240938005-23778-17-git-send-email-andros@netapp.com>
+ <1240938005-23778-18-git-send-email-andros@netapp.com>
+ <1240938005-23778-19-git-send-email-andros@netapp.com>
+ <1240938005-23778-20-git-send-email-andros@netapp.com>
+ <1240938005-23778-21-git-send-email-andros@netapp.com>
+ <1240938005-23778-22-git-send-email-andros@netapp.com>
+ <1240938005-23778-23-git-send-email-andros@netapp.com>
+ <1240938005-23778-24-git-send-email-andros@netapp.com>
+ <1240938005-23778-25-git-send-email-andros@netapp.com>
+ <1240938005-23778-26-git-send-email-andros@netapp.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:50875 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760153AbZD1RAs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2009 13:00:48 -0400
-In-Reply-To: <1240938005-23778-15-git-send-email-andros@netapp.com>
+	id S1760446AbZD1RA7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Apr 2009 13:00:59 -0400
+In-Reply-To: <1240938005-23778-26-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Replacing page based drc cache with buffer based drc cache.
+The size of the nfsd4_op array in nfsd4_compoundargs determines the
+supported maximum number of operations.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   21 ---------------------
- 1 files changed, 0 insertions(+), 21 deletions(-)
+ include/linux/nfsd/state.h |    3 +--
+ include/linux/nfsd/xdr4.h  |    2 +-
+ 2 files changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 05083d3..3d1e33a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1040,19 +1040,6 @@ nfsd4_release_respages(struct page **respages, short resused)
- 	}
- }
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 0b07d40..49e3f60 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -107,8 +107,7 @@ struct nfs4_callback {
  
--static void
--nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
--{
--	int i;
--
--	for (i = 0; i < count; i++) {
--		topages[i] = frompages[i];
--		if (!topages[i])
--			continue;
--		get_page(topages[i]);
--	}
--}
--
- /*
-  * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
-  * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
-@@ -1102,8 +1089,6 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 	entry->ce_resused = rqstp->rq_resused;
- 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
- 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
--	nfsd4_copy_pages(entry->ce_respages, rqstp->rq_respages,
--			 entry->ce_resused);
- 	entry->ce_datav.iov_base = resp->cstate.statp;
- 	entry->ce_datav.iov_len = resv->iov_len - ((char *)resp->cstate.statp -
- 				(char *)page_address(rqstp->rq_respages[0]));
-@@ -1176,17 +1161,11 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 		 * cached header. Release all the allocated result pages.
- 		 */
- 		svc_free_res_pages(resp->rqstp);
--		nfsd4_copy_pages(resp->rqstp->rq_respages, entry->ce_respages,
--			entry->ce_resused);
- 	} else {
- 		/* Release all but the first allocated result page */
+ #define NFSD_MAX_SLOTS_PER_SESSION	16
+ #define NFSD_SLOT_CACHE_SIZE		512
+-/* Maximum number of operations per session compound */
+-#define NFSD_MAX_OPS_PER_COMPOUND	16
++#define NFSD_MAX_OPS_PER_COMPOUND	8
  
- 		resp->rqstp->rq_resused--;
- 		svc_free_res_pages(resp->rqstp);
--
--		nfsd4_copy_pages(&resp->rqstp->rq_respages[1],
--				 &entry->ce_respages[1],
--				 entry->ce_resused - 1);
- 	}
+ struct nfsd4_slot {
+ 	bool	sl_inuse;
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index cd51fa8..bc8fab3 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -455,7 +455,7 @@ struct nfsd4_compoundargs {
+ 	u32				minorversion;
+ 	u32				opcnt;
+ 	struct nfsd4_op			*ops;
+-	struct nfsd4_op			iops[8];
++	struct nfsd4_op			iops[NFSD_MAX_OPS_PER_COMPOUND];
+ };
  
- 	resp->rqstp->rq_resused = entry->ce_resused;
+ struct nfsd4_compoundres {
 -- 
 1.5.4.3
 
