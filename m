@@ -1,218 +1,103 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [patch 03/29] knfsd: add userspace controls for stats tables
-Date: Tue, 28 Apr 2009 12:03:49 -0400
-Message-ID: <223A8BE7-4083-4222-83B8-6BB6C4107016@oracle.com>
-References: <20090331202800.739621000@sgi.com> <20090331202938.939647000@sgi.com> <20090425215745.GA5088@fieldses.org> <20090425220329.GB5088@fieldses.org> <A11EACD6-B05E-4A1A-A38C-F65B2DFB77B3@oracle.com> <20090427232225.GB5108@fieldses.org> <4993A7C8-342E-47BE-997A-AF18E5DF41BE@oracle.com> <20090428155736.GH17891@fieldses.org>
+Subject: Re: [Bug] NFSv4 fails to work without ipv6 kernel module
+Date: Tue, 28 Apr 2009 12:16:52 -0400
+Message-ID: <E3A82BE4-E39C-4E4E-9CBA-4CD182E73CBB@oracle.com>
+References: <200904271903.36379.bircoph@gmail.com> <1810FE6E-D2AF-4ED3-BE34-F6117A8D9B46@oracle.com> <200904280444.00206.bircoph@gmail.com>
 Mime-Version: 1.0 (Apple Message framework v930.3)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>, Linux NFS ML <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+To: Andrew Savchenko <bircoph@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:21749 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762904AbZD1QEF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:04:05 -0400
-In-Reply-To: <20090428155736.GH17891@fieldses.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:60275 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932342AbZD1QRD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:17:03 -0400
+In-Reply-To: <200904280444.00206.bircoph@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 28, 2009, at 11:57 AM, J. Bruce Fields wrote:
-
-> On Tue, Apr 28, 2009 at 11:37:09AM -0400, Chuck Lever wrote:
->>
->> On Apr 27, 2009, at 7:22 PM, J. Bruce Fields wrote:
->>
->>> On Mon, Apr 27, 2009 at 12:06:18PM -0400, Chuck Lever wrote:
->>>> On Apr 25, 2009, at 6:03 PM, J. Bruce Fields wrote:
->>>>> Pfft, did it again.
->>>>>
->>>>> --b.
->>>>>
->>>>> On Sat, Apr 25, 2009 at 05:57:45PM -0400, bfields wrote:
->>>>>> On Wed, Apr 01, 2009 at 07:28:03AM +1100, Greg Banks wrote:
->>>>>>> Add two control files to /proc/fs/nfsd:
->>>>>>>
->>>>>>> * "stats_enabled" can be used to disable or enable the gathering
->>>>>>> of per-client and per-export statistics in the server.
->>>>>>>
->>>>>>> * "stats_prune_period" can be used to set the period at
->>>>>>> which the pruning timer runs, in seconds.  Unused stats
->>>>>>> entries will survive at most twice that time.
->>>>>>>
->>>>>>> Signed-off-by: Greg Banks <gnb@sgi.com>
->>>>>>> ---
->>>>>>>
->>>>>>> fs/nfsd/nfsctl.c |   99
->>>>>>> ++++++++++++++++++++++++++++++++++++++++++++
->>>>>>> 1 file changed, 99 insertions(+)
->>>>>>>
->>>>>>> Index: bfields/fs/nfsd/nfsctl.c
->>>>>>> =
->>>>>>> =
->>>>>>> =
->>>>>>> ================================================================
->>>>>>> --- bfields.orig/fs/nfsd/nfsctl.c
->>>>>>> +++ bfields/fs/nfsd/nfsctl.c
->>>>>>> @@ -64,6 +64,8 @@ enum {
->>>>>>> 	NFSD_Versions,
->>>>>>> 	NFSD_Ports,
->>>>>>> 	NFSD_MaxBlkSize,
->>>>>>> +	NFSD_Stats_Enabled,
->>>>>>> +	NFSD_Stats_Prune_Period,
->>>>>>> 	/*
->>>>>>> 	 * The below MUST come last.  Otherwise we leave a hole in
->>>>>>> nfsd_files[]
->>>>>>> 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
->>>>>>> @@ -92,6 +94,8 @@ static ssize_t write_pool_threads(struct
->>>>>>> static ssize_t write_versions(struct file *file, char *buf,  
->>>>>>> size_t
->>>>>>> size);
->>>>>>> static ssize_t write_ports(struct file *file, char *buf, size_t
->>>>>>> size);
->>>>>>> static ssize_t write_maxblksize(struct file *file, char *buf,
->>>>>>> size_t size);
->>>>>>> +static ssize_t write_stats_enabled(struct file *file, char  
->>>>>>> *buf,
->>>>>>> size_t size);
->>>>>>> +static ssize_t write_stats_prune_period(struct file *file, char
->>>>>>> *buf, size_t size);
->>>>>>> #ifdef CONFIG_NFSD_V4
->>>>>>> static ssize_t write_leasetime(struct file *file, char *buf,
->>>>>>> size_t size);
->>>>>>> static ssize_t write_recoverydir(struct file *file, char *buf,
->>>>>>> size_t size);
->>>>>>> @@ -113,6 +117,8 @@ static ssize_t (*write_op[])(struct file
->>>>>>> 	[NFSD_Versions] = write_versions,
->>>>>>> 	[NFSD_Ports] = write_ports,
->>>>>>> 	[NFSD_MaxBlkSize] = write_maxblksize,
->>>>>>> +	[NFSD_Stats_Enabled] = write_stats_enabled,
->>>>>>> +	[NFSD_Stats_Prune_Period] = write_stats_prune_period,
->>>>>>> #ifdef CONFIG_NFSD_V4
->>>>>>> 	[NFSD_Leasetime] = write_leasetime,
->>>>>>> 	[NFSD_RecoveryDir] = write_recoverydir,
->>>>>>> @@ -1121,6 +1127,97 @@ static ssize_t write_maxblksize(struct f
->>>>>>> 	return sprintf(buf, "%d\n", nfsd_max_blksize);
->>>>>>> }
->>>>>>>
->>>>>>> +extern int nfsd_stats_enabled;
->>>>>>> +
->>>>>>> +/**
->>>>>>> + * write_stats_enabled - Set or report whether per-client/
->>>>>>> + *			 per-export stats are enabled.
->>>>>>> + *
->>>>>>> + * Input:
->>>>>>> + *			buf:		ignored
->>>>>>> + *			size:		zero
->>>>>>> + *
->>>>>>> + * OR
->>>>>>> + *
->>>>>>> + * Input:
->>>>>>> + * 			buf:		C string containing an unsigned
->>>>>>> + * 					integer value representing the new value
->>>>>>> + *			size:		non-zero length of C string in @buf
->>>>>>> + * Output:
->>>>>>> + *	On success:	passed-in buffer filled with '\n'-terminated C
->>>>>>> string
->>>>>>> + *			containing numeric value of the current setting
->>>>>>> + *			return code is the size in bytes of the string
->>>>>>> + *	On error:	return code is zero or a negative errno value
->>>>>>> + */
->>>>>>> +static ssize_t write_stats_enabled(struct file *file, char  
->>>>>>> *buf,
->>>>>>> size_t size)
->>>>>>> +{
->>>>>>> +	char *mesg = buf;
->>>>>>> +	if (size > 0) {
->>>>>>> +		int enabled;
->>>>>>> +		int rv = get_int(&mesg, &enabled);
->>>>>>> +		if (rv)
->>>>>>> +			return rv;
->>>>>>> +		/* check `enabled' against allowed range */
->>>>>>> +		if (enabled < 0 || enabled > 1)
->>>>>>> +			return -EINVAL;
->>>>>>> +		/*
->>>>>>> +		 * We can change the enabled flag at any time without
->>>>>>> +		 * locking.  All it controls is whether stats are
->>>>>>> +		 * gathered for new incoming NFS calls.  Old gathered
->>>>>>> +		 * stats still sit around in the hash tables until
->>>>>>> +		 * naturally pruned.
->>>>>>> +		 */
->>>>>>> +		nfsd_stats_enabled = enabled;
->>>>>>> +	}
->>>>>>> +	return sprintf(buf, "%d\n", nfsd_stats_enabled);
->>>>>>> +}
->>>>>>> +
->>>>>>> +extern int nfsd_stats_prune_period;
->>>>>>> +
->>>>>>> +/**
->>>>>>> + * write_stats_prune_period - Set or report the period for
->>>>>>> pruning
->>>>>>> + *			      old per-client/per-export stats entries,
->>>>>>> + *			      in seconds.
->>>>>>> + *
->>>>>>> + * Input:
->>>>>>> + *			buf:		ignored
->>>>>>> + *			size:		zero
->>>>>>> + *
->>>>>>> + * OR
->>>>>>> + *
->>>>>>> + * Input:
->>>>>>> + * 			buf:		C string containing an unsigned
->>>>>>> + * 					integer value representing the new value
->>>>>>> + *			size:		non-zero length of C string in @buf
->>>>>>> + * Output:
->>>>>>> + *	On success:	passed-in buffer filled with '\n'-terminated C
->>>>>>> string
->>>>>>> + *			containing numeric value of the current setting
->>>>>>> + *			return code is the size in bytes of the string
->>>>>>> + *	On error:	return code is zero or a negative errno value
->>>>>>> + */
->>>>>>
->>>>>> Just an idle remark, don't worry about this for now, but: we  
->>>>>> might
->>>>>> want
->>>>>> to rein in this write_*() comment format a little some day.  A
->>>>>> lot of
->>>>>> the content seems duplicated.
->>>>
->>>> I disagree.
->>>
->>> How?  The below seems to be an arguing against *removing* the
->>> comments,
->>> or removing information from them, neither of which I'd be in favor
->>> of.
->>
->> Then I misunderstood what you meant by "rein in".
->>
->> The apparent content duplication is because these functions are all
->> slightly different.  What we had before was a single description of  
->> the
->> return values at the top of the files that more or less fit each proc
->> file, but didn't precisely fit any but the oldest.
->>
->> (Responding a bit to Greg) IMO highlighting the differences instead
->> means a person trying to understand this interface has to read the  
->> whole
->> damn nfsctl.c file instead of looking at the one piece s/he is
->> interested in.  This is documentation, not code, so I think a little
->> text duplication is OK or even actually preferred.
+On Apr 27, 2009, at 8:43 PM, Andrew Savchenko wrote:
+> Hello,
 >
-> Agreed, and I agree that nobody should have to read the whole file.   
-> But
-> appropriate cross-references ("foo() behaves like bar() except...")
-> could prevent that.  As long as we don't require following too many  
-> such
-> references, I think the burden of tracking following references  
-> would be
-> outweighed by the benefits of more concise descriptions.
+> On Monday 27 April 2009, Chuck Lever wrote:
+>> On Apr 27, 2009, at 11:03 AM, Andrew Savchenko wrote:
+>>> Hello,
+>>>
+>>> I have ipv6 support as a module (it may be needed in the
+>>> recent future), but currently I want ipv6 to be disabled on my
+>>> system, so I blacklisted this module. And here problems
+>>> begin...
+>>>
+>>> NFSv3 works flawlessly:
+>>> # mount 172.19.0.1:/home/ftp /mnt/nfs/
+>>>
+>>> but NFSv4 fails:
+>>> # mount -t nfs4 172.19.0.1:/ /mnt/nfs/
+>>> mount.nfs4: Cannot allocate memory
+>>>
+>>> After modprobe ipv6 it works:
+>>> # mount -t nfs4 172.19.0.1:/ /mnt/nfs/
+>>>
+>>> I recompiled nfs-utils without ipv6 support, but this doesn't
+>>> help.
+>>>
+>>> Here is my /etc/exports:
+>>> /home/ftp 172.16.0.0/12
+>>> (ro,async,crossmnt,no_subtree_check,fsid=0,all_squash) \
+>>>       127.0.0.1/32
+>>> (ro,async,crossmnt,no_subtree_check,fsid=0,all_squash)
+>>>
+>>> I use nfs-utils-1.1.5, I tested this on both vanilla linux
+>>> kernels 2.6.28.7 and 2.6.28.9.
+>>
+>> Have you tried this with 2.6.29?
+>
+> I just tried with vanilla 2.6.29.1. Things became even worse. Now
+> not only NFSv4 fails to mount as usual, but NFSv3 fails too:
+>
+> # mount 172.19.0.1:/home/ftp /mnt/orionis
+> mount.nfs: Address family not supported by protocol
+>
+> And following error appears in kernel log multiple times:
+> RPC: failed to contact local rpcbind server (errno 5).
+>
+> I attached strace -f for both mount attempts. The problem is in
+> mount() syscall in both cases, thus somewhere inside the kernel...
+>
+> With ipv6 module loaded all works fine.
 
-I'm OK with more brevity in these comments as long as we recognize  
-that the devil is in the details.  We should preserve the specificity  
-of the API descriptions.
+Right, this isn't an nfs-utils problem, it's an issue in the kernel  
+(so the strace isn't terribly informative).  2.6.29 is supposed to  
+have addressed this problem, but maybe you are hitting a new way that  
+not having ipv6.ko loaded is buggering us.
 
-I think it was you who was complaining recently about knowing whether  
-a \n or a \0 is expected at the end of some of these strings.  ;-)
+If you're building these kernels yourself, why not disable CONFIG_IPV6?
+
+>> You can also try building 2.6.28 with CONFIG_SUNRPC_REGISTER_V4
+>> disabled.
+>
+> With this option disabled errno 5 (see above) disappeared from
+> logs, but mount fails with the same errors. Yet again, with ipv6
+> module loaded it works ok.
+
+I can't reproduce here on 2.6.30-rc2, so it may be just an issue with  
+2.6.29.  You can enable debug printks to see what the kernel thinks is  
+going on.  Try this as root:
+
+   # rpcdebug -m nfs -s mount
+   # mount ....
+   # rpcdebug -m nfs -c
+
+Then look in your kernel log.  "rpcdebug -vh" will list the full set  
+of flags you can enable.
+
+Since rpcbind also seems to be an issue, you can try this also:
+
+   # rpcdebug -m rpc -s bind
+   # mount ....
+   # rpcdebug -m rpc -c
+
+What type of server are you attempting to mount?  Linux?  Solaris?
 
 --
 Chuck Lever
