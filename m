@@ -1,115 +1,30 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 18/19] lockd: Update NSM state from SM_MON replies
-Date: Tue, 28 Apr 2009 12:25:24 -0400
-Message-ID: <20090428162524.GI17891@fieldses.org>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233332.17283.23011.stgit@ingres.1015granger.net>
+Subject: Re: [patch 03/29] knfsd: add userspace controls for stats tables
+Date: Tue, 28 Apr 2009 12:26:02 -0400
+Message-ID: <20090428162602.GJ17891@fieldses.org>
+References: <20090331202800.739621000@sgi.com> <20090331202938.939647000@sgi.com> <20090425215745.GA5088@fieldses.org> <20090425220329.GB5088@fieldses.org> <A11EACD6-B05E-4A1A-A38C-F65B2DFB77B3@oracle.com> <20090427232225.GB5108@fieldses.org> <4993A7C8-342E-47BE-997A-AF18E5DF41BE@oracle.com> <20090428155736.GH17891@fieldses.org> <223A8BE7-4083-4222-83B8-6BB6C4107016@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>, Linux NFS ML <linux-nfs@vger.kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:46158 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:46161 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756690AbZD1QZY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:25:24 -0400
-In-Reply-To: <20090423233332.17283.23011.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	with ESMTP id S1756690AbZD1Q0F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:26:05 -0400
+In-Reply-To: <223A8BE7-4083-4222-83B8-6BB6C4107016@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 07:33:33PM -0400, Chuck Lever wrote:
-> When rpc.statd starts up in user space at boot time, it attempts to
-> write the latest NSM local state number into
-> /proc/sys/fs/nfs/nsm_local_state.
-> 
-> If lockd.ko isn't loaded yet (as is the case in most configurations),
-> that file doesn't exist, thus the kernel's NSM state remains set to
-> its initial value of zero during lockd operation.
-> 
-> This is a problem because rpc.statd and lockd use the NSM state number
-> to prevent repeated lock recovery on rebooted hosts.  If lockd sends
-> a zero NSM state, but then a delayed SM_NOTIFY with a real NSM state
-> number is received, there is no way for lockd or rpc.statd to
-> distinguish that stale SM_NOTIFY from an actual reboot.  Thus lock
-> recovery could be performed after the rebooted host has already
-> started reclaiming locks, and those locks will be lost.
-> 
-> We could change /etc/init.d/nfslock so it always modprobes lockd.ko
-> before starting rpc.statd.  However, if lockd.ko is ever unloaded
-> and reloaded, we are back at square one, since the NSM state is not
-> preserved across an unload/reload cycle.  This may happen frequently
-> on clients that use automounter.  A period of NFS inactivity causes
-> lockd.ko to be unloaded, and the kernel loses its NSM state setting.
+On Tue, Apr 28, 2009 at 12:03:49PM -0400, Chuck Lever wrote:
+> I'm OK with more brevity in these comments as long as we recognize that 
+> the devil is in the details.  We should preserve the specificity of the 
+> API descriptions.
+>
+> I think it was you who was complaining recently about knowing whether a 
+> \n or a \0 is expected at the end of some of these strings.  ;-)
 
-Aie.  Can we also fix the automounter or some other part of the
-userspace configuration?
-
-> Instead, let's use the fact that rpc.statd plants the local system's
-> NSM state in every SM_MON (and SM_UNMON) reply.  lockd performs a
-> synchronous SM_MON upcall to the local rpc.statd _before_ sending its
-> first NLM request to a new remote.  This would permit rpc.statd to
-> provide the current NSM state to lockd, even after lockd.ko had been
-> unloaded and reloaded.
-> 
-> Note that NLMPROC_LOCK arguments are constructed before the
-> nsm_monitor() call, so we have to rearrange argument construction very
-> slightly to make this all work out.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/lockd/clntproc.c |    2 +-
->  fs/lockd/mon.c      |    6 +++++-
->  2 files changed, 6 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index dd79570..f55b900 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -126,7 +126,6 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
->  	struct nlm_lock	*lock = &argp->lock;
->  
->  	nlmclnt_next_cookie(&argp->cookie);
-> -	argp->state   = nsm_local_state;
->  	memcpy(&lock->fh, NFS_FH(fl->fl_file->f_path.dentry->d_inode), sizeof(struct nfs_fh));
->  	lock->caller  = utsname()->nodename;
->  	lock->oh.data = req->a_owner;
-> @@ -519,6 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
->  
->  	if (nsm_monitor(host) < 0)
->  		goto out;
-> +	req->a_args.state = nsm_local_state;
-
-Hm.  It looks like a_args.state is never used, except in ifdef'd-out
-code in nlm4svc_proc_lock() and nlmsvc_proc_lock() ifdef'd out.
-Something's wrong there.  (Not your fault; but needs looking into.)
-
->  
->  	fl->fl_flags |= FL_ACCESS;
->  	status = do_vfs_lock(fl);
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index 6d5d4a4..5017d50 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -188,8 +188,12 @@ int nsm_monitor(const struct nlm_host *host)
->  		status = -EIO;
->  	if (status < 0)
->  		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
-> -	else
-> +	else {
->  		nsm->sm_monitored = 1;
-> +		nsm_local_state = res.state;
-> +		dprintk("lockd: nsm_monitor: NSM state is now %d\n",
-> +				nsm_local_state);
-
-Could we make that a dprintk in the case where this changes nsm_local
-state from something other than zero (nsm_lock_state && nsm_local_state
-!= res.state)?
-
-(Just to make sure no statd is returning inconsistent nsm_local_stats
-here.)
-
-> +	}
->  	return status;
->  }
+Oh, absolutely, I do appreciate the fact that we've got some
+documentation there.
 
 --b.
