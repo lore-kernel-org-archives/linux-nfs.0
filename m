@@ -1,270 +1,71 @@
-From: Thanos Chatziathanassiou <tchatzi-nz9JlX+3IF8@public.gmane.org>
-Subject: Re: nfs-utils-1.1.6 released.
-Date: Tue, 28 Apr 2009 14:34:11 +0300
-Message-ID: <49F6E9B3.2090508@arx.net>
-References: <49ECB9E6.4010001@RedHat.com> <49EDFE21.2000007@arx.net> <49EF3A83.50409@RedHat.com> <20090422155427.GA8712@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS BUG_ON in nfs_do_writepage
+Date: Tue, 28 Apr 2009 07:45:17 -0400
+Message-ID: <1240919117.7376.6.camel@heimdal.trondhjem.org>
+References: <20090412235010.c8e3475b.akpm@linux-foundation.org>
+	 <1239650202.16771.15.camel@heimdal.trondhjem.org>
+	 <5da0588e0904131506k5c58e8ddob9bf38f61da6302a@mail.gmail.com>
+	 <5da0588e0904131644g131dc816r61884e83bc4cd006@mail.gmail.com>
+	 <5da0588e0904240226j3454941y5f58c17a32a9a23d@mail.gmail.com>
+	 <1240671428.6112.1.camel@heimdal.trondhjem.org>
+	 <20090426064026.GD28555@wotan.suse.de>
+	 <1240755509.5055.34.camel@heimdal.trondhjem.org>
+	 <20090426151324.GB5588@wotan.suse.de>
+	 <1240768522.10548.33.camel@heimdal.trondhjem.org>
+	 <20090428042717.GA6304@wotan.suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/x-pkcs7-signature"; micalg=sha1; boundary="------------ms040800040809000600030904"
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: linux-fsdevel@vger.kernel.org, Rince <rincebrain@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Nick Piggin <npiggin@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvs-director.arx.gr ([193.239.214.236]:55053 "EHLO
-	lvs-director.arx.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755037AbZD1Le7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 07:34:59 -0400
-In-Reply-To: <20090422155427.GA8712@fieldses.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:49094 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750973AbZD1Lp0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Apr 2009 07:45:26 -0400
+In-Reply-To: <20090428042717.GA6304-B4tOwbsTzaBolqkO4TVVkw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
+On Tue, 2009-04-28 at 06:27 +0200, Nick Piggin wrote:
+> On Sun, Apr 26, 2009 at 01:55:22PM -0400, Trond Myklebust wrote:
+> > On Sun, 2009-04-26 at 17:13 +0200, Nick Piggin wrote:
+> > > This doesn't seem to fix the race, though... on kernels with the
+> > > race still there, it will just open a window where you can have
+> > > a dirty pte but the page not written out.
+> > > 
+> > > I don't understand.
+> > 
+> > I'm just pointing out that the NFS client already calls
+> > __set_page_dirty_nobuffers() while holding the page lock inside the
+> > nfs_vm_page_mkwrite() call, so having the VM do it too in the call to
+> > set_page_dirty_balance() is actually redundant. IOW: as far as the NFS
+> > code is concerned, we can get rid of the ->set_page_dirty() callback in
+> > that situation.
+> > 
+> > I couldn't find any other places in the VM code where we can have a
+> > dirty pte without also having called page_mkwrite() (and hence
+> > __set_page_dirty_nobuffers). As I said, adding a WARN_ON(!PageDirty())
+> > in ->set_page_dirty() didn't ever trigger any cases where the
+> > set_page_dirty() was actually setting the dirty bit (except in the case
+> > where we race with page writeout in do_wp_page() and __do_fault()).
+> > 
+> > That's why I believe disabling ->set_page_dirty() is safe here, and will
+> > in fact suffice to fix the page writeout race.
+> 
+> Ah, no I don't think so because it opens another race where the
+> pte is dity but the page is marked clean.
 
---------------ms040800040809000600030904
-Content-Type: multipart/mixed;
- boundary="------------070805050105030302040002"
+So how can that happen?
 
-This is a multi-part message in MIME format.
---------------070805050105030302040002
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: quoted-printable
+AFAICS, when the pte is dirtied, we should get a page fault, which
+causes the page itself to be marked dirty by the nfs_vm_page_mkwrite()
+callback.
+When the page gets written out, the VM calls clear_page_dirty_for_io()
+which also causes the pte to be cleaned.
 
-O/H J. Bruce Fields =CE=AD=CE=B3=CF=81=CE=B1=CF=88=CE=B5:
-> On Wed, Apr 22, 2009 at 11:40:51AM -0400, Steve Dickson wrote:
->  =20
->> Thanos Chatziathanassiou wrote:
->>    =20
->>> Installed nfs-utils-1.1.6 and I'm facing an issue:
->>>
->>> on the server:
->>> # cat /etc/exports
->>> /opt/shared/home
->>> 192.168.99.0/255.255.255.0(rw,no_root_squash,no_subtree_check,sync)
->>>
->>> # cat /var/lib/nfs/etab
->>> /opt/shared/home  =20
->>> 192.168.99.0/255.255.255.0(rw,sync,wdelay,hide,nocrossmnt,secure,no_r=
-oot_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=3D6553=
-4,anongid=3D65534)
->>>
->>>
->>> on the client:
->>> # cat /proc/mounts
->>> nfsip:/opt/shared/home /home nfs
->>> rw,noatime,vers=3D3,rsize=3D8192,wsize=3D8192,hard,intr,proto=3Dudp,t=
-imeo=3D11,retrans=3D2,addr=3Dnfsip
->>> 0 0
->>>
->>> however, everyone (including root) gets mapped to uid 65534 despite
->>> no_root_squash and no_all_squash...not very useful for a home directo=
-ry.
->>> Is there something I'm missing ?
->>>      =20
->> Wow... That is very strange...=20
->>    =20
->
-> Might be worth looking at the network traffic to see if some change in
-> the client or in the mountd security negotiation hasn't caused the
-> client to start doing auth_null instead of auth_unix?
->
-> --b.
->  =20
-Apologies for taking so long, but I was out of the office last week.
-I'm attaching a tcpdump of mounting the directory ``/vhome'' and doing a =
-
-``touch lala'' (my very own ``foo'') in said directory, which resulted=20
-in access denied on the client.
-It doesn't say much to me, but then again I'm certainly no expert.
->  =20
->> any type of failures in /var/log/messages?
->>    =20
-Nothing obvious, at least. Just:
-Apr 28 14:06:30 nfs mountd[1115]: authenticated mount request from=20
-192.168.99.6:637 for /opt/shared/vhome (/opt/shared/vhome)
-on the server. nothing on the client.
-
-By the way, umounting the directory on the client results in this being=20
-printed out to stderr:
-``umount.nfs: address family not supported by DNS resolver''
-which I saw in utils/mount/network.c.
-It was missing a ``%s'' in the attached patch, which resulted in
-``umount.nfs: address family not supported by DNS resolver (192.168.99.20=
-)''
-when added.
-
->>    =20
->>> Also tried to go back to the previous (1.1.1) nfs-utils, but after
->>> ``exportfs -ra'' the the server spit a few of those and all mounts fr=
-oze
->>> nfs mountd[1115]: /var/lib/nfs/etab:1: unknown keyword "mapping=3Dide=
-ntity"
->>>      =20
->> I don't see a 'mapping' entry in the above 'cat /var/lib/nfs/etab'?=20
->>    =20
-me neither (?)
->> steved.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" i=
-n
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>    =20
-Let me know if I can be of any assistance.
+At what point can you therefore have a situation where the pte is dirty
+without the page being marked as dirty too?
 
 
---------------070805050105030302040002
-Content-Type: application/octet-stream;
- name="nfs.pkt"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs.pkt"
-
-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
---------------070805050105030302040002
-Content-Type: text/x-diff;
- name="utils-mount-network.c.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="utils-mount-network.c.patch"
-
---- network.c.orig	Mon Apr 20 20:32:50 2009
-+++ network.c	Tue Apr 21 20:21:23 2009
-@@ -266,7 +266,7 @@
- 	*salen = 0;
- 
- 	if (af_hint != AF_INET) {
--		nfs_error(_("%s: address family not supported by DNS resolver\n"),
-+		nfs_error(_("%s: address family not supported by DNS resolver (%s)\n"),
- 				progname, hostname);
- 		return 0;
- 	}
-
---------------070805050105030302040002--
-
---------------ms040800040809000600030904
-Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIII+zCC
-AtgwggJBoAMCAQICEDYf5lSnNv5tcTsBokqWKNwwDQYJKoZIhvcNAQEFBQAwYjELMAkGA1UE
-BhMCWkExJTAjBgNVBAoTHFRoYXd0ZSBDb25zdWx0aW5nIChQdHkpIEx0ZC4xLDAqBgNVBAMT
-I1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFpbCBJc3N1aW5nIENBMB4XDTA5MDMwMzE2MzYzM1oX
-DTEwMDMwMzE2MzYzM1owQTEfMB0GA1UEAxMWVGhhd3RlIEZyZWVtYWlsIE1lbWJlcjEeMBwG
-CSqGSIb3DQEJARYPdGNoYXR6aUBhcngubmV0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAp7Qihqj+5xLt5RT/MmdkxlXgf82jalYMYAVg7aOFg5stuKcwcQebnnm6gpOVEy28
-jrfUFIwUg2v+z/PmVLSERoYuq5V94mUzhLv1NsGlsUT/oMpdnoiVEeYuPH7nscTOkyaek0Xe
-ST3qSKrhGb0sQs5KdSVjB3kNGK7HLAqpSnQuM/wU4nZTMEWjm1UTVeIJ3G+e8Fm5B2YCxTGp
-TBavfZNnIC49Hz/0hybZoBMP3KbcKHwBzl6F3uhaWaxOccezWOcV/LMnRBW/Lrn6d2WLFzQu
-dNBVP0AcChtJueI6nDzyMY66FAgJFQbmR1SSq3xQFUW7eEU1nTCZ30GlggVmqwIDAQABoyww
-KjAaBgNVHREEEzARgQ90Y2hhdHppQGFyeC5uZXQwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0B
-AQUFAAOBgQB+qrgv2n3iVNeYl+o7LfJ52f+btX5IKtAPKQx/yCrceF2YnguIruLzhd6ktRiF
-rpgTvcY4cO9Va5sNUBBhtKI0ATDHwe6laas0KFDTvtDg3TYbiycK6rdHieg1wfFQKgNofYgr
-F35LFf8PlhL4hikFy/V1E39Goih4riLyFeeK5jCCAtgwggJBoAMCAQICEDYf5lSnNv5tcTsB
-okqWKNwwDQYJKoZIhvcNAQEFBQAwYjELMAkGA1UEBhMCWkExJTAjBgNVBAoTHFRoYXd0ZSBD
-b25zdWx0aW5nIChQdHkpIEx0ZC4xLDAqBgNVBAMTI1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFp
-bCBJc3N1aW5nIENBMB4XDTA5MDMwMzE2MzYzM1oXDTEwMDMwMzE2MzYzM1owQTEfMB0GA1UE
-AxMWVGhhd3RlIEZyZWVtYWlsIE1lbWJlcjEeMBwGCSqGSIb3DQEJARYPdGNoYXR6aUBhcngu
-bmV0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAp7Qihqj+5xLt5RT/MmdkxlXg
-f82jalYMYAVg7aOFg5stuKcwcQebnnm6gpOVEy28jrfUFIwUg2v+z/PmVLSERoYuq5V94mUz
-hLv1NsGlsUT/oMpdnoiVEeYuPH7nscTOkyaek0XeST3qSKrhGb0sQs5KdSVjB3kNGK7HLAqp
-SnQuM/wU4nZTMEWjm1UTVeIJ3G+e8Fm5B2YCxTGpTBavfZNnIC49Hz/0hybZoBMP3KbcKHwB
-zl6F3uhaWaxOccezWOcV/LMnRBW/Lrn6d2WLFzQudNBVP0AcChtJueI6nDzyMY66FAgJFQbm
-R1SSq3xQFUW7eEU1nTCZ30GlggVmqwIDAQABoywwKjAaBgNVHREEEzARgQ90Y2hhdHppQGFy
-eC5uZXQwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQUFAAOBgQB+qrgv2n3iVNeYl+o7LfJ5
-2f+btX5IKtAPKQx/yCrceF2YnguIruLzhd6ktRiFrpgTvcY4cO9Va5sNUBBhtKI0ATDHwe6l
-aas0KFDTvtDg3TYbiycK6rdHieg1wfFQKgNofYgrF35LFf8PlhL4hikFy/V1E39Goih4riLy
-FeeK5jCCAz8wggKooAMCAQICAQ0wDQYJKoZIhvcNAQEFBQAwgdExCzAJBgNVBAYTAlpBMRUw
-EwYDVQQIEwxXZXN0ZXJuIENhcGUxEjAQBgNVBAcTCUNhcGUgVG93bjEaMBgGA1UEChMRVGhh
-d3RlIENvbnN1bHRpbmcxKDAmBgNVBAsTH0NlcnRpZmljYXRpb24gU2VydmljZXMgRGl2aXNp
-b24xJDAiBgNVBAMTG1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFpbCBDQTErMCkGCSqGSIb3DQEJ
-ARYccGVyc29uYWwtZnJlZW1haWxAdGhhd3RlLmNvbTAeFw0wMzA3MTcwMDAwMDBaFw0xMzA3
-MTYyMzU5NTlaMGIxCzAJBgNVBAYTAlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAo
-UHR5KSBMdGQuMSwwKgYDVQQDEyNUaGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBD
-QTCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAxKY8VXNV+065yplaHmjAdQRwnd/p/6Me
-7L3N9VvyGna9fww6YfK/Uc4B1OVQCjDXAmNaLIkVcI7dyfArhVqqP3FWy688Cwfn8R+RNiQq
-E88r1fOCdz0Dviv+uxg+B79AgAJk16emu59l0cUqVIUPSAR/p7bRPGEEQB5kGXJgt/sCAwEA
-AaOBlDCBkTASBgNVHRMBAf8ECDAGAQH/AgEAMEMGA1UdHwQ8MDowOKA2oDSGMmh0dHA6Ly9j
-cmwudGhhd3RlLmNvbS9UaGF3dGVQZXJzb25hbEZyZWVtYWlsQ0EuY3JsMAsGA1UdDwQEAwIB
-BjApBgNVHREEIjAgpB4wHDEaMBgGA1UEAxMRUHJpdmF0ZUxhYmVsMi0xMzgwDQYJKoZIhvcN
-AQEFBQADgYEASIzRUIPqCy7MDaNmrGcPf6+svsIXoUOWlJ1/TCG4+DYfqi2fNi/A9BxQIJNw
-PP2t4WFiw9k6GX6EsZkbAMUaC4J0niVQlGLH2ydxVyWN3amcOY6MIE9lX5Xa9/eH1sYITq72
-6jTlEBpbNU1341YheILcIRk13iSx0x1G/11fZU8xggNxMIIDbQIBATB2MGIxCzAJBgNVBAYT
-AlpBMSUwIwYDVQQKExxUaGF3dGUgQ29uc3VsdGluZyAoUHR5KSBMdGQuMSwwKgYDVQQDEyNU
-aGF3dGUgUGVyc29uYWwgRnJlZW1haWwgSXNzdWluZyBDQQIQNh/mVKc2/m1xOwGiSpYo3DAJ
-BgUrDgMCGgUAoIIB0DAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEP
-Fw0wOTA0MjgxMTM0MTFaMCMGCSqGSIb3DQEJBDEWBBSchYSDUfuus6VOKI3n51hBdq73cDBf
-BgkqhkiG9w0BCQ8xUjBQMAsGCWCGSAFlAwQBAjAKBggqhkiG9w0DBzAOBggqhkiG9w0DAgIC
-AIAwDQYIKoZIhvcNAwICAUAwBwYFKw4DAgcwDQYIKoZIhvcNAwICASgwgYUGCSsGAQQBgjcQ
-BDF4MHYwYjELMAkGA1UEBhMCWkExJTAjBgNVBAoTHFRoYXd0ZSBDb25zdWx0aW5nIChQdHkp
-IEx0ZC4xLDAqBgNVBAMTI1RoYXd0ZSBQZXJzb25hbCBGcmVlbWFpbCBJc3N1aW5nIENBAhA2
-H+ZUpzb+bXE7AaJKlijcMIGHBgsqhkiG9w0BCRACCzF4oHYwYjELMAkGA1UEBhMCWkExJTAj
-BgNVBAoTHFRoYXd0ZSBDb25zdWx0aW5nIChQdHkpIEx0ZC4xLDAqBgNVBAMTI1RoYXd0ZSBQ
-ZXJzb25hbCBGcmVlbWFpbCBJc3N1aW5nIENBAhA2H+ZUpzb+bXE7AaJKlijcMA0GCSqGSIb3
-DQEBAQUABIIBAEfZv+PUCQUSwQhv4M6Pr2ZmsJ8ME+Fyj1tsB88z5v8neq9X/5yJwffImBzI
-MIMfvwiBpbkIOALGFe1EXNF3MND+yRH06giZBH9k+8OIeU+FzhlTl/QeJBZz+9w1bGK3NV91
-nCUeQUapYL1jCmfT+Qxkx/dQsQ9TdaC6y5kjZ31C+vWgg2VpXbJuXhM5DEz2xlYjmk1rt4LN
-55k/KU8zUfv5kIa6TaQmtXSh+0CIouP01AJ3fQbyfDOt21r1226dme0HgRzlUlUKCGE4o9Gh
-25cdKg/U8G4lWhTs45WRqX+Oclm60ZFgzeMPiioHnAFuwEgVlaFNQas3F/jYi7W38wQAAAAA
-AAA=
---------------ms040800040809000600030904--
