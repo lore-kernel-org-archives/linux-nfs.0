@@ -1,104 +1,115 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [Bug] NFSv4 fails to work without ipv6 kernel module
-Date: Tue, 28 Apr 2009 12:16:52 -0400
-Message-ID: <E3A82BE4-E39C-4E4E-9CBA-4CD182E73CBB@oracle.com>
-References: <200904271903.36379.bircoph@gmail.com> <1810FE6E-D2AF-4ED3-BE34-F6117A8D9B46@oracle.com> <200904280444.00206.bircoph@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 18/19] lockd: Update NSM state from SM_MON replies
+Date: Tue, 28 Apr 2009 12:25:24 -0400
+Message-ID: <20090428162524.GI17891@fieldses.org>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233332.17283.23011.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Andrew Savchenko <bircoph@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:60275 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932342AbZD1QRD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:17:03 -0400
-In-Reply-To: <200904280444.00206.bircoph@gmail.com>
+Received: from mail.fieldses.org ([141.211.133.115]:46158 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756690AbZD1QZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:25:24 -0400
+In-Reply-To: <20090423233332.17283.23011.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 27, 2009, at 8:43 PM, Andrew Savchenko wrote:
-> Hello,
->
-> On Monday 27 April 2009, Chuck Lever wrote:
->> On Apr 27, 2009, at 11:03 AM, Andrew Savchenko wrote:
->>> Hello,
->>>
->>> I have ipv6 support as a module (it may be needed in the
->>> recent future), but currently I want ipv6 to be disabled on my
->>> system, so I blacklisted this module. And here problems
->>> begin...
->>>
->>> NFSv3 works flawlessly:
->>> # mount 172.19.0.1:/home/ftp /mnt/nfs/
->>>
->>> but NFSv4 fails:
->>> # mount -t nfs4 172.19.0.1:/ /mnt/nfs/
->>> mount.nfs4: Cannot allocate memory
->>>
->>> After modprobe ipv6 it works:
->>> # mount -t nfs4 172.19.0.1:/ /mnt/nfs/
->>>
->>> I recompiled nfs-utils without ipv6 support, but this doesn't
->>> help.
->>>
->>> Here is my /etc/exports:
->>> /home/ftp 172.16.0.0/12
->>> (ro,async,crossmnt,no_subtree_check,fsid=0,all_squash) \
->>>       127.0.0.1/32
->>> (ro,async,crossmnt,no_subtree_check,fsid=0,all_squash)
->>>
->>> I use nfs-utils-1.1.5, I tested this on both vanilla linux
->>> kernels 2.6.28.7 and 2.6.28.9.
->>
->> Have you tried this with 2.6.29?
->
-> I just tried with vanilla 2.6.29.1. Things became even worse. Now
-> not only NFSv4 fails to mount as usual, but NFSv3 fails too:
->
-> # mount 172.19.0.1:/home/ftp /mnt/orionis
-> mount.nfs: Address family not supported by protocol
->
-> And following error appears in kernel log multiple times:
-> RPC: failed to contact local rpcbind server (errno 5).
->
-> I attached strace -f for both mount attempts. The problem is in
-> mount() syscall in both cases, thus somewhere inside the kernel...
->
-> With ipv6 module loaded all works fine.
+On Thu, Apr 23, 2009 at 07:33:33PM -0400, Chuck Lever wrote:
+> When rpc.statd starts up in user space at boot time, it attempts to
+> write the latest NSM local state number into
+> /proc/sys/fs/nfs/nsm_local_state.
+> 
+> If lockd.ko isn't loaded yet (as is the case in most configurations),
+> that file doesn't exist, thus the kernel's NSM state remains set to
+> its initial value of zero during lockd operation.
+> 
+> This is a problem because rpc.statd and lockd use the NSM state number
+> to prevent repeated lock recovery on rebooted hosts.  If lockd sends
+> a zero NSM state, but then a delayed SM_NOTIFY with a real NSM state
+> number is received, there is no way for lockd or rpc.statd to
+> distinguish that stale SM_NOTIFY from an actual reboot.  Thus lock
+> recovery could be performed after the rebooted host has already
+> started reclaiming locks, and those locks will be lost.
+> 
+> We could change /etc/init.d/nfslock so it always modprobes lockd.ko
+> before starting rpc.statd.  However, if lockd.ko is ever unloaded
+> and reloaded, we are back at square one, since the NSM state is not
+> preserved across an unload/reload cycle.  This may happen frequently
+> on clients that use automounter.  A period of NFS inactivity causes
+> lockd.ko to be unloaded, and the kernel loses its NSM state setting.
 
-Right, this isn't an nfs-utils problem, it's an issue in the kernel  
-(so the strace isn't terribly informative).  2.6.29 is supposed to  
-have addressed this problem, but maybe you are hitting a new way that  
-not having ipv6.ko loaded is buggering us.
+Aie.  Can we also fix the automounter or some other part of the
+userspace configuration?
 
-If you're building these kernels yourself, why not disable CONFIG_IPV6?
+> Instead, let's use the fact that rpc.statd plants the local system's
+> NSM state in every SM_MON (and SM_UNMON) reply.  lockd performs a
+> synchronous SM_MON upcall to the local rpc.statd _before_ sending its
+> first NLM request to a new remote.  This would permit rpc.statd to
+> provide the current NSM state to lockd, even after lockd.ko had been
+> unloaded and reloaded.
+> 
+> Note that NLMPROC_LOCK arguments are constructed before the
+> nsm_monitor() call, so we have to rearrange argument construction very
+> slightly to make this all work out.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/lockd/clntproc.c |    2 +-
+>  fs/lockd/mon.c      |    6 +++++-
+>  2 files changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> index dd79570..f55b900 100644
+> --- a/fs/lockd/clntproc.c
+> +++ b/fs/lockd/clntproc.c
+> @@ -126,7 +126,6 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
+>  	struct nlm_lock	*lock = &argp->lock;
+>  
+>  	nlmclnt_next_cookie(&argp->cookie);
+> -	argp->state   = nsm_local_state;
+>  	memcpy(&lock->fh, NFS_FH(fl->fl_file->f_path.dentry->d_inode), sizeof(struct nfs_fh));
+>  	lock->caller  = utsname()->nodename;
+>  	lock->oh.data = req->a_owner;
+> @@ -519,6 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct file_lock *fl)
+>  
+>  	if (nsm_monitor(host) < 0)
+>  		goto out;
+> +	req->a_args.state = nsm_local_state;
 
->> You can also try building 2.6.28 with CONFIG_SUNRPC_REGISTER_V4
->> disabled.
->
-> With this option disabled errno 5 (see above) disappeared from
-> logs, but mount fails with the same errors. Yet again, with ipv6
-> module loaded it works ok.
+Hm.  It looks like a_args.state is never used, except in ifdef'd-out
+code in nlm4svc_proc_lock() and nlmsvc_proc_lock() ifdef'd out.
+Something's wrong there.  (Not your fault; but needs looking into.)
 
-I can't reproduce here on 2.6.30-rc2, so it may be just an issue with  
-2.6.29.  You can enable debug printks to see what the kernel thinks is  
-going on.  Try this as root:
+>  
+>  	fl->fl_flags |= FL_ACCESS;
+>  	status = do_vfs_lock(fl);
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 6d5d4a4..5017d50 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -188,8 +188,12 @@ int nsm_monitor(const struct nlm_host *host)
+>  		status = -EIO;
+>  	if (status < 0)
+>  		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
+> -	else
+> +	else {
+>  		nsm->sm_monitored = 1;
+> +		nsm_local_state = res.state;
+> +		dprintk("lockd: nsm_monitor: NSM state is now %d\n",
+> +				nsm_local_state);
 
-   # rpcdebug -m nfs -s mount
-   # mount ....
-   # rpcdebug -m nfs -c
+Could we make that a dprintk in the case where this changes nsm_local
+state from something other than zero (nsm_lock_state && nsm_local_state
+!= res.state)?
 
-Then look in your kernel log.  "rpcdebug -vh" will list the full set  
-of flags you can enable.
+(Just to make sure no statd is returning inconsistent nsm_local_stats
+here.)
 
-Since rpcbind also seems to be an issue, you can try this also:
+> +	}
+>  	return status;
+>  }
 
-   # rpcdebug -m rpc -s bind
-   # mount ....
-   # rpcdebug -m rpc -c
-
-What type of server are you attempting to mount?  Linux?  Solaris?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
