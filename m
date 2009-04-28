@@ -1,64 +1,125 @@
-From: andros@netapp.com
-Subject: [PATCH 03/31] nfsd41: turn off create session caching
-Date: Tue, 28 Apr 2009 12:59:37 -0400
-Message-ID: <1240938005-23778-3-git-send-email-andros@netapp.com>
-References: <1240938005-23778-1-git-send-email-andros@netapp.com>
- <1240938005-23778-2-git-send-email-andros@netapp.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Andy Adamson <andros@netapp.com>
-To: bfields@fieldses.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 19/19] lockd: clean up 64-bit alignment fix in nsm_init_private()
+Date: Tue, 28 Apr 2009 13:24:24 -0400
+Message-ID: <9A6CA37F-0D4D-48C3-AEF8-E47B2836EDCC@oracle.com>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233340.17283.29580.stgit@ingres.1015granger.net> <20090428163101.GK17891@fieldses.org> <1AF02847-8D16-4387-81CB-F36969CA9883@oracle.com> <20090428164027.GO17891@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6692 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932891AbZD1RC4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2009 13:02:56 -0400
-In-Reply-To: <1240938005-23778-2-git-send-email-andros@netapp.com>
+Received: from acsinet11.oracle.com ([141.146.126.233]:28023 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760591AbZD1RYt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 13:24:49 -0400
+In-Reply-To: <20090428164027.GO17891@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Apr 28, 2009, at 12:40 PM, J. Bruce Fields wrote:
+> On Tue, Apr 28, 2009 at 12:35:50PM -0400, Chuck Lever wrote:
+>> On Apr 28, 2009, at 12:31 PM, J. Bruce Fields wrote:
+>>> On Thu, Apr 23, 2009 at 07:33:40PM -0400, Chuck Lever wrote:
+>>>> Recently, commit ad5b365c fixed a data type alignment issue in
+>>>> nsm_init_private() by introducing put_unaligned().  We don't  
+>>>> actually
+>>>> _require_ an unaligned access to nsm_private here.
+>>>>
+>>>> Instead, we should always use memcpy/memcmp to access the  
+>>>> contents of
+>>>> RPC opaque data types.  This permits us to continue to define these
+>>>> as
+>>>> simple character arrays, as most legacy RPC code does, and to  
+>>>> rely on
+>>>> gcc to pack the fields in in-core structures optimally without
+>>>> breaking
+>>>> on platforms that require strict alignment.
+>>>
+>>> OK, I'm confused.  What structures will get packed differently?
+>>
+>> Any struct that has an nsm_private embedded in it, such as struct
+>> nlm_reboot.
+>
+> I don't see how that or any structure is changed by this patch.
 
-In preparation for switching clientid cache strategies.
-If cstate->slot is not set, nfsdsvc_encode_compoundres will not cache
-the create session response.
+It's not.  Note the phrase above in the description: "permits us to  
+_continue_ to define these" -- meaning, I'm not changing the structures.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfsd/nfs4state.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
+It has been suggested that we use a union or __aligned attribute for  
+RPC opaques.  The problem with that is that it would cause structs  
+like nlm_reboot to balloon in size; char x[] is aligned on bytes, but  
+a union of u8, u32, and u64 would be aligned on a double-word  
+boundary.  That would make such structures larger.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 43c821f..e6dbf05 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1341,7 +1341,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		     struct nfsd4_create_session *cr_ses)
- {
- 	u32 ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
--	struct nfsd4_compoundres *resp = rqstp->rq_resp;
- 	struct nfs4_client *conf, *unconf;
- 	struct nfsd4_slot *slot = NULL;
- 	int status = 0;
-@@ -1357,11 +1356,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		if (status == nfserr_replay_cache) {
- 			dprintk("Got a create_session replay! seqid= %d\n",
- 				slot->sl_seqid);
--			cstate->slot = slot;
--			cstate->status = status;
--			/* Return the cached reply status */
--			status = nfsd4_replay_cache_entry(resp, NULL);
--			goto out;
- 		} else if (cr_ses->seqid != conf->cl_slot.sl_seqid + 1) {
- 			status = nfserr_seq_misordered;
- 			dprintk("Sequence misordered!\n");
-@@ -1419,7 +1413,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	cr_ses->seqid = slot->sl_seqid;
- 
- 	slot->sl_inuse = true;
--	cstate->slot = slot;
- 	/* Ensure a page is used for the cache */
- 	slot->sl_cache_entry.ce_cachethis = 1;
- out:
+Legacy RPC code, and any code generated by rpcgen, generally defines  
+an opaque as a character array.  So again, using a union would be  
+inconsistent with other uses of RPC opaques.
+
+The point is we want to define and access RPC opaque's consistently,  
+using memset() and memcpy(), since these are nothing more than byte  
+arrays.  The code in nsm_init_private() was an exception to this, for  
+no reason.  We don't really need special alignment macros in there, as  
+long as we access the RPC opaque field with the byte sets and copies.
+
+Would it help if I described this patch as a "clean up" ?
+
+> --b.
+>
+>>
+>>> --b.
+>>>
+>>>>
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>>
+>>>> fs/lockd/mon.c |   12 +++++-------
+>>>> 1 files changed, 5 insertions(+), 7 deletions(-)
+>>>>
+>>>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+>>>> index 5017d50..763509a 100644
+>>>> --- a/fs/lockd/mon.c
+>>>> +++ b/fs/lockd/mon.c
+>>>> @@ -16,8 +16,6 @@
+>>>> #include <linux/sunrpc/svc.h>
+>>>> #include <linux/lockd/lockd.h>
+>>>>
+>>>> -#include <asm/unaligned.h>
+>>>> -
+>>>> #define NLMDBG_FACILITY		NLMDBG_MONITOR
+>>>> #define NSM_PROGRAM		100024
+>>>> #define NSM_VERSION		1
+>>>> @@ -278,14 +276,14 @@ static struct nsm_handle
+>>>> *nsm_lookup_priv(const struct nsm_private *priv)
+>>>> */
+>>>> static void nsm_init_private(struct nsm_handle *nsm)
+>>>> {
+>>>> -	u64 *p = (u64 *)&nsm->sm_priv.data;
+>>>> 	struct timespec ts;
+>>>> -	s64 ns;
+>>>> +	u64 buf[2];
+>>>>
+>>>> 	ktime_get_ts(&ts);
+>>>> -	ns = timespec_to_ns(&ts);
+>>>> -	put_unaligned(ns, p);
+>>>> -	put_unaligned((unsigned long)nsm, p + 1);
+>>>> +	buf[0] = timespec_to_ns(&ts);
+>>>> +	buf[1] = (unsigned long)nsm;
+>>>> +
+>>>> +	memcpy(nsm->sm_priv.data, buf, SM_PRIV_SIZE);
+>>>> }
+>>>>
+>>>> static struct nsm_handle *nsm_create_handle(const struct sockaddr
+>>>> *sap,
+>>>>
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+
 -- 
-1.5.4.3
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
