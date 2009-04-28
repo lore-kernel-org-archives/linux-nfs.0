@@ -1,151 +1,92 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 18/19] lockd: Update NSM state from SM_MON replies
-Date: Tue, 28 Apr 2009 12:38:03 -0400
-Message-ID: <20090428163803.GN17891@fieldses.org>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233332.17283.23011.stgit@ingres.1015granger.net> <20090428162524.GI17891@fieldses.org> <20423538-9733-44FE-8DAC-AD0995DA1B58@oracle.com>
+Subject: Re: [PATCH 19/19] lockd: clean up 64-bit alignment fix in
+	nsm_init_private()
+Date: Tue, 28 Apr 2009 12:40:27 -0400
+Message-ID: <20090428164027.GO17891@fieldses.org>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233340.17283.29580.stgit@ingres.1015granger.net> <20090428163101.GK17891@fieldses.org> <1AF02847-8D16-4387-81CB-F36969CA9883@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:60663 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:36307 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753410AbZD1QiF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:38:05 -0400
-In-Reply-To: <20423538-9733-44FE-8DAC-AD0995DA1B58@oracle.com>
+	with ESMTP id S1753410AbZD1Qk1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:40:27 -0400
+In-Reply-To: <1AF02847-8D16-4387-81CB-F36969CA9883@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 12:34:19PM -0400, Chuck Lever wrote:
-> On Apr 28, 2009, at 12:25 PM, J. Bruce Fields wrote:
->> On Thu, Apr 23, 2009 at 07:33:33PM -0400, Chuck Lever wrote:
->>> When rpc.statd starts up in user space at boot time, it attempts to
->>> write the latest NSM local state number into
->>> /proc/sys/fs/nfs/nsm_local_state.
+On Tue, Apr 28, 2009 at 12:35:50PM -0400, Chuck Lever wrote:
+> On Apr 28, 2009, at 12:31 PM, J. Bruce Fields wrote:
+>> On Thu, Apr 23, 2009 at 07:33:40PM -0400, Chuck Lever wrote:
+>>> Recently, commit ad5b365c fixed a data type alignment issue in
+>>> nsm_init_private() by introducing put_unaligned().  We don't actually
+>>> _require_ an unaligned access to nsm_private here.
 >>>
->>> If lockd.ko isn't loaded yet (as is the case in most configurations),
->>> that file doesn't exist, thus the kernel's NSM state remains set to
->>> its initial value of zero during lockd operation.
->>>
->>> This is a problem because rpc.statd and lockd use the NSM state  
->>> number
->>> to prevent repeated lock recovery on rebooted hosts.  If lockd sends
->>> a zero NSM state, but then a delayed SM_NOTIFY with a real NSM state
->>> number is received, there is no way for lockd or rpc.statd to
->>> distinguish that stale SM_NOTIFY from an actual reboot.  Thus lock
->>> recovery could be performed after the rebooted host has already
->>> started reclaiming locks, and those locks will be lost.
->>>
->>> We could change /etc/init.d/nfslock so it always modprobes lockd.ko
->>> before starting rpc.statd.  However, if lockd.ko is ever unloaded
->>> and reloaded, we are back at square one, since the NSM state is not
->>> preserved across an unload/reload cycle.  This may happen frequently
->>> on clients that use automounter.  A period of NFS inactivity causes
->>> lockd.ko to be unloaded, and the kernel loses its NSM state setting.
+>>> Instead, we should always use memcpy/memcmp to access the contents of
+>>> RPC opaque data types.  This permits us to continue to define these  
+>>> as
+>>> simple character arrays, as most legacy RPC code does, and to rely on
+>>> gcc to pack the fields in in-core structures optimally without  
+>>> breaking
+>>> on platforms that require strict alignment.
 >>
->> Aie.  Can we also fix the automounter or some other part of the
->> userspace configuration?
+>> OK, I'm confused.  What structures will get packed differently?
 >
-> User space isn't the problem here... it's the fact that lockd can get  
-> unloaded after a period of inactivity.  IMO lockd should be pinned in  
-> the kernel after it is loaded with /etc/init.d/nfslock.
->
->>> Instead, let's use the fact that rpc.statd plants the local system's
->>> NSM state in every SM_MON (and SM_UNMON) reply.  lockd performs a
->>> synchronous SM_MON upcall to the local rpc.statd _before_ sending its
->>> first NLM request to a new remote.  This would permit rpc.statd to
->>> provide the current NSM state to lockd, even after lockd.ko had been
->>> unloaded and reloaded.
->>>
->>> Note that NLMPROC_LOCK arguments are constructed before the
->>> nsm_monitor() call, so we have to rearrange argument construction  
->>> very
->>> slightly to make this all work out.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> fs/lockd/clntproc.c |    2 +-
->>> fs/lockd/mon.c      |    6 +++++-
->>> 2 files changed, 6 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
->>> index dd79570..f55b900 100644
->>> --- a/fs/lockd/clntproc.c
->>> +++ b/fs/lockd/clntproc.c
->>> @@ -126,7 +126,6 @@ static void nlmclnt_setlockargs(struct nlm_rqst  
->>> *req, struct file_lock *fl)
->>> 	struct nlm_lock	*lock = &argp->lock;
->>>
->>> 	nlmclnt_next_cookie(&argp->cookie);
->>> -	argp->state   = nsm_local_state;
->>> 	memcpy(&lock->fh, NFS_FH(fl->fl_file->f_path.dentry->d_inode),  
->>> sizeof(struct nfs_fh));
->>> 	lock->caller  = utsname()->nodename;
->>> 	lock->oh.data = req->a_owner;
->>> @@ -519,6 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct  
->>> file_lock *fl)
->>>
->>> 	if (nsm_monitor(host) < 0)
->>> 		goto out;
->>> +	req->a_args.state = nsm_local_state;
->>
->> Hm.  It looks like a_args.state is never used, except in ifdef'd-out
->> code in nlm4svc_proc_lock() and nlmsvc_proc_lock() ifdef'd out.
->> Something's wrong there.  (Not your fault; but needs looking into.)
->
-> This isn't a big deal on the server side (I guess I should give this  
-> patch to Trond instead of you, in that case).
->
-> The client passes its NSM state number to the server in NLMPROC_LOCK  
-> calls.  There is no mechanism for the server to pass its NSM state  
-> number to the client via the NLM protocol.  So the first the client is  
-> aware of the server's NSM state number is after the server reboots (via 
-> SM_NOTIFY).  If the server never reboots, the client will never know the 
-> server's NSM state number.
+> Any struct that has an nsm_private embedded in it, such as struct  
+> nlm_reboot.
 
-So the #if 0'd code should just be deleted?
+I don't see how that or any structure is changed by this patch.
 
 --b.
 
 >
->>> 	fl->fl_flags |= FL_ACCESS;
->>> 	status = do_vfs_lock(fl);
+>> --b.
+>>
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>
+>>> fs/lockd/mon.c |   12 +++++-------
+>>> 1 files changed, 5 insertions(+), 7 deletions(-)
+>>>
 >>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
->>> index 6d5d4a4..5017d50 100644
+>>> index 5017d50..763509a 100644
 >>> --- a/fs/lockd/mon.c
 >>> +++ b/fs/lockd/mon.c
->>> @@ -188,8 +188,12 @@ int nsm_monitor(const struct nlm_host *host)
->>> 		status = -EIO;
->>> 	if (status < 0)
->>> 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
->>> -	else
->>> +	else {
->>> 		nsm->sm_monitored = 1;
->>> +		nsm_local_state = res.state;
->>> +		dprintk("lockd: nsm_monitor: NSM state is now %d\n",
->>> +				nsm_local_state);
->>
->> Could we make that a dprintk in the case where this changes nsm_local
->> state from something other than zero (nsm_lock_state &&  
->> nsm_local_state
->> != res.state)?
->>
->> (Just to make sure no statd is returning inconsistent nsm_local_stats
->> here.)
->
-> I'm not sure that's a big deal, but...
->
-> Note that the XNFS version 3 spec suggests the local lockd should  
-> request the NSM state number when it starts up by posting an  
-> SM_UNMON_ALL to the local statd.  That might be safer than loading it  
-> after every SM_MON.
->
->>> +	}
->>> 	return status;
+>>> @@ -16,8 +16,6 @@
+>>> #include <linux/sunrpc/svc.h>
+>>> #include <linux/lockd/lockd.h>
+>>>
+>>> -#include <asm/unaligned.h>
+>>> -
+>>> #define NLMDBG_FACILITY		NLMDBG_MONITOR
+>>> #define NSM_PROGRAM		100024
+>>> #define NSM_VERSION		1
+>>> @@ -278,14 +276,14 @@ static struct nsm_handle  
+>>> *nsm_lookup_priv(const struct nsm_private *priv)
+>>>  */
+>>> static void nsm_init_private(struct nsm_handle *nsm)
+>>> {
+>>> -	u64 *p = (u64 *)&nsm->sm_priv.data;
+>>> 	struct timespec ts;
+>>> -	s64 ns;
+>>> +	u64 buf[2];
+>>>
+>>> 	ktime_get_ts(&ts);
+>>> -	ns = timespec_to_ns(&ts);
+>>> -	put_unaligned(ns, p);
+>>> -	put_unaligned((unsigned long)nsm, p + 1);
+>>> +	buf[0] = timespec_to_ns(&ts);
+>>> +	buf[1] = (unsigned long)nsm;
+>>> +
+>>> +	memcpy(nsm->sm_priv.data, buf, SM_PRIV_SIZE);
 >>> }
->>
->> --b.
+>>>
+>>> static struct nsm_handle *nsm_create_handle(const struct sockaddr  
+>>> *sap,
+>>>
 >
 > --
 > Chuck Lever
