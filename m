@@ -1,93 +1,49 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 19/19] lockd: clean up 64-bit alignment fix in
-	nsm_init_private()
-Date: Tue, 28 Apr 2009 12:40:27 -0400
-Message-ID: <20090428164027.GO17891@fieldses.org>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233340.17283.29580.stgit@ingres.1015granger.net> <20090428163101.GK17891@fieldses.org> <1AF02847-8D16-4387-81CB-F36969CA9883@oracle.com>
+Subject: Re: [PATCH 1/1] update Documentation/filesystems/00-INDEX with new
+	nfsd related docs.
+Date: Tue, 28 Apr 2009 12:55:11 -0400
+Message-ID: <20090428165511.GR17891@fieldses.org>
+References: <1239129937-14669-1-git-send-email-bhalevy@panasas.com> <49DBA235.3070602@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	James Lentini <jlentini@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:36307 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:42901 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753410AbZD1Qk1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:40:27 -0400
-In-Reply-To: <1AF02847-8D16-4387-81CB-F36969CA9883@oracle.com>
+	with ESMTP id S1754190AbZD1QzN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:55:13 -0400
+In-Reply-To: <49DBA235.3070602@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 12:35:50PM -0400, Chuck Lever wrote:
-> On Apr 28, 2009, at 12:31 PM, J. Bruce Fields wrote:
->> On Thu, Apr 23, 2009 at 07:33:40PM -0400, Chuck Lever wrote:
->>> Recently, commit ad5b365c fixed a data type alignment issue in
->>> nsm_init_private() by introducing put_unaligned().  We don't actually
->>> _require_ an unaligned access to nsm_private here.
->>>
->>> Instead, we should always use memcpy/memcmp to access the contents of
->>> RPC opaque data types.  This permits us to continue to define these  
->>> as
->>> simple character arrays, as most legacy RPC code does, and to rely on
->>> gcc to pack the fields in in-core structures optimally without  
->>> breaking
->>> on platforms that require strict alignment.
->>
->> OK, I'm confused.  What structures will get packed differently?
->
-> Any struct that has an nsm_private embedded in it, such as struct  
-> nlm_reboot.
+Thanks, applied.--b.
 
-I don't see how that or any structure is changed by this patch.
-
---b.
-
->
->> --b.
->>
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> fs/lockd/mon.c |   12 +++++-------
->>> 1 files changed, 5 insertions(+), 7 deletions(-)
->>>
->>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
->>> index 5017d50..763509a 100644
->>> --- a/fs/lockd/mon.c
->>> +++ b/fs/lockd/mon.c
->>> @@ -16,8 +16,6 @@
->>> #include <linux/sunrpc/svc.h>
->>> #include <linux/lockd/lockd.h>
->>>
->>> -#include <asm/unaligned.h>
->>> -
->>> #define NLMDBG_FACILITY		NLMDBG_MONITOR
->>> #define NSM_PROGRAM		100024
->>> #define NSM_VERSION		1
->>> @@ -278,14 +276,14 @@ static struct nsm_handle  
->>> *nsm_lookup_priv(const struct nsm_private *priv)
->>>  */
->>> static void nsm_init_private(struct nsm_handle *nsm)
->>> {
->>> -	u64 *p = (u64 *)&nsm->sm_priv.data;
->>> 	struct timespec ts;
->>> -	s64 ns;
->>> +	u64 buf[2];
->>>
->>> 	ktime_get_ts(&ts);
->>> -	ns = timespec_to_ns(&ts);
->>> -	put_unaligned(ns, p);
->>> -	put_unaligned((unsigned long)nsm, p + 1);
->>> +	buf[0] = timespec_to_ns(&ts);
->>> +	buf[1] = (unsigned long)nsm;
->>> +
->>> +	memcpy(nsm->sm_priv.data, buf, SM_PRIV_SIZE);
->>> }
->>>
->>> static struct nsm_handle *nsm_create_handle(const struct sockaddr  
->>> *sap,
->>>
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
+On Tue, Apr 07, 2009 at 09:57:57PM +0300, Benny Halevy wrote:
+> On Apr. 07, 2009, 21:45 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
+> 
+> Sorry, pls add:
+> 
+> Cc: James Lentini <jlentini@netapp.com>
+> 
+> > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> > ---
+> >  Documentation/filesystems/00-INDEX |    4 ++++
+> >  1 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/Documentation/filesystems/00-INDEX b/Documentation/filesystems/00-INDEX
+> > index 52cd611..d3cc954 100644
+> > --- a/Documentation/filesystems/00-INDEX
+> > +++ b/Documentation/filesystems/00-INDEX
+> > @@ -66,6 +66,10 @@ mandatory-locking.txt
+> >  	- info on the Linux implementation of Sys V mandatory file locking.
+> >  ncpfs.txt
+> >  	- info on Novell Netware(tm) filesystem using NCP protocol.
+> > +nfs41-server.txt
+> > +	- info on the Linux server implementation of NFSv4 minor version 1.
+> > +nfs-rdma.txt
+> > +	- how to install and setup the Linux NFS/RDMA client and server software.
+> >  nfsroot.txt
+> >  	- short guide on setting up a diskless box with NFS root filesystem.
+> >  ntfs.txt
