@@ -1,30 +1,75 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch 03/29] knfsd: add userspace controls for stats tables
-Date: Tue, 28 Apr 2009 12:26:02 -0400
-Message-ID: <20090428162602.GJ17891@fieldses.org>
-References: <20090331202800.739621000@sgi.com> <20090331202938.939647000@sgi.com> <20090425215745.GA5088@fieldses.org> <20090425220329.GB5088@fieldses.org> <A11EACD6-B05E-4A1A-A38C-F65B2DFB77B3@oracle.com> <20090427232225.GB5108@fieldses.org> <4993A7C8-342E-47BE-997A-AF18E5DF41BE@oracle.com> <20090428155736.GH17891@fieldses.org> <223A8BE7-4083-4222-83B8-6BB6C4107016@oracle.com>
+Subject: Re: [PATCH 19/19] lockd: clean up 64-bit alignment fix in
+	nsm_init_private()
+Date: Tue, 28 Apr 2009 12:31:01 -0400
+Message-ID: <20090428163101.GK17891@fieldses.org>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233340.17283.29580.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>, Linux NFS ML <linux-nfs@vger.kernel.org>
+Cc: linux-nfs@vger.kernel.org, Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:46161 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:38379 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756690AbZD1Q0F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:26:05 -0400
-In-Reply-To: <223A8BE7-4083-4222-83B8-6BB6C4107016@oracle.com>
+	with ESMTP id S1759761AbZD1QbD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:31:03 -0400
+In-Reply-To: <20090423233340.17283.29580.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 12:03:49PM -0400, Chuck Lever wrote:
-> I'm OK with more brevity in these comments as long as we recognize that 
-> the devil is in the details.  We should preserve the specificity of the 
-> API descriptions.
->
-> I think it was you who was complaining recently about knowing whether a 
-> \n or a \0 is expected at the end of some of these strings.  ;-)
+On Thu, Apr 23, 2009 at 07:33:40PM -0400, Chuck Lever wrote:
+> Recently, commit ad5b365c fixed a data type alignment issue in
+> nsm_init_private() by introducing put_unaligned().  We don't actually
+> _require_ an unaligned access to nsm_private here.
+> 
+> Instead, we should always use memcpy/memcmp to access the contents of
+> RPC opaque data types.  This permits us to continue to define these as
+> simple character arrays, as most legacy RPC code does, and to rely on
+> gcc to pack the fields in in-core structures optimally without breaking
+> on platforms that require strict alignment.
 
-Oh, absolutely, I do appreciate the fact that we've got some
-documentation there.
+OK, I'm confused.  What structures will get packed differently?
 
 --b.
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/lockd/mon.c |   12 +++++-------
+>  1 files changed, 5 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 5017d50..763509a 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -16,8 +16,6 @@
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/lockd/lockd.h>
+>  
+> -#include <asm/unaligned.h>
+> -
+>  #define NLMDBG_FACILITY		NLMDBG_MONITOR
+>  #define NSM_PROGRAM		100024
+>  #define NSM_VERSION		1
+> @@ -278,14 +276,14 @@ static struct nsm_handle *nsm_lookup_priv(const struct nsm_private *priv)
+>   */
+>  static void nsm_init_private(struct nsm_handle *nsm)
+>  {
+> -	u64 *p = (u64 *)&nsm->sm_priv.data;
+>  	struct timespec ts;
+> -	s64 ns;
+> +	u64 buf[2];
+>  
+>  	ktime_get_ts(&ts);
+> -	ns = timespec_to_ns(&ts);
+> -	put_unaligned(ns, p);
+> -	put_unaligned((unsigned long)nsm, p + 1);
+> +	buf[0] = timespec_to_ns(&ts);
+> +	buf[1] = (unsigned long)nsm;
+> +
+> +	memcpy(nsm->sm_priv.data, buf, SM_PRIV_SIZE);
+>  }
+>  
+>  static struct nsm_handle *nsm_create_handle(const struct sockaddr *sap,
+> 
