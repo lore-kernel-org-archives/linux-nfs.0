@@ -1,39 +1,31 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 19/19] lockd: clean up 64-bit alignment fix in nsm_init_private()
-Date: Tue, 28 Apr 2009 12:35:50 -0400
-Message-ID: <1AF02847-8D16-4387-81CB-F36969CA9883@oracle.com>
-References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233340.17283.29580.stgit@ingres.1015granger.net> <20090428163101.GK17891@fieldses.org>
+Subject: Re: [PATCH 17/19] NFSD: Stricter buffer size checking in fs/nfsd/nfsctl.c
+Date: Tue, 28 Apr 2009 12:36:38 -0400
+Message-ID: <933CF5D0-337D-46CF-81E8-13F617BF0B2F@oracle.com>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233325.17283.71127.stgit@ingres.1015granger.net> <20090428163130.GL17891@fieldses.org>
 Mime-Version: 1.0 (Apple Message framework v930.3)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, Mans Rullgard <mans-2StjZFpD7GcAvxtiuMwx3w@public.gmane.org>
+Cc: linux-nfs@vger.kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:27382 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753595AbZD1QgO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:36:14 -0400
-In-Reply-To: <20090428163101.GK17891@fieldses.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:45620 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754173AbZD1Qgt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 12:36:49 -0400
+In-Reply-To: <20090428163130.GL17891@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Apr 28, 2009, at 12:31 PM, J. Bruce Fields wrote:
-> On Thu, Apr 23, 2009 at 07:33:40PM -0400, Chuck Lever wrote:
->> Recently, commit ad5b365c fixed a data type alignment issue in
->> nsm_init_private() by introducing put_unaligned().  We don't actually
->> _require_ an unaligned access to nsm_private here.
->>
->> Instead, we should always use memcpy/memcmp to access the contents of
->> RPC opaque data types.  This permits us to continue to define these  
->> as
->> simple character arrays, as most legacy RPC code does, and to rely on
->> gcc to pack the fields in in-core structures optimally without  
->> breaking
->> on platforms that require strict alignment.
+> On Thu, Apr 23, 2009 at 07:33:25PM -0400, Chuck Lever wrote:
+>> Clean up: For consistency, handle output buffer size checking in a
+>> other nfsctl functions the same way it's done for write_versions().
 >
-> OK, I'm confused.  What structures will get packed differently?
+> These all look fine to me, thanks.  Let me know when you want them
+> applied.
 
-Any struct that has an nsm_private embedded in it, such as struct  
-nlm_reboot.
+Just to confirm that 1/19 looks OK to you too... I think you can apply  
+1 - 17 now.
 
 > --b.
 >
@@ -41,46 +33,62 @@ nlm_reboot.
 >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 >> ---
 >>
->> fs/lockd/mon.c |   12 +++++-------
->> 1 files changed, 5 insertions(+), 7 deletions(-)
+>> fs/nfsd/nfsctl.c |   14 +++++++++-----
+>> 1 files changed, 9 insertions(+), 5 deletions(-)
 >>
->> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
->> index 5017d50..763509a 100644
->> --- a/fs/lockd/mon.c
->> +++ b/fs/lockd/mon.c
->> @@ -16,8 +16,6 @@
->> #include <linux/sunrpc/svc.h>
->> #include <linux/lockd/lockd.h>
->>
->> -#include <asm/unaligned.h>
->> -
->> #define NLMDBG_FACILITY		NLMDBG_MONITOR
->> #define NSM_PROGRAM		100024
->> #define NSM_VERSION		1
->> @@ -278,14 +276,14 @@ static struct nsm_handle  
->> *nsm_lookup_priv(const struct nsm_private *priv)
->>  */
->> static void nsm_init_private(struct nsm_handle *nsm)
->> {
->> -	u64 *p = (u64 *)&nsm->sm_priv.data;
->> 	struct timespec ts;
->> -	s64 ns;
->> +	u64 buf[2];
->>
->> 	ktime_get_ts(&ts);
->> -	ns = timespec_to_ns(&ts);
->> -	put_unaligned(ns, p);
->> -	put_unaligned((unsigned long)nsm, p + 1);
->> +	buf[0] = timespec_to_ns(&ts);
->> +	buf[1] = (unsigned long)nsm;
+>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>> index a152694..877e713 100644
+>> --- a/fs/nfsd/nfsctl.c
+>> +++ b/fs/nfsd/nfsctl.c
+>> @@ -695,8 +695,9 @@ static ssize_t write_threads(struct file *file,  
+>> char *buf, size_t size)
+>> 		if (rv)
+>> 			return rv;
+>> 	}
+>> -	sprintf(buf, "%d\n", nfsd_nrthreads());
+>> -	return strlen(buf);
 >> +
->> +	memcpy(nsm->sm_priv.data, buf, SM_PRIV_SIZE);
+>> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
+>> +							nfsd_nrthreads());
 >> }
 >>
->> static struct nsm_handle *nsm_create_handle(const struct sockaddr  
->> *sap,
+>> /**
+>> @@ -1197,7 +1198,9 @@ static ssize_t write_maxblksize(struct file  
+>> *file, char *buf, size_t size)
+>> 		nfsd_max_blksize = bsize;
+>> 		mutex_unlock(&nfsd_mutex);
+>> 	}
+>> -	return sprintf(buf, "%d\n", nfsd_max_blksize);
+>> +
+>> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
+>> +							nfsd_max_blksize);
+>> }
 >>
+>> #ifdef CONFIG_NFSD_V4
+>> @@ -1221,8 +1224,9 @@ static ssize_t __write_leasetime(struct file  
+>> *file, char *buf, size_t size)
+>> 			return -EINVAL;
+>> 		nfs4_reset_lease(lease);
+>> 	}
+>> -	sprintf(buf, "%ld\n", nfs4_lease_time());
+>> -	return strlen(buf);
+>> +
+>> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%ld\n",
+>> +							nfs4_lease_time());
+>> }
+>>
+>> /**
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---
+-- 
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
+
+
+
+
