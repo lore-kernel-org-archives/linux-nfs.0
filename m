@@ -1,122 +1,48 @@
-From: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
-Subject: Re: [patch 03/29] knfsd: add userspace controls for stats tables
-Date: Tue, 28 Apr 2009 11:31:49 +1000
-Message-ID: <ac442c870904271831i2542b745ndd3ee276b88300fe@mail.gmail.com>
-References: <20090331202800.739621000@sgi.com>
-	 <20090331202938.939647000@sgi.com>
-	 <20090425215745.GA5088@fieldses.org>
-	 <20090425220329.GB5088@fieldses.org>
-	 <A11EACD6-B05E-4A1A-A38C-F65B2DFB77B3@oracle.com>
-	 <ac442c870904271827w6041a67ew82fe36a843beeac3@mail.gmail.com>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: NFS BUG_ON in nfs_do_writepage
+Date: Tue, 28 Apr 2009 06:27:17 +0200
+Message-ID: <20090428042717.GA6304@wotan.suse.de>
+References: <20090412235010.c8e3475b.akpm@linux-foundation.org> <1239650202.16771.15.camel@heimdal.trondhjem.org> <5da0588e0904131506k5c58e8ddob9bf38f61da6302a@mail.gmail.com> <5da0588e0904131644g131dc816r61884e83bc4cd006@mail.gmail.com> <5da0588e0904240226j3454941y5f58c17a32a9a23d@mail.gmail.com> <1240671428.6112.1.camel@heimdal.trondhjem.org> <20090426064026.GD28555@wotan.suse.de> <1240755509.5055.34.camel@heimdal.trondhjem.org> <20090426151324.GB5588@wotan.suse.de> <1240768522.10548.33.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux NFS ML <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, Rince <rincebrain@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f180.google.com ([209.85.221.180]:49919 "EHLO
-	mail-qy0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755331AbZD1Bbt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Apr 2009 21:31:49 -0400
-Received: by qyk10 with SMTP id 10so540566qyk.33
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2009 18:31:49 -0700 (PDT)
-In-Reply-To: <ac442c870904271827w6041a67ew82fe36a843beeac3-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from cantor.suse.de ([195.135.220.2]:38430 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750735AbZD1E1W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Apr 2009 00:27:22 -0400
+In-Reply-To: <1240768522.10548.33.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-G'day,
+On Sun, Apr 26, 2009 at 01:55:22PM -0400, Trond Myklebust wrote:
+> On Sun, 2009-04-26 at 17:13 +0200, Nick Piggin wrote:
+> > This doesn't seem to fix the race, though... on kernels with the
+> > race still there, it will just open a window where you can have
+> > a dirty pte but the page not written out.
+> > 
+> > I don't understand.
+> 
+> I'm just pointing out that the NFS client already calls
+> __set_page_dirty_nobuffers() while holding the page lock inside the
+> nfs_vm_page_mkwrite() call, so having the VM do it too in the call to
+> set_page_dirty_balance() is actually redundant. IOW: as far as the NFS
+> code is concerned, we can get rid of the ->set_page_dirty() callback in
+> that situation.
+> 
+> I couldn't find any other places in the VM code where we can have a
+> dirty pte without also having called page_mkwrite() (and hence
+> __set_page_dirty_nobuffers). As I said, adding a WARN_ON(!PageDirty())
+> in ->set_page_dirty() didn't ever trigger any cases where the
+> set_page_dirty() was actually setting the dirty bit (except in the case
+> where we race with page writeout in do_wp_page() and __do_fault()).
+> 
+> That's why I believe disabling ->set_page_dirty() is safe here, and will
+> in fact suffice to fix the page writeout race.
 
-Whoops, this bounced from the list because I accidentally had HTML
-formatting on.  Resending.
+Ah, no I don't think so because it opens another race where the
+pte is dity but the page is marked clean.
 
-On Tue, Apr 28, 2009 at 11:27 AM, Greg Banks <gnb-xTcybq6BZ68@public.gmane.org> wrote:
->
->
-> On Tue, Apr 28, 2009 at 2:06 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>
->> On Apr 25, 2009, at 6:03 PM, J. Bruce Fields wrote:
->>>
->>> Pfft, did it again.
->>>
->>> --b.
->>>
->>> On Sat, Apr 25, 2009 at 05:57:45PM -0400, bfields wrote:
->>>>
->>>> On Wed, Apr 01, 2009 at 07:28:03AM +1100, Greg Banks wrote:
->>>>>
->>>>> +
->>>>> +/**
->>>>> + * write_stats_prune_period - Set or report the period for pruning
->>>>> + *                           old per-client/per-export stats entries,
->>>>> + *                           in seconds.
->>>>> + *
->>>>> + * Input:
->>>>> + *                     buf:            ignored
->>>>> + *                     size:           zero
->>>>> + *
->>>>> + * OR
->>>>> + *
->>>>> + * Input:
->>>>> + *                     buf:            C string containing an unsigned
->>>>> + *                                     integer value representing the
->>>>> new value
->>>>> + *                     size:           non-zero length of C string in
->>>>> @buf
->>>>> + * Output:
->>>>> + *     On success:     passed-in buffer filled with '\n'-terminated C
->>>>> string
->>>>> + *                     containing numeric value of the current setting
->>>>> + *                     return code is the size in bytes of the string
->>>>> + *     On error:       return code is zero or a negative errno value
->>>>> + */
->>>>
->>>> Just an idle remark, don't worry about this for now, but: we might want
->>>> to rein in this write_*() comment format a little some day.  A lot of
->>>> the content seems duplicated.
->>
->> I disagree.
->>
->> The present nfsctl user space API is entirely ad hoc.
->
-> Agreed.
->
->>
->>
->> Although sometimes the behavior is the same, each function/file can behave
->> slightly differently than the others.  We have to be very specific about
->> this here because the comments serve as both "user" documentation and as
->> code/API specification.
->
-> Sure, but the comments aren't organised in such a way that the subtle
-> differences between each pseudofile are obvious.  Instead there are large
-> swathes of text above each write_*() function which describe behaviours
-> common to all the write_*() functions, and you have to hunt carefully for
-> the differences.
->
-> For example, we don't need 10 copies of this text:
->
->  *     On success:     passed-in buffer filled with '\n'-terminated C string
->  *                     containing numeric value of the current setting
->  *                     return code is the size in bytes of the string
->
-> Bruce rightly points out that my patch was continuing this poor trend.
->
->>
->> Because this code wasn't adequately documented, features have been added
->> over time without a close examination of the operation of other parts of
->> this code.
->>
->> If you really want to simplify the comments, we should consider
->> simplifying the API first, imo.
->
-> Meh.  Most of the stuff in the nfsd filesystem could be *simplified* by
-> using the actual /proc filesystem mechanisms instead.
->
->
->
-> --
-> Greg.
->
-
-
-
--- 
-Greg.
