@@ -1,143 +1,191 @@
-From: "Weathers, Norman R." <Norman.R.Weathers-496aOtIFJR1B+Kdf37RAV9BPR1lH4CV8@public.gmane.org>
-Subject: RE: [Bug] NFSv4 fails to work without ipv6 kernel module
-Date: Tue, 28 Apr 2009 13:50:11 -0500
-Message-ID: <0122F800A3B64C449565A9E8C297701005E6DE1A@hoexmb9.conoco.net>
-References: <200904271903.36379.bircoph@gmail.com> <1810FE6E-D2AF-4ED3-BE34-F6117A8D9B46@oracle.com> <200904280444.00206.bircoph@gmail.com> <E3A82BE4-E39C-4E4E-9CBA-4CD182E73CBB@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: <linux-nfs@vger.kernel.org>
-To: "Chuck Lever" <chuck.lever@oracle.com>,
-	"Andrew Savchenko" <bircoph@gmail.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 18/19] lockd: Update NSM state from SM_MON replies
+Date: Tue, 28 Apr 2009 15:11:07 -0400
+Message-ID: <528F3128-71DD-4B0F-AA31-6A60BC808708@oracle.com>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233332.17283.23011.stgit@ingres.1015granger.net> <20090428162524.GI17891@fieldses.org> <20423538-9733-44FE-8DAC-AD0995DA1B58@oracle.com> <20090428163803.GN17891@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailman1.ppco.com ([138.32.41.4]:52527 "EHLO mailman1.ppco.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754122AbZD1TGY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 15:06:24 -0400
-Received: from bvlextrd1.conoco.net (bvlextrd1.conoco.net [138.32.41.12])
-	by mailman1.ppco.com (Switch-3.3.0/Switch-3.2.7) with ESMTP id n3SIpkdN032478
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Apr 2009 13:51:47 -0500
-In-Reply-To: <E3A82BE4-E39C-4E4E-9CBA-4CD182E73CBB@oracle.com>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:33260 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751294AbZD1TLa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Apr 2009 15:11:30 -0400
+In-Reply-To: <20090428163803.GN17891@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I, too, have seen this just this last weekend.  I have a vanilla
-2.6.29.1 kernel on Fedora 10, and I compiled it with IPV4 and IPV6, plus
-NFSv3 and NFSv4, plus the new rpcbind 4 support.  With IPV6 blacklisted,
-NFSv3 would not mount.  It had the same error message as Andrew
-"mount.nfs: Address family not supported by protocol".  Once I
-whitelisted IPV6, NFS would mount.  Unfortunately, this is not a good
-situation for me because IPV6 plays havoc with my network for some
-reason (darn cheap Linksys router probably).
+On Apr 28, 2009, at 12:38 PM, J. Bruce Fields wrote:
+> On Tue, Apr 28, 2009 at 12:34:19PM -0400, Chuck Lever wrote:
+>> On Apr 28, 2009, at 12:25 PM, J. Bruce Fields wrote:
+>>> On Thu, Apr 23, 2009 at 07:33:33PM -0400, Chuck Lever wrote:
+>>>> When rpc.statd starts up in user space at boot time, it attempts to
+>>>> write the latest NSM local state number into
+>>>> /proc/sys/fs/nfs/nsm_local_state.
+>>>>
+>>>> If lockd.ko isn't loaded yet (as is the case in most  
+>>>> configurations),
+>>>> that file doesn't exist, thus the kernel's NSM state remains set to
+>>>> its initial value of zero during lockd operation.
+>>>>
+>>>> This is a problem because rpc.statd and lockd use the NSM state
+>>>> number
+>>>> to prevent repeated lock recovery on rebooted hosts.  If lockd  
+>>>> sends
+>>>> a zero NSM state, but then a delayed SM_NOTIFY with a real NSM  
+>>>> state
+>>>> number is received, there is no way for lockd or rpc.statd to
+>>>> distinguish that stale SM_NOTIFY from an actual reboot.  Thus lock
+>>>> recovery could be performed after the rebooted host has already
+>>>> started reclaiming locks, and those locks will be lost.
+>>>>
+>>>> We could change /etc/init.d/nfslock so it always modprobes lockd.ko
+>>>> before starting rpc.statd.  However, if lockd.ko is ever unloaded
+>>>> and reloaded, we are back at square one, since the NSM state is not
+>>>> preserved across an unload/reload cycle.  This may happen  
+>>>> frequently
+>>>> on clients that use automounter.  A period of NFS inactivity causes
+>>>> lockd.ko to be unloaded, and the kernel loses its NSM state  
+>>>> setting.
+>>>
+>>> Aie.  Can we also fix the automounter or some other part of the
+>>> userspace configuration?
+>>
+>> User space isn't the problem here... it's the fact that lockd can get
+>> unloaded after a period of inactivity.  IMO lockd should be pinned in
+>> the kernel after it is loaded with /etc/init.d/nfslock.
+>>
+>>>> Instead, let's use the fact that rpc.statd plants the local  
+>>>> system's
+>>>> NSM state in every SM_MON (and SM_UNMON) reply.  lockd performs a
+>>>> synchronous SM_MON upcall to the local rpc.statd _before_ sending  
+>>>> its
+>>>> first NLM request to a new remote.  This would permit rpc.statd to
+>>>> provide the current NSM state to lockd, even after lockd.ko had  
+>>>> been
+>>>> unloaded and reloaded.
+>>>>
+>>>> Note that NLMPROC_LOCK arguments are constructed before the
+>>>> nsm_monitor() call, so we have to rearrange argument construction
+>>>> very
+>>>> slightly to make this all work out.
+>>>>
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>>
+>>>> fs/lockd/clntproc.c |    2 +-
+>>>> fs/lockd/mon.c      |    6 +++++-
+>>>> 2 files changed, 6 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+>>>> index dd79570..f55b900 100644
+>>>> --- a/fs/lockd/clntproc.c
+>>>> +++ b/fs/lockd/clntproc.c
+>>>> @@ -126,7 +126,6 @@ static void nlmclnt_setlockargs(struct nlm_rqst
+>>>> *req, struct file_lock *fl)
+>>>> 	struct nlm_lock	*lock = &argp->lock;
+>>>>
+>>>> 	nlmclnt_next_cookie(&argp->cookie);
+>>>> -	argp->state   = nsm_local_state;
+>>>> 	memcpy(&lock->fh, NFS_FH(fl->fl_file->f_path.dentry->d_inode),
+>>>> sizeof(struct nfs_fh));
+>>>> 	lock->caller  = utsname()->nodename;
+>>>> 	lock->oh.data = req->a_owner;
+>>>> @@ -519,6 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct
+>>>> file_lock *fl)
+>>>>
+>>>> 	if (nsm_monitor(host) < 0)
+>>>> 		goto out;
+>>>> +	req->a_args.state = nsm_local_state;
+>>>
+>>> Hm.  It looks like a_args.state is never used, except in ifdef'd-out
+>>> code in nlm4svc_proc_lock() and nlmsvc_proc_lock() ifdef'd out.
+>>> Something's wrong there.  (Not your fault; but needs looking into.)
+>>
+>> This isn't a big deal on the server side (I guess I should give this
+>> patch to Trond instead of you, in that case).
+>>
+>> The client passes its NSM state number to the server in NLMPROC_LOCK
+>> calls.  There is no mechanism for the server to pass its NSM state
+>> number to the client via the NLM protocol.  So the first the client  
+>> is
+>> aware of the server's NSM state number is after the server reboots  
+>> (via
+>> SM_NOTIFY).  If the server never reboots, the client will never  
+>> know the
+>> server's NSM state number.
+>
+> So the #if 0'd code should just be deleted?
 
-I went back and turned off the RPCBind v4 and recompiled the NFS
-modules, and now I can blacklist IPV6 and my NFSv3 works fine.  It is a
-strange problem.  My server, a Fedora 10 box, showed that it was
-authenticating the mount request fine...
+OK, I misread your question before.
 
-Norman Weathers 
+As I read the code, our server does not appear to utilize the client's  
+NSM state number, except for gating SM_NOTIFY requests with a  
+previously-seen NSM state number.  The #ifdef'd code would potentially  
+deny lock requests if it detected the state number going backwards.
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
-> Sent: Tuesday, April 28, 2009 11:17 AM
-> To: Andrew Savchenko
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: [Bug] NFSv4 fails to work without ipv6 kernel module
-> 
-> On Apr 27, 2009, at 8:43 PM, Andrew Savchenko wrote:
-> > Hello,
-> >
-> > On Monday 27 April 2009, Chuck Lever wrote:
-> >> On Apr 27, 2009, at 11:03 AM, Andrew Savchenko wrote:
-> >>> Hello,
-> >>>
-> >>> I have ipv6 support as a module (it may be needed in the
-> >>> recent future), but currently I want ipv6 to be disabled on my
-> >>> system, so I blacklisted this module. And here problems
-> >>> begin...
-> >>>
-> >>> NFSv3 works flawlessly:
-> >>> # mount 172.19.0.1:/home/ftp /mnt/nfs/
-> >>>
-> >>> but NFSv4 fails:
-> >>> # mount -t nfs4 172.19.0.1:/ /mnt/nfs/
-> >>> mount.nfs4: Cannot allocate memory
-> >>>
-> >>> After modprobe ipv6 it works:
-> >>> # mount -t nfs4 172.19.0.1:/ /mnt/nfs/
-> >>>
-> >>> I recompiled nfs-utils without ipv6 support, but this doesn't
-> >>> help.
-> >>>
-> >>> Here is my /etc/exports:
-> >>> /home/ftp 172.16.0.0/12
-> >>> (ro,async,crossmnt,no_subtree_check,fsid=0,all_squash) \
-> >>>       127.0.0.1/32
-> >>> (ro,async,crossmnt,no_subtree_check,fsid=0,all_squash)
-> >>>
-> >>> I use nfs-utils-1.1.5, I tested this on both vanilla linux
-> >>> kernels 2.6.28.7 and 2.6.28.9.
-> >>
-> >> Have you tried this with 2.6.29?
-> >
-> > I just tried with vanilla 2.6.29.1. Things became even worse. Now
-> > not only NFSv4 fails to mount as usual, but NFSv3 fails too:
-> >
-> > # mount 172.19.0.1:/home/ftp /mnt/orionis
-> > mount.nfs: Address family not supported by protocol
-> >
-> > And following error appears in kernel log multiple times:
-> > RPC: failed to contact local rpcbind server (errno 5).
-> >
-> > I attached strace -f for both mount attempts. The problem is in
-> > mount() syscall in both cases, thus somewhere inside the kernel...
-> >
-> > With ipv6 module loaded all works fine.
-> 
-> Right, this isn't an nfs-utils problem, it's an issue in the kernel  
-> (so the strace isn't terribly informative).  2.6.29 is supposed to  
-> have addressed this problem, but maybe you are hitting a new 
-> way that  
-> not having ipv6.ko loaded is buggering us.
-> 
-> If you're building these kernels yourself, why not disable 
-> CONFIG_IPV6?
-> 
-> >> You can also try building 2.6.28 with CONFIG_SUNRPC_REGISTER_V4
-> >> disabled.
-> >
-> > With this option disabled errno 5 (see above) disappeared from
-> > logs, but mount fails with the same errors. Yet again, with ipv6
-> > module loaded it works ok.
-> 
-> I can't reproduce here on 2.6.30-rc2, so it may be just an 
-> issue with  
-> 2.6.29.  You can enable debug printks to see what the kernel 
-> thinks is  
-> going on.  Try this as root:
-> 
->    # rpcdebug -m nfs -s mount
->    # mount ....
->    # rpcdebug -m nfs -c
-> 
-> Then look in your kernel log.  "rpcdebug -vh" will list the full set  
-> of flags you can enable.
-> 
-> Since rpcbind also seems to be an issue, you can try this also:
-> 
->    # rpcdebug -m rpc -s bind
->    # mount ....
->    # rpcdebug -m rpc -c
-> 
-> What type of server are you attempting to mount?  Linux?  Solaris?
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+It would be nicer if the server actually tracked the client's state  
+number, but it doesn't appear to do that today.  The #ifdef'd code  
+serves to remind us that we should consider this.  This would also  
+prevent a delayed SM_NOTIFY from causing the server to drop locks  
+reacquired during the grace period accidentally.
+
+So I think it would be good to leave it, or replace it with a FIXME  
+comment, for now.  Eventually we should add a little extra logic to  
+handle this case.
+
+> --b.
+>
+>>
+>>>> 	fl->fl_flags |= FL_ACCESS;
+>>>> 	status = do_vfs_lock(fl);
+>>>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+>>>> index 6d5d4a4..5017d50 100644
+>>>> --- a/fs/lockd/mon.c
+>>>> +++ b/fs/lockd/mon.c
+>>>> @@ -188,8 +188,12 @@ int nsm_monitor(const struct nlm_host *host)
+>>>> 		status = -EIO;
+>>>> 	if (status < 0)
+>>>> 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
+>>>> -	else
+>>>> +	else {
+>>>> 		nsm->sm_monitored = 1;
+>>>> +		nsm_local_state = res.state;
+>>>> +		dprintk("lockd: nsm_monitor: NSM state is now %d\n",
+>>>> +				nsm_local_state);
+>>>
+>>> Could we make that a dprintk in the case where this changes  
+>>> nsm_local
+>>> state from something other than zero (nsm_lock_state &&
+>>> nsm_local_state
+>>> != res.state)?
+>>>
+>>> (Just to make sure no statd is returning inconsistent  
+>>> nsm_local_stats
+>>> here.)
+>>
+>> I'm not sure that's a big deal, but...
+>>
+>> Note that the XNFS version 3 spec suggests the local lockd should
+>> request the NSM state number when it starts up by posting an
+>> SM_UNMON_ALL to the local statd.  That might be safer than loading it
+>> after every SM_MON.
+>>
+>>>> +	}
+>>>> 	return status;
+>>>> }
+>>>
+>>> --b.
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
