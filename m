@@ -1,21 +1,22 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: [PATCH] nfs-utils: Fix IPv6 support in support/nfs/rpc_socket.c
-Date: Wed, 29 Apr 2009 17:24:12 -0400
-Message-ID: <20090429212247.9359.84751.stgit@seurat.1015granger.net>
+Date: Wed, 29 Apr 2009 17:28:39 -0400
+Message-ID: <20090429212738.25419.64944.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:17295 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760851AbZD2VZC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Apr 2009 17:25:02 -0400
+Received: from rcsinet11.oracle.com ([148.87.113.123]:26903 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754876AbZD2Va6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Apr 2009 17:30:58 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Use the correct #ifdef variable to enable IPv6 support for privileged
-RPC clients.  Without this fix, unmounting IPv6 NFSv2/v3 servers fails.
+RPC clients.  Without this fix, unmounting an IPv6 NFSv2/v3 server
+fails.
 
 Introduced by commit 8c94296bc84f3a204f2061c0391a1d2350e4f37e.
 
