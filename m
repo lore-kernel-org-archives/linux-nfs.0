@@ -1,210 +1,284 @@
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 1/7] svcgssd: add client's principal name to downcall
-	information
-Date: Wed, 29 Apr 2009 17:56:16 -0400
-Message-ID: <20090429215615.25811.85107.stgit@jazz.citi.umich.edu>
+Subject: [PATCH 3/7] gssd: add support for callback authentication
+Date: Wed, 29 Apr 2009 17:56:26 -0400
+Message-ID: <20090429215626.25811.13927.stgit@jazz.citi.umich.edu>
 References: <20090429214300.25811.81332.stgit@jazz.citi.umich.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:47702 "EHLO citi.umich.edu"
+Received: from citi.umich.edu ([141.211.133.111]:47712 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753387AbZD2V4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Apr 2009 17:56:16 -0400
+	id S1759051AbZD2V40 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2009 17:56:26 -0400
 In-Reply-To: <20090429214300.25811.81332.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <aglo@citi.umich.edu>
 
-This patch adds the krb5 hostbased principal, name which the
-nfs client used to authenticate, to the svcgssd downcall
-information.  This information is needed for the callback
-authentication.
-
-When estabishing the callback, nfsd will pass the principal
-name in the upcall to the gssd.  gssd will acquire a service
-ticket for the specified principal name.
+Add support for handling upcalls on the new "nfsd4_cb" directory pipes.
+Only new kernels (2.6.29) have support for this new pipe directory.
+(The need for this new pipe directory will go away with NFSv4.1 where
+the callback can be done on the same connection as the fore-channel.)
 
 Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
 Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
 
- utils/gssd/svcgssd_proc.c |   94 ++++++++++++++++++++++++++++++++++++++++++---
- 1 files changed, 87 insertions(+), 7 deletions(-)
+ utils/gssd/gssd.c           |    5 +++
+ utils/gssd/gssd.h           |    2 +
+ utils/gssd/gssd_main_loop.c |   18 ++++++++++-
+ utils/gssd/gssd_proc.c      |   73 +++++++++++++++++++++++++++++--------------
+ 4 files changed, 74 insertions(+), 24 deletions(-)
 
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index 6f2ba61..f1bfbef 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -56,6 +56,7 @@
- #include "gss_util.h"
- #include "err_util.h"
- #include "context.h"
-+#include "gss_oids.h"
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index f6949db..7a23362 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -57,6 +57,7 @@
  
- extern char * mech2file(gss_OID mech);
- #define SVCGSSD_CONTEXT_CHANNEL "/proc/net/rpc/auth.rpcsec.context/channel"
-@@ -73,7 +74,7 @@ struct svc_cred {
- static int
- do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 		gss_OID mech, gss_buffer_desc *context_token,
--		int32_t endtime)
-+		int32_t endtime, char *client_name)
+ char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
+ char pipefs_nfsdir[PATH_MAX] = GSSD_PIPEFS_DIR;
++char pipefs_nfscbdir[PATH_MAX] = GSSD_PIPEFS_DIR;
+ char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+ char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR;
+ char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
+@@ -163,6 +164,10 @@ main(int argc, char *argv[])
+ 		 pipefs_dir, GSSD_SERVICE_NAME);
+ 	if (pipefs_nfsdir[sizeof(pipefs_nfsdir)-1] != '\0')
+ 		errx(1, "pipefs_nfsdir path name too long");
++	snprintf(pipefs_nfscbdir, sizeof(pipefs_nfscbdir), "%s/%s",
++		 pipefs_dir, GSSD_NFSCB_NAME);
++	if (pipefs_nfscbdir[sizeof(pipefs_nfscbdir)-1] != '\0')
++		errx(1, "pipefs_nfscbdir path name too long");
+ 
+ 	if ((progname = strrchr(argv[0], '/')))
+ 		progname++;
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index 3c52f46..ef2ac54 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -49,6 +49,7 @@
+ #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+ #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+ #define GSSD_SERVICE_NAME			"nfs"
++#define GSSD_NFSCB_NAME				"nfsd4_cb"
+ #define GSSD_SERVICE_NAME_LEN			3
+ #define GSSD_MAX_CCACHE_SEARCH			16
+ 
+@@ -61,6 +62,7 @@ enum {AUTHTYPE_KRB5, AUTHTYPE_SPKM3, AUTHTYPE_LIPKEY};
+ 
+ extern char			pipefs_dir[PATH_MAX];
+ extern char			pipefs_nfsdir[PATH_MAX];
++extern char			pipefs_nfscbdir[PATH_MAX];
+ extern char			keytabfile[PATH_MAX];
+ extern char			*ccachesearch[];
+ extern int			use_memcache;
+diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+index 397fd14..1c1ff4f 100644
+--- a/utils/gssd/gssd_main_loop.c
++++ b/utils/gssd/gssd_main_loop.c
+@@ -103,7 +103,7 @@ gssd_run()
  {
- 	FILE *f;
- 	int i;
-@@ -98,9 +99,10 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 	qword_printint(f, cred->cr_gid);
- 	qword_printint(f, cred->cr_ngroups);
- 	printerr(2, "mech: %s, hndl len: %d, ctx len %d, timeout: %d (%d from now), "
--		 "uid: %d, gid: %d, num aux grps: %d:\n",
-+		 "clnt: %s, uid: %d, gid: %d, num aux grps: %d:\n",
- 		 fname, out_handle->length, context_token->length,
- 		 endtime, endtime - time(0),
-+		 client_name ? client_name : "<null>",
- 		 cred->cr_uid, cred->cr_gid, cred->cr_ngroups);
- 	for (i=0; i < cred->cr_ngroups; i++) {
- 		qword_printint(f, cred->cr_groups[i]);
-@@ -108,6 +110,8 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 	int			ret;
+ 	struct sigaction	dn_act;
+-	int			fd;
++	int			fd, fd_cb;
+ 	sigset_t		set;
+ 
+ 	/* Taken from linux/Documentation/dnotify.txt: */
+@@ -125,6 +125,20 @@ gssd_run()
+ 	fcntl(fd, F_SETSIG, DNOTIFY_SIGNAL);
+ 	fcntl(fd, F_NOTIFY, DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
+ 
++	/* Attempt to open new callback pipe.  If the open fails,
++	 * don't try to process it. */
++	if ((fd_cb = open(pipefs_nfscbdir, O_RDONLY)) == -1) {
++		/* could be an older kernel or a newer one doing NFS 4.1 */
++		if (errno != ENOENT)
++			printerr(0, "WARNING: failed to open %s: %s\n",
++				 pipefs_nfscbdir, strerror(errno));
++		memset(pipefs_nfscbdir, '\0', sizeof(pipefs_nfscbdir));
++	} else {
++		fcntl(fd_cb, F_SETSIG, DNOTIFY_SIGNAL);
++		fcntl(fd_cb, F_NOTIFY,
++			DN_CREATE|DN_DELETE|DN_MODIFY|DN_MULTISHOT);
++	}
++
+ 	init_client_list();
+ 
+ 	printerr(1, "beginning poll\n");
+@@ -151,5 +165,7 @@ gssd_run()
+ 		}
  	}
- 	qword_print(f, fname);
- 	qword_printhex(f, context_token->value, context_token->length);
-+	if (client_name)
-+		qword_print(f, client_name);
- 	err = qword_eol(f);
- 	if (err) {
- 		printerr(1, "WARNING: error writing to downcall channel "
-@@ -307,6 +311,75 @@ print_hexl(const char *description, unsigned char *cp, int length)
- }
- #endif
- 
-+static int
-+get_krb5_hostbased_name (gss_buffer_desc *name, char **hostbased_name)
-+{
-+	char *p, *sname = NULL;
-+	if (strchr(name->value, '@') && strchr(name->value, '/')) {
-+		if ((sname = calloc(name->length, 1)) == NULL) {
-+			printerr(0, "ERROR: get_krb5_hostbased_name failed "
-+				 "to allocate %d bytes\n", name->length);
-+			return -1;
-+		}
-+		/* read in name and instance and replace '/' with '@' */
-+		sscanf(name->value, "%[^@]", sname);
-+		p = strrchr(sname, '/');
-+		if (p == NULL) {    /* The '@' preceeded the '/' */
-+			free(sname);
-+			return -1;
-+		}
-+		*p = '@';
-+	}
-+	*hostbased_name = sname;
-+	return 0;
-+}
-+
-+static int
-+get_hostbased_client_name(gss_name_t client_name, gss_OID mech,
-+			  char **hostbased_name)
-+{
-+	u_int32_t	maj_stat, min_stat;
-+	gss_buffer_desc	name;
-+	gss_OID		name_type = GSS_C_NO_OID;
-+	char		*cname;
-+	int		res = -1;
-+
-+	*hostbased_name = NULL;	    /* preset in case we fail */
-+
-+	/* Get the client's gss authenticated name */
-+	maj_stat = gss_display_name(&min_stat, client_name, &name, &name_type);
-+	if (maj_stat != GSS_S_COMPLETE) {
-+		pgsserr("get_hostbased_client_name: gss_display_name",
-+			maj_stat, min_stat, mech);
-+		goto out_err;
-+	}
-+	if (name.length >= 0xffff) {	    /* don't overflow */
-+		printerr(0, "ERROR: get_hostbased_client_name: "
-+			 "received gss_name is too long (%d bytes)\n",
-+			 name.length);
-+		goto out_rel_buf;
-+	}
-+
-+	/* For Kerberos, transform the NT_KRB5_PRINCIPAL name to
-+	 * an NT_HOSTBASED_SERVICE name */
-+	if (g_OID_equal(&krb5oid, mech)) {
-+		if (get_krb5_hostbased_name(&name, &cname) == 0)
-+			*hostbased_name = cname;
-+	}
-+
-+	/* No support for SPKM3, just print a warning (for now) */
-+	if (g_OID_equal(&spkm3oid, mech)) {
-+		printerr(1, "WARNING: get_hostbased_client_name: "
-+			 "no hostbased_name support for SPKM3\n");
-+	}
-+
-+	res = 0;
-+out_rel_buf:
-+	gss_release_buffer(&min_stat, &name);
-+out_err:
-+	return res;
-+}
-+
- void
- handle_nullreq(FILE *f) {
- 	/* XXX initialize to a random integer to reduce chances of unnecessary
-@@ -325,7 +398,7 @@ handle_nullreq(FILE *f) {
- 				null_token = {.value = NULL};
- 	u_int32_t		ret_flags;
- 	gss_ctx_id_t		ctx = GSS_C_NO_CONTEXT;
--	gss_name_t		client_name;
-+	gss_name_t		client_name = NULL;
- 	gss_OID			mech = GSS_C_NO_OID;
- 	u_int32_t		maj_stat = GSS_S_FAILURE, min_stat = 0;
- 	u_int32_t		ignore_min_stat;
-@@ -334,6 +407,7 @@ handle_nullreq(FILE *f) {
- 	static int		lbuflen = 0;
- 	static char		*cp;
- 	int32_t			ctx_endtime;
-+	char			*hostbased_name = NULL;
- 
- 	printerr(1, "handling null request\n");
- 
-@@ -396,11 +470,13 @@ handle_nullreq(FILE *f) {
- 	if (get_ids(client_name, mech, &cred)) {
- 		/* get_ids() prints error msg */
- 		maj_stat = GSS_S_BAD_NAME; /* XXX ? */
--		gss_release_name(&ignore_min_stat, &client_name);
- 		goto out_err;
- 	}
--	gss_release_name(&ignore_min_stat, &client_name);
--
-+	if (get_hostbased_client_name(client_name, mech, &hostbased_name)) {
-+		/* get_hostbased_client_name() prints error msg */
-+		maj_stat = GSS_S_BAD_NAME; /* XXX ? */
-+		goto out_err;
-+	}
- 
- 	/* Context complete. Pass handle_seq in out_handle to use
- 	 * for context lookup in the kernel. */
-@@ -419,7 +495,8 @@ handle_nullreq(FILE *f) {
- 	/* We no longer need the gss context */
- 	gss_delete_sec_context(&ignore_min_stat, &ctx, &ignore_out_tok);
- 
--	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime);
-+	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime,
-+			hostbased_name);
- continue_needed:
- 	send_response(f, &in_handle, &in_tok, maj_stat, min_stat,
- 			&out_handle, &out_tok);
-@@ -428,6 +505,9 @@ out:
- 		free(ctx_token.value);
- 	if (out_tok.value != NULL)
- 		gss_release_buffer(&ignore_min_stat, &out_tok);
-+	if (client_name)
-+		gss_release_name(&ignore_min_stat, &client_name);
-+	free(hostbased_name);
- 	printerr(1, "finished handling null request\n");
+ 	close(fd);
++	if (fd_cb != -1)
++		close(fd_cb);
  	return;
+ }
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 0fc0c42..969d113 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -232,11 +232,19 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+ 		sscanf(p, "port: %127s\n", cb_port);
+ 
+ 	/* check service, program, and version */
+-	if(memcmp(service, "nfs", 3)) return -1;
++	if (memcmp(service, "nfs", 3) != 0)
++		return -1;
+ 	*prog = atoi(program + 1); /* skip open paren */
+ 	*vers = atoi(version);
+-	if((*prog != 100003) || ((*vers != 2) && (*vers != 3) && (*vers != 4)))
+-		goto fail;
++
++	if (strlen(service) == 3 ) {
++		if ((*prog != 100003) || ((*vers != 2) && (*vers != 3) &&
++		    (*vers != 4)))
++			goto fail;
++	} else if (memcmp(service, "nfs4_cb", 7) == 0) {
++		if (*vers != 1)
++			goto fail;
++	}
+ 
+ 	if (cb_port[0] != '\0') {
+ 		port = atoi(cb_port);
+@@ -315,19 +323,18 @@ out:
+ static int
+ process_clnt_dir_files(struct clnt_info * clp)
+ {
+-	char	kname[32];
+-	char	sname[32];
+-	char	info_file_name[32];
++	char	name[PATH_MAX];
++	char	info_file_name[PATH_MAX];
+ 
+ 	if (clp->krb5_fd == -1) {
+-		snprintf(kname, sizeof(kname), "%s/krb5", clp->dirname);
+-		clp->krb5_fd = open(kname, O_RDWR);
++		snprintf(name, sizeof(name), "%s/krb5", clp->dirname);
++		clp->krb5_fd = open(name, O_RDWR);
+ 	}
+ 	if (clp->spkm3_fd == -1) {
+-		snprintf(sname, sizeof(sname), "%s/spkm3", clp->dirname);
+-		clp->spkm3_fd = open(sname, O_RDWR);
++		snprintf(name, sizeof(name), "%s/spkm3", clp->dirname);
++		clp->spkm3_fd = open(name, O_RDWR);
+ 	}
+-	if((clp->krb5_fd == -1) && (clp->spkm3_fd == -1))
++	if ((clp->krb5_fd == -1) && (clp->spkm3_fd == -1))
+ 		return -1;
+ 	snprintf(info_file_name, sizeof(info_file_name), "%s/info",
+ 			clp->dirname);
+@@ -384,17 +391,18 @@ insert_clnt_poll(struct clnt_info *clp)
+ }
+ 
+ static void
+-process_clnt_dir(char *dir)
++process_clnt_dir(char *dir, char *pdir)
+ {
+ 	struct clnt_info *	clp;
+ 
+ 	if (!(clp = insert_new_clnt()))
+ 		goto fail_destroy_client;
+ 
+-	if (!(clp->dirname = calloc(strlen(dir) + 1, 1))) {
++	/* An extra for the '/', and an extra for the null */
++	if (!(clp->dirname = calloc(strlen(dir) + strlen(pdir) + 2, 1))) {
+ 		goto fail_destroy_client;
+ 	}
+-	memcpy(clp->dirname, dir, strlen(dir));
++	sprintf(clp->dirname, "%s/%s", pdir, dir);
+ 	if ((clp->dir_fd = open(clp->dirname, O_RDONLY)) == -1) {
+ 		printerr(0, "ERROR: can't open %s: %s\n",
+ 			 clp->dirname, strerror(errno));
+@@ -438,16 +446,24 @@ init_client_list(void)
+  * directories, since the DNOTIFY could have been in there.
+  */
+ static void
+-update_old_clients(struct dirent **namelist, int size)
++update_old_clients(struct dirent **namelist, int size, char *pdir)
+ {
+ 	struct clnt_info *clp;
+ 	void *saveprev;
+ 	int i, stillhere;
++	char fname[PATH_MAX];
+ 
+ 	for (clp = clnt_list.tqh_first; clp != NULL; clp = clp->list.tqe_next) {
++		/* only compare entries in the global list that are from the
++		 * same pipefs parent directory as "pdir"
++		 */
++		if (strncmp(clp->dirname, pdir, strlen(pdir)) != 0) continue;
++
+ 		stillhere = 0;
+ 		for (i=0; i < size; i++) {
+-			if (!strcmp(clp->dirname, namelist[i]->d_name)) {
++			snprintf(fname, sizeof(fname), "%s/%s",
++				 pdir, namelist[i]->d_name);
++			if (strcmp(clp->dirname, fname) == 0) {
+ 				stillhere = 1;
+ 				break;
+ 			}
+@@ -468,13 +484,16 @@ update_old_clients(struct dirent **namelist, int size)
+ 
+ /* Search for a client by directory name, return 1 if found, 0 otherwise */
+ static int
+-find_client(char *dirname)
++find_client(char *dirname, char *pdir)
+ {
+ 	struct clnt_info	*clp;
++	char fname[PATH_MAX];
+ 
+-	for (clp = clnt_list.tqh_first; clp != NULL; clp = clp->list.tqe_next)
+-		if (!strcmp(clp->dirname, dirname))
++	for (clp = clnt_list.tqh_first; clp != NULL; clp = clp->list.tqe_next) {
++		snprintf(fname, sizeof(fname), "%s/%s", pdir, dirname);
++		if (strcmp(clp->dirname, fname) == 0)
+ 			return 1;
++	}
+ 	return 0;
+ }
+ 
+@@ -497,12 +516,12 @@ process_pipedir(char *pipe_name)
+ 		return -1;
+ 	}
+ 
+-	update_old_clients(namelist, j);
++	update_old_clients(namelist, j, pipe_name);
+ 	for (i=0; i < j; i++) {
+ 		if (i < FD_ALLOC_BLOCK
+ 				&& !strncmp(namelist[i]->d_name, "clnt", 4)
+-				&& !find_client(namelist[i]->d_name))
+-			process_clnt_dir(namelist[i]->d_name);
++				&& !find_client(namelist[i]->d_name, pipe_name))
++			process_clnt_dir(namelist[i]->d_name, pipe_name);
+ 		free(namelist[i]);
+ 	}
+ 
+@@ -510,7 +529,6 @@ process_pipedir(char *pipe_name)
+ 
+ 	return 0;
+ }
+-
+ /* Used to read (and re-read) list of clients, set up poll array. */
+ int
+ update_client_list(void)
+@@ -521,6 +539,15 @@ update_client_list(void)
+ 	if (retval)
+ 		printerr(0, "ERROR: processing %s\n", pipefs_nfsdir);
+ 
++	/* If we successfully processed nfsdir and callback directory exists
++	 * process any events in the callback directory
++	 */
++	if (retval == 0 && pipefs_nfscbdir[0] != '\0') {
++		retval = process_pipedir(pipefs_nfscbdir);
++		if (retval)
++			printerr(0, "ERROR: processing %s\n", pipefs_nfscbdir);
++	}
++
+ 	return retval;
+ }
  
 
