@@ -1,49 +1,53 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4995 "EHLO mx2.netapp.com"
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 4/7] gssd: print full client directory being handled
+Date: Wed, 29 Apr 2009 17:56:31 -0400
+Message-ID: <20090429215631.25811.69164.stgit@jazz.citi.umich.edu>
+References: <20090429214300.25811.81332.stgit@jazz.citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from citi.umich.edu ([141.211.133.111]:47715 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754009AbZD1Q4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Apr 2009 12:56:18 -0400
-From: andros@netapp.com
-To: bfields@fieldses.org
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] pynfs: set cache_this to false for readdir
-Date: Tue, 28 Apr 2009 12:56:15 -0400
-Message-Id: <1240937775-23746-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1240937775-23746-1-git-send-email-andros@netapp.com>
-References: <>
- <1240937775-23746-1-git-send-email-andros@netapp.com>
+	id S1758390AbZD2V4b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2009 17:56:31 -0400
+In-Reply-To: <20090429214300.25811.81332.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
-MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+From: Olga Kornievskaia <aglo@citi.umich.edu>
 
-testserver.py was failing initialization against the new Linux server DRC
-which has a lower max resonse size cached value than the initializaion
-readdir response.
+For convenience, add the full name of the upcall pipe being processed.
+(Distinquishes between "normal" upcall, and a callback upcall.)
 
-Set cache_this to False
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
- nfs4.1/server41tests/environment.py |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
-index fb0e7ed..8623158 100644
---- a/nfs4.1/server41tests/environment.py
-+++ b/nfs4.1/server41tests/environment.py
-@@ -415,7 +415,7 @@ def do_readdir(sess, file, cookie=0, cookieverf='', attrs=0L,
-     baseops = use_obj(file)
-     while True:
-         readdir_op = op.readdir(cookie, cookieverf, dircount, maxcount, attrs)
--        res = sess.compound(baseops + [readdir_op])
-+        res = sess.compound(baseops + [readdir_op], cache_this=False)
-         check(res, msg="READDIR with cookie=%i, maxcount=%i" % (cookie, maxcount))
-         reply = res.resarray[-1].reply
-         if not reply.entries and not reply.eof:
--- 
-1.5.4.3
+ utils/gssd/gssd_proc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 969d113..c1f0350 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -857,7 +857,7 @@ handle_krb5_upcall(struct clnt_info *clp)
+ 	char			**dirname;
+ 	int			create_resp = -1;
+ 
+-	printerr(1, "handling krb5 upcall\n");
++	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
+ 
+ 	token.length = 0;
+ 	token.value = NULL;
+@@ -972,7 +972,7 @@ handle_spkm3_upcall(struct clnt_info *clp)
+ 	struct authgss_private_data pd;
+ 	gss_buffer_desc		token;
+ 
+-	printerr(2, "handling spkm3 upcall\n");
++	printerr(2, "handling spkm3 upcall (%s)\n", clp->dirname);
+ 
+ 	token.length = 0;
+ 	token.value = NULL;
 
