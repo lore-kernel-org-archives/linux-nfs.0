@@ -1,91 +1,107 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs-utils: Fix IPv6 support in support/nfs/rpc_socket.c
-Date: Wed, 29 Apr 2009 17:35:04 -0400
-Message-ID: <2DD6DD01-7395-4B93-A334-102D28E54B30@oracle.com>
-References: <20090429212247.9359.84751.stgit@seurat.1015granger.net>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <steved@redhat.com>
+From: Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 2/7] gssd: refactor update_client_list()
+Date: Wed, 29 Apr 2009 17:56:21 -0400
+Message-ID: <20090429215621.25811.84774.stgit@jazz.citi.umich.edu>
+References: <20090429214300.25811.81332.stgit@jazz.citi.umich.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:29315 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751109AbZD2Vf2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Apr 2009 17:35:28 -0400
-In-Reply-To: <20090429212247.9359.84751.stgit-x+BlCsqV7M/wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+Received: from citi.umich.edu ([141.211.133.111]:47706 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758250AbZD2V4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Apr 2009 17:56:21 -0400
+In-Reply-To: <20090429214300.25811.81332.stgit-zTNJhAanYLVZN1qrTdtDg5Vzexx5G7lz@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry, you can ignore this one.
+From: Olga Kornievskaia <aglo@citi.umich.edu>
 
-On Apr 29, 2009, at 5:24 PM, Chuck Lever wrote:
+Split out the processing for a pipe to a separate routine.  The next
+patch adds a new pipe to be processed.
 
-> Use the correct #ifdef variable to enable IPv6 support for privileged
-> RPC clients.  Without this fix, unmounting IPv6 NFSv2/v3 servers  
-> fails.
->
-> Introduced by commit 8c94296bc84f3a204f2061c0391a1d2350e4f37e.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
-> support/nfs/rpc_socket.c |   12 +++++-------
-> 1 files changed, 5 insertions(+), 7 deletions(-)
->
-> diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-> index 85e6064..cebf83d 100644
-> --- a/support/nfs/rpc_socket.c
-> +++ b/support/nfs/rpc_socket.c
-> @@ -132,7 +132,7 @@ static int nfs_bind(const int sock, const  
-> sa_family_t family)
-> 	return -1;
-> }
->
-> -#ifdef IPV6_SUPPORT
-> +#ifdef IPV6_SUPPORTED
->
-> /*
->  * Bind a socket using an unused privileged source port.
-> @@ -153,18 +153,16 @@ static int nfs_bindresvport(const int sock,  
-> const sa_family_t family)
->
-> 	switch (family) {
-> 	case AF_INET:
-> -		return bindresvport_sa(sock, (struct sockaddr *)&sin,
-> -					(socklen_t)sizeof(sin));
-> +		return bindresvport_sa(sock, (struct sockaddr *)&sin);
-> 	case AF_INET6:
-> -		return bindresvport_sa(sock, (struct sockaddr *)&sin6,
-> -					(socklen_t)sizeof(sin6));
-> +		return bindresvport_sa(sock, (struct sockaddr *)&sin6);
-> 	}
->
-> 	errno = EAFNOSUPPORT;
-> 	return -1;
-> }
->
-> -#else	/* !IPV6_SUPPORT */
-> +#else	/* !IPV6_SUPPORTED */
->
-> /*
->  * Bind a socket using an unused privileged source port.
-> @@ -182,7 +180,7 @@ static int nfs_bindresvport(const int sock,  
-> const sa_family_t family)
-> 	return bindresvport(sock, NULL);
-> }
->
-> -#endif	/* !IPV6_SUPPORT */
-> +#endif	/* !IPV6_SUPPORTED */
->
-> /*
->  * Perform a non-blocking connect on the socket fd.
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+---
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ utils/gssd/gssd_main_loop.c |    3 +--
+ utils/gssd/gssd_proc.c      |   28 +++++++++++++++++++++-------
+ 2 files changed, 22 insertions(+), 9 deletions(-)
+
+diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+index 917b662..397fd14 100644
+--- a/utils/gssd/gssd_main_loop.c
++++ b/utils/gssd/gssd_main_loop.c
+@@ -132,8 +132,7 @@ gssd_run()
+ 		while (dir_changed) {
+ 			dir_changed = 0;
+ 			if (update_client_list()) {
+-				printerr(0, "ERROR: couldn't update "
+-					 "client list\n");
++				/* Error msg is already printed */
+ 				exit(1);
+ 			}
+ 		}
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 02239d2..0fc0c42 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -478,25 +478,25 @@ find_client(char *dirname)
+ 	return 0;
+ }
+ 
+-/* Used to read (and re-read) list of clients, set up poll array. */
+-int
+-update_client_list(void)
++static int
++process_pipedir(char *pipe_name)
+ {
+ 	struct dirent **namelist;
+ 	int i, j;
+ 
+-	if (chdir(pipefs_nfsdir) < 0) {
++	if (chdir(pipe_name) < 0) {
+ 		printerr(0, "ERROR: can't chdir to %s: %s\n",
+-			 pipefs_nfsdir, strerror(errno));
++			 pipe_name, strerror(errno));
+ 		return -1;
+ 	}
+ 
+-	j = scandir(pipefs_nfsdir, &namelist, NULL, alphasort);
++	j = scandir(pipe_name, &namelist, NULL, alphasort);
+ 	if (j < 0) {
+ 		printerr(0, "ERROR: can't scandir %s: %s\n",
+-			 pipefs_nfsdir, strerror(errno));
++			 pipe_name, strerror(errno));
+ 		return -1;
+ 	}
++
+ 	update_old_clients(namelist, j);
+ 	for (i=0; i < j; i++) {
+ 		if (i < FD_ALLOC_BLOCK
+@@ -507,9 +507,23 @@ update_client_list(void)
+ 	}
+ 
+ 	free(namelist);
++
+ 	return 0;
+ }
+ 
++/* Used to read (and re-read) list of clients, set up poll array. */
++int
++update_client_list(void)
++{
++	int retval = -1;
++
++	retval = process_pipedir(pipefs_nfsdir);
++	if (retval)
++		printerr(0, "ERROR: processing %s\n", pipefs_nfsdir);
++
++	return retval;
++}
++
+ static int
+ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	    gss_buffer_desc *context_token)
+
