@@ -1,7 +1,7 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 11/39] nfs41: Backchannel callback service helper routines
-Date: Fri,  1 May 2009 02:20:55 +0300
-Message-ID: <1241133655-656-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 12/39] nfs41: Refactor svc_process()
+Date: Fri,  1 May 2009 02:21:04 +0300
+Message-ID: <1241133664-688-1-git-send-email-bhalevy@panasas.com>
 References: <49FA3180.5030404@panasas.com>
 Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
 	linux-nfs@vger.kernel.org,
@@ -9,179 +9,169 @@ Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
 	Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:21760 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:4046 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756294AbZD3XVE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:21:04 -0400
+	with ESMTP id S1753797AbZD3XVQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:21:16 -0400
 In-Reply-To: <49FA3180.5030404@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+From: Ricardo Labiaga <ricardo.labiaga@netapp.com>
 
-Executes the backchannel task on the RPC state machine using
-the existing open connection previously established by the client.
+net/sunrpc/svc.c:svc_process() is used by the NFSv4 callback service
+to process RPC requests arriving over connections initiated by the
+server.  NFSv4.1 supports callbacks over the backchannel on connections
+initiated by the client.  This patch refactors svc_process() so that
+common code can also be used by the backchannel.
 
 Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-
-nfs41: Add bc_svc.o to sunrpc Makefile.
-
-[nfs41: bc_send() does not need to be exported outside RPC module]
-[nfs41: xprt_free_bc_request() need not be exported outside RPC module]
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/sunrpc/bc_xprt.h |    3 +
- net/sunrpc/Makefile            |    2 +-
- net/sunrpc/backchannel_rqst.c  |    1 -
- net/sunrpc/bc_svc.c            |   80 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c          |    3 +
- 5 files changed, 87 insertions(+), 2 deletions(-)
- create mode 100644 net/sunrpc/bc_svc.c
+ net/sunrpc/svc.c |   80 +++++++++++++++++++++++++++++++++--------------------
+ 1 files changed, 50 insertions(+), 30 deletions(-)
 
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index 1c1746a..3016c00 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -29,12 +29,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/xprt.h>
-+#include <linux/sunrpc/sched.h>
- 
- #ifdef CONFIG_NFS_V4_1
- struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt);
- void xprt_free_bc_request(struct rpc_rqst *req);
- int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
- void xprt_destroy_backchannel(struct rpc_xprt *, int max_reqs);
-+void bc_release_request(struct rpc_task *);
-+int bc_send(struct rpc_rqst *req);
- #else /* CONFIG_NFS_V4_1 */
- static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
- 					 unsigned int min_reqs)
-diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-index 4a01f96..db73fd2 100644
---- a/net/sunrpc/Makefile
-+++ b/net/sunrpc/Makefile
-@@ -13,6 +13,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
- 	    rpcb_clnt.o timer.o xdr.o \
- 	    sunrpc_syms.o cache.o rpc_pipe.o \
- 	    svc_xprt.o
--sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o
-+sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o bc_svc.o
- sunrpc-$(CONFIG_PROC_FS) += stats.o
- sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 7d7708a..92fb3bd 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -265,6 +265,5 @@ void xprt_free_bc_request(struct rpc_rqst *req)
- 	list_add(&req->rq_bc_pa_list, &xprt->bc_pa_list);
- 	spin_unlock_bh(&xprt->bc_pa_lock);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 8847add..bfda66d 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -970,20 +970,18 @@ svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
  }
--EXPORT_SYMBOL(xprt_free_bc_request);
  
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
-new file mode 100644
-index 0000000..b13f51d
---- /dev/null
-+++ b/net/sunrpc/bc_svc.c
-@@ -0,0 +1,80 @@
-+/******************************************************************************
-+
-+(c) 2007 Network Appliance, Inc.  All Rights Reserved.
-+
-+Network Appliance provides this source code under the GPL v2 License.
-+The GPL v2 license is available at
-+http://opensource.org/licenses/gpl-license.php.
-+
-+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+
-+******************************************************************************/
-+
-+/*
-+ * The NFSv4.1 callback service helper routines.
-+ * They implement the transport level processing required to send the
-+ * reply over an existing open connection previously established by the client.
+ /*
+- * Process the RPC request.
++ * Common routine for processing the RPC request.
+  */
+-int
+-svc_process(struct svc_rqst *rqstp)
++static int
++svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ {
+ 	struct svc_program	*progp;
+ 	struct svc_version	*versp = NULL;	/* compiler food */
+ 	struct svc_procedure	*procp = NULL;
+-	struct kvec *		argv = &rqstp->rq_arg.head[0];
+-	struct kvec *		resv = &rqstp->rq_res.head[0];
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	kxdrproc_t		xdr;
+ 	__be32			*statp;
+-	u32			dir, prog, vers, proc;
++	u32			prog, vers, proc;
+ 	__be32			auth_stat, rpc_stat;
+ 	int			auth_res;
+ 	__be32			*reply_statp;
+@@ -993,19 +991,6 @@ svc_process(struct svc_rqst *rqstp)
+ 	if (argv->iov_len < 6*4)
+ 		goto err_short_len;
+ 
+-	/* setup response xdr_buf.
+-	 * Initially it has just one page
+-	 */
+-	rqstp->rq_resused = 1;
+-	resv->iov_base = page_address(rqstp->rq_respages[0]);
+-	resv->iov_len = 0;
+-	rqstp->rq_res.pages = rqstp->rq_respages + 1;
+-	rqstp->rq_res.len = 0;
+-	rqstp->rq_res.page_base = 0;
+-	rqstp->rq_res.page_len = 0;
+-	rqstp->rq_res.buflen = PAGE_SIZE;
+-	rqstp->rq_res.tail[0].iov_base = NULL;
+-	rqstp->rq_res.tail[0].iov_len = 0;
+ 	/* Will be turned off only in gss privacy case: */
+ 	rqstp->rq_splice_ok = 1;
+ 	/* Will be turned off only when NFSv4 Sessions are used */
+@@ -1014,17 +999,13 @@ svc_process(struct svc_rqst *rqstp)
+ 	/* Setup reply header */
+ 	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
+ 
+-	rqstp->rq_xid = svc_getu32(argv);
+ 	svc_putu32(resv, rqstp->rq_xid);
+ 
+-	dir  = svc_getnl(argv);
+ 	vers = svc_getnl(argv);
+ 
+ 	/* First words of reply: */
+ 	svc_putnl(resv, 1);		/* REPLY */
+ 
+-	if (dir != 0)		/* direction != CALL */
+-		goto err_bad_dir;
+ 	if (vers != 2)		/* RPC version number */
+ 		goto err_bad_rpc;
+ 
+@@ -1147,7 +1128,7 @@ svc_process(struct svc_rqst *rqstp)
+  sendit:
+ 	if (svc_authorise(rqstp))
+ 		goto dropit;
+-	return svc_send(rqstp);
++	return 1;		/* Caller can now send it */
+ 
+  dropit:
+ 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+@@ -1161,12 +1142,6 @@ err_short_len:
+ 
+ 	goto dropit;			/* drop request */
+ 
+-err_bad_dir:
+-	svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
+-
+-	serv->sv_stats->rpcbadfmt++;
+-	goto dropit;			/* drop request */
+-
+ err_bad_rpc:
+ 	serv->sv_stats->rpcbadfmt++;
+ 	svc_putnl(resv, 1);	/* REJECT */
+@@ -1220,6 +1195,51 @@ err_bad:
+ EXPORT_SYMBOL_GPL(svc_process);
+ 
+ /*
++ * Process the RPC request.
 + */
-+
-+#if defined(CONFIG_NFS_V4_1)
-+
-+#include <linux/module.h>
-+
-+#include <linux/sunrpc/xprt.h>
-+#include <linux/sunrpc/sched.h>
-+#include <linux/sunrpc/bc_xprt.h>
-+
-+#define RPCDBG_FACILITY	RPCDBG_SVCDSP
-+
-+void bc_release_request(struct rpc_task *task)
++int
++svc_process(struct svc_rqst *rqstp)
 +{
-+	struct rpc_rqst *req = task->tk_rqstp;
-+
-+	dprintk("RPC:       bc_release_request: task= %p\n", task);
++	struct kvec		*argv = &rqstp->rq_arg.head[0];
++	struct kvec		*resv = &rqstp->rq_res.head[0];
++	struct svc_serv		*serv = rqstp->rq_server;
++	u32			dir;
++	int			error;
 +
 +	/*
-+	 * Release this request only if it's a backchannel
-+	 * preallocated request
++	 * Setup response xdr_buf.
++	 * Initially it has just one page
 +	 */
-+	if (!bc_prealloc(req))
-+		return;
-+	xprt_free_bc_request(req);
++	rqstp->rq_resused = 1;
++	resv->iov_base = page_address(rqstp->rq_respages[0]);
++	resv->iov_len = 0;
++	rqstp->rq_res.pages = rqstp->rq_respages + 1;
++	rqstp->rq_res.len = 0;
++	rqstp->rq_res.page_base = 0;
++	rqstp->rq_res.page_len = 0;
++	rqstp->rq_res.buflen = PAGE_SIZE;
++	rqstp->rq_res.tail[0].iov_base = NULL;
++	rqstp->rq_res.tail[0].iov_len = 0;
++
++	rqstp->rq_xid = svc_getu32(argv);
++
++	dir  = svc_getnl(argv);
++	if (dir != 0) {
++		/* direction != CALL */
++		svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
++		serv->sv_stats->rpcbadfmt++;
++		svc_drop(rqstp);
++		return 0;
++	}
++
++	error = svc_process_common(rqstp, argv, resv);
++	if (error <= 0)
++		return error;
++
++	return svc_send(rqstp);
 +}
-+
-+/* Empty callback ops */
-+static const struct rpc_call_ops nfs41_callback_ops = {
-+};
-+
 +
 +/*
-+ * Send the callback reply
-+ */
-+int bc_send(struct rpc_rqst *req)
-+{
-+	struct rpc_task *task;
-+	int ret;
-+
-+	dprintk("RPC:       bc_send req= %p\n", req);
-+	task = rpc_run_bc_task(req, &nfs41_callback_ops);
-+	if (IS_ERR(task))
-+		ret = PTR_ERR(task);
-+	else {
-+		BUG_ON(atomic_read(&task->tk_count) != 1);
-+		ret = task->tk_status;
-+		rpc_put_task(task);
-+	}
-+	return ret;
-+	dprintk("RPC:       bc_send ret= %d \n", ret);
-+}
-+
-+#endif /* CONFIG_NFS_V4_1 */
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 403ebda..5bf9e66 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2145,6 +2145,9 @@ static struct rpc_xprt_ops xs_tcp_ops = {
- 	.buf_free		= rpc_free,
- 	.send_request		= xs_tcp_send_request,
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
-+#if defined(CONFIG_NFS_V4_1)
-+	.release_request	= bc_release_request,
-+#endif /* CONFIG_NFS_V4_1 */
- 	.close			= xs_tcp_shutdown,
- 	.destroy		= xs_destroy,
- 	.print_stats		= xs_tcp_print_stats,
+  * Return (transport-specific) limit on the rpc payload.
+  */
+ u32 svc_max_payload(const struct svc_rqst *rqstp)
 -- 
 1.6.2.1
 
