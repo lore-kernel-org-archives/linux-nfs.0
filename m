@@ -1,52 +1,70 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [pnfs] [RFC 0/10] nfsd41 server backchannel for 2.6.31
-Date: Fri, 01 May 2009 02:12:34 +0300
-Message-ID: <49FA3062.9050606@panasas.com>
-References: <49FA2D86.8060402@panasas.com>
+Subject: [RFC 0/39] nfs41 client backchannel for 2.6.31
+Date: Fri, 01 May 2009 02:17:20 +0300
+Message-ID: <49FA3180.5030404@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS list <linux-nfs@vger.kernel.org>,
+Cc: Ricardo Labiaga <ricardo.labiaga@netapp.com>,
 	pNFS Mailing List <pnfs@linux-nfs.org>,
-	Ricardo Labiaga <ricardo.labiaga@netapp.com>
-To: "J. Bruce Fields" <bfields@citi.umich.edu>
+	NFS list <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:20833 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:32333 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751943AbZD3XNY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:13:24 -0400
-In-Reply-To: <49FA2D86.8060402@panasas.com>
+	with ESMTP id S1752005AbZD3XR2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:17:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May. 01, 2009, 2:00 +0300, Benny Halevy <bhalevy@panasas.com> wrote:
-> Bruce,
-> 
-> After squashing and merging Ricardo's latest patchset
-> please review the following patchset and consider for 2.6.31.
+Trond,
 
-I forgot to mention that this patchset is also available on
-git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.31
+Please review the following patchset and consider for 2.6.31.
+
+It is also available on
+git://linux-nfs.org/~bhalevy/linux-pnfs.git nfs41-for-2.6.31
 which is based onto
-git://git.linux-nfs.org/~bfields/linux.git for-2.6.31
+git://git.linux-nfs.org/~trondmy/nfs-2.6.git nfsv41
+
+Thanks,
 
 Benny
 
-> 
-> Thanks,
-> 
-> Benny
-> 
-> [RFC 01/10] nfsd: cleanup nfs4.0 callback encode routines
-> [RFC 02/10] nfsd: minorversion support for the back channel
-> [RFC 03/10] nfsd41: sunrpc: Added rpc server-side backchannel handling
-> [RFC 04/10] nfsd41: Remember the auth flavor to use for callbacks
-> [RFC 05/10] nfsd41: callback infrastructure
-> [RFC 06/10] nfsd41: Backchannel: Add sequence arguments to callback RPC arguments
-> [RFC 07/10] nfsd41: Backchannel: Server backchannel RPC wait queue
-> [RFC 08/10] nfsd41: Backchannel: Setup sequence information
-> [RFC 09/10] nfsd41: cb_sequence callback
-> [RFC 10/10] nfsd41: cb_recall callback
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+[RFC 01/39] nfs41: Add ability to read RPC call direction on TCP stream.
+[RFC 02/39] nfs41: Skip past the RPC call direction
+[RFC 03/39] nfs41: Refactor nfs4_{init,destroy}_callback for nfs4.0
+[RFC 04/39] nfs41: minorversion support for nfs4_{init,destroy}_callback
+[RFC 05/39] nfs41: client callback structures
+[RFC 06/39] nfs41: Initialize new rpc_xprt callback related fields
+[RFC 07/39] nfs41: New backchannel helper routines
+[RFC 08/39] nfs41: New include/linux/sunrpc/bc_xprt.h
+[RFC 09/39] nfs41: New xs_tcp_read_data()
+[RFC 10/39] nfs41: Add backchannel processing support to RPC state machine
+[RFC 11/39] nfs41: Backchannel callback service helper routines
+[RFC 12/39] nfs41: Refactor svc_process()
+[RFC 13/39] nfs41: Backchannel bc_svc_process()
+[RFC 14/39] nfs41: Implement NFSv4.1 callback service process.
+[RFC 15/39] nfs41: sunrpc: provide functions to create and destroy a svc_xprt for backchannel use
+[RFC 16/39] nfs41: sunrpc: add a struct svc_xprt pointer to struct svc_serv for backchannel use
+[RFC 17/39] nfs41: create a svc_xprt for nfs41 callback thread and use for incoming callbacks
+[RFC 18/39] nfs41: save svc_serv in nfs_callback_info
+[RFC 19/39] nfs41: Allow NFSv4 and NFSv4.1 callback services to coexist
+[RFC 20/39] nfs41: Setup the backchannel
+[RFC 21/39] nfs41: Client indicates presence of NFSv4.1 callback channel.
+[RFC 22/39] nfs41: Get the rpc_xprt * from the rpc_rqst instead of the rpc_clnt.
+[RFC 23/39] nfs41: Release backchannel resources associated with session
+[RFC 24/39] nfs41: store minorversion in cb_compound_hdr_arg
+[RFC 25/39] nfs41: decode minorversion 1 cb_compound header
+[RFC 26/39] nfs41: callback numbers definitions
+[RFC 27/39] nfs41: consider minorversion in callback_xdr:process_op
+[RFC 28/39] nfs41: define CB_NOTIFY_DEVICEID as not supported
+[RFC 29/39] nfs41: cb_sequence protocol level data structures
+[RFC 30/39] nfs41: cb_sequence proc implementation
+[RFC 31/39] nfs41: cb_sequence xdr implementation
+[RFC 32/39] nfs41: verify CB_SEQUENCE position in callback compound
+[RFC 33/39] nfs41: Rename rq_received to rq_reply_bytes_recvd
+[RFC 34/39] nfs41: Backchannel: update cb_sequence args and results
+[RFC 35/39] nfs41: Backchannel: Refactor nfs4_reset_slot_table()
+[RFC 36/39] nfs41: Backchannel: Refactor nfs4_init_slot_table()
+[RFC 37/39] nfs41: Backchannel: Add a backchannel slot table to the session
+[RFC 38/39] nfs41: Backchannel: New find_client_with_session()
+[RFC 39/39] nfs41: Backchannel: CB_SEQUENCE validation
