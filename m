@@ -1,59 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from kazi.fit.vutbr.cz ([147.229.8.12]:58750 "EHLO kazi.fit.vutbr.cz"
+Received: from mx2.redhat.com ([66.187.237.31]:45956 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753102AbZDNNe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Apr 2009 09:34:26 -0400
-Date: Tue, 14 Apr 2009 15:34:23 +0200
-From: Kasparek Tomas <kasparek@fit.vutbr.cz>
-To: Bryan McLellan <btm@loftninjas.org>, linux-nfs@vger.kernel.org
-Subject: Re: Unexplained NFS mount hangs
-Message-ID: <20090414133422.GU8106@fit.vutbr.cz>
-References: <20090413092406.304d04fb@dstickney2> <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com> <20090413104759.525161b2@dstickney2> <893823750904131611i70621c5t4c5f96d3a9e876e7@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <893823750904131611i70621c5t4c5f96d3a9e876e7@mail.gmail.com>
+	id S1750909AbZD3UlW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Apr 2009 16:41:22 -0400
+Message-ID: <49FA0CE8.9090706@redhat.com>
+Date: Thu, 30 Apr 2009 16:41:12 -0400
+From: Peter Staubach <staubach@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+ flushing
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com> <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+In-Reply-To: <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Apr 13, 2009 at 04:11:35PM -0700, Bryan McLellan wrote:
-> On Mon, Apr 13, 2009 at 9:47 AM, Daniel Stickney <dstickney@pronto.com> wrote:
-> > To add a little more info, in a post on April 10th titled "NFSv3 Client Timeout on 2.6.27" Bryan mentioned that his client socket was in state FIN_WAIT2, and server in CLOSE_WAIT, which is exactly what I am seeing here.
-> 
-> Since my problems originated after upgrading to Ubuntu intrepid in a
-> 'etch -> hardy -> intrepid' cycle, and hardy contained 2.6.24, I
-> wonder if the regression was in:
-> 
-> commit e06799f958bf7f9f8fae15f0c6f519953fb0257c
-> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date:   Mon Nov 5 15:44:12 2007 -0500
-> 
->     SUNRPC: Use shutdown() instead of close() when disconnecting a TCP socket
-> 
->     By using shutdown() rather than close() we allow the RPC client to wait
->     for the TCP close handshake to complete before we start trying to reconnect
->     using the same port.
->     We use shutdown(SHUT_WR) only instead of shutting down both directions,
->     however we wait until the server has closed the connection on its side.
-> 
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Chuck Lever wrote:
+>
+> On Apr 30, 2009, at 4:12 PM, Brian R Cowan wrote:
+>
+>> Hello all,
+>>
+>> This is my first post, so please be gentle.... I have been working
+>> with a
+>> customer who is attempting to build their product in ClearCase dynamic
+>> views on Linux. When they went from Red hat Enterprise Linux 4
+>> (update 5)
+>> to Red Hat Enterprise Linux 5 (Update 2), their build performance
+>> degraded
+>> dramatically. When troubleshooting the issue, we noticed that links on
+>> RHEL 5 caused an incredible number of "STABLE" 4kb nfs writes even
+>> though
+>> the storage we were writing to was EXPLICITLY mounted async. (This made
+>> RHEL 5 nearly 5x slower than RHEL 4.5 in this area...)
+>>
+>> On consultation with some internal resources, we found this change in
+>> the
+>> 2.6 kernel:
+>>
+>> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=ab0a3dbedc51037f3d2e22ef67717a987b3d15e2
+>>
+>>
+>> In here it looks like the NFS client is forcing sync writes any time a
+>> write of less than the NFS write size occurs. We tested this
+>> hypothesis by
+>> setting the write size to 2KB. The "STABLE" writes went away and link
+>> times came back down out of the stratosphere. We built a modified kernel
+>> based on the RHEL 5.2 kernel (that ONLY backed out of this change)
+>> and we
+>> got a 33% improvement in overall build speeds. In my case, I see almost
+>> identical build times between the 2 OS's when we use this modified
+>> kernel
+>> on RHEL 5.
+>>
+>> Now, why am I posing this to the list? I need to understand *why* that
+>> change was made. On the face of it, simply backing out that patch
+>> would be
+>> perfect. I'm paranoid. I want to make sure that this is the ONLY reason:
+>> "/* For single writes, FLUSH_STABLE is more efficient */ "
+>>
+>> It seems more accurate to say that they *aren't* more efficient, but
+>> rather are "safer, but slower."
+>
+> They are more efficient from the point of view that only a single RPC
+> is needed for a complete write.  The WRITE and COMMIT are done in a
+> single request.
+>
+> I don't think the issue here is whether the write is stable, but it is
+> whether the NFS client has to block the application for it.  A stable
+> write that is asynchronous to the application is faster than
+> WRITE+COMMIT.
+>
+> So it's not "stable" that is holding you up, it's "synchronous." 
+> Those are orthogonal concepts.
+>
 
-Hi,
+Actually, the "stable" part can be a killer.  It depends upon
+why and when nfs_flush_inode() is invoked.
 
-probably yes, I have several other problems with this. See my previous post
-about lockd issues and DoS on server by repeating clients. Last info is,
-that Trond knows about the DoS problem and when this is solved I will try
-to do everything I can to solve the lockd problem. I need to stay with
-2.6.27 so it is crucial for me to solve all these.
+I did quite a bit of work on this aspect of RHEL-5 and discovered
+that this particular code was leading to some serious slowdowns.
+The server would end up doing a very slow FILE_SYNC write when
+all that was really required was an UNSTABLE write at the time.
 
-Bye
+Did anyone actually measure this optimization and if so, what
+were the numbers?
 
---   
+    Thanx...
 
-  Tomas Kasparek, PhD student  E-mail: kasparek@fit.vutbr.cz
-  CVT FIT VUT Brno, L127       Web:    http://www.fit.vutbr.cz/~kasparek
-  Bozetechova 1, 612 66        Fax:    +420 54114-1270
-  Brno, Czech Republic         Phone:  +420 54114-1220
-
-  jabber: tomas.kasparek@jabber.cz
-  GPG: 2F1E 1AAF FD3B CFA3 1537  63BD DCBE 18FF A035 53BC
-
+       ps
