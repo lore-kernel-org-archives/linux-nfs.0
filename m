@@ -1,73 +1,59 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 08/31] nfsd41: sanity check client drc maxreqs
-Date: Thu, 30 Apr 2009 14:43:52 -0400
-Message-ID: <1241117032.15476.43.camel@heimdal.trondhjem.org>
-References: <1240938005-23778-1-git-send-email-andros@netapp.com>
-	 <1240938005-23778-2-git-send-email-andros@netapp.com>
-	 <1240938005-23778-3-git-send-email-andros@netapp.com>
-	 <1240938005-23778-4-git-send-email-andros@netapp.com>
-	 <1240938005-23778-5-git-send-email-andros@netapp.com>
-	 <1240938005-23778-6-git-send-email-andros@netapp.com>
-	 <1240938005-23778-7-git-send-email-andros@netapp.com>
-	 <1240938005-23778-8-git-send-email-andros@netapp.com>
-	 <49F9E10A.60801@panasas.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: Adding mount option to kernel for NFS filesystem
+Date: Thu, 30 Apr 2009 14:58:16 -0400
+Message-ID: <20090430145816.7761131b@barsoom.rdu.redhat.com>
+References: <49F8884A.8050402@oudelohuis.nl>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: andros@netapp.com, bfields@fieldses.org, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Gertjan Oude Lohuis <gertjan-yZ1RIXqxfwWWrUy98/Atqw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:50154 "EHLO mail-out2.uio.no"
+Received: from mx2.redhat.com ([66.187.237.31]:35663 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753541AbZD3SoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Apr 2009 14:44:04 -0400
-In-Reply-To: <49F9E10A.60801@panasas.com>
+	id S1756460AbZD3S61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Apr 2009 14:58:27 -0400
+In-Reply-To: <49F8884A.8050402-yZ1RIXqxfwWWrUy98/Atqw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-04-30 at 20:34 +0300, Benny Halevy wrote:
-> On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
-> > From: Andy Adamson <andros@netapp.com>
-> > 
-> > Ensure the client requested maximum requests are between 1 and
-> > NFSD_MAX_SLOTS_PER_SESSION
-> > 
-> > Signed-off-by: Andy Adamson <andros@netapp.com>
-> > ---
-> >  fs/nfsd/nfs4state.c |    5 +++++
-> >  1 files changed, 5 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index e216169..59b601b 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -427,6 +427,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
-> >  {
-> >  	int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
-> >  
-> > +	if (fchan->maxreqs < 1)
-> > +		return nfserr_inval;
+On Wed, 29 Apr 2009 19:03:06 +0200
+Gertjan Oude Lohuis <gertjan-yZ1RIXqxfwWWrUy98/Atqw@public.gmane.org> wrote:
+
+> Hi guys,
 > 
-> Is 0 prohibited by the protocol?
-> The server can set it to whatever value it wants,
-> or if we can live with it, it actually provides a
-> nice way to test the server end-cases.
+> For fun and learning purposes I'm trying to add an mountflag for
+> NFS-mounts to the kernel and mount. The flag's semantics are identical
+> to ac/noac: 'flag' is default but has no special meaning, 'noflag'
+> triggers a certain action.
 > 
-> Benny
+> I have a small question about adding the flag to
+> include/linux/nfs_mount.h. Since NFS_MOUNT_FLAGMASK is defined as
+> 0xFFFF, and all bits up until 0xFFFF are occupied by existing
+> NFS_MOUNT-flags, how could I add my own flag?
+> Would it be ok to define NFS_MOUNT_FLAGMASK as 0xFFFFF and my own flag
+> as 0x10000? Or will this have other side effects? It seems to be working
+> though ;-).
+> How would this be done if a real flag should be added by kernel maintainers?
+> 
+> I guess another option would be to create a new entry in the
+> nfs_mount_data struct and treat it as an option (rsize-, wsize-,
+> timeo-alike), but I'd like to do keep it the same as other flags.
+> 
+> Please advice! ;-)
+> Thanks in advance for your time.
+> 
+> Sincerely,
+> Gertjan
+> 
 
-The draft spec doesn't appear to explicitly exclude the value 0 for
-ca_maxrequests.
+It's probably better to post questions like this to
+linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org cc'ing that on the response...
 
-I suppose a client might be able to request a session with a back
-channel, but no fore channel if it wants to. The problem is that it
-wouldn't be able to send SEQUENCE or BACKCHANNEL_CTL requests, and so
-managing that back channel would be tough. There would be no way for the
-server to tell the client of a back channel fault, or of the GSS context
-expiring, and no way for the client to change that context.
+Newer kernels and mount.nfs progs use text-based mount options by
+default. My suggestion would be to avoid worrying about the legacy
+mount option code and to just make the new option work with the text
+based ones only.
 
-In practice, therefore, it probably isn't a bad idea to return
-NFS4ERR_INVAL...
-
-Cheers
-  Trond
-
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
