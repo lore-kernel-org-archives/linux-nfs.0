@@ -1,52 +1,38 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 01/31] nfsd41: slots are freed with session
-Date: Thu, 30 Apr 2009 09:13:19 -0400
-Message-ID: <E822BDE1-D1FF-41F4-A40A-95F5B6D475FF@netapp.com>
-References: <1240938005-23778-1-git-send-email-andros@netapp.com> <49F96B97.8050204@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed
-Cc: bfields@fieldses.org, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27429 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753117AbZD3NNW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Apr 2009 09:13:22 -0400
-In-Reply-To: <49F96B97.8050204@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: David Howells <dhowells@redhat.com>
+Subject: cat and grep can cause excess page read at EOF
+Date: Thu, 30 Apr 2009 15:25:28 +0100
+Message-ID: <304.1241101528@redhat.com>
+Cc: dhowells@redhat.com
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-yes, you're right - it prevents an oops on server shutdown.
 
--->Andy
+Hi,
 
-On Apr 30, 2009, at 5:12 AM, Benny Halevy wrote:
+When reading a file that ends exactly on a page boundary, reading an entire
+file and relying on read() = 0 to indicate the EOF (such as is done by cat and
+grep) causes readpage() to be invoked on the filesystem for a page immediately
+beyond EOF.
 
-> On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> The session and slots are allocated all in one piece.
->
-> This patch should go into 2.6.30, right?
->
-> Benny
->
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfsd/nfs4state.c |    1 -
->> 1 files changed, 0 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index e82a518..42ebcb3 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -582,7 +582,6 @@ free_session(struct kref *kref)
->> 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
->> 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
->> 	}
->> -	kfree(ses->se_slots);
->> 	kfree(ses);
->> }
->>
+Is it worth making generic_file_aio_read() note that the EOF has been reached
+and return 0 immediately, rather than trying to read over the EOF?  The
+problem with doing that might be that filesystems such as NFS2/3 might
+occasionally miss the fact that a file has been extended on the server.
 
+The call chain I see on my testbox is this:
+
+ [<ffffffffa0348382>] ? nfs_readpage+0x138/0x16a [nfs]
+ [<ffffffff8026fa15>] ? generic_file_aio_read+0x399/0x55a
+ [<ffffffff80294199>] ? do_sync_read+0xce/0x113
+ [<ffffffff80243cb8>] ? autoremove_wake_function+0x0/0x2e
+ [<ffffffff80355fe5>] ? file_has_perm+0x82/0x8b
+ [<ffffffff80294cd1>] ? vfs_read+0xaa/0x153
+ [<ffffffff80294e36>] ? sys_read+0x45/0x6e
+ [<ffffffff8020adeb>] ? system_call_fastpath+0x16/0x1b
+
+nfs_readpage() is asked to read page 0x6400 from a 100MB file - which doesn't
+exist, and so calls nfs_return_empty_page().
+
+David
