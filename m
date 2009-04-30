@@ -1,102 +1,73 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 02/31] nfsd41: change check_slot_seqid parameters
-Date: Thu, 30 Apr 2009 20:35:14 +0300
-Message-ID: <49F9E152.5090809@panasas.com>
-References: <1240938005-23778-1-git-send-email-andros@netapp.com> <1240938005-23778-2-git-send-email-andros@netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH 08/31] nfsd41: sanity check client drc maxreqs
+Date: Thu, 30 Apr 2009 14:43:52 -0400
+Message-ID: <1241117032.15476.43.camel@heimdal.trondhjem.org>
+References: <1240938005-23778-1-git-send-email-andros@netapp.com>
+	 <1240938005-23778-2-git-send-email-andros@netapp.com>
+	 <1240938005-23778-3-git-send-email-andros@netapp.com>
+	 <1240938005-23778-4-git-send-email-andros@netapp.com>
+	 <1240938005-23778-5-git-send-email-andros@netapp.com>
+	 <1240938005-23778-6-git-send-email-andros@netapp.com>
+	 <1240938005-23778-7-git-send-email-andros@netapp.com>
+	 <1240938005-23778-8-git-send-email-andros@netapp.com>
+	 <49F9E10A.60801@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: bfields@fieldses.org, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: text/plain
+Cc: andros@netapp.com, bfields@fieldses.org, pnfs@linux-nfs.org,
+	linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:6631 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S933446AbZD3Rfy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 13:35:54 -0400
-In-Reply-To: <1240938005-23778-2-git-send-email-andros@netapp.com>
+Received: from mail-out2.uio.no ([129.240.10.58]:50154 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753541AbZD3SoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Apr 2009 14:44:04 -0400
+In-Reply-To: <49F9E10A.60801@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Thu, 2009-04-30 at 20:34 +0300, Benny Halevy wrote:
+> On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
+> > From: Andy Adamson <andros@netapp.com>
+> > 
+> > Ensure the client requested maximum requests are between 1 and
+> > NFSD_MAX_SLOTS_PER_SESSION
+> > 
+> > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > ---
+> >  fs/nfsd/nfs4state.c |    5 +++++
+> >  1 files changed, 5 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index e216169..59b601b 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -427,6 +427,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+> >  {
+> >  	int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
+> >  
+> > +	if (fchan->maxreqs < 1)
+> > +		return nfserr_inval;
 > 
-> For separation of session slot and clientid slot processing.
+> Is 0 prohibited by the protocol?
+> The server can set it to whatever value it wants,
+> or if we can live with it, it actually provides a
+> nice way to test the server end-cases.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfsd/nfs4state.c |   24 +++++++++++++-----------
->  1 files changed, 13 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 42ebcb3..43c821f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1310,26 +1310,26 @@ error:
->  }
->  
->  static int
-> -check_slot_seqid(u32 seqid, struct nfsd4_slot *slot)
-> +check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse )
+> Benny
 
-nit: extra space before closing parentheses.
-(I'll remove it when merging into the pnfs tree)
+The draft spec doesn't appear to explicitly exclude the value 0 for
+ca_maxrequests.
 
-Benny
+I suppose a client might be able to request a session with a back
+channel, but no fore channel if it wants to. The problem is that it
+wouldn't be able to send SEQUENCE or BACKCHANNEL_CTL requests, and so
+managing that back channel would be tough. There would be no way for the
+server to tell the client of a back channel fault, or of the GSS context
+expiring, and no way for the client to change that context.
 
->  {
-> -	dprintk("%s enter. seqid %d slot->sl_seqid %d\n", __func__, seqid,
-> -		slot->sl_seqid);
-> +	dprintk("%s enter. seqid %d slot_seqid %d\n", __func__, seqid,
-> +		slot_seqid);
->  
->  	/* The slot is in use, and no response has been sent. */
-> -	if (slot->sl_inuse) {
-> -		if (seqid == slot->sl_seqid)
-> +	if (slot_inuse) {
-> +		if (seqid == slot_seqid)
->  			return nfserr_jukebox;
->  		else
->  			return nfserr_seq_misordered;
->  	}
->  	/* Normal */
-> -	if (likely(seqid == slot->sl_seqid + 1))
-> +	if (likely(seqid == slot_seqid + 1))
->  		return nfs_ok;
->  	/* Replay */
-> -	if (seqid == slot->sl_seqid)
-> +	if (seqid == slot_seqid)
->  		return nfserr_replay_cache;
->  	/* Wraparound */
-> -	if (seqid == 1 && (slot->sl_seqid + 1) == 0)
-> +	if (seqid == 1 && (slot_seqid + 1) == 0)
->  		return nfs_ok;
->  	/* Misordered replay or misordered new request */
->  	return nfserr_seq_misordered;
-> @@ -1352,7 +1352,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  
->  	if (conf) {
->  		slot = &conf->cl_slot;
-> -		status = check_slot_seqid(cr_ses->seqid, slot);
-> +		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
-> +					  slot->sl_inuse);
->  		if (status == nfserr_replay_cache) {
->  			dprintk("Got a create_session replay! seqid= %d\n",
->  				slot->sl_seqid);
-> @@ -1377,7 +1378,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		}
->  
->  		slot = &unconf->cl_slot;
-> -		status = check_slot_seqid(cr_ses->seqid, slot);
-> +		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
-> +					  slot->sl_inuse);
->  		if (status) {
->  			/* an unconfirmed replay returns misordered */
->  			status = nfserr_seq_misordered;
-> @@ -1487,7 +1489,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	slot = &session->se_slots[seq->slotid];
->  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
->  
-> -	status = check_slot_seqid(seq->seqid, slot);
-> +	status = check_slot_seqid(seq->seqid, slot->sl_seqid, slot->sl_inuse);
->  	if (status == nfserr_replay_cache) {
->  		cstate->slot = slot;
->  		cstate->session = session;
+In practice, therefore, it probably isn't a bad idea to return
+NFS4ERR_INVAL...
+
+Cheers
+  Trond
+
