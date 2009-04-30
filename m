@@ -1,70 +1,131 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 0/39] nfs41 client backchannel for 2.6.31
-Date: Fri, 01 May 2009 02:17:20 +0300
-Message-ID: <49FA3180.5030404@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Ricardo Labiaga <ricardo.labiaga@netapp.com>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>
+Subject: [RFC 01/39] nfs41: Add ability to read RPC call direction on TCP stream.
+Date: Fri,  1 May 2009 02:19:03 +0300
+Message-ID: <1241133543-315-1-git-send-email-bhalevy@panasas.com>
+References: <49FA3180.5030404@panasas.com>
+Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
+	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:32333 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:1319 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752005AbZD3XR2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:17:28 -0400
+	with ESMTP id S1752910AbZD3XTJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:19:09 -0400
+In-Reply-To: <49FA3180.5030404@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond,
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-Please review the following patchset and consider for 2.6.31.
+NFSv4.1 callbacks can arrive over an existing connection. This patch adds
+the logic to read the RPC call direction (call or reply). It does this by
+updating the state machine to look for the call direction invoking
+xs_tcp_read_calldir(...) after reading the XID.
 
-It is also available on
-git://linux-nfs.org/~bhalevy/linux-pnfs.git nfs41-for-2.6.31
-which is based onto
-git://git.linux-nfs.org/~trondmy/nfs-2.6.git nfsv41
+[nfs41: Keep track of RPC call/reply direction with a flag]
 
-Thanks,
+As per 11/14/08 review of RFC 53/85.
 
-Benny
+Add a new flag to track whether the incoming message is an RPC call or an
+RPC reply.  TCP_RPC_REPLY is set in the 'struct sock_xprt' tcp_flags in
+xs_tcp_read_calldir() if the message is an RPC reply sent on the forechannel.
+It is cleared if the message is an RPC request sent on the back channel.
 
-[RFC 01/39] nfs41: Add ability to read RPC call direction on TCP stream.
-[RFC 02/39] nfs41: Skip past the RPC call direction
-[RFC 03/39] nfs41: Refactor nfs4_{init,destroy}_callback for nfs4.0
-[RFC 04/39] nfs41: minorversion support for nfs4_{init,destroy}_callback
-[RFC 05/39] nfs41: client callback structures
-[RFC 06/39] nfs41: Initialize new rpc_xprt callback related fields
-[RFC 07/39] nfs41: New backchannel helper routines
-[RFC 08/39] nfs41: New include/linux/sunrpc/bc_xprt.h
-[RFC 09/39] nfs41: New xs_tcp_read_data()
-[RFC 10/39] nfs41: Add backchannel processing support to RPC state machine
-[RFC 11/39] nfs41: Backchannel callback service helper routines
-[RFC 12/39] nfs41: Refactor svc_process()
-[RFC 13/39] nfs41: Backchannel bc_svc_process()
-[RFC 14/39] nfs41: Implement NFSv4.1 callback service process.
-[RFC 15/39] nfs41: sunrpc: provide functions to create and destroy a svc_xprt for backchannel use
-[RFC 16/39] nfs41: sunrpc: add a struct svc_xprt pointer to struct svc_serv for backchannel use
-[RFC 17/39] nfs41: create a svc_xprt for nfs41 callback thread and use for incoming callbacks
-[RFC 18/39] nfs41: save svc_serv in nfs_callback_info
-[RFC 19/39] nfs41: Allow NFSv4 and NFSv4.1 callback services to coexist
-[RFC 20/39] nfs41: Setup the backchannel
-[RFC 21/39] nfs41: Client indicates presence of NFSv4.1 callback channel.
-[RFC 22/39] nfs41: Get the rpc_xprt * from the rpc_rqst instead of the rpc_clnt.
-[RFC 23/39] nfs41: Release backchannel resources associated with session
-[RFC 24/39] nfs41: store minorversion in cb_compound_hdr_arg
-[RFC 25/39] nfs41: decode minorversion 1 cb_compound header
-[RFC 26/39] nfs41: callback numbers definitions
-[RFC 27/39] nfs41: consider minorversion in callback_xdr:process_op
-[RFC 28/39] nfs41: define CB_NOTIFY_DEVICEID as not supported
-[RFC 29/39] nfs41: cb_sequence protocol level data structures
-[RFC 30/39] nfs41: cb_sequence proc implementation
-[RFC 31/39] nfs41: cb_sequence xdr implementation
-[RFC 32/39] nfs41: verify CB_SEQUENCE position in callback compound
-[RFC 33/39] nfs41: Rename rq_received to rq_reply_bytes_recvd
-[RFC 34/39] nfs41: Backchannel: update cb_sequence args and results
-[RFC 35/39] nfs41: Backchannel: Refactor nfs4_reset_slot_table()
-[RFC 36/39] nfs41: Backchannel: Refactor nfs4_init_slot_table()
-[RFC 37/39] nfs41: Backchannel: Add a backchannel slot table to the session
-[RFC 38/39] nfs41: Backchannel: New find_client_with_session()
-[RFC 39/39] nfs41: Backchannel: CB_SEQUENCE validation
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ net/sunrpc/xprtsock.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index d40ff50..692b517 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -270,6 +270,12 @@ struct sock_xprt {
+ #define TCP_RCV_COPY_FRAGHDR	(1UL << 1)
+ #define TCP_RCV_COPY_XID	(1UL << 2)
+ #define TCP_RCV_COPY_DATA	(1UL << 3)
++#define TCP_RCV_COPY_CALLDIR	(1UL << 4)
++
++/*
++ * TCP RPC flags
++ */
++#define TCP_RPC_REPLY		(1UL << 5)
+ 
+ static inline struct sockaddr *xs_addr(struct rpc_xprt *xprt)
+ {
+@@ -945,7 +951,7 @@ static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, struct xdr_skb_rea
+ 	transport->tcp_offset = 0;
+ 
+ 	/* Sanity check of the record length */
+-	if (unlikely(transport->tcp_reclen < 4)) {
++	if (unlikely(transport->tcp_reclen < 8)) {
+ 		dprintk("RPC:       invalid TCP record fragment length\n");
+ 		xprt_force_disconnect(xprt);
+ 		return;
+@@ -980,13 +986,48 @@ static inline void xs_tcp_read_xid(struct sock_xprt *transport, struct xdr_skb_r
+ 	if (used != len)
+ 		return;
+ 	transport->tcp_flags &= ~TCP_RCV_COPY_XID;
+-	transport->tcp_flags |= TCP_RCV_COPY_DATA;
++	transport->tcp_flags |= TCP_RCV_COPY_CALLDIR;
+ 	transport->tcp_copied = 4;
+-	dprintk("RPC:       reading reply for XID %08x\n",
++	dprintk("RPC:       reading %s XID %08x\n",
++			(transport->tcp_flags & TCP_RPC_REPLY) ? "reply for"
++							      : "request with",
+ 			ntohl(transport->tcp_xid));
+ 	xs_tcp_check_fraghdr(transport);
+ }
+ 
++static inline void xs_tcp_read_calldir(struct sock_xprt *transport,
++				       struct xdr_skb_reader *desc)
++{
++	size_t len, used;
++	u32 offset;
++	__be32	calldir;
++
++	/*
++	 * We want transport->tcp_offset to be 8 at the end of this routine
++	 * (4 bytes for the xid and 4 bytes for the call/reply flag).
++	 * When this function is called for the first time,
++	 * transport->tcp_offset is 4 (after having already read the xid).
++	 */
++	offset = transport->tcp_offset - sizeof(transport->tcp_xid);
++	len = sizeof(calldir) - offset;
++	dprintk("RPC:       reading CALL/REPLY flag (%Zu bytes)\n", len);
++	used = xdr_skb_read_bits(desc, &calldir, len);
++	transport->tcp_offset += used;
++	if (used != len)
++		return;
++	transport->tcp_flags &= ~TCP_RCV_COPY_CALLDIR;
++	transport->tcp_flags |= TCP_RCV_COPY_DATA;
++	transport->tcp_copied += 4;
++	if (ntohl(calldir) == RPC_REPLY)
++		transport->tcp_flags |= TCP_RPC_REPLY;
++	else
++		transport->tcp_flags &= ~TCP_RPC_REPLY;
++	dprintk("RPC:       reading %s CALL/REPLY flag %08x\n",
++			(transport->tcp_flags & TCP_RPC_REPLY) ?
++				"reply for" : "request with", calldir);
++	xs_tcp_check_fraghdr(transport);
++}
++
+ static inline void xs_tcp_read_request(struct rpc_xprt *xprt, struct xdr_skb_reader *desc)
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+@@ -1103,6 +1144,11 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
+ 			xs_tcp_read_xid(transport, &desc);
+ 			continue;
+ 		}
++		/* Read in the call/reply flag */
++		if (transport->tcp_flags & TCP_RCV_COPY_CALLDIR) {
++			xs_tcp_read_calldir(transport, &desc);
++			continue;
++		}
+ 		/* Read in the request data */
+ 		if (transport->tcp_flags & TCP_RCV_COPY_DATA) {
+ 			xs_tcp_read_request(xprt, &desc);
+-- 
+1.6.2.1
+
