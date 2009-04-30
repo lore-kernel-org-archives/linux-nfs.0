@@ -1,135 +1,149 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 10/10] nfsd41: cb_recall callback
-Date: Fri,  1 May 2009 02:07:14 +0300
-Message-ID: <1241132834-32689-1-git-send-email-bhalevy@panasas.com>
-References: <49FA2D86.8060402@panasas.com>
-Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-	Ricardo Labiaga <ricardo.labiaga@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: Re: [PATCH 10/31] nfsd41: use globals for DRC memory use management
+Date: Fri, 01 May 2009 02:08:52 +0300
+Message-ID: <49FA2F84.1000702@panasas.com>
+References: <1240938005-23778-1-git-send-email-andros@netapp.com> <1240938005-23778-2-git-send-email-andros@netapp.com> <1240938005-23778-3-git-send-email-andros@netapp.com> <1240938005-23778-4-git-send-email-andros@netapp.com> <1240938005-23778-5-git-send-email-andros@netapp.com> <1240938005-23778-6-git-send-email-andros@netapp.com> <1240938005-23778-7-git-send-email-andros@netapp.com> <1240938005-23778-8-git-send-email-andros@netapp.com> <1240938005-23778-9-git-send-email-andros@netapp.com> <1240938005-23778-10-git-send-email-andros@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: bfields@fieldses.org, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:1983 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:1120 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755653AbZD3XHV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:07:21 -0400
-In-Reply-To: <49FA2D86.8060402@panasas.com>
+	with ESMTP id S1751243AbZD3XI6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:08:58 -0400
+In-Reply-To: <1240938005-23778-10-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The version 4.1 DRC memory limit and tracking variables are server wide and
+> session specific.
+> Add a spinlock to serialize access to the management variables which change
+> on session creation and deletion (usage counter) or (future) administrative
+> action to adjust the total DRC memory limit.
+> 
+> Track DRC memory usage in free session.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c        |   11 +++++++----
+>  fs/nfsd/nfssvc.c           |   19 +++++++++++++++----
+>  include/linux/nfsd/nfsd.h  |    5 +++++
+>  include/linux/sunrpc/svc.h |    2 --
+>  4 files changed, 27 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index d12220c..a9e722e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -416,7 +416,7 @@ gen_sessionid(struct nfsd4_session *ses)
+>  
+>  /*
+>   * Give the client the number of slots it requests bound by
+> - * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
+> + * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
+>   *
+>   * If we run out of reserved DRC memory we should (up to a point) re-negotiate
+>   * active sessions and reduce their slot usage to make rooom for new
+> @@ -434,9 +434,9 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+>  	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
+>  
+>  	spin_lock(&nfsd_serv->sv_lock);
 
-Implement the cb_recall callback conforming to
-http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
+Hmm, shouldn't you grab nfsd_drc_lock instead?
 
-Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[Share v4.0 and v4.1 back channel xdr]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: use nfsd4_cb_sequence for callback minorversion]
-[nfsd41: conditionally decode_sequence in nfs4_xdr_dec_cb_recall]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: Backchannel: Add sequence arguments to callback RPC arguments]
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4callback.c |   30 ++++++++++++++++++++++++------
- 1 files changed, 24 insertions(+), 6 deletions(-)
+> -	if (mem + nfsd_serv->sv_drc_mem_used > nfsd_serv->sv_drc_max_mem)
+> -		mem = nfsd_serv->sv_drc_max_mem - nfsd_serv->sv_drc_mem_used;
+> -	nfsd_serv->sv_drc_mem_used += mem;
+> +	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
+> +		mem = nfsd_drc_max_mem - nfsd_drc_mem_used;
+> +	nfsd_drc_mem_used += mem;
+>  	spin_unlock(&nfsd_serv->sv_lock);
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 78f4dd2..136dbda 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -296,15 +296,19 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
- }
- 
- static int
--nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *args)
-+nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
-+		       struct nfs4_rpc_args *rpc_args)
- {
- 	struct xdr_stream xdr;
-+	struct nfs4_cb_recall *args = rpc_args->args_op;
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = args->cbr_ident,
-+		.minorversion = rpc_args->args_seq.cbs_minorversion,
- 	};
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_cb_compound_hdr(&xdr, &hdr);
-+	encode_cb_sequence(&xdr, &rpc_args->args_seq, &hdr);
- 	encode_cb_recall(&xdr, args, &hdr);
- 	encode_cb_nops(&hdr);
- 	return 0;
-@@ -404,7 +408,8 @@ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
- }
- 
- static int
--nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
-+nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
-+		       struct nfs4_rpc_res *rpc_res)
- {
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr;
-@@ -414,6 +419,11 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
- 	status = decode_cb_compound_hdr(&xdr, &hdr);
- 	if (status)
- 		goto out;
-+	if (rpc_res && rpc_res->res_seq) {
-+		status = decode_cb_sequence(&xdr, rpc_res->res_seq, rqstp);
-+		if (status)
-+			goto out;
-+	}
- 	status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
- out:
- 	return status;
-@@ -694,19 +704,25 @@ void
- nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_client;
--	struct rpc_clnt *clnt = clp->cl_callback.cb_client;
- 	struct nfs4_cb_recall *cbr = &dp->dl_recall;
-+	struct nfs4_rpc_args args = {
-+		.args_op = cbr,
-+	};
-+	struct nfs4_rpc_res res;
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
--		.rpc_argp = cbr,
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
- 	};
- 	int retries = 1;
- 	int status = 0;
- 
-+	dprintk("%s: dp %p\n", __func__, dp);
-+
- 	cbr->cbr_trunc = 0; /* XXX need to implement truncate optimization */
- 	cbr->cbr_dp = dp;
- 
--	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
-+	status = nfsd4_cb_sync(clp, &msg, RPC_TASK_SOFT);
- 	while (retries--) {
- 		switch (status) {
- 			case -EIO:
-@@ -721,13 +737,15 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- 				goto out_put_cred;
- 		}
- 		ssleep(2);
--		status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
-+		status = nfsd4_cb_sync(clp, &msg, RPC_TASK_SOFT);
- 	}
- out_put_cred:
- 	/*
- 	 * Success or failure, now we're either waiting for lease expiration
- 	 * or deleg_return.
- 	 */
-+	dprintk("%s: dp %p dl_flock %p dl_count %d\n",
-+		__func__, dp, dp->dl_flock, atomic_read(&dp->dl_count));
- 	put_nfs4_client(clp);
- 	nfs4_put_delegation(dp);
- 	return;
--- 
-1.6.2.1
+and unlock nfsd_drc_lock
 
+Benny
+
+>  
+>  	if (mem < NFSD_SLOT_CACHE_SIZE) {
+> @@ -588,6 +588,9 @@ free_session(struct kref *kref)
+>  		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+>  		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+>  	}
+> +	spin_lock(&nfsd_drc_lock);
+> +	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs * NFSD_SLOT_CACHE_SIZE;
+> +	spin_unlock(&nfsd_drc_lock);
+>  	kfree(ses);
+>  }
+>  
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 80588cc..37633f5 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -67,6 +67,16 @@ struct timeval			nfssvc_boot;
+>  DEFINE_MUTEX(nfsd_mutex);
+>  struct svc_serv 		*nfsd_serv;
+>  
+> +/*
+> + * nfsd_drc_lock protects nfsd_drc_max_pages and nfsd_drc_pages_used.
+> + * nfsd_drc_max_pages limits the total amount of memory available for
+> + * version 4.1 DRC caches.
+> + * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
+> + */
+> +spinlock_t	nfsd_drc_lock;
+> +unsigned int	nfsd_drc_max_mem;
+> +unsigned int	nfsd_drc_mem_used;
+> +
+>  #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+>  static struct svc_stat	nfsd_acl_svcstats;
+>  static struct svc_version *	nfsd_acl_version[] = {
+> @@ -238,12 +248,13 @@ static void set_max_drc(void)
+>  {
+>  	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
+>  	#define NFSD_DRC_SIZE_SHIFT	10
+> -	nfsd_serv->sv_drc_max_mem = (nr_free_buffer_pages()
+> +	nfsd_drc_max_mem = (nr_free_buffer_pages()
+>  					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
+> -	nfsd_serv->sv_drc_mem_used = 0;
+> +	nfsd_drc_mem_used = 0;
+> +	spin_lock_init(&nfsd_drc_lock);
+>  	dprintk("%s svc_drc_max_mem %u [in pages %lu]\n", __func__,
+> -		nfsd_serv->sv_drc_max_mem,
+> -		nfsd_serv->sv_drc_max_mem / PAGE_SIZE);
+> +		nfsd_drc_max_mem,
+> +		nfsd_drc_max_mem / PAGE_SIZE);
+>  }
+>  
+>  int nfsd_create_serv(void)
+> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+> index 9cd6399..23ba7bd 100644
+> --- a/include/linux/nfsd/nfsd.h
+> +++ b/include/linux/nfsd/nfsd.h
+> @@ -56,6 +56,11 @@ extern struct svc_version	nfsd_version2, nfsd_version3,
+>  extern u32			nfsd_supported_minorversion;
+>  extern struct mutex		nfsd_mutex;
+>  extern struct svc_serv		*nfsd_serv;
+> +extern spinlock_t		nfsd_drc_lock;
+> +extern unsigned int		nfsd_drc_max_mem;
+> +extern unsigned int		nfsd_drc_mem_used;
+> +
+> +
+>  
+>  extern struct seq_operations nfs_exports_op;
+>  
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 243508e..d0d8bf4 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -94,8 +94,6 @@ struct svc_serv {
+>  	struct module *		sv_module;	/* optional module to count when
+>  						 * adding threads */
+>  	svc_thread_fn		sv_function;	/* main function for threads */
+> -	unsigned int		sv_drc_max_mem; /* Total pages for DRC */
+> -	unsigned int		sv_drc_mem_used;/* DRC pages used */
+>  };
+>  
+>  /*
