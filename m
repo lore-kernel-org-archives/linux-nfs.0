@@ -1,74 +1,73 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 23/39] nfs41: Release backchannel resources associated with session
-Date: Fri,  1 May 2009 02:22:57 +0300
-Message-ID: <1241133777-1054-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 24/39] nfs41: store minorversion in cb_compound_hdr_arg
+Date: Fri,  1 May 2009 02:23:04 +0300
+Message-ID: <1241133784-1086-1-git-send-email-bhalevy@panasas.com>
 References: <49FA3180.5030404@panasas.com>
 Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-	Ricardo Labiaga <ricardo.labiaga@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>
+	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:32564 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:31666 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757552AbZD3XXE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:23:04 -0400
+	with ESMTP id S1757691AbZD3XXN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:23:13 -0400
 In-Reply-To: <49FA3180.5030404@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-Frees the preallocated backchannel resources that are associated with
-this session when the session is destroyed.
-
-A backchannel is currently created once per session. Destroy the backchannel
-only when the session is destroyed.
-
-Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-Signed-off-by: Andy Adamson<andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4proc.c |    6 ++++++
- fs/nfs/super.c    |    1 -
- 2 files changed, 6 insertions(+), 1 deletions(-)
+ fs/nfs/callback.h     |    1 +
+ fs/nfs/callback_xdr.c |   12 +++++++-----
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index aab69f0..485c279 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -49,6 +49,7 @@
- #include <linux/namei.h>
- #include <linux/mount.h>
- #include <linux/module.h>
-+#include <linux/sunrpc/bc_xprt.h>
- 
- #include "nfs4_fs.h"
- #include "delegation.h"
-@@ -4484,6 +4485,11 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 
- void nfs4_destroy_session(struct nfs4_session *session)
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index ed52e06..21881d9 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -26,6 +26,7 @@ enum nfs4_callback_opnum {
+ struct cb_compound_hdr_arg {
+ 	unsigned int taglen;
+ 	const char *tag;
++	unsigned int minorversion;
+ 	unsigned int callback_ident;
+ 	unsigned nops;
+ };
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index dd0ef34..91f6f74 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -132,7 +132,6 @@ static __be32 decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
+ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound_hdr_arg *hdr)
  {
-+	nfs4_proc_destroy_session(session);
-+	dprintk("%s Destroy backchannel for xprt %p\n",
-+		__func__, session->clp->cl_rpcclient->cl_xprt);
-+	xprt_destroy_backchannel(session->clp->cl_rpcclient->cl_xprt,
-+				NFS41_BC_MIN_CALLBACKS);
- 	nfs4_destroy_slot_table(session);
- 	kfree(session);
+ 	__be32 *p;
+-	unsigned int minor_version;
+ 	__be32 status;
+ 
+ 	status = decode_string(xdr, &hdr->taglen, &hdr->tag);
+@@ -147,15 +146,18 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
+ 	p = read_buf(xdr, 12);
+ 	if (unlikely(p == NULL))
+ 		return htonl(NFS4ERR_RESOURCE);
+-	minor_version = ntohl(*p++);
++	hdr->minorversion = ntohl(*p++);
+ 	/* Check minor version is zero. */
+-	if (minor_version != 0) {
+-		printk(KERN_WARNING "%s: NFSv4 server callback with illegal minor version %u!\n",
+-				__func__, minor_version);
++	if (hdr->minorversion != 0) {
++		printk(KERN_WARNING "%s: NFSv4 server callback with "
++			"illegal minor version %u!\n",
++			__func__, hdr->minorversion);
+ 		return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
+ 	}
+ 	hdr->callback_ident = ntohl(*p++);
+ 	hdr->nops = ntohl(*p);
++	dprintk("%s: minorversion %d nops %d\n", __func__,
++		hdr->minorversion, hdr->nops);
+ 	return 0;
  }
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 892215c..923b28f 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2486,7 +2486,6 @@ static void nfs4_kill_super(struct super_block *sb)
- 	dprintk("--> %s\n", __func__);
- 	nfs_super_return_all_delegations(sb);
- 	kill_anon_super(sb);
--
- 	nfs4_renewd_prepare_shutdown(server);
- 	nfs_fscache_release_super_cookie(sb);
- 	nfs_free_server(server);
+ 
 -- 
 1.6.2.1
 
