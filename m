@@ -1,97 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:40498 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752810AbZDNMkz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Apr 2009 08:40:55 -0400
-Subject: Re: Unexplained NFS mount hangs
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Rudy@grumpydevil.homelinux.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Daniel Stickney <dstickney@pronto.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <1239712656.13583.80.camel@poledra.romunt.nl>
-References: <20090413092406.304d04fb@dstickney2>
-	 <C81F82EF-81F0-432D-B727-F496F807CEB3@oracle.com>
-	 <20090413104759.525161b2@dstickney2>
-	 <48017BBF-03BD-4C87-84F1-1D3603273E4F@oracle.com>
-	 <1239650707.13583.49.camel@poledra.romunt.nl>
-	 <1239700583.13583.62.camel@poledra.romunt.nl>
-	 <1239712286.16771.39.camel@heimdal.trondhjem.org>
-	 <1239712656.13583.80.camel@poledra.romunt.nl>
-Content-Type: text/plain
-Date: Tue, 14 Apr 2009 08:40:45 -0400
-Message-Id: <1239712845.16771.53.camel@heimdal.trondhjem.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:20250 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755393AbZD3U2q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 16:28:46 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Brian R Cowan <brcowan@us.ibm.com>
+In-Reply-To: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
+Date: Thu, 30 Apr 2009 16:28:24 -0400
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2009-04-14 at 14:37 +0200, Rudy Zijlstra wrote:
-> Op dinsdag 14-04-2009 om 08:31 uur [tijdzone -0400], schreef Trond
-> Myklebust:
-> > On Tue, 2009-04-14 at 11:16 +0200, Rudy Zijlstra wrote:
-> > > Op maandag 13-04-2009 om 21:25 uur [tijdzone +0200], schreef Rudy
-> > > Zijlstra:
-> > > > Op maandag 13-04-2009 om 13:08 uur [tijdzone -0400], schreef Chuck
-> > > > Lever:
-> > > > > On Apr 13, 2009, at 12:47 PM, Daniel Stickney wrote:
-> > > > > 
-> > > > > > On Mon, 13 Apr 2009 12:12:47 -0400
-> > > > > > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > > > > >
-> > > > > >> On Apr 13, 2009, at 11:24 AM, Daniel Stickney wrote:
-> > > > > >>> Hi all,
-> > > > > >>>
-> > > > > >>> I am investigating some NFS mount hangs that we have started to see
-> > > > > >>> over the past month on some of our servers. The behavior is that the
-> > > > > >>> client mount hangs and needs to be manually unmounted (forcefully
-> > > > > >>> with 'umount -f') and remounted to make it work. There are about 85
-> > > > > >>> clients mounting a partition over NFS. About 50 of the clients are
-> > > > > >>> running Fedora Core 3 with kernel 2.6.11-1.27_FC3smp. Not one of
-> > > > > >>> these 50 has ever had this mount hang. The other 35 are CentOS 5.2
-> > > > > >>> with kernel 2.6.27 which was compiled from source. The mount hangs
-> > > > > >>> are inconsistent and so far I don't know how to trigger them on
-> > > > > >>> demand. The timing of the hangs as noted by the timestamp in /var/
-> > > > > >>> log/messages varies. Not all of the 35 CentOS clients have their
-> > > > > >>> mounts hang at the same time, and the NFS server continues operating
-> > > > > >>> apparently normally for all other clients. Normally maybe 5 clients
-> > > > > >>> have a mount hang per week, on different days, mostly different
-> > > > > >>> times. Now and then we might see a cluster of a few clien
-> > > > > >>> ts have their mounts hang at the same exact time, but this is not
-> > > > > >>> consistent. In /var/log/messages we see
-> > > 
-> > > 
-> > > > OK, i'll switch to 2.6.30 on all clients once it is out. Prefer to wait
-> > > > for release, as they are production type machines. 
-> > > > 
-> > > > If i get a hang, i'll check with "netstat --ip"
-> > > > 
-> > > 
-> > > Just now one of my 2.6.28.7 machines is hanging. 
-> > > netstat results in client status: 
-> > > tcp  0  0 mythm.romunt.nl:1020    repeater.romunt.nl:nfsd FIN_WAIT2
-> > > tcp 76  0 mythm.romunt.nl:6544    repeater.romunt.n:53854 ESTABLISHED
-> > > 
-> > >  
-> > > and on the server i find:
-> > > tcp  1  0 repeater.romunt.nl:nfsd mythm.romunt.nl:1020    CLOSE_WAIT 
-> > > tcp  0  0 repeater.romunt.n:53854 mythm.romunt.nl:6544    FIN_WAIT2  
-> > > 
-> > 
-> > Which shows that the NFS server is failing to close the tcp connection
-> > after the client has closed on its side.
-> > 
-> > You probably want to apply this patch to your server:
-> >     http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=69b6ba3712b796a66595cfaf0a5ab4dfe1cf964a
-> > 
-> > 
-> > Trond
-> > 
-> 
-> Hi Trond
-> 
-> Thanks, would an upgrade to 2.6.29.1 also work? 
 
-Yes. That same patch should also be in 2.6.29.
+On Apr 30, 2009, at 4:12 PM, Brian R Cowan wrote:
 
-Cheers
-  Trond
+> Hello all,
+>
+> This is my first post, so please be gentle.... I have been working  
+> with a
+> customer who is attempting to build their product in ClearCase dynamic
+> views on Linux. When they went from Red hat Enterprise Linux 4  
+> (update 5)
+> to Red Hat Enterprise Linux 5 (Update 2), their build performance  
+> degraded
+> dramatically. When troubleshooting the issue, we noticed that links on
+> RHEL 5 caused an incredible number of "STABLE" 4kb nfs writes even  
+> though
+> the storage we were writing to was EXPLICITLY mounted async. (This  
+> made
+> RHEL 5 nearly 5x slower than RHEL 4.5 in this area...)
+>
+> On consultation with some internal resources, we found this change  
+> in the
+> 2.6 kernel:
+>
+> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=ab0a3dbedc51037f3d2e22ef67717a987b3d15e2
+>
+> In here it looks like the NFS client is forcing sync writes any time a
+> write of less than the NFS write size occurs. We tested this  
+> hypothesis by
+> setting the write size to 2KB. The "STABLE" writes went away and link
+> times came back down out of the stratosphere. We built a modified  
+> kernel
+> based on the RHEL 5.2 kernel (that ONLY backed out of this change)  
+> and we
+> got a 33% improvement in overall build speeds. In my case, I see  
+> almost
+> identical build times between the 2 OS's when we use this modified  
+> kernel
+> on RHEL 5.
+>
+> Now, why am I posing this to the list? I need to understand *why* that
+> change was made. On the face of it, simply backing out that patch  
+> would be
+> perfect. I'm paranoid. I want to make sure that this is the ONLY  
+> reason:
+> "/* For single writes, FLUSH_STABLE is more efficient */ "
+>
+> It seems more accurate to say that they *aren't* more efficient, but
+> rather are "safer, but slower."
 
+They are more efficient from the point of view that only a single RPC  
+is needed for a complete write.  The WRITE and COMMIT are done in a  
+single request.
+
+I don't think the issue here is whether the write is stable, but it is  
+whether the NFS client has to block the application for it.  A stable  
+write that is asynchronous to the application is faster than WRITE 
++COMMIT.
+
+So it's not "stable" that is holding you up, it's "synchronous."   
+Those are orthogonal concepts.
+
+> I know that this is a 3+ year old update, but RHEL 4 is based on a 2.4
+> kernel,
+
+Nope, RHEL 4 is 2.6.9.  RHEL 3 is 2.4.20-ish.
+
+> and SLES 9 is based on something in the same ballpark. And our
+> customers see problems when they go to SLES 10/RHEL 5 from the prior  
+> major
+> distro version.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
