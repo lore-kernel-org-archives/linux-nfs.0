@@ -1,104 +1,207 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 13/39] nfs41: Backchannel bc_svc_process()
-Date: Fri,  1 May 2009 02:21:18 +0300
-Message-ID: <1241133678-720-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 14/39] nfs41: Implement NFSv4.1 callback service process.
+Date: Fri,  1 May 2009 02:21:30 +0300
+Message-ID: <1241133690-752-1-git-send-email-bhalevy@panasas.com>
 References: <49FA3180.5030404@panasas.com>
 Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
 	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:14994 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:2131 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753402AbZD3XV2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:21:28 -0400
+	with ESMTP id S1753402AbZD3XVg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:21:36 -0400
 In-Reply-To: <49FA3180.5030404@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-Implement the NFSv4.1 backchannel service.  Invokes the common callback
-processing logic svc_process_common() to authenticate the call and
-dispatch the appropriate NFSv4.1 XDR decoder and operation procedure.
-It then invokes bc_send() to send the reply over the same connection.
-bc_send() is implemented in a separate patch.
+nfs41_callback_up() initializes the necessary queues and creates the new
+nfs41_callback_svc thread.  This thread executes the callback service which
+waits for requests to arrive on the svc_serv->sv_cb_list.
 
-At this time there is no slot validation or reply cache handling.
+NFS41_BC_MIN_CALLBACKS is set to 1 because we expect callbacks to not
+cause substantial latency.
 
-[nfs41: Preallocate rpc_rqst receive buffer for handling callbacks]
+The actual processing of the callback will be implemented as a separate patch.
+
+There is only one NFSv4.1 callback service.  The first caller of
+nfs4_callback_up() creates the service, subsequent callers increment a
+reference count on the service.  The service is destroyed when the last
+caller invokes nfs_callback_down().
+
+The transport needs to hold a reference to the callback service in order
+to invoke it during callback processing.  Currently this reference is only
+obtained when the service is first created.  This is incorrect, since
+subsequent registrations for other transports will leave the xprt->serv
+pointer uninitialized, leading to an oops when a callback arrives on
+the "unreferenced" transport.
+
+This patch fixes the problem by ensuring that a reference to the service
+is saved in xprt->serv, either because the service is created by this
+invocation to nfs4_callback_up() or by a prior invocation.
+
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfs41: Add a reference to svc_serv during callback service bring up]
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/svc.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 49 insertions(+), 0 deletions(-)
+ fs/nfs/callback.c          |   83 ++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/callback.h          |    7 ++++
+ include/linux/sunrpc/svc.h |    2 +
+ 3 files changed, 90 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index bfda66d..06b52e4 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -25,6 +25,7 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/clnt.h>
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 3926046..9ee174c 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -17,6 +17,9 @@
+ #include <linux/freezer.h>
+ #include <linux/kthread.h>
+ #include <linux/sunrpc/svcauth_gss.h>
++#if defined(CONFIG_NFS_V4_1)
 +#include <linux/sunrpc/bc_xprt.h>
++#endif
  
- #define RPCDBG_FACILITY	RPCDBG_SVCDSP
+ #include <net/inet_sock.h>
  
-@@ -1239,6 +1240,54 @@ svc_process(struct svc_rqst *rqstp)
- 	return svc_send(rqstp);
+@@ -131,6 +134,69 @@ out_err:
+ 	return ERR_PTR(ret);
  }
  
 +#if defined(CONFIG_NFS_V4_1)
 +/*
-+ * Process a backchannel RPC request that arrived over an existing
-+ * outbound connection
++ * The callback service for NFSv4.1 callbacks
 + */
-+int
-+bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
-+	       struct svc_rqst *rqstp)
++static int
++nfs41_callback_svc(void *vrqstp)
 +{
-+	struct kvec	*argv = &rqstp->rq_arg.head[0];
-+	struct kvec	*resv = &rqstp->rq_res.head[0];
-+	int 		error;
++	struct svc_rqst *rqstp = vrqstp;
++	struct svc_serv *serv = rqstp->rq_server;
++	struct rpc_rqst *req;
++	int error;
++	DEFINE_WAIT(wq);
 +
-+	/* Build the svc_rqst used by the common processing routine */
-+	rqstp->rq_xid = req->rq_xid;
-+	rqstp->rq_prot = req->rq_xprt->prot;
-+	rqstp->rq_server = serv;
-+
-+	rqstp->rq_addrlen = sizeof(req->rq_xprt->addr);
-+	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
-+	memcpy(&rqstp->rq_arg, &req->rq_rcv_buf, sizeof(rqstp->rq_arg));
-+	memcpy(&rqstp->rq_res, &req->rq_snd_buf, sizeof(rqstp->rq_res));
-+
-+	/* reset result send buffer "put" position */
-+	resv->iov_len = 0;
-+
-+	if (rqstp->rq_prot != IPPROTO_TCP) {
-+		printk(KERN_ERR "No support for Non-TCP transports!\n");
-+		BUG();
-+	}
++	set_freezable();
 +
 +	/*
-+	 * Skip the next two words because they've already been
-+	 * processed in the trasport
++	 * FIXME: do we really need to run this under the BKL? If so, please
++	 * add a comment about what it's intended to protect.
 +	 */
-+	svc_getu32(argv);	/* XID */
-+	svc_getnl(argv);	/* CALLDIR */
-+
-+	error = svc_process_common(rqstp, argv, resv);
-+	if (error <= 0)
-+		return error;
-+
-+	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
-+	return bc_send(req);
++	lock_kernel();
++	while (!kthread_should_stop()) {
++		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
++		spin_lock_bh(&serv->sv_cb_lock);
++		if (!list_empty(&serv->sv_cb_list)) {
++			req = list_first_entry(&serv->sv_cb_list,
++					struct rpc_rqst, rq_bc_list);
++			list_del(&req->rq_bc_list);
++			spin_unlock_bh(&serv->sv_cb_lock);
++			dprintk("Invoking bc_svc_process()\n");
++			error = bc_svc_process(serv, req, rqstp);
++			dprintk("bc_svc_process() returned w/ error code= %d\n",
++				error);
++		} else {
++			spin_unlock_bh(&serv->sv_cb_lock);
++			schedule();
++		}
++		finish_wait(&serv->sv_cb_waitq, &wq);
++	}
++	unlock_kernel();
++	nfs_callback_info.task = NULL;
++	svc_exit_thread(rqstp);
++	return 0;
 +}
-+EXPORT_SYMBOL(bc_svc_process);
++
++/*
++ * Bring up the NFSv4.1 callback service
++ */
++struct svc_rqst *
++nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
++{
++	/*
++	 * Save the svc_serv in the transport so that it can
++	 * be referenced when the session backchannel is initialized
++	 */
++	xprt->bc_serv = serv;
++
++	INIT_LIST_HEAD(&serv->sv_cb_list);
++	spin_lock_init(&serv->sv_cb_lock);
++	init_waitqueue_head(&serv->sv_cb_waitq);
++	return svc_prepare_thread(serv, &serv->sv_pools[0]);
++}
 +#endif /* CONFIG_NFS_V4_1 */
 +
  /*
-  * Return (transport-specific) limit on the rpc payload.
+  * Bring up the callback thread if it is not already up.
   */
+@@ -141,10 +207,18 @@ int nfs_callback_up(u32 minorversion, void *args)
+ 	int (*callback_svc)(void *vrqstp);
+ 	char svc_name[12];
+ 	int ret = 0;
++#if defined(CONFIG_NFS_V4_1)
++	struct rpc_xprt *xprt = (struct rpc_xprt *)args;
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ 	mutex_lock(&nfs_callback_mutex);
+-	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
++	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL) {
++#if defined(CONFIG_NFS_V4_1)
++		if (minorversion)
++			xprt->bc_serv = nfs_callback_info.serv;
++#endif /* CONFIG_NFS_V4_1 */
+ 		goto out;
++	}
+ 	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+ 	if (!serv) {
+ 		ret = -ENOMEM;
+@@ -157,7 +231,12 @@ int nfs_callback_up(u32 minorversion, void *args)
+ 		rqstp = nfs4_callback_up(serv);
+ 		callback_svc = nfs4_callback_svc;
+ 	} else {
+-		BUG();	/* for now */
++#if defined(CONFIG_NFS_V4_1)
++		rqstp = nfs41_callback_up(serv, xprt);
++		callback_svc = nfs41_callback_svc;
++#else  /* CONFIG_NFS_V4_1 */
++		BUG();
++#endif /* CONFIG_NFS_V4_1 */
+ 	}
+ 
+ 	if (IS_ERR(rqstp)) {
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 7f12e65..f2696ba 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -70,6 +70,13 @@ extern void nfs_callback_down(void);
+ #define nfs_callback_down()	do {} while(0)
+ #endif
+ 
++/*
++ * nfs41: Callbacks are expected to not cause substantial latency,
++ * so we limit their concurrency to 1 by setting up the maximum number
++ * of slots for the backchannel.
++ */
++#define NFS41_BC_MIN_CALLBACKS 1
++
+ extern unsigned int nfs_callback_set_tcpport;
+ extern unsigned short nfs_callback_tcpport;
+ extern unsigned short nfs_callback_tcpport6;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 4a8afbd..16043c4 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -419,6 +419,8 @@ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+ int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
+ void		   svc_destroy(struct svc_serv *);
+ int		   svc_process(struct svc_rqst *);
++int		   bc_svc_process(struct svc_serv *, struct rpc_rqst *,
++			struct svc_rqst *);
+ int		   svc_register(const struct svc_serv *, const int,
+ 				const unsigned short, const unsigned short);
+ 
 -- 
 1.6.2.1
 
