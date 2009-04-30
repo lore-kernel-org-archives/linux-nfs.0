@@ -1,131 +1,65 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 01/39] nfs41: Add ability to read RPC call direction on TCP stream.
-Date: Fri,  1 May 2009 02:19:03 +0300
-Message-ID: <1241133543-315-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 02/39] nfs41: Skip past the RPC call direction
+Date: Fri,  1 May 2009 02:19:09 +0300
+Message-ID: <1241133549-348-1-git-send-email-bhalevy@panasas.com>
 References: <49FA3180.5030404@panasas.com>
 Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
 	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:1319 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:25919 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752910AbZD3XTJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:19:09 -0400
+	with ESMTP id S1752910AbZD3XTU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:19:20 -0400
 In-Reply-To: <49FA3180.5030404@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-NFSv4.1 callbacks can arrive over an existing connection. This patch adds
-the logic to read the RPC call direction (call or reply). It does this by
-updating the state machine to look for the call direction invoking
-xs_tcp_read_calldir(...) after reading the XID.
+xs_tcp_read_calldir() is now responsible for reading the RPC call
+direction and determining whether it is a reply or a callback request.
+The call to xdr_skb_read_bits() inside xs_tcp_read_calldir() moves the
+xdr_skb_reader offset past the RPC call direction (offset should be
+equal to 8).  Therefore xs_tcp_read_common() called from
+xs_tcp_ready_reply() should be copying the TCP buffer starting past the
+RPC call direction.  It is now necessary to read the RPC call direction
+earlier to determine whether to call the reply handler or the callback
+handler.
 
-[nfs41: Keep track of RPC call/reply direction with a flag]
-
-As per 11/14/08 review of RFC 53/85.
-
-Add a new flag to track whether the incoming message is an RPC call or an
-RPC reply.  TCP_RPC_REPLY is set in the 'struct sock_xprt' tcp_flags in
-xs_tcp_read_calldir() if the message is an RPC reply sent on the forechannel.
-It is cleared if the message is an RPC request sent on the back channel.
+call_verify() should therefore skip past the XID and call/reply flag.
 
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/xprtsock.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 49 insertions(+), 3 deletions(-)
+ net/sunrpc/clnt.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d40ff50..692b517 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -270,6 +270,12 @@ struct sock_xprt {
- #define TCP_RCV_COPY_FRAGHDR	(1UL << 1)
- #define TCP_RCV_COPY_XID	(1UL << 2)
- #define TCP_RCV_COPY_DATA	(1UL << 3)
-+#define TCP_RCV_COPY_CALLDIR	(1UL << 4)
-+
-+/*
-+ * TCP RPC flags
-+ */
-+#define TCP_RPC_REPLY		(1UL << 5)
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d00e813..76d7d46 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1390,13 +1390,14 @@ rpc_verify_header(struct rpc_task *task)
+ 	}
+ 	if ((len -= 3) < 0)
+ 		goto out_overflow;
+-	p += 1;	/* skip XID */
  
- static inline struct sockaddr *xs_addr(struct rpc_xprt *xprt)
- {
-@@ -945,7 +951,7 @@ static inline void xs_tcp_read_fraghdr(struct rpc_xprt *xprt, struct xdr_skb_rea
- 	transport->tcp_offset = 0;
- 
- 	/* Sanity check of the record length */
--	if (unlikely(transport->tcp_reclen < 4)) {
-+	if (unlikely(transport->tcp_reclen < 8)) {
- 		dprintk("RPC:       invalid TCP record fragment length\n");
- 		xprt_force_disconnect(xprt);
- 		return;
-@@ -980,13 +986,48 @@ static inline void xs_tcp_read_xid(struct sock_xprt *transport, struct xdr_skb_r
- 	if (used != len)
- 		return;
- 	transport->tcp_flags &= ~TCP_RCV_COPY_XID;
--	transport->tcp_flags |= TCP_RCV_COPY_DATA;
-+	transport->tcp_flags |= TCP_RCV_COPY_CALLDIR;
- 	transport->tcp_copied = 4;
--	dprintk("RPC:       reading reply for XID %08x\n",
-+	dprintk("RPC:       reading %s XID %08x\n",
-+			(transport->tcp_flags & TCP_RPC_REPLY) ? "reply for"
-+							      : "request with",
- 			ntohl(transport->tcp_xid));
- 	xs_tcp_check_fraghdr(transport);
- }
- 
-+static inline void xs_tcp_read_calldir(struct sock_xprt *transport,
-+				       struct xdr_skb_reader *desc)
-+{
-+	size_t len, used;
-+	u32 offset;
-+	__be32	calldir;
-+
+-	if ((n = ntohl(*p++)) != RPC_REPLY) {
+-		dprintk("RPC: %5u %s: not an RPC reply: %x\n",
+-				task->tk_pid, __func__, n);
+-		goto out_garbage;
+-	}
 +	/*
-+	 * We want transport->tcp_offset to be 8 at the end of this routine
-+	 * (4 bytes for the xid and 4 bytes for the call/reply flag).
-+	 * When this function is called for the first time,
-+	 * transport->tcp_offset is 4 (after having already read the xid).
++	 * Skip the XID and call direction.
++	 * The underlying transport has read the XID and RPC call direction
++	 * to determine this is an RPC reply.
 +	 */
-+	offset = transport->tcp_offset - sizeof(transport->tcp_xid);
-+	len = sizeof(calldir) - offset;
-+	dprintk("RPC:       reading CALL/REPLY flag (%Zu bytes)\n", len);
-+	used = xdr_skb_read_bits(desc, &calldir, len);
-+	transport->tcp_offset += used;
-+	if (used != len)
-+		return;
-+	transport->tcp_flags &= ~TCP_RCV_COPY_CALLDIR;
-+	transport->tcp_flags |= TCP_RCV_COPY_DATA;
-+	transport->tcp_copied += 4;
-+	if (ntohl(calldir) == RPC_REPLY)
-+		transport->tcp_flags |= TCP_RPC_REPLY;
-+	else
-+		transport->tcp_flags &= ~TCP_RPC_REPLY;
-+	dprintk("RPC:       reading %s CALL/REPLY flag %08x\n",
-+			(transport->tcp_flags & TCP_RPC_REPLY) ?
-+				"reply for" : "request with", calldir);
-+	xs_tcp_check_fraghdr(transport);
-+}
++	p += 2;
 +
- static inline void xs_tcp_read_request(struct rpc_xprt *xprt, struct xdr_skb_reader *desc)
- {
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-@@ -1103,6 +1144,11 @@ static int xs_tcp_data_recv(read_descriptor_t *rd_desc, struct sk_buff *skb, uns
- 			xs_tcp_read_xid(transport, &desc);
- 			continue;
- 		}
-+		/* Read in the call/reply flag */
-+		if (transport->tcp_flags & TCP_RCV_COPY_CALLDIR) {
-+			xs_tcp_read_calldir(transport, &desc);
-+			continue;
-+		}
- 		/* Read in the request data */
- 		if (transport->tcp_flags & TCP_RCV_COPY_DATA) {
- 			xs_tcp_read_request(xprt, &desc);
+ 	if ((n = ntohl(*p++)) != RPC_MSG_ACCEPTED) {
+ 		if (--len < 0)
+ 			goto out_overflow;
 -- 
 1.6.2.1
 
