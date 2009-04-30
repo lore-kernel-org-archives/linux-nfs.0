@@ -1,59 +1,110 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: Adding mount option to kernel for NFS filesystem
-Date: Thu, 30 Apr 2009 14:58:16 -0400
-Message-ID: <20090430145816.7761131b@barsoom.rdu.redhat.com>
-References: <49F8884A.8050402@oudelohuis.nl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Gertjan Oude Lohuis <gertjan-yZ1RIXqxfwWWrUy98/Atqw@public.gmane.org>
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: [PATCH 02/31] nfsd41: change check_slot_seqid parameters
+Date: Thu, 30 Apr 2009 15:34:51 -0400
+Message-ID: <81B8E2B8-F551-4285-ACAF-7B54A19D0902@netapp.com>
+References: <1240938005-23778-1-git-send-email-andros@netapp.com> <1240938005-23778-2-git-send-email-andros@netapp.com> <49F9E152.5090809@panasas.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: bfields@fieldses.org, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35663 "EHLO mx2.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:14582 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756460AbZD3S61 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Apr 2009 14:58:27 -0400
-In-Reply-To: <49F8884A.8050402-yZ1RIXqxfwWWrUy98/Atqw@public.gmane.org>
+	id S1751022AbZD3TfF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Apr 2009 15:35:05 -0400
+In-Reply-To: <49F9E152.5090809@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 29 Apr 2009 19:03:06 +0200
-Gertjan Oude Lohuis <gertjan-yZ1RIXqxfwWWrUy98/Atqw@public.gmane.org> wrote:
 
-> Hi guys,
-> 
-> For fun and learning purposes I'm trying to add an mountflag for
-> NFS-mounts to the kernel and mount. The flag's semantics are identical
-> to ac/noac: 'flag' is default but has no special meaning, 'noflag'
-> triggers a certain action.
-> 
-> I have a small question about adding the flag to
-> include/linux/nfs_mount.h. Since NFS_MOUNT_FLAGMASK is defined as
-> 0xFFFF, and all bits up until 0xFFFF are occupied by existing
-> NFS_MOUNT-flags, how could I add my own flag?
-> Would it be ok to define NFS_MOUNT_FLAGMASK as 0xFFFFF and my own flag
-> as 0x10000? Or will this have other side effects? It seems to be working
-> though ;-).
-> How would this be done if a real flag should be added by kernel maintainers?
-> 
-> I guess another option would be to create a new entry in the
-> nfs_mount_data struct and treat it as an option (rsize-, wsize-,
-> timeo-alike), but I'd like to do keep it the same as other flags.
-> 
-> Please advice! ;-)
-> Thanks in advance for your time.
-> 
-> Sincerely,
-> Gertjan
-> 
+On Apr 30, 2009, at 1:35 PM, Benny Halevy wrote:
 
-It's probably better to post questions like this to
-linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org cc'ing that on the response...
+> On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> For separation of session slot and clientid slot processing.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfsd/nfs4state.c |   24 +++++++++++++-----------
+>> 1 files changed, 13 insertions(+), 11 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 42ebcb3..43c821f 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1310,26 +1310,26 @@ error:
+>> }
+>>
+>> static int
+>> -check_slot_seqid(u32 seqid, struct nfsd4_slot *slot)
+>> +check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse )
+>
+> nit: extra space before closing parentheses.
+> (I'll remove it when merging into the pnfs tree)
+>
+Thanks - I thought I ran checkpatch on all of these....
 
-Newer kernels and mount.nfs progs use text-based mount options by
-default. My suggestion would be to avoid worrying about the legacy
-mount option code and to just make the new option work with the text
-based ones only.
 
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+> Benny
+>
+>> {
+>> -	dprintk("%s enter. seqid %d slot->sl_seqid %d\n", __func__, seqid,
+>> -		slot->sl_seqid);
+>> +	dprintk("%s enter. seqid %d slot_seqid %d\n", __func__, seqid,
+>> +		slot_seqid);
+>>
+>> 	/* The slot is in use, and no response has been sent. */
+>> -	if (slot->sl_inuse) {
+>> -		if (seqid == slot->sl_seqid)
+>> +	if (slot_inuse) {
+>> +		if (seqid == slot_seqid)
+>> 			return nfserr_jukebox;
+>> 		else
+>> 			return nfserr_seq_misordered;
+>> 	}
+>> 	/* Normal */
+>> -	if (likely(seqid == slot->sl_seqid + 1))
+>> +	if (likely(seqid == slot_seqid + 1))
+>> 		return nfs_ok;
+>> 	/* Replay */
+>> -	if (seqid == slot->sl_seqid)
+>> +	if (seqid == slot_seqid)
+>> 		return nfserr_replay_cache;
+>> 	/* Wraparound */
+>> -	if (seqid == 1 && (slot->sl_seqid + 1) == 0)
+>> +	if (seqid == 1 && (slot_seqid + 1) == 0)
+>> 		return nfs_ok;
+>> 	/* Misordered replay or misordered new request */
+>> 	return nfserr_seq_misordered;
+>> @@ -1352,7 +1352,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>>
+>> 	if (conf) {
+>> 		slot = &conf->cl_slot;
+>> -		status = check_slot_seqid(cr_ses->seqid, slot);
+>> +		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
+>> +					  slot->sl_inuse);
+>> 		if (status == nfserr_replay_cache) {
+>> 			dprintk("Got a create_session replay! seqid= %d\n",
+>> 				slot->sl_seqid);
+>> @@ -1377,7 +1378,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>> 		}
+>>
+>> 		slot = &unconf->cl_slot;
+>> -		status = check_slot_seqid(cr_ses->seqid, slot);
+>> +		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
+>> +					  slot->sl_inuse);
+>> 		if (status) {
+>> 			/* an unconfirmed replay returns misordered */
+>> 			status = nfserr_seq_misordered;
+>> @@ -1487,7 +1489,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>> 	slot = &session->se_slots[seq->slotid];
+>> 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+>>
+>> -	status = check_slot_seqid(seq->seqid, slot);
+>> +	status = check_slot_seqid(seq->seqid, slot->sl_seqid, slot- 
+>> >sl_inuse);
+>> 	if (status == nfserr_replay_cache) {
+>> 		cstate->slot = slot;
+>> 		cstate->session = session;
+
