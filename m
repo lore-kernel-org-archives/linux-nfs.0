@@ -1,230 +1,112 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [RFC 04/39] nfs41: minorversion support for nfs4_{init,destroy}_callback
-Date: Fri,  1 May 2009 02:19:36 +0300
-Message-ID: <1241133576-415-1-git-send-email-bhalevy@panasas.com>
+Subject: [RFC 05/39] nfs41: client callback structures
+Date: Fri,  1 May 2009 02:19:42 +0300
+Message-ID: <1241133582-448-1-git-send-email-bhalevy@panasas.com>
 References: <49FA3180.5030404@panasas.com>
 Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+	linux-nfs@vger.kernel.org,
+	Ricardo Labiaga <ricardo.labiaga@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:3422 "EHLO
+Received: from gw-ca.panasas.com ([209.116.51.66]:27515 "EHLO
 	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753935AbZD3XTm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:19:42 -0400
+	with ESMTP id S1754539AbZD3XUB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Apr 2009 19:20:01 -0400
 In-Reply-To: <49FA3180.5030404@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-move nfs4_init_callback into nfs4_init_client_minor_version
-and nfs4_destroy_callback into nfs4_clear_client_minor_version
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-as these need to happen also when auto-negotiating the minorversion
-once the callback service for nfs41 becomes different than for nfs4.0
+Adds new list of rpc_xprt structures, and a readers/writers lock to
+protect the list.  The list is used to preallocate resources for
+the backchannel during backchannel requests.  Callbacks are not
+expected to cause significant latency, so only one callback will
+be allowed at this time.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix checkpatch warning]
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+It also adds a pointer to the NFS callback service so that
+requests can be directed to it for processing.
+
+New callback members added to svc_serv. The NFSv4.1 callback service will
+sleep on the svc_serv->svc_cb_waitq until new callback requests arrive.
+The request will be queued in svc_serv->svc_cb_list. This patch adds this
+list, the sleep queue and spinlock to svc_serv.
+
+[nfs41: NFSv4.1 callback support]
+Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/callback.c |   67 ++++++++++++++++++++++++++++++++++++++---------------
- fs/nfs/callback.h |    2 +-
- fs/nfs/client.c   |   21 +++++-----------
- 3 files changed, 56 insertions(+), 34 deletions(-)
+ include/linux/sunrpc/svc.h  |    8 ++++++++
+ include/linux/sunrpc/xprt.h |   22 ++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index a886e69..3926046 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -59,7 +59,7 @@ module_param_call(callback_tcpport, param_set_port, param_get_int,
-  * This is the callback kernel thread.
-  */
- static int
--nfs_callback_svc(void *vrqstp)
-+nfs4_callback_svc(void *vrqstp)
- {
- 	int err, preverr = 0;
- 	struct svc_rqst *rqstp = vrqstp;
-@@ -97,20 +97,12 @@ nfs_callback_svc(void *vrqstp)
- }
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 2a30775..4a8afbd 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -96,6 +96,14 @@ struct svc_serv {
+ 	svc_thread_fn		sv_function;	/* main function for threads */
+ 	unsigned int		sv_drc_max_pages; /* Total pages for DRC */
+ 	unsigned int		sv_drc_pages_used;/* DRC pages used */
++#if defined(CONFIG_NFS_V4_1)
++	struct list_head	sv_cb_list;	/* queue for callback requests
++						 * that arrive over the same
++						 * connection */
++	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
++	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
++						 * entries in the svc_cb_list */
++#endif /* CONFIG_NFS_V4_1 */
+ };
  
  /*
-- * Bring up the callback thread if it is not already up.
-+ * Prepare to bring up the NFSv4 callback service
-  */
--int nfs_callback_up(void)
-+struct svc_rqst *
-+nfs4_callback_up(struct svc_serv *serv)
- {
--	struct svc_serv *serv = NULL;
--	int ret = 0;
--
--	mutex_lock(&nfs_callback_mutex);
--	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
--		goto out;
--	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
--	ret = -ENOMEM;
--	if (!serv)
--		goto out_err;
-+	int ret;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 1758d9f..b0867e4 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -97,6 +97,12 @@ struct rpc_rqst {
  
- 	ret = svc_create_xprt(serv, "tcp", PF_INET,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-@@ -131,18 +123,55 @@ int nfs_callback_up(void)
- 		goto out_err;
- #endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+ 	unsigned long		rq_xtime;	/* when transmitted */
+ 	int			rq_ntrans;
++
++#if defined(CONFIG_NFS_V4_1)
++	struct list_head	rq_bc_list;	/* Callback service list */
++	unsigned long		rq_bc_pa_state;	/* Backchannel prealloc state */
++	struct list_head	rq_bc_pa_list;	/* Backchannel prealloc list */
++#endif /* CONFIG_NFS_V4_1 */
+ };
+ #define rq_svec			rq_snd_buf.head
+ #define rq_slen			rq_snd_buf.len
+@@ -174,6 +180,14 @@ struct rpc_xprt {
+ 	spinlock_t		reserve_lock;	/* lock slot table */
+ 	u32			xid;		/* Next XID value to use */
+ 	struct rpc_task *	snd_task;	/* Task blocked in send */
++#if defined(CONFIG_NFS_V4_1)
++	struct svc_serv		*bc_serv;       /* The RPC service which will */
++						/* process the callback */
++	spinlock_t		bc_pa_lock;	/* Protects the preallocated
++						 * items */
++	struct list_head	bc_pa_list;	/* List of preallocated
++						 * backchannel rpc_rqst's */
++#endif /* CONFIG_NFS_V4_1 */
+ 	struct list_head	recv;
  
--	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
--	if (IS_ERR(nfs_callback_info.rqst)) {
--		ret = PTR_ERR(nfs_callback_info.rqst);
--		nfs_callback_info.rqst = NULL;
-+	return svc_prepare_thread(serv, &serv->sv_pools[0]);
-+
-+out_err:
-+	if (ret == 0)
-+		ret = -ENOMEM;
-+	return ERR_PTR(ret);
-+}
-+
+ 	struct {
+@@ -192,6 +206,14 @@ struct rpc_xprt {
+ 	const char		*address_strings[RPC_DISPLAY_MAX];
+ };
+ 
++#if defined(CONFIG_NFS_V4_1)
 +/*
-+ * Bring up the callback thread if it is not already up.
++ * Backchannel flags
 + */
-+int nfs_callback_up(u32 minorversion, void *args)
-+{
-+	struct svc_serv *serv = NULL;
-+	struct svc_rqst *rqstp;
-+	int (*callback_svc)(void *vrqstp);
-+	char svc_name[12];
-+	int ret = 0;
++#define	RPC_BC_PA_IN_USE	0x0001		/* Preallocated backchannel */
++						/* buffer in use */
++#endif /* CONFIG_NFS_V4_1 */
 +
-+	mutex_lock(&nfs_callback_mutex);
-+	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
-+		goto out;
-+	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
-+	if (!serv) {
-+		ret = -ENOMEM;
-+		goto out_err;
-+	}
-+
-+	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
-+	 * need to monitor and control them both */
-+	if (!minorversion) {
-+		rqstp = nfs4_callback_up(serv);
-+		callback_svc = nfs4_callback_svc;
-+	} else {
-+		BUG();	/* for now */
-+	}
-+
-+	if (IS_ERR(rqstp)) {
-+		ret = PTR_ERR(rqstp);
- 		goto out_err;
- 	}
- 
- 	svc_sock_update_bufs(serv);
- 
--	nfs_callback_info.task = kthread_run(nfs_callback_svc,
-+	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
-+	nfs_callback_info.rqst = rqstp;
-+	nfs_callback_info.task = kthread_run(callback_svc,
- 					     nfs_callback_info.rqst,
--					     "nfsv4-svc");
-+					     svc_name);
- 	if (IS_ERR(nfs_callback_info.task)) {
- 		ret = PTR_ERR(nfs_callback_info.task);
- 		svc_exit_thread(nfs_callback_info.rqst);
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index e110e28..7f12e65 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -63,7 +63,7 @@ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getat
- extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy);
- 
- #ifdef CONFIG_NFS_V4
--extern int nfs_callback_up(void);
-+extern int nfs_callback_up(u32 minorversion, void *args);
- extern void nfs_callback_down(void);
- #else
- #define nfs_callback_up()	(0)
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index d9657d4..df2b40d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -47,9 +47,6 @@
- #include "internal.h"
- #include "fscache.h"
- 
--static int nfs4_init_callback(struct nfs_client *);
--static void nfs4_destroy_callback(struct nfs_client *);
--
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
- static DEFINE_SPINLOCK(nfs_client_lock);
-@@ -124,9 +121,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 
- 	clp->rpc_ops = cl_init->rpc_ops;
- 
--	if (nfs4_init_callback(clp) < 0)
--		goto error_2;
--
- 	atomic_set(&clp->cl_count, 1);
- 	clp->cl_cons_state = NFS_CS_INITING;
- 
-@@ -136,7 +130,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	if (cl_init->hostname) {
- 		clp->cl_hostname = kstrdup(cl_init->hostname, GFP_KERNEL);
- 		if (!clp->cl_hostname)
--			goto error_3;
-+			goto error_cleanup;
- 	}
- 
- 	INIT_LIST_HEAD(&clp->cl_superblocks);
-@@ -161,9 +155,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 
- 	return clp;
- 
--error_3:
--	nfs4_destroy_callback(clp);
--error_2:
-+error_cleanup:
- 	kfree(clp);
- error_0:
- 	return NULL;
-@@ -207,6 +199,8 @@ static void nfs4_clear_client_minor_version(struct nfs_client *clp)
- 
- 	clp->cl_call_sync = _nfs4_call_sync;
- #endif /* CONFIG_NFS_V4_1 */
-+
-+	nfs4_destroy_callback(clp);
- }
- 
- /*
-@@ -225,8 +219,6 @@ static void nfs_free_client(struct nfs_client *clp)
- 	if (!IS_ERR(clp->cl_rpcclient))
- 		rpc_shutdown_client(clp->cl_rpcclient);
- 
--	nfs4_destroy_callback(clp);
--
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
- 
-@@ -1104,7 +1096,8 @@ static int nfs4_init_callback(struct nfs_client *clp)
- 	int error;
- 
- 	if (clp->rpc_ops->version == 4) {
--		error = nfs_callback_up();
-+		error = nfs_callback_up(clp->cl_minorversion,
-+					clp->cl_rpcclient->cl_xprt);
- 		if (error < 0) {
- 			dprintk("%s: failed to start callback. Error = %d\n",
- 				__func__, error);
-@@ -1139,7 +1132,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
- 	}
- #endif /* CONFIG_NFS_V4_1 */
- 
--	return 0;
-+	return nfs4_init_callback(clp);
- }
- 
- /*
+ struct xprt_create {
+ 	int			ident;		/* XPRT_TRANSPORT identifier */
+ 	struct sockaddr *	srcaddr;	/* optional local address */
 -- 
 1.6.2.1
 
