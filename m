@@ -1,172 +1,57 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 10/31] nfsd41: use globals for DRC memory use management
-Date: Fri, 1 May 2009 10:39:58 -0400
-Message-ID: <DE836E95-495E-452F-8E0B-812DE435A236@netapp.com>
-References: <1240938005-23778-1-git-send-email-andros@netapp.com> <1240938005-23778-2-git-send-email-andros@netapp.com> <1240938005-23778-3-git-send-email-andros@netapp.com> <1240938005-23778-4-git-send-email-andros@netapp.com> <1240938005-23778-5-git-send-email-andros@netapp.com> <1240938005-23778-6-git-send-email-andros@netapp.com> <1240938005-23778-7-git-send-email-andros@netapp.com> <1240938005-23778-8-git-send-email-andros@netapp.com> <1240938005-23778-9-git-send-email-andros@netapp.com> <1240938005-23778-10-git-send-email-andros@netapp.com> <49FA2F84.1000702@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: bfields@fieldses.org, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Disable AF_INET6 callback service if SUNRPC_REGISTER_V4
+	is disabled
+Date: Fri, 01 May 2009 10:58:49 -0400
+Message-ID: <20090501145754.17520.70458.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6983 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751848AbZEAOkM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 May 2009 10:40:12 -0400
-In-Reply-To: <49FA2F84.1000702@panasas.com>
+Received: from acsinet11.oracle.com ([141.146.126.233]:49883 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760139AbZEAO7p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 10:59:45 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This works around a problem (fixed in 2.6.30) where unloading the
+ipv6.ko module causes mount.nfs4 to fail with "Cannot allocate memory."
 
-On Apr 30, 2009, at 7:08 PM, Benny Halevy wrote:
+SUNRPC_REGISTER_V4 is required for AF_INET6 support in NFS and lockd.
+If V4 rpcbind registration support isn't available in the kernel, lockd
+uses AF_INET only.  NFSv4 callback does not register with rpcbind, so it
+doesn't care what flavor of rpcbind registration is available in the
+kernel.
 
-> On Apr. 28, 2009, 19:59 +0300, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> The version 4.1 DRC memory limit and tracking variables are server  
->> wide and
->> session specific.
->> Add a spinlock to serialize access to the management variables  
->> which change
->> on session creation and deletion (usage counter) or (future)  
->> administrative
->> action to adjust the total DRC memory limit.
->>
->> Track DRC memory usage in free session.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfsd/nfs4state.c        |   11 +++++++----
->> fs/nfsd/nfssvc.c           |   19 +++++++++++++++----
->> include/linux/nfsd/nfsd.h  |    5 +++++
->> include/linux/sunrpc/svc.h |    2 --
->> 4 files changed, 27 insertions(+), 10 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index d12220c..a9e722e 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -416,7 +416,7 @@ gen_sessionid(struct nfsd4_session *ses)
->>
->> /*
->>  * Give the client the number of slots it requests bound by
->> - * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
->> + * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
->>  *
->>  * If we run out of reserved DRC memory we should (up to a point)  
->> re-negotiate
->>  * active sessions and reduce their slot usage to make rooom for new
->> @@ -434,9 +434,9 @@ static int set_forechannel_maxreqs(struct  
->> nfsd4_channel_attrs *fchan)
->> 	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
->>
->> 	spin_lock(&nfsd_serv->sv_lock);
->
-> Hmm, shouldn't you grab nfsd_drc_lock instead?
->
->> -	if (mem + nfsd_serv->sv_drc_mem_used > nfsd_serv->sv_drc_max_mem)
->> -		mem = nfsd_serv->sv_drc_max_mem - nfsd_serv->sv_drc_mem_used;
->> -	nfsd_serv->sv_drc_mem_used += mem;
->> +	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
->> +		mem = nfsd_drc_max_mem - nfsd_drc_mem_used;
->> +	nfsd_drc_mem_used += mem;
->> 	spin_unlock(&nfsd_serv->sv_lock);
->
-> and unlock nfsd_drc_lock
+For 2.6.29 we decided to use SUNRPC_REGISTER_V4 to disable IPv6 support
+in NFS and lockd to work around the requirement that ipv6.ko be loaded.
+But I forgot that the NFSv4 callback service would still try to start an
+AF_INET6 listener even if SUNRPC_REGISTER_V4 is disabled.
 
+Tested-by: Andrew Savchenko <bircoph@gmail.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Yes, somehow that got lost the last time I refactored the patch set.
+Hi Trond-
 
-Thanks for catching this.
+Would you consider this patch for 2.6.29-stable?
 
--->Andy
->
->
-> Benny
->
->>
->> 	if (mem < NFSD_SLOT_CACHE_SIZE) {
->> @@ -588,6 +588,9 @@ free_session(struct kref *kref)
->> 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
->> 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
->> 	}
->> +	spin_lock(&nfsd_drc_lock);
->> +	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs *  
->> NFSD_SLOT_CACHE_SIZE;
->> +	spin_unlock(&nfsd_drc_lock);
->> 	kfree(ses);
->> }
->>
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index 80588cc..37633f5 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -67,6 +67,16 @@ struct timeval			nfssvc_boot;
->> DEFINE_MUTEX(nfsd_mutex);
->> struct svc_serv 		*nfsd_serv;
->>
->> +/*
->> + * nfsd_drc_lock protects nfsd_drc_max_pages and  
->> nfsd_drc_pages_used.
->> + * nfsd_drc_max_pages limits the total amount of memory available  
->> for
->> + * version 4.1 DRC caches.
->> + * nfsd_drc_pages_used tracks the current version 4.1 DRC memory  
->> usage.
->> + */
->> +spinlock_t	nfsd_drc_lock;
->> +unsigned int	nfsd_drc_max_mem;
->> +unsigned int	nfsd_drc_mem_used;
->> +
->> #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
->> static struct svc_stat	nfsd_acl_svcstats;
->> static struct svc_version *	nfsd_acl_version[] = {
->> @@ -238,12 +248,13 @@ static void set_max_drc(void)
->> {
->> 	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC  
->> */
->> 	#define NFSD_DRC_SIZE_SHIFT	10
->> -	nfsd_serv->sv_drc_max_mem = (nr_free_buffer_pages()
->> +	nfsd_drc_max_mem = (nr_free_buffer_pages()
->> 					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
->> -	nfsd_serv->sv_drc_mem_used = 0;
->> +	nfsd_drc_mem_used = 0;
->> +	spin_lock_init(&nfsd_drc_lock);
->> 	dprintk("%s svc_drc_max_mem %u [in pages %lu]\n", __func__,
->> -		nfsd_serv->sv_drc_max_mem,
->> -		nfsd_serv->sv_drc_max_mem / PAGE_SIZE);
->> +		nfsd_drc_max_mem,
->> +		nfsd_drc_max_mem / PAGE_SIZE);
->> }
->>
->> int nfsd_create_serv(void)
->> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
->> index 9cd6399..23ba7bd 100644
->> --- a/include/linux/nfsd/nfsd.h
->> +++ b/include/linux/nfsd/nfsd.h
->> @@ -56,6 +56,11 @@ extern struct svc_version	nfsd_version2,  
->> nfsd_version3,
->> extern u32			nfsd_supported_minorversion;
->> extern struct mutex		nfsd_mutex;
->> extern struct svc_serv		*nfsd_serv;
->> +extern spinlock_t		nfsd_drc_lock;
->> +extern unsigned int		nfsd_drc_max_mem;
->> +extern unsigned int		nfsd_drc_mem_used;
->> +
->> +
->>
->> extern struct seq_operations nfs_exports_op;
->>
->> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->> index 243508e..d0d8bf4 100644
->> --- a/include/linux/sunrpc/svc.h
->> +++ b/include/linux/sunrpc/svc.h
->> @@ -94,8 +94,6 @@ struct svc_serv {
->> 	struct module *		sv_module;	/* optional module to count when
->> 						 * adding threads */
->> 	svc_thread_fn		sv_function;	/* main function for threads */
->> -	unsigned int		sv_drc_max_mem; /* Total pages for DRC */
->> -	unsigned int		sv_drc_mem_used;/* DRC pages used */
->> };
->>
->> /*
+ fs/nfs/callback.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 3e634f2..b59a614 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -45,7 +45,8 @@ static const int nfs_set_port_max = 65535;
+  * If the kernel has IPv6 support available, always listen for
+  * both AF_INET and AF_INET6 requests.
+  */
+-#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++#if (defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) && \
++	defined(CONFIG_SUNRPC_REGISTER_V4)
+ static const sa_family_t	nfs_callback_family = AF_INET6;
+ #else
+ static const sa_family_t	nfs_callback_family = AF_INET;
 
