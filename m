@@ -1,208 +1,113 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/8] NFS: Add separate mountd status code decoders for each
-	mountd version
-Date: Fri, 01 May 2009 12:36:52 -0400
-Message-ID: <20090501163651.25681.95115.stgit@ingres.1015granger.net>
+Subject: [PATCH 6/8] NFS: add XDR decoder for mountd version 3 auth-flavor
+	lists
+Date: Fri, 01 May 2009 12:37:07 -0400
+Message-ID: <20090501163706.25681.71427.stgit@ingres.1015granger.net>
 References: <20090501163507.25681.14463.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:25720 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752580AbZEAQhD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 12:37:03 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:63350 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754075AbZEAQhQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 12:37:16 -0400
 In-Reply-To: <20090501163507.25681.14463.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce data structures and xdr_stream-based decoding functions for
-unmarshalling mountd status codes properly.
+Introduce an xdr_stream-based XDR decoder that can unpack the auth-
+flavor list returned in a MNT3 reply.
 
-Mountd version 3 uses specific standard error return codes that are
-not errno values and not NFS3ERR_ values.  These have a well-defined
-standard mapping to local errno values.  Introduce data structures
-and a decoder function that map these status codes to local errno
-values properly.  This is new functionality (but not used yet).
+The nfs_mount() function's caller allocates an array, and passes the
+size and a pointer to it.  The decoder decodes all the flavors it can
+into the array, and returns the number of decoded flavors.
 
-Version 1 mountd status values are defined by RFC 1094 as UNIX error
-values (errno values).  Errno values on heterogeneous systems do not
-necessarily match each other.  To avoid exposing possibly incorrect
-errno values to upper layers, the current XDR decoder converts all
-non-zero MNT version 1 status codes to -EACCES.
-
-The OpenGroup XNFS standard provides a mapping similar to but smaller
-than the version 3 error codes.  Implement a decoder that uses the XNFS
-error codes, replacing the current decoder.
-
-For both mountd protocol versions, map unrecognized errors to -EACCES.
-
-Finally we introduce a replacement data structure for mnt_fhstatus
-at this time, which is used by the new XDR decoders.  In addition to
-documenting that the status value returned by the XDR decoders is
-always an errno, this new structure will be expanded in subsequent
-patches.
+If the caller is not interested in the auth flavors, it can pass a
+value of zero as the size of the pre-allocated array.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/mount_clnt.c |  134 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 134 insertions(+), 0 deletions(-)
+ fs/nfs/internal.h   |    6 ++++++
+ fs/nfs/mount_clnt.c |   38 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+), 0 deletions(-)
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 1173099..b13b456 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -30,6 +30,12 @@ struct nfs_clone_mount {
+ };
+ 
+ /*
++ * Note: RFC 1813 doesn't limit the number of auth flavors that
++ * a server can return, so make something up.
++ */
++#define NFS_MAX_SECFLAVORS	(12)
++
++/*
+  * In-kernel mount arguments
+  */
+ struct nfs_parsed_mount_data {
 diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 7b81914..cdda067 100644
+index 40d3286..bb2bcd9 100644
 --- a/fs/nfs/mount_clnt.c
 +++ b/fs/nfs/mount_clnt.c
-@@ -29,6 +29,8 @@
-  * XDR data type sizes
-  */
- #define encode_dirpath_sz	XDR_QUADLEN(sizeof(u32) + MNTPATHLEN)
-+#define MNT_status_sz		XDR_QUADLEN(sizeof(u32))
-+#define MNT_fhs_status_sz	XDR_QUADLEN(sizeof(u32))
+@@ -33,6 +33,8 @@
+ #define MNT_fhs_status_sz	XDR_QUADLEN(sizeof(u32))
+ #define MNT_fhandle_sz		XDR_QUADLEN(NFS2_FHSIZE)
+ #define MNT_fhandle3_sz		XDR_QUADLEN(sizeof(u32) + NFS3_FHSIZE)
++#define MNT_authflav3_sz	XDR_QUADLEN(sizeof(u32) + \
++					NFS_MAX_SECFLAVORS * sizeof(u32))
  
  /*
   * XDR argument and result sizes
-@@ -61,6 +63,83 @@ enum {
- 
- static struct rpc_program	mnt_program;
- 
-+/*
-+ * Defined by OpenGroup XNFS Version 3W, chapter 8
-+ */
-+enum mountstat {
-+	MNT_OK			= 0,
-+	MNT_EPERM		= 1,
-+	MNT_ENOENT		= 2,
-+	MNT_EACCES		= 13,
-+	MNT_EINVAL		= 22,
-+};
-+
-+#define MNT_MAPERRNO(name) \
-+	{ \
-+		.status		= MNT_E##name, \
-+		.errno		= -E##name, \
-+	}
-+
-+static struct {
-+	u32 status;
-+	int errno;
-+} mnt_errtbl[] = {
-+	{
-+		.status		= MNT_OK,
-+		.errno		= 0,
-+	},
-+	MNT_MAPERRNO(PERM),
-+	MNT_MAPERRNO(NOENT),
-+	MNT_MAPERRNO(ACCES),
-+	MNT_MAPERRNO(INVAL),
-+};
-+
-+/*
-+ * Defined by RFC 1813, section 5.1.5
-+ */
-+enum mountstat3 {
-+	MNT3_OK			= 0,		/* no error */
-+	MNT3ERR_PERM		= 1,		/* Not owner */
-+	MNT3ERR_NOENT		= 2,		/* No such file or directory */
-+	MNT3ERR_IO		= 5,		/* I/O error */
-+	MNT3ERR_ACCES		= 13,		/* Permission denied */
-+	MNT3ERR_NOTDIR		= 20,		/* Not a directory */
-+	MNT3ERR_INVAL		= 22,		/* Invalid argument */
-+	MNT3ERR_NAMETOOLONG	= 63,		/* Filename too long */
-+	MNT3ERR_NOTSUPP		= 10004,	/* Operation not supported */
-+	MNT3ERR_SERVERFAULT	= 10006,	/* A failure on the server */
-+};
-+
-+#define MNT3_MAPERRNO(name) \
-+	{ \
-+		.status		= MNT3ERR_##name, \
-+		.errno		= -E##name, \
-+	}
-+
-+static struct {
-+	u32 status;
-+	int errno;
-+} mnt3_errtbl[] = {
-+	{
-+		.status		= MNT3_OK,
-+		.errno		= 0,
-+	},
-+	MNT3_MAPERRNO(PERM),
-+	MNT3_MAPERRNO(NOENT),
-+	MNT3_MAPERRNO(IO),
-+	MNT3_MAPERRNO(ACCES),
-+	MNT3_MAPERRNO(NOTDIR),
-+	MNT3_MAPERRNO(INVAL),
-+	MNT3_MAPERRNO(NAMETOOLONG),
-+	MNT3_MAPERRNO(NOTSUPP),
-+	MNT3_MAPERRNO(SERVERFAULT),
-+};
-+
-+struct mountres {
-+	int errno;
-+	struct nfs_fh *fh;
-+};
-+
- struct mnt_fhstatus {
- 	u32 status;
+@@ -140,6 +142,8 @@ static struct {
+ struct mountres {
+ 	int errno;
  	struct nfs_fh *fh;
-@@ -179,6 +258,61 @@ static int xdr_decode_fhstatus(struct rpc_rqst *req, __be32 *p,
++	unsigned int *auth_count;
++	rpc_authflavor_t *auth_flavors;
+ };
+ 
+ struct mnt_fhstatus {
+@@ -352,6 +356,40 @@ static int decode_fhandle3(struct xdr_stream *xdr, struct mountres *res)
  	return 0;
  }
  
-+/*
-+ * RFC 1094: "A non-zero status indicates some sort of error.  In this
-+ * case, the status is a UNIX error number."  This can be problematic
-+ * if the server and client use different errno values for the same
-+ * error.
-+ *
-+ * However, the OpenGroup XNFS spec provides a simple mapping that is
-+ * independent of local errno values on the server and the client.
-+ */
-+static int decode_status(struct xdr_stream *xdr, struct mountres *res)
++static int decode_auth_flavors(struct xdr_stream *xdr, struct mountres *res)
 +{
-+	unsigned int i;
-+	u32 status;
++	rpc_authflavor_t *flavors = res->auth_flavors;
++	unsigned int *count = res->auth_count;
++	u32 entries, i;
 +	__be32 *p;
 +
-+	p = xdr_inline_decode(xdr, sizeof(status));
++	if (*count == 0)
++		return 0;
++
++	p = xdr_inline_decode(xdr, sizeof(entries));
 +	if (unlikely(p == NULL))
 +		return -EIO;
-+	status = ntohl(*p);
++	entries = ntohl(*p);
++	dprintk("NFS: received %u auth flavors\n", entries);
++	if (entries > NFS_MAX_SECFLAVORS)
++		entries = NFS_MAX_SECFLAVORS;
 +
-+	for (i = 0; i <= ARRAY_SIZE(mnt_errtbl); i++) {
-+		if (mnt_errtbl[i].status == status) {
-+			res->errno = mnt_errtbl[i].errno;
-+			return 0;
-+		}
-+	}
-+
-+	dprintk("NFS: unrecognized MNT status code: %u\n", status);
-+	res->errno = -EACCES;
-+	return 0;
-+}
-+
-+static int decode_fhs_status(struct xdr_stream *xdr, struct mountres *res)
-+{
-+	unsigned int i;
-+	u32 status;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, sizeof(status));
++	p = xdr_inline_decode(xdr, sizeof(u32) * entries);
 +	if (unlikely(p == NULL))
 +		return -EIO;
-+	status = ntohl(*p);
 +
-+	for (i = 0; i <= ARRAY_SIZE(mnt3_errtbl); i++) {
-+		if (mnt3_errtbl[i].status == status) {
-+			res->errno = mnt3_errtbl[i].errno;
-+			return 0;
-+		}
++	if (entries > *count)
++		entries = *count;
++
++	for (i = 0; i < entries; i++) {
++		flavors[i] = ntohl(*p++);
++		dprintk("NFS:\tflavor %u: %d\n", i, flavors[i]);
 +	}
++	*count = i;
 +
-+	dprintk("NFS: unrecognized MNT3 status code: %u\n", status);
-+	res->errno = -EACCES;
 +	return 0;
 +}
 +
