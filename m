@@ -1,128 +1,45 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] SUNRPC: Fix the problem of EADDRNOTAVAIL syslog floods on
- reconnect
-Date: Tue, 21 Apr 2009 17:18:20 -0400
-Message-ID: <1241176603.5162.0.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Petr Vandrovec <petr@vandrovec.name>,
-	Jean Delvare <khali-PUYAD+kWke1g9hUCZPvPmw@public.gmane.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [Bug] NFSv4 fails to work without ipv6 kernel module
+Date: Fri, 1 May 2009 10:15:45 -0400
+Message-ID: <D1EFB3ED-6951-4871-8FAE-C69C5B3E519E@oracle.com>
+References: <200905010304.45884.bircoph@gmail.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Andrew Savchenko <bircoph@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55885 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755465AbZEALSJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 May 2009 07:18:09 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:62223 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754390AbZEAOPv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 10:15:51 -0400
+In-Reply-To: <200905010304.45884.bircoph@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-See http://bugzilla.kernel.org/show_bug.cgi?id=13034
+On Apr 30, 2009, at 7:04 PM, Andrew Savchenko wrote:
+> Hello, Chuck!
+>
+> [10l, forget to CC to list]
+>
+> On Thursday 30 April 2009, Chuck Lever wrote:
+> [...]
+>>> With ipv6 module loaded all works fine.
+>>>
+>>>> You can also try building 2.6.28 with
+>>>> CONFIG_SUNRPC_REGISTER_V4 disabled.
+>>>
+>>> With this option disabled errno 5 (see above) disappeared from
+>>> logs, but mount fails with the same errors. Yet again, with
+>>> ipv6 module loaded it works ok.
+>>
+>> Reproduced here.  A patch is attached.  (I usually send patches
+>> inline, but to test 2.6.29-stable I'm working outside of git,
+>> using old-fashioned tools like "diff").
+>
+> Patch works ok, thank you.
 
-If the port gets into a TIME_WAIT state, then we cannot reconnect without
-binding to a new port.
+Thanks for testing.
 
-Tested-by: Petr Vandrovec <petr@vandrovec.name>
-Tested-by: Jean Delvare <khali-PUYAD+kWke1g9hUCZPvPmw@public.gmane.org>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/xprt.c           |    6 ++----
- net/sunrpc/xprtsock.c       |   26 +++++++++++++++++++++-----
- 3 files changed, 24 insertions(+), 9 deletions(-)
-
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 1758d9f..08afe43 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -261,6 +261,7 @@ void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
- #define XPRT_BINDING		(5)
- #define XPRT_CLOSING		(6)
- #define XPRT_CONNECTION_ABORT	(7)
-+#define XPRT_CONNECTION_CLOSE	(8)
- 
- static inline void xprt_set_connected(struct rpc_xprt *xprt)
- {
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index a0bfe53..06ca058 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -672,10 +672,8 @@ xprt_init_autodisconnect(unsigned long data)
- 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state))
- 		goto out_abort;
- 	spin_unlock(&xprt->transport_lock);
--	if (xprt_connecting(xprt))
--		xprt_release_write(xprt, NULL);
--	else
--		queue_work(rpciod_workqueue, &xprt->task_cleanup);
-+	set_bit(XPRT_CONNECTION_CLOSE, &xprt->state);
-+	queue_work(rpciod_workqueue, &xprt->task_cleanup);
- 	return;
- out_abort:
- 	spin_unlock(&xprt->transport_lock);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d40ff50..e185961 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -807,6 +807,9 @@ static void xs_reset_transport(struct sock_xprt *transport)
-  *
-  * This is used when all requests are complete; ie, no DRC state remains
-  * on the server we want to save.
-+ *
-+ * The caller _must_ be holding XPRT_LOCKED in order to avoid issues with
-+ * xs_reset_transport() zeroing the socket from underneath a writer.
-  */
- static void xs_close(struct rpc_xprt *xprt)
- {
-@@ -824,6 +827,14 @@ static void xs_close(struct rpc_xprt *xprt)
- 	xprt_disconnect_done(xprt);
- }
- 
-+static void xs_tcp_close(struct rpc_xprt *xprt)
-+{
-+	if (test_and_clear_bit(XPRT_CONNECTION_CLOSE, &xprt->state))
-+		xs_close(xprt);
-+	else
-+		xs_tcp_shutdown(xprt);
-+}
-+
- /**
-  * xs_destroy - prepare to shutdown a transport
-  * @xprt: doomed transport
-@@ -1772,6 +1783,15 @@ static void xs_tcp_setup_socket(struct rpc_xprt *xprt,
- 			xprt, -status, xprt_connected(xprt),
- 			sock->sk->sk_state);
- 	switch (status) {
-+	default:
-+		printk("%s: connect returned unhandled error %d\n",
-+			__func__, status);
-+	case -EADDRNOTAVAIL:
-+		/* We're probably in TIME_WAIT. Get rid of existing socket,
-+		 * and retry
-+		 */
-+		set_bit(XPRT_CONNECTION_CLOSE, &xprt->state);
-+		xprt_force_disconnect(xprt);
- 	case -ECONNREFUSED:
- 	case -ECONNRESET:
- 	case -ENETUNREACH:
-@@ -1782,10 +1802,6 @@ static void xs_tcp_setup_socket(struct rpc_xprt *xprt,
- 		xprt_clear_connecting(xprt);
- 		return;
- 	}
--	/* get rid of existing socket, and retry */
--	xs_tcp_shutdown(xprt);
--	printk("%s: connect returned unhandled error %d\n",
--			__func__, status);
- out_eagain:
- 	status = -EAGAIN;
- out:
-@@ -1994,7 +2010,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
- 	.buf_free		= rpc_free,
- 	.send_request		= xs_tcp_send_request,
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
--	.close			= xs_tcp_shutdown,
-+	.close			= xs_tcp_close,
- 	.destroy		= xs_destroy,
- 	.print_stats		= xs_tcp_print_stats,
- };
--- 
-1.6.0.4
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
