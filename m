@@ -1,65 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out01.mta.xmission.com ([166.70.13.231]:47004 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752271AbZEMBLp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 May 2009 21:11:45 -0400
+Received: from e35.co.us.ibm.com ([32.97.110.153]:45373 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750869AbZEAQje (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 12:39:34 -0400
+In-Reply-To: <1241126587.15476.62.camel@heimdal.trondhjem.org>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+	 <49FA0CE8.9090706@redhat.com> <1241126587.15476.62.camel@heimdal.trondhjem.org>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Matt Helsley <matthltc@us.ibm.com>, Containers <containers@lists.osdl.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC][PATCH] Improve NFS use of network and mount namespaces
-References: <20090512215138.GD3912@us.ibm.com>
-	<1242172010.5407.79.camel@heimdal.trondhjem.org>
-	<m13ab97trc.fsf@fess.ebiederm.org>
-	<1242173604.5407.82.camel@heimdal.trondhjem.org>
-From: ebiederm@xmission.com (Eric W. Biederman)
-Date: Tue, 12 May 2009 18:11:41 -0700
-In-Reply-To: <1242173604.5407.82.camel@heimdal.trondhjem.org> (Trond Myklebust's message of "Tue\, 12 May 2009 20\:13\:24 -0400")
-Message-ID: <m1zldh4xiq.fsf@fess.ebiederm.org>
-Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org, Peter Staubach <staubach@redhat.com>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
+From: Brian R Cowan <brcowan@us.ibm.com>
+Message-ID: <OFA2346ADE.C9BEB0D3-ON852575A9.00520371-852575A9.005B82BB@us.ibm.com>
+Date: Fri, 1 May 2009 12:39:32 -0400
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+linux-nfs-owner@vger.kernel.org wrote on 04/30/2009 05:23:07 PM:
 
-> On Tue, 2009-05-12 at 17:04 -0700, Eric W. Biederman wrote:
->> Trond Myklebust <trond.myklebust@fys.uio.no> writes:
->> 
->> > Finally, what happens if someone decides to set up a private socket
->> > namespace, using CLONE_NEWNET, without also using CLONE_NEWNS to create
->> > a private mount namespace? Would anyone have even the remotest chance in
->> > hell of figuring out what filesystem is mounted where in the ensuing
->> > chaos?
->> 
->> Good question.  Multiple NFS servers with the same ip address reachable
->> from the same machine sounds about as nasty pickle as it gets.
->> 
->> The only way I can even imagine a setup like that is someone connecting
->> to a vpn.  So they are behind more than one NAT gateway.
->> 
->> Bleh NAT sucks.
->
-> It is doable, though, and it will affect more than just NFS. Pretty much
-> all networked filesystems are affected.
+> As usual, the optimisation is workload dependent. The main type of
+> workload we're targetting with this patch is the app that opens a file,
+> writes < 4k and then closes the file. For that case, it's a no-brainer
+> that you don't need to split a single stable write into an unstable + a
+> commit.
 
-Good point.  That was an oversight when I did the initial round of patches
-to deny the unsupported cases in other than the initial network namespace.
+The app impacted most is the gcc linker... I tested by building Samba, 
+then by linking smbd. We think the linker memory maps the output file. 
+Don't really know for sure since I don't know the gcc source any more than 
+I'm an expert in the Linux NFS implementation. In any event, the linker is 
+doing all kinds of lseeks and writes as it builds the output executable 
+based on the various .o files being linked in. All of those writes are 
+slowed down by this write change. If we were closing the file afterwards, 
+that would be one thing, but we're not...
 
-> It begs the question: is there ever any possible justification for
-> allowing CLONE_NEWNET without implying CLONE_NEWNS?
+> 
+> So if the application isn't doing the above type of short write followed
+> by close, then exactly what is causing a flush to disk in the first
+> place? Ordinarily, the client will try to cache writes until the cows
+> come home (or until the VM tells it to reclaim memory - whichever comes
+> first)...
 
-Superblocks and the like are independent of the mount namespace.  So I
-don't even seeing CONE_NEWNS helping except for looking in
-/proc/mounts.
+We suspect it's the latter (something telling the system to flush memory) 
+but chasing that looks to be a challenge...
 
-If network filesystems have a path based identity.  AKA ip address.  This
-is a problem.  If there is some kind of other identity like a uuid
-this problem might not even matter.
+> 
+> Cheers
+>   Trond
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-As for the original question.
 
-We have test setups at work where we have tests running in different
-network namespaces but they don't conflict in the filesystem so
-CLONE_NEWNS would be redundant.  As well as unhelpful.
 
-Eric
+
+=================================================================
+Brian Cowan
+Advisory Software Engineer
+ClearCase Customer Advocacy Group (CAG)
+Rational Software
+IBM Software Group
+81 Hartwell Ave
+Lexington, MA
+ 
+Phone: 1.781.372.3580
+Web: http://www.ibm.com/software/rational/support/
+ 
+
+Please be sure to update your PMR using ESR at 
+http://www-306.ibm.com/software/support/probsub.html or cc all 
+correspondence to sw_support@us.ibm.com to be sure your PMR is updated in 
+case I am not available.
+
