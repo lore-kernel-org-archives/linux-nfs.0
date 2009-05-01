@@ -1,26 +1,46 @@
-From: andros@netapp.com
-Subject: [PATCH 0/1] NFSD Fix for 2.6.30
-Date: Fri,  1 May 2009 11:33:52 -0400
-Message-ID: <1241192033-4493-1-git-send-email-andros@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Do not display the setting of the "intr" mount option
+Date: Fri, 01 May 2009 12:34:27 -0400
+Message-ID: <20090501163402.25637.67939.stgit@ingres.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755513AbZEAPdz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 May 2009 11:33:55 -0400
-In-Reply-To: <>
-References: <>
+Received: from acsinet11.oracle.com ([141.146.126.233]:60846 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751006AbZEAQej (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 12:34:39 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce
+The "intr" mount option has been deprecated for a while, but
+/proc/mounts continues to display "nointr" whether "intr" or "nointr"
+has been specified for a mount point.
 
-Please add this patch to the 2.6.30 rc fixes. It prevents an oops on nfsd shutdown.
+Since these options do not have any effect, simply do not display
+them.
 
-0001-nfsd41-slots-are-freed-with-session.patch
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks
+Hi Trond-
 
--->Andy
+For 2.6.31?
+
+ fs/nfs/super.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6717200..7a81cb6 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -514,7 +514,6 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		const char *nostr;
+ 	} nfs_info[] = {
+ 		{ NFS_MOUNT_SOFT, ",soft", ",hard" },
+-		{ NFS_MOUNT_INTR, ",intr", ",nointr" },
+ 		{ NFS_MOUNT_POSIX, ",posix", "" },
+ 		{ NFS_MOUNT_NOCTO, ",nocto", "" },
+ 		{ NFS_MOUNT_NOAC, ",noac", "" },
 
