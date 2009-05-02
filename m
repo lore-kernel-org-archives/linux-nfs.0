@@ -1,155 +1,49 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 07/31] nfsd41: replay solo and embedded create session
-Date: Fri, 15 May 2009 19:08:21 -0400
-Message-ID: <20090515230821.GH26389@fieldses.org>
-References: <1240938005-23778-1-git-send-email-andros@netapp.com> <1240938005-23778-2-git-send-email-andros@netapp.com> <1240938005-23778-3-git-send-email-andros@netapp.com> <1240938005-23778-4-git-send-email-andros@netapp.com> <1240938005-23778-5-git-send-email-andros@netapp.com> <1240938005-23778-6-git-send-email-andros@netapp.com> <1240938005-23778-7-git-send-email-andros@netapp.com>
+From: =?ISO-8859-15?Q?Peter_=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
+Subject: Re: [PATCH] NFS: Do not display the setting of the "intr" mount
+ option
+Date: Sat, 2 May 2009 10:12:31 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.0905021010320.19638@maggie.lkpg.cendio.se>
+References: <20090501163402.25637.67939.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: andros@netapp.com
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-1085729976-1241251837=:19638"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:52099 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754808AbZEOXIU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2009 19:08:20 -0400
-In-Reply-To: <1240938005-23778-7-git-send-email-andros@netapp.com>
+Received: from mail.cendio.se ([193.12.253.69]:61714 "EHLO mail.cendio.se"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753570AbZEBIMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 May 2009 04:12:32 -0400
+Received: from maggie.lkpg.cendio.se (maggie.lkpg.cendio.se [10.47.1.208])
+	by mail.cendio.se (Postfix) with ESMTP id 91C175F00FC
+	for <linux-nfs@vger.kernel.org>; Sat,  2 May 2009 10:12:31 +0200 (CEST)
+In-Reply-To: <20090501163402.25637.67939.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 12:59:41PM -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> CREATE_SESSION can be preceeded by a SEQUENCE operation (an embedded
-> CREATE_SESSION) and the create session single slot cache must be maintained.
-> Always replay a create session from nfsd4_replay_create_session(). Leave
-> nfsd4_store_cache_entry() for session (sequence operation) replays.
-> 
-> Set cstate->status to a new internal error, nfserr_replay_clientid_cache, and
-> change the logic in nfsd4_proc_compound so that CREATE_SESSION replays replace
-> encode_operation.
-> The new internal error is needed to differentiate between an embedded
-> CREATE_SESSION replay and a SEQUENCE replay.
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-And making the clientid_cache cache just the unencoded
-nfsd4_create_session would avoid the need for this special case, since
-it would look to nfsd4_proc_compound() like any other create_session.
+--789237761-1085729976-1241251837=:19638
+Content-Type: TEXT/PLAIN; CHARSET=ISO-8859-15; FORMAT=flowed
+Content-Transfer-Encoding: 8BIT
+Content-ID: <alpine.LFD.2.00.0905021010381.19638-K9BqGu7AvB3wj5YHdwD3Ga2PxDmRETKR@public.gmane.org>
 
---b.
+On Fri, 1 May 2009, Chuck Lever wrote:
 
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfsd/nfs4proc.c        |    9 +++++++--
->  fs/nfsd/nfs4state.c       |    5 +++++
->  fs/nfsd/nfs4xdr.c         |   17 +++++++++++++++++
->  include/linux/nfsd/nfsd.h |    2 ++
->  include/linux/nfsd/xdr4.h |    2 ++
->  5 files changed, 33 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index b2883e9..32d5866 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -996,7 +996,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  			BUG_ON(op->status == nfs_ok);
->  
->  encode_op:
-> -		/* Only from SEQUENCE or CREATE_SESSION */
-> +		/* Only from SEQUENCE */
->  		if (resp->cstate.status == nfserr_replay_cache) {
->  			dprintk("%s NFS4.1 replay from cache\n", __func__);
->  			if (nfsd4_not_cached(resp))
-> @@ -1005,7 +1005,12 @@ encode_op:
->  				status = op->status;
->  			goto out;
->  		}
-> -		if (op->status == nfserr_replay_me) {
-> +		/* Only from CREATE_SESSION */
-> +		if (resp->cstate.status == nfserr_replay_clientid_cache) {
-> +			dprintk("%s NFS4.1 replay from clientid cache\n",
-> +				__func__);
-> +			status = op->status;
-> +		} else if (op->status == nfserr_replay_me) {
->  			op->replay = &cstate->replay_owner->so_replay;
->  			nfsd4_encode_replay(resp, op);
->  			status = op->status = op->replay->rp_status;
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index de7cc51..e216169 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1350,6 +1350,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		     struct nfsd4_create_session *cr_ses)
->  {
->  	u32 ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
-> +	struct nfsd4_compoundres *resp = rqstp->rq_resp;
->  	struct nfs4_client *conf, *unconf;
->  	struct nfsd4_clid_slot *slot = NULL;
->  	int status = 0;
-> @@ -1364,6 +1365,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		if (status == nfserr_replay_cache) {
->  			dprintk("Got a create_session replay! seqid= %d\n",
->  				slot->sl_seqid);
-> +			cstate->status = nfserr_replay_clientid_cache;
-> +			/* Return the cached reply status */
-> +			status = nfsd4_replay_create_session(resp, slot);
-> +			goto out;
->  		} else if (cr_ses->seqid != conf->cl_slot.sl_seqid + 1) {
->  			status = nfserr_seq_misordered;
->  			dprintk("Sequence misordered!\n");
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 1dfec1d..238612e 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3064,6 +3064,23 @@ nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
->  	slot->sl_datalen = (char *)resp->p - (char *)p;
->  }
->  
-> +__be32
-> +nfsd4_replay_create_session(struct nfsd4_compoundres *resp,
-> +			    struct nfsd4_clid_slot *slot)
-> +{
-> +	__be32 *p;
-> +
-> +	RESERVE_SPACE(8);
-> +	WRITE32(OP_CREATE_SESSION);
-> +	*p++ = slot->sl_status; /* already in network byte order */
-> +	ADJUST_ARGS();
-> +
-> +	memcpy(resp->p, slot->sl_data, slot->sl_datalen);
-> +	p += XDR_QUADLEN(slot->sl_datalen);
-> +	ADJUST_ARGS();
-> +	return slot->sl_status;
-> +}
-> +
->  static __be32
->  nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
->  			     struct nfsd4_destroy_session *destroy_session)
-> diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-> index 2b49d67..9cd6399 100644
-> --- a/include/linux/nfsd/nfsd.h
-> +++ b/include/linux/nfsd/nfsd.h
-> @@ -301,6 +301,8 @@ void		nfsd_lockd_shutdown(void);
->  #define	nfserr_replay_me	cpu_to_be32(11001)
->  /* nfs41 replay detected */
->  #define	nfserr_replay_cache	cpu_to_be32(11002)
-> +/* nfs41 clientid cache replay detected */
-> +#define	nfserr_replay_clientid_cache	cpu_to_be32(11003)
->  
->  /* Check for dir entries '.' and '..' */
->  #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
-> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-> index 21e0b73..ac00985 100644
-> --- a/include/linux/nfsd/xdr4.h
-> +++ b/include/linux/nfsd/xdr4.h
-> @@ -519,6 +519,8 @@ extern __be32 nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
->  		struct nfsd4_sequence *seq);
->  extern void nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
->  		struct nfsd4_clid_slot *slot, int nfserr);
-> +extern __be32 nfsd4_replay_create_session(struct nfsd4_compoundres *resp,
-> +		struct nfsd4_clid_slot *slot);
->  extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
->  		struct nfsd4_compound_state *,
->  struct nfsd4_exchange_id *);
-> -- 
-> 1.5.4.3
-> 
+> The "intr" mount option has been deprecated for a while, but
+> /proc/mounts continues to display "nointr" whether "intr" or "nointr"
+> has been specified for a mount point.
+>
+> Since these options do not have any effect, simply do not display
+> them.
+
+Does this mean that "intr" is default now? Will the "intr" mount option 
+still be accepted/ignored in the future?
+
+
+Best regards, 
+---
+Peter Åstrand		ThinLinc Chief Developer
+Cendio AB		http://www.cendio.com
+Wallenbergs gata 4
+583 30 Linköping	Phone: +46-13-21 46 00
+--789237761-1085729976-1241251837=:19638--
