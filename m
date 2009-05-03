@@ -1,162 +1,164 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfsd4: eliminate struct nfs4_cb_recall
-Date: Sun,  3 May 2009 14:16:36 -0400
-Message-ID: <1241374599-20348-11-git-send-email-bfields@fieldses.org>
-References: <1241374599-20348-1-git-send-email-bfields@fieldses.org>
- <1241374599-20348-2-git-send-email-bfields@fieldses.org>
- <1241374599-20348-3-git-send-email-bfields@fieldses.org>
- <1241374599-20348-4-git-send-email-bfields@fieldses.org>
- <1241374599-20348-5-git-send-email-bfields@fieldses.org>
- <1241374599-20348-6-git-send-email-bfields@fieldses.org>
- <1241374599-20348-7-git-send-email-bfields@fieldses.org>
- <1241374599-20348-8-git-send-email-bfields@fieldses.org>
- <1241374599-20348-9-git-send-email-bfields@fieldses.org>
- <1241374599-20348-10-git-send-email-bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: use C99 struct initializers
+Date: Sun, 3 May 2009 14:17:25 -0400
+Message-ID: <20090503181725.GA20762@fieldses.org>
+References: <49F795C9.6040909@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Neil Brown <neilb@suse.de>
+To: Randy Dunlap <randy.dunlap@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:58613 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:58631 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754186AbZECSQj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 14:16:39 -0400
-In-Reply-To: <1241374599-20348-10-git-send-email-bfields@fieldses.org>
+	with ESMTP id S1754151AbZECSRZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 14:17:25 -0400
+In-Reply-To: <49F795C9.6040909@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Tue, Apr 28, 2009 at 04:48:25PM -0700, Randy Dunlap wrote:
+> From: Randy Dunlap <randy.dunlap@oracle.com>
+> 
+> Eliminate 56 sparse warnings like this one:
 
-The nfs4_cb_recall struct is used only in nfs4_delegation, so its
-pointer to the containing delegation is unnecessary--we could just use
-container_of().
+Thanks, applied for 2.6.31.
 
-But there's no real reason to have this a separate struct at all--just
-move these fields to nfs4_delegation.
+--b.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4callback.c     |   24 +++++++++++-------------
- fs/nfsd/nfs4state.c        |    5 ++---
- include/linux/nfsd/state.h |   18 +++++-------------
- 3 files changed, 18 insertions(+), 29 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index ed860d7..2509305 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -215,18 +215,18 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
- }
- 
- static int
--encode_cb_recall(struct xdr_stream *xdr, struct nfs4_cb_recall *cb_rec)
-+encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp)
- {
- 	__be32 *p;
--	int len = cb_rec->cbr_fh.fh_size;
-+	int len = dp->dl_fh.fh_size;
- 
--	RESERVE_SPACE(12+sizeof(cb_rec->cbr_stateid) + len);
-+	RESERVE_SPACE(12+sizeof(dp->dl_stateid) + len);
- 	WRITE32(OP_CB_RECALL);
--	WRITE32(cb_rec->cbr_stateid.si_generation);
--	WRITEMEM(&cb_rec->cbr_stateid.si_opaque, sizeof(stateid_opaque_t));
--	WRITE32(cb_rec->cbr_trunc);
-+	WRITE32(dp->dl_stateid.si_generation);
-+	WRITEMEM(&dp->dl_stateid.si_opaque, sizeof(stateid_opaque_t));
-+	WRITE32(dp->dl_trunc);
- 	WRITE32(len);
--	WRITEMEM(&cb_rec->cbr_fh.fh_base, len);
-+	WRITEMEM(&dp->dl_fh.fh_base, len);
- 	return 0;
- }
- 
-@@ -241,11 +241,11 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
- }
- 
- static int
--nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_cb_recall *args)
-+nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_delegation *args)
- {
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr = {
--		.ident = args->cbr_ident,
-+		.ident = args->dl_ident,
- 		.nops   = 1,
- 	};
- 
-@@ -502,17 +502,15 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_client;
- 	struct rpc_clnt *clnt = clp->cl_cb_conn.cb_client;
--	struct nfs4_cb_recall *cbr = &dp->dl_recall;
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
--		.rpc_argp = cbr,
-+		.rpc_argp = dp,
- 		.rpc_cred = clp->cl_cb_conn.cb_cred
- 	};
- 	int retries = 1;
- 	int status = 0;
- 
--	cbr->cbr_trunc = 0; /* XXX need to implement truncate optimization */
--	cbr->cbr_dp = dp;
-+	dp->dl_trunc = 0; /* XXX need to implement truncate optimization */
- 
- 	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
- 	while (retries--) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d7b5e6b..3e5345e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -203,9 +203,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	get_file(stp->st_vfs_file);
- 	dp->dl_vfs_file = stp->st_vfs_file;
- 	dp->dl_type = type;
--	dp->dl_recall.cbr_dp = NULL;
--	dp->dl_recall.cbr_ident = cb->cb_ident;
--	dp->dl_recall.cbr_trunc = 0;
-+	dp->dl_ident = cb->cb_ident;
-+	dp->dl_trunc = 0;
- 	dp->dl_stateid.si_boot = get_seconds();
- 	dp->dl_stateid.si_stateownerid = current_delegid++;
- 	dp->dl_stateid.si_fileid = 0;
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 563c367..233b60d 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -61,15 +61,6 @@ typedef struct {
- #define si_stateownerid   si_opaque.so_stateownerid
- #define si_fileid         si_opaque.so_fileid
- 
--
--struct nfs4_cb_recall {
--	u32			cbr_ident;
--	int			cbr_trunc;
--	stateid_t		cbr_stateid;
--	struct knfsd_fh		cbr_fh;
--	struct nfs4_delegation	*cbr_dp;
--};
--
- struct nfs4_delegation {
- 	struct list_head	dl_perfile;
- 	struct list_head	dl_perclnt;
-@@ -81,12 +72,13 @@ struct nfs4_delegation {
- 	struct file		*dl_vfs_file;
- 	u32			dl_type;
- 	time_t			dl_time;
--	struct nfs4_cb_recall	dl_recall;
-+/* For recall: */
-+	u32			dl_ident;
-+	int			dl_trunc;
-+	stateid_t		dl_stateid;
-+	struct knfsd_fh		dl_fh;
- };
- 
--#define dl_stateid      dl_recall.cbr_stateid
--#define dl_fh           dl_recall.cbr_fh
--
- /* client delegation callback info */
- struct nfs4_cb_conn {
- 	/* SETCLIENTID info */
--- 
-1.6.0.4
-
+> 
+> fs/nfsd/nfs4xdr.c:1331:15: warning: obsolete array initializer, use C99 syntax
+> 
+> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+> Cc: Neil Brown <neilb@suse.de>
+> ---
+>  fs/nfsd/nfs4xdr.c |  112 +++++++++++++++++++++++++++---------------------------
+>  1 file changed, 56 insertions(+), 56 deletions(-)
+> 
+> --- linux-2.6.30-rc3-git4.orig/fs/nfsd/nfs4xdr.c
+> +++ linux-2.6.30-rc3-git4/fs/nfsd/nfs4xdr.c
+> @@ -1328,64 +1328,64 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  };
+>  
+>  static nfsd4_dec nfsd41_dec_ops[] = {
+> -	[OP_ACCESS]		(nfsd4_dec)nfsd4_decode_access,
+> -	[OP_CLOSE]		(nfsd4_dec)nfsd4_decode_close,
+> -	[OP_COMMIT]		(nfsd4_dec)nfsd4_decode_commit,
+> -	[OP_CREATE]		(nfsd4_dec)nfsd4_decode_create,
+> -	[OP_DELEGPURGE]		(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_DELEGRETURN]	(nfsd4_dec)nfsd4_decode_delegreturn,
+> -	[OP_GETATTR]		(nfsd4_dec)nfsd4_decode_getattr,
+> -	[OP_GETFH]		(nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_LINK]		(nfsd4_dec)nfsd4_decode_link,
+> -	[OP_LOCK]		(nfsd4_dec)nfsd4_decode_lock,
+> -	[OP_LOCKT]		(nfsd4_dec)nfsd4_decode_lockt,
+> -	[OP_LOCKU]		(nfsd4_dec)nfsd4_decode_locku,
+> -	[OP_LOOKUP]		(nfsd4_dec)nfsd4_decode_lookup,
+> -	[OP_LOOKUPP]		(nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_NVERIFY]		(nfsd4_dec)nfsd4_decode_verify,
+> -	[OP_OPEN]		(nfsd4_dec)nfsd4_decode_open,
+> -	[OP_OPENATTR]		(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_OPEN_CONFIRM]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_OPEN_DOWNGRADE]	(nfsd4_dec)nfsd4_decode_open_downgrade,
+> -	[OP_PUTFH]		(nfsd4_dec)nfsd4_decode_putfh,
+> -	[OP_PUTPUBFH]		(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_PUTROOTFH]		(nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_READ]		(nfsd4_dec)nfsd4_decode_read,
+> -	[OP_READDIR]		(nfsd4_dec)nfsd4_decode_readdir,
+> -	[OP_READLINK]		(nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_REMOVE]		(nfsd4_dec)nfsd4_decode_remove,
+> -	[OP_RENAME]		(nfsd4_dec)nfsd4_decode_rename,
+> -	[OP_RENEW]		(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_RESTOREFH]		(nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_SAVEFH]		(nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_SECINFO]		(nfsd4_dec)nfsd4_decode_secinfo,
+> -	[OP_SETATTR]		(nfsd4_dec)nfsd4_decode_setattr,
+> -	[OP_SETCLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_SETCLIENTID_CONFIRM](nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_VERIFY]		(nfsd4_dec)nfsd4_decode_verify,
+> -	[OP_WRITE]		(nfsd4_dec)nfsd4_decode_write,
+> -	[OP_RELEASE_LOCKOWNER]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
+> +	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
+> +	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
+> +	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
+> +	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
+> +	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
+> +	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
+> +	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
+> +	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
+> +	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
+> +	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
+> +	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+> +	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
+> +	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+> +	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+> +	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+> +	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+> +	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
+> +	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
+> +	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
+> +	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
+> +	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+> +	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+> +	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  
+>  	/* new operations for NFSv4.1 */
+> -	[OP_BACKCHANNEL_CTL]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_BIND_CONN_TO_SESSION](nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_EXCHANGE_ID]	(nfsd4_dec)nfsd4_decode_exchange_id,
+> -	[OP_CREATE_SESSION]	(nfsd4_dec)nfsd4_decode_create_session,
+> -	[OP_DESTROY_SESSION]	(nfsd4_dec)nfsd4_decode_destroy_session,
+> -	[OP_FREE_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_GET_DIR_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_GETDEVICEINFO]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_GETDEVICELIST]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_LAYOUTCOMMIT]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_LAYOUTGET]		(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_LAYOUTRETURN]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_SECINFO_NO_NAME]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_SEQUENCE]		(nfsd4_dec)nfsd4_decode_sequence,
+> -	[OP_SET_SSV]		(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_TEST_STATEID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_WANT_DELEGATION]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_DESTROY_CLIENTID]	(nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_RECLAIM_COMPLETE]	(nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_BIND_CONN_TO_SESSION]= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
+> +	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
+> +	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
+> +	[OP_FREE_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_GET_DIR_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_GETDEVICEINFO]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_GETDEVICELIST]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_LAYOUTCOMMIT]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_LAYOUTGET]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_LAYOUTRETURN]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SECINFO_NO_NAME]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SEQUENCE]		= (nfsd4_dec)nfsd4_decode_sequence,
+> +	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  };
+>  
+>  struct nfsd4_minorversion_ops {
+> 
