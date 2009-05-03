@@ -1,118 +1,102 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfsd4: lookup up callback cred only once
-Date: Sun,  3 May 2009 14:16:33 -0400
-Message-ID: <1241374599-20348-8-git-send-email-bfields@fieldses.org>
+Subject: [PATCH] nfsd4: create rpc callback client from server thread
+Date: Sun,  3 May 2009 14:16:32 -0400
+Message-ID: <1241374599-20348-7-git-send-email-bfields@fieldses.org>
 References: <1241374599-20348-1-git-send-email-bfields@fieldses.org>
  <1241374599-20348-2-git-send-email-bfields@fieldses.org>
  <1241374599-20348-3-git-send-email-bfields@fieldses.org>
  <1241374599-20348-4-git-send-email-bfields@fieldses.org>
  <1241374599-20348-5-git-send-email-bfields@fieldses.org>
  <1241374599-20348-6-git-send-email-bfields@fieldses.org>
- <1241374599-20348-7-git-send-email-bfields@fieldses.org>
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:58607 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:58605 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754158AbZECSQj (ORCPT
+	with ESMTP id S1754152AbZECSQj (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 14:16:39 -0400
-In-Reply-To: <1241374599-20348-7-git-send-email-bfields@fieldses.org>
+In-Reply-To: <1241374599-20348-6-git-send-email-bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-Lookup the callback cred once and then use it for all subsequent
-callbacks.
+The code is a little simpler, and it should be easier to avoid races, if
+we just do all rpc client creation/destruction from nfsd or laundromat
+threads and do only the rpc calls themselves asynchronously.  The rpc
+creation doesn't involve any significant waiting (it doesn't call the
+client, for example), so there's no reason not to do this.
+
+Also don't bother destroying the client on failure of the rpc null
+probe.  We may want to retry the probe later anyway.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4callback.c     |   26 ++++++++++++++++++++++++++
- fs/nfsd/nfs4state.c        |    4 ++++
- include/linux/nfsd/state.h |    1 +
- 3 files changed, 31 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c |   31 ++++++++++++++++---------------
+ 1 files changed, 16 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 711c628..cc10ed3 100644
+index 4788d09..711c628 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -415,6 +415,22 @@ static void warn_no_callback_path(struct nfs4_client *clp, int reason)
- 		(int)clp->cl_name.len, clp->cl_name.data, reason);
+@@ -409,6 +409,12 @@ int setup_callback_client(struct nfs4_client *clp)
+ 
  }
  
-+static struct rpc_cred *lookup_cb_cred(struct nfs4_callback *cb)
++static void warn_no_callback_path(struct nfs4_client *clp, int reason)
 +{
-+	struct auth_cred acred = {
-+		.machine_cred = 1
-+	};
-+
-+	/*
-+	 * Note in the gss case this doesn't actually have to wait for a
-+	 * gss upcall (or any calls to the client); this just creates a
-+	 * non-uptodate cred which the rpc state machine will fill in with
-+	 * a refresh_upcall later.
-+	 */
-+	return rpcauth_lookup_credcache(cb->cb_client->cl_auth, &acred,
-+							RPCAUTH_LOOKUP_NEW);
++	dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
++		(int)clp->cl_name.len, clp->cl_name.data, reason);
 +}
 +
  static int do_probe_callback(void *data)
  {
  	struct nfs4_client *clp = data;
-@@ -423,9 +439,18 @@ static int do_probe_callback(void *data)
- 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
- 		.rpc_argp       = clp,
+@@ -419,24 +425,12 @@ static int do_probe_callback(void *data)
  	};
-+	struct rpc_cred *cred;
  	int status;
  
-+	cred = lookup_cb_cred(cb);
-+	if (IS_ERR(cred)) {
-+		status = PTR_ERR(cred);
-+		goto out;
-+	}
-+	cb->cb_cred = cred;
-+	msg.rpc_cred = cb->cb_cred;
+-	status = setup_callback_client(clp);
+-	if (status)
+-		goto out_err;
+-
  	status = rpc_call_sync(cb->cb_client, &msg, RPC_TASK_SOFT);
-+out:
+-
  	if (status)
- 		warn_no_callback_path(clp, status);
- 	else
-@@ -475,6 +500,7 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
- 		.rpc_argp = cbr,
-+		.rpc_cred = clp->cl_callback.cb_cred
- 	};
- 	int retries = 1;
- 	int status = 0;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7e1fcc3..b205c7d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -643,6 +643,10 @@ shutdown_callback_client(struct nfs4_client *clp)
- 		clp->cl_callback.cb_client = NULL;
- 		rpc_shutdown_client(clnt);
- 	}
-+	if (clp->cl_callback.cb_cred) {
-+		put_rpccred(clp->cl_callback.cb_cred);
-+		clp->cl_callback.cb_cred = NULL;
-+	}
+-		goto out_release_client;
++		warn_no_callback_path(clp, status);
++	else
++		atomic_set(&cb->cb_set, 1);
+ 
+-	atomic_set(&cb->cb_set, 1);
+-	put_nfs4_client(clp);
+-	return 0;
+-out_release_client:
+-	rpc_shutdown_client(cb->cb_client);
+-	cb->cb_client = NULL;
+-out_err:
+-	dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
+-		(int)clp->cl_name.len, clp->cl_name.data, status);
+ 	put_nfs4_client(clp);
+ 	return 0;
  }
+@@ -448,9 +442,16 @@ void
+ nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+ 	struct task_struct *t;
++	int status;
  
- static inline void
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 4d61c87..8d882a3 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -97,6 +97,7 @@ struct nfs4_callback {
- 	/* RPC client info */
- 	atomic_t		cb_set;     /* successful CB_NULL call */
- 	struct rpc_clnt *       cb_client;
-+	struct rpc_cred	*	cb_cred;
- };
+ 	BUG_ON(atomic_read(&clp->cl_callback.cb_set));
  
- /* Maximum number of slots per session. 128 is useful for long haul TCP */
++	status = setup_callback_client(clp);
++	if (status) {
++		warn_no_callback_path(clp, status);
++		return;
++	}
++
+ 	/* the task holds a reference to the nfs4_client struct */
+ 	atomic_inc(&clp->cl_count);
+ 
 -- 
 1.6.0.4
 
