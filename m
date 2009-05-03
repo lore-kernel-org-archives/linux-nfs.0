@@ -1,192 +1,48 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [RFC 05/10] nfsd41: callback infrastructure
-Date: Sun, 3 May 2009 16:49:21 -0400
-Message-ID: <20090503204921.GC22306@fieldses.org>
-References: <49FA2D86.8060402@panasas.com> <1241132768-32526-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [RFC 0/10] nfsd41 server backchannel for 2.6.31
+Date: Sun, 3 May 2009 16:53:43 -0400
+Message-ID: <20090503205343.GD22306@fieldses.org>
+References: <49FA2D86.8060402@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Cc: pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Ricardo Labiaga <ricardo.labiaga@netapp.com>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:52349 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:38786 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752177AbZECUtV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 16:49:21 -0400
-In-Reply-To: <1241132768-32526-1-git-send-email-bhalevy@panasas.com>
+	with ESMTP id S1753466AbZECUxo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 16:53:44 -0400
+In-Reply-To: <49FA2D86.8060402@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 01, 2009 at 02:06:08AM +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Fri, May 01, 2009 at 02:00:22AM +0300, Benny Halevy wrote:
+> Bruce,
 > 
-> Keep the xprt used for create_session in cl_cb_xprt.
-> Mark cl_callback.cb_minorversion = 1 and remember
-> the client provided cl_callback.cb_prog rpc program number.
-> Use it to probe the callback path.
-> 
-> Define xdr sizes and code nfs4_cb_compound header to be able
-> to send a null callback rpc.
-> 
-> Signed-off-by: Andy Adamson<andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [get callback minorversion from fore channel's]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4callback.c     |   33 ++++++++++++++++++++++++++++++---
->  fs/nfsd/nfs4state.c        |   10 ++++++++++
->  include/linux/nfsd/state.h |    3 +++
->  3 files changed, 43 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 5823b9a..6f1ca49 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -43,6 +43,7 @@
->  #include <linux/sunrpc/xdr.h>
->  #include <linux/sunrpc/svc.h>
->  #include <linux/sunrpc/clnt.h>
-> +#include <linux/sunrpc/svcsock.h>
->  #include <linux/nfsd/nfsd.h>
->  #include <linux/nfsd/state.h>
->  #include <linux/sunrpc/sched.h>
-> @@ -52,16 +53,19 @@
->  
->  #define NFSPROC4_CB_NULL 0
->  #define NFSPROC4_CB_COMPOUND 1
-> +#define NFS4_STATEID_SIZE 16
->  
->  /* Index of predefined Linux callback client operations */
->  
->  enum {
-> -        NFSPROC4_CLNT_CB_NULL = 0,
-> +	NFSPROC4_CLNT_CB_NULL = 0,
->  	NFSPROC4_CLNT_CB_RECALL,
-> +	NFSPROC4_CLNT_CB_SEQUENCE,
->  };
->  
->  enum nfs_cb_opnum4 {
->  	OP_CB_RECALL            = 4,
-> +	OP_CB_SEQUENCE          = 11,
->  };
->  
->  #define NFS4_MAXTAGLEN		20
-> @@ -70,15 +74,22 @@ enum nfs_cb_opnum4 {
->  #define NFS4_dec_cb_null_sz		0
->  #define cb_compound_enc_hdr_sz		4
->  #define cb_compound_dec_hdr_sz		(3 + (NFS4_MAXTAGLEN >> 2))
-> +#define sessionid_sz			(NFS4_MAX_SESSIONID_LEN >> 2)
-> +#define cb_sequence_enc_sz		(sessionid_sz + 4 +             \
-> +					1 /* no referring calls list yet */)
-> +#define cb_sequence_dec_sz		(op_dec_sz + sessionid_sz + 4)
-> +
->  #define op_enc_sz			1
->  #define op_dec_sz			2
->  #define enc_nfs4_fh_sz			(1 + (NFS4_FHSIZE >> 2))
->  #define enc_stateid_sz			(NFS4_STATEID_SIZE >> 2)
->  #define NFS4_enc_cb_recall_sz		(cb_compound_enc_hdr_sz +       \
-> +					cb_sequence_enc_sz +            \
->  					1 + enc_stateid_sz +            \
->  					enc_nfs4_fh_sz)
->  
->  #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
-> +					cb_sequence_dec_sz +            \
->  					op_dec_sz)
->  
->  /*
-> @@ -135,13 +146,19 @@ xdr_error:                                      \
->  		return -EIO; \
->  	} \
->  } while (0)
-> +#define COPYMEM(x, nbytes) do {                \
-> +	memcpy((x), p, nbytes);                \
-> +	p += XDR_QUADLEN(nbytes);              \
-> +} while (0)
->  
->  struct nfs4_cb_compound_hdr {
-> -	int		status;
-> -	u32		ident;
-> +	/* args */
-> +	u32		ident;	/* minorversion 0 only */
->  	u32		nops;
->  	__be32		*nops_p;
->  	u32		minorversion;
-> +	/* res */
-> +	int		status;
->  	u32		taglen;
->  	char		*tag;
->  };
-> @@ -402,6 +419,15 @@ static struct rpc_clnt *setup_callback_client(struct nfs4_client *clp)
->  	addr.sin_family = AF_INET;
->  	addr.sin_port = htons(cb->cb_port);
->  	addr.sin_addr.s_addr = htonl(cb->cb_addr);
-> +	if (cb->cb_minorversion) {
-> +		BUG_ON(cb->cb_minorversion != 1);
+> After squashing and merging Ricardo's latest patchset
+> please review the following patchset and consider for 2.6.31.
 
-Is this really a likely mistake?  Let's just drop this BUG_ON().
+Note this will conflict with the pending changes I have to make the
+current callbacks use asynchronous rpc tasks instead of
+kthreads--apologies.  I'll try to get those into for-2.6.31 tomorrow,
+and then I hope you won't mind working on top of that?
 
 --b.
 
-> +		args.bc_sock = container_of(clp->cl_cb_xprt, struct svc_sock,
-> +					    sk_xprt);
-> +	}
-> +
-> +	dprintk("%s: program %s 0x%x nrvers %u version %u minorversion %u\n",
-> +		__func__, args.program->name, args.prognumber,
-> +		args.program->nrvers, args.version, cb->cb_minorversion);
->  
->  	/* Create RPC client */
->  	client = rpc_create(&args);
-> @@ -441,6 +467,7 @@ static int do_probe_callback(void *data)
->  	put_nfs4_client(clp);
->  	return 0;
->  out_release_client:
-> +	dprintk("NFSD: synchronous CB_NULL failed. status=%d\n", status);
->  	rpc_shutdown_client(client);
->  out_err:
->  	dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index ad30039..61d5c66 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -651,6 +651,8 @@ static inline void
->  free_client(struct nfs4_client *clp)
->  {
->  	shutdown_callback_client(clp);
-> +	if (clp->cl_cb_xprt)
-> +		svc_xprt_put(clp->cl_cb_xprt);
->  	nfsd4_release_respages(clp->cl_slot.sl_cache_entry.ce_respages,
->  			     clp->cl_slot.sl_cache_entry.ce_resused);
->  	if (clp->cl_cred.cr_group_info)
-> @@ -1391,6 +1393,14 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		cr_ses->flags &= ~SESSION4_PERSIST;
->  		cr_ses->flags &= ~SESSION4_RDMA;
->  
-> +		if (cr_ses->flags & SESSION4_BACK_CHAN) {
-> +			unconf->cl_cb_xprt = rqstp->rq_xprt;
-> +			svc_xprt_get(unconf->cl_cb_xprt);
-> +			unconf->cl_callback.cb_minorversion =
-> +				cstate->minorversion;
-> +			unconf->cl_callback.cb_prog = cr_ses->callback_prog;
-> +			nfsd4_probe_callback(unconf);
-> +		}
->  		conf = unconf;
->  	} else {
->  		status = nfserr_stale_clientid;
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index 8762843..6bdf0d5 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -203,6 +203,9 @@ struct nfs4_client {
->  	struct nfsd4_slot	cl_slot;	/* create_session slot */
->  	u32			cl_exchange_flags;
->  	struct nfs4_sessionid	cl_sessionid;
-> +
-> +	/* for nfs41 callbacks */
-> +	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
->  };
->  
->  /* struct nfs4_client_reset
-> -- 
-> 1.6.2.1
 > 
+> Thanks,
+> 
+> Benny
+> 
+> [RFC 01/10] nfsd: cleanup nfs4.0 callback encode routines
+> [RFC 02/10] nfsd: minorversion support for the back channel
+> [RFC 03/10] nfsd41: sunrpc: Added rpc server-side backchannel handling
+> [RFC 04/10] nfsd41: Remember the auth flavor to use for callbacks
+> [RFC 05/10] nfsd41: callback infrastructure
+> [RFC 06/10] nfsd41: Backchannel: Add sequence arguments to callback RPC arguments
+> [RFC 07/10] nfsd41: Backchannel: Server backchannel RPC wait queue
+> [RFC 08/10] nfsd41: Backchannel: Setup sequence information
+> [RFC 09/10] nfsd41: cb_sequence callback
+> [RFC 10/10] nfsd41: cb_recall callback
