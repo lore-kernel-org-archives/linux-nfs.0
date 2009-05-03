@@ -1,45 +1,60 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
+From: Kay Sievers <kay.sievers@vrfy.org>
 Subject: Re: very slow NFS boot on linux-next and -mm
-Date: Sun, 3 May 2009 20:40:13 +0800
-Message-ID: <20090503124013.GA31700@localhost>
-References: <20090503105456.GA30449@localhost>
+Date: Sun, 3 May 2009 14:56:06 +0200
+Message-ID: <ac3eb2510905030556p4ce25ff1w9aa5cbf76be2e206@mail.gmail.com>
+References: <20090503105456.GA30449@localhost> <20090503124013.GA31700@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
 	linux-hotplug@vger.kernel.org
-To: linux-nfs@vger.kernel.org
+To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-hotplug-owner@vger.kernel.org>
-In-Reply-To: <20090503105456.GA30449@localhost>
+In-Reply-To: <20090503124013.GA31700@localhost>
 Sender: linux-hotplug-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ah it's not really a NFS problem..
+On Sun, May 3, 2009 at 14:40, Wu Fengguang <fengguang.wu@intel.com> wro=
+te:
 
-On Sun, May 03, 2009 at 06:54:56PM +0800, Wu Fengguang wrote:
-> 
-> My NFSROOT box sometimes will get stuck for a dozen seconds during boot.
-> 
-[snip]
-> The NFSROOT client that got stuck is running latest linux-next, the
-> server side is running 2.6.30-rc3.
-> 
-> Switching the client kernel to latest -mm makes it very reproducible.
-> Here is another stack dump:
-> 
-> [  180.399845] udevd         D ffff8800280291e0  3056  1388      1
+> The udevd is doing this busy loop like mad:
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0open("/etc/group", O_RDONLY|O_CLOEXEC) =C2=
+=A0=3D 7
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0lseek(7, 0, SEEK_CUR) =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =3D 0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0fstat(7, {st_mode=3DS_IFREG|0644, st_size=3D=
+797, ...}) =3D 0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0mmap(NULL, 797, PROT_READ, MAP_SHARED, 7, =
+0) =3D 0x7f6791601000
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0lseek(7, 797, SEEK_SET) =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =3D 797
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0munmap(0x7f6791601000, 797) =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0 =3D 0
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0close(7) =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0=3D 0
+>
+> udev version is 0.141-1.
 
-The udevd is doing this busy loop like mad:
+Are you sure that's "busy loop" in that sense, and not just "load"?
 
-        open("/etc/group", O_RDONLY|O_CLOEXEC)  = 7
-        lseek(7, 0, SEEK_CUR)                   = 0
-        fstat(7, {st_mode=S_IFREG|0644, st_size=797, ...}) = 0
-        mmap(NULL, 797, PROT_READ, MAP_SHARED, 7, 0) = 0x7f6791601000
-        lseek(7, 797, SEEK_SET)                 = 797
-        munmap(0x7f6791601000, 797)             = 0
-        close(7)                                = 0
+If your config carries OWNER=3D or GROUP=3D rules in the udev rules, bu=
+t
+your system does not have these users or groups configured, glibc will
+try to resolve these names to the uid/gid with every event that needs
+these values.
 
-udev version is 0.141-1.
+If the in rules configured user/group names can be resolved at startup
+of udevd, they will be cached and never looked up again.
+
+Are you sure, that your system is configured correctly regarding the
+used rules and referenced system users/groups names?
 
 Thanks,
-Fengguang
-
+Kay
+--
+To unsubscribe from this list: send the line "unsubscribe linux-hotplug=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
