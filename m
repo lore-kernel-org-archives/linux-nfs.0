@@ -1,7 +1,7 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] nfsd4: remove unused dl_trunc
-Date: Sun,  3 May 2009 14:16:37 -0400
-Message-ID: <1241374599-20348-12-git-send-email-bfields@fieldses.org>
+Subject: [PATCH] nfsd4: replace callback thread by asynchronous rpc
+Date: Sun,  3 May 2009 14:16:34 -0400
+Message-ID: <1241374599-20348-9-git-send-email-bfields@fieldses.org>
 References: <1241374599-20348-1-git-send-email-bfields@fieldses.org>
  <1241374599-20348-2-git-send-email-bfields@fieldses.org>
  <1241374599-20348-3-git-send-email-bfields@fieldses.org>
@@ -10,83 +10,107 @@ References: <1241374599-20348-1-git-send-email-bfields@fieldses.org>
  <1241374599-20348-6-git-send-email-bfields@fieldses.org>
  <1241374599-20348-7-git-send-email-bfields@fieldses.org>
  <1241374599-20348-8-git-send-email-bfields@fieldses.org>
- <1241374599-20348-9-git-send-email-bfields@fieldses.org>
- <1241374599-20348-10-git-send-email-bfields@fieldses.org>
- <1241374599-20348-11-git-send-email-bfields@fieldses.org>
 Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:58615 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:58609 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754201AbZECSQj (ORCPT
+	with ESMTP id S1754159AbZECSQj (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 14:16:39 -0400
-In-Reply-To: <1241374599-20348-11-git-send-email-bfields@fieldses.org>
+In-Reply-To: <1241374599-20348-8-git-send-email-bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: J. Bruce Fields <bfields@citi.umich.edu>
 
-There's no point in keeping this field around--it's always zero.
-
-(Background: the protocol allows you to tell the client that the file is
-about to be truncated, as an optimization to save the client from
-writing back dirty pages that will just be discarded.  We don't
-implement this hint.  If we do some day, adding this field back in will
-be the least of the work involved.)
+We don't really need a synchronous rpc, and moving to an asynchronous
+rpc allows us to do without this extra kthread.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4callback.c     |    4 +---
- fs/nfsd/nfs4state.c        |    1 -
- include/linux/nfsd/state.h |    1 -
- 3 files changed, 1 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4callback.c |   38 ++++++++++++++++++++++----------------
+ 1 files changed, 22 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 2509305..0420b5e 100644
+index cc10ed3..0aaf68b 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -224,7 +224,7 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp)
- 	WRITE32(OP_CB_RECALL);
- 	WRITE32(dp->dl_stateid.si_generation);
- 	WRITEMEM(&dp->dl_stateid.si_opaque, sizeof(stateid_opaque_t));
--	WRITE32(dp->dl_trunc);
-+	WRITE32(0); /* truncate optimization not implemented */
- 	WRITE32(len);
- 	WRITEMEM(&dp->dl_fh.fh_base, len);
- 	return 0;
-@@ -510,8 +510,6 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
- 	int retries = 1;
- 	int status = 0;
+@@ -415,6 +415,21 @@ static void warn_no_callback_path(struct nfs4_client *clp, int reason)
+ 		(int)clp->cl_name.len, clp->cl_name.data, reason);
+ }
  
--	dp->dl_trunc = 0; /* XXX need to implement truncate optimization */
++static void nfsd4_cb_probe_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_client *clp = calldata;
++
++	if (task->tk_status)
++		warn_no_callback_path(clp, task->tk_status);
++	else
++		atomic_set(&clp->cl_callback.cb_set, 1);
++	put_nfs4_client(clp);
++}
++
++static const struct rpc_call_ops nfsd4_cb_probe_ops = {
++	.rpc_call_done = nfsd4_cb_probe_done,
++};
++
+ static struct rpc_cred *lookup_cb_cred(struct nfs4_callback *cb)
+ {
+ 	struct auth_cred acred = {
+@@ -431,9 +446,8 @@ static struct rpc_cred *lookup_cb_cred(struct nfs4_callback *cb)
+ 							RPCAUTH_LOOKUP_NEW);
+ }
+ 
+-static int do_probe_callback(void *data)
++void do_probe_callback(struct nfs4_client *clp)
+ {
+-	struct nfs4_client *clp = data;
+ 	struct nfs4_callback    *cb = &clp->cl_callback;
+ 	struct rpc_message msg = {
+ 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
+@@ -449,15 +463,13 @@ static int do_probe_callback(void *data)
+ 	}
+ 	cb->cb_cred = cred;
+ 	msg.rpc_cred = cb->cb_cred;
+-	status = rpc_call_sync(cb->cb_client, &msg, RPC_TASK_SOFT);
++	status = rpc_call_async(cb->cb_client, &msg, RPC_TASK_SOFT,
++				&nfsd4_cb_probe_ops, (void *)clp);
+ out:
+-	if (status)
++	if (status) {
+ 		warn_no_callback_path(clp, status);
+-	else
+-		atomic_set(&cb->cb_set, 1);
 -
- 	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT);
- 	while (retries--) {
- 		switch (status) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3e5345e..cbb16e1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -204,7 +204,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_stateid *stp, struct svc_f
- 	dp->dl_vfs_file = stp->st_vfs_file;
- 	dp->dl_type = type;
- 	dp->dl_ident = cb->cb_ident;
--	dp->dl_trunc = 0;
- 	dp->dl_stateid.si_boot = get_seconds();
- 	dp->dl_stateid.si_stateownerid = current_delegid++;
- 	dp->dl_stateid.si_fileid = 0;
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 233b60d..346b603 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -74,7 +74,6 @@ struct nfs4_delegation {
- 	time_t			dl_time;
- /* For recall: */
- 	u32			dl_ident;
--	int			dl_trunc;
- 	stateid_t		dl_stateid;
- 	struct knfsd_fh		dl_fh;
- };
+-	put_nfs4_client(clp);
+-	return 0;
++		put_nfs4_client(clp);
++	}
+ }
+ 
+ /*
+@@ -466,7 +478,6 @@ out:
+ void
+ nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+-	struct task_struct *t;
+ 	int status;
+ 
+ 	BUG_ON(atomic_read(&clp->cl_callback.cb_set));
+@@ -480,12 +491,7 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+ 	/* the task holds a reference to the nfs4_client struct */
+ 	atomic_inc(&clp->cl_count);
+ 
+-	t = kthread_run(do_probe_callback, clp, "nfs4_cb_probe");
+-
+-	if (IS_ERR(t))
+-		atomic_dec(&clp->cl_count);
+-
+-	return;
++	do_probe_callback(clp);
+ }
+ 
+ /*
 -- 
 1.6.0.4
 
