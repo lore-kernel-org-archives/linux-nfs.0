@@ -1,60 +1,51 @@
-From: Kay Sievers <kay.sievers@vrfy.org>
-Subject: Re: very slow NFS boot on linux-next and -mm
-Date: Sun, 3 May 2009 14:56:06 +0200
-Message-ID: <ac3eb2510905030556p4ce25ff1w9aa5cbf76be2e206@mail.gmail.com>
-References: <20090503105456.GA30449@localhost> <20090503124013.GA31700@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-hotplug@vger.kernel.org
-To: Wu Fengguang <fengguang.wu@intel.com>
-Return-path: <linux-hotplug-owner@vger.kernel.org>
-In-Reply-To: <20090503124013.GA31700@localhost>
-Sender: linux-hotplug-owner@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH] nfsd: quiet compile warning
+Date: Sun,  3 May 2009 14:16:28 -0400
+Message-ID: <1241374599-20348-3-git-send-email-bfields@fieldses.org>
+References: <1241374599-20348-1-git-send-email-bfields@fieldses.org>
+ <1241374599-20348-2-git-send-email-bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:58597 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753520AbZECSQj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 14:16:39 -0400
+In-Reply-To: <1241374599-20348-2-git-send-email-bfields@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 3, 2009 at 14:40, Wu Fengguang <fengguang.wu@intel.com> wro=
-te:
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-> The udevd is doing this busy loop like mad:
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0open("/etc/group", O_RDONLY|O_CLOEXEC) =C2=
-=A0=3D 7
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0lseek(7, 0, SEEK_CUR) =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =3D 0
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0fstat(7, {st_mode=3DS_IFREG|0644, st_size=3D=
-797, ...}) =3D 0
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0mmap(NULL, 797, PROT_READ, MAP_SHARED, 7, =
-0) =3D 0x7f6791601000
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0lseek(7, 797, SEEK_SET) =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =3D 797
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0munmap(0x7f6791601000, 797) =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 =C2=A0 =3D 0
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0close(7) =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0=3D 0
->
-> udev version is 0.141-1.
+Stephen Rothwell said:
+"Today's linux-next build (powerpc ppc64_defconfig) produced this new
+warning:
 
-Are you sure that's "busy loop" in that sense, and not just "load"?
+fs/nfsd/nfs4state.c: In function 'EXPIRED_STATEID':
+fs/nfsd/nfs4state.c:2757: warning: comparison of distinct pointer types lacks a cast
 
-If your config carries OWNER=3D or GROUP=3D rules in the udev rules, bu=
-t
-your system does not have these users or groups configured, glibc will
-try to resolve these names to the uid/gid with every event that needs
-these values.
+Caused by commit 78155ed75f470710f2aecb3e75e3d97107ba8374 ("nfsd4:
+distinguish expired from stale stateids")."
 
-If the in rules configured user/group names can be resolved at startup
-of udevd, they will be cached and never looked up again.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Are you sure, that your system is configured correctly regarding the
-used rules and referenced system users/groups names?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 74e822e..d24dd12 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2754,7 +2754,7 @@ EXPIRED_STATEID(stateid_t *stateid)
+ {
+ 	if (time_before((unsigned long)boot_time,
+ 			((unsigned long)stateid->si_boot)) &&
+-	    time_before((stateid->si_boot + lease_time), get_seconds())) {
++	    time_before((unsigned long)(stateid->si_boot + lease_time), get_seconds())) {
+ 		dprintk("NFSD: expired stateid (%08x/%08x/%08x/%08x)!\n",
+ 			stateid->si_boot, stateid->si_stateownerid,
+ 			stateid->si_fileid, stateid->si_generation);
+-- 
+1.6.0.4
 
-Thanks,
-Kay
---
-To unsubscribe from this list: send the line "unsubscribe linux-hotplug=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
