@@ -1,48 +1,45 @@
-From: Robert Schwebel <r.schwebel@pengutronix.de>
-Subject: [patch] use ioctl.h instead of ttycom.h on Linux
-Date: Sun, 3 May 2009 12:58:29 +0200
-Message-ID: <20090503105829.GS15802@pengutronix.de>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: very slow NFS boot on linux-next and -mm
+Date: Sun, 3 May 2009 20:40:13 +0800
+Message-ID: <20090503124013.GA31700@localhost>
+References: <20090503105456.GA30449@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: crossdev-iOHc7L4DgpLFDiOEh+KS6A@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-hotplug@vger.kernel.org
 To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:59970 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753468AbZECK6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 May 2009 06:58:30 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-hotplug-owner@vger.kernel.org>
+In-Reply-To: <20090503105456.GA30449@localhost>
+Sender: linux-hotplug-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When compiling nfs-utils-1.1.6, I get this error:
+Ah it's not really a NFS problem..
 
-arm-iwmmx-linux-gnueabi-gcc -DHAVE_CONFIG_H -I. -I../../support/include -isystem /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCORE-PXA270.PCM990/sysroot-target/include -isystem /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCORE-PXA270.PCM990/sysroot-target/usr/include -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT sm_inter_svc.o -MD -MP -MF .deps/sm_inter_svc.Tpo -c -o sm_inter_svc.o sm_inter_svc.c
-sm_inter_svc.c:10:39: error: sys/ttycom.h: No such file or directory
+On Sun, May 03, 2009 at 06:54:56PM +0800, Wu Fengguang wrote:
+> 
+> My NFSROOT box sometimes will get stuck for a dozen seconds during boot.
+> 
+[snip]
+> The NFSROOT client that got stuck is running latest linux-next, the
+> server side is running 2.6.30-rc3.
+> 
+> Switching the client kernel to latest -mm makes it very reproducible.
+> Here is another stack dump:
+> 
+> [  180.399845] udevd         D ffff8800280291e0  3056  1388      1
 
-Use sys/ioctl.h instead.
+The udevd is doing this busy loop like mad:
 
-Signed-off-by: Robert Schwebel <r.schwebel@pengutronix.de>
+        open("/etc/group", O_RDONLY|O_CLOEXEC)  = 7
+        lseek(7, 0, SEEK_CUR)                   = 0
+        fstat(7, {st_mode=S_IFREG|0644, st_size=797, ...}) = 0
+        mmap(NULL, 797, PROT_READ, MAP_SHARED, 7, 0) = 0x7f6791601000
+        lseek(7, 797, SEEK_SET)                 = 797
+        munmap(0x7f6791601000, 797)             = 0
+        close(7)                                = 0
 
----
- tools/rpcgen/rpc_main.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+udev version is 0.141-1.
 
-Index: nfs-utils-1.1.6/tools/rpcgen/rpc_main.c
-===================================================================
---- nfs-utils-1.1.6.orig/tools/rpcgen/rpc_main.c
-+++ nfs-utils-1.1.6/tools/rpcgen/rpc_main.c
-@@ -550,7 +550,7 @@ s_output(int argc, char **argv, char *in
- 	  f_print(fout, "#include <sys/ttycom.h>/* TIOCNOTTY */\n");
- #else
- 	if( !tirpcflag )
--	  f_print(fout, "#include <sys/ttycom.h>/* TIOCNOTTY */\n");
-+	  f_print(fout, "#include <sys/ioctl.h>/* TIOCNOTTY */\n");
- #endif
- 	if( Cflag && (inetdflag || pmflag ) ) {
- 	  f_print(fout, "#ifdef __cplusplus\n");
+Thanks,
+Fengguang
 
--- 
-Pengutronix e.K.                           |                             |
-Industrial Linux Solutions                 | http://www.pengutronix.de/  |
-Peiner Str. 6-8, 31137 Hildesheim, Germany | Phone: +49-5121-206917-0    |
-Amtsgericht Hildesheim, HRA 2686           | Fax:   +49-5121-206917-5555 |
