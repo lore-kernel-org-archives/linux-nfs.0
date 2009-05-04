@@ -1,86 +1,70 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Return error code from nfs_callback_up() to user space
-Date: Mon, 04 May 2009 13:21:31 -0400
-Message-ID: <20090504172102.3805.64913.stgit@ingres.1015granger.net>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: Re: [patch] use ioctl.h instead of ttycom.h on Linux
+Date: Mon, 4 May 2009 19:15:48 -0400
+Message-ID: <200905041915.49624.vapier@gentoo.org>
+References: <20090503105829.GS15802@pengutronix.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: Trond.Myklebust@netapp.com
+Content-Type: multipart/signed;
+  boundary="nextPart1330946.szBJLQ71pu";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Cc: linux-nfs@vger.kernel.org, crossdev-iOHc7L4DgpLFDiOEh+KS6A@public.gmane.org
+To: Robert Schwebel <r.schwebel@pengutronix.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:57551 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755245AbZEDRXN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 May 2009 13:23:13 -0400
+Received: from smtp.gentoo.org ([140.211.166.183]:34631 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753177AbZEDXPu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 May 2009 19:15:50 -0400
+In-Reply-To: <20090503105829.GS15802@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the kernel cannot start the NFSv4 callback service during a mount
-request, it returns -ENOMEM to user space, resulting in this message:
+--nextPart1330946.szBJLQ71pu
+Content-Type: text/plain;
+  charset="iso-8859-15"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-   mount.nfs4: Cannot allocate memory
+On Sunday 03 May 2009 06:58:29 Robert Schwebel wrote:
+> When compiling nfs-utils-1.1.6, I get this error:
+>
+> arm-iwmmx-linux-gnueabi-gcc -DHAVE_CONFIG_H -I. -I../../support/include
+> -isystem
+> /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCO
+>RE-PXA270.PCM990/sysroot-target/include -isystem
+> /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCO
+>RE-PXA270.PCM990/sysroot-target/usr/include -D_GNU_SOURCE -Wall
+> -Wstrict-prototypes  -pipe -g -O2 -MT sm_inter_svc.o -MD -MP -MF
+> .deps/sm_inter_svc.Tpo -c -o sm_inter_svc.o sm_inter_svc.c
+> sm_inter_svc.c:10:39: error: sys/ttycom.h: No such file or directory
+>
+> Use sys/ioctl.h instead.
 
-Adjust nfs_alloc_client() and nfs_get_client() to pass NFSv4 callback
-start-up errors back to user space so a less mysterious error message
-can be displayed by the mount command.
+ive posted a patch or two to fix this, but cant seem to get it merged ...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+i.e. your change is of course correct
+-mike
 
-error_3 case fixed.  Thanks for the review.
+--nextPart1330946.szBJLQ71pu
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
 
- fs/nfs/client.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.11 (GNU/Linux)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 75c9cd2..0e9a1f9 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -114,6 +114,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- {
- 	struct nfs_client *clp;
- 	struct rpc_cred *cred;
-+	int err = -ENOMEM;
- 
- 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
- 		goto error_0;
-@@ -121,7 +122,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->rpc_ops = cl_init->rpc_ops;
- 
- 	if (cl_init->rpc_ops->version == 4) {
--		if (nfs_callback_up() < 0)
-+		err = nfs_callback_up();
-+		if (err < 0)
- 			goto error_2;
- 		__set_bit(NFS_CS_CALLBACK, &clp->cl_res_state);
- 	}
-@@ -133,6 +135,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->cl_addrlen = cl_init->addrlen;
- 
- 	if (cl_init->hostname) {
-+		err = -ENOMEM;
- 		clp->cl_hostname = kstrdup(cl_init->hostname, GFP_KERNEL);
- 		if (!clp->cl_hostname)
- 			goto error_3;
-@@ -165,7 +168,7 @@ error_3:
- error_2:
- 	kfree(clp);
- error_0:
--	return NULL;
-+	return ERR_PTR(err);
- }
- 
- static void nfs4_shutdown_client(struct nfs_client *clp)
-@@ -456,9 +459,10 @@ static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_in
- 		spin_unlock(&nfs_client_lock);
- 
- 		new = nfs_alloc_client(cl_init);
--	} while (new);
-+	} while (!IS_ERR(new));
- 
--	return ERR_PTR(-ENOMEM);
-+	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
-+	return new;
- 
- 	/* install a new client and return with it unready */
- install_client:
+iQIcBAABAgAGBQJJ/3clAAoJEEFjO5/oN/WBWQsP/i22KNQEi406qk2HTejTVvgw
+bfEyg7lZGy026Lw9STZ/+ngVN0KrNGqMfgjxp9nj66g5CFEe20MLhbuIVgw01Sns
+gmYk4KnIAiMVELTje95pfnFLRl8bVBsrQw8p4AcOC50m4PlpRpDTrrJ7CY6r4eZp
+D/8hgVi/Q+pIZaiLY2ZT5XPOTnQoTFcRUKTli29FN/DjW12kj0XhoW5HTXrF6TEF
+D0lKQnSsN8r3PjOYREmhrgo6QL32nOCWnlBRwbI2W1NkhLIR2GX230+EacFJHbJo
+NJLpfGjeMVSYzhClSlQeJfb0MUD7TlvluAE6TZ4L6r1tc9P1/efZ1gWdTa+6CHXZ
+Fl2VBm3VH+HzxqwIfmbaNnmpFIBQMJl+qsdBYZJO0Wvn0XnfHZ4rnCmD0iNSokhH
+hfLJKdRKT9fod3tYSTiMh7m4vXks7OW1bzaHnx1CwCLHpEK0MuviDgQJj9aRD65f
+aBM2TcnbmxgsE/IdGG0ckqq1o1gZ2ENFLtwzvWofMw3mk+CWhu19a1wXFBkCmWdz
+7uQyx27R1EYWWQ/cZAYLBOrzOe4Rgb32iTOFhnX2uhWvcByxX59IIzVl0WzzOwX2
+5aOfiBaRIjunY2tujtsRvorAQWbfC8DZ2CvxoTu+nxcI7aQPeK6+TG3Yi06OYZT7
+d0XXjK3Ua30jZRliRmeZ
+=W03n
+-----END PGP SIGNATURE-----
 
+--nextPart1330946.szBJLQ71pu--
