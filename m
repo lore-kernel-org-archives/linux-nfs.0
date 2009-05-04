@@ -1,79 +1,48 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFS: Return error code from nfs_callback_up() to user
-	space
-Date: Mon, 04 May 2009 13:01:25 -0400
-Message-ID: <20090504170124.2733.88314.stgit@ingres.1015granger.net>
+Subject: [PATCH 2/2] NFS: Fix false error return from nfs_callback_up() if
+	ipv6.ko is not available
+Date: Mon, 04 May 2009 13:01:33 -0400
+Message-ID: <20090504170132.2733.84230.stgit@ingres.1015granger.net>
 References: <20090504165839.2733.50787.stgit@ingres.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:52513 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754194AbZEDRBg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 May 2009 13:01:36 -0400
+Received: from acsinet12.oracle.com ([141.146.126.234]:55661 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754677AbZEDRBn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 May 2009 13:01:43 -0400
 In-Reply-To: <20090504165839.2733.50787.stgit-07a7zB5ZJzbwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the kernel cannot start the NFSv4 callback service during a mount
-request, it returns -ENOMEM to user space, resulting in this message:
+Clear "ret" if the error return from svc_create_xprt(AF_INET6) was
+-EAFNOSUPORT.  Otherwise, callback start-up will succeed, but
+nfs_callback_up() will return -EAFNOSUPPORT anyway, and the first
+NFSv4 mount attempt after a reboot will fail.
 
-   mount.nfs4: Cannot allocate memory
-
-Adjust nfs_alloc_client() and nfs_get_client() to pass NFSv4 callback
-start-up errors back to user space so a less mysterious error message
-can be displayed by the mount command.
+Bug introduced by commit f738f517 in 2.6.30-rc1.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/client.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+ fs/nfs/callback.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 75c9cd2..da1e2fd 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -114,6 +114,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- {
- 	struct nfs_client *clp;
- 	struct rpc_cred *cred;
-+	int err = -ENOMEM;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index a886e69..6e3bd42 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -127,7 +127,9 @@ int nfs_callback_up(void)
+ 		nfs_callback_tcpport6 = ret;
+ 		dprintk("NFS: Callback listener port = %u (af %u)\n",
+ 				nfs_callback_tcpport6, PF_INET6);
+-	} else if (ret != -EAFNOSUPPORT)
++	} else if (ret == -EAFNOSUPPORT)
++		ret = 0;
++	else
+ 		goto out_err;
+ #endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
  
- 	if ((clp = kzalloc(sizeof(*clp), GFP_KERNEL)) == NULL)
- 		goto error_0;
-@@ -121,7 +122,8 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	clp->rpc_ops = cl_init->rpc_ops;
- 
- 	if (cl_init->rpc_ops->version == 4) {
--		if (nfs_callback_up() < 0)
-+		err = nfs_callback_up();
-+		if (err < 0)
- 			goto error_2;
- 		__set_bit(NFS_CS_CALLBACK, &clp->cl_res_state);
- 	}
-@@ -165,7 +167,7 @@ error_3:
- error_2:
- 	kfree(clp);
- error_0:
--	return NULL;
-+	return ERR_PTR(err);
- }
- 
- static void nfs4_shutdown_client(struct nfs_client *clp)
-@@ -456,9 +458,10 @@ static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_in
- 		spin_unlock(&nfs_client_lock);
- 
- 		new = nfs_alloc_client(cl_init);
--	} while (new);
-+	} while (!IS_ERR(new));
- 
--	return ERR_PTR(-ENOMEM);
-+	dprintk("--> nfs_get_client() = %ld [failed]\n", PTR_ERR(new));
-+	return new;
- 
- 	/* install a new client and return with it unready */
- install_client:
 
