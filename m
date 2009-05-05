@@ -1,74 +1,55 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: NFS write OOPS with 2.6.29.2
-Date: Mon, 4 May 2009 23:14:26 -0700
-Message-ID: <20090504231426.2e5a51b0.akpm@linux-foundation.org>
-References: <Pine.LNX.4.64.0905031552340.1774@praktifix.dwd.de>
+From: =?ISO-8859-15?Q?Peter_=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
+Subject: Re: [PATCH] NFS: Do not display the setting of the "intr" mount
+ option
+Date: Tue, 5 May 2009 08:36:22 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.0905050832340.6736@maggie.lkpg.cendio.se>
+References: <20090501163402.25637.67939.stgit@ingres.1015granger.net>  <alpine.LFD.2.00.0905021010320.19638@maggie.lkpg.cendio.se>  <382F5CF6-4D1A-4B1E-8E17-B6426CFC3A03@oracle.com> <1241455743.5754.10.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
-To: Holger Kiehl <Holger.Kiehl@dwd.de>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758102AbZEEGQ3@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.0905031552340.1774@praktifix.dwd.de>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: MULTIPART/MIXED; BOUNDARY="789237761-57686459-1241505382=:6736"
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.cendio.se ([193.12.253.69]:61012 "EHLO mail.cendio.se"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750714AbZEEGgX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 May 2009 02:36:23 -0400
+In-Reply-To: <1241455743.5754.10.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-(cc linux-nfs)
+--789237761-57686459-1241505382=:6736
+Content-Type: TEXT/PLAIN; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8BIT
 
-On Sun, 3 May 2009 16:03:38 +0000 (GMT) Holger Kiehl <Holger.Kiehl@dwd.de> wrote:
+On Mon, 4 May 2009, Trond Myklebust wrote:
 
-> Hello
-> 
-> With plain kernel 2.6.29.2 I get the following OOPS (several of them) when
-> writing lots of small files on the client system:
-> 
->     May  3 18:48:34 obelix kernel: ------------[ cut here ]------------
->     May  3 18:48:34 obelix kernel: kernel BUG at fs/nfs/write.c:252!
+>> Since 2.6.25, the behavior of the NFS client has been a mix of the
+>> two.  I believe the current behavior is that SIGKILL can terminate an
+>> NFS operation, but all other signals are deferred until pending NFS
+>> operations complete.
 
-I think this is a well-know bug, and fixes should be available in 2.6.29.3?
+I guess this means that commands cannot be terminated using Ctrl-C, since 
+that generates a SIGINT? If so, this is a change for the worse.
 
->     May  3 18:48:34 obelix kernel: invalid opcode: 0000 [#1] SMP
->     May  3 18:48:34 obelix kernel: last sysfs file: /sys/devices/pci0000:00/0000:00:1c.2/0000:11:00.0/0000:12:00.0/irq
->     May  3 18:48:34 obelix kernel: CPU 1
->     May  3 18:48:34 obelix kernel: Modules linked in: nfs lockd nfs_acl auth_rpcgss coretemp smsc47m1 ipmi_si ipmi_msghandler sunrpc binfmt_misc usbhid i5000_edac i2c_i801 uhci_hcd sg i2c_core i5k_amb ehci_hcd usbcore [last unloaded: scsi_wait_scan]
->     May  3 18:48:34 obelix kernel: Pid: 8328, comm: sf_loc Not tainted 2.6.29.2 #2 PRIMERGY RX300 S4
->     May  3 18:48:34 obelix kernel: RIP: 0010:[<ffffffffa010effc>]  [<ffffffffa010effc>] nfs_do_writepage+0xfa/0x196 [nfs]
->     May  3 18:48:34 obelix kernel: RSP: 0018:ffff8807e619bb28  EFLAGS: 00010286
->     May  3 18:48:34 obelix kernel: RAX: 0000000000000001 RBX: ffffe2001ba1dcc0 RCX: 0000000000000015
->     May  3 18:48:34 obelix kernel: RDX: 0000000000000000 RSI: 0000000000600020 RDI: ffff8807ec10e950
->     May  3 18:48:34 obelix kernel: RBP: ffff8807e619bb58 R08: ffff88082cf52540 R09: ffff88083cc74440
->     May  3 18:48:34 obelix kernel: R10: 0000000000000000 R11: 00000000fffffffa R12: ffff88082cf52540
->     May  3 18:48:34 obelix kernel: R13: ffff8807ec10ea9c R14: ffffe2001ba1dcc0 R15: ffff8807ec10e9e8
->     May  3 18:48:34 obelix kernel: FS:  00007f03010276f0(0000) GS:ffff88083cca3e40(0000) knlGS:0000000000000000
->     May  3 18:48:34 obelix kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->     May  3 18:48:34 obelix kernel: CR2: 00007fb127e21508 CR3: 000000082cf94000 CR4: 00000000000406e0
->     May  3 18:48:34 obelix kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->     May  3 18:48:34 obelix kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->     May  3 18:48:34 obelix kernel: Process sf_loc (pid: 8328, threadinfo ffff8807e619a000, task ffff88082cf84840)
->     May  3 18:48:34 obelix kernel: Stack:
->     May  3 18:48:34 obelix kernel: ffff8807e619bcb8 ffffe2001ba1dcc0 ffffe2001ba1dcc0 0000000000000000
->     May  3 18:48:34 obelix kernel: 0000000000000001 0000000000000000 ffff8807e619bb78 ffffffffa010f50a
->     May  3 18:48:34 obelix kernel: ffffe2001ba1dcc0 ffff8807e619bd68 ffff8807e619bca8 ffffffff8026f964
->     May  3 18:48:34 obelix kernel: Call Trace:
->     May  3 18:48:34 obelix kernel: [<ffffffffa010f50a>] nfs_writepages_callback+0xf/0x20 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffff8026f964>] write_cache_pages+0x246/0x389
->     May  3 18:48:34 obelix kernel: [<ffffffffa010f4fb>] ? nfs_writepages_callback+0x0/0x20 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffff80268c20>] ? find_get_pages_tag+0x3e/0xd9
->     May  3 18:48:34 obelix kernel: [<ffffffffa010f4d1>] nfs_writepages+0xb0/0xda [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa01107f1>] ? nfs_flush_one+0x0/0xd9 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa01107f1>] ? nfs_flush_one+0x0/0xd9 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa01105e5>] __nfs_write_mapping+0x19/0x50 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa0110676>] nfs_write_mapping+0x5a/0x7e [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa01106c3>] nfs_wb_all+0x12/0x14 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa0106096>] nfs_sync_mapping+0x34/0x38 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa0103a7e>] do_setlk+0x89/0xb0 [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffffa0103cc7>] nfs_lock+0x18a/0x19b [nfs]
->     May  3 18:48:34 obelix kernel: [<ffffffff802c1978>] vfs_lock_file+0x1e/0x35
->     May  3 18:48:34 obelix kernel: [<ffffffff802c1b7a>] fcntl_setlk+0x13e/0x278
->     May  3 18:48:34 obelix kernel: [<ffffffff802a0649>] sys_fcntl+0x2bc/0x33a
->     May  3 18:48:34 obelix kernel: [<ffffffff8020b51b>] system_call_fastpath+0x16/0x1b
->     May  3 18:48:34 obelix kernel: Code: 00 4c 89 e7 e8 ba cb ff ff 4c 89 e7 89 c3 e8 05 cc ff ff 85 db 74 a7 e9 82 00 00 00 41 f6 44 24 40 02 74 0b 41 fe 87 b4 00 00 00 <0f> 0b eb fe 4c 89 f7 e8 2d 03 16 e0 85 c0 75 49 49 8b 46 18 ba
->     May  3 18:48:34 obelix kernel: RIP  [<ffffffffa010effc>] nfs_do_writepage+0xfa/0x196 [nfs]
-> ...
+
+>> The mount command continues to accept both options, but neither have
+>> any effect on the client's behavior (both options are no-ops).
 >
+> Note that this behaviour is true of local filesystems too, since
+> generic_file_read() has been changed to call lock_page_killable()
+> instead of the uninterruptible lock_page().
+
+I see. However, it's much more common with unreachable network servers 
+than unreachable local block devices.
+
+
+Best regards, 
+---
+Peter Åstrand		ThinLinc Chief Developer
+Cendio AB		http://www.cendio.com
+Wallenbergs gata 4
+583 30 Linköping	Phone: +46-13-21 46 00
+--789237761-57686459-1241505382=:6736--
