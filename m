@@ -1,96 +1,50 @@
 From: Kevin Constantine <Kevin.Constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
-Subject: [PATCH 1/2] Allow nfs/vers=4 option in old style mount commands
-Date: Tue,  5 May 2009 14:46:43 -0700
-Message-ID: <1241560004-16787-2-git-send-email-kevin.constantine@disneyanimation.com>
-References: <1241560004-16787-1-git-send-email-kevin.constantine@disneyanimation.com>
-Cc: Kevin Constantine <Kevin.Constantine-P5ys19MLBK/QT0dZR+AlfA@public.gmane.org>
+Subject: Allow vers=4 and nfsvers=4 mount options
+Date: Tue,  5 May 2009 14:46:42 -0700
+Message-ID: <1241560004-16787-1-git-send-email-kevin.constantine@disneyanimation.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate2.disneyanimation.com ([12.188.26.102]:2848 "EHLO
-	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759104AbZEEVqo (ORCPT
+Received: from mailgate1.disneyanimation.com ([12.188.26.101]:48078 "EHLO
+	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759072AbZEEVqo (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 May 2009 17:46:44 -0400
-In-Reply-To: <1241560004-16787-1-git-send-email-kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
+Received: from chaos.fas.fa.disney.com (chaos.fas.fa.disney.com [172.30.160.30])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mailhub.fa.disney.com (Postfix) with ESMTP id DBF081253C1
+	for <linux-nfs@vger.kernel.org>; Tue,  5 May 2009 14:46:44 -0700 (PDT)
+Received: (from kconstan@localhost)
+	by chaos.fas.fa.disney.com (8.13.8/8.13.7/Submit) id n45Lkiex016891
+	for linux-nfs@vger.kernel.org; Tue, 5 May 2009 14:46:44 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This allows a user to specify nfsvers=4, or vers=4 on the mount
-commandline and have mount.nfs4 called as though fstype=nfs4 were
-specified.  This patch handles the nfs4mount, and nfsmount cases in
-try_mount().
+I've run into a problem recently while trying to set up an environment for testing
+nfsv4.  In our environment, we have a mixture of Linux, and OSX, and all of our mounts
+are made via automount maps stored in LDAP which are shared among the platforms.  The
+problem is made even more complicated by the fact that some of our file servers
+support v4, while others do not.  This means that v4 mounts need to be specified on
+a mount by mount basis, and only on certain test machines.
 
-Added the function find_rightmost() to return the rightmost option in the
-extra_opts string.  If vers=4 is overridden later in the string by
-vers=3, we need to honor that.
+With nfsv4, Linux appears to use fstype=nfs4 to distinguish between v2,3 and v4, and
+attempts to specify vers=4, or nfsvers=4 error.  OSX doesn't understand fstype
+and mounts error when this option is encountered.  OSX instead relies on
+vers=2,3,4 or nfsvers=2,3,4 to determine the version.  It appears that Solaris will
+likely behave the same way as OSX based on the manpage, though I haven't tested it.
 
-Signed-off-by: Kevin Constantine <kevin.constantine-FfNkGbSheRGpB8w63BLUukEOCMrvLtNR@public.gmane.org>
----
- utils/mount/mount.c |   41 ++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 40 insertions(+), 1 deletions(-)
+I've written the following patches to allow vers=4, and nfsvers=4 to be passed to
+the mount command.  There's a patch for the text-based mount, and a second for the
+older style mount options.  In both cases, I attempt to detect the vers= option
+as early as possible in order to set fstype=nfs4, and then let the code continue on
+as though the user had specified fstype=nfs4 on the command line.
 
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index 06e2804..4cebc0f 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -444,11 +444,38 @@ static int try_mount(char *spec, char *mount_point, int flags,
- 	return ret;
- }
- 
-+static void find_rightmost(char *extra_opts, char *search_opt, char **rightmost_opt)
-+{
-+	char *opts = xstrdup(extra_opts);
-+	char *right_opt = NULL, *token = NULL;
-+	int i = 0;
-+
-+	for (;;) {
-+		if (i == 0) {
-+			token = strtok(opts, ",");
-+			i++;
-+		}
-+		else 
-+			token = strtok(NULL, ",");
-+
-+		if (token == NULL) 
-+			break;
-+		if (! strncmp(token, search_opt, strlen(search_opt))) 
-+			right_opt = xstrdup(token);
-+	}
-+	if (right_opt != NULL) {
-+		*rightmost_opt = xmalloc(strlen(right_opt));
-+		strcpy(*rightmost_opt, right_opt);
-+	}
-+	free(opts);
-+	free(right_opt);
-+}
-+
- int main(int argc, char *argv[])
- {
- 	int c, flags = 0, mnt_err = 1, fake = 0;
- 	char *spec, *mount_point, *fs_type = "nfs";
--	char *extra_opts = NULL, *mount_opts = NULL;
-+	char *extra_opts = NULL, *mount_opts = NULL, *vers_opt=NULL;
- 	uid_t uid = getuid();
- 
- 	progname = basename(argv[0]);
-@@ -562,6 +589,18 @@ int main(int argc, char *argv[])
- 
- 	parse_opts(mount_opts, &flags, &extra_opts);
- 
-+	find_rightmost(extra_opts, "vers", &vers_opt);
-+	if (vers_opt != NULL) {
-+		if ((strcmp(vers_opt, "vers=4")) == 0) 
-+			fs_type = "nfs4";
-+	}
-+
-+	find_rightmost(extra_opts, "nfsvers", &vers_opt);
-+	if (vers_opt != NULL) {
-+		if ((strcmp(vers_opt, "nfsvers=4")) == 0) 
-+			fs_type = "nfs4";
-+	}
-+
- 	if (uid != 0) {
- 		if (!(flags & (MS_USERS|MS_USER))) {
- 			nfs_error(_("%s: permission denied"), progname);
--- 
-1.6.2.1
+Using these patches, I can now specify something like:
+pamtest4  -rw,intr,hard,timeo=600$RSZ,vers=$NFSVERS     supportsv4:/vol/someexport
+pamtest3  -rw,intr,hard,timeo=600$RSZ                   supportsv3only:/vol/v3export
+in the automount map.  The variable $NFSVERS is set to 4 on the test clients, and 3
+on production Linux machines, and OSX.
 
+[PATCH 1/2] Allow nfs/vers=4 option in old style mount commands
+[PATCH 2/2] Allow nfs/vers=4 option in text-based mount commands
+
+-kevin
