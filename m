@@ -1,50 +1,68 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: [PATCH 3/7] gssd: add support for callback authentication
-Date: Wed, 6 May 2009 17:22:10 -0400
-Message-ID: <4d569c330905061422t53d4a96as712678f2805c81ac@mail.gmail.com>
-References: <20090429214300.25811.81332.stgit@jazz.citi.umich.edu>
-	 <20090429215626.25811.13927.stgit@jazz.citi.umich.edu>
-	 <20090430212457.GA5700@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [RFC 0/10] nfsd41 server backchannel for 2.6.31
+Date: Wed, 6 May 2009 17:24:05 -0400
+Message-ID: <20090506212405.GB15996@fieldses.org>
+References: <20090503205343.GD22306@fieldses.org> <C6265C00.5118%ricardo.labiaga@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain; charset=us-ascii
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	pNFS Mailing List <pnfs@linux-nfs.org>,
+	NFS list <linux-nfs@vger.kernel.org>
+To: "Labiaga, Ricardo" <ricardo.labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.24]:31392 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754697AbZEFVWK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2009 17:22:10 -0400
-Received: by qw-out-2122.google.com with SMTP id 5so287734qwd.37
-        for <linux-nfs@vger.kernel.org>; Wed, 06 May 2009 14:22:10 -0700 (PDT)
-In-Reply-To: <20090430212457.GA5700@fieldses.org>
+Received: from mail.fieldses.org ([141.211.133.115]:49908 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760941AbZEFVYG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 May 2009 17:24:06 -0400
+In-Reply-To: <C6265C00.5118%ricardo.labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 30, 2009 at 5:24 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Apr 29, 2009 at 05:56:26PM -0400, Kevin Coffman wrote:
->> From: Olga Kornievskaia <aglo@citi.umich.edu>
->>
->> Add support for handling upcalls on the new "nfsd4_cb" directory pipes.
->> Only new kernels (2.6.29) have support for this new pipe directory.
->> (The need for this new pipe directory will go away with NFSv4.1 where
->> the callback can be done on the same connection as the fore-channel.)
->
-> My only complaint is that the code would be robust (and more
-> future-proof) if instead of specifically looking for "nfs" and
-> "nfsd4_cb", we just look at all top-level rpc_pipefs directories and
-> handed directories under any of them in the same way.
->
-> --b.
+On Tue, May 05, 2009 at 09:11:28PM -0700, Labiaga, Ricardo wrote:
+> It shouldn't be too bad.  I'll go ahead and rework the patches on top of
+> your asynchronous RPC callback changes.
 
-In our offline discussion, Bruce convinced me that we should just
-treat all the directories under the rpc_pipefs directory as equal, and
-process any clnt directories that show up within them.  (This
-currently includes, "lockd  mount  nfs  nfsd4_cb  portmap  statd".)
-Any new directories appearing in the future will automatically get the
-same treatment.
+OK, thanks.  I've added them to for-2.6.31:
 
-Steve, I don't know what you might have already done with these
-patches.  Would you prefer a replacement for this patch, or patch on
-top of this?
+	git://linux-nfs.org/~bfields/linux.git for-2.6.31
 
-K.C.
+So easiest for me would be if the patches are against that.
+
+--b.
+
+> 
+> - ricardo
+> 
+> 
+> On 5/3/09 1:53 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Fri, May 01, 2009 at 02:00:22AM +0300, Benny Halevy wrote:
+> >> Bruce,
+> >> 
+> >> After squashing and merging Ricardo's latest patchset
+> >> please review the following patchset and consider for 2.6.31.
+> > 
+> > Note this will conflict with the pending changes I have to make the
+> > current callbacks use asynchronous rpc tasks instead of
+> > kthreads--apologies.  I'll try to get those into for-2.6.31 tomorrow,
+> > and then I hope you won't mind working on top of that?
+> > 
+> > --b.
+> > 
+> >> 
+> >> Thanks,
+> >> 
+> >> Benny
+> >> 
+> >> [RFC 01/10] nfsd: cleanup nfs4.0 callback encode routines
+> >> [RFC 02/10] nfsd: minorversion support for the back channel
+> >> [RFC 03/10] nfsd41: sunrpc: Added rpc server-side backchannel handling
+> >> [RFC 04/10] nfsd41: Remember the auth flavor to use for callbacks
+> >> [RFC 05/10] nfsd41: callback infrastructure
+> >> [RFC 06/10] nfsd41: Backchannel: Add sequence arguments to callback RPC
+> >> arguments
+> >> [RFC 07/10] nfsd41: Backchannel: Server backchannel RPC wait queue
+> >> [RFC 08/10] nfsd41: Backchannel: Setup sequence information
+> >> [RFC 09/10] nfsd41: cb_sequence callback
+> >> [RFC 10/10] nfsd41: cb_recall callback
+> 
