@@ -1,69 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.211.133.111]:36488 "EHLO citi.umich.edu"
+Received: from neil.brown.name ([220.233.11.133]:37303 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753825AbZETPUe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 May 2009 11:20:34 -0400
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [round2 PATCH 0/7] nfs-utils: add support for authenticated callbacks
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 20 May 2009 11:20:36 -0400
-Message-ID: <20090520151651.2986.29621.stgit@jazz.citi.umich.edu>
-Content-Type: text/plain; charset="utf-8"
+	id S1753163AbZEGOFy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2009 10:05:54 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1M24EU-0006cL-0H
+	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 00:05:54 +1000
+In-Reply-To: <4A02DAA8.6050005@bio.ifi.lmu.de>
+References: <4A02DAA8.6050005@bio.ifi.lmu.de>
+Date: Thu, 7 May 2009 10:34:51 -0300
+Message-ID: <c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
+From: Leonardo Chiquitto <leonardo.lists@gmail.com>
+To: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
+Cc: nfs@lists.sourceforge.net
+Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Steve,
+> Now when the NFS client is running SLES 11 with its kernel 2.6.27,
+> the NFS server tries to make UDP connections from its ports 111 and
+> 700 to different ports on the client.
+>
+> If the client is running SLES 10 with 2.6.16, those connections are
+> not tried from the server, no matter if the server runs 2.6.16 or
+> 2.6.27.
+>
+> So I've two questions:
+> 1) Should nfs-over-tcp still use any UDP ports at all?
+> 2) What has been changed in the client code between 2.6.16 and 2.6.27
+>   that could cause this behaviour?
 
-This series adds support to gssd and svcgssd to support
-authenticated callbacks.
+By default it is now using UDP to connect to mountd.
 
-1) adds the name the client used when authenticating to the
-svcgssd downcall information.  This is used by nfsd to determine
-the target name when initiating the callback.
+> Is there a way to prevent those UDP connects?
 
-2) splits out the processing of update_client_list() to accomodate
-a new upcall pipe added in the next patch.
+Yes, add "mountproto=tcp" to your mount options.
 
-3) changes gssd to process all rpc_pipefs directories (this patch is
-changed from the first round to process all directories rather than
-special-casing directories)
+Regards,
+Leonardo
 
-4) a debugging aid to distinquish which upcall is being processed
-
-6) adds support for handling the "target=" attribute in the new upcall
-
-7) adds support for handling the "service=" attribute in the new upcall
-
-NOTE:  For authenticated callbacks to work, an NFS client or an
-NFS server must be running both rpcgssd _and_ rpcsvcgssd.
-This will require a configuration change.
-
-A future patch is planned to combine gssd and svcgssd into
-a single daemon to make configuration easier.  However, there
-are some architectural issues that must be resolved first.
-
----
-
-Kevin Coffman (1):
-      gssd: add upcall support for callback authentication
-
-Olga Kornievskaia (6):
-      gssd: process service= attribute in new upcall
-      gssd: process target= attribute in new upcall
-      gssd: handle new client upcall
-      gssd: print full client directory being handled
-      gssd: refactor update_client_list()
-      svcgssd: add client's principal name to downcall information
-
-
- utils/gssd/gssd.c           |    6 -
- utils/gssd/gssd.h           |   12 +
- utils/gssd/gssd_main_loop.c |  102 +++++++++++-
- utils/gssd/gssd_proc.c      |  365 +++++++++++++++++++++++++++++++++++--------
- utils/gssd/krb5_util.c      |   21 ++
- utils/gssd/krb5_util.h      |    3 
- utils/gssd/svcgssd_proc.c   |   94 ++++++++++-
- 7 files changed, 505 insertions(+), 98 deletions(-)
+------------------------------------------------------------------------------
+The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
+production scanning environment may not be a perfect world - but thanks to
+Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
+Series Scanner you'll get full speed at 300 dpi even with all image 
+processing features enabled. http://p.sf.net/sfu/kodak-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
