@@ -1,62 +1,62 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: =?ISO-8859-15?Q?Peter_=C5strand?= <astrand-+4tYiAq3b6azQB+pC5nmwQ@public.gmane.org>
 Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Thu, 07 May 2009 09:52:06 -0400
-Message-ID: <1241704326.4884.10.camel@heimdal.trondhjem.org>
+Date: Thu, 7 May 2009 16:03:53 +0200 (CEST)
+Message-ID: <alpine.LFD.2.00.0905071559550.32245@maggie.lkpg.cendio.se>
 References: <4A02DAA8.6050005@bio.ifi.lmu.de>
+	<1241704326.4884.10.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: MULTIPART/MIXED;
+	BOUNDARY="789237761-2129566511-1241704796=:32245"
 Cc: nfs@lists.sourceforge.net
-To: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:39325 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:37302 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761484AbZEGNyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2009 09:54:33 -0400
+	id S1752872AbZEGOFr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2009 10:05:47 -0400
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M243R-0006ZL-2g
-	for linux-nfs@vger.kernel.org; Thu, 07 May 2009 23:54:29 +1000
-In-Reply-To: <4A02DAA8.6050005-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+	id 1M24EM-0006c6-6C
+	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 00:05:46 +1000
+In-Reply-To: <1241704326.4884.10.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-05-07 at 14:57 +0200, Frank Steiner wrote:
-> Hi,
-> 
-> I'm fighting with my firewall to get nfs-over-tcp through. 
-> 
-> The server is outside the firewall, the client is inside. The firewall
-> allows all tcp back-connections (without syn), no UDPs. Mount on the
-> client side worked fine with kernel 2.6.16 in SLES 10.
-> 
-> Now when the NFS client is running SLES 11 with its kernel 2.6.27, 
-> the NFS server tries to make UDP connections from its ports 111 and 
-> 700 to different ports on the client.
-> 
-> If the client is running SLES 10 with 2.6.16, those connections are
-> not tried from the server, no matter if the server runs 2.6.16 or
-> 2.6.27.
-> 
-> So I've two questions:
-> 1) Should nfs-over-tcp still use any UDP ports at all?
-> 2) What has been changed in the client code between 2.6.16 and 2.6.27
->    that could cause this behaviour?
-> 
-> Is there a way to prevent those UDP connects?
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-The default behaviour is to always try to use UDP to talk to mountd and
-the portmapper in order to minimize the number of ports that get left in
-the TIME_WAIT state. If you only want to use TCP, then you might try
-using '-omountproto=tcp'
+--789237761-2129566511-1241704796=:32245
+Content-Type: TEXT/PLAIN; CHARSET=ISO-8859-15; format=flowed
+Content-ID: <alpine.LFD.2.00.0905071601271.32245-K9BqGu7AvB3wj5YHdwD3Ga2PxDmRETKR@public.gmane.org>
+Content-Transfer-Encoding: quoted-printable
 
-Cheers
-  Trond
+On Thu, 7 May 2009, Trond Myklebust wrote:
 
-PS: Note that nfs@lists.sourceforge.net is deprecated due to poor
-anti-spam filtering. You should rather send posts directly to
-linux-nfs@vger.kernel.org
+> PS: Note that nfs@lists.sourceforge.net is deprecated due to poor
+> anti-spam filtering. You should rather send posts directly to
+> linux-nfs@vger.kernel.org
 
+Note that if you are trying to subscribe to nfs@lists.sourceforge.net,=20
+you'll get this message:
 
+"This list is closed to new subscriptions.  Please subscribe to
+linux-nfs-u79uwXL29TaiAVqoAR/hOA@public.gmane.org  Send mail to majorodomo@vger.kernel.org to
+subscribe."
+
+majorodomo@vger.kernel.org is misspelled; should be=20
+majordomo-u79uwXL29TaiAVqoAR/hOA@public.gmane.org
+
+Best regards,=20
+---
+Peter =C5strand		ThinLinc Chief Developer
+Cendio AB		http://www.cendio.com
+Wallenbergs gata 4
+583 30 Link=F6ping	Phone: +46-13-21 46 00
+--789237761-2129566511-1241704796=:32245
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
 ------------------------------------------------------------------------------
 The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
@@ -64,6 +64,12 @@ production scanning environment may not be a perfect world - but thanks to
 Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
 Series Scanner you'll get full speed at 300 dpi even with all image 
 processing features enabled. http://p.sf.net/sfu/kodak-com
+--789237761-2129566511-1241704796=:32245
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 _______________________________________________
 NFS maillist  -  NFS@lists.sourceforge.net
 https://lists.sourceforge.net/lists/listinfo/nfs
@@ -71,4 +77,7 @@ _______________________________________________
 Please note that nfs@lists.sourceforge.net is being discontinued.
 Please subscribe to linux-nfs@vger.kernel.org instead.
     http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--789237761-2129566511-1241704796=:32245--
+
 
