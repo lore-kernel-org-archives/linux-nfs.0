@@ -1,45 +1,58 @@
-From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+From: Tom Talpey <tmtalpey@gmail.com>
 Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Thu, 07 May 2009 17:26:59 +0200
-Message-ID: <4A02FDC3.9090709@bio.ifi.lmu.de>
+Date: Thu, 07 May 2009 11:35:43 -0400
+Message-ID: <4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
 References: <4A02DAA8.6050005@bio.ifi.lmu.de>
 	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
+	<4A02FDC3.9090709@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Leonardo Chiquitto <leonardo.lists@gmail.com>
+Cc: Leonardo Chiquitto <leonardo.lists@gmail.com>,
+	nfs@lists.sourceforge.net
+To: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:57128 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:43923 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754768AbZEGP2F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2009 11:28:05 -0400
+	id S1753469AbZEGPhZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2009 11:37:25 -0400
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M25Vz-0006pg-Eg
-	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 01:28:03 +1000
-In-Reply-To: <c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id 1M25f3-0006rN-09
+	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 01:37:25 +1000
+In-Reply-To: <4A02FDC3.9090709-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Leonardo Chiquitto wrote
+At 11:26 AM 5/7/2009, Frank Steiner wrote:
+>Leonardo Chiquitto wrote
+>
+>>> Is there a way to prevent those UDP connects?
+>> 
+>> Yes, add "mountproto=tcp" to your mount options.
+>
+>I was only aware of "proto=tcp" and indeed missed the mountproto option.
+>
+>Thanks both Leonardo and Trond for your answers!
+>
 
->> Is there a way to prevent those UDP connects?
-> 
-> Yes, add "mountproto=tcp" to your mount options.
+There is one small caveat to using mountproto=tcp through firewalls:
+while the mount will succeed, there are some side protocol exchanges
+which may not.
 
-I was only aware of "proto=tcp" and indeed missed the mountproto option.
+In particular, if you do NLM file locking, there is a server callback (NLM
+"granted") which the server may choose to issue via UDP. If this callback
+is not seen by the client due to firewall blocking, there may be a 30-second
+pause before a client retry unblocks the caller.
 
-Thanks both Leonardo and Trond for your answers!
+Also, the NSM (status monitor) exchanges are often performed via UDP.
+Again, if you are using NLM and the server reboots, the client may not
+become aware of this promptly, and lock reclaim will be affected.
 
-cu,
-Frank
+OTOH, if your applications don't use locking on the NFS mounts, you'll
+probably be fine.
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+Tom.
+
 
 ------------------------------------------------------------------------------
 The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
