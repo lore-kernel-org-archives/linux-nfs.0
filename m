@@ -1,80 +1,66 @@
-From: Eric Paris <eparis@redhat.com>
-Subject: Re: [PATCH] inotify: report rounded-up event size to user space
-Date: Thu, 07 May 2009 08:16:48 -0400
-Message-ID: <1241698608.2899.5.camel@dhcp231-142.rdu.redhat.com>
-References: <20090503105456.GA30449@localhost>
-	 <20090503124013.GA31700@localhost>
-	 <ac3eb2510905030556p4ce25ff1w9aa5cbf76be2e206@mail.gmail.com>
-	 <20090504133019.GA14300@localhost>
-	 <ac3eb2510905060642o41f9c68rf1138e94d76d611c@mail.gmail.com>
-	 <20090507115947.GA20934@localhost>
+From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Subject: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
+Date: Thu, 07 May 2009 14:57:12 +0200
+Message-ID: <4A02DAA8.6050005@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Kay Sievers <kay.sievers@vrfy.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"linux-hotplug@vger.kernel.org" <linux-hotplug@vger.kernel.org>,
-	Al Viro <viro@zeniv.linux.org.uk>,
-	Christoph Hellwig <hch@lst.de>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Return-path: <linux-hotplug-owner@vger.kernel.org>
-In-Reply-To: <20090507115947.GA20934@localhost>
-Sender: linux-hotplug-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from neil.brown.name ([220.233.11.133]:39770 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754517AbZEGN05 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2009 09:26:57 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1M23cm-0006U0-5O
+	for linux-nfs@vger.kernel.org; Thu, 07 May 2009 23:26:56 +1000
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-05-07 at 19:59 +0800, Wu Fengguang wrote:
+Hi,
 
-> ---
-> inotify: report rounded-up event size to user space
-> 
-> Fix a udev madness problem, which falls into an endless loop:
-> 
-> (1) ppoll([{fd=4, events=POLLIN}, {fd=5, events=POLLIN}, {fd=3, events=POLLIN}], 3, NULL, [], 8) = 1 ([{fd=3, revents=POLLIN}])
-> (2) ioctl(3, FIONREAD, [39])                = 0
-> (3) read(3, 0x62ad60, 39)                   = -1 EINVAL (Invalid argument)
-> 
-> In (2) we reported a small len, while in (3) we insist on a rounded up len,
-> leading to a failed inotify read(), which will be retried endlessly by udev.
-> 
-> [  756.569243] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.600103] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.630265] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.670862] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.701845] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.732899] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.763126] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.794829] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.824985] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  756.856760] get_one_event: event_size=48 > count=38, name_len=22, name=61-dev-root-link.rules
-> [  761.608521] __ratelimit: 210 callbacks suppressed
-> 
-> Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
+I'm fighting with my firewall to get nfs-over-tcp through. 
 
-Gaaah should have remembered to do that with the ioctl.
- 
-Acked-by: Eric Paris <eparis@redhat.com>
+The server is outside the firewall, the client is inside. The firewall
+allows all tcp back-connections (without syn), no UDPs. Mount on the
+client side worked fine with kernel 2.6.16 in SLES 10.
 
-Andrew can you add this to your tree, I will roll it into my next patch
-set.
+Now when the NFS client is running SLES 11 with its kernel 2.6.27, 
+the NFS server tries to make UDP connections from its ports 111 and 
+700 to different ports on the client.
 
--Eric
+If the client is running SLES 10 with 2.6.16, those connections are
+not tried from the server, no matter if the server runs 2.6.16 or
+2.6.27.
 
-> ---
->  fs/notify/inotify/inotify_user.c |    4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> --- linux.orig/fs/notify/inotify/inotify_user.c
-> +++ linux/fs/notify/inotify/inotify_user.c
-> @@ -318,7 +318,9 @@ static long inotify_ioctl(struct file *f
->  		mutex_lock(&group->notification_mutex);
->  		list_for_each_entry(holder, &group->notification_list, event_list) {
->  			event = holder->event;
-> -			send_len += sizeof(struct inotify_event) + event->name_len;
-> +			send_len += sizeof(struct inotify_event);
-> +			send_len += roundup(event->name_len,
-> +					sizeof(struct inotify_event));
->  		}
->  		mutex_unlock(&group->notification_mutex);
->  		ret = put_user(send_len, (int __user *) p);
+So I've two questions:
+1) Should nfs-over-tcp still use any UDP ports at all?
+2) What has been changed in the client code between 2.6.16 and 2.6.27
+   that could cause this behaviour?
+
+Is there a way to prevent those UDP connects?
+
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+
+------------------------------------------------------------------------------
+The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
+production scanning environment may not be a perfect world - but thanks to
+Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
+Series Scanner you'll get full speed at 300 dpi even with all image 
+processing features enabled. http://p.sf.net/sfu/kodak-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
