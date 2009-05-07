@@ -1,54 +1,62 @@
-From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
-Subject: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Thu, 07 May 2009 14:57:12 +0200
-Message-ID: <4A02DAA8.6050005@bio.ifi.lmu.de>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
+Date: Thu, 07 May 2009 09:52:06 -0400
+Message-ID: <1241704326.4884.10.camel@heimdal.trondhjem.org>
+References: <4A02DAA8.6050005@bio.ifi.lmu.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
+Cc: nfs@lists.sourceforge.net
+To: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:39770 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:39325 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754517AbZEGN05 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2009 09:26:57 -0400
+	id S1761484AbZEGNyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2009 09:54:33 -0400
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M23cm-0006U0-5O
-	for linux-nfs@vger.kernel.org; Thu, 07 May 2009 23:26:56 +1000
+	id 1M243R-0006ZL-2g
+	for linux-nfs@vger.kernel.org; Thu, 07 May 2009 23:54:29 +1000
+In-Reply-To: <4A02DAA8.6050005-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Thu, 2009-05-07 at 14:57 +0200, Frank Steiner wrote:
+> Hi,
+> 
+> I'm fighting with my firewall to get nfs-over-tcp through. 
+> 
+> The server is outside the firewall, the client is inside. The firewall
+> allows all tcp back-connections (without syn), no UDPs. Mount on the
+> client side worked fine with kernel 2.6.16 in SLES 10.
+> 
+> Now when the NFS client is running SLES 11 with its kernel 2.6.27, 
+> the NFS server tries to make UDP connections from its ports 111 and 
+> 700 to different ports on the client.
+> 
+> If the client is running SLES 10 with 2.6.16, those connections are
+> not tried from the server, no matter if the server runs 2.6.16 or
+> 2.6.27.
+> 
+> So I've two questions:
+> 1) Should nfs-over-tcp still use any UDP ports at all?
+> 2) What has been changed in the client code between 2.6.16 and 2.6.27
+>    that could cause this behaviour?
+> 
+> Is there a way to prevent those UDP connects?
 
-I'm fighting with my firewall to get nfs-over-tcp through. 
+The default behaviour is to always try to use UDP to talk to mountd and
+the portmapper in order to minimize the number of ports that get left in
+the TIME_WAIT state. If you only want to use TCP, then you might try
+using '-omountproto=tcp'
 
-The server is outside the firewall, the client is inside. The firewall
-allows all tcp back-connections (without syn), no UDPs. Mount on the
-client side worked fine with kernel 2.6.16 in SLES 10.
+Cheers
+  Trond
 
-Now when the NFS client is running SLES 11 with its kernel 2.6.27, 
-the NFS server tries to make UDP connections from its ports 111 and 
-700 to different ports on the client.
+PS: Note that nfs@lists.sourceforge.net is deprecated due to poor
+anti-spam filtering. You should rather send posts directly to
+linux-nfs@vger.kernel.org
 
-If the client is running SLES 10 with 2.6.16, those connections are
-not tried from the server, no matter if the server runs 2.6.16 or
-2.6.27.
 
-So I've two questions:
-1) Should nfs-over-tcp still use any UDP ports at all?
-2) What has been changed in the client code between 2.6.16 and 2.6.27
-   that could cause this behaviour?
-
-Is there a way to prevent those UDP connects?
-
-cu,
-Frank
-
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
 ------------------------------------------------------------------------------
 The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
