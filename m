@@ -1,58 +1,58 @@
-From: Tom Talpey <tmtalpey@gmail.com>
+From: Aaron Wiebe <epiphani@gmail.com>
 Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Thu, 07 May 2009 11:35:43 -0400
-Message-ID: <4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
+Date: Thu, 7 May 2009 12:08:17 -0400
+Message-ID: <e7ca40f70905070908p595c1d23gef745a122ae09caa@mail.gmail.com>
 References: <4A02DAA8.6050005@bio.ifi.lmu.de>
 	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
 	<4A02FDC3.9090709@bio.ifi.lmu.de>
+	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: Leonardo Chiquitto <leonardo.lists@gmail.com>,
+To: Tom Talpey <tmtalpey@gmail.com>,
+	Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>,
+	Leonardo Chiquitto <leonardo.lists@gmail.com>,
 	nfs@lists.sourceforge.net
-To: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:43923 "EHLO neil.brown.name"
+Received: from neil.brown.name ([220.233.11.133]:39401 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753469AbZEGPhZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 May 2009 11:37:25 -0400
+	id S1754134AbZEGQKa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 May 2009 12:10:30 -0400
 Received: from brown by neil.brown.name with local (Exim 4.69)
 	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M25f3-0006rN-09
-	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 01:37:25 +1000
-In-Reply-To: <4A02FDC3.9090709-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+	id 1M26B1-0006wr-2q
+	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 02:10:27 +1000
+In-Reply-To: <4a02ffdf.1ac1f10a.637d.ffffbc3a-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 11:26 AM 5/7/2009, Frank Steiner wrote:
->Leonardo Chiquitto wrote
+On Thu, May 7, 2009 at 11:35 AM, Tom Talpey <tmtalpey@gmail.com> wrote:
 >
->>> Is there a way to prevent those UDP connects?
->> 
->> Yes, add "mountproto=tcp" to your mount options.
+> There is one small caveat to using mountproto=tcp through firewalls:
+> while the mount will succeed, there are some side protocol exchanges
+> which may not.
 >
->I was only aware of "proto=tcp" and indeed missed the mountproto option.
+> In particular, if you do NLM file locking, there is a server callback (NLM
+> "granted") which the server may choose to issue via UDP. If this callback
+> is not seen by the client due to firewall blocking, there may be a 30-second
+> pause before a client retry unblocks the caller.
 >
->Thanks both Leonardo and Trond for your answers!
->
+> Also, the NSM (status monitor) exchanges are often performed via UDP.
+> Again, if you are using NLM and the server reboots, the client may not
+> become aware of this promptly, and lock reclaim will be affected.
 
-There is one small caveat to using mountproto=tcp through firewalls:
-while the mount will succeed, there are some side protocol exchanges
-which may not.
+Sorry for the slight threadjack, but a question along those lines...
 
-In particular, if you do NLM file locking, there is a server callback (NLM
-"granted") which the server may choose to issue via UDP. If this callback
-is not seen by the client due to firewall blocking, there may be a 30-second
-pause before a client retry unblocks the caller.
+My understanding is that currently portmap will not bind any UDP NLM
+listeners unless there are UDP mounts on the machine.  I know there
+are servers out there that will always speak NLM over UDP
+(netapp/ontap being the prominent one), and as a result there can be
+problems without firewalls.  If servers are out there that will speak
+NLM over UDP regardless of the mount itself, shouldn't we be binding
+NLM/UDP regardless of the mount transport?
 
-Also, the NSM (status monitor) exchanges are often performed via UDP.
-Again, if you are using NLM and the server reboots, the client may not
-become aware of this promptly, and lock reclaim will be affected.
+(Or did I miss this change being reverted a while back?)
 
-OTOH, if your applications don't use locking on the NFS mounts, you'll
-probably be fine.
-
-Tom.
-
+-Aaron
 
 ------------------------------------------------------------------------------
 The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
