@@ -1,117 +1,226 @@
-From: Roger Marcus <roger.marcus@gmail.com>
-Subject: Re: Problem with NFS and XEN
-Date: Fri, 8 May 2009 16:32:18 +0200
-Message-ID: <c4838b6b0905080732v7f693436md49bc6dcdca5d6d9@mail.gmail.com>
-References: <c4838b6b0905072310g5658ed91i486797b76c8d95d3@mail.gmail.com>
-	 <1241785441.19651.28.camel@heimdal.trondhjem.org>
-	 <c4838b6b0905080611n3ef3f2efr3e843836b1e3dd@mail.gmail.com>
-	 <1241790224.19651.40.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 18/19] lockd: Update NSM state from SM_MON replies
+Date: Fri, 8 May 2009 11:19:07 -0400
+Message-ID: <92B5F3F1-7091-4F94-B656-1733DC5A7B02@oracle.com>
+References: <20090423231550.17283.24432.stgit@ingres.1015granger.net> <20090423233332.17283.23011.stgit@ingres.1015granger.net> <20090428162524.GI17891@fieldses.org> <20423538-9733-44FE-8DAC-AD0995DA1B58@oracle.com> <20090428163803.GN17891@fieldses.org> <528F3128-71DD-4B0F-AA31-6A60BC808708@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f174.google.com ([209.85.218.174]:59466 "EHLO
-	mail-bw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752462AbZEHOcU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 10:32:20 -0400
-Received: by bwz22 with SMTP id 22so1405078bwz.37
-        for <linux-nfs@vger.kernel.org>; Fri, 08 May 2009 07:32:19 -0700 (PDT)
-In-Reply-To: <1241790224.19651.40.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:30487 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751071AbZEHPTU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 11:19:20 -0400
+In-Reply-To: <528F3128-71DD-4B0F-AA31-6A60BC808708@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond:
+On Apr 28, 2009, at 3:11 PM, Chuck Lever wrote:
+> On Apr 28, 2009, at 12:38 PM, J. Bruce Fields wrote:
+>> On Tue, Apr 28, 2009 at 12:34:19PM -0400, Chuck Lever wrote:
+>>> On Apr 28, 2009, at 12:25 PM, J. Bruce Fields wrote:
+>>>> On Thu, Apr 23, 2009 at 07:33:33PM -0400, Chuck Lever wrote:
+>>>>> When rpc.statd starts up in user space at boot time, it attempts  
+>>>>> to
+>>>>> write the latest NSM local state number into
+>>>>> /proc/sys/fs/nfs/nsm_local_state.
+>>>>>
+>>>>> If lockd.ko isn't loaded yet (as is the case in most  
+>>>>> configurations),
+>>>>> that file doesn't exist, thus the kernel's NSM state remains set  
+>>>>> to
+>>>>> its initial value of zero during lockd operation.
+>>>>>
+>>>>> This is a problem because rpc.statd and lockd use the NSM state
+>>>>> number
+>>>>> to prevent repeated lock recovery on rebooted hosts.  If lockd  
+>>>>> sends
+>>>>> a zero NSM state, but then a delayed SM_NOTIFY with a real NSM  
+>>>>> state
+>>>>> number is received, there is no way for lockd or rpc.statd to
+>>>>> distinguish that stale SM_NOTIFY from an actual reboot.  Thus lock
+>>>>> recovery could be performed after the rebooted host has already
+>>>>> started reclaiming locks, and those locks will be lost.
+>>>>>
+>>>>> We could change /etc/init.d/nfslock so it always modprobes  
+>>>>> lockd.ko
+>>>>> before starting rpc.statd.  However, if lockd.ko is ever unloaded
+>>>>> and reloaded, we are back at square one, since the NSM state is  
+>>>>> not
+>>>>> preserved across an unload/reload cycle.  This may happen  
+>>>>> frequently
+>>>>> on clients that use automounter.  A period of NFS inactivity  
+>>>>> causes
+>>>>> lockd.ko to be unloaded, and the kernel loses its NSM state  
+>>>>> setting.
+>>>>
+>>>> Aie.  Can we also fix the automounter or some other part of the
+>>>> userspace configuration?
+>>>
+>>> User space isn't the problem here... it's the fact that lockd can  
+>>> get
+>>> unloaded after a period of inactivity.  IMO lockd should be pinned  
+>>> in
+>>> the kernel after it is loaded with /etc/init.d/nfslock.
+>>>
+>>>>> Instead, let's use the fact that rpc.statd plants the local  
+>>>>> system's
+>>>>> NSM state in every SM_MON (and SM_UNMON) reply.  lockd performs a
+>>>>> synchronous SM_MON upcall to the local rpc.statd _before_  
+>>>>> sending its
+>>>>> first NLM request to a new remote.  This would permit rpc.statd to
+>>>>> provide the current NSM state to lockd, even after lockd.ko had  
+>>>>> been
+>>>>> unloaded and reloaded.
+>>>>>
+>>>>> Note that NLMPROC_LOCK arguments are constructed before the
+>>>>> nsm_monitor() call, so we have to rearrange argument construction
+>>>>> very
+>>>>> slightly to make this all work out.
+>>>>>
+>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> ---
+>>>>>
+>>>>> fs/lockd/clntproc.c |    2 +-
+>>>>> fs/lockd/mon.c      |    6 +++++-
+>>>>> 2 files changed, 6 insertions(+), 2 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+>>>>> index dd79570..f55b900 100644
+>>>>> --- a/fs/lockd/clntproc.c
+>>>>> +++ b/fs/lockd/clntproc.c
+>>>>> @@ -126,7 +126,6 @@ static void nlmclnt_setlockargs(struct  
+>>>>> nlm_rqst
+>>>>> *req, struct file_lock *fl)
+>>>>> 	struct nlm_lock	*lock = &argp->lock;
+>>>>>
+>>>>> 	nlmclnt_next_cookie(&argp->cookie);
+>>>>> -	argp->state   = nsm_local_state;
+>>>>> 	memcpy(&lock->fh, NFS_FH(fl->fl_file->f_path.dentry->d_inode),
+>>>>> sizeof(struct nfs_fh));
+>>>>> 	lock->caller  = utsname()->nodename;
+>>>>> 	lock->oh.data = req->a_owner;
+>>>>> @@ -519,6 +518,7 @@ nlmclnt_lock(struct nlm_rqst *req, struct
+>>>>> file_lock *fl)
+>>>>>
+>>>>> 	if (nsm_monitor(host) < 0)
+>>>>> 		goto out;
+>>>>> +	req->a_args.state = nsm_local_state;
+>>>>
+>>>> Hm.  It looks like a_args.state is never used, except in ifdef'd- 
+>>>> out
+>>>> code in nlm4svc_proc_lock() and nlmsvc_proc_lock() ifdef'd out.
+>>>> Something's wrong there.  (Not your fault; but needs looking into.)
+>>>
+>>> This isn't a big deal on the server side (I guess I should give this
+>>> patch to Trond instead of you, in that case).
 
-BINGO!!!!
-That was good!
-Thank you thank you.
-Does this mean that if I recreate the subdirectory, I have to do someth=
-ing to
-re-exportit? like exportfs -a nfsclient:/adir
+Since this is a client-side only patch, should I pass this to Trond  
+instead?
 
-I will keep going, but that is great so far!
-Thank you very much,
+[ more below ]
 
-Roger Marcus
-
-trond:
-Oh, you're using crossmnt to export the subdirectories? In that case,
-why doesn't just 'exportfs -f' suffice to allow you to unmount them?
-
-
-On Fri, May 8, 2009 at 3:43 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Fri, 2009-05-08 at 15:11 +0200, Roger Marcus wrote:
->> Hi Trond,
+>>> The client passes its NSM state number to the server in NLMPROC_LOCK
+>>> calls.  There is no mechanism for the server to pass its NSM state
+>>> number to the client via the NLM protocol.  So the first the  
+>>> client is
+>>> aware of the server's NSM state number is after the server reboots  
+>>> (via
+>>> SM_NOTIFY).  If the server never reboots, the client will never  
+>>> know the
+>>> server's NSM state number.
 >>
->> Thank you for your answer.
->>
->> exportfs does not report the individual directories that are mounted
->> on the exported directory, so I cannot use your script.
->>
->> on the nfsserver exports file:
->> /adir =A0 =A0 192.168.11.129(rw,sync,no_subtree_check,crossmnt,no_ro=
-ot_squash)
->>
->> on the same machine:
->> mount -o loop virtual.iso virtualstuff
->> so now I have /adir/virtualstuff
->>
->> (which by the way, I can: =A0umount virtualstuff immediately without
->> problem and it releases.
->> however, if I run XEN on the client, then the directory is permanent=
-ly
->> locked, ie, umount virtualstuff
->> DOESN'T work again unless I run exportfs -ua killing all connections
->> to the server.)
->>
->> the nfs-client sees /adir/virtualstuff, since parent /adir is mounte=
-d.
->> When I run the virtualmachine within the virtualstuff directory (xm
->> create /adir/virtualstuff/config.cfg)
->> and then I destroy the virtualmachine (xm destroy /adir/virtualstuff=
-/config.cfg)
->> I can never 'umount virtualstuff' from the nfsserver, even though no
->> one is accessing the directory
->> any more.
->>
->> So on the nfsserver I cannot umount virtualstuff. this is the bug.
->>
->> exportfs -ua =A0 =A0kills nfs for everybody, and then I can run 'umo=
-unt
->> virtualstuff', but this is not what I want.
->> exportfs -u nfsclient:/adir =A0 =A0 =A0 doesn't even work. I don't w=
-ant this
->> variation because I might be running 2 virtual machines
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
-=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0in two subdirectories.
->>
->> question: is the fact that ;exportfs -u nfsclient:/adir' doesn't wor=
-k a bug?
->>
->> What I want to be able to do is from the nfsserver side, 'umount
->> virtualstuff', which I can do if I
->> 1) never run XEN, or
->> 2) exportfs -ua. The latter command kills all clients attached to th=
-e server
->> so I cannot use this second command.
->> 3) the command 'exportfs -u nfsclient:/adir' doesn't work and this
->> might be a bug. I do not
->> want this variant since if I am running 2 virtual machines on the
->> nfsclient I would kill the other machine.
->>
->> In /proc/net/rpc/nfsd.export/content =A0 I see my virtualstuff
->> subdirectory referenced. Perhaps this
->> tells you something.
->>
->> Thank you in advance,
->>
->> Roger Marcus
->>
+>> So the #if 0'd code should just be deleted?
 >
-> Oh, you're using crossmnt to export the subdirectories? In that case,
-> why doesn't just 'exportfs -f' suffice to allow you to unmount them?
+> OK, I misread your question before.
 >
-> Trond
+> As I read the code, our server does not appear to utilize the  
+> client's NSM state number, except for gating SM_NOTIFY requests with  
+> a previously-seen NSM state number.  The #ifdef'd code would  
+> potentially deny lock requests if it detected the state number going  
+> backwards.
 >
+> It would be nicer if the server actually tracked the client's state  
+> number, but it doesn't appear to do that today.  The #ifdef'd code  
+> serves to remind us that we should consider this.  This would also  
+> prevent a delayed SM_NOTIFY from causing the server to drop locks  
+> reacquired during the grace period accidentally.
 >
+> So I think it would be good to leave it, or replace it with a FIXME  
+> comment, for now.  Eventually we should add a little extra logic to  
+> handle this case.
+>
+>> --b.
+>>
+>>>
+>>>>> 	fl->fl_flags |= FL_ACCESS;
+>>>>> 	status = do_vfs_lock(fl);
+>>>>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+>>>>> index 6d5d4a4..5017d50 100644
+>>>>> --- a/fs/lockd/mon.c
+>>>>> +++ b/fs/lockd/mon.c
+>>>>> @@ -188,8 +188,12 @@ int nsm_monitor(const struct nlm_host *host)
+>>>>> 		status = -EIO;
+>>>>> 	if (status < 0)
+>>>>> 		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
+>>>>> -	else
+>>>>> +	else {
+>>>>> 		nsm->sm_monitored = 1;
+>>>>> +		nsm_local_state = res.state;
+>>>>> +		dprintk("lockd: nsm_monitor: NSM state is now %d\n",
+>>>>> +				nsm_local_state);
+>>>>
+>>>> Could we make that a dprintk in the case where this changes  
+>>>> nsm_local
+>>>> state from something other than zero (nsm_lock_state &&
+>>>> nsm_local_state
+>>>> != res.state)?
+>>>>
+>>>> (Just to make sure no statd is returning inconsistent  
+>>>> nsm_local_stats
+>>>> here.)
+
+Having the kernel limit changes to the state number is probably not a  
+good idea.  Certain statd operations such as SM_SIMU_CRASH will modify  
+that state number.  We don't use SM_SIMU_CRASH today, but handling  
+server failover and such will likely require something like it.
+
+In any event, servers that are careful enough to track a client's NSM  
+state number will tell us pretty quickly if this is not working right.
+
+>>> I'm not sure that's a big deal, but...
+>>>
+>>> Note that the XNFS version 3 spec suggests the local lockd should
+>>> request the NSM state number when it starts up by posting an
+>>> SM_UNMON_ALL to the local statd.  That might be safer than loading  
+>>> it
+>>> after every SM_MON.
+
+So, the problem with using SM_UNMON_ALL when lockd starts up is that  
+it introduces yet another start-up ordering dependency.  In order for  
+this solution to work, statd is required to be running before lockd  
+starts up.  I think we discussed a few weeks ago how, on the server,  
+lockd needs to start first so that it is available before reboot  
+notifications are sent.
+
+Even though this patch is for the client, I'm loathe to add yet  
+another start-up ordering dependency in this area.  Theoretically this  
+stuff should work correctly no matter what order you start it  
+(especially since we don't package NFS init scripts with nfs-utils).   
+The current proposal (using the result of SM_MON) provides adequate  
+NSM state number updates without introducing new ordering constraints.
+
+>>>>> +	}
+>>>>> 	return status;
+>>>>> }
+>>>>
+>>>> --b.
+>>>
+>>> --
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
