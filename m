@@ -1,250 +1,173 @@
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Subject: Re: integrity: nfsd imbalance bug fix
-Date: Fri, 08 May 2009 14:47:34 -0400
-Message-ID: <1241808454.4843.19.camel@dyn9002018117.watson.ibm.com>
-References: <1240943534.4143.55.camel@dyn9002018117.watson.ibm.com>
-	 <20090429141837.beaa5d59.akpm@linux-foundation.org>
-	 <1241804120.4843.7.camel@dyn9002018117.watson.ibm.com>
-	 <20090508180730.GB20539@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, hooanon05@yahoo.co.jp,
-	jmorris@namei.org, safford@watson.ibm.com,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761325AbZEHSr5@vger.kernel.org>
-In-Reply-To: <20090508180730.GB20539@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFS issues with recent kernels [long]
+Date: Fri, 8 May 2009 16:00:56 -0400
+Message-ID: <8D7394C9-0142-4635-88E5-139F4F5F39F6@oracle.com>
+References: <20090417102659.GC55096@fuchs> <B05C16C7-53B5-4E26-8239-956C600CF452@oracle.com> <20090420091454.GB614@fuchs> <F1250240-F050-47B7-9569-54941AAAD572@oracle.com> <20090421043642.GA52257@fuchs> <20090508193813.GC3801@fuchs>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed	delsp=yes
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Guennadi Liakhovetski <g.liakhovetski@gmx.de>
+To: =?ISO-8859-1?Q?Andr=E9_Berger?= <andre.berger-S0/GAf8tV78@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:19695 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753367AbZEHUBD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 16:01:03 -0400
+In-Reply-To: <20090508193813.GC3801@fuchs>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-05-08 at 14:07 -0400, J. Bruce Fields wrote:
-> On Fri, May 08, 2009 at 01:35:20PM -0400, Mimi Zohar wrote:
-> > On Wed, 2009-04-29 at 14:18 -0700, Andrew Morton wrote: 
-> > > On Tue, 28 Apr 2009 14:32:14 -0400
-> > > Mimi Zohar <zohar@linux.vnet.ibm.com> wrote:
-> > > 
-> > > > The number of calls to ima_path_check()/ima_file_free()
-> > > > should be balanced.  An extra call to fput(), indicates
-> > > > the file could have been accessed without first being
-> > > > measured.
-> > > > 
-> > > > An nfsd exported file is opened/closed by the kernel
-> > > > causing an integrity imbalance message.
-> > > > 
-> > > > - rename and export opencount_get to ima_opencount_get
-> > > > - replace ima_shm_check calls with ima_opencount_get
-> > > > - add call to increment opencount for files opened by nfsd.
-> > > > - add call to measure exported files in nfsd_permission().
-> > > > - export ima_path_check
-> > > > 
-> > > 
-> > > The patch looks fragile to me.  It sprinkles IMA-specific operations
-> > > over random unrelated subsystems.  There is hence a decent chance of
-> > > breakage in the future.
-> > > 
-> > > Suppose some other new piece of kernel code opens/closes a file.  The
-> > > developer didn't think to add the IMA hooks and whoops, we have a bug.
-> > 
-> > Agreed.  Exactly for that reason we have the imbalance message. The
-> > imbalance message is not a bug per se, but an indication that the
-> > file hasn't been integrity (permission) checked.
-> 
-> Where do I need to go to find out what this integrity checking is?  I
-> don't know the first thing about it....
-> 
-> --b.
+On May 8, 2009, at 3:38 PM, Andr=E9 Berger wrote:
+> * Andr=E9 Berger (2009-04-21):
+>> * Chuck Lever (2009-04-20):
+>>> On Apr 20, 2009, at 5:14 AM, Andr=E9 Berger wrote:
+>>>> * Chuck Lever (2009-04-17):
+>>>>> Copying linux-nfs@vger.kernel.org, please follow up there.
+>>>>
+>>>> OK, here we go. If anyone here doesn't want to receive these
+>>>> messages, please let me know.
+>>>>
+>>>> It took me a while to get a tcpdump binary for the dbox2, hence th=
+e
+>>>> delay and extensive quotes. The libc6 for tcpdump is itself locate=
+d
+>>>> on a NFS share.
+>>>
+>>>  [ ... ]
+>>>
+>>>>> You could try capturing a raw packet trace of the initial mount =20
+>>>>> and a
+>>>>> few
+>>>>> reads and write on the share.  The clients negotiate the rsize an=
+d
+>>>>> wsize
+>>>>> settings with the server, and the packet dump would expose the
+>>>>> negotiated
+>>>>> values.
+>>>>>
+>>>>> On your clients, use "tcpdump -s 0 -w /tmp/raw host" followed by =
+=20
+>>>>> the
+>>>>> DNS
+>>>>> name of your server.  Then attach the raw pcap files to e-mail (a=
+s
+>>>>> long as
+>>>>> they are less than 100KB or so) and post them to linux-nfs@vger.k=
+ernel.org
+>>>>
+>>>> Here you go. The host "192.168.1.8 hg linkstation" is specified in
+>>>> /etc/hosts.
+>>>>
+>>>>>> For the sake of completeness, my router is a Linksys WRT54G
+>>>>>>
+>>>>>> with Tomato firmware
+>>>>>>
+>>>>>> <http://www.polarcloud.com/tomato_123>
+>>>>>>
+>>>>>> and a MTU of 1492 throughout the network.
+>>>>>>
+>>>>>> If there is anything I can do to help troubleshooting, please =20
+>>>>>> let me
+>>>>>> know.
+>>>
+>>> I got two copies of this e-mail.  One has a 24KB PCAP file called =20
+>>> "raw"
+>>> and the other has a 90KB file called "xap" that does not appear to =
+=20
+>>> be a
+>>> PCAP file.
+>>
+>> The first message was too big for the list and bounced (172 KB). For
+>> the second one (90KB raw size), I was unable to produce a dump small
+>> enough, so I used split on it. I might have sent the wrong part
+>> though.
+>>
+>>> I looked at "raw" and it's hard to make sense of it.  I see both =20
+>>> UDP and
+>>> TCP traffic, and both NFSv2 and NFSv3 requests.  I guess this is =20
+>>> because
+>>> tcpdump is on NFS.  It would be better if you could copy the tcpdum=
+p
+>>> binary to a local file system on the client before running the =20
+>>> test to
+>>> avoid the extra traffic.
+>>
+>> Space is very limited on the dbox, so I had to try and compile the
+>> dbox2 Neutrino OS with tcpdump during the last couple of days.
+>> Yesterday I succeeded, so I hope to boot the beast today.
+>>
+>>> You should avoid UDP on this network at all costs, especially if =20
+>>> you want
+>>> to use large r/wsize.  It's likely that this is the real performanc=
+e
+>>> issue.  Specify "proto=3Dtcp" on your mount command line to force =20
+>>> the use of
+>>> NFS/TCP.  Otherwise IP packet fragmentation and reassembly will =20
+>>> cause
+>>> dropped RPC requests, exacerbated by network link speed mismatches =
+=20
+>>> and
+>>> Ethernet frame collision on the half-duplex links.
+>>>
+>>> I believe the older 2.4-based NFS clients will use UDP by default.
+>>
+>> Weird, I always got the best results with UDP for writing and TCP fo=
+r
+>> reading.
+>>
+>> I'll try and produce a better, short tcpdump as soon as I can.
+>
+> After some difficulties, here we go!
+>
+> -Andr=E9
+>
+> --
+> May as well be hung for a sheep as a lamb!
+> Linkstation/KuroBox/HG/HS/Tera Kernel 2.6/PPC from <http://hvkls.dynd=
+ns.org=20
+> >
+> iPhone <http://hvkls.dyndns.org/downloads/documentation/README-iphone=
+=2Ehtml=20
+> >
+> <raw>
 
-I'd start with the patch descriptions http://lkml.org/lkml/2009/2/4/251
-and security/integrity/ima/Kconfig, which has a pointer to the initial
-paper on IMA. Documentation/ABI/testing/ima_policy contains information
-on defining a config file.
+Assuming 192.168.1.8 is your server, frame 79 and 622 report FSINFO =20
+results:
 
-Mimi
+Network File System, FSINFO Reply
+     [Program Version: 3]
+     [V3 Procedure: FSINFO (19)]
+     Status: NFS3_OK (0)
+     obj_attributes
+         attributes_follow: no value (0)
+     rtmax: 16384
+     rtpref: 16384
+     rtmult: 4096
+     wtmax: 16384
+     wtpref: 16384
+     wtmult: 4096
+     dtpref: 4096
+     maxfilesize: 2194719883264
+     time delta: 1.000000000 seconds
+         seconds: 1
+         nano seconds: 0
+     Properties: 0x0000001b
+         1... . =3D SETATTR can set time on server
+         .1.. . =3D PATHCONF is valid for all files
+         ...1 . =3D File System supports symbolic links
+         .... 1 =3D File System supports hard links
 
-> > 
-> > > It would be really really better if we could add the IMA hooks in a
-> > > single place.  That might require the addition of a new function, and
-> > > that's fine.  d_instantiate_kernel() or init_file_kernel() or whatever
-> > > - that's fine.  It still has the risk that new code will forget to use
-> > > the in-kernel variant, but we have a better chance of detecting it.
-> > 
-> > Definitely. Originally the integrity checking was in inode_permission().
-> > But measuring a file requires a dentry and mount point.
-> > 
-> > I've updated the patch to fix a 'counts' error and divided the patch
-> > into two, separating the IMA code changes from the IMA calls in nfsd.
-> > 
-> > > > 
-> > > > Index: security-testing-2.6/fs/nfsd/vfs.c
-> > > > ===================================================================
-> > > > --- security-testing-2.6.orig/fs/nfsd/vfs.c
-> > > > +++ security-testing-2.6/fs/nfsd/vfs.c
-> > > > @@ -55,6 +55,7 @@
-> > > >  #include <linux/security.h>
-> > > >  #endif /* CONFIG_NFSD_V4 */
-> > > >  #include <linux/jhash.h>
-> > > > +#include <linux/ima.h>
-> > > >  
-> > > >  #include <asm/uaccess.h>
-> > > >  
-> > > > @@ -735,6 +736,8 @@ nfsd_open(struct svc_rqst *rqstp, struct
-> > > >  			    flags, cred);
-> > > >  	if (IS_ERR(*filp))
-> > > >  		host_err = PTR_ERR(*filp);
-> > > > +	else
-> > > > +		ima_opencount_get(*filp);
-> > > 
-> > > This suggests dentry_open_kernel().
-> > 
-> > Good name, but making dentry_open_kernel() the default behavior,
-> > would mask the real bug - not doing integrity (permission) checking.
-> > 
-> > > 
-> > > >  out_nfserr:
-> > > >  	err = nfserrno(host_err);
-> > > >  out:
-> > > > @@ -2096,7 +2099,13 @@ nfsd_permission(struct svc_rqst *rqstp, 
-> > > >  	if (err == -EACCES && S_ISREG(inode->i_mode) &&
-> > > >  	    acc == (NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE))
-> > > >  		err = inode_permission(inode, MAY_EXEC);
-> > > > +	if (err)
-> > > > +		goto nfsd_out;
-> > > >  
-> > > > +	err = ima_path_check(&exp->ex_path,
-> > > > +			     acc & (MAY_READ | MAY_WRITE | MAY_EXEC));
-> > > 
-> > > hm, dunno what to do about that.
-> > 
-> > The real problem is that this belongs in inode_permission(), but an
-> > inode is not enough.  It requires a dentry and mount point to
-> > measure the file.
-> > 
-> > > > +	return err;
-> > > > +nfsd_out:
-> > > >  	return err? nfserrno(err) : 0;
-> > > >  }
-> > > >  
-> > > > Index: security-testing-2.6/security/integrity/ima/ima_main.c
-> > > > ===================================================================
-> > > > --- security-testing-2.6.orig/security/integrity/ima/ima_main.c
-> > > > +++ security-testing-2.6/security/integrity/ima/ima_main.c
-> > > > @@ -206,6 +206,7 @@ out:
-> > > >  	kref_put(&iint->refcount, iint_free);
-> > > >  	return 0;
-> > > >  }
-> > > > +EXPORT_SYMBOL_GPL(ima_path_check);
-> > > >  
-> > > >  static int process_measurement(struct file *file, const unsigned char *filename,
-> > > >  			       int mask, int function)
-> > > > @@ -234,7 +235,16 @@ out:
-> > > >  	return rc;
-> > > >  }
-> > > >  
-> > > > -static void opencount_get(struct file *file)
-> > > > +/*
-> > > > + * ima_opencount_get - incr opencount for files opened by the kernel
-> > > > + *
-> > > > + * - IPC shm and shmat create/fput a file.
-> > > > + * - nfsd opens/closes exported files.
-> > > > + *
-> > > > + * Increment the opencount for these files to prevent unnecessary
-> > > > + * imbalance messages.
-> > > > + */
-> > > > +void ima_opencount_get(struct file *file)
-> > > >  {
-> > > >  	struct inode *inode = file->f_dentry->d_inode;
-> > > >  	struct ima_iint_cache *iint;
-> > > > @@ -248,6 +258,7 @@ static void opencount_get(struct file *f
-> > > >  	iint->opencount++;
-> > > >  	mutex_unlock(&iint->mutex);
-> > > >  }
-> > > > +EXPORT_SYMBOL_GPL(ima_opencount_get);
-> > > >  
-> > > >  /**
-> > > >   * ima_file_mmap - based on policy, collect/store measurement.
-> > > > @@ -272,18 +283,6 @@ int ima_file_mmap(struct file *file, uns
-> > > >  	return 0;
-> > > >  }
-> > > >  
-> > > > -/*
-> > > > - * ima_shm_check - IPC shm and shmat create/fput a file
-> > > > - *
-> > > > - * Maintain the opencount for these files to prevent unnecessary
-> > > > - * imbalance messages.
-> > > > - */
-> > > > -void ima_shm_check(struct file *file)
-> > > > -{
-> > > > -	opencount_get(file);
-> > > > -	return;
-> > > > -}
-> > > > -
-> > > >  /**
-> > > >   * ima_bprm_check - based on policy, collect/store measurement.
-> > > >   * @bprm: contains the linux_binprm structure
-> > > > Index: security-testing-2.6/include/linux/ima.h
-> > > > ===================================================================
-> > > > --- security-testing-2.6.orig/include/linux/ima.h
-> > > > +++ security-testing-2.6/include/linux/ima.h
-> > > > @@ -20,7 +20,7 @@ extern void ima_inode_free(struct inode 
-> > > >  extern int ima_path_check(struct path *path, int mask);
-> > > >  extern void ima_file_free(struct file *file);
-> > > >  extern int ima_file_mmap(struct file *file, unsigned long prot);
-> > > > -extern void ima_shm_check(struct file *file);
-> > > > +extern void ima_opencount_get(struct file *file);
-> > > >  
-> > > >  #else
-> > > >  static inline int ima_bprm_check(struct linux_binprm *bprm)
-> > > > @@ -53,7 +53,7 @@ static inline int ima_file_mmap(struct f
-> > > >  	return 0;
-> > > >  }
-> > > >  
-> > > > -static inline void ima_shm_check(struct file *file)
-> > > > +static inline void ima_opencount_get(struct file *file)
-> > > >  {
-> > > >  	return;
-> > > >  }
-> > > > Index: security-testing-2.6/ipc/shm.c
-> > > > ===================================================================
-> > > > --- security-testing-2.6.orig/ipc/shm.c
-> > > > +++ security-testing-2.6/ipc/shm.c
-> > > > @@ -384,7 +384,7 @@ static int newseg(struct ipc_namespace *
-> > > >  	error = PTR_ERR(file);
-> > > >  	if (IS_ERR(file))
-> > > >  		goto no_file;
-> > > > -	ima_shm_check(file);
-> > > > +	ima_opencount_get(file);
-> > > >  
-> > > >  	id = ipc_addid(&shm_ids(ns), &shp->shm_perm, ns->shm_ctlmni);
-> > > >  	if (id < 0) {
-> > > > @@ -891,7 +891,7 @@ long do_shmat(int shmid, char __user *sh
-> > > >  	file = alloc_file(path.mnt, path.dentry, f_mode, &shm_file_operations);
-> > > >  	if (!file)
-> > > >  		goto out_free;
-> > > > -	ima_shm_check(file);
-> > > > +	ima_opencount_get(file);
-> > > >  
-> > > >  	file->private_data = sfd;
-> > > >  	file->f_mapping = shp->shm_file->f_mapping;
-> > > > Index: security-testing-2.6/mm/shmem.c
-> > > > ===================================================================
-> > > > --- security-testing-2.6.orig/mm/shmem.c
-> > > > +++ security-testing-2.6/mm/shmem.c
-> > > > @@ -2680,7 +2680,7 @@ int shmem_zero_setup(struct vm_area_stru
-> > > >  	if (IS_ERR(file))
-> > > >  		return PTR_ERR(file);
-> > > >  
-> > > > -	ima_shm_check(file);
-> > > > +	ima_opencount_get(file);
-> > > >  	if (vma->vm_file)
-> > > >  		fput(vma->vm_file);
-> > > >  	vma->vm_file = file;
-> > > 
-> > > Maybe do the IMA operations in (or under) shmem_file_setup() and
-> > > hugetlb_file_setup()?
-> > 
-> > Again, that would hide the real issue of not having done integrity
-> > (permission) checking.
-> > 
-> > Mimi
-> > 
+says your server operating system supports NFS rsize and wsize maxima =20
+of 16384 bytes.
+
+RFC 1813:
+> rtmax
+> The maximum size in bytes of a READ request supported by the server. =
+=20
+> Any READ with a number greater than rtmax will result in a short =20
+> read of rtmax bytes or less.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
