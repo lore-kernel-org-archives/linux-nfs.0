@@ -1,143 +1,236 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Problem with NFS and XEN
-Date: Fri, 8 May 2009 13:18:46 -0400
-Message-ID: <20090508171845.GA19945@fieldses.org>
-References: <c4838b6b0905072310g5658ed91i486797b76c8d95d3@mail.gmail.com> <1241785441.19651.28.camel@heimdal.trondhjem.org> <c4838b6b0905080611n3ef3f2efr3e843836b1e3dd@mail.gmail.com> <1241790224.19651.40.camel@heimdal.trondhjem.org> <c4838b6b0905080732v7f693436md49bc6dcdca5d6d9@mail.gmail.com>
+From: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Subject: Re: integrity: nfsd imbalance bug fix
+Date: Fri, 08 May 2009 13:35:20 -0400
+Message-ID: <1241804120.4843.7.camel@dyn9002018117.watson.ibm.com>
+References: <1240943534.4143.55.camel@dyn9002018117.watson.ibm.com>
+	 <20090429141837.beaa5d59.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: Roger Marcus <roger.marcus@gmail.com>
+Content-Type: text/plain
+Cc: linux-kernel@vger.kernel.org, hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org,
+	jmorris@namei.org, safford-aZOuKsOsJu3MbYB6QlFGEg@public.gmane.org,
+	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:52954 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751702AbZEHRSp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 13:18:45 -0400
-In-Reply-To: <c4838b6b0905080732v7f693436md49bc6dcdca5d6d9-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:54880 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751677AbZEHRfY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 13:35:24 -0400
+In-Reply-To: <20090429141837.beaa5d59.akpm@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 08, 2009 at 04:32:18PM +0200, Roger Marcus wrote:
-> Trond:
->=20
-> BINGO!!!!
-> That was good!
-> Thank you thank you.
-> Does this mean that if I recreate the subdirectory, I have to do some=
-thing to
-> re-exportit? like exportfs -a nfsclient:/adir
+On Wed, 2009-04-29 at 14:18 -0700, Andrew Morton wrote: 
+> On Tue, 28 Apr 2009 14:32:14 -0400
+> Mimi Zohar <zohar@linux.vnet.ibm.com> wrote:
+> 
+> > The number of calls to ima_path_check()/ima_file_free()
+> > should be balanced.  An extra call to fput(), indicates
+> > the file could have been accessed without first being
+> > measured.
+> > 
+> > An nfsd exported file is opened/closed by the kernel
+> > causing an integrity imbalance message.
+> > 
+> > - rename and export opencount_get to ima_opencount_get
+> > - replace ima_shm_check calls with ima_opencount_get
+> > - add call to increment opencount for files opened by nfsd.
+> > - add call to measure exported files in nfsd_permission().
+> > - export ima_path_check
+> > 
+> 
+> The patch looks fragile to me.  It sprinkles IMA-specific operations
+> over random unrelated subsystems.  There is hence a decent chance of
+> breakage in the future.
+> 
+> Suppose some other new piece of kernel code opens/closes a file.  The
+> developer didn't think to add the IMA hooks and whoops, we have a bug.
 
-No, no need.
+Agreed.  Exactly for that reason we have the imbalance message. The
+imbalance message is not a bug per se, but an indication that the
+file hasn't been integrity (permission) checked.
 
-The kernel has its own cache of the export table, and asks mountd when =
-a
-client tries to access a filesystem that it doesn't have a cached expor=
-t
-for.  The "exportfs -f" just flushes that kernels cache, without
-changing mountd's idea of which filesystems are exported.
+> It would be really really better if we could add the IMA hooks in a
+> single place.  That might require the addition of a new function, and
+> that's fine.  d_instantiate_kernel() or init_file_kernel() or whatever
+> - that's fine.  It still has the risk that new code will forget to use
+> the in-kernel variant, but we have a better chance of detecting it.
 
-So the next time a client tries to access that filesystem, the kernel
-will get the export information back from mountd (and the filesystem
-will become busy again).
+Definitely. Originally the integrity checking was in inode_permission().
+But measuring a file requires a dentry and mount point.
 
---b.
+I've updated the patch to fix a 'counts' error and divided the patch
+into two, separating the IMA code changes from the IMA calls in nfsd.
 
->=20
-> I will keep going, but that is great so far!
-> Thank you very much,
->=20
-> Roger Marcus
->=20
-> trond:
-> Oh, you're using crossmnt to export the subdirectories? In that case,
-> why doesn't just 'exportfs -f' suffice to allow you to unmount them?
->=20
->=20
-> On Fri, May 8, 2009 at 3:43 PM, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
-> > On Fri, 2009-05-08 at 15:11 +0200, Roger Marcus wrote:
-> >> Hi Trond,
-> >>
-> >> Thank you for your answer.
-> >>
-> >> exportfs does not report the individual directories that are mount=
-ed
-> >> on the exported directory, so I cannot use your script.
-> >>
-> >> on the nfsserver exports file:
-> >> /adir =C2=A0 =C2=A0 192.168.11.129(rw,sync,no_subtree_check,crossm=
-nt,no_root_squash)
-> >>
-> >> on the same machine:
-> >> mount -o loop virtual.iso virtualstuff
-> >> so now I have /adir/virtualstuff
-> >>
-> >> (which by the way, I can: =C2=A0umount virtualstuff immediately wi=
-thout
-> >> problem and it releases.
-> >> however, if I run XEN on the client, then the directory is permane=
-ntly
-> >> locked, ie, umount virtualstuff
-> >> DOESN'T work again unless I run exportfs -ua killing all connectio=
-ns
-> >> to the server.)
-> >>
-> >> the nfs-client sees /adir/virtualstuff, since parent /adir is moun=
-ted.
-> >> When I run the virtualmachine within the virtualstuff directory (x=
-m
-> >> create /adir/virtualstuff/config.cfg)
-> >> and then I destroy the virtualmachine (xm destroy /adir/virtualstu=
-ff/config.cfg)
-> >> I can never 'umount virtualstuff' from the nfsserver, even though =
-no
-> >> one is accessing the directory
-> >> any more.
-> >>
-> >> So on the nfsserver I cannot umount virtualstuff. this is the bug.
-> >>
-> >> exportfs -ua =C2=A0 =C2=A0kills nfs for everybody, and then I can =
-run 'umount
-> >> virtualstuff', but this is not what I want.
-> >> exportfs -u nfsclient:/adir =C2=A0 =C2=A0 =C2=A0 doesn't even work=
-=2E I don't want this
-> >> variation because I might be running 2 virtual machines
-> >> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=
-=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0in two subdirectories.
-> >>
-> >> question: is the fact that ;exportfs -u nfsclient:/adir' doesn't w=
-ork a bug?
-> >>
-> >> What I want to be able to do is from the nfsserver side, 'umount
-> >> virtualstuff', which I can do if I
-> >> 1) never run XEN, or
-> >> 2) exportfs -ua. The latter command kills all clients attached to =
-the server
-> >> so I cannot use this second command.
-> >> 3) the command 'exportfs -u nfsclient:/adir' doesn't work and this
-> >> might be a bug. I do not
-> >> want this variant since if I am running 2 virtual machines on the
-> >> nfsclient I would kill the other machine.
-> >>
-> >> In /proc/net/rpc/nfsd.export/content =C2=A0 I see my virtualstuff
-> >> subdirectory referenced. Perhaps this
-> >> tells you something.
-> >>
-> >> Thank you in advance,
-> >>
-> >> Roger Marcus
-> >>
-> >
-> > Oh, you're using crossmnt to export the subdirectories? In that cas=
-e,
-> > why doesn't just 'exportfs -f' suffice to allow you to unmount them=
-?
-> >
-> > Trond
-> >
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > Index: security-testing-2.6/fs/nfsd/vfs.c
+> > ===================================================================
+> > --- security-testing-2.6.orig/fs/nfsd/vfs.c
+> > +++ security-testing-2.6/fs/nfsd/vfs.c
+> > @@ -55,6 +55,7 @@
+> >  #include <linux/security.h>
+> >  #endif /* CONFIG_NFSD_V4 */
+> >  #include <linux/jhash.h>
+> > +#include <linux/ima.h>
+> >  
+> >  #include <asm/uaccess.h>
+> >  
+> > @@ -735,6 +736,8 @@ nfsd_open(struct svc_rqst *rqstp, struct
+> >  			    flags, cred);
+> >  	if (IS_ERR(*filp))
+> >  		host_err = PTR_ERR(*filp);
+> > +	else
+> > +		ima_opencount_get(*filp);
+> 
+> This suggests dentry_open_kernel().
+
+Good name, but making dentry_open_kernel() the default behavior,
+would mask the real bug - not doing integrity (permission) checking.
+
+> 
+> >  out_nfserr:
+> >  	err = nfserrno(host_err);
+> >  out:
+> > @@ -2096,7 +2099,13 @@ nfsd_permission(struct svc_rqst *rqstp, 
+> >  	if (err == -EACCES && S_ISREG(inode->i_mode) &&
+> >  	    acc == (NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE))
+> >  		err = inode_permission(inode, MAY_EXEC);
+> > +	if (err)
+> > +		goto nfsd_out;
+> >  
+> > +	err = ima_path_check(&exp->ex_path,
+> > +			     acc & (MAY_READ | MAY_WRITE | MAY_EXEC));
+> 
+> hm, dunno what to do about that.
+
+The real problem is that this belongs in inode_permission(), but an
+inode is not enough.  It requires a dentry and mount point to
+measure the file.
+
+> > +	return err;
+> > +nfsd_out:
+> >  	return err? nfserrno(err) : 0;
+> >  }
+> >  
+> > Index: security-testing-2.6/security/integrity/ima/ima_main.c
+> > ===================================================================
+> > --- security-testing-2.6.orig/security/integrity/ima/ima_main.c
+> > +++ security-testing-2.6/security/integrity/ima/ima_main.c
+> > @@ -206,6 +206,7 @@ out:
+> >  	kref_put(&iint->refcount, iint_free);
+> >  	return 0;
+> >  }
+> > +EXPORT_SYMBOL_GPL(ima_path_check);
+> >  
+> >  static int process_measurement(struct file *file, const unsigned char *filename,
+> >  			       int mask, int function)
+> > @@ -234,7 +235,16 @@ out:
+> >  	return rc;
+> >  }
+> >  
+> > -static void opencount_get(struct file *file)
+> > +/*
+> > + * ima_opencount_get - incr opencount for files opened by the kernel
+> > + *
+> > + * - IPC shm and shmat create/fput a file.
+> > + * - nfsd opens/closes exported files.
+> > + *
+> > + * Increment the opencount for these files to prevent unnecessary
+> > + * imbalance messages.
+> > + */
+> > +void ima_opencount_get(struct file *file)
+> >  {
+> >  	struct inode *inode = file->f_dentry->d_inode;
+> >  	struct ima_iint_cache *iint;
+> > @@ -248,6 +258,7 @@ static void opencount_get(struct file *f
+> >  	iint->opencount++;
+> >  	mutex_unlock(&iint->mutex);
+> >  }
+> > +EXPORT_SYMBOL_GPL(ima_opencount_get);
+> >  
+> >  /**
+> >   * ima_file_mmap - based on policy, collect/store measurement.
+> > @@ -272,18 +283,6 @@ int ima_file_mmap(struct file *file, uns
+> >  	return 0;
+> >  }
+> >  
+> > -/*
+> > - * ima_shm_check - IPC shm and shmat create/fput a file
+> > - *
+> > - * Maintain the opencount for these files to prevent unnecessary
+> > - * imbalance messages.
+> > - */
+> > -void ima_shm_check(struct file *file)
+> > -{
+> > -	opencount_get(file);
+> > -	return;
+> > -}
+> > -
+> >  /**
+> >   * ima_bprm_check - based on policy, collect/store measurement.
+> >   * @bprm: contains the linux_binprm structure
+> > Index: security-testing-2.6/include/linux/ima.h
+> > ===================================================================
+> > --- security-testing-2.6.orig/include/linux/ima.h
+> > +++ security-testing-2.6/include/linux/ima.h
+> > @@ -20,7 +20,7 @@ extern void ima_inode_free(struct inode 
+> >  extern int ima_path_check(struct path *path, int mask);
+> >  extern void ima_file_free(struct file *file);
+> >  extern int ima_file_mmap(struct file *file, unsigned long prot);
+> > -extern void ima_shm_check(struct file *file);
+> > +extern void ima_opencount_get(struct file *file);
+> >  
+> >  #else
+> >  static inline int ima_bprm_check(struct linux_binprm *bprm)
+> > @@ -53,7 +53,7 @@ static inline int ima_file_mmap(struct f
+> >  	return 0;
+> >  }
+> >  
+> > -static inline void ima_shm_check(struct file *file)
+> > +static inline void ima_opencount_get(struct file *file)
+> >  {
+> >  	return;
+> >  }
+> > Index: security-testing-2.6/ipc/shm.c
+> > ===================================================================
+> > --- security-testing-2.6.orig/ipc/shm.c
+> > +++ security-testing-2.6/ipc/shm.c
+> > @@ -384,7 +384,7 @@ static int newseg(struct ipc_namespace *
+> >  	error = PTR_ERR(file);
+> >  	if (IS_ERR(file))
+> >  		goto no_file;
+> > -	ima_shm_check(file);
+> > +	ima_opencount_get(file);
+> >  
+> >  	id = ipc_addid(&shm_ids(ns), &shp->shm_perm, ns->shm_ctlmni);
+> >  	if (id < 0) {
+> > @@ -891,7 +891,7 @@ long do_shmat(int shmid, char __user *sh
+> >  	file = alloc_file(path.mnt, path.dentry, f_mode, &shm_file_operations);
+> >  	if (!file)
+> >  		goto out_free;
+> > -	ima_shm_check(file);
+> > +	ima_opencount_get(file);
+> >  
+> >  	file->private_data = sfd;
+> >  	file->f_mapping = shp->shm_file->f_mapping;
+> > Index: security-testing-2.6/mm/shmem.c
+> > ===================================================================
+> > --- security-testing-2.6.orig/mm/shmem.c
+> > +++ security-testing-2.6/mm/shmem.c
+> > @@ -2680,7 +2680,7 @@ int shmem_zero_setup(struct vm_area_stru
+> >  	if (IS_ERR(file))
+> >  		return PTR_ERR(file);
+> >  
+> > -	ima_shm_check(file);
+> > +	ima_opencount_get(file);
+> >  	if (vma->vm_file)
+> >  		fput(vma->vm_file);
+> >  	vma->vm_file = file;
+> 
+> Maybe do the IMA operations in (or under) shmem_file_setup() and
+> hugetlb_file_setup()?
+
+Again, that would hide the real issue of not having done integrity
+(permission) checking.
+
+Mimi
+
