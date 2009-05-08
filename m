@@ -1,75 +1,73 @@
-From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
-Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Fri, 08 May 2009 08:03:08 +0200
-Message-ID: <4A03CB1C.7020703@bio.ifi.lmu.de>
-References: <4A02DAA8.6050005@bio.ifi.lmu.de>
-	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
-	<4A02FDC3.9090709@bio.ifi.lmu.de>
-	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
+From: Roger Marcus <roger.marcus@gmail.com>
+Subject: Problem with NFS and XEN
+Date: Fri, 8 May 2009 08:10:50 +0200
+Message-ID: <c4838b6b0905072310g5658ed91i486797b76c8d95d3@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Leonardo Chiquitto <leonardo.lists@gmail.com>,
-	nfs@lists.sourceforge.net
-To: Tom Talpey <tmtalpey@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:51282 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751209AbZEHGEs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 May 2009 02:04:48 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M2JCQ-0003l3-Sy
-	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 16:04:47 +1000
-In-Reply-To: <4a02ffdf.1ac1f10a.637d.ffffbc3a-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:43430 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753742AbZEHGKv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 02:10:51 -0400
+Received: by fxm2 with SMTP id 2so1191512fxm.37
+        for <linux-nfs@vger.kernel.org>; Thu, 07 May 2009 23:10:50 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom Talpey wrote
+Hi,
 
+I am having a problem with NFS and I thought that you could help me or
+you could steer me to
+someone who might be able to.
 
-> In particular, if you do NLM file locking, there is a server callback (NLM
-> "granted") which the server may choose to issue via UDP. If this callback
-> is not seen by the client due to firewall blocking, there may be a 30-second
-> pause before a client retry unblocks the caller.
-> 
-> Also, the NSM (status monitor) exchanges are often performed via UDP.
-> Again, if you are using NLM and the server reboots, the client may not
-> become aware of this promptly, and lock reclaim will be affected.
-> 
-> OTOH, if your applications don't use locking on the NFS mounts, you'll
-> probably be fine.
+The problem is this:
 
-We do use locking on nfs mounts, so I wonder what that would mean for the
-firewall. Currently I see connections from the NFS server *from* port 700
-and 111 (we've fixed mountd port to 700) to (it seems) arbitrary udp
-ports on the NFS clients.
+An NFS Server mounts an image on a local directory, containing a XEN
+virtual machine configuration file and a XEN image.
 
-Would that be enough to allow those? Or could the source ports be arbitrary
-with NLM, too? I.e., would we have to open all udp traffic from the NFS
-servers to all the NFS clients?
+An NFS Client computer sees the directory that was mounted remotely
+and starts the XEN Virtual machine on the mounted directory.
+The NFS Client computer then stops the XEN Virtual machine. So far, so
+good. The machine ran. It stopped. The NFS Client
+leaves the directory. No process is accessing that directory from the
+client side.
 
-cu,
-Frank
+Problem: The NFS Server cannot umount the local directory.
+fuser returns no usage of the directory.
+lsof returns no usage of the directory.
+umount -f won't force umount the directory.
 
+What does work is exportfs -ua.
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+This is not a good way to go, since it is planned that many clients
+will be using the server; indeed many
+clients will be using multiple subdirectories on the server.
 
-------------------------------------------------------------------------------
-The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
-production scanning environment may not be a perfect world - but thanks to
-Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
-Series Scanner you'll get full speed at 300 dpi even with all image 
-processing features enabled. http://p.sf.net/sfu/kodak-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+1. Is this a XEN bug or an NFS bug?
+2. Is there some other command like exportfs in which you can just
+disable the one local directory but maintain an
+active mount on the parent directory?
 
+exports:
+/adir =A0=A0=A0 192.168.11.129(rw,sync,no_subtree_check,crossmnt,no_roo=
+t_squash)
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+/adir/image.iso (contains xen vm stuff)
+server executes: mount -o loop /adir/image.iso /adir/virtualstuff
+
+client mounts adir with mount -t nfs 192.168.11.22:/adir /adir
+xm create /adir/virtualstuff/config.cfg
+xm destroy virtual
+
+on the nfs-server:
+umount /adir/virtualstuff (won't)
+
+only exportfs -ua works, but this defeats my purpose.
+
+Can you suggest anything?
+
+thanks in advance,
+
+Roger Marcus
