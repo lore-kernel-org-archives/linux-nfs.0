@@ -1,74 +1,135 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Fri, 08 May 2009 08:27:42 -0400
-Message-ID: <1241785662.19651.32.camel@heimdal.trondhjem.org>
-References: <4A02DAA8.6050005@bio.ifi.lmu.de>
-	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
-	<4A02FDC3.9090709@bio.ifi.lmu.de>
-	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
-	<4A03CB1C.7020703@bio.ifi.lmu.de>
+From: Roger Marcus <roger.marcus@gmail.com>
+Subject: Re: Problem with NFS and XEN
+Date: Fri, 8 May 2009 15:11:42 +0200
+Message-ID: <c4838b6b0905080611n3ef3f2efr3e843836b1e3dd@mail.gmail.com>
+References: <c4838b6b0905072310g5658ed91i486797b76c8d95d3@mail.gmail.com>
+	 <1241785441.19651.28.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Leonardo Chiquitto <leonardo.lists@gmail.com>,
-	nfs@lists.sourceforge.net, Tom Talpey <tmtalpey@gmail.com>
-To: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:42225 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753578AbZEHM3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 May 2009 08:29:47 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M2PD0-0000NN-Nu
-	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 22:29:46 +1000
-In-Reply-To: <4A03CB1C.7020703-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:38969 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751207AbZEHNLm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 May 2009 09:11:42 -0400
+Received: by fxm2 with SMTP id 2so1388116fxm.37
+        for <linux-nfs@vger.kernel.org>; Fri, 08 May 2009 06:11:42 -0700 (PDT)
+In-Reply-To: <1241785441.19651.28.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-05-08 at 08:03 +0200, Frank Steiner wrote:
-> Tom Talpey wrote
-> 
-> 
-> > In particular, if you do NLM file locking, there is a server callback (NLM
-> > "granted") which the server may choose to issue via UDP. If this callback
-> > is not seen by the client due to firewall blocking, there may be a 30-second
-> > pause before a client retry unblocks the caller.
-> > 
-> > Also, the NSM (status monitor) exchanges are often performed via UDP.
-> > Again, if you are using NLM and the server reboots, the client may not
-> > become aware of this promptly, and lock reclaim will be affected.
-> > 
-> > OTOH, if your applications don't use locking on the NFS mounts, you'll
-> > probably be fine.
-> 
-> We do use locking on nfs mounts, so I wonder what that would mean for the
-> firewall. Currently I see connections from the NFS server *from* port 700
-> and 111 (we've fixed mountd port to 700) to (it seems) arbitrary udp
-> ports on the NFS clients.
-> 
-> Would that be enough to allow those? Or could the source ports be arbitrary
-> with NLM, too? I.e., would we have to open all udp traffic from the NFS
-> servers to all the NFS clients?
+Hi Trond,
 
-Most NFS servers allow you to pin the ports used by the lockd service.
-In Linux, the kernel boot parameters lockd.nlm_tcpport and
-lockd.nlm_udpport will suffice to do it for you (see
-linux/Documentation/kernel-parameters.txt).
+Thank you for your answer.
 
-Trond
+exportfs does not report the individual directories that are mounted
+on the exported directory, so I cannot use your script.
+
+on the nfsserver exports file:
+/adir     192.168.11.129(rw,sync,no_subtree_check,crossmnt,no_root_squash)
+
+on the same machine:
+mount -o loop virtual.iso virtualstuff
+so now I have /adir/virtualstuff
+
+(which by the way, I can:  umount virtualstuff immediately without
+problem and it releases.
+however, if I run XEN on the client, then the directory is permanently
+locked, ie, umount virtualstuff
+DOESN'T work again unless I run exportfs -ua killing all connections
+to the server.)
+
+the nfs-client sees /adir/virtualstuff, since parent /adir is mounted.
+When I run the virtualmachine within the virtualstuff directory (xm
+create /adir/virtualstuff/config.cfg)
+and then I destroy the virtualmachine (xm destroy /adir/virtualstuff/config.cfg)
+I can never 'umount virtualstuff' from the nfsserver, even though no
+one is accessing the directory
+any more.
+
+So on the nfsserver I cannot umount virtualstuff. this is the bug.
+
+exportfs -ua    kills nfs for everybody, and then I can run 'umount
+virtualstuff', but this is not what I want.
+exportfs -u nfsclient:/adir       doesn't even work. I don't want this
+variation because I might be running 2 virtual machines
+                                                 in two subdirectories.
+
+question: is the fact that ;exportfs -u nfsclient:/adir' doesn't work a bug?
+
+What I want to be able to do is from the nfsserver side, 'umount
+virtualstuff', which I can do if I
+1) never run XEN, or
+2) exportfs -ua. The latter command kills all clients attached to the server
+so I cannot use this second command.
+3) the command 'exportfs -u nfsclient:/adir' doesn't work and this
+might be a bug. I do not
+want this variant since if I am running 2 virtual machines on the
+nfsclient I would kill the other machine.
+
+In /proc/net/rpc/nfsd.export/content   I see my virtualstuff
+subdirectory referenced. Perhaps this
+tells you something.
+
+Thank you in advance,
+
+Roger Marcus
 
 
-------------------------------------------------------------------------------
-The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
-production scanning environment may not be a perfect world - but thanks to
-Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
-Series Scanner you'll get full speed at 300 dpi even with all image 
-processing features enabled. http://p.sf.net/sfu/kodak-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
 
+
+On Fri, May 8, 2009 at 2:24 PM, Trond Myklebust
+<trond.myklebust@fys.uio.no> wrote:
+> On Fri, 2009-05-08 at 08:10 +0200, Roger Marcus wrote:
+>> Hi,
+>>
+>> I am having a problem with NFS and I thought that you could help me or
+>> you could steer me to
+>> someone who might be able to.
+>>
+>> The problem is this:
+>>
+>> An NFS Server mounts an image on a local directory, containing a XEN
+>> virtual machine configuration file and a XEN image.
+>>
+>> An NFS Client computer sees the directory that was mounted remotely
+>> and starts the XEN Virtual machine on the mounted directory.
+>> The NFS Client computer then stops the XEN Virtual machine. So far, so
+>> good. The machine ran. It stopped. The NFS Client
+>> leaves the directory. No process is accessing that directory from the
+>> client side.
+>
+> It is still exported, so the NFS server still has a reference to it.
+>
+>> Problem: The NFS Server cannot umount the local directory.
+>> fuser returns no usage of the directory.
+>> lsof returns no usage of the directory.
+>
+> correction: lsof and fuser don't show any _user processes_ that
+> reference the directory. NFSd runs in the kernel...
+>
+>> umount -f won't force umount the directory.
+>>
+>> What does work is exportfs -ua.
+>
+> or 'exportfs -u client:/directory'. See 'man exportfs'
+>
+>> This is not a good way to go, since it is planned that many clients
+>> will be using the server; indeed many
+>> clients will be using multiple subdirectories on the server.
+>>
+>> 1. Is this a XEN bug or an NFS bug?
+>> 2. Is there some other command like exportfs in which you can just
+>> disable the one local directory but maintain an
+>> active mount on the parent directory?
+>
+> See above.
+>
+> Note that if you want to unexport all export entries for a particular
+> directory '/mydir', then something like this simple script will do it:
+>
+> exportfs -u $(exportfs | awk '/^\/mydir/ { print $2 ":" $1; }')
+>
+> Trond
+>
+>
