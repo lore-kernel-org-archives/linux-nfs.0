@@ -1,210 +1,465 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS write OOPS with 2.6.29.2
-Date: Sun, 10 May 2009 00:17:54 -0400
-Message-ID: <1241929074.5149.1.camel@heimdal.trondhjem.org>
-References: <Pine.LNX.4.64.0905031552340.1774@praktifix.dwd.de>
-	 <20090504231426.2e5a51b0.akpm@linux-foundation.org>
-	 <Pine.LNX.4.64.0905091913010.3181@praktifix.dwd.de>
+From: Wang Chen <wangchen@cn.fujitsu.com>
+Subject: Re: [PATCH] nfs lockd: detect grace_list corruption
+Date: Mon, 11 May 2009 14:13:50 +0800
+Message-ID: <4A07C21E.3020309@cn.fujitsu.com>
+References: <49F12D78.2040304@cn.fujitsu.com> <20090424231252.GD22477@fieldses.org> <4A0155A0.4020008@cn.fujitsu.com> <20090506203227.GM9861@fieldses.org> <4A0284EB.9050202@cn.fujitsu.com> <20090508182648.GD20539@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-flTo81mqaIGkWR0gU+s2"
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: neilb@suse.de, Trond.Myklebust@netapp.com,
 	linux-nfs@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Holger Kiehl <Holger.Kiehl-ra7Ruw+Xvfw@public.gmane.org>
+	FNST-Bian Naimeng <biannm@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:54216 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750732AbZEJER6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 May 2009 00:17:58 -0400
-In-Reply-To: <Pine.LNX.4.64.0905091913010.3181-DdDwMD9x1pcjw5PkpUM3Og@public.gmane.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:50456 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751161AbZEKGOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 May 2009 02:14:33 -0400
+In-Reply-To: <20090508182648.GD20539@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
---=-flTo81mqaIGkWR0gU+s2
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-
-On Sat, 2009-05-09 at 19:16 +0000, Holger Kiehl wrote:
-> On Mon, 4 May 2009, Andrew Morton wrote:
+J. Bruce Fields said the following on 2009-5-9 2:26:
+> On Thu, May 07, 2009 at 02:51:23PM +0800, Wang Chen wrote:
+>> J. Bruce Fields said the following on 2009-5-7 4:32:
+>>> On Wed, May 06, 2009 at 05:17:20PM +0800, Wang Chen wrote:
+>>>> J. Bruce Fields said the following on 2009-4-25 7:12:
+>>>>> On Fri, Apr 24, 2009 at 11:09:44AM +0800, Wang Chen wrote:
+>>>>>> Although I can't reproduce it now, it really happened that some lock manager
+>>>>>> started grace period but didn't end it.
+>>>>>> This causes an lm entry be left in grace_list, and when service nfs restart,
+>>>>>> the same lm will be added again into the list.
+>>>>>> As you know, adding an entry, which is in the list, to a list will leads to
+>>>>>> list corruption.
+>>>>> I'd really like to understand why locks_end_grace() isn't being called.
+>>>>> I'm probably overlooking something obvious, but I just can't see how
+>>>>> lockd or nfsd can be shut down right now without locks_end_grace() being
+>>>>> called.
+>>>>>
+>>>> Me neither can figure out why locks_end_grace() isn't being called.
+>>>>
+>>>> But do locks_start_grace() twice can trigger this warning too.
+>>>> You can do
+>>>> 1. service nfs restart
+>>>> 2. (immediately) kill -s SIGKILL lockd
+>>>> this can trigger
+>>>> ---
+>>>> lockd(void *vrqstp)
+>>>> ...
+>>>> 		if (signalled()) {
+>>>> 			flush_signals(current);
+>>>> 			if (nlmsvc_ops) {
+>>>> 				nlmsvc_invalidate_all();
+>>>> 				set_grace_period();
+>>>> ---
+>>>> and makes locks_start_grace() be called twice without locks_end_grace().
+>>> Ah-hah!
+>>>
+>>>> So I still suggest to do something to protect the lm list. :)
+>>> I wouldn't be opposed to a simple WARN_ON(!list_empty()) in
+>>> locks_start_grace(), but I'm mainly worried about fixing the original
+>>> bug.  How about the following?
+>>>
+>> Yeah, the following fix is OK to me, although it only fixed
+>> "start_grace again after start_grace" case.
 > 
-> >
-> > (cc linux-nfs)
-> >
-> > On Sun, 3 May 2009 16:03:38 +0000 (GMT) Holger Kiehl <Holger.Kiehl-ra7Ruw+Xvfw@public.gmane.org> wrote:
-> >
-> >> Hello
-> >>
-> >> With plain kernel 2.6.29.2 I get the following OOPS (several of them) when
-> >> writing lots of small files on the client system:
-> >>
-> >>     May  3 18:48:34 obelix kernel: ------------[ cut here ]------------
-> >>     May  3 18:48:34 obelix kernel: kernel BUG at fs/nfs/write.c:252!
-> >
-> > I think this is a well-know bug, and fixes should be available in 2.6.29.3?
-> >
-> Thanks for this information. I just tried 2.6.29.3 and it still oopses.
-> Are there any patches I can try?
+> OK, thanks.
+> 
+>> The bug about "quit lockd without end_grace", which I encountered before
+>> incidentally, maybe is still there.
+> 
+> You're talking about the report that started this thread?:
+> 
+> 	http://marc.info/?l=linux-nfs&m=124054262421444&w=2
+> 
 
-The attached backports against 2.6.29 are untested, but they are known
-to compile at least. Could you give them a try?
+Yes. I mean this.
 
-Cheers
-  Trond
+> It looks to me like that could be explained by two start_grace's in a
+> row.
+> 
 
+But in that report, I didn't post the total message.
+Here are something show that:
+1. not only lockd has the problem, but nfsd also.
+2. every time I do "service nfs restart", I got the warning, so this is not
+   "two start_grace's in a row" problem.
+Following is more message I got on last month.
+------------------------------------------------------
+Apr 16 16:35:41 localhost mountd[15061]: Caught signal 15, un-registering and exiting.
+Apr 16 16:35:42 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 16 16:35:43 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 16 16:35:43 localhost kernel: ------------[ cut here ]------------
+Apr 16 16:35:43 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 16 16:35:43 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 16 16:35:43 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 16 16:35:43 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 16 16:35:43 localhost kernel: Pid: 17455, comm: rpc.nfsd Tainted: G        W  2.6.30-rc2 #3
+Apr 16 16:35:43 localhost kernel: Call Trace:
+Apr 16 16:35:43 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 16 16:35:43 localhost kernel: [<efc17dec>] ? nfsd4_build_namelist+0x0/0x8e [nfsd]
+Apr 16 16:35:43 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 16 16:35:43 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 16 16:35:43 localhost kernel: [<c04a3f66>] ? mntput_no_expire+0x1c/0x101
+Apr 16 16:35:43 localhost kernel: [<c04a0062>] ? dput+0x35/0x103
+Apr 16 16:35:43 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 16 16:35:43 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 16 16:35:43 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 16 16:35:43 localhost kernel: [<efc13a49>] nfs4_state_start+0x7a/0xdd [nfsd]
+Apr 16 16:35:43 localhost kernel: [<efbfd5be>] nfsd_svc+0x57/0xf9 [nfsd]
+Apr 16 16:35:43 localhost kernel: [<efbfdff6>] ? write_threads+0x0/0x59 [nfsd]
+Apr 16 16:35:43 localhost kernel: [<efbfe02b>] write_threads+0x35/0x59 [nfsd]
+Apr 16 16:35:43 localhost kernel: [<efbfd84d>] nfsctl_transaction_write+0x3b/0x58 [nfsd]
+Apr 16 16:35:43 localhost kernel: [<efbfd812>] ? nfsctl_transaction_write+0x0/0x58 [nfsd]
+Apr 16 16:35:43 localhost kernel: [<c04927af>] vfs_write+0x7c/0xad
+Apr 16 16:35:43 localhost kernel: [<c0492879>] sys_write+0x3b/0x60
+Apr 16 16:35:43 localhost kernel: [<c0403148>] sysenter_do_call+0x12/0x3c
+Apr 16 16:35:43 localhost kernel: ---[ end trace fa484bd6d19ade87 ]---
+Apr 16 16:35:43 localhost kernel: NFSD: starting 90-second grace period
+...snip...
+Apr 17 13:02:54 localhost mountd[17468]: Caught signal 15, un-registering and exiting.
+Apr 17 13:02:54 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 13:02:55 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 13:02:55 localhost kernel: ------------[ cut here ]------------
+Apr 17 13:02:55 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 13:02:55 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 13:02:55 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 13:02:55 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 13:02:55 localhost kernel: Pid: 22642, comm: rpc.nfsd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 13:02:55 localhost kernel: Call Trace:
+Apr 17 13:02:55 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 13:02:55 localhost kernel: [<efc17dec>] ? nfsd4_build_namelist+0x0/0x8e [nfsd]
+Apr 17 13:02:55 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 13:02:55 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 13:02:55 localhost kernel: [<c04a3f66>] ? mntput_no_expire+0x1c/0x101
+Apr 17 13:02:55 localhost kernel: [<c04a0062>] ? dput+0x35/0x103
+Apr 17 13:02:55 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 13:02:55 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 13:02:55 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 13:02:55 localhost kernel: [<efc13a49>] nfs4_state_start+0x7a/0xdd [nfsd]
+Apr 17 13:02:55 localhost kernel: [<efbfd5be>] nfsd_svc+0x57/0xf9 [nfsd]
+Apr 17 13:02:55 localhost kernel: [<efbfdff6>] ? write_threads+0x0/0x59 [nfsd]
+Apr 17 13:02:55 localhost kernel: [<efbfe02b>] write_threads+0x35/0x59 [nfsd]
+Apr 17 13:02:55 localhost kernel: [<efbfd84d>] nfsctl_transaction_write+0x3b/0x58 [nfsd]
+Apr 17 13:02:55 localhost kernel: [<efbfd812>] ? nfsctl_transaction_write+0x0/0x58 [nfsd]
+Apr 17 13:02:55 localhost kernel: [<c04927af>] vfs_write+0x7c/0xad
+Apr 17 13:02:55 localhost kernel: [<c0492879>] sys_write+0x3b/0x60
+Apr 17 13:02:55 localhost kernel: [<c0403148>] sysenter_do_call+0x12/0x3c
+Apr 17 13:02:55 localhost kernel: ---[ end trace fa484bd6d19ade88 ]---
+Apr 17 13:02:55 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 13:04:07 localhost mountd[22655]: Caught signal 15, un-registering and exiting.
+Apr 17 13:04:07 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 13:04:07 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 13:04:07 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 13:05:04 localhost mountd[22760]: Caught signal 15, un-registering and exiting.
+Apr 17 13:05:04 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 13:05:05 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 13:05:05 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 13:06:10 localhost mountd[22859]: Caught signal 15, un-registering and exiting.
+Apr 17 13:06:10 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 13:06:10 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 13:06:10 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 13:08:07 localhost mountd[22960]: Caught signal 15, un-registering and exiting.
+Apr 17 13:08:07 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 13:08:07 localhost kernel: ------------[ cut here ]------------
+Apr 17 13:08:07 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 13:08:07 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 13:08:07 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 13:08:07 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 13:08:07 localhost kernel: Pid: 23062, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 13:08:07 localhost kernel: Call Trace:
+Apr 17 13:08:07 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 13:08:07 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 13:08:07 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 13:08:07 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 13:08:07 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 13:08:07 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 13:08:07 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 13:08:07 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 13:08:07 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 13:08:07 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 13:08:07 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 13:08:07 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 13:08:07 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 13:08:07 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 13:08:07 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 13:08:07 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 13:08:07 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 13:08:07 localhost kernel: ---[ end trace fa484bd6d19ade89 ]---
+Apr 17 13:08:07 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 13:08:07 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:39:45 localhost mountd[23074]: Caught signal 15, un-registering and exiting.
+Apr 17 14:39:45 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:39:45 localhost kernel: ------------[ cut here ]------------
+Apr 17 14:39:45 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 14:39:45 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 14:39:45 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 14:39:45 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 14:39:45 localhost kernel: Pid: 24287, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 14:39:45 localhost kernel: Call Trace:
+Apr 17 14:39:45 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 14:39:45 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 14:39:45 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 14:39:45 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 14:39:45 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 14:39:45 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 14:39:45 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 14:39:45 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 14:39:45 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 14:39:45 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 14:39:45 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 14:39:45 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 14:39:45 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 14:39:45 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 14:39:45 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 14:39:45 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 14:39:45 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 14:39:45 localhost kernel: ---[ end trace fa484bd6d19ade8a ]---
+Apr 17 14:39:45 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:39:45 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:41:32 localhost mountd[24299]: Caught signal 15, un-registering and exiting.
+Apr 17 14:41:32 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:41:33 localhost kernel: ------------[ cut here ]------------
+Apr 17 14:41:33 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 14:41:33 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 14:41:33 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 14:41:33 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 14:41:33 localhost kernel: Pid: 24399, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 14:41:33 localhost kernel: Call Trace:
+Apr 17 14:41:33 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 14:41:33 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 14:41:33 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 14:41:33 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 14:41:33 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 14:41:33 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 14:41:33 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 14:41:33 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 14:41:33 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 14:41:33 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 14:41:33 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 14:41:33 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 14:41:33 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 14:41:33 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 14:41:33 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 14:41:33 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 14:41:33 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 14:41:33 localhost kernel: ---[ end trace fa484bd6d19ade8b ]---
+Apr 17 14:41:33 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:41:33 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:42:16 localhost mountd[24411]: Caught signal 15, un-registering and exiting.
+Apr 17 14:42:17 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:42:17 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:42:17 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:42:52 localhost mountd[24508]: Caught signal 15, un-registering and exiting.
+Apr 17 14:42:52 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:42:53 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:42:53 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:43:28 localhost mountd[24602]: Caught signal 15, un-registering and exiting.
+Apr 17 14:43:28 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:43:29 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:43:29 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:43:59 localhost mountd[24697]: Caught signal 15, un-registering and exiting.
+Apr 17 14:43:59 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:44:00 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:44:00 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:44:28 localhost mountd[24791]: Caught signal 15, un-registering and exiting.
+Apr 17 14:44:28 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:44:29 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:44:29 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:45:33 localhost mountd[24885]: Caught signal 15, un-registering and exiting.
+Apr 17 14:45:33 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:45:34 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:45:34 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:46:05 localhost mountd[24988]: Caught signal 15, un-registering and exiting.
+Apr 17 14:46:05 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:46:05 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:46:05 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 14:46:34 localhost mountd[25082]: Caught signal 15, un-registering and exiting.
+Apr 17 14:46:34 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 14:46:35 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 14:46:35 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 15:35:01 localhost mountd[25176]: Caught signal 15, un-registering and exiting.
+Apr 17 15:35:02 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 15:35:02 localhost kernel: ------------[ cut here ]------------
+Apr 17 15:35:02 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 15:35:02 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 15:35:02 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 15:35:02 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 15:35:02 localhost kernel: Pid: 25883, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 15:35:02 localhost kernel: Call Trace:
+Apr 17 15:35:02 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 15:35:02 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 15:35:02 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 15:35:02 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 15:35:02 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 15:35:02 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 15:35:02 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 15:35:02 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 15:35:02 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 15:35:02 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 15:35:02 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 15:35:02 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 15:35:02 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 15:35:02 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 15:35:02 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 15:35:02 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 15:35:02 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 15:35:02 localhost kernel: ---[ end trace fa484bd6d19ade8c ]---
+Apr 17 15:35:02 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 15:35:02 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 15:55:22 localhost mountd[25895]: Caught signal 15, un-registering and exiting.
+Apr 17 15:55:22 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 15:55:23 localhost kernel: ------------[ cut here ]------------
+Apr 17 15:55:23 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 15:55:23 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 15:55:23 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 15:55:23 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 15:55:23 localhost kernel: Pid: 26230, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 15:55:23 localhost kernel: Call Trace:
+Apr 17 15:55:23 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 15:55:23 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 15:55:23 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 15:55:23 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 15:55:23 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 15:55:23 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 15:55:23 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 15:55:23 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 15:55:23 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 15:55:23 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 15:55:23 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 15:55:23 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 15:55:23 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 15:55:23 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 15:55:23 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 15:55:23 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 15:55:23 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 15:55:23 localhost kernel: ---[ end trace fa484bd6d19ade8d ]---
+Apr 17 15:55:23 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 15:55:23 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 16:54:27 localhost mountd[26242]: Caught signal 15, un-registering and exiting.
+Apr 17 16:54:27 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 16:54:28 localhost kernel: ------------[ cut here ]------------
+Apr 17 16:54:28 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 16:54:28 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 16:54:28 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 16:54:28 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 16:54:28 localhost kernel: Pid: 27044, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 16:54:28 localhost kernel: Call Trace:
+Apr 17 16:54:28 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 16:54:28 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 16:54:28 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 16:54:28 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 16:54:28 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 16:54:28 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 16:54:28 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 16:54:28 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 16:54:28 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 16:54:28 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 16:54:28 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 16:54:28 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 16:54:28 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 16:54:28 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 16:54:28 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 16:54:28 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 16:54:28 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 16:54:28 localhost kernel: ---[ end trace fa484bd6d19ade8e ]---
+Apr 17 16:54:28 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 16:54:28 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 16:59:55 localhost mountd[27056]: Caught signal 15, un-registering and exiting.
+Apr 17 16:59:55 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 16:59:56 localhost kernel: ------------[ cut here ]------------
+Apr 17 16:59:56 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 16:59:56 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 16:59:56 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 16:59:56 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 16:59:56 localhost kernel: Pid: 27197, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 16:59:56 localhost kernel: Call Trace:
+Apr 17 16:59:56 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 16:59:56 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 16:59:56 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 16:59:56 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 16:59:56 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 16:59:56 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 16:59:56 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 16:59:56 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 16:59:56 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 16:59:56 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 16:59:56 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 16:59:56 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 16:59:56 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 16:59:56 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 16:59:56 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 16:59:56 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 16:59:56 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 16:59:56 localhost kernel: ---[ end trace fa484bd6d19ade8f ]---
+Apr 17 16:59:56 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 16:59:56 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 17:02:50 localhost mountd[27209]: Caught signal 15, un-registering and exiting.
+Apr 17 17:02:50 localhost kernel: nfsd: last server has exited, flushing export cache
+Apr 17 17:02:51 localhost kernel: ------------[ cut here ]------------
+Apr 17 17:02:51 localhost kernel: WARNING: at lib/list_debug.c:26 __list_add+0x27/0x5c()
+Apr 17 17:02:51 localhost kernel: Hardware name: Presario M2000 (PT365PA#AB2)      
+Apr 17 17:02:51 localhost kernel: list_add corruption. next->prev should be prev (ef8fe958), but was ef8ff128. (next=ef8ff128).
+Apr 17 17:02:51 localhost kernel: Modules linked in: fuse i915 drm i2c_algo_bit nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc ipv6 p4_clockmod dm_multipath uinput snd_intel8x0m snd_intel8x0 snd_seq_dummy snd_ac97_codec ac97_bus snd_seq_oss snd_seq_midi_event snd_seq snd_seq_device snd_pcm_oss snd_mixer_oss snd_pcm snd_timer snd soundcore 8139cp firewire_ohci firewire_core snd_page_alloc tifm_7xx1 i2c_i801 iTCO_wdt 8139too tifm_core i2c_core yenta_socket crc_itu_t iTCO_vendor_support pcspkr mii rsrc_nonstatic wmi video output ata_generic pata_acpi [last unloaded: microcode]
+Apr 17 17:02:51 localhost kernel: Pid: 27349, comm: lockd Tainted: G        W  2.6.30-rc2 #3
+Apr 17 17:02:51 localhost kernel: Call Trace:
+Apr 17 17:02:51 localhost kernel: [<c042d5b5>] warn_slowpath+0x71/0xa0
+Apr 17 17:02:51 localhost kernel: [<c0422a96>] ? update_curr+0x11d/0x125
+Apr 17 17:02:51 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 17:02:51 localhost kernel: [<c044b270>] ? trace_hardirqs_on+0xb/0xd
+Apr 17 17:02:51 localhost kernel: [<c051c61a>] ? _raw_spin_lock+0x53/0xfa
+Apr 17 17:02:51 localhost kernel: [<c051c89f>] __list_add+0x27/0x5c
+Apr 17 17:02:51 localhost kernel: [<ef8f6daa>] locks_start_grace+0x22/0x30 [lockd]
+Apr 17 17:02:51 localhost kernel: [<ef8f34da>] set_grace_period+0x39/0x53 [lockd]
+Apr 17 17:02:51 localhost kernel: [<c06b8921>] ? lock_kernel+0x1c/0x28
+Apr 17 17:02:51 localhost kernel: [<ef8f3558>] lockd+0x64/0x164 [lockd]
+Apr 17 17:02:51 localhost kernel: [<c044b12d>] ? trace_hardirqs_on_caller+0x18/0x150
+Apr 17 17:02:51 localhost kernel: [<c04227b0>] ? complete+0x34/0x3e
+Apr 17 17:02:51 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 17:02:51 localhost kernel: [<ef8f34f4>] ? lockd+0x0/0x164 [lockd]
+Apr 17 17:02:51 localhost kernel: [<c043dd42>] kthread+0x45/0x6b
+Apr 17 17:02:51 localhost kernel: [<c043dcfd>] ? kthread+0x0/0x6b
+Apr 17 17:02:51 localhost kernel: [<c0403c23>] kernel_thread_helper+0x7/0x10
+Apr 17 17:02:51 localhost kernel: ---[ end trace fa484bd6d19ade90 ]---
+Apr 17 17:02:51 localhost kernel: NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+Apr 17 17:02:51 localhost kernel: NFSD: starting 90-second grace period
+Apr 17 17:08:09 localhost mountd[27361]: authenticated mount request from 10.167.141.101:695 for /tmp/nfs3 (/tmp/nfs3)
 
---=-flTo81mqaIGkWR0gU+s2
-Content-Disposition: attachment; filename="patches-fix_nfs_mmap.tar.bz2"
-Content-Type: application/x-bzip-compressed-tar; name="patches-fix_nfs_mmap.tar.bz2"
-Content-Transfer-Encoding: base64
-
-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
-
-
---=-flTo81mqaIGkWR0gU+s2--
+> --b.
+> 
+>>> --b.
+>>>
+>>> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+>>> index abf8388..1a54ae1 100644
+>>> --- a/fs/lockd/svc.c
+>>> +++ b/fs/lockd/svc.c
+>>> @@ -104,6 +104,16 @@ static void set_grace_period(void)
+>>>  	schedule_delayed_work(&grace_period_end, grace_period);
+>>>  }
+>>>  
+>>> +static void restart_grace(void)
+>>> +{
+>>> +	if (nlmsvc_ops) {
+>>> +		cancel_delayed_work_sync(&grace_period_end);
+>>> +		locks_end_grace(&lockd_manager);
+>>> +		nlmsvc_invalidate_all();
+>>> +		set_grace_period();
+>>> +	}
+>>> +}
+>>> +
+>>>  /*
+>>>   * This is the lockd kernel thread
+>>>   */
+>>> @@ -149,10 +159,7 @@ lockd(void *vrqstp)
+>>>  
+>>>  		if (signalled()) {
+>>>  			flush_signals(current);
+>>> -			if (nlmsvc_ops) {
+>>> -				nlmsvc_invalidate_all();
+>>> -				set_grace_period();
+>>> -			}
+>>> +			restart_grace();
+>>>  			continue;
+>>>  		}
+>>>  
+>>>
 
