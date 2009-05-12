@@ -1,140 +1,35 @@
-From: =?iso-8859-1?Q?Andr=E9?= Berger <andre.berger-S0/GAf8tV78@public.gmane.org>
-Subject: Re: NFS issues with recent kernels [long]
-Date: Tue, 12 May 2009 07:42:25 +0200
-Message-ID: <20090512054225.GH3801@fuchs>
-References: <B05C16C7-53B5-4E26-8239-956C600CF452@oracle.com> <20090420091454.GB614@fuchs> <F1250240-F050-47B7-9569-54941AAAD572@oracle.com> <20090421043642.GA52257@fuchs> <20090508193813.GC3801@fuchs> <8D7394C9-0142-4635-88E5-139F4F5F39F6@oracle.com> <20090508203751.GD3801@fuchs> <1241815735.7291.1.camel@heimdal.trondhjem.org> <20090509185736.GF3801@fuchs> <1241901691.5101.26.camel@heimdal.trondhjem.org>
+From: Shehjar Tikoo <shehjart-iP+wyIN8Xge1Z/+hSey0Gg@public.gmane.org>
+Subject: Different rsize/wsize for different NFS server software
+Date: Tue, 12 May 2009 16:44:01 +0530
+Message-ID: <4A0959F9.1010107@zresearch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Guennadi Liakhovetski <g.liakhovetski@gmx.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fmmailgate02.web.de ([217.72.192.227]:60891 "EHLO
-	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752302AbZELFm2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 May 2009 01:42:28 -0400
-In-Reply-To: <1241901691.5101.26.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from [12.204.100.226] ([12.204.100.226]:34921 "EHLO gluster.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754647AbZELMBH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2009 08:01:07 -0400
+Received: from [115.108.23.204] (helo=[192.168.1.90])
+	by gluster.com with esmtpa (Exim 4.69)
+	(envelope-from <shehjart-iP+wyIN8Xge1Z/+hSey0Gg@public.gmane.org>)
+	id 1M3pta-0003iw-5g
+	for linux-nfs@vger.kernel.org; Tue, 12 May 2009 04:11:38 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Trond Myklebust (2009-05-09):
-> On Sat, 2009-05-09 at 20:57 +0200, Andr=C3=A9 Berger wrote:
-> > * Trond Myklebust (2009-05-08):
-> > > On Fri, 2009-05-08 at 22:37 +0200, Andr=C3=A9 Berger wrote:
-> > > > * Chuck Lever (2009-05-08):
-> > > > > On May 8, 2009, at 3:38 PM, Andr=C3=A9 Berger wrote:
-> > > > >> * Andr=C3=A9 Berger (2009-04-21):
-> > > > >>> * Chuck Lever (2009-04-20):
-> > > > >>>> On Apr 20, 2009, at 5:14 AM, Andr=C3=A9 Berger wrote:
-> > > > >>>>> * Chuck Lever (2009-04-17):
-> > > > [...]
-> > > > > Assuming 192.168.1.8 is your server, frame 79 and 622 report =
-=46SINFO =20
-> > > > > results:
-> > > > >
-> > > > > Network File System, FSINFO Reply
-> > > > >     [Program Version: 3]
-> > > > >     [V3 Procedure: FSINFO (19)]
-> > > > >     Status: NFS3_OK (0)
-> > > > >     obj_attributes
-> > > > >         attributes_follow: no value (0)
-> > > > >     rtmax: 16384
-> > > > >     rtpref: 16384
-> > > > >     rtmult: 4096
-> > > > >     wtmax: 16384
-> > > > >     wtpref: 16384
-> > > > >     wtmult: 4096
-> > > > >     dtpref: 4096
-> > > > >     maxfilesize: 2194719883264
-> > > > >     time delta: 1.000000000 seconds
-> > > > >         seconds: 1
-> > > > >         nano seconds: 0
-> > > > >     Properties: 0x0000001b
-> > > > >         1... . =3D SETATTR can set time on server
-> > > > >         .1.. . =3D PATHCONF is valid for all files
-> > > > >         ...1 . =3D File System supports symbolic links
-> > > > >         .... 1 =3D File System supports hard links
-> > > > >
-> > > > > says your server operating system supports NFS rsize and wsiz=
-e maxima of=20
-> > > > > 16384 bytes.
-> > > > >
-> > > > > RFC 1813:
-> > > > >> rtmax
-> > > > >> The maximum size in bytes of a READ request supported by the=
- server. =20
-> > > > >> Any READ with a number greater than rtmax will result in a s=
-hort read of=20
-> > > > >> rtmax bytes or less.
-> > > >=20
-> > > > My OS is 2.6.29.2, Debian etch, on a PPC system. I swear I got =
-32K
-> > > > [rw]size with kernels < 2.6.19, at least "mount" reported them =
-as
-> > > > such. With recent kernels, "mount" and your analysis agree on j=
-ust
-> > > > 16K. So, what can I do?
-> > >=20
-> > > There is nothing the client can do as long as the server says it =
-won't
-> > > accept NFS requests with read or write sizes > 16k. You therefore=
- need
-> > > to fix the server.
-> >=20
-> > So what can I do to fix this? I've upgraded to nfs-utils-1.1.4 in t=
-he
-> > meantime, 1.1.5 and both 1.1.6 give me=20
-> >=20
-> >   make[2]: Entering directory `/tmp/nfs-utils-1.1.5/support/misc'
-> >   gcc -DHAVE_CONFIG_H -I. -I../../support/include   -I/usr/include =
- -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT tcpwrapper.o=
- -MD -MP -MF .deps/tcpwrapper.Tpo -c -o tcpwrapper.o tcpwrapper.c
-> >   tcpwrapper.c: In function =E2=80=98haccess_add=E2=80=99:
-> >   tcpwrapper.c:117: warning: implicit declaration of function =E2=80=
-=98TAILQ_EMPTY=E2=80=99
-> >   tcpwrapper.c:119: error: expected expression before =E2=80=98else=
-=E2=80=99
-> >   tcpwrapper.c: In function =E2=80=98haccess_lookup=E2=80=99:
-> >   tcpwrapper.c:131: warning: implicit declaration of function =E2=80=
-=98TAILQ_FOREACH=E2=80=99
-> >   tcpwrapper.c:131: error: =E2=80=98list=E2=80=99 undeclared (first=
- use in this function)
-> >   tcpwrapper.c:131: error: (Each undeclared identifier is reported =
-only once
-> >   tcpwrapper.c:131: error: for each function it appears in.)
-> >   tcpwrapper.c:131: error: expected =E2=80=98;=E2=80=99 before =E2=80=
-=98{=E2=80=99 token
-> >   make[2]: *** [tcpwrapper.o] Error 1
-> >   make[2]: Leaving directory `/tmp/nfs-utils-1.1.5/support/misc'
-> >   make[1]: *** [all-recursive] Error 1
-> >   make[1]: Leaving directory `/tmp/nfs-utils-1.1.5/support'
-> >   make: *** [all-recursive] Error 1
-> >=20
-> > with=20
-> >=20
-> >   ./configure --prefix=3D/usr/local --sysconfdir=3D/etc --with-tcp-=
-wrappers=3D/usr/include --with-statedir=3D/var/lib/nfs
-> >=20
-> > I've already upgraded tcpd to the Lenny version 7.6.q-16 (from
-> > source), but that didn't help.=20
-> >=20
-> > With 1.1.4, I still get 16384 [rw]size while 32768 were requested.=20
->=20
->=20
-> If the server is based on a recent Linux kernel, then you should chec=
-k
-> the value of /proc/fs/nfsd/max_block_size. If it is less than 32k, th=
-en
-> try increasing it.
+Hi All
 
-Indeed, that does the trick with 2.6.29.3 :)
+I've been running some tests using the linux NFS3 client using the
+in-kernel NFS server and the unfs3 project.
 
-Thank you very much, everyone!
+I see that the client mounts the in-kernel server with default
+[rw]size values of 32k and the unfs3 server using [rw]size values
+of 512k. Where is this difference coming from, because I do not
+specify these different [rw]size value on the command line for mount.
 
--Andr=C3=A9
+The client kernel is Debian's 2.6.18-5-amd64 and the server kernel
+is Fedora's 2.6.18-92.1.6.el5.
 
---=20
-May as well be hung for a sheep as a lamb!
-Linkstation/KuroBox/HG/HS/Tera Kernel 2.6/PPC from <http://hvkls.dyndns=
-=2Eorg>
-iPhone <http://hvkls.dyndns.org/downloads/documentation/README-iphone.h=
-tml>
+Thanks
+Shehjar
