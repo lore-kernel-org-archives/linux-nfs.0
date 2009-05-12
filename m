@@ -1,58 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.29]:29841 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758638AbZEZVxD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 17:53:03 -0400
-Received: by yw-out-2324.google.com with SMTP id 5so2385995ywb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2009 14:53:04 -0700 (PDT)
-In-Reply-To: <392702.81064.qm@web43513.mail.sp1.yahoo.com>
-References: <392702.81064.qm@web43513.mail.sp1.yahoo.com>
-Date: Tue, 26 May 2009 17:53:04 -0400
-Message-ID: <4d569c330905261453g59b4b878wb050bc8b2fcf838f@mail.gmail.com>
-Subject: Re: Kerberos question related to NFSV3
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: barry sabsevitz <barry_sabsevitz@yahoo.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out1.uio.no ([129.240.10.57]:55561 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752053AbZELXq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2009 19:46:57 -0400
+Subject: Re: [RFC][PATCH] Improve NFS use of network and mount namespaces
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Matt Helsley <matthltc@us.ibm.com>
+Cc: Containers <containers@lists.osdl.org>, linux-nfs@vger.kernel.org,
+        Eric Biederman <ebiederm@xmission.com>
+In-Reply-To: <20090512215138.GD3912@us.ibm.com>
+References: <20090512215138.GD3912@us.ibm.com>
+Content-Type: text/plain
+Date: Tue, 12 May 2009 19:46:50 -0400
+Message-Id: <1242172010.5407.79.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, May 13, 2009 at 2:01 PM, barry sabsevitz
-<barry_sabsevitz@yahoo.com> wrote:
->
-> Hi,
-> I have a question regarding NFSV3 and Kerberos that I was hoping someone could help me with.
->
-> I have setup Kerberos successfully on a red hat 5.2 system using NFSV3. I am using nfs-utils-1.1.6
-> and have a patch to rpc.svcgssd where I can specify a -h option and tell it to use a principal name that
-> is different than the name of the system.
->
-> My question is related to Kerberos and how it gets configured for NFS. I have a cluster with 2 nodes in
-> it and each node can have multiple virtual ip addressess accessing NFS Kerberos shares from it. I have
-> previously successfully setup a configuration where I create 1 service principal for every virtual IP address
-> that will be processing the Kerberos NFSV3 exports. And then I modify DNS to have a forward and reverse
-> mapping between the fqdn used for creating the service principal and the VIP.  This works for me. It seems
-> a bit inefficient though.
->
->  My question is: Does Kerberos allow me to set up 1 service principal that can be used at the same time by
-> multiple virtual ip addresses. For example: If I have 2 VIP's - 10.1.1.1 and 10.1.1.2, can I create 1 service
-> principal called nfs/nfs-pkg1.activedir.net@ACTIVEDIR.NET and then have DNS configured to map
-> nfs-pkg1 -> 10.1.1.1  and nfs-pkg1 also to -> 10.1.1.2 and then both those VIP's reverse mapped to
-> nfs-pkg1. Is Kerberos with NFS expected to work in this configuration? Or do I need to have a seperate
-> service principal for every virtual ip address that will be processing the Kerberos NFS exports?
->
-> Thanks for your help.
-> Barry
+On Tue, 2009-05-12 at 14:51 -0700, Matt Helsley wrote:
+> Sun RPC currently opens sockets from the initial network namespace making it
+> impossible to restrict which NFS servers a container may interact with.
+> 
+> For example, the NFS server at 10.0.0.3 reachable from the initial namespace
+> will always be used even if an entirely different server with the address
+> 10.0.0.3 is reachable from a container's network namespace. Hence network
+> namespaces cannot be used to restrict the network access of a container as long
+> as the RPC code opens sockets using the initial network namespace. This is
+> in stark contrast to other protocols like HTTP where the sockets are created in
+> their proper namespaces because kernel threads are not used to open sockets for
+> client network IO.
+> 
+> We may plausibly end up with namespaces created by:
+> I) The administrator may mount 10.0.0.3:/export_foo from init's
+> container, clone the mount namespace, and unmount from the original
+> mount namespace.
+> 
+> II) The administrator may start a task which clones the mount namespace
+> before mounting 10.0.0.3:/export_foo.
+> 
+> Proposed Solution:
+> 
+> The network namespace of the task that did the mount best defines which server
+> the "administrator", whether in a container or not, expects to work with.
+> When the mount is done inside a container then that is the network namespace 
+> to use. When the mount is done prior to creating the container then that's the 
+> namespace that should be used.
+> 
+> This allows system administrators to isolate network traffic generated by NFS
+> clients by mounting after creating a container. If partial isolation is desired
+> then the administrator may mount before creating a container with a new network
+> namespace. In each case the RPC packets would originate from a consistent
+> namespace.
+> 
+> One way to ensure consistent namespace usage would be to hold a reference to
+> the original network namespace as long as the mount exists. This naturally 
+> suggests storing the network namespace reference in the NFS superblock. 
+> However, it may be better to store it with the RPC transport itself since
+> it is directly responsible for (re)opening the sockets.
+> 
+> This patch adds a reference to the network namespace to the RPC
+> transport. When the NFS export is mounted the network namespace of
+> the current task establishes which namespace to reference. That
+> reference is stored in the RPC transport and used to open sockets
+> whenever a new socket is required.
 
-After some offline discussion, it sounds like Barry is possibly seeing
-an issue with multiple DNS lookups during the mount process returning
-different addresses for the name.  (Mostly speculation, but he is
-seeing some kind of issue sharing a name between more than one
-machine.)
+Ewwwwwwww
 
-I know people have worked on fail-over servers.  Has anyone else had a
-cluster setup like this which uses the same name for more than one
-machine, using Kerberos mounts?
+You ignore the fact that NFS super blocks that point to the same
+filesystem are shared (including between containers). We don't want to
+have separate page caches in cases where the filesystems are the same;
+that causes unnecessary cache consistency problems. There is sharing at
+other levels too. All NFSv4 super blocks that share a server IP address,
+will also share a common lease. Ditto when it comes to NFSv2 and NFSv3
+clients, and lock monitoring state.
 
-K.C.
+You ignore the fact that NFS often depends on a whole slew of other RPC
+services. Kernel services like NLM (a.k.a lockd), the portmap/rpcbind
+client, and user space utilities like statd and the portmap/rpcbind
+server. Are we supposed to add socket namespace crap to all those apis
+too?
+
+What happens to services like rpc.gssd, of which there is only one user
+space instance, and which use the ip address of the server (as supplied
+by the kernel) to figure out who they are talking to?
+
+Finally, what happens if someone decides to set up a private socket
+namespace, using CLONE_NEWNET, without also using CLONE_NEWNS to create
+a private mount namespace? Would anyone have even the remotest chance in
+hell of figuring out what filesystem is mounted where in the ensuing
+chaos?
+
+Trond
+
