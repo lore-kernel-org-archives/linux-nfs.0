@@ -1,61 +1,48 @@
-From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
-Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Tue, 12 May 2009 15:51:13 +0200
-Message-ID: <4A097ED1.2050303@bio.ifi.lmu.de>
-References: <4A02DAA8.6050005@bio.ifi.lmu.de>
-	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
-	<4A02FDC3.9090709@bio.ifi.lmu.de>
-	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
-	<4A03CB1C.7020703@bio.ifi.lmu.de>
-	<4a083d44.85c2f10a.4cf7.ffff85fb@mx.google.com>
+From: Shehjar Tikoo <shehjart-iP+wyIN8Xge1Z/+hSey0Gg@public.gmane.org>
+Subject: Re: Different rsize/wsize for different NFS server software
+Date: Tue, 12 May 2009 20:53:40 +0530
+Message-ID: <4A09947C.9030206@zresearch.com>
+References: <4A0959F9.1010107@zresearch.com>	 <4A097DE9.6030709@zresearch.com> <1242137345.21939.6.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Leonardo Chiquitto <leonardo.lists@gmail.com>,
-	nfs@lists.sourceforge.net
-To: Tom Talpey <tmtalpey@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:59561 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751672AbZELOQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 May 2009 10:16:55 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M3sms-0006VH-6e
-	for linux-nfs@vger.kernel.org; Wed, 13 May 2009 00:16:54 +1000
-In-Reply-To: <4a083d44.85c2f10a.4cf7.ffff85fb-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
+Received: from [12.204.100.226] ([12.204.100.226]:51411 "EHLO gluster.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1756725AbZELPV3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2009 11:21:29 -0400
+In-Reply-To: <1242137345.21939.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom, thanks for all your explanations! I've got to go through them
-carefully to make sure I understand every kind of side-effect with 
-all the different protocols and callback-stuff etc.
+Trond Myklebust wrote:
+> On Tue, 2009-05-12 at 19:17 +0530, Shehjar Tikoo wrote:
+>> Shehjar Tikoo wrote:
+...
+...
+...
+>> Is there any way to force the client to use a 64k wsize value?
+> 
+> You probably have the exact same filesystem still mounted somewhere else
+> on that client. A 2.6.18 kernel will, in those circumstances, share the
+> same super block with both mount points, and will therefore not permit
+> you to use different mount options.
 
-NFSv4 could indeed be an option for us, so I will check that also,
-and I'm also going to read your talk. 
+That was, in fact, the case.
 
-Thanks a lot for caring!
+Thanks
+Shehjar
 
-cu,
-Frank
+> 
+> This is something which has been fixed in more recent kernels.
+> 
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
-
-------------------------------------------------------------------------------
-The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
-production scanning environment may not be a perfect world - but thanks to
-Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
-Series Scanner you'll get full speed at 300 dpi even with all image 
-processing features enabled. http://p.sf.net/sfu/kodak-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+> Trond
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
