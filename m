@@ -1,62 +1,61 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Different rsize/wsize for different NFS server software
-Date: Tue, 12 May 2009 10:09:05 -0400
-Message-ID: <1242137345.21939.6.camel@heimdal.trondhjem.org>
-References: <4A0959F9.1010107@zresearch.com>
-	 <4A097DE9.6030709@zresearch.com>
+From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
+Date: Tue, 12 May 2009 15:51:13 +0200
+Message-ID: <4A097ED1.2050303@bio.ifi.lmu.de>
+References: <4A02DAA8.6050005@bio.ifi.lmu.de>
+	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
+	<4A02FDC3.9090709@bio.ifi.lmu.de>
+	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
+	<4A03CB1C.7020703@bio.ifi.lmu.de>
+	<4a083d44.85c2f10a.4cf7.ffff85fb@mx.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Shehjar Tikoo <shehjart-iP+wyIN8Xge1Z/+hSey0Gg@public.gmane.org>
+Content-Type: text/plain; charset="us-ascii"
+Cc: Leonardo Chiquitto <leonardo.lists@gmail.com>,
+	nfs@lists.sourceforge.net
+To: Tom Talpey <tmtalpey@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:33998 "EHLO mail-out2.uio.no"
+Received: from neil.brown.name ([220.233.11.133]:59561 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755085AbZELOJI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 May 2009 10:09:08 -0400
-In-Reply-To: <4A097DE9.6030709-iP+wyIN8Xge1Z/+hSey0Gg@public.gmane.org>
+	id S1751672AbZELOQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2009 10:16:55 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1M3sms-0006VH-6e
+	for linux-nfs@vger.kernel.org; Wed, 13 May 2009 00:16:54 +1000
+In-Reply-To: <4a083d44.85c2f10a.4cf7.ffff85fb-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-05-12 at 19:17 +0530, Shehjar Tikoo wrote:
-> Shehjar Tikoo wrote:
-> > Hi All
-> > 
-> > I've been running some tests using the linux NFS3 client using the
-> > in-kernel NFS server and the unfs3 project.
-> > 
-> > I see that the client mounts the in-kernel server with default
-> > [rw]size values of 32k and the unfs3 server using [rw]size values
-> > of 512k. Where is this difference coming from, because I do not
-> > specify these different [rw]size value on the command line for mount.
-> > 
-> 
-> Through wireshark, I see that an FSINFO request is sent
-> by the client in order to get the wtpref and rtpref values and that is
-> what determines the wsize and rsize values at the client.
-> 
-> The next strange behaviour is that, with unfs3 as the server, I try
-> to mount using wsize set to 65536 with the command:
-> 
-> $ mount  192.168.1.201:/server/ -o wsize=65536 /test/mount
-> 
-> but the /proc/mounts entry still reports a 512k wsize value.
-> 
-> $ cat /proc/mounts
-> 192.168.1.201:/server/ /test/mount nfs 
-> rw,vers=3,rsize=524288,wsize=524288,hard,intr,proto=tcp,timeo=600,retrans=2,sec=sys,addr=192.168.1.201 
-> 0 0
-> 
-> and wireshark also shows client sending 512k requests.
-> mount.fs version is: mount.nfs (linux nfs-utils 1.1.4)
-> 
-> Is there any way to force the client to use a 64k wsize value?
+Tom, thanks for all your explanations! I've got to go through them
+carefully to make sure I understand every kind of side-effect with 
+all the different protocols and callback-stuff etc.
 
-You probably have the exact same filesystem still mounted somewhere else
-on that client. A 2.6.18 kernel will, in those circumstances, share the
-same super block with both mount points, and will therefore not permit
-you to use different mount options.
+NFSv4 could indeed be an option for us, so I will check that also,
+and I'm also going to read your talk. 
 
-This is something which has been fixed in more recent kernels.
+Thanks a lot for caring!
 
-Trond
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+
+------------------------------------------------------------------------------
+The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
+production scanning environment may not be a perfect world - but thanks to
+Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
+Series Scanner you'll get full speed at 300 dpi even with all image 
+processing features enabled. http://p.sf.net/sfu/kodak-com
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
