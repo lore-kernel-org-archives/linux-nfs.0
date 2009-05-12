@@ -1,94 +1,140 @@
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are  truncated
- by	the nfs rdma client.
-Date: Mon, 11 May 2009 22:06:26 -0500
-Message-ID: <4A08E7B2.1010907@opengridcomputing.com>
-References: <20090424190510.3134.90405.stgit@build.ogc.int>	 <49F31A16.2080806@opengridcomputing.com>	 <49F4AE86.4090908@opengridcomputing.com>	 <49f515a5.1d1e640a.1c82.6677@mx.google.com>	 <49F5ED55.1010607@opengridcomputing.com>	 <1240855510.8818.9.camel@heimdal.trondhjem.org>	 <1240856613.8818.16.camel@heimdal.trondhjem.org>	 <49F60845.4010007@opengridcomputing.com>	 <1240865214.8818.73.camel@heimdal.trondhjem.org>	 <4A08A5C6.7040003@opengridcomputing.com>	 <1242082203.1743.11.camel@heimdal.trondhjem.org>	 <4A08BF1C.2050204@opengridcomputing.com>	 <1242089066.1743.19.camel@heimdal.trondhjem.org>	 <4a08cd7b.48c3f10a.6bb1.fffff6d3@mx.google.com> <1242092150.16618.15.camel@heimdal.trondhjem.org>
+From: =?iso-8859-1?Q?Andr=E9?= Berger <andre.berger-S0/GAf8tV78@public.gmane.org>
+Subject: Re: NFS issues with recent kernels [long]
+Date: Tue, 12 May 2009 07:42:25 +0200
+Message-ID: <20090512054225.GH3801@fuchs>
+References: <B05C16C7-53B5-4E26-8239-956C600CF452@oracle.com> <20090420091454.GB614@fuchs> <F1250240-F050-47B7-9569-54941AAAD572@oracle.com> <20090421043642.GA52257@fuchs> <20090508193813.GC3801@fuchs> <8D7394C9-0142-4635-88E5-139F4F5F39F6@oracle.com> <20090508203751.GD3801@fuchs> <1241815735.7291.1.camel@heimdal.trondhjem.org> <20090509185736.GF3801@fuchs> <1241901691.5101.26.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Tom Talpey <tmtalpey@gmail.com>, tom@opengridcomputing.com,
-	linux-nfs@vger.kernel.org, vuhuong@mellanox.com,
-	Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>,
-	"general-ZwoEplunGu1OwGhvXhtEPSCwEArCW2h5@public.gmane.org" <general-ZwoEplunGu1OwGhvXhtEPSCwEArCW2h5@public.gmane.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=utf-8
+Cc: Guennadi Liakhovetski <g.liakhovetski@gmx.de>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:52681 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757594AbZELDG3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 May 2009 23:06:29 -0400
-In-Reply-To: <1242092150.16618.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from fmmailgate02.web.de ([217.72.192.227]:60891 "EHLO
+	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752302AbZELFm2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 May 2009 01:42:28 -0400
+In-Reply-To: <1241901691.5101.26.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Mon, 2009-05-11 at 21:14 -0400, Tom Talpey wrote:
->   
->> At 08:44 PM 5/11/2009, Trond Myklebust wrote:
->>     
->>> On Mon, 2009-05-11 at 19:13 -0500, Steve Wise wrote:
->>>       
->>>> Trond Myklebust wrote:
->>>>         
->>>>> On Mon, 2009-05-11 at 17:25 -0500, Steve Wise wrote:
->>>>>   
->>>>>           
->>>>>> Hey Trond,
->>>>>>
->>>>>> Will this bug fix make 2.6.30?
->>>>>>
->>>>>> Thanks,
->>>>>>
->>>>>> Steve.
->>>>>>     
->>>>>>             
->>>>> Not in the form it is in now. As I've said earlier, I'm not happy about
->>>>> the sunrpc layer having to circumvent ordinary type checking on
->>>>> non-sunrpc structures.
->>>>>
->>>>> Cheers
->>>>>     Trond
->>>>>           
->>>> How is it circumventing?  It's currently incorrectly casting a pointer 
->>>> into a u64.  That seems just broken to me.  Also, its really the sunrpc 
->>>> rdma transport layer.  It deals specifically with rdma.  It _should_ 
->>>> know about rdma interfaces and types.
->>>>         
->>> The fact is that I'm simply not interested enough in rdma to tolerate
->>> hacks. If it isn't done cleanly, in a manner that I can maintain, then
->>> the whole transport layer comes out...
->>>       
->> I know exactly what you want - it's not what the code does now and
->> it's not an accessor function to set the hardware's u64 field. What's
->> needed is a new function to manage the entire RDMA triplet, and the
->> memory registration behind it, in the OFA code side. Put the hardware
->> goop below the line, IOW. I'll dust up Steve on this.
->>     
->
-> This does indeed sound like what I'd looking for.
->
-> There is a huge difference between having code that depends on well
-> defined rdma interfaces, and code that depends on rdma hacks. A piece of
-> code that requires casts from a non-local opaque type into another
-> protocol-dependent non-local type will definitely fall in the latter
-> category. I really don't care what the current code does, but a fix for
-> that code is something that does it _correctly_; it is not yet another
-> hack, whether or not it fixes a bug in the short term.
->
->    Trond
->
->   
+* Trond Myklebust (2009-05-09):
+> On Sat, 2009-05-09 at 20:57 +0200, Andr=C3=A9 Berger wrote:
+> > * Trond Myklebust (2009-05-08):
+> > > On Fri, 2009-05-08 at 22:37 +0200, Andr=C3=A9 Berger wrote:
+> > > > * Chuck Lever (2009-05-08):
+> > > > > On May 8, 2009, at 3:38 PM, Andr=C3=A9 Berger wrote:
+> > > > >> * Andr=C3=A9 Berger (2009-04-21):
+> > > > >>> * Chuck Lever (2009-04-20):
+> > > > >>>> On Apr 20, 2009, at 5:14 AM, Andr=C3=A9 Berger wrote:
+> > > > >>>>> * Chuck Lever (2009-04-17):
+> > > > [...]
+> > > > > Assuming 192.168.1.8 is your server, frame 79 and 622 report =
+=46SINFO =20
+> > > > > results:
+> > > > >
+> > > > > Network File System, FSINFO Reply
+> > > > >     [Program Version: 3]
+> > > > >     [V3 Procedure: FSINFO (19)]
+> > > > >     Status: NFS3_OK (0)
+> > > > >     obj_attributes
+> > > > >         attributes_follow: no value (0)
+> > > > >     rtmax: 16384
+> > > > >     rtpref: 16384
+> > > > >     rtmult: 4096
+> > > > >     wtmax: 16384
+> > > > >     wtpref: 16384
+> > > > >     wtmult: 4096
+> > > > >     dtpref: 4096
+> > > > >     maxfilesize: 2194719883264
+> > > > >     time delta: 1.000000000 seconds
+> > > > >         seconds: 1
+> > > > >         nano seconds: 0
+> > > > >     Properties: 0x0000001b
+> > > > >         1... . =3D SETATTR can set time on server
+> > > > >         .1.. . =3D PATHCONF is valid for all files
+> > > > >         ...1 . =3D File System supports symbolic links
+> > > > >         .... 1 =3D File System supports hard links
+> > > > >
+> > > > > says your server operating system supports NFS rsize and wsiz=
+e maxima of=20
+> > > > > 16384 bytes.
+> > > > >
+> > > > > RFC 1813:
+> > > > >> rtmax
+> > > > >> The maximum size in bytes of a READ request supported by the=
+ server. =20
+> > > > >> Any READ with a number greater than rtmax will result in a s=
+hort read of=20
+> > > > >> rtmax bytes or less.
+> > > >=20
+> > > > My OS is 2.6.29.2, Debian etch, on a PPC system. I swear I got =
+32K
+> > > > [rw]size with kernels < 2.6.19, at least "mount" reported them =
+as
+> > > > such. With recent kernels, "mount" and your analysis agree on j=
+ust
+> > > > 16K. So, what can I do?
+> > >=20
+> > > There is nothing the client can do as long as the server says it =
+won't
+> > > accept NFS requests with read or write sizes > 16k. You therefore=
+ need
+> > > to fix the server.
+> >=20
+> > So what can I do to fix this? I've upgraded to nfs-utils-1.1.4 in t=
+he
+> > meantime, 1.1.5 and both 1.1.6 give me=20
+> >=20
+> >   make[2]: Entering directory `/tmp/nfs-utils-1.1.5/support/misc'
+> >   gcc -DHAVE_CONFIG_H -I. -I../../support/include   -I/usr/include =
+ -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT tcpwrapper.o=
+ -MD -MP -MF .deps/tcpwrapper.Tpo -c -o tcpwrapper.o tcpwrapper.c
+> >   tcpwrapper.c: In function =E2=80=98haccess_add=E2=80=99:
+> >   tcpwrapper.c:117: warning: implicit declaration of function =E2=80=
+=98TAILQ_EMPTY=E2=80=99
+> >   tcpwrapper.c:119: error: expected expression before =E2=80=98else=
+=E2=80=99
+> >   tcpwrapper.c: In function =E2=80=98haccess_lookup=E2=80=99:
+> >   tcpwrapper.c:131: warning: implicit declaration of function =E2=80=
+=98TAILQ_FOREACH=E2=80=99
+> >   tcpwrapper.c:131: error: =E2=80=98list=E2=80=99 undeclared (first=
+ use in this function)
+> >   tcpwrapper.c:131: error: (Each undeclared identifier is reported =
+only once
+> >   tcpwrapper.c:131: error: for each function it appears in.)
+> >   tcpwrapper.c:131: error: expected =E2=80=98;=E2=80=99 before =E2=80=
+=98{=E2=80=99 token
+> >   make[2]: *** [tcpwrapper.o] Error 1
+> >   make[2]: Leaving directory `/tmp/nfs-utils-1.1.5/support/misc'
+> >   make[1]: *** [all-recursive] Error 1
+> >   make[1]: Leaving directory `/tmp/nfs-utils-1.1.5/support'
+> >   make: *** [all-recursive] Error 1
+> >=20
+> > with=20
+> >=20
+> >   ./configure --prefix=3D/usr/local --sysconfdir=3D/etc --with-tcp-=
+wrappers=3D/usr/include --with-statedir=3D/var/lib/nfs
+> >=20
+> > I've already upgraded tcpd to the Lenny version 7.6.q-16 (from
+> > source), but that didn't help.=20
+> >=20
+> > With 1.1.4, I still get 16384 [rw]size while 32768 were requested.=20
+>=20
+>=20
+> If the server is based on a recent Linux kernel, then you should chec=
+k
+> the value of /proc/fs/nfsd/max_block_size. If it is less than 32k, th=
+en
+> try increasing it.
 
-Trond, I get your point, and we can certainly work on improving this 
-with the rdma developer community.  But removing the one-line-broken 
-cast will resolve a current crash situation for 2.6.30.  Can't we get 
-this fix in 2.6.30 and work on the API improvements for 2.6.31?  I've 
-CCed Roland and the ofa general list to get everyone involved in this 
-thread so we can get this API design change going.
+Indeed, that does the trick with 2.6.29.3 :)
 
-I agree we can clean this up moving forward, but lets fix the broken 
-2.6.30 code.  
+Thank you very much, everyone!
 
-Will this work?
+-Andr=C3=A9
 
-Steve.
-
+--=20
+May as well be hung for a sheep as a lamb!
+Linkstation/KuroBox/HG/HS/Tera Kernel 2.6/PPC from <http://hvkls.dyndns=
+=2Eorg>
+iPhone <http://hvkls.dyndns.org/downloads/documentation/README-iphone.h=
+tml>
