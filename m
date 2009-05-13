@@ -1,42 +1,32 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
-  over NFS
-Date: Wed, 13 May 2009 09:32:29 -0700
-Message-ID: <20090513093229.097b47d2.akpm@linux-foundation.org>
-References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
-	<20090508120119.8c93cfd7.akpm@linux-foundation.org>
-	<20090511081415.GL4694@kernel.dk>
-	<x49skjb21b7.fsf@segfault.boston.devel.redhat.com>
-	<20090511165826.GG4694@kernel.dk>
-	<x494ovp4r51.fsf@segfault.boston.devel.redhat.com>
-	<20090512204433.7eb69075.akpm@linux-foundation.org>
-	<x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com>
-	<b4ff356f0905130920v184ab529mb52a4346d4c77c14@mail.gmail.com>
+From: barry sabsevitz <barry_sabsevitz@yahoo.com>
+Subject: Kerberos question related to NFSV3
+Date: Wed, 13 May 2009 11:01:43 -0700 (PDT)
+Message-ID: <392702.81064.qm@web43513.mail.sp1.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Jeff Moyer <jmoyer@redhat.com>, Jens Axboe <jens.axboe@oracle.com>,
-	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
-To: Olga Kornievskaia <aglo@citi.umich.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37447 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752003AbZEMQmK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2009 12:42:10 -0400
-In-Reply-To: <b4ff356f0905130920v184ab529mb52a4346d4c77c14-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from n69.bullet.mail.sp1.yahoo.com ([98.136.44.41]:26284 "HELO
+	n69.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1756803AbZEMSBm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2009 14:01:42 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 13 May 2009 12:20:57 -0400 Olga Kornievskaia <aglo@citi.umich.edu> wrote:
 
-> I believe what you are seeing is how well TCP autotuning performs.
-> What old NFS code was doing is disabling autotuning and instead using
-> #nfsd thread to scale TCP recv window. You are providing an example of
-> where setting TCP buffer sizes outperforms TCP autotuning. While this
-> is a valid example, there is also an alternative example of where old
-> NFS design hurts performance.
+Hi, 
+I have a question regarding NFSV3 and Kerberos that I was hoping someone could help me with.
 
-<scratches head>
+I have setup Kerberos successfully on a red hat 5.2 system using NFSV3. I am using nfs-utils-1.1.6 and have a patch to rpc.svcgssd where I can specify a -h option and tell it to use a principal name that is different than the name of the system. 
 
-Jeff's computer got slower.  Can we fix that?
+My question is related to Kerberos and how it gets configured for NFS. I have a cluster with 2 nodes in it and each node can have multiple virtual ip addressess accessing NFS Kerberos shares from it. I have previously successfully setup a configuration where I create 1 service principal for every virtual IP address that will be processing the Kerberos NFSV3 exports. And then I modify DNS to have a forward and reverse mapping between the fqdn used for creating the service principal and the VIP.  This works for me. It seems a bit inefficient though.
+
+ My question is: Does Kerberos allow me to set up 1 service principal that can be used at the same time by multiple virtual ip addresses. For example: If I have 2 VIP's - 10.1.1.1 and 10.1.1.2, can I create 1 service principal called nfs/nfs-pkg1.activedir.net-jPvyhR5Pr7e588XsNBc39w@public.gmane.org and then have DNS configured to map nfs-pkg1 -> 10.1.1.1  and nfs-pkg1 also to -> 10.1.1.2 and then both those VIP's reverse mapped to nfs-pkg1. Is Kerberos with NFS expected to work in this configuration? Or do I need to have a seperate service principal for every virtual ip address that will be processing the Kerberos NFS exports?
+
+Thanks for your help.
+Barry
+
+
+
+      
+
