@@ -1,58 +1,52 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40501 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761611AbZE0Lyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 May 2009 07:54:38 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: chuck.lever@oracle.com, steved@redhat.com
-Subject: [PATCH 0/5] nfs-utils: add IPv6 support for rpc.nfsd (try #3)
-Date: Wed, 27 May 2009 07:54:30 -0400
-Message-Id: <1243425275-6284-1-git-send-email-jlayton@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Message-ID: <4A0A89BD.3030607@redhat.com>
+Date: Wed, 13 May 2009 16:50:05 +0800
+From: Eugene Teo <eugene@redhat.com>
+To: Frank Filz <ffilzlnx.at.us.ibm.com@redhat.com>
+Subject: Re: [PATCH] nfs: Fix NFS v4 client handling of MAY_EXEC in
+	nfs_permission.
+References: <1241837734.2404.4.camel@dyn9047022153>
+In-Reply-To: <1241837734.2404.4.camel@dyn9047022153>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-This is the third attempt to add support IPv6 to rpc.nfsd. The main
-changes since the last patchset are:
+Frank Filz wrote:
+> The problem is that permission checking is skipped if atomic open is
+> possible, but when exec opens a file, it just opens it O_READONLY which
+> means EXEC permission will not be checked at that time.
+> 
+> This problem is observed by the following sequence (executed as root):
+> 
+> mount -t nfs4 server:/ /mnt4
+> echo "ls" >/mnt4/foo
+> chmod 744 /mnt4/foo
+> su guest -c "mnt4/foo"
+> 
+> Signed-off-by: Frank Filz <ffilzlnx at us.ibm.com>
 
-1) removal of the -4 and -6 options. The preferred way to disable
-address families for now will be to configure /etc/netconfig. It's
-probably better not to add new command line options until there is a
-clear need for them. Since I'm not adding new options, I've dropped the
-manpage patch too. We may still want a manpage update eventually to
-discuss how one should disable address families for nfsd.
+Tested-by: Eugene Teo <eugeneteo@kernel.sg>
 
-2) Fixed the error handling when ipv6.ko is blacklisted. The earlier
-patchset would cause the program to error out when it couldn't create a
-socket for an address family. Now, as long as the program succeeds in
-creating sockets for at least one address family it will declare
-success. It will however, log an error that it was unable to create the
-socket for the other.
+I have tested this on 2.6.29.3, and I can confirm that the patch fixed
+the problem.
 
-I think the set is bisectable, but have only really tested the final
-result. I've also tested the final result when built with tirpc enabled
-and disabled, and ipv6 enabled and disabled. I've also tested this with
-a rpc.nfsd built for IPv6 on a host that has ipv6.ko blacklisted.
+Btw, this looks like the same problem that was reported in 2006:
+http://linux-nfs.org/pipermail/nfsv4/2006-November/005323.html
+http://linux-nfs.org/pipermail/nfsv4/2006-November/005313.html
+http://bugzilla.linux-nfs.org/show_bug.cgi?id=131
 
-Most of the testing I've done has been by watching the program under
-strace. Since most of the kernel work for IPv6 support hasn't made it
-to mainline, it's a little difficult to do much testing of this beyond
-that.
-
-Jeff Layton (5):
-  nfs-utils: don't link libexport.a and libmisc.a to nfsd
-  nfs-utils: break up nfssvc.c into more individually callable
-    functions
-  nfs-utils: set IPV6_V6ONLY on nfssvc IPv6 sockets
-  nfs-utils: add IPv6 support to nfsd
-  nfs-utils: limit protocols and families used by nfsd to those listed
-    in /etc/netconfig
-
- support/include/nfslib.h |    8 ++-
- support/nfs/nfssvc.c     |  201 +++++++++++++++++++++++++++++++++++----------
- utils/nfsd/Makefile.am   |    4 +-
- utils/nfsd/nfsd.c        |  180 ++++++++++++++++++++++++++++++++++-------
- 4 files changed, 316 insertions(+), 77 deletions(-)
-
+Thanks, Eugene
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
