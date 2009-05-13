@@ -1,43 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from newpeace.netnation.com ([204.174.223.7]:45762 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751708AbZE2WEL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2009 18:04:11 -0400
-Date: Fri, 29 May 2009 15:04:12 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: New file doesn't show up if cached as missing
-Message-ID: <20090529220412.GJ1719@hostway.ca>
-References: <20090529175243.GA30961@hostway.ca> <1243622206.7155.103.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1243622206.7155.103.camel@heimdal.trondhjem.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:54672 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752273AbZEMANd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 May 2009 20:13:33 -0400
+Subject: Re: [RFC][PATCH] Improve NFS use of network and mount namespaces
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Matt Helsley <matthltc@us.ibm.com>, Containers <containers@lists.osdl.org>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <m13ab97trc.fsf@fess.ebiederm.org>
+References: <20090512215138.GD3912@us.ibm.com>
+	 <1242172010.5407.79.camel@heimdal.trondhjem.org>
+	 <m13ab97trc.fsf@fess.ebiederm.org>
+Content-Type: text/plain
+Date: Tue, 12 May 2009 20:13:24 -0400
+Message-Id: <1242173604.5407.82.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, May 29, 2009 at 02:36:46PM -0400, Trond Myklebust wrote:
+On Tue, 2009-05-12 at 17:04 -0700, Eric W. Biederman wrote:
+> Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+> 
+> > Finally, what happens if someone decides to set up a private socket
+> > namespace, using CLONE_NEWNET, without also using CLONE_NEWNS to create
+> > a private mount namespace? Would anyone have even the remotest chance in
+> > hell of figuring out what filesystem is mounted where in the ensuing
+> > chaos?
+> 
+> Good question.  Multiple NFS servers with the same ip address reachable
+> from the same machine sounds about as nasty pickle as it gets.
+> 
+> The only way I can even imagine a setup like that is someone connecting
+> to a vpn.  So they are behind more than one NAT gateway.
+> 
+> Bleh NAT sucks.
 
-> That is most likely to be a consequence of poor mtime resolution on the
-> server (i.e. the directory mtime failing to change because the file
-> creation occurred within < 1 second of the 'rm'), combined with negative
-> lookup caching.
+It is doable, though, and it will affect more than just NFS. Pretty much
+all networked filesystems are affected.
 
-As in "ls --full-time" shows 0 for the fractional second part?
+It begs the question: is there ever any possible justification for
+allowing CLONE_NEWNET without implying CLONE_NEWNS?
 
-Hrm, I thought newer ext3 had nanosecond mtime, but it seems not...
+Trond
 
-> Try using the '-olookupcache=positive' or '-olookupcache=none' mount
-> options (requires a relatively recent version of nfs-utils).
-
-After backporting nfs-utils, either of those options seem to this
-particular case work as desired.  Excellent!
-
-I guess all of the attribute-caching-related options are unrelated to
-this case.  Is this consistent with older operation and that of other
-OSes?  It might be a little surprising for some (me) when "noac" still
-ends up doing some caching.
-
-Thanks,
-
-Simon-
