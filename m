@@ -1,75 +1,100 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [patch for 2.6.30? 1/1] lockd: fix FILE_LOCKING=n build error
-Date: Wed, 13 May 2009 15:59:53 -0400
-Message-ID: <20090513195953.GF13420@fieldses.org>
-References: <200905122047.n4CKlP24029339@imap1.linux-foundation.org>
+From: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [ofa-general] Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start values are truncated by	the nfs rdma client.
+Date: Wed, 13 May 2009 14:35:16 -0700
+Message-ID: <adak54kr8iz.fsf@cisco.com>
+References: <20090424190510.3134.90405.stgit@build.ogc.int>
+	<49F31A16.2080806@opengridcomputing.com>
+	<49F4AE86.4090908@opengridcomputing.com>
+	<49f515a5.1d1e640a.1c82.6677@mx.google.com>
+	<49F5ED55.1010607@opengridcomputing.com>
+	<1240855510.8818.9.camel@heimdal.trondhjem.org>
+	<1240856613.8818.16.camel@heimdal.trondhjem.org>
+	<49F60845.4010007@opengridcomputing.com>
+	<1240865214.8818.73.camel@heimdal.trondhjem.org>
+	<4A08A5C6.7040003@opengridcomputing.com>
+	<1242082203.1743.11.camel@heimdal.trondhjem.org>
+	<4A08BF1C.2050204@opengridcomputing.com>
+	<1242089066.1743.19.camel@heimdal.trondhjem.org>
+	<4a08cd7b.48c3f10a.6bb1.fffff6d3@mx.google.com>
+	<1242092150.16618.15.camel@heimdal.trondhjem.org>
+	<4A08E7B2.1010907@opengridcomputing.com>
+	<4A099FB8.7090603@opengridcomputing.com>
+	<4A09A283.3090605@opengridcomputing.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
-	randy.dunlap@oracle.com
-To: akpm@linux-foundation.org
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	linux-nfs@vger.kernel.org,
+	"Talpey\, Thomas" <Thomas.Talpey@netapp.com>,
+	"general\@lists.openfabrics.org" <general-ZwoEplunGu1OwGhvXhtEPSCwEArCW2h5@public.gmane.org>
+To: Steve Wise <swise@opengridcomputing.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:44221 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753597AbZEMT76 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2009 15:59:58 -0400
-In-Reply-To: <200905122047.n4CKlP24029339-AB4EexQrvXRQetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+Received: from sj-iport-1.cisco.com ([171.71.176.70]:60874 "EHLO
+	sj-iport-1.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754338AbZEMVfQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2009 17:35:16 -0400
+In-Reply-To: <4A09A283.3090605@opengridcomputing.com> (Steve Wise's message of
+	"Tue, 12 May 2009 11:23:31 -0500")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 12, 2009 at 01:28:09PM -0700, akpm@linux-foundation.org wrote:
-> From: Randy Dunlap <randy.dunlap@oracle.com>
-> 
-> lockd/svclock.c is missing a header file <linux/fs.h>.
-> 
-> <linux/fs.h> is missing a definition of locks_release_private()
-> for the config case of FILE_LOCKING=n, causing a build error:
-> 
-> fs/lockd/svclock.c:330: error: implicit declaration of function 'locks_release_private'
-> 
+ > Trond Myklebust wrote (earlier in this thread):
+ > >
+ > > All I should need to know is that I can advertise either dma handles or
+ > > kernel VAs, and know that I can choose between two functions, say,
+ > > ib_send_wr_fastreg_dma_init() and ib_send_wr_fastreg_kva_init() to
+ > > initialise the ib_send_wr structure correctly.
 
-Thanks, applied for 2.6.31.
+I skimmed the earlier thread, and I have to say that I don't quite see
+what the problem with assigning things to a u64 directly is.  You can
+use any address you want, and I don't quite understand why using the
+correct cast to avoid sign extension or truncation problems is such a
+big maintenance burden?
 
---b.
+The code below really just looks like obfuscation to me -- are we going
+to want to add something like
 
-> lockd without FILE_LOCKING doesn't make sense, so make LOCKD and LOCKD_V4
-> depend on FILE_LOCKING, and make NFS depend on FILE_LOCKING.
-> 
-> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
-> Cc: Bruce Fields <bfields@fieldses.org>
-> Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> ---
-> 
->  fs/Kconfig     |    2 ++
->  fs/nfs/Kconfig |    2 +-
->  2 files changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff -puN fs/Kconfig~lockd-fix-file_locking=n-build-error fs/Kconfig
-> --- a/fs/Kconfig~lockd-fix-file_locking=n-build-error
-> +++ a/fs/Kconfig
-> @@ -236,10 +236,12 @@ source "fs/nfsd/Kconfig"
->  
->  config LOCKD
->  	tristate
-> +	depends on FILE_LOCKING
->  
->  config LOCKD_V4
->  	bool
->  	depends on NFSD_V3 || NFS_V3
-> +	depends on FILE_LOCKING
->  	default y
->  
->  config EXPORTFS
-> diff -puN fs/nfs/Kconfig~lockd-fix-file_locking=n-build-error fs/nfs/Kconfig
-> --- a/fs/nfs/Kconfig~lockd-fix-file_locking=n-build-error
-> +++ a/fs/nfs/Kconfig
-> @@ -1,6 +1,6 @@
->  config NFS_FS
->  	tristate "NFS client support"
-> -	depends on INET
-> +	depends on INET && FILE_LOCKING
->  	select LOCKD
->  	select SUNRPC
->  	select NFS_ACL_SUPPORT if NFS_V3_ACL
-> _
+/**
+ * ib_init_fast_reg_iova_start_u64 - initializes the iova_start field
+ *   based on a 64-bit address supplied by the user.
+ * @wr - struct ib_send_wr pointer to be initialized
+ * @addr - void * address to be used as the iova_start
+ */
+static inline void ib_init_fast_reg_iova_start_kva(struct ib_send_wr *wr,
+						   u64 addr)
+{
+	wr->wr.fast_reg.iova_start = addr;
+}
+
+next, to make sure we don't get confused about assigning a u64 to a u64?
+It all looks a bit overcomplicated to me.
+
+ - R.
+
+ > /**
+ > + * ib_init_fast_reg_iova_start_dma - initializes the iova_start field
+ > + *   based on a dma address supplied by the user.
+ > + * @wr - struct ib_send_wr pointer to be initialized
+ > + * @addr - dma_addr_t value to be used as the iova_start
+ > + */
+ > +static inline void ib_init_fast_reg_iova_start_dma(struct ib_send_wr *wr,
+ > +                                                  dma_addr_t addr)
+ > +{
+ > +       wr->wr.fast_reg.iova_start = addr;
+ > +}
+ > +
+ > +/**
+ > + * ib_init_fast_reg_iova_start_kva - initializes the iova_start field
+ > + *   based on a kernel virtual address supplied by the user.
+ > + * @wr - struct ib_send_wr pointer to be initialized
+ > + * @addr - void * address to be used as the iova_start
+ > + */
+ > +static inline void ib_init_fast_reg_iova_start_kva(struct ib_send_wr *wr,
+ > +                                                  void *addr)
+ > +{
+ > +       wr->wr.fast_reg.iova_start = (unsigned long)addr;
+ > +}
+ > +
+ > +/**
+ >  * ib_alloc_mw - Allocates a memory window.
+ >  * @pd: The protection domain associated with the memory window.
+ >  */
