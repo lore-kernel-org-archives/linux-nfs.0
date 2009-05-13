@@ -1,52 +1,217 @@
-From: Suresh Jayaraman <sjayaraman@suse.de>
-Subject: Re: NFS write OOPS with 2.6.29.2
-Date: Wed, 13 May 2009 16:20:02 +0530
-Message-ID: <4A0AA5DA.6090705@suse.de>
-References: <Pine.LNX.4.64.0905031552340.1774@praktifix.dwd.de>	 <20090504231426.2e5a51b0.akpm@linux-foundation.org>	 <Pine.LNX.4.64.0905091913010.3181@praktifix.dwd.de>	 <1241929074.5149.1.camel@heimdal.trondhjem.org>	 <Pine.LNX.4.64.0905110919490.27423@praktifix.dwd.de>	 <1242044201.6691.4.camel@heimdal.trondhjem.org>	 <Pine.LNX.4.64.0905111240190.27423@praktifix.dwd.de> <1242046675.6691.6.camel@heimdal.trondhjem.org>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone over NFS
+Date: Wed, 13 May 2009 10:58:39 -0400
+Message-ID: <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com>
+References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
+	<20090508120119.8c93cfd7.akpm@linux-foundation.org>
+	<20090511081415.GL4694@kernel.dk>
+	<x49skjb21b7.fsf@segfault.boston.devel.redhat.com>
+	<20090511165826.GG4694@kernel.dk>
+	<x494ovp4r51.fsf@segfault.boston.devel.redhat.com>
+	<20090512204433.7eb69075.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Holger Kiehl <Holger.Kiehl-ra7Ruw+Xvfw@public.gmane.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jens Axboe <jens.axboe@oracle.com>, linux-kernel@vger.kernel.org,
+	"Rafael J. Wysocki" <rjw@sisk.pl>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from victor.provo.novell.com ([137.65.250.26]:56071 "EHLO
-	victor.provo.novell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754566AbZEMKuS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2009 06:50:18 -0400
-In-Reply-To: <1242046675.6691.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:40039 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758752AbZEMO74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 May 2009 10:59:56 -0400
+In-Reply-To: <20090512204433.7eb69075.akpm@linux-foundation.org> (Andrew
+	Morton's message of "Tue, 12 May 2009 20:44:33 -0700")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Mon, 2009-05-11 at 12:45 +0000, Holger Kiehl wrote:
->> On Mon, 11 May 2009, Trond Myklebust wrote:
->>>
->> Thanks! Now it works. One more problem I have is with splice(). My
->> application reports the following error:
->>
->>     splice() error : Invalid argument
->>
->> When it is called as follows:
->>
->>      if ((bytes_written = splice(fd_pipe[0], NULL, to_fd,
->>                                  NULL, bytes_read,
->>                                  SPLICE_F_MOVE | SPLICE_F_MORE)) == -1)
->>
->> Or may I not use splice() over NFS?
-> 
-> The read part is there, but the write part is still missing (just an
-> oversight - implementing it is pretty trivial). I'm planning on fixing
-> that for 2.6.31.
-> 
+Andrew Morton <akpm@linux-foundation.org> writes:
 
-Did my latest respun look OK?
+> (obvious cc's added...)
+>
+> It's an iozone performance regression.
+>
+> On Tue, 12 May 2009 23:29:30 -0400 Jeff Moyer <jmoyer@redhat.com> wrote:
+>
+>> Jens Axboe <jens.axboe@oracle.com> writes:
+>> 
+>> > On Mon, May 11 2009, Jeff Moyer wrote:
+>> >> Jens Axboe <jens.axboe@oracle.com> writes:
+>> >> 
+>> >> > On Fri, May 08 2009, Andrew Morton wrote:
+>> >> >> On Thu, 23 Apr 2009 10:01:58 -0400
+>> >> >> Jeff Moyer <jmoyer@redhat.com> wrote:
+>> >> >> 
+>> >> >> > Hi,
+>> >> >> > 
+>> >> >> > I've been working on CFQ improvements for interleaved I/Os between
+>> >> >> > processes, and noticed a regression in performance when using the
+>> >> >> > deadline I/O scheduler.  The test uses a server configured with a cciss
+>> >> >> > array and 1Gb/s ethernet.
+>> >> >> > 
+>> >> >> > The iozone command line was:
+>> >> >> >   iozone -s 2000000 -r 64 -f /mnt/test/testfile -i 1 -w
+>> >> >> > 
+>> >> >> > The numbers in the nfsd's row represent the number of nfsd "threads".
+>> >> >> > These numbers (in MB/s) represent the average of 5 runs.
+>> >> >> > 
+>> >> >> >                v2.6.29
+>> >> >> > 
+>> >> >> > nfsd's  |   1    |  2   |   4   |   8
+>> >> >> > --------+---------------+-------+------
+>> >> >> > deadline| 43207 | 67436 | 96289 | 107590
+>> >> >> > 
+>> >> >> >               2.6.30-rc1
+>> >> >> > 
+>> >> >> > nfsd's  |   1   |   2   |   4   |   8
+>> >> >> > --------+---------------+-------+------
+>> >> >> > deadline| 43732 | 68059 | 76659 | 83231
+>> >> >> > 
+>> >> >> >     2.6.30-rc3.block-for-linus
+>> >> >> > 
+>> >> >> > nfsd's  |   1   |   2   |   4   |   8
+>> >> >> > --------+---------------+-------+------
+>> >> >> > deadline| 46102 | 71151 | 83120 | 82330
+>> >> >> > 
+>> >> >> > 
+>> >> >> > Notice the drop for 4 and 8 threads.  It may be worth noting that the
+>> >> >> > default number of NFSD threads is 8.
 
-http://lkml.org/lkml/2009/4/22/70
+Just following up with numbers:
 
+  2.6.30-rc4
 
-Thanks,
+nfsd's  |   8
+--------+------
+cfq     | 51632   (49791 52436 52308 51488 52141)
+deadline| 65558   (41675 42559 74820 87518 81221)
 
--- 
-Suresh Jayaraman
+   2.6.30-rc4 reverting the sunrpc "fix"
+
+nfsd's  |   8
+--------+------
+cfq     |  82513  (81650 82762 83147 82935 82073)
+deadline| 107827  (109730 106077 107175 108524 107632)
+
+The numbers in parenthesis are the individual runs.  Notice how
+2.6.30-rc4 has some pretty wide variations for deadline.
+
+Cheers,
+Jeff
+
+>> >> >> I guess we should ask Rafael to add this to the post-2.6.29 regression
+>> >> >> list.
+>> >> >
+>> >> > I agree. It'd be nice to bisect this one down, I'm guessing some mm
+>> >> > change has caused this writeout regression.
+>> >> 
+>> >> It's not writeout, it's a read test.
+>> >
+>> > Doh sorry, I even ran these tests as well a few weeks back. So perhaps
+>> > some read-ahead change, I didn't look into it. FWIW, on a single SATA
+>> > drive here, it didn't show any difference.
+>> 
+>> OK, I bisected this to the following commit.  The mount is done using
+>> NFSv3, by the way.
+>> 
+>> commit 47a14ef1af48c696b214ac168f056ddc79793d0e
+>> Author: Olga Kornievskaia <aglo@citi.umich.edu>
+>> Date:   Tue Oct 21 14:13:47 2008 -0400
+>> 
+>>     svcrpc: take advantage of tcp autotuning
+>>     
+>>     Allow the NFSv4 server to make use of TCP autotuning behaviour, which
+>>     was previously disabled by setting the sk_userlocks variable.
+>>     
+>>     Set the receive buffers to be big enough to receive the whole RPC
+>>     request, and set this for the listening socket, not the accept socket.
+>>     
+>>     Remove the code that readjusts the receive/send buffer sizes for the
+>>     accepted socket. Previously this code was used to influence the TCP
+>>     window management behaviour, which is no longer needed when autotuning
+>>     is enabled.
+>>     
+>>     This can improve IO bandwidth on networks with high bandwidth-delay
+>>     products, where a large tcp window is required.  It also simplifies
+>>     performance tuning, since getting adequate tcp buffers previously
+>>     required increasing the number of nfsd threads.
+>>     
+>>     Signed-off-by: Olga Kornievskaia <aglo@citi.umich.edu>
+>>     Cc: Jim Rees <rees@umich.edu>
+>>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>> 
+>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>> index 5763e64..7a2a90f 100644
+>> --- a/net/sunrpc/svcsock.c
+>> +++ b/net/sunrpc/svcsock.c
+>> @@ -345,7 +345,6 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+>>  	lock_sock(sock->sk);
+>>  	sock->sk->sk_sndbuf = snd * 2;
+>>  	sock->sk->sk_rcvbuf = rcv * 2;
+>> -	sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
+>>  	release_sock(sock->sk);
+>>  #endif
+>>  }
+>> @@ -797,23 +796,6 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>>  		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
+>>  		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
+>>  
+>> -	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
+>> -		/* sndbuf needs to have room for one request
+>> -		 * per thread, otherwise we can stall even when the
+>> -		 * network isn't a bottleneck.
+>> -		 *
+>> -		 * We count all threads rather than threads in a
+>> -		 * particular pool, which provides an upper bound
+>> -		 * on the number of threads which will access the socket.
+>> -		 *
+>> -		 * rcvbuf just needs to be able to hold a few requests.
+>> -		 * Normally they will be removed from the queue
+>> -		 * as soon a a complete request arrives.
+>> -		 */
+>> -		svc_sock_setbufsize(svsk->sk_sock,
+>> -				    (serv->sv_nrthreads+3) * serv->sv_max_mesg,
+>> -				    3 * serv->sv_max_mesg);
+>> -
+>>  	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+>>  
+>>  	/* Receive data. If we haven't got the record length yet, get
+>> @@ -1061,15 +1043,6 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+>>  
+>>  		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
+>>  
+>> -		/* initialise setting must have enough space to
+>> -		 * receive and respond to one request.
+>> -		 * svc_tcp_recvfrom will re-adjust if necessary
+>> -		 */
+>> -		svc_sock_setbufsize(svsk->sk_sock,
+>> -				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
+>> -				    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
+>> -
+>> -		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
+>>  		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+>>  		if (sk->sk_state != TCP_ESTABLISHED)
+>>  			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+>> @@ -1140,8 +1113,14 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>>  	/* Initialize the socket */
+>>  	if (sock->type == SOCK_DGRAM)
+>>  		svc_udp_init(svsk, serv);
+>> -	else
+>> +	else {
+>> +		/* initialise setting must have enough space to
+>> +		 * receive and respond to one request.
+>> +		 */
+>> +		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
+>> +					4 * serv->sv_max_mesg);
+>>  		svc_tcp_init(svsk, serv);
+>> +	}
+>>  
+>>  	/*
+>>  	 * We start one listener per sv_serv.  We want AF_INET
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
