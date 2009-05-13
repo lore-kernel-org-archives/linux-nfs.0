@@ -1,59 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:41815 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752595AbZEMAox (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 May 2009 20:44:53 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e8.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id n4D0Z4CZ001495
-	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2009 20:35:04 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4D0iscf257172
-	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2009 20:44:54 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n4D0ir8I002660
-	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2009 20:44:54 -0400
-Date: Tue, 12 May 2009 17:44:52 -0700
+Received: from e38.co.us.ibm.com ([32.97.110.159]:38045 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751618AbZEMBFp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 May 2009 21:05:45 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e38.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id n4D13696027857
+	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2009 19:03:06 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4D15kWX202944
+	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2009 19:05:46 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n4D15jer010437
+	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2009 19:05:46 -0600
+Date: Tue, 12 May 2009 18:05:45 -0700
 From: Matt Helsley <matthltc@us.ibm.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
-        Matt Helsley <matthltc@us.ibm.com>,
-        Containers <containers@lists.osdl.org>, linux-nfs@vger.kernel.org
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Matt Helsley <matthltc@us.ibm.com>, Containers <containers@lists.osdl.org>,
+        linux-nfs@vger.kernel.org
 Subject: Re: [RFC][PATCH] Improve NFS use of network and mount namespaces
-Message-ID: <20090513004452.GF3912@us.ibm.com>
-References: <20090512215138.GD3912@us.ibm.com> <1242172010.5407.79.camel@heimdal.trondhjem.org> <m13ab97trc.fsf@fess.ebiederm.org> <1242173604.5407.82.camel@heimdal.trondhjem.org>
+Message-ID: <20090513010545.GG3912@us.ibm.com>
+References: <20090512215138.GD3912@us.ibm.com> <m1fxf97tvt.fsf@fess.ebiederm.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1242173604.5407.82.camel@heimdal.trondhjem.org>
+In-Reply-To: <m1fxf97tvt.fsf@fess.ebiederm.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, May 12, 2009 at 08:13:24PM -0400, Trond Myklebust wrote:
-> On Tue, 2009-05-12 at 17:04 -0700, Eric W. Biederman wrote:
-> > Trond Myklebust <trond.myklebust@fys.uio.no> writes:
-> > 
-> > > Finally, what happens if someone decides to set up a private socket
-> > > namespace, using CLONE_NEWNET, without also using CLONE_NEWNS to create
-> > > a private mount namespace? Would anyone have even the remotest chance in
-> > > hell of figuring out what filesystem is mounted where in the ensuing
-> > > chaos?
-> > 
-> > Good question.  Multiple NFS servers with the same ip address reachable
-> > from the same machine sounds about as nasty pickle as it gets.
-> > 
-> > The only way I can even imagine a setup like that is someone connecting
-> > to a vpn.  So they are behind more than one NAT gateway.
-> > 
-> > Bleh NAT sucks.
+On Tue, May 12, 2009 at 05:01:58PM -0700, Eric W. Biederman wrote:
+> Matt Helsley <matthltc@us.ibm.com> writes:
 > 
-> It is doable, though, and it will affect more than just NFS. Pretty much
-> all networked filesystems are affected.
+> > Sun RPC currently opens sockets from the initial network namespace making it
+> > impossible to restrict which NFS servers a container may interact with.
+> >
+> > For example, the NFS server at 10.0.0.3 reachable from the initial namespace
+> > will always be used even if an entirely different server with the address
+> > 10.0.0.3 is reachable from a container's network namespace. Hence network
+> > namespaces cannot be used to restrict the network access of a container as long
+> > as the RPC code opens sockets using the initial network namespace. This is
+> > in stark contrast to other protocols like HTTP where the sockets are created in
+> > their proper namespaces because kernel threads are not used to open sockets for
+> > client network IO.
+> >
+> > We may plausibly end up with namespaces created by:
+> > I) The administrator may mount 10.0.0.3:/export_foo from init's
+> > container, clone the mount namespace, and unmount from the original
+> > mount namespace.
+> >
+> > II) The administrator may start a task which clones the mount namespace
+> > before mounting 10.0.0.3:/export_foo.
+> >
+> > Proposed Solution:
+> >
+> > The network namespace of the task that did the mount best defines which server
+> > the "administrator", whether in a container or not, expects to work with.
+> > When the mount is done inside a container then that is the network namespace 
+> > to use. When the mount is done prior to creating the container then that's the 
+> > namespace that should be used.
+> >
+> > This allows system administrators to isolate network traffic generated by NFS
+> > clients by mounting after creating a container. If partial isolation is desired
+> > then the administrator may mount before creating a container with a new network
+> > namespace. In each case the RPC packets would originate from a consistent
+> > namespace.
+> >
+> > One way to ensure consistent namespace usage would be to hold a reference to
+> > the original network namespace as long as the mount exists. This naturally 
+> > suggests storing the network namespace reference in the NFS superblock. 
+> > However, it may be better to store it with the RPC transport itself since
+> > it is directly responsible for (re)opening the sockets.
+> >
+> > This patch adds a reference to the network namespace to the RPC
+> > transport. When the NFS export is mounted the network namespace of
+> > the current task establishes which namespace to reference. That
+> > reference is stored in the RPC transport and used to open sockets
+> > whenever a new socket is required.
 > 
-> It begs the question: is there ever any possible justification for
-> allowing CLONE_NEWNET without implying CLONE_NEWNS?
+> Matt.  This may be the basis of something and the problem is real.
+> However it is clear you have missed a lot of details.
 
-There are so many filesystem-based kernel APIs that this is a pervasive
-problem IMHO -- not just with CLONE_NEWNET. However, even if we required
-CLONE_NEWNET|CLONE_NEWNS network namespaces still present a problem to
-network filesystems in general.
+Well crap. While I did not ignore all the RPC services I noticed
+when I tried reading the NFS/RPC code, based on the response from Chuck,
+you, and Trond, I clearly fucked up when I thought I had properly understood 
+how the RPC code works with the services that support NFS.
 
--Matt
+I figured that since RPC was the core of these services it would be a
+good place to start trying to address the problem. It looked like the
+RPC transport was a good place to deal with all of these services since
+it's responsible for (re)opening the sockets needed to perform RPC IO.
+But apparently the transport is not shared the way I thought it was :/..
+
+> So could you first address this problem in nfs_get_sb by 
+> denying the mount if we are not in the initial network namespace.
+> 
+> I.e.
+> 
+> if (current->nsproxy->net_ns != &init_net)
+> 	return -EINVAL;
+> 
+> That should be a lot simpler to get right and at least give reliable
+> and predictable semantics.
+
+Yes, that seems like a reasonable preventitive measure for now.
+
+	-Matt
+
