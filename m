@@ -1,62 +1,75 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
- over NFS
-Date: Wed, 13 May 2009 15:45:38 -0400
-Message-ID: <1242243938.5407.115.camel@heimdal.trondhjem.org>
-References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
-	 <20090508120119.8c93cfd7.akpm@linux-foundation.org>
-	 <20090511081415.GL4694@kernel.dk>
-	 <x49skjb21b7.fsf@segfault.boston.devel.redhat.com>
-	 <20090511165826.GG4694@kernel.dk>
-	 <x494ovp4r51.fsf@segfault.boston.devel.redhat.com>
-	 <20090512204433.7eb69075.akpm@linux-foundation.org>
-	 <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com>
-	 <b4ff356f0905130920v184ab529mb52a4346d4c77c14@mail.gmail.com>
-	 <20090513093229.097b47d2.akpm@linux-foundation.org>
-	 <20090513182524.GA20778@merit.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [patch for 2.6.30? 1/1] lockd: fix FILE_LOCKING=n build error
+Date: Wed, 13 May 2009 15:59:53 -0400
+Message-ID: <20090513195953.GF13420@fieldses.org>
+References: <200905122047.n4CKlP24029339@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Olga Kornievskaia <aglo@citi.umich.edu>,
-	Jeff Moyer <jmoyer@redhat.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Jim Rees <rees@umich.edu>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1761556AbZEMTqq@vger.kernel.org>
-In-Reply-To: <20090513182524.GA20778@merit.edu>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
+	randy.dunlap@oracle.com
+To: akpm@linux-foundation.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:44221 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753597AbZEMT76 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 May 2009 15:59:58 -0400
+In-Reply-To: <200905122047.n4CKlP24029339-AB4EexQrvXRQetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-05-13 at 14:25 -0400, Jim Rees wrote:
-> Andrew Morton wrote:
+On Tue, May 12, 2009 at 01:28:09PM -0700, akpm@linux-foundation.org wrote:
+> From: Randy Dunlap <randy.dunlap@oracle.com>
 > 
->   Jeff's computer got slower.  Can we fix that?
+> lockd/svclock.c is missing a header file <linux/fs.h>.
 > 
-> TCP autotuning can reduce performance by up to about 10% in some cases.
-> Jeff found one of these cases.  While the autotuning penalty never exceeds
-> 10% as far as I know, I can provide examples of other cases where autotuning
-> improves nfsd performance by more than a factor of 100.
+> <linux/fs.h> is missing a definition of locks_release_private()
+> for the config case of FILE_LOCKING=n, causing a build error:
 > 
-> The right thing is to fix autotuning.  If autotuning is considered too
-> broken to use, it should be turned off everywhere, not just in nfsd, as it
-> hurts/benefits all TCP clients, not just nfs.
+> fs/lockd/svclock.c:330: error: implicit declaration of function 'locks_release_private'
 > 
-> This topic has been discussed before on netdev:
-> http://www.spinics.net/lists/netdev/msg68650.html
-> http://www.spinics.net/lists/netdev/msg68155.html
 
-Yes, but one consequence of this patch is that the socket send buffer
-size sk->sk_sndbuf is now initialised to a smaller value than before.
+Thanks, applied for 2.6.31.
 
-This again means that the test for xprt->xpt_ops->xpo_has_wspace() in
-svc_xprt_enqueue() will fail more often, and so you will be able to
-process fewer incoming requests in parallel while you are waiting for
-the send window size to build up.
+--b.
 
-Perhaps the right thing to do here is to allow some limited violation of
-the xpo_has_wspace() test while the send window is in the process of
-building up?
-
-Cheers
-  Trond
+> lockd without FILE_LOCKING doesn't make sense, so make LOCKD and LOCKD_V4
+> depend on FILE_LOCKING, and make NFS depend on FILE_LOCKING.
+> 
+> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+> Cc: Bruce Fields <bfields@fieldses.org>
+> Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+> ---
+> 
+>  fs/Kconfig     |    2 ++
+>  fs/nfs/Kconfig |    2 +-
+>  2 files changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff -puN fs/Kconfig~lockd-fix-file_locking=n-build-error fs/Kconfig
+> --- a/fs/Kconfig~lockd-fix-file_locking=n-build-error
+> +++ a/fs/Kconfig
+> @@ -236,10 +236,12 @@ source "fs/nfsd/Kconfig"
+>  
+>  config LOCKD
+>  	tristate
+> +	depends on FILE_LOCKING
+>  
+>  config LOCKD_V4
+>  	bool
+>  	depends on NFSD_V3 || NFS_V3
+> +	depends on FILE_LOCKING
+>  	default y
+>  
+>  config EXPORTFS
+> diff -puN fs/nfs/Kconfig~lockd-fix-file_locking=n-build-error fs/nfs/Kconfig
+> --- a/fs/nfs/Kconfig~lockd-fix-file_locking=n-build-error
+> +++ a/fs/nfs/Kconfig
+> @@ -1,6 +1,6 @@
+>  config NFS_FS
+>  	tristate "NFS client support"
+> -	depends on INET
+> +	depends on INET && FILE_LOCKING
+>  	select LOCKD
+>  	select SUNRPC
+>  	select NFS_ACL_SUPPORT if NFS_V3_ACL
+> _
