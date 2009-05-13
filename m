@@ -1,49 +1,42 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [stable] [PATCH] NFS: Fix the notifications when renaming onto
- an existing file
-Date: Tue, 12 May 2009 18:42:40 -0400
-Message-ID: <1242168160.5407.18.camel@heimdal.trondhjem.org>
-References: <20090512222420.6972.25308.stgit@heimdal.trondhjem.org>
-	 <20090512223105.GA16679@kroah.com>
+From: Jay Cliburn <jacliburn@bellsouth.net>
+Subject: Re: NFS regression?  Odd delays and lockups accessing an NFS
+ export.
+Date: Tue, 12 May 2009 19:05:46 -0500
+Message-ID: <20090512190546.5e8a7faf@osprey.hogchain.net>
+References: <p6lha4te54h04qdbnos1mcemdmn1cfca6s@4ax.com>
+	<20080818185048.GO20684@miggy.org>
+	<48A9CF89.9090304@bellsouth.net>
+	<1242160078.2404.6.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: stable@kernel.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Greg KH <greg@kroah.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7337 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751980AbZELWmo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 May 2009 18:42:44 -0400
-In-Reply-To: <20090512223105.GA16679@kroah.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: Grant Coady <gcoady.lk@gmail.com>,
+	linux-kernel <linux-kernel@vger.kernel.org>, neilb@suse.de,
+	bfields@fieldses.org, linux-nfs@vger.kernel.org
+To: Frank Filz <ffilzlnx@us.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757683AbZEMAGA@vger.kernel.org>
+In-Reply-To: <1242160078.2404.6.camel@dyn9047022153>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-05-12 at 15:31 -0700, Greg KH wrote:
-> On Tue, May 12, 2009 at 06:24:20PM -0400, Trond Myklebust wrote:
-> > NFS appears to be returning an unnecessary "delete" notification when
-> > we're doing an atomic rename. See
-> > 
-> >   http://bugzilla.gnome.org/show_bug.cgi?id=575684
-> > 
-> > The fix is to get rid of the redundant call to d_delete().
-> > 
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> > Please apply to 2.6.27 - 2.6.29 stable series...
+On Tue, 12 May 2009 13:27:58 -0700
+Frank Filz <ffilzlnx@us.ibm.com> wrote:
+
+> On Mon, 2008-08-18 at 14:37 -0500, J. K. Cliburn wrote:
+> > Athanasius wrote:
+> > > On Mon, Aug 18, 2008 at 12:02:20PM +1000, Grant Coady wrote:
+> > >> I've been using NFS here for years, lately there's something odd going on 
+> > >> since about a month or so.  Previously reported last month:
+> > >> http://www.gossamer-threads.com/lists/linux/kernel/951419?page=last
+[...]
+> > I see you're running the atl1 driver on your client.  I'm chasing an 
+> > intermittent bug in that driver that seems to be affected by certain 
+> > offload parameters.  Try disabling TSO and see if things improve.
 > 
-> Is this already in Linus's tree?  If so, what is the git commit id?
+> Was this ever resolved? We're seeing a similar hangup in a 2.6.27
+> kernel.
 
-Sorry, I forgot to include that. The commit id in mainline is
-b1e4adf4ea41bb8b5a7bfc1a7001f137e65495df.
+The TSO problem in the atl1 driver was never resolved, and TSO was turned off by default with commit 82c26a9d117f0178b8c1b33429014b6d99c470f6 in the 2.6.27 cycle.  It was also added to the -stable tree at 2.6.26.4.
 
-Cheers
-  Trond
+http://lkml.org/lkml/2008/9/3/251
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Jay
