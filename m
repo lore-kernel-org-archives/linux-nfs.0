@@ -1,7 +1,7 @@
 From: Jeff Moyer <jmoyer@redhat.com>
 Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone over NFS
-Date: Thu, 14 May 2009 10:38:41 -0400
-Message-ID: <x49ab5f7nri.fsf@segfault.boston.devel.redhat.com>
+Date: Thu, 14 May 2009 11:00:28 -0400
+Message-ID: <x49ws8j686r.fsf@segfault.boston.devel.redhat.com>
 References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
 	<20090508120119.8c93cfd7.akpm@linux-foundation.org>
 	<20090511081415.GL4694@kernel.dk>
@@ -24,10 +24,10 @@ Cc: netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
 	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:49496 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:49900 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753311AbZENOj7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 May 2009 10:39:59 -0400
+	id S1751642AbZENPBu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 May 2009 11:01:50 -0400
 In-Reply-To: <1242311620.6560.14.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org> (Trond
 	Myklebust's message of "Thu, 14 May 2009 10:33:40 -0400")
 Sender: linux-nfs-owner@vger.kernel.org
@@ -93,7 +93,18 @@ Trond Myklebust <trond.myklebust@fys.uio.no> writes:
 >
 > Does something like this help?
 
-Is this in addition to the previous patch or instead of it?
+Sorry for the previous, stupid question.  I applied the patch in
+addition the last one and here are the results:
 
-Cheers,
-Jeff
+70327
+71561
+68760
+69199
+65324
+
+A packet capture for this run is available here:
+  http://people.redhat.com/jmoyer/trond2.pcap.bz2
+
+Any more ideas?  ;)
+
+-Jeff
