@@ -1,37 +1,132 @@
-From: Or Gerlitz <ogerlitz-hKgKHo2Ms0FWk0Htik3J/w@public.gmane.org>
-Subject: Re: [ofa-general] Re: [PATCH 2.6.30] xprtrdma: The frmr iova_start
- values are truncated by	the nfs rdma client.
-Date: Thu, 14 May 2009 16:45:26 +0300
-Message-ID: <4A0C2076.8010702@Voltaire.com>
-References: <20090424190510.3134.90405.stgit@build.ogc.int>	<49F31A16.2080806@opengridcomputing.com>	<49F4AE86.4090908@opengridcomputing.com>	<49f515a5.1d1e640a.1c82.6677@mx.google.com>	<49F5ED55.1010607@opengridcomputing.com>	<1240855510.8818.9.camel@heimdal.trondhjem.org>	<1240856613.8818.16.camel@heimdal.trondhjem.org>	<49F60845.4010007@opengridcomputing.com>	<1240865214.8818.73.camel@heimdal.trondhjem.org>	<4A08A5C6.7040003@opengridcomputing.com>	<1242082203.1743.11.camel@heimdal.trondhjem.org>	<4A08BF1C.2050204@opengridcomputing.com>	<1242089066.1743.19.camel@heimdal.trondhjem.org>	<4a08cd7b.48c3f10a.6bb1.fffff6d3@mx.google.com>	<1242092150.16618.15.camel@heimdal.trondhjem.org>	<4A08E7B2.1010907@opengridcomputing.com>	<4A099FB8.7090603@opengridcomputing.com>	<4A09A283.3090605@opengrid
- computing.com> <adak54kr8iz.fsf@cisco.com>	<4A0BC6A6.1070002@voltaire.com> <4A0C1F72.8050503@opengridcomputing.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
+ over NFS
+Date: Thu, 14 May 2009 10:33:40 -0400
+Message-ID: <1242311620.6560.14.camel@heimdal.trondhjem.org>
+References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
+	 <20090508120119.8c93cfd7.akpm@linux-foundation.org>
+	 <20090511081415.GL4694@kernel.dk>
+	 <x49skjb21b7.fsf@segfault.boston.devel.redhat.com>
+	 <20090511165826.GG4694@kernel.dk>
+	 <x494ovp4r51.fsf@segfault.boston.devel.redhat.com>
+	 <20090512204433.7eb69075.akpm@linux-foundation.org>
+	 <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com>
+	 <x49k54ku7i2.fsf@segfault.boston.devel.redhat.com>
+	 <1242258338.5407.244.camel@heimdal.trondhjem.org>
+	 <x49octv7qr8.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Roland Dreier <rdreier-FYB4Gu1CFyUAvxtiuMwx3w@public.gmane.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org,
-	"Talpey, Thomas" <Thomas.Talpey@netapp.com>,
-	"general-ZwoEplunGu1OwGhvXhtEPSCwEArCW2h5@public.gmane.org" <general-ZwoEplunGu1OwGhvXhtEPSCwEArCW2h5@public.gmane.org>
-To: Steve Wise <swise@opengridcomputing.com>
+Content-Type: text/plain
+Cc: netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fwil.voltaire.com ([193.47.165.2]:52253 "EHLO exil.voltaire.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752420AbZENNpe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 May 2009 09:45:34 -0400
-In-Reply-To: <4A0C1F72.8050503@opengridcomputing.com>
+Received: from mail-out1.uio.no ([129.240.10.57]:47940 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750920AbZENOdq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 May 2009 10:33:46 -0400
+In-Reply-To: <x49octv7qr8.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Wise wrote:
-> The NFSRDMA transport uses Fast Register Memory Regions.  In this
-> particular section of code, the NFSRDMA client is building a fastreg
-> work request to bind a page list to a fastreg mr.  You can read about
-> this in the IBTA spec on memory management extensions, or in the RDMA Verbs draft.
+On Thu, 2009-05-14 at 09:34 -0400, Jeff Moyer wrote:
+> Trond Myklebust <trond.myklebust@fys.uio.no> writes:
+> 
+> > On Wed, 2009-05-13 at 15:29 -0400, Jeff Moyer wrote:
+> >> Hi, netdev folks.  The summary here is:
+> >> 
+> >> A patch added in the 2.6.30 development cycle caused a performance
+> >> regression in my NFS iozone testing.  The patch in question is the
+> >> following:
+> >> 
+> >> commit 47a14ef1af48c696b214ac168f056ddc79793d0e
+> >> Author: Olga Kornievskaia <aglo@citi.umich.edu>
+> >> Date:   Tue Oct 21 14:13:47 2008 -0400
+> >> 
+> >>     svcrpc: take advantage of tcp autotuning
+> >>  
+> >> which is also quoted below.  Using 8 nfsd threads, a single client doing
+> >> 2GB of streaming read I/O goes from 107590 KB/s under 2.6.29 to 65558
+> >> KB/s under 2.6.30-rc4.  I also see more run to run variation under
+> >> 2.6.30-rc4 using the deadline I/O scheduler on the server.  That
+> >> variation disappears (as does the performance regression) when reverting
+> >> the above commit.
+> >
+> > It looks to me as if we've got a bug in the svc_tcp_has_wspace() helper
+> > function. I can see no reason why we should stop processing new incoming
+> > RPC requests just because the send buffer happens to be 2/3 full. If we
+> > see that we have space for another reply, then we should just go for it.
+> > OTOH, we do want to ensure that the SOCK_NOSPACE flag remains set, so
+> > that the TCP layer knows that we're congested, and that we'd like it to
+> > increase the send window size, please.
+> >
+> > Could you therefore please see if the following (untested) patch helps?
+> 
+> I'm seeing slightly better results with the patch:
+> 
+> 71548
+> 75987
+> 71557
+> 87432
+> 83538
+> 
+> But that's still not up to the speeds we saw under 2.6.29.  The packet
+> capture for one run can be found here:
+>   http://people.redhat.com/jmoyer/trond.pcap.bz2
+> 
+> Cheers,
+> Jeff
 
-Hi Steve,
+Yes. Something is very wrong there...
 
-I was aware for the context being fastreg work request. I was thinking
-that the spec mandates either dma addr or kva on the iova but from your reply
-I assume to be wrong, thanks.
+See for instance frame 1195, where the client finishes sending a whole
+series of READ requests, and we go into a flurry of ACKs passing
+backwards and forwards, but no data. It looks as if the NFS server isn't
+processing anything, probably because the window size falls afoul of the
+svc_tcp_has_wspace()...
 
-Or.
+Does something like this help?
+
+Cheers
+  Trond
+---------------------------------------------------------------------
+>From 85e3f5860a9063d193bdb45516b3d3d347b87301 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 14 May 2009 10:33:07 -0400
+Subject: [PATCH] SUNRPC: Always allow the NFS server to process at least one request
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/svcsock.c |    9 ++++++++-
+ 1 files changed, 8 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 8962355..4837442 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -972,9 +972,16 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ {
+ 	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
++	int reserved;
+ 	int required;
+ 
+-	required = (atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg) * 2;
++	reserved = atomic_read(&xprt->xpt_reserved);
++	/* Always allow the server to process at least one request, whether
++	 * or not the TCP window is large enough
++	 */
++	if (reserved == 0)
++		return 1;
++	required = (reserved + serv->sv_max_mesg) << 1;
+ 	if (sk_stream_wspace(svsk->sk_sk) < required)
+ 		goto out_nospace;
+ 	return 1;
+-- 
+1.6.0.4
+
+
+
