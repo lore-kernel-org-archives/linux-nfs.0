@@ -1,97 +1,63 @@
-From: Rob Gardner <rob.gardner@hp.com>
-Subject: Re: Virtual IPs and blocking locks
-Date: Fri, 15 May 2009 10:50:43 -0600
-Message-ID: <4A0D9D63.1090102@hp.com>
-References: <4A0D80B6.4070101@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
+	over NFS
+Date: Fri, 15 May 2009 17:37:43 -0400
+Message-ID: <20090515213743.GE26389@fieldses.org>
+References: <20090511081415.GL4694@kernel.dk> <x49skjb21b7.fsf@segfault.boston.devel.redhat.com> <20090511165826.GG4694@kernel.dk> <x494ovp4r51.fsf@segfault.boston.devel.redhat.com> <20090512204433.7eb69075.akpm@linux-foundation.org> <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com> <x49k54ku7i2.fsf@segfault.boston.devel.redhat.com> <1242258338.5407.244.camel@heimdal.trondhjem.org> <20090514175500.GB5675@fieldses.org> <1242325569.6560.27.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jeff Moyer <jmoyer@redhat.com>, netdev@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from g5t0008.atlanta.hp.com ([15.192.0.45]:18310 "EHLO
-	g5t0008.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbZEOQun (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2009 12:50:43 -0400
-Received: from g5t0012.atlanta.hp.com (unknown [15.192.0.16])
-	(using TLSv1 with cipher ADH-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by g5t0008.atlanta.hp.com (Postfix) with ESMTPS id C19342463F
-	for <linux-nfs@vger.kernel.org>; Fri, 15 May 2009 16:50:44 +0000 (UTC)
-Received: from [15.238.15.51] (puedo.americas.hpqcorp.net [15.238.15.51])
-	by g5t0012.atlanta.hp.com (Postfix) with ESMTPSA id 9A24D1000B
-	for <linux-nfs@vger.kernel.org>; Fri, 15 May 2009 16:50:44 +0000 (UTC)
-In-Reply-To: <4A0D80B6.4070101@redhat.com>
+Received: from mail.fieldses.org ([141.211.133.115]:51392 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751740AbZEOViE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2009 17:38:04 -0400
+In-Reply-To: <1242325569.6560.27.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It looks to me like recent kernels have added a "h_srcaddr" filed to the 
-nlm_host structure, and this should be set to the server's virtual ip 
-address. Then when the server sends the GRANTED_MSG call to the client, 
-it should appear to be coming from the virtual ip address, not the 
-server's primary ip address. So either h_srcaddr isn't getting set up 
-correctly with your virtual ip address, or rpc_create() isn't binding it 
-as the source address as it should. In our (older kernel) code, we 
-explicitly call xprt_set_bindaddr() with the virtual ip address to make 
-this happen, but I don't immediately see where this happens in the 
-latest kernel source.
+On Thu, May 14, 2009 at 02:26:09PM -0400, Trond Myklebust wrote:
+> On Thu, 2009-05-14 at 13:55 -0400, J. Bruce Fields wrote:
+> > On Wed, May 13, 2009 at 07:45:38PM -0400, Trond Myklebust wrote:
+> > > On Wed, 2009-05-13 at 15:29 -0400, Jeff Moyer wrote:
+> > > > Hi, netdev folks.  The summary here is:
+> > > > 
+> > > > A patch added in the 2.6.30 development cycle caused a performance
+> > > > regression in my NFS iozone testing.  The patch in question is the
+> > > > following:
+> > > > 
+> > > > commit 47a14ef1af48c696b214ac168f056ddc79793d0e
+> > > > Author: Olga Kornievskaia <aglo@citi.umich.edu>
+> > > > Date:   Tue Oct 21 14:13:47 2008 -0400
+> > > > 
+> > > >     svcrpc: take advantage of tcp autotuning
+> > > >  
+> > > > which is also quoted below.  Using 8 nfsd threads, a single client doing
+> > > > 2GB of streaming read I/O goes from 107590 KB/s under 2.6.29 to 65558
+> > > > KB/s under 2.6.30-rc4.  I also see more run to run variation under
+> > > > 2.6.30-rc4 using the deadline I/O scheduler on the server.  That
+> > > > variation disappears (as does the performance regression) when reverting
+> > > > the above commit.
+> > > 
+> > > It looks to me as if we've got a bug in the svc_tcp_has_wspace() helper
+> > > function. I can see no reason why we should stop processing new incoming
+> > > RPC requests just because the send buffer happens to be 2/3 full. If we
+> > 
+> > I agree, the calculation doesn't look right.  But where do you get the
+> > 2/3 number from?
+> 
+> That's the sk_stream_wspace() vs. sk_stream_min_wspace() comparison.
 
-Rob Gardner
-HP Storage Works / NAS
+Oh, I see, so looking at their implementations,
 
+	sk_stream_wspace(sk) < sk_stream_min_wspace(sk)
 
-Sachin S. Prabhu wrote:
-> We have had a few reported cases of problems using blocking locks on nfs shares 
-> mounted using virtual ips. In these cases, the NFS server was using a floating 
-> ip for clustering purposes.
->
-> Please consider the transaction below
->
-> NFS client: 10.33.8.75
-> NFS Server:
-> Primary IP : 10.33.8.71
-> Floating IP:  10.33.8.77
->
-> $ tshark -r block-virtual.pcap -R 'nlm'
-> 19   2.487622   10.33.8.75 -> 10.33.8.77   NLM V4 LOCK Call FH:0x6176411a svid:4 
-> pos:0-0
-> 22   2.487760   10.33.8.77 -> 10.33.8.75   NLM V4 LOCK Reply (Call In 19) 
-> NLM_BLOCKED
-> 33   2.489518   10.33.8.71 -> 10.33.8.75   NLM V4 GRANTED_MSG Call FH:0x6176411a 
-> svid:4 pos:0-0
-> 36   2.489635   10.33.8.75 -> 10.33.8.71   NLM V4 GRANTED_MSG Reply (Call In 33)
-> 46   2.489977   10.33.8.75 -> 10.33.8.71   NLM V4 GRANTED_RES Call NLM_DENIED
-> 49   2.490096   10.33.8.71 -> 10.33.8.75   NLM V4 GRANTED_RES Reply (Call In 46)
->
-> 19 - A lock request is sent from the client to the floating ip.
-> 22 - A NLM_BLOCKED request is sent back by the Floating ip to the client.
-> 33 - Server Primary IP address returns a NLM_GRANTED using the async callback 
-> mechanism.
-> 36 - Ack for GRANTED_MSG in 33.
-> 47 - Client returns a NLM_DENIED to the SERVER. This is done since it doesn't 
-> match the locks requested.
-> 49 - Ack for GRANTED_RES in 46.
->
-> In this case, the GRANTED_MSG is sent by the primary ip as determined by the 
-> routing table. This lock grant is rejected by the server since the ip address of 
-> the server doesn't match the ip address of the server against which the request 
-> was made. The locks are eventually granted after a 30 second poll timeout on the 
-> client.
->
-> Similar problems are also seen when nfs shares are exported from GFS filesystems 
-> since GFS uses deferred locks.
->
-> The problem was introduced by commit 5ac5f9d1ce8492163dbde5d357dc5d03becf7e36 
-> which adds a check for the server ip address. This causes a regression for 
-> clients which mount off a virtual ip address from the server.
->
-> A possible fix for this issue is to use the server ip address in the nlm_lock.oh 
-> field used to make the request and compare it to the nlm_lock.oh returned in the 
-> GRANTED_MSG call instead of checking the ip address of the server calling making 
-> the GRANTED_MSG call.
->
-> Sachin Prabhu
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->   
-
+is equivalent to sk_wmem_queued/2 < sk_->sndbuf - sk_wmem_queued, or
+sk_wmem_queued < 2/3 sndbuf, got it.  I didn't understand that the point
+of this patch was just to do that calculation around--now I see.--b.
