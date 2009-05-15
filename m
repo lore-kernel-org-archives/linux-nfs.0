@@ -1,63 +1,107 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
-	over NFS
-Date: Fri, 15 May 2009 17:37:43 -0400
-Message-ID: <20090515213743.GE26389@fieldses.org>
-References: <20090511081415.GL4694@kernel.dk> <x49skjb21b7.fsf@segfault.boston.devel.redhat.com> <20090511165826.GG4694@kernel.dk> <x494ovp4r51.fsf@segfault.boston.devel.redhat.com> <20090512204433.7eb69075.akpm@linux-foundation.org> <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com> <x49k54ku7i2.fsf@segfault.boston.devel.redhat.com> <1242258338.5407.244.camel@heimdal.trondhjem.org> <20090514175500.GB5675@fieldses.org> <1242325569.6560.27.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 0/29] NFSv4.1 Server DRC rewrite Version 2
+Date: Fri, 15 May 2009 18:46:31 -0400
+Message-ID: <20090515224631.GF26389@fieldses.org>
+References: <1240937775-23746-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jeff Moyer <jmoyer@redhat.com>, netdev@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
-	Olga Kornievskaia <aglo@citi.umich.edu>,
-	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51392 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:39661 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751740AbZEOViE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2009 17:38:04 -0400
-In-Reply-To: <1242325569.6560.27.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	with ESMTP id S1752304AbZEOWqd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 May 2009 18:46:33 -0400
+In-Reply-To: <1240937775-23746-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 14, 2009 at 02:26:09PM -0400, Trond Myklebust wrote:
-> On Thu, 2009-05-14 at 13:55 -0400, J. Bruce Fields wrote:
-> > On Wed, May 13, 2009 at 07:45:38PM -0400, Trond Myklebust wrote:
-> > > On Wed, 2009-05-13 at 15:29 -0400, Jeff Moyer wrote:
-> > > > Hi, netdev folks.  The summary here is:
-> > > > 
-> > > > A patch added in the 2.6.30 development cycle caused a performance
-> > > > regression in my NFS iozone testing.  The patch in question is the
-> > > > following:
-> > > > 
-> > > > commit 47a14ef1af48c696b214ac168f056ddc79793d0e
-> > > > Author: Olga Kornievskaia <aglo@citi.umich.edu>
-> > > > Date:   Tue Oct 21 14:13:47 2008 -0400
-> > > > 
-> > > >     svcrpc: take advantage of tcp autotuning
-> > > >  
-> > > > which is also quoted below.  Using 8 nfsd threads, a single client doing
-> > > > 2GB of streaming read I/O goes from 107590 KB/s under 2.6.29 to 65558
-> > > > KB/s under 2.6.30-rc4.  I also see more run to run variation under
-> > > > 2.6.30-rc4 using the deadline I/O scheduler on the server.  That
-> > > > variation disappears (as does the performance regression) when reverting
-> > > > the above commit.
-> > > 
-> > > It looks to me as if we've got a bug in the svc_tcp_has_wspace() helper
-> > > function. I can see no reason why we should stop processing new incoming
-> > > RPC requests just because the send buffer happens to be 2/3 full. If we
-> > 
-> > I agree, the calculation doesn't look right.  But where do you get the
-> > 2/3 number from?
+Are these patches against Benny's tree?
+
+I need patches against my tree (ideally, against my for-2.6.31 branch).
+
+If that means sending me patches from Benny's tree first, that's fine.
+Just as long as I know what order to go through all these in....
+
+--b.
+
+On Tue, Apr 28, 2009 at 12:56:14PM -0400, andros@netapp.com wrote:
+> Version 2 of the NFSv4.1 DRC rewrite.
 > 
-> That's the sk_stream_wspace() vs. sk_stream_min_wspace() comparison.
-
-Oh, I see, so looking at their implementations,
-
-	sk_stream_wspace(sk) < sk_stream_min_wspace(sk)
-
-is equivalent to sk_wmem_queued/2 < sk_->sndbuf - sk_wmem_queued, or
-sk_wmem_queued < 2/3 sndbuf, got it.  I didn't understand that the point
-of this patch was just to do that calculation around--now I see.--b.
+> V1 -> V2 Differences:
+> 
+> 1) Separate structure for the single slot clientid cache because it does not
+> need several of the fields that the sessions multiple slot cache needs, and
+> has a different static cache buffer size.
+> 
+> 2) Move from a dynamic to a static buffer allocation for the sessions DRC
+> because we can't promise the client to be able to cache a response and then
+> run out of memory and not be able to cache a response.
+> Switch from a 1024 byte to a 512 byte buffer.
+> 
+> 3) Removed struct nfsd4_cache_entry, replaced by new nfsd4_slot fields.
+> 
+> 4) Global DRC memory limit tracking.
+> 
+> 
+> This is a rewrite of the NFSv4.1 DRC, switching from a page based cache to
+> a buffer based cache. The logic for the single slot clientid cache has been
+> separated from the session slot logic to handle the CREATE_SESSION call
+> preceeded by a SEQUENCE and all the replay combinations therein.
+> 
+> The session DRC now caches encoded operations with the exception of the
+> SEQUENCE operation which for a replay is encoded with the current slot and
+> session values.  A review of message sizes indicates that a 512 byte buffer
+> for the operations is adequate.
+> 
+> Not addressed is the necessary pre-operation processing estimate of the encoded
+> per operation result to check against the negotiated fore channel maximum
+> response size cached.
+> 
+> I've tested NFSv4.1 mounts using Connectathon and the new pynfs 4.1 tests,
+> where I added two new Clientid cache replay tests [to be submitted]to
+> st_create_session.py.
+> 
+> I've tested NFSv4.0 mounts using Connectathon and the pynfs v4.0 tests.
+> 
+> As always, comments and suggestions welcome.
+> 
+> -->Andy
+> 
+> Bug fix
+> 0001-nfsd41-slots-are-freed-with-session.patch
+> 
+> Clientid single slot cache
+> 0002-nfsd41-change-check_slot_seqid-parameters.patch
+> 0003-nfsd41-turn-off-create-session-caching.patch
+> 0004-nfsd41-separate-clientid-slot-from-session-slot.patch
+> 0005-nfsd41-encode-create_session-result-into-cache.patch
+> 0006-nfsd41-create_session-check-replay-first.patch
+> 0007-nfsd41-replay-solo-and-embedded-create-session.patch
+> 
+> Session slot cache
+> 0008-nfsd41-sanity-check-client-drc-maxreqs.patch
+> 0009-nfsd41-change-from-page-to-memory-based-drc-limits.patch
+> 0010-nfsd41-use-globals-for-DRC-memory-use-management.patch
+> 0011-nfsd41-set-the-session-maximum-response-size-cached.patch
+> 0012-nfsd41-use-static-buffers-for-sessions-DRC.patch
+> 0013-nfsd41-replace-ce_cachethis-with-nfsd4_slot-field.patch
+> 0014-nfsd41-replace-ce_opcnt-with-nfsd4_slot-field.patch
+> 0015-nfsd41-nfsd41-replace-ce_status-with-nfsd4_slot-fi.patch
+> 0016-nfsd41-obliterate-nfsd4_copy_pages.patch
+> 0017-nfsd41-obliterate-nfsd41_copy_replay_data.patch
+> 0018-nfsd41-obliterate-nfsd4_release_respages.patch
+> 0019-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
+> 0020-nfsd41-remove-struct-nfsd4_cache_entry.patch
+> 0021-nfsd41-obliterate-nfsd4_set_statp.patch
+> 0022-nfsd41-rename-nfsd4_enc_uncached_replay.patch
+> 0023-nfsd41-encode-replay-sequence-from-the-slot-values.patch
+> 0024-nfsd41-fix-nfsd4_replay_cache_entry-comments.patch
+> 0025-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
+> 0026-nfsd41-support-16-slots-per-session.patch
+> 0027-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
+> 0028-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
+> 0029-nfsd41-add-test-for-failed-sequence-operation.patch
+> 0030-nfsd41-remove-redundant-failed-sequence-check.patch
+> 0031-nfsd41-only-reference-the-session-on-non-replay-seq.patch
+> 
