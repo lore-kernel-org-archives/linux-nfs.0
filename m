@@ -1,107 +1,75 @@
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH 2.6.30] svcrdma: dma unmap the correct length for the RPCRDMA
-	header page.
-Date: Thu, 14 May 2009 16:34:28 -0500
-Message-ID: <20090514213428.19282.27658.stgit@build.ogc.int>
+From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
+Date: Fri, 15 May 2009 08:38:54 +0200
+Message-ID: <4A0D0DFE.6040108@bio.ifi.lmu.de>
+References: <4A02DAA8.6050005@bio.ifi.lmu.de>
+	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
+	<4A02FDC3.9090709@bio.ifi.lmu.de>
+	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>
+	<4A03CB1C.7020703@bio.ifi.lmu.de>
+	<4a083d44.85c2f10a.4cf7.ffff85fb@mx.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: tom@opengridcomputing.com, linux-nfs@vger.kernel.org
-To: bfields@fieldses.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Tom Talpey <tmtalpey@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:33016 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753762AbZENVe1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 May 2009 17:34:27 -0400
+Received: from neil.brown.name ([220.233.11.133]:42631 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753412AbZEOGjw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 May 2009 02:39:52 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1M4r5E-0005tF-IE
+	for linux-nfs@vger.kernel.org; Fri, 15 May 2009 16:39:52 +1000
+In-Reply-To: <4a083d44.85c2f10a.4cf7.ffff85fb-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The svcrdma module was incorrectly unmapping the RPCRDMA header page.
-On IBM pserver systems this causes a resource leak that results in
-running out of bus address space (10 cthon iterations will reproduce it).
-The code was mapping the full page but only unmapping the actual header
-length.  The fix is to only map the header length.
+Tom Talpey wrote
 
-I also cleaned up the use of ib_dma_map_page() calls since the unmap
-logic always uses ib_dma_unmap_single().  I made these symmetrical.
+> The very best solution, by the way, would be to use NFSv4. It has no
+> side protocols, and therefore no UDP issue. It does have a callback
+> connection from the server to the client, but is done with TCP and is
+> configurable.
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
----
+I've indeed switched our through-firewall-nfsservers to NFSv4 and
+the problems are gone. Thanks a lot for pointing me there!
+I only open port 2049/tcp and everything works.
 
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   12 ++++++------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 +++++-----
- 2 files changed, 11 insertions(+), 11 deletions(-)
+However, I still see blocked connections on the firewall, coming from
+the NFS client to the NFS server: 
+...PROTO=TCP SPT=55598 DPT=111...
+rpcinfo tells me the portmapper is running at port 111 (udp and tcp).
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 8b510c5..f071b7e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -128,7 +128,8 @@ static int fast_reg_xdr(struct svcxprt_rdma *xprt,
- 		page_bytes -= sge_bytes;
- 
- 		frmr->page_list->page_list[page_no] =
--			ib_dma_map_page(xprt->sc_cm_id->device, page, 0,
-+			ib_dma_map_single(xprt->sc_cm_id->device, 
-+					  page_address(page),
- 					  PAGE_SIZE, DMA_TO_DEVICE);
- 		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
- 					 frmr->page_list->page_list[page_no]))
-@@ -532,18 +533,17 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 		clear_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags);
- 
- 	/* Prepare the SGE for the RPCRDMA Header */
-+	ctxt->sge[0].lkey = rdma->sc_dma_lkey;
-+	ctxt->sge[0].length = svc_rdma_xdr_get_reply_hdr_len(rdma_resp);
- 	ctxt->sge[0].addr =
--		ib_dma_map_page(rdma->sc_cm_id->device,
--				page, 0, PAGE_SIZE, DMA_TO_DEVICE);
-+		ib_dma_map_single(rdma->sc_cm_id->device, page_address(page),
-+				  ctxt->sge[0].length, DMA_TO_DEVICE);
- 	if (ib_dma_mapping_error(rdma->sc_cm_id->device, ctxt->sge[0].addr))
- 		goto err;
- 	atomic_inc(&rdma->sc_dma_used);
- 
- 	ctxt->direction = DMA_TO_DEVICE;
- 
--	ctxt->sge[0].length = svc_rdma_xdr_get_reply_hdr_len(rdma_resp);
--	ctxt->sge[0].lkey = rdma->sc_dma_lkey;
--
- 	/* Determine how many of our SGE are to be transmitted */
- 	for (sge_no = 1; byte_count && sge_no < vec->count; sge_no++) {
- 		sge_bytes = min_t(size_t, vec->sge[sge_no].iov_len, byte_count);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 4b0c2fa..5151f9f 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -500,8 +500,8 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
- 		BUG_ON(sge_no >= xprt->sc_max_sge);
- 		page = svc_rdma_get_page();
- 		ctxt->pages[sge_no] = page;
--		pa = ib_dma_map_page(xprt->sc_cm_id->device,
--				     page, 0, PAGE_SIZE,
-+		pa = ib_dma_map_single(xprt->sc_cm_id->device,
-+				     page_address(page), PAGE_SIZE,
- 				     DMA_FROM_DEVICE);
- 		if (ib_dma_mapping_error(xprt->sc_cm_id->device, pa))
- 			goto err_put_ctxt;
-@@ -1315,8 +1315,8 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
- 
- 	/* Prepare SGE for local address */
--	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
--				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
-+	sge.addr = ib_dma_map_single(xprt->sc_cm_id->device,
-+				   page_address(p), PAGE_SIZE, DMA_FROM_DEVICE);
- 	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
- 		put_page(p);
- 		return;
-@@ -1343,7 +1343,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 	if (ret) {
- 		dprintk("svcrdma: Error %d posting send for protocol error\n",
- 			ret);
--		ib_dma_unmap_page(xprt->sc_cm_id->device,
-+		ib_dma_unmap_single(xprt->sc_cm_id->device,
- 				  sge.addr, PAGE_SIZE,
- 				  DMA_FROM_DEVICE);
- 		svc_rdma_put_context(ctxt, 1);
+I didn't find a clear statement when googling if that should happen
+with NFSv4 or not. It doesn't seem to block the NFS share in any way,
+at least as far as I can see. 
+
+I wouldn't mind to open tcp port 111 to the NFS server. I'm just curios
+if that behaviour is correct or not with NFSv4.
+
+cu,
+Frank
+
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+
+
+------------------------------------------------------------------------------
+Crystal Reports - New Free Runtime and 30 Day Trial
+Check out the new simplified licensing option that enables 
+unlimited royalty-free distribution of the report engine 
+for externally facing server and web deployment. 
+http://p.sf.net/sfu/businessobjects
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
