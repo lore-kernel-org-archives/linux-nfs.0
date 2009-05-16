@@ -1,173 +1,121 @@
-From: Jerome Walters <jeronimo-CNLtBM1LHs6sTnJN9+BGXg@public.gmane.org>
-Subject: nfs: server not responding
-Date: Sat, 16 May 2009 00:57:01 +0000 (UTC)
-Message-ID: <loom.20090516T005618-989@post.gmane.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 0/29] NFSv4.1 Server DRC rewrite Version 2
+Date: Sat, 16 May 2009 11:16:08 +0300
+Message-ID: <4A0E7648.9070307@panasas.com>
+References: <1240937775-23746-1-git-send-email-andros@netapp.com> <20090515224631.GF26389@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: andros@netapp.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:36243 "EHLO ciao.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752431AbZEPBAF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 May 2009 21:00:05 -0400
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1M58Fu-0003Oe-Lv
-	for linux-nfs@vger.kernel.org; Sat, 16 May 2009 01:00:03 +0000
-Received: from vanilla.varna.spnet.net ([212.50.0.56])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 16 May 2009 01:00:02 +0000
-Received: from jeronimo by vanilla.varna.spnet.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 16 May 2009 01:00:02 +0000
+Received: from gw-ca.panasas.com ([209.116.51.66]:32849 "EHLO
+	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752734AbZEPIRK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 May 2009 04:17:10 -0400
+In-Reply-To: <20090515224631.GF26389@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Description of problem:
-Periodically, and with no obvious cause, all NFS connections between ou=
-r Debian=20
-Testing (_Squeeze_) x86 client (a diskless node which uses nfsroot and =
-boots=20
-from the server) and our Debian Testing (_Squeeze_) x86 server hang and=
- dmesg=20
-on the client side informs that the server is "not responding".
+On May. 16, 2009, 1:46 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> Are these patches against Benny's tree?
+> 
+> I need patches against my tree (ideally, against my for-2.6.31 branch).
 
-The server is responding to everyone else's requests.=20
+Doesn't make much of a difference...
+They apply cleanly on either master or your for-2.6.31 branch.
 
-Restarting the nfsd on the server doesn't appear to solve the problem.
+You can get them from git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.31
+which is based on top of your for-2.6.31 branch.
 
-At first I wasnt able to capture some debug information since /var/log =
-was=20
-mounted over the nfs, so I have installed a hard drive where I mounted=20
-only /var/log to be able to capture debug logs from the client as well.
+Benny
 
-
-Debug Logs:=20
-http://fixity.net/tmp/client.log.gz - Kernel RPC Debug Log from the cli=
-ent
-http://fixity.net/tmp/server.log.gz - Kernel RPC Debug Log from the ser=
-ver
-
-
-How reproducible:
-Happens from 10 to 90 minutes after booting the diskless node.
-
-
-Actual results:
-NFS connections stop responding, system hangs or becomes very slow and=20
-unresponsive (it doesnt respond to Ctrl+Alt+Del as well). 60 to 90 minu=
-tes=20
-after the first server time out client says server OK but the client is=
- still=20
-unresponsive. Immediately after that the client logs server connection =
-loss=20
-again which leads to continues loop. Client is still unresponsive. Some=
-times=20
-client resumes normal operation for couple of hours but then the proble=
-m=20
-repeats.
-
-
-Connectivity info:=20
-Both the client and the server are connected to Gigabit Ethernet Cisco =
-Metro=20
-series managable switch. Both of them use Intel Pro 82545GM Gigabit Eth=
-ernet=20
-Server Controllers. Neither one of them log any Ethernet errors and non=
-e are=20
-logged by the switch.
-
-
-Expected results:
-NFS connections continue to function and don't fail like clockwork when=
- every=20
-other client on the network has no issues.
-
-
-Client & Server Load:
-=46or the purposes of testing both machines were only running needed da=
-emons and=20
-weren=E2=80=99t loaded at all.
-
-
-Client & Server Kernel:
-On both the client and server custom compiled linux 2.6.29.3 kernel was=
- used.=20
-Configuration file @ http://fixity.net/tmp/config-2.6.29.3.gz
-
-
-Client & Server Network interface fragmented packet queue length:
-net.ipv4.ipfrag_high_thresh =3D 524288
-net.ipv4.ipfrag_low_thresh =3D 393216
-
-
-Client Versions:
-libnfsidmap2/squeeze uptodate 0.21-2
-nfs-common/squeeze uptodate 1:1.1.4-1
-
-
-Client Mount (cat /proc/mounts | grep nfsroot):
-10.11.11.1:/nfsroot / nfs=20
-rw,vers=3D3,rsize=3D524288,wsize=3D524288,namlen=3D255,hard,nointr,nolo=
-ck,proto=3Dtcp,time
-o=3D7,retrans=3D10,sec=3Dsys,addr=3D10.11.11.1 0 0
-
-
-Client fstab:
-proc            /proc           proc    defaults        0       0
-/dev/nfs        /               nfs     defaults        1       1
-none            /tmp            tmpfs   defaults        0       0
-none            /var/run        tmpfs   defaults        0       0
-none            /var/lock       tmpfs   defaults        0       0
-none            /var/tmp        tmpfs   defaults        0       0
-
-
-Client Daemons:
-portmap, rpc.statd, rpc.idmapd
-
-
-Server Daemons:
-portmap, rpc.statd, rpc.idmapd, rpc.mountd --manage-gids
-
-
-Server Versions:
-libnfsidmap2/squeeze uptodate 0.21-2
-nfs-common/squeeze uptodate 1:1.1.4-1
-nfs-kernel-server/testing uptodate 1:1.1.4-1
-
-
-Server Export:
-/nfsroot 10.11.11.*(rw,no_root_squash,async,no_subtree_check)
-
-
-Server Options:
-RPCNFSDCOUNT=3D16
-RPCNFSDPRIORITY=3D0
-RPCMOUNTDOPTS=3D--manage-gids
-NEED_SVCGSSD=3Dno
-RPCSVCGSSDOPTS=3Dno
-
-
-Additional Info:
-Since I have read that tweaking the nfsroot mount options could improve=
- the=20
-situation a have tested with different options as follows:
-rsize/wsize=3D1024|2048|4096|8192|32768|524288
-timeo=3D15|60|600
-retrans=3D3|10|20
-None resulted in solving the problem.
-
-
-
-
-
-Any help or suggestions on fixing the problem would be highly appreciat=
-ed. I=20
-have been messing with that problem for the last couple of weeks and ra=
-n out of=20
-ideas.
-
-
-Best Regards,
-Jerome Walters
-
+> 
+> If that means sending me patches from Benny's tree first, that's fine.
+> Just as long as I know what order to go through all these in....
+> 
+> --b.
+> 
+> On Tue, Apr 28, 2009 at 12:56:14PM -0400, andros@netapp.com wrote:
+>> Version 2 of the NFSv4.1 DRC rewrite.
+>>
+>> V1 -> V2 Differences:
+>>
+>> 1) Separate structure for the single slot clientid cache because it does not
+>> need several of the fields that the sessions multiple slot cache needs, and
+>> has a different static cache buffer size.
+>>
+>> 2) Move from a dynamic to a static buffer allocation for the sessions DRC
+>> because we can't promise the client to be able to cache a response and then
+>> run out of memory and not be able to cache a response.
+>> Switch from a 1024 byte to a 512 byte buffer.
+>>
+>> 3) Removed struct nfsd4_cache_entry, replaced by new nfsd4_slot fields.
+>>
+>> 4) Global DRC memory limit tracking.
+>>
+>>
+>> This is a rewrite of the NFSv4.1 DRC, switching from a page based cache to
+>> a buffer based cache. The logic for the single slot clientid cache has been
+>> separated from the session slot logic to handle the CREATE_SESSION call
+>> preceeded by a SEQUENCE and all the replay combinations therein.
+>>
+>> The session DRC now caches encoded operations with the exception of the
+>> SEQUENCE operation which for a replay is encoded with the current slot and
+>> session values.  A review of message sizes indicates that a 512 byte buffer
+>> for the operations is adequate.
+>>
+>> Not addressed is the necessary pre-operation processing estimate of the encoded
+>> per operation result to check against the negotiated fore channel maximum
+>> response size cached.
+>>
+>> I've tested NFSv4.1 mounts using Connectathon and the new pynfs 4.1 tests,
+>> where I added two new Clientid cache replay tests [to be submitted]to
+>> st_create_session.py.
+>>
+>> I've tested NFSv4.0 mounts using Connectathon and the pynfs v4.0 tests.
+>>
+>> As always, comments and suggestions welcome.
+>>
+>> -->Andy
+>>
+>> Bug fix
+>> 0001-nfsd41-slots-are-freed-with-session.patch
+>>
+>> Clientid single slot cache
+>> 0002-nfsd41-change-check_slot_seqid-parameters.patch
+>> 0003-nfsd41-turn-off-create-session-caching.patch
+>> 0004-nfsd41-separate-clientid-slot-from-session-slot.patch
+>> 0005-nfsd41-encode-create_session-result-into-cache.patch
+>> 0006-nfsd41-create_session-check-replay-first.patch
+>> 0007-nfsd41-replay-solo-and-embedded-create-session.patch
+>>
+>> Session slot cache
+>> 0008-nfsd41-sanity-check-client-drc-maxreqs.patch
+>> 0009-nfsd41-change-from-page-to-memory-based-drc-limits.patch
+>> 0010-nfsd41-use-globals-for-DRC-memory-use-management.patch
+>> 0011-nfsd41-set-the-session-maximum-response-size-cached.patch
+>> 0012-nfsd41-use-static-buffers-for-sessions-DRC.patch
+>> 0013-nfsd41-replace-ce_cachethis-with-nfsd4_slot-field.patch
+>> 0014-nfsd41-replace-ce_opcnt-with-nfsd4_slot-field.patch
+>> 0015-nfsd41-nfsd41-replace-ce_status-with-nfsd4_slot-fi.patch
+>> 0016-nfsd41-obliterate-nfsd4_copy_pages.patch
+>> 0017-nfsd41-obliterate-nfsd41_copy_replay_data.patch
+>> 0018-nfsd41-obliterate-nfsd4_release_respages.patch
+>> 0019-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
+>> 0020-nfsd41-remove-struct-nfsd4_cache_entry.patch
+>> 0021-nfsd41-obliterate-nfsd4_set_statp.patch
+>> 0022-nfsd41-rename-nfsd4_enc_uncached_replay.patch
+>> 0023-nfsd41-encode-replay-sequence-from-the-slot-values.patch
+>> 0024-nfsd41-fix-nfsd4_replay_cache_entry-comments.patch
+>> 0025-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
+>> 0026-nfsd41-support-16-slots-per-session.patch
+>> 0027-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
+>> 0028-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
+>> 0029-nfsd41-add-test-for-failed-sequence-operation.patch
+>> 0030-nfsd41-remove-redundant-failed-sequence-check.patch
+>> 0031-nfsd41-only-reference-the-session-on-non-replay-seq.patch
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
