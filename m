@@ -1,121 +1,350 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 0/29] NFSv4.1 Server DRC rewrite Version 2
-Date: Sat, 16 May 2009 11:16:08 +0300
-Message-ID: <4A0E7648.9070307@panasas.com>
-References: <1240937775-23746-1-git-send-email-andros@netapp.com> <20090515224631.GF26389@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
+ over NFS
+Date: Sun, 17 May 2009 15:10:54 -0400
+Message-ID: <1242587454.17796.2.camel@heimdal.trondhjem.org>
+References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
+	 <20090508120119.8c93cfd7.akpm@linux-foundation.org>
+	 <20090511081415.GL4694@kernel.dk>
+	 <x49skjb21b7.fsf@segfault.boston.devel.redhat.com>
+	 <20090511165826.GG4694@kernel.dk>
+	 <x494ovp4r51.fsf@segfault.boston.devel.redhat.com>
+	 <20090512204433.7eb69075.akpm@linux-foundation.org>
+	 <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com>
+	 <x49k54ku7i2.fsf@segfault.boston.devel.redhat.com>
+	 <1242258338.5407.244.camel@heimdal.trondhjem.org>
+	 <x49octv7qr8.fsf@segfault.boston.devel.redhat.com>
+	 <1242311620.6560.14.camel@heimdal.trondhjem.org>
+	 <x49ws8j686r.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: andros@netapp.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from gw-ca.panasas.com ([209.116.51.66]:32849 "EHLO
-	laguna.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752734AbZEPIRK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 May 2009 04:17:10 -0400
-In-Reply-To: <20090515224631.GF26389@fieldses.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:60816 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752168AbZEQTLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 May 2009 15:11:06 -0400
+In-Reply-To: <x49ws8j686r.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May. 16, 2009, 1:46 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> Are these patches against Benny's tree?
+On Thu, 2009-05-14 at 11:00 -0400, Jeff Moyer wrote:
+> Sorry for the previous, stupid question.  I applied the patch in
+> addition the last one and here are the results:
 > 
-> I need patches against my tree (ideally, against my for-2.6.31 branch).
-
-Doesn't make much of a difference...
-They apply cleanly on either master or your for-2.6.31 branch.
-
-You can get them from git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.31
-which is based on top of your for-2.6.31 branch.
-
-Benny
-
+> 70327
+> 71561
+> 68760
+> 69199
+> 65324
 > 
-> If that means sending me patches from Benny's tree first, that's fine.
-> Just as long as I know what order to go through all these in....
+> A packet capture for this run is available here:
+>   http://people.redhat.com/jmoyer/trond2.pcap.bz2
 > 
-> --b.
-> 
-> On Tue, Apr 28, 2009 at 12:56:14PM -0400, andros@netapp.com wrote:
->> Version 2 of the NFSv4.1 DRC rewrite.
->>
->> V1 -> V2 Differences:
->>
->> 1) Separate structure for the single slot clientid cache because it does not
->> need several of the fields that the sessions multiple slot cache needs, and
->> has a different static cache buffer size.
->>
->> 2) Move from a dynamic to a static buffer allocation for the sessions DRC
->> because we can't promise the client to be able to cache a response and then
->> run out of memory and not be able to cache a response.
->> Switch from a 1024 byte to a 512 byte buffer.
->>
->> 3) Removed struct nfsd4_cache_entry, replaced by new nfsd4_slot fields.
->>
->> 4) Global DRC memory limit tracking.
->>
->>
->> This is a rewrite of the NFSv4.1 DRC, switching from a page based cache to
->> a buffer based cache. The logic for the single slot clientid cache has been
->> separated from the session slot logic to handle the CREATE_SESSION call
->> preceeded by a SEQUENCE and all the replay combinations therein.
->>
->> The session DRC now caches encoded operations with the exception of the
->> SEQUENCE operation which for a replay is encoded with the current slot and
->> session values.  A review of message sizes indicates that a 512 byte buffer
->> for the operations is adequate.
->>
->> Not addressed is the necessary pre-operation processing estimate of the encoded
->> per operation result to check against the negotiated fore channel maximum
->> response size cached.
->>
->> I've tested NFSv4.1 mounts using Connectathon and the new pynfs 4.1 tests,
->> where I added two new Clientid cache replay tests [to be submitted]to
->> st_create_session.py.
->>
->> I've tested NFSv4.0 mounts using Connectathon and the pynfs v4.0 tests.
->>
->> As always, comments and suggestions welcome.
->>
->> -->Andy
->>
->> Bug fix
->> 0001-nfsd41-slots-are-freed-with-session.patch
->>
->> Clientid single slot cache
->> 0002-nfsd41-change-check_slot_seqid-parameters.patch
->> 0003-nfsd41-turn-off-create-session-caching.patch
->> 0004-nfsd41-separate-clientid-slot-from-session-slot.patch
->> 0005-nfsd41-encode-create_session-result-into-cache.patch
->> 0006-nfsd41-create_session-check-replay-first.patch
->> 0007-nfsd41-replay-solo-and-embedded-create-session.patch
->>
->> Session slot cache
->> 0008-nfsd41-sanity-check-client-drc-maxreqs.patch
->> 0009-nfsd41-change-from-page-to-memory-based-drc-limits.patch
->> 0010-nfsd41-use-globals-for-DRC-memory-use-management.patch
->> 0011-nfsd41-set-the-session-maximum-response-size-cached.patch
->> 0012-nfsd41-use-static-buffers-for-sessions-DRC.patch
->> 0013-nfsd41-replace-ce_cachethis-with-nfsd4_slot-field.patch
->> 0014-nfsd41-replace-ce_opcnt-with-nfsd4_slot-field.patch
->> 0015-nfsd41-nfsd41-replace-ce_status-with-nfsd4_slot-fi.patch
->> 0016-nfsd41-obliterate-nfsd4_copy_pages.patch
->> 0017-nfsd41-obliterate-nfsd41_copy_replay_data.patch
->> 0018-nfsd41-obliterate-nfsd4_release_respages.patch
->> 0019-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
->> 0020-nfsd41-remove-struct-nfsd4_cache_entry.patch
->> 0021-nfsd41-obliterate-nfsd4_set_statp.patch
->> 0022-nfsd41-rename-nfsd4_enc_uncached_replay.patch
->> 0023-nfsd41-encode-replay-sequence-from-the-slot-values.patch
->> 0024-nfsd41-fix-nfsd4_replay_cache_entry-comments.patch
->> 0025-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
->> 0026-nfsd41-support-16-slots-per-session.patch
->> 0027-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
->> 0028-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
->> 0029-nfsd41-add-test-for-failed-sequence-operation.patch
->> 0030-nfsd41-remove-redundant-failed-sequence-check.patch
->> 0031-nfsd41-only-reference-the-session-on-non-replay-seq.patch
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Any more ideas?  ;)
+
+Yep. I've got 2 more patches for you. With both of them applied, I'm
+seeing decent performance on my own test rig. The first patch is
+appended. I'll send the second in another email (to avoid attachments).
+
+Cheers
+ Trond
+-----------------------------------------------------------------------
+>From fcfdaf81eb21a996d83a2b68da2d62bb3697c1db Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Sun, 17 May 2009 12:40:05 -0400
+Subject: [PATCH] SUNRPC: Fix svc_tcp_recvfrom()
+
+Ensure that if the TCP receive window is smaller than the message length,
+then we just buffer the existing data, in order to allow the client to send
+more...
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/svcsock.h |    1 +
+ net/sunrpc/svcsock.c           |  167 +++++++++++++++++++++++++++++-----------
+ 2 files changed, 124 insertions(+), 44 deletions(-)
+
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 483e103..b0b4546 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -28,6 +28,7 @@ struct svc_sock {
+ 	/* private TCP part */
+ 	u32			sk_reclen;	/* length of record */
+ 	u32			sk_tcplen;	/* current read length */
++	struct page *		sk_pages[RPCSVC_MAXPAGES];	/* received data */
+ };
+ 
+ /*
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index c4e7be5..6069489 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -323,6 +323,33 @@ static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
+ 	return len;
+ }
+ 
++static int svc_partial_recvfrom(struct svc_rqst *rqstp,
++				struct kvec *iov, int nr,
++				int buflen, unsigned int base)
++{
++	size_t save_iovlen;
++	void __user *save_iovbase;
++	unsigned int i;
++	int ret;
++
++	if (base == 0)
++		return svc_recvfrom(rqstp, iov, nr, buflen);
++
++	for (i = 0; i < nr; i++) {
++		if (iov[i].iov_len > base)
++			break;
++		base -= iov[i].iov_len;
++	}
++	save_iovlen = iov[i].iov_len;
++	save_iovbase = iov[i].iov_base;
++	iov[i].iov_len -= base;
++	iov[i].iov_base += base;
++	ret = svc_recvfrom(rqstp, &iov[i], nr - i, buflen);
++	iov[i].iov_len = save_iovlen;
++	iov[i].iov_base = save_iovbase;
++	return ret;
++}
++
+ /*
+  * Set socket snd and rcv buffer lengths
+  */
+@@ -790,6 +817,56 @@ failed:
+ 	return NULL;
+ }
+ 
++static unsigned int svc_tcp_restore_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
++{
++	unsigned int i, len, npages;
++
++	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
++		return 0;
++	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
++	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	for (i = 0; i < npages; i++) {
++		if (rqstp->rq_pages[i] != NULL)
++			put_page(rqstp->rq_pages[i]);
++		BUG_ON(svsk->sk_pages[i] == NULL);
++		rqstp->rq_pages[i] = svsk->sk_pages[i];
++		svsk->sk_pages[i] = NULL;
++	}
++	rqstp->rq_arg.head[0].iov_base = page_address(rqstp->rq_pages[0]);
++	return len;
++}
++
++static void svc_tcp_save_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
++{
++	unsigned int i, len, npages;
++
++	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
++		return;
++	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
++	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	for (i = 0; i < npages; i++) {
++		svsk->sk_pages[i] = rqstp->rq_pages[i];
++		rqstp->rq_pages[i] = NULL;
++	}
++}
++
++static void svc_tcp_clear_pages(struct svc_sock *svsk)
++{
++	unsigned int i, len, npages;
++
++	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
++		goto out;
++	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
++	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
++	for (i = 0; i < npages; i++) {
++		BUG_ON(svsk->sk_pages[i] == NULL);
++		put_page(svsk->sk_pages[i]);
++		svsk->sk_pages[i] = NULL;
++	}
++out:
++	svsk->sk_tcplen = 0;
++}
++
+ /*
+  * Receive data from a TCP socket.
+  */
+@@ -800,7 +877,8 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+ 	int		len;
+ 	struct kvec *vec;
+-	int pnum, vlen;
++	unsigned int want, base, vlen;
++	int pnum;
+ 
+ 	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
+ 		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
+@@ -814,9 +892,9 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	 * possible up to the complete record length.
+ 	 */
+ 	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
+-		int		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
+ 		struct kvec	iov;
+ 
++		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
+ 		iov.iov_base = ((char *) &svsk->sk_reclen) + svsk->sk_tcplen;
+ 		iov.iov_len  = want;
+ 		if ((len = svc_recvfrom(rqstp, &iov, 1, want)) < 0)
+@@ -826,8 +904,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		if (len < want) {
+ 			dprintk("svc: short recvfrom while reading record "
+ 				"length (%d of %d)\n", len, want);
+-			svc_xprt_received(&svsk->sk_xprt);
+-			return -EAGAIN; /* record header not complete */
++			goto err_noclose;
+ 		}
+ 
+ 		svsk->sk_reclen = ntohl(svsk->sk_reclen);
+@@ -853,25 +930,14 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		}
+ 	}
+ 
+-	/* Check whether enough data is available */
+-	len = svc_recv_available(svsk);
+-	if (len < 0)
+-		goto error;
+-
+-	if (len < svsk->sk_reclen) {
+-		dprintk("svc: incomplete TCP record (%d of %d)\n",
+-			len, svsk->sk_reclen);
+-		svc_xprt_received(&svsk->sk_xprt);
+-		return -EAGAIN;	/* record not complete */
+-	}
+-	len = svsk->sk_reclen;
+-	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
++	base = svc_tcp_restore_pages(svsk, rqstp);
++	want = svsk->sk_reclen - base;
+ 
+ 	vec = rqstp->rq_vec;
+ 	vec[0] = rqstp->rq_arg.head[0];
+ 	vlen = PAGE_SIZE;
+ 	pnum = 1;
+-	while (vlen < len) {
++	while (vlen < svsk->sk_reclen) {
+ 		vec[pnum].iov_base = page_address(rqstp->rq_pages[pnum]);
+ 		vec[pnum].iov_len = PAGE_SIZE;
+ 		pnum++;
+@@ -880,19 +946,26 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	rqstp->rq_respages = &rqstp->rq_pages[pnum];
+ 
+ 	/* Now receive data */
+-	len = svc_recvfrom(rqstp, vec, pnum, len);
+-	if (len < 0)
+-		goto error;
++	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
++	len = svc_partial_recvfrom(rqstp, vec, pnum, want, base);
++	if (len != want) {
++		if (len >= 0)
++			svsk->sk_tcplen += len;
++		else if (len != -EAGAIN)
++			goto err_other;
++		svc_tcp_save_pages(svsk, rqstp);
++		dprintk("svc: incomplete TCP record (%d of %d)\n",
++			svsk->sk_tcplen, svsk->sk_reclen);
++		goto err_noclose;
++	}
+ 
+-	dprintk("svc: TCP complete record (%d bytes)\n", len);
+-	rqstp->rq_arg.len = len;
++	rqstp->rq_arg.len = svsk->sk_reclen;
+ 	rqstp->rq_arg.page_base = 0;
+-	if (len <= rqstp->rq_arg.head[0].iov_len) {
+-		rqstp->rq_arg.head[0].iov_len = len;
++	if (rqstp->rq_arg.len <= rqstp->rq_arg.head[0].iov_len) {
++		rqstp->rq_arg.head[0].iov_len = rqstp->rq_arg.len;
+ 		rqstp->rq_arg.page_len = 0;
+-	} else {
+-		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
+-	}
++	} else
++		rqstp->rq_arg.page_len = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
+ 
+ 	rqstp->rq_xprt_ctxt   = NULL;
+ 	rqstp->rq_prot	      = IPPROTO_TCP;
+@@ -900,29 +973,32 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	/* Reset TCP read info */
+ 	svsk->sk_reclen = 0;
+ 	svsk->sk_tcplen = 0;
++	/* If we have more data, signal svc_xprt_enqueue() to try again */
++	if (svc_recv_available(svsk) > sizeof(rpc_fraghdr))
++		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
++
+ 
+ 	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
+ 	svc_xprt_received(&svsk->sk_xprt);
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpcnt++;
+ 
+-	return len;
+-
+- err_delete:
++	dprintk("svc: TCP complete record (%d bytes)\n", rqstp->rq_arg.len);
++	return rqstp->rq_arg.len;
++error:
++	if (len == -EAGAIN)
++		goto err_got_eagain;
++err_other:
++	printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
++	       svsk->sk_xprt.xpt_server->sv_name, -len);
++err_delete:
+ 	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 	return -EAGAIN;
+-
+- error:
+-	if (len == -EAGAIN) {
+-		dprintk("RPC: TCP recvfrom got EAGAIN\n");
+-		svc_xprt_received(&svsk->sk_xprt);
+-	} else {
+-		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
+-		       svsk->sk_xprt.xpt_server->sv_name, -len);
+-		goto err_delete;
+-	}
+-
+-	return len;
++err_got_eagain:
++	dprintk("RPC: TCP recvfrom got EAGAIN\n");
++err_noclose:
++	svc_xprt_received(&svsk->sk_xprt);
++	return -EAGAIN;	/* record not complete */
+ }
+ 
+ /*
+@@ -1043,6 +1119,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 
+ 		svsk->sk_reclen = 0;
+ 		svsk->sk_tcplen = 0;
++		memset(&svsk->sk_pages[0], 0, sizeof(svsk->sk_pages));
+ 
+ 		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
+ 
+@@ -1291,8 +1368,10 @@ static void svc_tcp_sock_detach(struct svc_xprt *xprt)
+ 
+ 	svc_sock_detach(xprt);
+ 
+-	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags))
++	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
++		svc_tcp_clear_pages(svsk);
+ 		kernel_sock_shutdown(svsk->sk_sock, SHUT_RDWR);
++	}
+ }
+ 
+ /*
+-- 
+1.6.0.4
+
+
+
