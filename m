@@ -1,8 +1,8 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
  over NFS
-Date: Sun, 17 May 2009 15:10:54 -0400
-Message-ID: <1242587454.17796.2.camel@heimdal.trondhjem.org>
+Date: Sun, 17 May 2009 15:12:04 -0400
+Message-ID: <1242587524.17796.3.camel@heimdal.trondhjem.org>
 References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
 	 <20090508120119.8c93cfd7.akpm@linux-foundation.org>
 	 <20090511081415.GL4694@kernel.dk>
@@ -16,6 +16,7 @@ References: <x49hc0f79k9.fsf@segfault.boston.devel.redhat.com>
 	 <x49octv7qr8.fsf@segfault.boston.devel.redhat.com>
 	 <1242311620.6560.14.camel@heimdal.trondhjem.org>
 	 <x49ws8j686r.fsf@segfault.boston.devel.redhat.com>
+	 <1242587454.17796.2.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
@@ -25,324 +26,178 @@ Cc: netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
 To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:60816 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752168AbZEQTLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 May 2009 15:11:06 -0400
-In-Reply-To: <x49ws8j686r.fsf-RRHT56Q3PSP4kTEheFKJxxDDeQx5vsVwAInAS/Ez/D0@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <1242587454.17796.2.camel@heimdal.trondhjem.org>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-05-14 at 11:00 -0400, Jeff Moyer wrote:
-> Sorry for the previous, stupid question.  I applied the patch in
-> addition the last one and here are the results:
+On Sun, 2009-05-17 at 15:11 -0400, Trond Myklebust wrote:
+> On Thu, 2009-05-14 at 11:00 -0400, Jeff Moyer wrote:
+> > Sorry for the previous, stupid question.  I applied the patch in
+> > addition the last one and here are the results:
+> > 
+> > 70327
+> > 71561
+> > 68760
+> > 69199
+> > 65324
+> > 
+> > A packet capture for this run is available here:
+> >   http://people.redhat.com/jmoyer/trond2.pcap.bz2
+> > 
+> > Any more ideas?  ;)
 > 
-> 70327
-> 71561
-> 68760
-> 69199
-> 65324
-> 
-> A packet capture for this run is available here:
->   http://people.redhat.com/jmoyer/trond2.pcap.bz2
-> 
-> Any more ideas?  ;)
+> Yep. I've got 2 more patches for you. With both of them applied, I'm
+> seeing decent performance on my own test rig. The first patch is
+> appended. I'll send the second in another email (to avoid attachments).
 
-Yep. I've got 2 more patches for you. With both of them applied, I'm
-seeing decent performance on my own test rig. The first patch is
-appended. I'll send the second in another email (to avoid attachments).
+Here is number 2. It is incremental to all the others...
 
-Cheers
- Trond
+
 -----------------------------------------------------------------------
->From fcfdaf81eb21a996d83a2b68da2d62bb3697c1db Mon Sep 17 00:00:00 2001
+>From 1d11caba8bcfc8fe718bfa9a957715bf3819af09 Mon Sep 17 00:00:00 2001
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Sun, 17 May 2009 12:40:05 -0400
-Subject: [PATCH] SUNRPC: Fix svc_tcp_recvfrom()
+Date: Sun, 17 May 2009 13:01:00 -0400
+Subject: [PATCH] SUNRPC: Further congestion control tweaks...
 
-Ensure that if the TCP receive window is smaller than the message length,
-then we just buffer the existing data, in order to allow the client to send
-more...
+Ensure that deferred requests are accounted for correctly by the write
+space reservation mechanism. In order to avoid double counting, remove
+the
+reservation when we defer the request, and save any calculated value, so
+that we can restore it when the request is requeued.
+
+Also fix svc_tcp_has_wspace() so that it doesn't reserve twice the
+memory
+that we expect to require in order to write out the data.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/sunrpc/svcsock.h |    1 +
- net/sunrpc/svcsock.c           |  167 +++++++++++++++++++++++++++++-----------
- 2 files changed, 124 insertions(+), 44 deletions(-)
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc_xprt.c      |   10 +++++-----
+ net/sunrpc/svcsock.c       |   19 +++++++------------
+ 3 files changed, 13 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 483e103..b0b4546 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -28,6 +28,7 @@ struct svc_sock {
- 	/* private TCP part */
- 	u32			sk_reclen;	/* length of record */
- 	u32			sk_tcplen;	/* current read length */
-+	struct page *		sk_pages[RPCSVC_MAXPAGES];	/* received data */
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 2a30775..2c373d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -341,6 +341,7 @@ struct svc_deferred_req {
+ 	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
+ 	size_t			xprt_hlen;
++	int			reserved_space;
+ 	int			argslen;
+ 	__be32			args[0];
  };
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index c200d92..daa1f27 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -299,7 +299,6 @@ static void svc_thread_dequeue(struct svc_pool
+*pool, struct svc_rqst *rqstp)
+  */
+ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ {
+-	struct svc_serv	*serv = xprt->xpt_server;
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+ 	int cpu;
+@@ -376,8 +375,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 				rqstp, rqstp->rq_xprt);
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+-		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 		rqstp->rq_waking = 1;
+ 		pool->sp_nwaking++;
+ 		pool->sp_stats.threads_woken++;
+@@ -657,8 +654,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	if (xprt) {
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+-		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 	} else {
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
+@@ -741,6 +736,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+ 			rqstp, pool->sp_id, xprt,
+ 			atomic_read(&xprt->xpt_ref.refcount));
++		rqstp->rq_reserved = serv->sv_max_mesg;
++		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 		rqstp->rq_deferred = svc_deferred_dequeue(xprt);
+ 		if (rqstp->rq_deferred) {
+ 			svc_xprt_received(xprt);
+@@ -1006,6 +1003,8 @@ static struct cache_deferred_req *svc_defer(struct
+cache_req *req)
+ 	}
+ 	svc_xprt_get(rqstp->rq_xprt);
+ 	dr->xprt = rqstp->rq_xprt;
++	dr->reserved_space = rqstp->rq_reserved;
++	svc_reserve(rqstp, 0);
  
- /*
+ 	dr->handle.revisit = svc_revisit;
+ 	return &dr->handle;
+@@ -1018,6 +1017,7 @@ static int svc_deferred_recv(struct svc_rqst
+*rqstp)
+ {
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
+ 
++	svc_reserve(rqstp, dr->reserved_space);
+ 	/* setup iov_base past transport header */
+ 	rqstp->rq_arg.head[0].iov_base = dr->args + (dr->xprt_hlen>>2);
+ 	/* The iov_len does not include the transport header bytes */
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index c4e7be5..6069489 100644
+index 4837442..eed978e 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -323,6 +323,33 @@ static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
- 	return len;
+@@ -345,6 +345,7 @@ static void svc_sock_setbufsize(struct socket *sock,
+unsigned int snd,
+ 	lock_sock(sock->sk);
+ 	sock->sk->sk_sndbuf = snd * 2;
+ 	sock->sk->sk_rcvbuf = rcv * 2;
++	sock->sk->sk_write_space(sock->sk);
+ 	release_sock(sock->sk);
+ #endif
  }
- 
-+static int svc_partial_recvfrom(struct svc_rqst *rqstp,
-+				struct kvec *iov, int nr,
-+				int buflen, unsigned int base)
-+{
-+	size_t save_iovlen;
-+	void __user *save_iovbase;
-+	unsigned int i;
-+	int ret;
-+
-+	if (base == 0)
-+		return svc_recvfrom(rqstp, iov, nr, buflen);
-+
-+	for (i = 0; i < nr; i++) {
-+		if (iov[i].iov_len > base)
-+			break;
-+		base -= iov[i].iov_len;
-+	}
-+	save_iovlen = iov[i].iov_len;
-+	save_iovbase = iov[i].iov_base;
-+	iov[i].iov_len -= base;
-+	iov[i].iov_base += base;
-+	ret = svc_recvfrom(rqstp, &iov[i], nr - i, buflen);
-+	iov[i].iov_len = save_iovlen;
-+	iov[i].iov_base = save_iovbase;
-+	return ret;
-+}
-+
- /*
-  * Set socket snd and rcv buffer lengths
-  */
-@@ -790,6 +817,56 @@ failed:
- 	return NULL;
- }
- 
-+static unsigned int svc_tcp_restore_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
-+{
-+	unsigned int i, len, npages;
-+
-+	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
-+		return 0;
-+	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
-+	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	for (i = 0; i < npages; i++) {
-+		if (rqstp->rq_pages[i] != NULL)
-+			put_page(rqstp->rq_pages[i]);
-+		BUG_ON(svsk->sk_pages[i] == NULL);
-+		rqstp->rq_pages[i] = svsk->sk_pages[i];
-+		svsk->sk_pages[i] = NULL;
-+	}
-+	rqstp->rq_arg.head[0].iov_base = page_address(rqstp->rq_pages[0]);
-+	return len;
-+}
-+
-+static void svc_tcp_save_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
-+{
-+	unsigned int i, len, npages;
-+
-+	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
-+		return;
-+	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
-+	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	for (i = 0; i < npages; i++) {
-+		svsk->sk_pages[i] = rqstp->rq_pages[i];
-+		rqstp->rq_pages[i] = NULL;
-+	}
-+}
-+
-+static void svc_tcp_clear_pages(struct svc_sock *svsk)
-+{
-+	unsigned int i, len, npages;
-+
-+	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
-+		goto out;
-+	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
-+	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	for (i = 0; i < npages; i++) {
-+		BUG_ON(svsk->sk_pages[i] == NULL);
-+		put_page(svsk->sk_pages[i]);
-+		svsk->sk_pages[i] = NULL;
-+	}
-+out:
-+	svsk->sk_tcplen = 0;
-+}
-+
- /*
-  * Receive data from a TCP socket.
-  */
-@@ -800,7 +877,8 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
- 	int		len;
- 	struct kvec *vec;
--	int pnum, vlen;
-+	unsigned int want, base, vlen;
-+	int pnum;
- 
- 	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
- 		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
-@@ -814,9 +892,9 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	 * possible up to the complete record length.
+@@ -626,6 +627,7 @@ static void svc_udp_init(struct svc_sock *svsk,
+struct svc_serv *serv)
+ 	 * receive and respond to one request.
+ 	 * svc_udp_recvfrom will re-adjust if necessary
  	 */
- 	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
--		int		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
- 		struct kvec	iov;
++	svsk->sk_sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
+ 	svc_sock_setbufsize(svsk->sk_sock,
+ 			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
+ 			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
+@@ -971,21 +973,14 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst
+*rqstp)
+ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ {
+ 	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
+-	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+-	int reserved;
++	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
+ 	int required;
  
-+		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
- 		iov.iov_base = ((char *) &svsk->sk_reclen) + svsk->sk_tcplen;
- 		iov.iov_len  = want;
- 		if ((len = svc_recvfrom(rqstp, &iov, 1, want)) < 0)
-@@ -826,8 +904,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		if (len < want) {
- 			dprintk("svc: short recvfrom while reading record "
- 				"length (%d of %d)\n", len, want);
--			svc_xprt_received(&svsk->sk_xprt);
--			return -EAGAIN; /* record header not complete */
-+			goto err_noclose;
- 		}
- 
- 		svsk->sk_reclen = ntohl(svsk->sk_reclen);
-@@ -853,25 +930,14 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		}
- 	}
- 
--	/* Check whether enough data is available */
--	len = svc_recv_available(svsk);
--	if (len < 0)
--		goto error;
--
--	if (len < svsk->sk_reclen) {
--		dprintk("svc: incomplete TCP record (%d of %d)\n",
--			len, svsk->sk_reclen);
--		svc_xprt_received(&svsk->sk_xprt);
--		return -EAGAIN;	/* record not complete */
--	}
--	len = svsk->sk_reclen;
--	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
-+	base = svc_tcp_restore_pages(svsk, rqstp);
-+	want = svsk->sk_reclen - base;
- 
- 	vec = rqstp->rq_vec;
- 	vec[0] = rqstp->rq_arg.head[0];
- 	vlen = PAGE_SIZE;
- 	pnum = 1;
--	while (vlen < len) {
-+	while (vlen < svsk->sk_reclen) {
- 		vec[pnum].iov_base = page_address(rqstp->rq_pages[pnum]);
- 		vec[pnum].iov_len = PAGE_SIZE;
- 		pnum++;
-@@ -880,19 +946,26 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	rqstp->rq_respages = &rqstp->rq_pages[pnum];
- 
- 	/* Now receive data */
--	len = svc_recvfrom(rqstp, vec, pnum, len);
--	if (len < 0)
--		goto error;
-+	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
-+	len = svc_partial_recvfrom(rqstp, vec, pnum, want, base);
-+	if (len != want) {
-+		if (len >= 0)
-+			svsk->sk_tcplen += len;
-+		else if (len != -EAGAIN)
-+			goto err_other;
-+		svc_tcp_save_pages(svsk, rqstp);
-+		dprintk("svc: incomplete TCP record (%d of %d)\n",
-+			svsk->sk_tcplen, svsk->sk_reclen);
-+		goto err_noclose;
-+	}
- 
--	dprintk("svc: TCP complete record (%d bytes)\n", len);
--	rqstp->rq_arg.len = len;
-+	rqstp->rq_arg.len = svsk->sk_reclen;
- 	rqstp->rq_arg.page_base = 0;
--	if (len <= rqstp->rq_arg.head[0].iov_len) {
--		rqstp->rq_arg.head[0].iov_len = len;
-+	if (rqstp->rq_arg.len <= rqstp->rq_arg.head[0].iov_len) {
-+		rqstp->rq_arg.head[0].iov_len = rqstp->rq_arg.len;
- 		rqstp->rq_arg.page_len = 0;
--	} else {
--		rqstp->rq_arg.page_len = len - rqstp->rq_arg.head[0].iov_len;
--	}
-+	} else
-+		rqstp->rq_arg.page_len = rqstp->rq_arg.len - rqstp->rq_arg.head[0].iov_len;
- 
- 	rqstp->rq_xprt_ctxt   = NULL;
- 	rqstp->rq_prot	      = IPPROTO_TCP;
-@@ -900,29 +973,32 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	/* Reset TCP read info */
- 	svsk->sk_reclen = 0;
- 	svsk->sk_tcplen = 0;
-+	/* If we have more data, signal svc_xprt_enqueue() to try again */
-+	if (svc_recv_available(svsk) > sizeof(rpc_fraghdr))
-+		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
-+
- 
- 	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
- 	svc_xprt_received(&svsk->sk_xprt);
- 	if (serv->sv_stats)
- 		serv->sv_stats->nettcpcnt++;
- 
--	return len;
--
-- err_delete:
-+	dprintk("svc: TCP complete record (%d bytes)\n", rqstp->rq_arg.len);
-+	return rqstp->rq_arg.len;
-+error:
-+	if (len == -EAGAIN)
-+		goto err_got_eagain;
-+err_other:
-+	printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
-+	       svsk->sk_xprt.xpt_server->sv_name, -len);
-+err_delete:
- 	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 	return -EAGAIN;
--
-- error:
--	if (len == -EAGAIN) {
--		dprintk("RPC: TCP recvfrom got EAGAIN\n");
--		svc_xprt_received(&svsk->sk_xprt);
--	} else {
--		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
--		       svsk->sk_xprt.xpt_server->sv_name, -len);
--		goto err_delete;
--	}
--
--	return len;
-+err_got_eagain:
-+	dprintk("RPC: TCP recvfrom got EAGAIN\n");
-+err_noclose:
-+	svc_xprt_received(&svsk->sk_xprt);
-+	return -EAGAIN;	/* record not complete */
+-	reserved = atomic_read(&xprt->xpt_reserved);
+-	/* Always allow the server to process at least one request, whether
+-	 * or not the TCP window is large enough
+-	 */
+-	if (reserved == 0)
++	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
++		return 1;
++	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
++	if (sk_stream_wspace(svsk->sk_sk) >= required)
+ 		return 1;
+-	required = (reserved + serv->sv_max_mesg) << 1;
+-	if (sk_stream_wspace(svsk->sk_sk) < required)
+-		goto out_nospace;
+-	return 1;
+-out_nospace:
+ 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+ 	return 0;
  }
- 
- /*
-@@ -1043,6 +1119,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 
- 		svsk->sk_reclen = 0;
- 		svsk->sk_tcplen = 0;
-+		memset(&svsk->sk_pages[0], 0, sizeof(svsk->sk_pages));
- 
- 		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
- 
-@@ -1291,8 +1368,10 @@ static void svc_tcp_sock_detach(struct svc_xprt *xprt)
- 
- 	svc_sock_detach(xprt);
- 
--	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags))
-+	if (!test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-+		svc_tcp_clear_pages(svsk);
- 		kernel_sock_shutdown(svsk->sk_sock, SHUT_RDWR);
-+	}
- }
- 
- /*
 -- 
 1.6.0.4
 
