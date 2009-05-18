@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/3] SUNRPC: Fix the TCP server's send buffer accounting
+Subject: [PATCH 2/3] SUNRPC: Fix the TCP write space reservations for
+ deferred requests
 Date: Mon, 18 May 2009 17:47:56 -0400
-Message-ID: <20090518214756.786.58191.stgit@heimdal.trondhjem.org>
+Message-ID: <20090518214756.786.33956.stgit@heimdal.trondhjem.org>
 References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -11,107 +12,91 @@ To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:38684 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753873AbZERVv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753758AbZERVv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 18 May 2009 17:51:27 -0400
 In-Reply-To: <20090518214756.786.28129.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, the sunrpc server is refusing to allow us to process new RPC
-calls if the TCP send buffer is 2/3 full, even if we do actually have
-enough free space to guarantee that we can send another request.
-The following patch fixes svc_tcp_has_wspace() so that we only stop
-processing requests if we know that the socket buffer cannot possibly fit
-another reply.
-
-It also fixes the tcp write_space() callback so that we only clear the
-SOCK_NOSPACE flag when the TCP send buffer is less than 2/3 full.
-This should ensure that the send window will grow as per the standard TCP
-socket code.
+Ensure that deferred requests are accounted for correctly by the write
+space reservation mechanism. In order to avoid double counting, remove the
+reservation when we defer the request, and save any calculated value, so
+that we can restore it when the request is requeued.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- net/sunrpc/svcsock.c |   36 +++++++++++++++++++-----------------
- 1 files changed, 19 insertions(+), 17 deletions(-)
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc_xprt.c      |   10 +++++-----
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index af31988..eed978e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -345,6 +345,7 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
- 	lock_sock(sock->sk);
- 	sock->sk->sk_sndbuf = snd * 2;
- 	sock->sk->sk_rcvbuf = rcv * 2;
-+	sock->sk->sk_write_space(sock->sk);
- 	release_sock(sock->sk);
- #endif
- }
-@@ -386,6 +387,15 @@ static void svc_write_space(struct sock *sk)
- 	}
- }
- 
-+static void svc_tcp_write_space(struct sock *sk)
-+{
-+	struct socket *sock = sk->sk_socket;
-+
-+	if (sk_stream_wspace(sk) >= sk_stream_min_wspace(sk) && sock)
-+		clear_bit(SOCK_NOSPACE, &sock->flags);
-+	svc_write_space(sk);
-+}
-+
- /*
-  * Copy the UDP datagram's destination address to the rqstp structure.
-  * The 'destination' address in this case is the address to which the
-@@ -617,6 +627,7 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	 * receive and respond to one request.
- 	 * svc_udp_recvfrom will re-adjust if necessary
- 	 */
-+	svsk->sk_sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
- 	svc_sock_setbufsize(svsk->sk_sock,
- 			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
- 			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
-@@ -962,25 +973,16 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 2a30775..2c373d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -341,6 +341,7 @@ struct svc_deferred_req {
+ 	union svc_addr_u	daddr;	/* where reply must come from */
+ 	struct cache_deferred_req handle;
+ 	size_t			xprt_hlen;
++	int			reserved_space;
+ 	int			argslen;
+ 	__be32			args[0];
+ };
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index c200d92..daa1f27 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -299,7 +299,6 @@ static void svc_thread_dequeue(struct svc_pool *pool, struct svc_rqst *rqstp)
+  */
+ void svc_xprt_enqueue(struct svc_xprt *xprt)
  {
- 	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
--	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
-+	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
- 	int required;
--	int wspace;
+-	struct svc_serv	*serv = xprt->xpt_server;
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+ 	int cpu;
+@@ -376,8 +375,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 				rqstp, rqstp->rq_xprt);
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+-		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 		rqstp->rq_waking = 1;
+ 		pool->sp_nwaking++;
+ 		pool->sp_stats.threads_woken++;
+@@ -657,8 +654,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	if (xprt) {
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+-		rqstp->rq_reserved = serv->sv_max_mesg;
+-		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 	} else {
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
+@@ -741,6 +736,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+ 			rqstp, pool->sp_id, xprt,
+ 			atomic_read(&xprt->xpt_ref.refcount));
++		rqstp->rq_reserved = serv->sv_max_mesg;
++		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+ 		rqstp->rq_deferred = svc_deferred_dequeue(xprt);
+ 		if (rqstp->rq_deferred) {
+ 			svc_xprt_received(xprt);
+@@ -1006,6 +1003,8 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+ 	}
+ 	svc_xprt_get(rqstp->rq_xprt);
+ 	dr->xprt = rqstp->rq_xprt;
++	dr->reserved_space = rqstp->rq_reserved;
++	svc_reserve(rqstp, 0);
  
--	/*
--	 * Set the SOCK_NOSPACE flag before checking the available
--	 * sock space.
--	 */
-+	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
-+		return 1;
-+	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
-+	if (sk_stream_wspace(svsk->sk_sk) >= required)
-+		return 1;
- 	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	required = atomic_read(&svsk->sk_xprt.xpt_reserved) + serv->sv_max_mesg;
--	wspace = sk_stream_wspace(svsk->sk_sk);
--
--	if (wspace < sk_stream_min_wspace(svsk->sk_sk))
--		return 0;
--	if (required * 2 > wspace)
--		return 0;
--
--	clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	return 1;
-+	return 0;
- }
+ 	dr->handle.revisit = svc_revisit;
+ 	return &dr->handle;
+@@ -1018,6 +1017,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
+ {
+ 	struct svc_deferred_req *dr = rqstp->rq_deferred;
  
- static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
-@@ -1036,7 +1038,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 		dprintk("setting up TCP socket for reading\n");
- 		sk->sk_state_change = svc_tcp_state_change;
- 		sk->sk_data_ready = svc_tcp_data_ready;
--		sk->sk_write_space = svc_write_space;
-+		sk->sk_write_space = svc_tcp_write_space;
- 
- 		svsk->sk_reclen = 0;
- 		svsk->sk_tcplen = 0;
++	svc_reserve(rqstp, dr->reserved_space);
+ 	/* setup iov_base past transport header */
+ 	rqstp->rq_arg.head[0].iov_base = dr->args + (dr->xprt_hlen>>2);
+ 	/* The iov_len does not include the transport header bytes */
 
