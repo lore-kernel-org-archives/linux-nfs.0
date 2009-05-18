@@ -1,48 +1,40 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 3/3] nfs-utils: add IPv6 support to nfsd
-Date: Mon, 18 May 2009 11:48:47 -0400
-Message-ID: <20090518114847.55dedb53@tlielax.poochiereds.net>
-References: <1242064697-32520-1-git-send-email-jlayton@redhat.com>
-	<1242064697-32520-4-git-send-email-jlayton@redhat.com>
-	<00A26259-D5D8-4E1C-91F4-6AB5CE194870@oracle.com>
-	<4A1181EE.7080401@RedHat.com>
+From: Robert Schwebel <r.schwebel@pengutronix.de>
+Subject: Re: [patch] use ioctl.h instead of ttycom.h on Linux
+Date: Mon, 18 May 2009 17:53:13 +0200
+Message-ID: <20090518155313.GK19843@pengutronix.de>
+References: <20090503105829.GS15802@pengutronix.de> <4A1180D4.4010305@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-15
+Cc: linux-nfs@vger.kernel.org, crossdev-iOHc7L4DgpLFDiOEh+KS6A@public.gmane.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:50100 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751270AbZERPs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 May 2009 11:48:56 -0400
-In-Reply-To: <4A1181EE.7080401-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from metis.ext.pengutronix.de ([92.198.50.35]:56637 "EHLO
+	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752648AbZERPxN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 May 2009 11:53:13 -0400
+In-Reply-To: <4A1180D4.4010305-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 18 May 2009 11:42:38 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
-
-> 
-> 
-> Chuck Lever wrote:
-> > On May 11, 2009, at 1:58 PM, Jeff Layton wrote:
-> >> Add 2 new options to rpc.nfsd -- -4 and -6. -4 makes it an IPv4-only
-> >> server, and -6 makes it IPv6-only. Restructure the -H option so that
-> >> if the address appears to be or resolves to an IPv4 address, that
-> >> IPv6 is disabled. Ditto if it resolves to an IPv6 address.
+On Mon, May 18, 2009 at 11:37:56AM -0400, Steve Dickson wrote:
+> Robert Schwebel wrote:
+> > When compiling nfs-utils-1.1.6, I get this error:
 > > 
-> > For rpc.statd, I'm following Olaf's suggestion to use /etc/netconfig to
-> > decide what transports to use for listeners.  Basically, rpc.statd
-> > attempts to start listeners for all visible netids (marked with 'v') in
-> > /etc/netconfig.  This is how Solaris works, as I understand it.  I'm
-> > planning to take this course for rpc.mountd as well.
+> > arm-iwmmx-linux-gnueabi-gcc -DHAVE_CONFIG_H -I. -I../../support/include -isystem /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCORE-PXA270.PCM990/sysroot-target/include -isystem /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCORE-PXA270.PCM990/sysroot-target/usr/include -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT sm_inter_svc.o -MD -MP -MF .deps/sm_inter_svc.Tpo -c -o sm_inter_svc.o sm_inter_svc.c
+> > sm_inter_svc.c:10:39: error: sys/ttycom.h: No such file or directory
 > > 
-> > Maybe rpc.nfsd should follow suit?
-> I would have to agree... Jeff, what do you think?
+> > Use sys/ioctl.h instead.
+> > 
+> > Signed-off-by: Robert Schwebel <r.schwebel@pengutronix.de>
+> > 
+> > ---
+> Committed... 
 
-Definitely agree. Once I'm through playing whack-a-mole on some CIFS
-issues, I plan to sit down and look at incorporating that. Thanks for
-having a look.
+Great, thanks!
 
+rsc
 -- 
-Jeff Layton <jlayton@redhat.com>
+Pengutronix e.K.                           |                             |
+Industrial Linux Solutions                 | http://www.pengutronix.de/  |
+Peiner Str. 6-8, 31137 Hildesheim, Germany | Phone: +49-5121-206917-0    |
+Amtsgericht Hildesheim, HRA 2686           | Fax:   +49-5121-206917-5555 |
