@@ -1,40 +1,75 @@
-From: Robert Schwebel <r.schwebel@pengutronix.de>
-Subject: Re: [patch] use ioctl.h instead of ttycom.h on Linux
-Date: Mon, 18 May 2009 17:53:13 +0200
-Message-ID: <20090518155313.GK19843@pengutronix.de>
-References: <20090503105829.GS15802@pengutronix.de> <4A1180D4.4010305@RedHat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] nfs-utils: Fix IPv6 support in support/nfs/rpc_socket.c
+Date: Mon, 18 May 2009 12:13:03 -0400
+Message-ID: <20090518161301.12029.41834.stgit@seurat.1015granger.net>
+References: <20090518161224.12029.86761.stgit@seurat.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: linux-nfs@vger.kernel.org, crossdev-iOHc7L4DgpLFDiOEh+KS6A@public.gmane.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:56637 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752648AbZERPxN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 May 2009 11:53:13 -0400
-In-Reply-To: <4A1180D4.4010305-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:18655 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758367AbZERQPR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 May 2009 12:15:17 -0400
+In-Reply-To: <20090518161224.12029.86761.stgit-x+BlCsqV7M/wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 18, 2009 at 11:37:56AM -0400, Steve Dickson wrote:
-> Robert Schwebel wrote:
-> > When compiling nfs-utils-1.1.6, I get this error:
-> > 
-> > arm-iwmmx-linux-gnueabi-gcc -DHAVE_CONFIG_H -I. -I../../support/include -isystem /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCORE-PXA270.PCM990/sysroot-target/include -isystem /home/rsc/svn/oselas/bsp/OSELAS.BSP-Pengutronix-AllYes-trunk/platform-phyCORE-PXA270.PCM990/sysroot-target/usr/include -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT sm_inter_svc.o -MD -MP -MF .deps/sm_inter_svc.Tpo -c -o sm_inter_svc.o sm_inter_svc.c
-> > sm_inter_svc.c:10:39: error: sys/ttycom.h: No such file or directory
-> > 
-> > Use sys/ioctl.h instead.
-> > 
-> > Signed-off-by: Robert Schwebel <r.schwebel@pengutronix.de>
-> > 
-> > ---
-> Committed... 
+Use the correct #ifdef variable to enable IPv6 support for privileged
+RPC clients.  Without this fix, unmounting an IPv6 NFSv2/v3 server
+fails.
 
-Great, thanks!
+Introduced by commit 8c94296bc84f3a204f2061c0391a1d2350e4f37e.
 
-rsc
--- 
-Pengutronix e.K.                           |                             |
-Industrial Linux Solutions                 | http://www.pengutronix.de/  |
-Peiner Str. 6-8, 31137 Hildesheim, Germany | Phone: +49-5121-206917-0    |
-Amtsgericht Hildesheim, HRA 2686           | Fax:   +49-5121-206917-5555 |
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ support/nfs/rpc_socket.c |   12 +++++-------
+ 1 files changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+index 85e6064..cebf83d 100644
+--- a/support/nfs/rpc_socket.c
++++ b/support/nfs/rpc_socket.c
+@@ -132,7 +132,7 @@ static int nfs_bind(const int sock, const sa_family_t family)
+ 	return -1;
+ }
+ 
+-#ifdef IPV6_SUPPORT
++#ifdef IPV6_SUPPORTED
+ 
+ /*
+  * Bind a socket using an unused privileged source port.
+@@ -153,18 +153,16 @@ static int nfs_bindresvport(const int sock, const sa_family_t family)
+ 
+ 	switch (family) {
+ 	case AF_INET:
+-		return bindresvport_sa(sock, (struct sockaddr *)&sin,
+-					(socklen_t)sizeof(sin));
++		return bindresvport_sa(sock, (struct sockaddr *)&sin);
+ 	case AF_INET6:
+-		return bindresvport_sa(sock, (struct sockaddr *)&sin6,
+-					(socklen_t)sizeof(sin6));
++		return bindresvport_sa(sock, (struct sockaddr *)&sin6);
+ 	}
+ 
+ 	errno = EAFNOSUPPORT;
+ 	return -1;
+ }
+ 
+-#else	/* !IPV6_SUPPORT */
++#else	/* !IPV6_SUPPORTED */
+ 
+ /*
+  * Bind a socket using an unused privileged source port.
+@@ -182,7 +180,7 @@ static int nfs_bindresvport(const int sock, const sa_family_t family)
+ 	return bindresvport(sock, NULL);
+ }
+ 
+-#endif	/* !IPV6_SUPPORT */
++#endif	/* !IPV6_SUPPORTED */
+ 
+ /*
+  * Perform a non-blocking connect on the socket fd.
+
