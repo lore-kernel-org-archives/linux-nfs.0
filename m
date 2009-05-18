@@ -1,41 +1,53 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/2] Two more nfs-utils patches
-Date: Mon, 18 May 2009 13:27:55 -0400
-Message-ID: <4A119A9B.2050202@RedHat.com>
-References: <20090518161224.12029.86761.stgit@seurat.1015granger.net>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [PATCH] nfs: Fix NFS v4 client handling of MAY_EXEC in
+	nfs_permission.
+Date: Mon, 18 May 2009 12:25:03 -0700
+Message-ID: <1242674704.4273.5.camel@dyn9047022153>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain
+Cc: Eugene Teo <eugene@redhat.com>, security@kernel.org,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Bruce Fields <bfields@fieldses.org>
+To: NFS List <linux-nfs@vger.kernel.org>,
+	NFS V4 Mailing List <nfsv4@linux-nfs.org>,
+	Linux Kernel Mailing List
+	<linux-linux-kernel@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:44037 "EHLO mx2.redhat.com"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:33014 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750756AbZERRay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 May 2009 13:30:54 -0400
-In-Reply-To: <20090518161224.12029.86761.stgit-x+BlCsqV7M/wdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
+	id S1752092AbZERTZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 May 2009 15:25:05 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The problem is that permission checking is skipped if atomic open is
+possible, but when exec opens a file, it just opens it O_READONLY which
+means EXEC permission will not be checked at that time.
 
+This problem is observed by the following sequence (executed as root):
 
-Chuck Lever wrote:
-> Steve-
-> 
-> While you're at it, here are two more fixes.
-> 
-> ---
-> 
-> Chuck Lever (2):
->       umount.nfs: Harden umount.nfs error reporting
->       nfs-utils: Fix IPv6 support in support/nfs/rpc_socket.c
-> 
-> 
->  support/nfs/rpc_socket.c |   12 +++++-------
->  utils/mount/network.c    |   19 ++++++++++++++-----
->  utils/mount/nfsumount.c  |   17 +++++++++--------
->  3 files changed, 28 insertions(+), 20 deletions(-)
-> 
+mount -t nfs4 server:/ /mnt4
+echo "ls" >/mnt4/foo
+chmod 744 /mnt4/foo
+su guest -c "mnt4/foo"
 
-Committed...
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+---
+ fs/nfs/dir.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-steved.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 370b190..89f98e9 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1943,7 +1943,8 @@ int nfs_permission(struct inode *inode, int mask)
+ 		case S_IFREG:
+ 			/* NFSv4 has atomic_open... */
+ 			if (nfs_server_capable(inode, NFS_CAP_ATOMIC_OPEN)
+-					&& (mask & MAY_OPEN))
++					&& (mask & MAY_OPEN)
++					&& !(mask & MAY_EXEC))
+ 				goto out;
+ 			break;
+ 		case S_IFDIR:
+
