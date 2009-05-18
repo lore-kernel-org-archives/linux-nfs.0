@@ -1,30 +1,170 @@
-From: Rob Gardner <rob.gardner@hp.com>
-Subject: Re: Virtual IPs and blocking locks
-Date: Mon, 18 May 2009 07:55:44 -0600
-Message-ID: <4A1168E0.3090409@hp.com>
-References: <4A0D80B6.4070101@redhat.com> <4A0D9D63.1090102@hp.com> <4A11657B.4070002@redhat.com>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [pnfs] [PATCH 05/31] nfsd41: encode create_session result into
+	cache
+Date: Mon, 18 May 2009 09:54:46 -0400
+Message-ID: <89c397150905180654w31660501wc91c6a23164ac96d@mail.gmail.com>
+References: <1240938005-23778-1-git-send-email-andros@netapp.com>
+	 <1240938005-23778-2-git-send-email-andros@netapp.com>
+	 <1240938005-23778-3-git-send-email-andros@netapp.com>
+	 <1240938005-23778-4-git-send-email-andros@netapp.com>
+	 <1240938005-23778-5-git-send-email-andros@netapp.com>
+	 <20090515230518.GG26389@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "Sachin S. Prabhu" <sprabhu@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from g4t0015.houston.hp.com ([15.201.24.18]:21065 "EHLO
-	g4t0015.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751270AbZERNyX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 May 2009 09:54:23 -0400
-In-Reply-To: <4A11657B.4070002@redhat.com>
+Received: from yx-out-2324.google.com ([74.125.44.29]:45343 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750867AbZERNyp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 May 2009 09:54:45 -0400
+Received: by yx-out-2324.google.com with SMTP id 3so1980230yxj.1
+        for <linux-nfs@vger.kernel.org>; Mon, 18 May 2009 06:54:46 -0700 (PDT)
+In-Reply-To: <20090515230518.GG26389@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the client gets a message from an IP address that he never sent a 
-request to, he is correct to reject that message.
-
-Rob
-
-
-Sachin S. Prabhu wrote:
+On Fri, May 15, 2009 at 7:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Tue, Apr 28, 2009 at 12:59:39PM -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> CREATE_SESSION can be preceeded by a SEQUENCE operation and the
+>> create session single slot cache must be maintained. Encode the results of
+>> a create session call into the cache at the end of processing.
+>>
+>> The create session result will also be encoded into the RPC response, and if
+>> it is preceeded by a SEQUENCE operation, will also be encoded into the
+>> session slot table cache.
+>>
+>> Errors that do not change the create session cache:
+>> A create session NFS4ERR_STALE_CLIENTID error means that a client record
+>> (and associated create session slot) could not be found and therefore can't
+>> be changed.  NFSERR_SEQ_MISORDERED errors do not change the slot cache.
+>>
+>> All other errors get cached.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfsd/nfs4state.c       |    6 ++++--
+>>  fs/nfsd/nfs4xdr.c         |   18 ++++++++++++++++++
+>>  include/linux/nfsd/xdr4.h |    2 ++
+>>  3 files changed, 24 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index fee6bf0..142c460 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1376,7 +1376,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>>               if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+>>                   (ip_addr != unconf->cl_addr)) {
+>>                       status = nfserr_clid_inuse;
+>> -                     goto out;
+>> +                     goto out_cache;
+>>               }
+>>
+>>               slot = &unconf->cl_slot;
+>> @@ -1418,7 +1418,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>>       memcpy(cr_ses->sessionid.data, conf->cl_sessionid.data,
+>>              NFS4_MAX_SESSIONID_LEN);
+>>       cr_ses->seqid = slot->sl_seqid;
+>> -
+>> +out_cache:
+>> +     /* cache solo and embedded create sessions under the state lock */
+>> +     nfsd4_cache_create_session(cr_ses, slot, status);
+>>  out:
+>>       nfs4_unlock_state();
+>>       dprintk("%s returns %d\n", __func__, ntohl(status));
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index b2f8d74..1dfec1d 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -3046,6 +3046,24 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, int nfserr,
+>>       return 0;
+>>  }
+>>
+>> +/*
+>> + * Encode the create_session result into the create session single DRC
+>> + * slot cache. Do this for solo or embedded create session operations.
+>> + */
+>> +void
+>> +nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
+>> +                        struct nfsd4_clid_slot *slot, int nfserr)
+>> +{
+>> +     __be32 *p = (__be32 *)slot->sl_data;
+>> +     struct nfsd4_compoundres tmp = {
+>> +             .p = p,
+>> +             .end = p + XDR_QUADLEN(CS_MAX_ENC_SZ),
+>> +     }, *resp = &tmp;
 >
-> However this still leaves the question of the client handling such a situation 
-> where a callback is made from a different ip address. Should the client accept 
-> such callbacks or is the current behaviour of rejecting these callbacks correct?
+> bfields@pig:~/local/linux-2.6$ gdb vmlinux
+> GNU gdb 6.8-debian
+> ...
+> This GDB was configured as "i486-linux-gnu"...
+> (gdb) p sizeof(struct nfsd4_compoundres)
+> $1 = 588
+>
+> So that's a 588 byte structure on my machine--better not to put it on
+> the stack if we can avoid it.
 
+How did Benny put it -- oh yeah.
+
+Ouch.
+
+Should not be on the stack.
+
+>
+> This trick of faking up a temporary nfsd4_compoundres to be able to use
+> nfsd4_encode_create_session() unmodified is sort of brilliant but
+> possibly also sort of nuts?  I don't know.  Anyway, maybe:
+>
+>        - rewrite nfsd4_encode_create_session() to call a common
+>          encode_create_session that takes just the start and end
+>          pointers, then call that?  Or
+>        - forget the xdr encoding entirely and just save the values we
+>          care about from nfsd4_create_session?  (Heck, there's no
+>          pointers in there or anything--you could just make a copy of
+>          the whole struct.)
+>
+> I'm leaning towards the latter--the xdr encoding seems unnecessary, and
+> introduces error-handling for a case (overflowing the CS_MAX_ENC_SZ-size
+> buffer) that we'll never hit.  And if we're making the clientid slot
+> such a special case then I suppose there's no need to xdr-encode for
+> uniform handling with the regular sessions slot case.
+
+I like #2 as well - the same method used for the sessions operation. Good idea.
+I'll call nfsd4_encode_create_session on replay.
+
+-->Andy
+
+>
+> --b.
+>
+>> +
+>> +     slot->sl_status = nfsd4_encode_create_session(resp, nfserr, cr_ses);
+>> +     slot->sl_datalen = (char *)resp->p - (char *)p;
+>> +}
+>> +
+>>  static __be32
+>>  nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, int nfserr,
+>>                            struct nfsd4_destroy_session *destroy_session)
+>> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+>> index afd4464..21e0b73 100644
+>> --- a/include/linux/nfsd/xdr4.h
+>> +++ b/include/linux/nfsd/xdr4.h
+>> @@ -517,6 +517,8 @@ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+>>  extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
+>>  extern __be32 nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+>>               struct nfsd4_sequence *seq);
+>> +extern void nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
+>> +             struct nfsd4_clid_slot *slot, int nfserr);
+>>  extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+>>               struct nfsd4_compound_state *,
+>>  struct nfsd4_exchange_id *);
+>> --
+>> 1.5.4.3
+>>
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+>
