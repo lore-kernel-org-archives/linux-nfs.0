@@ -1,8 +1,8 @@
 From: Frank Filz <ffilzlnx@us.ibm.com>
 Subject: [PATCH] nfs: Fix NFS v4 client handling of MAY_EXEC in
 	nfs_permission.
-Date: Mon, 18 May 2009 12:25:03 -0700
-Message-ID: <1242674704.4273.5.camel@dyn9047022153>
+Date: Mon, 18 May 2009 12:29:43 -0700
+Message-ID: <1242674983.4273.8.camel@dyn9047022153>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: Eugene Teo <eugene@redhat.com>, security@kernel.org,
@@ -10,15 +10,16 @@ Cc: Eugene Teo <eugene@redhat.com>, security@kernel.org,
 	Bruce Fields <bfields@fieldses.org>
 To: NFS List <linux-nfs@vger.kernel.org>,
 	NFS V4 Mailing List <nfsv4@linux-nfs.org>,
-	Linux Kernel Mailing List
-	<linux-linux-kernel@vger.kernel.org>
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:33014 "EHLO e3.ny.us.ibm.com"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:43853 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752092AbZERTZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 May 2009 15:25:05 -0400
+	id S1751396AbZERT3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 May 2009 15:29:44 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+
+Sorry for the resend, got lkml address wrong...
 
 The problem is that permission checking is skipped if atomic open is
 possible, but when exec opens a file, it just opens it O_READONLY which
