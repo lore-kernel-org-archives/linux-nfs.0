@@ -1,70 +1,48 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: [PATCH] nfsd: fix hung up of nfs client while sync write data to
- nfs server
-Date: Tue, 19 May 2009 12:03:15 +0800
-Message-ID: <4A122F83.4020606@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: RFC: merging sm-notify and rpc.statd
+Date: Tue, 19 May 2009 10:36:14 -0400
+Message-ID: <E9DE1ACD-4C9D-43F8-9B00-28CE536BFDBD@oracle.com>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49836 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750750AbZESEGq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 May 2009 00:06:46 -0400
+Received: from rcsinet11.oracle.com ([148.87.113.123]:62010 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752432AbZESOgY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2009 10:36:24 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 'Short write in nfsd becomes a full write to the client'
-(31dec2538e45e9fff2007ea1f4c6bae9f78db724) broken the sync write.
-With the following commands to reproduce:
+Hi Neil-
 
-  $ mount -t nfs -o sync 192.168.0.21:/nfsroot /mnt
-  $ cd /mnt
-  $ echo aaaa > temp.txt
+As part of IPv6 support for NFS, I've been looking at rpc.statd and sm- 
+notify.  IPv6 support touches so many parts of both, and the current  
+open-coded RPC request schedulers in both can't support netids without  
+major revision or replacement.  So I've decided to write a replacement  
+instead of grafting in support for IPv6 to the current implementation.
 
-Then nfs client is hung up.
+For many reasons I'm thinking of merging sm-notify and rpc.statd back  
+together.  The two were split only a few years ago, and it seems to me  
+that it was done to support SuSE's in-kernel statd, which has since  
+been effectively abandoned.
 
-In SYNC mode the server alaways return the write count 0 to the
-client. This is because the value of host_err in nfsd_vfs_write()
-will be overwrite in SYNC mode by 'host_err=nfsd_sync(file);',
-and then we return host_err(which is now 0) as write count.
+Having the two separated has ushered in a host of minor  
+complications.  Packaging and init-scripts are more complicated.  Both  
+executables have separate knowlege about /var/lib/nfs/{sm,sm.bak}.   
+There are two separate man pages that share a lot of the same content.
 
-This patch fixed the problem.
+So, what do you think about folding sm-notify back into rpc.statd?   
+Steve suggested there may have been a customer issue that drove the  
+separation.  Do you have any recollection of the issues?
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
----
- fs/nfsd/vfs.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+For the rest of the list: are there strong dependencies outside RH and  
+SuSE distributions that would require a separate sm-notify  
+executable?  Any other issues?
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6c68ffd..b660435 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1015,6 +1015,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
- 	set_fs(oldfs);
- 	if (host_err >= 0) {
-+		*cnt = host_err;
- 		nfsdstats.io_write += host_err;
- 		fsnotify_modify(file->f_path.dentry);
- 	}
-@@ -1060,10 +1061,9 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	}
- 
- 	dprintk("nfsd: write complete host_err=%d\n", host_err);
--	if (host_err >= 0) {
-+	if (host_err >= 0)
- 		err = 0;
--		*cnt = host_err;
--	} else
-+	else
- 		err = nfserrno(host_err);
- out:
- 	return err;
--- 
-1.5.3.8
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
