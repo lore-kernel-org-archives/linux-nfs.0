@@ -1,48 +1,45 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: RFC: merging sm-notify and rpc.statd
-Date: Tue, 19 May 2009 10:36:14 -0400
-Message-ID: <E9DE1ACD-4C9D-43F8-9B00-28CE536BFDBD@oracle.com>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
+From: Jeff Moyer <jmoyer@redhat.com>
+Subject: Re: [PATCH 0/3] Fix the Linux rpc-over-tcp server performance
+Date: Tue, 19 May 2009 11:14:29 -0400
+Message-ID: <x498wkt3z1m.fsf@segfault.boston.devel.redhat.com>
+References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:62010 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752432AbZESOgY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2009 10:36:24 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:50175 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753442AbZESPOf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 May 2009 11:14:35 -0400
+In-Reply-To: <20090518214756.786.28129.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org> (Trond
+	Myklebust's message of "Mon, 18 May 2009 17:47:56 -0400")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil-
+Trond Myklebust <Trond.Myklebust@netapp.com> writes:
 
-As part of IPv6 support for NFS, I've been looking at rpc.statd and sm- 
-notify.  IPv6 support touches so many parts of both, and the current  
-open-coded RPC request schedulers in both can't support netids without  
-major revision or replacement.  So I've decided to write a replacement  
-instead of grafting in support for IPv6 to the current implementation.
+> I squashed the previous set of 4 incremental patches into 3. Otherwise
+> there should be no differences w.r.t. the set that Jeff tested.
 
-For many reasons I'm thinking of merging sm-notify and rpc.statd back  
-together.  The two were split only a few years ago, and it seems to me  
-that it was done to support SuSE's in-kernel statd, which has since  
-been effectively abandoned.
+I applied your original patches, then reverted these three, and the
+resulting tree shows that they are, in fact, the same.
 
-Having the two separated has ushered in a host of minor  
-complications.  Packaging and init-scripts are more complicated.  Both  
-executables have separate knowlege about /var/lib/nfs/{sm,sm.bak}.   
-There are two separate man pages that share a lot of the same content.
+So...
 
-So, what do you think about folding sm-notify back into rpc.statd?   
-Steve suggested there may have been a customer issue that drove the  
-separation.  Do you have any recollection of the issues?
+Tested-by: Jeff Moyer <jmoyer@redhat.com>
 
-For the rest of the list: are there strong dependencies outside RH and  
-SuSE distributions that would require a separate sm-notify  
-executable?  Any other issues?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> ---
+>
+> Trond Myklebust (3):
+>       SUNRPC: Fix svc_tcp_recvfrom()
+>       SUNRPC: Fix the TCP write space reservations for deferred requests
+>       SUNRPC: Fix the TCP server's send buffer accounting
+>
+>
+>  include/linux/sunrpc/svc.h     |    1 
+>  include/linux/sunrpc/svcsock.h |    1 
+>  net/sunrpc/svc_xprt.c          |   10 +-
+>  net/sunrpc/svcsock.c           |  203 ++++++++++++++++++++++++++++------------
+>  4 files changed, 149 insertions(+), 66 deletions(-)
