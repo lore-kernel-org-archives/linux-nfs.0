@@ -1,41 +1,70 @@
-From: Eugene Teo <eugene@redhat.com>
-Subject: Re: [PATCH] nfs: Fix NFS v4 client handling of MAY_EXEC in 	nfs_permission.
-Date: Tue, 19 May 2009 08:13:11 +0800
-Message-ID: <4A11F997.5030602@redhat.com>
-References: <1242674983.4273.8.camel@dyn9047022153>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: [PATCH] nfsd: fix hung up of nfs client while sync write data to
+ nfs server
+Date: Tue, 19 May 2009 12:03:15 +0800
+Message-ID: <4A122F83.4020606@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: NFS List <linux-nfs@vger.kernel.org>,
-	NFS V4 Mailing List <nfsv4@linux-nfs.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	security@kernel.org, Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Bruce Fields <bfields@fieldses.org>
-To: Frank Filz <ffilzlnx@us.ibm.com>
+Content-Type: text/plain; charset=GB2312
+To: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
+	"J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39193 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751854AbZESAOT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 May 2009 20:14:19 -0400
-In-Reply-To: <1242674983.4273.8.camel@dyn9047022153>
+Received: from cn.fujitsu.com ([222.73.24.84]:49836 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750750AbZESEGq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 May 2009 00:06:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Frank Filz wrote:
-> Sorry for the resend, got lkml address wrong...
-> 
-> The problem is that permission checking is skipped if atomic open is
-> possible, but when exec opens a file, it just opens it O_READONLY which
-> means EXEC permission will not be checked at that time.
-> 
-> This problem is observed by the following sequence (executed as root):
-> 
-> mount -t nfs4 server:/ /mnt4
-> echo "ls" >/mnt4/foo
-> chmod 744 /mnt4/foo
-> su guest -c "mnt4/foo"
-> 
-> Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+Commit 'Short write in nfsd becomes a full write to the client'
+(31dec2538e45e9fff2007ea1f4c6bae9f78db724) broken the sync write.
+With the following commands to reproduce:
 
-Tested-by: Eugene Teo <eugeneteo-X4ZF2iejbADYtjvyW6yDsg@public.gmane.org>
+  $ mount -t nfs -o sync 192.168.0.21:/nfsroot /mnt
+  $ cd /mnt
+  $ echo aaaa > temp.txt
 
-Thanks, Eugene
+Then nfs client is hung up.
+
+In SYNC mode the server alaways return the write count 0 to the
+client. This is because the value of host_err in nfsd_vfs_write()
+will be overwrite in SYNC mode by 'host_err=nfsd_sync(file);',
+and then we return host_err(which is now 0) as write count.
+
+This patch fixed the problem.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ fs/nfsd/vfs.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6c68ffd..b660435 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1015,6 +1015,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
+ 	set_fs(oldfs);
+ 	if (host_err >= 0) {
++		*cnt = host_err;
+ 		nfsdstats.io_write += host_err;
+ 		fsnotify_modify(file->f_path.dentry);
+ 	}
+@@ -1060,10 +1061,9 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 	}
+ 
+ 	dprintk("nfsd: write complete host_err=%d\n", host_err);
+-	if (host_err >= 0) {
++	if (host_err >= 0)
+ 		err = 0;
+-		*cnt = host_err;
+-	} else
++	else
+ 		err = nfserrno(host_err);
+ out:
+ 	return err;
+-- 
+1.5.3.8
+
+
+
