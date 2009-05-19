@@ -1,70 +1,73 @@
-From: Tom Talpey <tmtalpey@gmail.com>
-Subject: Re: Huge race in lockd for async lock requests?
-Date: Tue, 19 May 2009 17:33:44 -0400
-Message-ID: <4a1325c5.09025a0a.1fbd.7aaf@mx.google.com>
-References: <4A0D80B6.4070101@redhat.com>
- <4A0D9D63.1090102@hp.com>
- <4A11657B.4070002@redhat.com>
- <4A1168E0.3090409@hp.com>
- <4A1319F9.90304@hp.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: RFC: merging sm-notify and rpc.statd
+Date: Wed, 20 May 2009 08:39:47 +1000
+Message-ID: <18963.13619.563465.804193@notabene.brown>
+References: <E9DE1ACD-4C9D-43F8-9B00-28CE536BFDBD@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Rob Gardner <rob.gardner@hp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f166.google.com ([209.85.217.166]:36079 "EHLO
-	mail-gx0-f166.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751289AbZESVd4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2009 17:33:56 -0400
-Received: by gxk10 with SMTP id 10so120468gxk.13
-        for <linux-nfs@vger.kernel.org>; Tue, 19 May 2009 14:33:57 -0700 (PDT)
-In-Reply-To: <4A1319F9.90304@hp.com>
+Received: from cantor2.suse.de ([195.135.220.15]:43190 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753441AbZESW67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 May 2009 18:58:59 -0400
+In-Reply-To: message from Chuck Lever on Tuesday May 19
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At 04:43 PM 5/19/2009, Rob Gardner wrote:
->I've got a question about lockd in conjunction with a filesystem that 
->provides its own (async) locking.
->
->After nlmsvc_lock() calls vfs_lock_file(), it seems to be that we might 
->get the async callback (nlmsvc_grant_deferred) at any time. What's to 
->stop it from arriving before we even put the block on the nlm_block 
->list? If this happens, then nlmsvc_grant_deferred() will print "grant 
->for unknown block" and then we'll wait forever for a grant that will 
->never come.
+On Tuesday May 19, chuck.lever@oracle.com wrote:
+> Hi Neil-
+> 
+> As part of IPv6 support for NFS, I've been looking at rpc.statd and sm- 
+> notify.  IPv6 support touches so many parts of both, and the current  
+> open-coded RPC request schedulers in both can't support netids without  
+> major revision or replacement.  So I've decided to write a replacement  
+> instead of grafting in support for IPv6 to the current implementation.
+> 
+> For many reasons I'm thinking of merging sm-notify and rpc.statd back  
+> together.  The two were split only a few years ago, and it seems to me  
+> that it was done to support SuSE's in-kernel statd, which has since  
+> been effectively abandoned.
+> 
+> Having the two separated has ushered in a host of minor  
+> complications.  Packaging and init-scripts are more complicated.  Both  
+> executables have separate knowlege about /var/lib/nfs/{sm,sm.bak}.   
+> There are two separate man pages that share a lot of the same content.
+> 
+> So, what do you think about folding sm-notify back into rpc.statd?   
+> Steve suggested there may have been a customer issue that drove the  
+> separation.  Do you have any recollection of the issues?
+> 
+> For the rest of the list: are there strong dependencies outside RH and  
+> SuSE distributions that would require a separate sm-notify  
+> executable?  Any other issues?
 
-Yes, there's a race but the client will retry every 30 seconds, so it won't
-wait forever. Depending on the kernel client version, there are some
-improvements we've tried over time to close the raciness a little. What
-exact client version are you working with?
+While the separation of sm-notify was presumably driven by the suse
+in-kernel statd, that wasn't the reason that I copied the idea in
+nfs-utils.
 
->
->Seems like we ought to do nlmsvc_insert_block() before vfs_lock_file() 
->at the very least; But this still leaves problems where the lock is 
->granted via the callback while we're still in nlmsvc_lock(), and we 
->ignore it and tell the client that the lock is blocked; Now they'll have 
->to retry before getting the lock.
+sm-notify and statd really have two very different tasks.
 
-It's a little worse than that. It's also possible for the client to hold a lock,
-but a stray or retried server callback can cause the client to reject it,
-releasing the lock at the server. This causes the server to grant the lock
-to another client even though the first client still thinks it holds it. It's an
-NLM protocol issue, frankly, due to the fact that the server callback is a
-completely separate channel.
+sm-notify :
+   - is a 'client' for the "SM" protocol.
+   - must be run at boot time, and after that is not needed.
 
->
->Any thoughts on this besides "give up on using lockd"?
 
-Use NFSv4? ;-)
+statd :
+   - is a 'server' for the "SM" protocol.
+   - only needs to be running when either nfsd is running or an 
+     nfs mount which supports locks is active
 
-Tom.
+Thus I feel they are conceptually quite distinct.
 
->
->Rob Gardner
->
->--
->To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->the body of a message to majordomo@vger.kernel.org
->More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+It is probably true that they could share a slab of code, and putting
+that code in a common .c file would make a lot of sense.
 
+I am not strongly against re-uniting them.  However before doing that,
+I think it would be a good idea to collect a list of the problems that
+would be solved by unifying them, and the asking the question: is
+unifying them the only or best solution to these problems.
+
+Thanks,
+NeilBrown
