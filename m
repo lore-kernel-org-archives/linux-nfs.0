@@ -1,81 +1,104 @@
 From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Subject: [PATCH 2/3] integrity: move ima_counts_get
-Date: Tue, 19 May 2009 13:25:58 -0400
-Message-ID: <4b26da825c7cff6c22e924012011bedb76f7079b.1242753148.git.zohar@linux.vnet.ibm.com>
+Subject: [PATCH 3/3] integrity: nfsd imbalance bug fix
+Date: Tue, 19 May 2009 13:25:59 -0400
+Message-ID: <ac3acdbcb8a63d70635e9c7b8fb5192b01756548.1242753149.git.zohar@linux.vnet.ibm.com>
 References: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, hooanon05@yahoo.co.jp,
+Cc: Andrew Morton <akpm@linux-foundation.org>, hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org,
 	"J. Bruce Fields" <bfields@fieldses.org>,
 	Eric Paris <eparis@redhat.com>,
-	Hugh Dickins <hugh@veritas.com>,
+	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
 	James Morris <jmorris@namei.org>,
-	David Safford <safford@watson.ibm.com>,
+	David Safford <safford-aZOuKsOsJu3MbYB6QlFGEg@public.gmane.org>,
 	linux-nfs@vger.kernel.org, Mimi Zohar <zohar@linux.vnet.ibm.com>,
 	Mimi Zohar <zohar@us.ibm.com>
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755785AbZESR01@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:33251 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752827AbZESR0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 May 2009 13:26:02 -0400
 In-Reply-To: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
 In-Reply-To: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
 References: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Based on discussion on lkml (Andrew Morton and Eric Paris),
-move ima_counts_get down a layer into shmem/hugetlb__file_setup().
-Resolves drm shmem_file_setup() usage case as well.
+An nfsd exported file is opened/closed by the kernel causing the
+integrity imbalance message.
+
+Before a file is opened, there normally is permission checking, which
+is done in inode_permission().  However, as integrity checking requires
+a dentry and mount point, which is not available in inode_permission(),
+the integrity (permission) checking must be called separately.
+
+In order to detect any missing integrity checking calls, we keep track
+of file open/closes.  ima_path_check() increments these counts and
+does the integrity (permission) checking. As a result, the number of
+calls to ima_path_check()/ima_file_free() should be balanced.  An extra
+call to fput(), indicates the file could have been accessed without first
+calling ima_path_check().
+
+In nfsv3 permission checking is done once, followed by multiple reads,
+which do an open/close for each read.  The integrity (permission) checking
+call should be in nfsd_permission() after the inode_permission() call, but
+as there is no correlation between the number of permission checking and
+open calls, the integrity checking call should not increment the counters,
+but defer it to when the file is actually opened.
+
+This patch adds:
+- integrity (permission) checking for nfsd exported files in nfsd_permission().
+- a call to increment counts for files opened by nfsd.
 
 Signed-off-by: Mimi Zohar <zohar@us.ibm.com>
 ---
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 153d968..ccc62de 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -30,6 +30,7 @@
- #include <linux/dnotify.h>
- #include <linux/statfs.h>
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6c68ffd..54a8660 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -55,6 +55,7 @@
  #include <linux/security.h>
+ #endif /* CONFIG_NFSD_V4 */
+ #include <linux/jhash.h>
 +#include <linux/ima.h>
  
  #include <asm/uaccess.h>
  
-@@ -997,6 +998,7 @@ struct file *hugetlb_file_setup(const char *name, size_t size, int acctflag)
- 			&hugetlbfs_file_operations);
- 	if (!file)
- 		goto out_dentry; /* inode is already attached */
-+	ima_counts_get(file);
+@@ -735,6 +736,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 			    flags, cred);
+ 	if (IS_ERR(*filp))
+ 		host_err = PTR_ERR(*filp);
++	else
++		ima_counts_get(*filp);
+ out_nfserr:
+ 	err = nfserrno(host_err);
+ out:
+@@ -2024,6 +2027,7 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
+ 					struct dentry *dentry, int acc)
+ {
+ 	struct inode	*inode = dentry->d_inode;
++	struct path	path;
+ 	int		err;
  
- 	return file;
+ 	if (acc == NFSD_MAY_NOP)
+@@ -2096,7 +2100,18 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
+ 	if (err == -EACCES && S_ISREG(inode->i_mode) &&
+ 	    acc == (NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE))
+ 		err = inode_permission(inode, MAY_EXEC);
++	if (err)
++		goto nfsd_out;
  
-diff --git a/ipc/shm.c b/ipc/shm.c
-index 47b4642..5608183 100644
---- a/ipc/shm.c
-+++ b/ipc/shm.c
-@@ -384,7 +384,6 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
- 	error = PTR_ERR(file);
- 	if (IS_ERR(file))
- 		goto no_file;
--	ima_counts_get(file);
++	/* Do integrity (permission) checking now, but defer incrementing
++	 * IMA counts to the actual file open.
++	 */
++	path.mnt = exp->ex_path.mnt;
++	path.dentry = dentry;
++	err = ima_path_check(&path, acc & (MAY_READ | MAY_WRITE | MAY_EXEC),
++			     IMA_COUNT_LEAVE);
++	return err;
++nfsd_out:
+ 	return err? nfserrno(err) : 0;
+ }
  
- 	id = ipc_addid(&shm_ids(ns), &shp->shm_perm, ns->shm_ctlmni);
- 	if (id < 0) {
-diff --git a/mm/shmem.c b/mm/shmem.c
-index a817f75..0132fbd 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -2659,6 +2659,7 @@ struct file *shmem_file_setup(char *name, loff_t size, unsigned long flags)
- 	if (error)
- 		goto close_file;
- #endif
-+	ima_counts_get(file);
- 	return file;
- 
- close_file:
-@@ -2684,7 +2685,6 @@ int shmem_zero_setup(struct vm_area_struct *vma)
- 	if (IS_ERR(file))
- 		return PTR_ERR(file);
- 
--	ima_counts_get(file);
- 	if (vma->vm_file)
- 		fput(vma->vm_file);
- 	vma->vm_file = file;
 -- 
 1.6.0.6
+
