@@ -1,101 +1,180 @@
 From: "Labiaga, Ricardo" <ricardo.labiaga@netapp.com>
-Subject: Re: [RFC 06/11] nfsd41: Backchannel: Add sequence arguments to
- callback RPC arguments
-Date: Wed, 20 May 2009 11:05:15 -0700
-Message-ID: <C639946B.625D%ricardo.labiaga@netapp.com>
-References: <4A13B219.2020101@panasas.com>
+Subject: Re: [RFC 10/11] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+Date: Wed, 20 May 2009 11:17:04 -0700
+Message-ID: <C6399730.6262%ricardo.labiaga@netapp.com>
+References: <4A13B55A.3030405@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="US-ASCII"
 Cc: <bfields@fieldses.org>, <pnfs@linux-nfs.org>,
-	<linux-nfs@vger.kernel.org>
+	<linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30101 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:1542 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754955AbZETSFr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 May 2009 14:05:47 -0400
-In-Reply-To: <4A13B219.2020101@panasas.com>
+	id S1754001AbZETSR7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 May 2009 14:17:59 -0400
+In-Reply-To: <4A13B55A.3030405@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/20/09 12:32 AM, "Benny Halevy" <bhalevy@panasas.com> wrote:
+On 5/20/09 12:46 AM, "Benny Halevy" <bhalevy@panasas.com> wrote:
 
 > On May. 20, 2009, 6:00 +0300, Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 > wrote:
->> Follow the model we use in the client. Make the sequence arguments
->> part of the regular RPC arguments.  The results point to them.  Adjust
->> references to the sequence arguments.
->> 
 >> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
->> [define struct nfsd4_cb_sequence here]
+>> [nfsd41: cb_recall callback]
+>> [Share v4.0 and v4.1 back channel xdr]
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [Share v4.0 and v4.1 back channel xdr]
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [nfsd41: use nfsd4_cb_sequence for callback minorversion]
+>> [nfsd41: conditionally decode_sequence in nfs4_xdr_dec_cb_recall]
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> [nfsd41: Backchannel: Add sequence arguments to callback RPC arguments]
+>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 >> ---
->>  fs/nfsd/nfs4callback.c     |    9 +++++++++
->>  include/linux/nfsd/state.h |    9 +++++++++
->>  2 files changed, 18 insertions(+), 0 deletions(-)
+>>  fs/nfsd/nfs4callback.c |   40 ++++++++++++++++++++++++++++++++++++----
+>>  1 files changed, 36 insertions(+), 4 deletions(-)
 >> 
 >> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> index f75750e..0b5c4a6 100644
+>> index 521d5f5..b25dcc2 100644
 >> --- a/fs/nfsd/nfs4callback.c
 >> +++ b/fs/nfsd/nfs4callback.c
->> @@ -92,6 +92,15 @@ enum nfs_cb_opnum4 {
->> cb_sequence_dec_sz +            \
->> op_dec_sz)
+>> @@ -292,15 +292,19 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+>>  }
 >>  
->> +struct nfs4_rpc_args {
->> + void    *args_op;
->> + struct nfsd4_cb_sequence args_seq;
->> +};
->> +
->> +struct nfs4_rpc_res {
->> + struct nfsd4_cb_sequence *res_seq;
+>>  static int
+>> -nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct
+>> nfs4_delegation *args)
+>> +nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
+>> +  struct nfs4_rpc_args *rpc_args)
+>>  {
+>> struct xdr_stream xdr;
+>> + struct nfs4_delegation *args = rpc_args->args_op;
+>> struct nfs4_cb_compound_hdr hdr = {
+>> .ident = args->dl_ident,
+>> +  .minorversion = rpc_args->args_seq.cbs_minorversion,
+>> };
+>>  
+>> xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+>> encode_cb_compound_hdr(&xdr, &hdr);
+>> + encode_cb_sequence(&xdr, &rpc_args->args_seq, &hdr);
+>> encode_cb_recall(&xdr, args, &hdr);
+>> encode_cb_nops(&hdr);
+>> return 0;
+>> @@ -400,7 +404,8 @@ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+>>  }
+>>  
+>>  static int
+>> -nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
+>> +nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
+>> +  struct nfs4_rpc_res *rpc_res)
+>>  {
+>> struct xdr_stream xdr;
+>> struct nfs4_cb_compound_hdr hdr;
+>> @@ -410,6 +415,11 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32
+>> *p)
+>> status = decode_cb_compound_hdr(&xdr, &hdr);
+>> if (status)
+>> goto out;
+>> + if (rpc_res && rpc_res->res_seq) {
 > 
-> Given the size of nfsd4_cb_sequence, why not just embed it here?
+> With this version rpc_res != NULL is guaranteed, isn't it?
+> Also, embedding res_seq in nfs4_rpc_res will obviate this condition further.
 
-nfs4_rpc_res->res_seq will simply point to nfs4_rpc_args.args_seq.  During
-decode we only need to verify the return values are the same, as what we
-sent, so I don't see the need to have a separate copy.  That's why the args
-have the actual structure, but the results only a pointer.
+True, rpc_res will always be non-NULL but rpc_res->res_seq is still NULL if
+this is a v4.0 callback.
+
+> 
+>> +  status = decode_cb_sequence(&xdr, rpc_res->res_seq, rqstp);
+>> +  if (status)
+>> +   goto out;
+>> + }
+>> status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
+>>  out:
+>> return status;
+>> @@ -687,6 +697,8 @@ static void nfsd4_cb_recall_done(struct rpc_task *task,
+>> void *calldata)
+>> struct nfs4_delegation *dp = calldata;
+>> struct nfs4_client *clp = dp->dl_client;
+>>  
+>> + nfsd4_cb_done(task, calldata);
+>> +
+>> switch (task->tk_status) {
+>> case -EIO:
+>> /* Network partition? */
+>> @@ -699,16 +711,20 @@ static void nfsd4_cb_recall_done(struct rpc_task *task,
+>> void *calldata)
+>> break;
+>> default:
+>> /* success, or error we can't handle */
+>> -  return;
+>> +  goto done;
+>> }
+>> if (dp->dl_retries--) {
+>> rpc_delay(task, 2*HZ);
+>> task->tk_status = 0;
+>> rpc_restart_call(task);
+>> +  return;
+>> } else {
+>> atomic_set(&clp->cl_cb_conn.cb_set, 0);
+>> warn_no_callback_path(clp, task->tk_status);
+>> }
+>> +done:
+>> + kfree(task->tk_msg.rpc_argp);
+>> + kfree(task->tk_msg.rpc_resp);
+>>  }
+>>  
+>>  static void nfsd4_cb_recall_release(void *calldata)
+>> @@ -734,16 +750,32 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+>>  {
+>> struct nfs4_client *clp = dp->dl_client;
+>> struct rpc_clnt *clnt = clp->cl_cb_conn.cb_client;
+>> + struct nfs4_rpc_args *args;
+>> + struct nfs4_rpc_res *res;
+>> struct rpc_message msg = {
+>> .rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+>> -  .rpc_argp = dp,
+>> .rpc_cred = clp->cl_cb_conn.cb_cred
+>> };
+>> int status;
+>>  
+>> + args = kzalloc(sizeof(*args), GFP_KERNEL);
+>> + if (!args) {
+>> +  status = -ENOMEM;
+>> +  goto out;
+>> + }
+>> + res = kzalloc(sizeof(*res), GFP_KERNEL);
+>> + if (!res) {
+>> +  kfree(args);
+>> +  status = -ENOMEM;
+>> +  goto out;
+>> + }
+> 
+> Hmm, why not allocate the two in one piece and possibly having a kmem_cache
+> for them?
+
+They're two different types of structures.  You mean encapsulate them in a
+super structure and then have the pointers to respective members?  I'm not
+following.
 
 - ricardo
 
-> (Historically, it didn't have the cbs_minorversion member so
-> it's presence was the actual indication of the minorversion.
-> Now that this has changed, I see no good reason not to embed it.
-> 
 > Benny
 > 
->> +};
->> +
->>  /*
->>  * Generic encode routines from fs/nfs/nfs4xdr.c
->>  */
->> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
->> index 212a75b..931aaa6 100644
->> --- a/include/linux/nfsd/state.h
->> +++ b/include/linux/nfsd/state.h
->> @@ -61,6 +61,12 @@ typedef struct {
->>  #define si_stateownerid   si_opaque.so_stateownerid
->>  #define si_fileid         si_opaque.so_fileid
->>  
->> +struct nfsd4_cb_sequence {
->> + /* args/res */
->> + u32   cbs_minorversion;
->> + struct nfs4_client *cbs_clp;
->> +};
->> +
->>  struct nfs4_delegation {
->> struct list_head dl_perfile;
->> struct list_head dl_perclnt;
->> @@ -188,6 +194,9 @@ struct nfs4_client {
->> struct nfsd4_slot cl_slot; /* create_session slot */
->> u32   cl_exchange_flags;
->> struct nfs4_sessionid cl_sessionid;
->> +
->> + /* for nfs41 callbacks */
->> + struct svc_xprt  *cl_cb_xprt; /* 4.1 callback transport */
->>  };
->>  
->>  /* struct nfs4_client_reset
+>> + args->args_op = dp;
+>> + msg.rpc_argp = args;
+>> + msg.rpc_resp = res;
+>> dp->dl_retries = 1;
+>> status = rpc_call_async(clnt, &msg, RPC_TASK_SOFT,
+>> &nfsd4_cb_recall_ops, dp);
+>> +out:
+>> if (status) {
+>> put_nfs4_client(clp);
+>> nfs4_put_delegation(dp);
 
