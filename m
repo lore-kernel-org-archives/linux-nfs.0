@@ -1,57 +1,35 @@
-From: "NeilBrown" <neilb@suse.de>
+From: Ben Greear <greearb@candelatech.com>
 Subject: Re: RFC: merging sm-notify and rpc.statd
-Date: Wed, 20 May 2009 11:05:34 +1000 (EST)
-Message-ID: <bdacaae74fbd57ee96599286eae43751.squirrel@neil.brown.name>
-References: <E9DE1ACD-4C9D-43F8-9B00-28CE536BFDBD@oracle.com>
-    <18963.13619.563465.804193@notabene.brown>
-    <200905191925.38902.vapier@gentoo.org>
+Date: Tue, 19 May 2009 18:10:50 -0700
+Message-ID: <4A13589A.6050406@candelatech.com>
+References: <E9DE1ACD-4C9D-43F8-9B00-28CE536BFDBD@oracle.com>    <18963.13619.563465.804193@notabene.brown>    <200905191925.38902.vapier@gentoo.org> <bdacaae74fbd57ee96599286eae43751.squirrel@neil.brown.name>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Chuck Lever" <chuck.lever@oracle.com>,
-	"Linux NFS mailing list" <linux-nfs@vger.kernel.org>
-To: "Mike Frysinger" <vapier@gentoo.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Mike Frysinger <vapier@gentoo.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Linux NFS mailing list <linux-nfs@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:33017 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754888AbZETBFo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 May 2009 21:05:44 -0400
-In-Reply-To: <200905191925.38902.vapier@gentoo.org>
+Received: from mail.candelatech.com ([208.74.158.172]:57046 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755287AbZETBLE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2009 21:11:04 -0400
+In-Reply-To: <bdacaae74fbd57ee96599286eae43751.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 20, 2009 9:25 am, Mike Frysinger wrote:
-> On Tuesday 19 May 2009 18:39:47 Neil Brown wrote:
->> sm-notify :
->>    - is a 'client' for the "SM" protocol.
->>    - must be run at boot time, and after that is not needed.
->>
->> statd :
->>    - is a 'server' for the "SM" protocol.
->>    - only needs to be running when either nfsd is running or an
->>      nfs mount which supports locks is active
->
-> that last part -- any nfs mount with locks -- means that pretty much every
-> nfs
-> client out there needs it running.
->
-> sm-notify is pretty minuscule, so the overhead of having that run on a
-> server
-> is negligible, especially when combined with the already required statd.
-> -mike
->
+NeilBrown wrote:
+> They really are separate functions.
+>   
+Maybe have one code base and have it do different things based on a cmd-line
+argument or the name (use a symlink for one of the functions) ?
 
-The point is that sm-notify should really be run at boot whenever
-it is installed.
-statd, being a server that listens to request from the network, should
-only be run if it is needed (because most people like the policy of
-only running network services that are actually needed).
+If the code is really similar, that should allow easy reuse?
 
-If all nfs mounts are performed manually, then you might not want to
-run statd for quite a long time after boot.  But you need to run
-sm-notify immediately after boot to ensure that any locks you held
-before the reboot get released.
+Ben
 
-They really are separate functions.
+-- 
+Ben Greear <greearb@candelatech.com> 
+Candela Technologies Inc  http://www.candelatech.com
 
-NeilBrown
 
