@@ -1,67 +1,31 @@
-From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
-Subject: RE: [pnfs] [RFC 0/10] nfsd41 server backchannel for 2.6.31
-Date: Tue, 19 May 2009 20:04:51 -0700
-Message-ID: <273FE88A07F5D445824060902F70034405CEB672@SACMVEXC1-PRD.hq.netapp.com>
-References: <273FE88A07F5D445824060902F70034405CEB64D@SACMVEXC1-PRD.hq.netapp.com>
+From: "Anoop P.A." <Anoop_P.A-4W7cOCfLBmzY0TyS/+Ba5Q@public.gmane.org>
+Subject: NFS-CIFS locking
+Date: Tue, 19 May 2009 23:11:40 -0700
+Message-ID: <A7DEA48C84FD0B48AAAE33F328C02014030F3FAA@BBY1EXM11.pmc_nt.nt.pmc-sierra.bc.ca>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-	<linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
-To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>,
-	<bfields@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+To: <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25460 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751822AbZETDEz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 May 2009 23:04:55 -0400
-In-Reply-To: <273FE88A07F5D445824060902F70034405CEB64D-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from bby1mta03.pmc-sierra.com ([216.241.235.118]:52942 "EHLO
+	bby1mta03.pmc-sierra.bc.ca" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751638AbZETGLj convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 May 2009 02:11:39 -0400
+Received: from bby1mta03.pmc-sierra.bc.ca (localhost.pmc-sierra.bc.ca [127.0.0.1])
+	by localhost (Postfix) with SMTP id E23471070076
+	for <linux-nfs@vger.kernel.org>; Tue, 19 May 2009 23:11:40 -0700 (PDT)
+Received: from bby1exg02.pmc_nt.nt.pmc-sierra.bc.ca (BBY1EXG02.pmc-sierra.bc.ca [216.241.231.167])
+	by bby1mta03.pmc-sierra.bc.ca (Postfix) with SMTP id D9DA61070073
+	for <linux-nfs@vger.kernel.org>; Tue, 19 May 2009 23:11:40 -0700 (PDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Labiaga, Ricardo
-> Sent: Tuesday, May 19, 2009 7:08 PM
-> To: bfields@fieldses.org
-> Cc: Adamson, Andy; linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
-> Subject: [pnfs] [RFC 0/10] nfsd41 server backchannel for 2.6.31
-> 
-> [resend with extended cc list]
-> 
-> Bruce,
-> 
-> We've reworked the v4.1 backchannel patches to use asynchronous RPCs.
-> We've also addressed the comments you made on the previous series (RFC
-> 03, RFC 04, and RFC 05).  We are still working to address Trond's
-> comments for RFC 03, but do not want to hold off the review of the
-rest
-> of the patches.  Can you please consider the set for inclusion in
-> 2.6.31, with the note that an update to RFC 03 will be coming soon.
 
-Correction, an update to RFC 04 will be coming soon.  Sorry for the
-noise.
+Hi List,
+I have a use case where I will export one share through=A0 samba, FTP a=
+nd NFS. Is there any way to achieve cross protocol locking? I am using =
+Linux kernel 2.6.18.=20
+Any inputs highly appreciated.
 
-- ricardo
-
-> 
-> [RFC 01/11] nfsd: cleanup nfs4.0 callback encode routines
-> [RFC 02/11] nfsd: minorversion support for the back channel
-> [RFC 03/11] nfsd41: sunrpc: svc_tcp_recv_record()
-> [RFC 04/11] nfsd41: sunrpc: Added rpc server-side backchannel handling
-> [RFC 05/11] nfsd41: callback infrastructure
-> [RFC 06/11] nfsd41: Backchannel: Add sequence arguments to callback
-RPC
-> arguments
-> [RFC 07/11] nfsd41: Backchannel: Server backchannel RPC wait queue
-> [RFC 08/11] nfsd41: Backchannel: Setup sequence information
-> [RFC 09/11] nfsd41: cb_sequence callback
-> [RFC 10/11] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-> [RFC 11/11] nfsd41: Refactor create_client()
-> 
-> Thanks,
-> 
-> - ricardo
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+Thanks & Regards,
+Anoop P A
