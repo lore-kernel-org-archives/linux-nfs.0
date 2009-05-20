@@ -1,7 +1,7 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [RFC 11/11] nfsd41: Refactor create_client()
-Date: Tue, 19 May 2009 20:00:28 -0700
-Message-ID: <1242788428-18723-11-git-send-email-Ricardo.Labiaga@netapp.com>
+Subject: [RFC 08/11] nfsd41: Backchannel: Setup sequence information
+Date: Tue, 19 May 2009 20:00:25 -0700
+Message-ID: <1242788428-18723-8-git-send-email-Ricardo.Labiaga@netapp.com>
 References: <273FE88A07F5D445824060902F70034405CEB64D@SACMVEXC1-PRD.hq.netapp.com>
  <1242788428-18723-1-git-send-email-Ricardo.Labiaga@netapp.com>
  <1242788428-18723-2-git-send-email-Ricardo.Labiaga@netapp.com>
@@ -10,9 +10,6 @@ References: <273FE88A07F5D445824060902F70034405CEB64D@SACMVEXC1-PRD.hq.netapp.co
  <1242788428-18723-5-git-send-email-Ricardo.Labiaga@netapp.com>
  <1242788428-18723-6-git-send-email-Ricardo.Labiaga@netapp.com>
  <1242788428-18723-7-git-send-email-Ricardo.Labiaga@netapp.com>
- <1242788428-18723-8-git-send-email-Ricardo.Labiaga@netapp.com>
- <1242788428-18723-9-git-send-email-Ricardo.Labiaga@netapp.com>
- <1242788428-18723-10-git-send-email-Ricardo.Labiaga@netapp.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
 	Benny Halevy <bhalevy@panasas.com>
@@ -20,190 +17,139 @@ To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:57430 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755358AbZETDAd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 May 2009 23:00:33 -0400
-In-Reply-To: <1242788428-18723-10-git-send-email-Ricardo.Labiaga@netapp.com>
+	id S1754288AbZETDAc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 May 2009 23:00:32 -0400
+In-Reply-To: <1242788428-18723-7-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move common initialization of 'struct nfs4_client' inside create_client().
+Follows the model used by the NFS client.  Setup the RPC prepare and done
+function pointers so that we can populate the sequence information if
+minorversion == 1.  rpc_run_task() is then invoked directly just like
+existing NFS client operations do.
+
+nfsd4_cb_prepare() determines if the sequence information needs to be setup.
+If the slot is in use, it adds itself to the wait queue.
+
+nfsd4_cb_done() wakes anyone sleeping on the callback channel wait queue
+after our RPC reply has been received.
 
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-
-[nfsd41: Remember the auth flavor to use for callbacks]
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+[define cl_cb_seq_nr here]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |   90 +++++++++++++++++++++++++-------------------------
- 1 files changed, 45 insertions(+), 45 deletions(-)
+ fs/nfsd/nfs4callback.c     |   78 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfsd/state.h |    1 +
+ 2 files changed, 79 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 45cbbbc..1e4740f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -710,27 +710,6 @@ expire_client(struct nfs4_client *clp)
- 	put_nfs4_client(clp);
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 0b5c4a6..b739cc9 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -533,6 +533,83 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+ 	do_probe_callback(clp);
  }
  
--static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir)
--{
--	struct nfs4_client *clp;
--
--	clp = alloc_client(name);
--	if (clp == NULL)
--		return NULL;
--	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
--	atomic_set(&clp->cl_count, 1);
--	atomic_set(&clp->cl_cb_conn.cb_set, 0);
--	INIT_LIST_HEAD(&clp->cl_idhash);
--	INIT_LIST_HEAD(&clp->cl_strhash);
--	INIT_LIST_HEAD(&clp->cl_openowners);
--	INIT_LIST_HEAD(&clp->cl_delegations);
--	INIT_LIST_HEAD(&clp->cl_sessions);
--	INIT_LIST_HEAD(&clp->cl_lru);
--	clear_bit(0, &clp->cl_cb_slot_busy);
--	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
--	return clp;
--}
--
- static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
- {
- 	memcpy(target->cl_verifier.data, source->data,
-@@ -793,6 +772,46 @@ static void gen_confirm(struct nfs4_client *clp)
- 	*p++ = i++;
- }
- 
-+static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
-+		struct svc_rqst *rqstp, nfs4_verifier *verf)
++/*
++ * There's currently a single callback channel slot.
++ * If the slot is available, then mark it busy.  Otherwise, set the
++ * thread for sleeping on the callback RPC wait queue.
++ */
++static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
++		struct rpc_task *task)
 +{
-+	struct nfs4_client *clp;
-+	u32 ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
-+	char *princ;
++	struct nfs4_rpc_args *args = task->tk_msg.rpc_argp;
++	struct nfs4_rpc_res *res = task->tk_msg.rpc_resp;
++	u32 *ptr = (u32 *)clp->cl_sessionid.data;
++	int status = 0;
 +
-+	clp = alloc_client(name);
-+	if (clp == NULL)
-+		return NULL;
++	dprintk("%s: %u:%u:%u:%u\n", __func__,
++		ptr[0], ptr[1], ptr[2], ptr[3]);
 +
-+	princ = svc_gss_principal(rqstp);
-+	if (princ) {
-+		clp->cl_principal = kstrdup(princ, GFP_KERNEL);
-+		if (clp->cl_principal == NULL) {
-+			free_client(clp);
-+			return NULL;
-+		}
++	if (test_and_set_bit(0, &clp->cl_cb_slot_busy) != 0) {
++		rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
++		dprintk("%s slot is busy\n", __func__);
++		status = -EAGAIN;
++		goto out;
 +	}
 +
-+	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
-+	atomic_set(&clp->cl_count, 1);
-+	atomic_set(&clp->cl_cb_conn.cb_set, 0);
-+	INIT_LIST_HEAD(&clp->cl_idhash);
-+	INIT_LIST_HEAD(&clp->cl_strhash);
-+	INIT_LIST_HEAD(&clp->cl_openowners);
-+	INIT_LIST_HEAD(&clp->cl_delegations);
-+	INIT_LIST_HEAD(&clp->cl_sessions);
-+	INIT_LIST_HEAD(&clp->cl_lru);
-+	clear_bit(0, &clp->cl_cb_slot_busy);
-+	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
-+	copy_verf(clp, verf);
-+	clp->cl_addr = ip_addr;
-+	clp->cl_flavor = rqstp->rq_flavor;
-+	copy_cred(&clp->cl_cred, &rqstp->rq_cred);
-+	gen_confirm(clp);
++	/* We'll need the clp during XDR encoding and decoding */
++	args->args_seq.cbs_clp = clp;
++	res->res_seq = &args->args_seq;
 +
-+	return clp;
++out:
++	dprintk("%s status=%d\n", __func__, status);
++	return status;
 +}
 +
- static int check_name(struct xdr_netobj name)
++/*
++ * TODO: cb_sequence should support referring call lists, cachethis, multiple
++ * slots, and mark callback channel down on communication errors.
++ */
++static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_delegation *dp = calldata;
++	struct nfs4_client *clp = dp->dl_client;
++	struct nfs4_rpc_args *args = task->tk_msg.rpc_argp;
++	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
++	int status = 0;
++
++	args->args_seq.cbs_minorversion = minorversion;
++	if (minorversion) {
++		status = nfsd41_cb_setup_sequence(clp, task);
++		if (status) {
++			if (status != -EAGAIN) {
++				/* terminate rpc task */
++				task->tk_status = status;
++				task->tk_action = NULL;
++			}
++			return;
++		}
++	}
++	rpc_call_start(task);
++}
++
++static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_delegation *dp = calldata;
++	struct nfs4_client *clp = dp->dl_client;
++
++	dprintk("%s: minorversion=%d\n", __func__,
++		clp->cl_cb_conn.cb_minorversion);
++
++	if (clp->cl_cb_conn.cb_minorversion) {
++		/* No need for lock, access serialized in nfsd4_cb_prepare */
++		++clp->cl_cb_seq_nr;
++		clear_bit(0, &clp->cl_cb_slot_busy);
++		rpc_wake_up_next(&clp->cl_cb_waitq);
++		dprintk("%s: freed slot, new seqid=%d\n", __func__,
++			clp->cl_cb_seq_nr);
++	}
++}
++
+ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
  {
- 	if (name.len == 0) 
-@@ -1285,17 +1304,13 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	struct nfs4_delegation *dp = calldata;
+@@ -572,6 +649,7 @@ static void nfsd4_cb_recall_release(void *calldata)
+ }
  
- out_new:
- 	/* Normal case */
--	new = create_client(exid->clname, dname);
-+	new = create_client(exid->clname, dname, rqstp, &verf);
- 	if (new == NULL) {
- 		status = nfserr_resource;
- 		goto out;
- 	}
- 
--	copy_verf(new, &verf);
--	copy_cred(&new->cl_cred, &rqstp->rq_cred);
--	new->cl_addr = ip_addr;
- 	gen_clid(new);
--	gen_confirm(new);
- 	add_to_unconfirmed(new, strhashval);
- out_copy:
- 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
-@@ -1535,7 +1550,6 @@ __be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_setclientid *setclid)
- {
--	struct sockaddr_in	*sin = svc_addr_in(rqstp);
- 	struct xdr_netobj 	clname = { 
- 		.len = setclid->se_namelen,
- 		.data = setclid->se_name,
-@@ -1544,7 +1558,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	unsigned int 		strhashval;
- 	struct nfs4_client	*conf, *unconf, *new;
- 	__be32 			status;
--	char			*princ;
- 	char                    dname[HEXDIR_LEN];
- 	
- 	if (!check_name(clname))
-@@ -1586,7 +1599,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 */
- 		if (unconf)
- 			expire_client(unconf);
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		gen_clid(new);
-@@ -1603,7 +1616,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			 */
- 			expire_client(unconf);
- 		}
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		copy_clid(new, conf);
-@@ -1613,7 +1626,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 * probable client reboot; state will be removed if
- 		 * confirmed.
- 		 */
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		gen_clid(new);
-@@ -1624,24 +1637,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 * confirmed.
- 		 */
- 		expire_client(unconf);
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		gen_clid(new);
- 	}
--	copy_verf(new, &clverifier);
--	new->cl_addr = sin->sin_addr.s_addr;
--	new->cl_flavor = rqstp->rq_flavor;
--	princ = svc_gss_principal(rqstp);
--	if (princ) {
--		new->cl_principal = kstrdup(princ, GFP_KERNEL);
--		if (new->cl_principal == NULL) {
--			free_client(new);
--			goto out;
--		}
--	}
--	copy_cred(&new->cl_cred, &rqstp->rq_cred);
--	gen_confirm(new);
- 	gen_callback(new, setclid);
- 	add_to_unconfirmed(new, strhashval);
- 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+ static const struct rpc_call_ops nfsd4_cb_recall_ops = {
++	.rpc_call_prepare = nfsd4_cb_prepare,
+ 	.rpc_call_done = nfsd4_cb_recall_done,
+ 	.rpc_release = nfsd4_cb_recall_release,
+ };
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 261cd73..9191497 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -198,6 +198,7 @@ struct nfs4_client {
+ 	/* for nfs41 callbacks */
+ 	/* We currently support a single back channel with a single slot */
+ 	unsigned long		cl_cb_slot_busy;
++	u32			cl_cb_seq_nr;
+ 	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
+ 	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
+ 						/* wait here for slots */
 -- 
 1.5.4.3
 
