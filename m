@@ -1,106 +1,83 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [RFC 01/11] nfsd: cleanup nfs4.0 callback encode routines
-Date: Tue, 19 May 2009 20:00:18 -0700
-Message-ID: <1242788428-18723-1-git-send-email-Ricardo.Labiaga@netapp.com>
+Subject: [RFC 02/11] nfsd: minorversion support for the back channel
+Date: Tue, 19 May 2009 20:00:19 -0700
+Message-ID: <1242788428-18723-2-git-send-email-Ricardo.Labiaga@netapp.com>
 References: <273FE88A07F5D445824060902F70034405CEB64D@SACMVEXC1-PRD.hq.netapp.com>
+ <1242788428-18723-1-git-send-email-Ricardo.Labiaga@netapp.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Andy Adamson <andros@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+	Benny Halevy <bhalevy@panasas.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57430 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50956 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753988AbZETDAa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 May 2009 23:00:30 -0400
-In-Reply-To: <273FE88A07F5D445824060902F70034405CEB64D-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+	id S1754288AbZETDAb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 May 2009 23:00:31 -0400
+In-Reply-To: <1242788428-18723-1-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Mimic the client and prepare to share the back channel xdr with NFSv4.1.
-Bump the number of operations in each encode routine, then backfill the
-number of operations.
+Prepare to share backchannel code with NFSv4.1.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+[nfsd41: use nfsd4_cb_sequence for callback minorversion]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c |   24 ++++++++++++++++--------
- 1 files changed, 16 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4callback.c     |    3 ++-
+ fs/nfsd/nfs4state.c        |    1 +
+ include/linux/nfsd/state.h |    3 ++-
+ 3 files changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f4fab69..353eb4a 100644
+index 353eb4a..3fd23f7 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -140,8 +140,9 @@ struct nfs4_cb_compound_hdr {
- 	int		status;
+@@ -141,6 +141,7 @@ struct nfs4_cb_compound_hdr {
  	u32		ident;
  	u32		nops;
-+	__be32		*nops_p;
+ 	__be32		*nops_p;
++	u32		minorversion;
  	u32		taglen;
--	char *		tag;
-+	char		*tag;
+ 	char		*tag;
  };
+@@ -209,7 +210,7 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
  
- static struct {
-@@ -201,7 +202,7 @@ nfs_cb_stat_to_errno(int stat)
-  * XDR encode
-  */
- 
--static int
-+static void
- encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
- {
- 	__be32 * p;
-@@ -210,12 +211,18 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
+ 	RESERVE_SPACE(16);
  	WRITE32(0);            /* tag length is always 0 */
- 	WRITE32(NFS4_MINOR_VERSION);
+-	WRITE32(NFS4_MINOR_VERSION);
++	WRITE32(hdr->minorversion);
  	WRITE32(hdr->ident);
-+	hdr->nops_p = p;
+ 	hdr->nops_p = p;
  	WRITE32(hdr->nops);
--	return 0;
- }
- 
--static int
--encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp)
-+static void encode_cb_nops(struct nfs4_cb_compound_hdr *hdr)
-+{
-+	*hdr->nops_p = htonl(hdr->nops);
-+}
-+
-+static void
-+encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
-+		struct nfs4_cb_compound_hdr *hdr)
- {
- 	__be32 *p;
- 	int len = dp->dl_fh.fh_size;
-@@ -227,7 +234,7 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp)
- 	WRITE32(0); /* truncate optimization not implemented */
- 	WRITE32(len);
- 	WRITEMEM(&dp->dl_fh.fh_base, len);
--	return 0;
-+	hdr->nops++;
- }
- 
- static int
-@@ -246,12 +253,13 @@ nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_delegation *
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = args->dl_ident,
--		.nops   = 1,
- 	};
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
- 	encode_cb_compound_hdr(&xdr, &hdr);
--	return (encode_cb_recall(&xdr, args));
-+	encode_cb_recall(&xdr, args, &hdr);
-+	encode_cb_nops(&hdr);
-+	return 0;
- }
- 
- 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b276624..7158134 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -978,6 +978,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
+ 	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
+ 	                 &cb->cb_addr, &cb->cb_port)))
+ 		goto out_err;
++	cb->cb_minorversion = 0;
+ 	cb->cb_prog = se->se_callback_prog;
+ 	cb->cb_ident = se->se_callback_ident;
+ 	return;
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index c0c4921..212a75b 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -85,7 +85,8 @@ struct nfs4_cb_conn {
+ 	u32                     cb_addr;
+ 	unsigned short          cb_port;
+ 	u32                     cb_prog;
+-	u32                     cb_ident;
++	u32			cb_minorversion;
++	u32                     cb_ident;	/* minorversion 0 only */
+ 	/* RPC client info */
+ 	atomic_t		cb_set;     /* successful CB_NULL call */
+ 	struct rpc_clnt *       cb_client;
 -- 
 1.5.4.3
 
