@@ -1,61 +1,92 @@
-From: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
-Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
-	flushing
-Date: Sat, 30 May 2009 23:02:47 +1000
-Message-ID: <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
-	 <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
-	 <49FA0CE8.9090706@redhat.com>
-	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
-	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
-	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
-	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
-	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
-	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
-	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
+From: Hugh Dickins <hugh.dickins@tiscali.co.uk>
+Subject: Re: [PATCH 2/3] integrity: move ima_counts_get
+Date: Thu, 21 May 2009 22:19:09 +0100 (BST)
+Message-ID: <Pine.LNX.4.64.0905212214060.19415@sister.anvils>
+References: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
+ <4b26da825c7cff6c22e924012011bedb76f7079b.1242753148.git.zohar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Brian R Cowan <brcowan@us.ibm.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
-	Peter Staubach <staubach@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.24]:5907 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756594AbZE3NCr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 May 2009 09:02:47 -0400
-In-Reply-To: <1243686363.5209.16.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	hooanon05@yahoo.co.jp, "J. Bruce Fields" <bfields@fieldses.org>,
+	Eric Paris <eparis@redhat.com>,
+	James Morris <jmorris@namei.org>,
+	David Safford <safford@watson.ibm.com>,
+	linux-nfs@vger.kernel.org, Mimi Zohar <zohar@us.ibm.com>
+To: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756484AbZEUVYn@vger.kernel.org>
+In-Reply-To: <4b26da825c7cff6c22e924012011bedb76f7079b.1242753148.git.zohar@linux.vnet.ibm.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 30, 2009 at 10:26 PM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Sat, 2009-05-30 at 10:22 +1000, Greg Banks wrote:
->> On Sat, May 30, 2009 at 3:35 AM, Trond Myklebust
->> <trond.myklebust@fys.uio.no> wrote:
->> > On Fri, 2009-05-29 at 13:25 -0400, Brian R Cowan wrote:
->> >>
->>
->
-> Firstly, the server only uses O_SYNC if you turn off write gathering
-> (a.k.a. the 'wdelay' option). The default behaviour for the Linux nfs
-> server is to always try write gathering and hence no O_SYNC.
+On Tue, 19 May 2009, Mimi Zohar wrote:
 
-Well, write gathering is a total crock that AFAICS only helps
-single-file writes on NFSv2.  For today's workloads all it does is
-provide a hotspot on the two global variables that track writes in an
-attempt to gather them.  Back when I worked on a server product,
-no_wdelay was one of the standard options for new exports.
+> Based on discussion on lkml (Andrew Morton and Eric Paris),
+> move ima_counts_get down a layer into shmem/hugetlb__file_setup().
+> Resolves drm shmem_file_setup() usage case as well.
+> 
+> Signed-off-by: Mimi Zohar <zohar@us.ibm.com>
 
-> Secondly, even if it were the case, then this does not justify changing
-> the client behaviour.
+I still think you're doing this at the wrong level, but recognize
+that you probably won't be persuaded until a few more users of
+alloc_file() emerge, all wanting your ima_counts_get().
 
-I totally agree, it was just an observation.
+Resolving GEM's shmem_file_setup() is an improvement, so I'll say
 
-In any case, as Christoph points out, the ext3 performance difference
-makes an unstable WRITE+COMMIT slower than a stable WRITE, and you
-already assumed that.
+Acked-by: Hugh Dickins <hugh.dickins@tiscali.co.uk>
 
--- 
-Greg.
+> ---
+> diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
+> index 153d968..ccc62de 100644
+> --- a/fs/hugetlbfs/inode.c
+> +++ b/fs/hugetlbfs/inode.c
+> @@ -30,6 +30,7 @@
+>  #include <linux/dnotify.h>
+>  #include <linux/statfs.h>
+>  #include <linux/security.h>
+> +#include <linux/ima.h>
+>  
+>  #include <asm/uaccess.h>
+>  
+> @@ -997,6 +998,7 @@ struct file *hugetlb_file_setup(const char *name, size_t size, int acctflag)
+>  			&hugetlbfs_file_operations);
+>  	if (!file)
+>  		goto out_dentry; /* inode is already attached */
+> +	ima_counts_get(file);
+>  
+>  	return file;
+>  
+> diff --git a/ipc/shm.c b/ipc/shm.c
+> index 47b4642..5608183 100644
+> --- a/ipc/shm.c
+> +++ b/ipc/shm.c
+> @@ -384,7 +384,6 @@ static int newseg(struct ipc_namespace *ns, struct ipc_params *params)
+>  	error = PTR_ERR(file);
+>  	if (IS_ERR(file))
+>  		goto no_file;
+> -	ima_counts_get(file);
+>  
+>  	id = ipc_addid(&shm_ids(ns), &shp->shm_perm, ns->shm_ctlmni);
+>  	if (id < 0) {
+> diff --git a/mm/shmem.c b/mm/shmem.c
+> index a817f75..0132fbd 100644
+> --- a/mm/shmem.c
+> +++ b/mm/shmem.c
+> @@ -2659,6 +2659,7 @@ struct file *shmem_file_setup(char *name, loff_t size, unsigned long flags)
+>  	if (error)
+>  		goto close_file;
+>  #endif
+> +	ima_counts_get(file);
+>  	return file;
+>  
+>  close_file:
+> @@ -2684,7 +2685,6 @@ int shmem_zero_setup(struct vm_area_struct *vma)
+>  	if (IS_ERR(file))
+>  		return PTR_ERR(file);
+>  
+> -	ima_counts_get(file);
+>  	if (vma->vm_file)
+>  		fput(vma->vm_file);
+>  	vma->vm_file = file;
+> -- 
+> 1.6.0.6
