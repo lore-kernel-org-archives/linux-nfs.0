@@ -1,40 +1,60 @@
-From: James Morris <jmorris@namei.org>
-Subject: Re: [PATCH 1/3] integrity: path_check update
-Date: Fri, 22 May 2009 09:58:46 +1000 (EST)
-Message-ID: <alpine.LRH.2.00.0905220958330.6348@tundra.namei.org>
-References: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
+From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
+Date: Fri, 22 May 2009 13:05:29 +0200
+Message-ID: <4A1686F9.8030307@bio.ifi.lmu.de>
+References: <4A02DAA8.6050005@bio.ifi.lmu.de>	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>	<4A02FDC3.9090709@bio.ifi.lmu.de>	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>	<4A03CB1C.7020703@bio.ifi.lmu.de>	<4a083d44.85c2f10a.4cf7.ffff85fb@mx.google.com>	<4A0D0DFE.6040108@bio.ifi.lmu.de>	<4a0d72a6.c5c2f10a.368f.5cc5@mx.google.com>	<4A1127CE.5030701@bio.ifi.lmu.de>
+	<4a115a4c.47c1f10a.53d0.ffff96cc@mx.google.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org, "J. Bruce Fields" <bfields@fieldses.org>,
-	Eric Paris <eparis@redhat.com>,
-	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
-	David Safford <safford-aZOuKsOsJu3MbYB6QlFGEg@public.gmane.org>,
-	linux-nfs@vger.kernel.org, Mimi Zohar <zohar@us.ibm.com>
-To: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="us-ascii"
+Cc: nfs@lists.sourceforge.net
+To: Tom Talpey <tmtalpey@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:41616 "EHLO tundra.namei.org"
+Received: from neil.brown.name ([220.233.11.133]:54125 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751188AbZEVABY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 May 2009 20:01:24 -0400
-In-Reply-To: <8971a1efcc5153f1c9b167997e5ca0c3c40a69d5.1242753145.git.zohar@linux.vnet.ibm.com>
+	id S1753117AbZEVLGM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 May 2009 07:06:12 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1M7SZn-0003Aw-VD
+	for linux-nfs@vger.kernel.org; Fri, 22 May 2009 21:06:12 +1000
+In-Reply-To: <4a115a4c.47c1f10a.53d0.ffff96cc-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 19 May 2009, Mimi Zohar wrote:
+Tom Talpey wrote
 
-> - Add support in ima_path_check() for integrity checking without
-> incrementing the counts. (Required for nfsd.)
-> - rename and export opencount_get to ima_counts_get
-> - replace ima_shm_check calls with ima_counts_get
-> - export ima_path_check
+> If the rpcdebug command isn't available, you can alternatively set
+> set the RPCDBG_BIND bit with
 > 
-> Signed-off-by: Mimi Zohar <zohar@us.ibm.com>
+> 	echo 32 >/proc/sys/sunrpc/rpc_debug
+> 
+> and clear it by echoing 0. Many other bits are accessible btw, defined
+> in the kernel include/sunrpc/debug.h file.
 
-Applied to 
-git://git.kernel.org/pub/scm/linux/kernel/git/jmorris/security-testing-2.6#next
+Thanks :-) Looking at the debug output I found it was a different
+program but NFS that was trying to contact the portmapper :-)
+
+cu,
+Frank
 
 -- 
-James Morris
-<jmorris@namei.org>
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+
+------------------------------------------------------------------------------
+Register Now for Creativity and Technology (CaT), June 3rd, NYC. CaT
+is a gathering of tech-side developers & brand creativity professionals. Meet
+the minds behind Google Creative Lab, Visual Complexity, Processing, & 
+iPhoneDevCamp asthey present alongside digital heavyweights like Barbarian
+Group, R/GA, & Big Spaceship. http://www.creativitycat.com 
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
