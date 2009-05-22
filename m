@@ -1,60 +1,73 @@
-From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
-Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Date: Fri, 22 May 2009 13:05:29 +0200
-Message-ID: <4A1686F9.8030307@bio.ifi.lmu.de>
-References: <4A02DAA8.6050005@bio.ifi.lmu.de>	<c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>	<4A02FDC3.9090709@bio.ifi.lmu.de>	<4a02ffdf.1ac1f10a.637d.ffffbc3a@mx.google.com>	<4A03CB1C.7020703@bio.ifi.lmu.de>	<4a083d44.85c2f10a.4cf7.ffff85fb@mx.google.com>	<4A0D0DFE.6040108@bio.ifi.lmu.de>	<4a0d72a6.c5c2f10a.368f.5cc5@mx.google.com>	<4A1127CE.5030701@bio.ifi.lmu.de>
-	<4a115a4c.47c1f10a.53d0.ffff96cc@mx.google.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 2.6.30-rc deadline scheduler performance regression for iozone
+	over NFS
+Date: Fri, 22 May 2009 19:45:08 -0400
+Message-ID: <20090522234508.GC9076@fieldses.org>
+References: <20090512204433.7eb69075.akpm@linux-foundation.org> <x49y6t1rqw0.fsf@segfault.boston.devel.redhat.com> <x49k54ku7i2.fsf@segfault.boston.devel.redhat.com> <1242258338.5407.244.camel@heimdal.trondhjem.org> <x49octv7qr8.fsf@segfault.boston.devel.redhat.com> <1242311620.6560.14.camel@heimdal.trondhjem.org> <x49ws8j686r.fsf@segfault.boston.devel.redhat.com> <1242587454.17796.2.camel@heimdal.trondhjem.org> <1242587524.17796.3.camel@heimdal.trondhjem.org> <x49tz3ia45h.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfs@lists.sourceforge.net
-To: Tom Talpey <tmtalpey@gmail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:54125 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753117AbZEVLGM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 May 2009 07:06:12 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M7SZn-0003Aw-VD
-	for linux-nfs@vger.kernel.org; Fri, 22 May 2009 21:06:12 +1000
-In-Reply-To: <4a115a4c.47c1f10a.53d0.ffff96cc-ATjtLOhZ0NVl57MIdRCFDg@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	linux-kernel@vger.kernel.org, "Rafael J. Wysocki" <rjw@sisk.pl>,
+	Olga Kornievskaia <aglo@citi.umich.edu>,
+	Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <x49tz3ia45h.fsf@segfault.boston.devel.redhat.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom Talpey wrote
-
-> If the rpcdebug command isn't available, you can alternatively set
-> set the RPCDBG_BIND bit with
+On Mon, May 18, 2009 at 10:15:22AM -0400, Jeff Moyer wrote:
+> Trond Myklebust <trond.myklebust@fys.uio.no> writes:
 > 
-> 	echo 32 >/proc/sys/sunrpc/rpc_debug
+> > On Sun, 2009-05-17 at 15:11 -0400, Trond Myklebust wrote:
+> >> On Thu, 2009-05-14 at 11:00 -0400, Jeff Moyer wrote:
+> >> > Sorry for the previous, stupid question.  I applied the patch in
+> >> > addition the last one and here are the results:
+> >> > 
+> >> > 70327
+> >> > 71561
+> >> > 68760
+> >> > 69199
+> >> > 65324
+> >> > 
+> >> > A packet capture for this run is available here:
+> >> >   http://people.redhat.com/jmoyer/trond2.pcap.bz2
+> >> > 
+> >> > Any more ideas?  ;)
+> >> 
+> >> Yep. I've got 2 more patches for you. With both of them applied, I'm
+> >> seeing decent performance on my own test rig. The first patch is
+> >> appended. I'll send the second in another email (to avoid attachments).
+> >
+> > Here is number 2. It is incremental to all the others...
 > 
-> and clear it by echoing 0. Many other bits are accessible btw, defined
-> in the kernel include/sunrpc/debug.h file.
+> With all 4 patches applied, these are the numbers for 5 runs:
+> 
+> 103168
+> 101212
+> 103346
+> 100842
+> 103172
+> 
+> It's looking much better, but we're still off by a few percent.  Thanks
+> for the quick turnaround on this, Trond!  If you submit these patches,
+> feel free to add:
 
-Thanks :-) Looking at the debug output I found it was a different
-program but NFS that was trying to contact the portmapper :-)
+I'd like to take a look and run some tests of my own when I get back
+from vacation next week.
 
-cu,
-Frank
+Then assuming no problems I'm inclined to queue them up for 2.6.31, and,
+in the meantime, revert the autotuning patch temporarily for
+2.6.30--under the assumption that autotuning is still the right thing to
+do, but that this is too significant a regression to ignore, and Trond's
+work is too involved to submit for 2.6.30 this late in the process.
 
--- 
-Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
-Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
-LMU, Amalienstr. 17           Phone: +49 89 2180-4049
-80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
-* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
+--b.
 
-------------------------------------------------------------------------------
-Register Now for Creativity and Technology (CaT), June 3rd, NYC. CaT
-is a gathering of tech-side developers & brand creativity professionals. Meet
-the minds behind Google Creative Lab, Visual Complexity, Processing, & 
-iPhoneDevCamp asthey present alongside digital heavyweights like Barbarian
-Group, R/GA, & Big Spaceship. http://www.creativitycat.com 
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+> 
+> Tested-by: Jeff Moyer <jmoyer@redhat.com>
+> 
+> Cheers,
+> Jeff
