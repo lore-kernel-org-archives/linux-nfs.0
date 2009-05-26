@@ -1,32 +1,87 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/6] nfs-utils: add IPv6 support for rpc.nfsd (try #2)
-Date: Tue, 26 May 2009 13:08:44 -0400
-Message-ID: <20090526130844.28c1383f@tlielax.poochiereds.net>
-References: <1243350951-13462-1-git-send-email-jlayton@redhat.com>
-	<5889D6C8-2E49-430C-A2DF-F85F57637A63@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 4/6] nfs-utils: add IPv6 support to nfsd
+Date: Tue, 26 May 2009 13:31:47 -0400
+Message-ID: <4E4834B1-DA6E-4D87-AA7E-747B679CB49F@oracle.com>
+References: <1243350951-13462-1-git-send-email-jlayton@redhat.com> <1243350951-13462-5-git-send-email-jlayton@redhat.com> <43AF9911-DDC3-47C5-956C-1871ABF019D7@oracle.com> <20090526124907.4b711eaa@tlielax.poochiereds.net>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+	Steve Dickson <steved@redhat.com>, Neil Brown <neilb@suse.de>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:55279 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751015AbZEZRIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 May 2009 13:08:49 -0400
-In-Reply-To: <5889D6C8-2E49-430C-A2DF-F85F57637A63@oracle.com>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:45123 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754285AbZEZRcM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 13:32:12 -0400
+In-Reply-To: <20090526124907.4b711eaa-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 26 May 2009 11:24:57 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> We should also ensure this behaves itself if IPv6 support is built  
-> into the kernel, but ipv6.ko is blacklisted.
-> 
+On May 26, 2009, at 12:49 PM, Jeff Layton wrote:
 
-Good call. I tested that and rpc.nfsd errored out when creating an
-IPv6 socket. It should be simple enough to fix. Let me do that and
-I'll resend in another day or two.
+> On Tue, 26 May 2009 11:24:05 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>> Hi Jeff-
+>>
+>> On May 26, 2009, at 11:15 AM, Jeff Layton wrote:
+>>
+>>> Add 2 new options to rpc.nfsd -- -4 and -6. -4 makes it an IPv4-only
+>>> server, and -6 makes it IPv6-only. Restructure the -H option so that
+>>> if the address appears to be or resolves to an IPv4 address, that
+>>> IPv6 is disabled. Ditto if it resolves to an IPv6 address.
+>>
+>> The new rpc.statd doesn't have a "-4" or "-6" option.  It looks in /
+>> etc/netconfig to start only the visible transports.  I was suggesting
+>> that rpc.nfsd use /etc/netconfig _instead_ of having a -4/-6 command-
+>> line option.
+>>
+>> Just a thought.
+>>
+>
+> I don't feel strongly about it either way. It seems reasonable that
+> someone might want to disable ipv4 or ipv6 without changing
+> /etc/netconfig. This also has some parity with the -T and -U options
+> too...
+>
+> It would be good however to have nfsd and statd share options and
+> behavior here, so I think we should implement the same convention for
+> both. Do you think it would be better to remove -4/-6 from nfsd, or  
+> add
+> those options to the new statd?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+My sense is statd is a kind of set-it-and-forget-it kind of thing.  It  
+doesn't have a lockd_up() kind of API that, for example, mount.nfs or  
+rpc.nfsd can invoke, to ensure that it's listening for a particular  
+protocol family or protocol (eventually mount.nfs could ping it via  
+IPv6 when mounting an IPv6 server, but it doesn't do that today).  So  
+it starts everything to cover all the bases.  That can change if  
+someone has a cogent argument!
+
+rpc.nfsd is another kind of beast, as it's starting kernel services,  
+not a user space listener.  Even given rpc.nfsd's past of allowing -T  
+and -U, it's hard to say whether users will want the flexibility of  
+enabling IPv6 or IPv4, or whether they will want whatever families are  
+supported with the option of supporting UDP or TCP on both families.   
+If there's a way to make it all automatic, that might be the best  
+choice.
+
+But I'd hesitate to introduce -4 and -6 if there's a realistic  
+possibility that we may not want or need that kind of flexibility in  
+the end.  Maybe we can go without for now, and add those options later  
+if needed?
+
+Plus, do we want a "don't ever use IPv4" or "IPv6" kind of setting, or  
+just a "please start IPv4" or "IPv6" setting?  Does -6 exclude IPv4  
+and vice versa?  What should it mean when neither are present?
+
+Once we have everything done, we might look back and say we definitely  
+need these options on all the user space components, and at that point  
+we'd have a clear idea how to make the options behave consistently for  
+all of the pieces.  I guess this is an argument for leaving these  
+options off until we have a better sense of what is needed.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
