@@ -1,55 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:32867 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752974AbZE2WQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 May 2009 18:16:42 -0400
-Subject: Re: New file doesn't show up if cached as missing
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Simon Kirby <sim@hostway.ca>
+Received: from yw-out-2324.google.com ([74.125.46.29]:29841 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758638AbZEZVxD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 17:53:03 -0400
+Received: by yw-out-2324.google.com with SMTP id 5so2385995ywb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2009 14:53:04 -0700 (PDT)
+In-Reply-To: <392702.81064.qm@web43513.mail.sp1.yahoo.com>
+References: <392702.81064.qm@web43513.mail.sp1.yahoo.com>
+Date: Tue, 26 May 2009 17:53:04 -0400
+Message-ID: <4d569c330905261453g59b4b878wb050bc8b2fcf838f@mail.gmail.com>
+Subject: Re: Kerberos question related to NFSV3
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: barry sabsevitz <barry_sabsevitz@yahoo.com>
 Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20090529220412.GJ1719@hostway.ca>
-References: <20090529175243.GA30961@hostway.ca>
-	 <1243622206.7155.103.camel@heimdal.trondhjem.org>
-	 <20090529220412.GJ1719@hostway.ca>
-Content-Type: text/plain
-Date: Fri, 29 May 2009 18:16:40 -0400
-Message-Id: <1243635400.7155.168.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2009-05-29 at 15:04 -0700, Simon Kirby wrote:
-> On Fri, May 29, 2009 at 02:36:46PM -0400, Trond Myklebust wrote:
-> 
-> > That is most likely to be a consequence of poor mtime resolution on the
-> > server (i.e. the directory mtime failing to change because the file
-> > creation occurred within < 1 second of the 'rm'), combined with negative
-> > lookup caching.
-> 
-> As in "ls --full-time" shows 0 for the fractional second part?
-> 
-> Hrm, I thought newer ext3 had nanosecond mtime, but it seems not...
+On Wed, May 13, 2009 at 2:01 PM, barry sabsevitz
+<barry_sabsevitz@yahoo.com> wrote:
+>
+> Hi,
+> I have a question regarding NFSV3 and Kerberos that I was hoping someone could help me with.
+>
+> I have setup Kerberos successfully on a red hat 5.2 system using NFSV3. I am using nfs-utils-1.1.6
+> and have a patch to rpc.svcgssd where I can specify a -h option and tell it to use a principal name that
+> is different than the name of the system.
+>
+> My question is related to Kerberos and how it gets configured for NFS. I have a cluster with 2 nodes in
+> it and each node can have multiple virtual ip addressess accessing NFS Kerberos shares from it. I have
+> previously successfully setup a configuration where I create 1 service principal for every virtual IP address
+> that will be processing the Kerberos NFSV3 exports. And then I modify DNS to have a forward and reverse
+> mapping between the fqdn used for creating the service principal and the VIP.  This works for me. It seems
+> a bit inefficient though.
+>
+>  My question is: Does Kerberos allow me to set up 1 service principal that can be used at the same time by
+> multiple virtual ip addresses. For example: If I have 2 VIP's - 10.1.1.1 and 10.1.1.2, can I create 1 service
+> principal called nfs/nfs-pkg1.activedir.net@ACTIVEDIR.NET and then have DNS configured to map
+> nfs-pkg1 -> 10.1.1.1  and nfs-pkg1 also to -> 10.1.1.2 and then both those VIP's reverse mapped to
+> nfs-pkg1. Is Kerberos with NFS expected to work in this configuration? Or do I need to have a seperate
+> service principal for every virtual ip address that will be processing the Kerberos NFS exports?
+>
+> Thanks for your help.
+> Barry
 
-No. You'll have to migrate to ext4 (or xfs) if you want finer grained
-timestamps.
+After some offline discussion, it sounds like Barry is possibly seeing
+an issue with multiple DNS lookups during the mount process returning
+different addresses for the name.  (Mostly speculation, but he is
+seeing some kind of issue sharing a name between more than one
+machine.)
 
-> > Try using the '-olookupcache=positive' or '-olookupcache=none' mount
-> > options (requires a relatively recent version of nfs-utils).
-> 
-> After backporting nfs-utils, either of those options seem to this
-> particular case work as desired.  Excellent!
-> 
-> I guess all of the attribute-caching-related options are unrelated to
-> this case.  Is this consistent with older operation and that of other
-> OSes?  It might be a little surprising for some (me) when "noac" still
-> ends up doing some caching.
+I know people have worked on fail-over servers.  Has anyone else had a
+cluster setup like this which uses the same name for more than one
+machine, using Kerberos mounts?
 
-noac is all about attribute caching, whereas this is lookup/dentry
-caching. You can compare it to data caching: 'noac' doesn't force the
-cache to be flushed on every read() request, but it does force the mtime
-to be checked, and so cache consistency is relatively stronger (provided
-the mtime is accurate enough).
-
-Cheers
-  Trond
-
+K.C.
