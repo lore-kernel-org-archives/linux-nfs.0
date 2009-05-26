@@ -1,149 +1,125 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Tue, 26 May 2009 15:06:27 -0400
-Message-ID: <1243364787.30354.8.camel@heimdal.trondhjem.org>
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: Re: [PATCH 2.6.30] svcrdma: dma unmap the correct length for the
+ RPCRDMA	header page.
+Date: Tue, 26 May 2009 15:41:24 -0500
+Message-ID: <4A1C53F4.1080701@opengridcomputing.com>
+References: <20090514213428.19282.27658.stgit@build.ogc.int>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>,
-	Steven Whitehouse <swhiteho@redhat.com>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	Vu Pham <vu@mellanox.com>, Tom Talpey <tmtalpey@gmail.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: tom@opengridcomputing.com, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52465 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756482AbZEZTHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 May 2009 15:07:52 -0400
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:54559 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754112AbZEZUkW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 16:40:22 -0400
+In-Reply-To: <20090514213428.19282.27658.stgit-T4OLL4TyM9aNDNWfRnPdfg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+Hey Bruce,
 
-Please pull from the "bugfixes" branch of the repository at
+Do you think this can make 2.6.30?
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+Thanks,
 
-This will update the following files through the appended changesets.
+Steve.
 
-  Cheers,
-    Trond
 
-----
- fs/nfs/nfs4proc.c           |    9 +++------
- fs/nfs/nfsroot.c            |    2 +-
- net/sunrpc/xprtrdma/verbs.c |    3 ++-
- 3 files changed, 6 insertions(+), 8 deletions(-)
+Steve Wise wrote:
+> The svcrdma module was incorrectly unmapping the RPCRDMA header page.
+> On IBM pserver systems this causes a resource leak that results in
+> running out of bus address space (10 cthon iterations will reproduce it).
+> The code was mapping the full page but only unmapping the actual header
+> length.  The fix is to only map the header length.
+>
+> I also cleaned up the use of ib_dma_map_page() calls since the unmap
+> logic always uses ib_dma_unmap_single().  I made these symmetrical.
+>
+> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> ---
+>
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   12 ++++++------
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 +++++-----
+>  2 files changed, 11 insertions(+), 11 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index 8b510c5..f071b7e 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -128,7 +128,8 @@ static int fast_reg_xdr(struct svcxprt_rdma *xprt,
+>  		page_bytes -= sge_bytes;
+>  
+>  		frmr->page_list->page_list[page_no] =
+> -			ib_dma_map_page(xprt->sc_cm_id->device, page, 0,
+> +			ib_dma_map_single(xprt->sc_cm_id->device, 
+> +					  page_address(page),
+>  					  PAGE_SIZE, DMA_TO_DEVICE);
+>  		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+>  					 frmr->page_list->page_list[page_no]))
+> @@ -532,18 +533,17 @@ static int send_reply(struct svcxprt_rdma *rdma,
+>  		clear_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags);
+>  
+>  	/* Prepare the SGE for the RPCRDMA Header */
+> +	ctxt->sge[0].lkey = rdma->sc_dma_lkey;
+> +	ctxt->sge[0].length = svc_rdma_xdr_get_reply_hdr_len(rdma_resp);
+>  	ctxt->sge[0].addr =
+> -		ib_dma_map_page(rdma->sc_cm_id->device,
+> -				page, 0, PAGE_SIZE, DMA_TO_DEVICE);
+> +		ib_dma_map_single(rdma->sc_cm_id->device, page_address(page),
+> +				  ctxt->sge[0].length, DMA_TO_DEVICE);
+>  	if (ib_dma_mapping_error(rdma->sc_cm_id->device, ctxt->sge[0].addr))
+>  		goto err;
+>  	atomic_inc(&rdma->sc_dma_used);
+>  
+>  	ctxt->direction = DMA_TO_DEVICE;
+>  
+> -	ctxt->sge[0].length = svc_rdma_xdr_get_reply_hdr_len(rdma_resp);
+> -	ctxt->sge[0].lkey = rdma->sc_dma_lkey;
+> -
+>  	/* Determine how many of our SGE are to be transmitted */
+>  	for (sge_no = 1; byte_count && sge_no < vec->count; sge_no++) {
+>  		sge_bytes = min_t(size_t, vec->sge[sge_no].iov_len, byte_count);
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 4b0c2fa..5151f9f 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -500,8 +500,8 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+>  		BUG_ON(sge_no >= xprt->sc_max_sge);
+>  		page = svc_rdma_get_page();
+>  		ctxt->pages[sge_no] = page;
+> -		pa = ib_dma_map_page(xprt->sc_cm_id->device,
+> -				     page, 0, PAGE_SIZE,
+> +		pa = ib_dma_map_single(xprt->sc_cm_id->device,
+> +				     page_address(page), PAGE_SIZE,
+>  				     DMA_FROM_DEVICE);
+>  		if (ib_dma_mapping_error(xprt->sc_cm_id->device, pa))
+>  			goto err_put_ctxt;
+> @@ -1315,8 +1315,8 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+>  	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+>  
+>  	/* Prepare SGE for local address */
+> -	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
+> -				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
+> +	sge.addr = ib_dma_map_single(xprt->sc_cm_id->device,
+> +				   page_address(p), PAGE_SIZE, DMA_FROM_DEVICE);
+>  	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
+>  		put_page(p);
+>  		return;
+> @@ -1343,7 +1343,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+>  	if (ret) {
+>  		dprintk("svcrdma: Error %d posting send for protocol error\n",
+>  			ret);
+> -		ib_dma_unmap_page(xprt->sc_cm_id->device,
+> +		ib_dma_unmap_single(xprt->sc_cm_id->device,
+>  				  sge.addr, PAGE_SIZE,
+>  				  DMA_FROM_DEVICE);
+>  		svc_rdma_put_context(ctxt, 1);
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
 
-commit 95baa25c7321eb8613246acbf61b97911cc748d3
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue May 26 14:51:00 2009 -0400
-
-    NFSv4: Fix the case where NFSv4 renewal fails
-    
-    If the asynchronous lease renewal fails (usually due to a soft timeout),
-    then we _must_ schedule state recovery in order to ensure that we don't
-    lose the lease unnecessarily or, if the lease is already lost, that we
-    recover the locking state promptly...
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit d0367a508af9cf97beb202935bb9ad8883d30cd1
-Author: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
-Date:   Tue May 26 14:51:00 2009 -0400
-
-    nfs: fix build error in nfsroot with initconst
-    
-    fix build error with latest kbuild adjustments to initconst.
-    
-    The commit a447c0932445f92ce6f4c1bd020f62c5097a7842 ("vfs: Use
-    const for kernel parser table") changed:
-    
-        static match_table_t __initdata tokens = {
-    to
-        static match_table_t __initconst tokens = {
-    
-    But the missing const causes powerpc to fail with latest
-    updates to __initconst like this:
-    
-    fs/nfs/nfsroot.c:400: error: __setup_str_nfs_root_setup causes a section type conflict
-    fs/nfs/nfsroot.c:400: error: __setup_str_nfs_root_setup causes a section type conflict
-    
-    The bug is only present with kbuild-next.
-    Following patch has been build tested.
-    
-    Signed-off-by: Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>
-    Cc: Steven Whitehouse <swhiteho@redhat.com>
-    Cc: Stephen Rothwell <sfr@canb.auug.org.au>
-    Acked-by: Jan Beulich <jbeulich@novell.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 68743082b560067e3e93eab8b2568f238e486865
-Author: Vu Pham <vu@mellanox.com>
-Date:   Tue May 26 14:51:00 2009 -0400
-
-    XPRTRDMA: fix client rpcrdma FRMR registration on mlx4 devices
-    
-    mlx4/connectX FRMR requires local write enable together with remote
-    rdma write enable. This fixes NFS/RDMA operation over the ConnectX
-    Infiniband HCA in the default memreg mode.
-    
-    Signed-off-by: Vu Pham <vu@mellanox.com>
-    Signed-off-by: Tom Talpey <tmtalpey@gmail.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a4d2426..4674f80 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2594,12 +2594,9 @@ static void nfs4_renew_done(struct rpc_task *task, void *data)
- 	unsigned long timestamp = (unsigned long)data;
- 
- 	if (task->tk_status < 0) {
--		switch (task->tk_status) {
--			case -NFS4ERR_STALE_CLIENTID:
--			case -NFS4ERR_EXPIRED:
--			case -NFS4ERR_CB_PATH_DOWN:
--				nfs4_schedule_state_recovery(clp);
--		}
-+		/* Unless we're shutting down, schedule state recovery! */
-+		if (test_bit(NFS_CS_RENEWD, &clp->cl_res_state) != 0)
-+			nfs4_schedule_state_recovery(clp);
- 		return;
- 	}
- 	spin_lock(&clp->cl_lock);
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index d9ef602..e3ed590 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -129,7 +129,7 @@ enum {
- 	Opt_err
- };
- 
--static match_table_t __initconst tokens = {
-+static const match_table_t tokens __initconst = {
- 	{Opt_port, "port=%u"},
- 	{Opt_rsize, "rsize=%u"},
- 	{Opt_wsize, "wsize=%u"},
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3b21e0c..465aafc 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1495,7 +1495,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.length = i << PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.access_flags = (writing ?
--				IB_ACCESS_REMOTE_WRITE : IB_ACCESS_REMOTE_READ);
-+				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
-+				IB_ACCESS_REMOTE_READ);
- 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
