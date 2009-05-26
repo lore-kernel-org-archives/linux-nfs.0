@@ -1,77 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:45373 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750869AbZEAQje (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 May 2009 12:39:34 -0400
-In-Reply-To: <1241126587.15476.62.camel@heimdal.trondhjem.org>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
-	 <49FA0CE8.9090706@redhat.com> <1241126587.15476.62.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-nfs-owner@vger.kernel.org, Peter Staubach <staubach@redhat.com>
-Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
-From: Brian R Cowan <brcowan@us.ibm.com>
-Message-ID: <OFA2346ADE.C9BEB0D3-ON852575A9.00520371-852575A9.005B82BB@us.ibm.com>
-Date: Fri, 1 May 2009 12:39:32 -0400
-Content-Type: text/plain; charset="US-ASCII"
+Received: from mx2.redhat.com ([66.187.237.31]:46732 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751483AbZEZPPy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 May 2009 11:15:54 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: chuck.lever@oracle.com, steved@redhat.com
+Subject: [PATCH 0/6] nfs-utils: add IPv6 support for rpc.nfsd (try #2)
+Date: Tue, 26 May 2009 11:15:45 -0400
+Message-Id: <1243350951-13462-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-linux-nfs-owner@vger.kernel.org wrote on 04/30/2009 05:23:07 PM:
+This is the second attempt to add support IPv6 to rpc.nfsd. The main
+changes since the last patchset are:
 
-> As usual, the optimisation is workload dependent. The main type of
-> workload we're targetting with this patch is the app that opens a file,
-> writes < 4k and then closes the file. For that case, it's a no-brainer
-> that you don't need to split a single stable write into an unstable + a
-> commit.
+1) the addition of a patch that makes nfsd look at /etc/netconfig when
+tirpc is enabled, and to disable any family/protocol combinations that
+don't have visible netid's.
 
-The app impacted most is the gcc linker... I tested by building Samba, 
-then by linking smbd. We think the linker memory maps the output file. 
-Don't really know for sure since I don't know the gcc source any more than 
-I'm an expert in the Linux NFS implementation. In any event, the linker is 
-doing all kinds of lseeks and writes as it builds the output executable 
-based on the various .o files being linked in. All of those writes are 
-slowed down by this write change. If we were closing the file afterwards, 
-that would be one thing, but we're not...
+2) stop linking in some unneeded .a libs.
 
-> 
-> So if the application isn't doing the above type of short write followed
-> by close, then exactly what is causing a flush to disk in the first
-> place? Ordinarily, the client will try to cache writes until the cows
-> come home (or until the VM tells it to reclaim memory - whichever comes
-> first)...
+3) some minor bugfixes
 
-We suspect it's the latter (something telling the system to flush memory) 
-but chasing that looks to be a challenge...
+4) update to the nfsd manpage for new options
 
-> 
-> Cheers
->   Trond
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I think the set is bisectable, but have only really tested the final
+result. I've also tested the final result when built with tirpc enabled
+and disabled, and ipv6 enabled and disabled.
 
+I haven't seen any regressions when testing on recent mainline kernels
+and The only real difference that anyone may notice is that when IPv6
+support is built in, and the kernel doesn't support IPv6, nfsd logs this
+message a couple of times when starting nfsd:
 
+nfssvc: writing fds to kernel failed: errno 97 (Address family not supported by protocol)
 
+Most of the testing I've done has been by watching the program under
+strace.  Since most of the kernel work for IPv6 support hasn't made it
+to mainline, it's a little difficult to do much testing of this beyond
+that.
 
-=================================================================
-Brian Cowan
-Advisory Software Engineer
-ClearCase Customer Advocacy Group (CAG)
-Rational Software
-IBM Software Group
-81 Hartwell Ave
-Lexington, MA
- 
-Phone: 1.781.372.3580
-Web: http://www.ibm.com/software/rational/support/
- 
+Jeff Layton (6):
+  nfs-utils: don't link libexport.a and libmisc.a to nfsd
+  nfs-utils: break up nfssvc.c into more individually callable
+    functions
+  nfs-utils: set IPV6_V6ONLY on nfssvc IPv6 sockets
+  nfs-utils: add IPv6 support to nfsd
+  nfs-utils: limit protocols and families used by nfsd to those listed
+    in /etc/netconfig
+  nfs-utils: add -4 and -6 options to nfsd manpage
 
-Please be sure to update your PMR using ESR at 
-http://www-306.ibm.com/software/support/probsub.html or cc all 
-correspondence to sw_support@us.ibm.com to be sure your PMR is updated in 
-case I am not available.
+ support/include/nfslib.h |    8 ++-
+ support/nfs/nfssvc.c     |  164 +++++++++++++++++++++++++++++++++----------
+ utils/nfsd/Makefile.am   |    4 +-
+ utils/nfsd/nfsd.c        |  175 ++++++++++++++++++++++++++++++++++++++--------
+ utils/nfsd/nfsd.man      |   10 +++
+ 5 files changed, 292 insertions(+), 69 deletions(-)
 
