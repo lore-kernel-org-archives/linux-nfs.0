@@ -1,118 +1,224 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:58852 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754550AbZEIUlf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 9 May 2009 16:41:35 -0400
-Subject: Re: NFS issues with recent kernels [long]
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: =?ISO-8859-1?Q?Andr=E9?= Berger <andre.berger@web.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Guennadi Liakhovetski <g.liakhovetski@gmx.de>
-In-Reply-To: <20090509185736.GF3801@fuchs>
-References: <20090417102659.GC55096@fuchs>
-	 <B05C16C7-53B5-4E26-8239-956C600CF452@oracle.com>
-	 <20090420091454.GB614@fuchs>
-	 <F1250240-F050-47B7-9569-54941AAAD572@oracle.com>
-	 <20090421043642.GA52257@fuchs> <20090508193813.GC3801@fuchs>
-	 <8D7394C9-0142-4635-88E5-139F4F5F39F6@oracle.com>
-	 <20090508203751.GD3801@fuchs>
-	 <1241815735.7291.1.camel@heimdal.trondhjem.org>
-	 <20090509185736.GF3801@fuchs>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 09 May 2009 16:41:31 -0400
-Message-Id: <1241901691.5101.26.camel@heimdal.trondhjem.org>
+Received: from mail.fieldses.org ([141.211.133.115]:54396 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755821AbZEZS47 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 14:56:59 -0400
+Date: Tue, 26 May 2009 14:57:01 -0400
+To: Greg Banks <gnb@sgi.com>
+Cc: Linux NFS ML <linux-nfs@vger.kernel.org>,
+        Robert Gardner <rob.gardner@hp.com>
+Subject: Re: [patch 18/29] knfsd: dynamically expand the reply cache
+Message-ID: <20090526185701.GE31567@fieldses.org>
+References: <20090331202800.739621000@sgi.com> <20090331202944.386752000@sgi.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20090331202944.386752000@sgi.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2009-05-09 at 20:57 +0200, André Berger wrote:
-> * Trond Myklebust (2009-05-08):
-> > On Fri, 2009-05-08 at 22:37 +0200, André Berger wrote:
-> > > * Chuck Lever (2009-05-08):
-> > > > On May 8, 2009, at 3:38 PM, André Berger wrote:
-> > > >> * André Berger (2009-04-21):
-> > > >>> * Chuck Lever (2009-04-20):
-> > > >>>> On Apr 20, 2009, at 5:14 AM, André Berger wrote:
-> > > >>>>> * Chuck Lever (2009-04-17):
-> > > [...]
-> > > > Assuming 192.168.1.8 is your server, frame 79 and 622 report FSINFO  
-> > > > results:
-> > > >
-> > > > Network File System, FSINFO Reply
-> > > >     [Program Version: 3]
-> > > >     [V3 Procedure: FSINFO (19)]
-> > > >     Status: NFS3_OK (0)
-> > > >     obj_attributes
-> > > >         attributes_follow: no value (0)
-> > > >     rtmax: 16384
-> > > >     rtpref: 16384
-> > > >     rtmult: 4096
-> > > >     wtmax: 16384
-> > > >     wtpref: 16384
-> > > >     wtmult: 4096
-> > > >     dtpref: 4096
-> > > >     maxfilesize: 2194719883264
-> > > >     time delta: 1.000000000 seconds
-> > > >         seconds: 1
-> > > >         nano seconds: 0
-> > > >     Properties: 0x0000001b
-> > > >         1... . = SETATTR can set time on server
-> > > >         .1.. . = PATHCONF is valid for all files
-> > > >         ...1 . = File System supports symbolic links
-> > > >         .... 1 = File System supports hard links
-> > > >
-> > > > says your server operating system supports NFS rsize and wsize maxima of 
-> > > > 16384 bytes.
-> > > >
-> > > > RFC 1813:
-> > > >> rtmax
-> > > >> The maximum size in bytes of a READ request supported by the server.  
-> > > >> Any READ with a number greater than rtmax will result in a short read of 
-> > > >> rtmax bytes or less.
-> > > 
-> > > My OS is 2.6.29.2, Debian etch, on a PPC system. I swear I got 32K
-> > > [rw]size with kernels < 2.6.19, at least "mount" reported them as
-> > > such. With recent kernels, "mount" and your analysis agree on just
-> > > 16K. So, what can I do?
-> > 
-> > There is nothing the client can do as long as the server says it won't
-> > accept NFS requests with read or write sizes > 16k. You therefore need
-> > to fix the server.
+On Wed, Apr 01, 2009 at 07:28:18AM +1100, Greg Banks wrote:
+> Allow the reply cache to expand under nonidempotent NFS call load.
+> The current fixed limit on reply cache entries is actually so small
+> as to make the reply cache utterly ineffectual (see the comment in
+> nfscache.c for details).
 > 
-> So what can I do to fix this? I've upgraded to nfs-utils-1.1.4 in the
-> meantime, 1.1.5 and both 1.1.6 give me 
-> 
->   make[2]: Entering directory `/tmp/nfs-utils-1.1.5/support/misc'
->   gcc -DHAVE_CONFIG_H -I. -I../../support/include   -I/usr/include  -D_GNU_SOURCE -Wall -Wstrict-prototypes  -pipe -g -O2 -MT tcpwrapper.o -MD -MP -MF .deps/tcpwrapper.Tpo -c -o tcpwrapper.o tcpwrapper.c
->   tcpwrapper.c: In function ‘haccess_add’:
->   tcpwrapper.c:117: warning: implicit declaration of function ‘TAILQ_EMPTY’
->   tcpwrapper.c:119: error: expected expression before ‘else’
->   tcpwrapper.c: In function ‘haccess_lookup’:
->   tcpwrapper.c:131: warning: implicit declaration of function ‘TAILQ_FOREACH’
->   tcpwrapper.c:131: error: ‘list’ undeclared (first use in this function)
->   tcpwrapper.c:131: error: (Each undeclared identifier is reported only once
->   tcpwrapper.c:131: error: for each function it appears in.)
->   tcpwrapper.c:131: error: expected ‘;’ before ‘{’ token
->   make[2]: *** [tcpwrapper.o] Error 1
->   make[2]: Leaving directory `/tmp/nfs-utils-1.1.5/support/misc'
->   make[1]: *** [all-recursive] Error 1
->   make[1]: Leaving directory `/tmp/nfs-utils-1.1.5/support'
->   make: *** [all-recursive] Error 1
-> 
-> with 
-> 
->   ./configure --prefix=/usr/local --sysconfdir=/etc --with-tcp-wrappers=/usr/include --with-statedir=/var/lib/nfs
-> 
-> I've already upgraded tcpd to the Lenny version 7.6.q-16 (from
-> source), but that didn't help. 
-> 
-> With 1.1.4, I still get 16384 [rw]size while 32768 were requested. 
+> This is a simpler version of an older more complicated patch which
+> dynamically expanded the hash index using lazy rehashing.  Here we
+> allocate a hash index which is too large for the initial size of the
+> reply cache, and don't ever resize it.
 
+Hm, just on the subject; looks like someone (cc'd) is presenting at the
+Linux Symposium on reply cache improvements:
 
-If the server is based on a recent Linux kernel, then you should check
-the value of /proc/fs/nfsd/max_block_size. If it is less than 32k, then
-try increasing it.
+	http://www.linuxsymposium.org/2009/view_abstract.php?content_key=89
 
-Cheers
-  Trond
+I assume they're talking about the linux server?  Will there be patches?
 
+--b.
+
+> 
+> Signed-off-by: Greg Banks <gnb@sgi.com>
+> ---
+> 
+>  fs/nfsd/nfscache.c |   76 ++++++++++++++++++++++++++++++++++++------
+>  1 file changed, 66 insertions(+), 10 deletions(-)
+> 
+> Index: bfields/fs/nfsd/nfscache.c
+> ===================================================================
+> --- bfields.orig/fs/nfsd/nfscache.c
+> +++ bfields/fs/nfsd/nfscache.c
+> @@ -9,7 +9,7 @@
+>   *
+>   * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+>   *
+> - * SMP lock splitting by Greg Banks <gnb@sgi.com>
+> + * Dynamic expansion and SMP lock splitting by Greg Banks <gnb@sgi.com>
+>   *     Copyright (c) 2005-2009 Silicon Graphics, Inc.
+>   */
+>  
+> @@ -24,11 +24,21 @@
+>  #include <linux/nfsd/nfsd.h>
+>  #include <linux/nfsd/cache.h>
+>  
+> -/* Size of reply cache. Common values are:
+> +/* Initial size of reply cache. Common values are:
+>   * 4.3BSD:	128
+>   * 4.4BSD:	256
+>   * Solaris2:	1024
+>   * DEC Unix:	512-4096
+> + *
+> + * All these values reflect network packet rates and NFS loads common
+> + * somewhen around 1990, and are utterly inadequate for modern NFS
+> + * servers.  To be at all effective the reply cache needs to hold all
+> + * NFS calls seen by the server for at least a client RPC timeout period
+> + * (typically 1.1 seconds), and to handle weird IP routing issues should
+> + * really hold 120 seconds of traffic.  A modern NFS server can be
+> + * fielding upwards of 10,000 calls per second, which means the default
+> + * cache size of 1024 holds about 102 milliseconds'  traffic, i.e. the
+> + * default size is three orders of magnitude too small.
+>   */
+>  /* number of buckets used to manage LRU lists and cache locks (power of 2) */
+>  #ifdef CONFIG_SMP
+> @@ -36,14 +46,22 @@
+>  #else
+>  #define CACHE_NUM_BUCKETS	1
+>  #endif
+> -/* number of entries in all LRU lists (power of 2) */
+> +/* initial number of entries in all LRU lists (power of 2) */
+>  #define CACHE_SIZE		(1024)
+> +/* largest possible number of entries in all LRU lists (power of 2) */
+> +#define CACHE_MAX_SIZE		(16*1024*CACHE_NUM_BUCKETS)
+>  /* largest possible number of entries in LRU per bucket */
+> -#define CACHE_BUCKET_MAX_SIZE	(CACHE_SIZE/CACHE_NUM_BUCKETS)
+> +#define CACHE_BUCKET_MAX_SIZE	(CACHE_MAX_SIZE/CACHE_NUM_BUCKETS)
+> +/* number of entries each bucket will expand by */
+> +#define CACHE_BUCKET_INCREMENT	(1024/CACHE_NUM_BUCKETS)
+>  /* log2 of largest desired hash chain length */
+>  #define MAX_CHAIN_ORDER		2
+>  /* initial and maximum size of the per-bucket hash table */
+> -#define HASHSIZE		((CACHE_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
+> +#define HASHSIZE		((CACHE_MAX_SIZE>>MAX_CHAIN_ORDER)/CACHE_NUM_BUCKETS)
+> +/* the cache attempts to expand if an entry younger than this is evicted */
+> +#define CACHE_THRESH_AGE	(11 * HZ / 10)  /* in jiffies */
+> +/* parameters for rate limiting cache expansion */
+> +#define CACHE_RATE_JIFFIES	(HZ/2)
+>  
+>  /*
+>   * locking for the reply cache:
+> @@ -63,6 +81,9 @@ struct svc_cache_bucket
+>  	struct list_head lru;
+>  	unsigned int size;
+>  	struct hlist_head *hash;
+> +	/* parameters for expand rate limiting */
+> +	unsigned long last;
+> +	unsigned long nhits;
+>  } ____cacheline_aligned_in_smp;
+>  
+>  static struct svc_cache_bucket	cache_buckets[CACHE_NUM_BUCKETS];
+> @@ -90,18 +111,18 @@ static inline u32 request_hash(u32 xid, 
+>  static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+>  
+>  /*
+> - * Initialise the reply cache data structures.
+> + * Expand (or initialise) the reply cache data structures.
+>   * Called without cache_lock, uses it internally.  Returns
+>   * 0 on success, an error otherwise.
+>   */
+> -static int nfsd_cache_bucket_init(struct svc_cache_bucket *b, unsigned int num)
+> +static int nfsd_cache_bucket_expand(struct svc_cache_bucket *b, unsigned int increment)
+>  {
+>  	struct svc_cacherep *rp;
+>  	unsigned int i;
+>  	LIST_HEAD(lru);
+>  
+>  	/* allocate new entries without the lock, keep them on their own list */
+> -	i = num;
+> +	i = increment;
+>  	while (i) {
+>  		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
+>  		if (!rp)
+> @@ -116,7 +137,7 @@ static int nfsd_cache_bucket_init(struct
+>  	/* add the new entries */
+>  	spin_lock(&b->lock);
+>  
+> -	b->size = num;
+> +	b->size += increment;
+>  	list_splice(&lru, &b->lru);
+>  
+>  	spin_unlock(&b->lock);
+> @@ -142,7 +163,7 @@ int nfsd_reply_cache_init(void)
+>  
+>  		INIT_LIST_HEAD(&b->lru);
+>  		spin_lock_init(&b->lock);
+> -		if (nfsd_cache_bucket_init(b, CACHE_SIZE/CACHE_NUM_BUCKETS))
+> +		if (nfsd_cache_bucket_expand(b, CACHE_SIZE/CACHE_NUM_BUCKETS))
+>  			goto out_nomem;
+>  		b->hash = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
+>  		if (!b->hash)
+> @@ -189,6 +210,26 @@ static inline void lru_put_end(struct sv
+>  }
+>  
+>  /*
+> + * Decide whether it is time to expand the cache.  Returns 1 iff
+> + * the cache is to be expanded.  Called with bucket lock held.
+> + */
+> +static int nfsd_cache_expand_ratelimit(struct svc_cache_bucket *b)
+> +{
+> +	unsigned long now = jiffies;
+> +
+> +	b->nhits++;
+> +	if (b->last == 0) {
+> +		b->last = now;
+> +	} else if ((now - b->last) > CACHE_RATE_JIFFIES &&
+> +		   b->nhits > (b->size >> 4)) {
+> +		b->nhits = 0;
+> +		b->last = now;
+> +		return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+> +/*
+>   * Try to find an entry matching the current call in the cache. When none
+>   * is found, we grab the oldest unlocked entry off the LRU list.
+>   * Note that no operation within the loop may sleep.
+> @@ -207,6 +248,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+>  	struct svc_cache_bucket *b;
+>  	unsigned long		age;
+>  	int			rtn;
+> +	int			expand = 0;
+>  
+>  	rqstp->rq_cacherep = NULL;
+>  	if (cache_disabled || type == RC_NOCACHE) {
+> @@ -259,6 +301,18 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+>  		goto out;
+>  	}
+>  
+> +	if (rp->c_state != RC_UNUSED) {
+> +		/* reusing an existing cache entry */
+> +		age = jiffies - rp->c_timestamp;
+> +		if (age < CACHE_THRESH_AGE &&
+> +		    b->size < CACHE_BUCKET_MAX_SIZE &&
+> +		    nfsd_cache_expand_ratelimit(b)) {
+> +			expand = CACHE_BUCKET_INCREMENT;
+> +			if (b->size + expand > CACHE_BUCKET_MAX_SIZE)
+> +				expand = CACHE_BUCKET_MAX_SIZE - b->size;
+> +		}
+> +	}
+> +
+>  	rqstp->rq_cacherep = rp;
+>  	rp->c_state = RC_INPROG;
+>  	rp->c_xid = xid;
+> @@ -280,6 +334,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp
+>  	rp->c_type = RC_NOCACHE;
+>   out:
+>  	spin_unlock(&b->lock);
+> +	if (expand)
+> +		nfsd_cache_bucket_expand(b, expand);
+>  	return rtn;
+>  
+>  found_entry:
+> 
+> --
+> Greg
