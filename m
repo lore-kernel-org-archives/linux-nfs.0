@@ -1,103 +1,315 @@
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-Subject: [PATCH v2] integrity: nfsd imbalance bug fix
-Date: Wed, 27 May 2009 09:31:52 -0400
-Message-ID: <1243431112-7388-1-git-send-email-zohar@linux.vnet.ibm.com>
-Cc: Mimi Zohar <zohar@linux.vnet.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org, "J. Bruce Fields" <bfields@fieldses.org>,
-	Hugh Dickins <hugh-DTz5qymZ9yRBDgjK7y7TUQ@public.gmane.org>,
-	James Morris <jmorris@namei.org>,
-	David Safford <safford-aZOuKsOsJu3MbYB6QlFGEg@public.gmane.org>,
-	linux-nfs@vger.kernel.org, Mimi Zohar <zohar@us.ibm.com>
-To: linux-kernel@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 4/5] nfs-utils: add IPv6 support to nfsd
+Date: Wed, 27 May 2009 12:22:57 -0400
+Message-ID: <08EFB0AF-CE3B-4B21-9D6D-33EEBFCDC39E@oracle.com>
+References: <1243425275-6284-1-git-send-email-jlayton@redhat.com> <1243425275-6284-5-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:39425 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1763344AbZE0NdT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 May 2009 09:33:19 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:29382 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752901AbZE0QXS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 May 2009 12:23:18 -0400
+In-Reply-To: <1243425275-6284-5-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An nfsd exported file is opened/closed by the kernel causing the
-integrity imbalance message.
 
-Before a file is opened, there normally is permission checking, which
-is done in inode_permission().  However, as integrity checking requires
-a dentry and mount point, which is not available in inode_permission(),
-the integrity (permission) checking must be called separately.
+On May 27, 2009, at 7:54 AM, Jeff Layton wrote:
 
-In order to detect any missing integrity checking calls, we keep track
-of file open/closes.  ima_path_check() increments these counts and
-does the integrity (permission) checking. As a result, the number of
-calls to ima_path_check()/ima_file_free() should be balanced.  An extra
-call to fput(), indicates the file could have been accessed without first
-calling ima_path_check().
+> Add support for handing off IPv6 sockets to the kernel for nfsd. One  
+> of
+> the main goals here is to not change the behavior of options and not  
+> to
+> add any new ones, so this patch attempts to do that.
+>
+> We also don't want to break anything in the event that someone has an
+> rpc.nfsd program built with IPv6 capability, but the knfsd doesn't
+> support IPv6. Ditto for the cases where IPv6 is either not compiled in
+> or is compiled in and blacklisted.
+>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> utils/nfsd/nfsd.c |  158 +++++++++++++++++++++++++++++++++++++++++ 
+> +-----------
+> 1 files changed, 125 insertions(+), 33 deletions(-)
+>
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index 2a3cd0a..77c7e1b 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -41,17 +41,24 @@ static struct option longopts[] =
+> };
+> unsigned int protobits = NFSCTL_ALLBITS;
+> unsigned int versbits = NFSCTL_ALLBITS;
+> -int minorvers4 = NFSD_MAXMINORVERS4;		/* nfsv4 minor version */
+> -char *haddr = NULL;
+>
+> int
+> main(int argc, char **argv)
+> {
+> -	int	count = 1, c, error, port, fd, found_one;
+> +	int	count = 1, c, error = 0, port, fd, found_one;
+> 	struct servent *ent;
+> 	struct hostent *hp;
+> 	char *p;
+> -	struct sockaddr_in sin;
+> +	struct sockaddr_in sin = { };
+> +	struct sockaddr_in6 sin6 = { };
+> +	int minorvers4 = NFSD_MAXMINORVERS4;	/* nfsv4 minor version */
+> +	char	*haddr = NULL;
+> +	int	ipv4 = 1;
+> +#ifdef IPV6_SUPPORTED
+> +	int	ipv6 = 1;
+> +#else  /* IPV6_SUPPORTED */
+> +	int	ipv6 = 0;
+> +#endif /* IPV6_SUPPORTED */
+>
+> 	ent = getservbyname ("nfs", "udp");
+> 	if (ent != NULL)
+> @@ -62,15 +69,9 @@ main(int argc, char **argv)
+> 	while ((c = getopt_long(argc, argv, "H:hN:p:P:TU", longopts,  
+> NULL)) != EOF) {
+> 		switch(c) {
+> 		case 'H':
+> -			if (inet_addr(optarg) != INADDR_NONE) {
+> -				haddr = strdup(optarg);
+> -			} else if ((hp = gethostbyname(optarg)) != NULL) {
+> -				haddr = inet_ntoa((*(struct in_addr*)(hp->h_addr_list[0])));
+> -			} else {
+> -				fprintf(stderr, "%s: Unknown hostname: %s\n",
+> -					argv[0], optarg);
+> -				usage(argv [0]);
+> -			}
+> +			/* we only deal with one host addr at the moment */
+> +			free(haddr);
+> +			haddr = strdup(optarg);
+> 			break;
+> 		case 'P':	/* XXX for nfs-server compatibility */
+> 		case 'p':
+> @@ -98,24 +99,79 @@ main(int argc, char **argv)
+> 			}
+> 			break;
+> 		case 'T':
+> -				NFSCTL_TCPUNSET(protobits);
+> -				break;
+> +			NFSCTL_TCPUNSET(protobits);
+> +			break;
+> 		case 'U':
+> -				NFSCTL_UDPUNSET(protobits);
+> -				break;
+> +			NFSCTL_UDPUNSET(protobits);
+> +			break;
 
-In nfsv3 permission checking is done once, followed by multiple reads,
-which do an open/close for each read.  The integrity (permission) checking
-call should be in nfsd_permission() after the inode_permission() call, but
-as there is no correlation between the number of permission checking and
-open calls, the integrity checking call should not increment the counters,
-but defer it to when the file is actually opened.
+Clean up: separate patch?
 
-This patch adds:
-- integrity (permission) checking for nfsd exported files in nfsd_permission().
-- a call to increment counts for files opened by nfsd.
+> 		default:
+> 			fprintf(stderr, "Invalid argument: '%c'\n", c);
+> 		case 'h':
+> 			usage(argv[0]);
+> 		}
+> 	}
+> -	/*
+> -	 * Do some sanity checking, if the ctlbits are set
+> -	 */
+> +
+> +	/* sanity checks */
+> +
+> +	/* if an address was specified, check it first */
+> +	if (haddr) {
+> +		/* does it look like an addr of some sort? */
+> +		if (inet_pton(AF_INET, haddr, &sin.sin_addr)) {
+> +			ipv6 = 0;
+> +			goto family_check;
+> +		} else if (inet_pton(AF_INET6, haddr, &sin6.sin6_addr)) {
+> +			ipv4 = 0;
+> +			goto family_check;
+> +		}
 
-This patch has been updated to return the nfs error types.
+Using getaddrinfo(3) with AI_NUMERICHOST might allow a lot of  
+simplification here.  See utils/new-statd/hostname.c in my repo for  
+some possibilities.
 
-Signed-off-by: Mimi Zohar <zohar@us.ibm.com>
----
- fs/nfsd/vfs.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
+You could also easily pass the text version of the -p option into  
+getaddrinfo() to have it plant the port number into the bind address.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6c68ffd..81ff0f4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -55,6 +55,7 @@
- #include <linux/security.h>
- #endif /* CONFIG_NFSD_V4 */
- #include <linux/jhash.h>
-+#include <linux/ima.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -735,6 +736,8 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 			    flags, cred);
- 	if (IS_ERR(*filp))
- 		host_err = PTR_ERR(*filp);
-+	else
-+		ima_counts_get(*filp);
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
-@@ -2024,6 +2027,7 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 					struct dentry *dentry, int acc)
- {
- 	struct inode	*inode = dentry->d_inode;
-+	struct path	path;
- 	int		err;
- 
- 	if (acc == NFSD_MAY_NOP)
-@@ -2096,7 +2100,17 @@ nfsd_permission(struct svc_rqst *rqstp, struct svc_export *exp,
- 	if (err == -EACCES && S_ISREG(inode->i_mode) &&
- 	    acc == (NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE))
- 		err = inode_permission(inode, MAY_EXEC);
-+	if (err)
-+		goto nfsd_out;
- 
-+	/* Do integrity (permission) checking now, but defer incrementing
-+	 * IMA counts to the actual file open.
-+	 */
-+	path.mnt = exp->ex_path.mnt;
-+	path.dentry = dentry;
-+	err = ima_path_check(&path, acc & (MAY_READ | MAY_WRITE | MAY_EXEC),
-+			     IMA_COUNT_LEAVE);
-+nfsd_out:
- 	return err? nfserrno(err) : 0;
- }
- 
--- 
-1.6.0.6
+This logic is complex enough that you may want to extract it into a  
+helper anyway.
 
+> +
+> +		/* see if it's a hostname */
+> +		hp = gethostbyname(haddr);
+> +		if (!hp) {
+> +			fprintf(stderr, "%s: gethostbyname on %s failed: %d\n",
+> +					argv[0], haddr, h_errno);
+> +			error = h_errno;
+> +			usage(argv[0]);
+> +		}
+> +
+> +		switch (hp->h_addrtype) {
+> +		case AF_INET:
+> +			ipv6 = 0;
+> +			memcpy(&sin.sin_addr, hp->h_addr_list[0],
+> +			       hp->h_length);
+> +			if (sin.sin_addr.s_addr == INADDR_NONE) {
+> +				fprintf(stderr, "%s: Bad hostaddr %s\n",
+> +						argv[0], haddr);
+> +				usage(argv[0]);
+> +			}
+> +			break;
+> +#ifdef IPV6_SUPPORTED
+> +		case AF_INET6:
+> +			ipv4 = 0;
+> +			memcpy(&sin6.sin6_addr, hp->h_addr_list[0],
+> +			       hp->h_length);
+> +			break;
+> +#endif /* IPV6_SUPPORTED */
+> +		default:
+> +			fprintf(stderr, "%s: unsupported address family %d\n",
+> +					argv[0], hp->h_addrtype);
+> +			exit(0);
+> +		}
+> +	}
+> +
+> +family_check:
+> +	/* make sure at least one address family is enabled */
+> +	if (!ipv4 && !ipv6) {
+> +		fprintf(stderr, "no address families enabled\n");
+> +		exit(1);
+> +	}
+
+Is this needed if you don't have -4 and -6?  I'm still familiarizing  
+myself with these patches, but I have a vague feeling that this  
+checking could be made much simpler, especially if the netconfig- 
+related logic was introduced at the same time rather than in a  
+separate patch.
+
+> +
+> +	/* make sure at least one protocol type is enabled */
+> 	if (!NFSCTL_UDPISSET(protobits) && !NFSCTL_TCPISSET(protobits)) {
+> 		fprintf(stderr, "invalid protocol specified\n");
+> 		exit(1);
+> 	}
+> +
+> +	/* make sure that at least one version is enabled */
+> 	found_one = 0;
+> 	for (c = NFSD_MINVERS; c <= NFSD_MAXVERS; c++) {
+> 		if (NFSCTL_VERISSET(versbits, c))
+> @@ -126,14 +182,11 @@ main(int argc, char **argv)
+> 		exit(1);
+> 	}			
+>
+> +	/* must have TCP for NFSv4 */
+> 	if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
+> 		fprintf(stderr, "version 4 requires the TCP protocol\n");
+> 		exit(1);
+> 	}
+> -	if (haddr == NULL) {
+> -		struct in_addr in = {INADDR_ANY};
+> -		haddr = strdup(inet_ntoa(in));
+> -	}
+>
+> 	if (chdir(NFS_STATEDIR)) {
+> 		fprintf(stderr, "%s: chdir(%s) failed: %s\n",
+> @@ -148,6 +201,12 @@ main(int argc, char **argv)
+> 				"%s: invalid server count (%d), using 1\n",
+> 				argv[0], count);
+> 			count = 1;
+> +		} else if (count == 0) {
+> +			/*
+> +			 * don't bother setting anything else if the threads
+> +			 * are coming down anyway.
+> +			 */
+> +			goto set_threads;
+> 		}
+> 	}
+> 	/* KLUDGE ALERT:
+> @@ -163,24 +222,55 @@ main(int argc, char **argv)
+> 		(void) dup2(fd, 2);
+> 	}
+> 	closeall(3);
+> +	openlog("nfsd", LOG_PID, LOG_DAEMON);
+
+Might be nice if rpc.nfsd used xlog() instead.  Maybe for another day.
+
+> -	sin.sin_family = AF_INET;
+> -	sin.sin_port = htons(port);
+> -	sin.sin_addr.s_addr = inet_addr(haddr);
+> +	/*
+> +	 * skip everything but setting of number of threads if sockets are
+> +	 * already open and in use.
+> +	 */
+> +	if (nfssvc_inuse())
+> +		goto set_threads;
+>
+> 	/*
+> 	 * must set versions before the fd's so that the right versions get
+> 	 * registered with rpcbind. Note that on older kernels w/o the right
+> 	 * interfaces, these are a no-op.
+> 	 */
+> -	if (!nfssvc_inuse()) {
+> -		nfssvc_setvers(versbits, minorvers4);
+> -		error = nfssvc_setfds(protobits, (struct sockaddr *) &sin,  
+> sizeof(sin));
+> -		if (error)
+> -			goto out;
+> +	nfssvc_setvers(versbits, minorvers4);
+> +
+> +	if (ipv4) {
+> +		sin.sin_family = AF_INET;
+> +		sin.sin_port = htons(port);
+> +		if (!haddr)
+> +			sin.sin_addr.s_addr = INADDR_ANY;
+> +
+> +		if (nfssvc_setfds(protobits, (struct sockaddr *) &sin,  
+> sizeof(sin)))
+> +			ipv4 = 0;
+> 	}
+>
+> -	openlog("nfsd", LOG_PID, LOG_DAEMON);
+> +#ifdef IPV6_SUPPORTED
+> +	if (ipv6) {
+> +		sin6.sin6_family = AF_INET6;
+> +		sin6.sin6_port = htons(port);
+> +		if (!haddr)
+> +			sin6.sin6_addr = in6addr_any;
+> +
+> +		if (nfssvc_setfds(protobits, (struct sockaddr *) &sin6,  
+> sizeof(sin6)))
+> +			ipv6 = 0;
+> +	}
+> +#endif /* IPV6_SUPPORTED */
+> +
+> +	/*
+> +	 * if ipv4 and ipv6 are both 0 here, then we were unable to pass  
+> off sockets
+> +	 * to the kernel. Don't try to bring up any threads.
+> +	 */
+> +	if (!ipv4 && !ipv6 && count > 0) {
+> +		syslog(LOG_ERR, "nfssvc: failed to hand off sockets to kernel\n");
+> +		error = -1;
+> +		goto out;
+> +	}
+> +
+> +set_threads:
+> 	if ((error = nfssvc_threads(port, count)) < 0) {
+> 		int e = errno;
+> 		syslog(LOG_ERR, "nfssvc: %s", strerror(e));
+> @@ -188,6 +278,8 @@ main(int argc, char **argv)
+> 	}
+>
+> out:
+> +	free(haddr);
+> +	closelog();
+> 	return (error != 0);
+> }
+>
+> -- 
+> 1.6.0.6
+>
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
