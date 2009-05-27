@@ -1,45 +1,38 @@
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: Re: [PATCH 2.6.30] svcrdma: dma unmap the correct length for the
- RPCRDMA header page.
-Date: Tue, 26 May 2009 17:09:15 -0500
-Message-ID: <4A1C688B.8080307@opengridcomputing.com>
-References: <20090514213428.19282.27658.stgit@build.ogc.int> <4A1C53F4.1080701@opengridcomputing.com> <20090526220050.GO1432@fieldses.org>
+From: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>
+Subject: Re: [patch 18/29] knfsd: dynamically expand the reply cache
+Date: Wed, 27 May 2009 10:28:14 +1000
+Message-ID: <ac442c870905261728o61359e66s5d541c7b9f410f0c@mail.gmail.com>
+References: <20090331202800.739621000@sgi.com>
+	 <20090331202944.386752000@sgi.com>
+	 <20090526185701.GE31567@fieldses.org> <4A1C5E02.50204@hp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: tom@opengridcomputing.com, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Linux NFS ML <linux-nfs@vger.kernel.org>
+To: Rob Gardner <rob.gardner@hp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:40298 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754709AbZEZWIM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 18:08:12 -0400
-In-Reply-To: <20090526220050.GO1432@fieldses.org>
+Received: from mail-qy0-f190.google.com ([209.85.221.190]:51222 "EHLO
+	mail-qy0-f190.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751229AbZE0A2O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 May 2009 20:28:14 -0400
+Received: by qyk28 with SMTP id 28so3945614qyk.33
+        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2009 17:28:15 -0700 (PDT)
+In-Reply-To: <4A1C5E02.50204@hp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Tue, May 26, 2009 at 03:41:24PM -0500, Steve Wise wrote:
->   
->> Hey Bruce,
+On Wed, May 27, 2009 at 7:24 AM, Rob Gardner <rob.gardner@hp.com> wrote:
+> J. Bruce Fields wrote:
 >>
->> Do you think this can make 2.6.30?
->>     
+>> Hm, just on the subject; looks like someone (cc'd) is presenting at the
+>> Linux Symposium on reply cache improvements:
+>>
+>[...] In the meantime, the final paper is
+> due at the end of this week and I'd love for a couple of 'experts' to review
+> it. Anyone interested?
 >
-> I was going to save it for 2.6.31; vague mental scorecard:
->
-> 	- 2.6.30 is close to release
-> 	- I think of rdma (correctly or not?) as a little young, so
-> 	  don't prioritize bug-fixes to it quite as highly
-> 	- A resource leak (even as large as this) isn't the worst
-> 	  category of bug.
->
-> But I may be wrong.
->
->   
-Ok.
 
-As a data point: this bug will exhaust the iommu address space on a IBM 
-Power system within 10 cthon iterations...
+Yes please.  The abstract sounds very interesting.
 
-Steve.
-
+-- 
+Greg.
