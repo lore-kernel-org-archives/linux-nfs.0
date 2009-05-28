@@ -1,97 +1,115 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: Re: [PATCH] nfsd: fix hung up of nfs client while sync write data
-	to nfs server
-Date: Thu, 28 May 2009 20:45:50 +0800
-Message-ID: <4A1E877E.8080007@cn.fujitsu.com>
-References: <4A122F83.4020606@cn.fujitsu.com>
-	<20090527224845.GE29565@fieldses.org>
+From: Tom Talpey <tmtalpey@gmail.com>
+Subject: Re: [PATCH 3/3] sunrpc: reduce timeout when unregistering
+  rpcbind registrations.
+Date: Thu, 28 May 2009 09:07:20 -0400
+Message-ID: <4a1e8c9e.48c3f10a.6d51.4c33@mx.google.com>
+References: <20090528062730.15937.70579.stgit@notabene.brown>
+ <20090528063303.15937.62423.stgit@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090527224845.GE29565@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qy0-f190.google.com ([209.85.221.190]:60080 "EHLO
+	mail-qy0-f190.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759493AbZE1NHm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2009 09:07:42 -0400
+Received: by qyk28 with SMTP id 28so5431889qyk.33
+        for <linux-nfs@vger.kernel.org>; Thu, 28 May 2009 06:07:43 -0700 (PDT)
+In-Reply-To: <20090528063303.15937.62423.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Tue, May 19, 2009 at 12:03:15PM +0800, Wei Yongjun wrote:
->   
->> Commit 'Short write in nfsd becomes a full write to the client'
->> (31dec2538e45e9fff2007ea1f4c6bae9f78db724) broken the sync write.
->> With the following commands to reproduce:
->>
->>   $ mount -t nfs -o sync 192.168.0.21:/nfsroot /mnt
->>   $ cd /mnt
->>   $ echo aaaa > temp.txt
->>
->> Then nfs client is hung up.
->>
->> In SYNC mode the server alaways return the write count 0 to the
->> client. This is because the value of host_err in nfsd_vfs_write()
->> will be overwrite in SYNC mode by 'host_err=nfsd_sync(file);',
->> and then we return host_err(which is now 0) as write count.
->>     
+At 02:33 AM 5/28/2009, NeilBrown wrote:
+>Unregistering an RPC service is not essential - but it is tidy.
+>So it is unpleasant to wait a long time for it to complete.
 >
-> Undoubtedly correct--applied, thanks!
+>As unregistering is always directed to localhost, the most likely
+>reason for any delay is the portmap (or rpcbind) is not running.
+>In that case, waiting it totally pointless.  In any case, we should
+>expect a quick response, and zero packet loss.
 >
-> (But it bugs me that I can't reproduce this: I see the client (mounting
-> with -osync, as above) send an unstable write followed by an immediate
-> commit, instead of a stable write.  This is with 2.6.29.30-rc7 on client
-> and server.)
->   
+>So reduce the timeouts to a total of half a second.
 
-I used 2.6.29.30-rc7 on server and RHEL5GA as client.^_^
+Why wait for the response at all in this case? With zero retries
+and nothing to do with the result, it seems pointless to even wait
+for half a second.
 
-> --b.
+Tom.
+
+
 >
->   
->> This patch fixed the problem.
->>
->> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
->> ---
->>  fs/nfsd/vfs.c |    6 +++---
->>  1 files changed, 3 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 6c68ffd..b660435 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -1015,6 +1015,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
->>  	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
->>  	set_fs(oldfs);
->>  	if (host_err >= 0) {
->> +		*cnt = host_err;
->>  		nfsdstats.io_write += host_err;
->>  		fsnotify_modify(file->f_path.dentry);
->>  	}
->> @@ -1060,10 +1061,9 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
->>  	}
->>  
->>  	dprintk("nfsd: write complete host_err=%d\n", host_err);
->> -	if (host_err >= 0) {
->> +	if (host_err >= 0)
->>  		err = 0;
->> -		*cnt = host_err;
->> -	} else
->> +	else
->>  		err = nfserrno(host_err);
->>  out:
->>  	return err;
->> -- 
->> 1.5.3.8
->>
->>
->>
->>     
+>This means that if we try to stop nfsd while portmap is not running,
+>it takes 3 seconds instead of 3.5 minutes.
+>
+>Note that stopping portmap before the last nfsd thread has died is
+>not simply a configuration error.  When we kill nfsd threads they
+>could take a while to die, and it is possible that portmap could
+>then be killed before the last nfsd thread has had a change to finish
+>up.
+>
+>[An alternate might be to make the sunrpc code always "connect"
+>udp sockets so that "port not reachable" errors would get reported
+>back.  This requires a more intrusive change though and might have
+>other consequences]
+>
+>Signed-off-by: NeilBrown <neilb@suse.de>
+>---
+>
+> net/sunrpc/rpcb_clnt.c |   17 +++++++++++++++--
+> 1 files changed, 15 insertions(+), 2 deletions(-)
+>
+>diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+>index beee6da..31f7e2e 100644
+>--- a/net/sunrpc/rpcb_clnt.c
+>+++ b/net/sunrpc/rpcb_clnt.c
+>@@ -132,7 +132,8 @@ static const struct sockaddr_in rpcb_inaddr_loopback = {
+> };
+> 
+> static struct rpc_clnt *rpcb_create_local(struct sockaddr *addr,
+>-					  size_t addrlen, u32 version)
+>+					  size_t addrlen, u32 version,
+>+					  int unregister)
+> {
+> 	struct rpc_create_args args = {
+> 		.protocol	= XPRT_TRANSPORT_UDP,
+>@@ -144,6 +145,16 @@ static struct rpc_clnt *rpcb_create_local(struct 
+>sockaddr *addr,
+> 		.authflavor	= RPC_AUTH_UNIX,
+> 		.flags		= RPC_CLNT_CREATE_NOPING,
+> 	};
+>+	const struct rpc_timeout unreg_timeout = {
+>+		.to_initval = HZ/2,
+>+		.to_maxval = HZ/2,
+>+		.to_increment = 0,
+>+		.to_retries = 0,
+>+		.to_exponential = 0,
+>+	};
+>+
+>+	if (unregister)
+>+		args.timeout = &unreg_timeout;
+> 
+> 	return rpc_create(&args);
+> }
+>@@ -183,10 +194,12 @@ static int rpcb_register_call(const u32 version, 
+>struct rpc_message *msg)
+> 	size_t addrlen = sizeof(rpcb_inaddr_loopback);
+> 	struct rpc_clnt *rpcb_clnt;
+> 	int result, error = 0;
+>+	int unregister;
+> 
+> 	msg->rpc_resp = &result;
+> 
+>-	rpcb_clnt = rpcb_create_local(addr, addrlen, version);
+>+	unregister = (msg->rpc_proc->p_proc == RPCBPROC_UNSET);
+>+	rpcb_clnt = rpcb_create_local(addr, addrlen, version, unregister);
+> 	if (!IS_ERR(rpcb_clnt)) {
+> 		error = rpc_call_sync(rpcb_clnt, msg, 0);
+> 		rpc_shutdown_client(rpcb_clnt);
 >
 >
->   
+>--
+>To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>the body of a message to majordomo@vger.kernel.org
+>More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
