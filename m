@@ -1,82 +1,67 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Huge race in lockd for async lock requests?
-Date: Thu, 28 May 2009 16:05:23 -0400
-Message-ID: <20090528200523.GE13860@fieldses.org>
-References: <4A0D80B6.4070101@redhat.com> <4A0D9D63.1090102@hp.com> <4A11657B.4070002@redhat.com> <4A1168E0.3090409@hp.com> <4A1319F9.90304@hp.com> <4A13A973.4050703@hp.com> <4a140d0a.85c2f10a.53bc.0979@mx.google.com> <4A1431B1.6080708@hp.com>
+Subject: Re: 2.6.29+ NFS-Server Problem "reconnect_path: npd != pd"
+Date: Thu, 28 May 2009 16:28:03 -0400
+Message-ID: <20090528202803.GF13860@fieldses.org>
+References: <20090521142026.GA5566@geggus.net> <1242924599.6687.1.camel@heimdal.trondhjem.org> <20090521165751.GA4428@geggus.net> <1242927133.6687.4.camel@heimdal.trondhjem.org> <gv4463$6fn$1@ultimate100.geggus.net> <1242929546.22947.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tmtalpey@gmail.com,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Rob Gardner <rob.gardner@hp.com>
+Cc: Sven Geggus <lists@fuchsschwanzdomain.de>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:54298 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:42922 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760865AbZE1UFX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2009 16:05:23 -0400
-In-Reply-To: <4A1431B1.6080708@hp.com>
+	with ESMTP id S1758720AbZE1U2H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2009 16:28:07 -0400
+In-Reply-To: <1242929546.22947.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 20, 2009 at 10:37:05AM -0600, Rob Gardner wrote:
-> Tom Talpey wrote:
->> At 02:55 AM 5/20/2009, Rob Gardner wrote:
->>   
->>> Tom Talpey wrote:
->>>     
->>>> At 04:43 PM 5/19/2009, Rob Gardner wrote:
->>>>       
->>>>> I've got a question about lockd in conjunction with a filesystem 
->>>>> that provides its own (async) locking.
->>>>>
->>>>> After nlmsvc_lock() calls vfs_lock_file(), it seems to be that we 
->>>>> might get the async callback (nlmsvc_grant_deferred) at any time. 
->>>>> What's to stop it from arriving before we even put the block on 
->>>>> the nlm_block list? If this happens, then nlmsvc_grant_deferred() 
->>>>> will print "grant for unknown block" and then we'll wait forever 
->>>>> for a grant that will never come.
->>>>>         
->>>> Yes, there's a race but the client will retry every 30 seconds, so it won't
->>>> wait forever.
->>>>       
->>> OK, a blocking lock request will get retried in 30 seconds and work 
->>> out "ok". But a non-blocking request will get in big trouble. Let's 
->>> say the     
->>
->> A non-blocking lock doesn't request, and won't get, a callback. So I
->> don't understand...
->>
->>   
->
-> What do you mean a non-blocking lock doesn't request? Remember that I'm  
-> dealing with a filesystem that provides its own locking functions via  
-> file->f_op->lock(). Such a filesystem might easily defer a non-blocking  
-> lock request and invoke the callback later. At least I don't know of any  
-> rule that says that it can't do this, and clearly the code expects this  
-> possibility:
->
->              case FILE_LOCK_DEFERRED:
->                        if (wait)
->                                break;
->                        /* Filesystem lock operation is in progress
->                           Add it to the queue waiting for callback */
->                        ret = nlmsvc_defer_lock_rqst(rqstp, block);
->
->
->>> callback is invoked immediately after the vfs_lock_file call returns  
->>> FILE_LOCK_DEFERRED. At this point, the block is not on the nlm_block  
->>> list, so the callback routine will not be able to find it and mark it 
->>> as granted. Then nlmsvc_lock() will call nlmsvc_defer_lock_rqst(), 
->>> put the block on the nlm_block list, and eventually the request will 
->>> timeout and the client will get lck_denied. Meanwhile, the lock has 
->>> actually been granted, but nobody knows about it.
->>>     
->>
->> Yes, this can happen, I've seen it too. Again, it's a bug in the protocol
->> more than a bug in the clients. 
-> It looks to me like a bug in the server. The server must be able to deal  
-> with async filesystem callbacks happening at any time, however 
-> inconvenient.
+On Thu, May 21, 2009 at 02:12:26PM -0400, Trond Myklebust wrote:
+> On Thu, 2009-05-21 at 17:48 +0000, Sven Geggus wrote:
+> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > 
+> > > So what is the underlying filesystem that you are exporting, and what
+> > > does your /etc/exports file look like?
+> > 
+> > The underlying filesystem is xfs and /etc/exports (unchanged) is here:
+> > 
+> > --cut--
+> > # /etc/exports: the access control list for filesystems which may be exported
+> > #		to NFS clients.  See exports(5).
+> > /               192.168.3.2(rw,no_root_squash,async,subtree_check)
+> > /home/sven	192.168.3.2(rw,no_root_squash,async,subtree_check) 192.168.3.6(rw,no_root_squash,async,subtree_check) 192.168.3.8(rw,no_root_squash,async,subtree_check)
+> > /home/mp3	192.168.3.2(rw,no_root_squash,async,subtree_check) 192.168.3.6(rw,no_root_squash,async,subtree_check) 192.168.3.8(rw,no_root_squash,async,subtree_check)
+> > /home/sven/filme 192.168.3.7(ro,async,subtree_check)
+> > /home/kathi910	192.168.3.7(rw,no_root_squash,async,no_subtree_check)
+> > --cut--
+> > 
+> > 192.168.3.2 is the client which causes the error, I didn't notice the
+> > error on the other clients, but they are not used that often.
+> > 
+> > Especially 192.168.3.7 does seem to work.
+> > 
+> > Regards
+> > 
+> > Sven
+> > 
+> 
+> Reforwarding the reply for the benefit of the NFS mailing list. Not
+> everyone reads lkml...
 
-Absolutely, if that's possible then it's a server bug.
+Original thread starts here:
+
+	http://marc.info/?l=linux-kernel&m=124291571326139&w=2
+
+I don't think this is a known bug.
+
+Looks like you have subtree_check set on the "bad" export, and
+no_subtree_check set on the "good" export.  subtree_check can result in
+spurious stale errors when files are renamed, so it's possible this is
+by design.
+
+You say you get that message on 296.29.x but not 2.6.27.x.  And you say
+you also get stale filehandle errors.  I assume you didn't get the same
+stale filehandle errors on 2.6.27.x?
 
 --b.
