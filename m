@@ -1,58 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:37303 "EHLO neil.brown.name"
+Received: from mail-out1.uio.no ([129.240.10.57]:48081 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753163AbZEGOFy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 May 2009 10:05:54 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1M24EU-0006cL-0H
-	for linux-nfs@vger.kernel.org; Fri, 08 May 2009 00:05:54 +1000
-In-Reply-To: <4A02DAA8.6050005@bio.ifi.lmu.de>
-References: <4A02DAA8.6050005@bio.ifi.lmu.de>
-Date: Thu, 7 May 2009 10:34:51 -0300
-Message-ID: <c2d0b6ec0905070634p6888226cx5b2c8abae51cd1be@mail.gmail.com>
-From: Leonardo Chiquitto <leonardo.lists@gmail.com>
-To: Frank Steiner <fsteiner-mail1@bio.ifi.lmu.de>
-Cc: nfs@lists.sourceforge.net
-Subject: Re: [NFS] nfs-over-tcp still needs udp ports? (SLES 11)
-Content-Type: text/plain; charset="iso-8859-1"
+	id S1751363AbZE2Sgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 May 2009 14:36:47 -0400
+Subject: Re: New file doesn't show up if cached as missing
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20090529175243.GA30961@hostway.ca>
+References: <20090529175243.GA30961@hostway.ca>
+Content-Type: text/plain
+Date: Fri, 29 May 2009 14:36:46 -0400
+Message-Id: <1243622206.7155.103.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> Now when the NFS client is running SLES 11 with its kernel 2.6.27,
-> the NFS server tries to make UDP connections from its ports 111 and
-> 700 to different ports on the client.
->
-> If the client is running SLES 10 with 2.6.16, those connections are
-> not tried from the server, no matter if the server runs 2.6.16 or
-> 2.6.27.
->
-> So I've two questions:
-> 1) Should nfs-over-tcp still use any UDP ports at all?
-> 2) What has been changed in the client code between 2.6.16 and 2.6.27
->   that could cause this behaviour?
+On Fri, 2009-05-29 at 10:52 -0700, Simon Kirby wrote:
+> Hello!
+> 
+> On Linux 2.6.28.10 server and client, with NFSv3 or NFSv4, I can
+> fairly easily reproduce a case where creating a file (open,write,close)
+> and then attempting to open it on another client mounting the same server
+> returns ENOENT.  If I run "ls" before I try to cat it, it works.
+> 
+> To reproduce:
+> 
+> ssh root@lps01 'rm -f /shared/ssl/test; stat /shared/ssl/test'; \
+> ssh root@lps02 'echo hi > /shared/ssl/test'; \
+> ssh root@lps01 'cat /shared/ssl/test'
+> 
+> The original stat (or cat or open) is important as it seems to cache that
+> the file does not exist.  I can then even log in and poke around:
+> 
+> lps01:~# cd /shared
+> lps01:/shared# cat test
+> cat: test: No such file or directory
+> lps01:/shared# stat test
+> stat: cannot stat `test': No such file or directory
+> lps01:/shared# ls test
+> ls: test: No such file or directory
+> lps01:/shared# ls
+> <files including "test">
+> lps01lsh:/shared# cat test
+> hi
+> 
+> Is this expected behaviour?  The file system is mounted on both clients
+> with: rw,hard,intr,...,acdirmin=0,acdirmax=0,acregmin=0,acregmax=0,noac
+> 
+> (eg: we can't find a way to make it not happen.)
 
-By default it is now using UDP to connect to mountd.
+That is most likely to be a consequence of poor mtime resolution on the
+server (i.e. the directory mtime failing to change because the file
+creation occurred within < 1 second of the 'rm'), combined with negative
+lookup caching.
 
-> Is there a way to prevent those UDP connects?
+Try using the '-olookupcache=positive' or '-olookupcache=none' mount
+options (requires a relatively recent version of nfs-utils).
 
-Yes, add "mountproto=tcp" to your mount options.
-
-Regards,
-Leonardo
-
-------------------------------------------------------------------------------
-The NEW KODAK i700 Series Scanners deliver under ANY circumstances! Your
-production scanning environment may not be a perfect world - but thanks to
-Kodak, there's a perfect scanner to get the job done! With the NEW KODAK i700
-Series Scanner you'll get full speed at 300 dpi even with all image 
-processing features enabled. http://p.sf.net/sfu/kodak-com
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+Trond
 
