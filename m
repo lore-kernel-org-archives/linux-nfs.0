@@ -1,92 +1,37 @@
-From: Neil Brown <neilb@suse.de>
-Subject: [PATCH]  bug in old-cache handling in mountd.
-Date: Fri, 29 May 2009 11:49:19 +1000
-Message-ID: <18975.16159.264056.854413@notabene.brown>
+From: Rob Gardner <rob.gardner@hp.com>
+Subject: Re: Huge race in lockd for async lock requests?
+Date: Thu, 28 May 2009 20:59:02 -0600
+Message-ID: <4A1F4F76.70108@hp.com>
+References: <4A0D80B6.4070101@redhat.com> <4A0D9D63.1090102@hp.com> <4A11657B.4070002@redhat.com> <4A1168E0.3090409@hp.com> <4A1319F9.90304@hp.com> <4A13A973.4050703@hp.com> <4a140d0a.85c2f10a.53bc.0979@mx.google.com> <4A1431B1.6080708@hp.com> <20090528200523.GE13860@fieldses.org> <4A1F035B.4040306@hp.com> <20090529002636.GA19184@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: "tmtalpey@gmail.com" <tmtalpey@gmail.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:52431 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751011AbZE2Bs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 May 2009 21:48:56 -0400
+Received: from g4t0014.houston.hp.com ([15.201.24.17]:4658 "EHLO
+	g4t0014.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751253AbZE2C7D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2009 22:59:03 -0400
+In-Reply-To: <20090529002636.GA19184@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+J. Bruce Fields wrote:
+>
+> Looking at the code....  This is all under the BKL, and as far as I can
+> tell there aren't any blocking operations anywhere there, so I don't
+> think this should happen if the filesystem is careful.  Have you seen it
+> happen?
 
-Hi,
- there is a bug in the old-cache behaviour of mountd.
- Hopefully no-one is using this but you never know....
 
- The bug was reported to redhat
-    https://bugzilla.redhat.com/show_bug.cgi?id=164186
+Aha, I just figured it out and you were right. The filesystem in this 
+case was not careful. It broke the rules and actually made the fl_grant 
+call *before* even returning to nlmsvc_lock's call to vfs_lock_file, and 
+it did it in the lockd thread! So the BKL was of no use, and I saw 
+nlmsvc_grant_deferred print "grant for unknown block". So I think 
+everything is ok, no huge race in lockd for async lock requests. Thank 
+you for clearing this up.
 
- It was fixed incorrectly and never (that I recall) reported
- upstream. :-(
+Rob Gardner
 
- A SLES customer thinks they have hit the same problem, which is why
- I'm looking at it.  (They shouldn't really hit it because that
- version of sles uses 'new_cache' but maybe nfsdfs was disabled
- somehow - don't know yet).
-
- Anyway, when mountd gets a mount request, it tells the kernel about it
- and remembers that it told the kernel so it doesn't have to tell the
- kernel again.
- It is possible that "exportfs -r" will tell the kernel to forget that
- information if the client has since unmounted.
- So mountd really needs to tell the kernel even if it thinks the
- kernel should already know.
-
- The following patch does this if the kernel refuses to provide a
- valid filehandle.
-
- Does RHEL3 use old-cache or new-cache ??
-
-Thanks,
-NeilBrown
-
-From: NeilBrown <neilb@suse.de>
-Subject: retry export if getfh fails.
-
-mountd tries to avoid telling the kernel to export something
-when the kernel already knows to do that.
-However sometimes (exportfs -r) the kernel can be told
-to forget something without mountd realising.
-So if mountd finds that it cannot get a  valid filehandle,
-make sure it really has been exported to the kernel.
-
-This only applies if the nfsd filesystem is not mounted.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 25d292b..b59f939 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -467,8 +467,12 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
- 			return NULL;
- 		}
- 	} else {
--		if (exp->m_exported<1)
-+		int did_export = 0;
-+	retry:
-+		if (exp->m_exported<1) {
- 			export_export(exp);
-+			did_export = 1;
-+		}
- 		if (!exp->m_xtabent)
- 			xtab_append(exp);
- 
-@@ -482,6 +486,11 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
- 				fh = getfh_old ((struct sockaddr *) sin,
- 						stb.st_dev, stb.st_ino);
- 		}
-+		if (fh == NULL && !did_export) {
-+			exp->m_exported = 0;
-+			goto retry;
-+		}
-+
- 		if (fh == NULL) {
- 			xlog(L_WARNING, "getfh failed: %s", strerror(errno));
- 			*error = NFSERR_ACCES;
