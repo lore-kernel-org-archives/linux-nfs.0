@@ -1,278 +1,133 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 5/5] nfs-utils: limit protocols and families used by nfsd to those listed in /etc/netconfig
-Date: Fri, 29 May 2009 11:30:17 -0400
-Message-ID: <BED3D54F-0EF3-4AB4-954A-765D1454AF83@oracle.com>
-References: <1243425275-6284-1-git-send-email-jlayton@redhat.com> <1243425275-6284-6-git-send-email-jlayton@redhat.com> <91B388AD-66DF-4204-B0C2-9131D5AA4651@oracle.com> <20090529072050.0f24e385@tlielax.poochiereds.net>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Jeff Layton <jlayton@redhat.com>
+From: Brian R Cowan <brcowan@us.ibm.com>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
+Date: Fri, 29 May 2009 11:55:45 -0400
+Message-ID: <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+	 <49FA0CE8.9090706@redhat.com> <1241126587.15476.62.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	linux-nfs-owner@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:58827 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751559AbZE2Pav (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2009 11:30:51 -0400
-In-Reply-To: <20090529072050.0f24e385-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:42014 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760521AbZE2Pzy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2009 11:55:54 -0400
+In-Reply-To: <1241126587.15476.62.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Been working this issue with Red hat, and didn't need to go to the list... 
+Well, now I do... You mention that "The main type of workload we're 
+targetting with this patch is the app that opens a file, writes < 4k and 
+then closes the file." Well, it appears that this issue also impacts 
+flushing pages from filesystem caches.
 
-On May 29, 2009, at 7:20 AM, Jeff Layton wrote:
+The reason this came up in my environment is that our product's build 
+auditing gives the the filesystem cache an interesting workout. When 
+ClearCase audits a build, the build places data in a few places, 
+including:
+1) a build audit file that usually resides in /tmp. This build audit is 
+essentially a log of EVERY file open/read/write/delete/rename/etc. that 
+the programs called in the build script make in the clearcase "view" 
+you're building in. As a result, this file can get pretty large.
+2) The build outputs themselves, which in this case are being written to a 
+remote storage location on a Linux or Solaris server, and
+3) a file called .cmake.state, which is a local cache that is written to 
+after the build script completes containing what is essentially a "Bill of 
+materials" for the files created during builds in this "view."
 
-> On Wed, 27 May 2009 12:30:21 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
->
->>
->> On May 27, 2009, at 7:54 AM, Jeff Layton wrote:
->>
->>> ...disable any that aren't listed or aren't marked as "visible".
->>
->> I kind of favor the converse approach -- enable the ones that _are_
->> marked visible -- which appears to be the more common usage of
->> netconfig.
->>
->
-> Fair enough. That may be cleaner. I'll probably change it to do that.
->
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> support/include/nfslib.h |    2 +
->>> support/nfs/nfssvc.c     |   69 +++++++++++++++++++++++++++++++++++ 
->>> ++
->>> +++++++++
->>> utils/nfsd/nfsd.c        |   32 +++++++++++++++------
->>> 3 files changed, 94 insertions(+), 9 deletions(-)
->>>
->>> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
->>> index 4cb1dc0..bae0902 100644
->>> --- a/support/include/nfslib.h
->>> +++ b/support/include/nfslib.h
->>> @@ -133,6 +133,8 @@ int			nfsctl(int, struct nfsctl_arg *, union
->>> nfsctl_res *);
->>> int			nfssvc_inuse(void);
->>> int			nfssvc_setfds(unsigned int ctlbits, struct sockaddr *sa,
->>> 					socklen_t addrlen);
->>> +unsigned int		nfssvc_set_family_proto(const sa_family_t family,
->>> +						unsigned int ctlbits);
->>> void			nfssvc_setvers(unsigned int ctlbits, int minorvers4);
->>> int			nfssvc_threads(unsigned short port, int nrservs);
->>> int			nfsaddclient(struct nfsctl_client *clp);
->>> diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
->>> index 2aa5281..a91c892 100644
->>> --- a/support/nfs/nfssvc.c
->>> +++ b/support/nfs/nfssvc.c
->>> @@ -18,8 +18,13 @@
->>> #include <errno.h>
->>> #include <syslog.h>
->>>
->>> +#ifdef HAVE_LIBTIRPC
->>> +#include <netdb.h>
->>> +#include <netconfig.h>
->>> +#endif
->>>
->>> #include "nfslib.h"
->>> +#include "nfsrpc.h"
->>>
->>> #define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
->>> #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
->>> @@ -54,6 +59,70 @@ nfssvc_inuse(void)
->>> 	return 0;
->>> }
->>>
->>> +#ifdef HAVE_LIBTIRPC
->>> +static unsigned int
->>> +nfssvc_netid_visible(const sa_family_t family, const unsigned short
->>> protocol)
->>> +{
->>> +	char *nc_protofmly, *nc_proto;
->>> +	struct netconfig *nconf;
->>> +	struct protoent *proto;
->>> +	void *handle;
->>> +
->>> +	switch (family) {
->>> +	case AF_LOCAL:
->>> +	case AF_INET:
->>> +		nc_protofmly = NC_INET;
->>> +		break;
->>> +	case AF_INET6:
->>> +		nc_protofmly = NC_INET6;
->>> +		break;
->>> +	default:
->>> +		return 0;
->>> +	}
->>> +
->>> +	proto = getprotobynumber(protocol);
->>> +	if (proto == NULL)
->>> +		return 0;
->>> +	nc_proto = proto->p_name;
->>
->> Oddly I don't see any usage in libtirpc of getprotobynumber(3).  It
->> seems to stick with defined constants such as NC_TCP.  I suspect  
->> there
->> is really no guaranteed relationship between getprotobynumber and
->> getnetconfig.
->>
->> I guess this is exactly the friction point between the world of TI- 
->> RPC
->> and netids and the kernel's world which doesn't have that concept.
->>
->
-> Hmm good point...I'll plan to switch the next iteration of this set  
-> not
-> to use getprotobynumber.
->
-> FWIW, you may want to have a look at nfs_gp_get_netid since it does  
-> the
-> same thing.
+We believe that the build audit file access is causing build output to get 
+flushed out of the filesystem cache. These flushes happen *in 4k chunks.* 
+This trips over this change since the cache pages appear to get flushed on 
+an individual basis.
 
-All of that code will get a fair scrubbing after we finish the first  
-pass of IPv6 support in nfs-utils.
+One note is that if the build outputs were going to a clearcase view 
+stored on an enterprise-level NAS device, there isn't as much of an issue 
+because many of these return from the stable write request as soon as the 
+data goes into the battery-backed memory disk cache on the NAS. However, 
+it really impacts writes to general-purpose OS's that follow Sun's lead in 
+how they handle "stable" writes. The truly annoying part about this rather 
+subtle change is that the NFS client is specifically ignoring the client 
+mount options since we cannot force the "async" mount option to turn off 
+this behavior.
 
->>> +
->>> +	handle = setnetconfig();
->>> +	while((nconf = getnetconfig(handle))) {
->>> +		if (!(nconf->nc_flag & NC_VISIBLE))
->>> +			continue;
->>> +		if (nconf->nc_protofmly &&
->>> +		    strcmp(nconf->nc_protofmly, nc_protofmly))
->>> +			continue;
->>> +		if (nconf->nc_proto && strcmp(nconf->nc_proto, nc_proto))
->>> +			continue;
->>> +		endnetconfig(handle);
->>> +		return 1;
->>> +	}
->>> +	endnetconfig(handle);
->>> +	return 0;
->>> +}
->>> +#else
->>> +static unsigned int
->>> +nfssvc_netid_visible(const sa_family_t family, const unsigned short
->>> protocol)
->>> +{
->>> +	return 1;
->>> +}
->>> +#endif
->>> +
->>> +/* given a family and ctlbits, disable any that aren't listed in
->>> netconfig */
->>> +unsigned int
->>> +nfssvc_set_family_proto(const sa_family_t family, unsigned int
->>> ctlbits)
->>> +{
->>> +	if (NFSCTL_UDPISSET(ctlbits) &&
->>> +	    !nfssvc_netid_visible(family, IPPROTO_UDP))
->>> +		NFSCTL_UDPUNSET(ctlbits);
->>> +
->>> +	if (NFSCTL_TCPISSET(ctlbits) &&
->>> +	    !nfssvc_netid_visible(family, IPPROTO_TCP))
->>> +		NFSCTL_TCPUNSET(ctlbits);
->>> +
->>> +	return ctlbits;
->>> +}
->>> +
->>> int
->>> nfssvc_setfds(unsigned int ctlbits, struct sockaddr *sa, socklen_t
->>> addrlen)
->>> {
->>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
->>> index 77c7e1b..45bede9 100644
->>> --- a/utils/nfsd/nfsd.c
->>> +++ b/utils/nfsd/nfsd.c
->>> @@ -54,6 +54,8 @@ main(int argc, char **argv)
->>> 	int minorvers4 = NFSD_MAXMINORVERS4;	/* nfsv4 minor version */
->>> 	char	*haddr = NULL;
->>> 	int	ipv4 = 1;
->>> +	unsigned int proto4;
->>> +	unsigned int proto6;
->>> #ifdef IPV6_SUPPORTED
->>> 	int	ipv6 = 1;
->>> #else  /* IPV6_SUPPORTED */
->>> @@ -159,15 +161,25 @@ main(int argc, char **argv)
->>> 	}
->>>
->>> family_check:
->>> -	/* make sure at least one address family is enabled */
->>> -	if (!ipv4 && !ipv6) {
->>> -		fprintf(stderr, "no address families enabled\n");
->>> -		exit(1);
->>> +	/* limit protocols to use based on /etc/netconfig */
->>> +	proto4 = nfssvc_set_family_proto(AF_INET, protobits);
->>> +	proto6 = nfssvc_set_family_proto(AF_INET6, protobits);
->>> +
->>> +	/* make sure at least one protocol type is enabled */
->>> +	if (ipv4 && !NFSCTL_UDPISSET(proto4) && ! 
->>> NFSCTL_TCPISSET(proto4)) {
->>> +		fprintf(stderr, "WARNING: no protocols enabled for IPv4\n");
->>> +		ipv4 = 0;
->>> 	}
->>>
->>> 	/* make sure at least one protocol type is enabled */
->>> -	if (!NFSCTL_UDPISSET(protobits) && !NFSCTL_TCPISSET(protobits)) {
->>> -		fprintf(stderr, "invalid protocol specified\n");
->>> +	if (ipv6 && !NFSCTL_UDPISSET(proto6) && ! 
->>> NFSCTL_TCPISSET(proto6)) {
->>> +		fprintf(stderr, "WARNING: no protocols enabled for IPv6\n");
->>> +		ipv6 = 0;
->>> +	}
->>> +
->>> +	/* make sure at least one address family is enabled */
->>> +	if (!ipv4 && !ipv6) {
->>> +		fprintf(stderr, "no address families enabled\n");
->>> 		exit(1);
->>> 	}
->>>
->>> @@ -183,7 +195,9 @@ family_check:
->>> 	}			
->>>
->>> 	/* must have TCP for NFSv4 */
->>> -	if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
->>> +	if (NFSCTL_VERISSET(versbits, 4) &&
->>> +	    !NFSCTL_TCPISSET(proto4) &&
->>> +	    !NFSCTL_TCPISSET(proto6)) {
->>> 		fprintf(stderr, "version 4 requires the TCP protocol\n");
->>> 		exit(1);
->>> 	}
->>> @@ -244,7 +258,7 @@ family_check:
->>> 		if (!haddr)
->>> 			sin.sin_addr.s_addr = INADDR_ANY;
->>>
->>> -		if (nfssvc_setfds(protobits, (struct sockaddr *) &sin,
->>> sizeof(sin)))
->>> +		if (nfssvc_setfds(proto4, (struct sockaddr *) &sin, sizeof(sin)))
->>> 			ipv4 = 0;
->>> 	}
->>>
->>> @@ -255,7 +269,7 @@ family_check:
->>> 		if (!haddr)
->>> 			sin6.sin6_addr = in6addr_any;
->>>
->>> -		if (nfssvc_setfds(protobits, (struct sockaddr *) &sin6,
->>> sizeof(sin6)))
->>> +		if (nfssvc_setfds(proto6, (struct sockaddr *) &sin6,  
->>> sizeof(sin6)))
->>> 			ipv6 = 0;
->>> 	}
->>> #endif /* IPV6_SUPPORTED */
->>> -- 
->>> 1.6.0.6
->>>
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->
->
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+=================================================================
+Brian Cowan
+Advisory Software Engineer
+ClearCase Customer Advocacy Group (CAG)
+Rational Software
+IBM Software Group
+81 Hartwell Ave
+Lexington, MA
+ 
+Phone: 1.781.372.3580
+Web: http://www.ibm.com/software/rational/support/
+ 
+
+Please be sure to update your PMR using ESR at 
+http://www-306.ibm.com/software/support/probsub.html or cc all 
+correspondence to sw_support@us.ibm.com to be sure your PMR is updated in 
+case I am not available.
+
+
+
+From:
+Trond Myklebust <trond.myklebust@fys.uio.no>
+To:
+Peter Staubach <staubach@redhat.com>
+Cc:
+Chuck Lever <chuck.lever@oracle.com>, Brian R Cowan/Cupertino/IBM@IBMUS, 
+linux-nfs@vger.kernel.org
+Date:
+04/30/2009 05:23 PM
+Subject:
+Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
+Sent by:
+linux-nfs-owner@vger.kernel.org
+
+
+
+On Thu, 2009-04-30 at 16:41 -0400, Peter Staubach wrote:
+> Chuck Lever wrote:
+> >
+> > On Apr 30, 2009, at 4:12 PM, Brian R Cowan wrote:
+> >>
+> >> 
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=ab0a3dbedc51037f3d2e22ef67717a987b3d15e2
+
+> >>
+> Actually, the "stable" part can be a killer.  It depends upon
+> why and when nfs_flush_inode() is invoked.
+> 
+> I did quite a bit of work on this aspect of RHEL-5 and discovered
+> that this particular code was leading to some serious slowdowns.
+> The server would end up doing a very slow FILE_SYNC write when
+> all that was really required was an UNSTABLE write at the time.
+> 
+> Did anyone actually measure this optimization and if so, what
+> were the numbers?
+
+As usual, the optimisation is workload dependent. The main type of
+workload we're targetting with this patch is the app that opens a file,
+writes < 4k and then closes the file. For that case, it's a no-brainer
+that you don't need to split a single stable write into an unstable + a
+commit.
+
+So if the application isn't doing the above type of short write followed
+by close, then exactly what is causing a flush to disk in the first
+place? Ordinarily, the client will try to cache writes until the cows
+come home (or until the VM tells it to reclaim memory - whichever comes
+first)...
+
+Cheers
+  Trond
 
 --
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
