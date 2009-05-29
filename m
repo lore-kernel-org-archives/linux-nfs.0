@@ -1,75 +1,92 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Huge race in lockd for async lock requests?
-Date: Thu, 28 May 2009 20:26:36 -0400
-Message-ID: <20090529002636.GA19184@fieldses.org>
-References: <4A0D80B6.4070101@redhat.com> <4A0D9D63.1090102@hp.com> <4A11657B.4070002@redhat.com> <4A1168E0.3090409@hp.com> <4A1319F9.90304@hp.com> <4A13A973.4050703@hp.com> <4a140d0a.85c2f10a.53bc.0979@mx.google.com> <4A1431B1.6080708@hp.com> <20090528200523.GE13860@fieldses.org> <4A1F035B.4040306@hp.com>
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH]  bug in old-cache handling in mountd.
+Date: Fri, 29 May 2009 11:49:19 +1000
+Message-ID: <18975.16159.264056.854413@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "tmtalpey@gmail.com" <tmtalpey@gmail.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Rob Gardner <rob.gardner@hp.com>
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51454 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751394AbZE2A0f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 May 2009 20:26:35 -0400
-In-Reply-To: <4A1F035B.4040306@hp.com>
+Received: from cantor.suse.de ([195.135.220.2]:52431 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751011AbZE2Bs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 May 2009 21:48:56 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 28, 2009 at 03:34:19PM -0600, Rob Gardner wrote:
-> J. Bruce Fields wrote:
->>>>>> At 04:43 PM 5/19/2009, Rob Gardner wrote:
->>>>>>                 
->>>>>>> I've got a question about lockd in conjunction with a 
->>>>>>> filesystem that provides its own (async) locking.
->>>>>>>
->>>>>>> After nlmsvc_lock() calls vfs_lock_file(), it seems to be 
->>>>>>> that we might get the async callback (nlmsvc_grant_deferred) 
->>>>>>> at any time. What's to stop it from arriving before we even 
->>>>>>> put the block on the nlm_block list? If this happens, then 
->>>>>>> nlmsvc_grant_deferred() will print "grant for unknown block" 
->>>>>>> and then we'll wait forever for a grant that will never come.
->>>>>>>     
->>> dealing with a filesystem that provides its own locking functions via 
->>>  file->f_op->lock(). Such a filesystem might easily defer a 
->>> non-blocking  lock request and invoke the callback later. At least I 
->>> don't know of any  rule that says that it can't do this, and clearly 
->>> the code expects this  possibility:
->>>
->>>              case FILE_LOCK_DEFERRED:
->>>                        if (wait)
->>>                                break;
->>>                        /* Filesystem lock operation is in progress
->>>                           Add it to the queue waiting for callback */
->>>                        ret = nlmsvc_defer_lock_rqst(rqstp, block);
->>>
->>>     It looks to me like a bug in the server. The server must be able 
->>> to deal  with async filesystem callbacks happening at any time, 
->>> however inconvenient.
->>>     
->>
->> Absolutely, if that's possible then it's a server bug.
->>
->> --b.
->>   
->
-> It's definitely possible for the async filesystem callback to occur at  
-> any time.
 
-Looking at the code....  This is all under the BKL, and as far as I can
-tell there aren't any blocking operations anywhere there, so I don't
-think this should happen if the filesystem is careful.  Have you seen it
-happen?
+Hi,
+ there is a bug in the old-cache behaviour of mountd.
+ Hopefully no-one is using this but you never know....
 
-Of course this may be fragile--we'll have to think about what to do when
-we eventually remove the BKL.
+ The bug was reported to redhat
+    https://bugzilla.redhat.com/show_bug.cgi?id=164186
 
---b.
+ It was fixed incorrectly and never (that I recall) reported
+ upstream. :-(
 
-> I think at the very least, nlmsvc_lock() ought to put the  
-> block on the nlm_block list *before* calling vfs_lock_file(), and then  
-> remove it immediately if the lock is granted synchronously. I would like  
-> to develop and submit a patch for this, but I am currently working with  
-> a much older kernel and it will take some time before I get to work with  
-> newer bits.
+ A SLES customer thinks they have hit the same problem, which is why
+ I'm looking at it.  (They shouldn't really hit it because that
+ version of sles uses 'new_cache' but maybe nfsdfs was disabled
+ somehow - don't know yet).
+
+ Anyway, when mountd gets a mount request, it tells the kernel about it
+ and remembers that it told the kernel so it doesn't have to tell the
+ kernel again.
+ It is possible that "exportfs -r" will tell the kernel to forget that
+ information if the client has since unmounted.
+ So mountd really needs to tell the kernel even if it thinks the
+ kernel should already know.
+
+ The following patch does this if the kernel refuses to provide a
+ valid filehandle.
+
+ Does RHEL3 use old-cache or new-cache ??
+
+Thanks,
+NeilBrown
+
+From: NeilBrown <neilb@suse.de>
+Subject: retry export if getfh fails.
+
+mountd tries to avoid telling the kernel to export something
+when the kernel already knows to do that.
+However sometimes (exportfs -r) the kernel can be told
+to forget something without mountd realising.
+So if mountd finds that it cannot get a  valid filehandle,
+make sure it really has been exported to the kernel.
+
+This only applies if the nfsd filesystem is not mounted.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 25d292b..b59f939 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -467,8 +467,12 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 			return NULL;
+ 		}
+ 	} else {
+-		if (exp->m_exported<1)
++		int did_export = 0;
++	retry:
++		if (exp->m_exported<1) {
+ 			export_export(exp);
++			did_export = 1;
++		}
+ 		if (!exp->m_xtabent)
+ 			xtab_append(exp);
+ 
+@@ -482,6 +486,11 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 				fh = getfh_old ((struct sockaddr *) sin,
+ 						stb.st_dev, stb.st_ino);
+ 		}
++		if (fh == NULL && !did_export) {
++			exp->m_exported = 0;
++			goto retry;
++		}
++
+ 		if (fh == NULL) {
+ 			xlog(L_WARNING, "getfh failed: %s", strerror(errno));
+ 			*error = NFSERR_ACCES;
