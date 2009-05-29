@@ -1,55 +1,139 @@
-From: Simon Kirby <sim@hostway.ca>
-Subject: New file doesn't show up if cached as missing
-Date: Fri, 29 May 2009 10:52:43 -0700
-Message-ID: <20090529175243.GA30961@hostway.ca>
+From: Brian R Cowan <brcowan@us.ibm.com>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
+Date: Fri, 29 May 2009 14:18:22 -0400
+Message-ID: <OFA11F5AE0.259995DA-ON852575C5.0063C023-852575C5.00648F55@us.ibm.com>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+	 <49FA0CE8.9090706@redhat.com>	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
+	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <41044976-395B-4ED0-BBA1-153FD76BDA53@oracle.com>
+	 <OF1B5F174D.1ADF159F-ON852575C5.005FEEB7-852575C5.0060E305@us.ibm.com>	 <1243618968.7155.60.camel@heimdal.trondhjem.org>
+	 <OF4385ED29.7ACEF71B-ON852575C5.00621211-852575C5.00626F39@us.ibm.com> <1243620455.7155.80.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="US-ASCII"
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	linux-nfs-owner@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from newpeace.netnation.com ([204.174.223.7]:35447 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753528AbZE2SPi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2009 14:15:38 -0400
-Received: from sim by peace.netnation.com with local (Exim 4.63)
-	(envelope-from <sim@netnation.com>)
-	id 1MA6G3-00008C-NY
-	for linux-nfs@vger.kernel.org; Fri, 29 May 2009 10:52:43 -0700
+Received: from e36.co.us.ibm.com ([32.97.110.154]:46042 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751402AbZE2SS0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 May 2009 14:18:26 -0400
+In-Reply-To: <1243620455.7155.80.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello!
+There is a third option, that the COMMIT calls are not coming from the 
+same thread of execution that the write call is. The symptoms would seem 
+to bear that out. As would the fact that the performance degradation 
+occurs both when the server is Linux itself and when it is Solaris (any 
+NFSv3-supporting version). I'm not saying that Solaris is bug-free, but it 
+would be unusual if they are both broken the same way. The linux nfs FAQ 
+says:
 
-On Linux 2.6.28.10 server and client, with NFSv3 or NFSv4, I can
-fairly easily reproduce a case where creating a file (open,write,close)
-and then attempting to open it on another client mounting the same server
-returns ENOENT.  If I run "ls" before I try to cat it, it works.
+-----------------------
+* NFS Version 3 introduces the concept of "safe asynchronous writes." A 
+Version 3 client can specify that the server is allowed to reply before it 
+has saved the requested data to disk, permitting the server to gather 
+small NFS write operations into a single efficient disk write operation. A 
+Version 3 client can also specify that the data must be written to disk 
+before the server replies, just like a Version 2 write. The client 
+specifies the type of write by setting the stable_how field in the 
+arguments of each write operation to UNSTABLE to request a safe 
+asynchronous write, and FILE_SYNC for an NFS Version 2 style write.
 
-To reproduce:
+Servers indicate whether the requested data is permanently stored by 
+setting a corresponding field in the response to each NFS write operation. 
+A server can respond to an UNSTABLE write request with an UNSTABLE reply 
+or a FILE_SYNC reply, depending on whether or not the requested data 
+resides on permanent storage yet. An NFS protocol-compliant server must 
+respond to a FILE_SYNC request only with a FILE_SYNC reply.
 
-ssh root@lps01 'rm -f /shared/ssl/test; stat /shared/ssl/test'; \
-ssh root@lps02 'echo hi > /shared/ssl/test'; \
-ssh root@lps01 'cat /shared/ssl/test'
+Clients ensure that data that was written using a safe asynchronous write 
+has been written onto permanent storage using a new operation available in 
+Version 3 called a COMMIT. Servers do not send a response to a COMMIT 
+operation until all data specified in the request has been written to 
+permanent storage. NFS Version 3 clients must protect buffered data that 
+has been written using a safe asynchronous write but not yet committed. If 
+a server reboots before a client has sent an appropriate COMMIT, the 
+server can reply to the eventual COMMIT request in a way that forces the 
+client to resend the original write operation. Version 3 clients use 
+COMMIT operations when flushing safe asynchronous writes to the server 
+during a close(2) or fsync(2) system call, or when encountering memory 
+pressure. 
+-----------------------
 
-The original stat (or cat or open) is important as it seems to cache that
-the file does not exist.  I can then even log in and poke around:
+Now, what happens in the client when the server cones back with the 
+UNSTABLE reply?
+=================================================================
+Brian Cowan
+Advisory Software Engineer
+ClearCase Customer Advocacy Group (CAG)
+Rational Software
+IBM Software Group
+81 Hartwell Ave
+Lexington, MA
+ 
+Phone: 1.781.372.3580
+Web: http://www.ibm.com/software/rational/support/
+ 
 
-lps01:~# cd /shared
-lps01:/shared# cat test
-cat: test: No such file or directory
-lps01:/shared# stat test
-stat: cannot stat `test': No such file or directory
-lps01:/shared# ls test
-ls: test: No such file or directory
-lps01:/shared# ls
-<files including "test">
-lps01lsh:/shared# cat test
-hi
+Please be sure to update your PMR using ESR at 
+http://www-306.ibm.com/software/support/probsub.html or cc all 
+correspondence to sw_support@us.ibm.com to be sure your PMR is updated in 
+case I am not available.
 
-Is this expected behaviour?  The file system is mounted on both clients
-with: rw,hard,intr,...,acdirmin=0,acdirmax=0,acregmin=0,acregmax=0,noac
 
-(eg: we can't find a way to make it not happen.)
 
-Cheers,
+From:
+Trond Myklebust <trond.myklebust@fys.uio.no>
+To:
+Brian R Cowan/Cupertino/IBM@IBMUS
+Cc:
+Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org, 
+linux-nfs-owner@vger.kernel.org, Peter Staubach <staubach@redhat.com>
+Date:
+05/29/2009 02:07 PM
+Subject:
+Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
 
-Simon-
+
+
+On Fri, 2009-05-29 at 13:55 -0400, Brian R Cowan wrote:
+> > Yes. If the page is dirty, but not up to date, then it needs to be
+> > cleaned before you can overwrite the contents with the results of a
+> > fresh read.
+> > That means flushing the data to disk... Which again means doing either 
+a
+> > stable write or an unstable write+commit. The former is more efficient
+> > that the latter, 'cos it accomplishes the exact same work in a single
+> > RPC call.
+> 
+> I suspect that the COMMIT RPC's are done somewhere other than in the 
+flush 
+> itself. If the "write + commit" operation was happening in the that 
+exact 
+> matter, then the change in the git at the beginning of this thread 
+*would 
+> not have impacted client performance*. I can demonstrate -- at will -- 
+> that it does impact performance. So, there is something that keeps track 
+
+> of the number of writes and issues the commits without slowing down the 
+> application. This git change bypasses that and degrades the linker 
+> performance.
+
+If the server gives slower performance for a single stable write, vs.
+the same unstable write + commit, then you are demonstrating that the
+server is seriously _broken_.
+
+The only other explanation, is if the client prior to that patch being
+applied was somehow failing to send out the COMMIT. If so, then the
+client was broken, and the patch is a fix that results in correct
+behaviour. That would mean that the rest of the client flush code is
+probably still broken, but at least the nfs_wb_page() is now correct.
+
+Those are the only 2 options.
+
+Trond
+
+
+
