@@ -1,44 +1,43 @@
-From: Jesper Dangaard Brouer <hawk@comx.dk>
-Subject: [PATCH 4/5] sctp: protocol.c call rcu_barrier() on unload.
-Date: Mon, 08 Jun 2009 15:11:43 +0200
-Message-ID: <20090608131143.10052.96470.stgit@localhost>
-References: <20090608130959.10052.54590.stgit@localhost>
+From: Simon Kirby <sim@netnation.com>
+Subject: Re: [Oops] EXT3 / journal / possibly NFS-tickled issues
+Date: Mon, 1 Jun 2009 12:58:01 -0700
+Message-ID: <20090601195801.GA23986@hostway.ca>
+References: <20090529231455.GA14665@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com,
-	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
-	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
-To: "David S. Miller" <davem@davemloft.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20090608130959.10052.54590.stgit@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from newpeace.netnation.com ([204.174.223.7]:55781 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754754AbZFAT6D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2009 15:58:03 -0400
+In-Reply-To: <20090529231455.GA14665@hostway.ca>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On module unload call rcu_barrier(), this is needed as synchronize_rcu()
-is not strong enough.  The kmem_cache_destroy() does invoke
-synchronize_rcu() but it does not provide same protection.
+On Fri, May 29, 2009 at 04:14:55PM -0700, Simon Kirby wrote:
 
-Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
----
+> Hello!  Happy Friday...
+> 
+> We have a Linux HA NFS "NAS" setup (with heartbeat et al) that has been
+> backended with about 40 TB of storage.  LVM and AOE are in use, and
+> there are about 40 1 TB EXT3 file systems.  The kernel is vanilla amd64
+> 2.6.28.10 except that I've built DRBD (unused) and newer AOE into it
+> (sorry).
 
- net/sctp/protocol.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+Ok, I have now seen "EXT3 Inode ...: orphan list check failed!" on four
+separate HA pairs (8 different boxes), the other three without AOE (using
+DRBD instead).  One of them has never crashed or failed over, and has had
+the FS mounted since mkfs.ext3 was run.  They are running 2.6.28.7.
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index cb2c50d..79cbd47 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1370,6 +1370,8 @@ SCTP_STATIC __exit void sctp_exit(void)
- 	sctp_proc_exit();
- 	cleanup_sctp_mibs();
- 
-+	rcu_barrier(); /* Wait for completion of call_rcu()'s */
-+
- 	kmem_cache_destroy(sctp_chunk_cachep);
- 	kmem_cache_destroy(sctp_bucket_cachep);
- }
+I will try to set up a test box and reproduce this without DRBD or AOE,
+but with AOE used in one case and DRBD in another, I think the problem
+may be unrelated to them.  The common pattern here is lots of I/O via
+knfsd (NFSv3).
 
+I did not see this message on kernel 2.6.27 and older kernels.
+Hopefully I can get a reproducible case easily enough.  Is anyone else
+seeing this error?
+
+Simon-
