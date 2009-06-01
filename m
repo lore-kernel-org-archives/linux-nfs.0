@@ -1,64 +1,52 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH v2] flow control for WRITE requests
-Date: Mon, 01 Jun 2009 17:48:06 -0400
-Message-ID: <1243892886.4868.74.camel@heimdal.trondhjem.org>
-References: <49C93526.70303@redhat.com>
-	 <20090324211917.GJ19389@fieldses.org>  <4A1D9210.8070102@redhat.com>
-	 <1243457149.8522.68.camel@heimdal.trondhjem.org>
-	 <4A1EB09A.8030809@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+	flushing
+Date: Mon, 1 Jun 2009 18:30:08 -0400
+Message-ID: <20090601223008.GF5950@fieldses.org>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com> <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com> <49FA0CE8.9090706@redhat.com> <1241126587.15476.62.camel@heimdal.trondhjem.org> <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com> <1243615595.7155.48.camel@heimdal.trondhjem.org> <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com> <1243618500.7155.56.camel@heimdal.trondhjem.org> <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com> <20090530075756.GA27885@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Brian R Cowan <brcowan@us.ibm.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>
+To: Krishna Kumar <krikku@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:48328 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753299AbZFAVsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Jun 2009 17:48:11 -0400
-In-Reply-To: <4A1EB09A.8030809@redhat.com>
+Received: from mail.fieldses.org ([141.211.133.115]:38434 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753139AbZFAWaN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Jun 2009 18:30:13 -0400
+In-Reply-To: <20090530075756.GA27885@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-05-28 at 11:41 -0400, Peter Staubach wrote:
-> -----
+On Sat, May 30, 2009 at 03:57:56AM -0400, Christoph Hellwig wrote:
+> On Sat, May 30, 2009 at 10:22:58AM +1000, Greg Banks wrote:
+> >  * The underlying filesystem might be doing more or better things in
+> > one or the other code paths e.g. optimising allocations.
 > 
-> I am trying to do accomplish two things here.  The first thing
-> was to smooth the WRITE traffic so that the client would perform
-> better.  Caching a few gigabytes of data and then flushing it to
-> the server using a firehose doesn't seem to work very well.  In
-> a customer situation, I really had a server which could not keep
-> up with the client.  Something was needed to better match the
-> client and server bandwidths.
+> Which is the case with ext3 which is pretty common.  It does reasonably
+> well on O_SYNC as far as I can see, but has a catastrophic fsync
+> implementation. 
 > 
-> Second, I noticed that the architecture to smooth the WRITE
-> traffic and do the flow control could be used very nicely to
-> solve the stat() problem too.  The smoothing of the WRITE
-> traffic results in fewer dirty cached pages which need to get
-> flushed to the server during the stat() processing.  This helps
-> to reduce the latency of the stat() call.  Next, the flow control
-> aspect can be used to block the application which is writing to
-> the file while the application.  It happens without adding any
-> more code to the writing path.
+> >  * The Linux NFS server ignores the byte range in the COMMIT rpc and
+> > flushes the whole file (I suspect this is a historical accident rather
+> > than deliberate policy).  If there is other dirty data on that file
+> > server-side, that other data will be written too before the COMMIT
+> > reply is sent.  This may have a performance impact, depending on the
+> > workload.
 > 
-> I have spent quite a bit of time trying to measure the performance
-> impact.  As far as I can see, it varies from significantly better
-> to no affect.  Some things like dd run much better in my test
-> network.  Other things like rpmbuild don't appear to be affected.
-> Compilations tend to be random access to files and are generally
-> more cpu limited than i/o bound.
+> Right now we can't actually implement that proper because the fsync
+> file operation can't actually flush sub ranges.  There have been some
+> other requests for this, but my ->fsync resdesign in on hold until
+> NFSD stops calling ->fsync without a file struct.
+> 
+> I think the open file cache will help us with that, if we can extend
+> it to also cache open file structs for directories.
 
-So, how about doing this by modifying balance_dirty_pages() instead?
-Limiting pages on a per-inode basis isn't going to solve the common
-problem of 'ls -l' performance, where you have to stat a whole bunch of
-files, all of which may be dirty. To deal with that case, you really
-need an absolute limit on the number of dirty pages.
+Krishna Kumar--do you think that'd be a reasonable thing to do?
 
-Currently, we have only relative limits: a given bdi is allowed a
-maximum percentage value of the total write back cache size... We could
-add a 'max_pages' field, that specifies an absolute limit at which the
-vfs should start writeback.
-
-Cheers
-  Trond
-
+--b.
