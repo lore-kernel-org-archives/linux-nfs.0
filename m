@@ -1,155 +1,582 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:46709 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753806AbZFYRNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Jun 2009 13:13:54 -0400
-Subject: Re: [PATCH] read-modify-write page updating
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Peter Staubach <staubach@redhat.com>
-Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <4A428482.60403@redhat.com>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
-	 <49FA0CE8.9090706@redhat.com>
-	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
-	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
-	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
-	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
-	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
-	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
-	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
-	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
-	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
-	 <1243963631.4868.124.camel@heimdal.trondhjem.org>
-	 <18982.41770.293636.786518@fisica.ufpr.br>
-	 <1244049027.5603.5.camel@heimdal.trondhjem.org>
-	 <OFB53BFCCB.0CEC7A7E-ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>
-	 <1244138698.5203.59.camel@heimdal.trondhjem.org>
-	 <4A428482.60403@redhat.com>
-Content-Type: text/plain
-Date: Thu, 25 Jun 2009 13:13:49 -0400
-Message-Id: <1245950029.4913.17.camel@heimdal.trondhjem.org>
+Received: from smtp-vbr14.xs4all.nl ([194.109.24.34]:3121 "EHLO
+	smtp-vbr14.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752941AbZFBO3q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jun 2009 10:29:46 -0400
+Date: Tue, 2 Jun 2009 16:29:36 +0200
+From: Miquel van Smoorenburg <mikevs@xs4all.net>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, bfields@fieldses.org, neilb@suse.de,
+        mikevs@xs4all.net
+Subject: nfs/sunrpc: high CPU usage in rpcauth_lookup_credcache with lots
+	of uids [PATCH]
+Message-ID: <20090602142933.GA27312@xs4all.net>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2009-06-24 at 15:54 -0400, Peter Staubach wrote:
-> Hi.
-> 
-> I have a proposal for possibly resolving this issue.
-> 
-> I believe that this situation occurs due to the way that the
-> Linux NFS client handles writes which modify partial pages.
-> 
-> The Linux NFS client handles partial page modifications by
-> allocating a page from the page cache, copying the data from
-> the user level into the page, and then keeping track of the
-> offset and length of the modified portions of the page.  The
-> page is not marked as up to date because there are portions
-> of the page which do not contain valid file contents.
-> 
-> When a read call comes in for a portion of the page, the
-> contents of the page must be read in the from the server.
-> However, since the page may already contain some modified
-> data, that modified data must be written to the server
-> before the file contents can be read back in the from server.
-> And, since the writing and reading can not be done atomically,
-> the data must be written and committed to stable storage on
-> the server for safety purposes.  This means either a
-> FILE_SYNC WRITE or a UNSTABLE WRITE followed by a COMMIT.
-> This has been discussed at length previously.
-> 
-> This algorithm could be described as modify-write-read.  It
-> is most efficient when the application only updates pages
-> and does not read them.
-> 
-> My proposed solution is to add a heuristic to decide whether
-> to do this modify-write-read algorithm or switch to a read-
-> modify-write algorithm when initially allocating the page
-> in the write system call path.  The heuristic uses the modes
-> that the file was opened with, the offset in the page to
-> read from, and the size of the region to read.
-> 
-> If the file was opened for reading in addition to writing
-> and the page would not be filled completely with data from
-> the user level, then read in the old contents of the page
-> and mark it as Uptodate before copying in the new data.  If
-> the page would be completely filled with data from the user
-> level, then there would be no reason to read in the old
-> contents because they would just be copied over.
-> 
-> This would optimize for applications which randomly access
-> and update portions of files.  The linkage editor for the
-> C compiler is an example of such a thing.
-> 
-> I tested the attached patch by using rpmbuild to build the
-> current Fedora rawhide kernel.  The kernel without the
-> patch generated about 153,000 READ requests and 265,500
-> WRITE requests.  The modified kernel containing the patch
-> generated about 156,000 READ requests and 257,000 WRITE
-> requests.  Thus, about 3,000 more READ requests were
-> generated, but about 8,500 fewer WRITE requests were
-> generated.  I suspect that many of these additional
-> WRITE requests were probably FILE_SYNC requests to WRITE
-> a single page, but I didn't test this theory.
-> 
->     Thanx...
-> 
->        ps
-> 
-> Signed-off-by: Peter Staubach <staubach@redhat.com>
-> plain text document attachment (read-modify-write.devel)
-> --- linux-2.6.30.i686/fs/nfs/file.c.org
-> +++ linux-2.6.30.i686/fs/nfs/file.c
-> @@ -337,15 +337,15 @@ static int nfs_write_begin(struct file *
->  			struct page **pagep, void **fsdata)
->  {
->  	int ret;
-> -	pgoff_t index;
-> +	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
->  	struct page *page;
-> -	index = pos >> PAGE_CACHE_SHIFT;
->  
->  	dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
->  		file->f_path.dentry->d_parent->d_name.name,
->  		file->f_path.dentry->d_name.name,
->  		mapping->host->i_ino, len, (long long) pos);
->  
-> +start:
->  	/*
->  	 * Prevent starvation issues if someone is doing a consistency
->  	 * sync-to-disk
-> @@ -364,6 +364,12 @@ static int nfs_write_begin(struct file *
->  	if (ret) {
->  		unlock_page(page);
->  		page_cache_release(page);
-> +	} else if ((file->f_mode & FMODE_READ) && !PageUptodate(page) &&
-> +		   ((pos & (PAGE_CACHE_SIZE - 1)) || len != PAGE_CACHE_SIZE)) {
+[repost, with more people in the cc: list]
 
-It might also be nice to put the above test in a little inlined helper
-function (called nfs_want_read_modify_write() ?).
+We run a cluster of POP and IMAP servers that are used by
+hundreds of thousands of different users- we see as much
+as 80.000 different users per server on any given day.
 
-So, a number of questions spring to mind:
+The servers have their mailspool NFS mounted, and each user has
+a unique user-id.
 
-     1. What if we're extending the file? We might not need to read the
-        page at all in that case (see nfs_write_end()).
-     2. What if the page is already dirty or is carrying an uncommitted
-        unstable write?
-     3. We might want to try to avoid looping more than once here. If
-        the kernel is very low on memory, we might just want to write
-        out the data rather than read the page and risk having the VM
-        eject it before we can dirty it.
-     4. Should we be starting an async readahead on the next page?
-        Single page sized reads can be a nuisance too, if you are
-        writing huge amounts of data.
+We noticed a high CPU load on these servers, sometimes near
+100% system time being used on all cores. I used oprofile to
+find out where the CPU was being burned and it turned out to
+be in rpcauth_lookup_credcache(). The credential cache hashtable
+is sized way to small for our purposes- it's just 16 slots,
+and with 100.000 entries in the generic and unix credential
+caches the chainlength goes over 6000.
 
-> +		ret = nfs_readpage(file, page);
-> +		page_cache_release(page);
-> +		if (!ret)
-> +			goto start;
->  	}
->  	return ret;
->  }
+It's not that we have tens of thousands of different uids active on
+the box at the same time, it's just that the box has lots of RAM
+and all the caches - including the credential caches - just
+grow and grow.
 
-Cheers
-  Trond
+It appears that both the auth_unix and auth_generic credential
+caches grow at the same rate and are the same size, but most of
+the entries in the auth_generic credcache are inactive and could
+be pruned by a rpcauth_prune_expired() run, where the auth_unix
+credcache contains mostly active (refcounted) entries. The
+auth_unix credcache can only be pruned by echo 3>/proc/sys/vm/drop_caches.
 
+The patch below adds a hashtable size module parameter which if
+set to e.g. 4096 fixes the problem for us. Note that this is a
+patch for 2.6.27.x, it applies almost cleanly to 2.6.29.3, but it's
+a proof-of-concept patch anyway. I'm not sure if this is the right or
+complete fix, we should look into things like:
+
+- is there a way to limit the size of the active number
+  of entries in the auth_unix credential cache ?
+- should the hashtables be size initially based on the amount of RAM ?
+- should the hashtables be resized dynamically during use ?
+- should rpcauth_cache_shrinker be run more often, not only
+  when there is memory pressure but also from say a timer interrupt ?
+  What should be used for nr_to_scan in that case ?
+- why are both auth_generic and auth_unix used (probably has a
+  good reason but I don't know much of the rpc/auth stuff really)
+
+The simple fix would be to size the caches based on some RAM-based
+heuristic, VFS pressure will then limit the hash chainlength to
+something reasonable. Correct ? What would that heuristic look like ?
+
+
+# ------ #
+
+Detailed patch description:
+
+1. bugfixes:
+   - rpcauth_prune_expired: check nr_to_scan == 0 before decrementing it
+     (in 2.6.29.3 nr_to_scan is decremented but otherwise ignored ?..)
+   - rpcauth_prune_expired: keep cred on unused list when
+     cred->cr_count == 0 and it's not expired yet
+     (also fixed in 2.6.29.3)
+   - set RPC_AUTH_EXPIRY_MORATORIUM to 5*HZ to make it match with
+     the comment ('5 second garbage collection moratorium')
+     (in 2.6.29.3 the comment has been fixed instead)
+
+2. hashtable sizing:
+   rpcauth_init_credcache: allocate hashtables dyamically
+   auth_unix.c: use rpcauth_init_credcache
+   auth_generic.c: use rpcauth_init_credcache
+   sunrpc_syms.c: add hashsize module parameter
+   init_sunrpc: call rpcauth_init_module with hashsize parameter
+
+3. debugging:
+   - rpcauth_prune_expired: don't always delete the
+     entire cred_unused list, active entries are retained.
+     rpcauth_lookup_credcache: add new creds to cred_unused
+     right away, making the cred_unused list really a cred_lru list of
+     all creds
+   - adds sysctl debugging to analyze the number of active and
+     inactive entries on the cred_unused list
+   - add a sysctl knob to read the longest chainlength reached
+     on any hashtable
+
+diff -ru orig/linux-2.6.27.21/include/linux/sunrpc/auth.h linux-2.6.27.21/include/linux/sunrpc/auth.h
+--- orig/linux-2.6.27.21/include/linux/sunrpc/auth.h	2009-03-23 23:04:09.000000000 +0100
++++ linux-2.6.27.21/include/linux/sunrpc/auth.h	2009-05-19 16:02:35.000000000 +0200
+@@ -62,8 +62,12 @@
+  */
+ #define RPC_CREDCACHE_HASHBITS	4
+ #define RPC_CREDCACHE_NR	(1 << RPC_CREDCACHE_HASHBITS)
++#define RPC_CREDCACHE_MIN	4
++#define RPC_CREDCACHE_MAX	16384
+ struct rpc_cred_cache {
+-	struct hlist_head	hashtable[RPC_CREDCACHE_NR];
++	int			hashsize;
++	int			hashbits;
++	struct hlist_head	*hashtable;
+ 	spinlock_t		lock;
+ };
+ 
+@@ -124,9 +128,8 @@
+ extern const struct rpc_authops	authunix_ops;
+ extern const struct rpc_authops	authnull_ops;
+ 
+-void __init		rpc_init_authunix(void);
+-void __init		rpc_init_generic_auth(void);
+-void __init		rpcauth_init_module(void);
++int __init		rpc_init_generic_auth(void);
++int __init		rpcauth_init_module(int);
+ void __exit		rpcauth_remove_module(void);
+ void __exit		rpc_destroy_generic_auth(void);
+ 
+diff -ru orig/linux-2.6.27.21/net/sunrpc/auth.c linux-2.6.27.21/net/sunrpc/auth.c
+--- orig/linux-2.6.27.21/net/sunrpc/auth.c	2009-03-23 23:04:09.000000000 +0100
++++ linux-2.6.27.21/net/sunrpc/auth.c	2009-05-19 16:02:05.000000000 +0200
+@@ -14,6 +14,8 @@
+ #include <linux/hash.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/spinlock.h>
++#include <linux/vmalloc.h>
++#include <linux/sysctl.h>
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+@@ -28,6 +30,11 @@
+ 
+ static LIST_HEAD(cred_unused);
+ static unsigned long number_cred_unused;
++int credcache_hashsize = RPC_CREDCACHE_NR;
++
++#ifdef RPC_DEBUG
++static int credcache_max_chainlen;
++#endif
+ 
+ static u32
+ pseudoflavor_to_flavor(u32 flavor) {
+@@ -149,7 +156,14 @@
+ 	new = kmalloc(sizeof(*new), GFP_KERNEL);
+ 	if (!new)
+ 		return -ENOMEM;
+-	for (i = 0; i < RPC_CREDCACHE_NR; i++)
++	new->hashsize = credcache_hashsize;
++	new->hashbits = ilog2(new->hashsize);
++	new->hashtable = vmalloc(new->hashsize * sizeof(struct hlist_head));
++	if (!new->hashtable) {
++		kfree(new);
++		return -ENOMEM;
++	}
++	for (i = 0; i < new->hashsize; i++)
+ 		INIT_HLIST_HEAD(&new->hashtable[i]);
+ 	spin_lock_init(&new->lock);
+ 	auth->au_credcache = new;
+@@ -186,7 +200,7 @@
+ 
+ 	spin_lock(&rpc_credcache_lock);
+ 	spin_lock(&cache->lock);
+-	for (i = 0; i < RPC_CREDCACHE_NR; i++) {
++	for (i = 0; i < cache->hashsize; i++) {
+ 		head = &cache->hashtable[i];
+ 		while (!hlist_empty(head)) {
+ 			cred = hlist_entry(head->first, struct rpc_cred, cr_hash);
+@@ -215,13 +229,15 @@
+ 	if (cache) {
+ 		auth->au_credcache = NULL;
+ 		rpcauth_clear_credcache(cache);
++		if (cache->hashtable)
++			vfree(cache->hashtable);
+ 		kfree(cache);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_destroy_credcache);
+ 
+ 
+-#define RPC_AUTH_EXPIRY_MORATORIUM (60 * HZ)
++#define RPC_AUTH_EXPIRY_MORATORIUM (5 * HZ)
+ 
+ /*
+  * Remove stale credentials. Avoid sleeping inside the loop.
+@@ -230,13 +246,12 @@
+ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+ {
+ 	spinlock_t *cache_lock;
+-	struct rpc_cred *cred;
++	struct rpc_cred *cred, *n;
+ 	unsigned long expired = jiffies - RPC_AUTH_EXPIRY_MORATORIUM;
+ 
+-	while (!list_empty(&cred_unused)) {
+-		cred = list_entry(cred_unused.next, struct rpc_cred, cr_lru);
+-		list_del_init(&cred->cr_lru);
+-		number_cred_unused--;
++	list_for_each_entry_safe(cred, n, &cred_unused, cr_lru) {
++		if (nr_to_scan == 0)
++			break;
+ 		if (atomic_read(&cred->cr_count) != 0)
+ 			continue;
+ 		/* Enforce a 5 second garbage collection moratorium */
+@@ -247,13 +262,12 @@
+ 		spin_lock(cache_lock);
+ 		if (atomic_read(&cred->cr_count) == 0) {
+ 			get_rpccred(cred);
+-			list_add_tail(&cred->cr_lru, free);
++			list_move_tail(&cred->cr_lru, free);
++			number_cred_unused--;
+ 			rpcauth_unhash_cred_locked(cred);
+ 			nr_to_scan--;
+ 		}
+ 		spin_unlock(cache_lock);
+-		if (nr_to_scan == 0)
+-			break;
+ 	}
+ 	return nr_to_scan;
+ }
+@@ -267,8 +281,6 @@
+ 	LIST_HEAD(free);
+ 	int res;
+ 
+-	if (list_empty(&cred_unused))
+-		return 0;
+ 	spin_lock(&rpc_credcache_lock);
+ 	nr_to_scan = rpcauth_prune_expired(&free, nr_to_scan);
+ 	res = (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
+@@ -290,11 +302,19 @@
+ 	struct rpc_cred	*cred = NULL,
+ 			*entry, *new;
+ 	unsigned int nr;
++#ifdef RPC_DEBUG
++	int chainlen = 0;
++#endif
+ 
+-	nr = hash_long(acred->uid, RPC_CREDCACHE_HASHBITS);
++	nr = hash_long(acred->uid, cache->hashbits);
+ 
+ 	rcu_read_lock();
+ 	hlist_for_each_entry_rcu(entry, pos, &cache->hashtable[nr], cr_hash) {
++#ifdef RPC_DEBUG
++		chainlen++;
++		if (chainlen > credcache_max_chainlen)
++			credcache_max_chainlen = chainlen;
++#endif
+ 		if (!entry->cr_ops->crmatch(acred, entry, flags))
+ 			continue;
+ 		spin_lock(&cache->lock);
+@@ -331,6 +351,15 @@
+ 	} else
+ 		list_add_tail(&new->cr_lru, &free);
+ 	spin_unlock(&cache->lock);
++#ifdef RPC_DEBUG
++	/* Add to LRU list early for statistics */
++	if (cred == new) {
++		spin_lock(&rpc_credcache_lock);
++		list_add_tail(&cred->cr_lru, &cred_unused);
++		number_cred_unused++;
++		spin_unlock(&rpc_credcache_lock);
++	}
++#endif
+ found:
+ 	if (test_bit(RPCAUTH_CRED_NEW, &cred->cr_flags)
+ 			&& cred->cr_ops->cr_init != NULL
+@@ -566,19 +595,147 @@
+ 		test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) != 0;
+ }
+ 
++#ifdef RPC_DEBUG
++static int proc_credcache_hashsize(struct ctl_table *table, int write,
++                        struct file *file, void __user *buffer,
++                        size_t *length, loff_t *ppos)
++{
++	int tmp = credcache_hashsize;
++
++	table->data = &tmp;
++	table->maxlen = sizeof(int);
++	proc_dointvec(table, write, file, buffer, length, ppos);
++	if (write) {
++		if (tmp < RPC_CREDCACHE_MIN ||
++		    tmp > RPC_CREDCACHE_MAX ||
++		    !is_power_of_2(tmp))
++			return -EINVAL;
++		credcache_hashsize = tmp;
++	}
++	return 0;
++}
++
++static int proc_auth_credcache_size(struct ctl_table *table, int write,
++                        struct file *file, void __user *buffer,
++                        size_t *length, loff_t *ppos)
++{
++	struct rpc_cred	*cred;
++	unsigned long n, used = 0, unused = 0;
++	int tmp;
++
++	spin_lock(&rpc_credcache_lock);
++        list_for_each_entry(cred, &cred_unused, cr_lru) {
++		if (atomic_read(&cred->cr_count))
++			used++;
++		else
++			unused++;
++	}
++	spin_unlock(&rpc_credcache_lock);
++
++	n = table->extra1 ? used : unused;
++	tmp = n > INT_MAX ? INT_MAX : n;
++	table->data = &tmp;
++	table->maxlen = sizeof(int);
++
++	proc_dointvec(table, write, file, buffer, length, ppos);
++	if (write) {
++		int nr = unused - tmp;
++		if (nr > 0)
++			rpcauth_cache_shrinker(nr, GFP_KERNEL);
++	}
++
++	return 0;
++}
++
++static ctl_table sunrpc_credcache_knobs_table [] = {
++	{
++		.procname	= "credcache_hashsize",
++		.data		= NULL,
++		.mode		= 0644,
++		.proc_handler	= &proc_credcache_hashsize,
++	},
++	{
++		.procname	= "credcache_used",
++		.data		= NULL,
++		.mode		= 0444,
++		.proc_handler	= &proc_auth_credcache_size,
++		.extra1		= (void *)1,
++	},
++	{
++		.procname	= "credcache_unused",
++		.data		= NULL,
++		.mode		= 0644,
++		.proc_handler	= &proc_auth_credcache_size,
++		.extra1		= (void *)0,
++	},
++	{
++		.procname	= "credcache_total",
++		.data		= &number_cred_unused,
++		.maxlen		= sizeof(unsigned long),
++		.mode		= 0444,
++		.proc_handler	= &proc_doulongvec_minmax,
++	},
++	{
++		.procname	= "credcache_max_chainlen",
++		.data		= &credcache_max_chainlen,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= &proc_dointvec,
++	},
++	{
++		.ctl_name	= 0,
++	}
++};
++
++static ctl_table sunrpc_credcache_table[] = {
++	{
++		.ctl_name	= CTL_SUNRPC,
++		.procname	= "sunrpc",
++		.mode		= 0555,
++		.child		= sunrpc_credcache_knobs_table,
++	},
++	{
++		.ctl_name = 0,
++	}
++};
++
++static struct ctl_table_header *sunrpc_credcache_table_header;
++#endif
++
+ static struct shrinker rpc_cred_shrinker = {
+ 	.shrink = rpcauth_cache_shrinker,
+ 	.seeks = DEFAULT_SEEKS,
+ };
+ 
+-void __init rpcauth_init_module(void)
++int __init rpcauth_init_module(int hashsize)
+ {
+-	rpc_init_authunix();
+-	rpc_init_generic_auth();
++	int err;
++
++	if (hashsize) {
++		hashsize = min(hashsize, RPC_CREDCACHE_MAX);
++		hashsize = max(hashsize, RPC_CREDCACHE_MIN);
++		credcache_hashsize = rounddown_pow_of_two(hashsize);
++		printk(KERN_INFO "RPC: credcache hashtable size %d\n",
++							credcache_hashsize);
++	}
++
++	err = rpc_init_generic_auth();
++	if (err)
++		goto out;
++#ifdef RPC_DEBUG
++	sunrpc_credcache_table_header =
++		register_sysctl_table(sunrpc_credcache_table);
++#endif
+ 	register_shrinker(&rpc_cred_shrinker);
++out:
++	return err;
+ }
+ 
+ void __exit rpcauth_remove_module(void)
+ {
++#ifdef RPC_DEBUG
++	if (sunrpc_credcache_table_header)
++		unregister_sysctl_table(sunrpc_credcache_table_header);
++#endif
+ 	unregister_shrinker(&rpc_cred_shrinker);
+ }
+diff -ru orig/linux-2.6.27.21/net/sunrpc/auth_generic.c linux-2.6.27.21/net/sunrpc/auth_generic.c
+--- orig/linux-2.6.27.21/net/sunrpc/auth_generic.c	2009-03-23 23:04:09.000000000 +0100
++++ linux-2.6.27.21/net/sunrpc/auth_generic.c	2009-05-19 12:03:40.000000000 +0200
+@@ -26,7 +26,6 @@
+ };
+ 
+ static struct rpc_auth generic_auth;
+-static struct rpc_cred_cache generic_cred_cache;
+ static const struct rpc_credops generic_credops;
+ 
+ /*
+@@ -158,20 +157,16 @@
+ 	return 0;
+ }
+ 
+-void __init rpc_init_generic_auth(void)
++int __init rpc_init_generic_auth(void)
+ {
+-	spin_lock_init(&generic_cred_cache.lock);
++	return rpcauth_init_credcache(&generic_auth);
+ }
+ 
+ void __exit rpc_destroy_generic_auth(void)
+ {
+-	rpcauth_clear_credcache(&generic_cred_cache);
++	rpcauth_destroy_credcache(&generic_auth);
+ }
+ 
+-static struct rpc_cred_cache generic_cred_cache = {
+-	{{ NULL, },},
+-};
+-
+ static const struct rpc_authops generic_auth_ops = {
+ 	.owner = THIS_MODULE,
+ 	.au_name = "Generic",
+@@ -182,7 +177,6 @@
+ static struct rpc_auth generic_auth = {
+ 	.au_ops = &generic_auth_ops,
+ 	.au_count = ATOMIC_INIT(0),
+-	.au_credcache = &generic_cred_cache,
+ };
+ 
+ static const struct rpc_credops generic_credops = {
+diff -ru orig/linux-2.6.27.21/net/sunrpc/auth_unix.c linux-2.6.27.21/net/sunrpc/auth_unix.c
+--- orig/linux-2.6.27.21/net/sunrpc/auth_unix.c	2009-03-23 23:04:09.000000000 +0100
++++ linux-2.6.27.21/net/sunrpc/auth_unix.c	2009-05-19 14:06:45.000000000 +0200
+@@ -28,15 +28,23 @@
+ #endif
+ 
+ static struct rpc_auth		unix_auth;
+-static struct rpc_cred_cache	unix_cred_cache;
+ static const struct rpc_credops	unix_credops;
+ 
+ static struct rpc_auth *
+ unx_create(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
+ {
++	int err;
++
+ 	dprintk("RPC:       creating UNIX authenticator for client %p\n",
+ 			clnt);
+ 	atomic_inc(&unix_auth.au_count);
++	if (!unix_auth.au_credcache) {
++		err = rpcauth_init_credcache(&unix_auth);
++		if (err) {
++			atomic_dec(&unix_auth.au_count);
++			return ERR_PTR(err);
++		}
++	}
+ 	return &unix_auth;
+ }
+ 
+@@ -202,11 +210,6 @@
+ 	return p;
+ }
+ 
+-void __init rpc_init_authunix(void)
+-{
+-	spin_lock_init(&unix_cred_cache.lock);
+-}
+-
+ const struct rpc_authops authunix_ops = {
+ 	.owner		= THIS_MODULE,
+ 	.au_flavor	= RPC_AUTH_UNIX,
+@@ -218,17 +221,12 @@
+ };
+ 
+ static
+-struct rpc_cred_cache	unix_cred_cache = {
+-};
+-
+-static
+ struct rpc_auth		unix_auth = {
+ 	.au_cslack	= UNX_WRITESLACK,
+ 	.au_rslack	= 2,			/* assume AUTH_NULL verf */
+ 	.au_ops		= &authunix_ops,
+ 	.au_flavor	= RPC_AUTH_UNIX,
+ 	.au_count	= ATOMIC_INIT(0),
+-	.au_credcache	= &unix_cred_cache,
+ };
+ 
+ static
+diff -ru orig/linux-2.6.27.21/net/sunrpc/sunrpc_syms.c linux-2.6.27.21/net/sunrpc/sunrpc_syms.c
+--- orig/linux-2.6.27.21/net/sunrpc/sunrpc_syms.c	2009-03-23 23:04:09.000000000 +0100
++++ linux-2.6.27.21/net/sunrpc/sunrpc_syms.c	2009-05-19 12:53:10.000000000 +0200
+@@ -23,6 +23,7 @@
+ #include <linux/sunrpc/xprtsock.h>
+ 
+ extern struct cache_detail ip_map_cache, unix_gid_cache;
++static int hashsize;
+ 
+ static int __init
+ init_sunrpc(void)
+@@ -31,13 +32,14 @@
+ 	if (err)
+ 		goto out;
+ 	err = rpc_init_mempool();
+-	if (err) {
+-		unregister_rpc_pipefs();
+-		goto out;
+-	}
++	if (err)
++		goto out_err1;
+ #ifdef RPC_DEBUG
+ 	rpc_register_sysctl();
+ #endif
++	err = rpcauth_init_module(hashsize);
++	if (err)
++		goto out_err2;
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_init();
+ #endif
+@@ -45,7 +47,14 @@
+ 	cache_register(&unix_gid_cache);
+ 	svc_init_xprt_sock();	/* svc sock transport */
+ 	init_socket_xprt();	/* clnt sock transport */
+-	rpcauth_init_module();
++	goto out;
++out_err2:
++	rpc_destroy_mempool();
++#ifdef RPC_DEBUG
++	rpc_unregister_sysctl();
++#endif
++out_err1:
++	unregister_rpc_pipefs();
+ out:
+ 	return err;
+ }
+@@ -67,6 +76,8 @@
+ 	rpc_proc_exit();
+ #endif
+ }
++module_param(hashsize, int, 0);
++MODULE_PARM_DESC(hashsize, "size of hashtables for credential caches");
+ MODULE_LICENSE("GPL");
+ module_init(init_sunrpc);
+ module_exit(cleanup_sunrpc);
