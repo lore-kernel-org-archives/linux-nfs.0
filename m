@@ -1,77 +1,92 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 10/10] nfs-utils: update the nfsd manpage
-Date: Wed,  3 Jun 2009 15:52:43 -0400
-Message-ID: <1244058763-10352-11-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 05/10] nfs-utils: move check for active knfsd to helper function
+Date: Wed,  3 Jun 2009 15:52:38 -0400
+Message-ID: <1244058763-10352-6-git-send-email-jlayton@redhat.com>
 References: <1244058763-10352-1-git-send-email-jlayton@redhat.com>
 Cc: chuck.lever@oracle.com, steved@redhat.com
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51462 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:51457 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754730AbZFCTww (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 15:52:52 -0400
+	id S1754689AbZFCTwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2009 15:52:50 -0400
 In-Reply-To: <1244058763-10352-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add some clarification about the purpose of the program, info about the
---debug option, and a note about how it behaves when TI-RPC support is
-built in.
+nfssvc_setfds checks to see if knfsd is already running. Move this
+check to a helper function. Eventually the nfsd code will call this
+directly.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/nfsd/nfsd.man |   19 ++++++++++++++++---
- 1 files changed, 16 insertions(+), 3 deletions(-)
+ support/nfs/nfssvc.c |   44 +++++++++++++++++++++++++++++++-------------
+ 1 files changed, 31 insertions(+), 13 deletions(-)
 
-diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-index 4eb3e21..94b041e 100644
---- a/utils/nfsd/nfsd.man
-+++ b/utils/nfsd/nfsd.man
-@@ -13,8 +13,9 @@ The
- program implements the user level part of the NFS service. The
- main functionality is handled by the
- .B nfsd
--kernel module; the user space program merely starts the specified
--number of kernel threads.
-+kernel module. The user space program merely specifies what sort of sockets
-+the kernel service should listen on, what NFS versions it should support, and
-+how many kernel threads it should use.
- .P
- The
- .B rpc.mountd
-@@ -22,6 +23,11 @@ server provides an ancillary service needed to satisfy mount requests
- by NFS clients.
- .SH OPTIONS
- .TP
-+.B \-d " or " \-\-debug
-+enable debug log messages and log messages to stderr instead of syslog.
-+By default, nfsd logs all messages to syslog, except for errors generated
-+during option processing which go to stderr.
-+.TP
- .B \-H " or " \-\-host  hostname
- specify a particular hostname (or address) that NFS requests will
- be accepted on. By default,
-@@ -75,12 +81,19 @@ In particular
- .B rpc.nfsd 0
- will stop all threads and thus close any open connections.
+diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
+index 3e6bd31..8b15c4d 100644
+--- a/support/nfs/nfssvc.c
++++ b/support/nfs/nfssvc.c
+@@ -24,28 +24,46 @@
+ #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+ #define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
  
-+.SH NOTES
-+If the program is built with TI-RPC support, it will enable any protocol and
-+address family combinations that are marked visible in the
-+.B netconfig
-+database.
+-static void
+-nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
++/*
++ * Are there already sockets configured? If not, then it is safe to try to
++ * open some and pass them through.
++ *
++ * Note: If the user explicitly asked for 'udp', then we should probably check
++ * if that is open, and should open it if not. However we don't yet. All
++ * sockets have to be opened when the first daemon is started.
++ */
++int
++nfssvc_inuse(void)
+ {
+-	int fd, n, on=1;
++	int fd, n;
+ 	char buf[BUFSIZ];
+-	int udpfd = -1, tcpfd = -1;
+-	struct sockaddr_in sin;
+ 
+ 	fd = open(NFSD_PORTS_FILE, O_RDONLY);
 +
- .SH SEE ALSO
- .BR rpc.mountd (8),
- .BR exports (5),
- .BR exportfs (8),
- .BR rpc.rquotad (8),
--.BR nfsstat (8).
-+.BR nfsstat (8),
-+.BR netconfig(5).
- .SH AUTHOR
- Olaf Kirch, Bill Hawes, H. J. Lu, G. Allan Morris III,
- and a host of others.
++	/* problem opening file, assume that nothing is configured */
+ 	if (fd < 0)
+-		return;
++		return 0;
++
+ 	n = read(fd, buf, BUFSIZ);
+ 	close(fd);
++
+ 	if (n != 0)
++		return 1;
++
++	return 0;
++}
++
++static void
++nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
++{
++	int fd, n, on=1;
++	char buf[BUFSIZ];
++	int udpfd = -1, tcpfd = -1;
++	struct sockaddr_in sin;
++
++	if (nfssvc_inuse())
+ 		return;
+-	/* there are no ports currently open, so it is safe to
+-	 * try to open some and pass them through.
+-	 * Note: If the user explicitly asked for 'udp', then
+-	 * we should probably check if that is open, and should
+-	 * open it if not.  However we don't yet.  All sockets
+-	 * have to be opened when the first daemon is started.
+-	 */
++
+ 	fd = open(NFSD_PORTS_FILE, O_WRONLY);
+ 	if (fd < 0)
+ 		return;
 -- 
 1.6.2.2
 
