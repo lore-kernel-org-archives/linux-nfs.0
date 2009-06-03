@@ -1,42 +1,62 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: libtirpc and nis
-Date: Wed, 3 Jun 2009 18:44:32 -0400
-Message-ID: <200906031844.34398.vapier@gentoo.org>
-References: <200906031002.38551.vapier@gentoo.org> <4A269364.2080304@RedHat.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH]  bug in old-cache handling in mountd.
+Date: Thu, 4 Jun 2009 08:45:38 +1000
+Message-ID: <18982.64786.654330.415419@notabene.brown>
+References: <18975.16159.264056.854413@notabene.brown>
+	<4A26D2D8.5090200@RedHat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:45156 "EHLO smtp.gentoo.org"
+Received: from cantor2.suse.de ([195.135.220.15]:53737 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753965AbZFCWoc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 18:44:32 -0400
-In-Reply-To: <4A269364.2080304-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1754069AbZFCWpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2009 18:45:12 -0400
+In-Reply-To: message from Steve Dickson on Wednesday June 3
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday 03 June 2009 11:14:44 Steve Dickson wrote:
-> Mike Frysinger wrote:
-> > the libtirpc package is self described as a "standalone package".  i
-> > wonder how far that actually goes.  wrt NIS, it requires the system C
-> > library to provide NIS functionality or you get a build failure in a few
-> > files.  would be nice if libtirpc were usable without any NIS baggage at
-> > all.
->
-> NIS used RPC procedures to communicate. As it stands today
-> NIS is currently using the RPC procedures glibc. In the
-> future there is a very good chance that NIS will start
-> using the RPC procedures in libtirpc especially if
-> IPV6 support is needed...
->
-> So I'm a bit confused on what you mean by "NIS baggage"
-> in the libtirpc package.
+On Wednesday June 3, SteveD@redhat.com wrote:
+> 
+> 
+> Neil Brown wrote:
+> > Hi,
+> >  there is a bug in the old-cache behaviour of mountd.
+> >  Hopefully no-one is using this but you never know....
+> > 
+> >  The bug was reported to redhat
+> >     https://bugzilla.redhat.com/show_bug.cgi?id=164186
+> > 
+> >  It was fixed incorrectly and never (that I recall) reported
+> >  upstream. :-(
+> > 
+> >  A SLES customer thinks they have hit the same problem, which is why
+> >  I'm looking at it.  (They shouldn't really hit it because that
+> >  version of sles uses 'new_cache' but maybe nfsdfs was disabled
+> >  somehow - don't know yet).
+> > 
+> >  Anyway, when mountd gets a mount request, it tells the kernel about it
+> >  and remembers that it told the kernel so it doesn't have to tell the
+> >  kernel again.
+> >  It is possible that "exportfs -r" will tell the kernel to forget that
+> >  information if the client has since unmounted.
+> >  So mountd really needs to tell the kernel even if it thinks the
+> >  kernel should already know.
+> > 
+> >  The following patch does this if the kernel refuses to provide a
+> >  valid filehandle.
+> > 
+> >  Does RHEL3 use old-cache or new-cache ??
+> The new cache, if it exists...
 
-you cannot build libtirpc on a system that doesnt provide NIS functionality.  
-realistic RPC usage today is NFS related services only (i.e. a NFS client 
-mounting a share on a NFS server).  i might be missing something (since i'm no 
-RPC/NIS expert), but if this scenario doesnt require NIS in any way, then 
-having libtirpc require/use it is bloat that should have an option to disable.
--mike
+That's what I would have thought... which leave me wondering how both
+your customer and our customer hit the bug...  I must be missing
+something important.
+
+> 
+> Committed..
+
+Thanks.
+
+NeilBrown
