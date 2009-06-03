@@ -1,60 +1,53 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] nfs-utils: fix endptr check in closeall (try #2)
-Date: Wed,  3 Jun 2009 15:44:41 -0400
-Message-ID: <1244058281-10228-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-To: steved@redhat.com
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH]  bug in old-cache handling in mountd.
+Date: Wed, 03 Jun 2009 15:45:28 -0400
+Message-ID: <4A26D2D8.5090200@RedHat.com>
+References: <18975.16159.264056.854413@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59979 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:42503 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751977AbZFCToo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 15:44:44 -0400
+	id S1751311AbZFCTsb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2009 15:48:31 -0400
+In-Reply-To: <18975.16159.264056.854413-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The closeall function is broken in such a way that it almost never
-closes any file descriptors. It's calling strtol on the text
-representation of the file descriptor, and then checking to see if the
-value of *endptr is not '\0' before trying to close the file. This check
-is wrong.
 
-When strtol returns an endptr that points to a NULL byte, that indicates
-that the conversion was completely successful. I believe this check
-should instead be requiring that endptr is pointing to '\0' before closing
-the fd.
 
-Also, fix up the function to check for conversion errors from strtol. If
-one occurs, just skip the close on that entry.
+Neil Brown wrote:
+> Hi,
+>  there is a bug in the old-cache behaviour of mountd.
+>  Hopefully no-one is using this but you never know....
+> 
+>  The bug was reported to redhat
+>     https://bugzilla.redhat.com/show_bug.cgi?id=164186
+> 
+>  It was fixed incorrectly and never (that I recall) reported
+>  upstream. :-(
+> 
+>  A SLES customer thinks they have hit the same problem, which is why
+>  I'm looking at it.  (They shouldn't really hit it because that
+>  version of sles uses 'new_cache' but maybe nfsdfs was disabled
+>  somehow - don't know yet).
+> 
+>  Anyway, when mountd gets a mount request, it tells the kernel about it
+>  and remembers that it told the kernel so it doesn't have to tell the
+>  kernel again.
+>  It is possible that "exportfs -r" will tell the kernel to forget that
+>  information if the client has since unmounted.
+>  So mountd really needs to tell the kernel even if it thinks the
+>  kernel should already know.
+> 
+>  The following patch does this if the kernel refuses to provide a
+>  valid filehandle.
+> 
+>  Does RHEL3 use old-cache or new-cache ??
+The new cache, if it exists...
 
-Reported-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- support/nfs/closeall.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+Committed..
 
-diff --git a/support/nfs/closeall.c b/support/nfs/closeall.c
-index cc7fb3b..5fe07de 100644
---- a/support/nfs/closeall.c
-+++ b/support/nfs/closeall.c
-@@ -7,6 +7,7 @@
- #include <unistd.h>
- #include <stdlib.h>
- #include <dirent.h>
-+#include <errno.h>
- 
- void
- closeall(int min)
-@@ -18,8 +19,9 @@ closeall(int min)
- 
- 		while ((d = readdir(dir)) != NULL) {
- 			char *endp;
-+			errno = 0;
- 			long n = strtol(d->d_name, &endp, 10);
--			if (*endp != '\0' && n >= min && n != dfd)
-+			if (!errno && *endp == '\0' && n >= min && n != dfd)
- 				(void) close(n);
- 		}
- 		closedir(dir);
--- 
-1.6.0.6
-
+steved.
