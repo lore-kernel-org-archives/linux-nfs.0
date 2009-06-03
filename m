@@ -1,124 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lanfw001a.cxnet.dk ([87.72.215.196]:36307 "EHLO
-	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750777AbZFWPDx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 11:03:53 -0400
-From: Jesper Dangaard Brouer <hawk@comx.dk>
-Subject: [PATCH 00/10] We must use rcu_barrier() on module unload
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-        axboe@kernel.dk, "Patrick McHardy" <kaber@trash.net>,
-        christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
-        linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
-        yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
-        netfilter-devel@vger.kernel.org
-Date: Tue, 23 Jun 2009 17:03:53 +0200
-Message-ID: <20090623150330.22490.87327.stgit@localhost>
-Content-Type: text/plain; charset="utf-8"
+Received: from qw-out-2122.google.com ([74.125.92.24]:6933 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755758AbZFCVdH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2009 17:33:07 -0400
+Received: by qw-out-2122.google.com with SMTP id 5so230764qwd.37
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2009 14:33:09 -0700 (PDT)
+Message-ID: <4A26EAE3.7030705@gmail.com>
+Date: Wed, 03 Jun 2009 17:28:03 -0400
+From: Dean Hildebrand <seattleplus@gmail.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+CC: Carlos Carvalho <carlos@fisica.ufpr.br>, linux-nfs@vger.kernel.org
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+ flushing
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>	 <49FA0CE8.9090706@redhat.com>	 <1241126587.15476.62.camel@heimdal.trondhjem.org>	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org>	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org>	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org>	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>	 <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br> <1244049027.5603.5.camel@heimdal.trondhjem.org>
+In-Reply-To: <1244049027.5603.5.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch series is an attempt to cleanup the entire tree, for
-potential oops'es during module unload, due to outstanding RCU
-callbacks. (My last rcu_barrier patch series only addressed net/).
-
-If an unloadable module uses RCU callbacks, it need to use
-rcu_barrier() so that the module may be safely unloaded.
-
-For documentation see:
-
- Paul E. McKenney's Blog
- http://paulmck.livejournal.com/7314.html
-
- http://lwn.net/Articles/217484/
-
- Documentation/RCU/rcubarrier.txt
 
 
-Looking through the Linux kernel for call_rcu() users and unloadable
-modules I found 10 modules that didn't behave correctly.
+Trond Myklebust wrote:
+> On Wed, 2009-06-03 at 13:22 -0300, Carlos Carvalho wrote:
+>   
+>> Trond Myklebust (trond.myklebust@fys.uio.no) wrote on 2 June 2009 13:27:
+>>  >Write gathering relies on waiting an arbitrary length of time in order
+>>  >to see if someone is going to send another write. The protocol offers no
+>>  >guidance as to how long that wait should be, and so (at least on the
+>>  >Linux server) we've coded in a hard wait of 10ms if and only if we see
+>>  >that something else has the file open for writing.
+>>  >One problem with the Linux implementation is that the "something else"
+>>  >could be another nfs server thread that happens to be in nfsd_write(),
+>>  >however it could also be another open NFSv4 stateid, or a NLM lock, or a
+>>  >local process that has the file open for writing.
+>>  >Another problem is that the nfs server keeps a record of the last file
+>>  >that was accessed, and also waits if it sees you are writing again to
+>>  >that same file. Of course it has no idea if this is truly a parallel
+>>  >write, or if it just happens that you are writing again to the same file
+>>  >using O_SYNC...
+>>
+>> I think the decision to write or wait doesn't belong to the nfs
+>> server; it should just send the writes immediately. It's up to the
+>> fs/block/device layers to do the gathering. I understand that the
+>> client should try to do the gathering before sending the request to
+>> the wire
+>>     
+Just to be clear, the linux NFS server does not gather the writes.  
+Writes are passed immediately to the fs.  nfsd simply waits 10ms before 
+sync'ing the writes to disk.  This allows the underlying file system 
+time to do the gathering and sync data in larger chunks.  Of course, 
+this is only for stables writes and wdelay is enabled for the export.
 
-Please: MAINTAINERS needs to verify that the module exit code prevent
-any new RCU callbacks from being posted (before rcu_barrier() is
-called). (I have tried to do this verification, but most of these
-module are simply too large and complex for me to verify this within
-reasonable time)
-
-[Overview description, following patch ordering]
-
-The modules ext4, bridge, mac80211, sunrpc, nfs and ipv6 are fairly
-straight forward (maintainers still needs to check for prevent of new
-RCU callbacks).
-
-The module decnet, has disabled its module_exit() (since ^1da177e) but
-it still seems relevant to keep the code updated.
-
-The modules edac_core and cfq-iosched, has implemented their own
-open-coded wait_for_completion() scheme, in order to wait for
-call_rcu() calls.  Maintainers needs to look into removing this code
-and using rcu_barrier() instead.
-
-The module nf_conntrack, has embedded some comments that I would like
-Patrick McHardy to look at.  As I'm not sure which is are most optimal
-place to call rcu_barrier().  The patch probably calls rcu_barrier()
-too much, but its a better safe than sorry approach.
-
-
-I have made a patch for each individual module, so objections can be
-made on a per module basis.  I have Cc'ed all of the patches to the
-maintainers of each module (according to the MAINTAINERS file).
-
-
-The patchset is made on top of Linus Torvalds tree (starting on top of
-commit f234012f52a3).
-
-Who wants to pickup these patches? (I usually go through DaveM, but
-this also touches subsystems that are not (yet?) under DaveM's
-maintainer ship)
-
-
----
-Jesper Dangaard Brouer (10):
-      nf_conntrack: Use rcu_barrier().
-      cfq-iosched: Uses its own open-coded rcu_barrier.
-      edac_core: Uses call_rcu() and its own wait_for_completion scheme.
-      decnet: Use rcu_barrier() on module unload.
-      ipv6: Use rcu_barrier() on module unload.
-      nfs: Use rcu_barrier() on module unload.
-      sunrpc: Use rcu_barrier() on unload.
-      mac80211: Use rcu_barrier() on unload.
-      bridge: Use rcu_barrier() instead of syncronize_net() on unload.
-      ext4: Use rcu_barrier() on module unload.
-
-
- block/cfq-iosched.c                     |    6 ++++++
- drivers/edac/edac_device.c              |    5 +++++
- drivers/edac/edac_mc.c                  |    5 +++++
- drivers/edac/edac_pci.c                 |    5 +++++
- fs/ext4/mballoc.c                       |    4 +++-
- fs/nfs/inode.c                          |    1 +
- net/bridge/br.c                         |    2 +-
- net/decnet/af_decnet.c                  |    6 ++++++
- net/ipv6/af_inet6.c                     |    2 ++
- net/mac80211/main.c                     |    2 ++
- net/netfilter/nf_conntrack_core.c       |    5 +++++
- net/netfilter/nf_conntrack_standalone.c |    2 ++
- net/sunrpc/sunrpc_syms.c                |    1 +
- 13 files changed, 44 insertions(+), 2 deletions(-)
-
-
---
-Best regards,
-  Jesper Brouer
-  ComX Networks A/S
-  Linux Network developer
-  Cand. Scient Datalog / MSc.
-  Author of http://adsl-optimizer.dk
-  LinkedIn: http://www.linkedin.com/in/brouer
-
+Dean
+>
+> This isn't something that we've just pulled out of a hat. It dates back
+> to pre-NFSv3 times, when every write had to be synchronously committed
+> to disk before the RPC call could return.
+>
+> See, for instance,
+>
+> http://books.google.com/books?id=y9GgPhjyOUwC&pg=PA243&lpg=PA243&dq=What
+> +is+nfs+write
+> +gathering&source=bl&ots=M8s0XS2SLd&sig=ctmxQrpII2_Ti4czgpGZrF9mmds&hl=en&ei=Xa0mSrLMC8iptgfSsqHsBg&sa=X&oi=book_result&ct=result&resnum=3
+>
+> The point is that while it is a good idea for NFSv2, we have much better
+> methods of dealing with multiple writes in NFSv3 and v4...
+>
+> Trond
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   
