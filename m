@@ -1,32 +1,75 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 08/10] nfs-utils: add IPv6 support to nfssvc_setfds
-Date: Wed, 03 Jun 2009 16:20:22 -0400
-Message-ID: <4A26DB06.30500@RedHat.com>
+Date: Wed, 3 Jun 2009 16:24:23 -0400
+Message-ID: <55D734DA-ED13-4086-985E-E3C0ADE8D01A@oracle.com>
 References: <1244058763-10352-1-git-send-email-jlayton@redhat.com> <1244058763-10352-9-git-send-email-jlayton@redhat.com> <4D598E93-E9CE-4AA7-8289-169FD85EF05B@oracle.com> <4A26DA3B.3090404@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34823 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750968AbZFCUX2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 16:23:28 -0400
+Received: from rcsinet11.oracle.com ([148.87.113.123]:49452 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753332AbZFCUYo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2009 16:24:44 -0400
 In-Reply-To: <4A26DA3B.3090404-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Jun 3, 2009, at 4:16 PM, Steve Dickson wrote:
 
-Steve Dickson wrote:
+> Chuck Lever wrote:
+>>
+>> On Jun 3, 2009, at 3:52 PM, Jeff Layton wrote:
+>>
+>>> Allow nfssvc_setfds to properly deal with AF_INET6.
+>>>
+>>> IPv6 sockets for knfsd can't be allowed to accept IPv4 packets.  
+>>> Set the
+>>> correct option to prevent that from occurring on IPv6 sockets.
+>>>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> support/nfs/nfssvc.c |   14 ++++++++++++++
+>>> 1 files changed, 14 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
+>>> index 89fb5be..19f1a4c 100644
+>>> --- a/support/nfs/nfssvc.c
+>>> +++ b/support/nfs/nfssvc.c
+>>> @@ -76,6 +76,11 @@ nfssvc_setfds(const struct addrinfo *hints, const
+>>> char *node, const char *port)
+>>>    case AF_INET:
+>>>        family = "inet";
+>>>        break;
+>>> +#ifdef IPV6_SUPPORTED
+>>> +    case AF_INET6:
+>>> +        family = "inet6";
+>>> +        break;
+>>> +#endif /* IPV6_SUPPORTED */
+>>>    default:
+>>>        xlog(L_ERROR, "Unknown address family specified: %d\n",
+>>>                hints->ai_family);
+>>> @@ -123,6 +128,15 @@ nfssvc_setfds(const struct addrinfo *hints,  
+>>> const
+>>> char *node, const char *port)
+>>>            rc = errno;
+>>>            goto error;
+>>>        }
+>>> +#ifdef IPV6_SUPPORTED
+>>> +        if (addr->ai_family == AF_INET6 &&
+>>> +            setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &on,
+>>> sizeof(on))) {
 >>> +            xlog(L_ERROR, "unable to set IPV6_V6ONLY: "
 >>> +                "errno %d (%s)\n", errno, strerror(errno));
+>>
 >> I'm still looking at the other patches, but I notice you could use %m
 >> here too.
 > I kinda like having both... the errno *and* the error string...
-> 
-Ah... I see your point... sometimes '%m' is used and sometimes 
-strerror() is used... I'll clean that up... and switch 
-everything to strerror().... 
 
-steved.
+You can use %m and print the errno too.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
