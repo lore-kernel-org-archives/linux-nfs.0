@@ -1,62 +1,103 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH]  bug in old-cache handling in mountd.
-Date: Thu, 4 Jun 2009 08:45:38 +1000
-Message-ID: <18982.64786.654330.415419@notabene.brown>
-References: <18975.16159.264056.854413@notabene.brown>
-	<4A26D2D8.5090200@RedHat.com>
+From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Subject: RE: [pnfs] [RFC 02/39] nfs41: Skip past the RPC call direction
+Date: Wed, 3 Jun 2009 16:30:41 -0700
+Message-ID: <273FE88A07F5D445824060902F7003440612B023@SACMVEXC1-PRD.hq.netapp.com>
+References: <1244064624.5603.53.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: <linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	"Benny Halevy" <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53737 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:36694 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754069AbZFCWpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 18:45:12 -0400
-In-Reply-To: message from Steve Dickson on Wednesday June 3
+	id S1753055AbZFCXau convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jun 2009 19:30:50 -0400
+In-Reply-To: <1244064624.5603.53.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday June 3, SteveD@redhat.com wrote:
+> -----Original Message-----
+> From: Myklebust, Trond
+> Sent: Wednesday, June 03, 2009 2:30 PM
+> To: Benny Halevy
+> Cc: linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
+> Subject: Re: [pnfs] [RFC 02/39] nfs41: Skip past the RPC call
+direction
 > 
+> On Fri, 2009-05-01 at 02:19 +0300, Benny Halevy wrote:
+> > From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> >
+> > xs_tcp_read_calldir() is now responsible for reading the RPC call
+> > direction and determining whether it is a reply or a callback
+request.
+> > The call to xdr_skb_read_bits() inside xs_tcp_read_calldir() moves
+the
+> > xdr_skb_reader offset past the RPC call direction (offset should be
+> > equal to 8).  Therefore xs_tcp_read_common() called from
+> > xs_tcp_ready_reply() should be copying the TCP buffer starting past
+the
+> > RPC call direction.  It is now necessary to read the RPC call
+direction
+> > earlier to determine whether to call the reply handler or the
+callback
+> > handler.
+> >
+> > call_verify() should therefore skip past the XID and call/reply
+flag.
+> >
+> > Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> > ---
+> >  net/sunrpc/clnt.c |   13 +++++++------
+> >  1 files changed, 7 insertions(+), 6 deletions(-)
+> >
+> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > index d00e813..76d7d46 100644
+> > --- a/net/sunrpc/clnt.c
+> > +++ b/net/sunrpc/clnt.c
+> > @@ -1390,13 +1390,14 @@ rpc_verify_header(struct rpc_task *task)
+> >  	}
+> >  	if ((len -= 3) < 0)
+> >  		goto out_overflow;
+> > -	p += 1;	/* skip XID */
+> >
+> > -	if ((n = ntohl(*p++)) != RPC_REPLY) {
+> > -		dprintk("RPC: %5u %s: not an RPC reply: %x\n",
+> > -				task->tk_pid, __func__, n);
+> > -		goto out_garbage;
+> > -	}
+> > +	/*
+> > +	 * Skip the XID and call direction.
+> > +	 * The underlying transport has read the XID and RPC call
+direction
+> > +	 * to determine this is an RPC reply.
+> > +	 */
+> > +	p += 2;
+> > +
+> >  	if ((n = ntohl(*p++)) != RPC_MSG_ACCEPTED) {
+> >  		if (--len < 0)
+> >  			goto out_overflow;
 > 
-> Neil Brown wrote:
-> > Hi,
-> >  there is a bug in the old-cache behaviour of mountd.
-> >  Hopefully no-one is using this but you never know....
-> > 
-> >  The bug was reported to redhat
-> >     https://bugzilla.redhat.com/show_bug.cgi?id=164186
-> > 
-> >  It was fixed incorrectly and never (that I recall) reported
-> >  upstream. :-(
-> > 
-> >  A SLES customer thinks they have hit the same problem, which is why
-> >  I'm looking at it.  (They shouldn't really hit it because that
-> >  version of sles uses 'new_cache' but maybe nfsdfs was disabled
-> >  somehow - don't know yet).
-> > 
-> >  Anyway, when mountd gets a mount request, it tells the kernel about it
-> >  and remembers that it told the kernel so it doesn't have to tell the
-> >  kernel again.
-> >  It is possible that "exportfs -r" will tell the kernel to forget that
-> >  information if the client has since unmounted.
-> >  So mountd really needs to tell the kernel even if it thinks the
-> >  kernel should already know.
-> > 
-> >  The following patch does this if the kernel refuses to provide a
-> >  valid filehandle.
-> > 
-> >  Does RHEL3 use old-cache or new-cache ??
-> The new cache, if it exists...
+> Err... No... The above comment is true only for the case of TCP. Why
+> don't you simply copy the RPC call direction into the buffer?
 
-That's what I would have thought... which leave me wondering how both
-your customer and our customer hit the bug...  I must be missing
-something important.
+You're right.  We'll follow your suggestion to copy it into the buffer
+and leave the processing as it originally was in rpc_verify_header().
 
+- ricardo
+
+
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
 > 
-> Committed..
-
-Thanks.
-
-NeilBrown
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
