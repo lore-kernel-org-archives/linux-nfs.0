@@ -1,86 +1,77 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: libtirpc and nis
-Date: Wed, 3 Jun 2009 20:12:20 -0400
-Message-ID: <200906032012.21876.vapier@gentoo.org>
-References: <200906031002.38551.vapier@gentoo.org> <200906031844.34398.vapier@gentoo.org> <047CD688-878B-4504-BD59-3C0B65C1B631@oracle.com>
+From: carlos@fisica.ufpr.br (Carlos Carvalho)
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+ flushing
+Date: Wed, 3 Jun 2009 23:16:34 -0300
+Message-ID: <18983.11906.492608.778104@fisica.ufpr.br>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
+	<5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+	<49FA0CE8.9090706@redhat.com>
+	<1241126587.15476.62.camel@heimdal.trondhjem.org>
+	<OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
+	<1243615595.7155.48.camel@heimdal.trondhjem.org>
+	<OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
+	<1243618500.7155.56.camel@heimdal.trondhjem.org>
+	<ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
+	<1243686363.5209.16.camel@heimdal.trondhjem.org>
+	<ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
+	<BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
+	<1243963631.4868.124.camel@heimdal.trondhjem.org>
+	<18982.41770.293636.786518@fisica.ufpr.br>
+	<1244049027.5603.5.camel@heimdal.trondhjem.org>
+	<4A26EAE3.7030705@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1506055.CFrTTXEtxq";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Cc: Steve Dickson <SteveD@redhat.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	libtirpc <libtirpc-devel@lists.sourceforge.net>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:42966 "EHLO smtp.gentoo.org"
+Received: from fisica.ufpr.br ([200.17.209.129]:25126 "EHLO fisica.ufpr.br"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753489AbZFDAMV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 20:12:21 -0400
-In-Reply-To: <047CD688-878B-4504-BD59-3C0B65C1B631@oracle.com>
+	id S1751647AbZFDCQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2009 22:16:35 -0400
+In-Reply-To: <4A26EAE3.7030705@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---nextPart1506055.CFrTTXEtxq
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Dean Hildebrand (seattleplus@gmail.com) wrote on 3 June 2009 17:28:
+ >Trond Myklebust wrote:
+ >> On Wed, 2009-06-03 at 13:22 -0300, Carlos Carvalho wrote:
+ >>   
+ >>> Trond Myklebust (trond.myklebust@fys.uio.no) wrote on 2 June 2009 13:27:
+ >>>  >Write gathering relies on waiting an arbitrary length of time in order
+ >>>  >to see if someone is going to send another write. The protocol offers no
+ >>>  >guidance as to how long that wait should be, and so (at least on the
+ >>>  >Linux server) we've coded in a hard wait of 10ms if and only if we see
+ >>>  >that something else has the file open for writing.
+ >>>  >One problem with the Linux implementation is that the "something else"
+ >>>  >could be another nfs server thread that happens to be in nfsd_write(),
+ >>>  >however it could also be another open NFSv4 stateid, or a NLM lock, or a
+ >>>  >local process that has the file open for writing.
+ >>>  >Another problem is that the nfs server keeps a record of the last file
+ >>>  >that was accessed, and also waits if it sees you are writing again to
+ >>>  >that same file. Of course it has no idea if this is truly a parallel
+ >>>  >write, or if it just happens that you are writing again to the same file
+ >>>  >using O_SYNC...
+ >>>
+ >>> I think the decision to write or wait doesn't belong to the nfs
+ >>> server; it should just send the writes immediately. It's up to the
+ >>> fs/block/device layers to do the gathering. I understand that the
+ >>> client should try to do the gathering before sending the request to
+ >>> the wire
+ >>>     
+ >Just to be clear, the linux NFS server does not gather the writes.  
+ >Writes are passed immediately to the fs.
 
-On Wednesday 03 June 2009 19:59:09 Chuck Lever wrote:
-> On Jun 3, 2009, at 6:44 PM, Mike Frysinger wrote:
-> > On Wednesday 03 June 2009 11:14:44 Steve Dickson wrote:
-> >> Mike Frysinger wrote:
-> >>> the libtirpc package is self described as a "standalone package".  i
-> >>> wonder how far that actually goes.  wrt NIS, it requires the
-> >>> system C
-> >>> library to provide NIS functionality or you get a build failure in
-> >>> a few
-> >>> files.  would be nice if libtirpc were usable without any NIS
-> >>> baggage at
-> >>> all.
-> >>
-> >> NIS used RPC procedures to communicate. As it stands today
-> >> NIS is currently using the RPC procedures glibc. In the
-> >> future there is a very good chance that NIS will start
-> >> using the RPC procedures in libtirpc especially if
-> >> IPV6 support is needed...
-> >>
-> >> So I'm a bit confused on what you mean by "NIS baggage"
-> >> in the libtirpc package.
-> >
-> > you cannot build libtirpc on a system that doesnt provide NIS
-> > functionality.
-> > realistic RPC usage today is NFS related services only (i.e. a NFS
-> > client
-> > mounting a share on a NFS server).
->
-> Mike, it would help if you could provide the build output so we can
-> see exactly what's failing.
+Ah! That's much better.
 
-libtirpc does not provide rpcsvc/nis.h
--mike
+ >nfsd simply waits 10ms before 
+ >sync'ing the writes to disk.  This allows the underlying file system 
+  ****
+ >time to do the gathering and sync data in larger chunks.
 
---nextPart1506055.CFrTTXEtxq
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
+OK, all is perfectly fine then.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.11 (GNU/Linux)
+Since syncs seem to be a requirement of the protocol, perhaps the 10ms
+delay could be made tunable to allow admins more flexibility. For
+example, if we change other timeouts we could adjust the nfs sync one
+accordingly. Could be an option to nfsd or, better, a variable in /proc.
 
-iQIcBAABAgAGBQJKJxFlAAoJEEFjO5/oN/WBVmoQAMbvVAyhTvwJrl6cdMiPAf1o
-aGWnfewbGyWwunqnHLRRe+ZzfGsHzmVu4jjR1rLoI7EDLBtOXBmyl2PiN9s0QYhV
-YZKiGg2AMCcPD9c/NfX7Dk4U5N+meAk4UxzYQXz9XbGoNVfN5NlbMMPnS3wdfj2M
-zYob1Xtfhkg9eNFC6KvIM4gcEBx+FYRsK1gbYR3EI5P3SgUUMlZSXssficLUhzFc
-goSWa8vkxQRalsaWUEtgYdy9ibZ1UxkbbA+ocBc/jeiLyvTGJx+8hnvbIyXe1ZdU
-TiYewMxgVvWYxOPAu9/8mbvtwY9kRB6FXgSKcXg6VSTZIJHgadf32lpzEOXG4/am
-Ow5GXga/ztyC9m7rd+nYTNkML/8kGOP4YR6C93Vy7XT1Tf3HzxgD0sX9FVAXtOf1
-j2N7akDQuhSfq5WCaVFpaSrKOZGBFyA0DT+qxjv2ZnD09hHimd9vn8WkxSI0a2ik
-1L/BZU3vFkmH+SlaSxXqI1g/JdfN4OmCWGqv0HeUCiYpqD6+Hof8K/mkMJVPTksw
-4oLaeryDPKWUyEmobKkP/dmbzM/vzlddX7Ph1ymu8QuI9bQ8v4n6g3yLSG12y6Tc
-XtSe08iMy6ubFulDVWcW3qjjkZqAjFrMM6yuQu2US4okyVZrDLBGbwHrZETQnNsG
-xVz4FjJqHgUt8a0jqpC7
-=LmGS
------END PGP SIGNATURE-----
-
---nextPart1506055.CFrTTXEtxq--
+Thanks Dean and Trond for the explanations.
