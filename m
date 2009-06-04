@@ -1,75 +1,65 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH] nfs-utils: fix endptr check in closeall (try #4)
-Date: Thu,  4 Jun 2009 07:53:07 -0400
-Message-ID: <1244116387-19827-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
-	trond.myklebust@fys.uio.no
-To: steved@redhat.com
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: libtirpc and nis
+Date: Thu, 04 Jun 2009 08:06:59 -0400
+Message-ID: <1244117219.5203.12.camel@heimdal.trondhjem.org>
+References: <200906031002.38551.vapier@gentoo.org>
+	 <200906031844.34398.vapier@gentoo.org>
+	 <047CD688-878B-4504-BD59-3C0B65C1B631@oracle.com>
+	 <200906032012.21876.vapier@gentoo.org>  <4A279C05.9030108@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Mike Frysinger <vapier@gentoo.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	libtirpc <libtirpc-devel@lists.sourceforge.net>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:53166 "EHLO mx2.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:58205 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757187AbZFDLxR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2009 07:53:17 -0400
+	id S1753941AbZFDMHP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2009 08:07:15 -0400
+In-Reply-To: <4A279C05.9030108-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The closeall function is broken in such a way that it almost never
-closes any file descriptors. It's calling strtol on the text
-representation of the file descriptor, and then checking to see if the
-value of *endptr is not '\0' before trying to close the file. This check
-is wrong.
+On Thu, 2009-06-04 at 06:03 -0400, Steve Dickson wrote:
+> 
+> Mike Frysinger wrote:
+> > On Wednesday 03 June 2009 19:59:09 Chuck Lever wrote:
+> >> On Jun 3, 2009, at 6:44 PM, Mike Frysinger wrote:
+> >>> On Wednesday 03 June 2009 11:14:44 Steve Dickson wrote:
+> >>>> Mike Frysinger wrote:
+> >>>>> the libtirpc package is self described as a "standalone package".  i
+> >>>>> wonder how far that actually goes.  wrt NIS, it requires the
+> >>>>> system C
+> >>>>> library to provide NIS functionality or you get a build failure in
+> >>>>> a few
+> >>>>> files.  would be nice if libtirpc were usable without any NIS
+> >>>>> baggage at
+> >>>>> all.
+> >>>> NIS used RPC procedures to communicate. As it stands today
+> >>>> NIS is currently using the RPC procedures glibc. In the
+> >>>> future there is a very good chance that NIS will start
+> >>>> using the RPC procedures in libtirpc especially if
+> >>>> IPV6 support is needed...
+> >>>>
+> >>>> So I'm a bit confused on what you mean by "NIS baggage"
+> >>>> in the libtirpc package.
+> >>> you cannot build libtirpc on a system that doesnt provide NIS
+> >>> functionality.
+> >>> realistic RPC usage today is NFS related services only (i.e. a NFS
+> >>> client
+> >>> mounting a share on a NFS server).
+> >> Mike, it would help if you could provide the build output so we can
+> >> see exactly what's failing.
+> > 
+> > libtirpc does not provide rpcsvc/nis.h
+> 
+> Hmm... I wonder what it would take to incorporate that file into
+> libitrpc... 
 
-When strtol returns an endptr that points to a NULL byte, that indicates
-that the conversion was completely successful. I believe this check
-should instead be requiring that endptr is pointing to '\0' before
-closing the fd.
+rpcgen support. We already have the nis.x file in glibc's copy of the
+rpcsvc directory.
 
-Also, fix up the function to check for conversion errors from strtol. If
-one occurs, just skip the close on that entry.
-
-Finally, as Trond pointed out, it's unlikely that readdir will return a
-blank string in d_name but that situation wouldn't be detected by the
-current code. This patch adds such a check and skips the close if it
-occurs.
-
-Reported-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- support/nfs/closeall.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/support/nfs/closeall.c b/support/nfs/closeall.c
-index cc7fb3b..38fb162 100644
---- a/support/nfs/closeall.c
-+++ b/support/nfs/closeall.c
-@@ -7,19 +7,24 @@
- #include <unistd.h>
- #include <stdlib.h>
- #include <dirent.h>
-+#include <errno.h>
- 
- void
- closeall(int min)
- {
-+	char *endp;
-+	long n;
- 	DIR *dir = opendir("/proc/self/fd");
-+
- 	if (dir != NULL) {
- 		int dfd = dirfd(dir);
- 		struct dirent *d;
- 
- 		while ((d = readdir(dir)) != NULL) {
--			char *endp;
--			long n = strtol(d->d_name, &endp, 10);
--			if (*endp != '\0' && n >= min && n != dfd)
-+			errno = 0;
-+			n = strtol(d->d_name, &endp, 10);
-+			if (!errno && *endp == '\0' && endp != d->d_name &&
-+			    n >= min && n != dfd)
- 				(void) close(n);
- 		}
- 		closedir(dir);
--- 
-1.6.0.6
+Trond
 
