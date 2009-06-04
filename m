@@ -1,77 +1,244 @@
-From: carlos@fisica.ufpr.br (Carlos Carvalho)
-Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
- flushing
-Date: Wed, 3 Jun 2009 23:16:34 -0300
-Message-ID: <18983.11906.492608.778104@fisica.ufpr.br>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
-	<5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
-	<49FA0CE8.9090706@redhat.com>
-	<1241126587.15476.62.camel@heimdal.trondhjem.org>
-	<OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
-	<1243615595.7155.48.camel@heimdal.trondhjem.org>
-	<OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
-	<1243618500.7155.56.camel@heimdal.trondhjem.org>
-	<ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
-	<1243686363.5209.16.camel@heimdal.trondhjem.org>
-	<ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
-	<BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
-	<1243963631.4868.124.camel@heimdal.trondhjem.org>
-	<18982.41770.293636.786518@fisica.ufpr.br>
-	<1244049027.5603.5.camel@heimdal.trondhjem.org>
-	<4A26EAE3.7030705@gmail.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [pnfs] [RFC 04/39] nfs41: minorversion support for nfs4_{init,
+ destroy}_callback
+Date: Wed, 03 Jun 2009 22:39:58 -0400
+Message-ID: <1244083198.5603.354.camel@heimdal.trondhjem.org>
+References: <49FA3180.5030404@panasas.com>
+	 <1241133576-415-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fisica.ufpr.br ([200.17.209.129]:25126 "EHLO fisica.ufpr.br"
+Received: from mx2.netapp.com ([216.240.18.37]:43888 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751647AbZFDCQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Jun 2009 22:16:35 -0400
-In-Reply-To: <4A26EAE3.7030705@gmail.com>
+	id S1753271AbZFDCqp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Jun 2009 22:46:45 -0400
+In-Reply-To: <1241133576-415-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dean Hildebrand (seattleplus@gmail.com) wrote on 3 June 2009 17:28:
- >Trond Myklebust wrote:
- >> On Wed, 2009-06-03 at 13:22 -0300, Carlos Carvalho wrote:
- >>   
- >>> Trond Myklebust (trond.myklebust@fys.uio.no) wrote on 2 June 2009 13:27:
- >>>  >Write gathering relies on waiting an arbitrary length of time in order
- >>>  >to see if someone is going to send another write. The protocol offers no
- >>>  >guidance as to how long that wait should be, and so (at least on the
- >>>  >Linux server) we've coded in a hard wait of 10ms if and only if we see
- >>>  >that something else has the file open for writing.
- >>>  >One problem with the Linux implementation is that the "something else"
- >>>  >could be another nfs server thread that happens to be in nfsd_write(),
- >>>  >however it could also be another open NFSv4 stateid, or a NLM lock, or a
- >>>  >local process that has the file open for writing.
- >>>  >Another problem is that the nfs server keeps a record of the last file
- >>>  >that was accessed, and also waits if it sees you are writing again to
- >>>  >that same file. Of course it has no idea if this is truly a parallel
- >>>  >write, or if it just happens that you are writing again to the same file
- >>>  >using O_SYNC...
- >>>
- >>> I think the decision to write or wait doesn't belong to the nfs
- >>> server; it should just send the writes immediately. It's up to the
- >>> fs/block/device layers to do the gathering. I understand that the
- >>> client should try to do the gathering before sending the request to
- >>> the wire
- >>>     
- >Just to be clear, the linux NFS server does not gather the writes.  
- >Writes are passed immediately to the fs.
+On Fri, 2009-05-01 at 02:19 +0300, Benny Halevy wrote:
+> move nfs4_init_callback into nfs4_init_client_minor_version
+> and nfs4_destroy_callback into nfs4_clear_client_minor_version
+> 
+> as these need to happen also when auto-negotiating the minorversion
+> once the callback service for nfs41 becomes different than for nfs4.0
+> 
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [nfs41: Fix checkpatch warning]
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/callback.c |   67 ++++++++++++++++++++++++++++++++++++++---------------
+>  fs/nfs/callback.h |    2 +-
+>  fs/nfs/client.c   |   21 +++++-----------
+>  3 files changed, 56 insertions(+), 34 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index a886e69..3926046 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -59,7 +59,7 @@ module_param_call(callback_tcpport, param_set_port, param_get_int,
+>   * This is the callback kernel thread.
+>   */
+>  static int
+> -nfs_callback_svc(void *vrqstp)
+> +nfs4_callback_svc(void *vrqstp)
+>  {
+>  	int err, preverr = 0;
+>  	struct svc_rqst *rqstp = vrqstp;
+> @@ -97,20 +97,12 @@ nfs_callback_svc(void *vrqstp)
+>  }
+>  
+>  /*
+> - * Bring up the callback thread if it is not already up.
+> + * Prepare to bring up the NFSv4 callback service
+>   */
+> -int nfs_callback_up(void)
+> +struct svc_rqst *
+> +nfs4_callback_up(struct svc_serv *serv)
+>  {
+> -	struct svc_serv *serv = NULL;
+> -	int ret = 0;
+> -
+> -	mutex_lock(&nfs_callback_mutex);
+> -	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+> -		goto out;
+> -	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+> -	ret = -ENOMEM;
+> -	if (!serv)
+> -		goto out_err;
+> +	int ret;
+>  
+>  	ret = svc_create_xprt(serv, "tcp", PF_INET,
+>  				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+> @@ -131,18 +123,55 @@ int nfs_callback_up(void)
+>  		goto out_err;
+>  #endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+>  
+> -	nfs_callback_info.rqst = svc_prepare_thread(serv, &serv->sv_pools[0]);
+> -	if (IS_ERR(nfs_callback_info.rqst)) {
+> -		ret = PTR_ERR(nfs_callback_info.rqst);
+> -		nfs_callback_info.rqst = NULL;
+> +	return svc_prepare_thread(serv, &serv->sv_pools[0]);
+> +
+> +out_err:
+> +	if (ret == 0)
+> +		ret = -ENOMEM;
+> +	return ERR_PTR(ret);
+> +}
+> +
+> +/*
+> + * Bring up the callback thread if it is not already up.
+> + */
+> +int nfs_callback_up(u32 minorversion, void *args)
+                                         ^^^^^^^^^^
+There is no reason not to type check the arguments here. Please fix...
 
-Ah! That's much better.
+> +{
+> +	struct svc_serv *serv = NULL;
+> +	struct svc_rqst *rqstp;
+> +	int (*callback_svc)(void *vrqstp);
+> +	char svc_name[12];
+> +	int ret = 0;
+> +
+> +	mutex_lock(&nfs_callback_mutex);
+> +	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+> +		goto out;
+> +	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+> +	if (!serv) {
+> +		ret = -ENOMEM;
+> +		goto out_err;
+> +	}
+> +
+> +	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
+> +	 * need to monitor and control them both */
+> +	if (!minorversion) {
+> +		rqstp = nfs4_callback_up(serv);
+> +		callback_svc = nfs4_callback_svc;
+> +	} else {
+> +		BUG();	/* for now */
+> +	}
+> +
+> +	if (IS_ERR(rqstp)) {
+> +		ret = PTR_ERR(rqstp);
+>  		goto out_err;
+>  	}
+>  
+>  	svc_sock_update_bufs(serv);
+>  
+> -	nfs_callback_info.task = kthread_run(nfs_callback_svc,
+> +	sprintf(svc_name, "nfsv4.%u-svc", minorversion);
+> +	nfs_callback_info.rqst = rqstp;
+> +	nfs_callback_info.task = kthread_run(callback_svc,
+>  					     nfs_callback_info.rqst,
+> -					     "nfsv4-svc");
+> +					     svc_name);
+>  	if (IS_ERR(nfs_callback_info.task)) {
+>  		ret = PTR_ERR(nfs_callback_info.task);
+>  		svc_exit_thread(nfs_callback_info.rqst);
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index e110e28..7f12e65 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -63,7 +63,7 @@ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args, struct cb_getat
+>  extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy);
+>  
+>  #ifdef CONFIG_NFS_V4
+> -extern int nfs_callback_up(void);
+> +extern int nfs_callback_up(u32 minorversion, void *args);
+>  extern void nfs_callback_down(void);
+>  #else
+>  #define nfs_callback_up()	(0)
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index d9657d4..df2b40d 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -47,9 +47,6 @@
+>  #include "internal.h"
+>  #include "fscache.h"
+>  
+> -static int nfs4_init_callback(struct nfs_client *);
+> -static void nfs4_destroy_callback(struct nfs_client *);
+> -
+>  #define NFSDBG_FACILITY		NFSDBG_CLIENT
+>  
+>  static DEFINE_SPINLOCK(nfs_client_lock);
+> @@ -124,9 +121,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  
+>  	clp->rpc_ops = cl_init->rpc_ops;
+>  
+> -	if (nfs4_init_callback(clp) < 0)
+> -		goto error_2;
+> -
+>  	atomic_set(&clp->cl_count, 1);
+>  	clp->cl_cons_state = NFS_CS_INITING;
+>  
+> @@ -136,7 +130,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  	if (cl_init->hostname) {
+>  		clp->cl_hostname = kstrdup(cl_init->hostname, GFP_KERNEL);
+>  		if (!clp->cl_hostname)
+> -			goto error_3;
+> +			goto error_cleanup;
+>  	}
+>  
+>  	INIT_LIST_HEAD(&clp->cl_superblocks);
+> @@ -161,9 +155,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+>  
+>  	return clp;
+>  
+> -error_3:
+> -	nfs4_destroy_callback(clp);
+> -error_2:
+> +error_cleanup:
+>  	kfree(clp);
+>  error_0:
+>  	return NULL;
+> @@ -207,6 +199,8 @@ static void nfs4_clear_client_minor_version(struct nfs_client *clp)
+>  
+>  	clp->cl_call_sync = _nfs4_call_sync;
+>  #endif /* CONFIG_NFS_V4_1 */
+> +
+> +	nfs4_destroy_callback(clp);
+>  }
+>  
+>  /*
+> @@ -225,8 +219,6 @@ static void nfs_free_client(struct nfs_client *clp)
+>  	if (!IS_ERR(clp->cl_rpcclient))
+>  		rpc_shutdown_client(clp->cl_rpcclient);
+>  
+> -	nfs4_destroy_callback(clp);
+> -
+>  	if (clp->cl_machine_cred != NULL)
+>  		put_rpccred(clp->cl_machine_cred);
+>  
+> @@ -1104,7 +1096,8 @@ static int nfs4_init_callback(struct nfs_client *clp)
+>  	int error;
+>  
+>  	if (clp->rpc_ops->version == 4) {
+> -		error = nfs_callback_up();
+> +		error = nfs_callback_up(clp->cl_minorversion,
+> +					clp->cl_rpcclient->cl_xprt);
+>  		if (error < 0) {
+>  			dprintk("%s: failed to start callback. Error = %d\n",
+>  				__func__, error);
+> @@ -1139,7 +1132,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+>  	}
+>  #endif /* CONFIG_NFS_V4_1 */
+>  
+> -	return 0;
+> +	return nfs4_init_callback(clp);
+>  }
+>  
+>  /*
 
- >nfsd simply waits 10ms before 
- >sync'ing the writes to disk.  This allows the underlying file system 
-  ****
- >time to do the gathering and sync data in larger chunks.
 
-OK, all is perfectly fine then.
 
-Since syncs seem to be a requirement of the protocol, perhaps the 10ms
-delay could be made tunable to allow admins more flexibility. For
-example, if we change other timeouts we could adjust the nfs sync one
-accordingly. Could be an option to nfsd or, better, a variable in /proc.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Thanks Dean and Trond for the explanations.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
