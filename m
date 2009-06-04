@@ -1,333 +1,200 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 06/10] nfs-utils: convert nfssvc_setfds to use getaddrinfo
-Date: Thu, 4 Jun 2009 16:17:25 -0400
-Message-ID: <8CBDF84A-D188-4D25-8211-A18AD5EC65A7@oracle.com>
-References: <1244058763-10352-1-git-send-email-jlayton@redhat.com> <1244058763-10352-7-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [pnfs] [RFC 11/39] nfs41: Backchannel callback service helper
+ routines
+Date: Thu, 04 Jun 2009 16:20:42 -0400
+Message-ID: <1244146842.5203.101.camel@heimdal.trondhjem.org>
+References: <49FA3180.5030404@panasas.com>
+	 <1241133655-656-1-git-send-email-bhalevy@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:57061 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751732AbZFDUSh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2009 16:18:37 -0400
-In-Reply-To: <1244058763-10352-7-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:20815 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752462AbZFDUUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2009 16:20:41 -0400
+In-Reply-To: <1241133655-656-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 3, 2009, at 3:52 PM, Jeff Layton wrote:
-
-> Convert nfssvc_setfds to use getaddrinfo. Change the args that it  
-> takes
-> and fix up nfssvc function to pass in the proper args. The things that
-> nfssvc has to do to call the new nfssvc_setfds is a little cumbersome
-> for now, but that will eventually be cleaned up in a later patch.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+On Fri, 2009-05-01 at 02:20 +0300, Benny Halevy wrote:
+> From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> Executes the backchannel task on the RPC state machine using
+> the existing open connection previously established by the client.
+> 
+> Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+> 
+> nfs41: Add bc_svc.o to sunrpc Makefile.
+> 
+> [nfs41: bc_send() does not need to be exported outside RPC module]
+> [nfs41: xprt_free_bc_request() need not be exported outside RPC module]
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
-> support/nfs/nfssvc.c |  191 +++++++++++++++++++++++++++++++++ 
-> +----------------
-> utils/nfsd/nfsd.c    |   18 +++--
-> 2 files changed, 140 insertions(+), 69 deletions(-)
->
-> diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
-> index 8b15c4d..168414c 100644
-> --- a/support/nfs/nfssvc.c
-> +++ b/support/nfs/nfssvc.c
-> @@ -10,7 +10,9 @@
-> #include <config.h>
-> #endif
->
-> +#include <sys/types.h>
-> #include <sys/socket.h>
-> +#include <netdb.h>
-> #include <netinet/in.h>
-> #include <arpa/inet.h>
-> #include <unistd.h>
-> @@ -53,85 +55,148 @@ nfssvc_inuse(void)
-> 	return 0;
-> }
->
-> -static void
-> -nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
-> +static int
-> +nfssvc_setfds(const struct addrinfo *hints, const char *node, const  
-> char *port)
-> {
-> -	int fd, n, on=1;
-> +	int fd, on = 1, fac = L_ERROR;
-> +	int sockfd = -1, rc = 0;
-> 	char buf[BUFSIZ];
+>  include/linux/sunrpc/bc_xprt.h |    3 +
+>  net/sunrpc/Makefile            |    2 +-
+>  net/sunrpc/backchannel_rqst.c  |    1 -
+>  net/sunrpc/bc_svc.c            |   80 ++++++++++++++++++++++++++++++++++++++++
+>  net/sunrpc/xprtsock.c          |    3 +
+>  5 files changed, 87 insertions(+), 2 deletions(-)
+>  create mode 100644 net/sunrpc/bc_svc.c
+> 
+> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+> index 1c1746a..3016c00 100644
+> --- a/include/linux/sunrpc/bc_xprt.h
+> +++ b/include/linux/sunrpc/bc_xprt.h
+> @@ -29,12 +29,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+>  
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/xprt.h>
+> +#include <linux/sunrpc/sched.h>
+>  
+>  #ifdef CONFIG_NFS_V4_1
+>  struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt);
+>  void xprt_free_bc_request(struct rpc_rqst *req);
+>  int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
+>  void xprt_destroy_backchannel(struct rpc_xprt *, int max_reqs);
+> +void bc_release_request(struct rpc_task *);
+> +int bc_send(struct rpc_rqst *req);
+>  #else /* CONFIG_NFS_V4_1 */
+>  static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
+>  					 unsigned int min_reqs)
+> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+> index 4a01f96..db73fd2 100644
+> --- a/net/sunrpc/Makefile
+> +++ b/net/sunrpc/Makefile
+> @@ -13,6 +13,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+>  	    rpcb_clnt.o timer.o xdr.o \
+>  	    sunrpc_syms.o cache.o rpc_pipe.o \
+>  	    svc_xprt.o
+> -sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o
+> +sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o bc_svc.o
+>  sunrpc-$(CONFIG_PROC_FS) += stats.o
+>  sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+> index 7d7708a..92fb3bd 100644
+> --- a/net/sunrpc/backchannel_rqst.c
+> +++ b/net/sunrpc/backchannel_rqst.c
+> @@ -265,6 +265,5 @@ void xprt_free_bc_request(struct rpc_rqst *req)
+>  	list_add(&req->rq_bc_pa_list, &xprt->bc_pa_list);
+>  	spin_unlock_bh(&xprt->bc_pa_lock);
+>  }
+> -EXPORT_SYMBOL(xprt_free_bc_request);
 
-Same comment as earlier; BUFSIZ is probably unnecessarily large.
+Err.... That's random... What is there in this patch that suddenly makes
+the export unnecessary?
 
-> -	int udpfd = -1, tcpfd = -1;
-> -	struct sockaddr_in sin;
-> -
-> -	if (nfssvc_inuse())
-> -		return;
-> +	struct addrinfo *addrhead = NULL, *addr;
-> +	char *proto, *family;
->
-> +	/*
-> +	 * if file can't be opened, then assume that it's not available and
-> +	 * that the caller should just fall back to the old nfsctl interface
-> + 	 */
-> 	fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> 	if (fd < 0)
-> -		return;
-> -	sin.sin_family = AF_INET;
-> -	sin.sin_port   = htons(port);
-> -	sin.sin_addr.s_addr =  inet_addr(haddr);
-> -
-> -	if (NFSCTL_UDPISSET(ctlbits)) {
-> -		udpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-> -		if (udpfd < 0) {
-> -			xlog(L_ERROR, "unable to create UDP socket: "
-> -				"errno %d (%m)", errno);
-> -			exit(1);
-> -		}
-> -		if (bind(udpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
-> -			xlog(L_ERROR, "unable to bind UDP socket: "
-> -				"errno %d (%m)", errno);
-> -			exit(1);
-> -		}
-> +		return 0;
+>  #endif /* CONFIG_NFS_V4_1 */
+> diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
+> new file mode 100644
+> index 0000000..b13f51d
+> --- /dev/null
+> +++ b/net/sunrpc/bc_svc.c
+> @@ -0,0 +1,80 @@
+> +/******************************************************************************
 > +
-> +	switch(hints->ai_family) {
-> +	case AF_INET:
-> +		family = "inet";
-> +		break;
-> +	default:
-> +		xlog(L_ERROR, "Unknown address family specified: %d\n",
-> +				hints->ai_family);
-> +		rc = EAFNOSUPPORT;
-> +		goto error;
-> 	}
->
-> -	if (NFSCTL_TCPISSET(ctlbits)) {
-> -		tcpfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-> -		if (tcpfd < 0) {
-> -			xlog(L_ERROR, "unable to createt tcp socket: "
-> -				"errno %d (%m)", errno);
-> -			exit(1);
-> +	rc = getaddrinfo(node, port, hints, &addrhead);
-> +	if (rc == EAI_NONAME && !strcmp(port, "nfs")) {
-> +		snprintf(buf, BUFSIZ, "%d", NFS_PORT);
-> +		rc = getaddrinfo(node, buf, hints, &addrhead);
-> +	}
+> +(c) 2007 Network Appliance, Inc.  All Rights Reserved.
 
-So, I wonder about this semantic.  Should rpc.nfsd fail outright if  
-the specified port isn't usable?  If it succeeds, but silently creates  
-a listener on a port that wasn't specified, that might be a little  
-surprising to some administrators.
-
-Also, passing sizeof(buf) instead of BUFSIZ might be more maintainable.
+More references to historic entities...
 
 > +
-> +	if (rc != 0) {
-> +		xlog(L_ERROR, "unable to resolve %s:%s to %s address: "
-> +				"%s", node ? node : "ANYADDR", port, family,
-> +				rc == EAI_SYSTEM ? strerror(errno) :
-> +					gai_strerror(rc));
-> +		goto error;
-> +	}
+> +Network Appliance provides this source code under the GPL v2 License.
+> +The GPL v2 license is available at
+> +http://opensource.org/licenses/gpl-license.php.
 > +
-> +	addr = addrhead;
-> +	while(addr) {
-> +		/* skip non-TCP / non-UDP sockets */
-> +		switch(addr->ai_protocol) {
-> +		case IPPROTO_UDP:
-> +			proto = "UDP";
-> +			break;
-> +		case IPPROTO_TCP:
-> +			proto = "TCP";
-> +			break;
-> +		default:
-> +			addr = addr->ai_next;
-> +			continue;
-> 		}
-> -		if (setsockopt(tcpfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))  
-> < 0) {
-> -			xlog(L_ERROR, "unable to set SO_REUSEADDR: "
-> -				"errno %d (%m)", errno);
-> -			exit(1);
+> +THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+> +"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+> +LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+> +A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+> +CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+> +EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+> +PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+> +PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+> +LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+> +NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+> +SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 > +
-> +		xlog(D_GENERAL, "Creating %s %s socket.", family, proto);
+> +******************************************************************************/
 > +
-> +		/* open socket and prepare to hand it off to kernel */
-> +		sockfd = socket(addr->ai_family, addr->ai_socktype,
-> +				addr->ai_protocol);
-> +		if (sockfd < 0) {
-> +			xlog(L_ERROR, "unable to create %s %s socket: "
-> +				"errno %d (%m)", family, proto, errno);
-> +			rc = errno;
-> +			goto error;
-> 		}
-> -		if (bind(tcpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
-> -			xlog(L_ERROR, "unable to bind TCP socket: "
-> -				"errno %d (%m)", errno);
-> -			exit(1);
-> +		if (addr->ai_protocol == IPPROTO_TCP &&
-> +		    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on,  
-> sizeof(on))) {
-> +			xlog(L_ERROR, "unable to set SO_REUSEADDR on %s "
-> +				"socket: errno %d (%m)", family, errno);
-> +			rc = errno;
-> +			goto error;
-> +		}
-> +		if (bind(sockfd, addr->ai_addr, addr->ai_addrlen)) {
-> +			xlog(L_ERROR, "unable to bind %s %s socket: "
-> +				"errno %d (%m)", family, proto, errno);
-> +			rc = errno;
-> +			goto error;
-> 		}
-> -		if (listen(tcpfd, 64) < 0){
-> +		if (addr->ai_protocol == IPPROTO_TCP && listen(sockfd, 64)) {
-> 			xlog(L_ERROR, "unable to create listening socket: "
-> 				"errno %d (%m)", errno);
-> -			exit(1);
-> +			rc = errno;
-> +			goto error;
-> 		}
-> -	}
-> -	if (udpfd >= 0) {
-> -		snprintf(buf, BUFSIZ,"%d\n", udpfd);
-> -		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-> -			xlog(L_ERROR,
-> -			       "writing fds to kernel failed: errno %d (%m)",
-> -			       errno);
-> -		}
-> -		close(fd);
-> -		fd = -1;
-> -	}
-> -	if (tcpfd >= 0) {
+> +/*
+> + * The NFSv4.1 callback service helper routines.
+> + * They implement the transport level processing required to send the
+> + * reply over an existing open connection previously established by the client.
+> + */
 > +
-> 		if (fd < 0)
-> 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> -		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
+> +#if defined(CONFIG_NFS_V4_1)
 > +
-> +		if (fd < 0) {
-> +			xlog(L_ERROR, "couldn't open ports file: errno "
-> +				      "%d (%m)", errno);
-> +			goto error;
-> +		}
-> +		snprintf(buf, BUFSIZ, "%d\n", sockfd);
-> 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-> -			xlog(L_ERROR,
-> -			       "writing fds to kernel failed: errno %d (%m)",
-> -			       errno);
-> +			/*
-> +			 * this error may be common on older kernels that don't
-> +			 * support IPv6, so turn into a debug message.
-> +			 */
-> +			if (errno == EAFNOSUPPORT)
-> +				fac = D_ALL;
-> +			xlog(fac, "writing fd to kernel failed: errno %d (%m)",
-> +				  errno);
-> +			rc = errno;
-> +			goto error;
-> 		}
-> +		close(fd);
-> +		close(sockfd);
-> +		sockfd = fd = -1;
-> +		addr = addr->ai_next;
-> 	}
-> -	close(fd);
-> +error:
-> +	if (fd >= 0)
-> +		close(fd);
-> +	if (sockfd >= 0)
-> +		close(sockfd);
-> +	if (addrhead)
-> +		freeaddrinfo(addrhead);
-> +	return rc;
-> +}
->
-> -	return;
-> +static int
-> +nfssvc_set_sockets(const int family, const unsigned int protobits,
-> +		   const char *host, const char *port)
+> +#include <linux/module.h>
+> +
+> +#include <linux/sunrpc/xprt.h>
+> +#include <linux/sunrpc/sched.h>
+> +#include <linux/sunrpc/bc_xprt.h>
+> +
+> +#define RPCDBG_FACILITY	RPCDBG_SVCDSP
+> +
+> +void bc_release_request(struct rpc_task *task)
 > +{
-> +	struct addrinfo hints = { .ai_flags = AI_PASSIVE | AI_ADDRCONFIG };
+> +	struct rpc_rqst *req = task->tk_rqstp;
 > +
-> +	hints.ai_family = family;
+> +	dprintk("RPC:       bc_release_request: task= %p\n", task);
 > +
-> +	if (!NFSCTL_ANYPROTO(protobits))
-> +		return EPROTOTYPE;
-> +	else if (!NFSCTL_UDPISSET(protobits))
-> +		hints.ai_protocol = IPPROTO_TCP;
-> +	else if (!NFSCTL_TCPISSET(protobits))
-> +		hints.ai_protocol = IPPROTO_UDP;
+> +	/*
+> +	 * Release this request only if it's a backchannel
+> +	 * preallocated request
+> +	 */
+> +	if (!bc_prealloc(req))
+> +		return;
+> +	xprt_free_bc_request(req);
+> +}
 > +
-> +	return nfssvc_setfds(&hints, host, port);
-> }
+> +/* Empty callback ops */
+> +static const struct rpc_call_ops nfs41_callback_ops = {
+> +};
 > +
-> static void
-> nfssvc_versbits(unsigned int ctlbits, int minorvers4)
-> {
-> @@ -169,13 +234,17 @@ nfssvc(int port, int nrservs, unsigned int  
-> versbits, int minorvers4,
-> {
-> 	struct nfsctl_arg	arg;
-> 	int fd;
-> +	char portstr[BUFSIZ];
-
-Ditto.
-
-> 	/* Note: must set versions before fds so that
-> 	 * the ports get registered with portmap against correct
-> 	 * versions
-> 	 */
-> -	nfssvc_versbits(versbits, minorvers4);
-> -	nfssvc_setfds(port, protobits, haddr);
-> +	if (!nfssvc_inuse()) {
-> +		nfssvc_versbits(versbits, minorvers4);
-> +		snprintf(portstr, BUFSIZ, "%d", port);
-> +		nfssvc_set_sockets(AF_INET, protobits, haddr, portstr);
+> +
+> +/*
+> + * Send the callback reply
+> + */
+> +int bc_send(struct rpc_rqst *req)
+> +{
+> +	struct rpc_task *task;
+> +	int ret;
+> +
+> +	dprintk("RPC:       bc_send req= %p\n", req);
+> +	task = rpc_run_bc_task(req, &nfs41_callback_ops);
+> +	if (IS_ERR(task))
+> +		ret = PTR_ERR(task);
+> +	else {
+> +		BUG_ON(atomic_read(&task->tk_count) != 1);
+> +		ret = task->tk_status;
+> +		rpc_put_task(task);
 > +	}
->
-> 	fd = open(NFSD_THREAD_FILE, O_WRONLY);
-> 	if (fd < 0)
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index 6dfea67..e9d0bf9 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -76,14 +76,16 @@ main(int argc, char **argv)
-> 			xlog_stderr(1);
-> 			break;
-> 		case 'H':
-> -			if (inet_addr(optarg) != INADDR_NONE) {
-> -				haddr = strdup(optarg);
-> -			} else if ((hp = gethostbyname(optarg)) != NULL) {
-> -				haddr = inet_ntoa((*(struct in_addr*)(hp->h_addr_list[0])));
-> -			} else {
-> -				fprintf(stderr, "%s: Unknown hostname: %s\n",
-> -					progname, optarg);
-> -				usage(progname);
-> +			/*
-> +			 * for now, this only handles one -H option. Use the
-> +			 * last one specified.
-> +			 */
-> +			free(haddr);
-> +			haddr = strdup(optarg);
-> +			if (!haddr) {
-> +				fprintf(stderr, "%s: unable to allocate "
-> +					"memory.\n", progname);
-> +				exit(1);
+> +	return ret;
+> +	dprintk("RPC:       bc_send ret= %d \n", ret);
+> +}
+> +
+> +#endif /* CONFIG_NFS_V4_1 */
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 403ebda..5bf9e66 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -2145,6 +2145,9 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+>  	.buf_free		= rpc_free,
+>  	.send_request		= xs_tcp_send_request,
+>  	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+> +#if defined(CONFIG_NFS_V4_1)
+> +	.release_request	= bc_release_request,
+> +#endif /* CONFIG_NFS_V4_1 */
+>  	.close			= xs_tcp_shutdown,
+>  	.destroy		= xs_destroy,
+>  	.print_stats		= xs_tcp_print_stats,
 
-Aside: I've been trying to stick with EXIT_SUCCESS and EXIT_FAILURE  
-when calling exit(3).
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> 			}
-> 			break;
-> 		case 'P':	/* XXX for nfs-server compatibility */
-> -- 
-> 1.6.2.2
->
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
