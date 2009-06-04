@@ -1,134 +1,229 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 05/10] nfs-utils: move check for active knfsd to helper function
-Date: Thu, 4 Jun 2009 16:00:43 -0400
-Message-ID: <6D2FD4AF-B289-4EB5-B2CE-F83BA80514B1@oracle.com>
-References: <1244058763-10352-1-git-send-email-jlayton@redhat.com> <1244058763-10352-6-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Jeff Layton <jlayton@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [pnfs] [RFC 14/39] nfs41: Implement NFSv4.1 callback service
+ process.
+Date: Thu, 04 Jun 2009 16:18:01 -0400
+Message-ID: <1244146681.5203.99.camel@heimdal.trondhjem.org>
+References: <49FA3180.5030404@panasas.com>
+	 <1241133690-752-1-git-send-email-bhalevy@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:26208 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752292AbZFDUBH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2009 16:01:07 -0400
-In-Reply-To: <1244058763-10352-6-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:55099 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751257AbZFDUSA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2009 16:18:00 -0400
+In-Reply-To: <1241133690-752-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 3, 2009, at 3:52 PM, Jeff Layton wrote:
-
-> nfssvc_setfds checks to see if knfsd is already running. Move this
-> check to a helper function. Eventually the nfsd code will call this
-> directly.
-
-Some of this isn't your fault, but this code could use a little extra  
-clean up as you split it up, IMO.
-
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+On Fri, 2009-05-01 at 02:21 +0300, Benny Halevy wrote:
+> From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> nfs41_callback_up() initializes the necessary queues and creates the new
+> nfs41_callback_svc thread.  This thread executes the callback service which
+> waits for requests to arrive on the svc_serv->sv_cb_list.
+> 
+> NFS41_BC_MIN_CALLBACKS is set to 1 because we expect callbacks to not
+> cause substantial latency.
+> 
+> The actual processing of the callback will be implemented as a separate patch.
+> 
+> There is only one NFSv4.1 callback service.  The first caller of
+> nfs4_callback_up() creates the service, subsequent callers increment a
+> reference count on the service.  The service is destroyed when the last
+> caller invokes nfs_callback_down().
+> 
+> The transport needs to hold a reference to the callback service in order
+> to invoke it during callback processing.  Currently this reference is only
+> obtained when the service is first created.  This is incorrect, since
+> subsequent registrations for other transports will leave the xprt->serv
+> pointer uninitialized, leading to an oops when a callback arrives on
+> the "unreferenced" transport.
+> 
+> This patch fixes the problem by ensuring that a reference to the service
+> is saved in xprt->serv, either because the service is created by this
+> invocation to nfs4_callback_up() or by a prior invocation.
+> 
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [nfs41: Add a reference to svc_serv during callback service bring up]
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
-> support/nfs/nfssvc.c |   44 ++++++++++++++++++++++++++++++ 
-> +-------------
-> 1 files changed, 31 insertions(+), 13 deletions(-)
->
-> diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
-> index 3e6bd31..8b15c4d 100644
-> --- a/support/nfs/nfssvc.c
-> +++ b/support/nfs/nfssvc.c
-> @@ -24,28 +24,46 @@
-> #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
-> #define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
->
-> -static void
-> -nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
+>  fs/nfs/callback.c          |   83 ++++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfs/callback.h          |    7 ++++
+>  include/linux/sunrpc/svc.h |    2 +
+>  3 files changed, 90 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 3926046..9ee174c 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -17,6 +17,9 @@
+>  #include <linux/freezer.h>
+>  #include <linux/kthread.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+> +#if defined(CONFIG_NFS_V4_1)
+> +#include <linux/sunrpc/bc_xprt.h>
+> +#endif
+>  
+>  #include <net/inet_sock.h>
+>  
+> @@ -131,6 +134,69 @@ out_err:
+>  	return ERR_PTR(ret);
+>  }
+>  
+> +#if defined(CONFIG_NFS_V4_1)
 > +/*
-> + * Are there already sockets configured? If not, then it is safe to  
-> try to
-> + * open some and pass them through.
-> + *
-> + * Note: If the user explicitly asked for 'udp', then we should  
-> probably check
-> + * if that is open, and should open it if not. However we don't  
-> yet. All
-> + * sockets have to be opened when the first daemon is started.
+> + * The callback service for NFSv4.1 callbacks
 > + */
-> +int
-> +nfssvc_inuse(void)
-> {
-> -	int fd, n, on=1;
-> +	int fd, n;
-
-read(2) returns a ssize_t result, not an int.
-
-> 	char buf[BUFSIZ];
-
-Eesh.  BUFSIZ looks like it's two pages on my system, so adding this  
-helper makes the stack requirements in this path over 16KB.
-
-Might be better if we used something a little more stack friendly  
-here.  The kernel bounds the size of the read(2) result to  
-SIMPLE_TRANSACTION_LIMIT, which is less than a page, for example.   
-Making it a static would keep "buf" off the stack, too; or checking  
-how much buffer we really need (like only a few bytes, for this  
-particular check) might be better.
-
-> -	int udpfd = -1, tcpfd = -1;
-> -	struct sockaddr_in sin;
->
-> 	fd = open(NFSD_PORTS_FILE, O_RDONLY);
+> +static int
+> +nfs41_callback_svc(void *vrqstp)
+> +{
+> +	struct svc_rqst *rqstp = vrqstp;
+> +	struct svc_serv *serv = rqstp->rq_server;
+> +	struct rpc_rqst *req;
+> +	int error;
+> +	DEFINE_WAIT(wq);
 > +
-> +	/* problem opening file, assume that nothing is configured */
-> 	if (fd < 0)
-> -		return;
-> +		return 0;
+> +	set_freezable();
 > +
-> 	n = read(fd, buf, BUFSIZ);
-
-Nit: Using "sizeof(buf)" might be slightly more maintainable than  
-"BUFSIZ".
-
-> 	close(fd);
-> +
-> 	if (n != 0)
-
-If read(2) returns -1, we return 1 here.  How about "return (n > 0);" ?
-
-> +		return 1;
-> +
+> +	/*
+> +	 * FIXME: do we really need to run this under the BKL? If so, please
+> +	 * add a comment about what it's intended to protect.
+> +	 */
+> +	lock_kernel();
+> +	while (!kthread_should_stop()) {
+> +		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
+> +		spin_lock_bh(&serv->sv_cb_lock);
+> +		if (!list_empty(&serv->sv_cb_list)) {
+> +			req = list_first_entry(&serv->sv_cb_list,
+> +					struct rpc_rqst, rq_bc_list);
+> +			list_del(&req->rq_bc_list);
+> +			spin_unlock_bh(&serv->sv_cb_lock);
+> +			dprintk("Invoking bc_svc_process()\n");
+> +			error = bc_svc_process(serv, req, rqstp);
+> +			dprintk("bc_svc_process() returned w/ error code= %d\n",
+> +				error);
+> +		} else {
+> +			spin_unlock_bh(&serv->sv_cb_lock);
+> +			schedule();
+> +		}
+> +		finish_wait(&serv->sv_cb_waitq, &wq);
+> +	}
+> +	unlock_kernel();
+> +	nfs_callback_info.task = NULL;
+> +	svc_exit_thread(rqstp);
 > +	return 0;
 > +}
 > +
-> +static void
-> +nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
+> +/*
+> + * Bring up the NFSv4.1 callback service
+> + */
+> +struct svc_rqst *
+> +nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
 > +{
-> +	int fd, n, on=1;
-
-Another compiler warning issue: "n" is probably now unused in  
-nfssvc_setfds().
-
->
-> +	char buf[BUFSIZ];
-> +	int udpfd = -1, tcpfd = -1;
-> +	struct sockaddr_in sin;
+> +	/*
+> +	 * Save the svc_serv in the transport so that it can
+> +	 * be referenced when the session backchannel is initialized
+> +	 */
+> +	xprt->bc_serv = serv;
 > +
-> +	if (nfssvc_inuse())
-> 		return;
-> -	/* there are no ports currently open, so it is safe to
-> -	 * try to open some and pass them through.
-> -	 * Note: If the user explicitly asked for 'udp', then
-> -	 * we should probably check if that is open, and should
-> -	 * open it if not.  However we don't yet.  All sockets
-> -	 * have to be opened when the first daemon is started.
-> -	 */
+> +	INIT_LIST_HEAD(&serv->sv_cb_list);
+> +	spin_lock_init(&serv->sv_cb_lock);
+> +	init_waitqueue_head(&serv->sv_cb_waitq);
+> +	return svc_prepare_thread(serv, &serv->sv_pools[0]);
+> +}
+> +#endif /* CONFIG_NFS_V4_1 */
 > +
-> 	fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> 	if (fd < 0)
-> 		return;
-> -- 
-> 1.6.2.2
->
+>  /*
+>   * Bring up the callback thread if it is not already up.
+>   */
+> @@ -141,10 +207,18 @@ int nfs_callback_up(u32 minorversion, void *args)
+>  	int (*callback_svc)(void *vrqstp);
+>  	char svc_name[12];
+>  	int ret = 0;
+> +#if defined(CONFIG_NFS_V4_1)
+> +	struct rpc_xprt *xprt = (struct rpc_xprt *)args;
+> +#endif /* CONFIG_NFS_V4_1 */
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+More ugly embedded ifdefs...
+
+>  
+>  	mutex_lock(&nfs_callback_mutex);
+> -	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL)
+> +	if (nfs_callback_info.users++ || nfs_callback_info.task != NULL) {
+> +#if defined(CONFIG_NFS_V4_1)
+> +		if (minorversion)
+> +			xprt->bc_serv = nfs_callback_info.serv;
+> +#endif /* CONFIG_NFS_V4_1 */
+
+Ditto
+
+>  		goto out;
+> +	}
+>  	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+>  	if (!serv) {
+>  		ret = -ENOMEM;
+> @@ -157,7 +231,12 @@ int nfs_callback_up(u32 minorversion, void *args)
+>  		rqstp = nfs4_callback_up(serv);
+>  		callback_svc = nfs4_callback_svc;
+>  	} else {
+> -		BUG();	/* for now */
+> +#if defined(CONFIG_NFS_V4_1)
+> +		rqstp = nfs41_callback_up(serv, xprt);
+> +		callback_svc = nfs41_callback_svc;
+> +#else  /* CONFIG_NFS_V4_1 */
+> +		BUG();
+> +#endif /* CONFIG_NFS_V4_1 */
+
+Ditto
+
+>  	}
+>  
+>  	if (IS_ERR(rqstp)) {
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index 7f12e65..f2696ba 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -70,6 +70,13 @@ extern void nfs_callback_down(void);
+>  #define nfs_callback_down()	do {} while(0)
+>  #endif
+>  
+> +/*
+> + * nfs41: Callbacks are expected to not cause substantial latency,
+> + * so we limit their concurrency to 1 by setting up the maximum number
+> + * of slots for the backchannel.
+> + */
+> +#define NFS41_BC_MIN_CALLBACKS 1
+> +
+>  extern unsigned int nfs_callback_set_tcpport;
+>  extern unsigned short nfs_callback_tcpport;
+>  extern unsigned short nfs_callback_tcpport6;
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 4a8afbd..16043c4 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -419,6 +419,8 @@ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+>  int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
+>  void		   svc_destroy(struct svc_serv *);
+>  int		   svc_process(struct svc_rqst *);
+> +int		   bc_svc_process(struct svc_serv *, struct rpc_rqst *,
+> +			struct svc_rqst *);
+
+OK, I give up. Why is the function text and export declaration in one
+patch, while the declaration is in this patch?
+
+>  int		   svc_register(const struct svc_serv *, const int,
+>  				const unsigned short, const unsigned short);
+>  
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
