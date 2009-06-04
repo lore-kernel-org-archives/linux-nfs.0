@@ -1,358 +1,402 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 06/10] nfs-utils: convert nfssvc_setfds to use
- getaddrinfo
-Date: Thu, 4 Jun 2009 16:36:05 -0400
-Message-ID: <20090604163605.31e5cf27@tlielax.poochiereds.net>
-References: <1244058763-10352-1-git-send-email-jlayton@redhat.com>
-	<1244058763-10352-7-git-send-email-jlayton@redhat.com>
-	<8CBDF84A-D188-4D25-8211-A18AD5EC65A7@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 03/10] nfs-utils: convert rpc.nfsd to use xlog()
+Date: Thu, 4 Jun 2009 16:38:43 -0400
+Message-ID: <788A0E48-CE8A-4346-A025-CC76415B0876@oracle.com>
+References: <1244058763-10352-1-git-send-email-jlayton@redhat.com> <1244058763-10352-4-git-send-email-jlayton@redhat.com> <7968D2B9-3E31-4E0D-9D0B-309D757A0014@oracle.com> <20090604162534.15db803a@tlielax.poochiereds.net>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40273 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751389AbZFDUgJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2009 16:36:09 -0400
-In-Reply-To: <8CBDF84A-D188-4D25-8211-A18AD5EC65A7@oracle.com>
+Received: from acsinet11.oracle.com ([141.146.126.233]:44873 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752663AbZFDUjE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jun 2009 16:39:04 -0400
+In-Reply-To: <20090604162534.15db803a-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 4 Jun 2009 16:17:25 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> 
-> On Jun 3, 2009, at 3:52 PM, Jeff Layton wrote:
-> 
-> > Convert nfssvc_setfds to use getaddrinfo. Change the args that it  
-> > takes
-> > and fix up nfssvc function to pass in the proper args. The things that
-> > nfssvc has to do to call the new nfssvc_setfds is a little cumbersome
-> > for now, but that will eventually be cleaned up in a later patch.
-> >
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > support/nfs/nfssvc.c |  191 +++++++++++++++++++++++++++++++++ 
-> > +----------------
-> > utils/nfsd/nfsd.c    |   18 +++--
-> > 2 files changed, 140 insertions(+), 69 deletions(-)
-> >
-> > diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
-> > index 8b15c4d..168414c 100644
-> > --- a/support/nfs/nfssvc.c
-> > +++ b/support/nfs/nfssvc.c
-> > @@ -10,7 +10,9 @@
-> > #include <config.h>
-> > #endif
-> >
-> > +#include <sys/types.h>
-> > #include <sys/socket.h>
-> > +#include <netdb.h>
-> > #include <netinet/in.h>
-> > #include <arpa/inet.h>
-> > #include <unistd.h>
-> > @@ -53,85 +55,148 @@ nfssvc_inuse(void)
-> > 	return 0;
-> > }
-> >
-> > -static void
-> > -nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
-> > +static int
-> > +nfssvc_setfds(const struct addrinfo *hints, const char *node, const  
-> > char *port)
-> > {
-> > -	int fd, n, on=1;
-> > +	int fd, on = 1, fac = L_ERROR;
-> > +	int sockfd = -1, rc = 0;
-> > 	char buf[BUFSIZ];
-> 
-> Same comment as earlier; BUFSIZ is probably unnecessarily large.
-> 
+On Jun 4, 2009, at 4:25 PM, Jeff Layton wrote:
 
-Yup. Will give that a hard look.
+> On Thu, 4 Jun 2009 15:38:32 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>>
+>> On Jun 3, 2009, at 3:52 PM, Jeff Layton wrote:
+>>
+>>> ...and add a --debug option to make nfsd log messages to stderr.
+>>>
+>>> rpc.nfsd is usually run out of init scripts in which case logging to
+>>> syslog makes more sense. Make that the default and add a switch that
+>>> makes log messages go to stderr. Eventually however nfsd has to  
+>>> close
+>>> stderr, at which point the program switches to logging to syslog
+>>> unconditionally.
+>>>
+>>> For now, stderr gets closed rather early, so --debug isn't terribly
+>>> helpful. Later patches will make rpc.nfsd delay closing of stderr
+>>> longer
+>>> which should make it more useful.
+>>>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> support/nfs/nfssvc.c |   46 +++++++++++++++++-------------------
+>>> utils/nfsd/nfsd.c    |   63 ++++++++++++++++++++++++++++++
+>>> +-------------------
+>>> 2 files changed, 61 insertions(+), 48 deletions(-)
+>>>
+>>> diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
+>>> index 33c15a7..3e6bd31 100644
+>>> --- a/support/nfs/nfssvc.c
+>>> +++ b/support/nfs/nfssvc.c
+>>
+>> One wonders why this code is not under utils/nfsd/ .  rpc.nfsd seems
+>> to be its only caller.
+>>
+>
+> Yep...not sure either. I could move it, I suppose.
+>
+>>> @@ -16,10 +16,9 @@
+>>> #include <unistd.h>
+>>> #include <fcntl.h>
+>>> #include <errno.h>
+>>> -#include <syslog.h>
+>>> -
+>>>
+>>> #include "nfslib.h"
+>>> +#include "xlog.h"
+>>>
+>>> #define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+>>> #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+>>> @@ -57,13 +56,13 @@ nfssvc_setfds(int port, unsigned int ctlbits,
+>>> char *haddr)
+>>> 	if (NFSCTL_UDPISSET(ctlbits)) {
+>>> 		udpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+>>> 		if (udpfd < 0) {
+>>> -			syslog(LOG_ERR, "nfssvc: unable to create UPD socket: "
+>>> -				"errno %d (%s)\n", errno, strerror(errno));
+>>> +			xlog(L_ERROR, "unable to create UDP socket: "
+>>> +				"errno %d (%m)", errno);
+>>> 			exit(1);
+>>> 		}
+>>> 		if (bind(udpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
+>>> -			syslog(LOG_ERR, "nfssvc: unable to bind UPD socket: "
+>>> -				"errno %d (%s)\n", errno, strerror(errno));
+>>> +			xlog(L_ERROR, "unable to bind UDP socket: "
+>>> +				"errno %d (%m)", errno);
+>>> 			exit(1);
+>>> 		}
+>>> 	}
+>>> @@ -71,32 +70,32 @@ nfssvc_setfds(int port, unsigned int ctlbits,
+>>> char *haddr)
+>>> 	if (NFSCTL_TCPISSET(ctlbits)) {
+>>> 		tcpfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+>>> 		if (tcpfd < 0) {
+>>> -			syslog(LOG_ERR, "nfssvc: unable to createt tcp socket: "
+>>> -				"errno %d (%s)\n", errno, strerror(errno));
+>>> +			xlog(L_ERROR, "unable to createt tcp socket: "
+>>
+>> You could correct the misspelling here (createt), while you're at it.
+>>
+>
+> I think I fix that in a later patch, but I'll fix it here too.
+>
+>>> +				"errno %d (%m)", errno);
+>>> 			exit(1);
+>>> 		}
+>>> 		if (setsockopt(tcpfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) <
+>>> 0) {
+>>> -			syslog(LOG_ERR, "nfssvc: unable to set SO_REUSEADDR: "
+>>> -				"errno %d (%s)\n", errno, strerror(errno));
+>>> +			xlog(L_ERROR, "unable to set SO_REUSEADDR: "
+>>> +				"errno %d (%m)", errno);
+>>> 			exit(1);
+>>> 		}
+>>> 		if (bind(tcpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
+>>> -			syslog(LOG_ERR, "nfssvc: unable to bind TCP socket: "
+>>> -				"errno %d (%s)\n", errno, strerror(errno));
+>>> +			xlog(L_ERROR, "unable to bind TCP socket: "
+>>> +				"errno %d (%m)", errno);
+>>> 			exit(1);
+>>> 		}
+>>> 		if (listen(tcpfd, 64) < 0){
+>>> -			syslog(LOG_ERR, "nfssvc: unable to create listening socket: "
+>>> -				"errno %d (%s)\n", errno, strerror(errno));
+>>> +			xlog(L_ERROR, "unable to create listening socket: "
+>>> +				"errno %d (%m)", errno);
+>>> 			exit(1);
+>>> 		}
+>>> 	}
+>>> 	if (udpfd >= 0) {
+>>> 		snprintf(buf, BUFSIZ,"%d\n", udpfd);
+>>> 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+>>> -			syslog(LOG_ERR,
+>>> -			       "nfssvc: writing fds to kernel failed: errno %d (%s)",
+>>> -			       errno, strerror(errno));
+>>> +			xlog(L_ERROR,
+>>> +			       "writing fds to kernel failed: errno %d (%m)",
+>>> +			       errno);
+>>> 		}
+>>> 		close(fd);
+>>> 		fd = -1;
+>>> @@ -106,9 +105,9 @@ nfssvc_setfds(int port, unsigned int ctlbits,
+>>> char *haddr)
+>>> 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
+>>> 		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
+>>> 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+>>> -			syslog(LOG_ERR,
+>>> -			       "nfssvc: writing fds to kernel failed: errno %d (%s)",
+>>> -			       errno, strerror(errno));
+>>> +			xlog(L_ERROR,
+>>> +			       "writing fds to kernel failed: errno %d (%m)",
+>>> +			       errno);
+>>> 		}
+>>> 	}
+>>> 	close(fd);
+>>> @@ -139,10 +138,9 @@ nfssvc_versbits(unsigned int ctlbits, int
+>>> minorvers4)
+>>> 				    minorvers4 > 0 ? '+' : '-',
+>>> 				    n);
+>>> 	snprintf(ptr+off, BUFSIZ - off, "\n");
+>>> -	if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+>>> -		syslog(LOG_ERR, "nfssvc: Setting version failed: errno %d (%s)",
+>>> -			errno, strerror(errno));
+>>> -	}
+>>> +	if (write(fd, buf, strlen(buf)) != strlen(buf))
+>>> +		xlog(L_ERROR, "Setting version failed: errno %d (%m)", errno);
+>>> +
+>>> 	close(fd);
+>>>
+>>> 	return;
+>>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+>>> index c7bd003..6dfea67 100644
+>>> --- a/utils/nfsd/nfsd.c
+>>> +++ b/utils/nfsd/nfsd.c
+>>> @@ -18,13 +18,13 @@
+>>> #include <string.h>
+>>> #include <errno.h>
+>>> #include <getopt.h>
+>>> -#include <syslog.h>
+>>> #include <netdb.h>
+>>> #include <sys/socket.h>
+>>> #include <netinet/in.h>
+>>> #include <arpa/inet.h>
+>>>
+>>> #include "nfslib.h"
+>>> +#include "xlog.h"
+>>>
+>>> static void	usage(const char *);
+>>>
+>>> @@ -37,6 +37,7 @@ static struct option longopts[] =
+>>> 	{ "no-udp", 0, 0, 'U' },
+>>> 	{ "port", 1, 0, 'P' },
+>>> 	{ "port", 1, 0, 'p' },
+>>> +	{ "debug", 0, 0, 'd' },
+>>> 	{ NULL, 0, 0, 0 }
+>>> };
+>>> unsigned int protobits = NFSCTL_ALLBITS;
+>>> @@ -50,7 +51,7 @@ main(int argc, char **argv)
+>>> 	int	count = 1, c, error, port, fd, found_one;
+>>> 	struct servent *ent;
+>>> 	struct hostent *hp;
+>>> -	char *p;
+>>> +	char *p, *progname;
+>>>
+>>> 	ent = getservbyname ("nfs", "udp");
+>>> 	if (ent != NULL)
+>>> @@ -58,8 +59,22 @@ main(int argc, char **argv)
+>>> 	else
+>>> 		port = 2049;
+>>>
+>>> -	while ((c = getopt_long(argc, argv, "H:hN:p:P:TU", longopts,
+>>> NULL)) != EOF) {
+>>> +	progname = strdup(basename(argv[0]));
+>>> +	if (!progname) {
+>>> +		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
+>>> +		exit(1);
+>>> +	}
+>>> +
+>>> +	xlog_syslog(1);
+>>> +	xlog_stderr(0);
+>>> +
+>>> +	while ((c = getopt_long(argc, argv, "dH:hN:p:P:TU", longopts,
+>>> NULL)) != EOF) {
+>>> 		switch(c) {
+>>> +		case 'd':
+>>> +			xlog_config(D_ALL, 1);
+>>> +			xlog_syslog(0);
+>>> +			xlog_stderr(1);
+>>> +			break;
+>>> 		case 'H':
+>>> 			if (inet_addr(optarg) != INADDR_NONE) {
+>>> 				haddr = strdup(optarg);
+>>> @@ -67,8 +82,8 @@ main(int argc, char **argv)
+>>> 				haddr = inet_ntoa((*(struct in_addr*)(hp->h_addr_list[0])));
+>>> 			} else {
+>>> 				fprintf(stderr, "%s: Unknown hostname: %s\n",
+>>> -					argv[0], optarg);
+>>> -				usage(argv [0]);
+>>> +					progname, optarg);
+>>> +				usage(progname);
+>>> 			}
+>>> 			break;
+>>> 		case 'P':	/* XXX for nfs-server compatibility */
+>>> @@ -76,8 +91,8 @@ main(int argc, char **argv)
+>>> 			port = atoi(optarg);
+>>> 			if (port <= 0 || port > 65535) {
+>>> 				fprintf(stderr, "%s: bad port number: %s\n",
+>>> -					argv[0], optarg);
+>>> -				usage(argv [0]);
+>>> +					progname, optarg);
+>>> +				usage(progname);
+>>> 			}
+>>> 			break;
+>>> 		case 'N':
+>>> @@ -105,14 +120,17 @@ main(int argc, char **argv)
+>>> 		default:
+>>> 			fprintf(stderr, "Invalid argument: '%c'\n", c);
+>>> 		case 'h':
+>>> -			usage(argv[0]);
+>>> +			usage(progname);
+>>> 		}
+>>> 	}
+>>> +
+>>> +	xlog_open(progname);
+>>> +
+>>> 	/*
+>>> 	 * Do some sanity checking, if the ctlbits are set
+>>> 	 */
+>>> 	if (!NFSCTL_UDPISSET(protobits) && !NFSCTL_TCPISSET(protobits)) {
+>>> -		fprintf(stderr, "invalid protocol specified\n");
+>>> +		xlog(L_ERROR, "invalid protocol specified");
+>>
+>> Nit: This code looks like additional command line option parsing, so
+>> fprintf(stderr) might be entirely adequate.  Any reason to promote
+>> these to xlog() ?
+>
+> I think when I asked you about this before you said that you thought
+> that nfsd should always log to syslog whenever possible.
 
-> > -	int udpfd = -1, tcpfd = -1;
-> > -	struct sockaddr_in sin;
-> > -
-> > -	if (nfssvc_inuse())
-> > -		return;
-> > +	struct addrinfo *addrhead = NULL, *addr;
-> > +	char *proto, *family;
-> >
-> > +	/*
-> > +	 * if file can't be opened, then assume that it's not available and
-> > +	 * that the caller should just fall back to the old nfsctl interface
-> > + 	 */
-> > 	fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> > 	if (fd < 0)
-> > -		return;
-> > -	sin.sin_family = AF_INET;
-> > -	sin.sin_port   = htons(port);
-> > -	sin.sin_addr.s_addr =  inet_addr(haddr);
-> > -
-> > -	if (NFSCTL_UDPISSET(ctlbits)) {
-> > -		udpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-> > -		if (udpfd < 0) {
-> > -			xlog(L_ERROR, "unable to create UDP socket: "
-> > -				"errno %d (%m)", errno);
-> > -			exit(1);
-> > -		}
-> > -		if (bind(udpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
-> > -			xlog(L_ERROR, "unable to bind UDP socket: "
-> > -				"errno %d (%m)", errno);
-> > -			exit(1);
-> > -		}
-> > +		return 0;
-> > +
-> > +	switch(hints->ai_family) {
-> > +	case AF_INET:
-> > +		family = "inet";
-> > +		break;
-> > +	default:
-> > +		xlog(L_ERROR, "Unknown address family specified: %d\n",
-> > +				hints->ai_family);
-> > +		rc = EAFNOSUPPORT;
-> > +		goto error;
-> > 	}
-> >
-> > -	if (NFSCTL_TCPISSET(ctlbits)) {
-> > -		tcpfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-> > -		if (tcpfd < 0) {
-> > -			xlog(L_ERROR, "unable to createt tcp socket: "
-> > -				"errno %d (%m)", errno);
-> > -			exit(1);
-> > +	rc = getaddrinfo(node, port, hints, &addrhead);
-> > +	if (rc == EAI_NONAME && !strcmp(port, "nfs")) {
-> > +		snprintf(buf, BUFSIZ, "%d", NFS_PORT);
-> > +		rc = getaddrinfo(node, buf, hints, &addrhead);
-> > +	}
-> 
-> So, I wonder about this semantic.  Should rpc.nfsd fail outright if  
-> the specified port isn't usable?  If it succeeds, but silently creates  
-> a listener on a port that wasn't specified, that might be a little  
-> surprising to some administrators.
-> 
+Remember I said that after I mentioned I hadn't looked at this code  
+closely ;-)
 
-Well, I think that's the semantic we have here. It should only retry
-with NFS_PORT if a '-p' option wasn't specified (that's what
-the !strcmp is all about).
+> Once the
+> command line parsing is done, it's safe to switch to syslog...
 
-> Also, passing sizeof(buf) instead of BUFSIZ might be more maintainable.
-> 
+Yes, the question is where that point is.
 
-Yep, I'll fix that here and in the earlier patch.
+> I'm starting to wonder though whether that's the ideal thing. Given
+> that rpc.nfsd isn't really a daemon per-se, maybe it would be better  
+> to
+> make it send output to stderr instead? The parent processes for init
+> scripts usually take care of logging stderr to syslog. If someone is
+> running interactively then it probably makes sense to give them
+> feedback on stderr rather than requiring them to run with --debug...
 
-> > +
-> > +	if (rc != 0) {
-> > +		xlog(L_ERROR, "unable to resolve %s:%s to %s address: "
-> > +				"%s", node ? node : "ANYADDR", port, family,
-> > +				rc == EAI_SYSTEM ? strerror(errno) :
-> > +					gai_strerror(rc));
-> > +		goto error;
-> > +	}
-> > +
-> > +	addr = addrhead;
-> > +	while(addr) {
-> > +		/* skip non-TCP / non-UDP sockets */
-> > +		switch(addr->ai_protocol) {
-> > +		case IPPROTO_UDP:
-> > +			proto = "UDP";
-> > +			break;
-> > +		case IPPROTO_TCP:
-> > +			proto = "TCP";
-> > +			break;
-> > +		default:
-> > +			addr = addr->ai_next;
-> > +			continue;
-> > 		}
-> > -		if (setsockopt(tcpfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))  
-> > < 0) {
-> > -			xlog(L_ERROR, "unable to set SO_REUSEADDR: "
-> > -				"errno %d (%m)", errno);
-> > -			exit(1);
-> > +
-> > +		xlog(D_GENERAL, "Creating %s %s socket.", family, proto);
-> > +
-> > +		/* open socket and prepare to hand it off to kernel */
-> > +		sockfd = socket(addr->ai_family, addr->ai_socktype,
-> > +				addr->ai_protocol);
-> > +		if (sockfd < 0) {
-> > +			xlog(L_ERROR, "unable to create %s %s socket: "
-> > +				"errno %d (%m)", family, proto, errno);
-> > +			rc = errno;
-> > +			goto error;
-> > 		}
-> > -		if (bind(tcpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
-> > -			xlog(L_ERROR, "unable to bind TCP socket: "
-> > -				"errno %d (%m)", errno);
-> > -			exit(1);
-> > +		if (addr->ai_protocol == IPPROTO_TCP &&
-> > +		    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on,  
-> > sizeof(on))) {
-> > +			xlog(L_ERROR, "unable to set SO_REUSEADDR on %s "
-> > +				"socket: errno %d (%m)", family, errno);
-> > +			rc = errno;
-> > +			goto error;
-> > +		}
-> > +		if (bind(sockfd, addr->ai_addr, addr->ai_addrlen)) {
-> > +			xlog(L_ERROR, "unable to bind %s %s socket: "
-> > +				"errno %d (%m)", family, proto, errno);
-> > +			rc = errno;
-> > +			goto error;
-> > 		}
-> > -		if (listen(tcpfd, 64) < 0){
-> > +		if (addr->ai_protocol == IPPROTO_TCP && listen(sockfd, 64)) {
-> > 			xlog(L_ERROR, "unable to create listening socket: "
-> > 				"errno %d (%m)", errno);
-> > -			exit(1);
-> > +			rc = errno;
-> > +			goto error;
-> > 		}
-> > -	}
-> > -	if (udpfd >= 0) {
-> > -		snprintf(buf, BUFSIZ,"%d\n", udpfd);
-> > -		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-> > -			xlog(L_ERROR,
-> > -			       "writing fds to kernel failed: errno %d (%m)",
-> > -			       errno);
-> > -		}
-> > -		close(fd);
-> > -		fd = -1;
-> > -	}
-> > -	if (tcpfd >= 0) {
-> > +
-> > 		if (fd < 0)
-> > 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> > -		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
-> > +
-> > +		if (fd < 0) {
-> > +			xlog(L_ERROR, "couldn't open ports file: errno "
-> > +				      "%d (%m)", errno);
-> > +			goto error;
-> > +		}
-> > +		snprintf(buf, BUFSIZ, "%d\n", sockfd);
-> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-> > -			xlog(L_ERROR,
-> > -			       "writing fds to kernel failed: errno %d (%m)",
-> > -			       errno);
-> > +			/*
-> > +			 * this error may be common on older kernels that don't
-> > +			 * support IPv6, so turn into a debug message.
-> > +			 */
-> > +			if (errno == EAFNOSUPPORT)
-> > +				fac = D_ALL;
-> > +			xlog(fac, "writing fd to kernel failed: errno %d (%m)",
-> > +				  errno);
-> > +			rc = errno;
-> > +			goto error;
-> > 		}
-> > +		close(fd);
-> > +		close(sockfd);
-> > +		sockfd = fd = -1;
-> > +		addr = addr->ai_next;
-> > 	}
-> > -	close(fd);
-> > +error:
-> > +	if (fd >= 0)
-> > +		close(fd);
-> > +	if (sockfd >= 0)
-> > +		close(sockfd);
-> > +	if (addrhead)
-> > +		freeaddrinfo(addrhead);
-> > +	return rc;
-> > +}
-> >
-> > -	return;
-> > +static int
-> > +nfssvc_set_sockets(const int family, const unsigned int protobits,
-> > +		   const char *host, const char *port)
-> > +{
-> > +	struct addrinfo hints = { .ai_flags = AI_PASSIVE | AI_ADDRCONFIG };
-> > +
-> > +	hints.ai_family = family;
-> > +
-> > +	if (!NFSCTL_ANYPROTO(protobits))
-> > +		return EPROTOTYPE;
-> > +	else if (!NFSCTL_UDPISSET(protobits))
-> > +		hints.ai_protocol = IPPROTO_TCP;
-> > +	else if (!NFSCTL_TCPISSET(protobits))
-> > +		hints.ai_protocol = IPPROTO_UDP;
-> > +
-> > +	return nfssvc_setfds(&hints, host, port);
-> > }
-> > +
-> > static void
-> > nfssvc_versbits(unsigned int ctlbits, int minorvers4)
-> > {
-> > @@ -169,13 +234,17 @@ nfssvc(int port, int nrservs, unsigned int  
-> > versbits, int minorvers4,
-> > {
-> > 	struct nfsctl_arg	arg;
-> > 	int fd;
-> > +	char portstr[BUFSIZ];
-> 
-> Ditto.
-> 
-> > 	/* Note: must set versions before fds so that
-> > 	 * the ports get registered with portmap against correct
-> > 	 * versions
-> > 	 */
-> > -	nfssvc_versbits(versbits, minorvers4);
-> > -	nfssvc_setfds(port, protobits, haddr);
-> > +	if (!nfssvc_inuse()) {
-> > +		nfssvc_versbits(versbits, minorvers4);
-> > +		snprintf(portstr, BUFSIZ, "%d", port);
-> > +		nfssvc_set_sockets(AF_INET, protobits, haddr, portstr);
-> > +	}
-> >
-> > 	fd = open(NFSD_THREAD_FILE, O_WRONLY);
-> > 	if (fd < 0)
-> > diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> > index 6dfea67..e9d0bf9 100644
-> > --- a/utils/nfsd/nfsd.c
-> > +++ b/utils/nfsd/nfsd.c
-> > @@ -76,14 +76,16 @@ main(int argc, char **argv)
-> > 			xlog_stderr(1);
-> > 			break;
-> > 		case 'H':
-> > -			if (inet_addr(optarg) != INADDR_NONE) {
-> > -				haddr = strdup(optarg);
-> > -			} else if ((hp = gethostbyname(optarg)) != NULL) {
-> > -				haddr = inet_ntoa((*(struct in_addr*)(hp->h_addr_list[0])));
-> > -			} else {
-> > -				fprintf(stderr, "%s: Unknown hostname: %s\n",
-> > -					progname, optarg);
-> > -				usage(progname);
-> > +			/*
-> > +			 * for now, this only handles one -H option. Use the
-> > +			 * last one specified.
-> > +			 */
-> > +			free(haddr);
-> > +			haddr = strdup(optarg);
-> > +			if (!haddr) {
-> > +				fprintf(stderr, "%s: unable to allocate "
-> > +					"memory.\n", progname);
-> > +				exit(1);
-> 
-> Aside: I've been trying to stick with EXIT_SUCCESS and EXIT_FAILURE  
-> when calling exit(3).
-> 
+This is one of those cases where different init script behavior across  
+distributions is a challenge.  It might be better to provide command- 
+line options to direct the output, rather than a simple "debug"  
+option.  Just a thought.
 
-Ok. I'll have a look at that too. There's value in being consistent
-here I think.
+>>> 		exit(1);
+>>> 	}
+>>> 	found_one = 0;
+>>> @@ -121,12 +139,12 @@ main(int argc, char **argv)
+>>> 			found_one = 1;
+>>> 	}
+>>> 	if (!found_one) {
+>>> -		fprintf(stderr, "no version specified\n");
+>>> +		xlog(L_ERROR, "no version specified");
+>>> 		exit(1);
+>>> 	}			
+>>>
+>>> 	if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
+>>> -		fprintf(stderr, "version 4 requires the TCP protocol\n");
+>>> +		xlog(L_ERROR, "version 4 requires the TCP protocol");
+>>> 		exit(1);
+>>> 	}
+>>> 	if (haddr == NULL) {
+>>> @@ -135,17 +153,15 @@ main(int argc, char **argv)
+>>> 	}
+>>>
+>>> 	if (chdir(NFS_STATEDIR)) {
+>>> -		fprintf(stderr, "%s: chdir(%s) failed: %s\n",
+>>> -			argv [0], NFS_STATEDIR, strerror(errno));
+>>> +		xlog(L_ERROR, "chdir(%s) failed: %m", NFS_STATEDIR);
+>>> 		exit(1);
+>>> 	}
+>>>
+>>> 	if (optind < argc) {
+>>> 		if ((count = atoi(argv[optind])) < 0) {
+>>> 			/* insane # of servers */
+>>> -			fprintf(stderr,
+>>> -				"%s: invalid server count (%d), using 1\n",
+>>> -				argv[0], count);
+>>> +			xlog(L_ERROR, "invalid server count (%d), using 1",
+>>> +				      count);
+>>> 			count = 1;
+>>> 		}
+>>> 	}
+>>> @@ -155,21 +171,20 @@ main(int argc, char **argv)
+>>> 	   everything before spawning kernel threads.  --Chip */
+>>> 	fd = open("/dev/null", O_RDWR);
+>>> 	if (fd == -1)
+>>> -		perror("/dev/null");
+>>> +		xlog(L_ERROR, "Unable to open /dev/null: %m");
+>>> 	else {
+>>> 		(void) dup2(fd, 0);
+>>> 		(void) dup2(fd, 1);
+>>> 		(void) dup2(fd, 2);
+>>> 	}
+>>> +	xlog_syslog(1);
+>>> +	xlog_stderr(0);
+>>> 	closeall(3);
+>>>
+>>> -	openlog("nfsd", LOG_PID, LOG_DAEMON);
+>>> -	if ((error = nfssvc(port, count, versbits, minorvers4, protobits,
+>>> haddr)) < 0) {
+>>> -		int e = errno;
+>>> -		syslog(LOG_ERR, "nfssvc: %s", strerror(e));
+>>> -		closelog();
+>>> -	}
+>>> +	if ((error = nfssvc(port, count, versbits, minorvers4, protobits,
+>>> haddr)) < 0)
+>>> +		xlog(L_ERROR, "nfssvc (%m)");
+>>>
+>>> +	free(progname);
+>>> 	return (error != 0);
+>>> }
+>>>
+>>> @@ -177,7 +192,7 @@ static void
+>>> usage(const char *prog)
+>>> {
+>>> 	fprintf(stderr, "Usage:\n"
+>>> -		"%s [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version
+>>> version ] [-T|--no-tcp] [-U|--no-udp] nrservs\n",
+>>> +		"%s [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version
+>>> version ] [-T|--no-tcp] [-U|--no-udp] [-d|--debug] nrservs\n",
+>>> 		prog);
+>>> 	exit(2);
+>>> }
+>>> -- 
+>>> 1.6.2.2
+>>>
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>
+>
+> -- 
+> Jeff Layton <jlayton@redhat.com>
 
-> > 			}
-> > 			break;
-> > 		case 'P':	/* XXX for nfs-server compatibility */
-> > -- 
-> > 1.6.2.2
-> >
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+
+
