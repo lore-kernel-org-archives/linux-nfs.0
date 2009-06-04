@@ -1,200 +1,381 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [pnfs] [RFC 11/39] nfs41: Backchannel callback service helper
- routines
-Date: Thu, 04 Jun 2009 16:20:42 -0400
-Message-ID: <1244146842.5203.101.camel@heimdal.trondhjem.org>
-References: <49FA3180.5030404@panasas.com>
-	 <1241133655-656-1-git-send-email-bhalevy@panasas.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 03/10] nfs-utils: convert rpc.nfsd to use xlog()
+Date: Thu, 4 Jun 2009 16:25:34 -0400
+Message-ID: <20090604162534.15db803a@tlielax.poochiereds.net>
+References: <1244058763-10352-1-git-send-email-jlayton@redhat.com>
+	<1244058763-10352-4-git-send-email-jlayton@redhat.com>
+	<7968D2B9-3E31-4E0D-9D0B-309D757A0014@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20815 "EHLO mx2.netapp.com"
+Received: from mx2.redhat.com ([66.187.237.31]:46577 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752462AbZFDUUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2009 16:20:41 -0400
-In-Reply-To: <1241133655-656-1-git-send-email-bhalevy@panasas.com>
+	id S1751327AbZFDUZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Jun 2009 16:25:40 -0400
+In-Reply-To: <7968D2B9-3E31-4E0D-9D0B-309D757A0014@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-05-01 at 02:20 +0300, Benny Halevy wrote:
-> From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> 
-> Executes the backchannel task on the RPC state machine using
-> the existing open connection previously established by the client.
-> 
-> Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-> 
-> nfs41: Add bc_svc.o to sunrpc Makefile.
-> 
-> [nfs41: bc_send() does not need to be exported outside RPC module]
-> [nfs41: xprt_free_bc_request() need not be exported outside RPC module]
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  include/linux/sunrpc/bc_xprt.h |    3 +
->  net/sunrpc/Makefile            |    2 +-
->  net/sunrpc/backchannel_rqst.c  |    1 -
->  net/sunrpc/bc_svc.c            |   80 ++++++++++++++++++++++++++++++++++++++++
->  net/sunrpc/xprtsock.c          |    3 +
->  5 files changed, 87 insertions(+), 2 deletions(-)
->  create mode 100644 net/sunrpc/bc_svc.c
-> 
-> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-> index 1c1746a..3016c00 100644
-> --- a/include/linux/sunrpc/bc_xprt.h
-> +++ b/include/linux/sunrpc/bc_xprt.h
-> @@ -29,12 +29,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
->  
->  #include <linux/sunrpc/svcsock.h>
->  #include <linux/sunrpc/xprt.h>
-> +#include <linux/sunrpc/sched.h>
->  
->  #ifdef CONFIG_NFS_V4_1
->  struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt);
->  void xprt_free_bc_request(struct rpc_rqst *req);
->  int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
->  void xprt_destroy_backchannel(struct rpc_xprt *, int max_reqs);
-> +void bc_release_request(struct rpc_task *);
-> +int bc_send(struct rpc_rqst *req);
->  #else /* CONFIG_NFS_V4_1 */
->  static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
->  					 unsigned int min_reqs)
-> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-> index 4a01f96..db73fd2 100644
-> --- a/net/sunrpc/Makefile
-> +++ b/net/sunrpc/Makefile
-> @@ -13,6 +13,6 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
->  	    rpcb_clnt.o timer.o xdr.o \
->  	    sunrpc_syms.o cache.o rpc_pipe.o \
->  	    svc_xprt.o
-> -sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o
-> +sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o bc_svc.o
->  sunrpc-$(CONFIG_PROC_FS) += stats.o
->  sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-> index 7d7708a..92fb3bd 100644
-> --- a/net/sunrpc/backchannel_rqst.c
-> +++ b/net/sunrpc/backchannel_rqst.c
-> @@ -265,6 +265,5 @@ void xprt_free_bc_request(struct rpc_rqst *req)
->  	list_add(&req->rq_bc_pa_list, &xprt->bc_pa_list);
->  	spin_unlock_bh(&xprt->bc_pa_lock);
->  }
-> -EXPORT_SYMBOL(xprt_free_bc_request);
+On Thu, 4 Jun 2009 15:38:32 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Err.... That's random... What is there in this patch that suddenly makes
-the export unnecessary?
+> 
+> On Jun 3, 2009, at 3:52 PM, Jeff Layton wrote:
+> 
+> > ...and add a --debug option to make nfsd log messages to stderr.
+> >
+> > rpc.nfsd is usually run out of init scripts in which case logging to
+> > syslog makes more sense. Make that the default and add a switch that
+> > makes log messages go to stderr. Eventually however nfsd has to close
+> > stderr, at which point the program switches to logging to syslog
+> > unconditionally.
+> >
+> > For now, stderr gets closed rather early, so --debug isn't terribly
+> > helpful. Later patches will make rpc.nfsd delay closing of stderr  
+> > longer
+> > which should make it more useful.
+> >
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > support/nfs/nfssvc.c |   46 +++++++++++++++++-------------------
+> > utils/nfsd/nfsd.c    |   63 ++++++++++++++++++++++++++++++ 
+> > +-------------------
+> > 2 files changed, 61 insertions(+), 48 deletions(-)
+> >
+> > diff --git a/support/nfs/nfssvc.c b/support/nfs/nfssvc.c
+> > index 33c15a7..3e6bd31 100644
+> > --- a/support/nfs/nfssvc.c
+> > +++ b/support/nfs/nfssvc.c
+> 
+> One wonders why this code is not under utils/nfsd/ .  rpc.nfsd seems  
+> to be its only caller.
+> 
 
->  #endif /* CONFIG_NFS_V4_1 */
-> diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
-> new file mode 100644
-> index 0000000..b13f51d
-> --- /dev/null
-> +++ b/net/sunrpc/bc_svc.c
-> @@ -0,0 +1,80 @@
-> +/******************************************************************************
-> +
-> +(c) 2007 Network Appliance, Inc.  All Rights Reserved.
+Yep...not sure either. I could move it, I suppose.
 
-More references to historic entities...
+> > @@ -16,10 +16,9 @@
+> > #include <unistd.h>
+> > #include <fcntl.h>
+> > #include <errno.h>
+> > -#include <syslog.h>
+> > -
+> >
+> > #include "nfslib.h"
+> > +#include "xlog.h"
+> >
+> > #define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+> > #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+> > @@ -57,13 +56,13 @@ nfssvc_setfds(int port, unsigned int ctlbits,  
+> > char *haddr)
+> > 	if (NFSCTL_UDPISSET(ctlbits)) {
+> > 		udpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+> > 		if (udpfd < 0) {
+> > -			syslog(LOG_ERR, "nfssvc: unable to create UPD socket: "
+> > -				"errno %d (%s)\n", errno, strerror(errno));
+> > +			xlog(L_ERROR, "unable to create UDP socket: "
+> > +				"errno %d (%m)", errno);
+> > 			exit(1);
+> > 		}
+> > 		if (bind(udpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
+> > -			syslog(LOG_ERR, "nfssvc: unable to bind UPD socket: "
+> > -				"errno %d (%s)\n", errno, strerror(errno));
+> > +			xlog(L_ERROR, "unable to bind UDP socket: "
+> > +				"errno %d (%m)", errno);
+> > 			exit(1);
+> > 		}
+> > 	}
+> > @@ -71,32 +70,32 @@ nfssvc_setfds(int port, unsigned int ctlbits,  
+> > char *haddr)
+> > 	if (NFSCTL_TCPISSET(ctlbits)) {
+> > 		tcpfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+> > 		if (tcpfd < 0) {
+> > -			syslog(LOG_ERR, "nfssvc: unable to createt tcp socket: "
+> > -				"errno %d (%s)\n", errno, strerror(errno));
+> > +			xlog(L_ERROR, "unable to createt tcp socket: "
+> 
+> You could correct the misspelling here (createt), while you're at it.
+> 
 
-> +
-> +Network Appliance provides this source code under the GPL v2 License.
-> +The GPL v2 license is available at
-> +http://opensource.org/licenses/gpl-license.php.
-> +
-> +THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-> +"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-> +LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-> +A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-> +CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-> +EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-> +PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-> +PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-> +LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-> +NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-> +SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-> +
-> +******************************************************************************/
-> +
-> +/*
-> + * The NFSv4.1 callback service helper routines.
-> + * They implement the transport level processing required to send the
-> + * reply over an existing open connection previously established by the client.
-> + */
-> +
-> +#if defined(CONFIG_NFS_V4_1)
-> +
-> +#include <linux/module.h>
-> +
-> +#include <linux/sunrpc/xprt.h>
-> +#include <linux/sunrpc/sched.h>
-> +#include <linux/sunrpc/bc_xprt.h>
-> +
-> +#define RPCDBG_FACILITY	RPCDBG_SVCDSP
-> +
-> +void bc_release_request(struct rpc_task *task)
-> +{
-> +	struct rpc_rqst *req = task->tk_rqstp;
-> +
-> +	dprintk("RPC:       bc_release_request: task= %p\n", task);
-> +
-> +	/*
-> +	 * Release this request only if it's a backchannel
-> +	 * preallocated request
-> +	 */
-> +	if (!bc_prealloc(req))
-> +		return;
-> +	xprt_free_bc_request(req);
-> +}
-> +
-> +/* Empty callback ops */
-> +static const struct rpc_call_ops nfs41_callback_ops = {
-> +};
-> +
-> +
-> +/*
-> + * Send the callback reply
-> + */
-> +int bc_send(struct rpc_rqst *req)
-> +{
-> +	struct rpc_task *task;
-> +	int ret;
-> +
-> +	dprintk("RPC:       bc_send req= %p\n", req);
-> +	task = rpc_run_bc_task(req, &nfs41_callback_ops);
-> +	if (IS_ERR(task))
-> +		ret = PTR_ERR(task);
-> +	else {
-> +		BUG_ON(atomic_read(&task->tk_count) != 1);
-> +		ret = task->tk_status;
-> +		rpc_put_task(task);
-> +	}
-> +	return ret;
-> +	dprintk("RPC:       bc_send ret= %d \n", ret);
-> +}
-> +
-> +#endif /* CONFIG_NFS_V4_1 */
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 403ebda..5bf9e66 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2145,6 +2145,9 @@ static struct rpc_xprt_ops xs_tcp_ops = {
->  	.buf_free		= rpc_free,
->  	.send_request		= xs_tcp_send_request,
->  	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
-> +#if defined(CONFIG_NFS_V4_1)
-> +	.release_request	= bc_release_request,
-> +#endif /* CONFIG_NFS_V4_1 */
->  	.close			= xs_tcp_shutdown,
->  	.destroy		= xs_destroy,
->  	.print_stats		= xs_tcp_print_stats,
+I think I fix that in a later patch, but I'll fix it here too.
+
+> > +				"errno %d (%m)", errno);
+> > 			exit(1);
+> > 		}
+> > 		if (setsockopt(tcpfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) <  
+> > 0) {
+> > -			syslog(LOG_ERR, "nfssvc: unable to set SO_REUSEADDR: "
+> > -				"errno %d (%s)\n", errno, strerror(errno));
+> > +			xlog(L_ERROR, "unable to set SO_REUSEADDR: "
+> > +				"errno %d (%m)", errno);
+> > 			exit(1);
+> > 		}
+> > 		if (bind(tcpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
+> > -			syslog(LOG_ERR, "nfssvc: unable to bind TCP socket: "
+> > -				"errno %d (%s)\n", errno, strerror(errno));
+> > +			xlog(L_ERROR, "unable to bind TCP socket: "
+> > +				"errno %d (%m)", errno);
+> > 			exit(1);
+> > 		}
+> > 		if (listen(tcpfd, 64) < 0){
+> > -			syslog(LOG_ERR, "nfssvc: unable to create listening socket: "
+> > -				"errno %d (%s)\n", errno, strerror(errno));
+> > +			xlog(L_ERROR, "unable to create listening socket: "
+> > +				"errno %d (%m)", errno);
+> > 			exit(1);
+> > 		}
+> > 	}
+> > 	if (udpfd >= 0) {
+> > 		snprintf(buf, BUFSIZ,"%d\n", udpfd);
+> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+> > -			syslog(LOG_ERR,
+> > -			       "nfssvc: writing fds to kernel failed: errno %d (%s)",
+> > -			       errno, strerror(errno));
+> > +			xlog(L_ERROR,
+> > +			       "writing fds to kernel failed: errno %d (%m)",
+> > +			       errno);
+> > 		}
+> > 		close(fd);
+> > 		fd = -1;
+> > @@ -106,9 +105,9 @@ nfssvc_setfds(int port, unsigned int ctlbits,  
+> > char *haddr)
+> > 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
+> > 		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
+> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+> > -			syslog(LOG_ERR,
+> > -			       "nfssvc: writing fds to kernel failed: errno %d (%s)",
+> > -			       errno, strerror(errno));
+> > +			xlog(L_ERROR,
+> > +			       "writing fds to kernel failed: errno %d (%m)",
+> > +			       errno);
+> > 		}
+> > 	}
+> > 	close(fd);
+> > @@ -139,10 +138,9 @@ nfssvc_versbits(unsigned int ctlbits, int  
+> > minorvers4)
+> > 				    minorvers4 > 0 ? '+' : '-',
+> > 				    n);
+> > 	snprintf(ptr+off, BUFSIZ - off, "\n");
+> > -	if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+> > -		syslog(LOG_ERR, "nfssvc: Setting version failed: errno %d (%s)",
+> > -			errno, strerror(errno));
+> > -	}
+> > +	if (write(fd, buf, strlen(buf)) != strlen(buf))
+> > +		xlog(L_ERROR, "Setting version failed: errno %d (%m)", errno);
+> > +
+> > 	close(fd);
+> >
+> > 	return;
+> > diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> > index c7bd003..6dfea67 100644
+> > --- a/utils/nfsd/nfsd.c
+> > +++ b/utils/nfsd/nfsd.c
+> > @@ -18,13 +18,13 @@
+> > #include <string.h>
+> > #include <errno.h>
+> > #include <getopt.h>
+> > -#include <syslog.h>
+> > #include <netdb.h>
+> > #include <sys/socket.h>
+> > #include <netinet/in.h>
+> > #include <arpa/inet.h>
+> >
+> > #include "nfslib.h"
+> > +#include "xlog.h"
+> >
+> > static void	usage(const char *);
+> >
+> > @@ -37,6 +37,7 @@ static struct option longopts[] =
+> > 	{ "no-udp", 0, 0, 'U' },
+> > 	{ "port", 1, 0, 'P' },
+> > 	{ "port", 1, 0, 'p' },
+> > +	{ "debug", 0, 0, 'd' },
+> > 	{ NULL, 0, 0, 0 }
+> > };
+> > unsigned int protobits = NFSCTL_ALLBITS;
+> > @@ -50,7 +51,7 @@ main(int argc, char **argv)
+> > 	int	count = 1, c, error, port, fd, found_one;
+> > 	struct servent *ent;
+> > 	struct hostent *hp;
+> > -	char *p;
+> > +	char *p, *progname;
+> >
+> > 	ent = getservbyname ("nfs", "udp");
+> > 	if (ent != NULL)
+> > @@ -58,8 +59,22 @@ main(int argc, char **argv)
+> > 	else
+> > 		port = 2049;
+> >
+> > -	while ((c = getopt_long(argc, argv, "H:hN:p:P:TU", longopts,  
+> > NULL)) != EOF) {
+> > +	progname = strdup(basename(argv[0]));
+> > +	if (!progname) {
+> > +		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
+> > +		exit(1);
+> > +	}
+> > +
+> > +	xlog_syslog(1);
+> > +	xlog_stderr(0);
+> > +
+> > +	while ((c = getopt_long(argc, argv, "dH:hN:p:P:TU", longopts,  
+> > NULL)) != EOF) {
+> > 		switch(c) {
+> > +		case 'd':
+> > +			xlog_config(D_ALL, 1);
+> > +			xlog_syslog(0);
+> > +			xlog_stderr(1);
+> > +			break;
+> > 		case 'H':
+> > 			if (inet_addr(optarg) != INADDR_NONE) {
+> > 				haddr = strdup(optarg);
+> > @@ -67,8 +82,8 @@ main(int argc, char **argv)
+> > 				haddr = inet_ntoa((*(struct in_addr*)(hp->h_addr_list[0])));
+> > 			} else {
+> > 				fprintf(stderr, "%s: Unknown hostname: %s\n",
+> > -					argv[0], optarg);
+> > -				usage(argv [0]);
+> > +					progname, optarg);
+> > +				usage(progname);
+> > 			}
+> > 			break;
+> > 		case 'P':	/* XXX for nfs-server compatibility */
+> > @@ -76,8 +91,8 @@ main(int argc, char **argv)
+> > 			port = atoi(optarg);
+> > 			if (port <= 0 || port > 65535) {
+> > 				fprintf(stderr, "%s: bad port number: %s\n",
+> > -					argv[0], optarg);
+> > -				usage(argv [0]);
+> > +					progname, optarg);
+> > +				usage(progname);
+> > 			}
+> > 			break;
+> > 		case 'N':
+> > @@ -105,14 +120,17 @@ main(int argc, char **argv)
+> > 		default:
+> > 			fprintf(stderr, "Invalid argument: '%c'\n", c);
+> > 		case 'h':
+> > -			usage(argv[0]);
+> > +			usage(progname);
+> > 		}
+> > 	}
+> > +
+> > +	xlog_open(progname);
+> > +
+> > 	/*
+> > 	 * Do some sanity checking, if the ctlbits are set
+> > 	 */
+> > 	if (!NFSCTL_UDPISSET(protobits) && !NFSCTL_TCPISSET(protobits)) {
+> > -		fprintf(stderr, "invalid protocol specified\n");
+> > +		xlog(L_ERROR, "invalid protocol specified");
+> 
+> Nit: This code looks like additional command line option parsing, so  
+> fprintf(stderr) might be entirely adequate.  Any reason to promote  
+> these to xlog() ?
+> 
+
+I think when I asked you about this before you said that you thought
+that nfsd should always log to syslog whenever possible. Once the
+command line parsing is done, it's safe to switch to syslog...
+
+I'm starting to wonder though whether that's the ideal thing. Given
+that rpc.nfsd isn't really a daemon per-se, maybe it would be better to
+make it send output to stderr instead? The parent processes for init
+scripts usually take care of logging stderr to syslog. If someone is
+running interactively then it probably makes sense to give them
+feedback on stderr rather than requiring them to run with --debug...
+
+> > 		exit(1);
+> > 	}
+> > 	found_one = 0;
+> > @@ -121,12 +139,12 @@ main(int argc, char **argv)
+> > 			found_one = 1;
+> > 	}
+> > 	if (!found_one) {
+> > -		fprintf(stderr, "no version specified\n");
+> > +		xlog(L_ERROR, "no version specified");
+> > 		exit(1);
+> > 	}			
+> >
+> > 	if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
+> > -		fprintf(stderr, "version 4 requires the TCP protocol\n");
+> > +		xlog(L_ERROR, "version 4 requires the TCP protocol");
+> > 		exit(1);
+> > 	}
+> > 	if (haddr == NULL) {
+> > @@ -135,17 +153,15 @@ main(int argc, char **argv)
+> > 	}
+> >
+> > 	if (chdir(NFS_STATEDIR)) {
+> > -		fprintf(stderr, "%s: chdir(%s) failed: %s\n",
+> > -			argv [0], NFS_STATEDIR, strerror(errno));
+> > +		xlog(L_ERROR, "chdir(%s) failed: %m", NFS_STATEDIR);
+> > 		exit(1);
+> > 	}
+> >
+> > 	if (optind < argc) {
+> > 		if ((count = atoi(argv[optind])) < 0) {
+> > 			/* insane # of servers */
+> > -			fprintf(stderr,
+> > -				"%s: invalid server count (%d), using 1\n",
+> > -				argv[0], count);
+> > +			xlog(L_ERROR, "invalid server count (%d), using 1",
+> > +				      count);
+> > 			count = 1;
+> > 		}
+> > 	}
+> > @@ -155,21 +171,20 @@ main(int argc, char **argv)
+> > 	   everything before spawning kernel threads.  --Chip */
+> > 	fd = open("/dev/null", O_RDWR);
+> > 	if (fd == -1)
+> > -		perror("/dev/null");
+> > +		xlog(L_ERROR, "Unable to open /dev/null: %m");
+> > 	else {
+> > 		(void) dup2(fd, 0);
+> > 		(void) dup2(fd, 1);
+> > 		(void) dup2(fd, 2);
+> > 	}
+> > +	xlog_syslog(1);
+> > +	xlog_stderr(0);
+> > 	closeall(3);
+> >
+> > -	openlog("nfsd", LOG_PID, LOG_DAEMON);
+> > -	if ((error = nfssvc(port, count, versbits, minorvers4, protobits,  
+> > haddr)) < 0) {
+> > -		int e = errno;
+> > -		syslog(LOG_ERR, "nfssvc: %s", strerror(e));
+> > -		closelog();
+> > -	}
+> > +	if ((error = nfssvc(port, count, versbits, minorvers4, protobits,  
+> > haddr)) < 0)
+> > +		xlog(L_ERROR, "nfssvc (%m)");
+> >
+> > +	free(progname);
+> > 	return (error != 0);
+> > }
+> >
+> > @@ -177,7 +192,7 @@ static void
+> > usage(const char *prog)
+> > {
+> > 	fprintf(stderr, "Usage:\n"
+> > -		"%s [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version  
+> > version ] [-T|--no-tcp] [-U|--no-udp] nrservs\n",
+> > +		"%s [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version  
+> > version ] [-T|--no-tcp] [-U|--no-udp] [-d|--debug] nrservs\n",
+> > 		prog);
+> > 	exit(2);
+> > }
+> > -- 
+> > 1.6.2.2
+> >
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Jeff Layton <jlayton@redhat.com>
