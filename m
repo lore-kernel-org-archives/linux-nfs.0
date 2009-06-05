@@ -1,72 +1,55 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: RE: [pnfs] [RFC 07/39] nfs41: New backchannel helper routines
-Date: Fri, 05 Jun 2009 08:40:30 -0400
-Message-ID: <1244205630.5410.23.camel@heimdal.trondhjem.org>
-References: <273FE88A07F5D445824060902F7003440612B656@SACMVEXC1-PRD.hq.netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Link performance over NFS degraded in RHEL5. -- was : Read/Write
+ NFS I/O performance degraded by FLUSH_STABLE page flushing
+Date: Fri, 05 Jun 2009 09:30:11 -0400
+Message-ID: <4A291DE3.2070105@RedHat.com>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org>	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org>	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org>	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>	 <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br>	 <1244049027.5603.5.camel@heimdal.trondhjem.org>	 <OFB53BFCCB.0CEC7A7E-ON852575C <1244138698.5203.59.camel@heimdal.trondhjem.org> <OF37FCED66.33F08949-O
+ N852575CB.006DE109-852575CB.0071CFBD@us.ibm.com> <4A2902E6.2080006@RedHat.com> <4A29144A.6030405@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Tom Talpey <tmtalpey@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22042 "EHLO mx2.netapp.com"
+Received: from mx2.redhat.com ([66.187.237.31]:43017 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750984AbZFEMka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2009 08:40:30 -0400
-In-Reply-To: <273FE88A07F5D445824060902F7003440612B656-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+	id S1752146AbZFENdP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2009 09:33:15 -0400
+In-Reply-To: <4A29144A.6030405@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-06-04 at 19:17 -0700, Labiaga, Ricardo wrote:
-> > > +/*
-> > > + * Helper routines that track the number of preallocation elements
-> > > + * on the transport.
-> > > + */
-> > > +static inline int xprt_need_to_requeue(struct rpc_xprt *xprt)
-> > > +{
-> > > +	return xprt->bc_alloc_count > 0;
-> > > +}
-> > 
-> > Shouldn't this be 'xprt->bc_alloc_count < min_reqs' or something like
-> > that?
+
+
+Tom Talpey wrote:
+> On 6/5/2009 7:35 AM, Steve Dickson wrote:
+>> Brian R Cowan wrote:
+>>> Trond Myklebust<trond.myklebust@fys.uio.no>  wrote on 06/04/2009
+>>> 02:04:58
+>>> PM:
+>>>
+>>>> Did you try turning off write gathering on the server (i.e. add the
+>>>> 'no_wdelay' export option)? As I said earlier, that forces a delay of
+>>>> 10ms per RPC call, which might explain the FILE_SYNC slowness.
+>>> Just tried it, this seems to be a very useful workaround as well. The
+>>> FILE_SYNC write calls come back in about the same amount of time as the
+>>> write+commit pairs... Speeds up building regardless of the network
+>>> filesystem (ClearCase MVFS or straight NFS).
+>>
+>> Does anybody had the history as to why 'no_wdelay' is an
+>> export default?
 > 
-> xprt->bc_alloc_count is correct because 'bc_alloc_count' tracks the
-> number of backchannels that have been setup.  In other words, return the
-> preallocated structure to the queue if there are backchannels that will
-> eventually consume the 'struct rpc_xprt'.  Otherwise it gets freed.
-> 'bc_alloc_count' does not track the number of 'struct rpc_xprt'.
-
-OK... I think I now understand what this is doing.
-
-Basically, you are keeping a count of the number of requests that you
-want to keep preallocated. When you destroy the back channel, then you
-set it to zero, and destroy all those requests that are on the 'unused'
-list, then you destroy all remaining requests in the xprt_release()
-callback instead of requeuing them in the 'unused' list.
-
-Hmm... Wouldn't just a flag have been sufficient here? Why do you need
-to make bc_alloc_count a counter?
-
-> > Why are we allocating full pages here? 99.9999999% of all callbacks
-> are
-> > going to be small. The only exception is CB_NOTIFY, and we're not yet
-> > sure we're ever going to want those...
+> Because "wdelay" is a complete crock?
 > 
-> CB_NOTIFY_DEVICEID can also get long if the server uses multiple
-> deviceids.  It can be an unbound list, but the client does have the
-> ability of telling the server the maximum size of the callback requests.
-> Each deviceID is 16 bytes, so it doesn't take many to fill a page.  Is
-> it an overkill just for this case?  I could change it if you really want
-> us to.
+> Adding 10ms to every write RPC only helps if there's a steady
+> single-file stream arriving at the server. In most other workloads
+> it only slows things down.
+> 
+> The better solution is to continue tuning the clients to issue
+> writes in a more sequential and less all-or-nothing fashion.
+> There are plenty of other less crock-ful things to do in the
+> server, too.
+Ok... So do you think removing it as a default would cause
+any regressions?
 
-All right, let's keep it for the moment then, but please add a comment
-explaining how you pulled this particular number out of your hat.
+steved.
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
