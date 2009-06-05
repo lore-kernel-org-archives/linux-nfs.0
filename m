@@ -1,50 +1,72 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: should we make --enable-tirpc the default in current nfs-utils?
-Date: Fri, 5 Jun 2009 07:36:48 -0400
-Message-ID: <20090605073648.5a5497b5@tlielax.poochiereds.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: RE: [pnfs] [RFC 07/39] nfs41: New backchannel helper routines
+Date: Fri, 05 Jun 2009 08:40:30 -0400
+Message-ID: <1244205630.5410.23.camel@heimdal.trondhjem.org>
+References: <273FE88A07F5D445824060902F7003440612B656@SACMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34226 "EHLO mx2.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22042 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750949AbZFELgs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2009 07:36:48 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n55BaogK000474
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 07:36:50 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n55BanJH018110
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 07:36:50 -0400
-Received: from tlielax.poochiereds.net (vpn-12-229.rdu.redhat.com [10.11.12.229])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n55BanVu016892
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 07:36:49 -0400
+	id S1750984AbZFEMka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2009 08:40:30 -0400
+In-Reply-To: <273FE88A07F5D445824060902F7003440612B656-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eventually, we most distros are going to want to build nfs-utils
-against libtirpc in order to get IPv6 support. At some point, we'll
-probably want to make building with IPv6 support the default. In the
-meantime however, we need to get more testing exposure for the TI-RPC
-codepaths. We'll probably start building Fedora's nfs-utils with TI-RPC
-support in the near future.
+On Thu, 2009-06-04 at 19:17 -0700, Labiaga, Ricardo wrote:
+> > > +/*
+> > > + * Helper routines that track the number of preallocation elements
+> > > + * on the transport.
+> > > + */
+> > > +static inline int xprt_need_to_requeue(struct rpc_xprt *xprt)
+> > > +{
+> > > +	return xprt->bc_alloc_count > 0;
+> > > +}
+> > 
+> > Shouldn't this be 'xprt->bc_alloc_count < min_reqs' or something like
+> > that?
+> 
+> xprt->bc_alloc_count is correct because 'bc_alloc_count' tracks the
+> number of backchannels that have been setup.  In other words, return the
+> preallocated structure to the queue if there are backchannels that will
+> eventually consume the 'struct rpc_xprt'.  Otherwise it gets freed.
+> 'bc_alloc_count' does not track the number of 'struct rpc_xprt'.
 
-The question that Steve D. has asked is whether we should also make
---enable-tirpc the default for the mainline nfs-utils tree?
+OK... I think I now understand what this is doing.
 
-Doing this now would add wider testing exposure for these codepaths and
-help flush out bugs in TIRPC+IPV4 codepaths. OTOH, it means adding a
-new library dependency for packagers, or they'll need to take the
-conscious step to --disable-tirpc when they configure.
+Basically, you are keeping a count of the number of requests that you
+want to keep preallocated. When you destroy the back channel, then you
+set it to zero, and destroy all those requests that are on the 'unused'
+list, then you destroy all remaining requests in the xprt_release()
+callback instead of requeuing them in the 'unused' list.
 
-We could make it so that configure looks for libtirpc and if it's not
-available, configures the build against legacy RPC interfaces. I think
-this is a bad idea however. While it should "just work" either way,
-there are some small behavioral differences when TIRPC support is built
-in. I think it's probably better to make enabling and disabling TIRPC a
-conscious step.
+Hmm... Wouldn't just a flag have been sufficient here? Why do you need
+to make bc_alloc_count a counter?
 
-Thoughts?
+> > Why are we allocating full pages here? 99.9999999% of all callbacks
+> are
+> > going to be small. The only exception is CB_NOTIFY, and we're not yet
+> > sure we're ever going to want those...
+> 
+> CB_NOTIFY_DEVICEID can also get long if the server uses multiple
+> deviceids.  It can be an unbound list, but the client does have the
+> ability of telling the server the maximum size of the callback requests.
+> Each deviceID is 16 bytes, so it doesn't take many to fill a page.  Is
+> it an overkill just for this case?  I could change it if you really want
+> us to.
 
+All right, let's keep it for the moment then, but please add a comment
+explaining how you pulled this particular number out of your hat.
+
+Trond
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
