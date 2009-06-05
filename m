@@ -1,47 +1,49 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
-Date: Fri, 5 Jun 2009 12:10:27 -0400
-Message-ID: <20090605161027.GF10975@fieldses.org>
-References: <20090605073648.5a5497b5@tlielax.poochiereds.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+ flushing
+Date: Fri, 05 Jun 2009 12:12:08 -0400
+Message-ID: <1244218328.5410.38.camel@heimdal.trondhjem.org>
+References: <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com>
+	 <49FA0CE8.9090706@redhat.com>
+	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
+	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
+	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
+	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
+	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
+	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
+	 <20090530075756.GA27885@infradead.org> <20090601223008.GF5950@fieldses.org>
+	 <20090605145450.GA11988@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Krishna Kumar <krikku@gmail.com>, Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>,
+	Brian R Cowan <brcowan@us.ibm.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:51201 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752139AbZFEQKY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 12:10:24 -0400
-In-Reply-To: <20090605073648.5a5497b5-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:55411 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752979AbZFEQM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2009 12:12:27 -0400
+In-Reply-To: <20090605145450.GA11988@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 05, 2009 at 07:36:48AM -0400, Jeff Layton wrote:
-> Eventually, we most distros are going to want to build nfs-utils
-> against libtirpc in order to get IPv6 support. At some point, we'll
-> probably want to make building with IPv6 support the default. In the
-> meantime however, we need to get more testing exposure for the TI-RPC
-> codepaths. We'll probably start building Fedora's nfs-utils with TI-RPC
-> support in the near future.
+On Fri, 2009-06-05 at 10:54 -0400, Christoph Hellwig wrote:
+> On Mon, Jun 01, 2009 at 06:30:08PM -0400, J. Bruce Fields wrote:
+> > > NFSD stops calling ->fsync without a file struct.
+> > > 
+> > > I think the open file cache will help us with that, if we can extend
+> > > it to also cache open file structs for directories.
+> > 
+> > Krishna Kumar--do you think that'd be a reasonable thing to do?
 > 
-> The question that Steve D. has asked is whether we should also make
-> --enable-tirpc the default for the mainline nfs-utils tree?
+> Btw, do you have at least the basic open files cache queue for 2.6.31?
 > 
-> Doing this now would add wider testing exposure for these codepaths and
-> help flush out bugs in TIRPC+IPV4 codepaths. OTOH, it means adding a
-> new library dependency for packagers, or they'll need to take the
-> conscious step to --disable-tirpc when they configure.
-> 
-> We could make it so that configure looks for libtirpc and if it's not
-> available, configures the build against legacy RPC interfaces. I think
-> this is a bad idea however. While it should "just work" either way,
-> there are some small behavioral differences when TIRPC support is built
-> in. I think it's probably better to make enabling and disabling TIRPC a
-> conscious step.
-> 
-> Thoughts?
 
-Makes sense to me to have upstream defaults set to what we expect
-distributions to move to, assuming there aren't known regressions.
+Now that _will_ badly screw up the write gathering heuristic...
 
---b.
+Trond
+
