@@ -1,71 +1,38 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] nfs-utils: Set all verbose types in gssd daemons.
-Date: Fri, 05 Jun 2009 11:25:50 -0400
-Message-ID: <4A2938FE.2070903@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+	flushing
+Date: Fri, 5 Jun 2009 12:01:45 -0400
+Message-ID: <20090605160145.GD10975@fieldses.org>
+References: <49FA0CE8.9090706@redhat.com> <1241126587.15476.62.camel@heimdal.trondhjem.org> <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com> <1243615595.7155.48.camel@heimdal.trondhjem.org> <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com> <1243618500.7155.56.camel@heimdal.trondhjem.org> <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com> <20090530075756.GA27885@infradead.org> <20090601223008.GF5950@fieldses.org> <20090605145450.GA11988@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Krishna Kumar <krikku@gmail.com>, Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>,
+	Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Brian R Cowan <brcowan@us.ibm.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:55207 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750893AbZFEP2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2009 11:28:50 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n55FSrLF025998
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 11:28:53 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n55FSqVC024569
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 11:28:52 -0400
-Received: from xenhat.boston.devel.redhat.com (vpn-10-18.bos.redhat.com [10.16.10.18])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n55FSpcT028150
-	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 11:28:51 -0400
+Received: from mail.fieldses.org ([141.211.133.115]:60134 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752030AbZFEQBy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 12:01:54 -0400
+In-Reply-To: <20090605145450.GA11988@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I founded it very handy to have library verbosity enabled
-when verbosity is enabled on either the gssd or 
-svcgssd daemons. 
+On Fri, Jun 05, 2009 at 10:54:50AM -0400, Christoph Hellwig wrote:
+> On Mon, Jun 01, 2009 at 06:30:08PM -0400, J. Bruce Fields wrote:
+> > > NFSD stops calling ->fsync without a file struct.
+> > > 
+> > > I think the open file cache will help us with that, if we can extend
+> > > it to also cache open file structs for directories.
+> > 
+> > Krishna Kumar--do you think that'd be a reasonable thing to do?
+> 
+> Btw, do you have at least the basic open files cache queue for 2.6.31?
 
-So this patch will set the verbosity level in the 
-librpcsecgss library and in the libnfsidmapd (for svcgssd) 
-when verbosity level is set by the '-v' flag it on
-either daemon.
+No.  I'll try to give it a look this afternoon.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
-----------------------------------------------
-
-diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index f6949db..40a2b4d 100644
---- a/utils/gssd/gssd.c
-+++ b/utils/gssd/gssd.c
-@@ -171,6 +171,8 @@ main(int argc, char *argv[])
- 
- 	initerr(progname, verbosity, fg);
- #ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
-+	if (verbosity && rpc_verbosity == 0)
-+		rpc_verbosity = verbosity;
- 	authgss_set_debug_level(rpc_verbosity);
- #else
-         if (rpc_verbosity > 0)
-diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-index 6ca0e8d..69d2a69 100644
---- a/utils/gssd/svcgssd.c
-+++ b/utils/gssd/svcgssd.c
-@@ -208,6 +208,8 @@ main(int argc, char *argv[])
- 
- 	initerr(progname, verbosity, fg);
- #ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
-+	if (verbosity && rpc_verbosity == 0)
-+		rpc_verbosity = verbosity;
- 	authgss_set_debug_level(rpc_verbosity);
- #else
- 	if (rpc_verbosity > 0)
-@@ -215,6 +217,8 @@ main(int argc, char *argv[])
- 			    "support setting debug level\n");
- #endif
- #ifdef HAVE_NFS4_SET_DEBUG
-+		if (verbosity && idmap_verbosity == 0)
-+			idmap_verbosity = verbosity;
-         nfs4_set_debug(idmap_verbosity, NULL);
- #else
- 	if (idmap_verbosity > 0)
+--b.
