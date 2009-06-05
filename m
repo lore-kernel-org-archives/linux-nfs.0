@@ -1,71 +1,42 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: Re: [round2 PATCH 0/7] nfs-utils: add support for authenticated
-	callbacks
-Date: Fri, 5 Jun 2009 15:47:59 -0400
-Message-ID: <4d569c330906051247y7e24a7d4q3392b1481954447c@mail.gmail.com>
-References: <20090520151651.2986.29621.stgit@jazz.citi.umich.edu>
-	 <4A296A95.3070208@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+	flushing
+Date: Fri, 5 Jun 2009 15:54:34 -0400
+Message-ID: <20090605195434.GI14043@fieldses.org>
+References: <1241126587.15476.62.camel@heimdal.trondhjem.org> <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com> <1243615595.7155.48.camel@heimdal.trondhjem.org> <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com> <1243618500.7155.56.camel@heimdal.trondhjem.org> <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com> <20090530075756.GA27885@infradead.org> <20090601223008.GF5950@fieldses.org> <20090605145450.GA11988@infradead.org> <1244218328.5410.38.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Krishna Kumar <krikku@gmail.com>, Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>,
+	Brian R Cowan <brcowan@us.ibm.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+	Peter Staubach <staubach@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from qw-out-2122.google.com ([74.125.92.24]:34427 "EHLO
-	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751328AbZFETr6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 15:47:58 -0400
-Received: by qw-out-2122.google.com with SMTP id 5so1207640qwd.37
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Jun 2009 12:48:00 -0700 (PDT)
-In-Reply-To: <4A296A95.3070208-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:54722 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751960AbZFETyu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 15:54:50 -0400
+In-Reply-To: <1244218328.5410.38.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 5, 2009 at 2:57 PM, Steve Dickson<SteveD@redhat.com> wrote:
-> Kevin Coffman wrote:
->> Hi Steve,
->>
->> This series adds support to gssd and svcgssd to support
->> authenticated callbacks.
->>
->> 1) adds the name the client used when authenticating to the
->> svcgssd downcall information. =A0This is used by nfsd to determine
->> the target name when initiating the callback.
->>
->> 2) splits out the processing of update_client_list() to accomodate
->> a new upcall pipe added in the next patch.
->>
->> 3) changes gssd to process all rpc_pipefs directories (this patch is
->> changed from the first round to process all directories rather than
->> special-casing directories)
->>
->> 4) a debugging aid to distinquish which upcall is being processed
->>
->> 6) adds support for handling the "target=3D" attribute in the new up=
-call
->>
->> 7) adds support for handling the "service=3D" attribute in the new u=
-pcall
->>
->> NOTE: =A0For authenticated callbacks to work, an NFS client or an
->> NFS server must be running both rpcgssd _and_ rpcsvcgssd.
->> This will require a configuration change.
->
-> Question, How are authenticated callbacks are not configured?
-> Also do both daemons have to be running if authenticated
-> callbacks are not configured?
->
-> steved.
+On Fri, Jun 05, 2009 at 12:12:08PM -0400, Trond Myklebust wrote:
+> On Fri, 2009-06-05 at 10:54 -0400, Christoph Hellwig wrote:
+> > On Mon, Jun 01, 2009 at 06:30:08PM -0400, J. Bruce Fields wrote:
+> > > > NFSD stops calling ->fsync without a file struct.
+> > > > 
+> > > > I think the open file cache will help us with that, if we can extend
+> > > > it to also cache open file structs for directories.
+> > > 
+> > > Krishna Kumar--do you think that'd be a reasonable thing to do?
+> > 
+> > Btw, do you have at least the basic open files cache queue for 2.6.31?
+> > 
+> 
+> Now that _will_ badly screw up the write gathering heuristic...
 
-Hi Steve,
-AFAIK, there isn't a way to turn off the attempt to do the
-authenticated callback.  I think that's what you mean by how are they
-not configured?
+How?
 
-So for example, if the nfs client is not running svcgssd, the server
-will attempt the callback (with authentication), and the upcall
-request will time out and fail.  If the NFS server is not running
-gssd, when it attempts to establish the callback its upcall to gssd
-will time out and you'll get the printks warning that the daemon is
-not running.
-
-K.C.
+--b.
