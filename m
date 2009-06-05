@@ -1,35 +1,53 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Read/Write NFS I/O performance degraded by FLUSH_STABLE page
-	flushing
-Date: Fri, 5 Jun 2009 10:54:50 -0400
-Message-ID: <20090605145450.GA11988@infradead.org>
-References: <5ECD2205-4DC9-41F1-AC5C-ADFA984745D3@oracle.com> <49FA0CE8.9090706@redhat.com> <1241126587.15476.62.camel@heimdal.trondhjem.org> <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com> <1243615595.7155.48.camel@heimdal.trondhjem.org> <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com> <1243618500.7155.56.camel@heimdal.trondhjem.org> <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com> <20090530075756.GA27885@infradead.org> <20090601223008.GF5950@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] libnfsidmap: debug log when local Realms are not found
+Date: Fri, 05 Jun 2009 11:12:52 -0400
+Message-ID: <4A2935F4.8040702@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Krishna Kumar <krikku@gmail.com>, Greg Banks <gnb-xTcybq6BZ68@public.gmane.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Brian R Cowan <brcowan@us.ibm.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
-	Peter Staubach <staubach@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Kevin Coffman <kwc@citi.umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:50562 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751088AbZFEOyx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 10:54:53 -0400
-In-Reply-To: <20090601223008.GF5950@fieldses.org>
+Received: from mx2.redhat.com ([66.187.237.31]:60087 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751670AbZFEPPx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2009 11:15:53 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 01, 2009 at 06:30:08PM -0400, J. Bruce Fields wrote:
-> > NFSD stops calling ->fsync without a file struct.
-> > 
-> > I think the open file cache will help us with that, if we can extend
-> > it to also cache open file structs for directories.
-> 
-> Krishna Kumar--do you think that'd be a reasonable thing to do?
+Hey Kevin,
 
-Btw, do you have at least the basic open files cache queue for 2.6.31?
+When the krb5 realm and the DNS domain name are not
+the same and the 'Local-Realm' variable is not
+set (or set incorrectly) in /etc/idmapd.conf, 
+causes the krb5 mounted file system to be inaccessible
+by any and all users, which is the right thing to do.
 
+But, the problem is, there is no reason logged as
+to why the all users are being denied assess; with
+or without debug enabled. 
+
+This patch will log, with debug enabled, when the
+krb5 realm can not be used since it does not match 
+the DNS domain name or the 'Local-Realm' variable 
+defined in /etc/idmad.conf.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---------------------------------
+
+diff -up libnfsidmap/nss.c.orig libnfsidmap/nss.c
+--- libnfsidmap/nss.c.orig	2009-04-13 14:46:17.000000000 -0400
++++ libnfsidmap/nss.c	2009-06-05 10:37:46.000000000 -0400
+@@ -298,9 +298,11 @@ static int nss_gss_princ_to_ids(char *se
+ 			break;
+ 		}
+ 	}
+-	if (!found)
++	if (!found) {
++		IDMAP_LOG(1, ("nss_gss_princ_to_ids: Local-Realm '%s': NOT FOUND", 
++			princ_realm));
+ 		return -ENOENT;
+-
++	}
+ 	/* XXX: this should call something like getgssauthnam instead? */
+ 	pw = nss_getpwnam(princ, NULL, &err);
+ 	if (pw == NULL) {
