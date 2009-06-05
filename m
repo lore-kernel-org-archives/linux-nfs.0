@@ -1,53 +1,71 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [PATCH] libnfsidmap: debug log when local Realms are not found
-Date: Fri, 05 Jun 2009 11:12:52 -0400
-Message-ID: <4A2935F4.8040702@RedHat.com>
+Subject: [PATCH] nfs-utils: Set all verbose types in gssd daemons.
+Date: Fri, 05 Jun 2009 11:25:50 -0400
+Message-ID: <4A2938FE.2070903@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Kevin Coffman <kwc@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:60087 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:55207 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751670AbZFEPPx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2009 11:15:53 -0400
+	id S1750893AbZFEP2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Jun 2009 11:28:50 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n55FSrLF025998
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 11:28:53 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n55FSqVC024569
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 11:28:52 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-18.bos.redhat.com [10.16.10.18])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n55FSpcT028150
+	for <linux-nfs@vger.kernel.org>; Fri, 5 Jun 2009 11:28:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Kevin,
+I founded it very handy to have library verbosity enabled
+when verbosity is enabled on either the gssd or 
+svcgssd daemons. 
 
-When the krb5 realm and the DNS domain name are not
-the same and the 'Local-Realm' variable is not
-set (or set incorrectly) in /etc/idmapd.conf, 
-causes the krb5 mounted file system to be inaccessible
-by any and all users, which is the right thing to do.
-
-But, the problem is, there is no reason logged as
-to why the all users are being denied assess; with
-or without debug enabled. 
-
-This patch will log, with debug enabled, when the
-krb5 realm can not be used since it does not match 
-the DNS domain name or the 'Local-Realm' variable 
-defined in /etc/idmad.conf.
+So this patch will set the verbosity level in the 
+librpcsecgss library and in the libnfsidmapd (for svcgssd) 
+when verbosity level is set by the '-v' flag it on
+either daemon.
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
----------------------------------
+----------------------------------------------
 
-diff -up libnfsidmap/nss.c.orig libnfsidmap/nss.c
---- libnfsidmap/nss.c.orig	2009-04-13 14:46:17.000000000 -0400
-+++ libnfsidmap/nss.c	2009-06-05 10:37:46.000000000 -0400
-@@ -298,9 +298,11 @@ static int nss_gss_princ_to_ids(char *se
- 			break;
- 		}
- 	}
--	if (!found)
-+	if (!found) {
-+		IDMAP_LOG(1, ("nss_gss_princ_to_ids: Local-Realm '%s': NOT FOUND", 
-+			princ_realm));
- 		return -ENOENT;
--
-+	}
- 	/* XXX: this should call something like getgssauthnam instead? */
- 	pw = nss_getpwnam(princ, NULL, &err);
- 	if (pw == NULL) {
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index f6949db..40a2b4d 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -171,6 +171,8 @@ main(int argc, char *argv[])
+ 
+ 	initerr(progname, verbosity, fg);
+ #ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
++	if (verbosity && rpc_verbosity == 0)
++		rpc_verbosity = verbosity;
+ 	authgss_set_debug_level(rpc_verbosity);
+ #else
+         if (rpc_verbosity > 0)
+diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+index 6ca0e8d..69d2a69 100644
+--- a/utils/gssd/svcgssd.c
++++ b/utils/gssd/svcgssd.c
+@@ -208,6 +208,8 @@ main(int argc, char *argv[])
+ 
+ 	initerr(progname, verbosity, fg);
+ #ifdef HAVE_AUTHGSS_SET_DEBUG_LEVEL
++	if (verbosity && rpc_verbosity == 0)
++		rpc_verbosity = verbosity;
+ 	authgss_set_debug_level(rpc_verbosity);
+ #else
+ 	if (rpc_verbosity > 0)
+@@ -215,6 +217,8 @@ main(int argc, char *argv[])
+ 			    "support setting debug level\n");
+ #endif
+ #ifdef HAVE_NFS4_SET_DEBUG
++		if (verbosity && idmap_verbosity == 0)
++			idmap_verbosity = verbosity;
+         nfs4_set_debug(idmap_verbosity, NULL);
+ #else
+ 	if (idmap_verbosity > 0)
