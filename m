@@ -1,263 +1,101 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: RE: [pnfs] [RFC 09/39] nfs41: New xs_tcp_read_data()
-Date: Fri, 05 Jun 2009 12:56:15 -0400
-Message-ID: <1244220975.5410.47.camel@heimdal.trondhjem.org>
-References: <273FE88A07F5D445824060902F7003440612B810@SACMVEXC1-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
+Date: Fri, 5 Jun 2009 13:30:39 -0400
+Message-ID: <4BAB6B5A-3446-4525-ABD7-FCDCDF52E986@oracle.com>
+References: <20090605073648.5a5497b5@tlielax.poochiereds.net> <20090605161027.GF10975@fieldses.org> <4D090F4F-4063-429C-829B-E56A1B127D3B@oracle.com> <20090605163828.GG10975@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17532 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755610AbZFEQ4T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2009 12:56:19 -0400
-In-Reply-To: <273FE88A07F5D445824060902F7003440612B810-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:53061 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751379AbZFERbZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 13:31:25 -0400
+In-Reply-To: <20090605163828.GG10975@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-06-05 at 09:44 -0700, Labiaga, Ricardo wrote:
-> > -----Original Message-----
-> > From: Myklebust, Trond
-> > Sent: Thursday, June 04, 2009 12:40 PM
-> > To: Benny Halevy
-> > Cc: linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
-> > Subject: Re: [pnfs] [RFC 09/39] nfs41: New xs_tcp_read_data()
-> > 
-> > On Fri, 2009-05-01 at 02:20 +0300, Benny Halevy wrote:
-> > > From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> > >
-> > > Handles RPC replies and backchannel callbacks.  Traditionally the
-> NFS
-> > > client has expected only RPC replies on its open connections.  With
-> > > NFSv4.1, callbacks can arrive over an existing open connection.
-> > >
-> > > This patch refactors the old xs_tcp_read_request() into an RPC reply
-> > handler:
-> > > xs_tcp_read_reply(), a new backchannel callback handler:
-> > xs_tcp_read_callback(),
-> > > and a common routine to read the data off the transport:
-> > xs_tcp_read_common().
-> > > The new xs_tcp_read_callback() queues callback requests onto a queue
-> > where
-> > > the callback service (a separate thread) is listening for the
-> > processing.
-> > >
-> > > This patch incorporates work and suggestions from Rahul Iyer
-> > (iyer@netapp.com)
-> > > and Benny Halevy (bhalevy@panasas.com).
-> > >
-> > > [nfs41: Keep track of RPC call/reply direction with a flag]
-> > > [nfs41: Preallocate rpc_rqst receive buffer for handling callbacks]
-> > > Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-> > > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> > > ---
-> > >  net/sunrpc/xprtsock.c |  141
-> > ++++++++++++++++++++++++++++++++++++++++++------
-> > >  1 files changed, 123 insertions(+), 18 deletions(-)
-> > >
-> > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > > index 692b517..403ebda 100644
-> > > --- a/net/sunrpc/xprtsock.c
-> > > +++ b/net/sunrpc/xprtsock.c
-> > > @@ -34,6 +34,9 @@
-> > >  #include <linux/sunrpc/sched.h>
-> > >  #include <linux/sunrpc/xprtsock.h>
-> > >  #include <linux/file.h>
-> > > +#ifdef CONFIG_NFS_V4_1
-> > > +#include <linux/sunrpc/bc_xprt.h>
-> > > +#endif
-> > >
-> > >  #include <net/sock.h>
-> > >  #include <net/checksum.h>
-> > > @@ -1028,25 +1031,16 @@ static inline void
-> xs_tcp_read_calldir(struct
-> > sock_xprt *transport,
-> > >  	xs_tcp_check_fraghdr(transport);
-> > >  }
-> > >
-> > > -static inline void xs_tcp_read_request(struct rpc_xprt *xprt,
-> struct
-> > xdr_skb_reader *desc)
-> > > +static inline void xs_tcp_read_common(struct rpc_xprt *xprt,
-> > > +				     struct xdr_skb_reader *desc,
-> > > +				     struct rpc_rqst *req)
-> > >  {
-> > > -	struct sock_xprt *transport = container_of(xprt, struct
-> sock_xprt,
-> > xprt);
-> > > -	struct rpc_rqst *req;
-> > > +	struct sock_xprt *transport =
-> > > +				container_of(xprt, struct sock_xprt,
-> xprt);
-> > >  	struct xdr_buf *rcvbuf;
-> > >  	size_t len;
-> > >  	ssize_t r;
-> > >
-> > > -	/* Find and lock the request corresponding to this xid */
-> > > -	spin_lock(&xprt->transport_lock);
-> > > -	req = xprt_lookup_rqst(xprt, transport->tcp_xid);
-> > > -	if (!req) {
-> > > -		transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
-> > > -		dprintk("RPC:       XID %08x request not found!\n",
-> > > -				ntohl(transport->tcp_xid));
-> > > -		spin_unlock(&xprt->transport_lock);
-> > > -		return;
-> > > -	}
-> > > -
-> > >  	rcvbuf = &req->rq_private_buf;
-> > >  	len = desc->count;
-> > >  	if (len > transport->tcp_reclen - transport->tcp_offset) {
-> > > @@ -1084,7 +1078,7 @@ static inline void xs_tcp_read_request(struct
-> > rpc_xprt *xprt, struct xdr_skb_rea
-> > >  				"tcp_offset = %u, tcp_reclen = %u\n",
-> > >  				xprt, transport->tcp_copied,
-> > >  				transport->tcp_offset,
-> transport->tcp_reclen);
-> > > -		goto out;
-> > > +		return;
-> > >  	}
-> > >
-> > >  	dprintk("RPC:       XID %08x read %Zd bytes\n",
-> > > @@ -1100,11 +1094,122 @@ static inline void
-> xs_tcp_read_request(struct
-> > rpc_xprt *xprt, struct xdr_skb_rea
-> > >  			transport->tcp_flags &= ~TCP_RCV_COPY_DATA;
-> > >  	}
-> > >
-> > > -out:
-> > > +	return;
-> > > +}
-> > > +
-> > > +/*
-> > > + * Finds the request corresponding to the RPC xid and invokes the
-> > common
-> > > + * tcp read code to read the data.
-> > > + */
-> > > +static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
-> > > +				    struct xdr_skb_reader *desc)
-> > > +{
-> > > +	struct sock_xprt *transport =
-> > > +				container_of(xprt, struct sock_xprt,
-> xprt);
-> > > +	struct rpc_rqst *req;
-> > > +
-> > > +	dprintk("RPC:       read reply XID %08x\n", ntohl(transport-
-> > >tcp_xid));
-> > > +
-> > > +	/* Find and lock the request corresponding to this xid */
-> > > +	spin_lock(&xprt->transport_lock);
-> > > +	req = xprt_lookup_rqst(xprt, transport->tcp_xid);
-> > > +	if (!req) {
-> > > +		dprintk("RPC:       XID %08x request not found!\n",
-> > > +				ntohl(transport->tcp_xid));
-> > > +		spin_unlock(&xprt->transport_lock);
-> > > +		return -1;
-> > > +	}
-> > > +
-> > > +	xs_tcp_read_common(xprt, desc, req);
-> > > +
-> > >  	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
-> > >  		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
-> > > +
-> > >  	spin_unlock(&xprt->transport_lock);
-> > > -	xs_tcp_check_fraghdr(transport);
-> > > +	return 0;
-> > > +}
-> > > +
-> > > +#if defined(CONFIG_NFS_V4_1)
-> > > +/*
-> > > + * Obtains an rpc_rqst previously allocated and invokes the common
-> > > + * tcp read code to read the data.  The result is placed in the
-> > callback
-> > > + * queue.
-> > > + * If we're unable to obtain the rpc_rqst we schedule the closing
-> of
-> > the
-> > > + * connection and return -1.
-> > > + */
-> > > +static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
-> > > +				       struct xdr_skb_reader *desc)
-> > > +{
-> > > +	struct sock_xprt *transport =
-> > > +				container_of(xprt, struct sock_xprt,
-> xprt);
-> > > +	struct rpc_rqst *req;
-> > > +
-> > > +	req = xprt_alloc_bc_request(xprt);
-> > > +	if (req == NULL) {
-> > > +		/*
-> > > +		 * Schedule an autoclose RPC call
-> > > +		 */
-> > > +		printk(KERN_WARNING "Callback slot table overflowed\n");
-> > > +		set_bit(XPRT_CLOSE_WAIT, &xprt->state);
-> > > +		if (test_and_set_bit(XPRT_LOCKED, &xprt->state) == 0)
-> > > +			queue_work(rpciod_workqueue,
-> &xprt->task_cleanup);
-> > > +		return -1;
-> > > +	}
-> > > +
-> > > +	req->rq_xid = transport->tcp_xid;
-> > > +	dprintk("RPC:       read callback  XID %08x\n",
-> ntohl(req->rq_xid));
-> > > +	xs_tcp_read_common(xprt, desc, req);
-> > > +
-> > > +	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
-> > > +		struct svc_serv *bc_serv = xprt->bc_serv;
-> > > +
-> > > +		/*
-> > > +		 * Add callback request to callback list.  The callback
-> > > +		 * service sleeps on the sv_cb_waitq waiting for new
-> > > +		 * requests.  Wake it up after adding enqueing the
-> > > +		 * request.
-> > > +		 */
-> > > +		dprintk("RPC:       add callback request to list\n");
-> > > +		spin_lock(&bc_serv->sv_cb_lock);
-> > > +		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
-> > > +		spin_unlock(&bc_serv->sv_cb_lock);
-> > > +		wake_up(&bc_serv->sv_cb_waitq);
-> > > +	}
-> > > +
-> > > +	req->rq_private_buf.len = transport->tcp_copied;
-> > > +
-> > > +	return 0;
-> > > +}
-> > > +#endif /* CONFIG_NFS_V4_1 */
-> > > +
-> > > +/*
-> > > + * Read data off the transport.  This can be either an RPC_CALL or
-> an
-> > > + * RPC_REPLY.  Relay the processing to helper functions.
-> > > + */
-> > > +static void xs_tcp_read_data(struct rpc_xprt *xprt,
-> > > +				    struct xdr_skb_reader *desc)
-> > > +{
-> > > +	struct sock_xprt *transport =
-> > > +				container_of(xprt, struct sock_xprt,
-> xprt);
-> > > +	int status;
-> > > +
-> > > +#if defined(CONFIG_NFS_V4_1)
-> > > +	status = (transport->tcp_flags & TCP_RPC_REPLY) ?
-> > > +		xs_tcp_read_reply(xprt, desc) :
-> > > +		xs_tcp_read_callback(xprt, desc);
-> > > +#else
-> > > +	status = xs_tcp_read_reply(xprt, desc);
-> > > +#endif /* CONFIG_NFS_V4_1 */
-> > 
-> > Ugh... Please don't embed ifdefs in functions like this...
-> > 
-> 
-> OK, so is it okay to use the CONF_NFS_V4_1 code and remove the ifdefs?
 
-Just define a helper function that does one thing in the 4.1 case, and
-calls xs_tcp_read_reply() in the default case.
+On Jun 5, 2009, at 12:38 PM, J. Bruce Fields wrote:
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> On Fri, Jun 05, 2009 at 12:14:48PM -0400, Chuck Lever wrote:
+>>
+>> On Jun 5, 2009, at 12:10 PM, J. Bruce Fields wrote:
+>>
+>>> On Fri, Jun 05, 2009 at 07:36:48AM -0400, Jeff Layton wrote:
+>>>> Eventually, we most distros are going to want to build nfs-utils
+>>>> against libtirpc in order to get IPv6 support. At some point, we'll
+>>>> probably want to make building with IPv6 support the default. In  
+>>>> the
+>>>> meantime however, we need to get more testing exposure for the TI- 
+>>>> RPC
+>>>> codepaths. We'll probably start building Fedora's nfs-utils with  
+>>>> TI-
+>>>> RPC
+>>>> support in the near future.
+>>>>
+>>>> The question that Steve D. has asked is whether we should also make
+>>>> --enable-tirpc the default for the mainline nfs-utils tree?
+>>>>
+>>>> Doing this now would add wider testing exposure for these codepaths
+>>>> and
+>>>> help flush out bugs in TIRPC+IPV4 codepaths. OTOH, it means  
+>>>> adding a
+>>>> new library dependency for packagers, or they'll need to take the
+>>>> conscious step to --disable-tirpc when they configure.
+>>>>
+>>>> We could make it so that configure looks for libtirpc and if it's  
+>>>> not
+>>>> available, configures the build against legacy RPC interfaces. I
+>>>> think
+>>>> this is a bad idea however. While it should "just work" either way,
+>>>> there are some small behavioral differences when TIRPC support is
+>>>> built
+>>>> in. I think it's probably better to make enabling and disabling
+>>>> TIRPC a
+>>>> conscious step.
+>>>>
+>>>> Thoughts?
+>>>
+>>> Makes sense to me to have upstream defaults set to what we expect
+>>> distributions to move to, assuming there aren't known regressions.
+>>>
+>> That's a big assumption,
+>
+> I'm confused--there are known regressions or there aren't.  (I'm not
+> talking about unknown regressions....)
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+To say there are or there aren't is a little black and white.
+
+While this TI-RPC implementation has been around for a while, we've  
+seen some rather significant bugs in this port.  For example, we've  
+seen issues having to do with the width and endianness of basic data  
+types; the position of fields in structures shared with the legacy RPC  
+implementation; incorrect authentication behavior with AF_LOCAL  
+transports; missing parameters when making common RPC calls; and so  
+on.  Based on this, I'm expecting more of the same.
+
+Given the maturity of the nfs-utils code and how little we seem to  
+know about how people use this stuff, I am hesitant to allow wide use  
+even though I don't know of any regressions.
+
+>> and it's exactly why we wanted to have some  soak time in rawhide or
+>> Debian unstable before enabling it by default  upstream.
+>
+> I don't think upstream needs to be more conservative than the
+> development distro's.
+
+Perhaps, but my experience so far has been that some distros that do  
+not bill themselves as "development" seem to just grab the latest nfs- 
+utils whenever they cut a new release.  So I'm a little more cautious  
+about making new features default in upstream nfs-utils before they've  
+had some shake-down time.
+
+Since distros can still disable TI-RPC support with --disable-tirpc,  
+I'm not going to advocate strongly one way or the other.  My main  
+interest is in gating the flood of bug reports and user annoyance.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
