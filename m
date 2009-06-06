@@ -1,209 +1,92 @@
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [RFC 11/11] nfsd41: Refactor create_client()
-Date: Fri,  5 Jun 2009 19:50:06 -0700
-Message-ID: <1244256606-12905-11-git-send-email-Ricardo.Labiaga@netapp.com>
-References: <273FE88A07F5D445824060902F7003440612BB9D@SACMVEXC1-PRD.hq.netapp.com>
- <1244256606-12905-1-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-2-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-3-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-4-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-5-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-6-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-7-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-8-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-9-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244256606-12905-10-git-send-email-Ricardo.Labiaga@netapp.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>
-To: bfields@fieldses.org, trond.myklebust@netapp.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
+Date: Sat, 6 Jun 2009 07:11:53 -0400
+Message-ID: <20090606071153.164d92dd@tlielax.poochiereds.net>
+References: <20090605073648.5a5497b5@tlielax.poochiereds.net>
+	<200906051224.40592.vapier@gentoo.org>
+	<20090605133634.23357e8e@tlielax.poochiereds.net>
+	<200906051650.42007.vapier@gentoo.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org
+To: Mike Frysinger <vapier@gentoo.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33505 "EHLO mx2.netapp.com"
+Received: from mx2.redhat.com ([66.187.237.31]:36532 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753468AbZFFCw5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Jun 2009 22:52:57 -0400
-In-Reply-To: <1244256606-12905-10-git-send-email-Ricardo.Labiaga@netapp.com>
+	id S1753716AbZFFLLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 6 Jun 2009 07:11:54 -0400
+In-Reply-To: <200906051650.42007.vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move common initialization of 'struct nfs4_client' inside create_client().
+On Fri, 5 Jun 2009 16:50:41 -0400
+Mike Frysinger <vapier@gentoo.org> wrote:
 
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> On Friday 05 June 2009 13:36:34 Jeff Layton wrote:
+> > On Fri, 5 Jun 2009 12:24:39 -0400 Mike Frysinger wrote:
+> > > On Friday 05 June 2009 07:36:48 Jeff Layton wrote:
+> > > > Doing this now would add wider testing exposure for these codepaths and
+> > > > help flush out bugs in TIRPC+IPV4 codepaths. OTOH, it means adding a
+> > > > new library dependency for packagers, or they'll need to take the
+> > > > conscious step to --disable-tirpc when they configure.
+> > >
+> > > or have the configure script dump a warning whenever libtirpc is not used
+> > > ...
+> >
+> > The problem there is that these sorts of warnings tend to get lost in
+> > the noise. So then you have the situation where people aren't sure
+> > whether they built against libtirpc or not. Only running ldd against
+> > the binaries will tell you.
+> 
+> the configure script knows whether it's going to be building against libtirpc.  
+> it isnt going to happen randomly during `make`.
+> AC_MSG_WARNING([
+> 
+> You really should think about switching to libtirpc
+> 
+> ])
+> 
+> maybe it's different in Gentoo, but people report configure warnings all the 
+> time ;)
+> 
 
-[nfsd41: Remember the auth flavor to use for callbacks]
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4state.c |   90 +++++++++++++++++++++++++-------------------------
- 1 files changed, 45 insertions(+), 45 deletions(-)
+Well, Gentoo probably has a larger percentage of people compiling the
+sources. Other distros generally distribute the binaries. But to be
+fair, it's not unreasonable to expect people who are compiling from
+sources to know what they're doing.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 45cbbbc..1e4740f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -710,27 +710,6 @@ expire_client(struct nfs4_client *clp)
- 	put_nfs4_client(clp);
- }
- 
--static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir)
--{
--	struct nfs4_client *clp;
--
--	clp = alloc_client(name);
--	if (clp == NULL)
--		return NULL;
--	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
--	atomic_set(&clp->cl_count, 1);
--	atomic_set(&clp->cl_cb_conn.cb_set, 0);
--	INIT_LIST_HEAD(&clp->cl_idhash);
--	INIT_LIST_HEAD(&clp->cl_strhash);
--	INIT_LIST_HEAD(&clp->cl_openowners);
--	INIT_LIST_HEAD(&clp->cl_delegations);
--	INIT_LIST_HEAD(&clp->cl_sessions);
--	INIT_LIST_HEAD(&clp->cl_lru);
--	clear_bit(0, &clp->cl_cb_slot_busy);
--	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
--	return clp;
--}
--
- static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
- {
- 	memcpy(target->cl_verifier.data, source->data,
-@@ -793,6 +772,46 @@ static void gen_confirm(struct nfs4_client *clp)
- 	*p++ = i++;
- }
- 
-+static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
-+		struct svc_rqst *rqstp, nfs4_verifier *verf)
-+{
-+	struct nfs4_client *clp;
-+	u32 ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
-+	char *princ;
-+
-+	clp = alloc_client(name);
-+	if (clp == NULL)
-+		return NULL;
-+
-+	princ = svc_gss_principal(rqstp);
-+	if (princ) {
-+		clp->cl_principal = kstrdup(princ, GFP_KERNEL);
-+		if (clp->cl_principal == NULL) {
-+			free_client(clp);
-+			return NULL;
-+		}
-+	}
-+
-+	memcpy(clp->cl_recdir, recdir, HEXDIR_LEN);
-+	atomic_set(&clp->cl_count, 1);
-+	atomic_set(&clp->cl_cb_conn.cb_set, 0);
-+	INIT_LIST_HEAD(&clp->cl_idhash);
-+	INIT_LIST_HEAD(&clp->cl_strhash);
-+	INIT_LIST_HEAD(&clp->cl_openowners);
-+	INIT_LIST_HEAD(&clp->cl_delegations);
-+	INIT_LIST_HEAD(&clp->cl_sessions);
-+	INIT_LIST_HEAD(&clp->cl_lru);
-+	clear_bit(0, &clp->cl_cb_slot_busy);
-+	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
-+	copy_verf(clp, verf);
-+	clp->cl_addr = ip_addr;
-+	clp->cl_flavor = rqstp->rq_flavor;
-+	copy_cred(&clp->cl_cred, &rqstp->rq_cred);
-+	gen_confirm(clp);
-+
-+	return clp;
-+}
-+
- static int check_name(struct xdr_netobj name)
- {
- 	if (name.len == 0) 
-@@ -1285,17 +1304,13 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- out_new:
- 	/* Normal case */
--	new = create_client(exid->clname, dname);
-+	new = create_client(exid->clname, dname, rqstp, &verf);
- 	if (new == NULL) {
- 		status = nfserr_resource;
- 		goto out;
- 	}
- 
--	copy_verf(new, &verf);
--	copy_cred(&new->cl_cred, &rqstp->rq_cred);
--	new->cl_addr = ip_addr;
- 	gen_clid(new);
--	gen_confirm(new);
- 	add_to_unconfirmed(new, strhashval);
- out_copy:
- 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
-@@ -1535,7 +1550,6 @@ __be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_setclientid *setclid)
- {
--	struct sockaddr_in	*sin = svc_addr_in(rqstp);
- 	struct xdr_netobj 	clname = { 
- 		.len = setclid->se_namelen,
- 		.data = setclid->se_name,
-@@ -1544,7 +1558,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	unsigned int 		strhashval;
- 	struct nfs4_client	*conf, *unconf, *new;
- 	__be32 			status;
--	char			*princ;
- 	char                    dname[HEXDIR_LEN];
- 	
- 	if (!check_name(clname))
-@@ -1586,7 +1599,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 */
- 		if (unconf)
- 			expire_client(unconf);
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		gen_clid(new);
-@@ -1603,7 +1616,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			 */
- 			expire_client(unconf);
- 		}
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		copy_clid(new, conf);
-@@ -1613,7 +1626,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 * probable client reboot; state will be removed if
- 		 * confirmed.
- 		 */
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		gen_clid(new);
-@@ -1624,24 +1637,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 * confirmed.
- 		 */
- 		expire_client(unconf);
--		new = create_client(clname, dname);
-+		new = create_client(clname, dname, rqstp, &clverifier);
- 		if (new == NULL)
- 			goto out;
- 		gen_clid(new);
- 	}
--	copy_verf(new, &clverifier);
--	new->cl_addr = sin->sin_addr.s_addr;
--	new->cl_flavor = rqstp->rq_flavor;
--	princ = svc_gss_principal(rqstp);
--	if (princ) {
--		new->cl_principal = kstrdup(princ, GFP_KERNEL);
--		if (new->cl_principal == NULL) {
--			free_client(new);
--			goto out;
--		}
--	}
--	copy_cred(&new->cl_cred, &rqstp->rq_cred);
--	gen_confirm(new);
- 	gen_callback(new, setclid);
- 	add_to_unconfirmed(new, strhashval);
- 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+> > > > We could make it so that configure looks for libtirpc and if it's not
+> > > > available, configures the build against legacy RPC interfaces. I think
+> > > > this is a bad idea however. While it should "just work" either way,
+> > > > there are some small behavioral differences when TIRPC support is built
+> > > > in. I think it's probably better to make enabling and disabling TIRPC a
+> > > > conscious step.
+> > >
+> > > i think this is the correct behavior for unspecified configure flags
+> >
+> > In general, yes. In this case though I think it's reasonable to force
+> > people compiling the package without tirpc installed to take the
+> > conscious step to either install the right libs and headers, or to add
+> > --disable-tirpc.
+> >
+> > I think doing so will lead to a more deterministic outcome in this
+> > situation. If that's a problem however, I'm willing to listen to the
+> > reasoning and reconsider...
+> 
+> i just dont agree with having to re-run configure to "fix" a condition that 
+> the configure script should already be able to handle.  but i'm speaking in 
+> general terms here, not specific to what you propose as that isnt exactly the 
+> same thing.  i dont feel too strongly here, especially since it doesnt affect 
+> me in any realistic way.
+> -mike
+
+Ok, fair enough. I don't feel terribly strongly about this either and
+that is the the conventional way that configure options work (don't
+fail unless absolutely necessary). I'll see about coding up a patch
+that makes --enable-tirpc the default but falls back to legacy RPC code
+with a warning if TIRPC libs/headers aren't present.
+
+Thanks for the input...
+
 -- 
-1.5.4.3
-
+Jeff Layton <jlayton@redhat.com>
