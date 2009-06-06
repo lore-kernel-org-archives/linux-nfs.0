@@ -1,7 +1,7 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [RFC 09/11] nfsd41: Backchannel: cb_sequence callback
-Date: Fri,  5 Jun 2009 19:50:04 -0700
-Message-ID: <1244256606-12905-9-git-send-email-Ricardo.Labiaga@netapp.com>
+Subject: [RFC 10/11] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+Date: Fri,  5 Jun 2009 19:50:05 -0700
+Message-ID: <1244256606-12905-10-git-send-email-Ricardo.Labiaga@netapp.com>
 References: <273FE88A07F5D445824060902F7003440612BB9D@SACMVEXC1-PRD.hq.netapp.com>
  <1244256606-12905-1-git-send-email-Ricardo.Labiaga@netapp.com>
  <1244256606-12905-2-git-send-email-Ricardo.Labiaga@netapp.com>
@@ -11,140 +11,144 @@ References: <273FE88A07F5D445824060902F7003440612BB9D@SACMVEXC1-PRD.hq.netapp.co
  <1244256606-12905-6-git-send-email-Ricardo.Labiaga@netapp.com>
  <1244256606-12905-7-git-send-email-Ricardo.Labiaga@netapp.com>
  <1244256606-12905-8-git-send-email-Ricardo.Labiaga@netapp.com>
+ <1244256606-12905-9-git-send-email-Ricardo.Labiaga@netapp.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Benny Halevy <bhalevy@panasas.com>,
 	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
-	Andy Adamson <andros@netapp.com>
+	Andy Adamson <andros@netapp.com>,
+	Ricardo Labiaga <ricardo.labiaga@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
 To: bfields@fieldses.org, trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18948 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57617 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753228AbZFFCw5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1753431AbZFFCw5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Fri, 5 Jun 2009 22:52:57 -0400
-In-Reply-To: <1244256606-12905-8-git-send-email-Ricardo.Labiaga@netapp.com>
+In-Reply-To: <1244256606-12905-9-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
-
-Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
-
-Note: highest slot id and target highest slot id do not have to be 0
-as was previously implemented.  They can be greater than what the
-nfs server sent if the client supports a larger slot table on the
-backchannel.  At this point we just ignore that.
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-[Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
+[nfsd41: cb_recall callback]
+[Share v4.0 and v4.1 back channel xdr]
 Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixed indentation]
+Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[Share v4.0 and v4.1 back channel xdr]
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 [nfsd41: use nfsd4_cb_sequence for callback minorversion]
+[nfsd41: conditionally decode_sequence in nfs4_xdr_dec_cb_recall]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: fix verification of CB_SEQUENCE highest slot id[
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: Backchannel: Remove old backchannel serialization]
-[nfsd41: Backchannel: First callback sequence ID should be 1]
+[nfsd41: Backchannel: Add sequence arguments to callback RPC arguments]
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: decode_cb_sequence does not need to actually decode ignored fields]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 ---
- fs/nfsd/nfs4callback.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 72 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c |   31 +++++++++++++++++++++++++++----
+ 1 files changed, 27 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 70e1af2..22e5455 100644
+index 22e5455..9142ff9 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -256,6 +256,27 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
- 	hdr->nops++;
+@@ -288,15 +288,19 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
  }
  
-+static void
-+encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
-+		   struct nfs4_cb_compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	if (hdr->minorversion == 0)
-+		return;
-+
-+	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
-+
-+	WRITE32(OP_CB_SEQUENCE);
-+	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
-+	WRITE32(args->cbs_clp->cl_cb_seq_nr);
-+	WRITE32(0);		/* slotid, always 0 */
-+	WRITE32(0);		/* highest slotid always 0 */
-+	WRITE32(0);		/* cachethis always 0 */
-+	WRITE32(0); /* FIXME: support referring_call_lists */
-+	hdr->nops++;
-+}
-+
  static int
- nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+-nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_delegation *args)
++nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
++		struct nfs4_rpc_args *rpc_args)
  {
-@@ -317,6 +338,57 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
+ 	struct xdr_stream xdr;
++	struct nfs4_delegation *args = rpc_args->args_op;
+ 	struct nfs4_cb_compound_hdr hdr = {
+ 		.ident = args->dl_ident,
++		.minorversion = rpc_args->args_seq.cbs_minorversion,
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 	encode_cb_compound_hdr(&xdr, &hdr);
++	encode_cb_sequence(&xdr, &rpc_args->args_seq, &hdr);
+ 	encode_cb_recall(&xdr, args, &hdr);
+ 	encode_cb_nops(&hdr);
  	return 0;
+@@ -396,7 +400,8 @@ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
  }
  
-+/*
-+ * Our current back channel implmentation supports a single backchannel
-+ * with a single slot.
-+ */
-+static int
-+decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
-+		   struct rpc_rqst *rqstp)
-+{
-+	struct nfs4_sessionid id;
-+	int status;
-+	u32 dummy;
-+	__be32 *p;
-+
-+	if (res->cbs_minorversion == 0)
-+		return 0;
-+
-+	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
-+	if (status)
-+		return status;
-+
-+	/*
-+	 * If the server returns different values for sessionID, slotID or
-+	 * sequence number, the server is looney tunes.
-+	 */
-+	status = -ESERVERFAULT;
-+
-+	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
-+	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
-+	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
-+	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
-+		   NFS4_MAX_SESSIONID_LEN)) {
-+		dprintk("%s Invalid session id\n", __func__);
-+		goto out;
-+	}
-+	READ32(dummy);
-+	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
-+		dprintk("%s Invalid sequence number\n", __func__);
-+		goto out;
-+	}
-+	READ32(dummy); 	/* slotid must be 0 */
-+	if (dummy != 0) {
-+		dprintk("%s Invalid slotid\n", __func__);
-+		goto out;
-+	}
-+	/* FIXME: process highest slotid and target highest slotid */
-+	status = 0;
-+out:
-+	return status;
-+}
-+
-+
  static int
- nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+-nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
++nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
++		struct nfsd4_cb_sequence *seq)
  {
+ 	struct xdr_stream xdr;
+ 	struct nfs4_cb_compound_hdr hdr;
+@@ -406,6 +411,11 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
+ 	status = decode_cb_compound_hdr(&xdr, &hdr);
+ 	if (status)
+ 		goto out;
++	if (seq) {
++		status = decode_cb_sequence(&xdr, seq, rqstp);
++		if (status)
++			goto out;
++	}
+ 	status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
+ out:
+ 	return status;
+@@ -688,6 +698,8 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ 	struct nfs4_delegation *dp = calldata;
+ 	struct nfs4_client *clp = dp->dl_client;
+ 
++	nfsd4_cb_done(task, calldata);
++
+ 	switch (task->tk_status) {
+ 	case -EIO:
+ 		/* Network partition? */
+@@ -700,16 +712,19 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ 		break;
+ 	default:
+ 		/* success, or error we can't handle */
+-		return;
++		goto done;
+ 	}
+ 	if (dp->dl_retries--) {
+ 		rpc_delay(task, 2*HZ);
+ 		task->tk_status = 0;
+ 		rpc_restart_call(task);
++		return;
+ 	} else {
+ 		atomic_set(&clp->cl_cb_conn.cb_set, 0);
+ 		warn_no_callback_path(clp, task->tk_status);
+ 	}
++done:
++	kfree(task->tk_msg.rpc_argp);
+ }
+ 
+ static void nfsd4_cb_recall_release(void *calldata)
+@@ -735,16 +750,24 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_client *clp = dp->dl_client;
+ 	struct rpc_clnt *clnt = clp->cl_cb_conn.cb_client;
++	struct nfs4_rpc_args *args;
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+-		.rpc_argp = dp,
+ 		.rpc_cred = clp->cl_cb_conn.cb_cred
+ 	};
+ 	int status;
+ 
++	args = kzalloc(sizeof(*args), GFP_KERNEL);
++	if (!args) {
++		status = -ENOMEM;
++		goto out;
++	}
++	args->args_op = dp;
++	msg.rpc_argp = args;
+ 	dp->dl_retries = 1;
+ 	status = rpc_call_async(clnt, &msg, RPC_TASK_SOFT,
+ 				&nfsd4_cb_recall_ops, dp);
++out:
+ 	if (status) {
+ 		put_nfs4_client(clp);
+ 		nfs4_put_delegation(dp);
 -- 
 1.5.4.3
 
