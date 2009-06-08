@@ -1,60 +1,61 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 1/1] sunrpc: potential memory leak in function
-	rdma_read_xdr
-Date: Mon, 15 Jun 2009 19:34:46 -0400
-Message-ID: <20090615233446.GD18504@fieldses.org>
-References: <20090614000526.56036335@frequentis.com>
+From: Oliver Hartkopp <oliver@hartkopp.net>
+Subject: Re: [PATCH 3/5] can: af_can.c use rcu_barrier() on module unload.
+Date: Mon, 08 Jun 2009 15:24:58 +0200
+Message-ID: <4A2D112A.4000308@hartkopp.net>
+References: <20090608130959.10052.54590.stgit@localhost> <20090608131138.10052.5408.stgit@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org
-To: Christian Engelmayer <christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:60566 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752010AbZFOXer (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 19:34:47 -0400
-In-Reply-To: <20090614000526.56036335-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Cc: "David S. Miller" <davem@davemloft.net>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
+	wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com,
+	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
+	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Jesper Dangaard Brouer <hawk@comx.dk>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20090608131138.10052.5408.stgit@localhost>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jun 14, 2009 at 12:05:26AM +0200, Christian Engelmayer wrote:
-> From: Christian Engelmayer <christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
+Jesper Dangaard Brouer wrote:
+> This module uses rcu_call() thus it should use rcu_barrier()
+> on module unload.
 > 
-> In case the check on ch_count fails the cleanup path is skipped and the
-> previously allocated memory 'rpl_map', 'chl_map' is not freed.
+> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+
+Thanks Jesper for pointing at this issue!
+
+Acked-By: Oliver Hartkopp <oliver@hartkopp.net>
+
+Btw. i do agree with theses patches to be a bug fix that should go into
+2.6.30-rc8 as well as into the stable series.
+
+Best regards,
+Oliver
+
+
+> ---
 > 
-> Signed-off-by: Christian Engelmayer <christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
-> --
-> Reported by Coverity.
-
-Thanks, applied (after fixing up a minor whitespace error--extra space
-added before tab on comment line).
-
-rdma_read_xdr() is long.  If there were a logical way to move some of
-that into a helper function or two, that might make it easier to read
-(and/or might simplify cleanup on failure).
-
---b.
-
+>  net/can/af_can.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
 > 
-> --- linux-2.6.29.4/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c.orig	2009-06-13 23:41:16.000000000 +0200
-> +++ linux-2.6.29.4/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c	2009-06-13 23:40:21.000000000 +0200
-> @@ -397,14 +397,14 @@ static int rdma_read_xdr(struct svcxprt_
->  	if (!ch)
->  		return 0;
+> diff --git a/net/can/af_can.c b/net/can/af_can.c
+> index 10f0528..e733725 100644
+> --- a/net/can/af_can.c
+> +++ b/net/can/af_can.c
+> @@ -903,6 +903,8 @@ static __exit void can_exit(void)
+>  	}
+>  	spin_unlock(&can_rcvlists_lock);
 >  
-> -	/* Allocate temporary reply and chunk maps */
-> -	rpl_map = svc_rdma_get_req_map();
-> -	chl_map = svc_rdma_get_req_map();
-> -
->  	svc_rdma_rcl_chunk_counts(ch, &ch_count, &byte_count);
->  	if (ch_count > RPCSVC_MAXPAGES)
->  		return -EINVAL;
->  
-> + 	/* Allocate temporary reply and chunk maps */
-> +	rpl_map = svc_rdma_get_req_map();
-> +	chl_map = svc_rdma_get_req_map();
+> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
 > +
->  	if (!xprt->sc_frmr_pg_list_len)
->  		sge_count = map_read_chunks(xprt, rqstp, hdr_ctxt, rmsgp,
->  					    rpl_map, chl_map, ch_count,
+>  	kmem_cache_destroy(rcv_cache);
+>  }
+>  
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe netdev" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
