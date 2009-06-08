@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 18/30] nfsd41: remove iovlen field from nfsd4_compound_state
-Date: Mon,  8 Jun 2009 14:20:59 -0400
-Message-ID: <1244485271-7461-19-git-send-email-andros@netapp.com>
+Subject: [PATCH 20/30] nfsd41: obliterate nfsd4_set_statp
+Date: Mon,  8 Jun 2009 14:21:01 -0400
+Message-ID: <1244485271-7461-21-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -21,70 +21,77 @@ References: <>
  <1244485271-7461-16-git-send-email-andros@netapp.com>
  <1244485271-7461-17-git-send-email-andros@netapp.com>
  <1244485271-7461-18-git-send-email-andros@netapp.com>
+ <1244485271-7461-19-git-send-email-andros@netapp.com>
+ <1244485271-7461-20-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:38770 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752370AbZFHSVc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:32 -0400
-In-Reply-To: <1244485271-7461-18-git-send-email-andros@netapp.com>
+	id S1753345AbZFHSVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:33 -0400
+In-Reply-To: <1244485271-7461-20-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Set resp->p in nfsd4_replay_cache_entry so that the nfs4svc_encode_compoundres
-iov_len calculation is correct.
+Replacing page based DRC cache with buffer based DRC cache, the cstate->statp
+pointer is no longer necessary.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c       |    2 +-
- fs/nfsd/nfs4xdr.c         |    5 +----
+ fs/nfsd/nfs4state.c       |    8 --------
+ fs/nfsd/nfssvc.c          |    4 ----
  include/linux/nfsd/xdr4.h |    1 -
- 3 files changed, 2 insertions(+), 6 deletions(-)
+ 3 files changed, 0 insertions(+), 13 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d494723..7ef9b92 100644
+index 55c7f3a..19f6064 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1091,7 +1091,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+@@ -990,14 +990,6 @@ out_err:
+ 	return;
+ }
  
- 	resp->rqstp->rq_resused = entry->ce_resused;
- 	resp->opcnt = slot->sl_opcnt;
--	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
-+	resp->p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
- 	status = slot->sl_status;
+-void
+-nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp)
+-{
+-	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+-
+-	resp->cstate.statp = statp;
+-}
+-
+ /*
+  * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
+  * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 37633f5..d14adea 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -572,10 +572,6 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+ 		+ rqstp->rq_res.head[0].iov_len;
+ 	rqstp->rq_res.head[0].iov_len += sizeof(__be32);
  
- 	return status;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0250214..d09bb9d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3334,10 +3334,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
- 	BUG_ON(iov->iov_len > PAGE_SIZE);
- 	if (nfsd4_has_session(&resp->cstate)) {
--		if (resp->cstate.status == nfserr_replay_cache &&
--				!nfsd4_not_cached(resp)) {
--			iov->iov_len = resp->cstate.iovlen;
--		} else {
-+		if (resp->cstate.status != nfserr_replay_cache) {
- 			nfsd4_store_cache_entry(resp);
- 			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
- 			resp->cstate.slot->sl_inuse = 0;
+-	/* NFSv4.1 DRC requires statp */
+-	if (rqstp->rq_vers == 4)
+-		nfsd4_set_statp(rqstp, statp);
+-
+ 	/* Now call the procedure handler, and encode NFS status. */
+ 	nfserr = proc->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
+ 	nfserr = map_new_errors(rqstp->rq_vers, nfserr);
 diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 49d5ec9..2ee9b1d 100644
+index 2ee9b1d..505e3e3 100644
 --- a/include/linux/nfsd/xdr4.h
 +++ b/include/linux/nfsd/xdr4.h
-@@ -53,7 +53,6 @@ struct nfsd4_compound_state {
+@@ -51,7 +51,6 @@ struct nfsd4_compound_state {
+ 	/* For sessions DRC */
+ 	struct nfsd4_session	*session;
  	struct nfsd4_slot	*slot;
- 	__be32			*statp;
+-	__be32			*statp;
  	__be32			*datap;
--	size_t			iovlen;
  	u32			minorversion;
  	u32			status;
- };
 -- 
 1.5.4.3
 
