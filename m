@@ -1,8 +1,9 @@
 From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH 4/5] sctp: protocol.c call rcu_barrier() on unload.
-Date: Mon, 8 Jun 2009 09:22:27 -0700
-Message-ID: <20090608162227.GE6961@linux.vnet.ibm.com>
-References: <20090608130959.10052.54590.stgit@localhost> <20090608131143.10052.96470.stgit@localhost>
+Subject: Re: [PATCH 5/5] sunrpc/auth_gss: Call rcu_barrier() on module
+	unload.
+Date: Mon, 8 Jun 2009 09:26:56 -0700
+Message-ID: <20090608162656.GF6961@linux.vnet.ibm.com>
+References: <20090608130959.10052.54590.stgit@localhost> <20090608131148.10052.39869.stgit@localhost>
 Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -13,39 +14,37 @@ Cc: "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
 	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
 	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
 To: Jesper Dangaard Brouer <hawk@comx.dk>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090608131143.10052.96470.stgit@localhost>
-Sender: netdev-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20090608131148.10052.39869.stgit@localhost>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 08, 2009 at 03:11:43PM +0200, Jesper Dangaard Brouer wrote:
-> On module unload call rcu_barrier(), this is needed as synchronize_rcu()
-> is not strong enough.  The kmem_cache_destroy() does invoke
-> synchronize_rcu() but it does not provide same protection.
+On Mon, Jun 08, 2009 at 03:11:48PM +0200, Jesper Dangaard Brouer wrote:
+> As the module uses rcu_call() we should make sure that all
+> rcu callback has been completed before removing the code.
 
-Good, looks like sctp_v4_del_protocol() invokes call_rcu(), which the
-rcu_barrier() would then wait for.  And it looks like sctp_v6_del_protocol()
-does the same for IPv6.
+Good improvement!!!  Assuming that gss_svc_shutdown() and
+rpcauth_unregister() prevent any future RCU callbacks to be registered,
+this patch will fix things up.
 
-Reviewed_by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+Acked-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
 
 > Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
 > ---
 > 
->  net/sctp/protocol.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
+>  net/sunrpc/auth_gss/auth_gss.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
 > 
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index cb2c50d..79cbd47 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -1370,6 +1370,8 @@ SCTP_STATIC __exit void sctp_exit(void)
->  	sctp_proc_exit();
->  	cleanup_sctp_mibs();
-> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index e630b38..66d458f 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -1548,6 +1548,7 @@ static void __exit exit_rpcsec_gss(void)
+>  {
+>  	gss_svc_shutdown();
+>  	rpcauth_unregister(&authgss_ops);
 > +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
-> +
->  	kmem_cache_destroy(sctp_chunk_cachep);
->  	kmem_cache_destroy(sctp_bucket_cachep);
 >  }
+> 
+>  MODULE_LICENSE("GPL");
 > 
