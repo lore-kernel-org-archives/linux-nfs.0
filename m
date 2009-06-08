@@ -1,96 +1,81 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH 5/5] sunrpc/auth_gss: Call rcu_barrier() on module
-	unload.
-Date: Mon, 8 Jun 2009 14:13:48 -0700
-Message-ID: <20090608211348.GI6961@linux.vnet.ibm.com>
-References: <20090608130959.10052.54590.stgit@localhost> <20090608131148.10052.39869.stgit@localhost> <20090608162656.GF6961@linux.vnet.ibm.com> <1244480449.5040.4.camel@heimdal.trondhjem.org> <Pine.LNX.4.64.0906082128240.1180@ask.diku.dk>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Subject: RE: should we make --enable-tirpc the default in current nfs-utils?
+Date: Mon, 8 Jun 2009 15:17:55 -0700
+Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC031D1EFD@SACMVEXC1-PRD.hq.netapp.com>
+References: <20090605073648.5a5497b5@tlielax.poochiereds.net><200906051224.40592.vapier@gentoo.org><20090605133634.23357e8e@tlielax.poochiereds.net><200906051650.42007.vapier@gentoo.org><20090606071153.164d92dd@tlielax.poochiereds.net><7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com><20090606160230.247d3ca3@tlielax.poochiereds.net><861F88E5-EF00-48C8-8D1D-F0830D547DFA@oracle.com><7A24DF798E223B4C9864E8F92E8C93EC031D1B12@SACMVEXC1-PRD.hq.netapp.com> <20090608125957.3c8f0c95@tlielax.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Jesper Dangaard Brouer <hawk@comx.dk>,
-	netdev <netdev@vger.kernel.org>, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Jesper Dangaard Brouer <hawk@diku.dk>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <Pine.LNX.4.64.0906082128240.1180@ask.diku.dk>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Chuck Lever" <chuck.lever@oracle.com>,
+	"Mike Frysinger" <vapier@gentoo.org>, <linux-nfs@vger.kernel.org>
+To: "Jeff Layton" <jlayton@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:53396 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753594AbZFHWRy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2009 18:17:54 -0400
+In-Reply-To: <20090608125957.3c8f0c95-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 08, 2009 at 09:48:54PM +0200, Jesper Dangaard Brouer wrote:
->
-> (trimmed Cc)
->
-> On Mon, 8 Jun 2009, Trond Myklebust wrote:
->
->> Hmm... If this is about ensuring that all the call_rcu() callbacks
->> complete before we remove the module, then don't we also need similar
->> barriers in
->
-> Well, Trond that was a hard question, as I don't know this code... but if 
-> it uses call_rcu() callbacks its most likely.
->
-> I have not done a complete sweep of the tree, I have only looked at the 
-> netdev parts, as this is where I usually snoop around.  So there is 
-> probably plenty of work for some kernel-janitors (Cc'ing the list ;-))
->
->> net/sunrpc/sunrpc_syms.c:cleanup_sunrpc()
->
-> Looking at the code that end up in sunrpc.ko, I see that both 
-> net/sunrpc/auth_unix.c and net/sunrpc/auth_generic.c uses call_rcu() 
-> callbacks.
->
->> and in fs/nfs/inode.c:exit_nfs_fs()?
->
-> Looking at the code which end up into nfs.ko (which includes 
-> fs/nfs/inode.c) I see that the fs/nfs/delegation.c uses call_rcu() 
-> callbacks.
->
-> But its hard for me to figure out how this code interacts.  Don't know if 
-> we need to document a code path that can occur fast enough, before we add 
-> this safe guard?  It should be Paul's saying...
+ 
 
-Unless there is some other mechanism to ensure that all the RCU
-callbacks have been invoked before the module exit, there needs to be
-code in the module-exit function that does the following:
+> -----Original Message-----
+> From: Jeff Layton [mailto:jlayton@redhat.com] 
+> Sent: Monday, June 08, 2009 10:00 AM
+> To: Muntz, Daniel
+> Cc: Chuck Lever; Mike Frysinger; linux-nfs@vger.kernel.org
+> Subject: Re: should we make --enable-tirpc the default in 
+> current nfs-utils?
+> 
+> On Mon, 8 Jun 2009 08:46:23 -0700
+> "Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
+> 
+> > > 
+> > > The reason to build without it is that libtirpc is 
+> largely untested 
+> > > code (on Linux), and the nfs-utils support to use TI-RPC is also 
+> > > largely untested.  I think the default config settings should 
+> > > configure a safe, known-working configuration, not the 
+> most advanced 
+> > > configuration.
+> > > 
+> > > As much as I like the idea of wider testing, the idea 
+> that we happen 
+> > > to be testing with live users is not inviting.  But I 
+> guess it's all 
+> > > we've got at this point.
+> > 
+> > It would be nice if RH had a way of testing this with 
+> Fedora without 
+> > making it the default in the standard nfs-utils package 
+> until _after_ 
+> > testing.  Perhaps nfs-utils has evolved to the point where it could 
+> > use a release-candidate model.  Then all distros could pull an RC 
+> > build if they want it, while production users could pull 
+> the last "stable"
+> > release.
+> 
+> This has very little to do with Red Hat. We can enable or 
+> disable TIRPC in our own distros without making this change 
+> upstream. The question here is whether we should make this 
+> the default now, or does it make more sense to wait until 
+> everything has been converted to TIRPC, and had IPv6 support 
+> added and *then* enable it.
 
-o	Prevent any new RCU callbacks from being posted.  In other
-	words, make sure that no future call_rcu() invocations happen
-	from this module -unless- those call_rcu() invocations touch
-	only functions and data that outlive this module.
+But **IF** you had a release candidate model, then you would have a
+mechanism for OTHERS to pick up "pre-release" code and get the
+additional testing you are after.  Without it, your only option is to
+put un/little-tested code into mainline nfs-utils (I am going on your
+assertion and Chuck's that this code needs more testing).  I can't see
+any reasonable excuse (non-FUD as you say) for not doing things this
+way.
 
-o	Invoke rcu_barrier().
-
-o	Of course, if the module uses call_rcu_sched() instead of
-	call_rcu(), then it should invoke rcu_barrier_sched() instead
-	of rcu_barrier().  Similarly, if it uses call_rcu_bh() instead
-	of call_rcu(), then it should invoke rcu_barrier_bh() instead of
-	rcu_barrier().	If the module uses more than one of call_rcu(),
-	call_rcu_sched(), and call_rcu_bh(), then it must invoke more than
-	one of rcu_barrier(), rcu_barrier_sched(), and rcu_barrier_bh().
-
-What other mechanism could be used?  I cannot think of one that it safe.
-For example, a module that tried to count the number of RCU callbacks in
-flight would be vulnerable to races as follows:
-
-1.	CPU 0: RCU callback decrements the counter.
-
-2.	CPU 1: module-exit function notices that the counter is zero,
-	so removes the module.
-
-3.	CPU 0: attempts to execute the code returning from the RCU
-	callback, and dies horribly due to that code no longer being
-	in memory.
-
-If there was an easy solution (or even a hard solution) to this problem,
-then I do not believe that Nikita Danilov would have asked Dipankar Sarma
-for rcu_barrier().  Therefore, I do not expect anyone to be able to come
-up with an alternative to rcu_barrier() and friends.  Always happy to
-learn something by being proven wrong, of course!!!
-
-So unless someone can show me some other safe mechanism, every unloadable
-module that uses call_rcu(), call_rcu_sched(), or call_rcu_bh() must use
-rcu_barrier(), rcu_barrier_sched(), and/or rcu_barrier_bh() in its
-module-exit function.
-
-							Thanx, Paul
+> 
+> I believe the latter option will be more disruptive. Phasing 
+> support in slowly makes sense and there's an easy "fix" for 
+> people who find they have problems with it (--disable-tirpc).
+> 
+> --
+> Jeff Layton <jlayton@redhat.com>
+> 
