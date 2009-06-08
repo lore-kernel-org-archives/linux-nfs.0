@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 07/30] nfsd41: sanity check client drc maxreqs
-Date: Mon,  8 Jun 2009 14:20:48 -0400
-Message-ID: <1244485271-7461-8-git-send-email-andros@netapp.com>
+Subject: [PATCH 13/30] nfsd41: replace ce_opcnt with nfsd4_slot field
+Date: Mon,  8 Jun 2009 14:20:54 -0400
+Message-ID: <1244485271-7461-14-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -10,43 +10,67 @@ References: <>
  <1244485271-7461-5-git-send-email-andros@netapp.com>
  <1244485271-7461-6-git-send-email-andros@netapp.com>
  <1244485271-7461-7-git-send-email-andros@netapp.com>
+ <1244485271-7461-8-git-send-email-andros@netapp.com>
+ <1244485271-7461-9-git-send-email-andros@netapp.com>
+ <1244485271-7461-10-git-send-email-andros@netapp.com>
+ <1244485271-7461-11-git-send-email-andros@netapp.com>
+ <1244485271-7461-12-git-send-email-andros@netapp.com>
+ <1244485271-7461-13-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14528 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38770 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752833AbZFHSVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:22 -0400
-In-Reply-To: <1244485271-7461-7-git-send-email-andros@netapp.com>
+	id S1753318AbZFHSV1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:27 -0400
+In-Reply-To: <1244485271-7461-13-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Ensure the client requested maximum requests are between 1 and
-NFSD_MAX_SLOTS_PER_SESSION
+In preparation to remove struct nfsd4_cache_entry
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c        |    4 ++--
+ include/linux/nfsd/state.h |    1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f3acaa0..3b05df3 100644
+index 837c9cf..c5c372d 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -427,6 +427,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
- {
- 	int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
+@@ -1062,7 +1062,7 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 		return;
  
-+	if (fchan->maxreqs < 1)
-+		return nfserr_inval;
-+	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
-+		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
-+
- 	spin_lock(&nfsd_serv->sv_lock);
- 	if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
- 		np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
+ 	nfsd4_release_respages(entry->ce_respages, entry->ce_resused);
+-	entry->ce_opcnt = resp->opcnt;
++	slot->sl_opcnt = resp->opcnt;
+ 	entry->ce_status = resp->cstate.status;
+ 
+ 	/*
+@@ -1175,7 +1175,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 	}
+ 
+ 	resp->rqstp->rq_resused = entry->ce_resused;
+-	resp->opcnt = entry->ce_opcnt;
++	resp->opcnt = slot->sl_opcnt;
+ 	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
+ 	status = entry->ce_status;
+ 
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index e818edc..ceee37a 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -121,6 +121,7 @@ struct nfsd4_slot {
+ 	bool				sl_inuse;
+ 	u32				sl_seqid;
+ 	int				sl_cachethis;
++	int				sl_opcnt;
+ 	u32				sl_datalen;
+ 	char				sl_data[NFSD_SLOT_CACHE_SIZE];
+ 	struct nfsd4_cache_entry	sl_cache_entry;
 -- 
 1.5.4.3
 
