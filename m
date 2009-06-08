@@ -1,63 +1,109 @@
-From: Jesper Dangaard Brouer <hawk@diku.dk>
-Subject: Re: [PATCH 5/5] sunrpc/auth_gss: Call rcu_barrier() on module unload.
-Date: Mon, 8 Jun 2009 21:48:54 +0200 (CEST)
-Message-ID: <Pine.LNX.4.64.0906082128240.1180@ask.diku.dk>
-References: <20090608130959.10052.54590.stgit@localhost>
- <20090608131148.10052.39869.stgit@localhost>  <20090608162656.GF6961@linux.vnet.ibm.com>
- <1244480449.5040.4.camel@heimdal.trondhjem.org>
+From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Subject: RE: [pnfs] [RFC 07/39] nfs41: New backchannel helper routines
+Date: Mon, 8 Jun 2009 13:49:59 -0700
+Message-ID: <273FE88A07F5D445824060902F7003440627B9EA@SACMVEXC1-PRD.hq.netapp.com>
+References: <1244205630.5410.23.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: paulmck@linux.vnet.ibm.com, Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
-	netdev <netdev@vger.kernel.org>, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Benny Halevy" <bhalevy@panasas.com>, <linux-nfs@vger.kernel.org>,
+	<pnfs@linux-nfs.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mgw1.diku.dk ([130.225.96.91]:48891 "EHLO mgw1.diku.dk"
+Received: from mx2.netapp.com ([216.240.18.37]:37380 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750758AbZFHTtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 15:49:41 -0400
-In-Reply-To: <1244480449.5040.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1752072AbZFHUx1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2009 16:53:27 -0400
+In-Reply-To: <1244205630.5410.23.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> -----Original Message-----
+> From: Myklebust, Trond
+> Sent: Friday, June 05, 2009 5:41 AM
+> To: Labiaga, Ricardo
+> Cc: Benny Halevy; linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
+> Subject: RE: [pnfs] [RFC 07/39] nfs41: New backchannel helper routines
+> 
+> On Thu, 2009-06-04 at 19:17 -0700, Labiaga, Ricardo wrote:
+> > > > +/*
+> > > > + * Helper routines that track the number of preallocation
+elements
+> > > > + * on the transport.
+> > > > + */
+> > > > +static inline int xprt_need_to_requeue(struct rpc_xprt *xprt)
+> > > > +{
+> > > > +	return xprt->bc_alloc_count > 0;
+> > > > +}
+> > >
+> > > Shouldn't this be 'xprt->bc_alloc_count < min_reqs' or something
+like
+> > > that?
+> >
+> > xprt->bc_alloc_count is correct because 'bc_alloc_count' tracks the
+> > number of backchannels that have been setup.  In other words, return
+the
+> > preallocated structure to the queue if there are backchannels that
+will
+> > eventually consume the 'struct rpc_xprt'.  Otherwise it gets freed.
+> > 'bc_alloc_count' does not track the number of 'struct rpc_xprt'.
+> 
+> OK... I think I now understand what this is doing.
+> 
+> Basically, you are keeping a count of the number of requests that you
+> want to keep preallocated. 
 
-(trimmed Cc)
+Correct.
 
-On Mon, 8 Jun 2009, Trond Myklebust wrote:
+> When you destroy the back channel, then you
+                     ^^^
+                     last
 
-> Hmm... If this is about ensuring that all the call_rcu() callbacks
-> complete before we remove the module, then don't we also need similar
-> barriers in
+> set it to zero, and destroy all those requests that are on the
+'unused'
+> list, then you destroy all remaining requests in the xprt_release()
+> callback instead of requeuing them in the 'unused' list.
 
-Well, Trond that was a hard question, as I don't know this code... but if 
-it uses call_rcu() callbacks its most likely.
+Correct.
 
-I have not done a complete sweep of the tree, I have only looked at the 
-netdev parts, as this is where I usually snoop around.  So there is 
-probably plenty of work for some kernel-janitors (Cc'ing the list ;-))
+> 
+> Hmm... Wouldn't just a flag have been sufficient here? Why do you need
+> to make bc_alloc_count a counter?
+> 
 
-> net/sunrpc/sunrpc_syms.c:cleanup_sunrpc()
+We can have more than one session, and more than one backchannel.
+That's why I'm using a counter and not a flag.
 
-Looking at the code that end up in sunrpc.ko, I see that both 
-net/sunrpc/auth_unix.c and net/sunrpc/auth_generic.c uses call_rcu() 
-callbacks.
+> > > Why are we allocating full pages here? 99.9999999% of all
+callbacks
+> > are
+> > > going to be small. The only exception is CB_NOTIFY, and we're not
+yet
+> > > sure we're ever going to want those...
+> >
+> > CB_NOTIFY_DEVICEID can also get long if the server uses multiple
+> > deviceids.  It can be an unbound list, but the client does have the
+> > ability of telling the server the maximum size of the callback
+requests.
+> > Each deviceID is 16 bytes, so it doesn't take many to fill a page.
+Is
+> > it an overkill just for this case?  I could change it if you really
+want
+> > us to.
+> 
+> All right, let's keep it for the moment then, but please add a comment
+> explaining how you pulled this particular number out of your hat.
+> 
 
-> and in fs/nfs/inode.c:exit_nfs_fs()?
+Will do.
 
-Looking at the code which end up into nfs.ko (which includes 
-fs/nfs/inode.c) I see that the fs/nfs/delegation.c uses call_rcu() 
-callbacks.
+- ricardo
 
-But its hard for me to figure out how this code interacts.  Don't know if 
-we need to document a code path that can occur fast enough, before we add 
-this safe guard?  It should be Paul's saying...
-
-Cheers,
-   Jesper Brouer
-
---
--------------------------------------------------------------------
-MSc. Master of Computer Science
-Dept. of Computer Science, University of Copenhagen
-Author of http://www.adsl-optimizer.dk
--------------------------------------------------------------------
+> Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
