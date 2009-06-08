@@ -1,400 +1,166 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 03/11] nfs-utils: convert rpc.nfsd to use xlog()
-Date: Mon, 8 Jun 2009 14:25:46 -0400
-Message-ID: <9A27F8AC-81D3-434F-85F7-DF6A02133843@oracle.com>
-References: <1244484044-21355-1-git-send-email-jlayton@redhat.com> <1244484044-21355-4-git-send-email-jlayton@redhat.com> <A5BA117E-93F5-4735-A33F-94902CEA9FCD@oracle.com> <20090608142312.1e1ea273@tlielax.poochiereds.net>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 05/11] nfs-utils: declare a static common buffer for
+ nfssvc.c routines
+Date: Mon, 8 Jun 2009 14:30:56 -0400
+Message-ID: <20090608143056.5815c152@tlielax.poochiereds.net>
+References: <1244484044-21355-1-git-send-email-jlayton@redhat.com>
+	<1244484044-21355-6-git-send-email-jlayton@redhat.com>
+	<EBCB2BCD-7C12-4D3C-A93A-FBD4291986EC@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Jeff Layton <jlayton@poochiereds.net>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:60359 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750894AbZFHS0I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2009 14:26:08 -0400
-In-Reply-To: <20090608142312.1e1ea273-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from mx2.redhat.com ([66.187.237.31]:51078 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751216AbZFHSbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:31:02 -0400
+In-Reply-To: <EBCB2BCD-7C12-4D3C-A93A-FBD4291986EC@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 8 Jun 2009 14:22:28 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-On Jun 8, 2009, at 2:23 PM, Jeff Layton wrote:
+> 
+> On Jun 8, 2009, at 2:00 PM, Jeff Layton wrote:
+> 
+> > Several of the routines in nfssvc.c declare a buffer for strings.  
+> > Use a
+> > shared static buffer instead to keep it off of the stack. Also, the
+> > buffer allocated in some places is *really* large. BUFSIZ is generally
+> > 8k. These routines don't need nearly that much.
+> >
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > utils/nfsd/nfssvc.c |   28 +++++++++++++++++-----------
+> > 1 files changed, 17 insertions(+), 11 deletions(-)
+> >
+> > diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> > index 0a7546a..025554d 100644
+> > --- a/utils/nfsd/nfssvc.c
+> > +++ b/utils/nfsd/nfssvc.c
+> > @@ -24,18 +24,25 @@
+> > #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+> > #define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
+> >
+> > +/*
+> > + * declaring a common static scratch buffer here keeps us from  
+> > having to
+> > + * continually thrash the stack. The value of 128 bytes here is  
+> > really just a
+> > + * SWAG and can be increased if necessary. It ought to be enough  
+> > for the
+> > + * routines below however.
+> > + */
+> > +char buf[128];
+> > +
+> > static void
+> > nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
+> > {
+> > 	int fd, n, on=1;
+> > -	char buf[BUFSIZ];
+> > 	int udpfd = -1, tcpfd = -1;
+> > 	struct sockaddr_in sin;
+> >
+> > 	fd = open(NFSD_PORTS_FILE, O_RDONLY);
+> > 	if (fd < 0)
+> > 		return;
+> > -	n = read(fd, buf, BUFSIZ);
+> > +	n = read(fd, buf, sizeof(buf));
+> >
+> > 	close(fd);
+> > 	if (n != 0)
+> > 		return;
+> > @@ -91,7 +98,7 @@ nfssvc_setfds(int port, unsigned int ctlbits, char  
+> > *haddr)
+> > 		}
+> > 	}
+> > 	if (udpfd >= 0) {
+> > -		snprintf(buf, BUFSIZ,"%d\n", udpfd);
+> > +		snprintf(buf, sizeof(buf), "%d\n", udpfd);
+> 
+> Since sizeof(buf) is a SWAG, maybe we should have some way of finding  
+> out if the buffer is ever overflowed. Just a thought.
+> 
 
-> On Mon, 8 Jun 2009 14:16:48 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
->
->>
->> On Jun 8, 2009, at 2:00 PM, Jeff Layton wrote:
->>
->>> ...and add --debug and --syslog options.
->>>
->>> With the switch to xlog(), it becomes trivial to add debug messages,
->>> so
->>> add an option to turn them on when requested.
->>>
->>> Also, rpc.nfsd isn't a proper daemon per-se, so it makes more  
->>> sense to
->>> log errors to stderr where possible. Usually init scripts take  
->>> care of
->>> redirecting stderr output to syslog anyway.
->>>
->>> For those that don't, add a --syslog option that forces all output
->>> to go
->>> to syslog instead. Note that even with this option, errors  
->>> encountered
->>> during option processing will still go to stderr.
->>>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> utils/nfsd/nfsd.c   |   67 +++++++++++++++++++++++++++++++
->>> +------------------
->>> utils/nfsd/nfssvc.c |   47 +++++++++++++++++------------------
->>> 2 files changed, 66 insertions(+), 48 deletions(-)
->>>
->>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
->>> index 183681b..1589a9f 100644
->>> --- a/utils/nfsd/nfsd.c
->>> +++ b/utils/nfsd/nfsd.c
->>> @@ -18,7 +18,6 @@
->>> #include <string.h>
->>> #include <errno.h>
->>> #include <getopt.h>
->>> -#include <syslog.h>
->>> #include <netdb.h>
->>> #include <sys/socket.h>
->>> #include <netinet/in.h>
->>> @@ -26,6 +25,7 @@
->>>
->>> #include "nfslib.h"
->>> #include "nfssvc.h"
->>> +#include "xlog.h"
->>>
->>> static void	usage(const char *);
->>>
->>> @@ -38,6 +38,8 @@ static struct option longopts[] =
->>> 	{ "no-udp", 0, 0, 'U' },
->>> 	{ "port", 1, 0, 'P' },
->>> 	{ "port", 1, 0, 'p' },
->>> +	{ "debug", 0, 0, 'd' },
->>> +	{ "syslog", 0, 0, 's' },
->>> 	{ NULL, 0, 0, 0 }
->>> };
->>> unsigned int protobits = NFSCTL_ALLBITS;
->>> @@ -51,7 +53,7 @@ main(int argc, char **argv)
->>> 	int	count = 1, c, error, port, fd, found_one;
->>> 	struct servent *ent;
->>> 	struct hostent *hp;
->>> -	char *p;
->>> +	char *p, *progname;
->>>
->>> 	ent = getservbyname ("nfs", "udp");
->>> 	if (ent != NULL)
->>> @@ -59,8 +61,20 @@ main(int argc, char **argv)
->>> 	else
->>> 		port = 2049;
->>>
->>> -	while ((c = getopt_long(argc, argv, "H:hN:p:P:TU", longopts,
->>> NULL)) != EOF) {
->>> +	progname = strdup(basename(argv[0]));
->>> +	if (!progname) {
->>> +		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
->>> +		exit(1);
->>> +	}
->>> +
->>> +	xlog_syslog(0);
->>> +	xlog_stderr(1);
->>
->> I think this is an OK design overall, but don't you need to do an
->> xlog_open() before you start generating these error messages?  I  
->> think
->> that's why most of the other components just stick with
->> fprintf(stderr) while processing command line options.
->>
->
-> Yes, and this code does that. It doesn't use xlog until xlog_open has
-> been done. The 2 lines above just set the variables that determine
-> where xlog output actually goes. That just sets the defaults for these
-> values so that they can be properly overriden by --syslog.
->
->>> +
->>> +	while ((c = getopt_long(argc, argv, "dH:hN:p:P:sTU", longopts,
->>> NULL)) != EOF) {
->>> 		switch(c) {
->>> +		case 'd':
->>> +			xlog_config(D_ALL, 1);
+I don't think it's possible with the strings we're snprintf'ing into
+there today. In general I'm all for bounds checking, but I don't think
+it'll ever actually fire here.
 
-OK, I was distracted by this (and the above)...
-
->>>
->>> +			break;
->>> 		case 'H':
->>> 			if (inet_addr(optarg) != INADDR_NONE) {
->>> 				haddr = strdup(optarg);
->>> @@ -68,8 +82,8 @@ main(int argc, char **argv)
->>> 				haddr = inet_ntoa((*(struct in_addr*)(hp->h_addr_list[0])));
->>> 			} else {
->>> 				fprintf(stderr, "%s: Unknown hostname: %s\n",
-
-And did not notice this.
-
->>>
->>> -					argv[0], optarg);
->>> -				usage(argv [0]);
->>> +					progname, optarg);
->>> +				usage(progname);
->>> 			}
->>> 			break;
->>> 		case 'P':	/* XXX for nfs-server compatibility */
->>> @@ -77,8 +91,8 @@ main(int argc, char **argv)
->>> 			port = atoi(optarg);
->>> 			if (port <= 0 || port > 65535) {
->>> 				fprintf(stderr, "%s: bad port number: %s\n",
->>> -					argv[0], optarg);
->>> -				usage(argv [0]);
->>> +					progname, optarg);
->>> +				usage(progname);
->>> 			}
->>> 			break;
->>> 		case 'N':
->>> @@ -97,6 +111,10 @@ main(int argc, char **argv)
->>> 				exit(1);
->>> 			}
->>> 			break;
->>> +		case 's':
->>> +			xlog_syslog(1);
->>> +			xlog_stderr(0);
->>> +			break;
->>> 		case 'T':
->>> 			NFSCTL_TCPUNSET(protobits);
->>> 			break;
->>> @@ -106,14 +124,17 @@ main(int argc, char **argv)
->>> 		default:
->>> 			fprintf(stderr, "Invalid argument: '%c'\n", c);
->>> 		case 'h':
->>> -			usage(argv[0]);
->>> +			usage(progname);
->>> 		}
->>> 	}
->>> +
->>> +	xlog_open(progname);
->>> +
->>> 	/*
->>> 	 * Do some sanity checking, if the ctlbits are set
->>> 	 */
->>> 	if (!NFSCTL_UDPISSET(protobits) && !NFSCTL_TCPISSET(protobits)) {
->>> -		fprintf(stderr, "invalid protocol specified\n");
->>> +		xlog(L_ERROR, "invalid protocol specified");
->>> 		exit(1);
->>> 	}
->>> 	found_one = 0;
->>> @@ -122,12 +143,12 @@ main(int argc, char **argv)
->>> 			found_one = 1;
->>> 	}
->>> 	if (!found_one) {
->>> -		fprintf(stderr, "no version specified\n");
->>> +		xlog(L_ERROR, "no version specified");
->>> 		exit(1);
->>> 	}			
->>>
->>> 	if (NFSCTL_VERISSET(versbits, 4) && !NFSCTL_TCPISSET(protobits)) {
->>> -		fprintf(stderr, "version 4 requires the TCP protocol\n");
->>> +		xlog(L_ERROR, "version 4 requires the TCP protocol");
->>> 		exit(1);
->>> 	}
->>> 	if (haddr == NULL) {
->>> @@ -136,17 +157,15 @@ main(int argc, char **argv)
->>> 	}
->>>
->>> 	if (chdir(NFS_STATEDIR)) {
->>> -		fprintf(stderr, "%s: chdir(%s) failed: %s\n",
->>> -			argv [0], NFS_STATEDIR, strerror(errno));
->>> +		xlog(L_ERROR, "chdir(%s) failed: %m", NFS_STATEDIR);
->>> 		exit(1);
->>> 	}
->>>
->>> 	if (optind < argc) {
->>> 		if ((count = atoi(argv[optind])) < 0) {
->>> 			/* insane # of servers */
->>> -			fprintf(stderr,
->>> -				"%s: invalid server count (%d), using 1\n",
->>> -				argv[0], count);
->>> +			xlog(L_ERROR, "invalid server count (%d), using 1",
->>> +				      count);
->>> 			count = 1;
->>> 		}
->>> 	}
->>> @@ -156,21 +175,21 @@ main(int argc, char **argv)
->>> 	   everything before spawning kernel threads.  --Chip */
->>> 	fd = open("/dev/null", O_RDWR);
->>> 	if (fd == -1)
->>> -		perror("/dev/null");
->>> +		xlog(L_ERROR, "Unable to open /dev/null: %m");
->>> 	else {
->>> +		/* switch xlog output to syslog since stderr is being closed */
->>> +		xlog_syslog(1);
->>> +		xlog_stderr(0);
->>> 		(void) dup2(fd, 0);
->>> 		(void) dup2(fd, 1);
->>> 		(void) dup2(fd, 2);
->>> 	}
->>> 	closeall(3);
->>>
->>> -	openlog("nfsd", LOG_PID, LOG_DAEMON);
->>> -	if ((error = nfssvc(port, count, versbits, minorvers4, protobits,
->>> haddr)) < 0) {
->>> -		int e = errno;
->>> -		syslog(LOG_ERR, "nfssvc: %s", strerror(e));
->>> -		closelog();
->>> -	}
->>> +	if ((error = nfssvc(port, count, versbits, minorvers4, protobits,
->>> haddr)) < 0)
->>> +		xlog(L_ERROR, "nfssvc: errno %d (%m)", errno);
->>>
->>> +	free(progname);
->>> 	return (error != 0);
->>> }
->>>
->>> @@ -178,7 +197,7 @@ static void
->>> usage(const char *prog)
->>> {
->>> 	fprintf(stderr, "Usage:\n"
->>> -		"%s [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version
->>> version ] [-T|--no-tcp] [-U|--no-udp] nrservs\n",
->>> +		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-
->>> version version ] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] nrservs
->>> \n",
->>> 		prog);
->>> 	exit(2);
->>> }
->>> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
->>> index 6c5289a..0a7546a 100644
->>> --- a/utils/nfsd/nfssvc.c
->>> +++ b/utils/nfsd/nfssvc.c
->>> @@ -16,10 +16,9 @@
->>> #include <unistd.h>
->>> #include <fcntl.h>
->>> #include <errno.h>
->>> -#include <syslog.h>
->>> -
->>>
->>> #include "nfslib.h"
->>> +#include "xlog.h"
->>>
->>> #define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
->>> #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
->>> @@ -57,13 +56,13 @@ nfssvc_setfds(int port, unsigned int ctlbits,
->>> char *haddr)
->>> 	if (NFSCTL_UDPISSET(ctlbits)) {
->>> 		udpfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
->>> 		if (udpfd < 0) {
->>> -			syslog(LOG_ERR, "nfssvc: unable to create UPD socket: "
->>> -				"errno %d (%s)\n", errno, strerror(errno));
->>> +			xlog(L_ERROR, "unable to create UDP socket: "
->>> +				"errno %d (%m)", errno);
->>> 			exit(1);
->>> 		}
->>> 		if (bind(udpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
->>> -			syslog(LOG_ERR, "nfssvc: unable to bind UPD socket: "
->>> -				"errno %d (%s)\n", errno, strerror(errno));
->>> +			xlog(L_ERROR, "unable to bind UDP socket: "
->>> +				"errno %d (%m)", errno);
->>> 			exit(1);
->>> 		}
->>> 	}
->>> @@ -71,32 +70,32 @@ nfssvc_setfds(int port, unsigned int ctlbits,
->>> char *haddr)
->>> 	if (NFSCTL_TCPISSET(ctlbits)) {
->>> 		tcpfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
->>> 		if (tcpfd < 0) {
->>> -			syslog(LOG_ERR, "nfssvc: unable to createt tcp socket: "
->>> -				"errno %d (%s)\n", errno, strerror(errno));
->>> +			xlog(L_ERROR, "unable to create TCP socket: "
->>> +				"errno %d (%m)", errno);
->>> 			exit(1);
->>> 		}
->>> 		if (setsockopt(tcpfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) <
->>> 0) {
->>> -			syslog(LOG_ERR, "nfssvc: unable to set SO_REUSEADDR: "
->>> -				"errno %d (%s)\n", errno, strerror(errno));
->>> +			xlog(L_ERROR, "unable to set SO_REUSEADDR: "
->>> +				"errno %d (%m)", errno);
->>> 			exit(1);
->>> 		}
->>> 		if (bind(tcpfd, (struct  sockaddr  *)&sin, sizeof(sin)) < 0){
->>> -			syslog(LOG_ERR, "nfssvc: unable to bind TCP socket: "
->>> -				"errno %d (%s)\n", errno, strerror(errno));
->>> +			xlog(L_ERROR, "unable to bind TCP socket: "
->>> +				"errno %d (%m)", errno);
->>> 			exit(1);
->>> 		}
->>> 		if (listen(tcpfd, 64) < 0){
->>> -			syslog(LOG_ERR, "nfssvc: unable to create listening socket: "
->>> -				"errno %d (%s)\n", errno, strerror(errno));
->>> +			xlog(L_ERROR, "unable to create listening socket: "
->>> +				"errno %d (%m)", errno);
->>> 			exit(1);
->>> 		}
->>> 	}
->>> 	if (udpfd >= 0) {
->>> 		snprintf(buf, BUFSIZ,"%d\n", udpfd);
->>> 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
->>> -			syslog(LOG_ERR,
->>> -			       "nfssvc: writing fds to kernel failed: errno %d (%s)",
->>> -			       errno, strerror(errno));
->>> +			xlog(L_ERROR,
->>> +			       "writing fds to kernel failed: errno %d (%m)",
->>> +			       errno);
->>> 		}
->>> 		close(fd);
->>> 		fd = -1;
->>> @@ -106,9 +105,9 @@ nfssvc_setfds(int port, unsigned int ctlbits,
->>> char *haddr)
->>> 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
->>> 		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
->>> 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
->>> -			syslog(LOG_ERR,
->>> -			       "nfssvc: writing fds to kernel failed: errno %d (%s)",
->>> -			       errno, strerror(errno));
->>> +			xlog(L_ERROR,
->>> +			       "writing fds to kernel failed: errno %d (%m)",
->>> +			       errno);
->>> 		}
->>> 	}
->>> 	close(fd);
->>> @@ -138,11 +137,11 @@ nfssvc_versbits(unsigned int ctlbits, int
->>> minorvers4)
->>> 		    off += snprintf(ptr+off, BUFSIZ - off, "%c4.%d",
->>> 				    minorvers4 > 0 ? '+' : '-',
->>> 				    n);
->>> +	xlog(D_GENERAL, "Writing version string to kernel: %s", buf);
->>> 	snprintf(ptr+off, BUFSIZ - off, "\n");
->>> -	if (write(fd, buf, strlen(buf)) != strlen(buf)) {
->>> -		syslog(LOG_ERR, "nfssvc: Setting version failed: errno %d (%s)",
->>> -			errno, strerror(errno));
->>> -	}
->>> +	if (write(fd, buf, strlen(buf)) != strlen(buf))
->>> +		xlog(L_ERROR, "Setting version failed: errno %d (%m)", errno);
->>> +
->>> 	close(fd);
->>>
->>> 	return;
->>> -- 
->>> 1.6.0.6
->>>
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
->
->
-> -- 
-> Jeff Layton <jlayton@poochiereds.net>
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+It may be more of a danger for the nfssvc_versbits function, but even
+there I don't think it's possible. It might be reasonable follow-on
+patch though to guard against that problem for future changes.
 
 
+> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+> > 			xlog(L_ERROR,
+> > 			       "writing fds to kernel failed: errno %d (%m)",
+> > @@ -103,7 +110,7 @@ nfssvc_setfds(int port, unsigned int ctlbits,  
+> > char *haddr)
+> > 	if (tcpfd >= 0) {
+> > 		if (fd < 0)
+> > 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
+> > -		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
+> > +		snprintf(buf, sizeof(buf), "%d\n", tcpfd);
+> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
+> > 			xlog(L_ERROR,
+> > 			       "writing fds to kernel failed: errno %d (%m)",
+> > @@ -118,7 +125,7 @@ static void
+> > nfssvc_versbits(unsigned int ctlbits, int minorvers4)
+> > {
+> > 	int fd, n, off;
+> > -	char buf[BUFSIZ], *ptr;
+> > +	char *ptr;
+> >
+> > 	ptr = buf;
+> > 	off = 0;
+> > @@ -128,17 +135,17 @@ nfssvc_versbits(unsigned int ctlbits, int  
+> > minorvers4)
+> >
+> > 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
+> > 		if (NFSCTL_VERISSET(ctlbits, n))
+> > -		    off += snprintf(ptr+off, BUFSIZ - off, "+%d ", n);
+> > +		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
+> > 		else
+> > -		    off += snprintf(ptr+off, BUFSIZ - off, "-%d ", n);
+> > +		    off += snprintf(ptr+off, sizeof(buf) - off, "-%d ", n);
+> > 	}
+> > 	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
+> > 	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
+> > -		    off += snprintf(ptr+off, BUFSIZ - off, "%c4.%d",
+> > +		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
+> > 				    minorvers4 > 0 ? '+' : '-',
+> > 				    n);
+> > 	xlog(D_GENERAL, "Writing version string to kernel: %s", buf);
+> > -	snprintf(ptr+off, BUFSIZ - off, "\n");
+> > +	snprintf(ptr+off, sizeof(buf) - off, "\n");
+> > 	if (write(fd, buf, strlen(buf)) != strlen(buf))
+> > 		xlog(L_ERROR, "Setting version failed: errno %d (%m)", errno);
+> >
+> > @@ -168,9 +175,8 @@ nfssvc(int port, int nrservs, unsigned int  
+> > versbits, int minorvers4,
+> > 		 * Just write the number in.
+> > 		 * Cannot handle port number yet, but does anyone care?
+> > 		 */
+> > -		char buf[20];
+> > 		int n;
+> > -		snprintf(buf, 20,"%d\n", nrservs);
+> > +		snprintf(buf, sizeof(buf), "%d\n", nrservs);
+> > 		n = write(fd, buf, strlen(buf));
+> > 		close(fd);
+> > 		if (n != strlen(buf))
+> > -- 
+> > 1.6.0.6
+> >
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
