@@ -1,166 +1,63 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 05/11] nfs-utils: declare a static common buffer for
- nfssvc.c routines
-Date: Mon, 8 Jun 2009 14:30:56 -0400
-Message-ID: <20090608143056.5815c152@tlielax.poochiereds.net>
-References: <1244484044-21355-1-git-send-email-jlayton@redhat.com>
-	<1244484044-21355-6-git-send-email-jlayton@redhat.com>
-	<EBCB2BCD-7C12-4D3C-A93A-FBD4291986EC@oracle.com>
+From: Jesper Dangaard Brouer <hawk@diku.dk>
+Subject: Re: [PATCH 5/5] sunrpc/auth_gss: Call rcu_barrier() on module unload.
+Date: Mon, 8 Jun 2009 21:48:54 +0200 (CEST)
+Message-ID: <Pine.LNX.4.64.0906082128240.1180@ask.diku.dk>
+References: <20090608130959.10052.54590.stgit@localhost>
+ <20090608131148.10052.39869.stgit@localhost>  <20090608162656.GF6961@linux.vnet.ibm.com>
+ <1244480449.5040.4.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: paulmck@linux.vnet.ibm.com, Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
+	netdev <netdev@vger.kernel.org>, linux-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51078 "EHLO mx2.redhat.com"
+Received: from mgw1.diku.dk ([130.225.96.91]:48891 "EHLO mgw1.diku.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216AbZFHSbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:31:02 -0400
-In-Reply-To: <EBCB2BCD-7C12-4D3C-A93A-FBD4291986EC@oracle.com>
+	id S1750758AbZFHTtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 15:49:41 -0400
+In-Reply-To: <1244480449.5040.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 8 Jun 2009 14:22:28 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> 
-> On Jun 8, 2009, at 2:00 PM, Jeff Layton wrote:
-> 
-> > Several of the routines in nfssvc.c declare a buffer for strings.  
-> > Use a
-> > shared static buffer instead to keep it off of the stack. Also, the
-> > buffer allocated in some places is *really* large. BUFSIZ is generally
-> > 8k. These routines don't need nearly that much.
-> >
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > utils/nfsd/nfssvc.c |   28 +++++++++++++++++-----------
-> > 1 files changed, 17 insertions(+), 11 deletions(-)
-> >
-> > diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> > index 0a7546a..025554d 100644
-> > --- a/utils/nfsd/nfssvc.c
-> > +++ b/utils/nfsd/nfssvc.c
-> > @@ -24,18 +24,25 @@
-> > #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
-> > #define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
-> >
-> > +/*
-> > + * declaring a common static scratch buffer here keeps us from  
-> > having to
-> > + * continually thrash the stack. The value of 128 bytes here is  
-> > really just a
-> > + * SWAG and can be increased if necessary. It ought to be enough  
-> > for the
-> > + * routines below however.
-> > + */
-> > +char buf[128];
-> > +
-> > static void
-> > nfssvc_setfds(int port, unsigned int ctlbits, char *haddr)
-> > {
-> > 	int fd, n, on=1;
-> > -	char buf[BUFSIZ];
-> > 	int udpfd = -1, tcpfd = -1;
-> > 	struct sockaddr_in sin;
-> >
-> > 	fd = open(NFSD_PORTS_FILE, O_RDONLY);
-> > 	if (fd < 0)
-> > 		return;
-> > -	n = read(fd, buf, BUFSIZ);
-> > +	n = read(fd, buf, sizeof(buf));
-> >
-> > 	close(fd);
-> > 	if (n != 0)
-> > 		return;
-> > @@ -91,7 +98,7 @@ nfssvc_setfds(int port, unsigned int ctlbits, char  
-> > *haddr)
-> > 		}
-> > 	}
-> > 	if (udpfd >= 0) {
-> > -		snprintf(buf, BUFSIZ,"%d\n", udpfd);
-> > +		snprintf(buf, sizeof(buf), "%d\n", udpfd);
-> 
-> Since sizeof(buf) is a SWAG, maybe we should have some way of finding  
-> out if the buffer is ever overflowed. Just a thought.
-> 
+(trimmed Cc)
 
-I don't think it's possible with the strings we're snprintf'ing into
-there today. In general I'm all for bounds checking, but I don't think
-it'll ever actually fire here.
+On Mon, 8 Jun 2009, Trond Myklebust wrote:
 
-It may be more of a danger for the nfssvc_versbits function, but even
-there I don't think it's possible. It might be reasonable follow-on
-patch though to guard against that problem for future changes.
+> Hmm... If this is about ensuring that all the call_rcu() callbacks
+> complete before we remove the module, then don't we also need similar
+> barriers in
 
+Well, Trond that was a hard question, as I don't know this code... but if 
+it uses call_rcu() callbacks its most likely.
 
-> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-> > 			xlog(L_ERROR,
-> > 			       "writing fds to kernel failed: errno %d (%m)",
-> > @@ -103,7 +110,7 @@ nfssvc_setfds(int port, unsigned int ctlbits,  
-> > char *haddr)
-> > 	if (tcpfd >= 0) {
-> > 		if (fd < 0)
-> > 			fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> > -		snprintf(buf, BUFSIZ,"%d\n", tcpfd);
-> > +		snprintf(buf, sizeof(buf), "%d\n", tcpfd);
-> > 		if (write(fd, buf, strlen(buf)) != strlen(buf)) {
-> > 			xlog(L_ERROR,
-> > 			       "writing fds to kernel failed: errno %d (%m)",
-> > @@ -118,7 +125,7 @@ static void
-> > nfssvc_versbits(unsigned int ctlbits, int minorvers4)
-> > {
-> > 	int fd, n, off;
-> > -	char buf[BUFSIZ], *ptr;
-> > +	char *ptr;
-> >
-> > 	ptr = buf;
-> > 	off = 0;
-> > @@ -128,17 +135,17 @@ nfssvc_versbits(unsigned int ctlbits, int  
-> > minorvers4)
-> >
-> > 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
-> > 		if (NFSCTL_VERISSET(ctlbits, n))
-> > -		    off += snprintf(ptr+off, BUFSIZ - off, "+%d ", n);
-> > +		    off += snprintf(ptr+off, sizeof(buf) - off, "+%d ", n);
-> > 		else
-> > -		    off += snprintf(ptr+off, BUFSIZ - off, "-%d ", n);
-> > +		    off += snprintf(ptr+off, sizeof(buf) - off, "-%d ", n);
-> > 	}
-> > 	n = minorvers4 >= 0 ? minorvers4 : -minorvers4;
-> > 	if (n >= NFSD_MINMINORVERS4 && n <= NFSD_MAXMINORVERS4)
-> > -		    off += snprintf(ptr+off, BUFSIZ - off, "%c4.%d",
-> > +		    off += snprintf(ptr+off, sizeof(buf) - off, "%c4.%d",
-> > 				    minorvers4 > 0 ? '+' : '-',
-> > 				    n);
-> > 	xlog(D_GENERAL, "Writing version string to kernel: %s", buf);
-> > -	snprintf(ptr+off, BUFSIZ - off, "\n");
-> > +	snprintf(ptr+off, sizeof(buf) - off, "\n");
-> > 	if (write(fd, buf, strlen(buf)) != strlen(buf))
-> > 		xlog(L_ERROR, "Setting version failed: errno %d (%m)", errno);
-> >
-> > @@ -168,9 +175,8 @@ nfssvc(int port, int nrservs, unsigned int  
-> > versbits, int minorvers4,
-> > 		 * Just write the number in.
-> > 		 * Cannot handle port number yet, but does anyone care?
-> > 		 */
-> > -		char buf[20];
-> > 		int n;
-> > -		snprintf(buf, 20,"%d\n", nrservs);
-> > +		snprintf(buf, sizeof(buf), "%d\n", nrservs);
-> > 		n = write(fd, buf, strlen(buf));
-> > 		close(fd);
-> > 		if (n != strlen(buf))
-> > -- 
-> > 1.6.0.6
-> >
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+I have not done a complete sweep of the tree, I have only looked at the 
+netdev parts, as this is where I usually snoop around.  So there is 
+probably plenty of work for some kernel-janitors (Cc'ing the list ;-))
 
+> net/sunrpc/sunrpc_syms.c:cleanup_sunrpc()
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Looking at the code that end up in sunrpc.ko, I see that both 
+net/sunrpc/auth_unix.c and net/sunrpc/auth_generic.c uses call_rcu() 
+callbacks.
+
+> and in fs/nfs/inode.c:exit_nfs_fs()?
+
+Looking at the code which end up into nfs.ko (which includes 
+fs/nfs/inode.c) I see that the fs/nfs/delegation.c uses call_rcu() 
+callbacks.
+
+But its hard for me to figure out how this code interacts.  Don't know if 
+we need to document a code path that can occur fast enough, before we add 
+this safe guard?  It should be Paul's saying...
+
+Cheers,
+   Jesper Brouer
+
+--
+-------------------------------------------------------------------
+MSc. Master of Computer Science
+Dept. of Computer Science, University of Copenhagen
+Author of http://www.adsl-optimizer.dk
+-------------------------------------------------------------------
