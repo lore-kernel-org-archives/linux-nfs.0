@@ -1,109 +1,135 @@
 From: andros@netapp.com
-Subject: [PATCH 04/30] nfsd41: encode create_session result into clid cache
-Date: Mon,  8 Jun 2009 14:20:45 -0400
-Message-ID: <1244485271-7461-5-git-send-email-andros@netapp.com>
+Subject: [PATCH 12/30] nfsd41: replace ce_cachethis with nfsd4_slot field
+Date: Mon,  8 Jun 2009 14:20:53 -0400
+Message-ID: <1244485271-7461-13-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
  <1244485271-7461-3-git-send-email-andros@netapp.com>
  <1244485271-7461-4-git-send-email-andros@netapp.com>
+ <1244485271-7461-5-git-send-email-andros@netapp.com>
+ <1244485271-7461-6-git-send-email-andros@netapp.com>
+ <1244485271-7461-7-git-send-email-andros@netapp.com>
+ <1244485271-7461-8-git-send-email-andros@netapp.com>
+ <1244485271-7461-9-git-send-email-andros@netapp.com>
+ <1244485271-7461-10-git-send-email-andros@netapp.com>
+ <1244485271-7461-11-git-send-email-andros@netapp.com>
+ <1244485271-7461-12-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39968 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38770 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752867AbZFHSVX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:23 -0400
-In-Reply-To: <1244485271-7461-4-git-send-email-andros@netapp.com>
+	id S1752994AbZFHSV0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:26 -0400
+In-Reply-To: <1244485271-7461-12-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-CREATE_SESSION can be preceeded by a SEQUENCE operation and the
-create session single slot cache must be maintained. Save the results of
-a create session call (struct nfsd4_create_session) into the cache at the end
-of processing while still under the state lock.
-
-If the CREATE_SESSION operation it is preceeded by a SEQUENCE operation it
-will also be encoded into the session slot table cache.
-
-Errors that do not change the create session cache:
-A create session NFS4ERR_STALE_CLIENTID error means that a client record
-(and associated create session slot) could not be found and therefore can't
-be changed.  NFSERR_SEQ_MISORDERED errors do not change the slot cache.
-
-All other errors get cached.
-
-The old method of using nfsd4_store_cache_entry() for create sessions operations
-will be removed in a following patch.
+In preparation to remove struct nfsd4_cache_entry
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   22 +++++++++++++++++++++-
- 1 files changed, 21 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4proc.c         |    6 +++---
+ fs/nfsd/nfs4state.c        |   10 +++++-----
+ fs/nfsd/nfs4xdr.c          |    2 +-
+ include/linux/nfsd/state.h |    1 +
+ include/linux/nfsd/xdr4.h  |    2 +-
+ 5 files changed, 11 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 13a6c58..3a2b12f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -870,8 +870,8 @@ nfsd4_enc_uncached_replay(struct nfsd4_compoundargs *args,
+ {
+ 	struct nfsd4_op *op;
+ 
+-	dprintk("--> %s resp->opcnt %d ce_cachethis %u \n", __func__,
+-		resp->opcnt, resp->cstate.slot->sl_cache_entry.ce_cachethis);
++	dprintk("--> %s resp->opcnt %d cachethis %u \n", __func__,
++		resp->opcnt, resp->cstate.slot->sl_cachethis);
+ 
+ 	/* Encode the replayed sequence operation */
+ 	BUG_ON(resp->opcnt != 1);
+@@ -879,7 +879,7 @@ nfsd4_enc_uncached_replay(struct nfsd4_compoundargs *args,
+ 	nfsd4_encode_operation(resp, op);
+ 
+ 	/*return nfserr_retry_uncached_rep in next operation. */
+-	if (resp->cstate.slot->sl_cache_entry.ce_cachethis == 0) {
++	if (resp->cstate.slot->sl_cachethis == 0) {
+ 		op = &args->ops[resp->opcnt++];
+ 		op->status = nfserr_retry_uncached_rep;
+ 		nfsd4_encode_operation(resp, op);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8bf1cfa..265379e 100644
+index ab80a38..837c9cf 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1334,6 +1334,20 @@ check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
- 	return nfserr_seq_misordered;
+@@ -1074,8 +1074,8 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 		entry->ce_resused = 0;
+ 		entry->ce_rpchdrlen = 0;
+ 		slot->sl_datalen = 0;
+-		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
+-			resp->cstate.slot->sl_cache_entry.ce_cachethis);
++		dprintk("%s Just cache SEQUENCE. cachethis %d\n", __func__,
++			resp->cstate.slot->sl_cachethis);
+ 		return;
+ 	}
+ 	/* Length is checked to be <= se_fmaxresp_cached in
+@@ -1532,10 +1532,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	/* Success! bump slot seqid */
+ 	slot->sl_inuse = true;
+ 	slot->sl_seqid = seq->seqid;
+-	slot->sl_cache_entry.ce_cachethis = seq->cachethis;
+-	/* Always set the cache entry cachethis for solo sequence */
++	slot->sl_cachethis = seq->cachethis;
++	/* Always set the slot cachethis for solo sequence */
+ 	if (nfsd4_is_solo_sequence(resp))
+-		slot->sl_cache_entry.ce_cachethis = 1;
++		slot->sl_cachethis = 1;
+ 
+ 	cstate->slot = slot;
+ 	cstate->session = session;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 6f7e7b2..0250214 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3191,7 +3191,7 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+ 		return status;
+ 
+ 	session = resp->cstate.session;
+-	if (session == NULL || slot->sl_cache_entry.ce_cachethis == 0)
++	if (session == NULL || slot->sl_cachethis == 0)
+ 		return status;
+ 
+ 	if (resp->opcnt >= args->opcnt)
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 5319be5..e818edc 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -120,6 +120,7 @@ struct nfsd4_cache_entry {
+ struct nfsd4_slot {
+ 	bool				sl_inuse;
+ 	u32				sl_seqid;
++	int				sl_cachethis;
+ 	u32				sl_datalen;
+ 	char				sl_data[NFSD_SLOT_CACHE_SIZE];
+ 	struct nfsd4_cache_entry	sl_cache_entry;
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 9ab9ab6..49d5ec9 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -470,7 +470,7 @@ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
+ 
+ static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
+ {
+-	return !resp->cstate.slot->sl_cache_entry.ce_cachethis ||
++	return !resp->cstate.slot->sl_cachethis ||
+ 			nfsd4_is_solo_sequence(resp);
  }
  
-+/*
-+ * Cache the create session result into the create session single DRC
-+ * slot cache by saving the xdr structure. sl_seqid has been set.
-+ * Do this for solo or embedded create session operations.
-+ */
-+static void
-+nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
-+			   struct nfsd4_clid_slot *slot, int nfserr)
-+{
-+	slot->sl_status = nfserr;
-+	memcpy(&slot->sl_cr_ses, cr_ses, sizeof(*cr_ses));
-+}
-+
-+
- __be32
- nfsd4_create_session(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -1343,6 +1357,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
- 	struct nfs4_client *conf, *unconf;
- 	struct nfsd4_slot *slot = NULL;
-+	struct nfsd4_clid_slot *cs_slot = NULL;
- 	int status = 0;
- 
- 	nfs4_lock_state();
-@@ -1371,6 +1386,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		conf->cl_slot.sl_seqid++;
- 	} else if (unconf) {
- 		slot = &unconf->cl_slot;
-+		cs_slot = &unconf->cl_cs_slot;
- 		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
- 					  slot->sl_inuse);
- 		if (status) {
-@@ -1382,7 +1398,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
- 		    (ip_addr != unconf->cl_addr)) {
- 			status = nfserr_clid_inuse;
--			goto out;
-+			goto out_cache;
- 		}
- 
- 		slot->sl_seqid++; /* from 0 to 1 */
-@@ -1412,6 +1428,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	cstate->slot = slot;
- 	/* Ensure a page is used for the cache */
- 	slot->sl_cache_entry.ce_cachethis = 1;
-+
-+out_cache:
-+	/* cache solo and embedded create sessions under the state lock */
-+	nfsd4_cache_create_session(cr_ses, cs_slot, status);
- out:
- 	nfs4_unlock_state();
- 	dprintk("%s returns %d\n", __func__, ntohl(status));
 -- 
 1.5.4.3
 
