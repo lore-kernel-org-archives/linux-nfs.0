@@ -1,8 +1,7 @@
 From: Jesper Dangaard Brouer <hawk@comx.dk>
-Subject: [PATCH 1/5] 8021q: Vlan driver should use rcu_barrier() on unload
-	instead of syncronize_net()
-Date: Mon, 08 Jun 2009 15:11:28 +0200
-Message-ID: <20090608131128.10052.30759.stgit@localhost>
+Subject: [PATCH 2/5] nfnetlink_queue: Use rcu_barrier() on module unload.
+Date: Mon, 08 Jun 2009 15:11:33 +0200
+Message-ID: <20090608131133.10052.40836.stgit@localhost>
 References: <20090608130959.10052.54590.stgit@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -14,33 +13,40 @@ Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
 	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
 	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
 To: "David S. Miller" <davem@davemloft.net>
-Return-path: <netdev-owner@vger.kernel.org>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
 In-Reply-To: <20090608130959.10052.54590.stgit@localhost>
-Sender: netdev-owner@vger.kernel.org
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The VLAN 8021q driver needs to call rcu_barrier() when unloading the module,
-instead of syncronize_net().  This is needed to make sure that outstanding
-call_rcu() callbacks have completed, before the callback function code is
-removed on module unload.
+This module uses rcu_call() thus it should use rcu_barrier() on module unload.
+
+Also fixed a trivial typo 'nfetlink' -> 'nfnetlink' in comment.
 
 Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
 ---
 
- net/8021q/vlan.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/netfilter/nfnetlink_queue.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/net/8021q/vlan.c b/net/8021q/vlan.c
-index 714e1c3..fe64908 100644
---- a/net/8021q/vlan.c
-+++ b/net/8021q/vlan.c
-@@ -758,7 +758,7 @@ static void __exit vlan_cleanup_module(void)
- 		BUG_ON(!hlist_empty(&vlan_group_hash[i]));
- 
- 	unregister_pernet_gen_device(vlan_net_id, &vlan_net_ops);
--	synchronize_net();
+diff --git a/net/netfilter/nfnetlink_queue.c b/net/netfilter/nfnetlink_queue.c
+index 8c86011..71daa09 100644
+--- a/net/netfilter/nfnetlink_queue.c
++++ b/net/netfilter/nfnetlink_queue.c
+@@ -1,6 +1,6 @@
+ /*
+  * This is a module which is used for queueing packets and communicating with
+- * userspace via nfetlink.
++ * userspace via nfnetlink.
+  *
+  * (C) 2005 by Harald Welte <laforge@netfilter.org>
+  * (C) 2007 by Patrick McHardy <kaber@trash.net>
+@@ -932,6 +932,8 @@ static void __exit nfnetlink_queue_fini(void)
+ #endif
+ 	nfnetlink_subsys_unregister(&nfqnl_subsys);
+ 	netlink_unregister_notifier(&nfqnl_rtnl_notifier);
++
 +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
- 
- 	vlan_gvrp_uninit();
  }
+ 
+ MODULE_DESCRIPTION("netfilter packet queue handler");
 
