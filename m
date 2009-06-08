@@ -1,154 +1,109 @@
 From: andros@netapp.com
-Subject: [PATCH 09/30] nfsd41: use globals for DRC memory use management
-Date: Mon,  8 Jun 2009 14:20:50 -0400
-Message-ID: <1244485271-7461-10-git-send-email-andros@netapp.com>
+Subject: [PATCH 04/30] nfsd41: encode create_session result into clid cache
+Date: Mon,  8 Jun 2009 14:20:45 -0400
+Message-ID: <1244485271-7461-5-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
  <1244485271-7461-3-git-send-email-andros@netapp.com>
  <1244485271-7461-4-git-send-email-andros@netapp.com>
- <1244485271-7461-5-git-send-email-andros@netapp.com>
- <1244485271-7461-6-git-send-email-andros@netapp.com>
- <1244485271-7461-7-git-send-email-andros@netapp.com>
- <1244485271-7461-8-git-send-email-andros@netapp.com>
- <1244485271-7461-9-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10001 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:39968 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752806AbZFHSVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:22 -0400
-In-Reply-To: <1244485271-7461-9-git-send-email-andros@netapp.com>
+	id S1752867AbZFHSVX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:23 -0400
+In-Reply-To: <1244485271-7461-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The version 4.1 DRC memory limit and tracking variables are server wide and
-session specific.
-Add a spinlock to serialize access to the management variables which change
-on session creation and deletion (usage counter) or (future) administrative
-action to adjust the total DRC memory limit.
+CREATE_SESSION can be preceeded by a SEQUENCE operation and the
+create session single slot cache must be maintained. Save the results of
+a create session call (struct nfsd4_create_session) into the cache at the end
+of processing while still under the state lock.
 
-Track DRC memory usage in free session.
+If the CREATE_SESSION operation it is preceeded by a SEQUENCE operation it
+will also be encoded into the session slot table cache.
+
+Errors that do not change the create session cache:
+A create session NFS4ERR_STALE_CLIENTID error means that a client record
+(and associated create session slot) could not be found and therefore can't
+be changed.  NFSERR_SEQ_MISORDERED errors do not change the slot cache.
+
+All other errors get cached.
+
+The old method of using nfsd4_store_cache_entry() for create sessions operations
+will be removed in a following patch.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c        |   15 +++++++++------
- fs/nfsd/nfssvc.c           |   19 +++++++++++++++----
- include/linux/nfsd/nfsd.h  |    5 +++++
- include/linux/sunrpc/svc.h |    2 --
- 4 files changed, 29 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c |   22 +++++++++++++++++++++-
+ 1 files changed, 21 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 52bd99c..db56a8a 100644
+index 8bf1cfa..265379e 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -416,7 +416,7 @@ gen_sessionid(struct nfsd4_session *ses)
- 
- /*
-  * Give the client the number of slots it requests bound by
-- * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
-+ * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
-  *
-  * If we run out of reserved DRC memory we should (up to a point) re-negotiate
-  * active sessions and reduce their slot usage to make rooom for new
-@@ -433,11 +433,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
- 
- 	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
- 
--	spin_lock(&nfsd_serv->sv_lock);
--	if (mem + nfsd_serv->sv_drc_mem_used > nfsd_serv->sv_drc_max_mem)
--		mem = nfsd_serv->sv_drc_max_mem - nfsd_serv->sv_drc_mem_used;
--	nfsd_serv->sv_drc_mem_used += mem;
--	spin_unlock(&nfsd_serv->sv_lock);
-+	spin_lock(&nfsd_drc_lock);
-+	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
-+		mem = nfsd_drc_max_mem - nfsd_drc_mem_used;
-+	nfsd_drc_mem_used += mem;
-+	spin_unlock(&nfsd_drc_lock);
- 
- 	if (mem < NFSD_SLOT_CACHE_SIZE) {
- 		fchan->maxreqs = 0;
-@@ -586,6 +586,9 @@ free_session(struct kref *kref)
- 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
- 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
- 	}
-+	spin_lock(&nfsd_drc_lock);
-+	nfsd_drc_mem_used -= ses->se_fnumslots * NFSD_SLOT_CACHE_SIZE;
-+	spin_unlock(&nfsd_drc_lock);
- 	kfree(ses);
+@@ -1334,6 +1334,20 @@ check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
+ 	return nfserr_seq_misordered;
  }
- 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 80588cc..37633f5 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -67,6 +67,16 @@ struct timeval			nfssvc_boot;
- DEFINE_MUTEX(nfsd_mutex);
- struct svc_serv 		*nfsd_serv;
  
 +/*
-+ * nfsd_drc_lock protects nfsd_drc_max_pages and nfsd_drc_pages_used.
-+ * nfsd_drc_max_pages limits the total amount of memory available for
-+ * version 4.1 DRC caches.
-+ * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
++ * Cache the create session result into the create session single DRC
++ * slot cache by saving the xdr structure. sl_seqid has been set.
++ * Do this for solo or embedded create session operations.
 + */
-+spinlock_t	nfsd_drc_lock;
-+unsigned int	nfsd_drc_max_mem;
-+unsigned int	nfsd_drc_mem_used;
-+
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- static struct svc_stat	nfsd_acl_svcstats;
- static struct svc_version *	nfsd_acl_version[] = {
-@@ -238,12 +248,13 @@ static void set_max_drc(void)
- {
- 	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
- 	#define NFSD_DRC_SIZE_SHIFT	10
--	nfsd_serv->sv_drc_max_mem = (nr_free_buffer_pages()
-+	nfsd_drc_max_mem = (nr_free_buffer_pages()
- 					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
--	nfsd_serv->sv_drc_mem_used = 0;
-+	nfsd_drc_mem_used = 0;
-+	spin_lock_init(&nfsd_drc_lock);
- 	dprintk("%s svc_drc_max_mem %u [in pages %lu]\n", __func__,
--		nfsd_serv->sv_drc_max_mem,
--		nfsd_serv->sv_drc_max_mem / PAGE_SIZE);
-+		nfsd_drc_max_mem,
-+		nfsd_drc_max_mem / PAGE_SIZE);
- }
- 
- int nfsd_create_serv(void)
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2b49d67..a0cfb30 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -56,6 +56,11 @@ extern struct svc_version	nfsd_version2, nfsd_version3,
- extern u32			nfsd_supported_minorversion;
- extern struct mutex		nfsd_mutex;
- extern struct svc_serv		*nfsd_serv;
-+extern spinlock_t		nfsd_drc_lock;
-+extern unsigned int		nfsd_drc_max_mem;
-+extern unsigned int		nfsd_drc_mem_used;
++static void
++nfsd4_cache_create_session(struct nfsd4_create_session *cr_ses,
++			   struct nfsd4_clid_slot *slot, int nfserr)
++{
++	slot->sl_status = nfserr;
++	memcpy(&slot->sl_cr_ses, cr_ses, sizeof(*cr_ses));
++}
 +
 +
+ __be32
+ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		     struct nfsd4_compound_state *cstate,
+@@ -1343,6 +1357,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	struct nfs4_client *conf, *unconf;
+ 	struct nfsd4_slot *slot = NULL;
++	struct nfsd4_clid_slot *cs_slot = NULL;
+ 	int status = 0;
  
- extern struct seq_operations nfs_exports_op;
+ 	nfs4_lock_state();
+@@ -1371,6 +1386,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		conf->cl_slot.sl_seqid++;
+ 	} else if (unconf) {
+ 		slot = &unconf->cl_slot;
++		cs_slot = &unconf->cl_cs_slot;
+ 		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
+ 					  slot->sl_inuse);
+ 		if (status) {
+@@ -1382,7 +1398,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+ 		    (ip_addr != unconf->cl_addr)) {
+ 			status = nfserr_clid_inuse;
+-			goto out;
++			goto out_cache;
+ 		}
  
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 243508e..d0d8bf4 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -94,8 +94,6 @@ struct svc_serv {
- 	struct module *		sv_module;	/* optional module to count when
- 						 * adding threads */
- 	svc_thread_fn		sv_function;	/* main function for threads */
--	unsigned int		sv_drc_max_mem; /* Total pages for DRC */
--	unsigned int		sv_drc_mem_used;/* DRC pages used */
- };
- 
- /*
+ 		slot->sl_seqid++; /* from 0 to 1 */
+@@ -1412,6 +1428,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	cstate->slot = slot;
+ 	/* Ensure a page is used for the cache */
+ 	slot->sl_cache_entry.ce_cachethis = 1;
++
++out_cache:
++	/* cache solo and embedded create sessions under the state lock */
++	nfsd4_cache_create_session(cr_ses, cs_slot, status);
+ out:
+ 	nfs4_unlock_state();
+ 	dprintk("%s returns %d\n", __func__, ntohl(status));
 -- 
 1.5.4.3
 
