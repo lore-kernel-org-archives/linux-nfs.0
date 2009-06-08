@@ -1,84 +1,119 @@
 From: andros@netapp.com
-Subject: [PATCH 0/30] NFSv4.1 Server DRC rewrite Version 3
-Date: Mon,  8 Jun 2009 14:20:41 -0400
-Message-ID: <1244485271-7461-1-git-send-email-andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 03/30] nfsd41: declare clientid create session slot structure
+Date: Mon,  8 Jun 2009 14:20:44 -0400
+Message-ID: <1244485271-7461-4-git-send-email-andros@netapp.com>
+References: <>
+ <1244485271-7461-1-git-send-email-andros@netapp.com>
+ <1244485271-7461-2-git-send-email-andros@netapp.com>
+ <1244485271-7461-3-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24915 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10001 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750961AbZFHSVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:12 -0400
-In-Reply-To: <>
-References: <>
+	id S1752638AbZFHSVS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:18 -0400
+In-Reply-To: <1244485271-7461-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4.1 Server DRC rewrite Version 3
+From: Andy Adamson <andros@netapp.com>
 
-This patch set applies to 2.6.30-rc8 and is the third version of the NFSv4.1
-server DRC rewrite. As per Bruce Field's suggestion, the clientid cache for
-CREATE_SESSION operations has been changed from storing the encoded response
-to storing struct nfsd4_create_session, the CREATE_SESSION xdr structure.
+The nfs41 single slot clientid cache holds the results of create session
+processing in the create session xdr struct.  The slot does not need the inuse,
+cachethis or other fields that the multiple slot session cache uses.
 
-The NFSv4.1 DRC is changed from a page based cache to
-a buffer based cache. The logic for the single slot clientid cache has been
-separated from the session slot logic to handle the CREATE_SESSION call
-preceeded by a SEQUENCE and all the replay combinations therein.
+The cl_slot field of struct nfs4_client will be removed in a following patch.
 
-The session DRC now caches encoded operations with the exception of the
-SEQUENCE operation which for a replay is encoded with the current slot and
-session values.  A review of message sizes indicates that a 512 byte buffer
-for the operations is adequate.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/nfsd/state.h |   31 +++++++++++++++++++++++++++++++
+ include/linux/nfsd/xdr4.h  |   23 -----------------------
+ 2 files changed, 31 insertions(+), 23 deletions(-)
 
-Not addressed is replacing the nfsd4_check_drc_limit() post-operation checking 
-with a pre-operation processing estimate of the encoded per operation result.
-
-Testing:
-4.1 mount: Connectathon and 4.1pynfs including the new create session replay
-tests.
-4.0 mount; Connectathon.
-
-
-Clientid (create session operation) single slot DRC patches
-
-0001-nfsd41-create_session-check-replay-first.patch
-0002-nfsd41-change-check_slot_seqid-parameters.patch
-0003-nfsd41-declare-clientid-create-session-slot-structu.patch
-0004-nfsd41-encode-create_session-result-into-clid-cache.patch
-0005-nfsd41-replay-solo-and-embedded-create-session.patch
-0006-nfsd41-remove-the-unused-nfsd4_slot-create-session-s.patch
-
-Sessions (sequence operation) multiple slot DRC patches.
-
-0007-nfsd41-sanity-check-client-drc-maxreqs.patch
-0008-nfsd41-change-from-page-to-memory-based-drc-limits.patch
-0009-nfsd41-use-globals-for-DRC-memory-use-management.patch
-0010-nfsd41-set-the-session-maximum-response-size-cached.patch
-0011-nfsd41-use-static-buffers-for-sessions-DRC.patch
-0012-nfsd41-replace-ce_cachethis-with-nfsd4_slot-field.patch
-0013-nfsd41-replace-ce_opcnt-with-nfsd4_slot-field.patch
-0014-nfsd41-nfsd41-replace-ce_status-with-nfsd4_slot-fi.patch
-0015-nfsd41-obliterate-nfsd4_copy_pages.patch
-0016-nfsd41-obliterate-nfsd41_copy_replay_data.patch
-0017-nfsd41-obliterate-nfsd4_release_respages.patch
-0018-nfsd41-remove-iovlen-field-from-nfsd4_compound_stat.patch
-0019-nfsd41-remove-struct-nfsd4_cache_entry.patch
-0020-nfsd41-obliterate-nfsd4_set_statp.patch
-0021-nfsd41-rename-nfsd4_enc_uncached_replay.patch
-0022-nfsd41-encode-replay-sequence-from-the-slot-values.patch
-0023-nfsd41-fix-nfsd4_replay_cache_entry-comments.patch
-0024-nfsd41-fix-nfsd4_store_cache_entry-comments.patch
-0025-nfsd41-support-16-slots-per-session.patch
-0026-nfsd41-use-the-maximum-operations-per-compound-in-n.patch
-0027-nfsd41-fix-nfsd4_store_cache_entry-dprintk.patch
-0028-nfsd41-add-test-for-failed-sequence-operation.patch
-0029-nfsd41-remove-redundant-failed-sequence-check.patch
-0030-nfsd41-only-reference-the-session-on-non-replay-seq.patch
-patch-message.txt
-
-Comments welcome.
-
--->Andy
-
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 4d61c87..901590e 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -122,6 +122,36 @@ struct nfsd4_slot {
+ 	struct nfsd4_cache_entry	sl_cache_entry;
+ };
+ 
++struct nfsd4_channel_attrs {
++	u32	headerpadsz;
++	u32	maxreq_sz;
++	u32	maxresp_sz;
++	u32	maxresp_cached;
++	u32	maxops;
++	u32	maxreqs;
++	u32	nr_rdma_attrs;
++	u32	rdma_attrs;
++};
++
++struct nfsd4_create_session {
++	clientid_t			clientid;
++	struct nfs4_sessionid		sessionid;
++	u32				seqid;
++	u32				flags;
++	struct nfsd4_channel_attrs	fore_channel;
++	struct nfsd4_channel_attrs	back_channel;
++	u32				callback_prog;
++	u32				uid;
++	u32				gid;
++};
++
++/* The single slot clientid cache structure */
++struct nfsd4_clid_slot {
++	u32				sl_seqid;
++	__be32				sl_status;
++	struct nfsd4_create_session	sl_cr_ses;
++};
++
+ struct nfsd4_session {
+ 	struct kref		se_ref;
+ 	struct list_head	se_hash;	/* hash by sessionid */
+@@ -192,6 +222,7 @@ struct nfs4_client {
+ 	/* for nfs41 */
+ 	struct list_head	cl_sessions;
+ 	struct nfsd4_slot	cl_slot;	/* create_session slot */
++	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_sessionid	cl_sessionid;
+ };
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index f80d601..6e24dbb 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -363,29 +363,6 @@ struct nfsd4_exchange_id {
+ 	int		spa_how;
+ };
+ 
+-struct nfsd4_channel_attrs {
+-	u32		headerpadsz;
+-	u32		maxreq_sz;
+-	u32		maxresp_sz;
+-	u32		maxresp_cached;
+-	u32		maxops;
+-	u32		maxreqs;
+-	u32		nr_rdma_attrs;
+-	u32		rdma_attrs;
+-};
+-
+-struct nfsd4_create_session {
+-	clientid_t		clientid;
+-	struct nfs4_sessionid	sessionid;
+-	u32			seqid;
+-	u32			flags;
+-	struct nfsd4_channel_attrs fore_channel;
+-	struct nfsd4_channel_attrs back_channel;
+-	u32			callback_prog;
+-	u32			uid;
+-	u32			gid;
+-};
+-
+ struct nfsd4_sequence {
+ 	struct nfs4_sessionid	sessionid;		/* request/response */
+ 	u32			seqid;			/* request/response */
+-- 
+1.5.4.3
 
