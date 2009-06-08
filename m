@@ -1,175 +1,73 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
-Date: Mon, 8 Jun 2009 07:10:26 -0400
-Message-ID: <20090608071026.0b57fff8@tupile.poochiereds.net>
-References: <20090605073648.5a5497b5@tlielax.poochiereds.net>
-	<200906051224.40592.vapier@gentoo.org>
-	<20090605133634.23357e8e@tlielax.poochiereds.net>
-	<200906051650.42007.vapier@gentoo.org>
-	<20090606071153.164d92dd@tlielax.poochiereds.net>
-	<7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com>
-	<20090606160230.247d3ca3@tlielax.poochiereds.net>
-	<4A2CD550.4090609@RedHat.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [RFC 0/10] nfsd41 server backchannel for 2.6.31 (try 3)
+Date: Mon, 08 Jun 2009 15:17:49 +0300
+Message-ID: <4A2D016D.6090205@panasas.com>
+References: <273FE88A07F5D445824060902F7003440612BB9D@SACMVEXC1-PRD.hq.netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Muntz, Daniel" <Dan.Muntz@netapp.com>,
-	Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	"Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:56140 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754275AbZFHLKa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 07:10:30 -0400
-In-Reply-To: <4A2CD550.4090609-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:22920
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754629AbZFHMRt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2009 08:17:49 -0400
+In-Reply-To: <273FE88A07F5D445824060902F7003440612BB9D-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 08 Jun 2009 05:09:36 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+Merged onto the nfsd41-for-2.6.31 branch.
 
+Thanks!
+
+Benny
+
+On Jun. 06, 2009, 5:48 +0300, "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com> wrote:
+> Bruce, Trond,
+> 
+> The following patch set addresses your comments on the server v4.1
+> backchannel RPC functionality previously submitted.  It also addresses
+> Benny's comments on the implementation of the async RPC v4.1 callbacks.
+> Please consider for 2.6.31.
+> 
+> [RFC 01/11] nfsd41: Backchannel: cleanup nfs4.0 callback encode routines
+> [RFC 02/11] nfsd41: Backchannel: minorversion support for the back
+> channel
+> [RFC 03/11] nfsd41: sunrpc: svc_tcp_recv_record()
+> [RFC 04/11] nfsd41: sunrpc: Added rpc server-side backchannel handling
+> [RFC 05/11] nfsd41: Backchannel: callback infrastructure
+> [RFC 06/11] nfsd41: Backchannel: Add sequence arguments to callback RPC
+> arguments
+> [RFC 07/11] nfsd41: Backchannel: Server backchannel RPC wait queue
+> [RFC 08/11] nfsd41: Backchannel: Setup sequence information
+> [RFC 09/11] nfsd41: Backchannel: cb_sequence callback
+> [RFC 10/11] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+> [RFC 11/11] nfsd41: Refactor create_client()
 > 
 > 
-> Jeff Layton wrote:
-> > On Sat, 6 Jun 2009 11:00:41 -0700
-> > "Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
-> > 
-> >>  
-> >>
-> >>> -----Original Message-----
-> >>> From: Jeff Layton [mailto:jlayton@redhat.com] 
-> >>> Sent: Saturday, June 06, 2009 4:12 AM
-> >>> To: Mike Frysinger
-> >>> Cc: linux-nfs@vger.kernel.org
-> >>> Subject: Re: should we make --enable-tirpc the default in 
-> >>> current nfs-utils?
-> >>>
-> >>> On Fri, 5 Jun 2009 16:50:41 -0400
-> >>> Mike Frysinger <vapier@gentoo.org> wrote:
-> >>>
-> >>>> On Friday 05 June 2009 13:36:34 Jeff Layton wrote:
-> >>>>> On Fri, 5 Jun 2009 12:24:39 -0400 Mike Frysinger wrote:
-> >>>>>> On Friday 05 June 2009 07:36:48 Jeff Layton wrote:
-> >>>>>>> Doing this now would add wider testing exposure for these 
-> >>>>>>> codepaths and help flush out bugs in TIRPC+IPV4 
-> >>> codepaths. OTOH, 
-> >>>>>>> it means adding a new library dependency for packagers, or 
-> >>>>>>> they'll need to take the conscious step to 
-> >>> --disable-tirpc when they configure.
-> >>>>>> or have the configure script dump a warning whenever 
-> >>> libtirpc is 
-> >>>>>> not used ...
-> >>>>> The problem there is that these sorts of warnings tend to 
-> >>> get lost 
-> >>>>> in the noise. So then you have the situation where people aren't 
-> >>>>> sure whether they built against libtirpc or not. Only running ldd 
-> >>>>> against the binaries will tell you.
-> >>>> the configure script knows whether it's going to be 
-> >>> building against libtirpc.  
-> >>>> it isnt going to happen randomly during `make`.
-> >>>> AC_MSG_WARNING([
-> >>>>
-> >>>> You really should think about switching to libtirpc
-> >>>>
-> >>>> ])
-> >>>>
-> >>>> maybe it's different in Gentoo, but people report configure 
-> >>> warnings 
-> >>>> all the time ;)
-> >>>>
-> >>> Well, Gentoo probably has a larger percentage of people 
-> >>> compiling the sources. Other distros generally distribute the 
-> >>> binaries. But to be fair, it's not unreasonable to expect 
-> >>> people who are compiling from sources to know what they're doing.
-> >>>
-> >>>>>>> We could make it so that configure looks for libtirpc and if 
-> >>>>>>> it's not available, configures the build against legacy RPC 
-> >>>>>>> interfaces. I think this is a bad idea however. While 
-> >>> it should 
-> >>>>>>> "just work" either way, there are some small behavioral 
-> >>>>>>> differences when TIRPC support is built in. I think it's 
-> >>>>>>> probably better to make enabling and disabling TIRPC 
-> >>> a conscious step.
-> >>>>>> i think this is the correct behavior for unspecified configure 
-> >>>>>> flags
-> >>>>> In general, yes. In this case though I think it's reasonable to 
-> >>>>> force people compiling the package without tirpc 
-> >>> installed to take 
-> >>>>> the conscious step to either install the right libs and 
-> >>> headers, or 
-> >>>>> to add --disable-tirpc.
-> >>>>>
-> >>>>> I think doing so will lead to a more deterministic 
-> >>> outcome in this 
-> >>>>> situation. If that's a problem however, I'm willing to 
-> >>> listen to the 
-> >>>>> reasoning and reconsider...
-> >>>> i just dont agree with having to re-run configure to "fix" 
-> >>> a condition 
-> >>>> that the configure script should already be able to handle. 
-> >>>  but i'm 
-> >>>> speaking in general terms here, not specific to what you propose as 
-> >>>> that isnt exactly the same thing.  i dont feel too strongly here, 
-> >>>> especially since it doesnt affect me in any realistic way.
-> >>>> -mike
-> >>> Ok, fair enough. I don't feel terribly strongly about this 
-> >>> either and that is the the conventional way that configure 
-> >>> options work (don't fail unless absolutely necessary). I'll 
-> >>> see about coding up a patch that makes --enable-tirpc the 
-> >>> default but falls back to legacy RPC code with a warning if 
-> >>> TIRPC libs/headers aren't present.
-> >> Changing the default because the code isn't sufficiently tested strikes
-> >> me as a particularly bad idea.  If Red Hat wants more testing,
-> >> distribute nfs-utils with TIRPC enabled in Fedora, and _then_ change the
-> >> default in nfs-utils after more testing has occurred.  Delegating
-> >> testing to unsuspecting end-users (especially people who need to rebuild
-> >> in production environments) seems like an ideal way to cause real
-> >> problems.
-> >>
-> > 
-> > If users have TIRPC installed on their systems, why would we want to
-> > avoid using it? Pieces of this code (mount.nfs, for instance) are
-> > pretty much complete and working. There's no real reason to build these
-> > apps against legacy RPC now if we can help it.
-> > 
-> >> And ffs, don't change the existing configure behavior.  When nfs-utils
-> >> is supposed to build with TIRPC (e.g., when TIRPC is the default), the
-> >> configure should fail if TIRPC isn't installed.  Perhaps the error
-> >> message on failure could suggest running configure with --disable-tirpc.
-> >>
-> > 
-> > nfs-utils is already builds with TIRPC. It also builds with legacy RPC.
-> > So in this discussion the first question is, "Is there some reason to
-> > not build against TIRPC when it's available on the machine?"
-> > 
-> > Second question: "Should make configure bail out when TIRPC isn't
-> > available and force the user to specify --disable-tirpc on the command
-> > line, or should we make the build just fall back to legacy RPC when the
-> > right TIRPC libs/headers aren't present?"
-> > 
-> > So far, I'm leaning toward "No" on the first question and to
-> > "automatically fall back" on the second question.
-> I concur on this approach... but would like to change the flavour a bit
-> Meaning.. Lets take out any and all references to TIRPC and replace
-> them with IPv6 support, since, ultimately, that's what were are talking
-> about...
+> As requested, this patch set squashes the following patches recently
+> submitted to the pnfs list by Alexandros, Benny, and myself.
 > 
-> So, if libtirpc exists, there will be IPv6 support. If not, there will
-> not be IPv6 support... 
+> nfsd41: sunrpc: Remove unused functions
+> nfsd41: sunrpc: Don't auto close the server backchannel connection
+> nfsd41: sunrpc: eliminate unneeded switch statement in xs_setup_tcp()
+> nfsd41: sunrpc: remove bc_close and bc_init_auto_disconnect dummy fun
+> nfsd41: sunrpc: Define xprt_server_backchannel()
+> nfsd41: sunrpc: create common send routine for the fore and the back
+> nfsd41: sunrpc: remove bc_connect_worker()
+> nfsd41: sunrpc: Document server backchannel locking
+> nfsd41: sunrpc: Use free_page() to free server backchannel pages
+> nfsd41: sunrpc: New svc_process_calldir()
+> nfsd41: sunrpc: svc_tcp_recv_record()
+> nfsd41: decode_cb_sequence does not need to actually decode ignored
+> fields
 > 
-
-Yes, eventually we'll want to make IPv6 support default to "on" when
-TIRPC is present. If you look at the code though, there are #ifdef's
-for HAVE_LIBTIRPC and IPV6_SUPPORTED. These are currently controlled by
-separate configure options, but you cannot build in IPv6 support
-without TIRPC.
-
-In the interest of phasing in this support slowly, Chuck and I are
-proposing that we enable TIRPC by default now, and keep IPv6 support a
-separate option for the time being. Eventually, we'll want to turn on
-IPv6 support automatically when TIRPC is available.  I think it makes
-sense though to wait until we have some experience with TIRPC support
-in nfs-utils before we go all the way with turning on IPv6 support by
-default.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> Thanks,
+> 
+> - ricardo
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
