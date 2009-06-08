@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 06/30] nfsd41 remove the unused nfsd4_slot create session slot
-Date: Mon,  8 Jun 2009 14:20:47 -0400
-Message-ID: <1244485271-7461-7-git-send-email-andros@netapp.com>
+Subject: [PATCH 11/30] nfsd41: use static buffers for sessions DRC
+Date: Mon,  8 Jun 2009 14:20:52 -0400
+Message-ID: <1244485271-7461-12-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -9,70 +9,132 @@ References: <>
  <1244485271-7461-4-git-send-email-andros@netapp.com>
  <1244485271-7461-5-git-send-email-andros@netapp.com>
  <1244485271-7461-6-git-send-email-andros@netapp.com>
+ <1244485271-7461-7-git-send-email-andros@netapp.com>
+ <1244485271-7461-8-git-send-email-andros@netapp.com>
+ <1244485271-7461-9-git-send-email-andros@netapp.com>
+ <1244485271-7461-10-git-send-email-andros@netapp.com>
+ <1244485271-7461-11-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:10001 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:65497 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752638AbZFHSVT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:19 -0400
-In-Reply-To: <1244485271-7461-6-git-send-email-andros@netapp.com>
+	id S1753040AbZFHSVY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:24 -0400
+In-Reply-To: <1244485271-7461-11-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The multiple slot sessions DRC and the single slot create session DRC no
-longer share struct nfsd4_slot and associated struct nfsd4_cache_entry
-helper routines. The logic in nfs4svc_encode_compoundres to switch between
-the mulitple sessions DRC and the old single create session DRC will be
-removed in a following patch.
+Change from page based to memory based NFSv4.1 DRC.
+
+We need to allocate memory for the session DRC in the CREATE_SESSION operation
+because of the guarantee to the client that the memory resource is available
+for caching responses.
+
+In preparation to remove struct nfsd4_cache_entry, add static storage to
+struct nfsd4_slot to hold up to NFSD_SLOT_CACH_SIZE of all encoded operation
+data past the encoded sequence operation.
+
+The encoded operation processing length is checked prior to the
+nfsd4_store_cache_entry call by nfsd4_check_drc_limit. Note that
+nfsd4_check_drc_limit() does this check after processing each operation which
+is incorrect, it should be done prior to processing.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c        |    5 +----
- include/linux/nfsd/state.h |    1 -
- 2 files changed, 1 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c        |   12 ++++++++++++
+ fs/nfsd/nfs4xdr.c          |    1 +
+ include/linux/nfsd/state.h |    2 ++
+ include/linux/nfsd/xdr4.h  |    1 +
+ 4 files changed, 16 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5f2dd23..f3acaa0 100644
+index cdc2a5e..ab80a38 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -648,8 +648,6 @@ static inline void
- free_client(struct nfs4_client *clp)
+@@ -1048,6 +1048,7 @@ nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
+ void
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
  {
- 	shutdown_callback_client(clp);
--	nfsd4_release_respages(clp->cl_slot.sl_cache_entry.ce_respages,
--			     clp->cl_slot.sl_cache_entry.ce_resused);
- 	if (clp->cl_cred.cr_group_info)
- 		put_group_info(clp->cl_cred.cr_group_info);
- 	kfree(clp->cl_principal);
-@@ -1293,12 +1291,11 @@ out_copy:
- 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
- 	exid->clientid.cl_id = new->cl_clientid.cl_id;
++	struct nfsd4_slot *slot = resp->cstate.slot;
+ 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
+ 	struct svc_rqst *rqstp = resp->rqstp;
+ 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+@@ -1072,10 +1073,17 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 	if (nfsd4_not_cached(resp)) {
+ 		entry->ce_resused = 0;
+ 		entry->ce_rpchdrlen = 0;
++		slot->sl_datalen = 0;
+ 		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
+ 			resp->cstate.slot->sl_cache_entry.ce_cachethis);
+ 		return;
+ 	}
++	/* Length is checked to be <= se_fmaxresp_cached in
++	 * nfsd4_check_drc_limit
++	 */
++	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
++	memcpy(slot->sl_data, resp->cstate.datap, slot->sl_datalen);
++
+ 	entry->ce_resused = rqstp->rq_resused;
+ 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
+ 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
+@@ -1123,6 +1131,7 @@ __be32
+ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 			 struct nfsd4_sequence *seq)
+ {
++	struct nfsd4_slot *slot = resp->cstate.slot;
+ 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
+ 	__be32 status;
  
--	new->cl_slot.sl_seqid = 0;
- 	exid->seqid = 1;
- 	nfsd4_set_ex_flags(new, exid);
+@@ -1143,6 +1152,9 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 		return nfs_ok;
+ 	}
  
- 	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
--		new->cl_slot.sl_seqid, new->cl_exchange_flags);
-+		new->cl_cs_slot.sl_seqid, new->cl_exchange_flags);
- 	status = nfs_ok;
++	/* The sequence operation has been encoded, cstate->datap set. */
++	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
++
+ 	if (!nfsd41_copy_replay_data(resp, entry)) {
+ 		/*
+ 		 * Not enough room to use the replay rpc header, send the
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 7e6b139..6f7e7b2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3090,6 +3090,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+ 	WRITE32(0);
  
- out:
+ 	ADJUST_ARGS();
++	resp->cstate.datap = p;	/* DRC cache data pointer */
+ 	return 0;
+ }
+ 
 diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 901590e..aeb5e82 100644
+index 28ddb32..5319be5 100644
 --- a/include/linux/nfsd/state.h
 +++ b/include/linux/nfsd/state.h
-@@ -221,7 +221,6 @@ struct nfs4_client {
+@@ -120,6 +120,8 @@ struct nfsd4_cache_entry {
+ struct nfsd4_slot {
+ 	bool				sl_inuse;
+ 	u32				sl_seqid;
++	u32				sl_datalen;
++	char				sl_data[NFSD_SLOT_CACHE_SIZE];
+ 	struct nfsd4_cache_entry	sl_cache_entry;
+ };
  
- 	/* for nfs41 */
- 	struct list_head	cl_sessions;
--	struct nfsd4_slot	cl_slot;	/* create_session slot */
- 	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
- 	u32			cl_exchange_flags;
- 	struct nfs4_sessionid	cl_sessionid;
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 6e24dbb..9ab9ab6 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
+ 	struct nfsd4_session	*session;
+ 	struct nfsd4_slot	*slot;
+ 	__be32			*statp;
++	__be32			*datap;
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	u32			status;
 -- 
 1.5.4.3
 
