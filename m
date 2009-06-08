@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 29/30] nfsd41: remove redundant failed sequence check
-Date: Mon,  8 Jun 2009 14:21:10 -0400
-Message-ID: <1244485271-7461-30-git-send-email-andros@netapp.com>
+Subject: [PATCH 26/30] nfsd41: use the maximum operations per compound in nfsd4_compoundargs
+Date: Mon,  8 Jun 2009 14:21:07 -0400
+Message-ID: <1244485271-7461-27-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -29,48 +29,55 @@ References: <>
  <1244485271-7461-24-git-send-email-andros@netapp.com>
  <1244485271-7461-25-git-send-email-andros@netapp.com>
  <1244485271-7461-26-git-send-email-andros@netapp.com>
- <1244485271-7461-27-git-send-email-andros@netapp.com>
- <1244485271-7461-28-git-send-email-andros@netapp.com>
- <1244485271-7461-29-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:38770 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753648AbZFHSVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:42 -0400
-In-Reply-To: <1244485271-7461-29-git-send-email-andros@netapp.com>
+	id S1753499AbZFHSVj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:39 -0400
+In-Reply-To: <1244485271-7461-26-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
+The size of the nfsd4_op array in nfsd4_compoundargs determines the
+supported maximum number of operations.
+
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
+ include/linux/nfsd/state.h |    3 +--
+ include/linux/nfsd/xdr4.h  |    2 +-
+ 2 files changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c95f75d..424b2da 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -998,16 +998,9 @@ void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
- 	struct nfsd4_slot *slot = resp->cstate.slot;
--	struct svc_rqst *rqstp = resp->rqstp;
--	struct nfsd4_compoundargs *args = rqstp->rq_argp;
--	struct nfsd4_op *op = &args->ops[resp->opcnt];
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index f2ccb64..7dfd01a 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -101,8 +101,7 @@ struct nfs4_callback {
  
- 	dprintk("--> %s cachethis %d\n", __func__, slot->sl_cachethis);
+ #define NFSD_MAX_SLOTS_PER_SESSION	16
+ #define NFSD_SLOT_CACHE_SIZE		512
+-/* Maximum number of operations per session compound */
+-#define NFSD_MAX_OPS_PER_COMPOUND	16
++#define NFSD_MAX_OPS_PER_COMPOUND	8
  
--	/* Don't cache a failed OP_SEQUENCE. */
--	if (resp->opcnt == 1 && op->opnum == OP_SEQUENCE && resp->cstate.status)
--		return;
--
- 	slot->sl_opcnt = resp->opcnt;
- 	slot->sl_status = resp->cstate.status;
+ struct nfsd4_slot {
+ 	bool	sl_inuse;
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index 505e3e3..026d3a5 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -443,7 +443,7 @@ struct nfsd4_compoundargs {
+ 	u32				minorversion;
+ 	u32				opcnt;
+ 	struct nfsd4_op			*ops;
+-	struct nfsd4_op			iops[8];
++	struct nfsd4_op			iops[NFSD_MAX_OPS_PER_COMPOUND];
+ };
  
+ struct nfsd4_compoundres {
 -- 
 1.5.4.3
 
