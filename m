@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 11/30] nfsd41: use static buffers for sessions DRC
-Date: Mon,  8 Jun 2009 14:20:52 -0400
-Message-ID: <1244485271-7461-12-git-send-email-andros@netapp.com>
+Subject: [PATCH 08/30] nfsd41: change from page to memory based drc limits
+Date: Mon,  8 Jun 2009 14:20:49 -0400
+Message-ID: <1244485271-7461-9-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -11,130 +11,136 @@ References: <>
  <1244485271-7461-6-git-send-email-andros@netapp.com>
  <1244485271-7461-7-git-send-email-andros@netapp.com>
  <1244485271-7461-8-git-send-email-andros@netapp.com>
- <1244485271-7461-9-git-send-email-andros@netapp.com>
- <1244485271-7461-10-git-send-email-andros@netapp.com>
- <1244485271-7461-11-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65497 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10001 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753040AbZFHSVY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:24 -0400
-In-Reply-To: <1244485271-7461-11-git-send-email-andros@netapp.com>
+	id S1751456AbZFHSVV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:21 -0400
+In-Reply-To: <1244485271-7461-8-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Change from page based to memory based NFSv4.1 DRC.
+NFSD_SLOT_CACHE_SIZE is the size of all encoded operation responses (excluding
+the sequence operation) that we want to cache.
 
-We need to allocate memory for the session DRC in the CREATE_SESSION operation
-because of the guarantee to the client that the memory resource is available
-for caching responses.
-
-In preparation to remove struct nfsd4_cache_entry, add static storage to
-struct nfsd4_slot to hold up to NFSD_SLOT_CACH_SIZE of all encoded operation
-data past the encoded sequence operation.
-
-The encoded operation processing length is checked prior to the
-nfsd4_store_cache_entry call by nfsd4_check_drc_limit. Note that
-nfsd4_check_drc_limit() does this check after processing each operation which
-is incorrect, it should be done prior to processing.
+Adjust NFSD_DRC_SIZE_SHIFT to reflect using 512 bytes instead of PAGE_SIZE.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c        |   12 ++++++++++++
- fs/nfsd/nfs4xdr.c          |    1 +
- include/linux/nfsd/state.h |    2 ++
- include/linux/nfsd/xdr4.h  |    1 +
- 4 files changed, 16 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c        |   29 +++++++++++++++--------------
+ fs/nfsd/nfssvc.c           |   13 +++++++------
+ include/linux/nfsd/state.h |    1 +
+ include/linux/sunrpc/svc.h |    4 ++--
+ 4 files changed, 25 insertions(+), 22 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cdc2a5e..ab80a38 100644
+index 3b05df3..52bd99c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1048,6 +1048,7 @@ nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
- void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+@@ -418,33 +418,34 @@ gen_sessionid(struct nfsd4_session *ses)
+  * Give the client the number of slots it requests bound by
+  * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
+  *
+- * If we run out of pages (sv_drc_pages_used == sv_drc_max_pages) we
+- * should (up to a point) re-negotiate active sessions and reduce their
+- * slot usage to make rooom for new connections. For now we just fail the
+- * create session.
++ * If we run out of reserved DRC memory we should (up to a point) re-negotiate
++ * active sessions and reduce their slot usage to make rooom for new
++ * connections. For now we just fail the create session.
+  */
+ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
  {
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
- 	struct svc_rqst *rqstp = resp->rqstp;
- 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-@@ -1072,10 +1073,17 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 	if (nfsd4_not_cached(resp)) {
- 		entry->ce_resused = 0;
- 		entry->ce_rpchdrlen = 0;
-+		slot->sl_datalen = 0;
- 		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
- 			resp->cstate.slot->sl_cache_entry.ce_cachethis);
- 		return;
- 	}
-+	/* Length is checked to be <= se_fmaxresp_cached in
-+	 * nfsd4_check_drc_limit
-+	 */
-+	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
-+	memcpy(slot->sl_data, resp->cstate.datap, slot->sl_datalen);
+-	int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
++	int mem;
+ 
+ 	if (fchan->maxreqs < 1)
+ 		return nfserr_inval;
+ 	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+ 		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
+ 
++	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
 +
- 	entry->ce_resused = rqstp->rq_resused;
- 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
- 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
-@@ -1123,6 +1131,7 @@ __be32
- nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 			 struct nfsd4_sequence *seq)
- {
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
- 	__be32 status;
+ 	spin_lock(&nfsd_serv->sv_lock);
+-	if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
+-		np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
+-	nfsd_serv->sv_drc_pages_used += np;
++	if (mem + nfsd_serv->sv_drc_mem_used > nfsd_serv->sv_drc_max_mem)
++		mem = nfsd_serv->sv_drc_max_mem - nfsd_serv->sv_drc_mem_used;
++	nfsd_serv->sv_drc_mem_used += mem;
+ 	spin_unlock(&nfsd_serv->sv_lock);
  
-@@ -1143,6 +1152,9 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 		return nfs_ok;
- 	}
- 
-+	/* The sequence operation has been encoded, cstate->datap set. */
-+	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
-+
- 	if (!nfsd41_copy_replay_data(resp, entry)) {
- 		/*
- 		 * Not enough room to use the replay rpc header, send the
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 7e6b139..6f7e7b2 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3090,6 +3090,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- 	WRITE32(0);
- 
- 	ADJUST_ARGS();
-+	resp->cstate.datap = p;	/* DRC cache data pointer */
- 	return 0;
+-	if (np <= 0) {
+-		status = nfserr_resource;
++	if (mem < NFSD_SLOT_CACHE_SIZE) {
+ 		fchan->maxreqs = 0;
+-	} else
+-		fchan->maxreqs = np / NFSD_PAGES_PER_SLOT;
+-
+-	return status;
++		return nfserr_resource;
++	} else {
++		fchan->maxreqs = mem / NFSD_SLOT_CACHE_SIZE;
++		return 0;
++	}
  }
  
+ /*
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index cbba4a9..80588cc 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -237,12 +237,13 @@ void nfsd_reset_versions(void)
+ static void set_max_drc(void)
+ {
+ 	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
+-	#define NFSD_DRC_SIZE_SHIFT	7
+-	nfsd_serv->sv_drc_max_pages = nr_free_buffer_pages()
+-						>> NFSD_DRC_SIZE_SHIFT;
+-	nfsd_serv->sv_drc_pages_used = 0;
+-	dprintk("%s svc_drc_max_pages %u\n", __func__,
+-		nfsd_serv->sv_drc_max_pages);
++	#define NFSD_DRC_SIZE_SHIFT	10
++	nfsd_serv->sv_drc_max_mem = (nr_free_buffer_pages()
++					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
++	nfsd_serv->sv_drc_mem_used = 0;
++	dprintk("%s svc_drc_max_mem %u [in pages %lu]\n", __func__,
++		nfsd_serv->sv_drc_max_mem,
++		nfsd_serv->sv_drc_max_mem / PAGE_SIZE);
+ }
+ 
+ int nfsd_create_serv(void)
 diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 28ddb32..5319be5 100644
+index aeb5e82..28ddb32 100644
 --- a/include/linux/nfsd/state.h
 +++ b/include/linux/nfsd/state.h
-@@ -120,6 +120,8 @@ struct nfsd4_cache_entry {
- struct nfsd4_slot {
- 	bool				sl_inuse;
- 	u32				sl_seqid;
-+	u32				sl_datalen;
-+	char				sl_data[NFSD_SLOT_CACHE_SIZE];
- 	struct nfsd4_cache_entry	sl_cache_entry;
+@@ -103,6 +103,7 @@ struct nfs4_callback {
+ #define NFSD_MAX_SLOTS_PER_SESSION	128
+ /* Maximum number of pages per slot cache entry */
+ #define NFSD_PAGES_PER_SLOT	1
++#define NFSD_SLOT_CACHE_SIZE		512
+ /* Maximum number of operations per session compound */
+ #define NFSD_MAX_OPS_PER_COMPOUND	16
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 2a30775..243508e 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -94,8 +94,8 @@ struct svc_serv {
+ 	struct module *		sv_module;	/* optional module to count when
+ 						 * adding threads */
+ 	svc_thread_fn		sv_function;	/* main function for threads */
+-	unsigned int		sv_drc_max_pages; /* Total pages for DRC */
+-	unsigned int		sv_drc_pages_used;/* DRC pages used */
++	unsigned int		sv_drc_max_mem; /* Total pages for DRC */
++	unsigned int		sv_drc_mem_used;/* DRC pages used */
  };
  
-diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 6e24dbb..9ab9ab6 100644
---- a/include/linux/nfsd/xdr4.h
-+++ b/include/linux/nfsd/xdr4.h
-@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
- 	struct nfsd4_session	*session;
- 	struct nfsd4_slot	*slot;
- 	__be32			*statp;
-+	__be32			*datap;
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
+ /*
 -- 
 1.5.4.3
 
