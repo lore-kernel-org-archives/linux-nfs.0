@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 16/30] nfsd41: obliterate nfsd41_copy_replay_data
-Date: Mon,  8 Jun 2009 14:20:57 -0400
-Message-ID: <1244485271-7461-17-git-send-email-andros@netapp.com>
+Subject: [PATCH 09/30] nfsd41: use globals for DRC memory use management
+Date: Mon,  8 Jun 2009 14:20:50 -0400
+Message-ID: <1244485271-7461-10-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -12,90 +12,143 @@ References: <>
  <1244485271-7461-7-git-send-email-andros@netapp.com>
  <1244485271-7461-8-git-send-email-andros@netapp.com>
  <1244485271-7461-9-git-send-email-andros@netapp.com>
- <1244485271-7461-10-git-send-email-andros@netapp.com>
- <1244485271-7461-11-git-send-email-andros@netapp.com>
- <1244485271-7461-12-git-send-email-andros@netapp.com>
- <1244485271-7461-13-git-send-email-andros@netapp.com>
- <1244485271-7461-14-git-send-email-andros@netapp.com>
- <1244485271-7461-15-git-send-email-andros@netapp.com>
- <1244485271-7461-16-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38770 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10001 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753254AbZFHSVa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:30 -0400
-In-Reply-To: <1244485271-7461-16-git-send-email-andros@netapp.com>
+	id S1752806AbZFHSVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:22 -0400
+In-Reply-To: <1244485271-7461-9-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Replacing page based drc cache with buffer based drc cache.
+The version 4.1 DRC memory limit and tracking variables are server wide and
+session specific.
+Add a spinlock to serialize access to the management variables which change
+on session creation and deletion (usage counter) or (future) administrative
+action to adjust the total DRC memory limit.
+
+Track DRC memory usage in free session.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |   39 ---------------------------------------
- 1 files changed, 0 insertions(+), 39 deletions(-)
+ fs/nfsd/nfs4state.c        |   15 +++++++++------
+ fs/nfsd/nfssvc.c           |   19 +++++++++++++++----
+ include/linux/nfsd/nfsd.h  |    5 +++++
+ include/linux/sunrpc/svc.h |    2 --
+ 4 files changed, 29 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bc443ba..dbb84a3 100644
+index 52bd99c..db56a8a 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1083,32 +1083,6 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- }
+@@ -416,7 +416,7 @@ gen_sessionid(struct nfsd4_session *ses)
  
  /*
-- * We keep the rpc header, but take the nfs reply from the replycache.
-- */
--static int
--nfsd41_copy_replay_data(struct nfsd4_compoundres *resp,
--			struct nfsd4_cache_entry *entry)
--{
--	struct svc_rqst *rqstp = resp->rqstp;
--	struct kvec *resv = &resp->rqstp->rq_res.head[0];
--	int len;
--
--	/* Current request rpc header length*/
--	len = (char *)resp->cstate.statp -
--			(char *)page_address(rqstp->rq_respages[0]);
--	if (entry->ce_datav.iov_len + len > PAGE_SIZE) {
--		dprintk("%s v41 cached reply too large (%Zd).\n", __func__,
--			entry->ce_datav.iov_len);
--		return 0;
--	}
--	/* copy the cached reply nfsd data past the current rpc header */
--	memcpy((char *)resv->iov_base + len, entry->ce_datav.iov_base,
--		entry->ce_datav.iov_len);
--	resv->iov_len = len + entry->ce_datav.iov_len;
--	return 1;
--}
--
--/*
-  * Keep the first page of the replay. Copy the NFSv4.1 data from the first
-  * cached page.  Replace any futher replay pages from the cache.
-  */
-@@ -1140,19 +1114,6 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 	/* The sequence operation has been encoded, cstate->datap set. */
- 	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
+  * Give the client the number of slots it requests bound by
+- * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
++ * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
+  *
+  * If we run out of reserved DRC memory we should (up to a point) re-negotiate
+  * active sessions and reduce their slot usage to make rooom for new
+@@ -433,11 +433,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
  
--	if (!nfsd41_copy_replay_data(resp, entry)) {
--		/*
--		 * Not enough room to use the replay rpc header, send the
--		 * cached header. Release all the allocated result pages.
--		 */
--		svc_free_res_pages(resp->rqstp);
--	} else {
--		/* Release all but the first allocated result page */
--
--		resp->rqstp->rq_resused--;
--		svc_free_res_pages(resp->rqstp);
--	}
--
- 	resp->rqstp->rq_resused = entry->ce_resused;
- 	resp->opcnt = slot->sl_opcnt;
- 	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
+ 	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
+ 
+-	spin_lock(&nfsd_serv->sv_lock);
+-	if (mem + nfsd_serv->sv_drc_mem_used > nfsd_serv->sv_drc_max_mem)
+-		mem = nfsd_serv->sv_drc_max_mem - nfsd_serv->sv_drc_mem_used;
+-	nfsd_serv->sv_drc_mem_used += mem;
+-	spin_unlock(&nfsd_serv->sv_lock);
++	spin_lock(&nfsd_drc_lock);
++	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
++		mem = nfsd_drc_max_mem - nfsd_drc_mem_used;
++	nfsd_drc_mem_used += mem;
++	spin_unlock(&nfsd_drc_lock);
+ 
+ 	if (mem < NFSD_SLOT_CACHE_SIZE) {
+ 		fchan->maxreqs = 0;
+@@ -586,6 +586,9 @@ free_session(struct kref *kref)
+ 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+ 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+ 	}
++	spin_lock(&nfsd_drc_lock);
++	nfsd_drc_mem_used -= ses->se_fnumslots * NFSD_SLOT_CACHE_SIZE;
++	spin_unlock(&nfsd_drc_lock);
+ 	kfree(ses);
+ }
+ 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 80588cc..37633f5 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -67,6 +67,16 @@ struct timeval			nfssvc_boot;
+ DEFINE_MUTEX(nfsd_mutex);
+ struct svc_serv 		*nfsd_serv;
+ 
++/*
++ * nfsd_drc_lock protects nfsd_drc_max_pages and nfsd_drc_pages_used.
++ * nfsd_drc_max_pages limits the total amount of memory available for
++ * version 4.1 DRC caches.
++ * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
++ */
++spinlock_t	nfsd_drc_lock;
++unsigned int	nfsd_drc_max_mem;
++unsigned int	nfsd_drc_mem_used;
++
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ static struct svc_stat	nfsd_acl_svcstats;
+ static struct svc_version *	nfsd_acl_version[] = {
+@@ -238,12 +248,13 @@ static void set_max_drc(void)
+ {
+ 	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
+ 	#define NFSD_DRC_SIZE_SHIFT	10
+-	nfsd_serv->sv_drc_max_mem = (nr_free_buffer_pages()
++	nfsd_drc_max_mem = (nr_free_buffer_pages()
+ 					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
+-	nfsd_serv->sv_drc_mem_used = 0;
++	nfsd_drc_mem_used = 0;
++	spin_lock_init(&nfsd_drc_lock);
+ 	dprintk("%s svc_drc_max_mem %u [in pages %lu]\n", __func__,
+-		nfsd_serv->sv_drc_max_mem,
+-		nfsd_serv->sv_drc_max_mem / PAGE_SIZE);
++		nfsd_drc_max_mem,
++		nfsd_drc_max_mem / PAGE_SIZE);
+ }
+ 
+ int nfsd_create_serv(void)
+diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+index 2b49d67..a0cfb30 100644
+--- a/include/linux/nfsd/nfsd.h
++++ b/include/linux/nfsd/nfsd.h
+@@ -56,6 +56,11 @@ extern struct svc_version	nfsd_version2, nfsd_version3,
+ extern u32			nfsd_supported_minorversion;
+ extern struct mutex		nfsd_mutex;
+ extern struct svc_serv		*nfsd_serv;
++extern spinlock_t		nfsd_drc_lock;
++extern unsigned int		nfsd_drc_max_mem;
++extern unsigned int		nfsd_drc_mem_used;
++
++
+ 
+ extern struct seq_operations nfs_exports_op;
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 243508e..d0d8bf4 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -94,8 +94,6 @@ struct svc_serv {
+ 	struct module *		sv_module;	/* optional module to count when
+ 						 * adding threads */
+ 	svc_thread_fn		sv_function;	/* main function for threads */
+-	unsigned int		sv_drc_max_mem; /* Total pages for DRC */
+-	unsigned int		sv_drc_mem_used;/* DRC pages used */
+ };
+ 
+ /*
 -- 
 1.5.4.3
 
