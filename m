@@ -1,7 +1,7 @@
 From: andros@netapp.com
-Subject: [PATCH 25/30] nfsd41: support 16 slots per session
-Date: Mon,  8 Jun 2009 14:21:06 -0400
-Message-ID: <1244485271-7461-26-git-send-email-andros@netapp.com>
+Subject: [PATCH 27/30] nfsd41: fix nfsd4_store_cache_entry dprintk
+Date: Mon,  8 Jun 2009 14:21:08 -0400
+Message-ID: <1244485271-7461-28-git-send-email-andros@netapp.com>
 References: <>
  <1244485271-7461-1-git-send-email-andros@netapp.com>
  <1244485271-7461-2-git-send-email-andros@netapp.com>
@@ -28,40 +28,48 @@ References: <>
  <1244485271-7461-23-git-send-email-andros@netapp.com>
  <1244485271-7461-24-git-send-email-andros@netapp.com>
  <1244485271-7461-25-git-send-email-andros@netapp.com>
+ <1244485271-7461-26-git-send-email-andros@netapp.com>
+ <1244485271-7461-27-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:38770 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753438AbZFHSVi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 14:21:38 -0400
-In-Reply-To: <1244485271-7461-25-git-send-email-andros@netapp.com>
+	id S1753480AbZFHSVk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 14:21:40 -0400
+In-Reply-To: <1244485271-7461-27-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-128 slots is a bit much without proof that they are needed.
-
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/nfsd/state.h |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 3facf68..f2ccb64 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -99,8 +99,7 @@ struct nfs4_callback {
- 	struct rpc_clnt *       cb_client;
- };
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 05b0190..c95f75d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1002,7 +1002,7 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+ 	struct nfsd4_op *op = &args->ops[resp->opcnt];
  
--/* Maximum number of slots per session. 128 is useful for long haul TCP */
--#define NFSD_MAX_SLOTS_PER_SESSION	128
-+#define NFSD_MAX_SLOTS_PER_SESSION	16
- #define NFSD_SLOT_CACHE_SIZE		512
- /* Maximum number of operations per session compound */
- #define NFSD_MAX_OPS_PER_COMPOUND	16
+-	dprintk("--> %s\n", __func__);
++	dprintk("--> %s cachethis %d\n", __func__, slot->sl_cachethis);
+ 
+ 	/* Don't cache a failed OP_SEQUENCE. */
+ 	if (resp->opcnt == 1 && op->opnum == OP_SEQUENCE && resp->cstate.status)
+@@ -1015,8 +1015,6 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 	/* Don't cache the sequence operation, use the slot values on replay */
+ 	if (nfsd4_not_cached(resp)) {
+ 		slot->sl_datalen = 0;
+-		dprintk("%s Just cache SEQUENCE. cachethis %d\n", __func__,
+-			resp->cstate.slot->sl_cachethis);
+ 		return;
+ 	}
+ 	/* Length is checked to be <= se_fmaxresp_cached in
 -- 
 1.5.4.3
 
