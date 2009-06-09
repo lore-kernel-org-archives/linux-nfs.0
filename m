@@ -1,54 +1,72 @@
-From: "NeilBrown" <neilb@suse.de>
-Subject: Re: RPC: multiple fragments per record not supported
-Date: Tue, 9 Jun 2009 12:03:42 +1000 (EST)
-Message-ID: <676fa8ce48993d133dc0c5deb308ea14.squirrel@neil.brown.name>
-References: <20090609002033.GL21174@hostway.ca>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: sk_lock: inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W}
+	usage
+Date: Tue, 9 Jun 2009 11:07:26 +0800
+Message-ID: <20090609030726.GA8026@localhost>
+References: <20090608023757.GA6244@localhost> <20090608134428.4373.A69D9226@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "Simon Kirby" <sim@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+	"linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+	"chris.mason@oracle.com" <chris.mason@oracle.com>
+To: KOSAKI Motohiro <kosaki.motohiro-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:45531 "EHLO mx1.suse.de"
+Received: from mga03.intel.com ([143.182.124.21]:53223 "EHLO mga03.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751280AbZFICDu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 22:03:50 -0400
-In-Reply-To: <20090609002033.GL21174@hostway.ca>
+	id S1751803AbZFIDNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Jun 2009 23:13:40 -0400
+In-Reply-To: <20090608134428.4373.A69D9226-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, June 9, 2009 10:20 am, Simon Kirby wrote:
-> Hello!
->
-> With 2.6.28.10 and 2.6.29.4 knfsd after a few hours of heavy concurrent
-> NFSv3 write loads (migration of Maildirs with rsync), we are seeing this
-> error:
->
-> 	kernel: RPC: multiple fragments per record not supported
->
-> ...followed by knfsd immediately ignoring all further requests.
-> Restarting knfsd (/etc/init.d/nfs-kernel-server restart) seems to make
-> it start responding and work as normal again.
->
-> "ps -eo pid,stat,args,wchan" during the event shows all nfsd processes
-> sleeping in "svc_recv":
->
-> 22714 S<   [nfsd]                      svc_recv
->
-> This client with the high write load is an old 2.6.17 kernel, mounting
-> the server with
-> rw,nolock,hard,intr,timeo=9,retrans=3,rsize=8192,wsize=8192
-> (jumbo frames are enabled).
->
-> Is this any sort of known issue?  I'm trying to reproduce it in a testing
-> environment.
+On Mon, Jun 08, 2009 at 12:55:18PM +0800, KOSAKI Motohiro wrote:
+> Hi
+> 
+> > Hi,
+> > 
+> > This lockdep warning appears when doing stress memory tests over NFS.
+> > 
+> > page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
+> > 
+> > tcp_close => lock sk_lock => tcp_send_fin => alloc_skb_fclone => page reclaim
+> > 
+> > Any ideas?
+> 
+> AFAIK, btrfs has re-dirty hack. 
+> 
+> ------------------------------------------------------------------
+> static int btrfs_writepage(struct page *page, struct writeback_control *wbc)
+> {
+>         struct extent_io_tree *tree;
+> 
+> 
+>         if (current->flags & PF_MEMALLOC) {
+>                 redirty_page_for_writepage(wbc, page);
+>                 unlock_page(page);
+>                 return 0;
+>         }
+>         tree = &BTRFS_I(page->mapping->host)->io_tree;
+>         return extent_write_full_page(tree, page, btrfs_get_extent, wbc);
+> }
+> ---------------------------------------------------------------
+> 
+> PF_MEMALLOC mean caller is try_to_free_pages(). (not normal write nor kswapd)
 
-Yes.  Known issue.  The data stream from the client gets corrupted.
-Fix is
+No, kswapd also sets the PF_MEMALLOC flag. It looks like btrfs_writepage()
+is trying to avoid inefficient page outs at the cost of pinning dirty
+pages in memory (even when we really want free pages).
 
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=e0ab53deaa91293a7958d63d5a2cf4c5645ad6f0
+Thanks,
+Fengguang
 
-which is in 2.6.18
-
-NeilBrown
-
-
+> Can't nfs does similar hack? 
+> 
+> 
+> I'm not net nor nfs expert. perhaps I'm wrong :-)
+> 
+> 
+> Thanks.
+> 
+> 
