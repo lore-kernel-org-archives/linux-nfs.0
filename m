@@ -1,101 +1,46 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
-Date: Mon, 8 Jun 2009 19:08:25 -0400
-Message-ID: <20090608190825.046355d4@tupile.poochiereds.net>
-References: <20090605073648.5a5497b5@tlielax.poochiereds.net>
-	<200906051224.40592.vapier@gentoo.org>
-	<20090605133634.23357e8e@tlielax.poochiereds.net>
-	<200906051650.42007.vapier@gentoo.org>
-	<20090606071153.164d92dd@tlielax.poochiereds.net>
-	<7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com>
-	<20090606160230.247d3ca3@tlielax.poochiereds.net>
-	<861F88E5-EF00-48C8-8D1D-F0830D547DFA@oracle.com>
-	<7A24DF798E223B4C9864E8F92E8C93EC031D1B12@SACMVEXC1-PRD.hq.netapp.com>
-	<20090608125957.3c8f0c95@tlielax.poochiereds.net>
-	<7A24DF798E223B4C9864E8F92E8C93EC031D1EFD@SACMVEXC1-PRD.hq.netapp.com>
+From: Simon Kirby <sim@hostway.ca>
+Subject: RPC: multiple fragments per record not supported
+Date: Mon, 8 Jun 2009 17:20:33 -0700
+Message-ID: <20090609002033.GL21174@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Chuck Lever" <chuck.lever@oracle.com>,
-	"Mike Frysinger" <vapier@gentoo.org>, <linux-nfs@vger.kernel.org>
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:55512 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751478AbZFHXIf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Jun 2009 19:08:35 -0400
-In-Reply-To: <7A24DF798E223B4C9864E8F92E8C93EC031D1EFD-hX7t0kiaRRpT+ZUat5FNkAK/GNPrWCqfQQ4Iyu8u01E@public.gmane.org>
+Received: from newpeace.netnation.com ([204.174.223.7]:59269 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750727AbZFIAUf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jun 2009 20:20:35 -0400
+Received: from sim by peace.netnation.com with local (Exim 4.63)
+	(envelope-from <sim@netnation.com>)
+	id 1MDp4r-0004pi-RA
+	for linux-nfs@vger.kernel.org; Mon, 08 Jun 2009 17:20:33 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 8 Jun 2009 15:17:55 -0700
-"Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
+Hello!
 
->  
-> 
-> > -----Original Message-----
-> > From: Jeff Layton [mailto:jlayton@redhat.com] 
-> > Sent: Monday, June 08, 2009 10:00 AM
-> > To: Muntz, Daniel
-> > Cc: Chuck Lever; Mike Frysinger; linux-nfs@vger.kernel.org
-> > Subject: Re: should we make --enable-tirpc the default in 
-> > current nfs-utils?
-> > 
-> > On Mon, 8 Jun 2009 08:46:23 -0700
-> > "Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
-> > 
-> > > > 
-> > > > The reason to build without it is that libtirpc is 
-> > largely untested 
-> > > > code (on Linux), and the nfs-utils support to use TI-RPC is also 
-> > > > largely untested.  I think the default config settings should 
-> > > > configure a safe, known-working configuration, not the 
-> > most advanced 
-> > > > configuration.
-> > > > 
-> > > > As much as I like the idea of wider testing, the idea 
-> > that we happen 
-> > > > to be testing with live users is not inviting.  But I 
-> > guess it's all 
-> > > > we've got at this point.
-> > > 
-> > > It would be nice if RH had a way of testing this with 
-> > Fedora without 
-> > > making it the default in the standard nfs-utils package 
-> > until _after_ 
-> > > testing.  Perhaps nfs-utils has evolved to the point where it could 
-> > > use a release-candidate model.  Then all distros could pull an RC 
-> > > build if they want it, while production users could pull 
-> > the last "stable"
-> > > release.
-> > 
-> > This has very little to do with Red Hat. We can enable or 
-> > disable TIRPC in our own distros without making this change 
-> > upstream. The question here is whether we should make this 
-> > the default now, or does it make more sense to wait until 
-> > everything has been converted to TIRPC, and had IPv6 support 
-> > added and *then* enable it.
-> 
-> But **IF** you had a release candidate model, then you would have a
-> mechanism for OTHERS to pick up "pre-release" code and get the
-> additional testing you are after.  Without it, your only option is to
-> put un/little-tested code into mainline nfs-utils (I am going on your
-> assertion and Chuck's that this code needs more testing).  I can't see
-> any reasonable excuse (non-FUD as you say) for not doing things this
-> way.
-> 
+With 2.6.28.10 and 2.6.29.4 knfsd after a few hours of heavy concurrent
+NFSv3 write loads (migration of Maildirs with rsync), we are seeing this
+error:
 
-I'm not sure what you're proposing...so you're saying we should cut a
-release candidate version and apply nothing but this patch to it to
-make --enable-tirpc the default? Or is this more a proposal to change
-the nfs-utils release mode in general?
+	kernel: RPC: multiple fragments per record not supported
 
-I'm a bit skeptical that that will result in better testing, but I'm
-willing to listen to what you're proposing.
+...followed by knfsd immediately ignoring all further requests. 
+Restarting knfsd (/etc/init.d/nfs-kernel-server restart) seems to make
+it start responding and work as normal again.
 
-When I say that this code needs more testing, I mean exactly that.
-Chuck and I have tested it and banged out as many bugs as we can find.
-The next step is to get it into more people's hands. This will likely
-uncover even more bugs, which we will then fix.
+"ps -eo pid,stat,args,wchan" during the event shows all nfsd processes
+sleeping in "svc_recv":
 
--- 
-Jeff Layton <jlayton@redhat.com>
+22714 S<   [nfsd]                      svc_recv
+
+This client with the high write load is an old 2.6.17 kernel, mounting
+the server with rw,nolock,hard,intr,timeo=9,retrans=3,rsize=8192,wsize=8192
+(jumbo frames are enabled).
+
+Is this any sort of known issue?  I'm trying to reproduce it in a testing
+environment.
+
+Cheers,
+
+Simon-
