@@ -1,8 +1,8 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
-Date: Tue, 9 Jun 2009 10:30:01 -0400
-Message-ID: <6C2F758F-4274-4952-B139-FA854B7BA48B@oracle.com>
-References: <20090605073648.5a5497b5@tlielax.poochiereds.net> <200906051224.40592.vapier@gentoo.org> <20090605133634.23357e8e@tlielax.poochiereds.net> <200906051650.42007.vapier@gentoo.org> <20090606071153.164d92dd@tlielax.poochiereds.net> <7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com> <20090606160230.247d3ca3@tlielax.poochiereds.net> <4A2CD550.4090609@RedHat.com> <20090608071026.0b57fff8@tupile.poochiereds.net> <4A2D13DF.2040105@RedHat.com> <467512DC-2A83-4432-A29C-1688B021A1F5@oracle.com> <4A2D2862.3090303@RedHat.com> <20090608124140.3fa02688@tlielax.poochiereds.net> <CAFCBD84-FFEB-40FB-9594-40E4E17A8BE3@oracle.com> <4A2E503E.1080809@RedHat.com>
+Date: Tue, 9 Jun 2009 10:48:18 -0400
+Message-ID: <2B0EDEC2-CA9F-4D43-B5F1-6EB5B04504DE@oracle.com>
+References: <20090605073648.5a5497b5@tlielax.poochiereds.net> <200906051224.40592.vapier@gentoo.org> <20090605133634.23357e8e@tlielax.poochiereds.net> <200906051650.42007.vapier@gentoo.org> <20090606071153.164d92dd@tlielax.poochiereds.net> <7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com> <20090606160230.247d3ca3@tlielax.poochiereds.net> <861F88E5-EF00-48C8-8D1D-F0830D547DFA@oracle.com> <7A24DF798E223B4C9864E8F92E8C93EC031D1B12@SACMVEXC1-PRD.hq.netapp.com> <20090608125957.3c8f0c95@tlielax.poochiereds.net> <EFEC3BA9-F125-4060-BC7C-9EE32A1D0174@oracle.com> <4A2E5714.3030502@RedHat.com>
 Mime-Version: 1.0 (Apple Message framework v935.3)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
 Cc: Jeff Layton <jlayton@redhat.com>,
@@ -10,118 +10,109 @@ Cc: Jeff Layton <jlayton@redhat.com>,
 	Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:44858 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752272AbZFIOa2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2009 10:30:28 -0400
-In-Reply-To: <4A2E503E.1080809-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:60442 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751181AbZFIOsm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2009 10:48:42 -0400
+In-Reply-To: <4A2E5714.3030502-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jun 9, 2009, at 8:06 AM, Steve Dickson wrote:
-
+On Jun 9, 2009, at 8:35 AM, Steve Dickson wrote:
 > Chuck Lever wrote:
+>>
+>> On Jun 8, 2009, at 12:59 PM, Jeff Layton wrote:
+>>
+>>> On Mon, 8 Jun 2009 08:46:23 -0700
+>>> "Muntz, Daniel" <Dan.Muntz@netapp.com> wrote:
 >>>
 >>>>>
->>>>>> I guess I just don't see why there has to be two switches for
->>>>>> this feature...
+>>>>> The reason to build without it is that libtirpc is largely
+>>>>> untested code (on Linux), and the nfs-utils support to use
+>>>>> TI-RPC is also largely untested.  I think the default config
+>>>>> settings should configure a safe, known-working
+>>>>> configuration, not the most advanced configuration.
 >>>>>
->>>>> Because people seem to want to disable IPv6 support completely  
->>>>> on their
->>>>> systems...  Because there is a striking lack of infrastructure  
->>>>> for IPv6
->>>>> support (including GUIs for configurating ip6tables, lack of IPv6
->>>>> support in NetworkManager, no IPv6 support in tcp_wrappers,
->>>>> inability to
->>>>> disable IPv6 support in the kernel without hacking it out of
->>>>> /etc/modprobe.conf, and so on)...  Because TI-RPC is one level of
->>>>> complexity, and IPv6 adds more complexity...
->>>>>
->>>>> We can probably remove --enable-ipv6, and just stick with
->>>>> --enable-tirpc, which implies IPv6 support, if you prefer that.
->>>> Actually I would like to do just the opposite... remove --enable- 
->>>> tirpc
->>>> and stick with --enable-ipv6...
+>>>>> As much as I like the idea of wider testing, the idea that we
+>>>>> happen to be testing with live users is not inviting.  But I
+>>>>> guess it's all we've got at this point.
 >>>>
->>>>> But it's a strange argument, when we have --enable-mount,
->>>>> --enable-nfsv4,
->>>>> and on and on.
->>>> Well, your examples are all defining functionality... not  
->>>> libraries...
->>>>
+>>>> It would be nice if RH had a way of testing this with Fedora  
+>>>> without
+>>>> making it the default in the standard nfs-utils package until  
+>>>> _after_
+>>>> testing.  Perhaps nfs-utils has evolved to the point where it  
+>>>> could use
+>>>> a release-candidate model.  Then all distros could pull an RC  
+>>>> build if
+>>>> they want it, while production users could pull the last "stable"
+>>>> release.
 >>>
->>> Right. I agree with Steve here. I think it makes sense to keep the
->>> knobs we expect people to twiddle to be for features and not
->>> necessarily for libs.
+>>> This has very little to do with Red Hat. We can enable or disable  
+>>> TIRPC
+>>> in our own distros without making this change upstream. The question
+>>> here is whether we should make this the default now, or does it make
+>>> more sense to wait until everything has been converted to TIRPC, and
+>>> had IPv6 support added and *then* enable it.
 >>
->> I really don't understand why having TI-RPC in a library is  
->> important here.
+>> I disagree.
 >>
->> --enable-tirpc is a feature knob.  Forget that it happens to be in a
->> library.  Either nfs-utils supports TI-RPC or it supports legacy RPC.
->> The external behavior of nfs-utils changes.
+>> The question about changing the upstream default came up because I  
+>> asked
+>> RH to enable this option in Fedora so we can test first.  Steve  
+>> doesn't
+>> want Fedora to enable TI-RPC unless upstream has it enabled by  
+>> default.
 >>
->> Legacy RPC is in a library too.  It happens to be in a library that  
->> is
->> included by default, so configure doesn't have to figure out where  
->> RPC
->> support is and whether it is installed.
->>
->> What's the difference?
-> Following this theory there should have been an --enable-glibc
-> which obviously misguided...
+>> So this is _precisely_ about why RH won't enable this in Fedora  
+>> first.
+> My concern, as with all package maintainers, is to keep their package
+> or git tree or whatever as stable as possible so as not to have a
+> negative on his or her community users....
 >
-> All configuration flags define functionality not supporting parts
-> of those functionalities....
+> So my reluctance to make the switch in the Fedora Development stream,
+> called Rawhide, came from the concern of breaking the NFS components
+> what would have (as it has have) a very negative effect on entire
+> development of the next release (in this case F-12).
 
-That is exactly what --enable-tirpc does.  The fact that it is in a  
-separate library is completely incidental.  Either you get the new  
-code and new features (such as support for rpcbind v3/v4 and support  
-for IPv6) or you get the legacy behavior.
+There must be something I don't understand.  Why would we foist  
+something on all distributions (by placing it in upstream) that you  
+wouldn't even put in a development distribution?  My impression was  
+that this kind of testing was exactly the purpose of rawhide and  
+Fedora.  Is user space NFS special in this regard?  If so, how can we  
+make progress if testing opportunities like this are not available to  
+user space NFS?
 
---enable-tirpc does more than look for a library.  It switches in a  
-bunch of new code in nfs-utils itself, and enables new features and  
-new behavior.
+At this point Jeff has convinced me there really aren't any practical  
+testing opportunities we can use before this is enabled upstream  
+anyway.  So, go ahead and enable TI-RPC by default upstream.  Jeff's  
+patch from yesterday seems fine.
 
-I honestly don't see a distinction between --enable-gss, which adds  
-additional features in nfs-utils, but requires an additional library,  
-and --enable-tirpc, which adds additional features, but requires an  
-additional library.
-
-> Lets just have an --enable-ipv6/--disable-ipv6 flag and leave it to
-> the distros as to how they want to deal with it.
-
-We already have a run-time switch for IPv6 support: It's /etc/ 
-netconfig.  Of course, that switch is entirely ignored if TI-RPC  
-support is not built in.  The point is we don't need the configure  
-switch at all: if --disable-tirpc is specified, then no IPv6 support  
-is available.  if --enable-tirpc is specified, then IPv6 support is  
-possible if there are visible inet6 transports in /etc/netconfig.
-
-> Now with that said, just because --enable-ipv6 is set, does not have
-> to mean *all* IPv6 support is there, especially if its not fully  
-> baked.
-> More times that not, pieces of major new features are released in
-> multi updates... Maybe in this first IPv6 release only the supporting
-> components are enabled (ala libtirpc). In the next release client
-> side rpc.statd is enabled and so on...
+> So I like to "Bake" things in upstream for a while, to see how things
+> go. Because in the end, the people who are pulling directly from the
+> git tree generally have clue and are very easy to work with because
+> of their strong understanding of what they are doing...
 >
-> Trickling things in a very slow and control pace makes it much easier
-> to manage new functionality... IMHO... and having the big hammer
-> (ala --disable-ipv6) is a comfortable thing when comes to maintaining
-> stability...
+> Once it appears the new functionality somewhat "baked", I will gladly
+> introduce the functionality into rawhide, which enables testing by
+> a much broader community... which is a very good thing...
 >
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I have found that this theory has worked fairly well in the all
+> the packages I maintain.... Not to say things don't break... Just
+> ask the Fedora community about the time I broke mount.. My IRC
+> window lit up so fast I thought it was on fire! 8-)
+
+What this tells me is that our own pre-commit testing of nfs-utils is  
+not adequate.  I do not exclude myself from this observation.
+
+> So in the end, its not the case I won't enable it, I just want to
+> take as many precautions as I can to ensure both streams, upstream
+> and rawhide stay as stable as possible...
+
+Yes, I would also like upstream to be as stable as possible, which is  
+why I have voiced a preference for more testing before the existing TI- 
+RPC work goes upstream.  The practical world wins out, however.
 
 --
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
-
-
-
