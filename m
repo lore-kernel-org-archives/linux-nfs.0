@@ -1,93 +1,59 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
-Date: Tue, 09 Jun 2009 11:41:33 -0400
-Message-ID: <4A2E82AD.7070908@RedHat.com>
-References: <20090605073648.5a5497b5@tlielax.poochiereds.net> <200906051224.40592.vapier@gentoo.org> <20090605133634.23357e8e@tlielax.poochiereds.net> <200906051650.42007.vapier@gentoo.org> <20090606071153.164d92dd@tlielax.poochiereds.net> <7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com> <20090606160230.247d3ca3@tlielax.poochiereds.net> <4A2CD550.4090609@RedHat.com> <20090608071026.0b57fff8@tupile.poochiereds.net> <4A2D13DF.2040105@RedHat.com> <467512DC-2A83-4432-A29C-1688B021A1F5@oracle.com> <4A2D2862.3090303@RedHat.com> <20090608124140.3fa02688@tlielax.poochiereds.net> <CAFCBD84-FFEB-40FB-9594-40E4E17A8BE3@oracle.com> <4A2E503E.1080809@RedHat.com> <6C2F758F-4274-4952-B139-FA854B7BA48B@oracle.com> <4A2E7646.1030602@RedHat.com> <42F5C949-9BBB-4A35-8454-F56BF7CD904D@or
- acle.com>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH 4/5] sctp: protocol.c call rcu_barrier() on unload.
+Date: Tue, 9 Jun 2009 08:50:11 -0700
+Message-ID: <20090609155011.GD6789@linux.vnet.ibm.com>
+References: <20090608130959.10052.54590.stgit@localhost> <20090608131143.10052.96470.stgit@localhost> <20090608162227.GE6961@linux.vnet.ibm.com> <4A2E8357.80509@hp.com>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jeff Layton <jlayton@redhat.com>,
-	"Muntz, Daniel" <Dan.Muntz@netapp.com>,
-	Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45048 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751779AbZFIPoo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Jun 2009 11:44:44 -0400
-In-Reply-To: <42F5C949-9BBB-4A35-8454-F56BF7CD904D@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
+	"David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de,
+	oliver.hartkopp@volkswagen.de, wg@grandegger.com, sri@us.ibm.com,
+	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
+	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <4A2E8357.80509@hp.com>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Chuck Lever wrote:
+On Tue, Jun 09, 2009 at 11:44:23AM -0400, Vlad Yasevich wrote:
+> Paul E. McKenney wrote:
+> > On Mon, Jun 08, 2009 at 03:11:43PM +0200, Jesper Dangaard Brouer wrote:
+> >> On module unload call rcu_barrier(), this is needed as synchronize_rcu()
+> >> is not strong enough.  The kmem_cache_destroy() does invoke
+> >> synchronize_rcu() but it does not provide same protection.
+> > 
+> > Good, looks like sctp_v4_del_protocol() invokes call_rcu(), which the
+> > rcu_barrier() would then wait for.  And it looks like sctp_v6_del_protocol()
+> > does the same for IPv6.
+> > 
+> > Reviewed_by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+> > 
+> >> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+> >> ---
+> >>
+> >>  net/sctp/protocol.c |    2 ++
+> >>  1 files changed, 2 insertions(+), 0 deletions(-)
+> >>
+> >> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+> >> index cb2c50d..79cbd47 100644
+> >> --- a/net/sctp/protocol.c
+> >> +++ b/net/sctp/protocol.c
+> >> @@ -1370,6 +1370,8 @@ SCTP_STATIC __exit void sctp_exit(void)
+> >>  	sctp_proc_exit();
+> >>  	cleanup_sctp_mibs();
+> >>
+> >> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+> >> +
+> >>  	kmem_cache_destroy(sctp_chunk_cachep);
+> >>  	kmem_cache_destroy(sctp_bucket_cachep);
+> >>  }
 > 
-> I think you are making my argument for me.  The fact that TI-RPC support
-> could go into glibc (but hasn't because of politics) suggests that
-> --enable-tirpc has nothing to do with a particular library.  It is
-> solely a feature knob, just like all the other --enable switches in
-> ./configure.
-So you agree that --enable-tirpc and --enable-ipv6 are the same thing
-since you can't have ipv6 without libtirpc and only reason to
-have libtirpc is ipv6...
+> Shouldn't the rcu_barrier call be before sctp_free_local_addr_list()?
 
-> 
->>> I honestly don't see a distinction between --enable-gss, which adds
->>> additional features in nfs-utils, but requires an additional library,
->>> and --enable-tirpc, which adds additional features, but requires an
->>> additional library.
->> -enable-gss cause two daemon to be build and get installed which
->> adds the Secure NFS functionality. --enable-tirpc only causes code
->> paths to change, it add no functionality unless Ipv6 is enabled.
-> 
-> TI-RPC is not just an IPv6 enabler.  It also has interoperability
-> implications.  Support for rpcbind v3/v4 has no dependence on IPv6.  You
-> can use rpcbind v3 or v4 requests over IPv4, for example, which provides
-> a significantly richer set of functionality.  One area of non-IPv6
-> interest would be support for registering local services via AF_UNIX --
-> this type of registering is actually authenticated, so it is a good
-> security feature.
-But again, the only reason rpcbind is around is because it has 
-IPv6 support. Please believe, I was a bit nervous switch out the 
-portmapper since it was a very stable piece of code since it
-very rarely changed... 
- 
-> 
->> So that's way I think all that is needed is an --enable-ipv6 flag.
-> 
-> Actually, the new statd is built only if --enable-tirpc is set.  So,
-> yes:  new code _and_ new components are provided if --enable-tirpc is
-> set.  TI-RPC is very similar to Secure NFS functionality.  Secure NFS
-> provides support for new RPC features known as RPCSEC GSS, and
-> --enable-tirpc provides support for new RPC features known as TI-RPC. 
-> So again, I don't see any philosophical difference between --enable-gss
-> and --enable-tirpc.
-And the only reason statd need to use the new code is for IPv6 
-support, true? 
+Hmmm...  What sequence of events would lead to a failure if
+rcu_barrier() is after sctp_free_local_addr_list()?
 
-> 
-> However, --enable-ipv6 is unnecessary because we want, and have,
-> run-time switches for that support.  We are forced to, because nfs-utils
-> has to run on kernels which may or may not support IPv6.
-
-> 
-> I am continuing to argue this point because getting rid of
-> --enable-tirpc will make our jobs a lot harder.  The reason this knob is
-> there is to firewall the new code and keep upstream nfs-utils stable as
-> we integrate more and more support for TI-RPC.
-Understood... And I applaud the effort both you and Jeff are making...
-
-> 
-> If we call it --enable-ipv6, many distributions will say "so what, i
-> don't need that" and leave it turned off.  We won't get the kind of soak
-> time we really need.
-And if we call --enable-tirpc they will not know that they are enabling 
-IPv6 code in statd, true?
-
-But in the end, I guess I have confidence that the distros will do what is 
-best for them... and if they have customers that need this support they 
-will enable it. If not, they will not enable it, regardless of what 
-upstream does...
-
-steved.
+							Thanx, Paul
