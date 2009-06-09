@@ -1,82 +1,83 @@
-From: Vladislav Bolkhovitin <vst-d+Crzxg7Rs0@public.gmane.org>
-Subject: Re: mmotm 2009-06-02-16-11 uploaded (readahead)
-Date: Tue, 09 Jun 2009 15:01:24 +0400
-Message-ID: <4A2E4104.5080509@vlnb.net>
-References: <200906022331.n52NVJhG015117@imap1.linux-foundation.org> <4A25F3FF.5060404@oracle.com> <20090603134739.97d8a461.akpm@linux-foundation.org> <20090609035915.GW11363@kernel.dk> <20090608213817.999143dd.akpm@linux-foundation.org> <20090609045106.GA9370@localhost>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: should we make --enable-tirpc the default in current nfs-utils?
+Date: Tue, 09 Jun 2009 08:06:22 -0400
+Message-ID: <4A2E503E.1080809@RedHat.com>
+References: <20090605073648.5a5497b5@tlielax.poochiereds.net> <200906051224.40592.vapier@gentoo.org> <20090605133634.23357e8e@tlielax.poochiereds.net> <200906051650.42007.vapier@gentoo.org> <20090606071153.164d92dd@tlielax.poochiereds.net> <7A24DF798E223B4C9864E8F92E8C93EC031D19D3@SACMVEXC1-PRD.hq.netapp.com> <20090606160230.247d3ca3@tlielax.poochiereds.net> <4A2CD550.4090609@RedHat.com> <20090608071026.0b57fff8@tupile.poochiereds.net> <4A2D13DF.2040105@RedHat.com> <467512DC-2A83-4432-A29C-1688B021A1F5@oracle.com> <4A2D2862.3090303@RedHat.com> <20090608124140.3fa02688@tlielax.poochiereds.net> <CAFCBD84-FFEB-40FB-9594-40E4E17A8BE3@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Randy Dunlap <randy.dunlap@oracle.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"hifumi.hisashi-gVGce1chcLdL9jVzuh4AOg@public.gmane.org" <hifumi.hisashi-gVGce1chcLdL9jVzuh4AOg@public.gmane.org>,
-	Bart Van Assche <bart.vanassche@gmail.com>,
-	Beheer InterCommIT <intercommit@gmail.com>,
-	linux-nfs@vger.kernel.org, scst-devel@lists.sourceforge.net
-To: Wu Fengguang <fengguang.wu@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Jeff Layton <jlayton@redhat.com>,
+	"Muntz, Daniel" <Dan.Muntz@netapp.com>,
+	Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.8]:63999 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752231AbZFILHG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jun 2009 07:07:06 -0400
-In-Reply-To: <20090609045106.GA9370@localhost>
+Received: from mx2.redhat.com ([66.187.237.31]:39272 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752011AbZFIMJb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Jun 2009 08:09:31 -0400
+In-Reply-To: <CAFCBD84-FFEB-40FB-9594-40E4E17A8BE3@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Wu Fengguang, on 06/09/2009 08:51 AM wrote:
-> On Tue, Jun 09, 2009 at 12:38:17PM +0800, Andrew Morton wrote:
->> On Tue, 9 Jun 2009 05:59:16 +0200 Jens Axboe <jens.axboe@oracle.com> wrote:
+Chuck Lever wrote:
 >>
->>> ...
->>>> Doing a block-specific call from inside page_cache_async_readahead() is
->>>> a bit of a layering violation - this may not be a block-backed
->>>> filesystem at all.
 >>>>
->>>> otoh, perhaps blk_run_backing_dev() is wrongly named and defined in the
->>>> wrong place.  Perhaps non-block-backed backing_devs want to implement
->>>> an unplug-style function too?  In which case the whole thing should be
->>>> renamed and moved outside blkdev.h.
+>>>>> I guess I just don't see why there has to be two switches for
+>>>>> this feature...
 >>>>
->>>> If we don't want to do that, shouldn't backing_dev_info.unplug* be
->>>> wrapped in #ifdef CONFIG_BLOCK?  And wasn't it a layering violation to
->>>> put block-specific things into the backing_dev_info?
+>>>> Because people seem to want to disable IPv6 support completely on their
+>>>> systems...  Because there is a striking lack of infrastructure for IPv6
+>>>> support (including GUIs for configurating ip6tables, lack of IPv6
+>>>> support in NetworkManager, no IPv6 support in tcp_wrappers,
+>>>> inability to
+>>>> disable IPv6 support in the kernel without hacking it out of
+>>>> /etc/modprobe.conf, and so on)...  Because TI-RPC is one level of
+>>>> complexity, and IPv6 adds more complexity...
 >>>>
->>>> Jens, talk to me!
->>>>
->>>> From the readahead POV: does it make sense to call the backing-dev's
->>>> "unplug" function even if that isn't a block-based device?  Or was this
->>>> just a weird block-device-only performance problem?  Hard to say.
->>> Layering wise, I don't think it's that bad. It would have looked cleaner
->>> to do:
+>>>> We can probably remove --enable-ipv6, and just stick with
+>>>> --enable-tirpc, which implies IPv6 support, if you prefer that.
+>>> Actually I would like to do just the opposite... remove --enable-tirpc
+>>> and stick with --enable-ipv6...
 >>>
->>>         blk_run_address_space(mapping);
+>>>> But it's a strange argument, when we have --enable-mount,
+>>>> --enable-nfsv4,
+>>>> and on and on.
+>>> Well, your examples are all defining functionality... not libraries...
 >>>
->>> instead, but we would still need to make that available outside of
->>> CONFIG_BLOCK as well.
->>>
->>> What I don't like about the patch is that it's a heuristic, a "I poked
->>> this and it made that faster" with nobody really understanding why.
->> Well.  I _think_ we understand it.  I'm not sure that we understand why
->> it made scst faster though.
+>>
+>> Right. I agree with Steve here. I think it makes sense to keep the
+>> knobs we expect people to twiddle to be for features and not
+>> necessarily for libs.
 > 
-> Because the NFS/SCST servers are running RAID?
+> I really don't understand why having TI-RPC in a library is important here.
 > 
-> Also the client side NFS/SCST IO request may be slitted up and served
-> by a pool of server processes, which introduces the same disorderness
-> as in RAID configuration. But I wonder whether blk_* work for them,
-> or NFS/SCST have the "plug" concept at all.
+> --enable-tirpc is a feature knob.  Forget that it happens to be in a
+> library.  Either nfs-utils supports TI-RPC or it supports legacy RPC. 
+> The external behavior of nfs-utils changes.
+> 
+> Legacy RPC is in a library too.  It happens to be in a library that is
+> included by default, so configure doesn't have to figure out where RPC
+> support is and whether it is installed.
+> 
+> What's the difference?
+Following this theory there should have been an --enable-glibc
+which obviously misguided... 
 
-Yes, I agree about the disorderness. In the Beheer's case there are both 
-RAID and IO reordering caused by IO submission by a pool of SCST IO 
-threads. So, your comment in the patch can well explain why the 
-blk_run_backing_dev() patch recovers read-ahead and, hence, improves 
-performance in this case.
+All configuration flags define functionality not supporting parts 
+of those functionalities.... 
 
-But I also agree that it would be good to prove that theory by some 
-block/RA/SCST traces, because there might be other similar issues in the 
-RA code, which could be discovered with better understanding of the 
-problem. We can ask Beheer to prepare the necessary traces.
+Lets just have an --enable-ipv6/--disable-ipv6 flag and leave it to
+the distros as to how they want to deal with it. 
 
-Vlad
+Now with that said, just because --enable-ipv6 is set, does not have 
+to mean *all* IPv6 support is there, especially if its not fully baked.
+More times that not, pieces of major new features are released in 
+multi updates... Maybe in this first IPv6 release only the supporting 
+components are enabled (ala libtirpc). In the next release client 
+side rpc.statd is enabled and so on... 
 
+Trickling things in a very slow and control pace makes it much easier 
+to manage new functionality... IMHO... and having the big hammer
+(ala --disable-ipv6) is a comfortable thing when comes to maintaining  
+stability...
+
+steved.
