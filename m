@@ -1,32 +1,32 @@
-From: Jan Engelhardt <jengelh@medozas.de>
-Subject: Re: [PATCH 3/5] can: af_can.c use rcu_barrier() on module unload.
-Date: Wed, 10 Jun 2009 13:33:15 +0200 (CEST)
-Message-ID: <alpine.LSU.2.00.0906101327400.30984@fbirervta.pbzchgretzou.qr>
-References: <20090608130959.10052.54590.stgit@localhost> <20090608131138.10052.5408.stgit@localhost> <4A2D112A.4000308@hartkopp.net> <20090610.011027.43904351.davem@davemloft.net>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: Add acreg{min,max} and acdir{min,max} in
+ milliseconds
+Date: Wed, 10 Jun 2009 08:27:24 -0400
+Message-ID: <1244636844.24750.23.camel@heimdal.trondhjem.org>
+References: <200906091832.50633.agud@akamai.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: oliver@hartkopp.net, hawk@comx.dk, paulmck@linux.vnet.ibm.com,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de,
-	wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com,
-	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
-	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
-To: David Miller <davem@davemloft.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20090610.011027.43904351.davem@davemloft.net>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com, gud-OYTqUY/oFF8@public.gmane.org,
+	"Uhlenkott, Jason" <juhlenko@akamai.com>
+To: Amit Gud <agud@akamai.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:59907 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755757AbZFJM11 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Jun 2009 08:27:27 -0400
+In-Reply-To: <200906091832.50633.agud@akamai.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 2009-06-09 at 18:32 -0700, Amit Gud wrote:
+> This patch adds 4 new NFS mount options(acdirminms, acdirmaxms, acregminms,
+> acregmaxms) converting already existing one into a millisecond resolution
+> instead of seconds.
+> 
+> Also, modifies the mountstats output to milliseconds instead of seconds.
 
-On Wednesday 2009-06-10 10:10, David Miller wrote:
->> Acked-By: Oliver Hartkopp <oliver@hartkopp.net>
->
->Please don't capitalize the "By" in "Acked-By".  Otherwise
->patchwork doesn't pick them up automatically.
+Why, exactly, do you need to control cache timeouts down to the
+millisecond level?
 
-Is not that a patchwork bug then that should be reported? Or a
-missing feature to checkpatch? Do we need a CodingStyle for
-SOBs now too, just for that?
+Trond
 
-(Personally I prefer lowercase after the dash too, but I wanted to
-illuminate all sides of the box.)
