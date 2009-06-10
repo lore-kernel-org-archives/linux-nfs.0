@@ -1,32 +1,35 @@
 From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 3/5] can: af_can.c use rcu_barrier() on module unload.
-Date: Wed, 10 Jun 2009 01:10:27 -0700 (PDT)
-Message-ID: <20090610.011027.43904351.davem@davemloft.net>
+Subject: Re: [PATCH 0/5] We must use rcu_barrier() on module unload
+Date: Wed, 10 Jun 2009 01:11:55 -0700 (PDT)
+Message-ID: <20090610.011155.231596832.davem@davemloft.net>
 References: <20090608130959.10052.54590.stgit@localhost>
-	<20090608131138.10052.5408.stgit@localhost>
-	<4A2D112A.4000308@hartkopp.net>
 Mime-Version: 1.0
 Content-Type: Text/Plain; charset=us-ascii
-Cc: hawk@comx.dk, paulmck@linux.vnet.ibm.com, netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de,
-	oliver.hartkopp@volkswagen.de, wg@grandegger.com,
+Cc: paulmck@linux.vnet.ibm.com, netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org, urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org,
+	oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, wg-5Yr1BZd7O62+XT7JhA+gdA@public.gmane.org,
 	vladislav.yasevich@hp.com, sri@us.ibm.com,
 	linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com,
 	linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
-To: oliver@hartkopp.net
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <4A2D112A.4000308@hartkopp.net>
-Sender: netfilter-devel-owner@vger.kernel.org
+To: hawk-4UpuNZONu4c@public.gmane.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:50051
+	"EHLO sunset.davemloft.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757911AbZFJILx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jun 2009 04:11:53 -0400
+In-Reply-To: <20090608130959.10052.54590.stgit@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Oliver Hartkopp <oliver@hartkopp.net>
-Date: Mon, 08 Jun 2009 15:24:58 +0200
+From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+Date: Mon, 08 Jun 2009 15:11:23 +0200
 
-> Acked-By: Oliver Hartkopp <oliver@hartkopp.net>
+> If an unloadable module uses RCU callbacks, it need to use
+> rcu_barrier() so that the module may be safely unloaded.
+ ...
+> The patchset is made on top of DaveM's net-next-2.6 tree (starting on
+> top of commit a1c1db392090). As this is my usual development tree,
+> even though this patchset is bugfixes. (Just tested it applied cleanly
+> on Linus'es tree ...)
 
-Please don't capitalize the "By" in "Acked-By".  Otherwise
-patchwork doesn't pick them up automatically.
-
-It's just like "Signed-off-by", only the first word is capitalized.
-
-Thank you.
+All 5 patches applied, thanks!
