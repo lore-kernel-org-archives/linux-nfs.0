@@ -1,42 +1,33 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 3/3] sunrpc: reduce timeout when unregistering
-  rpcbind registrations.
-Date: Thu, 11 Jun 2009 14:49:10 +1000
-Message-ID: <18992.36038.267957.467326@notabene.brown>
-References: <20090528062730.15937.70579.stgit@notabene.brown>
-	<20090528063303.15937.62423.stgit@notabene.brown>
-	<4a1e8c9e.48c3f10a.6d51.4c33@mx.google.com>
+From: David Miller <davem@davemloft.net>
+Subject: Re: [patch 1/1] sunrpc: align cache_clean work's timer
+Date: Thu, 11 Jun 2009 02:52:51 -0700 (PDT)
+Message-ID: <20090611.025251.227156574.davem@davemloft.net>
+References: <200906101952.n5AJqLZb006065@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom Talpey <tmtalpey@gmail.com>
+Content-Type: Text/Plain; charset=us-ascii
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org,
+	anton@samba.org, neilb@suse.de
+To: akpm@linux-foundation.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58713 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754817AbZFKEsj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Jun 2009 00:48:39 -0400
-In-Reply-To: message from Tom Talpey on Thursday May 28
+Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:35571
+	"EHLO sunset.davemloft.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758161AbZFKJwt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jun 2009 05:52:49 -0400
+In-Reply-To: <200906101952.n5AJqLZb006065-AB4EexQrvXRQetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday May 28, tmtalpey@gmail.com wrote:
-> At 02:33 AM 5/28/2009, NeilBrown wrote:
-> >Unregistering an RPC service is not essential - but it is tidy.
-> >So it is unpleasant to wait a long time for it to complete.
-> >
-> >As unregistering is always directed to localhost, the most likely
-> >reason for any delay is the portmap (or rpcbind) is not running.
-> >In that case, waiting it totally pointless.  In any case, we should
-> >expect a quick response, and zero packet loss.
-> >
-> >So reduce the timeouts to a total of half a second.
+From: akpm@linux-foundation.org
+Date: Wed, 10 Jun 2009 12:52:21 -0700
+
+> From: Anton Blanchard <anton@samba.org>
 > 
-> Why wait for the response at all in this case? With zero retries
-> and nothing to do with the result, it seems pointless to even wait
-> for half a second.
+> Align cache_clean work.
+> 
+> Signed-off-by: Anton Blanchard <anton@samba.org>
+> Cc: Neil Brown <neilb@suse.de>
+> Cc: Trond Myklebust <trond.myklebust@fys.uio.no>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 
-That's a fair point, thanks.  I'll keep that in mind if I revisit
-these patches.
-
-Thanks,
-NeilBrown
+Acked-by: David S. Miller <davem@davemloft.net>
