@@ -1,7 +1,7 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [PATCH 12/14] SQUASHME: Removes bc_svc_process() declaration
-Date: Thu, 11 Jun 2009 22:54:18 -0700
-Message-ID: <1244786060-2200-13-git-send-email-Ricardo.Labiaga@netapp.com>
+Subject: [PATCH 10/14] SQUASHME: nfs41: sunrpc: Don't skip past the RPC call direction
+Date: Thu, 11 Jun 2009 22:54:16 -0700
+Message-ID: <1244786060-2200-11-git-send-email-Ricardo.Labiaga@netapp.com>
 References: <>
  <1244786060-2200-1-git-send-email-Ricardo.Labiaga@netapp.com>
  <1244786060-2200-2-git-send-email-Ricardo.Labiaga@netapp.com>
@@ -13,40 +13,51 @@ References: <>
  <1244786060-2200-8-git-send-email-Ricardo.Labiaga@netapp.com>
  <1244786060-2200-9-git-send-email-Ricardo.Labiaga@netapp.com>
  <1244786060-2200-10-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244786060-2200-11-git-send-email-Ricardo.Labiaga@netapp.com>
- <1244786060-2200-12-git-send-email-Ricardo.Labiaga@netapp.com>
 Cc: bhalevy@panasas.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
 	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2056 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:39089 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753973AbZFLF6M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Jun 2009 01:58:12 -0400
-In-Reply-To: <1244786060-2200-12-git-send-email-Ricardo.Labiaga@netapp.com>
+	id S1753559AbZFLF6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Jun 2009 01:58:11 -0400
+In-Reply-To: <1244786060-2200-10-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[squash with: nfs41: Implement Nfsv4.1 callback service process]
+[squash with: nfs41: Skippast the RPC call direction]
+
+xs_tcp_read_data() has been modified to include the RPC call direction in the
+XDR buffer.  We need to read the direction during the header verification.
 
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 ---
- include/linux/sunrpc/svc.h |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 52e8cb0..b8234f2 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -418,8 +418,6 @@ int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
- int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
- void		   svc_destroy(struct svc_serv *);
- int		   svc_process(struct svc_rqst *);
--int		   bc_svc_process(struct svc_serv *, struct rpc_rqst *,
--			struct svc_rqst *);
- int		   svc_register(const struct svc_serv *, const int,
- 				const unsigned short, const unsigned short);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index e7fffd2..d5a85a9 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1507,12 +1507,12 @@ rpc_verify_header(struct rpc_task *task)
+ 	if ((len -= 3) < 0)
+ 		goto out_overflow;
  
+-	/*
+-	 * Skip the XID and call direction.
+-	 * The underlying transport has read the XID and RPC call direction
+-	 * to determine this is an RPC reply.
+-	 */
+-	p += 2;
++	p += 1; /* skip XID */
++	if ((n = ntohl(*p++)) != RPC_REPLY) {
++		dprintk("RPC: %5u %s: not an RPC reply: %x\n",
++			task->tk_pid, __func__, n);
++		goto out_garbage;
++	}
+ 
+ 	if ((n = ntohl(*p++)) != RPC_MSG_ACCEPTED) {
+ 		if (--len < 0)
 -- 
 1.5.4.3
 
