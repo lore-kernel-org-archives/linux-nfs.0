@@ -1,51 +1,59 @@
 From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: [PATCH 0/14] Updates to nfs41 client backchannel for 2.6.31
-Date: Thu, 11 Jun 2009 22:54:06 -0700
-Message-ID: <1244786060-2200-1-git-send-email-Ricardo.Labiaga@netapp.com>
-Cc: bhalevy@panasas.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 02/14] SQUASHME: Update copyright notice and explain page allocation
+Date: Thu, 11 Jun 2009 22:54:08 -0700
+Message-ID: <1244786060-2200-3-git-send-email-Ricardo.Labiaga@netapp.com>
+References: <>
+ <1244786060-2200-1-git-send-email-Ricardo.Labiaga@netapp.com>
+ <1244786060-2200-2-git-send-email-Ricardo.Labiaga@netapp.com>
+Cc: bhalevy@panasas.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:55147 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751346AbZFLF6J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Jun 2009 01:58:09 -0400
-In-Reply-To: <>
-References: <>
+	id S1751571AbZFLF6K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Jun 2009 01:58:10 -0400
+In-Reply-To: <1244786060-2200-2-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+[squash with: nfs41: New backchannel helper routines]
 
-Trond,
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+---
+ net/sunrpc/backchannel_rqst.c |   11 ++++++++++-
+ 1 files changed, 10 insertions(+), 1 deletions(-)
 
-Here's a set of patches that address the comments received so far on the
-"nfs41 client backchannel for 2.6.31" series.  We'll squash these into
-Benny's tree, but I wanted to first submit them as stand alone patches for
-your review.
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 8f177a5..5a7d342 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -1,8 +1,9 @@
+ /******************************************************************************
+ 
+ (c) 2007 Network Appliance, Inc.  All Rights Reserved.
++(c) 2009 NetApp.  All Rights Reserved.
+ 
+-Network Appliance provides this source code under the GPL v2 License.
++NetApp provides this source code under the GPL v2 License.
+ The GPL v2 license is available at
+ http://opensource.org/licenses/gpl-license.php.
+ 
+@@ -75,6 +76,14 @@ static void xprt_free_allocation(struct rpc_rqst *req)
+  * incoming callback request.  It's up to the higher levels in the
+  * stack to enforce that the maximum number of session slots is not
+  * being exceeded.
++ *
++ * Some callback arguments can be large.  For example, a pNFS server
++ * using multiple deviceids.  The list can be unbound, but the client
++ * has the ability to tell the server the maximum size of the callback
++ * requests.  Each deviceID is 16 bytes, so allocate one page
++ * for the arguments to have enough room to receive a number of these
++ * deviceIDs.  The NFS client indicates to the pNFS server that its
++ * callback requests can be up to 4096 bytes in size.
+  */
+ int xprt_setup_backchannel(struct rpc_xprt *xprt, unsigned int min_reqs)
+ {
+-- 
+1.5.4.3
 
-Benny,
-
-Each patch indicates the patch it should in turn be squased with.
-Note that patch 10 simply backs out the changes of the original patch. 
-We'll also need to manually move the removal of the 'xprt_free_bc_request'
-export symbol into the correct patch through git-rebase.  We can do that
-next week during bakeathon.
-
-
-[PATCH 01/14] SQUASHME: Type check arguments of nfs_callback_up
-[PATCH 02/14] SQUASHME: Update copyright notice and explain page allocation
-[PATCH 03/14] SQUASHME: Update Copyright notice and fix formatting
-[PATCH 04/14] SQUASHME: rpc_count_iostats incorrectly exits early
-[PATCH 05/14] SQUASHME: Convert rpc_reply_expected() to inline function
-[PATCH 06/14] SQUASHME: Remove unnecessary BUG_ON()
-[PATCH 07/14] SQUASHME: Rename variable
-[PATCH 08/14] SQUASHME: Removal of ugly #ifdefs
-[PATCH 09/14] SQUASHME: nfs41: sunrpc: Add RPC direction back into the XDR buffer
-[PATCH 10/14] SQUASHME: nfs41: sunrpc: Don't skip past the RPC call direction
-[PATCH 11/14] SQUASHME: Moves embedded #ifdefs into #ifdef function blocks
-[PATCH 12/14] SQUASHME: Removes bc_svc_process() declaration
-[PATCH 13/14] SQUASHME: Move bc_svc_process() declaration to correct patch
-[PATCH 14/14] SQUASHME: Update copyright
-
-Thanks,
-
-- ricardo
