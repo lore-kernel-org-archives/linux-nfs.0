@@ -1,224 +1,194 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/8] NFS: Update MNT and MNT3 reply decoding functions
-Date: Sat, 13 Jun 2009 19:26:23 -0400
-Message-ID: <20090613232623.3225.52634.stgit@isabey.1015granger.net>
+Subject: [PATCH 3/8] NFS: Add separate mountd status code decoders for each
+	mountd version
+Date: Sat, 13 Jun 2009 19:26:01 -0400
+Message-ID: <20090613232601.3225.86496.stgit@isabey.1015granger.net>
 References: <20090613232149.3225.92143.stgit@isabey.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:20903 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755514AbZFMX0h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Jun 2009 19:26:37 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:16879 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754830AbZFMX0f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Jun 2009 19:26:35 -0400
 In-Reply-To: <20090613232149.3225.92143.stgit-r85ClMMopbrwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Solder xdr_stream-based XDR decoding functions into the in-kernel mountd
-client that are more careful about checking data types and watching for
-buffer overflows.  The new MNT3 decoder includes support for auth-flavor
-list decoding.
+Introduce data structures and xdr_stream-based decoding functions for
+unmarshalling mountd status codes properly.
 
-The "_sz" macro for MNT3 replies was missing the size of the file handle.
-I've added this back, and included the size of the auth flavor array.
+Mountd version 3 uses specific standard error return codes that are
+not errno values and not NFS3ERR_ values.  These have a well-defined
+standard mapping to local errno values.  Introduce data structures
+and a decoder function that map these status codes to local errno
+values properly.  This is new functionality (but not used yet).
+
+Version 1 mountd status values are defined by RFC 1094 as UNIX error
+values (errno values).  Errno values on heterogeneous systems do not
+necessarily match each other.  To avoid exposing possibly incorrect
+errno values to upper layers, the current XDR decoder converts all
+non-zero MNT version 1 status codes to -EACCES.
+
+The OpenGroup XNFS standard provides a mapping similar to but smaller
+than the version 3 error codes.  Implement a decoder that uses the XNFS
+error codes, replacing the current decoder.
+
+For both mountd protocol versions, map unrecognized errors to -EACCES.
+
+Finally we introduce a replacement data structure for mnt_fhstatus
+at this time, which is used by the new XDR decoders.  In addition to
+documenting that the status value returned by the XDR decoders is
+always an errno, this new structure will be expanded in subsequent
+patches.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h   |    2 ++
- fs/nfs/mount_clnt.c |   63 ++++++++++++++++++++++++++++++++++++++++-----------
- fs/nfs/nfsroot.c    |    2 ++
- fs/nfs/super.c      |    2 ++
- 4 files changed, 55 insertions(+), 14 deletions(-)
+ fs/nfs/mount_clnt.c |  116 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 116 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b13b456..82a78c8 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -83,6 +83,8 @@ struct nfs_mount_request {
- 	unsigned short		protocol;
- 	struct nfs_fh		*fh;
- 	int			noresvport;
-+	unsigned int		*auth_flav_len;
-+	rpc_authflavor_t	*auth_flavs;
- };
- 
- extern int nfs_mount(struct nfs_mount_request *info);
 diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index ed0a27e..618d815 100644
+index 79b5954..8429885 100644
 --- a/fs/nfs/mount_clnt.c
 +++ b/fs/nfs/mount_clnt.c
-@@ -39,6 +39,9 @@
-  * XDR argument and result sizes
+@@ -29,6 +29,8 @@
+  * XDR data type sizes
   */
- #define MNT_enc_dirpath_sz	encode_dirpath_sz
-+#define MNT_dec_mountres_sz	(MNT_status_sz + MNT_fhandle_sz)
-+#define MNT_dec_mountres3_sz	(MNT_status_sz + MNT_fhandle_sz + \
-+				 MNT_authflav3_sz)
+ #define encode_dirpath_sz	(1 + XDR_QUADLEN(MNTPATHLEN))
++#define MNT_status_sz		(1)
++#define MNT_fhs_status_sz	(1)
  
  /*
-  * Defined by RFC 1094, section A.5
-@@ -140,8 +143,10 @@ struct mnt_fhstatus {
-  */
- int nfs_mount(struct nfs_mount_request *info)
- {
--	struct mnt_fhstatus	result = {
--		.fh		= info->fh
-+	struct mountres	result = {
-+		.fh		= info->fh,
-+		.auth_count	= info->auth_flav_len,
-+		.auth_flavors	= info->auth_flavs,
- 	};
- 	struct rpc_message msg	= {
- 		.rpc_argp	= info->dirpath,
-@@ -180,7 +185,7 @@ int nfs_mount(struct nfs_mount_request *info)
+  * XDR argument and result sizes
+@@ -61,6 +63,65 @@ enum {
  
- 	if (status < 0)
- 		goto out_call_err;
--	if (result.status != 0)
-+	if (result.errno != 0)
- 		goto out_mnt_err;
+ static struct rpc_program	mnt_program;
  
- 	dprintk("NFS: MNT request succeeded\n");
-@@ -191,16 +196,16 @@ out:
- 
- out_clnt_err:
- 	status = PTR_ERR(mnt_clnt);
--	dprintk("NFS: failed to create RPC client, status=%d\n", status);
-+	dprintk("NFS: failed to create MNT RPC client, status=%d\n", status);
- 	goto out;
- 
- out_call_err:
--	dprintk("NFS: failed to start MNT request, status=%d\n", status);
-+	dprintk("NFS: MNT request failed, status=%d\n", status);
- 	goto out;
- 
- out_mnt_err:
--	dprintk("NFS: MNT server returned result %d\n", result.status);
--	status = nfs_stat_to_errno(result.status);
-+	dprintk("NFS: MNT server returned result %d\n", result.errno);
-+	status = result.errno;
- 	goto out;
- }
- 
-@@ -291,6 +296,20 @@ static int decode_fhandle(struct xdr_stream *xdr, struct mountres *res)
++/*
++ * Defined by OpenGroup XNFS Version 3W, chapter 8
++ */
++enum mountstat {
++	MNT_OK			= 0,
++	MNT_EPERM		= 1,
++	MNT_ENOENT		= 2,
++	MNT_EACCES		= 13,
++	MNT_EINVAL		= 22,
++};
++
++static struct {
++	u32 status;
++	int errno;
++} mnt_errtbl[] = {
++	{ .status = MNT_OK,			.errno = 0,		},
++	{ .status = MNT_EPERM,			.errno = -EPERM,	},
++	{ .status = MNT_ENOENT,			.errno = -ENOENT,	},
++	{ .status = MNT_EACCES,			.errno = -EACCES,	},
++	{ .status = MNT_EINVAL,			.errno = -EINVAL,	},
++};
++
++/*
++ * Defined by RFC 1813, section 5.1.5
++ */
++enum mountstat3 {
++	MNT3_OK			= 0,		/* no error */
++	MNT3ERR_PERM		= 1,		/* Not owner */
++	MNT3ERR_NOENT		= 2,		/* No such file or directory */
++	MNT3ERR_IO		= 5,		/* I/O error */
++	MNT3ERR_ACCES		= 13,		/* Permission denied */
++	MNT3ERR_NOTDIR		= 20,		/* Not a directory */
++	MNT3ERR_INVAL		= 22,		/* Invalid argument */
++	MNT3ERR_NAMETOOLONG	= 63,		/* Filename too long */
++	MNT3ERR_NOTSUPP		= 10004,	/* Operation not supported */
++	MNT3ERR_SERVERFAULT	= 10006,	/* A failure on the server */
++};
++
++static struct {
++	u32 status;
++	int errno;
++} mnt3_errtbl[] = {
++	{ .status = MNT3_OK,			.errno = 0,		},
++	{ .status = MNT3ERR_PERM,		.errno = -EPERM,	},
++	{ .status = MNT3ERR_NOENT,		.errno = -ENOENT,	},
++	{ .status = MNT3ERR_IO,			.errno = -EIO,		},
++	{ .status = MNT3ERR_ACCES,		.errno = -EACCES,	},
++	{ .status = MNT3ERR_NOTDIR,		.errno = -ENOTDIR,	},
++	{ .status = MNT3ERR_INVAL,		.errno = -EINVAL,	},
++	{ .status = MNT3ERR_NAMETOOLONG,	.errno = -ENAMETOOLONG,	},
++	{ .status = MNT3ERR_NOTSUPP,		.errno = -ENOTSUPP,	},
++	{ .status = MNT3ERR_SERVERFAULT,	.errno = -ESERVERFAULT,	},
++};
++
++struct mountres {
++	int errno;
++	struct nfs_fh *fh;
++};
++
+ struct mnt_fhstatus {
+ 	u32 status;
+ 	struct nfs_fh *fh;
+@@ -179,6 +240,61 @@ static int xdr_decode_fhstatus(struct rpc_rqst *req, __be32 *p,
  	return 0;
  }
  
-+static int mnt_dec_mountres(struct rpc_rqst *req, __be32 *p,
-+			    struct mountres *res)
++/*
++ * RFC 1094: "A non-zero status indicates some sort of error.  In this
++ * case, the status is a UNIX error number."  This can be problematic
++ * if the server and client use different errno values for the same
++ * error.
++ *
++ * However, the OpenGroup XNFS spec provides a simple mapping that is
++ * independent of local errno values on the server and the client.
++ */
++static int decode_status(struct xdr_stream *xdr, struct mountres *res)
 +{
-+	struct xdr_stream xdr;
-+	int status;
++	unsigned int i;
++	u32 status;
++	__be32 *p;
 +
-+	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
++	p = xdr_inline_decode(xdr, sizeof(status));
++	if (unlikely(p == NULL))
++		return -EIO;
++	status = ntohl(*p);
 +
-+	status = decode_status(&xdr, res);
-+	if (unlikely(status != 0 || res->errno != 0))
-+		return status;
-+	return decode_fhandle(&xdr, res);
++	for (i = 0; i <= ARRAY_SIZE(mnt_errtbl); i++) {
++		if (mnt_errtbl[i].status == status) {
++			res->errno = mnt_errtbl[i].errno;
++			return 0;
++		}
++	}
++
++	dprintk("NFS: unrecognized MNT status code: %u\n", status);
++	res->errno = -EACCES;
++	return 0;
 +}
 +
- static int decode_fhs_status(struct xdr_stream *xdr, struct mountres *res)
- {
- 	unsigned int i;
-@@ -371,6 +390,25 @@ static int decode_auth_flavors(struct xdr_stream *xdr, struct mountres *res)
- 	return 0;
- }
- 
-+static int mnt_dec_mountres3(struct rpc_rqst *req, __be32 *p,
-+			     struct mountres *res)
++static int decode_fhs_status(struct xdr_stream *xdr, struct mountres *res)
 +{
-+	struct xdr_stream xdr;
-+	int status;
++	unsigned int i;
++	u32 status;
++	__be32 *p;
 +
-+	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
++	p = xdr_inline_decode(xdr, sizeof(status));
++	if (unlikely(p == NULL))
++		return -EIO;
++	status = ntohl(*p);
 +
-+	status = decode_fhs_status(&xdr, res);
-+	if (unlikely(status != 0 || res->errno != 0))
-+		return status;
-+	status = decode_fhandle3(&xdr, res);
-+	if (unlikely(status != 0)) {
-+		res->errno = -EBADHANDLE;
-+		return 0;
++	for (i = 0; i <= ARRAY_SIZE(mnt3_errtbl); i++) {
++		if (mnt3_errtbl[i].status == status) {
++			res->errno = mnt3_errtbl[i].errno;
++			return 0;
++		}
 +	}
-+	return decode_auth_flavors(&xdr, res);
++
++	dprintk("NFS: unrecognized MNT3 status code: %u\n", status);
++	res->errno = -EACCES;
++	return 0;
 +}
 +
  static int xdr_decode_fhstatus3(struct rpc_rqst *req, __be32 *p,
  				struct mnt_fhstatus *res)
  {
-@@ -388,16 +426,13 @@ static int xdr_decode_fhstatus3(struct rpc_rqst *req, __be32 *p,
- 	return 0;
- }
- 
--#define MNT_fhstatus_sz		(1 + 8)
--#define MNT_fhstatus3_sz	(1 + 16)
--
- static struct rpc_procinfo mnt_procedures[] = {
- 	[MOUNTPROC_MNT] = {
- 		.p_proc		= MOUNTPROC_MNT,
- 		.p_encode	= (kxdrproc_t)mnt_enc_dirpath,
--		.p_decode	= (kxdrproc_t) xdr_decode_fhstatus,
-+		.p_decode	= (kxdrproc_t)mnt_dec_mountres,
- 		.p_arglen	= MNT_enc_dirpath_sz,
--		.p_replen	= MNT_fhstatus_sz,
-+		.p_replen	= MNT_dec_mountres_sz,
- 		.p_statidx	= MOUNTPROC_MNT,
- 		.p_name		= "MOUNT",
- 	},
-@@ -407,9 +442,9 @@ static struct rpc_procinfo mnt3_procedures[] = {
- 	[MOUNTPROC3_MNT] = {
- 		.p_proc		= MOUNTPROC3_MNT,
- 		.p_encode	= (kxdrproc_t)mnt_enc_dirpath,
--		.p_decode	= (kxdrproc_t) xdr_decode_fhstatus3,
-+		.p_decode	= (kxdrproc_t)mnt_dec_mountres3,
- 		.p_arglen	= MNT_enc_dirpath_sz,
--		.p_replen	= MNT_fhstatus3_sz,
-+		.p_replen	= MNT_dec_mountres3_sz,
- 		.p_statidx	= MOUNTPROC3_MNT,
- 		.p_name		= "MOUNT",
- 	},
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index 24c1b93..8c55b27 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -490,6 +490,7 @@ static int __init root_nfs_get_handle(void)
- {
- 	struct nfs_fh fh;
- 	struct sockaddr_in sin;
-+	unsigned int auth_flav_len = 0;
- 	struct nfs_mount_request request = {
- 		.sap		= (struct sockaddr *)&sin,
- 		.salen		= sizeof(sin),
-@@ -499,6 +500,7 @@ static int __init root_nfs_get_handle(void)
- 		.protocol	= (nfs_data.flags & NFS_MOUNT_TCP) ?
- 					XPRT_TRANSPORT_TCP : XPRT_TRANSPORT_UDP,
- 		.fh		= &fh,
-+		.auth_flav_len	= &auth_flav_len,
- 	};
- 	int status;
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 3502e46..8b3b494 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1380,6 +1380,7 @@ out_security_failure:
- static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			 struct nfs_fh *root_fh)
- {
-+	unsigned int auth_flavor_len = 0;
- 	struct nfs_mount_request request = {
- 		.sap		= (struct sockaddr *)
- 						&args->mount_server.address,
-@@ -1387,6 +1388,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 		.protocol	= args->mount_server.protocol,
- 		.fh		= root_fh,
- 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
-+		.auth_flav_len	= &auth_flavor_len,
- 	};
- 	int status;
- 
 
