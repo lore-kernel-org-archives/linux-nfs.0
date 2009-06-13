@@ -1,106 +1,46 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS: Invalid mount option values should fail even with
- "sloppy"
-Date: Sat, 13 Jun 2009 18:13:54 -0400
-Message-ID: <1244931234.6803.18.camel@heimdal.trondhjem.org>
-References: <20090612221659.25437.19858.stgit@isabey.1015granger.net>
-	 <1244912830.6803.4.camel@heimdal.trondhjem.org>
-	 <984DFA28-DDFB-46F5-BD2B-16DCB80C7137@oracle.com>
+From: Christian Engelmayer <christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
+Subject: [PATCH 1/1] sunrpc: potential memory leak in function rdma_read_xdr
+Date: Sun, 14 Jun 2009 00:05:26 +0200
+Message-ID: <20090614000526.56036335@frequentis.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org, linux-nfs@vger.kernel.org
+To: bfields@fieldses.org, neilb@suse.de
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:39243 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751822AbZFMWNz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 13 Jun 2009 18:13:55 -0400
-In-Reply-To: <984DFA28-DDFB-46F5-BD2B-16DCB80C7137@oracle.com>
+Received: from mail.frequentis.com ([212.186.194.131]:54664 "EHLO
+	mail.frequentis.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752501AbZFMW1Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Jun 2009 18:27:25 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-06-13 at 17:55 -0400, Chuck Lever wrote:
-> On Jun 13, 2009, at 1:07 PM, Trond Myklebust wrote:
-> 
-> > On Fri, 2009-06-12 at 18:19 -0400, Chuck Lever wrote:
-> >> Ian Kent reports:
-> >>
-> >> "I've noticed a couple of other regressions with the options vers
-> >> and proto option of mount.nfs(8).
-> >>
-> >> The commands:
-> >>
-> >> mount -t nfs -o vers=<invalid version> <server>:/<path> /<mountpoint>
-> >> mount -t nfs -o proto=<invalid proto> <server>:/<path> /<mountpoint>
-> >>
-> >> both immediately fail.
-> >>
-> >> But if the "-s" option is also used they both succeed with the
-> >> mount falling back to defaults (by the look of it).
-> >>
-> >> In the past these failed even when the sloppy option was given, as
-> >> I think they should. I believe the sloppy option is meant to allow
-> >> the mount command to still function for mount options (for example
-> >> in shared autofs maps) that exist on other Unix implementations but
-> >> aren't present in the Linux mount.nfs(8). So, an invalid value
-> >> specified for a known mount option is different to an unknown mount
-> >> option and should fail appropriately."
-> >>
-> >> See RH bugzilla 486266.
-> >>
-> >> Address the problem by separating parsing errors into two categories.
-> >> Invalid options will fail only if sloppy isn't set, but invalid
-> >> values will always fail.
-> >>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >>
-> >> Trond-
-> >>
-> >> Request For Comments only.  Ian hasn't tested this yet, but I was  
-> >> hoping
-> >> it could find its way into 2.6.31 at some point, if it looks  
-> >> correct to
-> >> you.
-> >>
-> >> fs/nfs/super.c |   57 ++++++++++++++++++++++++++++++ 
-> >> +-------------------------
-> >> 1 files changed, 32 insertions(+), 25 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> >> index 66ffd5d..e88c527 100644
-> >> --- a/fs/nfs/super.c
-> >> +++ b/fs/nfs/super.c
-> >> @@ -957,7 +957,7 @@ static int nfs_parse_mount_options(char *raw,
-> >> 				   struct nfs_parsed_mount_data *mnt)
-> >> {
-> >> 	char *p, *string, *secdata;
-> >> -	int rc, sloppy = 0, errors = 0;
-> >> +	int rc, sloppy = 0, invalid_options = 0, invalid_values = 0;
-> >
-> > Why add a counter? Why not just add a variable to hold the return  
-> > value
-> >
-> >          int ret = 0;
-> >
-> > ...and have the invalid values set ret=1?
-> 
-> That would probably work for invalid values, which should always cause  
-> a failure.  I guess I preferred treating the two as similarly as  
-> possible until the logic at the end.  That seemed a little more clear  
-> to me.
+From: Christian Engelmayer <christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
 
-They're really quite different. In the case of an invalid value, you
-know that you can immediately exit the parser and return an error,
-whereas in the case of an unknown option you have to continue parsing
-until you know whether or not 'sloppy' has been set.
+In case the check on ch_count fails the cleanup path is skipped and the
+previously allocated memory 'rpl_map', 'chl_map' is not freed.
 
-> We still need to sort invalid options if sloppy is set.  Renaming the  
-> variable @errors seems like a good way to document what exactly we're  
-> counting.
+Signed-off-by: Christian Engelmayer <christian.engelmayer-USXAA5bZaHGDvotElmWtJA@public.gmane.org>
+--
+Reported by Coverity.
 
-Agreed.
-
-Cheers
-  Trond
-
+--- linux-2.6.29.4/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c.orig	2009-06-13 23:41:16.000000000 +0200
++++ linux-2.6.29.4/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c	2009-06-13 23:40:21.000000000 +0200
+@@ -397,14 +397,14 @@ static int rdma_read_xdr(struct svcxprt_
+ 	if (!ch)
+ 		return 0;
+ 
+-	/* Allocate temporary reply and chunk maps */
+-	rpl_map = svc_rdma_get_req_map();
+-	chl_map = svc_rdma_get_req_map();
+-
+ 	svc_rdma_rcl_chunk_counts(ch, &ch_count, &byte_count);
+ 	if (ch_count > RPCSVC_MAXPAGES)
+ 		return -EINVAL;
+ 
++ 	/* Allocate temporary reply and chunk maps */
++	rpl_map = svc_rdma_get_req_map();
++	chl_map = svc_rdma_get_req_map();
++
+ 	if (!xprt->sc_frmr_pg_list_len)
+ 		sge_count = map_read_chunks(xprt, rqstp, hdr_ctxt, rmsgp,
+ 					    rpl_map, chl_map, ch_count,
