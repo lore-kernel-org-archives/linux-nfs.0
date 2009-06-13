@@ -1,73 +1,283 @@
 From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS: Add acreg{min,max} and acdir{min,max} in
- milliseconds
-Date: Fri, 12 Jun 2009 18:44:33 -0400
-Message-ID: <1244846673.32257.69.camel@heimdal.trondhjem.org>
-References: <200906091832.50633.agud@akamai.com>
-	 <1244636844.24750.23.camel@heimdal.trondhjem.org>
-	 <4A300CE3.8080502@akamai.com>
-	 <025BEFCD-2F56-4E29-99F9-1939867B48A7@fys.uio.no>
-	 <4A316814.7030609@akamai.com>
-	 <1244754888.5047.132.camel@heimdal.trondhjem.org>
-	 <4A32ACDB.90802@akamai.com>
-	 <1244836259.19533.19.camel@heimdal.trondhjem.org>
-	 <4A32CD5D.2070502@akamai.com>
+Subject: Re: [PATCH] NFS: Invalid mount option values should fail even with
+ "sloppy"
+Date: Sat, 13 Jun 2009 13:07:10 -0400
+Message-ID: <1244912830.6803.4.camel@heimdal.trondhjem.org>
+References: <20090612221659.25437.19858.stgit@isabey.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	Steve Dickson <SteveD@redhat.com>, "gud-OYTqUY/oFF8@public.gmane.org" <gud-OYTqUY/oFF8@public.gmane.org>,
-	"Uhlenkott, Jason" <juhlenko@akamai.com>
-To: Amit Gud <agud@akamai.com>
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:37522 "EHLO mail-out1.uio.no"
+Received: from mail-out1.uio.no ([129.240.10.57]:43418 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933020AbZFLWof (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Jun 2009 18:44:35 -0400
-In-Reply-To: <4A32CD5D.2070502@akamai.com>
+	id S1753556AbZFMRHM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 13 Jun 2009 13:07:12 -0400
+In-Reply-To: <20090612221659.25437.19858.stgit-r85ClMMopbrwdl/1UfZZQIVfYA8g3rJ/@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-06-12 at 14:49 -0700, Amit Gud wrote:
-> Trond Myklebust wrote:
-> > On Fri, 2009-06-12 at 12:30 -0700, Amit Gud wrote:
-> >> We definitely want lookup caching turned on, always, including both
-> >> positive and negative caching.  But, we need to see new files, unlinks,
-> >> and renames much quicker than a second.
-> > 
-> > Then use the lookupcache option, since that's what it is for.
-> > 
+On Fri, 2009-06-12 at 18:19 -0400, Chuck Lever wrote:
+> Ian Kent reports:
 > 
-> Sorry, I don't understand.
+> "I've noticed a couple of other regressions with the options vers
+> and proto option of mount.nfs(8).
 > 
-> Copying from your last mail:
+> The commands:
 > 
-> > Secondly, we have already introduced finer control over the lookup
-> > caching as of Linux 2.6.28 and newer:
-> >         - if you want to ensure that machine A always see new files and
-> >         links immediately once they have been created, then
-> >         '-olookupcache=positive' should turn off negative dentry
-> >         caching.
-> >         - if you also want to ensure that it immediately sees renames,
-> >         unlinks and such, then '-olookupcache=none' will turn off lookup
-> >         caching altogether.
+> mount -t nfs -o vers=<invalid version> <server>:/<path> /<mountpoint>
+> mount -t nfs -o proto=<invalid proto> <server>:/<path> /<mountpoint>
 > 
-> How is it possible to _not_ disable any caching (positive or negative
-> dentries) and still be able to see renames, unlinks and such in << 1s?
+> both immediately fail.
+> 
+> But if the "-s" option is also used they both succeed with the
+> mount falling back to defaults (by the look of it).
+> 
+> In the past these failed even when the sloppy option was given, as
+> I think they should. I believe the sloppy option is meant to allow
+> the mount command to still function for mount options (for example
+> in shared autofs maps) that exist on other Unix implementations but
+> aren't present in the Linux mount.nfs(8). So, an invalid value
+> specified for a known mount option is different to an unknown mount
+> option and should fail appropriately."
+> 
+> See RH bugzilla 486266.
+> 
+> Address the problem by separating parsing errors into two categories.
+> Invalid options will fail only if sloppy isn't set, but invalid
+> values will always fail.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> Trond-
+> 
+> Request For Comments only.  Ian hasn't tested this yet, but I was hoping
+> it could find its way into 2.6.31 at some point, if it looks correct to
+> you.
+> 
+>  fs/nfs/super.c |   57 +++++++++++++++++++++++++++++++-------------------------
+>  1 files changed, 32 insertions(+), 25 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 66ffd5d..e88c527 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -957,7 +957,7 @@ static int nfs_parse_mount_options(char *raw,
+>  				   struct nfs_parsed_mount_data *mnt)
+>  {
+>  	char *p, *string, *secdata;
+> -	int rc, sloppy = 0, errors = 0;
+> +	int rc, sloppy = 0, invalid_options = 0, invalid_values = 0;
 
-You could set acdirmin/acdirmax to 0, but that just floods your server
-with GETATTR calls instead of LOOKUPs. Then again, so will your
-millisecond acdirmin/acdirmax.
-Furthermore, you would be adjusting the _attribute_ cache timeout (not
-just the lookup cache), which comes at a cost to all the other
-operations that depend on those attributes. IOW: readdir(), permissions
-checking, stat() calls, ...
+Why add a counter? Why not just add a variable to hold the return value
 
-It boils down to this: I'm extremely reluctant to get into an arms race
-of adding ever more mount options for increasingly finer-tuned attribute
-cache timeouts. While such an option may meet _your_ machine room
-requirements here and now, it becomes tiresome over the years as
-machines gain power, and people first start lobbying for millisecond
-timeouts, then microseconds, nanoseconds, pico... in order to catch up.
+          int ret = 0;
 
-  Trond
+...and have the invalid values set ret=1?
+
+>  	if (!raw) {
+>  		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
+> @@ -1092,77 +1092,77 @@ static int nfs_parse_mount_options(char *raw,
+>  		case Opt_port:
+>  			if (match_int(args, &option) ||
+>  			    option < 0 || option > USHORT_MAX) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("port");
+>  			} else
+>  				mnt->nfs_server.port = option;
+>  			break;
+>  		case Opt_rsize:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("rsize");
+>  			} else
+>  				mnt->rsize = option;
+>  			break;
+>  		case Opt_wsize:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("wsize");
+>  			} else
+>  				mnt->wsize = option;
+>  			break;
+>  		case Opt_bsize:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("bsize");
+>  			} else
+>  				mnt->bsize = option;
+>  			break;
+>  		case Opt_timeo:
+>  			if (match_int(args, &option) || option <= 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("timeo");
+>  			} else
+>  				mnt->timeo = option;
+>  			break;
+>  		case Opt_retrans:
+>  			if (match_int(args, &option) || option <= 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("retrans");
+>  			} else
+>  				mnt->retrans = option;
+>  			break;
+>  		case Opt_acregmin:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("acregmin");
+>  			} else
+>  				mnt->acregmin = option;
+>  			break;
+>  		case Opt_acregmax:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("acregmax");
+>  			} else
+>  				mnt->acregmax = option;
+>  			break;
+>  		case Opt_acdirmin:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("acdirmin");
+>  			} else
+>  				mnt->acdirmin = option;
+>  			break;
+>  		case Opt_acdirmax:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("acdirmax");
+>  			} else
+>  				mnt->acdirmax = option;
+>  			break;
+>  		case Opt_actimeo:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("actimeo");
+>  			} else
+>  				mnt->acregmin = mnt->acregmax =
+> @@ -1170,7 +1170,7 @@ static int nfs_parse_mount_options(char *raw,
+>  			break;
+>  		case Opt_namelen:
+>  			if (match_int(args, &option) || option < 0) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("namlen");
+>  			} else
+>  				mnt->namlen = option;
+> @@ -1178,7 +1178,7 @@ static int nfs_parse_mount_options(char *raw,
+>  		case Opt_mountport:
+>  			if (match_int(args, &option) ||
+>  			    option < 0 || option > USHORT_MAX) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("mountport");
+>  			} else
+>  				mnt->mount_server.port = option;
+> @@ -1187,14 +1187,14 @@ static int nfs_parse_mount_options(char *raw,
+>  			if (match_int(args, &option) ||
+>  			    option < NFS_MNT_VERSION ||
+>  			    option > NFS_MNT3_VERSION) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("mountvers");
+>  			} else
+>  				mnt->mount_server.version = option;
+>  			break;
+>  		case Opt_nfsvers:
+>  			if (match_int(args, &option)) {
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("nfsvers");
+>  				break;
+>  			}
+> @@ -1206,7 +1206,7 @@ static int nfs_parse_mount_options(char *raw,
+>  				mnt->flags |= NFS_MOUNT_VER3;
+>  				break;
+>  			default:
+> -				errors++;
+> +				invalid_values++;
+>  				nfs_parse_invalid_value("nfsvers");
+>  			}
+>  			break;
+> @@ -1221,7 +1221,7 @@ static int nfs_parse_mount_options(char *raw,
+>  			rc = nfs_parse_security_flavors(string, mnt);
+>  			kfree(string);
+>  			if (!rc) {
+> -				errors++;
+> +				invalid_values++;
+>  				dfprintk(MOUNT, "NFS:   unrecognized "
+>  						"security flavor\n");
+>  			}
+> @@ -1249,7 +1249,7 @@ static int nfs_parse_mount_options(char *raw,
+>  				xprt_load_transport(string);
+>  				break;
+>  			default:
+> -				errors++;
+> +				invalid_values++;
+>  				dfprintk(MOUNT, "NFS:   unrecognized "
+>  						"transport protocol\n");
+>  			}
+> @@ -1272,7 +1272,7 @@ static int nfs_parse_mount_options(char *raw,
+>  				break;
+>  			case Opt_xprt_rdma: /* not used for side protocols */
+>  			default:
+> -				errors++;
+> +				invalid_values++;
+>  				dfprintk(MOUNT, "NFS:   unrecognized "
+>  						"transport protocol\n");
+>  			}
+> @@ -1330,7 +1330,7 @@ static int nfs_parse_mount_options(char *raw,
+>  					mnt->flags |= NFS_MOUNT_LOOKUP_CACHE_NONEG|NFS_MOUNT_LOOKUP_CACHE_NONE;
+>  					break;
+>  				default:
+> -					errors++;
+> +					invalid_values++;
+>  					dfprintk(MOUNT, "NFS:   invalid "
+>  							"lookupcache argument\n");
+>  			};
+> @@ -1350,15 +1350,22 @@ static int nfs_parse_mount_options(char *raw,
+>  			break;
+>  
+>  		default:
+> -			errors++;
+> +			invalid_options++;
+>  			dfprintk(MOUNT, "NFS:   unrecognized mount option "
+>  					"'%s'\n", p);
+>  		}
+>  	}
+>  
+> -	if (errors > 0) {
+> -		dfprintk(MOUNT, "NFS: parsing encountered %d error%s\n",
+> -				errors, (errors == 1 ? "" : "s"));
+> +	if (invalid_values > 0) {
+> +		dfprintk(MOUNT, "NFS: parsing encountered %d invalid value%s\n",
+> +				invalid_values,
+> +				invalid_values == 1 ? "" : "s");
+> +		return 0;
+> +	}
+> +	if (invalid_options > 0) {
+> +		dfprintk(MOUNT, "NFS: parsing encountered %d invalid option%s\n",
+> +				invalid_options,
+> +				invalid_options == 1 ? "" : "s");
+>  		if (!sloppy)
+>  			return 0;
+>  	}
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
