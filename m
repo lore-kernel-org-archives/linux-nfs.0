@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 08/14] SQUASHME: Removal of ugly #ifdefs
-Date: Sun, 14 Jun 2009 12:53:32 -0400
-Message-ID: <1244998412.5298.0.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 11/14] SQUASHME: Moves embedded #ifdefs into #ifdef
+ function blocks
+Date: Sun, 14 Jun 2009 12:55:06 -0400
+Message-ID: <1244998506.5298.2.camel@heimdal.trondhjem.org>
 References: <> <1244786060-2200-1-git-send-email-Ricardo.Labiaga@netapp.com>
 	 <1244786060-2200-2-git-send-email-Ricardo.Labiaga@netapp.com>
 	 <1244786060-2200-3-git-send-email-Ricardo.Labiaga@netapp.com>
@@ -11,147 +12,106 @@ References: <> <1244786060-2200-1-git-send-email-Ricardo.Labiaga@netapp.com>
 	 <1244786060-2200-7-git-send-email-Ricardo.Labiaga@netapp.com>
 	 <1244786060-2200-8-git-send-email-Ricardo.Labiaga@netapp.com>
 	 <1244786060-2200-9-git-send-email-Ricardo.Labiaga@netapp.com>
-	 <4A35097B.70605@panasas.com>
+	 <1244786060-2200-10-git-send-email-Ricardo.Labiaga@netapp.com>
+	 <1244786060-2200-11-git-send-email-Ricardo.Labiaga@netapp.com>
+	 <1244786060-2200-12-git-send-email-Ricardo.Labiaga@netapp.com>
+	 <4A350B99.90104@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>, pnfs@linux-nfs.org,
 	linux-nfs@vger.kernel.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55693 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29691 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751997AbZFNQxc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Jun 2009 12:53:32 -0400
-In-Reply-To: <4A35097B.70605@panasas.com>
+	id S1752648AbZFNQzF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Jun 2009 12:55:05 -0400
+In-Reply-To: <4A350B99.90104@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-06-14 at 10:30 -0400, Benny Halevy wrote:
+On Sun, 2009-06-14 at 10:39 -0400, Benny Halevy wrote:
 > On Jun. 12, 2009, 1:54 -0400, Ricardo Labiaga <Ricardo.Labiaga@netapp.com> wrote:
-> > [squash with: nfs41: Implement NFSv4.1 callback service process]
+> > [squash with: nfs41: New xs_tcp_read_data()]
 > > 
 > > Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 > > ---
-> >  fs/nfs/callback.c |   50 +++++++++++++++++++++++++++++++++++---------------
-> >  1 files changed, 35 insertions(+), 15 deletions(-)
+> >  net/sunrpc/xprtsock.c |   28 ++++++++++++++++++----------
+> >  1 files changed, 18 insertions(+), 10 deletions(-)
 > > 
-> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > index 4395c96..116424e 100644
-> > --- a/fs/nfs/callback.c
-> > +++ b/fs/nfs/callback.c
-> > @@ -209,6 +209,39 @@ out:
-> >  	dprintk("--> %s return %p\n", __func__, rqstp);
-> >  	return rqstp;
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index fe57ebd..c6f24c0 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -1207,6 +1207,23 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+> >  
+> >  	return 0;
 > >  }
 > > +
-> > +static inline void nfs_callback_svc_setup(u32 minorversion,
-> > +		struct svc_serv *serv, struct rpc_xprt *xprt,
-> > +		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+> > +static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
+> > +					struct xdr_skb_reader *desc)
 > > +{
-> > +	if (minorversion) {
-> > +		*rqstpp = nfs41_callback_up(serv, xprt);
-> > +		*callback_svc = nfs41_callback_svc;
-> > +	} else {
-> > +		*rqstpp = nfs4_callback_up(serv);
-> > +		*callback_svc = nfs4_callback_svc;
-> > +	}
-> > +}
+> > +	struct sock_xprt *transport =
+> > +				container_of(xprt, struct sock_xprt, xprt);
 > > +
-> > +static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
-> > +		struct nfs_callback_data *cb_info)
-> > +{
-> > +	if (minorversion)
-> > +		xprt->bc_serv = cb_info->serv;
+> > +	return (transport->tcp_flags & TCP_RPC_REPLY) ?
+> > +		xs_tcp_read_reply(xprt, desc) :
+> > +		xs_tcp_read_callback(xprt, desc);
 > > +}
 > > +#else
-> > +static inline void nfs_callback_svc_setup(u32 minorversion,
-> > +		struct svc_serv *serv, struct rpc_xprt *xprt,
-> > +		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+> > +static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
+> > +					struct xdr_skb_reader *desc)
 > > +{
-> > +	*rqstpp = nfs4_callback_up(serv);
-> > +	*callback_svc = nfs4_callback_svc;
-> > +}
-> > +
-> > +static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
-> > +		struct nfs_callback_data *cb_info)
-> > +{
+> > +	return xs_tcp_read_reply(xprt, desc);
 > > +}
 > >  #endif /* CONFIG_NFS_V4_1 */
 > 
-> Although this removes the ungly #ifdefs from inside nfs_callback_up
-> it just introduces them elsewhere and what's worse, it adds code
-> duplication which is even more unreadable and harder to maintain.
+> Again, I'd be inclined to avoid duplicating code.
+> If we want still to use an #ifdef (and in this case
+> we might as well just always check the tcp_flags)
+> the I'd suggest to code this as follows:
 > 
-> How about something along these line?
-> 
-> static inline void nfs_callback_svc_setup(u32 minorversion,
-> 		struct svc_serv *serv, struct rpc_xprt *xprt,
-> 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+> static inline int _xs_tcp_read_data(struct rpc_xprt *xprt,
+> 				    struct xdr_skb_reader *desc)
 > {
-> #ifdef CONFIG_NFS_V4_1
-> 	if (minorversion) {
-> 		*rqstpp = nfs41_callback_up(serv, xprt);
-> 		*callback_svc = nfs41_callback_svc;
-> 		return;
-> 	}
-> #endif /* CONFIG_NFS_V4_1 */\
-
-NACK.... That's _exactly_ the kind of unreadable nonsense I _DON'T_ want
-to see....
-
-> 	*rqstpp = nfs4_callback_up(serv);
-> 	*callback_svc = nfs4_callback_svc;
-> }
+> #ifdef /* CONFIG_NFS_V4_1 */
+> 	struct sock_xprt *transport =
+> 				container_of(xprt, struct sock_xprt, xprt);
 > 
-> static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
-> 		struct nfs_callback_data *cb_info)
-> {
-> #ifdef CONFIG_NFS_V4_1
-> 	if (minorversion)
-> 		xprt->bc_serv = cb_info->serv;
-> #endif /* CONFIG_NFS_V4_1 */
+> 	if (!(transport->tcp_flags & TCP_RPC_REPLY))
+> 		return xs_tcp_read_callback(xprt, desc);
+> #ifdef /* CONFIG_NFS_V4_1 */
+> 
+> 	return xs_tcp_read_reply(xprt, desc);
 > }
 > 
 > Benny
 > 
 > >  
 > >  /*
-> > @@ -225,10 +258,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
-> >  
-> >  	mutex_lock(&nfs_callback_mutex);
-> >  	if (cb_info->users++ || cb_info->task != NULL) {
+> > @@ -1218,17 +1235,8 @@ static void xs_tcp_read_data(struct rpc_xprt *xprt,
+> >  {
+> >  	struct sock_xprt *transport =
+> >  				container_of(xprt, struct sock_xprt, xprt);
+> > -	int status;
+> > -
 > > -#if defined(CONFIG_NFS_V4_1)
-> > -		if (minorversion)
-> > -			xprt->bc_serv = cb_info->serv;
+> > -	status = (transport->tcp_flags & TCP_RPC_REPLY) ?
+> > -		xs_tcp_read_reply(xprt, desc) :
+> > -		xs_tcp_read_callback(xprt, desc);
+> > -#else
+> > -	status = xs_tcp_read_reply(xprt, desc);
 > > -#endif /* CONFIG_NFS_V4_1 */
-> > +		nfs_callback_bc_serv(minorversion, xprt, cb_info);
-> >  		goto out;
-> >  	}
-> >  	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
-> > @@ -239,17 +269,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
 > >  
-> >  	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
-> >  	 * need to monitor and control them both */
-> > -	if (!minorversion) {
-> > -		rqstp = nfs4_callback_up(serv);
-> > -		callback_svc = nfs4_callback_svc;
-> > -	} else {
-> > -#if defined(CONFIG_NFS_V4_1)
-> > -		rqstp = nfs41_callback_up(serv, xprt);
-> > -		callback_svc = nfs41_callback_svc;
-> > -#else  /* CONFIG_NFS_V4_1 */
-> > -		BUG();
-> > -#endif /* CONFIG_NFS_V4_1 */
-> > -	}
-> > +	nfs_callback_svc_setup(minorversion, serv, xprt, &rqstp, &callback_svc);
-> >  
-> >  	if (IS_ERR(rqstp)) {
-> >  		ret = PTR_ERR(rqstp);
+> > -	if (status == 0)
+> > +	if (_xs_tcp_read_data(xprt, desc) == 0)
+> >  		xs_tcp_check_fraghdr(transport);
+> >  	else {
+> >  		/*
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+NO! Just put the bits that are v4.1 specific in a function (make said
+function empty in the !v4.1 case, and call it from the common code.
 
 -- 
 Trond Myklebust
