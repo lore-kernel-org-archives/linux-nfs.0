@@ -1,100 +1,68 @@
-From: Bart Trojanowski <bart-LIbhotJ4rFdeoWH0uzbU5w@public.gmane.org>
-Subject: Re: [v2.6.30 nfs+fscache] swapper: possible circular locking
-	dependency detected
-Date: Sun, 14 Jun 2009 13:43:30 -0400
-Message-ID: <20090614174329.GA4721@jukie.net>
-References: <20090613182721.GA24072@jukie.net> <20090614141459.GA5543@jukie.net>
+From: Sascha Frey <sfrey-15KJMqYlBKyzX87ganJRvOIeGoz/g4FR@public.gmane.org>
+Subject: exporting subdirectory of shared filesystem to different hosts
+Date: Sun, 14 Jun 2009 19:53:25 +0200
+Message-ID: <20090614175325.GA10466@TechFak.Uni-Bielefeld.DE>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
-	linux-mm@kvack.org
-To: David Howells <dhowells@redhat.com>, linux-kernel@vger.kernel.org
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from tau.jukie.net ([216.239.93.128]:58918 "EHLO tau.jukie.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753518AbZFNRn2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Jun 2009 13:43:28 -0400
-In-Reply-To: <20090614141459.GA5543-LIbhotJ4rFdeoWH0uzbU5w@public.gmane.org>
+Received: from smarthost.piip.TechFak.Uni-Bielefeld.DE ([129.70.137.17]:54694
+	"EHLO smarthost.TechFak.Uni-Bielefeld.DE" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751764AbZFNSBc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Jun 2009 14:01:32 -0400
+Received: from vesuv.localdomain (vesuv.TechFak.Uni-Bielefeld.DE [129.70.137.28])
+	by smarthost.TechFak.Uni-Bielefeld.DE (Postfix) with ESMTP id 904FE4829A
+	for <linux-nfs@vger.kernel.org>; Sun, 14 Jun 2009 19:53:25 +0200 (CEST)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's me again.
+Hi,
 
-I am tyring to decipher the lockdep report...
+we have some Linux NFS servers distributing our users' homes to our
+clients.
 
-* Bart Trojanowski <bart-LIbhotJ4rFdeoWH0uzbU5w@public.gmane.org> [090614 10:15]:
-> =======================================================
-> [ INFO: possible circular locking dependency detected ]
-> 2.6.30-kvm3-dirty #4
-> -------------------------------------------------------
-> swapper/0 is trying to acquire lock:
->  (&cwq->lock){..-...}, at: [<ffffffff80256c37>] __queue_work+0x1d/0x43
-> 
-> but task is already holding lock:
->  (&q->lock){-.-.-.}, at: [<ffffffff80235b6a>] __wake_up+0x27/0x55
-> 
-> which lock already depends on the new lock.
-> 
-> 
-> the existing dependency chain (in reverse order) is:
-> 
-> -> #1 (&q->lock){-.-.-.}:
->        [<ffffffff8026b7f6>] __lock_acquire+0x1350/0x16b4
->        [<ffffffff8026bc21>] lock_acquire+0xc7/0xf3
->        [<ffffffff805a22e1>] _spin_lock_irqsave+0x4f/0x86
->        [<ffffffff80235b6a>] __wake_up+0x27/0x55
->        [<ffffffff8025620b>] insert_work+0x9a/0xa6
->        [<ffffffff80256c49>] __queue_work+0x2f/0x43
->        [<ffffffff80256cec>] queue_work_on+0x4a/0x53
->        [<ffffffff80256e49>] queue_work+0x1f/0x21
-<snip>
+We are using NIS netgroups to restrict access to certain NFS shares.
+Our /etc/exports file looks like this:
+/var/lib/nfs/v4root \
+        *(ro,fsid=0,insecure,no_subtree_check)
+/export/homes \
+        -rw,async,insecure,no_subtree_check @netgroupA
+/var/lib/nfs/v4root/export/homes \
+        -rw,async,insecure,nohide,no_subtree_check @netgroupA
 
-So, here I can see that we take the cwq->lock first, when __queue_work
-does:
+(/export/homes is bind-mounted to /var/lib/nfs/v4root/export/homes to
+have the same path for NFSv3 and v4 exports.)
 
-        spin_lock_irqsave(&cwq->lock, flags);
-        insert_work(cwq, work, &cwq->worklist);
-        spin_unlock_irqrestore(&cwq->lock, flags);
+Now we need to export some of the home directories to an additional
+group of hosts. So we added two lines for each one of these 'special
+cases' to the exports file:
 
-and later take the q->lock when insert_work calls to __wake_up:
+/export/homes/usera \
+        -rw,async,insecure,no_subtree_check @netgroupA @netgroupB
+/var/lib/nfs/v4root/export/homes/usera \
+        -rw,async,insecure,nohide,no_subtree_check @netgroupA @netgroupB
 
-        spin_lock_irqsave(&q->lock, flags);
-        __wake_up_common(q, mode, nr_exclusive, 0, key);
-        spin_unlock_irqrestore(&q->lock, flags);
+Our Problem:
+Hosts, which are member of netgroupB, are unable to mount
+server:/export/homes/usera, if using NFSv4:
+client:~# mount -t nfs4 server:/export/homes/usera /mnt
+mount.nfs4: mounting server:/export/homes/usera failed, reason given by
+server:
+  No such file or directory
 
-But previously the order was reversed:
+NFSv3 mount works (-t nfs)...
 
-> stack backtrace:
-> Pid: 0, comm: swapper Not tainted 2.6.30-kvm3-dirty #4
-> Call Trace:
->  <IRQ>  [<ffffffff80269ffe>] print_circular_bug_tail+0xc1/0xcc
->  [<ffffffff8026b52b>] __lock_acquire+0x1085/0x16b4
->  [<ffffffff802685b4>] ? save_trace+0x3f/0xa6
->  [<ffffffff8026ba78>] ? __lock_acquire+0x15d2/0x16b4
->  [<ffffffff8026bc21>] lock_acquire+0xc7/0xf3
->  [<ffffffff80256c37>] ? __queue_work+0x1d/0x43
->  [<ffffffff805a22e1>] _spin_lock_irqsave+0x4f/0x86
->  [<ffffffff80256c37>] ? __queue_work+0x1d/0x43
->  [<ffffffff80256c37>] __queue_work+0x1d/0x43
->  [<ffffffff80256cec>] queue_work_on+0x4a/0x53
->  [<ffffffff80256e49>] queue_work+0x1f/0x21
->  [<ffffffff80256e66>] schedule_work+0x1b/0x1d
->  [<ffffffffa00e9268>] fscache_enqueue_operation+0xec/0x11e [fscache]
->  [<ffffffffa00fd662>] cachefiles_read_waiter+0xee/0x102 [cachefiles]
->  [<ffffffff80233a55>] __wake_up_common+0x4b/0x7a
->  [<ffffffff80235b80>] __wake_up+0x3d/0x55
->  [<ffffffff8025a2f1>] __wake_up_bit+0x31/0x33
->  [<ffffffff802a52af>] unlock_page+0x27/0x2b
+We can't export the whole homes-tree to netgroupB. Adding entries in
+/etc/exports isn't a good idea either (we have more than 2000 home
+directories).
 
-Here the __wake_up happens first, which takes the q->lock, and later the
-__queue_work would take the cwq->lock.
 
-I am guessing that it's not safe for fscache to call out to queue_work
-from this cachefiles_read_waiter() context (more specifically
-fscache_enqueue_operation calls schedule_work).  I don't have much
-experience with lockdep...  does that make any sense?
+Is there any chance to get this working without setting up export
+entries for each single home directory?
 
--Bart
 
--- 
-				WebSig: http://www.jukie.net/~bart/sig/
+
+
+Thanks,
+Sascha
+
