@@ -1,74 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: exporting subdirectory of shared filesystem to different hosts
-Date: Mon, 15 Jun 2009 18:49:21 -0400
-Message-ID: <20090615224921.GA17917@fieldses.org>
-References: <20090614175325.GA10466@TechFak.Uni-Bielefeld.DE>
+From: Amit Gud <agud@akamai.com>
+Subject: Re: [PATCH] NFS: Add acreg{min,max} and acdir{min,max} in milliseconds
+Date: Mon, 15 Jun 2009 15:53:05 -0700
+Message-ID: <4A36D0D1.3000904@akamai.com>
+References: <200906091832.50633.agud@akamai.com>	 <1244636844.24750.23.camel@heimdal.trondhjem.org>	 <4A300CE3.8080502@akamai.com>	 <025BEFCD-2F56-4E29-99F9-1939867B48A7@fys.uio.no>	 <4A316814.7030609@akamai.com>	 <1244754888.5047.132.camel@heimdal.trondhjem.org>	 <4A32ACDB.90802@akamai.com>	 <1244836259.19533.19.camel@heimdal.trondhjem.org>	 <4A32CD5D.2070502@akamai.com> <1244846673.32257.69.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Sascha Frey <sfrey-15KJMqYlBKyzX87ganJRvOIeGoz/g4FR@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	Steve Dickson <SteveD@redhat.com>, "gud-OYTqUY/oFF8@public.gmane.org" <gud-OYTqUY/oFF8@public.gmane.org>,
+	"Uhlenkott, Jason" <juhlenko@akamai.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:35080 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758795AbZFOWtU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 18:49:20 -0400
-In-Reply-To: <20090614175325.GA10466-15KJMqYlBKyzX87ganJRvOIeGoz/g4FR@public.gmane.org>
+Received: from prod-mail-xrelay04.akamai.com ([96.6.114.79]:56099 "EHLO
+	prod-mail-xrelay04.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752315AbZFOWwl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 18:52:41 -0400
+In-Reply-To: <1244846673.32257.69.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jun 14, 2009 at 07:53:25PM +0200, Sascha Frey wrote:
-> Hi,
+Trond Myklebust wrote:
+> It boils down to this: I'm extremely reluctant to get into an arms race
+> of adding ever more mount options for increasingly finer-tuned attribute
+> cache timeouts. While such an option may meet _your_ machine room
+> requirements here and now, it becomes tiresome over the years as
+> machines gain power, and people first start lobbying for millisecond
+> timeouts, then microseconds, nanoseconds, pico... in order to catch up.
 > 
-> we have some Linux NFS servers distributing our users' homes to our
-> clients.
-> 
-> We are using NIS netgroups to restrict access to certain NFS shares.
-> Our /etc/exports file looks like this:
-> /var/lib/nfs/v4root \
->         *(ro,fsid=0,insecure,no_subtree_check)
-> /export/homes \
->         -rw,async,insecure,no_subtree_check @netgroupA
-> /var/lib/nfs/v4root/export/homes \
->         -rw,async,insecure,nohide,no_subtree_check @netgroupA
-> 
-> (/export/homes is bind-mounted to /var/lib/nfs/v4root/export/homes to
-> have the same path for NFSv3 and v4 exports.)
-> 
-> Now we need to export some of the home directories to an additional
-> group of hosts. So we added two lines for each one of these 'special
-> cases' to the exports file:
-> 
-> /export/homes/usera \
->         -rw,async,insecure,no_subtree_check @netgroupA @netgroupB
-> /var/lib/nfs/v4root/export/homes/usera \
->         -rw,async,insecure,nohide,no_subtree_check @netgroupA @netgroupB
-> 
-> Our Problem:
-> Hosts, which are member of netgroupB, are unable to mount
-> server:/export/homes/usera, if using NFSv4:
-> client:~# mount -t nfs4 server:/export/homes/usera /mnt
-> mount.nfs4: mounting server:/export/homes/usera failed, reason given by
-> server:
->   No such file or directory
-> 
-> NFSv3 mount works (-t nfs)...
-> 
-> We can't export the whole homes-tree to netgroupB. Adding entries in
-> /etc/exports isn't a good idea either (we have more than 2000 home
-> directories).
-> 
-> 
-> Is there any chance to get this working without setting up export
-> entries for each single home directory?
 
-Exports really only work well on a whole-filesystem basis.  The server
-is not good at distinguishing between different subtrees of the same
-filesystem.
+It only makes sense to make machines more powerful and put that power to
+optimum use. If keeping up with increased resolution is an issue, you
+think something like "-o unit=ms acregmin=..." would be better? 'unit'
+can apply to all the time related options defaulting to seconds.
 
-Note also: in the above situation, a malicious user in netgroupB can
-probably access anything in /export/homes.  You can fix that by changing
-no_subtree_check to subtree_check, but that may cause unexpected stale
-filehandle errors on renaming files (because it causes the filehandle of
-a file to change depending on which directory it is contained in).
 
---b.
+AG
+-- 
+May the source be with you.
+http://cis.ksu.edu/~gud
