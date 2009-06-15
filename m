@@ -1,200 +1,74 @@
-From: "Halevy, Benny" <bhalevy@panasas.com>
-Subject: RE: [PATCH 08/14] SQUASHME: Removal of ugly #ifdefs
-Date: Mon, 15 Jun 2009 12:59:49 -0400
-Message-ID: <7225594ED4A1304C9E43D030A886D221F4C554@daytona.int.panasas.com>
-References: <273FE88A07F5D445824060902F70034406334CCD@SACMVEXC1-PRD.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: exporting subdirectory of shared filesystem to different hosts
+Date: Mon, 15 Jun 2009 18:49:21 -0400
+Message-ID: <20090615224921.GA17917@fieldses.org>
+References: <20090614175325.GA10466@TechFak.Uni-Bielefeld.DE>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-	<pnfs@linux-nfs.org>, <linux-nfs@vger.kernel.org>
-To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Sascha Frey <sfrey-15KJMqYlBKyzX87ganJRvOIeGoz/g4FR@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:19975
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751275AbZFOREO convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jun 2009 13:04:14 -0400
+Received: from mail.fieldses.org ([141.211.133.115]:35080 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758795AbZFOWtU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 18:49:20 -0400
+In-Reply-To: <20090614175325.GA10466-15KJMqYlBKyzX87ganJRvOIeGoz/g4FR@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> There are two lines in common between the #ifdef and #else case.
+On Sun, Jun 14, 2009 at 07:53:25PM +0200, Sascha Frey wrote:
+> Hi,
 > 
-> +	*rqstpp = nfs4_callback_up(serv);
-> +	*callback_svc = nfs4_callback_svc;
-
-In the function body...
-There's also the function's header.
-
+> we have some Linux NFS servers distributing our users' homes to our
+> clients.
 > 
-> Calling it code duplication is a bit of a stretch :-)
-
-I agree it isn't much but still any change you will make
-in the future will have to bapplied on both copies and that's bad (IMO).
-
-Benny
-
+> We are using NIS netgroups to restrict access to certain NFS shares.
+> Our /etc/exports file looks like this:
+> /var/lib/nfs/v4root \
+>         *(ro,fsid=0,insecure,no_subtree_check)
+> /export/homes \
+>         -rw,async,insecure,no_subtree_check @netgroupA
+> /var/lib/nfs/v4root/export/homes \
+>         -rw,async,insecure,nohide,no_subtree_check @netgroupA
 > 
-> - ricardo
+> (/export/homes is bind-mounted to /var/lib/nfs/v4root/export/homes to
+> have the same path for NFSv3 and v4 exports.)
+> 
+> Now we need to export some of the home directories to an additional
+> group of hosts. So we added two lines for each one of these 'special
+> cases' to the exports file:
+> 
+> /export/homes/usera \
+>         -rw,async,insecure,no_subtree_check @netgroupA @netgroupB
+> /var/lib/nfs/v4root/export/homes/usera \
+>         -rw,async,insecure,nohide,no_subtree_check @netgroupA @netgroupB
+> 
+> Our Problem:
+> Hosts, which are member of netgroupB, are unable to mount
+> server:/export/homes/usera, if using NFSv4:
+> client:~# mount -t nfs4 server:/export/homes/usera /mnt
+> mount.nfs4: mounting server:/export/homes/usera failed, reason given by
+> server:
+>   No such file or directory
+> 
+> NFSv3 mount works (-t nfs)...
+> 
+> We can't export the whole homes-tree to netgroupB. Adding entries in
+> /etc/exports isn't a good idea either (we have more than 2000 home
+> directories).
+> 
+> 
+> Is there any chance to get this working without setting up export
+> entries for each single home directory?
 
------Original Message-----
-From: Labiaga, Ricardo [mailto:Ricardo.Labiaga@netapp.com]
-Sent: Mon 2009-06-15 18:31
-To: Halevy, Benny
-Cc: Myklebust, Trond; pnfs@linux-nfs.org; linux-nfs@vger.kernel.org
-Subject: RE: [PATCH 08/14] SQUASHME: Removal of ugly #ifdefs
- 
-> -----Original Message-----
-> From: Benny Halevy [mailto:bhalevy@panasas.com]
-> Sent: Sunday, June 14, 2009 7:30 AM
-> To: Labiaga, Ricardo
-> Cc: Myklebust, Trond; pnfs@linux-nfs.org; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH 08/14] SQUASHME: Removal of ugly #ifdefs
-> 
-> On Jun. 12, 2009, 1:54 -0400, Ricardo Labiaga
-<Ricardo.Labiaga@netapp.com>
-> wrote:
-> > [squash with: nfs41: Implement NFSv4.1 callback service process]
-> >
-> > Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> > ---
-> >  fs/nfs/callback.c |   50
-+++++++++++++++++++++++++++++++++++-----------
-> ----
-> >  1 files changed, 35 insertions(+), 15 deletions(-)
-> >
-> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > index 4395c96..116424e 100644
-> > --- a/fs/nfs/callback.c
-> > +++ b/fs/nfs/callback.c
-> > @@ -209,6 +209,39 @@ out:
-> >  	dprintk("--> %s return %p\n", __func__, rqstp);
-> >  	return rqstp;
-> >  }
-> > +
-> > +static inline void nfs_callback_svc_setup(u32 minorversion,
-> > +		struct svc_serv *serv, struct rpc_xprt *xprt,
-> > +		struct svc_rqst **rqstpp, int (**callback_svc)(void
-*vrqstp))
-> > +{
-> > +	if (minorversion) {
-> > +		*rqstpp = nfs41_callback_up(serv, xprt);
-> > +		*callback_svc = nfs41_callback_svc;
-> > +	} else {
-> > +		*rqstpp = nfs4_callback_up(serv);
-> > +		*callback_svc = nfs4_callback_svc;
-> > +	}
-> > +}
-> > +
-> > +static inline void nfs_callback_bc_serv(u32 minorversion, struct
-> rpc_xprt *xprt,
-> > +		struct nfs_callback_data *cb_info)
-> > +{
-> > +	if (minorversion)
-> > +		xprt->bc_serv = cb_info->serv;
-> > +}
-> > +#else
-> > +static inline void nfs_callback_svc_setup(u32 minorversion,
-> > +		struct svc_serv *serv, struct rpc_xprt *xprt,
-> > +		struct svc_rqst **rqstpp, int (**callback_svc)(void
-*vrqstp))
-> > +{
-> > +	*rqstpp = nfs4_callback_up(serv);
-> > +	*callback_svc = nfs4_callback_svc;
-> > +}
-> > +
-> > +static inline void nfs_callback_bc_serv(u32 minorversion, struct
-> rpc_xprt *xprt,
-> > +		struct nfs_callback_data *cb_info)
-> > +{
-> > +}
-> >  #endif /* CONFIG_NFS_V4_1 */
-> 
-> Although this removes the ungly #ifdefs from inside nfs_callback_up
-> it just introduces them elsewhere and what's worse, it adds code
-> duplication which is even more unreadable and harder to maintain.
-> 
+Exports really only work well on a whole-filesystem basis.  The server
+is not good at distinguishing between different subtrees of the same
+filesystem.
 
-There are two lines in common between the #ifdef and #else case.
+Note also: in the above situation, a malicious user in netgroupB can
+probably access anything in /export/homes.  You can fix that by changing
+no_subtree_check to subtree_check, but that may cause unexpected stale
+filehandle errors on renaming files (because it causes the filehandle of
+a file to change depending on which directory it is contained in).
 
-+	*rqstpp = nfs4_callback_up(serv);
-+	*callback_svc = nfs4_callback_svc;
-
-Calling it code duplication is a bit of a stretch :-)
-
-- ricardo
-
-> How about something along these line?
-> 
-> static inline void nfs_callback_svc_setup(u32 minorversion,
-> 		struct svc_serv *serv, struct rpc_xprt *xprt,
-> 		struct svc_rqst **rqstpp, int (**callback_svc)(void
-*vrqstp))
-> {
-> #ifdef CONFIG_NFS_V4_1
-> 	if (minorversion) {
-> 		*rqstpp = nfs41_callback_up(serv, xprt);
-> 		*callback_svc = nfs41_callback_svc;
-> 		return;
-> 	}
-> #endif /* CONFIG_NFS_V4_1 */
-> 	*rqstpp = nfs4_callback_up(serv);
-> 	*callback_svc = nfs4_callback_svc;
-> }
-> 
-> static inline void nfs_callback_bc_serv(u32 minorversion, struct
-rpc_xprt
-> *xprt,
-> 		struct nfs_callback_data *cb_info)
-> {
-> #ifdef CONFIG_NFS_V4_1
-> 	if (minorversion)
-> 		xprt->bc_serv = cb_info->serv;
-> #endif /* CONFIG_NFS_V4_1 */
-> }
-> 
-> Benny
-> 
-> >
-> >  /*
-> > @@ -225,10 +258,7 @@ int nfs_callback_up(u32 minorversion, struct
-> rpc_xprt *xprt)
-> >
-> >  	mutex_lock(&nfs_callback_mutex);
-> >  	if (cb_info->users++ || cb_info->task != NULL) {
-> > -#if defined(CONFIG_NFS_V4_1)
-> > -		if (minorversion)
-> > -			xprt->bc_serv = cb_info->serv;
-> > -#endif /* CONFIG_NFS_V4_1 */
-> > +		nfs_callback_bc_serv(minorversion, xprt, cb_info);
-> >  		goto out;
-> >  	}
-> >  	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE,
-> NULL);
-> > @@ -239,17 +269,7 @@ int nfs_callback_up(u32 minorversion, struct
-> rpc_xprt *xprt)
-> >
-> >  	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
-> >  	 * need to monitor and control them both */
-> > -	if (!minorversion) {
-> > -		rqstp = nfs4_callback_up(serv);
-> > -		callback_svc = nfs4_callback_svc;
-> > -	} else {
-> > -#if defined(CONFIG_NFS_V4_1)
-> > -		rqstp = nfs41_callback_up(serv, xprt);
-> > -		callback_svc = nfs41_callback_svc;
-> > -#else  /* CONFIG_NFS_V4_1 */
-> > -		BUG();
-> > -#endif /* CONFIG_NFS_V4_1 */
-> > -	}
-> > +	nfs_callback_svc_setup(minorversion, serv, xprt, &rqstp,
-> &callback_svc);
-> >
-> >  	if (IS_ERR(rqstp)) {
-> >  		ret = PTR_ERR(rqstp);
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+--b.
