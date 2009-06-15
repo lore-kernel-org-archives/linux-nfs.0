@@ -1,68 +1,157 @@
-From: Sascha Frey <sfrey-15KJMqYlBKyzX87ganJRvOIeGoz/g4FR@public.gmane.org>
-Subject: exporting subdirectory of shared filesystem to different hosts
-Date: Sun, 14 Jun 2009 19:53:25 +0200
-Message-ID: <20090614175325.GA10466@TechFak.Uni-Bielefeld.DE>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [pnfs] [PATCH 08/14] SQUASHME: Removal of ugly #ifdefs
+Date: Mon, 15 Jun 2009 11:48:36 +0300
+Message-ID: <4A360AE4.7040803@panasas.com>
+References: <> <1244786060-2200-1-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-2-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-3-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-4-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-5-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-6-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-7-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-8-git-send-email-Ricardo.Labiaga@netapp.com>	<1244786060-2200-9-git-send-email-Ricardo.Labiaga@netapp.com>	<4A35097B.70605@panasas.com> <1244998412.5298.0.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smarthost.piip.TechFak.Uni-Bielefeld.DE ([129.70.137.17]:54694
-	"EHLO smarthost.TechFak.Uni-Bielefeld.DE" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751764AbZFNSBc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Jun 2009 14:01:32 -0400
-Received: from vesuv.localdomain (vesuv.TechFak.Uni-Bielefeld.DE [129.70.137.28])
-	by smarthost.TechFak.Uni-Bielefeld.DE (Postfix) with ESMTP id 904FE4829A
-	for <linux-nfs@vger.kernel.org>; Sun, 14 Jun 2009 19:53:25 +0200 (CEST)
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:4283
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751165AbZFOJDx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 05:03:53 -0400
+In-Reply-To: <1244998412.5298.0.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On 06/14/2009 07:53 PM, Trond Myklebust wrote:
+> On Sun, 2009-06-14 at 10:30 -0400, Benny Halevy wrote:
+>> On Jun. 12, 2009, 1:54 -0400, Ricardo Labiaga <Ricardo.Labiaga@netapp.com> wrote:
+>>> [squash with: nfs41: Implement NFSv4.1 callback service process]
+>>>
+>>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>>> ---
+>>>  fs/nfs/callback.c |   50 +++++++++++++++++++++++++++++++++++---------------
+>>>  1 files changed, 35 insertions(+), 15 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>>> index 4395c96..116424e 100644
+>>> --- a/fs/nfs/callback.c
+>>> +++ b/fs/nfs/callback.c
+>>> @@ -209,6 +209,39 @@ out:
+>>>  	dprintk("--> %s return %p\n", __func__, rqstp);
+>>>  	return rqstp;
+>>>  }
+>>> +
+>>> +static inline void nfs_callback_svc_setup(u32 minorversion,
+>>> +		struct svc_serv *serv, struct rpc_xprt *xprt,
+>>> +		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+>>> +{
+>>> +	if (minorversion) {
+>>> +		*rqstpp = nfs41_callback_up(serv, xprt);
+>>> +		*callback_svc = nfs41_callback_svc;
+>>> +	} else {
+>>> +		*rqstpp = nfs4_callback_up(serv);
+>>> +		*callback_svc = nfs4_callback_svc;
+>>> +	}
+>>> +}
+>>> +
+>>> +static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>>> +		struct nfs_callback_data *cb_info)
+>>> +{
+>>> +	if (minorversion)
+>>> +		xprt->bc_serv = cb_info->serv;
+>>> +}
+>>> +#else
+>>> +static inline void nfs_callback_svc_setup(u32 minorversion,
+>>> +		struct svc_serv *serv, struct rpc_xprt *xprt,
+>>> +		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+>>> +{
+>>> +	*rqstpp = nfs4_callback_up(serv);
+>>> +	*callback_svc = nfs4_callback_svc;
+>>> +}
+>>> +
+>>> +static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>>> +		struct nfs_callback_data *cb_info)
+>>> +{
+>>> +}
+>>>  #endif /* CONFIG_NFS_V4_1 */
+>> Although this removes the ungly #ifdefs from inside nfs_callback_up
+>> it just introduces them elsewhere and what's worse, it adds code
+>> duplication which is even more unreadable and harder to maintain.
+>>
+>> How about something along these line?
+>>
+>> static inline void nfs_callback_svc_setup(u32 minorversion,
+>> 		struct svc_serv *serv, struct rpc_xprt *xprt,
+>> 		struct svc_rqst **rqstpp, int (**callback_svc)(void *vrqstp))
+>> {
+>> #ifdef CONFIG_NFS_V4_1
+>> 	if (minorversion) {
+>> 		*rqstpp = nfs41_callback_up(serv, xprt);
+>> 		*callback_svc = nfs41_callback_svc;
+>> 		return;
+>> 	}
+>> #endif /* CONFIG_NFS_V4_1 */\
+> 
+> NACK.... That's _exactly_ the kind of unreadable nonsense I _DON'T_ want
+> to see....
+> 
+if you do somewhere global
+#ifdef CONFIG_NFS_V4_1
+	...
+#else
+	const int minorversion = 0;
+#endif
 
-we have some Linux NFS servers distributing our users' homes to our
-clients.
+Then the above if (minorversion) will be optimized out if not CONFIG_NFS_V4_1,
+by the compiler. (And as a bonus it still gets parsed even if not defined)
 
-We are using NIS netgroups to restrict access to certain NFS shares.
-Our /etc/exports file looks like this:
-/var/lib/nfs/v4root \
-        *(ro,fsid=0,insecure,no_subtree_check)
-/export/homes \
-        -rw,async,insecure,no_subtree_check @netgroupA
-/var/lib/nfs/v4root/export/homes \
-        -rw,async,insecure,nohide,no_subtree_check @netgroupA
+>> 	*rqstpp = nfs4_callback_up(serv);
+>> 	*callback_svc = nfs4_callback_svc;
+>> }
+>>
+>> static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>> 		struct nfs_callback_data *cb_info)
+>> {
+>> #ifdef CONFIG_NFS_V4_1
+>> 	if (minorversion)
+>> 		xprt->bc_serv = cb_info->serv;
+>> #endif /* CONFIG_NFS_V4_1 */
+>> }
+>>
+>> Benny
+>>
+>>>  
+>>>  /*
+>>> @@ -225,10 +258,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+>>>  
+>>>  	mutex_lock(&nfs_callback_mutex);
+>>>  	if (cb_info->users++ || cb_info->task != NULL) {
+>>> -#if defined(CONFIG_NFS_V4_1)
+>>> -		if (minorversion)
+>>> -			xprt->bc_serv = cb_info->serv;
+>>> -#endif /* CONFIG_NFS_V4_1 */
+>>> +		nfs_callback_bc_serv(minorversion, xprt, cb_info);
+>>>  		goto out;
+>>>  	}
+>>>  	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
+>>> @@ -239,17 +269,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+>>>  
+>>>  	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
+>>>  	 * need to monitor and control them both */
+>>> -	if (!minorversion) {
+>>> -		rqstp = nfs4_callback_up(serv);
+>>> -		callback_svc = nfs4_callback_svc;
+>>> -	} else {
+>>> -#if defined(CONFIG_NFS_V4_1)
+>>> -		rqstp = nfs41_callback_up(serv, xprt);
+>>> -		callback_svc = nfs41_callback_svc;
+>>> -#else  /* CONFIG_NFS_V4_1 */
+>>> -		BUG();
+>>> -#endif /* CONFIG_NFS_V4_1 */
+>>> -	}
+>>> +	nfs_callback_svc_setup(minorversion, serv, xprt, &rqstp, &callback_svc);
+>>>  
+>>>  	if (IS_ERR(rqstp)) {
+>>>  		ret = PTR_ERR(rqstp);
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-(/export/homes is bind-mounted to /var/lib/nfs/v4root/export/homes to
-have the same path for NFSv3 and v4 exports.)
-
-Now we need to export some of the home directories to an additional
-group of hosts. So we added two lines for each one of these 'special
-cases' to the exports file:
-
-/export/homes/usera \
-        -rw,async,insecure,no_subtree_check @netgroupA @netgroupB
-/var/lib/nfs/v4root/export/homes/usera \
-        -rw,async,insecure,nohide,no_subtree_check @netgroupA @netgroupB
-
-Our Problem:
-Hosts, which are member of netgroupB, are unable to mount
-server:/export/homes/usera, if using NFSv4:
-client:~# mount -t nfs4 server:/export/homes/usera /mnt
-mount.nfs4: mounting server:/export/homes/usera failed, reason given by
-server:
-  No such file or directory
-
-NFSv3 mount works (-t nfs)...
-
-We can't export the whole homes-tree to netgroupB. Adding entries in
-/etc/exports isn't a good idea either (we have more than 2000 home
-directories).
-
-
-Is there any chance to get this working without setting up export
-entries for each single home directory?
-
-
-
-
-Thanks,
-Sascha
-
+Boaz
