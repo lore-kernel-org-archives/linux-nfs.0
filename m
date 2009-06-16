@@ -1,88 +1,161 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Link performance over NFS degraded in RHEL5. -- was :
-	Read/Write NFS I/O performance degraded by FLUSH_STABLE page
-	flushing
-Date: Mon, 15 Jun 2009 20:33:57 -0400
-Message-ID: <20090616003357.GB19396@fieldses.org>
-References: <OF37FCED66.33F08949-ON852575CB.006DE109-852575CB.0071CFBD@us.ibm.com> <4A2902E6.2080006@RedHat.com> <4A29144A.6030405@gmail.com> <4A291DE3.2070105@RedHat.com> <1244209956.5410.33.camel@heimdal.trondhjem.org> <4A29243F.8080008@RedHat.com> <20090605160544.GE10975@fieldses.org> <1244219715.5410.40.camel@heimdal.trondhjem.org> <20090615230801.GA18504@fieldses.org> <99d4545537613ce76040d3655b78bdb7.squirrel@neil.brown.name>
+From: "Labiaga, Ricardo" <ricardo.labiaga@netapp.com>
+Subject: Re: [pnfs] [RFC 39/39] nfs41: Backchannel: CB_SEQUENCE validation
+Date: Mon, 15 Jun 2009 17:42:32 -0700
+Message-ID: <C65C3888.7CB1%ricardo.labiaga@netapp.com>
+References: <1245112062.7470.6.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Steve Dickson <steved@redhat.com>,
-	Tom Talpey <tmtalpey@gmail.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
+Content-Type: text/plain;
+	charset="US-ASCII"
+Cc: <linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:42907 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751401AbZFPAd6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 20:33:58 -0400
-In-Reply-To: <99d4545537613ce76040d3655b78bdb7.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:48988 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751179AbZFPAmc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jun 2009 20:42:32 -0400
+In-Reply-To: <1245112062.7470.6.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 10:21:50AM +1000, NeilBrown wrote:
-> On Tue, June 16, 2009 9:08 am, J. Bruce Fields wrote:
+On 6/15/09 5:27 PM, "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+
+> On Fri, 2009-05-01 at 02:25 +0300, Benny Halevy wrote:
+>> From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>> 
+>> Validates the callback's sessionID, the slot number, and the sequence ID.
+>> Increments the slot's sequence.
+>> 
+>> Detects replays, but simply prints a debug message (if debugging is enabled
+>> since we don't yet implement a duplicate request cache for the backchannel.
+>> This should not present a problem, since only idempotent callbacks are
+>> currently implemented.
+>> 
+>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/callback_proc.c |   75
+>> ++++++++++++++++++++++++++++++++++++++++++++----
+>>  1 files changed, 69 insertions(+), 6 deletions(-)
+>> 
+>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>> index 6b342e8..c85d66f 100644
+>> --- a/fs/nfs/callback_proc.c
+>> +++ b/fs/nfs/callback_proc.c
+>> @@ -105,6 +105,57 @@ out:
+>>  #if defined(CONFIG_NFS_V4_1)
+>>  
+>>  /*
+>> + * Validate the sequenceID sent by the server.
+>> + * Return success if the sequenceID is one more than what we last saw on
+>> + * this slot, accounting for wraparound.  Increments the slot's sequence.
+>> + *
+>> + * We don't yet implement a duplicate request cache, so at this time
+>> + * we will log replays, and process them as if we had not seen them before,
+>> + * but we don't bump the sequence in the slot.  Not too worried about it,
+>> + * since we only currently implement idempotent callbacks anyway.
+>> + *
+>> + * We have a single slot backchannel at this time, so we don't bother
+>> + * checking the used_slots bit array on the table.  The lower layer
+>> guarantees
+>> + * a single outstanding callback request at a time.
+>> + */
+>> +static int
+>> +validate_seqid(struct nfs4_slot_table *tbl, u32 slotid, u32 seqid)
+>> +{
+>> + struct nfs4_slot *slot;
+>> +
+>> + dprintk("%s enter. slotid %d seqid %d\n",
+>> +  __func__, slotid, seqid);
+>> +
+>> + if (slotid > NFS41_BC_MAX_CALLBACKS)
+>> +  return NFS4ERR_BADSLOT;
 > 
-> > +	if (host_err >= 0 && stable)
-> > +		wait_for_concurrent_writes(file, use_wgather, &host_err);
-> >
+> I thought we agreed to always return error values as _negative_? Why the
+> change here?
 > 
-> Surely you want this to be:
-> 
->    if (host_err >= 0 && stable && use_wgather)
->          host_err = wait_for_concurrent_writes(file);
-> as
->  - this is more readable
->  - setting last_ino and last_dev is pointless when !use_wgather
 
-Yep, thanks.
+Will change to negative.
 
->  - we aren't interested in differentiation between non-negative values of
->    host_err.
+- ricardo
 
-Unfortunately, just below:
+>> +
+>> + slot = tbl->slots + slotid;
+>> + dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
+>> +
+>> + /* Normal */
+>> + if (likely(seqid == slot->seq_nr + 1)) {
+>> +  slot->seq_nr++;
+>> +  return NFS4_OK;
+>> + }
+>> +
+>> + /* Replay */
+>> + if (seqid == slot->seq_nr) {
+>> +  dprintk("%s seqid %d is a replay - no DRC available\n",
+>> +   __func__, seqid);
+>> +  return NFS4_OK;
+>> + }
+>> +
+>> + /* Wraparound */
+>> + if (seqid == 1 && (slot->seq_nr + 1) == 0) {
+>> +  slot->seq_nr = 1;
+>> +  return NFS4_OK;
+>> + }
+>> +
+>> + /* Misordered request */
+>> + return NFS4ERR_SEQ_MISORDERED;
+>> +}
+>> +
+>> +/*
+>>   * Returns a pointer to a held 'struct nfs_client' that matches the server's
+>>   * address, major version number, and session ID.  It is the caller's
+>>   * responsibility to release the returned reference.
+>> @@ -140,18 +191,27 @@ out:
+>> return NULL;
+>>  }
+>>  
+>> -/* FIXME: validate args->cbs_{sequence,slot}id */
+>>  /* FIXME: referring calls should be processed */
+>>  unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
+>> struct cb_sequenceres *res)
+>>  {
+>> - int i;
+>> - unsigned status = 0;
+>> + struct nfs_client *clp;
+>> + int i, status;
+>>  
+>> for (i = 0; i < args->csa_nrclists; i++)
+>> kfree(args->csa_rclists[i].rcl_refcalls);
+>> kfree(args->csa_rclists);
+>>  
+>> + status = NFS4ERR_BADSESSION;
+>> + clp = find_client_with_session(args->csa_addr, 4, &args->csa_sessionid);
+>> + if (clp == NULL)
+>> +  goto out;
+>> +
+>> + status = validate_seqid(&clp->cl_session->bc_slot_table,
+>> +    args->csa_slotid, args->csa_sequenceid);
+>> + if (status)
+>> +  goto out_putclient;
+>> +
+>> memcpy(&res->csr_sessionid, &args->csa_sessionid,
+>>       sizeof(res->csr_sessionid));
+>> res->csr_sequenceid = args->csa_sequenceid;
+>> @@ -159,9 +219,12 @@ unsigned nfs4_callback_sequence(struct cb_sequenceargs
+>> *args,
+>> res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+>> res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+>>  
+>> - dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+>> - res->csr_status = status;
+>> - return status;
+>> +out_putclient:
+>> + nfs_put_client(clp);
+>> +out:
+>> + dprintk("%s: exit with status = %d\n", __func__, status);
+>> + res->csr_status = htonl(status);
+>> + return res->csr_status;
+>>  }
+>>  
+>>  #endif /* CONFIG_NFS_V4_1 */
 
-	if (host_err >= 0) {
-		err = 0;
-		*cnt = host_err;
-	} else
-		err = nfserrno(host_err);
-
-We could save that count earlier, e.g.:
-
-@@ -1014,6 +1013,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
-        int                     host_err;
-        int                     stable = *stablep;
-        int                     use_wgather;
-+       int                     bytes;
- 
- #ifdef MSNFS
-        err = nfserr_perm;
-@@ -1056,6 +1056,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
-        set_fs(oldfs);
-        if (host_err >= 0) {
-                nfsdstats.io_write += host_err;
-+               bytes = host_err;
-                fsnotify_modify(file->f_path.dentry);
-        }
- 
-@@ -1063,13 +1064,13 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fh
-        if (host_err >= 0 && (inode->i_mode & (S_ISUID | S_ISGID)))
-                kill_suid(dentry);
- 
--       if (host_err >= 0 && stable)
--               wait_for_concurrent_writes(file, use_wgather, &host_err);
-+       if (host_err >= 0 && stable && use_wgather)
-+               host_err = wait_for_concurrent_writes(file);
- 
-        dprintk("nfsd: write complete host_err=%d\n", host_err);
-        if (host_err >= 0) {
-                err = 0;
--               *cnt = host_err;
-+               *cnt = bytes;
-        } else
-                err = nfserrno(host_err);
- out:
-
---b.
