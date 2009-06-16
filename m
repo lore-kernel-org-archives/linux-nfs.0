@@ -1,14 +1,14 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 17/44] nfsd41: obliterate nfsd4_copy_pages
-Date: Tue, 16 Jun 2009 04:20:01 +0300
-Message-ID: <1245115201-7361-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 18/44] nfsd41: obliterate nfsd41_copy_replay_data
+Date: Tue, 16 Jun 2009 04:20:04 +0300
+Message-ID: <1245115204-7394-1-git-send-email-bhalevy@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2624
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2588
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755383AbZFPBUA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:20:00 -0400
+	by vger.kernel.org with ESMTP id S1755580AbZFPBUD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:20:03 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -19,60 +19,66 @@ Replacing page based drc cache with buffer based drc cache.
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c |   21 ---------------------
- 1 files changed, 0 insertions(+), 21 deletions(-)
+ fs/nfsd/nfs4state.c |   39 ---------------------------------------
+ 1 files changed, 0 insertions(+), 39 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 58f4308..8c1dfe2 100644
+index 8c1dfe2..f01badc 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1026,19 +1026,6 @@ nfsd4_release_respages(struct page **respages, short resused)
- 	}
+@@ -1084,32 +1084,6 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
  }
  
--static void
--nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
+ /*
+- * We keep the rpc header, but take the nfs reply from the replycache.
+- */
+-static int
+-nfsd41_copy_replay_data(struct nfsd4_compoundres *resp,
+-			struct nfsd4_cache_entry *entry)
 -{
--	int i;
+-	struct svc_rqst *rqstp = resp->rqstp;
+-	struct kvec *resv = &resp->rqstp->rq_res.head[0];
+-	int len;
 -
--	for (i = 0; i < count; i++) {
--		topages[i] = frompages[i];
--		if (!topages[i])
--			continue;
--		get_page(topages[i]);
+-	/* Current request rpc header length*/
+-	len = (char *)resp->cstate.statp -
+-			(char *)page_address(rqstp->rq_respages[0]);
+-	if (entry->ce_datav.iov_len + len > PAGE_SIZE) {
+-		dprintk("%s v41 cached reply too large (%Zd).\n", __func__,
+-			entry->ce_datav.iov_len);
+-		return 0;
 -	}
+-	/* copy the cached reply nfsd data past the current rpc header */
+-	memcpy((char *)resv->iov_base + len, entry->ce_datav.iov_base,
+-		entry->ce_datav.iov_len);
+-	resv->iov_len = len + entry->ce_datav.iov_len;
+-	return 1;
 -}
 -
- /*
-  * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
-  * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
-@@ -1088,8 +1075,6 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 	entry->ce_resused = rqstp->rq_resused;
- 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
- 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
--	nfsd4_copy_pages(entry->ce_respages, rqstp->rq_respages,
--			 entry->ce_resused);
- 	entry->ce_datav.iov_base = resp->cstate.statp;
- 	entry->ce_datav.iov_len = resv->iov_len - ((char *)resp->cstate.statp -
- 				(char *)page_address(rqstp->rq_respages[0]));
-@@ -1162,17 +1147,11 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 		 * cached header. Release all the allocated result pages.
- 		 */
- 		svc_free_res_pages(resp->rqstp);
--		nfsd4_copy_pages(resp->rqstp->rq_respages, entry->ce_respages,
--			entry->ce_resused);
- 	} else {
- 		/* Release all but the first allocated result page */
+-/*
+  * Keep the first page of the replay. Copy the NFSv4.1 data from the first
+  * cached page.  Replace any futher replay pages from the cache.
+  */
+@@ -1141,19 +1115,6 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 	/* The sequence operation has been encoded, cstate->datap set. */
+ 	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
  
- 		resp->rqstp->rq_resused--;
- 		svc_free_res_pages(resp->rqstp);
+-	if (!nfsd41_copy_replay_data(resp, entry)) {
+-		/*
+-		 * Not enough room to use the replay rpc header, send the
+-		 * cached header. Release all the allocated result pages.
+-		 */
+-		svc_free_res_pages(resp->rqstp);
+-	} else {
+-		/* Release all but the first allocated result page */
 -
--		nfsd4_copy_pages(&resp->rqstp->rq_respages[1],
--				 &entry->ce_respages[1],
--				 entry->ce_resused - 1);
- 	}
- 
+-		resp->rqstp->rq_resused--;
+-		svc_free_res_pages(resp->rqstp);
+-	}
+-
  	resp->rqstp->rq_resused = entry->ce_resused;
+ 	resp->opcnt = slot->sl_opcnt;
+ 	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
 -- 
 1.6.3
 
