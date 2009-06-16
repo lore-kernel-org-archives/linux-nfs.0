@@ -1,99 +1,199 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Link performance over NFS degraded in RHEL5. -- was :
-	Read/Write NFS I/O performance degraded by FLUSH_STABLE page
-	flushing
-Date: Mon, 15 Jun 2009 20:55:58 -0400
-Message-ID: <20090616005558.GC19396@fieldses.org>
-References: <4A29144A.6030405@gmail.com> <4A291DE3.2070105@RedHat.com> <1244209956.5410.33.camel@heimdal.trondhjem.org> <4A29243F.8080008@RedHat.com> <20090605160544.GE10975@fieldses.org> <1244219715.5410.40.camel@heimdal.trondhjem.org> <20090615230801.GA18504@fieldses.org> <99d4545537613ce76040d3655b78bdb7.squirrel@neil.brown.name> <20090616003357.GB19396@fieldses.org> <02ada87c636e1088e9365a3cbea301e7.squirrel@neil.brown.name>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] sunrpc: Adding trace points to status routines (take 2)
+Date: Mon, 15 Jun 2009 17:56:51 -0700
+Message-ID: <1245113811.7470.15.camel@heimdal.trondhjem.org>
+References: <4A2EA789.60608@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Steve Dickson <steved@redhat.com>,
-	Tom Talpey <tmtalpey@gmail.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: NeilBrown <neilb@suse.de>
+Content-Type: text/plain
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux Kernel Mailing list <linux-kernel@vger.kernel.org>,
+	Ingo Molnar <mingo@redhat.com>, Jason Baron <jbaron@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:37125 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751401AbZFPAz7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 20:55:59 -0400
-In-Reply-To: <02ada87c636e1088e9365a3cbea301e7.squirrel-eq65iwfR9nKIECXXMXunQA@public.gmane.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:50066 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751709AbZFPA4x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jun 2009 20:56:53 -0400
+In-Reply-To: <4A2EA789.60608-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 10:50:57AM +1000, NeilBrown wrote:
-> On Tue, June 16, 2009 10:33 am, J. Bruce Fields wrote:
-> > On Tue, Jun 16, 2009 at 10:21:50AM +1000, NeilBrown wrote:
-> >> On Tue, June 16, 2009 9:08 am, J. Bruce Fields wrote:
-> >>
-> >> > +	if (host_err >= 0 && stable)
-> >> > +		wait_for_concurrent_writes(file, use_wgather, &host_err);
-> >> >
-> >>
-> >> Surely you want this to be:
-> >>
-> >>    if (host_err >= 0 && stable && use_wgather)
-> >>          host_err = wait_for_concurrent_writes(file);
-> >> as
-> >>  - this is more readable
-> >>  - setting last_ino and last_dev is pointless when !use_wgather
-> >
-> > Yep, thanks.
-> >
-> >>  - we aren't interested in differentiation between non-negative values
-> >> of
-> >>    host_err.
-> >
-> > Unfortunately, just below:
-> >
-> > 	if (host_err >= 0) {
-> > 		err = 0;
-> > 		*cnt = host_err;
-> > 	} else
-> > 		err = nfserrno(host_err);
-> >
+On Tue, 2009-06-09 at 14:18 -0400, Steve Dickson wrote:
+> Hey Trond,
 > 
-> Ahh.... that must be in code you haven't pushed out yet.
-> I don't see it in mainline or git.linux-nfs.org
+> Here is an updated version of the patch I sent out a while
+> back... all that has changed was the addtion of 'rpc_'  to
+> the name of the trace points which coincides with the
+> other trace points naming convention.
+> 
+> Here is a pointer to the previous email that has the 
+> fairly long winded explanation of how all this works:
+> 
+>    http://marc.info/?l=linux-kernel&m=124058933520183&w=2
+> 
+> And below is the updated patch which is based on Ingo's
+> linux-2.6-tip.git tree. 
+> 
+> Comments?
+> 
+> steved.
+>  
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Tue Jun  9 14:12:07 EDT 2009
+> 
+>     Adds three trace points to the status routines in the
+>     sunrpc state machine. The trace points will only execute
+>     in error conditions.
+>     
+>     The goal of these trace points it to make it easier to
+>     debug process that spin or get hung up in the NFS and
+>     related subsystems.
 
-Whoops--actually, it's the opposite problem: a bugfix patch that went
-upstream removed this, and I didn't merge that back into my for-2.6.31
-branch.  OK, time to do that, and then this is all much simpler....
-Thanks for calling my attention to that!
+Would this replace the existing dprint_status()? How does it differ from
+the existing DYNAMIC_DEBUG functionality that was merged in 2.6.30?
+    
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+> new file mode 100644
+> index 0000000..f502eb4
+> --- /dev/null
+> +++ b/include/trace/events/sunrpc.h
+> @@ -0,0 +1,86 @@
+> +#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
+> +#define _TRACE_SUNRPC_H
+> +
+> +#include <linux/tracepoint.h>
+> +
+> +#undef TRACE_SYSTEM
+> +#define TRACE_SYSTEM sunrpc
+> +
+> +TRACE_EVENT(rpc_call_status,
+> +
+> +	TP_PROTO(struct rpc_task *task),
+> +
+> +	TP_ARGS(task),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(u32, cl_prog)
+> +		__field(u32, cl_vers)
+> +		__field(u32, p_proc)
+> +		__field(int, tk_status)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->cl_prog = task->tk_client->cl_prog;
+> +		__entry->cl_vers = task->tk_client->cl_vers;
+> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
+> +		__entry->cl_prog = task->tk_client->cl_prog;
 
---b.
+You should only need to set entry->cl_prog once, right?
 
+> +		__entry->tk_status = task->tk_status;
+> +	),
+> +
+> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
+> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
+> +);
+> +
+> +TRACE_EVENT(rpc_bind_status,
+> +
+> +	TP_PROTO(struct rpc_task *task),
+> +
+> +	TP_ARGS(task),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(u32, cl_prog)
+> +		__field(u32, cl_vers)
+> +		__field(u32, p_proc)
+> +		__field(int, tk_status)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->cl_prog = task->tk_client->cl_prog;
+> +		__entry->cl_vers = task->tk_client->cl_vers;
+> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
+> +		__entry->cl_prog = task->tk_client->cl_prog;
+
+Ditto
+
+> +		__entry->tk_status = task->tk_status;
+> +	),
+> +
+> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
+> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
+> +);
+> +TRACE_EVENT(rpc_connect_status,
+> +
+> +	TP_PROTO(struct rpc_task *task, int status),
+> +
+> +	TP_ARGS(task, status),
+> +
+> +	TP_STRUCT__entry(
+> +		__field(u32, cl_prog)
+> +		__field(u32, cl_vers)
+> +		__field(u32, p_proc)
+> +		__field(int, tk_status)
+> +	),
+> +
+> +	TP_fast_assign(
+> +		__entry->cl_prog = task->tk_client->cl_prog;
+> +		__entry->cl_vers = task->tk_client->cl_vers;
+> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
+> +		__entry->cl_prog = task->tk_client->cl_prog;
+
+Ditto
+
+> +		__entry->tk_status = status;
+> +	),
+> +
+> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
+> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
+> +
+> +);
+> +#endif /* __TRACE_SUNRPC_H */
+> +
+> +/* This part must be outside protection */
+> +#include <trace/define_trace.h>
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 5abab09..b86ee2a 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -37,6 +37,9 @@
+>  #include <linux/sunrpc/rpc_pipe_fs.h>
+>  #include <linux/sunrpc/metrics.h>
+>  
+> +#include <linux/ftrace.h>
+> +#define CREATE_TRACE_POINTS
+> +#include <trace/events/sunrpc.h>
+>  
+>  #ifdef RPC_DEBUG
+>  # define RPCDBG_FACILITY	RPCDBG_CALL
+> @@ -957,6 +960,7 @@ call_bind_status(struct rpc_task *task)
+>  		return;
+>  	}
+>  
+> +	trace_rpc_bind_status(task);
+>  	switch (task->tk_status) {
+>  	case -ENOMEM:
+>  		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
+> @@ -1038,6 +1042,7 @@ call_connect_status(struct rpc_task *task)
+>  		return;
+>  	}
+>  
+> +	trace_rpc_connect_status(task, status);
+>  	switch (status) {
+>  		/* if soft mounted, test if we've timed out */
+>  	case -ETIMEDOUT:
+> @@ -1141,6 +1146,7 @@ call_status(struct rpc_task *task)
+>  		return;
+>  	}
+>  
+> +	trace_rpc_call_status(task);
+>  	task->tk_status = 0;
+>  	switch(status) {
+>  	case -EHOSTDOWN:
 > 
-> > We could save that count earlier, e.g.:
-> >
-> > @@ -1014,6 +1013,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh
-> > *fhp,
-> >         int                     host_err;
-> >         int                     stable = *stablep;
-> >         int                     use_wgather;
-> > +       int                     bytes;
-> >
-> >  #ifdef MSNFS
-> >         err = nfserr_perm;
-> > @@ -1056,6 +1056,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh
-> > *fhp,
-> >         set_fs(oldfs);
-> >         if (host_err >= 0) {
-> >                 nfsdstats.io_write += host_err;
-> > +               bytes = host_err;
-> >                 fsnotify_modify(file->f_path.dentry);
 > 
-> Or even
-> 
->    if (host_err >= 0) {
->           bytes = host_err;
->           nfsdstats.io_write += bytes
->            ...
-> 
-> And if you did that in whatever patch move the assignment to
-> *cnt to the bottom of the function, it might be even more readable!
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
+
+
