@@ -1,62 +1,78 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 16/44] nfsd41: nfsd41: replace ce_status with nfsd4_slot field
-Date: Tue, 16 Jun 2009 04:19:58 +0300
-Message-ID: <1245115198-7328-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 17/44] nfsd41: obliterate nfsd4_copy_pages
+Date: Tue, 16 Jun 2009 04:20:01 +0300
+Message-ID: <1245115201-7361-1-git-send-email-bhalevy@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2547
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2624
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754889AbZFPBT6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:19:58 -0400
+	by vger.kernel.org with ESMTP id S1755383AbZFPBUA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:20:00 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-In preparation to remove struct nfsd4_cache_entry
+Replacing page based drc cache with buffer based drc cache.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c        |    4 ++--
- include/linux/nfsd/state.h |    1 +
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c |   21 ---------------------
+ 1 files changed, 0 insertions(+), 21 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 826c265..58f4308 100644
+index 58f4308..8c1dfe2 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1067,7 +1067,7 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 
- 	nfsd4_release_respages(entry->ce_respages, entry->ce_resused);
- 	slot->sl_opcnt = resp->opcnt;
--	entry->ce_status = resp->cstate.status;
-+	slot->sl_status = resp->cstate.status;
- 
- 	/*
- 	 * Don't need a page to cache just the sequence operation - the slot
-@@ -1178,7 +1178,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 	resp->rqstp->rq_resused = entry->ce_resused;
- 	resp->opcnt = slot->sl_opcnt;
- 	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
--	status = entry->ce_status;
-+	status = slot->sl_status;
- 
- 	return status;
+@@ -1026,19 +1026,6 @@ nfsd4_release_respages(struct page **respages, short resused)
+ 	}
  }
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 9de02b6..4003afc 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -115,6 +115,7 @@ struct nfsd4_slot {
- 	u32				sl_seqid;
- 	int				sl_cachethis;
- 	int				sl_opcnt;
-+	__be32				sl_status;
- 	u32				sl_datalen;
- 	char				sl_data[NFSD_SLOT_CACHE_SIZE];
- 	struct nfsd4_cache_entry	sl_cache_entry;
+ 
+-static void
+-nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
+-{
+-	int i;
+-
+-	for (i = 0; i < count; i++) {
+-		topages[i] = frompages[i];
+-		if (!topages[i])
+-			continue;
+-		get_page(topages[i]);
+-	}
+-}
+-
+ /*
+  * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
+  * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
+@@ -1088,8 +1075,6 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 	entry->ce_resused = rqstp->rq_resused;
+ 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
+ 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
+-	nfsd4_copy_pages(entry->ce_respages, rqstp->rq_respages,
+-			 entry->ce_resused);
+ 	entry->ce_datav.iov_base = resp->cstate.statp;
+ 	entry->ce_datav.iov_len = resv->iov_len - ((char *)resp->cstate.statp -
+ 				(char *)page_address(rqstp->rq_respages[0]));
+@@ -1162,17 +1147,11 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 		 * cached header. Release all the allocated result pages.
+ 		 */
+ 		svc_free_res_pages(resp->rqstp);
+-		nfsd4_copy_pages(resp->rqstp->rq_respages, entry->ce_respages,
+-			entry->ce_resused);
+ 	} else {
+ 		/* Release all but the first allocated result page */
+ 
+ 		resp->rqstp->rq_resused--;
+ 		svc_free_res_pages(resp->rqstp);
+-
+-		nfsd4_copy_pages(&resp->rqstp->rq_respages[1],
+-				 &entry->ce_respages[1],
+-				 entry->ce_resused - 1);
+ 	}
+ 
+ 	resp->rqstp->rq_resused = entry->ce_resused;
 -- 
 1.6.3
 
