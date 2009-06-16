@@ -1,130 +1,298 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 03/44] nfsd41: change check_slot_seqid parameters
-Date: Tue, 16 Jun 2009 13:40:19 -0400
-Message-ID: <20090616174019.GB3045@fieldses.org>
-References: <1245115160-6898-1-git-send-email-bhalevy@panasas.com> <20090616173951.GA3045@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: RE: [pnfs] [RFC 31/39] nfs41: cb_sequence xdr implementation
+Date: Tue, 16 Jun 2009 10:58:19 -0700
+Message-ID: <1245175099.6755.3.camel@heimdal.trondhjem.org>
+References: <49FA3180.5030404@panasas.com>
+	 <1241133864-1317-1-git-send-email-bhalevy@panasas.com>
+	 <1245111512.7470.5.camel@heimdal.trondhjem.org>
+	 <7225594ED4A1304C9E43D030A886D221F4C55A@daytona.int.panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "Halevy, Benny" <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:36646 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756737AbZFPRkQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 13:40:16 -0400
-In-Reply-To: <20090616173951.GA3045@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:56131 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751368AbZFPR6S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Jun 2009 13:58:18 -0400
+In-Reply-To: <7225594ED4A1304C9E43D030A886D221F4C55A-QcknvLX4j1suWLk7KE+CsC1byIy0dIec@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 01:39:51PM -0400, bfields wrote:
-> On Tue, Jun 16, 2009 at 04:19:20AM +0300, Benny Halevy wrote:
-> > From: Andy Adamson <andros@netapp.com>
+On Mon, 2009-06-15 at 22:25 -0400, Halevy, Benny wrote:
+> > > +#define READ64(x)         do {			\
+> > > +	(x) = (u64)ntohl(*p++) << 32;		\
+> > > +	(x) |= ntohl(*p++);			\
+> > > +} while (0)
 > > 
-> > For separation of session slot and clientid slot processing.
-> > 
-> > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > This doesn't appear to be used, and in any case, it duplicates the
+> 
+> Oops, Will do.
+> 
+> > existing function xdr_duplicate_hyper(). Please remove...
+> 
+> xdr_decode_hyper?
+
+Err... Yes. In the non-jetlagged vernacular, it is indeed
+xdr_decode_hyper()...
+
+Trond
+
+> Benny
+> 
+> -----Original Message-----
+> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
+> Sent: Tue 2009-06-16 03:18
+> To: Halevy, Benny
+> Cc: linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
+> Subject: Re: [pnfs] [RFC 31/39] nfs41: cb_sequence xdr implementation
+>  
+> On Fri, 2009-05-01 at 02:24 +0300, Benny Halevy wrote:
+> > [nfs41: get rid of READMEM and COPYMEM for callback_xdr.c]
 > > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> 
-> This was actually already upstream, just not in my for-2.6.31, because I
-> based my for-2.6.31 branch off of 2.6.30-rc3, and submitted this to
-> 2.6.30 after -rc3.  So my choices included:
-> 
-> 	- Rebase for-2.6.31 onto a later -rc: but things will go
-> 	  smoother if I stop rebasing and rewriting my for-xxx branches,
-> 	  and I've stopped doing that this time around.
-> 	- Apply an identical patch to for-2.6.31 at the same time I
-> 	  submit it upstream: then after I submit for-2.6.31, the
-> 	  history would end up with two commits each for the same patch.
-> 	  I don't think that's a serious problem, but it seems ugly.
-> 	- Merge upstream back into my for-2.6.31 after submitting
-> 	  patches: Linus has complained before about people doing this
-> 	  too much, but I'm assuming doing it in a case like this where
-> 	  there's a clear reason is OK.
-> 
-> I think option 3 was the right one; so I've done that now and merged
-> 2.6.30 back into for-2.6.31....
-> 
-> Better might have been to merge a for-2.6.30 branch into for-2.6.31.
-
-Um.  I meant to respond to 02/44, not 03/44, here!
-
---b.
-
-> 
-> --b.
-> 
 > > ---
-> >  fs/nfsd/nfs4state.c |   24 +++++++++++++-----------
-> >  1 files changed, 13 insertions(+), 11 deletions(-)
+> >  fs/nfs/callback_xdr.c |  181 ++++++++++++++++++++++++++++++++++++++++++++++++-
+> >  1 files changed, 179 insertions(+), 2 deletions(-)
 > > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index d5caf2a..c22ec9b 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -1313,26 +1313,26 @@ error:
+> > diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> > index 9db88ce..066273c 100644
+> > --- a/fs/nfs/callback_xdr.c
+> > +++ b/fs/nfs/callback_xdr.c
+> > @@ -20,8 +20,18 @@
+> >  				2 + 2 + 3 + 3)
+> >  #define CB_OP_RECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+> >  
+> > +#if defined(CONFIG_NFS_V4_1)
+> > +#define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+> > +					4 + 1 + 3)
+> > +#endif /* CONFIG_NFS_V4_1 */
+> > +
+> >  #define NFSDBG_FACILITY NFSDBG_CALLBACK
+> >  
+> > +#define READ64(x)         do {			\
+> > +	(x) = (u64)ntohl(*p++) << 32;		\
+> > +	(x) |= ntohl(*p++);			\
+> > +} while (0)
+> 
+> This doesn't appear to be used, and in any case, it duplicates the
+> existing function xdr_duplicate_hyper(). Please remove...
+> 
+> > +
+> >  typedef __be32 (*callback_process_op_t)(void *, void *);
+> >  typedef __be32 (*callback_decode_arg_t)(struct svc_rqst *, struct xdr_stream *, void *);
+> >  typedef __be32 (*callback_encode_res_t)(struct svc_rqst *, struct xdr_stream *, void *);
+> > @@ -210,6 +220,122 @@ out:
+> >  	return status;
 > >  }
 > >  
-> >  static int
-> > -check_slot_seqid(u32 seqid, struct nfsd4_slot *slot)
-> > +check_slot_seqid(u32 seqid, u32 slot_seqid, int slot_inuse)
+> > +#if defined(CONFIG_NFS_V4_1)
+> > +
+> > +static unsigned decode_sessionid(struct xdr_stream *xdr,
+> > +				 struct nfs4_sessionid *sid)
+> > +{
+> > +	uint32_t *p;
+> > +	int len = NFS4_MAX_SESSIONID_LEN;
+> > +
+> > +	p = read_buf(xdr, len);
+> > +	if (unlikely(p == NULL))
+> > +		return htonl(NFS4ERR_RESOURCE);;
+> > +
+> > +	memcpy(sid->data, p, len);
+> > +	return 0;
+> > +}
+> > +
+> > +static unsigned decode_rc_list(struct xdr_stream *xdr,
+> > +			       struct referring_call_list *rc_list)
+> > +{
+> > +	uint32_t *p;
+> > +	int i;
+> > +	unsigned status;
+> > +
+> > +	status = decode_sessionid(xdr, &rc_list->rcl_sessionid);
+> > +	if (status)
+> > +		goto out;
+> > +
+> > +	status = htonl(NFS4ERR_RESOURCE);
+> > +	p = read_buf(xdr, sizeof(uint32_t));
+> > +	if (unlikely(p == NULL))
+> > +		goto out;
+> > +
+> > +	rc_list->rcl_nrefcalls = ntohl(*p++);
+> > +	if (rc_list->rcl_nrefcalls) {
+> > +		p = read_buf(xdr,
+> > +			     rc_list->rcl_nrefcalls * 2 * sizeof(uint32_t));
+> > +		if (unlikely(p == NULL))
+> > +			goto out;
+> > +		rc_list->rcl_refcalls = kmalloc(rc_list->rcl_nrefcalls *
+> > +						sizeof(*rc_list->rcl_refcalls),
+> > +						GFP_KERNEL);
+> > +		if (unlikely(rc_list->rcl_refcalls == NULL))
+> > +			goto out;
+> > +		for (i = 0; i < rc_list->rcl_nrefcalls; i++) {
+> > +			rc_list->rcl_refcalls[i].rc_sequenceid = ntohl(*p++);
+> > +			rc_list->rcl_refcalls[i].rc_slotid = ntohl(*p++);
+> > +		}
+> > +	}
+> > +	status = 0;
+> > +
+> > +out:
+> > +	return status;
+> > +}
+> > +
+> > +static unsigned decode_cb_sequence_args(struct svc_rqst *rqstp,
+> > +					struct xdr_stream *xdr,
+> > +					struct cb_sequenceargs *args)
+> > +{
+> > +	uint32_t *p;
+> > +	int i;
+> > +	unsigned status;
+> > +
+> > +	status = decode_sessionid(xdr, &args->csa_sessionid);
+> > +	if (status)
+> > +		goto out;
+> > +
+> > +	status = htonl(NFS4ERR_RESOURCE);
+> > +	p = read_buf(xdr, 5 * sizeof(uint32_t));
+> > +	if (unlikely(p == NULL))
+> > +		goto out;
+> > +
+> > +	args->csa_addr = svc_addr_in(rqstp);
+> > +	args->csa_sequenceid = ntohl(*p++);
+> > +	args->csa_slotid = ntohl(*p++);
+> > +	args->csa_highestslotid = ntohl(*p++);
+> > +	args->csa_cachethis = ntohl(*p++);
+> > +	args->csa_nrclists = ntohl(*p++);
+> > +	args->csa_rclists = NULL;
+> > +	if (args->csa_nrclists) {
+> > +		args->csa_rclists = kmalloc(args->csa_nrclists *
+> > +					    sizeof(*args->csa_rclists),
+> > +					    GFP_KERNEL);
+> > +		if (unlikely(args->csa_rclists == NULL))
+> > +			goto out;
+> > +
+> > +		for (i = 0; i < args->csa_nrclists; i++) {
+> > +			status = decode_rc_list(xdr, &args->csa_rclists[i]);
+> > +			if (status)
+> > +				goto out_free;
+> > +		}
+> > +	}
+> > +	status = 0;
+> > +
+> > +	dprintk("%s: sessionid %x:%x:%x:%x sequenceid %u slotid %u "
+> > +		"highestslotid %u cachethis %d nrclists %u\n",
+> > +		__func__,
+> > +		((u32 *)&args->csa_sessionid)[0],
+> > +		((u32 *)&args->csa_sessionid)[1],
+> > +		((u32 *)&args->csa_sessionid)[2],
+> > +		((u32 *)&args->csa_sessionid)[3],
+> > +		args->csa_sequenceid, args->csa_slotid,
+> > +		args->csa_highestslotid, args->csa_cachethis,
+> > +		args->csa_nrclists);
+> > +out:
+> > +	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+> > +	return status;
+> > +
+> > +out_free:
+> > +	for (i = 0; i < args->csa_nrclists; i++)
+> > +		kfree(args->csa_rclists[i].rcl_refcalls);
+> > +	kfree(args->csa_rclists);
+> > +	goto out;
+> > +}
+> > +
+> > +#endif /* CONFIG_NFS_V4_1 */
+> > +
+> >  static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
 > >  {
-> > -	dprintk("%s enter. seqid %d slot->sl_seqid %d\n", __func__, seqid,
-> > -		slot->sl_seqid);
-> > +	dprintk("%s enter. seqid %d slot_seqid %d\n", __func__, seqid,
-> > +		slot_seqid);
+> >  	__be32 *p;
+> > @@ -359,6 +485,49 @@ out:
+> >  	return status;
+> >  }
 > >  
-> >  	/* The slot is in use, and no response has been sent. */
-> > -	if (slot->sl_inuse) {
-> > -		if (seqid == slot->sl_seqid)
-> > +	if (slot_inuse) {
-> > +		if (seqid == slot_seqid)
-> >  			return nfserr_jukebox;
-> >  		else
-> >  			return nfserr_seq_misordered;
-> >  	}
-> >  	/* Normal */
-> > -	if (likely(seqid == slot->sl_seqid + 1))
-> > +	if (likely(seqid == slot_seqid + 1))
-> >  		return nfs_ok;
-> >  	/* Replay */
-> > -	if (seqid == slot->sl_seqid)
-> > +	if (seqid == slot_seqid)
-> >  		return nfserr_replay_cache;
-> >  	/* Wraparound */
-> > -	if (seqid == 1 && (slot->sl_seqid + 1) == 0)
-> > +	if (seqid == 1 && (slot_seqid + 1) == 0)
-> >  		return nfs_ok;
-> >  	/* Misordered replay or misordered new request */
-> >  	return nfserr_seq_misordered;
-> > @@ -1355,7 +1355,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+> > +#if defined(CONFIG_NFS_V4_1)
+> > +
+> > +static unsigned encode_sessionid(struct xdr_stream *xdr,
+> > +				 const struct nfs4_sessionid *sid)
+> > +{
+> > +	uint32_t *p;
+> > +	int len = NFS4_MAX_SESSIONID_LEN;
+> > +
+> > +	p = xdr_reserve_space(xdr, len);
+> > +	if (unlikely(p == NULL))
+> > +		return htonl(NFS4ERR_RESOURCE);
+> > +
+> > +	memcpy(p, sid, len);
+> > +	return 0;
+> > +}
+> > +
+> > +static unsigned encode_cb_sequence_res(struct svc_rqst *rqstp,
+> > +				       struct xdr_stream *xdr,
+> > +				       const struct cb_sequenceres *res)
+> > +{
+> > +	uint32_t *p;
+> > +	unsigned status = res->csr_status;
+> > +
+> > +	if (unlikely(status != 0))
+> > +		goto out;
+> > +
+> > +	encode_sessionid(xdr, &res->csr_sessionid);
+> > +
+> > +	p = xdr_reserve_space(xdr, 4 * sizeof(uint32_t));
+> > +	if (unlikely(p == NULL))
+> > +		return htonl(NFS4ERR_RESOURCE);
+> > +
+> > +	*p++ = htonl(res->csr_sequenceid);
+> > +	*p++ = htonl(res->csr_slotid);
+> > +	*p++ = htonl(res->csr_highestslotid);
+> > +	*p++ = htonl(res->csr_target_highestslotid);
+> > +out:
+> > +	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+> > +	return status;
+> > +}
+> > +
+> > +#endif /* CONFIG_NFS_V4_1 */
+> > +
+> >  static __be32 process_op(uint32_t minorversion, int nop,
+> >  		struct svc_rqst *rqstp,
+> >  		struct xdr_stream *xdr_in, void *argp,
+> > @@ -382,6 +551,7 @@ static __be32 process_op(uint32_t minorversion, int nop,
+> >  		switch (op_nr) {
+> >  		case OP_CB_GETATTR:
+> >  		case OP_CB_RECALL:
+> > +		case OP_CB_SEQUENCE:
+> >  			op = &callback_ops[op_nr];
+> >  			break;
 > >  
-> >  	if (conf) {
-> >  		slot = &conf->cl_slot;
-> > -		status = check_slot_seqid(cr_ses->seqid, slot);
-> > +		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
-> > +					  slot->sl_inuse);
-> >  		if (status == nfserr_replay_cache) {
-> >  			dprintk("Got a create_session replay! seqid= %d\n",
-> >  				slot->sl_seqid);
-> > @@ -1380,7 +1381,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
-> >  		}
+> > @@ -391,7 +561,6 @@ static __be32 process_op(uint32_t minorversion, int nop,
+> >  		case OP_CB_RECALL_ANY:
+> >  		case OP_CB_RECALLABLE_OBJ_AVAIL:
+> >  		case OP_CB_RECALL_SLOT:
+> > -		case OP_CB_SEQUENCE:
+> >  		case OP_CB_WANTS_CANCELLED:
+> >  		case OP_CB_NOTIFY_LOCK:
+> >  		case OP_CB_NOTIFY_DEVICEID:
+> > @@ -496,7 +665,15 @@ static struct callback_op callback_ops[] = {
+> >  		.process_op = (callback_process_op_t)nfs4_callback_recall,
+> >  		.decode_args = (callback_decode_arg_t)decode_recall_args,
+> >  		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
+> > -	}
+> > +	},
+> > +#if defined(CONFIG_NFS_V4_1)
+> > +	[OP_CB_SEQUENCE] = {
+> > +		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+> > +		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+> > +		.encode_res = (callback_encode_res_t)encode_cb_sequence_res,
+> > +		.res_maxsize = CB_OP_SEQUENCE_RES_MAXSZ,
+> > +	},
+> > +#endif /* CONFIG_NFS_V4_1 */
+> >  };
 > >  
-> >  		slot = &unconf->cl_slot;
-> > -		status = check_slot_seqid(cr_ses->seqid, slot);
-> > +		status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid,
-> > +					  slot->sl_inuse);
-> >  		if (status) {
-> >  			/* an unconfirmed replay returns misordered */
-> >  			status = nfserr_seq_misordered;
-> > @@ -1481,7 +1483,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >  	slot = &session->se_slots[seq->slotid];
-> >  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
-> >  
-> > -	status = check_slot_seqid(seq->seqid, slot);
-> > +	status = check_slot_seqid(seq->seqid, slot->sl_seqid, slot->sl_inuse);
-> >  	if (status == nfserr_replay_cache) {
-> >  		cstate->slot = slot;
-> >  		cstate->session = session;
-> > -- 
-> > 1.6.3
-> > 
+> >  /*
+> 
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
