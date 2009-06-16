@@ -1,74 +1,44 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 04/44] nfsd41: turn off create session caching
-Date: Tue, 16 Jun 2009 14:27:04 -0400
-Message-ID: <20090616182704.GC3045@fieldses.org>
-References: <1245115163-6931-1-git-send-email-bhalevy@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Subject: [PATCH 2/3] SQUASHME: nfs41: Backchannel: Remove FIXME comment
+Date: Tue, 16 Jun 2009 11:26:39 -0700
+Message-ID: <1245176800-10595-2-git-send-email-Ricardo.Labiaga@netapp.com>
+References: <>
+ <1245176800-10595-1-git-send-email-Ricardo.Labiaga@netapp.com>
+Cc: bhalevy@panasas.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:32887 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752020AbZFPS1C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 14:27:02 -0400
-In-Reply-To: <1245115163-6931-1-git-send-email-bhalevy@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:61377 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757995AbZFPSbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Jun 2009 14:31:12 -0400
+In-Reply-To: <1245176800-10595-1-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 04:19:23AM +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> In preparation for switching clientid cache strategies.
-> If cstate->slot is not set, nfsdsvc_encode_compoundres will not cache
-> the create session response.
+We already correctly monitor and manage the callback service for NFSv4
+and NFSv4.1.  Remove the comment calling attention to this.
 
-This is a regression.  If you can't find a way to replace the reply
-cache without a temporary regression, a comment here to that affect
-would be helpful.  I guess I can live with this (reluctantly) for code
-in this early a state.
+[squash with: nfs41: minorversion support for nfs4_{init,destroy}_callback]
 
---b.
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+---
+ fs/nfs/callback.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4state.c |    7 -------
->  1 files changed, 0 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c22ec9b..5fdef66 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1344,7 +1344,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		     struct nfsd4_create_session *cr_ses)
->  {
->  	u32 ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
-> -	struct nfsd4_compoundres *resp = rqstp->rq_resp;
->  	struct nfs4_client *conf, *unconf;
->  	struct nfsd4_slot *slot = NULL;
->  	int status = 0;
-> @@ -1360,11 +1359,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		if (status == nfserr_replay_cache) {
->  			dprintk("Got a create_session replay! seqid= %d\n",
->  				slot->sl_seqid);
-> -			cstate->slot = slot;
-> -			cstate->status = status;
-> -			/* Return the cached reply status */
-> -			status = nfsd4_replay_cache_entry(resp, NULL);
-> -			goto out;
->  		} else if (cr_ses->seqid != conf->cl_slot.sl_seqid + 1) {
->  			status = nfserr_seq_misordered;
->  			dprintk("Sequence misordered!\n");
-> @@ -1413,7 +1407,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  	cr_ses->seqid = slot->sl_seqid;
->  
->  	slot->sl_inuse = true;
-> -	cstate->slot = slot;
->  	/* Ensure a page is used for the cache */
->  	slot->sl_cache_entry.ce_cachethis = 1;
->  out:
-> -- 
-> 1.6.3
-> 
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index f874640..e69b8f6 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -265,8 +265,6 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
+ 		goto out_err;
+ 	}
+ 
+-	/* FIXME: either 4.0 or 4.1 callback service can be up at a time
+-	 * need to monitor and control them both */
+ 	minorversion_setup =  nfs_minorversion_callback_svc_setup(minorversion,
+ 					serv, xprt, &rqstp, &callback_svc);
+ 	if (!minorversion_setup) {
+-- 
+1.5.4.3
+
