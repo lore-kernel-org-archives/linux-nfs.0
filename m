@@ -1,199 +1,109 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] sunrpc: Adding trace points to status routines (take 2)
-Date: Mon, 15 Jun 2009 17:56:51 -0700
-Message-ID: <1245113811.7470.15.camel@heimdal.trondhjem.org>
-References: <4A2EA789.60608@RedHat.com>
+From: "Halevy, Benny" <bhalevy@panasas.com>
+Subject: RE: [pnfs] [RFC 25/39] nfs41: decode minorversion 1 cb_compound header
+Date: Mon, 15 Jun 2009 21:07:57 -0400
+Message-ID: <7225594ED4A1304C9E43D030A886D221F4C557@daytona.int.panasas.com>
+References: <49FA3180.5030404@panasas.com><1241133796-1118-1-git-send-email-bhalevy@panasas.com> <1245111238.7470.1.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux Kernel Mailing list <linux-kernel@vger.kernel.org>,
-	Ingo Molnar <mingo@redhat.com>, Jason Baron <jbaron@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: <linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:50066 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751709AbZFPA4x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jun 2009 20:56:53 -0400
-In-Reply-To: <4A2EA789.60608-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:1978
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752568AbZFPBH4 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jun 2009 21:07:56 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-06-09 at 14:18 -0400, Steve Dickson wrote:
-> Hey Trond,
+> What is the point of splitting the read_buf() here? That seems very
+> unnecessary...
+
+Agreed.
+I'll revert that.
+
+For the record, my original thinking was that you don't want to read
+the rest of the header if you don't support its minorversion.
+However, minorversion can't change the compound header's format
+so its safe to read it all.
+
+Benny
+
+-----Original Message-----
+From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
+Sent: Tue 2009-06-16 03:13
+To: Halevy, Benny
+Cc: linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
+Subject: Re: [pnfs] [RFC 25/39] nfs41: decode minorversion 1 cb_compound header
+ 
+On Fri, 2009-05-01 at 02:23 +0300, Benny Halevy wrote:
+> decode cb_compound header conforming to
+> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion1-26
 > 
-> Here is an updated version of the patch I sent out a while
-> back... all that has changed was the addtion of 'rpc_'  to
-> the name of the trace points which coincides with the
-> other trace points naming convention.
+> Get rid of cb_compound_hdr_arg.callback_ident
 > 
-> Here is a pointer to the previous email that has the 
-> fairly long winded explanation of how all this works:
+> callback_ident is not used anywhere so we shouldn't waste any memory to
+> store it.
 > 
->    http://marc.info/?l=linux-kernel&m=124058933520183&w=2
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/callback.h     |    1 -
+>  fs/nfs/callback_xdr.c |   12 ++++++++----
+>  2 files changed, 8 insertions(+), 5 deletions(-)
 > 
-> And below is the updated patch which is based on Ingo's
-> linux-2.6-tip.git tree. 
-> 
-> Comments?
-> 
-> steved.
+> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+> index 21881d9..e0f4e6b 100644
+> --- a/fs/nfs/callback.h
+> +++ b/fs/nfs/callback.h
+> @@ -27,7 +27,6 @@ struct cb_compound_hdr_arg {
+>  	unsigned int taglen;
+>  	const char *tag;
+>  	unsigned int minorversion;
+> -	unsigned int callback_ident;
+>  	unsigned nops;
+>  };
 >  
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Tue Jun  9 14:12:07 EDT 2009
-> 
->     Adds three trace points to the status routines in the
->     sunrpc state machine. The trace points will only execute
->     in error conditions.
->     
->     The goal of these trace points it to make it easier to
->     debug process that spin or get hung up in the NFS and
->     related subsystems.
-
-Would this replace the existing dprint_status()? How does it differ from
-the existing DYNAMIC_DEBUG functionality that was merged in 2.6.30?
-    
->     Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-> new file mode 100644
-> index 0000000..f502eb4
-> --- /dev/null
-> +++ b/include/trace/events/sunrpc.h
-> @@ -0,0 +1,86 @@
-> +#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
-> +#define _TRACE_SUNRPC_H
-> +
-> +#include <linux/tracepoint.h>
-> +
-> +#undef TRACE_SYSTEM
-> +#define TRACE_SYSTEM sunrpc
-> +
-> +TRACE_EVENT(rpc_call_status,
-> +
-> +	TP_PROTO(struct rpc_task *task),
-> +
-> +	TP_ARGS(task),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(u32, cl_prog)
-> +		__field(u32, cl_vers)
-> +		__field(u32, p_proc)
-> +		__field(int, tk_status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->cl_vers = task->tk_client->cl_vers;
-> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-
-You should only need to set entry->cl_prog once, right?
-
-> +		__entry->tk_status = task->tk_status;
-> +	),
-> +
-> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-> +);
-> +
-> +TRACE_EVENT(rpc_bind_status,
-> +
-> +	TP_PROTO(struct rpc_task *task),
-> +
-> +	TP_ARGS(task),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(u32, cl_prog)
-> +		__field(u32, cl_vers)
-> +		__field(u32, p_proc)
-> +		__field(int, tk_status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->cl_vers = task->tk_client->cl_vers;
-> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-
-Ditto
-
-> +		__entry->tk_status = task->tk_status;
-> +	),
-> +
-> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-> +);
-> +TRACE_EVENT(rpc_connect_status,
-> +
-> +	TP_PROTO(struct rpc_task *task, int status),
-> +
-> +	TP_ARGS(task, status),
-> +
-> +	TP_STRUCT__entry(
-> +		__field(u32, cl_prog)
-> +		__field(u32, cl_vers)
-> +		__field(u32, p_proc)
-> +		__field(int, tk_status)
-> +	),
-> +
-> +	TP_fast_assign(
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-> +		__entry->cl_vers = task->tk_client->cl_vers;
-> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-> +		__entry->cl_prog = task->tk_client->cl_prog;
-
-Ditto
-
-> +		__entry->tk_status = status;
-> +	),
-> +
-> +	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-> +		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-> +
-> +);
-> +#endif /* __TRACE_SUNRPC_H */
-> +
-> +/* This part must be outside protection */
-> +#include <trace/define_trace.h>
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 5abab09..b86ee2a 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -37,6 +37,9 @@
->  #include <linux/sunrpc/rpc_pipe_fs.h>
->  #include <linux/sunrpc/metrics.h>
->  
-> +#include <linux/ftrace.h>
-> +#define CREATE_TRACE_POINTS
-> +#include <trace/events/sunrpc.h>
->  
->  #ifdef RPC_DEBUG
->  # define RPCDBG_FACILITY	RPCDBG_CALL
-> @@ -957,6 +960,7 @@ call_bind_status(struct rpc_task *task)
->  		return;
+> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+> index 91f6f74..e141a7e 100644
+> --- a/fs/nfs/callback_xdr.c
+> +++ b/fs/nfs/callback_xdr.c
+> @@ -143,18 +143,22 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
+>  				__func__, hdr->taglen);
+>  		return htonl(NFS4ERR_RESOURCE);
 >  	}
->  
-> +	trace_rpc_bind_status(task);
->  	switch (task->tk_status) {
->  	case -ENOMEM:
->  		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-> @@ -1038,6 +1042,7 @@ call_connect_status(struct rpc_task *task)
->  		return;
->  	}
->  
-> +	trace_rpc_connect_status(task, status);
->  	switch (status) {
->  		/* if soft mounted, test if we've timed out */
->  	case -ETIMEDOUT:
-> @@ -1141,6 +1146,7 @@ call_status(struct rpc_task *task)
->  		return;
->  	}
->  
-> +	trace_rpc_call_status(task);
->  	task->tk_status = 0;
->  	switch(status) {
->  	case -EHOSTDOWN:
-> 
-> 
+> -	p = read_buf(xdr, 12);
+> +	p = read_buf(xdr, 4);
+>  	if (unlikely(p == NULL))
+>  		return htonl(NFS4ERR_RESOURCE);
+>  	hdr->minorversion = ntohl(*p++);
+> -	/* Check minor version is zero. */
+> -	if (hdr->minorversion != 0) {
+> +	/* Check minor version is zero or one. */
+> +	if (hdr->minorversion <= 1) {
+> +		p = read_buf(xdr, 8);
 
+What is the point of splitting the read_buf() here? That seems very
+unnecessary...
+
+> +		if (unlikely(p == NULL))
+> +			return htonl(NFS4ERR_RESOURCE);
+> +		p++;	/* skip callback_ident */
+> +	} else {
+>  		printk(KERN_WARNING "%s: NFSv4 server callback with "
+>  			"illegal minor version %u!\n",
+>  			__func__, hdr->minorversion);
+>  		return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
+>  	}
+> -	hdr->callback_ident = ntohl(*p++);
+>  	hdr->nops = ntohl(*p);
+>  	dprintk("%s: minorversion %d nops %d\n", __func__,
+>  		hdr->minorversion, hdr->nops);
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
