@@ -1,136 +1,152 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 42/44] nfsd41: Backchannel: cb_sequence callback
-Date: Tue, 16 Jun 2009 04:21:13 +0300
-Message-ID: <1245115273-8188-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 41/44] nfsd41: Backchannel: Setup sequence information
+Date: Tue, 16 Jun 2009 04:21:10 +0300
+Message-ID: <1245115270-8155-1-git-send-email-bhalevy@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2520
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2703
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757882AbZFPBVN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:21:13 -0400
+	by vger.kernel.org with ESMTP id S1757784AbZFPBVK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:21:10 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-Note: highest slot id and target highest slot id do not have to be 0
-as was previously implemented.  They can be greater than what the
-nfs server sent if the client supports a larger slot table on the
-backchannel.  At this point we just ignore that.
+Follows the model used by the NFS client.  Setup the RPC prepare and done
+function pointers so that we can populate the sequence information if
+minorversion == 1.  rpc_run_task() is then invoked directly just like
+existing NFS client operations do.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+nfsd4_cb_prepare() determines if the sequence information needs to be setup.
+If the slot is in use, it adds itself to the wait queue.
+
+nfsd4_cb_done() wakes anyone sleeping on the callback channel wait queue
+after our RPC reply has been received.  It also sets the task message
+result pointer to NULL to clearly indicate we're done using it.
+
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-[Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-[fixed indentation]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: use nfsd4_cb_sequence for callback minorversion]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: fix verification of CB_SEQUENCE highest slot id[
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: Backchannel: Remove old backchannel serialization]
-[nfsd41: Backchannel: First callback sequence ID should be 1]
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfsd41: decode_cb_sequence does not need to actually decode ignored fields]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+[define cl_cb_seq_nr here]
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4callback.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 72 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c     |   83 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfsd/state.h |    1 +
+ 2 files changed, 84 insertions(+), 0 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 70e1af2..22e5455 100644
+index a661ae4..70e1af2 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -256,6 +256,27 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
- 	hdr->nops++;
- }
- 
-+static void
-+encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
-+		   struct nfs4_cb_compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	if (hdr->minorversion == 0)
-+		return;
-+
-+	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
-+
-+	WRITE32(OP_CB_SEQUENCE);
-+	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
-+	WRITE32(args->cbs_clp->cl_cb_seq_nr);
-+	WRITE32(0);		/* slotid, always 0 */
-+	WRITE32(0);		/* highest slotid always 0 */
-+	WRITE32(0);		/* cachethis always 0 */
-+	WRITE32(0); /* FIXME: support referring_call_lists */
-+	hdr->nops++;
-+}
-+
- static int
- nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
- {
-@@ -317,6 +338,57 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
- 	return 0;
+@@ -529,6 +529,88 @@ nfsd4_probe_callback(struct nfs4_client *clp)
+ 	do_probe_callback(clp);
  }
  
 +/*
-+ * Our current back channel implmentation supports a single backchannel
-+ * with a single slot.
++ * There's currently a single callback channel slot.
++ * If the slot is available, then mark it busy.  Otherwise, set the
++ * thread for sleeping on the callback RPC wait queue.
 + */
-+static int
-+decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
-+		   struct rpc_rqst *rqstp)
++static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
++		struct rpc_task *task)
 +{
-+	struct nfs4_sessionid id;
-+	int status;
-+	u32 dummy;
-+	__be32 *p;
++	struct nfs4_rpc_args *args = task->tk_msg.rpc_argp;
++	u32 *ptr = (u32 *)clp->cl_sessionid.data;
++	int status = 0;
 +
-+	if (res->cbs_minorversion == 0)
-+		return 0;
++	dprintk("%s: %u:%u:%u:%u\n", __func__,
++		ptr[0], ptr[1], ptr[2], ptr[3]);
 +
-+	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
-+	if (status)
-+		return status;
++	if (test_and_set_bit(0, &clp->cl_cb_slot_busy) != 0) {
++		rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
++		dprintk("%s slot is busy\n", __func__);
++		status = -EAGAIN;
++		goto out;
++	}
 +
 +	/*
-+	 * If the server returns different values for sessionID, slotID or
-+	 * sequence number, the server is looney tunes.
++	 * We'll need the clp during XDR encoding and decoding,
++	 * and the sequence during decoding to verify the reply
 +	 */
-+	status = -ESERVERFAULT;
++	args->args_seq.cbs_clp = clp;
++	task->tk_msg.rpc_resp = &args->args_seq;
 +
-+	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
-+	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
-+	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
-+	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
-+		   NFS4_MAX_SESSIONID_LEN)) {
-+		dprintk("%s Invalid session id\n", __func__);
-+		goto out;
-+	}
-+	READ32(dummy);
-+	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
-+		dprintk("%s Invalid sequence number\n", __func__);
-+		goto out;
-+	}
-+	READ32(dummy); 	/* slotid must be 0 */
-+	if (dummy != 0) {
-+		dprintk("%s Invalid slotid\n", __func__);
-+		goto out;
-+	}
-+	/* FIXME: process highest slotid and target highest slotid */
-+	status = 0;
 +out:
++	dprintk("%s status=%d\n", __func__, status);
 +	return status;
 +}
 +
++/*
++ * TODO: cb_sequence should support referring call lists, cachethis, multiple
++ * slots, and mark callback channel down on communication errors.
++ */
++static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_delegation *dp = calldata;
++	struct nfs4_client *clp = dp->dl_client;
++	struct nfs4_rpc_args *args = task->tk_msg.rpc_argp;
++	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
++	int status = 0;
 +
- static int
- nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
++	args->args_seq.cbs_minorversion = minorversion;
++	if (minorversion) {
++		status = nfsd41_cb_setup_sequence(clp, task);
++		if (status) {
++			if (status != -EAGAIN) {
++				/* terminate rpc task */
++				task->tk_status = status;
++				task->tk_action = NULL;
++			}
++			return;
++		}
++	}
++	rpc_call_start(task);
++}
++
++static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_delegation *dp = calldata;
++	struct nfs4_client *clp = dp->dl_client;
++
++	dprintk("%s: minorversion=%d\n", __func__,
++		clp->cl_cb_conn.cb_minorversion);
++
++	if (clp->cl_cb_conn.cb_minorversion) {
++		/* No need for lock, access serialized in nfsd4_cb_prepare */
++		++clp->cl_cb_seq_nr;
++		clear_bit(0, &clp->cl_cb_slot_busy);
++		rpc_wake_up_next(&clp->cl_cb_waitq);
++		dprintk("%s: freed slot, new seqid=%d\n", __func__,
++			clp->cl_cb_seq_nr);
++
++		/* We're done looking into the sequence information */
++		task->tk_msg.rpc_resp = NULL;
++	}
++}
++
+ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
  {
+ 	struct nfs4_delegation *dp = calldata;
+@@ -568,6 +650,7 @@ static void nfsd4_cb_recall_release(void *calldata)
+ }
+ 
+ static const struct rpc_call_ops nfsd4_cb_recall_ops = {
++	.rpc_call_prepare = nfsd4_cb_prepare,
+ 	.rpc_call_done = nfsd4_cb_recall_done,
+ 	.rpc_release = nfsd4_cb_recall_release,
+ };
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 6f1a25e..5aaafbb 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -216,6 +216,7 @@ struct nfs4_client {
+ 	/* for nfs41 callbacks */
+ 	/* We currently support a single back channel with a single slot */
+ 	unsigned long		cl_cb_slot_busy;
++	u32			cl_cb_seq_nr;
+ 	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
+ 	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
+ 						/* wait here for slots */
 -- 
 1.6.3
 
