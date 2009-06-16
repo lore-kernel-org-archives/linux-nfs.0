@@ -1,289 +1,178 @@
-From: "Halevy, Benny" <bhalevy@panasas.com>
-Subject: RE: [pnfs] [RFC 31/39] nfs41: cb_sequence xdr implementation
-Date: Mon, 15 Jun 2009 22:25:07 -0400
-Message-ID: <7225594ED4A1304C9E43D030A886D221F4C55A@daytona.int.panasas.com>
-References: <49FA3180.5030404@panasas.com><1241133864-1317-1-git-send-email-bhalevy@panasas.com> <1245111512.7470.5.camel@heimdal.trondhjem.org>
+From: "Labiaga, Ricardo" <ricardo.labiaga@netapp.com>
+Subject: Re: [pnfs] [RFC 39/39] nfs41: Backchannel: CB_SEQUENCE validation
+Date: Mon, 15 Jun 2009 19:40:09 -0700
+Message-ID: <C65C5419.7CFE%ricardo.labiaga@netapp.com>
+References: <C65C3888.7CB1%ricardo.labiaga@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+	charset="US-ASCII"
 Cc: <linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
-To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
+To: Ricardo Labiaga <ricardo.labiaga@netapp.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:4825
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752226AbZFPC0W convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jun 2009 22:26:22 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:1524 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750959AbZFPCkI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Jun 2009 22:40:08 -0400
+In-Reply-To: <C65C3888.7CB1%ricardo.labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > +#define READ64(x)         do {			\
-> > +	(x) = (u64)ntohl(*p++) << 32;		\
-> > +	(x) |= ntohl(*p++);			\
-> > +} while (0)
+On 6/15/09 5:42 PM, "Ricardo Labiaga" <ricardo.labiaga@netapp.com> wrote:
+
+> On 6/15/09 5:27 PM, "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 > 
-> This doesn't appear to be used, and in any case, it duplicates the
-
-Oops, Will do.
-
-> existing function xdr_duplicate_hyper(). Please remove...
-
-xdr_decode_hyper?
-
-Benny
-
------Original Message-----
-From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
-Sent: Tue 2009-06-16 03:18
-To: Halevy, Benny
-Cc: linux-nfs@vger.kernel.org; pnfs@linux-nfs.org
-Subject: Re: [pnfs] [RFC 31/39] nfs41: cb_sequence xdr implementation
- 
-On Fri, 2009-05-01 at 02:24 +0300, Benny Halevy wrote:
-> [nfs41: get rid of READMEM and COPYMEM for callback_xdr.c]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/callback_xdr.c |  181 ++++++++++++++++++++++++++++++++++++++++++++++++-
->  1 files changed, 179 insertions(+), 2 deletions(-)
+>> On Fri, 2009-05-01 at 02:25 +0300, Benny Halevy wrote:
+>>> From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>>> 
+>>> Validates the callback's sessionID, the slot number, and the sequence ID.
+>>> Increments the slot's sequence.
+>>> 
+>>> Detects replays, but simply prints a debug message (if debugging is enabled
+>>> since we don't yet implement a duplicate request cache for the backchannel.
+>>> This should not present a problem, since only idempotent callbacks are
+>>> currently implemented.
+>>> 
+>>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>> ---
+>>>  fs/nfs/callback_proc.c |   75
+>>> ++++++++++++++++++++++++++++++++++++++++++++----
+>>>  1 files changed, 69 insertions(+), 6 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>>> index 6b342e8..c85d66f 100644
+>>> --- a/fs/nfs/callback_proc.c
+>>> +++ b/fs/nfs/callback_proc.c
+>>> @@ -105,6 +105,57 @@ out:
+>>>  #if defined(CONFIG_NFS_V4_1)
+>>>  
+>>>  /*
+>>> + * Validate the sequenceID sent by the server.
+>>> + * Return success if the sequenceID is one more than what we last saw on
+>>> + * this slot, accounting for wraparound.  Increments the slot's sequence.
+>>> + *
+>>> + * We don't yet implement a duplicate request cache, so at this time
+>>> + * we will log replays, and process them as if we had not seen them before,
+>>> + * but we don't bump the sequence in the slot.  Not too worried about it,
+>>> + * since we only currently implement idempotent callbacks anyway.
+>>> + *
+>>> + * We have a single slot backchannel at this time, so we don't bother
+>>> + * checking the used_slots bit array on the table.  The lower layer
+>>> guarantees
+>>> + * a single outstanding callback request at a time.
+>>> + */
+>>> +static int
+>>> +validate_seqid(struct nfs4_slot_table *tbl, u32 slotid, u32 seqid)
+>>> +{
+>>> + struct nfs4_slot *slot;
+>>> +
+>>> + dprintk("%s enter. slotid %d seqid %d\n",
+>>> +  __func__, slotid, seqid);
+>>> +
+>>> + if (slotid > NFS41_BC_MAX_CALLBACKS)
+>>> +  return NFS4ERR_BADSLOT;
+>> 
+>> I thought we agreed to always return error values as _negative_? Why the
+>> change here?
+>> 
 > 
-> diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-> index 9db88ce..066273c 100644
-> --- a/fs/nfs/callback_xdr.c
-> +++ b/fs/nfs/callback_xdr.c
-> @@ -20,8 +20,18 @@
->  				2 + 2 + 3 + 3)
->  #define CB_OP_RECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
->  
-> +#if defined(CONFIG_NFS_V4_1)
-> +#define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
-> +					4 + 1 + 3)
-> +#endif /* CONFIG_NFS_V4_1 */
-> +
->  #define NFSDBG_FACILITY NFSDBG_CALLBACK
->  
-> +#define READ64(x)         do {			\
-> +	(x) = (u64)ntohl(*p++) << 32;		\
-> +	(x) |= ntohl(*p++);			\
-> +} while (0)
+> Will change to negative.
+> 
 
-This doesn't appear to be used, and in any case, it duplicates the
-existing function xdr_duplicate_hyper(). Please remove...
+Looking at this more closely, this is the error that we encode into the XDR
+result, so it's okay for it to be positive.  I'll change it to use htonl()
+in this function to avoid confusion, instead of setting htonl() in its
+caller.
 
-> +
->  typedef __be32 (*callback_process_op_t)(void *, void *);
->  typedef __be32 (*callback_decode_arg_t)(struct svc_rqst *, struct xdr_stream *, void *);
->  typedef __be32 (*callback_encode_res_t)(struct svc_rqst *, struct xdr_stream *, void *);
-> @@ -210,6 +220,122 @@ out:
->  	return status;
->  }
->  
-> +#if defined(CONFIG_NFS_V4_1)
-> +
-> +static unsigned decode_sessionid(struct xdr_stream *xdr,
-> +				 struct nfs4_sessionid *sid)
-> +{
-> +	uint32_t *p;
-> +	int len = NFS4_MAX_SESSIONID_LEN;
-> +
-> +	p = read_buf(xdr, len);
-> +	if (unlikely(p == NULL))
-> +		return htonl(NFS4ERR_RESOURCE);;
-> +
-> +	memcpy(sid->data, p, len);
-> +	return 0;
-> +}
-> +
-> +static unsigned decode_rc_list(struct xdr_stream *xdr,
-> +			       struct referring_call_list *rc_list)
-> +{
-> +	uint32_t *p;
-> +	int i;
-> +	unsigned status;
-> +
-> +	status = decode_sessionid(xdr, &rc_list->rcl_sessionid);
-> +	if (status)
-> +		goto out;
-> +
-> +	status = htonl(NFS4ERR_RESOURCE);
-> +	p = read_buf(xdr, sizeof(uint32_t));
-> +	if (unlikely(p == NULL))
-> +		goto out;
-> +
-> +	rc_list->rcl_nrefcalls = ntohl(*p++);
-> +	if (rc_list->rcl_nrefcalls) {
-> +		p = read_buf(xdr,
-> +			     rc_list->rcl_nrefcalls * 2 * sizeof(uint32_t));
-> +		if (unlikely(p == NULL))
-> +			goto out;
-> +		rc_list->rcl_refcalls = kmalloc(rc_list->rcl_nrefcalls *
-> +						sizeof(*rc_list->rcl_refcalls),
-> +						GFP_KERNEL);
-> +		if (unlikely(rc_list->rcl_refcalls == NULL))
-> +			goto out;
-> +		for (i = 0; i < rc_list->rcl_nrefcalls; i++) {
-> +			rc_list->rcl_refcalls[i].rc_sequenceid = ntohl(*p++);
-> +			rc_list->rcl_refcalls[i].rc_slotid = ntohl(*p++);
-> +		}
-> +	}
-> +	status = 0;
-> +
-> +out:
-> +	return status;
-> +}
-> +
-> +static unsigned decode_cb_sequence_args(struct svc_rqst *rqstp,
-> +					struct xdr_stream *xdr,
-> +					struct cb_sequenceargs *args)
-> +{
-> +	uint32_t *p;
-> +	int i;
-> +	unsigned status;
-> +
-> +	status = decode_sessionid(xdr, &args->csa_sessionid);
-> +	if (status)
-> +		goto out;
-> +
-> +	status = htonl(NFS4ERR_RESOURCE);
-> +	p = read_buf(xdr, 5 * sizeof(uint32_t));
-> +	if (unlikely(p == NULL))
-> +		goto out;
-> +
-> +	args->csa_addr = svc_addr_in(rqstp);
-> +	args->csa_sequenceid = ntohl(*p++);
-> +	args->csa_slotid = ntohl(*p++);
-> +	args->csa_highestslotid = ntohl(*p++);
-> +	args->csa_cachethis = ntohl(*p++);
-> +	args->csa_nrclists = ntohl(*p++);
-> +	args->csa_rclists = NULL;
-> +	if (args->csa_nrclists) {
-> +		args->csa_rclists = kmalloc(args->csa_nrclists *
-> +					    sizeof(*args->csa_rclists),
-> +					    GFP_KERNEL);
-> +		if (unlikely(args->csa_rclists == NULL))
-> +			goto out;
-> +
-> +		for (i = 0; i < args->csa_nrclists; i++) {
-> +			status = decode_rc_list(xdr, &args->csa_rclists[i]);
-> +			if (status)
-> +				goto out_free;
-> +		}
-> +	}
-> +	status = 0;
-> +
-> +	dprintk("%s: sessionid %x:%x:%x:%x sequenceid %u slotid %u "
-> +		"highestslotid %u cachethis %d nrclists %u\n",
-> +		__func__,
-> +		((u32 *)&args->csa_sessionid)[0],
-> +		((u32 *)&args->csa_sessionid)[1],
-> +		((u32 *)&args->csa_sessionid)[2],
-> +		((u32 *)&args->csa_sessionid)[3],
-> +		args->csa_sequenceid, args->csa_slotid,
-> +		args->csa_highestslotid, args->csa_cachethis,
-> +		args->csa_nrclists);
-> +out:
-> +	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-> +	return status;
-> +
-> +out_free:
-> +	for (i = 0; i < args->csa_nrclists; i++)
-> +		kfree(args->csa_rclists[i].rcl_refcalls);
-> +	kfree(args->csa_rclists);
-> +	goto out;
-> +}
-> +
-> +#endif /* CONFIG_NFS_V4_1 */
-> +
->  static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
->  {
->  	__be32 *p;
-> @@ -359,6 +485,49 @@ out:
->  	return status;
->  }
->  
-> +#if defined(CONFIG_NFS_V4_1)
-> +
-> +static unsigned encode_sessionid(struct xdr_stream *xdr,
-> +				 const struct nfs4_sessionid *sid)
-> +{
-> +	uint32_t *p;
-> +	int len = NFS4_MAX_SESSIONID_LEN;
-> +
-> +	p = xdr_reserve_space(xdr, len);
-> +	if (unlikely(p == NULL))
-> +		return htonl(NFS4ERR_RESOURCE);
-> +
-> +	memcpy(p, sid, len);
-> +	return 0;
-> +}
-> +
-> +static unsigned encode_cb_sequence_res(struct svc_rqst *rqstp,
-> +				       struct xdr_stream *xdr,
-> +				       const struct cb_sequenceres *res)
-> +{
-> +	uint32_t *p;
-> +	unsigned status = res->csr_status;
-> +
-> +	if (unlikely(status != 0))
-> +		goto out;
-> +
-> +	encode_sessionid(xdr, &res->csr_sessionid);
-> +
-> +	p = xdr_reserve_space(xdr, 4 * sizeof(uint32_t));
-> +	if (unlikely(p == NULL))
-> +		return htonl(NFS4ERR_RESOURCE);
-> +
-> +	*p++ = htonl(res->csr_sequenceid);
-> +	*p++ = htonl(res->csr_slotid);
-> +	*p++ = htonl(res->csr_highestslotid);
-> +	*p++ = htonl(res->csr_target_highestslotid);
-> +out:
-> +	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-> +	return status;
-> +}
-> +
-> +#endif /* CONFIG_NFS_V4_1 */
-> +
->  static __be32 process_op(uint32_t minorversion, int nop,
->  		struct svc_rqst *rqstp,
->  		struct xdr_stream *xdr_in, void *argp,
-> @@ -382,6 +551,7 @@ static __be32 process_op(uint32_t minorversion, int nop,
->  		switch (op_nr) {
->  		case OP_CB_GETATTR:
->  		case OP_CB_RECALL:
-> +		case OP_CB_SEQUENCE:
->  			op = &callback_ops[op_nr];
->  			break;
->  
-> @@ -391,7 +561,6 @@ static __be32 process_op(uint32_t minorversion, int nop,
->  		case OP_CB_RECALL_ANY:
->  		case OP_CB_RECALLABLE_OBJ_AVAIL:
->  		case OP_CB_RECALL_SLOT:
-> -		case OP_CB_SEQUENCE:
->  		case OP_CB_WANTS_CANCELLED:
->  		case OP_CB_NOTIFY_LOCK:
->  		case OP_CB_NOTIFY_DEVICEID:
-> @@ -496,7 +665,15 @@ static struct callback_op callback_ops[] = {
->  		.process_op = (callback_process_op_t)nfs4_callback_recall,
->  		.decode_args = (callback_decode_arg_t)decode_recall_args,
->  		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
-> -	}
-> +	},
-> +#if defined(CONFIG_NFS_V4_1)
-> +	[OP_CB_SEQUENCE] = {
-> +		.process_op = (callback_process_op_t)nfs4_callback_sequence,
-> +		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
-> +		.encode_res = (callback_encode_res_t)encode_cb_sequence_res,
-> +		.res_maxsize = CB_OP_SEQUENCE_RES_MAXSZ,
-> +	},
-> +#endif /* CONFIG_NFS_V4_1 */
->  };
->  
->  /*
+- ricardo
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> - ricardo
+> 
+>>> +
+>>> + slot = tbl->slots + slotid;
+>>> + dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
+>>> +
+>>> + /* Normal */
+>>> + if (likely(seqid == slot->seq_nr + 1)) {
+>>> +  slot->seq_nr++;
+>>> +  return NFS4_OK;
+>>> + }
+>>> +
+>>> + /* Replay */
+>>> + if (seqid == slot->seq_nr) {
+>>> +  dprintk("%s seqid %d is a replay - no DRC available\n",
+>>> +   __func__, seqid);
+>>> +  return NFS4_OK;
+>>> + }
+>>> +
+>>> + /* Wraparound */
+>>> + if (seqid == 1 && (slot->seq_nr + 1) == 0) {
+>>> +  slot->seq_nr = 1;
+>>> +  return NFS4_OK;
+>>> + }
+>>> +
+>>> + /* Misordered request */
+>>> + return NFS4ERR_SEQ_MISORDERED;
+>>> +}
+>>> +
+>>> +/*
+>>>   * Returns a pointer to a held 'struct nfs_client' that matches the
+>>> server's
+>>>   * address, major version number, and session ID.  It is the caller's
+>>>   * responsibility to release the returned reference.
+>>> @@ -140,18 +191,27 @@ out:
+>>> return NULL;
+>>>  }
+>>>  
+>>> -/* FIXME: validate args->cbs_{sequence,slot}id */
+>>>  /* FIXME: referring calls should be processed */
+>>>  unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
+>>> struct cb_sequenceres *res)
+>>>  {
+>>> - int i;
+>>> - unsigned status = 0;
+>>> + struct nfs_client *clp;
+>>> + int i, status;
+>>>  
+>>> for (i = 0; i < args->csa_nrclists; i++)
+>>> kfree(args->csa_rclists[i].rcl_refcalls);
+>>> kfree(args->csa_rclists);
+>>>  
+>>> + status = NFS4ERR_BADSESSION;
+>>> + clp = find_client_with_session(args->csa_addr, 4, &args->csa_sessionid);
+>>> + if (clp == NULL)
+>>> +  goto out;
+>>> +
+>>> + status = validate_seqid(&clp->cl_session->bc_slot_table,
+>>> +    args->csa_slotid, args->csa_sequenceid);
+>>> + if (status)
+>>> +  goto out_putclient;
+>>> +
+>>> memcpy(&res->csr_sessionid, &args->csa_sessionid,
+>>>       sizeof(res->csr_sessionid));
+>>> res->csr_sequenceid = args->csa_sequenceid;
+>>> @@ -159,9 +219,12 @@ unsigned nfs4_callback_sequence(struct cb_sequenceargs
+>>> *args,
+>>> res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+>>> res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
+>>>  
+>>> - dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+>>> - res->csr_status = status;
+>>> - return status;
+>>> +out_putclient:
+>>> + nfs_put_client(clp);
+>>> +out:
+>>> + dprintk("%s: exit with status = %d\n", __func__, status);
+>>> + res->csr_status = htonl(status);
+>>> + return res->csr_status;
+>>>  }
+>>>  
+>>>  #endif /* CONFIG_NFS_V4_1 */
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
