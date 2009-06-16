@@ -1,178 +1,57 @@
-From: "Labiaga, Ricardo" <ricardo.labiaga@netapp.com>
-Subject: Re: [pnfs] [RFC 39/39] nfs41: Backchannel: CB_SEQUENCE validation
-Date: Mon, 15 Jun 2009 19:40:09 -0700
-Message-ID: <C65C5419.7CFE%ricardo.labiaga@netapp.com>
-References: <C65C3888.7CB1%ricardo.labiaga@netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] NFS: Add acreg{min,max} and acdir{min, max} in milliseconds
+Date: Tue, 16 Jun 2009 12:30:49 -0400
+Message-ID: <4A37C8B9.2040906@RedHat.com>
+References: <200906091832.50633.agud@akamai.com>	 <1244636844.24750.23.camel@heimdal.trondhjem.org>	 <4A300CE3.8080502@akamai.com>	 <025BEFCD-2F56-4E29-99F9-1939867B48A7@fys.uio.no>	 <4A316814.7030609@akamai.com>	 <1244754888.5047.132.camel@heimdal.trondhjem.org>	 <4A32ACDB.90802@akamai.com>	 <1244836259.19533.19.camel@heimdal.trondhjem.org>	 <4A32CD5D.2070502@akamai.com>	 <1244846673.32257.69.camel@heimdal.trondhjem.org>	 <4A36D0D1.3000904@akamai.com>	 <3786d1f06aae533fa82740d68985fd50.squirrel@neil.brown.name> <1245107980.7470.0.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="US-ASCII"
-Cc: <linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
-To: Ricardo Labiaga <ricardo.labiaga@netapp.com>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NeilBrown <neilb@suse.de>, Amit Gud <agud@akamai.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"gud-OYTqUY/oFF8@public.gmane.org" <gud-OYTqUY/oFF8@public.gmane.org>,
+	"Uhlenkott, Jason" <juhlenko@akamai.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1524 "EHLO mx2.netapp.com"
+Received: from mx2.redhat.com ([66.187.237.31]:51159 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750959AbZFPCkI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jun 2009 22:40:08 -0400
-In-Reply-To: <C65C3888.7CB1%ricardo.labiaga@netapp.com>
+	id S1759150AbZFPQeI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Jun 2009 12:34:08 -0400
+In-Reply-To: <1245107980.7470.0.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/15/09 5:42 PM, "Ricardo Labiaga" <ricardo.labiaga@netapp.com> wrote:
 
-> On 6/15/09 5:27 PM, "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-> 
->> On Fri, 2009-05-01 at 02:25 +0300, Benny Halevy wrote:
->>> From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
->>> 
->>> Validates the callback's sessionID, the slot number, and the sequence ID.
->>> Increments the slot's sequence.
->>> 
->>> Detects replays, but simply prints a debug message (if debugging is enabled
->>> since we don't yet implement a duplicate request cache for the backchannel.
->>> This should not present a problem, since only idempotent callbacks are
->>> currently implemented.
->>> 
->>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>> ---
->>>  fs/nfs/callback_proc.c |   75
->>> ++++++++++++++++++++++++++++++++++++++++++++----
->>>  1 files changed, 69 insertions(+), 6 deletions(-)
->>> 
->>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->>> index 6b342e8..c85d66f 100644
->>> --- a/fs/nfs/callback_proc.c
->>> +++ b/fs/nfs/callback_proc.c
->>> @@ -105,6 +105,57 @@ out:
->>>  #if defined(CONFIG_NFS_V4_1)
->>>  
->>>  /*
->>> + * Validate the sequenceID sent by the server.
->>> + * Return success if the sequenceID is one more than what we last saw on
->>> + * this slot, accounting for wraparound.  Increments the slot's sequence.
->>> + *
->>> + * We don't yet implement a duplicate request cache, so at this time
->>> + * we will log replays, and process them as if we had not seen them before,
->>> + * but we don't bump the sequence in the slot.  Not too worried about it,
->>> + * since we only currently implement idempotent callbacks anyway.
->>> + *
->>> + * We have a single slot backchannel at this time, so we don't bother
->>> + * checking the used_slots bit array on the table.  The lower layer
->>> guarantees
->>> + * a single outstanding callback request at a time.
->>> + */
->>> +static int
->>> +validate_seqid(struct nfs4_slot_table *tbl, u32 slotid, u32 seqid)
->>> +{
->>> + struct nfs4_slot *slot;
->>> +
->>> + dprintk("%s enter. slotid %d seqid %d\n",
->>> +  __func__, slotid, seqid);
->>> +
->>> + if (slotid > NFS41_BC_MAX_CALLBACKS)
->>> +  return NFS4ERR_BADSLOT;
->> 
->> I thought we agreed to always return error values as _negative_? Why the
->> change here?
->> 
-> 
-> Will change to negative.
-> 
 
-Looking at this more closely, this is the error that we encode into the XDR
-result, so it's okay for it to be positive.  I'll change it to use htonl()
-in this function to avoid confusion, instead of setting htonl() in its
-caller.
-
-- ricardo
-
-> - ricardo
+Trond Myklebust wrote:
+> On Tue, 2009-06-16 at 09:08 +1000, NeilBrown wrote:
+>> On Tue, June 16, 2009 8:53 am, Amit Gud wrote:
+>>> Trond Myklebust wrote:
+>>>> It boils down to this: I'm extremely reluctant to get into an arms race
+>>>> of adding ever more mount options for increasingly finer-tuned attribute
+>>>> cache timeouts. While such an option may meet _your_ machine room
+>>>> requirements here and now, it becomes tiresome over the years as
+>>>> machines gain power, and people first start lobbying for millisecond
+>>>> timeouts, then microseconds, nanoseconds, pico... in order to catch up.
+>>>>
+>>> It only makes sense to make machines more powerful and put that power to
+>>> optimum use. If keeping up with increased resolution is an issue, you
+>>> think something like "-o unit=ms acregmin=..." would be better? 'unit'
+>>> can apply to all the time related options defaulting to seconds.
+>> Wasn't this problem solved hundreds of years ago by the invention
+>> of the decimal point :-)
+>>
+>>   -o acregmin=0.0012
+>>
+>> Write the code to use as much precision as makes sense given the value
+>> of HZ - and round up.  No new mount options.
 > 
->>> +
->>> + slot = tbl->slots + slotid;
->>> + dprintk("%s slot table seqid: %d\n", __func__, slot->seq_nr);
->>> +
->>> + /* Normal */
->>> + if (likely(seqid == slot->seq_nr + 1)) {
->>> +  slot->seq_nr++;
->>> +  return NFS4_OK;
->>> + }
->>> +
->>> + /* Replay */
->>> + if (seqid == slot->seq_nr) {
->>> +  dprintk("%s seqid %d is a replay - no DRC available\n",
->>> +   __func__, seqid);
->>> +  return NFS4_OK;
->>> + }
->>> +
->>> + /* Wraparound */
->>> + if (seqid == 1 && (slot->seq_nr + 1) == 0) {
->>> +  slot->seq_nr = 1;
->>> +  return NFS4_OK;
->>> + }
->>> +
->>> + /* Misordered request */
->>> + return NFS4ERR_SEQ_MISORDERED;
->>> +}
->>> +
->>> +/*
->>>   * Returns a pointer to a held 'struct nfs_client' that matches the
->>> server's
->>>   * address, major version number, and session ID.  It is the caller's
->>>   * responsibility to release the returned reference.
->>> @@ -140,18 +191,27 @@ out:
->>> return NULL;
->>>  }
->>>  
->>> -/* FIXME: validate args->cbs_{sequence,slot}id */
->>>  /* FIXME: referring calls should be processed */
->>>  unsigned nfs4_callback_sequence(struct cb_sequenceargs *args,
->>> struct cb_sequenceres *res)
->>>  {
->>> - int i;
->>> - unsigned status = 0;
->>> + struct nfs_client *clp;
->>> + int i, status;
->>>  
->>> for (i = 0; i < args->csa_nrclists; i++)
->>> kfree(args->csa_rclists[i].rcl_refcalls);
->>> kfree(args->csa_rclists);
->>>  
->>> + status = NFS4ERR_BADSESSION;
->>> + clp = find_client_with_session(args->csa_addr, 4, &args->csa_sessionid);
->>> + if (clp == NULL)
->>> +  goto out;
->>> +
->>> + status = validate_seqid(&clp->cl_session->bc_slot_table,
->>> +    args->csa_slotid, args->csa_sequenceid);
->>> + if (status)
->>> +  goto out_putclient;
->>> +
->>> memcpy(&res->csr_sessionid, &args->csa_sessionid,
->>>       sizeof(res->csr_sessionid));
->>> res->csr_sequenceid = args->csa_sequenceid;
->>> @@ -159,9 +219,12 @@ unsigned nfs4_callback_sequence(struct cb_sequenceargs
->>> *args,
->>> res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
->>> res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
->>>  
->>> - dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
->>> - res->csr_status = status;
->>> - return status;
->>> +out_putclient:
->>> + nfs_put_client(clp);
->>> +out:
->>> + dprintk("%s: exit with status = %d\n", __func__, status);
->>> + res->csr_status = htonl(status);
->>> + return res->csr_status;
->>>  }
->>>  
->>>  #endif /* CONFIG_NFS_V4_1 */
+> That works for me...
+Or better how about -o acregmin=12micro
+
+steved
+> 
+> Trond
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
