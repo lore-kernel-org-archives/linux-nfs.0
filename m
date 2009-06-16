@@ -1,58 +1,136 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 40/44] nfsd41: Backchannel: Server backchannel RPC wait queue
-Date: Tue, 16 Jun 2009 04:21:08 +0300
-Message-ID: <1245115268-8122-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 42/44] nfsd41: Backchannel: cb_sequence callback
+Date: Tue, 16 Jun 2009 04:21:13 +0300
+Message-ID: <1245115273-8188-1-git-send-email-bhalevy@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2775
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2520
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757712AbZFPBVH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:21:07 -0400
+	by vger.kernel.org with ESMTP id S1757882AbZFPBVN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:21:13 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
 
-RPC callback requests will wait on this wait queue if the backchannel
-is out of slots.
+Note: highest slot id and target highest slot id do not have to be 0
+as was previously implemented.  They can be greater than what the
+nfs server sent if the client supports a larger slot table on the
+backchannel.  At this point we just ignore that.
 
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+[Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[fixed indentation]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: use nfsd4_cb_sequence for callback minorversion]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: fix verification of CB_SEQUENCE highest slot id[
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: Backchannel: Remove old backchannel serialization]
+[nfsd41: Backchannel: First callback sequence ID should be 1]
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+[nfsd41: decode_cb_sequence does not need to actually decode ignored fields]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c        |    2 ++
- include/linux/nfsd/state.h |    4 ++++
- 2 files changed, 6 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4callback.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 72 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index afb0f61..8fa431c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -731,6 +731,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir)
- 	INIT_LIST_HEAD(&clp->cl_delegations);
- 	INIT_LIST_HEAD(&clp->cl_sessions);
- 	INIT_LIST_HEAD(&clp->cl_lru);
-+	clear_bit(0, &clp->cl_cb_slot_busy);
-+	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
- 	return clp;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 70e1af2..22e5455 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -256,6 +256,27 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
+ 	hdr->nops++;
  }
  
-diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 299e44d..6f1a25e 100644
---- a/include/linux/nfsd/state.h
-+++ b/include/linux/nfsd/state.h
-@@ -214,7 +214,11 @@ struct nfs4_client {
- 	struct nfs4_sessionid	cl_sessionid;
++static void
++encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
++		   struct nfs4_cb_compound_hdr *hdr)
++{
++	__be32 *p;
++
++	if (hdr->minorversion == 0)
++		return;
++
++	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
++
++	WRITE32(OP_CB_SEQUENCE);
++	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
++	WRITE32(args->cbs_clp->cl_cb_seq_nr);
++	WRITE32(0);		/* slotid, always 0 */
++	WRITE32(0);		/* highest slotid always 0 */
++	WRITE32(0);		/* cachethis always 0 */
++	WRITE32(0); /* FIXME: support referring_call_lists */
++	hdr->nops++;
++}
++
+ static int
+ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+ {
+@@ -317,6 +338,57 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
+ 	return 0;
+ }
  
- 	/* for nfs41 callbacks */
-+	/* We currently support a single back channel with a single slot */
-+	unsigned long		cl_cb_slot_busy;
- 	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
-+	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
-+						/* wait here for slots */
- };
- 
- /* struct nfs4_client_reset
++/*
++ * Our current back channel implmentation supports a single backchannel
++ * with a single slot.
++ */
++static int
++decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
++		   struct rpc_rqst *rqstp)
++{
++	struct nfs4_sessionid id;
++	int status;
++	u32 dummy;
++	__be32 *p;
++
++	if (res->cbs_minorversion == 0)
++		return 0;
++
++	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
++	if (status)
++		return status;
++
++	/*
++	 * If the server returns different values for sessionID, slotID or
++	 * sequence number, the server is looney tunes.
++	 */
++	status = -ESERVERFAULT;
++
++	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
++	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
++	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
++	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
++		   NFS4_MAX_SESSIONID_LEN)) {
++		dprintk("%s Invalid session id\n", __func__);
++		goto out;
++	}
++	READ32(dummy);
++	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
++		dprintk("%s Invalid sequence number\n", __func__);
++		goto out;
++	}
++	READ32(dummy); 	/* slotid must be 0 */
++	if (dummy != 0) {
++		dprintk("%s Invalid slotid\n", __func__);
++		goto out;
++	}
++	/* FIXME: process highest slotid and target highest slotid */
++	status = 0;
++out:
++	return status;
++}
++
++
+ static int
+ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+ {
 -- 
 1.6.3
 
