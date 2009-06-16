@@ -1,67 +1,196 @@
-From: "Halevy, Benny" <bhalevy@panasas.com>
-Subject: What's in nfsd41-for-2.6.31
-Date: Mon, 15 Jun 2009 21:16:55 -0400
-Message-ID: <7225594ED4A1304C9E43D030A886D221F4C559@daytona.int.panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <pnfs@linux-nfs.org>, <linux-nfs@vger.kernel.org>
-To: <bfields@citi.umich.edu>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 01/44] nfsd41: move channel attributes from nfsd4_session to a nfsd4_channel_attr struct
+Date: Tue, 16 Jun 2009 04:19:13 +0300
+Message-ID: <1245115153-6832-1-git-send-email-bhalevy@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2551
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2460
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752010AbZFPBRc convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Jun 2009 21:17:32 -0400
+	by vger.kernel.org with ESMTP id S1751875AbZFPBTO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:19:14 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce,
+From: Alexandros Batsakis <Alexandros.Batsakis@netapp.com>
 
-The following patches are currently queued up in my nfsd41-for-2.6.31 branch:
+the change is valid for both the forechannel and the backchannel (currently dummy)
 
-[PATCH 01/44] nfsd41: move channel attributes from nfsd4_session to a nfsd4_channel_attr struct
-[PATCH 02/44] nfsd41: slots are freed with session
-[PATCH 03/44] nfsd41: change check_slot_seqid parameters
-[PATCH 04/44] nfsd41: turn off create session caching
-[PATCH 05/44] nfsd41: separate clientid slot from session slot
-[PATCH 06/44] nfsd41: encode create_session result into cache
-[PATCH 07/44] nfsd41: create_session check replay first
-[PATCH 08/44] nfsd41: replay solo and embedded create session
-[PATCH 09/44] nfsd41: sanity check client drc maxreqs
-[PATCH 10/44] nfsd41: change from page to memory based drc limits
-[PATCH 11/44] nfsd41: use globals for DRC memory use management
-[PATCH 12/44] nfsd41: set the session maximum response size cached
-[PATCH 13/44] nfsd41: use static buffers for sessions DRC
-[PATCH 14/44] nfsd41: replace ce_cachethis with nfsd4_slot field
-[PATCH 15/44] nfsd41: replace ce_opcnt with nfsd4_slot field
-[PATCH 16/44] nfsd41: nfsd41: replace ce_status with nfsd4_slot field
-[PATCH 17/44] nfsd41: obliterate nfsd4_copy_pages
-[PATCH 18/44] nfsd41: obliterate nfsd41_copy_replay_data
-[PATCH 19/44] nfsd41: obliterate nfsd4_release_respages
-[PATCH 20/44] nfsd41: remove iovlen field from nfsd4_compound_state
-[PATCH 21/44] nfsd41: remove struct nfsd4_cache_entry
-[PATCH 22/44] nfsd41: obliterate nfsd4_set_statp
-[PATCH 23/44] nfsd41: rename nfsd4_enc_uncached_replay
-[PATCH 24/44] nfsd41: encode replay sequence from the slot values
-[PATCH 25/44] nfsd41: fix nfsd4_replay_cache_entry comments
-[PATCH 26/44] nfsd41: fix nfsd4_store_cache_entry comments
-[PATCH 27/44] nfsd41: support 16 slots per session
-[PATCH 28/44] nfsd41: use the maximum operations per compound in nfsd4_compoundargs
-[PATCH 29/44] nfsd41: fix nfsd4_store_cache_entry dprintk
-[PATCH 30/44] nfsd41: add test for failed sequence operation
-[PATCH 31/44] nfsd41: remove redundant failed sequence check
-[PATCH 32/44] nfsd41: only reference the session on non-replay sequence
-[PATCH 33/44] nfsd41: Remove ip address collision detection case per review comment
-[PATCH 34/44] nfsd41: Backchannel: cleanup nfs4.0 callback encode routines
-[PATCH 35/44] nfsd41: Backchannel: minorversion support for the back channel
-[PATCH 36/44] nfsd41: sunrpc: svc_tcp_recv_record()
-[PATCH 37/44] nfsd41: sunrpc: Added rpc server-side backchannel handling
-[PATCH 38/44] nfsd41: Backchannel: callback infrastructure
-[PATCH 39/44] nfsd41: Backchannel: Add sequence arguments to callback RPC arguments
-[PATCH 40/44] nfsd41: Backchannel: Server backchannel RPC wait queue
-[PATCH 41/44] nfsd41: Backchannel: Setup sequence information
-[PATCH 42/44] nfsd41: Backchannel: cb_sequence callback
-[PATCH 43/44] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-[PATCH 44/44] nfsd41: Refactor create_client()
+Signed-off-by: Alexandros Batsakis <Alexandros.Batsakis@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfs4state.c        |   28 +++++++++++++++-------------
+ fs/nfsd/nfs4xdr.c          |    2 +-
+ include/linux/nfsd/state.h |   18 +++++++++++++-----
+ include/linux/nfsd/xdr4.h  |   11 -----------
+ 4 files changed, 29 insertions(+), 30 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b276624..d2851cc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -444,8 +444,8 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+  * fchan holds the client values on input, and the server values on output
+  */
+ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+-				    struct nfsd4_session *session,
+-				    struct nfsd4_channel_attrs *fchan)
++				  struct nfsd4_channel_attrs *session_fchan,
++				  struct nfsd4_channel_attrs *fchan)
+ {
+ 	int status = 0;
+ 	__u32   maxcount = svc_max_payload(rqstp);
+@@ -455,21 +455,21 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+ 	/* Use the client's max request and max response size if possible */
+ 	if (fchan->maxreq_sz > maxcount)
+ 		fchan->maxreq_sz = maxcount;
+-	session->se_fmaxreq_sz = fchan->maxreq_sz;
++	session_fchan->maxreq_sz = fchan->maxreq_sz;
+ 
+ 	if (fchan->maxresp_sz > maxcount)
+ 		fchan->maxresp_sz = maxcount;
+-	session->se_fmaxresp_sz = fchan->maxresp_sz;
++	session_fchan->maxresp_sz = fchan->maxresp_sz;
+ 
+ 	/* Set the max response cached size our default which is
+ 	 * a multiple of PAGE_SIZE and small */
+-	session->se_fmaxresp_cached = NFSD_PAGES_PER_SLOT * PAGE_SIZE;
+-	fchan->maxresp_cached = session->se_fmaxresp_cached;
++	session_fchan->maxresp_cached = NFSD_PAGES_PER_SLOT * PAGE_SIZE;
++	fchan->maxresp_cached = session_fchan->maxresp_cached;
+ 
+ 	/* Use the client's maxops if possible */
+ 	if (fchan->maxops > NFSD_MAX_OPS_PER_COMPOUND)
+ 		fchan->maxops = NFSD_MAX_OPS_PER_COMPOUND;
+-	session->se_fmaxops = fchan->maxops;
++	session_fchan->maxops = fchan->maxops;
+ 
+ 	/* try to use the client requested number of slots */
+ 	if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+@@ -481,7 +481,7 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+ 	 */
+ 	status = set_forechannel_maxreqs(fchan);
+ 
+-	session->se_fnumslots = fchan->maxreqs;
++	session_fchan->maxreqs = fchan->maxreqs;
+ 	return status;
+ }
+ 
+@@ -495,12 +495,14 @@ alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp,
+ 	memset(&tmp, 0, sizeof(tmp));
+ 
+ 	/* FIXME: For now, we just accept the client back channel attributes. */
+-	status = init_forechannel_attrs(rqstp, &tmp, &cses->fore_channel);
++	tmp.se_bchannel = cses->back_channel;
++	status = init_forechannel_attrs(rqstp, &tmp.se_fchannel,
++					&cses->fore_channel);
+ 	if (status)
+ 		goto out;
+ 
+ 	/* allocate struct nfsd4_session and slot table in one piece */
+-	slotsize = tmp.se_fnumslots * sizeof(struct nfsd4_slot);
++	slotsize = tmp.se_fchannel.maxreqs * sizeof(struct nfsd4_slot);
+ 	new = kzalloc(sizeof(*new) + slotsize, GFP_KERNEL);
+ 	if (!new)
+ 		goto out;
+@@ -574,7 +576,7 @@ free_session(struct kref *kref)
+ 	int i;
+ 
+ 	ses = container_of(kref, struct nfsd4_session, se_ref);
+-	for (i = 0; i < ses->se_fnumslots; i++) {
++	for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
+ 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+ 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+ 	}
+@@ -1131,7 +1133,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 	 * is sent (lease renewal).
+ 	 */
+ 	if (seq && nfsd4_not_cached(resp)) {
+-		seq->maxslots = resp->cstate.session->se_fnumslots;
++		seq->maxslots = resp->cstate.session->se_fchannel.maxreqs;
+ 		return nfs_ok;
+ 	}
+ 
+@@ -1474,7 +1476,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 		goto out;
+ 
+ 	status = nfserr_badslot;
+-	if (seq->slotid >= session->se_fnumslots)
++	if (seq->slotid >= session->se_fchannel.maxreqs)
+ 		goto out;
+ 
+ 	slot = &session->se_slots[seq->slotid];
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ab005fc..c4eda89 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3191,7 +3191,7 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+ 	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
+ 		length, xb->page_len, tlen, pad);
+ 
+-	if (length <= session->se_fmaxresp_cached)
++	if (length <= session->se_fchannel.maxresp_cached)
+ 		return status;
+ 	else
+ 		return nfserr_rep_too_big_to_cache;
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index c0c4921..105cc10 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -115,6 +115,17 @@ struct nfsd4_slot {
+ 	struct nfsd4_cache_entry	sl_cache_entry;
+ };
+ 
++struct nfsd4_channel_attrs {
++	u32		headerpadsz;
++	u32		maxreq_sz;
++	u32		maxresp_sz;
++	u32		maxresp_cached;
++	u32		maxops;
++	u32		maxreqs;
++	u32		nr_rdma_attrs;
++	u32		rdma_attrs;
++};
++
+ struct nfsd4_session {
+ 	struct kref		se_ref;
+ 	struct list_head	se_hash;	/* hash by sessionid */
+@@ -122,11 +133,8 @@ struct nfsd4_session {
+ 	u32			se_flags;
+ 	struct nfs4_client	*se_client;	/* for expire_client */
+ 	struct nfs4_sessionid	se_sessionid;
+-	u32			se_fmaxreq_sz;
+-	u32			se_fmaxresp_sz;
+-	u32			se_fmaxresp_cached;
+-	u32			se_fmaxops;
+-	u32			se_fnumslots;
++	struct nfsd4_channel_attrs se_fchannel;
++	struct nfsd4_channel_attrs se_bchannel;
+ 	struct nfsd4_slot	se_slots[];	/* forward channel slots */
+ };
+ 
+diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+index d0f050f..2bacf75 100644
+--- a/include/linux/nfsd/xdr4.h
++++ b/include/linux/nfsd/xdr4.h
+@@ -366,17 +366,6 @@ struct nfsd4_exchange_id {
+ 	int		spa_how;
+ };
+ 
+-struct nfsd4_channel_attrs {
+-	u32		headerpadsz;
+-	u32		maxreq_sz;
+-	u32		maxresp_sz;
+-	u32		maxresp_cached;
+-	u32		maxops;
+-	u32		maxreqs;
+-	u32		nr_rdma_attrs;
+-	u32		rdma_attrs;
+-};
+-
+ struct nfsd4_create_session {
+ 	clientid_t		clientid;
+ 	struct nfs4_sessionid	sessionid;
+-- 
+1.6.3
 
