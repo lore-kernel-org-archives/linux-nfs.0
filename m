@@ -1,120 +1,122 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 13/44] nfsd41: use static buffers for sessions DRC
-Date: Tue, 16 Jun 2009 04:19:49 +0300
-Message-ID: <1245115189-7229-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 14/44] nfsd41: replace ce_cachethis with nfsd4_slot field
+Date: Tue, 16 Jun 2009 04:19:52 +0300
+Message-ID: <1245115192-7262-1-git-send-email-bhalevy@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2667
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2659
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754476AbZFPBTt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:19:49 -0400
+	by vger.kernel.org with ESMTP id S1754633AbZFPBTw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jun 2009 21:19:52 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-Change from page based to memory based NFSv4.1 DRC.
-
-We need to allocate memory for the session DRC in the CREATE_SESSION operation
-because of the guarantee to the client that the memory resource is available
-for caching responses.
-
-In preparation to remove struct nfsd4_cache_entry, add static storage to
-struct nfsd4_slot to hold up to NFSD_SLOT_CACH_SIZE of all encoded operation
-data past the encoded sequence operation.
+In preparation to remove struct nfsd4_cache_entry
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfsd/nfs4state.c        |    9 +++++++++
- fs/nfsd/nfs4xdr.c          |    1 +
- include/linux/nfsd/state.h |    2 ++
- include/linux/nfsd/xdr4.h  |    1 +
- 4 files changed, 13 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4proc.c         |    6 +++---
+ fs/nfsd/nfs4state.c        |   10 +++++-----
+ fs/nfsd/nfs4xdr.c          |    2 +-
+ include/linux/nfsd/state.h |    1 +
+ include/linux/nfsd/xdr4.h  |    2 +-
+ 5 files changed, 11 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index d7f5aef..da7c49a 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -870,8 +870,8 @@ nfsd4_enc_uncached_replay(struct nfsd4_compoundargs *args,
+ {
+ 	struct nfsd4_op *op;
+ 
+-	dprintk("--> %s resp->opcnt %d ce_cachethis %u \n", __func__,
+-		resp->opcnt, resp->cstate.slot->sl_cache_entry.ce_cachethis);
++	dprintk("--> %s resp->opcnt %d cachethis %u \n", __func__,
++		resp->opcnt, resp->cstate.slot->sl_cachethis);
+ 
+ 	/* Encode the replayed sequence operation */
+ 	BUG_ON(resp->opcnt != 1);
+@@ -879,7 +879,7 @@ nfsd4_enc_uncached_replay(struct nfsd4_compoundargs *args,
+ 	nfsd4_encode_operation(resp, op);
+ 
+ 	/*return nfserr_retry_uncached_rep in next operation. */
+-	if (resp->cstate.slot->sl_cache_entry.ce_cachethis == 0) {
++	if (resp->cstate.slot->sl_cachethis == 0) {
+ 		op = &args->ops[resp->opcnt++];
+ 		op->status = nfserr_retry_uncached_rep;
+ 		nfsd4_encode_operation(resp, op);
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a6a7968..bf40c6b 100644
+index bf40c6b..c977e52 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1052,6 +1052,7 @@ nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
- void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
- 	struct svc_rqst *rqstp = resp->rqstp;
- 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
-@@ -1076,10 +1077,14 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 	if (nfsd4_not_cached(resp)) {
+@@ -1078,8 +1078,8 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
  		entry->ce_resused = 0;
  		entry->ce_rpchdrlen = 0;
-+		slot->sl_datalen = 0;
- 		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
- 			resp->cstate.slot->sl_cache_entry.ce_cachethis);
+ 		slot->sl_datalen = 0;
+-		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
+-			resp->cstate.slot->sl_cache_entry.ce_cachethis);
++		dprintk("%s Just cache SEQUENCE. cachethis %d\n", __func__,
++			resp->cstate.slot->sl_cachethis);
  		return;
  	}
-+	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
-+	memcpy(slot->sl_data, resp->cstate.datap, slot->sl_datalen);
-+
- 	entry->ce_resused = rqstp->rq_resused;
- 	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
- 		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
-@@ -1127,6 +1132,7 @@ __be32
- nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 			 struct nfsd4_sequence *seq)
- {
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
- 	__be32 status;
+ 	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
+@@ -1532,10 +1532,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	/* Success! bump slot seqid */
+ 	slot->sl_inuse = true;
+ 	slot->sl_seqid = seq->seqid;
+-	slot->sl_cache_entry.ce_cachethis = seq->cachethis;
+-	/* Always set the cache entry cachethis for solo sequence */
++	slot->sl_cachethis = seq->cachethis;
++	/* Always set the slot cachethis for solo sequence */
+ 	if (nfsd4_is_solo_sequence(resp))
+-		slot->sl_cache_entry.ce_cachethis = 1;
++		slot->sl_cachethis = 1;
  
-@@ -1147,6 +1153,9 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 		return nfs_ok;
- 	}
- 
-+	/* The sequence operation has been encoded, cstate->datap set. */
-+	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
-+
- 	if (!nfsd41_copy_replay_data(resp, entry)) {
- 		/*
- 		 * Not enough room to use the replay rpc header, send the
+ 	cstate->slot = slot;
+ 	cstate->session = session;
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c4eda89..7ab83cc 100644
+index 7ab83cc..5018483 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3072,6 +3072,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- 	WRITE32(0);
+@@ -3175,7 +3175,7 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+ 		return status;
  
- 	ADJUST_ARGS();
-+	resp->cstate.datap = p;	/* DRC cache data pointer */
- 	return 0;
- }
+ 	session = resp->cstate.session;
+-	if (session == NULL || slot->sl_cache_entry.ce_cachethis == 0)
++	if (session == NULL || slot->sl_cachethis == 0)
+ 		return status;
  
+ 	if (resp->opcnt >= args->opcnt)
 diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-index 1ebb05e..8d5daf7 100644
+index 8d5daf7..bfd545a 100644
 --- a/include/linux/nfsd/state.h
 +++ b/include/linux/nfsd/state.h
-@@ -113,6 +113,8 @@ struct nfsd4_cache_entry {
+@@ -113,6 +113,7 @@ struct nfsd4_cache_entry {
  struct nfsd4_slot {
  	bool				sl_inuse;
  	u32				sl_seqid;
-+	u32				sl_datalen;
-+	char				sl_data[NFSD_SLOT_CACHE_SIZE];
++	int				sl_cachethis;
+ 	u32				sl_datalen;
+ 	char				sl_data[NFSD_SLOT_CACHE_SIZE];
  	struct nfsd4_cache_entry	sl_cache_entry;
- };
- 
 diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
-index 5e4beb0..5144c92 100644
+index 5144c92..6febc62 100644
 --- a/include/linux/nfsd/xdr4.h
 +++ b/include/linux/nfsd/xdr4.h
-@@ -52,6 +52,7 @@ struct nfsd4_compound_state {
- 	struct nfsd4_session	*session;
- 	struct nfsd4_slot	*slot;
- 	__be32			*statp;
-+	__be32			*datap;
- 	size_t			iovlen;
- 	u32			minorversion;
- 	u32			status;
+@@ -473,7 +473,7 @@ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
+ 
+ static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
+ {
+-	return !resp->cstate.slot->sl_cache_entry.ce_cachethis ||
++	return !resp->cstate.slot->sl_cachethis ||
+ 			nfsd4_is_solo_sequence(resp);
+ }
+ 
 -- 
 1.6.3
 
