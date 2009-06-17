@@ -1,121 +1,38 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 2/3] nfsd: Pull write-gathering code out of nfsd_vfs_write
-Date: Wed, 17 Jun 2009 12:59:30 -0400
-Message-ID: <1245257971-22757-2-git-send-email-bfields@fieldses.org>
-References: <20090617165442.GE21311@fieldses.org>
- <1245257971-22757-1-git-send-email-bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Steve Dickson <steved@redhat.com>,
-	Tom Talpey <tmtalpey@gmail.com>,
-	Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: NeilBrown <neilb@suse.de>
+From: "Halevy, Benny" <bhalevy@panasas.com>
+Subject: [PATCH 0/3] code review fixes
+Date: Wed, 17 Jun 2009 13:20:30 -0400
+Message-ID: <7225594ED4A1304C9E43D030A886D221F4C568@daytona.int.panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: <pnfs@linux-nfs.org>, <linux-nfs@vger.kernel.org>
+To: "Trond Myklebust" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:60128 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751979AbZFQQ7d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2009 12:59:33 -0400
-In-Reply-To: <1245257971-22757-1-git-send-email-bfields@fieldses.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:14401
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753697AbZFQRUq convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Jun 2009 13:20:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+Trond,
 
-This is a relatively self-contained piece of code that handles a special
-case--move it to its own function.
+The following patches fix the remaining review comments for the
+nfs41 for 2.6.31 series (non-callback code).
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/vfs.c |   69 ++++++++++++++++++++++++++++++++------------------------
- 1 files changed, 39 insertions(+), 30 deletions(-)
+[PATCH 1/3] SQUASHME: nfs41: no need to break read_buf in decode_compound_hdr_arg
+[PATCH 2/3] SQUASHME: nfs41: refactor op preprocessing out of process_op
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ebf56c6..6ad76a4 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -963,6 +963,43 @@ static void kill_suid(struct dentry *dentry)
- 	mutex_unlock(&dentry->d_inode->i_mutex);
- }
- 
-+/*
-+ * Gathered writes: If another process is currently writing to the file,
-+ * there's a high chance this is another nfsd (triggered by a bulk write
-+ * from a client's biod). Rather than syncing the file with each write
-+ * request, we sleep for 10 msec.
-+ *
-+ * I don't know if this roughly approximates C. Juszak's idea of
-+ * gathered writes, but it's a nice and simple solution (IMHO), and it
-+ * seems to work:-)
-+ *
-+ * Note: we do this only in the NFSv2 case, since v3 and higher have a
-+ * better tool (separate unstable writes and commits) for solving this
-+ * problem.
-+ */
-+static int wait_for_concurrent_writes(struct file *file)
-+{
-+	struct inode *inode = file->f_path.dentry->d_inode;
-+	static ino_t last_ino;
-+	static dev_t last_dev;
-+	int err = 0;
-+
-+	if (atomic_read(&inode->i_writecount) > 1
-+	    || (last_ino == inode->i_ino && last_dev == inode->i_sb->s_dev)) {
-+		dprintk("nfsd: write defer %d\n", task_pid_nr(current));
-+		msleep(10);
-+		dprintk("nfsd: write resume %d\n", task_pid_nr(current));
-+	}
-+
-+	if (inode->i_state & I_DIRTY) {
-+		dprintk("nfsd: write sync %d\n", task_pid_nr(current));
-+		err = nfsd_sync(file);
-+	}
-+	last_ino = inode->i_ino;
-+	last_dev = inode->i_sb->s_dev;
-+	return err;
-+}
-+
- static __be32
- nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 				loff_t offset, struct kvec *vec, int vlen,
-@@ -1026,36 +1063,8 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	if (host_err >= 0 && (inode->i_mode & (S_ISUID | S_ISGID)))
- 		kill_suid(dentry);
- 
--	if (host_err >= 0 && stable && use_wgather) {
--		static ino_t	last_ino;
--		static dev_t	last_dev;
--
--		/*
--		 * Gathered writes: If another process is currently
--		 * writing to the file, there's a high chance
--		 * this is another nfsd (triggered by a bulk write
--		 * from a client's biod). Rather than syncing the
--		 * file with each write request, we sleep for 10 msec.
--		 *
--		 * I don't know if this roughly approximates
--		 * C. Juszak's idea of gathered writes, but it's a
--		 * nice and simple solution (IMHO), and it seems to
--		 * work:-)
--		 */
--		if (atomic_read(&inode->i_writecount) > 1
--		    || (last_ino == inode->i_ino && last_dev == inode->i_sb->s_dev)) {
--			dprintk("nfsd: write defer %d\n", task_pid_nr(current));
--			msleep(10);
--			dprintk("nfsd: write resume %d\n", task_pid_nr(current));
--		}
--
--		if (inode->i_state & I_DIRTY) {
--			dprintk("nfsd: write sync %d\n", task_pid_nr(current));
--			host_err=nfsd_sync(file);
--		}
--		last_ino = inode->i_ino;
--		last_dev = inode->i_sb->s_dev;
--	}
-+	if (host_err >= 0 && stable && use_wgather)
-+		host_err = wait_for_concurrent_writes(file);
- 
- 	dprintk("nfsd: write complete host_err=%d\n", host_err);
- 	if (host_err >= 0)
--- 
-1.6.0.4
+Note that this patch changes the nfsv4.0 behavior also when
+CONFIG_NFS_V4_1 is not defined where NFS4ERR_MINOR_VERS_MISMATCH
+will be returned if the client received a CB_COMPOUND
+with minorversion != 0.  Previously, it would have
+returned NFS4ERR_OP_ILLEGAL for CB_SEQUENCE.
+(or if the server is broken and sent OP_CB_GETATTR or OP_CB_RECALL
+with minorversion!=0, they would have been processed normally.
+
+[PATCH 3/3] SQUASHME: nfs41: get rid of READ64 in callback_xdr.c
+
+Benny
+
 
