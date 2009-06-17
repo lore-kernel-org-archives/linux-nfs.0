@@ -1,60 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2429 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753058AbZFFCvI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 22:51:08 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: [RFC 0/10] nfsd41 server backchannel for 2.6.31 (try 3)
-Date: Fri, 5 Jun 2009 19:48:21 -0700
-Message-ID: <273FE88A07F5D445824060902F7003440612BB9D@SACMVEXC1-PRD.hq.netapp.com>
-From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: <pnfs@linux-nfs.org>, <linux-nfs@vger.kernel.org>
+Received: from mail.fieldses.org ([141.211.133.115]:43945 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755257AbZFQQyn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2009 12:54:43 -0400
+Date: Wed, 17 Jun 2009 12:54:42 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Steve Dickson <steved@redhat.com>, Tom Talpey <tmtalpey@gmail.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Link performance over NFS degraded in RHEL5. -- was :
+	Read/Write NFS I/O performance degraded by FLUSH_STABLE page
+	flushing
+Message-ID: <20090617165442.GE21311@fieldses.org>
+References: <4A291DE3.2070105@RedHat.com> <1244209956.5410.33.camel@heimdal.trondhjem.org> <4A29243F.8080008@RedHat.com> <20090605160544.GE10975@fieldses.org> <1244219715.5410.40.camel@heimdal.trondhjem.org> <20090615230801.GA18504@fieldses.org> <99d4545537613ce76040d3655b78bdb7.squirrel@neil.brown.name> <20090616003357.GB19396@fieldses.org> <02ada87c636e1088e9365a3cbea301e7.squirrel@neil.brown.name> <20090616005558.GC19396@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20090616005558.GC19396@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Bruce, Trond,
+On Mon, Jun 15, 2009 at 08:55:58PM -0400, bfields wrote:
+> Whoops--actually, it's the opposite problem: a bugfix patch that went
+> upstream removed this, and I didn't merge that back into my for-2.6.31
+> branch.  OK, time to do that, and then this is all much simpler....
+> Thanks for calling my attention to that!
 
-The following patch set addresses your comments on the server v4.1
-backchannel RPC functionality previously submitted.  It also addresses
-Benny's comments on the implementation of the async RPC v4.1 callbacks.
-Please consider for 2.6.31.
+Having fixed that... the following is what I'm applying (on top of
+Trond's).
 
-[RFC 01/11] nfsd41: Backchannel: cleanup nfs4.0 callback encode routines
-[RFC 02/11] nfsd41: Backchannel: minorversion support for the back
-channel
-[RFC 03/11] nfsd41: sunrpc: svc_tcp_recv_record()
-[RFC 04/11] nfsd41: sunrpc: Added rpc server-side backchannel handling
-[RFC 05/11] nfsd41: Backchannel: callback infrastructure
-[RFC 06/11] nfsd41: Backchannel: Add sequence arguments to callback RPC
-arguments
-[RFC 07/11] nfsd41: Backchannel: Server backchannel RPC wait queue
-[RFC 08/11] nfsd41: Backchannel: Setup sequence information
-[RFC 09/11] nfsd41: Backchannel: cb_sequence callback
-[RFC 10/11] nfsd41: Backchannel: Implement cb_recall over NFSv4.1
-[RFC 11/11] nfsd41: Refactor create_client()
-
-
-As requested, this patch set squashes the following patches recently
-submitted to the pnfs list by Alexandros, Benny, and myself.
-
-nfsd41: sunrpc: Remove unused functions
-nfsd41: sunrpc: Don't auto close the server backchannel connection
-nfsd41: sunrpc: eliminate unneeded switch statement in xs_setup_tcp()
-nfsd41: sunrpc: remove bc_close and bc_init_auto_disconnect dummy fun
-nfsd41: sunrpc: Define xprt_server_backchannel()
-nfsd41: sunrpc: create common send routine for the fore and the back
-nfsd41: sunrpc: remove bc_connect_worker()
-nfsd41: sunrpc: Document server backchannel locking
-nfsd41: sunrpc: Use free_page() to free server backchannel pages
-nfsd41: sunrpc: New svc_process_calldir()
-nfsd41: sunrpc: svc_tcp_recv_record()
-nfsd41: decode_cb_sequence does not need to actually decode ignored
-fields
-
-Thanks,
-
-- ricardo
+--b.
