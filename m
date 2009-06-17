@@ -1,112 +1,152 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [pnfs] [PATCH 07/44] nfsd41: create_session check replay first
-Date: Tue, 16 Jun 2009 21:39:29 -0400
-Message-ID: <89c397150906161839u5c7c44f7pa14abfc1e5d7dc81@mail.gmail.com>
-References: <1245115172-7030-1-git-send-email-bhalevy@panasas.com>
-	 <20090616204734.GE3045@fieldses.org>
-	 <89c397150906161815v6136e000t338f4fce10ceff23@mail.gmail.com>
-	 <20090617012514.GE8980@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 10/44] nfsd41: change from page to memory based drc
+	limits
+Date: Tue, 16 Jun 2009 21:58:23 -0400
+Message-ID: <20090617015823.GF8980@fieldses.org>
+References: <1245115181-7130-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f214.google.com ([209.85.217.214]:55838 "EHLO
-	mail-gx0-f214.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752698AbZFQBrp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 21:47:45 -0400
-Received: by mail-gx0-f214.google.com with SMTP id 10so37462gxk.13
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2009 18:47:48 -0700 (PDT)
-In-Reply-To: <20090617012514.GE8980@fieldses.org>
+Received: from mail.fieldses.org ([141.211.133.115]:40844 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751704AbZFQB6V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 21:58:21 -0400
+In-Reply-To: <1245115181-7130-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 9:25 PM, J. Bruce Fields<bfields@fieldses.org> wrote:
-> On Tue, Jun 16, 2009 at 09:15:32PM -0400, William A. (Andy) Adamson wrote:
->> On Tue, Jun 16, 2009 at 4:47 PM, J. Bruce Fields<bfields@fieldses.org> wrote:
->> > On Tue, Jun 16, 2009 at 04:19:32AM +0300, Benny Halevy wrote:
->> >> From: Andy Adamson <andros@netapp.com>
->> >>
->> >> Replay processing needs to preceed other error processing.
->> >
->> > Why?
->> >
->>
->> Section 18.36.4. (CREATE_SESSION implementation section) states the
->> ordering of clientid confirmation processing as
->> 1) client id record lookup
->> 2) sequence id processing
->> 3) client id confirmation
->>
->> rpc cred processing is done in #3.
->
-> I don't see any reason we can't check the cred earlier--let's just leave
-> this as is and drop this patch.
+On Tue, Jun 16, 2009 at 04:19:41AM +0300, Benny Halevy wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> NFSD_SLOT_CACHE_SIZE is the size of all encoded operation responses (excluding
+> the sequence operation) that we want to cache.
+> 
+> Adjust NFSD_DRC_SIZE_SHIFT to reflect using 512 bytes instead of PAGE_SIZE.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfsd/nfs4state.c        |   29 +++++++++++++++--------------
+>  fs/nfsd/nfssvc.c           |   13 +++++++------
+>  include/linux/nfsd/state.h |    1 +
+>  include/linux/sunrpc/svc.h |    4 ++--
+>  4 files changed, 25 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 90e6645..6489913 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -416,33 +416,34 @@ gen_sessionid(struct nfsd4_session *ses)
+>   * Give the client the number of slots it requests bound by
+>   * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
+>   *
+> - * If we run out of pages (sv_drc_pages_used == sv_drc_max_pages) we
+> - * should (up to a point) re-negotiate active sessions and reduce their
+> - * slot usage to make rooom for new connections. For now we just fail the
+> - * create session.
+> + * If we run out of reserved DRC memory we should (up to a point) re-negotiate
+> + * active sessions and reduce their slot usage to make rooom for new
+> + * connections. For now we just fail the create session.
+>   */
+>  static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+>  {
+> -	int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
+> +	int mem;
+>  
+>  	if (fchan->maxreqs < 1)
+>  		return nfserr_inval;
+>  	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+>  		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
+>  
+> +	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
+> +
+>  	spin_lock(&nfsd_serv->sv_lock);
+> -	if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
+> -		np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
+> -	nfsd_serv->sv_drc_pages_used += np;
+> +	if (mem + nfsd_serv->sv_drc_mem_used > nfsd_serv->sv_drc_max_mem)
+> +		mem = nfsd_serv->sv_drc_max_mem - nfsd_serv->sv_drc_mem_used;
+> +	nfsd_serv->sv_drc_mem_used += mem;
+>  	spin_unlock(&nfsd_serv->sv_lock);
+>  
+> -	if (np <= 0) {
+> -		status = nfserr_resource;
+> +	if (mem < NFSD_SLOT_CACHE_SIZE) {
+>  		fchan->maxreqs = 0;
+> -	} else
+> -		fchan->maxreqs = np / NFSD_PAGES_PER_SLOT;
+> -
+> -	return status;
+> +		return nfserr_resource;
+> +	} else {
+> +		fchan->maxreqs = mem / NFSD_SLOT_CACHE_SIZE;
+> +		return 0;
 
-you want to replace the cache with this error?  I think at the very
-least you need to goto out instead of out_cache.
+Simpler:  just
 
-note that a replay of a CREATE_SESSION on an unconfirmed clientid
-returns NFS4ERR_SEQMISORDERED. So it doesn't matter at all what the
-rpc_cred is.
+	fchan->maxreqs = mem / NFSD_SLOT_CACHE_SIZE;
+	if (fchan->maxreqs == 0)
+		status = nfserr_resource;
 
-The choice is between an NFS4ERR_SEQMISORDERED and NFS4ERR_CLIDINUSE.
+--b.
 
-I think the patch should stay.
-
--->Andy
->
-> --b.
->
->>
->> ->Andy
->>
->> > --b.
->> >
->> >>
->> >> Signed-off-by: Andy Adamson <andros@netapp.com>
->> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> >> ---
->> >>  fs/nfsd/nfs4state.c |   12 ++++++------
->> >>  1 files changed, 6 insertions(+), 6 deletions(-)
->> >>
->> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> >> index bfc808b..5aef525 100644
->> >> --- a/fs/nfsd/nfs4state.c
->> >> +++ b/fs/nfsd/nfs4state.c
->> >> @@ -1378,12 +1378,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->> >>               }
->> >>               conf->cl_slot.sl_seqid++;
->> >>       } else if (unconf) {
->> >> -             if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->> >> -                 (ip_addr != unconf->cl_addr)) {
->> >> -                     status = nfserr_clid_inuse;
->> >> -                     goto out_cache;
->> >> -             }
->> >> -
->> >>               slot = &unconf->cl_slot;
->> >>               status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid, 0);
->> >>               if (status) {
->> >> @@ -1392,6 +1386,12 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->> >>                       goto out;
->> >>               }
->> >>
->> >> +             if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->> >> +                 (ip_addr != unconf->cl_addr)) {
->> >> +                     status = nfserr_clid_inuse;
->> >> +                     goto out_cache;
->> >> +             }
->> >> +
->> >>               slot->sl_seqid++; /* from 0 to 1 */
->> >>               move_to_confirmed(unconf);
->> >>
->> >> --
->> >> 1.6.3
->> >>
->> > _______________________________________________
->> > pNFS mailing list
->> > pNFS@linux-nfs.org
->> > http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
->> >
->
+> +	}
+>  }
+>  
+>  /*
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index cbba4a9..80588cc 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -237,12 +237,13 @@ void nfsd_reset_versions(void)
+>  static void set_max_drc(void)
+>  {
+>  	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
+> -	#define NFSD_DRC_SIZE_SHIFT	7
+> -	nfsd_serv->sv_drc_max_pages = nr_free_buffer_pages()
+> -						>> NFSD_DRC_SIZE_SHIFT;
+> -	nfsd_serv->sv_drc_pages_used = 0;
+> -	dprintk("%s svc_drc_max_pages %u\n", __func__,
+> -		nfsd_serv->sv_drc_max_pages);
+> +	#define NFSD_DRC_SIZE_SHIFT	10
+> +	nfsd_serv->sv_drc_max_mem = (nr_free_buffer_pages()
+> +					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
+> +	nfsd_serv->sv_drc_mem_used = 0;
+> +	dprintk("%s svc_drc_max_mem %u [in pages %lu]\n", __func__,
+> +		nfsd_serv->sv_drc_max_mem,
+> +		nfsd_serv->sv_drc_max_mem / PAGE_SIZE);
+>  }
+>  
+>  int nfsd_create_serv(void)
+> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> index eae086c..1ebb05e 100644
+> --- a/include/linux/nfsd/state.h
+> +++ b/include/linux/nfsd/state.h
+> @@ -96,6 +96,7 @@ struct nfs4_cb_conn {
+>  #define NFSD_MAX_SLOTS_PER_SESSION	128
+>  /* Maximum number of pages per slot cache entry */
+>  #define NFSD_PAGES_PER_SLOT	1
+> +#define NFSD_SLOT_CACHE_SIZE		512
+>  /* Maximum number of operations per session compound */
+>  #define NFSD_MAX_OPS_PER_COMPOUND	16
+>  
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 2a30775..243508e 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -94,8 +94,8 @@ struct svc_serv {
+>  	struct module *		sv_module;	/* optional module to count when
+>  						 * adding threads */
+>  	svc_thread_fn		sv_function;	/* main function for threads */
+> -	unsigned int		sv_drc_max_pages; /* Total pages for DRC */
+> -	unsigned int		sv_drc_pages_used;/* DRC pages used */
+> +	unsigned int		sv_drc_max_mem; /* Total pages for DRC */
+> +	unsigned int		sv_drc_mem_used;/* DRC pages used */
+>  };
+>  
+>  /*
+> -- 
+> 1.6.3
+> 
