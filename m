@@ -1,104 +1,66 @@
 From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [pnfs] [PATCH 07/44] nfsd41: create_session check replay first
-Date: Tue, 16 Jun 2009 21:22:22 -0400
-Message-ID: <89c397150906161822g7c75509aiffb44faab62728ce@mail.gmail.com>
-References: <1245115172-7030-1-git-send-email-bhalevy@panasas.com>
-	 <20090616204734.GE3045@fieldses.org>
-	 <20090616211633.GF3045@fieldses.org>
+Subject: Re: [PATCH 09/44] nfsd41: sanity check client drc maxreqs
+Date: Tue, 16 Jun 2009 21:23:14 -0400
+Message-ID: <89c397150906161823x3c6d821djd2d6ebb5d9725a9e@mail.gmail.com>
+References: <1245115178-7097-1-git-send-email-bhalevy@panasas.com>
+	 <20090617003538.GA8980@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
+Cc: Benny Halevy <bhalevy@panasas.com>, pnfs@linux-nfs.org,
+	linux-nfs@vger.kernel.org, andros@citi.umich.edu
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f214.google.com ([209.85.217.214]:56662 "EHLO
-	mail-gx0-f214.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751770AbZFQBWU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 21:22:20 -0400
-Received: by gxk10 with SMTP id 10so17357gxk.13
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2009 18:22:23 -0700 (PDT)
-In-Reply-To: <20090616211633.GF3045@fieldses.org>
+Received: from yw-out-2324.google.com ([74.125.46.31]:10006 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751995AbZFQBXM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 21:23:12 -0400
+Received: by yw-out-2324.google.com with SMTP id 5so7199ywb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2009 18:23:14 -0700 (PDT)
+In-Reply-To: <20090617003538.GA8980@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 5:16 PM, J. Bruce Fields<bfields@fieldses.org> wrote:
-> On Tue, Jun 16, 2009 at 04:47:34PM -0400, bfields wrote:
->> On Tue, Jun 16, 2009 at 04:19:32AM +0300, Benny Halevy wrote:
->> > From: Andy Adamson <andros@netapp.com>
->> >
->> > Replay processing needs to preceed other error processing.
+On Tue, Jun 16, 2009 at 8:35 PM, J. Bruce Fields<bfields@fieldses.org> wrote:
+> On Tue, Jun 16, 2009 at 04:19:38AM +0300, Benny Halevy wrote:
+>> From: Andy Adamson <andros@netapp.com>
 >>
->> Why?
+>> Ensure the client requested maximum requests are between 1 and
+>> NFSD_MAX_SLOTS_PER_SESSION
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4state.c |    5 +++++
+>>  1 files changed, 5 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 582cd2c..90e6645 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -425,6 +425,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+>>  {
+>>       int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
+>>
+>> +     if (fchan->maxreqs < 1)
+>> +             return nfserr_inval;
+>> +     else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+>> +             fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
+>> +
+>>       spin_lock(&nfsd_serv->sv_lock);
 >
-> Note: there's a slight leak of information here, which I don't think is
-> really important, but still by default would rather avoid: if a replay
-> is sent by someone other than the sender of the original create_session,
-> then sending back the cached result means they get to see a
-> create_session result that otherwise would have required them to sniff
-> the network (or decrypt a packet sent with the original user's creds, if
-> krb5p was in effect).
->
-> I doubt that's a big deal: I don't see anything that looks
-> security-critical in the create_session results.  But absent any real
-> reason to do otherwise, I'd rather check the creds before checking for
-> replay.
->
-> (Note: this is more critical in the case of the sessions DRC: e.g. if
-> the cached result includes read data, then we could end up exposing
-> filesystem data to someone who wouldn't otherwise be able to see it.)
+> How did this use of sv_lock creep in?  Let's remove that before we do
+> anything else....
 
-We should figure out credential checking for both create session and
-sequence drc...
+I remove it later.....
 
 -->Andy
+
 >
 > --b.
 >
+>>       if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
+>>               np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
+>> --
+>> 1.6.3
 >>
->> --b.
->>
->> >
->> > Signed-off-by: Andy Adamson <andros@netapp.com>
->> > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> > ---
->> >  fs/nfsd/nfs4state.c |   12 ++++++------
->> >  1 files changed, 6 insertions(+), 6 deletions(-)
->> >
->> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> > index bfc808b..5aef525 100644
->> > --- a/fs/nfsd/nfs4state.c
->> > +++ b/fs/nfsd/nfs4state.c
->> > @@ -1378,12 +1378,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->> >             }
->> >             conf->cl_slot.sl_seqid++;
->> >     } else if (unconf) {
->> > -           if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->> > -               (ip_addr != unconf->cl_addr)) {
->> > -                   status = nfserr_clid_inuse;
->> > -                   goto out_cache;
->> > -           }
->> > -
->> >             slot = &unconf->cl_slot;
->> >             status = check_slot_seqid(cr_ses->seqid, slot->sl_seqid, 0);
->> >             if (status) {
->> > @@ -1392,6 +1386,12 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->> >                     goto out;
->> >             }
->> >
->> > +           if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
->> > +               (ip_addr != unconf->cl_addr)) {
->> > +                   status = nfserr_clid_inuse;
->> > +                   goto out_cache;
->> > +           }
->> > +
->> >             slot->sl_seqid++; /* from 0 to 1 */
->> >             move_to_confirmed(unconf);
->> >
->> > --
->> > 1.6.3
->> >
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
 >
