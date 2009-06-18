@@ -1,102 +1,64 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: don't take nfsd_mutex twice when setting number of threads
-Date: Thu, 18 Jun 2009 12:41:37 -0400
-Message-ID: <20090618164137.GA9679@fieldses.org>
+Subject: Re: don't take nfsd_mutex twice when setting number of threads
+Date: Thu, 18 Jun 2009 12:43:38 -0400
+Message-ID: <20090618164338.GB9679@fieldses.org>
+References: <20090618164137.GA9679@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:35687 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:35688 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752788AbZFRQle (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 12:41:34 -0400
+	with ESMTP id S1751376AbZFRQnf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 12:43:35 -0400
 Received: from bfields by pickle.fieldses.org with local (Exim 4.69)
 	(envelope-from <bfields@fieldses.org>)
-	id 1MHKgD-0002dr-A4
-	for linux-nfs@vger.kernel.org; Thu, 18 Jun 2009 12:41:37 -0400
+	id 1MHKiA-0002eb-Of
+	for linux-nfs@vger.kernel.org; Thu, 18 Jun 2009 12:43:38 -0400
+In-Reply-To: <20090618164137.GA9679@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm applying the following patch for 2.6.31.
+On Thu, Jun 18, 2009 at 12:41:37PM -0400, bfields wrote:
+> I'm applying the following patch for 2.6.31.
 
---b.
+And this.
 
-commit 82e12fe9244ff653f703722a8937b595e10e71f4
+commit 671e1fcf63fd115eabcb693b06cbc2e4a3d1a3a3
 Author: NeilBrown <neilb@suse.de>
-Date:   Tue Jun 16 11:03:07 2009 +1000
+Date:   Tue Jun 16 11:03:20 2009 +1000
 
-    nfsd: don't take nfsd_mutex twice when setting number of threads.
+    nfsd: optimise the starting of zero threads when none are running.
     
-    Currently when we write a number to 'threads' in nfsdfs,
-    we take the nfsd_mutex, update the number of threads, then take the
-    mutex again to read the number of threads.
+    Currently, if we ask to set then number of nfsd threads to zero when
+    there are none running, we set up all the sockets and register the
+    service, and then tear it all down again.
+    This is pointless.
     
-    Mostly this isn't a big deal.  However if we are write '0', and
-    portmap happens to be dead, then we can get unpredictable behaviour.
-    If the nfsd threads all got killed quickly and the last thread is
-    waiting for portmap to respond, then the second time we take the mutex
-    we will block waiting for the last thread.
-    However if the nfsd threads didn't die quite that fast, then there
-    will be no contention when we try to take the mutex again.
-    
-    Unpredictability isn't fun, and waiting for the last thread to exit is
-    pointless, so avoid taking the lock twice.
-    To achieve this, get nfsd_svc return a non-negative number of active
-    threads when not returning a negative error.
+    So detect that case and exit promptly.
+    (also remove an assignment to 'error' which was never used.
     
     Signed-off-by: NeilBrown <neilb@suse.de>
+    Acked-by: Jeff Layton <jlayton@redhat.com>
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 877e713..1250fb9 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -207,10 +207,14 @@ static struct file_operations pool_stats_operations = {
- static ssize_t write_svc(struct file *file, char *buf, size_t size)
- {
- 	struct nfsctl_svc *data;
-+	int err;
- 	if (size < sizeof(*data))
- 		return -EINVAL;
- 	data = (struct nfsctl_svc*) buf;
--	return nfsd_svc(data->svc_port, data->svc_nthreads);
-+	err = nfsd_svc(data->svc_port, data->svc_nthreads);
-+	if (err < 0)
-+		return err;
-+	return 0;
- }
- 
- /**
-@@ -692,12 +696,12 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
- 		if (newthreads < 0)
- 			return -EINVAL;
- 		rv = nfsd_svc(NFS_PORT, newthreads);
--		if (rv)
-+		if (rv < 0)
- 			return rv;
--	}
-+	} else
-+		rv = nfsd_nrthreads();
- 
--	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n",
--							nfsd_nrthreads());
-+	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%d\n", rv);
- }
- 
- /**
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index cbba4a9..209eaa0 100644
+index 209eaa0..d4c9884 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -413,6 +413,12 @@ nfsd_svc(unsigned short port, int nrservs)
- 		goto failure;
+@@ -390,12 +390,14 @@ nfsd_svc(unsigned short port, int nrservs)
  
- 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
-+	if (error == 0)
-+		/* We are holding a reference to nfsd_serv which
-+		 * we don't want to count in the return value,
-+		 * so subtract 1
-+		 */
-+		error = nfsd_serv->sv_nrthreads - 1;
-  failure:
- 	svc_destroy(nfsd_serv);		/* Release server */
-  out:
+ 	mutex_lock(&nfsd_mutex);
+ 	dprintk("nfsd: creating service\n");
+-	error = -EINVAL;
+ 	if (nrservs <= 0)
+ 		nrservs = 0;
+ 	if (nrservs > NFSD_MAXSERVS)
+ 		nrservs = NFSD_MAXSERVS;
+-	
++	error = 0;
++	if (nrservs == 0 && nfsd_serv == NULL)
++		goto out;
++
+ 	/* Readahead param cache - will no-op if it already exists */
+ 	error =	nfsd_racache_init(2*nrservs);
+ 	if (error<0)
