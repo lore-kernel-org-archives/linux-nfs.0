@@ -1,64 +1,59 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: don't take nfsd_mutex twice when setting number of threads
-Date: Thu, 18 Jun 2009 12:43:38 -0400
-Message-ID: <20090618164338.GB9679@fieldses.org>
-References: <20090618164137.GA9679@fieldses.org>
+From: Peter Zijlstra <peterz@infradead.org>
+Subject: Re: NFS: possible circular locking  i_mutex <> mmap_sem
+Date: Thu, 18 Jun 2009 18:48:08 +0200
+Message-ID: <1245343689.13761.23623.camel@twins>
+References: <20090618023208.GA28572@localhost>
+	 <20090617195251.e648dbb8.akpm@linux-foundation.org>
+	 <20090618030238.GA850@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>
+To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:35688 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751376AbZFRQnf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 12:43:35 -0400
-Received: from bfields by pickle.fieldses.org with local (Exim 4.69)
-	(envelope-from <bfields@fieldses.org>)
-	id 1MHKiA-0002eb-Of
-	for linux-nfs@vger.kernel.org; Thu, 18 Jun 2009 12:43:38 -0400
-In-Reply-To: <20090618164137.GA9679@fieldses.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:36389 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751376AbZFRQsH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 12:48:07 -0400
+In-Reply-To: <20090618030238.GA850@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 18, 2009 at 12:41:37PM -0400, bfields wrote:
-> I'm applying the following patch for 2.6.31.
+On Thu, 2009-06-18 at 11:02 +0800, Wu Fengguang wrote:
 
-And this.
+> > > [ 2638.515865] =======================================================
+> > > [ 2638.519743] [ INFO: possible circular locking dependency detected ]
+> > > [ 2638.519743] 2.6.30-rc8-mm1 #307
+> > > [ 2638.519743] -------------------------------------------------------
+> > > [ 2638.519743] firefox-bin/3399 is trying to acquire lock:
+> > > [ 2638.519743]  (&mm->mmap_sem){++++++}, at: [<ffffffff81548471>] do_page_fault+0x301/0x330
+> > > [ 2638.519743]
+> > > [ 2638.519743] but task is already holding lock:
+> > > [ 2638.519743]  (&sb->s_type->i_mutex_key#6){+.+.+.}, at: [<ffffffff810c2bd2>] generic_file_aio_write+0x52/0xd0
+> > > [ 2638.519743]
+> > > [ 2638.519743] which lock already depends on the new lock.
+> > > [ 2638.519743]
+> > > [ 2638.519743]
+> > > [ 2638.519743] the existing dependency chain (in reverse order) is:
+> > > [ 2638.519743]
+> > > [ 2638.519743] -> #1 (&sb->s_type->i_mutex_key#6){+.+.+.}:
+> > > [ 2638.519743]        [<ffffffff8107c066>] __lock_acquire+0x12b6/0x1b40
+> > > [ 2638.519743]        [<ffffffff8107c9d1>] lock_acquire+0xe1/0x120
+> > > [ 2638.519743]        [<ffffffff8154328e>] mutex_lock_nested+0x5e/0x390
+> > > [ 2638.519743]        [<ffffffff811be15c>] nfs_revalidate_mapping+0xac/0x110    ==> takes i_mutex in nfs_invalidate_mapping()
+> > > [ 2638.519743]        [<ffffffff811bba25>] nfs_file_mmap+0x55/0x80
+> > > [ 2638.519743]        [<ffffffff810e2bb7>] mmap_region+0x427/0x600
+> > > [ 2638.519743]        [<ffffffff810e305e>] do_mmap_pgoff+0x2ce/0x3f0
+> > > [ 2638.519743]        [<ffffffff81010c26>] sys_mmap+0x106/0x130                 ==> takes mmap_sem
+> > > [ 2638.519743]        [<ffffffff8100bf42>] system_call_fastpath+0x16/0x1b
+> > > [ 2638.519743]        [<ffffffffffffffff>] 0xffffffffffffffff
+> > 
+> > This is the faulty code path.  mmap_sem is supposed to nest inside i_mutex.
+> 
+> This could be a long stand bug: the nfs_revalidate_mapping() call was
+> there in the very beginning of git history.
 
-commit 671e1fcf63fd115eabcb693b06cbc2e4a3d1a3a3
-Author: NeilBrown <neilb@suse.de>
-Date:   Tue Jun 16 11:03:20 2009 +1000
+http://programming.kicks-ass.net/kernel-patches/mmap-vs-nfs/
 
-    nfsd: optimise the starting of zero threads when none are running.
-    
-    Currently, if we ask to set then number of nfsd threads to zero when
-    there are none running, we set up all the sockets and register the
-    service, and then tear it all down again.
-    This is pointless.
-    
-    So detect that case and exit promptly.
-    (also remove an assignment to 'error' which was never used.
-    
-    Signed-off-by: NeilBrown <neilb@suse.de>
-    Acked-by: Jeff Layton <jlayton@redhat.com>
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 209eaa0..d4c9884 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -390,12 +390,14 @@ nfsd_svc(unsigned short port, int nrservs)
- 
- 	mutex_lock(&nfsd_mutex);
- 	dprintk("nfsd: creating service\n");
--	error = -EINVAL;
- 	if (nrservs <= 0)
- 		nrservs = 0;
- 	if (nrservs > NFSD_MAXSERVS)
- 		nrservs = NFSD_MAXSERVS;
--	
-+	error = 0;
-+	if (nrservs == 0 && nfsd_serv == NULL)
-+		goto out;
-+
- 	/* Readahead param cache - will no-op if it already exists */
- 	error =	nfsd_racache_init(2*nrservs);
- 	if (error<0)
