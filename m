@@ -1,242 +1,51 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] sunrpc: Adding trace points to status routines (take
- 2)
-Date: Thu, 18 Jun 2009 13:22:43 -0400
-Message-ID: <4A3A77E3.1010908@RedHat.com>
-References: <4A2EA789.60608@RedHat.com> <1245113811.7470.15.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/1] nfsd41: renew_client() needs to be called with the
+	client_mutex held
+Date: Thu, 18 Jun 2009 13:31:18 -0400
+Message-ID: <20090618173118.GF9679@fieldses.org>
+References: <1245289845-12118-1-git-send-email-Ricardo.Labiaga@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux Kernel Mailing list <linux-kernel@vger.kernel.org>,
-	Ingo Molnar <mingo@redhat.com>, Jason Baron <jbaron@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: bhalevy@panasas.com, pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39422 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753803AbZFRRZz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jun 2009 13:25:55 -0400
-In-Reply-To: <1245113811.7470.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.fieldses.org ([141.211.133.115]:51244 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751184AbZFRRbR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 13:31:17 -0400
+In-Reply-To: <1245289845-12118-1-git-send-email-Ricardo.Labiaga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Tue, 2009-06-09 at 14:18 -0400, Steve Dickson wrote:
->> Hey Trond,
->>
->> Here is an updated version of the patch I sent out a while
->> back... all that has changed was the addtion of 'rpc_'  to
->> the name of the trace points which coincides with the
->> other trace points naming convention.
->>
->> Here is a pointer to the previous email that has the 
->> fairly long winded explanation of how all this works:
->>
->>    http://marc.info/?l=linux-kernel&m=124058933520183&w=2
->>
->> And below is the updated patch which is based on Ingo's
->> linux-2.6-tip.git tree. 
->>
->> Comments?
->>
->> steved.
->>  
->> Author: Steve Dickson <steved@redhat.com>
->> Date:   Tue Jun  9 14:12:07 EDT 2009
->>
->>     Adds three trace points to the status routines in the
->>     sunrpc state machine. The trace points will only execute
->>     in error conditions.
->>     
->>     The goal of these trace points it to make it easier to
->>     debug process that spin or get hung up in the NFS and
->>     related subsystems.
+On Wed, Jun 17, 2009 at 06:50:45PM -0700, Ricardo Labiaga wrote:
+> renew_client() manipulates the client queue for lease renewal.  Need to
+> obtain the client_mutex before manipulating it.
 > 
-> Would this replace the existing dprint_status()? How does it differ from
-> the existing DYNAMIC_DEBUG functionality that was merged in 2.6.30?
-I believe it would be an addition to... Its my understanding the dynamic
-debug uses printks, which ultimately causes messages to be log to
-/var/log/messages... The trace points are used by a systemtap script 
-which is much more efficent and lightweight...
-
-
->     
->>     Signed-off-by: Steve Dickson <steved@redhat.com>
->>
->> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
->> new file mode 100644
->> index 0000000..f502eb4
->> --- /dev/null
->> +++ b/include/trace/events/sunrpc.h
->> @@ -0,0 +1,86 @@
->> +#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
->> +#define _TRACE_SUNRPC_H
->> +
->> +#include <linux/tracepoint.h>
->> +
->> +#undef TRACE_SYSTEM
->> +#define TRACE_SYSTEM sunrpc
->> +
->> +TRACE_EVENT(rpc_call_status,
->> +
->> +	TP_PROTO(struct rpc_task *task),
->> +
->> +	TP_ARGS(task),
->> +
->> +	TP_STRUCT__entry(
->> +		__field(u32, cl_prog)
->> +		__field(u32, cl_vers)
->> +		__field(u32, p_proc)
->> +		__field(int, tk_status)
->> +	),
->> +
->> +	TP_fast_assign(
->> +		__entry->cl_prog = task->tk_client->cl_prog;
->> +		__entry->cl_vers = task->tk_client->cl_vers;
->> +		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
->> +		__entry->cl_prog = task->tk_client->cl_prog;
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
 > 
-> You should only need to set entry->cl_prog once, right?
-Point... its redundant... Here is the updated patch:
- 
-Author: Steve Dickson <steved@redhat.com>
-Date:   Tue Jun  18 14:12:07 EDT 2009
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 4cb5d1d..18258d7 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1537,7 +1537,9 @@ replay_cache:
+>  	 * Hold a session reference until done processing the compound:
+>  	 * nfsd4_put_session called only if the cstate slot is set.
+>  	 */
+> +	nfs4_lock_state();
+>  	renew_client(session->se_client);
+> +	nfs4_unlock_state();
+>  	nfsd4_get_session(session);
+>  out:
+>  	spin_unlock(&sessionid_lock);
 
-    Adds three trace points to the status routines in the
-    sunrpc state machine. The trace points will only execute
-    in error conditions.
-    
-    The goal of these trace points it to make it easier to
-    debug process that spin or get hung up in the NFS and
-    related subsystems.
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+We can't take a mutex while handling a spinlock.  (And you should have
+gotten warnings about this--not sure what kernel hacking config options
+you may need turned on for that.)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-new file mode 100644
-index 0000000..f502eb4
---- /dev/null
-+++ b/include/trace/events/sunrpc.h
-@@ -0,0 +1,86 @@
-+#if !defined(_TRACE_SUNRPC_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_SUNRPC_H
-+
-+#include <linux/tracepoint.h>
-+
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM sunrpc
-+
-+TRACE_EVENT(rpc_call_status,
-+
-+	TP_PROTO(struct rpc_task *task),
-+
-+	TP_ARGS(task),
-+
-+	TP_STRUCT__entry(
-+		__field(u32, cl_prog)
-+		__field(u32, cl_vers)
-+		__field(u32, p_proc)
-+		__field(int, tk_status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->cl_prog = task->tk_client->cl_prog;
-+		__entry->cl_vers = task->tk_client->cl_vers;
-+		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-+		__entry->tk_status = task->tk_status;
-+	),
-+
-+	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-+		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-+);
-+
-+TRACE_EVENT(rpc_bind_status,
-+
-+	TP_PROTO(struct rpc_task *task),
-+
-+	TP_ARGS(task),
-+
-+	TP_STRUCT__entry(
-+		__field(u32, cl_prog)
-+		__field(u32, cl_vers)
-+		__field(u32, p_proc)
-+		__field(int, tk_status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->cl_prog = task->tk_client->cl_prog;
-+		__entry->cl_vers = task->tk_client->cl_vers;
-+		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-+		__entry->tk_status = task->tk_status;
-+	),
-+
-+	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-+		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-+);
-+TRACE_EVENT(rpc_connect_status,
-+
-+	TP_PROTO(struct rpc_task *task, int status),
-+
-+	TP_ARGS(task, status),
-+
-+	TP_STRUCT__entry(
-+		__field(u32, cl_prog)
-+		__field(u32, cl_vers)
-+		__field(u32, p_proc)
-+		__field(int, tk_status)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->cl_prog = task->tk_client->cl_prog;
-+		__entry->cl_vers = task->tk_client->cl_vers;
-+		__entry->p_proc = task->tk_client->cl_procinfo->p_proc;
-+		__entry->tk_status = status;
-+	),
-+
-+	TP_printk("%d[%d]:%d status=%d", __entry->cl_prog, 
-+		__entry->cl_vers,__entry->p_proc, __entry->tk_status)
-+
-+);
-+#endif /* __TRACE_SUNRPC_H */
-+
-+/* This part must be outside protection */
-+#include <trace/define_trace.h>
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 5abab09..b86ee2a 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -37,6 +37,9 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/metrics.h>
- 
-+#include <linux/ftrace.h>
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/sunrpc.h>
- 
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_CALL
-@@ -957,6 +960,7 @@ call_bind_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_bind_status(task);
- 	switch (task->tk_status) {
- 	case -ENOMEM:
- 		dprintk("RPC: %5u rpcbind out of memory\n", task->tk_pid);
-@@ -1038,6 +1042,7 @@ call_connect_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_connect_status(task, status);
- 	switch (status) {
- 		/* if soft mounted, test if we've timed out */
- 	case -ETIMEDOUT:
-@@ -1141,6 +1146,7 @@ call_status(struct rpc_task *task)
- 		return;
- 	}
- 
-+	trace_rpc_call_status(task);
- 	task->tk_status = 0;
- 	switch(status) {
- 	case -EHOSTDOWN:
+Possible hack: add a spinlock that for now will just cover the client
+lru?
 
-
+--b.
