@@ -1,8 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH attempt=2 2/5] VFS: Add VFS helper functions for setting up
- private namespaces
+Subject: [PATCH attempt=2 3/5] NFSv4: Replace nfs4_path_walk() with VFS
+ path lookup in a private namespace
 Date: Thu, 18 Jun 2009 14:57:31 -0700
-Message-ID: <20090618215731.27808.16968.stgit@heimdal.trondhjem.org>
+Message-ID: <20090618215731.27808.18129.stgit@heimdal.trondhjem.org>
 References: <20090618215731.27808.82272.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -15,119 +15,294 @@ In-Reply-To: <20090618215731.27808.82272.stgit@heimdal.trondhjem.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The purpose of this patch is to improve the remote mount path lookup
-support for distributed filesystems such as the NFSv4 client.
+As noted in the previous patch, the NFSv4 client mount code currently
+has several limitations. If the mount path contains symlinks, or
+referrals, or even if it just contains a '..', then the client code in
+nfs4_path_walk() will fail with an error.
 
-When given a mount command of the form "mount server:/foo/bar /mnt", the
-NFSv4 client is required to look up the filehandle for "server:/", and
-then look up each component of the remote mount path "foo/bar" in order
-to find the directory that is actually going to be mounted on /mnt.
-Following that remote mount path may involve following symlinks,
-crossing server-side mount points and even following referrals to
-filesystem volumes on other servers.
-
-Since the standard VFS path lookup code already supports walking paths
-that contain all these features (using in-kernel automounts for
-following referrals) we would like to be able to reuse that rather than
-duplicate the full path traversal functionality in the NFSv4 client code.
-
-This patch therefore defines a VFS helper function create_mnt_ns(), that
-sets up a temporary filesystem namespace and attaches a root filesystem to
-it.
+This patch replaces the nfs4_path_walk()-based lookup with a helper
+function that sets up a private namespace to represent the namespace on the
+server, then uses the ordinary VFS and NFS path lookup code to walk down the
+mount path in that namespace.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/namespace.c                |   46 +++++++++++++++++++++++++++++++++--------
- include/linux/mnt_namespace.h |    1 +
- 2 files changed, 38 insertions(+), 9 deletions(-)
+ fs/nfs/super.c |  178 +++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 files changed, 157 insertions(+), 21 deletions(-)
 
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 1d4f2d8..fb52edb 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1937,6 +1937,21 @@ dput_out:
- 	return retval;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b798ed1..8da7e59 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -42,6 +42,8 @@
+ #include <linux/smp_lock.h>
+ #include <linux/seq_file.h>
+ #include <linux/mount.h>
++#include <linux/mnt_namespace.h>
++#include <linux/namei.h>
+ #include <linux/nfs_idmap.h>
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
+@@ -270,10 +272,14 @@ static const struct super_operations nfs_sops = {
+ #ifdef CONFIG_NFS_V4
+ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
++static int nfs4_remote_get_sb(struct file_system_type *fs_type,
++	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static int nfs4_xdev_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static int nfs4_referral_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
++static int nfs4_remote_referral_get_sb(struct file_system_type *fs_type,
++	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs4_kill_super(struct super_block *sb);
+ 
+ static struct file_system_type nfs4_fs_type = {
+@@ -284,6 +290,14 @@ static struct file_system_type nfs4_fs_type = {
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
++static struct file_system_type nfs4_remote_fs_type = {
++	.owner		= THIS_MODULE,
++	.name		= "nfs4",
++	.get_sb		= nfs4_remote_get_sb,
++	.kill_sb	= nfs4_kill_super,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++};
++
+ struct file_system_type nfs4_xdev_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+@@ -292,6 +306,14 @@ struct file_system_type nfs4_xdev_fs_type = {
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
++static struct file_system_type nfs4_remote_referral_fs_type = {
++	.owner		= THIS_MODULE,
++	.name		= "nfs4",
++	.get_sb		= nfs4_remote_referral_get_sb,
++	.kill_sb	= nfs4_kill_super,
++	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
++};
++
+ struct file_system_type nfs4_referral_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+@@ -2422,12 +2444,12 @@ out_no_client_address:
  }
  
-+static struct mnt_namespace *alloc_mnt_ns(void)
-+{
-+	struct mnt_namespace *new_ns;
-+
-+	new_ns = kmalloc(sizeof(struct mnt_namespace), GFP_KERNEL);
-+	if (!new_ns)
-+		return ERR_PTR(-ENOMEM);
-+	atomic_set(&new_ns->count, 1);
-+	new_ns->root = NULL;
-+	INIT_LIST_HEAD(&new_ns->list);
-+	init_waitqueue_head(&new_ns->poll);
-+	new_ns->event = 0;
-+	return new_ns;
-+}
-+
  /*
-  * Allocate a new namespace structure and populate it with contents
-  * copied from the namespace of the passed in task structure.
-@@ -1948,14 +1963,9 @@ static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
- 	struct vfsmount *rootmnt = NULL, *pwdmnt = NULL;
- 	struct vfsmount *p, *q;
- 
--	new_ns = kmalloc(sizeof(struct mnt_namespace), GFP_KERNEL);
--	if (!new_ns)
--		return ERR_PTR(-ENOMEM);
--
--	atomic_set(&new_ns->count, 1);
--	INIT_LIST_HEAD(&new_ns->list);
--	init_waitqueue_head(&new_ns->poll);
--	new_ns->event = 0;
-+	new_ns = alloc_mnt_ns();
-+	if (IS_ERR(new_ns))
-+		return new_ns;
- 
- 	down_write(&namespace_sem);
- 	/* First pass: copy the tree topology */
-@@ -2019,6 +2029,24 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
- 	return new_ns;
- }
- 
-+/**
-+ * create_mnt_ns - creates a private namespace and adds a root filesystem
-+ * @mnt: pointer to the new root filesystem mountpoint
-+ */
-+struct mnt_namespace *create_mnt_ns(struct vfsmount *mnt)
-+{
-+	struct mnt_namespace *new_ns;
-+
-+	new_ns = alloc_mnt_ns();
-+	if (!IS_ERR(new_ns)) {
-+		mnt->mnt_ns = new_ns;
-+		new_ns->root = mnt;
-+		list_add(&new_ns->list, &new_ns->root->mnt_list);
-+	}
-+	return new_ns;
-+}
-+EXPORT_SYMBOL(create_mnt_ns);
-+
- SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
- 		char __user *, type, unsigned long, flags, void __user *, data)
+- * Get the superblock for an NFS4 mountpoint
++ * Get the superblock for the NFS4 root partition
+  */
+-static int nfs4_get_sb(struct file_system_type *fs_type,
++static int nfs4_remote_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt)
  {
-@@ -2267,4 +2295,4 @@ void put_mnt_ns(struct mnt_namespace *ns)
- 		/* releases vfsmount_lock */
- 		__put_mnt_ns(ns);
- }
+-	struct nfs_parsed_mount_data *data;
++	struct nfs_parsed_mount_data *data = raw_data;
+ 	struct super_block *s;
+ 	struct nfs_server *server;
+ 	struct nfs_fh *mntfh;
+@@ -2438,18 +2460,12 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 	};
+ 	int error = -ENOMEM;
+ 
+-	data = kzalloc(sizeof(*data), GFP_KERNEL);
+ 	mntfh = kzalloc(sizeof(*mntfh), GFP_KERNEL);
+ 	if (data == NULL || mntfh == NULL)
+ 		goto out_free_fh;
+ 
+ 	security_init_mnt_opts(&data->lsm_opts);
+ 
+-	/* Validate the mount data */
+-	error = nfs4_validate_mount_data(raw_data, data, dev_name);
+-	if (error < 0)
+-		goto out;
 -
-+EXPORT_SYMBOL(put_mnt_ns);
-diff --git a/include/linux/mnt_namespace.h b/include/linux/mnt_namespace.h
-index 299d11a..3beb259 100644
---- a/include/linux/mnt_namespace.h
-+++ b/include/linux/mnt_namespace.h
-@@ -24,6 +24,7 @@ struct proc_mounts {
+ 	/* Get a volume representation */
+ 	server = nfs4_create_server(data, mntfh);
+ 	if (IS_ERR(server)) {
+@@ -2462,7 +2478,7 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 		compare_super = NULL;
  
- struct fs_struct;
+ 	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(fs_type, compare_super, nfs_set_super, &sb_mntdata);
++	s = sget(&nfs4_fs_type, compare_super, nfs_set_super, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+ 		error = PTR_ERR(s);
+ 		goto out_free;
+@@ -2499,14 +2515,9 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 	error = 0;
  
-+extern struct mnt_namespace *create_mnt_ns(struct vfsmount *mnt);
- extern struct mnt_namespace *copy_mnt_ns(unsigned long, struct mnt_namespace *,
- 		struct fs_struct *);
- extern void put_mnt_ns(struct mnt_namespace *ns);
+ out:
+-	kfree(data->client_address);
+-	kfree(data->nfs_server.export_path);
+-	kfree(data->nfs_server.hostname);
+-	kfree(data->fscache_uniq);
+ 	security_free_mnt_opts(&data->lsm_opts);
+ out_free_fh:
+ 	kfree(mntfh);
+-	kfree(data);
+ 	return error;
+ 
+ out_free:
+@@ -2520,6 +2531,102 @@ error_splat_super:
+ 	goto out;
+ }
+ 
++static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
++		int flags, void *data, const char *hostname)
++{
++	struct vfsmount *root_mnt;
++	char *root_devname;
++	size_t len;
++
++	len = strlen(hostname) + 3;
++	root_devname = kmalloc(len, GFP_KERNEL);
++	if (root_devname == NULL)
++		return ERR_PTR(-ENOMEM);
++	snprintf(root_devname, len, "%s:/", hostname);
++	root_mnt = vfs_kern_mount(fs_type, flags, root_devname, data);
++	kfree(root_devname);
++	return root_mnt;
++}
++
++static int nfs_follow_remote_path(struct vfsmount *root_mnt,
++		const char *export_path, struct vfsmount *mnt_target)
++{
++	struct mnt_namespace *ns_private;
++	struct nameidata nd;
++	struct super_block *s;
++	int ret;
++
++	ns_private = create_mnt_ns(root_mnt);
++	ret = PTR_ERR(ns_private);
++	if (IS_ERR(ns_private))
++		goto out_mntput;
++
++	ret = vfs_path_lookup(root_mnt->mnt_root, root_mnt,
++			export_path, LOOKUP_FOLLOW, &nd);
++
++	put_mnt_ns(ns_private);
++
++	if (ret != 0)
++		goto out_err;
++
++	s = nd.path.mnt->mnt_sb;
++	atomic_inc(&s->s_active);
++	mnt_target->mnt_sb = s;
++	mnt_target->mnt_root = dget(nd.path.dentry);
++
++	path_put(&nd.path);
++	down_write(&s->s_umount);
++	return 0;
++out_mntput:
++	mntput(root_mnt);
++out_err:
++	return ret;
++}
++
++/*
++ * Get the superblock for an NFS4 mountpoint
++ */
++static int nfs4_get_sb(struct file_system_type *fs_type,
++	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt)
++{
++	struct nfs_parsed_mount_data *data;
++	char *export_path;
++	struct vfsmount *root_mnt;
++	int error = -ENOMEM;
++
++	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	if (data == NULL)
++		goto out_free_data;
++
++	/* Validate the mount data */
++	error = nfs4_validate_mount_data(raw_data, data, dev_name);
++	if (error < 0)
++		goto out;
++
++	export_path = data->nfs_server.export_path;
++	data->nfs_server.export_path = "/";
++	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, data,
++			data->nfs_server.hostname);
++	data->nfs_server.export_path = export_path;
++
++	error = PTR_ERR(root_mnt);
++	if (IS_ERR(root_mnt))
++		goto out;
++
++	error = nfs_follow_remote_path(root_mnt, export_path, mnt);
++
++out:
++	kfree(data->client_address);
++	kfree(data->nfs_server.export_path);
++	kfree(data->nfs_server.hostname);
++	kfree(data->fscache_uniq);
++out_free_data:
++	kfree(data);
++	dprintk("<-- nfs4_get_sb() = %d%s\n", error,
++			error != 0 ? " [error]" : "");
++	return error;
++}
++
+ static void nfs4_kill_super(struct super_block *sb)
+ {
+ 	struct nfs_server *server = NFS_SB(sb);
+@@ -2615,12 +2722,9 @@ error_splat_super:
+ 	return error;
+ }
+ 
+-/*
+- * Create an NFS4 server record on referral traversal
+- */
+-static int nfs4_referral_get_sb(struct file_system_type *fs_type, int flags,
+-				const char *dev_name, void *raw_data,
+-				struct vfsmount *mnt)
++static int nfs4_remote_referral_get_sb(struct file_system_type *fs_type,
++		int flags, const char *dev_name, void *raw_data,
++		struct vfsmount *mnt)
+ {
+ 	struct nfs_clone_mount *data = raw_data;
+ 	struct super_block *s;
+@@ -2699,4 +2803,36 @@ error_splat_super:
+ 	return error;
+ }
+ 
++/*
++ * Create an NFS4 server record on referral traversal
++ */
++static int nfs4_referral_get_sb(struct file_system_type *fs_type,
++		int flags, const char *dev_name, void *raw_data,
++		struct vfsmount *mnt)
++{
++	struct nfs_clone_mount *data = raw_data;
++	char *export_path;
++	struct vfsmount *root_mnt;
++	int error;
++
++	dprintk("--> nfs4_referral_get_sb()\n");
++
++	export_path = data->mnt_path;
++	data->mnt_path = "/";
++
++	root_mnt = nfs_do_root_mount(&nfs4_remote_referral_fs_type,
++			flags, data, data->hostname);
++	data->mnt_path = export_path;
++
++	error = PTR_ERR(root_mnt);
++	if (IS_ERR(root_mnt))
++		goto out;
++
++	error = nfs_follow_remote_path(root_mnt, export_path, mnt);
++out:
++	dprintk("<-- nfs4_referral_get_sb() = %d%s\n", error,
++			error != 0 ? " [error]" : "");
++	return error;
++}
++
+ #endif /* CONFIG_NFS_V4 */
 
