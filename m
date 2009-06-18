@@ -1,18 +1,18 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 32/44] nfsd41: only reference the session on non-replay
 	sequence
-Date: Thu, 18 Jun 2009 18:20:23 -0400
-Message-ID: <20090618222023.GJ12234@fieldses.org>
+Date: Thu, 18 Jun 2009 18:37:29 -0400
+Message-ID: <20090618223729.GL12234@fieldses.org>
 References: <1245115244-7857-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:39361 "EHLO
+Received: from mail.fieldses.org ([141.211.133.115]:41899 "EHLO
 	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754872AbZFRWUU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 18:20:20 -0400
+	with ESMTP id S1753240AbZFRWh1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 18:37:27 -0400
 In-Reply-To: <1245115244-7857-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -53,6 +53,20 @@ On Tue, Jun 16, 2009 at 04:20:44AM +0300, Benny Halevy wrote:
 > +	/* Renew the clientid on success and on replay */
 >  	renew_client(session->se_client);
 > -	nfsd4_get_session(session);
+
+The result of this seems to be that in the "got replay_cache" case, we
+exit this function with cstate->session set, but without a reference
+taken.
+
+That makes me extremely nervous.  Any time we're keeping a pointer to a
+reference-counted object, and dropping the lock under which the pointer
+was acquired, we should be holding a reference.
+
+If you're sure you won't be needing that session any more, then set
+cstate->session to NULL.
+
+--b.
+
 >  out:
 >  	spin_unlock(&sessionid_lock);
 >  	dprintk("%s: return %d\n", __func__, ntohl(status));
@@ -85,9 +99,6 @@ On Tue, Jun 16, 2009 at 04:20:44AM +0300, Benny Halevy wrote:
 > +		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
 > +		cs->slot->sl_inuse = 0;
 > +		nfsd4_put_session(cs->session);
-
-This chunkc seems to be irrelevant to the rest of the patch?
-
 >  	}
 >  	return 1;
 >  }
