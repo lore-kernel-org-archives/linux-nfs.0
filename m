@@ -1,126 +1,803 @@
-From: Simon Kirby <sim@hostway.ca>
-Subject: kernel NULL pointer dereference in rpcb_getport_done (2.6.29.4)
-Date: Fri, 19 Jun 2009 15:54:37 -0700
-Message-ID: <20090619225437.GA8472@hostway.ca>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 37/44] nfsd41: sunrpc: Added rpc server-side
+	backchannel handling
+Date: Fri, 19 Jun 2009 19:10:40 -0400
+Message-ID: <20090619231040.GC32083@fieldses.org>
+References: <1245115259-8023-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Trond Myklebust <trond@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from newpeace.netnation.com ([204.174.223.7]:55833 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751797AbZFSWyj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2009 18:54:39 -0400
-Received: from sim by peace.netnation.com with local (Exim 4.63)
-	(envelope-from <sim@netnation.com>)
-	id 1MHmyj-0004jN-Va
-	for linux-nfs@vger.kernel.org; Fri, 19 Jun 2009 15:54:37 -0700
+Received: from mail.fieldses.org ([141.211.133.115]:36410 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753834AbZFSXKj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2009 19:10:39 -0400
+In-Reply-To: <1245115259-8023-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-'lo!
+On Tue, Jun 16, 2009 at 04:20:59AM +0300, Benny Halevy wrote:
+> From: Rahul Iyer <iyer@netapp.com>
+> 
+> Signed-off-by: Rahul Iyer <iyer@netapp.com>
+> Signed-off-by: Mike Sager <sager@netapp.com>
+> Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> When the call direction is a reply, copy the xid and call direction into the
+> req->rq_private_buf.head[0].iov_base otherwise rpc_verify_header returns
+> rpc_garbage.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> 
+> [get rid of CONFIG_NFSD_V4_1]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> 
+> [sunrpc: refactoring of svc_tcp_recvfrom]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: create common send routine for the fore and the back channels]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: Use free_page() to free server backchannel pages]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: Document server backchannel locking]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: remove bc_connect_worker()]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: Define xprt_server_backchannel()[
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: remove bc_close and bc_init_auto_disconnect dummy functions]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: eliminate unneeded switch statement in xs_setup_tcp()]
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: Don't auto close the server backchannel connection]
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> 
+> [nfsd41: sunrpc: Remove unused functions]
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-On a few different boxes with heavy NFSv3 serving (and quite a bit of
-file locking), I am seeing the following Oops regularly recurring
-(2.6.28.10 and 2.6.29.4):
+I feel like I'm watching the end of a movie here.  I'm not sure how to
+handle a patch with so many contributors.
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000032
-IP: [<ffffffff8068499c>] rpcb_getport_done+0x4c/0xd0
-PGD 0 
-Oops: 0000 [#1] SMP 
-last sysfs file: /sys/block/dm-47/removable
-CPU 6 
-Modules linked in: drbd cn aoe xt_MARK bnx2 zlib_inflate e1000e
-Pid: 1471, comm: rpciod/6 Not tainted 2.6.29.4-hw #2 PowerEdge 1950
-RIP: 0010:[<ffffffff8068499c>]  [<ffffffff8068499c>] rpcb_getport_done+0x4c/0xd0
-RSP: 0018:ffff88043d8ddde0  EFLAGS: 00010282
-RAX: 0000000000000012 RBX: ffff880309c80780 RCX: ffff88043de65930
-RDX: 0000000000009554 RSI: 0000000000009554 RDI: ffff880309c80780
-RBP: ffff88043d8dde00 R08: ffff880309c80d14 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: ffff880309c80d00 R14: ffff880167591400 R15: ffff880167591490
-FS:  0000000000000000(0000) GS:ffff88043efa9500(0000) knlGS:0000000000000000
-CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-CR2: 0000000000000032 CR3: 0000000000201000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process rpciod/6 (pid: 1471, threadinfo ffff88043d8dc000, task ffff88043d8d1db0)
-Stack:
- ffff880167591400 ffff880167591400 0000000000000000 0000000000000001
- ffff88043d8dde20 ffffffff8067ce97 0000000000000001 ffff8801675914b0
- ffff88043d8dde60 ffffffff8067d487 ffff88043d8dde40 ffff8801675914b0
-Call Trace:
- [<ffffffff8067ce97>] rpc_exit_task+0x27/0x60
- [<ffffffff8067d487>] __rpc_execute+0x87/0x2d0
- [<ffffffff8067d6d0>] ? rpc_async_schedule+0x0/0x20
- [<ffffffff8067d6e0>] rpc_async_schedule+0x10/0x20
- [<ffffffff80252100>] run_workqueue+0xa0/0x150
- [<ffffffff80252cb3>] worker_thread+0x93/0xd0
- [<ffffffff80256370>] ? autoremove_wake_function+0x0/0x40
- [<ffffffff80252c20>] ? worker_thread+0x0/0xd0
- [<ffffffff80255efd>] kthread+0x4d/0x80
- [<ffffffff8020d61a>] child_rip+0xa/0x20
- [<ffffffff80255eb0>] ? kthread+0x0/0x80
- [<ffffffff8020d610>] ? child_rip+0x0/0x20
-Code: 44 8b 67 30 48 8b 1e 41 83 fc fb 74 32 41 83 fc a3 74 2f 45 85 e4 78 30 8b 56 14 66 85 d2 90 74 55 48 8b 43 08 0f b7 f2 48 89 df <ff> 50 20 f0 0f ba ab e0 03 00 00 04 19 c0 45 31 e4 eb 16 90 41 
-RIP  [<ffffffff8068499c>] rpcb_getport_done+0x4c/0xd0
- RSP <ffff88043d8ddde0>
-CR2: 0000000000000032
----[ end trace 209472a1a8b9753c ]---
+If I were you I'd restrict the signed-off-by's to people that actually
+could be said to have "signed off on" something like the final version
+of this patch, and acknolwedge any other contributor in the text in the
+comment.
 
-After this occurs, a lot of "lockd: server x not responding, timed out"
-messages start occurring for almost all of the clients, and locking
-becomes lossy (it works, eventually), until the NFS server is rebooted.
+But in any case I think it's time to ditch all this patch history....
 
-The backtrace is always the same and always in rpcb_getport_done().
+> ---
+>  include/linux/sunrpc/clnt.h    |    1 +
+>  include/linux/sunrpc/svcsock.h |    1 +
+>  include/linux/sunrpc/xprt.h    |    7 ++
+>  net/sunrpc/clnt.c              |    1 +
 
-(gdb) disassemble rpcb_getport_done
-Dump of assembler code for function rpcb_getport_done:
-00e0 <rpcb_getport_done+0>:       push   %rbp
-00e1 <rpcb_getport_done+1>:       mov    %rsp,%rbp
-00e4 <rpcb_getport_done+4>:       sub    $0x20,%rsp
-00e8 <rpcb_getport_done+8>:       mov    %r13,0x10(%rsp)
-00ed <rpcb_getport_done+13>:      mov    %r14,0x18(%rsp)
-00f2 <rpcb_getport_done+18>:      mov    %rsi,%r13
-00f5 <rpcb_getport_done+21>:      mov    %rbx,(%rsp)
-00f9 <rpcb_getport_done+25>:      mov    %r12,0x8(%rsp)
-00fe <rpcb_getport_done+30>:      mov    %rdi,%r14
-0101 <rpcb_getport_done+33>:      mov    0x30(%rdi),%r12d
-0105 <rpcb_getport_done+37>:      mov    (%rsi),%rbx
-0108 <rpcb_getport_done+40>:      cmp    $0xfffffffffffffffb,%r12d
-010c <rpcb_getport_done+44>:      je     0x140 <rpcb_getport_done+96>
-010e <rpcb_getport_done+46>:      cmp    $0xffffffffffffffa3,%r12d
-0112 <rpcb_getport_done+50>:      je     0x143 <rpcb_getport_done+99>
-0114 <rpcb_getport_done+52>:      test   %r12d,%r12d
-0117 <rpcb_getport_done+55>:      js     0x149 <rpcb_getport_done+105>
-0119 <rpcb_getport_done+57>:      mov    0x14(%rsi),%edx
-011c <rpcb_getport_done+60>:      test   %dx,%dx
-011f <rpcb_getport_done+63>:      nop    
-0120 <rpcb_getport_done+64>:      je     0x177 <rpcb_getport_done+151>
-0122 <rpcb_getport_done+66>:      mov    0x8(%rbx),%rax
-0126 <rpcb_getport_done+70>:      movzwl %dx,%esi
-0129 <rpcb_getport_done+73>:      mov    %rbx,%rdi
-012c <rpcb_getport_done+76>:      callq  *0x20(%rax) <================
-012f <rpcb_getport_done+79>:      lock btsl $0x4,0x3e0(%rbx)
-0138 <rpcb_getport_done+88>:      sbb    %eax,%eax
-013a <rpcb_getport_done+90>:      xor    %r12d,%r12d
-013d <rpcb_getport_done+93>:      jmp    0x155 <rpcb_getport_done+117>
-013f <rpcb_getport_done+95>:      nop    
-0140 <rpcb_getport_done+96>:      mov    $0xa3,%r12b
-0143 <rpcb_getport_done+99>:      incl   0x3ec(%rbx)
-0149 <rpcb_getport_done+105>:     mov    0x8(%rbx),%rax
-014d <rpcb_getport_done+109>:     xor    %esi,%esi
-014f <rpcb_getport_done+111>:     mov    %rbx,%rdi
-0152 <rpcb_getport_done+114>:     callq  *0x20(%rax)
-...
+One other bureaucratic point--I can't remember if Trond acked the
+client-side bits of this?
 
->From my crappy assembler reading, this looks like this code:
+>  net/sunrpc/sunrpc.h            |   35 +++++++
+>  net/sunrpc/svcsock.c           |  172 +++++++++++++++++++++++++++-------
+>  net/sunrpc/xprt.c              |   16 +++-
+>  net/sunrpc/xprtsock.c          |  201 ++++++++++++++++++++++++++++++++++++++--
+>  8 files changed, 390 insertions(+), 44 deletions(-)
+>  create mode 100644 net/sunrpc/sunrpc.h
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index c39a210..cf9a8ec 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -110,6 +110,7 @@ struct rpc_create_args {
+>  	rpc_authflavor_t	authflavor;
+>  	unsigned long		flags;
+>  	char			*client_name;
+> +	struct svc_sock		*bc_sock;	/* NFSv4.1 backchannel */
+>  };
+>  
+>  /* Values for "flags" field */
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+> index 8271631..19228f4 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -28,6 +28,7 @@ struct svc_sock {
+>  	/* private TCP part */
+>  	u32			sk_reclen;	/* length of record */
+>  	u32			sk_tcplen;	/* current read length */
+> +	struct rpc_xprt	       *sk_bc_xprt;	/* NFSv4.1 backchannel xprt */
+>  };
+>  
+>  /*
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 1758d9f..d180661 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -174,6 +174,7 @@ struct rpc_xprt {
+>  	spinlock_t		reserve_lock;	/* lock slot table */
+>  	u32			xid;		/* Next XID value to use */
+>  	struct rpc_task *	snd_task;	/* Task blocked in send */
+> +	struct svc_sock		*bc_sock;	/* NFSv4.1 backchannel */
 
-		/* Succeeded */
-		xprt->ops->set_port(xprt, map->r_port);
+I'm a little curious about the layering--rpc_xprt doesn't have any
+pointers to sockets--it leaves that to the transport-specific code.  Why
+do this and not define a new transport type?
 
-RAX is 0x12, and 0x12 + 0x20 is the fault address of 0x32, so it looks
-like xprt or ops is NULL.  0x20 is the offset of set_port in xprt->ops.
+Also: why is this a svc_sock pointer and not a svc_xprt pointer?
 
-Looks like there is some sort of race here...? :)
+And what happens right now if someone tries to mount a 4.1 server with
+udp or rdma?  ("It fails" is an OK answer, at least for the former (how
+do callbacks work over rdma?), as long as it fails in some graceful
+way.)
 
-Simon-
+>  	struct list_head	recv;
+>  
+>  	struct {
+> @@ -197,6 +198,7 @@ struct xprt_create {
+>  	struct sockaddr *	srcaddr;	/* optional local address */
+>  	struct sockaddr *	dstaddr;	/* remote peer address */
+>  	size_t			addrlen;
+> +	struct svc_sock		*bc_sock;	/* NFSv4.1 backchannel */
+>  };
+>  
+>  struct xprt_class {
+> @@ -331,6 +333,11 @@ static inline int xprt_test_and_set_binding(struct rpc_xprt *xprt)
+>  	return test_and_set_bit(XPRT_BINDING, &xprt->state);
+>  }
+>  
+> +static inline int xprt_server_backchannel(struct rpc_xprt *xprt)
+> +{
+> +	return xprt->bc_sock != NULL;
+> +}
+> +
+>  #endif /* __KERNEL__*/
+>  
+>  #endif /* _LINUX_SUNRPC_XPRT_H */
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 5abab09..3dc847f 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -266,6 +266,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+>  		.srcaddr = args->saddress,
+>  		.dstaddr = args->address,
+>  		.addrlen = args->addrsize,
+> +		.bc_sock = args->bc_sock,
+>  	};
+>  	char servername[48];
+>  
+> diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+> new file mode 100644
+> index 0000000..3258089
+> --- /dev/null
+> +++ b/net/sunrpc/sunrpc.h
+> @@ -0,0 +1,35 @@
+> +/******************************************************************************
+> +
+> +(c) 2008 NetApp.  All Rights Reserved.
+> +
+> +NetApp provides this source code under the GPL v2 License.
+> +The GPL v2 license is available at
+> +http://opensource.org/licenses/gpl-license.php.
+> +
+> +THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+> +"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+> +LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+> +A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+> +CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+> +EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+> +PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+> +PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+> +LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+> +NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+> +SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+> +
+> +******************************************************************************/
+> +
+> +/*
+> + * Functions and macros used internally by RPC
+> + */
+> +
+> +#ifndef _NET_SUNRPC_SUNRPC_H
+> +#define _NET_SUNRPC_SUNRPC_H
+> +
+> +int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+> +		    struct page *headpage, unsigned long headoffset,
+> +		    struct page *tailpage, unsigned long tailoffset);
+
+OK, if I'm understanding right, this is used for sending any message to
+the client, whether a normal rpc reply, or a backchannel rpc call.
+
+I don't yet understand the need for those last four arguments.  Is this
+due to different client and server use of the xdr_buf fields?  Could we
+find some cleaner solution?
+
+> +
+> +#endif /* _NET_SUNRPC_SUNRPC_H */
+> +
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 295582f..d065e7e 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -49,6 +49,7 @@
+>  #include <linux/sunrpc/msg_prot.h>
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/stats.h>
+> +#include <linux/sunrpc/xprt.h>
+>  
+>  #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+>  
+> @@ -153,49 +154,27 @@ static void svc_set_cmsg_data(struct svc_rqst *rqstp, struct cmsghdr *cmh)
+>  }
+>  
+>  /*
+> - * Generic sendto routine
+> + * send routine intended to be shared by the fore- and back-channel
+>   */
+> -static int svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
+> +int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+> +		    struct page *headpage, unsigned long headoffset,
+> +		    struct page *tailpage, unsigned long tailoffset)
+>  {
+> -	struct svc_sock	*svsk =
+> -		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+> -	struct socket	*sock = svsk->sk_sock;
+> -	int		slen;
+> -	union {
+> -		struct cmsghdr	hdr;
+> -		long		all[SVC_PKTINFO_SPACE / sizeof(long)];
+> -	} buffer;
+> -	struct cmsghdr *cmh = &buffer.hdr;
+> -	int		len = 0;
+>  	int		result;
+>  	int		size;
+>  	struct page	**ppage = xdr->pages;
+>  	size_t		base = xdr->page_base;
+>  	unsigned int	pglen = xdr->page_len;
+>  	unsigned int	flags = MSG_MORE;
+> -	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+> +	int		slen;
+> +	int		len = 0;
+>  
+>  	slen = xdr->len;
+>  
+> -	if (rqstp->rq_prot == IPPROTO_UDP) {
+> -		struct msghdr msg = {
+> -			.msg_name	= &rqstp->rq_addr,
+> -			.msg_namelen	= rqstp->rq_addrlen,
+> -			.msg_control	= cmh,
+> -			.msg_controllen	= sizeof(buffer),
+> -			.msg_flags	= MSG_MORE,
+> -		};
+> -
+> -		svc_set_cmsg_data(rqstp, cmh);
+> -
+> -		if (sock_sendmsg(sock, &msg, 0) < 0)
+> -			goto out;
+> -	}
+> -
+>  	/* send head */
+>  	if (slen == xdr->head[0].iov_len)
+>  		flags = 0;
+> -	len = kernel_sendpage(sock, rqstp->rq_respages[0], 0,
+> +	len = kernel_sendpage(sock, headpage, headoffset,
+>  				  xdr->head[0].iov_len, flags);
+>  	if (len != xdr->head[0].iov_len)
+>  		goto out;
+> @@ -219,16 +198,58 @@ static int svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
+>  		base = 0;
+>  		ppage++;
+>  	}
+> +
+>  	/* send tail */
+>  	if (xdr->tail[0].iov_len) {
+> -		result = kernel_sendpage(sock, rqstp->rq_respages[0],
+> -					     ((unsigned long)xdr->tail[0].iov_base)
+> -						& (PAGE_SIZE-1),
+> -					     xdr->tail[0].iov_len, 0);
+> -
+> +		result = kernel_sendpage(sock, tailpage, tailoffset,
+> +				   xdr->tail[0].iov_len, 0);
+>  		if (result > 0)
+>  			len += result;
+>  	}
+> +
+> +out:
+> +	return len;
+> +}
+> +
+> +
+> +/*
+> + * Generic sendto routine
+> + */
+> +static int svc_sendto(struct svc_rqst *rqstp, struct xdr_buf *xdr)
+> +{
+> +	struct svc_sock	*svsk =
+> +		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+> +	struct socket	*sock = svsk->sk_sock;
+> +	union {
+> +		struct cmsghdr	hdr;
+> +		long		all[SVC_PKTINFO_SPACE / sizeof(long)];
+> +	} buffer;
+> +	struct cmsghdr *cmh = &buffer.hdr;
+> +	int		len = 0;
+> +	unsigned long tailoff;
+> +	unsigned long headoff;
+> +	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+> +
+> +	if (rqstp->rq_prot == IPPROTO_UDP) {
+> +		struct msghdr msg = {
+> +			.msg_name	= &rqstp->rq_addr,
+> +			.msg_namelen	= rqstp->rq_addrlen,
+> +			.msg_control	= cmh,
+> +			.msg_controllen	= sizeof(buffer),
+> +			.msg_flags	= MSG_MORE,
+> +		};
+> +
+> +		svc_set_cmsg_data(rqstp, cmh);
+> +
+> +		if (sock_sendmsg(sock, &msg, 0) < 0)
+> +			goto out;
+> +	}
+> +
+> +	tailoff = ((unsigned long)xdr->tail[0].iov_base) & (PAGE_SIZE-1);
+> +	headoff = 0;
+> +	len = svc_send_common(sock, xdr, rqstp->rq_respages[0], headoff,
+> +			       rqstp->rq_respages[0], tailoff);
+> +
+>  out:
+>  	dprintk("svc: socket %p sendto([%p %Zu... ], %d) = %d (addr %s)\n",
+>  		svsk, xdr->head[0].iov_base, xdr->head[0].iov_len,
+> @@ -895,6 +916,57 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
+>  	return -EAGAIN;
+>  }
+>  
+> +static int svc_process_calldir(struct svc_sock *svsk, struct svc_rqst *rqstp,
+> +			       struct rpc_rqst **reqpp, struct kvec *vec)
+> +{
+> +	struct rpc_rqst *req = NULL;
+> +	u32 *p;
+> +	u32 xid;
+> +	u32 calldir;
+> +	int len;
+> +
+> +	len = svc_recvfrom(rqstp, vec, 1, 8);
+> +	if (len < 0)
+> +		goto error;
+> +
+> +	p = (u32 *)rqstp->rq_arg.head[0].iov_base;
+> +	xid = *p++;
+> +	calldir = *p;
+> +
+> +	if (calldir == 0) {
+> +		/* REQUEST is the most common case */
+> +		vec[0] = rqstp->rq_arg.head[0];
+> +	} else {
+> +		/* REPLY */
+> +		if (svsk->sk_bc_xprt)
+> +			req = xprt_lookup_rqst(svsk->sk_bc_xprt, xid);
+> +
+> +		if (!req) {
+> +			printk(KERN_NOTICE
+> +				"%s: Got unrecognized reply: "
+> +				"calldir 0x%x sk_bc_xprt %p xid %08x\n",
+> +				__func__, ntohl(calldir),
+> +				svsk->sk_bc_xprt, xid);
+> +			vec[0] = rqstp->rq_arg.head[0];
+> +			goto out;
+> +		}
+> +
+> +		memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+> +		       sizeof(struct xdr_buf));
+> +		/* copy the xid and call direction */
+> +		memcpy(req->rq_private_buf.head[0].iov_base,
+> +		       rqstp->rq_arg.head[0].iov_base, 8);
+> +		vec[0] = req->rq_private_buf.head[0];
+> +	}
+> + out:
+> +	vec[0].iov_base += 8;
+> +	vec[0].iov_len -= 8;
+> +	len = svsk->sk_reclen - 8;
+> + error:
+> +	*reqpp = req;
+> +	return len;
+> +}
+> +
+>  /*
+>   * Receive data from a TCP socket.
+>   */
+> @@ -906,6 +978,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  	int		len;
+>  	struct kvec *vec;
+>  	int pnum, vlen;
+> +	struct rpc_rqst *req = NULL;
+>  
+>  	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
+>  		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
+> @@ -919,9 +992,27 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  	vec = rqstp->rq_vec;
+>  	vec[0] = rqstp->rq_arg.head[0];
+>  	vlen = PAGE_SIZE;
+> +
+> +	/*
+> +	 * We have enough data for the whole tcp record. Let's try and read the
+> +	 * first 8 bytes to get the xid and the call direction. We can use this
+> +	 * to figure out if this is a call or a reply to a callback. If
+> +	 * sk_reclen is < 8 (xid and calldir), then this is a malformed packet.
+> +	 * In that case, don't bother with the calldir and just read the data.
+> +	 * It will be rejected in svc_process.
+> +	 */
+> +	if (len >= 8) {
+> +		len = svc_process_calldir(svsk, rqstp, &req, vec);
+> +		if (len < 0)
+> +			goto err_again;
+> +		vlen -= 8;
+> +	}
+> +
+>  	pnum = 1;
+>  	while (vlen < len) {
+> -		vec[pnum].iov_base = page_address(rqstp->rq_pages[pnum]);
+> +		vec[pnum].iov_base = (req) ?
+> +			page_address(req->rq_private_buf.pages[pnum - 1]) :
+> +			page_address(rqstp->rq_pages[pnum]);
+>  		vec[pnum].iov_len = PAGE_SIZE;
+>  		pnum++;
+>  		vlen += PAGE_SIZE;
+> @@ -933,6 +1024,16 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  	if (len < 0)
+>  		goto err_again;
+>  
+> +	/*
+> +	 * Account for the 8 bytes we read earlier
+> +	 */
+> +	len += 8;
+> +
+> +	if (req) {
+> +		xprt_complete_rqst(req->rq_task, len);
+> +		len = 0;
+> +		goto out;
+> +	}
+>  	dprintk("svc: TCP complete record (%d bytes)\n", len);
+>  	rqstp->rq_arg.len = len;
+>  	rqstp->rq_arg.page_base = 0;
+> @@ -946,6 +1047,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  	rqstp->rq_xprt_ctxt   = NULL;
+>  	rqstp->rq_prot	      = IPPROTO_TCP;
+>  
+> +out:
+>  	/* Reset TCP read info */
+>  	svsk->sk_reclen = 0;
+>  	svsk->sk_tcplen = 0;
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index a0bfe53..1f240f1 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -596,6 +596,9 @@ static void xprt_autoclose(struct work_struct *work)
+>  	struct rpc_xprt *xprt =
+>  		container_of(work, struct rpc_xprt, task_cleanup);
+>  
+> +	if (xprt_server_backchannel(xprt))
+> +		return;
+> +
+>  	xprt->ops->close(xprt);
+>  	clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
+>  	xprt_release_write(xprt, NULL);
+> @@ -666,6 +669,9 @@ xprt_init_autodisconnect(unsigned long data)
+>  {
+>  	struct rpc_xprt *xprt = (struct rpc_xprt *)data;
+>  
+> +	if (xprt_server_backchannel(xprt))
+> +		return;
+> +
+>  	spin_lock(&xprt->transport_lock);
+>  	if (!list_empty(&xprt->recv) || xprt->shutdown)
+>  		goto out_abort;
+> @@ -1053,7 +1059,8 @@ found:
+>  	INIT_LIST_HEAD(&xprt->recv);
+>  	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
+>  	setup_timer(&xprt->timer, xprt_init_autodisconnect,
+> -			(unsigned long)xprt);
+> +		    (unsigned long)xprt);
+> +
+>  	xprt->last_used = jiffies;
+>  	xprt->cwnd = RPC_INITCWND;
+>  	xprt->bind_index = 0;
+> @@ -1073,6 +1080,13 @@ found:
+>  	dprintk("RPC:       created transport %p with %u slots\n", xprt,
+>  			xprt->max_reqs);
+>  
+> +	/*
+> +	 * Since we don't want connections for the backchannel, we set
+> +	 * the xprt status to connected
+> +	 */
+> +	if (args->bc_sock)
+> +		xprt_set_connected(xprt);
+> +
+>  	return xprt;
+>  }
+>  
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index d40ff50..9a33804 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -32,6 +32,7 @@
+>  #include <linux/tcp.h>
+>  #include <linux/sunrpc/clnt.h>
+>  #include <linux/sunrpc/sched.h>
+> +#include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/xprtsock.h>
+>  #include <linux/file.h>
+>  
+> @@ -40,6 +41,7 @@
+>  #include <net/udp.h>
+>  #include <net/tcp.h>
+>  
+> +#include "sunrpc.h"
+>  /*
+>   * xprtsock tunables
+>   */
+> @@ -1966,6 +1968,134 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>  			xprt->stat.bklog_u);
+>  }
+>  
+> +struct rpc_buffer {
+> +	size_t	len;
+> +	char	data[];
+> +};
+
+We seem to be relying on the fact that this struct is the same as the
+one defined in sched.c?  Could we move this to a common header?
+
+--b.
+
+> +/*
+> + * Allocate a bunch of pages for a scratch buffer for the rpc code. The reason
+> + * we allocate pages instead doing a kmalloc like rpc_malloc is because we want
+> + * to use the server side send routines.
+> + */
+> +void *bc_malloc(struct rpc_task *task, size_t size)
+> +{
+> +	struct page *page;
+> +	struct rpc_buffer *buf;
+> +
+> +	BUG_ON(size > PAGE_SIZE - sizeof(struct rpc_buffer));
+> +	page = alloc_page(GFP_KERNEL);
+> +
+> +	if (!page)
+> +		return NULL;
+> +
+> +	buf = page_address(page);
+> +	buf->len = PAGE_SIZE;
+> +
+> +	return buf->data;
+> +}
+> +
+> +/*
+> + * Free the space allocated in the bc_alloc routine
+> + */
+> +void bc_free(void *buffer)
+> +{
+> +	struct rpc_buffer *buf;
+> +
+> +	if (!buffer)
+> +		return;
+> +
+> +	buf = container_of(buffer, struct rpc_buffer, data);
+> +	free_page((unsigned long)buf);
+> +}
+> +
+> +/*
+> + * Use the svc_sock to send the callback. Must be called with svsk->sk_mutex
+> + * held. Borrows heavily from svc_tcp_sendto and xs_tcp_semd_request.
+> + */
+> +static int bc_sendto(struct rpc_rqst *req)
+> +{
+> +	int len;
+> +	struct xdr_buf *xbufp = &req->rq_snd_buf;
+> +	struct rpc_xprt *xprt = req->rq_xprt;
+> +	struct sock_xprt *transport =
+> +				container_of(xprt, struct sock_xprt, xprt);
+> +	struct socket *sock = transport->sock;
+> +	unsigned long headoff;
+> +	unsigned long tailoff;
+> +
+> +	/*
+> +	 * Set up the rpc header and record marker stuff
+> +	 */
+> +	xs_encode_tcp_record_marker(xbufp);
+> +
+> +	tailoff = (unsigned long)xbufp->tail[0].iov_base & ~PAGE_MASK;
+> +	headoff = (unsigned long)xbufp->head[0].iov_base & ~PAGE_MASK;
+> +	len = svc_send_common(sock, xbufp,
+> +			      virt_to_page(xbufp->head[0].iov_base), headoff,
+> +			      xbufp->tail[0].iov_base, tailoff);
+> +
+> +	if (len != xbufp->len) {
+> +		printk(KERN_NOTICE "Error sending entire callback!\n");
+> +		len = -EAGAIN;
+> +	}
+> +
+> +	return len;
+> +}
+> +
+> +/*
+> + * The send routine. Borrows from svc_send
+> + */
+> +static int bc_send_request(struct rpc_task *task)
+> +{
+> +	struct rpc_rqst *req = task->tk_rqstp;
+> +	struct rpc_xprt *bc_xprt = req->rq_xprt;
+> +	struct svc_xprt	*xprt;
+> +	struct svc_sock         *svsk;
+> +	u32                     len;
+> +
+> +	dprintk("sending request with xid: %08x\n", ntohl(req->rq_xid));
+> +	/*
+> +	 * Get the server socket associated with this callback xprt
+> +	 */
+> +	svsk = bc_xprt->bc_sock;
+> +	xprt = &svsk->sk_xprt;
+> +
+> +	/*
+> +	 * Grab the mutex to serialize data as the connection is shared
+> +	 * with the fore channel
+> +	 */
+> +	mutex_lock(&xprt->xpt_mutex);
+> +	if (test_bit(XPT_DEAD, &xprt->xpt_flags))
+> +		len = -ENOTCONN;
+> +	else
+> +		len = bc_sendto(req);
+> +	mutex_unlock(&xprt->xpt_mutex);
+> +
+> +	if (len > 0)
+> +		len = 0;
+> +
+> +	return len;
+> +}
+> +
+> +/*
+> + * The close routine. Since this is client initiated, we do nothing
+> + */
+> +
+> +static void bc_close(struct rpc_xprt *xprt)
+> +{
+> +	return;
+> +}
+> +
+> +/*
+> + * The xprt destroy routine. Again, because this connection is client
+> + * initiated, we do nothing
+> + */
+> +
+> +static void bc_destroy(struct rpc_xprt *xprt)
+> +{
+> +	return;
+> +}
+> +
+>  static struct rpc_xprt_ops xs_udp_ops = {
+>  	.set_buffer_size	= xs_udp_set_buffer_size,
+>  	.reserve_xprt		= xprt_reserve_xprt_cong,
+> @@ -1999,6 +2129,22 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+>  	.print_stats		= xs_tcp_print_stats,
+>  };
+>  
+> +/*
+> + * The rpc_xprt_ops for the server backchannel
+> + */
+> +
+> +static struct rpc_xprt_ops bc_tcp_ops = {
+> +	.reserve_xprt		= xprt_reserve_xprt,
+> +	.release_xprt		= xprt_release_xprt,
+> +	.buf_alloc		= bc_malloc,
+> +	.buf_free		= bc_free,
+> +	.send_request		= bc_send_request,
+> +	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+> +	.close			= bc_close,
+> +	.destroy		= bc_destroy,
+> +	.print_stats		= xs_tcp_print_stats,
+> +};
+> +
+>  static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+>  				      unsigned int slot_table_size)
+>  {
+> @@ -2130,14 +2276,43 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+>  	xprt->prot = IPPROTO_TCP;
+>  	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+>  	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+> +	xprt->timeout = &xs_tcp_default_timeout;
+>  
+> -	xprt->bind_timeout = XS_BIND_TO;
+> -	xprt->connect_timeout = XS_TCP_CONN_TO;
+> -	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> -	xprt->idle_timeout = XS_IDLE_DISC_TO;
+> +	if (args->bc_sock) {
+> +		/* backchannel */
+> +		xprt_set_bound(xprt);
+> +		xprt->bind_timeout = 0;
+> +		xprt->connect_timeout = 0;
+> +		xprt->reestablish_timeout = 0;
+> +		xprt->idle_timeout = (~0);
+>  
+> -	xprt->ops = &xs_tcp_ops;
+> -	xprt->timeout = &xs_tcp_default_timeout;
+> +		/*
+> +		 * The backchannel uses the same socket connection as the
+> +		 * forechannel
+> +		 */
+> +		xprt->bc_sock = args->bc_sock;
+> +		xprt->bc_sock->sk_bc_xprt = xprt;
+> +		transport->sock = xprt->bc_sock->sk_sock;
+> +		transport->inet = xprt->bc_sock->sk_sk;
+> +
+> +		xprt->ops = &bc_tcp_ops;
+> +
+> +		switch (addr->sa_family) {
+> +		case AF_INET:
+> +			xs_format_ipv4_peer_addresses(xprt, "tcp",
+> +						      RPCBIND_NETID_TCP);
+> +			break;
+> +		case AF_INET6:
+> +			xs_format_ipv6_peer_addresses(xprt, "tcp",
+> +						      RPCBIND_NETID_TCP6);
+> +			break;
+> +		default:
+> +			kfree(xprt);
+> +			return ERR_PTR(-EAFNOSUPPORT);
+> +		}
+> +
+> +		goto out;
+> +	}
+>  
+>  	switch (addr->sa_family) {
+>  	case AF_INET:
+> @@ -2145,20 +2320,30 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+>  			xprt_set_bound(xprt);
+>  
+>  		INIT_DELAYED_WORK(&transport->connect_worker, xs_tcp_connect_worker4);
+> -		xs_format_ipv4_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP);
+> +		xs_format_ipv4_peer_addresses(xprt, "tcp",
+> +					      RPCBIND_NETID_TCP);
+>  		break;
+>  	case AF_INET6:
+>  		if (((struct sockaddr_in6 *)addr)->sin6_port != htons(0))
+>  			xprt_set_bound(xprt);
+>  
+>  		INIT_DELAYED_WORK(&transport->connect_worker, xs_tcp_connect_worker6);
+> -		xs_format_ipv6_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP6);
+> +		xs_format_ipv6_peer_addresses(xprt, "tcp",
+> +					      RPCBIND_NETID_TCP);
+>  		break;
+>  	default:
+>  		kfree(xprt);
+>  		return ERR_PTR(-EAFNOSUPPORT);
+>  	}
+>  
+> +	xprt->bind_timeout = XS_BIND_TO;
+> +	xprt->connect_timeout = XS_TCP_CONN_TO;
+> +	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> +	xprt->idle_timeout = XS_IDLE_DISC_TO;
+> +
+> +	xprt->ops = &xs_tcp_ops;
+> +
+> +out:
+>  	dprintk("RPC:       set up transport to address %s\n",
+>  			xprt->address_strings[RPC_DISPLAY_ALL]);
+>  
+> -- 
+> 1.6.3
+> 
