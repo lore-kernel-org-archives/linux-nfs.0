@@ -1,68 +1,66 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] nfsd41: renew_client must be called under the state lock
-Date: Thu, 18 Jun 2009 22:01:45 -0400
-Message-ID: <1245376905-3840-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH 2/2] nfs41: sunrpc: xprt_alloc_bc_request() should not use spin_lock_bh()
+Date: Thu, 18 Jun 2009 22:01:24 -0400
+Message-ID: <1245376884-3711-2-git-send-email-bhalevy@panasas.com>
+References: <1245376884-3711-1-git-send-email-bhalevy@panasas.com>
 Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
 	Benny Halevy <bhalevy@panasas.com>
-To: bfields@citi.umich.edu
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from linux-nfs.citi.umich.edu ([141.211.133.37]:58952 "EHLO
+Received: from linux-nfs.citi.umich.edu ([141.211.133.37]:58951 "EHLO
 	linux-nfs.citi.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753147AbZFSCL4 (ORCPT
+	with ESMTP id S1753742AbZFSCL4 (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 22:11:56 -0400
+In-Reply-To: <1245376884-3711-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FIXME: until we work out the state locking so we can use a
-spin lock to protect the cl_lru we need to take the state_lock
-to renew the client.
+From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
+xprt_alloc_bc_request() is always called in soft interrupt context.
+Grab the spin_lock instead of the bottom half spin_lock.  Softirqs
+do not preempt other softirqs running on the same processor, so there
+is no need to disable bottom halves.
+
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ net/sunrpc/backchannel_rqst.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
 
-Bruce, please add this patch to the nfsd41-for-2.6.31 series.
-Also availble on git://linux-nfs.org/~bhalevy/linux-pnfs.git nfsd41-for-2.6.31
-
- fs/nfsd/nfs4state.c |   16 ++++++++++------
- 1 files changed, 10 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e21da54..c845365 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1443,10 +1443,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 		 * for nfsd4_svc_encode_compoundres processing */
- 		status = nfsd4_replay_cache_entry(resp, seq);
- 		cstate->status = nfserr_replay_cache;
--		goto replay_cache;
--	}
--	if (status)
- 		goto out;
-+	}
-+	if (status) {
-+		spin_unlock(&sessionid_lock);
-+		goto err;
-+	}
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 5a7d342..553621f 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -211,6 +211,9 @@ EXPORT_SYMBOL(xprt_destroy_backchannel);
+  * has been preallocated as well.  Use xprt_alloc_bc_request to allocate
+  * to this request.  Use xprt_free_bc_request to return it.
+  *
++ * We know that we're called in soft interrupt context, grab the spin_lock
++ * since there is no need to grab the bottom half spin_lock.
++ *
+  * Return an available rpc_rqst, otherwise NULL if non are available.
+  */
+ struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt)
+@@ -218,7 +221,7 @@ struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt)
+ 	struct rpc_rqst *req;
  
- 	/* Success! bump slot seqid */
- 	slot->sl_inuse = true;
-@@ -1462,11 +1464,13 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	/* Hold a session reference until done caching the response */
- 	nfsd4_get_session(session);
+ 	dprintk("RPC:       allocate a backchannel request\n");
+-	spin_lock_bh(&xprt->bc_pa_lock);
++	spin_lock(&xprt->bc_pa_lock);
+ 	if (!list_empty(&xprt->bc_pa_list)) {
+ 		req = list_first_entry(&xprt->bc_pa_list, struct rpc_rqst,
+ 				rq_bc_pa_list);
+@@ -226,7 +229,7 @@ struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt)
+ 	} else {
+ 		req = NULL;
+ 	}
+-	spin_unlock_bh(&xprt->bc_pa_lock);
++	spin_unlock(&xprt->bc_pa_lock);
  
--replay_cache:
--	/* Renew the clientid on success and on replay */
--	renew_client(session->se_client);
- out:
- 	spin_unlock(&sessionid_lock);
-+	/* Renew the clientid on success and on replay */
-+	nfs4_lock_state();
-+	renew_client(session->se_client);
-+	nfs4_unlock_state();
-+err:
- 	dprintk("%s: return %d\n", __func__, ntohl(status));
- 	return status;
- }
+ 	if (req != NULL) {
+ 		set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
 -- 
 1.6.3.1
 
