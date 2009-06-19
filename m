@@ -1,88 +1,50 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 35/44] nfsd41: Backchannel: minorversion support for
-	the back channel
-Date: Thu, 18 Jun 2009 21:34:41 -0400
-Message-ID: <20090619013441.GE16785@fieldses.org>
-References: <1245115253-7957-1-git-send-email-bhalevy@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 1/2] nfs41: Move initialization of nfs4_opendata seq_res to nfs4_init_opendata_res
+Date: Thu, 18 Jun 2009 22:01:23 -0400
+Message-ID: <1245376884-3711-1-git-send-email-bhalevy@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Benny Halevy <bhalevy@panasas.com>
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:50643 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752693AbZFSBei (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 21:34:38 -0400
-In-Reply-To: <1245115253-7957-1-git-send-email-bhalevy@panasas.com>
+Received: from linux-nfs.citi.umich.edu ([141.211.133.37]:58950 "EHLO
+	linux-nfs.citi.umich.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753011AbZFSCL4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 22:11:56 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 16, 2009 at 04:20:53AM +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Prepare to share backchannel code with NFSv4.1.
+nfs4_open_recover_helper clears opendata->o_res
+before calling nfs4_init_opendata_res, thus causing
+NFSv4.0 OPEN operations to be sent rather than nfsv4.1.
 
-Also applied.--b.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+Trond, please add these two patches to the nfs41-for-2.6.31 series.
+Also availble on git://linux-nfs.org/~bhalevy/linux-pnfs.git nfs41-for-2.6.31
 
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> [nfsd41: use nfsd4_cb_sequence for callback minorversion]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4callback.c     |    3 ++-
->  fs/nfsd/nfs4state.c        |    1 +
->  include/linux/nfsd/state.h |    3 ++-
->  3 files changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 353eb4a..3fd23f7 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -141,6 +141,7 @@ struct nfs4_cb_compound_hdr {
->  	u32		ident;
->  	u32		nops;
->  	__be32		*nops_p;
-> +	u32		minorversion;
->  	u32		taglen;
->  	char		*tag;
->  };
-> @@ -209,7 +210,7 @@ encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
->  
->  	RESERVE_SPACE(16);
->  	WRITE32(0);            /* tag length is always 0 */
-> -	WRITE32(NFS4_MINOR_VERSION);
-> +	WRITE32(hdr->minorversion);
->  	WRITE32(hdr->ident);
->  	hdr->nops_p = p;
->  	WRITE32(hdr->nops);
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 8ac5630..ce6631d 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -983,6 +983,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
->  	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
->  	                 &cb->cb_addr, &cb->cb_port)))
->  		goto out_err;
-> +	cb->cb_minorversion = 0;
->  	cb->cb_prog = se->se_callback_prog;
->  	cb->cb_ident = se->se_callback_ident;
->  	return;
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index 093f165..f02e53c 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -85,7 +85,8 @@ struct nfs4_cb_conn {
->  	u32                     cb_addr;
->  	unsigned short          cb_port;
->  	u32                     cb_prog;
-> -	u32                     cb_ident;
-> +	u32			cb_minorversion;
-> +	u32                     cb_ident;	/* minorversion 0 only */
->  	/* RPC client info */
->  	atomic_t		cb_set;     /* successful CB_NULL call */
->  	struct rpc_clnt *       cb_client;
-> -- 
-> 1.6.3
-> 
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 57dabb8..04da834 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -680,6 +680,7 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
+ 	p->o_res.server = p->o_arg.server;
+ 	nfs_fattr_init(&p->f_attr);
+ 	nfs_fattr_init(&p->dir_attr);
++	p->o_res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
+ }
+ 
+ static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
+@@ -711,7 +712,6 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct path *path,
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = server->attr_bitmask;
+ 	p->o_arg.claim = NFS4_OPEN_CLAIM_NULL;
+-	p->o_res.seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
+ 	if (flags & O_EXCL) {
+ 		u32 *s = (u32 *) p->o_arg.u.verifier.data;
+ 		s[0] = jiffies;
+-- 
+1.6.3.1
+
