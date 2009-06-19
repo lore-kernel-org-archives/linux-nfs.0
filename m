@@ -1,71 +1,111 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/5] nfsd: add support for NFSv4 callbacks over IPv6
- (try #2)
-Date: Fri, 19 Jun 2009 16:05:29 -0400
-Message-ID: <20090619160529.37ba9987@tlielax.poochiereds.net>
-References: <1245436981-11806-1-git-send-email-jlayton@redhat.com>
-	<20090619195810.GB28506@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/3] SUNRPC: Fix the TCP write space reservations for
+	deferred requests
+Date: Fri, 19 Jun 2009 18:23:44 -0400
+Message-ID: <20090619222344.GB32083@fieldses.org>
+References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org> <20090518214756.786.33956.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Jeff Moyer <jmoyer@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59242 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750884AbZFSUFf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Jun 2009 16:05:35 -0400
-In-Reply-To: <20090619195810.GB28506@fieldses.org>
+Received: from mail.fieldses.org ([141.211.133.115]:52012 "EHLO
+	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751324AbZFSWXm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2009 18:23:42 -0400
+In-Reply-To: <20090518214756.786.33956.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 19 Jun 2009 15:58:10 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Mon, May 18, 2009 at 05:47:56PM -0400, Trond Myklebust wrote:
+> Ensure that deferred requests are accounted for correctly by the write
+> space reservation mechanism. In order to avoid double counting, remove the
+> reservation when we defer the request, and save any calculated value, so
+> that we can restore it when the request is requeued.
 
-> On Fri, Jun 19, 2009 at 02:42:56PM -0400, Jeff Layton wrote:
-> > Here's a second pass at adding support for NFSv4 callback channels over
-> > IPv6. The main changes since the last set are:
-> > 
-> > 1) rebase to Bruce's master/for-2.6.31 branches. It applies cleanly to
-> > either.
-> > 
-> > 2) cleaned up the IPv6-enablement patch: mostly this was done by
-> > removing conditional compilation from several places where it wasn't
-> > really required.
-> > 
-> > 3) add patch that makes it set the sin6_scope_id for the callback
-> > address to the same value as the sin6_scope_id in the svc_rqst->rq_addr.
-> > This allows the server to call back clients that mounted the server via
-> > one of its link-local addresses.
-> > 
-> > Again, tested using opensolaris and linux clients and watching the
-> > traffic with wireshark. Everything seems to work. Delegations and
-> > recalls work fine to opensolaris.
-> > 
-> > I seem to be having some trouble getting the server to issue delegations
-> > to linux clients, but I can see the callback channel being correctly
-> > established.
-> > 
-> > I think the problem with delegations is unrelated to this set. It seems
-> > to still be a problem even with IPv4 on an unpatched kernel. I think it
-> > has something to do with how linux clients are generating open_owner
-> > ID's. I'll email the list separately about that...
+I like that it does the addition to xpt_reserved in just one place
+instead of two, and carrying over the reserved_space is nice, but I
+don't understand the "double accounting" comment--where exactly is
+something counted twice?
+
+--b.
+
 > 
-> The usual problem here is just that delegations aren't given out on
-> first use of an open_owner.  You'll probably need to open the file
-> twice.
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
 > 
-
-Yep I tried that and it still didn't work. Looks like the client is
-generating a different open_owner on each open call. I even tried
-having the same process open and close the file multiple times and it
-generated a different open_owner for each open call.
-
-For the record, the client is running a Fedora 11 kernel:
-
-2.6.29.4-167.fc11.x86_64
-
-...I need to dig a little deeper when I get some time, but I'm pretty
-sure it's a client problem.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+>  include/linux/sunrpc/svc.h |    1 +
+>  net/sunrpc/svc_xprt.c      |   10 +++++-----
+>  2 files changed, 6 insertions(+), 5 deletions(-)
+> 
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 2a30775..2c373d8 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -341,6 +341,7 @@ struct svc_deferred_req {
+>  	union svc_addr_u	daddr;	/* where reply must come from */
+>  	struct cache_deferred_req handle;
+>  	size_t			xprt_hlen;
+> +	int			reserved_space;
+>  	int			argslen;
+>  	__be32			args[0];
+>  };
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index c200d92..daa1f27 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -299,7 +299,6 @@ static void svc_thread_dequeue(struct svc_pool *pool, struct svc_rqst *rqstp)
+>   */
+>  void svc_xprt_enqueue(struct svc_xprt *xprt)
+>  {
+> -	struct svc_serv	*serv = xprt->xpt_server;
+>  	struct svc_pool *pool;
+>  	struct svc_rqst	*rqstp;
+>  	int cpu;
+> @@ -376,8 +375,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+>  				rqstp, rqstp->rq_xprt);
+>  		rqstp->rq_xprt = xprt;
+>  		svc_xprt_get(xprt);
+> -		rqstp->rq_reserved = serv->sv_max_mesg;
+> -		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+>  		rqstp->rq_waking = 1;
+>  		pool->sp_nwaking++;
+>  		pool->sp_stats.threads_woken++;
+> @@ -657,8 +654,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  	if (xprt) {
+>  		rqstp->rq_xprt = xprt;
+>  		svc_xprt_get(xprt);
+> -		rqstp->rq_reserved = serv->sv_max_mesg;
+> -		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+>  	} else {
+>  		/* No data pending. Go to sleep */
+>  		svc_thread_enqueue(pool, rqstp);
+> @@ -741,6 +736,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+>  			rqstp, pool->sp_id, xprt,
+>  			atomic_read(&xprt->xpt_ref.refcount));
+> +		rqstp->rq_reserved = serv->sv_max_mesg;
+> +		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+>  		rqstp->rq_deferred = svc_deferred_dequeue(xprt);
+>  		if (rqstp->rq_deferred) {
+>  			svc_xprt_received(xprt);
+> @@ -1006,6 +1003,8 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+>  	}
+>  	svc_xprt_get(rqstp->rq_xprt);
+>  	dr->xprt = rqstp->rq_xprt;
+> +	dr->reserved_space = rqstp->rq_reserved;
+> +	svc_reserve(rqstp, 0);
+>  
+>  	dr->handle.revisit = svc_revisit;
+>  	return &dr->handle;
+> @@ -1018,6 +1017,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp)
+>  {
+>  	struct svc_deferred_req *dr = rqstp->rq_deferred;
+>  
+> +	svc_reserve(rqstp, dr->reserved_space);
+>  	/* setup iov_base past transport header */
+>  	rqstp->rq_arg.head[0].iov_base = dr->args + (dr->xprt_hlen>>2);
+>  	/* The iov_len does not include the transport header bytes */
+> 
