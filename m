@@ -1,127 +1,111 @@
-From: "Halevy, Benny" <bhalevy@panasas.com>
-Subject: RE: [PATCH 32/44] nfsd41: only reference the session on non-replaysequence
-Date: Thu, 18 Jun 2009 19:43:00 -0400
-Message-ID: <7225594ED4A1304C9E43D030A886D221F4C577@daytona.int.panasas.com>
-References: <1245115244-7857-1-git-send-email-bhalevy@panasas.com> <20090618223729.GL12234@fieldses.org>
+From: Mike Mackovitch <macko-2kanFRK1NckAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 28/44] nfsd41: use the maximum operations per compound
+	in nfsd4_compoundargs
+Date: Thu, 18 Jun 2009 17:49:36 -0700
+Message-ID: <20090619004936.GB19581@m3.macko.edu>
+References: <1245115233-7725-1-git-send-email-bhalevy@panasas.com> <20090618221443.GH12234@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: <pnfs@linux-nfs.org>, <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>, <andros@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Benny Halevy <bhalevy@panasas.com>, pnfs@linux-nfs.org,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:11015
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755797AbZFRXm5 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Jun 2009 19:42:57 -0400
+Received: from mail-out4.apple.com ([17.254.13.23]:57130 "EHLO
+	mail-out4.apple.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751181AbZFSA54 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 20:57:56 -0400
+In-Reply-To: <20090618221443.GH12234@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Thu 2009-06-18 15:37
-> To: Halevy, Benny
-> Cc: pnfs@linux-nfs.org; linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH 32/44] nfsd41: only reference the session on non-replaysequence
->  
-> On Tue, Jun 16, 2009 at 04:20:44AM +0300, Benny Halevy wrote:
+On Thu, Jun 18, 2009 at 06:14:43PM -0400, J. Bruce Fields wrote:
+> On Tue, Jun 16, 2009 at 04:20:33AM +0300, Benny Halevy wrote:
 > > From: Andy Adamson <andros@netapp.com>
 > > 
-> > Solo CREATE_SESSION replays used to share the logic in nfsdsvc_enc_compound_res
-> > and use nfsd4_store_cache_entry, but not set the cstate session nor take a
-> > reference on the session. CREATE_SESSION no longer uses nfsd4_store_cache_entry.
-> > 
-> > The SEQUENCE operation only needs to reference the session to call
-> > nfsd4_store_cache_entry.
-> > 
+> > The size of the nfsd4_op array in nfsd4_compoundargs determines the
+> > supported maximum number of operations.
+> 
+> This is another one that is a clear straightfoward bugfix to existing
+> code, so please put it right up at the front of the patch series.
+> 
+> (ALso a comment that more clearly explains the problem would help, say,
+> like:
+> 
+> 	"We're returning NFSD_MAX_OPS_PER_COMPOUND = 16 to 4.1 clients,
+> 	but the limit the server actually enforces (in
+> 	nfsd4_decode_compound) is 8.  Fix the value of
+> 	NFSD_MAX_OPS_PER_COMPOUND to return the correct value to 4.1
+> 	clients."
+> 
+> )
+
+Doesn't nfsd4_decode_compound() handle more ops by allocating
+a separate, larger array to hold them?:
+
+>From http://lxr.linux.no/linux+v2.6.30/fs/nfsd/nfs4xdr.c :
+
+1424        if (argp->opcnt > 100)
+1425                goto xdr_error;
+1426
+1427        if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
+1428                argp->ops = kmalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
+1429                if (!argp->ops) {
+1430                        argp->ops = argp->iops;
+1431                        dprintk("nfsd: couldn't allocate room for COMPOUND\n");
+1432                        goto xdr_error;
+1433                }
+1434        }
+
+That looks to me like up to 100 ops are allowed.
+
+As an NFS client implementer I wouldn't expect to generate a compound
+with anything near 100 ops.  However, I have recently composed a
+compound consisting of up to 12 ops (attempting to be efficient in
+some NFSv4.0 named attribute code).  And 12 is larger than 8.... so
+I'll probably be sad if Linux isn't going to be supporting that many
+ops in a compound.
+
+Thanks
+--macko
+
 > > Signed-off-by: Andy Adamson <andros@netapp.com>
 > > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > > ---
-> >  fs/nfsd/nfs4state.c |    9 ++++-----
-> >  fs/nfsd/nfs4xdr.c   |   14 ++++++--------
-> >  2 files changed, 10 insertions(+), 13 deletions(-)
+> >  include/linux/nfsd/state.h |    3 +--
+> >  include/linux/nfsd/xdr4.h  |    2 +-
+> >  2 files changed, 2 insertions(+), 3 deletions(-)
 > > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 591879d..c91b333 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -1436,13 +1436,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >  	cstate->slot = slot;
-> >  	cstate->session = session;
+> > diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> > index aea8137..093f165 100644
+> > --- a/include/linux/nfsd/state.h
+> > +++ b/include/linux/nfsd/state.h
+> > @@ -94,8 +94,7 @@ struct nfs4_cb_conn {
 > >  
-> > +	/* Hold a session reference until done caching the response */
-> > +	nfsd4_get_session(session);
-> > +
-> >  replay_cache:
-> > -	/* Renew the clientid on success and on replay.
-> > -	 * Hold a session reference until done processing the compound:
-> > -	 * nfsd4_put_session called only if the cstate slot is set.
-> > -	 */
-> > +	/* Renew the clientid on success and on replay */
-> >  	renew_client(session->se_client);
-> > -	nfsd4_get_session(session);
-> 
-> The result of this seems to be that in the "got replay_cache" case, we
-> exit this function with cstate->session set, but without a reference
-> taken.
-> 
-> That makes me extremely nervous.  Any time we're keeping a pointer to a
-> reference-counted object, and dropping the lock under which the pointer
-> was acquired, we should be holding a reference.
-> 
-> If you're sure you won't be needing that session any more, then set
-> cstate->session to NULL.
-
-Or, get a reference on the session just do:
-	if (nfsd4_has_session(cs)) {
-		if (cs->status != nfserr_replay_cache) {
-			nfsd4_store_cache_entry(resp);
-			cs->slot->sl_inuse = 0;
-		}
-		nfsd4_put_session(cs->session);
-	}
-
-Benny
-
-> 
-> --b.
-> 
-> >  out:
-> >  	spin_unlock(&sessionid_lock);
-> >  	dprintk("%s: return %d\n", __func__, ntohl(status));
-> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > index cebde87..e1b1397 100644
-> > --- a/fs/nfsd/nfs4xdr.c
-> > +++ b/fs/nfsd/nfs4xdr.c
-> > @@ -3300,6 +3300,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
-> >  	/*
-> >  	 * All that remains is to write the tag and operation count...
-> >  	 */
-> > +	struct nfsd4_compound_state *cs = &resp->cstate;
-> >  	struct kvec *iov;
-> >  	p = resp->tagp;
-> >  	*p++ = htonl(resp->taglen);
-> > @@ -3313,14 +3314,11 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
-> >  		iov = &rqstp->rq_res.head[0];
-> >  	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
-> >  	BUG_ON(iov->iov_len > PAGE_SIZE);
-> > -	if (nfsd4_has_session(&resp->cstate)) {
-> > -		if (resp->cstate.status != nfserr_replay_cache) {
-> > -			nfsd4_store_cache_entry(resp);
-> > -			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
-> > -			resp->cstate.slot->sl_inuse = 0;
-> > -		}
-> > -		if (resp->cstate.session)
-> > -			nfsd4_put_session(resp->cstate.session);
-> > +	if (nfsd4_has_session(cs) && cs->status != nfserr_replay_cache) {
-> > +		nfsd4_store_cache_entry(resp);
-> > +		dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
-> > +		cs->slot->sl_inuse = 0;
-> > +		nfsd4_put_session(cs->session);
-> >  	}
-> >  	return 1;
-> >  }
+> >  #define NFSD_MAX_SLOTS_PER_SESSION	16
+> >  #define NFSD_SLOT_CACHE_SIZE		512
+> > -/* Maximum number of operations per session compound */
+> > -#define NFSD_MAX_OPS_PER_COMPOUND	16
+> > +#define NFSD_MAX_OPS_PER_COMPOUND	8
+> >  
+> >  struct nfsd4_slot {
+> >  	bool	sl_inuse;
+> > diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> > index 84ac4bb..d99c8fe 100644
+> > --- a/include/linux/nfsd/xdr4.h
+> > +++ b/include/linux/nfsd/xdr4.h
+> > @@ -446,7 +446,7 @@ struct nfsd4_compoundargs {
+> >  	u32				minorversion;
+> >  	u32				opcnt;
+> >  	struct nfsd4_op			*ops;
+> > -	struct nfsd4_op			iops[8];
+> > +	struct nfsd4_op			iops[NFSD_MAX_OPS_PER_COMPOUND];
+> >  };
+> >  
+> >  struct nfsd4_compoundres {
 > > -- 
 > > 1.6.3
 > > 
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
