@@ -1,127 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63517 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755331AbZFXTh6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Jun 2009 15:37:58 -0400
-From: andros@netapp.com
-To: bfields@citi.umich.edu
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/5] nfsd41: use globals for DRC limits
-Date: Wed, 24 Jun 2009 15:37:45 -0400
-Message-Id: <1245872278-18743-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1245872278-18743-1-git-send-email-andros@netapp.com>
-References: <>
- <1245872278-18743-1-git-send-email-andros@netapp.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.122]:45922 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751483AbZFSSnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jun 2009 14:43:00 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org, chuck.lever@oracle.com
+Subject: [PATCH 0/5] nfsd: add support for NFSv4 callbacks over IPv6 (try #2)
+Date: Fri, 19 Jun 2009 14:42:56 -0400
+Message-Id: <1245436981-11806-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Here's a second pass at adding support for NFSv4 callback channels over
+IPv6. The main changes since the last set are:
 
-The version 4.1 DRC memory limit and tracking variables are server wide and
-session specific. Replace struct svc_serv fields with globals.
-Stop using the svc_serv sv_lock.
+1) rebase to Bruce's master/for-2.6.31 branches. It applies cleanly to
+either.
 
-Add a spinlock to serialize access to the DRC limit management variables which
-change on session creation and deletion (usage counter) or (future)
-administrative action to adjust the total DRC memory limit.
+2) cleaned up the IPv6-enablement patch: mostly this was done by
+removing conditional compilation from several places where it wasn't
+really required.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfsd/nfs4state.c        |   10 +++++-----
- fs/nfsd/nfssvc.c           |   19 +++++++++++++++----
- include/linux/nfsd/nfsd.h  |    3 +++
- include/linux/sunrpc/svc.h |    2 --
- 4 files changed, 23 insertions(+), 11 deletions(-)
+3) add patch that makes it set the sin6_scope_id for the callback
+address to the same value as the sin6_scope_id in the svc_rqst->rq_addr.
+This allows the server to call back clients that mounted the server via
+one of its link-local addresses.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 980a216..2e6a44e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -430,11 +430,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
- 	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
- 		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
- 
--	spin_lock(&nfsd_serv->sv_lock);
--	if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
--		np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
--	nfsd_serv->sv_drc_pages_used += np;
--	spin_unlock(&nfsd_serv->sv_lock);
-+	spin_lock(&nfsd_drc_lock);
-+	if (np + nfsd_drc_pages_used > nfsd_drc_max_pages)
-+		np = nfsd_drc_max_pages - nfsd_drc_pages_used;
-+	nfsd_drc_pages_used += np;
-+	spin_unlock(&nfsd_drc_lock);
- 
- 	if (np <= 0) {
- 		status = nfserr_resource;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index d4c9884..78d8fcd 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -67,6 +67,16 @@ struct timeval			nfssvc_boot;
- DEFINE_MUTEX(nfsd_mutex);
- struct svc_serv 		*nfsd_serv;
- 
-+/*
-+ * nfsd_drc_lock protects nfsd_drc_max_pages and nfsd_drc_pages_used.
-+ * nfsd_drc_max_pages limits the total amount of memory available for
-+ * version 4.1 DRC caches.
-+ * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
-+ */
-+spinlock_t	nfsd_drc_lock;
-+unsigned int	nfsd_drc_max_pages;
-+unsigned int	nfsd_drc_pages_used;
-+
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- static struct svc_stat	nfsd_acl_svcstats;
- static struct svc_version *	nfsd_acl_version[] = {
-@@ -238,11 +248,12 @@ static void set_max_drc(void)
- {
- 	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
- 	#define NFSD_DRC_SIZE_SHIFT	7
--	nfsd_serv->sv_drc_max_pages = nr_free_buffer_pages()
-+	nfsd_drc_max_pages = nr_free_buffer_pages()
- 						>> NFSD_DRC_SIZE_SHIFT;
--	nfsd_serv->sv_drc_pages_used = 0;
--	dprintk("%s svc_drc_max_pages %u\n", __func__,
--		nfsd_serv->sv_drc_max_pages);
-+	nfsd_drc_pages_used = 0;
-+	spin_lock_init(&nfsd_drc_lock);
-+	dprintk("%s nfsd_drc_max_pages %u\n", __func__,
-+		nfsd_drc_max_pages);
- }
- 
- int nfsd_create_serv(void)
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2b49d67..2571f85 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -56,6 +56,9 @@ extern struct svc_version	nfsd_version2, nfsd_version3,
- extern u32			nfsd_supported_minorversion;
- extern struct mutex		nfsd_mutex;
- extern struct svc_serv		*nfsd_serv;
-+extern spinlock_t		nfsd_drc_lock;
-+extern unsigned int		nfsd_drc_max_pages;
-+extern unsigned int		nfsd_drc_pages_used;
- 
- extern struct seq_operations nfs_exports_op;
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 2a30775..d0d8bf4 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -94,8 +94,6 @@ struct svc_serv {
- 	struct module *		sv_module;	/* optional module to count when
- 						 * adding threads */
- 	svc_thread_fn		sv_function;	/* main function for threads */
--	unsigned int		sv_drc_max_pages; /* Total pages for DRC */
--	unsigned int		sv_drc_pages_used;/* DRC pages used */
- };
- 
- /*
--- 
-1.5.4.3
+Again, tested using opensolaris and linux clients and watching the
+traffic with wireshark. Everything seems to work. Delegations and
+recalls work fine to opensolaris.
+
+I seem to be having some trouble getting the server to issue delegations
+to linux clients, but I can see the callback channel being correctly
+established.
+
+I think the problem with delegations is unrelated to this set. It seems
+to still be a problem even with IPv4 on an unpatched kernel. I think it
+has something to do with how linux clients are generating open_owner
+ID's. I'll email the list separately about that...
+
+Jeff Layton (5):
+  nfsd: convert nfs4_callback struct to hold address in
+    sockaddr_storage
+  nfsd: break out setclientid port parsing into separate routine
+  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
+  nfsd: add support for NFSv4 callbacks over IPv6
+  nfsd: populate sin6_scope_id on callback address with scopeid from
+    rq_addr on SETCLIENTID call
+
+ fs/nfsd/nfs4callback.c     |   11 +--
+ fs/nfsd/nfs4state.c        |  221 ++++++++++++++++++++++++++++++++++++--------
+ include/linux/nfsd/state.h |    6 +-
+ 3 files changed, 189 insertions(+), 49 deletions(-)
 
