@@ -1,92 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:38910 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757139AbZFQDKI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jun 2009 23:10:08 -0400
-Date: Tue, 16 Jun 2009 23:10:08 -0400
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 12/44] nfsd41: set the session maximum response size
-	cached
-Message-ID: <20090617031008.GG8980@fieldses.org>
-References: <1245115186-7196-1-git-send-email-bhalevy@panasas.com>
+Received: from mail-out3.apple.com ([17.254.13.22]:63543 "EHLO
+	mail-out3.apple.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753265AbZFSC1x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jun 2009 22:27:53 -0400
+Date: Thu, 18 Jun 2009 19:27:54 -0700
+From: Mike Mackovitch <macko@apple.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Mike Mackovitch <macko@apple.com>, Benny Halevy <bhalevy@panasas.com>,
+        pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 28/44] nfsd41: use the maximum operations per compound
+	in nfsd4_compoundargs
+Message-ID: <20090619022754.GA19679@m3.macko.edu>
+References: <1245115233-7725-1-git-send-email-bhalevy@panasas.com> <20090618221443.GH12234@fieldses.org> <20090619004936.GB19581@m3.macko.edu> <20090619010410.GC16785@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1245115186-7196-1-git-send-email-bhalevy@panasas.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20090619010410.GC16785@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jun 16, 2009 at 04:19:46AM +0300, Benny Halevy wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Thu, Jun 18, 2009 at 09:04:10PM -0400, J. Bruce Fields wrote:
+> On Thu, Jun 18, 2009 at 05:49:36PM -0700, Mike Mackovitch wrote:
 > 
-> We won't cache the SEQUENCE operation because we can encode it from the session
-> slot values.
+> > As an NFS client implementer I wouldn't expect to generate a compound
+> > with anything near 100 ops.  However, I have recently composed a
+> > compound consisting of up to 12 ops (attempting to be efficient in
+> > some NFSv4.0 named attribute code).  And 12 is larger than 8.... so
+> > I'll probably be sad if Linux isn't going to be supporting that many
+> > ops in a compound.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfsd41: move channel attributes from nfsd4_session to a nfsd4_channel_attr struct]
-> Signed-off-by: Alexandros Batsakis <Alexandros.Batsakis@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4state.c |   12 ++++++++----
->  1 files changed, 8 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 6427f8b..a6a7968 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -446,6 +446,12 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
->  	}
->  }
->  
-> +/* rpc header + encoded OP_SEQUENCE reply + NFSD_SLOT_CACHE_SIZE in bytes */
-> +#define NFSD_MAX_RESPONSE_CACHED  ((RPC_MAX_HEADER_WITH_AUTH + \
+> OK.  I wanna know how you got up to 12, though! That's quite a compound.
 
-So, summarizing an offline conversation: RPC_MAX_HEADER_WITH_AUTH is the
-request, not the response, which is smaller (since the response has only
-a verifier, not a cred).
+Drat!  I was kinda hoping you wouldn't ask.  :-)
 
-This is also the worst-case maximum--so we end up advertising a max
-cached response size much larger than we can actually handle.
+MacOSX's VFS currently has both an extended attribute interface and a
+named stream (think "resource fork") interface.  I was investigating
+using NFSv4(.0) named attributes to back both, and I was trying to devise
+an efficient method of "getting" named attributes (and their typically-small
+contents) and properly maintaining a cache of named attribute directory/file
+attributes and contents.
 
-So better would be to use the *minimum* possible size of a reply header.
+I wanted to minimize the number of round trips to the server.  I also
+wanted to minimize code duplication.  And I ended up with a common
+function that sends a compound containing 5, 8, or 12 ops - depending
+on what we had cached already and if we were trying to also READ data:
 
-Then we'll be advertising something that may be smaller than we could
-actually handle, but that's a safe error....
+PUTFH       - of the file/directory we want the named attribute for
+OPENATTR    - to get the named attribute directory
+GETATTR(FH) - to be able to cache the attribute directory (name cache and readdir cache)
+LOOKUP or OPEN(potentially with CREATE)
+GETATTR(FH) - to get the named attribute file's file handle and attributes
+SAVEFH      - to save it for reading the first chunk of data from it
+PUTFH       - of the file/directory
+OPENATTR    - to get back to its named attribute directory
+GETATTR     - to get updated attributes for the named attribute directory
+RESTOREFH   - get back to the (potentially new) named attribute file
+NVERIFY (size==0) - don't bother trying to read if the named attribute file is empty
+READ        - read the first chunk (and potentially all of) of the named attribute file
 
-And in practice kerberos verifiers aren't that big (a few 10's of
-bytes?), so this shouldn't matter too much.
+If we already have the attribute directory we don't need to do the OPENATTR's
+or the first GETATTR (we just PUTFH the attribute directory's fh).  We'd
+like to also fetch post-lookup/open attributes for the attribute directory.
+And we want to leave the READ results for last (to simplify some of the coding).
+If we're not READing we don't need to send the SAVEFH, RESTOREFH, NVERIFY, READ.
 
---b.
+It's not necessarily pretty (some might argue it's ugly)... but it appears to
+work and I don't think it's too much of an "abuse" of the protocol.  :-)
 
-> +				  2 + /* OP_SEQUENCE header */ \
-> +				  XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5 + \
-> +				  XDR_QUADLEN(NFSD_SLOT_CACHE_SIZE)) << 2)
-> +
->  /*
->   * fchan holds the client values on input, and the server values on output
->   */
-> @@ -467,9 +473,7 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
->  		fchan->maxresp_sz = maxcount;
->  	session_fchan->maxresp_sz = fchan->maxresp_sz;
->  
-> -	/* Set the max response cached size our default which is
-> -	 * a multiple of PAGE_SIZE and small */
-> -	session_fchan->maxresp_cached = NFSD_PAGES_PER_SLOT * PAGE_SIZE;
-> +	session_fchan->maxresp_cached = NFSD_MAX_RESPONSE_CACHED;
->  	fchan->maxresp_cached = session_fchan->maxresp_cached;
->  
->  	/* Use the client's maxops if possible */
-> @@ -587,7 +591,7 @@ free_session(struct kref *kref)
->  		nfsd4_release_respages(e->ce_respages, e->ce_resused);
->  	}
->  	spin_lock(&nfsd_drc_lock);
-> -	nfsd_drc_mem_used -= ses->se_fnumslots * NFSD_SLOT_CACHE_SIZE;
-> +	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs * NFSD_SLOT_CACHE_SIZE;
->  	spin_unlock(&nfsd_drc_lock);
->  	kfree(ses);
->  }
-> -- 
-> 1.6.3
-> 
+In any event, while we don't normally expect to use long compounds, we still
+would like to be able to use them when we're trying to efficiently handle the
+demands of an operating system that depends on certain file system features.
+
+So, if a server is going to put a limit on the number of ops in a compound,
+we'd prefer if it were higher rather than lower.  8 seems too low.  16 might
+be good but I'm thinking 24 or 32 might be a safer, longer-term limit to
+satisfy the needs of future "demanding" NFS clients.
+
+Thanks
+--macko
