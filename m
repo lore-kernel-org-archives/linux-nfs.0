@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH attempt=3 1/5] VFS: Uninline the function put_mnt_ns()
+Subject: [PATCH attempt=3 5/5] NFS: Correct the NFS mount path when
+ following a referral
 Date: Sat, 20 Jun 2009 15:33:45 -0400
-Message-ID: <20090620193345.14142.28003.stgit@heimdal.trondhjem.org>
+Message-ID: <20090620193345.14142.10415.stgit@heimdal.trondhjem.org>
 References: <20090620193344.14142.22774.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,64 +10,58 @@ Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
 To: Al Viro <viro@ZenIV.linux.org.uk>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
 	Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:60581 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751337AbZFTTgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 20 Jun 2009 15:36:54 -0400
-In-Reply-To: <20090620193344.14142.22774.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090620193344.14142.22774.stgit@heimdal.trondhjem.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-In order to allow modules to use it without having to export vfsmount_lock.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/namespace.c                |    8 ++++++--
- include/linux/mnt_namespace.h |    9 +--------
- 2 files changed, 7 insertions(+), 10 deletions(-)
+ fs/nfs/super.c |   24 ++++++++++++++++++++++++
+ 1 files changed, 24 insertions(+), 0 deletions(-)
 
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 2dd333b..2465c05 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -2246,10 +2246,14 @@ void __init mnt_init(void)
- 	init_mount_tree();
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 8da7e59..daecbad 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2548,6 +2548,27 @@ static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
+ 	return root_mnt;
  }
  
--void __put_mnt_ns(struct mnt_namespace *ns)
-+void put_mnt_ns(struct mnt_namespace *ns)
- {
--	struct vfsmount *root = ns->root;
-+	struct vfsmount *root;
- 	LIST_HEAD(umount_list);
-+	
-+	if (!atomic_dec_and_lock(&ns->count, &vfsmount_lock))
++static void nfs_fix_devname(const struct path *path, struct vfsmount *mnt)
++{
++	char *page = (char *) __get_free_page(GFP_KERNEL);
++	char *devname, *tmp;
++
++	if (page == NULL)
 +		return;
-+	root = ns->root;
- 	ns->root = NULL;
- 	spin_unlock(&vfsmount_lock);
- 	down_write(&namespace_sem);
-diff --git a/include/linux/mnt_namespace.h b/include/linux/mnt_namespace.h
-index 3a05929..299d11a 100644
---- a/include/linux/mnt_namespace.h
-+++ b/include/linux/mnt_namespace.h
-@@ -26,14 +26,7 @@ struct fs_struct;
- 
- extern struct mnt_namespace *copy_mnt_ns(unsigned long, struct mnt_namespace *,
- 		struct fs_struct *);
--extern void __put_mnt_ns(struct mnt_namespace *ns);
--
--static inline void put_mnt_ns(struct mnt_namespace *ns)
--{
--	if (atomic_dec_and_lock(&ns->count, &vfsmount_lock))
--		/* releases vfsmount_lock */
--		__put_mnt_ns(ns);
--}
-+extern void put_mnt_ns(struct mnt_namespace *ns);
- 
- static inline void exit_mnt_ns(struct task_struct *p)
++	devname = nfs_path(path->mnt->mnt_devname,
++			path->mnt->mnt_root, path->dentry,
++			page, PAGE_SIZE);
++	if (devname == NULL)
++		goto out_freepage;
++	tmp = kstrdup(devname, GFP_KERNEL);
++	if (tmp == NULL)
++		goto out_freepage;
++	kfree(mnt->mnt_devname);
++	mnt->mnt_devname = tmp;
++out_freepage:
++	free_page((unsigned long)page);
++}
++
+ static int nfs_follow_remote_path(struct vfsmount *root_mnt,
+ 		const char *export_path, struct vfsmount *mnt_target)
  {
+@@ -2574,6 +2595,9 @@ static int nfs_follow_remote_path(struct vfsmount *root_mnt,
+ 	mnt_target->mnt_sb = s;
+ 	mnt_target->mnt_root = dget(nd.path.dentry);
+ 
++	/* Correct the device pathname */
++	nfs_fix_devname(&nd.path, mnt_target);
++
+ 	path_put(&nd.path);
+ 	down_write(&s->s_umount);
+ 	return 0;
 
