@@ -1,47 +1,47 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 0/5] nfsd: add support for NFSv4 callbacks over IPv6
- (try #2)
-Date: Mon, 22 Jun 2009 11:50:40 -0400
-Message-ID: <20090622115040.5bf55dd7@tlielax.poochiereds.net>
-References: <1245436981-11806-1-git-send-email-jlayton@redhat.com>
-	<C4F29AD4-164F-431D-9BEB-836717A6D65F@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils: fix endptr check in closeall (try #4)
+Date: Mon, 22 Jun 2009 12:02:53 -0400
+Message-ID: <4A3FAB2D.7070508@RedHat.com>
+References: <1244116387-19827-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Bruce Fields <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+	trond.myklebust@fys.uio.no
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33518 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:45194 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754833AbZFVPun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Jun 2009 11:50:43 -0400
-In-Reply-To: <C4F29AD4-164F-431D-9BEB-836717A6D65F@oracle.com>
+	id S1757146AbZFVQGF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jun 2009 12:06:05 -0400
+In-Reply-To: <1244116387-19827-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 22 Jun 2009 11:47:37 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
 
-> > 3) add patch that makes it set the sin6_scope_id for the callback
-> > address to the same value as the sin6_scope_id in the svc_rqst- 
-> > >rq_addr.
-> > This allows the server to call back clients that mounted the server  
-> > via
-> > one of its link-local addresses.
+Jeff Layton wrote:
+> The closeall function is broken in such a way that it almost never
+> closes any file descriptors. It's calling strtol on the text
+> representation of the file descriptor, and then checking to see if the
+> value of *endptr is not '\0' before trying to close the file. This check
+> is wrong.
 > 
-> The rpcbind XDR patches I'm working on provide a full universal  
-> address 2 sockaddr conversion capability in sunrpc.ko, since several  
-> unrelated features in NFS/NFSD/sunrpc appear to require it.  I think  
-> the server-side callback client should use this common code instead of  
-> having its own version.
+> When strtol returns an endptr that points to a NULL byte, that indicates
+> that the conversion was completely successful. I believe this check
+> should instead be requiring that endptr is pointing to '\0' before
+> closing the fd.
 > 
-> The new code is in my git repo; you should be able to pull HEAD to  
-> have a look.
+> Also, fix up the function to check for conversion errors from strtol. If
+> one occurs, just skip the close on that entry.
 > 
+> Finally, as Trond pointed out, it's unlikely that readdir will return a
+> blank string in d_name but that situation wouldn't be detected by the
+> current code. This patch adds such a check and skips the close if it
+> occurs.
+> 
+> Reported-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+Committed....
 
-That sounds good. I'd rather use common code if it's present. I'll have
-a look.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+steved.
