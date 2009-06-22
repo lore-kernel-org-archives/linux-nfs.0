@@ -1,78 +1,58 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Fix up new minorversion= option
-Date: Tue, 30 Jun 2009 13:14:19 -0400
-Message-ID: <20090630171151.2006.25350.stgit@matisse.1015granger.net>
+From: Simon Kirby <sim@hostway.ca>
+Subject: Re: kernel NULL pointer dereference in rpcb_getport_done (2.6.29.4)
+Date: Mon, 22 Jun 2009 14:11:26 -0700
+Message-ID: <20090622211126.GA564@hostway.ca>
+References: <20090619225437.GA8472@hostway.ca> <1245527855.5182.33.camel@heimdal.trondhjem.org> <20090621050941.GA17059@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: sager@netapp.com, linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Greg Banks <gnb@sgi.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:41580
-	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752438AbZF3SI4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2009 14:08:56 -0400
+Received: from newpeace.netnation.com ([204.174.223.7]:41507 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752714AbZFVVLY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jun 2009 17:11:24 -0400
+In-Reply-To: <20090621050941.GA17059@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The new minorversion= mount option (commit 3fd5be9e) was merged at
-the same time as the recent sloppy parser fixes (commit a5a16bae),
-so minorversion= still uses the old value parsing logic.
+On Sat, Jun 20, 2009 at 10:09:41PM -0700, Simon Kirby wrote:
 
-If the minorversion= option specifies a bogus value, it should fail
-with "bad value" not "bad option."
+> Actually, we just saw another similar crash on another machine which is
+> an NFS client from this server (no nfsd running).  Same backtrace, but
+> this time RAX was "32322e32352e3031", which is obviously ASCII
+> ("22.25.01"), so memory scribbling seems to definitely be happening...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Good news: 2.6.30 seems to have fixed whatever the original scribbling
+source was.  I see at least a couple of suspect commits in the log, but
+I'm not sure which yet.
 
-Potential candidate for 2.6.31-rc.  Build-tested only.
+However, with 2.6.30, it seems 59a252ff8c0f2fa32c896f69d56ae33e641ce7ad
+is causing us a large performance regression.  The server's response
+latency is huge compared to normal.  I suspected this patch was the
+culprit, so I wrote over the instruction that loads SVC_MAX_WAKING before
+this comparison:
 
-As I understand it, new features can be patched after the merge window
-closes, yes?
++	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
++		/* too many threads are runnable and trying to wake up */
++		thread_avail = 0;
++	}
 
- fs/nfs/super.c |   18 +++++++++++-------
- 1 files changed, 11 insertions(+), 7 deletions(-)
+...when I raised SVC_MAX_WAKING to 40ish, the problem for us disappears. 
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 0b4cbdc..83a3107 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -158,7 +158,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mountvers, "mountvers=%s" },
- 	{ Opt_nfsvers, "nfsvers=%s" },
- 	{ Opt_nfsvers, "vers=%s" },
--	{ Opt_minorversion, "minorversion=%u" },
-+	{ Opt_minorversion, "minorversion=%s" },
- 
- 	{ Opt_sec, "sec=%s" },
- 	{ Opt_proto, "proto=%s" },
-@@ -1001,7 +1001,6 @@ static int nfs_parse_mount_options(char *raw,
- 	while ((p = strsep(&raw, ",")) != NULL) {
- 		substring_t args[MAX_OPT_ARGS];
- 		unsigned long option;
--		int int_option;
- 		int token;
- 
- 		if (!*p)
-@@ -1273,11 +1272,16 @@ static int nfs_parse_mount_options(char *raw,
- 			}
- 			break;
- 		case Opt_minorversion:
--			if (match_int(args, &int_option))
--				return 0;
--			if (int_option < 0 || int_option > NFS4_MAX_MINOR_VERSION)
--				return 0;
--			mnt->minorversion = int_option;
-+			string = match_strdup(args);
-+			if (string == NULL)
-+				goto out_nomem;
-+			rc = strict_strtoul(string, 10, &option);
-+			kfree(string);
-+			if (rc != 0)
-+				goto out_invalid_value;
-+			if (option > NFS4_MAX_MINOR_VERSION)
-+				goto out_invalid_value;
-+			mnt->minorversion = option;
- 			break;
- 
- 		/*
+The problem is that with just 72 nfsd processes running, the NFS socket
+has a ~1 MB backlog of packets on it, even though "ps" shows most of the
+nfsd threads are not blocked.  This is on an 8 core system, with high NFS
+packet rates.  More NFS threads (300) made no difference.
 
+As soon as I raised SVC_MAX_WAKING, the load average went up again to
+what it normally was before with 2.6.29, but the socket's receive backlog
+went down to nearly 0 again, and the request latency is now back to
+normal.
+
+I think the issue here is that whatever calls svc_xprt_enqueue() isn't
+doing it again as soon as the threads sleep again, but only when the next
+packet comes in, or something...
+
+Simon-
