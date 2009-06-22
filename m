@@ -1,39 +1,44 @@
-From: Miquel van Smoorenburg <mikevs@xs4all.net>
-Subject: Re: nfs/sunrpc: high CPU usage in rpcauth_lookup_credcache with
- lots of uids [PATCH]
-Date: Mon, 22 Jun 2009 15:09:08 +0200
-Message-ID: <1245676148.5413.1.camel@laptop>
-References: <20090602142933.GA27312@xs4all.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs-utils: Set all verbose types in gssd daemons.
+Date: Mon, 22 Jun 2009 09:15:33 -0400
+Message-ID: <4A3F83F5.7070704@RedHat.com>
+References: <4A2938FE.2070903@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Trond.Myklebust@netapp.com, bfields@fieldses.org, neilb@suse.de,
-	mikevs@xs4all.net
+Content-Type: text/plain; charset=ISO-8859-1
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr10.xs4all.nl ([194.109.24.30]:3637 "EHLO
-	smtp-vbr10.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754574AbZFVNJY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jun 2009 09:09:24 -0400
-In-Reply-To: <20090602142933.GA27312@xs4all.net>
+Received: from mx2.redhat.com ([66.187.237.31]:38269 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751506AbZFVNSh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jun 2009 09:18:37 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n5MDIeiS018491
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2009 09:18:40 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n5MDIdax029402
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2009 09:18:39 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-40.bos.redhat.com [10.16.10.40])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n5MDIcBx031649
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2009 09:18:39 -0400
+In-Reply-To: <4A2938FE.2070903-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-06-02 at 16:29 +0200, Miquel van Smoorenburg wrote:
-> [repost, with more people in the cc: list]
+
+
+Steve Dickson wrote:
+> I founded it very handy to have library verbosity enabled
+> when verbosity is enabled on either the gssd or 
+> svcgssd daemons. 
 > 
-> We run a cluster of POP and IMAP servers that are used by
-> hundreds of thousands of different users- we see as much
-> as 80.000 different users per server on any given day.
->
-> We noticed a high CPU load on these servers, sometimes near
-> 100% system time being used on all cores. I used oprofile to
-> find out where the CPU was being burned and it turned out to
-> be in rpcauth_lookup_credcache(). The credential cache hashtable
-> is sized way to small for our purposes- it's just 16 slots,
-> and with 100.000 entries in the generic and unix credential
-> caches the chainlength goes over 6000.
+> So this patch will set the verbosity level in the 
+> librpcsecgss library and in the libnfsidmapd (for svcgssd) 
+> when verbosity level is set by the '-v' flag it on
+> either daemon.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ----------------------------------------------
+> 
+Committed...
 
-ping ?
-
-Mike.
-
+steved.
