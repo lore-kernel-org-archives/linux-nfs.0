@@ -1,32 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.fieldses.org ([141.211.133.115]:43945 "EHLO
-	pickle.fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755257AbZFQQyn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jun 2009 12:54:43 -0400
-Date: Wed, 17 Jun 2009 12:54:42 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Steve Dickson <steved@redhat.com>, Tom Talpey <tmtalpey@gmail.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Link performance over NFS degraded in RHEL5. -- was :
-	Read/Write NFS I/O performance degraded by FLUSH_STABLE page
-	flushing
-Message-ID: <20090617165442.GE21311@fieldses.org>
-References: <4A291DE3.2070105@RedHat.com> <1244209956.5410.33.camel@heimdal.trondhjem.org> <4A29243F.8080008@RedHat.com> <20090605160544.GE10975@fieldses.org> <1244219715.5410.40.camel@heimdal.trondhjem.org> <20090615230801.GA18504@fieldses.org> <99d4545537613ce76040d3655b78bdb7.squirrel@neil.brown.name> <20090616003357.GB19396@fieldses.org> <02ada87c636e1088e9365a3cbea301e7.squirrel@neil.brown.name> <20090616005558.GC19396@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20090616005558.GC19396@fieldses.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:6263 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753626AbZFVTU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Jun 2009 15:20:59 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 0/5] NFS private namespace patchset
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Mon, 22 Jun 2009 15:09:13 -0400
+Message-ID: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Jun 15, 2009 at 08:55:58PM -0400, bfields wrote:
-> Whoops--actually, it's the opposite problem: a bugfix patch that went
-> upstream removed this, and I didn't merge that back into my for-2.6.31
-> branch.  OK, time to do that, and then this is all much simpler....
-> Thanks for calling my attention to that!
+The following series is a resend of a set of patches that were
+originally targetted for inclusion in 2.6.30-rc1. They build upon
+Al Viro's "Cache root in nameidata" patches, and add the ability to
+create a private mount namespace that is not visible to user
+processes.
+As stated before, the goal is to allow reuse of vfs_path_lookup() in
+order to allow the nfs client to walk down NFSv4 mount paths, and locate
+the directory that needs to be mounted.
 
-Having fixed that... the following is what I'm applying (on top of
-Trond's).
+There have been no further comments on these patches since I mailed the
+last revision, so I'm hoping that Al and Christoph will ack them and
+that Linus will apply...
 
---b.
+Cheers
+  Trond
+
+---
+
+Trond Myklebust (5):
+      NFS: Correct the NFS mount path when following a referral
+      NFS: Fix nfs_path() to always return a '/' at the beginning of the path
+      NFSv4: Replace nfs4_path_walk() with VFS path lookup in a private namespace
+      VFS: Add VFS helper functions for setting up private namespaces
+      VFS: Uninline the function put_mnt_ns()
+
+
+ fs/namespace.c                |   53 +++++++++--
+ fs/nfs/namespace.c            |    5 +
+ fs/nfs/super.c                |  202 +++++++++++++++++++++++++++++++++++++----
+ include/linux/mnt_namespace.h |   10 --
+ 4 files changed, 231 insertions(+), 39 deletions(-)
+
+-- 
+Signature
