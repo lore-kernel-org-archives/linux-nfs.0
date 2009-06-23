@@ -1,11 +1,11 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 5/5] NFS: Correct the NFS mount path when following a
- referral
-Date: Tue, 23 Jun 2009 17:15:49 -0400
-Message-ID: <1245791749.5133.12.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH 2/5] VFS: Add VFS helper functions for setting up
+ private namespaces
+Date: Tue, 23 Jun 2009 17:29:49 -0400
+Message-ID: <1245792589.5133.24.camel@heimdal.trondhjem.org>
 References: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org>
-	 <20090622190914.27923.84173.stgit@heimdal.trondhjem.org>
-	 <20090623204202.GA25969@us.ibm.com>
+	 <20090622190913.27923.61549.stgit@heimdal.trondhjem.org>
+	 <20090623201307.GA25760@us.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
@@ -15,93 +15,91 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-kernel@vger.kernel.org
 To: "Serge E. Hallyn" <serue@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49586 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18830 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757732AbZFWVP6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Jun 2009 17:15:58 -0400
-In-Reply-To: <20090623204202.GA25969@us.ibm.com>
+	id S1754022AbZFWVaL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Jun 2009 17:30:11 -0400
+In-Reply-To: <20090623201307.GA25760@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-06-23 at 15:42 -0500, Serge E. Hallyn wrote:
+On Tue, 2009-06-23 at 15:13 -0500, Serge E. Hallyn wrote:
 > Quoting Trond Myklebust (Trond.Myklebust@netapp.com):
+> > The purpose of this patch is to improve the remote mount path lookup
+> > support for distributed filesystems such as the NFSv4 client.
+> > 
+> > When given a mount command of the form "mount server:/foo/bar /mnt", the
+> > NFSv4 client is required to look up the filehandle for "server:/", and
+> > then look up each component of the remote mount path "foo/bar" in order
+> > to find the directory that is actually going to be mounted on /mnt.
+> > Following that remote mount path may involve following symlinks,
+> > crossing server-side mount points and even following referrals to
+> > filesystem volumes on other servers.
+> > 
+> > Since the standard VFS path lookup code already supports walking paths
+> > that contain all these features (using in-kernel automounts for
+> > following referrals) we would like to be able to reuse that rather than
+> > duplicate the full path traversal functionality in the NFSv4 client code.
+> > 
+> > This patch therefore defines a VFS helper function create_mnt_ns(), that
+> > sets up a temporary filesystem namespace and attaches a root filesystem to
+> > it. It exports the create_mnt_ns() and put_mnt_ns() function for use by
+> > filesystem modules.
+> > 
 > > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> > 
-> >  fs/nfs/super.c |   24 ++++++++++++++++++++++++
-> >  1 files changed, 24 insertions(+), 0 deletions(-)
-> > 
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index 8da7e59..daecbad 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -2548,6 +2548,27 @@ static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
-> >  	return root_mnt;
-> >  }
-> > 
-> > +static void nfs_fix_devname(const struct path *path, struct vfsmount *mnt)
-> > +{
-> > +	char *page = (char *) __get_free_page(GFP_KERNEL);
-> > +	char *devname, *tmp;
-> > +
-> > +	if (page == NULL)
-> > +		return;
-> > +	devname = nfs_path(path->mnt->mnt_devname,
-> > +			path->mnt->mnt_root, path->dentry,
-> > +			page, PAGE_SIZE);
-> > +	if (devname == NULL)
-> > +		goto out_freepage;
-> > +	tmp = kstrdup(devname, GFP_KERNEL);
-> > +	if (tmp == NULL)
-> > +		goto out_freepage;
-> > +	kfree(mnt->mnt_devname);
-> > +	mnt->mnt_devname = tmp;
 > 
-> (looking through patch 3 a bit) is this expected to be safe because all
-> callers will send in a mnt which was privately mounted as nfs root_mnt through
-> vfs_kern_mount?  So that at this point noone else can have a ref to
-> mnt?
+> This looks good, thanks.  Though I see no reason not to also switch over
+> init_mount_tree() to the new helper.
 > 
-> If that isn't the intent, then this seems problematic...  (If it is, it
-> seems worth commenting both so that every reader doesn't feel compelled
-> to verify, and so that no new callers will naively violate that
-> expectation)
+> (Seems plausible that c/r code would use this as well)
+> 
+> Reviewed-by: Serge Hallyn <serue@us.ibm.com>
+> 
+> thanks,
+> -serge
 
-The call to nfs_fix_devname() is only applied to the 'mnt_target'
-vfsmount, which is the one that was passed down directly from
-do_kern_mount() to the ->get_sb() method. It is entirely unreferenced by
-any other process since we haven't yet called 'do_add_mount()' to
-publish it.
+Thanks for the review! I missed the code duplication in
+init_mount_tree(). Something like the following?
 
 Cheers
   Trond
+--------------------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+VFS: Switch init_mount_tree() to use the new create_mnt_ns() helper
 
-> thanks,
-> -serge
-> 
-> > +out_freepage:
-> > +	free_page((unsigned long)page);
-> > +}
-> > +
-> >  static int nfs_follow_remote_path(struct vfsmount *root_mnt,
-> >  		const char *export_path, struct vfsmount *mnt_target)
-> >  {
-> > @@ -2574,6 +2595,9 @@ static int nfs_follow_remote_path(struct vfsmount *root_mnt,
-> >  	mnt_target->mnt_sb = s;
-> >  	mnt_target->mnt_root = dget(nd.path.dentry);
-> > 
-> > +	/* Correct the device pathname */
-> > +	nfs_fix_devname(&nd.path, mnt_target);
-> > +
-> >  	path_put(&nd.path);
-> >  	down_write(&s->s_umount);
-> >  	return 0;
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Eliminates some duplicated code...
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/namespace.c |   11 ++---------
+ 1 files changed, 2 insertions(+), 9 deletions(-)
+
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index a7bea8c..4a86b85 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -2222,16 +2222,9 @@ static void __init init_mount_tree(void)
+ 	mnt = do_kern_mount("rootfs", 0, "rootfs", NULL);
+ 	if (IS_ERR(mnt))
+ 		panic("Can't create rootfs");
+-	ns = kmalloc(sizeof(*ns), GFP_KERNEL);
+-	if (!ns)
++	ns = create_mnt_ns(mnt);
++	if (IS_ERR(ns))
+ 		panic("Can't allocate initial namespace");
+-	atomic_set(&ns->count, 1);
+-	INIT_LIST_HEAD(&ns->list);
+-	init_waitqueue_head(&ns->poll);
+-	ns->event = 0;
+-	list_add(&mnt->mnt_list, &ns->list);
+-	ns->root = mnt;
+-	mnt->mnt_ns = ns;
+ 
+ 	init_task.nsproxy->mnt_ns = ns;
+ 	get_mnt_ns(ns);
+
 
 -- 
 Trond Myklebust
