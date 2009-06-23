@@ -1,61 +1,155 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 04/10] sunrpc: Use rcu_barrier() on unload.
-Date: Tue, 23 Jun 2009 12:59:13 -0400
-Message-ID: <1245776353.9586.1.camel@heimdal.trondhjem.org>
-References: <20090623150330.22490.87327.stgit@localhost>
-	 <20090623150414.22490.14888.stgit@localhost>
+From: "Serge E. Hallyn" <serue@us.ibm.com>
+Subject: Re: [PATCH 2/5] VFS: Add VFS helper functions for setting up
+	private namespaces
+Date: Tue, 23 Jun 2009 15:13:07 -0500
+Message-ID: <20090623201307.GA25760@us.ibm.com>
+References: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org> <20090622190913.27923.61549.stgit@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
-	christine.caulfield@googlemail.com, linux-wireless@vger.kernel.org,
-	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: Jesper Dangaard Brouer <hawk@comx.dk>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20090623150414.22490.14888.stgit@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:38480 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753057AbZFWUN0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 16:13:26 -0400
+In-Reply-To: <20090622190913.27923.61549.stgit-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-06-23 at 17:04 +0200, Jesper Dangaard Brouer wrote:
-> The sunrpc module uses rcu_call() thus it should use rcu_barrier() on
-> module unload.
+Quoting Trond Myklebust (Trond.Myklebust@netapp.com):
+> The purpose of this patch is to improve the remote mount path lookup
+> support for distributed filesystems such as the NFSv4 client.
 > 
-> Have not verified that the possibility for new call_rcu() callbacks
-> has been disabled.  As a hint for checking, the functions calling
-> call_rcu() (unx_destroy_cred and generic_destroy_cred) are
-> registered as crdestroy function pointer in struct rpc_credops.
+> When given a mount command of the form "mount server:/foo/bar /mnt", the
+> NFSv4 client is required to look up the filehandle for "server:/", and
+> then look up each component of the remote mount path "foo/bar" in order
+> to find the directory that is actually going to be mounted on /mnt.
+> Following that remote mount path may involve following symlinks,
+> crossing server-side mount points and even following referrals to
+> filesystem volumes on other servers.
 > 
-> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+> Since the standard VFS path lookup code already supports walking paths
+> that contain all these features (using in-kernel automounts for
+> following referrals) we would like to be able to reuse that rather than
+> duplicate the full path traversal functionality in the NFSv4 client code.
+> 
+> This patch therefore defines a VFS helper function create_mnt_ns(), that
+> sets up a temporary filesystem namespace and attaches a root filesystem to
+> it. It exports the create_mnt_ns() and put_mnt_ns() function for use by
+> filesystem modules.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+This looks good, thanks.  Though I see no reason not to also switch over
+init_mount_tree() to the new helper.
+
+(Seems plausible that c/r code would use this as well)
+
+Reviewed-by: Serge Hallyn <serue@us.ibm.com>
+
+thanks,
+-serge
+
 > ---
 > 
->  net/sunrpc/sunrpc_syms.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
+>  fs/namespace.c                |   45 ++++++++++++++++++++++++++++++++++-------
+>  include/linux/mnt_namespace.h |    1 +
+>  2 files changed, 38 insertions(+), 8 deletions(-)
 > 
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index 843629f..adaa819 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -66,6 +66,7 @@ cleanup_sunrpc(void)
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_exit();
->  #endif
-> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+> 
+> diff --git a/fs/namespace.c b/fs/namespace.c
+> index 2465c05..9b766b0 100644
+> --- a/fs/namespace.c
+> +++ b/fs/namespace.c
+> @@ -1937,6 +1937,21 @@ dput_out:
+>  	return retval;
 >  }
->  MODULE_LICENSE("GPL");
->  module_init(init_sunrpc);
 > 
-
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> +static struct mnt_namespace *alloc_mnt_ns(void)
+> +{
+> +	struct mnt_namespace *new_ns;
+> +
+> +	new_ns = kmalloc(sizeof(struct mnt_namespace), GFP_KERNEL);
+> +	if (!new_ns)
+> +		return ERR_PTR(-ENOMEM);
+> +	atomic_set(&new_ns->count, 1);
+> +	new_ns->root = NULL;
+> +	INIT_LIST_HEAD(&new_ns->list);
+> +	init_waitqueue_head(&new_ns->poll);
+> +	new_ns->event = 0;
+> +	return new_ns;
+> +}
+> +
+>  /*
+>   * Allocate a new namespace structure and populate it with contents
+>   * copied from the namespace of the passed in task structure.
+> @@ -1948,14 +1963,9 @@ static struct mnt_namespace *dup_mnt_ns(struct mnt_namespace *mnt_ns,
+>  	struct vfsmount *rootmnt = NULL, *pwdmnt = NULL;
+>  	struct vfsmount *p, *q;
+> 
+> -	new_ns = kmalloc(sizeof(struct mnt_namespace), GFP_KERNEL);
+> -	if (!new_ns)
+> -		return ERR_PTR(-ENOMEM);
+> -
+> -	atomic_set(&new_ns->count, 1);
+> -	INIT_LIST_HEAD(&new_ns->list);
+> -	init_waitqueue_head(&new_ns->poll);
+> -	new_ns->event = 0;
+> +	new_ns = alloc_mnt_ns();
+> +	if (IS_ERR(new_ns))
+> +		return new_ns;
+> 
+>  	down_write(&namespace_sem);
+>  	/* First pass: copy the tree topology */
+> @@ -2019,6 +2029,24 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
+>  	return new_ns;
+>  }
+> 
+> +/**
+> + * create_mnt_ns - creates a private namespace and adds a root filesystem
+> + * @mnt: pointer to the new root filesystem mountpoint
+> + */
+> +struct mnt_namespace *create_mnt_ns(struct vfsmount *mnt)
+> +{
+> +	struct mnt_namespace *new_ns;
+> +
+> +	new_ns = alloc_mnt_ns();
+> +	if (!IS_ERR(new_ns)) {
+> +		mnt->mnt_ns = new_ns;
+> +		new_ns->root = mnt;
+> +		list_add(&new_ns->list, &new_ns->root->mnt_list);
+> +	}
+> +	return new_ns;
+> +}
+> +EXPORT_SYMBOL(create_mnt_ns);
+> +
+>  SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
+>  		char __user *, type, unsigned long, flags, void __user *, data)
+>  {
+> @@ -2264,3 +2292,4 @@ void put_mnt_ns(struct mnt_namespace *ns)
+>  	release_mounts(&umount_list);
+>  	kfree(ns);
+>  }
+> +EXPORT_SYMBOL(put_mnt_ns);
+> diff --git a/include/linux/mnt_namespace.h b/include/linux/mnt_namespace.h
+> index 299d11a..3beb259 100644
+> --- a/include/linux/mnt_namespace.h
+> +++ b/include/linux/mnt_namespace.h
+> @@ -24,6 +24,7 @@ struct proc_mounts {
+> 
+>  struct fs_struct;
+> 
+> +extern struct mnt_namespace *create_mnt_ns(struct vfsmount *mnt);
+>  extern struct mnt_namespace *copy_mnt_ns(unsigned long, struct mnt_namespace *,
+>  		struct fs_struct *);
+>  extern void put_mnt_ns(struct mnt_namespace *ns);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
