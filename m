@@ -1,39 +1,57 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 37/44] nfsd41: sunrpc: Added rpc server-side	backchannel
- handling
-Date: Tue, 23 Jun 2009 08:47:01 +0300
-Message-ID: <4A406C55.5030008@panasas.com>
-References: <1245115259-8023-1-git-send-email-bhalevy@panasas.com> <20090622181954.GB19619@fieldses.org>
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Subject: [PATCH 01/10] ext4: Use rcu_barrier() on module unload.
+Date: Tue, 23 Jun 2009 17:03:59 +0200
+Message-ID: <20090623150358.22490.24818.stgit@localhost>
+References: <20090623150330.22490.87327.stgit@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:3257
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751076AbZFWFrD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 01:47:03 -0400
-In-Reply-To: <20090622181954.GB19619@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
+	axboe@kernel.dk, "Patrick McHardy" <kaber@trash.net>,
+	christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
+	linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
+	yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
+	linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
+	netfilter-devel@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun. 22, 2009, 21:19 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> By the way, apologies, I believe these are quite close, but the merge
-> window is closing and I need to help with the move, so this will have to
-> be queued for 2.6.32.  I'll start doing that as soon as I can.
+The ext4 module uses rcu_call() thus it should use rcu_barrier()on
+module unload.
 
-Sigh, bad timing.
-Given the depth of your review we should definitely have had
-to start reviewing this code much sooner.
+The kmem cache ext4_pspace_cachep is sometimes free'ed using
+call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
+before doing kmem_cache_destroy().
 
-> 
-> Also I'm aware there are some more bugfixes that should really go into
-> 2.6.31; if I haven't dealt with those by the end of the week, please
-> complain.
+I have difficult determining if no new call_rcu() callbacks can be envoked.
+Would the maintainer please verify this?
 
-Thanks.  I'll follow up on that too.
+Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+---
 
-Benny
+ fs/ext4/mballoc.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-> 
-> --b.
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 519a0a6..e271a9e 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2902,8 +2902,10 @@ int __init init_ext4_mballoc(void)
+ 
+ void exit_ext4_mballoc(void)
+ {
+-	/* XXX: synchronize_rcu(); */
++	/* Wait for completion of call_rcu()'s on ext4_pspace_cachep */
++	rcu_barrier();
+ 	kmem_cache_destroy(ext4_pspace_cachep);
++
+ 	kmem_cache_destroy(ext4_ac_cachep);
+ 	kmem_cache_destroy(ext4_free_ext_cachep);
+ }
+
