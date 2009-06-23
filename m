@@ -1,75 +1,61 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH 10/10] nf_conntrack: Use rcu_barrier().
-Date: Tue, 23 Jun 2009 18:23:33 +0200
-Message-ID: <4A410185.3090706@trash.net>
-References: <20090623150330.22490.87327.stgit@localhost> <20090623150444.22490.27931.stgit@localhost>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 04/10] sunrpc: Use rcu_barrier() on unload.
+Date: Tue, 23 Jun 2009 12:59:13 -0400
+Message-ID: <1245776353.9586.1.camel@heimdal.trondhjem.org>
+References: <20090623150330.22490.87327.stgit@localhost>
+	 <20090623150414.22490.14888.stgit@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Type: text/plain
 Cc: "David S. Miller" <davem@davemloft.net>,
 	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
 	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
 	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, christine.caulfield@googlemail.com,
-	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
+	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
+	christine.caulfield@googlemail.com, linux-wireless@vger.kernel.org,
 	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
 	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
 	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
 	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
 To: Jesper Dangaard Brouer <hawk@comx.dk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-In-Reply-To: <20090623150444.22490.27931.stgit@localhost>
-Sender: linux-ext4-owner@vger.kernel.org
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <20090623150414.22490.14888.stgit@localhost>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jesper Dangaard Brouer wrote:
-> I'm not sure which is are most optimal place to call rcu_barrier().
-> The patch probably calls rcu_barrier() too much, but its a better
-> safe than sorry approach.
+On Tue, 2009-06-23 at 17:04 +0200, Jesper Dangaard Brouer wrote:
+> The sunrpc module uses rcu_call() thus it should use rcu_barrier() on
+> module unload.
 > 
-> There is embedded some comments that I would like Patrick McHardy
-> to look at.
+> Have not verified that the possibility for new call_rcu() callbacks
+> has been disabled.  As a hint for checking, the functions calling
+> call_rcu() (unx_destroy_cred and generic_destroy_cred) are
+> registered as crdestroy function pointer in struct rpc_credops.
 > 
-> diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
-> index 5f72b94..cea4537 100644
-> --- a/net/netfilter/nf_conntrack_core.c
-> +++ b/net/netfilter/nf_conntrack_core.c
-> @@ -1084,6 +1084,8 @@ static void nf_conntrack_cleanup_init_net(void)
->  {
->  	nf_conntrack_helper_fini();
->  	nf_conntrack_proto_fini();
-> +	rcu_barrier();
-> +	/* Need to wait for call_rcu() before dealloc the kmem_cache */
->  	kmem_cache_destroy(nf_conntrack_cachep);
-
-Which call_rcu() is this referring to? If its the conntrack destruction,
-that one is gone in the current kernel and I think destruction is
-handled properly by the sl*b-allocators (SLAB_DESTROY_BY_RCU).
-
-> @@ -1118,6 +1120,9 @@ void nf_conntrack_cleanup(struct net *net)
->  	/* This makes sure all current packets have passed through
->  	   netfilter framework.  Roll on, two-stage module
->  	   delete... */
-> +	/* hawk@comx.dk 2009-06-20: Think this should be replaced by a
-> +          rcu_barrier() ???
-> +	*/
->  	synchronize_net();
-
-AFAICT this one is used to make sure the old value of the ip_ct_attach
-hook is not visible anymore before beginning cleanup and is not needed
-for anything else.
-
->  	nf_conntrack_cleanup_net(net);
-> diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrack_standalone.c
-> index 1935153..29c6cd0 100644
-> --- a/net/netfilter/nf_conntrack_standalone.c
-> +++ b/net/netfilter/nf_conntrack_standalone.c
-> @@ -500,6 +500,8 @@ static void nf_conntrack_net_exit(struct net *net)
->  	nf_conntrack_standalone_fini_sysctl(net);
->  	nf_conntrack_standalone_fini_proc(net);
->  	nf_conntrack_cleanup(net);
-> +	/* hawk@comx.dk: Think rcu_barrier() should to be called earlier? */
+> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+> ---
+> 
+>  net/sunrpc/sunrpc_syms.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+> index 843629f..adaa819 100644
+> --- a/net/sunrpc/sunrpc_syms.c
+> +++ b/net/sunrpc/sunrpc_syms.c
+> @@ -66,6 +66,7 @@ cleanup_sunrpc(void)
+>  #ifdef CONFIG_PROC_FS
+>  	rpc_proc_exit();
+>  #endif
 > +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
 >  }
+>  MODULE_LICENSE("GPL");
+>  module_init(init_sunrpc);
+> 
 
-Which call_rcu() is this referring to? We should place them in
-the cleanup sub-functions to make this clearly visible.
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
