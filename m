@@ -1,8 +1,7 @@
 From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
-Subject: [PATCH 08/10] edac_core: Uses call_rcu() and its own
-	wait_for_completion scheme.
-Date: Tue, 23 Jun 2009 17:04:34 +0200
-Message-ID: <20090623150434.22490.18824.stgit@localhost>
+Subject: [PATCH 09/10] cfq-iosched: Uses its own open-coded rcu_barrier.
+Date: Tue, 23 Jun 2009 17:04:39 +0200
+Message-ID: <20090623150439.22490.14657.stgit@localhost>
 References: <20090623150330.22490.87327.stgit@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -18,76 +17,42 @@ Cc: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
 	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org,
 	netfilter-devel@vger.kernel.org
 To: "David S. Miller" <davem@davemloft.net>
-Return-path: <linux-wireless-owner@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from lanfw001a.cxnet.dk ([87.72.215.196]:49574 "EHLO
+	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756737AbZFWP3u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 11:29:50 -0400
 In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
-Sender: linux-wireless-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Module edac_core.ko uses call_rcu() callbacks in edac_device.c, edac_mc.c
-and edac_pci.c.
+This module cfq-iosched, has discovered the value of waiting for
+call_rcu() completion, but its has its own open-coded implementation
+of rcu_barrier(), which I don't think is 'strong' enough.
 
-They all uses a wait_for_completion scheme, but this scheme it not 100%
-safe on multiple CPUs.  See the _rcu_barrier() implementation which explains
-why extra precausion is needed.
-
-The patch adds a comment about rcu_barrier() and as a precausion calls
-rcu_barrier().  A maintainer needs to look at removing the wait_for_completion
-code.
+This patch only leaves a comment for the maintainers to consider.
 
 Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
 ---
 
- drivers/edac/edac_device.c |    5 +++++
- drivers/edac/edac_mc.c     |    5 +++++
- drivers/edac/edac_pci.c    |    5 +++++
- 3 files changed, 15 insertions(+), 0 deletions(-)
+ block/cfq-iosched.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/drivers/edac/edac_device.c b/drivers/edac/edac_device.c
-index b02a6a6..5e831c9 100644
---- a/drivers/edac/edac_device.c
-+++ b/drivers/edac/edac_device.c
-@@ -373,6 +373,11 @@ static void del_edac_device_from_global_list(struct edac_device_ctl_info
- 	init_completion(&edac_device->removal_complete);
- 	call_rcu(&edac_device->rcu, complete_edac_device_list_del);
- 	wait_for_completion(&edac_device->removal_complete);
-+
-+	/* hawk-4UpuNZONu4c@public.gmane.org 2009-06-22: I think that rcu_barrier() should
-+	 *  be used instead of wait_for_completion, because
-+	 *  rcu_barrier() take multiple CPUs into account */
-+	rcu_barrier();
- }
- 
- /*
-diff --git a/drivers/edac/edac_mc.c b/drivers/edac/edac_mc.c
-index 335b7eb..edcce41 100644
---- a/drivers/edac/edac_mc.c
-+++ b/drivers/edac/edac_mc.c
-@@ -428,6 +428,11 @@ static void del_mc_from_global_list(struct mem_ctl_info *mci)
- 	init_completion(&mci->complete);
- 	call_rcu(&mci->rcu, complete_mc_list_del);
- 	wait_for_completion(&mci->complete);
-+
-+	/* hawk-4UpuNZONu4c@public.gmane.org 2009-06-22: I think that rcu_barrier() should
-+	 *  be used instead of wait_for_completion, because
-+	 *  rcu_barrier() take multiple CPUs into account */
-+	rcu_barrier();
- }
- 
- /**
-diff --git a/drivers/edac/edac_pci.c b/drivers/edac/edac_pci.c
-index 30b585b..d0eb8c9 100644
---- a/drivers/edac/edac_pci.c
-+++ b/drivers/edac/edac_pci.c
-@@ -188,6 +188,11 @@ static void del_edac_pci_from_global_list(struct edac_pci_ctl_info *pci)
- 	init_completion(&pci->complete);
- 	call_rcu(&pci->rcu, complete_edac_pci_list_del);
- 	wait_for_completion(&pci->complete);
-+
-+	/* hawk-4UpuNZONu4c@public.gmane.org 2009-06-22: I think that rcu_barrier() should
-+	 *  be used instead of wait_for_completion, because
-+	 *  rcu_barrier() take multiple CPUs into account */
-+	rcu_barrier();
- }
- 
- #if 0
+diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+index 833ec18..c15555b 100644
+--- a/block/cfq-iosched.c
++++ b/block/cfq-iosched.c
+@@ -2657,6 +2657,12 @@ static void __exit cfq_exit(void)
+ 	/*
+ 	 * this also protects us from entering cfq_slab_kill() with
+ 	 * pending RCU callbacks
++	 *
++	 * hawk-4UpuNZONu4c@public.gmane.org 2009-06-18: Maintainer please consider using
++	 *  rcu_barrier() instead of this open-coded wait for
++	 *  completion implementation.  I think it provides a better
++	 *  guarantee that all CPUs are finished, although
++	 *  elv_ioc_count_read() do consider all CPUs.
+ 	 */
+ 	if (elv_ioc_count_read(ioc_count))
+ 		wait_for_completion(&all_gone);
 
