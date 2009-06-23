@@ -1,41 +1,118 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH 0/5] NFS private namespace patchset
-Date: Tue, 23 Jun 2009 14:40:10 -0700 (PDT)
-Message-ID: <alpine.LFD.2.01.0906231438390.3240@localhost.localdomain>
-References: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org> <alpine.LFD.2.01.0906221238370.3240@localhost.localdomain> <20090623213309.GK8633@ZenIV.linux.org.uk>
+From: "Serge E. Hallyn" <serue@us.ibm.com>
+Subject: Re: [PATCH 2/5] VFS: Add VFS helper functions for setting up
+	private namespaces
+Date: Tue, 23 Jun 2009 17:32:30 -0500
+Message-ID: <20090623223230.GA30173@us.ibm.com>
+References: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org> <20090622190913.27923.61549.stgit@heimdal.trondhjem.org> <20090623201307.GA25760@us.ibm.com> <1245792589.5133.24.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
 	Christoph Hellwig <hch@infradead.org>,
 	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38827 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751246AbZFWVkw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 17:40:52 -0400
-In-Reply-To: <20090623213309.GK8633@ZenIV.linux.org.uk>
-Sender: linux-nfs-owner@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1245792589.5133.24.camel@heimdal.trondhjem.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On Tue, 23 Jun 2009, Al Viro wrote:
-> On Mon, Jun 22, 2009 at 12:40:33PM -0700, Linus Torvalds wrote:
+Quoting Trond Myklebust (Trond.Myklebust@netapp.com):
+> On Tue, 2009-06-23 at 15:13 -0500, Serge E. Hallyn wrote:
+> > Quoting Trond Myklebust (Trond.Myklebust@netapp.com):
+> > > The purpose of this patch is to improve the remote mount path lookup
+> > > support for distributed filesystems such as the NFSv4 client.
+> > > 
+> > > When given a mount command of the form "mount server:/foo/bar /mnt", the
+> > > NFSv4 client is required to look up the filehandle for "server:/", and
+> > > then look up each component of the remote mount path "foo/bar" in order
+> > > to find the directory that is actually going to be mounted on /mnt.
+> > > Following that remote mount path may involve following symlinks,
+> > > crossing server-side mount points and even following referrals to
+> > > filesystem volumes on other servers.
+> > > 
+> > > Since the standard VFS path lookup code already supports walking paths
+> > > that contain all these features (using in-kernel automounts for
+> > > following referrals) we would like to be able to reuse that rather than
+> > > duplicate the full path traversal functionality in the NFSv4 client code.
+> > > 
+> > > This patch therefore defines a VFS helper function create_mnt_ns(), that
+> > > sets up a temporary filesystem namespace and attaches a root filesystem to
+> > > it. It exports the create_mnt_ns() and put_mnt_ns() function for use by
+> > > filesystem modules.
+> > > 
+> > > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > > 
+> > This looks good, thanks.  Though I see no reason not to also switch over
+> > init_mount_tree() to the new helper.
 > > 
-> > Al? Where are you?
+> > (Seems plausible that c/r code would use this as well)
+> > 
+> > Reviewed-by: Serge Hallyn <serue@us.ibm.com>
+> > 
+> > thanks,
+> > -serge
 > 
-> Back, digging through the mailbox.
+> Thanks for the review! I missed the code duplication in
+> init_mount_tree(). Something like the following?
 
-Ok, I applied Trond's private namespace patchset, since I was planning on 
-doing -rc1 today (now reconsidering due to the bulk of stuff I've done 
-today, it might be tomorrow).
+Yup.
 
-But I'm still interested in fixes and particularly in the path ref leak 
-issue.
+(it keeps bugging me that the order of args to list_add() gets reversed
+as a result, but clearly with both starting out empty it doesn't
+matter..)
 
-Oh, and Trond just sent out a cleanup patch that looked fine too.
+thanks,
+-serge
 
-			Linus
+> Cheers
+>   Trond
+> --------------------------------------------------------------------
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> VFS: Switch init_mount_tree() to use the new create_mnt_ns() helper
+> 
+> Eliminates some duplicated code...
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/namespace.c |   11 ++---------
+>  1 files changed, 2 insertions(+), 9 deletions(-)
+> 
+> 
+> diff --git a/fs/namespace.c b/fs/namespace.c
+> index a7bea8c..4a86b85 100644
+> --- a/fs/namespace.c
+> +++ b/fs/namespace.c
+> @@ -2222,16 +2222,9 @@ static void __init init_mount_tree(void)
+>  	mnt = do_kern_mount("rootfs", 0, "rootfs", NULL);
+>  	if (IS_ERR(mnt))
+>  		panic("Can't create rootfs");
+> -	ns = kmalloc(sizeof(*ns), GFP_KERNEL);
+> -	if (!ns)
+> +	ns = create_mnt_ns(mnt);
+> +	if (IS_ERR(ns))
+>  		panic("Can't allocate initial namespace");
+> -	atomic_set(&ns->count, 1);
+> -	INIT_LIST_HEAD(&ns->list);
+> -	init_waitqueue_head(&ns->poll);
+> -	ns->event = 0;
+> -	list_add(&mnt->mnt_list, &ns->list);
+> -	ns->root = mnt;
+> -	mnt->mnt_ns = ns;
+> 
+>  	init_task.nsproxy->mnt_ns = ns;
+>  	get_mnt_ns(ns);
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
