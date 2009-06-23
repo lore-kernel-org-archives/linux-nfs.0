@@ -1,62 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from qmta10.westchester.pa.mail.comcast.net ([76.96.62.17]:41331
-	"EHLO QMTA10.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751832AbZFENub (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jun 2009 09:50:31 -0400
-Message-ID: <4A2922A5.5070101@gmail.com>
-Date: Fri, 05 Jun 2009 09:50:29 -0400
-From: Tom Talpey <tmtalpey@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Link performance over NFS degraded in RHEL5. -- was : Read/Write
- NFS I/O performance degraded by FLUSH_STABLE page flushing
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org>	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org>	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org>	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>	 <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br>	 <1244049027.5603.5.camel@heimdal.trondhjem.org>	 <OFB53BFCCB.0CEC7A7E-ON852575C <1244138698.5203.59.camel@heimdal.trondhjem.org> <OF37FCED66.33F08949-ON852575CB.006DE109-852575CB.0071CFBD@us.ibm.com> <4A2902E6.2080006@RedHat.com> <4A29144A.6030405@gmail.com> <4A291D83.1000508@RedHat.com>
-In-Reply-To: <4A291D83.1000508@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from lanfw001a.cxnet.dk ([87.72.215.196]:36307 "EHLO
+	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750777AbZFWPDx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 11:03:53 -0400
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Subject: [PATCH 00/10] We must use rcu_barrier() on module unload
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
+        axboe@kernel.dk, "Patrick McHardy" <kaber@trash.net>,
+        christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
+        linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
+        yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
+        netfilter-devel@vger.kernel.org
+Date: Tue, 23 Jun 2009 17:03:53 +0200
+Message-ID: <20090623150330.22490.87327.stgit@localhost>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 6/5/2009 9:28 AM, Steve Dickson wrote:
->
-> Tom Talpey wrote:
->> On 6/5/2009 7:35 AM, Steve Dickson wrote:
->>> Brian R Cowan wrote:
->>>> Trond Myklebust<trond.myklebust@fys.uio.no>   wrote on 06/04/2009
->>>> 02:04:58
->>>> PM:
->>>>
->>>>> Did you try turning off write gathering on the server (i.e. add the
->>>>> 'no_wdelay' export option)? As I said earlier, that forces a delay of
->>>>> 10ms per RPC call, which might explain the FILE_SYNC slowness.
->>>> Just tried it, this seems to be a very useful workaround as well. The
->>>> FILE_SYNC write calls come back in about the same amount of time as the
->>>> write+commit pairs... Speeds up building regardless of the network
->>>> filesystem (ClearCase MVFS or straight NFS).
->>> Does anybody had the history as to why 'no_wdelay' is an
->>> export default?
->> Because "wdelay" is a complete crock?
->>
->> Adding 10ms to every write RPC only helps if there's a steady
->> single-file stream arriving at the server. In most other workloads
->> it only slows things down.
->>
->> The better solution is to continue tuning the clients to issue
->> writes in a more sequential and less all-or-nothing fashion.
->> There are plenty of other less crock-ful things to do in the
->> server, too.
-> Ok... So do you think removing it as a default would cause
-> any regressions?
+This patch series is an attempt to cleanup the entire tree, for
+potential oops'es during module unload, due to outstanding RCU
+callbacks. (My last rcu_barrier patch series only addressed net/).
 
-I'm not 100% clear on what you mean by removing it. Since it's
-a "no_" option, removing it means that "wdelay" becomes the
-default? That would certainly cause a regression for many.
+If an unloadable module uses RCU callbacks, it need to use
+rcu_barrier() so that the module may be safely unloaded.
 
-I think the big problem with tweaking the default in nfs_utils
-is that there's little guarantee of the kernel behavior that
-would result. Older kernels, NFSv2 mounts, etc will behave completely
-differently from new ones, NFSv3, modified clients, etc. So
-touching this option is quite risky, IMO, even though it's a
-crock.
+For documentation see:
 
-Tom.
+ Paul E. McKenney's Blog
+ http://paulmck.livejournal.com/7314.html
+
+ http://lwn.net/Articles/217484/
+
+ Documentation/RCU/rcubarrier.txt
+
+
+Looking through the Linux kernel for call_rcu() users and unloadable
+modules I found 10 modules that didn't behave correctly.
+
+Please: MAINTAINERS needs to verify that the module exit code prevent
+any new RCU callbacks from being posted (before rcu_barrier() is
+called). (I have tried to do this verification, but most of these
+module are simply too large and complex for me to verify this within
+reasonable time)
+
+[Overview description, following patch ordering]
+
+The modules ext4, bridge, mac80211, sunrpc, nfs and ipv6 are fairly
+straight forward (maintainers still needs to check for prevent of new
+RCU callbacks).
+
+The module decnet, has disabled its module_exit() (since ^1da177e) but
+it still seems relevant to keep the code updated.
+
+The modules edac_core and cfq-iosched, has implemented their own
+open-coded wait_for_completion() scheme, in order to wait for
+call_rcu() calls.  Maintainers needs to look into removing this code
+and using rcu_barrier() instead.
+
+The module nf_conntrack, has embedded some comments that I would like
+Patrick McHardy to look at.  As I'm not sure which is are most optimal
+place to call rcu_barrier().  The patch probably calls rcu_barrier()
+too much, but its a better safe than sorry approach.
+
+
+I have made a patch for each individual module, so objections can be
+made on a per module basis.  I have Cc'ed all of the patches to the
+maintainers of each module (according to the MAINTAINERS file).
+
+
+The patchset is made on top of Linus Torvalds tree (starting on top of
+commit f234012f52a3).
+
+Who wants to pickup these patches? (I usually go through DaveM, but
+this also touches subsystems that are not (yet?) under DaveM's
+maintainer ship)
+
+
+---
+Jesper Dangaard Brouer (10):
+      nf_conntrack: Use rcu_barrier().
+      cfq-iosched: Uses its own open-coded rcu_barrier.
+      edac_core: Uses call_rcu() and its own wait_for_completion scheme.
+      decnet: Use rcu_barrier() on module unload.
+      ipv6: Use rcu_barrier() on module unload.
+      nfs: Use rcu_barrier() on module unload.
+      sunrpc: Use rcu_barrier() on unload.
+      mac80211: Use rcu_barrier() on unload.
+      bridge: Use rcu_barrier() instead of syncronize_net() on unload.
+      ext4: Use rcu_barrier() on module unload.
+
+
+ block/cfq-iosched.c                     |    6 ++++++
+ drivers/edac/edac_device.c              |    5 +++++
+ drivers/edac/edac_mc.c                  |    5 +++++
+ drivers/edac/edac_pci.c                 |    5 +++++
+ fs/ext4/mballoc.c                       |    4 +++-
+ fs/nfs/inode.c                          |    1 +
+ net/bridge/br.c                         |    2 +-
+ net/decnet/af_decnet.c                  |    6 ++++++
+ net/ipv6/af_inet6.c                     |    2 ++
+ net/mac80211/main.c                     |    2 ++
+ net/netfilter/nf_conntrack_core.c       |    5 +++++
+ net/netfilter/nf_conntrack_standalone.c |    2 ++
+ net/sunrpc/sunrpc_syms.c                |    1 +
+ 13 files changed, 44 insertions(+), 2 deletions(-)
+
+
+--
+Best regards,
+  Jesper Brouer
+  ComX Networks A/S
+  Linux Network developer
+  Cand. Scient Datalog / MSc.
+  Author of http://adsl-optimizer.dk
+  LinkedIn: http://www.linkedin.com/in/brouer
+
