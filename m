@@ -1,7 +1,7 @@
 From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
-Subject: [PATCH 05/10] nfs: Use rcu_barrier() on module unload.
-Date: Tue, 23 Jun 2009 17:04:19 +0200
-Message-ID: <20090623150419.22490.94087.stgit@localhost>
+Subject: [PATCH 06/10] ipv6: Use rcu_barrier() on module unload.
+Date: Tue, 23 Jun 2009 17:04:24 +0200
+Message-ID: <20090623150424.22490.47149.stgit@localhost>
 References: <20090623150330.22490.87327.stgit@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,30 +17,33 @@ Cc: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
 	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org,
 	netfilter-devel@vger.kernel.org
 To: "David S. Miller" <davem@davemloft.net>
-Return-path: <linux-wireless-owner@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from lanfw001a.cxnet.dk ([87.72.215.196]:49568 "EHLO
+	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751260AbZFWP3r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 11:29:47 -0400
 In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
-Sender: linux-wireless-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The exit path unregister and destroys a lot of stuff, but I have not
-verified that nfs_free_delegation() cannot start new call_rcu() callbacks.
-
-Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+The ipv6 module uses rcu_call() thus it should use rcu_barrier() on
+module unload.
 ---
 
- fs/nfs/inode.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ net/ipv6/af_inet6.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 64f8719..40bf2b7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1518,6 +1518,7 @@ static void __exit exit_nfs_fs(void)
- 	unregister_nfs_fs();
- 	nfs_fs_proc_exit();
- 	nfsiod_stop();
+diff --git a/net/ipv6/af_inet6.c b/net/ipv6/af_inet6.c
+index 85b3d00..caa0278 100644
+--- a/net/ipv6/af_inet6.c
++++ b/net/ipv6/af_inet6.c
+@@ -1284,6 +1284,8 @@ static void __exit inet6_exit(void)
+ 	proto_unregister(&udplitev6_prot);
+ 	proto_unregister(&udpv6_prot);
+ 	proto_unregister(&tcpv6_prot);
++
 +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
  }
+ module_exit(inet6_exit);
  
- /* Not quite true; I just maintain it */
 
