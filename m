@@ -1,7 +1,7 @@
 From: Jesper Dangaard Brouer <hawk@comx.dk>
-Subject: [PATCH 01/10] ext4: Use rcu_barrier() on module unload.
-Date: Tue, 23 Jun 2009 17:03:59 +0200
-Message-ID: <20090623150358.22490.24818.stgit@localhost>
+Subject: [PATCH 04/10] sunrpc: Use rcu_barrier() on unload.
+Date: Tue, 23 Jun 2009 17:04:14 +0200
+Message-ID: <20090623150414.22490.14888.stgit@localhost>
 References: <20090623150330.22490.87327.stgit@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -17,41 +17,35 @@ Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
 	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
 	netfilter-devel@vger.kernel.org
 To: "David S. Miller" <davem@davemloft.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The ext4 module uses rcu_call() thus it should use rcu_barrier()on
+The sunrpc module uses rcu_call() thus it should use rcu_barrier() on
 module unload.
 
-The kmem cache ext4_pspace_cachep is sometimes free'ed using
-call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
-before doing kmem_cache_destroy().
-
-I have difficult determining if no new call_rcu() callbacks can be envoked.
-Would the maintainer please verify this?
+Have not verified that the possibility for new call_rcu() callbacks
+has been disabled.  As a hint for checking, the functions calling
+call_rcu() (unx_destroy_cred and generic_destroy_cred) are
+registered as crdestroy function pointer in struct rpc_credops.
 
 Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
 ---
 
- fs/ext4/mballoc.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+ net/sunrpc/sunrpc_syms.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 519a0a6..e271a9e 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2902,8 +2902,10 @@ int __init init_ext4_mballoc(void)
- 
- void exit_ext4_mballoc(void)
- {
--	/* XXX: synchronize_rcu(); */
-+	/* Wait for completion of call_rcu()'s on ext4_pspace_cachep */
-+	rcu_barrier();
- 	kmem_cache_destroy(ext4_pspace_cachep);
-+
- 	kmem_cache_destroy(ext4_ac_cachep);
- 	kmem_cache_destroy(ext4_free_ext_cachep);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 843629f..adaa819 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -66,6 +66,7 @@ cleanup_sunrpc(void)
+ #ifdef CONFIG_PROC_FS
+ 	rpc_proc_exit();
+ #endif
++	rcu_barrier(); /* Wait for completion of call_rcu()'s */
  }
+ MODULE_LICENSE("GPL");
+ module_init(init_sunrpc);
 
