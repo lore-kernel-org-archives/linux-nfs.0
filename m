@@ -1,37 +1,70 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH 2/5] VFS: Add VFS helper functions for setting up private
- namespaces
-Date: Tue, 23 Jun 2009 19:51:59 -0700 (PDT)
-Message-ID: <alpine.LFD.2.01.0906231950030.3240@localhost.localdomain>
-References: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org> <20090622190913.27923.61549.stgit@heimdal.trondhjem.org> <20090623201307.GA25760@us.ibm.com> <1245792589.5133.24.camel@heimdal.trondhjem.org> <20090623223230.GA30173@us.ibm.com>
+From: Chrissie Caulfield <christine.caulfield@googlemail.com>
+Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
+Date: Wed, 24 Jun 2009 07:23:58 +0100
+Message-ID: <4A41C67E.8070301@googlemail.com>
+References: <20090623150330.22490.87327.stgit@localhost> <20090623150429.22490.15113.stgit@localhost>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Al Viro <viro@ZenIV.linux.org.uk>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Serge E. Hallyn" <serue@us.ibm.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37453 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751611AbZFXCwL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Jun 2009 22:52:11 -0400
-In-Reply-To: <20090623223230.GA30173@us.ibm.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: "David S. Miller" <davem@davemloft.net>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
+	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
+	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
+	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
+	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
+	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
+To: Jesper Dangaard Brouer <hawk@comx.dk>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20090623150429.22490.15113.stgit@localhost>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Jesper Dangaard Brouer wrote:
+> The decnet module unloading as been disabled with a '#if 0' statement,
+> because it have had issues.  Perhaps using rcu_barrier() will fix
+> these issues?
+> 
+> Any maintainers with input?
+> 
+> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+> ---
+> 
+>  net/decnet/af_decnet.c |    6 ++++++
+>  1 files changed, 6 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/decnet/af_decnet.c b/net/decnet/af_decnet.c
+> index d351b8d..bff12da 100644
+> --- a/net/decnet/af_decnet.c
+> +++ b/net/decnet/af_decnet.c
+> @@ -2393,6 +2393,10 @@ module_init(decnet_init);
+>   * Prevent DECnet module unloading until its fixed properly.
+>   * Requires an audit of the code to check for memory leaks and
+>   * initialisation problems etc.
+> + *
+> + * hawk@comx.dk 2009-06-19:
+> + *  I have added a rcu_barrier() which should plug some of your
+> + *  module unload issues.  Maintainers please try it out...
+>   */
+>  #if 0
+>  static void __exit decnet_exit(void)
+> @@ -2413,6 +2417,8 @@ static void __exit decnet_exit(void)
+>  	proc_net_remove(&init_net, "decnet");
+>  
+>  	proto_unregister(&dn_proto);
+> +
+> +	rcu_barrier_bh(); /* Wait for completion of call_rcu_bh()'s */
+>  }
+>  module_exit(decnet_exit);
+>  #endif
+> 
 
+The issues with DECnet module unloading are a little more than just an
+RCU leak I think!
 
-On Tue, 23 Jun 2009, Serge E. Hallyn wrote:
->
-> (it keeps bugging me that the order of args to list_add() gets reversed
-> as a result, but clearly with both starting out empty it doesn't
-> matter..)
+Though that area does need reviewing ... when I get some time.
 
-.. and the new one is more logical. "list_add()" really adds the first 
-entry to the list pointed to by the second one. It _works_ the other way 
-too in this case, as you point out, but now that you mention it, it really 
-looks like the pre-patch code is "wrong".
+-- 
 
-		Linus
+Chrissie
