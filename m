@@ -1,50 +1,42 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 37/44] nfsd41: sunrpc: Added rpc server-side
-	backchannel handling
-Date: Wed, 24 Jun 2009 16:05:58 -0400
-Message-ID: <20090624200558.GV14503@fieldses.org>
-References: <1245115259-8023-1-git-send-email-bhalevy@panasas.com> <20090622181954.GB19619@fieldses.org> <4A406C55.5030008@panasas.com>
+Subject: Re: citi, linux-nfs.org downtime
+Date: Wed, 24 Jun 2009 17:35:27 -0400
+Message-ID: <20090624213527.GC14503@fieldses.org>
+References: <20090622162611.GB16719@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org, pnfs@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 174-143-236-118.static.slicehost.net ([174.143.236.118]:49329
+Received: from 174-143-236-118.static.slicehost.net ([174.143.236.118]:55885
 	"EHLO fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753059AbZFXUF7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 16:05:59 -0400
-In-Reply-To: <4A406C55.5030008@panasas.com>
+	with ESMTP id S1755190AbZFXVfY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 17:35:24 -0400
+In-Reply-To: <20090622162611.GB16719@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 23, 2009 at 08:47:01AM +0300, Benny Halevy wrote:
-> On Jun. 22, 2009, 21:19 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > By the way, apologies, I believe these are quite close, but the merge
-> > window is closing and I need to help with the move, so this will have to
-> > be queued for 2.6.32.  I'll start doing that as soon as I can.
+On Mon, Jun 22, 2009 at 12:26:11PM -0400, J. Bruce Fields wrote:
+> CITI's offices and machine room are moving to a new building tomorrow
+> (tuesday).  This means that citi.umich.edu and linux-nfs.org will be
+> going down late tonight or early tomorrow morning, and staying down at
+> least until early afternoon (and probably longer).
 > 
-> Sigh, bad timing.
-> Given the depth of your review we should definitely have had
-> to start reviewing this code much sooner.
+> (Alert users may already have noticed one or two outages of several
+> hours over the last few weeks as we prepared the machine room for the
+> move.)
+> 
+> Apologies in advance for any inconvenience--getting services back up
+> will be our first priority, but it's a complicated operation.
 
-I'd saw "slowness" rather than depth!  And some bad planning on my part.
+Stuff should be mostly working again now.
 
-Anyway, one thing that would help would be just to make sure it's very
-clear what the final version of a patch series is.  If I'm not sure, I'm
-likely to procrastinate.
+So, if I have this right:
 
-Also other things being equal if it's possible to sequence series with
-easy bugfixes at the front, then I'm more likely to start in on them....
+	Total data moved: ~ 35 terabytes
+	Time to get racks back online: ~ 28 hours
+	Estimated total bandwidth of the CITI move: 2.8 gigabits/second
+
+If we count only the time to physically move the racks, and not the time
+to get them back online, bandwidth is closer to 20 gigabits per second.
 
 --b.
-
-> > Also I'm aware there are some more bugfixes that should really go into
-> > 2.6.31; if I haven't dealt with those by the end of the week, please
-> > complain.
-> 
-> Thanks.  I'll follow up on that too.
-> 
-> Benny
-> 
-> > 
-> > --b.
