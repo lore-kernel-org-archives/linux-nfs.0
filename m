@@ -1,85 +1,121 @@
-From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
-Subject: Missing xtab entry after nfsd startup
-Date: Wed, 24 Jun 2009 13:59:51 +0530
-Message-ID: <4A41E3FF.4060303@gluster.com>
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Subject: Re: [PATCH 10/10] nf_conntrack: Use rcu_barrier().
+Date: Wed, 24 Jun 2009 11:02:19 +0200
+Message-ID: <1245834139.6695.31.camel@localhost.localdomain>
+References: <20090623150330.22490.87327.stgit@localhost>
+	 <20090623150444.22490.27931.stgit@localhost>  <4A410185.3090706@trash.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from saturn.datasyncintra.net ([208.88.241.29]:51110 "EHLO
-	saturn.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751392AbZFXIfO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 04:35:14 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by saturn.datasyncintra.net (Postfix) with ESMTP id 25BC6690CCD
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Jun 2009 03:28:37 -0500 (CDT)
-Received: from saturn.datasyncintra.net ([127.0.0.1])
-	by localhost (saturn.datasyncintra.net [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id bvzIu0BYdVk2 for <linux-nfs@vger.kernel.org>;
-	Wed, 24 Jun 2009 03:28:36 -0500 (CDT)
-Received: from [192.168.1.90] (unknown [220.224.228.188])
-	(Authenticated sender: shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org)
-	by saturn.datasyncintra.net (Postfix) with ESMTP id 0714D313A64
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Jun 2009 03:28:35 -0500 (CDT)
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: "David S. Miller" <davem@davemloft.net>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
+	axboe@kernel.dk, christine.caulfield@googlemail.com,
+	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
+	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
+	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
+	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
+	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
+To: Patrick McHardy <kaber@trash.net>
+Return-path: <netfilter-devel-owner@vger.kernel.org>
+In-Reply-To: <4A410185.3090706@trash.net>
+Sender: netfilter-devel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All
+On Tue, 2009-06-23 at 18:23 +0200, Patrick McHardy wrote:
+> Jesper Dangaard Brouer wrote:
+> > I'm not sure which is are most optimal place to call rcu_barrier().
+> > The patch probably calls rcu_barrier() too much, but its a better
+> > safe than sorry approach.
+> > 
+> > There is embedded some comments that I would like Patrick McHardy
+> > to look at.
+> > 
+> > diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
+> > index 5f72b94..cea4537 100644
+> > --- a/net/netfilter/nf_conntrack_core.c
+> > +++ b/net/netfilter/nf_conntrack_core.c
+> > @@ -1084,6 +1084,8 @@ static void nf_conntrack_cleanup_init_net(void)
+> >  {
+> >  	nf_conntrack_helper_fini();
+> >  	nf_conntrack_proto_fini();
+> > +	rcu_barrier();
+> > +	/* Need to wait for call_rcu() before dealloc the kmem_cache */
+> >  	kmem_cache_destroy(nf_conntrack_cachep);
+> 
+> Which call_rcu() is this referring to? 
 
-I am running into a "Permission denied" at the client when I try to
-do a mount of an exported directory.
+It is the call_rcu() in nf_conntrack_expect.c (which is linked into
+nf_conntrack.ko).  But that also means that it should have been the slab
+cache called "nf_ct_expect_cachep" we should have waited for... (and I
+also notice that "nf_ct_expect_cachep" is missing the
+SLAB_DESTROY_BY_RCU flag, and the SLAB_DESTROY_BY_RCU flag should be
+removed from "nf_conntrack_cachep")
 
-Looking at the HOWTO, I see that there seems to be some inconsistency
-as the entries for the export are missing from the /var/lib/nfs/xtab.
+> If its the conntrack destruction,
+> that one is gone in the current kernel and I think destruction is
+> handled properly by the sl*b-allocators (SLAB_DESTROY_BY_RCU).
 
-For eg:
+Just dived into the slab.c code and noticed that it also is flawed,
+ARGH!.  When the SLAB_DESTROY_BY_RCU flags is set, it only calls
+synchronize_rcu() and not rcu_barrier() as it should!
 
-On the Server:
-[root@192 shehjart]# cat /etc/exports
-/data/shehjart/volumes/disk1    *(rw,no_root_squash)
-[root@192 shehjart]# /etc/init.d/nfs start
-Starting NFS services:                                     [  OK  ]
-Starting NFS quotas:                                       [  OK  ]
-Starting NFS daemon:                                       [  OK  ]
-Starting NFS mountd:                                       [  OK  ]
-[root@192 shehjart]# cat  /proc/fs/nfs/exports
-# Version 1.1
-# Path Client(Flags) # IPs
-[root@192 shehjart]# cat /var/lib/nfs/xtab
-[root@192 shehjart]#
+I'll fix that up in another patch series... 
 
-On the client, after the above commands:
-root@indus:~# mount 192.168.1.201:/data/shehjart/volumes/disk1 /mnt/
-mount.nfs: 192.168.1.201:/data/shehjart/volumes/disk1 failed, reason 
-given by server: Permission denied
+Looking into slub and slob at the moment, and it seems that they
+schedule another call_rcu callback for freeing when the
+SLAB_DESTROY_BY_RCU flags is set.  That seems racy to me... Paul?
 
-After this failed mount, the server says:
-[root@192 shehjart]# cat  /proc/fs/nfs/exports
-# Version 1.1
-# Path Client(Flags) # IPs
-/data/shehjart/volumes/disk1 
-*(rw,no_root_squash,sync,wdelay,no_subtree_check)
-[root@192 shehjart]# cat /var/lib/nfs/xtab
-[root@192 shehjart]#
 
-even with:
-[root@192 shehjart]# exportfs -ra
-[root@192 shehjart]# cat /var/lib/nfs/xtab
-[root@192 shehjart]#
+> > @@ -1118,6 +1120,9 @@ void nf_conntrack_cleanup(struct net *net)
+> >  	/* This makes sure all current packets have passed through
+> >  	   netfilter framework.  Roll on, two-stage module
+> >  	   delete... */
+> > +	/* hawk@comx.dk 2009-06-20: Think this should be replaced by a
+> > +          rcu_barrier() ???
+> > +	*/
+> >  	synchronize_net();
+> 
+> AFAICT this one is used to make sure the old value of the ip_ct_attach
+> hook is not visible anymore before beginning cleanup and is not needed
+> for anything else.
 
-And the "Permission denied" persists.
+Fine!
 
-tshark shows that the MNT request fails because the
-server returns a MNT3ERR_ACCES.
+> >  	nf_conntrack_cleanup_net(net);
+> > diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrack_standalone.c
+> > index 1935153..29c6cd0 100644
+> > --- a/net/netfilter/nf_conntrack_standalone.c
+> > +++ b/net/netfilter/nf_conntrack_standalone.c
+> > @@ -500,6 +500,8 @@ static void nf_conntrack_net_exit(struct net *net)
+> >  	nf_conntrack_standalone_fini_sysctl(net);
+> >  	nf_conntrack_standalone_fini_proc(net);
+> >  	nf_conntrack_cleanup(net);
+> > +	/* hawk@comx.dk: Think rcu_barrier() should to be called earlier? */
+> > +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+> >  }
+> 
+> Which call_rcu() is this referring to? We should place them in
+> the cleanup sub-functions to make this clearly visible.
 
-Server is:
-[root@192 shehjart]# uname -a
-Linux n1 2.6.18-128.1.10.el5xen #1 SMP Thu May 7 11:07:18 EDT 2009 
-x86_64 x86_64 x86_64 GNU/Linux
+This call_rcu() is the one done in nf_conntrack_extend.c:114  (notice
+"_extend" NOT "_expect"), which calls __nf_ct_ext_free_rcu().
 
-Client is a debian testing:
-Linux indus 2.6.18-5-amd64 #1 SMP Thu May 31 23:51:05 UTC 2007 x86_64 
-GNU/Linux
+Guess this rcu_barrier() should then be move to
+nf_ct_extend_unregister() right? (it already invokes a
+synchronize_rcu() that should be replaced by rcu_barrier()).
+Although this means the nf_ct_extend_unregister() will be called three
+times in nf_conntrack_cleanup_net() when unregistering ecache, acct and
+expect.
 
-Thanks
-Shehjar
+
+Thank you for your feedback :-) ... I'll post a new v2 patch...
+-- 
+Med venlig hilsen / Best regards
+  Jesper Brouer
+  ComX Networks A/S
+  Linux Network developer
+  Cand. Scient Datalog / MSc.
+  Author of http://adsl-optimizer.dk
+  LinkedIn: http://www.linkedin.com/in/brouer
+
