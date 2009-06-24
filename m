@@ -1,51 +1,44 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: [PATCH] sunrpc: fix missing kernel-doc
-Date: Wed, 24 Jun 2009 10:53:07 -0700
-Message-ID: <4A426803.4050807@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	David Miller <davem@davemloft.net>
-To: linux-nfs@vger.kernel.org
+From: andros@netapp.com
+Subject: [PATCH 3/5] nfsd41: reclaim DRC memory on session free
+Date: Wed, 24 Jun 2009 15:37:47 -0400
+Message-ID: <1245872278-18743-4-git-send-email-andros@netapp.com>
+References: <>
+ <1245872278-18743-1-git-send-email-andros@netapp.com>
+ <1245872278-18743-2-git-send-email-andros@netapp.com>
+ <1245872278-18743-3-git-send-email-andros@netapp.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Andy Adamson <andros@netapp.com>
+To: bfields@citi.umich.edu
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:22095 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752051AbZFXRxW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 13:53:22 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:63517 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757332AbZFXTh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jun 2009 15:37:59 -0400
+In-Reply-To: <1245872278-18743-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
+From: Andy Adamson <andros@netapp.com>
 
-Fix sunrpc kernel-doc warnings:
-
-Warning(net/sunrpc/clnt.c:629): No description found for parameter 'req'
-Warning(net/sunrpc/clnt.c:629): No description found for parameter 'tk_ops'
-Warning(net/sunrpc/clnt.c:629): Excess function parameter 'ops' description in 'rpc_run_bc_task'
-
-Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- net/sunrpc/clnt.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
---- linux-2.6.30-git22.orig/net/sunrpc/clnt.c
-+++ linux-2.6.30-git22/net/sunrpc/clnt.c
-@@ -622,7 +622,8 @@ EXPORT_SYMBOL_GPL(rpc_call_async);
- /**
-  * rpc_run_bc_task - Allocate a new RPC task for backchannel use, then run
-  * rpc_execute against it
-- * @ops: RPC call ops
-+ * @req: the RPC request
-+ * @tk_ops: RPC call ops
-  */
- struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
- 					const struct rpc_call_ops *tk_ops)
-
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b4a536d..991c3cc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -583,6 +583,9 @@ free_session(struct kref *kref)
+ 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+ 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+ 	}
++	spin_lock(&nfsd_drc_lock);
++	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs * NFSD_SLOT_CACHE_SIZE;
++	spin_unlock(&nfsd_drc_lock);
+ 	kfree(ses);
+ }
+ 
 -- 
-~Randy
-LPC 2009, Sept. 23-25, Portland, Oregon
-http://linuxplumbersconf.org/2009/
+1.5.4.3
+
