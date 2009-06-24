@@ -1,85 +1,114 @@
-From: Chrissie Caulfield <christine.caulfield@googlemail.com>
-Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
-Date: Wed, 24 Jun 2009 14:50:42 +0100
-Message-ID: <5A680E0A-EFEB-44EA-9F06-F338E6CBD6D1@googlemail.com>
-References: <20090623150330.22490.87327.stgit@localhost> <20090623150429.22490.15113.stgit@localhost> <4A41C67E.8070301@googlemail.com> <1245843884.6695.54.camel@localhost.localdomain> <1245845367.24921.3.camel@localhost.localdomain>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: Patrick McHardy <kaber@trash.net>
+Subject: Re: [PATCH v2 10/10] nf_conntrack: Use rcu_barrier() and fix	kmem_cache_create
+ flags
+Date: Wed, 24 Jun 2009 15:58:32 +0200
+Message-ID: <4A423108.60109@trash.net>
+References: <20090623150330.22490.87327.stgit@localhost>	 <20090623150444.22490.27931.stgit@localhost>  <4A410185.3090706@trash.net>	 <1245834139.6695.31.camel@localhost.localdomain> <1245836409.6695.35.camel@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Cc: "David S. Miller" <davem@davemloft.net>,
 	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
 	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, axboe@kernel.dk,
-	Patrick McHardy <kaber@trash.net>, Trond.Myklebust@netapp.com,
+	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
+	axboe@kernel.dk, christine.caulfield@googlemail.com,
+	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
 	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
 	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
 	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org, netfilter-devel@vger.kernel.org
-To: jdb-4UpuNZONu4c@public.gmane.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtaout01-winn.ispmail.ntl.com ([81.103.221.47]:54002 "EHLO
-	mtaout01-winn.ispmail.ntl.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752735AbZFXNuw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 09:50:52 -0400
-In-Reply-To: <1245845367.24921.3.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
+To: jdb@comx.dk
+Return-path: <linux-ext4-owner@vger.kernel.org>
+In-Reply-To: <1245836409.6695.35.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Jesper Dangaard Brouer wrote:
+> Adjusting SLAB_DESTROY_BY_RCU flags.
+> 
+>  kmem_cache_create("nf_conntrack", ...) does not need the
+>  SLAB_DESTROY_BY_RCU flag.
 
-On 24 Jun 2009, at 13:09, Jesper Dangaard Brouer wrote:
+It does need it. We're using it instead of call_rcu() for conntracks.
 
-> On Wed, 2009-06-24 at 13:44 +0200, Jesper Dangaard Brouer wrote:
->> On Wed, 2009-06-24 at 07:23 +0100, Chrissie Caulfield wrote:
->>> The issues with DECnet module unloading are a little more than  
->>> just an
->>> RCU leak I think!
->>>
->>> Though that area does need reviewing ... when I get some time.
->>
->> Fine.  Now you have read my comment in the code, then there is a  
->> updated
->> patch below.  Will you ack-that?
->
+>  But the
+>  kmem_cache_create("nf_conntrack_expect", ...) should use the
+>  SLAB_DESTROY_BY_RCU flag, because it uses a call_rcu() callback to
+>  invoke kmem_cache_free().
 
-I don't have any objection to the patch at all, it just seemed a  
-little odd to deliberately add code inside #if 0 ;-)
+No, using call_rcu() means we don't need SLAB_DESTROY_BY_RCU.
+Please see the note in include/linux/slab.h.
 
-Chrissie
+> RCU barriers, rcu_barrier(), is inserted two places.
+> 
+>  In nf_conntrack_expect.c nf_conntrack_expect_fini() before the
+>  kmem_cache_destroy(), even though the use of the SLAB_DESTROY_BY_RCU
+>  flag, because slub does not (currently) handle rcu sync correctly.
 
+I think that should be fixed in slub then.
 
-> Sorry wrong patch... forgot save the code and 'stg refresh'...
->
-> [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
->
-> From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
->
-> The decnet module unloading as been disabled with a '#if 0' statement,
-> because it have had issues.
->
-> We add a rcu_barrier() anyhow for correctness.
->
-> The maintainer (Chrissie Caulfield) will look into the unload issue
-> when time permits.
->
-> Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
-> ---
->
-> net/decnet/af_decnet.c |    2 ++
-> 1 files changed, 2 insertions(+), 0 deletions(-)
->
->
-> diff --git a/net/decnet/af_decnet.c b/net/decnet/af_decnet.c
-> index d351b8d..77d4028 100644
-> --- a/net/decnet/af_decnet.c
-> +++ b/net/decnet/af_decnet.c
-> @@ -2413,6 +2413,8 @@ static void __exit decnet_exit(void)
-> 	proc_net_remove(&init_net, "decnet");
->
-> 	proto_unregister(&dn_proto);
-> +
-> +	rcu_barrier_bh(); /* Wait for completion of call_rcu_bh()'s */
-> }
-> module_exit(decnet_exit);
-> #endif
->
->
+>  And in nf_conntrack_extend.c nf_ct_extend_unregister(), inorder to
+>  wait for completion of callbacks to __nf_ct_ext_free_rcu(), which is
+>  invoked by __nf_ct_ext_add().  It might be more efficient to call
+>  rcu_barrier() in nf_conntrack_core.c nf_conntrack_cleanup_net(), but
+>  thats make it more difficult to read the code (as the callback code
+>  in located in nf_conntrack_extend.c).
+
+This one looks fine.
+
+> diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
+> index 5f72b94..438ce84 100644
+> --- a/net/netfilter/nf_conntrack_core.c
+> +++ b/net/netfilter/nf_conntrack_core.c
+> @@ -1242,7 +1242,7 @@ static int nf_conntrack_init_init_net(void)
+>  
+>  	nf_conntrack_cachep = kmem_cache_create("nf_conntrack",
+>  						sizeof(struct nf_conn),
+> -						0, SLAB_DESTROY_BY_RCU, NULL);
+> +						0, 0, NULL);
+>  	if (!nf_conntrack_cachep) {
+>  		printk(KERN_ERR "Unable to create nf_conn slab cache\n");
+>  		ret = -ENOMEM;
+> diff --git a/net/netfilter/nf_conntrack_expect.c b/net/netfilter/nf_conntrack_expect.c
+> index afde8f9..56227c2 100644
+> --- a/net/netfilter/nf_conntrack_expect.c
+> +++ b/net/netfilter/nf_conntrack_expect.c
+> @@ -593,7 +593,7 @@ int nf_conntrack_expect_init(struct net *net)
+>  	if (net_eq(net, &init_net)) {
+>  		nf_ct_expect_cachep = kmem_cache_create("nf_conntrack_expect",
+>  					sizeof(struct nf_conntrack_expect),
+> -					0, 0, NULL);
+> +					0, SLAB_DESTROY_BY_RCU, NULL);
+>  		if (!nf_ct_expect_cachep)
+>  			goto err2;
+>  	}
+> @@ -617,8 +617,15 @@ err1:
+>  void nf_conntrack_expect_fini(struct net *net)
+>  {
+>  	exp_proc_remove(net);
+> -	if (net_eq(net, &init_net))
+> +	if (net_eq(net, &init_net)) {
+> +		/* hawk@comx.dk 2009-06-24: The rcu_barrier() can be
+> +		 * removed once the sl*b allocators has been fixed
+> +		 * regarding handling the SLAB_DESTROY_BY_RCU flag
+> +		 * correctly.
+> +		 */
+> +		rcu_barrier(); /* Wait for call_rcu() before destroy */
+>  		kmem_cache_destroy(nf_ct_expect_cachep);
+> +	}
+>  	nf_ct_free_hashtable(net->ct.expect_hash, net->ct.expect_vmalloc,
+>  			     nf_ct_expect_hsize);
+>  }
+> diff --git a/net/netfilter/nf_conntrack_extend.c b/net/netfilter/nf_conntrack_extend.c
+> index 4b2c769..fef95be 100644
+> --- a/net/netfilter/nf_conntrack_extend.c
+> +++ b/net/netfilter/nf_conntrack_extend.c
+> @@ -186,6 +186,6 @@ void nf_ct_extend_unregister(struct nf_ct_ext_type *type)
+>  	rcu_assign_pointer(nf_ct_ext_types[type->id], NULL);
+>  	update_alloc_size(type);
+>  	mutex_unlock(&nf_ct_ext_type_mutex);
+> -	synchronize_rcu();
+> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+>  }
+>  EXPORT_SYMBOL_GPL(nf_ct_extend_unregister);
+> 
 
