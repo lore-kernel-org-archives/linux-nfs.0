@@ -1,63 +1,50 @@
-From: andros@netapp.com
-Subject: [PATCH 14/14] nfsd41: remove redundant failed sequence check
-Date: Wed, 24 Jun 2009 15:37:58 -0400
-Message-ID: <1245872278-18743-15-git-send-email-andros@netapp.com>
-References: <>
- <1245872278-18743-1-git-send-email-andros@netapp.com>
- <1245872278-18743-2-git-send-email-andros@netapp.com>
- <1245872278-18743-3-git-send-email-andros@netapp.com>
- <1245872278-18743-4-git-send-email-andros@netapp.com>
- <1245872278-18743-5-git-send-email-andros@netapp.com>
- <1245872278-18743-6-git-send-email-andros@netapp.com>
- <1245872278-18743-7-git-send-email-andros@netapp.com>
- <1245872278-18743-8-git-send-email-andros@netapp.com>
- <1245872278-18743-9-git-send-email-andros@netapp.com>
- <1245872278-18743-10-git-send-email-andros@netapp.com>
- <1245872278-18743-11-git-send-email-andros@netapp.com>
- <1245872278-18743-12-git-send-email-andros@netapp.com>
- <1245872278-18743-13-git-send-email-andros@netapp.com>
- <1245872278-18743-14-git-send-email-andros@netapp.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Andy Adamson <andros@netapp.com>
-To: bfields@citi.umich.edu
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 37/44] nfsd41: sunrpc: Added rpc server-side
+	backchannel handling
+Date: Wed, 24 Jun 2009 16:05:58 -0400
+Message-ID: <20090624200558.GV14503@fieldses.org>
+References: <1245115259-8023-1-git-send-email-bhalevy@panasas.com> <20090622181954.GB19619@fieldses.org> <4A406C55.5030008@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:40120 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761090AbZFXTiI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Jun 2009 15:38:08 -0400
-In-Reply-To: <1245872278-18743-14-git-send-email-andros@netapp.com>
+Received: from 174-143-236-118.static.slicehost.net ([174.143.236.118]:49329
+	"EHLO fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753059AbZFXUF7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 16:05:59 -0400
+In-Reply-To: <4A406C55.5030008@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Jun 23, 2009 at 08:47:01AM +0300, Benny Halevy wrote:
+> On Jun. 22, 2009, 21:19 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > By the way, apologies, I believe these are quite close, but the merge
+> > window is closing and I need to help with the move, so this will have to
+> > be queued for 2.6.32.  I'll start doing that as soon as I can.
+> 
+> Sigh, bad timing.
+> Given the depth of your review we should definitely have had
+> to start reviewing this code much sooner.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfsd/nfs4state.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
+I'd saw "slowness" rather than depth!  And some bad planning on my part.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7662ca8..bb85d0d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1003,17 +1003,10 @@ void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
- 	struct nfsd4_slot *slot = resp->cstate.slot;
--	struct svc_rqst *rqstp = resp->rqstp;
--	struct nfsd4_compoundargs *args = rqstp->rq_argp;
--	struct nfsd4_op *op = &args->ops[resp->opcnt];
- 	unsigned int base;
- 
- 	dprintk("--> %s slot %p\n", __func__, slot);
- 
--	/* Don't cache a failed OP_SEQUENCE. */
--	if (resp->opcnt == 1 && op->opnum == OP_SEQUENCE && resp->cstate.status)
--		return;
--
- 	slot->sl_opcnt = resp->opcnt;
- 	slot->sl_status = resp->cstate.status;
- 
--- 
-1.5.4.3
+Anyway, one thing that would help would be just to make sure it's very
+clear what the final version of a patch series is.  If I'm not sure, I'm
+likely to procrastinate.
 
+Also other things being equal if it's possible to sequence series with
+easy bugfixes at the front, then I'm more likely to start in on them....
+
+--b.
+
+> > Also I'm aware there are some more bugfixes that should really go into
+> > 2.6.31; if I haven't dealt with those by the end of the week, please
+> > complain.
+> 
+> Thanks.  I'll follow up on that too.
+> 
+> Benny
+> 
+> > 
+> > --b.
