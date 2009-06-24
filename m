@@ -1,76 +1,126 @@
-From: Jesper Dangaard Brouer <jdb-4UpuNZONu4c@public.gmane.org>
-Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
-Date: Wed, 24 Jun 2009 14:09:27 +0200
-Message-ID: <1245845367.24921.3.camel@localhost.localdomain>
-References: <20090623150330.22490.87327.stgit@localhost>
-	 <20090623150429.22490.15113.stgit@localhost>
-	 <4A41C67E.8070301@googlemail.com>
-	 <1245843884.6695.54.camel@localhost.localdomain>
-Reply-To: jdb-4UpuNZONu4c@public.gmane.org
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 0/5] NFS private namespace patchset
+Date: Wed, 24 Jun 2009 13:58:12 +0100
+Message-ID: <20090624125812.GQ8633@ZenIV.linux.org.uk>
+References: <20090622190913.27923.31665.stgit@heimdal.trondhjem.org> <alpine.LFD.2.01.0906221238370.3240@localhost.localdomain> <20090623213309.GK8633@ZenIV.linux.org.uk> <alpine.LFD.2.01.0906231438390.3240@localhost.localdomain> <20090623232258.GL8633@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
-	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
-	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org, netfilter-devel@vger.kernel.org
-To: Chrissie Caulfield <christine.caulfield@googlemail.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lanfw001a.cxnet.dk ([87.72.215.196]:41632 "EHLO
-	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751058AbZFXMJ0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jun 2009 08:09:26 -0400
-In-Reply-To: <1245843884.6695.54.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090623232258.GL8633@ZenIV.linux.org.uk>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-06-24 at 13:44 +0200, Jesper Dangaard Brouer wrote:
-> On Wed, 2009-06-24 at 07:23 +0100, Chrissie Caulfield wrote:
-> > The issues with DECnet module unloading are a little more than just an
-> > RCU leak I think!
-> > 
-> > Though that area does need reviewing ... when I get some time.
-> 
-> Fine.  Now you have read my comment in the code, then there is a updated
-> patch below.  Will you ack-that?
+On Wed, Jun 24, 2009 at 12:22:58AM +0100, Al Viro wrote:
 
-Sorry wrong patch... forgot save the code and 'stg refresh'... 
+> OK, I've finally crawled through the pile of mail.  Will have the trees
+> (VFS and audit) out later tonight...
 
-[PATCH 07/10] decnet: Use rcu_barrier() on module unload.
+OK, here's the tame stuff; there's still more left, but that'll have to
+wait.  My apologies for disappearing in the middle of merge window ;-/
+Please pull from
 
-From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+  git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs-2.6.git/ for-linus
 
-The decnet module unloading as been disabled with a '#if 0' statement,
-because it have had issues.
+Shortlog:
 
-We add a rcu_barrier() anyhow for correctness.
+Al Viro (16):
+      Make allocation of anon devices cheaper
+      ... and the same for vfsmount id/mount group id
+      add caching of ACLs in struct inode
+      switch ext2 to inode->i_acl
+      switch ext3 to inode->i_acl
+      switch ext4 to inode->i_acl
+      switch jfs to inode->i_acl
+      switch jffs2 to inode->i_acl
+      switch btrfs to inode->i_acl
+      switch nilfs2 to inode->i_acl
+      reiserfs: minimal fix for ACL caching
+      switch reiserfs to usual conventions for caching ACLs
+      switch reiserfs to inode->i_acl
+      switch shmem to inode->i_acl
+      helpers for acl caching + switch to those
+      switch xfs to generic acl caching helpers
 
-The maintainer (Chrissie Caulfield) will look into the unload issue
-when time permits.
+Ankit Jain (1):
+      fs: Add new pre-allocation ioctls to vfs for compatibility with legacy xfs ioctls
 
-Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
----
+Christoph Hellwig (3):
+      reiserfs: remove stray unlock_super in reiserfs_resize
+      update Documentation/filesystems/Locking
+      cleanup __writeback_single_inode
 
- net/decnet/af_decnet.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+H. Peter Anvin (1):
+      devpts: remove module-related code
 
+J. R. Okajima (1):
+      vfs: fix nd->root leak in do_filp_open()
 
-diff --git a/net/decnet/af_decnet.c b/net/decnet/af_decnet.c
-index d351b8d..77d4028 100644
---- a/net/decnet/af_decnet.c
-+++ b/net/decnet/af_decnet.c
-@@ -2413,6 +2413,8 @@ static void __exit decnet_exit(void)
- 	proc_net_remove(&init_net, "decnet");
- 
- 	proto_unregister(&dn_proto);
-+
-+	rcu_barrier_bh(); /* Wait for completion of call_rcu_bh()'s */
- }
- module_exit(decnet_exit);
- #endif
+Trond Myklebust (1):
+      VFS: Switch init_mount_tree() to use the new create_mnt_ns() helper
 
+Diffstat:
+
+ Documentation/filesystems/Locking |   41 ++++++++-------
+ fs/btrfs/acl.c                    |   44 +++-------------
+ fs/btrfs/btrfs_inode.h            |    4 --
+ fs/btrfs/ctree.h                  |    2 -
+ fs/btrfs/inode.c                  |   16 +-----
+ fs/compat_ioctl.c                 |   48 ++++++++++++++++++
+ fs/devpts/inode.c                 |   10 ----
+ fs/ext2/acl.c                     |   81 ++++++-----------------------
+ fs/ext2/acl.h                     |    4 --
+ fs/ext2/ext2.h                    |    4 --
+ fs/ext2/inode.c                   |    4 --
+ fs/ext2/super.c                   |   16 ------
+ fs/ext3/acl.c                     |   85 +++++++------------------------
+ fs/ext3/acl.h                     |    4 --
+ fs/ext3/inode.c                   |    4 --
+ fs/ext3/super.c                   |   16 ------
+ fs/ext4/acl.c                     |   67 +++---------------------
+ fs/ext4/acl.h                     |    4 --
+ fs/ext4/ext4.h                    |    4 --
+ fs/ext4/inode.c                   |    4 --
+ fs/ext4/super.c                   |   16 ------
+ fs/fs-writeback.c                 |  100 ++++++++++++++++++------------------
+ fs/inode.c                        |   10 ++++
+ fs/ioctl.c                        |   35 +++++++++++++
+ fs/jffs2/acl.c                    |   88 ++++++--------------------------
+ fs/jffs2/acl.h                    |    4 --
+ fs/jffs2/jffs2_fs_i.h             |    4 --
+ fs/jffs2/os-linux.h               |    4 --
+ fs/jffs2/readinode.c              |    1 -
+ fs/jfs/acl.c                      |   42 ++++++----------
+ fs/jfs/jfs_incore.h               |    6 --
+ fs/jfs/super.c                    |   16 ------
+ fs/jfs/xattr.c                    |   10 +---
+ fs/namei.c                        |   11 ++++-
+ fs/namespace.c                    |   37 +++++++++-----
+ fs/nilfs2/inode.c                 |    8 ---
+ fs/nilfs2/nilfs.h                 |    4 --
+ fs/nilfs2/super.c                 |   10 ----
+ fs/open.c                         |   58 +++++++++++-----------
+ fs/reiserfs/inode.c               |    4 --
+ fs/reiserfs/resize.c              |    1 -
+ fs/reiserfs/super.c               |   24 ---------
+ fs/reiserfs/xattr_acl.c           |   58 ++++-----------------
+ fs/super.c                        |    9 +++-
+ fs/ubifs/xattr.c                  |    2 +-
+ fs/xfs/linux-2.6/xfs_acl.c        |   73 +++-----------------------
+ fs/xfs/xfs_acl.h                  |    4 --
+ fs/xfs/xfs_iget.c                 |    2 -
+ fs/xfs/xfs_inode.h                |    5 --
+ include/linux/ext3_fs_i.h         |    4 --
+ include/linux/falloc.h            |   21 ++++++++
+ include/linux/fs.h                |   13 +++++
+ include/linux/posix_acl.h         |   64 +++++++++++++++++++++++
+ include/linux/reiserfs_acl.h      |   17 ------
+ include/linux/reiserfs_fs_i.h     |    4 --
+ include/linux/shmem_fs.h          |    8 ---
+ mm/shmem.c                        |    9 ++--
+ mm/shmem_acl.c                    |   29 ++---------
+ 58 files changed, 455 insertions(+), 822 deletions(-)
