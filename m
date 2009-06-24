@@ -1,114 +1,74 @@
-From: Patrick McHardy <kaber@trash.net>
-Subject: Re: [PATCH v2 10/10] nf_conntrack: Use rcu_barrier() and fix	kmem_cache_create
- flags
-Date: Wed, 24 Jun 2009 15:58:32 +0200
-Message-ID: <4A423108.60109@trash.net>
-References: <20090623150330.22490.87327.stgit@localhost>	 <20090623150444.22490.27931.stgit@localhost>  <4A410185.3090706@trash.net>	 <1245834139.6695.31.camel@localhost.localdomain> <1245836409.6695.35.camel@localhost.localdomain>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH 09/10] cfq-iosched: Uses its own open-coded rcu_barrier.
+Date: Wed, 24 Jun 2009 07:05:05 -0700
+Message-ID: <20090624140505.GA6779@linux.vnet.ibm.com>
+References: <20090623150330.22490.87327.stgit@localhost> <20090623150439.22490.14657.stgit@localhost> <20090624064236.GE31415@kernel.dk>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, christine.caulfield@googlemail.com,
-	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
-	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: jdb@comx.dk
-Return-path: <linux-ext4-owner@vger.kernel.org>
-In-Reply-To: <1245836409.6695.35.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
+	"David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org, dougthompson@xmission.com,
+	bluesmoke-devel@lists.sourceforge.net,
+	Patrick McHardy <kaber@trash.net>,
+	christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
+	linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
+	yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
+	linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org,
+	netfilter-devel@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:47826 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751240AbZFXOFJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jun 2009 10:05:09 -0400
+In-Reply-To: <20090624064236.GE31415@kernel.dk>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jesper Dangaard Brouer wrote:
-> Adjusting SLAB_DESTROY_BY_RCU flags.
+On Wed, Jun 24, 2009 at 08:42:37AM +0200, Jens Axboe wrote:
+> On Tue, Jun 23 2009, Jesper Dangaard Brouer wrote:
+> > This module cfq-iosched, has discovered the value of waiting for
+> > call_rcu() completion, but its has its own open-coded implementation
+> > of rcu_barrier(), which I don't think is 'strong' enough.
+> > 
+> > This patch only leaves a comment for the maintainers to consider.
 > 
->  kmem_cache_create("nf_conntrack", ...) does not need the
->  SLAB_DESTROY_BY_RCU flag.
+> We need a stronger primitive and rcu_barrier(), since we also need to
+> wait for the rcu calls to even be scheduled. So I don't think the below
+> can be improved, it's already fine.
 
-It does need it. We're using it instead of call_rcu() for conntracks.
+It is indeed important to first prevent new call_rcu() instances from
+being invoked, and only then invoke rcu_barrier().
 
->  But the
->  kmem_cache_create("nf_conntrack_expect", ...) should use the
->  SLAB_DESTROY_BY_RCU flag, because it uses a call_rcu() callback to
->  invoke kmem_cache_free().
+							Thanx, Paul
 
-No, using call_rcu() means we don't need SLAB_DESTROY_BY_RCU.
-Please see the note in include/linux/slab.h.
-
-> RCU barriers, rcu_barrier(), is inserted two places.
+> > Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+> > ---
+> > 
+> >  block/cfq-iosched.c |    6 ++++++
+> >  1 files changed, 6 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
+> > index 833ec18..c15555b 100644
+> > --- a/block/cfq-iosched.c
+> > +++ b/block/cfq-iosched.c
+> > @@ -2657,6 +2657,12 @@ static void __exit cfq_exit(void)
+> >  	/*
+> >  	 * this also protects us from entering cfq_slab_kill() with
+> >  	 * pending RCU callbacks
+> > +	 *
+> > +	 * hawk-4UpuNZONu4c@public.gmane.org 2009-06-18: Maintainer please consider using
+> > +	 *  rcu_barrier() instead of this open-coded wait for
+> > +	 *  completion implementation.  I think it provides a better
+> > +	 *  guarantee that all CPUs are finished, although
+> > +	 *  elv_ioc_count_read() do consider all CPUs.
+> >  	 */
+> >  	if (elv_ioc_count_read(ioc_count))
+> >  		wait_for_completion(&all_gone);
+> > 
 > 
->  In nf_conntrack_expect.c nf_conntrack_expect_fini() before the
->  kmem_cache_destroy(), even though the use of the SLAB_DESTROY_BY_RCU
->  flag, because slub does not (currently) handle rcu sync correctly.
-
-I think that should be fixed in slub then.
-
->  And in nf_conntrack_extend.c nf_ct_extend_unregister(), inorder to
->  wait for completion of callbacks to __nf_ct_ext_free_rcu(), which is
->  invoked by __nf_ct_ext_add().  It might be more efficient to call
->  rcu_barrier() in nf_conntrack_core.c nf_conntrack_cleanup_net(), but
->  thats make it more difficult to read the code (as the callback code
->  in located in nf_conntrack_extend.c).
-
-This one looks fine.
-
-> diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
-> index 5f72b94..438ce84 100644
-> --- a/net/netfilter/nf_conntrack_core.c
-> +++ b/net/netfilter/nf_conntrack_core.c
-> @@ -1242,7 +1242,7 @@ static int nf_conntrack_init_init_net(void)
->  
->  	nf_conntrack_cachep = kmem_cache_create("nf_conntrack",
->  						sizeof(struct nf_conn),
-> -						0, SLAB_DESTROY_BY_RCU, NULL);
-> +						0, 0, NULL);
->  	if (!nf_conntrack_cachep) {
->  		printk(KERN_ERR "Unable to create nf_conn slab cache\n");
->  		ret = -ENOMEM;
-> diff --git a/net/netfilter/nf_conntrack_expect.c b/net/netfilter/nf_conntrack_expect.c
-> index afde8f9..56227c2 100644
-> --- a/net/netfilter/nf_conntrack_expect.c
-> +++ b/net/netfilter/nf_conntrack_expect.c
-> @@ -593,7 +593,7 @@ int nf_conntrack_expect_init(struct net *net)
->  	if (net_eq(net, &init_net)) {
->  		nf_ct_expect_cachep = kmem_cache_create("nf_conntrack_expect",
->  					sizeof(struct nf_conntrack_expect),
-> -					0, 0, NULL);
-> +					0, SLAB_DESTROY_BY_RCU, NULL);
->  		if (!nf_ct_expect_cachep)
->  			goto err2;
->  	}
-> @@ -617,8 +617,15 @@ err1:
->  void nf_conntrack_expect_fini(struct net *net)
->  {
->  	exp_proc_remove(net);
-> -	if (net_eq(net, &init_net))
-> +	if (net_eq(net, &init_net)) {
-> +		/* hawk@comx.dk 2009-06-24: The rcu_barrier() can be
-> +		 * removed once the sl*b allocators has been fixed
-> +		 * regarding handling the SLAB_DESTROY_BY_RCU flag
-> +		 * correctly.
-> +		 */
-> +		rcu_barrier(); /* Wait for call_rcu() before destroy */
->  		kmem_cache_destroy(nf_ct_expect_cachep);
-> +	}
->  	nf_ct_free_hashtable(net->ct.expect_hash, net->ct.expect_vmalloc,
->  			     nf_ct_expect_hsize);
->  }
-> diff --git a/net/netfilter/nf_conntrack_extend.c b/net/netfilter/nf_conntrack_extend.c
-> index 4b2c769..fef95be 100644
-> --- a/net/netfilter/nf_conntrack_extend.c
-> +++ b/net/netfilter/nf_conntrack_extend.c
-> @@ -186,6 +186,6 @@ void nf_ct_extend_unregister(struct nf_ct_ext_type *type)
->  	rcu_assign_pointer(nf_ct_ext_types[type->id], NULL);
->  	update_alloc_size(type);
->  	mutex_unlock(&nf_ct_ext_type_mutex);
-> -	synchronize_rcu();
-> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
->  }
->  EXPORT_SYMBOL_GPL(nf_ct_extend_unregister);
+> -- 
+> Jens Axboe
 > 
-
