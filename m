@@ -1,50 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:52563 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:63517 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751151AbZFDU50 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2009 16:57:26 -0400
-Subject: Re: Link performance over NFS degraded in RHEL5. -- was :
- Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Brian R Cowan <brcowan@us.ibm.com>
-Cc: Carlos Carvalho <carlos@fisica.ufpr.br>, linux-nfs@vger.kernel.org,
-        linux-nfs-owner@vger.kernel.org
-In-Reply-To: <OF37FCED66.33F08949-ON852575CB.006DE109-852575CB.0071CFBD@us.ibm.com>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
-	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
-	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
-	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
-	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
-	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
-	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
-	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
-	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
-	 <1243963631.4868.124.camel@heimdal.trondhjem.org>
-	 <18982.41770.293636.786518@fisica.ufpr.br>
-	 <1244049027.5603.5.camel@heimdal.trondhjem.org>
-	 <OFB53BFCCB.0CEC7A7E-ON852575C <1244138698.5203.59.camel@heimdal.trondhjem.org>
-	 <OF37FCED66.33F08949-ON852575CB.006DE109-852575CB.0071CFBD@us.ibm.com>
-Content-Type: text/plain
-Date: Thu, 04 Jun 2009 16:57:22 -0400
-Message-Id: <1244149042.5203.108.camel@heimdal.trondhjem.org>
+	id S1755331AbZFXTh6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Jun 2009 15:37:58 -0400
+From: andros@netapp.com
+To: bfields@citi.umich.edu
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/5] nfsd41: use globals for DRC limits
+Date: Wed, 24 Jun 2009 15:37:45 -0400
+Message-Id: <1245872278-18743-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1245872278-18743-1-git-send-email-andros@netapp.com>
+References: <>
+ <1245872278-18743-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2009-06-04 at 16:43 -0400, Brian R Cowan wrote:
-> What I'm trying to understand is why RHEL 4 is not flushing anywhere near 
-> as often. Either RHEL4 erred on the side of not writing, and RHEL5 is 
-> erring on the opposite side, or RHEL5 is doing unnecessary flushes... I've 
-> seen that 2.6.29 flushes less than the Red hat 2.6.18-derived kernels, but 
-> it still flushes a lot more than RHEL 4 does.
+From: Andy Adamson <andros@netapp.com>
 
-Most of that increase is probably mainly due to the changes to the way
-stat() works. More precisely, it would be due to this patch:
+The version 4.1 DRC memory limit and tracking variables are server wide and
+session specific. Replace struct svc_serv fields with globals.
+Stop using the svc_serv sv_lock.
 
-   http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=70b9ecbdb9c5fdc731f8780bffd45d9519020c4a
+Add a spinlock to serialize access to the DRC limit management variables which
+change on session creation and deletion (usage counter) or (future)
+administrative action to adjust the total DRC memory limit.
 
-which went into Linux 2.6.16 in order to fix a posix compatibility
-issue.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfsd/nfs4state.c        |   10 +++++-----
+ fs/nfsd/nfssvc.c           |   19 +++++++++++++++----
+ include/linux/nfsd/nfsd.h  |    3 +++
+ include/linux/sunrpc/svc.h |    2 --
+ 4 files changed, 23 insertions(+), 11 deletions(-)
 
-Trond
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 980a216..2e6a44e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -430,11 +430,11 @@ static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+ 	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+ 		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
+ 
+-	spin_lock(&nfsd_serv->sv_lock);
+-	if (np + nfsd_serv->sv_drc_pages_used > nfsd_serv->sv_drc_max_pages)
+-		np = nfsd_serv->sv_drc_max_pages - nfsd_serv->sv_drc_pages_used;
+-	nfsd_serv->sv_drc_pages_used += np;
+-	spin_unlock(&nfsd_serv->sv_lock);
++	spin_lock(&nfsd_drc_lock);
++	if (np + nfsd_drc_pages_used > nfsd_drc_max_pages)
++		np = nfsd_drc_max_pages - nfsd_drc_pages_used;
++	nfsd_drc_pages_used += np;
++	spin_unlock(&nfsd_drc_lock);
+ 
+ 	if (np <= 0) {
+ 		status = nfserr_resource;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index d4c9884..78d8fcd 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -67,6 +67,16 @@ struct timeval			nfssvc_boot;
+ DEFINE_MUTEX(nfsd_mutex);
+ struct svc_serv 		*nfsd_serv;
+ 
++/*
++ * nfsd_drc_lock protects nfsd_drc_max_pages and nfsd_drc_pages_used.
++ * nfsd_drc_max_pages limits the total amount of memory available for
++ * version 4.1 DRC caches.
++ * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
++ */
++spinlock_t	nfsd_drc_lock;
++unsigned int	nfsd_drc_max_pages;
++unsigned int	nfsd_drc_pages_used;
++
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ static struct svc_stat	nfsd_acl_svcstats;
+ static struct svc_version *	nfsd_acl_version[] = {
+@@ -238,11 +248,12 @@ static void set_max_drc(void)
+ {
+ 	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
+ 	#define NFSD_DRC_SIZE_SHIFT	7
+-	nfsd_serv->sv_drc_max_pages = nr_free_buffer_pages()
++	nfsd_drc_max_pages = nr_free_buffer_pages()
+ 						>> NFSD_DRC_SIZE_SHIFT;
+-	nfsd_serv->sv_drc_pages_used = 0;
+-	dprintk("%s svc_drc_max_pages %u\n", __func__,
+-		nfsd_serv->sv_drc_max_pages);
++	nfsd_drc_pages_used = 0;
++	spin_lock_init(&nfsd_drc_lock);
++	dprintk("%s nfsd_drc_max_pages %u\n", __func__,
++		nfsd_drc_max_pages);
+ }
+ 
+ int nfsd_create_serv(void)
+diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+index 2b49d67..2571f85 100644
+--- a/include/linux/nfsd/nfsd.h
++++ b/include/linux/nfsd/nfsd.h
+@@ -56,6 +56,9 @@ extern struct svc_version	nfsd_version2, nfsd_version3,
+ extern u32			nfsd_supported_minorversion;
+ extern struct mutex		nfsd_mutex;
+ extern struct svc_serv		*nfsd_serv;
++extern spinlock_t		nfsd_drc_lock;
++extern unsigned int		nfsd_drc_max_pages;
++extern unsigned int		nfsd_drc_pages_used;
+ 
+ extern struct seq_operations nfs_exports_op;
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 2a30775..d0d8bf4 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -94,8 +94,6 @@ struct svc_serv {
+ 	struct module *		sv_module;	/* optional module to count when
+ 						 * adding threads */
+ 	svc_thread_fn		sv_function;	/* main function for threads */
+-	unsigned int		sv_drc_max_pages; /* Total pages for DRC */
+-	unsigned int		sv_drc_pages_used;/* DRC pages used */
+ };
+ 
+ /*
+-- 
+1.5.4.3
 
