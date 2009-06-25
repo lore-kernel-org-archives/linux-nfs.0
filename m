@@ -1,92 +1,60 @@
-From: Jesper Dangaard Brouer <jdb@comx.dk>
-Subject: [PATCH v3 10/10] nf_conntrack: Use rcu_barrier()
-Date: Thu, 25 Jun 2009 12:02:58 +0200
-Message-ID: <1245924178.24921.61.camel@localhost.localdomain>
+From: Jesper Dangaard Brouer <jdb-4UpuNZONu4c@public.gmane.org>
+Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
+Date: Thu, 25 Jun 2009 13:52:09 +0200
+Message-ID: <1245930729.24921.67.camel@localhost.localdomain>
 References: <20090623150330.22490.87327.stgit@localhost>
-	 <20090623150444.22490.27931.stgit@localhost>  <4A410185.3090706@trash.net>
-	 <1245834139.6695.31.camel@localhost.localdomain>
-	 <1245836409.6695.35.camel@localhost.localdomain> <4A423108.60109@trash.net>
-	 <1245922153.24921.56.camel@localhost.localdomain>
-Reply-To: jdb@comx.dk
+	 <20090623150429.22490.15113.stgit@localhost>
+	 <4A41C67E.8070301@googlemail.com>
+	 <1245843884.6695.54.camel@localhost.localdomain>
+	 <1245845367.24921.3.camel@localhost.localdomain>
+	 <5A680E0A-EFEB-44EA-9F06-F338E6CBD6D1@googlemail.com>
+Reply-To: jdb-4UpuNZONu4c@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Christoph Lameter <cl@linux-foundation.org>, linux-mm@kvack.org,
-	"David S. Miller" <davem@davemloft.net>,
+Cc: "David S. Miller" <davem@davemloft.net>,
 	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
 	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, christine.caulfield@googlemail.com,
-	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
+	dougthompson@xmission.com, axboe@kernel.dk,
+	Patrick McHardy <kaber@trash.net>, Trond.Myklebust@netapp.com,
 	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
 	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
 	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: Patrick McHardy <kaber@trash.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-In-Reply-To: <1245922153.24921.56.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
+	tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org, netfilter-devel@vger.kernel.org
+To: Chrissie Caulfield <christine.caulfield@googlemail.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from lanfw001a.cxnet.dk ([87.72.215.196]:49908 "EHLO
+	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751144AbZFYLwH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2009 07:52:07 -0400
+In-Reply-To: <5A680E0A-EFEB-44EA-9F06-F338E6CBD6D1@googlemail.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-06-25 at 11:29 +0200, Jesper Dangaard Brouer wrote:
-> Should I make two different patchs?
+On Wed, 2009-06-24 at 14:50 +0100, Chrissie Caulfield wrote:
+> I don't have any objection to the patch at all, 
 
-Here is the single patch... Patrick tell me if you want it split up?
+Thus assuming an:
 
+Acked-by: Chrissie Caulfield <christine.caulfield@googlemail.com>
 
-[PATCH v3 10/10] nf_conntrack: Use rcu_barrier()
+(wondering if patchworks picks this up...)
 
-From: Jesper Dangaard Brouer <hawk@comx.dk>
+> it just seemed a  
+> little odd to deliberately add code inside #if 0 ;-)
 
-RCU barriers, rcu_barrier(), is inserted two places.
+Yes, but it makes sense if you want to fix that code path later on.
 
- In nf_conntrack_expect.c nf_conntrack_expect_fini() before the
- kmem_cache_destroy().  Firstly to make sure the callback to the
- nf_ct_expect_free_rcu() code is still around.  Secondly because I'm
- unsure about the consequence of having in flight
- nf_ct_expect_free_rcu/kmem_cache_free() calls while doing a
- kmem_cache_destroy() slab destroy.
+And I'm not the only one who have added code here... git blame:
 
- And in nf_conntrack_extend.c nf_ct_extend_unregister(), inorder to
- wait for completion of callbacks to __nf_ct_ext_free_rcu(), which is
- invoked by __nf_ct_ext_add().  It might be more efficient to call
- rcu_barrier() in nf_conntrack_core.c nf_conntrack_cleanup_net(), but
- thats make it more difficult to read the code (as the callback code
- in located in nf_conntrack_extend.c).
+fa34ddd7 (Thomas Graf              2007-03-22 11:57:46 -0700 2401)
+457c4cbc (Eric W. Biederman        2007-09-12 12:01:34 +0200 2413)
 
-Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
----
-
- net/netfilter/nf_conntrack_expect.c |    4 +++-
- net/netfilter/nf_conntrack_extend.c |    2 +-
- 2 files changed, 4 insertions(+), 2 deletions(-)
-
-
-diff --git a/net/netfilter/nf_conntrack_expect.c b/net/netfilter/nf_conntrack_expect.c
-index afde8f9..2032dfe 100644
---- a/net/netfilter/nf_conntrack_expect.c
-+++ b/net/netfilter/nf_conntrack_expect.c
-@@ -617,8 +617,10 @@ err1:
- void nf_conntrack_expect_fini(struct net *net)
- {
- 	exp_proc_remove(net);
--	if (net_eq(net, &init_net))
-+	if (net_eq(net, &init_net)) {
-+		rcu_barrier(); /* Wait for call_rcu() before destroy */
- 		kmem_cache_destroy(nf_ct_expect_cachep);
-+	}
- 	nf_ct_free_hashtable(net->ct.expect_hash, net->ct.expect_vmalloc,
- 			     nf_ct_expect_hsize);
- }
-diff --git a/net/netfilter/nf_conntrack_extend.c b/net/netfilter/nf_conntrack_extend.c
-index 4b2c769..fef95be 100644
---- a/net/netfilter/nf_conntrack_extend.c
-+++ b/net/netfilter/nf_conntrack_extend.c
-@@ -186,6 +186,6 @@ void nf_ct_extend_unregister(struct nf_ct_ext_type *type)
- 	rcu_assign_pointer(nf_ct_ext_types[type->id], NULL);
- 	update_alloc_size(type);
- 	mutex_unlock(&nf_ct_ext_type_mutex);
--	synchronize_rcu();
-+	rcu_barrier(); /* Wait for completion of call_rcu()'s */
- }
- EXPORT_SYMBOL_GPL(nf_ct_extend_unregister);
-
+Cheers,
+                                  -- 
+                    Med venlig hilsen / Best regards
+                              Jesper Brouer
+                            ComX Networks A/S
+                         Linux Network developer
+                       Cand. Scient Datalog / MSc.
+                    Author of http://adsl-optimizer.dk
+               LinkedIn: http://www.linkedin.com/in/brouer
