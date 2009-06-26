@@ -1,45 +1,38 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
-Date: Thu, 25 Jun 2009 16:10:46 -0700 (PDT)
-Message-ID: <20090625.161046.19938291.davem@davemloft.net>
-References: <1245845367.24921.3.camel@localhost.localdomain>
-	<5A680E0A-EFEB-44EA-9F06-F338E6CBD6D1@googlemail.com>
-	<1245930729.24921.67.camel@localhost.localdomain>
+From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
+Subject: Reference to file size in nfsd_create_v3
+Date: Fri, 26 Jun 2009 14:40:12 +0530
+Message-ID: <4A449074.6060600@gluster.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: christine.caulfield@googlemail.com, paulmck@linux.vnet.ibm.com,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, axboe@kernel.dk, kaber@trash.net,
-	Trond.Myklebust@netapp.com, johannes@sipsolutions.net,
-	yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
-	linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger-xsfywfwIY+M@public.gmane.org,
-	netfilter-devel@vger.kernel.org
-To: jdb-4UpuNZONu4c@public.gmane.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:55640
-	"EHLO sunset.davemloft.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752782AbZFYXKm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Jun 2009 19:10:42 -0400
-In-Reply-To: <1245930729.24921.67.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
+Received: from saturn.datasyncintra.net ([208.88.241.29]:60202 "EHLO
+	saturn.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752885AbZFZJIt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jun 2009 05:08:49 -0400
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by saturn.datasyncintra.net (Postfix) with ESMTP id 7787D85F637
+	for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2009 04:08:52 -0500 (CDT)
+Received: from saturn.datasyncintra.net ([127.0.0.1])
+	by localhost (saturn.datasyncintra.net [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 0jJE--c-gA2T for <linux-nfs@vger.kernel.org>;
+	Fri, 26 Jun 2009 04:08:52 -0500 (CDT)
+Received: from [192.168.1.91] (unknown [122.166.102.221])
+	(Authenticated sender: shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org)
+	by saturn.datasyncintra.net (Postfix) with ESMTP id 483D785F61F
+	for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2009 04:08:50 -0500 (CDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jesper Dangaard Brouer <jdb-4UpuNZONu4c@public.gmane.org>
-Date: Thu, 25 Jun 2009 13:52:09 +0200
+Hi All
 
-> On Wed, 2009-06-24 at 14:50 +0100, Chrissie Caulfield wrote:
->> I don't have any objection to the patch at all, 
-> 
-> Thus assuming an:
-> 
-> Acked-by: Chrissie Caulfield <christine.caulfield@googlemail.com>
-> 
-> (wondering if patchworks picks this up...)
+I am looking at the fs/nfsd/vfs.c:nfsd_create_v3 function.
+In there, a comment says:
+"furthermore, if the size is nonzero, we should ignore it
+according to spec!"
 
-It usually does.
+Could someone please point out the section in RFC1813 where this
+  particular point is specified?
 
-However, could you formally resubmit just the networking bits
-as that would make life a lot easier for me.
-
-Thanks a lot Jesper!
+Thanks
+Shehjar
