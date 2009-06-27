@@ -1,55 +1,68 @@
-From: Dale Stimson <DaleStimson@gmail.com>
-Subject: Re: [PATCH] Short write in nfsd becomes a full write to the client
-Date: Fri, 26 Jun 2009 21:24:49 -0700
-Message-ID: <20090627042449.GC15665@cupro.opengvs.com>
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
+Date: Sat, 27 Jun 2009 09:35:04 +0200
+Message-ID: <1246088104.29340.5.camel@localhost.localdomain>
+References: <1245845367.24921.3.camel@localhost.localdomain>
+	 <5A680E0A-EFEB-44EA-9F06-F338E6CBD6D1@googlemail.com>
+	 <1245930729.24921.67.camel@localhost.localdomain>
+	 <20090625.161046.19938291.davem@davemloft.net>
+	 <Pine.LNX.4.64.0906262100210.14848@ask.diku.dk>
+	 <alpine.DEB.2.01.0906262010091.6439@bogon>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Shaw <dshaw-wh+mT2OhP0WF0gnf/s2wvA@public.gmane.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 68-185-24-58.static.mdfd.or.charter.com ([68.185.24.58]:43464
-	"EHLO cupro.opengvs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754743AbZF0Enf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Jun 2009 00:43:35 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: Jesper Dangaard Brouer <hawk@diku.dk>,
+	David Miller <davem@davemloft.net>, paulmck@linux.vnet.ibm.com,
+	netdev <netdev@vger.kernel.org>,
+	LKML <linux-kernel@vger.kernel.org>,
+	Patrick McHardy <kaber@trash.net>, yoshfuji@linux-ipv6.org,
+	linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+	catalin.marinas@gmail.com
+To: Christian Kujau <lists@nerdbynature.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+In-Reply-To: <alpine.DEB.2.01.0906262010091.6439@bogon>
+Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Mar 2009 20:16:14 -0500, David Shaw <dshaw-wh+mT2OhP0WF0gnf/s2wvA@public.gmane.org> wrote:
-> If a filesystem being written to via NFS returns a short write count
-> (as opposed to an error) to nfsd, nfsd treats that as a success for
-> the entire write, rather than the short count that actually succeeded.
+On Fri, 2009-06-26 at 20:15 -0700, Christian Kujau wrote:
+> On Fri, 26 Jun 2009, Jesper Dangaard Brouer wrote:
+> > I'll resubmit the patches to you and netdev, to limit the spam effect...
 > 
-> For example, given a 8192 byte write, if the underlying filesystem
-> only writes 4096 bytes, nfsd will ack back to the nfs client that all
-> 8192 bytes were written.  The nfs client does have retry logic for
-> short writes, but this is never called as the client is told the
-> complete write succeeded.
-...
-> Here is a patch to properly return the short write count to the
-> client.
-[patch elided]
+> Out of curiosity: why was linux-ext4 Cc'ed on these rcu_barrier patches
+> (but not other fs-lists but linux-nfs)? I did not see any ../fs/ext4/ 
+> changes.
 
-I bring this to your attention so you may, if you choose, look into
-this further:
+There was a ../fs/ext4/ change in patch [01/10].
 
-Problem synopsis:
-An old client (running RHL 9 with kernel "2.4.20-43.9.legacy")
-attempts to seek on a file mounted over nfs.  The operation fails
-with "Illegal seek" or "Input/Output error".  The server is running
-Fedora 11 kernel-PAE-2.6.29.5-191.fc11.i686, which includes the
-short write patch.  When this kernel is re-built without the short
-write patch, everything works as before.
+Titled: "ext4: Use rcu_barrier() on module unload"
 
-Detais are at
-https://bugzilla.redhat.com/show_bug.cgi?id=508174
+git show --stat d6a4ea73b7e8779607dd48735d9a9c521c890857
+commit d6a4ea73b7e8779607dd48735d9a9c521c890857
+Author: Jesper Dangaard Brouer <hawk@comx.dk>
+Date:   Tue Jun 23 15:40:54 2009 +0200
 
-Caveats: I am specifically referring to the patch file
-"linux-2.6-nfsd-report-short-writes.patch" as newly included in
-Fedora's file kernel-2.6.29.5-191.fc11.src.rpm .  I can't vouch
-that that patch file is identical to what was posted to this list
-or merged for 2.6.30-rc1.
+    ext4: Use rcu_barrier() on module unload.
+    
+    The ext4 module uses rcu_call() thus it should use rcu_barrier()on
+    module unload.
+    
+    The kmem cache ext4_pspace_cachep is sometimes free'ed using
+    call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
+    before doing kmem_cache_destroy().
+    
+    I have difficult determining if no new call_rcu() callbacks can be envoked.
+    Would the maintainer please verify this?
+    
+    Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
 
-(As an aside, in this case, the client was attempting a simple gcc
-compile and link.  The failing programs (invoked by fcc) were the
-assember ("as)" and "ld".)
+ fs/ext4/mballoc.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+-- 
+Med venlig hilsen / Best regards
+  Jesper Brouer
+  ComX Networks A/S
+  Linux Network developer
+  Cand. Scient Datalog / MSc.
+  Author of http://adsl-optimizer.dk
+  LinkedIn: http://www.linkedin.com/in/brouer
+
