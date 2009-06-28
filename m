@@ -1,47 +1,79 @@
-From: Leandro Lucarella <llucax@gmail.com>
-Subject: Re: 2.6.29+ NFS-Server Problem "reconnect_path: npd != pd"
-Date: Sat, 27 Jun 2009 16:39:27 -0300
-Message-ID: <20090627193927.GB25375@homero.springfield.home>
-References: <20090521142026.GA5566@geggus.net> <20090528202803.GF13860@fieldses.org> <20090528203228.GA6056@geggus.net> <200906191414.02674.mathias@blx4.net> <20090619124611.GA16337@geggus.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH 0/14] NFSv4.1 Server DRC rewrite Version 4
+Date: Sun, 28 Jun 2009 19:01:04 +0300
+Message-ID: <4A4793C0.5040903@panasas.com>
+References: <> <1245872278-18743-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mathias Kretschmer <mathias-ZcF2+9dVbKo@public.gmane.org>,
-	"J\. Bruce Fields" <bfields@fieldses.org>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: bfields@citi.umich.edu, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from [200.117.86.35] ([200.117.86.35]:38918 "EHLO
-	burns.springfield.home" rhost-flags-FAIL-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751257AbZF0UC4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Jun 2009 16:02:56 -0400
-In-Reply-To: <20090619124611.GA16337-6gBBswh35yKsTnJN9+BGXg@public.gmane.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:6680
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753401AbZF1QBD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jun 2009 12:01:03 -0400
+In-Reply-To: <1245872278-18743-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sven Geggus, el 19 de junio a las 14:46 me escribiste:
-> Mathias Kretschmer schrieb am Freitag, den 19. Juni um 14:14 Uhr:
-> 
-> > For a while my server has been running fine after the upgrade to 2.6.30.
-> > My NFS/diskless desktop worked just fine. Then yesterday evening suddenly the 
-> > first "reconnect_path: npd != pd" messages popped up.  Sometime during the 
-> > night the frequency of those messages showing up increased to > 100 msgs/sec 
-> > in average.
-> 
-> More or less the same here. My client machine (2.6.30) however worked just
-> for a few hours. It does however work fine using the older Kernel (2.6.27.x)
-> on the Server.
-> 
-> This is also XFS+NFS here. I will also attach the associated .config of the
-> Kernel.
+Andy,
 
-Hi, I want to confirm that I'm still having this problem in 2.6.30. I'm
-using Debian (unstable) too, and the exported fs is XFS.
+I've merged this patchset onto the nfsd41 branch which
+is now based on 2.6.31-rc1, replacing the respective patches
+you sent previously.
 
-Here is a related bug report:
-http://bugzilla.kernel.org/show_bug.cgi?id=13375
+Benny
 
--- 
-Leandro Lucarella (luca) | Blog colectivo: http://www.mazziblog.com.ar/blog/
-----------------------------------------------------------------------------
-GPG Key: 5F5A8D05 (F8CD F9A7 BF00 5431 4145  104C 949E BFB6 5F5A 8D05)
+On Jun. 24, 2009, 22:37 +0300, andros@netapp.com wrote:
+> NFSv4.1 Server DRC rewrite Version 4
+> 
+> This patch set applies to linux-nfs.org/~bfields/linux, for-2.6.31 branch
+> updated on 6-22-2009.
+> 
+> In response to bfield's comments I moved the DRC limit bug fixes to the front
+> of the series, consolidated patches replacing the single slot clientid DRC
+> into one patch and the replacement of the mulitple slot sequeqnce operation
+> DRC into another single patch.
+> 
+> The NFSv4.1 DRC is changed from a page based cache to
+> a buffer based cache. The logic for the single slot clientid cache has been
+> separated from the session slot logic to handle the CREATE_SESSION call
+> preceeded by a SEQUENCE and all the replay combinations therein.
+> 
+> The session DRC now caches encoded operations with the exception of the
+> SEQUENCE operation which for a replay is encoded with the current slot and
+> session values.  A review of message sizes indicates that a 512 byte buffer
+> for the operations is adequate.
+> 
+> Not addressed is replacing the nfsd4_check_drc_limit() post-operation checking
+> with a pre-operation processing estimate of the encoded per operation result
+> 
+> Testing:
+> 4.1 mount: Connectathon and 4.1pynfs including the new create session replay
+> tests.
+> 4.0 mount; Connectathon.
+> 
+> 0001-nfsd41-use-globals-for-DRC-limits.patch
+> 0002-nfsd41-change-from-page-to-memory-based-drc-limits.patch
+> 0003-nfsd41-reclaim-DRC-memory-on-session-free.patch
+> 0004-nfsd41-set-the-session-maximum-response-size-cached.patch
+> 0005-nfsd41-remove-redundant-forechannel-max-requests-ch.patch
+> 0006-nfsd41-change-check_slot_seqid-parameters.patch
+> 0007-nfsd41-replace-create_session-DRC-with-xdr-structur.patch
+> 0008-nfsd41-replace-page-based-DRC-with-buffer-based-DRC.patch
+> 0009-nfsd41-rename-nfsd4_enc_uncached_replay.patch
+> 0010-nfsd41-encode-replay-sequence-from-the-slot-values.patch
+> 0011-nfsd41-fix-nfsd4_replay_cache_entry-comments.patch
+> 0012-nfsd41-support-16-slots-per-session.patch
+> 0013-nfsd41-add-test-for-failed-sequence-operation.patch
+> 0014-nfsd41-remove-redundant-failed-sequence-check.patch
+> 
+> Comments welcome.
+> 
+> -->Andy
+> 
+> _______________________________________________
+> pNFS mailing list
+> pNFS@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
