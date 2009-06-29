@@ -1,202 +1,181 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/31] getport: Remove unneeded @salen arguments
-Date: Mon, 29 Jun 2009 13:35:35 -0400
-Message-ID: <20090629173535.2076.40148.stgit@matisse.1015granger.net>
+Subject: [PATCH 11/31] getport: Clear shared error fields before trying
+	rpcbind queries
+Date: Mon, 29 Jun 2009 13:36:32 -0400
+Message-ID: <20090629173632.2076.6602.stgit@matisse.1015granger.net>
 References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:52523 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758313AbZF2Rfz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:35:55 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:35279 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755999AbZF2Rg4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:36:56 -0400
 In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Now that getnameinfo(3) is no longer used, the @salen
-argument to nfs_sockaddr2universal() is no longer needed.
+Some RPC errors set fields in rpc_createerr.cf_error in addition
+to cf_stat.  Be sure to clear _all_ error fields in rpc_createerr
+each time through the rpcbind API.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/include/nfsrpc.h |    4 +---
- support/nfs/getport.c    |   42 +++++++++++++++++-------------------------
- 2 files changed, 18 insertions(+), 28 deletions(-)
+ support/include/nfsrpc.h |    9 +++++++++
+ support/nfs/getport.c    |   18 ++++++++++++++++++
+ support/nfs/rpc_socket.c |    4 ++++
+ utils/mount/network.c    |    3 +--
+ 4 files changed, 32 insertions(+), 2 deletions(-)
 
 diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
-index 543c35b..da3b4df 100644
+index da3b4df..b3cdb8c 100644
 --- a/support/include/nfsrpc.h
 +++ b/support/include/nfsrpc.h
-@@ -73,8 +73,7 @@ extern CLIENT		*nfs_get_priv_rpcclient( const struct sockaddr *,
- /*
-  * Convert a socket address to a universal address
-  */
--extern char		*nfs_sockaddr2universal(const struct sockaddr *,
--				const socklen_t);
-+extern char		*nfs_sockaddr2universal(const struct sockaddr *);
+@@ -49,6 +49,15 @@
+ #define NSMPROG		((rpcprog_t)100024)
+ #endif
  
++/**
++ * nfs_clear_rpc_createerr - zap all error reporting fields
++ *
++ */
++static inline void nfs_clear_rpc_createerr(void)
++{
++	memset(&rpc_createerr, 0, sizeof(rpc_createerr));
++}
++
  /*
-  * Extract port number from a universal address
-@@ -114,7 +113,6 @@ extern unsigned short	nfs_rpcb_getaddr(const struct sockaddr *,
- 				const socklen_t,
- 				const unsigned short,
- 				const struct sockaddr *,
--				const socklen_t,
- 				const rpcprog_t,
- 				const rpcvers_t,
- 				const unsigned short,
+  * Look up an RPC program name in /etc/rpc
+  */
 diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-index 056d3c7..bc0f121 100644
+index 71f02f3..aa9c154 100644
 --- a/support/nfs/getport.c
 +++ b/support/nfs/getport.c
-@@ -321,7 +321,6 @@ int nfs_universal2port(const char *uaddr)
- /**
-  * nfs_sockaddr2universal - convert a sockaddr to a "universal address"
-  * @sap: pointer to a socket address
-- * @salen: length of socket address
-  *
-  * Universal addresses (defined in RFC 1833) are used when calling an
-  * rpcbind daemon via protocol versions 3 or 4..
-@@ -334,8 +333,7 @@ int nfs_universal2port(const char *uaddr)
-  * in some earlier glibc releases, and we don't require support for
-  * scope IDs for universal addresses.
-  */
--char *nfs_sockaddr2universal(const struct sockaddr *sap,
--			     const socklen_t salen)
-+char *nfs_sockaddr2universal(const struct sockaddr *sap)
- {
- 	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sap;
- 	const struct sockaddr_un *sun = (const struct sockaddr_un *)sap;
-@@ -407,7 +405,6 @@ static int nfs_gp_ping(CLIENT *client, struct timeval timeout)
-  * to by r_netid and r_addr; otherwise 0.
-  */
- static int nfs_gp_init_rpcb_parms(const struct sockaddr *sap,
--				  const socklen_t salen,
- 				  const rpcprog_t program,
- 				  const rpcvers_t version,
- 				  const unsigned short protocol,
-@@ -419,7 +416,7 @@ static int nfs_gp_init_rpcb_parms(const struct sockaddr *sap,
- 	if (netid == NULL)
- 		return 0;
+@@ -627,6 +627,8 @@ int nfs_rpc_ping(const struct sockaddr *sap, const socklen_t salen,
+ 	if (timeout != NULL)
+ 		tout = *timeout;
  
--	addr = nfs_sockaddr2universal(sap, salen);
-+	addr = nfs_sockaddr2universal(sap);
- 	if (addr == NULL) {
- 		free(netid);
- 		return 0;
-@@ -540,7 +537,6 @@ static unsigned long nfs_gp_pmap_getport(CLIENT *client,
- 
- static unsigned short nfs_gp_getport_rpcb(CLIENT *client,
- 					  const struct sockaddr *sap,
--					  const socklen_t salen,
- 					  const rpcprog_t program,
- 					  const rpcvers_t version,
- 					  const unsigned short protocol,
-@@ -549,8 +545,8 @@ static unsigned short nfs_gp_getport_rpcb(CLIENT *client,
++	nfs_clear_rpc_createerr();
++
+ 	memcpy(saddr, sap, (size_t)salen);
+ 	client = nfs_get_rpcclient(saddr, salen, protocol,
+ 						program, version, &tout);
+@@ -690,6 +692,8 @@ unsigned short nfs_getport(const struct sockaddr *sap,
  	unsigned short port = 0;
- 	struct rpcb parms;
+ 	CLIENT *client;
  
--	if (nfs_gp_init_rpcb_parms(sap, salen, program,
--					version, protocol, &parms) != 0) {
-+	if (nfs_gp_init_rpcb_parms(sap, program, version,
-+					protocol, &parms) != 0) {
- 		port = nfs_gp_rpcb_getaddr(client, &parms, timeout);
- 		nfs_gp_free_rpcb_parms(&parms);
- 	}
-@@ -586,7 +582,6 @@ static unsigned long nfs_gp_getport_pmap(CLIENT *client,
-  */
- static unsigned short nfs_gp_getport(CLIENT *client,
- 				     const struct sockaddr *sap,
--				     const socklen_t salen,
- 				     const rpcprog_t program,
- 				     const rpcvers_t version,
- 				     const unsigned short protocol,
-@@ -595,7 +590,7 @@ static unsigned short nfs_gp_getport(CLIENT *client,
- 	switch (sap->sa_family) {
- #ifdef HAVE_LIBTIRPC
- 	case AF_INET6:
--		return nfs_gp_getport_rpcb(client, sap, salen, program,
-+		return nfs_gp_getport_rpcb(client, sap, program,
- 						version, protocol, timeout);
- #endif	/* HAVE_LIBTIRPC */
- 	case AF_INET:
-@@ -699,7 +694,7 @@ unsigned short nfs_getport(const struct sockaddr *sap,
++	nfs_clear_rpc_createerr();
++
+ 	memcpy(saddr, sap, (size_t)salen);
  	client = nfs_gp_get_rpcbclient(saddr, salen, protocol,
  						default_rpcb_version, &timeout);
- 	if (client != NULL) {
--		port = nfs_gp_getport(client, saddr, salen, program,
-+		port = nfs_gp_getport(client, saddr, program,
- 					version, protocol, timeout);
- 		CLNT_DESTROY(client);
- 	}
-@@ -737,7 +732,7 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
+@@ -729,6 +733,8 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
+ 	CLIENT *client;
+ 	int result = 0;
+ 	
++	nfs_clear_rpc_createerr();
++
  	client = nfs_gp_get_rpcbclient(sap, salen, protocol,
  						default_rpcb_version, &timeout);
  	if (client != NULL) {
--		port = nfs_gp_getport(client, sap, salen, program,
-+		port = nfs_gp_getport(client, sap, program,
- 					version, protocol, timeout);
- 		CLNT_DESTROY(client);
- 		client = NULL;
-@@ -812,7 +807,7 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
+@@ -745,6 +751,8 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
+ 		memcpy(saddr, sap, (size_t)salen);
+ 		nfs_gp_set_port(saddr, htons(port));
+ 
++		nfs_clear_rpc_createerr();
++
+ 		client = nfs_get_rpcclient(saddr, salen, protocol,
+ 						program, version, &timeout);
+ 		if (client != NULL) {
+@@ -803,6 +811,8 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
+ 	CLIENT *client;
+ 	struct timeval timeout = { -1, 0 };
+ 
++	nfs_clear_rpc_createerr();
++
+ 	client = nfs_gp_get_rpcbclient(sap, salen, 0, RPCBVERS_4, &timeout);
  	if (client != NULL) {
  		struct rpcb parms;
+@@ -817,6 +827,8 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
+ #endif	/* NFS_GP_LOCAL */
  
--		if (nfs_gp_init_rpcb_parms(sap, salen, program, version,
-+		if (nfs_gp_init_rpcb_parms(sap, program, version,
- 						protocol, &parms) != 0) {
- 			port = nfs_gp_rpcb_getaddr(client, &parms, timeout);
- 			nfs_gp_free_rpcb_parms(&parms);
-@@ -838,7 +833,6 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
-  * @salen: length of server address
-  * @transport: transport protocol to use for the query
-  * @addr: pointer to r_addr address
-- * @addrlen: length of address
-  * @program: requested RPC program number
-  * @version: requested RPC version number
-  * @protocol: requested IPPROTO_ value of transport protocol
-@@ -869,7 +863,6 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
- 				const socklen_t salen,
- 				const unsigned short transport,
- 				const struct sockaddr *addr,
--				const socklen_t addrlen,
- 				const rpcprog_t program,
- 				const rpcvers_t version,
- 				const unsigned short protocol,
-@@ -889,7 +882,7 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
+ 	if (port == 0) {
++		nfs_clear_rpc_createerr();
++
+ 		if (nfs_gp_loopback_address(lb_addr, &lb_len)) {
+ 			port = nfs_getport(lb_addr, lb_len,
+ 						program, version, protocol);
+@@ -878,6 +890,8 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
+ 	if (timeout != NULL)
+ 		tout = *timeout;
+ 
++	nfs_clear_rpc_createerr();
++
+ 	memcpy(saddr, sap, (size_t)salen);
  	client = nfs_gp_get_rpcbclient(saddr, salen, transport,
  							RPCBVERS_4, &tout);
- 	if (client != NULL) {
--		if (nfs_gp_init_rpcb_parms(addr, addrlen, program, version,
-+		if (nfs_gp_init_rpcb_parms(addr, program, version,
- 						protocol, &parms) != 0) {
- 			port = nfs_gp_rpcb_getaddr(client, &parms, tout);
- 			nfs_gp_free_rpcb_parms(&parms);
-@@ -902,15 +895,14 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
- 
- #else	/* !HAVE_LIBTIRPC */
- 
--unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
--				const socklen_t salen,
--				const unsigned short transport,
--				const struct sockaddr *addr,
--				const socklen_t addrlen,
--				const rpcprog_t program,
--				const rpcvers_t version,
--				const unsigned short protocol,
--				const struct timeval *timeout)
-+unsigned short nfs_rpcb_getaddr(__attribute__((unused)) const struct sockaddr *sap,
-+				__attribute__((unused)) const socklen_t salen,
-+				__attribute__((unused)) const unsigned short transport,
-+				__attribute__((unused)) const struct sockaddr *addr,
-+				__attribute__((unused)) const rpcprog_t program,
-+				__attribute__((unused)) const rpcvers_t version,
-+				__attribute__((unused)) const unsigned short protocol,
-+				__attribute__((unused)) const struct timeval *timeout)
+@@ -904,6 +918,8 @@ unsigned short nfs_rpcb_getaddr(__attribute__((unused)) const struct sockaddr *s
+ 				__attribute__((unused)) const unsigned short protocol,
+ 				__attribute__((unused)) const struct timeval *timeout)
  {
++	nfs_clear_rpc_createerr();
++
  	rpc_createerr.cf_stat = RPC_UNKNOWNADDR;
  	return 0;
+ }
+@@ -959,6 +975,8 @@ unsigned long nfs_pmap_getport(const struct sockaddr_in *sin,
+ 	if (timeout != NULL)
+ 		tout = *timeout;
+ 
++	nfs_clear_rpc_createerr();
++
+ 	memcpy(saddr, sin, sizeof(address));
+ 	client = nfs_gp_get_rpcbclient(saddr, (socklen_t)sizeof(*sin),
+ 					transport, PMAPVERS, &tout);
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+index ac4e6d8..a080487 100644
+--- a/support/nfs/rpc_socket.c
++++ b/support/nfs/rpc_socket.c
+@@ -443,6 +443,8 @@ CLIENT *nfs_get_rpcclient(const struct sockaddr *sap,
+ 	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+ 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+ 
++	nfs_clear_rpc_createerr();
++
+ 	switch (sap->sa_family) {
+ 	case AF_LOCAL:
+ 		return nfs_get_localclient(sap, salen, program,
+@@ -506,6 +508,8 @@ CLIENT *nfs_get_priv_rpcclient(const struct sockaddr *sap,
+ 	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+ 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+ 
++	nfs_clear_rpc_createerr();
++
+ 	switch (sap->sa_family) {
+ 	case AF_LOCAL:
+ 		return nfs_get_localclient(sap, salen, program,
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 04a62ab..3080378 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -538,7 +538,6 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
+ 	memcpy(saddr, sap, salen);
+ 	p_prot = prot ? &prot : protos;
+ 	p_vers = vers ? &vers : versions;
+-	rpc_createerr.cf_stat = 0;
+ 
+ 	for (;;) {
+ 		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
+@@ -581,7 +580,7 @@ out_ok:
+ 		pmap->pm_prot = *p_prot;
+ 	if (!port)
+ 		pmap->pm_port = p_port;
+-	rpc_createerr.cf_stat = 0;
++	nfs_clear_rpc_createerr();
+ 	return 1;
+ }
+ 
 
