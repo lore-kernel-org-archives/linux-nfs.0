@@ -1,55 +1,92 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 26/31] mount.nfs: Remove unused @salen parameter from
-	nfs_ca_gai()
-Date: Mon, 29 Jun 2009 13:39:03 -0400
-Message-ID: <20090629173903.2076.36065.stgit@matisse.1015granger.net>
+Subject: [PATCH 19/31] mount.nfs: Clean up nfs_is_permanent_error()
+Date: Mon, 29 Jun 2009 13:37:48 -0400
+Message-ID: <20090629173747.2076.52839.stgit@matisse.1015granger.net>
 References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:39836 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756811AbZF2RkN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:40:13 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:54809 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756504AbZF2RkI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:40:08 -0400
 In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Address compiler warning:
-
-    network.c:1124: warning: unused parameter =E2=80=98salen=E2=80=99
+Clean up: Move nfs_is_permanent_error() closer to the functions that
+call it, and update a documenting comment to reflect recent
+restructuring in this area.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ utils/mount/stropts.c |   45 +++++++++++++++++++++++++--------------------
+ 1 files changed, 25 insertions(+), 20 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 6e0a72a..11c7162 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1103,7 +1103,7 @@ static int nfs_ca_sockname(const struct sockaddr =
-*sap, const socklen_t salen,
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 6801569..6560f1c 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -287,26 +287,6 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ }
+ 
+ /*
+- * Distinguish between permanent and temporary errors.
+- *
+- * Returns 0 if the passed-in error is temporary, thus the
+- * mount system call should be retried; returns one if the
+- * passed-in error is permanent, thus the mount system call
+- * should not be retried.
+- */
+-static int nfs_is_permanent_error(int error)
+-{
+-	switch (error) {
+-	case ESTALE:
+-	case ETIMEDOUT:
+-	case ECONNREFUSED:
+-		return 0;	/* temporary */
+-	default:
+-		return 1;	/* permanent */
+-	}
+-}
+-
+-/*
+  * Get NFS/mnt server addresses from mount options
   *
-  * Returns 1 and fills in @buf if successful; otherwise, zero.
-  */
--static int nfs_ca_gai(const struct sockaddr *sap, const socklen_t sale=
-n,
-+static int nfs_ca_gai(const struct sockaddr *sap,
- 		      struct sockaddr *buf, socklen_t *buflen)
- {
- 	struct addrinfo *gai_results;
-@@ -1144,7 +1144,7 @@ int nfs_callback_address(const struct sockaddr *s=
-ap, const socklen_t salen,
- 	struct sockaddr_in6 *sin6 =3D (struct sockaddr_in6 *)buf;
-=20
- 	if (nfs_ca_sockname(sap, salen, buf, buflen) =3D=3D 0)
--		if (nfs_ca_gai(sap, salen, buf, buflen) =3D=3D 0)
-+		if (nfs_ca_gai(sap, buf, buflen) =3D=3D 0)
- 			goto out_failed;
-=20
- 	/*
+  * Returns 1 and fills in @nfs_saddr, @nfs_salen, @mnt_saddr, and @mnt_salen
+@@ -634,6 +614,31 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+ }
+ 
+ /*
++ * Distinguish between permanent and temporary errors.
++ *
++ * Basically, we retry if communication with the server has
++ * failed so far, but fail immediately if there is a local
++ * error (like a bad mount option).
++ *
++ * ESTALE is also a temporary error because some servers
++ * return ESTALE when a share is temporarily offline.
++ *
++ * Returns 1 if we should fail immediately, or 0 if we
++ * should retry.
++ */
++static int nfs_is_permanent_error(int error)
++{
++	switch (error) {
++	case ESTALE:
++	case ETIMEDOUT:
++	case ECONNREFUSED:
++		return 0;	/* temporary */
++	default:
++		return 1;	/* permanent */
++	}
++}
++
++/*
+  * Handle "foreground" NFS mounts.
+  *
+  * Retry the mount request for as long as the 'retry=' option says.
 
