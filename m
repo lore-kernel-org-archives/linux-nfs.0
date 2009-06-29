@@ -1,95 +1,98 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/31] mount.nfs: Add more debugging output around
-	nfs_getport()
-Date: Mon, 29 Jun 2009 13:36:41 -0400
-Message-ID: <20090629173641.2076.75316.stgit@matisse.1015granger.net>
+Subject: [PATCH 13/31] getport: Restore historical TCP connect timeout error
+	code
+Date: Mon, 29 Jun 2009 13:36:51 -0400
+Message-ID: <20090629173650.2076.36481.stgit@matisse.1015granger.net>
 References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:53665 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756869AbZF2RhC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:37:02 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:35615 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755762AbZF2RhM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:37:12 -0400
 In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So we can see how rpcbind queries are failing during mount processing,
-add some debugging messages (enabled with "mount.nfs -v") around the
-nfs_getport() calls.
+The latest versions of mount.nfs appear not to fall back to
+UDP if TCP isn't available on the server.
+
+Our new nfs_getport() implementation is missing a bit of logic
+from the original mount getport() implementation.  Without it,
+nfs_probe_port() sees a TCP connect timeout as a permanent error,
+so it fails immediately instead of attempting to try again with
+UDP.
+
+Similar changes for our new ping API (see the old clnt_ping()
+function, which is still in utils/mount/network.c).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   28 ++++++++++++++++++++++++----
- 1 files changed, 24 insertions(+), 4 deletions(-)
+ support/nfs/getport.c |   26 ++++++++++++++++++++++++--
+ 1 files changed, 24 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 3080378..9661995 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -509,6 +509,21 @@ static void nfs_pp_debug(const struct sockaddr *sap, const socklen_t salen,
- 			port);
- }
+diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+index aa9c154..e39f809 100644
+--- a/support/nfs/getport.c
++++ b/support/nfs/getport.c
+@@ -66,6 +66,23 @@ static const rpcvers_t default_rpcb_version = PMAPVERS;
+ #endif	/* !HAVE_LIBTIRPC */
  
-+static void nfs_pp_debug2(const char *str)
+ /*
++ * Historical: Map TCP connect timeouts to timeout
++ * error code used by UDP.
++ */
++static void
++nfs_gp_map_tcp_errorcodes(const unsigned short protocol)
 +{
-+	if (!verbose)
++	if (protocol != IPPROTO_TCP)
 +		return;
 +
-+	if (rpc_createerr.cf_error.re_status == RPC_CANTRECV ||
-+	    rpc_createerr.cf_error.re_status == RPC_CANTSEND)
-+		nfs_error(_("%s: portmap query %s%s - %s"),
-+				progname, str, clnt_spcreateerror(""),
-+				strerror(rpc_createerr.cf_error.re_errno));
-+	else
-+		nfs_error(_("%s: portmap query %s%s"),
-+				progname, str, clnt_spcreateerror(""));
++	switch (rpc_createerr.cf_error.re_errno) {
++	case ETIMEDOUT:
++		rpc_createerr.cf_stat = RPC_TIMEDOUT;
++		break;
++	}
 +}
 +
++/*
+  * There's no easy way to tell how the local system's networking
+  * and rpcbind is configured (ie. whether we want to use IPv6 or
+  * IPv4 loopback to contact RPC services on the local host).  We
+@@ -188,10 +205,13 @@ static CLIENT *nfs_gp_get_rpcbclient(struct sockaddr *sap,
+ 		NULL,
+ 	};
+ 	rpcprog_t rpcb_prog = nfs_getrpcbyname(RPCBPROG, rpcb_pgmtbl);
++	CLIENT *clnt;
+ 
+ 	nfs_gp_set_port(sap, nfs_gp_get_rpcb_port(transport));
+-	return nfs_get_rpcclient(sap, salen, transport, rpcb_prog,
+-					version, timeout);
++	clnt = nfs_get_rpcclient(sap, salen, transport, rpcb_prog,
++							version, timeout);
++	nfs_gp_map_tcp_errorcodes(transport);
++	return clnt;
+ }
+ 
  /*
-  * Use the portmapper to discover whether or not the service we want is
-  * available. The lists 'versions' and 'protos' define ordered sequences
-@@ -540,6 +555,9 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
- 	p_vers = vers ? &vers : versions;
- 
- 	for (;;) {
-+		if (verbose)
-+			printf(_("%s: prog %lu, trying vers=%lu, prot=%u\n"),
-+				progname, prog, *p_vers, *p_prot);
- 		p_port = nfs_getport(saddr, salen, prog, *p_vers, *p_prot);
- 		if (p_port) {
- 			if (!port || port == p_port) {
-@@ -555,22 +573,24 @@ static int nfs_probe_port(const struct sockaddr *sap, const socklen_t salen,
- 		    rpc_createerr.cf_stat != RPC_TIMEDOUT &&
- 		    rpc_createerr.cf_stat != RPC_CANTRECV &&
- 		    rpc_createerr.cf_stat != RPC_PROGVERSMISMATCH)
--			goto out_bad;
-+			break;
- 
- 		if (!prot) {
--			if (*++p_prot)
-+			if (*++p_prot) {
-+				nfs_pp_debug2("retrying");
- 				continue;
-+			}
- 			p_prot = protos;
- 		}
- 		if (rpc_createerr.cf_stat == RPC_TIMEDOUT ||
- 		    rpc_createerr.cf_stat == RPC_CANTRECV)
--			goto out_bad;
-+			break;
- 
- 		if (vers || !*++p_vers)
- 			break;
+@@ -634,6 +654,7 @@ int nfs_rpc_ping(const struct sockaddr *sap, const socklen_t salen,
+ 						program, version, &tout);
+ 	if (client != NULL) {
+ 		result = nfs_gp_ping(client, tout);
++		nfs_gp_map_tcp_errorcodes(protocol);
+ 		CLNT_DESTROY(client);
  	}
  
--out_bad:
-+	nfs_pp_debug2("failed");
- 	return 0;
- 
- out_ok:
+@@ -757,6 +778,7 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
+ 						program, version, &timeout);
+ 		if (client != NULL) {
+ 			result = nfs_gp_ping(client, timeout);
++			nfs_gp_map_tcp_errorcodes(protocol);
+ 			CLNT_DESTROY(client);
+ 		}
+ 	}
 
