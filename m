@@ -1,48 +1,63 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/31] getport: RPC_PROGNOTREGISTERED is a permanent error
-Date: Mon, 29 Jun 2009 13:36:23 -0400
-Message-ID: <20090629173622.2076.61556.stgit@matisse.1015granger.net>
+Subject: [PATCH 07/31] support: Use HAVE_LIBTIRPC to switch in
+	bindresvport_sa(3t)
+Date: Mon, 29 Jun 2009 13:35:54 -0400
+Message-ID: <20090629173554.2076.60138.stgit@matisse.1015granger.net>
 References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:55356 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754559AbZF2Rgn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:36:43 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:37156 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758589AbZF2RgQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:36:16 -0400
 In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpcbind returns RPC_PROGNOTREGISTERED if it knows for certain that an
-RPC program is not supported for a given transport.  This is a
-permanent and authoritative error, so the library's rpcbind query API
-should never retry the query -- it will only get the same answer.
+commit 383a026d99624c88c0e802103ef4c4865db8eb71, which fixed an
+earlier commit, is still not quite correct.
 
-A similar change was submitted for libtirpc.  Unlike rpcb_getaddr(3t),
-mount.nfs's rpcbind client only retries once (with RPCB3PROC_GETADDR),
-but an extra TCP socket in this case would leave another port in
-TIME_WAIT.  It's infrequent enough, but might as well get rid of it.
+bindresvport_sa(3t) is available whenever libtirpc is linked.
+There's no need to use IPV6_SUPPORTED here.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/nfs/getport.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ support/nfs/rpc_socket.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-index bc0f121..71f02f3 100644
---- a/support/nfs/getport.c
-+++ b/support/nfs/getport.c
-@@ -469,7 +469,7 @@ static unsigned short nfs_gp_rpcb_getaddr(CLIENT *client,
- 		case RPC_SUCCESS:
- 			if ((uaddr == NULL) || (uaddr[0] == '\0')) {
- 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
--				continue;
-+				return 0;
- 			}
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+index cebf83d..2f76542 100644
+--- a/support/nfs/rpc_socket.c
++++ b/support/nfs/rpc_socket.c
+@@ -132,7 +132,7 @@ static int nfs_bind(const int sock, const sa_family_t family)
+ 	return -1;
+ }
  
- 			port = nfs_universal2port(uaddr);
+-#ifdef IPV6_SUPPORTED
++#ifdef HAVE_LIBTIRPC
+ 
+ /*
+  * Bind a socket using an unused privileged source port.
+@@ -162,7 +162,7 @@ static int nfs_bindresvport(const int sock, const sa_family_t family)
+ 	return -1;
+ }
+ 
+-#else	/* !IPV6_SUPPORTED */
++#else	/* !HAVE_LIBTIRPC */
+ 
+ /*
+  * Bind a socket using an unused privileged source port.
+@@ -180,7 +180,7 @@ static int nfs_bindresvport(const int sock, const sa_family_t family)
+ 	return bindresvport(sock, NULL);
+ }
+ 
+-#endif	/* !IPV6_SUPPORTED */
++#endif	/* !HAVE_LIBTIRPC */
+ 
+ /*
+  * Perform a non-blocking connect on the socket fd.
 
