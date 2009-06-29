@@ -1,82 +1,55 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 31/31] mount.nfs: Squelch compiler warnings in nfs_strerror()
-Date: Mon, 29 Jun 2009 13:39:51 -0400
-Message-ID: <20090629173950.2076.12289.stgit@matisse.1015granger.net>
+Subject: [PATCH 26/31] mount.nfs: Remove unused @salen parameter from
+	nfs_ca_gai()
+Date: Mon, 29 Jun 2009 13:39:03 -0400
+Message-ID: <20090629173903.2076.36065.stgit@matisse.1015granger.net>
 References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:51709 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757111AbZF2RkL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:40:11 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:39836 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756811AbZF2RkN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:40:13 -0400
 In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Address compiler warnings:
+Address compiler warning:
 
-    error.c: In function =E2=80=98nfs_strerror=E2=80=99:
-    error.c:341: warning: comparison between signed and unsigned
-    error.c:342: warning: comparison between signed and unsigned
+    network.c:1124: warning: unused parameter =E2=80=98salen=E2=80=99
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/error.c |   12 ++++++------
- utils/mount/error.h |    2 +-
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ utils/mount/network.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/error.c b/utils/mount/error.c
-index 5c9d3f2..4cc9e09 100644
---- a/utils/mount/error.c
-+++ b/utils/mount/error.c
-@@ -300,6 +300,8 @@ void umount_error(int err, const char *dev)
- #define EDQUOT	ENOSPC
- #endif
-=20
-+#define ARRAY_SIZE(x)		(sizeof(x) / sizeof((x)[0]))=20
-+
- static struct {
- 	enum nfsstat stat;
- 	int errnum;
-@@ -329,19 +331,17 @@ static struct {
- #endif
- 	/* Throw in some NFSv3 values for even more fun (HP returns these) */
- 	{ 71,			EREMOTE		},
--
--	{ -1,			EIO		}
- };
-=20
--char *nfs_strerror(int stat)
-+char *nfs_strerror(unsigned int stat)
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 6e0a72a..11c7162 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1103,7 +1103,7 @@ static int nfs_ca_sockname(const struct sockaddr =
+*sap, const socklen_t salen,
+  *
+  * Returns 1 and fills in @buf if successful; otherwise, zero.
+  */
+-static int nfs_ca_gai(const struct sockaddr *sap, const socklen_t sale=
+n,
++static int nfs_ca_gai(const struct sockaddr *sap,
+ 		      struct sockaddr *buf, socklen_t *buflen)
  {
--	int i;
-+	unsigned int i;
- 	static char buf[256];
+ 	struct addrinfo *gai_results;
+@@ -1144,7 +1144,7 @@ int nfs_callback_address(const struct sockaddr *s=
+ap, const socklen_t salen,
+ 	struct sockaddr_in6 *sin6 =3D (struct sockaddr_in6 *)buf;
 =20
--	for (i =3D 0; nfs_errtbl[i].stat !=3D -1; i++) {
-+	for (i =3D 0; i < ARRAY_SIZE(nfs_errtbl); i++) {
- 		if (nfs_errtbl[i].stat =3D=3D stat)
- 			return strerror(nfs_errtbl[i].errnum);
- 	}
--	sprintf(buf, _("unknown nfs status return value: %d"), stat);
-+	sprintf(buf, _("unknown nfs status return value: %u"), stat);
- 	return buf;
- }
-diff --git a/utils/mount/error.h b/utils/mount/error.h
-index 7126de5..42b28cf 100644
---- a/utils/mount/error.h
-+++ b/utils/mount/error.h
-@@ -24,7 +24,7 @@
- #ifndef _NFS_UTILS_MOUNT_ERROR_H
- #define _NFS_UTILS_MOUNT_ERROR_H
+ 	if (nfs_ca_sockname(sap, salen, buf, buflen) =3D=3D 0)
+-		if (nfs_ca_gai(sap, salen, buf, buflen) =3D=3D 0)
++		if (nfs_ca_gai(sap, buf, buflen) =3D=3D 0)
+ 			goto out_failed;
 =20
--char *nfs_strerror(int);
-+char *nfs_strerror(unsigned int);
-=20
- void mount_error(const char *, const char *, int);
- void rpc_mount_errors(char *, int, int);
+ 	/*
 
