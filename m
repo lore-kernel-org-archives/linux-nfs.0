@@ -1,138 +1,151 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/31] getport: Remove AI_ADDRCONFIG from
-	nfs_gp_loopback_address()
-Date: Mon, 29 Jun 2009 13:35:17 -0400
-Message-ID: <20090629173516.2076.8213.stgit@matisse.1015granger.net>
+Subject: [PATCH 02/31] getport: RPCB_GETADDR's r_addr should contain rpcbind
+	port, not zero
+Date: Mon, 29 Jun 2009 13:35:08 -0400
+Message-ID: <20090629173507.2076.50205.stgit@matisse.1015granger.net>
 References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:54286 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758242AbZF2Rfq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:35:46 -0400
+Received: from rcsinet12.oracle.com ([148.87.113.124]:36291 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758097AbZF2Rfb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jun 2009 13:35:31 -0400
 In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-AI_ADDRCONFIG was used ostensibly to figure out if the local system
-had IPv6 available when generating a loopback address.
+Similar to a change made to the kernel's rpcbind client.  See
+kernel commit 143b6c4008a7928de7e139c3a77a90e4cad8db2c.
 
-A legacy version of nfs_gp_loopback_address() was created to handle
-ANYADDR address generation for old versions of glibc where
-AI_ADDRCONFIG doesn't exist.  This means we have to be careful to
-test both the normal and legacy versions when committing changes in
-this area.
-
-But it turns out that even contemporary versions of glibc ignore
-AI_ADDRCONFIG when the hostname string is NULL.  getaddrinfo(3)
-always returns an AF_INET and an AF_INET6 loopback address in this
-case, no matter how the system is configured.
-
-Change nfs_gp_loopback_address() to have one version that simply looks
-up "localhost" instead of doing anything fancy.  If "localhost" is an
-IPv6 address, we'll use that.  Otherwise, it should nearly always be
-an AF_INET loopback address.
-
-This eliminates the need for AI_ADDRCONFIG, and removes the duplicate
-version of nfs_gp_loopback_address().  Note that callers never used
-the port number in the returned socket address, so get rid of the
-"sunrpc" service string too.
+The r_addr argument of RPCB_GETADDR procedures contains the
+rpcbind server's address and port number.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- support/nfs/getport.c |   54 +++++++++----------------------------------------
- 1 files changed, 10 insertions(+), 44 deletions(-)
+ support/nfs/getport.c |   37 +++++++++++++++++++++++--------------
+ 1 files changed, 23 insertions(+), 14 deletions(-)
 
 diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-index 2b80dce..9d85e89 100644
+index 926bab8..2b80dce 100644
 --- a/support/nfs/getport.c
 +++ b/support/nfs/getport.c
-@@ -65,59 +65,32 @@ static const rpcvers_t default_rpcb_version = RPCBVERS_4;
- static const rpcvers_t default_rpcb_version = PMAPVERS;
- #endif	/* !HAVE_LIBTIRPC */
- 
--#ifdef HAVE_DECL_AI_ADDRCONFIG
- /*
-- * getaddrinfo(3) generates a usable loopback address based on how the
-- * local network interfaces are configured.  RFC 3484 requires that the
-- * results are sorted so that the first result has the best likelihood
-- * of working, so we try just that first result.
-+ * There's no easy way to tell how the local system's networking
-+ * and rpcbind is configured (ie. whether we want to use IPv6 or
-+ * IPv4 loopback to contact RPC services on the local host).  We
-+ * punt and simply try to look up "localhost".
-  *
-  * Returns TRUE on success.
+@@ -201,7 +201,7 @@ static in_port_t nfs_gp_get_rpcb_port(const unsigned short protocol)
+  * client.  Otherwise returns NULL, and rpc_createerr.cf_stat is set to
+  * reflect the error.
   */
- static int nfs_gp_loopback_address(struct sockaddr *sap, socklen_t *salen)
- {
- 	struct addrinfo *gai_results;
--	struct addrinfo gai_hint = {
--		.ai_flags	= AI_ADDRCONFIG,
--	};
--	socklen_t len = *salen;
- 	int ret = 0;
+-static CLIENT *nfs_gp_get_rpcbclient(const struct sockaddr *sap,
++static CLIENT *nfs_gp_get_rpcbclient(struct sockaddr *sap,
+ 				     const socklen_t salen,
+ 				     const unsigned short transport,
+ 				     const rpcvers_t version,
+@@ -214,14 +214,10 @@ static CLIENT *nfs_gp_get_rpcbclient(const struct sockaddr *sap,
+ 		"sunrpc",
+ 		NULL,
+ 	};
+-	struct sockaddr_storage address;
+-	struct sockaddr *saddr = (struct sockaddr *)&address;
+ 	rpcprog_t rpcb_prog = nfs_getrpcbyname(RPCBPROG, rpcb_pgmtbl);
  
--	if (getaddrinfo(NULL, "sunrpc", &gai_hint, &gai_results))
-+	if (getaddrinfo("localhost", NULL, NULL, &gai_results))
- 		return 0;
- 
--	switch (gai_results->ai_addr->sa_family) {
--	case AF_INET:
--	case AF_INET6:
--		if (len >= gai_results->ai_addrlen) {
--			memcpy(sap, gai_results->ai_addr,
--					gai_results->ai_addrlen);
--			*salen = gai_results->ai_addrlen;
--			ret = 1;
--		}
-+	if (*salen >= gai_results->ai_addrlen) {
-+		memcpy(sap, gai_results->ai_addr,
-+				gai_results->ai_addrlen);
-+		*salen = gai_results->ai_addrlen;
-+		ret = 1;
- 	}
- 
- 	freeaddrinfo(gai_results);
- 	return ret;
+-	memcpy(saddr, sap, (size_t)salen);
+-	nfs_gp_set_port(saddr, nfs_gp_get_rpcb_port(transport));
+-
+-	return nfs_get_rpcclient(saddr, salen, transport, rpcb_prog,
++	nfs_gp_set_port(sap, nfs_gp_get_rpcb_port(transport));
++	return nfs_get_rpcclient(sap, salen, transport, rpcb_prog,
+ 					version, timeout);
  }
--#else
--/*
-- * Old versions of getaddrinfo(3) don't support AI_ADDRCONFIG, so we
-- * have a fallback for building on legacy systems.
-- */
--static int nfs_gp_loopback_address(struct sockaddr *sap, socklen_t *salen)
--{
--	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
--
--	memset(sin, 0, sizeof(*sin));
--
--	sin->sin_family = AF_INET;
--	sin->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
--	*salen = sizeof(*sin);
--
--	return 1;
--}
--#endif
  
- /*
-  * Plant port number in @sap.  @port is already in network byte order.
-@@ -839,13 +812,6 @@ int nfs_getport_ping(struct sockaddr *sap, const socklen_t salen,
-  * isn't listening on /var/run/rpcbind.sock), send a query via UDP to localhost
-  * (UDP doesn't leave a socket in TIME_WAIT, and the timeout is a relatively
-  * short 3 seconds).
-- *
-- * getaddrinfo(3) generates a usable loopback address.  RFC 3484 requires that
-- * the results are sorted so that the first result has the best likelihood of
-- * working, so we try just that first result.  If IPv6 is all that is
-- * available, we are sure to generate an AF_INET6 loopback address and use
-- * rpcbindv4/v3 GETADDR.  AF_INET6 requests go via rpcbind v4/3 in order to
-- * detect if the requested RPC service supports AF_INET6 or not.
-  */
- unsigned short nfs_getlocalport(const rpcprot_t program,
- 				const rpcvers_t version,
+@@ -663,7 +659,7 @@ static unsigned short nfs_gp_getport(CLIENT *client,
+ }
+ 
+ /**
+- * nfs_rcp_ping - Determine if RPC service is responding to requests
++ * nfs_rpc_ping - Determine if RPC service is responding to requests
+  * @sap: pointer to address of server to query (port is already filled in)
+  * @salen: length of server address
+  * @program: requested RPC program number
+@@ -678,6 +674,8 @@ int nfs_rpc_ping(const struct sockaddr *sap, const socklen_t salen,
+ 		 const rpcprog_t program, const rpcvers_t version,
+ 		 const unsigned short protocol, const struct timeval *timeout)
+ {
++	struct sockaddr_storage address;
++	struct sockaddr *saddr = (struct sockaddr *)&address;
+ 	CLIENT *client;
+ 	struct timeval tout = { -1, 0 };
+ 	int result = 0;
+@@ -685,7 +683,9 @@ int nfs_rpc_ping(const struct sockaddr *sap, const socklen_t salen,
+ 	if (timeout != NULL)
+ 		tout = *timeout;
+ 
+-	client = nfs_get_rpcclient(sap, salen, protocol, program, version, &tout);
++	memcpy(saddr, sap, (size_t)salen);
++	client = nfs_get_rpcclient(saddr, salen, protocol,
++						program, version, &tout);
+ 	if (client != NULL) {
+ 		result = nfs_gp_ping(client, tout);
+ 		CLNT_DESTROY(client);
+@@ -740,14 +740,17 @@ unsigned short nfs_getport(const struct sockaddr *sap,
+ 			   const rpcvers_t version,
+ 			   const unsigned short protocol)
+ {
++	struct sockaddr_storage address;
++	struct sockaddr *saddr = (struct sockaddr *)&address;
+ 	struct timeval timeout = { -1, 0 };
+ 	unsigned short port = 0;
+ 	CLIENT *client;
+ 
+-	client = nfs_gp_get_rpcbclient(sap, salen, protocol,
++	memcpy(saddr, sap, (size_t)salen);
++	client = nfs_gp_get_rpcbclient(saddr, salen, protocol,
+ 						default_rpcb_version, &timeout);
+ 	if (client != NULL) {
+-		port = nfs_gp_getport(client, sap, salen, program,
++		port = nfs_gp_getport(client, saddr, salen, program,
+ 					version, protocol, timeout);
+ 		CLNT_DESTROY(client);
+ 	}
+@@ -930,6 +933,8 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
+ 				const unsigned short protocol,
+ 				const struct timeval *timeout)
+ {
++	struct sockaddr_storage address;
++	struct sockaddr *saddr = (struct sockaddr *)&address;
+ 	CLIENT *client;
+ 	struct rpcb parms;
+ 	struct timeval tout = { -1, 0 };
+@@ -938,7 +943,9 @@ unsigned short nfs_rpcb_getaddr(const struct sockaddr *sap,
+ 	if (timeout != NULL)
+ 		tout = *timeout;
+ 
+-	client = nfs_gp_get_rpcbclient(sap, salen, transport, RPCBVERS_4, &tout);
++	memcpy(saddr, sap, (size_t)salen);
++	client = nfs_gp_get_rpcbclient(saddr, salen, transport,
++							RPCBVERS_4, &tout);
+ 	if (client != NULL) {
+ 		if (nfs_gp_init_rpcb_parms(addr, addrlen, program, version,
+ 						protocol, &parms) != 0) {
+@@ -1004,6 +1011,8 @@ unsigned long nfs_pmap_getport(const struct sockaddr_in *sin,
+ 			       const unsigned long protocol,
+ 			       const struct timeval *timeout)
+ {
++	struct sockaddr_in address;
++	struct sockaddr *saddr = (struct sockaddr *)&address;
+ 	CLIENT *client;
+ 	struct pmap parms = {
+ 		.pm_prog	= program,
+@@ -1016,8 +1025,8 @@ unsigned long nfs_pmap_getport(const struct sockaddr_in *sin,
+ 	if (timeout != NULL)
+ 		tout = *timeout;
+ 
+-	client = nfs_gp_get_rpcbclient((struct sockaddr *)sin,
+-					(socklen_t)sizeof(*sin),
++	memcpy(saddr, sin, sizeof(address));
++	client = nfs_gp_get_rpcbclient(saddr, (socklen_t)sizeof(*sin),
+ 					transport, PMAPVERS, &tout);
+ 	if (client != NULL) {
+ 		port = nfs_gp_pmap_getport(client, &parms, tout);
 
