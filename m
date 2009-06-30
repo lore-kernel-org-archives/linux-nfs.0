@@ -1,40 +1,57 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [solved] Re: [PATCH] Short write in nfsd becomes a full write
-	to the client
-Date: Tue, 30 Jun 2009 11:22:50 -0400
-Message-ID: <20090630152250.GD17840@fieldses.org>
-References: <20090627042449.GC15665@cupro.opengvs.com> <20090629145952.GE4945@fieldses.org> <20090629192951.GA3851@cupro.opengvs.com> <20090629194711.GF8062@fieldses.org> <20090629194925.GG8062@fieldses.org> <20090630152209.GA3320@cupro.opengvs.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, David Shaw <dshaw-wh+mT2OhP0WF0gnf/s2wvA@public.gmane.org>
-To: Dale Stimson <DaleStimson@gmail.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 3/3] nfs41: pass state recovery error back to caller
+Date: Tue, 30 Jun 2009 20:06:30 +0300
+Message-ID: <1246381590-4010-1-git-send-email-bhalevy@panasas.com>
+References: <4A4A4564.3000708@panasas.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Benny Halevy <bhalevy@panasas.com>,
+	Andy Adamson <andros@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 174-143-236-118.static.slicehost.net ([174.143.236.118]:46820
-	"EHLO fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752179AbZF3PWr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2009 11:22:47 -0400
-In-Reply-To: <20090630152209.GA3320-NmLOIDrUSDQtrE7AZYN0JQC/G2K4zDHf@public.gmane.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:21657
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752303AbZF3RG3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2009 13:06:29 -0400
+In-Reply-To: <4A4A4564.3000708@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 30, 2009 at 08:22:09AM -0700, Dale Stimson wrote:
-> On Mon, Jun 29, 2009 at 03:49:25PM -0400, J. Bruce Fields wrote:
-> > After looking at the trace: yes, looks like the same problem.  (The
-> > (succesful) FILE_SYNC write request returned with a 0 length.)  So
-> > retest with the new patch applied, then poke the Fedora people to apply
-> > it as well.
-> > 
-> > --b.
-> 
-> Success.
-> 
-> I applied patch a0d24b295aed7a9daf4ca36bd4784e4d40f82303
-> "nfsd: fix hung up of nfs client while sync write data to nfs server"
-> to the otherwise unmodified Fedora 11 kernel 2.6.29.5-191.fc11.i686.PAE
-> and the problem was resolved.
-> 
-> Thank you for your help.  I will update
-> https://bugzilla.redhat.com/show_bug.cgi?id=508174
-> and suggest that the patch be applied to future Fedora 2.6.29-based kernels.
+Currently the error returned from create_session to the state manager
+is recorded in cl_cons_state via nfs_mark_client_ready
+but it is ignored by nfs4_check_client_ready and mis-translated to
+-EPROTONOSUPPORT if the client has a session.
 
-Thanks for following up.--b.
+Fixes https://bugzilla.linux-nfs.org/show_bug.cgi?id=178
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Cc: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |    9 ++-------
+ 1 files changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 157a1d9..b3f8307 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -536,16 +536,11 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ /*
+  * With sessions, the client is not marked ready until after a
+  * successful EXCHANGE_ID and CREATE_SESSION.
+- *
+- * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
+- * other versions of NFS can be tried.
+  */
+ int nfs4_check_client_ready(struct nfs_client *clp)
+ {
+-	if (!nfs4_has_session(clp))
+-		return 0;
+-	if (clp->cl_cons_state < NFS_CS_READY)
+-		return -EPROTONOSUPPORT;
++	if (clp->cl_cons_state < 0)
++		return clp->cl_cons_state;
+ 	return 0;
+ }
+ 
+-- 
+1.6.3.3
+
