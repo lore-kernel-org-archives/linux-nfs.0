@@ -1,111 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:50861 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751308AbZFDVtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Jun 2009 17:49:05 -0400
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org> <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org> <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org> <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com> <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br> <1244049027.5603.5.camel@heimdal.trondhjem.org>	 <OFB53BFCCB.0CEC7A7E-ON852575C <1244138698.5203.59.camel@heimdal.trondhjem.org>	 <OF37FCED66.33F08949-ON852575CB <1244149042.5203.108.camel@heimdal.trondhjem.org> <OFA43D111A.982879F6-ON852575CB.0073FBF9-852575CB.007622CD@us.ibm.com>
-Message-Id: <2E6FA271-39F6-4FE7-9642-B5F3CCF60045@fys.uio.no>
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Brian R Cowan <brcowan@us.ibm.com>
-In-Reply-To: <OFA43D111A.982879F6-ON852575CB.0073FBF9-852575CB.007622CD@us.ibm.com>
-Content-Type: text/plain;
-	charset=us-ascii;
-	format=flowed;
-	delsp=yes
-Subject: Re: Link performance over NFS degraded in RHEL5. -- was : Read/Write NFS I/O performance degraded by FLUSH_STABLE page flushing
-Date: Thu, 4 Jun 2009 17:48:56 -0400
-Cc: Carlos Carvalho <carlos@fisica.ufpr.br>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>
+Received: from 68-185-24-58.static.mdfd.or.charter.com ([68.185.24.58]:58907
+	"EHLO cupro.opengvs.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751900AbZF3PWL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2009 11:22:11 -0400
+Date: Tue, 30 Jun 2009 08:22:09 -0700
+From: Dale Stimson <DaleStimson@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, David Shaw <dshaw@jabberwocky.com>
+Subject: [solved] Re: [PATCH] Short write in nfsd becomes a full write to
+	the client
+Message-ID: <20090630152209.GA3320@cupro.opengvs.com>
+References: <20090627042449.GC15665@cupro.opengvs.com> <20090629145952.GE4945@fieldses.org> <20090629192951.GA3851@cupro.opengvs.com> <20090629194711.GF8062@fieldses.org> <20090629194925.GG8062@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20090629194925.GG8062@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Well, that's a good reason to get rid of those Solaris servers. :-)
+On Mon, Jun 29, 2009 at 03:49:25PM -0400, J. Bruce Fields wrote:
+> On Mon, Jun 29, 2009 at 03:47:11PM -0400, bfields wrote:
+> > On Mon, Jun 29, 2009 at 12:29:51PM -0700, Dale Stimson wrote:
+> > > On Mon, Jun 29, 2009 at 10:59:52AM -0400, J. Bruce Fields wrote:
+> > > > On Fri, Jun 26, 2009 at 09:24:49PM -0700, Dale Stimson wrote:
+> > > > > On Thu, 5 Mar 2009 20:16:14 -0500, David Shaw <dshaw@jabberwocky.com> wrote:
+> > > > > > If a filesystem being written to via NFS returns a short write count
+> > > > > > (as opposed to an error) to nfsd, nfsd treats that as a success for
+> > > > > > the entire write, rather than the short count that actually succeeded.
+> > > > > > 
+> > > > > > For example, given a 8192 byte write, if the underlying filesystem
+> > > > > > only writes 4096 bytes, nfsd will ack back to the nfs client that all
+> > > > > > 8192 bytes were written.  The nfs client does have retry logic for
+> > > > > > short writes, but this is never called as the client is told the
+> > > > > > complete write succeeded.
+> > > > > ...
+> > > > > > Here is a patch to properly return the short write count to the
+> > > > > > client.
+> > > > > [patch elided]
+> > > > > 
+> > > > > I bring this to your attention so you may, if you choose, look into
+> > > > > this further:
+> > > > > 
+> > > > > Problem synopsis:
+> > > > > An old client (running RHL 9 with kernel "2.4.20-43.9.legacy")
+> > > > > attempts to seek on a file mounted over nfs.  The operation fails
+> > > > > with "Illegal seek" or "Input/Output error".  The server is running
+> > > > > Fedora 11 kernel-PAE-2.6.29.5-191.fc11.i686, which includes the
+> > > > > short write patch.  When this kernel is re-built without the short
+> > > > > write patch, everything works as before.
+> > > > 
+> > > > Does that server kernel have some version of
+> > > > a0d24b295aed7a9daf4ca36bd4784e4d40f82303 "nfsd: fix hung up of nfs
+> > > > client while sync write data to nfs server" applied?
+> > > 
+> > > No.  As far as I can see that patch has been merged only in 2.6.30 and is not in any of the 2.6.29.? releases.  There is definitely no Fedora-specific version of that patch present.  The only Fedora-specific patch related to NFS applied in kernel-2.6.29.5-191.fc11.src.rpm is linux-2.6-nfsd-report-short-writes.patch.
+> > 
+> > That patch fixes a problem with the showrt write patch, so it would be
+> > worth retesting with it applied.
+> 
+> After looking at the trace: yes, looks like the same problem.  (The
+> (succesful) FILE_SYNC write request returned with a 0 length.)  So
+> retest with the new patch applied, then poke the Fedora people to apply
+> it as well.
+> 
+> --b.
 
-Seriously, though, we do _not_ fix server bugs by changing the client.  
-If we had been doing something that was incorrect, or not recommended  
-by the NFS spec, then matters would be different...
+Success.
 
-Trond
+I applied patch a0d24b295aed7a9daf4ca36bd4784e4d40f82303
+"nfsd: fix hung up of nfs client while sync write data to nfs server"
+to the otherwise unmodified Fedora 11 kernel 2.6.29.5-191.fc11.i686.PAE
+and the problem was resolved.
 
-On Jun 4, 2009, at 17:30, Brian R Cowan <brcowan@us.ibm.com> wrote:
-
-> I'll have to see if/how this impacts the flush behavior. I don't  
-> THINK we
-> are doing getattrs in the middle of the link, but the trace  
-> information
-> kind of went astray when the VM's gor reverted to base OS.
->
-> Also, your recommended workaround of setting no_wdelay only works if  
-> the
-> NFS server is Linux, the option isn't available on Solaris or HP-UX.  
-> This
-> limits it's usefulness in heterogenous environments. Solaris 10  
-> doesn't
-> support async NFS exports, and we've already discussed how the small- 
-> write
-> optimization overrides write behavior on async mounts.
->
-> =================================================================
-> Brian Cowan
-> Advisory Software Engineer
-> ClearCase Customer Advocacy Group (CAG)
-> Rational Software
-> IBM Software Group
-> 81 Hartwell Ave
-> Lexington, MA
->
-> Phone: 1.781.372.3580
-> Web: http://www.ibm.com/software/rational/support/
->
->
-> Please be sure to update your PMR using ESR at
-> http://www-306.ibm.com/software/support/probsub.html or cc all
-> correspondence to sw_support@us.ibm.com to be sure your PMR is  
-> updated in
-> case I am not available.
->
->
->
-> From:
-> Trond Myklebust <trond.myklebust@fys.uio.no>
-> To:
-> Brian R Cowan/Cupertino/IBM@IBMUS
-> Cc:
-> Carlos Carvalho <carlos@fisica.ufpr.br>, linux-nfs@vger.kernel.org,
-> linux-nfs-owner@vger.kernel.org
-> Date:
-> 06/04/2009 04:57 PM
-> Subject:
-> Re: Link performance over NFS degraded in RHEL5. -- was : Read/Write  
-> NFS
-> I/O performance degraded by FLUSH_STABLE page flushing
->
->
->
-> On Thu, 2009-06-04 at 16:43 -0400, Brian R Cowan wrote:
->> What I'm trying to understand is why RHEL 4 is not flushing anywhere
-> near
->> as often. Either RHEL4 erred on the side of not writing, and RHEL5 is
->> erring on the opposite side, or RHEL5 is doing unnecessary flushes...
-> I've
->> seen that 2.6.29 flushes less than the Red hat 2.6.18-derived  
->> kernels,
-> but
->> it still flushes a lot more than RHEL 4 does.
->
-> Most of that increase is probably mainly due to the changes to the way
-> stat() works. More precisely, it would be due to this patch:
->
->
-> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=70b9ecbdb9c5fdc731f8780bffd45d9519020c4a
->
->
-> which went into Linux 2.6.16 in order to fix a posix compatibility
-> issue.
->
-> Trond
->
->
->
+Thank you for your help.  I will update
+https://bugzilla.redhat.com/show_bug.cgi?id=508174
+and suggest that the patch be applied to future Fedora 2.6.29-based kernels.
