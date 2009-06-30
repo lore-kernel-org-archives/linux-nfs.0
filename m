@@ -1,57 +1,78 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 3/3] nfs41: pass state recovery error back to caller
-Date: Tue, 30 Jun 2009 20:06:30 +0300
-Message-ID: <1246381590-4010-1-git-send-email-bhalevy@panasas.com>
-References: <4A4A4564.3000708@panasas.com>
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Benny Halevy <bhalevy@panasas.com>,
-	Andy Adamson <andros@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Fix up new minorversion= option
+Date: Tue, 30 Jun 2009 13:14:19 -0400
+Message-ID: <20090630171151.2006.25350.stgit@matisse.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: sager@netapp.com, linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:21657
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752303AbZF3RG3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2009 13:06:29 -0400
-In-Reply-To: <4A4A4564.3000708@panasas.com>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:41580
+	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752438AbZF3SI4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jun 2009 14:08:56 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently the error returned from create_session to the state manager
-is recorded in cl_cons_state via nfs_mark_client_ready
-but it is ignored by nfs4_check_client_ready and mis-translated to
--EPROTONOSUPPORT if the client has a session.
+The new minorversion= mount option (commit 3fd5be9e) was merged at
+the same time as the recent sloppy parser fixes (commit a5a16bae),
+so minorversion= still uses the old value parsing logic.
 
-Fixes https://bugzilla.linux-nfs.org/show_bug.cgi?id=178
+If the minorversion= option specifies a bogus value, it should fail
+with "bad value" not "bad option."
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Cc: Andy Adamson <andros@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/client.c |    9 ++-------
- 1 files changed, 2 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 157a1d9..b3f8307 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -536,16 +536,11 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
- /*
-  * With sessions, the client is not marked ready until after a
-  * successful EXCHANGE_ID and CREATE_SESSION.
-- *
-- * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
-- * other versions of NFS can be tried.
-  */
- int nfs4_check_client_ready(struct nfs_client *clp)
- {
--	if (!nfs4_has_session(clp))
--		return 0;
--	if (clp->cl_cons_state < NFS_CS_READY)
--		return -EPROTONOSUPPORT;
-+	if (clp->cl_cons_state < 0)
-+		return clp->cl_cons_state;
- 	return 0;
- }
+Potential candidate for 2.6.31-rc.  Build-tested only.
+
+As I understand it, new features can be patched after the merge window
+closes, yes?
+
+ fs/nfs/super.c |   18 +++++++++++-------
+ 1 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 0b4cbdc..83a3107 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -158,7 +158,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountvers, "mountvers=%s" },
+ 	{ Opt_nfsvers, "nfsvers=%s" },
+ 	{ Opt_nfsvers, "vers=%s" },
+-	{ Opt_minorversion, "minorversion=%u" },
++	{ Opt_minorversion, "minorversion=%s" },
  
--- 
-1.6.3.3
+ 	{ Opt_sec, "sec=%s" },
+ 	{ Opt_proto, "proto=%s" },
+@@ -1001,7 +1001,6 @@ static int nfs_parse_mount_options(char *raw,
+ 	while ((p = strsep(&raw, ",")) != NULL) {
+ 		substring_t args[MAX_OPT_ARGS];
+ 		unsigned long option;
+-		int int_option;
+ 		int token;
+ 
+ 		if (!*p)
+@@ -1273,11 +1272,16 @@ static int nfs_parse_mount_options(char *raw,
+ 			}
+ 			break;
+ 		case Opt_minorversion:
+-			if (match_int(args, &int_option))
+-				return 0;
+-			if (int_option < 0 || int_option > NFS4_MAX_MINOR_VERSION)
+-				return 0;
+-			mnt->minorversion = int_option;
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			rc = strict_strtoul(string, 10, &option);
++			kfree(string);
++			if (rc != 0)
++				goto out_invalid_value;
++			if (option > NFS4_MAX_MINOR_VERSION)
++				goto out_invalid_value;
++			mnt->minorversion = option;
+ 			break;
+ 
+ 		/*
 
