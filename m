@@ -1,88 +1,58 @@
-From: Alexandros Batsakis <batsakis@netapp.com>
-Subject: Re: [pnfs] [PATCH 4/5] nfsd41: set the session maximum response sizecached
-Date: Wed, 1 Jul 2009 16:09:55 -0700
-Message-ID: <5BDF2F31-6F9B-4214-95F9-4EE9B40E5538@netapp.com>
-References: <> <1245872278-18743-1-git-send-email-andros@netapp.com><1245872278-18743-2-git-send-email-andros@netapp.com><1245872278-18743-3-git-send-email-andros@netapp.com><1245872278-18743-4-git-send-email-andros@netapp.com> <1245872278-18743-5-git-send-email-andros@netapp.com>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: <bfields@citi.umich.edu>, "Adamson, Andy" <andros@netapp.com>,
-	<linux-nfs@vger.kernel.org>, <pnfs@linux-nfs.org>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH] NFSD: Don't hold unrefcounted creds over call to
+	nfsd_setuser()
+Date: Thu, 02 Jul 2009 14:35:32 +0100
+Message-ID: <20090702133532.28297.89635.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	dhowells@redhat.com
+To: bfields@fieldses.org, steved@redhat.com, rasmus-tUP8e6pgWdNlY7y4Fx5NiA@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4404 "EHLO mx2.netapp.com"
+Received: from mx2.redhat.com ([66.187.237.31]:49769 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751051AbZGAXKk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Jul 2009 19:10:40 -0400
-In-Reply-To: <1245872278-18743-5-git-send-email-andros@netapp.com>
+	id S1751044AbZGBNgh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jul 2009 09:36:37 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+nfsd_open() gets an unrefcounted pointer to the current process's effective
+credentials at the top of the function, then calls nfsd_setuser() via
+fh_verify() - which may replace and destroy the current process's effective
+credentials - and then passes the unrefcounted pointer to dentry_open() - but
+the credentials may have been destroyed by this point.
 
-On Jun 24, 2009, at 12:37 PM, Adamson, Andy wrote:
+Instead, the value from current_cred() should be passed directly to
+dentry_open() as one of its arguments, rather than being cached in a variable.
 
-> From: Andy Adamson <andros@netapp.com>
->
-> NFSD_SLOT_CACHE_SIZE holds the encoded operations past the SEQUENCE  
-> operation.
-> ca_maxresponsesize_cached (draft-ietf-nfsv4-minorversion1-29) is the  
-> xdr
-> encoded size of the request including the RPC header. Since the RPC  
-> header
-> size varies with security flavor credential and verifier. we cannot  
-> set an
-> accurate ca_maxresponsesize_cached. Use NFSD_SLOT_CACHE_SIZE as an
-> approximate ca_maxresponsesize_cached - we will have at least that  
-> much space.
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfsd/nfs4state.c |   11 ++++++++---
->  1 files changed, 8 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 991c3cc..a0bd6da 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -464,9 +464,14 @@ static int init_forechannel_attrs(struct  
-> svc_rqst *rqstp,
->                 fchan->maxresp_sz = maxcount;
->         session_fchan->maxresp_sz = fchan->maxresp_sz;
->
-> -       /* Set the max response cached size our default which is
-> -        * a multiple of PAGE_SIZE and small */
-> -       session_fchan->maxresp_cached = NFSD_PAGES_PER_SLOT *  
-> PAGE_SIZE;
-> +       /*
-> +        * The ca_maxresponssize_cached definition includes the xdr
-> +        * encoded size of the rpc header with the variable length  
-> security
-> +        * flavor credential plus verifier as well as the encoded  
-> SEQUENCE
-> +        * operation response size which are not included in
-> +        * NFSD_SLOT_CACHE_SIZE. We err on the side of being a bit  
-> small.
-> +        */
-> +       session_fchan->maxresp_cached = NFSD_SLOT_CACHE_SIZE;
->         fchan->maxresp_cached = session_fchan->maxresp_cached;
->
->
-Here we set the maxresp_cached equal to 512 which is normally much  
-less than the maxresp_sz, and we return this value to client in  
-CREATE_SESSION.
-This leads to a bunch of NFSERR_TOO_BIG_TO_CACHE errors for OPENs,  
-READs, etc.
-In theory the client should be able to recover (or better prevent this  
-by not setting cachethis=1).
-Is there a reason that maxresp_cached is so small ?
+Possibly fh_verify() should return the creds to use.
 
--alexandros
->         /* Use the client's maxops if possible */
-> --
-> 1.5.4.3
->
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
->
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/nfsd/vfs.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 4145083..23341c1 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -678,7 +678,6 @@ __be32
+ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 			int access, struct file **filp)
+ {
+-	const struct cred *cred = current_cred();
+ 	struct dentry	*dentry;
+ 	struct inode	*inode;
+ 	int		flags = O_RDONLY|O_LARGEFILE;
+@@ -733,7 +732,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 		vfs_dq_init(inode);
+ 	}
+ 	*filp = dentry_open(dget(dentry), mntget(fhp->fh_export->ex_path.mnt),
+-			    flags, cred);
++			    flags, current_cred());
+ 	if (IS_ERR(*filp))
+ 		host_err = PTR_ERR(*filp);
+ 	else
 
