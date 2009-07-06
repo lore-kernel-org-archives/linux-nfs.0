@@ -1,43 +1,42 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 01/10] ext4: Use rcu_barrier() on module unload.
-Date: Sun, 5 Jul 2009 22:31:13 -0400
-Message-ID: <20090706023113.GE6706@mit.edu>
-References: <20090623150330.22490.87327.stgit@localhost> <20090623150358.22490.24818.stgit@localhost>
+From: Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Subject: Re: sk_lock: inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W}
+	usage
+Date: Mon, 6 Jul 2009 18:52:16 +0800
+Message-ID: <20090706105216.GA19124@gondor.apana.org.au>
+References: <20090608023757.GA6244@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
-	christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
-	linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
-	yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
-	linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-ext4@vger.kernel.org, adilger-xsfywfwIY+M@public.gmane.org,
-	netfilter-devel@vger.kernel.org
-To: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
+To: Wu Fengguang <fengguang.wu@intel.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42602 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753973AbZGFCcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 5 Jul 2009 22:32:15 -0400
-In-Reply-To: <20090623150358.22490.24818.stgit@localhost>
+Received: from rhun.apana.org.au ([64.62.148.172]:52565 "EHLO
+	arnor.apana.org.au" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757716AbZGFKwP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2009 06:52:15 -0400
+In-Reply-To: <20090608023757.GA6244@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 23, 2009 at 05:03:59PM +0200, Jesper Dangaard Brouer wrote:
-> The ext4 module uses rcu_call() thus it should use rcu_barrier()on
-> module unload.
+Wu Fengguang <fengguang.wu@intel.com> wrote:
 > 
-> The kmem cache ext4_pspace_cachep is sometimes free'ed using
-> call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
-> before doing kmem_cache_destroy().
+> This lockdep warning appears when doing stress memory tests over NFS.
 > 
-> I have difficult determining if no new call_rcu() callbacks can be envoked.
-> Would the maintainer please verify this?
+> page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
+> 
+> tcp_close => lock sk_lock => tcp_send_fin => alloc_skb_fclone => page reclaim
 
-Yes, that's correct.  Thanks; I've included this in the ext4 patch
-queue.
+Well perhaps not this particular path, but it is certainly possible
+if an existing NFS socket dies and NFS tries to reestablish it.
 
-						- Ted
+I suggest that NFS should utilise the sk_allocation field and
+set an appropriate value.  Note that you may have to patch TCP
+so that it uses sk_allocation everywhere necessary, e.g., in
+tcp_send_fin.
+
+Cheers,
+-- 
+Visit Openswan at http://www.openswan.org/
+Email: Herbert Xu ~{PmV>HI~} <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
