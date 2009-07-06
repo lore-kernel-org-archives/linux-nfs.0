@@ -1,46 +1,142 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 3/3] sunrpc: reduce timeout when unregistering rpcbind registrations.
-Date: Mon, 6 Jul 2009 14:32:41 -0400
-Message-ID: <9D0F8CF2-3FA2-4065-A125-DE02C2674129@oracle.com>
-References: <20090528062730.15937.70579.stgit@notabene.brown> <20090528063303.15937.62423.stgit@notabene.brown> <A85051CB-18EB-4003-8DD6-26D3E9968543@oracle.com> <18992.35996.986951.556723@notabene.brown> <A51FBC9A-6B56-4DF3-A657-D1E6508F8FEE@oracle.com> <E4516F53-E0D1-494D-A62C-1035D3A8F1FB@oracle.com> <4A51F125.5080709@suse.de> <A8A87823-B37B-43ED-82A1-5A822C9C880C@oracle.com> <4A52217E.9050207@suse.de> <4E8F91E6-4E55-44BB-889B-DDB9910129BF@oracle.com> <1246898450.11267.12.camel@heimdal.trondhjem.org> <68129579-E484-4E7E-B38D-4E14ED5A5B1D@oracle.com> <1246900456.11267.34.camel@heimdal.trondhjem.org> <71D4E90D-471B-4BFA-B47C-6A5BFD0754E9@oracle.com> <1246903105.23966.4.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v935.3)
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: [pnfs] [PATCH 4/5] nfsd41: set the session maximum response sizecached
+Date: Mon, 6 Jul 2009 15:27:43 -0400
+Message-ID: <4F969509-933A-45B1-B365-CB70F812A120@netapp.com>
+References: <> <1245872278-18743-1-git-send-email-andros@netapp.com><1245872278-18743-2-git-send-email-andros@netapp.com><1245872278-18743-3-git-send-email-andros@netapp.com><1245872278-18743-4-git-send-email-andros@netapp.com> <1245872278-18743-5-git-send-email-andros@netapp.com> <5BDF2F31-6F9B-4214-95F9-4EE9B40E5538@netapp.com>
+Mime-Version: 1.0 (Apple Message framework v930.3)
 Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Suresh Jayaraman <sjayaraman@suse.de>, Neil Brown <neilb@suse.de>,
-	Linux NFS mailing list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+	<bfields@citi.umich.edu>, <linux-nfs@vger.kernel.org>,
+	<pnfs@linux-nfs.org>
+To: Alexandros Batsakis <batsakis@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:56703 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751894AbZGFScs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2009 14:32:48 -0400
-In-Reply-To: <1246903105.23966.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:30380 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752882AbZGFT1m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Jul 2009 15:27:42 -0400
+In-Reply-To: <5BDF2F31-6F9B-4214-95F9-4EE9B40E5538@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul 6, 2009, at 1:58 PM, Trond Myklebust wrote:
-> On Mon, 2009-07-06 at 13:51 -0400, Chuck Lever wrote:
->> In both cases, it turns out that the library implementations in user
->> space already fail quickly.  RPC_CANTRECV is returned if an attempt  
->> is
->> made to send an rpcbind query to an inactive UDP port.
->> RPC_SYSTEMERROR/ECONNREFUSED is returned if an attempt is made to  
->> send
->> an rpcbind query to an inactive TCP port.  In my view, the kernel is
->> lacking here, and should be made to emulate user space more closely.
+
+On Jul 1, 2009, at 7:09 PM, Alexandros Batsakis wrote:
+
 >
-> I fully agree that we can fix the above by more judicious  
-> interpretation
-> of the returned networking errors. What I don't see eye to eye with is
-> the assertion that has been floating about that the current behaviour
-> should be a good enough reason to add kernel AF_LOCAL support.
+> On Jun 24, 2009, at 12:37 PM, Adamson, Andy wrote:
+>
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> NFSD_SLOT_CACHE_SIZE holds the encoded operations past the SEQUENCE  
+>> operation.
+>> ca_maxresponsesize_cached (draft-ietf-nfsv4-minorversion1-29) is  
+>> the xdr
+>> encoded size of the request including the RPC header. Since the RPC  
+>> header
+>> size varies with security flavor credential and verifier. we cannot  
+>> set an
+>> accurate ca_maxresponsesize_cached. Use NFSD_SLOT_CACHE_SIZE as an
+>> approximate ca_maxresponsesize_cached - we will have at least that  
+>> much space.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfsd/nfs4state.c |   11 ++++++++---
+>> 1 files changed, 8 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 991c3cc..a0bd6da 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -464,9 +464,14 @@ static int init_forechannel_attrs(struct  
+>> svc_rqst *rqstp,
+>>                fchan->maxresp_sz = maxcount;
+>>        session_fchan->maxresp_sz = fchan->maxresp_sz;
+>>
+>> -       /* Set the max response cached size our default which is
+>> -        * a multiple of PAGE_SIZE and small */
+>> -       session_fchan->maxresp_cached = NFSD_PAGES_PER_SLOT *  
+>> PAGE_SIZE;
+>> +       /*
+>> +        * The ca_maxresponssize_cached definition includes the xdr
+>> +        * encoded size of the rpc header with the variable length  
+>> security
+>> +        * flavor credential plus verifier as well as the encoded  
+>> SEQUENCE
+>> +        * operation response size which are not included in
+>> +        * NFSD_SLOT_CACHE_SIZE. We err on the side of being a bit  
+>> small.
+>> +        */
+>> +       session_fchan->maxresp_cached = NFSD_SLOT_CACHE_SIZE;
+>>        fchan->maxresp_cached = session_fchan->maxresp_cached;
+>>
+>>
+> Here we set the maxresp_cached equal to 512 which is normally much  
+> less than the maxresp_sz, and we return this value to client in  
+> CREATE_SESSION.
 
-Since portmapper doesn't support it, and the kernel (for now) needs  
-backwards compatibility with portmapper, AF_LOCAL for rpcbind is  
-rather a non-starter.
+The max response size cached is supposed to be a lot less than the max  
+response size.  Since it is a nfsd memory resource, we would like to  
+keep it as low as possible.
 
-In my opinion there are other reasons to consider kernel-level  
-AF_LOCAL support at some later point.
+NFSv4.1 clients should not expect READ and READDIR results to be  
+cached, and the linux client does not ask for these operations to be  
+cached. GETATTR with an acl request should also not be cached - there  
+is no way to tell how large the acl is.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+>
+> This leads to a bunch of NFSERR_TOO_BIG_TO_CACHE errors for OPENs,  
+> READs, etc.
+
+Argh. I chose the 512 byte DRC buffer size because it does service the  
+responses of the Linux (and Solaris) clients. The 512 bytes were  
+designed to hold operation results past the sequence operation. This  
+was tested at the last bakeathon.
+
+The maxresponse_size_cached is supposed to hold the RPC response,  
+including verifier and the encoded operations. In the previous DRC  
+patch set, which was tested at the bakeathon, the max response size  
+cached was set to 512+size of encoded SEQUENCE + RPC max size.
+
+Bruce suggested that we just use the DRC buffer size for the max  
+response size cached which is what the current code uses.
+
+I just  ran connectathon tests against the nfsd41-all 2.6.31-rc1  
+server and saw the NFS4ERR_TOO_BIG_TO_CACHE on OPEN, CREATE, RENAME  
+etc - all of which had a total response of 548 bytes or so - just past  
+the max response size cached limit. This is with AUTH_SYS, and a NULL  
+RPC verifier.
+
+The sequence operation always returns 44 bytes. The minimal RPC reply  
+is 32 bytes (NULL RPC verifier).
+
+Here is what I suggest.
+
+1) max response size should be the DRC buffer slot size (currently  
+512) + 44 + 32. The RPC GSS verifier will still not be accounted for,  
+but the rest of the known sizes are.
+2) Perhaps bump the 512 to 512+64.  The current code shows we are  
+cutting it a bit close, we want to ensure that nfsd can service normal  
+operation responses with several GETATTR's with a lot of attributes.
+
+
+-->Andy
+
+
+
+>
+> In theory the client should be able to recover (or better prevent  
+> this by not setting cachethis=1).
+> Is there a reason that maxresp_cached is so small ?
+>
+> -alexandros
+>>        /* Use the client's maxops if possible */
+>> --
+>> 1.5.4.3
+>>
+>> _______________________________________________
+>> pNFS mailing list
+>> pNFS@linux-nfs.org
+>> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+>>
+>
+
