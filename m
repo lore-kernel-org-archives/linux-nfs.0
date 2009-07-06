@@ -1,49 +1,43 @@
-From: Paul Collins <paul@burly.ondioline.org>
-Subject: Re: 2.6.31-rc2 soft lockups; traces point at rpc_wake_up, nfs4_run_state_manager, bit_waitqueue
-Date: Mon, 06 Jul 2009 09:25:07 +1200
-Message-ID: <8763e6aklo.fsf@jenny.ondioline.org>
-References: <87eisv7g5p.fsf@bulky.wgtn.ondioline.org>
-	<20090705081225.GA12783@elte.hu>
-	<1246800661.5937.1.camel@heimdal.trondhjem.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 01/10] ext4: Use rcu_barrier() on module unload.
+Date: Sun, 5 Jul 2009 22:31:13 -0400
+Message-ID: <20090706023113.GE6706@mit.edu>
+References: <20090623150330.22490.87327.stgit@localhost> <20090623150358.22490.24818.stgit@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ingo Molnar <mingo@elte.hu>, linux-nfs@vger.kernel.org,
-	Andy Adamson <andros@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>,
-	linux-kernel@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755624AbZGEVZT@vger.kernel.org>
-In-Reply-To: <1246800661.5937.1.camel@heimdal.trondhjem.org> (Trond
-	Myklebust's message of "Sun, 05 Jul 2009 09:31:01 -0400")
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
+	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
+	christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
+	linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
+	yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
+	linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+	linux-ext4@vger.kernel.org, adilger-xsfywfwIY+M@public.gmane.org,
+	netfilter-devel@vger.kernel.org
+To: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:42602 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753973AbZGFCcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 5 Jul 2009 22:32:15 -0400
+In-Reply-To: <20090623150358.22490.24818.stgit@localhost>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <Trond.Myklebust@netapp.com> writes:
+On Tue, Jun 23, 2009 at 05:03:59PM +0200, Jesper Dangaard Brouer wrote:
+> The ext4 module uses rcu_call() thus it should use rcu_barrier()on
+> module unload.
+> 
+> The kmem cache ext4_pspace_cachep is sometimes free'ed using
+> call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
+> before doing kmem_cache_destroy().
+> 
+> I have difficult determining if no new call_rcu() callbacks can be envoked.
+> Would the maintainer please verify this?
 
-> On Sun, 2009-07-05 at 10:12 +0200, Ingo Molnar wrote:
->> (added more Cc:s)
->> 
->> potential suspects are:
->> 
->> 1f84603: Merge branch 'devel-for-2.6.31' into for-2.6.31
->> 3f09df7: NFS: Ensure we always hold the BKL when dereferencing inode->i_flock
->> 965b5d6: NFSv4: Handle more errors when recovering open file and locking state
->> 34dc1ad: nfs41: increment_{open,lock}_seqid
->> 78722e9: nfs41: only retry EXCHANGE_ID on recoverable errors
->> b4b8260: nfs41: get_clid_cred for EXCHANGE_ID
->> 90a1661: nfs41: add a get_clid_cred function to nfs4_state_recovery_ops
->> 591d71c: nfs41: establish sessions-based clientid
->> a7b7210: nfs41: introduce get_state_renewal_cred
->> 8e69514f: nfs41: support minorversion 1 for nfs4_check_lease
->> c3fad1b: nfs41: add session reset to state manager
->> 76db6d95: nfs41: add session setup to the state manager
->> c2e713d: nfs41: translate NFS4ERR_MINOR_VERS_MISMATCH to EPROTONOSUPPORT
->
-> Or possibly either rpc.gssd or rpc.idmapd dying. Have you checked to see
-> if they are up and running correctly?
+Yes, that's correct.  Thanks; I've included this in the ext4 patch
+queue.
 
-I hadn't checked because my NFS4 setup has been solid for a while now.
-But I'll give it a lash again.  I don't have NFS 4.1 support enabled,
-which may eliminate some of the commits above from consideration.
-
-        Paul
+						- Ted
