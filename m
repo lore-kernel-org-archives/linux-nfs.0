@@ -1,25 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f196.google.com ([209.85.221.196]:50844 "EHLO
-	mail-qy0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753622AbZG2TMg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jul 2009 15:12:36 -0400
-Received: by qyk34 with SMTP id 34so191937qyk.33
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Jul 2009 12:12:35 -0700 (PDT)
-Date: Wed, 29 Jul 2009 15:06:56 -0400
-Message-ID: <4d569c330907291206j3229c946o471f642b0a97881a@mail.gmail.com>
-Subject: librpcsecgss-0.19
-From: Kevin Coffman <kwc@umich.edu>
-To: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp-cloud1.xs4all.nl ([194.109.24.61]:18414 "EHLO
+	smtp-cloud1.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756397AbZGIMo6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2009 08:44:58 -0400
+Subject: Invalidating NFS attribute cache
+From: Hans Kramer <hans.kramer@xs4all.nl>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain
+Date: Thu, 09 Jul 2009 14:34:54 +0200
+Message-Id: <1247142894.7427.43.camel@cancun.hanskramer.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-A new version of librpcsecgss is now available from:
+Hi,
 
-http://www.citi.umich.edu/projects/nfsv4/linux/librpcsecgss/librpcsecgss-0.19.tar.gz
+For some silly reason I have an application that needs to poll for the
+existence of a certain file on a NFS share. 
+(This is done from Sybase ASE ;-)
 
-Changes since librpcsecgss-0.18:
+Now I run into the issue of attribute caching. Turning of the attribute
+cache with the mount option of -o noac easily solves all the issues.
 
-   * A patch from Steve Dickson <SteveD@redhat.com> which updates
-     the Sun license notice for their rpc code which this is based on.
+However, it would be nice if we could still use attribute caching and
+force to invalidate on-demand the attribute cache.
+
+After a lot of trying, the following solution seems to work for me now:
+(pathname is the test file)   
+
+#define _GNU_SOURCE
+
+    char *copy = strdup(pathname);
+    char *path = dirname(copy);
+
+    int fd = open(path, O_DIRECTORY);
+    if (fd >= 0)
+        close(fd);
+
+    free(copy);
+
+    return access(pathname, F_OK);
+
+Just opening the parent directory with O_DIRECTORY seems to do the
+trick.
+
+My questions: Is this hack going to work under every circumstance or
+could it fail in the future with some update. Is there a ioctl call that
+could the the same thing? That is invalidate the parent directory cache.
+Or do I miss something completely ?-)
+
+Thanks in advance
+
+Hans  
+
