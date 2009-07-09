@@ -1,80 +1,135 @@
-From: Simon Kirby <sim@hostway.ca>
-Subject: Re: kernel NULL pointer dereference in rpcb_getport_done (2.6.29.4)
-Date: Thu, 9 Jul 2009 10:27:39 -0700
-Message-ID: <20090709172739.GG13617@hostway.ca>
-References: <20090619225437.GA8472@hostway.ca> <1245527855.5182.33.camel@heimdal.trondhjem.org> <20090621050941.GA17059@hostway.ca> <20090622211126.GA564@hostway.ca>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfs(8): Add description of lookupcache mount option
+Date: Thu, 09 Jul 2009 16:11:46 -0400
+Message-ID: <20090709201037.12662.80504.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from newpeace.netnation.com ([204.174.223.7]:34276 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752220AbZGIR1m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2009 13:27:42 -0400
-Received: from sim by peace.netnation.com with local (Exim 4.63)
-	(envelope-from <sim@netnation.com>)
-	id 1MOxPH-0003gu-8R
-	for linux-nfs@vger.kernel.org; Thu, 09 Jul 2009 10:27:39 -0700
-In-Reply-To: <20090622211126.GA564@hostway.ca>
+Received: from acsinet11.oracle.com ([141.146.126.233]:50453 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753148AbZGIUNq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2009 16:13:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+See kernel commit 7973c1f1.
 
-It seems this email to Greg Banks is bouncing (no longer works at SGI),
-and I see git commit 59a252ff8c0f2fa32c896f69d56ae33e641ce7ad is still
-in HEAD (and still causing problems for our load).
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Can somebody else eyeball this, please?  I don't understand enough about
-this particular change to fix the request latency / queue backlogging
-that this patch seems to introduce.
+Trond-
 
-It would seem to me that this patch is flawed because svc_xprt_enqueue()
-is edge-triggered upon the arrival of packets, but the NFS threads
-themselves cannot then pull another request off of the socket queue. 
-This patch likely helps with the particular benchmark, but not in our
-load case where there is a heavy mix of cached and uncached NFS requests.
+Noted the absense of a description in nfs(8) of the new lookupcache 
+mount option.  Cobbled together this explanation.  Before I submit
+this to Steve, any comments?
 
-Simon-
+ utils/mount/nfs.man |   86 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 86 insertions(+), 0 deletions(-)
 
-On Mon, Jun 22, 2009 at 02:11:26PM -0700, Simon Kirby wrote:
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 13de524..8f1b393 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -422,6 +422,44 @@ NFS mount points allowed on a client, but NFS servers must be configured
+ to allow clients to connect via non-privileged source ports.
+ .IP
+ Refer to the SECURITY CONSIDERATIONS section for important details.
++.TP 1.5i
++.BI lookupcache= mode
++Specifies how the NFS client manages its cache of directory entries.
++.I mode
++can be one of
++.BR all ,
++.BR none ,
++.BR pos ,
++or
++.BR positive .
++This option is supported in kernels 2.6.28 and later.
++.IP
++The NFS client caches the result of all LOOKUP requests,
++including results that indicate that a requested directory entry
++does not exist on the server.
++If this option is not specified, or if
++.B all
++is specified, the client
++assumes its directory entry cache is valid
++until the parent directory's cached attributes expire.
++.IP
++If
++.BR pos " or " positive
++is specified,
++the client always revalidates entries in its directory cache
++that indicate that the requested file does not exist on the server
++before an application can use them.
++.IP
++If
++.B none
++is specified,
++the client always revalidates all cached entries in its directory
++cache before an application can use them,
++which permits quick detection of files that were created or removed
++by other clients, but can impact application and server performance.
++.IP
++The DATA AND METADATA COHERENCE section contains a
++detailed discussion of these trade-offs.
+ .SS "Valid options for the nfs file system type"
+ Use these options, along with the options in the above subsection,
+ for mounting the
+@@ -1017,6 +1055,54 @@ If absolute cache coherence among clients is required,
+ applications should use file locking. Alternatively, applications 
+ can also open their files with the O_DIRECT flag
+ to disable data caching entirely.
++.SS "Directory entry caching"
++The Linux NFS client caches results of LOOKUP requests
++to reduce traffic to servers.
++These days, the client caches lookup results
++even if the requested directory entry
++in a LOOKUP request does not exist on the server
++(in other words, if the server returns ENOENT).
++This is known as a
++.IR "cached negative lookup result" .
++.P
++The Linux NFS client watches a directory's mtime
++to detect when directory entries have been added or removed
++on the server.
++If the client detects a change in a directory's mtime,
++the client drops all cached LOOKUP results for that directory.
++Since the directory's mtime is a cached attribute, it may
++take some time before a client notices it has changed.
++See the descriptions of the
++.BR acdirmin ", " acdirmax ", and " noac
++mount options for more information about
++how long a directory's mtime is cached.
++.P
++This caching behavior improves the performance of applications that
++do not share files with applications on other clients.
++Using cached information about directories can interfere
++with applications that run concurrently on multiple clients and
++need to detect the creation or removal of files quickly, however.
++The
++.B lookupcache
++mount option allows some tuning of directory entry caching behavior.
++.P
++Previously, the Linux NFS client tracked only successful lookup
++results, not negative results, with its lookup cache.
++This permits applications to detect new directory entries
++created by other clients quickly.
++If an application depends on the previous lookup caching behavior
++of the Linux NFS client, you can use
++.BR lookupcache=positive .
++.P
++If the client ignores its cache and validates every application
++lookup request with the server,
++that client can immediately detect when a new directory
++entry has been either created or removed by another client.
++You can specify this behavior using
++.BR lookupcache=none .
++However, the extra NFS requests needed if the client does not
++cache directory entries can exact a performance penalty.
++.P
+ .SS "The sync mount option"
+ The NFS client treats the
+ .B sync
 
-> On Sat, Jun 20, 2009 at 10:09:41PM -0700, Simon Kirby wrote:
-> 
-> > Actually, we just saw another similar crash on another machine which is
-> > an NFS client from this server (no nfsd running).  Same backtrace, but
-> > this time RAX was "32322e32352e3031", which is obviously ASCII
-> > ("22.25.01"), so memory scribbling seems to definitely be happening...
-> 
-> Good news: 2.6.30 seems to have fixed whatever the original scribbling
-> source was.  I see at least a couple of suspect commits in the log, but
-> I'm not sure which yet.
-> 
-> However, with 2.6.30, it seems 59a252ff8c0f2fa32c896f69d56ae33e641ce7ad
-> is causing us a large performance regression.  The server's response
-> latency is huge compared to normal.  I suspected this patch was the
-> culprit, so I wrote over the instruction that loads SVC_MAX_WAKING before
-> this comparison:
-> 
-> +	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
-> +		/* too many threads are runnable and trying to wake up */
-> +		thread_avail = 0;
-> +	}
-> 
-> ...when I raised SVC_MAX_WAKING to 40ish, the problem for us disappears. 
-> 
-> The problem is that with just 72 nfsd processes running, the NFS socket
-> has a ~1 MB backlog of packets on it, even though "ps" shows most of the
-> nfsd threads are not blocked.  This is on an 8 core system, with high NFS
-> packet rates.  More NFS threads (300) made no difference.
-> 
-> As soon as I raised SVC_MAX_WAKING, the load average went up again to
-> what it normally was before with 2.6.29, but the socket's receive backlog
-> went down to nearly 0 again, and the request latency is now back to
-> normal.
-> 
-> I think the issue here is that whatever calls svc_xprt_enqueue() isn't
-> doing it again as soon as the threads sleep again, but only when the next
-> packet comes in, or something...
-> 
-> Simon-
