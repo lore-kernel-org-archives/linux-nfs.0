@@ -1,127 +1,60 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: sk_lock: inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W}
-	usage
-Date: Thu, 9 Jul 2009 21:17:46 +0800
-Message-ID: <20090709131746.GA27965@localhost>
-References: <20090608023757.GA6244@localhost> <20090706105216.GA19124@gondor.apana.org.au>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] read-modify-write page updating
+Date: Thu, 09 Jul 2009 09:59:18 -0400
+Message-ID: <4A55F7B6.80800@redhat.com>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <49FA0CE8.9090706@redhat.com>	 <1241126587.15476.62.camel@heimdal.trondhjem.org>	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org>	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org>	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org>	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>	 <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br>	 <1244049027.5603.5.camel@heimdal.trondhjem.org>	 <OFB53BFCCB.0CEC7A7E
+ -ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>	 <1244138698.5203.59.camel@heimdal.trondhjem.org>	 <4A428482.60403@redhat.com> <1245950029.4913.17.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-	"David S. Miller" <davem@davemloft.net>
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090706105216.GA19124@gondor.apana.org.au>
-Sender: netdev-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:41489 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759129AbZGIN7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jul 2009 09:59:24 -0400
+In-Reply-To: <1245950029.4913.17.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 06, 2009 at 06:52:16PM +0800, Herbert Xu wrote:
-> Wu Fengguang <fengguang.wu@intel.com> wrote:
-> > 
-> > This lockdep warning appears when doing stress memory tests over NFS.
-> > 
-> > page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
-> > 
-> > tcp_close => lock sk_lock => tcp_send_fin => alloc_skb_fclone => page reclaim
-> 
-> Well perhaps not this particular path, but it is certainly possible
-> if an existing NFS socket dies and NFS tries to reestablish it.
-> 
-> I suggest that NFS should utilise the sk_allocation field and
-> set an appropriate value.  Note that you may have to patch TCP
-> so that it uses sk_allocation everywhere necessary, e.g., in
-> tcp_send_fin.
+Trond Myklebust wrote:
+>
+> It might also be nice to put the above test in a little inlined helper
+> function (called nfs_want_read_modify_write() ?).
+>
+>   
 
-Good suggestion! NFS already sets sk_allocation to GFP_ATOMIC in
-linux/net/sunrpc/xprtsock.c <<xs_tcp_finish_connecting>>.
+Good suggestion.
 
-To fix this warning and possible recursions, I converted some
-GPF_KERNEL cases to sk_allocation in the tcp/ipv4 code:
+> So, a number of questions spring to mind:
+>
+>      1. What if we're extending the file? We might not need to read the
+>         page at all in that case (see nfs_write_end()).
+>   
 
----
-tcp: replace hard coded GFP_KERNEL with sk_allocation
+Yup.
 
-This fixed a lockdep warning which appeared when doing stress
-memory tests over NFS:
+>      2. What if the page is already dirty or is carrying an uncommitted
+>         unstable write?
+>   
 
-	inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
+Yup.
 
-	mount_root => nfs_root_data => tcp_close => lock sk_lock =>
-			tcp_send_fin => alloc_skb_fclone => page reclaim
+>      3. We might want to try to avoid looping more than once here. If
+>         the kernel is very low on memory, we might just want to write
+>         out the data rather than read the page and risk having the VM
+>         eject it before we can dirty it.
+>   
 
-	page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
+Yup.
 
-CC: Arnaldo Carvalho de Melo <acme@ghostprotocols.net>
-CC: David S. Miller <davem@davemloft.net>
-CC: Herbert Xu <herbert@gondor.apana.org.au>
-Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
----
- net/ipv4/tcp.c        |    4 ++--
- net/ipv4/tcp_ipv4.c   |    5 +++--
- net/ipv4/tcp_output.c |    5 +++--
- 3 files changed, 8 insertions(+), 6 deletions(-)
+>      4. Should we be starting an async readahead on the next page?
+>         Single page sized reads can be a nuisance too, if you are
+>         writing huge amounts of data.
 
---- linux.orig/net/ipv4/tcp_ipv4.c
-+++ linux/net/ipv4/tcp_ipv4.c
-@@ -970,8 +970,9 @@ static int tcp_v4_parse_md5_keys(struct 
- 
- 	if (!tcp_sk(sk)->md5sig_info) {
- 		struct tcp_sock *tp = tcp_sk(sk);
--		struct tcp_md5sig_info *p = kzalloc(sizeof(*p), GFP_KERNEL);
-+		struct tcp_md5sig_info *p;
- 
-+		p = kzalloc(sizeof(*p), sk->sk_allocation);
- 		if (!p)
- 			return -EINVAL;
- 
-@@ -979,7 +980,7 @@ static int tcp_v4_parse_md5_keys(struct 
- 		sk->sk_route_caps &= ~NETIF_F_GSO_MASK;
- 	}
- 
--	newkey = kmemdup(cmd.tcpm_key, cmd.tcpm_keylen, GFP_KERNEL);
-+	newkey = kmemdup(cmd.tcpm_key, cmd.tcpm_keylen, sk->sk_allocation);
- 	if (!newkey)
- 		return -ENOMEM;
- 	return tcp_v4_md5_do_add(sk, sin->sin_addr.s_addr,
---- linux.orig/net/ipv4/tcp_output.c
-+++ linux/net/ipv4/tcp_output.c
-@@ -2100,7 +2100,8 @@ void tcp_send_fin(struct sock *sk)
- 	} else {
- 		/* Socket is locked, keep trying until memory is available. */
- 		for (;;) {
--			skb = alloc_skb_fclone(MAX_TCP_HEADER, GFP_KERNEL);
-+			skb = alloc_skb_fclone(MAX_TCP_HEADER,
-+					       sk->sk_allocation);
- 			if (skb)
- 				break;
- 			yield();
-@@ -2358,7 +2359,7 @@ int tcp_connect(struct sock *sk)
- 	sk->sk_wmem_queued += buff->truesize;
- 	sk_mem_charge(sk, buff->truesize);
- 	tp->packets_out += tcp_skb_pcount(buff);
--	tcp_transmit_skb(sk, buff, 1, GFP_KERNEL);
-+	tcp_transmit_skb(sk, buff, 1, sk->sk_allocation);
- 
- 	/* We change tp->snd_nxt after the tcp_transmit_skb() call
- 	 * in order to make this packet get counted in tcpOutSegs.
---- linux.orig/net/ipv4/tcp.c
-+++ linux/net/ipv4/tcp.c
-@@ -1834,7 +1834,7 @@ void tcp_close(struct sock *sk, long tim
- 		/* Unread data was tossed, zap the connection. */
- 		NET_INC_STATS_USER(sock_net(sk), LINUX_MIB_TCPABORTONCLOSE);
- 		tcp_set_state(sk, TCP_CLOSE);
--		tcp_send_active_reset(sk, GFP_KERNEL);
-+		tcp_send_active_reset(sk, sk->sk_allocation);
- 	} else if (sock_flag(sk, SOCK_LINGER) && !sk->sk_lingertime) {
- 		/* Check zero linger _after_ checking for unread data. */
- 		sk->sk_prot->disconnect(sk, 0);
-@@ -2666,7 +2666,7 @@ static struct tcp_md5sig_pool **__tcp_al
- 		struct tcp_md5sig_pool *p;
- 		struct crypto_hash *hash;
- 
--		p = kzalloc(sizeof(*p), GFP_KERNEL);
-+		p = kzalloc(sizeof(*p), sk->sk_allocation);
- 		if (!p)
- 			goto out_free;
- 		*per_cpu_ptr(pool, cpu) = p;
+This one is tough.  It sounds good, but seems difficult to implement.
+
+I think that this could be viewed as an optimization.
+
+       ps
+
