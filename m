@@ -1,64 +1,80 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH v2] read-modify-write page updating
-Date: Thu, 09 Jul 2009 11:39:32 -0400
-Message-ID: <1247153972.5766.15.camel@heimdal.trondhjem.org>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
-	 <49FA0CE8.9090706@redhat.com>
-	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
-	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
-	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
-	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
-	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
-	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
-	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
-	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
-	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
-	 <1243963631.4868.124.camel@heimdal.trondhjem.org>
-	 <18982.41770.293636.786518@fisica.ufpr.br>
-	 <1244049027.5603.5.camel@heimdal.trondhjem.org>
-	 <OFB53BFCCB.0CEC7A7E-ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>
-	 <1244138698.5203.59.camel@heimdal.trondhjem.org>
-	 <4A428482.60403@redhat.com>  <4A55FAC8.5040309@redhat.com>
+From: Simon Kirby <sim@hostway.ca>
+Subject: Re: kernel NULL pointer dereference in rpcb_getport_done (2.6.29.4)
+Date: Thu, 9 Jul 2009 10:27:39 -0700
+Message-ID: <20090709172739.GG13617@hostway.ca>
+References: <20090619225437.GA8472@hostway.ca> <1245527855.5182.33.camel@heimdal.trondhjem.org> <20090621050941.GA17059@hostway.ca> <20090622211126.GA564@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:33168 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757182AbZGIPjj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jul 2009 11:39:39 -0400
-In-Reply-To: <4A55FAC8.5040309@redhat.com>
+Received: from newpeace.netnation.com ([204.174.223.7]:34276 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752220AbZGIR1m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2009 13:27:42 -0400
+Received: from sim by peace.netnation.com with local (Exim 4.63)
+	(envelope-from <sim@netnation.com>)
+	id 1MOxPH-0003gu-8R
+	for linux-nfs@vger.kernel.org; Thu, 09 Jul 2009 10:27:39 -0700
+In-Reply-To: <20090622211126.GA564@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-07-09 at 10:12 -0400, Peter Staubach wrote:
+Hello,
 
-> Signed-off-by: Peter Staubach <staubach@redhat.com>
+It seems this email to Greg Banks is bouncing (no longer works at SGI),
+and I see git commit 59a252ff8c0f2fa32c896f69d56ae33e641ce7ad is still
+in HEAD (and still causing problems for our load).
 
-Please could you send such patches as inline, rather than as
-attachments. It makes it harder to comment on the patch contents...
+Can somebody else eyeball this, please?  I don't understand enough about
+this particular change to fix the request latency / queue backlogging
+that this patch seems to introduce.
 
-> +static int nfs_want_read_modify_write(struct file *file, struct page *page,
-> +			loff_t pos, unsigned len)
-> +{
-> +	unsigned int pglen = nfs_page_length(page);
-> +	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
-> +	unsigned int end = offset + len;
-> +
-> +	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
-> +	    !PageUptodate(page) &&		/* Uptodate? */
-> +	    !PageDirty(page) &&			/* Dirty already? */
-> +	    !PagePrivate(page) &&		/* i/o request already? */
+It would seem to me that this patch is flawed because svc_xprt_enqueue()
+is edge-triggered upon the arrival of packets, but the NFS threads
+themselves cannot then pull another request off of the socket queue. 
+This patch likely helps with the particular benchmark, but not in our
+load case where there is a heavy mix of cached and uncached NFS requests.
 
-I don't think you need the PageDirty() test. These days we should be
-guaranteed to always have PagePrivate() set whenever PageDirty() is
-(although the converse is not true). Anything else would be a bug...
+Simon-
 
-> +	    pglen &&				/* valid bytes of file? */
-> +	    (end < pglen || offset))		/* replace all valid bytes? */
-> +		return 1;
-> +	return 0;
-> +}
-> +
+On Mon, Jun 22, 2009 at 02:11:26PM -0700, Simon Kirby wrote:
 
+> On Sat, Jun 20, 2009 at 10:09:41PM -0700, Simon Kirby wrote:
+> 
+> > Actually, we just saw another similar crash on another machine which is
+> > an NFS client from this server (no nfsd running).  Same backtrace, but
+> > this time RAX was "32322e32352e3031", which is obviously ASCII
+> > ("22.25.01"), so memory scribbling seems to definitely be happening...
+> 
+> Good news: 2.6.30 seems to have fixed whatever the original scribbling
+> source was.  I see at least a couple of suspect commits in the log, but
+> I'm not sure which yet.
+> 
+> However, with 2.6.30, it seems 59a252ff8c0f2fa32c896f69d56ae33e641ce7ad
+> is causing us a large performance regression.  The server's response
+> latency is huge compared to normal.  I suspected this patch was the
+> culprit, so I wrote over the instruction that loads SVC_MAX_WAKING before
+> this comparison:
+> 
+> +	if (pool->sp_nwaking >= SVC_MAX_WAKING) {
+> +		/* too many threads are runnable and trying to wake up */
+> +		thread_avail = 0;
+> +	}
+> 
+> ...when I raised SVC_MAX_WAKING to 40ish, the problem for us disappears. 
+> 
+> The problem is that with just 72 nfsd processes running, the NFS socket
+> has a ~1 MB backlog of packets on it, even though "ps" shows most of the
+> nfsd threads are not blocked.  This is on an 8 core system, with high NFS
+> packet rates.  More NFS threads (300) made no difference.
+> 
+> As soon as I raised SVC_MAX_WAKING, the load average went up again to
+> what it normally was before with 2.6.29, but the socket's receive backlog
+> went down to nearly 0 again, and the request latency is now back to
+> normal.
+> 
+> I think the issue here is that whatever calls svc_xprt_enqueue() isn't
+> doing it again as soon as the threads sleep again, but only when the next
+> packet comes in, or something...
+> 
+> Simon-
