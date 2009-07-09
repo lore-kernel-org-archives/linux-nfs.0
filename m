@@ -1,107 +1,64 @@
-From: Hans Kramer <hans.kramer-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>
-Subject: Re: Invalidating NFS attribute cache
-Date: Thu, 09 Jul 2009 16:39:09 +0200
-Message-ID: <1247150349.7427.84.camel@cancun.hanskramer.com>
-References: <1247142894.7427.43.camel@cancun.hanskramer.com>
-	 <5440D81E-BC29-4061-92B5-D750CEECFF62@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH v2] read-modify-write page updating
+Date: Thu, 09 Jul 2009 11:39:32 -0400
+Message-ID: <1247153972.5766.15.camel@heimdal.trondhjem.org>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
+	 <49FA0CE8.9090706@redhat.com>
+	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
+	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
+	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
+	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
+	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
+	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
+	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
+	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
+	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
+	 <1243963631.4868.124.camel@heimdal.trondhjem.org>
+	 <18982.41770.293636.786518@fisica.ufpr.br>
+	 <1244049027.5603.5.camel@heimdal.trondhjem.org>
+	 <OFB53BFCCB.0CEC7A7E-ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>
+	 <1244138698.5203.59.camel@heimdal.trondhjem.org>
+	 <4A428482.60403@redhat.com>  <4A55FAC8.5040309@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-XXsw6zVWoXsakpLNrGPK"
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain
+Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr16.xs4all.nl ([194.109.24.36]:4073 "EHLO
-	smtp-vbr16.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759207AbZGIOjR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2009 10:39:17 -0400
-In-Reply-To: <5440D81E-BC29-4061-92B5-D750CEECFF62@oracle.com>
+Received: from mail-out2.uio.no ([129.240.10.58]:33168 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757182AbZGIPjj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jul 2009 11:39:39 -0400
+In-Reply-To: <4A55FAC8.5040309@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2009-07-09 at 10:12 -0400, Peter Staubach wrote:
 
---=-XXsw6zVWoXsakpLNrGPK
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+> Signed-off-by: Peter Staubach <staubach@redhat.com>
 
-Thanks Chuck,
+Please could you send such patches as inline, rather than as
+attachments. It makes it harder to comment on the patch contents...
 
-I was not aware of this mount option.
+> +static int nfs_want_read_modify_write(struct file *file, struct page *page,
+> +			loff_t pos, unsigned len)
+> +{
+> +	unsigned int pglen = nfs_page_length(page);
+> +	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+> +	unsigned int end = offset + len;
+> +
+> +	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+> +	    !PageUptodate(page) &&		/* Uptodate? */
+> +	    !PageDirty(page) &&			/* Dirty already? */
+> +	    !PagePrivate(page) &&		/* i/o request already? */
 
-I will try it.
+I don't think you need the PageDirty() test. These days we should be
+guaranteed to always have PagePrivate() set whenever PageDirty() is
+(although the converse is not true). Anything else would be a bug...
 
-Thanks!
-
-
-On Thu, 2009-07-09 at 10:10 -0400, Chuck Lever wrote:
-> On Jul 9, 2009, at 8:34 AM, Hans Kramer wrote:
-> > Hi,
-> >
-> > For some silly reason I have an application that needs to poll for the
-> > existence of a certain file on a NFS share.
-> > (This is done from Sybase ASE ;-)
-> >
-> > Now I run into the issue of attribute caching. Turning of the =20
-> > attribute
-> > cache with the mount option of -o noac easily solves all the issues.
-> >
-> > However, it would be nice if we could still use attribute caching and
-> > force to invalidate on-demand the attribute cache.
->=20
-> Since you are only concerned with the existence of a file (and not its =20
-> mtime, say). have you considered the new directory cache mount option: =20
-> lookupcache=3D?
->=20
-> I see it's not mentioned in nfs(8) so you should probably look in =20
-> recent archives of this mailing list for information.
->=20
-> > After a lot of trying, the following solution seems to work for me =20
-> > now:
-> > (pathname is the test file)
-> >
-> > #define _GNU_SOURCE
-> >
-> >    char *copy =3D strdup(pathname);
-> >    char *path =3D dirname(copy);
-> >
-> >    int fd =3D open(path, O_DIRECTORY);
-> >    if (fd >=3D 0)
-> >        close(fd);
-> >
-> >    free(copy);
-> >
-> >    return access(pathname, F_OK);
-> >
-> > Just opening the parent directory with O_DIRECTORY seems to do the
-> > trick.
-> >
-> > My questions: Is this hack going to work under every circumstance or
-> > could it fail in the future with some update. Is there a ioctl call =20
-> > that
-> > could the the same thing? That is invalidate the parent directory =20
-> > cache.
-> > Or do I miss something completely ?-)
-> >
-> > Thanks in advance
-> >
-> > Hans
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" =20
-> > in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
-
---=-XXsw6zVWoXsakpLNrGPK
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkpWAQ0ACgkQwGRENV8Xlu9A5QCdGmKnIrDaYMp2c8PH/4BcIFbh
-hcYAnRkv0LeJ7sopUlMTOidIAxRiwoqL
-=ngxa
------END PGP SIGNATURE-----
-
---=-XXsw6zVWoXsakpLNrGPK--
+> +	    pglen &&				/* valid bytes of file? */
+> +	    (end < pglen || offset))		/* replace all valid bytes? */
+> +		return 1;
+> +	return 0;
+> +}
+> +
 
