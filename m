@@ -1,37 +1,127 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH 4/5] nfsd41: set the session maximum response
-	sizecached
-Date: Mon, 6 Jul 2009 17:48:24 -0400
-Message-ID: <20090706214824.GS1601@fieldses.org>
-References: <1245872278-18743-5-git-send-email-andros@netapp.com> <5BDF2F31-6F9B-4214-95F9-4EE9B40E5538@netapp.com> <4F969509-933A-45B1-B365-CB70F812A120@netapp.com>
+From: Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: sk_lock: inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W}
+	usage
+Date: Thu, 9 Jul 2009 21:17:46 +0800
+Message-ID: <20090709131746.GA27965@localhost>
+References: <20090608023757.GA6244@localhost> <20090706105216.GA19124@gondor.apana.org.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexandros Batsakis <batsakis@netapp.com>,
-	"Adamson, Andy" <William.Adamson@netapp.com>,
-	linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Andy Adamson <andros@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 174-143-236-118.static.slicehost.net ([174.143.236.118]:49791
-	"EHLO fieldses.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752757AbZGFVsV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jul 2009 17:48:21 -0400
-In-Reply-To: <4F969509-933A-45B1-B365-CB70F812A120@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+	"David S. Miller" <davem@davemloft.net>
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20090706105216.GA19124@gondor.apana.org.au>
+Sender: netdev-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 06, 2009 at 03:27:43PM -0400, Andy Adamson wrote:
-> Here is what I suggest.
->
-> 1) max response size should be the DRC buffer slot size (currently 512) + 
-> 44 + 32. The RPC GSS verifier will still not be accounted for, but the 
-> rest of the known sizes are.
+On Mon, Jul 06, 2009 at 06:52:16PM +0800, Herbert Xu wrote:
+> Wu Fengguang <fengguang.wu@intel.com> wrote:
+> > 
+> > This lockdep warning appears when doing stress memory tests over NFS.
+> > 
+> > page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
+> > 
+> > tcp_close => lock sk_lock => tcp_send_fin => alloc_skb_fclone => page reclaim
+> 
+> Well perhaps not this particular path, but it is certainly possible
+> if an existing NFS socket dies and NFS tries to reestablish it.
+> 
+> I suggest that NFS should utilise the sk_allocation field and
+> set an appropriate value.  Note that you may have to patch TCP
+> so that it uses sk_allocation everywhere necessary, e.g., in
+> tcp_send_fin.
 
-Sounds good.
+Good suggestion! NFS already sets sk_allocation to GFP_ATOMIC in
+linux/net/sunrpc/xprtsock.c <<xs_tcp_finish_connecting>>.
 
-> 2) Perhaps bump the 512 to 512+64.  The current code shows we are  
-> cutting it a bit close, we want to ensure that nfsd can service normal  
-> operation responses with several GETATTR's with a lot of attributes.
+To fix this warning and possible recursions, I converted some
+GPF_KERNEL cases to sk_allocation in the tcp/ipv4 code:
 
-576 sounds a little close too.  768?  1k?
+---
+tcp: replace hard coded GFP_KERNEL with sk_allocation
 
---b.
+This fixed a lockdep warning which appeared when doing stress
+memory tests over NFS:
+
+	inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
+
+	mount_root => nfs_root_data => tcp_close => lock sk_lock =>
+			tcp_send_fin => alloc_skb_fclone => page reclaim
+
+	page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
+
+CC: Arnaldo Carvalho de Melo <acme@ghostprotocols.net>
+CC: David S. Miller <davem@davemloft.net>
+CC: Herbert Xu <herbert@gondor.apana.org.au>
+Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
+---
+ net/ipv4/tcp.c        |    4 ++--
+ net/ipv4/tcp_ipv4.c   |    5 +++--
+ net/ipv4/tcp_output.c |    5 +++--
+ 3 files changed, 8 insertions(+), 6 deletions(-)
+
+--- linux.orig/net/ipv4/tcp_ipv4.c
++++ linux/net/ipv4/tcp_ipv4.c
+@@ -970,8 +970,9 @@ static int tcp_v4_parse_md5_keys(struct 
+ 
+ 	if (!tcp_sk(sk)->md5sig_info) {
+ 		struct tcp_sock *tp = tcp_sk(sk);
+-		struct tcp_md5sig_info *p = kzalloc(sizeof(*p), GFP_KERNEL);
++		struct tcp_md5sig_info *p;
+ 
++		p = kzalloc(sizeof(*p), sk->sk_allocation);
+ 		if (!p)
+ 			return -EINVAL;
+ 
+@@ -979,7 +980,7 @@ static int tcp_v4_parse_md5_keys(struct 
+ 		sk->sk_route_caps &= ~NETIF_F_GSO_MASK;
+ 	}
+ 
+-	newkey = kmemdup(cmd.tcpm_key, cmd.tcpm_keylen, GFP_KERNEL);
++	newkey = kmemdup(cmd.tcpm_key, cmd.tcpm_keylen, sk->sk_allocation);
+ 	if (!newkey)
+ 		return -ENOMEM;
+ 	return tcp_v4_md5_do_add(sk, sin->sin_addr.s_addr,
+--- linux.orig/net/ipv4/tcp_output.c
++++ linux/net/ipv4/tcp_output.c
+@@ -2100,7 +2100,8 @@ void tcp_send_fin(struct sock *sk)
+ 	} else {
+ 		/* Socket is locked, keep trying until memory is available. */
+ 		for (;;) {
+-			skb = alloc_skb_fclone(MAX_TCP_HEADER, GFP_KERNEL);
++			skb = alloc_skb_fclone(MAX_TCP_HEADER,
++					       sk->sk_allocation);
+ 			if (skb)
+ 				break;
+ 			yield();
+@@ -2358,7 +2359,7 @@ int tcp_connect(struct sock *sk)
+ 	sk->sk_wmem_queued += buff->truesize;
+ 	sk_mem_charge(sk, buff->truesize);
+ 	tp->packets_out += tcp_skb_pcount(buff);
+-	tcp_transmit_skb(sk, buff, 1, GFP_KERNEL);
++	tcp_transmit_skb(sk, buff, 1, sk->sk_allocation);
+ 
+ 	/* We change tp->snd_nxt after the tcp_transmit_skb() call
+ 	 * in order to make this packet get counted in tcpOutSegs.
+--- linux.orig/net/ipv4/tcp.c
++++ linux/net/ipv4/tcp.c
+@@ -1834,7 +1834,7 @@ void tcp_close(struct sock *sk, long tim
+ 		/* Unread data was tossed, zap the connection. */
+ 		NET_INC_STATS_USER(sock_net(sk), LINUX_MIB_TCPABORTONCLOSE);
+ 		tcp_set_state(sk, TCP_CLOSE);
+-		tcp_send_active_reset(sk, GFP_KERNEL);
++		tcp_send_active_reset(sk, sk->sk_allocation);
+ 	} else if (sock_flag(sk, SOCK_LINGER) && !sk->sk_lingertime) {
+ 		/* Check zero linger _after_ checking for unread data. */
+ 		sk->sk_prot->disconnect(sk, 0);
+@@ -2666,7 +2666,7 @@ static struct tcp_md5sig_pool **__tcp_al
+ 		struct tcp_md5sig_pool *p;
+ 		struct crypto_hash *hash;
+ 
+-		p = kzalloc(sizeof(*p), GFP_KERNEL);
++		p = kzalloc(sizeof(*p), sk->sk_allocation);
+ 		if (!p)
+ 			goto out_free;
+ 		*per_cpu_ptr(pool, cpu) = p;
