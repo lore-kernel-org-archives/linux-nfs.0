@@ -1,60 +1,83 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] read-modify-write page updating
-Date: Thu, 09 Jul 2009 09:59:18 -0400
-Message-ID: <4A55F7B6.80800@redhat.com>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <49FA0CE8.9090706@redhat.com>	 <1241126587.15476.62.camel@heimdal.trondhjem.org>	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org>	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org>	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org>	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>	 <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br>	 <1244049027.5603.5.camel@heimdal.trondhjem.org>	 <OFB53BFCCB.0CEC7A7E
- -ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>	 <1244138698.5203.59.camel@heimdal.trondhjem.org>	 <4A428482.60403@redhat.com> <1245950029.4913.17.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Invalidating NFS attribute cache
+Date: Thu, 9 Jul 2009 10:10:33 -0400
+Message-ID: <5440D81E-BC29-4061-92B5-D750CEECFF62@oracle.com>
+References: <1247142894.7427.43.camel@cancun.hanskramer.com>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: Hans Kramer <hans.kramer-qWit8jRvyhVmR6Xm/wNWPw@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:41489 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759129AbZGIN7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jul 2009 09:59:24 -0400
-In-Reply-To: <1245950029.4913.17.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:50667 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759070AbZGIOKj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jul 2009 10:10:39 -0400
+In-Reply-To: <1247142894.7427.43.camel-6FgEqA8bTCrD1MxPaE+0Y3nhMCiq3JZZ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
+On Jul 9, 2009, at 8:34 AM, Hans Kramer wrote:
+> Hi,
 >
-> It might also be nice to put the above test in a little inlined helper
-> function (called nfs_want_read_modify_write() ?).
+> For some silly reason I have an application that needs to poll for the
+> existence of a certain file on a NFS share.
+> (This is done from Sybase ASE ;-)
 >
->   
-
-Good suggestion.
-
-> So, a number of questions spring to mind:
+> Now I run into the issue of attribute caching. Turning of the  
+> attribute
+> cache with the mount option of -o noac easily solves all the issues.
 >
->      1. What if we're extending the file? We might not need to read the
->         page at all in that case (see nfs_write_end()).
->   
+> However, it would be nice if we could still use attribute caching and
+> force to invalidate on-demand the attribute cache.
 
-Yup.
+Since you are only concerned with the existence of a file (and not its  
+mtime, say). have you considered the new directory cache mount option:  
+lookupcache=?
 
->      2. What if the page is already dirty or is carrying an uncommitted
->         unstable write?
->   
+I see it's not mentioned in nfs(8) so you should probably look in  
+recent archives of this mailing list for information.
 
-Yup.
+> After a lot of trying, the following solution seems to work for me  
+> now:
+> (pathname is the test file)
+>
+> #define _GNU_SOURCE
+>
+>    char *copy = strdup(pathname);
+>    char *path = dirname(copy);
+>
+>    int fd = open(path, O_DIRECTORY);
+>    if (fd >= 0)
+>        close(fd);
+>
+>    free(copy);
+>
+>    return access(pathname, F_OK);
+>
+> Just opening the parent directory with O_DIRECTORY seems to do the
+> trick.
+>
+> My questions: Is this hack going to work under every circumstance or
+> could it fail in the future with some update. Is there a ioctl call  
+> that
+> could the the same thing? That is invalidate the parent directory  
+> cache.
+> Or do I miss something completely ?-)
+>
+> Thanks in advance
+>
+> Hans
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
->      3. We might want to try to avoid looping more than once here. If
->         the kernel is very low on memory, we might just want to write
->         out the data rather than read the page and risk having the VM
->         eject it before we can dirty it.
->   
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Yup.
 
->      4. Should we be starting an async readahead on the next page?
->         Single page sized reads can be a nuisance too, if you are
->         writing huge amounts of data.
 
-This one is tough.  It sounds good, but seems difficult to implement.
-
-I think that this could be viewed as an optimization.
-
-       ps
 
