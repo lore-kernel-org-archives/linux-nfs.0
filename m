@@ -1,33 +1,35 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: sk_lock: inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W}
-	usage
-Date: Fri, 10 Jul 2009 16:02:47 +0800
-Message-ID: <20090710080247.GA2693@gondor.apana.org.au>
-References: <20090608023757.GA6244@localhost> <20090706105216.GA19124@gondor.apana.org.au> <20090709131746.GA27965@localhost> <20090709.171355.09466097.davem@davemloft.net> <20090710080017.GA24168@localhost>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: David Miller <davem@davemloft.net>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"netdev@vger.kernel.org" <netdev@vger.kernel.org>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090710080017.GA24168@localhost>
-Sender: netdev-owner@vger.kernel.org
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] nfsd41: gather and report statistics also for v4.1 ops
+Date: Fri, 10 Jul 2009 12:37:40 +0300
+Message-ID: <1247218660-14084-1-git-send-email-bhalevy@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: " J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:27966
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751049AbZGJJhp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2009 05:37:45 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 10, 2009 at 04:00:17PM +0800, Wu Fengguang wrote:
-> 
-> The (sk_allocation & ~__GFP_WAIT) cases should be rare, but I guess
-> the networking code shall do it anyway, because sk_allocation defaults
-> to GFP_KERNEL. It seems that currently the networking code simply uses
-> a lot of GFP_ATOMIC, do they really mean "I cannot sleep"?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/nfs4.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Yep because they're done from softirq context.
-
-Cheers,
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index bd2eba5..aff924a 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -234,7 +234,7 @@ enum nfs_opnum4 {
+ Needs to be updated if more operations are defined in future.*/
+ 
+ #define FIRST_NFS4_OP	OP_ACCESS
+-#define LAST_NFS4_OP 	OP_RELEASE_LOCKOWNER
++#define LAST_NFS4_OP 	OP_RECLAIM_COMPLETE
+ 
+ enum nfsstat4 {
+ 	NFS4_OK = 0,
 -- 
-Visit Openswan at http://www.openswan.org/
-Email: Herbert Xu ~{PmV>HI~} <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+1.6.3.3
+
