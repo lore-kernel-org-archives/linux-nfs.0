@@ -1,152 +1,52 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfs(8): Add description of lookupcache mount option
-Date: Fri, 10 Jul 2009 13:20:21 -0400
-Message-ID: <20090710172020.GA9927@fieldses.org>
-References: <20090709201037.12662.80504.stgit@matisse.1015granger.net>
+From: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
+Subject: Security negotiation
+Date: Fri, 10 Jul 2009 13:07:46 -0500
+Message-ID: <4A578372.1020005@excfb.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41356 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751343AbZGJRpR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2009 13:45:17 -0400
-In-Reply-To: <20090709201037.12662.80504.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from eastrmmtao101.cox.net ([68.230.240.7]:34113 "EHLO
+	eastrmmtao101.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753389AbZGJS2D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2009 14:28:03 -0400
+Received: from eastrmimpo03.cox.net ([68.1.16.126])
+          by eastrmmtao101.cox.net
+          (InterMail vM.7.08.02.01 201-2186-121-102-20070209) with ESMTP
+          id <20090710180758.DYBA20709.eastrmmtao101.cox.net-jOUDVclVbkx9GQUQ9EqIheTW4wlIGRCZ@public.gmane.org>
+          for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2009 14:07:58 -0400
+Received: from [192.168.2.115] (kanigix.internal.excfb.com [192.168.2.115])
+	by adept.internal.excfb.com (8.14.2/8.14.2) with ESMTP id n6AI7v3n017770
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Jul 2009 13:07:57 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 09, 2009 at 04:11:46PM -0400, Chuck Lever wrote:
-> See kernel commit 7973c1f1.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> Trond-
-> 
-> Noted the absense of a description in nfs(8) of the new lookupcache 
-> mount option.  Cobbled together this explanation.  Before I submit
-> this to Steve, any comments?
-> 
->  utils/mount/nfs.man |   86 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 86 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 13de524..8f1b393 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -422,6 +422,44 @@ NFS mount points allowed on a client, but NFS servers must be configured
->  to allow clients to connect via non-privileged source ports.
->  .IP
->  Refer to the SECURITY CONSIDERATIONS section for important details.
-> +.TP 1.5i
-> +.BI lookupcache= mode
-> +Specifies how the NFS client manages its cache of directory entries.
-> +.I mode
-> +can be one of
-> +.BR all ,
-> +.BR none ,
-> +.BR pos ,
-> +or
-> +.BR positive .
-> +This option is supported in kernels 2.6.28 and later.
-> +.IP
-> +The NFS client caches the result of all LOOKUP requests,
-> +including results that indicate that a requested directory entry
-> +does not exist on the server.
-> +If this option is not specified, or if
-> +.B all
-> +is specified, the client
-> +assumes its directory entry cache is valid
-> +until the parent directory's cached attributes expire.
-> +.IP
-> +If
-> +.BR pos " or " positive
-> +is specified,
-> +the client always revalidates entries in its directory cache
-> +that indicate that the requested file does not exist on the server
-> +before an application can use them.
+During a NFSv3 mount request, the server returns an array of supported 
+security flavors.
 
-I find this sentence hard to parse (e.g. I've lost track of what "them"
-refers to by the time I get to the end of the sentence).  How about
-explicitly defining "negative directory cache entry", and then saying
-"the client always revalidates negative directory cache entries before
-using them."?
+With a Linux server, exports(5) states:
 
---b.
+For the purposes of security  flavor  negotiation, order counts: 
+preferred flavors should be listed first.
 
+And the Solaris client states in mount_nfs(1M):
 
-> +.IP
-> +If
-> +.B none
-> +is specified,
-> +the client always revalidates all cached entries in its directory
-> +cache before an application can use them,
-> +which permits quick detection of files that were created or removed
-> +by other clients, but can impact application and server performance.
-> +.IP
-> +The DATA AND METADATA COHERENCE section contains a
-> +detailed discussion of these trade-offs.
->  .SS "Valid options for the nfs file system type"
->  Use these options, along with the options in the above subsection,
->  for mounting the
-> @@ -1017,6 +1055,54 @@ If absolute cache coherence among clients is required,
->  applications should use file locking. Alternatively, applications 
->  can also open their files with the O_DIRECT flag
->  to disable data caching entirely.
-> +.SS "Directory entry caching"
-> +The Linux NFS client caches results of LOOKUP requests
-> +to reduce traffic to servers.
-> +These days, the client caches lookup results
-> +even if the requested directory entry
-> +in a LOOKUP request does not exist on the server
-> +(in other words, if the server returns ENOENT).
-> +This is known as a
-> +.IR "cached negative lookup result" .
-> +.P
-> +The Linux NFS client watches a directory's mtime
-> +to detect when directory entries have been added or removed
-> +on the server.
-> +If the client detects a change in a directory's mtime,
-> +the client drops all cached LOOKUP results for that directory.
-> +Since the directory's mtime is a cached attribute, it may
-> +take some time before a client notices it has changed.
-> +See the descriptions of the
-> +.BR acdirmin ", " acdirmax ", and " noac
-> +mount options for more information about
-> +how long a directory's mtime is cached.
-> +.P
-> +This caching behavior improves the performance of applications that
-> +do not share files with applications on other clients.
-> +Using cached information about directories can interfere
-> +with applications that run concurrently on multiple clients and
-> +need to detect the creation or removal of files quickly, however.
-> +The
-> +.B lookupcache
-> +mount option allows some tuning of directory entry caching behavior.
-> +.P
-> +Previously, the Linux NFS client tracked only successful lookup
-> +results, not negative results, with its lookup cache.
-> +This permits applications to detect new directory entries
-> +created by other clients quickly.
-> +If an application depends on the previous lookup caching behavior
-> +of the Linux NFS client, you can use
-> +.BR lookupcache=positive .
-> +.P
-> +If the client ignores its cache and validates every application
-> +lookup request with the server,
-> +that client can immediately detect when a new directory
-> +entry has been either created or removed by another client.
-> +You can specify this behavior using
-> +.BR lookupcache=none .
-> +However, the extra NFS requests needed if the client does not
-> +cache directory entries can exact a performance penalty.
-> +.P
->  .SS "The sync mount option"
->  The NFS client treats the
->  .B sync
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     NFS Version 3 mounts negotiate a security mode when the server 
+returns an array of security modes. The
+     client picks the first mode in the array that is supported on the 
+client. In negotiations, an NFS Version 3 client
+     is limited to the security flavors listed in /etc/nfssec.conf.
+
+The Linux nfs(5) states:
+
+     If the sec option is not specified, or if sec=sys is specified, the 
+NFS client uses the AUTH_SYS
+     security flavor for  all  NFS  requests on this mount point.
+
+So, I'm trying to understand what the Linux client would do if the 
+export does not support AUTH_SYS and
+there is no sec= supplied.
+
+Does the Linux client traverse the array in order until it finds a match 
+or does it consider which flavor is strongest?
+
