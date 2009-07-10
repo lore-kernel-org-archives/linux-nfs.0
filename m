@@ -1,103 +1,73 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] nfsstat: process nfs41 client and server stats
-Date: Fri, 10 Jul 2009 12:39:03 +0300
-Message-ID: <1247218743-14126-1-git-send-email-bhalevy@panasas.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Steve Dickson <steved@redhat.com>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH v2] read-modify-write page updating
+Date: Fri, 10 Jul 2009 11:57:02 -0400
+Message-ID: <4A5764CE.70804@redhat.com>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>	 <1241126587.15476.62.camel@heimdal.trondhjem.org>	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>	 <1243615595.7155.48.camel@heimdal.trondhjem.org>	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>	 <1243618500.7155.56.camel@heimdal.trondhjem.org>	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>	 <1243686363.5209.16.camel@heimdal.trondhjem.org>	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>	 <1243963631.4868.124.camel@heimdal.trondhjem.org>	 <18982.41770.293636.786518@fisica.ufpr.br>	 <1244049027.5603.5.camel@heimdal.trondhjem.org>	 <OFB53BFCCB.0CEC7A7E-ON852575CA.006BA196-852575CB.0
+ 0613ABC@us.ibm.com>	 <1244138698.5203.59.camel@heimdal.trondhjem.org>	 <4A428482.60403@redhat.com>  <4A55FAC8.5040309@redhat.com> <1247153972.5766.15.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:27777
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751215AbZGJJjG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Jul 2009 05:39:06 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:50990 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751651AbZGJP5L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Jul 2009 11:57:11 -0400
+In-Reply-To: <1247153972.5766.15.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Augment nfs4 stats to cover new nfs41 client and
-server operations' stats.
+Trond Myklebust wrote:
+> On Thu, 2009-07-09 at 10:12 -0400, Peter Staubach wrote:
+>
+>   
+>> Signed-off-by: Peter Staubach <staubach@redhat.com>
+>>     
+>
+> Please could you send such patches as inline, rather than as
+> attachments. It makes it harder to comment on the patch contents...
+>
+>   
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- utils/nfsstat/nfsstat.c |   46 ++++++++++++++++++++++++++++++++++++++++------
- 1 files changed, 40 insertions(+), 6 deletions(-)
+I will investigate how to do this.
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 7e9f327..fa46d5d 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -30,8 +30,8 @@ static unsigned int	cltproc2info[20], cltproc2info_old[20];	/* NFSv2 call counts
- static unsigned int	srvproc3info[24], srvproc3info_old[24];	/* NFSv3 call counts ([0] == 22) */
- static unsigned int	cltproc3info[24], cltproc3info_old[24];	/* NFSv3 call counts ([0] == 22) */
- static unsigned int	srvproc4info[4], srvproc4info_old[4];	/* NFSv4 call counts ([0] == 2) */
--static unsigned int	cltproc4info[37], cltproc4info_old[37];	/* NFSv4 call counts ([0] == 35) */
--static unsigned int	srvproc4opsinfo[42], srvproc4opsinfo_old[42];	/* NFSv4 call counts ([0] == 40) */
-+static unsigned int	cltproc4info[49], cltproc4info_old[49];	/* NFSv4 call counts ([0] == 35) */
-+static unsigned int	srvproc4opsinfo[61], srvproc4opsinfo_old[61];	/* NFSv4 call counts ([0] == 40) */
- static unsigned int	srvnetinfo[5], srvnetinfo_old[5];	/* 0  # of received packets
- 								 * 1  UDP packets
- 								 * 2  TCP packets
-@@ -93,24 +93,58 @@ static const char *	nfssrvproc4name[2] = {
- 	"compound",
- };
- 
--static const char *	nfscltproc4name[35] = {
-+static const char *	nfscltproc4name[47] = {
- 	"null",      "read",      "write",   "commit",      "open",        "open_conf",
- 	"open_noat", "open_dgrd", "close",   "setattr",     "fsinfo",      "renew",
- 	"setclntid", "confirm",   "lock",
- 	"lockt",     "locku",     "access",  "getattr",     "lookup",      "lookup_root",
- 	"remove",    "rename",    "link",    "symlink",     "create",      "pathconf",
- 	"statfs",    "readlink",  "readdir", "server_caps", "delegreturn", "getacl",
--	"setacl",    "fs_locations"
-+	"setacl",    "fs_locations",
-+	/* nfsv4.1 client ops */
-+	"exchange_id",
-+	"create_ses",
-+	"destroy_ses",
-+	"sequence",
-+	"get_lease_t",
-+	"layoutget",
-+	"layoutcommit",
-+	"layoutreturn",
-+	"getdevlist",
-+	"getdevinfo",
-+	/* nfsv4.1 pnfs client ops to data server only */
-+	"ds_write",
-+	"ds_commit",
- };
- 
--static const char *     nfssrvproc4opname[40] = {
-+static const char *     nfssrvproc4opname[59] = {
-         "op0-unused",   "op1-unused", "op2-future",  "access",     "close",       "commit",
-         "create",       "delegpurge", "delegreturn", "getattr",    "getfh",       "link",
-         "lock",         "lockt",      "locku",       "lookup",     "lookup_root", "nverify",
-         "open",         "openattr",   "open_conf",   "open_dgrd",  "putfh",       "putpubfh",
-         "putrootfh",    "read",       "readdir",     "readlink",   "remove",      "rename",
-         "renew",        "restorefh",  "savefh",      "secinfo",    "setattr",     "setcltid",
--        "setcltidconf", "verify",     "write",       "rellockowner"
-+        "setcltidconf", "verify",     "write",       "rellockowner",
-+	/* nfsv4.1 server ops */
-+	"bc_ctl",
-+	"bind_conn",
-+	"exchange_id",
-+	"create_ses",
-+	"destroy_ses",
-+	"free_stateid",
-+	"getdirdeleg",
-+	"getdevinfo",
-+	"getdevlist",
-+	"layoutcommit",
-+	"layoutget",
-+	"layoutreturn",
-+	"secinfononam",
-+	"sequence",
-+	"set_ssv",
-+	"test_stateid",
-+	"want_deleg",
-+	"destroy_clid",
-+	"reclaim_comp",
- };
- 
- #define LABEL_srvnet		"Server packet stats:\n"
--- 
-1.6.3.3
+>> +static int nfs_want_read_modify_write(struct file *file, struct page *page,
+>> +			loff_t pos, unsigned len)
+>> +{
+>> +	unsigned int pglen = nfs_page_length(page);
+>> +	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+>> +	unsigned int end = offset + len;
+>> +
+>> +	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+>> +	    !PageUptodate(page) &&		/* Uptodate? */
+>> +	    !PageDirty(page) &&			/* Dirty already? */
+>> +	    !PagePrivate(page) &&		/* i/o request already? */
+>>     
+>
+> I don't think you need the PageDirty() test. These days we should be
+> guaranteed to always have PagePrivate() set whenever PageDirty() is
+> (although the converse is not true). Anything else would be a bug...
+>
+>   
+
+Okie doke.  It seemed to me that this should be true, but it was
+safer to leave both tests.
+
+I will remove that PageDirty test, retest, and then send another
+version of the patch.  I will be out next week, so it will take a
+couple of weeks.
+
+    Thanx...
+
+       ps
+
+>> +	    pglen &&				/* valid bytes of file? */
+>> +	    (end < pglen || offset))		/* replace all valid bytes? */
+>> +		return 1;
+>> +	return 0;
+>> +}
+>> +
+>>     
+>
+>   
 
