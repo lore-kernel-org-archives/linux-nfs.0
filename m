@@ -1,72 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43586 "EHLO mx2.netapp.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:50365 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751868AbZGWSLs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Jul 2009 14:11:48 -0400
-Cc: erveith@de.ibm.com, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-Message-Id: <2CFD9099-9CE1-479D-99D0-80C4E5FA58F4@netapp.com>
-From: Andy Adamson <andros@netapp.com>
-To: Rick Macklem <rick@snowhite.cis.uoguelph.ca>
-In-Reply-To: <200907231510.LAA43979@snowhite.cis.uoguelph.ca>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: nfs4 write delegation status
-Date: Thu, 23 Jul 2009 14:11:46 -0400
-References: <200907231510.LAA43979@snowhite.cis.uoguelph.ca>
+	id S1754830AbZGLQbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 12 Jul 2009 12:31:02 -0400
+Subject: Re: How to monitor Linux NFS client load?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Andrey Borzenkov <arvidjaar@mail.ru>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <200907120838.06766.arvidjaar@mail.ru>
+References: <200907112103.27082.arvidjaar@mail.ru>
+	 <1247352267.7281.2.camel@heimdal.trondhjem.org>
+	 <200907120838.06766.arvidjaar@mail.ru>
+Content-Type: text/plain
+Date: Sun, 12 Jul 2009 12:30:57 -0400
+Message-Id: <1247416257.13973.0.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Sun, 2009-07-12 at 08:38 +0400, Andrey Borzenkov wrote:
+> On Sunday 12 of July 2009 02:44:27 Trond Myklebust wrote:
+> > On Sat, 2009-07-11 at 21:03 +0400, Andrey Borzenkov wrote:
+> > > Recently we have the case of very high latencies on NFS reads as
+> > > reported by application (SAP R/3). NFS server was NetApp FAS;
+> > > according to NetApp statistic, average volume read latencies were
+> > > in order 10ms, while SAP stats gave 30-50ms. Systems were
+> > > interconnected by dedicated 1Gb/s Cisco switches (3750G) with ca.
+> > > 30% max load on interfaces.
+> > >
+> > > On advice of my colleague we changed sunrpc.tcp_slot_table_entries
+> > > from default 16 to 128 which seemed to make situation much better -
+> > > without changing load pattern of filer in any visible way.
+> > >
+> > > Now, I can understand, why we observed much higher latency on
+> > > system and why changing (what effectively is) queue depth helped.
+> > > But I am totally frustrated that there does not appear to be *any*
+> > > possibility to detect this situation on Linux side and to get a
+> > > real numbers of real NFS IO latencies or number of requests waiting
+> > > to be executed (and I do not even dream about per-mount point
+> > > stats).
+> > >
+> > > I am grateful for any hints how can we monitor Linux NFS client and
+> > > get real-life numbers of what happens inside. Thank you!
+> >
+> > See the nfs-iostat utility in the nfs-utils package:
+> >
+> > http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=tools/nfs-i
+> >ostat/nfs-iostat.py;h=9626d42609b9485c7fda0c9ef69d698f9fa929fd;hb=HEAD
+> >
+> 
+> This looks exactly like what is required, except ...
+> 
+> cn1:~ # ./nfs-iostat.py 2
+> Traceback (most recent call last):
+>   File "./nfs-iostat.py", line 559, in ?
+>     iostat_command(prog)
+>   File "./nfs-iostat.py", line 464, in iostat_command
+>     mountstats = parse_stats_file('/proc/self/mountstats')
+>   File "./nfs-iostat.py", line 434, in parse_stats_file
+>     f = file(filename)
+> IOError: [Errno 2] No such file or directory: '/proc/self/mountstats'
+> 
+> Which minimum kernel version is required for it?
+> 
+> Thank you!
 
-On Jul 23, 2009, at 11:10 AM, Rick Macklem wrote:
+You need kernel 2.6.17 or newer.
 
->>> I really don't want to enable write delegations until we figure  
->>> out how
->>> to enforce them correctly against local (non-nfs) users of the  
->>> exported
->>> filesystem as well.  In addition to breaking delegations on read  
->>> opens,
->>> that means breaking delegations or doing a cb_getattr on  
->>> operations like
->>> stat.
->>
->> do you know whether there are local FS where the maintainers at  
->> least plan
->> to incorporate delegations?
->
-> I'm not a Linux guy, so I'm not familiar with the internal  
-> structure, but...
-> in general, I don't think the problem is with local file systems.  
-> Usually
-> the problem is with local system call access. For example, if a
-> process running locally on the server opens a file, the delegation  
-> should
-> be recalled, so that changes done locally on the client get flushed  
-> back
-> to the server. Also, a write delegation allows a client to do byte  
-> range
-> locking locally in the client, so the write delegation needs to be
-> recalled before anything gets a byte range lock locally in the server.
-
-The delegation implementation on the Linux server uses the vfs lease  
-subsystem, and so is integrated with local access - conflicting opens  
-done locally do recall delegations.  But the last time I looked, the  
-lease subsystem is not complete as it doesn't recall leases (nor  
-delegations) on remove, rename, etc. Another problem is that while  
-write delegations improve performance for certain workloads, they kill  
-performance for others.
-
--->Andy
-
->
->
-> A Samba server running in the nfs server would be doing "local" ops
-> for the purpose of this discussion. (I'm not sure if Samba goes as far
-> as doing Open/Share locks for clients?)
->
-> rick
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers
+  Trond
 
