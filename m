@@ -1,42 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:33945 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:56087 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752537AbZGNRuF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jul 2009 13:50:05 -0400
-Date: Tue, 14 Jul 2009 13:48:28 -0400
-From: Valerie Aurora <vaurora@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>, Jan Blunck <jblunck@suse.de>,
-        Christoph Hellwig <hch@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Union mounts, NFS, and locking
-Message-ID: <20090714174828.GE27582@shell>
-Content-Type: text/plain; charset=us-ascii
+	id S1756523AbZGMQUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jul 2009 12:20:15 -0400
+Subject: Re: Security negotiation
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Tom Haynes <tdh@excfb.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <4A5B5BCC.5040200@excfb.com>
+References: <4A578372.1020005@excfb.com>
+	 <D8976FEC-39F9-4FF4-8FCE-AB3D5B047DFB@oracle.com>
+	 <F2FB7FDE-00D9-4623-964D-3C632AD64C68@oracle.com>
+	 <4A57AADE.8080002@excfb.com>
+	 <2BA1057E-5A8E-4780-B8F2-FCC8BA3846CC@oracle.com>
+	 <4A57C2F3.4070109@excfb.com>
+	 <1247265922.8254.30.camel@heimdal.trondhjem.org>
+	 <4A5B5BCC.5040200@excfb.com>
+Content-Type: text/plain
+Date: Mon, 13 Jul 2009 12:20:07 -0400
+Message-Id: <1247502007.14524.3.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-For now, the union mount developers are assuming that the bottom layer
-of a union mount is read-only.  This avoids the directory
-topology-related problems summarized in this thread:
+On Mon, 2009-07-13 at 11:07 -0500, Tom Haynes wrote:
+> Trond Myklebust wrote:
+> > On Fri, 2009-07-10 at 17:38 -0500, Tom Haynes wrote:
+> >   
+> >> If they have the same access lists, then the server is free to order them...
+> >>
+> >> share -F nfs -o sec=sys:none:krb5,rw /foo
+> >> share -F nfs -o sec=sys,ro,sec=krb5p,rw,root=@192.168.2.0,sec=krb5,rw /bar
+> >>
+> >> In the first, we don't care how the server presents them. In the second, 
+> >> the list would be: sys krb5p krb5.
+> >>     
+> >
+> > Meaning that the client defaults to read-only access?
+> >
+> > Trond
+> >   
+> 
+> In this scenario, yes.
+> 
+> The export states that if you can't be bothered to run kerberos, I can't 
+> be bothered to let you write
+> to my filesystem.
 
-http://lkml.org/lkml/2008/1/17/4
+Well, how does the security negotiating NFSv3 client discover that?
 
-The problem is making a file system really really read-only and not
-letting someone else come along and start sneakily modifying it
-underneath us.  My superblock readonly users patch
-(http://lkml.org/lkml/2009/7/13/243) fixes that for local file
-systems, but I'm not sure how to handle NFS mounts as the bottom
-layer.  The client can mount it read-only, but that puts no
-restrictions on the server.  However, the kernel can already deal with
-things unexpectedly moving/going away on an NFS mount - ESTALE - and
-the dentry/inode/etc. won't suddenly disappear in the way they can
-with local file systems.  Is this good enough for union mounts?  Or do
-we need to get the NFS server to promise that the exported file system
-is really really read-only too?
+I'm assuming that in the case of NFSv4, you would return
+NFS4ERR_WRONGSEC if the user attempts to write to the server, but what
+do you do in the case of NFSv3? Do you return an rpc level AUTH_TOOWEAK
+error instead?
 
-(Yes, this depends on the actual concrete union mount locking scheme,
-but I'm more interested in whether it can or cannot be solved in
-principle.)
+    Trond
 
--VAL
