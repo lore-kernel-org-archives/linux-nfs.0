@@ -1,52 +1,75 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] NFS client packet storm on 2.6.27.x
-Date: Mon, 13 Jul 2009 10:20:01 -0700
-Message-ID: <20090713172001.GA22775@kroah.com>
-References: <20090116104802.GF47559@fit.vutbr.cz>
- <20090118130835.GH47559@fit.vutbr.cz>
- <20090120150301.GG47559@fit.vutbr.cz>
- <1232465547.7055.3.camel@heimdal.trondhjem.org>
- <20090303120848.GV89843@fit.vutbr.cz>
- <1236089767.9631.4.camel@heimdal.trondhjem.org>
- <20090418051739.GL64731@fit.vutbr.cz>
- <20090422172707.GC57877@fit.vutbr.cz>
- <20090625055532.GC50277@fit.vutbr.cz>
- <20090713111214.GC30754@fit.vutbr.cz>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/5] NFS: Fix up new minorversion= option
+Date: Mon, 13 Jul 2009 15:17:17 -0400
+Message-ID: <20090713191717.1951.20958.stgit@matisse.1015granger.net>
+References: <20090713191417.1951.75470.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	stable@kernel.org
-To: Kasparek Tomas <kasparek@fit.vutbr.cz>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:52283 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756635AbZGMRXb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2009 13:23:31 -0400
-In-Reply-To: <20090713111214.GC30754@fit.vutbr.cz>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45013
+	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751732AbZGMTRV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2009 15:17:21 -0400
+In-Reply-To: <20090713191417.1951.75470.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 13, 2009 at 01:12:15PM +0200, Kasparek Tomas wrote:
-> On Thu, Jun 25, 2009 at 07:55:32AM +0200, Kasparek Tomas wrote:
-> > http://www.linux-nfs.org/Linux-2.6.x/2.6.27/
-> > 
-> > .../fixups_4/linux-2.6.27-001-respond_promptly_to_socket_errors.dif
-> > .../fixups_4/linux-2.6.27-002-respond_promptly_to_socket_errors_2.dif
-> > 
-> > ...
-> > Together with tcp_linger patch it seems to improve the situation a lot to
-> > state when it is possible for me to use 2.6.27.x kernels.
-> > 
-> > Trond, will it be possible to get tcp_linger and the upper twho patches to
-> > 2.6.27.x stable queue so others get these fixes?
-> 
-> I got no response so far, is there someone who could advise me what to do
-> to get above patches to 2.6.27.x stable? Or is there some reason, why this
-> is not possible at all?
+The new minorversion= mount option (commit 3fd5be9e) was merged at
+the same time as the recent sloppy parser fixes (commit a5a16bae),
+so minorversion= still uses the old value parsing logic.
 
-Can you backport them and send them to stable@kernel.org with the git
-commit ids of the orignal patches?
+If the minorversion= option specifies a bogus value, it should fail
+with "bad value" not "bad option."
 
-thanks,
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-greg k-h
+ fs/nfs/super.c |   18 +++++++++++-------
+ 1 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 0b4cbdc..83a3107 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -158,7 +158,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountvers, "mountvers=%s" },
+ 	{ Opt_nfsvers, "nfsvers=%s" },
+ 	{ Opt_nfsvers, "vers=%s" },
+-	{ Opt_minorversion, "minorversion=%u" },
++	{ Opt_minorversion, "minorversion=%s" },
+ 
+ 	{ Opt_sec, "sec=%s" },
+ 	{ Opt_proto, "proto=%s" },
+@@ -1001,7 +1001,6 @@ static int nfs_parse_mount_options(char *raw,
+ 	while ((p = strsep(&raw, ",")) != NULL) {
+ 		substring_t args[MAX_OPT_ARGS];
+ 		unsigned long option;
+-		int int_option;
+ 		int token;
+ 
+ 		if (!*p)
+@@ -1273,11 +1272,16 @@ static int nfs_parse_mount_options(char *raw,
+ 			}
+ 			break;
+ 		case Opt_minorversion:
+-			if (match_int(args, &int_option))
+-				return 0;
+-			if (int_option < 0 || int_option > NFS4_MAX_MINOR_VERSION)
+-				return 0;
+-			mnt->minorversion = int_option;
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			rc = strict_strtoul(string, 10, &option);
++			kfree(string);
++			if (rc != 0)
++				goto out_invalid_value;
++			if (option > NFS4_MAX_MINOR_VERSION)
++				goto out_invalid_value;
++			mnt->minorversion = option;
+ 			break;
+ 
+ 		/*
+
