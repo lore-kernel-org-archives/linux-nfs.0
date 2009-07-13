@@ -1,133 +1,128 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/5] NFS: Add ability to send MOUNTPROC_UMNT to the kernel's
-	mountd client
-Date: Mon, 13 Jul 2009 15:17:32 -0400
-Message-ID: <20090713191731.1951.28069.stgit@matisse.1015granger.net>
+Subject: [PATCH 4/5] NFS: Fix auth flavor len accounting
+Date: Mon, 13 Jul 2009 15:17:39 -0400
+Message-ID: <20090713191739.1951.88096.stgit@matisse.1015granger.net>
 References: <20090713191417.1951.75470.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45020
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45023
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754817AbZGMTRe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2009 15:17:34 -0400
+	by vger.kernel.org with ESMTP id S1754869AbZGMTRm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2009 15:17:42 -0400
 In-Reply-To: <20090713191417.1951.75470.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After certain failure modes of an NFS mount, an NFS client should send
-a MOUNTPROC_UMNT request to remove the just-added mount entry from the
-server's mount table.  While no-one should rely on the accuracy of the
-server's mount table, this is just being a good neighbor.
+Previous logic in the NFS mount parsing code path assumed
+auth_flavor_len was set to zero for simple authentication flavors
+(like AUTH_UNIX), and 1 for compound flavors (like AUTH_GSS).
 
-Since NFS mount processing is handled in the kernel now, we will need
-a function in the kernel's mountd client that can post a MOUNTRPC_UMNT
-request, in order to handle these failure modes.
+At some earlier point (maybe even before the option parsers were
+merged?) specific checks for auth_flavor_len being zero were removed
+from the functions that validate the mount option that sets the mount
+point's authentication flavor.
+
+Since we are populating an array for authentication flavors, the
+auth_flavor_len should always be set to the number of flavors.  Let's
+eliminate some cleverness here, and prepare for new logic that needs
+to know the number of flavors in the auth_flavors[] array.
+
+(auth_flavors[] is an array because at some point we want to allow a
+list of acceptable authentication flavors to be specified via the sec=
+mount option.  For now it remains a single element array).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h   |    1 +
- fs/nfs/mount_clnt.c |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 61 insertions(+), 0 deletions(-)
+ fs/nfs/super.c |   17 +++--------------
+ 1 files changed, 3 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index fa9a0d0..d3823d7 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -102,6 +102,7 @@ struct nfs_mount_request {
- };
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 83a3107..a33e608 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -904,8 +904,6 @@ static void nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
  
- extern int nfs_mount(struct nfs_mount_request *info);
-+extern int nfs_umount(const struct nfs_mount_request *info);
+ /*
+  * Parse the value of the 'sec=' option.
+- *
+- * The flavor_len setting is for v4 mounts.
+  */
+ static int nfs_parse_security_flavors(char *value,
+ 				      struct nfs_parsed_mount_data *mnt)
+@@ -916,53 +914,43 @@ static int nfs_parse_security_flavors(char *value,
  
- /* client.c */
- extern struct rpc_program nfs_program;
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index b5ed325..67148e4 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -218,6 +218,52 @@ out_mnt_err:
- 	goto out;
+ 	switch (match_token(value, nfs_secflavor_tokens, args)) {
+ 	case Opt_sec_none:
+-		mnt->auth_flavor_len = 0;
+ 		mnt->auth_flavors[0] = RPC_AUTH_NULL;
+ 		break;
+ 	case Opt_sec_sys:
+-		mnt->auth_flavor_len = 0;
+ 		mnt->auth_flavors[0] = RPC_AUTH_UNIX;
+ 		break;
+ 	case Opt_sec_krb5:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5;
+ 		break;
+ 	case Opt_sec_krb5i:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5I;
+ 		break;
+ 	case Opt_sec_krb5p:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5P;
+ 		break;
+ 	case Opt_sec_lkey:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEY;
+ 		break;
+ 	case Opt_sec_lkeyi:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYI;
+ 		break;
+ 	case Opt_sec_lkeyp:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYP;
+ 		break;
+ 	case Opt_sec_spkm:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKM;
+ 		break;
+ 	case Opt_sec_spkmi:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMI;
+ 		break;
+ 	case Opt_sec_spkmp:
+-		mnt->auth_flavor_len = 1;
+ 		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMP;
+ 		break;
+ 	default:
+ 		return 0;
+ 	}
+ 
++	mnt->auth_flavor_len = 1;
+ 	return 1;
  }
  
-+/**
-+ * nfs_umount - Notify a server that we have unmounted this export
-+ * @info: pointer to umount request arguments
-+ *
-+ * MOUNTPROC_UMNT is advisory, so we set a short timeout.
-+ */
-+int nfs_umount(const struct nfs_mount_request *info)
-+{
-+	static const struct rpc_timeout nfs_umnt_timeout = {
-+		.to_initval = 1 * HZ,
-+		.to_maxval = 3 * HZ,
-+		.to_retries = 2,
-+	};
-+	struct mountres	result;
-+	struct rpc_message msg	= {
-+		.rpc_argp	= info->dirpath,
-+		.rpc_resp	= &result,
-+	};
-+	struct rpc_clnt *clnt;
-+	int status;
-+
-+	clnt = nfs_mount_rpc_create(info, &nfs_umnt_timeout);
-+	if (IS_ERR(clnt))
-+		return PTR_ERR(clnt);
-+
-+	dprintk("NFS: sending UMNT request for %s:%s\n",
-+		(info->hostname ? info->hostname : "server"),
-+			info->dirpath);
-+
-+	if (info->version == NFS_MNT3_VERSION)
-+		msg.rpc_proc = &clnt->cl_procinfo[MOUNTPROC3_UMNT];
-+	else
-+		msg.rpc_proc = &clnt->cl_procinfo[MOUNTPROC_UMNT];
-+
-+	status = rpc_call_sync(clnt, &msg, 0);
-+	rpc_shutdown_client(clnt);
-+
-+	if (status < 0) {
-+		dprintk("NFS: UMNT request failed, status=%d\n", status);
-+		return status;
-+	}
-+
-+	dprintk("NFS: UMNT request succeeded\n");
-+	return 0;
-+}
-+
- /*
-  * XDR encode/decode functions for MOUNT
-  */
-@@ -416,6 +462,13 @@ static struct rpc_procinfo mnt_procedures[] = {
- 		.p_statidx	= MOUNTPROC_MNT,
- 		.p_name		= "MOUNT",
- 	},
-+	[MOUNTPROC_UMNT] = {
-+		.p_proc		= MOUNTPROC_UMNT,
-+		.p_encode	= (kxdrproc_t)mnt_enc_dirpath,
-+		.p_arglen	= MNT_enc_dirpath_sz,
-+		.p_statidx	= MOUNTPROC_UMNT,
-+		.p_name		= "UMOUNT",
-+	},
- };
+@@ -1680,6 +1668,7 @@ static int nfs_validate_mount_data(void *options,
+ 	args->nfs_server.port	= 0;	/* autobind unless user sets port */
+ 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
++	args->auth_flavor_len	= 1;
  
- static struct rpc_procinfo mnt3_procedures[] = {
-@@ -428,6 +481,13 @@ static struct rpc_procinfo mnt3_procedures[] = {
- 		.p_statidx	= MOUNTPROC3_MNT,
- 		.p_name		= "MOUNT",
- 	},
-+	[MOUNTPROC3_UMNT] = {
-+		.p_proc		= MOUNTPROC3_UMNT,
-+		.p_encode	= (kxdrproc_t)mnt_enc_dirpath,
-+		.p_arglen	= MNT_enc_dirpath_sz,
-+		.p_statidx	= MOUNTPROC3_UMNT,
-+		.p_name		= "UMOUNT",
-+	},
- };
+ 	switch (data->version) {
+ 	case 1:
+@@ -2343,7 +2332,7 @@ static int nfs4_validate_mount_data(void *options,
+ 	args->acdirmax		= NFS_DEF_ACDIRMAX;
+ 	args->nfs_server.port	= NFS_PORT; /* 2049 unless user set port= */
+ 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
+-	args->auth_flavor_len	= 0;
++	args->auth_flavor_len	= 1;
+ 	args->minorversion	= 0;
  
- 
+ 	switch (data->version) {
 
