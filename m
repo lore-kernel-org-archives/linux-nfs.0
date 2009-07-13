@@ -1,33 +1,52 @@
-From: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
-Subject: Re: Security negotiation
-Date: Mon, 13 Jul 2009 11:44:56 -0500
-Message-ID: <4A5B6488.2050606@excfb.com>
-References: <4A578372.1020005@excfb.com>	 <D8976FEC-39F9-4FF4-8FCE-AB3D5B047DFB@oracle.com>	 <F2FB7FDE-00D9-4623-964D-3C632AD64C68@oracle.com>	 <4A57AADE.8080002@excfb.com>	 <2BA1057E-5A8E-4780-B8F2-FCC8BA3846CC@oracle.com>	 <4A57C2F3.4070109@excfb.com>	 <1247265922.8254.30.camel@heimdal.trondhjem.org>	 <4A5B5BCC.5040200@excfb.com> <1247502007.14524.3.camel@heimdal.trondhjem.org>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] NFS client packet storm on 2.6.27.x
+Date: Mon, 13 Jul 2009 10:20:01 -0700
+Message-ID: <20090713172001.GA22775@kroah.com>
+References: <20090116104802.GF47559@fit.vutbr.cz>
+ <20090118130835.GH47559@fit.vutbr.cz>
+ <20090120150301.GG47559@fit.vutbr.cz>
+ <1232465547.7055.3.camel@heimdal.trondhjem.org>
+ <20090303120848.GV89843@fit.vutbr.cz>
+ <1236089767.9631.4.camel@heimdal.trondhjem.org>
+ <20090418051739.GL64731@fit.vutbr.cz>
+ <20090422172707.GC57877@fit.vutbr.cz>
+ <20090625055532.GC50277@fit.vutbr.cz>
+ <20090713111214.GC30754@fit.vutbr.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@kernel.org
+To: Kasparek Tomas <kasparek@fit.vutbr.cz>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmmtao102.cox.net ([68.230.240.8]:56973 "EHLO
-	eastrmmtao102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753597AbZGMQpB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jul 2009 12:45:01 -0400
-In-Reply-To: <1247502007.14524.3.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from kroah.org ([198.145.64.141]:52283 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756635AbZGMRXb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Jul 2009 13:23:31 -0400
+In-Reply-To: <20090713111214.GC30754@fit.vutbr.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> Well, how does the security negotiating NFSv3 client discover that?
-> I'm assuming that in the case of NFSv4, you would return
-> NFS4ERR_WRONGSEC if the user attempts to write to the server, but what
-> do you do in the case of NFSv3? Do you return an rpc level AUTH_TOOWEAK
-> error instead?
->
->     Trond
->   
+On Mon, Jul 13, 2009 at 01:12:15PM +0200, Kasparek Tomas wrote:
+> On Thu, Jun 25, 2009 at 07:55:32AM +0200, Kasparek Tomas wrote:
+> > http://www.linux-nfs.org/Linux-2.6.x/2.6.27/
+> > 
+> > .../fixups_4/linux-2.6.27-001-respond_promptly_to_socket_errors.dif
+> > .../fixups_4/linux-2.6.27-002-respond_promptly_to_socket_errors_2.dif
+> > 
+> > ...
+> > Together with tcp_linger patch it seems to improve the situation a lot to
+> > state when it is possible for me to use 2.6.27.x kernels.
+> > 
+> > Trond, will it be possible to get tcp_linger and the upper twho patches to
+> > 2.6.27.x stable queue so others get these fixes?
+> 
+> I got no response so far, is there someone who could advise me what to do
+> to get above patches to 2.6.27.x stable? Or is there some reason, why this
+> is not possible at all?
 
+Can you backport them and send them to stable@kernel.org with the git
+commit ids of the orignal patches?
 
-Yes, that is what we would do in this case.
+thanks,
 
-
+greg k-h
