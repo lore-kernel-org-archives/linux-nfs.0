@@ -1,60 +1,43 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: Union mounts, NFS, and locking
-Date: Tue, 14 Jul 2009 16:19:41 -0400
-Message-ID: <20090714201940.GF27582@shell>
-References: <20090714174828.GE27582@shell> <200907141819.n6EIJQi1014319@agora.fsl.cs.sunysb.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] SUNRPC: handle IPv6 PKTINFO when extracting
+	destination address
+Date: Tue, 14 Jul 2009 17:41:42 -0400
+Message-ID: <20090714214141.GI2551@fieldses.org>
+References: <20090713145352.2177.8095.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Jan Blunck <jblunck@suse.de>,
-	Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-To: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47077 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:53693 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753902AbZGNUUD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Jul 2009 16:20:03 -0400
-In-Reply-To: <200907141819.n6EIJQi1014319-zop+azHP2WsZjdeEBZXbMidm6ipF23ct@public.gmane.org>
+	id S1756250AbZGNVlo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Jul 2009 17:41:44 -0400
+In-Reply-To: <20090713145352.2177.8095.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 14, 2009 at 02:19:26PM -0400, Erez Zadok wrote:
-> In message <20090714174828.GE27582@shell>, Valerie Aurora writes:
-> [...]
-> > (Yes, this depends on the actual concrete union mount locking scheme,
-> > but I'm more interested in whether it can or cannot be solved in
-> > principle.)
+On Mon, Jul 13, 2009 at 10:54:26AM -0400, Chuck Lever wrote:
+> PKTINFO is needed to scrape the caller's IP address off the socket so
+> RPC datagram replies are routed correctly.  Fill in missing pieces in
+> the kernel RPC server's UDP receive path to request IPv6 PKTINFO and
+> correctly parse the IPv6 cmsg header.
 > 
-> Val,
-> 
-> To solve this "in principle" would require a semantic change to all
-> network-based file systems (not just NFS).  You'll find yourself deep inside
-> age-old distributed systems and distributed locking issues---hard problems
-> (you've got plenty to worry about w/o having to redefine NFS semantics :-)
+> Without this patch, kernel RPC services drop all incoming requests on
+> UDP on IPv6.
 
-Makes sense.
+Looks fine, thanks--applied for 2.6.32.
 
-> IMHO it's not worth at this stage to try and solve that problem in an
-> end-to-end manner (client to server).  For a unioning layer to have to worry
-> about every possible change in any of the layers below it, is no different
-> than for every possible network-filesystem client to be able to guarantee
-> that nothing ever changes on the server unexpectedly: they don't, so why
-> should you have to solve this problem now?  Not that I don't think it's an
-> important problem---I just don't see why *you* should have to solve this and
-> not the network-filesystem community: whatever solution that can come up,
-> can be applicable to any unioning layer.  In the mean time, do the best you
-> can (e.g., ESTALE, readonly superblocks, etc.).
+> @@ -531,16 +551,15 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+>  
+>  	rqstp->rq_prot = IPPROTO_UDP;
+>  
+> -	if (cmh->cmsg_level != IPPROTO_IP ||
+> -	    cmh->cmsg_type != IP_PKTINFO) {
+> +	if (!svc_udp_get_dest_address(rqstp, cmh)) {
 
-Okay, so my best idea for a solution is to introduce a new NFS mount
-option that means the server promises that the exported file system is
-read-only (using superblock read-only count scheme locally).  E.g.:
+(Though personally I would have done this as two patches, with most of
+it in a preparatory cleanup patch and the above chunk (which if I
+understand right represents the only change in behavior) as the bugfix.)
 
-/etc/exports:
-/client_root_fs   thin-client-*.local.domain(server_ro,no_root_squash)
-
-Trond, is this super-gross or totally reasonable?  Seems like we add
-new NFS mount options at the drop of a hat.
-
--VAL
+--b.
