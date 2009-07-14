@@ -1,142 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from newpeace.netnation.com ([204.174.223.7]:54221 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755188AbZGXXNF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jul 2009 19:13:05 -0400
-Received: from sim by peace.netnation.com with local (Exim 4.63)
-	(envelope-from <sim@netnation.com>)
-	id 1MUTwi-0000cT-Um
-	for linux-nfs@vger.kernel.org; Fri, 24 Jul 2009 16:13:00 -0700
-Date: Fri, 24 Jul 2009 16:13:00 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Subject: Slower performance with lookupcache (2.6.30.2)
-Message-ID: <20090724231300.GA572@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from filer.fsl.cs.sunysb.edu ([130.245.126.2]:55462 "EHLO
+	filer.fsl.cs.sunysb.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756376AbZGNUhT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jul 2009 16:37:19 -0400
+Date: Tue, 14 Jul 2009 16:36:40 -0400
+Message-Id: <200907142036.n6EKaexe017464@agora.fsl.cs.sunysb.edu>
+From: Erez Zadok <ezk@cs.sunysb.edu>
+To: Valerie Aurora <vaurora@redhat.com>
+Cc: Erez Zadok <ezk@cs.sunysb.edu>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>, Jan Blunck <jblunck@suse.de>,
+        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: Union mounts, NFS, and locking 
+In-reply-to: Your message of "Tue, 14 Jul 2009 16:19:41 EDT."
+             <20090714201940.GF27582@shell>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hello :)
+In message <20090714201940.GF27582@shell>, Valerie Aurora writes:
+> On Tue, Jul 14, 2009 at 02:19:26PM -0400, Erez Zadok wrote:
+> > In message <20090714174828.GE27582@shell>, Valerie Aurora writes:
+[...]
+> > IMHO it's not worth at this stage to try and solve that problem in an
+> > end-to-end manner (client to server).  For a unioning layer to have to worry
+> > about every possible change in any of the layers below it, is no different
+> > than for every possible network-filesystem client to be able to guarantee
+> > that nothing ever changes on the server unexpectedly: they don't, so why
+> > should you have to solve this problem now?  Not that I don't think it's an
+> > important problem---I just don't see why *you* should have to solve this and
+> > not the network-filesystem community: whatever solution that can come up,
+> > can be applicable to any unioning layer.  In the mean time, do the best you
+> > can (e.g., ESTALE, readonly superblocks, etc.).
+> 
+> Okay, so my best idea for a solution is to introduce a new NFS mount
+> option that means the server promises that the exported file system is
+> read-only (using superblock read-only count scheme locally).  E.g.:
 
-I just noticed something interesting while benchmarking NFSv3 versus
-GlusterFS.  With lookupcache enabled (all or positive), it seems that
-successive executions of "du" are slower the second and further times. 
-With lookupcache disabled, second and further executions are slightly
-faster than the first but still slower than with lookupcache enabled:
+How would the server be able to guarantee that?  Are you planning to change
+the protocol or implementation somehow?  Are you assuming that the server
+will be running linux w/ special r/o sb support?  If so, it won't work on
+other platforms (NFS is supposed to be interoperable in principle :-)
 
-# umount /nfs ; mount -t nfs 10.10.52.30:/home/nfs /nfs -o lookupcache=positive && repeat 3 /bin/sh -c 'time du -s /nfs/test ; sleep 3'
-494616  /nfs/test
+Without a protocol change, such an option (if I understood you), is at best
+a server promise to "behave nice."
 
-real    0m1.670s
-user    0m0.028s
-sys     0m0.344s
-494616  /nfs/test
+In dealing with Unionfs, I've already had to face some really annoying
+cases related to this.  For example, when the client mounts read-write, but
+the server does *any* combination of these two:
 
-real    0m4.030s
-user    0m0.052s
-sys     0m0.536s
-494616  /nfs/test
+1. export readonly or readwrite
+2. the native f/s exported can be locally mounted r/o or r/w.
 
-real    0m4.025s
-user    0m0.060s
-sys     0m0.608s
+Turns out that servers in that case will return any of EROFS, EACESS, EPERM,
+and even ESTALE.  So this is annoying to have to detect: a true permission
+error should be returned to the user in unionfs, but a readonly access
+should result in a copyup.  I don't believe this behavior was standardized
+in v2/v3.
 
-With lookupcache=none:
+So, in retrospect, it would be *great* if I had a client-side mount option
+that could guarantee that the server is exporting/mounting readonly.  But I
+feel that for such a client-side option to work, some sort of information
+has to flow b/t the server and the client to validate this readonly
+assertion.
 
-# umount /nfs ; mount -t nfs 10.10.52.30:/home/nfs /nfs -o lookupcache=none && repeat 3 /bin/sh -c 'time du -s /nfs/test ; sleep 3'
-494616  /nfs/test
+> /etc/exports:
+> /client_root_fs   thin-client-*.local.domain(server_ro,no_root_squash)
+> 
+> Trond, is this super-gross or totally reasonable?  Seems like we add
+> new NFS mount options at the drop of a hat.
+> 
+> -VAL
 
-real    0m5.362s
-user    0m0.044s
-sys     0m0.924s
-494616  /nfs/test
-
-real    0m4.496s
-user    0m0.060s
-sys     0m0.828s
-494616  /nfs/test
-
-real    0m4.497s
-user    0m0.052s
-sys     0m0.780s
-
-In this case, /nfs/test is just a copy of /usr made on the server.  The
-only difference is "lookupcache".  When set to "all" or "positive", the
-first sweep is much faster than "none", but the following sweeps are
-slower.
-
-nfsstat shows that "getattr" is called many more times on the second and
-third sweeps:
-
-# umount /nfs ; mount -t nfs 10.10.52.30:/home/nfs /nfs -o lookupcache=all && repeat 3 /bin/sh -c 'cat /proc/net/rpc/nfs > /tmp/x ; time du -s /nfs/test ; nfsstat -c3 -S /tmp/x ; sleep 3'
-494616  /nfs/test
-
-real    0m1.684s
-user    0m0.036s
-sys     0m0.316s
-Client rpc stats:
-calls      retrans    authrefrsh
-8622       0          0       
-
-Client nfs v3:
-null         getattr      setattr      lookup       access       readlink     
-0         0% 3649     42% 0         0% 820       9% 1826     21% 0         0% 
-read         write        create       mkdir        symlink      mknod        
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-remove       rmdir        rename       link         readdir      readdirplus  
-0         0% 0         0% 0         0% 0         0% 8         0% 2319     26% 
-fsstat       fsinfo       pathconf     commit       
-0         0% 0         0% 0         0% 0         0% 
-
-494616  /nfs/test
-
-real    0m3.975s
-user    0m0.052s
-sys     0m0.672s
-Client rpc stats:
-calls      retrans    authrefrsh
-25076      0          0       
-
-Client nfs v3:
-null         getattr      setattr      lookup       access       readlink     
-0         0% 25076   100% 0         0% 0         0% 0         0% 0         0% 
-read         write        create       mkdir        symlink      mknod        
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-remove       rmdir        rename       link         readdir      readdirplus  
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-fsstat       fsinfo       pathconf     commit       
-0         0% 0         0% 0         0% 0         0% 
-
-494616  /nfs/test
-
-real    0m4.010s
-user    0m0.056s
-sys     0m0.616s
-Client rpc stats:
-calls      retrans    authrefrsh
-25076      0          0       
-
-Client nfs v3:
-null         getattr      setattr      lookup       access       readlink     
-0         0% 25076   100% 0         0% 0         0% 0         0% 0         0% 
-read         write        create       mkdir        symlink      mknod        
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-remove       rmdir        rename       link         readdir      readdirplus  
-0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-fsstat       fsinfo       pathconf     commit       
-0         0% 0         0% 0         0% 0         0% 
-
-Adding "echo 1 > /proc/sys/vm/drop_caches" to the repeat loop makes the
-readdirplus calls happen each time, but still with increased getattrs. 
-With "echo 2 > /proc/sys/vm/drop_caches" instead, behaviour is always
-fast (~1.6 seconds).
-
-The lookupcache here seems to be increasing initial performance but then
-seems to slow down cached performance by causing more getattrs than with
-no lookupcache, perhaps for revalidation tests.
-
-This is stock 2.6.30.2 on the server and client, NFSv3, EXT3 on the
-server.
-
-Simon-
+Erez.
