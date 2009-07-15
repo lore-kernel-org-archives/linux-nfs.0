@@ -1,85 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx30.mail.ru ([94.100.176.44]:16803 "EHLO mx30.mail.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750831AbZGLEiK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 12 Jul 2009 00:38:10 -0400
-From: Andrey Borzenkov <arvidjaar@mail.ru>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: How to monitor Linux NFS client load?
-Date: Sun, 12 Jul 2009 08:38:02 +0400
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <200907112103.27082.arvidjaar@mail.ru> <1247352267.7281.2.camel@heimdal.trondhjem.org>
-In-Reply-To: <1247352267.7281.2.camel@heimdal.trondhjem.org>
-Content-Type: multipart/signed;
-  boundary="nextPart4227050.kbD4j8JChD";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <200907120838.06766.arvidjaar@mail.ru>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:32769
+	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752115AbZGOVnE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2009 17:43:04 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/10] SUNRPC: Add documenting comments in net/sunrpc/timer.c
+To: trond.myklebust@fys.uio.no
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 15 Jul 2009 17:43:00 -0400
+Message-ID: <20090715214300.7883.95882.stgit@matisse.1015granger.net>
+In-Reply-To: <20090715213842.7883.48947.stgit@matisse.1015granger.net>
+References: <20090715213842.7883.48947.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---nextPart4227050.kbD4j8JChD
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Clean up: provide documenting comments for the functions in
+net/sunrpc/timer.c.
 
-On Sunday 12 of July 2009 02:44:27 Trond Myklebust wrote:
-> On Sat, 2009-07-11 at 21:03 +0400, Andrey Borzenkov wrote:
-> > Recently we have the case of very high latencies on NFS reads as
-> > reported by application (SAP R/3). NFS server was NetApp FAS;
-> > according to NetApp statistic, average volume read latencies were
-> > in order 10ms, while SAP stats gave 30-50ms. Systems were
-> > interconnected by dedicated 1Gb/s Cisco switches (3750G) with ca.
-> > 30% max load on interfaces.
-> >
-> > On advice of my colleague we changed sunrpc.tcp_slot_table_entries
-> > from default 16 to 128 which seemed to make situation much better -
-> > without changing load pattern of filer in any visible way.
-> >
-> > Now, I can understand, why we observed much higher latency on
-> > system and why changing (what effectively is) queue depth helped.
-> > But I am totally frustrated that there does not appear to be *any*
-> > possibility to detect this situation on Linux side and to get a
-> > real numbers of real NFS IO latencies or number of requests waiting
-> > to be executed (and I do not even dream about per-mount point
-> > stats).
-> >
-> > I am grateful for any hints how can we monitor Linux NFS client and
-> > get real-life numbers of what happens inside. Thank you!
->
-> See the nfs-iostat utility in the nfs-utils package:
->
-> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=tools/nfs-i
->ostat/nfs-iostat.py;h=9626d42609b9485c7fda0c9ef69d698f9fa929fd;hb=HEAD
->
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-This looks exactly like what is required, except ...
+ net/sunrpc/timer.c |   45 +++++++++++++++++++++++++++++----------------
+ 1 files changed, 29 insertions(+), 16 deletions(-)
 
-cn1:~ # ./nfs-iostat.py 2
-Traceback (most recent call last):
-  File "./nfs-iostat.py", line 559, in ?
-    iostat_command(prog)
-  File "./nfs-iostat.py", line 464, in iostat_command
-    mountstats = parse_stats_file('/proc/self/mountstats')
-  File "./nfs-iostat.py", line 434, in parse_stats_file
-    f = file(filename)
-IOError: [Errno 2] No such file or directory: '/proc/self/mountstats'
+diff --git a/net/sunrpc/timer.c b/net/sunrpc/timer.c
+index 31becbf..14ac71c 100644
+--- a/net/sunrpc/timer.c
++++ b/net/sunrpc/timer.c
+@@ -25,8 +25,13 @@
+ #define RPC_RTO_INIT (HZ/5)
+ #define RPC_RTO_MIN (HZ/10)
+ 
+-void
+-rpc_init_rtt(struct rpc_rtt *rt, unsigned long timeo)
++/**
++ * rpc_init_rtt - Initialize an RPC RTT estimator context
++ * @rt: context to initialize
++ * @timeo: initial timeout value, in jiffies
++ *
++ */
++void rpc_init_rtt(struct rpc_rtt *rt, unsigned long timeo)
+ {
+ 	unsigned long init = 0;
+ 	unsigned i;
+@@ -43,12 +48,16 @@ rpc_init_rtt(struct rpc_rtt *rt, unsigned long timeo)
+ }
+ EXPORT_SYMBOL_GPL(rpc_init_rtt);
+ 
+-/*
++/**
++ * rpc_update_rtt - Update an RPC RTT estimator context
++ * @rt: context to update
++ * @timer: timer array index (request type)
++ * @m: recent actual RTT, in jiffies
++ *
+  * NB: When computing the smoothed RTT and standard deviation,
+  *     be careful not to produce negative intermediate results.
+  */
+-void
+-rpc_update_rtt(struct rpc_rtt *rt, unsigned timer, long m)
++void rpc_update_rtt(struct rpc_rtt *rt, unsigned timer, long m)
+ {
+ 	long *srtt, *sdrtt;
+ 
+@@ -79,21 +88,25 @@ rpc_update_rtt(struct rpc_rtt *rt, unsigned timer, long m)
+ }
+ EXPORT_SYMBOL_GPL(rpc_update_rtt);
+ 
+-/*
+- * Estimate rto for an nfs rpc sent via. an unreliable datagram.
+- * Use the mean and mean deviation of rtt for the appropriate type of rpc
+- * for the frequent rpcs and a default for the others.
+- * The justification for doing "other" this way is that these rpcs
+- * happen so infrequently that timer est. would probably be stale.
+- * Also, since many of these rpcs are
+- * non-idempotent, a conservative timeout is desired.
++/**
++ * rpc_calc_rto - Provide an estimated timeout value
++ * @rt: context to use for calculation
++ * @timer: timer array index (request type)
++ *
++ * Estimate RTO for an NFS RPC sent via an unreliable datagram.  Use
++ * the mean and mean deviation of RTT for the appropriate type of RPC
++ * for frequently issued RPCs, and a fixed default for the others.
++ *
++ * The justification for doing "other" this way is that these RPCs
++ * happen so infrequently that timer estimation would probably be
++ * stale.  Also, since many of these rpcs are non-idempotent, a
++ * conservative timeout is desired.
++ *
+  * getattr, lookup,
+  * read, write, commit     - A+4D
+  * other                   - timeo
+  */
+-
+-unsigned long
+-rpc_calc_rto(struct rpc_rtt *rt, unsigned timer)
++unsigned long rpc_calc_rto(struct rpc_rtt *rt, unsigned timer)
+ {
+ 	unsigned long res;
+ 
 
-Which minimum kernel version is required for it?
-
-Thank you!
-
---nextPart4227050.kbD4j8JChD
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkpZaKoACgkQR6LMutpd94wFiwCfY3lVJRKaejUoj5rQZBSkOQhd
-8F4AoKUIm+ZyHFdo0caRzC6aCaAmn5FZ
-=6Z4A
------END PGP SIGNATURE-----
-
---nextPart4227050.kbD4j8JChD--
