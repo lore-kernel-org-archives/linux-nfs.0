@@ -1,75 +1,64 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 00/31] mount.nfs patches for next nfs-utils release
-Date: Wed, 15 Jul 2009 09:50:22 -0400
-Message-ID: <4A5DDE9E.9040001@RedHat.com>
-References: <20090629172704.2076.45402.stgit@matisse.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Union mounts, NFS, and locking
+Date: Wed, 15 Jul 2009 13:27:59 -0400
+Message-ID: <20090715172758.GA13893@fieldses.org>
+References: <20090714201940.GF27582@shell> <200907142036.n6EKaexe017464@agora.fsl.cs.sunysb.edu> <20090714220515.GH27582@shell>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jan Blunck <jblunck@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Valerie Aurora <vaurora@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51997 "EHLO mx2.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:48180 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751134AbZGONxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jul 2009 09:53:41 -0400
-In-Reply-To: <20090629172704.2076.45402.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1755627AbZGOR2Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jul 2009 13:28:16 -0400
+In-Reply-To: <20090714220515.GH27582@shell>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Jul 14, 2009 at 06:05:16PM -0400, Valerie Aurora wrote:
+> On Tue, Jul 14, 2009 at 04:36:40PM -0400, Erez Zadok wrote:
+> > In message <20090714201940.GF27582@shell>, Valerie Aurora writes:
+> >
+> > > Okay, so my best idea for a solution is to introduce a new NFS mount
+> > > option that means the server promises that the exported file system is
+> > > read-only (using superblock read-only count scheme locally).  E.g.:
 
+Language nitpick: the term "read-only" is confusing.  Files
+(/proc/mounts) and filesystems (nfs) that are "read-only" can still
+change.
 
-On 06/29/2009 01:34 PM, Chuck Lever wrote:
-> Hi Steve-
-> 
-> This series contains some patches I've had for a little while, and a
-> bunch of new fixes I made last week to address RH bugzillas 486266 and
-> 505535.
-> 
-> In the short term, these patches should address most of the recent
-> complaints about the new mount.nfs.  Text-based mounts should behave
-> a lot more like legacy mounts -- fewer hangs and better negotiation
-> semantics.
-> 
-> Longer term, we are planning to sink the mount version/transport
-> negotiation into the kernel.
-> 
-> ---
-> 
-> Chuck Lever (31):
->       mount.nfs: Squelch compiler warnings in nfs_strerror()
->       mount.nfs: Squelch unused parameter warnings on empty functions
->       mount.nfs: Fix compiler warning in stropts.c
->       umount.nfs: Use correct data type in nfsumount()
->       mount.nfs: remove unused @addrlen argument from nfs_string_to_sockaddr()
->       mount.nfs: Remove unused @salen parameter from nfs_ca_gai()
->       mount.nfs: Fix some nfs_error() nits in network.c
->       mount.nfs: Remove unused parameter in try_mount()
->       mount.nfs: Use correct data type in discover_nfs_mount_data_version()
->       support: Introduce sockaddr helpers to get and set IP port numbers
->       mount.nfs: Don't update extra_opts after text-based negotiation
->       mount.nfs: Clean up after restructuring version/protocol negotiation
->       mount.nfs: Clean up nfs_is_permanent_error()
->       mount.nfs: rearchitect mount version/protocol negotiation logic
->       mount.nfs: make nfs_options2pmap return errors
->       mount.nfs: force rpcbind queries if options aren't specified
->       mount.nfs: If port= specifies an unregistered port, retry, then fail
->       getport: Convert TCP connection refused to RPC_CANTRECV
->       getport: Restore historical TCP connect timeout error code
->       mount.nfs: Add more debugging output around nfs_getport()
->       getport: Clear shared error fields before trying rpcbind queries
->       getport: RPC_PROGNOTREGISTERED is a permanent error
->       support: Set proper retransmit timeout for datagram transports
->       support: Don't return RPC_UNKNOWNHOST from rpc_socket.c
->       support: Use HAVE_LIBTIRPC to switch in bindresvport_sa(3t)
->       New versions of libtool add extra aclocal scripts
->       getport: Remove unneeded @salen arguments
->       getport: replace getnameinfo(NI_NUMERICHOST) with inet_ntop(3)
->       getport: Remove AI_ADDRCONFIG from nfs_gp_loopback_address()
->       getport: RPCB_GETADDR's r_addr should contain rpcbind port, not zero
->       getport: RPCB_GETADDR r_owner should be an empty string
-> 
-Committed... a long with a couple more patches that cleaned up some 
-error cases and the uses of uninitialised data... 
+I'd be happier with "unchanging" or "constant" or "static".
 
-steved.
- 
+> > 
+> > How would the server be able to guarantee that?  Are you planning to change
+> > the protocol or implementation somehow?  Are you assuming that the server
+> > will be running linux w/ special r/o sb support?  If so, it won't work on
+> > other platforms (NFS is supposed to be interoperable in principle :-)
+> > 
+> > Without a protocol change, such an option (if I understood you), is at best
+> > a server promise to "behave nice."
+> 
+> Yeah, it's just a promise, one that the NFS server shouldn't make if
+> it can't implement it.  The client's sole responsibility is to fail
+> gracefully if the server breaks its promise.
+> 
+> The "protocol change" can probably be limited to a new NFS mount
+> option and the error returned if the server can't implement this mount
+> option.
+
+The mount options aren't really in the protocol--so it'd probably take
+the form of a filesystem-granularity attribute that the client could
+query (and then fail the mount if the client didn't like the answer).
+
+But even then: the fact is that someone will want to update the
+filesystem some day.  And there's no way to force every client
+administrator to remount.  So we'd have to decide how to handle that
+case.
+
+--b.
