@@ -1,231 +1,245 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/10] SUNRPC: Use rpc_ntop() for constructing transport
-	address strings
-Date: Wed, 15 Jul 2009 17:37:23 -0400
-Message-ID: <20090715213723.7582.37432.stgit@matisse.1015granger.net>
+Subject: [PATCH 06/10] NFS: Replace nfs_parse_ip_address() with rpc_pton()
+Date: Wed, 15 Jul 2009 17:37:31 -0400
+Message-ID: <20090715213730.7582.38155.stgit@matisse.1015granger.net>
 References: <20090715212628.7582.98251.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:38864
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:38867
 	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752749AbZGOVh0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2009 17:37:26 -0400
+	by vger.kernel.org with ESMTP id S1753136AbZGOVhd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2009 17:37:33 -0400
 In-Reply-To: <20090715212628.7582.98251.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up:  In addition to using the new generic rpc_ntop() and
-rpc_get_port() functions, have the RPC client compute the presentation
-address buffer sizes dynamically using kstrdup().
+Clean up: Use the common routine now provided in sunrpc.ko for parsing mount
+addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtrdma/transport.c |   45 ++++++----------
- net/sunrpc/xprtsock.c           |  109 ++++++++++++---------------------------
- 2 files changed, 52 insertions(+), 102 deletions(-)
+ fs/nfs/internal.h      |    1 
+ fs/nfs/nfs4namespace.c |    6 +-
+ fs/nfs/super.c         |  148 ++++++------------------------------------------
+ 3 files changed, 22 insertions(+), 133 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 537c210..5f9b867 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -168,39 +168,30 @@ static struct rpc_xprt_ops xprt_rdma_procs;	/* forward reference */
- static void
- xprt_rdma_format_addresses(struct rpc_xprt *xprt)
- {
--	struct sockaddr_in *addr = (struct sockaddr_in *)
-+	struct sockaddr *sap = (struct sockaddr *)
- 					&rpcx_to_rdmad(xprt).addr;
--	char *buf;
-+	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
-+	char buf[64];
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index a19b7b9..8f8a760 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -214,7 +214,6 @@ void nfs_zap_acl_cache(struct inode *inode);
+ extern int nfs_wait_bit_killable(void *word);
  
--	buf = kzalloc(20, GFP_KERNEL);
--	if (buf)
--		snprintf(buf, 20, "%pI4", &addr->sin_addr.s_addr);
--	xprt->address_strings[RPC_DISPLAY_ADDR] = buf;
-+	(void)rpc_ntop(sap, buf, sizeof(buf));
-+	xprt->address_strings[RPC_DISPLAY_ADDR] = kstrdup(buf, GFP_KERNEL);
+ /* super.c */
+-void nfs_parse_ip_address(char *, size_t, struct sockaddr *, size_t *);
+ extern struct file_system_type nfs_xdev_fs_type;
+ #ifdef CONFIG_NFS_V4
+ extern struct file_system_type nfs4_xdev_fs_type;
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 2a2a0a7..43c86b7 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -121,9 +121,9 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
  
--	buf = kzalloc(8, GFP_KERNEL);
--	if (buf)
--		snprintf(buf, 8, "%u", ntohs(addr->sin_port));
--	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
-+	(void)snprintf(buf, sizeof(buf), "%u", rpc_get_port(sap));
-+	xprt->address_strings[RPC_DISPLAY_PORT] = kstrdup(buf, GFP_KERNEL);
+ 		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len))
+ 			continue;
+-		nfs_parse_ip_address(buf->data, buf->len,
+-				mountdata->addr, &mountdata->addrlen);
+-		if (mountdata->addr->sa_family == AF_UNSPEC)
++		mountdata->addrlen = rpc_pton(buf->data, buf->len,
++				mountdata->addr, mountdata->addrlen);
++		if (mountdata->addrlen == 0)
+ 			continue;
+ 		nfs_set_port(mountdata->addr, NFS_PORT);
  
- 	xprt->address_strings[RPC_DISPLAY_PROTO] = "rdma";
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 8170b94..354ef4c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -742,129 +742,10 @@ static int nfs_verify_server_address(struct sockaddr *addr)
+ 	}
+ 	}
  
--	buf = kzalloc(48, GFP_KERNEL);
--	if (buf)
--		snprintf(buf, 48, "addr=%pI4 port=%u proto=%s",
--			&addr->sin_addr.s_addr,
--			ntohs(addr->sin_port), "rdma");
--	xprt->address_strings[RPC_DISPLAY_ALL] = buf;
--
--	buf = kzalloc(10, GFP_KERNEL);
--	if (buf)
--		snprintf(buf, 10, "%02x%02x%02x%02x",
--			NIPQUAD(addr->sin_addr.s_addr));
--	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = buf;
--
--	buf = kzalloc(8, GFP_KERNEL);
--	if (buf)
--		snprintf(buf, 8, "%4hx", ntohs(addr->sin_port));
--	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = buf;
-+	(void)snprintf(buf, sizeof(buf), "addr=%s port=%s proto=rdma",
-+			xprt->address_strings[RPC_DISPLAY_ADDR],
-+			xprt->address_strings[RPC_DISPLAY_PORT]);
-+	xprt->address_strings[RPC_DISPLAY_ALL] = kstrdup(buf, GFP_KERNEL);
-+
-+	(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
-+				NIPQUAD(sin->sin_addr.s_addr));
-+	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = kstrdup(buf, GFP_KERNEL);
-+
-+	(void)snprintf(buf, sizeof(buf), "%4hx", rpc_get_port(sap));
-+	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = kstrdup(buf, GFP_KERNEL);
- 
- 	/* netid */
- 	xprt->address_strings[RPC_DISPLAY_NETID] = "rdma";
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index a42c2ad..302a409 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -296,99 +296,58 @@ static inline struct sockaddr_in6 *xs_addr_in6(struct rpc_xprt *xprt)
- 	return (struct sockaddr_in6 *) &xprt->addr;
++	dfprintk(MOUNT, "NFS: Invalid IP address specified\n");
+ 	return 0;
  }
  
--static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt,
--					  const char *protocol,
--					  const char *netid)
-+static void xs_format_common_peer_addresses(struct rpc_xprt *xprt)
- {
--	struct sockaddr_in *addr = xs_addr_in(xprt);
--	char *buf;
+-static void nfs_parse_ipv4_address(char *string, size_t str_len,
+-				   struct sockaddr *sap, size_t *addr_len)
+-{
+-	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
+-	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
 -
--	buf = kzalloc(20, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 20, "%pI4", &addr->sin_addr.s_addr);
--	}
--	xprt->address_strings[RPC_DISPLAY_ADDR] = buf;
-+	struct sockaddr *sap = xs_addr(xprt);
-+	char buf[128];
- 
--	buf = kzalloc(8, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 8, "%u",
--				ntohs(addr->sin_port));
--	}
--	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
-+	(void)rpc_ntop(sap, buf, sizeof(buf));
-+	xprt->address_strings[RPC_DISPLAY_ADDR] = kstrdup(buf, GFP_KERNEL);
- 
--	xprt->address_strings[RPC_DISPLAY_PROTO] = protocol;
-+	(void)snprintf(buf, sizeof(buf), "%u", rpc_get_port(sap));
-+	xprt->address_strings[RPC_DISPLAY_PORT] = kstrdup(buf, GFP_KERNEL);
- 
--	buf = kzalloc(48, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 48, "addr=%pI4 port=%u proto=%s",
--			&addr->sin_addr.s_addr,
--			ntohs(addr->sin_port),
--			protocol);
--	}
--	xprt->address_strings[RPC_DISPLAY_ALL] = buf;
-+	(void)snprintf(buf, sizeof(buf), "addr=%s port=%s proto=%s",
-+			xprt->address_strings[RPC_DISPLAY_ADDR],
-+			xprt->address_strings[RPC_DISPLAY_PORT],
-+			xprt->address_strings[RPC_DISPLAY_PROTO]);
-+	xprt->address_strings[RPC_DISPLAY_ALL] = kstrdup(buf, GFP_KERNEL);
- 
--	buf = kzalloc(10, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 10, "%02x%02x%02x%02x",
--				NIPQUAD(addr->sin_addr.s_addr));
--	}
--	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = buf;
-+	(void)snprintf(buf, sizeof(buf), "%4hx", rpc_get_port(sap));
-+	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = kstrdup(buf, GFP_KERNEL);
-+}
- 
--	buf = kzalloc(8, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 8, "%4hx",
--				ntohs(addr->sin_port));
--	}
--	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = buf;
-+static void xs_format_ipv4_peer_addresses(struct rpc_xprt *xprt,
-+					  const char *protocol,
-+					  const char *netid)
-+{
-+	struct sockaddr_in *sin = xs_addr_in(xprt);
-+	char buf[16];
- 
-+	xprt->address_strings[RPC_DISPLAY_PROTO] = protocol;
- 	xprt->address_strings[RPC_DISPLAY_NETID] = netid;
-+
-+	(void)snprintf(buf, sizeof(buf), "%02x%02x%02x%02x",
-+				NIPQUAD(sin->sin_addr.s_addr));
-+	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = kstrdup(buf, GFP_KERNEL);
-+
-+	xs_format_common_peer_addresses(xprt);
- }
- 
- static void xs_format_ipv6_peer_addresses(struct rpc_xprt *xprt,
- 					  const char *protocol,
- 					  const char *netid)
- {
--	struct sockaddr_in6 *addr = xs_addr_in6(xprt);
--	char *buf;
+-	if (str_len <= INET_ADDRSTRLEN) {
+-		dfprintk(MOUNT, "NFS: parsing IPv4 address %*s\n",
+-				(int)str_len, string);
 -
--	buf = kzalloc(40, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 40, "%pI6",&addr->sin6_addr);
+-		sin->sin_family = AF_INET;
+-		*addr_len = sizeof(*sin);
+-		if (in4_pton(string, str_len, addr, '\0', NULL))
+-			return;
 -	}
--	xprt->address_strings[RPC_DISPLAY_ADDR] = buf;
 -
--	buf = kzalloc(8, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 8, "%u",
--				ntohs(addr->sin6_port));
+-	sap->sa_family = AF_UNSPEC;
+-	*addr_len = 0;
+-}
+-
+-#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+-static int nfs_parse_ipv6_scope_id(const char *string, const size_t str_len,
+-				   const char *delim,
+-				   struct sockaddr_in6 *sin6)
+-{
+-	char *p;
+-	size_t len;
+-
+-	if ((string + str_len) == delim)
+-		return 1;
+-
+-	if (*delim != IPV6_SCOPE_DELIMITER)
+-		return 0;
+-
+-	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL))
+-		return 0;
+-
+-	len = (string + str_len) - delim - 1;
+-	p = kstrndup(delim + 1, len, GFP_KERNEL);
+-	if (p) {
+-		unsigned long scope_id = 0;
+-		struct net_device *dev;
+-
+-		dev = dev_get_by_name(&init_net, p);
+-		if (dev != NULL) {
+-			scope_id = dev->ifindex;
+-			dev_put(dev);
+-		} else {
+-			if (strict_strtoul(p, 10, &scope_id) == 0) {
+-				kfree(p);
+-				return 0;
+-			}
+-		}
+-
+-		kfree(p);
+-
+-		sin6->sin6_scope_id = scope_id;
+-		dfprintk(MOUNT, "NFS: IPv6 scope ID = %lu\n", scope_id);
+-		return 1;
 -	}
--	xprt->address_strings[RPC_DISPLAY_PORT] = buf;
-+	struct sockaddr_in6 *sin6 = xs_addr_in6(xprt);
-+	char buf[48];
- 
- 	xprt->address_strings[RPC_DISPLAY_PROTO] = protocol;
-+	xprt->address_strings[RPC_DISPLAY_NETID] = netid;
- 
--	buf = kzalloc(64, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 64, "addr=%pI6 port=%u proto=%s",
--				&addr->sin6_addr,
--				ntohs(addr->sin6_port),
--				protocol);
+-
+-	return 0;
+-}
+-
+-static void nfs_parse_ipv6_address(char *string, size_t str_len,
+-				   struct sockaddr *sap, size_t *addr_len)
+-{
+-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
+-	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
+-	const char *delim;
+-
+-	if (str_len <= INET6_ADDRSTRLEN) {
+-		dfprintk(MOUNT, "NFS: parsing IPv6 address %*s\n",
+-				(int)str_len, string);
+-
+-		sin6->sin6_family = AF_INET6;
+-		*addr_len = sizeof(*sin6);
+-		if (in6_pton(string, str_len, addr,
+-					IPV6_SCOPE_DELIMITER, &delim) != 0) {
+-			if (nfs_parse_ipv6_scope_id(string, str_len,
+-							delim, sin6) != 0)
+-				return;
+-		}
 -	}
--	xprt->address_strings[RPC_DISPLAY_ALL] = buf;
 -
--	buf = kzalloc(36, GFP_KERNEL);
--	if (buf)
--		snprintf(buf, 36, "%pi6", &addr->sin6_addr);
+-	sap->sa_family = AF_UNSPEC;
+-	*addr_len = 0;
+-}
+-#else
+-static void nfs_parse_ipv6_address(char *string, size_t str_len,
+-				   struct sockaddr *sap, size_t *addr_len)
+-{
+-	sap->sa_family = AF_UNSPEC;
+-	*addr_len = 0;
+-}
+-#endif
 -
--	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = buf;
+-/*
+- * Construct a sockaddr based on the contents of a string that contains
+- * an IP address in presentation format.
+- *
+- * If there is a problem constructing the new sockaddr, set the address
+- * family to AF_UNSPEC.
+- */
+-void nfs_parse_ip_address(char *string, size_t str_len,
+-				 struct sockaddr *sap, size_t *addr_len)
+-{
+-	unsigned int i, colons;
 -
--	buf = kzalloc(8, GFP_KERNEL);
--	if (buf) {
--		snprintf(buf, 8, "%4hx",
--				ntohs(addr->sin6_port));
--	}
--	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = buf;
-+	(void)snprintf(buf, sizeof(buf), "%pi6", &sin6->sin6_addr);
-+	xprt->address_strings[RPC_DISPLAY_HEX_ADDR] = kstrdup(buf, GFP_KERNEL);
+-	colons = 0;
+-	for (i = 0; i < str_len; i++)
+-		if (string[i] == ':')
+-			colons++;
+-
+-	if (colons >= 2)
+-		nfs_parse_ipv6_address(string, str_len, sap, addr_len);
+-	else
+-		nfs_parse_ipv4_address(string, str_len, sap, addr_len);
+-}
+-
+ /*
+  * Sanity check the NFS transport protocol.
+  *
+@@ -1344,11 +1225,14 @@ static int nfs_parse_mount_options(char *raw,
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
+-			nfs_parse_ip_address(string, strlen(string),
+-					     (struct sockaddr *)
+-						&mnt->nfs_server.address,
+-					     &mnt->nfs_server.addrlen);
++			mnt->nfs_server.addrlen =
++				rpc_pton(string, strlen(string),
++					(struct sockaddr *)
++					&mnt->nfs_server.address,
++					sizeof(mnt->nfs_server.address));
+ 			kfree(string);
++			if (mnt->nfs_server.addrlen == 0)
++				goto out_invalid_address;
+ 			break;
+ 		case Opt_clientaddr:
+ 			string = match_strdup(args);
+@@ -1368,11 +1252,14 @@ static int nfs_parse_mount_options(char *raw,
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
+-			nfs_parse_ip_address(string, strlen(string),
+-					     (struct sockaddr *)
+-						&mnt->mount_server.address,
+-					     &mnt->mount_server.addrlen);
++			mnt->mount_server.addrlen =
++				rpc_pton(string, strlen(string),
++					(struct sockaddr *)
++					&mnt->mount_server.address,
++					sizeof(mnt->mount_server.address));
+ 			kfree(string);
++			if (mnt->mount_server.addrlen == 0)
++				goto out_invalid_address;
+ 			break;
+ 		case Opt_lookupcache:
+ 			string = match_strdup(args);
+@@ -1424,8 +1311,11 @@ static int nfs_parse_mount_options(char *raw,
  
--	xprt->address_strings[RPC_DISPLAY_NETID] = netid;
-+	xs_format_common_peer_addresses(xprt);
- }
+ 	return 1;
  
- static void xs_free_peer_addresses(struct rpc_xprt *xprt)
++out_invalid_address:
++	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
++	return 0;
+ out_invalid_value:
+-	printk(KERN_INFO "NFS: bad mount option value specified: %s \n", p);
++	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
+ 	return 0;
+ out_nomem:
+ 	printk(KERN_INFO "NFS: not enough memory to parse option\n");
 
