@@ -1,223 +1,126 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/10] SUNRPC: Pass full bind address to transports after
-	GETPORT/GETADDR
-Date: Wed, 15 Jul 2009 17:42:38 -0400
-Message-ID: <20090715214238.7883.91886.stgit@matisse.1015granger.net>
+Subject: [PATCH 08/10] SUNRPC: Rename sock_xprt.addr as sock_xprt.srcaddr
+Date: Wed, 15 Jul 2009 17:42:46 -0400
+Message-ID: <20090715214245.7883.67655.stgit@matisse.1015granger.net>
 References: <20090715213842.7883.48947.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:60993
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:60996
 	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754642AbZGOVml (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2009 17:42:41 -0400
+	by vger.kernel.org with ESMTP id S1754748AbZGOVms (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jul 2009 17:42:48 -0400
 In-Reply-To: <20090715213842.7883.48947.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TI-RPC rpcbind operations provide not just a port number, but a full
-socket address the client should connect to.  This allows rpcbind to
-redirect RPC traffic to specific network interfaces or servers.  The
-Linux kernel rpcbind client implementation currently ignores the
-address.
-
-Expand the ->set_port transport method so an address is passed to
-transports during an RPC bind operation.  Additional changes to
-individual client transports will be required to replace the peer
-address after an rpcbind operation.
+Rename the addr and port field in the sock_xprt struct.  I'm about to add
+another address field, so let's avoid confusion.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- include/linux/sunrpc/xprt.h     |    4 +++-
- net/sunrpc/rpcb_clnt.c          |   22 +++++++---------------
- net/sunrpc/xprtrdma/transport.c |   23 +++++++++++++++++++----
- net/sunrpc/xprtsock.c           |   35 +++++++++++++++++++++++++++--------
- 4 files changed, 56 insertions(+), 28 deletions(-)
+ net/sunrpc/xprtsock.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 65fad95..deb39d5 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -112,7 +112,9 @@ struct rpc_xprt_ops {
- 	int		(*reserve_xprt)(struct rpc_task *task);
- 	void		(*release_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*rpcbind)(struct rpc_task *task);
--	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
-+	void		(*set_address)(struct rpc_xprt *xprt,
-+					const struct sockaddr *sap,
-+					const size_t salen);
- 	void		(*connect)(struct rpc_task *task);
- 	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
- 	void		(*buf_free)(void *buffer);
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 4cc2c58..68046df 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -681,7 +681,6 @@ static void rpcb_getport_done(struct rpc_task *child, void *data)
- 	struct sockaddr *sap = (struct sockaddr *)&map->r_raddr;
- 	struct rpc_xprt *xprt = map->r_xprt;
- 	int status = child->tk_status;
--	unsigned short port = 0;
- 
- 	/* Garbage reply: retry with a lesser rpcbind version */
- 	if (status == -EIO)
-@@ -693,31 +692,24 @@ static void rpcb_getport_done(struct rpc_task *child, void *data)
- 
- 	if (status < 0) {
- 		/* rpcbind server not available on remote host? */
--		xprt->ops->set_port(xprt, 0);
-+		xprt->ops->set_address(xprt, &rpcb_inaddr_unspec,
-+					sizeof(rpcb_inaddr_unspec));
- 		xprt_clear_bound(xprt);
- 	} else if (sap->sa_family == AF_UNSPEC) {
- 		/* Requested RPC service wasn't registered on remote host */
--		xprt->ops->set_port(xprt, 0);
-+		xprt->ops->set_address(xprt, &rpcb_inaddr_unspec,
-+					sizeof(rpcb_inaddr_unspec));
- 		xprt_clear_bound(xprt);
- 		status = -EACCES;
- 	} else {
- 		/* Succeeded */
--		switch (sap->sa_family) {
--		case AF_INET:
--			port = ntohs(((struct sockaddr_in *)sap)->sin_port);
--			break;
--		case AF_INET6:
--			port = ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
--			break;
--		}
--
--		xprt->ops->set_port(xprt, port);
-+		xprt->ops->set_address(xprt, sap, map->r_raddrlen);
- 		xprt_set_bound(xprt);
- 		status = 0;
- 	}
- 
--	dprintk("RPC: %5u rpcb_getport_done(status %d, port %u)\n",
--			child->tk_pid, status, port);
-+	dprintk("RPC: %5u rpcb_getport_done(status %d)\n",
-+			child->tk_pid, status);
- 
- 	map->r_status = status;
- }
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 5f9b867..780385f 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -453,14 +453,29 @@ xprt_rdma_close(struct rpc_xprt *xprt)
- }
- 
- static void
--xprt_rdma_set_port(struct rpc_xprt *xprt, u16 port)
-+xprt_rdma_set_address(struct rpc_xprt *xprt, const struct sockaddr *bindaddr,
-+			const size_t bindaddr_len)
- {
- 	struct sockaddr_in *sap;
-+	__be16 port;
-+
-+	switch (bindaddr->sa_family) {
-+	case AF_UNSPEC:
-+		port = 0;
-+		break;
-+	case AF_INET:
-+		port = ((struct sockaddr_in *)bindaddr)->sin_port;
-+		break;
-+	default:
-+		dprintk("RPC:       %s: address family not supported\n",
-+				__func__);
-+		return;
-+	}
- 
- 	sap = (struct sockaddr_in *)&xprt->addr;
--	sap->sin_port = htons(port);
-+	sap->sin_port = port;
- 	sap = (struct sockaddr_in *)&rpcx_to_rdmad(xprt).addr;
--	sap->sin_port = htons(port);
-+	sap->sin_port = port;
- 	dprintk("RPC:       %s: %u\n", __func__, port);
- }
- 
-@@ -752,7 +767,7 @@ static struct rpc_xprt_ops xprt_rdma_procs = {
- 	.release_request	= xprt_release_rqst_cong,       /* ditto */
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def, /* ditto */
- 	.rpcbind		= rpcb_getport_async,	/* sunrpc/rpcb_clnt.c */
--	.set_port		= xprt_rdma_set_port,
-+	.set_address		= xprt_rdma_set_address,
- 	.connect		= xprt_rdma_connect,
- 	.buf_alloc		= xprt_rdma_allocate,
- 	.buf_free		= xprt_rdma_free,
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 302a409..000ddd9 100644
+index 000ddd9..4804d88 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -1521,23 +1521,42 @@ static unsigned short xs_get_random_port(void)
- }
+@@ -248,8 +248,8 @@ struct sock_xprt {
+ 	 * Connection of transports
+ 	 */
+ 	struct delayed_work	connect_worker;
+-	struct sockaddr_storage	addr;
+-	unsigned short		port;
++	struct sockaddr_storage	srcaddr;
++	unsigned short		srcport;
  
- /**
-- * xs_set_port - reset the port number in the remote endpoint address
-+ * xs_set_address - reset the port number in the remote endpoint address
-  * @xprt: generic transport
-- * @port: new port number
-+ * @bindaddr: socket address to connect to
-+ * @bindaddr_len: length of socket address
-  *
-  */
--static void xs_set_port(struct rpc_xprt *xprt, unsigned short port)
-+static void xs_set_address(struct rpc_xprt *xprt,
-+			   const struct sockaddr *bindaddr,
-+			   const size_t bindaddr_len)
+ 	/*
+ 	 * UDP socket buffer size parameters
+@@ -1565,7 +1565,7 @@ static void xs_set_address(struct rpc_xprt *xprt,
+ 
+ static unsigned short xs_get_srcport(struct sock_xprt *transport, struct socket *sock)
  {
- 	struct sockaddr *addr = xs_addr(xprt);
-+	__be16 port;
+-	unsigned short port = transport->port;
++	unsigned short port = transport->srcport;
  
--	dprintk("RPC:       setting port for xprt %p to %u\n", xprt, port);
-+	switch (bindaddr->sa_family) {
-+	case AF_UNSPEC:
-+		port = 0;
-+		break;
-+	case AF_INET:
-+		port = ((struct sockaddr_in *)bindaddr)->sin_port;
-+		break;
-+	case AF_INET6:
-+		port = ((struct sockaddr_in6 *)bindaddr)->sin6_port;
-+		break;
-+	default:
-+		BUG();
-+	}
-+
-+	dprintk("RPC:       setting port for xprt %p to %u\n",
-+			xprt, ntohs(port));
+ 	if (port == 0 && transport->xprt.resvport)
+ 		port = xs_get_random_port();
+@@ -1574,8 +1574,8 @@ static unsigned short xs_get_srcport(struct sock_xprt *transport, struct socket
  
- 	switch (addr->sa_family) {
- 	case AF_INET:
--		((struct sockaddr_in *)addr)->sin_port = htons(port);
-+		((struct sockaddr_in *)addr)->sin_port = port;
- 		break;
- 	case AF_INET6:
--		((struct sockaddr_in6 *)addr)->sin6_port = htons(port);
-+		((struct sockaddr_in6 *)addr)->sin6_port = port;
- 		break;
- 	default:
- 		BUG();
-@@ -2102,7 +2121,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong,
- 	.rpcbind		= rpcb_getport_async,
--	.set_port		= xs_set_port,
-+	.set_address		= xs_set_address,
- 	.connect		= xs_connect,
- 	.buf_alloc		= rpc_malloc,
- 	.buf_free		= rpc_free,
-@@ -2119,7 +2138,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.rpcbind		= rpcb_getport_async,
--	.set_port		= xs_set_port,
-+	.set_address		= xs_set_address,
- 	.connect		= xs_tcp_connect,
- 	.buf_alloc		= rpc_malloc,
- 	.buf_free		= rpc_free,
+ static unsigned short xs_next_srcport(struct sock_xprt *transport, struct socket *sock, unsigned short port)
+ {
+-	if (transport->port != 0)
+-		transport->port = 0;
++	if (transport->srcport != 0)
++		transport->srcport = 0;
+ 	if (!transport->xprt.resvport)
+ 		return 0;
+ 	if (port <= xprt_min_resvport || port > xprt_max_resvport)
+@@ -1593,7 +1593,7 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+ 	unsigned short port = xs_get_srcport(transport, sock);
+ 	unsigned short last;
+ 
+-	sa = (struct sockaddr_in *)&transport->addr;
++	sa = (struct sockaddr_in *)&transport->srcaddr;
+ 	myaddr.sin_addr = sa->sin_addr;
+ 	do {
+ 		myaddr.sin_port = htons(port);
+@@ -1602,7 +1602,7 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+ 		if (port == 0)
+ 			break;
+ 		if (err == 0) {
+-			transport->port = port;
++			transport->srcport = port;
+ 			break;
+ 		}
+ 		last = port;
+@@ -1626,7 +1626,7 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+ 	unsigned short port = xs_get_srcport(transport, sock);
+ 	unsigned short last;
+ 
+-	sa = (struct sockaddr_in6 *)&transport->addr;
++	sa = (struct sockaddr_in6 *)&transport->srcaddr;
+ 	myaddr.sin6_addr = sa->sin6_addr;
+ 	do {
+ 		myaddr.sin6_port = htons(port);
+@@ -1635,7 +1635,7 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+ 		if (port == 0)
+ 			break;
+ 		if (err == 0) {
+-			transport->port = port;
++			transport->srcport = port;
+ 			break;
+ 		}
+ 		last = port;
+@@ -2080,7 +2080,7 @@ static void xs_udp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	seq_printf(seq, "\txprt:\tudp %u %lu %lu %lu %lu %Lu %Lu\n",
+-			transport->port,
++			transport->srcport,
+ 			xprt->stat.bind_count,
+ 			xprt->stat.sends,
+ 			xprt->stat.recvs,
+@@ -2104,7 +2104,7 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 		idle_time = (long)(jiffies - xprt->last_used) / HZ;
+ 
+ 	seq_printf(seq, "\txprt:\ttcp %u %lu %lu %lu %ld %lu %lu %lu %Lu %Lu\n",
+-			transport->port,
++			transport->srcport,
+ 			xprt->stat.bind_count,
+ 			xprt->stat.connect_count,
+ 			xprt->stat.connect_time,
+@@ -2183,7 +2183,7 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
+ 	if (args->srcaddr)
+-		memcpy(&new->addr, args->srcaddr, args->addrlen);
++		memcpy(&new->srcaddr, args->srcaddr, args->addrlen);
+ 
+ 	return xprt;
+ }
 
