@@ -1,67 +1,68 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 01/10] SUNRPC: Clean up RPCBIND_MAXUADDRLEN definitions
-Date: Thu, 16 Jul 2009 14:56:30 -0400
-Message-ID: <1247770590.12292.79.camel@heimdal.trondhjem.org>
-References: <20090715212628.7582.98251.stgit@matisse.1015granger.net>
-	 <20090715213654.7582.2418.stgit@matisse.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Bug in server's export -- List of security flavors
+Date: Thu, 16 Jul 2009 14:56:42 -0400
+Message-ID: <20090716185642.GB2495@fieldses.org>
+References: <4A5F5C4C.3070308@excfb.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:53948 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:41050 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932941AbZGPS4d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jul 2009 14:56:33 -0400
-In-Reply-To: <20090715213654.7582.2418.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S933019AbZGPS4m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jul 2009 14:56:42 -0400
+In-Reply-To: <4A5F5C4C.3070308-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-07-15 at 17:36 -0400, Chuck Lever wrote:
-> Clean up: Replace the single-integer definition of RPCBIND_MAXUADDRLEN
-> with a definition that is based on previously defined address string
-> sizes, and document the way this maximum is calculated.  Also provide
-> a separate macro for the size of the port number extension.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  include/linux/sunrpc/msg_prot.h |   18 +++++++++++++++++-
->  1 files changed, 17 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
-> index 70df4f1..063e806 100644
-> --- a/include/linux/sunrpc/msg_prot.h
-> +++ b/include/linux/sunrpc/msg_prot.h
-> @@ -189,7 +189,23 @@ typedef __be32	rpc_fraghdr;
->   * Additionally, the two alternative forms specified in Section 2.2 of
->   * [RFC2373] are also acceptable.
->   */
-> -#define RPCBIND_MAXUADDRLEN	(56u)
-> +
-> +#include <linux/inet.h>
-> +
-> +/* Maximum size of the port number part of a universal address */
-> +#define RPCBIND_MAXUADDRPLEN	sizeof(".255.255")
-> +
-> +/* Maximum size of an IPv4 universal address */
-> +#define RPCBIND_MAXUADDR4LEN	\
-> +		(INET_ADDRSTRLEN + RPCBIND_MAXUADDRPLEN)
-> +
-> +/* Maximum size of an IPv6 universal address */
-> +#define RPCBIND_MAXUADDR6LEN	\
-> +		(INET6_ADDRSTRLEN + RPCBIND_MAXUADDRPLEN)
-> +
-> +#define __RPCB_MAXLEN(x, y) (x > y ? x : y)
-> +#define RPCBIND_MAXUADDRLEN	\
-> +		__RPCB_MAXLEN(RPCBIND_MAXUADDR4LEN, RPCBIND_MAXUADDR6LEN)
+On Thu, Jul 16, 2009 at 11:58:52AM -0500, Tom Haynes wrote:
+> [tdh@adept tournament]> exportfs -rva
+> exporting 192.168.2.0/255.255.255.0:/home
+> exporting *:/
+> exportfs: could not open /var/lib/nfs/etab for locking
+> exportfs: can't lock /var/lib/nfs/etab for writing
+> [tdh@adept tournament]> more /etc/exports
+> / *(sync)
+> /home  
+> 192.168.2.0/255.255.255.0(rw,async,no_subtree_check,insecure,no_root_squash)
+> [tdh@adept tournament]> uname -a
+> Linux adept.internal.excfb.com 2.6.29.4-167.fc11.i586 #1 SMP Wed May 27  
+> 17:14:37 EDT 2009 i686 i686 i386 GNU/Linux
+>
+> So, adept:/home is exported in a fairly typical way that I've had going for
+> the past 3 years.
+>
+> [root@witch ~]> mount -o vers=3 adept:/home /mnt
+> nfs mount: security mode does not match the server exporting adept:/home
+>
+> The server is not sending any authentication flavors:
+>
+> MOUNT:----- NFS MOUNT -----
+> MOUNT:
+> MOUNT:Proc = 1 (Add mount entry)
+> MOUNT:Status = 0 (OK)
+> MOUNT:File handle = [DADF]
+> MOUNT: 01000700010005000000000053CF6DE4FF1C4572BB2950392EB6993C
+> MOUNT:Authentication flavor =
+> MOUNT:
+>
+> And yet this mount will work from a Linux box:
+>
+> root@slayer:~# uname -a
+> Linux slayer 2.6.28-13-generic #45-Ubuntu SMP Tue Jun 30 19:49:51 UTC  
+> 2009 i686 GNU/Linux
+> root@slayer:~# mount -o vers=3 adept:/home /mnt
+>
+> I'm guessing that the Linux client is ignoring the list and trying the  
+> default AUTH_SYS anyway. Is that
+> also a bug on the client, using a flavor not advertised by the server?
 
-Ewww... We _know_ that this will always evaluate to
-RPCBIND_MAXUADDR6LEN, so why pretend that we need the above
-"calculation"?
+I don't see how it could be a problem for the client to try an
+unadvertised flavor.  The server has to enforce the choice of flavor
+anyway.
 
->  #endif /* __KERNEL__ */
->  #endif /* _LINUX_SUNRPC_MSGPROT_H_ */
-> 
+(Um, but that's pretty weird that the server's advertising an empty
+list.  What's the nfs-utils version?)
 
-
+--b.
