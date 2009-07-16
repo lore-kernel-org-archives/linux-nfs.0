@@ -1,282 +1,244 @@
 From: Bian Naimeng <biannm@cn.fujitsu.com>
-Subject: [PATCH 2/4]Kill PROC macro from NLMv4 server procedures
-Date: Thu, 16 Jul 2009 17:30:45 +0800
-Message-ID: <4A5EF345.7050308@cn.fujitsu.com>
+Subject: [PATCH 3/4] NLM: Kill PROC macro from NLMv1 and NLMv3 client procedures
+Date: Thu, 16 Jul 2009 17:31:45 +0800
+Message-ID: <4A5EF381.7010101@cn.fujitsu.com>
 References: <4A5EF29B.1050100@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:63612 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:51698 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754825AbZGPJbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jul 2009 05:31:37 -0400
+	id S1754682AbZGPJch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jul 2009 05:32:37 -0400
 In-Reply-To: <4A5EF29B.1050100@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to make the code more clear, kill PROC macro from NLMv4 server
-procedures.
+In order to make the code more clear, kill PROC macro from NLMv1 and NLMv3
+client procedures.
 
 Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
 
 ---
- fs/lockd/svc4proc.c |  237 +++++++++++++++++++++++++++++++++++++++++++-------
- 1 files changed, 203 insertions(+), 34 deletions(-)
+ fs/lockd/xdr.c |  201 +++++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 files changed, 171 insertions(+), 30 deletions(-)
 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index bd173a6..5c31626 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -468,44 +468,213 @@ nlm4svc_proc_granted_res(struct svc_rqst *rqstp, struct nlm_res  *argp,
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 0336f2b..1b36274 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -536,38 +536,179 @@ nlmclt_decode_res(struct rpc_rqst *req, __be32 *p, struct nlm_res *resp)
+  */
+ #define nlmclt_decode_norep	NULL
  
- struct nlm_void			{ int dummy; };
- 
--#define PROC(name, xargt, xrest, argt, rest, respsize)	\
-- { .pc_func	= (svc_procfunc) nlm4svc_proc_##name,	\
--   .pc_decode	= (kxdrproc_t) nlm4svc_decode_##xargt,	\
--   .pc_encode	= (kxdrproc_t) nlm4svc_encode_##xrest,	\
--   .pc_release	= NULL,					\
--   .pc_argsize	= sizeof(struct nlm_##argt),		\
--   .pc_ressize	= sizeof(struct nlm_##rest),		\
--   .pc_xdrressize = respsize,				\
-- }
-+#define NLM4SVC_NONE_PROC \
-+{								\
-+	.pc_func	= (svc_procfunc) nlm4svc_proc_none,	\
-+	.pc_decode	= (kxdrproc_t) nlm4svc_decode_void,	\
-+	.pc_encode	= (kxdrproc_t) nlm4svc_encode_void,	\
-+	.pc_release	= NULL,					\
-+	.pc_argsize	= sizeof(struct nlm_void),		\
-+	.pc_ressize	= sizeof(struct nlm_void),		\
-+	.pc_xdrressize	= 0,					\
-+}
-+
- #define	Ck	(1+XDR_QUADLEN(NLM_MAXCOOKIELEN))	/* cookie */
- #define	No	(1+1024/4)				/* netobj */
- #define	St	1					/* status */
- #define	Rg	4					/* range (offset + length) */
- struct svc_procedure		nlmsvc_procedures4[] = {
--  PROC(null,		void,		void,		void,	void, 1),
--  PROC(test,		testargs,	testres,	args,	res, Ck+St+2+No+Rg),
--  PROC(lock,		lockargs,	res,		args,	res, Ck+St),
--  PROC(cancel,		cancargs,	res,		args,	res, Ck+St),
--  PROC(unlock,		unlockargs,	res,		args,	res, Ck+St),
--  PROC(granted,		testargs,	res,		args,	res, Ck+St),
--  PROC(test_msg,	testargs,	norep,		args,	void, 1),
--  PROC(lock_msg,	lockargs,	norep,		args,	void, 1),
--  PROC(cancel_msg,	cancargs,	norep,		args,	void, 1),
--  PROC(unlock_msg,	unlockargs,	norep,		args,	void, 1),
--  PROC(granted_msg,	testargs,	norep,		args,	void, 1),
--  PROC(test_res,	testres,	norep,		res,	void, 1),
--  PROC(lock_res,	lockres,	norep,		res,	void, 1),
--  PROC(cancel_res,	cancelres,	norep,		res,	void, 1),
--  PROC(unlock_res,	unlockres,	norep,		res,	void, 1),
--  PROC(granted_res,	res,		norep,		res,	void, 1),
-+	[NLMPROC_NULL] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_null,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_void,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_void,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_void),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
-+	},
+-#define PROC(proc, argtype, restype)	\
+-[NLMPROC_##proc] = {							\
+-	.p_proc      = NLMPROC_##proc,					\
+-	.p_encode    = (kxdrproc_t) nlmclt_encode_##argtype,		\
+-	.p_decode    = (kxdrproc_t) nlmclt_decode_##restype,		\
+-	.p_arglen    = NLM_##argtype##_sz,				\
+-	.p_replen    = NLM_##restype##_sz,				\
+-	.p_statidx   = NLMPROC_##proc,					\
+-	.p_name      = #proc,						\
+-	}
+-
+ static struct rpc_procinfo	nlm_procedures[] = {
+-    PROC(TEST,		testargs,	testres),
+-    PROC(LOCK,		lockargs,	res),
+-    PROC(CANCEL,	cancargs,	res),
+-    PROC(UNLOCK,	unlockargs,	res),
+-    PROC(GRANTED,	testargs,	res),
+-    PROC(TEST_MSG,	testargs,	norep),
+-    PROC(LOCK_MSG,	lockargs,	norep),
+-    PROC(CANCEL_MSG,	cancargs,	norep),
+-    PROC(UNLOCK_MSG,	unlockargs,	norep),
+-    PROC(GRANTED_MSG,	testargs,	norep),
+-    PROC(TEST_RES,	testres,	norep),
+-    PROC(LOCK_RES,	res,		norep),
+-    PROC(CANCEL_RES,	res,		norep),
+-    PROC(UNLOCK_RES,	res,		norep),
+-    PROC(GRANTED_RES,	res,		norep),
 +	[NLMPROC_TEST] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_test,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_testargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_testres,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St+2+No+Rg,
++		.p_proc		= NLMPROC_TEST,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_testargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_testres,
++		.p_arglen	= NLM_testargs_sz,
++		.p_replen	= NLM_testres_sz,
++		.p_statidx	= NLMPROC_TEST,
++		.p_name		= "TEST",
 +	},
 +	[NLMPROC_LOCK] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_lock,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_lockargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_res,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St,
++		.p_proc		= NLMPROC_LOCK,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_lockargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_res,
++		.p_arglen	= NLM_lockargs_sz,
++		.p_replen	= NLM_res_sz,
++		.p_statidx	= NLMPROC_LOCK,
++		.p_name		= "LOCK",
 +	},
 +	[NLMPROC_CANCEL] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_cancel,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_cancargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_res,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St,
++		.p_proc		= NLMPROC_CANCEL,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_cancargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_res,
++		.p_arglen	= NLM_cancargs_sz,
++		.p_replen	= NLM_res_sz,
++		.p_statidx	= NLMPROC_CANCEL,
++		.p_name		= "CANCEL",
 +	},
 +	[NLMPROC_UNLOCK] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_unlock,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_unlockargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_res,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St,
++		.p_proc		= NLMPROC_UNLOCK,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_unlockargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_res,
++		.p_arglen	= NLM_unlockargs_sz,
++		.p_replen	= NLM_res_sz,
++		.p_statidx	= NLMPROC_UNLOCK,
++		.p_name		= "UNLOCK",
 +	},
 +	[NLMPROC_GRANTED] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_granted,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_testargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_res,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St,
++		.p_proc		= NLMPROC_GRANTED,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_testargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_res,
++		.p_arglen	= NLM_testargs_sz,
++		.p_replen	= NLM_res_sz,
++		.p_statidx	= NLMPROC_GRANTED,
++		.p_name		= "GRANTED",
 +	},
 +	[NLMPROC_TEST_MSG] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_test_msg,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_testargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_TEST_MSG,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_testargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_testargs_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_TEST_MSG,
++		.p_name		= "TEST_MSG",
 +	},
 +	[NLMPROC_LOCK_MSG] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_lock_msg,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_lockargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_LOCK_MSG,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_lockargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_lockargs_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_LOCK_MSG,
++		.p_name		= "LOCK_MSG",
 +	},
 +	[NLMPROC_CANCEL_MSG] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_cancel_msg,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_cancargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_CANCEL_MSG,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_cancargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_cancargs_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_CANCEL_MSG,
++		.p_name		= "CANCEL_MSG",
 +	},
 +	[NLMPROC_UNLOCK_MSG] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_unlock_msg,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_unlockargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_UNLOCK_MSG,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_unlockargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_unlockargs_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_UNLOCK_MSG,
++		.p_name		= "UNLOCK_MSG",
 +	},
 +	[NLMPROC_GRANTED_MSG] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_granted_msg,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_testargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_GRANTED_MSG,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_testargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_testargs_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_GRANTED_MSG,
++		.p_name		= "GRANTED_MSG",
 +	},
 +	[NLMPROC_TEST_RES] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_test_res,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_testres,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_res),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_TEST_RES,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_testres,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_testres_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_TEST_RES,
++		.p_name		= "TEST_RES",
 +	},
 +	[NLMPROC_LOCK_RES] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_lock_res,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_lockres,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_res),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_LOCK_RES,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_res,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_res_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_LOCK_RES,
++		.p_name		= "LOCK_RES",
 +	},
 +	[NLMPROC_CANCEL_RES] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_cancel_res,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_cancelres,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_res),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_CANCEL_RES,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_res,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_res_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_CANCEL_RES,
++		.p_name		= "CANCEL_RES",
 +	},
 +	[NLMPROC_UNLOCK_RES] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_unlock_res,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_unlockres,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_res),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_UNLOCK_RES,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_res,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_res_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_UNLOCK_RES,
++		.p_name		= "UNLOCK_RES",
 +	},
 +	[NLMPROC_GRANTED_RES] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_granted_res,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_res,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_norep,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_res),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_GRANTED_RES,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_res,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_norep,
++		.p_arglen	= NLM_res_sz,
++		.p_replen	= NLM_norep_sz,
++		.p_statidx	= NLMPROC_GRANTED_RES,
++		.p_name		= "GRANTED_RES",
 +	},
-   /* statd callback */
--  PROC(sm_notify,	reboot,		void,		reboot,	void, 1),
--  PROC(none,		void,		void,		void,	void, 0),
--  PROC(none,		void,		void,		void,	void, 0),
--  PROC(none,		void,		void,		void,	void, 0),
--  PROC(share,		shareargs,	shareres,	args,	res, Ck+St+1),
--  PROC(unshare,		shareargs,	shareres,	args,	res, Ck+St+1),
--  PROC(nm_lock,		lockargs,	res,		args,	res, Ck+St),
--  PROC(free_all,	notify,		void,		args,	void, 1),
--
-+	[NLMPROC_NSM_NOTIFY] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_sm_notify,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_reboot,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_void,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_reboot),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
-+	},
-+	NLM4SVC_NONE_PROC,
-+	NLM4SVC_NONE_PROC,
-+	NLM4SVC_NONE_PROC,
+ #ifdef NLMCLNT_SUPPORT_SHARES
+-    PROC(SHARE,		shareargs,	shareres),
+-    PROC(UNSHARE,	shareargs,	shareres),
+-    PROC(NM_LOCK,	lockargs,	res),
+-    PROC(FREE_ALL,	notify,		void),
 +	[NLMPROC_SHARE] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_share,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_shareargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_shareres,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St+1,
++		.p_proc		= NLMPROC_SHARE,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_shareargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_shareres,
++		.p_arglen	= NLM_shareargs_sz,
++		.p_replen	= NLM_shareres_sz,
++		.p_statidx	= NLMPROC_SHARE,
++		.p_name		= "SHARE",
 +	},
 +	[NLMPROC_UNSHARE] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_unshare,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_shareargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_shareres,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St+1,
++		.p_proc		= NLMPROC_UNSHARE,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_shareargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_shareres,
++		.p_arglen	= NLM_shareargs_sz,
++		.p_replen	= NLM_shareres_sz,
++		.p_statidx	= NLMPROC_UNSHARE,
++		.p_name		= "UNSHARE",
 +	},
 +	[NLMPROC_NM_LOCK] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_nm_lock,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_lockargs,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_res,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_res),
-+		.pc_xdrressize	= Ck+St,
++		.p_proc		= NLMPROC_NM_LOCK,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_lockargs,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_res,
++		.p_arglen	= NLM_lockargs_sz,
++		.p_replen	= NLM_res_sz,
++		.p_statidx	= NLMPROC_NM_LOCK,
++		.p_name		= "NM_LOCK",
 +	},
 +	[NLMPROC_FREE_ALL] = {
-+		.pc_func	= (svc_procfunc) nlm4svc_proc_free_all,
-+		.pc_decode	= (kxdrproc_t) nlm4svc_decode_notify,
-+		.pc_encode	= (kxdrproc_t) nlm4svc_encode_void,
-+		.pc_release	= NULL,
-+		.pc_argsize	= sizeof(struct nlm_args),
-+		.pc_ressize	= sizeof(struct nlm_void),
-+		.pc_xdrressize	= 1,
++		.p_proc		= NLMPROC_FREE_ALL,
++		.p_encode	= (kxdrproc_t) nlmclt_encode_notify,
++		.p_decode	= (kxdrproc_t) nlmclt_decode_void,
++		.p_arglen	= NLM_notify_sz,
++		.p_replen	= NLM_void_sz,
++		.p_statidx	= NLMPROC_FREE_ALL,
++		.p_name		= "FREE_ALL",
 +	},
+ #endif
  };
+ 
 -- 
 1.6.0.3
 
