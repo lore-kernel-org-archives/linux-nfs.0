@@ -1,116 +1,194 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 3/5] NFS: Add ability to send MOUNTPROC_UMNT to the
- kernel's mountd client
-Date: Thu, 16 Jul 2009 14:42:20 -0400
-Message-ID: <1247769740.12292.76.camel@heimdal.trondhjem.org>
-References: <20090713191417.1951.75470.stgit@matisse.1015granger.net>
-	 <20090713191731.1951.28069.stgit@matisse.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [pnfs] [PATCH 2/5] nfsd41: change from page to memory based
+	drc limits
+Date: Thu, 16 Jul 2009 14:50:51 -0400
+Message-ID: <20090716185051.GA2495@fieldses.org>
+References: <1245872278-18743-1-git-send-email-andros@netapp.com> <1245872278-18743-2-git-send-email-andros@netapp.com> <1245872278-18743-3-git-send-email-andros@netapp.com> <20090716141748.GC30477@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:35167 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:34552 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932833AbZGPSm0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jul 2009 14:42:26 -0400
-In-Reply-To: <20090713191731.1951.28069.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S932941AbZGPSuw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jul 2009 14:50:52 -0400
+In-Reply-To: <20090716141748.GC30477@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-07-13 at 15:17 -0400, Chuck Lever wrote:
-> After certain failure modes of an NFS mount, an NFS client should send
-> a MOUNTPROC_UMNT request to remove the just-added mount entry from the
-> server's mount table.  While no-one should rely on the accuracy of the
-> server's mount table, this is just being a good neighbor.
+On Thu, Jul 16, 2009 at 10:17:48AM -0400, J. Bruce Fields wrote:
+> On Wed, Jun 24, 2009 at 03:37:46PM -0400, andros@netapp.com wrote:
+> > From: Andy Adamson <andros@netapp.com>
+> > 
+> > NFSD_SLOT_CACHE_SIZE is the size of all encoded operation responses (excluding
+> > the sequence operation) that we want to cache.
+> > 
+> > Adjust NFSD_DRC_SIZE_SHIFT to reflect using 512 bytes instead of PAGE_SIZE.
+> > 
+> > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > ---
+> >  fs/nfsd/nfs4state.c        |   30 ++++++++++++++----------------
+> >  fs/nfsd/nfssvc.c           |   17 +++++++++--------
+> >  include/linux/nfsd/nfsd.h  |    4 ++--
+> >  include/linux/nfsd/state.h |    1 +
+> >  4 files changed, 26 insertions(+), 26 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 2e6a44e..b4a536d 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -414,35 +414,33 @@ gen_sessionid(struct nfsd4_session *ses)
+> >  
+> >  /*
+> >   * Give the client the number of slots it requests bound by
+> > - * NFSD_MAX_SLOTS_PER_SESSION and by sv_drc_max_pages.
+> > + * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
+> >   *
+> > - * If we run out of pages (sv_drc_pages_used == sv_drc_max_pages) we
+> > - * should (up to a point) re-negotiate active sessions and reduce their
+> > - * slot usage to make rooom for new connections. For now we just fail the
+> > - * create session.
+> > + * If we run out of reserved DRC memory we should (up to a point) re-negotiate
+> > + * active sessions and reduce their slot usage to make rooom for new
+> > + * connections. For now we just fail the create session.
+> >   */
+> >  static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
+> >  {
+> > -	int status = 0, np = fchan->maxreqs * NFSD_PAGES_PER_SLOT;
+> > +	int mem;
+> >  
+> >  	if (fchan->maxreqs < 1)
+> >  		return nfserr_inval;
+> >  	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+> >  		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
+> >  
+> > +	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
+> > +
+> >  	spin_lock(&nfsd_drc_lock);
+> > -	if (np + nfsd_drc_pages_used > nfsd_drc_max_pages)
+> > -		np = nfsd_drc_max_pages - nfsd_drc_pages_used;
+> > -	nfsd_drc_pages_used += np;
+> > +	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
+> > +		mem = nfsd_drc_max_mem - nfsd_drc_mem_used;
+> > +	nfsd_drc_mem_used += mem;
 > 
-> Since NFS mount processing is handled in the kernel now, we will need
-> a function in the kernel's mountd client that can post a MOUNTRPC_UMNT
-> request, in order to handle these failure modes.
+> There's a small bug here: in the case where
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> 	0 < mem < NFSD_PAGES_PER_SLOT,
 > 
->  fs/nfs/internal.h   |    1 +
->  fs/nfs/mount_clnt.c |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 61 insertions(+), 0 deletions(-)
+> we add mem into nfsd_drc_mem_used, but never subtract it back off.
+
+(Actually this is true whenever there's roundoff error, since we're
+adding in the un-rounded-off version but subtracting off (in the next
+patch) the rounded-off version.)
+
+--b.
+
 > 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index fa9a0d0..d3823d7 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -102,6 +102,7 @@ struct nfs_mount_request {
->  };
->  
->  extern int nfs_mount(struct nfs_mount_request *info);
-> +extern int nfs_umount(const struct nfs_mount_request *info);
->  
->  /* client.c */
->  extern struct rpc_program nfs_program;
-> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-> index b5ed325..67148e4 100644
-> --- a/fs/nfs/mount_clnt.c
-> +++ b/fs/nfs/mount_clnt.c
-> @@ -218,6 +218,52 @@ out_mnt_err:
->  	goto out;
->  }
->  
-> +/**
-> + * nfs_umount - Notify a server that we have unmounted this export
-> + * @info: pointer to umount request arguments
-> + *
-> + * MOUNTPROC_UMNT is advisory, so we set a short timeout.
-> + */
-> +int nfs_umount(const struct nfs_mount_request *info)
-> +{
-> +	static const struct rpc_timeout nfs_umnt_timeout = {
-> +		.to_initval = 1 * HZ,
-> +		.to_maxval = 3 * HZ,
-> +		.to_retries = 2,
-> +	};
-
-These values will never work with a TCP mount. Shouldn't we just enforce
-this as UDP only?
-
-> +	struct mountres	result;
-> +	struct rpc_message msg	= {
-> +		.rpc_argp	= info->dirpath,
-> +		.rpc_resp	= &result,
-> +	};
-> +	struct rpc_clnt *clnt;
-> +	int status;
-> +
-> +	clnt = nfs_mount_rpc_create(info, &nfs_umnt_timeout);
-> +	if (IS_ERR(clnt))
-> +		return PTR_ERR(clnt);
-
-Why are we returning a status value here? I see no reason why we should
-care if a umount call works or failed. It is certainly not going to
-affect anything the client does.
-
-> +
-> +	dprintk("NFS: sending UMNT request for %s:%s\n",
-> +		(info->hostname ? info->hostname : "server"),
-> +			info->dirpath);
-> +
-> +	if (info->version == NFS_MNT3_VERSION)
-> +		msg.rpc_proc = &clnt->cl_procinfo[MOUNTPROC3_UMNT];
-> +	else
-> +		msg.rpc_proc = &clnt->cl_procinfo[MOUNTPROC_UMNT];
-> +
-> +	status = rpc_call_sync(clnt, &msg, 0);
-> +	rpc_shutdown_client(clnt);
-> +
-> +	if (status < 0) {
-> +		dprintk("NFS: UMNT request failed, status=%d\n", status);
-> +		return status;
-> +	}
-> +
-> +	dprintk("NFS: UMNT request succeeded\n");
-> +	return 0;
-> +}
-
-ditto concerning return values. Please just make this a void function.
-
-
-
+> >  	spin_unlock(&nfsd_drc_lock);
+> >  
+> > -	if (np <= 0) {
+> > -		status = nfserr_resource;
+> > -		fchan->maxreqs = 0;
+> > -	} else
+> > -		fchan->maxreqs = np / NFSD_PAGES_PER_SLOT;
+> > -
+> > -	return status;
+> > +	fchan->maxreqs = mem / NFSD_SLOT_CACHE_SIZE;
+> > +	if (fchan->maxreqs == 0)
+> > +		return nfserr_resource;
+> > +	return 0;
+> >  }
+> >  
+> >  /*
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 78d8fcd..1793dba 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -74,8 +74,8 @@ struct svc_serv 		*nfsd_serv;
+> >   * nfsd_drc_pages_used tracks the current version 4.1 DRC memory usage.
+> >   */
+> >  spinlock_t	nfsd_drc_lock;
+> > -unsigned int	nfsd_drc_max_pages;
+> > -unsigned int	nfsd_drc_pages_used;
+> > +unsigned int	nfsd_drc_max_mem;
+> > +unsigned int	nfsd_drc_mem_used;
+> >  
+> >  #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+> >  static struct svc_stat	nfsd_acl_svcstats;
+> > @@ -247,13 +247,14 @@ void nfsd_reset_versions(void)
+> >  static void set_max_drc(void)
+> >  {
+> >  	/* The percent of nr_free_buffer_pages used by the V4.1 server DRC */
+> > -	#define NFSD_DRC_SIZE_SHIFT	7
+> > -	nfsd_drc_max_pages = nr_free_buffer_pages()
+> > -						>> NFSD_DRC_SIZE_SHIFT;
+> > -	nfsd_drc_pages_used = 0;
+> > +	#define NFSD_DRC_SIZE_SHIFT	10
+> > +	nfsd_drc_max_mem = (nr_free_buffer_pages()
+> > +					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
+> > +	nfsd_drc_mem_used = 0;
+> >  	spin_lock_init(&nfsd_drc_lock);
+> > -	dprintk("%s nfsd_drc_max_pages %u\n", __func__,
+> > -		nfsd_drc_max_pages);
+> > +	dprintk("%s nfsd_drc_max_mem %u [in pages %lu]\n", __func__,
+> > +		nfsd_drc_max_mem,
+> > +		nfsd_drc_max_mem / PAGE_SIZE);
+> 
+> The reader can do the "in pages" for him/herself if necessary.
+> 
+> >  }
+> >  
+> >  int nfsd_create_serv(void)
+> > diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
+> > index 2571f85..2812ed5 100644
+> > --- a/include/linux/nfsd/nfsd.h
+> > +++ b/include/linux/nfsd/nfsd.h
+> > @@ -57,8 +57,8 @@ extern u32			nfsd_supported_minorversion;
+> >  extern struct mutex		nfsd_mutex;
+> >  extern struct svc_serv		*nfsd_serv;
+> >  extern spinlock_t		nfsd_drc_lock;
+> > -extern unsigned int		nfsd_drc_max_pages;
+> > -extern unsigned int		nfsd_drc_pages_used;
+> > +extern unsigned int		nfsd_drc_max_mem;
+> > +extern unsigned int		nfsd_drc_mem_used;
+> >  
+> >  extern struct seq_operations nfs_exports_op;
+> >  
+> > diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> > index f5a95fd..10b6b30 100644
+> > --- a/include/linux/nfsd/state.h
+> > +++ b/include/linux/nfsd/state.h
+> > @@ -98,6 +98,7 @@ struct nfs4_cb_conn {
+> >  /* Maximum number of pages per slot cache entry */
+> >  #define NFSD_PAGES_PER_SLOT	1
+> >  /* Maximum number of operations per session compound */
+> > +#define NFSD_SLOT_CACHE_SIZE		512
+> 
+> Whoops--the above comment's misplaced now.
+> 
+> Also, this patch leaves the code in an inconsistent state where some
+> places still uses page size, others don't.  (E.g. we promise to cache
+> page_size, and still will, I think, and allocate that much, but we
+> calculate the maximum requests by the new smaller 512 byte value.)
+> 
+> Either fix all that at once, or just keep NFSD_SLOT_CACHE_SIZE 4k for
+> now.
+> 
+> --b.
+> 
+> >  #define NFSD_MAX_OPS_PER_COMPOUND	16
+> >  
+> >  struct nfsd4_cache_entry {
+> > -- 
+> > 1.5.4.3
+> > 
+> > _______________________________________________
+> > pNFS mailing list
+> > pNFS@linux-nfs.org
+> > http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
