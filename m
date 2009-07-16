@@ -1,63 +1,53 @@
-From: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
-Subject: Bug in server's export -- List of security flavors
-Date: Thu, 16 Jul 2009 11:58:52 -0500
-Message-ID: <4A5F5C4C.3070308@excfb.com>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: Union mounts, NFS, and locking
+Date: Thu, 16 Jul 2009 13:25:13 -0400
+Message-ID: <20090716172512.GM27582@shell>
+References: <20090714201940.GF27582@shell> <200907142036.n6EKaexe017464@agora.fsl.cs.sunysb.edu> <20090714220515.GH27582@shell> <20090715172758.GA13893@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Erez Zadok <ezk-EX0cT3Az47bauI2f2gSDlQ@public.gmane.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jan Blunck <jblunck@suse.de>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmmtao105.cox.net ([68.230.240.47]:39734 "EHLO
-	eastrmmtao105.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932617AbZGPQ7F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jul 2009 12:59:05 -0400
-Received: from eastrmimpo03.cox.net ([68.1.16.126])
-          by eastrmmtao105.cox.net
-          (InterMail vM.7.08.02.01 201-2186-121-102-20070209) with ESMTP
-          id <20090716165903.WJGK14338.eastrmmtao105.cox.net-jOUDVclVbkx9GQUQ9EqIheTW4wlIGRCZ@public.gmane.org>
-          for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2009 12:59:03 -0400
-Received: from [192.168.2.115] (kanigix.internal.excfb.com [192.168.2.115])
-	by adept.internal.excfb.com (8.14.3/8.14.2) with ESMTP id n6GGx0r1008530
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2009 11:59:02 -0500
+Received: from mx1.redhat.com ([66.187.233.31]:32937 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932844AbZGPR0G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jul 2009 13:26:06 -0400
+In-Reply-To: <20090715172758.GA13893@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[tdh@adept tournament]> exportfs -rva
-exporting 192.168.2.0/255.255.255.0:/home
-exporting *:/
-exportfs: could not open /var/lib/nfs/etab for locking
-exportfs: can't lock /var/lib/nfs/etab for writing
-[tdh@adept tournament]> more /etc/exports
-/ *(sync)
-/home 
-192.168.2.0/255.255.255.0(rw,async,no_subtree_check,insecure,no_root_squash)
-[tdh@adept tournament]> uname -a
-Linux adept.internal.excfb.com 2.6.29.4-167.fc11.i586 #1 SMP Wed May 27 
-17:14:37 EDT 2009 i686 i686 i386 GNU/Linux
+On Wed, Jul 15, 2009 at 01:27:59PM -0400, J. Bruce Fields wrote:
+> On Tue, Jul 14, 2009 at 06:05:16PM -0400, Valerie Aurora wrote:
+> > On Tue, Jul 14, 2009 at 04:36:40PM -0400, Erez Zadok wrote:
+> > > In message <20090714201940.GF27582@shell>, Valerie Aurora writes:
+> > >
+> > > > Okay, so my best idea for a solution is to introduce a new NFS mount
+> > > > option that means the server promises that the exported file system is
+> > > > read-only (using superblock read-only count scheme locally).  E.g.:
+> 
+> Language nitpick: the term "read-only" is confusing.  Files
+> (/proc/mounts) and filesystems (nfs) that are "read-only" can still
+> change.
+> 
+> I'd be happier with "unchanging" or "constant" or "static".
 
-So, adept:/home is exported in a fairly typical way that I've had going for
-the past 3 years.
+What about "immutable"?  It should be familiar from inode attributes.
 
-[root@witch ~]> mount -o vers=3 adept:/home /mnt
-nfs mount: security mode does not match the server exporting adept:/home
+> The mount options aren't really in the protocol--so it'd probably take
+> the form of a filesystem-granularity attribute that the client could
+> query (and then fail the mount if the client didn't like the answer).
+> 
+> But even then: the fact is that someone will want to update the
+> filesystem some day.  And there's no way to force every client
+> administrator to remount.  So we'd have to decide how to handle that
+> case.
 
-The server is not sending any authentication flavors:
+Agreed.  I'm no NFS expert, but I think that treating it as if the NFS
+server had stopped responding might be a start?
 
-MOUNT:----- NFS MOUNT -----
-MOUNT:
-MOUNT:Proc = 1 (Add mount entry)
-MOUNT:Status = 0 (OK)
-MOUNT:File handle = [DADF]
-MOUNT: 01000700010005000000000053CF6DE4FF1C4572BB2950392EB6993C
-MOUNT:Authentication flavor =
-MOUNT:
-
-And yet this mount will work from a Linux box:
-
-root@slayer:~# uname -a
-Linux slayer 2.6.28-13-generic #45-Ubuntu SMP Tue Jun 30 19:49:51 UTC 
-2009 i686 GNU/Linux
-root@slayer:~# mount -o vers=3 adept:/home /mnt
-
-I'm guessing that the Linux client is ignoring the list and trying the 
-default AUTH_SYS anyway. Is that
-also a bug on the client, using a flavor not advertised by the server?
+-VAL
