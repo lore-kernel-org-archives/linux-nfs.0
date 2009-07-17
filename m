@@ -1,62 +1,53 @@
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-Subject: Re: [PATCH 1/4] NLM: Kill PROC macro from NLMv1 and NLMv3 server
- procedures
-Date: Fri, 17 Jul 2009 11:33:58 +0800
-Message-ID: <4A5FF126.2000907@cn.fujitsu.com>
-References: <4A5EF29B.1050100@cn.fujitsu.com>	 <4A5EF2FB.1010403@cn.fujitsu.com> <1247779647.12292.164.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 07/10] SUNRPC: Pass full bind address to transports
+	after GETPORT/GETADDR
+Date: Fri, 17 Jul 2009 12:02:30 -0400
+Message-ID: <20090717160230.GG10710@fieldses.org>
+References: <20090715213842.7883.48947.stgit@matisse.1015granger.net> <20090715214238.7883.91886.stgit@matisse.1015granger.net> <1247778644.12292.156.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=Shift_JIS
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:60756 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S934074AbZGQDfD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jul 2009 23:35:03 -0400
-In-Reply-To: <1247779647.12292.164.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:57865 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964855AbZGQQCc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jul 2009 12:02:32 -0400
+In-Reply-To: <1247778644.12292.156.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Thu, 2009-07-16 at 17:29 +0800, Bian Naimeng wrote:
+On Thu, Jul 16, 2009 at 05:10:44PM -0400, Trond Myklebust wrote:
+> On Wed, 2009-07-15 at 17:42 -0400, Chuck Lever wrote:
+> > TI-RPC rpcbind operations provide not just a port number, but a full
+> > socket address the client should connect to.  This allows rpcbind to
+> > redirect RPC traffic to specific network interfaces or servers.  The
+> > Linux kernel rpcbind client implementation currently ignores the
+> > address.
+> > 
+> > Expand the ->set_port transport method so an address is passed to
+> > transports during an RPC bind operation.  Additional changes to
+> > individual client transports will be required to replace the peer
+> > address after an rpcbind operation.
 > 
->> +	[NLMPROC_NSM_NOTIFY] = {
->> +		.pc_func	= (svc_procfunc) nlmsvc_proc_sm_notify,
->> +		.pc_decode	= (kxdrproc_t) nlmsvc_decode_reboot,
->> +		.pc_encode	= (kxdrproc_t) nlmsvc_encode_void,
->> +		.pc_release	= NULL,
->> +		.pc_argsize	= sizeof(struct nlm_reboot),
->> +		.pc_ressize	= sizeof(struct nlm_void),
->> +		.pc_xdrressize	= 1,
->> +	},
->> +	NLMSVC_NONE_PROC,
->> +	NLMSVC_NONE_PROC,
->> +	NLMSVC_NONE_PROC,
-> 
-> Hmm... Does the C standard really allow you to mix C99 initialisers and
-> K&R initialisers in this manner?
-> 
+> Now I'm worried. We've just spent a lot of time implementing RPCSEC_GSS
+> security, and yet we're going allow an AUTH_SYS-based RPC call to tell
+> us to change an IP address that the user supplied us with? It was bad
+> enough when we allowed it to set the port number...
 
-  In this point, i think C99 is compatible with K&R. If it just support K&R
-  but not C99, maybe " [subscript] = {}" should not work too.
+The authentication of the server will use whatever hostname was supplied
+on the commandline, so should still provide some protection.
 
-  And i have tested with gcc, it can work with -std=c99 or -ansi option.
+On the other hand: with krb5 (as opposed to krb5i or krb5p), a
+man-in-the-middle attack that keeps the rpc headers and replaces the
+body is always possible.  But if you can redirect the client to a
+port/ip address under your control, that might simplify the attack
+significantly.  Similarly, sniffing non-krb5p traffic might become
+simpler.
 
-  And may i ask other questions.  
+It might also simplify denial of service attacks (possibly with the goal
+of making the user give up on gss and downgrade to auth_sys?).
 
-  Q: why we must initial these three procedures, is it in order to reply ok 
-      to client?  
+An attacker could do the same stuff with dns, I suppose.
 
-      But i have not finded that client will send these request.
-
-      In RFC1813, we defined NLMPROC_NSM_NOTIFY = 16 and NLMPROC_SHARE = 20,
-      but why not NLMPROC_SHARE = 17? 
-
-      I try to find the reason, but failed. Would you answer my question or
-      give me some suggestions. Thanks very much.
-     
-Best Regard
-  Bian
-
-> Cheers
->   Trond
-
+--b.
