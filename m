@@ -1,73 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:49286 "EHLO mail-out1.uio.no"
+Received: from cantor.suse.de ([195.135.220.2]:35397 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752468AbZGMRkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Jul 2009 13:40:24 -0400
-Subject: Re: [stable] NFS client packet storm on 2.6.27.x
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Greg KH <greg@kroah.com>
-Cc: Kasparek Tomas <kasparek@fit.vutbr.cz>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, stable@kernel.org
-In-Reply-To: <20090713172001.GA22775@kroah.com>
-References: <20090116104802.GF47559@fit.vutbr.cz>
-	 <20090118130835.GH47559@fit.vutbr.cz> <20090120150301.GG47559@fit.vutbr.cz>
-	 <1232465547.7055.3.camel@heimdal.trondhjem.org>
-	 <20090303120848.GV89843@fit.vutbr.cz>
-	 <1236089767.9631.4.camel@heimdal.trondhjem.org>
-	 <20090418051739.GL64731@fit.vutbr.cz> <20090422172707.GC57877@fit.vutbr.cz>
-	 <20090625055532.GC50277@fit.vutbr.cz> <20090713111214.GC30754@fit.vutbr.cz>
-	 <20090713172001.GA22775@kroah.com>
-Content-Type: text/plain
-Date: Mon, 13 Jul 2009 13:40:17 -0400
-Message-Id: <1247506817.14524.25.camel@heimdal.trondhjem.org>
+	id S934181AbZGQHxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jul 2009 03:53:42 -0400
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>
+Date: Fri, 17 Jul 2009 17:53:37 +1000
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <19040.11777.346898.322780@notabene.brown>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: reset TCP reconnect exponential back-off on successful connection.
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2009-07-13 at 10:20 -0700, Greg KH wrote:
-> On Mon, Jul 13, 2009 at 01:12:15PM +0200, Kasparek Tomas wrote:
-> > On Thu, Jun 25, 2009 at 07:55:32AM +0200, Kasparek Tomas wrote:
-> > > http://www.linux-nfs.org/Linux-2.6.x/2.6.27/
-> > > 
-> > > .../fixups_4/linux-2.6.27-001-respond_promptly_to_socket_errors.dif
-> > > .../fixups_4/linux-2.6.27-002-respond_promptly_to_socket_errors_2.dif
-> > > 
-> > > ...
-> > > Together with tcp_linger patch it seems to improve the situation a lot to
-> > > state when it is possible for me to use 2.6.27.x kernels.
-> > > 
-> > > Trond, will it be possible to get tcp_linger and the upper twho patches to
-> > > 2.6.27.x stable queue so others get these fixes?
-> > 
-> > I got no response so far, is there someone who could advise me what to do
-> > to get above patches to 2.6.27.x stable? Or is there some reason, why this
-> > is not possible at all?
-> 
-> Can you backport them and send them to stable@kernel.org with the git
-> commit ids of the orignal patches?
 
-When testing at a customer site, we recently found that we actually need
-4 patches in order to completely fix the storming problem in 2.6.27.y,
-and ensure a timely socket reconnect.
+Hi.
+ A customer of ours has been testing NFS failover and has been
+ experiencing unexpected delays before the client starts writing
+ again.   It turns out there are a number of issues here, some client
+ and some server.
 
-commit 15f081ca8ddfe150fb639c591b18944a539da0fc (SUNRPC: Avoid an
-unnecessary task reschedule on ENOTCONN)
+ This patch fixes two client issues, one that causes the failover time
+ to double on each migration (or each time the NFS server is stopped
+ and restarted), and one that causes the client to spam the server
+ with SYN requests until it accepts the connection (I have a trace
+ showing over 100 SYN requests, each followed by a RST,ACK reply, in
+ the space for 300 milliseconds).
 
-commit 670f94573104b4a25525d3fcdcd6496c678df172 (SUNRPC: Ensure we set
-XPRT_CLOSING only after we've sent a tcp FIN...)
+ I am able to simulate the first failure and have tested that the
+ patch fixes it.  I have not managed to simulate the second failure,
+ but I think that fix is clearly safe.
 
-commit 40d2549db5f515e415894def98b49db7d4c56714 (SUNRPC: Don't
-disconnect if a connection is still in progress.)
+ I'm not sure that the patch fits the original definition for -stable,
+ but it seems to fit the current practice and I would appreciate if
+ (assuming the patch passes review) it could be submitted for -stable.
 
-and finally
+Thanks,
+NeilBrown
 
-commit f75e6745aa3084124ae1434fd7629853bdaf6798 (SUNRPC: Fix the problem
-of EADDRNOTAVAIL syslog floods on reconnect)
 
-The first three need to be applied to kernels 2.6.27.y to 2.6.29.y,
-while the last needs to be applied to 2.6.27.y to 2.6.30.y.
 
-I'll ensure the patches get sent to stable@kernel.org...
+The sunrpc/TCP transport has an exponential back-off for reconnection,
+starting at 3 seconds and with a maximum of 300 seconds.  On every
+connection attempt the timeout is doubled.
+It is only reset when the client deliberately closes the connection.
+If the server closes the connection but a subsequent reconnect
+succeeds, the timeout remains elevated.
 
-   Trond
+This means that if the server resets the connection several times, as
+can happen with server migration in a clustered environment, each
+reconnect takes longer than the previous one - unnecessarily so.
+
+This patch resets the timeout on a successful connection so that every
+time the server resets the connection we start with a basic 3 second
+timeout.
+
+There is also the possibility for the reverse problem.  When the
+client closes the connection it sets the timeout to 0 (so that a
+reconnect - when required - is instant).  When 0 is doubled it remains
+at 0, so if the server refused the reconnect, the client will try
+again instantly and indefinitely.  To avoid this we ensure that after
+doubling the timeout it is at least the minimum.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ net/sunrpc/xprtsock.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 83c73c4..b032e06 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1403,6 +1403,7 @@ static void xs_tcp_state_change(struct sock *sk)
+ 				TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
+ 
+ 			xprt_wake_pending_tasks(xprt, -EAGAIN);
++			xprt->reestablish_timeout = 0;
+ 		}
+ 		spin_unlock_bh(&xprt->transport_lock);
+ 		break;
+@@ -2090,6 +2091,8 @@ static void xs_connect(struct rpc_task *task)
+ 				   &transport->connect_worker,
+ 				   xprt->reestablish_timeout);
+ 		xprt->reestablish_timeout <<= 1;
++		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
++			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+ 	} else {
+-- 
+1.6.3.3
 
