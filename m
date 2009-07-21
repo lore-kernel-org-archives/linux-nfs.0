@@ -1,86 +1,67 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] SUNRPC: reset TCP reconnect exponential back-off on
- successful connection.
-Date: Tue, 21 Jul 2009 19:07:44 -0400
-Message-ID: <1248217664.5034.18.camel@heimdal.trondhjem.org>
-References: <19040.11777.346898.322780@notabene.brown>
+From: Jeff Garzik <jeff@garzik.org>
+Subject: Re: 2.6.31-rc3 nfsv4 client regression (oops)
+Date: Tue, 21 Jul 2009 19:08:38 -0400
+Message-ID: <4A664A76.5000902@garzik.org>
+References: <4A5C3858.6070303@garzik.org> <1247571788.19099.32.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: LKML <linux-kernel@vger.kernel.org>,
+	Linux NFS ML <linux-nfs@vger.kernel.org>,
+	"Rafael J. Wysocki" <rjw@sisk.pl>,
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:55424 "EHLO mail-out2.uio.no"
+Received: from srv5.dvmed.net ([207.36.208.214]:40710 "EHLO mail.dvmed.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756354AbZGUXHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jul 2009 19:07:49 -0400
-In-Reply-To: <19040.11777.346898.322780-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1756366AbZGUXIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jul 2009 19:08:43 -0400
+In-Reply-To: <1247571788.19099.32.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-07-17 at 17:53 +1000, Neil Brown wrote:
-> Hi.
->  A customer of ours has been testing NFS failover and has been
->  experiencing unexpected delays before the client starts writing
->  again.   It turns out there are a number of issues here, some client
->  and some server.
+Trond Myklebust wrote:
+> NFSv4: Fix an Oops in nfs4_free_lock_state
 > 
->  This patch fixes two client issues, one that causes the failover time
->  to double on each migration (or each time the NFS server is stopped
->  and restarted), and one that causes the client to spam the server
->  with SYN requests until it accepts the connection (I have a trace
->  showing over 100 SYN requests, each followed by a RST,ACK reply, in
->  the space for 300 milliseconds).
+> The oops http://www.kerneloops.org/raw.php?rawid=537858&msgid= appears to
+> be due to the nfs4_lock_state->ls_state field being uninitialised. This
+> happens if the call to nfs4_free_lock_state() is triggered at the end of
+> nfs4_get_lock_state().
 > 
->  I am able to simulate the first failure and have tested that the
->  patch fixes it.  I have not managed to simulate the second failure,
->  but I think that fix is clearly safe.
+> The fixe is to move the initialisation of ls_state into the allocator.
 > 
->  I'm not sure that the patch fits the original definition for -stable,
->  but it seems to fit the current practice and I would appreciate if
->  (assuming the patch passes review) it could be submitted for -stable.
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
 > 
-> Thanks,
-> NeilBrown
+>  fs/nfs/nfs4state.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
 > 
-> 
-> The sunrpc/TCP transport has an exponential back-off for reconnection,
-> starting at 3 seconds and with a maximum of 300 seconds.  On every
-> connection attempt the timeout is doubled.
-> It is only reset when the client deliberately closes the connection.
-> If the server closes the connection but a subsequent reconnect
-> succeeds, the timeout remains elevated.
-> 
-> This means that if the server resets the connection several times, as
-> can happen with server migration in a clustered environment, each
-> reconnect takes longer than the previous one - unnecessarily so.
-> 
-> This patch resets the timeout on a successful connection so that every
-> time the server resets the connection we start with a basic 3 second
-> timeout.
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index b73c5a7..65ca8c1 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -553,6 +553,7 @@ static struct nfs4_lock_state *nfs4_alloc_lock_state(struct nfs4_state *state, f
+>  	INIT_LIST_HEAD(&lsp->ls_sequence.list);
+>  	lsp->ls_seqid.sequence = &lsp->ls_sequence;
+>  	atomic_set(&lsp->ls_count, 1);
+> +	lsp->ls_state = state;
+>  	lsp->ls_owner = fl_owner;
+>  	spin_lock(&clp->cl_lock);
+>  	nfs_alloc_unique_id(&clp->cl_lockowner_id, &lsp->ls_id, 1, 64);
+> @@ -587,7 +588,6 @@ static struct nfs4_lock_state *nfs4_get_lock_state(struct nfs4_state *state, fl_
+>  		if (lsp != NULL)
+>  			break;
+>  		if (new != NULL) {
+> -			new->ls_state = state;
+>  			list_add(&new->ls_locks, &state->lock_states);
+>  			set_bit(LK_STATE_IN_USE, &state->flags);
 
-I seem to remember a situation (was it with NetApp filers?) where the
-server would accept the connection, but then immediately abort it
-because the services weren't all finished booting.
+Ping?  This is headed upstream, right?
 
-IMO, the rule should therefore be that if a server aborts the
-connection, we should assume it is in some sort of trouble, and be
-careful when reconnecting.
+This oops fix has lived outside the tree for at least a week now, and 
+IMO needs to move upstream...
 
-Now, that said, if the server has been operating fine for several
-minutes before aborting the connection, we could definitely be a bit
-more aggressive about the reconnection timeout. Could we rather do that?
+	Jeff
 
-> There is also the possibility for the reverse problem.  When the
-> client closes the connection it sets the timeout to 0 (so that a
-> reconnect - when required - is instant).  When 0 is doubled it remains
-> at 0, so if the server refused the reconnect, the client will try
-> again instantly and indefinitely.  To avoid this we ensure that after
-> doubling the timeout it is at least the minimum.
 
-Is this true? AFAICS, we always ensure xprt->reestablish_timeout is
-non-zero when we enter TCP_SYN_SENT.
-
-Cheers
-  Trond
 
