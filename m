@@ -1,75 +1,86 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH] Fix hang on access to NFSv4 subexports with sec=
-Date: Tue, 21 Jul 2009 18:49:38 -0400
-Message-ID: <20090721224938.GA20694@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] SUNRPC: reset TCP reconnect exponential back-off on
+ successful connection.
+Date: Tue, 21 Jul 2009 19:07:44 -0400
+Message-ID: <1248217664.5034.18.camel@heimdal.trondhjem.org>
+References: <19040.11777.346898.322780@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
+Content-Type: text/plain
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45854 "EHLO fieldses.org"
+Received: from mail-out2.uio.no ([129.240.10.58]:55424 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755529AbZGUWti (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jul 2009 18:49:38 -0400
+	id S1756354AbZGUXHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jul 2009 19:07:49 -0400
+In-Reply-To: <19040.11777.346898.322780-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since
+On Fri, 2009-07-17 at 17:53 +1000, Neil Brown wrote:
+> Hi.
+>  A customer of ours has been testing NFS failover and has been
+>  experiencing unexpected delays before the client starts writing
+>  again.   It turns out there are a number of issues here, some client
+>  and some server.
+> 
+>  This patch fixes two client issues, one that causes the failover time
+>  to double on each migration (or each time the NFS server is stopped
+>  and restarted), and one that causes the client to spam the server
+>  with SYN requests until it accepts the connection (I have a trace
+>  showing over 100 SYN requests, each followed by a RST,ACK reply, in
+>  the space for 300 milliseconds).
+> 
+>  I am able to simulate the first failure and have tested that the
+>  patch fixes it.  I have not managed to simulate the second failure,
+>  but I think that fix is clearly safe.
+> 
+>  I'm not sure that the patch fits the original definition for -stable,
+>  but it seems to fit the current practice and I would appreciate if
+>  (assuming the patch passes review) it could be submitted for -stable.
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> 
+> The sunrpc/TCP transport has an exponential back-off for reconnection,
+> starting at 3 seconds and with a maximum of 300 seconds.  On every
+> connection attempt the timeout is doubled.
+> It is only reset when the client deliberately closes the connection.
+> If the server closes the connection but a subsequent reconnect
+> succeeds, the timeout remains elevated.
+> 
+> This means that if the server resets the connection several times, as
+> can happen with server migration in a clustered environment, each
+> reconnect takes longer than the previous one - unnecessarily so.
+> 
+> This patch resets the timeout on a successful connection so that every
+> time the server resets the connection we start with a basic 3 second
+> timeout.
 
-	2d77e3a27b7b211f303f.. "Fix bug when both crossmnt and fsid are set"
+I seem to remember a situation (was it with NetApp filers?) where the
+server would accept the connection, but then immediately abort it
+because the services weren't all finished booting.
 
-Subexports automatically created by "crossmnt" get the NFSEXP_FSID flag
-cleared.  That flag should also be cleared in the
-security-flavor-specific flag fields.  Otherwise the kernel detects the
-inconsistent flags and rejects the export.
+IMO, the rule should therefore be that if a server aborts the
+connection, we should assume it is in some sort of trouble, and be
+careful when reconnecting.
 
-The symptoms are clients hanging the first time they export a filesystem
-mounted under a filesystem that was exported with something like:
+Now, that said, if the server has been operating fine for several
+minutes before aborting the connection, we could definitely be a bit
+more aggressive about the reconnection timeout. Could we rather do that?
 
-	/exports *(crossmnt,fsid=0,sec=krb5)
+> There is also the possibility for the reverse problem.  When the
+> client closes the connection it sets the timeout to 0 (so that a
+> reconnect - when required - is instant).  When 0 is doubled it remains
+> at 0, so if the server refused the reconnect, the client will try
+> again instantly and indefinitely.  To avoid this we ensure that after
+> doubling the timeout it is at least the minimum.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Is this true? AFAICS, we always ensure xprt->reestablish_timeout is
+non-zero when we enter TCP_SYN_SENT.
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 9bbbfb3..e4e2f22 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -564,7 +564,7 @@ static void write_fsloc(FILE *f, struct exportent *ep, char *path)
- 	release_replicas(servers);
- }
- 
--static void write_secinfo(FILE *f, struct exportent *ep)
-+static void write_secinfo(FILE *f, struct exportent *ep, int flag_mask)
- {
- 	struct sec_entry *p;
- 
-@@ -578,7 +578,7 @@ static void write_secinfo(FILE *f, struct exportent *ep)
- 	qword_printint(f, p - ep->e_secinfo);
- 	for (p = ep->e_secinfo; p->flav; p++) {
- 		qword_printint(f, p->flav->fnum);
--		qword_printint(f, p->flags);
-+		qword_printint(f, p->flags & flag_mask);
- 	}
- 
- }
-@@ -590,16 +590,14 @@ static int dump_to_cache(FILE *f, char *domain, char *path, struct exportent *ex
- 	qword_printint(f, time(0)+30*60);
- 	if (exp) {
- 		int different_fs = strcmp(path, exp->e_path) != 0;
--		
--		if (different_fs)
--			qword_printint(f, exp->e_flags & ~NFSEXP_FSID);
--		else
--			qword_printint(f, exp->e_flags);
-+		int flag_mask = different_fs ? ~NFSEXP_FSID : ~0;
-+
-+		qword_printint(f, exp->e_flags & flag_mask);
- 		qword_printint(f, exp->e_anonuid);
- 		qword_printint(f, exp->e_anongid);
- 		qword_printint(f, exp->e_fsid);
- 		write_fsloc(f, exp, path);
--		write_secinfo(f, exp);
-+		write_secinfo(f, exp, flag_mask);
-  		if (exp->e_uuid == NULL || different_fs) {
-  			char u[16];
-  			if (get_uuid(path, NULL, 16, u)) {
+Cheers
+  Trond
+
