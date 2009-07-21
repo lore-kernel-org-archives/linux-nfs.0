@@ -1,82 +1,190 @@
-From: Frans Pop <elendil@planet.nl>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Error mounting FC8 NFS server with 2.6.31-rc3 NFSv4 client.
-Date: Tue, 21 Jul 2009 22:24:30 +0200
-Message-ID: <200907212224.32205.elendil@planet.nl>
-References: <4A64EB1F.4000602@candelatech.com> <200907212123.08790.elendil@planet.nl> <1248206076.21343.30.camel@heimdal.trondhjem.org>
+Date: Tue, 21 Jul 2009 17:17:30 -0400
+Message-ID: <1248211050.21343.38.camel@heimdal.trondhjem.org>
+References: <4A64EB1F.4000602@candelatech.com>
+	 <1248178527.5222.0.camel@heimdal.trondhjem.org>
+	 <4A65F184.5060802@candelatech.com>
+	 <1248196339.21343.8.camel@heimdal.trondhjem.org>
+	 <4A65FCB2.6080903@candelatech.com>
+	 <1248199140.21343.17.camel@heimdal.trondhjem.org>
+	 <4A660295.9020807@candelatech.com>
+	 <1248200897.21343.19.camel@heimdal.trondhjem.org>
+	 <4A6609A9.3000504@candelatech.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="utf-8"
-Cc: greearb@candelatech.com, linux-kernel@vger.kernel.org,
+Content-Type: text/plain
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
 	linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756186AbZGUUYg@vger.kernel.org>
-In-Reply-To: <1248206076.21343.30.camel@heimdal.trondhjem.org>
+To: Ben Greear <greearb@candelatech.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756196AbZGUVRi@vger.kernel.org>
+In-Reply-To: <4A6609A9.3000504@candelatech.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday 21 July 2009, Trond Myklebust wrote:
-> On Tue, 2009-07-21 at 21:23 +0200, Frans Pop wrote:
-> > Trond Myklebust wrote:
-> > > Ah... You have NFS_V4_1 enabled despite the Kconfig warning... Does
-> > > the bug occur when you turn this off too?
+On Tue, 2009-07-21 at 11:32 -0700, Ben Greear wrote:
+> On 07/21/2009 11:28 AM, Trond Myklebust wrote:
+> > On Tue, 2009-07-21 at 11:01 -0700, Ben Greear wrote:
+> >> On 07/21/2009 10:59 AM, Trond Myklebust wrote:
+> >>> On Tue, 2009-07-21 at 10:36 -0700, Ben Greear wrote:
+> >>>> On 07/21/2009 10:12 AM, Trond Myklebust wrote:
+> >>>>> On Tue, 2009-07-21 at 09:49 -0700, Ben Greear wrote:
+> >>>>>> On 07/21/2009 05:15 AM, Trond Myklebust wrote:
+> >>>>>>
+> >>>>>>> What does /var/lib/nfs/v4recovery look like on the server?
+> >>>>>> The server was misconfigured, but I still think the client should
+> >>>>>> behave better in this case.  If you cannot reproduce it, let me know
+> >>>>>> and I can try to be more specific.  If you still want the v4recovery
+> >>>>>> information, let me know and I'll send it.
+> >>>>> So how should the client behave, when a screwed up server allows it to
+> >>>>> mount but starts returning illegal values for setclientid? The only
+> >>>>> thing I can see we could do is to tell the user EINSANESERVER...
+> >>>> Well, it could just fail the mount and give up and not overly spam
+> >>>> /var/log/messages in a tight loop perhaps?
+> >>> This doesn't happen at mount time. It happens when you open a file.
+> >> Not for me, and evidently not for the other person that reported
+> >> similar results.  All I had to do was attempt the mount (which never
+> >> completed).
+> >>
+> >> Thanks,
+> >> Ben
 > >
-> > Eh, no. In my case both client and server are 2.6.30 which did not
-> > yet have NFS_V4_1 (and in all my .31 configs I did disable it).
->
-> ...and you are seeing the state manager running when you try to mount
-> an NFSv4 partition using the 2.6.30 client?
+> > Ah... You have NFS_V4_1 enabled despite the Kconfig warning... Does the
+> > bug occur when you turn this off too?
+> 
+> Yes, it did.
 
-Per my previous message, I think there may be two related issues:
-- mount hanging when no NFS4 root is defined, reproducible on .30
-- state errors occurring in that situation, which may have been
-  introduced with .31
+OK. The following patch should fix that particular regression.
 
-I've just checked and when I saw the state errors I was running .31-rc3 on
-the client, and partially also on the server. I saw error 2, 5 and 10022.
-See log below.
-
-I first switched back to .30 on the server to see if that fixed the mount
-problem (it didn't) and later also switched back to .30 on the client.
-
-(Sorry for the kernel version confusion, but I've been working on
-different issues requiring frequent reboots; but I hope the info helps.)
+Note that there is a bug remaining inside nfs4_init_session(): we
+shouldn't be copying the rsize/wsize into the nfs_client if the latter
+was already initialised. I'm going to leave that for the moment, though,
+since that bug wasn't introduced by my patch, and it doesn't affect
+NFSv4.0.
 
 Cheers,
-FJP
+  Trond
+-----------------------------------------------------------------
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+NFSv4: Fix an NFSv4 mount regression
 
-Log from the client:
-Jul 19 20:10:16 aragorn kernel: Linux version 2.6.31-rc3
-[...]
-Jul 20 00:44:45 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 2
-Jul 20 00:49:27 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 00:52:30 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 00:55:30 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 00:59:39 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 01:01:15 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-[... server rebooted from 2.6.31-rc3 to 2.6.30 ...]
-Jul 20 01:06:37 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 01:09:37 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 01:12:37 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 01:15:37 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 01:18:37 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 10022
-Jul 20 01:23:52 aragorn kernel: Error: state manager failed on NFSv4 server thorin with error 5
+Commit 008f55d0e019943323c20a03493a2ba5672a4cc8 (nfs41: recover lease in
+_nfs4_lookup_root) forces the state manager to always run on mount. This is
+a bug in the case of NFSv4.0, which doesn't require us to send a
+setclientid until we want to grab file state.
+
+In any case, this is completely the wrong place to be doing state
+management. Moving that code into nfs4_init_session...
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfs/client.c   |   18 +++---------------
+ fs/nfs/nfs4_fs.h  |    6 ++++++
+ fs/nfs/nfs4proc.c |   24 +++++++++++++++++-------
+ 3 files changed, 26 insertions(+), 22 deletions(-)
 
 
-Unrelated, but I just noticed the following on the server (with 2.6.30);
-not sure what exactly triggered that, maybe a stop/start of the NFS services:
-
-Jul 20 01:23:22 thorin kernel: RPC: Unregistered udp transport module.
-Jul 20 01:23:22 thorin kernel: RPC: Unregistered tcp transport module.
-Jul 20 01:23:22 thorin kernel: nfsd: failed to unregister auth.unix.gid cache
-Jul 20 01:23:22 thorin kernel: ------------[ cut here ]------------
-Jul 20 01:23:22 thorin kernel: WARNING: at /home/fjp/projects/kernel/linux-2.6/fs/proc/generic.c:847 
-remove_proc_entry+0x164/0x1b0()
-Jul 20 01:23:22 thorin kernel: remove_proc_entry: removing non-empty directory 'net/rpc', leaking at least 'auth.unix.gid'
-Jul 20 01:23:22 thorin kernel: Modules linked in: ipv6 exportfs sunrpc(-) dm_mod loop evdev ehci_hcd usbcore mv643xx_eth libphy 
-gpio_keys [last unloaded: auth_rpcgss]
-Jul 20 01:23:22 thorin kernel: [<c002ab6c>] (unwind_backtrace+0x0/0xd4) from [<c003fd78>] (warn_slowpath_common+0x4c/0x68)
-Jul 20 01:23:22 thorin kernel: [<c003fd78>] (warn_slowpath_common+0x4c/0x68) from [<c003fdd0>] (warn_slowpath_fmt+0x28/0x38)
-Jul 20 01:23:22 thorin kernel: [<c003fdd0>] (warn_slowpath_fmt+0x28/0x38) from [<c00e43c4>] (remove_proc_entry+0x164/0x1b0)
-Jul 20 01:23:22 thorin kernel: [<c00e43c4>] (remove_proc_entry+0x164/0x1b0) from [<c00628b8>] (sys_delete_module+0x1d0/0x230)
-Jul 20 01:23:22 thorin kernel: [<c00628b8>] (sys_delete_module+0x1d0/0x230) from [<c0024ce0>] (ret_fast_syscall+0x0/0x2c)
-Jul 20 01:23:22 thorin kernel: ---[ end trace b5320efdfa0e8be3 ]---
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index c2d0616..8d25ccb 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1242,20 +1242,6 @@ error:
+ 	return error;
+ }
+ 
+-/*
+- * Initialize a session.
+- * Note: save the mount rsize and wsize for create_server negotiation.
+- */
+-static void nfs4_init_session(struct nfs_client *clp,
+-			      unsigned int wsize, unsigned int rsize)
+-{
+-#if defined(CONFIG_NFS_V4_1)
+-	if (nfs4_has_session(clp)) {
+-		clp->cl_session->fc_attrs.max_rqst_sz = wsize;
+-		clp->cl_session->fc_attrs.max_resp_sz = rsize;
+-	}
+-#endif /* CONFIG_NFS_V4_1 */
+-}
+ 
+ /*
+  * Session has been established, and the client marked ready.
+@@ -1350,7 +1336,9 @@ struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
+ 	BUG_ON(!server->nfs_client->rpc_ops);
+ 	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+ 
+-	nfs4_init_session(server->nfs_client, server->wsize, server->rsize);
++	error = nfs4_init_session(server);
++	if (error < 0)
++		goto error;
+ 
+ 	/* Probe the root fh to retrieve its FSID */
+ 	error = nfs4_path_walk(server, mntfh, data->nfs_server.export_path);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 61bc3a3..6ea07a3 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -220,6 +220,7 @@ extern void nfs4_destroy_session(struct nfs4_session *session);
+ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
+ extern int nfs4_proc_create_session(struct nfs_client *, int reset);
+ extern int nfs4_proc_destroy_session(struct nfs4_session *);
++extern int nfs4_init_session(struct nfs_server *server);
+ #else /* CONFIG_NFS_v4_1 */
+ static inline int nfs4_setup_sequence(struct nfs_client *clp,
+ 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
+@@ -227,6 +228,11 @@ static inline int nfs4_setup_sequence(struct nfs_client *clp,
+ {
+ 	return 0;
+ }
++
++static inline int nfs4_init_session(struct nfs_server *server)
++{
++	return 0;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ extern struct nfs4_state_maintenance_ops *nfs4_state_renewal_ops[];
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ff0c080..df24f67 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2040,15 +2040,9 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
+-	int status;
+ 
+ 	nfs_fattr_init(info->fattr);
+-	status = nfs4_recover_expired_lease(server);
+-	if (!status)
+-		status = nfs4_check_client_ready(server->nfs_client);
+-	if (!status)
+-		status = nfs4_call_sync(server, &msg, &args, &res, 0);
+-	return status;
++	return nfs4_call_sync(server, &msg, &args, &res, 0);
+ }
+ 
+ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+@@ -4793,6 +4787,22 @@ int nfs4_proc_destroy_session(struct nfs4_session *session)
+ 	return status;
+ }
+ 
++int nfs4_init_session(struct nfs_server *server)
++{
++	struct nfs_client *clp = server->nfs_client;
++	int ret;
++
++	if (!nfs4_has_session(clp))
++		return 0;
++
++	clp->cl_session->fc_attrs.max_rqst_sz = server->wsize;
++	clp->cl_session->fc_attrs.max_resp_sz = server->rsize;
++	ret = nfs4_recover_expired_lease(server);
++	if (!ret)
++		ret = nfs4_check_client_ready(clp);
++	return ret;
++}
++
+ /*
+  * Renew the cl_session lease.
+  */
