@@ -1,72 +1,99 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:50365 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754830AbZGLQbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 12 Jul 2009 12:31:02 -0400
-Subject: Re: How to monitor Linux NFS client load?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Andrey Borzenkov <arvidjaar@mail.ru>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <200907120838.06766.arvidjaar@mail.ru>
-References: <200907112103.27082.arvidjaar@mail.ru>
-	 <1247352267.7281.2.camel@heimdal.trondhjem.org>
-	 <200907120838.06766.arvidjaar@mail.ru>
-Content-Type: text/plain
-Date: Sun, 12 Jul 2009 12:30:57 -0400
-Message-Id: <1247416257.13973.0.camel@heimdal.trondhjem.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Tue, 21 Jul 2009 17:47:17 -0400
+Message-ID: <fe2cbb740907211447t4dfcc0dara63bb96648599638@mail.gmail.com>
+Subject: nfs4 write delegation status
+From: "David V. Cloud" <david.v.cloud@gmail.com>
+To: nfsv4@linux-nfs.org
+Cc: linux-nfs@vger.kernel.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: multipart/mixed; boundary="===============0690846410=="
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-07-12 at 08:38 +0400, Andrey Borzenkov wrote:
-> On Sunday 12 of July 2009 02:44:27 Trond Myklebust wrote:
-> > On Sat, 2009-07-11 at 21:03 +0400, Andrey Borzenkov wrote:
-> > > Recently we have the case of very high latencies on NFS reads as
-> > > reported by application (SAP R/3). NFS server was NetApp FAS;
-> > > according to NetApp statistic, average volume read latencies were
-> > > in order 10ms, while SAP stats gave 30-50ms. Systems were
-> > > interconnected by dedicated 1Gb/s Cisco switches (3750G) with ca.
-> > > 30% max load on interfaces.
-> > >
-> > > On advice of my colleague we changed sunrpc.tcp_slot_table_entries
-> > > from default 16 to 128 which seemed to make situation much better -
-> > > without changing load pattern of filer in any visible way.
-> > >
-> > > Now, I can understand, why we observed much higher latency on
-> > > system and why changing (what effectively is) queue depth helped.
-> > > But I am totally frustrated that there does not appear to be *any*
-> > > possibility to detect this situation on Linux side and to get a
-> > > real numbers of real NFS IO latencies or number of requests waiting
-> > > to be executed (and I do not even dream about per-mount point
-> > > stats).
-> > >
-> > > I am grateful for any hints how can we monitor Linux NFS client and
-> > > get real-life numbers of what happens inside. Thank you!
-> >
-> > See the nfs-iostat utility in the nfs-utils package:
-> >
-> > http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=tools/nfs-i
-> >ostat/nfs-iostat.py;h=9626d42609b9485c7fda0c9ef69d698f9fa929fd;hb=HEAD
-> >
-> 
-> This looks exactly like what is required, except ...
-> 
-> cn1:~ # ./nfs-iostat.py 2
-> Traceback (most recent call last):
->   File "./nfs-iostat.py", line 559, in ?
->     iostat_command(prog)
->   File "./nfs-iostat.py", line 464, in iostat_command
->     mountstats = parse_stats_file('/proc/self/mountstats')
->   File "./nfs-iostat.py", line 434, in parse_stats_file
->     f = file(filename)
-> IOError: [Errno 2] No such file or directory: '/proc/self/mountstats'
-> 
-> Which minimum kernel version is required for it?
-> 
-> Thank you!
+--===============0690846410==
+Content-Type: multipart/alternative; boundary=0016367ed4e1c58789046f3e32b1
 
-You need kernel 2.6.17 or newer.
+--0016367ed4e1c58789046f3e32b1
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-Cheers
-  Trond
+Hi all,
+I was playing with nfs4 delegation, finding out that write delegations have
+never been granted. I am using Benny Halevy's git tree with latest
+pnfs-block-all branch. With rpcdebug,  I found out that the write-delegation
+grant was rejected due to setlease failure with error code (-11, which is
+-EAGAIN). I finally figured out that this failure was caused by the
+following lines in generic_setlease function,
 
+        if ((arg == F_WRLCK)
+            && ((atomic_read(&dentry->d_count) > 1)
+            || (atomic_read(&inode->i_count) > 1)))
+            goto out;
+
+In my nfsd, the i_count, and d_count turn out to be 2 (no conflicts actaully
+exist in my test case), so write-delegations always failed. I did find some
+similar posts on nfs4 related mail lists about this problem. One possible
+hack by Ajay could be found at
+http://osdir.com/ml/linux.nfsv4/2006-08/msg00063.html
+
+I am curious whether there is any progress in awarding write delegation in
+current linux nfs4 implementation (for example, any git branch with write
+delegation enabled I can pull?) Or, is write-delegation feature available in
+other systems like OpenSolaris?
+
+Any suggestion if I would like to enable and test write delegation? I think
+some changes are needed to the setlease interface, right?
+
+Thanks,
+David
+
+--0016367ed4e1c58789046f3e32b1
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
+
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Diso-8859-=
+1">Hi all, <br>I was playing with nfs4 delegation, finding out that write d=
+elegations have never been granted. I am using Benny Halevy's git tree with=
+ latest pnfs-block-all branch. With rpcdebug,&nbsp; I found out that the wr=
+ite-delegation grant was rejected due to setlease failure with error code (=
+-11, which is -EAGAIN). I finally figured out that this failure was caused =
+by the following lines in generic_setlease function, <br>
+<br>&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; if ((arg =3D=3D F_WRLCK)<br>&nbsp=
+;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &amp;&amp; ((atomic_rea=
+d(&amp;dentry-&gt;d_count) &gt; 1)<br>&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;=
+ &nbsp;&nbsp;&nbsp; || (atomic_read(&amp;inode-&gt;i_count) &gt; 1)))<br>&n=
+bsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; goto out;<br><br>In =
+my nfsd, the i_count, and d_count turn out to be 2 (no conflicts actaully e=
+xist in my test case), so write-delegations always failed. I did find some =
+similar posts on nfs4 related mail lists about this problem. One possible h=
+ack by Ajay could be found at<br>
+<a href=3D"http://osdir.com/ml/linux.nfsv4/2006-08/msg00063.html">http://os=
+dir.com/ml/linux.nfsv4/2006-08/msg00063.html</a><br><br>I am curious whethe=
+r there is any progress in awarding write delegation in current linux nfs4 =
+implementation (for example, any git branch with write delegation enabled I=
+ can pull?) Or, is write-delegation feature available in other systems like=
+ OpenSolaris? <br>
+<br>Any suggestion if I would like to enable and test write delegation? I t=
+hink some changes are needed to the setlease interface, right?<br><br>Thank=
+s,<br>David<br>
+
+--0016367ed4e1c58789046f3e32b1--
+
+--===============0690846410==
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+--===============0690846410==--
