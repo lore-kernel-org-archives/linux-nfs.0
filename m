@@ -1,58 +1,53 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: server locks up at boot
-Date: Wed, 22 Jul 2009 12:32:16 -0400
-Message-ID: <20090722163216.GA4491@fieldses.org>
-References: <4A5F9110.4050208@atmos.washington.edu>
+Subject: Re: nfs4 write delegation status
+Date: Wed, 22 Jul 2009 12:38:10 -0400
+Message-ID: <20090722163810.GB4491@fieldses.org>
+References: <fe2cbb740907211447t4dfcc0dara63bb96648599638@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: David Warren <warren-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>
+Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org
+To: "David V. Cloud" <david.v.cloud@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40597 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33934 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753255AbZGVQcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jul 2009 12:32:16 -0400
-In-Reply-To: <4A5F9110.4050208-qmPYOCrcNLLyFCzt5hm0YvZ8FUJU4vz8@public.gmane.org>
+	id S1753484AbZGVQiK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jul 2009 12:38:10 -0400
+In-Reply-To: <fe2cbb740907211447t4dfcc0dara63bb96648599638-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 16, 2009 at 01:44:00PM -0700, David Warren wrote:
-> We have been having a problem for a while now with kernels ranging from  
-> 2.6.26 through 30. When a boots and starts the nfs server, it reads the  
-> /var/lib/nfs/v4recovery directory. If this directory is empty everything  
-> is fine. If it is not, all nfs related processes go into D wait and  
-> never return. Any other attempt to read the directory results in that  
-> process getting stuck in D wait as well. This happens on a variety of  
-> systems, all running Debian Lenny (happened with etch also) with kernels  
-> ranging from 2.6.26 - 2.6.31-rc2 serving disks via nfs4. if you boot  
-> single user and clear out the directory, everything is fine. Also, there  
-> is never any problem logged anywhere.
+On Tue, Jul 21, 2009 at 05:47:17PM -0400, David V. Cloud wrote:
+> Hi all,
+> I was playing with nfs4 delegation, finding out that write delegations have
+> never been granted. I am using Benny Halevy's git tree with latest
+> pnfs-block-all branch. With rpcdebug,  I found out that the write-delegation
+> grant was rejected due to setlease failure with error code (-11, which is
+> -EAGAIN). I finally figured out that this failure was caused by the
+> following lines in generic_setlease function,
+> 
+>         if ((arg == F_WRLCK)
+>             && ((atomic_read(&dentry->d_count) > 1)
+>             || (atomic_read(&inode->i_count) > 1)))
+>             goto out;
+> 
+> In my nfsd, the i_count, and d_count turn out to be 2 (no conflicts actaully
+> exist in my test case), so write-delegations always failed. I did find some
+> similar posts on nfs4 related mail lists about this problem. One possible
+> hack by Ajay could be found at
+> http://osdir.com/ml/linux.nfsv4/2006-08/msg00063.html
+> 
+> I am curious whether there is any progress in awarding write delegation in
+> current linux nfs4 implementation (for example, any git branch with write
+> delegation enabled I can pull?) Or, is write-delegation feature available in
+> other systems like OpenSolaris?
+> 
+> Any suggestion if I would like to enable and test write delegation? I think
+> some changes are needed to the setlease interface, right?
 
-What filesystem(s) is that directory on?  When the processes get stuck
-in D state, could you "echo w >/proc/sysrq-trigger" and see what's
-dumped to the system logs?  Also, when you boot with a nonempty
-/var/lib/nfs/v4recovery directory, what do the contents of that
-directory look like?  Is SELinux (or something else that could make them
-difficult to delete) enabled?
-
-> So, my questions are:
->
-> What is this directory really used for? It doesn't seem to need it to  
-> reestablish connections
-> Anyone have any idea what is going on or suggestions for finding out?
-
-It's essentially storing a list of clients that held some kind of state
-on the previous boot.  Clients on that list are permitted to reclaim
-state (like locks) on the next boot.
-
-So if you ever reboot while an application on a client holds a lock,
-the client will not be allowed to reclaim that lock.  In the case of
-linux clients I think the application will be allowed to continue
-without being told of the situation, with the risk that another client
-may get a conflicting lock without the application knowing.
-
-That v4recovery directory has been problematic, I've been promising for
-a while to replace it with a different mechanism, and am pretty
-embarrassed that I haven't yet....
+I really don't want to enable write delegations until we figure out how
+to enforce them correctly against local (non-nfs) users of the exported
+filesystem as well.  In addition to breaking delegations on read opens,
+that means breaking delegations or doing a cb_getattr on operations like
+stat.
 
 --b.
