@@ -1,17 +1,12 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Rick Macklem <rick@snowhite.cis.uoguelph.ca>
 Subject: Re: nfs4 write delegation status
-Date: Thu, 23 Jul 2009 09:00:39 -0400
-Message-ID: <20090723130039.GB22626@fieldses.org>
-References: <fe2cbb740907211447t4dfcc0dara63bb96648599638@mail.gmail.com>
-	<20090722163810.GB4491@fieldses.org>
-	<OF97D5D1D5.E19FBA13-ONC12575FC.002CE971-C12575FC.002D0D78@de.ibm.com>
+Date: Thu, 23 Jul 2009 11:10:06 -0400 (EDT)
+Message-ID: <200907231510.LAA43979@snowhite.cis.uoguelph.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	linux-nfs-owner@vger.kernel.org
-To: Eric Veith <ERVEITH@de.ibm.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: erveith@de.ibm.com
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <OF97D5D1D5.E19FBA13-ONC12575FC.002CE971-C12575FC.002D0D78@de.ibm.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -23,9 +18,6 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 23, 2009 at 10:12:05AM +0200, Eric Veith wrote:
-> Hello,
-> 
 > > I really don't want to enable write delegations until we figure out how
 > > to enforce them correctly against local (non-nfs) users of the exported
 > > filesystem as well.  In addition to breaking delegations on read opens,
@@ -35,17 +27,17 @@ On Thu, Jul 23, 2009 at 10:12:05AM +0200, Eric Veith wrote:
 > do you know whether there are local FS where the maintainers at least plan
 > to incorporate delegations?
 
-Local filesystems don't need support from the filesystem itself; the
-only modifications necessary should be to the vfs.
+I'm not a Linux guy, so I'm not familiar with the internal structure, but...
+in general, I don't think the problem is with local file systems. Usually
+the problem is with local system call access. For example, if a
+process running locally on the server opens a file, the delegation should
+be recalled, so that changes done locally on the client get flushed back
+to the server. Also, a write delegation allows a client to do byte range
+locking locally in the client, so the write delegation needs to be
+recalled before anything gets a byte range lock locally in the server.
 
-We have patches that do that for read delegations:
+A Samba server running in the nfs server would be doing "local" ops
+for the purpose of this discussion. (I'm not sure if Samba goes as far
+as doing Open/Share locks for clients?)
 
-	http://git.linux-nfs.org/?p=bfields/linux-topics.git;a=shortlog;h=refs/heads/leases
-
-but they still have a few problems.  I hope to get them out for review
-soon.
-
-Write delegations are more difficult.  Distributed filesystems will also
-be harder.
-
---b.
+rick
