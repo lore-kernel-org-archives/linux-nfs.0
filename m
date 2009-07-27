@@ -1,53 +1,76 @@
-From: Rob Gardner <rob.gardner@hp.com>
-Subject: Re: [NFS] Export especific file extension
-Date: Mon, 27 Jul 2009 16:20:15 -0600
-Message-ID: <4A6E281F.4020209@hp.com>
-References: <4A6E0E9F.3010009@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [pnfs] [PATCH 3/5] nfsd41: reclaim DRC memory on session free
+Date: Mon, 27 Jul 2009 18:57:35 -0400
+Message-ID: <20090727225735.GF4718@fieldses.org>
+References: <1245872278-18743-1-git-send-email-andros@netapp.com> <1245872278-18743-2-git-send-email-andros@netapp.com> <1245872278-18743-3-git-send-email-andros@netapp.com> <1245872278-18743-4-git-send-email-andros@netapp.com> <20090716141805.GD30477@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
-To: =?ISO-8859-1?Q?=22F=E1bio_Jr=2E=22?= <fjuniorlista@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:34317 "EHLO neil.brown.name"
+Received: from fieldses.org ([174.143.236.118]:60624 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754831AbZG0WUw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2009 18:20:52 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1MVYYX-0007Oz-Fo
-	for linux-nfs@vger.kernel.org; Tue, 28 Jul 2009 08:20:29 +1000
-In-Reply-To: <4A6E0E9F.3010009@gmail.com>
+	id S1754007AbZG0W5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jul 2009 18:57:35 -0400
+In-Reply-To: <20090716141805.GD30477@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-=46=E1bio Jr. wrote:
-> Hello all.
->
-> Is there a way to export only some specific file extensions from a=20
-> directory, like exporting only the files in /home/fabio with the .jpg=
-=20
-> extension?
-You could do this pretty easily by exporting a 'fuse' filesystem layere=
-d=20
-on top of your home directory.
+On Thu, Jul 16, 2009 at 10:18:05AM -0400, J. Bruce Fields wrote:
+> On Wed, Jun 24, 2009 at 03:37:47PM -0400, andros@netapp.com wrote:
+> > From: Andy Adamson <andros@netapp.com>
+> > 
+> > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > ---
+> >  fs/nfsd/nfs4state.c |    3 +++
+> >  1 files changed, 3 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index b4a536d..991c3cc 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -583,6 +583,9 @@ free_session(struct kref *kref)
+> >  		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+> >  		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+> >  	}
+> > +	spin_lock(&nfsd_drc_lock);
+> > +	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs * NFSD_SLOT_CACHE_SIZE;
+> > +	spin_unlock(&nfsd_drc_lock);
+> >  	kfree(ses);
+> 
+> This patch has to be combined with the previous one.
 
-Rob Gardner
-HP
+I thought this was fixing a bug from the previous patch!  But instead I
+see this is a fix for a preexisting bugfix.  So better to move this to
+the head of the patch series; applied the following to my for-2.6.32.
 
+Apologies--I've just done this myself and applied the following.  Look
+OK?
 
------------------------------------------------------------------------=
--------
-Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30=
--Day=20
-trial. Simplify your report design, integration and deployment - and fo=
-cus on=20
-what you do best, core application coding. Discover what's new with=20
-Crystal Reports now.  http://p.sf.net/sfu/bobj-july
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
+--b.
 
+commit 0a515ffa6f29e9a0f0f60373576bd4d3d5608ae8
+Author: Andy Adamson <andros@netapp.com>
+Date:   Mon Jul 27 18:49:05 2009 -0400
+
+    nfsd41: reclaim DRC memory on session free
+    
+    This fixes a leak which would eventually lock out new clients.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2e6a44e..69bd37e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -585,6 +585,9 @@ free_session(struct kref *kref)
+ 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+ 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+ 	}
++	spin_lock(&nfsd_drc_lock);
++	nfsd_drc_pages_used -= ses->se_fchannel.maxreqs * NFSD_PAGES_PER_SLOT;
++	spin_unlock(&nfsd_drc_lock);
+ 	kfree(ses);
+ }
+ 
