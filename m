@@ -1,118 +1,77 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] svcrdma: Fix race between svc_rdma_recvfrom thread and
-	the dto_tasklet
-Date: Mon, 27 Jul 2009 17:35:40 -0400
-Message-ID: <20090727213540.GB4718@fieldses.org>
-References: <1218579184-46881-1-git-send-email-tom@opengridcomputing.com> <20090727213355.GA4718@fieldses.org>
+From: Daniel J Blueman <daniel.blueman@gmail.com>
+Subject: [2.6.31-rc4] nfs4 writecount warning...
+Date: Mon, 27 Jul 2009 22:49:03 +0100
+Message-ID: <6278d2220907271449l38609680n943875d2672da20f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Tom Tucker <tom@opengridcomputing.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39376 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755092AbZG0Vfk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Jul 2009 17:35:40 -0400
-In-Reply-To: <20090727213355.GA4718@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: Linux Kernel <linux-kernel@vger.kernel.org>,
+	linux-nfs@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755206AbZG0VtG@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 27, 2009 at 05:33:55PM -0400, bfields wrote:
-> On Tue, Aug 12, 2008 at 05:13:04PM -0500, Tom Tucker wrote:
-> > RDMA_READ completions are kept on a separate queue from the general
-> > I/O request queue. Since a separate lock is used to protect the RDMA_READ
-> > completion queue, a race exists between the dto_tasklet and the
-> > svc_rdma_recvfrom thread where the dto_tasklet sets the XPT_DATA
-> > bit and adds I/O to the read-completion queue. Concurrently, the
-> > recvfrom thread checks the generic queue, finds it empty and resets
-> > the XPT_DATA bit. A subsequent svc_xprt_enqueue will fail to enqueue
-> > the transport for I/O and cause the transport to "stall".
-> > 
-> > The fix is to protect both lists with the same lock and set the XPT_DATA
-> > bit with this lock held.
-> 
-> Thanks.  Assuming this race has existed from the start (so it's not a
-> recent regression), and the consequences are no worse than a stall, I'm
-> inclined to queue this up for 2.6.32--but if I'm wrong about either of
-> those, we could try for 2.6.31 and/or stable.
+After two days uptime on my NFS4 server with 2.6.31-rc4 and a few
+2.6.28 clients, I hit the file write-count
+WARN_ON(f->f_mnt_write_state != 0) in file_take_write() in the
+nfsd4_open path [1].
 
-Erp, cripes, sorry--only just noticed all this mail seems to have been
-delayed a year!  OK....--b.
+I can't find this reported elsewhere; let me know if it's preferred in
+bugzilla.kernel.org etc.
 
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-> > 
-> > ---
-> >  include/linux/sunrpc/svc_rdma.h          |    1 -
-> >  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    8 ++++----
-> >  net/sunrpc/xprtrdma/svc_rdma_transport.c |    5 ++---
-> >  3 files changed, 6 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-> > index ef2e3a2..dc05b54 100644
-> > --- a/include/linux/sunrpc/svc_rdma.h
-> > +++ b/include/linux/sunrpc/svc_rdma.h
-> > @@ -143,7 +143,6 @@ struct svcxprt_rdma {
-> >  	unsigned long	     sc_flags;
-> >  	struct list_head     sc_dto_q;		/* DTO tasklet I/O pending Q */
-> >  	struct list_head     sc_read_complete_q;
-> > -	spinlock_t           sc_read_complete_lock;
-> >  	struct work_struct   sc_work;
-> >  };
-> >  /* sc_flags */
-> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> > index b4b17f4..74de31a 100644
-> > --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> > +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> > @@ -443,18 +443,18 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
-> >  
-> >  	dprintk("svcrdma: rqstp=%p\n", rqstp);
-> >  
-> > -	spin_lock_bh(&rdma_xprt->sc_read_complete_lock);
-> > +	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
-> >  	if (!list_empty(&rdma_xprt->sc_read_complete_q)) {
-> >  		ctxt = list_entry(rdma_xprt->sc_read_complete_q.next,
-> >  				  struct svc_rdma_op_ctxt,
-> >  				  dto_q);
-> >  		list_del_init(&ctxt->dto_q);
-> >  	}
-> > -	spin_unlock_bh(&rdma_xprt->sc_read_complete_lock);
-> > -	if (ctxt)
-> > +	if (ctxt) {
-> > +		spin_unlock_bh(&rdma_xprt->sc_rq_dto_lock);
-> >  		return rdma_read_complete(rqstp, ctxt);
-> > +	}
-> >  
-> > -	spin_lock_bh(&rdma_xprt->sc_rq_dto_lock);
-> >  	if (!list_empty(&rdma_xprt->sc_rq_dto_q)) {
-> >  		ctxt = list_entry(rdma_xprt->sc_rq_dto_q.next,
-> >  				  struct svc_rdma_op_ctxt,
-> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > index 19ddc38..900cb69 100644
-> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > @@ -359,11 +359,11 @@ static void sq_cq_reap(struct svcxprt_rdma *xprt)
-> >  			if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
-> >  				struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
-> >  				BUG_ON(!read_hdr);
-> > +				spin_lock_bh(&xprt->sc_rq_dto_lock);
-> >  				set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
-> > -				spin_lock_bh(&xprt->sc_read_complete_lock);
-> >  				list_add_tail(&read_hdr->dto_q,
-> >  					      &xprt->sc_read_complete_q);
-> > -				spin_unlock_bh(&xprt->sc_read_complete_lock);
-> > +				spin_unlock_bh(&xprt->sc_rq_dto_lock);
-> >  				svc_xprt_enqueue(&xprt->sc_xprt);
-> >  			}
-> >  			svc_rdma_put_context(ctxt, 0);
-> > @@ -428,7 +428,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
-> >  	init_waitqueue_head(&cma_xprt->sc_send_wait);
-> >  
-> >  	spin_lock_init(&cma_xprt->sc_lock);
-> > -	spin_lock_init(&cma_xprt->sc_read_complete_lock);
-> >  	spin_lock_init(&cma_xprt->sc_rq_dto_lock);
-> >  
-> >  	cma_xprt->sc_ord = svcrdma_ord;
+Thanks,
+  Daniel
+
+--- [1]
+
+------------[ cut here ]------------
+
+WARNING: at include/linux/fs.h:953 nfsd4_process_open2+0x9c3/0xc90()
+
+Hardware name: OEM
+
+Modules linked in: coretemp w83627ehf hwmon_vid ath9k
+snd_hda_codec_realtek mac80211 led_class ath snd_hda_intel
+snd_hda_codec snd_pcm snd_timer snd pl2303 soundcore snd_page_alloc
+
+Pid: 2970, comm: nfsd Tainted: G        W  2.6.31-rc4-274sd #1
+
+Call Trace:
+
+ [<ffffffff81190413>] ? nfsd4_process_open2+0x9c3/0xc90
+
+ [<ffffffff810490f8>] warn_slowpath_common+0x78/0xd0
+
+ [<ffffffff8104915f>] warn_slowpath_null+0xf/0x20
+
+ [<ffffffff81190413>] nfsd4_process_open2+0x9c3/0xc90
+
+ [<ffffffff8118420f>] ? do_open_lookup+0x28f/0x300
+
+ [<ffffffff811844b9>] nfsd4_open+0x239/0x420
+
+ [<ffffffff81183c67>] nfsd4_proc_compound+0x2d7/0x530
+
+ [<ffffffff81172115>] nfsd_dispatch+0x115/0x260
+
+ [<ffffffff813f3d12>] svc_process+0x492/0x800
+
+ [<ffffffff8142e507>] ? down_read+0x77/0x80
+
+ [<ffffffff81172740>] ? nfsd+0x0/0x160
+
+ [<ffffffff8117281d>] nfsd+0xdd/0x160
+
+ [<ffffffff81062c9e>] kthread+0x9e/0xb0
+
+ [<ffffffff8100ce9a>] child_rip+0xa/0x20
+
+ [<ffffffff8100c83c>] ? restore_args+0x0/0x30
+
+ [<ffffffff81062c00>] ? kthread+0x0/0xb0
+
+ [<ffffffff8100ce90>] ? child_rip+0x0/0x20
+
+---[ end trace 8ecb5c2eb0ae54d8 ]---
+
+-- 
+Daniel J Blueman
