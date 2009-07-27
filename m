@@ -1,77 +1,32 @@
-From: Daniel J Blueman <daniel.blueman@gmail.com>
-Subject: [2.6.31-rc4] nfs4 writecount warning...
-Date: Mon, 27 Jul 2009 22:49:03 +0100
-Message-ID: <6278d2220907271449l38609680n943875d2672da20f@mail.gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Slower performance with lookupcache (2.6.30.2)
+Date: Mon, 27 Jul 2009 17:57:26 -0400
+Message-ID: <1248731846.31801.66.camel@heimdal.trondhjem.org>
+References: <20090724231300.GA572@hostway.ca>
+	 <1248540703.6139.106.camel@heimdal.trondhjem.org>
+	 <20090727170106.GA9330@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: Linux Kernel <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755206AbZG0VtG@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Simon Kirby <sim@hostway.ca>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:57662 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754134AbZG0V5a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Jul 2009 17:57:30 -0400
+In-Reply-To: <20090727170106.GA9330@hostway.ca>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After two days uptime on my NFS4 server with 2.6.31-rc4 and a few
-2.6.28 clients, I hit the file write-count
-WARN_ON(f->f_mnt_write_state != 0) in file_take_write() in the
-nfsd4_open path [1].
+On Mon, 2009-07-27 at 10:01 -0700, Simon Kirby wrote:
+> You say that LOOKUP is returning the attributes as well -- is it not
+> possible to operate the same way doing revalidation?
 
-I can't find this reported elsewhere; let me know if it's preferred in
-bugzilla.kernel.org etc.
+I'm not sure I understand you. Do you mean issue LOOKUP calls instead of
+GETATTR calls when revalidating the file attribute information? Sure we
+could, but LOOKUP is a more expensive operation than GETATTR on most
+platforms: it requires the server to retrieve and process information
+from both the parent directory and the file.
 
-Thanks,
-  Daniel
+   Trond
 
---- [1]
-
-------------[ cut here ]------------
-
-WARNING: at include/linux/fs.h:953 nfsd4_process_open2+0x9c3/0xc90()
-
-Hardware name: OEM
-
-Modules linked in: coretemp w83627ehf hwmon_vid ath9k
-snd_hda_codec_realtek mac80211 led_class ath snd_hda_intel
-snd_hda_codec snd_pcm snd_timer snd pl2303 soundcore snd_page_alloc
-
-Pid: 2970, comm: nfsd Tainted: G        W  2.6.31-rc4-274sd #1
-
-Call Trace:
-
- [<ffffffff81190413>] ? nfsd4_process_open2+0x9c3/0xc90
-
- [<ffffffff810490f8>] warn_slowpath_common+0x78/0xd0
-
- [<ffffffff8104915f>] warn_slowpath_null+0xf/0x20
-
- [<ffffffff81190413>] nfsd4_process_open2+0x9c3/0xc90
-
- [<ffffffff8118420f>] ? do_open_lookup+0x28f/0x300
-
- [<ffffffff811844b9>] nfsd4_open+0x239/0x420
-
- [<ffffffff81183c67>] nfsd4_proc_compound+0x2d7/0x530
-
- [<ffffffff81172115>] nfsd_dispatch+0x115/0x260
-
- [<ffffffff813f3d12>] svc_process+0x492/0x800
-
- [<ffffffff8142e507>] ? down_read+0x77/0x80
-
- [<ffffffff81172740>] ? nfsd+0x0/0x160
-
- [<ffffffff8117281d>] nfsd+0xdd/0x160
-
- [<ffffffff81062c9e>] kthread+0x9e/0xb0
-
- [<ffffffff8100ce9a>] child_rip+0xa/0x20
-
- [<ffffffff8100c83c>] ? restore_args+0x0/0x30
-
- [<ffffffff81062c00>] ? kthread+0x0/0xb0
-
- [<ffffffff8100ce90>] ? child_rip+0x0/0x20
-
----[ end trace 8ecb5c2eb0ae54d8 ]---
-
--- 
-Daniel J Blueman
