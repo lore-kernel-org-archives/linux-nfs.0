@@ -1,61 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx4.mail.ru ([94.100.176.18]:6009 "EHLO mx4.mail.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753434AbZGKRVN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 11 Jul 2009 13:21:13 -0400
-Received: from mx33.mail.ru (mx33.mail.ru [94.100.176.47])
-	by mx4.mail.ru (mPOP.Fallback_MX) with ESMTP id 4862D81B820
-	for <linux-nfs@vger.kernel.org>; Sat, 11 Jul 2009 21:04:00 +0400 (MSD)
-From: Andrey Borzenkov <arvidjaar@mail.ru>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: How to monitor Linux NFS client load?
-Date: Sat, 11 Jul 2009 21:03:23 +0400
-Content-Type: multipart/signed;
-  boundary="nextPart1643450.1QxvPtLl5q";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <200907112103.27082.arvidjaar@mail.ru>
+Received: from newpeace.netnation.com ([204.174.223.7]:51489 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752728AbZG0RBJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2009 13:01:09 -0400
+Date: Mon, 27 Jul 2009 10:01:06 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Slower performance with lookupcache (2.6.30.2)
+Message-ID: <20090727170106.GA9330@hostway.ca>
+References: <20090724231300.GA572@hostway.ca> <1248540703.6139.106.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1248540703.6139.106.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---nextPart1643450.1QxvPtLl5q
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+On Sat, Jul 25, 2009 at 12:51:43PM -0400, Trond Myklebust wrote:
 
-Recently we have the case of very high latencies on NFS reads as=20
-reported by application (SAP R/3). NFS server was NetApp FAS; according=20
-to NetApp statistic, average volume read latencies were in order 10ms,=20
-while SAP stats gave 30-50ms. Systems were interconnected by dedicated=20
-1Gb/s Cisco switches (3750G) with ca. 30% max load on interfaces.
+> On Fri, 2009-07-24 at 16:13 -0700, Simon Kirby wrote:
+> > The lookupcache here seems to be increasing initial performance but then
+> > seems to slow down cached performance by causing more getattrs than with
+> > no lookupcache, perhaps for revalidation tests.
+> 
+> Yes. This is expected behaviour.
+> 
+> When you look up a dentry, you are also retrieving its attributes, so
+> the stat() call, can be entirely handled by the single LOOKUP rpc call.
+> 
+> If you are caching the dentries, then your stat() call doesn't need to
+> do a lookup, but it still needs to return valid attributes. Since
+> acregmin=3 seconds, then your test is likely to have to revalidate a
+> couple of times. However as long as there are no changes to the file,
+> then the attribute caching algorithm should get progressively more
+> aggressive. I'd therefore expect that if you change that to 'repeat 10'
+> or so, then the lookupcache=all/positive cases should show an
+> improvement.
 
-On advice of my colleague we changed sunrpc.tcp_slot_table_entries from=20
-default 16 to 128 which seemed to make situation much better - without=20
-changing load pattern of filer in any visible way.
+Ahh, yes, I see, there is.  If I run it longer, I see that it gets even
+faster (0.6 seconds) for the forth run and then after a few more, back
+up to 4 seconds once.  That makes sense now.
 
-Now, I can understand, why we observed much higher latency on system and=20
-why changing (what effectively is) queue depth helped. But I am totally=20
-frustrated that there does not appear to be *any* possibility to detect=20
-this situation on Linux side and to get a real numbers of real NFS IO=20
-latencies or number of requests waiting to be executed (and I do not=20
-even dream about per-mount point stats).
+You say that LOOKUP is returning the attributes as well -- is it not
+possible to operate the same way doing revalidation?  I was surprised
+that there are so many fewer RPC calls during the first run (8622 calls
+versus 25076 calls).  But, I suppose it's just readdirplus batching some
+information together in a single call (since there are 23,650 files and
+directories in the tree), and we probably wouldn't want to readdir all
+the time.
 
-I am grateful for any hints how can we monitor Linux NFS client and get=20
-real-life numbers of what happens inside. Thank you!
+Cheers,
 
-=2Dandrey
-
---nextPart1643450.1QxvPtLl5q
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkpYxdsACgkQR6LMutpd94zlhACbBrZXuthSX0JHia0msHfJx5Gp
-EHoAoJOddoM2KNJfS4yysIxWuOyRQWzf
-=Co50
------END PGP SIGNATURE-----
-
---nextPart1643450.1QxvPtLl5q--
+Simon-
