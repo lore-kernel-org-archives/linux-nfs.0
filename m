@@ -1,15 +1,39 @@
-From: vivianofferplc013-+MseY0pMZYIAvxtiuMwx3w@public.gmane.org
-Subject: (unknown)
-Date: Mon, 27 Jul 2009 16:23:28 +0000
-Message-ID: <072720091623.22303.4A6DD48000049FB90000571F223045151403010CD2079C080C03BFCCCECF0C049F9D0A000001020E07900790__21433.3604592413$1248711910$gmane$org@mchsi.com>
-To: unlisted-recipients:; (no To-header on input)
+From: =?ISO-8859-1?Q?=22F=E1bio_Jr=2E=22?= <fjuniorlista@gmail.com>
+Subject: [NFS] Export especific file extension
+Date: Mon, 27 Jul 2009 17:31:27 -0300
+Message-ID: <4A6E0E9F.3010009@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from sccmmhc92.asp.att.net ([204.127.203.212]:52202 "EHLO
-	sccmmhc92.asp.att.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752001AbZG0QYU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2009 12:24:20 -0400
+Received: from neil.brown.name ([220.233.11.133]:41083 "EHLO neil.brown.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752101AbZG0UcT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2009 16:32:19 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1MVWrV-0005O7-DJ
+	for linux-nfs@vger.kernel.org; Tue, 28 Jul 2009 06:31:57 +1000
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a Financial Service Announcement, we offer loan to all in need,ranging from $5000 to $800,000.00 USD. Our interest rate is 3% and our service and terms are dependable. any interested person should apply via email:lapoloanlender@gmail.com
+Hello all.
+
+Is there a way to export only some specific file extensions from a=20
+directory, like exporting only the files in /home/fabio with the .jpg=20
+extension?
+
+[]s
+
+=46=E1bio Jr.
+
+-----------------------------------------------------------------------=
+-------
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
