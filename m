@@ -1,66 +1,15 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfs4 write delegation status
-Date: Fri, 24 Jul 2009 14:44:29 -0400
-Message-ID: <20090724184429.GA16811@fieldses.org>
-References: <200907231510.LAA43979@snowhite.cis.uoguelph.ca>
-	<2CFD9099-9CE1-479D-99D0-80C4E5FA58F4@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, erveith@de.ibm.com, nfsv4@linux-nfs.org
-To: Andy Adamson <andros@netapp.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <2CFD9099-9CE1-479D-99D0-80C4E5FA58F4@netapp.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: vivianofferplc013-+MseY0pMZYIAvxtiuMwx3w@public.gmane.org
+Subject: (unknown)
+Date: Mon, 27 Jul 2009 16:23:28 +0000
+Message-ID: <072720091623.22303.4A6DD48000049FB90000571F223045151403010CD2079C080C03BFCCCECF0C049F9D0A000001020E07900790__21433.3604592413$1248711910$gmane$org@mchsi.com>
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from sccmmhc92.asp.att.net ([204.127.203.212]:52202 "EHLO
+	sccmmhc92.asp.att.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752001AbZG0QYU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jul 2009 12:24:20 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 23, 2009 at 02:11:46PM -0400, Andy Adamson wrote:
->
-> On Jul 23, 2009, at 11:10 AM, Rick Macklem wrote:
->
->>>> I really don't want to enable write delegations until we figure  
->>>> out how
->>>> to enforce them correctly against local (non-nfs) users of the  
->>>> exported
->>>> filesystem as well.  In addition to breaking delegations on read  
->>>> opens,
->>>> that means breaking delegations or doing a cb_getattr on  
->>>> operations like
->>>> stat.
->>>
->>> do you know whether there are local FS where the maintainers at  
->>> least plan
->>> to incorporate delegations?
->>
->> I'm not a Linux guy, so I'm not familiar with the internal structure, 
->> but...
->> in general, I don't think the problem is with local file systems.  
->> Usually
->> the problem is with local system call access. For example, if a
->> process running locally on the server opens a file, the delegation  
->> should
->> be recalled, so that changes done locally on the client get flushed  
->> back
->> to the server. Also, a write delegation allows a client to do byte  
->> range
->> locking locally in the client, so the write delegation needs to be
->> recalled before anything gets a byte range lock locally in the server.
->
-> The delegation implementation on the Linux server uses the vfs lease  
-> subsystem, and so is integrated with local access - conflicting opens  
-> done locally do recall delegations.  But the last time I looked, the  
-> lease subsystem is not complete as it doesn't recall leases (nor  
-> delegations) on remove, rename, etc. Another problem is that while write 
-> delegations improve performance for certain workloads, they kill  
-> performance for others.
+This is a Financial Service Announcement, we offer loan to all in need,ranging from $5000 to $800,000.00 USD. Our interest rate is 3% and our service and terms are dependable. any interested person should apply via email:lapoloanlender@gmail.com
 
-Are there any published results yet with real workloads?
-
---b.
