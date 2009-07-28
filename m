@@ -1,76 +1,50 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH 3/5] nfsd41: reclaim DRC memory on session free
-Date: Mon, 27 Jul 2009 18:57:35 -0400
-Message-ID: <20090727225735.GF4718@fieldses.org>
-References: <1245872278-18743-1-git-send-email-andros@netapp.com> <1245872278-18743-2-git-send-email-andros@netapp.com> <1245872278-18743-3-git-send-email-andros@netapp.com> <1245872278-18743-4-git-send-email-andros@netapp.com> <20090716141805.GD30477@fieldses.org>
+From: Frank Steiner <fsteiner-mail1-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
+Subject: Re: [NFS] locking failure with rpcbind and nfsroot (SLES 11, 2.6.27)
+Date: Tue, 28 Jul 2009 12:31:50 +0200
+Message-ID: <4A6ED396.7000705@bio.ifi.lmu.de>
+References: <4A671ADE.5060109@bio.ifi.lmu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: andros@netapp.com
+Content-Type: text/plain; charset="us-ascii"
+To: nfs@lists.sourceforge.net
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60624 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:40320 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754007AbZG0W5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Jul 2009 18:57:35 -0400
-In-Reply-To: <20090716141805.GD30477@fieldses.org>
+	id S1750848AbZG1Kce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jul 2009 06:32:34 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1MVjyb-0006iC-6A
+	for linux-nfs@vger.kernel.org; Tue, 28 Jul 2009 20:32:09 +1000
+In-Reply-To: <4A671ADE.5060109-G0GEQqhI7DhYiKXMg8wJIg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 16, 2009 at 10:18:05AM -0400, J. Bruce Fields wrote:
-> On Wed, Jun 24, 2009 at 03:37:47PM -0400, andros@netapp.com wrote:
-> > From: Andy Adamson <andros@netapp.com>
-> > 
-> > Signed-off-by: Andy Adamson <andros@netapp.com>
-> > ---
-> >  fs/nfsd/nfs4state.c |    3 +++
-> >  1 files changed, 3 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index b4a536d..991c3cc 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -583,6 +583,9 @@ free_session(struct kref *kref)
-> >  		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
-> >  		nfsd4_release_respages(e->ce_respages, e->ce_resused);
-> >  	}
-> > +	spin_lock(&nfsd_drc_lock);
-> > +	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs * NFSD_SLOT_CACHE_SIZE;
-> > +	spin_unlock(&nfsd_drc_lock);
-> >  	kfree(ses);
-> 
-> This patch has to be combined with the previous one.
+So, is no one but me using root-over-nfs anymore?
 
-I thought this was fixing a bug from the previous patch!  But instead I
-see this is a fix for a preexisting bugfix.  So better to move this to
-the head of the patch series; applied the following to my for-2.6.32.
+Otherwise I wonder how one can handle a /var filesystem with root-over-nfs
+and locking. I can't be the only one having this problem?!
 
-Apologies--I've just done this myself and applied the following.  Look
-OK?
+cu,
+FRank
 
---b.
 
-commit 0a515ffa6f29e9a0f0f60373576bd4d3d5608ae8
-Author: Andy Adamson <andros@netapp.com>
-Date:   Mon Jul 27 18:49:05 2009 -0400
+-- 
+Dipl.-Inform. Frank Steiner   Web:  http://www.bio.ifi.lmu.de/~steiner/
+Lehrstuhl f. Bioinformatik    Mail: http://www.bio.ifi.lmu.de/~steiner/m/
+LMU, Amalienstr. 17           Phone: +49 89 2180-4049
+80333 Muenchen, Germany       Fax:   +49 89 2180-99-4049
+* Rekursion kann man erst verstehen, wenn man Rekursion verstanden hat. *
 
-    nfsd41: reclaim DRC memory on session free
-    
-    This fixes a leak which would eventually lock out new clients.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+------------------------------------------------------------------------------
+Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30-Day 
+trial. Simplify your report design, integration and deployment - and focus on 
+what you do best, core application coding. Discover what's new with 
+Crystal Reports now.  http://p.sf.net/sfu/bobj-july
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e6a44e..69bd37e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -585,6 +585,9 @@ free_session(struct kref *kref)
- 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
- 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
- 	}
-+	spin_lock(&nfsd_drc_lock);
-+	nfsd_drc_pages_used -= ses->se_fchannel.maxreqs * NFSD_PAGES_PER_SLOT;
-+	spin_unlock(&nfsd_drc_lock);
- 	kfree(ses);
- }
- 
