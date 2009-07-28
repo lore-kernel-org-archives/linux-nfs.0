@@ -1,67 +1,67 @@
-From: Catalin Marinas <catalin.marinas@arm.com>
-Subject: Re: [Patch] Fix memory leak in write_pool_threads
-Date: Tue, 28 Jul 2009 16:03:48 +0100
-Message-ID: <b0943d9e0907280803p5ccf7e6pd7611af8ed302c6b@mail.gmail.com>
-References: <1248784328.3250.30.camel@queen>
+From: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+Subject: [PATCH] nfs: remove superfluous BUG_ON()s
+Date: Tue, 28 Jul 2009 17:04:56 +0200
+Message-ID: <200907281704.56870.bzolnier@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Eric Sesterhenn <eric.sesterhenn-9J169x0r4uIEe5DYm7f/Lg@public.gmane.org>
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Dan Carpenter <error27@gmail.com>, corbet-T1hC0tSOHrs@public.gmane.org,
+	eteo@redhat.com, Julia Lawall <julia@diku.dk>
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f221.google.com ([209.85.218.221]:42827 "EHLO
+Received: from mail-bw0-f221.google.com ([209.85.218.221]:59316 "EHLO
 	mail-bw0-f221.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753323AbZG1PDv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2009 11:03:51 -0400
-Received: by bwz21 with SMTP id 21so91323bwz.37
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2009 08:03:50 -0700 (PDT)
-In-Reply-To: <1248784328.3250.30.camel@queen>
+	with ESMTP id S1754167AbZG1PG6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2009 11:06:58 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2009/7/28 Eric Sesterhenn <eric.sesterhenn-9J169x0r4uIEe5DYm7f/Lg@public.gmane.org>:
-> kmemcheck produces the following warning
+From: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+Subject: [PATCH] nfs: remove superfluous BUG_ON()s
 
-That's "kmemleak" (a bit confusing since there is "kmemcheck" as well
-in the kernel :-)).
+Remove duplicated BUG_ON()s from nfs[4]_create_server()
+(we make the same checks earlier in both functions).
 
-> unreferenced object 0xc9ec02a0 (size 8):
-> =A0comm "cat", pid 19048, jiffies 730243
-> =A0backtrace:
-> =A0 =A0[<c01bf970>] create_object+0x100/0x240
-> =A0 =A0[<c01bfadb>] kmemleak_alloc+0x2b/0x60
-> =A0 =A0[<c01bcd4b>] __kmalloc+0x14b/0x270
-> =A0 =A0[<c02fd027>] write_pool_threads+0x87/0x1d0
-> =A0 =A0[<c02fcc08>] nfsctl_transaction_write+0x58/0x70
-> =A0 =A0[<c02fcc6f>] nfsctl_transaction_read+0x4f/0x60
-> =A0 =A0[<c01c2574>] vfs_read+0x94/0x150
-> =A0 =A0[<c01c297d>] sys_read+0x3d/0x70
-> =A0 =A0[<c0102d6b>] sysenter_do_call+0x12/0x32
-> =A0 =A0[<ffffffff>] 0xffffffff
->
-> write_pool_threads() only frees nthreads on error paths, in the succe=
-ss case
-> we leak it.
->
-> Signed-off-by: Eric Sesterhenn <eric.sesterhenn-PIliufFCYSYOIzVOb1FTxg@public.gmane.org>
->
-> --- linux/fs/nfsd/nfsctl.c.orig 2009-07-28 14:19:19.000000000 +0200
-> +++ linux/fs/nfsd/nfsctl.c =A0 =A0 =A02009-07-28 14:19:30.000000000 +=
-0200
-> @@ -784,6 +784,7 @@ static ssize_t write_pool_threads(struct
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0mesg +=3D len;
-> =A0 =A0 =A0 =A0}
->
-> + =A0 =A0 =A0 kfree(nthreads);
-> =A0 =A0 =A0 =A0mutex_unlock(&nfsd_mutex);
-> =A0 =A0 =A0 =A0return (mesg-buf);
+This takes care of the following entries from Dan's list:
 
-Thanks for this. On minor point - the kfree() could probably be moved
-after mutex_unlock().
+fs/nfs/client.c +1078 nfs_create_server(47) warning: variable derefenced before check 'server->nfs_client'
+fs/nfs/client.c +1079 nfs_create_server(48) warning: variable derefenced before check 'server->nfs_client->rpc_ops'
+fs/nfs/client.c +1363 nfs4_create_server(43) warning: variable derefenced before check 'server->nfs_client'
+fs/nfs/client.c +1364 nfs4_create_server(44) warning: variable derefenced before check 'server->nfs_
 
-I added the patch to the kmemleak-fixes branch on
-git://linux-arm.org/linux-2.6.git (I'm not pushing this branch
-upstream, it's mainly for people trying kmemleak to avoid reporting or
-investigating already fixed leaks).
+Reported-by: Dan Carpenter <error27@gmail.com>
+Cc: corbet-T1hC0tSOHrs@public.gmane.org
+Cc: eteo@redhat.com
+Cc: Julia Lawall <julia@diku.dk>
+Signed-off-by: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+---
+ fs/nfs/client.c |    8 --------
+ 1 file changed, 8 deletions(-)
 
---=20
-Catalin
+Index: b/fs/nfs/client.c
+===================================================================
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1075,10 +1075,6 @@ struct nfs_server *nfs_create_server(con
+ 		(unsigned long long) server->fsid.major,
+ 		(unsigned long long) server->fsid.minor);
+ 
+-	BUG_ON(!server->nfs_client);
+-	BUG_ON(!server->nfs_client->rpc_ops);
+-	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+-
+ 	spin_lock(&nfs_client_lock);
+ 	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
+ 	list_add_tail(&server->master_link, &nfs_volume_list);
+@@ -1360,10 +1356,6 @@ struct nfs_server *nfs4_create_server(co
+ 	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
+ 		server->namelen = NFS4_MAXNAMLEN;
+ 
+-	BUG_ON(!server->nfs_client);
+-	BUG_ON(!server->nfs_client->rpc_ops);
+-	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+-
+ 	spin_lock(&nfs_client_lock);
+ 	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
+ 	list_add_tail(&server->master_link, &nfs_volume_list);
