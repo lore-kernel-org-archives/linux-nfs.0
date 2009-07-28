@@ -1,67 +1,84 @@
-From: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
-Subject: [PATCH] nfs: remove superfluous BUG_ON()s
-Date: Tue, 28 Jul 2009 17:04:56 +0200
-Message-ID: <200907281704.56870.bzolnier@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [Patch] Fix memory leak in write_pool_threads
+Date: Tue, 28 Jul 2009 11:40:21 -0400
+Message-ID: <20090728154021.GE19497@fieldses.org>
+References: <1248784328.3250.30.camel@queen>
 Mime-Version: 1.0
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Dan Carpenter <error27@gmail.com>, corbet-T1hC0tSOHrs@public.gmane.org,
-	eteo@redhat.com, Julia Lawall <julia@diku.dk>
-To: Trond.Myklebust@netapp.com
+Content-Type: text/plain; charset=us-ascii
+Cc: catalin.marinas@gmail.com, linux-nfs@vger.kernel.org
+To: Eric Sesterhenn <eric.sesterhenn-9J169x0r4uIEe5DYm7f/Lg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f221.google.com ([209.85.218.221]:59316 "EHLO
-	mail-bw0-f221.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754167AbZG1PG6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2009 11:06:58 -0400
+Received: from fieldses.org ([174.143.236.118]:51618 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754500AbZG1PkW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jul 2009 11:40:22 -0400
+In-Reply-To: <1248784328.3250.30.camel@queen>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
-Subject: [PATCH] nfs: remove superfluous BUG_ON()s
+On Tue, Jul 28, 2009 at 02:32:08PM +0200, Eric Sesterhenn wrote:
+> hi,
+> 
+> kmemcheck produces the following warning
+> 
+> unreferenced object 0xc9ec02a0 (size 8):
+>   comm "cat", pid 19048, jiffies 730243
+>   backtrace:
+>     [<c01bf970>] create_object+0x100/0x240
+>     [<c01bfadb>] kmemleak_alloc+0x2b/0x60
+>     [<c01bcd4b>] __kmalloc+0x14b/0x270
+>     [<c02fd027>] write_pool_threads+0x87/0x1d0
+>     [<c02fcc08>] nfsctl_transaction_write+0x58/0x70
+>     [<c02fcc6f>] nfsctl_transaction_read+0x4f/0x60
+>     [<c01c2574>] vfs_read+0x94/0x150
+>     [<c01c297d>] sys_read+0x3d/0x70
+>     [<c0102d6b>] sysenter_do_call+0x12/0x32
+>     [<ffffffff>] 0xffffffff
+> 
+> write_pool_threads() only frees nthreads on error paths, in the success case
+> we leak it.
 
-Remove duplicated BUG_ON()s from nfs[4]_create_server()
-(we make the same checks earlier in both functions).
+Thanks!  Applied.
 
-This takes care of the following entries from Dan's list:
+> Signed-off-by: Eric Sesterhenn <eric.sesterhenn-PIliufFCYSYOIzVOb1FTxg@public.gmane.org>
+> 
+> --- linux/fs/nfsd/nfsctl.c.orig	2009-07-28 14:19:19.000000000 +0200
+> +++ linux/fs/nfsd/nfsctl.c	2009-07-28 14:19:30.000000000 +0200
+> @@ -784,6 +784,7 @@ static ssize_t write_pool_threads(struct
+>  		mesg += len;
+>  	}
+>  
+> +	kfree(nthreads);
+>  	mutex_unlock(&nfsd_mutex);
+>  	return (mesg-buf);
 
-fs/nfs/client.c +1078 nfs_create_server(47) warning: variable derefenced before check 'server->nfs_client'
-fs/nfs/client.c +1079 nfs_create_server(48) warning: variable derefenced before check 'server->nfs_client->rpc_ops'
-fs/nfs/client.c +1363 nfs4_create_server(43) warning: variable derefenced before check 'server->nfs_client'
-fs/nfs/client.c +1364 nfs4_create_server(44) warning: variable derefenced before check 'server->nfs_
+It also seems a little silly not to share the exit code here; applying
+the following on top.
 
-Reported-by: Dan Carpenter <error27@gmail.com>
-Cc: corbet-T1hC0tSOHrs@public.gmane.org
-Cc: eteo@redhat.com
-Cc: Julia Lawall <julia@diku.dk>
-Signed-off-by: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
----
- fs/nfs/client.c |    8 --------
- 1 file changed, 8 deletions(-)
+--b.
 
-Index: b/fs/nfs/client.c
-===================================================================
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1075,10 +1075,6 @@ struct nfs_server *nfs_create_server(con
- 		(unsigned long long) server->fsid.major,
- 		(unsigned long long) server->fsid.minor);
- 
--	BUG_ON(!server->nfs_client);
--	BUG_ON(!server->nfs_client->rpc_ops);
--	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+commit 766dc4031548759efe4bd619715d3b5ffc2b53a5
+Author: J. Bruce Fields <bfields@citi.umich.edu>
+Date:   Tue Jul 28 11:37:25 2009 -0400
+
+    nfsd: minor write_pool_threads exit cleanup
+    
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 48da164..b51e7ae 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -784,11 +784,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 		size -= len;
+ 		mesg += len;
+ 	}
 -
- 	spin_lock(&nfs_client_lock);
- 	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
- 	list_add_tail(&server->master_link, &nfs_volume_list);
-@@ -1360,10 +1356,6 @@ struct nfs_server *nfs4_create_server(co
- 	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
- 		server->namelen = NFS4_MAXNAMLEN;
- 
--	BUG_ON(!server->nfs_client);
--	BUG_ON(!server->nfs_client->rpc_ops);
--	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+-	kfree(nthreads);
+-	mutex_unlock(&nfsd_mutex);
+-	return (mesg-buf);
 -
- 	spin_lock(&nfs_client_lock);
- 	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
- 	list_add_tail(&server->master_link, &nfs_volume_list);
++	rv = mesg - buf;
+ out_free:
+ 	kfree(nthreads);
+ 	mutex_unlock(&nfsd_mutex);
