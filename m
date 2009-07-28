@@ -1,79 +1,188 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Patch] Fix memory leak in write_pool_threads
-Date: Tue, 28 Jul 2009 11:42:05 -0400
-Message-ID: <20090728154205.GF19497@fieldses.org>
-References: <1248784328.3250.30.camel@queen> <b0943d9e0907280803p5ccf7e6pd7611af8ed302c6b@mail.gmail.com>
+From: Rob Gardner <rob.gardner@hp.com>
+Subject: Re: [NFS] Export especific file extension
+Date: Tue, 28 Jul 2009 09:58:16 -0600
+Message-ID: <4A6F2018.1040808@hp.com>
+References: <4A6E0E9F.3010009@gmail.com> <4A6E281F.4020209@hp.com>
+	<4A6EDBC9.6040008@gmail.com> <4A6EFB00.2080308@hp.com>
+	<4A6EFEE9.1070708@gmail.com> <4A6F02F5.9090002@hp.com>
+	<4A6F0DCB.3090903@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Eric Sesterhenn <eric.sesterhenn-9J169x0r4uIEe5DYm7f/Lg@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Catalin Marinas <catalin.marinas@arm.com>
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>
+To: =?ISO-8859-1?Q?=22F=E1bio_Jr=2E=22?= <fjuniorlista@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51624 "EHLO fieldses.org"
+Received: from neil.brown.name ([220.233.11.133]:52791 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753518AbZG1PmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jul 2009 11:42:17 -0400
-In-Reply-To: <b0943d9e0907280803p5ccf7e6pd7611af8ed302c6b-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1754554AbZG1P7X convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jul 2009 11:59:23 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1MVp4s-0005qh-3T
+	for linux-nfs@vger.kernel.org; Wed, 29 Jul 2009 01:58:58 +1000
+In-Reply-To: <4A6F0DCB.3090903@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 28, 2009 at 04:03:48PM +0100, Catalin Marinas wrote:
-> 2009/7/28 Eric Sesterhenn <eric.sesterhenn-9J169x0r4uIEe5DYm7f/Lg@public.gmane.org>:
-> > kmemcheck produces the following warning
->=20
-> That's "kmemleak" (a bit confusing since there is "kmemcheck" as well
-> in the kernel :-)).
+=46=E1bio Jr. wrote:
+> Rob Gardner escreveu:
+>  =20
+>> F=E1bio Jr. wrote:
+>>    =20
+>>> Rob Gardner escreveu:
+>>> =20
+>>>      =20
+>>>> F=E1bio Jr. wrote:
+>>>>   =20
+>>>>        =20
+>>>>> Rob Gardner escreveu:
+>>>>> =20
+>>>>>     =20
+>>>>>          =20
+>>>>>> F=E1bio Jr. wrote:
+>>>>>>          =20
+>>>>>>            =20
+>>>>>>> Hello all.
+>>>>>>>
+>>>>>>> Is there a way to export only some specific file extensions fro=
+m=20
+>>>>>>> a directory, like exporting only the files in /home/fabio with=20
+>>>>>>> the .jpg extension?
+>>>>>>>                =20
+>>>>>>>              =20
+>>>>>> You could do this pretty easily by exporting a 'fuse' filesystem=
+=20
+>>>>>> layered on top of your home directory.
+>>>>>>
+>>>>>> Rob Gardner
+>>>>>> HP
+>>>>>>
+>>>>>>            =20
+>>>>>>            =20
+>>>>> Thanks Rob for the reply,
+>>>>>
+>>>>> This means that if I use this FUSE, I can export via NFS only the=
+=20
+>>>>> file extension that I need? let me explain my problem, not really=
+ a=20
+>>>>> problem, but a doubt.
+>>>>>
+>>>>> I have one storage that have my aplication files. This storage is=
+=20
+>>>>> mounted via NFS in my 3 aplication servers. Now I will put anothe=
+r=20
+>>>>> server, to serve only static files (jpg,png,css,js basically), an=
+d=20
+>>>>> though that maybe there is a way to export only these files from=20
+>>>>> the storage. The problem is that these files are not organized in=
+=20
+>>>>> diferent folders.
+>>>>>
+>>>>> Maybe my first question doesn't explained my real necessity, but=20
+>>>>> your answer will make me search a little more about FUSE.
+>>>>>      =20
+>>>>>          =20
+>>>> I think your first question explained your need clearly. FUSE is a=
+=20
+>>>> filesystem layer that lets you filter requests through a user=20
+>>>> program such as a python script. So, for instance, every time a=20
+>>>> process opens a file, a function is called in your script, and you=
+=20
+>>>> can look at the name of the file being opened, and there decide=20
+>>>> whether or not to allow the file to be opened. I think this would=20
+>>>> solve your problem easily. Though all the storage is "exported",=20
+>>>> only files with certain names (ie, *.jpg, etc) could be opened. Yo=
+u=20
+>>>> could also decide which files get enumerated with readdir, etc.
+>>>>
+>>>> Rob Gardner
+>>>> HP
+>>>>
+>>>>
+>>>>    =20
+>>>>        =20
+>>> Oh yes, I think I didn't understand you answer.. but now all became=
+=20
+>>> clear in my mind. I'm afraid that using this solution maybe cause a=
+n=20
+>>> increase on storage processor load, because for every request the=20
+>>> script must be executed. I already have some issues with server=20
+>>> availability, and perhaps the solution of a problem becomes the=20
+>>> worsening of another.
+>>>
+>>> Still thanks for the reply and thanks for helping to clear my mind.
+>>>      =20
+>> It's a valid concern, but fuse does not "execute a script" for every=
+=20
+>> operation. The script is always running, sort of like a server for t=
+he=20
+>> pseudo-filesystem. Each requests causes a few lines in the script to=
+=20
+>> be executed. There is no process creation and dispatch for each=20
+>> operation, only a process wakeup for each operation. It is=20
+>> impressively lightweight and it's worth trying before dismissing it =
+as=20
+>> a resource drain.
+>>
+>>    =20
+> Hmm.. that's interesting, but, how many requests this script can hand=
+le?=20
+> This can vary in diferent systems or configs, or even can be measured=
+?
+>  =20
 
-Thanks, fixed up changelog and added a Reviewed-by: Catalin Marinas
-<catalin.marinas@arm.com>.
+OK now you're talking about throughput... that's different than=20
+processor load. The fuser script is single threaded, I think, so it=20
+probably won't scale too well.
 
---b.
+You could go into the kernel and hack a filter into say, the nfs lookup=
+=20
+code, and cause lookup failures for files named '*.jpg' on certain=20
+exports. That would scale, though would take quite a bit more work.
 
-> > unreferenced object 0xc9ec02a0 (size 8):
-> > =C2=A0comm "cat", pid 19048, jiffies 730243
-> > =C2=A0backtrace:
-> > =C2=A0 =C2=A0[<c01bf970>] create_object+0x100/0x240
-> > =C2=A0 =C2=A0[<c01bfadb>] kmemleak_alloc+0x2b/0x60
-> > =C2=A0 =C2=A0[<c01bcd4b>] __kmalloc+0x14b/0x270
-> > =C2=A0 =C2=A0[<c02fd027>] write_pool_threads+0x87/0x1d0
-> > =C2=A0 =C2=A0[<c02fcc08>] nfsctl_transaction_write+0x58/0x70
-> > =C2=A0 =C2=A0[<c02fcc6f>] nfsctl_transaction_read+0x4f/0x60
-> > =C2=A0 =C2=A0[<c01c2574>] vfs_read+0x94/0x150
-> > =C2=A0 =C2=A0[<c01c297d>] sys_read+0x3d/0x70
-> > =C2=A0 =C2=A0[<c0102d6b>] sysenter_do_call+0x12/0x32
-> > =C2=A0 =C2=A0[<ffffffff>] 0xffffffff
-> >
-> > write_pool_threads() only frees nthreads on error paths, in the suc=
-cess case
-> > we leak it.
-> >
-> > Signed-off-by: Eric Sesterhenn <eric.sesterhenn-PIliufFCYSYOIzVOb1FTxg@public.gmane.org>
-> >
-> > --- linux/fs/nfsd/nfsctl.c.orig 2009-07-28 14:19:19.000000000 +0200
-> > +++ linux/fs/nfsd/nfsctl.c =C2=A0 =C2=A0 =C2=A02009-07-28 14:19:30.=
-000000000 +0200
-> > @@ -784,6 +784,7 @@ static ssize_t write_pool_threads(struct
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0mesg +=3D le=
-n;
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0}
-> >
-> > + =C2=A0 =C2=A0 =C2=A0 kfree(nthreads);
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0mutex_unlock(&nfsd_mutex);
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0return (mesg-buf);
->=20
-> Thanks for this. On minor point - the kfree() could probably be moved
-> after mutex_unlock().
->=20
-> I added the patch to the kmemleak-fixes branch on
-> git://linux-arm.org/linux-2.6.git (I'm not pushing this branch
-> upstream, it's mainly for people trying kmemleak to avoid reporting o=
-r
-> investigating already fixed leaks).
->=20
-> --=20
-> Catalin
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+>> But anyway, here's another idea for you-- Export a new directory tha=
+t=20
+>> contains links to only those the files you want to export.
+>>
+>>    =20
+> Unfortunately, even if I wanted to, it's not possible to do this in m=
+y=20
+> scenario, since I have aprox. 4 milion files only in jpeg format in=20
+> different folders, not counting the other extensions. The major probl=
+em=20
+> was the planning phase, that not counted with so many files and not=20
+> prepared the files organization to better performance. But for smalle=
+rs=20
+> systems, its a very good solution.
+
+I guess you're in a better position to judge the suitability of a=20
+proposed solution...  I can think of various reasons why creating links=
+=20
+might not be a good solution, but I don't see why having millions of=20
+files presents any problem, as the process of creating links can be=20
+automated rather easily.
+
+
+Rob Gardner
+HP
+
+
+
+
+-----------------------------------------------------------------------=
+-------
+Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30=
+-Day=20
+trial. Simplify your report design, integration and deployment - and fo=
+cus on=20
+what you do best, core application coding. Discover what's new with=20
+Crystal Reports now.  http://p.sf.net/sfu/bobj-july
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
