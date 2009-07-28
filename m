@@ -1,52 +1,49 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [NFS] Export especific file extension
-Date: Tue, 28 Jul 2009 12:21:21 -0400
-Message-ID: <20090728162121.GH19497@fieldses.org>
-References: <4A6E0E9F.3010009@gmail.com> <4A6E281F.4020209@hp.com>
-	<4A6EDBC9.6040008@gmail.com> <4A6EFB00.2080308@hp.com>
-	<4A6EFEE9.1070708@gmail.com> <4A6F02F5.9090002@hp.com>
-	<4A6F0DCB.3090903@gmail.com> <4A6F2018.1040808@hp.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] nfs: remove superfluous BUG_ON()s
+Date: Tue, 28 Jul 2009 12:59:10 -0400
+Message-ID: <1248800350.6205.7.camel@heimdal.trondhjem.org>
+References: <200907281704.56870.bzolnier@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "nfs@lists.sourceforge.net" <nfs@lists.sourceforge.net>,
-	=?utf-8?Q?F=C3=A1bio_Jr=2E?= <fjuniorlista@gmail.com>
-To: Rob Gardner <rob.gardner@hp.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Dan Carpenter <error27@gmail.com>, corbet-T1hC0tSOHrs@public.gmane.org,
+	eteo@redhat.com, Julia Lawall <julia@diku.dk>
+To: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:57313 "EHLO neil.brown.name"
+Received: from mx2.netapp.com ([216.240.18.37]:47085 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752873AbZG1Qpb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jul 2009 12:45:31 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1MVpnW-0006mT-TB
-	for linux-nfs@vger.kernel.org; Wed, 29 Jul 2009 02:45:06 +1000
-In-Reply-To: <4A6F2018.1040808@hp.com>
+	id S1751376AbZG1RAt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jul 2009 13:00:49 -0400
+In-Reply-To: <200907281704.56870.bzolnier@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 28, 2009 at 09:58:16AM -0600, Rob Gardner wrote:
-> You could go into the kernel and hack a filter into say, the nfs lookup 
-> code, and cause lookup failures for files named '*.jpg' on certain 
-> exports. That would scale, though would take quite a bit more work.
+On Tue, 2009-07-28 at 17:04 +0200, Bartlomiej Zolnierkiewicz wrote:
+> From: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+> Subject: [PATCH] nfs: remove superfluous BUG_ON()s
+> 
+> Remove duplicated BUG_ON()s from nfs[4]_create_server()
+> (we make the same checks earlier in both functions).
+> 
+> This takes care of the following entries from Dan's list:
+> 
+> fs/nfs/client.c +1078 nfs_create_server(47) warning: variable derefenced before check 'server->nfs_client'
+> fs/nfs/client.c +1079 nfs_create_server(48) warning: variable derefenced before check 'server->nfs_client->rpc_ops'
+> fs/nfs/client.c +1363 nfs4_create_server(43) warning: variable derefenced before check 'server->nfs_client'
+> fs/nfs/client.c +1364 nfs4_create_server(44) warning: variable derefenced before check 'server->nfs_
+> 
+> Reported-by: Dan Carpenter <error27@gmail.com>
+> Cc: corbet-T1hC0tSOHrs@public.gmane.org
+> Cc: eteo@redhat.com
+> Cc: Julia Lawall <julia@diku.dk>
+> Signed-off-by: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
 
-This sounds more like a problem that should be solved on the application
-side....
+Thanks! I will apply...
 
-E.g. surely there's a way to configure apache (or whatever) to map paths
-like $foo.jpg to /nfs/image-server/$foo.jpg?
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
-
-------------------------------------------------------------------------------
-Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30-Day 
-trial. Simplify your report design, integration and deployment - and focus on 
-what you do best, core application coding. Discover what's new with 
-Crystal Reports now.  http://p.sf.net/sfu/bobj-july
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
