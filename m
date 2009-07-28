@@ -1,83 +1,125 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] NFS client packet storm on 2.6.27.x
-Date: Tue, 28 Jul 2009 11:31:47 -0700
-Message-ID: <20090728183147.GI32209@kroah.com>
-References: <20090120150301.GG47559@fit.vutbr.cz>
- <1232465547.7055.3.camel@heimdal.trondhjem.org>
- <20090303120848.GV89843@fit.vutbr.cz>
- <1236089767.9631.4.camel@heimdal.trondhjem.org>
- <20090418051739.GL64731@fit.vutbr.cz>
- <20090422172707.GC57877@fit.vutbr.cz>
- <20090625055532.GC50277@fit.vutbr.cz>
- <20090713111214.GC30754@fit.vutbr.cz>
- <20090713172001.GA22775@kroah.com>
- <1247506817.14524.25.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
+Date: Tue, 28 Jul 2009 17:12:15 -0400
+Message-ID: <20090728211215.GE28376@fieldses.org>
+References: <20090420162017.GA28079@gradator.net> <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Kasparek Tomas <kasparek@fit.vutbr.cz>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, stable@kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:60837 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750743AbZG1S5s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Jul 2009 14:57:48 -0400
-In-Reply-To: <1247506817.14524.25.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
+To: Sylvain Rochet <gradator@gradator.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+In-Reply-To: <20090728164142.GA13662@gradator.net>
+Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 13, 2009 at 01:40:17PM -0400, Trond Myklebust wrote:
-> On Mon, 2009-07-13 at 10:20 -0700, Greg KH wrote:
-> > On Mon, Jul 13, 2009 at 01:12:15PM +0200, Kasparek Tomas wrote:
-> > > On Thu, Jun 25, 2009 at 07:55:32AM +0200, Kasparek Tomas wrote:
-> > > > http://www.linux-nfs.org/Linux-2.6.x/2.6.27/
-> > > > 
-> > > > .../fixups_4/linux-2.6.27-001-respond_promptly_to_socket_errors.dif
-> > > > .../fixups_4/linux-2.6.27-002-respond_promptly_to_socket_errors_2.dif
-> > > > 
-> > > > ...
-> > > > Together with tcp_linger patch it seems to improve the situation a lot to
-> > > > state when it is possible for me to use 2.6.27.x kernels.
-> > > > 
-> > > > Trond, will it be possible to get tcp_linger and the upper twho patches to
-> > > > 2.6.27.x stable queue so others get these fixes?
+On Tue, Jul 28, 2009 at 06:41:42PM +0200, Sylvain Rochet wrote:
+> Hi,
+> 
+> 
+> On Tue, Jul 28, 2009 at 03:52:26PM +0200, Jan Kara wrote:
+> > On Tue 28-07-09 13:27:15, Sylvain Rochet wrote:
+> > > On Mon, Jul 27, 2009 at 05:42:53PM +0200, Jan Kara wrote:
+> > > > On Sat 25-07-09 17:17:52, Sylvain Rochet wrote:
+> > > > > > 
+> > > > > > Can you still see the corruption with 2.6.30 kernel?
+> > > > > 
+> > > > > Not upgraded yet, we'll give a try.
 > > > 
-> > > I got no response so far, is there someone who could advise me what to do
-> > > to get above patches to 2.6.27.x stable? Or is there some reason, why this
-> > > is not possible at all?
+> > > Done, now featuring 2.6.30.3 ;)
 > > 
-> > Can you backport them and send them to stable@kernel.org with the git
-> > commit ids of the orignal patches?
+> > OK, drop me an email if you will see corruption also with this kernel.
 > 
-> When testing at a customer site, we recently found that we actually need
-> 4 patches in order to completely fix the storming problem in 2.6.27.y,
-> and ensure a timely socket reconnect.
+> Lets move out the corrupted directory ;)
 > 
-> commit 15f081ca8ddfe150fb639c591b18944a539da0fc (SUNRPC: Avoid an
-> unnecessary task reschedule on ENOTCONN)
+> root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache/e# rm -- * .ok 
+> rm: cannot remove `spip%3Farticle19.f8740dca': Input/output error
+> root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache/e# cd ..
+> root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache# mv e/ /data/lost+found/wooops
 > 
-> commit 670f94573104b4a25525d3fcdcd6496c678df172 (SUNRPC: Ensure we set
-> XPRT_CLOSING only after we've sent a tcp FIN...)
 > 
-> commit 40d2549db5f515e415894def98b49db7d4c56714 (SUNRPC: Don't
-> disconnect if a connection is still in progress.)
-
-I've now applied all of these to the .27 stable tree.
-
-> and finally
+> > > > This is probably the misleading output from ext3_iget(). It should give
+> > > > you EIO in the latest kernel.
+> > > 
+> > > root@bazooka:/data/web/ed/90/48/walotux.walon.org/htdocs/tmp/cache/e# cat spip%3Farticle19.f8740dca 
+> > > cat: spip%3Farticle19.f8740dca: Input/output error
+> > > 
+> > > It has much more sense now. We thought the problem was around NFS due 
+> > > the the previous error message, actually this is probably not the best 
+> > > looking path.
+> > 
+> > Yes, EIO makes more sence. I think the problem is NFS connected anyway
+> > though :). But I don't have a clue how it can happen yet. Maybe I can try
+> > adding some low-cost debugging checks if you'd be willing to run such
+> > kernel...
 > 
-> commit f75e6745aa3084124ae1434fd7629853bdaf6798 (SUNRPC: Fix the problem
-> of EADDRNOTAVAIL syslog floods on reconnect)
+> Without any problem, we have 24/7/365 physical access and we don't need 
+> to provide high-availability services.
 > 
-> The first three need to be applied to kernels 2.6.27.y to 2.6.29.y,
-> while the last needs to be applied to 2.6.27.y to 2.6.30.y.
+> Anyway, the data hosted aren't that important, there is little or even 
+> no need for strict confidentiality, so we will be happy to provide ssh 
+> access to whom would like to look deeper into this issue.
+> 
+> 
+> > I'm adding to CC linux-nfs just in case someone has an idea.
+> > 
+> > > >   Ah, OK, here's the problem. The directory points to a file which is
+> > > > obviously deleted (note the "Links: 0"). All the content of the inode seems
+> > > > to indicate that the file was correctly deleted (you might check that the
+> > > > corresponding bit in the bitmap is cleared via: "icheck 88541562").
+> > > 
+> > > root@bazooka:~# debugfs /dev/md10
+> > > debugfs 1.40-WIP (14-Nov-2006)
+> > > debugfs:  icheck 88541562
+> > > Block   Inode number
+> > > 88541562        <block not found>
+> > 
+> > Ah, wrong debugfs command. I should have written:
+> > testi <88541562>
+> 
+> debugfs:  testi <88541562>
+> Inode 88541562 is not in use
+> 
+> 
+> > > >   The question is how it could happen the directory still points to the
+> > > > inode. Really strange. It looks as if we've lost a write to the directory
+> > > > but I don't see how. Are there any suspitious kernel messages in this case?
+> > > 
+> > > There were nothing for a while, but since the reboot there are some 
+> > > about this inode: 
+> > > 
+> > > EXT3-fs error (device md10): ext3_lookup: deleted inode referenced: 88541562
+> > 
+> > Yes, that's to be expected given the corruption any NFS error messages?
+> 
+> There are some error messages on NFS clients, however they are quite old.
+> 
+> Apr 19 15:38:21 gin kernel: NFS: Buggy server - nlink == 0!
+> May  3 20:00:52 gin kernel: NFS: Buggy server - nlink == 0!
+> May  3 23:24:03 gin kernel: NFS: Buggy server - nlink == 0!
+> May  7 11:40:57 gin kernel: NFS: Buggy server - nlink == 0!
+> May  7 14:41:02 gin kernel: NFS: Buggy server - nlink == 0!
+> May 26 11:10:42 cognac kernel: NFS: Buggy server - nlink == 0!
+> May 26 11:13:28 cognac kernel: NFS: Buggy server - nlink == 0!
+> May 26 12:34:39 cognac kernel: NFS: Buggy server - nlink == 0!
+> May 26 12:39:43 cognac kernel: NFS: Buggy server - nlink == 0!
+> 
+> This is obviously related to the corruption.
 
-The last one is in .30, so it doesn't need to go there again :)
+It might be interesting to know whether the file that we returned to the
+client with nlink 0 was the same that you later saw corruption on; maybe
+adding a printk of the inode number there would help.
 
-But this last one doesn't apply at all to the .27 stable tree.  Care to
-refresh it and send it to stable@kernel.org if you think it is also
-needed?
+Googling around on that error message, a previous thread:
 
-thanks,
+	http://marc.info/?t=107429333300004&r=1&w=4
 
-greg k-h
+seems to conclude it's a bug, but doesn't followup with a fix.  And I
+don't see any mention of possible filesystem corruption.
+
+Is NFSv4 involved here?  I wonder if something that might otherwise be
+only a problem for the client could become a problem for the server if
+it attempts to do further operations with an unlinked inode in a
+compound operation that follows a lookup.
+
+--b.
