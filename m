@@ -1,47 +1,88 @@
-From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
-Subject: Short-reads on NFS client
-Date: Thu, 30 Jul 2009 22:12:31 +0530
-Message-ID: <4A71CD77.2000505@gluster.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Andy Adamson <andros@netapp.com>
+Subject: Re: [pnfs] [PATCH 3/5] nfsd41: reclaim DRC memory on session free
+Date: Fri, 31 Jul 2009 04:38:24 -0400
+Message-ID: <271F4750-A5E5-457E-977F-B0900A1B86D9@netapp.com>
+References: <1245872278-18743-1-git-send-email-andros@netapp.com> <1245872278-18743-2-git-send-email-andros@netapp.com> <1245872278-18743-3-git-send-email-andros@netapp.com> <1245872278-18743-4-git-send-email-andros@netapp.com> <20090716141805.GD30477@fieldses.org> <20090727225735.GF4718@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v930.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from saturn.datasyncintra.net ([208.88.241.29]:46434 "EHLO
-	saturn.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751096AbZG3Qjd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jul 2009 12:39:33 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by saturn.datasyncintra.net (Postfix) with ESMTP id 709D477B325
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2009 11:39:34 -0500 (CDT)
-Received: from saturn.datasyncintra.net ([127.0.0.1])
-	by localhost (saturn.datasyncintra.net [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id INqHaB23jDpz for <linux-nfs@vger.kernel.org>;
-	Thu, 30 Jul 2009 11:39:33 -0500 (CDT)
-Received: from [192.168.1.91] (unknown [122.166.102.221])
-	(Authenticated sender: shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org)
-	by saturn.datasyncintra.net (Postfix) with ESMTP id 336797D3281
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2009 11:39:32 -0500 (CDT)
+Received: from mx2.netapp.com ([216.240.18.37]:43469 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751352AbZGaIi1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Jul 2009 04:38:27 -0400
+In-Reply-To: <20090727225735.GF4718@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All
 
-Is there ever a possibility that a read syscall over linux nfs client
-will return a short read? I think a short read is what I am observing
-on our system with unfs3 as the NFS server. I've instrumented the
-server and it seems to be returning the correct amount of data.
+On Jul 27, 2009, at 6:57 PM, J. Bruce Fields wrote:
 
-Is there any way I can debug this further?
+> On Thu, Jul 16, 2009 at 10:18:05AM -0400, J. Bruce Fields wrote:
+>> On Wed, Jun 24, 2009 at 03:37:47PM -0400, andros@netapp.com wrote:
+>>> From: Andy Adamson <andros@netapp.com>
+>>>
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>> fs/nfsd/nfs4state.c |    3 +++
+>>> 1 files changed, 3 insertions(+), 0 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index b4a536d..991c3cc 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -583,6 +583,9 @@ free_session(struct kref *kref)
+>>> 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+>>> 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+>>> 	}
+>>> +	spin_lock(&nfsd_drc_lock);
+>>> +	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs *  
+>>> NFSD_SLOT_CACHE_SIZE;
+>>> +	spin_unlock(&nfsd_drc_lock);
+>>> 	kfree(ses);
+>>
+>> This patch has to be combined with the previous one.
+>
+> I thought this was fixing a bug from the previous patch!  But  
+> instead I
+> see this is a fix for a preexisting bugfix.  So better to move this to
+> the head of the patch series; applied the following to my for-2.6.32.
+>
+> Apologies--I've just done this myself and applied the following.  Look
+> OK?
 
-I am running the  2.6.18-92.el5 kernel. The tool I am using is fileop
-that is part of the iozone package. The original problem with the test
-is that it outputs "Data mis-compare" error messages which means that
-while doing a byte-to-byte comparison of what it wrote against the
-data it read back from the file, it fails to see same contents as
-written by it. On further hacking a bit with the code, I see that it
-tries to compare X bytes in its buffer with Y bytes read from the
-file, assuming that X will always be equal to Y. Is this assumption
-supposed to hold for linux NFS client reads?
+Looks fine. Thanks
 
-Thanks
-Shehjar
+-->Andy
+>
+>
+> --b.
+>
+> commit 0a515ffa6f29e9a0f0f60373576bd4d3d5608ae8
+> Author: Andy Adamson <andros@netapp.com>
+> Date:   Mon Jul 27 18:49:05 2009 -0400
+>
+>    nfsd41: reclaim DRC memory on session free
+>
+>    This fixes a leak which would eventually lock out new clients.
+>
+>    Signed-off-by: Andy Adamson <andros@netapp.com>
+>    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e6a44e..69bd37e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -585,6 +585,9 @@ free_session(struct kref *kref)
+> 		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+> 		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+> 	}
+> +	spin_lock(&nfsd_drc_lock);
+> +	nfsd_drc_pages_used -= ses->se_fchannel.maxreqs *  
+> NFSD_PAGES_PER_SLOT;
+> +	spin_unlock(&nfsd_drc_lock);
+> 	kfree(ses);
+> }
+>
+
