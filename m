@@ -1,52 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Thu, 6 Aug 2009 13:05:43 -0400
-Message-ID: <20090806170543.GA32511@fieldses.org>
-References: <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz> <20090806131555.GA23359@gradator.net>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 07/11] nfs-utils: convert nfssvc_setfds to use getaddrinfo
+Date: Sat, 01 Aug 2009 07:35:50 -0400
+Message-ID: <4A742896.1010005@RedHat.com>
+References: <1244484044-21355-1-git-send-email-jlayton@redhat.com> <1244484044-21355-8-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
-	Al Viro <viro@zeniv.linux.org.uk>
-To: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57868 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:32781 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756222AbZHFRFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Aug 2009 13:05:46 -0400
-In-Reply-To: <20090806131555.GA23359-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
+	id S1751171AbZHALkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 1 Aug 2009 07:40:03 -0400
+In-Reply-To: <1244484044-21355-8-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 06, 2009 at 03:15:56PM +0200, Sylvain Rochet wrote:
-> Hi,
-> 
-> 
-> On Wed, Aug 05, 2009 at 12:56:19AM +0200, Jan Kara wrote:
-> > 
-> > Thanks for testing. So you seem to be really stressting the path where
-> > creation of new files / directories fails (probably due to group quota).
-> 
-> Yes, there are 29 groups over quota on a total of 4499. Those are mainly 
-> spammed websites and therefore quite stressed due to the amount of tries 
-> to add new "data".
-> 
-> 
-> > I have one idea what could cause your filesystem corruption, although 
-> > it's a wild guess... Please try attached oneliner.
-> 
-> Running since yesterday.
-> 
-> 
-> > Also your corruption reminded me that Al Viro has been fixing problems
-> > where we could cache one inode twice when a filesystem was mounted over NFS
-> > and that could also lead to a filesystem corruption. So I'm adding him to
-> > CC just in case he has some idea. BTW Al, what do you think about the
-> > problem I describe in the attached patch? I'm not sure if it can cause some
-> > real problems but in theory it could...
-> 
-> Should we upgrade NFS clients as well ?  (now running 2.6.28.9)
+On 06/08/2009 02:00 PM, Jeff Layton wrote:
+>  static void
+>  nfssvc_versbits(unsigned int ctlbits, int minorvers4)
+>  {
+> @@ -180,8 +246,11 @@ nfssvc(int port, int nrservs, unsigned int versbits, int minorvers4,
+>  	 * the ports get registered with portmap against correct
+>  	 * versions
+>  	 */
+> -	nfssvc_versbits(versbits, minorvers4);
+> -	nfssvc_setfds(port, protobits, haddr);
+> +	if (!nfssvc_inuse()) {
+> +		nfssvc_versbits(versbits, minorvers4);
+> +		snprintf(buf, sizeof(buf), "%d", port);
+> +		nfssvc_set_sockets(AF_INET, protobits, haddr, portstr);
+portstr is not defined here.... and as far as I can tell its not
+defined in any of the next 3 patches either... 
 
-The client version shouldn't matter.
+What am I missing or it is missing?
 
---b.
+steved.
+
