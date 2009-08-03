@@ -1,7 +1,7 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [Patch 3/8] NFS Mount Configuration File (Vers 2)
-Date: Mon, 03 Aug 2009 10:53:29 -0400
-Message-ID: <4A76F9E9.5020604@RedHat.com>
+Subject: [Patch 4/8] NFS Mount Configuration File (Vers 2)
+Date: Mon, 03 Aug 2009 10:54:32 -0400
+Message-ID: <4A76FA28.2080109@RedHat.com>
 References: <4A76F8E6.2010607@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -20,95 +20,52 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 528e270be6bb3e4a072cbbb7f3a8b378b64b7fba
+commit 259bf96f9e2b6836529158ea1b7ee3a02e3266b7
 Author: Steve Dickson <steved@redhat.com>
-Date:   Mon Mar 9 13:57:10 2009 -0400
+Date:   Sun Aug 2 12:28:19 2009 -0400
 
-    Store values in lower case. This makes it easier to do string
-    comparisons when reading lists from the configuration file.
+    Adds '--enable-mountconf' configuration flag that will
+    enabled mount to read from a configuration file.
+    The default value is disabled (or no)
+    
+    Adds '--with-mountfile' configuration flag that is used when
+    mountconf is enabled to define the configuration file name.
+    The default is /etc/nfsmount.conf.
     
     Signed-off-by: Steve Dickson <steved@redhat.com>
 
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index b36200b..f5e0f79 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -114,7 +114,16 @@ conf_hash(char *s)
- 	}
- 	return hash;
- }
-+/*
-+ * Convert letter from upper case to lower case
-+ */
-+static inline upper2lower(char *str)
-+{
-+	char *ptr = str;
+diff --git a/configure.ac b/configure.ac
+index e0ca70e..5d26345 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -136,6 +136,31 @@ AC_ARG_ENABLE(ipv6,
+ 	AC_SUBST(enable_ipv6)
+ 	AM_CONDITIONAL(CONFIG_IPV6, [test "$enable_ipv6" = "yes"])
  
-+	while (*ptr) 
-+		*ptr++ = tolower(*ptr);
-+}
- /*
-  * Insert a tag-value combination from LINE (the equal sign is at POS)
-  */
-@@ -523,7 +532,7 @@ conf_get_tag_list(char *section)
- 	for (; cb; cb = LIST_NEXT(cb, link)) {
- 		if (strcasecmp (section, cb->section) == 0) {
- 			list->cnt++;
--			node = calloc (1, sizeof *node);
-+			node = calloc(1, sizeof *node);
- 			if (!node)
- 				goto cleanup;
- 			node->field = strdup(cb->tag);
-@@ -615,7 +624,7 @@ conf_free_list(struct conf_list *list)
- }
- 
- int
--conf_begin (void)
-+conf_begin(void)
- {
-   static int seq = 0;
- 
-@@ -623,7 +632,7 @@ conf_begin (void)
- }
- 
- static struct conf_trans *
--conf_trans_node (int transaction, enum conf_op op)
-+conf_trans_node(int transaction, enum conf_op op)
- {
- 	struct conf_trans *node;
- 
-@@ -639,9 +648,9 @@ conf_trans_node (int transaction, enum conf_op op)
- 	return node;
- }
- 
--/* Queue a set operation.  */
-+/* Queue a set operation.  Store value in lower case */
- int
--conf_set (int transaction, char *section, char *tag, 
-+conf_set(int transaction, char *section, char *tag, 
- 	char *value, int override, int is_default)
- {
- 	struct conf_trans *node;
-@@ -654,16 +663,22 @@ conf_set (int transaction, char *section, char *tag,
- 		xlog_warn("conf_set: strdup(\"%s\") failed", section);
- 		goto fail;
- 	}
-+	upper2lower(node->section);
++if test "$enable_mount" = yes; then
++	AC_ARG_ENABLE(mountconfig,
++	[AC_HELP_STRING([--enable-mountconf],
++                        [enable mount to use a configuration file])],
++	mountconfig=$enableval,
++	mountconfig=no)
++	if test "$enable_mountconfig" = yes; then
++		AC_DEFINE(MOUNT_CONFIG, 1, 
++			[Define this if you want mount to read a configuration file])
++		AC_ARG_WITH(mountfile,
++			[AC_HELP_STRING([--with-mountfile=filename],
++			[Using filename as the NFS mount options file [/etc/nfsmounts.conf]]
++			)],
++		mountfile=$withval,
++		mountfile=/etc/nfsmount.conf)
++		AC_SUBST(mountfile)
++		AC_DEFINE_UNQUOTED(MOUNTOPTS_CONFFILE, "$mountfile", 
++			[This defines the location of the NFS mount configuration file])
++	else
++		enable_mountconfig=
++	fi
++	AC_SUBST(enable_mountconfig)
++	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mountconfig" = "yes"])
++fi
 +
- 	node->tag = strdup(tag);
- 	if (!node->tag) {
- 		xlog_warn("conf_set: strdup(\"%s\") failed", tag);
- 		goto fail;
- 	}
-+	upper2lower(node->tag);
-+
- 	node->value = strdup(value);
- 	if (!node->value) {
- 		xlog_warn("conf_set: strdup(\"%s\") failed", value);
- 		goto fail;
- 	}
-+	upper2lower(node->value);
-+
- 	node->override = override;
- 	node->is_default = is_default;
- 	return 0;
+ dnl Check for TI-RPC library and headers
+ AC_LIBTIRPC
