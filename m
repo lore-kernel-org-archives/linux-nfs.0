@@ -1,42 +1,65 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH RFC 11/13] nfs: nfs4xdr: get rid of READTIME macro
-Date: Wed, 12 Aug 2009 18:22:35 +0300
-Message-ID: <1250090555-9863-1-git-send-email-bhalevy@panasas.com>
-References: <4A82DC7B.3090600@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:10697
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752707AbZHLPWl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Aug 2009 11:22:41 -0400
-In-Reply-To: <4A82DC7B.3090600@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Patch 3/8] NFS Mount Configuration File (Vers 2)
+Date: Mon, 03 Aug 2009 12:05:10 -0400
+Message-ID: <4A770AB6.8010806@RedHat.com>
+References: <4A76F8E6.2010607@RedHat.com> <4A76F9E9.5020604@RedHat.com>
+	<20090803152409.GB28838@fieldses.org> <4A7706E8.7060106@RedHat.com>
+	<20090803155658.GF28838@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090803155658.GF28838@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It has no users.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4xdr.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index db17685..2e83aef 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2448,11 +2448,6 @@ static int nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req, uint32_t *p,
-  * task to translate them into Linux-specific versions which are more
-  * consistent with the style used in NFSv2/v3...
-  */
--#define READTIME(x)       do {			\
--	p++;					\
--	(x.tv_sec) = ntohl(*p++);		\
--	(x.tv_nsec) = ntohl(*p++);		\
--} while (0)
- #define COPYMEM(x,nbytes) do {			\
- 	memcpy((x), p, nbytes);			\
- 	p += XDR_QUADLEN(nbytes);		\
--- 
-1.6.4
+On 08/03/2009 11:56 AM, J. Bruce Fields wrote:
+> On Mon, Aug 03, 2009 at 11:48:56AM -0400, Steve Dickson wrote:
+>>
+>> On 08/03/2009 11:24 AM, J. Bruce Fields wrote:
+>>> On Mon, Aug 03, 2009 at 10:53:29AM -0400, Steve Dickson wrote:
+>>>> commit 528e270be6bb3e4a072cbbb7f3a8b378b64b7fba
+>>>> Author: Steve Dickson <steved@redhat.com>
+>>>> Date:   Mon Mar 9 13:57:10 2009 -0400
+>>>>
+>>>>     Store values in lower case. This makes it easier to do string
+>>>>     comparisons when reading lists from the configuration file.
+>>> Just curious--which parts of the configuration file (section headers,
+>>> keys, values--looks like maybe all 3?) are you making case-insensitive,
+>>> and why do they need to be?
+>> Yes all three of them... 
+>>> E.g. the idmapd configuration file contains paths and user/group names,
+>>> and both those still need to be case sensitive.
+>> hmm... good point... I would suspect this might be the case for
+>> all users of these routines since pathnames and user/group names
+>> are always case-sensitive.... 
+>>
+>> I would guess both the section and keys can be case-insensitive
+>> but the key probably say case-sensitive...
+> 
+> If you're using mount paths, for example, in the section names, then
+> that part also needs to be case-sensitive.
+Point... 
 
+> 
+> Probably the right thing to do is to leave the core config-file code out
+> of the business of playing with case, and let the callers do it in
+> particular cases when it's appropriate.
+I guess... but that leaves the disconnect between what the caller expects the 
+sections/keys to be called and what is actually in the config file.
+If the only difference is case, I was thinking routines should be smart enough
+to figure that out... 
+
+steved.
