@@ -1,211 +1,50 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Patch 7/8] NFS Mount Configuration File (Vers 2)
-Date: Mon, 3 Aug 2009 11:31:13 -0400
-Message-ID: <20090803153113.GC28838@fieldses.org>
-References: <4A76F8E6.2010607@RedHat.com> <4A76FB3B.1070004@RedHat.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Patch 3/8] NFS Mount Configuration File (Vers 2)
+Date: Mon, 03 Aug 2009 11:48:56 -0400
+Message-ID: <4A7706E8.7060106@RedHat.com>
+References: <4A76F8E6.2010607@RedHat.com> <4A76F9E9.5020604@RedHat.com>
+	<20090803152409.GB28838@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48154 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754629AbZHCPbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Aug 2009 11:31:12 -0400
-In-Reply-To: <4A76FB3B.1070004-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090803152409.GB28838@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 03, 2009 at 10:59:07AM -0400, Steve Dickson wrote:
-> commit 92e623c74908ffcc76da72e7927ce4e237062c76
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Sun Aug 2 12:41:03 2009 -0400
+
+
+On 08/03/2009 11:24 AM, J. Bruce Fields wrote:
+> On Mon, Aug 03, 2009 at 10:53:29AM -0400, Steve Dickson wrote:
+>> commit 528e270be6bb3e4a072cbbb7f3a8b378b64b7fba
+>> Author: Steve Dickson <steved@redhat.com>
+>> Date:   Mon Mar 9 13:57:10 2009 -0400
+>>
+>>     Store values in lower case. This makes it easier to do string
+>>     comparisons when reading lists from the configuration file.
 > 
->     The new nfsmount.conf(5) man page and the update to
->     the nfs(5) man page
->     
->     Signed-off-by: Steve Dickson <steved@redhat.com>
+> Just curious--which parts of the configuration file (section headers,
+> keys, values--looks like maybe all 3?) are you making case-insensitive,
+> and why do they need to be?
+Yes all three of them... 
 > 
-> diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-> index a1b56ca..5c1e5ad 100644
-> --- a/utils/mount/Makefile.am
-> +++ b/utils/mount/Makefile.am
-> @@ -19,6 +19,7 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
->  
->  if MOUNT_CONFIG
->  mount_nfs_SOURCES += configfile.c
-> +man5_MANS += nfsmount.conf.man
->  endif
->  
->  mount_nfs_LDADD = ../../support/nfs/libnfs.a \
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 13de524..251b16f 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -752,6 +752,44 @@ In the presence of multiple client network interfaces,
->  special routing policies,
->  or atypical network topologies,
->  the exact address to use for callbacks may be nontrivial to determine. 
-> +.SH MOUNT CONFIGURATION FILE
-> +All of the mount options described in the previous section can also be configured in
-> +the 
-> +.I /etc/nfsmount.conf 
-> +file. This configuration file is made up of three
-> +different sections: Global, Server and MountPoint. See 
-> +.BR nfsmount.conf(5)
-> +for details.
-> +.PP
-> +The mount command parses section in a particular order, and will not use
-> +options that were set in previous sections.  The order of precedence is as follows:
-> +
-> +.B Command line option 
-> +.RS
-> +options set on the command line will always be used.
-> +.RE
-> +.B Mount Point options
-> +.RS
-> +options set in the 
-> +.B [<Mount_Point>]
-> +section  will
-> +be used only if they are not specified on the command line.
-> +.RE
-> +.B Server options
-> +.RS
-> +options set in the 
-> +.B [<Server_Name>] 
-> +section will be used
-> +if they are not specified on the command  line or  the
-> +mount point section.
-> +.RE
-> +.B Global options 
-> +.RS
-> +options set in the 
-> +.B [NFSMount_Global_Options] 
-> +will be used if they are not specified on the command line, mount point 
-> +section, or the server section.
-> +.RE
->  .SH EXAMPLES
->  To mount an export using NFS version 2,
->  use the
-> diff --git a/utils/mount/nfsmount.conf.man b/utils/mount/nfsmount.conf.man
-> new file mode 100644
-> index 0000000..1a3bb68
-> --- /dev/null
-> +++ b/utils/mount/nfsmount.conf.man
-> @@ -0,0 +1,87 @@
-> +.\"@(#)nfsmount.conf.5"
-> +.TH NFSMOUNT.CONF 5 "9 Mar 2008"
-> +.SH NAME
-> +nfsmount.conf - Configuration file for NFS mounts
-> +.SH SYNOPSIS
-> +Configuration file for NFS mounts that allows options
-> +to be set globally, per server or per mount point.
-> +.SH DESCRIPTION
-> +The configuration file is made up of multiple sections 
-> +followed by variables associated with that section.
-> +A section is defined by a string enclosed by 
-> +.BR [
-> +and 
-> +.BR ]
-> +branches; for example, 
-> +.BR [nfsserver.foo.com] . 
-> +Variables are assignment statements that assign values 
-> +to particular variables using the  
-> +.BR = 
-> +operator, as in 
-> +.BR Proto=Tcp .
-> +Sections are broken up into three basic categories:
-> +Global options, Server options and Mount Point options.
-> +.HP
-> +.BR [NFSMount_Global_Options]
-> +- This statically named section
-> +defines all of the global mount options that can be 
-> +applied to every NFS mount.
-> +.HP
-> +.BR [<Server_Name>]
+> E.g. the idmapd configuration file contains paths and user/group names,
+> and both those still need to be case sensitive.
+hmm... good point... I would suspect this might be the case for
+all users of these routines since pathnames and user/group names
+are always case-sensitive.... 
 
+I would guess both the section and keys can be case-insensitive
+but the key probably say case-sensitive...
 
-I notice the git configuration file uses a similar format, but allows
-section headers that looks like:
-
-	[remote "origin"]
-	        url =
-		git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
-		fetch = +refs/heads/*:refs/remotes/origin/*
-	[remote "linux-nfs"]
-	        url = ssh://linux-nfs.org/~bfields/exports/linux.git
-		fetch = +refs/heads/*:refs/remotes/linux-nfs/*
-
-That quoted part in the section name looks like it should allow
-arbitrary strings without the risk of clashing with section names that
-we might want to add in the future.  That might be a better way to
-handle server and mount point names?
-
-It looks like git's configuration-parsing code is in config.c (from
-git://git.kernel.org/pub/scm/git/git.git).
-
---b.
-
-> +- This section defines all the mount options that should 
-> +be used on mounts to a particular NFS server. The 
-> +.BR <Server_Name>
-> +needs to be an exact match of the server
-> +name used in the 
-> +.B mount
-> +command. 
-> +.HP
-> +.BR [<Mount_Point>]
-> +- This section defines all the mount options that 
-> +should be used on a particular mount point.
-> +The 
-> +.BR <Mount_Point>
-> +string need to be an exact match of the
-> +path used in the 
-> +.BR mount 
-> +command.
-> +.SH EXAMPLES
-> +.PP
-> +These are some example lines of how sections and variables
-> +are defined in the configuration file.
-> +.PP
-> +.BR [NFSMount_Global_Options]
-> +.br
-> +.BR Proto=Tcp
-> +.RS
-> +.HP
-> +The TCP protocol will be used on every NFS mount.
-> +.HP
-> +.RE
-> +.BR [nfsserver.foo.com]
-> +.br
-> +.BR rsize=32k
-> +.br
-> +.BR wsize=32k
-> +.HP
-> +.RS
-> +A 33k (32768 bytes) block size will be used as the read and write
-> +size on all mounts to the 'nfsserver.foo.com' server.
-> +.HP
-> +.RE
-> +.BR [/export/home]
-> +.br
-> +.BR Background=True
-> +.RS
-> +.HP
-> +All mounts to the '/export/home' export will be performed in
-> +the background (i.e. done asynchronously).
-> +.HP
-> +.SH FILES
-> +.TP 10n
-> +.I /etc/nfsmount.conf
-> +Default NFS mount configuration file
-> +.PD
-> +.SH SEE ALSO
-> +.BR nfs (5),
-> +.BR mount (8),
-> 
-> _______________________________________________
-> NFSv4 mailing list
-> NFSv4@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+steved.
