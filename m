@@ -1,48 +1,26 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 10/12] sunrpc: fix memory leak in unix_gid cache.
-Date: Tue, 4 Aug 2009 16:55:54 -0400
-Message-ID: <20090804205554.GC24758@fieldses.org>
-References: <20090804051145.15929.11356.stgit@notabene.brown> <20090804052239.15929.71459.stgit@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: ->migratepage aops for nfs missing
+Date: Tue, 04 Aug 2009 23:02:47 +0100
+Message-ID: <25558.1249423367@redhat.com>
+References: <1249419186.5377.20.camel@heimdal.trondhjem.org> <20090804202648.GA12484@basil.fritz.box>
+Cc: dhowells@redhat.com, Andi Kleen <andi@firstfloor.org>,
+	linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52323 "EHLO fieldses.org"
+Received: from mx2.redhat.com ([66.187.237.31]:60184 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752680AbZHDUzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2009 16:55:54 -0400
-In-Reply-To: <20090804052239.15929.71459.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S933212AbZHDWC4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 18:02:56 -0400
+In-Reply-To: <1249419186.5377.20.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 04, 2009 at 03:22:39PM +1000, NeilBrown wrote:
-> When we look up an entry in the uid->gidlist cache, we take
-> a reference to the content but don't drop the reference to the
-> cache entry.  So it never gets freed.
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Applied, thanks.  (It doesn't seem to depend on the others.)
+> The only thing I'm not 100% sure about is fscache, but I think the
+> correct thing is just to call nfs_fscache_release_page(). David?
 
---b.
+Yes, probably.  Note that that will only release the page unconditionally if
+gfp includes __GFP_WAIT.
 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
-> 
->  net/sunrpc/svcauth_unix.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-> index f2de152..0afeb30 100644
-> --- a/net/sunrpc/svcauth_unix.c
-> +++ b/net/sunrpc/svcauth_unix.c
-> @@ -660,6 +660,7 @@ static int unix_gid_find(uid_t uid, struct group_info **gip,
->  	case 0:
->  		*gip = ug->gi;
->  		get_group_info(*gip);
-> +		cache_put(&ug->h, &unix_gid_cache);
->  		return 0;
->  	case -ETIMEDOUT:
->  		prevug = ug;
-> 
-> 
+David
