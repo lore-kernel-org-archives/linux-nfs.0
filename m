@@ -1,128 +1,107 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/4] NFS: Fix auth flavor len accounting
-Date: Tue, 04 Aug 2009 09:59:02 -0400
-Message-ID: <20090804135901.2287.72709.stgit@matisse.1015granger.net>
-References: <20090804135425.2287.3313.stgit@matisse.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 00/12] Some improvements to request deferral and
+	related code
+Date: Tue, 4 Aug 2009 10:04:28 -0400
+Message-ID: <20090804140428.GE14249@fieldses.org>
+References: <20090804051145.15929.11356.stgit@notabene.brown>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:50547
-	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754698AbZHDN7E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2009 09:59:04 -0400
-In-Reply-To: <20090804135425.2287.3313.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:46761 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752608AbZHDOE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 10:04:28 -0400
+In-Reply-To: <20090804051145.15929.11356.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Previous logic in the NFS mount parsing code path assumed
-auth_flavor_len was set to zero for simple authentication flavors
-(like AUTH_UNIX), and 1 for compound flavors (like AUTH_GSS).
+On Tue, Aug 04, 2009 at 03:22:38PM +1000, NeilBrown wrote:
+> Hi Bruce and all.
+> 
+>  When I wrote the authentication cache all those years ago I handled
+>  cache misses by arranging to simply retry the whole request, either
+>  by saving a copy for be replayed later, or by waiting for the client
+>  to resend.
+> 
+>  As we know this isn't ideal.  Large requests (e.g. writes) don't get
+>  saved, TCP connections don't resend in a suitable time, and NFSv4
+>  request are sufficiently complex that restarting from the beginning
+>  isn't really a good idea.
 
-At some earlier point (maybe even before the option parsers were
-merged?) specific checks for auth_flavor_len being zero were removed
-from the functions that validate the mount option that sets the mount
-point's authentication flavor.
+Excellent, thanks for working on this!
 
-Since we are populating an array for authentication flavors, the
-auth_flavor_len should always be set to the number of flavors.  Let's
-eliminate some cleverness here, and prepare for new logic that needs
-to know the number of flavors in the auth_flavors[] array.
+>  So I have finally implemented the "wait a while" approach which has
+>  probably been suggested several times and is even implemented in a
+>  somewhat hackish way for nfsidmap.
+> 
+>  Yes, I know I have probably argued against this in the past.  I was
+>  wrong.
+> 
+>  This series fixes a few little bugs and tidies up some code but does
+>  two main important things.
+> 
+>  1/ 'allow thread to block....' will wait a little while if there is a
+>  cache miss.  If an answer is available in that time, it continues on
+>  it's merry way.  If no answer arrives, the old deferral approach is
+>  used.  It waits 5 seconds if there are spare nfsd threads, and 1
+>  second if there all threads are busy.  I have almost nothing with
+>  which to justify these numbers.
 
-(auth_flavors[] is an array because at some point we want to allow a
-list of acceptable authentication flavors to be specified via the sec=
-mount option.  For now it remains a single element array).
+I think the v4 server at least should return NFS4ERR_DELAY in this case
+instead of doing the internal replay.  That avoids possible problems
+with non-idempotent compound ops.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+>From the protocol point of view I don't know if there's any rule of
+thumb about when it'd be best to return DELAY.  Perhaps it's best to
+avoid it whenever possible, but when the delay is on the order of
+seconds it sounds reasonable to me.
 
- fs/nfs/super.c |   17 +++--------------
- 1 files changed, 3 insertions(+), 14 deletions(-)
+--b.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 83a3107..a33e608 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -904,8 +904,6 @@ static void nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
- 
- /*
-  * Parse the value of the 'sec=' option.
-- *
-- * The flavor_len setting is for v4 mounts.
-  */
- static int nfs_parse_security_flavors(char *value,
- 				      struct nfs_parsed_mount_data *mnt)
-@@ -916,53 +914,43 @@ static int nfs_parse_security_flavors(char *value,
- 
- 	switch (match_token(value, nfs_secflavor_tokens, args)) {
- 	case Opt_sec_none:
--		mnt->auth_flavor_len = 0;
- 		mnt->auth_flavors[0] = RPC_AUTH_NULL;
- 		break;
- 	case Opt_sec_sys:
--		mnt->auth_flavor_len = 0;
- 		mnt->auth_flavors[0] = RPC_AUTH_UNIX;
- 		break;
- 	case Opt_sec_krb5:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5;
- 		break;
- 	case Opt_sec_krb5i:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5I;
- 		break;
- 	case Opt_sec_krb5p:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_KRB5P;
- 		break;
- 	case Opt_sec_lkey:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEY;
- 		break;
- 	case Opt_sec_lkeyi:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYI;
- 		break;
- 	case Opt_sec_lkeyp:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_LKEYP;
- 		break;
- 	case Opt_sec_spkm:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKM;
- 		break;
- 	case Opt_sec_spkmi:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMI;
- 		break;
- 	case Opt_sec_spkmp:
--		mnt->auth_flavor_len = 1;
- 		mnt->auth_flavors[0] = RPC_AUTH_GSS_SPKMP;
- 		break;
- 	default:
- 		return 0;
- 	}
- 
-+	mnt->auth_flavor_len = 1;
- 	return 1;
- }
- 
-@@ -1680,6 +1668,7 @@ static int nfs_validate_mount_data(void *options,
- 	args->nfs_server.port	= 0;	/* autobind unless user sets port */
- 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
-+	args->auth_flavor_len	= 1;
- 
- 	switch (data->version) {
- 	case 1:
-@@ -2343,7 +2332,7 @@ static int nfs4_validate_mount_data(void *options,
- 	args->acdirmax		= NFS_DEF_ACDIRMAX;
- 	args->nfs_server.port	= NFS_PORT; /* 2049 unless user set port= */
- 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
--	args->auth_flavor_len	= 0;
-+	args->auth_flavor_len	= 1;
- 	args->minorversion	= 0;
- 
- 	switch (data->version) {
-
+> 
+>  2/ 'close connection when...' provides a better fall back for TCP.
+>  If the sunrpc layer decides to drop the request without queueing it
+>  at all, it will close the connection.  This encourages the client to
+>  retry sooner.
+> 
+>  Please review and comment.
+> 
+>  If you like them all, they can be pulled from
+> 
+>       git://neil.brown.name/linux-2.6/ nfsd
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> ---
+> 
+> NeilBrown (12):
+>       sunrpc: close connection when a request is irretrievably lost.
+>       sunrpc/cache: change deferred-request hash table to use hlist.
+>       sunrpc: fix memory leak in unix_gid cache.
+>       nfsd/idmap: drop special request deferal in favour of improved default.
+>       sunrpc/cache: retry cache lookups that return -ETIMEDOUT
+>       sunrpc/cache: allow thread to block while waiting for cache update.
+>       sunrpc/cache: avoid variable over-loading in cache_defer_req
+>       sunrpc/cache: use list_del_init for the list_head entries in cache_deferred_req
+>       sunrpc/cache: recheck cache validity after cache_defer_req
+>       sunrpc/cache: simplify cache_fresh_locked and cache_fresh_unlocked.
+>       sunrpc/cache: make sure deferred requests eventually get revisited.
+>       sunrpc/cache: rename queue_loose to cache_dequeue
+> 
+> 
+>  fs/nfsd/export.c               |   18 ++++
+>  fs/nfsd/nfs4idmap.c            |  105 +++---------------------
+>  include/linux/sunrpc/cache.h   |    5 +
+>  include/linux/sunrpc/svcauth.h |   10 ++
+>  net/sunrpc/cache.c             |  173 ++++++++++++++++++++++++++--------------
+>  net/sunrpc/svc.c               |    3 +
+>  net/sunrpc/svc_xprt.c          |   11 +++
+>  net/sunrpc/svcauth_unix.c      |   31 ++++++-
+>  8 files changed, 192 insertions(+), 164 deletions(-)
+> 
+> -- 
+> 
