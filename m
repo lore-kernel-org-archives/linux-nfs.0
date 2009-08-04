@@ -1,154 +1,80 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 04/12] sunrpc/cache: recheck cache validity after
+Subject: Re: [PATCH 06/12] sunrpc/cache: avoid variable over-loading in
 	cache_defer_req
-Date: Tue, 4 Aug 2009 16:42:52 -0400
-Message-ID: <20090804204252.GA24758@fieldses.org>
-References: <20090804051145.15929.11356.stgit@notabene.brown> <20090804052238.15929.56800.stgit@notabene.brown>
+Date: Tue, 4 Aug 2009 16:47:29 -0400
+Message-ID: <20090804204729.GB24758@fieldses.org>
+References: <20090804051145.15929.11356.stgit@notabene.brown> <20090804052239.15929.87201.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
 To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37258 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:45782 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932611AbZHDUmv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2009 16:42:51 -0400
-In-Reply-To: <20090804052238.15929.56800.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S1753215AbZHDUr2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 16:47:28 -0400
+In-Reply-To: <20090804052239.15929.87201.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 04, 2009 at 03:22:38PM +1000, NeilBrown wrote:
-> If cache_defer_req did not leave the request on a queue, then it could
-> possibly have waited long enough that the cache became valid.  So check the
-> status after the call.
+On Tue, Aug 04, 2009 at 03:22:39PM +1000, NeilBrown wrote:
+> In cache_defer_req, 'dreq' is used for two significantly different
+> values that happen to be of the same type.
+> 
+> This is both confusing, and make it hard to extend the range of one of
+> the values as we will in the next patch.
+> So introduce 'discard' to take one of the values.
 > 
 > Signed-off-by: NeilBrown <neilb@suse.de>
 > ---
 > 
->  net/sunrpc/cache.c |   53 ++++++++++++++++++++++++++++++++--------------------
->  1 files changed, 33 insertions(+), 20 deletions(-)
+>  net/sunrpc/cache.c |   14 +++++++-------
+>  1 files changed, 7 insertions(+), 7 deletions(-)
 > 
 > diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index c1f897c..bff4baa 100644
+> index 2f19463..4892c5c 100644
 > --- a/net/sunrpc/cache.c
 > +++ b/net/sunrpc/cache.c
-> @@ -173,6 +173,22 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
->  EXPORT_SYMBOL_GPL(sunrpc_cache_update);
+> @@ -561,7 +561,7 @@ static int cache_defer_cnt;
 >  
->  static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h);
-> +
-> +static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-> +{
-> +	if (!test_bit(CACHE_VALID, &h->flags) ||
-> +	    h->expiry_time < get_seconds())
-> +		return -EAGAIN;
-> +	else if (detail->flush_time > h->last_refresh)
-> +		return -EAGAIN;
-> +	else {
-> +		/* entry is valid */
-> +		if (test_bit(CACHE_NEGATIVE, &h->flags))
-> +			return -ENOENT;
-> +		else
-> +			return 0;
-> +	}
-> +}
->  /*
->   * This is the generic cache management routine for all
->   * the authentication caches.
-> @@ -181,8 +197,10 @@ static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h);
->   *
->   *
->   * Returns 0 if the cache_head can be used, or cache_puts it and returns
-> - * -EAGAIN if upcall is pending,
-> - * -ETIMEDOUT if upcall failed and should be retried,
-> + * -EAGAIN if upcall is pending and request has been queued
-> + * -ETIMEDOUT if upcall failed or request could not be queue or
-
-s/queue/queued/
-
-> + *           upcall completed but item is still invalid (implying that
-> + *           the cache item has been replaced with a newer one).
->   * -ENOENT if cache entry was negative
->   */
->  int cache_check(struct cache_detail *detail,
-> @@ -192,17 +210,7 @@ int cache_check(struct cache_detail *detail,
->  	long refresh_age, age;
+>  static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  {
+> -	struct cache_deferred_req *dreq;
+> +	struct cache_deferred_req *dreq, *discard;
+>  	int hash = DFR_HASH(item);
 >  
->  	/* First decide return status as best we can */
-> -	if (!test_bit(CACHE_VALID, &h->flags) ||
-> -	    h->expiry_time < get_seconds())
-> -		rv = -EAGAIN;
-> -	else if (detail->flush_time > h->last_refresh)
-> -		rv = -EAGAIN;
-> -	else {
-> -		/* entry is valid */
-> -		if (test_bit(CACHE_NEGATIVE, &h->flags))
-> -			rv = -ENOENT;
-> -		else rv = 0;
-> -	}
-> +	rv = cache_is_valid(detail, h);
+>  	if (cache_defer_cnt >= DFR_MAX) {
+> @@ -586,20 +586,20 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  	list_add(&dreq->hash, &cache_defer_hash[hash]);
 >  
->  	/* now see if we want to start an upcall */
->  	refresh_age = (h->expiry_time - h->last_refresh);
-> @@ -235,10 +243,14 @@ int cache_check(struct cache_detail *detail,
->  		}
->  	}
->  
-> -	if (rv == -EAGAIN)
-> -		if (cache_defer_req(rqstp, h) != 0)
-> -			rv = -ETIMEDOUT;
-> -
-> +	if (rv == -EAGAIN) {
-> +		if (cache_defer_req(rqstp, h) == 0) {
-> +			/* Request is not deferred */
+>  	/* it is in, now maybe clean up */
+> -	dreq = NULL;
+> +	discard = NULL;
+>  	if (++cache_defer_cnt > DFR_MAX) {
+> -		dreq = list_entry(cache_defer_list.prev,
+> -				  struct cache_deferred_req, recent);
+> +		discard = list_entry(cache_defer_list.prev,
+> +				     struct cache_deferred_req, recent);
+>  		list_del_init(&dreq->recent);
+>  		list_del_init(&dreq->hash);
 
-The code might be more self-explanatory if we wrote:
-
-		if (cache_defer_req(rqstp, h) == -ETIMEDOUT) {
-
-Well, at least it would be obvious we're handling the "failure" case?
-(Even if admittedly it's a "failure" that we may be able to handle).
-
-It always takes me a little thought whenever I encounter a
-boolean-returning function whose name doesn't have an obvious truth
-value (list_empty, cache_is_valid).
-
-No complaints otherwise.
+Shouldn't these two "dreq"'s be "discard"'s as well?
 
 --b.
 
-> +			rv = cache_is_valid(detail, h);
-> +			if (rv == -EAGAIN)
-> +				rv = -ETIMEDOUT;
-> +		}
-> +	}
->  	if (rv)
->  		cache_put(h, detail);
->  	return rv;
-> @@ -557,11 +569,11 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
->  		 * or continue and drop the oldest below
->  		 */
->  		if (net_random()&1)
-> -			return -ETIMEDOUT;
-> +			return 0;
+>  		cache_defer_cnt--;
 >  	}
->  	dreq = req->defer(req);
->  	if (dreq == NULL)
-> -		return -ETIMEDOUT;
-> +		return 0;
+>  	spin_unlock(&cache_defer_lock);
 >  
->  	dreq->item = item;
->  
-> @@ -591,8 +603,9 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+> -	if (dreq) {
+> +	if (discard)
+>  		/* there was one too many */
+> -		dreq->revisit(dreq, 1);
+> -	}
+> +		discard->revisit(discard, 1);
+> +
 >  	if (!test_bit(CACHE_PENDING, &item->flags)) {
 >  		/* must have just been validated... */
 >  		cache_revisit_request(item);
-> +		return 0;
->  	}
-> -	return 0;
-> +	return 1;
->  }
->  
->  static void cache_revisit_request(struct cache_head *item)
 > 
 > 
