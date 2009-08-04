@@ -1,134 +1,64 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 04/12] sunrpc/cache: recheck cache validity after
-	cache_defer_req
-Date: Tue, 04 Aug 2009 15:22:38 +1000
-Message-ID: <20090804052238.15929.56800.stgit@notabene.brown>
+Subject: [PATCH 05/12] sunrpc/cache: use list_del_init for the list_head
+	entries in cache_deferred_req
+Date: Tue, 04 Aug 2009 15:22:39 +1000
+Message-ID: <20090804052238.15929.27456.stgit@notabene.brown>
 References: <20090804051145.15929.11356.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52220 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:41286 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753098AbZHDFYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2009 01:24:34 -0400
+	id S1753098AbZHDFYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 01:24:42 -0400
 In-Reply-To: <20090804051145.15929.11356.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If cache_defer_req did not leave the request on a queue, then it could
-possibly have waited long enough that the cache became valid.  So check the
-status after the call.
+Using list_del_init is generally safer than list_del, and it will
+allow us, in the next patch, to see if an entry has already been
+processed or not.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
 
- net/sunrpc/cache.c |   53 ++++++++++++++++++++++++++++++++--------------------
- 1 files changed, 33 insertions(+), 20 deletions(-)
+ net/sunrpc/cache.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index c1f897c..bff4baa 100644
+index bff4baa..2f19463 100644
 --- a/net/sunrpc/cache.c
 +++ b/net/sunrpc/cache.c
-@@ -173,6 +173,22 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- EXPORT_SYMBOL_GPL(sunrpc_cache_update);
+@@ -590,8 +590,8 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 	if (++cache_defer_cnt > DFR_MAX) {
+ 		dreq = list_entry(cache_defer_list.prev,
+ 				  struct cache_deferred_req, recent);
+-		list_del(&dreq->recent);
+-		list_del(&dreq->hash);
++		list_del_init(&dreq->recent);
++		list_del_init(&dreq->hash);
+ 		cache_defer_cnt--;
+ 	}
+ 	spin_unlock(&cache_defer_lock);
+@@ -625,7 +625,7 @@ static void cache_revisit_request(struct cache_head *item)
+ 			dreq = list_entry(lp, struct cache_deferred_req, hash);
+ 			lp = lp->next;
+ 			if (dreq->item == item) {
+-				list_del(&dreq->hash);
++				list_del_init(&dreq->hash);
+ 				list_move(&dreq->recent, &pending);
+ 				cache_defer_cnt--;
+ 			}
+@@ -651,7 +651,7 @@ void cache_clean_deferred(void *owner)
  
- static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h);
-+
-+static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-+{
-+	if (!test_bit(CACHE_VALID, &h->flags) ||
-+	    h->expiry_time < get_seconds())
-+		return -EAGAIN;
-+	else if (detail->flush_time > h->last_refresh)
-+		return -EAGAIN;
-+	else {
-+		/* entry is valid */
-+		if (test_bit(CACHE_NEGATIVE, &h->flags))
-+			return -ENOENT;
-+		else
-+			return 0;
-+	}
-+}
- /*
-  * This is the generic cache management routine for all
-  * the authentication caches.
-@@ -181,8 +197,10 @@ static int cache_make_upcall(struct cache_detail *detail, struct cache_head *h);
-  *
-  *
-  * Returns 0 if the cache_head can be used, or cache_puts it and returns
-- * -EAGAIN if upcall is pending,
-- * -ETIMEDOUT if upcall failed and should be retried,
-+ * -EAGAIN if upcall is pending and request has been queued
-+ * -ETIMEDOUT if upcall failed or request could not be queue or
-+ *           upcall completed but item is still invalid (implying that
-+ *           the cache item has been replaced with a newer one).
-  * -ENOENT if cache entry was negative
-  */
- int cache_check(struct cache_detail *detail,
-@@ -192,17 +210,7 @@ int cache_check(struct cache_detail *detail,
- 	long refresh_age, age;
- 
- 	/* First decide return status as best we can */
--	if (!test_bit(CACHE_VALID, &h->flags) ||
--	    h->expiry_time < get_seconds())
--		rv = -EAGAIN;
--	else if (detail->flush_time > h->last_refresh)
--		rv = -EAGAIN;
--	else {
--		/* entry is valid */
--		if (test_bit(CACHE_NEGATIVE, &h->flags))
--			rv = -ENOENT;
--		else rv = 0;
--	}
-+	rv = cache_is_valid(detail, h);
- 
- 	/* now see if we want to start an upcall */
- 	refresh_age = (h->expiry_time - h->last_refresh);
-@@ -235,10 +243,14 @@ int cache_check(struct cache_detail *detail,
+ 	list_for_each_entry_safe(dreq, tmp, &cache_defer_list, recent) {
+ 		if (dreq->owner == owner) {
+-			list_del(&dreq->hash);
++			list_del_init(&dreq->hash);
+ 			list_move(&dreq->recent, &pending);
+ 			cache_defer_cnt--;
  		}
- 	}
- 
--	if (rv == -EAGAIN)
--		if (cache_defer_req(rqstp, h) != 0)
--			rv = -ETIMEDOUT;
--
-+	if (rv == -EAGAIN) {
-+		if (cache_defer_req(rqstp, h) == 0) {
-+			/* Request is not deferred */
-+			rv = cache_is_valid(detail, h);
-+			if (rv == -EAGAIN)
-+				rv = -ETIMEDOUT;
-+		}
-+	}
- 	if (rv)
- 		cache_put(h, detail);
- 	return rv;
-@@ -557,11 +569,11 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		 * or continue and drop the oldest below
- 		 */
- 		if (net_random()&1)
--			return -ETIMEDOUT;
-+			return 0;
- 	}
- 	dreq = req->defer(req);
- 	if (dreq == NULL)
--		return -ETIMEDOUT;
-+		return 0;
- 
- 	dreq->item = item;
- 
-@@ -591,8 +603,9 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 	if (!test_bit(CACHE_PENDING, &item->flags)) {
- 		/* must have just been validated... */
- 		cache_revisit_request(item);
-+		return 0;
- 	}
--	return 0;
-+	return 1;
- }
- 
- static void cache_revisit_request(struct cache_head *item)
 
 
