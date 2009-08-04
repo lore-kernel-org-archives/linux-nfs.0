@@ -1,64 +1,75 @@
-From: Sylvain Rochet <gradator@gradator.net>
-Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Tue, 4 Aug 2009 13:15:05 +0200
-Message-ID: <20090804111505.GA6433@gradator.net>
-References: <20090420162017.GA28079@gradator.net> <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/4] NFS: Fix up new minorversion= option
+Date: Tue, 04 Aug 2009 09:58:47 -0400
+Message-ID: <20090804135847.2287.5945.stgit@matisse.1015granger.net>
+References: <20090804135425.2287.3313.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="GvXjxJ+pjyke8COw"
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-In-Reply-To: <20090803222901.GB23162@duck.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:50541
+	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753220AbZHDN6s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2009 09:58:48 -0400
+In-Reply-To: <20090804135425.2287.3313.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The new minorversion= mount option (commit 3fd5be9e) was merged at
+the same time as the recent sloppy parser fixes (commit a5a16bae),
+so minorversion= still uses the old value parsing logic.
 
---GvXjxJ+pjyke8COw
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+If the minorversion= option specifies a bogus value, it should fail
+with "bad value" not "bad option."
 
-Hi,
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/nfs/super.c |   18 +++++++++++-------
+ 1 files changed, 11 insertions(+), 7 deletions(-)
 
-On Tue, Aug 04, 2009 at 12:29:01AM +0200, Jan Kara wrote:
->=20
->   OK, I've found some time and written the debugging patch. Hopefully it
-> will tell us more. It should output messages to the kernel log if it
-> finds something suspicious - like:
-> No dentry for unlinked inode...
-> Dentry ... for unlinked inode ... has no parent
-> Found directory entry ... for unlinked inode
->=20
->   When you see such messages in the log, send them to me please. Also
-> attach the System.map file so that I can translate the address where
-> i_nlink was dropped - for that ext3 should be compiled into the kernel
-> (should not be a module). Thanks a lot for testing.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 0b4cbdc..83a3107 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -158,7 +158,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mountvers, "mountvers=%s" },
+ 	{ Opt_nfsvers, "nfsvers=%s" },
+ 	{ Opt_nfsvers, "vers=%s" },
+-	{ Opt_minorversion, "minorversion=%u" },
++	{ Opt_minorversion, "minorversion=%s" },
+ 
+ 	{ Opt_sec, "sec=%s" },
+ 	{ Opt_proto, "proto=%s" },
+@@ -1001,7 +1001,6 @@ static int nfs_parse_mount_options(char *raw,
+ 	while ((p = strsep(&raw, ",")) != NULL) {
+ 		substring_t args[MAX_OPT_ARGS];
+ 		unsigned long option;
+-		int int_option;
+ 		int token;
+ 
+ 		if (!*p)
+@@ -1273,11 +1272,16 @@ static int nfs_parse_mount_options(char *raw,
+ 			}
+ 			break;
+ 		case Opt_minorversion:
+-			if (match_int(args, &int_option))
+-				return 0;
+-			if (int_option < 0 || int_option > NFS4_MAX_MINOR_VERSION)
+-				return 0;
+-			mnt->minorversion = int_option;
++			string = match_strdup(args);
++			if (string == NULL)
++				goto out_nomem;
++			rc = strict_strtoul(string, 10, &option);
++			kfree(string);
++			if (rc != 0)
++				goto out_invalid_value;
++			if (option > NFS4_MAX_MINOR_VERSION)
++				goto out_invalid_value;
++			mnt->minorversion = option;
+ 			break;
+ 
+ 		/*
 
-Patch applied.
-
-And there is already a lot of output.
-
-http://edony.tuxfamily.org/~grad/bazooka/System.map-2.6.30.4
-http://edony.tuxfamily.org/~grad/bazooka/config-2.6.30.4
-http://edony.tuxfamily.org/~grad/bazooka/kern.log
-
-
-Sylvain
-
---GvXjxJ+pjyke8COw
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFKeBg5DFub3qtEsS8RAgIWAKCsC2fadjouSls1EWuiVIEPh3lxpgCfZ4wG
-lgccIBouV30FqS6ou8zkxO8=
-=iyJr
------END PGP SIGNATURE-----
-
---GvXjxJ+pjyke8COw--
