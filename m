@@ -1,77 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:31367 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752196AbZHZRYP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2009 13:24:15 -0400
-Cc: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <4A3D2EF4-33D4-4C4A-B76B-4FFE5A347E48@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-In-Reply-To: <1251305859.5226.9.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 4/4] nfs-utils: nfs-iostat.py autofs cleanup and option to sort by ops/s
-Date: Wed, 26 Aug 2009 13:24:00 -0400
-References: <4A94C13E.6070403@dreamworks.com> <10C29C3A-4BF4-4C45-AEEF-CE22F77911BD@oracle.com> <4A954C4D.3060701@dreamworks.com> <08E0F2AC-2747-4F98-9686-CF665490B0F1@oracle.com> <1251305859.5226.9.camel@heimdal.trondhjem.org>
+Received: from cantor2.suse.de ([195.135.220.15]:56108 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933556AbZHDW4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 18:56:21 -0400
+Date: Wed, 5 Aug 2009 00:56:19 +0200
+From: Jan Kara <jack@suse.cz>
+To: Sylvain Rochet <gradator@gradator.net>
+Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
+Message-ID: <20090804225619.GB11097@duck.suse.cz>
+References: <20090420162017.GA28079@gradator.net> <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net>
+Content-Type: multipart/mixed; boundary="2fHTh5uZTiUOsy+g"
+In-Reply-To: <20090804111505.GA6433@gradator.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+--2fHTh5uZTiUOsy+g
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-On Aug 26, 2009, at 12:57 PM, Trond Myklebust wrote:
+  Hi,
 
-> On Wed, 2009-08-26 at 11:47 -0400, Chuck Lever wrote:
->> On Aug 26, 2009, at 10:53 AM, Lans Carstensen wrote:
->>
->>> Greetings!  Comments inline.  Chuck Lever wrote:
->>>> Hi Lans-
->>>> I was thinking about this feature a little more.  Would it be
->>>> interesting to allow sorting by other metrics besides ops/s ?
->>>> That's another feature that the "top" command has that this new
->>>> option doesn't.
->>>> I also don't like the bare integer options.  What if, at some
->>>> point, we want "-4" and "-6" for IPv6 support (not that we do, but
->>>> what if)?  Plus, having the bare integers doesn't give any clues
->>>> about what the number means.
->>>> In which case I propose:
->>>> --sort=ops --list=<n>
->>>> which provides more flexibility and helps make the options more
->>>> self-documenting.
->>>
->>> Again, thanks for looking this over.
->>>
->>> I had thought about the sorting a little bit, but decided that every
->>> case we cared about devolved to sorting by ops/s.  We'd use a tool
->>> like this in an operational group where they've lost control of a
->>> particular rogue workload in the mix of thousands of other
->>> workloads, and the operational group is trying to figure out what
->>> workload is generating a disproportionate amount of traffic (ops/
->>> s).  If someone wanted to extend the implementation further where
->>> leaving "--sort" unadorned sorts by ops and using "--
->>> sort=readdirplus" or somesuch, I'd be all for it - but it didn't
->>> seem worth the work for our use.  So I'd encourage that to be
->>> adopted as-is and if someone wants to put the extra effort into it
->>> I'm all for it.
->>
->> Well, the problem is once we choose a command line option, it's hard
->> to change it later.  I think having two choices, like --sort=ops  
->> and --
->> sort=def[ault] would be fine for now, and give us room to grow later.
->
-> There is precedent for having both an option "--sort" with no  
-> arguments,
-> and "--sort=". See for instance 'ls --color'/'ls --color=WHEN'.
->
-> We could therefore just add '--sort' for now, and then add a -- 
-> sort=KEY
-> type option when someone decides they need it.
+On Tue 04-08-09 13:15:05, Sylvain Rochet wrote:
+> On Tue, Aug 04, 2009 at 12:29:01AM +0200, Jan Kara wrote:
+> > 
+> >   OK, I've found some time and written the debugging patch. Hopefully it
+> > will tell us more. It should output messages to the kernel log if it
+> > finds something suspicious - like:
+> > No dentry for unlinked inode...
+> > Dentry ... for unlinked inode ... has no parent
+> > Found directory entry ... for unlinked inode
+> > 
+> >   When you see such messages in the log, send them to me please. Also
+> > attach the System.map file so that I can translate the address where
+> > i_nlink was dropped - for that ext3 should be compiled into the kernel
+> > (should not be a module). Thanks a lot for testing.
+> 
+> Patch applied.
+> 
+> And there is already a lot of output.
+> 
+> http://edony.tuxfamily.org/~grad/bazooka/System.map-2.6.30.4
+> http://edony.tuxfamily.org/~grad/bazooka/config-2.6.30.4
+> http://edony.tuxfamily.org/~grad/bazooka/kern.log
+  Thanks for testing. So you seem to be really stressting the path where
+creation of new files / directories fails (probably due to group quota).  I
+have one idea what could cause your filesystem corruption, although it's a
+wild guess... Please try attached oneliner.
+  Also your corruption reminded me that Al Viro has been fixing problems
+where we could cache one inode twice when a filesystem was mounted over NFS
+and that could also lead to a filesystem corruption. So I'm adding him to
+CC just in case he has some idea. BTW Al, what do you think about the
+problem I describe in the attached patch? I'm not sure if it can cause some
+real problems but in theory it could...
 
-If we are confident that having a "--sort" today will not limit  
-options later, then let's go for it.
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--2fHTh5uZTiUOsy+g
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-fs-Make-sure-data-stored-into-inode-is-properly-see.patch"
+
+>From 78513d3a5628fda0f8d685d732b7bc73bd4c9222 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 5 Aug 2009 00:42:21 +0200
+Subject: [PATCH] fs: Make sure data stored into inode is properly seen before unlocking new inode
+
+In theory it could happen that on one CPU we initialize a new inode but clearing
+of I_NEW | I_LOCK gets reordered before some of the initialization. Thus on
+another CPU we return not fully uptodate inode from iget_locked().
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/inode.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/inode.c b/fs/inode.c
+index 901bad1..e9a8e77 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -696,6 +696,7 @@ void unlock_new_inode(struct inode *inode)
+ 	 * just created it (so there can be no old holders
+ 	 * that haven't tested I_LOCK).
+ 	 */
++	smp_mb();
+ 	WARN_ON((inode->i_state & (I_LOCK|I_NEW)) != (I_LOCK|I_NEW));
+ 	inode->i_state &= ~(I_LOCK|I_NEW);
+ 	wake_up_inode(inode);
+-- 
+1.6.0.2
 
 
-
+--2fHTh5uZTiUOsy+g--
