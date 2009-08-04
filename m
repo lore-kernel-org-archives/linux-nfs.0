@@ -1,80 +1,54 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 06/12] sunrpc/cache: avoid variable over-loading in
-	cache_defer_req
-Date: Tue, 4 Aug 2009 16:47:29 -0400
-Message-ID: <20090804204729.GB24758@fieldses.org>
-References: <20090804051145.15929.11356.stgit@notabene.brown> <20090804052239.15929.87201.stgit@notabene.brown>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: ->migratepage aops for nfs missing
+Date: Tue, 04 Aug 2009 16:53:06 -0400
+Message-ID: <1249419186.5377.20.camel@heimdal.trondhjem.org>
+References: <20090804202648.GA12484@basil.fritz.box>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
-To: NeilBrown <neilb@suse.de>
+To: Andi Kleen <andi@firstfloor.org>,
+	David Howells <dhowells@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45782 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:6819 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753215AbZHDUr2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2009 16:47:28 -0400
-In-Reply-To: <20090804052239.15929.87201.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
+	id S932281AbZHDUyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 16:54:15 -0400
+In-Reply-To: <20090804202648.GA12484-u0/ZJuX+froe6aEkudXLsA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 04, 2009 at 03:22:39PM +1000, NeilBrown wrote:
-> In cache_defer_req, 'dreq' is used for two significantly different
-> values that happen to be of the same type.
+On Tue, 2009-08-04 at 22:26 +0200, Andi Kleen wrote:
+> Trond,
 > 
-> This is both confusing, and make it hard to extend the range of one of
-> the values as we will in the next patch.
-> So introduce 'discard' to take one of the values.
+> Any particular reason ->migratepage is not enabled for 
+> the nfs file aops?
 > 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
+> Is it known to be unsafe to move NFS buffer pages at runtime?
 > 
->  net/sunrpc/cache.c |   14 +++++++-------
->  1 files changed, 7 insertions(+), 7 deletions(-)
+> I have a similar requirement for memory error handling.
 > 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 2f19463..4892c5c 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -561,7 +561,7 @@ static int cache_defer_cnt;
->  
->  static int cache_defer_req(struct cache_req *req, struct cache_head *item)
->  {
-> -	struct cache_deferred_req *dreq;
-> +	struct cache_deferred_req *dreq, *discard;
->  	int hash = DFR_HASH(item);
->  
->  	if (cache_defer_cnt >= DFR_MAX) {
-> @@ -586,20 +586,20 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
->  	list_add(&dreq->hash, &cache_defer_hash[hash]);
->  
->  	/* it is in, now maybe clean up */
-> -	dreq = NULL;
-> +	discard = NULL;
->  	if (++cache_defer_cnt > DFR_MAX) {
-> -		dreq = list_entry(cache_defer_list.prev,
-> -				  struct cache_deferred_req, recent);
-> +		discard = list_entry(cache_defer_list.prev,
-> +				     struct cache_deferred_req, recent);
->  		list_del_init(&dreq->recent);
->  		list_del_init(&dreq->hash);
+> Thanks,
+> 
+> -Andi
 
-Shouldn't these two "dreq"'s be "discard"'s as well?
+Hi Andi,
 
---b.
+I don't think there are any fundamental problems with migrating NFS page
+cache pages. In order to handle dirty pages, we'd need to write the
+equivalent of buffer_migrate_page() in order to transfer the private
+data, lock and update the 'struct nfs_page' that tracks the page's dirty
+area.
 
->  		cache_defer_cnt--;
->  	}
->  	spin_unlock(&cache_defer_lock);
->  
-> -	if (dreq) {
-> +	if (discard)
->  		/* there was one too many */
-> -		dreq->revisit(dreq, 1);
-> -	}
-> +		discard->revisit(discard, 1);
-> +
->  	if (!test_bit(CACHE_PENDING, &item->flags)) {
->  		/* must have just been validated... */
->  		cache_revisit_request(item);
-> 
-> 
+The only thing I'm not 100% sure about is fscache, but I think the
+correct thing is just to call nfs_fscache_release_page(). David?
+
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
