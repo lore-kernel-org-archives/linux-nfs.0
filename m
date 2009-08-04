@@ -1,170 +1,140 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 07/12] sunrpc/cache: allow thread to block while waiting for
-	cache update.
+Subject: [PATCH 08/12] sunrpc/cache: retry cache lookups that return -ETIMEDOUT
 Date: Tue, 04 Aug 2009 15:22:39 +1000
-Message-ID: <20090804052239.15929.42666.stgit@notabene.brown>
+Message-ID: <20090804052239.15929.66850.stgit@notabene.brown>
 References: <20090804051145.15929.11356.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:41293 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:41298 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753620AbZHDFY5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2009 01:24:57 -0400
+	id S1754085AbZHDFZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 01:25:05 -0400
 In-Reply-To: <20090804051145.15929.11356.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current practice of waiting for cache updates by queueing the
-whole request to be retried has (at least) two problems.
+If cache_check returns -ETIMEDOUT, then the cache item is not
+up-to-date, but there is no pending upcall.
+This could mean the data is not available, or it could mean that the
+good data has been stored in a new cache item.
 
-1/ We NFSv4, requests can be quite complex and re-trying a whole
-  request when a later part fails should only be a list-resort, not a
-  normal practice.
-
-2/ Large requests, and in particular any 'write' request, will not be
-  queued by the current code and doing so would be undesirable.
-
-In many cases only a very sort wait is needed before the cache gets
-valid data.
-
-So, providing the underlying transport permits it by setting
- ->thread_wait,
-arrange to wait briefly for an upcall to be completed (as reflected in
-the clearing of CACHE_PENDING).
-If the short wait was not long enough and CACHE_PENDING is still set,
-fall back on the old approach.
-
-The 'thread_wait' value is set to 5 seconds when there are spare
-threads, and 1 second when there are no spare threads.
-
-These values are probably much higher than needed, but will ensure
-some forward progress.
+So re-do the lookup and if that returns a new item, proceed using that
+item.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
 
- include/linux/sunrpc/cache.h |    3 +++
- net/sunrpc/cache.c           |   44 +++++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/svc_xprt.c        |   11 +++++++++++
- 3 files changed, 57 insertions(+), 1 deletions(-)
+ fs/nfsd/export.c          |   18 ++++++++++++++++++
+ net/sunrpc/svcauth_unix.c |   22 ++++++++++++++++++++--
+ 2 files changed, 38 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 2d8b211..ad62e8d 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -112,6 +112,9 @@ struct cache_detail {
-  */
- struct cache_req {
- 	struct cache_deferred_req *(*defer)(struct cache_req *req);
-+	int thread_wait;  /* How long (jiffies) we can block the
-+			   * current thread to wait for updates.
-+			   */
- };
- /* this must be embedded in a deferred_request that is being
-  * delayed awaiting cache-fill
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 4892c5c..ba2e113 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -559,10 +559,22 @@ static LIST_HEAD(cache_defer_list);
- static struct list_head cache_defer_hash[DFR_HASHSIZE];
- static int cache_defer_cnt;
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index b92a276..6fcb0eb 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -783,9 +783,18 @@ exp_find_key(svc_client *clp, int fsid_type, u32 *fsidv, struct cache_req *reqp)
+ 	memcpy(key.ek_fsid, fsidv, key_len(fsid_type));
  
-+struct thread_deferred_req {
-+	struct cache_deferred_req handle;
-+	wait_queue_head_t wait;
-+};
-+static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
-+{
-+	struct thread_deferred_req *dr =
-+		container_of(dreq, struct thread_deferred_req, handle);
-+	wake_up(&dr->wait);
-+}
-+
- static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq, *discard;
- 	int hash = DFR_HASH(item);
-+	struct thread_deferred_req sleeper;
- 
- 	if (cache_defer_cnt >= DFR_MAX) {
- 		/* too much in the cache, randomly drop this one,
-@@ -571,7 +583,14 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		if (net_random()&1)
- 			return 0;
- 	}
--	dreq = req->defer(req);
-+	if (req->thread_wait) {
-+		dreq = &sleeper.handle;
-+		init_waitqueue_head(&sleeper.wait);
-+		dreq->revisit = cache_restart_thread;
-+	} else
-+		dreq = req->defer(req);
-+
-+ retry:
- 	if (dreq == NULL)
- 		return 0;
- 
-@@ -605,6 +624,29 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		cache_revisit_request(item);
- 		return 0;
- 	}
-+
-+	if (dreq == &sleeper.handle) {
-+		wait_event_interruptible_timeout(
-+			sleeper.wait,
-+			!test_bit(CACHE_PENDING, &item->flags)
-+			|| list_empty(&sleeper.handle.hash),
-+			req->thread_wait);
-+		spin_lock(&cache_defer_lock);
-+		if (!list_empty(&sleeper.handle.hash)) {
-+			list_del_init(&sleeper.handle.recent);
-+			list_del_init(&sleeper.handle.hash);
-+			cache_defer_cnt--;
-+		}
-+		spin_unlock(&cache_defer_lock);
-+		if (test_bit(CACHE_PENDING, &item->flags)) {
-+			/* item is still pending, try request
-+			 * deferral
-+			 */
-+			dreq = req->defer(req);
-+			goto retry;
-+		}
-+		return 0;
+ 	ek = svc_expkey_lookup(&key);
++ again:
+ 	if (ek == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 	err = cache_check(&svc_expkey_cache, &ek->h, reqp);
++	if (err == -ETIMEDOUT) {
++		struct svc_expkey *prev_ek = ek;
++		ek = svc_expkey_lookup(&key);
++		if (ek != prev_ek)
++			goto again;
++		if (ek)
++			cache_put(&ek->h, &svc_expkey_cache);
 +	}
- 	return 1;
- }
+ 	if (err)
+ 		return ERR_PTR(err);
+ 	return ek;
+@@ -855,9 +864,18 @@ static svc_export *exp_get_by_name(svc_client *clp, const struct path *path,
+ 	key.ex_path = *path;
  
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 27d4433..465443c 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -655,12 +655,23 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		pool->sp_nwaking--;
- 		BUG_ON(pool->sp_nwaking < 0);
+ 	exp = svc_export_lookup(&key);
++ retry:
+ 	if (exp == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 	err = cache_check(&svc_export_cache, &exp->h, reqp);
++	if (err == -ETIMEDOUT) {
++		struct svc_export *prev_exp = exp;
++		exp = svc_export_lookup(&key);
++		if (exp != prev_exp)
++			goto retry;
++		if (exp)
++			cache_put(&exp->h, &svc_export_cache);
++	}
+ 	if (err)
+ 		return ERR_PTR(err);
+ 	return exp;
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 5c865e2..f2de152 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -649,8 +649,10 @@ static int unix_gid_find(uid_t uid, struct group_info **gip,
+ 			 struct svc_rqst *rqstp)
+ {
+ 	struct unix_gid *ug = unix_gid_lookup(uid);
++	struct unix_gid *prevug;
+ 	if (!ug)
+ 		return -EAGAIN;
++ retry:
+ 	switch (cache_check(&unix_gid_cache, &ug->h, &rqstp->rq_chandle)) {
+ 	case -ENOENT:
+ 		*gip = NULL;
+@@ -659,6 +661,13 @@ static int unix_gid_find(uid_t uid, struct group_info **gip,
+ 		*gip = ug->gi;
+ 		get_group_info(*gip);
+ 		return 0;
++	case -ETIMEDOUT:
++		prevug = ug;
++		ug = unix_gid_lookup(uid);
++		if (ug != prevug)
++			goto retry;
++		if (ug)
++			cache_put(&ug->h, &unix_gid_cache);
+ 	default:
+ 		return -EAGAIN;
  	}
+@@ -669,7 +678,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ {
+ 	struct sockaddr_in *sin;
+ 	struct sockaddr_in6 *sin6, sin6_storage;
+-	struct ip_map *ipm;
++	struct ip_map *ipm, *prev_ipm;
+ 
+ 	switch (rqstp->rq_addr.ss_family) {
+ 	case AF_INET:
+@@ -694,14 +703,23 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
+ 				    &sin6->sin6_addr);
+ 
++ retry:
+ 	if (ipm == NULL)
+ 		return SVC_DENIED;
+ 
+ 	switch (cache_check(&ip_map_cache, &ipm->h, &rqstp->rq_chandle)) {
+ 		default:
+ 			BUG();
+-		case -EAGAIN:
+ 		case -ETIMEDOUT:
++			prev_ipm = ipm;
++			ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
++					    &sin6->sin6_addr);
++			if (ipm != prev_ipm)
++				goto retry;
++			if (ipm)
++				cache_put(&ipm->h, &ip_map_cache);
 +
-+	/* Normally we will wait up to 5 seconds for any required
-+	 * cache information to be provided.
-+	 */
-+	rqstp->rq_chandle.thread_wait = 5*HZ;
- 	xprt = svc_xprt_dequeue(pool);
- 	if (xprt) {
- 		rqstp->rq_xprt = xprt;
- 		svc_xprt_get(xprt);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-+
-+		/* As there is a shortage of threads and this request
-+		 * had to be queue, don't allow the thread to wait so
-+		 * long for cache updates.
-+		 */
-+		rqstp->rq_chandle.thread_wait = 1*HZ;
- 	} else {
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
++		case -EAGAIN:
+ 			return SVC_DROP;
+ 		case -ENOENT:
+ 			return SVC_DENIED;
 
 
