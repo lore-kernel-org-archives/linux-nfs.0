@@ -1,161 +1,107 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/4] NFS: Add ability to send MOUNTPROC_UMNT to the
- kernel's mountd client
-Date: Wed, 05 Aug 2009 08:21:01 -0400
-Message-ID: <1249474861.5385.5.camel@heimdal.trondhjem.org>
-References: <20090804135425.2287.3313.stgit@matisse.1015granger.net>
-	 <20090804135854.2287.13193.stgit@matisse.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/5] new statd [take 1]
+Date: Wed, 5 Aug 2009 09:51:05 -0400
+Message-ID: <618BB409-0166-46AA-84DD-A9A67259AA38@oracle.com>
+References: <20090804180334.21944.64404.stgit@matisse.1015granger.net>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:47166 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933564AbZHEMVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Aug 2009 08:21:04 -0400
-In-Reply-To: <20090804135854.2287.13193.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:24653 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934333AbZHENvK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 09:51:10 -0400
+Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
+	by rgminet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n75DpcUh017017
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Aug 2009 13:51:40 GMT
+Received: from abhmt015.oracle.com (abhmt015.oracle.com [141.146.116.24])
+	by acsinet15.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n75DpVVF026099
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Aug 2009 13:51:31 GMT
+In-Reply-To: <20090804180334.21944.64404.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-08-04 at 09:58 -0400, Chuck Lever wrote:
-> After certain failure modes of an NFS mount, an NFS client should send
-> a MOUNTPROC_UMNT request to remove the just-added mount entry from the
-> server's mount table.  While no-one should rely on the accuracy of the
-> server's mount table, sending a UMNT is simply being a good internet
-> neighbor.
-> 
-> Since NFS mount processing is handled in the kernel now, we will need
-> a function in the kernel's mountd client that can post a MOUNTRPC_UMNT
-> request, in order to handle these failure modes.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The big patch didn't make it through the mailing list, apparently.  I  
+didn't receive any kind of bounce message.
+
+Does anyone know who moderates this list and if there is a size limit?
+
+
+On Aug 4, 2009, at 2:06 PM, Chuck Lever wrote:
+
+> Hi Steve-
+>
+> Here are some man page patches and the one big patch that adds the new
+> IPv6-capable statd.  I'd like to start socializing these changes to
+> expedite the new statd into mainline nfs-utils.
+>
 > ---
-> 
->  fs/nfs/internal.h   |    1 +
->  fs/nfs/mount_clnt.c |   80 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 81 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 7dd90a6..8d2b71d 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -102,6 +102,7 @@ struct nfs_mount_request {
->  };
->  
->  extern int nfs_mount(struct nfs_mount_request *info);
-> +extern void nfs_umount(const struct nfs_mount_request *info);
->  
->  /* client.c */
->  extern struct rpc_program nfs_program;
-> diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-> index 38ef9ea..e51bf9a 100644
-> --- a/fs/nfs/mount_clnt.c
-> +++ b/fs/nfs/mount_clnt.c
-> @@ -209,6 +209,72 @@ out_mnt_err:
->  	goto out;
->  }
->  
-> +/**
-> + * nfs_umount - Notify a server that we have unmounted this export
-> + * @info: pointer to umount request arguments
-> + *
-> + * MOUNTPROC_UMNT is advisory, so we set a short timeout, and always
-> + * use UDP.
-> + */
-> +void nfs_umount(const struct nfs_mount_request *info)
-> +{
-> +	static const struct rpc_timeout nfs_umnt_timeout = {
-> +		.to_initval = 1 * HZ,
-> +		.to_maxval = 3 * HZ,
-> +		.to_retries = 2,
-> +	};
-> +	struct rpc_create_args args = {
-> +		.protocol	= IPPROTO_UDP,
-> +		.address	= info->sap,
-> +		.addrsize	= info->salen,
-> +		.timeout	= &nfs_umnt_timeout,
-> +		.servername	= info->hostname,
-> +		.program	= &mnt_program,
-> +		.version	= info->version,
-> +		.authflavor	= RPC_AUTH_UNIX,
-> +		.flags		= RPC_CLNT_CREATE_NOPING,
-> +	};
-> +	struct mountres	result;
-> +	struct rpc_message msg	= {
-> +		.rpc_argp	= info->dirpath,
-> +		.rpc_resp	= &result,
-> +	};
-> +	struct rpc_clnt *clnt;
-> +	int status;
-> +
-> +	if (info->noresvport)
-> +		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
-> +
-> +	clnt = rpc_create(&args);
-> +	if (unlikely(IS_ERR(clnt)))
-> +		goto out_clnt_err;
-> +
-> +	dprintk("NFS: sending UMNT request for %s:%s\n",
-> +		(info->hostname ? info->hostname : "server"), info->dirpath);
-> +
-> +	if (info->version == NFS_MNT3_VERSION)
-> +		msg.rpc_proc = &clnt->cl_procinfo[MOUNTPROC3_UMNT];
-> +	else
-> +		msg.rpc_proc = &clnt->cl_procinfo[MOUNTPROC_UMNT];
-> +
-> +	status = rpc_call_sync(clnt, &msg, 0);
-> +	rpc_shutdown_client(clnt);
-> +
-> +	if (unlikely(status < 0))
-> +		goto out_call_err;
-> +
-> +	return;
-> +
-> +out_clnt_err:
-> +	dprintk("NFS: failed to create UMNT RPC client, status=%ld\n",
-> +			PTR_ERR(clnt));
-> +	return;
-> +
-> +out_call_err:
-> +	dprintk("NFS: UMNT request failed, status=%d\n", status);
-> +	return;
+>
+> Chuck Lever (5):
+>      nfs(5): update nfs(5) with details about IPv6 support
+>      nfs-utils: introduce new statd implementation
+>      statd: change default state dir to /var/lib/nfs/statd
+>      nfs(5): Remove trailing blanks
+>      nfs(5): Add description of lookupcache mount option
+>
+>
+> .gitignore                    |    4
+> Makefile.am                   |    4
+> aclocal/libcap.m4             |   15 +
+> aclocal/libsqlite3.m4         |   33 ++
+> aclocal/libtirpc.m4           |    2
+> configure.ac                  |   16 +
+> utils/Makefile.am             |    7
+> utils/mount/nfs.man           |  377 ++++++++++++------
+> utils/new-statd/Makefile.am   |  102 +++++
+> utils/new-statd/file.c        |  779 ++++++++++++++++++++++++++++++++ 
+> ++++++
+> utils/new-statd/hostname.c    |  520 +++++++++++++++++++++++++
+> utils/new-statd/main.c        |  319 ++++++++++++++++
+> utils/new-statd/nlmcall.c     |  525 ++++++++++++++++++++++++++
+> utils/new-statd/sm-notify.c   |  155 ++++++++
+> utils/new-statd/sm-notify.man |  286 ++++++++++++++
+> utils/new-statd/sm_inter.x    |  107 +++++
+> utils/new-statd/smncall.c     |  774 ++++++++++++++++++++++++++++++++ 
+> ++++++
+> utils/new-statd/start-statd   |   12 +
+> utils/new-statd/statd.h       |  135 +++++++
+> utils/new-statd/statd.man     |  388 +++++++++++++++++++
+> utils/new-statd/svc.c         |  841 ++++++++++++++++++++++++++++++++ 
+> +++++++++
+> utils/statd/Makefile.am       |    9
+> utils/statd/sm-notify.man     |   12 -
+> utils/statd/statd.man         |   10
+> 24 files changed, 5282 insertions(+), 150 deletions(-)
+> create mode 100644 aclocal/libcap.m4
+> create mode 100644 aclocal/libsqlite3.m4
+> create mode 100644 utils/new-statd/Makefile.am
+> create mode 100644 utils/new-statd/file.c
+> create mode 100644 utils/new-statd/hostname.c
+> create mode 100644 utils/new-statd/main.c
+> create mode 100644 utils/new-statd/nlmcall.c
+> create mode 100644 utils/new-statd/sm-notify.c
+> create mode 100644 utils/new-statd/sm-notify.man
+> create mode 100644 utils/new-statd/sm_inter.x
+> create mode 100644 utils/new-statd/smncall.c
+> create mode 100644 utils/new-statd/start-statd
+> create mode 100644 utils/new-statd/statd.h
+> create mode 100644 utils/new-statd/statd.man
+> create mode 100644 utils/new-statd/svc.c
+>
+> -- 
+> Chuck Lever <chuck.lever@oracle.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Ehem.... I'm removing this.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-> +}
-> +
->  /*
->   * XDR encode/decode functions for MOUNT
->   */
-> @@ -407,6 +473,13 @@ static struct rpc_procinfo mnt_procedures[] = {
->  		.p_statidx	= MOUNTPROC_MNT,
->  		.p_name		= "MOUNT",
->  	},
-> +	[MOUNTPROC_UMNT] = {
-> +		.p_proc		= MOUNTPROC_UMNT,
-> +		.p_encode	= (kxdrproc_t)mnt_enc_dirpath,
-> +		.p_arglen	= MNT_enc_dirpath_sz,
-> +		.p_statidx	= MOUNTPROC_UMNT,
-> +		.p_name		= "UMOUNT",
-> +	},
->  };
->  
->  static struct rpc_procinfo mnt3_procedures[] = {
-> @@ -419,6 +492,13 @@ static struct rpc_procinfo mnt3_procedures[] = {
->  		.p_statidx	= MOUNTPROC3_MNT,
->  		.p_name		= "MOUNT",
->  	},
-> +	[MOUNTPROC3_UMNT] = {
-> +		.p_proc		= MOUNTPROC3_UMNT,
-> +		.p_encode	= (kxdrproc_t)mnt_enc_dirpath,
-> +		.p_arglen	= MNT_enc_dirpath_sz,
-> +		.p_statidx	= MOUNTPROC3_UMNT,
-> +		.p_name		= "UMOUNT",
-> +	},
->  };
->  
-> 
-> 
+
 
 
