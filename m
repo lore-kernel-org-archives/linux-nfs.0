@@ -1,63 +1,90 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/4] new statd [take 2]
-Date: Wed, 5 Aug 2009 14:06:39 -0400
-Message-ID: <9ACB8AA1-8442-4313-9494-DE78F49FE826@oracle.com>
-References: <20090805143550.12866.8377.stgit@matisse.1015granger.net> <20090805131554.67eb15bc@tlielax.poochiereds.net>
-Mime-Version: 1.0 (Apple Message framework v935.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st
+	part)
+Date: Wed, 5 Aug 2009 14:15:45 -0400
+Message-ID: <20090805181545.GF9944@fieldses.org>
+References: <20090805143550.12866.8377.stgit@matisse.1015granger.net> <20090805144540.12866.22084.stgit@matisse.1015granger.net> <20090805174811.GB9944@fieldses.org> <DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:61506 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751218AbZHESG7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 14:06:59 -0400
-In-Reply-To: <20090805131554.67eb15bc-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:39291 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751037AbZHESPr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Aug 2009 14:15:47 -0400
+In-Reply-To: <DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug 5, 2009, at 1:15 PM, Jeff Layton wrote:
-> On Wed, 05 Aug 2009 10:45:30 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+On Wed, Aug 05, 2009 at 02:05:44PM -0400, Chuck Lever wrote:
+> On Aug 5, 2009, at 1:48 PM, J. Bruce Fields wrote:
+>> On Wed, Aug 05, 2009 at 10:45:40AM -0400, Chuck Lever wrote:
+>>> Provide a new implementation of statd that supports IPv6.  The new
+>>> statd implementation resides under
+>>>
+>>>  utils/new-statd/
+>>>
+>>> The contents of this directory are built if --enable-tirpc is set
+>>> on the ./configure command line, and sqlite3 is available on the
+>>> build system.  Otherwise, the legacy version of statd, which still
+>>> resides under utils/statd/, is built.
+>>>
+>>> The goals of this re-write are:
+>>>
+>>> o Support IPv6 networking
+>>>
+>>>   Support interoperation with TI-RPC-based NSM implementations.
+>>>   Transport Independent RPC, or TI-RPC, provides IPv6 network support
+>>>   for Linux's NSM implementation.
+>>>
+>>>   To support TI-RPC, open code to construct RPC requests in socket
+>>>   buffers and then schedule them has been replaced with standard
+>>>   library calls.
+>>>
+>>> o Support notification via TCP
+>>>
+>>>   As a secondary benefit of using TI-RPC library calls, reboot
+>>>   notifications and NLM callbacks can now be sent via connection-
+>>>   oriented transport protocols.
+>>>
+>>>   Note that lockd does not (yet) tell statd what transport protocol
+>>>   to use when sending reboot notifications.  statd/sm-notify will
+>>>   continue to use UDP for the time being.
+>>>
+>>> o Use an embedded database for storing on-disk callback data
+>>>
+>>>   This whole exercise is for the purpose of crash robustness.  There
+>>>   are well-known deficiencies with simple create/rename/unlink
+>>>   disk storage schemes during system crashes.  Replace the current
+>>>   flat-file monitor list mechanism which uses sync(2) with sqlite3,
+>>>   which uses fsync(3).
+>>
+>> If someone wants to move around that data, is it still simple to do
+>> that?  (Where is it kept on the filesystem?)
+>>
+>> (I'm thinking of someone that shares it for high-availabity, as in:
+>>
+>> 	http://www.howtoforge.com/high_availability_nfs_drbd_heartbeat_p3
+>>
+>> Or maybe somebody that just needs to move their /var partition to a
+>> different disk one day.)
 >
->> Apparently there is a 100KB per-email size limit imposed by
->> vger.kernel.org.  I've broken up the large statd patch, and
->> postponed the nfs(8) man page patches to another day.
->>
->> Yesterday it was decided that:
->>
->>  [PATCH 3/5] statd: change default state dir to /var/lib/nfs/statd
->>
->> was overkill. That one has been dropped from this series.
->>
->> The first two of the present patches introduce the .c files under
->> utils/new-statd/ .  The next patch adds actools infrastructure for
->> building the new statd and sm-notify executables.  The last patch
->> adds two new man pages for statd and sm-notify.
->>
->> The old statd remains in utils/statd.  If sqlite3 and TI-RPC is
->> present on the build system, and TI-RPC is enabled during
->> configuration, the new statd is built and installed instead of the
->> old one.
->>
->> See the description in the first patch for more details on the
->> features of the new implementation.
->>
+> Statd's monitor lists and state number are stored in a single regular  
+> file, /var/lib/nfs/statd/statdb by default.  This file can be easily  
+> backed up, or used on other systems, if desired.  I would recommend  
+> ensuring the NSM state number is reset in the latter case, which can be 
+> done with the sqlite3 command.
 >
-> Nice work, Chuck.
->
-> Rewriting statd from scratch is a pretty bold step, but I think it's
-> warranted.
->
-> I've been testing this new implementation over several iterations and
-> the recent ones have worked well for me so far. I've also walked
-> through the code and it all seems to make sense.
->
-> Acked-by: Jeff Layton <jlayton@redhat.com>
+> I've had some dialog with Lon Hohberger about clustering requirements.  I 
+> think we are looking at crafting a separate utility that uses sqlite3 C 
+> function calls to extract data that's interesting to the clustering 
+> implementation.  Again, this could even be scripted with bash and the 
+> sqlite3 command, but perhaps a C program is more maintainable.
 
-Independent testing was an important piece of this work.  Thanks to  
-Jeff and Sankar Bose at NetApp for their assistance so far.
+OK, good.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+And for the simplest cases, it should still be enough to just copy
+/var/lib/nfs/, right?
+
+--b.
