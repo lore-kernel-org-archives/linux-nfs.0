@@ -1,17 +1,17 @@
-From: Steve Dickson <SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [Patch 3/8] NFS Mount Configuration File (Vers 2)
-Date: Wed, 05 Aug 2009 15:14:11 -0400
-Message-ID: <4A79DA03.20703@RedHat.com>
+Date: Wed, 5 Aug 2009 15:29:19 -0400
+Message-ID: <20090805192919.GI9944@fieldses.org>
 References: <4A76F8E6.2010607@RedHat.com> <4A76F9E9.5020604@RedHat.com>
 	<20090803152409.GB28838@fieldses.org> <4A7706E8.7060106@RedHat.com>
-	<20090803155658.GF28838@fieldses.org>
+	<20090803155658.GF28838@fieldses.org> <4A79DA03.20703@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090803155658.GF28838@fieldses.org>
+In-Reply-To: <4A79DA03.20703@RedHat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -23,43 +23,21 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/03/2009 11:56 AM, J. Bruce Fields wrote:
-> On Mon, Aug 03, 2009 at 11:48:56AM -0400, Steve Dickson wrote:
->>
->> On 08/03/2009 11:24 AM, J. Bruce Fields wrote:
->>> On Mon, Aug 03, 2009 at 10:53:29AM -0400, Steve Dickson wrote:
->>>> commit 528e270be6bb3e4a072cbbb7f3a8b378b64b7fba
->>>> Author: Steve Dickson <steved@redhat.com>
->>>> Date:   Mon Mar 9 13:57:10 2009 -0400
->>>>
->>>>     Store values in lower case. This makes it easier to do string
->>>>     comparisons when reading lists from the configuration file.
->>> Just curious--which parts of the configuration file (section headers,
->>> keys, values--looks like maybe all 3?) are you making case-insensitive,
->>> and why do they need to be?
->> Yes all three of them... 
->>> E.g. the idmapd configuration file contains paths and user/group names,
->>> and both those still need to be case sensitive.
->> hmm... good point... I would suspect this might be the case for
->> all users of these routines since pathnames and user/group names
->> are always case-sensitive.... 
->>
->> I would guess both the section and keys can be case-insensitive
->> but the key probably say case-sensitive...
+On Wed, Aug 05, 2009 at 03:14:11PM -0400, Steve Dickson wrote:
+> After thinking about this.. I've convinced myself that the internal
+> parsing routines should make the Section names case-insensitive 
+> but the rest of the data (i.e the tag, value) should be returned as is
+> and let the callers deal with the case... 
 > 
-> If you're using mount paths, for example, in the section names, then
-> that part also needs to be case-sensitive.
-> 
-> Probably the right thing to do is to leave the core config-file code out
-> of the business of playing with case, and let the callers do it in
-> particular cases when it's appropriate.
-After thinking about this.. I've convinced myself that the internal
-parsing routines should make the Section names case-insensitive 
-but the rest of the data (i.e the tag, value) should be returned as is
-and let the callers deal with the case... 
+> The reason being everything hangs off Section names. So making those
+> easier to find I think is a good thing and hopefully it will make
+> managing config files a bit less error prone.... 
 
-The reason being everything hangs off Section names. So making those
-easier to find I think is a good thing and hopefully it will make
-managing config files a bit less error prone.... 
+That's probably not what I would do, but I could live with that, as long
+as we're preserving the case of paths and user/group names.
 
-steved.
+By the way, it looks like the git code to handle their extended section
+names (the [key "string"] thing) is in git's
+config.c:get_extended_base_var(), if that's a useful example.
+
+--b.
