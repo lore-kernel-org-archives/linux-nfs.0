@@ -1,63 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f217.google.com ([209.85.220.217]:48986 "EHLO
-	mail-fx0-f217.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932471AbZHDGzy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2009 02:55:54 -0400
-Received: by fxm17 with SMTP id 17so3089995fxm.37
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Aug 2009 23:55:54 -0700 (PDT)
-Date: Tue, 4 Aug 2009 08:55:54 +0200
-Message-ID: <3a4e28f70908032355u6ecf7a2bx6789347fdd5e5300@mail.gmail.com>
-Subject: Problem with active / active NFS cluster
-From: Niko Neufeld <niko.neufeld@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out1.uio.no ([129.240.10.57]:49209 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932633AbZHEAuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Aug 2009 20:50:24 -0400
+Subject: Re: [PATCH v3] read-modify-write page updating
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Peter Staubach <staubach@redhat.com>
+Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <4A787543.9040701@redhat.com>
+References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
+	 <49FA0CE8.9090706@redhat.com>
+	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
+	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
+	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
+	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
+	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
+	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
+	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
+	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
+	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
+	 <1243963631.4868.124.camel@heimdal.trondhjem.org>
+	 <18982.41770.293636.786518@fisica.ufpr.br>
+	 <1244049027.5603.5.camel@heimdal.trondhjem.org>
+	 <OFB53BFCCB.0CEC7A7E-ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>
+	 <1244138698.5203.59.camel@heimdal.trondhjem.org>
+	 <4A428482.60403@redhat.com> <4A55FAC8.5040309@redhat.com>
+	 <4A787543.9040701@redhat.com>
+Content-Type: text/plain
+Date: Tue, 04 Aug 2009 20:50:11 -0400
+Message-Id: <1249433411.12510.4.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dear all,
+On Tue, 2009-08-04 at 13:52 -0400, Peter Staubach wrote:
+> Signed-off-by: Peter Staubach <staubach@redhat.com>
+> 
+> --- linux-2.6.30.i686/fs/nfs/file.c.org
+> +++ linux-2.6.30.i686/fs/nfs/file.c
+> @@ -328,6 +328,42 @@ nfs_file_fsync(struct file *file, struct
+>  }
+>  
+>  /*
+> + * Decide whether a read/modify/write cycle may be more efficient
+> + * then a modify/write/read cycle when writing to a page in the
+> + * page cache.
+> + *
+> + * The modify/write/read cycle may occur if a page is read before
+> + * being completely filled by the writer.  In this situation, the
+> + * page must be completely written to stable storage on the server
+> + * before it can be refilled by reading in the page from the server.
+> + * This can lead to expensive, small, FILE_SYNC mode writes being
+> + * done.
+> + *
+> + * It may be more efficient to read the page first if the file is
+> + * open for reading in addition to writing, the page is not marked
+> + * as Uptodate, it is not dirty or waiting to be committed,
+> + * indicating that it was previously allocated and then modified,
+> + * that there were valid bytes of data in that range of the file,
+> + * and that the new data won't completely replace the old data in
+> + * that range of the file.
+> + */
+> +static int nfs_want_read_modify_write(struct file *file, struct page *page,
+> +			loff_t pos, unsigned len)
+> +{
+> +	unsigned int pglen = nfs_page_length(page);
+> +	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+> +	unsigned int end = offset + len;
+> +
+> +	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+> +	    !PageUptodate(page) &&		/* Uptodate? */
+> +	    !PagePrivate(page) &&		/* i/o request already? */
+> +	    pglen &&				/* valid bytes of file? */
+> +	    (end < pglen || offset))		/* replace all valid bytes? */
+> +		return 1;
+> +	return 0;
+> +}
+> +
+> +/*
+>   * This does the "real" work of the write. We must allocate and lock the
+>   * page to be sent back to the generic routine, which then copies the
+>   * data from user space.
+> @@ -340,15 +376,16 @@ static int nfs_write_begin(struct file *
+>  			struct page **pagep, void **fsdata)
+>  {
+>  	int ret;
+> -	pgoff_t index;
+> +	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
+>  	struct page *page;
+> -	index = pos >> PAGE_CACHE_SHIFT;
+> +	int once_thru = 0;
+>  
+>  	dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
+>  		file->f_path.dentry->d_parent->d_name.name,
+>  		file->f_path.dentry->d_name.name,
+>  		mapping->host->i_ino, len, (long long) pos);
+>  
+> +start:
+>  	/*
+>  	 * Prevent starvation issues if someone is doing a consistency
+>  	 * sync-to-disk
+> @@ -367,6 +404,13 @@ static int nfs_write_begin(struct file *
+>  	if (ret) {
+>  		unlock_page(page);
+>  		page_cache_release(page);
+> +	} else if (!once_thru &&
+> +		   nfs_want_read_modify_write(file, page, pos, len)) {
+> +		once_thru = 1;
+> +		ret = nfs_readpage(file, page);
+> +		page_cache_release(page);
+> +		if (!ret)
+> +			goto start;
+>  	}
+>  	return ret;
+>  }
+> 
+Thanks! Applied...
 
-My apologies up-front if this the wrong mailing list for this post.
+Trond
 
-To serve the needs of a fairly large (~ 1000 nodes) cluster for an
-experiment at CERN we use the following setup:
-5 servers running RHEL 5.3 (2.6.18-128.1.16.el5 x86_64) export two
-filesystems rw via NFS v3 over UDP to the entire cluster. The clients
-are predominantly RHEL4 (2.6.9-78.0.8.EL.cernsmp) both 32 and 64 bits.
-The filesystems reside on a SAN and the servers mount them using
-StorNext cvfs 3.5.1.
-For load-sharing and high-availability we use the following setup:
-there are as many virtual IPs as their are physical servers. The
-clients mount from a DNS alias. When all servers are active each
-server will export both file-systems via one of the virtual IPs. We
-use heartbeat to handle failovers, which works very nicely.
-/etc/exports on all servers looks like this
-<SNIP>
-*lbdaq.cern.ch(rw,sync,root_squash,no_subtree_check,fsid=100)
-</SNIP>
-
-Recently users have reported the following strange problems
-
-1) a directory (with some subdirectories and files) was deleted on one
-client. Immedeatly afterwards the directory was re-created from a CVS
-checkout. On at least one other client this change was *not* visible.
-The original contents (before the unlink) remained visible for more
-than 1 hour (!). Unfortunately the problem "vanished" before we could
-get traces (wireshark etc...). Fact is that the two client nodes in
-question have mounted the fs from different servers.
-
-2) One user claims that a freshly checked out directory (on which he
-also worked from another node) has "vanished".
-
-After googling for a while I realized that - at least from a
-superficial search - that this specific configuration, where  several
-servers serve the same filesystem at the same time, is rare.
-My question now is: is there something fundamentally flawed or risky
-in this setup? My (admittedly) not very deep understanding of NFS is
-that this should not be worse in terms of (potential) caching problems
-than a setup with a single server.
-
-Any hint / comment is greatly appreciated.
-
-Regards,
-Niko
