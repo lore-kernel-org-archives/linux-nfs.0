@@ -1,63 +1,58 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Patch 3/8] NFS Mount Configuration File (Vers 2)
-Date: Wed, 5 Aug 2009 15:33:16 -0400
-Message-ID: <20090805193316.GJ9944@fieldses.org>
-References: <4A76F8E6.2010607@RedHat.com> <4A76F9E9.5020604@RedHat.com> <20090803152409.GB28838@fieldses.org> <4A7706E8.7060106@RedHat.com> <20090803155658.GF28838@fieldses.org> <4A79DA03.20703@RedHat.com> <20090805192919.GI9944@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/10] SUNRPC: Clean up RPCBIND_MAXUADDRLEN definitions
+Date: Wed, 05 Aug 2009 15:39:58 -0400
+Message-ID: <20090805193957.3359.33308.stgit@matisse.1015granger.net>
+References: <20090805193709.3359.34559.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54039 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750845AbZHETdP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Aug 2009 15:33:15 -0400
-In-Reply-To: <20090805192919.GI9944@fieldses.org>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:42690
+	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751866AbZHETj7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 15:39:59 -0400
+In-Reply-To: <20090805193709.3359.34559.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 05, 2009 at 03:29:19PM -0400, J. Bruce Fields wrote:
-> On Wed, Aug 05, 2009 at 03:14:11PM -0400, Steve Dickson wrote:
-> > After thinking about this.. I've convinced myself that the internal
-> > parsing routines should make the Section names case-insensitive 
-> > but the rest of the data (i.e the tag, value) should be returned as is
-> > and let the callers deal with the case... 
-> > 
-> > The reason being everything hangs off Section names. So making those
-> > easier to find I think is a good thing and hopefully it will make
-> > managing config files a bit less error prone.... 
-> 
-> That's probably not what I would do, but I could live with that, as long
-> as we're preserving the case of paths and user/group names.
-> 
-> By the way, it looks like the git code to handle their extended section
-> names (the [key "string"] thing) is in git's
-> config.c:get_extended_base_var(), if that's a useful example.
+Clean up: Replace the single-integer definition of RPCBIND_MAXUADDRLEN
+with a definition that is based on previously defined address string
+sizes, and document the way this maximum is calculated.  Also provide
+a separate macro for the size of the port number extension.
 
-(And, by the way, they agree with you on case-sensitivity: from the
-git-config man page:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-	"The file consists of sections and variables. A section begins
-	with the name of the section in square brackets and continues
-	until the next section begins. Section names are not case
-	sensitive. Only alphanumeric characters, - and . are allowed in
-	section names. Each variable must belong to some section, which
-	means that there must be section header before first setting of
-	a variable.
+ include/linux/sunrpc/msg_prot.h |   17 ++++++++++++++++-
+ 1 files changed, 16 insertions(+), 1 deletions(-)
 
-	"Sections can be further divided into subsections. To begin a
-	subsection put its name in double quotes, separated by space
-	from the section name, in the section header, like in example
-	below:
+diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
+index 70df4f1..77e6248 100644
+--- a/include/linux/sunrpc/msg_prot.h
++++ b/include/linux/sunrpc/msg_prot.h
+@@ -189,7 +189,22 @@ typedef __be32	rpc_fraghdr;
+  * Additionally, the two alternative forms specified in Section 2.2 of
+  * [RFC2373] are also acceptable.
+  */
+-#define RPCBIND_MAXUADDRLEN	(56u)
++
++#include <linux/inet.h>
++
++/* Maximum size of the port number part of a universal address */
++#define RPCBIND_MAXUADDRPLEN	sizeof(".255.255")
++
++/* Maximum size of an IPv4 universal address */
++#define RPCBIND_MAXUADDR4LEN	\
++		(INET_ADDRSTRLEN + RPCBIND_MAXUADDRPLEN)
++
++/* Maximum size of an IPv6 universal address */
++#define RPCBIND_MAXUADDR6LEN	\
++		(INET6_ADDRSTRLEN + RPCBIND_MAXUADDRPLEN)
++
++/* Assume INET6_ADDRSTRLEN will always be larger than INET_ADDRSTRLEN... */
++#define RPCBIND_MAXUADDRLEN	RPCBIND_MAXUADDR6LEN
+ 
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_MSGPROT_H_ */
 
-		[section "subsection"]
-
-	"Subsection names can contain any characters except newline
-	(doublequote " and backslash have to be escaped as \" and \\,
-	respectively) and are case sensitive. Section header cannot span
-	multiple lines."
-
-)
-
---b.
