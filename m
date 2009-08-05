@@ -1,61 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51751 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755447AbZHYReH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2009 13:34:07 -0400
-Message-ID: <4A942089.1010102@RedHat.com>
-Date: Tue, 25 Aug 2009 13:34:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [NFS] [PATCH] nfs-utils: nfs-iostat.py option to sort by ops/s
-References: <4A93214A.5000404@dreamworks.com> <009376AC-B08B-4E90-A46B-E5BC069A5A78@oracle.com>
-In-Reply-To: <009376AC-B08B-4E90-A46B-E5BC069A5A78@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet12.oracle.com ([148.87.113.124]:50791 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934292AbZHEOp6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 10:45:58 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/4] new statd [take 2]
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 05 Aug 2009 10:45:30 -0400
+Message-ID: <20090805143550.12866.8377.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 08/25/2009 12:29 PM, Chuck Lever wrote:
-> [ Cc: changed to correct mailing list.  sf.net list is deprecated. ]
-> 
-> On Aug 24, 2009, at 7:24 PM, Lans Carstensen wrote:
->> Hi,
->>
->> I've recently made tools/nfs-iostat/nfs-iostat.py more useful in our
->> autofs environment with a variety of cleanups and am offering this
->> patch up for discussion and/or inclusion in nfs-utils.  It does the
->> following:
->>
->> * Adds a --top flag to sort the display of mountpoint entries by ops/s.
->> * Adds a --<n> flag to only display stats for the first <n> mountpoints
->> * Re-reads the mountpoint list on intervals since it's dynamic in an
->>  autofs environment.
->> * Conforms the Python path to the LSB 3.2+ standard of /usr/bin/python
->> http://refspecs.freestandards.org/LSB_3.2.0/LSB-Languages/LSB-Languages/pylocation.html
->>
-> 
-> A couple of overall comments.
-> 
-> 1.  These seem to be logically independent changes, so we would prefer
-> them in separate patches.  Each logical change can be refined and voted
-> up or down separately.
-I guess you could break this up into more patches... but overall its
-by no means unruly.... 
+Apparently there is a 100KB per-email size limit imposed by
+vger.kernel.org.  I've broken up the large statd patch, and
+postponed the nfs(8) man page patches to another day.
 
-> 
-> 2.  Sorting by ops is OK, but not sure about "--top".  Since the script
-> doesn't generate a curses like display like "top" does, maybe "--sort
-> <n>" would be a better name, and --top and --<n> could be combined.
-Hmm.. I kinda like like the --top flag... its pretty descriptive to
-what it does..
- 
-> 
-> 3.  The distributors should weigh in on the Python path change.
-Using '#!/usr/bin/python' is better than '#!/usr/bin/env python'
-since you know exactly which python binary you will be using.
-It was also pointed out the env convention will confuse 
-rpm's dependency generator
+Yesterday it was decided that:
 
-steved.
+  [PATCH 3/5] statd: change default state dir to /var/lib/nfs/statd
+
+was overkill. That one has been dropped from this series.
+
+The first two of the present patches introduce the .c files under
+utils/new-statd/ .  The next patch adds actools infrastructure for
+building the new statd and sm-notify executables.  The last patch
+adds two new man pages for statd and sm-notify.
+
+The old statd remains in utils/statd.  If sqlite3 and TI-RPC is
+present on the build system, and TI-RPC is enabled during
+configuration, the new statd is built and installed instead of the
+old one.
+
+See the description in the first patch for more details on the
+features of the new implementation.
+
+---
+
+Chuck Lever (4):
+      nfs-utils: introduce new statd implementation (4th part)
+      nfs-utils: introduce new statd implementation (3rd part)
+      nfs-utils: introduce new statd implementation (2nd part)
+      nfs-utils: introduce new statd implementation (1st part)
+
+
+ .gitignore                    |    4 
+ Makefile.am                   |    4 
+ aclocal/libcap.m4             |   15 +
+ aclocal/libsqlite3.m4         |   33 ++
+ aclocal/libtirpc.m4           |    2 
+ configure.ac                  |   12 +
+ utils/Makefile.am             |    7 
+ utils/new-statd/Makefile.am   |  102 +++++
+ utils/new-statd/file.c        |  779 ++++++++++++++++++++++++++++++++++++++
+ utils/new-statd/hostname.c    |  520 +++++++++++++++++++++++++
+ utils/new-statd/main.c        |  319 ++++++++++++++++
+ utils/new-statd/nlmcall.c     |  525 ++++++++++++++++++++++++++
+ utils/new-statd/sm-notify.c   |  155 ++++++++
+ utils/new-statd/sm-notify.man |  286 ++++++++++++++
+ utils/new-statd/sm_inter.x    |  107 +++++
+ utils/new-statd/smncall.c     |  774 ++++++++++++++++++++++++++++++++++++++
+ utils/new-statd/start-statd   |   12 +
+ utils/new-statd/statd.h       |  135 +++++++
+ utils/new-statd/statd.man     |  388 +++++++++++++++++++
+ utils/new-statd/svc.c         |  841 +++++++++++++++++++++++++++++++++++++++++
+ utils/statd/Makefile.am       |    9 
+ 21 files changed, 5024 insertions(+), 5 deletions(-)
+ create mode 100644 aclocal/libcap.m4
+ create mode 100644 aclocal/libsqlite3.m4
+ create mode 100644 utils/new-statd/Makefile.am
+ create mode 100644 utils/new-statd/file.c
+ create mode 100644 utils/new-statd/hostname.c
+ create mode 100644 utils/new-statd/main.c
+ create mode 100644 utils/new-statd/nlmcall.c
+ create mode 100644 utils/new-statd/sm-notify.c
+ create mode 100644 utils/new-statd/sm-notify.man
+ create mode 100644 utils/new-statd/sm_inter.x
+ create mode 100644 utils/new-statd/smncall.c
+ create mode 100644 utils/new-statd/start-statd
+ create mode 100644 utils/new-statd/statd.h
+ create mode 100644 utils/new-statd/statd.man
+ create mode 100644 utils/new-statd/svc.c
+
+-- 
+Signature
