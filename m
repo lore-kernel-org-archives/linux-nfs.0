@@ -1,102 +1,499 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/10] SUNRPC: Move XDR data type size macros
-Date: Wed, 05 Aug 2009 15:40:05 -0400
-Message-ID: <20090805194005.3359.68780.stgit@matisse.1015granger.net>
+Subject: [PATCH 03/10] SUNRPC: Provide functions for managing universal
+	addresses
+Date: Wed, 05 Aug 2009 15:40:13 -0400
+Message-ID: <20090805194012.3359.23101.stgit@matisse.1015granger.net>
 References: <20090805193709.3359.34559.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:42693
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:42696
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751886AbZHETkH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 15:40:07 -0400
+	by vger.kernel.org with ESMTP id S1751398AbZHETkP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 15:40:15 -0400
 In-Reply-To: <20090805193709.3359.34559.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: To make subsequent patches cleaner, move the XDR data type
-size macros to the top of the file (similar to nfs4xdr.c) first.
+Introduce a set of functions in the kernel's RPC implementation for
+converting between a socket address and either a standard
+presentation address string or an RPC universal address.
+
+The universal address functions will be used to encode and decode
+RPCB_FOO and NFSv4 SETCLIENTID arguments.  The other functions are
+part of a previous promise to deliver shared functions that can be
+used by upper-layer protocols to display and manipulate IP
+addresses.
+
+The kernel's current address printf formatters were designed
+specifically for kernel to user-space APIs that require a particular
+string format for socket addresses, thus are somewhat limited for the
+purposes of sunrpc.ko.  The formatter for IPv6 addresses, %pI6, does
+not support short-handing or scope IDs.  Also, these printf formatters
+are unique per address family, so a separate formatter string is
+required for printing AF_INET and AF_INET6 addresses.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   56 +++++++++++++++++++++++++++---------------------
- 1 files changed, 31 insertions(+), 25 deletions(-)
+ fs/nfs/internal.h           |    2 
+ include/linux/sunrpc/clnt.h |   38 ++++
+ net/sunrpc/Makefile         |    2 
+ net/sunrpc/addr.c           |  364 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 403 insertions(+), 3 deletions(-)
+ create mode 100644 net/sunrpc/addr.c
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index beee6da..ad1d731 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -75,6 +75,37 @@ enum {
- #define RPCB_OWNER_STRING	"0"
- #define RPCB_MAXOWNERLEN	sizeof(RPCB_OWNER_STRING)
- 
-+/*
-+ * XDR data type sizes
-+ */
-+#define RPCB_program_sz		(1)
-+#define RPCB_version_sz		(1)
-+#define RPCB_protocol_sz	(1)
-+#define RPCB_port_sz		(1)
-+#define RPCB_boolean_sz		(1)
-+
-+#define RPCB_netid_sz		(1 + XDR_QUADLEN(RPCBIND_MAXNETIDLEN))
-+#define RPCB_addr_sz		(1 + XDR_QUADLEN(RPCBIND_MAXUADDRLEN))
-+#define RPCB_ownerstring_sz	(1 + XDR_QUADLEN(RPCB_MAXOWNERLEN))
-+
-+/*
-+ * XDR argument and result sizes
-+ */
-+#define RPCB_mappingargs_sz	(RPCB_program_sz + RPCB_version_sz + \
-+				RPCB_protocol_sz + RPCB_port_sz)
-+#define RPCB_getaddrargs_sz	(RPCB_program_sz + RPCB_version_sz + \
-+				RPCB_netid_sz + RPCB_addr_sz + \
-+				RPCB_ownerstring_sz)
-+
-+#define RPCB_getportres_sz	RPCB_port_sz
-+#define RPCB_setres_sz		RPCB_boolean_sz
-+
-+/*
-+ * Note that RFC 1833 does not put any size restrictions on the
-+ * address string returned by the remote rpcbind database.
-+ */
-+#define RPCB_getaddrres_sz	RPCB_addr_sz
-+
- static void			rpcb_getport_done(struct rpc_task *, void *);
- static void			rpcb_map_release(void *data);
- static struct rpc_program	rpcb_program;
-@@ -768,31 +799,6 @@ out_err:
- 	return -EIO;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8d2b71d..ff68397 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -370,8 +370,6 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ 		PAGE_SIZE - 1) >> PAGE_SHIFT;
  }
  
--#define RPCB_program_sz		(1u)
--#define RPCB_version_sz		(1u)
--#define RPCB_protocol_sz	(1u)
--#define RPCB_port_sz		(1u)
--#define RPCB_boolean_sz		(1u)
+-#define IPV6_SCOPE_DELIMITER	'%'
 -
--#define RPCB_netid_sz		(1+XDR_QUADLEN(RPCBIND_MAXNETIDLEN))
--#define RPCB_addr_sz		(1+XDR_QUADLEN(RPCBIND_MAXUADDRLEN))
--#define RPCB_ownerstring_sz	(1+XDR_QUADLEN(RPCB_MAXOWNERLEN))
--
--#define RPCB_mappingargs_sz	RPCB_program_sz+RPCB_version_sz+	\
--				RPCB_protocol_sz+RPCB_port_sz
--#define RPCB_getaddrargs_sz	RPCB_program_sz+RPCB_version_sz+	\
--				RPCB_netid_sz+RPCB_addr_sz+		\
--				RPCB_ownerstring_sz
--
--#define RPCB_setres_sz		RPCB_boolean_sz
--#define RPCB_getportres_sz	RPCB_port_sz
--
--/*
-- * Note that RFC 1833 does not put any size restrictions on the
-- * address string returned by the remote rpcbind database.
-- */
--#define RPCB_getaddrres_sz	RPCB_addr_sz
--
- #define PROC(proc, argtype, restype)					\
- 	[RPCBPROC_##proc] = {						\
- 		.p_proc		= RPCBPROC_##proc,			\
+ /*
+  * Set the port number in an address.  Be agnostic about the address
+  * family.
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 37881f1..2636e8a 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -9,6 +9,10 @@
+ #ifndef _LINUX_SUNRPC_CLNT_H
+ #define _LINUX_SUNRPC_CLNT_H
+ 
++#include <linux/socket.h>
++#include <linux/in.h>
++#include <linux/in6.h>
++
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xprt.h>
+@@ -151,5 +155,39 @@ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ 
++size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
++size_t		rpc_pton(const char *, const size_t,
++			 struct sockaddr *, const size_t);
++char *		rpc_sockaddr2uaddr(const struct sockaddr *);
++size_t		rpc_uaddr2sockaddr(const char *, const size_t,
++				   struct sockaddr *, const size_t);
++
++static inline unsigned short rpc_get_port(const struct sockaddr *sap)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		return ntohs(((struct sockaddr_in *)sap)->sin_port);
++	case AF_INET6:
++		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
++	}
++	return 0;
++}
++
++static inline void rpc_set_port(struct sockaddr *sap,
++				const unsigned short port)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		((struct sockaddr_in *)sap)->sin_port = htons(port);
++		break;
++	case AF_INET6:
++		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
++		break;
++	}
++}
++
++#define IPV6_SCOPE_DELIMITER		'%'
++#define IPV6_SCOPE_ID_LEN		sizeof("%nnnnnnnnnn")
++
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_CLNT_H */
+diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+index db73fd2..9d2fca5 100644
+--- a/net/sunrpc/Makefile
++++ b/net/sunrpc/Makefile
+@@ -10,7 +10,7 @@ obj-$(CONFIG_SUNRPC_XPRT_RDMA) += xprtrdma/
+ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+ 	    auth.o auth_null.o auth_unix.o auth_generic.o \
+ 	    svc.o svcsock.o svcauth.o svcauth_unix.o \
+-	    rpcb_clnt.o timer.o xdr.o \
++	    addr.o rpcb_clnt.o timer.o xdr.o \
+ 	    sunrpc_syms.o cache.o rpc_pipe.o \
+ 	    svc_xprt.o
+ sunrpc-$(CONFIG_NFS_V4_1) += backchannel_rqst.o bc_svc.o
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+new file mode 100644
+index 0000000..22e8fd8
+--- /dev/null
++++ b/net/sunrpc/addr.c
+@@ -0,0 +1,364 @@
++/*
++ * Copyright 2009, Oracle.  All rights reserved.
++ *
++ * Convert socket addresses to presentation addresses and universal
++ * addresses, and vice versa.
++ *
++ * Universal addresses are introduced by RFC 1833 and further refined by
++ * recent RFCs describing NFSv4.  The universal address format is part
++ * of the external (network) interface provided by rpcbind version 3
++ * and 4, and by NFSv4.  Such an address is a string containing a
++ * presentation format IP address followed by a port number in
++ * "hibyte.lobyte" format.
++ *
++ * IPv6 addresses can also include a scope ID, typically denoted by
++ * a '%' followed by a device name or a non-negative integer.  Refer to
++ * RFC 4291, Section 2.2 for details on IPv6 presentation formats.
++ */
++
++#include <net/ipv6.h>
++#include <linux/sunrpc/clnt.h>
++
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++
++static size_t rpc_ntop6_noscopeid(const struct sockaddr *sap,
++				  char *buf, const int buflen)
++{
++	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	const struct in6_addr *addr = &sin6->sin6_addr;
++
++	/*
++	 * RFC 4291, Section 2.2.2
++	 *
++	 * Shorthanded ANY address
++	 */
++	if (ipv6_addr_any(addr))
++		return snprintf(buf, buflen, "::");
++
++	/*
++	 * RFC 4291, Section 2.2.2
++	 *
++	 * Shorthanded loopback address
++	 */
++	if (ipv6_addr_loopback(addr))
++		return snprintf(buf, buflen, "::1");
++
++	/*
++	 * RFC 4291, Section 2.2.3
++	 *
++	 * Special presentation address format for mapped v4
++	 * addresses.
++	 */
++	if (ipv6_addr_v4mapped(addr))
++		return snprintf(buf, buflen, "::ffff:%pI4",
++					&addr->s6_addr32[3]);
++
++	/*
++	 * RFC 4291, Section 2.2.1
++	 *
++	 * To keep the result as short as possible, especially
++	 * since we don't shorthand, we don't want leading zeros
++	 * in each halfword, so avoid %pI6.
++	 */
++	return snprintf(buf, buflen, "%x:%x:%x:%x:%x:%x:%x:%x",
++		ntohs(addr->s6_addr16[0]), ntohs(addr->s6_addr16[1]),
++		ntohs(addr->s6_addr16[2]), ntohs(addr->s6_addr16[3]),
++		ntohs(addr->s6_addr16[4]), ntohs(addr->s6_addr16[5]),
++		ntohs(addr->s6_addr16[6]), ntohs(addr->s6_addr16[7]));
++}
++
++static size_t rpc_ntop6(const struct sockaddr *sap,
++			char *buf, const size_t buflen)
++{
++	const struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	char scopebuf[IPV6_SCOPE_ID_LEN];
++	size_t len;
++	int rc;
++
++	len = rpc_ntop6_noscopeid(sap, buf, buflen);
++	if (unlikely(len == 0))
++		return len;
++
++	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL) &&
++	    !(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_SITELOCAL))
++		return len;
++
++	rc = snprintf(scopebuf, sizeof(scopebuf), "%c%u",
++			IPV6_SCOPE_DELIMITER, sin6->sin6_scope_id);
++	if (unlikely((size_t)rc > sizeof(scopebuf)))
++		return 0;
++
++	len += rc;
++	if (unlikely(len > buflen))
++		return 0;
++
++	strcat(buf, scopebuf);
++	return len;
++}
++
++#else	/* !(defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) */
++
++static size_t rpc_ntop6_noscopeid(const struct sockaddr *sap,
++				  char *buf, const int buflen)
++{
++	return 0;
++}
++
++static size_t rpc_ntop6(const struct sockaddr *sap,
++			char *buf, const size_t buflen)
++{
++	return 0;
++}
++
++#endif	/* !(defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)) */
++
++static int rpc_ntop4(const struct sockaddr *sap,
++		     char *buf, const size_t buflen)
++{
++	const struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++
++	return snprintf(buf, buflen, "%pI4", &sin->sin_addr);
++}
++
++/**
++ * rpc_ntop - construct a presentation address in @buf
++ * @sap: socket address
++ * @buf: construction area
++ * @buflen: size of @buf, in bytes
++ *
++ * Plants a %NUL-terminated string in @buf and returns the length
++ * of the string, excluding the %NUL.  Otherwise zero is returned.
++ */
++size_t rpc_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
++{
++	switch (sap->sa_family) {
++	case AF_INET:
++		return rpc_ntop4(sap, buf, buflen);
++	case AF_INET6:
++		return rpc_ntop6(sap, buf, buflen);
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_ntop);
++
++static size_t rpc_pton4(const char *buf, const size_t buflen,
++			struct sockaddr *sap, const size_t salen)
++{
++	struct sockaddr_in *sin = (struct sockaddr_in *)sap;
++	u8 *addr = (u8 *)&sin->sin_addr.s_addr;
++
++	if (buflen > INET_ADDRSTRLEN || salen < sizeof(struct sockaddr_in))
++		return 0;
++
++	memset(sap, 0, sizeof(struct sockaddr_in));
++
++	if (in4_pton(buf, buflen, addr, '\0', NULL) == 0)
++		return 0;
++
++	sin->sin_family = AF_INET;
++	return sizeof(struct sockaddr_in);;
++}
++
++#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
++static int rpc_parse_scope_id(const char *buf, const size_t buflen,
++			      const char *delim, struct sockaddr_in6 *sin6)
++{
++	char *p;
++	size_t len;
++
++	if ((buf + buflen) == delim)
++		return 1;
++
++	if (*delim != IPV6_SCOPE_DELIMITER)
++		return 0;
++
++	if (!(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_LINKLOCAL) &&
++	    !(ipv6_addr_type(&sin6->sin6_addr) & IPV6_ADDR_SITELOCAL))
++		return 0;
++
++	len = (buf + buflen) - delim - 1;
++	p = kstrndup(delim + 1, len, GFP_KERNEL);
++	if (p) {
++		unsigned long scope_id = 0;
++		struct net_device *dev;
++
++		dev = dev_get_by_name(&init_net, p);
++		if (dev != NULL) {
++			scope_id = dev->ifindex;
++			dev_put(dev);
++		} else {
++			if (strict_strtoul(p, 10, &scope_id) == 0) {
++				kfree(p);
++				return 0;
++			}
++		}
++
++		kfree(p);
++
++		sin6->sin6_scope_id = scope_id;
++		return 1;
++	}
++
++	return 0;
++}
++
++static size_t rpc_pton6(const char *buf, const size_t buflen,
++			struct sockaddr *sap, const size_t salen)
++{
++	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sap;
++	u8 *addr = (u8 *)&sin6->sin6_addr.in6_u;
++	const char *delim;
++
++	if (buflen > (INET6_ADDRSTRLEN + IPV6_SCOPE_ID_LEN) ||
++	    salen < sizeof(struct sockaddr_in6))
++		return 0;
++
++	memset(sap, 0, sizeof(struct sockaddr_in6));
++
++	if (in6_pton(buf, buflen, addr, IPV6_SCOPE_DELIMITER, &delim) == 0)
++		return 0;
++
++	if (!rpc_parse_scope_id(buf, buflen, delim, sin6))
++		return 0;
++
++	sin6->sin6_family = AF_INET6;
++	return sizeof(struct sockaddr_in6);
++}
++#else
++static size_t rpc_pton6(const char *buf, const size_t buflen,
++			struct sockaddr *sap, const size_t salen)
++{
++	return 0;
++}
++#endif
++
++/**
++ * rpc_pton - Construct a sockaddr in @sap
++ * @buf: C string containing presentation format IP address
++ * @buflen: length of presentation address in bytes
++ * @sap: buffer into which to plant socket address
++ * @salen: size of buffer in bytes
++ *
++ * Returns the size of the socket address if successful; otherwise
++ * zero is returned.
++ *
++ * Plants a socket address in @sap and returns the size of the
++ * socket address, if successful.  Returns zero if an error
++ * occurred.
++ */
++size_t rpc_pton(const char *buf, const size_t buflen,
++		struct sockaddr *sap, const size_t salen)
++{
++	unsigned int i;
++
++	for (i = 0; i < buflen; i++)
++		if (buf[i] == ':')
++			return rpc_pton6(buf, buflen, sap, salen);
++	return rpc_pton4(buf, buflen, sap, salen);
++}
++EXPORT_SYMBOL_GPL(rpc_pton);
++
++/**
++ * rpc_sockaddr2uaddr - Construct a universal address string from @sap.
++ * @sap: socket address
++ *
++ * Returns a %NUL-terminated string in dynamically allocated memory;
++ * otherwise NULL is returned if an error occurred.  Caller must
++ * free the returned string.
++ */
++char *rpc_sockaddr2uaddr(const struct sockaddr *sap)
++{
++	char portbuf[RPCBIND_MAXUADDRPLEN];
++	char addrbuf[RPCBIND_MAXUADDRLEN];
++	unsigned short port;
++
++	switch (sap->sa_family) {
++	case AF_INET:
++		if (rpc_ntop4(sap, addrbuf, sizeof(addrbuf)) == 0)
++			return NULL;
++		port = ntohs(((struct sockaddr_in *)sap)->sin_port);
++		break;
++	case AF_INET6:
++		if (rpc_ntop6_noscopeid(sap, addrbuf, sizeof(addrbuf)) == 0)
++			return NULL;
++		port = ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
++		break;
++	default:
++		return NULL;
++	}
++
++	if (snprintf(portbuf, sizeof(portbuf),
++		     ".%u.%u", port >> 8, port & 0xff) > (int)sizeof(portbuf))
++		return NULL;
++
++	if (strlcat(addrbuf, portbuf, sizeof(addrbuf)) > sizeof(addrbuf))
++		return NULL;
++
++	return kstrdup(addrbuf, GFP_KERNEL);
++}
++EXPORT_SYMBOL_GPL(rpc_sockaddr2uaddr);
++
++/**
++ * rpc_uaddr2sockaddr - convert a universal address to a socket address.
++ * @uaddr: C string containing universal address to convert
++ * @uaddr_len: length of universal address string
++ * @sap: buffer into which to plant socket address
++ * @salen: size of buffer
++ *
++ * Returns the size of the socket address if successful; otherwise
++ * zero is returned.
++ */
++size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
++			  struct sockaddr *sap, const size_t salen)
++{
++	char *c, buf[RPCBIND_MAXUADDRLEN];
++	unsigned long portlo, porthi;
++	unsigned short port;
++
++	if (uaddr_len > sizeof(buf))
++		return 0;
++
++	memcpy(buf, uaddr, uaddr_len);
++
++	buf[uaddr_len] = '\n';
++	buf[uaddr_len + 1] = '\0';
++
++	c = strrchr(buf, '.');
++	if (unlikely(c == NULL))
++		return 0;
++	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
++		return 0;
++	if (unlikely(portlo > 255))
++		return 0;
++
++	c[0] = '\n';
++	c[1] = '\0';
++
++	c = strrchr(buf, '.');
++	if (unlikely(c == NULL))
++		return 0;
++	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
++		return 0;
++	if (unlikely(porthi > 255))
++		return 0;
++
++	port = (unsigned short)((porthi << 8) | portlo);
++
++	c[0] = '\0';
++
++	if (rpc_pton(buf, strlen(buf), sap, salen) == 0)
++		return 0;
++
++	switch (sap->sa_family) {
++	case AF_INET:
++		((struct sockaddr_in *)sap)->sin_port = htons(port);
++		return sizeof(struct sockaddr_in);
++	case AF_INET6:
++		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
++		return sizeof(struct sockaddr_in6);
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_uaddr2sockaddr);
 
