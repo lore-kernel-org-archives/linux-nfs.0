@@ -1,7 +1,7 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: [Patch 9/10] NFS Mount Configuration File (Vers 3)
-Date: Thu, 06 Aug 2009 14:48:51 -0400
-Message-ID: <4A7B2593.2000403@RedHat.com>
+Subject: [Patch 10/10] NFS Mount Configuration File (Vers 3)
+Date: Thu, 06 Aug 2009 14:49:56 -0400
+Message-ID: <4A7B25D4.4070204@RedHat.com>
 References: <4A7B2324.9090406@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -20,149 +20,95 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 6fe11af2fe9eacf785bf71f34251569bff197ebe
+commit 8157fe02ca0d056eb58ba94e8dabd14ead29d2fd
 Author: Steve Dickson <steved@redhat.com>
-Date:   Wed Aug 5 17:07:21 2009 -0400
+Date:   Thu Aug 6 13:11:00 2009 -0400
 
-    The example nfsmount.conf file
+    Now that only the Section names are case-insensitive
+    the mount code has to make sure the the mount
+    options given to the kernel are in the correct
+    case.
+    
+    Fixed a couple of warnings on #ifndefs
     
     Signed-off-by: Steve Dickson <steved@redhat.com>
 
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index 5c1e5ad..451ec90 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -20,6 +20,7 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
- if MOUNT_CONFIG
- mount_nfs_SOURCES += configfile.c
- man5_MANS += nfsmount.conf.man
-+EXTRA_DIST += nfsmount.conf
- endif
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index b263581..6fc5d60 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -64,4 +64,14 @@ extern int      conf_remove(int, char *, char *);
+ extern int      conf_remove_section(int, char *);
+ extern void     conf_report(void);
  
- mount_nfs_LDADD = ../../support/nfs/libnfs.a \
-diff --git a/utils/mount/nfsmount.conf b/utils/mount/nfsmount.conf
-new file mode 100644
-index 0000000..f9fcfcb
---- /dev/null
-+++ b/utils/mount/nfsmount.conf
-@@ -0,0 +1,120 @@
-+#
-+# /etc/nfsmount.conf - see nfsmount.conf(5) for details
-+#
-+# This is an NFS mount configuration file. This file can be broken
-+# up into three different sections: Mount, Server and Global
-+# 
-+# [ MountPoint "Mount_point" ] 
-+# This section defines all the mount options that
-+# should be used on a particular mount point. The '<Mount_Point>'
-+# string need to be an exact match of the path in the mount 
-+# command. Example:
-+#     [ MountPoint "/export/home" ]
-+#       background=True
-+# Would cause all mount to /export/home would be done in
-+# the background
-+#
-+# [ Server "Server_Name" ]
-+# This section defines all the mount options that
-+# should be used on mounts to a particular NFS server. 
-+# Example:
-+#     [ Server "nfsserver.foo.com" ]
-+#       rsize=32k
-+#       wsize=32k
-+# All reads and writes to the 'nfsserver.foo.com' server 
-+# will be done with 32k (32768 bytes) block sizes.
-+#
-+#[ NFSMount_Global_Options ]
-+# This statically named section defines global mount 
-+# options that can be applied on all NFS mount.
-+#
-+# Protocol Version [2,3]
-+# Nfsvers=3
-+# Network Transport [Udp,Tcp,Rdma]
-+# Proto=Tcp
-+#
-+# The number of times a request will be retired before 
-+# generating a timeout 
-+# Retrans=2
-+#
-+# The number of minutes that will retry mount
-+# Retry=2
-+#
-+# The minimum time (in seconds) file attributes are cached
-+# acregmin=30
-+#
-+# The Maximum time (in seconds) file attributes are cached
-+# acregmin=60
-+#
-+# The minimum time (in seconds) directory attributes are cached
-+# acregmin=30
-+#
-+# The Maximum time (in seconds) directory attributes are cached
-+# acregmin=60
-+#
-+# Enable Access  Control  Lists
-+# Acl=False
-+#
-+# Enable Attribute Caching
-+# Ac=True
-+#
-+# Do mounts in background (i.e. asynchronously)
-+# Background=False
-+#
-+# Close-To-Open cache coherence
-+# Cto=True
-+#
-+# Do mounts in foreground (i.e. synchronously)
-+# Foreground=True
-+#
-+# How to handle times out from servers (Hard is STRONGLY suggested)
-+# Hard=True
-+# Soft=False
-+#
-+# Enable File Locking
-+# Lock=True
-+#
-+# Enable READDIRPLUS on NFS version 3 mounts
-+# Rdirplus=True
-+#
-+# Maximum Read Size (in Bytes)
-+# Rsize=8k
-+#
-+# Maximum Write Size (in Bytes)
-+# Wsize=8k
-+#
-+# Maximum Server Block Size (in Bytes)
-+# Bsize=8k
-+#
-+# Ignore unknown mount options
-+# Sloppy=False
-+#
-+# Share Data and Attribute Caches
-+# Sharecache=True
-+#
-+# The amount of time, in tenths of a seconds, the client
-+# will wait for a response from the server before retransmitting
-+# the request.
-+# Timeo=600
-+#
-+# Sets all attributes times to the same time (in seconds)
-+# actimeo=30
-+#
-+# Server Mountd port mountport
-+# mountport=4001
-+#
-+# Server Mountd Protocol
-+# mountproto=tcp
-+#
-+# Server Mountd Version
-+# mounvers=3
-+#
-+# Server Mountd Host
-+# mounthost=hostname
-+#
-+# Server Port
-+# Port=2049
-+#
-+# RPCGSS security flavors 
-+# [none, sys, krb5, krb5i, krb5p ]
-+# Sec=sys
++/*
++ * Convert letter from upper case to lower case
++ */
++static inline void upper2lower(char *str)
++{
++	char *ptr = str;
++
++	while (*ptr) 
++		*ptr++ = tolower(*ptr);
++}
+ #endif				/* _CONFFILE_H_ */
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index 97dc88a..b19b739 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -120,18 +120,6 @@ conf_hash(char *s)
+ }
+ 
+ /*
+- * Convert letter from upper case to lower case
+- */
+-static inline void upper2lower(char *str)
+-{
+-	char *ptr = str;
+-
+-	while (*ptr) 
+-		*ptr++ = tolower(*ptr);
+-}
+-
+-
+-/*
+  * Insert a tag-value combination from LINE (the equal sign is at POS)
+  */
+ static int
+diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+index cad8c52..e347b0e 100644
+--- a/utils/mount/configfile.c
++++ b/utils/mount/configfile.c
+@@ -37,11 +37,11 @@
+ #define NFSMOUNT_GLOBAL_OPTS "NFSMount_Global_Options"
+ #endif
+ 
+-#ifndef NFSMOUNT_MOUNTPOINT  "MountPoint"
++#ifndef NFSMOUNT_MOUNTPOINT
+ #define NFSMOUNT_MOUNTPOINT "MountPoint"
+ #endif
+ 
+-#ifndef NFSMOUNT_SERVER "Server"
++#ifndef NFSMOUNT_SERVER
+ #define NFSMOUNT_SERVER "Server"
+ #endif
+ 
+@@ -83,6 +83,9 @@ char *mountopts_alias(char *opt, int *argtype)
+ 		*argtype = mnt_alias_tab[i].argtype;
+ 		return mnt_alias_tab[i].opt;
+ 	}
++	/* Make option names case-insensitive */
++	upper2lower(opt);
++
+ 	return opt;
+ }
+ /*
+@@ -202,7 +205,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+ 		 * Do not overwrite options if already exists 
+ 		 */
+ 		snprintf(buf, BUFSIZ, "%s=", node->field);
+-		if (opts && strstr(opts, buf) != NULL)
++		if (opts && strcasestr(opts, buf) != NULL)
+ 			continue;
+ 		if (lookup_entry(node->field) != NULL)
+ 			continue;
