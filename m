@@ -1,105 +1,90 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/10] SUNRPC: Add documenting comments in net/sunrpc/timer.c
-Date: Thu, 06 Aug 2009 14:55:45 -0400
-Message-ID: <20090806185545.3458.47417.stgit@matisse.1015granger.net>
-References: <20090806184944.3458.44739.stgit@matisse.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+Subject: Re: [Patch 7/10] NFS Mount Configuration File (Vers 3)
+Date: Thu, 6 Aug 2009 16:35:44 -0400
+Message-ID: <E3DFEA95-A38E-446C-B9AB-3BA7E9837E94@oracle.com>
+References: <4A7B2324.9090406@RedHat.com> <4A7B2515.2040304@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v935.3)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45919
-	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753537AbZHFSzr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 14:55:47 -0400
-In-Reply-To: <20090806184944.3458.44739.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:35363 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753343AbZHFUgL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 16:36:11 -0400
+In-Reply-To: <4A7B2515.2040304-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: provide documenting comments for the functions in
-net/sunrpc/timer.c.
+How come the short descriptions (Subject:) for all of these patches  
+are identical?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Aug 6, 2009, at 2:46 PM, Steve Dickson wrote:
+> commit eab66bd02db90965d1cbf4e100a274a4e3e6e29e
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Sun Aug 2 12:37:19 2009 -0400
+>
+>    Added hooks to the mount command that allow
+>    mount options to be set in a configuration file
+>
+>    Signed-off-by: Steve Dickson <steved@redhat.com>
+>
+> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+> index a668cd9..30d087e 100644
+> --- a/utils/mount/mount.c
+> +++ b/utils/mount/mount.c
+> @@ -47,6 +47,11 @@
+> #include "stropts.h"
+> #include "version.h"
+>
+> +#ifdef MOUNT_CONFIG
+> +#include "conffile.h"
+> +extern char *conf_get_mntopts(char *, char *, char *);
 
- net/sunrpc/timer.c |   45 +++++++++++++++++++++++++++++----------------
- 1 files changed, 29 insertions(+), 16 deletions(-)
+Can this forward declaration be added to conffile.h ?
 
-diff --git a/net/sunrpc/timer.c b/net/sunrpc/timer.c
-index 31becbf..dd82434 100644
---- a/net/sunrpc/timer.c
-+++ b/net/sunrpc/timer.c
-@@ -25,8 +25,13 @@
- #define RPC_RTO_INIT (HZ/5)
- #define RPC_RTO_MIN (HZ/10)
- 
--void
--rpc_init_rtt(struct rpc_rtt *rt, unsigned long timeo)
-+/**
-+ * rpc_init_rtt - Initialize an RPC RTT estimator context
-+ * @rt: context to initialize
-+ * @timeo: initial timeout value, in jiffies
-+ *
-+ */
-+void rpc_init_rtt(struct rpc_rtt *rt, unsigned long timeo)
- {
- 	unsigned long init = 0;
- 	unsigned i;
-@@ -43,12 +48,16 @@ rpc_init_rtt(struct rpc_rtt *rt, unsigned long timeo)
- }
- EXPORT_SYMBOL_GPL(rpc_init_rtt);
- 
--/*
-+/**
-+ * rpc_update_rtt - Update an RPC RTT estimator context
-+ * @rt: context to update
-+ * @timer: timer array index (request type)
-+ * @m: recent actual RTT, in jiffies
-+ *
-  * NB: When computing the smoothed RTT and standard deviation,
-  *     be careful not to produce negative intermediate results.
-  */
--void
--rpc_update_rtt(struct rpc_rtt *rt, unsigned timer, long m)
-+void rpc_update_rtt(struct rpc_rtt *rt, unsigned timer, long m)
- {
- 	long *srtt, *sdrtt;
- 
-@@ -79,21 +88,25 @@ rpc_update_rtt(struct rpc_rtt *rt, unsigned timer, long m)
- }
- EXPORT_SYMBOL_GPL(rpc_update_rtt);
- 
--/*
-- * Estimate rto for an nfs rpc sent via. an unreliable datagram.
-- * Use the mean and mean deviation of rtt for the appropriate type of rpc
-- * for the frequent rpcs and a default for the others.
-- * The justification for doing "other" this way is that these rpcs
-- * happen so infrequently that timer est. would probably be stale.
-- * Also, since many of these rpcs are
-- * non-idempotent, a conservative timeout is desired.
-+/**
-+ * rpc_calc_rto - Provide an estimated timeout value
-+ * @rt: context to use for calculation
-+ * @timer: timer array index (request type)
-+ *
-+ * Estimate RTO for an NFS RPC sent via an unreliable datagram.  Use
-+ * the mean and mean deviation of RTT for the appropriate type of RPC
-+ * for frequently issued RPCs, and a fixed default for the others.
-+ *
-+ * The justification for doing "other" this way is that these RPCs
-+ * happen so infrequently that timer estimation would probably be
-+ * stale.  Also, since many of these RPCs are non-idempotent, a
-+ * conservative timeout is desired.
-+ *
-  * getattr, lookup,
-  * read, write, commit     - A+4D
-  * other                   - timeo
-  */
--
--unsigned long
--rpc_calc_rto(struct rpc_rtt *rt, unsigned timer)
-+unsigned long rpc_calc_rto(struct rpc_rtt *rt, unsigned timer)
- {
- 	unsigned long res;
- 
+> +#endif
+> +
+> char *progname;
+> int nfs_mount_data_version;
+> int nomtab;
+> @@ -474,6 +479,13 @@ int main(int argc, char *argv[])
+> 	spec = argv[1];
+> 	mount_point = argv[2];
+>
+> +#ifdef MOUNT_CONFIG
+> +	/*
+> +	 * Read the the default mount options
+> +	 */
+> +	conf_init();
+> +#endif
 
+It would be cleaner if the #ifdefs were moved to conf_init() (and  
+above, for the #include, and below, into conf_get_mntopts()).  If  
+MOUNT_CONFIG isn't set, then configfile.o would just contain stubs,  
+but it would then always be built.
+
+Otherwise, we end up with each new feature adding #ifdefs in the  
+mainline code, and eventually it becomes unreadable.
+
+> +
+> 	argv[2] = argv[0]; /* so that getopt error messages are correct */
+> 	while ((c = getopt_long(argc - 2, argv + 2, "rvVwfno:hs",
+> 				longopts, NULL)) != -1) {
+> @@ -559,6 +571,12 @@ int main(int argc, char *argv[])
+> 		mnt_err = EX_USAGE;
+> 		goto out;
+> 	}
+> +#ifdef MOUNT_CONFIG
+> +	/*
+> +	 * Concatenate mount options from the configuration file
+> +	 */
+> +	mount_opts = conf_get_mntopts(spec, mount_point, mount_opts);
+> +#endif
+>
+> 	parse_opts(mount_opts, &flags, &extra_opts);
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
