@@ -1,132 +1,166 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/10] SUNRPC: Clean up: Remove unused XDR decoder functions
-	from rpcb_clnt.c
-Date: Thu, 06 Aug 2009 14:55:08 -0400
-Message-ID: <20090806185507.3458.60802.stgit@matisse.1015granger.net>
+Subject: [PATCH 06/10] SUNRPC: Eliminate PROC macro from rpcb_clnt
+Date: Thu, 06 Aug 2009 14:55:15 -0400
+Message-ID: <20090806185515.3458.38005.stgit@matisse.1015granger.net>
 References: <20090806184944.3458.44739.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45904
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45907
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751902AbZHFSzJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 14:55:09 -0400
+	by vger.kernel.org with ESMTP id S1751251AbZHFSzR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 14:55:17 -0400
 In-Reply-To: <20090806184944.3458.44739.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Clean up: Replace PROC macro with open coded C99 structure
+initializers to improve readability.
+
+The rpcbind v4 GETVERSADDR procedure is never sent by the current
+implementation, so it is not copied to the new structures.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   81 ------------------------------------------------
- 1 files changed, 0 insertions(+), 81 deletions(-)
+ net/sunrpc/rpcb_clnt.c |  113 +++++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 91 insertions(+), 22 deletions(-)
 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 88de754..c4b716c 100644
+index c4b716c..830faf4 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -718,15 +718,6 @@ static int rpcb_enc_mapping(struct rpc_rqst *req, __be32 *p,
- 	return 0;
+@@ -864,39 +864,108 @@ out_fail:
+ 	return -EIO;
  }
  
--static int rpcb_decode_getport(struct rpc_rqst *req, __be32 *p,
--			       unsigned short *portp)
--{
--	*portp = (unsigned short) ntohl(*p++);
--	dprintk("RPC:       rpcb getport result: %u\n",
--			*portp);
--	return 0;
--}
--
- static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
- 			    struct rpcbind_args *rpcb)
- {
-@@ -752,15 +743,6 @@ static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
- 	return 0;
- }
- 
--static int rpcb_decode_set(struct rpc_rqst *req, __be32 *p,
--			   unsigned int *boolp)
--{
--	*boolp = (unsigned int) ntohl(*p++);
--	dprintk("RPC:       rpcb set/unset call %s\n",
--			(*boolp ? "succeeded" : "failed"));
--	return 0;
--}
--
- static int rpcb_dec_set(struct rpc_rqst *req, __be32 *p,
- 			unsigned int *boolp)
- {
-@@ -833,69 +815,6 @@ static int rpcb_enc_getaddr(struct rpc_rqst *req, __be32 *p,
- 	return 0;
- }
- 
--static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
--			       unsigned short *portp)
--{
--	char *addr;
--	u32 addr_len;
--	int c, i, f, first, val;
--
--	*portp = 0;
--	addr_len = ntohl(*p++);
--
--	if (addr_len == 0) {
--		dprintk("RPC:       rpcb_decode_getaddr: "
--					"service is not registered\n");
--		return 0;
+-#define PROC(proc, argtype, restype)					\
+-	[RPCBPROC_##proc] = {						\
+-		.p_proc		= RPCBPROC_##proc,			\
+-		.p_encode	= (kxdrproc_t) rpcb_enc_##argtype,	\
+-		.p_decode	= (kxdrproc_t) rpcb_dec_##restype,	\
+-		.p_arglen	= RPCB_##argtype##args_sz,		\
+-		.p_replen	= RPCB_##restype##res_sz,		\
+-		.p_statidx	= RPCBPROC_##proc,			\
+-		.p_timer	= 0,					\
+-		.p_name		= #proc,				\
 -	}
 -
--	/*
--	 * Simple sanity check.
--	 */
--	if (addr_len > RPCBIND_MAXUADDRLEN)
--		goto out_err;
--
--	/*
--	 * Start at the end and walk backwards until the first dot
--	 * is encountered.  When the second dot is found, we have
--	 * both parts of the port number.
--	 */
--	addr = (char *)p;
--	val = 0;
--	first = 1;
--	f = 1;
--	for (i = addr_len - 1; i > 0; i--) {
--		c = addr[i];
--		if (c >= '0' && c <= '9') {
--			val += (c - '0') * f;
--			f *= 10;
--		} else if (c == '.') {
--			if (first) {
--				*portp = val;
--				val = first = 0;
--				f = 1;
--			} else {
--				*portp |= (val << 8);
--				break;
--			}
--		}
--	}
--
--	/*
--	 * Simple sanity check.  If we never saw a dot in the reply,
--	 * then this was probably just garbage.
--	 */
--	if (first)
--		goto out_err;
--
--	dprintk("RPC:       rpcb_decode_getaddr port=%u\n", *portp);
--	return 0;
--
--out_err:
--	dprintk("RPC:       rpcbind server returned malformed reply\n");
--	return -EIO;
--}
--
- static int rpcb_dec_getaddr(struct rpc_rqst *req, __be32 *p,
- 			    struct rpcbind_args *rpcb)
- {
+ /*
+  * Not all rpcbind procedures described in RFC 1833 are implemented
+  * since the Linux kernel RPC code requires only these.
+  */
++
+ static struct rpc_procinfo rpcb_procedures2[] = {
+-	PROC(SET,		mapping,	set),
+-	PROC(UNSET,		mapping,	set),
+-	PROC(GETPORT,		mapping,	getport),
++	[RPCBPROC_SET] = {
++		.p_proc		= RPCBPROC_SET,
++		.p_encode	= (kxdrproc_t)rpcb_enc_mapping,
++		.p_decode	= (kxdrproc_t)rpcb_dec_set,
++		.p_arglen	= RPCB_mappingargs_sz,
++		.p_replen	= RPCB_setres_sz,
++		.p_statidx	= RPCBPROC_SET,
++		.p_timer	= 0,
++		.p_name		= "SET",
++	},
++	[RPCBPROC_UNSET] = {
++		.p_proc		= RPCBPROC_UNSET,
++		.p_encode	= (kxdrproc_t)rpcb_enc_mapping,
++		.p_decode	= (kxdrproc_t)rpcb_dec_set,
++		.p_arglen	= RPCB_mappingargs_sz,
++		.p_replen	= RPCB_setres_sz,
++		.p_statidx	= RPCBPROC_UNSET,
++		.p_timer	= 0,
++		.p_name		= "UNSET",
++	},
++	[RPCBPROC_GETPORT] = {
++		.p_proc		= RPCBPROC_GETPORT,
++		.p_encode	= (kxdrproc_t)rpcb_enc_mapping,
++		.p_decode	= (kxdrproc_t)rpcb_dec_getport,
++		.p_arglen	= RPCB_mappingargs_sz,
++		.p_replen	= RPCB_getportres_sz,
++		.p_statidx	= RPCBPROC_GETPORT,
++		.p_timer	= 0,
++		.p_name		= "GETPORT",
++	},
+ };
+ 
+ static struct rpc_procinfo rpcb_procedures3[] = {
+-	PROC(SET,		getaddr,	set),
+-	PROC(UNSET,		getaddr,	set),
+-	PROC(GETADDR,		getaddr,	getaddr),
++	[RPCBPROC_SET] = {
++		.p_proc		= RPCBPROC_SET,
++		.p_encode	= (kxdrproc_t)rpcb_enc_getaddr,
++		.p_decode	= (kxdrproc_t)rpcb_dec_set,
++		.p_arglen	= RPCB_getaddrargs_sz,
++		.p_replen	= RPCB_setres_sz,
++		.p_statidx	= RPCBPROC_SET,
++		.p_timer	= 0,
++		.p_name		= "SET",
++	},
++	[RPCBPROC_UNSET] = {
++		.p_proc		= RPCBPROC_UNSET,
++		.p_encode	= (kxdrproc_t)rpcb_enc_getaddr,
++		.p_decode	= (kxdrproc_t)rpcb_dec_set,
++		.p_arglen	= RPCB_getaddrargs_sz,
++		.p_replen	= RPCB_setres_sz,
++		.p_statidx	= RPCBPROC_UNSET,
++		.p_timer	= 0,
++		.p_name		= "UNSET",
++	},
++	[RPCBPROC_GETADDR] = {
++		.p_proc		= RPCBPROC_GETADDR,
++		.p_encode	= (kxdrproc_t)rpcb_enc_getaddr,
++		.p_decode	= (kxdrproc_t)rpcb_dec_getaddr,
++		.p_arglen	= RPCB_getaddrargs_sz,
++		.p_replen	= RPCB_getaddrres_sz,
++		.p_statidx	= RPCBPROC_GETADDR,
++		.p_timer	= 0,
++		.p_name		= "GETADDR",
++	},
+ };
+ 
+ static struct rpc_procinfo rpcb_procedures4[] = {
+-	PROC(SET,		getaddr,	set),
+-	PROC(UNSET,		getaddr,	set),
+-	PROC(GETADDR,		getaddr,	getaddr),
+-	PROC(GETVERSADDR,	getaddr,	getaddr),
++	[RPCBPROC_SET] = {
++		.p_proc		= RPCBPROC_SET,
++		.p_encode	= (kxdrproc_t)rpcb_enc_getaddr,
++		.p_decode	= (kxdrproc_t)rpcb_dec_set,
++		.p_arglen	= RPCB_getaddrargs_sz,
++		.p_replen	= RPCB_setres_sz,
++		.p_statidx	= RPCBPROC_SET,
++		.p_timer	= 0,
++		.p_name		= "SET",
++	},
++	[RPCBPROC_UNSET] = {
++		.p_proc		= RPCBPROC_UNSET,
++		.p_encode	= (kxdrproc_t)rpcb_enc_getaddr,
++		.p_decode	= (kxdrproc_t)rpcb_dec_set,
++		.p_arglen	= RPCB_getaddrargs_sz,
++		.p_replen	= RPCB_setres_sz,
++		.p_statidx	= RPCBPROC_UNSET,
++		.p_timer	= 0,
++		.p_name		= "UNSET",
++	},
++	[RPCBPROC_GETADDR] = {
++		.p_proc		= RPCBPROC_GETADDR,
++		.p_encode	= (kxdrproc_t)rpcb_enc_getaddr,
++		.p_decode	= (kxdrproc_t)rpcb_dec_getaddr,
++		.p_arglen	= RPCB_getaddrargs_sz,
++		.p_replen	= RPCB_getaddrres_sz,
++		.p_statidx	= RPCBPROC_GETADDR,
++		.p_timer	= 0,
++		.p_name		= "GETADDR",
++	},
+ };
+ 
+ static struct rpcb_info rpcb_next_version[] = {
 
