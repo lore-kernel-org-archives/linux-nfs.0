@@ -1,147 +1,132 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/10] SUNRPC: Introduce new xdr_stream-based decoders to
-	rpcb_clnt.c
-Date: Thu, 06 Aug 2009 14:55:00 -0400
-Message-ID: <20090806185500.3458.75166.stgit@matisse.1015granger.net>
+Subject: [PATCH 05/10] SUNRPC: Clean up: Remove unused XDR decoder functions
+	from rpcb_clnt.c
+Date: Thu, 06 Aug 2009 14:55:08 -0400
+Message-ID: <20090806185507.3458.60802.stgit@matisse.1015granger.net>
 References: <20090806184944.3458.44739.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45901
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45904
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753343AbZHFSzD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 14:55:03 -0400
+	by vger.kernel.org with ESMTP id S1751902AbZHFSzJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 14:55:09 -0400
 In-Reply-To: <20090806184944.3458.44739.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the open-coded decode logic for PMAP_GETPORT/RPCB_GETADDR with
-an xdr_stream-based implementation, similar to what NFSv4 uses, to
-protect against buffer overflows.  The new implementation also checks
-that the incoming port number is reasonable.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/rpcb_clnt.c |   80 ++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 77 insertions(+), 3 deletions(-)
+ net/sunrpc/rpcb_clnt.c |   81 ------------------------------------------------
+ 1 files changed, 0 insertions(+), 81 deletions(-)
 
 diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index fe183af..88de754 100644
+index 88de754..c4b716c 100644
 --- a/net/sunrpc/rpcb_clnt.c
 +++ b/net/sunrpc/rpcb_clnt.c
-@@ -454,7 +454,7 @@ int rpcb_getport_sync(struct sockaddr_in *sin, u32 prog, u32 vers, int prot)
- 	struct rpc_message msg = {
- 		.rpc_proc	= &rpcb_procedures2[RPCBPROC_GETPORT],
- 		.rpc_argp	= &map,
--		.rpc_resp	= &map.r_port,
-+		.rpc_resp	= &map,
- 	};
- 	struct rpc_clnt	*rpcb_clnt;
- 	int status;
-@@ -484,7 +484,7 @@ static struct rpc_task *rpcb_call_async(struct rpc_clnt *rpcb_clnt, struct rpcbi
- 	struct rpc_message msg = {
- 		.rpc_proc = proc,
- 		.rpc_argp = map,
--		.rpc_resp = &map->r_port,
-+		.rpc_resp = map,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = rpcb_clnt,
-@@ -727,6 +727,31 @@ static int rpcb_decode_getport(struct rpc_rqst *req, __be32 *p,
+@@ -718,15 +718,6 @@ static int rpcb_enc_mapping(struct rpc_rqst *req, __be32 *p,
  	return 0;
  }
  
-+static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
-+			    struct rpcbind_args *rpcb)
-+{
-+	struct rpc_task *task = req->rq_task;
-+	struct xdr_stream xdr;
-+	unsigned long port;
-+
-+	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
-+
-+	rpcb->r_port = 0;
-+
-+	p = xdr_inline_decode(&xdr, sizeof(__be32));
-+	if (unlikely(p == NULL))
-+		return -EIO;
-+
-+	port = ntohl(*p);
-+	dprintk("RPC: %5u PMAP_%s result: %lu\n", task->tk_pid,
-+			task->tk_msg.rpc_proc->p_name, port);
-+	if (unlikely(port > USHORT_MAX))
-+		return -EIO;
-+
-+	rpcb->r_port = port;
-+	return 0;
-+}
-+
- static int rpcb_decode_set(struct rpc_rqst *req, __be32 *p,
- 			   unsigned int *boolp)
+-static int rpcb_decode_getport(struct rpc_rqst *req, __be32 *p,
+-			       unsigned short *portp)
+-{
+-	*portp = (unsigned short) ntohl(*p++);
+-	dprintk("RPC:       rpcb getport result: %u\n",
+-			*portp);
+-	return 0;
+-}
+-
+ static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
+ 			    struct rpcbind_args *rpcb)
  {
-@@ -871,11 +896,60 @@ out_err:
- 	return -EIO;
+@@ -752,15 +743,6 @@ static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
  }
  
-+static int rpcb_dec_getaddr(struct rpc_rqst *req, __be32 *p,
-+			    struct rpcbind_args *rpcb)
-+{
-+	struct sockaddr_storage address;
-+	struct sockaddr *sap = (struct sockaddr *)&address;
-+	struct rpc_task *task = req->rq_task;
-+	struct xdr_stream xdr;
-+	u32 len;
-+
-+	rpcb->r_port = 0;
-+
-+	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
-+
-+	p = xdr_inline_decode(&xdr, sizeof(__be32));
-+	if (unlikely(p == NULL))
-+		goto out_fail;
-+	len = ntohl(*p);
-+
-+	/*
-+	 * If the returned universal address is a null string,
-+	 * the requested RPC service was not registered.
-+	 */
-+	if (len == 0) {
-+		dprintk("RPC: %5u RPCB reply: program not registered\n",
-+				task->tk_pid);
-+		return 0;
-+	}
-+
-+	if (unlikely(len > RPCBIND_MAXUADDRLEN))
-+		goto out_fail;
-+
-+	p = xdr_inline_decode(&xdr, len);
-+	if (unlikely(p == NULL))
-+		goto out_fail;
-+	dprintk("RPC: %5u RPCB_%s reply: %s\n", task->tk_pid,
-+			task->tk_msg.rpc_proc->p_name, (char *)p);
-+
-+	if (rpc_uaddr2sockaddr((char *)p, len, sap, sizeof(address)) == 0)
-+		goto out_fail;
-+	rpcb->r_port = rpc_get_port(sap);
-+
-+	return 0;
-+
-+out_fail:
-+	dprintk("RPC: %5u malformed RPCB_%s reply\n",
-+			task->tk_pid, task->tk_msg.rpc_proc->p_name);
-+	return -EIO;
-+}
-+
- #define PROC(proc, argtype, restype)					\
- 	[RPCBPROC_##proc] = {						\
- 		.p_proc		= RPCBPROC_##proc,			\
- 		.p_encode	= (kxdrproc_t) rpcb_enc_##argtype,	\
--		.p_decode	= (kxdrproc_t) rpcb_decode_##restype,	\
-+		.p_decode	= (kxdrproc_t) rpcb_dec_##restype,	\
- 		.p_arglen	= RPCB_##argtype##args_sz,		\
- 		.p_replen	= RPCB_##restype##res_sz,		\
- 		.p_statidx	= RPCBPROC_##proc,			\
+-static int rpcb_decode_set(struct rpc_rqst *req, __be32 *p,
+-			   unsigned int *boolp)
+-{
+-	*boolp = (unsigned int) ntohl(*p++);
+-	dprintk("RPC:       rpcb set/unset call %s\n",
+-			(*boolp ? "succeeded" : "failed"));
+-	return 0;
+-}
+-
+ static int rpcb_dec_set(struct rpc_rqst *req, __be32 *p,
+ 			unsigned int *boolp)
+ {
+@@ -833,69 +815,6 @@ static int rpcb_enc_getaddr(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
+ }
+ 
+-static int rpcb_decode_getaddr(struct rpc_rqst *req, __be32 *p,
+-			       unsigned short *portp)
+-{
+-	char *addr;
+-	u32 addr_len;
+-	int c, i, f, first, val;
+-
+-	*portp = 0;
+-	addr_len = ntohl(*p++);
+-
+-	if (addr_len == 0) {
+-		dprintk("RPC:       rpcb_decode_getaddr: "
+-					"service is not registered\n");
+-		return 0;
+-	}
+-
+-	/*
+-	 * Simple sanity check.
+-	 */
+-	if (addr_len > RPCBIND_MAXUADDRLEN)
+-		goto out_err;
+-
+-	/*
+-	 * Start at the end and walk backwards until the first dot
+-	 * is encountered.  When the second dot is found, we have
+-	 * both parts of the port number.
+-	 */
+-	addr = (char *)p;
+-	val = 0;
+-	first = 1;
+-	f = 1;
+-	for (i = addr_len - 1; i > 0; i--) {
+-		c = addr[i];
+-		if (c >= '0' && c <= '9') {
+-			val += (c - '0') * f;
+-			f *= 10;
+-		} else if (c == '.') {
+-			if (first) {
+-				*portp = val;
+-				val = first = 0;
+-				f = 1;
+-			} else {
+-				*portp |= (val << 8);
+-				break;
+-			}
+-		}
+-	}
+-
+-	/*
+-	 * Simple sanity check.  If we never saw a dot in the reply,
+-	 * then this was probably just garbage.
+-	 */
+-	if (first)
+-		goto out_err;
+-
+-	dprintk("RPC:       rpcb_decode_getaddr port=%u\n", *portp);
+-	return 0;
+-
+-out_err:
+-	dprintk("RPC:       rpcbind server returned malformed reply\n");
+-	return -EIO;
+-}
+-
+ static int rpcb_dec_getaddr(struct rpc_rqst *req, __be32 *p,
+ 			    struct rpcbind_args *rpcb)
+ {
 
