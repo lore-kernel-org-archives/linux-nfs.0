@@ -1,77 +1,51 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st
- part)
-Date: Wed, 05 Aug 2009 19:30:04 -0400
-Message-ID: <1249515004.5428.34.camel@heimdal.trondhjem.org>
-References: <20090805143550.12866.8377.stgit@matisse.1015granger.net>
-	 <20090805144540.12866.22084.stgit@matisse.1015granger.net>
-	 <20090805174811.GB9944@fieldses.org>
-	 <DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com>
-	 <20090805181545.GF9944@fieldses.org>
-	 <7330021D-C95A-463D-8D18-29453EF185BC@oracle.com>
-	 <1249507356.5428.11.camel@heimdal.trondhjem.org>
-	 <D503383F-3D52-4F93-B850-AFE84316435C@oracle.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 06/12] sunrpc/cache: avoid variable over-loading in
+	cache_defer_req
+Date: Thu, 6 Aug 2009 14:35:28 +1000
+Message-ID: <19066.23952.91954.409689@notabene.brown>
+References: <20090804051145.15929.11356.stgit@notabene.brown>
+	<20090804052239.15929.87201.stgit@notabene.brown>
+	<20090804204729.GB24758@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, steved@redhat.com,
-	linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:35623 "EHLO mail-out2.uio.no"
+Received: from cantor2.suse.de ([195.135.220.15]:43567 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751806AbZHEXaM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Aug 2009 19:30:12 -0400
-In-Reply-To: <D503383F-3D52-4F93-B850-AFE84316435C@oracle.com>
+	id S1750982AbZHFEfT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Aug 2009 00:35:19 -0400
+In-Reply-To: message from J. Bruce Fields on Tuesday August 4
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-08-05 at 18:24 -0400, Chuck Lever wrote:
-> On Aug 5, 2009, at 5:22 PM, Trond Myklebust wrote:
-> > On Wed, 2009-08-05 at 14:26 -0400, Chuck Lever wrote:
-> >> sqlite3 doesn't do anything special under the covers.  It uses only
-> >> POSIX file access and locking calls, as far as I know.  So I think
-> >> hosting /var on most well-behaved clustering file systems won't have
-> >> any problem with this arrangement.
-> >
-> > So we're basically introducing a dependency on a completely new  
-> > library
-> > that will have to be added to boot partitions/nfsroot/etc, and we have
-> > no real reason for doing it other than because we want to move from
-> > using sync() to fsync()?
-> >
-> > Sounds like a NACK to me...
+On Tuesday August 4, bfields@fieldses.org wrote:
+> On Tue, Aug 04, 2009 at 03:22:39PM +1000, NeilBrown wrote:
+> > In cache_defer_req, 'dreq' is used for two significantly different
+> > values that happen to be of the same type.
+> > 
+> > This is both confusing, and make it hard to extend the range of one of
+> > the values as we will in the next patch.
+> > So introduce 'discard' to take one of the values.
+> > 
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+...
+> > @@ -586,20 +586,20 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+> >  	list_add(&dreq->hash, &cache_defer_hash[hash]);
+> >  
+> >  	/* it is in, now maybe clean up */
+> > -	dreq = NULL;
+> > +	discard = NULL;
+> >  	if (++cache_defer_cnt > DFR_MAX) {
+> > -		dreq = list_entry(cache_defer_list.prev,
+> > -				  struct cache_deferred_req, recent);
+> > +		discard = list_entry(cache_defer_list.prev,
+> > +				     struct cache_deferred_req, recent);
+> >  		list_del_init(&dreq->recent);
+> >  		list_del_init(&dreq->hash);
 > 
-> Which library are you talking about, libsqlite3 or libtirpc?  Because  
-> NEITHER of those is in /lib.
+> Shouldn't these two "dreq"'s be "discard"'s as well?
 
-libsqlite is the problem. Unlike libtirpc, it's utility has yet to be
-established.
+Yes, definitely.  Thanks for catching that.
 
-> In any event, it's not just sync(2) that is a problem.  sync(2) by  
-> itself is a boot performance problem, but it's the combination of  
-> rename and sync that is known to be especially unreliable during  
-> system crashes.  Statd, being a crash monitor, shouldn't depend on  
-> rename/sync to maintain persistent data in the face of system  
-> instability.  I'd call that a real reason to use something more robust.
-
-What are you talking about? Is this about the truncate + rename issue
-leaving empty files upon a crash?
-That issue is solved trivially by doing an fsync() before you rename the
-file. That entire discussion was about whether or not existing
-applications should be _required_ to do this kind of POSIX pedantry,
-when previously they could get away without it.
-
-IOW: that issue alone does not justify replacing the current simple file
-based scheme.
-
-> Can we try to be a little more constructive, please?  Asking the list  
-> (which includes distributors, who actually have to worry about such  
-> things) whether this would be a problem is significantly less abrasive  
-> then just saying "NACK" outright.
-
-It would be constructive if you could actually _justify_ these
-backward-incompatible changes instead of hand waving, and accusing
-others of being obstructionist.
-
-     Trond
-
+NeilBrown
