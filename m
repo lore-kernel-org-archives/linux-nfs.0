@@ -1,15 +1,15 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [Patch 3/10] NFS Mount Configuration File (Vers 3)
-Date: Fri, 07 Aug 2009 10:38:02 +0300
-Message-ID: <4A7BD9DA.6070301@panasas.com>
-References: <4A7B2324.9090406@RedHat.com> <4A7B2414.602@RedHat.com>
+Subject: Re: [Patch 1/10] NFS Mount Configuration File (Vers 3)
+Date: Fri, 07 Aug 2009 11:06:04 +0300
+Message-ID: <4A7BE06C.4080607@panasas.com>
+References: <4A7B2324.9090406@RedHat.com> <4A7B238A.5010608@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 To: Steve Dickson <SteveD@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A7B2414.602@RedHat.com>
+In-Reply-To: <4A7B238A.5010608@RedHat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -21,65 +21,97 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug. 06, 2009, 21:42 +0300, Steve Dickson <SteveD@redhat.com> wrote:
-> commit 3d08862cfebb9fb8a360d362bb9e5e761e6b1fb5
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Wed Aug 5 15:53:36 2009 -0400
-> 
->     Make Section names case-insensitive which should
->     help in locating them resulting in make the config
->     files a bit less error prone
->     
->     Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index 5f491eb..a8b8037 100644
-> --- a/support/nfs/conffile.c
-> +++ b/support/nfs/conffile.c
-> @@ -116,6 +116,18 @@ conf_hash(char *s)
->  }
->  
->  /*
-> + * Convert letter from upper case to lower case
+On Aug. 06, 2009, 21:40 +0300, Steve Dickson <SteveD@redhat.com> wrote:
+<snip>
+
+
+> +/*
+> + * Parse the line LINE of SZ bytes.  Skip Comments, recognize section
+> + * headers and feed tag-value pairs into our configuration database.
 > + */
-> +static inline void upper2lower(char *str)
+> +static void
+> +conf_parse_line(int trans, char *line, size_t sz)
 > +{
-> +	char *ptr = str;
+> +	char *val;
+> +	size_t i;
+> +	int j;
+> +	static char *section = 0;
+> +	static int ln = 0;
 > +
-> +	while (*ptr) 
-> +		*ptr++ = tolower(*ptr);
-> +}
+> +	/* Lines starting with '#' or ';' are comments.  */
+> +	ln++;
+> +	if (*line == '#' || *line == ';')
+> +		return;
 > +
+> +	/* '[section]' parsing...  */
+> +	if (*line == '[') {
+> +		for (i = 1; i < sz; i++)
+> +			if (line[i] == ']')
+> +				break;
+> +		if (section)
+> +			free (section);
+> +		if (i == sz) {
+> +			xlog_warn("conf_parse_line: %d:"
+> + 				"non-matched ']', ignoring until next section", ln);
+> +			section = 0;
+> +			return;
+> +		}
+> +		section = malloc(i);
+> +		if (!section) {
+> +			xlog_warn("conf_parse_line: %d: malloc (%lu) failed", ln,
+> +						(unsigned long)i);
+> +			return;
+> +		}
+> +		strlcpy(section, line + 1, i);
+> +		return;
+> +	}
+> +
+> +	/* Deal with assignments.  */
+> +	for (i = 0; i < sz; i++) {
+> +		if (line[i] == '=') {
+> +			/* If no section, we are ignoring the lines.  */
+> +			if (!section) {
+> +				xlog_warn("conf_parse_line: %d: ignoring line due to no section", 
+> +					ln);
+> +				return;
+> +			}
+> +			line[strcspn (line, " \t=")] = '\0';
+> +			val = line + i + 1 + strspn (line + i + 1, " \t");
+> +			/* Skip trailing whitespace, if any */
+> +			for (j = sz - (val - line) - 1; j > 0 && isspace(val[j]); j--)
+> +				val[j] = '\0';
 
-nit: to optimize this function a tiny bit you can also do:
+Should we break on the first non space?
+This will allow spaces in the value...
+Should we skip trailing comments as well (';' in particular)? I.e.:
 
-static inline void upper2lower(char *str)
-{
-	char c;
-
-	while ((c = tolower(*str)))
-		*str++ = c;
-}
+			/* Skip trailing comments, if any */
+			for (j = 0; j < sz - (val - line); j++) {
+				if (val[j] == '#' || val[j] == ';') {
+					val[j] = '\0';
+					break;
+				}
+			}
+			/* Skip trailing whitespace, if any */
+			for (j--; j > 0; j--) {
+				if (isspace(val[j]))
+					val[j] = '\0';
+				else
+					break;
+			}
 
 Benny
 
+> +			/* XXX Perhaps should we not ignore errors?  */
+> +			conf_set(trans, section, line, val, 0, 0);
+> +			return;
+> +		}
+> +	}
+> +	/* Other non-empty lines are weird.  */
+> +	i = strspn(line, " \t");
+> +	if (line[i])
+> +		xlog_warn("conf_parse_line: %d: syntax error", ln);
 > +
-> +/*
->   * Insert a tag-value combination from LINE (the equal sign is at POS)
->   */
->  static int
-> @@ -654,6 +666,9 @@ conf_set(int transaction, char *section, char *tag,
->  		xlog_warn("conf_set: strdup(\"%s\") failed", section);
->  		goto fail;
->  	}
-> +	/* Make Section names case-insensitive */
-> +	upper2lower(node->section);
+> +	return;
+> +}
 > +
->  	node->tag = strdup(tag);
->  	if (!node->tag) {
->  		xlog_warn("conf_set: strdup(\"%s\") failed", tag);
-> 
-> _______________________________________________
-> NFSv4 mailing list
-> NFSv4@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
