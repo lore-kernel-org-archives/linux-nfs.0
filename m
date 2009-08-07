@@ -1,16 +1,16 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [Patch 3/10] NFS Mount Configuration File (Vers 3)
-Date: Fri, 07 Aug 2009 14:35:47 -0400
-Message-ID: <4A7C7403.2040804@RedHat.com>
-References: <4A7B2324.9090406@RedHat.com> <4A7B2414.602@RedHat.com>
-	<4A7BD9DA.6070301@panasas.com>
+Subject: Re: [Patch 7/10] NFS Mount Configuration File (Vers 3)
+Date: Fri, 07 Aug 2009 14:37:22 -0400
+Message-ID: <4A7C7462.1090605@RedHat.com>
+References: <4A7B2324.9090406@RedHat.com> <4A7B2515.2040304@RedHat.com>
+	<E3DFEA95-A38E-446C-B9AB-3BA7E9837E94@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Benny Halevy <bhalevy@panasas.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A7BD9DA.6070301@panasas.com>
+In-Reply-To: <E3DFEA95-A38E-446C-B9AB-3BA7E9837E94@oracle.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -22,139 +22,163 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 08/07/2009 03:38 AM, Benny Halevy wrote:
-> On Aug. 06, 2009, 21:42 +0300, Steve Dickson <SteveD@redhat.com> wrote:
->> commit 3d08862cfebb9fb8a360d362bb9e5e761e6b1fb5
+On 08/06/2009 04:35 PM, Chuck Lever wrote:
+> 
+> On Aug 6, 2009, at 2:46 PM, Steve Dickson wrote:
+>> commit eab66bd02db90965d1cbf4e100a274a4e3e6e29e
 >> Author: Steve Dickson <steved@redhat.com>
->> Date:   Wed Aug 5 15:53:36 2009 -0400
+>> Date:   Sun Aug 2 12:37:19 2009 -0400
 >>
->>     Make Section names case-insensitive which should
->>     help in locating them resulting in make the config
->>     files a bit less error prone
->>     
->>     Signed-off-by: Steve Dickson <steved@redhat.com>
+>>    Added hooks to the mount command that allow
+>>    mount options to be set in a configuration file
 >>
->> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
->> index 5f491eb..a8b8037 100644
->> --- a/support/nfs/conffile.c
->> +++ b/support/nfs/conffile.c
->> @@ -116,6 +116,18 @@ conf_hash(char *s)
->>  }
->>  
->>  /*
->> + * Convert letter from upper case to lower case
->> + */
->> +static inline void upper2lower(char *str)
->> +{
->> +	char *ptr = str;
+>>    Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+>> index a668cd9..30d087e 100644
+>> --- a/utils/mount/mount.c
+>> +++ b/utils/mount/mount.c
+>> @@ -47,6 +47,11 @@
+>> #include "stropts.h"
+>> #include "version.h"
+>>
+>> +#ifdef MOUNT_CONFIG
+>> +#include "conffile.h"
+>> +extern char *conf_get_mntopts(char *, char *, char *);
+> 
+> Can this forward declaration be added to conffile.h ?
+> 
+>> +#endif
 >> +
->> +	while (*ptr) 
->> +		*ptr++ = tolower(*ptr);
->> +}
->> +
+>> char *progname;
+>> int nfs_mount_data_version;
+>> int nomtab;
+>> @@ -474,6 +479,13 @@ int main(int argc, char *argv[])
+>>     spec = argv[1];
+>>     mount_point = argv[2];
+>>
+>> +#ifdef MOUNT_CONFIG
+>> +    /*
+>> +     * Read the the default mount options
+>> +     */
+>> +    conf_init();
+>> +#endif
 > 
-> nit: to optimize this function a tiny bit you can also do:
+> It would be cleaner if the #ifdefs were moved to conf_init() (and above,
+> for the #include, and below, into conf_get_mntopts()).  If MOUNT_CONFIG
+> isn't set, then configfile.o would just contain stubs, but it would then
+> always be built.
 > 
-> static inline void upper2lower(char *str)
-> {
-> 	char c;
+> Otherwise, we end up with each new feature adding #ifdefs in the
+> mainline code, and eventually it becomes unreadable.
 > 
-> 	while ((c = tolower(*str)))
-> 		*str++ = c;
-> }
-> 
-Here is the update to Patch 10/10 which fixes this nit.
+I agree... there is the update to this patch:
 
-commit d4d2a8a4af44c057d1bd89ea94bce7ce17bfd0a5
+commit 5225a4e8fbedc5c4f888691855dd3fe2e3eff9ad
 Author: Steve Dickson <steved@redhat.com>
-Date:   Fri Aug 7 14:34:42 2009 -0400
+Date:   Fri Aug 7 14:29:07 2009 -0400
 
-    Now that only the Section names are case-insensitive
-    the mount code has to make sure the the mount options
-    given to the kernel are in the correct case.
-    
-    Fixed a couple of warnings on #ifndefs
+    Added hooks to the mount command that allow
+    mount options to be set in a configuration file
     
     Signed-off-by: Steve Dickson <steved@redhat.com>
 
-diff --git a/support/include/conffile.h b/support/include/conffile.h
-index b263581..132a149 100644
---- a/support/include/conffile.h
-+++ b/support/include/conffile.h
-@@ -64,4 +64,14 @@ extern int      conf_remove(int, char *, char *);
- extern int      conf_remove_section(int, char *);
- extern void     conf_report(void);
+diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+index a1b56ca..db7778f 100644
+--- a/utils/mount/Makefile.am
++++ b/utils/mount/Makefile.am
+@@ -15,7 +15,8 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
+ 		    nfsumount.c \
+ 		    mount_constants.h error.h network.h fstab.h token.h \
+ 		    parse_opt.h parse_dev.h \
+-		    nfs4_mount.h nfs_mount4.h stropts.h version.h
++		    nfs4_mount.h nfs_mount4.h stropts.h version.h \
++			mount_config.h
  
-+/*
-+ * Convert letter from upper case to lower case
-+ */
-+static inline void upper2lower(char *str)
-+{
-+	char c;
+ if MOUNT_CONFIG
+ mount_nfs_SOURCES += configfile.c
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index a668cd9..909fedf 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -37,6 +37,7 @@
+ #include "xcommon.h"
+ #include "nls.h"
+ #include "mount_constants.h"
++#include "mount_config.h"
+ #include "nfs_paths.h"
+ #include "nfs_mntent.h"
+ 
+@@ -474,6 +475,8 @@ int main(int argc, char *argv[])
+ 	spec = argv[1];
+ 	mount_point = argv[2];
+ 
++	mount_config_init();
 +
-+	while ((c = tolower(*str)))
-+		*str++ = c;
-+}
- #endif				/* _CONFFILE_H_ */
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 97dc88a..b19b739 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -120,18 +120,6 @@ conf_hash(char *s)
- }
- 
- /*
-- * Convert letter from upper case to lower case
-- */
--static inline void upper2lower(char *str)
--{
--	char *ptr = str;
--
--	while (*ptr) 
--		*ptr++ = tolower(*ptr);
--}
--
--
--/*
-  * Insert a tag-value combination from LINE (the equal sign is at POS)
-  */
- static int
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index cad8c52..e347b0e 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -37,11 +37,11 @@
- #define NFSMOUNT_GLOBAL_OPTS "NFSMount_Global_Options"
- #endif
- 
--#ifndef NFSMOUNT_MOUNTPOINT  "MountPoint"
-+#ifndef NFSMOUNT_MOUNTPOINT
- #define NFSMOUNT_MOUNTPOINT "MountPoint"
- #endif
- 
--#ifndef NFSMOUNT_SERVER "Server"
-+#ifndef NFSMOUNT_SERVER
- #define NFSMOUNT_SERVER "Server"
- #endif
- 
-@@ -83,6 +83,9 @@ char *mountopts_alias(char *opt, int *argtype)
- 		*argtype = mnt_alias_tab[i].argtype;
- 		return mnt_alias_tab[i].opt;
+ 	argv[2] = argv[0]; /* so that getopt error messages are correct */
+ 	while ((c = getopt_long(argc - 2, argv + 2, "rvVwfno:hs",
+ 				longopts, NULL)) != -1) {
+@@ -559,6 +562,10 @@ int main(int argc, char *argv[])
+ 		mnt_err = EX_USAGE;
+ 		goto out;
  	}
-+	/* Make option names case-insensitive */
-+	upper2lower(opt);
++	/*
++	 * Concatenate mount options from the configuration file
++	 */
++	mount_opts = mount_config_opts(spec, mount_point, mount_opts);
+ 
+ 	parse_opts(mount_opts, &flags, &extra_opts);
+ 
+diff --git a/utils/mount/mount_config.h b/utils/mount/mount_config.h
+new file mode 100644
+index 0000000..2af9f9d
+--- /dev/null
++++ b/utils/mount/mount_config.h
+@@ -0,0 +1,47 @@
++#ifndef _LINUX_MOUNT__CONFIG_H
++#define _LINUX_MOUNT_CONFIG__H
++/*
++ * mount_config.h -- mount configuration file routines 
++ * Copyright (C) 2008 Red Hat, Inc <nfs@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2, or (at your option)
++ * any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ */
 +
- 	return opt;
- }
- /*
-@@ -202,7 +205,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
- 		 * Do not overwrite options if already exists 
- 		 */
- 		snprintf(buf, BUFSIZ, "%s=", node->field);
--		if (opts && strstr(opts, buf) != NULL)
-+		if (opts && strcasestr(opts, buf) != NULL)
- 			continue;
- 		if (lookup_entry(node->field) != NULL)
- 			continue;
++inline void mount_config_init(void);
++
++#ifdef MOUNT_CONFIG
++#include "conffile.h"
++extern char *conf_get_mntopts(char *, char *, char *);
++
++inline void mount_config_init()
++{
++	/*
++	 * Read the the default mount options
++	 */
++	conf_init();
++}
++inline char *mount_config_opts(char *spec, 
++		char *mount_point, char *mount_opts)
++{
++	return conf_get_mntopts(spec, mount_point, mount_opts);
++}
++#else /* MOUNT_CONFIG */
++
++inline void mount_config_init() { }
++
++inline char *mount_config_opts(char *spec, 
++		char *mount_point, char *mount_opts)
++{
++	return mount_opts;
++}
++#endif /* MOUNT_CONFIG */
++#endif
