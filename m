@@ -1,61 +1,85 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Security negotiation
-Date: Fri, 10 Jul 2009 18:45:22 -0400
-Message-ID: <1247265922.8254.30.camel@heimdal.trondhjem.org>
-References: <4A578372.1020005@excfb.com>
-	 <D8976FEC-39F9-4FF4-8FCE-AB3D5B047DFB@oracle.com>
-	 <F2FB7FDE-00D9-4623-964D-3C632AD64C68@oracle.com>
-	 <4A57AADE.8080002@excfb.com>
-	 <2BA1057E-5A8E-4780-B8F2-FCC8BA3846CC@oracle.com>
-	 <4A57C2F3.4070109@excfb.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Tom Haynes <tdh-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:50702 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752936AbZGJWpd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Jul 2009 18:45:33 -0400
-In-Reply-To: <4A57C2F3.4070109-8AdZ+HgO7noAvxtiuMwx3w@public.gmane.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:30178
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754879AbZHGGmY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Aug 2009 02:42:24 -0400
+Message-ID: <4A7BCCCA.4020307@panasas.com>
+Date: Fri, 07 Aug 2009 09:42:18 +0300
+From: Benny Halevy <bhalevy@panasas.com>
+To: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
+CC: nfsv4@linux-nfs.org, Steve Dickson <steved@redhat.com>,
+        "J. Bruce Fields" <bfields@citi.umich.edu>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
+References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com> <f6ce31e30908061718u2c527e2eo5cf35f6eb0800fd4@mail.gmail.com>
+In-Reply-To: <f6ce31e30908061718u2c527e2eo5cf35f6eb0800fd4@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Fri, 2009-07-10 at 17:38 -0500, Tom Haynes wrote:
-> Chuck Lever wrote:
-> > On Jul 10, 2009, at 4:55 PM, Tom Haynes wrote:
-> >
-> >> The second option would push AUTH_NONE to the end of the list, which
-> >> corresponds to my thinking of it as a wild card.
-> >
-> > The problem with the server's auth list is that it is a list of _all_ 
-> > flavors that the server supports.  
+On Aug. 07, 2009, 3:18 +0300, Carlos André <candrecn@gmail.com> wrote:
+> Anyone ?
 > 
-> For us it is a list of flavors supported on that export.
-> 
-> Our default export is basically sec=sys,rw.
-> 
-> To get all of the flavors, the admin would have to configure them in.
-> 
-> >
-> > I was wondering when a server would not want to order the flavor list 
-> > by strongest to weakest.  We have the use case of the kerberos 5 
-> > pseudoflavors:  clients should probably use krb5 over krb5p by 
-> > default, as this provides good security without a lot of performance 
-> > overhead.  But krb5p is stronger security than krb5.
-> 
-> When they have different access lists.
-> 
-> If they have the same access lists, then the server is free to order them...
-> 
-> share -F nfs -o sec=sys:none:krb5,rw /foo
-> share -F nfs -o sec=sys,ro,sec=krb5p,rw,root=@192.168.2.0,sec=krb5,rw /bar
-> 
-> In the first, we don't care how the server presents them. In the second, 
-> the list would be: sys krb5p krb5.
+> 2009/7/29 Carlos André <candrecn@gmail.com>:
+>> PPL, I need put a CentOS 5.3 (updated) NFSv4 server to work with Kerberos
+>> and AutoFS, but i got a problem: If NFS server goes down i get a LOOOOOOONG
+>> mount timeout on CentOS 5.3 (updated) NFSv4 client...
+>>
+>> Since i need mount some (3 to 6) dirs at user logon process, if mount hangs,
+>> user logon hangs. Then i want configure it to timeout (if server down) after
+>> 10-15 secs (MAX) on each mount attempt.
+>>
+>> I already make a lab and tried a LOT of combinations, there my findings
+>> (server DOWN IP: 172.16.0.10 / client IP: 172.16.1.10) using basic command
+>> (time mount 172.16.0.10:/remotedir /localdir/ -t nfs4 -o
+>> sec=krb5,proto=<tcp/udp>) from NFS client:
+>>
+>> - Once i try access mount point using AutoFS (proto=tcp OR proto=udp) it
+>> hangs for 189 secs (3m9s: real  3m9.001s)  until show error (mount: mount to
+>> NFS server '172.16.0.10' failed: timed out (giving up))
 
-Meaning that the client defaults to read-only access?
+Sounds like you're hitting the server's grace period.
+You can try hacking it in /etc/init.d/nfs
+by adding
+	echo 15 > /proc/fs/nfsd/nfsv4leasetime
 
-Trond
+before
+        daemon rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT
 
+Then, look at your /var/log/messages file for
+NFSD: starting 15-second grace period
+
+That said, I'm not sure why it can't be passed as a command line
+option to the nfsd daemon and controlled via RPCNFSDARGS
+in /etc/sysconfig/nfs
+
+Benny
+
+>>
+>> Mounting manually using NFSv4 i got same timeouts of AutoFS.
+>>
+>> The only way to get a lower timeout value is using only proto=udp,retry=0
+>> (not using sec=krb5) any another combination i get 3m9s (sec=krb5,proto=tcp
+>>
+>>
+>> I tried change another NFS mount options putting a lower value (timeo,
+>> retrans, retry), and they only change something then i use NFSv3 with
+>> proto=udp. But i want NFSv4/TCP (coz Kerberos) and a timeout lower then 15
+>> secs... :(
+>>
+>> I'm using these packages (server and client side):
+>> autofs-5.0.1-0.rc2.102.el5_3.1
+>> nfs-utils-1.0.9-40.el5
+>> kernel-2.6.18-128.1.16.el5
+>>
+>> The only way to resolve this behavior is changing the source code? There's
+>> no way to lower timeout with NFSv4/TCP in this case ?
+>>
+>> Thanks.
+>>
+>>
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
