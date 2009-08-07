@@ -1,66 +1,69 @@
-From: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
-Subject: Re: AutoFS+NFSv4 server down = Client LOOOOONG timeout.
-Date: Thu, 6 Aug 2009 21:17:03 -0300
-Message-ID: <f6ce31e30908061717k320969a1v63242f3dab29cff5@mail.gmail.com>
-References: <f6ce31e30907300538p5d8f54e9v6e4b30630ded2852@mail.gmail.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 00/12] Some improvements to request deferral and
+	related code
+Date: Fri, 7 Aug 2009 14:13:50 +1000
+Message-ID: <19067.43518.105153.247173@notabene.brown>
+References: <20090804051145.15929.11356.stgit@notabene.brown>
+	<20090804140428.GE14249@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f183.google.com ([209.85.212.183]:57231 "EHLO
-	mail-vw0-f183.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755416AbZHGARF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 20:17:05 -0400
-Received: by vws13 with SMTP id 13so1200382vws.22
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Aug 2009 17:17:05 -0700 (PDT)
-In-Reply-To: <f6ce31e30907300538p5d8f54e9v6e4b30630ded2852-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from cantor2.suse.de ([195.135.220.15]:52114 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750887AbZHGENk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Aug 2009 00:13:40 -0400
+In-Reply-To: message from J. Bruce Fields on Tuesday August 4
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Anyone??
+On Tuesday August 4, bfields@fieldses.org wrote:
+> On Tue, Aug 04, 2009 at 03:22:38PM +1000, NeilBrown wrote:
+> >  This series fixes a few little bugs and tidies up some code but does
+> >  two main important things.
+> > 
+> >  1/ 'allow thread to block....' will wait a little while if there is a
+> >  cache miss.  If an answer is available in that time, it continues on
+> >  it's merry way.  If no answer arrives, the old deferral approach is
+> >  used.  It waits 5 seconds if there are spare nfsd threads, and 1
+> >  second if there all threads are busy.  I have almost nothing with
+> >  which to justify these numbers.
+> 
+> I think the v4 server at least should return NFS4ERR_DELAY in this case
+> instead of doing the internal replay.  That avoids possible problems
+> with non-idempotent compound ops.
 
-2009/7/30 Carlos Andr=E9 <candrecn@gmail.com>:
-> PPL, I need put a CentOS 5.3 (updated) NFSv4 server to work with
-> Kerberos and AutoFS, but i got a problem: If NFS server goes down i
-> get a LOOOOOOONG mount timeout on CentOS 5.3 (updated) NFSv4 client..=
-=2E
->
-> Since i need mount some (3 to 6) dirs at user logon process, if mount
-> hangs, user logon hangs. Then i want configure it to timeout (if
-> server down) after 10-15 secs (MAX) on each mount attempt.
->
-> I already make a lab and tried a LOT of combinations, there my
-> findings (server DOWN IP: 172.16.0.10 / client IP: 172.16.1.10) using
-> basic command (time mount 172.16.0.10:/remotedir /localdir/ -t nfs4 -=
-o
-> sec=3Dkrb5,proto=3D<tcp/udp>) from NFS client:
->
-> - Once i try access mount point using AutoFS (proto=3Dtcp OR proto=3D=
-udp)
-> it hangs for 189 secs (3m9s: real =A03m9.001s) =A0until show error (m=
-ount:
-> mount to NFS server '172.16.0.10' failed: timed out (giving up))
->
-> Mounting manually using NFSv4 i got same timeouts of AutoFS.
->
-> The only way to get a lower timeout value is using only
-> proto=3Dudp,retry=3D0 (AND not using Kerberos...sec=3Dkrb5) any anoth=
-er
-> combination i get 3m9s (sec=3Dkrb5,proto=3Dtcp)
->
->
-> I tried change another NFS mount options putting a lower value (timeo=
-,
-> retrans, etc) but they make no difference.... But i want
-> NFSv4/TCP/Kerberos and a timeout lower then 15 secs... :(
->
-> I'm using these packages (server and client side):
-> autofs-5.0.1-0.rc2.102.el5_3.1
-> nfs-utils-1.0.9-40.el5
-> kernel-2.6.18-128.1.16.el5
->
-> The only way to resolve this behavior is changing the source code?
-> There's no way to lower timeout with NFSv4/TCP in this case ?
->
-> Thanks.
->
+If the request has been handed to nfsd, then yes I agree.  We probably
+want some way for nfsd to mark the request as "don't replay" so that
+an error will propagate out.  Currently we map that error to EJUKEBOX
+for v3 or v4, but you are right, we want ERR_DELAY for v4.
+
+If the request is still in the RPC code (trying to identify the
+origin or to decode the crypto) then we cannot return ERR_DELAY, but
+as none of the request will have been processed yet, there is no room
+for a problem with non-idempotent ops.
+
+It has occurred to me that we could throw away the current request
+deferral completely:  if we don't feel comfortable delaying the thread
+for as long as it takes, we just return an error or drop the request
+(closing any connection).
+I'm not sure I'd be comfortable doing that if there were only a few
+(8?) threads though.
+Maybe if we got dynamic nfsd threads so that new ones could be created
+on demand I would feel quite happy to discard the deferral stuff and
+just use a delay.
+
+> 
+> >From the protocol point of view I don't know if there's any rule of
+> thumb about when it'd be best to return DELAY.  Perhaps it's best to
+> avoid it whenever possible, but when the delay is on the order of
+> seconds it sounds reasonable to me.
+
+Of course you don't know how long the delay will be until it happens:-)
+
+But I agree.  Delay internally if possible, but as soon as that seems
+to be awkward (e.g. run out of threads), return DELAY
+
+Thanks,
+NeilBrown
