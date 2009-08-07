@@ -1,16 +1,16 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
-Date: Fri, 7 Aug 2009 10:04:25 -0400
-Message-ID: <20090807140425.GA18298@fieldses.org>
-References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
-	<f6ce31e30908061718u2c527e2eo5cf35f6eb0800fd4@mail.gmail.com>
-	<4A7BCCCA.4020307@panasas.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Patch 1/10] NFS Mount Configuration File (Vers 3)
+Date: Fri, 07 Aug 2009 13:09:08 -0400
+Message-ID: <4A7C5FB4.5060508@RedHat.com>
+References: <4A7B2324.9090406@RedHat.com> <4A7B238A.5010608@RedHat.com>
+	<4A7BE06C.4080607@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: NFS list <linux-nfs@vger.kernel.org>, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A7BCCCA.4020307@panasas.com>
+In-Reply-To: <4A7BE06C.4080607@panasas.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -22,30 +22,99 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCBBdWcgMDcsIDIwMDkgYXQgMDk6NDI6MThBTSArMDMwMCwgQmVubnkgSGFsZXZ5IHdy
-b3RlOgo+IE9uIEF1Zy4gMDcsIDIwMDksIDM6MTggKzAzMDAsIENhcmxvcyBBbmRyw6kgPGNhbmRy
-ZWNuQGdtYWlsLmNvbT4gd3JvdGU6Cj4gPiBBbnlvbmUgPwo+ID4gCj4gPiAyMDA5LzcvMjkgQ2Fy
-bG9zIEFuZHLDqSA8Y2FuZHJlY25AZ21haWwuY29tPjoKPiA+PiBQUEwsIEkgbmVlZCBwdXQgYSBD
-ZW50T1MgNS4zICh1cGRhdGVkKSBORlN2NCBzZXJ2ZXIgdG8gd29yayB3aXRoIEtlcmJlcm9zCj4g
-Pj4gYW5kIEF1dG9GUywgYnV0IGkgZ290IGEgcHJvYmxlbTogSWYgTkZTIHNlcnZlciBnb2VzIGRv
-d24gaSBnZXQgYSBMT09PT09PT05HCj4gPj4gbW91bnQgdGltZW91dCBvbiBDZW50T1MgNS4zICh1
-cGRhdGVkKSBORlN2NCBjbGllbnQuLi4KPiA+Pgo+ID4+IFNpbmNlIGkgbmVlZCBtb3VudCBzb21l
-ICgzIHRvIDYpIGRpcnMgYXQgdXNlciBsb2dvbiBwcm9jZXNzLCBpZiBtb3VudCBoYW5ncywKPiA+
-PiB1c2VyIGxvZ29uIGhhbmdzLiBUaGVuIGkgd2FudCBjb25maWd1cmUgaXQgdG8gdGltZW91dCAo
-aWYgc2VydmVyIGRvd24pIGFmdGVyCj4gPj4gMTAtMTUgc2VjcyAoTUFYKSBvbiBlYWNoIG1vdW50
-IGF0dGVtcHQuCj4gPj4KPiA+PiBJIGFscmVhZHkgbWFrZSBhIGxhYiBhbmQgdHJpZWQgYSBMT1Qg
-b2YgY29tYmluYXRpb25zLCB0aGVyZSBteSBmaW5kaW5ncwo+ID4+IChzZXJ2ZXIgRE9XTiBJUDog
-MTcyLjE2LjAuMTAgLyBjbGllbnQgSVA6IDE3Mi4xNi4xLjEwKSB1c2luZyBiYXNpYyBjb21tYW5k
-Cj4gPj4gKHRpbWUgbW91bnQgMTcyLjE2LjAuMTA6L3JlbW90ZWRpciAvbG9jYWxkaXIvIC10IG5m
-czQgLW8KPiA+PiBzZWM9a3JiNSxwcm90bz08dGNwL3VkcD4pIGZyb20gTkZTIGNsaWVudDoKPiA+
-Pgo+ID4+IC0gT25jZSBpIHRyeSBhY2Nlc3MgbW91bnQgcG9pbnQgdXNpbmcgQXV0b0ZTIChwcm90
-bz10Y3AgT1IgcHJvdG89dWRwKSBpdAo+ID4+IGhhbmdzIGZvciAxODkgc2VjcyAoM205czogcmVh
-bCAgM205LjAwMXMpICB1bnRpbCBzaG93IGVycm9yIChtb3VudDogbW91bnQgdG8KPiA+PiBORlMg
-c2VydmVyICcxNzIuMTYuMC4xMCcgZmFpbGVkOiB0aW1lZCBvdXQgKGdpdmluZyB1cCkpCj4gCj4g
-U291bmRzIGxpa2UgeW91J3JlIGhpdHRpbmcgdGhlIHNlcnZlcidzIGdyYWNlIHBlcmlvZC4KCkkg
-dGhvdWdodCBoZSB3YXMgZGVzY3JpYmluZyBhIHNpdHVhdGlvbiB3aGVyZSB0aGUgc2VydmVyIHRo
-ZSBzZXJ2ZXIKaXMgY29tcGxldGVseSBnb25lIGFuZCBpc24ndCBjb21pbmcgYmFjaywgYW5kIHdv
-bmRlcmluZyBob3cgdG8gbWFrZSB0aGUKbW91bnQgZmFpbCBmYXN0ZXIuICBCdXQgSSBtYXkgYmUg
-bWlzdW5kZXJzdGFuZGluZy4KCi0tYi4KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX18KTkZTdjQgbWFpbGluZyBsaXN0Ck5GU3Y0QGxpbnV4LW5mcy5vcmcKaHR0
-cDovL2xpbnV4LW5mcy5vcmcvY2dpLWJpbi9tYWlsbWFuL2xpc3RpbmZvL25mc3Y0
+
+
+On 08/07/2009 04:06 AM, Benny Halevy wrote:
+> On Aug. 06, 2009, 21:40 +0300, Steve Dickson <SteveD@redhat.com> wrote:
+> <snip>
+> 
+> 
+>> +/*
+>> + * Parse the line LINE of SZ bytes.  Skip Comments, recognize section
+>> + * headers and feed tag-value pairs into our configuration database.
+>> + */
+>> +static void
+>> +conf_parse_line(int trans, char *line, size_t sz)
+>> +{
+>> +	char *val;
+>> +	size_t i;
+>> +	int j;
+>> +	static char *section = 0;
+>> +	static int ln = 0;
+>> +
+>> +	/* Lines starting with '#' or ';' are comments.  */
+>> +	ln++;
+>> +	if (*line == '#' || *line == ';')
+>> +		return;
+>> +
+>> +	/* '[section]' parsing...  */
+>> +	if (*line == '[') {
+>> +		for (i = 1; i < sz; i++)
+>> +			if (line[i] == ']')
+>> +				break;
+>> +		if (section)
+>> +			free (section);
+>> +		if (i == sz) {
+>> +			xlog_warn("conf_parse_line: %d:"
+>> + 				"non-matched ']', ignoring until next section", ln);
+>> +			section = 0;
+>> +			return;
+>> +		}
+>> +		section = malloc(i);
+>> +		if (!section) {
+>> +			xlog_warn("conf_parse_line: %d: malloc (%lu) failed", ln,
+>> +						(unsigned long)i);
+>> +			return;
+>> +		}
+>> +		strlcpy(section, line + 1, i);
+>> +		return;
+>> +	}
+>> +
+>> +	/* Deal with assignments.  */
+>> +	for (i = 0; i < sz; i++) {
+>> +		if (line[i] == '=') {
+>> +			/* If no section, we are ignoring the lines.  */
+>> +			if (!section) {
+>> +				xlog_warn("conf_parse_line: %d: ignoring line due to no section", 
+>> +					ln);
+>> +				return;
+>> +			}
+>> +			line[strcspn (line, " \t=")] = '\0';
+>> +			val = line + i + 1 + strspn (line + i + 1, " \t");
+>> +			/* Skip trailing whitespace, if any */
+>> +			for (j = sz - (val - line) - 1; j > 0 && isspace(val[j]); j--)
+>> +				val[j] = '\0';
+> 
+> Should we break on the first non space?
+> This will allow spaces in the value...
+> Should we skip trailing comments as well (';' in particular)? I.e.:
+Well to be honest I never looked a this code all that closely...
+I just moved it from one place to another.. ;-) 
+
+
+> 
+> 			/* Skip trailing comments, if any */
+> 			for (j = 0; j < sz - (val - line); j++) {
+> 				if (val[j] == '#' || val[j] == ';') {
+> 					val[j] = '\0';
+> 					break;
+> 				}
+> 			}
+> 			/* Skip trailing whitespace, if any */
+> 			for (j--; j > 0; j--) {
+> 				if (isspace(val[j]))
+> 					val[j] = '\0';
+> 				else
+> 					break;
+> 			}
+Well since the idmapd.conf man page never talks about comments,
+it not clear that in-line or trailing comments are supported. 
+Remember my goal with this code was just to reuse it. I really had no 
+intention on improving it  any of this code. But with that said...
+
+If in-line or trailing comments are needed for this configuration
+or other configuration, such the pnfs exports, then yes I would
+say its a good idea... but would rather deal with afterwords 
+once deemed needed... 
+
+steved.
