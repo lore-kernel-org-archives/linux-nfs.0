@@ -1,73 +1,166 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [Patch 2/10] NFS Mount Configuration File (Vers 3)
-Date: Sat, 08 Aug 2009 23:52:35 +0300
-Message-ID: <4A7DE593.10708@panasas.com>
-References: <4A7B2324.9090406@RedHat.com> <4A7B23D2.6080900@RedHat.com> <4A7BE0B2.9010008@panasas.com> <4A7C6032.4060301@RedHat.com>
+Subject: Re: [Patch 3/10] NFS Mount Configuration File (Vers 3)
+Date: Sat, 08 Aug 2009 23:54:26 +0300
+Message-ID: <4A7DE602.8090608@panasas.com>
+References: <4A7B2324.9090406@RedHat.com> <4A7B2414.602@RedHat.com>
+	<4A7BD9DA.6070301@panasas.com> <4A7C7403.2040804@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:2233
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750898AbZHHUwo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Aug 2009 16:52:44 -0400
-In-Reply-To: <4A7C6032.4060301-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4A7C7403.2040804@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug. 07, 2009, 20:11 +0300, Steve Dickson <SteveD@redhat.com> wrote:
+On Aug. 07, 2009, 21:35 +0300, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> On 08/07/2009 04:07 AM, Benny Halevy wrote:
->> On Aug. 06, 2009, 21:41 +0300, Steve Dickson <SteveD@redhat.com> wrote:
->>> commit f6f4d0b872c01eaffbcb4c3919f13237aa8678e1
+> On 08/07/2009 03:38 AM, Benny Halevy wrote:
+>> On Aug. 06, 2009, 21:42 +0300, Steve Dickson <SteveD@redhat.com> wrote:
+>>> commit 3d08862cfebb9fb8a360d362bb9e5e761e6b1fb5
 >>> Author: Steve Dickson <steved@redhat.com>
->>> Date:   Mon Mar 9 13:55:25 2009 -0400
+>>> Date:   Wed Aug 5 15:53:36 2009 -0400
 >>>
->>>     Taught conf_parse_line() to ignore spaces in the
->>>      '[section]' parsing and before the assignment statements
+>>>     Make Section names case-insensitive which should
+>>>     help in locating them resulting in make the config
+>>>     files a bit less error prone
 >>>     
 >>>     Signed-off-by: Steve Dickson <steved@redhat.com>
 >>>
 >>> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
->>> index c5f9fa7..5f491eb 100644
+>>> index 5f491eb..a8b8037 100644
 >>> --- a/support/nfs/conffile.c
 >>> +++ b/support/nfs/conffile.c
->>> @@ -50,11 +50,6 @@
->>>  #include "xlog.h"
+>>> @@ -116,6 +116,18 @@ conf_hash(char *s)
+>>>  }
 >>>  
->>>  static void conf_load_defaults (int);
->>> -#if 0
->>> -static int conf_find_trans_xf (int, char *);
->>> -#endif
->>> -
->>> -size_t  strlcpy(char *, const char *, size_t);
->>>  
->>>  struct conf_trans {
->>>  	TAILQ_ENTRY (conf_trans) link;
->>> @@ -219,26 +214,48 @@ conf_parse_line(int trans, char *line, size_t sz)
->>>  	if (*line == '#' || *line == ';')
->>>  		return;
->>>  
->>> +	/* Ignore blank lines */
->>> +	if (*line == '\0')
->>> +		return;
+>>>  /*
+>>> + * Convert letter from upper case to lower case
+>>> + */
+>>> +static inline void upper2lower(char *str)
+>>> +{
+>>> +	char *ptr = str;
 >>> +
->>> +	/* Strip off any leading blanks */
->>> +	while (isblank(*line)) 
->>> +		line++;
+>>> +	while (*ptr) 
+>>> +		*ptr++ = tolower(*ptr);
+>>> +}
 >>> +
->> Why not do this before looking for '#' or ';'?
-> Point, if we supported in-line comments or am I missing 
-> something? 
+>> nit: to optimize this function a tiny bit you can also do:
+>>
+>> static inline void upper2lower(char *str)
+>> {
+>> 	char c;
+>>
+>> 	while ((c = tolower(*str)))
+>> 		*str++ = c;
+>> }
+>>
+> Here is the update to Patch 10/10 which fixes this nit.
 
-Right.  This will allow the comment to start after a string
-of white spaces.  It's not the most important feature but
-will allow more readable config file, I think.
+Cool. Looks good!
 
 Benny
 
 > 
-> steved.
+> commit d4d2a8a4af44c057d1bd89ea94bce7ce17bfd0a5
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Fri Aug 7 14:34:42 2009 -0400
+> 
+>     Now that only the Section names are case-insensitive
+>     the mount code has to make sure the the mount options
+>     given to the kernel are in the correct case.
+>     
+>     Fixed a couple of warnings on #ifndefs
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> index b263581..132a149 100644
+> --- a/support/include/conffile.h
+> +++ b/support/include/conffile.h
+> @@ -64,4 +64,14 @@ extern int      conf_remove(int, char *, char *);
+>  extern int      conf_remove_section(int, char *);
+>  extern void     conf_report(void);
+>  
+> +/*
+> + * Convert letter from upper case to lower case
+> + */
+> +static inline void upper2lower(char *str)
+> +{
+> +	char c;
+> +
+> +	while ((c = tolower(*str)))
+> +		*str++ = c;
+> +}
+>  #endif				/* _CONFFILE_H_ */
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index 97dc88a..b19b739 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -120,18 +120,6 @@ conf_hash(char *s)
+>  }
+>  
+>  /*
+> - * Convert letter from upper case to lower case
+> - */
+> -static inline void upper2lower(char *str)
+> -{
+> -	char *ptr = str;
+> -
+> -	while (*ptr) 
+> -		*ptr++ = tolower(*ptr);
+> -}
+> -
+> -
+> -/*
+>   * Insert a tag-value combination from LINE (the equal sign is at POS)
+>   */
+>  static int
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index cad8c52..e347b0e 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -37,11 +37,11 @@
+>  #define NFSMOUNT_GLOBAL_OPTS "NFSMount_Global_Options"
+>  #endif
+>  
+> -#ifndef NFSMOUNT_MOUNTPOINT  "MountPoint"
+> +#ifndef NFSMOUNT_MOUNTPOINT
+>  #define NFSMOUNT_MOUNTPOINT "MountPoint"
+>  #endif
+>  
+> -#ifndef NFSMOUNT_SERVER "Server"
+> +#ifndef NFSMOUNT_SERVER
+>  #define NFSMOUNT_SERVER "Server"
+>  #endif
+>  
+> @@ -83,6 +83,9 @@ char *mountopts_alias(char *opt, int *argtype)
+>  		*argtype = mnt_alias_tab[i].argtype;
+>  		return mnt_alias_tab[i].opt;
+>  	}
+> +	/* Make option names case-insensitive */
+> +	upper2lower(opt);
+> +
+>  	return opt;
+>  }
+>  /*
+> @@ -202,7 +205,7 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
+>  		 * Do not overwrite options if already exists 
+>  		 */
+>  		snprintf(buf, BUFSIZ, "%s=", node->field);
+> -		if (opts && strstr(opts, buf) != NULL)
+> +		if (opts && strcasestr(opts, buf) != NULL)
+>  			continue;
+>  		if (lookup_entry(node->field) != NULL)
+>  			continue;
+> 
 > 
