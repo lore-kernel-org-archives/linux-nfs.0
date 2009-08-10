@@ -1,172 +1,181 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:52467 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753720AbZHZVMh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2009 17:12:37 -0400
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <486FBC5E-011A-4FF0-995D-944958BE74AE@oracle.com>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Message-Id: <4974ED30-D8CA-47B0-9D8F-BCD4410132FC@oracle.com>
 From: Chuck Lever <chuck.lever@oracle.com>
-To: Lans Carstensen <Lans.Carstensen@dreamworks.com>
-In-Reply-To: <4A94C13B.1070300@dreamworks.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 3/4] nfs-utils: nfs-iostat.py autofs cleanup and option to sort by ops/s
-Date: Wed, 26 Aug 2009 17:12:27 -0400
-References: <4A94C13B.1070300@dreamworks.com>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+To: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
+In-Reply-To: <f6ce31e30908101305n3a5b88ceo6b56b43f750b8548@mail.gmail.com>
+Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
+Date: Mon, 10 Aug 2009 16:35:22 -0400
+References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
+	<f6ce31e30908061718u2c527e2eo5cf35f6eb0800fd4@mail.gmail.com>
+	<4A7BCCCA.4020307@panasas.com>
+	<20090807140425.GA18298@fieldses.org>
+	<f6ce31e30908101129i3a0298b4uf96642872909ede8@mail.gmail.com>
+	<A411E867-D130-4D82-89F0-5C73077EE475@oracle.com>
+	<f6ce31e30908101243x1b69fdcbgdd8ae0d2d56e32de@mail.gmail.com>
+	<f6ce31e30908101305n3a5b88ceo6b56b43f750b8548@mail.gmail.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="iso-8859-1"; Format="flowed"; DelSp="yes"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
+On Aug 10, 2009, at 4:05 PM, Carlos Andr=E9 wrote:
+> Something funny: Using default tcp_syn_retries (5) i got
+> "3,6,12,24,48,96" secs interval... but if i change tcp_syn_retries to
+> 1 i got "3,6,3,6,3,6..." secs interval...
 
-On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
+Right.  Normally the RPC client calls the kernel's socket connect =20
+function, which does 6 SYN retries.  That one call usually takes =20
+longer than the RPC client's connect timeout, so it only makes one =20
+connect call, and then fails.
 
-> commit ef558b7b978418ac3da35e36dcf02a223e4ebe2d
-> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
-> Date:   Tue Aug 25 21:52:49 2009 -0700
->
->    Update list of mount points to parse stats for and drop mount
->    points from stats collection when they are umounted.  This
->    ensures proper stats collection for autofs mountpoints.
->
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
-> iostat.py
-> index 6ce31fc..9f3b3eb 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -447,7 +447,14 @@ def parse_stats_file(filename):
->     return ms_dict
->
-> def print_iostat_summary(old, new, devices, time, ac):
-> -    for device in devices:
-> +    if old:
-> +        # Trim device list to only include intersection of old and  
-> new data,
-> +        # this addresses umounts due to autofs mountpoints
-> +        devicelist = filter(lambda x:x in devices,old)
-> +    else:
-> +        devicelist = devices
-> +
-> +    for device in devicelist:
->         stats = DeviceData()
->         stats.parse_stats(new[device])
->         if not old:
-> @@ -458,11 +465,35 @@ def print_iostat_summary(old, new, devices,  
-> time, ac):
->             diff_stats = stats.compare_iostats(old_stats)
->             diff_stats.display_iostats(time, ac)
->
-> +def list_nfs_mounts(givenlist, mountstats):
-> +    """return a list of NFS mounts given a list to validate or
-> +       return a full list if the given list is empty
-> +    """
-> +    list = []
-> +    if len(givenlist) > 0:
-> +        for device in givenlist:
-> +            stats = DeviceData()
-> +            stats.parse_stats(mountstats[device])
-> +            if stats.is_nfs_mountpoint():
-> +                list += [device]
-> +    else:
-> +        for device, descr in mountstats.iteritems():
-> +            stats = DeviceData()
-> +            stats.parse_stats(descr)
-> +            if stats.is_nfs_mountpoint():
-> +                list += [device]
-> +    if len(list) == 0:
-> +        print 'No NFS mount points were found'
-> +        return
+Reducing the number of SYN retries per connect attempt causes the RPC =20
+client to retry the connect call until its connect timeout expires.  =20
+Each connect call resets the SYN timeout to 3 seconds.
 
-You refactored this logic from the main routine.  I think this last  
-"return" was OK in the main routine, but in a subroutine it may not do  
-exactly what you want.  A NoneType object is passed to  
-print_iostat_summary in this case.
-
-[cel@matisse tmp]$ ./nfs-iostat.py
-No NFS mount points were found
-Traceback (most recent call last):
-   File "./nfs-iostat.py", line 580, in <module>
-     iostat_command(prog)
-   File "./nfs-iostat.py", line 549, in iostat_command
-     print_iostat_summary(old_mountstats, mountstats, devices,  
-sample_time, which)
-   File "./nfs-iostat.py", line 457, in print_iostat_summary
-     for device in devicelist:
-TypeError: 'NoneType' object is not iterable
-
-> +
-> +    return list
-> +
-> def iostat_command(name):
->     """iostat-like command for NFS mount points
->     """
->     mountstats = parse_stats_file('/proc/self/mountstats')
->     devices = []
-> +    origdevices = []
->     which = 0
->     interval_seen = False
->     count_seen = False
-> @@ -492,7 +523,7 @@ def iostat_command(name):
->             continue
+> [root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
+> sec=3Dkrb5p,proto=3Dtcp
+> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
 >
->         if arg in mountstats:
-> -            devices += [arg]
-> +            origdevices += [arg]
->         elif not interval_seen:
->             interval = int(arg)
->             if interval > 0:
-> @@ -509,23 +540,7 @@ def iostat_command(name):
->                 return
+> real    3m9.000s
+> user    0m0.000s
+> sys     0m0.002s
 >
->     # make certain devices contains only NFS mount points
-> -    if len(devices) > 0:
-> -        check = []
-> -        for device in devices:
-> -            stats = DeviceData()
-> -            stats.parse_stats(mountstats[device])
-> -            if stats.is_nfs_mountpoint():
-> -                check += [device]
-> -        devices = check
-> -    else:
-> -        for device, descr in mountstats.iteritems():
-> -            stats = DeviceData()
-> -            stats.parse_stats(descr)
-> -            if stats.is_nfs_mountpoint():
-> -                devices += [device]
-> -    if len(devices) == 0:
-> -        print 'No NFS mount points were found'
-> -        return
-> +    devices = list_nfs_mounts(origdevices, mountstats)
+> [root@KSERVER /]# echo 1 > /proc/sys/net/ipv4/tcp_syn_retries
+> [root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
+> sec=3Dkrb5p,proto=3Dtcp  ("retry=3D1" =3D no change)
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
 >
->     old_mountstats = None
->     sample_time = 0.0
-> @@ -541,6 +556,9 @@ def iostat_command(name):
->             time.sleep(interval)
->             sample_time = interval
->             mountstats = parse_stats_file('/proc/self/mountstats')
-> +            # automount mountpoints add and drop, if automount is  
-> involved
-> +            # we need to recheck the devices list when reparsing
-> +            devices = list_nfs_mounts(origdevices,mountstats)
->             count -= 1
->     else:
->         while True:
-> @@ -549,6 +567,9 @@ def iostat_command(name):
->             time.sleep(interval)
->             sample_time = interval
->             mountstats = parse_stats_file('/proc/self/mountstats')
-> +            # automount mountpoints add and drop, if automount is  
-> involved
-> +            # we need to recheck the devices list when reparsing
-> +            devices = list_nfs_mounts(origdevices,mountstats)
+> real    2m6.004s
+> user    0m0.000s
+> sys     0m0.004s
 >
-> #
-> # Main
+> (3,6,3,6... secs interval)
 >
 >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> 2009/8/10 Carlos Andr=E9 <candrecn@gmail.com>:
+>> No, i'm just using packages from CentOS repo...
+>>
+>> And u're right about expo retries... with tcpdump i've monitored
+>> traffic and i got SYN retries in 3, 6, 12, 24, 48, 96 secs on port
+>> 2049...
+>> I tried use "retry=3D1" option on mount without any change... I dont
+>> want change source or tcp timers... just NFSv4 client.
+>>
+>> 2009/8/10 Chuck Lever <chuck.lever@oracle.com>:
+>>> On Aug 10, 2009, at 2:29 PM, Carlos Andr=E9 wrote:
+>>>>
+>>>> Bruce, no... you're right.  I'm describing a situation where my =20
+>>>> server
+>>>> died... i need mount fail faster (10 or 15 secs max) than 3 minutes
+>>>> and 9 seconds...
+>>>
+>>> The 189 second timeout is likely how long it takes the kernel to =20
+>>> give up
+>>> trying to connect a TCP socket to the server (6 SYN attempts with
+>>> exponential retries, or something like that).  For stock CentOS =20
+>>> 5.3, I think
+>>> user space does only a DNS lookup for normal NFSv4 mounts -- the =20
+>>> kernel just
+>>> tries to connect a TCP socket to port 2049, with no preceding =20
+>>> rpcbind
+>>> request.
+>>>
+>>> Carlos, let us know if you have replaced any NFS-related CentOS =20
+>>> components
+>>> (kernel, nfs-utils) with something you've built yourself.
+>>>
+>>>> 2009/8/7 J. Bruce Fields <bfields@fieldses.org>:
+>>>>>
+>>>>> On Fri, Aug 07, 2009 at 09:42:18AM +0300, Benny Halevy wrote:
+>>>>>>
+>>>>>> On Aug. 07, 2009, 3:18 +0300, Carlos Andr=E9 <candrecn@gmail.com> =20
+>>>>>> wrote:
+>>>>>>>
+>>>>>>> Anyone ?
+>>>>>>>
+>>>>>>> 2009/7/29 Carlos Andr=E9 <candrecn@gmail.com>:
+>>>>>>>>
+>>>>>>>> PPL, I need put a CentOS 5.3 (updated) NFSv4 server to work =20
+>>>>>>>> with
+>>>>>>>> Kerberos
+>>>>>>>> and AutoFS, but i got a problem: If NFS server goes down i =20
+>>>>>>>> get a
+>>>>>>>> LOOOOOOONG
+>>>>>>>> mount timeout on CentOS 5.3 (updated) NFSv4 client...
+>>>>>>>>
+>>>>>>>> Since i need mount some (3 to 6) dirs at user logon process, =20
+>>>>>>>> if mount
+>>>>>>>> hangs,
+>>>>>>>> user logon hangs. Then i want configure it to timeout (if =20
+>>>>>>>> server down)
+>>>>>>>> after
+>>>>>>>> 10-15 secs (MAX) on each mount attempt.
+>>>>>>>>
+>>>>>>>> I already make a lab and tried a LOT of combinations, there my
+>>>>>>>> findings
+>>>>>>>> (server DOWN IP: 172.16.0.10 / client IP: 172.16.1.10) using =20
+>>>>>>>> basic
+>>>>>>>> command
+>>>>>>>> (time mount 172.16.0.10:/remotedir /localdir/ -t nfs4 -o
+>>>>>>>> sec=3Dkrb5,proto=3D<tcp/udp>) from NFS client:
+>>>>>>>>
+>>>>>>>> - Once i try access mount point using AutoFS (proto=3Dtcp OR =20
+>>>>>>>> proto=3Dudp)
+>>>>>>>> it
+>>>>>>>> hangs for 189 secs (3m9s: real  3m9.001s)  until show error =20
+>>>>>>>> (mount:
+>>>>>>>> mount to
+>>>>>>>> NFS server '172.16.0.10' failed: timed out (giving up))
+>>>>>>
+>>>>>> Sounds like you're hitting the server's grace period.
+>>>>>
+>>>>> I thought he was describing a situation where the server the =20
+>>>>> server
+>>>>> is completely gone and isn't coming back, and wondering how to =20
+>>>>> make the
+>>>>> mount fail faster.  But I may be misunderstanding.
+>>>>>
+>>>>> --b.
+>>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-=20
+>>>> nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>>
+>>>
+>>>
+>>>
+>>
 
 --
 Chuck Lever
@@ -174,3 +183,7 @@ chuck[dot]lever[at]oracle[dot]com
 
 
 
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
