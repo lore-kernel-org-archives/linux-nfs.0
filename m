@@ -1,85 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:26339 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755483AbZHYRtq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 13:49:46 -0400
-Cc: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <B36B590E-6A19-4E03-BD49-1E95DA44C4EE@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Steve Dickson <SteveD@redhat.com>
-In-Reply-To: <4A942089.1010102@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [NFS] [PATCH] nfs-utils: nfs-iostat.py option to sort by ops/s
-Date: Tue, 25 Aug 2009 13:48:05 -0400
-References: <4A93214A.5000404@dreamworks.com> <009376AC-B08B-4E90-A46B-E5BC069A5A78@oracle.com> <4A942089.1010102@RedHat.com>
+Received: from mx2.redhat.com ([66.187.237.31]:34416 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753980AbZHJWJ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Aug 2009 18:09:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Subject: [PATCH 0/4] nfsd: add support for NFSv4 callbacks over IPv6 (try #3)
+Date: Mon, 10 Aug 2009 18:09:13 -0400
+Message-Id: <1249942157-12613-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Aug 25, 2009, at 1:34 PM, Steve Dickson wrote:
-> On 08/25/2009 12:29 PM, Chuck Lever wrote:
->> [ Cc: changed to correct mailing list.  sf.net list is deprecated. ]
->>
->> On Aug 24, 2009, at 7:24 PM, Lans Carstensen wrote:
->>> Hi,
->>>
->>> I've recently made tools/nfs-iostat/nfs-iostat.py more useful in our
->>> autofs environment with a variety of cleanups and am offering this
->>> patch up for discussion and/or inclusion in nfs-utils.  It does the
->>> following:
->>>
->>> * Adds a --top flag to sort the display of mountpoint entries by  
->>> ops/s.
->>> * Adds a --<n> flag to only display stats for the first <n>  
->>> mountpoints
->>> * Re-reads the mountpoint list on intervals since it's dynamic in an
->>> autofs environment.
->>> * Conforms the Python path to the LSB 3.2+ standard of /usr/bin/ 
->>> python
->>> http://refspecs.freestandards.org/LSB_3.2.0/LSB-Languages/LSB-Languages/pylocation.html
->>>
->>
->> A couple of overall comments.
->>
->> 1.  These seem to be logically independent changes, so we would  
->> prefer
->> them in separate patches.  Each logical change can be refined and  
->> voted
->> up or down separately.
-> I guess you could break this up into more patches... but overall its
-> by no means unruly....
+Third attempt at a patchset to add support for NFSv4 callbacks over
+IPv6. The main change here is that this set uses the standard routines
+for address conversion that were recently added to the RPC layer in
+Bruce's tree. Not only does this add IPv6 support but it's a net code
+reduction.
 
-Didn't mean to imply "unruly" but we do _prefer_ having logical  
-changes separated.
+There are also some other minor cleanups. The set should apply cleanly
+to Bruce's tree as of earlier today.
 
->> 2.  Sorting by ops is OK, but not sure about "--top".  Since the  
->> script
->> doesn't generate a curses like display like "top" does, maybe "--sort
->> <n>" would be a better name, and --top and --<n> could be combined.
-> Hmm.. I kinda like like the --top flag... its pretty descriptive to
-> what it does..
+Tested using opensolaris and linux clients and watching the traffic with
+wireshark.
 
-Some people aren't so imaginative, might expect "--top" to produce a  
-full curses-like display, then be pissed when they get a simple list.   
-And it seems to me that the two new options are related and could be  
-combined to good effect.
+Jeff Layton (4):
+  nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
+  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
+  nfsd: convert gen_callback to use rpc_uaddr2sockaddr
+  nfsd: add support for NFSv4 callbacks over IPv6
 
-I think "--top" should be reserved for an actual top-like  
-implementation (which might be pretty cool).
-
->> 3.  The distributors should weigh in on the Python path change.
-> Using '#!/usr/bin/python' is better than '#!/usr/bin/env python'
-> since you know exactly which python binary you will be using.
-> It was also pointed out the env convention will confuse
-> rpm's dependency generator
-
-Good enough for me.  Lans, it would be nice to document this last bit  
-(about rpm) in the patch description.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+ fs/nfsd/nfs4callback.c     |   11 +--
+ fs/nfsd/nfs4state.c        |  176 ++++++++++++++++++++++----------------------
+ include/linux/nfsd/state.h |    6 +-
+ 3 files changed, 93 insertions(+), 100 deletions(-)
 
