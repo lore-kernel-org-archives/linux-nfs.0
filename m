@@ -1,157 +1,136 @@
-From: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
-Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
-Date: Mon, 10 Aug 2009 17:05:10 -0300
-Message-ID: <f6ce31e30908101305n3a5b88ceo6b56b43f750b8548@mail.gmail.com>
-References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
-	<f6ce31e30908061718u2c527e2eo5cf35f6eb0800fd4@mail.gmail.com>
-	<4A7BCCCA.4020307@panasas.com> <20090807140425.GA18298@fieldses.org>
-	<f6ce31e30908101129i3a0298b4uf96642872909ede8@mail.gmail.com>
-	<A411E867-D130-4D82-89F0-5C73077EE475@oracle.com>
-	<f6ce31e30908101243x1b69fdcbgdd8ae0d2d56e32de@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <f6ce31e30908101243x1b69fdcbgdd8ae0d2d56e32de@mail.gmail.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 3/4] nfsd: convert gen_callback to use rpc_uaddr2sockaddr
+Date: Mon, 10 Aug 2009 18:09:16 -0400
+Message-ID: <1249942157-12613-4-git-send-email-jlayton@redhat.com>
+References: <1249942157-12613-1-git-send-email-jlayton@redhat.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: bfields@fieldses.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:34415 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753675AbZHJWJ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Aug 2009 18:09:27 -0400
+In-Reply-To: <1249942157-12613-1-git-send-email-jlayton@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Something funny: Using default tcp_syn_retries (5) i got
-"3,6,12,24,48,96" secs interval... but if i change tcp_syn_retries to
-1 i got "3,6,3,6,3,6..." secs interval...
+No need for a separate routine here. Use the standard one provided in
+sunrpc module.
 
-[root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
-sec=3Dkrb5p,proto=3Dtcp
-mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   82 ++++----------------------------------------------
+ 1 files changed, 7 insertions(+), 75 deletions(-)
 
-real    3m9.000s
-user    0m0.000s
-sys     0m0.002s
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cbc1a05..d294b1d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -55,6 +55,7 @@
+ #include <linux/lockd/bind.h>
+ #include <linux/module.h>
+ #include <linux/sunrpc/svcauth_gss.h>
++#include <linux/sunrpc/clnt.h>
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+@@ -896,78 +897,6 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
+ 	return NULL;
+ }
+ 
+-/* a helper function for parse_callback */
+-static int
+-parse_octet(unsigned int *lenp, char **addrp)
+-{
+-	unsigned int len = *lenp;
+-	char *p = *addrp;
+-	int n = -1;
+-	char c;
+-
+-	for (;;) {
+-		if (!len)
+-			break;
+-		len--;
+-		c = *p++;
+-		if (c == '.')
+-			break;
+-		if ((c < '0') || (c > '9')) {
+-			n = -1;
+-			break;
+-		}
+-		if (n < 0)
+-			n = 0;
+-		n = (n * 10) + (c - '0');
+-		if (n > 255) {
+-			n = -1;
+-			break;
+-		}
+-	}
+-	*lenp = len;
+-	*addrp = p;
+-	return n;
+-}
+-
+-/* parse and set the setclientid ipv4 callback address */
+-static int
+-parse_ipv4(unsigned int addr_len, char *addr_val, struct sockaddr_in *s4)
+-{
+-	int temp = 0;
+-	u32 cbaddr = 0;
+-	u16 cbport = 0;
+-	u32 addrlen = addr_len;
+-	char *addr = addr_val;
+-	int i, shift;
+-
+-	s4->sin_family = AF_INET;
+-
+-	/* ipaddress */
+-	shift = 24;
+-	for(i = 4; i > 0  ; i--) {
+-		if ((temp = parse_octet(&addrlen, &addr)) < 0) {
+-			return 0;
+-		}
+-		cbaddr |= (temp << shift);
+-		if (shift > 0)
+-		shift -= 8;
+-	}
+-	s4->sin_addr.s_addr = htonl(cbaddr);
+-
+-	/* port */
+-	shift = 8;
+-	for(i = 2; i > 0  ; i--) {
+-		if ((temp = parse_octet(&addrlen, &addr)) < 0) {
+-			return 0;
+-		}
+-		cbport |= (temp << shift);
+-		if (shift > 0)
+-			shift -= 8;
+-	}
+-	s4->sin_port = htons(cbport);
+-	return 1;
+-}
+-
+ static void
+ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
+ {
+@@ -977,10 +906,13 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
+ 	if ((se->se_callback_netid_len != 3) || memcmp((char *)se->se_callback_netid_val, "tcp", 3))
+ 		goto out_err;
+ 
+-	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
+-			  (struct sockaddr_in *) &cb->cb_addr)))
++	cb->cb_addrlen = rpc_uaddr2sockaddr(se->se_callback_addr_val,
++					    se->se_callback_addr_len,
++					    (struct sockaddr *) &cb->cb_addr,
++					    sizeof(cb->cb_addr));
++
++	if (cb->cb_addr.ss_family != AF_INET)
+ 		goto out_err;
+-	cb->cb_addrlen = sizeof(struct sockaddr_in);
+ 	cb->cb_minorversion = 0;
+ 	cb->cb_prog = se->se_callback_prog;
+ 	cb->cb_ident = se->se_callback_ident;
+-- 
+1.6.0.6
 
-[root@KSERVER /]# echo 1 > /proc/sys/net/ipv4/tcp_syn_retries
-[root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
-sec=3Dkrb5p,proto=3Dtcp  ("retry=3D1" =3D no change)
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
-mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
-
-real    2m6.004s
-user    0m0.000s
-sys     0m0.004s
-
-(3,6,3,6... secs interval)
-
-
-
-
-2009/8/10 Carlos Andr=E9 <candrecn@gmail.com>:
-> No, i'm just using packages from CentOS repo...
->
-> And u're right about expo retries... with tcpdump i've monitored
-> traffic and i got SYN retries in 3, 6, 12, 24, 48, 96 secs on port
-> 2049...
-> I tried use "retry=3D1" option on mount without any change... I dont
-> want change source or tcp timers... just NFSv4 client.
->
-> 2009/8/10 Chuck Lever <chuck.lever@oracle.com>:
->> On Aug 10, 2009, at 2:29 PM, Carlos Andr=E9 wrote:
->>>
->>> Bruce, no... you're right. =A0I'm describing a situation where my server
->>> died... i need mount fail faster (10 or 15 secs max) than 3 minutes
->>> and 9 seconds...
->>
->> The 189 second timeout is likely how long it takes the kernel to give up
->> trying to connect a TCP socket to the server (6 SYN attempts with
->> exponential retries, or something like that). =A0For stock CentOS 5.3, I=
- think
->> user space does only a DNS lookup for normal NFSv4 mounts -- the kernel =
-just
->> tries to connect a TCP socket to port 2049, with no preceding rpcbind
->> request.
->>
->> Carlos, let us know if you have replaced any NFS-related CentOS componen=
-ts
->> (kernel, nfs-utils) with something you've built yourself.
->>
->>> 2009/8/7 J. Bruce Fields <bfields@fieldses.org>:
->>>>
->>>> On Fri, Aug 07, 2009 at 09:42:18AM +0300, Benny Halevy wrote:
->>>>>
->>>>> On Aug. 07, 2009, 3:18 +0300, Carlos Andr=E9 <candrecn@gmail.com> wro=
-te:
->>>>>>
->>>>>> Anyone ?
->>>>>>
->>>>>> 2009/7/29 Carlos Andr=E9 <candrecn@gmail.com>:
->>>>>>>
->>>>>>> PPL, I need put a CentOS 5.3 (updated) NFSv4 server to work with
->>>>>>> Kerberos
->>>>>>> and AutoFS, but i got a problem: If NFS server goes down i get a
->>>>>>> LOOOOOOONG
->>>>>>> mount timeout on CentOS 5.3 (updated) NFSv4 client...
->>>>>>>
->>>>>>> Since i need mount some (3 to 6) dirs at user logon process, if mou=
-nt
->>>>>>> hangs,
->>>>>>> user logon hangs. Then i want configure it to timeout (if server do=
-wn)
->>>>>>> after
->>>>>>> 10-15 secs (MAX) on each mount attempt.
->>>>>>>
->>>>>>> I already make a lab and tried a LOT of combinations, there my
->>>>>>> findings
->>>>>>> (server DOWN IP: 172.16.0.10 / client IP: 172.16.1.10) using basic
->>>>>>> command
->>>>>>> (time mount 172.16.0.10:/remotedir /localdir/ -t nfs4 -o
->>>>>>> sec=3Dkrb5,proto=3D<tcp/udp>) from NFS client:
->>>>>>>
->>>>>>> - Once i try access mount point using AutoFS (proto=3Dtcp OR proto=
-=3Dudp)
->>>>>>> it
->>>>>>> hangs for 189 secs (3m9s: real =A03m9.001s) =A0until show error (mo=
-unt:
->>>>>>> mount to
->>>>>>> NFS server '172.16.0.10' failed: timed out (giving up))
->>>>>
->>>>> Sounds like you're hitting the server's grace period.
->>>>
->>>> I thought he was describing a situation where the server the server
->>>> is completely gone and isn't coming back, and wondering how to make the
->>>> mount fail faster. =A0But I may be misunderstanding.
->>>>
->>>> --b.
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
->>
->
