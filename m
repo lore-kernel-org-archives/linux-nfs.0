@@ -1,126 +1,139 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 4/4] nfsd: add support for NFSv4 callbacks over IPv6
-Date: Mon, 10 Aug 2009 18:09:17 -0400
-Message-ID: <1249942157-12613-5-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 1/4] nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
+Date: Mon, 10 Aug 2009 18:09:14 -0400
+Message-ID: <1249942157-12613-2-git-send-email-jlayton@redhat.com>
 References: <1249942157-12613-1-git-send-email-jlayton@redhat.com>
 Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
 	nfsv4@linux-nfs.org
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34414 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:34419 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753521AbZHJWJ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Aug 2009 18:09:27 -0400
+	id S1754019AbZHJWJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Aug 2009 18:09:29 -0400
 In-Reply-To: <1249942157-12613-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The framework to add this is all in place. Now, add the code to allow
-support for establishing a callback channel on an IPv6 socket.
+...rather than as a separate address and port fields. This will be
+necessary for implementing callbacks over IPv6.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c |   31 +++++++++++++++++++++++++------
- 1 files changed, 25 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4callback.c     |   11 ++---------
+ fs/nfsd/nfs4state.c        |   13 +++++++++----
+ include/linux/nfsd/state.h |    4 ++--
+ 3 files changed, 13 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 3fd23f7..81d1c52 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -377,7 +377,6 @@ static int max_cb_time(void)
+ 
+ int setup_callback_client(struct nfs4_client *clp)
+ {
+-	struct sockaddr_in	addr;
+ 	struct nfs4_cb_conn *cb = &clp->cl_cb_conn;
+ 	struct rpc_timeout	timeparms = {
+ 		.to_initval	= max_cb_time(),
+@@ -385,8 +384,8 @@ int setup_callback_client(struct nfs4_client *clp)
+ 	};
+ 	struct rpc_create_args args = {
+ 		.protocol	= IPPROTO_TCP,
+-		.address	= (struct sockaddr *)&addr,
+-		.addrsize	= sizeof(addr),
++		.address	= (struct sockaddr *) &cb->cb_addr,
++		.addrsize	= cb->cb_addrlen,
+ 		.timeout	= &timeparms,
+ 		.program	= &cb_program,
+ 		.prognumber	= cb->cb_prog,
+@@ -400,12 +399,6 @@ int setup_callback_client(struct nfs4_client *clp)
+ 	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
+ 		return -EINVAL;
+ 
+-	/* Initialize address */
+-	memset(&addr, 0, sizeof(addr));
+-	addr.sin_family = AF_INET;
+-	addr.sin_port = htons(cb->cb_port);
+-	addr.sin_addr.s_addr = htonl(cb->cb_addr);
+-
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
+ 	if (IS_ERR(client)) {
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d294b1d..578e48c 100644
+index 9295c4b..95e2185 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -56,6 +56,7 @@
- #include <linux/module.h>
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/clnt.h>
-+#include <net/ipv6.h>
+@@ -931,7 +931,7 @@ parse_octet(unsigned int *lenp, char **addrp)
  
- #define NFSDDBG_FACILITY                NFSDDBG_PROC
- 
-@@ -901,9 +902,16 @@ static void
- gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
+ /* parse and set the setclientid ipv4 callback address */
+ static int
+-parse_ipv4(unsigned int addr_len, char *addr_val, unsigned int *cbaddrp, unsigned short *cbportp)
++parse_ipv4(unsigned int addr_len, char *addr_val, struct sockaddr_in *s4)
  {
- 	struct nfs4_cb_conn *cb = &clp->cl_cb_conn;
--
--	/* Currently, we only support tcp for the callback channel */
--	if ((se->se_callback_netid_len != 3) || memcmp((char *)se->se_callback_netid_val, "tcp", 3))
-+	unsigned short expected_family;
+ 	int temp = 0;
+ 	u32 cbaddr = 0;
+@@ -940,6 +940,8 @@ parse_ipv4(unsigned int addr_len, char *addr_val, unsigned int *cbaddrp, unsigne
+ 	char *addr = addr_val;
+ 	int i, shift;
+ 
++	s4->sin_family = AF_INET;
 +
-+	/* Currently, we only support tcp and tcp6 for the callback channel */
-+	if (se->se_callback_netid_len == 3 &&
-+	    !memcmp(se->se_callback_netid_val, "tcp", 3))
-+		expected_family = AF_INET;
-+	else if (se->se_callback_netid_len == 4 &&
-+		 !memcmp(se->se_callback_netid_val, "tcp6", 4))
-+		expected_family = AF_INET6;
-+	else
+ 	/* ipaddress */
+ 	shift = 24;
+ 	for(i = 4; i > 0  ; i--) {
+@@ -950,7 +952,7 @@ parse_ipv4(unsigned int addr_len, char *addr_val, unsigned int *cbaddrp, unsigne
+ 		if (shift > 0)
+ 		shift -= 8;
+ 	}
+-	*cbaddrp = cbaddr;
++	s4->sin_addr.s_addr = htonl(cbaddr);
+ 
+ 	/* port */
+ 	shift = 8;
+@@ -962,7 +964,7 @@ parse_ipv4(unsigned int addr_len, char *addr_val, unsigned int *cbaddrp, unsigne
+ 		if (shift > 0)
+ 			shift -= 8;
+ 	}
+-	*cbportp = cbport;
++	s4->sin_port = htons(cbport);
+ 	return 1;
+ }
+ 
+@@ -976,13 +978,16 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
  		goto out_err;
  
- 	cb->cb_addrlen = rpc_uaddr2sockaddr(se->se_callback_addr_val,
-@@ -911,7 +919,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
- 					    (struct sockaddr *) &cb->cb_addr,
- 					    sizeof(cb->cb_addr));
- 
--	if (cb->cb_addr.ss_family != AF_INET)
-+	if (cb->cb_addr.ss_family != expected_family)
+ 	if ( !(parse_ipv4(se->se_callback_addr_len, se->se_callback_addr_val,
+-	                 &cb->cb_addr, &cb->cb_port)))
++			  (struct sockaddr_in *) &cb->cb_addr)))
  		goto out_err;
++	cb->cb_addrlen = sizeof(struct sockaddr_in);
  	cb->cb_minorversion = 0;
  	cb->cb_prog = se->se_callback_prog;
-@@ -1153,6 +1161,7 @@ static bool
- cl_addr_equal(struct sockaddr *a, struct sockaddr *b)
- {
- 	struct sockaddr_in *a4, *b4;
-+	struct sockaddr_in6 *a6, *b6;
- 
- 	if (a->sa_family != b->sa_family)
- 		return false;
-@@ -1162,6 +1171,10 @@ cl_addr_equal(struct sockaddr *a, struct sockaddr *b)
- 		a4 = (struct sockaddr_in *) a;
- 		b4 = (struct sockaddr_in *) b;
- 		return (a4->sin_addr.s_addr == b4->sin_addr.s_addr);
-+	case AF_INET6:
-+		a6 = (struct sockaddr_in6 *) a;
-+		b6 = (struct sockaddr_in6 *) b;
-+		return ipv6_addr_equal(&a6->sin6_addr, &b6->sin6_addr);
- 	}
- 
- 	/* not sure how to compare, so just return false */
-@@ -1173,6 +1186,7 @@ static void
- cl_addr_copy(struct sockaddr *dst, struct sockaddr *src)
- {
- 	struct sockaddr_in *s4, *d4;
-+	struct sockaddr_in6 *s6, *d6;
- 
- 	dst->sa_family = src->sa_family;
- 
-@@ -1182,6 +1196,11 @@ cl_addr_copy(struct sockaddr *dst, struct sockaddr *src)
- 		d4 = (struct sockaddr_in *) dst;
- 		d4->sin_addr.s_addr = s4->sin_addr.s_addr;
- 		return;
-+	case AF_INET6:
-+		s6 = (struct sockaddr_in6 *) src;
-+		d6 = (struct sockaddr_in6 *) dst;
-+		ipv6_addr_copy(&d6->sin6_addr, &s6->sin6_addr);
-+		return;
- 	default:
- 		dst->sa_family = AF_UNSPEC;
- 	}
-@@ -1196,7 +1215,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 	int status;
- 	unsigned int		strhashval;
- 	char			dname[HEXDIR_LEN];
--	char			addr_str[INET_ADDRSTRLEN];
-+	char			addr_str[INET6_ADDRSTRLEN];
- 	nfs4_verifier		verf = exid->verifier;
- 	struct sockaddr		*sa = svc_addr(rqstp);
- 
-@@ -1574,7 +1593,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		/* RFC 3530 14.2.33 CASE 0: */
- 		status = nfserr_clid_inuse;
- 		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
--			char addr_str[INET_ADDRSTRLEN];
-+			char addr_str[INET6_ADDRSTRLEN];
- 			rpc_ntop((struct sockaddr *) &conf->cl_addr, addr_str,
- 				 sizeof(addr_str));
- 			dprintk("NFSD: setclientid: string in use by client "
+ 	cb->cb_ident = se->se_callback_ident;
+ 	return;
+ out_err:
++	cb->cb_addr.ss_family = AF_UNSPEC;
++	cb->cb_addrlen = 0;
+ 	dprintk(KERN_INFO "NFSD: this client (clientid %08x/%08x) "
+ 		"will not receive delegations\n",
+ 		clp->cl_clientid.cl_boot, clp->cl_clientid.cl_id);
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 58bb197..d866368 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -81,8 +81,8 @@ struct nfs4_delegation {
+ /* client delegation callback info */
+ struct nfs4_cb_conn {
+ 	/* SETCLIENTID info */
+-	u32                     cb_addr;
+-	unsigned short          cb_port;
++	struct sockaddr_storage	cb_addr;
++	size_t			cb_addrlen;
+ 	u32                     cb_prog;
+ 	u32			cb_minorversion;
+ 	u32                     cb_ident;	/* minorversion 0 only */
 -- 
 1.6.0.6
 
