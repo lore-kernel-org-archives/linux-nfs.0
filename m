@@ -1,257 +1,299 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:49162 "EHLO
-	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751184AbZHMArM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Aug 2009 20:47:12 -0400
-Message-ID: <4A83628D.9000505@akamai.com>
-Date: Wed, 12 Aug 2009 17:47:09 -0700
-From: Amit Gud <agud@akamai.com>
-To: linux-nfs@vger.kernel.org, trond.myklebust@fys.uio.no, steved@redhat.com,
-        jlayton@poochiereds.net
-CC: gud@ksu.edu, juhlenko@akamai.com
-Subject: [PATCH] Take 2: Allow passing fine resolution timing options to mount
+Received: from mx2.redhat.com ([66.187.237.31]:52915 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751944AbZHLO1S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Aug 2009 10:27:18 -0400
+Message-ID: <4A82D13D.2030705@redhat.com>
+Date: Wed, 12 Aug 2009 22:27:09 +0800
+From: Ian Kent <ikent@redhat.com>
+To: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
+References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>	 <4A7BCCCA.4020307@panasas.com> <20090807140425.GA18298@fieldses.org>	 <f6ce31e30908101129i3a0298b4uf96642872909ede8@mail.gmail.com>	 <A411E867-D130-4D82-89F0-5C73077EE475@oracle.com>	 <f6ce31e30908101243x1b69fdcbgdd8ae0d2d56e32de@mail.gmail.com>	 <f6ce31e30908101305n3a5b88ceo6b56b43f750b8548@mail.gmail.com>	 <4974ED30-D8CA-47B0-9D8F-BCD4410132FC@oracle.com>	 <f6ce31e30908110541g7e1354ffs59b74ad808578742@mail.gmail.com>	 <7E189B77-1139-4B16-97E5-4841B41B90C7@oracle.com> <f6ce31e30908111937jbd174dev6de131840da5ed4a@mail.gmail.com>
+In-Reply-To: <f6ce31e30908111937jbd174dev6de131840da5ed4a@mail.gmail.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch modifies parsing of mount options to allows passing units
-along with the options. Valid units are "s" for seconds and "ms" for
-milliseconds. When not specified, the unit defaults to seconds.
+Carlos André wrote:
+> Chuck,
+> Since we'll use some NFS servers, and (some) they are not critical to
+> user work (if they're down, user can just sit and wait for them
+> working on something else like  a webapp, printing, etc...) and if we
+> lose a server or a router (worst case) acumulative timeouts on
+> workstation login-boot process will make users try kill us (lol). A
+> acceptable timeout(first mount fail timeout) per automount try is
+> something around 10-15 (max) seconds. For us the best is a option to
+> permit us to do adjustments (1 to X secs), and putting this like a new
+> feature/non-default option will not mess with another users.... I dont
+> wanna make a mess on sources by myself just to modify automounter for
+> our needs, I just want the "right" solution in our case...
 
-For example, "-o acdirmin=20ms" can be specified for 20 milliseconds,
-and "-o acdirmin=3s" or just "-o acdirmin=3" for 3 seconds.
+But that also begs the question.
+What version of autofs is in use?
 
-This code also changes the display of options in /proc/<pid>/mountstats
-from seconds to milliseconds to reflect the accuracy.
+The latest versions have the ability to specify a time to wait before
+killing the mount process but I think that itself is an option that
+hasn't had the bugs worked out yet because the RPC layer seems to want
+to refuse to give up even when we kill the process.
 
-Signed-off-by: Amit Gud <agud@akamai.com>
+Perhaps we can work on this further, depending on your version
+constraints, of course.
 
-Index: linux-2.6/fs/nfs/client.c
-===================================================================
---- linux-2.6.orig/fs/nfs/client.c	2009-08-06 12:01:14.000000000 -0700
-+++ linux-2.6/fs/nfs/client.c	2009-08-05 15:03:18.000000000 -0700
-@@ -1295,10 +1295,10 @@
- 	if (data->wsize)
- 		server->wsize = nfs_block_size(data->wsize, NULL);
+> 
+> Thanks for help.
+> 
+> 2009/8/11 Chuck Lever <chuck.lever@oracle.com>:
+>> On Aug 11, 2009, at 8:41 AM, Carlos André wrote:
+>>> This long timeout is good if workstation need mount a critical
+>>> directory using /etc/fstab on boot (for example)..
+>>> But in my case, using this loooong timeout doesnt make any sense,
+>>> since autofs retry mount directory on-access. This in fact gives me
+>>> alot of headaches, coz user login 'll just hangs if one server goes
+>>> down for any reason, and will again hangs if user try access directory
+>>> pointing to a NFS down server...
+>> "retry=0" means the mount command will fail as soon as the first mount(2)
+>> system call fails.  When you set SYN retries to 1, this means after 9
+>> seconds, the connect fails, and that causes the mount(2) system call to
+>> fail.
+>>
+>> Recent conversations with Ian suggested that a long timeout was desired for
+>> automounter as well as other cases.  Ian, is there something else we need to
+>> consider to determine the correct retry timeout for NFS/TCP mount points
+>> handled via automounter?  How should mount.nfs wait so we don't make other
+>> use cases worse?  (Looks like most of the history is intact below).
+>>
+>> How long do you think is appropriate for the automounter to wait if the
+>> server is down, in your case, Carlos?
+>>
+>>> Am losing something or there have was something weirdo...!?
+>>> ------------------------------------------------
+>>> [root@KSTATION ~]# echo 5 > /proc/sys/net/ipv4/tcp_syn_retries  [DEFAULT]
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> proto=tcp,retry=1
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    3m9.000s
+>>> user    0m0.002s
+>>> sys     0m0.001s
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> sec=krb5p,proto=tcp,retry=1
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    3m9.000s
+>>> user    0m0.000s
+>>> sys     0m0.002s
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> proto=tcp,retry=0
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    3m9.001s
+>>> user    0m0.000s
+>>> sys     0m0.003s
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> sec=krb5p,proto=tcp,retry=0
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    3m9.001s
+>>> user    0m0.002s
+>>> sys     0m0.001s
+>>>
+>>> [root@KSTATION ~]# echo 1 > /proc/sys/net/ipv4/tcp_syn_retries [ 5 to 1 ]
+>>>
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> proto=tcp,retry=1
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying). [x 6]
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    1m3.002s
+>>> user    0m0.000s
+>>> sys     0m0.002s
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> sec=krb5p,proto=tcp,retry=1
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying). [x 13]
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    2m6.000s
+>>> user    0m0.000s
+>>> sys     0m0.002s
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> proto=tcp,retry=0
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    0m9.003s
+>>> user    0m0.001s
+>>> sys     0m0.002s
+>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
+>>> sec=krb5p,proto=tcp,retry=0
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying). [x 13]
+>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>
+>>> real    2m6.001s
+>>> user    0m0.001s
+>>> sys     0m0.002s
+>>> [root@KSTATION ~]#
+>>> ------------------------------------------------
+>>> max timeout goes to 2m6s changing tcp_syn_retries from 5 to 1... and
+>>> using retry=0 without kerberos I got only 9s...
+>>>
+>>> *sigh*
+>>>
+>>>
+>>>
+>>> 2009/8/10 Chuck Lever <chuck.lever@oracle.com>:
+>>>> On Aug 10, 2009, at 4:05 PM, Carlos André wrote:
+>>>>> Something funny: Using default tcp_syn_retries (5) i got
+>>>>> "3,6,12,24,48,96" secs interval... but if i change tcp_syn_retries to
+>>>>> 1 i got "3,6,3,6,3,6..." secs interval...
+>>>> Right.  Normally the RPC client calls the kernel's socket connect
+>>>> function,
+>>>> which does 6 SYN retries.  That one call usually takes longer than the
+>>>> RPC
+>>>> client's connect timeout, so it only makes one connect call, and then
+>>>> fails.
+>>>>
+>>>> Reducing the number of SYN retries per connect attempt causes the RPC
+>>>> client
+>>>> to retry the connect call until its connect timeout expires.  Each
+>>>> connect
+>>>> call resets the SYN timeout to 3 seconds.
+>>>>
+>>>>> [root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
+>>>>> sec=krb5p,proto=tcp
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>>>
+>>>>> real    3m9.000s
+>>>>> user    0m0.000s
+>>>>> sys     0m0.002s
+>>>>>
+>>>>> [root@KSERVER /]# echo 1 > /proc/sys/net/ipv4/tcp_syn_retries
+>>>>> [root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
+>>>>> sec=krb5p,proto=tcp  ("retry=1" = no change)
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
+>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
+>>>>>
+>>>>> real    2m6.004s
+>>>>> user    0m0.000s
+>>>>> sys     0m0.004s
+>>>>>
+>>>>> (3,6,3,6... secs interval)
+>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>>> 2009/8/10 Carlos André <candrecn@gmail.com>:
+>>>>>> No, i'm just using packages from CentOS repo...
+>>>>>>
+>>>>>> And u're right about expo retries... with tcpdump i've monitored
+>>>>>> traffic and i got SYN retries in 3, 6, 12, 24, 48, 96 secs on port
+>>>>>> 2049...
+>>>>>> I tried use "retry=1" option on mount without any change... I dont
+>>>>>> want change source or tcp timers... just NFSv4 client.
+>>>>>>
+>>>>>> 2009/8/10 Chuck Lever <chuck.lever@oracle.com>:
+>>>>>>> On Aug 10, 2009, at 2:29 PM, Carlos André wrote:
+>>>>>>>> Bruce, no... you're right.  I'm describing a situation where my
+>>>>>>>> server
+>>>>>>>> died... i need mount fail faster (10 or 15 secs max) than 3 minutes
+>>>>>>>> and 9 seconds...
+>>>>>>> The 189 second timeout is likely how long it takes the kernel to give
+>>>>>>> up
+>>>>>>> trying to connect a TCP socket to the server (6 SYN attempts with
+>>>>>>> exponential retries, or something like that).  For stock CentOS 5.3, I
+>>>>>>> think
+>>>>>>> user space does only a DNS lookup for normal NFSv4 mounts -- the
+>>>>>>> kernel
+>>>>>>> just
+>>>>>>> tries to connect a TCP socket to port 2049, with no preceding rpcbind
+>>>>>>> request.
+>>>>>>>
+>>>>>>> Carlos, let us know if you have replaced any NFS-related CentOS
+>>>>>>> components
+>>>>>>> (kernel, nfs-utils) with something you've built yourself.
+>>>>>>>
+>>>>>>>> 2009/8/7 J. Bruce Fields <bfields@fieldses.org>:
+>>>>>>>>> On Fri, Aug 07, 2009 at 09:42:18AM +0300, Benny Halevy wrote:
+>>>>>>>>>> On Aug. 07, 2009, 3:18 +0300, Carlos André <candrecn@gmail.com>
+>>>>>>>>>> wrote:
+>>>>>>>>>>> Anyone ?
+>>>>>>>>>>>
+>>>>>>>>>>> 2009/7/29 Carlos André <candrecn@gmail.com>:
+>>>>>>>>>>>> PPL, I need put a CentOS 5.3 (updated) NFSv4 server to work with
+>>>>>>>>>>>> Kerberos
+>>>>>>>>>>>> and AutoFS, but i got a problem: If NFS server goes down i get a
+>>>>>>>>>>>> LOOOOOOONG
+>>>>>>>>>>>> mount timeout on CentOS 5.3 (updated) NFSv4 client...
+>>>>>>>>>>>>
+>>>>>>>>>>>> Since i need mount some (3 to 6) dirs at user logon process, if
+>>>>>>>>>>>> mount
+>>>>>>>>>>>> hangs,
+>>>>>>>>>>>> user logon hangs. Then i want configure it to timeout (if server
+>>>>>>>>>>>> down)
+>>>>>>>>>>>> after
+>>>>>>>>>>>> 10-15 secs (MAX) on each mount attempt.
+>>>>>>>>>>>>
+>>>>>>>>>>>> I already make a lab and tried a LOT of combinations, there my
+>>>>>>>>>>>> findings
+>>>>>>>>>>>> (server DOWN IP: 172.16.0.10 / client IP: 172.16.1.10) using
+>>>>>>>>>>>> basic
+>>>>>>>>>>>> command
+>>>>>>>>>>>> (time mount 172.16.0.10:/remotedir /localdir/ -t nfs4 -o
+>>>>>>>>>>>> sec=krb5,proto=<tcp/udp>) from NFS client:
+>>>>>>>>>>>>
+>>>>>>>>>>>> - Once i try access mount point using AutoFS (proto=tcp OR
+>>>>>>>>>>>> proto=udp)
+>>>>>>>>>>>> it
+>>>>>>>>>>>> hangs for 189 secs (3m9s: real  3m9.001s)  until show error
+>>>>>>>>>>>> (mount:
+>>>>>>>>>>>> mount to
+>>>>>>>>>>>> NFS server '172.16.0.10' failed: timed out (giving up))
+>>>>>>>>>> Sounds like you're hitting the server's grace period.
+>>>>>>>>> I thought he was describing a situation where the server the server
+>>>>>>>>> is completely gone and isn't coming back, and wondering how to make
+>>>>>>>>> the
+>>>>>>>>> mount fail faster.  But I may be misunderstanding.
+>>>>>>>>>
+>>>>>>>>> --b.
+>>>>>>>>>
+>>>>>>>> --
+>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>>>>>>>> in
+>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>> --
+>>>>>>> Chuck Lever
+>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>> --
+>>>> Chuck Lever
+>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>
+>>>>
+>>>>
+>>>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>>
 
--	server->acregmin = data->acregmin * HZ;
--	server->acregmax = data->acregmax * HZ;
--	server->acdirmin = data->acdirmin * HZ;
--	server->acdirmax = data->acdirmax * HZ;
-+	server->acregmin = (data->acregmin * HZ) / 1000;
-+	server->acregmax = (data->acregmax * HZ) / 1000;
-+	server->acdirmin = (data->acdirmin * HZ) / 1000;
-+	server->acdirmax = (data->acdirmax * HZ) / 1000;
-
- 	server->port = data->nfs_server.port;
-
-Index: linux-2.6/fs/nfs/super.c
-===================================================================
---- linux-2.6.orig/fs/nfs/super.c	2009-08-05 13:03:42.000000000 -0700
-+++ linux-2.6/fs/nfs/super.c	2009-08-12 17:26:44.000000000 -0700
-@@ -53,6 +53,7 @@
- #include <linux/nfs_xdr.h>
- #include <linux/magic.h>
- #include <linux/parser.h>
-+#include <linux/ctype.h>
-
- #include <asm/system.h>
- #include <asm/uaccess.h>
-@@ -558,14 +559,14 @@
- 	if (nfss->bsize != 0)
- 		seq_printf(m, ",bsize=%u", nfss->bsize);
- 	seq_printf(m, ",namlen=%u", nfss->namelen);
--	if (nfss->acregmin != NFS_DEF_ACREGMIN*HZ || showdefaults)
--		seq_printf(m, ",acregmin=%u", nfss->acregmin/HZ);
--	if (nfss->acregmax != NFS_DEF_ACREGMAX*HZ || showdefaults)
--		seq_printf(m, ",acregmax=%u", nfss->acregmax/HZ);
--	if (nfss->acdirmin != NFS_DEF_ACDIRMIN*HZ || showdefaults)
--		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
--	if (nfss->acdirmax != NFS_DEF_ACDIRMAX*HZ || showdefaults)
--		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
-+	if (nfss->acregmin != (NFS_DEF_ACREGMIN * HZ) / 1000 || showdefaults)
-+		seq_printf(m, ",acregmin=%u", (nfss->acregmin * 1000) / HZ);
-+	if (nfss->acregmax != (NFS_DEF_ACREGMAX * HZ) / 1000 || showdefaults)
-+		seq_printf(m, ",acregmax=%u", (nfss->acregmax * 1000) / HZ);
-+	if (nfss->acdirmin != (NFS_DEF_ACDIRMIN * HZ) / 1000 || showdefaults)
-+		seq_printf(m, ",acdirmin=%u", (nfss->acdirmin * 1000) / HZ);
-+	if (nfss->acdirmax != (NFS_DEF_ACDIRMAX * HZ) / 1000 || showdefaults)
-+		seq_printf(m, ",acdirmax=%u", (nfss->acdirmax * 1000) / HZ);
- 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
- 		if (nfss->flags & nfs_infop->flag)
- 			seq_puts(m, nfs_infop->str);
-@@ -967,6 +968,47 @@
- }
-
- /*
-+ * Parse the input string for unit. Return the value which when
-+ * multiplied with the user input yields millisecond resolution.
-+ *
-+ * If user does not specify any unit, it is defaulted to seconds.
-+ */
-+static unsigned int nfs_match_unit(char *string)
-+{
-+	unsigned int len = strlen(string);
-+
-+	if (len < 3)
-+		return 1000;
-+
-+	string = string + len - 2;
-+
-+	if (!strcmp(string, "ms")) {
-+		*string = '\0';
-+		return 1;
-+	}
-+
-+	string++;
-+
-+	if (isdigit(*string))
-+		return 1000;
-+
-+	if (*string == 's') {
-+		*string = '\0';
-+		return 1000;
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-+ * This converts the user value in millisecond resolution.
-+ */
-+static inline unsigned long nfs_convert_unit(unsigned int unit, unsigned long option)
-+{
-+	return unit * option;
-+}
-+
-+/*
-  * Error-check and convert a string of mount options from user space into
-  * a data structure.  The whole mount string is processed; bad options are
-  * skipped as they are encountered.  If there were no errors, return 1;
-@@ -1003,6 +1045,7 @@
- 		unsigned long option;
- 		int int_option;
- 		int token;
-+		unsigned int unit;
-
- 		if (!*p)
- 			continue;
-@@ -1174,52 +1217,57 @@
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
-+			unit = nfs_match_unit(string);
- 			rc = strict_strtoul(string, 10, &option);
- 			kfree(string);
- 			if (rc != 0)
- 				goto out_invalid_value;
--			mnt->acregmin = option;
-+			mnt->acregmin = nfs_convert_unit(option, unit);
- 			break;
- 		case Opt_acregmax:
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
-+			unit = nfs_match_unit(string);
- 			rc = strict_strtoul(string, 10, &option);
- 			kfree(string);
- 			if (rc != 0)
- 				goto out_invalid_value;
--			mnt->acregmax = option;
-+			mnt->acregmax = nfs_convert_unit(option, unit);
- 			break;
- 		case Opt_acdirmin:
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
-+			unit = nfs_match_unit(string);
- 			rc = strict_strtoul(string, 10, &option);
- 			kfree(string);
- 			if (rc != 0)
- 				goto out_invalid_value;
--			mnt->acdirmin = option;
-+			mnt->acdirmin = nfs_convert_unit(option, unit);
- 			break;
- 		case Opt_acdirmax:
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
-+			unit = nfs_match_unit(string);
- 			rc = strict_strtoul(string, 10, &option);
- 			kfree(string);
- 			if (rc != 0)
- 				goto out_invalid_value;
--			mnt->acdirmax = option;
-+			mnt->acdirmax = nfs_convert_unit(option, unit);
- 			break;
- 		case Opt_actimeo:
- 			string = match_strdup(args);
- 			if (string == NULL)
- 				goto out_nomem;
-+			unit = nfs_match_unit(string);
- 			rc = strict_strtoul(string, 10, &option);
- 			kfree(string);
- 			if (rc != 0)
- 				goto out_invalid_value;
- 			mnt->acregmin = mnt->acregmax =
--			mnt->acdirmin = mnt->acdirmax = option;
-+			mnt->acdirmin = mnt->acdirmax = nfs_convert_unit(option, unit);
- 			break;
- 		case Opt_namelen:
- 			string = match_strdup(args);
-@@ -1715,10 +1763,10 @@
- 		args->wsize		= data->wsize;
- 		args->timeo		= data->timeo;
- 		args->retrans		= data->retrans;
--		args->acregmin		= data->acregmin;
--		args->acregmax		= data->acregmax;
--		args->acdirmin		= data->acdirmin;
--		args->acdirmax		= data->acdirmax;
-+		args->acregmin		= data->acregmin * 1000;
-+		args->acregmax		= data->acregmax * 1000;
-+		args->acdirmin		= data->acdirmin * 1000;
-+		args->acdirmax		= data->acdirmax * 1000;
-
- 		memcpy(&args->nfs_server.address, &data->addr,
- 		       sizeof(data->addr));
-@@ -2391,10 +2439,10 @@
- 		args->wsize	= data->wsize;
- 		args->timeo	= data->timeo;
- 		args->retrans	= data->retrans;
--		args->acregmin	= data->acregmin;
--		args->acregmax	= data->acregmax;
--		args->acdirmin	= data->acdirmin;
--		args->acdirmax	= data->acdirmax;
-+		args->acregmin	= data->acregmin * 1000;
-+		args->acregmax	= data->acregmax * 1000;
-+		args->acdirmin	= data->acdirmin * 1000;
-+		args->acdirmax	= data->acdirmax * 1000;
- 		args->nfs_server.protocol = data->proto;
- 		nfs_validate_transport_protocol(args);
-
-Index: linux-2.6/include/linux/nfs_fs.h
-===================================================================
---- linux-2.6.orig/include/linux/nfs_fs.h	2009-08-05 18:45:16.000000000 -0700
-+++ linux-2.6/include/linux/nfs_fs.h	2009-08-05 18:45:32.000000000 -0700
-@@ -20,10 +20,10 @@
- #define NFS_MAX_UDP_TIMEOUT	(60*HZ)
- #define NFS_MAX_TCP_TIMEOUT	(600*HZ)
-
--#define NFS_DEF_ACREGMIN	(3)
--#define NFS_DEF_ACREGMAX	(60)
--#define NFS_DEF_ACDIRMIN	(30)
--#define NFS_DEF_ACDIRMAX	(60)
-+#define NFS_DEF_ACREGMIN	(3000)
-+#define NFS_DEF_ACREGMAX	(60000)
-+#define NFS_DEF_ACDIRMIN	(30000)
-+#define NFS_DEF_ACDIRMAX	(60000)
-
- /*
-  * When flushing a cluster of dirty pages, there can be different
-
-
-
--- 
-May the source be with you.
-http://cis.ksu.edu~/gud
