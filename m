@@ -1,223 +1,152 @@
 From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/7] sunrpc: add routine for comparing addresses
-Date: Wed, 12 Aug 2009 07:57:00 -0400
-Message-ID: <1250078226-10511-2-git-send-email-jlayton@redhat.com>
+Subject: [PATCH 4/7] nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
+Date: Wed, 12 Aug 2009 07:57:03 -0400
+Message-ID: <1250078226-10511-5-git-send-email-jlayton@redhat.com>
 References: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
 To: bfields@fieldses.org
-Return-path: <nfsv4-bounces@linux-nfs.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:57511 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751376AbZHLL5L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Aug 2009 07:57:11 -0400
 In-Reply-To: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lockd needs these sort of routines, as does the NFSv4 callback code.
-
-Move lockd's routines into common code and rename them so that they can
-be used by others.
+It's currently a __be32, which isn't big enough to hold an IPv6 address.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/lockd/clntlock.c         |    2 +-
- fs/lockd/host.c             |    4 +-
- fs/lockd/mon.c              |    2 +-
- fs/lockd/svcsubs.c          |    2 +-
- include/linux/lockd/lockd.h |   43 ---------------------------------------
- include/linux/sunrpc/clnt.h |    2 +
- net/sunrpc/addr.c           |   47 +++++++++++++++++++++++++++++++++++++++++++
- 7 files changed, 54 insertions(+), 48 deletions(-)
+ fs/nfsd/nfs4state.c        |   32 +++++++++++++++++++-------------
+ include/linux/nfsd/state.h |    2 +-
+ 2 files changed, 20 insertions(+), 14 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 1f3b0fc..fc9032d 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -166,7 +166,7 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
- 		 */
- 		if (fl_blocked->fl_u.nfs_fl.owner->pid != lock->svid)
- 			continue;
--		if (!nlm_cmp_addr(nlm_addr(block->b_host), addr))
-+		if (!rpc_cmp_addr(nlm_addr(block->b_host), addr))
- 			continue;
- 		if (nfs_compare_fh(NFS_FH(fl_blocked->fl_file->f_path.dentry->d_inode) ,fh) != 0)
- 			continue;
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 7cb076a..4600c20 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -111,7 +111,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 	 */
- 	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
--		if (!nlm_cmp_addr(nlm_addr(host), ni->sap))
-+		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
- 			continue;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 95e2185..7658070 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -55,6 +55,7 @@
+ #include <linux/lockd/bind.h>
+ #include <linux/module.h>
+ #include <linux/sunrpc/svcauth_gss.h>
++#include <linux/sunrpc/clnt.h>
  
- 		/* See if we have an NSM handle for this client */
-@@ -125,7 +125,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 		if (host->h_server != ni->server)
- 			continue;
- 		if (ni->server &&
--		    !nlm_cmp_addr(nlm_srcaddr(host), ni->src_sap))
-+		    !rpc_cmp_addr(nlm_srcaddr(host), ni->src_sap))
- 			continue;
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
  
- 		/* Move to head of hash chain. */
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 30c9331..f956651 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -209,7 +209,7 @@ static struct nsm_handle *nsm_lookup_addr(const struct sockaddr *sap)
- 	struct nsm_handle *nsm;
+@@ -1225,13 +1226,15 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	int status;
+ 	unsigned int		strhashval;
+ 	char			dname[HEXDIR_LEN];
++	char			addr_str[INET6_ADDRSTRLEN];
+ 	nfs4_verifier		verf = exid->verifier;
+-	u32			ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
++	struct sockaddr		*sa = svc_addr(rqstp);
  
- 	list_for_each_entry(nsm, &nsm_handles, sm_link)
--		if (nlm_cmp_addr(nsm_addr(nsm), sap))
-+		if (rpc_cmp_addr(nsm_addr(nsm), sap))
- 			return nsm;
- 	return NULL;
- }
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index 9e4d6aa..ad478da 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -417,7 +417,7 @@ EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_sb);
- static int
- nlmsvc_match_ip(void *datap, struct nlm_host *host)
++	rpc_ntop(sa, addr_str, sizeof(addr_str));
+ 	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
+-		" ip_addr=%u flags %x, spa_how %d\n",
++		"ip_addr=%s flags %x, spa_how %d\n",
+ 		__func__, rqstp, exid, exid->clname.len, exid->clname.data,
+-		ip_addr, exid->flags, exid->spa_how);
++		addr_str, exid->flags, exid->spa_how);
+ 
+ 	if (!check_name(exid->clname) || (exid->flags & ~EXCHGID4_FLAG_MASK_A))
+ 		return nfserr_inval;
+@@ -1320,7 +1323,7 @@ out_new:
+ 
+ 	copy_verf(new, &verf);
+ 	copy_cred(&new->cl_cred, &rqstp->rq_cred);
+-	new->cl_addr = ip_addr;
++	rpc_copy_addr((struct sockaddr *) &new->cl_addr, sa);
+ 	gen_clid(new);
+ 	gen_confirm(new);
+ 	add_to_unconfirmed(new, strhashval);
+@@ -1394,7 +1397,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		     struct nfsd4_compound_state *cstate,
+ 		     struct nfsd4_create_session *cr_ses)
  {
--	return nlm_cmp_addr(nlm_srcaddr(host), datap);
-+	return rpc_cmp_addr(nlm_srcaddr(host), datap);
- }
- 
- /**
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index c325b18..e7a251a 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -338,49 +338,6 @@ static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
+-	u32 ip_addr = svc_addr_in(rqstp)->sin_addr.s_addr;
++	struct sockaddr *sa = svc_addr(rqstp);
+ 	struct nfs4_client *conf, *unconf;
+ 	struct nfsd4_clid_slot *cs_slot = NULL;
+ 	int status = 0;
+@@ -1422,7 +1425,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		cs_slot->sl_seqid++;
+ 	} else if (unconf) {
+ 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+-		    (ip_addr != unconf->cl_addr)) {
++		    !rpc_cmp_addr(sa, (struct sockaddr *) &unconf->cl_addr)) {
+ 			status = nfserr_clid_inuse;
+ 			goto out;
+ 		}
+@@ -1569,7 +1572,7 @@ __be32
+ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		  struct nfsd4_setclientid *setclid)
+ {
+-	struct sockaddr_in	*sin = svc_addr_in(rqstp);
++	struct sockaddr		*sa = svc_addr(rqstp);
+ 	struct xdr_netobj 	clname = { 
+ 		.len = setclid->se_namelen,
+ 		.data = setclid->se_name,
+@@ -1601,8 +1604,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		/* RFC 3530 14.2.33 CASE 0: */
+ 		status = nfserr_clid_inuse;
+ 		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+-			dprintk("NFSD: setclientid: string in use by client"
+-				" at %pI4\n", &conf->cl_addr);
++			char addr_str[INET6_ADDRSTRLEN];
++			rpc_ntop((struct sockaddr *) &conf->cl_addr, addr_str,
++				 sizeof(addr_str));
++			dprintk("NFSD: setclientid: string in use by client "
++				"at %s\n", addr_str);
+ 			goto out;
+ 		}
  	}
- }
- 
--static inline int __nlm_cmp_addr4(const struct sockaddr *sap1,
--				  const struct sockaddr *sap2)
--{
--	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
--	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
--	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
--}
--
--#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
--static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
--				  const struct sockaddr *sap2)
--{
--	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
--	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
--	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
--}
--#else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
--static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
--				  const struct sockaddr *sap2)
--{
--	return 0;
--}
--#endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
--
--/*
-- * Compare two host addresses
-- *
-- * Return TRUE if the addresses are the same; otherwise FALSE.
-- */
--static inline int nlm_cmp_addr(const struct sockaddr *sap1,
--			       const struct sockaddr *sap2)
--{
--	if (sap1->sa_family == sap2->sa_family) {
--		switch (sap1->sa_family) {
--		case AF_INET:
--			return __nlm_cmp_addr4(sap1, sap2);
--		case AF_INET6:
--			return __nlm_cmp_addr6(sap1, sap2);
--		}
--	}
--	return 0;
--}
--
- /*
-  * Compare two NLM locks.
-  * When the second lock is of type F_UNLCK, this acts like a wildcard.
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index ab3f6e9..b9171f2 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -160,6 +160,8 @@ size_t		rpc_pton(const char *, const size_t,
- char *		rpc_sockaddr2uaddr(const struct sockaddr *);
- size_t		rpc_uaddr2sockaddr(const char *, const size_t,
- 				   struct sockaddr *, const size_t);
-+bool		rpc_cmp_addr(const struct sockaddr *sa1,
-+				const struct sockaddr *sa2);
- 
- static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+@@ -1664,7 +1670,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		gen_clid(new);
+ 	}
+ 	copy_verf(new, &clverifier);
+-	new->cl_addr = sin->sin_addr.s_addr;
++	rpc_copy_addr((struct sockaddr *) &new->cl_addr, sa);
+ 	new->cl_flavor = rqstp->rq_flavor;
+ 	princ = svc_gss_principal(rqstp);
+ 	if (princ) {
+@@ -1698,7 +1704,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			 struct nfsd4_compound_state *cstate,
+ 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
  {
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 22e8fd8..dbf908e 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -362,3 +362,50 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(rpc_uaddr2sockaddr);
-+
-+static bool __rpc_cmp_addr4(const struct sockaddr *sap1,
-+			    const struct sockaddr *sap2)
-+{
-+	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
-+	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
-+
-+	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
-+}
-+
-+#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-+static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
-+			    const struct sockaddr *sap2)
-+{
-+	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
-+	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
-+	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
-+}
-+#else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
-+static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
-+			    const struct sockaddr *sap2)
-+{
-+	return false;
-+}
-+#endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
-+
-+/**
-+ * rpc_cmp_addr - compare the address portion of two sockaddrs.
-+ * @sap1: first sockaddr
-+ * @sap2: second sockaddr
-+ *
-+ * Just compares the family and address portion. Ignores port, scope, etc.
-+ * Returns true if the addrs are equal, false if they aren't.
-+ */
-+bool rpc_cmp_addr(const struct sockaddr *sap1, const struct sockaddr *sap2)
-+{
-+	if (sap1->sa_family == sap2->sa_family) {
-+		switch (sap1->sa_family) {
-+		case AF_INET:
-+			return __rpc_cmp_addr4(sap1, sap2);
-+		case AF_INET6:
-+			return __rpc_cmp_addr6(sap1, sap2);
-+		}
-+	}
-+	return false;
-+}
-+EXPORT_SYMBOL_GPL(rpc_cmp_addr);
+-	struct sockaddr_in *sin = svc_addr_in(rqstp);
++	struct sockaddr *sa = svc_addr(rqstp);
+ 	struct nfs4_client *conf, *unconf;
+ 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
+ 	clientid_t * clid = &setclientid_confirm->sc_clientid;
+@@ -1717,9 +1723,9 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	unconf = find_unconfirmed_client(clid);
+ 
+ 	status = nfserr_clid_inuse;
+-	if (conf && conf->cl_addr != sin->sin_addr.s_addr)
++	if (conf && !rpc_cmp_addr((struct sockaddr *) &conf->cl_addr, sa))
+ 		goto out;
+-	if (unconf && unconf->cl_addr != sin->sin_addr.s_addr)
++	if (unconf && !rpc_cmp_addr((struct sockaddr *) &unconf->cl_addr, sa))
+ 		goto out;
+ 
+ 	/*
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index d866368..fb0c404 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -200,7 +200,7 @@ struct nfs4_client {
+ 	char                    cl_recdir[HEXDIR_LEN]; /* recovery dir */
+ 	nfs4_verifier		cl_verifier; 	/* generated by client */
+ 	time_t                  cl_time;        /* time of last lease renewal */
+-	__be32			cl_addr; 	/* client ipaddress */
++	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
+ 	u32			cl_flavor;	/* setclientid pseudoflavor */
+ 	char			*cl_principal;	/* setclientid principal name */
+ 	struct svc_cred		cl_cred; 	/* setclientid principal */
 -- 
 1.6.0.6
+
