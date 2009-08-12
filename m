@@ -1,55 +1,122 @@
-From: "Itay G." <itay.gr@gmail.com>
-Subject: [NFS] Find out the most accessed files?
-Date: Wed, 12 Aug 2009 12:32:29 +0100
-Message-ID: <14cf22870908120432j6102fb2eh98915383d32f7df8@mail.gmail.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 2/7] sunrpc: add common routine for copying address portion of
+	a sockaddr
+Date: Wed, 12 Aug 2009 07:57:01 -0400
+Message-ID: <1250078226-10511-3-git-send-email-jlayton@redhat.com>
+References: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-To: nfs@lists.sourceforge.net
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:58622 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751116AbZHLLdM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Aug 2009 07:33:12 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1MbC4B-0004tn-3y
-	for linux-nfs@vger.kernel.org; Wed, 12 Aug 2009 21:32:27 +1000
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: bfields@fieldses.org
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/addr.c           |   51 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+), 0 deletions(-)
 
-I have complete access to both the NFS server and the Client machines.
-I would like to install some sort of monitoring program on both,
-that would report what files are most "intensely" used. The goal would
-be to optimize where I should put the most accessed files (whether it
-would be on a fast storage or a slow one),
-but for that I would first need to know which files those are!
-
-I would prefer knowing how much "total data" has been read from or
-written to these files... but i can compromise on that...
-
-
-
-Any ideas on how to do that? or how else I could achieve the same goal?
-
-
-
-Thanks,
-
-
-Itay
-
-------------------------------------------------------------------------------
-Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30-Day 
-trial. Simplify your report design, integration and deployment - and focus on 
-what you do best, core application coding. Discover what's new with 
-Crystal Reports now.  http://p.sf.net/sfu/bobj-july
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index b9171f2..9c0b0a6 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -162,6 +162,7 @@ size_t		rpc_uaddr2sockaddr(const char *, const size_t,
+ 				   struct sockaddr *, const size_t);
+ bool		rpc_cmp_addr(const struct sockaddr *sa1,
+ 				const struct sockaddr *sa2);
++bool		rpc_copy_addr(struct sockaddr *dst, const struct sockaddr *src);
+ 
+ static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+ {
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index dbf908e..968a804 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -372,6 +372,17 @@ static bool __rpc_cmp_addr4(const struct sockaddr *sap1,
+ 	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+ }
+ 
++static bool __rpc_copy_addr4(struct sockaddr *dst,
++			     const struct sockaddr *src)
++{
++	const struct sockaddr_in *ssin = (struct sockaddr_in *) src;
++	struct sockaddr_in *dsin = (struct sockaddr_in *) dst;
++
++	dsin->sin_family = ssin->sin_family;
++	dsin->sin_addr.s_addr = ssin->sin_addr.s_addr;
++	return true;
++}
++
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+ 			    const struct sockaddr *sap2)
+@@ -380,12 +391,30 @@ static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+ 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+ 	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
+ }
++
++static bool __rpc_copy_addr6(struct sockaddr *dst,
++			     const struct sockaddr *src)
++{
++	const struct sockaddr_in6 *ssin6 = (const struct sockaddr_in6 *) src;
++	struct sockaddr_in6 *dsin6 = (struct sockaddr_in6 *) dst;
++
++	dsin6->sin6_family = ssin6->sin6_family;
++	ipv6_addr_copy(&dsin6->sin6_addr, &ssin6->sin6_addr);
++	return true;
++}
++
+ #else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+ static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+ 			    const struct sockaddr *sap2)
+ {
+ 	return false;
+ }
++
++static bool __rpc_copy_addr6(struct sockaddr *dst,
++			     const struct sockaddr *src)
++{
++	return false;
++}
+ #endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+ 
+ /**
+@@ -409,3 +438,25 @@ bool rpc_cmp_addr(const struct sockaddr *sap1, const struct sockaddr *sap2)
+ 	return false;
+ }
+ EXPORT_SYMBOL_GPL(rpc_cmp_addr);
++
++/**
++ * rpc_copy_addr - copy the address portion of one sockaddr to another
++ * @dst: destination sockaddr
++ * @src: source sockaddr
++ *
++ * Just copies the address portion and family. Ignores port, scope, etc.
++ * Caller is responsible for making certain that dst is large enough to hold
++ * the address in src. Returns true if address family is supported. Returns
++ * false otherwise.
++ */
++bool rpc_copy_addr(struct sockaddr *dst, const struct sockaddr *src)
++{
++	switch (src->sa_family) {
++	case AF_INET:
++		return __rpc_copy_addr4(dst, src);
++	case AF_INET6:
++		return __rpc_copy_addr6(dst, src);
++	}
++	return false;
++}
++EXPORT_SYMBOL_GPL(rpc_copy_addr);
+-- 
+1.6.0.6
