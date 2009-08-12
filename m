@@ -1,131 +1,117 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH RFC 12/13] nfs: nfs4xdr: change COPYMEM macro into a
- static function
-Date: Wed, 12 Aug 2009 16:36:16 -0400
-Message-ID: <1250109376.5973.13.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH RFC 13/13] nfs: nfs4xdr: get rid of READ_BUF
+Date: Wed, 12 Aug 2009 17:05:09 -0400
+Message-ID: <1250111109.5973.41.camel@heimdal.trondhjem.org>
 References: <4A82DC7B.3090600@panasas.com>
-	 <1250090563-9895-1-git-send-email-bhalevy@panasas.com>
+	 <1250090578-9927-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
 To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38927 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21356 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752345AbZHLUgc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Aug 2009 16:36:32 -0400
-In-Reply-To: <1250090563-9895-1-git-send-email-bhalevy@panasas.com>
+	id S1750847AbZHLVGS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Aug 2009 17:06:18 -0400
+In-Reply-To: <1250090578-9927-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Wed, 2009-08-12 at 18:22 +0300, Benny Halevy wrote:
+> Open code return pointer assignment and error checking using
+> a read_buf helper (macro), yet keep the dprintk on failure using an
+> internal __read_buf helper that gets the function name for printing.
+> 
 > Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
->  fs/nfs/nfs4xdr.c |   39 ++++++++++++++++++++-------------------
->  1 files changed, 20 insertions(+), 19 deletions(-)
+>  fs/nfs/nfs4xdr.c |  386 ++++++++++++++++++++++++++++++++++++++---------------
+>  1 files changed, 277 insertions(+), 109 deletions(-)
 > 
 > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 2e83aef..ed9bbd2 100644
+> index ed9bbd2..fb10a77 100644
 > --- a/fs/nfs/nfs4xdr.c
 > +++ b/fs/nfs/nfs4xdr.c
-> @@ -2448,11 +2448,6 @@ static int nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req, uint32_t *p,
->   * task to translate them into Linux-specific versions which are more
->   * consistent with the style used in NFSv2/v3...
->   */
-> -#define COPYMEM(x,nbytes) do {			\
-> -	memcpy((x), p, nbytes);			\
-> -	p += XDR_QUADLEN(nbytes);		\
-> -} while (0)
-> -
->  #define READ_BUF(nbytes)  do { \
->  	p = xdr_inline_decode(xdr, nbytes); \
->  	if (unlikely(!p)) { \
-> @@ -2464,6 +2459,12 @@ static int nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req, uint32_t *p,
->  	} \
->  } while (0)
+> @@ -2438,26 +2438,17 @@ static int nfs4_xdr_enc_get_lease_time(struct rpc_rqst *req, uint32_t *p,
+>  }
+>  #endif /* CONFIG_NFS_V4_1 */
 >  
-> +static __be32 *copymem(void *x, __be32 *p, u32 nbytes)
+> -/*
+> - * START OF "GENERIC" DECODE ROUTINES.
+> - *   These may look a little ugly since they are imported from a "generic"
+> - * set of XDR encode/decode routines which are intended to be shared by
+> - * all of our NFSv4 implementations (OpenBSD, MacOS X...).
+> - *
+> - * If the pain of reading these is too great, it should be a straightforward
+> - * task to translate them into Linux-specific versions which are more
+> - * consistent with the style used in NFSv2/v3...
+> - */
+> -#define READ_BUF(nbytes)  do { \
+> -	p = xdr_inline_decode(xdr, nbytes); \
+> -	if (unlikely(!p)) { \
+> -		dprintk("nfs: %s: prematurely hit end of receive" \
+> -				" buffer\n", __func__); \
+> -		dprintk("nfs: %s: xdr->p=%p, bytes=%u, xdr->end=%p\n", \
+> -				__func__, xdr->p, nbytes, xdr->end); \
+> -		return -EIO; \
+> -	} \
+> -} while (0)
+> +static __be32 *__read_buf(struct xdr_stream *xdr, size_t nbytes, char *func)
 > +{
-> +	memcpy(x, p, nbytes);
-> +	return p + XDR_QUADLEN(nbytes);
+> +	__be32 *p = xdr_inline_decode(xdr, nbytes);
+> +	if (unlikely(!p))
+> +		dprintk("nfs: %s: prematurely hit end of receive buffer: "
+> +			"xdr->p=%p, bytes=%u, xdr->end=%p\n",
+> +			func, xdr->p, nbytes, xdr->end);
+> +	return p;
 > +}
 > +
->  static int decode_opaque_inline(struct xdr_stream *xdr, unsigned int *len, char **string)
+> +#define read_buf(xdr, nbytes)	__read_buf(xdr, nbytes, __func__)
+>  
+>  static __be32 *copymem(void *x, __be32 *p, u32 nbytes)
+>  {
+> @@ -2469,9 +2460,13 @@ static int decode_opaque_inline(struct xdr_stream *xdr, unsigned int *len, char
 >  {
 >  	__be32 *p;
-> @@ -3312,7 +3313,7 @@ static int decode_close(struct xdr_stream *xdr, struct nfs_closeres *res)
->  	if (status)
->  		return status;
->  	READ_BUF(NFS4_STATEID_SIZE);
-> -	COPYMEM(res->stateid.data, NFS4_STATEID_SIZE);
-> +	copymem(res->stateid.data, p, NFS4_STATEID_SIZE);
+>  
+> -	READ_BUF(4);
+> +	p = read_buf(xdr, 4);
+> +	if (unlikely(!p))
+> +		return -EIO;
+>  	p = xdr_decode_int(p, len);
+> -	READ_BUF(*len);
+> +	p = read_buf(xdr, *len);
+> +	if (unlikely(!p))
+> +		return -EIO;
+>  	*string = (char *)p;
+>  	return 0;
+>  }
 
-I wouldn't mind converting the above 2 lines into a dedicated
+I'd do this a little differently.
 
-static int decode_stateid(struct xdr_stream *xdr, nfs4_stateid *stateid)
+static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+{
+	dprintk("nfs: %s: prematurely hit end of receive buffer."
+		"Remaining buffer length is %tu words.\n",
+		func, xdr->end - xdr->p);
+}
+
+static int decode_opaque_inline(struct xdr_stream *xdr, unsigned int *len, char **string)
 {
 	__be32 *p;
 
-	p = xdr_inline_decode(xdr, NFS4_STATEID_SIZE);
-	if (p) {
-		memcpy(stateid->data, p, NFS4_STATEID_SIZE);
-		return 0;
-	}
-	dprintk(....);
+	p = xdr_inline_decode(xdr, 4);
+	if (unlikely(!p))
+		goto out_overflow;
+	*len = be32_to_cpu(*p++);
+	p = xdr_inline_decode(xdr, *len);
+	if (unlikely(!p))
+		goto out_overflow;
+	*string = (char *)p;
+	return 0;
+out_overflow:
+	print_overflow_msg(__func__, xdr);
 	return -EIO;
 }
-
->  	return 0;
->  }
->  
-> @@ -3325,7 +3326,7 @@ static int decode_commit(struct xdr_stream *xdr, struct nfs_writeres *res)
->  	if (status)
->  		return status;
->  	READ_BUF(8);
-> -	COPYMEM(res->verf->verifier, 8);
-> +	copymem(res->verf->verifier, p, 8);
-
-Ditto for this...
-
->  	return 0;
->  }
->  
-> @@ -3601,7 +3602,7 @@ static int decode_getfh(struct xdr_stream *xdr, struct nfs_fh *fh)
->  		return -EIO;
->  	fh->size = len;
->  	READ_BUF(len);
-> -	COPYMEM(fh->data, len);
-> +	copymem(fh->data, p, len);
-
-Open code as memcpy() since we don't need to update the value of 'p'.
-
->  	return 0;
->  }
->  
-
-<snip lots of verifier and stateid decodes>
-
->  
-> @@ -4227,7 +4228,7 @@ static int decode_create_session(struct xdr_stream *xdr,
->  
->  	/* sessionid */
->  	READ_BUF(NFS4_MAX_SESSIONID_LEN);
-> -	COPYMEM(&session->sess_id, NFS4_MAX_SESSIONID_LEN);
-> +	copymem(&session->sess_id, p, NFS4_MAX_SESSIONID_LEN);
-
-Convert into a 'decode_session_id()' helper.
- 
->  	/* seqid, flags */
->  	READ_BUF(8);
-> @@ -4273,7 +4274,7 @@ static int decode_sequence(struct xdr_stream *xdr,
->  
->  	slot = &res->sr_session->fc_slot_table.slots[res->sr_slotid];
->  	READ_BUF(NFS4_MAX_SESSIONID_LEN + 20);
-> -	COPYMEM(id.data, NFS4_MAX_SESSIONID_LEN);
-> +	p = copymem(id.data, p, NFS4_MAX_SESSIONID_LEN);
->  	if (memcmp(id.data, res->sr_session->sess_id.data,
->  		   NFS4_MAX_SESSIONID_LEN)) {
->  		dprintk("%s Invalid session id\n", __func__);
 
 -- 
 Trond Myklebust
