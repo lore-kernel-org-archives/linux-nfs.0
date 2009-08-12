@@ -1,64 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mta1.dreamworks.com ([208.71.56.12]:24638 "EHLO
-	michael.anim.dreamworks.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754089AbZHZX4g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2009 19:56:36 -0400
-Message-ID: <4A95CBC7.5050001@dreamworks.com>
-Date: Wed, 26 Aug 2009 16:56:55 -0700
-From: Lans Carstensen <Lans.Carstensen@dreamworks.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] nfs-utils: nfs-iostat.py autofs cleanup and option
- to sort by ops/s
-References: <4A94C133.8030904@dreamworks.com> <3644941A-3EA7-4755-867A-888E81A372FC@oracle.com> <4A9550FF.6010103@RedHat.com> <52E7928C-340C-45EF-9CFF-FB902332465F@oracle.com> <4A9578E4.4040402@RedHat.com> <78010D70-DEC9-4177-AFE8-CF1627ABD8A4@oracle.com>
-In-Reply-To: <78010D70-DEC9-4177-AFE8-CF1627ABD8A4@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mrout2-b.corp.re1.yahoo.com ([69.147.107.21]:25689 "EHLO
+	mrout2-b.corp.re1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751893AbZHLUJY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Aug 2009 16:09:24 -0400
+Received: from enemycanmeet.champ.corp.yahoo.com (enemycanmeet.champ.corp.yahoo.com [10.74.90.165])
+	by mrout2-b.corp.re1.yahoo.com (8.13.8/8.13.8/y.out) with ESMTP id n7CJtxTB043431
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2009 12:55:59 -0700 (PDT)
+Received: from enemycanmeet.champ.corp.yahoo.com (localhost.localdomain [127.0.0.1])
+	by enemycanmeet.champ.corp.yahoo.com (8.13.8/8.13.8) with ESMTP id n7CJtj49020147
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2009 14:55:45 -0500
+Received: (from qbarnes@localhost)
+	by enemycanmeet.champ.corp.yahoo.com (8.13.8/8.13.8/Submit) id n7CJtjMx020146
+	for linux-nfs@vger.kernel.org; Wed, 12 Aug 2009 14:55:45 -0500
+Date: Wed, 12 Aug 2009 14:55:44 -0500
+From: Quentin Barnes <qbarnes+nfs@yahoo-inc.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Old 2.6.18 NFS attribute cache bug on SMP kernels
+Message-ID: <20090812195544.GA19990@yahoo-inc.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Chuck Lever wrote:
-> On Aug 26, 2009, at 2:03 PM, Steve Dickson wrote:
->> On 08/26/2009 11:35 AM, Chuck Lever wrote:
->>> On Aug 26, 2009, at 11:13 AM, Steve Dickson wrote:
->>>> On 08/26/2009 10:28 AM, Chuck Lever wrote:
->>>>>
->>>>> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
->>>>>
->>>>>> commit d3bb692a8c26c2d4e0dc70d7d0359daf79090e1e
->>>>>> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
->>>>>> Date:   Tue Aug 25 21:52:03 2009 -0700
->>>>>>
->>>>>>  Bump nfs-iostat.py version up to 0.3 to reflect new features.
->>>>>
->>>>> Now that nfs-iostat.py has been integrated into nfs-utils, I'm not 
->>>>> sure
->>>>> we want to maintain an individual version number for it.  Maybe it
->>>>> should use the nfs-utils package's versioning instead... Steve, your
->>>>> thoughts?
->>>> Hmm... I don't think we tie any of other commands versions to
->>>> the package version....
->>>
->>> Actually many of the C commands do grab a macro defined during
->>> autoconfiguration: PACKAGE_VERSION.
->>>
->> Interesting.. I do see PACKAGE_VERSION being defined in 
->> support/include/config.h
->> I guess I didn't know that was there and it does not seem to be used
->> by anybody... which is probably a problem but I don't think its a problem
->> with this script...
-> 
-> Right, I'm suggesting now would be a good time to switch these scripts 
-> over to the package-wide versioning scheme.
-> 
-> But take a look at mount, statd, showmount, and nfsstat, at least:  
-> these, for example, use the VERSION macro in their -V and usage messages.
+I've been doing some NFSv3 performance testing in preparation for
+moving a multi-threaded app from RHEL4 (2.6.9) to RHEL5 (2.6.18).
+In testing, noticed about an 8% decrease in overall performance of
+the app when on RHEL5 which was troubling.
 
-I agree with that concept but I'll kindly defer on the implementation as 
-I'm not exactly sure what would be required.  I guess maybe generation 
-of a Makefile.am that uses sed or somesuch to patch the script?
+The NFS file system used by the app is mounted "nocto".  I
+eventually isolated the drop in performance to the attribute cache.
+When I disabled the use of the attribute cache or disabled extra
+processors on an SMP system, performance came back.  It was actually
+_faster_ to go out over the network to the NFS server and do the
+GETATTR on an open(2) than it was to reuse the attributes in the
+cache on an SMP system!
 
--- Lans Carstensen, Systems Engineering, Dreamworks Animation
-Because they consistently observe and listen, the humble improve.
-                                                -- Wynton Marsalis
+I wrote a simple multi-threaded program that all it would do is
+fork multiple copies then just open and close files as quickly as
+possible.  When doing just open and closes, performance is down by a
+huge amount.  The test, when _not_ using the attribute cache, gets a
+huge speed boost -- 300%-2000% or even more.
 
+On a "nocto" mounted file system with an 8 processor SMP box,
+performance would go from 176k open calls per second with only one
+process running, to 10k/s with two processes, to just crawling along
+with 3k/s for four processes.  If I dynamically turn off all but
+one processor on the box, performance is _much_ better and drops
+linearly (as expected with a purely CPU bound jobs): 258k/s with one
+process, to 130k/s with two processes, to 65k/s with four processes.
+
+Notice that the curve in SP mode (258k/s vs. 176k/s) starts out much
+better even for the 1 process case.  That doesn't make any sense to
+me.  If it was simple lock contention, I would expect performance for
+one process running to be the same in both cases.
+
+I reproduced this problem on Intel 6600's, L5320',s, and Core2Duo's
+running x86_64 kernels.  I had someone try it on AMD systems and
+they apparently didn't see it, so it might be just related to Intel
+processors, but I can't be positive.  It happens with a plain
+kernel.org 2.6.18.8 kernel, so it's not a RHEL5-specific issue.  The
+good news is the problem does not happen with a generic 2.6.19.7
+kernel, so the problem was addressed in the next release.
+
+In comparing the 2.6.18.8 and 2.6.19.7 NFS source trees, there's
+been a lot of changes.  What I would like to know is: in the past
+was this an explicitly know issue; and does anyone know what
+changeset or changesets between these two kernels might have fixed
+this issue?
+
+Quentin
