@@ -1,82 +1,229 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 7/7] nfsd: populate sin6_scope_id on callback address with scopeid from rq_addr on SETCLIENTID call
-Date: Wed, 12 Aug 2009 07:57:06 -0400
-Message-ID: <1250078226-10511-8-git-send-email-jlayton@redhat.com>
-References: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: bfields@fieldses.org
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] NFS: Fix an O_DIRECT Oops...
+Date: Wed, 12 Aug 2009 09:12:30 -0400
+Message-ID: <1250082750.5814.0.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Catalin Marinas <catalin.marinas@arm.com>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	stable@kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35944 "EHLO mx2.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33441 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751206AbZHLL7L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Aug 2009 07:59:11 -0400
-In-Reply-To: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
+	id S1752284AbZHLNNF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Aug 2009 09:13:05 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a SETCLIENTID call comes in, one of the args given is the svc_rqst.
-This struct contains an rq_addr field which holds the address that sent
-the call. If this is an IPv6 address, then we can use the sin6_scope_id
-field in this address to populate the sin6_scope_id field in the
-callback address.
+We can't call nfs_readdata_release()/nfs_writedata_release() without
+first initialising and referencing args.context. Doing so inside
+nfs_direct_read_schedule_segment()/nfs_direct_write_schedule_segment()
+causes an Oops.
+We should rather be calling nfs_readdata_free()/nfs_writedata_free() in
+those cases.
 
-AFAICT, the rq_addr.sin6_scope_id is non-zero if and only if the client
-mounted the server's link-local address.
+Looking at the O_DIRECT code, the "struct nfs_direct_req" is already
+referencing the nfs_open_context for us. Since the readdata and writedata
+structures carry a reference to that, we can simplify things by getting rid
+of the extra nfs_open_context references, so that we can replace all
+instances of nfs_readdata_release()/nfs_writedata_release().
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reported-by: Catalin Marinas <catalin.marinas@arm.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Tested-by: Catalin Marinas <catalin.marinas@arm.com>
 ---
- fs/nfsd/nfs4state.c |   16 ++++++++++++++--
- 1 files changed, 14 insertions(+), 2 deletions(-)
+Please also apply to stable trees
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9ec0ca1..3e8478b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -898,7 +898,7 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
+ fs/nfs/direct.c        |   20 ++++++++++----------
+ fs/nfs/read.c          |    6 ++----
+ fs/nfs/write.c         |    6 ++----
+ include/linux/nfs_fs.h |    5 ++---
+ 4 files changed, 16 insertions(+), 21 deletions(-)
+
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 489fc01..e4e089a 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -255,7 +255,7 @@ static void nfs_direct_read_release(void *calldata)
+ 
+ 	if (put_dreq(dreq))
+ 		nfs_direct_complete(dreq);
+-	nfs_readdata_release(calldata);
++	nfs_readdata_free(data);
  }
  
- static void
--gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
-+gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
- {
- 	struct nfs4_cb_conn *cb = &clp->cl_cb_conn;
- 	unsigned short expected_family;
-@@ -921,6 +921,9 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se)
- 	if (!cb->cb_addrlen || cb->cb_addr.ss_family != expected_family)
- 		goto out_err;
- 
-+	if (cb->cb_addr.ss_family == AF_INET6)
-+		((struct sockaddr_in6 *) &cb->cb_addr)->sin6_scope_id = scopeid;
-+
- 	cb->cb_minorversion = 0;
- 	cb->cb_prog = se->se_callback_prog;
- 	cb->cb_ident = se->se_callback_ident;
-@@ -1507,6 +1510,15 @@ out:
- 	return status;
- }
- 
-+static u32
-+get_scope_id(struct sockaddr *sa)
-+{
-+	if (sa->sa_family != AF_INET6)
-+		return 0;
-+
-+	return ((struct sockaddr_in6 *) sa)->sin6_scope_id;
-+}
-+
- __be32
- nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_setclientid *setclid)
-@@ -1621,7 +1633,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ static const struct rpc_call_ops nfs_read_direct_ops = {
+@@ -314,14 +314,14 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 					data->npages, 1, 0, data->pagevec, NULL);
+ 		up_read(&current->mm->mmap_sem);
+ 		if (result < 0) {
+-			nfs_readdata_release(data);
++			nfs_readdata_free(data);
+ 			break;
+ 		}
+ 		if ((unsigned)result < data->npages) {
+ 			bytes = result * PAGE_SIZE;
+ 			if (bytes <= pgbase) {
+ 				nfs_direct_release_pages(data->pagevec, result);
+-				nfs_readdata_release(data);
++				nfs_readdata_free(data);
+ 				break;
+ 			}
+ 			bytes -= pgbase;
+@@ -334,7 +334,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
+ 		data->inode = inode;
+ 		data->cred = msg.rpc_cred;
+ 		data->args.fh = NFS_FH(inode);
+-		data->args.context = get_nfs_open_context(ctx);
++		data->args.context = ctx;
+ 		data->args.offset = pos;
+ 		data->args.pgbase = pgbase;
+ 		data->args.pages = data->pagevec;
+@@ -441,7 +441,7 @@ static void nfs_direct_free_writedata(struct nfs_direct_req *dreq)
+ 		struct nfs_write_data *data = list_entry(dreq->rewrite_list.next, struct nfs_write_data, pages);
+ 		list_del(&data->pages);
+ 		nfs_direct_release_pages(data->pagevec, data->npages);
+-		nfs_writedata_release(data);
++		nfs_writedata_free(data);
  	}
- 	copy_cred(&new->cl_cred, &rqstp->rq_cred);
- 	gen_confirm(new);
--	gen_callback(new, setclid);
-+	gen_callback(new, setclid, get_scope_id(sa));
- 	add_to_unconfirmed(new, strhashval);
- 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
- 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
--- 
-1.6.0.6
+ }
+ 
+@@ -534,7 +534,7 @@ static void nfs_direct_commit_release(void *calldata)
+ 
+ 	dprintk("NFS: %5u commit returned %d\n", data->task.tk_pid, status);
+ 	nfs_direct_write_complete(dreq, data->inode);
+-	nfs_commitdata_release(calldata);
++	nfs_commit_free(data);
+ }
+ 
+ static const struct rpc_call_ops nfs_commit_direct_ops = {
+@@ -570,7 +570,7 @@ static void nfs_direct_commit_schedule(struct nfs_direct_req *dreq)
+ 	data->args.fh = NFS_FH(data->inode);
+ 	data->args.offset = 0;
+ 	data->args.count = 0;
+-	data->args.context = get_nfs_open_context(dreq->ctx);
++	data->args.context = dreq->ctx;
+ 	data->res.count = 0;
+ 	data->res.fattr = &data->fattr;
+ 	data->res.verf = &data->verf;
+@@ -734,14 +734,14 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+ 					data->npages, 0, 0, data->pagevec, NULL);
+ 		up_read(&current->mm->mmap_sem);
+ 		if (result < 0) {
+-			nfs_writedata_release(data);
++			nfs_writedata_free(data);
+ 			break;
+ 		}
+ 		if ((unsigned)result < data->npages) {
+ 			bytes = result * PAGE_SIZE;
+ 			if (bytes <= pgbase) {
+ 				nfs_direct_release_pages(data->pagevec, result);
+-				nfs_writedata_release(data);
++				nfs_writedata_free(data);
+ 				break;
+ 			}
+ 			bytes -= pgbase;
+@@ -756,7 +756,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
+ 		data->inode = inode;
+ 		data->cred = msg.rpc_cred;
+ 		data->args.fh = NFS_FH(inode);
+-		data->args.context = get_nfs_open_context(ctx);
++		data->args.context = ctx;
+ 		data->args.offset = pos;
+ 		data->args.pgbase = pgbase;
+ 		data->args.pages = data->pagevec;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 73ea5e8..12c9e66 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -60,17 +60,15 @@ struct nfs_read_data *nfs_readdata_alloc(unsigned int pagecount)
+ 	return p;
+ }
+ 
+-static void nfs_readdata_free(struct nfs_read_data *p)
++void nfs_readdata_free(struct nfs_read_data *p)
+ {
+ 	if (p && (p->pagevec != &p->page_array[0]))
+ 		kfree(p->pagevec);
+ 	mempool_free(p, nfs_rdata_mempool);
+ }
+ 
+-void nfs_readdata_release(void *data)
++static void nfs_readdata_release(struct nfs_read_data *rdata)
+ {
+-	struct nfs_read_data *rdata = data;
+-
+ 	put_nfs_open_context(rdata->args.context);
+ 	nfs_readdata_free(rdata);
+ }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 6240e64..120acad 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -89,17 +89,15 @@ struct nfs_write_data *nfs_writedata_alloc(unsigned int pagecount)
+ 	return p;
+ }
+ 
+-static void nfs_writedata_free(struct nfs_write_data *p)
++void nfs_writedata_free(struct nfs_write_data *p)
+ {
+ 	if (p && (p->pagevec != &p->page_array[0]))
+ 		kfree(p->pagevec);
+ 	mempool_free(p, nfs_wdata_mempool);
+ }
+ 
+-void nfs_writedata_release(void *data)
++static void nfs_writedata_release(struct nfs_write_data *wdata)
+ {
+-	struct nfs_write_data *wdata = data;
+-
+ 	put_nfs_open_context(wdata->args.context);
+ 	nfs_writedata_free(wdata);
+ }
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index fdffb41..f6b9024 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -473,7 +473,6 @@ extern int  nfs_writepages(struct address_space *, struct writeback_control *);
+ extern int  nfs_flush_incompatible(struct file *file, struct page *page);
+ extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
+ extern int nfs_writeback_done(struct rpc_task *, struct nfs_write_data *);
+-extern void nfs_writedata_release(void *);
+ 
+ /*
+  * Try to write back everything synchronously (but check the
+@@ -488,7 +487,6 @@ extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
+ extern int  nfs_commit_inode(struct inode *, int);
+ extern struct nfs_write_data *nfs_commitdata_alloc(void);
+ extern void nfs_commit_free(struct nfs_write_data *wdata);
+-extern void nfs_commitdata_release(void *wdata);
+ #else
+ static inline int
+ nfs_commit_inode(struct inode *inode, int how)
+@@ -507,6 +505,7 @@ nfs_have_writebacks(struct inode *inode)
+  * Allocate nfs_write_data structures
+  */
+ extern struct nfs_write_data *nfs_writedata_alloc(unsigned int npages);
++extern void nfs_writedata_free(struct nfs_write_data *);
+ 
+ /*
+  * linux/fs/nfs/read.c
+@@ -515,7 +514,6 @@ extern int  nfs_readpage(struct file *, struct page *);
+ extern int  nfs_readpages(struct file *, struct address_space *,
+ 		struct list_head *, unsigned);
+ extern int  nfs_readpage_result(struct rpc_task *, struct nfs_read_data *);
+-extern void nfs_readdata_release(void *data);
+ extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
+ 			       struct page *);
+ 
+@@ -523,6 +521,7 @@ extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
+  * Allocate nfs_read_data structures
+  */
+ extern struct nfs_read_data *nfs_readdata_alloc(unsigned int npages);
++extern void nfs_readdata_free(struct nfs_read_data *);
+ 
+ /*
+  * linux/fs/nfs3proc.c
 
