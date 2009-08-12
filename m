@@ -1,43 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64234 "EHLO mx1.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:39940 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750895AbZHZPNJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Aug 2009 11:13:09 -0400
-Message-ID: <4A9550FF.6010103@RedHat.com>
-Date: Wed, 26 Aug 2009 11:13:03 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] nfs-utils: nfs-iostat.py autofs cleanup and option
- to sort by ops/s
-References: <4A94C133.8030904@dreamworks.com> <3644941A-3EA7-4755-867A-888E81A372FC@oracle.com>
-In-Reply-To: <3644941A-3EA7-4755-867A-888E81A372FC@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752351AbZHLNXY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Aug 2009 09:23:24 -0400
+From: Jeff Moyer <jmoyer@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        nfsv4@linux-nfs.org
+Subject: Re: [PATCH 0/3] Fix the Linux rpc-over-tcp server performance
+References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org>
+	<20090812024341.GA3227@fieldses.org>
+Date: Wed, 12 Aug 2009 09:22:17 -0400
+In-Reply-To: <20090812024341.GA3227@fieldses.org> (J. Bruce Fields's message
+	of "Tue, 11 Aug 2009 22:43:41 -0400")
+Message-ID: <x49ab25w4ja.fsf@segfault.boston.devel.redhat.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
+> On Mon, May 18, 2009 at 05:47:56PM -0400, Trond Myklebust wrote:
+>> I squashed the previous set of 4 incremental patches into 3. Otherwise
+>> there should be no differences w.r.t. the set that Jeff tested.
+>
+> Apologies for the long delay.... Unfortunately, I can't reproduce any of
+> this at all: I reliably get about 112MB/s regardless of what combination
+> of these patches I apply (including none).  This is over gigabit
+> ethernet to a server exporting a filesystem on raid 0 over 3 sata disks
+> which iozone locally reports getting just over 200MB/s reads from.
+>
+> Any suggestions?
 
-On 08/26/2009 10:28 AM, Chuck Lever wrote:
-> 
-> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
-> 
->> commit d3bb692a8c26c2d4e0dc70d7d0359daf79090e1e
->> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
->> Date:   Tue Aug 25 21:52:03 2009 -0700
->>
->>    Bump nfs-iostat.py version up to 0.3 to reflect new features.
-> 
-> Now that nfs-iostat.py has been integrated into nfs-utils, I'm not sure
-> we want to maintain an individual version number for it.  Maybe it
-> should use the nfs-utils package's versioning instead... Steve, your
-> thoughts?
-Hmm... I don't think we tie any of other commands versions to
-the package version.... Although it might be a good idea to do so,
-but for this instance, since these commands are still incognito (there
-are not man pages, which is on my plate), I think just bumping the 
-version is fine.. 
+Well, you gave me nothing to go on here, Bruce!  I assume you're using
+the deadline I/O scheduler on the NFS server, is that right?  If not,
+you should be.  Second, are you using iozone to reproduce?
 
-steved.
+  iozone -s 2000000 -r 64 -f /mnt/test/testfile -i 1 -w
+
+That's the command line I was using.  Third, I reproduced this on
+2.6.30-rc1.  Perhaps you should start there and make sure you at least
+see the same problem on that kernel.  Otherwise, maybe we've made up for
+the performance elsewhere.
+
+Finally, didn't you revert the autotuning patch?  If so, you wouldn't
+see this problem.  Let me know how this goes, and if you still can't
+reproduce it I'll setup for testing it here.
+
+Cheers,
+Jeff
