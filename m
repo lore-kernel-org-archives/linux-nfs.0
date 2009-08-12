@@ -1,33 +1,58 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Thu, 13 Aug 2009 00:34:53 +0200
-Message-ID: <20090812223453.GC10729@duck.suse.cz>
-References: <20090716172749.GC3740@atrey.karlin.mff.cuni.cz> <20090725151751.GA6419@gradator.net> <20090727154253.GB8332@duck.suse.cz> <20090728112715.GA8442@gradator.net> <20090728135226.GA21682@duck.suse.cz> <20090728164142.GA13662@gradator.net> <20090803222901.GB23162@duck.suse.cz> <20090804111505.GA6433@gradator.net> <20090804225619.GB11097@duck.suse.cz> <20090806131555.GA23359@gradator.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 0/3] Fix the Linux rpc-over-tcp server performance
+Date: Wed, 12 Aug 2009 18:40:01 -0400
+Message-ID: <1250116801.5973.49.camel@heimdal.trondhjem.org>
+References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org>
+	<20090812024341.GA3227@fieldses.org>
+	<x49ab25w4ja.fsf@segfault.boston.devel.redhat.com>
+	<20090812142041.GA12753@fieldses.org>
+	<x491vnhvucq.fsf@segfault.boston.devel.redhat.com>
+	<20090812223258.GE17782@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
-To: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:49948 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751896AbZHLWex (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Aug 2009 18:34:53 -0400
-In-Reply-To: <20090806131555.GA23359-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Jeff Moyer <jmoyer@redhat.com>, nfsv4@linux-nfs.org,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090812223258.GE17782@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  Hello,
-
-On Thu 06-08-09 15:15:56, Sylvain Rochet wrote:
-> > I have one idea what could cause your filesystem corruption, although 
-> > it's a wild guess... Please try attached oneliner.
+On Wed, 2009-08-12 at 18:32 -0400, J. Bruce Fields wrote:
+> For each test, I'm booting both client and server to the given kernel,
+> running
 > 
-> Running since yesterday.
-  Any news after a week of running? How often did the corruption happen
-previously?
+> 	mount server:/exports/ /mnt/
+> 	iozone -s 2000000 -r 64 -f /mnt/testfile -w -i1
+> 	umount /mnt/
+> 
+> five times, then taking the average of the "read" columns.  (I could
+> stick to one client--not sure which you were using.  Installing new
+> kernels on both is just what my existing test scripts happened to do by
+> default.)
+> 
+> 2.6.30-rc1:				114113
+> 2.6.30-rc1 + revert autotuning:		114159
+> 2.6.30-rc1 + patch 1:			114168
+> 2.6.30-rc1 + patch 1 & 2:		114136
+> 2.6.30-rc1 + patch 1, 2, & 3:		114149
 
-								Honza
+My tests were made using hammerfest as the server: it would see fairly
+long stalls when it was running basic 2.6.30-rc1 w/ autotuning. Feel
+free to co-opt it for your testing...
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
