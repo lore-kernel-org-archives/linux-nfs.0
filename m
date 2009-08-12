@@ -1,64 +1,68 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [PATCH 0/3] Fix the Linux rpc-over-tcp server performance
-Date: Wed, 12 Aug 2009 13:02:13 -0400
-Message-ID: <x491vnhvucq.fsf@segfault.boston.devel.redhat.com>
-References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org>
-	<20090812024341.GA3227@fieldses.org>
-	<x49ab25w4ja.fsf@segfault.boston.devel.redhat.com>
-	<20090812142041.GA12753@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH RFC 03/13] sunrpc: introduce 32-bit Xcoding helpers
+Date: Wed, 12 Aug 2009 16:12:51 -0400
+Message-ID: <1250107971.5973.1.camel@heimdal.trondhjem.org>
+References: <4A82DC7B.3090600@panasas.com>
+	 <1250090511-9605-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090812142041.GA12753@fieldses.org> (J. Bruce Fields's message
-	of "Wed, 12 Aug 2009 10:20:41 -0400")
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:25807 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754361AbZHLUNI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Aug 2009 16:13:08 -0400
+In-Reply-To: <1250090511-9605-1-git-send-email-bhalevy@panasas.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
+On Wed, 2009-08-12 at 18:21 +0300, Benny Halevy wrote:
+> To be used instead of WRITE32/READ32.
+> 
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  include/linux/sunrpc/xdr.h |   17 +++++++++++++++++
+>  1 files changed, 17 insertions(+), 0 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+> index 7da466b..466ea12 100644
+> --- a/include/linux/sunrpc/xdr.h
+> +++ b/include/linux/sunrpc/xdr.h
+> @@ -112,6 +112,23 @@ static inline __be32 *xdr_encode_array(__be32 *p, const void *s, unsigned int le
+>  }
+>  
+>  /*
+> + * Xcode 32bit quantities
+> + */
+> +static inline __be32 *
+> +xdr_encode_int(__be32 *p, __u32 val)
+> +{
+> +	*p = cpu_to_be32(val);
+> +	return p + 1;
+> +}
+> +
+> +static inline __be32 *
+> +xdr_decode_int(__be32 *p, __u32 *valp)
+> +{
+> +	*valp = be32_to_cpu(*p);
+> +	return p + 1;
+> +}
+> +
+> +/*
+>   * Decode 64bit quantities (NFSv3 support)
+>   */
+>  static inline __be32 *
 
-> On Wed, Aug 12, 2009 at 09:22:17AM -0400, Jeff Moyer wrote:
->> "J. Bruce Fields" <bfields@fieldses.org> writes:
->> 
->> > On Mon, May 18, 2009 at 05:47:56PM -0400, Trond Myklebust wrote:
->> >> I squashed the previous set of 4 incremental patches into 3. Otherwise
->> >> there should be no differences w.r.t. the set that Jeff tested.
->> >
->> > Apologies for the long delay.... Unfortunately, I can't reproduce any of
->> > this at all: I reliably get about 112MB/s regardless of what combination
->> > of these patches I apply (including none).  This is over gigabit
->> > ethernet to a server exporting a filesystem on raid 0 over 3 sata disks
->> > which iozone locally reports getting just over 200MB/s reads from.
->> >
->> > Any suggestions?
->> 
->> Well, you gave me nothing to go on here, Bruce!
->
-> Apologies for the lack of details....
+These two functions are completely superfluous. Please just open code
+trivial cases like these...
 
-No worries.  ;-)
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
->> I assume you're using
->> the deadline I/O scheduler on the NFS server, is that right?  If not,
->> you should be.
->
-> Oops, sorry, no. Looks like it doesn't allow setting a scheduler on md0,
-> so I'm assuming I should be setting it on the component drives.
-
-Right, set the scheduler on the component drives.  I was testing on
-hardware raid, fwiw.
-
-Again, let me know if you need me to reproduce this.  It will give me an
-excuse to get back that really nice machine I was using for testing. ;-)
-
--Jeff
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
