@@ -1,52 +1,63 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:45889
-	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751355AbZHFSyf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Aug 2009 14:54:35 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/10] Update rpcbind client's XDR functions [take 2]
-To: trond.myklebust@fys.uio.no
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 06 Aug 2009 14:54:24 -0400
-Message-ID: <20090806184944.3458.44739.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Subject: [PATCH 0/7] nfsd: add support for NFSv4 callbacks over IPv6 (try #4)
+Date: Wed, 12 Aug 2009 07:56:59 -0400
+Message-Id: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+Fourth attempt at a patchset to add support for NFSv4 callbacks over
+IPv6. Changes from last patchset include:
 
-Here is a second stab at replacing the XDR functions in the kernel's
-rpcbind client.  I update the kernel rpcbind client's XDR functions to
-use the NFSv4-style encoding and decoding, and use the new universal
-address API added in a previously posted series.
+1) moved address copy and comparison routines to net/sunrpc/addr.c and
+wrapped them properly in #ifdef's. Also changed lockd to use the common
+routines instead of its own.
 
-This series of patches is for 2.6.32, and depends on the last series I
-just sent.  I've addressed review comments, removing support for
-setting the remote's address at rpcbind time.  A handful of other
-simplifications were added to this set.
+2) added back in support for handling scope-id's (for when a host mounts
+a link-local address.
 
----
+Tested using opensolaris and linux and verifying that delegations could
+be properly recalled. I also tested mounts to the server's link-local
+address and verified that the callback channel connected correctly.
 
-Chuck Lever (10):
-      SUNRPC: Add documenting comments in net/sunrpc/timer.c
-      SUNRPC: Update xprt address strings after an rpcbind completes
-      SUNRPC: Kill RPC_DISPLAY_ALL
-      SUNRPC: Rename sock_xprt.addr as sock_xprt.srcaddr
-      SUNRPC: Eliminate PROC macro from rpcb_clnt
-      SUNRPC: Clean up: Remove unused XDR decoder functions from rpcb_clnt.c
-      SUNRPC: Introduce new xdr_stream-based decoders to rpcb_clnt.c
-      SUNRPC: Introduce xdr_stream-based decoders for RPCB_UNSET
-      SUNRPC: Clean up: Remove unused XDR encoder functions from rpcb_clnt.c
-      SUNRPC: Introduce new xdr_stream-based encoders to rpcb_clnt.c
+...the rest of the code is pretty much the same as the last set. This
+patchset should apply cleanly to Bruce's tree as of a pull this morning.
 
+Jeff Layton (7):
+  sunrpc: add routine for comparing addresses
+  sunrpc: add common routine for copying address portion of a sockaddr
+  nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
+  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
+  nfsd: convert gen_callback to use rpc_uaddr2sockaddr
+  nfsd: add support for NFSv4 callbacks over IPv6
+  nfsd: populate sin6_scope_id on callback address with scopeid from
+    rq_addr on SETCLIENTID call
 
- include/linux/sunrpc/xprt.h     |    1 
- net/sunrpc/rpcb_clnt.c          |  318 +++++++++++++++++++++++++++------------
- net/sunrpc/timer.c              |   45 ++++--
- net/sunrpc/xprtrdma/transport.c |    5 -
- net/sunrpc/xprtsock.c           |  156 +++++++++++--------
- 5 files changed, 337 insertions(+), 188 deletions(-)
+ fs/lockd/clntlock.c         |    2 +-
+ fs/lockd/host.c             |    4 +-
+ fs/lockd/mon.c              |    2 +-
+ fs/lockd/svcsubs.c          |    2 +-
+ fs/nfsd/nfs4callback.c      |   11 +---
+ fs/nfsd/nfs4state.c         |  142 ++++++++++++++++---------------------------
+ include/linux/lockd/lockd.h |   43 -------------
+ include/linux/nfsd/state.h  |    6 +-
+ include/linux/sunrpc/clnt.h |    3 +
+ net/sunrpc/addr.c           |   98 +++++++++++++++++++++++++++++
+ 10 files changed, 163 insertions(+), 150 deletions(-)
 
--- 
-Chuck Lever <chuck.lever@oracle.com>
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
