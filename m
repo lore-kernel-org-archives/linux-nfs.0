@@ -1,110 +1,251 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:20405 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752746AbZH0OJx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2009 10:09:53 -0400
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <8793561D-109E-41B3-86E3-C860CEE20636@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Lans Carstensen <Lans.Carstensen@dreamworks.com>
-In-Reply-To: <4A95CBDB.40502@dreamworks.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 3/4] nfs-utils: nfs-iostat.py autofs cleanup and option to sort by ops/s
-Date: Thu, 27 Aug 2009 10:09:41 -0400
-References: <4A94C13B.1070300@dreamworks.com> <486FBC5E-011A-4FF0-995D-944958BE74AE@oracle.com> <4A95CBDB.40502@dreamworks.com>
+Received: from prod-mail-xrelay01.akamai.com ([72.246.2.12]:57338 "EHLO
+	prod-mail-xrelay01.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751684AbZHLCFA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Aug 2009 22:05:00 -0400
+Message-ID: <4A8221CE.2020603@akamai.com>
+Date: Tue, 11 Aug 2009 18:58:38 -0700
+From: Amit Gud <agud@akamai.com>
+To: linux-nfs@vger.kernel.org, trond.myklebust@fys.uio.no, steved@redhat.com
+CC: juhlenko@akamai.com, gud@ksu.edu
+Subject: [PATCH] Allow passing fine resolution timing options to mount
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Aug 26, 2009, at 7:57 PM, Lans Carstensen wrote:
-> Chuck Lever wrote:
->> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
->>> commit ef558b7b978418ac3da35e36dcf02a223e4ebe2d
->>> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
->>> Date:   Tue Aug 25 21:52:49 2009 -0700
->>>
->>>   Update list of mount points to parse stats for and drop mount
->>>   points from stats collection when they are umounted.  This
->>>   ensures proper stats collection for autofs mountpoints.
->>>
->>> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
->>> iostat.py
->>> index 6ce31fc..9f3b3eb 100644
->>> --- a/tools/nfs-iostat/nfs-iostat.py
->>> +++ b/tools/nfs-iostat/nfs-iostat.py
->>> @@ -447,7 +447,14 @@ def parse_stats_file(filename):
->>>    return ms_dict
->>>
->>> def print_iostat_summary(old, new, devices, time, ac):
->>> -    for device in devices:
->>> +    if old:
->>> +        # Trim device list to only include intersection of old  
->>> and new data,
->>> +        # this addresses umounts due to autofs mountpoints
->>> +        devicelist = filter(lambda x:x in devices,old)
->>> +    else:
->>> +        devicelist = devices
->>> +
->>> +    for device in devicelist:
->>>        stats = DeviceData()
->>>        stats.parse_stats(new[device])
->>>        if not old:
->>> @@ -458,11 +465,35 @@ def print_iostat_summary(old, new, devices,  
->>> time, ac):
->>>            diff_stats = stats.compare_iostats(old_stats)
->>>            diff_stats.display_iostats(time, ac)
->>>
->>> +def list_nfs_mounts(givenlist, mountstats):
->>> +    """return a list of NFS mounts given a list to validate or
->>> +       return a full list if the given list is empty
->>> +    """
->>> +    list = []
->>> +    if len(givenlist) > 0:
->>> +        for device in givenlist:
->>> +            stats = DeviceData()
->>> +            stats.parse_stats(mountstats[device])
->>> +            if stats.is_nfs_mountpoint():
->>> +                list += [device]
->>> +    else:
->>> +        for device, descr in mountstats.iteritems():
->>> +            stats = DeviceData()
->>> +            stats.parse_stats(descr)
->>> +            if stats.is_nfs_mountpoint():
->>> +                list += [device]
->>> +    if len(list) == 0:
->>> +        print 'No NFS mount points were found'
->>> +        return
->> You refactored this logic from the main routine.  I think this last  
->> "return" was OK in the main routine, but in a subroutine it may not  
->> do exactly what you want.  A NoneType object is passed to  
->> print_iostat_summary in this case
->> [cel@matisse tmp]$ ./nfs-iostat.py
->> No NFS mount points were found
->> Traceback (most recent call last):
->>  File "./nfs-iostat.py", line 580, in <module>
->>    iostat_command(prog)
->>  File "./nfs-iostat.py", line 549, in iostat_command
->>    print_iostat_summary(old_mountstats, mountstats, devices,  
->> sample_time, which)
->>  File "./nfs-iostat.py", line 457, in print_iostat_summary
->>    for device in devicelist:
->> TypeError: 'NoneType' object is not iterable
->
-> Sigh.  Thanks.  I'll test more thoroughly and resubmit.  Based on  
-> the --list= argument change it'll probably be easier to refactor the  
-> script to use optparse, so I'll end up regenerating the last two  
-> patches as probably three new ones.
+This patch modifies parsing of mount options to allows passing units
+along with the options. Valid units are "se" for seconds and "ms" for
+milliseconds. When not specified, the unit defaults to seconds.
 
-Thanks, these are good changes.
+For example, "-o acdirmin=20ms" can be specified for 20 milliseconds,
+and "-o acdirmin=3se" or just "-o acdirmin=3" for 3 seconds.
 
-When you resubmit, can you add a Signed-off-by: line at the bottom of  
-each patch description?  You can look at this page for more information:
+This code also changes the display of options in /proc/<pid>/mountstats
+from seconds to milliseconds to reflect the accuracy.
 
-   http://kerneltrap.org/taxonomy/term/245
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Signed-off-by: Amit Gud <agud@akamai.com>
 
 
+Index: linux-2.6/fs/nfs/client.c
+===================================================================
+--- linux-2.6.orig/fs/nfs/client.c	2009-08-06 12:01:14.000000000 -0700
++++ linux-2.6/fs/nfs/client.c	2009-08-05 15:03:18.000000000 -0700
+@@ -1295,10 +1295,10 @@
+ 	if (data->wsize)
+ 		server->wsize = nfs_block_size(data->wsize, NULL);
 
+-	server->acregmin = data->acregmin * HZ;
+-	server->acregmax = data->acregmax * HZ;
+-	server->acdirmin = data->acdirmin * HZ;
+-	server->acdirmax = data->acdirmax * HZ;
++	server->acregmin = (data->acregmin * HZ) / 1000;
++	server->acregmax = (data->acregmax * HZ) / 1000;
++	server->acdirmin = (data->acdirmin * HZ) / 1000;
++	server->acdirmax = (data->acdirmax * HZ) / 1000;
+
+ 	server->port = data->nfs_server.port;
+
+Index: linux-2.6/fs/nfs/super.c
+===================================================================
+--- linux-2.6.orig/fs/nfs/super.c	2009-08-05 13:03:42.000000000 -0700
++++ linux-2.6/fs/nfs/super.c	2009-08-11 17:46:17.000000000 -0700
+@@ -53,6 +53,7 @@
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
++#include <linux/ctype.h>
+
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -558,14 +559,14 @@
+ 	if (nfss->bsize != 0)
+ 		seq_printf(m, ",bsize=%u", nfss->bsize);
+ 	seq_printf(m, ",namlen=%u", nfss->namelen);
+-	if (nfss->acregmin != NFS_DEF_ACREGMIN*HZ || showdefaults)
+-		seq_printf(m, ",acregmin=%u", nfss->acregmin/HZ);
+-	if (nfss->acregmax != NFS_DEF_ACREGMAX*HZ || showdefaults)
+-		seq_printf(m, ",acregmax=%u", nfss->acregmax/HZ);
+-	if (nfss->acdirmin != NFS_DEF_ACDIRMIN*HZ || showdefaults)
+-		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
+-	if (nfss->acdirmax != NFS_DEF_ACDIRMAX*HZ || showdefaults)
+-		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
++	if (nfss->acregmin != (NFS_DEF_ACREGMIN * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acregmin=%u", (nfss->acregmin * 1000) / HZ);
++	if (nfss->acregmax != (NFS_DEF_ACREGMAX * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acregmax=%u", (nfss->acregmax * 1000) / HZ);
++	if (nfss->acdirmin != (NFS_DEF_ACDIRMIN * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acdirmin=%u", (nfss->acdirmin * 1000) / HZ);
++	if (nfss->acdirmax != (NFS_DEF_ACDIRMAX * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acdirmax=%u", (nfss->acdirmax * 1000) / HZ);
+ 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
+ 		if (nfss->flags & nfs_infop->flag)
+ 			seq_puts(m, nfs_infop->str);
+@@ -967,6 +968,43 @@
+ }
+
+ /*
++ * Parse the input string for unit. Return the value which when
++ * multiplied with the user input yields millisecond resolution.
++ *
++ * If user does not specify any unit, it is defaulted to seconds.
++ */
++static unsigned int nfs_match_unit(char *string)
++{
++	unsigned int len = strlen(string);
++
++	if (len < 3)
++		return 1000;
++
++	string = string + len - 2;
++
++	if (isdigit(*string))
++		return 1000;
++
++	if (!strcmp(string, "se")) {
++		*string = '\0';
++		return 1000;
++	}
++	if (!strcmp(string, "ms")) {
++		*string = '\0';
++		return 1;
++	}
++	return 0;
++}
++
++/*
++ * This converts the user value in millisecond resolution.
++ */
++static inline unsigned long nfs_convert_unit(unsigned int unit, unsigned long option)
++{
++	return unit * option;
++}
++
++/*
+  * Error-check and convert a string of mount options from user space into
+  * a data structure.  The whole mount string is processed; bad options are
+  * skipped as they are encountered.  If there were no errors, return 1;
+@@ -1003,6 +1041,7 @@
+ 		unsigned long option;
+ 		int int_option;
+ 		int token;
++		unsigned int unit;
+
+ 		if (!*p)
+ 			continue;
+@@ -1174,52 +1213,57 @@
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acregmin = option;
++			mnt->acregmin = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_acregmax:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acregmax = option;
++			mnt->acregmax = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_acdirmin:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acdirmin = option;
++			mnt->acdirmin = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_acdirmax:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acdirmax = option;
++			mnt->acdirmax = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_actimeo:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+ 			mnt->acregmin = mnt->acregmax =
+-			mnt->acdirmin = mnt->acdirmax = option;
++			mnt->acdirmin = mnt->acdirmax = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_namelen:
+ 			string = match_strdup(args);
+@@ -1715,10 +1759,10 @@
+ 		args->wsize		= data->wsize;
+ 		args->timeo		= data->timeo;
+ 		args->retrans		= data->retrans;
+-		args->acregmin		= data->acregmin;
+-		args->acregmax		= data->acregmax;
+-		args->acdirmin		= data->acdirmin;
+-		args->acdirmax		= data->acdirmax;
++		args->acregmin		= data->acregmin * 1000;
++		args->acregmax		= data->acregmax * 1000;
++		args->acdirmin		= data->acdirmin * 1000;
++		args->acdirmax		= data->acdirmax * 1000;
+
+ 		memcpy(&args->nfs_server.address, &data->addr,
+ 		       sizeof(data->addr));
+@@ -2391,10 +2435,10 @@
+ 		args->wsize	= data->wsize;
+ 		args->timeo	= data->timeo;
+ 		args->retrans	= data->retrans;
+-		args->acregmin	= data->acregmin;
+-		args->acregmax	= data->acregmax;
+-		args->acdirmin	= data->acdirmin;
+-		args->acdirmax	= data->acdirmax;
++		args->acregmin	= data->acregmin * 1000;
++		args->acregmax	= data->acregmax * 1000;
++		args->acdirmin	= data->acdirmin * 1000;
++		args->acdirmax	= data->acdirmax * 1000;
+ 		args->nfs_server.protocol = data->proto;
+ 		nfs_validate_transport_protocol(args);
+
+Index: linux-2.6/include/linux/nfs_fs.h
+===================================================================
+--- linux-2.6.orig/include/linux/nfs_fs.h	2009-08-05 18:45:16.000000000 -0700
++++ linux-2.6/include/linux/nfs_fs.h	2009-08-05 18:45:32.000000000 -0700
+@@ -20,10 +20,10 @@
+ #define NFS_MAX_UDP_TIMEOUT	(60*HZ)
+ #define NFS_MAX_TCP_TIMEOUT	(600*HZ)
+
+-#define NFS_DEF_ACREGMIN	(3)
+-#define NFS_DEF_ACREGMAX	(60)
+-#define NFS_DEF_ACDIRMIN	(30)
+-#define NFS_DEF_ACDIRMAX	(60)
++#define NFS_DEF_ACREGMIN	(3000)
++#define NFS_DEF_ACREGMAX	(60000)
++#define NFS_DEF_ACDIRMIN	(30000)
++#define NFS_DEF_ACDIRMAX	(60000)
+
+ /*
+  * When flushing a cluster of dirty pages, there can be different
+
+-- 
+May the source be with you.
+http://cis.ksu.edu~/gud
