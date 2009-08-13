@@ -1,59 +1,257 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38103 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757608AbZHQRdz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Aug 2009 13:33:55 -0400
-Date: Mon, 17 Aug 2009 13:33:56 -0400
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
-Subject: [PATCH] Don't give client an empty flavor list
-Message-ID: <20090817173356.GF27331@fieldses.org>
-References: <4A5F5C4C.3070308@excfb.com> <20090716185642.GB2495@fieldses.org> <4A5F7EA9.9050309@excfb.com> <20090716194546.GG2495@fieldses.org> <4A5F8A00.8000104@excfb.com> <20090722000955.GC20694@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20090722000955.GC20694@fieldses.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:49162 "EHLO
+	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751184AbZHMArM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Aug 2009 20:47:12 -0400
+Message-ID: <4A83628D.9000505@akamai.com>
+Date: Wed, 12 Aug 2009 17:47:09 -0700
+From: Amit Gud <agud@akamai.com>
+To: linux-nfs@vger.kernel.org, trond.myklebust@fys.uio.no, steved@redhat.com,
+        jlayton@poochiereds.net
+CC: gud@ksu.edu, juhlenko@akamai.com
+Subject: [PATCH] Take 2: Allow passing fine resolution timing options to mount
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+This patch modifies parsing of mount options to allows passing units
+along with the options. Valid units are "s" for seconds and "ms" for
+milliseconds. When not specified, the unit defaults to seconds.
 
-In the absence of an explicit sec= option on an export, rpc.mountd is
-returning a zero-length flavor list to clients in the MOUNT results.
+For example, "-o acdirmin=20ms" can be specified for 20 milliseconds,
+and "-o acdirmin=3s" or just "-o acdirmin=3" for 3 seconds.
 
-The linux client doesn't seem to mind, but the Solaris client
-(reasonably enough) is giving up; the symptom is a "security mode does
-not match" error on mount.
+This code also changes the display of options in /proc/<pid>/mountstats
+from seconds to milliseconds to reflect the accuracy.
 
-We could modify the export-parsing code to ensure the secinfo array is
-nonzero.  But I think it's slightly simpler to handle this default case
-in the implementation of the MOUNT call.  This is more-or-less the same
-thing the kernel does when mountd passes it an export without any
-security flavors specified.
+Signed-off-by: Amit Gud <agud@akamai.com>
 
-Thanks to Tom Haynes for bug report and diagnosis.
+Index: linux-2.6/fs/nfs/client.c
+===================================================================
+--- linux-2.6.orig/fs/nfs/client.c	2009-08-06 12:01:14.000000000 -0700
++++ linux-2.6/fs/nfs/client.c	2009-08-05 15:03:18.000000000 -0700
+@@ -1295,10 +1295,10 @@
+ 	if (data->wsize)
+ 		server->wsize = nfs_block_size(data->wsize, NULL);
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- utils/mountd/mountd.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+-	server->acregmin = data->acregmin * HZ;
+-	server->acregmax = data->acregmax * HZ;
+-	server->acdirmin = data->acdirmin * HZ;
+-	server->acdirmax = data->acdirmax * HZ;
++	server->acregmin = (data->acregmin * HZ) / 1000;
++	server->acregmax = (data->acregmax * HZ) / 1000;
++	server->acdirmin = (data->acdirmin * HZ) / 1000;
++	server->acdirmax = (data->acdirmax * HZ) / 1000;
 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index b59f939..888fd8c 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -359,6 +359,11 @@ static void set_authflavors(struct mountres3_ok *ok, nfs_export *exp)
- 		flavors[i] = s->flav->fnum;
- 		i++;
- 	}
-+	if (i == 0) {
-+		/* default when there is no sec= option: */
-+		i = 1;
-+		flavors[0] = AUTH_UNIX;
-+	}
- 	ok->auth_flavors.auth_flavors_val = flavors;
- 	ok->auth_flavors.auth_flavors_len = i;
+ 	server->port = data->nfs_server.port;
+
+Index: linux-2.6/fs/nfs/super.c
+===================================================================
+--- linux-2.6.orig/fs/nfs/super.c	2009-08-05 13:03:42.000000000 -0700
++++ linux-2.6/fs/nfs/super.c	2009-08-12 17:26:44.000000000 -0700
+@@ -53,6 +53,7 @@
+ #include <linux/nfs_xdr.h>
+ #include <linux/magic.h>
+ #include <linux/parser.h>
++#include <linux/ctype.h>
+
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+@@ -558,14 +559,14 @@
+ 	if (nfss->bsize != 0)
+ 		seq_printf(m, ",bsize=%u", nfss->bsize);
+ 	seq_printf(m, ",namlen=%u", nfss->namelen);
+-	if (nfss->acregmin != NFS_DEF_ACREGMIN*HZ || showdefaults)
+-		seq_printf(m, ",acregmin=%u", nfss->acregmin/HZ);
+-	if (nfss->acregmax != NFS_DEF_ACREGMAX*HZ || showdefaults)
+-		seq_printf(m, ",acregmax=%u", nfss->acregmax/HZ);
+-	if (nfss->acdirmin != NFS_DEF_ACDIRMIN*HZ || showdefaults)
+-		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
+-	if (nfss->acdirmax != NFS_DEF_ACDIRMAX*HZ || showdefaults)
+-		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
++	if (nfss->acregmin != (NFS_DEF_ACREGMIN * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acregmin=%u", (nfss->acregmin * 1000) / HZ);
++	if (nfss->acregmax != (NFS_DEF_ACREGMAX * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acregmax=%u", (nfss->acregmax * 1000) / HZ);
++	if (nfss->acdirmin != (NFS_DEF_ACDIRMIN * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acdirmin=%u", (nfss->acdirmin * 1000) / HZ);
++	if (nfss->acdirmax != (NFS_DEF_ACDIRMAX * HZ) / 1000 || showdefaults)
++		seq_printf(m, ",acdirmax=%u", (nfss->acdirmax * 1000) / HZ);
+ 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
+ 		if (nfss->flags & nfs_infop->flag)
+ 			seq_puts(m, nfs_infop->str);
+@@ -967,6 +968,47 @@
  }
--- 
-1.6.0.4
 
+ /*
++ * Parse the input string for unit. Return the value which when
++ * multiplied with the user input yields millisecond resolution.
++ *
++ * If user does not specify any unit, it is defaulted to seconds.
++ */
++static unsigned int nfs_match_unit(char *string)
++{
++	unsigned int len = strlen(string);
++
++	if (len < 3)
++		return 1000;
++
++	string = string + len - 2;
++
++	if (!strcmp(string, "ms")) {
++		*string = '\0';
++		return 1;
++	}
++
++	string++;
++
++	if (isdigit(*string))
++		return 1000;
++
++	if (*string == 's') {
++		*string = '\0';
++		return 1000;
++	}
++
++	return 0;
++}
++
++/*
++ * This converts the user value in millisecond resolution.
++ */
++static inline unsigned long nfs_convert_unit(unsigned int unit, unsigned long option)
++{
++	return unit * option;
++}
++
++/*
+  * Error-check and convert a string of mount options from user space into
+  * a data structure.  The whole mount string is processed; bad options are
+  * skipped as they are encountered.  If there were no errors, return 1;
+@@ -1003,6 +1045,7 @@
+ 		unsigned long option;
+ 		int int_option;
+ 		int token;
++		unsigned int unit;
+
+ 		if (!*p)
+ 			continue;
+@@ -1174,52 +1217,57 @@
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acregmin = option;
++			mnt->acregmin = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_acregmax:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acregmax = option;
++			mnt->acregmax = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_acdirmin:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acdirmin = option;
++			mnt->acdirmin = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_acdirmax:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+-			mnt->acdirmax = option;
++			mnt->acdirmax = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_actimeo:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
+ 				goto out_nomem;
++			unit = nfs_match_unit(string);
+ 			rc = strict_strtoul(string, 10, &option);
+ 			kfree(string);
+ 			if (rc != 0)
+ 				goto out_invalid_value;
+ 			mnt->acregmin = mnt->acregmax =
+-			mnt->acdirmin = mnt->acdirmax = option;
++			mnt->acdirmin = mnt->acdirmax = nfs_convert_unit(option, unit);
+ 			break;
+ 		case Opt_namelen:
+ 			string = match_strdup(args);
+@@ -1715,10 +1763,10 @@
+ 		args->wsize		= data->wsize;
+ 		args->timeo		= data->timeo;
+ 		args->retrans		= data->retrans;
+-		args->acregmin		= data->acregmin;
+-		args->acregmax		= data->acregmax;
+-		args->acdirmin		= data->acdirmin;
+-		args->acdirmax		= data->acdirmax;
++		args->acregmin		= data->acregmin * 1000;
++		args->acregmax		= data->acregmax * 1000;
++		args->acdirmin		= data->acdirmin * 1000;
++		args->acdirmax		= data->acdirmax * 1000;
+
+ 		memcpy(&args->nfs_server.address, &data->addr,
+ 		       sizeof(data->addr));
+@@ -2391,10 +2439,10 @@
+ 		args->wsize	= data->wsize;
+ 		args->timeo	= data->timeo;
+ 		args->retrans	= data->retrans;
+-		args->acregmin	= data->acregmin;
+-		args->acregmax	= data->acregmax;
+-		args->acdirmin	= data->acdirmin;
+-		args->acdirmax	= data->acdirmax;
++		args->acregmin	= data->acregmin * 1000;
++		args->acregmax	= data->acregmax * 1000;
++		args->acdirmin	= data->acdirmin * 1000;
++		args->acdirmax	= data->acdirmax * 1000;
+ 		args->nfs_server.protocol = data->proto;
+ 		nfs_validate_transport_protocol(args);
+
+Index: linux-2.6/include/linux/nfs_fs.h
+===================================================================
+--- linux-2.6.orig/include/linux/nfs_fs.h	2009-08-05 18:45:16.000000000 -0700
++++ linux-2.6/include/linux/nfs_fs.h	2009-08-05 18:45:32.000000000 -0700
+@@ -20,10 +20,10 @@
+ #define NFS_MAX_UDP_TIMEOUT	(60*HZ)
+ #define NFS_MAX_TCP_TIMEOUT	(600*HZ)
+
+-#define NFS_DEF_ACREGMIN	(3)
+-#define NFS_DEF_ACREGMAX	(60)
+-#define NFS_DEF_ACDIRMIN	(30)
+-#define NFS_DEF_ACDIRMAX	(60)
++#define NFS_DEF_ACREGMIN	(3000)
++#define NFS_DEF_ACREGMAX	(60000)
++#define NFS_DEF_ACDIRMIN	(30000)
++#define NFS_DEF_ACDIRMAX	(60000)
+
+ /*
+  * When flushing a cluster of dirty pages, there can be different
+
+
+
+-- 
+May the source be with you.
+http://cis.ksu.edu~/gud
