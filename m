@@ -1,24 +1,15 @@
-From: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
-Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
-Date: Thu, 13 Aug 2009 11:43:53 -0300
-Message-ID: <f6ce31e30908130743l78423b52je5aaeaaf3ed1a373@mail.gmail.com>
-References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
-	<f6ce31e30908101305n3a5b88ceo6b56b43f750b8548@mail.gmail.com>
-	<4974ED30-D8CA-47B0-9D8F-BCD4410132FC@oracle.com>
-	<f6ce31e30908110541g7e1354ffs59b74ad808578742@mail.gmail.com>
-	<7E189B77-1139-4B16-97E5-4841B41B90C7@oracle.com>
-	<4A82CE18.6020401@redhat.com>
-	<f6ce31e30908120800i2cc82005s695d1097df554b58@mail.gmail.com>
-	<4A82DDB1.1000109@redhat.com>
-	<f6ce31e30908120940m6e9a093ayc59d7ef98e37b3d0@mail.gmail.com>
-	<4A84210F.3020906@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Ian Kent <ikent@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 1/7] sunrpc: add routine for comparing addresses
+Date: Thu, 13 Aug 2009 11:41:36 -0400
+Message-ID: <4A379E17-3353-4A50-9D80-F0A31EBF6DD5@oracle.com>
+References: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
+	<1250078226-10511-2-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A84210F.3020906@redhat.com>
+In-Reply-To: <1250078226-10511-2-git-send-email-jlayton@redhat.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -30,427 +21,227 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2009/8/13 Ian Kent <ikent@redhat.com>:
-> Carlos Andr=E9 wrote:
->> Today (2009-08-12) I'm using:
->> kernel-2.6.18-128.2.1.el5
->> autofs-5.0.1-0.rc2.102.el5_3.1
+On Aug 12, 2009, at 7:57 AM, Jeff Layton wrote:
+> lockd needs these sort of routines, as does the NFSv4 callback code.
 >
-> Thanks,
->
-> My mistake, the wait time I was referring to is used for umounts during
-> expires and is present in rev rc2.102.
->
-> It shouldn't be hard to add this for mount as well.
-> Would you like me to put something together?
+> Move lockd's routines into common code and rename them so that they  
+> can
+> be used by others.
 
-Sure! that 'll help me a lot (and for sure another ppl) :) Thanks :)
+Trond preferred these little helpers to be "static inline".  I put the  
+port helpers in include/linux/sunrpc/clnt.h, fwiw.
 
->
-> Probably would be good to test something out to see if we can make a
-> difference with the killing mount after some configured timeout but, if
-> we make progress, probably the best way to deal with it is for you to
-> log a bug against rhel-5 so I can get it committed to the rhel package.
-> The possible issue is that I'm not sure if the RPC subsystem in the
-> above rhel kernel will respond well to process death with potential
-> outstanding requests. But we'll see.
+The get_scope_id() function added in a later patch might also be a  
+candidate for this treatment.
 
-Ok, on my way :)
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/lockd/clntlock.c         |    2 +-
+> fs/lockd/host.c             |    4 +-
+> fs/lockd/mon.c              |    2 +-
+> fs/lockd/svcsubs.c          |    2 +-
+> include/linux/lockd/lockd.h |   43  
+> ---------------------------------------
+> include/linux/sunrpc/clnt.h |    2 +
+> net/sunrpc/addr.c           |   47 ++++++++++++++++++++++++++++++++++ 
+> +++++++++
+> 7 files changed, 54 insertions(+), 48 deletions(-)
+>
+> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> index 1f3b0fc..fc9032d 100644
+> --- a/fs/lockd/clntlock.c
+> +++ b/fs/lockd/clntlock.c
+> @@ -166,7 +166,7 @@ __be32 nlmclnt_grant(const struct sockaddr  
+> *addr, const struct nlm_lock *lock)
+> 		 */
+> 		if (fl_blocked->fl_u.nfs_fl.owner->pid != lock->svid)
+> 			continue;
+> -		if (!nlm_cmp_addr(nlm_addr(block->b_host), addr))
+> +		if (!rpc_cmp_addr(nlm_addr(block->b_host), addr))
+> 			continue;
+> 		if (nfs_compare_fh(NFS_FH(fl_blocked->fl_file->f_path.dentry- 
+> >d_inode) ,fh) != 0)
+> 			continue;
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 7cb076a..4600c20 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -111,7 +111,7 @@ static struct nlm_host *nlm_lookup_host(struct  
+> nlm_lookup_host_info *ni)
+> 	 */
+> 	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
+> 	hlist_for_each_entry(host, pos, chain, h_hash) {
+> -		if (!nlm_cmp_addr(nlm_addr(host), ni->sap))
+> +		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
+> 			continue;
+>
+> 		/* See if we have an NSM handle for this client */
+> @@ -125,7 +125,7 @@ static struct nlm_host *nlm_lookup_host(struct  
+> nlm_lookup_host_info *ni)
+> 		if (host->h_server != ni->server)
+> 			continue;
+> 		if (ni->server &&
+> -		    !nlm_cmp_addr(nlm_srcaddr(host), ni->src_sap))
+> +		    !rpc_cmp_addr(nlm_srcaddr(host), ni->src_sap))
+> 			continue;
+>
+> 		/* Move to head of hash chain. */
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 30c9331..f956651 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -209,7 +209,7 @@ static struct nsm_handle *nsm_lookup_addr(const  
+> struct sockaddr *sap)
+> 	struct nsm_handle *nsm;
+>
+> 	list_for_each_entry(nsm, &nsm_handles, sm_link)
+> -		if (nlm_cmp_addr(nsm_addr(nsm), sap))
+> +		if (rpc_cmp_addr(nsm_addr(nsm), sap))
+> 			return nsm;
+> 	return NULL;
+> }
+> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> index 9e4d6aa..ad478da 100644
+> --- a/fs/lockd/svcsubs.c
+> +++ b/fs/lockd/svcsubs.c
+> @@ -417,7 +417,7 @@ EXPORT_SYMBOL_GPL(nlmsvc_unlock_all_by_sb);
+> static int
+> nlmsvc_match_ip(void *datap, struct nlm_host *host)
+> {
+> -	return nlm_cmp_addr(nlm_srcaddr(host), datap);
+> +	return rpc_cmp_addr(nlm_srcaddr(host), datap);
+> }
+>
+> /**
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index c325b18..e7a251a 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -338,49 +338,6 @@ static inline int  
+> nlm_privileged_requester(const struct svc_rqst *rqstp)
+> 	}
+> }
+>
+> -static inline int __nlm_cmp_addr4(const struct sockaddr *sap1,
+> -				  const struct sockaddr *sap2)
+> -{
+> -	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
+> -	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
+> -	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+> -}
+> -
+> -#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+> -static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
+> -				  const struct sockaddr *sap2)
+> -{
+> -	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+> -	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+> -	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
+> -}
+> -#else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+> -static inline int __nlm_cmp_addr6(const struct sockaddr *sap1,
+> -				  const struct sockaddr *sap2)
+> -{
+> -	return 0;
+> -}
+> -#endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+> -
+> -/*
+> - * Compare two host addresses
+> - *
+> - * Return TRUE if the addresses are the same; otherwise FALSE.
+> - */
+> -static inline int nlm_cmp_addr(const struct sockaddr *sap1,
+> -			       const struct sockaddr *sap2)
+> -{
+> -	if (sap1->sa_family == sap2->sa_family) {
+> -		switch (sap1->sa_family) {
+> -		case AF_INET:
+> -			return __nlm_cmp_addr4(sap1, sap2);
+> -		case AF_INET6:
+> -			return __nlm_cmp_addr6(sap1, sap2);
+> -		}
+> -	}
+> -	return 0;
+> -}
+> -
+> /*
+>  * Compare two NLM locks.
+>  * When the second lock is of type F_UNLCK, this acts like a wildcard.
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index ab3f6e9..b9171f2 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -160,6 +160,8 @@ size_t		rpc_pton(const char *, const size_t,
+> char *		rpc_sockaddr2uaddr(const struct sockaddr *);
+> size_t		rpc_uaddr2sockaddr(const char *, const size_t,
+> 				   struct sockaddr *, const size_t);
+> +bool		rpc_cmp_addr(const struct sockaddr *sa1,
+> +				const struct sockaddr *sa2);
+>
+> static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+> {
+> diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+> index 22e8fd8..dbf908e 100644
+> --- a/net/sunrpc/addr.c
+> +++ b/net/sunrpc/addr.c
+> @@ -362,3 +362,50 @@ size_t rpc_uaddr2sockaddr(const char *uaddr,  
+> const size_t uaddr_len,
+> 	return 0;
+> }
+> EXPORT_SYMBOL_GPL(rpc_uaddr2sockaddr);
+> +
+> +static bool __rpc_cmp_addr4(const struct sockaddr *sap1,
+> +			    const struct sockaddr *sap2)
+> +{
+> +	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
+> +	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
+> +
+> +	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+> +}
+> +
+> +#if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+> +static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> +			    const struct sockaddr *sap2)
+> +{
+> +	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+> +	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+> +	return ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr);
+> +}
+> +#else	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+> +static bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> +			    const struct sockaddr *sap2)
+> +{
+> +	return false;
+> +}
+> +#endif	/* !(CONFIG_IPV6 || CONFIG_IPV6_MODULE) */
+> +
+> +/**
+> + * rpc_cmp_addr - compare the address portion of two sockaddrs.
+> + * @sap1: first sockaddr
+> + * @sap2: second sockaddr
+> + *
+> + * Just compares the family and address portion. Ignores port,  
+> scope, etc.
+> + * Returns true if the addrs are equal, false if they aren't.
+> + */
+> +bool rpc_cmp_addr(const struct sockaddr *sap1, const struct  
+> sockaddr *sap2)
+> +{
+> +	if (sap1->sa_family == sap2->sa_family) {
+> +		switch (sap1->sa_family) {
+> +		case AF_INET:
+> +			return __rpc_cmp_addr4(sap1, sap2);
+> +		case AF_INET6:
+> +			return __rpc_cmp_addr6(sap1, sap2);
+> +		}
+> +	}
+> +	return false;
+> +}
+> +EXPORT_SYMBOL_GPL(rpc_cmp_addr);
+> -- 
+> 1.6.0.6
 
-Thanks a lot!
-
->
->>
->>
->> Look my last test:
->> --------------------------------------------------------------
->> [root@KSTATION areas]# time ls testdown
->> ls: testdown: No such file or directory
->>
->> real =A0 =A03m9.025s
->> user =A0 =A00m0.000s
->> sys =A0 =A0 0m0.002s
->>
->>
->>
->>
->> Aug 12 12:57:07 KSTATION automount[15471]: sun_mount: parse(sun):
->> mounting root /misc/areas, mountpoint testdown, what
->> 1.2.3.4:/areas/testdown, fstype nfs4, options
->> acl,sec=3Dkrb5p,proto=3Dtcp,retry=3D0
->> Aug 12 12:57:07 KSTATION automount[15471]: do_mount:
->> 1.2.3.4:/areas/testdown /misc/areas/testdown type nfs4 options
->> acl,sec=3Dkrb5p,proto=3Dtcp,retry=3D0 using module nfs4
->> Aug 12 12:57:07 KSTATION automount[15471]: mount_mount: mount(nfs):
->> root=3D/misc/areas name=3Dtestdown what=3D1.2.3.4:/areas/testdown,
->> fstype=3Dnfs4, options=3Dacl,sec=3Dkrb5p,proto=3Dtcp,retry=3D0
->> Aug 12 12:57:07 KSTATION automount[15471]: mount_mount: mount(nfs):
->> nfs options=3D"acl,sec=3Dkrb5p,proto=3Dtcp,retry=3D0", nosymlink=3D0, ro=
-=3D0
->> Aug 12 12:57:07 KSTATION automount[15471]: mount_mount: mount(nfs):
->> calling mkdir_path /misc/areas/testdown
->> Aug 12 12:57:07 KSTATION automount[15471]: mount_mount: mount(nfs):
->> calling mount -t nfs4 -s -o acl,sec=3Dkrb5p,proto=3Dtcp,retry=3D0
->> 1.2.3.4:/areas/testdown /misc/areas/testdown
->> Aug 12 12:58:12 KSTATION automount[15471]: st_expire: state 1 path /misc
->> Aug 12 12:58:12 KSTATION automount[15471]: expire_proc: exp_proc =3D
->> 3078093712 path /misc
->> Aug 12 12:58:13 KSTATION automount[15471]: expire_proc_indirect: 2
->> submounts remaining in /misc
->> Aug 12 12:58:13 KSTATION automount[15471]: expire_cleanup: got thid
->> 3078093712 path /misc stat 3
->> Aug 12 12:58:13 KSTATION automount[15471]: expire_cleanup: sigchld:
->> exp 3078093712 finished, switching from 2 to 1
->> Aug 12 12:58:13 KSTATION automount[15471]: st_ready: st_ready(): state
->> =3D 2 path /misc
->> Aug 12 12:59:28 KSTATION automount[15471]: st_expire: state 1 path /misc
->> Aug 12 12:59:28 KSTATION automount[15471]: expire_proc: exp_proc =3D
->> 3078093712 path /misc
->> Aug 12 12:59:28 KSTATION automount[15471]: expire_proc_indirect: 2
->> submounts remaining in /misc
->> Aug 12 12:59:28 KSTATION automount[15471]: expire_cleanup: got thid
->> 3078093712 path /misc stat 3
->> Aug 12 12:59:28 KSTATION automount[15471]: expire_cleanup: sigchld:
->> exp 3078093712 finished, switching from 2 to 1
->> Aug 12 12:59:28 KSTATION automount[15471]: st_ready: st_ready(): state
->> =3D 2 path /misc
->> Aug 12 13:00:16 KSTATION automount[15471]: >> mount: mount to NFS
->> server '1.2.3.4' failed: timed out (giving up).
->> Aug 12 13:00:16 KSTATION automount[15471]: mount(nfs): nfs: mount
->> failure 1.2.3.4:/areas/testdown on /misc/areas/testdown
->> Aug 12 13:00:16 KSTATION automount[15471]: send_fail: token =3D 17
->> Aug 12 13:00:16 KSTATION automount[15471]: failed to mount /misc/areas/t=
-estdown
->> Aug 12 13:00:43 KSTATION automount[15471]: st_expire: state 1 path /misc
->> --------------------------------------------------------------
->>
->> 2009/8/12 Ian Kent <ikent@redhat.com>:
->>> Carlos Andr=E9 wrote:
->>>> Hi Ian,
->>>> I'm getting crazy trying put "retry=3D" to work on mount... this option
->>>> just DONT WORK if use proto=3Dtcp and/OR kerberos (sec=3Dkrb5/krb5i/kr=
-b5p)
->>>> like you can see on my previous emails...
->>> Right, my mistake for not looking closely enough at post.
->>>
->>> Maybe this is related to the same sort of problem we had with mount in
->>> the past, before the options parsing went into the kernel, where other
->>> services, like portmapper (or rpcbind), were being done with different
->>> timeout parameters before the RPC calls for mounting. That's just an
->>> example as NFSv4 shouldn't be sensitive to portmapper anyway.
->>>
->>> But what version of autofs and kernel did you say you were using?
->>>
->>>> I appreciate any help.
->>>>
->>>> Carlos.
->>>>
->>>>
->>>> 2009/8/12 Ian Kent <ikent@redhat.com>:
->>>>> Chuck Lever wrote:
->>>>>> On Aug 11, 2009, at 8:41 AM, Carlos Andr=E9 wrote:
->>>>>>> This long timeout is good if workstation need mount a critical
->>>>>>> directory using /etc/fstab on boot (for example)..
->>>>>>> But in my case, using this loooong timeout doesnt make any sense,
->>>>>>> since autofs retry mount directory on-access. This in fact gives me
->>>>>>> alot of headaches, coz user login 'll just hangs if one server goes
->>>>>>> down for any reason, and will again hangs if user try access direct=
-ory
->>>>>>> pointing to a NFS down server...
->>>>>> "retry=3D0" means the mount command will fail as soon as the first
->>>>>> mount(2) system call fails. =A0When you set SYN retries to 1, this m=
-eans
->>>>>> after 9 seconds, the connect fails, and that causes the mount(2) sys=
-tem
->>>>>> call to fail.
->>>>>>
->>>>>> Recent conversations with Ian suggested that a long timeout was desi=
-red
->>>>>> for automounter as well as other cases. =A0Ian, is there something e=
-lse we
->>>>>> need to consider to determine the correct retry timeout for NFS/TCP
->>>>>> mount points handled via automounter? =A0How should mount.nfs wait s=
-o we
->>>>>> don't make other use cases worse? =A0(Looks like most of the history=
- is
->>>>>> intact below).
->>>>> Of course we know that autofs is entirely at the mercy of mount(8) (a=
-nd
->>>>> mount.nfs in particular). This has always been a difficult situation =
-for
->>>>> the automounter because interactive mount invocations should wait. Bu=
-t I
->>>>> believe automount mounts should always time out quickly, but that lea=
-ds
->>>>> to its own set of problems, especially when home directories are conc=
-erned.
->>>>>
->>>>> I think adding "retry=3D0" is the right thing to do myself but I'm not
->>>>> certain that will work as we expect. I'll have to do some experimenta=
-tion.
->>>>>
->>>>>> How long do you think is appropriate for the automounter to wait if =
-the
->>>>>> server is down, in your case, Carlos?
->>>>>>
->>>>>>> Am losing something or there have was something weirdo...!?
->>>>>>> ------------------------------------------------
->>>>>>> [root@KSTATION ~]# echo 5 > /proc/sys/net/ipv4/tcp_syn_retries =A0[=
-DEFAULT]
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> proto=3Dtcp,retry=3D1
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A03m9.000s
->>>>>>> user =A0 =A00m0.002s
->>>>>>> sys =A0 =A0 0m0.001s
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> sec=3Dkrb5p,proto=3Dtcp,retry=3D1
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A03m9.000s
->>>>>>> user =A0 =A00m0.000s
->>>>>>> sys =A0 =A0 0m0.002s
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> proto=3Dtcp,retry=3D0
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A03m9.001s
->>>>>>> user =A0 =A00m0.000s
->>>>>>> sys =A0 =A0 0m0.003s
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> sec=3Dkrb5p,proto=3Dtcp,retry=3D0
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A03m9.001s
->>>>>>> user =A0 =A00m0.002s
->>>>>>> sys =A0 =A0 0m0.001s
->>>>>>>
->>>>>>> [root@KSTATION ~]# echo 1 > /proc/sys/net/ipv4/tcp_syn_retries [ 5 =
-to 1 ]
->>>>>>>
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> proto=3Dtcp,retry=3D1
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying). =
-[x 6]
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A01m3.002s
->>>>>>> user =A0 =A00m0.000s
->>>>>>> sys =A0 =A0 0m0.002s
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> sec=3Dkrb5p,proto=3Dtcp,retry=3D1
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying). =
-[x 13]
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A02m6.000s
->>>>>>> user =A0 =A00m0.000s
->>>>>>> sys =A0 =A0 0m0.002s
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> proto=3Dtcp,retry=3D0
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A00m9.003s
->>>>>>> user =A0 =A00m0.001s
->>>>>>> sys =A0 =A0 0m0.002s
->>>>>>> [root@KSTATION ~]# time mount 1.2.3.4:/blabla /tmp/ -t nfs4 -o
->>>>>>> sec=3Dkrb5p,proto=3Dtcp,retry=3D0
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying). =
-[x 13]
->>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up).
->>>>>>>
->>>>>>> real =A0 =A02m6.001s
->>>>>>> user =A0 =A00m0.001s
->>>>>>> sys =A0 =A0 0m0.002s
->>>>>>> [root@KSTATION ~]#
->>>>>>> ------------------------------------------------
->>>>>>> max timeout goes to 2m6s changing tcp_syn_retries from 5 to 1... and
->>>>>>> using retry=3D0 without kerberos I got only 9s...
->>>>>>>
->>>>>>> *sigh*
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>> 2009/8/10 Chuck Lever <chuck.lever@oracle.com>:
->>>>>>>> On Aug 10, 2009, at 4:05 PM, Carlos Andr=E9 wrote:
->>>>>>>>> Something funny: Using default tcp_syn_retries (5) i got
->>>>>>>>> "3,6,12,24,48,96" secs interval... but if i change tcp_syn_retrie=
-s to
->>>>>>>>> 1 i got "3,6,3,6,3,6..." secs interval...
->>>>>>>> Right. =A0Normally the RPC client calls the kernel's socket connect
->>>>>>>> function,
->>>>>>>> which does 6 SYN retries. =A0That one call usually takes longer th=
-an
->>>>>>>> the RPC
->>>>>>>> client's connect timeout, so it only makes one connect call, and t=
-hen
->>>>>>>> fails.
->>>>>>>>
->>>>>>>> Reducing the number of SYN retries per connect attempt causes the =
-RPC
->>>>>>>> client
->>>>>>>> to retry the connect call until its connect timeout expires. =A0Ea=
-ch
->>>>>>>> connect
->>>>>>>> call resets the SYN timeout to 3 seconds.
->>>>>>>>
->>>>>>>>> [root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
->>>>>>>>> sec=3Dkrb5p,proto=3Dtcp
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up=
-).
->>>>>>>>>
->>>>>>>>> real =A0 =A03m9.000s
->>>>>>>>> user =A0 =A00m0.000s
->>>>>>>>> sys =A0 =A0 0m0.002s
->>>>>>>>>
->>>>>>>>> [root@KSERVER /]# echo 1 > /proc/sys/net/ipv4/tcp_syn_retries
->>>>>>>>> [root@KSERVER mnt]# time mount 1.2.3.4:/blabla tmp/ -t nfs4 -o
->>>>>>>>> sec=3Dkrb5p,proto=3Dtcp =A0("retry=3D1" =3D no change)
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (retrying).
->>>>>>>>> mount: mount to NFS server '1.2.3.4' failed: timed out (giving up=
-).
->>>>>>>>>
->>>>>>>>> real =A0 =A02m6.004s
->>>>>>>>> user =A0 =A00m0.000s
->>>>>>>>> sys =A0 =A0 0m0.004s
->>>>>>>>>
->>>>>>>>> (3,6,3,6... secs interval)
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>> 2009/8/10 Carlos Andr=E9 <candrecn@gmail.com>:
->>>>>>>>>> No, i'm just using packages from CentOS repo...
->>>>>>>>>>
->>>>>>>>>> And u're right about expo retries... with tcpdump i've monitored
->>>>>>>>>> traffic and i got SYN retries in 3, 6, 12, 24, 48, 96 secs on po=
-rt
->>>>>>>>>> 2049...
->>>>>>>>>> I tried use "retry=3D1" option on mount without any change... I =
-dont
->>>>>>>>>> want change source or tcp timers... just NFSv4 client.
->>>>>>>>>>
->>>>>>>>>> 2009/8/10 Chuck Lever <chuck.lever@oracle.com>:
->>>>>>>>>>> On Aug 10, 2009, at 2:29 PM, Carlos Andr=E9 wrote:
->>>>>>>>>>>> Bruce, no... you're right. =A0I'm describing a situation where=
- my
->>>>>>>>>>>> server
->>>>>>>>>>>> died... i need mount fail faster (10 or 15 secs max) than 3 mi=
-nutes
->>>>>>>>>>>> and 9 seconds...
->>>>>>>>>>> The 189 second timeout is likely how long it takes the kernel to
->>>>>>>>>>> give up
->>>>>>>>>>> trying to connect a TCP socket to the server (6 SYN attempts wi=
-th
->>>>>>>>>>> exponential retries, or something like that). =A0For stock Cent=
-OS
->>>>>>>>>>> 5.3, I
->>>>>>>>>>> think
->>>>>>>>>>> user space does only a DNS lookup for normal NFSv4 mounts -- the
->>>>>>>>>>> kernel
->>>>>>>>>>> just
->>>>>>>>>>> tries to connect a TCP socket to port 2049, with no preceding r=
-pcbind
->>>>>>>>>>> request.
->>>>>>>>>>>
->>>>>>>>>>> Carlos, let us know if you have replaced any NFS-related CentOS
->>>>>>>>>>> components
->>>>>>>>>>> (kernel, nfs-utils) with something you've built yourself.
->>>>>>>>>>>
->>>>>>>>>>>> 2009/8/7 J. Bruce Fields <bfields@fieldses.org>:
->>>>>>>>>>>>> On Fri, Aug 07, 2009 at 09:42:18AM +0300, Benny Halevy wrote:
->>>>>>>>>>>>>> On Aug. 07, 2009, 3:18 +0300, Carlos Andr=E9 <candrecn@gmail=
-.com>
->>>>>>>>>>>>>> wrote:
->>>>>>>>>>>>>>> Anyone ?
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>> 2009/7/29 Carlos Andr=E9 <candrecn@gmail.com>:
->>>>>>>>>>>>>>>> PPL, I need put a CentOS 5.3 (updated) NFSv4 server to wor=
-k with
->>>>>>>>>>>>>>>> Kerberos
->>>>>>>>>>>>>>>> and AutoFS, but i got a problem: If NFS server goes down i=
- get a
->>>>>>>>>>>>>>>> LOOOOOOONG
->>>>>>>>>>>>>>>> mount timeout on CentOS 5.3 (updated) NFSv4 client...
->>>>>>>>>>>>>>>>
->>>>>>>>>>>>>>>> Since i need mount some (3 to 6) dirs at user logon proces=
-s, if
->>>>>>>>>>>>>>>> mount
->>>>>>>>>>>>>>>> hangs,
->>>>>>>>>>>>>>>> user logon hangs. Then i want configure it to timeout (if =
-server
->>>>>>>>>>>>>>>> down)
->>>>>>>>>>>>>>>> after
->>>>>>>>>>>>>>>> 10-15 secs (MAX) on each mount attempt.
->>>>>>>>>>>>>>>>
->>>>>>>>>>>>>>>> I already make a lab and tried a LOT of combinations, ther=
-e my
->>>>>>>>>>>>>>>> findings
->>>>>>>>>>>>>>>> (server DOWN IP: 172.16.0.10 / client IP: 172.16.1.10) usi=
-ng
->>>>>>>>>>>>>>>> basic
->>>>>>>>>>>>>>>> command
->>>>>>>>>>>>>>>> (time mount 172.16.0.10:/remotedir /localdir/ -t nfs4 -o
->>>>>>>>>>>>>>>> sec=3Dkrb5,proto=3D<tcp/udp>) from NFS client:
->>>>>>>>>>>>>>>>
->>>>>>>>>>>>>>>> - Once i try access mount point using AutoFS (proto=3Dtcp =
-OR
->>>>>>>>>>>>>>>> proto=3Dudp)
->>>>>>>>>>>>>>>> it
->>>>>>>>>>>>>>>> hangs for 189 secs (3m9s: real =A03m9.001s) =A0until show =
-error
->>>>>>>>>>>>>>>> (mount:
->>>>>>>>>>>>>>>> mount to
->>>>>>>>>>>>>>>> NFS server '172.16.0.10' failed: timed out (giving up))
->>>>>>>>>>>>>> Sounds like you're hitting the server's grace period.
->>>>>>>>>>>>> I thought he was describing a situation where the server the =
-server
->>>>>>>>>>>>> is completely gone and isn't coming back, and wondering how t=
-o make
->>>>>>>>>>>>> the
->>>>>>>>>>>>> mount fail faster. =A0But I may be misunderstanding.
->>>>>>>>>>>>>
->>>>>>>>>>>>> --b.
->>>>>>>>>>>>>
->>>>>>>>>>>> --
->>>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe
->>>>>>>>>>>> linux-nfs" in
->>>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>>>> More majordomo info at =A0http://vger.kernel.org/majordomo-inf=
-o.html
->>>>>>>>>>> --
->>>>>>>>>>> Chuck Lever
->>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>> --
->>>>>>>> Chuck Lever
->>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>
->>>>>>>>
->>>>>>>>
->>>>>>>>
->>>>>> --
->>>>>> Chuck Lever
->>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>
->>>>>>
->>>>>>
->>>
->
->
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
