@@ -1,82 +1,73 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH RFC v2 16/21] nfs: nfs4xdr: introduce decode_verifier
- helper
-Date: Fri, 14 Aug 2009 13:54:41 -0400
-Message-ID: <1250272482.5476.14.camel@heimdal.trondhjem.org>
-References: <4A8571E2.8020800@panasas.com>
-	 <1250259596-13993-1-git-send-email-bhalevy@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: Benny Halevy <bhalevy@panasas.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42681 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932241AbZHNRyy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Aug 2009 13:54:54 -0400
-In-Reply-To: <1250259596-13993-1-git-send-email-bhalevy@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/6] nfsd: add support for NFSv4 callbacks over IPv6 (try
+	#5)
+Date: Fri, 14 Aug 2009 14:05:03 -0400
+Message-ID: <D24FC53A-3E15-444F-BCDF-BE8454205B4F@oracle.com>
+References: <1250269079-14629-1-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Jeff Layton <jlayton@redhat.com>, Bruce Fields <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <1250269079-14629-1-git-send-email-jlayton@redhat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-08-14 at 17:19 +0300, Benny Halevy wrote:
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/nfs4xdr.c |   20 +++++++++++---------
->  1 files changed, 11 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 86e6983..b835dcc 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -3320,17 +3320,19 @@ static int decode_close(struct xdr_stream *xdr, struct nfs_closeres *res)
->  	return status;
->  }
->  
-> +static int decode_verifier(struct xdr_stream *xdr, void *verifier)
-> +{
-> +	return decode_opaque_fixed(xdr, verifier, 8);
-> +}
-> +
->  static int decode_commit(struct xdr_stream *xdr, struct nfs_writeres *res)
->  {
-> -	__be32 *p;
->  	int status;
->  
->  	status = decode_op_hdr(xdr, OP_COMMIT);
-> -	if (status)
-> -		return status;
-> -	READ_BUF(8);
-> -	COPYMEM(res->verf->verifier, 8);
-> -	return 0;
-> +	if (!status)
-> +		status = decode_verifier(xdr, res->verf->verifier);
-> +	return status;
->  }
->  
->  static int decode_create(struct xdr_stream *xdr, struct nfs4_change_info *cinfo)
-> @@ -3852,10 +3854,10 @@ static int decode_readdir(struct xdr_stream *xdr, struct rpc_rqst *req, struct n
->  	int		status;
->  
->  	status = decode_op_hdr(xdr, OP_READDIR);
-> -	if (status)
-> +	if (!status)
-> +		status = decode_verifier(xdr, readdir->verifier.data);
-> +	if (unlikely(status))
->  		return status;
-> -	READ_BUF(8);
-> -	COPYMEM(readdir->verifier.data, 8);
->  	dprintk("%s: verifier = %08x:%08x\n",
->  			__func__,
->  			((u32 *)readdir->verifier.data)[0],
+On Aug 14, 2009, at 12:57 PM, Jeff Layton wrote:
+> Fifth attempt at a patchset to add support for NFSv4 callbacks over
+> IPv6. Changes from last patchset are mostly to address Chuck's  
+> comments:
+>
+> 1) made the new address comparison and copy routines into static  
+> inlines
+> and added them to clnt.h. Ditto for the get_scope_id function.
+>
+> 2) combined the patch to change nfs4_cb_conn to hold address in
+> sockaddr_storage with the one to convert gen_callback to use
+> rpc_uaddr2sockaddr. That eliminates changes to the parse_ipv4 function
+> that eventually gets ripped out.
+>
+> Tested using opensolaris and linux and verifying that delegations  
+> could
+> be properly recalled. I also tested mounts to the server's link-local
+> address and verified that the callback channel connected correctly.
 
-This introduces an uninitialised variable warning into decode_readdir.
-The fix would be to use xdr->p in the calculation of hdrlen.
+Looks good.
 
-I'll add that, no need to resend.
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> Jeff Layton (6):
+>  sunrpc: add routine for comparing addresses
+>  sunrpc: add common routine for copying address portion of a sockaddr
+>  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
+>  nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
+>  nfsd: add support for NFSv4 callbacks over IPv6
+>  nfsd: populate sin6_scope_id on callback address with scopeid from
+>    rq_addr on SETCLIENTID call
+>
+> fs/lockd/clntlock.c         |    2 +-
+> fs/lockd/host.c             |    4 +-
+> fs/lockd/mon.c              |    2 +-
+> fs/lockd/svcsubs.c          |    2 +-
+> fs/nfsd/nfs4callback.c      |   11 +---
+> fs/nfsd/nfs4state.c         |  133 +++++++++++++ 
+> +-----------------------------
+> include/linux/lockd/lockd.h |   43 --------------
+> include/linux/nfsd/state.h  |    6 +-
+> include/linux/sunrpc/clnt.h |  113 ++++++++++++++++++++++++++++++++++ 
+> ++
+> 9 files changed, 166 insertions(+), 150 deletions(-)
+>
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
