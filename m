@@ -1,49 +1,59 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS and NFSv4 lists?
-Date: Thu, 13 Aug 2009 14:45:04 -0400
-Message-ID: <1250189104.16167.66.camel@heimdal.trondhjem.org>
-References: <20090813174923.GA15213@infradead.org>
-	 <1250186824.16167.31.camel@heimdal.trondhjem.org>
-	 <20090813181449.GA11931@infradead.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH RFC v2 0/21] nfs4xdr cleanup v2
+Date: Fri, 14 Aug 2009 17:17:06 +0300
+Message-ID: <4A8571E2.8020800@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:39213 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752646AbZHMSpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Aug 2009 14:45:07 -0400
-In-Reply-To: <20090813181449.GA11931@infradead.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:28986
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755671AbZHNORS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Aug 2009 10:17:18 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-08-13 at 14:14 -0400, Christoph Hellwig wrote:
-> On Thu, Aug 13, 2009 at 02:07:04PM -0400, Trond Myklebust wrote:
-> > On Thu, 2009-08-13 at 13:49 -0400, Christoph Hellwig wrote:
-> > > Is there really a reason to keep a separate NFSv4 mailing list?  v4
-> > > support is part of the same nfs/nfsd modules and quite deeply
-> > > interwinded with the v2/v3 code.  It seems most posts to the NFSv4 list
-> > > get cross-posted to the regular nfs list anyway.
-> > 
-> > I certainly agree that we can start deprecating the nfsv4@linux-nfs.org
-> > list, but I'm reluctant to shut it down completely as long as we're
-> > seeing some non-cross posted traffic there.
-> > 
-> > How about if we keep it open for another 6 months, and use that time to
-> > educate those people who post only on nfsv4@linux-nfs.org to move on to
-> > linux-nfs?
-> 
-> How about just turning the nfsv4 list into an auto-responder telling
-> people to use the linux-nfs@vger.kernel.org?
-> 
+Trond, thanks for your comments.
+I believe I've fixed them all.
 
-I tend to be wary of auto-responders: more often than not, they turn out
-to be great vehicles for relaying spam.
-However if someone with more mail administrator experience than myself
-would volunteer to help set one up, then I'd be willing to give it a
-try.
+Changes from v1:
 
-Cheers
-  Trond
+- dropped xdr_{en,de}code_int, open code cpu_to_be32 and be32_to_cpup instead.
+- added helpers for decoding stateid, verifier, and sessionid
+  using a common helper for decoding fixed size opaque arrays.
+- COPYMEM calls all converted to memcpy (no need for returning ptr)
+- READ_BUF open coded, callers use print_overflow_msg as you suggested.
 
+- minor cleanup in encode_compound_hdr
+- optimized nfs41 reserve_space usage
+- optimized low level encoding
+- simplified decode_exchange_id by reusing decode_opaque_inline
+- optimized low level decoding
+
+In this patchset:
+
+[PATCH RFC v2 01/21] sunrpc: hton -> cpu_to_be*
+[PATCH RFC v2 02/21] sunrpc: ntoh -> be*_to_cpu
+[PATCH RFC v2 03/21] nfs: nfs4xdr: get rid of WRITE32
+[PATCH RFC v2 04/21] nfs: nfs4xdr: get rid of WRITE64
+[PATCH RFC v2 05/21] nfs: nfs4xdr: get rid of WRITEMEM
+[PATCH RFC v2 06/21] nfs: nfs4xdr: optimize RESERVE_SPACE in encode_create_session and encode_sequence
+[PATCH RFC v2 07/21] nfs: nfs4xdr: encode_compound_hdr does not have to round up reserved bytes
+[PATCH RFC v2 08/21] nfs: nfs4xdr: change RESERVE_SPACE macro into a static helper
+[PATCH RFC v2 09/21] nfs: nfs4xdr: optimize low level encoding
+[PATCH RFC v2 10/21] nfs: nfs4xdr: merge xdr_encode_int+xdr_encode_opaque_fixed into xdr_encode_opaque
+[PATCH RFC v2 11/21] nfs: nfs4xdr: get rid of READ32
+[PATCH RFC v2 12/21] nfs: nfs4xdr: get rid of READ64
+[PATCH RFC v2 13/21] nfs: nfs4xdr: get rid of READTIME
+[PATCH RFC v2 14/21] nfs: nfs4xdr: introduce print_overflow_msg
+[PATCH RFC v2 15/21] nfs: nfs4xdr: introduce decode_opaque_fixed and decode_stateid helpers
+[PATCH RFC v2 16/21] nfs: nfs4xdr: introduce decode_verifier helper
+[PATCH RFC v2 17/21] nfs: nfs4xdr: introduce decode_sessionid helper
+[PATCH RFC v2 18/21] nfs: nfs4xdr: get rid of COPYMEM
+[PATCH RFC v2 19/21] nfs: nfs4xdr: simplify decode_exchange_id by reusing decode_opaque_inline
+[PATCH RFC v2 20/21] nfs: nfs4xdr: get rid of READ_BUF
+[PATCH RFC v2 21/21] nfs: nfs4xdr: optimize low level decoding
+
+Benny
