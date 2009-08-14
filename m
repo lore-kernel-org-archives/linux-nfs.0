@@ -1,112 +1,59 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:41533 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751610AbZHES0k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Aug 2009 14:26:40 -0400
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <7330021D-C95A-463D-8D18-29453EF185BC@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20090805181545.GF9944@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st part)
-Date: Wed, 5 Aug 2009 14:26:11 -0400
-References: <20090805143550.12866.8377.stgit@matisse.1015granger.net> <20090805144540.12866.22084.stgit@matisse.1015granger.net> <20090805174811.GB9944@fieldses.org> <DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com> <20090805181545.GF9944@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org, chuck.lever@oracle.com
+Subject: [PATCH 0/6] nfsd: add support for NFSv4 callbacks over IPv6 (try #5)
+Date: Fri, 14 Aug 2009 12:57:53 -0400
+Message-Id: <1250269079-14629-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
+Fifth attempt at a patchset to add support for NFSv4 callbacks over
+IPv6. Changes from last patchset are mostly to address Chuck's comments:
 
-On Aug 5, 2009, at 2:15 PM, J. Bruce Fields wrote:
+1) made the new address comparison and copy routines into static inlines
+and added them to clnt.h. Ditto for the get_scope_id function.
 
-> On Wed, Aug 05, 2009 at 02:05:44PM -0400, Chuck Lever wrote:
->> On Aug 5, 2009, at 1:48 PM, J. Bruce Fields wrote:
->>> On Wed, Aug 05, 2009 at 10:45:40AM -0400, Chuck Lever wrote:
->>>> Provide a new implementation of statd that supports IPv6.  The new
->>>> statd implementation resides under
->>>>
->>>> utils/new-statd/
->>>>
->>>> The contents of this directory are built if --enable-tirpc is set
->>>> on the ./configure command line, and sqlite3 is available on the
->>>> build system.  Otherwise, the legacy version of statd, which still
->>>> resides under utils/statd/, is built.
->>>>
->>>> The goals of this re-write are:
->>>>
->>>> o Support IPv6 networking
->>>>
->>>>  Support interoperation with TI-RPC-based NSM implementations.
->>>>  Transport Independent RPC, or TI-RPC, provides IPv6 network  
->>>> support
->>>>  for Linux's NSM implementation.
->>>>
->>>>  To support TI-RPC, open code to construct RPC requests in socket
->>>>  buffers and then schedule them has been replaced with standard
->>>>  library calls.
->>>>
->>>> o Support notification via TCP
->>>>
->>>>  As a secondary benefit of using TI-RPC library calls, reboot
->>>>  notifications and NLM callbacks can now be sent via connection-
->>>>  oriented transport protocols.
->>>>
->>>>  Note that lockd does not (yet) tell statd what transport protocol
->>>>  to use when sending reboot notifications.  statd/sm-notify will
->>>>  continue to use UDP for the time being.
->>>>
->>>> o Use an embedded database for storing on-disk callback data
->>>>
->>>>  This whole exercise is for the purpose of crash robustness.  There
->>>>  are well-known deficiencies with simple create/rename/unlink
->>>>  disk storage schemes during system crashes.  Replace the current
->>>>  flat-file monitor list mechanism which uses sync(2) with sqlite3,
->>>>  which uses fsync(3).
->>>
->>> If someone wants to move around that data, is it still simple to do
->>> that?  (Where is it kept on the filesystem?)
->>>
->>> (I'm thinking of someone that shares it for high-availabity, as in:
->>>
->>> 	http://www.howtoforge.com/high_availability_nfs_drbd_heartbeat_p3
->>>
->>> Or maybe somebody that just needs to move their /var partition to a
->>> different disk one day.)
->>
->> Statd's monitor lists and state number are stored in a single regular
->> file, /var/lib/nfs/statd/statdb by default.  This file can be easily
->> backed up, or used on other systems, if desired.  I would recommend
->> ensuring the NSM state number is reset in the latter case, which  
->> can be
->> done with the sqlite3 command.
->>
->> I've had some dialog with Lon Hohberger about clustering  
->> requirements.  I
->> think we are looking at crafting a separate utility that uses  
->> sqlite3 C
->> function calls to extract data that's interesting to the clustering
->> implementation.  Again, this could even be scripted with bash and the
->> sqlite3 command, but perhaps a C program is more maintainable.
->
-> OK, good.
->
-> And for the simplest cases, it should still be enough to just copy
-> /var/lib/nfs/, right?
+2) combined the patch to change nfs4_cb_conn to hold address in
+sockaddr_storage with the one to convert gen_callback to use
+rpc_uaddr2sockaddr. That eliminates changes to the parse_ipv4 function
+that eventually gets ripped out.
 
-I don't see why that wouldn't work, as long statd/sm-notify aren't  
-updating the database at that moment.  For safety I think there is an  
-sqlite3 backup mechanism for database files that respects the  
-library's locking semantics.
+Tested using opensolaris and linux and verifying that delegations could
+be properly recalled. I also tested mounts to the server's link-local
+address and verified that the callback channel connected correctly.
 
-sqlite3 doesn't do anything special under the covers.  It uses only  
-POSIX file access and locking calls, as far as I know.  So I think  
-hosting /var on most well-behaved clustering file systems won't have  
-any problem with this arrangement.
+Jeff Layton (6):
+  sunrpc: add routine for comparing addresses
+  sunrpc: add common routine for copying address portion of a sockaddr
+  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
+  nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
+  nfsd: add support for NFSv4 callbacks over IPv6
+  nfsd: populate sin6_scope_id on callback address with scopeid from
+    rq_addr on SETCLIENTID call
 
-One (admittedly minor) reason I did this is so we have some sample  
-code to try for other NFS-related daemons that need to store  
-information in /var robustly, potentially in clustered environments.
+ fs/lockd/clntlock.c         |    2 +-
+ fs/lockd/host.c             |    4 +-
+ fs/lockd/mon.c              |    2 +-
+ fs/lockd/svcsubs.c          |    2 +-
+ fs/nfsd/nfs4callback.c      |   11 +---
+ fs/nfsd/nfs4state.c         |  133 ++++++++++++++-----------------------------
+ include/linux/lockd/lockd.h |   43 --------------
+ include/linux/nfsd/state.h  |    6 +-
+ include/linux/sunrpc/clnt.h |  113 ++++++++++++++++++++++++++++++++++++
+ 9 files changed, 166 insertions(+), 150 deletions(-)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
