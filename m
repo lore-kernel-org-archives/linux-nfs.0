@@ -1,72 +1,97 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/6] nfsd: add support for NFSv4 callbacks over IPv6 (try
-	#5)
-Date: Fri, 14 Aug 2009 14:05:03 -0400
-Message-ID: <D24FC53A-3E15-444F-BCDF-BE8454205B4F@oracle.com>
-References: <1250269079-14629-1-git-send-email-jlayton@redhat.com>
+Subject: Re: [PATCH RFC v2 06/21] nfs: nfs4xdr: optimize RESERVE_SPACE in encode_create_session and encode_sequence
+Date: Fri, 14 Aug 2009 14:49:26 -0400
+Message-ID: <10346A84-B1F3-4161-B518-0F5D68D2DC9B@oracle.com>
+References: <4A8571E2.8020800@panasas.com> <1250259553-13672-1-git-send-email-bhalevy@panasas.com> <9734995E-20F8-4E53-83CD-BA95145D15ED@oracle.com> <1250269055.5476.11.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Jeff Layton <jlayton@redhat.com>, Bruce Fields <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1250269079-14629-1-git-send-email-jlayton@redhat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:31443 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754049AbZHNSti (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Aug 2009 14:49:38 -0400
+In-Reply-To: <1250269055.5476.11.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug 14, 2009, at 12:57 PM, Jeff Layton wrote:
-> Fifth attempt at a patchset to add support for NFSv4 callbacks over
-> IPv6. Changes from last patchset are mostly to address Chuck's  
-> comments:
->
-> 1) made the new address comparison and copy routines into static  
-> inlines
-> and added them to clnt.h. Ditto for the get_scope_id function.
->
-> 2) combined the patch to change nfs4_cb_conn to hold address in
-> sockaddr_storage with the one to convert gen_callback to use
-> rpc_uaddr2sockaddr. That eliminates changes to the parse_ipv4 function
-> that eventually gets ripped out.
->
-> Tested using opensolaris and linux and verifying that delegations  
-> could
-> be properly recalled. I also tested mounts to the server's link-local
-> address and verified that the callback channel connected correctly.
+On Aug 14, 2009, at 12:57 PM, Trond Myklebust wrote:
+> On Fri, 2009-08-14 at 12:32 -0400, Chuck Lever wrote:
+>> On Aug 14, 2009, at 10:19 AM, Benny Halevy wrote:
+>>> Coalesce multilpe constant RESERVE_SPACEs into one
+>>>
+>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>> ---
+>>> fs/nfs/nfs4xdr.c |   22 +++++-----------------
+>>> 1 files changed, 5 insertions(+), 17 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>> index 17915c8..d460d81 100644
+>>> --- a/fs/nfs/nfs4xdr.c
+>>> +++ b/fs/nfs/nfs4xdr.c
+>>> @@ -1562,17 +1562,15 @@ static void encode_create_session(struct
+>>> xdr_stream *xdr,
+>>> 	uint32_t len;
+>>> 	struct nfs_client *clp = args->client;
+>>>
+>>> -	RESERVE_SPACE(4);
+>>> -	*p++ = cpu_to_be32(OP_CREATE_SESSION);
+>>> +	len = scnprintf(machine_name, sizeof(machine_name), "%s",
+>>> +			clp->cl_ipaddr);
+>>>
+>>> -	RESERVE_SPACE(8);
+>>> +	RESERVE_SPACE(20 + 2*28 + 20 + len + 12);
+>>
+>> It would be nicer if we could use the foo_maxsz macros or "n *
+>> sizeof(__be32)" here somehow instead of integers.
 
-Looks good.
+Note the use of "somehow" implying that my suggestion is not supposed  
+to be a precise proscription for how to code it.  I presume we all  
+understand well enough the meaning of these macros to get the idea of  
+what I was trying to say.
 
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
+> No. sizeof(__be32) is a constant == 4. Spelling it out in every
+>>
+> reserve_space would be bloat, not documentation.
 
-> Jeff Layton (6):
->  sunrpc: add routine for comparing addresses
->  sunrpc: add common routine for copying address portion of a sockaddr
->  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
->  nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
->  nfsd: add support for NFSv4 callbacks over IPv6
->  nfsd: populate sin6_scope_id on callback address with scopeid from
->    rq_addr on SETCLIENTID call
 >
-> fs/lockd/clntlock.c         |    2 +-
-> fs/lockd/host.c             |    4 +-
-> fs/lockd/mon.c              |    2 +-
-> fs/lockd/svcsubs.c          |    2 +-
-> fs/nfsd/nfs4callback.c      |   11 +---
-> fs/nfsd/nfs4state.c         |  133 +++++++++++++ 
-> +-----------------------------
-> include/linux/lockd/lockd.h |   43 --------------
-> include/linux/nfsd/state.h  |    6 +-
-> include/linux/sunrpc/clnt.h |  113 ++++++++++++++++++++++++++++++++++ 
-> ++
-> 9 files changed, 166 insertions(+), 150 deletions(-)
->
+> foo_maxsz is something completely different: it spells out the maximum
+> possible buffer size. Please don't confuse that with the actual buffer
+> content size.
+
+The effective difference between foo_maxsz and the other macros is  
+only in the variable size parts of each argument set.  maxsz can be  
+constructed with a number of fixed size pieces that can be used  
+separately or combined into a single macro that _is_ appropriate to  
+use in the XDR routines.  Since we are explicitly adding the actual  
+lengths of variable sized arguments before calling reserve_space(), I  
+don't see a problem with using length macros for each argument.
+
+The risk of using naked integers in the XDR routines is that if  
+there's a length bug in the maxsz macros, we also need to visit the  
+XDR routines carefully to find other instances of the same problem.   
+If we use macros everywhere, then fixing one length macro will address  
+all similar instances at once...
+
+Maybe this isn't a big deal for something like the kernel's rpcbind  
+client, but nfs4xdr.c is already complex enough that I would easily  
+accept a slight decrease in readability to reduce the nontrivial risk  
+of getting these values wrong.  Take it from someone who has found and  
+fixed several such problems over the past few years: this is not a  
+documentation issue.
+
+Benny has combined the reserve_space() calls into a single call in  
+each XDR routine, thus visually separating the marshalling of each  
+argument from its related XDR buffer management.  If you already know  
+what you're looking at, that's not much of an issue.  But for those  
+who have never seen this code before, I think this reduces legibility  
+in favor of a slight code optimization.  Using length macros would  
+make it easier to understand the relationship between marshalling and  
+buffer management in each routine.
+
+> IOW: Please just leave the above as it is.
 
 --
 Chuck Lever
