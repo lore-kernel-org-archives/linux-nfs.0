@@ -1,311 +1,63 @@
-From: npiggin@suse.de
-Subject: [patch 2/5] fs: use new truncate helpers
-Date: Sun, 16 Aug 2009 20:25:35 +1000
-Message-ID: <20090816102856.368316383@suse.de>
-References: <20090816102533.329473921@suse.de>
-Cc: linux-fsdevel@vger.kernel.org, Miklos Szeredi <miklos@szeredi.hu>,
-	linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-	linux-cifs-client@lists.samba.org, sfrench@samba.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 00/11] nfs-utils: add TIRPC/IPv6 support to rpc.nfsd
+Date: Sun, 16 Aug 2009 16:06:13 -0400
+Message-ID: <4A8866B5.8090008@RedHat.com>
+References: <1244484044-21355-1-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:37638 "EHLO mx1.suse.de"
+Received: from mx2.redhat.com ([66.187.237.31]:60700 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754079AbZHPKby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 16 Aug 2009 06:31:54 -0400
+	id S1754958AbZHPUGR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 16 Aug 2009 16:06:17 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n7GK6J66024465
+	for <linux-nfs@vger.kernel.org>; Sun, 16 Aug 2009 16:06:19 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n7GK6In2006645
+	for <linux-nfs@vger.kernel.org>; Sun, 16 Aug 2009 16:06:18 -0400
+Received: from xenhat.boston.devel.redhat.com (vpn-10-26.bos.redhat.com [10.16.10.26])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n7GK6HUp011333
+	for <linux-nfs@vger.kernel.org>; Sun, 16 Aug 2009 16:06:17 -0400
+In-Reply-To: <1244484044-21355-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update some fs code to make use of new helper functions introduced
-in the previous patch. Should be no significant change in behaviour
-(except CIFS now calls send_sig under i_lock, via inode_newsize_ok).
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Miklos Szeredi <miklos@szeredi.hu>
-Cc: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com
-Cc: linux-cifs-client@lists.samba.org
-Cc: sfrench@samba.org
-Signed-off-by: Nick Piggin <npiggin@suse.de>
----
- fs/buffer.c           |   10 +--------
- fs/cifs/inode.c       |   51 ++++++++-----------------------------------------
- fs/fuse/dir.c         |   14 +++----------
- fs/fuse/fuse_i.h      |    2 -
- fs/fuse/inode.c       |   11 ----------
- fs/nfs/inode.c        |   52 +++++++++++---------------------------------------
- fs/ramfs/file-nommu.c |   18 ++++-------------
- 7 files changed, 33 insertions(+), 125 deletions(-)
-
-Index: linux-2.6/fs/buffer.c
-===================================================================
---- linux-2.6.orig/fs/buffer.c
-+++ linux-2.6/fs/buffer.c
-@@ -2225,16 +2225,10 @@ int generic_cont_expand_simple(struct in
- 	struct address_space *mapping = inode->i_mapping;
- 	struct page *page;
- 	void *fsdata;
--	unsigned long limit;
- 	int err;
- 
--	err = -EFBIG;
--        limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--	if (limit != RLIM_INFINITY && size > (loff_t)limit) {
--		send_sig(SIGXFSZ, current, 0);
--		goto out;
--	}
--	if (size > inode->i_sb->s_maxbytes)
-+	err = inode_newsize_ok(inode, size);
-+	if (err)
- 		goto out;
- 
- 	err = pagecache_write_begin(NULL, mapping, size, 0,
-Index: linux-2.6/fs/cifs/inode.c
-===================================================================
---- linux-2.6.orig/fs/cifs/inode.c
-+++ linux-2.6/fs/cifs/inode.c
-@@ -1557,57 +1557,24 @@ static int cifs_truncate_page(struct add
- 
- static int cifs_vmtruncate(struct inode *inode, loff_t offset)
- {
--	struct address_space *mapping = inode->i_mapping;
--	unsigned long limit;
-+	loff_t oldsize;
-+	int err;
- 
- 	spin_lock(&inode->i_lock);
--	if (inode->i_size < offset)
--		goto do_expand;
--	/*
--	 * truncation of in-use swapfiles is disallowed - it would cause
--	 * subsequent swapout to scribble on the now-freed blocks.
--	 */
--	if (IS_SWAPFILE(inode)) {
-+	err = inode_newsize_ok(inode, offset);
-+	if (err) {
- 		spin_unlock(&inode->i_lock);
--		goto out_busy;
-+		goto out;
- 	}
--	i_size_write(inode, offset);
--	spin_unlock(&inode->i_lock);
--	/*
--	 * unmap_mapping_range is called twice, first simply for efficiency
--	 * so that truncate_inode_pages does fewer single-page unmaps. However
--	 * after this first call, and before truncate_inode_pages finishes,
--	 * it is possible for private pages to be COWed, which remain after
--	 * truncate_inode_pages finishes, hence the second unmap_mapping_range
--	 * call must be made for correctness.
--	 */
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	truncate_inode_pages(mapping, offset);
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	goto out_truncate;
- 
--do_expand:
--	limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--	if (limit != RLIM_INFINITY && offset > limit) {
--		spin_unlock(&inode->i_lock);
--		goto out_sig;
--	}
--	if (offset > inode->i_sb->s_maxbytes) {
--		spin_unlock(&inode->i_lock);
--		goto out_big;
--	}
-+	oldsize = inode->i_size;
- 	i_size_write(inode, offset);
- 	spin_unlock(&inode->i_lock);
--out_truncate:
-+	truncate_pagecache(inode, oldsize, offset);
- 	if (inode->i_op->truncate)
- 		inode->i_op->truncate(inode);
--	return 0;
--out_sig:
--	send_sig(SIGXFSZ, current, 0);
--out_big:
--	return -EFBIG;
--out_busy:
--	return -ETXTBSY;
-+out:
-+	return err;
- }
- 
- static int
-Index: linux-2.6/fs/fuse/dir.c
-===================================================================
---- linux-2.6.orig/fs/fuse/dir.c
-+++ linux-2.6/fs/fuse/dir.c
-@@ -1276,14 +1276,9 @@ static int fuse_do_setattr(struct dentry
- 		return 0;
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
--		unsigned long limit;
--		if (IS_SWAPFILE(inode))
--			return -ETXTBSY;
--		limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--		if (limit != RLIM_INFINITY && attr->ia_size > (loff_t) limit) {
--			send_sig(SIGXFSZ, current, 0);
--			return -EFBIG;
--		}
-+		err = inode_newsize_ok(inode, attr->ia_size);
-+		if (err)
-+			return err;
- 		is_truncate = true;
- 	}
- 
-@@ -1350,8 +1345,7 @@ static int fuse_do_setattr(struct dentry
- 	 * FUSE_NOWRITE, otherwise fuse_launder_page() would deadlock.
- 	 */
- 	if (S_ISREG(inode->i_mode) && oldsize != outarg.attr.size) {
--		if (outarg.attr.size < oldsize)
--			fuse_truncate(inode->i_mapping, outarg.attr.size);
-+		truncate_pagecache(inode, oldsize, outarg.attr.size);
- 		invalidate_inode_pages2(inode->i_mapping);
- 	}
- 
-Index: linux-2.6/fs/nfs/inode.c
-===================================================================
---- linux-2.6.orig/fs/nfs/inode.c
-+++ linux-2.6/fs/nfs/inode.c
-@@ -426,49 +426,21 @@ nfs_setattr(struct dentry *dentry, struc
-  */
- static int nfs_vmtruncate(struct inode * inode, loff_t offset)
- {
--	if (i_size_read(inode) < offset) {
--		unsigned long limit;
-+	loff_t oldsize;
-+	int err;
- 
--		limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--		if (limit != RLIM_INFINITY && offset > limit)
--			goto out_sig;
--		if (offset > inode->i_sb->s_maxbytes)
--			goto out_big;
--		spin_lock(&inode->i_lock);
--		i_size_write(inode, offset);
--		spin_unlock(&inode->i_lock);
--	} else {
--		struct address_space *mapping = inode->i_mapping;
-+	err = inode_newsize_ok(inode, offset);
-+	if (err)
-+		goto out;
- 
--		/*
--		 * truncation of in-use swapfiles is disallowed - it would
--		 * cause subsequent swapout to scribble on the now-freed
--		 * blocks.
--		 */
--		if (IS_SWAPFILE(inode))
--			return -ETXTBSY;
--		spin_lock(&inode->i_lock);
--		i_size_write(inode, offset);
--		spin_unlock(&inode->i_lock);
-+	spin_lock(&inode->i_lock);
-+	oldsize = inode->i_size;
-+	i_size_write(inode, offset);
-+	spin_unlock(&inode->i_lock);
- 
--		/*
--		 * unmap_mapping_range is called twice, first simply for
--		 * efficiency so that truncate_inode_pages does fewer
--		 * single-page unmaps.  However after this first call, and
--		 * before truncate_inode_pages finishes, it is possible for
--		 * private pages to be COWed, which remain after
--		 * truncate_inode_pages finishes, hence the second
--		 * unmap_mapping_range call must be made for correctness.
--		 */
--		unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--		truncate_inode_pages(mapping, offset);
--		unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	}
--	return 0;
--out_sig:
--	send_sig(SIGXFSZ, current, 0);
--out_big:
--	return -EFBIG;
-+	truncate_pagecache(inode, oldsize, offset);
-+out:
-+	return err;
- }
- 
- /**
-Index: linux-2.6/fs/ramfs/file-nommu.c
-===================================================================
---- linux-2.6.orig/fs/ramfs/file-nommu.c
-+++ linux-2.6/fs/ramfs/file-nommu.c
-@@ -69,14 +69,11 @@ int ramfs_nommu_expand_for_mapping(struc
- 	/* make various checks */
- 	order = get_order(newsize);
- 	if (unlikely(order >= MAX_ORDER))
--		goto too_big;
-+		return -EFBIG;
- 
--	limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--	if (limit != RLIM_INFINITY && newsize > limit)
--		goto fsize_exceeded;
--
--	if (newsize > inode->i_sb->s_maxbytes)
--		goto too_big;
-+	ret = inode_newsize_ok(inode, newsize);
-+	if (ret)
-+		return ret;
- 
- 	i_size_write(inode, newsize);
- 
-@@ -118,12 +115,7 @@ int ramfs_nommu_expand_for_mapping(struc
- 
- 	return 0;
- 
-- fsize_exceeded:
--	send_sig(SIGXFSZ, current, 0);
-- too_big:
--	return -EFBIG;
--
-- add_error:
-+add_error:
- 	while (loop < npages)
- 		__free_page(pages + loop++);
- 	return ret;
-Index: linux-2.6/fs/fuse/fuse_i.h
-===================================================================
---- linux-2.6.orig/fs/fuse/fuse_i.h
-+++ linux-2.6/fs/fuse/fuse_i.h
-@@ -602,8 +602,6 @@ void fuse_change_attributes(struct inode
- void fuse_change_attributes_common(struct inode *inode, struct fuse_attr *attr,
- 				   u64 attr_valid);
- 
--void fuse_truncate(struct address_space *mapping, loff_t offset);
--
- /**
-  * Initialize the client device
-  */
-Index: linux-2.6/fs/fuse/inode.c
-===================================================================
---- linux-2.6.orig/fs/fuse/inode.c
-+++ linux-2.6/fs/fuse/inode.c
-@@ -115,14 +115,6 @@ static int fuse_remount_fs(struct super_
- 	return 0;
- }
- 
--void fuse_truncate(struct address_space *mapping, loff_t offset)
--{
--	/* See vmtruncate() */
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	truncate_inode_pages(mapping, offset);
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--}
--
- void fuse_change_attributes_common(struct inode *inode, struct fuse_attr *attr,
- 				   u64 attr_valid)
- {
-@@ -180,8 +172,7 @@ void fuse_change_attributes(struct inode
- 	spin_unlock(&fc->lock);
- 
- 	if (S_ISREG(inode->i_mode) && oldsize != attr->size) {
--		if (attr->size < oldsize)
--			fuse_truncate(inode->i_mapping, attr->size);
-+		truncate_pagecache(inode, oldsize, attr->size);
- 		invalidate_inode_pages2(inode->i_mapping);
- 	}
- }
 
 
+On 06/08/2009 02:00 PM, Jeff Layton wrote:
+> This is the sixth attempt at a patchset to add TIRPC and IPv6 support to
+> the rpc.nfsd program. The significant differences from the last set are:
+> 
+> 1) Change it to log errors to stderr by default, and add a --syslog
+> switch to force output to syslog
+> 
+> 2) moved nfssvc.c into the nfsd directory (and out of libnfs.a).
+> rpc.nfsd is the only user of those routines so there's no need to
+> keep it in common code.
+> 
+> 3) declared a common static string buffer for the nfssvc routines
+> to use to cut down stack usage. It's also smaller than BUFSIZ so the
+> general memory footprint for rpc.nfsd should be smaller.
+> 
+> There are also a number of cleanups and small fixes.
+> 
+> Comments and suggestions appreciated...
+> 
+> Jeff Layton (11):
+>   nfs-utils: move nfssvc.c to nfsd dir and clean up linking of nfsd
+>   nfs-utils: clean up option parsing in nfsd.c
+>   nfs-utils: convert rpc.nfsd to use xlog()
+>   nfs-utils: clean up NFSCTL_* macros for handling protocol bits
+>   nfs-utils: declare a static common buffer for nfssvc.c routines
+>   nfs-utils: move check for active knfsd to helper function
+>   nfs-utils: convert nfssvc_setfds to use getaddrinfo
+>   nfs-utils: break up the nfssvc interface
+>   nfs-utils: add IPv6 support to nfssvc_setfds
+>   nfs-utils: add IPv6 support to nfsd
+>   nfs-utils: update the nfsd manpage and copyright notices
+
+Committed.... 
+
+steved.
