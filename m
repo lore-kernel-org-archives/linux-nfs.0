@@ -1,51 +1,54 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [2.6.31-rc5] oops: NFS4 client manager kthread...
-Date: Mon, 17 Aug 2009 09:12:18 -0400
-Message-ID: <1250514738.8475.26.camel@heimdal.trondhjem.org>
-References: <6278d2220908161540h78f17424m592c5acf3420f906@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [Patch 0/10] NFS Mount Configuration File (Vers 3)
+Date: Mon, 17 Aug 2009 09:12:35 -0400
+Message-ID: <4A895743.4030202@RedHat.com>
+References: <4A7B2324.9090406@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Daniel J Blueman <daniel.blueman@gmail.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752315AbZHQNMT@vger.kernel.org>
-In-Reply-To: <6278d2220908161540h78f17424m592c5acf3420f906@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4A7B2324.9090406@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2009-08-16 at 23:40 +0100, Daniel J Blueman wrote:
-> After losing and regaining ethernet link a few times with 2.6.31-rc5
-> [1], I've hit an oops in the NFS4 client manager kthread [2] on my
-> client with NFS4 homedir mount.
+On 08/06/2009 02:38 PM, Steve Dickson wrote:
+> Hello,
 > 
-> Do you have a frequent test-case for when the client's manager kthread
-> gets invoked (with and without succeeding callbacks, due to eg a
-> firewall)? Server here is unpatched 2.6.30-rc6; I recall seeing
-> problems when the manager kthread gets invoked, across quite a few
-> kernel releases, just wasn't lucky enough to catch an oops.
+> Here is the latest version of these patches. In the version
+> the following changes were made:
 > 
-> Oppsing in allow_signal() suggests task state corruption perhaps? I'm
-> downloading the debug kernel to match up the disassembly and line
-> numbers, if that helps? This time, the client had no firewall (but
-> have seen other issues when the callback has failed due to the
-> firewall).
+>    1) Section headers how have an argument to them. Similar
+>       to [Server "foobar" ] or [MountPoint "/export"]
+>    
+>    2) Only the Section names are now case-less. Its up to
+>       the caller of the parsing routines to deal with case
+>       sensitivity of the data.
+> 
+> 
+> Here are the pointers to the two previous versions which
+> will explain the who, what and whys:  
+> 
+> http://marc.info/?l=linux-nfs&m=123663164305546&w=2
+> http://marc.info/?l=linux-nfs&m=124931114811175&w=2
+> 
+> 
+> This entire patch set is available at:
+>     http://people.redhat.com/steved/mount-conf/ver03/
+> 
+> and on the 'mount_conf-ver03' branch on my experimental git tree:
+>     git://linux-nfs.org/~steved/nfs-utils-exp.git
 
-Those aren't Oopses. They are 'soft lockup' warnings. Basically, they're
-saying that the CPU is getting stuck waiting for a spin lock or a mutex.
+Committed... Which included the updated patches I posted
+to this thread as well as Benny's suggestion on supporting
+inline comments... As usual, he's observations were spot on... 
 
-In this case, it is probably the fact that the state manager is going
-nuts trying to recover, while the connection to the server keeps coming
-up and going down.
-
-What does 'netstat -t' say when you get into this situation?
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+steved.
