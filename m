@@ -1,84 +1,80 @@
-From: Daniel J Blueman <daniel.blueman@gmail.com>
-Subject: Re: [2.6.31-rc5] oops: NFS4 client manager kthread...
-Date: Mon, 17 Aug 2009 14:53:08 +0100
-Message-ID: <6278d2220908170653s45df9989t9fa550f7efa0c182@mail.gmail.com>
-References: <6278d2220908161540h78f17424m592c5acf3420f906@mail.gmail.com>
-	 <1250514738.8475.26.camel@heimdal.trondhjem.org>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [pnfs] [PATCH RFC v2 0/21] nfs4xdr cleanup v2
+Date: Mon, 17 Aug 2009 16:54:45 +0300
+Message-ID: <4A896125.2040506@panasas.com>
+References: <4A8571E2.8020800@panasas.com>  <4A89338D.1040207@panasas.com> <1250513254.8475.20.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f214.google.com ([209.85.219.214]:53270 "EHLO
-	mail-ew0-f214.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752413AbZHQNxI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2009 09:53:08 -0400
-In-Reply-To: <1250514738.8475.26.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:5299
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752055AbZHQNyt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2009 09:54:49 -0400
+In-Reply-To: <1250513254.8475.20.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On 08/17/2009 03:47 PM, Trond Myklebust wrote:
+> On Mon, 2009-08-17 at 13:40 +0300, Boaz Harrosh wrote:
+>> * So I hate it that the READ32/WRITE32 is open coded. Now it looks like nothing, it
+>>   should have an xdr_encode/decode naming convention, all details hidden, consistent calling
+>>   convention with the reset of the code.
+> 
+> The convention is already established. Please see 15 years worth of
+> NFSv2/v3 xdr code. The NFSv4 code was the exception not the rule.
+> 
+> Now, it is obvious what we're doing: we're writing 32-bit big endian
+> encoded data into a memory buffer. Furthermore, the process of
+> converting from cpu ordered integers into 32-bit big endian is now made
+> obvious, making it easily verifiable both by inspection, and using
+> 'sparse'.
+> Adding wrappers to do this, is just unnecessarily obfuscating the code.
+> 
 
-On Mon, Aug 17, 2009 at 2:12 PM, Trond
-Myklebust<Trond.Myklebust@netapp.com> wrote:
-> On Sun, 2009-08-16 at 23:40 +0100, Daniel J Blueman wrote:
->> After losing and regaining ethernet link a few times with 2.6.31-rc5
->> [1], I've hit an oops in the NFS4 client manager kthread [2] on my
->> client with NFS4 homedir mount.
->>
->> Do you have a frequent test-case for when the client's manager kthre=
-ad
->> gets invoked (with and without succeeding callbacks, due to eg a
->> firewall)? Server here is unpatched 2.6.30-rc6; I recall seeing
->> problems when the manager kthread gets invoked, across quite a few
->> kernel releases, just wasn't lucky enough to catch an oops.
->>
->> Oppsing in allow_signal() suggests task state corruption perhaps? I'=
-m
->> downloading the debug kernel to match up the disassembly and line
->> numbers, if that helps? This time, the client had no firewall (but
->> have seen other issues when the callback has failed due to the
->> firewall).
->
-> Those aren't Oopses. They are 'soft lockup' warnings. Basically, they=
-'re
-> saying that the CPU is getting stuck waiting for a spin lock or a mut=
-ex.
->
-> In this case, it is probably the fact that the state manager is going
-> nuts trying to recover, while the connection to the server keeps comi=
-ng
-> up and going down.
->
-> What does 'netstat -t' say when you get into this situation?
+As I said, *sometimes* "obfuscation" is the point. If it has merits to account
+for human short concentration span.
 
-Whoops; it's true the stack-trace comes from the soft-lockup detector.
+>> * I hate it that I have to count (p)"++" now to look for actual code advancements.
+> 
+> How is that _any_ different from counting WRITE32s?
+> 
 
-There was a single 200s link excursion, but the client didn't recover
-as locks are held and never released it seems; I observe the
-'192.168.1.250-m' NFS4 manager kthread being created and not going
-away, despite IP connectivity with the server being fine after.
+The size for one. And mainly the symmetry with the other side of the wire.
 
-I'll reproduce it with stock 2.6.31-rc6 on the client and get 'netstat
--t' output.
+WRITEXX for every READXX. What now?
 
-Thanks for looking at this!
-  Daniel
+>> * I hate that it is called encode_hyper that a dum like me needs to look it up in the dictionary
+>>   "32" and "64" will do
+> 
+> I don't mind changing the name of xdr_encode_hyper() to
+> xdr_encode_uint64 or some such alternative, however the point is that we
+> should have only _one_ function that encodes 64 bit integers. Not one
+> function that everyone else uses, and then a macro that NFSv4 uses.
+> 
+>> * I hated it before, but I hate it even more now that the same operation is:
+>>   reserved(4); p + 1
+> 
+> Huh? What operation?
+> 
 
-> Cheers
-> =A0Trond
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+Sorry, I meant the mix use of byte_sizes and word_sizes. For example I'd like
+reserved(1); p + 1;
+and reserved(quad_len(len)); p + quad_len(len);
 
+I see a pattern here. Highly changing code devises these "helpers", that enables
+reviewing, for catching bugs. Then once stabilized, code is "un-obfuscated" and
+becomes "write-only". Who cares, no one needs to read-it, it works.
 
+I don't want to raise any flame wars here. I come late and I see what I see.
 
---=20
-Daniel J Blueman
+Probably 2, 3 iterations into this I will become blind to this code as well.
+I guess current code is fine. How hard can it be, so I spend an hour longer on
+a missing "++". New NFS versions are written every 10 years.
+
+Only one request though. Please make nfs and nfsd use the same xdr mechanics
+
+Boaz
