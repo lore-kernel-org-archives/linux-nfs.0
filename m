@@ -1,130 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:50550
-	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753372AbZHDN7L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Aug 2009 09:59:11 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] NFS: Use the authentication flavor list returned by mountd
-To: trond.myklebust@fys.uio.no
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 04 Aug 2009 09:59:09 -0400
-Message-ID: <20090804135909.2287.66026.stgit@matisse.1015granger.net>
-In-Reply-To: <20090804135425.2287.3313.stgit@matisse.1015granger.net>
-References: <20090804135425.2287.3313.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:38103 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757608AbZHQRdz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Aug 2009 13:33:55 -0400
+Date: Mon, 17 Aug 2009 13:33:56 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Tom Haynes <tdh@excfb.com>
+Subject: [PATCH] Don't give client an empty flavor list
+Message-ID: <20090817173356.GF27331@fieldses.org>
+References: <4A5F5C4C.3070308@excfb.com> <20090716185642.GB2495@fieldses.org> <4A5F7EA9.9050309@excfb.com> <20090716194546.GG2495@fieldses.org> <4A5F8A00.8000104@excfb.com> <20090722000955.GC20694@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20090722000955.GC20694@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Commit a14017db added support in the kernel's NFS mount client to
-decode the authentication flavor list returned by mountd.
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-The NFS client can now use this list to determine whether the
-authentication flavor requested by the user is actually supported
-by the server.
+In the absence of an explicit sec= option on an export, rpc.mountd is
+returning a zero-length flavor list to clients in the MOUNT results.
 
-Note we don't actually negotiate the security flavor if none was
-specified by the user.  Instead, we try to use AUTH_SYS, and fail if
-the server does not support it.  This prevents us from negotiating
-an inappropriate security flavor (some servers list AUTH_NULL first).
+The linux client doesn't seem to mind, but the Solaris client
+(reasonably enough) is giving up; the symptom is a "security mode does
+not match" error on mount.
 
-If the server does not support AUTH_SYS, the user must provide an
-appropriate security flavor by specifying the "sec=" mount option.
+We could modify the export-parsing code to ensure the secinfo array is
+nonzero.  But I think it's slightly simpler to handle this default case
+in the implementation of the MOUNT call.  This is more-or-less the same
+thing the kernel does when mountd passes it an export without any
+security flavors specified.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Thanks to Tom Haynes for bug report and diagnosis.
+
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
+ utils/mountd/mountd.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
- fs/nfs/super.c |   58 +++++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 files changed, 51 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a33e608..8526008 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1437,13 +1437,50 @@ out_security_failure:
- }
- 
- /*
-+ * Match the requested auth flavors with the list returned by
-+ * the server.  Returns zero and sets the mount's authentication
-+ * flavor on success; returns -EACCES if server does not support
-+ * the requested flavor.
-+ */
-+static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
-+			     struct nfs_mount_request *request)
-+{
-+	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
-+
-+	/*
-+	 * We avoid sophisticated negotiating here, as there are
-+	 * plenty of cases where we can get it wrong, providing
-+	 * either too little or too much security.
-+	 *
-+	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
-+	 * flavor listed first.  However, some servers list
-+	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
-+	 * preferred default, in args->auth_flavors[0] if user
-+	 * didn't specify sec= mount option.
-+	 */
-+	for (i = 0; i < args->auth_flavor_len; i++)
-+		for (j = 0; j < server_authlist_len; j++)
-+			if (args->auth_flavors[i] == request->auth_flavs[j]) {
-+				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
-+					request->auth_flavs[j]);
-+				args->auth_flavors[0] = request->auth_flavs[j];
-+				return 0;
-+			}
-+
-+	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
-+	nfs_umount(request);
-+	return -EACCES;
-+}
-+
-+/*
-  * Use the remote server's MOUNT service to request the NFS file handle
-  * corresponding to the provided path.
-  */
- static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 			 struct nfs_fh *root_fh)
- {
--	unsigned int auth_flavor_len = 0;
-+	rpc_authflavor_t server_authlist[NFS_MAX_SECFLAVORS];
-+	unsigned int server_authlist_len = ARRAY_SIZE(server_authlist);
- 	struct nfs_mount_request request = {
- 		.sap		= (struct sockaddr *)
- 						&args->mount_server.address,
-@@ -1451,7 +1488,8 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 		.protocol	= args->mount_server.protocol,
- 		.fh		= root_fh,
- 		.noresvport	= args->flags & NFS_MOUNT_NORESVPORT,
--		.auth_flav_len	= &auth_flavor_len,
-+		.auth_flav_len	= &server_authlist_len,
-+		.auth_flavs	= server_authlist,
- 	};
- 	int status;
- 
-@@ -1488,12 +1526,18 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	 * to a file handle.
- 	 */
- 	status = nfs_mount(&request);
--	if (status == 0)
--		return 0;
-+	if (status != 0) {
-+		dfprintk(MOUNT, "NFS: unable to mount server %s, error %d\n",
-+				request.hostname, status);
-+		return status;
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index b59f939..888fd8c 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -359,6 +359,11 @@ static void set_authflavors(struct mountres3_ok *ok, nfs_export *exp)
+ 		flavors[i] = s->flav->fnum;
+ 		i++;
+ 	}
++	if (i == 0) {
++		/* default when there is no sec= option: */
++		i = 1;
++		flavors[0] = AUTH_UNIX;
 +	}
- 
--	dfprintk(MOUNT, "NFS: unable to mount server %s, error %d\n",
--			request.hostname, status);
--	return status;
-+	/*
-+	 * MNTv1 (NFSv2) does not support auth flavor negotiation.
-+	 */
-+	if (args->mount_server.version != NFS_MNT3_VERSION)
-+		return 0;
-+	return nfs_walk_authlist(args, &request);
+ 	ok->auth_flavors.auth_flavors_val = flavors;
+ 	ok->auth_flavors.auth_flavors_len = i;
  }
- 
- static int nfs_parse_simple_hostname(const char *dev_name,
+-- 
+1.6.0.4
 
