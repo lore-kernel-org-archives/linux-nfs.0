@@ -1,204 +1,95 @@
-From: Daniel J Blueman <daniel.blueman@gmail.com>
-Subject: [2.6.31-rc5] oops: NFS4 client manager kthread...
-Date: Sun, 16 Aug 2009 23:40:22 +0100
-Message-ID: <6278d2220908161540h78f17424m592c5acf3420f906@mail.gmail.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [pnfs] [PATCH RFC v2 0/21] nfs4xdr cleanup v2
+Date: Mon, 17 Aug 2009 13:40:13 +0300
+Message-ID: <4A89338D.1040207@panasas.com>
+References: <4A8571E2.8020800@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux Kernel <linux-kernel@vger.kernel.org>
-To: linux-nfs@vger.kernel.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: Benny Halevy <bhalevy@panasas.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f214.google.com ([209.85.219.214]:57331 "EHLO
-	mail-ew0-f214.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751847AbZHPWkW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Aug 2009 18:40:22 -0400
+Received: from ip67-152-220-66.z220-152-67.customer.algx.net ([67.152.220.66]:1337
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1757528AbZHQKkL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Aug 2009 06:40:11 -0400
+In-Reply-To: <4A8571E2.8020800@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After losing and regaining ethernet link a few times with 2.6.31-rc5
-[1], I've hit an oops in the NFS4 client manager kthread [2] on my
-client with NFS4 homedir mount.
+On 08/14/2009 05:17 PM, Benny Halevy wrote:
+> Trond, thanks for your comments.
+> I believe I've fixed them all.
+> 
+> Changes from v1:
+> 
+> - dropped xdr_{en,de}code_int, open code cpu_to_be32 and be32_to_cpup instead.
+> - added helpers for decoding stateid, verifier, and sessionid
+>   using a common helper for decoding fixed size opaque arrays.
+> - COPYMEM calls all converted to memcpy (no need for returning ptr)
+> - READ_BUF open coded, callers use print_overflow_msg as you suggested.
+> 
+> - minor cleanup in encode_compound_hdr
+> - optimized nfs41 reserve_space usage
+> - optimized low level encoding
+> - simplified decode_exchange_id by reusing decode_opaque_inline
+> - optimized low level decoding
+> 
+> In this patchset:
+> 
+> [PATCH RFC v2 01/21] sunrpc: hton -> cpu_to_be*
+> [PATCH RFC v2 02/21] sunrpc: ntoh -> be*_to_cpu
+> [PATCH RFC v2 03/21] nfs: nfs4xdr: get rid of WRITE32
+> [PATCH RFC v2 04/21] nfs: nfs4xdr: get rid of WRITE64
+> [PATCH RFC v2 05/21] nfs: nfs4xdr: get rid of WRITEMEM
+> [PATCH RFC v2 06/21] nfs: nfs4xdr: optimize RESERVE_SPACE in encode_create_session and encode_sequence
+> [PATCH RFC v2 07/21] nfs: nfs4xdr: encode_compound_hdr does not have to round up reserved bytes
+> [PATCH RFC v2 08/21] nfs: nfs4xdr: change RESERVE_SPACE macro into a static helper
+> [PATCH RFC v2 09/21] nfs: nfs4xdr: optimize low level encoding
+> [PATCH RFC v2 10/21] nfs: nfs4xdr: merge xdr_encode_int+xdr_encode_opaque_fixed into xdr_encode_opaque
+> [PATCH RFC v2 11/21] nfs: nfs4xdr: get rid of READ32
+> [PATCH RFC v2 12/21] nfs: nfs4xdr: get rid of READ64
+> [PATCH RFC v2 13/21] nfs: nfs4xdr: get rid of READTIME
+> [PATCH RFC v2 14/21] nfs: nfs4xdr: introduce print_overflow_msg
+> [PATCH RFC v2 15/21] nfs: nfs4xdr: introduce decode_opaque_fixed and decode_stateid helpers
+> [PATCH RFC v2 16/21] nfs: nfs4xdr: introduce decode_verifier helper
+> [PATCH RFC v2 17/21] nfs: nfs4xdr: introduce decode_sessionid helper
+> [PATCH RFC v2 18/21] nfs: nfs4xdr: get rid of COPYMEM
+> [PATCH RFC v2 19/21] nfs: nfs4xdr: simplify decode_exchange_id by reusing decode_opaque_inline
+> [PATCH RFC v2 20/21] nfs: nfs4xdr: get rid of READ_BUF
+> [PATCH RFC v2 21/21] nfs: nfs4xdr: optimize low level decoding
+> 
+> Benny
 
-Do you have a frequent test-case for when the client's manager kthread
-gets invoked (with and without succeeding callbacks, due to eg a
-firewall)? Server here is unpatched 2.6.30-rc6; I recall seeing
-problems when the manager kthread gets invoked, across quite a few
-kernel releases, just wasn't lucky enough to catch an oops.
+I'm very sorry that Benny has done all this work. I understand that it was a mess and
+something should have been done. And I hope the final goal is to unify xdr stuff between
+server and client, but ...
 
-Oppsing in allow_signal() suggests task state corruption perhaps? I'm
-downloading the debug kernel to match up the disassembly and line
-numbers, if that helps? This time, the client had no firewall (but
-have seen other issues when the callback has failed due to the
-firewall).
+I hate what is done here!
+As an imperfect human person, that coded these things and had bugs and was chasing them
+for hours. These patches make my life much much harder. Not easier, sorry.
 
-Thanks,
-  Daniel
+The READXX/WRITEXX macros was a romantic attempt at unification between server and client
+and at "capitalizing" the actual encoding/decoding operations out of surrounding code, in
+an attempt to hide a way all details. So a bug maker like me could attempt a visual side
+by side comparison or counting of encode/decode operations, and fine the cure.
 
---- [1]
+* So I hate it that the READ32/WRITE32 is open coded. Now it looks like nothing, it
+  should have an xdr_encode/decode naming convention, all details hidden, consistent calling
+  convention with the reset of the code.
+* I hate it that I have to count (p)"++" now to look for actual code advancements.
+* I hate that it is called encode_hyper that a dum like me needs to look it up in the dictionary
+  "32" and "64" will do
+* I hated it before, but I hate it even more now that the same operation is:
+  reserved(4); p + 1
+  I wish it could be all __be32 everywhere
 
-Karmic's 2.6.31-5-generic maps to 2.6.31-rc5, but oddly is missed out at:
-http://kernel.ubuntu.com/~kernel-ppa/info/kernel-version-map.html
+Sometimes macros are good. When they try to make boring code pretty and cute.
+These macros where evil but could be fixed. Also inline functions can be devised
+for the same purpose. I do understand all these code theories, hell I wrote them,
+but the practice of the matter is that these patches take me back not forward.
+But perhaps it's just me?
 
---- [2]
-
-e1000e: eth0 NIC Link is Down
-
-e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: RX/TX
-
-BUG: soft lockup - CPU#1 stuck for 61s! [192.168.1.250-m:7944]
-
-Modules linked in: ppdev kvm_intel kvm microcode nfsd exportfs nfs
-lockd nfs_acl auth_rpcgss sunrpc ipt_REJECT ipt_LOG xt_limit xt_tcpudp
-xt_state ipt_addrtype ip6table_filter ip6_tables nf_nat_irc
-nf_conntrack_irc nf_nat_ftp nf_nat nf_conntrack_ipv4 nf_defrag_ipv4
-nf_conntrack_ftp nf_conntrack iptable_filter ip_tables x_tables
-dm_crypt joydev lp parport snd_hda_codec_conexant snd_hda_intel
-snd_hda_codec snd_pcm_oss snd_mixer_oss snd_pcm arc4 snd_seq_dummy
-pcmcia ecb snd_seq_oss snd_seq_midi snd_rawmidi snd_seq_midi_event
-snd_seq snd_timer snd_seq_device iwlagn iwlcore mac80211 psmouse
-serio_raw snd yenta_socket soundcore rsrc_nonstatic snd_page_alloc
-ricoh_mmc pcmcia_core sdhci_pci sdhci thinkpad_acpi led_class cfg80211
-nvram radeon ttm heci(C) e1000e fbcon tileblit font bitblit softcursor
-i915 drm i2c_algo_bit video output intel_agp
-
-CPU 1:
-
-Modules linked in: ppdev kvm_intel kvm microcode nfsd exportfs nfs
-lockd nfs_acl auth_rpcgss sunrpc ipt_REJECT ipt_LOG xt_limit xt_tcpudp
-xt_state ipt_addrtype ip6table_filter ip6_tables nf_nat_irc
-nf_conntrack_irc nf_nat_ftp nf_nat nf_conntrack_ipv4 nf_defrag_ipv4
-nf_conntrack_ftp nf_conntrack iptable_filter ip_tables x_tables
-dm_crypt joydev lp parport snd_hda_codec_conexant snd_hda_intel
-snd_hda_codec snd_pcm_oss snd_mixer_oss snd_pcm arc4 snd_seq_dummy
-pcmcia ecb snd_seq_oss snd_seq_midi snd_rawmidi snd_seq_midi_event
-snd_seq snd_timer snd_seq_device iwlagn iwlcore mac80211 psmouse
-serio_raw snd yenta_socket soundcore rsrc_nonstatic snd_page_alloc
-ricoh_mmc pcmcia_core sdhci_pci sdhci thinkpad_acpi led_class cfg80211
-nvram radeon ttm heci(C) e1000e fbcon tileblit font bitblit softcursor
-i915 drm i2c_algo_bit video output intel_agp
-
-Pid: 7944, comm: 192.168.1.250-m Tainted: G         C 2.6.31-5-generic
-#24-Ubuntu 276521G
-
-RIP: 0010:[<ffffffff8151da29>]  [<ffffffff8151da29>] _spin_lock_bh+0x19/0x30
-
-RSP: 0000:ffff88011d80fe30  EFLAGS: 00000246
-
-RAX: 000000000000a5a5 RBX: ffff88011d80fe40 RCX: 0000000000000035
-
-RDX: 0000000000000000 RSI: ffff88014b791cf0 RDI: ffff88014b791da8
-
-RBP: ffffffff81012b6e R08: 0000000000000000 R09: e000000000000000
-
-R10: fe968735ee473c00 R11: 0000000000000001 R12: ffff88011d80fe30
-
-R13: ffffffff81012b6e R14: ffff88011d80fda0 R15: ffffffff8106e042
-
-FS:  0000000000000000(0000) GS:ffff880028046000(0000) knlGS:0000000000000000
-
-CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-
-CR2: 0000000002423000 CR3: 000000014b4bc000 CR4: 00000000000026a0
-
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-
-Call Trace:
-
- [<ffffffffa049d9f7>] ? rpc_wake_up+0x17/0xa0 [sunrpc]
-
- [<ffffffffa052d840>] ? nfs4_run_state_manager+0x0/0x40 [nfs]
-
- [<ffffffffa052c53e>] ? nfs4_clear_state_manager_bit+0x2e/0x40 [nfs]
-
- [<ffffffffa052d788>] ? nfs4_state_manager+0x138/0x1f0 [nfs]
-
- [<ffffffff8105af9d>] ? allow_signal+0x9d/0xb0
-
- [<ffffffffa052d85e>] ? nfs4_run_state_manager+0x1e/0x40 [nfs]
-
- [<ffffffff810729b6>] ? kthread+0x96/0xa0
-
- [<ffffffff8101308a>] ? child_rip+0xa/0x20
-
- [<ffffffff81072920>] ? kthread+0x0/0xa0
-
- [<ffffffff81013080>] ? child_rip+0x0/0x20
-
-BUG: soft lockup - CPU#1 stuck for 61s! [192.168.1.250-m:7944]
-
-Modules linked in: ppdev kvm_intel kvm microcode nfsd exportfs nfs
-lockd nfs_acl auth_rpcgss sunrpc ipt_REJECT ipt_LOG xt_limit xt_tcpudp
-xt_state ipt_addrtype ip6table_filter ip6_tables nf_nat_irc
-nf_conntrack_irc nf_nat_ftp nf_nat nf_conntrack_ipv4 nf_defrag_ipv4
-nf_conntrack_ftp nf_conntrack iptable_filter ip_tables x_tables
-dm_crypt joydev lp parport snd_hda_codec_conexant snd_hda_intel
-snd_hda_codec snd_pcm_oss snd_mixer_oss snd_pcm arc4 snd_seq_dummy
-pcmcia ecb snd_seq_oss snd_seq_midi snd_rawmidi snd_seq_midi_event
-snd_seq snd_timer snd_seq_device iwlagn iwlcore mac80211 psmouse
-serio_raw snd yenta_socket soundcore rsrc_nonstatic snd_page_alloc
-ricoh_mmc pcmcia_core sdhci_pci sdhci thinkpad_acpi led_class cfg80211
-nvram radeon ttm heci(C) e1000e fbcon tileblit font bitblit softcursor
-i915 drm i2c_algo_bit video output intel_agp
-
-CPU 1:
-
-Modules linked in: ppdev kvm_intel kvm microcode nfsd exportfs nfs
-lockd nfs_acl auth_rpcgss sunrpc ipt_REJECT ipt_LOG xt_limit xt_tcpudp
-xt_state ipt_addrtype ip6table_filter ip6_tables nf_nat_irc
-nf_conntrack_irc nf_nat_ftp nf_nat nf_conntrack_ipv4 nf_defrag_ipv4
-nf_conntrack_ftp nf_conntrack iptable_filter ip_tables x_tables
-dm_crypt joydev lp parport snd_hda_codec_conexant snd_hda_intel
-snd_hda_codec snd_pcm_oss snd_mixer_oss snd_pcm arc4 snd_seq_dummy
-pcmcia ecb snd_seq_oss snd_seq_midi snd_rawmidi snd_seq_midi_event
-snd_seq snd_timer snd_seq_device iwlagn iwlcore mac80211 psmouse
-serio_raw snd yenta_socket soundcore rsrc_nonstatic snd_page_alloc
-ricoh_mmc pcmcia_core sdhci_pci sdhci thinkpad_acpi led_class cfg80211
-nvram radeon ttm heci(C) e1000e fbcon tileblit font bitblit softcursor
-i915 drm i2c_algo_bit video output intel_agp
-
-Pid: 7944, comm: 192.168.1.250-m Tainted: G         C 2.6.31-5-generic
-#24-Ubuntu 276521G
-
-RIP: 0010:[<ffffffffa052d66f>]  [<ffffffffa052d66f>]
-nfs4_state_manager+0x1f/0x1f0 [nfs]
-
-RSP: 0000:ffff88011d80fea0  EFLAGS: 00000246
-
-RAX: 0000000000000000 RBX: ffff88011d80fec0 RCX: 0000000000000035
-
-RDX: 0000000000000000 RSI: ffff88014b791d08 RDI: ffffffffa049da6b
-
-RBP: ffffffff81012b6e R08: 0000000000000000 R09: e000000000000000
-
-R10: fe968735ee473c00 R11: 0000000000000001 R12: ffffffffffffffc3
-
-R13: ffff88014b791da8 R14: ffff88014b791d08 R15: 0000000000000000
-
-FS:  0000000000000000(0000) GS:ffff880028046000(0000) knlGS:0000000000000000
-
-CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-
-CR2: 0000000002423000 CR3: 0000000001001000 CR4: 00000000000026a0
-
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-
-Call Trace:
-
- [<ffffffff8105af9d>] ? allow_signal+0x9d/0xb0
-
- [<ffffffffa052d85e>] ? nfs4_run_state_manager+0x1e/0x40 [nfs]
-
- [<ffffffff810729b6>] ? kthread+0x96/0xa0
-
- [<ffffffff8101308a>] ? child_rip+0xa/0x20
-
- [<ffffffff81072920>] ? kthread+0x0/0xa0
-
- [<ffffffff81013080>] ? child_rip+0x0/0x20
--- 
-Daniel J Blueman
+Thanks
+Boaz
