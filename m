@@ -1,66 +1,65 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [pnfs] [PATCH RFC v2 0/21] nfs4xdr cleanup v2
-Date: Mon, 17 Aug 2009 14:22:08 -0400
-Message-ID: <4A899FD0.6080401@redhat.com>
-References: <4A8571E2.8020800@panasas.com>  <4A89338D.1040207@panasas.com> <1250513254.8475.20.camel@heimdal.trondhjem.org>
+From: maximilian attems <max-U9r9yeDMy7A@public.gmane.org>
+Subject: Re: nfs MNT include cleanup
+Date: Tue, 18 Aug 2009 12:36:53 +0200
+Message-ID: <20090818103653.GB3954@stro.at>
+References: <20090811104418.GA6175@stro.at>
+ <C7D2AC7D-48B2-4206-A6B1-3780FE7D51CE@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-	pNFS Mailing List <pnfs@linux-nfs.org>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=utf-8
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>, klibc@zytor.com
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:42337 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757937AbZHQSWR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Aug 2009 14:22:17 -0400
-In-Reply-To: <1250513254.8475.20.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from baikonur.stro.at ([213.239.196.228]:48566 "EHLO
+	baikonur.stro.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758107AbZHRKhU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2009 06:37:20 -0400
+In-Reply-To: <C7D2AC7D-48B2-4206-A6B1-3780FE7D51CE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Mon, 2009-08-17 at 13:40 +0300, Boaz Harrosh wrote:
->> * So I hate it that the READ32/WRITE32 is open coded. Now it looks like nothing, it
->>   should have an xdr_encode/decode naming convention, all details hidden, consistent calling
->>   convention with the reset of the code.
-> 
-> The convention is already established. Please see 15 years worth of
-> NFSv2/v3 xdr code. The NFSv4 code was the exception not the rule.
-> 
-> Now, it is obvious what we're doing: we're writing 32-bit big endian
-> encoded data into a memory buffer. Furthermore, the process of
-> converting from cpu ordered integers into 32-bit big endian is now made
-> obvious, making it easily verifiable both by inspection, and using
-> 'sparse'.
-> Adding wrappers to do this, is just unnecessarily obfuscating the code.
-> 
->> * I hate it that I have to count (p)"++" now to look for actual code advancements.
-> 
-> How is that _any_ different from counting WRITE32s?
-> 
->> * I hate that it is called encode_hyper that a dum like me needs to look it up in the dictionary
->>   "32" and "64" will do
-> 
-> I don't mind changing the name of xdr_encode_hyper() to
-> xdr_encode_uint64 or some such alternative, however the point is that we
-> should have only _one_ function that encodes 64 bit integers. Not one
-> function that everyone else uses, and then a macro that NFSv4 uses.
-> 
+On Tue, 11 Aug 2009, Chuck Lever wrote:
 
-It seems to me that xdr_encode_hyper() is good because it matches
-the XDR specification, which called 64 bit integer values, "hyper".
+> On Aug 11, 2009, at 6:44 AM, maximilian attems wrote:
+> >2ad780978b7c0c3e7877949f098cbd06e7c73839 broke klibc build
+> >MNTPROC_MNT and MNTPROC_UMNT no longer defined.
+>=20
+> I assume then that klibc is out of tree?  I can't find it in my
+> kernel repo.
 
-		ps
+sorry for late reply, indeed you'll find it here:
+http://git.kernel.org/?p=3Dlibs/klibc/klibc.git;a=3Dsummary
+=20
+> >usr/kinit/nfsmount/mount.c: In function =E2=80=98mount_call=E2=80=99=
+:
+> >usr/kinit/nfsmount/mount.c:179: error: =E2=80=98MNTPROC_MNT=E2=80=99=
+ undeclared
+> >(first use in this function)
+> >usr/kinit/nfsmount/mount.c:179: error: (Each undeclared identifier
+> >is reported only once
+> >usr/kinit/nfsmount/mount.c:179: error: for each function it
+> >appears in.)
+> >usr/kinit/nfsmount/mount.c: In function =E2=80=98mount_v2=E2=80=99:
+> >usr/kinit/nfsmount/mount.c:211: error: =E2=80=98MNTPROC_MNT=E2=80=99=
+ undeclared
+> >(first use in this function)
+> >usr/kinit/nfsmount/mount.c: In function =E2=80=98umount_v2=E2=80=99:
+> >usr/kinit/nfsmount/mount.c:226: error: =E2=80=98MNTPROC_UMNT=E2=80=99=
+ undeclared
+> >(first use in this function)
+> >usr/kinit/nfsmount/mount.c: In function =E2=80=98mount_v3=E2=80=99:
+> >usr/kinit/nfsmount/mount.c:232: error: =E2=80=98MNTPROC_MNT=E2=80=99=
+ undeclared
+> >(first use in this function)
+> >usr/kinit/nfsmount/mount.c: In function =E2=80=98umount_v3=E2=80=99:
+> >usr/kinit/nfsmount/mount.c:251: error: =E2=80=98MNTPROC_UMNT=E2=80=99=
+ undeclared
+> >(first use in this function)
+> >make[4]: *** [usr/kinit/nfsmount/mount.o] Error 1
+> >make[3]: *** [usr/kinit/nfsmount] Error 2
+> >make[2]: *** [all] Error 2
+> >make[1]: *** [klibc] Error 2
+> >make[1]: Leaving directory `/home/maks/src/klibc-latest'
 
->> * I hated it before, but I hate it even more now that the same operation is:
->>   reserved(4); p + 1
-> 
-> Huh? What operation?
-> 
->>   I wish it could be all __be32 everywhere
-> 
-> ??? That's up to the protocol. If the protocol uses 32-bit integers,
-> then we can use __be32, but if it specifies a 64-bit big endian integer
-> in some structure, then we need to encode for that.
-> 
+we might still define those for ourselve, let's see..
 
