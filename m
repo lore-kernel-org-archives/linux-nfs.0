@@ -1,93 +1,46 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] Take 2: Allow passing fine resolution timing options
- to mount
-Date: Tue, 18 Aug 2009 20:49:09 -0400
-Message-ID: <1250642949.7921.136.camel@heimdal.trondhjem.org>
-References: <4A83628D.9000505@akamai.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
-	jlayton@poochiereds.net, gud-OYTqUY/oFF8@public.gmane.org, juhlenko@akamai.com
-To: Amit Gud <agud@akamai.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 16/17] nfs: Remove reference to generic_osync_inode from a comment
+Date: Wed, 19 Aug 2009 18:04:43 +0200
+Message-ID: <1250697884-22288-17-git-send-email-jack@suse.cz>
+References: <1250697884-22288-1-git-send-email-jack@suse.cz>
+Cc: hch@infradead.org, Jan Kara <jack@suse.cz>,
+	linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11100 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:55958 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750779AbZHSAtK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Aug 2009 20:49:10 -0400
-In-Reply-To: <4A83628D.9000505@akamai.com>
+	id S1751953AbZHSQEs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Aug 2009 12:04:48 -0400
+In-Reply-To: <1250697884-22288-1-git-send-email-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-08-12 at 17:47 -0700, Amit Gud wrote:
-> This patch modifies parsing of mount options to allows passing units
-> along with the options. Valid units are "s" for seconds and "ms" for
-> milliseconds. When not specified, the unit defaults to seconds.
-> 
-> For example, "-o acdirmin=20ms" can be specified for 20 milliseconds,
-> and "-o acdirmin=3s" or just "-o acdirmin=3" for 3 seconds.
-> 
-> This code also changes the display of options in /proc/<pid>/mountstats
-> from seconds to milliseconds to reflect the accuracy.
+generic_file_direct_write() no longer calls generic_osync_inode() so remove the
+comment.
 
-This won't work. Suddenly the contents of /proc/self/mountinfo can no
-longer be used as intended because acdirmin/max/... are being displayed
-in milliseconds, whereas the default unit is in seconds.
-Furthermore, you'll have rounding errors when converting backwards and
-forwards into HZ, since the latter is usually > 1ms.
+CC: linux-nfs@vger.kernel.org
+CC: Neil Brown <neilb@suse.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/nfs/direct.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-I agree with Neil. I think it would be better to use a 3 decimal fixed
-point notation instead. Couldn't something like the following be made to
-work?
-
-static int nfs_parse_mstimeo(const char *str, unsigned long *res)
-{
-	unsigned int msecs;
-	char *str2;
-
-	msecs = (unsigned int)simple_strtoul(str, &str2, 10);
-	msecs *= 1000;
-
-	/* Check if we're being given fixed point decimal notation */
-	if (*str2 == '.') {
-		unsigned long m;
-		size_t ndec = strlen(++str2);
-
-		/* Disallow more than 1/1000 precision */
-		if (ndec > 3)
-			goto out_inval;
-		if (strict_strtoul(str2, 10, &m))
-			goto out_inval;
-		switch (ndec) {
-		case 1:
-			m *= 10;
-		case 2:
-			m *= 10;
-			break;
-		}
-		msecs += (unsigned int)m;
-	} else if (*str2 != '\0' || str2 == str)
-		goto out_inval;
-
-	*res = msecs_to_jiffies(msecs);
-	return 0;
-out_inval:
-	return -EINVAL;
-}
-
-static void nfs_display_mstimeo(struct seq_file *m, unsigned long val)
-{
-	unsigned int msec = jiffies_to_msecs(val);
-	unsigned int rem = msec % 1000;
-
-	seq_printf(m, "%u", msec / 1000);
-	if (rem != 0)
-		seq_printf(m, ".%.3u", rem);
-}
-
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 489fc01..fd5fcc9 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -934,9 +934,6 @@ out:
+  * back into its cache.  We let the server do generic write
+  * parameter checking and report problems.
+  *
+- * We also avoid an unnecessary invocation of generic_osync_inode(),
+- * as it is fairly meaningless to sync the metadata of an NFS file.
+- *
+  * We eliminate local atime updates, see direct read above.
+  *
+  * We avoid unnecessary page cache invalidations for normal cached
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.6.0.2
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
