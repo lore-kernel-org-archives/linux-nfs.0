@@ -1,7 +1,7 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 15/32] SUNRPC: Rename rpc_mkdir to rpc_create_client_dir()
-Date: Wed, 19 Aug 2009 19:38:38 -0400
-Message-ID: <1250725135-14632-16-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 26/32] NFS: Add a ->migratepage() aop for NFS
+Date: Wed, 19 Aug 2009 19:38:49 -0400
+Message-ID: <1250725135-14632-27-git-send-email-Trond.Myklebust@netapp.com>
 References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-2-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-3-git-send-email-Trond.Myklebust@netapp.com>
@@ -17,115 +17,212 @@ References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-13-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-14-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-15-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-16-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-17-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-18-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-19-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-20-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-23-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-24-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51423 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5817 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753380AbZHSXlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Aug 2009 19:41:03 -0400
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNe90b028534
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:51 -0700 (PDT)
-In-Reply-To: <1250725135-14632-15-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754116AbZHSXk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Aug 2009 19:40:58 -0400
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNehc1001920
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:44 -0700 (PDT)
+In-Reply-To: <1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reflects the fact that rpc_mkdir() as it stands today, can only create
-a RPC client type directory.
+Make NFS a bit more friendly to NUMA and memory hot removal...
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    5 +++--
- net/sunrpc/clnt.c                  |    6 +++---
- net/sunrpc/rpc_pipe.c              |   11 +++++------
- 3 files changed, 11 insertions(+), 11 deletions(-)
+ fs/nfs/file.c     |    1 +
+ fs/nfs/internal.h |    6 +++
+ fs/nfs/write.c    |   91 ++++++++++++++++++++++++++++++++++++++++-------------
+ 3 files changed, 76 insertions(+), 22 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 91f5b13..8de0ac2 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -44,8 +44,9 @@ RPC_I(struct inode *inode)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 0506232..dfc8967 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -479,6 +479,7 @@ const struct address_space_operations nfs_file_aops = {
+ 	.invalidatepage = nfs_invalidate_page,
+ 	.releasepage = nfs_release_page,
+ 	.direct_IO = nfs_direct_IO,
++	.migratepage = nfs_migrate_page,
+ 	.launder_page = nfs_launder_page,
+ };
  
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7dd90a6..e2ccb4a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -248,6 +248,12 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
  
--extern struct dentry *rpc_mkdir(char *, struct rpc_clnt *);
--extern int rpc_rmdir(struct dentry *);
-+struct rpc_clnt;
-+extern struct dentry *rpc_create_client_dir(const char *, struct rpc_clnt *);
-+extern int rpc_remove_client_dir(struct dentry *);
- extern struct dentry *rpc_mkpipe(struct dentry *, const char *, void *,
- 				 const struct rpc_pipe_ops *, int flags);
- extern int rpc_unlink(struct dentry *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index ebfcf9b..6ec3770 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -113,7 +113,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
- 				"%s/clnt%x", dir_name,
- 				(unsigned int)clntid++);
- 		clnt->cl_pathname[sizeof(clnt->cl_pathname) - 1] = '\0';
--		clnt->cl_dentry = rpc_mkdir(clnt->cl_pathname, clnt);
-+		clnt->cl_dentry = rpc_create_client_dir(clnt->cl_pathname, clnt);
- 		if (!IS_ERR(clnt->cl_dentry))
- 			return 0;
- 		error = PTR_ERR(clnt->cl_dentry);
-@@ -232,7 +232,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ /* write.c */
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
++#ifdef CONFIG_MIGRATION
++extern int nfs_migrate_page(struct address_space *,
++		struct page *, struct page *);
++#else
++#define nfs_migrate_page NULL
++#endif
  
- out_no_auth:
- 	if (!IS_ERR(clnt->cl_dentry)) {
--		rpc_rmdir(clnt->cl_dentry);
-+		rpc_remove_client_dir(clnt->cl_dentry);
- 		rpc_put_mount();
- 	}
- out_no_path:
-@@ -424,7 +424,7 @@ rpc_free_client(struct kref *kref)
- 	dprintk("RPC:       destroying %s client for %s\n",
- 			clnt->cl_protname, clnt->cl_server);
- 	if (!IS_ERR(clnt->cl_dentry)) {
--		rpc_rmdir(clnt->cl_dentry);
-+		rpc_remove_client_dir(clnt->cl_dentry);
- 		rpc_put_mount();
- 	}
- 	if (clnt->cl_parent != clnt) {
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 2a4e6eb..08580be 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -755,7 +755,7 @@ out_bad:
+ /* nfs4proc.c */
+ extern int _nfs4_call_sync(struct nfs_server *server,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0a0a2ff..6240e64 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -13,6 +13,7 @@
+ #include <linux/file.h>
+ #include <linux/writeback.h>
+ #include <linux/swap.h>
++#include <linux/migrate.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/nfs_fs.h>
+@@ -26,6 +27,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "nfs4_fs.h"
++#include "fscache.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -220,24 +222,17 @@ static void nfs_end_page_writeback(struct page *page)
+ 		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
  }
  
- /**
-- * rpc_mkdir - Create a new directory in rpc_pipefs
-+ * rpc_create_client_dir - Create a new rpc_client directory in rpc_pipefs
-  * @path: path from the rpc_pipefs root to the new directory
-  * @rpc_client: rpc client to associate with this directory
-  *
-@@ -764,8 +764,8 @@ out_bad:
-  * information about the client, together with any "pipes" that may
-  * later be created using rpc_mkpipe().
-  */
--struct dentry *
--rpc_mkdir(char *path, struct rpc_clnt *rpc_client)
-+struct dentry *rpc_create_client_dir(const char *path,
-+				     struct rpc_clnt *rpc_client)
+-/*
+- * Find an associated nfs write request, and prepare to flush it out
+- * May return an error if the user signalled nfs_wait_on_request().
+- */
+-static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+-				struct page *page)
++static struct nfs_page *nfs_find_and_lock_request(struct page *page)
  {
- 	struct nameidata nd;
- 	struct dentry *dentry;
-@@ -797,11 +797,10 @@ out_err:
+ 	struct inode *inode = page->mapping->host;
+ 	struct nfs_page *req;
+ 	int ret;
+ 
+ 	spin_lock(&inode->i_lock);
+-	for(;;) {
++	for (;;) {
+ 		req = nfs_page_find_request_locked(page);
+-		if (req == NULL) {
+-			spin_unlock(&inode->i_lock);
+-			return 0;
+-		}
++		if (req == NULL)
++			break;
+ 		if (nfs_set_page_tag_locked(req))
+ 			break;
+ 		/* Note: If we hold the page lock, as is the case in nfs_writepage,
+@@ -249,23 +244,40 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 		ret = nfs_wait_on_request(req);
+ 		nfs_release_request(req);
+ 		if (ret != 0)
+-			return ret;
++			return ERR_PTR(ret);
+ 		spin_lock(&inode->i_lock);
+ 	}
+-	if (test_bit(PG_CLEAN, &req->wb_flags)) {
+-		spin_unlock(&inode->i_lock);
+-		BUG();
+-	}
+-	if (nfs_set_page_writeback(page) != 0) {
+-		spin_unlock(&inode->i_lock);
+-		BUG();
+-	}
+ 	spin_unlock(&inode->i_lock);
++	return req;
++}
++
++/*
++ * Find an associated nfs write request, and prepare to flush it out
++ * May return an error if the user signalled nfs_wait_on_request().
++ */
++static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
++				struct page *page)
++{
++	struct nfs_page *req;
++	int ret = 0;
++
++	req = nfs_find_and_lock_request(page);
++	if (!req)
++		goto out;
++	ret = PTR_ERR(req);
++	if (IS_ERR(req))
++		goto out;
++
++	ret = nfs_set_page_writeback(page);
++	BUG_ON(ret != 0);
++	BUG_ON(test_bit(PG_CLEAN, &req->wb_flags));
++
+ 	if (!nfs_pageio_add_request(pgio, req)) {
+ 		nfs_redirty_request(req);
+-		return pgio->pg_error;
++		ret = pgio->pg_error;
+ 	}
+-	return 0;
++out:
++	return ret;
  }
  
- /**
-- * rpc_rmdir - Remove a directory created with rpc_mkdir()
-+ * rpc_remove_client_dir - Remove a directory created with rpc_create_client_dir()
-  * @dentry: directory to remove
-  */
--int
--rpc_rmdir(struct dentry *dentry)
-+int rpc_remove_client_dir(struct dentry *dentry)
+ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc, struct nfs_pageio_descriptor *pgio)
+@@ -1582,6 +1594,41 @@ int nfs_wb_page(struct inode *inode, struct page* page)
+ 	return nfs_wb_page_priority(inode, page, FLUSH_STABLE);
+ }
+ 
++#ifdef CONFIG_MIGRATION
++int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
++		struct page *page)
++{
++	struct nfs_page *req;
++	int ret;
++
++	if (PageFsCache(page))
++		nfs_fscache_release_page(page, GFP_KERNEL);
++
++	req = nfs_find_and_lock_request(page);
++	ret = PTR_ERR(req);
++	if (IS_ERR(req))
++		goto out;
++
++	ret = migrate_page(mapping, newpage, page);
++	if (!req)
++		goto out;
++	if (ret)
++		goto out_unlock;
++	page_cache_get(newpage);
++	req->wb_page = newpage;
++	SetPagePrivate(newpage);
++	set_page_private(newpage, page_private(page));
++	ClearPagePrivate(page);
++	set_page_private(page, 0);
++	page_cache_release(page);
++out_unlock:
++	nfs_clear_page_tag_locked(req);
++	nfs_release_request(req);
++out:
++	return ret;
++}
++#endif
++
+ int __init nfs_init_writepagecache(void)
  {
- 	struct dentry *parent;
- 	struct inode *dir;
+ 	nfs_wdata_cachep = kmem_cache_create("nfs_write_data",
 -- 
 1.6.0.4
