@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 12/32] SUNRPC: Clean up rpc_lookup_create
-Date: Wed, 19 Aug 2009 19:38:35 -0400
-Message-ID: <1250725135-14632-13-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 25/32] SUNRPC: Add an rpc_pipefs front end for the sunrpc
+ cache code
+Date: Wed, 19 Aug 2009 19:38:48 -0400
+Message-ID: <1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com>
 References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-2-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-3-git-send-email-Trond.Myklebust@netapp.com>
@@ -14,158 +15,307 @@ References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-10-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-11-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-12-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-13-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-14-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-15-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-16-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-17-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-18-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-19-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-20-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-23-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-24-git-send-email-Trond.Myklebust@netapp.com>
+	 <1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39738 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:32245 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754031AbZHSXkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Aug 2009 19:40:53 -0400
+	id S1754103AbZHSXkz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Aug 2009 19:40:55 -0400
 Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNePRH001724
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:42 -0700 (PDT)
-In-Reply-To: <1250725135-14632-12-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNePRV001724
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:43 -0700 (PDT)
+In-Reply-To: <1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- net/sunrpc/rpc_pipe.c |  100 +++++++++++++++++++++++++++++--------------------
- 1 files changed, 59 insertions(+), 41 deletions(-)
+ include/linux/sunrpc/cache.h       |   13 ++++
+ include/linux/sunrpc/rpc_pipe_fs.h |    8 ++
+ net/sunrpc/cache.c                 |  126 ++++++++++++++++++++++++++++++++++++
+ net/sunrpc/rpc_pipe.c              |   43 ++++++++++++
+ 4 files changed, 190 insertions(+), 0 deletions(-)
 
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 8e5bf30..6f52b4d 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -64,6 +64,10 @@ struct cache_detail_procfs {
+ 	struct proc_dir_entry   *flush_ent, *channel_ent, *content_ent;
+ };
+ 
++struct cache_detail_pipefs {
++	struct dentry *dir;
++};
++
+ struct cache_detail {
+ 	struct module *		owner;
+ 	int			hash_size;
+@@ -110,6 +114,7 @@ struct cache_detail {
+ 
+ 	union {
+ 		struct cache_detail_procfs procfs;
++		struct cache_detail_pipefs pipefs;
+ 	} u;
+ };
+ 
+@@ -135,6 +140,10 @@ struct cache_deferred_req {
+ };
+ 
+ 
++extern const struct file_operations cache_file_operations_pipefs;
++extern const struct file_operations content_file_operations_pipefs;
++extern const struct file_operations cache_flush_operations_pipefs;
++
+ extern struct cache_head *
+ sunrpc_cache_lookup(struct cache_detail *detail,
+ 		    struct cache_head *key, int hash);
+@@ -186,6 +195,10 @@ extern void cache_purge(struct cache_detail *detail);
+ extern int cache_register(struct cache_detail *cd);
+ extern void cache_unregister(struct cache_detail *cd);
+ 
++extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
++					mode_t, struct cache_detail *);
++extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
++
+ extern void qword_add(char **bpp, int *lp, char *str);
+ extern void qword_addhex(char **bpp, int *lp, char *buf, int blen);
+ extern int qword_get(char **bpp, char *dest, int bufsize);
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 88332ef..a92571a 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -47,6 +47,14 @@ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ struct rpc_clnt;
+ extern struct dentry *rpc_create_client_dir(struct dentry *, struct qstr *, struct rpc_clnt *);
+ extern int rpc_remove_client_dir(struct dentry *);
++
++struct cache_detail;
++extern struct dentry *rpc_create_cache_dir(struct dentry *,
++					   struct qstr *,
++					   mode_t umode,
++					   struct cache_detail *);
++extern void rpc_remove_cache_dir(struct dentry *);
++
+ extern struct dentry *rpc_mkpipe(struct dentry *, const char *, void *,
+ 				 const struct rpc_pipe_ops *, int flags);
+ extern int rpc_unlink(struct dentry *);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 1cd82ed..db7720e 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -32,6 +32,7 @@
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/cache.h>
+ #include <linux/sunrpc/stats.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ 
+ #define	 RPCDBG_FACILITY RPCDBG_CACHE
+ 
+@@ -1438,3 +1439,128 @@ void cache_unregister(struct cache_detail *cd)
+ 	sunrpc_destroy_cache_detail(cd);
+ }
+ EXPORT_SYMBOL_GPL(cache_unregister);
++
++static ssize_t cache_read_pipefs(struct file *filp, char __user *buf,
++				 size_t count, loff_t *ppos)
++{
++	struct cache_detail *cd = RPC_I(filp->f_path.dentry->d_inode)->private;
++
++	return cache_read(filp, buf, count, ppos, cd);
++}
++
++static ssize_t cache_write_pipefs(struct file *filp, const char __user *buf,
++				  size_t count, loff_t *ppos)
++{
++	struct cache_detail *cd = RPC_I(filp->f_path.dentry->d_inode)->private;
++
++	return cache_write(filp, buf, count, ppos, cd);
++}
++
++static unsigned int cache_poll_pipefs(struct file *filp, poll_table *wait)
++{
++	struct cache_detail *cd = RPC_I(filp->f_path.dentry->d_inode)->private;
++
++	return cache_poll(filp, wait, cd);
++}
++
++static int cache_ioctl_pipefs(struct inode *inode, struct file *filp,
++			      unsigned int cmd, unsigned long arg)
++{
++	struct cache_detail *cd = RPC_I(inode)->private;
++
++	return cache_ioctl(inode, filp, cmd, arg, cd);
++}
++
++static int cache_open_pipefs(struct inode *inode, struct file *filp)
++{
++	struct cache_detail *cd = RPC_I(inode)->private;
++
++	return cache_open(inode, filp, cd);
++}
++
++static int cache_release_pipefs(struct inode *inode, struct file *filp)
++{
++	struct cache_detail *cd = RPC_I(inode)->private;
++
++	return cache_release(inode, filp, cd);
++}
++
++const struct file_operations cache_file_operations_pipefs = {
++	.owner		= THIS_MODULE,
++	.llseek		= no_llseek,
++	.read		= cache_read_pipefs,
++	.write		= cache_write_pipefs,
++	.poll		= cache_poll_pipefs,
++	.ioctl		= cache_ioctl_pipefs, /* for FIONREAD */
++	.open		= cache_open_pipefs,
++	.release	= cache_release_pipefs,
++};
++
++static int content_open_pipefs(struct inode *inode, struct file *filp)
++{
++	struct cache_detail *cd = RPC_I(inode)->private;
++
++	return content_open(inode, filp, cd);
++}
++
++const struct file_operations content_file_operations_pipefs = {
++	.open		= content_open_pipefs,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= seq_release_private,
++};
++
++static ssize_t read_flush_pipefs(struct file *filp, char __user *buf,
++			    size_t count, loff_t *ppos)
++{
++	struct cache_detail *cd = RPC_I(filp->f_path.dentry->d_inode)->private;
++
++	return read_flush(filp, buf, count, ppos, cd);
++}
++
++static ssize_t write_flush_pipefs(struct file *filp,
++				  const char __user *buf,
++				  size_t count, loff_t *ppos)
++{
++	struct cache_detail *cd = RPC_I(filp->f_path.dentry->d_inode)->private;
++
++	return write_flush(filp, buf, count, ppos, cd);
++}
++
++const struct file_operations cache_flush_operations_pipefs = {
++	.open		= nonseekable_open,
++	.read		= read_flush_pipefs,
++	.write		= write_flush_pipefs,
++};
++
++int sunrpc_cache_register_pipefs(struct dentry *parent,
++				 const char *name, mode_t umode,
++				 struct cache_detail *cd)
++{
++	struct qstr q;
++	struct dentry *dir;
++	int ret = 0;
++
++	sunrpc_init_cache_detail(cd);
++	q.name = name;
++	q.len = strlen(name);
++	q.hash = full_name_hash(q.name, q.len);
++	dir = rpc_create_cache_dir(parent, &q, umode, cd);
++	if (!IS_ERR(dir))
++		cd->u.pipefs.dir = dir;
++	else {
++		sunrpc_destroy_cache_detail(cd);
++		ret = PTR_ERR(dir);
++	}
++	return ret;
++}
++EXPORT_SYMBOL_GPL(sunrpc_cache_register_pipefs);
++
++void sunrpc_cache_unregister_pipefs(struct cache_detail *cd)
++{
++	rpc_remove_cache_dir(cd->u.pipefs.dir);
++	cd->u.pipefs.dir = NULL;
++	sunrpc_destroy_cache_detail(cd);
++}
++EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
++
 diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index cf30bf5..3633851 100644
+index 57e9cd3..8dd8153 100644
 --- a/net/sunrpc/rpc_pipe.c
 +++ b/net/sunrpc/rpc_pipe.c
-@@ -624,6 +624,57 @@ static int __rpc_rmpipe(struct inode *dir, struct dentry *dentry)
- 	return __rpc_unlink(dir, dentry);
+@@ -26,6 +26,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/workqueue.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
++#include <linux/sunrpc/cache.h>
+ 
+ static struct vfsmount *rpc_mount __read_mostly;
+ static int rpc_mount_count;
+@@ -882,6 +883,48 @@ int rpc_remove_client_dir(struct dentry *dentry)
+ 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
  }
  
-+static struct dentry *__rpc_lookup_create(struct dentry *parent,
-+					  struct qstr *name)
-+{
-+	struct dentry *dentry;
++static const struct rpc_filelist cache_pipefs_files[3] = {
++	[0] = {
++		.name = "channel",
++		.i_fop = &cache_file_operations_pipefs,
++		.mode = S_IFIFO|S_IRUSR|S_IWUSR,
++	},
++	[1] = {
++		.name = "content",
++		.i_fop = &content_file_operations_pipefs,
++		.mode = S_IFREG|S_IRUSR,
++	},
++	[2] = {
++		.name = "flush",
++		.i_fop = &cache_flush_operations_pipefs,
++		.mode = S_IFREG|S_IRUSR|S_IWUSR,
++	},
++};
 +
-+	dentry = d_lookup(parent, name);
-+	if (!dentry) {
-+		dentry = d_alloc(parent, name);
-+		if (!dentry) {
-+			dentry = ERR_PTR(-ENOMEM);
-+			goto out_err;
-+		}
-+	}
-+	if (!dentry->d_inode)
-+		dentry->d_op = &rpc_dentry_operations;
-+out_err:
-+	return dentry;
++static int rpc_cachedir_populate(struct dentry *dentry, void *private)
++{
++	return rpc_populate(dentry,
++			    cache_pipefs_files, 0, 3,
++			    private);
 +}
 +
-+static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
-+					  struct qstr *name)
++static void rpc_cachedir_depopulate(struct dentry *dentry)
 +{
-+	struct dentry *dentry;
-+
-+	dentry = __rpc_lookup_create(parent, name);
-+	if (dentry->d_inode == NULL)
-+		return dentry;
-+	dput(dentry);
-+	return ERR_PTR(-EEXIST);
++	rpc_depopulate(dentry, cache_pipefs_files, 0, 3);
 +}
 +
-+static struct dentry *rpc_lookup_negative(const char *path,
-+					  struct nameidata *nd)
++struct dentry *rpc_create_cache_dir(struct dentry *parent, struct qstr *name,
++				    mode_t umode, struct cache_detail *cd)
 +{
-+	struct inode *dir;
-+	struct dentry *dentry;
-+	int error;
++	return rpc_mkdir_populate(parent, name, umode, NULL,
++			rpc_cachedir_populate, cd);
++}
 +
-+	error = rpc_lookup_parent(path, nd);
-+	if (error != 0)
-+		return ERR_PTR(error);
-+	dir = nd->path.dentry->d_inode;
-+	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
-+	dentry = __rpc_lookup_create_exclusive(nd->path.dentry, &nd->last);
-+	if (IS_ERR(dentry)) {
-+		mutex_unlock(&dir->i_mutex);
-+		rpc_release_path(nd);
-+	}
-+	return dentry;
++void rpc_remove_cache_dir(struct dentry *dentry)
++{
++	rpc_rmdir_depopulate(dentry, rpc_cachedir_depopulate);
 +}
 +
  /*
-  * FIXME: This probably has races.
+  * populate the filesystem
   */
-@@ -723,44 +774,6 @@ __rpc_rmdir(struct inode *dir, struct dentry *dentry)
- 	return error;
- }
- 
--static struct dentry *
--rpc_lookup_create(struct dentry *parent, const char *name, int len, int exclusive)
--{
--	struct inode *dir = parent->d_inode;
--	struct dentry *dentry;
--
--	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
--	dentry = lookup_one_len(name, parent, len);
--	if (IS_ERR(dentry))
--		goto out_err;
--	if (!dentry->d_inode)
--		dentry->d_op = &rpc_dentry_operations;
--	else if (exclusive) {
--		dput(dentry);
--		dentry = ERR_PTR(-EEXIST);
--		goto out_err;
--	}
--	return dentry;
--out_err:
--	mutex_unlock(&dir->i_mutex);
--	return dentry;
--}
--
--static struct dentry *
--rpc_lookup_negative(char *path, struct nameidata *nd)
--{
--	struct dentry *dentry;
--	int error;
--
--	if ((error = rpc_lookup_parent(path, nd)) != 0)
--		return ERR_PTR(error);
--	dentry = rpc_lookup_create(nd->path.dentry, nd->last.name, nd->last.len,
--				   1);
--	if (IS_ERR(dentry))
--		rpc_release_path(nd);
--	return dentry;
--}
--
- /**
-  * rpc_mkdir - Create a new directory in rpc_pipefs
-  * @path: path from the rpc_pipefs root to the new directory
-@@ -854,6 +867,7 @@ struct dentry *rpc_mkpipe(struct dentry *parent, const char *name,
- 	struct dentry *dentry;
- 	struct inode *dir = parent->d_inode;
- 	umode_t umode = S_IFIFO | S_IRUSR | S_IWUSR;
-+	struct qstr q;
- 	int err;
- 
- 	if (ops->upcall == NULL)
-@@ -861,10 +875,14 @@ struct dentry *rpc_mkpipe(struct dentry *parent, const char *name,
- 	if (ops->downcall == NULL)
- 		umode &= ~S_IWUGO;
- 
--	dentry = rpc_lookup_create(parent, name, strlen(name), 0);
-+	q.name = name;
-+	q.len = strlen(name);
-+	q.hash = full_name_hash(q.name, q.len),
-+
-+	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
-+	dentry = __rpc_lookup_create(parent, &q);
- 	if (IS_ERR(dentry))
--		return dentry;
--	dir = parent->d_inode;
-+		goto out;
- 	if (dentry->d_inode) {
- 		struct rpc_inode *rpci = RPC_I(dentry->d_inode);
- 		if (rpci->private != private ||
 -- 
 1.6.0.4
