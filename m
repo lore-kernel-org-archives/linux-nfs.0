@@ -1,44 +1,93 @@
-From: "H. Peter Anvin" <hpa@zytor.com>
-Subject: Re: [klibc] nfs MNT include cleanup
-Date: Tue, 18 Aug 2009 09:04:45 -0700
-Message-ID: <4A8AD11D.4000809@zytor.com>
-References: <20090811104418.GA6175@stro.at>	<C7D2AC7D-48B2-4206-A6B1-3780FE7D51CE@oracle.com>	<20090818103653.GB3954@stro.at>	<86201444-2DDC-47B0-A92E-81CB19224CCB@oracle.com> <20090818124406.GD13440@baikonur.stro.at>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] Take 2: Allow passing fine resolution timing options
+ to mount
+Date: Tue, 18 Aug 2009 20:49:09 -0400
+Message-ID: <1250642949.7921.136.camel@heimdal.trondhjem.org>
+References: <4A83628D.9000505@akamai.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-	klibc@zytor.com, Trond Myklebust <Trond.Myklebust@netapp.com>
-To: maximilian attems <max-U9r9yeDMy7A@public.gmane.org>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+	jlayton@poochiereds.net, gud-OYTqUY/oFF8@public.gmane.org, juhlenko@akamai.com
+To: Amit Gud <agud@akamai.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from terminus.zytor.com ([198.137.202.10]:40599 "EHLO
-	terminus.zytor.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755145AbZHRQFn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Aug 2009 12:05:43 -0400
-In-Reply-To: <20090818124406.GD13440-P4at2qFsAtP5lb2fJPEjcQ@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:11100 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750779AbZHSAtK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Aug 2009 20:49:10 -0400
+In-Reply-To: <4A83628D.9000505@akamai.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/18/2009 05:44 AM, maximilian attems wrote:
-> On Tue, Aug 18, 2009 at 08:45:49AM -0400, Chuck Lever wrote:
->> However, the kernel has its own NFS mount client (the piece that  
->> handles rpcbind query and obtaining the root file handle), and you can  
->> pass a C string of mount options to the kernel with mount(2).  Perhaps  
->> in the long term, you might consider replacing the specialized code in  
->> klibc with simply passing the server, export path, and mount options  
->> right to the kernel and let it do the work.  This should work with any  
->> kernel later than 2.6.23.
->>
->> I'm happy to help with any questions.
+On Wed, 2009-08-12 at 17:47 -0700, Amit Gud wrote:
+> This patch modifies parsing of mount options to allows passing units
+> along with the options. Valid units are "s" for seconds and "ms" for
+> milliseconds. When not specified, the unit defaults to seconds.
 > 
-> sounds good indeed.
-> a quick one: can it do nfs v4 mounts?
+> For example, "-o acdirmin=20ms" can be specified for 20 milliseconds,
+> and "-o acdirmin=3s" or just "-o acdirmin=3" for 3 seconds.
 > 
+> This code also changes the display of options in /proc/<pid>/mountstats
+> from seconds to milliseconds to reflect the accuracy.
 
-I believe that was the reason for the change in the first place, and
-yes, klibc should *absolutely* use it.
+This won't work. Suddenly the contents of /proc/self/mountinfo can no
+longer be used as intended because acdirmin/max/... are being displayed
+in milliseconds, whereas the default unit is in seconds.
+Furthermore, you'll have rounding errors when converting backwards and
+forwards into HZ, since the latter is usually > 1ms.
 
-	-hpa (who once again apologizes for lack of time...)
+I agree with Neil. I think it would be better to use a 3 decimal fixed
+point notation instead. Couldn't something like the following be made to
+work?
+
+static int nfs_parse_mstimeo(const char *str, unsigned long *res)
+{
+	unsigned int msecs;
+	char *str2;
+
+	msecs = (unsigned int)simple_strtoul(str, &str2, 10);
+	msecs *= 1000;
+
+	/* Check if we're being given fixed point decimal notation */
+	if (*str2 == '.') {
+		unsigned long m;
+		size_t ndec = strlen(++str2);
+
+		/* Disallow more than 1/1000 precision */
+		if (ndec > 3)
+			goto out_inval;
+		if (strict_strtoul(str2, 10, &m))
+			goto out_inval;
+		switch (ndec) {
+		case 1:
+			m *= 10;
+		case 2:
+			m *= 10;
+			break;
+		}
+		msecs += (unsigned int)m;
+	} else if (*str2 != '\0' || str2 == str)
+		goto out_inval;
+
+	*res = msecs_to_jiffies(msecs);
+	return 0;
+out_inval:
+	return -EINVAL;
+}
+
+static void nfs_display_mstimeo(struct seq_file *m, unsigned long val)
+{
+	unsigned int msec = jiffies_to_msecs(val);
+	unsigned int rem = msec % 1000;
+
+	seq_printf(m, "%u", msec / 1000);
+	if (rem != 0)
+		seq_printf(m, ".%.3u", rem);
+}
 
 -- 
-H. Peter Anvin, Intel Open Source Technology Center
-I work for Intel.  I don't speak on their behalf.
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
