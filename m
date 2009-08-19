@@ -1,95 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mta1.dreamworks.com ([208.71.56.12]:60553 "EHLO
-	michael.anim.dreamworks.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755616AbZHYS4R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 14:56:17 -0400
-Message-ID: <4A942F4A.9040902@dreamworks.com>
-Date: Tue, 25 Aug 2009 11:36:58 -0700
-From: Lans Carstensen <Lans.Carstensen@dreamworks.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [NFS] [PATCH] nfs-utils: nfs-iostat.py option to sort by ops/s
-References: <4A93214A.5000404@dreamworks.com> <009376AC-B08B-4E90-A46B-E5BC069A5A78@oracle.com> <4A942089.1010102@RedHat.com> <B36B590E-6A19-4E03-BD49-1E95DA44C4EE@oracle.com>
-In-Reply-To: <B36B590E-6A19-4E03-BD49-1E95DA44C4EE@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:39738 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754072AbZHSXk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Aug 2009 19:40:58 -0400
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNe7Xv028517
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:44 -0700 (PDT)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/32] The following patches have been committed to branch
+ nfs-for-2.6.32
+Date: Wed, 19 Aug 2009 19:38:23 -0400
+Message-Id: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Chuck Lever wrote:
-> On Aug 25, 2009, at 1:34 PM, Steve Dickson wrote:
->> On 08/25/2009 12:29 PM, Chuck Lever wrote:
->>> [ Cc: changed to correct mailing list.  sf.net list is deprecated. ]
->>>
->>> On Aug 24, 2009, at 7:24 PM, Lans Carstensen wrote:
->>>> Hi,
->>>>
->>>> I've recently made tools/nfs-iostat/nfs-iostat.py more useful in our
->>>> autofs environment with a variety of cleanups and am offering this
->>>> patch up for discussion and/or inclusion in nfs-utils.  It does the
->>>> following:
->>>>
->>>> * Adds a --top flag to sort the display of mountpoint entries by ops/s.
->>>> * Adds a --<n> flag to only display stats for the first <n> mountpoints
->>>> * Re-reads the mountpoint list on intervals since it's dynamic in an
->>>> autofs environment.
->>>> * Conforms the Python path to the LSB 3.2+ standard of /usr/bin/python
->>>> http://refspecs.freestandards.org/LSB_3.2.0/LSB-Languages/LSB-Languages/pylocation.html 
->>>>
->>>>
->>>
->>> A couple of overall comments.
->>>
->>> 1.  These seem to be logically independent changes, so we would prefer
->>> them in separate patches.  Each logical change can be refined and voted
->>> up or down separately.
->> I guess you could break this up into more patches... but overall its
->> by no means unruly....
-> 
-> Didn't mean to imply "unruly" but we do _prefer_ having logical changes 
-> separated.
-> 
->>> 2.  Sorting by ops is OK, but not sure about "--top".  Since the script
->>> doesn't generate a curses like display like "top" does, maybe "--sort
->>> <n>" would be a better name, and --top and --<n> could be combined.
->> Hmm.. I kinda like like the --top flag... its pretty descriptive to
->> what it does..
-> 
-> Some people aren't so imaginative, might expect "--top" to produce a 
-> full curses-like display, then be pissed when they get a simple list.  
-> And it seems to me that the two new options are related and could be 
-> combined to good effect.
-> 
-> I think "--top" should be reserved for an actual top-like implementation 
-> (which might be pretty cool).
-> 
->>> 3.  The distributors should weigh in on the Python path change.
->> Using '#!/usr/bin/python' is better than '#!/usr/bin/env python'
->> since you know exactly which python binary you will be using.
->> It was also pointed out the env convention will confuse
->> rpm's dependency generator
-> 
-> Good enough for me.  Lans, it would be nice to document this last bit 
-> (about rpm) in the patch description.
+Bartlomiej Zolnierkiewicz (1):
+      nfs: remove superfluous BUG_ON()s
 
-Thanks for looking at this, guys.
+Peter Staubach (1):
+      NFS: read-modify-write page updating
 
-* I don't live in git, so it'll take me a little bit to break out the 
-patches - but I certainly don't mind if that helps this along.
+Roel Kluin (1):
+      nfs: Keep index within mnt_errtbl[]
 
-* To aid your testing on rescanning, there is a rescan but currently no 
-handling of differences in the "new" and "old" mount table and there is 
-no re-evaluation of the list of monitored mountpoints based on changes 
-in the mount table.  The existing implementation will throw a Python 
-exception when a mountpoint (say a user homedirectory) is unmounted from 
-a system during a trace.  The displayed data is also misleading if the 
-list of monitored mountpoints isn't grown to reflect new automounts that 
-might be your current top talkers.
+Trond Myklebust (29):
+      NFSv4: Don't loop forever on state recovery failure...
+      NFSv4: Add 'server capability' flags for NFSv4 recommended attributes
+      NFSv4: Don't do idmapper upcalls for asynchronous RPC calls
+      SUNRPC: convert some sysctls into module parameters
+      NFSv4: Clean up the nfs.callback_tcpport option
+      SUNRPC: Constify rpc_pipe_ops...
+      SUNRPC: Allow rpc_pipefs_ops to have null values for upcall and downcall
+      SUNRPC: Clean up rpc_pipefs lookup code...
+      SUNRPC: Clean up file creation code in rpc_pipefs
+      SUNRPC: Clean up rpc_unlink()
+      SUNRPC: Clean up rpc_lookup_create
+      SUNRPC: Clean up rpc_populate/depopulate
+      SUNRPC: rpc_pipefs cleanup
+      SUNRPC: Rename rpc_mkdir to rpc_create_client_dir()
+      SUNRPC: Clean up rpc_create_client_dir()
+      SUNRPC: Replace rpc_client->cl_dentry and cl_mnt, with a cl_path
+      SUNRPC: clean up rpc_setup_pipedir()
+      SUNRPC: One more clean up for rpc_create_client_dir()
+      NFSD: Clean up the idmapper warning...
+      SUNRPC: Ensure we initialise the cache_detail before creating procfs files
+      SUNRPC: Remove the global temporary write buffer in net/sunrpc/cache.c
+      SUNRPC: Allow the cache_detail to specify alternative upcall mechanisms
+      SUNRPC: Move procfs-specific stuff out of the generic sunrpc cache code
+      SUNRPC: Add an rpc_pipefs front end for the sunrpc cache code
+      NFS: Add a ->migratepage() aop for NFS
+      SUNRPC: Fix a typo in cache_pipefs_files
+      NFS: Add a dns resolver for use with NFSv4 referrals and migration
+      NFS: Use the DNS resolver in the mount code.
+      SUNRPC: cache must take a reference to the cache detail's module on open()
 
-* "--sort" doesn't offend me and I can switch to that.  The semantic of 
-"--top -1" was the most intuitive for a couple of us here but "--sort 
--1" isn't that far off.
+ Documentation/filesystems/nfs.txt   |   98 +++++
+ Documentation/kernel-parameters.txt |   29 ++
+ fs/nfs/Makefile                     |    3 +-
+ fs/nfs/cache_lib.c                  |  140 +++++++
+ fs/nfs/cache_lib.h                  |   27 ++
+ fs/nfs/callback.c                   |   26 +-
+ fs/nfs/client.c                     |   15 +-
+ fs/nfs/dns_resolve.c                |  335 +++++++++++++++++
+ fs/nfs/dns_resolve.h                |   14 +
+ fs/nfs/file.c                       |   49 +++-
+ fs/nfs/idmap.c                      |    6 +-
+ fs/nfs/inode.c                      |  100 +++++-
+ fs/nfs/internal.h                   |    6 +
+ fs/nfs/mount_clnt.c                 |    4 +-
+ fs/nfs/nfs4namespace.c              |   18 +-
+ fs/nfs/nfs4proc.c                   |   40 ++-
+ fs/nfs/nfs4xdr.c                    |   86 +++--
+ fs/nfs/write.c                      |   91 ++++--
+ fs/nfsd/export.c                    |   14 +-
+ fs/nfsd/nfs4idmap.c                 |   20 +-
+ include/linux/nfs_fs_sb.h           |    9 +
+ include/linux/sunrpc/cache.h        |   40 ++-
+ include/linux/sunrpc/clnt.h         |    5 +-
+ include/linux/sunrpc/rpc_pipe_fs.h  |   18 +-
+ net/sunrpc/auth_gss/auth_gss.c      |   12 +-
+ net/sunrpc/auth_gss/svcauth_gss.c   |    7 +-
+ net/sunrpc/cache.c                  |  622 ++++++++++++++++++++++++--------
+ net/sunrpc/clnt.c                   |   60 ++-
+ net/sunrpc/rpc_pipe.c               |  685 ++++++++++++++++++++---------------
+ net/sunrpc/svcauth_unix.c           |   14 +-
+ net/sunrpc/xprtsock.c               |   52 +++
+ 31 files changed, 2065 insertions(+), 580 deletions(-)
 
-* I agree a real "top" implementation would be cool.
-
--- Lans
