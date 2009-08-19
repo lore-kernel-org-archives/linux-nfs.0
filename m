@@ -1,7 +1,8 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 31/32] NFS: Use the DNS resolver in the mount code.
-Date: Wed, 19 Aug 2009 19:38:54 -0400
-Message-ID: <1250725135-14632-32-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 21/32] SUNRPC: Ensure we initialise the cache_detail before
+ creating procfs files
+Date: Wed, 19 Aug 2009 19:38:44 -0400
+Message-ID: <1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com>
 References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-2-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-3-git-send-email-Trond.Myklebust@netapp.com>
@@ -23,81 +24,93 @@ References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-19-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-20-git-send-email-Trond.Myklebust@netapp.com>
 	 <1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-23-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-24-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-27-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-28-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-29-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-30-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-31-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32245 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5817 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754139AbZHSXlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1754138AbZHSXlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 19 Aug 2009 19:41:03 -0400
 Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNe90h028534
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:52 -0700 (PDT)
-In-Reply-To: <1250725135-14632-31-git-send-email-Trond.Myklebust@netapp.com>
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNe90d028534
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:51 -0700 (PDT)
+In-Reply-To: <1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the referral code, use it to look up the new server's ip address if the
-fs_locations attribute contains a hostname.
+Also ensure that we destroy those files before we destroy the cache_detail.
+Otherwise, user processes might attempt to write into uninitialised caches.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4namespace.c |   18 +++++++++++++++++-
- 1 files changed, 17 insertions(+), 1 deletions(-)
+ net/sunrpc/cache.c |   30 ++++++++++++++++++++----------
+ 1 files changed, 20 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index ef22ee8..2636c26 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -17,6 +17,7 @@
- #include <linux/inet.h>
- #include "internal.h"
- #include "nfs4_fs.h"
-+#include "dns_resolve.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -95,6 +96,20 @@ static int nfs4_validate_fspath(const struct vfsmount *mnt_parent,
- 	return 0;
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 8ede4a6..062d4f4 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -347,13 +347,8 @@ static int create_cache_proc_entries(struct cache_detail *cd)
  }
+ #endif
  
-+static size_t nfs_parse_server_name(char *string, size_t len,
-+		struct sockaddr *sa, size_t salen)
-+{
-+	ssize_t ret;
+-int cache_register(struct cache_detail *cd)
++static void sunrpc_init_cache_detail(struct cache_detail *cd)
+ {
+-	int ret;
+-
+-	ret = create_cache_proc_entries(cd);
+-	if (ret)
+-		return ret;
+ 	rwlock_init(&cd->hash_lock);
+ 	INIT_LIST_HEAD(&cd->queue);
+ 	spin_lock(&cache_list_lock);
+@@ -367,11 +362,9 @@ int cache_register(struct cache_detail *cd)
+ 
+ 	/* start the cleaning process */
+ 	schedule_delayed_work(&cache_cleaner, 0);
+-	return 0;
+ }
+-EXPORT_SYMBOL_GPL(cache_register);
+ 
+-void cache_unregister(struct cache_detail *cd)
++static void sunrpc_destroy_cache_detail(struct cache_detail *cd)
+ {
+ 	cache_purge(cd);
+ 	spin_lock(&cache_list_lock);
+@@ -386,7 +379,6 @@ void cache_unregister(struct cache_detail *cd)
+ 	list_del_init(&cd->others);
+ 	write_unlock(&cd->hash_lock);
+ 	spin_unlock(&cache_list_lock);
+-	remove_cache_proc_entries(cd);
+ 	if (list_empty(&cache_list)) {
+ 		/* module must be being unloaded so its safe to kill the worker */
+ 		cancel_delayed_work_sync(&cache_cleaner);
+@@ -395,6 +387,24 @@ void cache_unregister(struct cache_detail *cd)
+ out:
+ 	printk(KERN_ERR "nfsd: failed to unregister %s cache\n", cd->name);
+ }
 +
-+	ret = rpc_pton(string, len, sa, salen);
-+	if (ret == 0) {
-+		ret = nfs_dns_resolve_name(string, len, sa, salen);
-+		if (ret < 0)
-+			ret = 0;
-+	}
++int cache_register(struct cache_detail *cd)
++{
++	int ret;
++
++	sunrpc_init_cache_detail(cd);
++	ret = create_cache_proc_entries(cd);
++	if (ret)
++		sunrpc_destroy_cache_detail(cd);
 +	return ret;
 +}
++EXPORT_SYMBOL_GPL(cache_register);
 +
- static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
- 				     char *page, char *page2,
- 				     const struct nfs4_fs_location *location)
-@@ -121,7 +136,8 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
++void cache_unregister(struct cache_detail *cd)
++{
++	remove_cache_proc_entries(cd);
++	sunrpc_destroy_cache_detail(cd);
++}
+ EXPORT_SYMBOL_GPL(cache_unregister);
  
- 		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len))
- 			continue;
--		mountdata->addrlen = rpc_pton(buf->data, buf->len,
-+		mountdata->addrlen = nfs_parse_server_name(buf->data,
-+				buf->len,
- 				mountdata->addr, mountdata->addrlen);
- 		if (mountdata->addrlen == 0)
- 			continue;
+ /* clean cache tries to find something to clean
 -- 
 1.6.0.4
