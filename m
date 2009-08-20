@@ -1,312 +1,158 @@
-From: npiggin@suse.de
-Subject: [patch 02/11] fs: use new truncate helpers
-Date: Fri, 21 Aug 2009 02:35:06 +1000
-Message-ID: <20090820164050.614859307@suse.de>
-References: <20090820163504.131529718@suse.de>
-Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-	Miklos Szeredi <miklos@szeredi.hu>, linux-nfs@vger.kernel.org,
-	Trond.Myklebust@netapp.com, linux-cifs-client@lists.samba.org,
-	sfrench@samba.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 30/32] NFS: Add a dns resolver for use with NFSv4 referrals and migration
+Date: Thu, 20 Aug 2009 12:54:48 -0400
+Message-ID: <F9C66E65-D885-4F14-88AD-16DCC5E5B563@oracle.com>
+References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-2-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-3-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-4-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-5-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-6-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-7-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-8-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-9-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-10-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-11-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-12-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-13-git-send
+ -email-Trond.Myklebust@netapp.com> <1250725135-14632-14-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-15-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-16-git-s!
+ ! end-email-Trond.Myklebust@netapp.com> <1250725135-14632-17-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-18-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-19-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-20-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-23-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-24-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-27-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-28-git-send-email-Trond.Myklebust@net
+ app.com> <1250725135-14632-29-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-30-git-send-email-Trond.Myklebust@netapp.com> <1250725135-14632-31-git-send-email-Trond.Myklebust@!
+ ne! tapp.com> <74466E40-D037-4DCD-9129-0EE7B987C843@oracle.com!
+ > <1250785542.19156.12.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35950 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754691AbZHTQm4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Aug 2009 12:42:56 -0400
+Received: from acsinet11.oracle.com ([141.146.126.233]:18098 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754602AbZHTQy4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Aug 2009 12:54:56 -0400
+In-Reply-To: <1250785542.19156.12.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update some fs code to make use of new helper functions introduced
-in the previous patch. Should be no significant change in behaviour
-(except CIFS now calls send_sig under i_lock, via inode_newsize_ok).
+On Aug 20, 2009, at 12:25 PM, Trond Myklebust wrote:
+> On Thu, 2009-08-20 at 11:34 -0400, Chuck Lever wrote:
+>>> +A basic sample /sbin/nfs_cache_getent
+>>> +=====================================
+>>> +
+>>> +#!/bin/bash
+>>> +#
+>>> +ttl=600
+>>> +#
+>>> +cut=/usr/bin/cut
+>>> +getent=/usr/bin/getent
+>>> +rpc_pipefs=/var/lib/nfs/rpc_pipefs
+>>> +#
+>>> +die()
+>>> +{
+>>> +	echo "Usage: $0 cache_name entry_name"
+>>> +	exit 1
+>>> +}
+>>> +
+>>> +[ $# -lt 2 ] && die
+>>> +cachename="$1"
+>>> +cache_path=${rpc_pipefs}/cache/${cachename}/channel
+>>> +
+>>> +case "${cachename}" in
+>>> +	dns_resolve)
+>>> +		name="$2"
+>>> +		result="$(${getent} hosts ${name} | ${cut} -f1 -d\ )"
+>>> +		[ -z "${result}" ] && result="0"
+>>> +		;;
+>>> +	*)
+>>> +		die
+>>> +		;;
+>>> +esac
+>>> +echo "${result} ${name} ${ttl}" >${cache_path}
+>>> +
+>>
+>> Instead of having a single script with a big case statement in it,  
+>> why
+>> not have a directory containing a bunch of smaller, more specific,
+>> scripts?  Common code can be "sourced" from a separate file.  Some of
+>> these scripts may want to do more (or less) than writing into an
+>> rpc_pipefs file.
+>
+> I'm not too concerned. As it says above, this is a sample that
+> illustrates how you could do it. It does work, though, so people can
+> definitely use it to test the functionality.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Miklos Szeredi <miklos@szeredi.hu>
-Cc: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com
-Cc: linux-cifs-client@lists.samba.org
-Cc: sfrench@samba.org
-Signed-off-by: Nick Piggin <npiggin@suse.de>
----
- fs/buffer.c           |   10 +--------
- fs/cifs/inode.c       |   51 ++++++++-----------------------------------------
- fs/fuse/dir.c         |   14 +++----------
- fs/fuse/fuse_i.h      |    2 -
- fs/fuse/inode.c       |   11 ----------
- fs/nfs/inode.c        |   52 +++++++++++---------------------------------------
- fs/ramfs/file-nommu.c |   18 ++++-------------
- 7 files changed, 33 insertions(+), 125 deletions(-)
+I'm thinking of when we want to add new upcalls, since you went to  
+some length to generalize this facility.  It would be easier to manage  
+adding a new script than it would to update an existing one, and an  
+admin or distributor could control what scripts are present, or  
+provide their own.
 
-Index: linux-2.6/fs/buffer.c
-===================================================================
---- linux-2.6.orig/fs/buffer.c
-+++ linux-2.6/fs/buffer.c
-@@ -2225,16 +2225,10 @@ int generic_cont_expand_simple(struct in
- 	struct address_space *mapping = inode->i_mapping;
- 	struct page *page;
- 	void *fsdata;
--	unsigned long limit;
- 	int err;
- 
--	err = -EFBIG;
--        limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--	if (limit != RLIM_INFINITY && size > (loff_t)limit) {
--		send_sig(SIGXFSZ, current, 0);
--		goto out;
--	}
--	if (size > inode->i_sb->s_maxbytes)
-+	err = inode_newsize_ok(inode, size);
-+	if (err)
- 		goto out;
- 
- 	err = pagecache_write_begin(NULL, mapping, size, 0,
-Index: linux-2.6/fs/cifs/inode.c
-===================================================================
---- linux-2.6.orig/fs/cifs/inode.c
-+++ linux-2.6/fs/cifs/inode.c
-@@ -1557,57 +1557,24 @@ static int cifs_truncate_page(struct add
- 
- static int cifs_vmtruncate(struct inode *inode, loff_t offset)
- {
--	struct address_space *mapping = inode->i_mapping;
--	unsigned long limit;
-+	loff_t oldsize;
-+	int err;
- 
- 	spin_lock(&inode->i_lock);
--	if (inode->i_size < offset)
--		goto do_expand;
--	/*
--	 * truncation of in-use swapfiles is disallowed - it would cause
--	 * subsequent swapout to scribble on the now-freed blocks.
--	 */
--	if (IS_SWAPFILE(inode)) {
-+	err = inode_newsize_ok(inode, offset);
-+	if (err) {
- 		spin_unlock(&inode->i_lock);
--		goto out_busy;
-+		goto out;
- 	}
--	i_size_write(inode, offset);
--	spin_unlock(&inode->i_lock);
--	/*
--	 * unmap_mapping_range is called twice, first simply for efficiency
--	 * so that truncate_inode_pages does fewer single-page unmaps. However
--	 * after this first call, and before truncate_inode_pages finishes,
--	 * it is possible for private pages to be COWed, which remain after
--	 * truncate_inode_pages finishes, hence the second unmap_mapping_range
--	 * call must be made for correctness.
--	 */
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	truncate_inode_pages(mapping, offset);
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	goto out_truncate;
- 
--do_expand:
--	limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--	if (limit != RLIM_INFINITY && offset > limit) {
--		spin_unlock(&inode->i_lock);
--		goto out_sig;
--	}
--	if (offset > inode->i_sb->s_maxbytes) {
--		spin_unlock(&inode->i_lock);
--		goto out_big;
--	}
-+	oldsize = inode->i_size;
- 	i_size_write(inode, offset);
- 	spin_unlock(&inode->i_lock);
--out_truncate:
-+	truncate_pagecache(inode, oldsize, offset);
- 	if (inode->i_op->truncate)
- 		inode->i_op->truncate(inode);
--	return 0;
--out_sig:
--	send_sig(SIGXFSZ, current, 0);
--out_big:
--	return -EFBIG;
--out_busy:
--	return -ETXTBSY;
-+out:
-+	return err;
- }
- 
- static int
-Index: linux-2.6/fs/fuse/dir.c
-===================================================================
---- linux-2.6.orig/fs/fuse/dir.c
-+++ linux-2.6/fs/fuse/dir.c
-@@ -1276,14 +1276,9 @@ static int fuse_do_setattr(struct dentry
- 		return 0;
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
--		unsigned long limit;
--		if (IS_SWAPFILE(inode))
--			return -ETXTBSY;
--		limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--		if (limit != RLIM_INFINITY && attr->ia_size > (loff_t) limit) {
--			send_sig(SIGXFSZ, current, 0);
--			return -EFBIG;
--		}
-+		err = inode_newsize_ok(inode, attr->ia_size);
-+		if (err)
-+			return err;
- 		is_truncate = true;
- 	}
- 
-@@ -1350,8 +1345,7 @@ static int fuse_do_setattr(struct dentry
- 	 * FUSE_NOWRITE, otherwise fuse_launder_page() would deadlock.
- 	 */
- 	if (S_ISREG(inode->i_mode) && oldsize != outarg.attr.size) {
--		if (outarg.attr.size < oldsize)
--			fuse_truncate(inode->i_mapping, outarg.attr.size);
-+		truncate_pagecache(inode, oldsize, outarg.attr.size);
- 		invalidate_inode_pages2(inode->i_mapping);
- 	}
- 
-Index: linux-2.6/fs/nfs/inode.c
-===================================================================
---- linux-2.6.orig/fs/nfs/inode.c
-+++ linux-2.6/fs/nfs/inode.c
-@@ -426,49 +426,21 @@ nfs_setattr(struct dentry *dentry, struc
-  */
- static int nfs_vmtruncate(struct inode * inode, loff_t offset)
- {
--	if (i_size_read(inode) < offset) {
--		unsigned long limit;
-+	loff_t oldsize;
-+	int err;
- 
--		limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--		if (limit != RLIM_INFINITY && offset > limit)
--			goto out_sig;
--		if (offset > inode->i_sb->s_maxbytes)
--			goto out_big;
--		spin_lock(&inode->i_lock);
--		i_size_write(inode, offset);
--		spin_unlock(&inode->i_lock);
--	} else {
--		struct address_space *mapping = inode->i_mapping;
-+	err = inode_newsize_ok(inode, offset);
-+	if (err)
-+		goto out;
- 
--		/*
--		 * truncation of in-use swapfiles is disallowed - it would
--		 * cause subsequent swapout to scribble on the now-freed
--		 * blocks.
--		 */
--		if (IS_SWAPFILE(inode))
--			return -ETXTBSY;
--		spin_lock(&inode->i_lock);
--		i_size_write(inode, offset);
--		spin_unlock(&inode->i_lock);
-+	spin_lock(&inode->i_lock);
-+	oldsize = inode->i_size;
-+	i_size_write(inode, offset);
-+	spin_unlock(&inode->i_lock);
- 
--		/*
--		 * unmap_mapping_range is called twice, first simply for
--		 * efficiency so that truncate_inode_pages does fewer
--		 * single-page unmaps.  However after this first call, and
--		 * before truncate_inode_pages finishes, it is possible for
--		 * private pages to be COWed, which remain after
--		 * truncate_inode_pages finishes, hence the second
--		 * unmap_mapping_range call must be made for correctness.
--		 */
--		unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--		truncate_inode_pages(mapping, offset);
--		unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	}
--	return 0;
--out_sig:
--	send_sig(SIGXFSZ, current, 0);
--out_big:
--	return -EFBIG;
-+	truncate_pagecache(inode, oldsize, offset);
-+out:
-+	return err;
- }
- 
- /**
-Index: linux-2.6/fs/ramfs/file-nommu.c
-===================================================================
---- linux-2.6.orig/fs/ramfs/file-nommu.c
-+++ linux-2.6/fs/ramfs/file-nommu.c
-@@ -69,14 +69,11 @@ int ramfs_nommu_expand_for_mapping(struc
- 	/* make various checks */
- 	order = get_order(newsize);
- 	if (unlikely(order >= MAX_ORDER))
--		goto too_big;
-+		return -EFBIG;
- 
--	limit = current->signal->rlim[RLIMIT_FSIZE].rlim_cur;
--	if (limit != RLIM_INFINITY && newsize > limit)
--		goto fsize_exceeded;
--
--	if (newsize > inode->i_sb->s_maxbytes)
--		goto too_big;
-+	ret = inode_newsize_ok(inode, newsize);
-+	if (ret)
-+		return ret;
- 
- 	i_size_write(inode, newsize);
- 
-@@ -118,12 +115,7 @@ int ramfs_nommu_expand_for_mapping(struc
- 
- 	return 0;
- 
-- fsize_exceeded:
--	send_sig(SIGXFSZ, current, 0);
-- too_big:
--	return -EFBIG;
--
-- add_error:
-+add_error:
- 	while (loop < npages)
- 		__free_page(pages + loop++);
- 	return ret;
-Index: linux-2.6/fs/fuse/fuse_i.h
-===================================================================
---- linux-2.6.orig/fs/fuse/fuse_i.h
-+++ linux-2.6/fs/fuse/fuse_i.h
-@@ -602,8 +602,6 @@ void fuse_change_attributes(struct inode
- void fuse_change_attributes_common(struct inode *inode, struct fuse_attr *attr,
- 				   u64 attr_valid);
- 
--void fuse_truncate(struct address_space *mapping, loff_t offset);
--
- /**
-  * Initialize the client device
-  */
-Index: linux-2.6/fs/fuse/inode.c
-===================================================================
---- linux-2.6.orig/fs/fuse/inode.c
-+++ linux-2.6/fs/fuse/inode.c
-@@ -115,14 +115,6 @@ static int fuse_remount_fs(struct super_
- 	return 0;
- }
- 
--void fuse_truncate(struct address_space *mapping, loff_t offset)
--{
--	/* See vmtruncate() */
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--	truncate_inode_pages(mapping, offset);
--	unmap_mapping_range(mapping, offset + PAGE_SIZE - 1, 0, 1);
--}
--
- void fuse_change_attributes_common(struct inode *inode, struct fuse_attr *attr,
- 				   u64 attr_valid)
- {
-@@ -180,8 +172,7 @@ void fuse_change_attributes(struct inode
- 	spin_unlock(&fc->lock);
- 
- 	if (S_ISREG(inode->i_mode) && oldsize != attr->size) {
--		if (attr->size < oldsize)
--			fuse_truncate(inode->i_mapping, attr->size);
-+		truncate_pagecache(inode, oldsize, attr->size);
- 		invalidate_inode_pages2(inode->i_mapping);
- 	}
- }
+The act of editing a single script is easy enough, but then you have  
+to worry about updates from the distributor possibly overwriting the  
+local modifications, and so on, and so on.
+
+A model like /etc/init.d might be easier to manage in the long run.
+
+>>> +	 * Disable the upcall mechanism if we're getting an ENOENT or
+>>> +	 * EACCES error. The admin can re-enable it on the fly by using
+>>> +	 * sysfs to set the 'cache_getent' parameter once the problem
+>>> +	 * has been fixed.
+>>> +	 */
+>>> +	if (ret == -ENOENT || ret == -EACCES)
+>>> +		nfs_cache_getent_prog[0] = '\0';
+>>
+>> What's the risk of continuing to invoke the upcall script if it
+>> doesn't exist?  If it's happening frequently I would expect that the
+>> lack of the file would be cached, so it would still be a quick  
+>> failure.
+>
+> Yes, but if the upcall script fails, we want to fall back to trying  
+> the
+> pipe upcall mechanism.
+
+Makes sense, but that important detail is not clear from the  
+documenting comment.
+
+>>> +#define NFS_DNS_HASHBITS 4
+>>> +#define NFS_DNS_HASHTBL_SIZE (1 << NFS_DNS_HASHBITS)
+>>
+>> So the hash table is only 16 buckets.  Is it really worth the trouble
+>> of keeping a small cache of hostname lookups in the kernel?  I  
+>> guess I
+>> don't have a clear idea of how often you need to handle DNS  
+>> resolution
+>> for FS_LOCATIONS.
+>
+> At the moment, the number of referrals out there are few, but we're
+> expecting that to grow when the whole federated fs management
+> infrastructure develops.
+
+OK.  Can you give some sense of quantity?
+
+>>> +static unsigned int nfs_dns_hash(const struct nfs_dns_ent *key)
+>>> +{
+>>> +	return hash_str(key->hostname, NFS_DNS_HASHBITS);
+>>> +}
+>>
+>> Any idea how well this hash function works for hostnames?
+>
+> No, but it is the same one nfsd uses for its version of the same  
+> cache,
+> so I assume that it is appropriate.
+
+A brief scan shows that it's hashing for username@host for idmapping,  
+but not for hostnames only (which might be missing randomness of the  
+username@ part).  A detail, for sure, but it would be reasonable to  
+verify at some point as the size of the cache increases.
+
+>>> +#define NFS_DNS_HOSTNAME_MAXLEN	(128)
+>>
+>> It looks like you are using this to size the target buffer for a
+>> presentation address, not a hostname.  Perhaps you should use
+>> INET6_ADDRSTRLEN+IPV6_SCOPEID_LEN+1 here instead, and/or change the
+>> name of the macro.
+>
+> No. I'm using it primarily to store the hostname. See nfs_dns_parse().
+
+OK, you store the presentation address in buf1 first, and now I see  
+that farther down you are storing the hostname too.  But note that the  
+maximum size of a hostname is 1024 (see the definition of NI_MAXHOST  
+in user space).
+
+If there is a protocol specified limit on the hostname string returned  
+via FS_LOCATION, perhaps that should be noted here.  Otherwise, 128 is  
+too small, I think.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
 
 
