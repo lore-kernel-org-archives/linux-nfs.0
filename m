@@ -1,187 +1,178 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 30/32] NFS: Add a dns resolver for use with NFSv4
- referrals and migration
-Date: Wed, 19 Aug 2009 19:51:56 -0400
-Message-ID: <1250725916.12555.1.camel@heimdal.trondhjem.org>
-References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-11-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-12-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-13-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-14-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-15-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-16-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-17-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-18-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-19-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-20-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-23-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-24-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-27-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-28-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-29-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-30-git-send-email-Trond.Myklebust@netapp.com>
-	 <1250725135-14632-31-git-send-email-Trond.Myklebust@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-To: linux-nfs@vger.kernel.org
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH RFC 01/10] nfsd41: sunrpc: svc_tcp_recv_record()
+Date: Thu, 20 Aug 2009 03:34:19 +0300
+Message-ID: <1250728459-28477-1-git-send-email-bhalevy@panasas.com>
+References: <4A8C9992.2000505@panasas.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Alexandros Batsakis <batsakis@netapp.com>,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1220 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752784AbZHSXwB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Aug 2009 19:52:01 -0400
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNq3ni004839
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:52:03 -0700 (PDT)
-In-Reply-To: <1250725135-14632-31-git-send-email-Trond.Myklebust@netapp.com>
+Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:15755
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753247AbZHTAsV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2009 20:48:21 -0400
+In-Reply-To: <4A8C9992.2000505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-08-19 at 19:38 -0400, Trond Myklebust wrote:
-> The NFSv4 and NFSv4.1 protocols both allow for the redirection of a client
-> from one server to another in order to support filesystem migration and
-> replication. For full protocol support, we need to add the ability to
-> convert a DNS host name into an IP address that we can feed to the RPC
-> client.
-> 
-> We'll reuse the sunrpc cache, now that it has been converted to work with
-> rpc_pipefs.
+From: Alexandros Batsakis <batsakis@netapp.com>
 
-Should I merge this too?
+Factor functionality out of svc_tcp_recvfrom() to simplify routine
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: NFS: Testcase for the DNS resolver
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ net/sunrpc/svcsock.c |   79 ++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 51 insertions(+), 28 deletions(-)
 
- fs/nfs/Kconfig           |   11 ++++++++++
- fs/nfs/Makefile          |    4 +++
- fs/nfs/cache_testcases.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/dns_resolve.c     |    1 +
- 4 files changed, 69 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/cache_testcases.c
-
-
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 2a77bc2..13fc471 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -101,3 +101,14 @@ config NFS_FSCACHE
- 	help
- 	  Say Y here if you want NFS data to be cached locally on disc through
- 	  the general filesystem cache manager
-+
-+config NFS_CACHETEST
-+	tristate "Test the NFS client DNS cache upcalls"
-+	depends on NFS_FS
-+	default N
-+	help
-+	  Choose M if you want to build a module that can be used to test
-+	  the NFS client DNS cache upcall mechanism.
-+
-+	  Most people will want to say N
-+
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index da7fda6..4fe5ac2 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -17,3 +17,7 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   nfs4namespace.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-+
-+obj-$(CONFIG_NFS_CACHETEST) += nfs_cachetest.o
-+nfs_cachetest-objs := cache_testcases.o
-+
-diff --git a/fs/nfs/cache_testcases.c b/fs/nfs/cache_testcases.c
-new file mode 100644
-index 0000000..2d8810a
---- /dev/null
-+++ b/fs/nfs/cache_testcases.c
-@@ -0,0 +1,53 @@
-+/*
-+ * linux/fs/nfs/cache_testcases.c
-+ *
-+ * Testcases for the NFS client cache upcalls
-+ *
-+ * Copyright (c) 2009 Trond Myklebust <Trond.Myklebust@netapp.com>
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/moduleparam.h>
-+#include <linux/sunrpc/clnt.h>
-+
-+#include "dns_resolve.h"
-+
-+static char hostname[NFS_DNS_HOSTNAME_MAXLEN] = "";
-+module_param_string(hostname, hostname, sizeof(hostname), 0600);
-+MODULE_PARM_DESC(hostname, "DNS hostname to look up");
-+
-+static int nfs_lookup_hostname(char *name)
-+{
-+	struct sockaddr_storage sa;
-+	ssize_t salen;
-+
-+	if (!name || *name == '\0')
-+		goto out;
-+	salen = nfs_dns_resolve_name(name, strlen(name),
-+			(struct sockaddr *)&sa, sizeof(sa));
-+	if (salen > 0) {
-+		char buf[INET6_ADDRSTRLEN+IPV6_SCOPE_ID_LEN+1];
-+
-+		rpc_ntop((struct sockaddr *)&sa, buf, sizeof(buf));
-+		printk(KERN_NOTICE "%15s ", buf);
-+	} else
-+		printk(KERN_NOTICE "%15zd ", salen);
-+	printk("%15s\n", name);
-+out:
-+	return 0;
-+}
-+
-+static int nfs_dnstest_init(void)
-+{
-+	return nfs_lookup_hostname(hostname);
-+}
-+
-+static void nfs_dnstest_exit(void)
-+{
-+}
-+
-+MODULE_AUTHOR("Trond Myklebust <Trond.Myklebust@netapp.com>");
-+MODULE_LICENSE("GPL");
-+
-+module_init(nfs_dnstest_init)
-+module_exit(nfs_dnstest_exit)
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index f4d54ba..572d453 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -322,6 +322,7 @@ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
- 		ret = -ESRCH;
- 	return ret;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 23128ee..5a5bc8b 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -826,21 +826,15 @@ failed:
  }
-+EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
  
- int nfs_dns_resolver_init(void)
+ /*
+- * Receive data from a TCP socket.
++ * Receive data.
++ * If we haven't gotten the record length yet, get the next four bytes.
++ * Otherwise try to gobble up as much as possible up to the complete
++ * record length.
+  */
+-static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
++static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
  {
-
+-	struct svc_sock	*svsk =
+-		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+ 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+-	int		len;
+-	struct kvec *vec;
+-	int pnum, vlen;
+-
+-	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
+-		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
+-		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
+-		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
++	int len;
+ 
+ 	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
+ 		/* sndbuf needs to have room for one request
+@@ -861,10 +855,6 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 
+-	/* Receive data. If we haven't got the record length yet, get
+-	 * the next four bytes. Otherwise try to gobble up as much as
+-	 * possible up to the complete record length.
+-	 */
+ 	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
+ 		int		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
+ 		struct kvec	iov;
+@@ -879,7 +869,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 			dprintk("svc: short recvfrom while reading record "
+ 				"length (%d of %d)\n", len, want);
+ 			svc_xprt_received(&svsk->sk_xprt);
+-			return -EAGAIN; /* record header not complete */
++			goto err_again; /* record header not complete */
+ 		}
+ 
+ 		svsk->sk_reclen = ntohl(svsk->sk_reclen);
+@@ -894,6 +884,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 					"per record not supported\n");
+ 			goto err_delete;
+ 		}
++
+ 		svsk->sk_reclen &= RPC_FRAGMENT_SIZE_MASK;
+ 		dprintk("svc: TCP record, %d bytes\n", svsk->sk_reclen);
+ 		if (svsk->sk_reclen > serv->sv_max_mesg) {
+@@ -914,11 +905,45 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		dprintk("svc: incomplete TCP record (%d of %d)\n",
+ 			len, svsk->sk_reclen);
+ 		svc_xprt_received(&svsk->sk_xprt);
+-		return -EAGAIN;	/* record not complete */
++		goto err_again;	/* record not complete */
+ 	}
+ 	len = svsk->sk_reclen;
+ 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 
++	return len;
++ error:
++	if (len == -EAGAIN) {
++		dprintk("RPC: TCP recv_record got EAGAIN\n");
++		svc_xprt_received(&svsk->sk_xprt);
++	}
++	return len;
++ err_delete:
++	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
++ err_again:
++	return -EAGAIN;
++}
++
++/*
++ * Receive data from a TCP socket.
++ */
++static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
++{
++	struct svc_sock	*svsk =
++		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
++	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
++	int		len;
++	struct kvec *vec;
++	int pnum, vlen;
++
++	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
++		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
++		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
++		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
++
++	len = svc_tcp_recv_record(svsk, rqstp);
++	if (len < 0)
++		goto error;
++
+ 	vec = rqstp->rq_vec;
+ 	vec[0] = rqstp->rq_arg.head[0];
+ 	vlen = PAGE_SIZE;
+@@ -934,7 +959,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	/* Now receive data */
+ 	len = svc_recvfrom(rqstp, vec, pnum, len);
+ 	if (len < 0)
+-		goto error;
++		goto err_again;
+ 
+ 	dprintk("svc: TCP complete record (%d bytes)\n", len);
+ 	rqstp->rq_arg.len = len;
+@@ -960,21 +985,19 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	return len;
+ 
+- err_delete:
+-	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+-	return -EAGAIN;
+-
+- error:
++err_again:
+ 	if (len == -EAGAIN) {
+ 		dprintk("RPC: TCP recvfrom got EAGAIN\n");
+ 		svc_xprt_received(&svsk->sk_xprt);
+-	} else {
++		return len;
++	}
++error:
++	if (len != -EAGAIN) {
+ 		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
+ 		       svsk->sk_xprt.xpt_server->sv_name, -len);
+-		goto err_delete;
++		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 	}
+-
+-	return len;
++	return -EAGAIN;
+ }
+ 
+ /*
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.6.4
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
