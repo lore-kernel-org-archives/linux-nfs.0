@@ -1,178 +1,90 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH RFC 01/10] nfsd41: sunrpc: svc_tcp_recv_record()
-Date: Thu, 20 Aug 2009 03:34:19 +0300
-Message-ID: <1250728459-28477-1-git-send-email-bhalevy@panasas.com>
+Subject: [PATCH RFC 03/10] nfsd41: sunrpc: move struct rpc_buffer def into a common header file
+Date: Thu, 20 Aug 2009 03:34:28 +0300
+Message-ID: <1250728468-28544-1-git-send-email-bhalevy@panasas.com>
 References: <4A8C9992.2000505@panasas.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Alexandros Batsakis <batsakis@netapp.com>,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
 	Benny Halevy <bhalevy@panasas.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:15755
 	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753247AbZHTAsV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2009 20:48:21 -0400
+	by vger.kernel.org with ESMTP id S1753483AbZHTAsX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Aug 2009 20:48:23 -0400
 In-Reply-To: <4A8C9992.2000505@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Alexandros Batsakis <batsakis@netapp.com>
+struct rpc_buffer is currently defined twice, the same way, in sched.c
+and xprtsock.c.  Move its definition into a sunrpc.h, a common, internal
+header file.
 
-Factor functionality out of svc_tcp_recvfrom() to simplify routine
-
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/svcsock.c |   79 ++++++++++++++++++++++++++++++++-----------------
- 1 files changed, 51 insertions(+), 28 deletions(-)
+ net/sunrpc/sched.c    |    7 ++-----
+ net/sunrpc/sunrpc.h   |    8 ++++++++
+ net/sunrpc/xprtsock.c |    4 ----
+ 3 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 23128ee..5a5bc8b 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -826,21 +826,15 @@ failed:
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 8f459ab..cef74ba 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -21,6 +21,8 @@
+ 
+ #include <linux/sunrpc/clnt.h>
+ 
++#include "sunrpc.h"
++
+ #ifdef RPC_DEBUG
+ #define RPCDBG_FACILITY		RPCDBG_SCHED
+ #define RPC_TASK_MAGIC_ID	0xf00baa
+@@ -711,11 +713,6 @@ static void rpc_async_schedule(struct work_struct *work)
+ 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
  }
  
- /*
-- * Receive data from a TCP socket.
-+ * Receive data.
-+ * If we haven't gotten the record length yet, get the next four bytes.
-+ * Otherwise try to gobble up as much as possible up to the complete
-+ * record length.
-  */
--static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
-+static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
- {
--	struct svc_sock	*svsk =
--		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
- 	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
--	int		len;
--	struct kvec *vec;
--	int pnum, vlen;
+-struct rpc_buffer {
+-	size_t	len;
+-	char	data[];
+-};
 -
--	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
--		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
--		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
--		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
-+	int len;
+ /**
+  * rpc_malloc - allocate an RPC buffer
+  * @task: RPC task that will use this buffer
+diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+index b1b2e64..7b68daf 100644
+--- a/net/sunrpc/sunrpc.h
++++ b/net/sunrpc/sunrpc.h
+@@ -27,6 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #ifndef _NET_SUNRPC_SUNRPC_H
+ #define _NET_SUNRPC_SUNRPC_H
  
- 	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
- 		/* sndbuf needs to have room for one request
-@@ -861,10 +855,6 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 
- 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 
--	/* Receive data. If we haven't got the record length yet, get
--	 * the next four bytes. Otherwise try to gobble up as much as
--	 * possible up to the complete record length.
--	 */
- 	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
- 		int		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
- 		struct kvec	iov;
-@@ -879,7 +869,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 			dprintk("svc: short recvfrom while reading record "
- 				"length (%d of %d)\n", len, want);
- 			svc_xprt_received(&svsk->sk_xprt);
--			return -EAGAIN; /* record header not complete */
-+			goto err_again; /* record header not complete */
- 		}
- 
- 		svsk->sk_reclen = ntohl(svsk->sk_reclen);
-@@ -894,6 +884,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 					"per record not supported\n");
- 			goto err_delete;
- 		}
-+
- 		svsk->sk_reclen &= RPC_FRAGMENT_SIZE_MASK;
- 		dprintk("svc: TCP record, %d bytes\n", svsk->sk_reclen);
- 		if (svsk->sk_reclen > serv->sv_max_mesg) {
-@@ -914,11 +905,45 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		dprintk("svc: incomplete TCP record (%d of %d)\n",
- 			len, svsk->sk_reclen);
- 		svc_xprt_received(&svsk->sk_xprt);
--		return -EAGAIN;	/* record not complete */
-+		goto err_again;	/* record not complete */
- 	}
- 	len = svsk->sk_reclen;
- 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 
-+	return len;
-+ error:
-+	if (len == -EAGAIN) {
-+		dprintk("RPC: TCP recv_record got EAGAIN\n");
-+		svc_xprt_received(&svsk->sk_xprt);
-+	}
-+	return len;
-+ err_delete:
-+	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-+ err_again:
-+	return -EAGAIN;
-+}
-+
 +/*
-+ * Receive data from a TCP socket.
++ * Header for dynamically allocated rpc buffers.
 + */
-+static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
-+{
-+	struct svc_sock	*svsk =
-+		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
-+	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
-+	int		len;
-+	struct kvec *vec;
-+	int pnum, vlen;
++struct rpc_buffer {
++	size_t	len;
++	char	data[];
++};
 +
-+	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
-+		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
-+		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
-+		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
-+
-+	len = svc_tcp_recv_record(svsk, rqstp);
-+	if (len < 0)
-+		goto error;
-+
- 	vec = rqstp->rq_vec;
- 	vec[0] = rqstp->rq_arg.head[0];
- 	vlen = PAGE_SIZE;
-@@ -934,7 +959,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	/* Now receive data */
- 	len = svc_recvfrom(rqstp, vec, pnum, len);
- 	if (len < 0)
--		goto error;
-+		goto err_again;
- 
- 	dprintk("svc: TCP complete record (%d bytes)\n", len);
- 	rqstp->rq_arg.len = len;
-@@ -960,21 +985,19 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 
- 	return len;
- 
-- err_delete:
--	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
--	return -EAGAIN;
--
-- error:
-+err_again:
- 	if (len == -EAGAIN) {
- 		dprintk("RPC: TCP recvfrom got EAGAIN\n");
- 		svc_xprt_received(&svsk->sk_xprt);
--	} else {
-+		return len;
-+	}
-+error:
-+	if (len != -EAGAIN) {
- 		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
- 		       svsk->sk_xprt.xpt_server->sv_name, -len);
--		goto err_delete;
-+		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
- 	}
--
--	return len;
-+	return -EAGAIN;
+ static inline int rpc_reply_expected(struct rpc_task *task)
+ {
+ 	return (task->tk_msg.rpc_proc != NULL) &&
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 6e6f939..4098a92 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2158,10 +2158,6 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 			xprt->stat.bklog_u);
  }
  
+-struct rpc_buffer {
+-	size_t	len;
+-	char	data[];
+-};
  /*
+  * Allocate a bunch of pages for a scratch buffer for the rpc code. The reason
+  * we allocate pages instead doing a kmalloc like rpc_malloc is because we want
 -- 
 1.6.4
 
