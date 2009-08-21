@@ -1,101 +1,75 @@
-From: Chuck Lever <Chuck.Lever@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: mount.nfs: access denied by server
-Date: Fri, 21 Aug 2009 16:20:57 -0400
-Message-ID: <D3C30154-16FA-4BC5-B250-BA0FBF60CCA2@oracle.com>
-References: <1250822171.6514.29.camel@heimdal.trondhjem.org> <BAE89B4F-CA8C-46B2-82EA-9BAA438C1DF7@oracle.com> <20090821182027.GD21043@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
+Date: Fri, 21 Aug 2009 17:08:12 -0400
+Message-ID: <1250888892.5700.7.camel@heimdal.trondhjem.org>
+References: <1250822171.6514.29.camel@heimdal.trondhjem.org>
+	 <BAE89B4F-CA8C-46B2-82EA-9BAA438C1DF7@oracle.com>
+	 <20090821182418.GE21043@fieldses.org>
+	 <31F3372A-891E-44EF-8DD2-78D5A3AD5CF1@oracle.com>
+	 <20090821200403.GA23529@fieldses.org> <4A8F0118.60705@sun.com>
+	 <4A8F0619.60305@redhat.com>  <20090821205921.GC23529@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Peter Staubach <staubach@redhat.com>,
 	Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>,
-	Steve Dickson <SteveD@redhat.com>
+	Chuck Lever <Chuck.Lever@oracle.com>,
+	NFS list <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:32508 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932685AbZHUVE4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2009 17:04:56 -0400
-In-Reply-To: <20090821182027.GD21043@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:15524 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932683AbZHUVIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Aug 2009 17:08:42 -0400
+In-Reply-To: <20090821205921.GC23529@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2009-08-21 at 16:59 -0400, J. Bruce Fields wrote:
+> On Fri, Aug 21, 2009 at 04:39:53PM -0400, Peter Staubach wrote:
+> > Tom Haynes wrote:
+> > > J. Bruce Fields wrote:
+> > >>
+> > >>> Right now, we use AUTH_SYS if the mount command didn't specify a
+> > >>> flavor, but the flavor we're going to use is always checked against
+> > >>> the server's returned list.  You seem to be suggesting we should
+> > >>> ignore the server's list entirely if sec= was specified...?
+> > >>>     
+> > >>
+> > >> Yes.  I can't see what practical problems that would cause.
+> > >>
+> > 
+> > Here, I am going to disagree.  The client should compare the
+> > flavor specified with the list of authentication flavors
+> > returned by the server and if the specific flavor isn't on
+> > the list, then the mount attempt should be failed.
+> 
+> Why?  What can go wrong if you just try the flavor?
+> 
+> Ugh: to answer my own question: ok, if the server allows auth_sys for
+> the NFS operations required on mount (as suggested by the security
+> considerations rfc), then that would mean mount would always succeed,
+> and nobody would see the error until the first operation on the
+> filesystem.  It would be better to return the error on mount.
+> 
+> So, I think I have to give in and agree with you.  People will just have
+> to upgrade their mountd's....
 
-On Aug 21, 2009, at 2:20 PM, J. Bruce Fields wrote:
+People have lived with the current situation for years without any
+trouble. It was only the addition of the security negotiation that
+exposed the mountd bug.
 
-> On Fri, Aug 21, 2009 at 02:16:08PM -0400, Chuck Lever wrote:
->> I want to understand the server bug a little more.  I glanced over  
->> RFC
->> 2623 and didn't see anything specific.
->>
->> Is it the case that only Linux NFSD does this, or do other servers do
->> it?  In other words, is this a typical server response, and if so, is
->> there a specific semantic attached to it?
->>
->> If no list is provided, should the client assume that only  
->> AUTH_NONE and
->> AUTH_SYS are supported, or instead, perhaps that the client can try  
->> to
->> use any flavor?  In other words, if no list is provided, let the  
->> mount
->> proceed no matter what was specified by sec= ?
->
-> I've sent the following to Steve to fix the server bug.
->
-> --b.
->
-> commit ceb3c96d68f47cf6a0c38ccd88b98c59c886e9fb
-> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> Date:   Tue Jul 21 19:30:04 2009 -0400
->
->    Don't give client an empty flavor list
->
->    In the absence of an explicit sec= option on an export,  
-> rpc.mountd is
->    returning a zero-length flavor list to clients in the MOUNT  
-> results.
->
->    The linux client doesn't seem to mind, but the Solaris client
->    (reasonably enough) is giving up; the symptom is a "security mode  
-> does
->    not match" error on mount.
->
->    We could modify the export-parsing code to ensure the secinfo  
-> array is
->    nonzero.  But I think it's slightly simpler to handle this  
-> default case
->    in the implementation of the MOUNT call.  This is more-or-less  
-> the same
->    thing the kernel does when mountd passes it an export without any
->    security flavors specified.
->
->    Thanks to Tom Haynes for bug report and diagnosis.
->
->    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->
-> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-> index b59f939..888fd8c 100644
-> --- a/utils/mountd/mountd.c
-> +++ b/utils/mountd/mountd.c
-> @@ -359,6 +359,11 @@ static void set_authflavors(struct mountres3_ok  
-> *ok, nfs_export *exp)
-> 		flavors[i] = s->flav->fnum;
-> 		i++;
-> 	}
-> +	if (i == 0) {
-> +		/* default when there is no sec= option: */
-> +		i = 1;
-> +		flavors[0] = AUTH_UNIX;
-> +	}
+My position is that if mountd returns a clearly invalid (i.e. empty)
+list, then that's not a reason to interrupt the mount. We should just
+fall back to what we did prior to including security negotiation.
 
-Does the Linux server also support AUTH_NONE if sec= isn't specified?
+The alternative is simply not to merge security negotiation until people
+have had ample time to upgrade mountd (i.e. 2-3 years from now).
 
-> 	ok->auth_flavors.auth_flavors_val = flavors;
-> 	ok->auth_flavors.auth_flavors_len = i;
-> }
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
