@@ -1,49 +1,42 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: [PATCH -mmotm] nfs/cache_lib: fix sunrpc struct build error
-Date: Fri, 21 Aug 2009 09:57:56 -0700
-Message-ID: <20090821095756.390c102e.randy.dunlap@oracle.com>
-References: <200908210222.n7L2Musb015815@imap1.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: akpm <akpm@linux-foundation.org>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:31699 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932477AbZHUQ4r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2009 12:56:47 -0400
-In-Reply-To: <200908210222.n7L2Musb015815-AB4EexQrvXRQetFLy7KEm3xJsTq8ys+cHZ5vskTnxNA@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 15/17] nfs: Remove reference to generic_osync_inode from a comment
+Date: Fri, 21 Aug 2009 19:24:05 +0200
+Message-ID: <1250875447-15622-16-git-send-email-jack@suse.cz>
+References: <1250875447-15622-1-git-send-email-jack@suse.cz>
+Cc: hch@lst.de, linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+	linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1250875447-15622-1-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
+generic_file_direct_write() no longer calls generic_osync_inode() so remove the
+comment.
 
-Add header file for struct delayed_work:
-
-In file included from fs/nfs/cache_lib.c:14:
-include/linux/sunrpc/rpc_pipe_fs.h:35: error: field 'queue_timeout' has incomplete type
-
-Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+CC: linux-nfs@vger.kernel.org
+CC: Neil Brown <neilb@suse.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/direct.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
---- mmotm-2009-0820-1918.orig/include/linux/sunrpc/rpc_pipe_fs.h
-+++ mmotm-2009-0820-1918/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -3,6 +3,8 @@
- 
- #ifdef __KERNEL__
- 
-+#include <linux/workqueue.h>
-+
- struct rpc_pipe_msg {
- 	struct list_head list;
- 	void *data;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 489fc01..fd5fcc9 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -934,9 +934,6 @@ out:
+  * back into its cache.  We let the server do generic write
+  * parameter checking and report problems.
+  *
+- * We also avoid an unnecessary invocation of generic_osync_inode(),
+- * as it is fairly meaningless to sync the metadata of an NFS file.
+- *
+  * We eliminate local atime updates, see direct read above.
+  *
+  * We avoid unnecessary page cache invalidations for normal cached
+-- 
+1.6.0.2
 
-
-
----
-~Randy
-LPC 2009, Sept. 23-25, Portland, Oregon
-http://linuxplumbersconf.org/2009/
