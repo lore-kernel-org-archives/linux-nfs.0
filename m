@@ -1,37 +1,57 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: linux-next: noot failure for next-20090820
-Date: Fri, 21 Aug 2009 08:34:46 -0400
-Message-ID: <1250858086.6514.35.camel@heimdal.trondhjem.org>
-References: <20090821094226.286faa67.sfr@canb.auug.org.au>
-	 <1250821846.6514.23.camel@heimdal.trondhjem.org>
-	 <20090821024454.GA8786@fieldses.org>
-	 <20090821135617.8b255a5a.sfr@canb.auug.org.au>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 30/32] NFS: Add a dns resolver for use with NFSv4
+ referrals and migration
+Date: Fri, 21 Aug 2009 09:42:48 -0400
+Message-ID: <20090821094248.23bc54f1@tlielax.poochiereds.net>
+References: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-18-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-19-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-20-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-21-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-22-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-23-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-24-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-25-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-26-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-27-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-28-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-29-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-30-git-send-email-Trond.Myklebust@netapp.com>
+	<1250725135-14632-31-git-send-email-Trond.Myklebust@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20090821135617.8b255a5a.sfr@canb.auug.org.au>
-Sender: linux-next-owner@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:26377 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932191AbZHUNnT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Aug 2009 09:43:19 -0400
+In-Reply-To: <1250725135-14632-31-git-send-email-Trond.Myklebust@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-08-21 at 13:56 +1000, Stephen Rothwell wrote:
-> Hi Trond,
-> 
-> On Thu, 20 Aug 2009 22:44:54 -0400 "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >
-> > > Could both you and Bruce check if the following patch fixes the problem?
-> > 
-> > Yep, that boots for me, thanks.
-> 
-> Works for me as well.  I will add it at the end of linux-next today and
-> hope to see it in your tree tomorrow.
-> 
-> Thanks.
+On Wed, 19 Aug 2009 19:38:53 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Thanks to you both for testing. The fix is now in my tree.
+> The NFSv4 and NFSv4.1 protocols both allow for the redirection of a client
+> from one server to another in order to support filesystem migration and
+> replication. For full protocol support, we need to add the ability to
+> convert a DNS host name into an IP address that we can feed to the RPC
+> client.
+> 
+> We'll reuse the sunrpc cache, now that it has been converted to work with
+> rpc_pipefs.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Cheers
-  Trond
+
+I'm happy to see this problem get resolved. Much of this functionality
+however is already provided by the keys API. While it's more geared
+toward dealing with auth tokens, it's still a fairly decent generic upcall
+implementation and could easily have been used here with a lot less new
+code added. Why did you decide to roll your own implementation instead?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
