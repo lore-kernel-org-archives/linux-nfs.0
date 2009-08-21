@@ -1,76 +1,114 @@
-From: Stefan Egli <stefan.egli@gmail.com>
-Subject: NFS v3 cached directory content out of sync
-Date: Fri, 21 Aug 2009 20:22:12 +0200
-Message-ID: <d4098e2f0908211122y5d024dd1sd2f80356749315cc@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Fwd: mount.nfs: access denied by server
+Date: Fri, 21 Aug 2009 14:24:18 -0400
+Message-ID: <20090821182418.GE21043@fieldses.org>
+References: <1250822171.6514.29.camel@heimdal.trondhjem.org> <BAE89B4F-CA8C-46B2-82EA-9BAA438C1DF7@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
+To: Chuck Lever <Chuck.Lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f217.google.com ([209.85.220.217]:39130 "EHLO
-	mail-fx0-f217.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932240AbZHUSWL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2009 14:22:11 -0400
-Received: by fxm17 with SMTP id 17so601813fxm.37
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2009 11:22:12 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:58994 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932332AbZHUSYT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Aug 2009 14:24:19 -0400
+In-Reply-To: <BAE89B4F-CA8C-46B2-82EA-9BAA438C1DF7@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi there,
+On Fri, Aug 21, 2009 at 02:16:08PM -0400, Chuck Lever wrote:
+> I want to understand the server bug a little more.  I glanced over RFC  
+> 2623 and didn't see anything specific.
+>
+> Is it the case that only Linux NFSD does this, or do other servers do  
+> it?  In other words, is this a typical server response, and if so, is  
+> there a specific semantic attached to it?
+>
+> If no list is provided, should the client assume that only AUTH_NONE and 
+> AUTH_SYS are supported, or instead, perhaps that the client can try to 
+> use any flavor?  In other words, if no list is provided, let the mount 
+> proceed no matter what was specified by sec= ?
 
-I'm experiencing a problem with NFS v3. After a rush of data written
-to a particular NFS partition (to/from NetApp) I have noticed
-directory listings between three different NFS v3 clients (doing a'ls
-in the same directory) to see different content. The 'rush of data'
-included approx 400GB (and took a few hours to do so). The
-inconsistency that the three clients experienced was still the case 4
-hours after the mentioned data rush.
+I think the safest behavior on the client would be something like:
 
-I would 'somehow understand' that such a 'data storm' could maybe
-overwhelm the NFS client's caches - and thus would 'accept' (although
-not liking it) a delay between the client's cache updates. But that
-such an inconsistency is still existing 4 hours afterwards is IMHO a
-plain bug.
+	- If an explicit sec= is provided on the client, try that
+	  flavor.  Otherwise:
+		- If the server returned a nonempty list, pick something
+		  off that list.  Otherwise:
+		  	- Try auth_sys.
 
-=A0Question 1: Would you agree that this is a bug or is it 'NFS as desi=
-gned' ?
+--b.
 
-What I did having seen this is creating a new file in that directory -
-and voila, all clients immediately got to see the right directory
-content. This again calmed my nerves as in 'NFS still works'.
-
-Having said that - I now did some more testing with this NFS cache
-delay and noticed that file content updates between the three NFS
-clients easily takes a few seconds - up to 10-15 seconds.
-
-=A0Question 2: Is such a file content delay in NFS 'as designed' - I'm
-assuming that fiddling with NFS mount parameters could put a 'defined
-maximum' to such a delay? Or is there no such maximum and under 'bad
-luck' situations it can go infinitely high (which would be Q1) ?
-
-=A0Question 3: What is a suggested best-practice NFS mount parameter se=
-t
-for complying with the following requirements:
-=A0=A0 * lots of reads - tons of files - reads often from different fil=
-es
-=A0=A0 * few writes - but if written it should propagate to all NFS
-clients 'immediately'
-=A0=A0 * high load situations (as with the 400GB read/write stuff above=
-) -
-and after or even during this doing a 'ls' in a directory should
-produce consistent results on different attached NFS clients
-
-=A0Question 4: If we'd somehow manually detected such a directory
-content inconsistency - would there be something like a 'hey NFS
-client, flush all NFS caches NOW' thing?
-
-=A0Question 5: any of this related to commit 37d9d76d8b3a2ac5817e1fa326=
-3cfe
-0fdb439e51: NFS: flush cached directory information slightly more readi=
-ly. ?
-
-Thanks for answers to any or all of above! :)
-
-MUCH appreciated!
-
-Regards,
-Stefan
+>
+> Thanks for any clarification.
+>
+> Begin forwarded message:
+>
+>> From: Trond Myklebust <trond.myklebust@fys.uio.no>
+>> Date: August 20, 2009 10:36:11 PM GMT-04:00
+>> To: Wu Fengguang <fengguang.wu@intel.com>, "Mr. Charles Edward Lever" 
+>> <Chuck.Lever@oracle.com>
+>> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, LKML 
+>> <linux-kernel@vger.kernel.org>
+>> Subject: Re: mount.nfs: access denied by server
+>>
+>> On Fri, 2009-08-21 at 09:27 +0800, Wu Fengguang wrote:
+>>> On Thu, Aug 20, 2009 at 09:02:29PM +0800, Trond Myklebust wrote:
+>>>> On Thu, 2009-08-20 at 15:13 +0800, Wu Fengguang wrote:
+>>>>> Hi,
+>>>>>
+>>>>> After upgrading NFS client kernel to latest linux-next, NFS mount
+>>>>> failed:
+>>>>>
+>>>>>        # mount -t nfs pxe:/cc /cc
+>>>>>        mount.nfs: access denied by server while mounting pxe:/cc
+>>>>>
+>>>>>        # uname -a
+>>>>>        Linux hp 2.6.31-rc6-next-20090818 #61 SMP Thu Aug 20  
+>>>>> 14:46:10 CST 2009 x86_64 GNU/Linux
+>>>>>
+>>>>> However server log says OK:
+>>>>>
+>>>>>        Aug 20 15:02:09 wu-t61 mountd[4599]: authenticated mount  
+>>>>> request from 192.168.11.6:973 for /cc (/cc)
+>>>>>        Aug 20 15:02:09 wu-t61 mountd[4599]: authenticated unmount 
+>>>>> request from 192.168.11.6:974 for /cc (/cc)
+>>>>>
+>>>>> However-2: nfsroot can be mounted at boot time. Server kernel has 
+>>>>> always been 2.6.30.
+>>>>>
+>>>>> Any ideas?
+>>>>>
+>>>>> Thanks,
+>>>>> Fengguang
+>>>>
+>>>> Can you try again after enabling mount debugging on the NFS client?
+>>>>
+>>>> echo 512 > /proc/sys/sunrpc/nfs_debug
+>>>
+>>> I used 1024 and found the mount failed here in nfs_walk_authlist():
+>>>
+>>>        dfprintk(MOUNT, "NFS: server does not support requested auth  
+>>> flavor\ n");
+>>>        nfs_umount(request);
+>>
+>> Thanks Fengguang!
+>>
+>> Chuck, this looks like one of yours. Could it be that you are hitting
+>> the same Linux knfsd bug that Tom Haynes saw with a Solaris client?
+>> AFAICR, the problem was that existing nfs servers do not set a default
+>> auth flavour, and so you just have to try with auth_sys and see if it
+>> succeeds...
+>>
+>> Cheers
+>>  Trond
+>>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
