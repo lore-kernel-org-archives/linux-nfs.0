@@ -1,145 +1,80 @@
-From: Thomas Haynes <Thomas.Haynes-xsfywfwIY+M@public.gmane.org>
+From: Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
 Subject: Re: mount.nfs: access denied by server
-Date: Fri, 21 Aug 2009 14:07:03 -0500
-Message-ID: <760BE185-BE57-42C2-817C-6776B5B66667@sun.com>
+Date: Fri, 21 Aug 2009 14:40:55 -0500
+Message-ID: <4A8EF847.8030500@sun.com>
 References: <1250822171.6514.29.camel@heimdal.trondhjem.org>
  <BAE89B4F-CA8C-46B2-82EA-9BAA438C1DF7@oracle.com>
  <20090821182418.GE21043@fieldses.org>
+ <760BE185-BE57-42C2-817C-6776B5B66667@sun.com>
+ <0BCE5960-E78A-4433-8D38-8DC2E6A0FDCF@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; delsp=yes; format=flowed
-Cc: Chuck Lever <Chuck.Lever@oracle.com>,
+Content-Type: text/plain; CHARSET=US-ASCII; format=flowed
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
 	Trond Myklebust <Trond.Myklebust@netapp.com>,
 	NFS list <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <Chuck.Lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from brmea-mail-4.Sun.COM ([192.18.98.36]:49223 "EHLO
-	brmea-mail-4.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754734AbZHUTZA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2009 15:25:00 -0400
+Received: from brmea-mail-2.Sun.COM ([192.18.98.43]:39307 "EHLO
+	brmea-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755011AbZHUTlI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Aug 2009 15:41:08 -0400
 Received: from fe-amer-10.sun.com ([192.18.109.80])
-	by brmea-mail-4.sun.com (8.13.6+Sun/8.12.9) with ESMTP id n7LJ7Ko2014300
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2009 19:07:20 GMT
+	by brmea-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id n7LJf9DD005177
+	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2009 19:41:09 GMT
 Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
  (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
- id <0KOQ00L00PLZR100-suYR2Hc8r9/lQFUxb2hVpgC/G2K4zDHf@public.gmane.org> for linux-nfs@vger.kernel.org; Fri,
- 21 Aug 2009 13:07:20 -0600 (MDT)
-In-reply-to: <20090821182418.GE21043@fieldses.org>
+ id <0KOQ00B00RD4T000-suYR2Hc8r9/lQFUxb2hVpgC/G2K4zDHf@public.gmane.org> for linux-nfs@vger.kernel.org; Fri,
+ 21 Aug 2009 13:41:09 -0600 (MDT)
+In-reply-to: <0BCE5960-E78A-4433-8D38-8DC2E6A0FDCF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-Sent from my iPhone
-
-On Aug 21, 2009, at 1:24 PM, "J. Bruce Fields" <bfields@fieldses.org>  
-wrote:
-
-> On Fri, Aug 21, 2009 at 02:16:08PM -0400, Chuck Lever wrote:
->> I want to understand the server bug a little more.  I glanced over  
->> RFC
->> 2623 and didn't see anything specific.
+Chuck Lever wrote:
+> On Aug 21, 2009, at 3:07 PM, Thomas Haynes wrote:
+>> Sent from my iPhone
 >>
->> Is it the case that only Linux NFSD does this, or do other servers do
->> it?  In other words, is this a typical server response, and if so, is
->> there a specific semantic attached to it?
+>> On Aug 21, 2009, at 1:24 PM, "J. Bruce Fields" <bfields@fieldses.org> 
+>> wrote:
 >>
->> If no list is provided, should the client assume that only  
->> AUTH_NONE and
->> AUTH_SYS are supported, or instead, perhaps that the client can try  
->> to
->> use any flavor?  In other words, if no list is provided, let the  
->> mount
->> proceed no matter what was specified by sec= ?
->
-> I think the safest behavior on the client would be something like:
->
->    - If an explicit sec= is provided on the client, try that
->      flavor.  Otherwise:
->        - If the server returned a nonempty list, pick something
->          off that list.  Otherwise:
->              - Try auth_sys.
->
-
-Which is pretty much what we do. The exception being that the default  
-flavor is a setting - and probably always AUTH_SYS...
-
-
-
-> --b.
->
->>
->> Thanks for any clarification.
->>
->> Begin forwarded message:
->>
->>> From: Trond Myklebust <trond.myklebust@fys.uio.no>
->>> Date: August 20, 2009 10:36:11 PM GMT-04:00
->>> To: Wu Fengguang <fengguang.wu@intel.com>, "Mr. Charles Edward  
->>> Lever"
->>> <Chuck.Lever@oracle.com>
->>> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, LKML
->>> <linux-kernel@vger.kernel.org>
->>> Subject: Re: mount.nfs: access denied by server
->>>
->>> On Fri, 2009-08-21 at 09:27 +0800, Wu Fengguang wrote:
->>>> On Thu, Aug 20, 2009 at 09:02:29PM +0800, Trond Myklebust wrote:
->>>>> On Thu, 2009-08-20 at 15:13 +0800, Wu Fengguang wrote:
->>>>>> Hi,
->>>>>>
->>>>>> After upgrading NFS client kernel to latest linux-next, NFS mount
->>>>>> failed:
->>>>>>
->>>>>>       # mount -t nfs pxe:/cc /cc
->>>>>>       mount.nfs: access denied by server while mounting pxe:/cc
->>>>>>
->>>>>>       # uname -a
->>>>>>       Linux hp 2.6.31-rc6-next-20090818 #61 SMP Thu Aug 20
->>>>>> 14:46:10 CST 2009 x86_64 GNU/Linux
->>>>>>
->>>>>> However server log says OK:
->>>>>>
->>>>>>       Aug 20 15:02:09 wu-t61 mountd[4599]: authenticated mount
->>>>>> request from 192.168.11.6:973 for /cc (/cc)
->>>>>>       Aug 20 15:02:09 wu-t61 mountd[4599]: authenticated unmount
->>>>>> request from 192.168.11.6:974 for /cc (/cc)
->>>>>>
->>>>>> However-2: nfsroot can be mounted at boot time. Server kernel has
->>>>>> always been 2.6.30.
->>>>>>
->>>>>> Any ideas?
->>>>>>
->>>>>> Thanks,
->>>>>> Fengguang
->>>>>
->>>>> Can you try again after enabling mount debugging on the NFS  
->>>>> client?
->>>>>
->>>>> echo 512 > /proc/sys/sunrpc/nfs_debug
+>>> On Fri, Aug 21, 2009 at 02:16:08PM -0400, Chuck Lever wrote:
+>>>> I want to understand the server bug a little more.  I glanced over RFC
+>>>> 2623 and didn't see anything specific.
 >>>>
->>>> I used 1024 and found the mount failed here in nfs_walk_authlist():
+>>>> Is it the case that only Linux NFSD does this, or do other servers do
+>>>> it?  In other words, is this a typical server response, and if so, is
+>>>> there a specific semantic attached to it?
 >>>>
->>>>       dfprintk(MOUNT, "NFS: server does not support requested auth
->>>> flavor\ n");
->>>>       nfs_umount(request);
+>>>> If no list is provided, should the client assume that only 
+>>>> AUTH_NONE and
+>>>> AUTH_SYS are supported, or instead, perhaps that the client can try to
+>>>> use any flavor?  In other words, if no list is provided, let the mount
+>>>> proceed no matter what was specified by sec= ?
 >>>
->>> Thanks Fengguang!
+>>> I think the safest behavior on the client would be something like:
 >>>
->>> Chuck, this looks like one of yours. Could it be that you are  
->>> hitting
->>> the same Linux knfsd bug that Tom Haynes saw with a Solaris client?
->>> AFAICR, the problem was that existing nfs servers do not set a  
->>> default
->>> auth flavour, and so you just have to try with auth_sys and see if  
->>> it
->>> succeeds...
->>>
->>> Cheers
->>> Trond
+>>>   - If an explicit sec= is provided on the client, try that
+>>>     flavor.  Otherwise:
+>>>       - If the server returned a nonempty list, pick something
+>>>         off that list.  Otherwise:
+>>>             - Try auth_sys.
 >>>
 >>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
+>> Which is pretty much what we do. The exception being that the default 
+>> flavor is a setting - and probably always AUTH_SYS...
+>
+> I'm still not sure what is the right thing to do here.  Looking at 
+> 1813, it says:
+
+Sorry, I read this wrong, I thought the question was how should the 
+client handle
+security flavors from the mount command.
+
+With respect to the server returning a list, our implementation does 
+look at the list
+of returned flavors and only tries to use one in the list. That was 
+actually the fix that
+Bruce just applied - the linux server was returning an empty list and 
+the OpenSolaris
+server would fail the mount.
+
+
