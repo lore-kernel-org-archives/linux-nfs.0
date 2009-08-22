@@ -1,96 +1,43 @@
-From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: mount.nfs: access denied by server
-Date: Sat, 22 Aug 2009 09:48:19 +0800
-Message-ID: <20090822014819.GA7798@localhost>
-References: <20090820071315.GA14765@localhost> <1250773349.5352.23.camel@heimdal.trondhjem.org> <20090821012700.GA9937@localhost> <1250822171.6514.29.camel@heimdal.trondhjem.org> <8C4C4FD5-733E-4327-8618-8C400FAE72C1@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: Handle a zero-length auth flavor list
+Date: Sat, 22 Aug 2009 13:34:18 -0400
+Message-ID: <1250962458.8143.24.camel@heimdal.trondhjem.org>
+References: <20090821215006.28834.73753.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	LKML <linux-kernel@vger.kernel.org>
-To: Chuck Lever <Chuck.Lever@oracle.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([143.182.124.21]:62883 "EHLO mga03.intel.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:36368 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933075AbZHVBs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Aug 2009 21:48:26 -0400
-In-Reply-To: <8C4C4FD5-733E-4327-8618-8C400FAE72C1@oracle.com>
+	id S932832AbZHVReU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Aug 2009 13:34:20 -0400
+In-Reply-To: <20090821215006.28834.73753.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 22, 2009 at 01:50:52AM +0800, Chuck Lever wrote:
+On Fri, 2009-08-21 at 17:50 -0400, Chuck Lever wrote:
+> Some releases of Linux rpc.mountd (nfs-utils 1.1.4 and later) return an
+> empty auth flavor list if no sec= was specified for the export.  This is
+> notably broken server behavior.
 > 
-> On Aug 20, 2009, at 10:36 PM, Trond Myklebust wrote:
+> The new auth flavor list checking added in a recent commit rejects this
+> case.  The OpenSolaris client does too.
 > 
-> > On Fri, 2009-08-21 at 09:27 +0800, Wu Fengguang wrote:
-> >> On Thu, Aug 20, 2009 at 09:02:29PM +0800, Trond Myklebust wrote:
-> >>> On Thu, 2009-08-20 at 15:13 +0800, Wu Fengguang wrote:
-> >>>> Hi,
-> >>>>
-> >>>> After upgrading NFS client kernel to latest linux-next, NFS mount
-> >>>> failed:
-> >>>>
-> >>>>        # mount -t nfs pxe:/cc /cc
-> >>>>        mount.nfs: access denied by server while mounting pxe:/cc
-> >>>>
-> >>>>        # uname -a
-> >>>>        Linux hp 2.6.31-rc6-next-20090818 #61 SMP Thu Aug 20  
-> >>>> 14:46:10 CST 2009 x86_64 GNU/Linux
-> >>>>
-> >>>> However server log says OK:
-> >>>>
-> >>>>        Aug 20 15:02:09 wu-t61 mountd[4599]: authenticated mount  
-> >>>> request from 192.168.11.6:973 for /cc (/cc)
-> >>>>        Aug 20 15:02:09 wu-t61 mountd[4599]: authenticated unmount  
-> >>>> request from 192.168.11.6:974 for /cc (/cc)
-> >>>>
-> >>>> However-2: nfsroot can be mounted at boot time. Server kernel has  
-> >>>> always been 2.6.30.
-> >>>>
-> >>>> Any ideas?
-> >>>>
-> >>>> Thanks,
-> >>>> Fengguang
-> >>>
-> >>> Can you try again after enabling mount debugging on the NFS client?
-> >>>
-> >>> echo 512 > /proc/sys/sunrpc/nfs_debug
-> >>
-> >> I used 1024 and found the mount failed here in nfs_walk_authlist():
-> >>
-> >>        dfprintk(MOUNT, "NFS: server does not support requested auth  
-> >> flavor\ n");
-> >>        nfs_umount(request);
-> >
-> > Thanks Fengguang!
-> >
-> > Chuck, this looks like one of yours. Could it be that you are hitting
-> > the same Linux knfsd bug that Tom Haynes saw with a Solaris client?
-> > AFAICR, the problem was that existing nfs servers do not set a default
-> > auth flavour, and so you just have to try with auth_sys and see if it
-> > succeeds...
+> The broken mountd implementation is already widely deployed.  To avoid
+> a behavioral regression, the kernel's mount client skips flavor checking
+> (ie reverts to the pre-2.6.32 behavior) if mountd returns an empty
+> flavor list.
 > 
-> With 1024 set, the mount client's XDR routines should have listed the  
-> server's flavors, if any, in the system log.  Should be something like  
-> "NFS: received 0 auth flavors" if the server didn't return any.  Can  
-> you confirm that?
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> Trond-
+> 
+> First proposal to address the empty flavor list regression.
 
-Yes. The full logs are:
+Looks alright. Do we know that it fixes the problem for Fengguang?
 
+Cheers
+  Trond
 
-Aug 21 09:54:38 hp kernel: [   74.671552] NFS: nfs mount opts='nolock,addr=192.168.11.2'
-Aug 21 09:54:38 hp kernel: [   74.677150] NFS:   parsing nfs mount option 'nolock'
-Aug 21 09:54:38 hp kernel: [   74.682204] NFS:   parsing nfs mount option 'addr=192.168.11.2'
-Aug 21 09:54:38 hp kernel: [   74.688234] NFS: MNTPATH: '/cc'
-Aug 21 09:54:38 hp kernel: [   74.691468] NFS: sending MNT request for pxe:/cc
-Aug 21 09:54:38 hp kernel: [   74.704458] NFS: received 0 auth flavors
-Aug 21 09:54:38 hp kernel: [   74.708587] NFS: MNT request succeeded
-Aug 21 09:54:38 hp kernel: [   74.712435] NFS: server does not support requested auth flavor
-Aug 21 09:54:38 hp kernel: [   74.718358] NFS: sending UMNT request for pxe:/cc
-
-
-> I'll try to post a fix later today.
-
-Thanks!
-
-Fengguang
