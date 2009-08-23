@@ -1,55 +1,31 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: [PATCH] NFS: Handle a zero-length auth flavor list
-Date: Sun, 23 Aug 2009 14:57:01 -0400
-Message-ID: <50C4E02A-ADB5-454B-8B13-751C8E737A9F@oracle.com>
-References: <20090821215006.28834.73753.stgit@matisse.1015granger.net> <1250962458.8143.24.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Date: Sun, 23 Aug 2009 15:41:50 -0400
+Message-ID: <1251056510.16283.6.camel@heimdal.trondhjem.org>
+References: <20090821215006.28834.73753.stgit@matisse.1015granger.net>
+	 <1250962458.8143.24.camel@heimdal.trondhjem.org>
+	 <50C4E02A-ADB5-454B-8B13-751C8E737A9F@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:38365 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933820AbZHWTc4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Aug 2009 15:32:56 -0400
-In-Reply-To: <1250962458.8143.24.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail-out2.uio.no ([129.240.10.58]:43647 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933939AbZHWTlw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 23 Aug 2009 15:41:52 -0400
+In-Reply-To: <50C4E02A-ADB5-454B-8B13-751C8E737A9F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug 22, 2009, at 1:34 PM, Trond Myklebust wrote:
-> On Fri, 2009-08-21 at 17:50 -0400, Chuck Lever wrote:
->> Some releases of Linux rpc.mountd (nfs-utils 1.1.4 and later)  
->> return an
->> empty auth flavor list if no sec= was specified for the export.   
->> This is
->> notably broken server behavior.
->>
->> The new auth flavor list checking added in a recent commit rejects  
->> this
->> case.  The OpenSolaris client does too.
->>
->> The broken mountd implementation is already widely deployed.  To  
->> avoid
->> a behavioral regression, the kernel's mount client skips flavor  
->> checking
->> (ie reverts to the pre-2.6.32 behavior) if mountd returns an empty
->> flavor list.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> Trond-
->>
->> First proposal to address the empty flavor list regression.
->
-> Looks alright. Do we know that it fixes the problem for Fengguang?
+On Sun, 2009-08-23 at 14:57 -0400, Chuck Lever wrote:
+> If this was an issue in 2.6.31-rc, the patch description should  
+> probably read "pre-2.6.31" not "pre-2.6.32".
 
-Nope, posted only here on linux-nfs for discussion and review first.   
-Thanks for forwarding.
+As far as I know, Fengguang was testing with a linux-next kernel which
+contains your auth negotiation code. None of this is scheduled to be
+merged into the 2.6.31-rc series.
 
-If this was an issue in 2.6.31-rc, the patch description should  
-probably read "pre-2.6.31" not "pre-2.6.32".
+Cheers
+  Trond
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
