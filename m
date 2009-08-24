@@ -1,107 +1,86 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: [pnfs] [PATCH RFC v2 0/21] nfs4xdr cleanup v2
-Date: Mon, 24 Aug 2009 09:45:07 -0400
-Message-ID: <7BFE58E2-2621-48A2-885B-8F14F75441B2@oracle.com>
-References: <4A8571E2.8020800@panasas.com>  <4A89338D.1040207@panasas.com>	 <1250513254.8475.20.camel@heimdal.trondhjem.org>	 <4A896125.2040506@panasas.com> <1250527692.20012.26.camel@heimdal.trondhjem.org> <4A9240C7.5090307@panasas.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Benny Halevy <bhalevy@panasas.com>,
+Date: Mon, 24 Aug 2009 09:50:22 -0400
+Message-ID: <1251121822.6325.68.camel@heimdal.trondhjem.org>
+References: <4A8571E2.8020800@panasas.com>  <4A89338D.1040207@panasas.com>
+	 <1250513254.8475.20.camel@heimdal.trondhjem.org>
+	 <4A896125.2040506@panasas.com>
+	 <1250527692.20012.26.camel@heimdal.trondhjem.org>
+	 <4A9240C7.5090307@panasas.com>
+	 <1251115007.6325.9.camel@heimdal.trondhjem.org>
+	 <4A928CA7.8070306@panasas.com>
+	 <1251118754.6325.47.camel@heimdal.trondhjem.org>
+	 <4A929507.2060808@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>,
 	NFS list <linux-nfs@vger.kernel.org>,
 	pNFS Mailing List <pnfs@linux-nfs.org>
 To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:50055 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752531AbZHXNrB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2009 09:47:01 -0400
-In-Reply-To: <4A9240C7.5090307@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:3473 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752463AbZHXNuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2009 09:50:21 -0400
+In-Reply-To: <4A929507.2060808@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug 24, 2009, at 3:27 AM, Boaz Harrosh wrote:
-> On 08/17/2009 07:48 PM, Trond Myklebust wrote:
->> On Mon, 2009-08-17 at 16:54 +0300, Boaz Harrosh wrote:
->>> On 08/17/2009 03:47 PM, Trond Myklebust wrote:
->>>> Adding wrappers to do this, is just unnecessarily obfuscating the  
->>>> code.
->>>>
->>>
->>> As I said, *sometimes* "obfuscation" is the point. If it has  
->>> merits to account
->>> for human short concentration span.
->>
->> In this case, the change was motivated by a bunch of patches which  
->> were
->> doing things like adding dummy READ32 requests immediately prior to a
->> READ_BUF() call. It was therefore abundantly clear that the  
->> obfuscation
->> was helping no-one, even though it may have made it easy to churn out
->> bad code quickly.
->>
->>>>> * I hate it that I have to count (p)"++" now to look for actual  
->>>>> code advancements.
->>>>
->>>> How is that _any_ different from counting WRITE32s?
->>>>
->>>
->>> The size for one. And mainly the symmetry with the other side of  
->>> the wire.
->>>
->>> WRITEXX for every READXX. What now?
->>
->> A
->>
->> 	*p++ = cpu_to_be32(foo); // WRITE32(foo)
->>
->> for every
->>
->> 	foo = be32_to_cpu(*p++); // READ32(foo)
->>
->
-> OK I used the new stuff by now, and I'm happy with everything
-> but the above. I *absolutely* insist on this changing to:
->
-> 	p = xdr_encode_word(p, foo);
-> and
-> 	p = xdr_decode_word(p, &foo);
->
-> [xdr_{encode,decode}_word is defined differently but is only used in  
-> a couple
-> of sunrpc files, the change of these places shall be added to this  
-> cleanup]
->
-> I have checked this version of the definition:
-> static inline __be32 *
-> xdr_encode_word(__be32 *p, __u32 val)
-> {
-> 	*p++ = cpu_to_be32(val);
-> 	return p;
-> }
->
-> static inline __be32 *
-> xdr_decode_word(__be32 *p, __u32 *valp)
-> {
-> 	*valp = be32_to_cpu(*p++);
-> 	return p;
-> }
->
-> under assembly with gcc -O2 and it gives the exact same result as  
-> the open code,
-> so I do not see what can be said against it?
+On Mon, 2009-08-24 at 16:26 +0300, Boaz Harrosh wrote:
+> On 08/24/2009 03:59 PM, Trond Myklebust wrote:
+> > On Mon, 2009-08-24 at 15:50 +0300, Boaz Harrosh wrote:
+> >> On 08/24/2009 02:56 PM, Trond Myklebust wrote:
+> > In any case, I don't apply patches based on popular vote. I apply them
+> > based on my conviction that they are useful.
+> > 
+> 
+> I think you need a reality check. Just look in the mailing list archives.
 
-In addition to being consistent with xdr_{encode,decode}_hyper, this  
-adds appropriate static data type checking, which we want.
+No Boaz. YOU need the reality check.
 
-> All in favor say I. (And even if you don't, I know what you all  
-> think ;-))
+As I said above, I don't apply patches based on popular vote. I'm open
+to be persuaded that something is useful and helps maintainability of
+the code, but I'm not open to coercive tactics such as people telling me
+that I'm being irrational, and that I should do what the "Big
+Majority" (consisting so far of 2 people) wants.
 
-Aye.
+> > I mean that the fundamental type of XDR is a __be32. We are using that
+> > fundamental type in standard C code.
+> 
+> I heavily use beXX types in code totally unrelated to XDR. Please don't hijack
+> _beXX to mean XDR, for me they are just unrelated overlapping subjects.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+??? We don't have a special 'XDR' type, and I didn't say '__beXX' is
+XDR. I said that the fundamental type that we use in XDR encoding and
+decoding is a __b32. That's why you get to declare
 
+	__be32 *p;
 
+at the top of each XDR function. Then you get to encode the contents of
+that '__be32' declared memory location using the standard Linux C
+functions for manipulating '__be32' type.
 
+If you don't like the names of those standard functions, then complain
+to the people who named them.
+
+> > The fundamental Linux function for converting from a u32 to a __be32 is
+> > cpu_to_be32(). It doesn't need a new wrapper, and neither does
+> > be32_to_cpu().
+> > 
+> 
+> And that is exactlly why I use them inside "my" xdr-wrapper. But the xdr wrapper
+> for me is to do with calling convention, uniformity of code, and statement of intent.
+> My wrapper is not about byte-ness it is about calling convention and that pointer arithmetic
+> which you don't like, and I do.
+
+I repeat: we don't have a special 'XDR' type. We have __be32.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
