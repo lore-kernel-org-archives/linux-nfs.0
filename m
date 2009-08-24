@@ -1,121 +1,298 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:49209 "EHLO mail-out1.uio.no"
+Received: from neil.brown.name ([220.233.11.133]:48832 "EHLO neil.brown.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932633AbZHEAuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Aug 2009 20:50:24 -0400
-Subject: Re: [PATCH v3] read-modify-write page updating
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Peter Staubach <staubach@redhat.com>
-Cc: Brian R Cowan <brcowan@us.ibm.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <4A787543.9040701@redhat.com>
-References: <OF3EBF546E.60A83A8F-ON852575A8.006EBB38-852575A8.006EFDE6@us.ibm.com>
-	 <49FA0CE8.9090706@redhat.com>
-	 <1241126587.15476.62.camel@heimdal.trondhjem.org>
-	 <OF820C8732.74757E21-ON852575C5.0055C089-852575C5.00578071@us.ibm.com>
-	 <1243615595.7155.48.camel@heimdal.trondhjem.org>
-	 <OF0EEDB635.561D17D4-ON852575C5.005CBABA-852575C5.005FAD0D@us.ibm.com>
-	 <1243618500.7155.56.camel@heimdal.trondhjem.org>
-	 <ac442c870905291722x1ec811b2sda997d464898fcda@mail.gmail.com>
-	 <1243686363.5209.16.camel@heimdal.trondhjem.org>
-	 <ac442c870905300602v6950ec42y5195d2d6ea7dd4c@mail.gmail.com>
-	 <BA67D2A4-1752-4789-ADB9-D1B3C6D197F6@oracle.com>
-	 <1243963631.4868.124.camel@heimdal.trondhjem.org>
-	 <18982.41770.293636.786518@fisica.ufpr.br>
-	 <1244049027.5603.5.camel@heimdal.trondhjem.org>
-	 <OFB53BFCCB.0CEC7A7E-ON852575CA.006BA196-852575CB.00613ABC@us.ibm.com>
-	 <1244138698.5203.59.camel@heimdal.trondhjem.org>
-	 <4A428482.60403@redhat.com> <4A55FAC8.5040309@redhat.com>
-	 <4A787543.9040701@redhat.com>
-Content-Type: text/plain
-Date: Tue, 04 Aug 2009 20:50:11 -0400
-Message-Id: <1249433411.12510.4.camel@heimdal.trondhjem.org>
+	id S1753381AbZHYAAG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2009 20:00:06 -0400
+Received: from brown by neil.brown.name with local (Exim 4.69)
+	(envelope-from <nfs-bounces@lists.sourceforge.net>)
+	id 1MfjQP-00074Y-JJ
+	for linux-nfs@vger.kernel.org; Tue, 25 Aug 2009 09:58:09 +1000
+Message-ID: <4A93214A.5000404@dreamworks.com>
+Date: Mon, 24 Aug 2009 16:24:58 -0700
+From: Lans Carstensen <Lans.Carstensen@dreamworks.com>
+To: nfs@lists.sourceforge.net
+Content-Type: multipart/mixed; boundary="------------050404070705070401090902"
+Subject: [NFS] [PATCH] nfs-utils: nfs-iostat.py option to sort by ops/s
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2009-08-04 at 13:52 -0400, Peter Staubach wrote:
-> Signed-off-by: Peter Staubach <staubach@redhat.com>
-> 
-> --- linux-2.6.30.i686/fs/nfs/file.c.org
-> +++ linux-2.6.30.i686/fs/nfs/file.c
-> @@ -328,6 +328,42 @@ nfs_file_fsync(struct file *file, struct
->  }
->  
->  /*
-> + * Decide whether a read/modify/write cycle may be more efficient
-> + * then a modify/write/read cycle when writing to a page in the
-> + * page cache.
-> + *
-> + * The modify/write/read cycle may occur if a page is read before
-> + * being completely filled by the writer.  In this situation, the
-> + * page must be completely written to stable storage on the server
-> + * before it can be refilled by reading in the page from the server.
-> + * This can lead to expensive, small, FILE_SYNC mode writes being
-> + * done.
-> + *
-> + * It may be more efficient to read the page first if the file is
-> + * open for reading in addition to writing, the page is not marked
-> + * as Uptodate, it is not dirty or waiting to be committed,
-> + * indicating that it was previously allocated and then modified,
-> + * that there were valid bytes of data in that range of the file,
-> + * and that the new data won't completely replace the old data in
-> + * that range of the file.
-> + */
-> +static int nfs_want_read_modify_write(struct file *file, struct page *page,
-> +			loff_t pos, unsigned len)
-> +{
-> +	unsigned int pglen = nfs_page_length(page);
-> +	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
-> +	unsigned int end = offset + len;
-> +
-> +	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
-> +	    !PageUptodate(page) &&		/* Uptodate? */
-> +	    !PagePrivate(page) &&		/* i/o request already? */
-> +	    pglen &&				/* valid bytes of file? */
-> +	    (end < pglen || offset))		/* replace all valid bytes? */
-> +		return 1;
-> +	return 0;
-> +}
-> +
-> +/*
->   * This does the "real" work of the write. We must allocate and lock the
->   * page to be sent back to the generic routine, which then copies the
->   * data from user space.
-> @@ -340,15 +376,16 @@ static int nfs_write_begin(struct file *
->  			struct page **pagep, void **fsdata)
->  {
->  	int ret;
-> -	pgoff_t index;
-> +	pgoff_t index = pos >> PAGE_CACHE_SHIFT;
->  	struct page *page;
-> -	index = pos >> PAGE_CACHE_SHIFT;
-> +	int once_thru = 0;
->  
->  	dfprintk(PAGECACHE, "NFS: write_begin(%s/%s(%ld), %u@%lld)\n",
->  		file->f_path.dentry->d_parent->d_name.name,
->  		file->f_path.dentry->d_name.name,
->  		mapping->host->i_ino, len, (long long) pos);
->  
-> +start:
->  	/*
->  	 * Prevent starvation issues if someone is doing a consistency
->  	 * sync-to-disk
-> @@ -367,6 +404,13 @@ static int nfs_write_begin(struct file *
->  	if (ret) {
->  		unlock_page(page);
->  		page_cache_release(page);
-> +	} else if (!once_thru &&
-> +		   nfs_want_read_modify_write(file, page, pos, len)) {
-> +		once_thru = 1;
-> +		ret = nfs_readpage(file, page);
-> +		page_cache_release(page);
-> +		if (!ret)
-> +			goto start;
->  	}
->  	return ret;
->  }
-> 
-Thanks! Applied...
+--------------050404070705070401090902
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Trond
+Hi,
 
+I've recently made tools/nfs-iostat/nfs-iostat.py more useful in our 
+autofs environment with a variety of cleanups and am offering this patch 
+up for discussion and/or inclusion in nfs-utils.  It does the following:
+
+* Adds a --top flag to sort the display of mountpoint entries by ops/s.
+* Adds a --<n> flag to only display stats for the first <n> mountpoints
+* Re-reads the mountpoint list on intervals since it's dynamic in an
+   autofs environment.
+* Conforms the Python path to the LSB 3.2+ standard of /usr/bin/python
+http://refspecs.freestandards.org/LSB_3.2.0/LSB-Languages/LSB-Languages/pylocation.html
+
+My ml subscription is still pending, so make sure this email is cc'ed on 
+feedback.  Thank you.
+
+-- Lans Carstensen
+
+--------------050404070705070401090902
+Content-Type: text/x-patch;
+ name="nfs-iostat-lsb-autofs-top.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="nfs-iostat-lsb-autofs-top.patch"
+
+--- tools/nfs-iostat/nfs-iostat.py.orig	2009-08-24 15:52:26.000000000 -0700
++++ tools/nfs-iostat/nfs-iostat.py	2009-08-24 15:53:11.000000000 -0700
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/python
+ # -*- python-mode -*-
+ """Emulate iostat for NFS mount points using /proc/self/mountstats
+ """
+@@ -20,9 +20,9 @@
+ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ """
+ 
+-import sys, os, time
++import sys, os, time, re
+ 
+-Iostats_version = '0.2'
++Iostats_version = '0.3'
+ 
+ def difference(x, y):
+     """Used for a map() function
+@@ -353,6 +353,13 @@
+         print '\t%7.3f' % rtt_per_op,
+         print '\t%7.3f' % exe_per_op
+ 
++    def ops(self, sample_time):
++        sends = float(self.__rpc_data['rpcsends'])
++        if sample_time == 0:
++            sample_time = float(self.__nfs_data['age'])
++        return (sends / sample_time)
++        
++
+     def display_iostats(self, sample_time, which):
+         """Display NFS and RPC stats in an iostat-like way
+         """
+@@ -421,6 +428,11 @@
+     print ' If one or more <mount point> names are specified, statistics for only these'
+     print ' mount points will be displayed.  Otherwise, all NFS mount points on the'
+     print ' client are listed.'
++    print
++    print ' You can also specify "--top" to sort the NFS mount points by ops/second,'
++    print ' and specify a number of mount points to return with -<num>, e.g. -1.'
++    print ' For example, use of "--top -1" will iterate only showing you the stats'
++    print ' for the mount point with the largest ops/second.'
+ 
+ def parse_stats_file(filename):
+     """pop the contents of a mountstats file into a dictionary,
+@@ -446,26 +458,82 @@
+ 
+     return ms_dict
+ 
+-def print_iostat_summary(old, new, devices, time, ac):
+-    for device in devices:
++def print_iostat_summary(old, new, devices, time, ac, sortbyops, entrycount):
++    diff_stats = { }
++    count = 1
++
++    if old:
++        # Trim device list to only include intersection of old a new data,
++        # this addresses changes due to automount
++        devicelist = filter(lambda x:x in devices,old)
++    else:
++        devicelist = devices
++
++    for device in devicelist:
++        count += 1
+         stats = DeviceData()
+         stats.parse_stats(new[device])
+         if not old:
+             stats.display_iostats(time, ac)
++            if (count>entrycount):
++                return
+         else:
+             old_stats = DeviceData()
+             old_stats.parse_stats(old[device])
+-            diff_stats = stats.compare_iostats(old_stats)
+-            diff_stats.display_iostats(time, ac)
++            diff_stats[device] = stats.compare_iostats(old_stats)
++            if not sortbyops:
++                diff_stats[device].display_iostats(time, ac)
++                if (count>entrycount):
++                    return
++
++    if old and sortbyops:
++        # We had old data and could formulate a comparison
++        # Now print comparison ordered by mountpoint ops per second
++        count = 1
++
++        devices.sort(key=lambda x: diff_stats[x].ops(time), reverse=True)
++
++        for device in devices:
++            count += 1
++            diff_stats[device].display_iostats(time, ac)
++            if (count>entrycount):
++                return
++
++def list_nfs_mounts(givenlist, mountstats):
++    """return a list of NFS mounts given a list to validate or
++       return a full list if the given list is empty
++    """
++    list = []
++    if len(givenlist) > 0:
++        for device in givenlist:
++            stats = DeviceData()
++            stats.parse_stats(mountstats[device])
++            if stats.is_nfs_mountpoint():
++                list += [device]
++    else:
++        for device, descr in mountstats.iteritems():
++            stats = DeviceData()
++            stats.parse_stats(descr)
++            if stats.is_nfs_mountpoint():
++                list += [device]
++    if len(list) == 0:
++        print 'No NFS mount points were found'
++        return
++   
++    return list
+ 
+ def iostat_command(name):
+     """iostat-like command for NFS mount points
+     """
+     mountstats = parse_stats_file('/proc/self/mountstats')
+     devices = []
++    origdevices = []
+     which = 0
+     interval_seen = False
+     count_seen = False
++    sortbyops = False
++    entrycount = sys.maxint
++
+ 
+     for arg in sys.argv:
+         if arg in ['-h', '--help', 'help', 'usage']:
+@@ -476,6 +544,19 @@
+             print '%s version %s' % (name, Iostats_version)
+             return
+ 
++        if arg in ['-t', '--top', 'top']:
++            sortbyops = True
++            # top-like display infers a loop, default to 1 second
++            if not interval_seen:
++                interval = 1
++                interval_seen = True
++            continue
++
++        stop_re = re.compile('-[0-9]+')
++        if stop_re.match(arg):
++            entrycount = int(arg.lstrip('-'))
++            continue
++
+         if arg in ['-a', '--attr']:
+             which = 1
+             continue
+@@ -492,7 +573,7 @@
+             continue
+ 
+         if arg in mountstats:
+-            devices += [arg]
++            origdevices += [arg]
+         elif not interval_seen:
+             interval = int(arg)
+             if interval > 0:
+@@ -509,47 +590,42 @@
+                 return
+ 
+     # make certain devices contains only NFS mount points
+-    if len(devices) > 0:
+-        check = []
+-        for device in devices:
+-            stats = DeviceData()
+-            stats.parse_stats(mountstats[device])
+-            if stats.is_nfs_mountpoint():
+-                check += [device]
+-        devices = check
+-    else:
+-        for device, descr in mountstats.iteritems():
+-            stats = DeviceData()
+-            stats.parse_stats(descr)
+-            if stats.is_nfs_mountpoint():
+-                devices += [device]
+-    if len(devices) == 0:
+-        print 'No NFS mount points were found'
+-        return
++    devices = list_nfs_mounts(origdevices, mountstats)
+ 
+     old_mountstats = None
+     sample_time = 0.0
+ 
+     if not interval_seen:
+-        print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which)
++        print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which, sortbyops, entrycount)
+         return
+ 
++
++    # Need to check for automount here and then use that flag below instead of always recalculating
++    
+     if count_seen:
+         while count != 0:
+-            print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which)
++            print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which, sortbyops, entrycount)
+             old_mountstats = mountstats
+             time.sleep(interval)
+             sample_time = interval
+             mountstats = parse_stats_file('/proc/self/mountstats')
++
++            # automount mountpoints add and drop, if automount is involved we need to recheck the
++            # devices list when reiterating the check
++            devices = list_nfs_mounts(origdevices,mountstats)
++
+             count -= 1
+     else: 
+         while True:
+-            print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which)
++            print_iostat_summary(old_mountstats, mountstats, devices, sample_time, which, sortbyops, entrycount)
+             old_mountstats = mountstats
+             time.sleep(interval)
+             sample_time = interval
+             mountstats = parse_stats_file('/proc/self/mountstats')
+ 
++            # automount mountpoints add and drop, if automount is involved we need to recheck the
++            # devices list when reiterating the check
++            devices = list_nfs_mounts(origdevices,mountstats)
+ #
+ # Main
+ #
+
+--------------050404070705070401090902
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+------------------------------------------------------------------------------
+Let Crystal Reports handle the reporting - Free Crystal Reports 2008 30-Day 
+trial. Simplify your report design, integration and deployment - and focus on 
+what you do best, core application coding. Discover what's new with 
+Crystal Reports now.  http://p.sf.net/sfu/bobj-july
+--------------050404070705070401090902
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+NFS maillist  -  NFS@lists.sourceforge.net
+https://lists.sourceforge.net/lists/listinfo/nfs
+_______________________________________________
+Please note that nfs@lists.sourceforge.net is being discontinued.
+Please subscribe to linux-nfs@vger.kernel.org instead.
+    http://vger.kernel.org/vger-lists.html#linux-nfs
+
+--------------050404070705070401090902--
