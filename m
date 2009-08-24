@@ -1,69 +1,92 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [pnfs] [PATCH RFC v2 0/21] nfs4xdr cleanup v2
-Date: Mon, 24 Aug 2009 07:56:47 -0400
-Message-ID: <1251115007.6325.9.camel@heimdal.trondhjem.org>
-References: <4A8571E2.8020800@panasas.com>  <4A89338D.1040207@panasas.com>
-	 <1250513254.8475.20.camel@heimdal.trondhjem.org>
-	 <4A896125.2040506@panasas.com>
-	 <1250527692.20012.26.camel@heimdal.trondhjem.org>
-	 <4A9240C7.5090307@panasas.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: NFS v3 cached directory content out of sync
+Date: Mon, 24 Aug 2009 08:11:33 -0400
+Message-ID: <1251115893.6325.23.camel@heimdal.trondhjem.org>
+References: <d4098e2f0908211122y5d024dd1sd2f80356749315cc@mail.gmail.com>
+	 <1250880591.27154.18.camel@heimdal.trondhjem.org>
+	 <d4098e2f0908211208j55dee16fy146ddb8de81d8722@mail.gmail.com>
+	 <1250962724.8143.29.camel@heimdal.trondhjem.org>
+	 <d4098e2f0908221628kfa208c5wa3367f8fbde1c1c9@mail.gmail.com>
+	 <d4098e2f0908240332k55ff2789r9aaa17cb5cd99cdf@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: Benny Halevy <bhalevy@panasas.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	pNFS Mailing List <pnfs@linux-nfs.org>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: Stefan Egli <stefan.egli@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63421 "EHLO mx2.netapp.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:51164 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751984AbZHXL5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Aug 2009 07:57:03 -0400
-In-Reply-To: <4A9240C7.5090307@panasas.com>
+	id S1752243AbZHXMLf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2009 08:11:35 -0400
+In-Reply-To: <d4098e2f0908240332k55ff2789r9aaa17cb5cd99cdf-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-08-24 at 10:27 +0300, Boaz Harrosh wrote:
-> OK I used the new stuff by now, and I'm happy with everything
-> but the above. I *absolutely* insist on this changing to:
-
-Feel quite free to insist, but the patch isn't going in.
-
-> 	p = xdr_encode_word(p, foo);
-> and 
-> 	p = xdr_decode_word(p, &foo);
+On Mon, 2009-08-24 at 12:32 +0200, Stefan Egli wrote:
+> Hi,
 > 
-> [xdr_{encode,decode}_word is defined differently but is only used in a couple
->  of sunrpc files, the change of these places shall be added to this cleanup]
+> It's me again. I'm catching up on 'man 5 nfs' and reading all the input I found
+> wrt the NFS directory cache issue so far. So this is hopefully a condensed
+> set of findings and questions ;)
 > 
-> I have checked this version of the definition:
->  static inline __be32 *
->  xdr_encode_word(__be32 *p, __u32 val)
->  {
-> 	*p++ = cpu_to_be32(val);
-> 	return p;
->  }
+> 1) As I understand, the Linux version we're using (2.6.24-24-generic) does not
+>    contain the patch 37d9d76d8b3a2ac5817e1fa3263cfe0fdb439e51 - which
+>    only made it to the kernel 2.6.30, right?
+
+That would be a question for the Debian/Ubuntu maintainers. I have no
+idea what they have included in 2.6.24-24-generic
+
+> 2) I'm still not sure I understand that patch correctly though
+>    (37d9d76d8b3a2ac5817e1fa3263cfe0fdb439e5): Would the tivoli restore
+>    be able to mess with mtimes and *therefore* cause the 4-5 hour cache
+>    inconsistency I'm seeing? If yes, would the patch then magically fix this?
+
+If tivoli is messing with the mtime, then it _might_ cause the
+condition, in a restore situation by changing the directory contents but
+not the mtime (which is what tells the NFS client and applications that
+the directory contents have changed).
+By looking at the ctime too, the client can always tell that something
+has changed, and thus clear its cache.
+
+> 3) The other part of my issue which I still don't understand is, why a backup
+>    (not restore) could cause completely unrelated files (which we update every
+>    5 minutes using some simple raw shell scripts) to remain out-of-sync
+>    with other NFS clients - that is, client A changes the content every 5 min
+>    but client B and C see it only after 1-2 hours. Seems somewhat new and
+>    unrelated to the restore case of above - as restore does change directory
+>    content (and that's where the problem lies) but backup merely changes
+>    the file's mtime probably (but not even sure it does that - maybe leaves it
+>    unchanged)
+
+I've no idea why the other clients aren't seeing a change in this case.
+I certainly cannot reproduce this with my own setup.
+
+With the default acdirmin/max settings, the clients should not be
+caching the mtime for longer than 1 minute. While they might be blind to
+the directory changes during that time, they should at least see it
+after the minute expires.
+
+> 4) If I see this correctly, the acdirmin/acdirmax parameters could not prevent
+>   a situation 2) of above?
+
+No.
+
+> 5) Would rdirplus be of any help here at all?
+
+No.
+
+> 6) Regarding the echo 3 > /proc/sys/vm/drop_caches issue:
 > 
->  static inline __be32 *
->  xdr_decode_word(__be32 *p, __u32 *valp)
->  {
-> 	*valp = be32_to_cpu(*p++);
-> 	return p;
->  }
+>   > Only if you are certain that there are no processes actually using that
+>   > directory or any of its subdirs/files.
 > 
-> under assembly with gcc -O2 and it gives the exact same result as the open code,
-> so I do not see what can be said against it?
+>   What happens if there are processes still having files open in subdirs?
+>   Would probably create .nfs files - but would it otherwise work - or corrupt
+>   read/written data?
 
-It is unnecessary, it looks ugly, the latter form takes 2 pointers and
-hides an assignment, it does an unconditional pointer increment.
+The VFS clears the cache by dropping unreferenced dentries. By holding a
+reference to the directory or a subfile/subdir, your process would
+simply cause the VFS to be unable to drop that dentry.
 
-IOW: Just learn the meaning of 'pointer to __be32'.
+Cheers
+  Trond
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
