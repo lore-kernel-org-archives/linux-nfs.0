@@ -1,57 +1,185 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/3] SUNRPC: Fix the TCP write space reservations for
-	deferred requests
-Date: Mon, 24 Aug 2009 17:32:13 -0400
-Message-ID: <20090824213213.GC8532@fieldses.org>
-References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org> <20090518214756.786.33956.stgit@heimdal.trondhjem.org> <20090619222344.GB32083@fieldses.org> <1245534248.5182.45.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH RFC 01/10] nfsd41: sunrpc: svc_tcp_recv_record()
+Date: Mon, 24 Aug 2009 18:52:50 -0400
+Message-ID: <20090824225249.GD8532@fieldses.org>
+References: <4A8C9992.2000505@panasas.com> <1250728459-28477-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Jeff Moyer <jmoyer@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Alexandros Batsakis <batsakis@netapp.com>,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60450 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47505 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752942AbZHXVcM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Aug 2009 17:32:12 -0400
-In-Reply-To: <1245534248.5182.45.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1752895AbZHXWws (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2009 18:52:48 -0400
+In-Reply-To: <1250728459-28477-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 20, 2009 at 05:44:08PM -0400, Trond Myklebust wrote:
-> On Fri, 2009-06-19 at 18:23 -0400, J. Bruce Fields wrote:
-> > On Mon, May 18, 2009 at 05:47:56PM -0400, Trond Myklebust wrote:
-> > > Ensure that deferred requests are accounted for correctly by the write
-> > > space reservation mechanism. In order to avoid double counting, remove the
-> > > reservation when we defer the request, and save any calculated value, so
-> > > that we can restore it when the request is requeued.
-> > 
-> > I like that it does the addition to xpt_reserved in just one place
-> > instead of two, and carrying over the reserved_space is nice, but I
-> > don't understand the "double accounting" comment--where exactly is
-> > something counted twice?
+On Thu, Aug 20, 2009 at 03:34:19AM +0300, Benny Halevy wrote:
+> From: Alexandros Batsakis <batsakis@netapp.com>
 > 
-> Correct me if I'm wrong, but as far as I can see, the current code bumps
-> xpt_reserved every time you call svc_xprt_enqueue() irrespective of
-> whether or not you are going to process a new RPC call, or whether you
-> are processing a deferred call.
-> 
-> In the latter case, there doesn't appear to be any code that subtracts
-> from xpt_reserved prior to the re-enqueue process, hence my belief that
-> we are double counting those events...
+> Factor functionality out of svc_tcp_recvfrom() to simplify routine
 
-Sorry for the slow response!  The original request is
-dropped--cache_check() returns -EAGAIN on queueing up the deferred
-request, the caller returns back to svc_process, and the reservation is
-removed from xpt_reserved by svc_drop().
-
-And a new reservation isn't made until the deferred request is
-revisited, at which point it's treated as any new request received from
-a socket would be.
-
-Your patch would instead have the server keep that reservation while the
-request is deferred.
-
-I'm not really sure how to decide which is better.
+Thanks, applied.
 
 --b.
+
+> 
+> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  net/sunrpc/svcsock.c |   79 ++++++++++++++++++++++++++++++++-----------------
+>  1 files changed, 51 insertions(+), 28 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 23128ee..5a5bc8b 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -826,21 +826,15 @@ failed:
+>  }
+>  
+>  /*
+> - * Receive data from a TCP socket.
+> + * Receive data.
+> + * If we haven't gotten the record length yet, get the next four bytes.
+> + * Otherwise try to gobble up as much as possible up to the complete
+> + * record length.
+>   */
+> -static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+> +static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
+>  {
+> -	struct svc_sock	*svsk =
+> -		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+>  	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+> -	int		len;
+> -	struct kvec *vec;
+> -	int pnum, vlen;
+> -
+> -	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
+> -		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
+> -		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
+> -		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
+> +	int len;
+>  
+>  	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
+>  		/* sndbuf needs to have room for one request
+> @@ -861,10 +855,6 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  
+>  	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+>  
+> -	/* Receive data. If we haven't got the record length yet, get
+> -	 * the next four bytes. Otherwise try to gobble up as much as
+> -	 * possible up to the complete record length.
+> -	 */
+>  	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
+>  		int		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
+>  		struct kvec	iov;
+> @@ -879,7 +869,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  			dprintk("svc: short recvfrom while reading record "
+>  				"length (%d of %d)\n", len, want);
+>  			svc_xprt_received(&svsk->sk_xprt);
+> -			return -EAGAIN; /* record header not complete */
+> +			goto err_again; /* record header not complete */
+>  		}
+>  
+>  		svsk->sk_reclen = ntohl(svsk->sk_reclen);
+> @@ -894,6 +884,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  					"per record not supported\n");
+>  			goto err_delete;
+>  		}
+> +
+>  		svsk->sk_reclen &= RPC_FRAGMENT_SIZE_MASK;
+>  		dprintk("svc: TCP record, %d bytes\n", svsk->sk_reclen);
+>  		if (svsk->sk_reclen > serv->sv_max_mesg) {
+> @@ -914,11 +905,45 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  		dprintk("svc: incomplete TCP record (%d of %d)\n",
+>  			len, svsk->sk_reclen);
+>  		svc_xprt_received(&svsk->sk_xprt);
+> -		return -EAGAIN;	/* record not complete */
+> +		goto err_again;	/* record not complete */
+>  	}
+>  	len = svsk->sk_reclen;
+>  	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+>  
+> +	return len;
+> + error:
+> +	if (len == -EAGAIN) {
+> +		dprintk("RPC: TCP recv_record got EAGAIN\n");
+> +		svc_xprt_received(&svsk->sk_xprt);
+> +	}
+> +	return len;
+> + err_delete:
+> +	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+> + err_again:
+> +	return -EAGAIN;
+> +}
+> +
+> +/*
+> + * Receive data from a TCP socket.
+> + */
+> +static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+> +{
+> +	struct svc_sock	*svsk =
+> +		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+> +	struct svc_serv	*serv = svsk->sk_xprt.xpt_server;
+> +	int		len;
+> +	struct kvec *vec;
+> +	int pnum, vlen;
+> +
+> +	dprintk("svc: tcp_recv %p data %d conn %d close %d\n",
+> +		svsk, test_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags),
+> +		test_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags),
+> +		test_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags));
+> +
+> +	len = svc_tcp_recv_record(svsk, rqstp);
+> +	if (len < 0)
+> +		goto error;
+> +
+>  	vec = rqstp->rq_vec;
+>  	vec[0] = rqstp->rq_arg.head[0];
+>  	vlen = PAGE_SIZE;
+> @@ -934,7 +959,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  	/* Now receive data */
+>  	len = svc_recvfrom(rqstp, vec, pnum, len);
+>  	if (len < 0)
+> -		goto error;
+> +		goto err_again;
+>  
+>  	dprintk("svc: TCP complete record (%d bytes)\n", len);
+>  	rqstp->rq_arg.len = len;
+> @@ -960,21 +985,19 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+>  
+>  	return len;
+>  
+> - err_delete:
+> -	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+> -	return -EAGAIN;
+> -
+> - error:
+> +err_again:
+>  	if (len == -EAGAIN) {
+>  		dprintk("RPC: TCP recvfrom got EAGAIN\n");
+>  		svc_xprt_received(&svsk->sk_xprt);
+> -	} else {
+> +		return len;
+> +	}
+> +error:
+> +	if (len != -EAGAIN) {
+>  		printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
+>  		       svsk->sk_xprt.xpt_server->sv_name, -len);
+> -		goto err_delete;
+> +		set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+>  	}
+> -
+> -	return len;
+> +	return -EAGAIN;
+>  }
+>  
+>  /*
+> -- 
+> 1.6.4
+> 
