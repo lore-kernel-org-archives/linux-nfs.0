@@ -1,145 +1,189 @@
-From: Daniel J Blueman <daniel.blueman@gmail.com>
-Subject: Re: [2.6.31-rc7] NFS4 client manager kthread spinning...
-Date: Mon, 24 Aug 2009 16:18:28 +0100
-Message-ID: <6278d2220908240818g3fc23311i607143b7cb6b965d@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH] Enable v4 mounts when either "nfsvers=4" or "vers=4" option
+ are set (vers-01)
+Date: Mon, 24 Aug 2009 12:05:00 -0400
+Message-ID: <4A92BA2C.3030407@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f207.google.com ([209.85.219.207]:52317 "EHLO
-	mail-ew0-f207.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751689AbZHXPS2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Aug 2009 11:18:28 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:20132 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752785AbZHXQFD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2009 12:05:03 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Incorporating all the input from the RFC of this patch (thank you very much) 
+here is the actual patch that allows v4 mount to occurr by setting mount 
+version to '4' on the mount command line.
 
-On Mon, Aug 17, 2009 at 2:53 PM, Daniel J
-Blueman<daniel.blueman@gmail.com> wrote:
-> Hi Trond,
->
-> On Mon, Aug 17, 2009 at 2:12 PM, Trond
-> Myklebust<Trond.Myklebust@netapp.com> wrote:
->> On Sun, 2009-08-16 at 23:40 +0100, Daniel J Blueman wrote:
->>> After losing and regaining ethernet link a few times with 2.6.31-rc5
->>> [1], I've hit an oops in the NFS4 client manager kthread [2] on my
->>> client with NFS4 homedir mount.
->>>
->>> Do you have a frequent test-case for when the client's manager kthread
->>> gets invoked (with and without succeeding callbacks, due to eg a
->>> firewall)? Server here is unpatched 2.6.30-rc6; I recall seeing
->>> problems when the manager kthread gets invoked, across quite a few
->>> kernel releases, just wasn't lucky enough to catch an oops.
->>>
->>> Oppsing in allow_signal() suggests task state corruption perhaps? I'm
->>> downloading the debug kernel to match up the disassembly and line
->>> numbers, if that helps? This time, the client had no firewall (but
->>> have seen other issues when the callback has failed due to the
->>> firewall).
->>
->> Those aren't Oopses. They are 'soft lockup' warnings. Basically, they're
->> saying that the CPU is getting stuck waiting for a spin lock or a mutex.
->>
->> In this case, it is probably the fact that the state manager is going
->> nuts trying to recover, while the connection to the server keeps coming
->> up and going down.
->>
->> What does 'netstat -t' say when you get into this situation?
->
-> Whoops; it's true the stack-trace comes from the soft-lockup detector.
->
-> There was a single 200s link excursion, but the client didn't recover
-> as locks are held and never released it seems; I observe the
-> '192.168.1.250-m' NFS4 manager kthread being created and not going
-> away, despite IP connectivity with the server being fine after.
->
-> I'll reproduce it with stock 2.6.31-rc6 on the client and get 'netstat
-> -t' output.
+The patch is on the "mount_vers4-r1" branch on my experiential git tree:
+     git://linux-nfs.org/~steved/nfs-utils-exp.git
 
-(subject line updated)
+Comments?
 
-After further analysis, I see that NFS services do correctly recover
-after the link excursion, however we see:
- - link is restored
- - the manager kthread gets created, does some work
- - we see lock reclamation fail [1]
- - after a short while, NFS read()s continue, all is good
- - the manager kthread spins indefinitely [2, 3] on (struct
-rpc_wait_queue)queue->lock with spin_lock_bh() [see rpc_wake_up]
+steved.
 
-This seems reproducible with various kernel debugging enabled (perhaps
-suggesting use-after-free via the lock being reinitialised/poisoned?).
+commit 8ae2bbb042559cd283067322072b6d669819e729
+Author: Steve Dickson <steved@redhat.com>
+Date:   Mon Aug 24 12:06:51 2009 -0400
 
-Let me know if anything else may help track this down (config, stack
-frame resolution etc). I'll take a deeper look if I get time in a
-couple of weeks, but alas it may be after 2.6.31 is released. NFS+RPC
-debugging (taken at a different time than [1]) at
-http://quora.org/hive/nfs-manager-spin.bz2 .
+    Enable v4 mounts when either "nfsvers=4" or "vers=4" option are set.
+    
+    Since nfs4 is a different file system than nfs, the file system type
+    has to be set when "v4" or "vers=4" or "nfsvers=4" are used. So
+    when either of these options are specified, the file system type
+    will be set to "nfs4" and those options will be stripped out of the
+    option list since the kernel will not know how to parse them
+    with v4 mounts
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
-Thanks,
-  Daniel
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index f6fa5fd..d3185b4 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -90,11 +90,11 @@ static const char *nfs_transport_opttbl[] = {
+ static const char *nfs_version_opttbl[] = {
+ 	"v2",
+ 	"v3",
++	"v4",
+ 	"vers",
+ 	"nfsvers",
+ 	NULL,
+ };
+-
+ static const unsigned long nfs_to_mnt[] = {
+ 	0,
+ 	0,
+@@ -1203,7 +1203,7 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
+  * Returns TRUE if @version contains a valid value for this option,
+  * or FALSE if the option was specified with an invalid value.
+  */
+-static int
++int
+ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ {
+ 	long tmp;
+@@ -1215,10 +1215,13 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 	case 1: /* v3 */
+ 		*version = 3;
+ 		return 1;
+-	case 2:	/* vers */
++	case 2: /* v4 */
++		*version = 4;
++		return 1;
++	case 3:	/* vers */
+ 		switch (po_get_numeric(options, "vers", &tmp)) {
+ 		case PO_FOUND:
+-			if (tmp >= 2 && tmp <= 3) {
++			if (tmp >= 2 && tmp <= 4) {
+ 				*version = tmp;
+ 				return 1;
+ 			}
+@@ -1229,10 +1232,10 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 		case PO_BAD_VALUE:
+ 			return 0;
+ 		}
+-	case 3: /* nfsvers */
++	case 4: /* nfsvers */
+ 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
+ 		case PO_FOUND:
+-			if (tmp >= 2 && tmp <= 3) {
++			if (tmp >= 2 && tmp <= 4) {
+ 				*version = tmp;
+ 				return 1;
+ 			}
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index db5134c..5169b26 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -62,6 +62,7 @@ int nfs_options2pmap(struct mount_options *,
+ int start_statd(void);
+ 
+ unsigned long nfsvers_to_mnt(const unsigned long);
++int nfs_nfs_version(struct mount_options *, unsigned long *);
+ 
+ int nfs_call_umount(clnt_addr_t *, dirpath *);
+ int nfs_advise_umount(const struct sockaddr *, const socklen_t,
+diff --git a/utils/mount/nfsmount.conf b/utils/mount/nfsmount.conf
+index f9fcfcb..1848359 100644
+--- a/utils/mount/nfsmount.conf
++++ b/utils/mount/nfsmount.conf
+@@ -28,7 +28,7 @@
+ # This statically named section defines global mount 
+ # options that can be applied on all NFS mount.
+ #
+-# Protocol Version [2,3]
++# Protocol Version [2,3,4]
+ # Nfsvers=3
+ # Network Transport [Udp,Tcp,Rdma]
+ # Proto=Tcp
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a12ace7..0d82441 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -656,6 +656,47 @@ static int nfsmount_bg(struct nfsmount_info *mi)
+ 		return nfsmount_child(mi);
+ }
+ 
++static const char *nfs_fstype_opttbl[] = {
++	"v4",
++	"vers",
++	"nfsvers",
++	NULL,
++};
++
++/*
++ * Returns either "nfs" or "nfs4" as the file system type
++ * depending on which (if any) of the nfs version options
++ * are specified. 
++ */
++char *nfs_fs_type(struct mount_options *options)
++{
++	unsigned long version;
++	static char *fs_type = "nfs";
++
++	if (nfs_nfs_version(options, &version) == 0)
++		return fs_type;
++
++	if (version != 4)
++		return fs_type;
++
++	fs_type = "nfs4";
++	switch(po_rightmost(options, nfs_fstype_opttbl)) {
++	case 0: /* v4 */
++		po_remove_all(options, "v4");
++		break;
++	case 1: /* vers=4 */
++		po_remove_all(options, "vers");
++		break;
++	case 2: /* nfsvers=4 */
++		po_remove_all(options, "nfsvers");
++		break;
++	default: /* Is this even possible ?? */
++		fs_type = "nfs";
++	}
++
++	return fs_type;
++}
++
+ /*
+  * Process mount options and try a mount system call.
+  *
+@@ -669,6 +710,9 @@ static const char *nfs_background_opttbl[] = {
+ 
+ static int nfsmount_start(struct nfsmount_info *mi)
+ {
++
++	mi->type = nfs_fs_type(mi->options);
++
+ 	if (!nfs_validate_options(mi))
+ 		return EX_FAIL;
+ 
 
---- [1]
 
-[ 1692.147184] e1000e: eth0 NIC Link is Down
-[ 1894.417242] nfs: server x1 not responding, still trying
-[ 1904.715032] e1000e: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow
-Control: RX/TX
-[ 1957.423232] nfs: server x1 OK
-[ 1957.481925] nfs4_reclaim_open_state: Lock reclaim failed!
 
---- [2]
-
-$ ps -ef
-<snip>
-UID        PID  PPID  C STIME TTY          TIME CMD
-root      5028     2 99 22:59 ?        00:00:09 [192.168.10.250-]
-
---- [3]
-
-192.168.10.25 R  running task     4040  5107      2 0x00000000
-
-ffffffff826c5470 00000000000002fb ffff88014b215d90 ffffffff810a2321
-
-ffffffff8168f99e 0000000000024390 0000000100000001 ffff880100000000
-
-0000000100000001 0000000000000001 0000000000000000 ffff8801451b54e8
-
-Call Trace:
-
-[<ffffffff810a2321>] __lock_acquire+0x2d1/0x1240
-
-[<ffffffff8168f99e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-
-[<ffffffff81693fa2>] ? sub_preempt_count+0x142/0x150
-
-[<ffffffff810a33ae>] lock_acquire+0x11e/0x170
-
-[<ffffffff8163f718>] ? rpc_wake_up+0x18/0xa0
-
-[<ffffffff81693fa2>] ? sub_preempt_count+0x142/0x150
-
-[<ffffffff8168fee6>] ? _spin_lock_bh+0x46/0x80
-
-[<ffffffff8163f718>] ? rpc_wake_up+0x18/0xa0
-
-[<ffffffff8124ff26>] ? nfs4_clear_state_manager_bit+0x36/0x40
-
-[<ffffffff812515a8>] ? nfs4_run_state_manager+0x378/0x500
-
-[<ffffffff81251230>] ? nfs4_run_state_manager+0x0/0x500
-
-[<ffffffff81088946>] ? kthread+0xa6/0xc0
-
-[<ffffffff8100d71a>] ? child_rip+0xa/0x20
-
-[<ffffffff8100d054>] ? restore_args+0x0/0x30
-
-[<ffffffff810888a0>] ? kthread+0x0/0xc0
-
-[<ffffffff8100d710>] ? child_rip+0x0/0x20
--- 
-Daniel J Blueman
+ 
