@@ -1,38 +1,55 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [2.6.31-rc7] NFS4 client manager kthread spinning...
-Date: Mon, 24 Aug 2009 19:18:27 -0400
-Message-ID: <1251155907.6325.359.camel@heimdal.trondhjem.org>
-References: <6278d2220908240818g3fc23311i607143b7cb6b965d@mail.gmail.com>
-	 <1251134769.6325.273.camel@heimdal.trondhjem.org>
-	 <6278d2220908241612g32cf4e61l3bc80c3f8c9d4037@mail.gmail.com>
+Subject: [PATCH] NFSv4: Fix an infinite looping problem with the
+ nfs4_state_manager
+Date: Mon, 24 Aug 2009 19:21:29 -0400
+Message-ID: <1251156089.6325.362.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-	Linux Kernel <linux-kernel@vger.kernel.org>
-To: Daniel J Blueman <daniel.blueman@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Daniel J Blueman <daniel.blueman@gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21764 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35251 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753381AbZHXXSl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Aug 2009 19:18:41 -0400
-In-Reply-To: <6278d2220908241612g32cf4e61l3bc80c3f8c9d4037-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1753470AbZHXXV2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Aug 2009 19:21:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-08-25 at 00:12 +0100, Daniel J Blueman wrote:
-> Perhaps unrelated to the manager kthread, I reproduced a
-> "nfs4_reclaim_open_state: Lock reclaim failed!" message ultimately -
-> expected/significant?
+Commit 76db6d9500caeaa774a3e32a997eba30bbdc176b (nfs41: add session setup
+to the state manager) introduces an infinite loop possibility in the NFSv4
+state manager. By first checking nfs4_has_session() before clearing the
+NFS4CLNT_SESSION_SETUP flag, it allows for a situation where someone sets
+that flag, but it never gets cleared, and so the state manager loops.
 
-It is not unexpected in a situation where you lose connection with the
-server. Another client is then free step in and grab the lock.
+In fact commit c3fad1b1aaf850bf692642642ace7cd0d64af0a3 (nfs41: add session
+reset to state manager) causes this to happen every time we get a network
+partition error.
 
-We should probably be issuing a SIGLOST to the process and clear the
-page cache in this situation. Currently, we cravenly write out the data
-despite the fact that we're no longer holding a lock...
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Tested-by: Daniel J Blueman <daniel.blueman@gmail.com>
+---
 
-Cheers
-  Trond
+ fs/nfs/nfs4state.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 65ca8c1..1434080 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1250,8 +1250,8 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 				continue;
+ 		}
+ 		/* Initialize or reset the session */
+-		if (nfs4_has_session(clp) &&
+-		   test_and_clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)) {
++		if (test_and_clear_bit(NFS4CLNT_SESSION_SETUP, &clp->cl_state)
++		   && nfs4_has_session(clp)) {
+ 			if (clp->cl_cons_state == NFS_CS_SESSION_INITING)
+ 				status = nfs4_initialize_session(clp);
+ 			else
+
 -- 
 Trond Myklebust
 Linux NFS client maintainer
