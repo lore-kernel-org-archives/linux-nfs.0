@@ -1,74 +1,82 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH 2/2] Enable v4 mounts when either "nfsvers=4" or
-	"vers=4" option are set (vers-02)
-Date: Tue, 25 Aug 2009 16:49:05 -0400
-Message-ID: <1251233345.25372.67.camel@heimdal.trondhjem.org>
-References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>
-	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>
-	<4A943914.9020104@RedHat.com>
-	<7AB7BC01-F9E5-4611-BB4B-2B6E27069631@oracle.com>
-	<4A944645.1020003@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] svcgss: reply AUTH_BADCRED to RPCSEC_GSS with unkown
+	services
+Date: Tue, 25 Aug 2009 17:40:02 -0400
+Message-ID: <20090825214002.GD32708@fieldses.org>
+References: <4A77FF18.4040804@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A944645.1020003@RedHat.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+	nfsv4@linux-nfs.org
+To: Wei Yongjun <yjwei@cn.fujitsu.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:34712 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751441AbZHYVkE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2009 17:40:04 -0400
+In-Reply-To: <4A77FF18.4040804@cn.fujitsu.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-08-25 at 16:15 -0400, Steve Dickson wrote:
-> 
-> On 08/25/2009 03:32 PM, Chuck Lever wrote:
-> > On Aug 25, 2009, at 3:18 PM, Steve Dickson wrote:
-> >> On 08/25/2009 02:59 PM, Chuck Lever wrote:
-> >>> On Aug 25, 2009, at 1:55 PM, Steve Dickson wrote:
-> >>>> commit 1471d23d692efc7388794a8a3c3b9e548d1c5be8
-> >>>> Author: Steve Dickson <steved@redhat.com>
-> >>>> Date:   Tue Aug 25 12:15:18 2009 -0400
-> >>>>
-> >>>>   Make sure umount use correct fs type.
-> >>>>
-> >>>>   umounts use the fs type in /etc/mtab to determine
-> >>>>   which file system is being unmounted. The mtab
-> >>>>   entry is create during the mount. To ensure the
-> >>>>   correct entry is create when the fs type changes
-> >>>>   due to the mount options, the address of the fs_type
-> >>>>   variable has to be passed so it can be updated.
-> >>>
-> >>> In general, my policy is to record the user requested mount options in
-> >>> /etc/mtab, and let umount.nfs handle renegotiating as needed.  For
-> >>> version/transport this means that the server's configuration can change
-> >>> between the mount and the umount, and the umount will still work.
-> >>>
-> >>> Perhaps this is not a consideration for NFSv4, but leaving the mount
-> >>> options as specified by the user would save the need to update the fs
-> >>> type, and would be a consistent policy for v2, v3, and v4.  I think it
-> >>> would be cleaner to teach umount.nfs to do the right thing with "-t nfs
-> >>> -o v4" rather than rewriting the options in /etc/mtab.
-> >> Since nfs4 is truly a separate/different file system from nfs in the
-> >> kernel, I think we should continue making that distinction in system
-> >> files like mtab and /proc/mounts....
-> > 
-> > We are teaching mount.nfs not to care about nfs/nfs4 (at least
-> > externally).  Why should umount.nfs?
-> That's not quite accurate... IMHO.. I see it as we are teach mount.nfs to
-> accept new command line arguments that will cause a nfs4 file system
-> to be mounted... and that is done by caring which fs type mount is
-> dealing with... 
+On Tue, Aug 04, 2009 at 05:27:52PM +0800, Wei Yongjun wrote:
+> When RPC messages is received with RPCSEC_GSS, and if the RPCSEC_GSS
+> include unkown services (not RPC_GSS_SVC_NONE, RPC_GSS_SVC_INTEGRITY
+> and RPC_GSS_SVC_PRIVACY), the response is considered as AUTH_BADCRED
+> in svcauth_gss_accept(), but the response be drop by
+> svcauth_gss_release(). I think response with AUTH_BADCRED is correct
+> one. So this patch fixed it.
 
-So, why couldn't we just do this in the kernel? It should be easily
-doable to set nfs -overs=4 to mount an NFSv4 filesystem. We only have to
-do this for text mounts...
+Thanks!  How did you find this?  (And how did you test the result?)
 
-Cheers
-   Trond
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 2278a50..6dce327 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1370,7 +1370,7 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+>  			goto out_err;
+>  		break;
+>  	default:
+> -		goto out_err;
+> +		goto out;
+>  	}
+>  
+>  out:
+
+The goto seems redundant.  How about just leaving out the default case
+and providing a comment?  (See below.)
+
+--b.
+
+commit ab3654a05aaf367b23bbb3d9229ff72a11999719
+Author: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date:   Tue Aug 4 17:27:52 2009 +0800
+
+    svcgss: reply AUTH_BADCRED to RPCSEC_GSS with unknown service
+    
+    When an RPC message is received with RPCSEC_GSS with an unknown service
+    (not RPC_GSS_SVC_NONE, RPC_GSS_SVC_INTEGRITY, or RPC_GSS_SVC_PRIVACY),
+    svcauth_gss_accept() returns AUTH_BADCRED, but svcauth_gss_release()
+    subsequently drops the response entirely, discarding the error.
+    
+    Fix that so the AUTH_BADCRED error is returned to the client.
+    
+    Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 2e6a148..f6c51e5 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1374,8 +1374,10 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+ 		if (stat)
+ 			goto out_err;
+ 		break;
+-	default:
+-		goto out_err;
++	/*
++	 * For any other gc_svc value, svcauth_gss_accept() already set
++	 * the auth_error appropriately; just fall through:
++	 */
+ 	}
+ 
+ out:
