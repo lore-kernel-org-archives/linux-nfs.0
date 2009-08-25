@@ -1,131 +1,130 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd41: renew_client must be called under the state
-	lock
-Date: Tue, 25 Aug 2009 17:59:48 -0400
-Message-ID: <20090825215948.GG32708@fieldses.org>
-References: <1250727716-28107-1-git-send-email-bhalevy@panasas.com> <20090824162904.GC4985@fieldses.org> <4A938D7A.3070908@panasas.com> <20090825131829.GA24049@fieldses.org> <4A941931.8070609@panasas.com>
+From: Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
+Subject: Re: mount.nfs: access denied by server
+Date: Tue, 25 Aug 2009 17:17:08 -0500
+Message-ID: <4A9462E4.5020404@sun.com>
+References: <31F3372A-891E-44EF-8DD2-78D5A3AD5CF1@oracle.com>
+ <20090821200403.GA23529@fieldses.org>
+ <EB232FA3-96EF-4332-94D5-61F465912838@oracle.com>
+ <1250889345.5700.11.camel@heimdal.trondhjem.org>
+ <20090821213016.GG23529@fieldses.org>
+ <1250890836.5700.19.camel@heimdal.trondhjem.org>
+ <20090821214720.GH23529@fieldses.org>
+ <1250891463.5700.21.camel@heimdal.trondhjem.org>
+ <20090824161004.GB4985@fieldses.org>
+ <1251133618.6325.262.camel@heimdal.trondhjem.org>
+ <20090824174129.GD4985@fieldses.org>
+ <1EEDD90B-709F-4C78-97B4-6107AE100162@oracle.com> <4A94162C.20904@sun.com>
+ <1251219492.25372.3.camel@heimdal.trondhjem.org> <4A942ACF.4030502@sun.com>
+ <1251225543.25372.22.camel@heimdal.trondhjem.org>
+ <1251225797.25372.25.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; CHARSET=US-ASCII; format=flowed
+Cc: NFS list <linux-nfs@vger.kernel.org>, nfs-discuss-xZgeD5Kw2fzokhkdeNNY6A@public.gmane.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55327 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756005AbZHYV7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2009 17:59:47 -0400
-In-Reply-To: <4A941931.8070609@panasas.com>
+Received: from brmea-mail-2.Sun.COM ([192.18.98.43]:42324 "EHLO
+	brmea-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755641AbZHYWRi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 18:17:38 -0400
+Received: from fe-amer-09.sun.com ([192.18.109.79])
+	by brmea-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id n7PMHe2A000889
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2009 22:17:40 GMT
+Received: from conversion-daemon.mail-amer.sun.com by mail-amer.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.04 64bit (built Jul  2 2009))
+ id <0KOY00400DRBV900-suYR2Hc8r9/lQFUxb2hVpgC/G2K4zDHf@public.gmane.org> for linux-nfs@vger.kernel.org; Tue,
+ 25 Aug 2009 16:17:40 -0600 (MDT)
+In-reply-to: <1251225797.25372.25.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 25, 2009 at 08:02:41PM +0300, Benny Halevy wrote:
-> On Aug. 25, 2009, 16:18 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Tue, Aug 25, 2009 at 10:06:34AM +0300, Benny Halevy wrote:
-> >> On Aug. 24, 2009, 19:29 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>> On Thu, Aug 20, 2009 at 03:21:56AM +0300, Benny Halevy wrote:
-> >>>> nfsd4_sequence() should not renew the client state if the session was not
-> >>>> found or if there was a bad slot.  This will also avoid dereferencing a
-> >>>> null session pointer.
-> >>>>
-> >>>> FIXME: until we work out the state locking so we can use a
-> >>>> spin lock to protect the cl_lru we need to take the state_lock
-> >>>> to renew the client.
-> >>> Is that first paragraph left over from some previous iteration of this
-> >>> patch?
-> >> Not really.
-> >> It sort of sets up the stage for the state lock elimination project.
-> >> That said, feel free to remove these lines as they are not particularly
-> >> important for understanding what this patch does or how to do it better.
-> > 
-> > Note I was referring to "should not renew..."  That seems to describe a
-> > problem that has already been fixed.
-> 
-> Hmm, apparently this came from "Do not renew state on error"
-> which was squashed together with this patch.
-> The text is still valid though somewhat unrelated to this patch's
-> title.  Maybe a better title would be the original one:
-> ""Do not renew state on error"
+Trond Myklebust wrote:
+> On Tue, 2009-08-25 at 14:39 -0400, Trond Myklebust wrote:
+>   
+>> On Tue, 2009-08-25 at 13:17 -0500, Tom Haynes wrote:
+>>     
+>>> Trond Myklebust wrote:
+>>>       
+>>>> On Tue, 2009-08-25 at 11:49 -0500, Tom Haynes wrote:
+>>>>   
+>>>>         
+>>>>> With OpenSolaris NFSv3, there is no autonegotiation.  With NFSv4, we 
+>>>>> support the autonegotiation
+>>>>> as defined in the protocol.
+>>>>>
+>>>>> We just went through a regression with this algorithm.
+>>>>>     
+>>>>>           
+>>>> NFSv4 also allows the server to change the list of supported security
+>>>> flavours on the fly at any point in the namespace, and at any time. How
+>>>> does OpenSolaris currently deal with this?
+>>>>
+>>>>   
+>>>>         
+>>> The client gets a WRONGSEC and then initiates auto-negotiation.
+>>>
+>>>       
+>> Right, but are there any limits to that?
+>>
+>> Will it, for instance, allow process 1 to continue using auth_sys, while
+>> process 2 switches to using krb5 on the same file?
+>>     
 
-The title's right, it's just the comment that went stale.  I've applied
-for 2.6.32 as follows.
+ From *reading* the code,  I think process 1 is fat, dumb, and happy 
+until it tries an
+action which generates a WRONGSEC. At that point it will have to negotiate.
 
---b.
 
-commit fdf7875040506ca7e595dffef56cbd81ae6b384b
-Author: Benny Halevy <bhalevy@panasas.com>
-Date:   Thu Aug 20 03:21:56 2009 +0300
+>> Should it recover in the case where the administrator suddenly removes
+>> krb5 from the list, and replaces it with krb5i on all subdirectories
+>> of ../../.. relative to your current working directory?
+>>     
+>
+> Sorry. Let me be more specific...
+>
+> Say you have
+>
+> /foo sec=krb5,rw
+>
+> and the administrator adds a new rule
+>
+> /foo/bar sec=krb5i,rw
+>
+> Will your autonegotiator be able to recover processes that are working
+> in /foo/bar/... without disturbing those working in /foo/baz/... ?
+>
+>   
 
-    nfsd41: renew_client must be called under the state lock
-    
-    Until we work out the state locking so we can use a spin lock to protect
-    the cl_lru, we need to take the state_lock to renew the client.
-    
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    [nfsd41: Do not renew state on error]
-    Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d2a0524..8e5ac49 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1463,12 +1463,16 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	spin_lock(&sessionid_lock);
- 	status = nfserr_badsession;
- 	session = find_in_sessionid_hashtbl(&seq->sessionid);
--	if (!session)
--		goto out;
-+	if (!session) {
-+		spin_unlock(&sessionid_lock);
-+		goto err;
-+	}
- 
- 	status = nfserr_badslot;
--	if (seq->slotid >= session->se_fchannel.maxreqs)
--		goto out;
-+	if (seq->slotid >= session->se_fchannel.maxreqs) {
-+		spin_unlock(&sessionid_lock);
-+		goto err;
-+	}
- 
- 	slot = &session->se_slots[seq->slotid];
- 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
-@@ -1481,10 +1485,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 		 * for nfsd4_svc_encode_compoundres processing */
- 		status = nfsd4_replay_cache_entry(resp, seq);
- 		cstate->status = nfserr_replay_cache;
--		goto replay_cache;
--	}
--	if (status)
- 		goto out;
-+	}
-+	if (status) {
-+		spin_unlock(&sessionid_lock);
-+		goto err;
-+	}
- 
- 	/* Success! bump slot seqid */
- 	slot->sl_inuse = true;
-@@ -1497,15 +1503,17 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	cstate->slot = slot;
- 	cstate->session = session;
- 
--replay_cache:
--	/* Renew the clientid on success and on replay.
--	 * Hold a session reference until done processing the compound:
-+	/* Hold a session reference until done processing the compound:
- 	 * nfsd4_put_session called only if the cstate slot is set.
- 	 */
--	renew_client(session->se_client);
- 	nfsd4_get_session(session);
- out:
- 	spin_unlock(&sessionid_lock);
-+	/* Renew the clientid on success and on replay */
-+	nfs4_lock_state();
-+	renew_client(session->se_client);
-+	nfs4_unlock_state();
-+err:
- 	dprintk("%s: return %d\n", __func__, ntohl(status));
- 	return status;
- }
+I'll let someone who knows the client give the real response, but 
+consider two
+threads, one in /foo/baz and one in /foo/bar.
+
+The one in /foo/baz will never get a WRONGSEC.
+
+The one in /foo/bar may never get one either - depending on the server 
+implementation.
+i.e., the server has probably put the FSID in the FH. The client is 
+handing back
+what is probably a non-volatile FH and the server has to honor it. And 
+the server
+may have no clue that the FH is under a new mount point.
+
+What happens if the client redrives a LOOKUP of the directory entry? It 
+should
+discover that the FHs no longer match and do some sort of recovery.
+
+
+
+
+
+
+> Cheers
+>   Trond
+>
+>   
+
+
+Sounds like a great thing to test at the next BAT. :->
+
+
+
