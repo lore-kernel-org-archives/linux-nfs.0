@@ -1,49 +1,137 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: mount.nfs: access denied by server
-Date: Tue, 25 Aug 2009 12:58:12 -0400
-Message-ID: <1251219492.25372.3.camel@heimdal.trondhjem.org>
-References: <31F3372A-891E-44EF-8DD2-78D5A3AD5CF1@oracle.com>
-	 <20090821200403.GA23529@fieldses.org>
-	 <EB232FA3-96EF-4332-94D5-61F465912838@oracle.com>
-	 <1250889345.5700.11.camel@heimdal.trondhjem.org>
-	 <20090821213016.GG23529@fieldses.org>
-	 <1250890836.5700.19.camel@heimdal.trondhjem.org>
-	 <20090821214720.GH23529@fieldses.org>
-	 <1250891463.5700.21.camel@heimdal.trondhjem.org>
-	 <20090824161004.GB4985@fieldses.org>
-	 <1251133618.6325.262.camel@heimdal.trondhjem.org>
-	 <20090824174129.GD4985@fieldses.org>
-	 <1EEDD90B-709F-4C78-97B4-6107AE100162@oracle.com>  <4A94162C.20904@sun.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] nfsd41: renew_client must be called under the state	lock
+Date: Tue, 25 Aug 2009 20:02:41 +0300
+Message-ID: <4A941931.8070609@panasas.com>
+References: <1250727716-28107-1-git-send-email-bhalevy@panasas.com> <20090824162904.GC4985@fieldses.org> <4A938D7A.3070908@panasas.com> <20090825131829.GA24049@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Chuck Lever <Chuck.Lever@oracle.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	NFS list <linux-nfs@vger.kernel.org>
-To: Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51668 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750821AbZHYQ6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2009 12:58:11 -0400
-In-Reply-To: <4A94162C.20904-xsfywfwIY+M@public.gmane.org>
+Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:53475
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755104AbZHYRCo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 13:02:44 -0400
+In-Reply-To: <20090825131829.GA24049@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-08-25 at 11:49 -0500, Tom Haynes wrote:
-> With OpenSolaris NFSv3, there is no autonegotiation.  With NFSv4, we 
-> support the autonegotiation
-> as defined in the protocol.
+On Aug. 25, 2009, 16:18 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Tue, Aug 25, 2009 at 10:06:34AM +0300, Benny Halevy wrote:
+>> On Aug. 24, 2009, 19:29 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>> On Thu, Aug 20, 2009 at 03:21:56AM +0300, Benny Halevy wrote:
+>>>> nfsd4_sequence() should not renew the client state if the session was not
+>>>> found or if there was a bad slot.  This will also avoid dereferencing a
+>>>> null session pointer.
+>>>>
+>>>> FIXME: until we work out the state locking so we can use a
+>>>> spin lock to protect the cl_lru we need to take the state_lock
+>>>> to renew the client.
+>>> Is that first paragraph left over from some previous iteration of this
+>>> patch?
+>> Not really.
+>> It sort of sets up the stage for the state lock elimination project.
+>> That said, feel free to remove these lines as they are not particularly
+>> important for understanding what this patch does or how to do it better.
 > 
-> We just went through a regression with this algorithm.
+> Note I was referring to "should not renew..."  That seems to describe a
+> problem that has already been fixed.
 
-NFSv4 also allows the server to change the list of supported security
-flavours on the fly at any point in the namespace, and at any time. How
-does OpenSolaris currently deal with this?
+Hmm, apparently this came from "Do not renew state on error"
+which was squashed together with this patch.
+The text is still valid though somewhat unrelated to this patch's
+title.  Maybe a better title would be the original one:
+""Do not renew state on error"
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Benny
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> 
+> --b.
+> 
+>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>> [nfsd41: Do not renew state on error]
+>>>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>> ---
+>>>>
+>>>> Bruce, I'm not whether it is too late but this patch fixes
+>>>> a bug in 2.6.31-rc that we've hit in the last Bakeathon.
+>>> I think we should wait for 2.6.32.  (And was the bug you hit due to the
+>>> lack of state locking or to the NULL dereference?)
+>>>
+>>> I don't have any fix for the locking problem queued up for 2.6.32.
+>>>
+>>> --b.
+>>>
+>>>> Benny
+>>>>
+>>>>  fs/nfsd/nfs4state.c |   30 +++++++++++++++++++-----------
+>>>>  1 files changed, 19 insertions(+), 11 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>>> index 1dedde9..3e7b20a 100644
+>>>> --- a/fs/nfsd/nfs4state.c
+>>>> +++ b/fs/nfsd/nfs4state.c
+>>>> @@ -1436,12 +1436,16 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>>>>  	spin_lock(&sessionid_lock);
+>>>>  	status = nfserr_badsession;
+>>>>  	session = find_in_sessionid_hashtbl(&seq->sessionid);
+>>>> -	if (!session)
+>>>> -		goto out;
+>>>> +	if (!session) {
+>>>> +		spin_unlock(&sessionid_lock);
+>>>> +		goto err;
+>>>> +	}
+>>>>  
+>>>>  	status = nfserr_badslot;
+>>>> -	if (seq->slotid >= session->se_fchannel.maxreqs)
+>>>> -		goto out;
+>>>> +	if (seq->slotid >= session->se_fchannel.maxreqs) {
+>>>> +		spin_unlock(&sessionid_lock);
+>>>> +		goto err;
+>>>> +	}
+>>>>  
+>>>>  	slot = &session->se_slots[seq->slotid];
+>>>>  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+>>>> @@ -1454,10 +1458,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>>>>  		 * for nfsd4_proc_compound processing */
+>>>>  		status = nfsd4_replay_cache_entry(resp, seq);
+>>>>  		cstate->status = nfserr_replay_cache;
+>>>> -		goto replay_cache;
+>>>> -	}
+>>>> -	if (status)
+>>>>  		goto out;
+>>>> +	}
+>>>> +	if (status) {
+>>>> +		spin_unlock(&sessionid_lock);
+>>>> +		goto err;
+>>>> +	}
+>>>>  
+>>>>  	/* Success! bump slot seqid */
+>>>>  	slot->sl_inuse = true;
+>>>> @@ -1470,15 +1476,17 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>>>>  	cstate->slot = slot;
+>>>>  	cstate->session = session;
+>>>>  
+>>>> -replay_cache:
+>>>> -	/* Renew the clientid on success and on replay.
+>>>> -	 * Hold a session reference until done processing the compound:
+>>>> +	/* Hold a session reference until done processing the compound:
+>>>>  	 * nfsd4_put_session called only if the cstate slot is set.
+>>>>  	 */
+>>>> -	renew_client(session->se_client);
+>>>>  	nfsd4_get_session(session);
+>>>>  out:
+>>>>  	spin_unlock(&sessionid_lock);
+>>>> +	/* Renew the clientid on success and on replay */
+>>>> +	nfs4_lock_state();
+>>>> +	renew_client(session->se_client);
+>>>> +	nfs4_unlock_state();
+>>>> +err:
+>>>>  	dprintk("%s: return %d\n", __func__, ntohl(status));
+>>>>  	return status;
+>>>>  }
+>>>> -- 
+>>>> 1.6.4
+>>>>
