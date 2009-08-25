@@ -1,106 +1,69 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH RFC 03/10] nfsd41: sunrpc: move struct rpc_buffer def
- into a common header file
-Date: Tue, 25 Aug 2009 11:43:52 +0300
-Message-ID: <4A93A448.3030405@panasas.com>
-References: <4A8C9992.2000505@panasas.com> <1250728468-28544-1-git-send-email-bhalevy@panasas.com> <20090824233526.GF8532@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] nfs-utils: disable IPv6 support in nfsd for now
+Date: Tue, 25 Aug 2009 08:52:16 -0400
+Message-ID: <1251204736-8343-1-git-send-email-jlayton@redhat.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:25711
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751118AbZHYInw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 04:43:52 -0400
-In-Reply-To: <20090824233526.GF8532@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57193 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750734AbZHYMwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2009 08:52:23 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug. 25, 2009, 2:35 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Aug 20, 2009 at 03:34:28AM +0300, Benny Halevy wrote:
->> struct rpc_buffer is currently defined twice, the same way, in sched.c
->> and xprtsock.c.  Move its definition into a sunrpc.h, a common, internal
->> header file.
-> 
-> Not a huge deal, but: ideally this move would be done before the
-> previous patch, which would use it.  (Under the general principal when
-> we have the chance, we we anticipate problems rather than introduce them
-> and then solve them in a later patch.)
+IPv6 support for nfsd was finished before some of the other daemons
+(mountd and statd in particular). That could be a problem in the future
+if someone were to boot a kernel that supports IPv6 serving with an
+older nfs-utils. For now, hardcode the IPv6 switch into the off position
+until the other daemons are functional.
 
-Absolutely. Will do.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsd/nfsd.c   |    9 +++++++++
+ utils/nfsd/nfssvc.c |    9 +++++++++
+ 2 files changed, 18 insertions(+), 0 deletions(-)
 
-Benny
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 650c593..1cda1e5 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -27,6 +27,15 @@
+ #include "nfssvc.h"
+ #include "xlog.h"
+ 
++/*
++ * IPv6 support for nfsd was finished before some of the other daemons (mountd
++ * and statd in particular). That could be a problem in the future if someone
++ * were to boot a kernel that supports IPv6 serving with  an older nfs-utils. For
++ * now, hardcode the IPv6 switch into the off position until the other daemons
++ * are functional.
++ */
++#undef IPV6_SUPPORTED
++
+ static void	usage(const char *);
+ 
+ static struct option longopts[] =
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index ee862b2..12d3253 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -22,6 +22,15 @@
+ #include "nfslib.h"
+ #include "xlog.h"
+ 
++/*
++ * IPv6 support for nfsd was finished before some of the other daemons (mountd
++ * and statd in particular). That could be a problem in the future if someone
++ * were to boot a kernel that supports IPv6 serving with an older nfs-utils. For
++ * now, hardcode the IPv6 switch into the off position until the other daemons
++ * are functional.
++ */
++#undef IPV6_SUPPORTED
++
+ #define NFSD_PORTS_FILE     "/proc/fs/nfsd/portlist"
+ #define NFSD_VERS_FILE    "/proc/fs/nfsd/versions"
+ #define NFSD_THREAD_FILE  "/proc/fs/nfsd/threads"
+-- 
+1.6.2.5
 
-> 
-> --b.
-> 
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  net/sunrpc/sched.c    |    7 ++-----
->>  net/sunrpc/sunrpc.h   |    8 ++++++++
->>  net/sunrpc/xprtsock.c |    4 ----
->>  3 files changed, 10 insertions(+), 9 deletions(-)
->>
->> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
->> index 8f459ab..cef74ba 100644
->> --- a/net/sunrpc/sched.c
->> +++ b/net/sunrpc/sched.c
->> @@ -21,6 +21,8 @@
->>  
->>  #include <linux/sunrpc/clnt.h>
->>  
->> +#include "sunrpc.h"
->> +
->>  #ifdef RPC_DEBUG
->>  #define RPCDBG_FACILITY		RPCDBG_SCHED
->>  #define RPC_TASK_MAGIC_ID	0xf00baa
->> @@ -711,11 +713,6 @@ static void rpc_async_schedule(struct work_struct *work)
->>  	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
->>  }
->>  
->> -struct rpc_buffer {
->> -	size_t	len;
->> -	char	data[];
->> -};
->> -
->>  /**
->>   * rpc_malloc - allocate an RPC buffer
->>   * @task: RPC task that will use this buffer
->> diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
->> index b1b2e64..7b68daf 100644
->> --- a/net/sunrpc/sunrpc.h
->> +++ b/net/sunrpc/sunrpc.h
->> @@ -27,6 +27,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
->>  #ifndef _NET_SUNRPC_SUNRPC_H
->>  #define _NET_SUNRPC_SUNRPC_H
->>  
->> +/*
->> + * Header for dynamically allocated rpc buffers.
->> + */
->> +struct rpc_buffer {
->> +	size_t	len;
->> +	char	data[];
->> +};
->> +
->>  static inline int rpc_reply_expected(struct rpc_task *task)
->>  {
->>  	return (task->tk_msg.rpc_proc != NULL) &&
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 6e6f939..4098a92 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -2158,10 +2158,6 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
->>  			xprt->stat.bklog_u);
->>  }
->>  
->> -struct rpc_buffer {
->> -	size_t	len;
->> -	char	data[];
->> -};
->>  /*
->>   * Allocate a bunch of pages for a scratch buffer for the rpc code. The reason
->>   * we allocate pages instead doing a kmalloc like rpc_malloc is because we want
->> -- 
->> 1.6.4
->>
