@@ -1,7 +1,7 @@
-From: Stefan Egli <stefan.egli@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: NFS v3 cached directory content out of sync
-Date: Tue, 25 Aug 2009 21:19:20 +0200
-Message-ID: <d4098e2f0908251219w42340c9ak4538a22f8d7391b6@mail.gmail.com>
+Date: Tue, 25 Aug 2009 15:25:50 -0400
+Message-ID: <1251228350.25372.36.camel@heimdal.trondhjem.org>
 References: <d4098e2f0908211122y5d024dd1sd2f80356749315cc@mail.gmail.com>
 	 <d4098e2f0908211208j55dee16fy146ddb8de81d8722@mail.gmail.com>
 	 <1250962724.8143.29.camel@heimdal.trondhjem.org>
@@ -12,42 +12,46 @@ References: <d4098e2f0908211122y5d024dd1sd2f80356749315cc@mail.gmail.com>
 	 <1251226809.25372.29.camel@heimdal.trondhjem.org>
 	 <d4098e2f0908251206o34590902u9a69aed32142d67e@mail.gmail.com>
 	 <1251227539.25372.35.camel@heimdal.trondhjem.org>
+	 <d4098e2f0908251219w42340c9ak4538a22f8d7391b6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Stefan Egli <stefan.egli@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f217.google.com ([209.85.220.217]:43308 "EHLO
-	mail-fx0-f217.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755995AbZHYTTT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 15:19:19 -0400
-Received: by fxm17 with SMTP id 17so2405258fxm.37
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Aug 2009 12:19:20 -0700 (PDT)
-In-Reply-To: <1251227539.25372.35.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:32858 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755936AbZHYTZv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Aug 2009 15:25:51 -0400
+In-Reply-To: <d4098e2f0908251219w42340c9ak4538a22f8d7391b6-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 25, 2009 at 9:12 PM, Trond Myklebust wrote:
-> On Tue, 2009-08-25 at 21:06 +0200, Stefan Egli wrote:
->> On Tue, Aug 25, 2009 at 9:00 PM, Trond Myklebust wrote:
->> > Yes. The NFS client will cache mtime whether or not you do an 'ls'. I
->> > suspect the only reason for the 'ls' in that launchpad bug report, is to
->> > force an mtime update (and to fill the readdir cache).
->>
->> Ok, interesting. I guess though that 'something' needs to read at least
->> a file in that particular directory for the directory content to be
->> cached, right? (i.e. either an 'ls' or some create/delete of a file?)
->
-> Every time you use a filename, the act of looking up that name is
-> cached. The parent directory's mtime is also cached. If it changes, then
-> the cached lookup is invalidated. If not, then the cached lookup is
-> assumed still valid (since the directory contents are not supposed to
-> have changed).
+On Tue, 2009-08-25 at 21:19 +0200, Stefan Egli wrote:
+> On Tue, Aug 25, 2009 at 9:12 PM, Trond Myklebust wrote:
+> > On Tue, 2009-08-25 at 21:06 +0200, Stefan Egli wrote:
+> >> On Tue, Aug 25, 2009 at 9:00 PM, Trond Myklebust wrote:
+> >> > Yes. The NFS client will cache mtime whether or not you do an 'ls'. I
+> >> > suspect the only reason for the 'ls' in that launchpad bug report, is to
+> >> > force an mtime update (and to fill the readdir cache).
+> >>
+> >> Ok, interesting. I guess though that 'something' needs to read at least
+> >> a file in that particular directory for the directory content to be
+> >> cached, right? (i.e. either an 'ls' or some create/delete of a file?)
+> >
+> > Every time you use a filename, the act of looking up that name is
+> > cached. The parent directory's mtime is also cached. If it changes, then
+> > the cached lookup is invalidated. If not, then the cached lookup is
+> > assumed still valid (since the directory contents are not supposed to
+> > have changed).
+> 
+> Great thanks, got that!
+> 
+> Is there some docu about this level of NFS detail you know of?
+> Esp the attribute and the data cache?
 
-Great thanks, got that!
+There should be some information (perhaps a bit out of date, but most of
+it good) in the old FAQ here: http://nfs.sourceforge.net/
 
-Is there some docu about this level of NFS detail you know of?
-Esp the attribute and the data cache?
+Cheers
+  Trond
 
-Cheers,
-Stefan
