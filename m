@@ -1,127 +1,205 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] nfsd41: renew_client must be called under the state	lock
-Date: Tue, 25 Aug 2009 10:06:34 +0300
-Message-ID: <4A938D7A.3070908@panasas.com>
-References: <1250727716-28107-1-git-send-email-bhalevy@panasas.com> <20090824162904.GC4985@fieldses.org>
+Subject: Re: [PATCH] Enable v4 mounts when either "nfsvers=4" or "vers=4"
+	option	are set (vers-01)
+Date: Tue, 25 Aug 2009 11:11:41 +0300
+Message-ID: <4A939CBD.60909@panasas.com>
+References: <4A92BA2C.3030407@RedHat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:55649
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752419AbZHYHGh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 03:06:37 -0400
-In-Reply-To: <20090824162904.GC4985@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4A92BA2C.3030407@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Aug. 24, 2009, 19:29 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Aug 20, 2009 at 03:21:56AM +0300, Benny Halevy wrote:
->> nfsd4_sequence() should not renew the client state if the session was not
->> found or if there was a bad slot.  This will also avoid dereferencing a
->> null session pointer.
->>
->> FIXME: until we work out the state locking so we can use a
->> spin lock to protect the cl_lru we need to take the state_lock
->> to renew the client.
-> 
-> Is that first paragraph left over from some previous iteration of this
-> patch?
-
-Not really.
-It sort of sets up the stage for the state lock elimination project.
-That said, feel free to remove these lines as they are not particularly
-important for understanding what this patch does or how to do it better.
+For the record, tested to work with -o vers=4,minorversion=1
 
 Benny
 
+On Aug. 24, 2009, 19:05 +0300, Steve Dickson <SteveD@redhat.com> wrote:
+> Incorporating all the input from the RFC of this patch (thank you very much) 
+> here is the actual patch that allows v4 mount to occurr by setting mount 
+> version to '4' on the mount command line.
 > 
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> [nfsd41: Do not renew state on error]
->> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>
->> Bruce, I'm not whether it is too late but this patch fixes
->> a bug in 2.6.31-rc that we've hit in the last Bakeathon.
+> The patch is on the "mount_vers4-r1" branch on my experiential git tree:
+>      git://linux-nfs.org/~steved/nfs-utils-exp.git
 > 
-> I think we should wait for 2.6.32.  (And was the bug you hit due to the
-> lack of state locking or to the NULL dereference?)
+> Comments?
 > 
-> I don't have any fix for the locking problem queued up for 2.6.32.
+> steved.
 > 
-> --b.
+> commit 8ae2bbb042559cd283067322072b6d669819e729
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Mon Aug 24 12:06:51 2009 -0400
 > 
->> Benny
->>
->>  fs/nfsd/nfs4state.c |   30 +++++++++++++++++++-----------
->>  1 files changed, 19 insertions(+), 11 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 1dedde9..3e7b20a 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -1436,12 +1436,16 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->>  	spin_lock(&sessionid_lock);
->>  	status = nfserr_badsession;
->>  	session = find_in_sessionid_hashtbl(&seq->sessionid);
->> -	if (!session)
->> -		goto out;
->> +	if (!session) {
->> +		spin_unlock(&sessionid_lock);
->> +		goto err;
->> +	}
->>  
->>  	status = nfserr_badslot;
->> -	if (seq->slotid >= session->se_fchannel.maxreqs)
->> -		goto out;
->> +	if (seq->slotid >= session->se_fchannel.maxreqs) {
->> +		spin_unlock(&sessionid_lock);
->> +		goto err;
->> +	}
->>  
->>  	slot = &session->se_slots[seq->slotid];
->>  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
->> @@ -1454,10 +1458,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->>  		 * for nfsd4_proc_compound processing */
->>  		status = nfsd4_replay_cache_entry(resp, seq);
->>  		cstate->status = nfserr_replay_cache;
->> -		goto replay_cache;
->> -	}
->> -	if (status)
->>  		goto out;
->> +	}
->> +	if (status) {
->> +		spin_unlock(&sessionid_lock);
->> +		goto err;
->> +	}
->>  
->>  	/* Success! bump slot seqid */
->>  	slot->sl_inuse = true;
->> @@ -1470,15 +1476,17 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->>  	cstate->slot = slot;
->>  	cstate->session = session;
->>  
->> -replay_cache:
->> -	/* Renew the clientid on success and on replay.
->> -	 * Hold a session reference until done processing the compound:
->> +	/* Hold a session reference until done processing the compound:
->>  	 * nfsd4_put_session called only if the cstate slot is set.
->>  	 */
->> -	renew_client(session->se_client);
->>  	nfsd4_get_session(session);
->>  out:
->>  	spin_unlock(&sessionid_lock);
->> +	/* Renew the clientid on success and on replay */
->> +	nfs4_lock_state();
->> +	renew_client(session->se_client);
->> +	nfs4_unlock_state();
->> +err:
->>  	dprintk("%s: return %d\n", __func__, ntohl(status));
->>  	return status;
->>  }
->> -- 
->> 1.6.4
->>
+>     Enable v4 mounts when either "nfsvers=4" or "vers=4" option are set.
+>     
+>     Since nfs4 is a different file system than nfs, the file system type
+>     has to be set when "v4" or "vers=4" or "nfsvers=4" are used. So
+>     when either of these options are specified, the file system type
+>     will be set to "nfs4" and those options will be stripped out of the
+>     option list since the kernel will not know how to parse them
+>     with v4 mounts
+>     
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index f6fa5fd..d3185b4 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -90,11 +90,11 @@ static const char *nfs_transport_opttbl[] = {
+>  static const char *nfs_version_opttbl[] = {
+>  	"v2",
+>  	"v3",
+> +	"v4",
+>  	"vers",
+>  	"nfsvers",
+>  	NULL,
+>  };
+> -
+>  static const unsigned long nfs_to_mnt[] = {
+>  	0,
+>  	0,
+> @@ -1203,7 +1203,7 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
+>   * Returns TRUE if @version contains a valid value for this option,
+>   * or FALSE if the option was specified with an invalid value.
+>   */
+> -static int
+> +int
+>  nfs_nfs_version(struct mount_options *options, unsigned long *version)
+>  {
+>  	long tmp;
+> @@ -1215,10 +1215,13 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+>  	case 1: /* v3 */
+>  		*version = 3;
+>  		return 1;
+> -	case 2:	/* vers */
+> +	case 2: /* v4 */
+> +		*version = 4;
+> +		return 1;
+> +	case 3:	/* vers */
+>  		switch (po_get_numeric(options, "vers", &tmp)) {
+>  		case PO_FOUND:
+> -			if (tmp >= 2 && tmp <= 3) {
+> +			if (tmp >= 2 && tmp <= 4) {
+>  				*version = tmp;
+>  				return 1;
+>  			}
+> @@ -1229,10 +1232,10 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+>  		case PO_BAD_VALUE:
+>  			return 0;
+>  		}
+> -	case 3: /* nfsvers */
+> +	case 4: /* nfsvers */
+>  		switch (po_get_numeric(options, "nfsvers", &tmp)) {
+>  		case PO_FOUND:
+> -			if (tmp >= 2 && tmp <= 3) {
+> +			if (tmp >= 2 && tmp <= 4) {
+>  				*version = tmp;
+>  				return 1;
+>  			}
+> diff --git a/utils/mount/network.h b/utils/mount/network.h
+> index db5134c..5169b26 100644
+> --- a/utils/mount/network.h
+> +++ b/utils/mount/network.h
+> @@ -62,6 +62,7 @@ int nfs_options2pmap(struct mount_options *,
+>  int start_statd(void);
+>  
+>  unsigned long nfsvers_to_mnt(const unsigned long);
+> +int nfs_nfs_version(struct mount_options *, unsigned long *);
+>  
+>  int nfs_call_umount(clnt_addr_t *, dirpath *);
+>  int nfs_advise_umount(const struct sockaddr *, const socklen_t,
+> diff --git a/utils/mount/nfsmount.conf b/utils/mount/nfsmount.conf
+> index f9fcfcb..1848359 100644
+> --- a/utils/mount/nfsmount.conf
+> +++ b/utils/mount/nfsmount.conf
+> @@ -28,7 +28,7 @@
+>  # This statically named section defines global mount 
+>  # options that can be applied on all NFS mount.
+>  #
+> -# Protocol Version [2,3]
+> +# Protocol Version [2,3,4]
+>  # Nfsvers=3
+>  # Network Transport [Udp,Tcp,Rdma]
+>  # Proto=Tcp
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index a12ace7..0d82441 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -656,6 +656,47 @@ static int nfsmount_bg(struct nfsmount_info *mi)
+>  		return nfsmount_child(mi);
+>  }
+>  
+> +static const char *nfs_fstype_opttbl[] = {
+> +	"v4",
+> +	"vers",
+> +	"nfsvers",
+> +	NULL,
+> +};
+> +
+> +/*
+> + * Returns either "nfs" or "nfs4" as the file system type
+> + * depending on which (if any) of the nfs version options
+> + * are specified. 
+> + */
+> +char *nfs_fs_type(struct mount_options *options)
+> +{
+> +	unsigned long version;
+> +	static char *fs_type = "nfs";
+> +
+> +	if (nfs_nfs_version(options, &version) == 0)
+> +		return fs_type;
+> +
+> +	if (version != 4)
+> +		return fs_type;
+> +
+> +	fs_type = "nfs4";
+> +	switch(po_rightmost(options, nfs_fstype_opttbl)) {
+> +	case 0: /* v4 */
+> +		po_remove_all(options, "v4");
+> +		break;
+> +	case 1: /* vers=4 */
+> +		po_remove_all(options, "vers");
+> +		break;
+> +	case 2: /* nfsvers=4 */
+> +		po_remove_all(options, "nfsvers");
+> +		break;
+> +	default: /* Is this even possible ?? */
+> +		fs_type = "nfs";
+> +	}
+> +
+> +	return fs_type;
+> +}
+> +
+>  /*
+>   * Process mount options and try a mount system call.
+>   *
+> @@ -669,6 +710,9 @@ static const char *nfs_background_opttbl[] = {
+>  
+>  static int nfsmount_start(struct nfsmount_info *mi)
+>  {
+> +
+> +	mi->type = nfs_fs_type(mi->options);
+> +
+>  	if (!nfs_validate_options(mi))
+>  		return EX_FAIL;
+>  
+> 
+> 
+> 
+>  
+> _______________________________________________
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
