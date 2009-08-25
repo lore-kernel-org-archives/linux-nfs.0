@@ -1,63 +1,95 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Subject: [PATCH 0/7] nfsd: add support for NFSv4 callbacks over IPv6 (try #4)
-Date: Wed, 12 Aug 2009 07:56:59 -0400
-Message-Id: <1250078226-10511-1-git-send-email-jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mta1.dreamworks.com ([208.71.56.12]:60553 "EHLO
+	michael.anim.dreamworks.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1755616AbZHYS4R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 14:56:17 -0400
+Message-ID: <4A942F4A.9040902@dreamworks.com>
+Date: Tue, 25 Aug 2009 11:36:58 -0700
+From: Lans Carstensen <Lans.Carstensen@dreamworks.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Steve Dickson <SteveD@redhat.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [NFS] [PATCH] nfs-utils: nfs-iostat.py option to sort by ops/s
+References: <4A93214A.5000404@dreamworks.com> <009376AC-B08B-4E90-A46B-E5BC069A5A78@oracle.com> <4A942089.1010102@RedHat.com> <B36B590E-6A19-4E03-BD49-1E95DA44C4EE@oracle.com>
+In-Reply-To: <B36B590E-6A19-4E03-BD49-1E95DA44C4EE@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-Fourth attempt at a patchset to add support for NFSv4 callbacks over
-IPv6. Changes from last patchset include:
+Chuck Lever wrote:
+> On Aug 25, 2009, at 1:34 PM, Steve Dickson wrote:
+>> On 08/25/2009 12:29 PM, Chuck Lever wrote:
+>>> [ Cc: changed to correct mailing list.  sf.net list is deprecated. ]
+>>>
+>>> On Aug 24, 2009, at 7:24 PM, Lans Carstensen wrote:
+>>>> Hi,
+>>>>
+>>>> I've recently made tools/nfs-iostat/nfs-iostat.py more useful in our
+>>>> autofs environment with a variety of cleanups and am offering this
+>>>> patch up for discussion and/or inclusion in nfs-utils.  It does the
+>>>> following:
+>>>>
+>>>> * Adds a --top flag to sort the display of mountpoint entries by ops/s.
+>>>> * Adds a --<n> flag to only display stats for the first <n> mountpoints
+>>>> * Re-reads the mountpoint list on intervals since it's dynamic in an
+>>>> autofs environment.
+>>>> * Conforms the Python path to the LSB 3.2+ standard of /usr/bin/python
+>>>> http://refspecs.freestandards.org/LSB_3.2.0/LSB-Languages/LSB-Languages/pylocation.html 
+>>>>
+>>>>
+>>>
+>>> A couple of overall comments.
+>>>
+>>> 1.  These seem to be logically independent changes, so we would prefer
+>>> them in separate patches.  Each logical change can be refined and voted
+>>> up or down separately.
+>> I guess you could break this up into more patches... but overall its
+>> by no means unruly....
+> 
+> Didn't mean to imply "unruly" but we do _prefer_ having logical changes 
+> separated.
+> 
+>>> 2.  Sorting by ops is OK, but not sure about "--top".  Since the script
+>>> doesn't generate a curses like display like "top" does, maybe "--sort
+>>> <n>" would be a better name, and --top and --<n> could be combined.
+>> Hmm.. I kinda like like the --top flag... its pretty descriptive to
+>> what it does..
+> 
+> Some people aren't so imaginative, might expect "--top" to produce a 
+> full curses-like display, then be pissed when they get a simple list.  
+> And it seems to me that the two new options are related and could be 
+> combined to good effect.
+> 
+> I think "--top" should be reserved for an actual top-like implementation 
+> (which might be pretty cool).
+> 
+>>> 3.  The distributors should weigh in on the Python path change.
+>> Using '#!/usr/bin/python' is better than '#!/usr/bin/env python'
+>> since you know exactly which python binary you will be using.
+>> It was also pointed out the env convention will confuse
+>> rpm's dependency generator
+> 
+> Good enough for me.  Lans, it would be nice to document this last bit 
+> (about rpm) in the patch description.
 
-1) moved address copy and comparison routines to net/sunrpc/addr.c and
-wrapped them properly in #ifdef's. Also changed lockd to use the common
-routines instead of its own.
+Thanks for looking at this, guys.
 
-2) added back in support for handling scope-id's (for when a host mounts
-a link-local address.
+* I don't live in git, so it'll take me a little bit to break out the 
+patches - but I certainly don't mind if that helps this along.
 
-Tested using opensolaris and linux and verifying that delegations could
-be properly recalled. I also tested mounts to the server's link-local
-address and verified that the callback channel connected correctly.
+* To aid your testing on rescanning, there is a rescan but currently no 
+handling of differences in the "new" and "old" mount table and there is 
+no re-evaluation of the list of monitored mountpoints based on changes 
+in the mount table.  The existing implementation will throw a Python 
+exception when a mountpoint (say a user homedirectory) is unmounted from 
+a system during a trace.  The displayed data is also misleading if the 
+list of monitored mountpoints isn't grown to reflect new automounts that 
+might be your current top talkers.
 
-...the rest of the code is pretty much the same as the last set. This
-patchset should apply cleanly to Bruce's tree as of a pull this morning.
+* "--sort" doesn't offend me and I can switch to that.  The semantic of 
+"--top -1" was the most intuitive for a couple of us here but "--sort 
+-1" isn't that far off.
 
-Jeff Layton (7):
-  sunrpc: add routine for comparing addresses
-  sunrpc: add common routine for copying address portion of a sockaddr
-  nfsd: convert nfs4_cb_conn struct to hold address in sockaddr_storage
-  nfsd: make nfs4_client->cl_addr a struct sockaddr_storage
-  nfsd: convert gen_callback to use rpc_uaddr2sockaddr
-  nfsd: add support for NFSv4 callbacks over IPv6
-  nfsd: populate sin6_scope_id on callback address with scopeid from
-    rq_addr on SETCLIENTID call
+* I agree a real "top" implementation would be cool.
 
- fs/lockd/clntlock.c         |    2 +-
- fs/lockd/host.c             |    4 +-
- fs/lockd/mon.c              |    2 +-
- fs/lockd/svcsubs.c          |    2 +-
- fs/nfsd/nfs4callback.c      |   11 +---
- fs/nfsd/nfs4state.c         |  142 ++++++++++++++++---------------------------
- include/linux/lockd/lockd.h |   43 -------------
- include/linux/nfsd/state.h  |    6 +-
- include/linux/sunrpc/clnt.h |    3 +
- net/sunrpc/addr.c           |   98 +++++++++++++++++++++++++++++
- 10 files changed, 163 insertions(+), 150 deletions(-)
-
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+-- Lans
