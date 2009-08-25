@@ -1,131 +1,92 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd41: renew_client must be called under the state
-	lock
-Date: Tue, 25 Aug 2009 09:18:29 -0400
-Message-ID: <20090825131829.GA24049@fieldses.org>
-References: <1250727716-28107-1-git-send-email-bhalevy@panasas.com> <20090824162904.GC4985@fieldses.org> <4A938D7A.3070908@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+From: Chuck Lever <Chuck.Lever@oracle.com>
+Subject: Re: mount.nfs: access denied by server
+Date: Tue, 25 Aug 2009 11:36:00 -0400
+Message-ID: <1EEDD90B-709F-4C78-97B4-6107AE100162@oracle.com>
+References: <31F3372A-891E-44EF-8DD2-78D5A3AD5CF1@oracle.com> <20090821200403.GA23529@fieldses.org> <EB232FA3-96EF-4332-94D5-61F465912838@oracle.com> <1250889345.5700.11.camel@heimdal.trondhjem.org> <20090821213016.GG23529@fieldses.org> <1250890836.5700.19.camel@heimdal.trondhjem.org> <20090821214720.GH23529@fieldses.org> <1250891463.5700.21.camel@heimdal.trondhjem.org> <20090824161004.GB4985@fieldses.org> <1251133618.6325.262.camel@heimdal.trondhjem.org> <20090824174129.GD4985@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	Tom Haynes <Thomas.Haynes-UdXhSnd/wVw@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36878 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751547AbZHYNS2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2009 09:18:28 -0400
-In-Reply-To: <4A938D7A.3070908@panasas.com>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:31451 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750754AbZHYPgb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Aug 2009 11:36:31 -0400
+In-Reply-To: <20090824174129.GD4985@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 25, 2009 at 10:06:34AM +0300, Benny Halevy wrote:
-> On Aug. 24, 2009, 19:29 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Thu, Aug 20, 2009 at 03:21:56AM +0300, Benny Halevy wrote:
-> >> nfsd4_sequence() should not renew the client state if the session was not
-> >> found or if there was a bad slot.  This will also avoid dereferencing a
-> >> null session pointer.
-> >>
-> >> FIXME: until we work out the state locking so we can use a
-> >> spin lock to protect the cl_lru we need to take the state_lock
-> >> to renew the client.
-> > 
-> > Is that first paragraph left over from some previous iteration of this
-> > patch?
-> 
-> Not really.
-> It sort of sets up the stage for the state lock elimination project.
-> That said, feel free to remove these lines as they are not particularly
-> important for understanding what this patch does or how to do it better.
+On Aug 24, 2009, at 1:41 PM, J. Bruce Fields wrote:
+> On Mon, Aug 24, 2009 at 01:06:58PM -0400, Trond Myklebust wrote:
+>> On Mon, 2009-08-24 at 12:10 -0400, J. Bruce Fields wrote:
+>>> On Fri, Aug 21, 2009 at 05:51:02PM -0400, Trond Myklebust wrote:
+>>>> On Fri, 2009-08-21 at 17:47 -0400, J. Bruce Fields wrote:
+>>>>> On Fri, Aug 21, 2009 at 05:40:36PM -0400, Trond Myklebust wrote:
+>>>>>> On Fri, 2009-08-21 at 17:30 -0400, J. Bruce Fields wrote:
+>>>>>>> 	3c1bb23c037, first in 1.1.3, removes AUTH_NULL from that static
+>>>>>>> 		list.
+>>>>>>
+>>>>>> Does the server support auth_null security? I didn't think it  
+>>>>>> did.
+>>>>>
+>>>>> Just off the top of my head, without looking at the code: I  
+>>>>> believe it
+>>>>> treats auth_null rpc calls exactly as if they were auth_sys  
+>>>>> calls with
+>>>>> uid and gid set to the "anonymous" uid and gid.
+>>>>
+>>>> OK, so that would break too.
+>>>
+>>> I've lost track of the antecedent to "that".
+>>
+>> Negotiating AUTH_NULL security for those mountd programs that fake  
+>> up a
+>> list of flavours that excludes AUTH_NULL.
+>
+> OK, got it.
+>
+> (And note (a reminder to anyone that forgot) the omission of AUTH_NULL
+> is a workaround for a bug in older mount.nfs which caused the client  
+> to
+> prefer flavors at the end of the list.  (Fixed in 3c1bb23c03, which  
+> went
+> into 1.1.3.  When was that bug introduced?)  That means some clients
+> read the list forwards, and some backwards, so if you want clients to
+> avoid picking AUTH_NULL by default, there's no safe place to put it.
+> Since AUTH_NULL seems rarely needed, it seemed best just to leave it
+> off.)
 
-Note I was referring to "should not renew..."  That seems to describe a
-problem that has already been fixed.
+RFC 2623 suggests how the server should sort the returned flavor  
+list.  However I don't think there's a consistent algorithm the client  
+can use with that list to determine a good default for that mount.   
+So, I would argue that any client that uses the "first" or "last"  
+entry in that list as the mount's auth flavor is probably broken; it  
+should pick a sec= default for all mounts, and if it's not on the  
+returned list, fail the mount.  That is, incidentally, what the kernel  
+MNT client does now.
 
---b.
+> Anyway, we could add a second special case on the client side that
+> allowed an explicit sec=null to bypass checking against the server  
+> list.
+> I don't know who actually needs mounts with sec=null.
 
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> [nfsd41: Do not renew state on error]
-> >> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> ---
-> >>
-> >> Bruce, I'm not whether it is too late but this patch fixes
-> >> a bug in 2.6.31-rc that we've hit in the last Bakeathon.
-> > 
-> > I think we should wait for 2.6.32.  (And was the bug you hit due to the
-> > lack of state locking or to the NULL dereference?)
-> > 
-> > I don't have any fix for the locking problem queued up for 2.6.32.
-> > 
-> > --b.
-> > 
-> >> Benny
-> >>
-> >>  fs/nfsd/nfs4state.c |   30 +++++++++++++++++++-----------
-> >>  1 files changed, 19 insertions(+), 11 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >> index 1dedde9..3e7b20a 100644
-> >> --- a/fs/nfsd/nfs4state.c
-> >> +++ b/fs/nfsd/nfs4state.c
-> >> @@ -1436,12 +1436,16 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >>  	spin_lock(&sessionid_lock);
-> >>  	status = nfserr_badsession;
-> >>  	session = find_in_sessionid_hashtbl(&seq->sessionid);
-> >> -	if (!session)
-> >> -		goto out;
-> >> +	if (!session) {
-> >> +		spin_unlock(&sessionid_lock);
-> >> +		goto err;
-> >> +	}
-> >>  
-> >>  	status = nfserr_badslot;
-> >> -	if (seq->slotid >= session->se_fchannel.maxreqs)
-> >> -		goto out;
-> >> +	if (seq->slotid >= session->se_fchannel.maxreqs) {
-> >> +		spin_unlock(&sessionid_lock);
-> >> +		goto err;
-> >> +	}
-> >>  
-> >>  	slot = &session->se_slots[seq->slotid];
-> >>  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
-> >> @@ -1454,10 +1458,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >>  		 * for nfsd4_proc_compound processing */
-> >>  		status = nfsd4_replay_cache_entry(resp, seq);
-> >>  		cstate->status = nfserr_replay_cache;
-> >> -		goto replay_cache;
-> >> -	}
-> >> -	if (status)
-> >>  		goto out;
-> >> +	}
-> >> +	if (status) {
-> >> +		spin_unlock(&sessionid_lock);
-> >> +		goto err;
-> >> +	}
-> >>  
-> >>  	/* Success! bump slot seqid */
-> >>  	slot->sl_inuse = true;
-> >> @@ -1470,15 +1476,17 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >>  	cstate->slot = slot;
-> >>  	cstate->session = session;
-> >>  
-> >> -replay_cache:
-> >> -	/* Renew the clientid on success and on replay.
-> >> -	 * Hold a session reference until done processing the compound:
-> >> +	/* Hold a session reference until done processing the compound:
-> >>  	 * nfsd4_put_session called only if the cstate slot is set.
-> >>  	 */
-> >> -	renew_client(session->se_client);
-> >>  	nfsd4_get_session(session);
-> >>  out:
-> >>  	spin_unlock(&sessionid_lock);
-> >> +	/* Renew the clientid on success and on replay */
-> >> +	nfs4_lock_state();
-> >> +	renew_client(session->se_client);
-> >> +	nfs4_unlock_state();
-> >> +err:
-> >>  	dprintk("%s: return %d\n", __func__, ntohl(status));
-> >>  	return status;
-> >>  }
-> >> -- 
-> >> 1.6.4
-> >>
+Or, we can make sure the server provides AUTH_NULL in the list _only_  
+if that flavor is specified explicitly on the export line.  Otherwise,  
+a single entry flavor list (ie supporting only AUTH_UNIX) is probably  
+the best default we can provide for the reasons you state above.
+
+It would help to provide some documenting comments to that effect in  
+the code, or maybe even state it in the exports(5) man page.
+
+> And/or we could plan to put AUTH_NULL back on the server's list some
+> day, depending on how widely disseminated we think the backwards mount
+> behavior was....
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
