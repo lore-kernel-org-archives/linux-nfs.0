@@ -1,15 +1,21 @@
-From: Ondrej Valousek <webserv@s3group.cz>
-Subject: Re: Kerberos+NFSv4: Security - Multiple sessions with same user.
-	One 	ticket for all?
-Date: Wed, 26 Aug 2009 13:51:10 +0200
-Message-ID: <4A9521AE.3010900@s3group.cz>
-References: <f6ce31e30908260446g534bb70bxd742e35141ae99c1@mail.gmail.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 2/2] Enable v4 mounts when either "nfsvers=4" or "vers=4"
+	option are set (vers-02)
+Date: Wed, 26 Aug 2009 08:10:02 -0400
+Message-ID: <4A95261A.5080601@RedHat.com>
+References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>
+	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>
+	<4A943914.9020104@RedHat.com>
+	<7AB7BC01-F9E5-4611-BB4B-2B6E27069631@oracle.com>
+	<4A944645.1020003@RedHat.com>
+	<29B9DDA7-00A2-4EDE-93B4-D00D5427CD70@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"; Format="flowed"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <f6ce31e30908260446g534bb70bxd742e35141ae99c1@mail.gmail.com>
+In-Reply-To: <29B9DDA7-00A2-4EDE-93B4-D00D5427CD70@oracle.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -21,63 +27,48 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhpcyBpc3N1ZSBoYXMgYWxyZWFkeSBiZWVuIGRpc2N1c3NlZCBvbiB0aGlzIGxpc3QuCkxvY2Fs
-IHJvb3QgaGFzIGFjY2VzcyB0byBhbGwgY3JlZGVudGlhbHMgc3RvcmVkIG9uIHRoYXQgbWFjaGlu
-ZSBhbmQgCnRoZXJlIGlzIG5vdGhpbmcgeW91IGNhbiBkbyB3aXRoIHRoaXMuIFlvdSBjYW4gb25s
-eSB0ZWxsIHRoZSB1c2VyIG5vdCB0byAKbG9nIHRvIGEgbWFjaGluZSB3aGljaCBpcyBhbHJlYWR5
-IGNvbXByb21pc2VkIGJ5IG1hbGljaW91cyBhdHRhY2tlciAKaGF2aW5nIHJvb3QgYWNjZXNzLgpP
-bmRyZWoKCkNhcmxvcyBBbmRyw6kgd3JvdGU6Cj4gSSBnb3QgYSBzdHJhbmdlIHNlY3VyaXR5IGlz
-c3VlLiBJIGxvZ29uIHZpYSBTU0ggb3IgbG9jYWwgY29uc29sZSB3aXRoCj4gbXkgdXNlciBhbmQg
-Z2V0IGEgdGlja2V0LCB0aGVuIGlmIGxvY2FsIHJvb3Qgc3UgdG8gbXkgdXNlciwgbG9jYWwgcm9v
-dAo+IGNhbiBhY2Nlc3MgbXkgZmlsZXMuCj4KPiBJJ20gdXNpbmcgQ2VudE9TIDUuMzoKPiBrZXJu
-ZWwtMi42LjE4LTEyOC4yLjEuZWw1Cj4ga3JiNS13b3Jrc3RhdGlvbi0xLjYuMS0zMS5lbDVfMy4z
-Cj4KPgo+IFNFU1NJT04gMToKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQo+ICQgc3NoIHJvb3RAMS4yLjMuNAo+IHJvb3RA
-MS4yLjMuNCdzIHBhc3N3b3JkOgo+IExhc3QgbG9naW46IFdlZCBBdWcgMjYgMDg6MDY6NDkgMjAw
-OSBmcm9tIFgKPiBbcm9vdEBLU1RBVElPTiB+XSMgc3UgY2FybG9zLmFuZHJlCj4gW2Nhcmxvcy5h
-bmRyZUBLU1RBVElPTiByb290XSQga2xpc3QKPiBrbGlzdDogTm8gY3JlZGVudGlhbHMgY2FjaGUg
-Zm91bmQgKHRpY2tldCBjYWNoZSBGSUxFOi90bXAva3JiNWNjXzEwMDAwKQo+Cj4KPiBLZXJiZXJv
-cyA0IHRpY2tldCBjYWNoZTogL3RtcC90a3QxMDAwMAo+IGtsaXN0OiBZb3UgaGF2ZSBubyB0aWNr
-ZXRzIGNhY2hlZAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04gcm9vdF0kIGNkIC9taXNjL2hvbWUv
-Y2FybG9zLmFuZHJlCj4gYmFzaDogY2Q6IC9taXNjL2hvbWUvY2FybG9zLmFuZHJlOiBQZXJtaXNz
-aW9uIGRlbmllZAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04gcm9vdF0kCj4gLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiBb
-LS1PSy0tXQo+Cj4KPiBTRVNTSU9OIDI6Cj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiAkIHNzaCBjYXJsb3MuYW5kcmVA
-MS4yLjMuNAo+IGNhcmxvcy5hbmRyZUAxLjIuMy40J3MgcGFzc3dvcmQ6Cj4gTGFzdCBsb2dpbjog
-V2VkIEF1ZyAyNiAwODowMTozMyAyMDA5IGZyb20gWAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04g
-fl0kIGtsaXN0Cj4gVGlja2V0IGNhY2hlOiBGSUxFOi90bXAva3JiNWNjXzEwMDAwX1BQTE1xRgo+
-IERlZmF1bHQgcHJpbmNpcGFsOiBjYXJsb3MuYW5kcmVAWC5CUgo+Cj4gVmFsaWQgc3RhcnRpbmcg
-ICAgIEV4cGlyZXMgICAgICAgICAgICBTZXJ2aWNlIHByaW5jaXBhbAo+IDA4LzI2LzA5IDA4OjMw
-OjEyICAwOC8yNi8wOSAxODozMDoxMiAga3JidGd0L1guQlJAWC5CUgo+ICAgICAgICAgcmVuZXcg
-dW50aWwgMDgvMjYvMDkgMDg6MzA6MTIKPgo+Cj4gS2VyYmVyb3MgNCB0aWNrZXQgY2FjaGU6IC90
-bXAvdGt0MTAwMDAKPiBrbGlzdDogWW91IGhhdmUgbm8gdGlja2V0cyBjYWNoZWQKPiBbY2FybG9z
-LmFuZHJlQEtTVEFUSU9OIH5dJCBjZCAvbWlzYy9ob21lL2Nhcmxvcy5hbmRyZQo+IFtjYXJsb3Mu
-YW5kcmVAS1NUQVRJT04gY2FybG9zLmFuZHJlXSQgbHMgLWxhCj4gdG90YWwgOAo+IGRyd3hyd3gt
-LS0gMiBjYXJsb3MuYW5kcmUgdXNlcnMgNDA5NiBBdWcgMjEgMDk6MDQgLgo+IGRyd3hyLXhyLXgg
-MyByb290ICAgICAgICAgcm9vdCAgICAgICAgICAgICAgIDAgQXVnIDI2IDA4OjMwIC4uCj4gW2Nh
-cmxvcy5hbmRyZUBLU1RBVElPTiBjYXJsb3MuYW5kcmVdJAo+IC0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gWy0tT0stLV0K
-Pgo+Cj4gTk9XIEJBQ0sgVE8gU0VTU0lPTiAxOgo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gW2Nhcmxvcy5hbmRyZUBL
-U1RBVElPTiByb290XSQgY2QgL21pc2MvaG9tZS9jYXJsb3MuYW5kcmUKPiBbY2FybG9zLmFuZHJl
-QEtTVEFUSU9OIGNhcmxvcy5hbmRyZV0kIGxzIC1sYQo+IHRvdGFsIDgKPiBkcnd4cnd4LS0tIDIg
-Y2FybG9zLmFuZHJlIHVzZXJzIDQwOTYgQXVnIDIxIDA5OjA0IC4KPiBkcnd4ci14ci14IDMgcm9v
-dCAgICAgICAgIHJvb3QgICAgICAgICAgICAgICAwIEF1ZyAyNiAwODozMCAuLgo+IFtjYXJsb3Mu
-YW5kcmVAS1NUQVRJT04gY2FybG9zLmFuZHJlXSQga2xpc3QKPiBrbGlzdDogTm8gY3JlZGVudGlh
-bHMgY2FjaGUgZm91bmQgKHRpY2tldCBjYWNoZSBGSUxFOi90bXAva3JiNWNjXzEwMDAwKQo+Cj4K
-PiBLZXJiZXJvcyA0IHRpY2tldCBjYWNoZTogL3RtcC90a3QxMDAwMAo+IGtsaXN0OiBZb3UgaGF2
-ZSBubyB0aWNrZXRzIGNhY2hlZAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04gY2FybG9zLmFuZHJl
-XSQKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLQo+IFtXVEYhPyE/XQo+Cj4gVGhlbiwgaWYgSSBsb2cgb24gc29tZW9uZSBt
-YWNoaW5lLCBsb2NhbCByb290IHVzZXIgKGFuZCAnc3UnIHRvIG15Cj4gdXNlcikgd2lsbCBoYXZl
-IGFjY2VzcyB0byBteSBmaWxlcyBsaWtlIE5GUyB3aXRob3V0IEtlcmJlcm9zPz8gVGhpcwo+IGJl
-aGF2aW9yIGlzICJjb3JyZWN0IiBvciBpdCdzIGEgYnVnPwo+IEFuZCBtb3JlIHN0cmFuZ2UgaXQn
-cyBjcmVkZW50aWFscywgcm9vdCAnc3UnZWQgdG8gbXkgdXNlciBkb2VzbnQgZ290Cj4gY3JlZGVu
-dGlhbHMsIGJ1dCBzdGlsbCBoYXZlIGFjY2VzcyB0byBteSBmaWxlcy4uLgo+Cj4gT3IgSSdtIGRv
-aW5nIHNvbWV0aGluZyB3cm9uZz8gLV8tJwo+Cj4gVGhhbmtzLgo+IF9fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCj4gTkZTdjQgbWFpbGluZyBsaXN0Cj4gTkZT
-djRAbGludXgtbmZzLm9yZwo+IGh0dHA6Ly9saW51eC1uZnMub3JnL2NnaS1iaW4vbWFpbG1hbi9s
-aXN0aW5mby9uZnN2NAo+ICAgCgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fXwpORlN2NCBtYWlsaW5nIGxpc3QKTkZTdjRAbGludXgtbmZzLm9yZwpodHRwOi8v
-bGludXgtbmZzLm9yZy9jZ2ktYmluL21haWxtYW4vbGlzdGluZm8vbmZzdjQ=
+On 08/25/2009 04:37 PM, Chuck Lever wrote:
+>>>> Also note there is no '-o ' flag to umount so 'umount -t nfs -o v4' is
+>>>> not valid... but 'umount -t nfs' is and works on both nfs4 and nfs
+>>>> file systems.
+>>>
+>>> Sorry I wasn't clear.  I meant that umount.nfs should be able to read a
+>>> line in /etc/mtab that has "nfs" and "v4" and do the right thing... then
+>>> you wouldn't have to change the fs_type in /etc/mtab at all.
+>> Ok.. I gotta you now... and I did take a few minutes to look into what
+>> something like this would take... I quickly came to the realization
+>> that adding all complexity to make a system file, that nobody see or
+>> care about, more aesthetic really not worth it and not necessary,
+>> IMHO....
+> 
+> It's more of a maintainability issue.  Make umount.nfs behave the same
+> way for v2, v3, and v4, instead of doing one thing for v2/v3 and another
+> for v4.
+Then why even have a mount.nfs4 command? Lets simple get ride of that 
+command all together and ignore the fact nfs and nfs4 are to separate 
+filesystems? Personally I think this would be wrong... 
+
+It was deemed, rightly so, that nfs4 would be a separate file system.
+So there there will be things that will have to be done to maintain
+both of them... All this patch set does is create a shorthand way of 
+mounting an nfs4 file system... nothing more and nothing less... 
+   
+> 
+>> Point being,  umount is so simple when it comes to umounting a nfs4 file
+>> system... It basically does nothing! Which is a beautiful thing! So to
+>> added
+>> all the code (on both the mount and umount side) to translate
+>> '-t nfs -o v4' into nfs4 (which  would have to happen since
+>> del_mtab() takes a fs type) is just not worth it... Especially when
+>> the other option is adding no code to the umount side...
+> 
+> I doubt it would be a lot of complexity, actually.  We already have
+> parser calls in umount.nfs to handle v2/v3 version/transport
+> negotiation, so I don't think it would be much of a stretch at all to
+> look for "v4" before deciding whether to do a v2/v3 umount or a v4 umount.
+
+Let's make a deal! ;-) If a bug report is opened about the exact user-given command 
+arguments to the mount command are not portrayed correctly in /etc/mtab, 
+I will fix that bug and then buy you dinner! :-) 
+
+steved.
