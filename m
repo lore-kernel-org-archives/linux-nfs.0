@@ -1,42 +1,44 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 04/12] sunrpc/cache: recheck cache validity after
-	cache_defer_req
-Date: Wed, 26 Aug 2009 10:42:35 +1000
-Message-ID: <19092.34043.650963.678054@notabene.brown>
-References: <20090804051145.15929.11356.stgit@notabene.brown>
-	<20090804052238.15929.56800.stgit@notabene.brown>
-	<20090804204252.GA24758@fieldses.org>
-	<19066.25248.283061.383233@notabene.brown>
-	<20090825215037.GF32708@fieldses.org>
+From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: Reference to file size in nfsd_create_v3
+Date: Wed, 26 Aug 2009 12:40:18 +0530
+Message-ID: <4A94DFDA.4040508@gluster.com>
+References: <4A449074.6060600@gluster.com> <20090825161845.GD26206@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:37935 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932241AbZHZAmB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Aug 2009 20:42:01 -0400
-In-Reply-To: message from J. Bruce Fields on Tuesday August 25
+Received: from saturn.datasyncintra.net ([208.88.241.29]:40668 "EHLO
+	saturn.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753185AbZHZHKY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2009 03:10:24 -0400
+In-Reply-To: <20090825161845.GD26206@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday August 25, bfields@fieldses.org wrote:
+J. Bruce Fields wrote:
+> On Fri, Jun 26, 2009 at 02:40:12PM +0530, Shehjar Tikoo wrote:
+>> Hi All
+>> 
+>> I am looking at the fs/nfsd/vfs.c:nfsd_create_v3 function. In
+>> there, a comment says: "furthermore, if the size is nonzero, we
+>> should ignore it according to spec!"
+>> 
+>> Could someone please point out the section in RFC1813 where this 
+>> particular point is specified?
 > 
-> Yes, OK, seems reasonable enough.
+> It's referring to the third paragraph of the DESCRIPTION section of
+> the OPEN operation (14.2.16) in rfc 3530.
 > 
-> So, apologies, I've lost track of the rest of your patches, but I'm
-> still very much interested.  Will you have a chance to rebase and
-> resend?  My for-2.6.32 branch at
-> 
-> 	git://linux-nfs.org/~bfields/linux.git for-2.6.32
-> 
-> has what I've applied so far, plus a merge of Trond's queued patches
-> (which includes some changes to the cache code).
+> --b.
+Ok.
 
-I'm taking some leave next week so it'll probably be mid September
-before I get around to sending anything, but I'll try to keep it on my
-todo list.
+For NFSv3, is there a specified way to handle create or mkdir ops where
+  the size is non-zero? The reason this came up is that I was testing
+unfs3 with SpecSFS2k8 and an MKDIR op failed in unfs3 because SFS sent
+the mkdir call with non-zero size in the attributes. I just wanted to
+see how Linux nfsd handled it.
 
-Thanks,
-NeilBrown
+
+Thanks
+-Shehjar
