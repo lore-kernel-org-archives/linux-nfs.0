@@ -1,116 +1,77 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-From: Jeff Moyer <jmoyer@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/3] Fix the Linux rpc-over-tcp server performance
-References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org>
-	<20090812024341.GA3227@fieldses.org>
-	<x49ab25w4ja.fsf@segfault.boston.devel.redhat.com>
-	<20090812142041.GA12753@fieldses.org>
-	<x491vnhvucq.fsf@segfault.boston.devel.redhat.com>
-	<20090812223258.GE17782@fieldses.org>
-Date: Thu, 13 Aug 2009 09:05:47 -0400
-In-Reply-To: <20090812223258.GE17782@fieldses.org> (J. Bruce Fields's message
-	of "Wed, 12 Aug 2009 18:32:58 -0400")
-Message-ID: <x49r5vfj238.fsf@segfault.boston.devel.redhat.com>
-Cc: nfsv4@linux-nfs.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:31367 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752196AbZHZRYP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Aug 2009 13:24:15 -0400
+Cc: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Message-Id: <4A3D2EF4-33D4-4C4A-B76B-4FFE5A347E48@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+In-Reply-To: <1251305859.5226.9.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH 4/4] nfs-utils: nfs-iostat.py autofs cleanup and option to sort by ops/s
+Date: Wed, 26 Aug 2009 13:24:00 -0400
+References: <4A94C13E.6070403@dreamworks.com> <10C29C3A-4BF4-4C45-AEEF-CE22F77911BD@oracle.com> <4A954C4D.3060701@dreamworks.com> <08E0F2AC-2747-4F98-9686-CF665490B0F1@oracle.com> <1251305859.5226.9.camel@heimdal.trondhjem.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-> On Wed, Aug 12, 2009 at 01:02:13PM -0400, Jeff Moyer wrote:
->> "J. Bruce Fields" <bfields@fieldses.org> writes:
->> 
->> > On Wed, Aug 12, 2009 at 09:22:17AM -0400, Jeff Moyer wrote:
->> >> "J. Bruce Fields" <bfields@fieldses.org> writes:
->> >> 
->> >> > On Mon, May 18, 2009 at 05:47:56PM -0400, Trond Myklebust wrote:
->> >> >> I squashed the previous set of 4 incremental patches into 3. Otherwise
->> >> >> there should be no differences w.r.t. the set that Jeff tested.
->> >> >
->> >> > Apologies for the long delay.... Unfortunately, I can't reproduce any of
->> >> > this at all: I reliably get about 112MB/s regardless of what combination
->> >> > of these patches I apply (including none).  This is over gigabit
->> >> > ethernet to a server exporting a filesystem on raid 0 over 3 sata disks
->> >> > which iozone locally reports getting just over 200MB/s reads from.
->> >> >
->> >> > Any suggestions?
->> >> 
->> >> Well, you gave me nothing to go on here, Bruce!
->> >
->> > Apologies for the lack of details....
->> 
->> No worries.  ;-)
->> 
->> >> I assume you're using
->> >> the deadline I/O scheduler on the NFS server, is that right?  If not,
->> >> you should be.
->> >
->> > Oops, sorry, no. Looks like it doesn't allow setting a scheduler on md0,
->> > so I'm assuming I should be setting it on the component drives.
->> 
->> Right, set the scheduler on the component drives.  I was testing on
->> hardware raid, fwiw.
+On Aug 26, 2009, at 12:57 PM, Trond Myklebust wrote:
+
+> On Wed, 2009-08-26 at 11:47 -0400, Chuck Lever wrote:
+>> On Aug 26, 2009, at 10:53 AM, Lans Carstensen wrote:
+>>
+>>> Greetings!  Comments inline.  Chuck Lever wrote:
+>>>> Hi Lans-
+>>>> I was thinking about this feature a little more.  Would it be
+>>>> interesting to allow sorting by other metrics besides ops/s ?
+>>>> That's another feature that the "top" command has that this new
+>>>> option doesn't.
+>>>> I also don't like the bare integer options.  What if, at some
+>>>> point, we want "-4" and "-6" for IPv6 support (not that we do, but
+>>>> what if)?  Plus, having the bare integers doesn't give any clues
+>>>> about what the number means.
+>>>> In which case I propose:
+>>>> --sort=ops --list=<n>
+>>>> which provides more flexibility and helps make the options more
+>>>> self-documenting.
+>>>
+>>> Again, thanks for looking this over.
+>>>
+>>> I had thought about the sorting a little bit, but decided that every
+>>> case we cared about devolved to sorting by ops/s.  We'd use a tool
+>>> like this in an operational group where they've lost control of a
+>>> particular rogue workload in the mix of thousands of other
+>>> workloads, and the operational group is trying to figure out what
+>>> workload is generating a disproportionate amount of traffic (ops/
+>>> s).  If someone wanted to extend the implementation further where
+>>> leaving "--sort" unadorned sorts by ops and using "--
+>>> sort=readdirplus" or somesuch, I'd be all for it - but it didn't
+>>> seem worth the work for our use.  So I'd encourage that to be
+>>> adopted as-is and if someone wants to put the extra effort into it
+>>> I'm all for it.
+>>
+>> Well, the problem is once we choose a command line option, it's hard
+>> to change it later.  I think having two choices, like --sort=ops  
+>> and --
+>> sort=def[ault] would be fine for now, and give us room to grow later.
 >
-> Not much difference in results.  This is frustrating.
+> There is precedent for having both an option "--sort" with no  
+> arguments,
+> and "--sort=". See for instance 'ls --color'/'ls --color=WHEN'.
 >
-> For each test, I'm booting both client and server to the given kernel,
-> running
->
-> 	mount server:/exports/ /mnt/
-> 	iozone -s 2000000 -r 64 -f /mnt/testfile -w -i1
-> 	umount /mnt/
->
-> five times, then taking the average of the "read" columns.  (I could
-> stick to one client--not sure which you were using.  Installing new
-> kernels on both is just what my existing test scripts happened to do by
-> default.)
+> We could therefore just add '--sort' for now, and then add a -- 
+> sort=KEY
+> type option when someone decides they need it.
 
-Hmm, I think I was using a RHEL 5 client, so 2.6.18-based.
+If we are confident that having a "--sort" today will not limit  
+options later, then let's go for it.
 
-> 2.6.30-rc1:				114113
-> 2.6.30-rc1 + revert autotuning:		114159
-> 2.6.30-rc1 + patch 1:			114168
-> 2.6.30-rc1 + patch 1 & 2:		114136
-> 2.6.30-rc1 + patch 1, 2, & 3:		114149
->
-> (Where patches 1, 2, 3 are, respectively, "SUNRPC: Fix the TCP server's
-> send buffer accounting results", "SUNRPC: Fix the TCP write space
-> reservations for deferred requests", and "Fix svc_tcp_recvfrom()
-> results", respectively.
->
-> And the average-of-5 is pointless, really: the individual results have
-> very little variation.
->
-> See anything obvious I've gotten wrong here?
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Aside from the client kernel, which I didn't think mattered at the time,
-no.
 
->> Again, let me know if you need me to reproduce this.  It will give me an
->> excuse to get back that really nice machine I was using for testing. ;-)
->
-> I'd be happiest if I could figure out how to reproduce this myself.
 
-Understood.  Try an older client kernel.  If that still doesn't work,
-then let me reproduce it and get back to you with more specifics of my
-configuration.
-
-Thanks for being so diligent, Bruce!
-
--Jeff
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
