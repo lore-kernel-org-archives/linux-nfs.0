@@ -1,8 +1,8 @@
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [PATCH 2/2] Enable v4 mounts when either "nfsvers=4" or "vers=4"
 	option are set (vers-02)
-Date: Wed, 26 Aug 2009 13:22:30 -0400
-Message-ID: <F805BE4F-BA72-4B13-A60A-B298C69611C8@oracle.com>
+Date: Wed, 26 Aug 2009 13:51:08 -0400
+Message-ID: <4A95760C.9000604@RedHat.com>
 References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>
 	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>
 	<4A943914.9020104@RedHat.com>
@@ -13,13 +13,14 @@ References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>
 	<4A954FBF.3030606@RedHat.com>
 	<23199F1A-EA23-4DE1-AAB8-92D4B508C865@oracle.com>
 	<4A956BF2.6000902@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
+	<F805BE4F-BA72-4B13-A60A-B298C69611C8@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A956BF2.6000902@RedHat.com>
+In-Reply-To: <F805BE4F-BA72-4B13-A60A-B298C69611C8@oracle.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -31,78 +32,38 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 08/26/2009 01:22 PM, Chuck Lever wrote:
+>>> and if your proposed method to handle -t nfs -o vers=4 will make
+>>> it more complicated to get there.
+>> No. I'm proposing a simple shorthand patch that will make mounting nfs4
+>> file systems easier in hope of moving the technology forward by making
+>> it more accessible... What I believe you are proposing is architecture
+>> change to hide the fact nfs and nfs4 are separate file systems...
+> 
+> Nope, we're proposing doing the simple method in the kernel instead of
+> in the mount command.
+> 
+My apologize then... I was misinterpreting what you guys were suggesting..
+(email sometimes causes that... :-\ )
 
-On Aug 26, 2009, at 1:08 PM, Steve Dickson wrote:
+I don't think the -o v4 translation will be as easy as a 
+"simple method in the kernel" and it surely will not be as simple 
+and unintrusive as the patch I'm proposing.... Here is why... 
 
-> On 08/26/2009 12:35 PM, Chuck Lever wrote:
->> On Aug 26, 2009, at 11:07 AM, Steve Dickson wrote:
->>>> I think that would be a much better approach.  If nfs4 goes away
->>>> someday, for example, it will be completely transparent to the  
->>>> mount
->>>> command if we've already pushed "-t nfs, vers=4" conversion into  
->>>> the
->>>> kernel.
->>> Well when/if that day comes, we can easily pull the patches from the
->>> mount
->>> command.
->>
->> You know it's never that easy.  The mount command has to keep legacy
->> logic for older kernels.  I'm just saying that the less the mount
->> command has to worry about what kernel version is running, the  
->> cleaner
->> the mount command will be.
-> Well with this patch, since we are only concentrating on text mounts,
-> we are already breaking with the tradition of keeping legacy logic...
-> And again as long as the nfs4 file system exists this approach will  
-> work...
->
->>
->>>> We are pushing all of the details of NFS mounting into the kernel
->>>> anyway, over time.
->>> Which I've never been a fan of... Again it's much easier change user
->>> level code (and more people can do it) than kernel code...  
->>> especially
->>> with things of this nature...
->>
->> People can continue to change the mount command all they want.  In  
->> fact
->> the user space text-based option parsing code is pretty darn  
->> flexible as
->> it is now.
-> Yes... the user space parsing code is very well written...
->
->>
->> I don't think we're denying that your proposal is expedient.  The
->> question I think is where we want to be in the long run,
-> NFS v4 as the default protocol version followed by NFS V4.1 becoming  
-> the
-> default protocol version.
->
->> and if your proposed method to handle -t nfs -o vers=4 will make
->> it more complicated to get there.
-> No. I'm proposing a simple shorthand patch that will make mounting  
-> nfs4
-> file systems easier in hope of moving the technology forward by making
-> it more accessible... What I believe you are proposing is architecture
-> change to hide the fact nfs and nfs4 are separate file systems...
+>From an Linux  architecture standpoint the mount command *always*
+know what file system its mounting. There not been a precedence set
+where mount, mounts one file system which turns into mounting a
+different file system. Meaning there is no kernel support for
+nfs_get_sb() to all of sudden decide to roll back the system call
+and jump into nfs4_get_sb() (or vice a versa depending on which is the 
+default).
 
-Nope, we're proposing doing the simple method in the kernel instead of  
-in the mount command.
+Of course we could set that precedence and quit frank we would have
+to. I'm not totally against that, although other in the kernel community
+might be...  
 
-> But in the end, if we do the simple shorthand patch (making the  
-> technology
-> available today) or the major architecture change (making the  
-> technology
-> available the distant future) with both approaches 'mount -o v4'
-> will do the exact same thing...
->
-> I for moving the technology today...
->
-> steved.
->
->
->
+But there is no way that re-architecturing of kernel will as simple
+and straightforward as following the Linux standard architecture of
+having mount, mount the correct file system.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+steved.
