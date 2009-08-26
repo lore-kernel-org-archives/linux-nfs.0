@@ -1,92 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39738 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:26530 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754072AbZHSXk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Aug 2009 19:40:58 -0400
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id n7JNe7Xv028517
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2009 16:40:44 -0700 (PDT)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/32] The following patches have been committed to branch
- nfs-for-2.6.32
-Date: Wed, 19 Aug 2009 19:38:23 -0400
-Message-Id: <1250725135-14632-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752564AbZHZSDU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Aug 2009 14:03:20 -0400
+Message-ID: <4A9578E4.4040402@RedHat.com>
+Date: Wed, 26 Aug 2009 14:03:16 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] nfs-utils: nfs-iostat.py autofs cleanup and option
+ to sort by ops/s
+References: <4A94C133.8030904@dreamworks.com> <3644941A-3EA7-4755-867A-888E81A372FC@oracle.com> <4A9550FF.6010103@RedHat.com> <52E7928C-340C-45EF-9CFF-FB902332465F@oracle.com>
+In-Reply-To: <52E7928C-340C-45EF-9CFF-FB902332465F@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Bartlomiej Zolnierkiewicz (1):
-      nfs: remove superfluous BUG_ON()s
 
-Peter Staubach (1):
-      NFS: read-modify-write page updating
 
-Roel Kluin (1):
-      nfs: Keep index within mnt_errtbl[]
+On 08/26/2009 11:35 AM, Chuck Lever wrote:
+> On Aug 26, 2009, at 11:13 AM, Steve Dickson wrote:
+>> On 08/26/2009 10:28 AM, Chuck Lever wrote:
+>>>
+>>> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
+>>>
+>>>> commit d3bb692a8c26c2d4e0dc70d7d0359daf79090e1e
+>>>> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
+>>>> Date:   Tue Aug 25 21:52:03 2009 -0700
+>>>>
+>>>>   Bump nfs-iostat.py version up to 0.3 to reflect new features.
+>>>
+>>> Now that nfs-iostat.py has been integrated into nfs-utils, I'm not sure
+>>> we want to maintain an individual version number for it.  Maybe it
+>>> should use the nfs-utils package's versioning instead... Steve, your
+>>> thoughts?
+>> Hmm... I don't think we tie any of other commands versions to
+>> the package version....
+> 
+> Actually many of the C commands do grab a macro defined during
+> autoconfiguration: PACKAGE_VERSION.
+> 
+Interesting.. I do see PACKAGE_VERSION being defined in support/include/config.h
+I guess I didn't know that was there and it does not seem to be used
+by anybody... which is probably a problem but I don't think its a problem
+with this script... 
 
-Trond Myklebust (29):
-      NFSv4: Don't loop forever on state recovery failure...
-      NFSv4: Add 'server capability' flags for NFSv4 recommended attributes
-      NFSv4: Don't do idmapper upcalls for asynchronous RPC calls
-      SUNRPC: convert some sysctls into module parameters
-      NFSv4: Clean up the nfs.callback_tcpport option
-      SUNRPC: Constify rpc_pipe_ops...
-      SUNRPC: Allow rpc_pipefs_ops to have null values for upcall and downcall
-      SUNRPC: Clean up rpc_pipefs lookup code...
-      SUNRPC: Clean up file creation code in rpc_pipefs
-      SUNRPC: Clean up rpc_unlink()
-      SUNRPC: Clean up rpc_lookup_create
-      SUNRPC: Clean up rpc_populate/depopulate
-      SUNRPC: rpc_pipefs cleanup
-      SUNRPC: Rename rpc_mkdir to rpc_create_client_dir()
-      SUNRPC: Clean up rpc_create_client_dir()
-      SUNRPC: Replace rpc_client->cl_dentry and cl_mnt, with a cl_path
-      SUNRPC: clean up rpc_setup_pipedir()
-      SUNRPC: One more clean up for rpc_create_client_dir()
-      NFSD: Clean up the idmapper warning...
-      SUNRPC: Ensure we initialise the cache_detail before creating procfs files
-      SUNRPC: Remove the global temporary write buffer in net/sunrpc/cache.c
-      SUNRPC: Allow the cache_detail to specify alternative upcall mechanisms
-      SUNRPC: Move procfs-specific stuff out of the generic sunrpc cache code
-      SUNRPC: Add an rpc_pipefs front end for the sunrpc cache code
-      NFS: Add a ->migratepage() aop for NFS
-      SUNRPC: Fix a typo in cache_pipefs_files
-      NFS: Add a dns resolver for use with NFSv4 referrals and migration
-      NFS: Use the DNS resolver in the mount code.
-      SUNRPC: cache must take a reference to the cache detail's module on open()
-
- Documentation/filesystems/nfs.txt   |   98 +++++
- Documentation/kernel-parameters.txt |   29 ++
- fs/nfs/Makefile                     |    3 +-
- fs/nfs/cache_lib.c                  |  140 +++++++
- fs/nfs/cache_lib.h                  |   27 ++
- fs/nfs/callback.c                   |   26 +-
- fs/nfs/client.c                     |   15 +-
- fs/nfs/dns_resolve.c                |  335 +++++++++++++++++
- fs/nfs/dns_resolve.h                |   14 +
- fs/nfs/file.c                       |   49 +++-
- fs/nfs/idmap.c                      |    6 +-
- fs/nfs/inode.c                      |  100 +++++-
- fs/nfs/internal.h                   |    6 +
- fs/nfs/mount_clnt.c                 |    4 +-
- fs/nfs/nfs4namespace.c              |   18 +-
- fs/nfs/nfs4proc.c                   |   40 ++-
- fs/nfs/nfs4xdr.c                    |   86 +++--
- fs/nfs/write.c                      |   91 ++++--
- fs/nfsd/export.c                    |   14 +-
- fs/nfsd/nfs4idmap.c                 |   20 +-
- include/linux/nfs_fs_sb.h           |    9 +
- include/linux/sunrpc/cache.h        |   40 ++-
- include/linux/sunrpc/clnt.h         |    5 +-
- include/linux/sunrpc/rpc_pipe_fs.h  |   18 +-
- net/sunrpc/auth_gss/auth_gss.c      |   12 +-
- net/sunrpc/auth_gss/svcauth_gss.c   |    7 +-
- net/sunrpc/cache.c                  |  622 ++++++++++++++++++++++++--------
- net/sunrpc/clnt.c                   |   60 ++-
- net/sunrpc/rpc_pipe.c               |  685 ++++++++++++++++++++---------------
- net/sunrpc/svcauth_unix.c           |   14 +-
- net/sunrpc/xprtsock.c               |   52 +++
- 31 files changed, 2065 insertions(+), 580 deletions(-)
-
+steved.
