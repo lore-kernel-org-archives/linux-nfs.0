@@ -1,21 +1,21 @@
 From: Steve Dickson <SteveD@redhat.com>
 Subject: Re: [PATCH 2/2] Enable v4 mounts when either "nfsvers=4" or "vers=4"
 	option are set (vers-02)
-Date: Wed, 26 Aug 2009 08:10:02 -0400
-Message-ID: <4A95261A.5080601@RedHat.com>
-References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>
-	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>
-	<4A943914.9020104@RedHat.com>
-	<7AB7BC01-F9E5-4611-BB4B-2B6E27069631@oracle.com>
+Date: Wed, 26 Aug 2009 08:28:26 -0400
+Message-ID: <4A952A6A.4000307@RedHat.com>
+References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>	
+	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>	
+	<4A943914.9020104@RedHat.com>	
+	<7AB7BC01-F9E5-4611-BB4B-2B6E27069631@oracle.com>	
 	<4A944645.1020003@RedHat.com>
-	<29B9DDA7-00A2-4EDE-93B4-D00D5427CD70@oracle.com>
+	<1251233345.25372.67.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <29B9DDA7-00A2-4EDE-93B4-D00D5427CD70@oracle.com>
+In-Reply-To: <1251233345.25372.67.camel@heimdal.trondhjem.org>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -27,48 +27,60 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/25/2009 04:37 PM, Chuck Lever wrote:
->>>> Also note there is no '-o ' flag to umount so 'umount -t nfs -o v4' is
->>>> not valid... but 'umount -t nfs' is and works on both nfs4 and nfs
->>>> file systems.
+On 08/25/2009 04:49 PM, Trond Myklebust wrote:
+> On Tue, 2009-08-25 at 16:15 -0400, Steve Dickson wrote:
+>>
+>> On 08/25/2009 03:32 PM, Chuck Lever wrote:
+>>> On Aug 25, 2009, at 3:18 PM, Steve Dickson wrote:
+>>>> On 08/25/2009 02:59 PM, Chuck Lever wrote:
+>>>>> On Aug 25, 2009, at 1:55 PM, Steve Dickson wrote:
+>>>>>> commit 1471d23d692efc7388794a8a3c3b9e548d1c5be8
+>>>>>> Author: Steve Dickson <steved@redhat.com>
+>>>>>> Date:   Tue Aug 25 12:15:18 2009 -0400
+>>>>>>
+>>>>>>   Make sure umount use correct fs type.
+>>>>>>
+>>>>>>   umounts use the fs type in /etc/mtab to determine
+>>>>>>   which file system is being unmounted. The mtab
+>>>>>>   entry is create during the mount. To ensure the
+>>>>>>   correct entry is create when the fs type changes
+>>>>>>   due to the mount options, the address of the fs_type
+>>>>>>   variable has to be passed so it can be updated.
+>>>>>
+>>>>> In general, my policy is to record the user requested mount options in
+>>>>> /etc/mtab, and let umount.nfs handle renegotiating as needed.  For
+>>>>> version/transport this means that the server's configuration can change
+>>>>> between the mount and the umount, and the umount will still work.
+>>>>>
+>>>>> Perhaps this is not a consideration for NFSv4, but leaving the mount
+>>>>> options as specified by the user would save the need to update the fs
+>>>>> type, and would be a consistent policy for v2, v3, and v4.  I think it
+>>>>> would be cleaner to teach umount.nfs to do the right thing with "-t nfs
+>>>>> -o v4" rather than rewriting the options in /etc/mtab.
+>>>> Since nfs4 is truly a separate/different file system from nfs in the
+>>>> kernel, I think we should continue making that distinction in system
+>>>> files like mtab and /proc/mounts....
 >>>
->>> Sorry I wasn't clear.  I meant that umount.nfs should be able to read a
->>> line in /etc/mtab that has "nfs" and "v4" and do the right thing... then
->>> you wouldn't have to change the fs_type in /etc/mtab at all.
->> Ok.. I gotta you now... and I did take a few minutes to look into what
->> something like this would take... I quickly came to the realization
->> that adding all complexity to make a system file, that nobody see or
->> care about, more aesthetic really not worth it and not necessary,
->> IMHO....
+>>> We are teaching mount.nfs not to care about nfs/nfs4 (at least
+>>> externally).  Why should umount.nfs?
+>> That's not quite accurate... IMHO.. I see it as we are teach mount.nfs to
+>> accept new command line arguments that will cause a nfs4 file system
+>> to be mounted... and that is done by caring which fs type mount is
+>> dealing with... 
 > 
-> It's more of a maintainability issue.  Make umount.nfs behave the same
-> way for v2, v3, and v4, instead of doing one thing for v2/v3 and another
-> for v4.
-Then why even have a mount.nfs4 command? Lets simple get ride of that 
-command all together and ignore the fact nfs and nfs4 are to separate 
-filesystems? Personally I think this would be wrong... 
+> So, why couldn't we just do this in the kernel? It should be easily
+> doable to set nfs -overs=4 to mount an NFSv4 filesystem. We only have to
+> do this for text mounts...
+Basically time to market.... A kernel patch will not make into a mainstream
+kernel until 2.6.32 which is in the distant future... verses having this
+patch committed in the very near future (like today! ;-) ). 
 
-It was deemed, rightly so, that nfs4 would be a separate file system.
-So there there will be things that will have to be done to maintain
-both of them... All this patch set does is create a shorthand way of 
-mounting an nfs4 file system... nothing more and nothing less... 
-   
-> 
->> Point being,  umount is so simple when it comes to umounting a nfs4 file
->> system... It basically does nothing! Which is a beautiful thing! So to
->> added
->> all the code (on both the mount and umount side) to translate
->> '-t nfs -o v4' into nfs4 (which  would have to happen since
->> del_mtab() takes a fs type) is just not worth it... Especially when
->> the other option is adding no code to the umount side...
-> 
-> I doubt it would be a lot of complexity, actually.  We already have
-> parser calls in umount.nfs to handle v2/v3 version/transport
-> negotiation, so I don't think it would be much of a stretch at all to
-> look for "v4" before deciding whether to do a v2/v3 umount or a v4 umount.
+Plus its historical reasons... Things like this have always been done in 
+in user level code since its much easier to change user level code that it
+is kernel.
 
-Let's make a deal! ;-) If a bug report is opened about the exact user-given command 
-arguments to the mount command are not portrayed correctly in /etc/mtab, 
-I will fix that bug and then buy you dinner! :-) 
+With that said, I will be more than willing to come up with kernel patch
+which in the end would make these patch obsolete... but again that
+would be in the distant future... 
 
 steved.
