@@ -1,13 +1,15 @@
-From: =?ISO-8859-1?Q?Carlos_Andr=E9?= <candrecn@gmail.com>
-Subject: Kerberos+NFSv4: Security - Multiple sessions with same user. One
-	ticket for all?
-Date: Wed, 26 Aug 2009 08:46:37 -0300
-Message-ID: <f6ce31e30908260446g534bb70bxd742e35141ae99c1@mail.gmail.com>
+From: Ondrej Valousek <webserv@s3group.cz>
+Subject: Re: Kerberos+NFSv4: Security - Multiple sessions with same user.
+	One 	ticket for all?
+Date: Wed, 26 Aug 2009 13:51:10 +0200
+Message-ID: <4A9521AE.3010900@s3group.cz>
+References: <f6ce31e30908260446g534bb70bxd742e35141ae99c1@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: NFS list <linux-nfs@vger.kernel.org>,
+Content-Type: text/plain; charset="utf-8"; Format="flowed"
+Cc: NFS list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
 Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <f6ce31e30908260446g534bb70bxd742e35141ae99c1@mail.gmail.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -19,83 +21,63 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I got a strange security issue. I logon via SSH or local console with
-my user and get a ticket, then if local root su to my user, local root
-can access my files.
-
-I'm using CentOS 5.3:
-kernel-2.6.18-128.2.1.el5
-krb5-workstation-1.6.1-31.el5_3.3
-
-
-SESSION 1:
------------------------------------------------------------------
-$ ssh root@1.2.3.4
-root@1.2.3.4's password:
-Last login: Wed Aug 26 08:06:49 2009 from X
-[root@KSTATION ~]# su carlos.andre
-[carlos.andre@KSTATION root]$ klist
-klist: No credentials cache found (ticket cache FILE:/tmp/krb5cc_10000)
-
-
-Kerberos 4 ticket cache: /tmp/tkt10000
-klist: You have no tickets cached
-[carlos.andre@KSTATION root]$ cd /misc/home/carlos.andre
-bash: cd: /misc/home/carlos.andre: Permission denied
-[carlos.andre@KSTATION root]$
------------------------------------------------------------------
-[--OK--]
-
-
-SESSION 2:
------------------------------------------------------------------
-$ ssh carlos.andre@1.2.3.4
-carlos.andre@1.2.3.4's password:
-Last login: Wed Aug 26 08:01:33 2009 from X
-[carlos.andre@KSTATION ~]$ klist
-Ticket cache: FILE:/tmp/krb5cc_10000_PPLMqF
-Default principal: carlos.andre@X.BR
-
-Valid starting     Expires            Service principal
-08/26/09 08:30:12  08/26/09 18:30:12  krbtgt/X.BR@X.BR
-        renew until 08/26/09 08:30:12
-
-
-Kerberos 4 ticket cache: /tmp/tkt10000
-klist: You have no tickets cached
-[carlos.andre@KSTATION ~]$ cd /misc/home/carlos.andre
-[carlos.andre@KSTATION carlos.andre]$ ls -la
-total 8
-drwxrwx--- 2 carlos.andre users 4096 Aug 21 09:04 .
-drwxr-xr-x 3 root         root               0 Aug 26 08:30 ..
-[carlos.andre@KSTATION carlos.andre]$
------------------------------------------------------------------
-[--OK--]
-
-
-NOW BACK TO SESSION 1:
------------------------------------------------------------------
-[carlos.andre@KSTATION root]$ cd /misc/home/carlos.andre
-[carlos.andre@KSTATION carlos.andre]$ ls -la
-total 8
-drwxrwx--- 2 carlos.andre users 4096 Aug 21 09:04 .
-drwxr-xr-x 3 root         root               0 Aug 26 08:30 ..
-[carlos.andre@KSTATION carlos.andre]$ klist
-klist: No credentials cache found (ticket cache FILE:/tmp/krb5cc_10000)
-
-
-Kerberos 4 ticket cache: /tmp/tkt10000
-klist: You have no tickets cached
-[carlos.andre@KSTATION carlos.andre]$
------------------------------------------------------------------
-[WTF!?!?]
-
-Then, if I log on someone machine, local root user (and 'su' to my
-user) will have access to my files like NFS without Kerberos?? This
-behavior is "correct" or it's a bug?
-And more strange it's credentials, root 'su'ed to my user doesnt got
-credentials, but still have access to my files...
-
-Or I'm doing something wrong? -_-'
-
-Thanks.
+VGhpcyBpc3N1ZSBoYXMgYWxyZWFkeSBiZWVuIGRpc2N1c3NlZCBvbiB0aGlzIGxpc3QuCkxvY2Fs
+IHJvb3QgaGFzIGFjY2VzcyB0byBhbGwgY3JlZGVudGlhbHMgc3RvcmVkIG9uIHRoYXQgbWFjaGlu
+ZSBhbmQgCnRoZXJlIGlzIG5vdGhpbmcgeW91IGNhbiBkbyB3aXRoIHRoaXMuIFlvdSBjYW4gb25s
+eSB0ZWxsIHRoZSB1c2VyIG5vdCB0byAKbG9nIHRvIGEgbWFjaGluZSB3aGljaCBpcyBhbHJlYWR5
+IGNvbXByb21pc2VkIGJ5IG1hbGljaW91cyBhdHRhY2tlciAKaGF2aW5nIHJvb3QgYWNjZXNzLgpP
+bmRyZWoKCkNhcmxvcyBBbmRyw6kgd3JvdGU6Cj4gSSBnb3QgYSBzdHJhbmdlIHNlY3VyaXR5IGlz
+c3VlLiBJIGxvZ29uIHZpYSBTU0ggb3IgbG9jYWwgY29uc29sZSB3aXRoCj4gbXkgdXNlciBhbmQg
+Z2V0IGEgdGlja2V0LCB0aGVuIGlmIGxvY2FsIHJvb3Qgc3UgdG8gbXkgdXNlciwgbG9jYWwgcm9v
+dAo+IGNhbiBhY2Nlc3MgbXkgZmlsZXMuCj4KPiBJJ20gdXNpbmcgQ2VudE9TIDUuMzoKPiBrZXJu
+ZWwtMi42LjE4LTEyOC4yLjEuZWw1Cj4ga3JiNS13b3Jrc3RhdGlvbi0xLjYuMS0zMS5lbDVfMy4z
+Cj4KPgo+IFNFU1NJT04gMToKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQo+ICQgc3NoIHJvb3RAMS4yLjMuNAo+IHJvb3RA
+MS4yLjMuNCdzIHBhc3N3b3JkOgo+IExhc3QgbG9naW46IFdlZCBBdWcgMjYgMDg6MDY6NDkgMjAw
+OSBmcm9tIFgKPiBbcm9vdEBLU1RBVElPTiB+XSMgc3UgY2FybG9zLmFuZHJlCj4gW2Nhcmxvcy5h
+bmRyZUBLU1RBVElPTiByb290XSQga2xpc3QKPiBrbGlzdDogTm8gY3JlZGVudGlhbHMgY2FjaGUg
+Zm91bmQgKHRpY2tldCBjYWNoZSBGSUxFOi90bXAva3JiNWNjXzEwMDAwKQo+Cj4KPiBLZXJiZXJv
+cyA0IHRpY2tldCBjYWNoZTogL3RtcC90a3QxMDAwMAo+IGtsaXN0OiBZb3UgaGF2ZSBubyB0aWNr
+ZXRzIGNhY2hlZAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04gcm9vdF0kIGNkIC9taXNjL2hvbWUv
+Y2FybG9zLmFuZHJlCj4gYmFzaDogY2Q6IC9taXNjL2hvbWUvY2FybG9zLmFuZHJlOiBQZXJtaXNz
+aW9uIGRlbmllZAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04gcm9vdF0kCj4gLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiBb
+LS1PSy0tXQo+Cj4KPiBTRVNTSU9OIDI6Cj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiAkIHNzaCBjYXJsb3MuYW5kcmVA
+MS4yLjMuNAo+IGNhcmxvcy5hbmRyZUAxLjIuMy40J3MgcGFzc3dvcmQ6Cj4gTGFzdCBsb2dpbjog
+V2VkIEF1ZyAyNiAwODowMTozMyAyMDA5IGZyb20gWAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04g
+fl0kIGtsaXN0Cj4gVGlja2V0IGNhY2hlOiBGSUxFOi90bXAva3JiNWNjXzEwMDAwX1BQTE1xRgo+
+IERlZmF1bHQgcHJpbmNpcGFsOiBjYXJsb3MuYW5kcmVAWC5CUgo+Cj4gVmFsaWQgc3RhcnRpbmcg
+ICAgIEV4cGlyZXMgICAgICAgICAgICBTZXJ2aWNlIHByaW5jaXBhbAo+IDA4LzI2LzA5IDA4OjMw
+OjEyICAwOC8yNi8wOSAxODozMDoxMiAga3JidGd0L1guQlJAWC5CUgo+ICAgICAgICAgcmVuZXcg
+dW50aWwgMDgvMjYvMDkgMDg6MzA6MTIKPgo+Cj4gS2VyYmVyb3MgNCB0aWNrZXQgY2FjaGU6IC90
+bXAvdGt0MTAwMDAKPiBrbGlzdDogWW91IGhhdmUgbm8gdGlja2V0cyBjYWNoZWQKPiBbY2FybG9z
+LmFuZHJlQEtTVEFUSU9OIH5dJCBjZCAvbWlzYy9ob21lL2Nhcmxvcy5hbmRyZQo+IFtjYXJsb3Mu
+YW5kcmVAS1NUQVRJT04gY2FybG9zLmFuZHJlXSQgbHMgLWxhCj4gdG90YWwgOAo+IGRyd3hyd3gt
+LS0gMiBjYXJsb3MuYW5kcmUgdXNlcnMgNDA5NiBBdWcgMjEgMDk6MDQgLgo+IGRyd3hyLXhyLXgg
+MyByb290ICAgICAgICAgcm9vdCAgICAgICAgICAgICAgIDAgQXVnIDI2IDA4OjMwIC4uCj4gW2Nh
+cmxvcy5hbmRyZUBLU1RBVElPTiBjYXJsb3MuYW5kcmVdJAo+IC0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gWy0tT0stLV0K
+Pgo+Cj4gTk9XIEJBQ0sgVE8gU0VTU0lPTiAxOgo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gW2Nhcmxvcy5hbmRyZUBL
+U1RBVElPTiByb290XSQgY2QgL21pc2MvaG9tZS9jYXJsb3MuYW5kcmUKPiBbY2FybG9zLmFuZHJl
+QEtTVEFUSU9OIGNhcmxvcy5hbmRyZV0kIGxzIC1sYQo+IHRvdGFsIDgKPiBkcnd4cnd4LS0tIDIg
+Y2FybG9zLmFuZHJlIHVzZXJzIDQwOTYgQXVnIDIxIDA5OjA0IC4KPiBkcnd4ci14ci14IDMgcm9v
+dCAgICAgICAgIHJvb3QgICAgICAgICAgICAgICAwIEF1ZyAyNiAwODozMCAuLgo+IFtjYXJsb3Mu
+YW5kcmVAS1NUQVRJT04gY2FybG9zLmFuZHJlXSQga2xpc3QKPiBrbGlzdDogTm8gY3JlZGVudGlh
+bHMgY2FjaGUgZm91bmQgKHRpY2tldCBjYWNoZSBGSUxFOi90bXAva3JiNWNjXzEwMDAwKQo+Cj4K
+PiBLZXJiZXJvcyA0IHRpY2tldCBjYWNoZTogL3RtcC90a3QxMDAwMAo+IGtsaXN0OiBZb3UgaGF2
+ZSBubyB0aWNrZXRzIGNhY2hlZAo+IFtjYXJsb3MuYW5kcmVAS1NUQVRJT04gY2FybG9zLmFuZHJl
+XSQKPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLQo+IFtXVEYhPyE/XQo+Cj4gVGhlbiwgaWYgSSBsb2cgb24gc29tZW9uZSBt
+YWNoaW5lLCBsb2NhbCByb290IHVzZXIgKGFuZCAnc3UnIHRvIG15Cj4gdXNlcikgd2lsbCBoYXZl
+IGFjY2VzcyB0byBteSBmaWxlcyBsaWtlIE5GUyB3aXRob3V0IEtlcmJlcm9zPz8gVGhpcwo+IGJl
+aGF2aW9yIGlzICJjb3JyZWN0IiBvciBpdCdzIGEgYnVnPwo+IEFuZCBtb3JlIHN0cmFuZ2UgaXQn
+cyBjcmVkZW50aWFscywgcm9vdCAnc3UnZWQgdG8gbXkgdXNlciBkb2VzbnQgZ290Cj4gY3JlZGVu
+dGlhbHMsIGJ1dCBzdGlsbCBoYXZlIGFjY2VzcyB0byBteSBmaWxlcy4uLgo+Cj4gT3IgSSdtIGRv
+aW5nIHNvbWV0aGluZyB3cm9uZz8gLV8tJwo+Cj4gVGhhbmtzLgo+IF9fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCj4gTkZTdjQgbWFpbGluZyBsaXN0Cj4gTkZT
+djRAbGludXgtbmZzLm9yZwo+IGh0dHA6Ly9saW51eC1uZnMub3JnL2NnaS1iaW4vbWFpbG1hbi9s
+aXN0aW5mby9uZnN2NAo+ICAgCgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fXwpORlN2NCBtYWlsaW5nIGxpc3QKTkZTdjRAbGludXgtbmZzLm9yZwpodHRwOi8v
+bGludXgtbmZzLm9yZy9jZ2ktYmluL21haWxtYW4vbGlzdGluZm8vbmZzdjQ=
