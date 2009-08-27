@@ -1,64 +1,151 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATHC] nfsd: Fix a couple issues with POSIX->NFSv4 ACL conversion
-Date: Thu, 27 Aug 2009 17:37:38 -0400
-Message-ID: <20090827213738.GF11721@fieldses.org>
-References: <1250287351.32255.3.camel@dyn9047022153>
-	<20090824235944.GH8532@fieldses.org>
-	<1251394811.32255.6.camel@dyn9047022153>
+Subject: Re: [pnfs] [PATCH] nfsd41: renew_client must be called under the
+	state lock
+Date: Thu, 27 Aug 2009 17:38:03 -0400
+Message-ID: <20090827213803.GG11721@fieldses.org>
+References: <1250727716-28107-1-git-send-email-bhalevy@panasas.com> <20090824162904.GC4985@fieldses.org> <4A938D7A.3070908@panasas.com> <20090825131829.GA24049@fieldses.org> <4A941931.8070609@panasas.com> <20090825215948.GG32708@fieldses.org> <4A94F060.4080209@panasas.com> <20090826210242.GB22723@fieldses.org> <4A96B62E.3040708@panasas.com> <20090827211639.GE11721@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: NFS List <linux-nfs@vger.kernel.org>,
-	NFS V4 Mailing List <nfsv4@linux-nfs.org>
-To: Frank Filz <ffilzlnx@us.ibm.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <1251394811.32255.6.camel@dyn9047022153>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: Benny Halevy <bhalevy@panasas.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:44823 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753272AbZH0ViB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Aug 2009 17:38:01 -0400
+In-Reply-To: <20090827211639.GE11721@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 27, 2009 at 10:40:11AM -0700, Frank Filz wrote:
-> On Mon, 2009-08-24 at 19:59 -0400, J. Bruce Fields wrote:
-> > On Fri, Aug 14, 2009 at 03:02:30PM -0700, Frank Filz wrote:
-> > > 1. GROUP@ Allow entry doesn't have NFS4_ACE_IDENTIFIER_GROUP, This
-> > > appears to have been introduced by accident as part of commit
-> > > http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=bec50c47aaf6f1f9247f1860547ab394a0802a4c
+On Thu, Aug 27, 2009 at 05:16:39PM -0400, bfields wrote:
+> On Thu, Aug 27, 2009 at 07:37:02PM +0300, Benny Halevy wrote:
+> > On Aug. 27, 2009, 0:02 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > On Wed, Aug 26, 2009 at 11:20:48AM +0300, Boaz Harrosh wrote:
+> > >> On 08/26/2009 12:59 AM, J. Bruce Fields wrote:
+> > >>> commit fdf7875040506ca7e595dffef56cbd81ae6b384b
+> > >>> Author: Benny Halevy <bhalevy@panasas.com>
+> > >>> Date:   Thu Aug 20 03:21:56 2009 +0300
+> > >>>
+> > >>>     nfsd41: renew_client must be called under the state lock
+> > >>>     
+> > >>>     Until we work out the state locking so we can use a spin lock to protect
+> > >>>     the cl_lru, we need to take the state_lock to renew the client.
+> > >>>     
+> > >>>     Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> > >>>     [nfsd41: Do not renew state on error]
+> > >>>     Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> > >>>     Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> > >>>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > >>>
+> > >>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > >>> index d2a0524..8e5ac49 100644
+> > >>> --- a/fs/nfsd/nfs4state.c
+> > >>> +++ b/fs/nfsd/nfs4state.c
+> > >>> @@ -1463,12 +1463,16 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> > >>>  	spin_lock(&sessionid_lock);
+> > >>>  	status = nfserr_badsession;
+> > >>>  	session = find_in_sessionid_hashtbl(&seq->sessionid);
+> > >>> -	if (!session)
+> > >>> -		goto out;
+> > >>> +	if (!session) {
+> > >>> +		spin_unlock(&sessionid_lock);
+> > >>> +		goto err;
+> > >>> +	}
+> > >>>  
+> > >>>  	status = nfserr_badslot;
+> > >>> -	if (seq->slotid >= session->se_fchannel.maxreqs)
+> > >>> -		goto out;
+> > >>> +	if (seq->slotid >= session->se_fchannel.maxreqs) {
+> > >>> +		spin_unlock(&sessionid_lock);
+> > >>> +		goto err;
+> > >>> +	}
+> > >>>  
+> > >> A spin_unlock is a big and delicate inlined code site
+> > >> Why not do a "goto err_unlock" or something
+> > > 
+> > > Yes, we could add an
+> > > 
+> > > 	err_unlock:
+> > > 		spin_unlock(&sessionid_lock);
+> > > 		goto err;
+> > > 
+> > > at the end.  It still seems little delicate.
+> > > 
+> > > How about the following (on top of Benny's patch), which sends all the
+> > > unlock cases to one label?  (Disclaimer: untested.  And this depends on
+> > > the assumption that cstate->session is NULL on entry to this function,
+> > > which I haven't checked.)
+> > > 
+> > > --b.
+> > > 
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index 8e5ac49..5f634d2 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -1463,16 +1463,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> > >  	spin_lock(&sessionid_lock);
+> > >  	status = nfserr_badsession;
+> > >  	session = find_in_sessionid_hashtbl(&seq->sessionid);
+> > > -	if (!session) {
+> > > -		spin_unlock(&sessionid_lock);
+> > > -		goto err;
+> > > -	}
+> > > +	if (!session)
+> > > +		goto out;
+> > >  
+> > >  	status = nfserr_badslot;
+> > > -	if (seq->slotid >= session->se_fchannel.maxreqs) {
+> > > -		spin_unlock(&sessionid_lock);
+> > > -		goto err;
+> > > -	}
+> > > +	if (seq->slotid >= session->se_fchannel.maxreqs)
+> > > +		goto out;
+> > >  
+> > >  	slot = &session->se_slots[seq->slotid];
+> > >  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+> > > @@ -1487,10 +1483,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> > >  		cstate->status = nfserr_replay_cache;
+> > >  		goto out;
+> > >  	}
+> > > -	if (status) {
+> > > -		spin_unlock(&sessionid_lock);
+> > > -		goto err;
+> > > -	}
+> > > +	if (status)
+> > > +		goto out;
+> > >  
+> > >  	/* Success! bump slot seqid */
+> > >  	slot->sl_inuse = true;
+> > > @@ -1510,10 +1504,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> > >  out:
+> > >  	spin_unlock(&sessionid_lock);
+> > >  	/* Renew the clientid on success and on replay */
+> > > -	nfs4_lock_state();
+> > > -	renew_client(session->se_client);
+> > > -	nfs4_unlock_state();
+> > > -err:
+> > > +	if (cstate->session) {
+> > > +		nfs4_lock_state();
+> > > +		renew_client(session->se_client);
+> > > +		nfs4_unlock_state();
+> > > +	}
+> > >  	dprintk("%s: return %d\n", __func__, ntohl(status));
+> > >  	return status;
+> > >  }
 > > 
-> > It's good to flip that bit every now and then just to keep client
-> > implementations on their toes....
-> > 
-> > 	(Slightly more seriously, the 4.1 draft says "The
-> > 	ACE4_IDENTIFIER_GROUP flag MUST be ignored on entries with these
-> > 	special identifiers.  When encoding entries with these special
-> > 	identifiers, the ACE4_IDENTIFIER_GROUP flag SHOULD be set to
-> > 	zero."  It really shouldn't matter either way, but the point is
-> > 	that this flag is used to distinguish named users from named
-> > 	groups (since unix allows a group to have the same name as a
-> > 	user), so it doesn't really make sense to use it on a special
-> > 	identifier such as this.)
+> > The code looks correct.
+> > Coming to think about it, I hope that cstate is initialized to zeroes
+> > since we're not explicitly clearing it. Should we?
+> > cstate comes from the struct nfsd4_compoundres * nfsd4_proc_compound
+> > is being called with...
 > 
-> Ok, that makes sense, in that case, we probably should have this
-> fragment to remove the flag from the GROUP@ deny entry:
+> net/sunrpc/svc.c:svc_process_common() has this:
+> 
+> 	/* Initialize storage for argp and resp */
+> 	memset(rqstp->rq_argp, 0, procp->pc_argsize);
+> 	memset(rqstp->rq_resp, 0, procp->pc_ressize);
+> 
+> OK!
 
-Sure.  Applied.
-
---b.
-
-> 
-> @@ -321,7 +321,7 @@ _posix_to_nfsv4_one(struct posix_acl *pacl, struct nfs4_acl *acl,
->  	deny = ~pas.group & pas.other;
->  	if (deny) {
->  		ace->type = NFS4_ACE_ACCESS_DENIED_ACE_TYPE;
-> -		ace->flag = eflag | NFS4_ACE_IDENTIFIER_GROUP;
-> +		ace->flag = eflag;
->  		ace->access_mask = deny_mask_from_posix(deny, flags);
->  		ace->whotype = NFS4_ACL_WHO_GROUP;
->  		ace++;
-> 
-> 
+(Applied).--b.
