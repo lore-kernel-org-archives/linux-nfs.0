@@ -1,147 +1,77 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: Re: [PATCH] svcgss: reply AUTH_BADCRED to RPCSEC_GSS with unkown
-	services
-Date: Thu, 27 Aug 2009 10:23:39 +0800
-Message-ID: <4A95EE2B.60108@cn.fujitsu.com>
-References: <4A77FF18.4040804@cn.fujitsu.com>
-	<20090825214002.GD32708@fieldses.org>
-	<4A94831F.8060508@cn.fujitsu.com>
-	<20090826205705.GA22723@fieldses.org>
+From: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: Reference to file size in nfsd_create_v3
+Date: Thu, 27 Aug 2009 11:49:36 +0530
+Message-ID: <4A962578.5000509@gluster.com>
+References: <4A449074.6060600@gluster.com> <20090825161845.GD26206@fieldses.org> <4A94DFDA.4040508@gluster.com> <4A953AE6.1030800@redhat.com> <20090826160444.GC18070@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Cc: Peter Staubach <staubach@redhat.com>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <20090826205705.GA22723@fieldses.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from saturn.datasyncintra.net ([208.88.241.29]:59567 "EHLO
+	saturn.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751217AbZH0GTD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2009 02:19:03 -0400
+In-Reply-To: <20090826160444.GC18070@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi J. Bruce Fields,
-
 J. Bruce Fields wrote:
-> On Wed, Aug 26, 2009 at 08:34:39AM +0800, Wei Yongjun wrote:
->   
->> J. Bruce Fields wrote:
->>     
->>> On Tue, Aug 04, 2009 at 05:27:52PM +0800, Wei Yongjun wrote:
->>>   
->>>       
->>>> When RPC messages is received with RPCSEC_GSS, and if the RPCSEC_GSS
->>>> include unkown services (not RPC_GSS_SVC_NONE, RPC_GSS_SVC_INTEGRITY
->>>> and RPC_GSS_SVC_PRIVACY), the response is considered as AUTH_BADCRED
->>>> in svcauth_gss_accept(), but the response be drop by
->>>> svcauth_gss_release(). I think response with AUTH_BADCRED is correct
->>>> one. So this patch fixed it.
->>>>     
->>>>         
->>> Thanks!  How did you find this?  (And how did you test the result?)
->>>   
->>>       
->> I test this used newpynfs, the GSS8 item test for this.
->> #./testserver.py nfsserver:/ --security=krb5 GSS8
->>     
->
-> Oh, OK--I thought I'd been running the pynfs gss tests, but now I see
-> that I haven't been; I've fixed my test scripts....  Thanks!--b.
->   
+> On Wed, Aug 26, 2009 at 09:38:46AM -0400, Peter Staubach wrote:
+>> Shehjar Tikoo wrote:
+>>> J. Bruce Fields wrote:
+>>>> On Fri, Jun 26, 2009 at 02:40:12PM +0530, Shehjar Tikoo wrote:
+>>>>> Hi All
+>>>>>
+>>>>> I am looking at the fs/nfsd/vfs.c:nfsd_create_v3 function. In
+>>>>> there, a comment says: "furthermore, if the size is nonzero, we
+>>>>> should ignore it according to spec!"
+>>>>>
+>>>>> Could someone please point out the section in RFC1813 where this
+>>>>> particular point is specified?
+>>>> It's referring to the third paragraph of the DESCRIPTION section of
+>>>> the OPEN operation (14.2.16) in rfc 3530.
+>>>>
+>>>> --b.
+>>> Ok.
+>>>
+>>> For NFSv3, is there a specified way to handle create or mkdir ops where
+>>>  the size is non-zero? The reason this came up is that I was testing
+>>> unfs3 with SpecSFS2k8 and an MKDIR op failed in unfs3 because SFS sent
+>>> the mkdir call with non-zero size in the attributes. I just wanted to
+>>> see how Linux nfsd handled it.
+> 
+> But you've only seen the problem against unfs3, not against the kernel
+> nfsd?
+> 
 
-Did you test the test case for write? In the old kernel, there was only one
-test case WRT5 is FAILURE, but in current kernel, the test cases after
-WRT5 are all fail, the result like the following:
-WRT1     st_write.testSimpleWrite                                 : PASS
-WRT1b    st_write.testSimpleWrite2                                : PASS
-WRT2     st_write.testStateidOne                                  : PASS
-WRT3     st_write.testWithOpen                                    : PASS
-WRT4     st_write.testNoData                                      : PASS
-WRT5     st_write.testLargeData                                   : FAILURE
-           timed out
-WRT6a    st_write.testLink                                        : FAILURE
-           timed out
-WRT6c    st_write.testChar                                        : FAILURE
-           timed out
-WRT6d    st_write.testDir                                         : FAILURE
-           timed out
-WRT6f    st_write.testFifo                                        : FAILURE
-           timed out
-WRT6s    st_write.testSocket                                      : FAILURE
-           timed out
-WRT7     st_write.testNoFh                                        : FAILURE
-           timed out
-WRT8     st_write.testOpenMode                                    : FAILURE
-           timed out
-WRT9     st_write.testShareDeny                                   : FAILURE
-           timed out
-WRT10    st_write.testBadStateid                                  : FAILURE
-           timed out
-WRT11    st_write.testStaleStateid                                : FAILURE
-           timed out
-WRT12    st_write.testOldStateid                                  : FAILURE
-           timed out
+I didnt test SFS against the kernel nfsd so cant comment on it.
 
-Case WRT5 fail because the RPC TCP fragment issue. But the rest test
-cases are fail seems after this patch:
-   svc: Move close processing to a single place
-  
-http://git.kernel.org/?p=linux/kernel/git/davem/net-2.6.git;a=commitdiff;h=d7979ae4a050a45b78af51832475001b68263d2a
+>> Most servers in the market just ignore the size field for
+>> MKDIR requests.  They also ignore the size field, unless it is
+>> 0, for CREATE requests.
+> 
+> So it's probably a bug on both sides.  (SpecSFS shouldn't be sending a
+> non-zero size either.)
+> 
 
-Old kernel will close the xprt after receive error. But new code is
-check before
-receive, and can nerver enter the check for CLOSE state.
+Yes, I fixed the problem in unfs3 by making it ignore the size in
+the MKDIR request. SpecSFS might need further investigation.
 
-Can you have a look at this patch?
+Thanks
+-Shehjar
 
-[PATCH] sunrpc: move the close processing after do recvfrom method
+> --b.
+> 
+>> Setting the size on a directory does not make sense and the
+>> usual decision point for file creation is whether to truncate
+>> the file to empty or not.
+>>
+>> 		ps
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Commit svc: Move close processing to a single place
-(d7979ae4a050a45b78af51832475001b68263d2a) moved the
-close processing before the recvfrom method. This may
-cause the close processing never be execute. So this
-patch move it to the right place.
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 27d4433..fd118d7 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -710,10 +710,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 	spin_unlock_bh(&pool->sp_lock);
- 
- 	len = 0;
--	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
--		dprintk("svc_recv: found XPT_CLOSE\n");
--		svc_delete_xprt(xprt);
--	} else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-+	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
- 		struct svc_xprt *newxpt;
- 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
- 		if (newxpt) {
-@@ -739,7 +736,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 			svc_xprt_received(newxpt);
- 		}
- 		svc_xprt_received(xprt);
--	} else {
-+	} else if (!test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
- 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
- 			rqstp, pool->sp_id, xprt,
- 			atomic_read(&xprt->xpt_ref.refcount));
-@@ -752,6 +749,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- 		dprintk("svc: got len=%d\n", len);
- 	}
- 
-+	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-+		dprintk("svc_recv: found XPT_CLOSE\n");
-+		svc_delete_xprt(xprt);
-+	}
-+
- 	/* No data, incomplete (TCP) read, or accept() */
- 	if (len == 0 || len == -EAGAIN) {
- 		rqstp->rq_res.len = 0;
