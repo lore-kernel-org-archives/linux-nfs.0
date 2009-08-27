@@ -1,164 +1,141 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] svcgss: reply AUTH_BADCRED to RPCSEC_GSS with unkown
-	services
-Date: Thu, 27 Aug 2009 12:26:23 -0400
-Message-ID: <20090827162623.GD7055@fieldses.org>
-References: <4A77FF18.4040804@cn.fujitsu.com>
-	<20090825214002.GD32708@fieldses.org>
-	<4A94831F.8060508@cn.fujitsu.com>
-	<20090826205705.GA22723@fieldses.org>
-	<4A95EE2B.60108@cn.fujitsu.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH] nfsd41: renew_client must be called under the
+ state lock
+Date: Thu, 27 Aug 2009 19:37:02 +0300
+Message-ID: <4A96B62E.3040708@panasas.com>
+References: <1250727716-28107-1-git-send-email-bhalevy@panasas.com> <20090824162904.GC4985@fieldses.org> <4A938D7A.3070908@panasas.com> <20090825131829.GA24049@fieldses.org> <4A941931.8070609@panasas.com> <20090825215948.GG32708@fieldses.org> <4A94F060.4080209@panasas.com> <20090826210242.GB22723@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: Wei Yongjun <yjwei@cn.fujitsu.com>
-Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <4A95EE2B.60108@cn.fujitsu.com>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:53065
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752890AbZH0QhD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2009 12:37:03 -0400
+In-Reply-To: <20090826210242.GB22723@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 27, 2009 at 10:23:39AM +0800, Wei Yongjun wrote:
-> Hi J. Bruce Fields,
+On Aug. 27, 2009, 0:02 +0300, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Wed, Aug 26, 2009 at 11:20:48AM +0300, Boaz Harrosh wrote:
+>> On 08/26/2009 12:59 AM, J. Bruce Fields wrote:
+>>> commit fdf7875040506ca7e595dffef56cbd81ae6b384b
+>>> Author: Benny Halevy <bhalevy@panasas.com>
+>>> Date:   Thu Aug 20 03:21:56 2009 +0300
+>>>
+>>>     nfsd41: renew_client must be called under the state lock
+>>>     
+>>>     Until we work out the state locking so we can use a spin lock to protect
+>>>     the cl_lru, we need to take the state_lock to renew the client.
+>>>     
+>>>     Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>     [nfsd41: Do not renew state on error]
+>>>     Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>>>     Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>>>     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+>>>
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index d2a0524..8e5ac49 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -1463,12 +1463,16 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>>>  	spin_lock(&sessionid_lock);
+>>>  	status = nfserr_badsession;
+>>>  	session = find_in_sessionid_hashtbl(&seq->sessionid);
+>>> -	if (!session)
+>>> -		goto out;
+>>> +	if (!session) {
+>>> +		spin_unlock(&sessionid_lock);
+>>> +		goto err;
+>>> +	}
+>>>  
+>>>  	status = nfserr_badslot;
+>>> -	if (seq->slotid >= session->se_fchannel.maxreqs)
+>>> -		goto out;
+>>> +	if (seq->slotid >= session->se_fchannel.maxreqs) {
+>>> +		spin_unlock(&sessionid_lock);
+>>> +		goto err;
+>>> +	}
+>>>  
+>> A spin_unlock is a big and delicate inlined code site
+>> Why not do a "goto err_unlock" or something
 > 
-> J. Bruce Fields wrote:
-> > On Wed, Aug 26, 2009 at 08:34:39AM +0800, Wei Yongjun wrote:
-> >   
-> >> J. Bruce Fields wrote:
-> >>     
-> >>> On Tue, Aug 04, 2009 at 05:27:52PM +0800, Wei Yongjun wrote:
-> >>>   
-> >>>       
-> >>>> When RPC messages is received with RPCSEC_GSS, and if the RPCSEC_GSS
-> >>>> include unkown services (not RPC_GSS_SVC_NONE, RPC_GSS_SVC_INTEGRITY
-> >>>> and RPC_GSS_SVC_PRIVACY), the response is considered as AUTH_BADCRED
-> >>>> in svcauth_gss_accept(), but the response be drop by
-> >>>> svcauth_gss_release(). I think response with AUTH_BADCRED is correct
-> >>>> one. So this patch fixed it.
-> >>>>     
-> >>>>         
-> >>> Thanks!  How did you find this?  (And how did you test the result?)
-> >>>   
-> >>>       
-> >> I test this used newpynfs, the GSS8 item test for this.
-> >> #./testserver.py nfsserver:/ --security=krb5 GSS8
-> >>     
-> >
-> > Oh, OK--I thought I'd been running the pynfs gss tests, but now I see
-> > that I haven't been; I've fixed my test scripts....  Thanks!--b.
-> >   
+> Yes, we could add an
 > 
-> Did you test the test case for write? In the old kernel, there was only one
-> test case WRT5 is FAILURE, but in current kernel, the test cases after
-> WRT5 are all fail, the result like the following:
-> WRT1     st_write.testSimpleWrite                                 : PASS
-> WRT1b    st_write.testSimpleWrite2                                : PASS
-> WRT2     st_write.testStateidOne                                  : PASS
-> WRT3     st_write.testWithOpen                                    : PASS
-> WRT4     st_write.testNoData                                      : PASS
-> WRT5     st_write.testLargeData                                   : FAILURE
->            timed out
-
-I'm not seeing exactly this, but am seeing timeouts in other tests now
-that I'm running pynfs tests over gss--it may have the same root cause.
-Unfortunately, your patch doesn't seem to fix the failures I'm seeing.
-
-> WRT6a    st_write.testLink                                        : FAILURE
->            timed out
-> WRT6c    st_write.testChar                                        : FAILURE
->            timed out
-> WRT6d    st_write.testDir                                         : FAILURE
->            timed out
-> WRT6f    st_write.testFifo                                        : FAILURE
->            timed out
-> WRT6s    st_write.testSocket                                      : FAILURE
->            timed out
-> WRT7     st_write.testNoFh                                        : FAILURE
->            timed out
-> WRT8     st_write.testOpenMode                                    : FAILURE
->            timed out
-> WRT9     st_write.testShareDeny                                   : FAILURE
->            timed out
-> WRT10    st_write.testBadStateid                                  : FAILURE
->            timed out
-> WRT11    st_write.testStaleStateid                                : FAILURE
->            timed out
-> WRT12    st_write.testOldStateid                                  : FAILURE
->            timed out
+> 	err_unlock:
+> 		spin_unlock(&sessionid_lock);
+> 		goto err;
 > 
-> Case WRT5 fail because the RPC TCP fragment issue. But the rest test
-> cases are fail seems after this patch:
->    svc: Move close processing to a single place
->   
-> http://git.kernel.org/?p=linux/kernel/git/davem/net-2.6.git;a=commitdiff;h=d7979ae4a050a45b78af51832475001b68263d2a
+> at the end.  It still seems little delicate.
 > 
-> Old kernel will close the xprt after receive error. But new code is
-> check before
-> receive, and can nerver enter the check for CLOSE state.
+> How about the following (on top of Benny's patch), which sends all the
+> unlock cases to one label?  (Disclaimer: untested.  And this depends on
+> the assumption that cstate->session is NULL on entry to this function,
+> which I haven't checked.)
 > 
-> Can you have a look at this patch?
-
-OK, thanks, that makes sense.  I won't to investigate a little more
-before applying, though.
-
---b.
-
+> --b.
 > 
-> [PATCH] sunrpc: move the close processing after do recvfrom method
-> 
-> Commit svc: Move close processing to a single place
-> (d7979ae4a050a45b78af51832475001b68263d2a) moved the
-> close processing before the recvfrom method. This may
-> cause the close processing never be execute. So this
-> patch move it to the right place.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 27d4433..fd118d7 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -710,10 +710,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  	spin_unlock_bh(&pool->sp_lock);
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 8e5ac49..5f634d2 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1463,16 +1463,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	spin_lock(&sessionid_lock);
+>  	status = nfserr_badsession;
+>  	session = find_in_sessionid_hashtbl(&seq->sessionid);
+> -	if (!session) {
+> -		spin_unlock(&sessionid_lock);
+> -		goto err;
+> -	}
+> +	if (!session)
+> +		goto out;
 >  
->  	len = 0;
-> -	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-> -		dprintk("svc_recv: found XPT_CLOSE\n");
-> -		svc_delete_xprt(xprt);
-> -	} else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
-> +	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
->  		struct svc_xprt *newxpt;
->  		newxpt = xprt->xpt_ops->xpo_accept(xprt);
->  		if (newxpt) {
-> @@ -739,7 +736,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  			svc_xprt_received(newxpt);
->  		}
->  		svc_xprt_received(xprt);
-> -	} else {
-> +	} else if (!test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
->  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
->  			rqstp, pool->sp_id, xprt,
->  			atomic_read(&xprt->xpt_ref.refcount));
-> @@ -752,6 +749,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  		dprintk("svc: got len=%d\n", len);
+>  	status = nfserr_badslot;
+> -	if (seq->slotid >= session->se_fchannel.maxreqs) {
+> -		spin_unlock(&sessionid_lock);
+> -		goto err;
+> -	}
+> +	if (seq->slotid >= session->se_fchannel.maxreqs)
+> +		goto out;
+>  
+>  	slot = &session->se_slots[seq->slotid];
+>  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+> @@ -1487,10 +1483,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  		cstate->status = nfserr_replay_cache;
+>  		goto out;
 >  	}
+> -	if (status) {
+> -		spin_unlock(&sessionid_lock);
+> -		goto err;
+> -	}
+> +	if (status)
+> +		goto out;
 >  
-> +	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
-> +		dprintk("svc_recv: found XPT_CLOSE\n");
-> +		svc_delete_xprt(xprt);
+>  	/* Success! bump slot seqid */
+>  	slot->sl_inuse = true;
+> @@ -1510,10 +1504,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  out:
+>  	spin_unlock(&sessionid_lock);
+>  	/* Renew the clientid on success and on replay */
+> -	nfs4_lock_state();
+> -	renew_client(session->se_client);
+> -	nfs4_unlock_state();
+> -err:
+> +	if (cstate->session) {
+> +		nfs4_lock_state();
+> +		renew_client(session->se_client);
+> +		nfs4_unlock_state();
 > +	}
-> +
->  	/* No data, incomplete (TCP) read, or accept() */
->  	if (len == 0 || len == -EAGAIN) {
->  		rqstp->rq_res.len = 0;
-> 
-> 
-> 
-> 
+>  	dprintk("%s: return %d\n", __func__, ntohl(status));
+>  	return status;
+>  }
+
+The code looks correct.
+Coming to think about it, I hope that cstate is initialized to zeroes
+since we're not explicitly clearing it. Should we?
+cstate comes from the struct nfsd4_compoundres * nfsd4_proc_compound
+is being called with...
+
+Benny
