@@ -1,210 +1,104 @@
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Subject: Re: [PATCH 2/5] nfsd41: bound forechannel drc size by memory usage
-Date: Thu, 27 Aug 2009 13:12:15 -0400
-Message-ID: <89c397150908271012w5517b9e8me92d1dbf3074ca3d@mail.gmail.com>
-References: <1251389264-3009-1-git-send-email-andros@netapp.com>
-	 <1251389264-3009-2-git-send-email-andros@netapp.com>
-	 <1251389264-3009-3-git-send-email-andros@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
-	Andy Adamson <andros@netapp.com>
-To: bfields@fieldses.org
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f195.google.com ([209.85.212.195]:39225 "EHLO
-	mail-vw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750801AbZH0RMO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2009 13:12:14 -0400
-Received: by vws33 with SMTP id 33so993746vws.33
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Aug 2009 10:12:15 -0700 (PDT)
-In-Reply-To: <1251389264-3009-3-git-send-email-andros@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 2/2] Enable v4 mounts when either "nfsvers=4" or "vers=4"
+	option are set (vers-02)
+Date: Thu, 27 Aug 2009 13:32:09 -0400
+Message-ID: <4A4EE1FA-209C-44D3-B418-96ABC18F9E3D@oracle.com>
+References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>	
+	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>	
+	<4A943914.9020104@RedHat.com>	
+	<7AB7BC01-F9E5-4611-BB4B-2B6E27069631@oracle.com>	
+	<4A944645.1020003@RedHat.com>	
+	<1251233345.25372.67.camel@heimdal.trondhjem.org>	
+	<B62E906B-F215-4400-B48D-DDE2C8428F9E@oracle.com>	
+	<4A954FBF.3030606@RedHat.com>	
+	<23199F1A-EA23-4DE1-AAB8-92D4B508C865@oracle.com>	
+	<4A956BF2.6000902@RedHat.com>	
+	<F805BE4F-BA72-4B13-A60A-B298C69611C8@oracle.com>	
+	<4A95760C.9000604@RedHat.com>	
+	<B26EBCDF-5836-440E-81D5-5E089158BFE1@oracle.com>
+	<1251316764.5226.21.camel@heimdal.trondhjem.org>
+	<4A9694D2.2030205@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"; DelSp="yes"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Steve Dickson <SteveD@redhat.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4A9694D2.2030205@RedHat.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 27, 2009 at 12:07 PM, <andros@netapp.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> By using the requested ca_maxresponsesize_cached * ca_maxresponses to=
- bound
-> a forechannel drc request size, clients can tailor a session to usage=
-=2E
->
-> For example, an I/O session (READ/WRITE only) can have a much smaller
-> ca_maxresponsesize_cached (for only WRITE compound responses) and a l=
-ot larger
-> ca_maxresponses to service a large in-flight data window.
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
-> =A0fs/nfsd/nfs4state.c =A0 =A0 =A0 =A0| =A0 60 ++++++++++++++++++++++=
-+++++++++------------
-> =A0include/linux/nfsd/state.h | =A0 =A08 ++++-
-> =A02 files changed, 49 insertions(+), 19 deletions(-)
->
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index ddfd36f..a691139 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -414,34 +414,60 @@ gen_sessionid(struct nfsd4_session *ses)
-> =A0}
->
-> =A0/*
-> - * Give the client the number of slots it requests bound by
-> - * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
-> + * 32 bytes of RPC header and 44 bytes of sequence operation respons=
-e
-> + * not included in NFSD_SLOT_CACHE_SIZE
-> + * */
-> +#define NFSD_MIN_HDR_SEQ_SZ =A0(32 + 44)
-> +
-> +/*
-> + * Give the client the number of ca_maxresponsesize_cached slots it =
-requests
-> + * bounded by NFSD_SLOT_CACHE_SIZE, NFSD_MAX_MEM_PER_SESSION and by
-> + * nfsd_drc_max_mem. Do not allow more than NFSD_MAX_SLOTS_PER_SESSI=
-ON.
-> + *
-> + * The ca_maxresponssize_cached definition includes the size
-> + * of the rpc header with the variable length security flavor creden=
-tial
-> + * plus verifier (32 bytes with AUTH_SYS and NULL verifier)
-> + * as well as the encoded SEQUENCE operation response (44 bytes)
-> + * which are not included in NFSD_SLOT_CACHE_SIZE.
-> + * We err on the side of being a bit small when AUTH_SYS/NULL verifi=
-er
-> + * is not used.
-> =A0*
-> =A0* If we run out of reserved DRC memory we should (up to a point) r=
-e-negotiate
-> =A0* active sessions and reduce their slot usage to make rooom for ne=
-w
-> =A0* connections. For now we just fail the create session.
-> =A0*/
-> -static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan=
-)
-> +static int set_forechannel_drc_size(struct nfsd4_channel_attrs *fcha=
-n)
-> =A0{
-> - =A0 =A0 =A0 int mem;
-> + =A0 =A0 =A0 int mem, size =3D fchan->maxresp_cached - NFSD_MIN_HDR_=
-SEQ_SZ;
->
-> - =A0 =A0 =A0 if (fchan->maxreqs < 1)
-> + =A0 =A0 =A0 if (fchan->maxreqs < 1 || size <=3D 0)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return nfserr_inval;
-> - =A0 =A0 =A0 else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 fchan->maxreqs =3D NFSD_MAX_SLOTS_PER_S=
-ESSION;
->
-> - =A0 =A0 =A0 mem =3D fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
-> + =A0 =A0 =A0 if (size > NFSD_SLOT_CACHE_SIZE)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 size =3D NFSD_SLOT_CACHE_SIZE;
-> +
-> + =A0 =A0 =A0 /* bound the maxreqs by NFSD_MAX_MEM_PER_SESSION */
-> + =A0 =A0 =A0 mem =3D fchan->maxreqs * size;
-> + =A0 =A0 =A0 if (mem > NFSD_MAX_MEM_PER_SESSION) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 fchan->maxreqs =3D NFSD_MAX_MEM_PER_SES=
-SION / size;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (fchan->maxreqs > NFSD_MAX_SLOTS_PER=
-_SESSION)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fchan->maxreqs =3D NFSD=
-_MAX_SLOTS_PER_SESSION;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 mem =3D fchan->maxreqs * size;
-> + =A0 =A0 =A0 }
->
-> =A0 =A0 =A0 =A0spin_lock(&nfsd_drc_lock);
-> - =A0 =A0 =A0 if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 mem =3D ((nfsd_drc_max_mem - nfsd_drc_m=
-em_used) /
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 NFSD_SL=
-OT_CACHE_SIZE) * NFSD_SLOT_CACHE_SIZE;
-> + =A0 =A0 =A0 /* bound the total session drc memory ussage */
-> + =A0 =A0 =A0 if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 fchan->maxreqs =3D (nfsd_drc_max_mem - =
-nfsd_drc_mem_used) / size;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 mem =3D fchan->maxreqs * size;
-> + =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0nfsd_drc_mem_used +=3D mem;
-> =A0 =A0 =A0 =A0spin_unlock(&nfsd_drc_lock);
->
-> - =A0 =A0 =A0 fchan->maxreqs =3D mem / NFSD_SLOT_CACHE_SIZE;
-> =A0 =A0 =A0 =A0if (fchan->maxreqs =3D=3D 0)
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 return nfserr_resource;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return nfserr_serverfault;
-               ^^^^^^^^^^^^^^^^^^^
-This change belongs in patch [PATCH 4/5] nfsd41: replace
-nfserr_resource in pure nfs41 responses
+On Aug 27, 2009, at 10:14 AM, Steve Dickson wrote:
+> On 08/26/2009 03:59 PM, Trond Myklebust wrote:
+>> On Wed, 2009-08-26 at 15:50 -0400, Chuck Lever wrote:
+>>> Yeah, switching file system types in the mount(2) system call is the
+>>> fly in the ointment.  I'm just wondering if Trond had some thoughts
+>>> about making that more feasible.
+>>
+>> Just look at what we're already doing for NFSv4. Inside  
+>> nfs4_get_sb, we
+>> basically do a kernel mount in order to get the real super block. We
+>> then simply have to attach it to the vfsmount that the sys_mount()  
+>> call
+>> passed down to us.
+> Well its not nfs4_get_sb() that would have to change its nfs_get_sb()
+> that would have to do an nfs4 mount after it discovered the -o vers=4.
+> It would get very messy very quickly for absolutely no reason since
+> the propose mount patch is straightforward, it works and better yet
+> its done! ;-)
 
--->Andy
+Right now we are only speculating that doing this in the kernel will  
+not be straightforward.  You say it will be unbearably ugly, and Trond  
+says it should be simple.  He said - he said.  Why not try it and find  
+out?
 
-> +
-> + =A0 =A0 =A0 fchan->maxresp_cached =3D size + NFSD_MIN_HDR_SEQ_SZ;
-> =A0 =A0 =A0 =A0return 0;
-> =A0}
+I hear your point that you want this done for RHEL 6.  I want IPv6  
+done for RHEL 6, but that's looking less and less likely.  If this  
+were a RHEL-only proposal, I'd be all over it.  But I'm concerned that  
+going with the mount command solution will make our lives more  
+challenging after RHEL 6 is come and gone.  It seems to me that  
+upstream is less concerned with expediency and more concerned with  
+good long term solutions.
+
+I'm going to ask around about this.  If it really does look offensive  
+to people, or technically infeasible, or will take a ridiculously long  
+time to implement correctly, I'm OK with the mount command solution.   
+I think we can afford to investigate a little more if we can find a  
+solution that gets us farther down the road.  All I'm asking for is a  
+little time to study the problem.
+
+>> This really isn't anything new or difficult...
+> Granted, mounting from the kernel is not new, but giving sys_mount()
+> on file system type which ends up mounting a complete different
+> file system is new... Plus architecturally that just seems wrong...
+> A abit incestual... would you say! ;-)
 >
-> @@ -466,9 +492,6 @@ static int init_forechannel_attrs(struct svc_rqst=
- *rqstp,
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0fchan->maxresp_sz =3D maxcount;
-> =A0 =A0 =A0 =A0session_fchan->maxresp_sz =3D fchan->maxresp_sz;
->
-> - =A0 =A0 =A0 session_fchan->maxresp_cached =3D NFSD_SLOT_CACHE_SIZE;
-> - =A0 =A0 =A0 fchan->maxresp_cached =3D session_fchan->maxresp_cached=
-;
-> -
-> =A0 =A0 =A0 =A0/* Use the client's maxops if possible */
-> =A0 =A0 =A0 =A0if (fchan->maxops > NFSD_MAX_OPS_PER_COMPOUND)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0fchan->maxops =3D NFSD_MAX_OPS_PER_COM=
-POUND;
-> @@ -478,9 +501,12 @@ static int init_forechannel_attrs(struct svc_rqs=
-t *rqstp,
-> =A0 =A0 =A0 =A0 * recover pages from existing sessions. For now fail =
-session
-> =A0 =A0 =A0 =A0 * creation.
-> =A0 =A0 =A0 =A0 */
-> - =A0 =A0 =A0 status =3D set_forechannel_maxreqs(fchan);
-> + =A0 =A0 =A0 status =3D set_forechannel_drc_size(fchan);
->
-> + =A0 =A0 =A0 session_fchan->maxresp_cached =3D fchan->maxresp_cached=
-;
-> =A0 =A0 =A0 =A0session_fchan->maxreqs =3D fchan->maxreqs;
-> +
-> + =A0 =A0 =A0 dprintk("%s status %d\n", __func__, status);
-> =A0 =A0 =A0 =A0return status;
-> =A0}
->
-> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
-> index fb0c404..ff0b771 100644
-> --- a/include/linux/nfsd/state.h
-> +++ b/include/linux/nfsd/state.h
-> @@ -92,13 +92,17 @@ struct nfs4_cb_conn {
-> =A0 =A0 =A0 =A0struct rpc_cred * =A0 =A0 =A0 cb_cred;
-> =A0};
->
-> -/* Maximum number of slots per session. 128 is useful for long haul =
-TCP */
-> -#define NFSD_MAX_SLOTS_PER_SESSION =A0 =A0 128
-> +/* Maximum number of slots per session. 160 is useful for long haul =
-TCP */
-> +#define NFSD_MAX_SLOTS_PER_SESSION =A0 =A0 160
-> =A0/* Maximum number of pages per slot cache entry */
-> =A0#define NFSD_PAGES_PER_SLOT =A0 =A01
-> =A0#define NFSD_SLOT_CACHE_SIZE =A0 =A0 =A0 =A0 =A0 PAGE_SIZE
-> =A0/* Maximum number of operations per session compound */
-> =A0#define NFSD_MAX_OPS_PER_COMPOUND =A0 =A0 =A016
-> +/* Maximum number of NFSD_SLOT_CACHE_SIZE slots per session */
-> +#define NFSD_CACHE_SIZE_SLOTS_PER_SESSION =A0 =A0 =A032
-> +#define NFSD_MAX_MEM_PER_SESSION =A0\
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 (NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NF=
-SD_SLOT_CACHE_SIZE)
->
-> =A0struct nfsd4_cache_entry {
-> =A0 =A0 =A0 =A0__be32 =A0 =A0 =A0 =A0 =A0ce_status;
-> --
-> 1.6.2.5
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+> I say we go with the proposed patch since its simple, architecturally
+> sound,
+
+The whole point of text-based mounts is that we are supposed to be  
+building up the NFS mount stuff in the kernel, closer to where all the  
+client features are actually implemented, instead of in user space.   
+It doesn't make sense to add logic in the mount command while our long  
+term goal is to move it to the kernel, especially if we can find a  
+viable alternative kernel implementation.
+
+> will not cause problems down the road as long as nfs4 remains
+> a standalone file system and its done!
+
+We know for _sure_ that at some point nfs4 will likely no longer be  
+visible to user space (or gone completely)...  so that last point is  
+rather moot.  Doing it in the mount command _will_ increase mount  
+command complexity down the road.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
