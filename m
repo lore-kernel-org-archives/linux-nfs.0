@@ -1,89 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59705 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:65228 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752008AbZHLWdw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Aug 2009 18:33:52 -0400
-Date: Wed, 12 Aug 2009 18:32:58 -0400
-To: Jeff Moyer <jmoyer@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        nfsv4@linux-nfs.org
-Subject: Re: [PATCH 0/3] Fix the Linux rpc-over-tcp server performance
-Message-ID: <20090812223258.GE17782@fieldses.org>
-References: <20090518214756.786.28129.stgit@heimdal.trondhjem.org> <20090812024341.GA3227@fieldses.org> <x49ab25w4ja.fsf@segfault.boston.devel.redhat.com> <20090812142041.GA12753@fieldses.org> <x491vnhvucq.fsf@segfault.boston.devel.redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <x491vnhvucq.fsf@segfault.boston.devel.redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751276AbZH0ORr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Aug 2009 10:17:47 -0400
+Message-ID: <4A969582.50702@RedHat.com>
+Date: Thu, 27 Aug 2009 10:17:38 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Lans Carstensen <Lans.Carstensen@dreamworks.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] nfs-utils: nfs-iostat.py autofs cleanup and option
+ to sort by ops/s
+References: <4A94C133.8030904@dreamworks.com> <3644941A-3EA7-4755-867A-888E81A372FC@oracle.com> <4A9550FF.6010103@RedHat.com> <52E7928C-340C-45EF-9CFF-FB902332465F@oracle.com> <4A9578E4.4040402@RedHat.com> <78010D70-DEC9-4177-AFE8-CF1627ABD8A4@oracle.com> <4A95CBC7.5050001@dreamworks.com> <9AB6A612-3CAA-4215-8247-25B1F8111896@oracle.com>
+In-Reply-To: <9AB6A612-3CAA-4215-8247-25B1F8111896@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Aug 12, 2009 at 01:02:13PM -0400, Jeff Moyer wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
+
+
+On 08/27/2009 10:04 AM, Chuck Lever wrote:
+> On Aug 26, 2009, at 7:56 PM, Lans Carstensen wrote:
+>> Chuck Lever wrote:
+>>> On Aug 26, 2009, at 2:03 PM, Steve Dickson wrote:
+>>>> On 08/26/2009 11:35 AM, Chuck Lever wrote:
+>>>>> On Aug 26, 2009, at 11:13 AM, Steve Dickson wrote:
+>>>>>> On 08/26/2009 10:28 AM, Chuck Lever wrote:
+>>>>>>>
+>>>>>>> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
+>>>>>>>
+>>>>>>>> commit d3bb692a8c26c2d4e0dc70d7d0359daf79090e1e
+>>>>>>>> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
+>>>>>>>> Date:   Tue Aug 25 21:52:03 2009 -0700
+>>>>>>>>
+>>>>>>>> Bump nfs-iostat.py version up to 0.3 to reflect new features.
+>>>>>>>
+>>>>>>> Now that nfs-iostat.py has been integrated into nfs-utils, I'm
+>>>>>>> not sure
+>>>>>>> we want to maintain an individual version number for it.  Maybe it
+>>>>>>> should use the nfs-utils package's versioning instead... Steve, your
+>>>>>>> thoughts?
+>>>>>> Hmm... I don't think we tie any of other commands versions to
+>>>>>> the package version....
+>>>>>
+>>>>> Actually many of the C commands do grab a macro defined during
+>>>>> autoconfiguration: PACKAGE_VERSION.
+>>>>>
+>>>> Interesting.. I do see PACKAGE_VERSION being defined in
+>>>> support/include/config.h
+>>>> I guess I didn't know that was there and it does not seem to be used
+>>>> by anybody... which is probably a problem but I don't think its a
+>>>> problem
+>>>> with this script...
+>>> Right, I'm suggesting now would be a good time to switch these
+>>> scripts over to the package-wide versioning scheme.
+>>> But take a look at mount, statd, showmount, and nfsstat, at least: 
+>>> these, for example, use the VERSION macro in their -V and usage
+>>> messages.
+>>
+>> I agree with that concept but I'll kindly defer on the implementation
+>> as I'm not exactly sure what would be required.
 > 
-> > On Wed, Aug 12, 2009 at 09:22:17AM -0400, Jeff Moyer wrote:
-> >> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> >> 
-> >> > On Mon, May 18, 2009 at 05:47:56PM -0400, Trond Myklebust wrote:
-> >> >> I squashed the previous set of 4 incremental patches into 3. Otherwise
-> >> >> there should be no differences w.r.t. the set that Jeff tested.
-> >> >
-> >> > Apologies for the long delay.... Unfortunately, I can't reproduce any of
-> >> > this at all: I reliably get about 112MB/s regardless of what combination
-> >> > of these patches I apply (including none).  This is over gigabit
-> >> > ethernet to a server exporting a filesystem on raid 0 over 3 sata disks
-> >> > which iozone locally reports getting just over 200MB/s reads from.
-> >> >
-> >> > Any suggestions?
-> >> 
-> >> Well, you gave me nothing to go on here, Bruce!
-> >
-> > Apologies for the lack of details....
-> 
-> No worries.  ;-)
-> 
-> >> I assume you're using
-> >> the deadline I/O scheduler on the NFS server, is that right?  If not,
-> >> you should be.
-> >
-> > Oops, sorry, no. Looks like it doesn't allow setting a scheduler on md0,
-> > so I'm assuming I should be setting it on the component drives.
-> 
-> Right, set the scheduler on the component drives.  I was testing on
-> hardware raid, fwiw.
+> That's quite alright.  Probably Steve should cook something up for this
+> one.
+Yeah... don't get get hung up on this one... I'll deal with it...
 
-Not much difference in results.  This is frustrating.
+steved.
 
-For each test, I'm booting both client and server to the given kernel,
-running
-
-	mount server:/exports/ /mnt/
-	iozone -s 2000000 -r 64 -f /mnt/testfile -w -i1
-	umount /mnt/
-
-five times, then taking the average of the "read" columns.  (I could
-stick to one client--not sure which you were using.  Installing new
-kernels on both is just what my existing test scripts happened to do by
-default.)
-
-2.6.30-rc1:				114113
-2.6.30-rc1 + revert autotuning:		114159
-2.6.30-rc1 + patch 1:			114168
-2.6.30-rc1 + patch 1 & 2:		114136
-2.6.30-rc1 + patch 1, 2, & 3:		114149
-
-(Where patches 1, 2, 3 are, respectively, "SUNRPC: Fix the TCP server's
-send buffer accounting results", "SUNRPC: Fix the TCP write space
-reservations for deferred requests", and "Fix svc_tcp_recvfrom()
-results", respectively.
-
-And the average-of-5 is pointless, really: the individual results have
-very little variation.
-
-See anything obvious I've gotten wrong here?
-
-> Again, let me know if you need me to reproduce this.  It will give me an
-> excuse to get back that really nice machine I was using for testing. ;-)
-
-I'd be happiest if I could figure out how to reproduce this myself.
-
---b.
