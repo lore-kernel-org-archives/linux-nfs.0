@@ -1,64 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48698 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750813AbZH1XHZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Aug 2009 19:07:25 -0400
-Date: Fri, 28 Aug 2009 19:07:27 -0400
-To: andros@netapp.com
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-Subject: Re: [pnfs] [PATCH 0/5] NFSv4.1 DRC rewrite version 6
-Message-ID: <20090828230727.GI2462@fieldses.org>
-References: <1251389264-3009-1-git-send-email-andros@netapp.com> <20090828224247.GG2462@fieldses.org> <20090828225608.GH2462@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20090828225608.GH2462@fieldses.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:20405 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752746AbZH0OJx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2009 10:09:53 -0400
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Message-Id: <8793561D-109E-41B3-86E3-C860CEE20636@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Lans Carstensen <Lans.Carstensen@dreamworks.com>
+In-Reply-To: <4A95CBDB.40502@dreamworks.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH 3/4] nfs-utils: nfs-iostat.py autofs cleanup and option to sort by ops/s
+Date: Thu, 27 Aug 2009 10:09:41 -0400
+References: <4A94C13B.1070300@dreamworks.com> <486FBC5E-011A-4FF0-995D-944958BE74AE@oracle.com> <4A95CBDB.40502@dreamworks.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Aug 28, 2009 at 06:56:08PM -0400, bfields wrote:
-> On Fri, Aug 28, 2009 at 06:42:48PM -0400, J. Bruce Fields wrote:
-> > On Thu, Aug 27, 2009 at 12:07:39PM -0400, andros@netapp.com wrote:
-> > > 
-> > > NFSv4.1 DRC Rewrite Version 6
-> > > 
-> > > These patches apply against git://linux-nfs.org/~bfields/linux: for-2.6.32
-> > > branch and continue to rewrite the NFSv4.1 Sessions DRC. Besides some
-> > > bug fixes:
-> > > 
-> > > 1) The bound on the fore channel per-session DRC size are rewritten.
-> > > Instead of just using a maximum number of slots to bound the size,
-> > > The server gives the client the number of ca_maxresponsesize_cached slots it
-> > > requests bounded by NFSD_SLOT_CACHE_SIZE, NFSD_MAX_MEM_PER_SESSION and by
-> > > nfsd_drc_max_mem. Do not allow more than NFSD_MAX_SLOTS_PER_SESSION.
-> > > 
-> > > This allows clients to tailor a session to usage.
-> > > For example, an I/O session (READ/WRITE/COMMIT only) can have a much smaller
-> > > ca_maxresponsesize_cached (for only WRITE/COMMIt compound responses) and a lot
-> > > larger ca_maxresponses to service a large in-flight data window.
-> > > 
-> > > 2) the page-based DRC is replaced with a buffer based DRC with each
-> > > slot table entry (struct nfsd4_slot + cache) allocated separately.
-> > > This allocation prepares us for slot size re-negotiation via the SEQUENCE
-> > > operation target and high slot id arguments.
-> > > 
-> > > Testing:
-> > > 
-> > > NFSv4.1 mount: pynfs tests - including the SEQUENCE replay cache tests.
-> > > connectathon tests.
-> > 
-> > By the way, any hints on getting the 4.1 pynfs stuff running?
-> 
-> OK, solution seemed to be
-> 
-> 	cd gssapi
-> 	python setup.py build_ext --inplace
-> 
-> But now almost everything fails.with SERVERFAULT.  Bah.
+On Aug 26, 2009, at 7:57 PM, Lans Carstensen wrote:
+> Chuck Lever wrote:
+>> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
+>>> commit ef558b7b978418ac3da35e36dcf02a223e4ebe2d
+>>> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
+>>> Date:   Tue Aug 25 21:52:49 2009 -0700
+>>>
+>>>   Update list of mount points to parse stats for and drop mount
+>>>   points from stats collection when they are umounted.  This
+>>>   ensures proper stats collection for autofs mountpoints.
+>>>
+>>> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs- 
+>>> iostat.py
+>>> index 6ce31fc..9f3b3eb 100644
+>>> --- a/tools/nfs-iostat/nfs-iostat.py
+>>> +++ b/tools/nfs-iostat/nfs-iostat.py
+>>> @@ -447,7 +447,14 @@ def parse_stats_file(filename):
+>>>    return ms_dict
+>>>
+>>> def print_iostat_summary(old, new, devices, time, ac):
+>>> -    for device in devices:
+>>> +    if old:
+>>> +        # Trim device list to only include intersection of old  
+>>> and new data,
+>>> +        # this addresses umounts due to autofs mountpoints
+>>> +        devicelist = filter(lambda x:x in devices,old)
+>>> +    else:
+>>> +        devicelist = devices
+>>> +
+>>> +    for device in devicelist:
+>>>        stats = DeviceData()
+>>>        stats.parse_stats(new[device])
+>>>        if not old:
+>>> @@ -458,11 +465,35 @@ def print_iostat_summary(old, new, devices,  
+>>> time, ac):
+>>>            diff_stats = stats.compare_iostats(old_stats)
+>>>            diff_stats.display_iostats(time, ac)
+>>>
+>>> +def list_nfs_mounts(givenlist, mountstats):
+>>> +    """return a list of NFS mounts given a list to validate or
+>>> +       return a full list if the given list is empty
+>>> +    """
+>>> +    list = []
+>>> +    if len(givenlist) > 0:
+>>> +        for device in givenlist:
+>>> +            stats = DeviceData()
+>>> +            stats.parse_stats(mountstats[device])
+>>> +            if stats.is_nfs_mountpoint():
+>>> +                list += [device]
+>>> +    else:
+>>> +        for device, descr in mountstats.iteritems():
+>>> +            stats = DeviceData()
+>>> +            stats.parse_stats(descr)
+>>> +            if stats.is_nfs_mountpoint():
+>>> +                list += [device]
+>>> +    if len(list) == 0:
+>>> +        print 'No NFS mount points were found'
+>>> +        return
+>> You refactored this logic from the main routine.  I think this last  
+>> "return" was OK in the main routine, but in a subroutine it may not  
+>> do exactly what you want.  A NoneType object is passed to  
+>> print_iostat_summary in this case
+>> [cel@matisse tmp]$ ./nfs-iostat.py
+>> No NFS mount points were found
+>> Traceback (most recent call last):
+>>  File "./nfs-iostat.py", line 580, in <module>
+>>    iostat_command(prog)
+>>  File "./nfs-iostat.py", line 549, in iostat_command
+>>    print_iostat_summary(old_mountstats, mountstats, devices,  
+>> sample_time, which)
+>>  File "./nfs-iostat.py", line 457, in print_iostat_summary
+>>    for device in devicelist:
+>> TypeError: 'NoneType' object is not iterable
+>
+> Sigh.  Thanks.  I'll test more thoroughly and resubmit.  Based on  
+> the --list= argument change it'll probably be easier to refactor the  
+> script to use optparse, so I'll end up regenerating the last two  
+> patches as probably three new ones.
 
-Does anyone have a list of which tests are expected to pass at this point?  If
-I ask for "all" tests, I get "4 skipped, 103 failed, 0 warned, 26 passed--full
-list available if anyone wants.  I seem to be passing connectathon tests
-OK over 4.1.
+Thanks, these are good changes.
 
---b.
+When you resubmit, can you add a Signed-off-by: line at the bottom of  
+each patch description?  You can look at this page for more information:
+
+   http://kerneltrap.org/taxonomy/term/245
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
