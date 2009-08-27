@@ -1,7 +1,7 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
-Date: Thu, 27 Aug 2009 10:52:19 -0400
-Message-ID: <1251384739.5173.7.camel@heimdal.trondhjem.org>
+Date: Thu, 27 Aug 2009 10:54:27 -0400
+Message-ID: <EE444BE9-552C-48EA-9F4E-CB958A8270B0@oracle.com>
 References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
 	<7E189B77-1139-4B16-97E5-4841B41B90C7@oracle.com>
 	<4A82CE18.6020401@redhat.com>
@@ -15,13 +15,14 @@ References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
 	<f6ce31e30908240627gff0a7eeu3c884185e6324518@mail.gmail.com>
 	<4A92AA43.6070304@redhat.com> <4A9649B3.7080208@redhat.com>
 	<7A35D986-E872-4DBD-8619-1F29D97AC039@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	<1251384739.5173.7.camel@heimdal.trondhjem.org>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset="iso-8859-1"; Format="flowed"; DelSp="yes"
 Cc: Ian Kent <ikent@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
 	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Chuck Lever <chuck.lever@oracle.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <7A35D986-E872-4DBD-8619-1F29D97AC039@oracle.com>
+In-Reply-To: <1251384739.5173.7.camel@heimdal.trondhjem.org>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -33,54 +34,98 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDA5LTA4LTI3IGF0IDEwOjM4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToKPiBP
-biBBdWcgMjcsIDIwMDksIGF0IDQ6NTQgQU0sIElhbiBLZW50IHdyb3RlOgo+ID4gSWFuIEtlbnQg
-d3JvdGU6Cj4gPj4gQ2FybG9zIEFuZHLDqSB3cm90ZToKPiA+Pj4gSGkgSWFuLAo+ID4+Pgo+ID4+
-PiBUaGFua3MgZm9yIHBhdGNoIGFuZCBzb3JyeSBmb3IgZGVsYXkgKGknbSBleHBlY3RpbmcgcmVj
-ZWl2ZSB1ICAKPiA+Pj4gcmVwbHkgb24KPiA+Pj4gYnVnIHRyYWNrLCBub3QgaGVyZSkgOikKPiA+
-Pj4KPiA+Pj4gQnV0LCB0aGlzIHBhdGNoIGRvZXNudCB3b3JrZWQgdG8gbWUgbGlrZSBleHBlY3Rl
-ZC4uLiAgOigKPiA+Pj4KPiA+Pj4KPiA+Pj4gRmlyc3RseSBJJ3ZlIGNoYW5nZWQgIiNNT1VOVF9X
-QUlUPS0xIiB0byAiTU9VTlRfV0FJVD0xMCIKPiA+Pj4gYW5kIGxhdGVyIGNoYW5nZWQgIjEwIiB0
-byAiMiIgd2l0aCBzYW1lIHJlc3VsdHMuLi4KPiA+Pj4gKGFsd2F5cyByZXN0YXJ0aW5nIHNlcnZp
-Y2UsIG9mIGNvdXJzZSA6KQo+ID4+Pgo+ID4+PiBUaGVuLCB0cmllZCByZW1vdmUgInNlYz1rcmI1
-cCIsIGFuZCBsYXRlciByZW1vdmVkICJuZnM0IiBidXQgaSBnb3QKPiA+Pj4gc2FtZSByZXN1bHRz
-IGFnYWluLgo+ID4+Pgo+ID4+PiBPciBpJ20gZG9pbmcgc29tZXRoaW5nIHdyb25nPwo+ID4+Pgo+
-ID4+Pgo+ID4+PiBbcm9vdEBLU1RBVElPTiBhcmVhc10jIGF1dG9tb3VudCAtVgo+ID4+Pgo+ID4+
-PiBMaW51eCBhdXRvbW91bnQgdmVyc2lvbiA1LjAuMS0wLnJjMi4xMzEuYno1MTczNDkuMQo+ID4+
-PiBbLi4uXQo+ID4+Pgo+ID4+PiBbcm9vdEBLU1RBVElPTiBhcmVhc10jIHRpbWUgbHMgLWxhIHRl
-c3Rkb3duCj4gPj4+IGxzOiB0ZXN0ZWRvd246IE5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkKPiA+
-Pj4KPiA+Pj4gcmVhbCAgICAzbTkuMDA2cwo+ID4+PiB1c2VyICAgIDBtMC4wMDJzCj4gPj4+IHN5
-cyAgICAgMG0wLjAwMHMKPiA+Pgo+ID4+IE9LLCB0aGF0IGlzbid0IGJlaGF2aW5nIHRoZSB3YXkg
-SSBleHBlY3QsIEknbGwgaGF2ZSBhIGxvb2suCj4gPj4KPiA+Pj4KPiA+Pj4gTE9HR0lORzoKPiA+
-Pj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiA+Pj4gQXVnIDI0
-IDA5OjIzOjUxIEtTVEFUSU9OIGF1dG9tb3VudFsyMDgwM106IG1vdW50X21vdW50OiBtb3VudChu
-ZnMpOgo+ID4+PiBjYWxsaW5nIG1vdW50IC10IG5mczQgLXMgLW8gcncsYWNsLHNlYz1rcmI1cCAx
-LjIuMy40Oi9hcmVhcy90ZXN0ZG93bgo+ID4+PiAvbWlzYy9hcmVhcy90ZXN0ZG93bgo+ID4+PiBB
-dWcgMjQgMDk6Mjc6MDAgS1NUQVRJT04gYXV0b21vdW50WzIwODAzXTogbW91bnQobmZzKTogbmZz
-OiBtb3VudAo+ID4+PiBmYWlsdXJlIDEuMi4zLjQ6L2FyZWFzL3Rlc3Rkb3duIG9uIC9taXNjL2Fy
-ZWFzL3Rlc3Rkb3duCj4gPj4+IEF1ZyAyNCAwOToyNzowMCBLU1RBVElPTiBhdXRvbW91bnRbMjA4
-MDNdOiBpb2N0bF9zZW5kX2ZhaWw6IHRva2VuICAKPiA+Pj4gPSA5MQo+ID4+PiBBdWcgMjQgMDk6
-Mjc6MDAgS1NUQVRJT04gYXV0b21vdW50WzIwODAzXTogZmFpbGVkIHRvIG1vdW50IC9taXNjLyAK
-PiA+Pj4gYXJlYXMvdGVzdGRvd24KPiA+Pj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0KPiA+Cj4gPiBIYXZpbmcgYSBsb29rIGF0IHRoaXMgSSBzdXNwZWN0IHRoZSBy
-ZWFzb24gaXQgZG9lc24ndCB3b3JrIGFzIGV4cGVjdGVkCj4gPiBpcyB0aGUgd2FpdHBpZCgyKSB3
-ZSBkbyBhZnRlciBzZW5kaW5nIHRoZSBURVJNIHNpZ25hbCB0byB0aGUgbW91bnQKPiA+IHByb2Nl
-c3MgKHdoaWNoIHdlIGhhdmUgdG8gZG8pIGlzIG5vdCByZXR1cm5pbmcuIFRoaXMgaXMgbGlrZWx5
-IGJlY2F1c2UKPiA+IHRoZSBtb3VudCBwcm9jZXNzIGlzbid0IGdpdmluZyB1cCBpbiBhIHNob3J0
-ZXIgdGltZSBhcyBpdCB1c2VkIHRvLgo+IAo+IFlvdSdyZSB0aGlua2luZyBtYXliZSBtb3VudCgy
-KSBzaG91bGQgYmUgYXMgaW50ZXJydXB0aWJsZSBhcyB0aGUgIAo+IHNvY2tldCBjYWxscyB0aGF0
-IHRoZSBtb3VudCBjb21tYW5kIHVzZWQgdG8gZG8/ICBUaGF0IG1pZ2h0IGJlICAKPiByZWFzb25h
-YmxlLCBhbmQgSSBjYW4gdGFrZSBhIGxvb2sgYXQgdGhhdC4KCkluIHJlY2VudCBrZXJuZWxzLCBh
-bGwgdGhvc2UgUlBDIGNhbGxzIHNob3VsZCBiZSB1c2luZyBUQVNLX0tJTExBQkxFCnNsZWVwIHN0
-YXRlcy4gU0lHVEVSTSBzaG91bGQgY2F1c2UgdGhlbSB0byBhYm9ydCwgcHJvdmlkZWQgdGhhdCBz
-b21lCnByb2Nlc3MgaXNuJ3QgYmxvY2tpbmcgaXQuCgpQZXJoYXBzIFRBU0tfS0lMTEFCTEUgY291
-bGQgYmUgYmFja3BvcnRlZCB0byBSSEVMLTU/Cgo+IEluIHRoZSBrZXJuZWwsIGlmIHRoZSBycGNi
-aW5kIGZvciB0aGUgTU5UIHJlcXVlc3QgaXMgYXN5bmMsIHRoYXQgd291bGQgIAo+IGJlIGRvbmUg
-YnkgcnBjaW9kLiAgVGhhdCdzIGEgZGlmZmVyZW50IHByb2Nlc3MsIHNvIHRoZSBzaWduYWwgd291
-bGRuJ3QgIAo+IGhhdmUgYW55IGVmZmVjdCBvbiB0aGUgbW91bnQuICBJIGhhdmUgYSBwYXRjaCB0
-aGF0IGNvbnZlcnRzIHRoZSBNTlQgIAo+IGNsaWVudCB0byB1c2UgcnBjYl9nZXRwb3J0X3N5bmMo
-KSB3aGljaCBtaWdodCBoZWxwIGluIHRoaXMgY2FzZS4KClRoZSBjbGllbnQgc2hvdWxkbid0IGJl
-IHVzaW5nIHJwY2JpbmQgYXQgYWxsIHdoZW4gZG9pbmcgYSBORlN2NCBtb3VudC4KCkNoZWVycwog
-IFRyb25kCgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpO
-RlN2NCBtYWlsaW5nIGxpc3QKTkZTdjRAbGludXgtbmZzLm9yZwpodHRwOi8vbGludXgtbmZzLm9y
-Zy9jZ2ktYmluL21haWxtYW4vbGlzdGluZm8vbmZzdjQ=
+On Aug 27, 2009, at 10:52 AM, Trond Myklebust wrote:
+> On Thu, 2009-08-27 at 10:38 -0400, Chuck Lever wrote:
+>> On Aug 27, 2009, at 4:54 AM, Ian Kent wrote:
+>>> Ian Kent wrote:
+>>>> Carlos Andr=E9 wrote:
+>>>>> Hi Ian,
+>>>>>
+>>>>> Thanks for patch and sorry for delay (i'm expecting receive u
+>>>>> reply on
+>>>>> bug track, not here) :)
+>>>>>
+>>>>> But, this patch doesnt worked to me like expected...  :(
+>>>>>
+>>>>>
+>>>>> Firstly I've changed "#MOUNT_WAIT=3D-1" to "MOUNT_WAIT=3D10"
+>>>>> and later changed "10" to "2" with same results...
+>>>>> (always restarting service, of course :)
+>>>>>
+>>>>> Then, tried remove "sec=3Dkrb5p", and later removed "nfs4" but i got
+>>>>> same results again.
+>>>>>
+>>>>> Or i'm doing something wrong?
+>>>>>
+>>>>>
+>>>>> [root@KSTATION areas]# automount -V
+>>>>>
+>>>>> Linux automount version 5.0.1-0.rc2.131.bz517349.1
+>>>>> [...]
+>>>>>
+>>>>> [root@KSTATION areas]# time ls -la testdown
+>>>>> ls: testedown: No such file or directory
+>>>>>
+>>>>> real    3m9.006s
+>>>>> user    0m0.002s
+>>>>> sys     0m0.000s
+>>>>
+>>>> OK, that isn't behaving the way I expect, I'll have a look.
+>>>>
+>>>>>
+>>>>> LOGGING:
+>>>>> -----------------------------------------
+>>>>> Aug 24 09:23:51 KSTATION automount[20803]: mount_mount:  =
+
+>>>>> mount(nfs):
+>>>>> calling mount -t nfs4 -s -o rw,acl,sec=3Dkrb5p 1.2.3.4:/areas/ =
+
+>>>>> testdown
+>>>>> /misc/areas/testdown
+>>>>> Aug 24 09:27:00 KSTATION automount[20803]: mount(nfs): nfs: mount
+>>>>> failure 1.2.3.4:/areas/testdown on /misc/areas/testdown
+>>>>> Aug 24 09:27:00 KSTATION automount[20803]: ioctl_send_fail: token
+>>>>> =3D 91
+>>>>> Aug 24 09:27:00 KSTATION automount[20803]: failed to mount /misc/
+>>>>> areas/testdown
+>>>>> -----------------------------------------
+>>>
+>>> Having a look at this I suspect the reason it doesn't work as  =
+
+>>> expected
+>>> is the waitpid(2) we do after sending the TERM signal to the mount
+>>> process (which we have to do) is not returning. This is likely  =
+
+>>> because
+>>> the mount process isn't giving up in a shorter time as it used to.
+>>
+>> You're thinking maybe mount(2) should be as interruptible as the
+>> socket calls that the mount command used to do?  That might be
+>> reasonable, and I can take a look at that.
+>
+> In recent kernels, all those RPC calls should be using TASK_KILLABLE
+> sleep states. SIGTERM should cause them to abort, provided that some
+> process isn't blocking it.
+>
+> Perhaps TASK_KILLABLE could be backported to RHEL-5?
+
+That's pretty extensive, with hooks in the page cache.  I doubt RH  =
+
+would go for that.
+
+>> In the kernel, if the rpcbind for the MNT request is async, that  =
+
+>> would
+>> be done by rpciod.  That's a different process, so the signal  =
+
+>> wouldn't
+>> have any effect on the mount.  I have a patch that converts the MNT
+>> client to use rpcb_getport_sync() which might help in this case.
+>
+> The client shouldn't be using rpcbind at all when doing a NFSv4 mount.
+
+Yep, forgot this was NFSv4.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
