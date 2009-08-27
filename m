@@ -1,141 +1,147 @@
-From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH] idmapd: remove idmapd.conf.man (moved to libnfsidmap)
-Date: Wed, 26 Aug 2009 21:23:44 -0400
-Message-ID: <20090827012343.22149.10793.stgit@jazz.citi.umich.edu>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: Re: [PATCH] svcgss: reply AUTH_BADCRED to RPCSEC_GSS with unkown
+	services
+Date: Thu, 27 Aug 2009 10:23:39 +0800
+Message-ID: <4A95EE2B.60108@cn.fujitsu.com>
+References: <4A77FF18.4040804@cn.fujitsu.com>
+	<20090825214002.GD32708@fieldses.org>
+	<4A94831F.8060508@cn.fujitsu.com>
+	<20090826205705.GA22723@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: steved@redhat.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:47315 "EHLO citi.umich.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754450AbZH0Bvh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Aug 2009 21:51:37 -0400
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <20090826205705.GA22723@fieldses.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The man page for idmapd.conf has become stagnant and out of date
-here.  Move it to the libnfsidmap package with the code that parses
-it so that it can more easily be maintained.
+Hi J. Bruce Fields,
 
-(libnfsidmap-0.23 now has the updated man page)
+J. Bruce Fields wrote:
+> On Wed, Aug 26, 2009 at 08:34:39AM +0800, Wei Yongjun wrote:
+>   
+>> J. Bruce Fields wrote:
+>>     
+>>> On Tue, Aug 04, 2009 at 05:27:52PM +0800, Wei Yongjun wrote:
+>>>   
+>>>       
+>>>> When RPC messages is received with RPCSEC_GSS, and if the RPCSEC_GSS
+>>>> include unkown services (not RPC_GSS_SVC_NONE, RPC_GSS_SVC_INTEGRITY
+>>>> and RPC_GSS_SVC_PRIVACY), the response is considered as AUTH_BADCRED
+>>>> in svcauth_gss_accept(), but the response be drop by
+>>>> svcauth_gss_release(). I think response with AUTH_BADCRED is correct
+>>>> one. So this patch fixed it.
+>>>>     
+>>>>         
+>>> Thanks!  How did you find this?  (And how did you test the result?)
+>>>   
+>>>       
+>> I test this used newpynfs, the GSS8 item test for this.
+>> #./testserver.py nfsserver:/ --security=krb5 GSS8
+>>     
+>
+> Oh, OK--I thought I'd been running the pynfs gss tests, but now I see
+> that I haven't been; I've fixed my test scripts....  Thanks!--b.
+>   
 
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
----
+Did you test the test case for write? In the old kernel, there was only one
+test case WRT5 is FAILURE, but in current kernel, the test cases after
+WRT5 are all fail, the result like the following:
+WRT1     st_write.testSimpleWrite                                 : PASS
+WRT1b    st_write.testSimpleWrite2                                : PASS
+WRT2     st_write.testStateidOne                                  : PASS
+WRT3     st_write.testWithOpen                                    : PASS
+WRT4     st_write.testNoData                                      : PASS
+WRT5     st_write.testLargeData                                   : FAILURE
+           timed out
+WRT6a    st_write.testLink                                        : FAILURE
+           timed out
+WRT6c    st_write.testChar                                        : FAILURE
+           timed out
+WRT6d    st_write.testDir                                         : FAILURE
+           timed out
+WRT6f    st_write.testFifo                                        : FAILURE
+           timed out
+WRT6s    st_write.testSocket                                      : FAILURE
+           timed out
+WRT7     st_write.testNoFh                                        : FAILURE
+           timed out
+WRT8     st_write.testOpenMode                                    : FAILURE
+           timed out
+WRT9     st_write.testShareDeny                                   : FAILURE
+           timed out
+WRT10    st_write.testBadStateid                                  : FAILURE
+           timed out
+WRT11    st_write.testStaleStateid                                : FAILURE
+           timed out
+WRT12    st_write.testOldStateid                                  : FAILURE
+           timed out
 
- utils/idmapd/Makefile.am     |    6 +--
- utils/idmapd/idmapd.conf.man |   74 ------------------------------------------
- 2 files changed, 2 insertions(+), 78 deletions(-)
- delete mode 100644 utils/idmapd/idmapd.conf.man
+Case WRT5 fail because the RPC TCP fragment issue. But the rest test
+cases are fail seems after this patch:
+   svc: Move close processing to a single place
+  
+http://git.kernel.org/?p=linux/kernel/git/davem/net-2.6.git;a=commitdiff;h=d7979ae4a050a45b78af51832475001b68263d2a
 
-diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-index eb393df..7c3f828 100644
---- a/utils/idmapd/Makefile.am
-+++ b/utils/idmapd/Makefile.am
-@@ -1,6 +1,5 @@
- ## Process this file with automake to produce Makefile.in
- 
--man5_MANS	= idmapd.conf.man
- man8_MANS	= idmapd.man
- 
- RPCPREFIX	= rpc.
-@@ -8,7 +7,6 @@ KPREFIX		= @kprefix@
- sbin_PROGRAMS	= idmapd
- 
- EXTRA_DIST = \
--	$(man5_MANS) \
- 	$(man8_MANS) \
- 	idmapd.conf
- 
-@@ -49,8 +47,8 @@ uninstall-hook:
- 
- # XXX This makes some assumptions about what automake does.
- # XXX But there is no install-man-hook or install-man-local.
--install-man: install-man5 install-man8 install-man-links
--uninstall-man: uninstall-man5 uninstall-man8 uninstall-man-links
-+install-man: install-man8 install-man-links
-+uninstall-man: uninstall-man8 uninstall-man-links
- 
- install-man-links:
- 	(cd $(DESTDIR)$(man8dir) && \
-diff --git a/utils/idmapd/idmapd.conf.man b/utils/idmapd/idmapd.conf.man
-deleted file mode 100644
-index 02722b1..0000000
---- a/utils/idmapd/idmapd.conf.man
-+++ /dev/null
-@@ -1,74 +0,0 @@
--.\"	$OpenBSD: mdoc.template,v 1.6 2001/02/03 08:22:44 niklas Exp $
--.\"
--.\" The following requests are required for all man pages.
--.Dd July 16, 2003
--.Dt idmapd.conf 5
--.Os
--.Sh NAME
--.Nm idmapd.conf
--.Nd configuration file for idmapd, the NFSv4 ID <-> Name Mapper
--.Sh SYNOPSIS
--Configuration file for idmapd, the NFSv4 ID <-> Name Mapper
--.Sh DESCRIPTION
--The
--.Nm
--configuration file has two sections, initiated by the strings
--[General] and [Mapping].  Each section may contain lines of the form
--.Dl ""
--.Dl variable = value
--.Dl ""
--The variables allowed in the General section are
--.Va Verbosity,
--.Va Pipefs-Directory,
--and
--.Va Domain,
--whose values have the same effect as the arguments to the
--.Fl v,
--.Fl p,
--and
--.Fl d
--commandline options, respectively.  The variables allowed in the
--Mapping section are
--.Va Nobody-User
--and
--.Va Nobody-Group,
--which have the same effect as the
--.Fl U
--and
--.Fl G
--commandline options.
--'
--.Sh EXAMPLES
--'
--An example
--.Pa /etc/idmapd.conf
--file:
--'
--.Bd -literal
--[General]
--
--Verbosity = 0
--Pipefs-Directory = /var/lib/nfs/rpc_pipefs
--Domain = localdomain
--
--[Mapping]
--
--Nobody-User = nobody
--Nobody-Group = nobody
--.Ed
--'
--.Sh SEE ALSO
--.Xr idmapd 8
--.\".Sh SEE ALSO
--.\".Xr nylon.conf 4
--.\" .Sh COMPATIBILITY
--.\".Sh STANDARDS
--.\".Sh ACKNOWLEDGEMENTS
--.Sh AUTHORS
--The idmapd software has been developed by Marius Aamodt Eriksen
--.Aq marius@citi.umich.edu .
--.\" .Sh HISTORY
--.\".Sh BUGS
--.\"Please report any bugs to Marius Aamodt Eriksen
--.\".Aq marius@monkey.org .
--.\" .Sh CAVEATS
+Old kernel will close the xprt after receive error. But new code is
+check before
+receive, and can nerver enter the check for CLOSE state.
 
+Can you have a look at this patch?
+
+[PATCH] sunrpc: move the close processing after do recvfrom method
+
+Commit svc: Move close processing to a single place
+(d7979ae4a050a45b78af51832475001b68263d2a) moved the
+close processing before the recvfrom method. This may
+cause the close processing never be execute. So this
+patch move it to the right place.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 27d4433..fd118d7 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -710,10 +710,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	spin_unlock_bh(&pool->sp_lock);
+ 
+ 	len = 0;
+-	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+-		dprintk("svc_recv: found XPT_CLOSE\n");
+-		svc_delete_xprt(xprt);
+-	} else if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
++	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+ 		struct svc_xprt *newxpt;
+ 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
+ 		if (newxpt) {
+@@ -739,7 +736,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 			svc_xprt_received(newxpt);
+ 		}
+ 		svc_xprt_received(xprt);
+-	} else {
++	} else if (!test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+ 			rqstp, pool->sp_id, xprt,
+ 			atomic_read(&xprt->xpt_ref.refcount));
+@@ -752,6 +749,11 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		dprintk("svc: got len=%d\n", len);
+ 	}
+ 
++	if (test_bit(XPT_CLOSE, &xprt->xpt_flags)) {
++		dprintk("svc_recv: found XPT_CLOSE\n");
++		svc_delete_xprt(xprt);
++	}
++
+ 	/* No data, incomplete (TCP) read, or accept() */
+ 	if (len == 0 || len == -EAGAIN) {
+ 		rqstp->rq_res.len = 0;
