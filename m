@@ -1,70 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet11.oracle.com ([148.87.113.123]:42328 "EHLO
-	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750996AbZH0OFU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Aug 2009 10:05:20 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <9AB6A612-3CAA-4215-8247-25B1F8111896@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Lans Carstensen <Lans.Carstensen@dreamworks.com>
-In-Reply-To: <4A95CBC7.5050001@dreamworks.com>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 2/4] nfs-utils: nfs-iostat.py autofs cleanup and option to sort by ops/s
-Date: Thu, 27 Aug 2009 10:04:05 -0400
-References: <4A94C133.8030904@dreamworks.com> <3644941A-3EA7-4755-867A-888E81A372FC@oracle.com> <4A9550FF.6010103@RedHat.com> <52E7928C-340C-45EF-9CFF-FB902332465F@oracle.com> <4A9578E4.4040402@RedHat.com> <78010D70-DEC9-4177-AFE8-CF1627ABD8A4@oracle.com> <4A95CBC7.5050001@dreamworks.com>
+Received: from fieldses.org ([174.143.236.118]:41367 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750718AbZH1W4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Aug 2009 18:56:06 -0400
+Date: Fri, 28 Aug 2009 18:56:09 -0400
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+Subject: Re: [pnfs] [PATCH 0/5] NFSv4.1 DRC rewrite version 6
+Message-ID: <20090828225608.GH2462@fieldses.org>
+References: <1251389264-3009-1-git-send-email-andros@netapp.com> <20090828224247.GG2462@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20090828224247.GG2462@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Aug 26, 2009, at 7:56 PM, Lans Carstensen wrote:
-> Chuck Lever wrote:
->> On Aug 26, 2009, at 2:03 PM, Steve Dickson wrote:
->>> On 08/26/2009 11:35 AM, Chuck Lever wrote:
->>>> On Aug 26, 2009, at 11:13 AM, Steve Dickson wrote:
->>>>> On 08/26/2009 10:28 AM, Chuck Lever wrote:
->>>>>>
->>>>>> On Aug 26, 2009, at 12:59 AM, Lans Carstensen wrote:
->>>>>>
->>>>>>> commit d3bb692a8c26c2d4e0dc70d7d0359daf79090e1e
->>>>>>> Author: Lans Carstensen <Lans.Carstensen@dreamworks.com>
->>>>>>> Date:   Tue Aug 25 21:52:03 2009 -0700
->>>>>>>
->>>>>>> Bump nfs-iostat.py version up to 0.3 to reflect new features.
->>>>>>
->>>>>> Now that nfs-iostat.py has been integrated into nfs-utils, I'm  
->>>>>> not sure
->>>>>> we want to maintain an individual version number for it.  Maybe  
->>>>>> it
->>>>>> should use the nfs-utils package's versioning instead... Steve,  
->>>>>> your
->>>>>> thoughts?
->>>>> Hmm... I don't think we tie any of other commands versions to
->>>>> the package version....
->>>>
->>>> Actually many of the C commands do grab a macro defined during
->>>> autoconfiguration: PACKAGE_VERSION.
->>>>
->>> Interesting.. I do see PACKAGE_VERSION being defined in support/ 
->>> include/config.h
->>> I guess I didn't know that was there and it does not seem to be used
->>> by anybody... which is probably a problem but I don't think its a  
->>> problem
->>> with this script...
->> Right, I'm suggesting now would be a good time to switch these  
->> scripts over to the package-wide versioning scheme.
->> But take a look at mount, statd, showmount, and nfsstat, at least:   
->> these, for example, use the VERSION macro in their -V and usage  
->> messages.
->
-> I agree with that concept but I'll kindly defer on the  
-> implementation as I'm not exactly sure what would be required.
+On Fri, Aug 28, 2009 at 06:42:48PM -0400, J. Bruce Fields wrote:
+> On Thu, Aug 27, 2009 at 12:07:39PM -0400, andros@netapp.com wrote:
+> > 
+> > NFSv4.1 DRC Rewrite Version 6
+> > 
+> > These patches apply against git://linux-nfs.org/~bfields/linux: for-2.6.32
+> > branch and continue to rewrite the NFSv4.1 Sessions DRC. Besides some
+> > bug fixes:
+> > 
+> > 1) The bound on the fore channel per-session DRC size are rewritten.
+> > Instead of just using a maximum number of slots to bound the size,
+> > The server gives the client the number of ca_maxresponsesize_cached slots it
+> > requests bounded by NFSD_SLOT_CACHE_SIZE, NFSD_MAX_MEM_PER_SESSION and by
+> > nfsd_drc_max_mem. Do not allow more than NFSD_MAX_SLOTS_PER_SESSION.
+> > 
+> > This allows clients to tailor a session to usage.
+> > For example, an I/O session (READ/WRITE/COMMIT only) can have a much smaller
+> > ca_maxresponsesize_cached (for only WRITE/COMMIt compound responses) and a lot
+> > larger ca_maxresponses to service a large in-flight data window.
+> > 
+> > 2) the page-based DRC is replaced with a buffer based DRC with each
+> > slot table entry (struct nfsd4_slot + cache) allocated separately.
+> > This allocation prepares us for slot size re-negotiation via the SEQUENCE
+> > operation target and high slot id arguments.
+> > 
+> > Testing:
+> > 
+> > NFSv4.1 mount: pynfs tests - including the SEQUENCE replay cache tests.
+> > connectathon tests.
+> 
+> By the way, any hints on getting the 4.1 pynfs stuff running?
 
-That's quite alright.  Probably Steve should cook something up for  
-this one.
+OK, solution seemed to be
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+	cd gssapi
+	python setup.py build_ext --inplace
 
+But now almost everything fails.with SERVERFAULT.  Bah.
 
-
+--b.
