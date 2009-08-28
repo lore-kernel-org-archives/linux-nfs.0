@@ -1,59 +1,66 @@
 From: andros@netapp.com
-Subject: [PATCH 2/4] nfsd41: use session maxreqs for sequence target and highest slotid
-Date: Fri, 28 Aug 2009 08:45:02 -0400
-Message-ID: <1251463504-3376-3-git-send-email-andros@netapp.com>
+Subject: [PATCH 3/4] nfsd41: replace nfserr_resource in pure nfs41 responses
+Date: Fri, 28 Aug 2009 08:45:03 -0400
+Message-ID: <1251463504-3376-4-git-send-email-andros@netapp.com>
 References: <1251463504-3376-1-git-send-email-andros@netapp.com>
  <1251463504-3376-2-git-send-email-andros@netapp.com>
+ <1251463504-3376-3-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
 	Andy Adamson <andros@netapp.com>
 To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:33497 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752057AbZIAVCa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2009 17:02:30 -0400
-In-Reply-To: <1251463504-3376-2-git-send-email-andros@netapp.com>
+	id S1752055AbZIAVCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2009 17:02:31 -0400
+In-Reply-To: <1251463504-3376-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-This fixes a bug in the sequence operation reply.
+nfserr_resource is not a legal error for NFSv4.1. Replace it with
+nfserr_serverfault for EXCHANGE_ID and CREATE_SESSION processing.
 
-The sequence operation returns the highest slotid it will accept in the future
-in sr_highest_slotid, and the highest slotid it prefers the client to use.
-Since we do not re-negotiate the session slot table yet, these should both
-always be set to the session ca_maxrequests.
+We will also need to map nfserr_resource to other errors in routines shared
+by NFSv4.0 and NFSv4.1
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4state.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+ fs/nfsd/nfs4state.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 02b3ddd..ec074e7 100644
+index ec074e7..c9a45f4 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1133,7 +1133,6 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 	 * session inactivity timer fires and a solo sequence operation
- 	 * is sent (lease renewal).
- 	 */
--	seq->maxslots = resp->cstate.session->se_fchannel.maxreqs;
+@@ -469,7 +469,7 @@ static int set_forechannel_drc_size(struct nfsd4_channel_attrs *fchan)
+ 	spin_unlock(&nfsd_drc_lock);
  
- 	/* Either returns 0 or nfserr_retry_uncached */
- 	status = nfsd4_enc_sequence_replay(resp->rqstp->rq_argp, resp);
-@@ -1497,6 +1496,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	slot = &session->se_slots[seq->slotid];
- 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+ 	if (fchan->maxreqs == 0)
+-		return nfserr_resource;
++		return nfserr_serverfault;
  
-+	/* We do not negotiate the number of slots yet, so set the
-+	 * maxslots to the session maxreqs which is used to encode
-+	 * sr_highest_slotid and the sr_target_slot id to maxslots */
-+	seq->maxslots = session->se_fchannel.maxreqs;
-+
- 	status = check_slot_seqid(seq->seqid, slot->sl_seqid, slot->sl_inuse);
- 	if (status == nfserr_replay_cache) {
- 		cstate->slot = slot;
+ 	fchan->maxresp_cached = size + NFSD_MIN_HDR_SEQ_SZ;
+ 	return 0;
+@@ -519,7 +519,7 @@ alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp,
+ 		   struct nfsd4_create_session *cses)
+ {
+ 	struct nfsd4_session *new, tmp;
+-	int idx, status = nfserr_resource, slotsize;
++	int idx, status = nfserr_serverfault, slotsize;
+ 
+ 	memset(&tmp, 0, sizeof(tmp));
+ 
+@@ -1282,7 +1282,7 @@ out_new:
+ 	/* Normal case */
+ 	new = create_client(exid->clname, dname);
+ 	if (new == NULL) {
+-		status = nfserr_resource;
++		status = nfserr_serverfault;
+ 		goto out;
+ 	}
+ 
 -- 
 1.6.2.5
 
