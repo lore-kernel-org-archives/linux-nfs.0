@@ -1,52 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7392 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33497 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753053AbZIBShh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Sep 2009 14:37:37 -0400
-Message-ID: <4A9EBB6B.4040009@redhat.com>
-Date: Wed, 02 Sep 2009 14:37:31 -0400
-From: Peter Staubach <staubach@redhat.com>
-To: Jason Legate <linux-nfs@proxime.net>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS for millions of files
-References: <20090902180841.GF946@proxime.net>
-In-Reply-To: <20090902180841.GF946@proxime.net>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1750935AbZIAVC1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2009 17:02:27 -0400
+From: andros@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+Subject: [PATCH 0/4] NFSv4.1 DRC Rewrite Version 7 
+Date: Fri, 28 Aug 2009 08:45:00 -0400
+Message-Id: <1251463504-3376-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Jason Legate wrote:
-> Hi, I'm trying to setup a server that we can create millions of files on over
-> NFS.  When I run our creation benchmark locally  I can get around 3000 files/
-> second in the configuration we're using now, but only around 300/second over
-> NFS.  It's mounted as this:
-> 
-> rw,nosuid,nodev,noatime,nodiratime,hard,bg,nointr,rsize=32768,wsize=32768,tcp,
-> nfsvers=3,timeo=600,actimeo=600,nocto
-> 
-> When I mount the same FS over localhost instead of across the lan, it performs
-> about full speed (the 3000/sec).  Anyone have any ideas what I might tweak or
-> look at?
-> 
-> We're going to be testing various XFS/LVM configs to get the best performance,
-> but right out the gate, NFS having a 10:1 penalty of performance doesn't bode
-> well.
-> 
+NFSv4.1 DRC Rewrite Version 7
 
-Hi.
+These patches apply against git://linux-nfs.org/~bfields/linux: for-2.6.32
+branch and continue to rewrite the NFSv4.1 Sessions DRC.
 
-Please keep in mind that the NFS stable storage requirements are
-probably causing a significant slowdown in activities such as this.
-All of the files being created over NFS are being flushed to stable
-storage, including modified directory contents and inode information,
-before the server responds to the client.  All of those local file
-creates are simply manipulating in-memory buffers and are not being
-flushed to stable storage until some later time.
+Responded to comments on Version 6.
 
-There really aren't any good solutions, except perhaps, for
-utilizing write caching on the server, and I would only recommend
-doing that if you have a good solution, from top to bottom in
-the file system and storage stack on the server.  Most aren't.
+1) The bound on the fore channel per-session DRC size are rewritten.
+Instead of just using a maximum number of slots to bound the size,
+The server gives the client the number of ca_maxresponsesize_cached slots it
+requests bounded by NFSD_SLOT_CACHE_SIZE, NFSD_MAX_MEM_PER_SESSION and by
+nfsd_drc_max_mem. Do not allow more than NFSD_MAX_SLOTS_PER_SESSION.
 
-		ps
+This allows clients to tailor a session to usage.
+For example, an I/O session (READ/WRITE/COMMIT only) can have a much smaller
+ca_maxresponsesize_cached (for only WRITE/COMMIt compound responses) and a lot
+larger ca_maxresponses to service a large in-flight data window.
+
+2) the page-based DRC is replaced with a buffer based DRC with each
+slot table entry (struct nfsd4_slot + cache) allocated separately.
+This allocation prepares us for slot size re-negotiation via the SEQUENCE
+operation target and high slot id arguments.
+
+Testing:
+
+NFSv4.1 mount: pynfs tests - including the SEQUENCE replay cache tests.
+connectathon tests.
+
+NFSv4.0 mount: connectathon tests.
+
+-->Andy
+
+0001-nfsd41-bound-forechannel-drc-size-by-memory-usage.patch
+0002-nfsd41-use-session-maxreqs-for-sequence-target-and.patch
+0003-nfsd41-replace-nfserr_resource-in-pure-nfs41-respon.patch
+0004-nfsd41-replace-page-based-DRC-with-buffer-based-DRC.patch
+
