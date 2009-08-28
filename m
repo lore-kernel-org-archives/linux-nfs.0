@@ -1,17 +1,17 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: [PATCH 0/5] NFSv4.1 DRC rewrite version 6
-Date: Fri, 28 Aug 2009 17:34:11 -0400
-Message-ID: <20090828213411.GE2462@fieldses.org>
+Date: Fri, 28 Aug 2009 18:42:48 -0400
+Message-ID: <20090828224247.GG2462@fieldses.org>
 References: <1251389264-3009-1-git-send-email-andros@netapp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
 To: andros@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55839 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39163 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751999AbZH1VeJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Aug 2009 17:34:09 -0400
+	id S1750712AbZH1Wmq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Aug 2009 18:42:46 -0400
 In-Reply-To: <1251389264-3009-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -23,13 +23,6 @@ On Thu, Aug 27, 2009 at 12:07:39PM -0400, andros@netapp.com wrote:
 > These patches apply against git://linux-nfs.org/~bfields/linux: for-2.6.32
 > branch and continue to rewrite the NFSv4.1 Sessions DRC. Besides some
 > bug fixes:
-
-Thanks for following up on this.  It looks fine except for a few nits
-noted on replies to individual patches.  Could you fix those up and
-resend?  And then I think #7 should be it....
-
---b.
-
 > 
 > 1) The bound on the fore channel per-session DRC size are rewritten.
 > Instead of just using a maximum number of slots to bound the size,
@@ -51,14 +44,32 @@ resend?  And then I think #7 should be it....
 > 
 > NFSv4.1 mount: pynfs tests - including the SEQUENCE replay cache tests.
 > connectathon tests.
-> 
-> NFSv4.0 mount: connectathon tests.
-> 
-> -->Andy
-> 
-> 0001-nfsd41-expand-solo-sequence-check.patch
-> 0002-nfsd41-bound-forechannel-drc-size-by-memory-usage.patch
-> 0003-nfsd41-use-session-maxreqs-for-sequence-target-and.patch
-> 0004-nfsd41-replace-nfserr_resource-in-pure-nfs41-respon.patch
-> 0005-nfsd41-replace-page-based-DRC-with-buffer-based-DRC.patch
-> 
+
+By the way, any hints on getting the 4.1 pynfs stuff running?
+
+./nfs4.1/testserver.py pearlet1:/pynfs41test-root --rundeps --maketree
+Traceback (most recent call last):
+  File "./nfs4.1/testserver.py", line 38, in <module>
+    import server41tests.environment as environment
+  File "/root/pynfs41/nfs4.1/server41tests/environment.py", line 15, in <module>
+    import rpc
+  File "/root/pynfs41/rpc/__init__.py", line 1, in <module>
+    from rpc import *
+  File "/root/pynfs41/rpc/rpc.py", line 14, in <module>
+    import security
+  File "/root/pynfs41/rpc/security.py", line 11, in <module>
+    import gssapi
+ImportError: No module named gssapi
+
+With the 4.0 pynfs I've always run
+
+	/setup.py build_ext --inplace
+
+before.  That gives me:
+
+	This is currently broken...everything should already be set up.
+	Just go into nfs4 and play.
+
+The setup.py in nfs4.1/ complains about not finding xdrgen.
+
+--b.
