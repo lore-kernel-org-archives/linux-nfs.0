@@ -1,152 +1,135 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: Re: [PATCH] svcgss: reply AUTH_BADCRED to RPCSEC_GSS with unkown
- services
-Date: Fri, 28 Aug 2009 08:53:44 +0800
-Message-ID: <4A972A98.2030406@cn.fujitsu.com>
-References: <4A77FF18.4040804@cn.fujitsu.com> <20090825214002.GD32708@fieldses.org> <4A94831F.8060508@cn.fujitsu.com> <20090826205705.GA22723@fieldses.org> <4A95EE2B.60108@cn.fujitsu.com> <20090827162623.GD7055@fieldses.org> <20090827210530.GC11721@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 2/2] Enable v4 mounts when either "nfsvers=4" or "vers=4"
+	option are set (vers-02)
+Date: Thu, 27 Aug 2009 22:55:16 -0400
+Message-ID: <4A974714.4080509@RedHat.com>
+References: <4A9424DB.2040303@RedHat.com> <4A942593.8030101@RedHat.com>	
+	<CF5F0448-E859-4EA2-805B-909B8C907533@oracle.com>	
+	<4A943914.9020104@RedHat.com>	
+	<7AB7BC01-F9E5-4611-BB4B-2B6E27069631@oracle.com>	
+	<4A944645.1020003@RedHat.com>	
+	<1251233345.25372.67.camel@heimdal.trondhjem.org>	
+	<B62E906B-F215-4400-B48D-DDE2C8428F9E@oracle.com>	
+	<4A954FBF.3030606@RedHat.com>	
+	<23199F1A-EA23-4DE1-AAB8-92D4B508C865@oracle.com>	
+	<4A956BF2.6000902@RedHat.com>	
+	<F805BE4F-BA72-4B13-A60A-B298C69611C8@oracle.com>	
+	<4A95760C.9000604@RedHat.com>	
+	<B26EBCDF-5836-440E-81D5-5E089158BFE1@oracle.com>
+	<1251316764.5226.21.camel@heimdal.trondhjem.org>
+	<4A9694D2.2030205@RedHat.com>
+	<4A4EE1FA-209C-44D3-B418-96ABC18F9E3D@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53251 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750963AbZH1A4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Aug 2009 20:56:32 -0400
-In-Reply-To: <20090827210530.GC11721@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Return-path: <nfsv4-bounces@linux-nfs.org>
+In-Reply-To: <4A4EE1FA-209C-44D3-B418-96ABC18F9E3D@oracle.com>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Thu, Aug 27, 2009 at 12:26:23PM -0400, bfields wrote:
->   
->> On Thu, Aug 27, 2009 at 10:23:39AM +0800, Wei Yongjun wrote:
->>     
->>> Hi J. Bruce Fields,
->>>
->>> J. Bruce Fields wrote:
->>>       
->>>> On Wed, Aug 26, 2009 at 08:34:39AM +0800, Wei Yongjun wrote:
->>>>   
->>>>         
->>>>> J. Bruce Fields wrote:
->>>>>     
->>>>>           
->>>>>> On Tue, Aug 04, 2009 at 05:27:52PM +0800, Wei Yongjun wrote:
->>>>>>   
->>>>>>       
->>>>>>             
->>>>>>> When RPC messages is received with RPCSEC_GSS, and if the RPCSEC_GSS
->>>>>>> include unkown services (not RPC_GSS_SVC_NONE, RPC_GSS_SVC_INTEGRITY
->>>>>>> and RPC_GSS_SVC_PRIVACY), the response is considered as AUTH_BADCRED
->>>>>>> in svcauth_gss_accept(), but the response be drop by
->>>>>>> svcauth_gss_release(). I think response with AUTH_BADCRED is correct
->>>>>>> one. So this patch fixed it.
->>>>>>>     
->>>>>>>         
->>>>>>>               
->>>>>> Thanks!  How did you find this?  (And how did you test the result?)
->>>>>>   
->>>>>>       
->>>>>>             
->>>>> I test this used newpynfs, the GSS8 item test for this.
->>>>> #./testserver.py nfsserver:/ --security=krb5 GSS8
->>>>>     
->>>>>           
->>>> Oh, OK--I thought I'd been running the pynfs gss tests, but now I see
->>>> that I haven't been; I've fixed my test scripts....  Thanks!--b.
->>>>   
->>>>         
->>> Did you test the test case for write? In the old kernel, there was only one
->>> test case WRT5 is FAILURE, but in current kernel, the test cases after
->>> WRT5 are all fail, the result like the following:
->>> WRT1     st_write.testSimpleWrite                                 : PASS
->>> WRT1b    st_write.testSimpleWrite2                                : PASS
->>> WRT2     st_write.testStateidOne                                  : PASS
->>> WRT3     st_write.testWithOpen                                    : PASS
->>> WRT4     st_write.testNoData                                      : PASS
->>> WRT5     st_write.testLargeData                                   : FAILURE
->>>            timed out
->>>       
->> I'm not seeing exactly this, but am seeing timeouts in other tests now
->> that I'm running pynfs tests over gss--it may have the same root cause.
->> Unfortunately, your patch doesn't seem to fix the failures I'm seeing.
+On 08/27/2009 01:32 PM, Chuck Lever wrote:
+>>> Just look at what we're already doing for NFSv4. Inside nfs4_get_sb, we
+>>> basically do a kernel mount in order to get the real super block. We
+>>> then simply have to attach it to the vfsmount that the sys_mount() call
+>>> passed down to us.
+>> Well its not nfs4_get_sb() that would have to change its nfs_get_sb()
+>> that would have to do an nfs4 mount after it discovered the -o vers=4.
+>> It would get very messy very quickly for absolutely no reason since
+>> the propose mount patch is straightforward, it works and better yet
+>> its done! ;-)
+> 
+> Right now we are only speculating that doing this in the kernel will not
+> be straightforward.  You say it will be unbearably ugly, and Trond says
+> it should be simple.  He said - he said.  Why not try it and find out?
+IMHO... adding a simple short cut to the mounting code is inherently simpler 
+and less risky than changing kernel code...
+
+> 
+> I hear your point that you want this done for RHEL 6.  
+Wrong! What I'm trying to do is move the Linux NFS implementation 
+forward for ALL distros and more importantly for the community as a whole... 
+
+
+> But I'm concerned that going with the mount command solution will make our 
+> lives more challenging after RHEL 6 is come and gone.
+Please.. Lets keep this in perspective.. My little short cut patch will
+have absolutely no effect on our technology 2 to 3 years when RHEL 6
+be comes active... I can speak from experience...   
+
+>  It seems to me that upstream is less concerned with expediency and 
+> more concerned with good long term solutions.
+Expediency?? NFS v4 was first introduced in Fedora 2 which was released
+in the middle of 2004... that's over five years ago... So I have to respectfully
+disagree with the term expediency... 
+
+> 
+> I'm going to ask around about this.  If it really does look offensive to
+> people, or technically infeasible, or will take a ridiculously long time
+> to implement correctly, I'm OK with the mount command solution.  I think
+> we can afford to investigate a little more if we can find a solution
+> that gets us farther down the road.  All I'm asking for is a little time
+> to study the problem.
+To study what? All the patch does is make easier to mount a file system
+that has been in the mainstream kernel since 2.6.5... Remember, people
+do not have to use the "-o v4' option... the '-t nfs4' option will 
+continue to work... 
+ 
+> 
+>>> This really isn't anything new or difficult...
+>> Granted, mounting from the kernel is not new, but giving sys_mount()
+>> on file system type which ends up mounting a complete different
+>> file system is new... Plus architecturally that just seems wrong...
+>> A abit incestual... would you say! ;-)
 >>
->>     
->>> WRT6a    st_write.testLink                                        : FAILURE
->>>            timed out
->>> WRT6c    st_write.testChar                                        : FAILURE
->>>            timed out
->>> WRT6d    st_write.testDir                                         : FAILURE
->>>            timed out
->>> WRT6f    st_write.testFifo                                        : FAILURE
->>>            timed out
->>> WRT6s    st_write.testSocket                                      : FAILURE
->>>            timed out
->>> WRT7     st_write.testNoFh                                        : FAILURE
->>>            timed out
->>> WRT8     st_write.testOpenMode                                    : FAILURE
->>>            timed out
->>> WRT9     st_write.testShareDeny                                   : FAILURE
->>>            timed out
->>> WRT10    st_write.testBadStateid                                  : FAILURE
->>>            timed out
->>> WRT11    st_write.testStaleStateid                                : FAILURE
->>>            timed out
->>> WRT12    st_write.testOldStateid                                  : FAILURE
->>>            timed out
->>>
->>> Case WRT5 fail because the RPC TCP fragment issue. But the rest test
->>> cases are fail seems after this patch:
->>>    svc: Move close processing to a single place
->>>   
->>> http://git.kernel.org/?p=linux/kernel/git/davem/net-2.6.git;a=commitdiff;h=d7979ae4a050a45b78af51832475001b68263d2a
->>>
->>> Old kernel will close the xprt after receive error. But new code is
->>> check before
->>> receive, and can nerver enter the check for CLOSE state.
->>>
->>> Can you have a look at this patch?
->>>       
->> OK, thanks, that makes sense.  I won't to investigate a little more
->> before applying, though.
->>     
->
-> Bah, it looks like I was just seeing a disagreement between pynfs and
-> nfsd about whether the sequence number should be incremented in the case
-> of an otherwise correct packet with a bad gss_service, which means that
-> after running GSS8, any subsequent requests with the same context are
-> dropped (and time out).
->
-> Since this sitaution is of no practical interest whatsoever (I can't
-> see why we'd ever see a request that was broken in this particular way),
-> I think the correct solution is to just stop running GSS8....
->   
+>> I say we go with the proposed patch since its simple, architecturally
+>> sound,
+> 
+> The whole point of text-based mounts is that we are supposed to be
+> building up the NFS mount stuff in the kernel, closer to where all the
+> client features are actually implemented, instead of in user space.  It
+> doesn't make sense to add logic in the mount command while our long term
+> goal is to move it to the kernel, especially if we can find a viable
+> alternative kernel implementation.
+Which is a bit ironic... It appears to me that the rest of the 
+Linux kernel community is actually moving things out of the kernel which
+actually makes sense IMHO... Just because we adopted the Solaris way of 
+moving the parsing of mount options into the kernel does not mean its
+the right thing to do... And in the end... goals do change... 
 
-When I test, I just fixed the GSS8 with this patch:
+> 
+>> will not cause problems down the road as long as nfs4 remains
+>> a standalone file system and its done!
+> 
+> We know for _sure_ that at some point nfs4 will likely no longer be
+> visible to user space (or gone completely)...  so that last point is
+> rather moot.  Doing it in the mount command _will_ increase mount
+> command complexity down the road.
+I can't disagree with this more... All this patch does make it easier to
+mount an *existing* file system... Now if that file system goes away,
+so be it.. changes will have to make... and the least of our problems
+will removing this simple short cut to mount that file system.
 
-diff --git a/lib/nfs4/servertests/st_gss.py b/lib/nfs4/servertests/st_gss.py
-index 6ad3e3e..dfff598 100644
---- a/lib/nfs4/servertests/st_gss.py
-+++ b/lib/nfs4/servertests/st_gss.py
-@@ -330,4 +330,5 @@ def testBadService(t, env):
-                        "should return AUTH_BADCRED, instead got %s" %
-                        (service, e))
-     finally:
-+        orig.gss_seq_num = c.security.gss_seq_num
-         c.security = orig
+At the end of the day..  'mount -o v4' will *always* work, whether 
+the nfs4 file system is or is not visible from user space... 
 
+If or when the kernel no longer support a nfs4 file system, we will *have* to
+change the mount version since mount.nfs4 will no longer be valid and
+we will have to put in some safeguards to be backwards compatible...
+We have done it in the past and will have to do it again... The proposed
+patch does not change that fact whatsoever... 
 
-I am not have a test of all the case with --security=krb5, just test
-the gss. This is because the krb server does not always works well.^_^
+So I see absolutely no reason not to make it easier for our community 
+to use the technology we have worked so hard on, for so long, now.
+And that's exactly what this patch does... 
 
-
-> (This is the problem with spending a lot of time on pynfs tests.
-> They've been useful for catching regressions, but there's a risk of
-> spending too much time tracking down "problems" that won't actually show
-> up in real situations.  Time would usually be better spent on bugs
-> (and/or performance problems) found in actual use.)
->   
-
-
+steved.
