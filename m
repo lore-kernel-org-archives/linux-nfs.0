@@ -1,53 +1,67 @@
-From: Toralf =?iso-8859-15?q?F=F6rster?= <toralf.foerster@gmx.de>
-Subject: nfsv4 directory mount plays hard to get
-Date: Fri, 28 Aug 2009 10:49:59 +0200
-Message-ID: <200908281049.59781.toralf.foerster@gmx.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-To: linux-nfs@vger.kernel.org
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: 2008 mountd clean-up patch
+Date: Fri, 28 Aug 2009 09:43:09 -0400
+Message-ID: <6A9AD7A7-1727-4AB5-BDD9-23AFE71B4208@oracle.com>
+References: <1F6E13E6-2D6F-4B80-B4E6-1B251012AF5A@oracle.com> <1251410478.32255.14.camel@dyn9047022153>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: Steve Dickson <SteveD@redhat.com>,
+	Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Frank Filz <ffilzlnx@us.ibm.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:55451 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1752467AbZH1It7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Aug 2009 04:49:59 -0400
+Received: from acsinet12.oracle.com ([141.146.126.234]:40840 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750984AbZH1ONw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Aug 2009 10:13:52 -0400
+In-Reply-To: <1251410478.32255.14.camel@dyn9047022153>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Aug 27, 2009, at 6:01 PM, Frank Filz wrote:
+> On Thu, 2009-08-27 at 15:34 -0400, Chuck Lever wrote:
+>> I'm looking at a 2008 nfs-utils clean up done in commit 7a817c45.  It
+>> has this hunk in it:
+>>
+>> @@ -111,7 +111,7 @@ void auth_unix_ip(FILE *f)
+>>         else if (client)
+>>                 qword_print(f, *client?client:"DEFAULT");
+>>         qword_eol(f);
+>> -       xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, *client?
+>> client: "DEFAULT");
+>> +       xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?
+>> client: "DEFAULT");
+>>
+>>         if (client) free(client);
+>>         free(he);
+>>
+>> You changed the '*client ? client : "DEFAULT"' expression in the
+>> xlog() call, but not in the qword_print() call right above it.  Which
+>> of these is correct, and why do they need to be different from each
+>> other?
+>>
+>> Seems to me _both_ should be 'client ? client : "DEFAULT"' (ie.
+>> without the dereference).
+>
+> There would be no point to not dereferencing client, it has already  
+> been
+> checked for NULL by "else if (client)". What it is doing is if the
+> client string is empty, it is printing "DEFAULT", and if the client
+> string is NULL, then it prints nothing.
+>
+> Perhaps the xlog should be:
+>
+>
+> 	if (client)
+> 		xlog(D_CALL, "auth_unix_ip: client %p '%s', client, *client? 
+> client: "DEFAULT");
+> 	else
+> 		xlog(D_CALL, "auth_unix_ip: client NULL");
 
-I'm wondering why a mount of a nfs4 directory exported by a user mode l=
-inux image
-(hostname n22_uml) at a mount point of the host (hostname n22) doesn't =
-work simply.
-Instead I've to specify the parameter "n22_uml:" oncy. After that all s=
-ubsequent
-umount/mounts of that particular file systems works w/o specifying "n22=
-_uml:".
+To confirm, then, the fix in 7a817c45 is bogus?
 
-n22 ~ # mount /mnt/nfs/n22_uml
-mount.nfs4: No such device
-n22 ~ # mount -t nfs n22_uml: /mnt/nfs/n22_uml
-mount.nfs: access denied by server while mounting n22_uml:
-n22 ~ # mount -t nfs4 n22_uml: /mnt/nfs/n22_uml
-n22 ~ # umount /mnt/nfs/n22_uml
-n22 ~ # mount /mnt/nfs/n22_uml
-n22 ~ # umount /mnt/nfs/n22_uml
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-The fstab entry at the host system :
-n22 ~ # grep nfs /etc/fstab
-n22_uml:        /mnt/nfs/n22_uml        nfs4    noauto
 
-The exports file at the UML :
-n22_uml ~ # cat /etc/exports=20
-# /etc/exports: NFS file systems being exported.  See exports(5).
-
-/tmp    n22*(rw,fsid=3D0,no_subtree_check,no_root_squash)
-
-The host runs 2.6.30.5, the UML  2.6.31-rc8.
-
---=20
-MfG/Sincerely
-
-Toralf F=F6rster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
 
