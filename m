@@ -1,453 +1,553 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Subject: Re: AutoFS+NFSv4 server down = LOOOOONG timeout.
-From: Ian Kent <ikent@redhat.com>
-To: Carlos =?ISO-8859-1?Q?Andr=E9?= <candrecn@gmail.com>
-In-Reply-To: <f6ce31e30908130818r2ccd676ax174eb5062282a15b@mail.gmail.com>
-References: <f6ce31e30907291021p769d8bb7jb7a13d0370b87bd6@mail.gmail.com>
-	<4974ED30-D8CA-47B0-9D8F-BCD4410132FC@oracle.com>
-	<f6ce31e30908110541g7e1354ffs59b74ad808578742@mail.gmail.com>
-	<7E189B77-1139-4B16-97E5-4841B41B90C7@oracle.com>
-	<4A82CE18.6020401@redhat.com>
-	<f6ce31e30908120800i2cc82005s695d1097df554b58@mail.gmail.com>
-	<4A82DDB1.1000109@redhat.com>
-	<f6ce31e30908120940m6e9a093ayc59d7ef98e37b3d0@mail.gmail.com>
-	<4A84210F.3020906@redhat.com>
-	<f6ce31e30908130743l78423b52je5aaeaaf3ed1a373@mail.gmail.com>
-	<f6ce31e30908130818r2ccd676ax174eb5062282a15b@mail.gmail.com>
-Date: Tue, 18 Aug 2009 08:30:18 +0800
-Message-Id: <1250555418.16878.7.camel@zeus.themaw.net>
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-        Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="utf-8"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 5/5] nfsd41: replace page based DRC with buffer based
+	DRC
+Date: Fri, 28 Aug 2009 17:33:23 -0400
+Message-ID: <20090828213323.GD2462@fieldses.org>
+References: <1251389264-3009-1-git-send-email-andros@netapp.com> <1251389264-3009-2-git-send-email-andros@netapp.com> <1251389264-3009-3-git-send-email-andros@netapp.com> <1251389264-3009-4-git-send-email-andros@netapp.com> <1251389264-3009-5-git-send-email-andros@netapp.com> <1251389264-3009-6-git-send-email-andros@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
+To: andros@netapp.com
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:55835 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753251AbZH1VdW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Aug 2009 17:33:22 -0400
+In-Reply-To: <1251389264-3009-6-git-send-email-andros@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDA5LTA4LTEzIGF0IDEyOjE4IC0wMzAwLCBDYXJsb3MgQW5kcsOpIHdyb3RlOgo+
-IEZpbGxlZCBidWcgcmVwb3J0Ogo+IGh0dHBzOi8vYnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1
-Zy5jZ2k/aWQ9NTE3MzQ5CgpIaSBDYXJsb3MsCgpJIGhhdmUgYSBwYXRjaGVkIHNvdXJjZSBycG0g
-dG8gYWRkIGEgbW91bnQgd2FpdCBwYXJhbWV0ZXIgdG8gYXV0b2ZzCmxvY2F0ZWQgYXQ6Cmh0dHA6
-Ly9wZW9wbGUucmVkaGF0LmNvbS9+aWtlbnQvYXV0b2ZzLTUuMC4xLTAucmMyLjEzMS5iejUxNzM0
-OS4xCgpDb3VsZCB5b3UgYnVpbGQgaXQgYW5kIHNlZSBpZiBpdCB3b3Jrcy4KSSBoYXZlbid0IHRl
-c3RlZCBpdCBhdCBhbGwgYnV0IGl0IGlzIGZhaXJseSBzdHJhaWdodCBmb3J3YXJkLgpJdCBpcyBz
-dGlsbCB1bmNsZWFyIGlmIHRoaXMgaXMgdGhlIHJpZ2h0IHdheSB0byBkbyB0aGlzIGFuZCB3aGF0
-IHRoZQpjb25zZXF1ZW5jZXMgYXJlIGluIHNlbmRpbmcgYSB0ZXJtIHNpZ25hbCB0byBtb3VudC4g
-VGhpcyBtb3VudCByZXF1ZXN0CndpbGwgbGlrZWx5IGJlIGZvbGxvd2VkIGJ5IG90aGVyIHJlcXVl
-c3RzIGZvciB0aGUgc2FtZSBtb3VudCBjYXVzaW5nIGFuCmFjY3VtdWxhdGlvbiBvZiBtb3VudCg4
-KSBwcm9jZXNzZXMgd2FpdGluZyBmb3IgUlBDIHRpbWVvdXRzIGJlZm9yZSB0aGV5CmNhbiBhbnN3
-ZXIgdGhlIFRFUk0gc2lnbmFsLgoKQW55d2F5LCBmb3IgaW5mb3JtYXRpb24gdGhlIHBhdGNoIGlu
-Y2x1ZGVkIGluIHRoZSBzb3VyY2UgcnBtIGFib3ZlIGlzOgoKYXV0b2ZzLTUuMC40IC0gYWRkIG1v
-dW50IHdhaXQgcGFyYW1ldGVyCgpGcm9tOiBJYW4gS2VudCA8cmF2ZW5AdGhlbWF3Lm5ldD4KCk9m
-dGVuIGRlbGF5cyB3aGVuIHRyeWluZyB0byBtb3VudCBmcm9tIGEgc2VydmVyIHRoYXQgaXMgbm90
-IHJlcG9uZGluZwpmb3Igc29tZSByZWFzb24gYXJlIHVuZGVzaXJhYmxlLiBUbyB0cnkgYW5kIHBy
-ZXZlbnQgdGhlc2UgZGVsYXlzIHdlCnByb3ZpZGUgYSBjb25maWd1cmF0aW9uIHNldHRpbmcgdG8g
-bGltaXQgdGhlIHRpbWUgdGhhdCB3ZSB3YWl0IGZvcgpvdXIgc3Bhd25lZCBtb3VudCg4KSBwcm9j
-ZXNzIHRvIGNvbXBsZXRlIGJlZm9yZSBzZW5kaW5nIGl0IGEgU0lHVEVSTQpzaWduYWwuIFRoaXMg
-cGF0Y2ggYWRkcyBhIGNvbmZpZ3VyYXRpb24gcGFyYW1ldGVyIHRvIGFsbG93IHVzIHRvCnJlcXVl
-c3Qgd2UgbGltaXQgdGhlIHRpbWUgd2Ugd2FpdCBmb3IgbW91bnQoOCkgdG8gY29tcGxldGUgYmVm
-b3JlCnNlbmQgaXQgYSBURVJNIHNpZ25hbC4KLS0tCgogZGFlbW9uL3NwYXduLmMgICAgICAgICAg
-ICAgICAgIHwgICAgMyArKy0KIGluY2x1ZGUvZGVmYXVsdHMuaCAgICAgICAgICAgICB8ICAgIDIg
-KysKIGxpYi9kZWZhdWx0cy5jICAgICAgICAgICAgICAgICB8ICAgMTMgKysrKysrKysrKysrKwog
-bWFuL2F1dG8ubWFzdGVyLjUuaW4gICAgICAgICAgIHwgICAgNyArKysrKysrCiByZWRoYXQvYXV0
-b2ZzLnN5c2NvbmZpZy5pbiAgICAgfCAgICA5ICsrKysrKysrKwogc2FtcGxlcy9hdXRvZnMuY29u
-Zi5kZWZhdWx0LmluIHwgICAgOSArKysrKysrKysKIDYgZmlsZXMgY2hhbmdlZCwgNDIgaW5zZXJ0
-aW9ucygrKSwgMSBkZWxldGlvbigtKQoKCi0tLSBhdXRvZnMtNS4wLjEub3JpZy9kYWVtb24vc3Bh
-d24uYworKysgYXV0b2ZzLTUuMC4xL2RhZW1vbi9zcGF3bi5jCkBAIC0zMTIsNiArMzEyLDcgQEAg
-aW50IHNwYXduX21vdW50KHVuc2lnbmVkIGxvZ29wdCwgLi4uKQogCXVuc2lnbmVkIGludCBvcHRp
-b25zOwogCXVuc2lnbmVkIGludCByZXRyaWVzID0gTVRBQl9MT0NLX1JFVFJJRVM7CiAJaW50IHVw
-ZGF0ZV9tdGFiID0gMSwgcmV0LCBwcmludGVkID0gMDsKKwl1bnNpZ25lZCBpbnQgd2FpdCA9IGRl
-ZmF1bHRzX2dldF9tb3VudF93YWl0KCk7CiAJY2hhciBidWZbUEFUSF9NQVhdOwogCiAJLyogSWYg
-d2UgdXNlIG1vdW50IGxvY2tpbmcgd2UgY2FuJ3QgdmFsaWRhdGUgdGhlIGxvY2F0aW9uICovCkBA
-IC0zNTMsNyArMzU0LDcgQEAgaW50IHNwYXduX21vdW50KHVuc2lnbmVkIGxvZ29wdCwgLi4uKQog
-CXZhX2VuZChhcmcpOwogCiAJd2hpbGUgKHJldHJpZXMtLSkgewotCQlyZXQgPSBkb19zcGF3bihs
-b2dvcHQsIC0xLCBvcHRpb25zLCBwcm9nLCAoY29uc3QgY2hhciAqKikgYXJndik7CisJCXJldCA9
-IGRvX3NwYXduKGxvZ29wdCwgd2FpdCwgb3B0aW9ucywgcHJvZywgKGNvbnN0IGNoYXIgKiopIGFy
-Z3YpOwogCQlpZiAocmV0ICYgTVRBQl9OT1RVUERBVEVEKSB7CiAJCQlzdHJ1Y3QgdGltZXNwZWMg
-dG0gPSB7MywgMH07CiAKLS0tIGF1dG9mcy01LjAuMS5vcmlnL2luY2x1ZGUvZGVmYXVsdHMuaAor
-KysgYXV0b2ZzLTUuMC4xL2luY2x1ZGUvZGVmYXVsdHMuaApAQCAtMjQsNiArMjQsNyBAQAogCiAj
-ZGVmaW5lIERFRkFVTFRfVElNRU9VVAkJCTYwMAogI2RlZmluZSBERUZBVUxUX05FR0FUSVZFX1RJ
-TUVPVVQJNjAKKyNkZWZpbmUgREVGQVVMVF9NT1VOVF9XQUlUCQktMQogI2RlZmluZSBERUZBVUxU
-X1VNT1VOVF9XQUlUCQkxMgogI2RlZmluZSBERUZBVUxUX0JST1dTRV9NT0RFCQkxCiAjZGVmaW5l
-IERFRkFVTFRfTE9HR0lORwkJCTAKQEAgLTYyLDYgKzYzLDcgQEAgc3RydWN0IGxkYXBfc2NoZW1h
-ICpkZWZhdWx0c19nZXRfc2NoZW1hKAogc3RydWN0IGxkYXBfc2VhcmNoZG4gKmRlZmF1bHRzX2dl
-dF9zZWFyY2hkbnModm9pZCk7CiB2b2lkIGRlZmF1bHRzX2ZyZWVfc2VhcmNoZG5zKHN0cnVjdCBs
-ZGFwX3NlYXJjaGRuICopOwogdW5zaWduZWQgaW50IGRlZmF1bHRzX2dldF9hcHBlbmRfb3B0aW9u
-cyh2b2lkKTsKK3Vuc2lnbmVkIGludCBkZWZhdWx0c19nZXRfbW91bnRfd2FpdCh2b2lkKTsKIHVu
-c2lnbmVkIGludCBkZWZhdWx0c19nZXRfdW1vdW50X3dhaXQodm9pZCk7CiBjb25zdCBjaGFyICpk
-ZWZhdWx0c19nZXRfYXV0aF9jb25mX2ZpbGUodm9pZCk7CiB1bnNpZ25lZCBpbnQgZGVmYXVsdHNf
-Z2V0X21hcF9oYXNoX3RhYmxlX3NpemUodm9pZCk7Ci0tLSBhdXRvZnMtNS4wLjEub3JpZy9saWIv
-ZGVmYXVsdHMuYworKysgYXV0b2ZzLTUuMC4xL2xpYi9kZWZhdWx0cy5jCkBAIC00NSw2ICs0NSw3
-IEBACiAjZGVmaW5lIEVOVl9OQU1FX1ZBTFVFX0FUVFIJCSJWQUxVRV9BVFRSSUJVVEUiCiAKICNk
-ZWZpbmUgRU5WX0FQUEVORF9PUFRJT05TCQkiQVBQRU5EX09QVElPTlMiCisjZGVmaW5lIEVOVl9N
-T1VOVF9XQUlUCQkJIk1PVU5UX1dBSVQiCiAjZGVmaW5lIEVOVl9VTU9VTlRfV0FJVAkJCSJVTU9V
-TlRfV0FJVCIKICNkZWZpbmUgRU5WX0FVVEhfQ09ORl9GSUxFCQkiQVVUSF9DT05GX0ZJTEUiCiAK
-QEAgLTMyMyw2ICszMjQsNyBAQCB1bnNpZ25lZCBpbnQgZGVmYXVsdHNfcmVhZF9jb25maWcodW5z
-aWduCiAJCSAgICBjaGVja19zZXRfY29uZmlnX3ZhbHVlKGtleSwgRU5WX05BTUVfRU5UUllfQVRU
-UiwgdmFsdWUsIHRvX3N5c2xvZykgfHwKIAkJICAgIGNoZWNrX3NldF9jb25maWdfdmFsdWUoa2V5
-LCBFTlZfTkFNRV9WQUxVRV9BVFRSLCB2YWx1ZSwgdG9fc3lzbG9nKSB8fAogCQkgICAgY2hlY2tf
-c2V0X2NvbmZpZ192YWx1ZShrZXksIEVOVl9BUFBFTkRfT1BUSU9OUywgdmFsdWUsIHRvX3N5c2xv
-ZykgfHwKKwkJICAgIGNoZWNrX3NldF9jb25maWdfdmFsdWUoa2V5LCBFTlZfTU9VTlRfV0FJVCwg
-dmFsdWUsIHRvX3N5c2xvZykgfHwKIAkJICAgIGNoZWNrX3NldF9jb25maWdfdmFsdWUoa2V5LCBF
-TlZfVU1PVU5UX1dBSVQsIHZhbHVlLCB0b19zeXNsb2cpIHx8CiAJCSAgICBjaGVja19zZXRfY29u
-ZmlnX3ZhbHVlKGtleSwgRU5WX0FVVEhfQ09ORl9GSUxFLCB2YWx1ZSwgdG9fc3lzbG9nKSB8fAog
-CQkgICAgY2hlY2tfc2V0X2NvbmZpZ192YWx1ZShrZXksIEVOVl9NQVBfSEFTSF9UQUJMRV9TSVpF
-LCB2YWx1ZSwgdG9fc3lzbG9nKSkKQEAgLTY1Miw2ICs2NTQsMTcgQEAgdW5zaWduZWQgaW50IGRl
-ZmF1bHRzX2dldF9hcHBlbmRfb3B0aW9ucwogCXJldHVybiByZXM7CiB9CiAKK3Vuc2lnbmVkIGlu
-dCBkZWZhdWx0c19nZXRfbW91bnRfd2FpdCh2b2lkKQoreworCWxvbmcgd2FpdDsKKworCXdhaXQg
-PSBnZXRfZW52X251bWJlcihFTlZfTU9VTlRfV0FJVCk7CisJaWYgKHdhaXQgPCAwKQorCQl3YWl0
-ID0gREVGQVVMVF9NT1VOVF9XQUlUOworCisJcmV0dXJuICh1bnNpZ25lZCBpbnQpIHdhaXQ7Cit9
-CisKIHVuc2lnbmVkIGludCBkZWZhdWx0c19nZXRfdW1vdW50X3dhaXQodm9pZCkKIHsKIAlsb25n
-IHdhaXQ7Ci0tLSBhdXRvZnMtNS4wLjEub3JpZy9tYW4vYXV0by5tYXN0ZXIuNS5pbgorKysgYXV0
-b2ZzLTUuMC4xL21hbi9hdXRvLm1hc3Rlci41LmluCkBAIC0xNzUsNiArMTc1LDEzIEBAIFNldCB0
-aGUgZGVmYXVsdCB0aW1lb3V0IGZvciBjYWNoaW5nIGZhaWwKIDYwKS4gSWYgdGhlIGVxdWl2YWxl
-bnQgY29tbWFuZCBsaW5lIG9wdGlvbiBpcyBnaXZlbiBpdCB3aWxsIG92ZXJyaWRlIHRoaXMKIHNl
-dHRpbmcuCiAuVFAKKy5CIE1PVU5UX1dBSVQKK1NldCB0aGUgZGVmYXVsdCB0aW1lIHRvIHdhaXQg
-Zm9yIGEgcmVzcG9uc2UgZnJvbSBhIHNwYXduZWQgbW91bnQoOCkKK2JlZm9yZSBzZW5kaW5nIGl0
-IGEgU0lHVEVSTS4gTm90ZSB0aGF0IHdlIHN0aWxsIG5lZWQgdG8gd2FpdCBmb3IgdGhlCitSUEMg
-bGF5ZXIgdG8gdGltZW91dCBiZWZvcmUgdGhlIHN1Yi1wcm9jZXNzIGV4aXRzIHNvIHRoaXMgaXNu
-J3QgaWRlYWwKK2J1dCBpdCBpcyB0aGUgYmVzdCB3ZSBjYW4gZG8uIFRoZSBkZWZhdWx0IGlzIHRv
-IHdhaXQgdW50aWwgbW91bnQoOCkKK3JldHVybnMgd2l0aG91dCBpbnRlcnZlbnRpb24uCisuVFAK
-IC5CIFVNT1VOVF9XQUlUCiBTZXQgdGhlIGRlZmF1bHQgdGltZSB0byB3YWl0IGZvciBhIHJlc3Bv
-bnNlIGZyb20gYSBzcGF3bmVkIHVtb3VudCg4KQogYmVmb3JlIHNlbmRpbmcgaXQgYSBTSUdURVJN
-LiBOb3RlIHRoYXQgd2Ugc3RpbGwgbmVlZCB0byB3YWl0IGZvciB0aGUKLS0tIGF1dG9mcy01LjAu
-MS5vcmlnL3JlZGhhdC9hdXRvZnMuc3lzY29uZmlnLmluCisrKyBhdXRvZnMtNS4wLjEvcmVkaGF0
-L2F1dG9mcy5zeXNjb25maWcuaW4KQEAgLTE0LDYgKzE0LDE1IEBAIFRJTUVPVVQ9MzAwCiAjCiAj
-TkVHQVRJVkVfVElNRU9VVD02MAogIworIyBNT1VOVF9XQUlUIC0gdGltZSB0byB3YWl0IGZvciBh
-IHJlc3BvbnNlIGZyb20gdW1vdW50KDgpLgorIyAJICAgICAgIFNldHRpbmcgdGhpcyB0aW1lb3V0
-IGNhbiBjYXVzZSBwcm9ibGVtcyB3aGVuCisjIAkgICAgICAgbW91bnQgd291bGQgb3RoZXJ3aXNl
-IHdhaXQgZm9yIGEgc2VydmVyIHRoYXQKKyMgCSAgICAgICBpcyB0ZW1wb3JhcmlseSB1bmF2YWls
-YWJsZSwgc3VjaCBhcyB3aGVuIGl0J3MKKyMgCSAgICAgICByZXN0YXJ0aW5nLiBUaGUgZGVmYWls
-dCBvZiB3YWl0aW5nIGZvciBtb3VudCg4KQorIyAJICAgICAgIHVzdWFsbHkgcmVzdWx0cyBpbiBh
-IHdhaXQgb2YgYXJvdW5kIDMgbWludXRlcy4KKyMKKyNNT1VOVF9XQUlUPS0xCisjCiAjIFVNT1VO
-VF9XQUlUIC0gdGltZSB0byB3YWl0IGZvciBhIHJlc3BvbnNlIGZyb20gdW1vdW50KDgpLgogIwog
-I1VNT1VOVF9XQUlUPTEyCi0tLSBhdXRvZnMtNS4wLjEub3JpZy9zYW1wbGVzL2F1dG9mcy5jb25m
-LmRlZmF1bHQuaW4KKysrIGF1dG9mcy01LjAuMS9zYW1wbGVzL2F1dG9mcy5jb25mLmRlZmF1bHQu
-aW4KQEAgLTE0LDYgKzE0LDE1IEBAIFRJTUVPVVQ9MzAwCiAjCiAjTkVHQVRJVkVfVElNRU9VVD02
-MAogIworIyBNT1VOVF9XQUlUIC0gdGltZSB0byB3YWl0IGZvciBhIHJlc3BvbnNlIGZyb20gdW1v
-dW50KDgpLgorIyAJICAgICAgIFNldHRpbmcgdGhpcyB0aW1lb3V0IGNhbiBjYXVzZSBwcm9ibGVt
-cyB3aGVuCisjIAkgICAgICAgbW91bnQgd291bGQgb3RoZXJ3aXNlIHdhaXQgZm9yIGEgc2VydmVy
-IHRoYXQKKyMgCSAgICAgICBpcyB0ZW1wb3JhcmlseSB1bmF2YWlsYWJsZSwgc3VjaCBhcyB3aGVu
-IGl0J3MKKyMgCSAgICAgICByZXN0YXJ0aW5nLiBUaGUgZGVmYWlsdCBvZiB3YWl0aW5nIGZvciBt
-b3VudCg4KQorIyAJICAgICAgIHVzdWFsbHkgcmVzdWx0cyBpbiBhIHdhaXQgb2YgYXJvdW5kIDMg
-bWludXRlcy4KKyMKKyNNT1VOVF9XQUlUPS0xCisjCiAjIFVNT1VOVF9XQUlUIC0gdGltZSB0byB3
-YWl0IGZvciBhIHJlc3BvbnNlIGZyb20gdW1vdW50KDgpLgogIwogI1VNT1VOVF9XQUlUPTEyCgoK
-PiAKPiBUaGFua3MhCj4gCj4gMjAwOS84LzEzIENhcmxvcyBBbmRyw6kgPGNhbmRyZWNuQGdtYWls
-LmNvbT46Cj4gPiAyMDA5LzgvMTMgSWFuIEtlbnQgPGlrZW50QHJlZGhhdC5jb20+Ogo+ID4+IENh
-cmxvcyBBbmRyw6kgd3JvdGU6Cj4gPj4+IFRvZGF5ICgyMDA5LTA4LTEyKSBJJ20gdXNpbmc6Cj4g
-Pj4+IGtlcm5lbC0yLjYuMTgtMTI4LjIuMS5lbDUKPiA+Pj4gYXV0b2ZzLTUuMC4xLTAucmMyLjEw
-Mi5lbDVfMy4xCj4gPj4KPiA+PiBUaGFua3MsCj4gPj4KPiA+PiBNeSBtaXN0YWtlLCB0aGUgd2Fp
-dCB0aW1lIEkgd2FzIHJlZmVycmluZyB0byBpcyB1c2VkIGZvciB1bW91bnRzIGR1cmluZwo+ID4+
-IGV4cGlyZXMgYW5kIGlzIHByZXNlbnQgaW4gcmV2IHJjMi4xMDIuCj4gPj4KPiA+PiBJdCBzaG91
-bGRuJ3QgYmUgaGFyZCB0byBhZGQgdGhpcyBmb3IgbW91bnQgYXMgd2VsbC4KPiA+PiBXb3VsZCB5
-b3UgbGlrZSBtZSB0byBwdXQgc29tZXRoaW5nIHRvZ2V0aGVyPwo+ID4KPiA+IFN1cmUhIHRoYXQg
-J2xsIGhlbHAgbWUgYSBsb3QgKGFuZCBmb3Igc3VyZSBhbm90aGVyIHBwbCkgOikgVGhhbmtzIDop
-Cj4gPgo+ID4+Cj4gPj4gUHJvYmFibHkgd291bGQgYmUgZ29vZCB0byB0ZXN0IHNvbWV0aGluZyBv
-dXQgdG8gc2VlIGlmIHdlIGNhbiBtYWtlIGEKPiA+PiBkaWZmZXJlbmNlIHdpdGggdGhlIGtpbGxp
-bmcgbW91bnQgYWZ0ZXIgc29tZSBjb25maWd1cmVkIHRpbWVvdXQgYnV0LCBpZgo+ID4+IHdlIG1h
-a2UgcHJvZ3Jlc3MsIHByb2JhYmx5IHRoZSBiZXN0IHdheSB0byBkZWFsIHdpdGggaXQgaXMgZm9y
-IHlvdSB0bwo+ID4+IGxvZyBhIGJ1ZyBhZ2FpbnN0IHJoZWwtNSBzbyBJIGNhbiBnZXQgaXQgY29t
-bWl0dGVkIHRvIHRoZSByaGVsIHBhY2thZ2UuCj4gPj4gVGhlIHBvc3NpYmxlIGlzc3VlIGlzIHRo
-YXQgSSdtIG5vdCBzdXJlIGlmIHRoZSBSUEMgc3Vic3lzdGVtIGluIHRoZQo+ID4+IGFib3ZlIHJo
-ZWwga2VybmVsIHdpbGwgcmVzcG9uZCB3ZWxsIHRvIHByb2Nlc3MgZGVhdGggd2l0aCBwb3RlbnRp
-YWwKPiA+PiBvdXRzdGFuZGluZyByZXF1ZXN0cy4gQnV0IHdlJ2xsIHNlZS4KPiA+Cj4gPiBPaywg
-b24gbXkgd2F5IDopCj4gPgo+ID4gVGhhbmtzIGEgbG90IQo+ID4KPiA+Pgo+ID4+Pgo+ID4+Pgo+
-ID4+PiBMb29rIG15IGxhc3QgdGVzdDoKPiA+Pj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KPiA+Pj4gW3Jvb3RAS1NUQVRJT04g
-YXJlYXNdIyB0aW1lIGxzIHRlc3Rkb3duCj4gPj4+IGxzOiB0ZXN0ZG93bjogTm8gc3VjaCBmaWxl
-IG9yIGRpcmVjdG9yeQo+ID4+Pgo+ID4+PiByZWFsICAgIDNtOS4wMjVzCj4gPj4+IHVzZXIgICAg
-MG0wLjAwMHMKPiA+Pj4gc3lzICAgICAwbTAuMDAycwo+ID4+Pgo+ID4+Pgo+ID4+Pgo+ID4+Pgo+
-ID4+PiBBdWcgMTIgMTI6NTc6MDcgS1NUQVRJT04gYXV0b21vdW50WzE1NDcxXTogc3VuX21vdW50
-OiBwYXJzZShzdW4pOgo+ID4+PiBtb3VudGluZyByb290IC9taXNjL2FyZWFzLCBtb3VudHBvaW50
-IHRlc3Rkb3duLCB3aGF0Cj4gPj4+IDEuMi4zLjQ6L2FyZWFzL3Rlc3Rkb3duLCBmc3R5cGUgbmZz
-NCwgb3B0aW9ucwo+ID4+PiBhY2wsc2VjPWtyYjVwLHByb3RvPXRjcCxyZXRyeT0wCj4gPj4+IEF1
-ZyAxMiAxMjo1NzowNyBLU1RBVElPTiBhdXRvbW91bnRbMTU0NzFdOiBkb19tb3VudDoKPiA+Pj4g
-MS4yLjMuNDovYXJlYXMvdGVzdGRvd24gL21pc2MvYXJlYXMvdGVzdGRvd24gdHlwZSBuZnM0IG9w
-dGlvbnMKPiA+Pj4gYWNsLHNlYz1rcmI1cCxwcm90bz10Y3AscmV0cnk9MCB1c2luZyBtb2R1bGUg
-bmZzNAo+ID4+PiBBdWcgMTIgMTI6NTc6MDcgS1NUQVRJT04gYXV0b21vdW50WzE1NDcxXTogbW91
-bnRfbW91bnQ6IG1vdW50KG5mcyk6Cj4gPj4+IHJvb3Q9L21pc2MvYXJlYXMgbmFtZT10ZXN0ZG93
-biB3aGF0PTEuMi4zLjQ6L2FyZWFzL3Rlc3Rkb3duLAo+ID4+PiBmc3R5cGU9bmZzNCwgb3B0aW9u
-cz1hY2wsc2VjPWtyYjVwLHByb3RvPXRjcCxyZXRyeT0wCj4gPj4+IEF1ZyAxMiAxMjo1NzowNyBL
-U1RBVElPTiBhdXRvbW91bnRbMTU0NzFdOiBtb3VudF9tb3VudDogbW91bnQobmZzKToKPiA+Pj4g
-bmZzIG9wdGlvbnM9ImFjbCxzZWM9a3JiNXAscHJvdG89dGNwLHJldHJ5PTAiLCBub3N5bWxpbms9
-MCwgcm89MAo+ID4+PiBBdWcgMTIgMTI6NTc6MDcgS1NUQVRJT04gYXV0b21vdW50WzE1NDcxXTog
-bW91bnRfbW91bnQ6IG1vdW50KG5mcyk6Cj4gPj4+IGNhbGxpbmcgbWtkaXJfcGF0aCAvbWlzYy9h
-cmVhcy90ZXN0ZG93bgo+ID4+PiBBdWcgMTIgMTI6NTc6MDcgS1NUQVRJT04gYXV0b21vdW50WzE1
-NDcxXTogbW91bnRfbW91bnQ6IG1vdW50KG5mcyk6Cj4gPj4+IGNhbGxpbmcgbW91bnQgLXQgbmZz
-NCAtcyAtbyBhY2wsc2VjPWtyYjVwLHByb3RvPXRjcCxyZXRyeT0wCj4gPj4+IDEuMi4zLjQ6L2Fy
-ZWFzL3Rlc3Rkb3duIC9taXNjL2FyZWFzL3Rlc3Rkb3duCj4gPj4+IEF1ZyAxMiAxMjo1ODoxMiBL
-U1RBVElPTiBhdXRvbW91bnRbMTU0NzFdOiBzdF9leHBpcmU6IHN0YXRlIDEgcGF0aCAvbWlzYwo+
-ID4+PiBBdWcgMTIgMTI6NTg6MTIgS1NUQVRJT04gYXV0b21vdW50WzE1NDcxXTogZXhwaXJlX3By
-b2M6IGV4cF9wcm9jID0KPiA+Pj4gMzA3ODA5MzcxMiBwYXRoIC9taXNjCj4gPj4+IEF1ZyAxMiAx
-Mjo1ODoxMyBLU1RBVElPTiBhdXRvbW91bnRbMTU0NzFdOiBleHBpcmVfcHJvY19pbmRpcmVjdDog
-Mgo+ID4+PiBzdWJtb3VudHMgcmVtYWluaW5nIGluIC9taXNjCj4gPj4+IEF1ZyAxMiAxMjo1ODox
-MyBLU1RBVElPTiBhdXRvbW91bnRbMTU0NzFdOiBleHBpcmVfY2xlYW51cDogZ290IHRoaWQKPiA+
-Pj4gMzA3ODA5MzcxMiBwYXRoIC9taXNjIHN0YXQgMwo+ID4+PiBBdWcgMTIgMTI6NTg6MTMgS1NU
-QVRJT04gYXV0b21vdW50WzE1NDcxXTogZXhwaXJlX2NsZWFudXA6IHNpZ2NobGQ6Cj4gPj4+IGV4
-cCAzMDc4MDkzNzEyIGZpbmlzaGVkLCBzd2l0Y2hpbmcgZnJvbSAyIHRvIDEKPiA+Pj4gQXVnIDEy
-IDEyOjU4OjEzIEtTVEFUSU9OIGF1dG9tb3VudFsxNTQ3MV06IHN0X3JlYWR5OiBzdF9yZWFkeSgp
-OiBzdGF0ZQo+ID4+PiA9IDIgcGF0aCAvbWlzYwo+ID4+PiBBdWcgMTIgMTI6NTk6MjggS1NUQVRJ
-T04gYXV0b21vdW50WzE1NDcxXTogc3RfZXhwaXJlOiBzdGF0ZSAxIHBhdGggL21pc2MKPiA+Pj4g
-QXVnIDEyIDEyOjU5OjI4IEtTVEFUSU9OIGF1dG9tb3VudFsxNTQ3MV06IGV4cGlyZV9wcm9jOiBl
-eHBfcHJvYyA9Cj4gPj4+IDMwNzgwOTM3MTIgcGF0aCAvbWlzYwo+ID4+PiBBdWcgMTIgMTI6NTk6
-MjggS1NUQVRJT04gYXV0b21vdW50WzE1NDcxXTogZXhwaXJlX3Byb2NfaW5kaXJlY3Q6IDIKPiA+
-Pj4gc3VibW91bnRzIHJlbWFpbmluZyBpbiAvbWlzYwo+ID4+PiBBdWcgMTIgMTI6NTk6MjggS1NU
-QVRJT04gYXV0b21vdW50WzE1NDcxXTogZXhwaXJlX2NsZWFudXA6IGdvdCB0aGlkCj4gPj4+IDMw
-NzgwOTM3MTIgcGF0aCAvbWlzYyBzdGF0IDMKPiA+Pj4gQXVnIDEyIDEyOjU5OjI4IEtTVEFUSU9O
-IGF1dG9tb3VudFsxNTQ3MV06IGV4cGlyZV9jbGVhbnVwOiBzaWdjaGxkOgo+ID4+PiBleHAgMzA3
-ODA5MzcxMiBmaW5pc2hlZCwgc3dpdGNoaW5nIGZyb20gMiB0byAxCj4gPj4+IEF1ZyAxMiAxMjo1
-OToyOCBLU1RBVElPTiBhdXRvbW91bnRbMTU0NzFdOiBzdF9yZWFkeTogc3RfcmVhZHkoKTogc3Rh
-dGUKPiA+Pj4gPSAyIHBhdGggL21pc2MKPiA+Pj4gQXVnIDEyIDEzOjAwOjE2IEtTVEFUSU9OIGF1
-dG9tb3VudFsxNTQ3MV06ID4+IG1vdW50OiBtb3VudCB0byBORlMKPiA+Pj4gc2VydmVyICcxLjIu
-My40JyBmYWlsZWQ6IHRpbWVkIG91dCAoZ2l2aW5nIHVwKS4KPiA+Pj4gQXVnIDEyIDEzOjAwOjE2
-IEtTVEFUSU9OIGF1dG9tb3VudFsxNTQ3MV06IG1vdW50KG5mcyk6IG5mczogbW91bnQKPiA+Pj4g
-ZmFpbHVyZSAxLjIuMy40Oi9hcmVhcy90ZXN0ZG93biBvbiAvbWlzYy9hcmVhcy90ZXN0ZG93bgo+
-ID4+PiBBdWcgMTIgMTM6MDA6MTYgS1NUQVRJT04gYXV0b21vdW50WzE1NDcxXTogc2VuZF9mYWls
-OiB0b2tlbiA9IDE3Cj4gPj4+IEF1ZyAxMiAxMzowMDoxNiBLU1RBVElPTiBhdXRvbW91bnRbMTU0
-NzFdOiBmYWlsZWQgdG8gbW91bnQgL21pc2MvYXJlYXMvdGVzdGRvd24KPiA+Pj4gQXVnIDEyIDEz
-OjAwOjQzIEtTVEFUSU9OIGF1dG9tb3VudFsxNTQ3MV06IHN0X2V4cGlyZTogc3RhdGUgMSBwYXRo
-IC9taXNjCj4gPj4+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tCj4gPj4+Cj4gPj4+IDIwMDkvOC8xMiBJYW4gS2VudCA8aWtlbnRA
-cmVkaGF0LmNvbT46Cj4gPj4+PiBDYXJsb3MgQW5kcsOpIHdyb3RlOgo+ID4+Pj4+IEhpIElhbiwK
-PiA+Pj4+PiBJJ20gZ2V0dGluZyBjcmF6eSB0cnlpbmcgcHV0ICJyZXRyeT0iIHRvIHdvcmsgb24g
-bW91bnQuLi4gdGhpcyBvcHRpb24KPiA+Pj4+PiBqdXN0IERPTlQgV09SSyBpZiB1c2UgcHJvdG89
-dGNwIGFuZC9PUiBrZXJiZXJvcyAoc2VjPWtyYjUva3JiNWkva3JiNXApCj4gPj4+Pj4gbGlrZSB5
-b3UgY2FuIHNlZSBvbiBteSBwcmV2aW91cyBlbWFpbHMuLi4KPiA+Pj4+IFJpZ2h0LCBteSBtaXN0
-YWtlIGZvciBub3QgbG9va2luZyBjbG9zZWx5IGVub3VnaCBhdCBwb3N0Lgo+ID4+Pj4KPiA+Pj4+
-IE1heWJlIHRoaXMgaXMgcmVsYXRlZCB0byB0aGUgc2FtZSBzb3J0IG9mIHByb2JsZW0gd2UgaGFk
-IHdpdGggbW91bnQgaW4KPiA+Pj4+IHRoZSBwYXN0LCBiZWZvcmUgdGhlIG9wdGlvbnMgcGFyc2lu
-ZyB3ZW50IGludG8gdGhlIGtlcm5lbCwgd2hlcmUgb3RoZXIKPiA+Pj4+IHNlcnZpY2VzLCBsaWtl
-IHBvcnRtYXBwZXIgKG9yIHJwY2JpbmQpLCB3ZXJlIGJlaW5nIGRvbmUgd2l0aCBkaWZmZXJlbnQK
-PiA+Pj4+IHRpbWVvdXQgcGFyYW1ldGVycyBiZWZvcmUgdGhlIFJQQyBjYWxscyBmb3IgbW91bnRp
-bmcuIFRoYXQncyBqdXN0IGFuCj4gPj4+PiBleGFtcGxlIGFzIE5GU3Y0IHNob3VsZG4ndCBiZSBz
-ZW5zaXRpdmUgdG8gcG9ydG1hcHBlciBhbnl3YXkuCj4gPj4+Pgo+ID4+Pj4gQnV0IHdoYXQgdmVy
-c2lvbiBvZiBhdXRvZnMgYW5kIGtlcm5lbCBkaWQgeW91IHNheSB5b3Ugd2VyZSB1c2luZz8KPiA+
-Pj4+Cj4gPj4+Pj4gSSBhcHByZWNpYXRlIGFueSBoZWxwLgo+ID4+Pj4+Cj4gPj4+Pj4gQ2FybG9z
-Lgo+ID4+Pj4+Cj4gPj4+Pj4KPiA+Pj4+PiAyMDA5LzgvMTIgSWFuIEtlbnQgPGlrZW50QHJlZGhh
-dC5jb20+Ogo+ID4+Pj4+PiBDaHVjayBMZXZlciB3cm90ZToKPiA+Pj4+Pj4+IE9uIEF1ZyAxMSwg
-MjAwOSwgYXQgODo0MSBBTSwgQ2FybG9zIEFuZHLDqSB3cm90ZToKPiA+Pj4+Pj4+PiBUaGlzIGxv
-bmcgdGltZW91dCBpcyBnb29kIGlmIHdvcmtzdGF0aW9uIG5lZWQgbW91bnQgYSBjcml0aWNhbAo+
-ID4+Pj4+Pj4+IGRpcmVjdG9yeSB1c2luZyAvZXRjL2ZzdGFiIG9uIGJvb3QgKGZvciBleGFtcGxl
-KS4uCj4gPj4+Pj4+Pj4gQnV0IGluIG15IGNhc2UsIHVzaW5nIHRoaXMgbG9vb29uZyB0aW1lb3V0
-IGRvZXNudCBtYWtlIGFueSBzZW5zZSwKPiA+Pj4+Pj4+PiBzaW5jZSBhdXRvZnMgcmV0cnkgbW91
-bnQgZGlyZWN0b3J5IG9uLWFjY2Vzcy4gVGhpcyBpbiBmYWN0IGdpdmVzIG1lCj4gPj4+Pj4+Pj4g
-YWxvdCBvZiBoZWFkYWNoZXMsIGNveiB1c2VyIGxvZ2luICdsbCBqdXN0IGhhbmdzIGlmIG9uZSBz
-ZXJ2ZXIgZ29lcwo+ID4+Pj4+Pj4+IGRvd24gZm9yIGFueSByZWFzb24sIGFuZCB3aWxsIGFnYWlu
-IGhhbmdzIGlmIHVzZXIgdHJ5IGFjY2VzcyBkaXJlY3RvcnkKPiA+Pj4+Pj4+PiBwb2ludGluZyB0
-byBhIE5GUyBkb3duIHNlcnZlci4uLgo+ID4+Pj4+Pj4gInJldHJ5PTAiIG1lYW5zIHRoZSBtb3Vu
-dCBjb21tYW5kIHdpbGwgZmFpbCBhcyBzb29uIGFzIHRoZSBmaXJzdAo+ID4+Pj4+Pj4gbW91bnQo
-Mikgc3lzdGVtIGNhbGwgZmFpbHMuICBXaGVuIHlvdSBzZXQgU1lOIHJldHJpZXMgdG8gMSwgdGhp
-cyBtZWFucwo+ID4+Pj4+Pj4gYWZ0ZXIgOSBzZWNvbmRzLCB0aGUgY29ubmVjdCBmYWlscywgYW5k
-IHRoYXQgY2F1c2VzIHRoZSBtb3VudCgyKSBzeXN0ZW0KPiA+Pj4+Pj4+IGNhbGwgdG8gZmFpbC4K
-PiA+Pj4+Pj4+Cj4gPj4+Pj4+PiBSZWNlbnQgY29udmVyc2F0aW9ucyB3aXRoIElhbiBzdWdnZXN0
-ZWQgdGhhdCBhIGxvbmcgdGltZW91dCB3YXMgZGVzaXJlZAo+ID4+Pj4+Pj4gZm9yIGF1dG9tb3Vu
-dGVyIGFzIHdlbGwgYXMgb3RoZXIgY2FzZXMuICBJYW4sIGlzIHRoZXJlIHNvbWV0aGluZyBlbHNl
-IHdlCj4gPj4+Pj4+PiBuZWVkIHRvIGNvbnNpZGVyIHRvIGRldGVybWluZSB0aGUgY29ycmVjdCBy
-ZXRyeSB0aW1lb3V0IGZvciBORlMvVENQCj4gPj4+Pj4+PiBtb3VudCBwb2ludHMgaGFuZGxlZCB2
-aWEgYXV0b21vdW50ZXI/ICBIb3cgc2hvdWxkIG1vdW50Lm5mcyB3YWl0IHNvIHdlCj4gPj4+Pj4+
-PiBkb24ndCBtYWtlIG90aGVyIHVzZSBjYXNlcyB3b3JzZT8gIChMb29rcyBsaWtlIG1vc3Qgb2Yg
-dGhlIGhpc3RvcnkgaXMKPiA+Pj4+Pj4+IGludGFjdCBiZWxvdykuCj4gPj4+Pj4+IE9mIGNvdXJz
-ZSB3ZSBrbm93IHRoYXQgYXV0b2ZzIGlzIGVudGlyZWx5IGF0IHRoZSBtZXJjeSBvZiBtb3VudCg4
-KSAoYW5kCj4gPj4+Pj4+IG1vdW50Lm5mcyBpbiBwYXJ0aWN1bGFyKS4gVGhpcyBoYXMgYWx3YXlz
-IGJlZW4gYSBkaWZmaWN1bHQgc2l0dWF0aW9uIGZvcgo+ID4+Pj4+PiB0aGUgYXV0b21vdW50ZXIg
-YmVjYXVzZSBpbnRlcmFjdGl2ZSBtb3VudCBpbnZvY2F0aW9ucyBzaG91bGQgd2FpdC4gQnV0IEkK
-PiA+Pj4+Pj4gYmVsaWV2ZSBhdXRvbW91bnQgbW91bnRzIHNob3VsZCBhbHdheXMgdGltZSBvdXQg
-cXVpY2tseSwgYnV0IHRoYXQgbGVhZHMKPiA+Pj4+Pj4gdG8gaXRzIG93biBzZXQgb2YgcHJvYmxl
-bXMsIGVzcGVjaWFsbHkgd2hlbiBob21lIGRpcmVjdG9yaWVzIGFyZSBjb25jZXJuZWQuCj4gPj4+
-Pj4+Cj4gPj4+Pj4+IEkgdGhpbmsgYWRkaW5nICJyZXRyeT0wIiBpcyB0aGUgcmlnaHQgdGhpbmcg
-dG8gZG8gbXlzZWxmIGJ1dCBJJ20gbm90Cj4gPj4+Pj4+IGNlcnRhaW4gdGhhdCB3aWxsIHdvcmsg
-YXMgd2UgZXhwZWN0LiBJJ2xsIGhhdmUgdG8gZG8gc29tZSBleHBlcmltZW50YXRpb24uCj4gPj4+
-Pj4+Cj4gPj4+Pj4+PiBIb3cgbG9uZyBkbyB5b3UgdGhpbmsgaXMgYXBwcm9wcmlhdGUgZm9yIHRo
-ZSBhdXRvbW91bnRlciB0byB3YWl0IGlmIHRoZQo+ID4+Pj4+Pj4gc2VydmVyIGlzIGRvd24sIGlu
-IHlvdXIgY2FzZSwgQ2FybG9zPwo+ID4+Pj4+Pj4KPiA+Pj4+Pj4+PiBBbSBsb3Npbmcgc29tZXRo
-aW5nIG9yIHRoZXJlIGhhdmUgd2FzIHNvbWV0aGluZyB3ZWlyZG8uLi4hPwo+ID4+Pj4+Pj4+IC0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQo+ID4+Pj4+Pj4+
-IFtyb290QEtTVEFUSU9OIH5dIyBlY2hvIDUgPiAvcHJvYy9zeXMvbmV0L2lwdjQvdGNwX3N5bl9y
-ZXRyaWVzICBbREVGQVVMVF0KPiA+Pj4+Pj4+PiBbcm9vdEBLU1RBVElPTiB+XSMgdGltZSBtb3Vu
-dCAxLjIuMy40Oi9ibGFibGEgL3RtcC8gLXQgbmZzNCAtbwo+ID4+Pj4+Pj4+IHByb3RvPXRjcCxy
-ZXRyeT0xCj4gPj4+Pj4+Pj4gbW91bnQ6IG1vdW50IHRvIE5GUyBzZXJ2ZXIgJzEuMi4zLjQnIGZh
-aWxlZDogdGltZWQgb3V0IChnaXZpbmcgdXApLgo+ID4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4gcmVhbCAg
-ICAzbTkuMDAwcwo+ID4+Pj4+Pj4+IHVzZXIgICAgMG0wLjAwMnMKPiA+Pj4+Pj4+PiBzeXMgICAg
-IDBtMC4wMDFzCj4gPj4+Pj4+Pj4gW3Jvb3RAS1NUQVRJT04gfl0jIHRpbWUgbW91bnQgMS4yLjMu
-NDovYmxhYmxhIC90bXAvIC10IG5mczQgLW8KPiA+Pj4+Pj4+PiBzZWM9a3JiNXAscHJvdG89dGNw
-LHJldHJ5PTEKPiA+Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcg
-ZmFpbGVkOiB0aW1lZCBvdXQgKGdpdmluZyB1cCkuCj4gPj4+Pj4+Pj4KPiA+Pj4+Pj4+PiByZWFs
-ICAgIDNtOS4wMDBzCj4gPj4+Pj4+Pj4gdXNlciAgICAwbTAuMDAwcwo+ID4+Pj4+Pj4+IHN5cyAg
-ICAgMG0wLjAwMnMKPiA+Pj4+Pj4+PiBbcm9vdEBLU1RBVElPTiB+XSMgdGltZSBtb3VudCAxLjIu
-My40Oi9ibGFibGEgL3RtcC8gLXQgbmZzNCAtbwo+ID4+Pj4+Pj4+IHByb3RvPXRjcCxyZXRyeT0w
-Cj4gPj4+Pj4+Pj4gbW91bnQ6IG1vdW50IHRvIE5GUyBzZXJ2ZXIgJzEuMi4zLjQnIGZhaWxlZDog
-dGltZWQgb3V0IChnaXZpbmcgdXApLgo+ID4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4gcmVhbCAgICAzbTku
-MDAxcwo+ID4+Pj4+Pj4+IHVzZXIgICAgMG0wLjAwMHMKPiA+Pj4+Pj4+PiBzeXMgICAgIDBtMC4w
-MDNzCj4gPj4+Pj4+Pj4gW3Jvb3RAS1NUQVRJT04gfl0jIHRpbWUgbW91bnQgMS4yLjMuNDovYmxh
-YmxhIC90bXAvIC10IG5mczQgLW8KPiA+Pj4+Pj4+PiBzZWM9a3JiNXAscHJvdG89dGNwLHJldHJ5
-PTAKPiA+Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVk
-OiB0aW1lZCBvdXQgKGdpdmluZyB1cCkuCj4gPj4+Pj4+Pj4KPiA+Pj4+Pj4+PiByZWFsICAgIDNt
-OS4wMDFzCj4gPj4+Pj4+Pj4gdXNlciAgICAwbTAuMDAycwo+ID4+Pj4+Pj4+IHN5cyAgICAgMG0w
-LjAwMXMKPiA+Pj4+Pj4+Pgo+ID4+Pj4+Pj4+IFtyb290QEtTVEFUSU9OIH5dIyBlY2hvIDEgPiAv
-cHJvYy9zeXMvbmV0L2lwdjQvdGNwX3N5bl9yZXRyaWVzIFsgNSB0byAxIF0KPiA+Pj4+Pj4+Pgo+
-ID4+Pj4+Pj4+IFtyb290QEtTVEFUSU9OIH5dIyB0aW1lIG1vdW50IDEuMi4zLjQ6L2JsYWJsYSAv
-dG1wLyAtdCBuZnM0IC1vCj4gPj4+Pj4+Pj4gcHJvdG89dGNwLHJldHJ5PTEKPiA+Pj4+Pj4+PiBt
-b3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKHJl
-dHJ5aW5nKS4gW3ggNl0KPiA+Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4y
-LjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKGdpdmluZyB1cCkuCj4gPj4+Pj4+Pj4KPiA+Pj4+Pj4+
-PiByZWFsICAgIDFtMy4wMDJzCj4gPj4+Pj4+Pj4gdXNlciAgICAwbTAuMDAwcwo+ID4+Pj4+Pj4+
-IHN5cyAgICAgMG0wLjAwMnMKPiA+Pj4+Pj4+PiBbcm9vdEBLU1RBVElPTiB+XSMgdGltZSBtb3Vu
-dCAxLjIuMy40Oi9ibGFibGEgL3RtcC8gLXQgbmZzNCAtbwo+ID4+Pj4+Pj4+IHNlYz1rcmI1cCxw
-cm90bz10Y3AscmV0cnk9MQo+ID4+Pj4+Pj4+IG1vdW50OiBtb3VudCB0byBORlMgc2VydmVyICcx
-LjIuMy40JyBmYWlsZWQ6IHRpbWVkIG91dCAocmV0cnlpbmcpLiBbeCAxM10KPiA+Pj4+Pj4+PiBt
-b3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKGdp
-dmluZyB1cCkuCj4gPj4+Pj4+Pj4KPiA+Pj4+Pj4+PiByZWFsICAgIDJtNi4wMDBzCj4gPj4+Pj4+
-Pj4gdXNlciAgICAwbTAuMDAwcwo+ID4+Pj4+Pj4+IHN5cyAgICAgMG0wLjAwMnMKPiA+Pj4+Pj4+
-PiBbcm9vdEBLU1RBVElPTiB+XSMgdGltZSBtb3VudCAxLjIuMy40Oi9ibGFibGEgL3RtcC8gLXQg
-bmZzNCAtbwo+ID4+Pj4+Pj4+IHByb3RvPXRjcCxyZXRyeT0wCj4gPj4+Pj4+Pj4gbW91bnQ6IG1v
-dW50IHRvIE5GUyBzZXJ2ZXIgJzEuMi4zLjQnIGZhaWxlZDogdGltZWQgb3V0IChnaXZpbmcgdXAp
-Lgo+ID4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4gcmVhbCAgICAwbTkuMDAzcwo+ID4+Pj4+Pj4+IHVzZXIg
-ICAgMG0wLjAwMXMKPiA+Pj4+Pj4+PiBzeXMgICAgIDBtMC4wMDJzCj4gPj4+Pj4+Pj4gW3Jvb3RA
-S1NUQVRJT04gfl0jIHRpbWUgbW91bnQgMS4yLjMuNDovYmxhYmxhIC90bXAvIC10IG5mczQgLW8K
-PiA+Pj4+Pj4+PiBzZWM9a3JiNXAscHJvdG89dGNwLHJldHJ5PTAKPiA+Pj4+Pj4+PiBtb3VudDog
-bW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKHJldHJ5aW5n
-KS4gW3ggMTNdCj4gPj4+Pj4+Pj4gbW91bnQ6IG1vdW50IHRvIE5GUyBzZXJ2ZXIgJzEuMi4zLjQn
-IGZhaWxlZDogdGltZWQgb3V0IChnaXZpbmcgdXApLgo+ID4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4gcmVh
-bCAgICAybTYuMDAxcwo+ID4+Pj4+Pj4+IHVzZXIgICAgMG0wLjAwMXMKPiA+Pj4+Pj4+PiBzeXMg
-ICAgIDBtMC4wMDJzCj4gPj4+Pj4+Pj4gW3Jvb3RAS1NUQVRJT04gfl0jCj4gPj4+Pj4+Pj4gLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCj4gPj4+Pj4+Pj4g
-bWF4IHRpbWVvdXQgZ29lcyB0byAybTZzIGNoYW5naW5nIHRjcF9zeW5fcmV0cmllcyBmcm9tIDUg
-dG8gMS4uLiBhbmQKPiA+Pj4+Pj4+PiB1c2luZyByZXRyeT0wIHdpdGhvdXQga2VyYmVyb3MgSSBn
-b3Qgb25seSA5cy4uLgo+ID4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4gKnNpZ2gqCj4gPj4+Pj4+Pj4KPiA+
-Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4gMjAwOS84LzEwIENodWNrIExldmVyIDxjaHVj
-ay5sZXZlckBvcmFjbGUuY29tPjoKPiA+Pj4+Pj4+Pj4gT24gQXVnIDEwLCAyMDA5LCBhdCA0OjA1
-IFBNLCBDYXJsb3MgQW5kcsOpIHdyb3RlOgo+ID4+Pj4+Pj4+Pj4gU29tZXRoaW5nIGZ1bm55OiBV
-c2luZyBkZWZhdWx0IHRjcF9zeW5fcmV0cmllcyAoNSkgaSBnb3QKPiA+Pj4+Pj4+Pj4+ICIzLDYs
-MTIsMjQsNDgsOTYiIHNlY3MgaW50ZXJ2YWwuLi4gYnV0IGlmIGkgY2hhbmdlIHRjcF9zeW5fcmV0
-cmllcyB0bwo+ID4+Pj4+Pj4+Pj4gMSBpIGdvdCAiMyw2LDMsNiwzLDYuLi4iIHNlY3MgaW50ZXJ2
-YWwuLi4KPiA+Pj4+Pj4+Pj4gUmlnaHQuICBOb3JtYWxseSB0aGUgUlBDIGNsaWVudCBjYWxscyB0
-aGUga2VybmVsJ3Mgc29ja2V0IGNvbm5lY3QKPiA+Pj4+Pj4+Pj4gZnVuY3Rpb24sCj4gPj4+Pj4+
-Pj4+IHdoaWNoIGRvZXMgNiBTWU4gcmV0cmllcy4gIFRoYXQgb25lIGNhbGwgdXN1YWxseSB0YWtl
-cyBsb25nZXIgdGhhbgo+ID4+Pj4+Pj4+PiB0aGUgUlBDCj4gPj4+Pj4+Pj4+IGNsaWVudCdzIGNv
-bm5lY3QgdGltZW91dCwgc28gaXQgb25seSBtYWtlcyBvbmUgY29ubmVjdCBjYWxsLCBhbmQgdGhl
-bgo+ID4+Pj4+Pj4+PiBmYWlscy4KPiA+Pj4+Pj4+Pj4KPiA+Pj4+Pj4+Pj4gUmVkdWNpbmcgdGhl
-IG51bWJlciBvZiBTWU4gcmV0cmllcyBwZXIgY29ubmVjdCBhdHRlbXB0IGNhdXNlcyB0aGUgUlBD
-Cj4gPj4+Pj4+Pj4+IGNsaWVudAo+ID4+Pj4+Pj4+PiB0byByZXRyeSB0aGUgY29ubmVjdCBjYWxs
-IHVudGlsIGl0cyBjb25uZWN0IHRpbWVvdXQgZXhwaXJlcy4gIEVhY2gKPiA+Pj4+Pj4+Pj4gY29u
-bmVjdAo+ID4+Pj4+Pj4+PiBjYWxsIHJlc2V0cyB0aGUgU1lOIHRpbWVvdXQgdG8gMyBzZWNvbmRz
-Lgo+ID4+Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Pj4gW3Jvb3RAS1NFUlZFUiBtbnRdIyB0aW1lIG1vdW50
-IDEuMi4zLjQ6L2JsYWJsYSB0bXAvIC10IG5mczQgLW8KPiA+Pj4+Pj4+Pj4+IHNlYz1rcmI1cCxw
-cm90bz10Y3AKPiA+Pj4+Pj4+Pj4+IG1vdW50OiBtb3VudCB0byBORlMgc2VydmVyICcxLjIuMy40
-JyBmYWlsZWQ6IHRpbWVkIG91dCAoZ2l2aW5nIHVwKS4KPiA+Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+
-PiByZWFsICAgIDNtOS4wMDBzCj4gPj4+Pj4+Pj4+PiB1c2VyICAgIDBtMC4wMDBzCj4gPj4+Pj4+
-Pj4+PiBzeXMgICAgIDBtMC4wMDJzCj4gPj4+Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Pj4gW3Jvb3RAS1NF
-UlZFUiAvXSMgZWNobyAxID4gL3Byb2Mvc3lzL25ldC9pcHY0L3RjcF9zeW5fcmV0cmllcwo+ID4+
-Pj4+Pj4+Pj4gW3Jvb3RAS1NFUlZFUiBtbnRdIyB0aW1lIG1vdW50IDEuMi4zLjQ6L2JsYWJsYSB0
-bXAvIC10IG5mczQgLW8KPiA+Pj4+Pj4+Pj4+IHNlYz1rcmI1cCxwcm90bz10Y3AgICgicmV0cnk9
-MSIgPSBubyBjaGFuZ2UpCj4gPj4+Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAn
-MS4yLjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKHJldHJ5aW5nKS4KPiA+Pj4+Pj4+Pj4+IG1vdW50
-OiBtb3VudCB0byBORlMgc2VydmVyICcxLjIuMy40JyBmYWlsZWQ6IHRpbWVkIG91dCAocmV0cnlp
-bmcpLgo+ID4+Pj4+Pj4+Pj4gbW91bnQ6IG1vdW50IHRvIE5GUyBzZXJ2ZXIgJzEuMi4zLjQnIGZh
-aWxlZDogdGltZWQgb3V0IChyZXRyeWluZykuCj4gPj4+Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8g
-TkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKHJldHJ5aW5nKS4KPiA+Pj4+
-Pj4+Pj4+IG1vdW50OiBtb3VudCB0byBORlMgc2VydmVyICcxLjIuMy40JyBmYWlsZWQ6IHRpbWVk
-IG91dCAocmV0cnlpbmcpLgo+ID4+Pj4+Pj4+Pj4gbW91bnQ6IG1vdW50IHRvIE5GUyBzZXJ2ZXIg
-JzEuMi4zLjQnIGZhaWxlZDogdGltZWQgb3V0IChyZXRyeWluZykuCj4gPj4+Pj4+Pj4+PiBtb3Vu
-dDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVkOiB0aW1lZCBvdXQgKHJldHJ5
-aW5nKS4KPiA+Pj4+Pj4+Pj4+IG1vdW50OiBtb3VudCB0byBORlMgc2VydmVyICcxLjIuMy40JyBm
-YWlsZWQ6IHRpbWVkIG91dCAocmV0cnlpbmcpLgo+ID4+Pj4+Pj4+Pj4gbW91bnQ6IG1vdW50IHRv
-IE5GUyBzZXJ2ZXIgJzEuMi4zLjQnIGZhaWxlZDogdGltZWQgb3V0IChyZXRyeWluZykuCj4gPj4+
-Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcgZmFpbGVkOiB0aW1l
-ZCBvdXQgKHJldHJ5aW5nKS4KPiA+Pj4+Pj4+Pj4+IG1vdW50OiBtb3VudCB0byBORlMgc2VydmVy
-ICcxLjIuMy40JyBmYWlsZWQ6IHRpbWVkIG91dCAocmV0cnlpbmcpLgo+ID4+Pj4+Pj4+Pj4gbW91
-bnQ6IG1vdW50IHRvIE5GUyBzZXJ2ZXIgJzEuMi4zLjQnIGZhaWxlZDogdGltZWQgb3V0IChyZXRy
-eWluZykuCj4gPj4+Pj4+Pj4+PiBtb3VudDogbW91bnQgdG8gTkZTIHNlcnZlciAnMS4yLjMuNCcg
-ZmFpbGVkOiB0aW1lZCBvdXQgKHJldHJ5aW5nKS4KPiA+Pj4+Pj4+Pj4+IG1vdW50OiBtb3VudCB0
-byBORlMgc2VydmVyICcxLjIuMy40JyBmYWlsZWQ6IHRpbWVkIG91dCAoZ2l2aW5nIHVwKS4KPiA+
-Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+PiByZWFsICAgIDJtNi4wMDRzCj4gPj4+Pj4+Pj4+PiB1c2Vy
-ICAgIDBtMC4wMDBzCj4gPj4+Pj4+Pj4+PiBzeXMgICAgIDBtMC4wMDRzCj4gPj4+Pj4+Pj4+Pgo+
-ID4+Pj4+Pj4+Pj4gKDMsNiwzLDYuLi4gc2VjcyBpbnRlcnZhbCkKPiA+Pj4+Pj4+Pj4+Cj4gPj4+
-Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Pj4KPiA+Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+PiAyMDA5LzgvMTAg
-Q2FybG9zIEFuZHLDqSA8Y2FuZHJlY25AZ21haWwuY29tPjoKPiA+Pj4+Pj4+Pj4+PiBObywgaSdt
-IGp1c3QgdXNpbmcgcGFja2FnZXMgZnJvbSBDZW50T1MgcmVwby4uLgo+ID4+Pj4+Pj4+Pj4+Cj4g
-Pj4+Pj4+Pj4+Pj4gQW5kIHUncmUgcmlnaHQgYWJvdXQgZXhwbyByZXRyaWVzLi4uIHdpdGggdGNw
-ZHVtcCBpJ3ZlIG1vbml0b3JlZAo+ID4+Pj4+Pj4+Pj4+IHRyYWZmaWMgYW5kIGkgZ290IFNZTiBy
-ZXRyaWVzIGluIDMsIDYsIDEyLCAyNCwgNDgsIDk2IHNlY3Mgb24gcG9ydAo+ID4+Pj4+Pj4+Pj4+
-IDIwNDkuLi4KPiA+Pj4+Pj4+Pj4+PiBJIHRyaWVkIHVzZSAicmV0cnk9MSIgb3B0aW9uIG9uIG1v
-dW50IHdpdGhvdXQgYW55IGNoYW5nZS4uLiBJIGRvbnQKPiA+Pj4+Pj4+Pj4+PiB3YW50IGNoYW5n
-ZSBzb3VyY2Ugb3IgdGNwIHRpbWVycy4uLiBqdXN0IE5GU3Y0IGNsaWVudC4KPiA+Pj4+Pj4+Pj4+
-Pgo+ID4+Pj4+Pj4+Pj4+IDIwMDkvOC8xMCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xl
-LmNvbT46Cj4gPj4+Pj4+Pj4+Pj4+IE9uIEF1ZyAxMCwgMjAwOSwgYXQgMjoyOSBQTSwgQ2FybG9z
-IEFuZHLDqSB3cm90ZToKPiA+Pj4+Pj4+Pj4+Pj4+IEJydWNlLCBuby4uLiB5b3UncmUgcmlnaHQu
-ICBJJ20gZGVzY3JpYmluZyBhIHNpdHVhdGlvbiB3aGVyZSBteQo+ID4+Pj4+Pj4+Pj4+Pj4gc2Vy
-dmVyCj4gPj4+Pj4+Pj4+Pj4+PiBkaWVkLi4uIGkgbmVlZCBtb3VudCBmYWlsIGZhc3RlciAoMTAg
-b3IgMTUgc2VjcyBtYXgpIHRoYW4gMyBtaW51dGVzCj4gPj4+Pj4+Pj4+Pj4+PiBhbmQgOSBzZWNv
-bmRzLi4uCj4gPj4+Pj4+Pj4+Pj4+IFRoZSAxODkgc2Vjb25kIHRpbWVvdXQgaXMgbGlrZWx5IGhv
-dyBsb25nIGl0IHRha2VzIHRoZSBrZXJuZWwgdG8KPiA+Pj4+Pj4+Pj4+Pj4gZ2l2ZSB1cAo+ID4+
-Pj4+Pj4+Pj4+PiB0cnlpbmcgdG8gY29ubmVjdCBhIFRDUCBzb2NrZXQgdG8gdGhlIHNlcnZlciAo
-NiBTWU4gYXR0ZW1wdHMgd2l0aAo+ID4+Pj4+Pj4+Pj4+PiBleHBvbmVudGlhbCByZXRyaWVzLCBv
-ciBzb21ldGhpbmcgbGlrZSB0aGF0KS4gIEZvciBzdG9jayBDZW50T1MKPiA+Pj4+Pj4+Pj4+Pj4g
-NS4zLCBJCj4gPj4+Pj4+Pj4+Pj4+IHRoaW5rCj4gPj4+Pj4+Pj4+Pj4+IHVzZXIgc3BhY2UgZG9l
-cyBvbmx5IGEgRE5TIGxvb2t1cCBmb3Igbm9ybWFsIE5GU3Y0IG1vdW50cyAtLSB0aGUKPiA+Pj4+
-Pj4+Pj4+Pj4ga2VybmVsCj4gPj4+Pj4+Pj4+Pj4+IGp1c3QKPiA+Pj4+Pj4+Pj4+Pj4gdHJpZXMg
-dG8gY29ubmVjdCBhIFRDUCBzb2NrZXQgdG8gcG9ydCAyMDQ5LCB3aXRoIG5vIHByZWNlZGluZyBy
-cGNiaW5kCj4gPj4+Pj4+Pj4+Pj4+IHJlcXVlc3QuCj4gPj4+Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+
-Pj4+IENhcmxvcywgbGV0IHVzIGtub3cgaWYgeW91IGhhdmUgcmVwbGFjZWQgYW55IE5GUy1yZWxh
-dGVkIENlbnRPUwo+ID4+Pj4+Pj4+Pj4+PiBjb21wb25lbnRzCj4gPj4+Pj4+Pj4+Pj4+IChrZXJu
-ZWwsIG5mcy11dGlscykgd2l0aCBzb21ldGhpbmcgeW91J3ZlIGJ1aWx0IHlvdXJzZWxmLgo+ID4+
-Pj4+Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Pj4+Pj4gMjAwOS84LzcgSi4gQnJ1Y2UgRmllbGRzIDxiZmll
-bGRzQGZpZWxkc2VzLm9yZz46Cj4gPj4+Pj4+Pj4+Pj4+Pj4gT24gRnJpLCBBdWcgMDcsIDIwMDkg
-YXQgMDk6NDI6MThBTSArMDMwMCwgQmVubnkgSGFsZXZ5IHdyb3RlOgo+ID4+Pj4+Pj4+Pj4+Pj4+
-PiBPbiBBdWcuIDA3LCAyMDA5LCAzOjE4ICswMzAwLCBDYXJsb3MgQW5kcsOpIDxjYW5kcmVjbkBn
-bWFpbC5jb20+Cj4gPj4+Pj4+Pj4+Pj4+Pj4+IHdyb3RlOgo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4gQW55
-b25lID8KPiA+Pj4+Pj4+Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+Pj4+Pj4+PiAyMDA5LzcvMjkgQ2Fy
-bG9zIEFuZHLDqSA8Y2FuZHJlY25AZ21haWwuY29tPjoKPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBQUEws
-IEkgbmVlZCBwdXQgYSBDZW50T1MgNS4zICh1cGRhdGVkKSBORlN2NCBzZXJ2ZXIgdG8gd29yayB3
-aXRoCj4gPj4+Pj4+Pj4+Pj4+Pj4+Pj4gS2VyYmVyb3MKPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBhbmQg
-QXV0b0ZTLCBidXQgaSBnb3QgYSBwcm9ibGVtOiBJZiBORlMgc2VydmVyIGdvZXMgZG93biBpIGdl
-dCBhCj4gPj4+Pj4+Pj4+Pj4+Pj4+Pj4gTE9PT09PT09ORwo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+IG1v
-dW50IHRpbWVvdXQgb24gQ2VudE9TIDUuMyAodXBkYXRlZCkgTkZTdjQgY2xpZW50Li4uCj4gPj4+
-Pj4+Pj4+Pj4+Pj4+Pj4KPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBTaW5jZSBpIG5lZWQgbW91bnQgc29t
-ZSAoMyB0byA2KSBkaXJzIGF0IHVzZXIgbG9nb24gcHJvY2VzcywgaWYKPiA+Pj4+Pj4+Pj4+Pj4+
-Pj4+PiBtb3VudAo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+IGhhbmdzLAo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+
-IHVzZXIgbG9nb24gaGFuZ3MuIFRoZW4gaSB3YW50IGNvbmZpZ3VyZSBpdCB0byB0aW1lb3V0IChp
-ZiBzZXJ2ZXIKPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBkb3duKQo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+IGFm
-dGVyCj4gPj4+Pj4+Pj4+Pj4+Pj4+Pj4gMTAtMTUgc2VjcyAoTUFYKSBvbiBlYWNoIG1vdW50IGF0
-dGVtcHQuCj4gPj4+Pj4+Pj4+Pj4+Pj4+Pj4KPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBJIGFscmVhZHkg
-bWFrZSBhIGxhYiBhbmQgdHJpZWQgYSBMT1Qgb2YgY29tYmluYXRpb25zLCB0aGVyZSBteQo+ID4+
-Pj4+Pj4+Pj4+Pj4+Pj4+IGZpbmRpbmdzCj4gPj4+Pj4+Pj4+Pj4+Pj4+Pj4gKHNlcnZlciBET1dO
-IElQOiAxNzIuMTYuMC4xMCAvIGNsaWVudCBJUDogMTcyLjE2LjEuMTApIHVzaW5nCj4gPj4+Pj4+
-Pj4+Pj4+Pj4+Pj4gYmFzaWMKPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBjb21tYW5kCj4gPj4+Pj4+Pj4+
-Pj4+Pj4+Pj4gKHRpbWUgbW91bnQgMTcyLjE2LjAuMTA6L3JlbW90ZWRpciAvbG9jYWxkaXIvIC10
-IG5mczQgLW8KPiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBzZWM9a3JiNSxwcm90bz08dGNwL3VkcD4pIGZy
-b20gTkZTIGNsaWVudDoKPiA+Pj4+Pj4+Pj4+Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+IC0g
-T25jZSBpIHRyeSBhY2Nlc3MgbW91bnQgcG9pbnQgdXNpbmcgQXV0b0ZTIChwcm90bz10Y3AgT1IK
-PiA+Pj4+Pj4+Pj4+Pj4+Pj4+PiBwcm90bz11ZHApCj4gPj4+Pj4+Pj4+Pj4+Pj4+Pj4gaXQKPiA+
-Pj4+Pj4+Pj4+Pj4+Pj4+PiBoYW5ncyBmb3IgMTg5IHNlY3MgKDNtOXM6IHJlYWwgIDNtOS4wMDFz
-KSAgdW50aWwgc2hvdyBlcnJvcgo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+IChtb3VudDoKPiA+Pj4+Pj4+
-Pj4+Pj4+Pj4+PiBtb3VudCB0bwo+ID4+Pj4+Pj4+Pj4+Pj4+Pj4+IE5GUyBzZXJ2ZXIgJzE3Mi4x
-Ni4wLjEwJyBmYWlsZWQ6IHRpbWVkIG91dCAoZ2l2aW5nIHVwKSkKPiA+Pj4+Pj4+Pj4+Pj4+Pj4g
-U291bmRzIGxpa2UgeW91J3JlIGhpdHRpbmcgdGhlIHNlcnZlcidzIGdyYWNlIHBlcmlvZC4KPiA+
-Pj4+Pj4+Pj4+Pj4+PiBJIHRob3VnaHQgaGUgd2FzIGRlc2NyaWJpbmcgYSBzaXR1YXRpb24gd2hl
-cmUgdGhlIHNlcnZlciB0aGUgc2VydmVyCj4gPj4+Pj4+Pj4+Pj4+Pj4gaXMgY29tcGxldGVseSBn
-b25lIGFuZCBpc24ndCBjb21pbmcgYmFjaywgYW5kIHdvbmRlcmluZyBob3cgdG8gbWFrZQo+ID4+
-Pj4+Pj4+Pj4+Pj4+IHRoZQo+ID4+Pj4+Pj4+Pj4+Pj4+IG1vdW50IGZhaWwgZmFzdGVyLiAgQnV0
-IEkgbWF5IGJlIG1pc3VuZGVyc3RhbmRpbmcuCj4gPj4+Pj4+Pj4+Pj4+Pj4KPiA+Pj4+Pj4+Pj4+
-Pj4+PiAtLWIuCj4gPj4+Pj4+Pj4+Pj4+Pj4KPiA+Pj4+Pj4+Pj4+Pj4+IC0tCj4gPj4+Pj4+Pj4+
-Pj4+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJz
-Y3JpYmUKPiA+Pj4+Pj4+Pj4+Pj4+IGxpbnV4LW5mcyIgaW4KPiA+Pj4+Pj4+Pj4+Pj4+IHRoZSBi
-b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCj4gPj4+Pj4+Pj4+
-Pj4+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9y
-ZG9tby1pbmZvLmh0bWwKPiA+Pj4+Pj4+Pj4+Pj4gLS0KPiA+Pj4+Pj4+Pj4+Pj4gQ2h1Y2sgTGV2
-ZXIKPiA+Pj4+Pj4+Pj4+Pj4gY2h1Y2tbZG90XWxldmVyW2F0XW9yYWNsZVtkb3RdY29tCj4gPj4+
-Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+Pj4+Cj4gPj4+Pj4+Pj4+Pj4+Cj4g
-Pj4+Pj4+Pj4+IC0tCj4gPj4+Pj4+Pj4+IENodWNrIExldmVyCj4gPj4+Pj4+Pj4+IGNodWNrW2Rv
-dF1sZXZlclthdF1vcmFjbGVbZG90XWNvbQo+ID4+Pj4+Pj4+Pgo+ID4+Pj4+Pj4+Pgo+ID4+Pj4+
-Pj4+Pgo+ID4+Pj4+Pj4+Pgo+ID4+Pj4+Pj4gLS0KPiA+Pj4+Pj4+IENodWNrIExldmVyCj4gPj4+
-Pj4+PiBjaHVja1tkb3RdbGV2ZXJbYXRdb3JhY2xlW2RvdF1jb20KPiA+Pj4+Pj4+Cj4gPj4+Pj4+
-Pgo+ID4+Pj4+Pj4KPiA+Pj4+Cj4gPj4KPiA+Pgo+ID4KCl9fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fCk5GU3Y0IG1haWxpbmcgbGlzdApORlN2NEBsaW51eC1u
-ZnMub3JnCmh0dHA6Ly9saW51eC1uZnMub3JnL2NnaS1iaW4vbWFpbG1hbi9saXN0aW5mby9uZnN2
-NA==
+On Thu, Aug 27, 2009 at 12:07:44PM -0400, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Use NFSD_SLOT_CACHE_SIZE size buffers for sessions DRC instead of holding nfsd
+> pages in cache.
+> 
+> Connectathon testing has shown that 1024 bytes for encoded compound operation
+> responses past the sequence operation is sufficient, 512 bytes is a little too
+> small. Set NFSD_SLOT_CACHE_SIZE to 1024.
+> 
+> Allocate memory for the session DRC in the CREATE_SESSION operation
+> to guarantee that the memory resource is available for caching responses.
+> Allocate each slot individually in preparation for slot table size negotiation.
+> 
+> Remove struct nfsd4_cache_entry and helper functions for the old page-based
+> DRC.
+> 
+> The iov_len calculation in nfs4svc_encode_compoundres is now always
+> correct, clean up the nfs4svc_encode_compoundres session logic.
+> 
+> The nfsd4_compound_state statp pointer is also not used.
+> Remove nfsd4_set_statp().
+> 
+> Move useful nfsd4_cache_entry fields into nfsd4_slot.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com
+> ---
+>  fs/nfsd/nfs4state.c        |  207 ++++++++++++--------------------------------
+>  fs/nfsd/nfs4xdr.c          |   13 ++--
+>  fs/nfsd/nfssvc.c           |    4 -
+>  include/linux/nfsd/state.h |   27 ++----
+>  include/linux/nfsd/xdr4.h  |    5 +-
+>  5 files changed, 74 insertions(+), 182 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 4695cec..2d72d5c 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -510,12 +510,22 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+>  	return status;
+>  }
+>  
+> +static void
+> +free_session_slots(struct nfsd4_session *ses)
+> +{
+> +	int i;
+> +
+> +	for (i = 0; i < ses->se_fchannel.maxreqs; i++)
+> +		kfree(ses->se_slots[i]);
+> +}
+> +
+>  static int
+>  alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp,
+>  		   struct nfsd4_create_session *cses)
+>  {
+>  	struct nfsd4_session *new, tmp;
+> -	int idx, status = nfserr_serverfault, slotsize;
+> +	struct nfsd4_slot *sp;
+> +	int idx, status = nfserr_serverfault, slotsize, cachesize, i;
+
+Just as a style thing: that list's getting a little long.  Could you
+keep at least "status" on a separate line?
+
+>  
+>  	memset(&tmp, 0, sizeof(tmp));
+>  
+> @@ -526,14 +536,23 @@ alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp,
+>  	if (status)
+>  		goto out;
+>  
+> -	/* allocate struct nfsd4_session and slot table in one piece */
+> -	slotsize = tmp.se_fchannel.maxreqs * sizeof(struct nfsd4_slot);
+> +	/* allocate struct nfsd4_session and slot table pointers in one piece */
+> +	slotsize = tmp.se_fchannel.maxreqs * sizeof(struct nfsd4_slot *);
+>  	new = kzalloc(sizeof(*new) + slotsize, GFP_KERNEL);
+
+I think this is OK for now, but maybe stick something like:
+
+	BUILD_BUG_ON(NFSD_MAX_SLOTS_PER_SESSION * sizeof(struct nfsd4_slot)
+			+ sizeof(struct nfsd4_session) > PAGE_SIZE);
+
+in state.h just to warn anyone who wants to blindly bump up
+NFSD_MAX_SLOTS_PER_SESSION.  (It's not really forbidden to kmalloc more
+than a page, but it's also not reliable, and if it becomes necessary
+then we'd rather find some way to code around it.)
+
+>  	if (!new)
+>  		goto out;
+>  
+>  	memcpy(new, &tmp, sizeof(*new));
+>  
+> +	/* allocate each struct nfsd4_slot and data cache in one piece */
+> +	cachesize = new->se_fchannel.maxresp_cached - NFSD_MIN_HDR_SEQ_SZ;
+> +	for (i = 0; i < new->se_fchannel.maxreqs; i++) {
+> +		sp = kzalloc(sizeof(*sp) + cachesize, GFP_KERNEL);
+> +		if (!sp)
+> +			goto out_free;
+> +		new->se_slots[i] = sp;
+> +	}
+> +
+>  	new->se_client = clp;
+>  	gen_sessionid(new);
+>  	idx = hash_sessionid(&new->se_sessionid);
+> @@ -550,6 +569,10 @@ alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp,
+>  	status = nfs_ok;
+>  out:
+>  	return status;
+> +out_free:
+> +	free_session_slots(new);
+> +	kfree(new);
+> +	goto out;
+>  }
+>  
+>  /* caller must hold sessionid_lock */
+> @@ -592,22 +615,16 @@ release_session(struct nfsd4_session *ses)
+>  	nfsd4_put_session(ses);
+>  }
+>  
+> -static void nfsd4_release_respages(struct page **respages, short resused);
+> -
+>  void
+>  free_session(struct kref *kref)
+>  {
+>  	struct nfsd4_session *ses;
+> -	int i;
+>  
+>  	ses = container_of(kref, struct nfsd4_session, se_ref);
+> -	for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
+> -		struct nfsd4_cache_entry *e = &ses->se_slots[i].sl_cache_entry;
+> -		nfsd4_release_respages(e->ce_respages, e->ce_resused);
+> -	}
+>  	spin_lock(&nfsd_drc_lock);
+>  	nfsd_drc_mem_used -= ses->se_fchannel.maxreqs * NFSD_SLOT_CACHE_SIZE;
+>  	spin_unlock(&nfsd_drc_lock);
+> +	free_session_slots(ses);
+>  	kfree(ses);
+>  }
+>  
+> @@ -964,116 +981,32 @@ out_err:
+>  	return;
+>  }
+>  
+> -void
+> -nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp)
+> -{
+> -	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+> -
+> -	resp->cstate.statp = statp;
+> -}
+> -
+> -/*
+> - * Dereference the result pages.
+> - */
+> -static void
+> -nfsd4_release_respages(struct page **respages, short resused)
+> -{
+> -	int i;
+> -
+> -	dprintk("--> %s\n", __func__);
+> -	for (i = 0; i < resused; i++) {
+> -		if (!respages[i])
+> -			continue;
+> -		put_page(respages[i]);
+> -		respages[i] = NULL;
+> -	}
+> -}
+> -
+> -static void
+> -nfsd4_copy_pages(struct page **topages, struct page **frompages, short count)
+> -{
+> -	int i;
+> -
+> -	for (i = 0; i < count; i++) {
+> -		topages[i] = frompages[i];
+> -		if (!topages[i])
+> -			continue;
+> -		get_page(topages[i]);
+> -	}
+> -}
+> -
+>  /*
+> - * Cache the reply pages up to NFSD_PAGES_PER_SLOT + 1, clearing the previous
+> - * pages. We add a page to NFSD_PAGES_PER_SLOT for the case where the total
+> - * length of the XDR response is less than se_fmaxresp_cached
+> - * (NFSD_PAGES_PER_SLOT * PAGE_SIZE) but the xdr_buf pages is used for a
+> - * of the reply (e.g. readdir).
+> - *
+> - * Store the base and length of the rq_req.head[0] page
+> - * of the NFSv4.1 data, just past the rpc header.
+> + * Cache a reply. nfsd4_check_drc_limit() has bounded the cache size.
+>   */
+>  void
+>  nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+>  {
+> -	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
+> -	struct svc_rqst *rqstp = resp->rqstp;
+> -	struct kvec *resv = &rqstp->rq_res.head[0];
+> -
+> -	dprintk("--> %s entry %p\n", __func__, entry);
+> +	struct nfsd4_slot *slot = resp->cstate.slot;
+> +	unsigned int base;
+>  
+> -	nfsd4_release_respages(entry->ce_respages, entry->ce_resused);
+> -	entry->ce_opcnt = resp->opcnt;
+> -	entry->ce_status = resp->cstate.status;
+> +	dprintk("--> %s slot %p\n", __func__, slot);
+>  
+> -	/*
+> -	 * Don't need a page to cache just the sequence operation - the slot
+> -	 * does this for us!
+> -	 */
+> +	slot->sl_opcnt = resp->opcnt;
+> +	slot->sl_status = resp->cstate.status;
+>  
+>  	if (nfsd4_not_cached(resp)) {
+> -		entry->ce_resused = 0;
+> -		entry->ce_rpchdrlen = 0;
+> -		dprintk("%s Just cache SEQUENCE. ce_cachethis %d\n", __func__,
+> -			resp->cstate.slot->sl_cache_entry.ce_cachethis);
+> +		slot->sl_datalen = 0;
+>  		return;
+>  	}
+> -	entry->ce_resused = rqstp->rq_resused;
+> -	if (entry->ce_resused > NFSD_PAGES_PER_SLOT + 1)
+> -		entry->ce_resused = NFSD_PAGES_PER_SLOT + 1;
+> -	nfsd4_copy_pages(entry->ce_respages, rqstp->rq_respages,
+> -			 entry->ce_resused);
+> -	entry->ce_datav.iov_base = resp->cstate.statp;
+> -	entry->ce_datav.iov_len = resv->iov_len - ((char *)resp->cstate.statp -
+> -				(char *)page_address(rqstp->rq_respages[0]));
+> -	/* Current request rpc header length*/
+> -	entry->ce_rpchdrlen = (char *)resp->cstate.statp -
+> -				(char *)page_address(rqstp->rq_respages[0]);
+> -}
+> -
+> -/*
+> - * We keep the rpc header, but take the nfs reply from the replycache.
+> - */
+> -static int
+> -nfsd41_copy_replay_data(struct nfsd4_compoundres *resp,
+> -			struct nfsd4_cache_entry *entry)
+> -{
+> -	struct svc_rqst *rqstp = resp->rqstp;
+> -	struct kvec *resv = &resp->rqstp->rq_res.head[0];
+> -	int len;
+> -
+> -	/* Current request rpc header length*/
+> -	len = (char *)resp->cstate.statp -
+> -			(char *)page_address(rqstp->rq_respages[0]);
+> -	if (entry->ce_datav.iov_len + len > PAGE_SIZE) {
+> -		dprintk("%s v41 cached reply too large (%Zd).\n", __func__,
+> -			entry->ce_datav.iov_len);
+> -		return 0;
+> -	}
+> -	/* copy the cached reply nfsd data past the current rpc header */
+> -	memcpy((char *)resv->iov_base + len, entry->ce_datav.iov_base,
+> -		entry->ce_datav.iov_len);
+> -	resv->iov_len = len + entry->ce_datav.iov_len;
+> -	return 1;
+> +	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
+> +	base = (char *)resp->cstate.datap -
+> +					(char *)resp->xbuf->head[0].iov_base;
+> +	if (read_bytes_from_xdr_buf(resp->xbuf, base, slot->sl_data,
+> +				    slot->sl_datalen))
+> +		printk(KERN_WARNING
+> +			"nfsd: sessions DRC could not cache compound\n");
+
+I'd make this WARN("nfsd:...") just to make it completely clear it's a
+kernel bug.  (This case should be caught by nfsd4_check_drc_limit unless
+we've messed something up, right?)
+
+> +	return;
+>  }
+>  
+>  /*
+> @@ -1091,14 +1024,14 @@ nfsd4_enc_sequence_replay(struct nfsd4_compoundargs *args,
+>  	struct nfsd4_slot *slot = resp->cstate.slot;
+>  
+>  	dprintk("--> %s resp->opcnt %d cachethis %u \n", __func__,
+> -		resp->opcnt, resp->cstate.slot->sl_cache_entry.ce_cachethis);
+> +		resp->opcnt, resp->cstate.slot->sl_cachethis);
+>  
+>  	/* Encode the replayed sequence operation */
+>  	op = &args->ops[resp->opcnt - 1];
+>  	nfsd4_encode_operation(resp, op);
+>  
+>  	/* Return nfserr_retry_uncached_rep in next operation. */
+> -	if (args->opcnt > 1 && slot->sl_cache_entry.ce_cachethis == 0) {
+> +	if (args->opcnt > 1 && slot->sl_cachethis == 0) {
+>  		op = &args->ops[resp->opcnt++];
+>  		op->status = nfserr_retry_uncached_rep;
+>  		nfsd4_encode_operation(resp, op);
+> @@ -1107,57 +1040,29 @@ nfsd4_enc_sequence_replay(struct nfsd4_compoundargs *args,
+>  }
+>  
+>  /*
+> - * Keep the first page of the replay. Copy the NFSv4.1 data from the first
+> - * cached page.  Replace any futher replay pages from the cache.
+> + * The sequence operation is not cached because we can use the slot and
+> + * session values.
+>   */
+>  __be32
+>  nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+>  			 struct nfsd4_sequence *seq)
+>  {
+> -	struct nfsd4_cache_entry *entry = &resp->cstate.slot->sl_cache_entry;
+> +	struct nfsd4_slot *slot = resp->cstate.slot;
+>  	__be32 status;
+>  
+> -	dprintk("--> %s entry %p\n", __func__, entry);
+> -
+> -	/*
+> -	 * If this is just the sequence operation, we did not keep
+> -	 * a page in the cache entry because we can just use the
+> -	 * slot info stored in struct nfsd4_sequence that was checked
+> -	 * against the slot in nfsd4_sequence().
+> -	 *
+> -	 * This occurs when seq->cachethis is FALSE, or when the client
+> -	 * session inactivity timer fires and a solo sequence operation
+> -	 * is sent (lease renewal).
+> -	 */
+> +	dprintk("--> %s slot %p\n", __func__, slot);
+>  
+>  	/* Either returns 0 or nfserr_retry_uncached */
+>  	status = nfsd4_enc_sequence_replay(resp->rqstp->rq_argp, resp);
+>  	if (status == nfserr_retry_uncached_rep)
+>  		return status;
+>  
+> -	if (!nfsd41_copy_replay_data(resp, entry)) {
+> -		/*
+> -		 * Not enough room to use the replay rpc header, send the
+> -		 * cached header. Release all the allocated result pages.
+> -		 */
+> -		svc_free_res_pages(resp->rqstp);
+> -		nfsd4_copy_pages(resp->rqstp->rq_respages, entry->ce_respages,
+> -			entry->ce_resused);
+> -	} else {
+> -		/* Release all but the first allocated result page */
+> -
+> -		resp->rqstp->rq_resused--;
+> -		svc_free_res_pages(resp->rqstp);
+> -
+> -		nfsd4_copy_pages(&resp->rqstp->rq_respages[1],
+> -				 &entry->ce_respages[1],
+> -				 entry->ce_resused - 1);
+> -	}
+> +	/* The sequence operation has been encoded, cstate->datap set. */
+> +	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
+>  
+> -	resp->rqstp->rq_resused = entry->ce_resused;
+> -	resp->opcnt = entry->ce_opcnt;
+> -	resp->cstate.iovlen = entry->ce_datav.iov_len + entry->ce_rpchdrlen;
+> -	status = entry->ce_status;
+> +	resp->opcnt = slot->sl_opcnt;
+> +	resp->p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
+> +	status = slot->sl_status;
+>  
+>  	return status;
+>  }
+> @@ -1489,7 +1394,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	if (seq->slotid >= session->se_fchannel.maxreqs)
+>  		goto out;
+>  
+> -	slot = &session->se_slots[seq->slotid];
+> +	slot = session->se_slots[seq->slotid];
+>  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+>  
+>  	/* We do not negotiate the number of slots yet, so set the
+> @@ -1502,7 +1407,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  		cstate->slot = slot;
+>  		cstate->session = session;
+>  		/* Return the cached reply status and set cstate->status
+> -		 * for nfsd4_svc_encode_compoundres processing */
+> +		 * for nfsd4_proc_compound processing */
+>  		status = nfsd4_replay_cache_entry(resp, seq);
+>  		cstate->status = nfserr_replay_cache;
+>  		goto replay_cache;
+> @@ -1513,7 +1418,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	/* Success! bump slot seqid */
+>  	slot->sl_inuse = true;
+>  	slot->sl_seqid = seq->seqid;
+> -	slot->sl_cache_entry.ce_cachethis = seq->cachethis;
+> +	slot->sl_cachethis = seq->cachethis;
+>  
+>  	cstate->slot = slot;
+>  	cstate->session = session;
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index fdf632b..49824ea 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3064,6 +3064,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
+>  	WRITE32(0);
+>  
+>  	ADJUST_ARGS();
+> +	resp->cstate.datap = p; /* DRC cache data pointer */
+>  	return 0;
+>  }
+>  
+> @@ -3166,7 +3167,7 @@ static int nfsd4_check_drc_limit(struct nfsd4_compoundres *resp)
+>  		return status;
+>  
+>  	session = resp->cstate.session;
+> -	if (session == NULL || slot->sl_cache_entry.ce_cachethis == 0)
+> +	if (session == NULL || slot->sl_cachethis == 0)
+>  		return status;
+>  
+>  	if (resp->opcnt >= args->opcnt)
+> @@ -3291,6 +3292,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+>  	/*
+>  	 * All that remains is to write the tag and operation count...
+>  	 */
+> +	struct nfsd4_compound_state *cs = &resp->cstate;
+>  	struct kvec *iov;
+>  	p = resp->tagp;
+>  	*p++ = htonl(resp->taglen);
+> @@ -3304,14 +3306,11 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+>  		iov = &rqstp->rq_res.head[0];
+>  	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+>  	BUG_ON(iov->iov_len > PAGE_SIZE);
+> -	if (nfsd4_has_session(&resp->cstate)) {
+> -		if (resp->cstate.status == nfserr_replay_cache &&
+> -				!nfsd4_not_cached(resp)) {
+> -			iov->iov_len = resp->cstate.iovlen;
+> -		} else {
+> +	if (nfsd4_has_session(cs)) {
+> +		if (cs->status != nfserr_replay_cache) {
+>  			nfsd4_store_cache_entry(resp);
+>  			dprintk("%s: SET SLOT STATE TO AVAILABLE\n", __func__);
+> -			resp->cstate.slot->sl_inuse = 0;
+> +			resp->cstate.slot->sl_inuse = false;
+>  		}
+>  		nfsd4_put_session(resp->cstate.session);
+>  	}
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index d68cd05..944ef01 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -576,10 +576,6 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+>  		+ rqstp->rq_res.head[0].iov_len;
+>  	rqstp->rq_res.head[0].iov_len += sizeof(__be32);
+>  
+> -	/* NFSv4.1 DRC requires statp */
+> -	if (rqstp->rq_vers == 4)
+> -		nfsd4_set_statp(rqstp, statp);
+> -
+>  	/* Now call the procedure handler, and encode NFS status. */
+>  	nfserr = proc->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
+>  	nfserr = map_new_errors(rqstp->rq_vers, nfserr);
+> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> index ff0b771..e745100 100644
+> --- a/include/linux/nfsd/state.h
+> +++ b/include/linux/nfsd/state.h
+> @@ -94,30 +94,23 @@ struct nfs4_cb_conn {
+>  
+>  /* Maximum number of slots per session. 160 is useful for long haul TCP */
+>  #define NFSD_MAX_SLOTS_PER_SESSION     160
+> -/* Maximum number of pages per slot cache entry */
+> -#define NFSD_PAGES_PER_SLOT	1
+> -#define NFSD_SLOT_CACHE_SIZE		PAGE_SIZE
+>  /* Maximum number of operations per session compound */
+>  #define NFSD_MAX_OPS_PER_COMPOUND	16
+> +/* Maximum  session per slot cache size */
+> +#define NFSD_SLOT_CACHE_SIZE		1024
+>  /* Maximum number of NFSD_SLOT_CACHE_SIZE slots per session */
+>  #define NFSD_CACHE_SIZE_SLOTS_PER_SESSION	32
+>  #define NFSD_MAX_MEM_PER_SESSION  \
+>  		(NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NFSD_SLOT_CACHE_SIZE)
+>  
+> -struct nfsd4_cache_entry {
+> -	__be32		ce_status;
+> -	struct kvec	ce_datav; /* encoded NFSv4.1 data in rq_res.head[0] */
+> -	struct page	*ce_respages[NFSD_PAGES_PER_SLOT + 1];
+> -	int		ce_cachethis;
+> -	short		ce_resused;
+> -	int		ce_opcnt;
+> -	int		ce_rpchdrlen;
+> -};
+> -
+>  struct nfsd4_slot {
+> -	bool				sl_inuse;
+> -	u32				sl_seqid;
+> -	struct nfsd4_cache_entry	sl_cache_entry;
+> +	bool	sl_inuse;
+> +	u32	sl_seqid;
+> +	int	sl_cachethis;
+> +	int	sl_opcnt;
+> +	__be32	sl_status;
+> +	u32	sl_datalen;
+> +	char	sl_data[];
+
+Could you just move sl_inuse to the end?  It'll save a few bytes in the
+structure (because the compiler will probably stick 3 bytes after it to
+align sl_seqid.)
+
+--b.
+
+>  };
+>  
+>  struct nfsd4_channel_attrs {
+> @@ -159,7 +152,7 @@ struct nfsd4_session {
+>  	struct nfs4_sessionid	se_sessionid;
+>  	struct nfsd4_channel_attrs se_fchannel;
+>  	struct nfsd4_channel_attrs se_bchannel;
+> -	struct nfsd4_slot	se_slots[];	/* forward channel slots */
+> +	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
+>  };
+>  
+>  static inline void
+> diff --git a/include/linux/nfsd/xdr4.h b/include/linux/nfsd/xdr4.h
+> index 3f71660..73164c2 100644
+> --- a/include/linux/nfsd/xdr4.h
+> +++ b/include/linux/nfsd/xdr4.h
+> @@ -51,7 +51,7 @@ struct nfsd4_compound_state {
+>  	/* For sessions DRC */
+>  	struct nfsd4_session	*session;
+>  	struct nfsd4_slot	*slot;
+> -	__be32			*statp;
+> +	__be32			*datap;
+>  	size_t			iovlen;
+>  	u32			minorversion;
+>  	u32			status;
+> @@ -472,8 +472,7 @@ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
+>  
+>  static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
+>  {
+> -	return !resp->cstate.slot->sl_cache_entry.ce_cachethis ||
+> -			nfsd4_is_solo_sequence(resp);
+> +	return !resp->cstate.slot->sl_cachethis || nfsd4_is_solo_sequence(resp);
+>  }
+>  
+>  #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+> -- 
+> 1.6.2.5
+> 
