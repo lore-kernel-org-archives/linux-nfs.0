@@ -1,65 +1,166 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: Change default behavior when "sec=" is not specified by user
-Date: Tue, 1 Sep 2009 16:31:54 -0400
-Message-ID: <411DA127-278F-4799-9E40-EB8409510E2E@oracle.com>
-References: <20090901151830.GC22846@fieldses.org> <18678BB3-52C6-4376-BBD1-50B8947BAAC7@oracle.com> <20090901160914.GG22846@fieldses.org> <73E8EAAF-9164-4F78-A9D4-1CC86A6A6255@oracle.com> <20090901163846.GJ22846@fieldses.org> <B9CADBA9-54B0-44AD-A8DC-FE3ED63341BC@oracle.com> <1251829540.18608.31.camel@heimdal.trondhjem.org> <D11105A9-4FAB-4F5C-BF02-BE489520C150@oracle.com> <1251833479.18608.69.camel@heimdal.trondhjem.org> <E7FCF468-0A25-4DA1-8E71-A383BCBA4642@oracle.com> <20090901201544.GF27726@fieldses.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: andros@netapp.com
+Subject: [PATCH 1/4] nfsd41: bound forechannel drc size by memory usage
+Date: Fri, 28 Aug 2009 08:45:01 -0400
+Message-ID: <1251463504-3376-2-git-send-email-andros@netapp.com>
+References: <1251463504-3376-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org,
+	Andy Adamson <andros@netapp.com>
+To: bfields@fieldses.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet12.oracle.com ([148.87.113.124]:18165 "EHLO
-	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753933AbZIAUcJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 16:32:09 -0400
-In-Reply-To: <20090901201544.GF27726@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:33497 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752016AbZIAVC3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2009 17:02:29 -0400
+In-Reply-To: <1251463504-3376-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 1, 2009, at 4:15 PM, J. Bruce Fields wrote:
-> On Tue, Sep 01, 2009 at 04:10:57PM -0400, Chuck Lever wrote:
->> On Sep 1, 2009, at 3:31 PM, Trond Myklebust wrote:
->>> As I said, this functionality is in also required in order to make
->>> NFSv4
->>> security negotiation work.
->>
->> This is all added to the kernel's MNT client.  None of this logic  
->> will
->> ever be used by NFSv4, unless we refactor it someday.  At which  
->> time, we
->> can worry about it then.
->>
->>> ...and for NFSv2 as well...
->>
->> Now you've lost me.  The v1 MNTPROC doesn't return a flavor list, so
->> NFSv2 doesn't support security flavor negotiation at mount time.
->
-> The protocol doesn't have explicit support for it, just as NFSv4.0
-> doesn't in the case of security on /, but we can still support a  
-> form of
-> "negotiation" in both cases by doing a linear search through the
-> supported flavors and trying each one.
->
-> I agree that we should do that.  I don't think it necessarily needs to
-> be done *before* any of the other changes that have been discussed, so
-> it could be done as a second step.
+From: Andy Adamson <andros@netapp.com>
 
-For v4, you have WRONGSEC, but I don't think NFSv2 makes that  
-distinction.  Would the client probe the server with NFS requests each  
-using a different flavor?  Would we expect to see the RPC level "weak  
-authentication" reply in the NFSv2 case?  Before Eisler says it, why  
-would we bother?
+By using the requested ca_maxresponsesize_cached * ca_maxresponses to bound
+a forechannel drc request size, clients can tailor a session to usage.
 
-Even so, that's a much different proposition than simply reading the  
-flavor list returned by MNT3PROC, so I'm straining to see how we could  
-reuse the logic I'm adding to the kernel's MNT client to do security  
-negotiation for NFSv2.  If Trond is referring only to merging the  
-kernel's auth flavor lists, then that comment makes more sense.
+For example, an I/O session (READ/WRITE only) can have a much smaller
+ca_maxresponsesize_cached (for only WRITE compound responses) and a lot larger
+ca_maxresponses to service a large in-flight data window.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfsd/nfs4state.c        |   66 ++++++++++++++++++++++++++++++++------------
+ include/linux/nfsd/state.h |    8 ++++-
+ 2 files changed, 54 insertions(+), 20 deletions(-)
 
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b44a2cf..02b3ddd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -414,34 +414,64 @@ gen_sessionid(struct nfsd4_session *ses)
+ }
+ 
+ /*
+- * Give the client the number of slots it requests bound by
+- * NFSD_MAX_SLOTS_PER_SESSION and by nfsd_drc_max_mem.
++ * The protocol defines ca_maxresponssize_cached to include the size of
++ * the rpc header, but all we need to cache is the data starting after
++ * the end of the initial SEQUENCE operation--the rest we regenerate
++ * each time.  Therefore we can advertise a ca_maxresponssize_cached
++ * value that is the number of bytes in our cache plus a few additional
++ * bytes.  In order to stay on the safe side, and not promise more than
++ * we can cache, those additional bytes must be the minimum possible: 24
++ * bytes of rpc header (xid through accept state, with AUTH_NULL
++ * verifier), 12 for the compound header (with zero-length tag), and 44
++ * for the SEQUENCE op response:
++ */
++#define NFSD_MIN_HDR_SEQ_SZ  (24 + 12 + 44)
++
++/*
++ * Give the client the number of ca_maxresponsesize_cached slots it
++ * requests, of size bounded by NFSD_SLOT_CACHE_SIZE,
++ * NFSD_MAX_MEM_PER_SESSION, and nfsd_drc_max_mem. Do not allow more
++ * than NFSD_MAX_SLOTS_PER_SESSION.
+  *
+- * If we run out of reserved DRC memory we should (up to a point) re-negotiate
+- * active sessions and reduce their slot usage to make rooom for new
+- * connections. For now we just fail the create session.
++ * If we run out of reserved DRC memory we should (up to a point)
++ * re-negotiate active sessions and reduce their slot usage to make
++ * rooom for new connections. For now we just fail the create session.
+  */
+-static int set_forechannel_maxreqs(struct nfsd4_channel_attrs *fchan)
++static int set_forechannel_drc_size(struct nfsd4_channel_attrs *fchan)
+ {
+-	int mem;
++	int mem, size = fchan->maxresp_cached;
+ 
+ 	if (fchan->maxreqs < 1)
+ 		return nfserr_inval;
+-	else if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
+-		fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
+ 
+-	mem = fchan->maxreqs * NFSD_SLOT_CACHE_SIZE;
++	if (size < NFSD_MIN_HDR_SEQ_SZ)
++		size = NFSD_MIN_HDR_SEQ_SZ;
++	size -= NFSD_MIN_HDR_SEQ_SZ;
++	if (size > NFSD_SLOT_CACHE_SIZE)
++		size = NFSD_SLOT_CACHE_SIZE;
++
++	/* bound the maxreqs by NFSD_MAX_MEM_PER_SESSION */
++	mem = fchan->maxreqs * size;
++	if (mem > NFSD_MAX_MEM_PER_SESSION) {
++		fchan->maxreqs = NFSD_MAX_MEM_PER_SESSION / size;
++		if (fchan->maxreqs > NFSD_MAX_SLOTS_PER_SESSION)
++			fchan->maxreqs = NFSD_MAX_SLOTS_PER_SESSION;
++		mem = fchan->maxreqs * size;
++	}
+ 
+ 	spin_lock(&nfsd_drc_lock);
+-	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem)
+-		mem = ((nfsd_drc_max_mem - nfsd_drc_mem_used) /
+-				NFSD_SLOT_CACHE_SIZE) * NFSD_SLOT_CACHE_SIZE;
++	/* bound the total session drc memory ussage */
++	if (mem + nfsd_drc_mem_used > nfsd_drc_max_mem) {
++		fchan->maxreqs = (nfsd_drc_max_mem - nfsd_drc_mem_used) / size;
++		mem = fchan->maxreqs * size;
++	}
+ 	nfsd_drc_mem_used += mem;
+ 	spin_unlock(&nfsd_drc_lock);
+ 
+-	fchan->maxreqs = mem / NFSD_SLOT_CACHE_SIZE;
+ 	if (fchan->maxreqs == 0)
+ 		return nfserr_resource;
++
++	fchan->maxresp_cached = size + NFSD_MIN_HDR_SEQ_SZ;
+ 	return 0;
+ }
+ 
+@@ -466,9 +496,6 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+ 		fchan->maxresp_sz = maxcount;
+ 	session_fchan->maxresp_sz = fchan->maxresp_sz;
+ 
+-	session_fchan->maxresp_cached = NFSD_SLOT_CACHE_SIZE;
+-	fchan->maxresp_cached = session_fchan->maxresp_cached;
+-
+ 	/* Use the client's maxops if possible */
+ 	if (fchan->maxops > NFSD_MAX_OPS_PER_COMPOUND)
+ 		fchan->maxops = NFSD_MAX_OPS_PER_COMPOUND;
+@@ -478,9 +505,12 @@ static int init_forechannel_attrs(struct svc_rqst *rqstp,
+ 	 * recover pages from existing sessions. For now fail session
+ 	 * creation.
+ 	 */
+-	status = set_forechannel_maxreqs(fchan);
++	status = set_forechannel_drc_size(fchan);
+ 
++	session_fchan->maxresp_cached = fchan->maxresp_cached;
+ 	session_fchan->maxreqs = fchan->maxreqs;
++
++	dprintk("%s status %d\n", __func__, status);
+ 	return status;
+ }
+ 
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index fb0c404..ff0b771 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -92,13 +92,17 @@ struct nfs4_cb_conn {
+ 	struct rpc_cred	*	cb_cred;
+ };
+ 
+-/* Maximum number of slots per session. 128 is useful for long haul TCP */
+-#define NFSD_MAX_SLOTS_PER_SESSION	128
++/* Maximum number of slots per session. 160 is useful for long haul TCP */
++#define NFSD_MAX_SLOTS_PER_SESSION     160
+ /* Maximum number of pages per slot cache entry */
+ #define NFSD_PAGES_PER_SLOT	1
+ #define NFSD_SLOT_CACHE_SIZE		PAGE_SIZE
+ /* Maximum number of operations per session compound */
+ #define NFSD_MAX_OPS_PER_COMPOUND	16
++/* Maximum number of NFSD_SLOT_CACHE_SIZE slots per session */
++#define NFSD_CACHE_SIZE_SLOTS_PER_SESSION	32
++#define NFSD_MAX_MEM_PER_SESSION  \
++		(NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NFSD_SLOT_CACHE_SIZE)
+ 
+ struct nfsd4_cache_entry {
+ 	__be32		ce_status;
+-- 
+1.6.2.5
 
