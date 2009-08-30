@@ -1,129 +1,136 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/5] NFS: Refactor NFSv4 text-based mount option validation
-Date: Sun, 30 Aug 2009 12:34:47 -0400
-Message-ID: <20090830163447.3652.34535.stgit@matisse.1015granger.net>
+Subject: [PATCH 1/5] NFS: combine nfs_kill_super() and nfs4_kill_super()
+Date: Sun, 30 Aug 2009 12:34:33 -0400
+Message-ID: <20090830163432.3652.437.stgit@matisse.1015granger.net>
 References: <20090830162211.3652.14638.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:49884
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:49879
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753859AbZH3Qev (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Aug 2009 12:34:51 -0400
+	by vger.kernel.org with ESMTP id S1753873AbZH3Qeg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Aug 2009 12:34:36 -0400
 In-Reply-To: <20090830162211.3652.14638.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the part of nfs4_validate_mount_options that handles text-based
-options into a helper, so we can call it from other functions.
+nfs_kill_super() and nfs4_kill_super() do almost the same thing, so combine
+them.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   69 ++++++++++++++++++++++++++++----------------------------
- 1 files changed, 34 insertions(+), 35 deletions(-)
+ fs/nfs/super.c |   45 +++++++++++++++++++++------------------------
+ 1 files changed, 21 insertions(+), 24 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ea7aedc..9119f22 100644
+index f3a95df..d215707 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -272,6 +272,8 @@ static const struct super_operations nfs_sops = {
+@@ -282,13 +282,12 @@ static int nfs4_referral_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static int nfs4_remote_referral_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+-static void nfs4_kill_super(struct super_block *sb);
+ 
+ static struct file_system_type nfs4_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_get_sb,
+-	.kill_sb	= nfs4_kill_super,
++	.kill_sb	= nfs_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
  };
  
- #ifdef CONFIG_NFS_V4
-+static int nfs4_validate_text_mount_data(void *options,
-+	struct nfs_parsed_mount_data *args, const char *dev_name);
- static int nfs4_get_sb(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
- static int nfs4_remote_get_sb(struct file_system_type *fs_type,
-@@ -2272,6 +2274,36 @@ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- 	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3);
+@@ -296,7 +295,7 @@ static struct file_system_type nfs4_remote_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_remote_get_sb,
+-	.kill_sb	= nfs4_kill_super,
++	.kill_sb	= nfs_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
+@@ -304,7 +303,7 @@ struct file_system_type nfs4_xdev_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_xdev_get_sb,
+-	.kill_sb	= nfs4_kill_super,
++	.kill_sb	= nfs_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
+@@ -312,7 +311,7 @@ static struct file_system_type nfs4_remote_referral_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_remote_referral_get_sb,
+-	.kill_sb	= nfs4_kill_super,
++	.kill_sb	= nfs_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
+@@ -320,7 +319,7 @@ struct file_system_type nfs4_referral_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_referral_get_sb,
+-	.kill_sb	= nfs4_kill_super,
++	.kill_sb	= nfs_kill_super,
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
+ };
+ 
+@@ -2127,16 +2126,27 @@ error_splat_super:
  }
  
-+static int nfs4_validate_text_mount_data(void *options,
-+					 struct nfs_parsed_mount_data *args,
-+					 const char *dev_name)
-+{
-+	if (nfs_parse_mount_options((char *)options, args) == 0)
-+		return -EINVAL;
-+
-+	if (!nfs_verify_server_address(nfs_server_address(args)))
-+		return -EINVAL;
-+
-+	nfs_set_default_port(nfs_server_address(args),
-+				args->nfs_server.port, NFS_PORT);
-+
-+	nfs_validate_transport_protocol(args);
-+
-+	nfs4_validate_mount_flags(args);
-+
-+	if (args->auth_flavor_len > 1)
-+		return -EINVAL;
-+
-+	if (args->client_address == NULL)
-+		return -EINVAL;
-+
-+	return nfs_parse_devname(dev_name,
-+				   &args->nfs_server.hostname,
-+				   NFS4_MAXNAMLEN,
-+				   &args->nfs_server.export_path,
-+				   NFS4_MAXPATHLEN);
-+}
-+
  /*
-  * Validate NFSv4 mount options
+- * Destroy an NFS2/3 superblock
++ * Destroy an NFS superblock
   */
-@@ -2353,37 +2385,8 @@ static int nfs4_validate_mount_data(void *options,
- 		nfs_validate_transport_protocol(args);
+-static void nfs_kill_super(struct super_block *s)
++static void nfs_kill_super(struct super_block *sb)
+ {
+-	struct nfs_server *server = NFS_SB(s);
++	struct nfs_server *server = NFS_SB(sb);
++
++	dprintk("--> %s\n", __func__);
++
++#ifdef CONFIG_NFS_V4
++	if (server->nfs_client->rpc_ops->version == 4) {
++		nfs_super_return_all_delegations(sb);
++		nfs4_renewd_prepare_shutdown(server);
++	}
++#endif	/* CONFIG_NFS_V4 */
  
- 		break;
--	default: {
--		int status;
--
--		if (nfs_parse_mount_options((char *)options, args) == 0)
--			return -EINVAL;
--
--		if (!nfs_verify_server_address(nfs_server_address(args)))
--			return -EINVAL;
--		nfs_set_default_port(nfs_server_address(args),
--					args->nfs_server.port, NFS_PORT);
--
--		nfs_validate_transport_protocol(args);
--
--		nfs4_validate_mount_flags(args);
--
--		if (args->auth_flavor_len > 1)
--			goto out_inval_auth;
--
--		if (args->client_address == NULL)
--			goto out_no_client_address;
--
--		status = nfs_parse_devname(dev_name,
--					   &args->nfs_server.hostname,
--					   NFS4_MAXNAMLEN,
--					   &args->nfs_server.export_path,
--					   NFS4_MAXPATHLEN);
--		if (status < 0)
--			return status;
--
--		break;
--		}
-+	default:
-+		return nfs4_validate_text_mount_data(options, args, dev_name);
- 	}
- 
- 	return 0;
-@@ -2400,10 +2403,6 @@ out_inval_auth:
- out_no_address:
- 	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
- 	return -EINVAL;
--
--out_no_client_address:
--	dfprintk(MOUNT, "NFS4: mount program didn't pass callback address\n");
--	return -EINVAL;
+ 	bdi_unregister(&server->backing_dev_info);
+-	kill_anon_super(s);
+-	nfs_fscache_release_super_cookie(s);
++	kill_anon_super(sb);
++	nfs_fscache_release_super_cookie(sb);
+ 	nfs_free_server(server);
++
++	dprintk("<-- %s\n", __func__);
  }
  
  /*
+@@ -2599,19 +2609,6 @@ out_free_data:
+ 	return error;
+ }
+ 
+-static void nfs4_kill_super(struct super_block *sb)
+-{
+-	struct nfs_server *server = NFS_SB(sb);
+-
+-	dprintk("--> %s\n", __func__);
+-	nfs_super_return_all_delegations(sb);
+-	kill_anon_super(sb);
+-	nfs4_renewd_prepare_shutdown(server);
+-	nfs_fscache_release_super_cookie(sb);
+-	nfs_free_server(server);
+-	dprintk("<-- %s\n", __func__);
+-}
+-
+ /*
+  * Clone an NFS4 server record on xdev traversal (FSID-change)
+  */
 
