@@ -1,165 +1,119 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/5] NFS: Allow the "nfs" file system type to support NFSv4
-Date: Sun, 30 Aug 2009 12:35:02 -0400
-Message-ID: <20090830163502.3652.15854.stgit@matisse.1015granger.net>
-References: <20090830162211.3652.14638.stgit@matisse.1015granger.net>
+Subject: [PATCH] mount.nfs: Ignore vers=4
+Date: Sun, 30 Aug 2009 12:37:13 -0400
+Message-ID: <20090830163617.4608.48355.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Cc: linux-nfs@vger.kernel.org
-To: trond.myklebust@fys.uio.no
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:49888
-	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753871AbZH3QfG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Aug 2009 12:35:06 -0400
-In-Reply-To: <20090830162211.3652.14638.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+Received: from rcsinet11.oracle.com ([148.87.113.123]:32256 "EHLO
+	rgminet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753863AbZH3Qh2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Aug 2009 12:37:28 -0400
+Received: from acsinet13.oracle.com (acsinet13.oracle.com [141.146.126.235])
+	by rgminet11.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n7UGbuJW032182
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sun, 30 Aug 2009 16:37:57 GMT
+Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
+	by acsinet13.oracle.com (Switch-3.3.1/Switch-3.3.1) with ESMTP id n7UG3CfT006619
+	for <linux-nfs@vger.kernel.org>; Sun, 30 Aug 2009 16:38:11 GMT
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When mounting an "nfs" type file system, recognize "v4," "vers=4," or
-"nfsvers=4" mount options.  For nfsvers=4, cause the file system to
-behave just like "nfs4," but remain "nfs".
+Since mount.nfs looks at the vers= option to determine pmap parameters when
+negotiating, it throws EINVAL if "4" is specified, even if the kernel
+supports vers=4 for "nfs" type file systems.
+
+Teach mount.nfs to ignore vers=4 and just pass the options to the kernel.
+
+Also fix up umount.nfs to skip the UMNT call for vers=4 mounts.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h    |    1 +
- fs/nfs/super.c       |   42 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/nfs4.h |    1 +
- 3 files changed, 43 insertions(+), 1 deletions(-)
+ utils/mount/network.c   |   12 ++++++++----
+ utils/mount/nfsumount.c |    4 ++++
+ utils/mount/stropts.c   |    6 ++++++
+ 3 files changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index d30b4fb..da132dc 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -68,6 +68,7 @@ struct nfs_parsed_mount_data {
- 	unsigned int		auth_flavor_len;
- 	rpc_authflavor_t	auth_flavors[1];
- 	char			*client_address;
-+	unsigned int		version;
- 	unsigned int		minorversion;
- 	char			*fscache_uniq;
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 4bcdfd4..70da441 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -73,7 +73,7 @@ enum {
- 	Opt_cto, Opt_nocto,
- 	Opt_ac, Opt_noac,
- 	Opt_lock, Opt_nolock,
--	Opt_v2, Opt_v3,
-+	Opt_v2, Opt_v3, Opt_v4,
- 	Opt_udp, Opt_tcp, Opt_rdma,
- 	Opt_acl, Opt_noacl,
- 	Opt_rdirplus, Opt_nordirplus,
-@@ -127,6 +127,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_nolock, "nolock" },
- 	{ Opt_v2, "v2" },
- 	{ Opt_v3, "v3" },
-+	{ Opt_v4, "v4" },
- 	{ Opt_udp, "udp" },
- 	{ Opt_tcp, "tcp" },
- 	{ Opt_rdma, "rdma" },
-@@ -933,10 +934,18 @@ static int nfs_parse_mount_options(char *raw,
- 			break;
- 		case Opt_v2:
- 			mnt->flags &= ~NFS_MOUNT_VER3;
-+			mnt->version = 2;
- 			break;
- 		case Opt_v3:
- 			mnt->flags |= NFS_MOUNT_VER3;
-+			mnt->version = 3;
- 			break;
-+#ifdef CONFIG_NFS_V4
-+		case Opt_v4:
-+			mnt->flags &= ~NFS_MOUNT_VER3;
-+			mnt->version = 4;
-+			break;
-+#endif
- 		case Opt_udp:
- 			mnt->flags &= ~NFS_MOUNT_TCP;
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-@@ -1150,10 +1159,18 @@ static int nfs_parse_mount_options(char *raw,
- 			switch (option) {
- 			case NFS2_VERSION:
- 				mnt->flags &= ~NFS_MOUNT_VER3;
-+				mnt->version = 2;
- 				break;
- 			case NFS3_VERSION:
- 				mnt->flags |= NFS_MOUNT_VER3;
-+				mnt->version = 3;
-+				break;
-+#ifdef CONFIG_NFS_V4
-+			case NFS4_VERSION:
-+				mnt->flags &= ~NFS_MOUNT_VER3;
-+				mnt->version = 4;
- 				break;
-+#endif
- 			default:
- 				goto out_invalid_value;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index f6fa5fd..420e15a 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -90,6 +90,7 @@ static const char *nfs_transport_opttbl[] = {
+ static const char *nfs_version_opttbl[] = {
+ 	"v2",
+ 	"v3",
++	"v4",
+ 	"vers",
+ 	"nfsvers",
+ 	NULL,
+@@ -1215,10 +1216,13 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 	case 1: /* v3 */
+ 		*version = 3;
+ 		return 1;
+-	case 2:	/* vers */
++	case 2: /* v4 */
++		*version = 4;
++		return 1;
++	case 3:	/* vers */
+ 		switch (po_get_numeric(options, "vers", &tmp)) {
+ 		case PO_FOUND:
+-			if (tmp >= 2 && tmp <= 3) {
++			if (tmp >= 2 && tmp <= 4) {
+ 				*version = tmp;
+ 				return 1;
  			}
-@@ -1626,6 +1643,7 @@ static int nfs_validate_mount_data(void *options,
- 	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
- 	args->auth_flavor_len	= 1;
-+	args->minorversion	= 0;
+@@ -1229,10 +1233,10 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 		case PO_BAD_VALUE:
+ 			return 0;
+ 		}
+-	case 3: /* nfsvers */
++	case 4: /* nfsvers */
+ 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
+ 		case PO_FOUND:
+-			if (tmp >= 2 && tmp <= 3) {
++			if (tmp >= 2 && tmp <= 4) {
+ 				*version = tmp;
+ 				return 1;
+ 			}
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index f81db14..c5505b1 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -179,6 +179,10 @@ static int nfs_umount_do_umnt(struct mount_options *options,
+ 		return EX_FAIL;
+ 	}
  
- 	switch (data->version) {
- 	case 1:
-@@ -1724,6 +1742,14 @@ static int nfs_validate_mount_data(void *options,
- 		if (!nfs_verify_server_address(nfs_server_address(args)))
- 			goto out_no_address;
- 
-+		if (args->version == 4)
-+#ifdef CONFIG_NFS_V4
-+			return nfs4_validate_text_mount_data(options,
-+							     args, dev_name);
-+#else
-+			goto out_v4_not_compiled;
-+#endif
++	/* Skip UMNT call for vers=4 mounts */
++	if (nfs_pmap.pm_vers == 4)
++		return EX_SUCCESS;
 +
- 		nfs_set_default_port(nfs_server_address(args),
- 					args->nfs_server.port, 0);
- 
-@@ -1773,6 +1799,12 @@ out_v3_not_compiled:
- 	return -EPROTONOSUPPORT;
- #endif /* !CONFIG_NFS_V3 */
- 
-+#ifndef CONFIG_NFS_V4
-+out_v4_not_compiled:
-+	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
-+	return -EPROTONOSUPPORT;
-+#endif /* !CONFIG_NFS_V4 */
-+
- out_nomem:
- 	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
- 	return -ENOMEM;
-@@ -2068,6 +2100,14 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 	if (error < 0)
- 		goto out;
- 
-+#ifdef CONFIG_NFS_V4
-+	if (data->version == 4) {
-+		error = nfs4_try_mount(flags, dev_name, data, mnt);
-+		kfree(data->client_address);
+ 	*hostname = nfs_umount_hostname(options, *hostname);
+ 	if (!*hostname) {
+ 		nfs_error(_("%s: out of memory"), progname);
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a12ace7..3e88c85 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -438,6 +438,7 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 	/*
+ 	 * Extract just the options needed to contact server.
+ 	 * Bail now if any of these have bad values.
++	 * Skip probing the server if this is a vers=4 mount
+ 	 */
+ 	if (!nfs_extract_server_addresses(options, nfs_saddr, &nfs_salen,
+ 						mnt_saddr, &mnt_salen)) {
+@@ -448,6 +449,11 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 		errno = EINVAL;
+ 		return 0;
+ 	}
++	if (nfs_pmap.pm_vers == 4) {
++		if (!nfs_append_clientaddr_option(nfs_saddr, nfs_salen, options))
++			errno = EINVAL;
 +		goto out;
 +	}
-+#endif	/* CONFIG_NFS_V4 */
-+
- 	/* Get a volume representation */
- 	server = nfs_create_server(data, mntfh);
- 	if (IS_ERR(server)) {
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index bd2eba5..33b2836 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -472,6 +472,7 @@ enum lock_type4 {
  
- #define NFSPROC4_NULL 0
- #define NFSPROC4_COMPOUND 1
-+#define NFS4_VERSION 4
- #define NFS4_MINOR_VERSION 0
- 
- #if defined(CONFIG_NFS_V4_1)
+ 	/*
+ 	 * The kernel NFS client doesn't support changing the RPC
 
