@@ -1,64 +1,56 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: Re: NFSD: Fix a bug in the NFSv4 'supported attrs' mandatory
-	attribute
-Date: Mon, 31 Aug 2009 18:03:24 -0400
-Message-ID: <20090831220324.GC5718@fieldses.org>
+ attribute
+Date: Mon, 31 Aug 2009 18:21:53 -0400
+Message-ID: <1251757313.25048.12.camel@heimdal.trondhjem.org>
 References: <1251746171.25048.1.camel@heimdal.trondhjem.org>
+	 <20090831220324.GC5718@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54180 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:15560 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751236AbZHaWDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Aug 2009 18:03:22 -0400
-In-Reply-To: <1251746171.25048.1.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1751672AbZHaWWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Aug 2009 18:22:24 -0400
+In-Reply-To: <20090831220324.GC5718@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 31, 2009 at 03:16:11PM -0400, Trond Myklebust wrote:
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Mon, 2009-08-31 at 18:03 -0400, J. Bruce Fields wrote:
+> On Mon, Aug 31, 2009 at 03:16:11PM -0400, Trond Myklebust wrote:
+> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > 
+> > The fact that the filesystem is present does _not_ imply that the
+> > fs_locations attribute should be marked as "unsupported".
 > 
-> The fact that the filesystem is present does _not_ imply that the
-> fs_locations attribute should be marked as "unsupported".
+> Yes, but the fact that the filesystem is present also does not imply
+> that exp->ex_fslocs.locations is NULL.  So I'm confused by your
+> characterization of the existing code.
+> 
+> If you want to do this, you probably also want to turn off the previous
+> exfslocs.locations check in the same function.  Otherwise we claim
+> support for the attribute but then never actually return it.
 
-Yes, but the fact that the filesystem is present also does not imply
-that exp->ex_fslocs.locations is NULL.  So I'm confused by your
-characterization of the existing code.
+...why is that a problem? Clients that conform to RFC3530 are perfectly
+capable of dealing with that case. The point is that if you say "I don't
+support this attribute", then the client will _never_ be allowed to
+check it.
 
-If you want to do this, you probably also want to turn off the previous
-exfslocs.locations check in the same function.  Otherwise we claim
-support for the attribute but then never actually return it.
+IOW: if you later decide to add replica information to the /etc/exports
+file, then none of the existing clients will be able to check that
+information.
 
---b.
+Furthermore, you are basically promising the clients that you will never
+return NFS4ERR_MOVED on that volume, since you're telling them that you
+don't support fs_locations on it.
+So you can't ever migrate it...
 
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfsd/nfs4xdr.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 2dcc7fe..1b07183 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1825,8 +1825,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->  			goto out_resource;
->  		if (!aclsupport)
->  			word0 &= ~FATTR4_WORD0_ACL;
-> -		if (!exp->ex_fslocs.locations)
-> -			word0 &= ~FATTR4_WORD0_FS_LOCATIONS;
->  		if (!word2) {
->  			WRITE32(2);
->  			WRITE32(word0);
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
