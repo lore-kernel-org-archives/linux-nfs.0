@@ -1,54 +1,86 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH] NFS: Change default behavior when "sec=" is not
- specified by user
-Date: Tue, 01 Sep 2009 17:22:40 -0400
-Message-ID: <1251840160.8463.20.camel@heimdal.trondhjem.org>
-References: <20090901151830.GC22846@fieldses.org>
-	 <18678BB3-52C6-4376-BBD1-50B8947BAAC7@oracle.com>
-	 <20090901160914.GG22846@fieldses.org>
-	 <73E8EAAF-9164-4F78-A9D4-1CC86A6A6255@oracle.com>
-	 <20090901163846.GJ22846@fieldses.org>
-	 <B9CADBA9-54B0-44AD-A8DC-FE3ED63341BC@oracle.com>
-	 <1251829540.18608.31.camel@heimdal.trondhjem.org>
-	 <D11105A9-4FAB-4F5C-BF02-BE489520C150@oracle.com>
-	 <1251833479.18608.69.camel@heimdal.trondhjem.org>
-	 <E7FCF468-0A25-4DA1-8E71-A383BCBA4642@oracle.com>
-	 <20090901201544.GF27726@fieldses.org>
-	 <411DA127-278F-4799-9E40-EB8409510E2E@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: lock dependency warning
+Date: Tue, 1 Sep 2009 18:11:55 -0400
+Message-ID: <20090901221155.GA30521@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:34525 "EHLO mail-out2.uio.no"
+Received: from fieldses.org ([174.143.236.118]:39610 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752014AbZIAVWm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2009 17:22:42 -0400
-In-Reply-To: <411DA127-278F-4799-9E40-EB8409510E2E@oracle.com>
+	id S1755230AbZIAWLx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2009 18:11:53 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-09-01 at 16:31 -0400, Chuck Lever wrote:
-> For v4, you have WRONGSEC, but I don't think NFSv2 makes that  
-> distinction.  Would the client probe the server with NFS requests each  
-> using a different flavor?  Would we expect to see the RPC level "weak  
-> authentication" reply in the NFSv2 case?  Before Eisler says it, why  
-> would we bother?
-> 
-> Even so, that's a much different proposition than simply reading the  
-> flavor list returned by MNT3PROC, so I'm straining to see how we could  
-> reuse the logic I'm adding to the kernel's MNT client to do security  
-> negotiation for NFSv2.  If Trond is referring only to merging the  
-> kernel's auth flavor lists, then that comment makes more sense.
+I'm getting this, running connectathon tests on a kernel which includes your
+latest nfs-for-2.6.32.  Is it new?
 
-IMO the goal should be to have _one_ engine that can iterate through a
-list of auth flavours (either the list provided by the MNT server, or
-the list of all flavours supported by the client) until it gets a
-positive response to an RPC call. We shouldn't assume that the flavour
-that was negotiated at mount time is final.
-It makes sense to code this iteration process at the RPC level instead
-of at the NFS level. That enables us to use the same engine for NFSv2,
-NFSv4, and the NFSv4.0 server (when doing client callbacks). Possibly
-also for NLM and MOUNT (apparently IRIX used to support this)...
+--b.
 
+=======================================================
+[ INFO: possible circular locking dependency detected ]
+2.6.31-rc8-00162-gf7fcab6 #321
+-------------------------------------------------------
+bigfile/3763 is trying to acquire lock:
+ (&sb->s_type->i_mutex_key#11){+.+.+.}, at: [<c11cd5f2>] nfs_revalidate_mapping+0x92/0xd0
+
+but task is already holding lock:
+ (&mm->mmap_sem){++++++}, at: [<c100640e>] sys_mmap2+0x8e/0xc0
+
+which lock already depends on the new lock.
+
+
+the existing dependency chain (in reverse order) is:
+
+-> #1 (&mm->mmap_sem){++++++}:
+       [<c1051476>] __lock_acquire+0xef6/0x1710
+       [<c1051d5f>] lock_acquire+0xcf/0xf0
+       [<c10951cb>] might_fault+0x8b/0xb0
+       [<c13cb5f7>] copy_to_user+0x37/0x70
+       [<c10bb059>] filldir64+0xa9/0xf0
+       [<c11c7f82>] nfs_do_filldir+0x1e2/0x5b0
+       [<c11c871e>] nfs_readdir+0x3ce/0x910
+       [<c10bb2f5>] vfs_readdir+0x95/0xb0
+       [<c10bb37e>] sys_getdents64+0x6e/0xc0
+       [<c1002f49>] syscall_call+0x7/0xb
+       [<ffffffff>] 0xffffffff
+
+-> #0 (&sb->s_type->i_mutex_key#11){+.+.+.}:
+       [<c10515ab>] __lock_acquire+0x102b/0x1710
+       [<c1051d5f>] lock_acquire+0xcf/0xf0
+       [<c17292ed>] mutex_lock_nested+0x5d/0x310
+       [<c11cd5f2>] nfs_revalidate_mapping+0x92/0xd0
+       [<c11ca5c8>] nfs_file_mmap+0x48/0x80
+       [<c109c436>] mmap_region+0x2b6/0x430
+       [<c109c7fd>] do_mmap_pgoff+0x24d/0x350
+       [<c100642d>] sys_mmap2+0xad/0xc0
+       [<c1002f49>] syscall_call+0x7/0xb
+       [<ffffffff>] 0xffffffff
+
+other info that might help us debug this:
+
+1 lock held by bigfile/3763:
+ #0:  (&mm->mmap_sem){++++++}, at: [<c100640e>] sys_mmap2+0x8e/0xc0
+
+stack backtrace:
+Pid: 3763, comm: bigfile Not tainted 2.6.31-rc8-00162-gf7fcab6 #321
+Call Trace:
+ [<c1727d29>] ? printk+0x1d/0x1f
+ [<c10500ac>] print_circular_bug_tail+0xbc/0xc0
+ [<c10515ab>] __lock_acquire+0x102b/0x1710
+ [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
+ [<c1051d5f>] lock_acquire+0xcf/0xf0
+ [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
+ [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
+ [<c17292ed>] mutex_lock_nested+0x5d/0x310
+ [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
+ [<c11f26f0>] ? nfs_have_delegation+0x0/0xc0
+ [<c11cd5f2>] nfs_revalidate_mapping+0x92/0xd0
+ [<c11ca5c8>] nfs_file_mmap+0x48/0x80
+ [<c109c436>] mmap_region+0x2b6/0x430
+ [<c109c7fd>] do_mmap_pgoff+0x24d/0x350
+ [<c100642d>] sys_mmap2+0xad/0xc0
+ [<c1002f49>] syscall_call+0x7/0xb
 
