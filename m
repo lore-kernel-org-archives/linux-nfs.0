@@ -1,130 +1,104 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/4] NFS: Refactor NFSv4 text-based mount option validation
-Date: Tue, 01 Sep 2009 10:21:17 -0400
-Message-ID: <20090901142116.3700.55866.stgit@matisse.1015granger.net>
+Subject: [PATCH 3/4] NFS: Move details of nfs4_get_sb() to a helper
+Date: Tue, 01 Sep 2009 10:21:24 -0400
+Message-ID: <20090901142124.3700.45454.stgit@matisse.1015granger.net>
 References: <20090901141615.3700.41738.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:51786
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:51789
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754935AbZIAOVU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 10:21:20 -0400
+	by vger.kernel.org with ESMTP id S1754954AbZIAOV2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 10:21:28 -0400
 In-Reply-To: <20090901141615.3700.41738.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Refactor the part of nfs4_validate_mount_options() that
-handles text-based options, so we can call it from the NFSv2/v3
-option validation function.
+Clean up: Refactor nfs4_get_sb() to allow its guts to be invoked by
+other functions.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/super.c |   63 +++++++++++++++++++++++++++++++-------------------------
- 1 files changed, 35 insertions(+), 28 deletions(-)
+ fs/nfs/super.c |   44 +++++++++++++++++++++++++++++++-------------
+ 1 files changed, 31 insertions(+), 13 deletions(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 0554433..599e8c5 100644
+index 599e8c5..c105e12 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -272,6 +272,8 @@ static const struct super_operations nfs_sops = {
- };
- 
+@@ -274,6 +274,8 @@ static const struct super_operations nfs_sops = {
  #ifdef CONFIG_NFS_V4
-+static int nfs4_validate_text_mount_data(void *options,
-+	struct nfs_parsed_mount_data *args, const char *dev_name);
+ static int nfs4_validate_text_mount_data(void *options,
+ 	struct nfs_parsed_mount_data *args, const char *dev_name);
++static int nfs4_try_mount(int flags, const char *dev_name,
++	struct nfs_parsed_mount_data *data, struct vfsmount *mnt);
  static int nfs4_get_sb(struct file_system_type *fs_type,
  	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
  static int nfs4_remote_get_sb(struct file_system_type *fs_type,
-@@ -2262,6 +2264,37 @@ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- 	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3);
+@@ -2565,6 +2567,34 @@ out_err:
+ 	return ret;
  }
  
-+static int nfs4_validate_text_mount_data(void *options,
-+					 struct nfs_parsed_mount_data *args,
-+					 const char *dev_name)
++static int nfs4_try_mount(int flags, const char *dev_name,
++			 struct nfs_parsed_mount_data *data,
++			 struct vfsmount *mnt)
 +{
-+	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
++	char *export_path;
++	struct vfsmount *root_mnt;
++	int error;
 +
-+	nfs_set_default_port(sap, args->nfs_server.port, NFS_PORT);
++	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
 +
-+	nfs_validate_transport_protocol(args);
++	export_path = data->nfs_server.export_path;
++	data->nfs_server.export_path = "/";
++	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, data,
++			data->nfs_server.hostname);
++	data->nfs_server.export_path = export_path;
 +
-+	nfs4_validate_mount_flags(args);
++	error = PTR_ERR(root_mnt);
++	if (IS_ERR(root_mnt))
++		goto out;
 +
-+	if (args->auth_flavor_len > 1) {
-+		dfprintk(MOUNT,
-+			 "NFS4: Too many RPC auth flavours specified\n");
-+		return -EINVAL;
-+	}
++	error = nfs_follow_remote_path(root_mnt, export_path, mnt);
 +
-+	if (args->client_address == NULL) {
-+		dfprintk(MOUNT,
-+			 "NFS4: mount program didn't pass callback address\n");
-+		return -EINVAL;
-+	}
-+
-+	return nfs_parse_devname(dev_name,
-+				   &args->nfs_server.hostname,
-+				   NFS4_MAXNAMLEN,
-+				   &args->nfs_server.export_path,
-+				   NFS4_MAXPATHLEN);
++out:
++	dfprintk(MOUNT, "<-- nfs4_try_mount() = %d%s\n", error,
++			error != 0 ? " [error]" : "");
++	return error;
 +}
 +
  /*
-  * Validate NFSv4 mount options
+  * Get the superblock for an NFS4 mountpoint
   */
-@@ -2342,36 +2375,14 @@ static int nfs4_validate_mount_data(void *options,
- 		nfs_validate_transport_protocol(args);
+@@ -2572,8 +2602,6 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt)
+ {
+ 	struct nfs_parsed_mount_data *data;
+-	char *export_path;
+-	struct vfsmount *root_mnt;
+ 	int error = -ENOMEM;
  
- 		break;
--	default: {
--		int status;
--
-+	default:
- 		if (nfs_parse_mount_options((char *)options, args) == 0)
- 			return -EINVAL;
+ 	data = kzalloc(sizeof(*data), GFP_KERNEL);
+@@ -2585,17 +2613,7 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 	if (error < 0)
+ 		goto out;
  
- 		if (!nfs_verify_server_address(sap))
- 			return -EINVAL;
--		nfs_set_default_port(sap, args->nfs_server.port, NFS_PORT);
+-	export_path = data->nfs_server.export_path;
+-	data->nfs_server.export_path = "/";
+-	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, data,
+-			data->nfs_server.hostname);
+-	data->nfs_server.export_path = export_path;
 -
--		nfs_validate_transport_protocol(args);
+-	error = PTR_ERR(root_mnt);
+-	if (IS_ERR(root_mnt))
+-		goto out;
 -
--		nfs4_validate_mount_flags(args);
--
--		if (args->auth_flavor_len > 1)
--			goto out_inval_auth;
--
--		if (args->client_address == NULL)
--			goto out_no_client_address;
--
--		status = nfs_parse_devname(dev_name,
--					   &args->nfs_server.hostname,
--					   NFS4_MAXNAMLEN,
--					   &args->nfs_server.export_path,
--					   NFS4_MAXPATHLEN);
--		if (status < 0)
--			return status;
+-	error = nfs_follow_remote_path(root_mnt, export_path, mnt);
++	error = nfs4_try_mount(flags, dev_name, data, mnt);
  
--		break;
--		}
-+		return nfs4_validate_text_mount_data(options, args, dev_name);
- 	}
- 
- 	return 0;
-@@ -2388,10 +2399,6 @@ out_inval_auth:
- out_no_address:
- 	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
- 	return -EINVAL;
--
--out_no_client_address:
--	dfprintk(MOUNT, "NFS4: mount program didn't pass callback address\n");
--	return -EINVAL;
- }
- 
- /*
+ out:
+ 	kfree(data->client_address);
 
