@@ -1,165 +1,202 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] NFS: Allow the "nfs" file system type to support NFSv4
-Date: Tue, 01 Sep 2009 10:21:32 -0400
-Message-ID: <20090901142131.3700.43669.stgit@matisse.1015granger.net>
+Subject: [PATCH 1/4] NFS: Mount option parser should detect unset port values
+Date: Tue, 01 Sep 2009 10:21:09 -0400
+Message-ID: <20090901142109.3700.29070.stgit@matisse.1015granger.net>
 References: <20090901141615.3700.41738.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@fys.uio.no
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:51791
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:51784
 	"EHLO matisse.1015granger.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754938AbZIAOVf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 10:21:35 -0400
+	by vger.kernel.org with ESMTP id S1754923AbZIAOVO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 10:21:14 -0400
 In-Reply-To: <20090901141615.3700.41738.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When mounting an "nfs" type file system, recognize "v4," "vers=4," or
-"nfsvers=4" mount options, and convert the file system to "nfs4" under
-the covers.
+The kernel's NFS mount option parser needs to distinguish between
+the "port=0" mount option and the absense of the "port=" option
+(currently also zero).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/internal.h    |    1 +
- fs/nfs/super.c       |   42 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/nfs4.h |    1 +
- 3 files changed, 43 insertions(+), 1 deletions(-)
+ fs/nfs/internal.h |    9 +++++++--
+ fs/nfs/super.c    |   55 ++++++++++++++++++++++++++++-------------------------
+ 2 files changed, 36 insertions(+), 28 deletions(-)
 
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index ffadffa..769582e 100644
+index dabf345..ffadffa 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -68,6 +68,7 @@ struct nfs_parsed_mount_data {
- 	unsigned int		auth_flavor_len;
- 	rpc_authflavor_t	auth_flavors[1];
- 	char			*client_address;
-+	unsigned int		version;
- 	unsigned int		minorversion;
- 	char			*fscache_uniq;
+@@ -49,6 +49,11 @@ struct nfs_clone_mount {
+ #define NFS_MAX_SECFLAVORS	(12)
+ 
+ /*
++ * Value used if the user did not specify a port value.
++ */
++#define NFS_UNSPEC_PORT		(-1)
++
++/*
+  * In-kernel mount arguments
+  */
+ struct nfs_parsed_mount_data {
+@@ -71,7 +76,7 @@ struct nfs_parsed_mount_data {
+ 		size_t			addrlen;
+ 		char			*hostname;
+ 		u32			version;
+-		unsigned short		port;
++		int			port;
+ 		unsigned short		protocol;
+ 	} mount_server;
+ 
+@@ -80,7 +85,7 @@ struct nfs_parsed_mount_data {
+ 		size_t			addrlen;
+ 		char			*hostname;
+ 		char			*export_path;
+-		unsigned short		port;
++		int			port;
+ 		unsigned short		protocol;
+ 	} nfs_server;
  
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c105e12..bde444b 100644
+index f3a95df..0554433 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -73,7 +73,7 @@ enum {
- 	Opt_cto, Opt_nocto,
- 	Opt_ac, Opt_noac,
- 	Opt_lock, Opt_nolock,
--	Opt_v2, Opt_v3,
-+	Opt_v2, Opt_v3, Opt_v4,
- 	Opt_udp, Opt_tcp, Opt_rdma,
- 	Opt_acl, Opt_noacl,
- 	Opt_rdirplus, Opt_nordirplus,
-@@ -127,6 +127,7 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_nolock, "nolock" },
- 	{ Opt_v2, "v2" },
- 	{ Opt_v3, "v3" },
-+	{ Opt_v4, "v4" },
- 	{ Opt_udp, "udp" },
- 	{ Opt_tcp, "tcp" },
- 	{ Opt_rdma, "rdma" },
-@@ -934,10 +935,18 @@ static int nfs_parse_mount_options(char *raw,
- 			break;
- 		case Opt_v2:
- 			mnt->flags &= ~NFS_MOUNT_VER3;
-+			mnt->version = 2;
- 			break;
- 		case Opt_v3:
- 			mnt->flags |= NFS_MOUNT_VER3;
-+			mnt->version = 3;
- 			break;
-+#ifdef CONFIG_NFS_V4
-+		case Opt_v4:
-+			mnt->flags &= ~NFS_MOUNT_VER3;
-+			mnt->version = 4;
-+			break;
-+#endif
- 		case Opt_udp:
- 			mnt->flags &= ~NFS_MOUNT_TCP;
- 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-@@ -1151,10 +1160,18 @@ static int nfs_parse_mount_options(char *raw,
- 			switch (option) {
- 			case NFS2_VERSION:
- 				mnt->flags &= ~NFS_MOUNT_VER3;
-+				mnt->version = 2;
- 				break;
- 			case NFS3_VERSION:
- 				mnt->flags |= NFS_MOUNT_VER3;
-+				mnt->version = 3;
-+				break;
-+#ifdef CONFIG_NFS_V4
-+			case NFS4_VERSION:
-+				mnt->flags &= ~NFS_MOUNT_VER3;
-+				mnt->version = 4;
- 				break;
-+#endif
- 			default:
- 				goto out_invalid_value;
- 			}
-@@ -1629,6 +1646,7 @@ static int nfs_validate_mount_data(void *options,
+@@ -747,6 +747,21 @@ static int nfs_verify_server_address(struct sockaddr *addr)
+ }
+ 
+ /*
++ * Select between a default port value and a user-specified port value.
++ * If a zero value is set, then autobind will be used.
++ */
++static void nfs_set_default_port(struct sockaddr *sap, const int parsed_port,
++				 const unsigned short default_port)
++{
++	unsigned short port = default_port;
++
++	if (parsed_port != NFS_UNSPEC_PORT)
++		port = parsed_port;
++
++	rpc_set_port(sap, port);
++}
++
++/*
+  * Sanity check the NFS transport protocol.
+  *
+  */
+@@ -1415,11 +1430,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
+ 		args->mount_server.addrlen = args->nfs_server.addrlen;
+ 	}
+ 	request.salen = args->mount_server.addrlen;
+-
+-	/*
+-	 * autobind will be used if mount_server.port == 0
+-	 */
+-	rpc_set_port(request.sap, args->mount_server.port);
++	nfs_set_default_port(request.sap, args->mount_server.port, 0);
+ 
+ 	/*
+ 	 * Now ask the mount server to map our export path
+@@ -1597,6 +1608,7 @@ static int nfs_validate_mount_data(void *options,
+ 				   const char *dev_name)
+ {
+ 	struct nfs_mount_data *data = (struct nfs_mount_data *)options;
++	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
+ 
+ 	if (data == NULL)
+ 		goto out_no_data;
+@@ -1608,8 +1620,8 @@ static int nfs_validate_mount_data(void *options,
+ 	args->acregmax		= NFS_DEF_ACREGMAX;
+ 	args->acdirmin		= NFS_DEF_ACDIRMIN;
+ 	args->acdirmax		= NFS_DEF_ACDIRMAX;
+-	args->mount_server.port	= 0;	/* autobind unless user sets port */
+-	args->nfs_server.port	= 0;	/* autobind unless user sets port */
++	args->mount_server.port	= NFS_UNSPEC_PORT;
++	args->nfs_server.port	= NFS_UNSPEC_PORT;
  	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
  	args->auth_flavors[0]	= RPC_AUTH_UNIX;
  	args->auth_flavor_len	= 1;
-+	args->minorversion	= 0;
+@@ -1657,11 +1669,9 @@ static int nfs_validate_mount_data(void *options,
+ 		args->acdirmin		= data->acdirmin;
+ 		args->acdirmax		= data->acdirmax;
+ 
+-		memcpy(&args->nfs_server.address, &data->addr,
+-		       sizeof(data->addr));
++		memcpy(sap, &data->addr, sizeof(data->addr));
+ 		args->nfs_server.addrlen = sizeof(data->addr);
+-		if (!nfs_verify_server_address((struct sockaddr *)
+-						&args->nfs_server.address))
++		if (!nfs_verify_server_address(sap))
+ 			goto out_no_address;
+ 
+ 		if (!(data->flags & NFS_MOUNT_TCP))
+@@ -1709,12 +1719,10 @@ static int nfs_validate_mount_data(void *options,
+ 		if (nfs_parse_mount_options((char *)options, args) == 0)
+ 			return -EINVAL;
+ 
+-		if (!nfs_verify_server_address((struct sockaddr *)
+-						&args->nfs_server.address))
++		if (!nfs_verify_server_address(sap))
+ 			goto out_no_address;
+ 
+-		rpc_set_port((struct sockaddr *)&args->nfs_server.address,
+-				args->nfs_server.port);
++		nfs_set_default_port(sap, args->nfs_server.port, 0);
+ 
+ 		nfs_set_mount_transport_protocol(args);
+ 
+@@ -2261,7 +2269,7 @@ static int nfs4_validate_mount_data(void *options,
+ 				    struct nfs_parsed_mount_data *args,
+ 				    const char *dev_name)
+ {
+-	struct sockaddr_in *ap;
++	struct sockaddr *sap = (struct sockaddr *)&args->nfs_server.address;
+ 	struct nfs4_mount_data *data = (struct nfs4_mount_data *)options;
+ 	char *c;
+ 
+@@ -2274,23 +2282,21 @@ static int nfs4_validate_mount_data(void *options,
+ 	args->acregmax		= NFS_DEF_ACREGMAX;
+ 	args->acdirmin		= NFS_DEF_ACDIRMIN;
+ 	args->acdirmax		= NFS_DEF_ACDIRMAX;
+-	args->nfs_server.port	= NFS_PORT; /* 2049 unless user set port= */
++	args->nfs_server.port	= NFS_UNSPEC_PORT;
+ 	args->auth_flavors[0]	= RPC_AUTH_UNIX;
+ 	args->auth_flavor_len	= 1;
+ 	args->minorversion	= 0;
  
  	switch (data->version) {
  	case 1:
-@@ -1726,6 +1744,14 @@ static int nfs_validate_mount_data(void *options,
- 		if (!nfs_verify_server_address(sap))
+-		ap = (struct sockaddr_in *)&args->nfs_server.address;
+ 		if (data->host_addrlen > sizeof(args->nfs_server.address))
+ 			goto out_no_address;
+ 		if (data->host_addrlen == 0)
+ 			goto out_no_address;
+ 		args->nfs_server.addrlen = data->host_addrlen;
+-		if (copy_from_user(ap, data->host_addr, data->host_addrlen))
++		if (copy_from_user(sap, data->host_addr, data->host_addrlen))
+ 			return -EFAULT;
+-		if (!nfs_verify_server_address((struct sockaddr *)
+-						&args->nfs_server.address))
++		if (!nfs_verify_server_address(sap))
  			goto out_no_address;
  
-+		if (args->version == 4)
-+#ifdef CONFIG_NFS_V4
-+			return nfs4_validate_text_mount_data(options,
-+							     args, dev_name);
-+#else
-+			goto out_v4_not_compiled;
-+#endif
-+
- 		nfs_set_default_port(sap, args->nfs_server.port, 0);
+ 		if (data->auth_flavourlen) {
+@@ -2342,12 +2348,9 @@ static int nfs4_validate_mount_data(void *options,
+ 		if (nfs_parse_mount_options((char *)options, args) == 0)
+ 			return -EINVAL;
  
- 		nfs_set_mount_transport_protocol(args);
-@@ -1774,6 +1800,12 @@ out_v3_not_compiled:
- 	return -EPROTONOSUPPORT;
- #endif /* !CONFIG_NFS_V3 */
+-		if (!nfs_verify_server_address((struct sockaddr *)
+-						&args->nfs_server.address))
++		if (!nfs_verify_server_address(sap))
+ 			return -EINVAL;
+-
+-		rpc_set_port((struct sockaddr *)&args->nfs_server.address,
+-				args->nfs_server.port);
++		nfs_set_default_port(sap, args->nfs_server.port, NFS_PORT);
  
-+#ifndef CONFIG_NFS_V4
-+out_v4_not_compiled:
-+	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
-+	return -EPROTONOSUPPORT;
-+#endif /* !CONFIG_NFS_V4 */
-+
- out_nomem:
- 	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
- 	return -ENOMEM;
-@@ -2069,6 +2101,14 @@ static int nfs_get_sb(struct file_system_type *fs_type,
- 	if (error < 0)
- 		goto out;
+ 		nfs_validate_transport_protocol(args);
  
-+#ifdef CONFIG_NFS_V4
-+	if (data->version == 4) {
-+		error = nfs4_try_mount(flags, dev_name, data, mnt);
-+		kfree(data->client_address);
-+		goto out;
-+	}
-+#endif	/* CONFIG_NFS_V4 */
-+
- 	/* Get a volume representation */
- 	server = nfs_create_server(data, mntfh);
- 	if (IS_ERR(server)) {
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index bd2eba5..33b2836 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -472,6 +472,7 @@ enum lock_type4 {
- 
- #define NFSPROC4_NULL 0
- #define NFSPROC4_COMPOUND 1
-+#define NFS4_VERSION 4
- #define NFS4_MINOR_VERSION 0
- 
- #if defined(CONFIG_NFS_V4_1)
 
