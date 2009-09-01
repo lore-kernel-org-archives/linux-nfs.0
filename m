@@ -1,71 +1,83 @@
-From: Peter Staubach <staubach@redhat.com>
-Subject: Re: [PATCH] NFS: Change default behavior when "sec=" is not	specified
- by user
-Date: Tue, 01 Sep 2009 15:24:06 -0400
-Message-ID: <4A9D74D6.7000608@redhat.com>
-References: <7C5C14D9-F315-4DF8-A2F4-C7F0981AC968@oracle.com> <20090901151830.GC22846@fieldses.org> <18678BB3-52C6-4376-BBD1-50B8947BAAC7@oracle.com> <20090901160914.GG22846@fieldses.org> <73E8EAAF-9164-4F78-A9D4-1CC86A6A6255@oracle.com> <20090901163846.GJ22846@fieldses.org> <B9CADBA9-54B0-44AD-A8DC-FE3ED63341BC@oracle.com> <4A9D690E.2050704@redhat.com> <20090901185011.GC27726@fieldses.org> <4A9D6D7C.60501@redhat.com> <20090901191652.GD27726@fieldses.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [PATCH] NFS: Change default behavior when "sec=" is not
+ specified by user
+Date: Tue, 01 Sep 2009 15:31:19 -0400
+Message-ID: <1251833479.18608.69.camel@heimdal.trondhjem.org>
+References: <20090901143012.3978.11441.stgit@matisse.1015granger.net>
+	 <20090901150545.GA22846@fieldses.org>
+	 <7C5C14D9-F315-4DF8-A2F4-C7F0981AC968@oracle.com>
+	 <20090901151830.GC22846@fieldses.org>
+	 <18678BB3-52C6-4376-BBD1-50B8947BAAC7@oracle.com>
+	 <20090901160914.GG22846@fieldses.org>
+	 <73E8EAAF-9164-4F78-A9D4-1CC86A6A6255@oracle.com>
+	 <20090901163846.GJ22846@fieldses.org>
+	 <B9CADBA9-54B0-44AD-A8DC-FE3ED63341BC@oracle.com>
+	 <1251829540.18608.31.camel@heimdal.trondhjem.org>
+	 <D11105A9-4FAB-4F5C-BF02-BE489520C150@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Chuck Lever <chuck.lever@oracle.com>, trond.myklebust@fys.uio.no,
-	linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51390 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:44984 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752597AbZIATYR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2009 15:24:17 -0400
-In-Reply-To: <20090901191652.GD27726@fieldses.org>
+	id S1752870AbZIATbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2009 15:31:23 -0400
+In-Reply-To: <D11105A9-4FAB-4F5C-BF02-BE489520C150@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields wrote:
-> On Tue, Sep 01, 2009 at 02:52:44PM -0400, Peter Staubach wrote:
->> J. Bruce Fields wrote:
->>> On Tue, Sep 01, 2009 at 02:33:50PM -0400, Peter Staubach wrote:
->>>> Some servers will accept any flavor of incoming RPC security
->>>> and just use AUTH_NULL in this situation.  It really shouldn't
->>>> matter what the client sends, as long as the server is just
->>>> going to map all requests to nobody/nobody anyway...
->>> OK, but let's not pile on more workarounds than we have to.  I don't see
->>> any reason that we really need to do anything special for servers that
->>> are broken in *that* particular way....
->>>
->> I don't think that that is considered to be broken, by the way.
+On Tue, 2009-09-01 at 14:58 -0400, Chuck Lever wrote:
+> On Sep 1, 2009, at 2:25 PM, Trond Myklebust wrote:
+> > On Tue, 2009-09-01 at 14:07 -0400, Chuck Lever wrote:
+> >> OK, one more corner case.
+> >>
+> >> What if the mount doesn't specify "sec=" and the only flavor in the
+> >> server's auth list is AUTH_NULL?  Seems like we should allow that  
+> >> one.
+> >
+> > Amend the above statement to "the only flavour in the server's auth  
+> > list
+> > that is supported by the client", and I'll agree.
 > 
-> OK, maybe not.
+> > If a server advertises auth_dh, auth_krb4 and auth_null, then we  
+> > should
+> > definitely try auth_null rather than failing.
 > 
->> I am not sure whether it still works this way, but I know that
->> Solaris used to work this way, at the very least.
->>
->> Since I clearly haven't looked, but why would the Linux NFS
->> server care which flavor that it got sent, if the export is
->> configured to map all requests to nobody/nobody?
+> What if the list has AUTH_GSS_KRB5 and AUTH_NULL?  Should the kernel  
+> try AUTH_GSS flavors if it can't tell whether gssd is running or there  
+> is a valid local keytab?
+
+Firstly, we can tell if gssd is running. There is a timeout period of 30
+seconds, but after that timeout, if there are no listeners on the end of
+the gssd pipe, the rpc_pipefs code will return ETIMEDOUT.
+
+> How does the kernel construct a list of client-supported auth flavors?
+
+Although we do have the auth_flavors[] list, we don't currently have a
+list that enumerates all the supported pseudoflavours. Instead, we have
+auth_flavors[], and then a separate list of all the rpcsec_gss auth
+mechanisms that are currently loaded into kernel memory.
+I suggest we need to unify the information in those two lists, perhaps
+by having everyone register into a separate list of all pseudoflavours
+that are acceptable as parameters for rpcauth_create().
+
+> > We should also try it if the server is broken, and returns an empty
+> > list, but only after first attempting to cycle through all the other
+> > flavours that are supported by the client.
 > 
-> I can think of any number of reasons, but on the client side I don't see
-> any great advantage to taking "auth_null" to mean "use anything you
-> want": it's another special case, it's undocumented and will only work
-> on some servers, and if it's really what the administrator wants, it
-> should be easy to fix the server to advertise everything while still
-> doing the id-squashing.
 > 
+> If the server returns an empty list, we can't negotiate.  We are  
+> fairly certain only old Linux servers return an empty list, in which  
+> case the client can assume all we've got is AUTH_NULL and AUTH_UNIX.   
 
-I don't understand this last.  Why would the server bother to
-advertise the various flavors if they are all going to treated
-as if they were AUTH_NONE?  It would seem to violate expectations
-that clients may have, that they issued authentic and verifiable
-requests, only to be treated as if they were not?
+...or RPCSEC_GSS/krb5
 
-Just out of curiosity, any number of reasons?  :-)
+> I think allowing the mount to proceed with AUTH_UNIX is the best  
+> choice here.
 
-This all seems like a lot of conversation and work just to try
-to figure out how to accommodate a configuration which has
-already indicated that it will ignore any incoming authentication
-information.  I would suggest that we take the easy and obvious
-way of sending AUTH_UNIX to such systems and if we find one that
-really insists upon receiving AUTH_NONE from the client, then
-we fix the client.  Many clients can't even generate AUTH_NONE,
-by the way...
+As I said, this functionality is in also required in order to make NFSv4
+security negotiation work.
 
-		ps
+Trond
 
-		ps
