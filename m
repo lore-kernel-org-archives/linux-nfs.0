@@ -1,72 +1,43 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] mount.nfs: Support "vers=4" in nfs_nfs_version()
-Date: Tue, 01 Sep 2009 10:28:58 -0400
-Message-ID: <20090901142858.3886.49968.stgit@matisse.1015granger.net>
+Subject: [PATCH 2/3] umount.nfs: Skip UMNT call for "-t nfs -o vers=4" mounts
+Date: Tue, 01 Sep 2009 10:29:08 -0400
+Message-ID: <20090901142907.3886.56927.stgit@matisse.1015granger.net>
 References: <20090901142357.3886.21465.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:57851 "EHLO
+Received: from acsinet11.oracle.com ([141.146.126.233]:58242 "EHLO
 	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754905AbZIAO3T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 10:29:19 -0400
+	with ESMTP id S1754914AbZIAO3a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 10:29:30 -0400
 In-Reply-To: <20090901142357.3886.21465.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To handle "-t nfs -o vers=4" the nfs_nfs_version() function must
-recognize "vers=4," "v4," and "nfsvers=4".
-
-Make nfs_nfs_version() a global function so it can be invoked
-independently of nfs_options2pmap().
+Make umount.nfs skip the UMNT call for vers=4 mounts, since NFSv4
+doesn't need it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
+ utils/mount/nfsumount.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index f6fa5fd..420e15a 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -90,6 +90,7 @@ static const char *nfs_transport_opttbl[] = {
- static const char *nfs_version_opttbl[] = {
- 	"v2",
- 	"v3",
-+	"v4",
- 	"vers",
- 	"nfsvers",
- 	NULL,
-@@ -1215,10 +1216,13 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
- 	case 1: /* v3 */
- 		*version = 3;
- 		return 1;
--	case 2:	/* vers */
-+	case 2: /* v4 */
-+		*version = 4;
-+		return 1;
-+	case 3:	/* vers */
- 		switch (po_get_numeric(options, "vers", &tmp)) {
- 		case PO_FOUND:
--			if (tmp >= 2 && tmp <= 3) {
-+			if (tmp >= 2 && tmp <= 4) {
- 				*version = tmp;
- 				return 1;
- 			}
-@@ -1229,10 +1233,10 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
- 		case PO_BAD_VALUE:
- 			return 0;
- 		}
--	case 3: /* nfsvers */
-+	case 4: /* nfsvers */
- 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
- 		case PO_FOUND:
--			if (tmp >= 2 && tmp <= 3) {
-+			if (tmp >= 2 && tmp <= 4) {
- 				*version = tmp;
- 				return 1;
- 			}
+diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
+index f81db14..c5505b1 100644
+--- a/utils/mount/nfsumount.c
++++ b/utils/mount/nfsumount.c
+@@ -179,6 +179,10 @@ static int nfs_umount_do_umnt(struct mount_options *options,
+ 		return EX_FAIL;
+ 	}
+ 
++	/* Skip UMNT call for vers=4 mounts */
++	if (nfs_pmap.pm_vers == 4)
++		return EX_SUCCESS;
++
+ 	*hostname = nfs_umount_hostname(options, *hostname);
+ 	if (!*hostname) {
+ 		nfs_error(_("%s: out of memory"), progname);
 
