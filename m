@@ -1,58 +1,64 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Linux client mount fails with Gluster NFSv3 server
-Date: Tue, 1 Sep 2009 12:43:35 -0400
-Message-ID: <20090901164334.GL22846@fieldses.org>
-References: <4A9BD90B.4090804@gluster.com> <1251738771.5144.21.camel@heimdal.trondhjem.org> <4A9CC186.10504@gluster.com> <1251807998.18608.1.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] NFS: Change default behavior when "sec=" is not specified by user
+Date: Tue, 1 Sep 2009 14:07:40 -0400
+Message-ID: <B9CADBA9-54B0-44AD-A8DC-FE3ED63341BC@oracle.com>
+References: <20090901143012.3978.11441.stgit@matisse.1015granger.net> <20090901150545.GA22846@fieldses.org> <7C5C14D9-F315-4DF8-A2F4-C7F0981AC968@oracle.com> <20090901151830.GC22846@fieldses.org> <18678BB3-52C6-4376-BBD1-50B8947BAAC7@oracle.com> <20090901160914.GG22846@fieldses.org> <73E8EAAF-9164-4F78-A9D4-1CC86A6A6255@oracle.com> <20090901163846.GJ22846@fieldses.org>
+Mime-Version: 1.0 (Apple Message framework v936)
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39648 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249AbZIAQne (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2009 12:43:34 -0400
-In-Reply-To: <1251807998.18608.1.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:40406 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751395AbZIASIB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Sep 2009 14:08:01 -0400
+In-Reply-To: <20090901163846.GJ22846@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 01, 2009 at 08:26:37AM -0400, Trond Myklebust wrote:
-> On Tue, 2009-09-01 at 12:09 +0530, Shehjar Tikoo wrote:
-> > I am able to view the packets just fine using wireshark Version 1.0.6.
-> > It is possible that the default options for you for TCP and RPC are
-> > not same as the ones below.
-> > Could you please try viewing the dump with the following options set 
-> > in the wireshark Protocol preferences pane.
-> > 
-> > Press <Ctrl> + <Shift> + p to bring up the protocol preferences
-> > window.
-> > 
-> > First, expand the "Protocol" section header in the window that pops
-> > up. Then look for "TCP" section. In the TCP section, please check the 
-> > following option:
-> > 
-> > "Allow subdissector to reassemble TCP streams"
-> > 
-> > Then, search for the "RPC" section under "Protocols". For RPC, please
-> > check the following option:
-> > 
-> > "Reassemble RPC over TCP message spanning multiple TCP segments"
-> > 
-> > This should make the RPC records visible properly.
-> 
-> I always run with those options enabled, and they were able to
-> reconstruct most of the RPC records correctly, but not the reply to the
-> FSINFO call.
 
-Same here--both options set, and I don't normally have this problem.
-The segments look OK, though (the sequence numbers are what you'd
-expect, anyway)--if the xdr was screwed up you'd think wireshark would
-still attempt to parse it.  I'm using 1.0.7 (from 1.0.7-1ubuntu1), but
-too lazy to try to debug wireshark....
+On Sep 1, 2009, at 12:38 PM, J. Bruce Fields wrote:
 
---b.
+> On Tue, Sep 01, 2009 at 12:29:30PM -0400, Chuck Lever wrote:
+>> On Sep 1, 2009, at 12:09 PM, J. Bruce Fields wrote:
+>>> And, sure, that'd be OK with me, and would probably be better than
+>>> adding another exception, so I'm OK with skipping #3.  (We  
+>>> definitely
+>>> shouldn't omit #2, though.)
+>>
+>> Seems straightforward enough, but...  Why are we doing this again?   
+>> It
+>> still seems like non-standard behavior.  Are we simply attempting to
+>> avoid the case where folks would get the "nobody" behavior  
+>> unexpectedly
+>> because of a mountd bug, or is there more to it?
+>
+> That's all there is to it.  As I said:
+>
+>>>>>>> 	2. In the absence of sec=, we should probably *not* choose
+>>>>>>> 	AUTH_NULL.  (All mountd's before 1.1.3 list AUTH_NULL first on
+>>>>>>> 	the returned list, so users with older servers may wonder why a
+>>>>>>> 	client upgrade is making files they create suddenly be owned by
+>>>>>>> 	nobody.) http://marc.info/?l=linux-nfs&m=125089022306281&w=2
+>
+>> I'm just thinking of what the documenting comment might say, and  
+>> perhaps
+>> some explanation added to nfs(5).
+>
+> "As a special case, to work around bugs in some older servers, the
+> client will never automatically negotiate auth_null; if auth_null is
+> desired, an explicit "sec=null" on the commandline is required."
+>
+> Or something like that.
 
-> Furthermore, when I looked at the binary contents, it seemed to me that
-> the post-op attributes contained some fishy information, such as
-> nlink==0. That alone would cause the NFS client to give up.
+OK, one more corner case.
+
+What if the mount doesn't specify "sec=" and the only flavor in the  
+server's auth list is AUTH_NULL?  Seems like we should allow that one.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
