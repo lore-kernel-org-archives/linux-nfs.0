@@ -1,59 +1,107 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/4] NFSv4.1 DRC Rewrite Version 7
-Date: Tue, 1 Sep 2009 23:12:20 -0400
-Message-ID: <20090902031220.GB4028@fieldses.org>
-References: <1251463504-3376-1-git-send-email-andros@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org
-To: andros@netapp.com
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 1/1 v2] nfs41: pass state recovery error back to caller
+Date: Wed,  2 Sep 2009 10:48:45 +0300
+Message-ID: <1251877725-12113-1-git-send-email-bhalevy@panasas.com>
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41695 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752764AbZIBDMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2009 23:12:18 -0400
-In-Reply-To: <1251463504-3376-1-git-send-email-andros@netapp.com>
+Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:52020
+	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751774AbZIBHsp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 03:48:45 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 28, 2009 at 08:45:00AM -0400, andros@netapp.com wrote:
-> NFSv4.1 DRC Rewrite Version 7
-> 
-> These patches apply against git://linux-nfs.org/~bfields/linux: for-2.6.32
-> branch and continue to rewrite the NFSv4.1 Sessions DRC.
+Currently the error returned from create_session
+is ignored by nfs4_check_client_ready and mis-translated to
+-EPROTONOSUPPORT if the client has a session.
+Record the error returned from create_session to the state manager
+in cl_cons_state via nfs_mark_client_ready and pass it upstream
+in nfs4_recover_expired_lease.
 
-All applied.  Thanks, Andy!--b.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
 
-> 
-> Responded to comments on Version 6.
-> 
-> 1) The bound on the fore channel per-session DRC size are rewritten.
-> Instead of just using a maximum number of slots to bound the size,
-> The server gives the client the number of ca_maxresponsesize_cached slots it
-> requests bounded by NFSD_SLOT_CACHE_SIZE, NFSD_MAX_MEM_PER_SESSION and by
-> nfsd_drc_max_mem. Do not allow more than NFSD_MAX_SLOTS_PER_SESSION.
-> 
-> This allows clients to tailor a session to usage.
-> For example, an I/O session (READ/WRITE/COMMIT only) can have a much smaller
-> ca_maxresponsesize_cached (for only WRITE/COMMIt compound responses) and a lot
-> larger ca_maxresponses to service a large in-flight data window.
-> 
-> 2) the page-based DRC is replaced with a buffer based DRC with each
-> slot table entry (struct nfsd4_slot + cache) allocated separately.
-> This allocation prepares us for slot size re-negotiation via the SEQUENCE
-> operation target and high slot id arguments.
-> 
-> Testing:
-> 
-> NFSv4.1 mount: pynfs tests - including the SEQUENCE replay cache tests.
-> connectathon tests.
-> 
-> NFSv4.0 mount: connectathon tests.
-> 
-> -->Andy
-> 
-> 0001-nfsd41-bound-forechannel-drc-size-by-memory-usage.patch
-> 0002-nfsd41-use-session-maxreqs-for-sequence-target-and.patch
-> 0003-nfsd41-replace-nfserr_resource-in-pure-nfs41-respon.patch
-> 0004-nfsd41-replace-page-based-DRC-with-buffer-based-DRC.patch
-> 
+This version of the patch is based on top of
+commit a78cb57a106fceeba26da2907db9d8886700e1dc
+NFSv4: Don't loop forever on state recovery failure...
+that's queued for 2.6.32
+
+Benny
+
+ fs/nfs/client.c    |   10 +++-------
+ fs/nfs/nfs4proc.c  |    6 ++++++
+ fs/nfs/nfs4state.c |    2 ++
+ 3 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index d36925f..79c3ee3 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -149,6 +149,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_boot_time = CURRENT_TIME;
+ 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+ 	clp->cl_minorversion = cl_init->minorversion;
++	clp->cl_lease_time = 0;
+ #endif
+ 	cred = rpc_lookup_machine_cred();
+ 	if (!IS_ERR(cred))
+@@ -535,16 +536,11 @@ void nfs_mark_client_ready(struct nfs_client *clp, int state)
+ /*
+  * With sessions, the client is not marked ready until after a
+  * successful EXCHANGE_ID and CREATE_SESSION.
+- *
+- * Map errors cl_cons_state errors to EPROTONOSUPPORT to indicate
+- * other versions of NFS can be tried.
+  */
+ int nfs4_check_client_ready(struct nfs_client *clp)
+ {
+-	if (!nfs4_has_session(clp))
+-		return 0;
+-	if (clp->cl_cons_state < NFS_CS_READY)
+-		return -EPROTONOSUPPORT;
++	if (clp->cl_cons_state < 0)
++		return clp->cl_cons_state;
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index be6544a..09f709a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1458,6 +1458,12 @@ static int nfs4_recover_expired_lease(struct nfs_server *server)
+ 		if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) &&
+ 		    !test_bit(NFS4CLNT_CHECK_LEASE,&clp->cl_state))
+ 			break;
++		if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) &&
++		    clp->cl_lease_time) {
++			/* fetch the lease reclaim error */
++			ret = (int)clp->cl_lease_time;
++			break;
++		}
+ 		nfs4_schedule_state_recovery(clp);
+ 		ret = -EIO;
+ 	}
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 65ca8c1..b5c71dc 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1220,6 +1220,7 @@ static void nfs4_set_lease_expired(struct nfs_client *clp, int status)
+ 			return;
+ 		}
+ 	}
++	clp->cl_lease_time = status;
+ 	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ }
+ 
+@@ -1231,6 +1232,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 	for(;;) {
+ 		if (test_and_clear_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state)) {
+ 			/* We're going to have to re-establish a clientid */
++			clp->cl_lease_time = 0;
+ 			status = nfs4_reclaim_lease(clp);
+ 			if (status) {
+ 				nfs4_set_lease_expired(clp, status);
+-- 
+1.6.4
+
