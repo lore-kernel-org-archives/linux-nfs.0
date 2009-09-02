@@ -1,158 +1,218 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH 4/8] nfs: use different capability flag for v4 and posix acl
-Date: Wed,  2 Sep 2009 17:54:24 +0530
-Message-ID: <1251894268-1555-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH 2/8] nfsv4: Switch to generic xattr handling code
+Date: Wed,  2 Sep 2009 17:54:22 +0530
+Message-ID: <1251894268-1555-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1251894268-1555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org,
 	nfsv4@linux-nfs.org, ffilzlnx@us.ibm.com, agruen@suse.de,
 	aneesh.kumar@linux.vnet.ibm.com, sfrench@us.ibm.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:55628 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751425AbZIBMZF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 08:25:05 -0400
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp02.in.ibm.com (8.14.3/8.13.1) with ESMTP id n82CP4Gc027816
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:55:04 +0530
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:48510 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751425AbZIBMY6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 08:24:58 -0400
+Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
+	by e28smtp01.in.ibm.com (8.14.3/8.13.1) with ESMTP id n82COtvn000476
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:54:55 +0530
 Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n82CP46b1859608
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:55:04 +0530
+	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n82COtY02195690
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:54:55 +0530
 Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n82CP3ub001473
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 22:25:04 +1000
+	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n82COslv001333
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 22:24:55 +1000
 In-Reply-To: <1251894268-1555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NVFSv4 can now support V4 acl and posix ACL. Use different
-flag indicate the capability
+This patch make nfsv4 use the generic xattr handling code
+to get the nfsv4 acl. This will help us to add posix acl
+support to nfsv4 in later patches
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfs/client.c           |    6 +++---
- fs/nfs/nfs3acl.c          |    8 ++++----
- fs/nfs/nfs4proc.c         |    4 ++--
- fs/nfs/super.c            |    2 +-
- include/linux/nfs_fs_sb.h |    4 ++--
- 5 files changed, 12 insertions(+), 12 deletions(-)
+ fs/nfs/dir.c      |    9 +++++--
+ fs/nfs/nfs4_fs.h  |    6 -----
+ fs/nfs/nfs4proc.c |   57 ++++++++++++++++++++++++++++++----------------------
+ fs/nfs/super.c    |    3 ++
+ 4 files changed, 42 insertions(+), 33 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8d25ccb..ea3a6b7 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -685,17 +685,17 @@ static void nfs_init_server_aclclient(struct nfs_server *server)
- 		goto out_noacl;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 32062c3..f9278a2 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -33,6 +33,8 @@
+ #include <linux/namei.h>
+ #include <linux/mount.h>
+ #include <linux/sched.h>
++#include <linux/xattr.h>
++
  
- 	/* No errors! Assume that Sun nfsacls are supported */
--	server->caps |= NFS_CAP_ACLS;
-+	server->caps |= NFS_CAP_PACLS;
- 	return;
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+@@ -117,9 +119,10 @@ const struct inode_operations nfs4_dir_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.getxattr       = nfs4_getxattr,
+-	.setxattr       = nfs4_setxattr,
+-	.listxattr      = nfs4_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.listxattr	= generic_listxattr,
++	.removexattr	= generic_removexattr,
+ };
  
- out_noacl:
--	server->caps &= ~NFS_CAP_ACLS;
-+	server->caps &= ~NFS_CAP_PACLS;
- }
- #else
- static inline void nfs_init_server_aclclient(struct nfs_server *server)
- {
- 	server->flags &= ~NFS_MOUNT_NOACL;
--	server->caps &= ~NFS_CAP_ACLS;
-+	server->caps &= ~NFS_CAP_PACLS;
- }
- #endif
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 6ea07a3..c9869f5 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -191,12 +191,6 @@ struct nfs4_state_maintenance_ops {
+ extern const struct dentry_operations nfs4_dentry_operations;
+ extern const struct inode_operations nfs4_dir_inode_operations;
  
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index bac6051..963b5d6 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -201,7 +201,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
- 	struct posix_acl *acl;
- 	int status, count;
- 
--	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
-+	if (!nfs_server_capable(inode, NFS_CAP_PACLS))
- 		return ERR_PTR(-EOPNOTSUPP);
- 
- 	status = nfs_revalidate_inode(server, inode);
-@@ -242,7 +242,7 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
- 		case -EPFNOSUPPORT:
- 		case -EPROTONOSUPPORT:
- 			dprintk("NFS_V3_ACL extension not supported; disabling\n");
--			server->caps &= ~NFS_CAP_ACLS;
-+			server->caps &= ~NFS_CAP_PACLS;
- 		case -ENOTSUPP:
- 			status = -EOPNOTSUPP;
- 		default:
-@@ -304,7 +304,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 	int status;
- 
- 	status = -EOPNOTSUPP;
--	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
-+	if (!nfs_server_capable(inode, NFS_CAP_PACLS))
- 		goto out;
- 
- 	/* We are doing this here, because XDR marshalling can only
-@@ -350,7 +350,7 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 		case -EPROTONOSUPPORT:
- 			dprintk("NFS_V3_ACL SETACL RPC not supported"
- 					"(will not retry)\n");
--			server->caps &= ~NFS_CAP_ACLS;
-+			server->caps &= ~NFS_CAP_PACLS;
- 		case -ENOTSUPP:
- 			status = -EOPNOTSUPP;
- 	}
+-/* inode.c */
+-extern ssize_t nfs4_getxattr(struct dentry *, const char *, void *, size_t);
+-extern int nfs4_setxattr(struct dentry *, const char *, const void *, size_t, int);
+-extern ssize_t nfs4_listxattr(struct dentry *, char *, size_t);
+-
+-
+ /* nfs4proc.c */
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct rpc_cred *);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index eb93426..2c71885 100644
+index 6917311..fa60261 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1999,7 +1999,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 	if (status == 0) {
- 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
- 		if (res.attr_bitmask[0] & FATTR4_WORD0_ACL)
--			server->caps |= NFS_CAP_ACLS;
-+			server->caps |= NFS_CAP_V4ACLS;
- 		if (res.has_links != 0)
- 			server->caps |= NFS_CAP_HARDLINKS;
- 		if (res.has_symlinks != 0)
-@@ -3077,7 +3077,7 @@ int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
+@@ -49,6 +49,7 @@
+ #include <linux/mount.h>
+ #include <linux/module.h>
+ #include <linux/sunrpc/bc_xprt.h>
++#include <linux/xattr.h>
  
- static inline int nfs4_server_supports_acls(struct nfs_server *server)
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+@@ -4172,42 +4173,37 @@ out:
+ 
+ #define XATTR_NAME_NFSV4_ACL "system.nfs4_acl"
+ 
+-int nfs4_setxattr(struct dentry *dentry, const char *key, const void *buf,
+-		size_t buflen, int flags)
++static int nfs4_xattr_set_nfs4_acl(struct inode *inode, const char *key,
++			const void *buf, size_t buflen, int flags)
  {
--	return (server->caps & NFS_CAP_ACLS)
-+	return (server->caps & NFS_CAP_V4ACLS)
- 		&& (server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
- 		&& (server->acl_bitmask & ACL4_SUPPORT_DENY_ACL);
+-	struct inode *inode = dentry->d_inode;
+-
+-	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+-		return -EOPNOTSUPP;
++	if (strcmp(key, "") != 0)
++		return -EINVAL;
+ 
+ 	return nfs4_proc_set_acl(inode, buf, buflen);
  }
+ 
+-/* The getxattr man page suggests returning -ENODATA for unknown attributes,
+- * and that's what we'll do for e.g. user attributes that haven't been set.
+- * But we'll follow ext2/ext3's lead by returning -EOPNOTSUPP for unsupported
+- * attributes in kernel-managed attribute namespaces. */
+-ssize_t nfs4_getxattr(struct dentry *dentry, const char *key, void *buf,
+-		size_t buflen)
++static int nfs4_xattr_get_nfs4_acl(struct inode *inode, const char *key,
++				void *buf, size_t buflen)
+ {
+-	struct inode *inode = dentry->d_inode;
+-
+-	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
+-		return -EOPNOTSUPP;
++	if (strcmp(key, "") != 0)
++		return -EINVAL;
+ 
+ 	return nfs4_proc_get_acl(inode, buf, buflen);
+ }
+ 
+-ssize_t nfs4_listxattr(struct dentry *dentry, char *buf, size_t buflen)
++static size_t nfs4_xattr_list_nfs4_acl(struct inode *inode, char *list,
++				size_t list_len, const char *name,
++				size_t name_len)
+ {
+ 	size_t len = strlen(XATTR_NAME_NFSV4_ACL) + 1;
+ 
+-	if (!nfs4_server_supports_acls(NFS_SERVER(dentry->d_inode)))
++	if (!nfs4_server_supports_acls(NFS_SERVER(inode)))
+ 		return 0;
+-	if (buf && buflen < len)
++
++	if (list && len <= list_len)
++		memcpy(list, XATTR_NAME_NFSV4_ACL, len);
++	else
+ 		return -ERANGE;
+-	if (buf)
+-		memcpy(buf, XATTR_NAME_NFSV4_ACL, len);
+ 	return len;
+ }
+ 
+@@ -4988,9 +4984,10 @@ static const struct inode_operations nfs4_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.getxattr	= nfs4_getxattr,
+-	.setxattr	= nfs4_setxattr,
+-	.listxattr	= nfs4_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.listxattr	= generic_listxattr,
++	.removexattr	= generic_removexattr,
+ };
+ 
+ const struct nfs_rpc_ops nfs_v4_clientops = {
+@@ -5032,6 +5029,18 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.close_context  = nfs4_close_context,
+ };
+ 
++struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
++	.prefix	= XATTR_NAME_NFSV4_ACL,
++	.list	= nfs4_xattr_list_nfs4_acl,
++	.get	= nfs4_xattr_get_nfs4_acl,
++	.set	= nfs4_xattr_set_nfs4_acl,
++};
++
++struct xattr_handler *nfs4_xattr_handlers[] = {
++	&nfs4_xattr_nfs4_acl_handler,
++	NULL
++};
++
+ /*
+  * Local variables:
+  *  c-basic-offset: 8
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2f2a5bd..abe9251 100644
+index 0b4cbdc..2f2a5bd 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -2317,7 +2317,7 @@ static void nfs4_fill_super(struct super_block *sb)
+@@ -242,6 +242,7 @@ static int nfs_xdev_get_sb(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *raw_data, struct vfsmount *mnt);
+ static void nfs_kill_super(struct super_block *);
+ static int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
++extern struct xattr_handler *nfs4_xattr_handlers[];
  
- static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
- {
--	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3);
-+	args->flags &= ~(NFS_MOUNT_NONLM|NFS_CAP_V4ACLS|NFS_MOUNT_VER3);
+ static struct file_system_type nfs_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -2299,6 +2300,7 @@ static void nfs4_clone_super(struct super_block *sb,
+ 	sb->s_maxbytes = old_sb->s_maxbytes;
+ 	sb->s_time_gran = 1;
+ 	sb->s_op = old_sb->s_op;
++	sb->s_xattr  = old_sb->s_xattr;
+  	nfs_initialise_sb(sb);
  }
  
- /*
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 19fe15d..2837ce3 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -165,9 +165,9 @@ struct nfs_server {
- #define NFS_CAP_READDIRPLUS	(1U << 0)
- #define NFS_CAP_HARDLINKS	(1U << 1)
- #define NFS_CAP_SYMLINKS	(1U << 2)
--#define NFS_CAP_ACLS		(1U << 3)
-+#define NFS_CAP_PACLS		(1U << 3)
- #define NFS_CAP_ATOMIC_OPEN	(1U << 4)
--
-+#define NFS_CAP_V4ACLS		(1U << 8)
+@@ -2309,6 +2311,7 @@ static void nfs4_fill_super(struct super_block *sb)
+ {
+ 	sb->s_time_gran = 1;
+ 	sb->s_op = &nfs4_sops;
++	sb->s_xattr = nfs4_xattr_handlers;
+ 	nfs_initialise_sb(sb);
+ }
  
- /* maximum number of slots to use */
- #define NFS4_MAX_SLOT_TABLE RPC_MAX_SLOT_TABLE
 -- 
 1.6.4.2.253.g0b1fac
 
