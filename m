@@ -1,53 +1,40 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/1 v2] nfs41: pass state recovery error back to caller
-Date: Wed, 02 Sep 2009 21:06:43 +0300
-Message-ID: <4A9EB433.6070506@panasas.com>
-References: <1251877725-12113-1-git-send-email-bhalevy@panasas.com> <1251913960.26601.41.camel@heimdal.trondhjem.org>
+From: Jason Legate <linux-nfs-17UcKVrmzybR7s880joybQ@public.gmane.org>
+Subject: NFS for millions of files
+Date: Wed, 2 Sep 2009 14:08:41 -0400
+Message-ID: <20090902180841.GF946@proxime.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ip67-152-220-67.z220-152-67.customer.algx.net ([67.152.220.67]:19255
-	"EHLO daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751326AbZIBSGn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 14:06:43 -0400
-In-Reply-To: <1251913960.26601.41.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail.offsitebackups.net ([64.251.15.164]:64326 "EHLO
+	home.slashze.ro" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753326AbZIBSNz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 14:13:55 -0400
+Received: from localhost (unknown [127.0.0.1])
+	by home.slashze.ro (Postfix) with ESMTP id 79A0461D86
+	for <linux-nfs@vger.kernel.org>; Wed,  2 Sep 2009 14:08:43 -0400 (EDT)
+Received: from home.slashze.ro ([127.0.0.1])
+	by localhost (home.slashze.ro [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id x3Y-ZW7h+HkG for <linux-nfs@vger.kernel.org>;
+	Wed,  2 Sep 2009 14:08:41 -0400 (EDT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep. 02, 2009, 20:52 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Wed, 2009-09-02 at 10:48 +0300, Benny Halevy wrote:
->> Currently the error returned from create_session
->> is ignored by nfs4_check_client_ready and mis-translated to
->> -EPROTONOSUPPORT if the client has a session.
->> Record the error returned from create_session to the state manager
->> in cl_cons_state via nfs_mark_client_ready and pass it upstream
->> in nfs4_recover_expired_lease.
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
-> 
-> Firstly, if you're out to save 4 bytes by sharing storage with an object
-> of an entirely different type, then please use an explicit union. Then
-> use a special state NFS4CLNT_LEASE_RECLAIM_FAILED in order to clearly
-> label what is being stored in that union.
-> 
+Hi, I'm trying to setup a server that we can create millions of files on over
+NFS.  When I run our creation benchmark locally  I can get around 3000 files/
+second in the configuration we're using now, but only around 300/second over
+NFS.  It's mounted as this:
 
-OK.  Just to make sure, will it be acceptable by you to add a field
-to struct nfs_client to explicitly keep this status or would you prefer to
-save these 4 bytes using the union and extra state?
+rw,nosuid,nodev,noatime,nodiratime,hard,bg,nointr,rsize=32768,wsize=32768,tcp,
+nfsvers=3,timeo=600,actimeo=600,nocto
 
-> Secondly, I'd say that it is more natural to share storage with the
-> client id, cl_ex_clid, rather than using the lease time. The latter is
-> read via an entirely separate RPC call _after_ you are done establishing
-> the lease and the first session.
-> 
+When I mount the same FS over localhost instead of across the lan, it performs
+about full speed (the 3000/sec).  Anyone have any ideas what I might tweak or
+look at?
 
-I (ab?)used cl_lease_time for this reason as nobody cares about its
-value at the session establishment phase.
+We're going to be testing various XFS/LVM configs to get the best performance,
+but right out the gate, NFS having a 10:1 penalty of performance doesn't bode
+well.
 
-(cl_ex_clid is defined under #ifdef CONFIG_NFS_V4_1
-so using it for this purpose will be cumbersome...)
-
-Benny
+Thanks in advance,
+Jason
