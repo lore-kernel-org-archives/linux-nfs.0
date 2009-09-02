@@ -1,469 +1,342 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH 1/8] nfs4: Posix acl server side side-band protocol support
-Date: Wed,  2 Sep 2009 17:54:21 +0530
-Message-ID: <1251894268-1555-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH 5/8] nfsv4: Add nfsv4 rpc client side support
+Date: Wed,  2 Sep 2009 17:54:25 +0530
+Message-ID: <1251894268-1555-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1251894268-1555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-nfs@vger.kernel.org
 To: trond.myklebust@netapp.com, bfields@fieldses.org,
 	nfsv4@linux-nfs.org, ffilzlnx@us.ibm.com, agruen@suse.de,
 	aneesh.kumar@linux.vnet.ibm.com, sfrench@us.ibm.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:33012 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751422AbZIBMYw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 08:24:52 -0400
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:48545 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751716AbZIBMZI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 08:25:08 -0400
 Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
-	by e28smtp03.in.ibm.com (8.14.3/8.13.1) with ESMTP id n82COpaG026344
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:54:51 +0530
+	by e28smtp01.in.ibm.com (8.14.3/8.13.1) with ESMTP id n82CP8HQ000799
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:55:08 +0530
 Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n82COpew1773806
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:54:51 +0530
+	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id n82CP8du2449576
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 17:55:08 +0530
 Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n82COo2n001176
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 22:24:51 +1000
+	by d28av02.in.ibm.com (8.14.3/8.13.1/NCO v10.0 AVout) with ESMTP id n82CP7p8001582
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Sep 2009 22:25:08 +1000
 In-Reply-To: <1251894268-1555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfsd/Kconfig           |    6 +
- fs/nfsd/Makefile          |    1 +
- fs/nfsd/nfs4pacl.c        |  322 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfssvc.c          |   11 +-
- include/linux/nfsd/nfsd.h |    7 +-
- 5 files changed, 341 insertions(+), 6 deletions(-)
- create mode 100644 fs/nfsd/nfs4pacl.c
+ fs/nfs/client.c         |   32 +++++++----
+ fs/nfs/nfs4xdr.c        |  149 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_xdr.h |   25 ++++++++
+ include/linux/nfsacl.h  |    2 +
+ 4 files changed, 197 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 503b9da..1156ae8 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -79,3 +79,9 @@ config NFSD_V4
- 	  available from http://linux-nfs.org/.
- 
- 	  If unsure, say N.
-+
-+config NFSD_V4_PACL
-+	bool "NFS server support for the NFSv4 POSIX ACL protocol extension"
-+	depends on NFSD_V4
-+	help
-+	  POSIX ACL sideband protocol extension
-diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
-index 9b118ee..05b37bb 100644
---- a/fs/nfsd/Makefile
-+++ b/fs/nfsd/Makefile
-@@ -11,3 +11,4 @@ nfsd-$(CONFIG_NFSD_V3)	+= nfs3proc.o nfs3xdr.o
- nfsd-$(CONFIG_NFSD_V3_ACL) += nfs3acl.o
- nfsd-$(CONFIG_NFSD_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4idmap.o \
- 			   nfs4acl.o nfs4callback.o nfs4recover.o
-+nfsd-$(CONFIG_NFSD_V4_PACL) += nfs4pacl.o
-diff --git a/fs/nfsd/nfs4pacl.c b/fs/nfsd/nfs4pacl.c
-new file mode 100644
-index 0000000..42d706a
---- /dev/null
-+++ b/fs/nfsd/nfs4pacl.c
-@@ -0,0 +1,322 @@
-+/*
-+ *
-+ * Process version NFS4 POSIX ACL requests.
-+ *
-+ */
-+
-+#include <linux/sunrpc/svc.h>
-+#include <linux/nfs4.h>
-+#include <linux/nfsd/nfsd.h>
-+#include <linux/nfsd/cache.h>
-+#include <linux/posix_acl.h>
-+#include <linux/nfsacl.h>
-+
-+
-+#define nfs4svc_decode_voidargs		NULL
-+#define nfs4svc_release_void		NULL
-+struct nfsd4_voidargs {
-+	int dummy;
-+};
-+#define nfsd4_voidres			nfsd4_voidargs
-+
-+struct nfsd4_getpaclargs {
-+	struct svc_fh           fh;
-+	int                     mask;
-+};
-+struct posix_acl;
-+struct nfsd4_setpaclargs {
-+	struct svc_fh           fh;
-+	int                     mask;
-+	struct posix_acl        *acl_access;
-+	struct posix_acl        *acl_default;
-+};
-+struct nfsd4_getpaclres {
-+	__be32                  status;
-+	struct svc_fh           fh;
-+	int                     mask;
-+	struct posix_acl        *acl_access;
-+	struct posix_acl        *acl_default;
-+};
-+struct nfsd4_setpaclres {
-+	__be32 status;
-+	struct svc_fh           fh;
-+};
-+union nfs4paclstore {
-+	struct nfsd4_getpaclargs  gaclargs;
-+	struct nfsd4_setpaclargs  saclargs;
-+	struct nfsd4_getpaclres   gaclres;
-+	struct nfsd4_setpaclres   saclres;
-+};
-+
-+#define NFS4_SVC_ACLXDRSZ    sizeof(union nfs4paclstore)
-+
-+/*
-+ * NULL call.
-+ */
-+static __be32
-+nfsd4_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
-+{
-+	return nfs_ok;
-+}
-+
-+/*
-+ * Get the Access and/or Default ACL of a file.
-+ */
-+static __be32 nfsd4_proc_getpacl(struct svc_rqst *rqstp,
-+		struct nfsd4_getpaclargs *argp, struct nfsd4_getpaclres *resp)
-+{
-+	svc_fh *fh;
-+	struct posix_acl *acl;
-+	__be32 nfserr = 0;
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_NOP);
-+	if (nfserr)
-+		goto err_out;
-+	if (argp->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT)) {
-+		nfserr = nfserr_inval;
-+		goto err_out;
-+	}
-+	resp->mask = argp->mask;
-+
-+	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
-+		acl = nfsd_get_posix_acl(fh, ACL_TYPE_ACCESS);
-+		if (IS_ERR(acl)) {
-+			int err = PTR_ERR(acl);
-+
-+			if (err == -ENODATA || err == -EOPNOTSUPP)
-+				acl = NULL;
-+			else {
-+				nfserr = nfserrno(err);
-+				goto fail;
-+			}
-+		}
-+		if (acl == NULL) {
-+			/* Solaris returns the inode's minimum ACL. */
-+
-+			struct inode *inode = fh->fh_dentry->d_inode;
-+			acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
-+		}
-+		resp->acl_access = acl;
-+	}
-+	if (resp->mask & (NFS_DFACL|NFS_DFACLCNT)) {
-+		/* Check how Solaris handles requests for the Default ACL
-+		   of a non-directory! */
-+
-+		acl = nfsd_get_posix_acl(fh, ACL_TYPE_DEFAULT);
-+		if (IS_ERR(acl)) {
-+			int err = PTR_ERR(acl);
-+
-+			if (err == -ENODATA || err == -EOPNOTSUPP)
-+				acl = NULL;
-+			else {
-+				nfserr = nfserrno(err);
-+				goto fail;
-+			}
-+		}
-+		resp->acl_default = acl;
-+	}
-+
-+	/*
-+	 * resp->acl_{access,default} are released in
-+	 * nfs4svc_release_getpacl.
-+	 */
-+	resp->status  = 0;
-+	return 0;
-+
-+fail:
-+	posix_acl_release(resp->acl_access);
-+	posix_acl_release(resp->acl_default);
-+err_out:
-+	resp->status = nfserr;
-+	return nfserr;
-+}
-+
-+/*
-+ * Set the Access and/or Default ACL of a file.
-+ */
-+static __be32 nfsd4_proc_setpacl(struct svc_rqst *rqstp,
-+		struct nfsd4_setpaclargs *argp,
-+		struct nfsd4_setpaclres *resp)
-+{
-+	svc_fh *fh;
-+	__be32 nfserr = 0;
-+
-+	fh = fh_copy(&resp->fh, &argp->fh);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_SATTR);
-+
-+	if (!nfserr) {
-+		nfserr = nfserrno( nfsd_set_posix_acl(
-+			fh, ACL_TYPE_ACCESS, argp->acl_access));
-+	}
-+	if (!nfserr) {
-+		nfserr = nfserrno( nfsd_set_posix_acl(
-+			fh, ACL_TYPE_DEFAULT, argp->acl_default));
-+	}
-+
-+	/* argp->acl_{access,default} may have been allocated in
-+	   nfs4svc_decode_setpaclargs. */
-+	posix_acl_release(argp->acl_access);
-+	posix_acl_release(argp->acl_default);
-+	resp->status = nfserr;
-+	return nfserr;
-+}
-+
-+/*
-+ * XDR decode functions
-+ */
-+__be32 *nfs4svc_decode_fh(__be32 *p, struct svc_fh *fhp)
-+{
-+	unsigned int size;
-+	fh_init(fhp, NFS4_FHSIZE);
-+	size = ntohl(*p++);
-+	if (size > NFS4_FHSIZE)
-+		return NULL;
-+
-+	memcpy(&fhp->fh_handle.fh_base, p, size);
-+	fhp->fh_handle.fh_size = size;
-+	return p + XDR_QUADLEN(size);
-+}
-+static int nfs4svc_decode_getpaclargs(struct svc_rqst *rqstp, __be32 *p,
-+		struct nfsd4_getpaclargs *args)
-+{
-+	p = nfs4svc_decode_fh(p, &args->fh);
-+	if (!p)
-+		return 0;
-+	args->mask = ntohl(*p); p++;
-+
-+	return xdr_argsize_check(rqstp, p);
-+}
-+
-+
-+static int nfs4svc_decode_setpaclargs(struct svc_rqst *rqstp, __be32 *p,
-+		struct nfsd4_setpaclargs *args)
-+{
-+	struct kvec *head = rqstp->rq_arg.head;
-+	unsigned int base;
-+	int n;
-+
-+	p = nfs4svc_decode_fh(p, &args->fh);
-+	if (!p)
-+		return 0;
-+	args->mask = ntohl(*p++);
-+	if (args->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT) ||
-+	    !xdr_argsize_check(rqstp, p))
-+		return 0;
-+
-+	base = (char *)p - (char *)head->iov_base;
-+	n = nfsacl_decode(&rqstp->rq_arg, base, NULL,
-+			  (args->mask & NFS_ACL) ?
-+			  &args->acl_access : NULL);
-+	if (n > 0)
-+		n = nfsacl_decode(&rqstp->rq_arg, base + n, NULL,
-+				  (args->mask & NFS_DFACL) ?
-+				  &args->acl_default : NULL);
-+	return (n > 0);
-+}
-+
-+/*
-+ * XDR encode functions
-+ */
-+extern int nfs4svc_encode_voidres(struct svc_rqst *rqstp,
-+				__be32 *p, void *dummy);
-+
-+/* GETPACL */
-+static int nfs4svc_encode_getpaclres(struct svc_rqst *rqstp, __be32 *p,
-+		struct nfsd4_getpaclres *resp)
-+{
-+	struct dentry *dentry = resp->fh.fh_dentry;
-+
-+	if (resp->status == 0 && dentry && dentry->d_inode) {
-+		struct inode *inode = dentry->d_inode;
-+		struct kvec *head = rqstp->rq_res.head;
-+		unsigned int base;
-+		int n;
-+		int w;
-+
-+		*p++ = htonl(resp->mask);
-+		if (!xdr_ressize_check(rqstp, p))
-+			return 0;
-+		base = (char *)p - (char *)head->iov_base;
-+
-+		rqstp->rq_res.page_len = w = nfsacl_size(
-+			(resp->mask & NFS_ACL)   ? resp->acl_access  : NULL,
-+			(resp->mask & NFS_DFACL) ? resp->acl_default : NULL);
-+		while (w > 0) {
-+			if (!rqstp->rq_respages[rqstp->rq_resused++])
-+				return 0;
-+			w -= PAGE_SIZE;
-+		}
-+
-+		n = nfsacl_encode(&rqstp->rq_res, base, inode,
-+				  resp->acl_access,
-+				  resp->mask & NFS_ACL, 0);
-+		if (n > 0)
-+			n = nfsacl_encode(&rqstp->rq_res, base + n, inode,
-+					  resp->acl_default,
-+					  resp->mask & NFS_DFACL,
-+					  NFS_ACL_DEFAULT);
-+		if (n <= 0)
-+			return 0;
-+	} else
-+		if (!xdr_ressize_check(rqstp, p))
-+			return 0;
-+
-+	return 1;
-+}
-+
-+/* SETPACL */
-+static int nfs4svc_encode_setpaclres(struct svc_rqst *rqstp, __be32 *p,
-+		struct nfsd4_setpaclres *resp)
-+{
-+	return xdr_ressize_check(rqstp, p);
-+}
-+
-+/*
-+ * XDR release functions
-+ */
-+static int nfs4svc_release_getpacl(struct svc_rqst *rqstp, __be32 *p,
-+		struct nfsd4_getpaclres *resp)
-+{
-+	fh_put(&resp->fh);
-+	posix_acl_release(resp->acl_access);
-+	posix_acl_release(resp->acl_default);
-+	return 1;
-+}
-+
-+static int nfs4svc_release_setpacl(struct svc_rqst *rqstp, __be32 *p,
-+			struct nfsd4_setpaclres *resp)
-+{
-+	fh_put(&resp->fh);
-+	return 1;
-+}
-+
-+#define PROC(name, argt, rest, relt, cache, respsize)	\
-+ { (svc_procfunc) nfsd4_proc_##name,		\
-+   (kxdrproc_t) nfs4svc_decode_##argt##args,	\
-+   (kxdrproc_t) nfs4svc_encode_##rest##res,	\
-+   (kxdrproc_t) nfs4svc_release_##relt,		\
-+   sizeof(struct nfsd4_##argt##args),		\
-+   sizeof(struct nfsd4_##rest##res),		\
-+   0,						\
-+   cache,					\
-+   respsize,					\
-+ }
-+
-+#define ST 1		/* status*/
-+#define ACL (1+NFS_ACL_MAX_ENTRIES*3)  /* Access Control List */
-+
-+static struct svc_procedure		nfsd_pacl_procedures4[] = {
-+  PROC(null,	void,		void,		void,	  RC_NOCACHE, ST),
-+  PROC(getpacl,	getpacl,	getpacl,	getpacl,	  RC_NOCACHE, ST+1+2*(1+ACL)),
-+  PROC(setpacl,	setpacl,	setpacl,	setpacl,   RC_NOCACHE, ST),
-+};
-+
-+struct svc_version nfsd_pacl_version4 = {
-+		.vs_vers	= 4,
-+		.vs_nproc	= 3,
-+		.vs_proc	= nfsd_pacl_procedures4,
-+		.vs_dispatch	= nfsd_dispatch,
-+		.vs_xdrsize	= NFS4_SVC_ACLXDRSZ,
-+		.vs_hidden	= 1,
-+};
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 492c79b..e970a60 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -66,11 +66,12 @@ struct timeval			nfssvc_boot;
- DEFINE_MUTEX(nfsd_mutex);
- struct svc_serv 		*nfsd_serv;
- 
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) || defined(CONFIG_NFSD_V4_PACL)
- static struct svc_stat	nfsd_acl_svcstats;
- static struct svc_version *	nfsd_acl_version[] = {
- 	[2] = &nfsd_acl_version2,
- 	[3] = &nfsd_acl_version3,
-+	[4] = &nfsd_pacl_version4,
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ea3a6b7..31f4a0b 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -81,11 +81,15 @@ struct rpc_stat nfs_rpcstat = {
+ 	.program		= &nfs_program
  };
  
- #define NFSD_ACL_MINVERS            2
-@@ -107,7 +108,7 @@ static struct svc_version *	nfsd_version[] = {
- static struct svc_version *nfsd_versions[NFSD_NRVERS];
- 
- struct svc_program		nfsd_program = {
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) || defined(CONFIG_NFSD_V4_PACL)
- 	.pg_next		= &nfsd_acl_program,
- #endif
- 	.pg_prog		= NFS_PROGRAM,		/* program number */
-@@ -129,14 +130,14 @@ int nfsd_vers(int vers, enum vers_op change)
- 	switch(change) {
- 	case NFSD_SET:
- 		nfsd_versions[vers] = nfsd_version[vers];
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) || defined(CONFIG_NFSD_V4_PACL)
- 		if (vers < NFSD_ACL_NRVERS)
- 			nfsd_acl_versions[vers] = nfsd_acl_version[vers];
- #endif
- 		break;
- 	case NFSD_CLEAR:
- 		nfsd_versions[vers] = NULL;
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) || defined(CONFIG_NFSD_V4_PACL)
- 		if (vers < NFSD_ACL_NRVERS)
- 			nfsd_acl_versions[vers] = NULL;
- #endif
-@@ -213,7 +214,7 @@ void nfsd_reset_versions(void)
- 	if (!found_one) {
- 		for (i = NFSD_MINVERS; i < NFSD_NRVERS; i++)
- 			nfsd_program.pg_vers[i] = nfsd_version[i];
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) || defined(CONFIG_NFSD_V4_PACL)
- 		for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++)
- 			nfsd_acl_program.pg_vers[i] =
- 				nfsd_acl_version[i];
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2b49d67..d9263b6 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -133,7 +133,7 @@ __be32		nfsd_permission(struct svc_rqst *, struct svc_export *,
- 				struct dentry *, int);
- int		nfsd_sync_dir(struct dentry *dp);
- 
--#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-+#if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) || defined(CONFIG_NFSD_V4_PACL)
- #ifdef CONFIG_NFSD_V2_ACL
- extern struct svc_version nfsd_acl_version2;
- #else
-@@ -144,6 +144,11 @@ extern struct svc_version nfsd_acl_version3;
- #else
- #define nfsd_acl_version3 NULL
- #endif
-+#ifdef CONFIG_NFSD_V4_PACL
-+extern struct svc_version nfsd_pacl_version4;
-+#else
-+#define nfsd_pacl_version4 NULL
+-
+-#ifdef CONFIG_NFS_V3_ACL
++#if defined(CONFIG_NFS_V3_ACL) || defined(CONFIG_NFS4_FS_POSIX_ACL)
+ static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
+ static struct rpc_version *	nfsacl_version[] = {
++#ifdef CONFIG_NFS_V3_ACL
+ 	[3]			= &nfsacl_version3,
 +#endif
- struct posix_acl *nfsd_get_posix_acl(struct svc_fh *, int);
- int nfsd_set_posix_acl(struct svc_fh *, int, struct posix_acl *);
++#ifdef CONFIG_NFS4_FS_POSIX_ACL
++	[4]			= &nfspacl_version4,
++#endif
+ };
+ 
+ struct rpc_program		nfsacl_program = {
+@@ -670,17 +674,18 @@ static int nfs_start_lockd(struct nfs_server *server)
+ }
+ 
+ /*
+- * Initialise an NFSv3 ACL client connection
++ * Initialise an NFSv3/NFSv4 ACL client connection
+  */
+-#ifdef CONFIG_NFS_V3_ACL
+-static void nfs_init_server_aclclient(struct nfs_server *server)
++#if defined(CONFIG_NFS_V3_ACL) ||  defined(CONFIG_NFS4_FS_POSIX_ACL)
++static void nfs_init_server_aclclient(struct nfs_server *server, int version)
+ {
+-	if (server->nfs_client->rpc_ops->version != 3)
++	if (server->nfs_client->rpc_ops->version != version)
+ 		goto out_noacl;
+ 	if (server->flags & NFS_MOUNT_NOACL)
+ 		goto out_noacl;
+ 
+-	server->client_acl = rpc_bind_new_program(server->client, &nfsacl_program, 3);
++	server->client_acl = rpc_bind_new_program(server->client,
++						&nfsacl_program, version);
+ 	if (IS_ERR(server->client_acl))
+ 		goto out_noacl;
+ 
+@@ -692,7 +697,8 @@ out_noacl:
+ 	server->caps &= ~NFS_CAP_PACLS;
+ }
+ #else
+-static inline void nfs_init_server_aclclient(struct nfs_server *server)
++static inline void nfs_init_server_aclclient(struct nfs_server *server,
++					int version)
+ {
+ 	server->flags &= ~NFS_MOUNT_NOACL;
+ 	server->caps &= ~NFS_CAP_PACLS;
+@@ -843,7 +849,7 @@ static int nfs_init_server(struct nfs_server *server,
+ 
+ 	server->namelen  = data->namlen;
+ 	/* Create a client RPC handle for the NFSv3 ACL management interface */
+-	nfs_init_server_aclclient(server);
++	nfs_init_server_aclclient(server, 3);
+ 	dprintk("<-- nfs_init_server() = 0 [new %p]\n", clp);
+ 	return 0;
+ 
+@@ -1303,7 +1309,10 @@ static int nfs4_init_server(struct nfs_server *server,
+ 	server->port = data->nfs_server.port;
+ 
+ 	error = nfs_init_server_rpcclient(server, &timeparms, data->auth_flavors[0]);
+-
++	if (error < 0)
++		goto error;
++	/* Create a client RPC handle for the NFSv4 ACL management interface */
++	nfs_init_server_aclclient(server, 4);
+ error:
+ 	/* Done */
+ 	dprintk("<-- nfs4_init_server() = %d\n", error);
+@@ -1490,7 +1499,8 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
+ 	if (error < 0)
+ 		goto out_free_server;
+ 	if (!IS_ERR(source->client_acl))
+-		nfs_init_server_aclclient(server);
++		nfs_init_server_aclclient(server,
++					source->nfs_client->rpc_ops->version);
+ 
+ 	/* probe the filesystem info for this server filesystem */
+ 	error = nfs_probe_fsinfo(server, fh, &fattr_fsinfo);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 617273e..eac604e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5502,8 +5502,157 @@ struct rpc_version		nfs_version4 = {
+ 	.procs			= nfs4_procedures
+ };
+ 
++#ifdef CONFIG_NFS4_FS_POSIX_ACL
++
++#define NFS4_fh_sz            (1 + (NFS4_FHSIZE >> 2))
++#define NFS4_getpaclargs_sz   (NFS4_fh_sz + 1)
++#define NFS4_setpaclargs_sz   (NFS4_fh_sz + 1 + XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
++#define NFS4_getpaclres_sz    (1 + 1 + XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
++#define NFS4_setpaclres_sz    (1)
++
++/*
++ * Encode GETACL arguments
++ */
++static inline __be32 *
++nfs4_xdr_encode_fhandle(__be32 *p, const struct nfs_fh *fh)
++{
++	return xdr_encode_array(p, fh->data, fh->size);
++}
++
++static int
++nfs4_xdr_getpaclargs(struct rpc_rqst *req, __be32 *p,
++		    struct nfs4_getpaclargs *args)
++{
++	struct rpc_auth	*auth = req->rq_task->tk_msg.rpc_cred->cr_auth;
++	unsigned int replen;
++
++	p = nfs4_xdr_encode_fhandle(p, args->fh);
++	*p++ = htonl(args->mask);
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++
++	if (args->mask & (NFS_ACL | NFS_DFACL)) {
++		/* Inline the page array */
++		replen = (RPC_REPHDRSIZE + auth->au_rslack +
++			  NFS4_getpaclres_sz) << 2;
++		xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0,
++				 NFSACL_MAXPAGES << PAGE_SHIFT);
++	}
++	return 0;
++}
++
++/*
++ * Encode SETACL arguments
++ */
++static int
++nfs4_xdr_setpaclargs(struct rpc_rqst *req, __be32 *p,
++		struct nfs4_setpaclargs *args)
++{
++	struct xdr_buf *buf = &req->rq_snd_buf;
++	unsigned int base;
++	int err;
++
++	p = nfs4_xdr_encode_fhandle(p, NFS_FH(args->inode));
++	*p++ = htonl(args->mask);
++	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
++	base = req->rq_slen;
++
++	if (args->npages != 0)
++		xdr_encode_pages(buf, args->pages, 0, args->len);
++	else
++		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
++				p + XDR_QUADLEN(args->len));
++
++	err = nfsacl_encode(buf, base, args->inode,
++			    (args->mask & NFS_ACL) ?
++			    args->acl_access : NULL, 1, 0);
++	if (err > 0)
++		err = nfsacl_encode(buf, base + err, args->inode,
++				    (args->mask & NFS_DFACL) ?
++				    args->acl_default : NULL, 1,
++				    NFS_ACL_DEFAULT);
++	return (err > 0) ? 0 : err;
++}
++
++/*
++ * Decode GETACL reply
++ */
++static int
++nfs4_xdr_getpaclres(struct rpc_rqst *req, __be32 *p,
++		   struct nfs4_getpaclres *res)
++{
++	struct xdr_buf *buf = &req->rq_rcv_buf;
++	int status = ntohl(*p++);
++	struct posix_acl **acl;
++	unsigned int *aclcnt;
++	int err, base;
++
++	if (status != 0)
++		return nfs4_stat_to_errno(status);
++	res->mask = ntohl(*p++);
++	if (res->mask & ~(NFS_ACL|NFS_ACLCNT|NFS_DFACL|NFS_DFACLCNT))
++		return -EINVAL;
++	base = (char *)p - (char *)req->rq_rcv_buf.head->iov_base;
++
++	acl = (res->mask & NFS_ACL) ? &res->acl_access : NULL;
++	aclcnt = (res->mask & NFS_ACLCNT) ? &res->acl_access_count : NULL;
++	err = nfsacl_decode(buf, base, aclcnt, acl);
++
++	acl = (res->mask & NFS_DFACL) ? &res->acl_default : NULL;
++	aclcnt = (res->mask & NFS_DFACLCNT) ? &res->acl_default_count : NULL;
++	if (err > 0)
++		err = nfsacl_decode(buf, base + err, aclcnt, acl);
++	return (err > 0) ? 0 : err;
++}
++
++/*
++ * Decode setacl reply.
++ */
++static int
++nfs4_xdr_setpaclres(struct rpc_rqst *req, __be32 *p, void *dummy)
++{
++	int status = ntohl(*p++);
++
++	if (status)
++		return nfs4_stat_to_errno(status);
++	return 0;
++}
++
++static struct rpc_procinfo nfs4_pacl_procedures[] = {
++	[NFSPROC4_CLNT_GETPACL] = {
++		.p_proc = NFSPROC4_CLNT_GETPACL,
++		.p_encode = (kxdrproc_t) nfs4_xdr_getpaclargs,
++		.p_decode = (kxdrproc_t) nfs4_xdr_getpaclres,
++		.p_arglen = NFS4_getpaclargs_sz,
++		.p_replen = NFS4_getpaclres_sz,
++		.p_statidx = NFSPROC4_CLNT_GETPACL,
++		.p_timer = 1,
++		.p_name = "GETPACL",
++	},
++	[NFSPROC4_CLNT_SETPACL] = {
++		.p_proc = NFSPROC4_CLNT_SETPACL,
++		.p_encode = (kxdrproc_t) nfs4_xdr_setpaclargs,
++		.p_decode = (kxdrproc_t) nfs4_xdr_setpaclres,
++		.p_arglen = NFS4_setpaclargs_sz,
++		.p_replen = NFS4_setpaclres_sz,
++		.p_statidx = NFSPROC4_CLNT_SETPACL,
++		.p_timer = 0,
++		.p_name = "SETPACL",
++	},
++};
++
++struct rpc_version		nfspacl_version4 = {
++	.number			= 4,
++	.nrprocs		= sizeof(nfs4_pacl_procedures)/
++				  sizeof(nfs4_pacl_procedures[0]),
++	.procs			= nfs4_pacl_procedures,
++};
++#endif  /* CONFIG_NFS4_FS_POSIX_ACL */
++
+ /*
+  * Local variables:
+  *  c-basic-offset: 8
+  * End:
+  */
++
++/*  LocalWords:  nfs
++ */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 62f63fb..39acac6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -886,6 +886,30 @@ struct nfs4_fs_locations_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
++struct nfs4_getpaclargs {
++	struct nfs_fh		*fh;
++	int			mask;
++	struct page		**pages;
++};
++
++struct nfs4_setpaclargs {
++	struct inode		*inode;
++	int			mask;
++	struct posix_acl	*acl_access;
++	struct posix_acl	*acl_default;
++	size_t			len;
++	unsigned int		npages;
++	struct page		**pages;
++};
++
++struct nfs4_getpaclres {
++	int			mask;
++	unsigned int		acl_access_count;
++	unsigned int		acl_default_count;
++	struct posix_acl	*acl_access;
++	struct posix_acl	*acl_default;
++};
++
+ #endif /* CONFIG_NFS_V4 */
+ 
+ struct nfstime4 {
+@@ -1061,5 +1085,6 @@ extern struct rpc_version	nfs_version4;
+ 
+ extern struct rpc_version	nfsacl_version3;
+ extern struct rpc_program	nfsacl_program;
++extern struct rpc_version	nfspacl_version4;
+ 
  #endif
+diff --git a/include/linux/nfsacl.h b/include/linux/nfsacl.h
+index 43011b6..15ffa58 100644
+--- a/include/linux/nfsacl.h
++++ b/include/linux/nfsacl.h
+@@ -16,6 +16,8 @@
+ #define ACLPROC3_GETACL		1
+ #define ACLPROC3_SETACL		2
+ 
++#define NFSPROC4_CLNT_GETPACL   1
++#define NFSPROC4_CLNT_SETPACL   2
+ 
+ /* Flags for the getacl/setacl mode */
+ #define NFS_ACL			0x0001
 -- 
 1.6.4.2.253.g0b1fac
 
