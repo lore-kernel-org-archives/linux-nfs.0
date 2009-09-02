@@ -1,64 +1,74 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Wed, 2 Sep 2009 14:27:39 -0400
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Message-ID: <20090902182739.GC17884@fieldses.org>
-References: <1251894268-1555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<20090902164243.GA17126@fieldses.org>
-	<20090902174957.GA10701@skywalker.linux.vnet.ibm.com>
-In-Reply-To: <20090902174957.GA10701@skywalker.linux.vnet.ibm.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@netapp.com, nfsv4@linux-nfs.org,
-        sfrench@us.ibm.com, agruen@suse.de
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.offsitebackups.net ([64.251.15.164]:64877 "EHLO
+	home.slashze.ro" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753311AbZIBSzq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 14:55:46 -0400
+Date: Wed, 2 Sep 2009 15:00:31 -0400
+From: Jason Legate <jlegate@proxime.net>
+To: Aaron Wiebe <epiphani@gmail.com>
+Cc: Jason Legate <linux-nfs@proxime.net>, linux-nfs@vger.kernel.org
+Subject: Re: NFS for millions of files
+Message-ID: <20090902190031.GG946@proxime.net>
+References: <20090902180841.GF946@proxime.net> <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Wed, Sep 02, 2009 at 11:19:57PM +0530, Aneesh Kumar K.V wrote:
-> On Wed, Sep 02, 2009 at 12:42:43PM -0400, J. Bruce Fields wrote:
-> > On Wed, Sep 02, 2009 at 05:54:20PM +0530, Aneesh Kumar K.V wrote:
-> > > This patch series implement POSIX ACL support for NFSV4 clients
-> > > using sideband protocol.
-> > 
-> > What motivates this?  Who exactly wants this and why?   What would be
-> > the advantages compared to other options, such as:
-> > 
-> > 	- native v4 support in filesystems, or
-> > 	- improved client-side acl tools that provided a user interface
-> > 	  for v4 acls closer to that for v3 acls, or
-> > 	- a v4.x extension to add support to the main protocol?
-> > 
-> > Is there interest in implementing this on any OS other than linux, or
-> > would this be a linux-only extension for the forseeable future?
-> > 
-> > What sideband protocol exactly?  If it's exactly the same protocol as
-> > the one used with v3, there must be some slight mismatches: e.g. v4
-> > filehandles are allowed to be longer.  How do you deal with these?
-> > 
+It is said that Aaron Wiebe, at Wed, 02 Sep 2009, wrote:
+
+> Have a look at these two kernel params - I'd recommend bumping them up
+> to 128 (they're 16 by default).
 > 
-> It is similar to v3 with longer file handle.  Also it doesn't support
-> attribute update as a part of the acl calls. I does zap cache and expect
-> the client to do another call to get the updated attribute values. Primary
-> motivation is to avoid side band rpc having to handle compound request so
-> that we can keep it simple.
+> sunrpc.tcp_slot_table_entries
+> sunrpc.udp_slot_table_entries
 
-That doesn't really answer the "motivation" question.
+They were indeed 16.  I've bumped them up to 128, and am trying again.
 
-If you really want to do this, writing the code is the easy part.  The
-really (extremely) hard part is coming up with good answers to the
-questions above.
+> Keep in mind that this could also be a serialization issue.  If you've
+> got a 3ms latency, and you're performing all of your opens serially,
+> you aren't going to get much faster.  If you do the work in parallel
+> you'll likely get substantially better numbers.
 
---b.
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+It appears it might just be serialization.  When I run more than 1 thread,
+I can consistently get between 200 and 250 files/thread/second (up to about
+10 threads, at which point I get diminishing returns per thread).
+
+I seem to be doing a lot of GETATTR's, and it appears to be driven by perl.
+We are open()'ing files with +>filename and apparently perl will do an fstat
+for us after opening.  Thanks for the tip, Aaron!
+
+-j
+
+> -Aaron
+> 
+> 
+> On Wed, Sep 2, 2009 at 2:08 PM, Jason Legate<linux-nfs@proxime.net> wrote:
+> > Hi, I'm trying to setup a server that we can create millions of files on over
+> > NFS. ?When I run our creation benchmark locally ?I can get around 3000 files/
+> > second in the configuration we're using now, but only around 300/second over
+> > NFS. ?It's mounted as this:
+> >
+> > rw,nosuid,nodev,noatime,nodiratime,hard,bg,nointr,rsize=32768,wsize=32768,tcp,
+> > nfsvers=3,timeo=600,actimeo=600,nocto
+> >
+> > When I mount the same FS over localhost instead of across the lan, it performs
+> > about full speed (the 3000/sec). ?Anyone have any ideas what I might tweak or
+> > look at?
+> >
+> > We're going to be testing various XFS/LVM configs to get the best performance,
+> > but right out the gate, NFS having a 10:1 penalty of performance doesn't bode
+> > well.
+> >
+> > Thanks in advance,
+> > Jason
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at ?http://vger.kernel.org/majordomo-info.html
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
