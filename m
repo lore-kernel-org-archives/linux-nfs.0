@@ -1,48 +1,46 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/4] Support "-t nfs,vers=4" mounts in the kernel [take
- 4]
-Date: Wed, 02 Sep 2009 11:10:38 -0400
-Message-ID: <4A9E8AEE.5040906@RedHat.com>
-References: <20090902135032.3550.23170.stgit@matisse.1015granger.net>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 1/1 v2] nfs41: pass state recovery error back to caller
+Date: Wed, 02 Sep 2009 13:52:40 -0400
+Message-ID: <1251913960.26601.41.camel@heimdal.trondhjem.org>
+References: <1251877725-12113-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: trond.myklebust@fys.uio.no, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28851 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40316 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751384AbZIBPS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Sep 2009 11:18:27 -0400
-In-Reply-To: <20090902135032.3550.23170.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1753153AbZIBRxd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Sep 2009 13:53:33 -0400
+In-Reply-To: <1251877725-12113-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/02/2009 09:51 AM, Chuck Lever wrote:
-> Sorry for the repost.  After reading the patch descriptions again, I
-> thought they needed some clarification.
+On Wed, 2009-09-02 at 10:48 +0300, Benny Halevy wrote:
+> Currently the error returned from create_session
+> is ignored by nfs4_check_client_ready and mis-translated to
+> -EPROTONOSUPPORT if the client has a session.
+> Record the error returned from create_session to the state manager
+> in cl_cons_state via nfs_mark_client_ready and pass it upstream
+> in nfs4_recover_expired_lease.
 > 
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 > ---
-> 
-> Chuck Lever (4):
->       NFS: Allow the "nfs" file system type to support NFSv4
->       NFS: Move details of nfs4_get_sb() to a helper
->       NFS: Refactor NFSv4 text-based mount option validation
->       NFS: Mount option parser should detect missing "port="
-> 
-> 
->  fs/nfs/internal.h    |   10 ++
->  fs/nfs/super.c       |  202 +++++++++++++++++++++++++++++++++-----------------
->  include/linux/nfs4.h |    1 
->  3 files changed, 144 insertions(+), 69 deletions(-)
-> 
-Trond, is there an ETA on this? 
 
-</rant>
-We've turned a simple 2 patch solution into a 4 user
-space patches and 4 kernel patches to simply added a
-short cut to mount the nfs4 file system... If this not
-an example of over engineering then I don't know what its...
-</rant>
+Firstly, if you're out to save 4 bytes by sharing storage with an object
+of an entirely different type, then please use an explicit union. Then
+use a special state NFS4CLNT_LEASE_RECLAIM_FAILED in order to clearly
+label what is being stored in that union.
 
+Secondly, I'd say that it is more natural to share storage with the
+client id, cl_ex_clid, rather than using the lease time. The latter is
+read via an entirely separate RPC call _after_ you are done establishing
+the lease and the first session.
 
-steved.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
