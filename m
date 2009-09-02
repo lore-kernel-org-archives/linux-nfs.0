@@ -1,63 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from neil.brown.name ([220.233.11.133]:39102 "EHLO neil.brown.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752492AbZIYMl5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Sep 2009 08:41:57 -0400
-Received: from brown by neil.brown.name with local (Exim 4.69)
-	(envelope-from <nfs-bounces@lists.sourceforge.net>)
-	id 1MrA7Z-0004JB-Ew
-	for linux-nfs@vger.kernel.org; Fri, 25 Sep 2009 22:41:57 +1000
-Date: Fri, 25 Sep 2009 08:24:37 -0400
-To: name <nfs@lists.sourceforge.net>
-From: Mary Belle <bjag41@gmail.com>
-Message-ID: <a0691eb94720066ada36e4638af4bfbb@72.52.199.37>
-Subject: [NFS] [MMS] Confirmation needed
-Reply-To: Mary Belle <bjag41@gmail.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-bw0-f219.google.com ([209.85.218.219]:38496 "EHLO
+	mail-bw0-f219.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753296AbZIBTKq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 15:10:46 -0400
+Received: by bwz19 with SMTP id 19so961318bwz.37
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Sep 2009 12:10:47 -0700 (PDT)
+In-Reply-To: <1f808b4a0909021135m49c2e60o6b305babcaed295c@mail.gmail.com>
+References: <20090902180841.GF946@proxime.net>
+	 <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
+	 <1f808b4a0909021135m49c2e60o6b305babcaed295c@mail.gmail.com>
+Date: Wed, 2 Sep 2009 15:10:47 -0400
+Message-ID: <e7ca40f70909021210p646e2635l267ac6def345b4c7@mail.gmail.com>
+Subject: Re: NFS for millions of files
+From: Aaron Wiebe <epiphani@gmail.com>
+To: Peter Chacko <peterchacko35@gmail.com>
+Cc: Jason Legate <linux-nfs@proxime.net>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Sep 2, 2009 at 2:35 PM, Peter Chacko<peterchacko35@gmail.com> wrote:
+> Is this NFSv4 ?  rsize and wsize > MTU size will cause fragmentation
+> and performance issues...Try making it around 4k .....You used  1<<15
+> fir your example. if you don't do writes....then this shouldn't
+> matter...and of course NFS is  Nfs is not For Scalability.. You cannot
+> get the same performance on NFS as you would get for localFS...May be
+> you can try 10g....still there is TCP/UDP/IP stack overhead.....
 
+Fragmentation won't hurt you that much, and it doesn't even apply to
+opens, since those operations are significantly smaller.  The
+performance gains higher in the stack from a larger rsize/wsize
+generally outweigh the savings in frame size optimization.  Of course,
+jumbo frames are always a good idea, but again, doesn't help here.
 
-Hello-
-
-It's Mary Belle, I found a very powerful Money Making System,
-it's never been done before, it's user friendly and fully automated.
-
-People who joined 2-3 months ago, are now making the kind of income
-they really deserve by just working 2-3 hrs a day.
-
-If you are interested please copy and paste in your web browser
-or click the link below to opt in for the mailing list.
-
-http://go2-link.com/otour?id=6105789&hash=6d0231c6f48c5d32a542575666223644
-
-
-Sincerely,
-
-Mary Belle
-reojoy45@gmail.com
-1328 E Canon Perdido St Santa Barbara
-California 93101 USA
-
-Removal link:
-Click Below to unsubscribed
-http://go2-link.com/ounsub?id=6105789&hash=6d0231c6f48c5d32a542575666223644
-
-
-
-------------------------------------------------------------------------------
-Come build with us! The BlackBerry&reg; Developer Conference in SF, CA
-is the only developer event you need to attend this year. Jumpstart your
-developing skills, take BlackBerry mobile applications to market and stay 
-ahead of the curve. Join us from November 9&#45;12, 2009. Register now&#33;
-http://p.sf.net/sfu/devconf
-_______________________________________________
-NFS maillist  -  NFS@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/nfs
-_______________________________________________
-Please note that nfs@lists.sourceforge.net is being discontinued.
-Please subscribe to linux-nfs@vger.kernel.org instead.
-    http://vger.kernel.org/vger-lists.html#linux-nfs
-
+-Aaron
