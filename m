@@ -1,67 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:50776 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934445AbZIDXDK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Sep 2009 19:03:10 -0400
-Message-ID: <4AA19CA9.5090702@candelatech.com>
-Date: Fri, 04 Sep 2009 16:03:05 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Reading NFS file without copying to user-space?
-References: <4AA16F25.6050700@candelatech.com>	 <1252096543.2402.4.camel@heimdal.trondhjem.org>	 <4AA17D62.9020404@candelatech.com>	 <74C14419-4D21-4EC2-B01A-EAC04B354F06@fys.uio.no>	 <4AA18D32.50507@candelatech.com>	 <1252102506.5274.7.camel@heimdal.trondhjem.org>	 <4AA19520.70305@candelatech.com> <1252104582.5274.16.camel@heimdal.trondhjem.org>
-In-Reply-To: <1252104582.5274.16.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-pz0-f204.google.com ([209.85.222.204]:36627 "EHLO
+	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752987AbZIBSfp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 14:35:45 -0400
+Received: by pzk42 with SMTP id 42so939959pzk.19
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Sep 2009 11:35:47 -0700 (PDT)
+In-Reply-To: <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
+References: <20090902180841.GF946@proxime.net>
+	 <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
+Date: Thu, 3 Sep 2009 00:05:46 +0530
+Message-ID: <1f808b4a0909021135m49c2e60o6b305babcaed295c@mail.gmail.com>
+Subject: Re: NFS for millions of files
+From: Peter Chacko <peterchacko35@gmail.com>
+To: Aaron Wiebe <epiphani@gmail.com>
+Cc: Jason Legate <linux-nfs@proxime.net>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/04/2009 03:49 PM, Trond Myklebust wrote:
-> On Fri, 2009-09-04 at 15:30 -0700, Ben Greear wrote:
+Is this NFSv4 ?  rsize and wsize > MTU size will cause fragmentation
+and performance issues...Try making it around 4k .....You used  1<<15
+fir your example. if you don't do writes....then this shouldn't
+matter...and of course NFS is  Nfs is not For Scalability.. You cannot
+get the same performance on NFS as you would get for localFS...May be
+you can try 10g....still there is TCP/UDP/IP stack overhead.....
 
->> I was thinking that the kernel might take the data received in the skb's from
->> the file-server and send it to /dev/null, ie basically just immediately
->> discard the received data.  If it could do that, it would be a zero-copy
->> read:  The only copying would be the NIC DMA'ing the packet into the skb.
+
+On Wed, Sep 2, 2009 at 11:49 PM, Aaron Wiebe<epiphani@gmail.com> wrote:
+> Have a look at these two kernel params - I'd recommend bumping them up
+> to 128 (they're 16 by default).
 >
-> No... The RPC layer will always copy the data from the socket into a
-> buffer. If you are using O_DIRECT reads, then that buffer will be the
-> same one that you supplied in userland (the kernel just uses page table
-> trickery to map those pages into the kernel address space). If you are
-> using any other type of read (even if it is being piped using sendfile()
-> or splice()) then it will copy that data into the NFS filesystem's page
-> cache.
-
-Ok, I think I understand that better now.  Seems like one could have
-RPC use a list of skbs as data store instead of copying the data,
-but perhaps that would be optimizing for something no one would
-ever really want in the real world.
-
-
->> Out of curiosity, any one have any benchmarks for NFS on 10G hardware?
+> sunrpc.tcp_slot_table_entries
+> sunrpc.udp_slot_table_entries
 >
-> I'm not aware of any public figures. I'd be interested to hear how you
-> max out.
+> Keep in mind that this could also be a serialization issue.  If you've
+> got a 3ms latency, and you're performing all of your opens serially,
+> you aren't going to get much faster.  If you do the work in parallel
+> you'll likely get substantially better numbers.
 >
->> Based on testing against another vendor's nfs server, it seems that the client
->> is loosing packets (the server shows tcp retransmits).
+> -Aaron
 >
-> Is the data being lost at the client, the switch or the server? Assuming
-> that you are using a managed switch, then a look at its statistics
-> should be able to answer that question.
+>
+> On Wed, Sep 2, 2009 at 2:08 PM, Jason Legate<linux-nfs@proxime.net> wrote:
+>> Hi, I'm trying to setup a server that we can create millions of files on over
+>> NFS.  When I run our creation benchmark locally  I can get around 3000 files/
+>> second in the configuration we're using now, but only around 300/second over
+>> NFS.  It's mounted as this:
+>>
+>> rw,nosuid,nodev,noatime,nodiratime,hard,bg,nointr,rsize=32768,wsize=32768,tcp,
+>> nfsvers=3,timeo=600,actimeo=600,nocto
+>>
+>> When I mount the same FS over localhost instead of across the lan, it performs
+>> about full speed (the 3000/sec).  Anyone have any ideas what I might tweak or
+>> look at?
+>>
+>> We're going to be testing various XFS/LVM configs to get the best performance,
+>> but right out the gate, NFS having a 10:1 penalty of performance doesn't bode
+>> well.
+>>
+>> Thanks in advance,
+>> Jason
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-At least for my local linux - linux tests, I'm using just fibre optic
-cable to connect them, so definitely not a switch problem here.  No obvious errors
-reported by either NIC, and pktgen tests show that they can easily sustain
-9Gbps.  I need to do more detailed looking at the netstat
-counters and such.  I suspect I may have too-small network buffers.  I last
-set up their defaults when a 1GB RAM system was 'high end', and now
-I'm using 12GB systems :P
 
-Thanks,
-Ben
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Best regards,
+Peter Chacko
 
+NetDiox computing systems,
+Network storage & OS  training and research.
+Bangalore, India.
+www.netdiox.com
+080 2664 0708
