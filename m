@@ -1,47 +1,64 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:59547 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752101AbZIXSGj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Sep 2009 14:06:39 -0400
-Message-ID: <4ABBB531.2050103@candelatech.com>
-Date: Thu, 24 Sep 2009 11:06:41 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Some NFS performance numbers for 2.6.31
-References: <4AB96F06.5040703@candelatech.com> <4ABAB3C5.9060808@candelatech.com> <20090924175439.GA10385@fieldses.org>
-In-Reply-To: <20090924175439.GA10385@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Wed, 2 Sep 2009 14:27:39 -0400
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
+Message-ID: <20090902182739.GC17884@fieldses.org>
+References: <1251894268-1555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	<20090902164243.GA17126@fieldses.org>
+	<20090902174957.GA10701@skywalker.linux.vnet.ibm.com>
+In-Reply-To: <20090902174957.GA10701@skywalker.linux.vnet.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@netapp.com, nfsv4@linux-nfs.org,
+        sfrench@us.ibm.com, agruen@suse.de
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/24/2009 10:54 AM, J. Bruce Fields wrote:
-> On Wed, Sep 23, 2009 at 04:48:21PM -0700, Ben Greear wrote:
->> On 09/22/2009 05:42 PM, Ben Greear wrote:
->>> I'm running some performance tests on NFSv3 on a slightly hacked 2.6.31
->>> kernel.
->>
->> I realized that LRO on the NICs was disabled because I had enabled ip-forwarding.
->>
->> I re-enabled that, and now can get about 18Gbps read rates (on the wires), using MTU
->> 1500.
->
-> On a 10 gig nic?  (Oh, sorry, I see: 2 10 gig nics.  OK!)  Just out of
-> curiosity: have you done any testing with real drives?  Which kernel is
-> this?
+On Wed, Sep 02, 2009 at 11:19:57PM +0530, Aneesh Kumar K.V wrote:
+> On Wed, Sep 02, 2009 at 12:42:43PM -0400, J. Bruce Fields wrote:
+> > On Wed, Sep 02, 2009 at 05:54:20PM +0530, Aneesh Kumar K.V wrote:
+> > > This patch series implement POSIX ACL support for NFSV4 clients
+> > > using sideband protocol.
+> > 
+> > What motivates this?  Who exactly wants this and why?   What would be
+> > the advantages compared to other options, such as:
+> > 
+> > 	- native v4 support in filesystems, or
+> > 	- improved client-side acl tools that provided a user interface
+> > 	  for v4 acls closer to that for v3 acls, or
+> > 	- a v4.x extension to add support to the main protocol?
+> > 
+> > Is there interest in implementing this on any OS other than linux, or
+> > would this be a linux-only extension for the forseeable future?
+> > 
+> > What sideband protocol exactly?  If it's exactly the same protocol as
+> > the one used with v3, there must be some slight mismatches: e.g. v4
+> > filehandles are allowed to be longer.  How do you deal with these?
+> > 
+> 
+> It is similar to v3 with longer file handle.  Also it doesn't support
+> attribute update as a part of the acl calls. I does zap cache and expect
+> the client to do another call to get the updated attribute values. Primary
+> motivation is to avoid side band rpc having to handle compound request so
+> that we can keep it simple.
 
-I see similar performance on real drivers, but I haven't done any tests with *only*
-using physical drivers.  Since that would exercise only a single mount, I'm
-not sure if it would scale as well as using multiple mounts with multiple
-virtual interfaces, but that is just pure hypothesizing on my part.
+That doesn't really answer the "motivation" question.
 
-This is 2.6.31 kernel, 64-bit, most kernel related debugging disabled.
+If you really want to do this, writing the code is the easy part.  The
+really (extremely) hard part is coming up with good answers to the
+questions above.
 
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+--b.
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
