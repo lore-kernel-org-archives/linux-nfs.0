@@ -1,110 +1,112 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: lock dependency warning
-Date: Tue, 01 Sep 2009 18:58:47 -0400
-Message-ID: <1251845927.8463.30.camel@heimdal.trondhjem.org>
-References: <20090901221155.GA30521@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFSD: Fix a bug in the NFSv4 'supported attrs' mandatory
+	attribute
+Date: Tue, 1 Sep 2009 20:58:45 -0400
+Message-ID: <20090902005844.GB582@fieldses.org>
+References: <1251746171.25048.1.camel@heimdal.trondhjem.org> <20090831220324.GC5718@fieldses.org> <1251757313.25048.12.camel@heimdal.trondhjem.org> <1251757790.25048.16.camel@heimdal.trondhjem.org> <20090831224901.GA7466@fieldses.org> <1251761165.25048.19.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62501 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37410 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755335AbZIAW7s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Sep 2009 18:59:48 -0400
-In-Reply-To: <20090901221155.GA30521@fieldses.org>
+	id S1755460AbZIBA6m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Sep 2009 20:58:42 -0400
+In-Reply-To: <1251761165.25048.19.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2009-09-01 at 18:11 -0400, J. Bruce Fields wrote:
-> I'm getting this, running connectathon tests on a kernel which includes your
-> latest nfs-for-2.6.32.  Is it new?
+On Mon, Aug 31, 2009 at 07:26:05PM -0400, Trond Myklebust wrote:
+> Actually, if you read Dave and Carl's 2005 internet draft, you'll see
+> that they recommend you bump the change attribute whenever fs_locations
+> changes.
+> IOW: clients would only be allowed to cache the fs_locations information
+> while the change attribute remains constant.
 
+Which works for pure referrals since the object itself doesn't really
+have any other use for the change attribute.  OK, makes sense.
 
-No, you are by far the first one to report this. It dates back a couple
-of years at least. The last time it surfaced was here:
+> > To me it would seem permissible, however, for a client to interpret a
+> > GETATTR reply which turns off a requested FS_LOCATIONS bit as stating a
+> > permanent lack of support for the attribute, rather than necessarily as
+> > stating that the list of fs_locations is currently zero-length.  So why
+> > not make it unambiguous and return a zero-length list?
+> 
+> That would work.
 
-    http://thread.gmane.org/gmane.linux.nfs/27406
+Eh, just one more check's slightly incorrect (well, anyway pynfs
+complains we're returning the wrong error), so the following is what I'm
+commiting--thanks.
 
-Peter Zijlstra has a fix, but it hasn't yet been merged into mainline:
+--b.
 
-    http://programming.kicks-ass.net/kernel-patches/mmap-vs-nfs/
+commit a06b1261bdb580b35967d0e055d1ab131b332254
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Aug 31 15:16:11 2009 -0400
 
-Cheers
-  Trond
+    NFSD: Fix a bug in the NFSv4 'supported attrs' mandatory attribute
+    
+    The fact that the filesystem doesn't currently list any alternate
+    locations does _not_ imply that the fs_locations attribute should be
+    marked as "unsupported".
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 
-> --b.
-> 
-> =======================================================
-> [ INFO: possible circular locking dependency detected ]
-> 2.6.31-rc8-00162-gf7fcab6 #321
-> -------------------------------------------------------
-> bigfile/3763 is trying to acquire lock:
->  (&sb->s_type->i_mutex_key#11){+.+.+.}, at: [<c11cd5f2>] nfs_revalidate_mapping+0x92/0xd0
-> 
-> but task is already holding lock:
->  (&mm->mmap_sem){++++++}, at: [<c100640e>] sys_mmap2+0x8e/0xc0
-> 
-> which lock already depends on the new lock.
-> 
-> 
-> the existing dependency chain (in reverse order) is:
-> 
-> -> #1 (&mm->mmap_sem){++++++}:
->        [<c1051476>] __lock_acquire+0xef6/0x1710
->        [<c1051d5f>] lock_acquire+0xcf/0xf0
->        [<c10951cb>] might_fault+0x8b/0xb0
->        [<c13cb5f7>] copy_to_user+0x37/0x70
->        [<c10bb059>] filldir64+0xa9/0xf0
->        [<c11c7f82>] nfs_do_filldir+0x1e2/0x5b0
->        [<c11c871e>] nfs_readdir+0x3ce/0x910
->        [<c10bb2f5>] vfs_readdir+0x95/0xb0
->        [<c10bb37e>] sys_getdents64+0x6e/0xc0
->        [<c1002f49>] syscall_call+0x7/0xb
->        [<ffffffff>] 0xffffffff
-> 
-> -> #0 (&sb->s_type->i_mutex_key#11){+.+.+.}:
->        [<c10515ab>] __lock_acquire+0x102b/0x1710
->        [<c1051d5f>] lock_acquire+0xcf/0xf0
->        [<c17292ed>] mutex_lock_nested+0x5d/0x310
->        [<c11cd5f2>] nfs_revalidate_mapping+0x92/0xd0
->        [<c11ca5c8>] nfs_file_mmap+0x48/0x80
->        [<c109c436>] mmap_region+0x2b6/0x430
->        [<c109c7fd>] do_mmap_pgoff+0x24d/0x350
->        [<c100642d>] sys_mmap2+0xad/0xc0
->        [<c1002f49>] syscall_call+0x7/0xb
->        [<ffffffff>] 0xffffffff
-> 
-> other info that might help us debug this:
-> 
-> 1 lock held by bigfile/3763:
->  #0:  (&mm->mmap_sem){++++++}, at: [<c100640e>] sys_mmap2+0x8e/0xc0
-> 
-> stack backtrace:
-> Pid: 3763, comm: bigfile Not tainted 2.6.31-rc8-00162-gf7fcab6 #321
-> Call Trace:
->  [<c1727d29>] ? printk+0x1d/0x1f
->  [<c10500ac>] print_circular_bug_tail+0xbc/0xc0
->  [<c10515ab>] __lock_acquire+0x102b/0x1710
->  [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
->  [<c1051d5f>] lock_acquire+0xcf/0xf0
->  [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
->  [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
->  [<c17292ed>] mutex_lock_nested+0x5d/0x310
->  [<c11cd5f2>] ? nfs_revalidate_mapping+0x92/0xd0
->  [<c11f26f0>] ? nfs_have_delegation+0x0/0xc0
->  [<c11cd5f2>] nfs_revalidate_mapping+0x92/0xd0
->  [<c11ca5c8>] nfs_file_mmap+0x48/0x80
->  [<c109c436>] mmap_region+0x2b6/0x430
->  [<c109c7fd>] do_mmap_pgoff+0x24d/0x350
->  [<c100642d>] sys_mmap2+0xad/0xc0
->  [<c1002f49>] syscall_call+0x7/0xb
-> 
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 6fde431..bebc0c2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -68,7 +68,6 @@ check_attr_support(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		   u32 *bmval, u32 *writable)
+ {
+ 	struct dentry *dentry = cstate->current_fh.fh_dentry;
+-	struct svc_export *exp = cstate->current_fh.fh_export;
+ 
+ 	/*
+ 	 * Check about attributes are supported by the NFSv4 server or not.
+@@ -80,17 +79,13 @@ check_attr_support(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_attrnotsupp;
+ 
+ 	/*
+-	 * Check FATTR4_WORD0_ACL & FATTR4_WORD0_FS_LOCATIONS can be supported
++	 * Check FATTR4_WORD0_ACL can be supported
+ 	 * in current environment or not.
+ 	 */
+ 	if (bmval[0] & FATTR4_WORD0_ACL) {
+ 		if (!IS_POSIXACL(dentry->d_inode))
+ 			return nfserr_attrnotsupp;
+ 	}
+-	if (bmval[0] & FATTR4_WORD0_FS_LOCATIONS) {
+-		if (exp->ex_fslocs.locations == NULL)
+-			return nfserr_attrnotsupp;
+-	}
+ 
+ 	/*
+ 	 * According to spec, read-only attributes return ERR_INVAL.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index fdf632b..20c5e3d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1793,11 +1793,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 				goto out_nfserr;
+ 		}
+ 	}
+-	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+-		if (exp->ex_fslocs.locations == NULL) {
+-			bmval0 &= ~FATTR4_WORD0_FS_LOCATIONS;
+-		}
+-	}
+ 	if ((buflen -= 16) < 0)
+ 		goto out_resource;
+ 
+@@ -1825,8 +1820,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 			goto out_resource;
+ 		if (!aclsupport)
+ 			word0 &= ~FATTR4_WORD0_ACL;
+-		if (!exp->ex_fslocs.locations)
+-			word0 &= ~FATTR4_WORD0_FS_LOCATIONS;
+ 		if (!word2) {
+ 			WRITE32(2);
+ 			WRITE32(word0);
