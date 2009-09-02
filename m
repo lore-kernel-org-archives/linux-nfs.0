@@ -1,61 +1,95 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 1/1 v2] nfs41: pass state recovery error back to caller
-Date: Wed, 02 Sep 2009 15:09:34 -0400
-Message-ID: <1251918574.26601.48.camel@heimdal.trondhjem.org>
-References: <1251877725-12113-1-git-send-email-bhalevy@panasas.com>
-	 <1251913960.26601.41.camel@heimdal.trondhjem.org>
-	 <4A9EB433.6070506@panasas.com>
+Subject: NFSd: Fix filehandle leaks in exp_pseudoroot() and nfsd4_path()
+Date: Wed, 02 Sep 2009 16:48:32 -0400
+Message-ID: <1251924512.26601.59.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39831 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3470 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753209AbZIBTK2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Sep 2009 15:10:28 -0400
-In-Reply-To: <4A9EB433.6070506@panasas.com>
+	id S1752604AbZIBUsq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Sep 2009 16:48:46 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2009-09-02 at 21:06 +0300, Benny Halevy wrote:
-> On Sep. 02, 2009, 20:52 +0300, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2009-09-02 at 10:48 +0300, Benny Halevy wrote:
-> >> Currently the error returned from create_session
-> >> is ignored by nfs4_check_client_ready and mis-translated to
-> >> -EPROTONOSUPPORT if the client has a session.
-> >> Record the error returned from create_session to the state manager
-> >> in cl_cons_state via nfs_mark_client_ready and pass it upstream
-> >> in nfs4_recover_expired_lease.
-> >>
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> ---
-> > 
-> > Firstly, if you're out to save 4 bytes by sharing storage with an object
-> > of an entirely different type, then please use an explicit union. Then
-> > use a special state NFS4CLNT_LEASE_RECLAIM_FAILED in order to clearly
-> > label what is being stored in that union.
-> > 
-> 
-> OK.  Just to make sure, will it be acceptable by you to add a field
-> to struct nfs_client to explicitly keep this status or would you prefer to
-> save these 4 bytes using the union and extra state?
+NFSd: Fix filehandle leaks in exp_pseudoroot() and nfsd4_path()
 
-For one thing, I'd like to know why we need to pass these errors up the
-stack. Normally, the state manager is supposed to be able to handle all
-recovery issues.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-> > Secondly, I'd say that it is more natural to share storage with the
-> > client id, cl_ex_clid, rather than using the lease time. The latter is
-> > read via an entirely separate RPC call _after_ you are done establishing
-> > the lease and the first session.
-> > 
-> 
-> I (ab?)used cl_lease_time for this reason as nobody cares about its
-> value at the session establishment phase.
+All the callers of exp_pseudoroot() appear to expect the filehandle it
+returns to be uninitialised if the function returns an error. This is not
+the case if the error is due to the check_nfsd_access() call failing.
 
-Are you able to guarantee that no other threads can race with the lease
-time RPC call?
+In addition, nfsd4_path() currently allocates a temporary filehandle, then
+fails to free it before the function exits.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+Note: this patch is still untested, but I can't see how it can
+be wrong. The leak is obvious by code inspection, and doing an extra
+fh_put() in the error case is obviously harmless.
+
+Also note: there is apparently a similar leak in fh_compose() itself,
+but I didn't want to spend the entire afternoon fixing all occurrences
+of this bug...
+
+ fs/nfsd/export.c  |    2 ++
+ fs/nfsd/nfs4xdr.c |   15 ++++++++++-----
+ 2 files changed, 12 insertions(+), 5 deletions(-)
+
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index d946264..984a5eb 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1341,6 +1341,8 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 	if (rv)
+ 		goto out;
+ 	rv = check_nfsd_access(exp, rqstp);
++	if (rv)
++		fh_put(fhp);
+ out:
+ 	exp_put(exp);
+ 	return rv;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1b07183..370c27e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1599,7 +1599,8 @@ static __be32 nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
+ static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *stat)
+ {
+ 	struct svc_fh tmp_fh;
+-	char *path, *rootpath;
++	char *path = NULL, *rootpath;
++	size_t rootlen;
+ 
+ 	fh_init(&tmp_fh, NFS4_FHSIZE);
+ 	*stat = exp_pseudoroot(rqstp, &tmp_fh);
+@@ -1609,14 +1610,18 @@ static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *
+ 
+ 	path = exp->ex_pathname;
+ 
+-	if (strncmp(path, rootpath, strlen(rootpath))) {
++	rootlen = strlen(rootpath);
++	if (strncmp(path, rootpath, rootlen)) {
+ 		dprintk("nfsd: fs_locations failed;"
+ 			"%s is not contained in %s\n", path, rootpath);
+ 		*stat = nfserr_notsupp;
+-		return NULL;
++		path = NULL;
++		goto out;
+ 	}
+-
+-	return path + strlen(rootpath);
++	path += rootlen;
++out:
++	fh_put(&tmp_fh);
++	return path;
+ }
+ 
+ /*
 
 -- 
 Trond Myklebust
