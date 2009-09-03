@@ -1,19 +1,18 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Date: Thu, 03 Sep 2009 10:09:28 -0400
-Message-ID: <1251986968.18338.36.camel@heimdal.trondhjem.org>
+Date: Thu, 3 Sep 2009 10:16:37 -0400
+Message-ID: <20090903141637.GC4566@fieldses.org>
 References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>
 	<20090902202206.GJ17884@fieldses.org>
 	<524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
-	<4A9F6027.9050807@s3group.cz>
-	<524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: ffilzlnx@linux.vnet.ibm.com, linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	jra@samba.org, agruen@suse.de
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	ffilzlnx@linux.vnet.ibm.com, jra@samba.org, agruen@suse.de
 To: Steve French <smfrench@gmail.com>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com>
+In-Reply-To: <524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -25,34 +24,57 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-09-03 at 08:54 -0500, Steve French wrote:
-> If someone were able to convince the linux-fsdevel community to change
-> fs/posix_acls.c
-> (or add an fs/cifs_acls.c) to handle NFSv4/CIFS/NTFS ACL evaluation, and add
-> support to store these richer ACLs on disk for the future (e.g. for
-> btrfs), that would be
-> great - but with no local file system in kernel which can store NFSv4 ACLs and
-> no code to evaluate these ACLs in the VFS and with a NACK from fsdevel when
-> others tried this a few years ago (even after MacOS and others moved to the
-> CIFS/NTFS ACLs model)
-
-I don't think the fs-devel community is a problem. We have native
-support for plenty of these filesystems which use alternative acl
-models, so a very good case can be made for their inclusion.
-
-The main problem has been finding developers with an interest, and with
-enough time on their hands. Andreas Gruenbacher started working on NFSv4
-acls, but due to his time constraints, his work ended up getting farmed
-out to a developer in SGI, and consequently ended up in a black hole
-somewhere...
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+T24gV2VkLCBTZXAgMDIsIDIwMDkgYXQgMDM6NTM6MTdQTSAtMDUwMCwgU3RldmUgRnJlbmNoIHdy
+b3RlOgo+IE9uIFdlZCwgU2VwIDIsIDIwMDkgYXQgMzoyMiBQTSwgSi4gQnJ1Y2UgRmllbGRzPGJm
+aWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToKPiA+IE9uIFdlZCwgU2VwIDAyLCAyMDA5IGF0IDAx
+OjU2OjIzUE0gLTA1MDAsIFN0ZXZlIEZyZW5jaCB3cm90ZToKPiA+PiAiSi4gQnJ1Y2UgRmllbGRz
+IiA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlIG9uIDA5LzAyLzIwMDkgMTE6NDI6NDMgQU06
+Cj4gPj4gPiBPbiBXZWQsIFNlcCAwMiwgMjAwOSBhdCAwNTo1NDoyMFBNICswNTMwLCBBbmVlc2gg
+S3VtYXIgSy5WIHdyb3RlOgo+ID4+ID4gPiBUaGlzIHBhdGNoIHNlcmllcyBpbXBsZW1lbnQgUE9T
+SVggQUNMIHN1cHBvcnQgZm9yIE5GU1Y0IGNsaWVudHMKPiA+PiA+ID4gdXNpbmcgc2lkZWJhbmQg
+cHJvdG9jb2wuCj4gPj4gPgo+ID4+ID4gV2hhdCBtb3RpdmF0ZXMgdGhpcz8gwqBXaG8gZXhhY3Rs
+eSB3YW50cyB0aGlzIGFuZCB3aHk/IMKgIFdoYXQgd291bGQgYmUKPiA+PiA+IHRoZSBhZHZhbnRh
+Z2VzIGNvbXBhcmVkIHRvIG90aGVyIG9wdGlvbnMsIHN1Y2ggYXM6Cj4gPj4KPiA+PiBUaGUgbW9z
+dCBvYnZpb3VzIHJlYXNvbiB0byBtZSBpcyB0aGF0IHNlY3VyaXR5IGluZm9ybWF0aW9uCj4gPj4g
+Y2FuIGJlIGxvc3QgYXMgdGhlIEFDTCB3aGljaCB3YXMgZ2VuZXJhdGVkIGJ5IExpbnV4IHV0aWxp
+dGllcyBhbmQKPiA+PiBjbGllbnQgYWNsIHRvb2xzICh3aGljaCBnZXQvc2V0IHBvc2l4IGFjbHMp
+IGFyZSBjb252ZXJ0ZWQgYnkgdGhlIExpbnV4IG5mcwo+ID4+IHY0IGNsaWVudAo+ID4KPiA+IFRo
+ZSBrZXJuZWwgdjQgY2xpZW50IGRvZXNuJ3QgZG8gdGhhdC0taXQgcGFzc2VzIHVudG91Y2hlZCB2
+NCBhY2xzIHRvIGFuZAo+ID4gZnJvbSB1c2Vyc3BhY2UuCj4gCj4gMSkgUGFzc2luZyB1bnRvdWNo
+ZWQgQUNMcyBkb2Vzbid0IGhlbHAgYXMgdGhlc2UgQUNMcyB3b3VsZCBiZSBORlMgc3BlY2lmaWMs
+Cj4gYW5kIHVucmVjb2duaXplZCBieSB0aGUgZGVmYXVsdCBMaW51eCB0b29scyBhbmQgR1VJcy4g
+IEFjY2VzcyBDb250cm9sIG9uCj4gZmlsZSBhbmQgZGlyZWN0b3J5IG9iamVjdHMgaXMgYSAic3lz
+dGVtIGZlYXR1cmUiIC0gcGFydCBvZiB0aGUgT1MgKGl0IGhhcyBiZWVuCj4gdGhhdCB3YXkgc2lu
+Y2UgYXQgbGVhc3QgT1MvMiwgbm90IGp1c3QgV2luZG93cywgTWFjT1MsIFNvbGFyaXMgZXRjLi4p
+Cj4gIFlvdSB3b3VsZG4ndCByZXF1aXJlIHRoZSB1c2VyIHRvIHVzZSBkaWZmZXJlbnQgdG9vbHMg
+Zm9yIG1vZGlmeWluZyBBQ0xzIGluCj4gV2luZG93cywgTWFjT1MgYW5kIHJlcXVpcmUgdGhhdCB0
+aGUgdXNlciB0cnkgdG8gZmlndXJlIG91dCB0aGUgQUNMIG1vZGVsIG9mCj4gdGhlIHVuZGVybHlp
+bmcgZmlsZSBzeXN0ZW0gYmVmb3JlIGRlY2lkaW5nIHdoYXQgdG9vbCB0byB1c2UgYW5kIHdoYXQg
+cGVybWlzc2lvbnMKPiB0byBhcHBseSB0byBoaXMgaG9tZSBkaXJlY3RvcnkKPiAyKSBJZiBQT1NJ
+WC0+TkZTdjQgY2xpZW50IG1hcHBpbmcgaXMgZG9uZSAoYXMgaGFkIGJlZW4gc3VnZ2VzdGVkIElJ
+UkMKPiBieSBvdGhlcnMgaW4gdGhlIHBhc3QpIGF0IGxlYXN0IHlvdSBsb3NlIGxlc3MgZGF0YSAo
+TkZTdjQgQUNMcyBhcmUgInJpY2hlciIKPiBpbiBmdW5jdGlvbiB0aGFuIFBPU0lYIEFDTHMgLSBz
+byBhdCBsZWFzdCB3aXRoIHRoZSBQT1NJWC0+TkZTdjQtPlBPU0lYCj4gY2FzZSB5b3UgYXJlIGxp
+bWl0aW5nIHRoZSB1c2VyIHRvIHRoZSBzdWJzZXQgb2YgY2hvaWNlcyB3aGljaCBhcmUgYWN0dWFs
+bHkKPiBnb2luZyB0byBiZSBhYmxlIHRvIGJlIHN0b3JlZCwgbm8gaW5oZXJpdGVuY2UgZXRjLikK
+CklmIEkgcmVtZW1iZXIgY29ycmVjdGx5LCBMaW51eCdzIHBvc2l4IGFjbCBzdXBwb3J0IHdhcyBh
+ZGRlZCBhdCBhYm91dAp0aGUgc2FtZSB0aW1lIHRoZSBORlN2NC4wIHNwZWMgd2FzIGJlaW5nIHdy
+aXR0ZW4tLUkgc2VlbSB0byByZWNhbGwgdGhlCmZpcnN0IEFDTCBwYXRjaGVzIGJlaW5nIG1lcmdl
+ZCBhcm91bmQgdGhlIHNhbWUgdGltZSBhcyB0aGUgZmlyc3QgTkZTdjQKcGF0Y2hlcz8gIEF0IHdo
+aWNoIHBvaW50IGl0IHdhcyByZWFzb25hYmxlIHRvIHNheSB0aGF0IG5vYm9keSByZWFsbHkKdXNl
+ZCAiUE9TSVgiIEFDTHMsIGFuZCBub2JvZHkgY291bGQgZXZlciBldmVuIGFncmVlIG9uIGEgc2lu
+Z2xlIHN0YW5kYXJkCmZvciB0aGVtLCBzbyB3aHkgYm90aGVyPwoKU28gYW5vdGhlciB3YXkgdG8g
+c3RhdGUgeW91ciBhcmd1bWVudCAjMSB3b3VsZCBiZSB0byBzYXkgdGhhdCBhIGxvdCBoYXMKY2hh
+bmdlZCBzaW5jZSB0aGVuOiBMaW51eCBhZG1pbmlzdHJhdG9ycyBoYXZlIGdvdHRlbiB1c2VkIHRv
+IEFDTHMsIHYyL3YzCmFuZCBDSUZTIGhhdmUgZ2FpbmVkIHN1cHBvcnQgZm9yIHRoZW0sIGV0Yy4s
+IHNvIHRoZXkncmUgZXN0YWJsaXNoZWQgbm93CmFuZCB3ZSBoYXZlIHRvIHN1cHBvcnQgdGhlbS4K
+CkkgdGhpbmsgdGhhdCBhcmd1bWVudCB3b3VsZCBuZWVkIHRvIGJlIG1hZGUgdG8gbmZzdjRAaWV0
+Zi5vcmcsIGFuZCB3aWxsCm5lZWQgc29tZSBldmlkZW5jZSB0byBiYWNrIGl0IHVwLiAgKFVuZm9y
+dHVuYXRlbHksIEkgc2VlIHRoYXQgb24gbXkgdmVyeQpyZWNlbnQgKFVidW50dSA5LjEwIGFscGhh
+KSBsaW51eCBkZXNrdG9wLCBhY2wgc3VwcG9ydCBvbiB0aGUgZmlsZXN5c3RlbQppc24ndCB0dXJu
+ZWQgb24sIGFuZCBuYXV0aWx1cyBkb2Vzbid0IGFwcGVhciB0byBrbm93IGhvdyB0byBlZGl0IGFj
+bHMuCk9uIHRoZSBvdGhlciBoYW5kLCBldmVyeXRoaW5nJ3MgY29tcGlsZWQgYWdhaW5zdCBsaWJh
+Y2wsIGFuZCB0aGUKY29tbWFuZGxpbmUgdXRpbGl0aWVzIGFwcGVhciB0byBoYXZlIGJlZW4gaW5z
+dGFsbGVkIGJ5IGRlZmF1bHQuKQoKLS1iLgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fXwpORlN2NCBtYWlsaW5nIGxpc3QKTkZTdjRAbGludXgtbmZzLm9yZwpo
+dHRwOi8vbGludXgtbmZzLm9yZy9jZ2ktYmluL21haWxtYW4vbGlzdGluZm8vbmZzdjQ=
