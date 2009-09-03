@@ -1,139 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.121]:60226 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752781AbZI0Qu2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Sep 2009 12:50:28 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org, linux-cifs-client@lists.samba.org
-Subject: [RFC PATCH 0/9] sunrpc: teach the SUNRPC layer how to speak SMB
-Date: Sun, 27 Sep 2009 12:50:21 -0400
-Message-Id: <1254070230-13125-1-git-send-email-jlayton@redhat.com>
+Received: from newpeace.netnation.com ([204.174.223.7]:59469 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756135AbZICUFx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Sep 2009 16:05:53 -0400
+Date: Thu, 3 Sep 2009 13:05:50 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Yohan <ytordjman@corp.free.fr>, Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Neil Brown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
+        mikevs@xs4all.net
+Subject: Re: VM issue causing high CPU loads
+Message-ID: <20090903200550.GB5257@hostway.ca>
+References: <4A92A25A.4050608@yohan.staff.proxad.net> <20090824162155.ce323f08.akpm@linux-foundation.org> <4A96463E.5080002@corp.free.fr> <4A9C34F8.2010307@corp.free.fr> <20090902170642.f4381c1d.akpm@linux-foundation.org> <1251982884.18338.9.camel@heimdal.trondhjem.org> <4A9FC719.9020104@corp.free.fr> <1251986526.18338.29.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1251986526.18338.29.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This patchset is still preliminary and is just an RFC...
+On Thu, Sep 03, 2009 at 10:02:06AM -0400, Trond Myklebust wrote:
 
-First, some background. When I was at Connectathon this year, Trond
-mentioned an interesting idea to me. He said (paraphrasing):
+> OK, so 16 hash buckets are likely to be filled with ~10^6 entries each.
+> I can see that might be a performance issue...
 
-"Why doesn't CIFS just use the RPC layer for transport? It's very
-efficient at shoveling bits out onto the wire. You'd just need to
-abstract out the XDR/RPC specific bits."
+We have a similar setup with millions of UIDs over NFS (currently NFSv3).
+I _wish_ there were a way to use NFSv4 without having to use name-mapped
+UIDs and GIDs, since our user and group names come from MySQL anyway, and
+are guaranteed to be consistent across machines.
 
-The idea has been floating around in the back of my head until recently,
-when I decided to give it a go. This patchset represents a first, rough
-draft at a patchset to do this. There's also a proof of concept module
-that demonstrates that it works as expected.
+Why on earth does NFSv4 force the use of names?
 
-The patchset is still very rough. Reconnect behavior is still very
-"RPC-ish", for instance. There are doubtless other changes that will
-need to be made before I had anything merge-worthy.
+I was considering hacking the code to stick IDs in there anyway, but I
+haven't looked at the feasibility of this.  I suspect this would break or
+complicate other things, but the current NFSv4 design just seems like an
+incredible waste for this case.
 
-At this point, I'm just interested in feedback on the general approach.
-Should I continue to pursue this or is it a non-starter for some
-reason?
-
-The next step here, obviously is to start building a fs on top of it.
-I'd particularly be interested in using this as a foundation of a
-new smb2fs.
-
-I've also got this patchset up on my public git tree:
-
-    http://git.samba.org/?p=jlayton/cifs.git;a=summary
-
-Here are some questions I anticipate on this, and their answers:
-
-------------------------------------------------------------------------
-Q: Are you insane? Why would you attempt to do this?
-
-A: Maybe...but in the last couple of years, I've spent a substantial
-amount of time working on the CIFS code. Much of that time has been
-spent fixing bugs. Many of those bugs exist in the low-level transport
-code which has been hacked on, kludged around and hand tweaked to
-where it is today. Unfortunately that's made it a very hard to work
-on mess. This drives away potential developers.
-
-CIFS in particular is also designed around synchronous ops, which
-seriously limits throughput. Retrofitting it for asynchronous operation
-will be adding even more kludges. The sunrpc code is already
-fundamentally asynchronous.
-------------------------------------------------------------------------
-Q: Okay, what's the benefit of hooking it up to sunrpc rather than
-building a new transport layer (or fixing the transport in the other two
-filesystems)?
-
-A: Using sunrpc allows us to share a lot of the rpc scheduler code with
-sunrpc. At a high level, NFS/RPC and SMB aren't really very different.
-Sure, they have different formats, and one is big endian on the wire and
-the other isn't...still there are significant similarities.
-
-We also get access to the great upcall mechanisms that sunrpc has, and
-the possibility to share code like the gssapi upcalls. The sunrpc layer
-has a credential and authentication management framework that we can
-build on to make a truly multiuser CIFS/SMB filesystem.
-
-I've heard it claimed before that Linux's sunrpc layer is
-over-engineered, but in this case that works in our favor...
-------------------------------------------------------------------------
-Q: can we hook up cifs or smbfs to use this as a transport?
-
-A: Not trivially. CIFS in particular is not designed with each call
-having discrete encode and decode functions. They're sort of mashed
-together. smbfs might be possible...I'm a little less familiar with it,
-but it does have a transport layer that more closely resembles the
-sunrpc one. Still though, it'd take significant work to make that
-happen. I'm not opposed to the idea however.
-
-In the end though, I think we'll probably need to design something new
-to sit on top of this. We will probably be able to borrow code and
-concepts from the other filesystems however.
-------------------------------------------------------------------------
-Q: could we use this as a transport layer for a smb2fs ?
-
-A: Yes, I think so. This particular prototype is build around SMB1, but
-SMB2 could be supported with only minor modifications. One of the
-reasons for sending this patchset now before I've built a filesystem on
-top of it is because I know that SMB2 work is in progress. I'd like to
-see it based around a more asynchronous transport model, or at least
-built with cleaner layering so that we can eventually bolt on a different
-transport layer if we so choose.
-
-Jeff Layton (9):
-  sunrpc: abstract out encoding function at rpc_clnt level
-  sunrpc: move check for too small reply size into rpc_verify_header
-  sunrpc: abstract our call decoding routine
-  sunrpc: move rpc_xdr_buf_init to clnt.h
-  sunrpc: make call_bind non-static
-  sunrpc: add new SMB transport class for sunrpc
-  sunrpc: add encoding and decoding routines for SMB
-  sunrpc: add Kconfig option for CONFIG_SUNRPC_SMB
-  smbtest: simple module for testing SMB/RPC code
-
- fs/Makefile                    |    2 +
- fs/lockd/host.c                |    4 +
- fs/lockd/mon.c                 |    4 +
- fs/nfs/client.c                |    4 +
- fs/nfs/mount_clnt.c            |    4 +
- fs/nfsd/nfs4callback.c         |    4 +
- fs/smbtest/Makefile            |    1 +
- fs/smbtest/smbtest.c           |  204 +++++
- include/linux/sunrpc/clnt.h    |   24 +-
- include/linux/sunrpc/smb.h     |   42 +
- include/linux/sunrpc/xprtsmb.h |   59 ++
- net/sunrpc/Kconfig             |   11 +
- net/sunrpc/Makefile            |    1 +
- net/sunrpc/clnt.c              |   98 ++-
- net/sunrpc/rpcb_clnt.c         |    8 +
- net/sunrpc/smb.c               |  120 +++
- net/sunrpc/sunrpc_syms.c       |    3 +
- net/sunrpc/xprtsmb.c           | 1723 ++++++++++++++++++++++++++++++++++++++++
- 18 files changed, 2272 insertions(+), 44 deletions(-)
- create mode 100644 fs/smbtest/Makefile
- create mode 100644 fs/smbtest/smbtest.c
- create mode 100644 include/linux/sunrpc/smb.h
- create mode 100644 include/linux/sunrpc/xprtsmb.h
- create mode 100644 net/sunrpc/smb.c
- create mode 100644 net/sunrpc/xprtsmb.c
-
+Simon-
