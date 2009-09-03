@@ -1,20 +1,19 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
+From: Steve French <smfrench@gmail.com>
 Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Date: Thu, 3 Sep 2009 09:55:16 -0400
-Message-ID: <20090903135516.GB4566@fieldses.org>
-References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>
-	<20090902202206.GJ17884@fieldses.org>
-	<524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
-	<4A9F6027.9050807@s3group.cz>
-	<524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com>
+Date: Thu, 3 Sep 2009 08:57:21 -0500
+Message-ID: <524f69650909030657y31e71c19v874772d67d1650df@mail.gmail.com>
+References: <4A9F6027.9050807@s3group.cz>
+	<7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
+	<524f69650909030636g68706b09wa50ad91984407878@mail.gmail.com>
+	<20090903135404.GA4566@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	ffilzlnx@linux.vnet.ibm.com, jra@samba.org, agruen@suse.de
-To: Steve French <smfrench@gmail.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Cc: linux-nfs@vger.kernel.org, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	nfsv4@linux-nfs.org, ffilzlnx@linux.vnet.ibm.com, jra@samba.org,
+	agruen@suse.de
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <nfsv4-bounces@linux-nfs.org>
-In-Reply-To: <524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com>
+In-Reply-To: <20090903135404.GA4566@fieldses.org>
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
 	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
@@ -26,41 +25,40 @@ Sender: nfsv4-bounces@linux-nfs.org
 Errors-To: nfsv4-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 03, 2009 at 08:54:06AM -0500, Steve French wrote:
-> On Thu, Sep 3, 2009 at 1:20 AM, Ondrej Valousek<webserv@s3group.cz> wrote:
-> >
-> >> 2) If POSIX->NFSv4 client mapping is done (as had been suggested IIRC
-> >> by others in the past) at least you lose less data (NFSv4 ACLs are
-> >> "richer"
-> >> in function than POSIX ACLs - so at least with the POSIX->NFSv4->POSIX
-> >> case you are limiting the user to the subset of choices which are actually
-> >> going to be able to be stored, no inheritence etc.)
-> >>
-> > I must say that I do not understand the motivation either. POSIX is not even
-> > a standard and should be replaced with NFSv4 acls.
-> > Even now ext3/ext4 support NFSv4 acls (ok. patch is needed but the patch is
-> > there already).
-> 
-> If someone were able to convince the linux-fsdevel community to change
-> fs/posix_acls.c
-> (or add an fs/cifs_acls.c) to handle NFSv4/CIFS/NTFS ACL evaluation, and add
-> support to store these richer ACLs on disk for the future (e.g. for
-> btrfs), that would be
-> great - but with no local file system in kernel which can store NFSv4 ACLs and
-> no code to evaluate these ACLs in the VFS and with a NACK from fsdevel when
+On Thu, Sep 3, 2009 at 8:54 AM, J. Bruce Fields<bfields@fieldses.org> wrote:
+> On Thu, Sep 03, 2009 at 08:36:44AM -0500, Steve French wrote:
+>> On Thu, Sep 3, 2009 at 2:46 AM, Muntz, Daniel<Dan.Muntz@netapp.com> wrot=
+e:
+>> > I've always thought of NFS as a means for making physical file systems
+>> > available across a network. =A0NFS having its own ACLs doesn't fit this
+>> > model. =A0E.g., "NFS ACLs" will never be integrated into NTFS. =A0Howe=
+ver, I
+>> > could imagine NFS ACLs solving the general problem if they were to form
+>> > a superset of the ACLs of exportable physical file systems
+>>
+>> NFSv4 ACLs are similar to CIFS/NTFS ACLS. NFSv4 ACLs were
+>> originally based on CIFS/NTFS ACLs so it would be reasonable
+>> to export them from NTFS (although the SIDs (UUIDs) have to be mapped
+>> to local Linux UIDs - we have user space code that can do this in Samba).
+>
+> On the server side, you'd actually have to map between SIDs and NFSv4
+> names (strings of the form user@domain).
 
-I don't remember that--do you have a pointer?
+Yes ... We could add mapping directly from user@domain to SID - Samba
+has something similar,
+but we already have both mapping to/from unix uid.
 
---b.
+1) SID (UUID, a number) to/from a local Unix UID (which winbind and
+others have today)
+and
+2) user@domain mapped to/from local Unix UID (which NFS user space
+code has today)
 
-> others tried this a few years ago (even after MacOS and others moved to the
-> CIFS/NTFS ACLs model)
-> 
-> > If the decision was up to me, I would forbid any nfsv4 acls if the server
-> > can not store them properly (i.e. without any conversion)
-> 
-> That would be a pretty dramatic loss of function - being forced to use
-> the primitive
-> mode bits to protect files if the server were Linux - and could be
-> worseeven NetApp does
-> some ACL mapping
+If
+
+
+-- =
+
+Thanks,
+
+Steve
