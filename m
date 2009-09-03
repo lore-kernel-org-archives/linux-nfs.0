@@ -1,44 +1,57 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Date: Thu, 3 Sep 2009 12:08:45 -0400
-Message-ID: <20090903160845.GF8270@fieldses.org>
-References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com> <20090902202206.GJ17884@fieldses.org> <524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com> <4A9F6027.9050807@s3group.cz> <524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com> <20090903135516.GB4566@fieldses.org> <524f69650909030835s41e78436p4b67594cf91de639@mail.gmail.com>
+Subject: Re: NFS for millions of files
+Date: Thu, 3 Sep 2009 15:05:27 -0400
+Message-ID: <20090903190527.GB10670@fieldses.org>
+References: <20090902180841.GF946@proxime.net> <4A9EBB6B.4040009@redhat.com> <20090903181535.GA10670@fieldses.org> <4AA00CFF.6010304@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ondrej Valousek <webserv-K2D8ygZuxnnrBKCeMvbIDA@public.gmane.org>, linux-nfs@vger.kernel.org,
-	nfsv4@linux-nfs.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-	ffilzlnx@linux.vnet.ibm.com, jra@samba.org, agruen@suse.de
-To: Steve French <smfrench@gmail.com>
+Cc: Peter Staubach <staubach@redhat.com>,
+	Jason Legate <linux-nfs-17UcKVrmzybR7s880joybQ@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36042 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47100 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754566AbZICQIp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2009 12:08:45 -0400
-In-Reply-To: <524f69650909030835s41e78436p4b67594cf91de639-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1756059AbZICTF0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2009 15:05:26 -0400
+In-Reply-To: <4AA00CFF.6010304@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 03, 2009 at 10:35:35AM -0500, Steve French wrote:
-> On Thu, Sep 3, 2009 at 8:55 AM, J. Bruce Fields<bfields@fieldses.org> wrote:
-> > On Thu, Sep 03, 2009 at 08:54:06AM -0500, Steve French wrote:
-> >> if someone were able to convince the linux-fsdevel community to change
-> >> fs/posix_acls.c
-> >> (or add an fs/cifs_acls.c) to handle NFSv4/CIFS/NTFS ACL evaluation, and add
-> >> support to store these richer ACLs on disk for the future (e.g. for
-> >> btrfs), that would be
-> >> great - but with no local file system in kernel which can store NFSv4 ACLs and
-> >> no code to evaluate these ACLs in the VFS and with a NACK from fsdevel when
-> >
-> > I don't remember that--do you have a pointer?
-> 
-> Aneesh mentioned one strongly worded objection (I remember more resistance
-> from others too)
-> 
-> http://kerneltrap.org/mailarchive/linux-fsdevel/2006/6/24/313526
+On Thu, Sep 03, 2009 at 02:37:51PM -0400, Ric Wheeler wrote:
+> On 09/03/2009 02:15 PM, J. Bruce Fields wrote:
+>> On Wed, Sep 02, 2009 at 02:37:31PM -0400, Peter Staubach wrote:
+>>    
+>>> Please keep in mind that the NFS stable storage requirements are
+>>> probably causing a significant slowdown in activities such as this.
+>>>      
+>> My first thought too, but:
+>>
+>>    
+>>> Jason Legate wrote:
+>>>      
+>>>> When I run our creation benchmark locally  I can get around 3000
+>>>> files/ second in the configuration we're using now, but only around
+>>>> 300/second over NFS.  It's mounted as this:
+>>>>        
+>> ...
+>>    
+>>>> When I mount the same FS over localhost instead of across the lan,
+>>>> it performs about full speed (the 3000/sec).
+>>>>        
+>> The localhost NFS mount would be incurring the same sync latency, so all
+>> his latency must be due to network.  (And with those numbers I guess
+>> he's either got lots of disk spindles, or an ssd, or (uh-oh) has the
+>> async option set?)
+>>
+>> --b.
+>>    
+>
+> For small files without doing an fsync per file, getting 3000 files/sec  
+> is not that much. Ext3 can do it with a local s-ata disk. I suspect that  
+> Jason would run much slower if he ran with local fsync()'s enabled  
+> (similar to what NFS servers have to do).
 
-Yes, Christoph's always been vehemently opposed.  I share his distaste
-for NFSv4/NT ACLs, but I agree with Trond that a solid implementation
-with a demonstrated need from CIFS, NFSv4, NTFS, etc., would be likely
-to overcome such objections.
+Yeah, which is why I was suspecting they set "async" on the export.  In
+which case I hope they know what they're doing....
 
 --b.
