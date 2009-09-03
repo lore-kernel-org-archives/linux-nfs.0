@@ -1,64 +1,68 @@
 From: Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: [PATCH][RESEND] tcp: replace hard coded GFP_KERNEL with
-	sk_allocation
-Date: Thu, 3 Sep 2009 15:01:16 +0800
-Message-ID: <20090903070116.GA27444@localhost>
-References: <20090903040407.GA20094@localhost> <20090902.231017.31926895.davem@davemloft.net> <20090902.233225.203837229.davem@davemloft.net>
+Subject: Re: NFS: possible circular locking  i_mutex <> mmap_sem
+Date: Thu, 3 Sep 2009 15:17:26 +0800
+Message-ID: <20090903071726.GA13663@localhost>
+References: <20090618023208.GA28572@localhost> <20090617195251.e648dbb8.akpm@linux-foundation.org> <20090618030238.GA850@localhost> <1245343689.13761.23623.camel@twins>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "herbert@gondor.apana.org.au" <herbert@gondor.apana.org.au>,
-	"acme@ghostprotocols.net" <acme@ghostprotocols.net>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+Cc: Andrew Morton <akpm@linux-foundation.org>,
 	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"netdev@vger.kernel.org" <netdev@vger.kernel.org>
-To: David Miller <davem@davemloft.net>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090902.233225.203837229.davem@davemloft.net>
-Sender: netdev-owner@vger.kernel.org
+	LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@elte.hu>,
+	Nick Piggin <nickpiggin-/E1597aS9LT0CCvOHzKKcA@public.gmane.org>,
+	"Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peter Zijlstra <peterz@infradead.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mga03.intel.com ([143.182.124.21]:63950 "EHLO mga03.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754733AbZICHRd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2009 03:17:33 -0400
+In-Reply-To: <1245343689.13761.23623.camel@twins>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 03, 2009 at 02:32:25PM +0800, David Miller wrote:
-> From: David Miller <davem@davemloft.net>
-> Date: Wed, 02 Sep 2009 23:10:17 -0700 (PDT)
+On Fri, Jun 19, 2009 at 12:48:08AM +0800, Peter Zijlstra wrote:
+> On Thu, 2009-06-18 at 11:02 +0800, Wu Fengguang wrote:
 > 
-> > From: Wu Fengguang <fengguang.wu@intel.com>
-> > Date: Thu, 3 Sep 2009 12:04:07 +0800
+> > > > [ 2638.515865] =======================================================
+> > > > [ 2638.519743] [ INFO: possible circular locking dependency detected ]
+> > > > [ 2638.519743] 2.6.30-rc8-mm1 #307
+> > > > [ 2638.519743] -------------------------------------------------------
+> > > > [ 2638.519743] firefox-bin/3399 is trying to acquire lock:
+> > > > [ 2638.519743]  (&mm->mmap_sem){++++++}, at: [<ffffffff81548471>] do_page_fault+0x301/0x330
+> > > > [ 2638.519743]
+> > > > [ 2638.519743] but task is already holding lock:
+> > > > [ 2638.519743]  (&sb->s_type->i_mutex_key#6){+.+.+.}, at: [<ffffffff810c2bd2>] generic_file_aio_write+0x52/0xd0
+> > > > [ 2638.519743]
+> > > > [ 2638.519743] which lock already depends on the new lock.
+> > > > [ 2638.519743]
+> > > > [ 2638.519743]
+> > > > [ 2638.519743] the existing dependency chain (in reverse order) is:
+> > > > [ 2638.519743]
+> > > > [ 2638.519743] -> #1 (&sb->s_type->i_mutex_key#6){+.+.+.}:
+> > > > [ 2638.519743]        [<ffffffff8107c066>] __lock_acquire+0x12b6/0x1b40
+> > > > [ 2638.519743]        [<ffffffff8107c9d1>] lock_acquire+0xe1/0x120
+> > > > [ 2638.519743]        [<ffffffff8154328e>] mutex_lock_nested+0x5e/0x390
+> > > > [ 2638.519743]        [<ffffffff811be15c>] nfs_revalidate_mapping+0xac/0x110    ==> takes i_mutex in nfs_invalidate_mapping()
+> > > > [ 2638.519743]        [<ffffffff811bba25>] nfs_file_mmap+0x55/0x80
+> > > > [ 2638.519743]        [<ffffffff810e2bb7>] mmap_region+0x427/0x600
+> > > > [ 2638.519743]        [<ffffffff810e305e>] do_mmap_pgoff+0x2ce/0x3f0
+> > > > [ 2638.519743]        [<ffffffff81010c26>] sys_mmap+0x106/0x130                 ==> takes mmap_sem
+> > > > [ 2638.519743]        [<ffffffff8100bf42>] system_call_fastpath+0x16/0x1b
+> > > > [ 2638.519743]        [<ffffffffffffffff>] 0xffffffffffffffff
+> > > 
+> > > This is the faulty code path.  mmap_sem is supposed to nest inside i_mutex.
 > > 
-> >> This fixed a lockdep warning which appeared when doing stress
-> >> memory tests over NFS:
-> >> 
-> >> 	inconsistent {RECLAIM_FS-ON-W} -> {IN-RECLAIM_FS-W} usage.
-> >> 
-> >> 	page reclaim => nfs_writepage => tcp_sendmsg => lock sk_lock
-> >> 
-> >> 	mount_root => nfs_root_data => tcp_close => lock sk_lock =>
-> >> 			tcp_send_fin => alloc_skb_fclone => page reclaim
-> >> 
-> >> David raised a concern that if the allocation fails in tcp_send_fin(), and it's
-> >> GFP_ATOMIC, we are going to yield() (which sleeps) and loop endlessly waiting
-> >> for the allocation to succeed.
-> >> 
-> >> But fact is, the original GFP_KERNEL also sleeps. GFP_ATOMIC+yield() looks
-> >> weird, but it is no worse the implicit sleep inside GFP_KERNEL. Both could
-> >> loop endlessly under memory pressure.
-> >> 
-> >> CC: Arnaldo Carvalho de Melo <acme@ghostprotocols.net>
-> >> CC: David S. Miller <davem@davemloft.net>
-> >> CC: Herbert Xu <herbert@gondor.apana.org.au>
-> >> Signed-off-by: Wu Fengguang <fengguang.wu@intel.com>
-> > 
-> > Applied to net-next-2.6, thanks!
+> > This could be a long stand bug: the nfs_revalidate_mapping() call was
+> > there in the very beginning of git history.
 > 
-> You obviously didn't build test this with TCP MD5 support
-> enabled, that fails.
+> http://programming.kicks-ass.net/kernel-patches/mmap-vs-nfs/
+> 
 
-Ah sorry! I compile bare kernels on my laptop..
+I wonder why such an old patch was not merged back in 2007.
+Nick and Trond seems to be OK with it. So is me. But now there
+are so many merge conflicts because it modified so many files..
 
-> I'm fixing it up, but if you're going to go through the motions
-> of submitting a patch multiple times, at least do a thorough
-> build test of the code you're changing.
-
-Good advice.  I'll consider a build server.
+I can do some stress tests for it.
 
 Thanks,
 Fengguang
