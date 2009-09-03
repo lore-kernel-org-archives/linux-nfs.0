@@ -1,50 +1,50 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Thu, 3 Sep 2009 16:11:46 +0530
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-yx0-f184.google.com ([209.85.210.184]:34697 "EHLO
+	mail-yx0-f184.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751647AbZICPfd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Sep 2009 11:35:33 -0400
+Received: by yxe14 with SMTP id 14so1297173yxe.21
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2009 08:35:35 -0700 (PDT)
+In-Reply-To: <20090903135516.GB4566@fieldses.org>
+References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>
+	 <20090902202206.GJ17884@fieldses.org>
+	 <524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
+	 <4A9F6027.9050807@s3group.cz>
+	 <524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com>
+	 <20090903135516.GB4566@fieldses.org>
+Date: Thu, 3 Sep 2009 10:35:35 -0500
+Message-ID: <524f69650909030835s41e78436p4b67594cf91de639@mail.gmail.com>
 Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Message-ID: <20090903104146.GA11784@skywalker.linux.vnet.ibm.com>
-References: <4A9F6027.9050807@s3group.cz>
-	<7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
-In-Reply-To: <7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
-Cc: linux-nfs@vger.kernel.org, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        nfsv4@linux-nfs.org, ffilzlnx@linux.vnet.ibm.com,
-        Steve French <smfrench@gmail.com>, jra@samba.org, agruen@suse.de
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+From: Steve French <smfrench@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Ondrej Valousek <webserv@s3group.cz>, linux-nfs@vger.kernel.org,
+        nfsv4@linux-nfs.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        ffilzlnx@linux.vnet.ibm.com, jra@samba.org, agruen@suse.de
+Content-Type: text/plain; charset=ISO-8859-1
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Thu, Sep 03, 2009 at 12:46:09AM -0700, Muntz, Daniel wrote:
-> I've always thought of NFS as a means for making physical file systems
-> available across a network.  NFS having its own ACLs doesn't fit this
-> model.  E.g., "NFS ACLs" will never be integrated into NTFS.  However, I
-> could imagine NFS ACLs solving the general problem if they were to form
-> a superset of the ACLs of exportable physical file systems, and the
-> mechanism for interpreting ACLs for a particular physical file system
-> could be encoded (or modularized) in such a way that NFS' evaluation of
-> ACL operations has the same results as the physical file system's
-> execution of the same ACL operations.  You could have a POSIX ACL
-> module, NTFS ACL module, etc.  There's a challenge for 4.2.
-> 
-> ACLs could possibly be made completely opaque to NFS with a module-based
-> approach.
-> 
+On Thu, Sep 3, 2009 at 8:55 AM, J. Bruce Fields<bfields@fieldses.org> wrote:
+> On Thu, Sep 03, 2009 at 08:54:06AM -0500, Steve French wrote:
+>> if someone were able to convince the linux-fsdevel community to change
+>> fs/posix_acls.c
+>> (or add an fs/cifs_acls.c) to handle NFSv4/CIFS/NTFS ACL evaluation, and add
+>> support to store these richer ACLs on disk for the future (e.g. for
+>> btrfs), that would be
+>> great - but with no local file system in kernel which can store NFSv4 ACLs and
+>> no code to evaluate these ACLs in the VFS and with a NACK from fsdevel when
+>
+> I don't remember that--do you have a pointer?
 
-What would be the acl model on the client side ? Considering that POSIX ACL
-is looked at as the native acl model in Linux, I guess we should have the ability
-to modify the ACLs using POSIX ACL tools on the nfs client
+Aneesh mentioned one strongly worded objection (I remember more resistance
+from others too)
 
--aneesh
-_______________________________________________
-NFSv4 mailing list
-NFSv4@linux-nfs.org
-http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+http://kerneltrap.org/mailarchive/linux-fsdevel/2006/6/24/313526
+
+
+
+-- 
+Thanks,
+
+Steve
