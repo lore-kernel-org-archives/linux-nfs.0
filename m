@@ -1,117 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36408 "EHLO mx1.redhat.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:50049 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753911AbZICSft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2009 14:35:49 -0400
-Message-ID: <4AA00CFF.6010304@redhat.com>
-Date: Thu, 03 Sep 2009 14:37:51 -0400
-From: Ric Wheeler <rwheeler@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Peter Staubach <staubach@redhat.com>, Jason Legate <linux-nfs@proxime.net>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFS for millions of files
-References: <20090902180841.GF946@proxime.net> <4A9EBB6B.4040009@redhat.com> <20090903181535.GA10670@fieldses.org>
-In-Reply-To: <20090903181535.GA10670@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1751978AbZICNBd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Sep 2009 09:01:33 -0400
+Subject: Re: VM issue causing high CPU loads
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Yohan <ytordjman@corp.free.fr>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>, mikevs@xs4all.net
+In-Reply-To: <20090902170642.f4381c1d.akpm@linux-foundation.org>
+References: <4A92A25A.4050608@yohan.staff.proxad.net>
+	 <20090824162155.ce323f08.akpm@linux-foundation.org>
+	 <4A96463E.5080002@corp.free.fr> <4A9C34F8.2010307@corp.free.fr>
+	 <20090902170642.f4381c1d.akpm@linux-foundation.org>
+Content-Type: text/plain
+Date: Thu, 03 Sep 2009 09:01:24 -0400
+Message-Id: <1251982884.18338.9.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/03/2009 02:15 PM, J. Bruce Fields wrote:
-> On Wed, Sep 02, 2009 at 02:37:31PM -0400, Peter Staubach wrote:
->    
->> Please keep in mind that the NFS stable storage requirements are
->> probably causing a significant slowdown in activities such as this.
->>      
-> My first thought too, but:
->
->    
->> Jason Legate wrote:
->>      
->>> When I run our creation benchmark locally  I can get around 3000
->>> files/ second in the configuration we're using now, but only around
->>> 300/second over NFS.  It's mounted as this:
->>>        
-> ...
->    
->>> When I mount the same FS over localhost instead of across the lan,
->>> it performs about full speed (the 3000/sec).
->>>        
-> The localhost NFS mount would be incurring the same sync latency, so all
-> his latency must be due to network.  (And with those numbers I guess
-> he's either got lots of disk spindles, or an ssd, or (uh-oh) has the
-> async option set?)
->
-> --b.
->    
+On Wed, 2009-09-02 at 17:06 -0700, Andrew Morton wrote:
+> On Mon, 31 Aug 2009 22:39:20 +0200
+> Yohan <ytordjman@corp.free.fr> wrote:
+> 
+> > Yohan wrote:
+> > > Andrew Morton wrote:
+> > >> On Mon, 24 Aug 2009 16:23:22 +0200
+> > >> Yohan <kernel@yohan.staff.proxad.net> wrote:  
+> > >>> Hi,
+> > >>>
+> > >>>     Is someone have an idea for that :
+> > >>>
+> > >>>         http://bugzilla.kernel.org/show_bug.cgi?id=14024
+> > >>>     
+> > >> Please generate a kernel profile to work out where all the CPU tie is
+> > >> being spent.  Documentation/basic_profiling.txt is a starting point.
+> > >>   
+> > > I post some new reports, it seems that the problem is in  
+> > > rpcauth_lookup_credcache ...
+> 
+> Thanks, that helps a lot.
+> 
+> > > for information, this is an imap mail server that mounts ~10 netapp 
+> > > over ~300 mountpoints..
+> >     I saw that : http://patchwork.kernel.org/patch/24747/
+> 
+> I wonder what happened with Miquel's patch?
 
-For small files without doing an fsync per file, getting 3000 files/sec 
-is not that much. Ext3 can do it with a local s-ata disk. I suspect that 
-Jason would run much slower if he ran with local fsync()'s enabled 
-(similar to what NFS servers have to do).
+At the time, I asked him to split out the various changes into several
+patches.
 
-Some quick testing on a local F12 (rawhide) box:
+His patch did a lot of different things that would impact workloads in
+different ways. For instance, while increasing the hash table size is
+not likely to have a huge performance degradation for most people, the
+change that decreases the garbage collection timeout is very likely to
+cause issues (particularly with RPCSEC_GSS setups)...
 
-No fsync: 3729 files/sec
+> > I did only:
+> > 
+> > --- linux-2.6.27.21/include/linux/sunrpc/auth.h	2009-03-23 23:04:09.000000000 +0100
+> > +++ linux-2.6.27.21/include/linux/sunrpc/auth.h	2009-05-19 16:02:35.000000000 +0200
+> > @@ -62,8 +62,12 @@ 
+> >   */
+> > - #define RPC_CREDCACHE_HASHBITS	4
+> > + #define RPC_CREDCACHE_HASHBITS	12
+> > 
+> > 
+> > And i test it in prod since sunday: i only have 36% of one core used by 
+> > system
+> > versus more than 3 cores used by system in another server that did a 
+> > drop_caches at morning...
+> > 
+> 
+> OK, but it's still pretty bad.  Let's tell the NFS guys.
+> 
+> In http://bugzilla.kernel.org/show_bug.cgi?id=14024 we appear to have a
+> major meltdown caused by the linear search in
+> rpcauth_lookup_credcache() with Yohan's workload.
+> 
 
-[root@ricdesktop rwheeler]# fs_mark -s 20480 -n 10000 -S 0 -d /test/test_dir
-
-#  fs_mark  -s  20480  -n  10000  -S  0  -d  /test/test_dir
-#    Version 3.3, 1 thread(s) starting at Thu Sep  3 14:26:26 2009
-#    Sync method: NO SYNC: Test does not issue sync() or fsync() calls.
-#    Directories:  no subdirectories used
-#    File names: 40 bytes long, (16 initial bytes of time stamp with 24 
-random bytes at end of name)
-#    Files info: size 20480 bytes, written with an IO size of 16384 
-bytes per write
-#    App overhead is time in microseconds spent in the test not doing 
-file writing related system calls.
-
-FSUse%        Count         Size    Files/sec     App Overhead
-      5        10000        20480       3729.0           315859
-
-Fsync & working barriers: 24.8 files/sec
-
-[root@ricdesktop rwheeler]# fs_mark -s 20480 -n 10000 -S 1 -d /test/test_dir
-
-#  fs_mark  -s  20480  -n  10000  -S  1  -d  /test/test_dir
-#    Version 3.3, 1 thread(s) starting at Thu Sep  3 14:27:00 2009
-#    Sync method: INBAND FSYNC: fsync() per file in write loop.
-#    Directories:  no subdirectories used
-#    File names: 40 bytes long, (16 initial bytes of time stamp with 24 
-random bytes at end of name)
-#    Files info: size 20480 bytes, written with an IO size of 16384 
-bytes per write
-#    App overhead is time in microseconds spent in the test not doing 
-file writing related system calls.
-
-FSUse%        Count         Size    Files/sec     App Overhead
-      5        10000        20480         24.8           350322
-
-Fsync/no write barriers: 377.1 files/sec
-
-[root@ricdesktop rwheeler]# umount /test/
-[root@ricdesktop rwheeler]# mount -o barrier=0 /dev/sdb /test/
-[root@ricdesktop rwheeler]# fs_mark -s 20480 -n 10000 -S 1 -d /test/test_dir
-
-#  fs_mark  -s  20480  -n  10000  -S  1  -d  /test/test_dir
-#    Version 3.3, 1 thread(s) starting at Thu Sep  3 14:36:27 2009
-#    Sync method: INBAND FSYNC: fsync() per file in write loop.
-#    Directories:  no subdirectories used
-#    File names: 40 bytes long, (16 initial bytes of time stamp with 24 
-random bytes at end of name)
-#    Files info: size 20480 bytes, written with an IO size of 16384 
-bytes per write
-#    App overhead is time in microseconds spent in the test not doing 
-file writing related system calls.
-
-FSUse%        Count         Size    Files/sec     App Overhead
-      5        10000        20480        377.1           328472
-
-
-Ric
-
-
+OK. Could we please have some more details about the actual workload
+involved here?
+As far as I can see, there is no RPCSEC_GSS involved, so credentials
+should never expire. They will be reused as long as processes aren't
+switching between thousands and thousands of different combinations of
+uid, gid and groups.
 
 
 
