@@ -1,100 +1,51 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:28842 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753786AbZIJUkV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 16:40:21 -0400
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jeff Layton <jlayton@redhat.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Message-Id: <DE1F606D-CE0A-4646-88E3-5A1652540073@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20090910162327.GE11858@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st part)
-Date: Thu, 10 Sep 2009 16:39:51 -0400
-References: <1249507356.5428.11.camel@heimdal.trondhjem.org> <D503383F-3D52-4F93-B850-AFE84316435C@oracle.com> <1249515004.5428.34.camel@heimdal.trondhjem.org> <20090909142945.755da393@tlielax.poochiereds.net> <1252521599.8722.53.camel@heimdal.trondhjem.org> <20B7C2F0-E566-4292-91E9-41A3FA6C9D4C@oracle.com> <1252525327.8722.81.camel@heimdal.trondhjem.org> <D2B488FA-2630-4355-8E3B-FE1243E4C3AE@oracle.com> <20090910150319.GA10704@fieldses.org> <AD3CA71A-8A67-4D8E-8138-92A01D672133@oracle.com> <20090910162327.GE11858@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Message-ID: <4A9F6027.9050807@s3group.cz>
+Date: Thu, 03 Sep 2009 08:20:23 +0200
+From: Ondrej Valousek <webserv@s3group.cz>
+To: Steve French <smfrench@gmail.com>
+Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
+References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>	<20090902202206.GJ17884@fieldses.org>
+	<524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
+In-Reply-To: <524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
+Cc: ffilzlnx@linux.vnet.ibm.com, linux-nfs@vger.kernel.org,
+        nfsv4@linux-nfs.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        jra@samba.org, agruen@suse.de
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 10, 2009, at 12:23 PM, J. Bruce Fields wrote:
-> On Thu, Sep 10, 2009 at 12:14:27PM -0400, Chuck Lever wrote:
->> On Sep 10, 2009, at 11:03 AM, J. Bruce Fields wrote:
->>> On Wed, Sep 09, 2009 at 06:18:11PM -0400, Chuck Lever wrote:
->>>> IDNs are UTF16.  /var therefore has to support UTF16 filenames;
->>>> either
->>>> byte in a double-byte character can be '/' or '\0'.  That means the
->>>> underlying fs implementation has to support UTF16 (FAT32 anyone?),
->>>> and
->>>> the system's locale has to be configured correctly.  If we decide
->>>> not to
->>>> depend on the file system to support UTF16 filenames, then statd  
->>>> has
->>>> to
->>>> be intelligent enough to figure out how to deal with converting  
->>>> UTF16
->>>> hostnames before storing them as filenames.  Then, we have to teach
->>>> matchhostname() and friends how to deal with double-byte character
->>>> strings...
->>>
->>> Googling around.... Is this accurate?:
->>>
->>> 	http://en.wikipedia.org/wiki/Internationalized_domain_name
->>>
->>> That makes it sound like domain names are staying ascii, and they're
->>> just adding something on top to allow encoding unicode using ascii,
->>> which may optionally be used by applications.
->>
->> There is a mechanism that provides an ASCII-ized version of domain  
->> names
->> that may contain non-ASCII characters, expressly for applications  
->> that
->> need to perform DNS queries but can't be easily converted to handle
->> double-byte character strings.  This can be adapted for statd,  
->> though I'm
->> not sure if the converted ASCII version of such names specifically
->> exclude '/'.
->>
->> Internationalized domain names themselves are still expressed in  
->> UTF16,
->> as far as I understand it.
+
+> 2) If POSIX->NFSv4 client mapping is done (as had been suggested IIRC
+> by others in the past) at least you lose less data (NFSv4 ACLs are "richer"
+> in function than POSIX ACLs - so at least with the POSIX->NFSv4->POSIX
+> case you are limiting the user to the subset of choices which are actually
+> going to be able to be stored, no inheritence etc.)
 >
-> From a quick skim of http://www.ietf.org/rfc/rfc3490.txt, it appears  
-> to
-> me that protocols (at the very least, any preexisting protocols) are  
-> all
-> expected to use the ascii representation on the wire, and that the
-> translation to unicode is meant by use for applications.
->
-> So in our case we'd continue to expect ascii domain names on the wire,
-> and I believe that's also what we should store in any database.  But  
-> if
-> someone were to write a gui administrative interface to that data, for
-> example, they might choose to use idna for display.
+>   
 
-That's a reasonable and specific objection to my claim that our  
-current host record storage format is inadequate to support IDNA.   
-I've also confirmed that ToAscii with the UseSTD3ASCIIRules flag set  
-is not supposed to generate a domain label string with a '/' in it.   
-My remaining concern here is that we could possibly see hostnames that  
-are too long to be stored in directory entries of some file systems,  
-especially considering that the ASCII-fied Unicode names will be  
-longer than typical ASCII names we normally encounter today.
+I must say that I do not understand the motivation either. POSIX is not 
+even a standard and should be replaced with NFSv4 acls.
+Even now ext3/ext4 support NFSv4 acls (ok. patch is needed but the patch 
+is there already).
 
-What about multi-homed host support?  The same mon_name can be used  
-with more than one my_name, for multi-homed hosts.  Using the current  
-on-disk scheme, statd turns that SM_MON request into a no-op.  So  
-additional records for the same hostname can't be stored, or we have  
-to resort to adding multiple lines in the same file.  This is possible  
-to do with just POSIX file system calls, but it does add complexity to  
-manage several lines in each hostname file without increasing the risk  
-of corruption if a file update (especially the deletion of one record  
-in the middle) is interrupted.
+If the decision was up to me, I would forbid any nfsv4 acls if the 
+server can not store them properly (i.e. without any conversion) + 
+forbid using nfsv4 with posix acls over sideband protocol (no standard, 
+so netapp will never support this and the same is to be expected from 
+Windows and Solaris). This is just adding mess and confusion.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+My 5 cents...
+Ondrej
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
