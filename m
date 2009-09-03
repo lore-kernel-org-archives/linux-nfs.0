@@ -1,54 +1,50 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp5-g21.free.fr ([212.27.42.5]:46806 "EHLO smtp5-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752795AbZICNji (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2009 09:39:38 -0400
-Message-ID: <4A9FC719.9020104@corp.free.fr>
-Date: Thu, 03 Sep 2009 15:39:37 +0200
-From: Yohan <ytordjman@corp.free.fr>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: Andrew Morton <akpm@linux-foundation.org>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>, mikevs@xs4all.net
-Subject: Re: VM issue causing high CPU loads
-References: <4A92A25A.4050608@yohan.staff.proxad.net>	 <20090824162155.ce323f08.akpm@linux-foundation.org>	 <4A96463E.5080002@corp.free.fr> <4A9C34F8.2010307@corp.free.fr>	 <20090902170642.f4381c1d.akpm@linux-foundation.org> <1251982884.18338.9.camel@heimdal.trondhjem.org>
-In-Reply-To: <1251982884.18338.9.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Thu, 3 Sep 2009 16:11:46 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
+Message-ID: <20090903104146.GA11784@skywalker.linux.vnet.ibm.com>
+References: <4A9F6027.9050807@s3group.cz>
+	<7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
+In-Reply-To: <7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
+Cc: linux-nfs@vger.kernel.org, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        nfsv4@linux-nfs.org, ffilzlnx@linux.vnet.ibm.com,
+        Steve French <smfrench@gmail.com>, jra@samba.org, agruen@suse.de
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Sep 03, 2009 at 12:46:09AM -0700, Muntz, Daniel wrote:
+> I've always thought of NFS as a means for making physical file systems
+> available across a network.  NFS having its own ACLs doesn't fit this
+> model.  E.g., "NFS ACLs" will never be integrated into NTFS.  However, I
+> could imagine NFS ACLs solving the general problem if they were to form
+> a superset of the ACLs of exportable physical file systems, and the
+> mechanism for interpreting ACLs for a particular physical file system
+> could be encoded (or modularized) in such a way that NFS' evaluation of
+> ACL operations has the same results as the physical file system's
+> execution of the same ACL operations.  You could have a POSIX ACL
+> module, NTFS ACL module, etc.  There's a challenge for 4.2.
+> 
+> ACLs could possibly be made completely opaque to NFS with a module-based
+> approach.
+> 
 
->>> I did only:
->>>
->>> --- linux-2.6.27.21/include/linux/sunrpc/auth.h	2009-03-23 23:04:09.000000000 +0100
->>> +++ linux-2.6.27.21/include/linux/sunrpc/auth.h	2009-05-19 16:02:35.000000000 +0200
->>> @@ -62,8 +62,12 @@ 
->>>   */
->>> - #define RPC_CREDCACHE_HASHBITS	4
->>> + #define RPC_CREDCACHE_HASHBITS	12
->>>
->>>
->>> And i test it in prod since sunday: i only have 36% of one core used by 
->>> system
->>> versus more than 3 cores used by system in another server that did a 
->>> drop_caches at morning...
->>>       
->> OK, but it's still pretty bad.  Let's tell the NFS guys.
->>
->> In http://bugzilla.kernel.org/show_bug.cgi?id=14024 we appear to have a
->> major meltdown caused by the linear search in
->> rpcauth_lookup_credcache() with Yohan's workload.
->>     
-> OK. Could we please have some more details about the actual workload involved here?
->   
-I add a new server CPU graph and 60s readprofile on the bugzilla
+What would be the acl model on the client side ? Considering that POSIX ACL
+is looked at as the native acl model in Linux, I guess we should have the ability
+to modify the ACLs using POSIX ACL tools on the nfs client
 
-> As far as I can see, there is no RPCSEC_GSS involved, so credentials
-> should never expire. They will be reused as long as processes aren't
-> switching between thousands and thousands of different combinations of
-> uid, gid and groups.
-My servers are imap servers.
-Foreach user (~15 million) it have a specific uid over ~10 nfs netapp 
-storage.
-
+-aneesh
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
