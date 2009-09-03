@@ -1,85 +1,50 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f204.google.com ([209.85.222.204]:36627 "EHLO
-	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752987AbZIBSfp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 14:35:45 -0400
-Received: by pzk42 with SMTP id 42so939959pzk.19
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Sep 2009 11:35:47 -0700 (PDT)
-In-Reply-To: <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
-References: <20090902180841.GF946@proxime.net>
-	 <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
-Date: Thu, 3 Sep 2009 00:05:46 +0530
-Message-ID: <1f808b4a0909021135m49c2e60o6b305babcaed295c@mail.gmail.com>
-Subject: Re: NFS for millions of files
-From: Peter Chacko <peterchacko35@gmail.com>
-To: Aaron Wiebe <epiphani@gmail.com>
-Cc: Jason Legate <linux-nfs@proxime.net>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Thu, 3 Sep 2009 09:54:04 -0400
+To: Steve French <smfrench@gmail.com>
+Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
+Message-ID: <20090903135404.GA4566@fieldses.org>
+References: <4A9F6027.9050807@s3group.cz>
+	<7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
+	<524f69650909030636g68706b09wa50ad91984407878@mail.gmail.com>
+In-Reply-To: <524f69650909030636g68706b09wa50ad91984407878@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        nfsv4@linux-nfs.org, ffilzlnx@linux.vnet.ibm.com, jra@samba.org,
+        agruen@suse.de
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="utf-8"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-Is this NFSv4 ?  rsize and wsize > MTU size will cause fragmentation
-and performance issues...Try making it around 4k .....You used  1<<15
-fir your example. if you don't do writes....then this shouldn't
-matter...and of course NFS is  Nfs is not For Scalability.. You cannot
-get the same performance on NFS as you would get for localFS...May be
-you can try 10g....still there is TCP/UDP/IP stack overhead.....
-
-
-On Wed, Sep 2, 2009 at 11:49 PM, Aaron Wiebe<epiphani@gmail.com> wrote:
-> Have a look at these two kernel params - I'd recommend bumping them up
-> to 128 (they're 16 by default).
->
-> sunrpc.tcp_slot_table_entries
-> sunrpc.udp_slot_table_entries
->
-> Keep in mind that this could also be a serialization issue.  If you've
-> got a 3ms latency, and you're performing all of your opens serially,
-> you aren't going to get much faster.  If you do the work in parallel
-> you'll likely get substantially better numbers.
->
-> -Aaron
->
->
-> On Wed, Sep 2, 2009 at 2:08 PM, Jason Legate<linux-nfs@proxime.net> wrote:
->> Hi, I'm trying to setup a server that we can create millions of files on over
->> NFS.  When I run our creation benchmark locally  I can get around 3000 files/
->> second in the configuration we're using now, but only around 300/second over
->> NFS.  It's mounted as this:
->>
->> rw,nosuid,nodev,noatime,nodiratime,hard,bg,nointr,rsize=32768,wsize=32768,tcp,
->> nfsvers=3,timeo=600,actimeo=600,nocto
->>
->> When I mount the same FS over localhost instead of across the lan, it performs
->> about full speed (the 3000/sec).  Anyone have any ideas what I might tweak or
->> look at?
->>
->> We're going to be testing various XFS/LVM configs to get the best performance,
->> but right out the gate, NFS having a 10:1 penalty of performance doesn't bode
->> well.
->>
->> Thanks in advance,
->> Jason
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
-
-
--- 
-Best regards,
-Peter Chacko
-
-NetDiox computing systems,
-Network storage & OS  training and research.
-Bangalore, India.
-www.netdiox.com
-080 2664 0708
+T24gVGh1LCBTZXAgMDMsIDIwMDkgYXQgMDg6MzY6NDRBTSAtMDUwMCwgU3RldmUgRnJlbmNoIHdy
+b3RlOgo+IE9uIFRodSwgU2VwIDMsIDIwMDkgYXQgMjo0NiBBTSwgTXVudHosIERhbmllbDxEYW4u
+TXVudHpAbmV0YXBwLmNvbT4gd3JvdGU6Cj4gPiBJJ3ZlIGFsd2F5cyB0aG91Z2h0IG9mIE5GUyBh
+cyBhIG1lYW5zIGZvciBtYWtpbmcgcGh5c2ljYWwgZmlsZSBzeXN0ZW1zCj4gPiBhdmFpbGFibGUg
+YWNyb3NzIGEgbmV0d29yay4gwqBORlMgaGF2aW5nIGl0cyBvd24gQUNMcyBkb2Vzbid0IGZpdCB0
+aGlzCj4gPiBtb2RlbC4gwqBFLmcuLCAiTkZTIEFDTHMiIHdpbGwgbmV2ZXIgYmUgaW50ZWdyYXRl
+ZCBpbnRvIE5URlMuIMKgSG93ZXZlciwgSQo+ID4gY291bGQgaW1hZ2luZSBORlMgQUNMcyBzb2x2
+aW5nIHRoZSBnZW5lcmFsIHByb2JsZW0gaWYgdGhleSB3ZXJlIHRvIGZvcm0KPiA+IGEgc3VwZXJz
+ZXQgb2YgdGhlIEFDTHMgb2YgZXhwb3J0YWJsZSBwaHlzaWNhbCBmaWxlIHN5c3RlbXMKPiAKPiBO
+RlN2NCBBQ0xzIGFyZSBzaW1pbGFyIHRvIENJRlMvTlRGUyBBQ0xTLiBORlN2NCBBQ0xzIHdlcmUK
+PiBvcmlnaW5hbGx5IGJhc2VkIG9uIENJRlMvTlRGUyBBQ0xzIHNvIGl0IHdvdWxkIGJlIHJlYXNv
+bmFibGUKPiB0byBleHBvcnQgdGhlbSBmcm9tIE5URlMgKGFsdGhvdWdoIHRoZSBTSURzIChVVUlE
+cykgaGF2ZSB0byBiZSBtYXBwZWQKPiB0byBsb2NhbCBMaW51eCBVSURzIC0gd2UgaGF2ZSB1c2Vy
+IHNwYWNlIGNvZGUgdGhhdCBjYW4gZG8gdGhpcyBpbiBTYW1iYSkuCgpPbiB0aGUgc2VydmVyIHNp
+ZGUsIHlvdSdkIGFjdHVhbGx5IGhhdmUgdG8gbWFwIGJldHdlZW4gU0lEcyBhbmQgTkZTdjQKbmFt
+ZXMgKHN0cmluZ3Mgb2YgdGhlIGZvcm0gdXNlckBkb21haW4pLgoKLS1iLgoKPiBOb3RlIFNhbWJh
+IHNlcnZlciBjYW4gbWFwIGJldHdlZW4gdGhlIENJRlMvTlRGUyBhbmQgTkZTdjQKPiBBQ0xzIGFs
+cmVhZHkgYW5kIGhhcyBmb3IgbWFueSB5ZWFycy4KPiAKPiBKUkEgb24gdGhlIFNhbWJhIHRlYW0g
+YW5kIEFuZHJlYXMgaGF2ZSBkb25lIHNvbWUgZ29vZAo+IHByZXNlbnRhdGlvbnMgb24gdGhlIGRp
+ZmZlcmVuY2VzIGluIEFDTCBtb2RlbHMsIGJ1dCBvdGhlciB0aGFuCj4gc3RvcmluZyB0aGUgIm1h
+c2siIG9yIGVxdWl2YWxlbnQgLSBQT1NJWCBBQ0xzIGNhbiBiZSB0aG91Z2h0IG9mIGFzCj4gYSBz
+dWJzZXQgb2YgTkZTdjQvQ0lGUy9OVEZTIEFDTHMKX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX18KTkZTdjQgbWFpbGluZyBsaXN0Ck5GU3Y0QGxpbnV4LW5mcy5v
+cmcKaHR0cDovL2xpbnV4LW5mcy5vcmcvY2dpLWJpbi9tYWlsbWFuL2xpc3RpbmZvL25mc3Y0
