@@ -1,94 +1,47 @@
-From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
-Subject: RE: VM issue causing high CPU loads
-Date: Thu, 3 Sep 2009 14:21:18 -0700
-Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC03F0AFB3@SACMVEXC1-PRD.hq.netapp.com>
-References: <20090903200550.GB5257@hostway.ca>
+From: Simon Kirby <sim@hostway.ca>
+Subject: Re: VM issue causing high CPU loads
+Date: Thu, 3 Sep 2009 15:22:53 -0700
+Message-ID: <20090903222253.GA8405@hostway.ca>
+References: <4A92A25A.4050608@yohan.staff.proxad.net> <20090824162155.ce323f08.akpm@linux-foundation.org> <4A96463E.5080002@corp.free.fr> <4A9C34F8.2010307@corp.free.fr> <20090902170642.f4381c1d.akpm@linux-foundation.org> <1251982884.18338.9.camel@heimdal.trondhjem.org> <4A9FC719.9020104@corp.free.fr> <1251986526.18338.29.camel@heimdal.trondhjem.org> <20090903200550.GB5257@hostway.ca> <1252010965.18338.63.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Cc: "Yohan" <ytordjman-CZvJ5kAzflf985uAA1p3mw@public.gmane.org>,
-	"Andrew Morton" <akpm@linux-foundation.org>,
-	<linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-	"Neil Brown" <neilb@suse.de>,
-	"J. Bruce Fields" <bfields@fieldses.org>, <mikevs@xs4all.net>
-To: "Simon Kirby" <sim@hostway.ca>,
-	"Trond Myklebust" <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61013 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932278AbZICVWB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Sep 2009 17:22:01 -0400
-In-Reply-To: <20090903200550.GB5257@hostway.ca>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Yohan <ytordjman@corp.free.fr>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	Neil Brown <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>, mikevs@xs4all.net
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S932410AbZICWWy@vger.kernel.org>
+In-Reply-To: <1252010965.18338.63.camel@heimdal.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Amen.  I understand that v4 wants to extend across domains, etc., but it
-goes out of its way to prevent the use of uids/gids, which in the vast
-majority of installations would work just fine and wouldn't incur the
-overhead of the mapping/unmapping operations.  There's no reason
-uids/gids couldn't coexist with string names.  If the 4.0 spec had a
-slightly different version of this paragraph:
+On Thu, Sep 03, 2009 at 04:49:25PM -0400, Trond Myklebust wrote:
 
-   To provide a greater degree of compatibility with previous versions
-   of NFS (i.e., v2 and v3), which identified users and groups by 32-bit
-   unsigned uid's and gid's, owner and group strings that consist of
-   decimal numeric values with no leading zeros can be given a special
-   interpretation by clients and servers which choose to provide such
-   support.  The receiver may treat such a user or group string as
-   representing the same user as would be represented by a v2/v3 uid or
-   gid having the corresponding numeric value.  A server is not
-   obligated to accept such a string, but may return an NFS4ERR_BADOWNER
-   instead.  To avoid this mechanism being used to subvert user and
-   group translation, so that a client might pass all of the owners and
-   groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
-   error when there is a valid translation for the user or owner
-   designated in this way.  In that case, the client must use the
-   appropriate name@domain string and not the special form for
-   compatibility.
+> I'm working on increasing the idmapper scalability, however another
+> project is currently taking up most of my time. I can't guarantee that
+> the revised idmapper code will be finished in time to allow for
+> inclusion in 2.6.32.
 
-i.e., take out the "subvert" portion, and just plain allow string
-representations of uids/gids, then at least the conversion would just be
-an atoi and itoa.  Even better, allow the uids/gids to be used directly
-and avoid the atoi/itoa, perhaps with a flag.  Either case is better
-than idmapd and getting EDELAY and an X-second pause in odd places
-because NFS has to go to userspace for a translation.
+Sure, improving it would be nice for cases where it's needed, but in
+environments where all IDs are consistent (by design), it just seems
+silly to force this extra work for zero gain.
 
-  -Dan Quixote
+> NFSv4 aspires to be an internet-wide protocol, and so you cannot use
+> uids/gids: they just aren't guaranteed to represent a unique user
+> outside your local LDAP/NIS or /etc/passwd domain. Furthermore, uids and
+> gids are a posix construct. They simply don't work in environments where
+> you may have lots of non-posix systems.
 
-> -----Original Message-----
-> From: Simon Kirby [mailto:sim@hostway.ca] 
-> Sent: Thursday, September 03, 2009 1:06 PM
-> To: Trond Myklebust
-> Cc: Yohan; Andrew Morton; linux-kernel@vger.kernel.org; 
-> linux-nfs@vger.kernel.org; Neil Brown; J. Bruce Fields; 
-> mikevs@xs4all.net
-> Subject: Re: VM issue causing high CPU loads
-> 
-> On Thu, Sep 03, 2009 at 10:02:06AM -0400, Trond Myklebust wrote:
-> 
-> > OK, so 16 hash buckets are likely to be filled with ~10^6 
-> entries each.
-> > I can see that might be a performance issue...
-> 
-> We have a similar setup with millions of UIDs over NFS 
-> (currently NFSv3).
-> I _wish_ there were a way to use NFSv4 without having to use 
-> name-mapped UIDs and GIDs, since our user and group names 
-> come from MySQL anyway, and are guaranteed to be consistent 
-> across machines.
-> 
-> Why on earth does NFSv4 force the use of names?
-> 
-> I was considering hacking the code to stick IDs in there 
-> anyway, but I haven't looked at the feasibility of this.  I 
-> suspect this would break or complicate other things, but the 
-> current NFSv4 design just seems like an incredible waste for 
-> this case.
-> 
-> Simon-
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in the body of a message to 
-> majordomo@vger.kernel.org More majordomo info at  
-> http://vger.kernel.org/majordomo-info.html
-> 
+So, for environments with all POSIX systems, what do you think about
+perhaps a mount or export flag that violates the spec on purpose to allow
+numeric IDs to be used?
+
+I can understand that the quiet use of IDs if name-to-user mapping fails
+will cause security issues in environments without consistent users, so
+it would now be unsafe to turn this on silently.  However, making this
+an option seems reasonable to me.
+
+(Not that I know what I'm doing.)
+
+Simon-
