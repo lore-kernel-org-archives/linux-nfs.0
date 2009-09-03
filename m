@@ -1,127 +1,94 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: NFSd: Fix filehandle leaks in exp_pseudoroot() and nfsd4_path()
-Date: Thu, 3 Sep 2009 17:03:09 -0400
-Message-ID: <20090903210309.GC12084@fieldses.org>
-References: <1251924512.26601.59.camel@heimdal.trondhjem.org>
+From: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+Subject: RE: VM issue causing high CPU loads
+Date: Thu, 3 Sep 2009 14:21:18 -0700
+Message-ID: <7A24DF798E223B4C9864E8F92E8C93EC03F0AFB3@SACMVEXC1-PRD.hq.netapp.com>
+References: <20090903200550.GB5257@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain;
+	charset="us-ascii"
+Cc: "Yohan" <ytordjman-CZvJ5kAzflf985uAA1p3mw@public.gmane.org>,
+	"Andrew Morton" <akpm@linux-foundation.org>,
+	<linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+	"Neil Brown" <neilb@suse.de>,
+	"J. Bruce Fields" <bfields@fieldses.org>, <mikevs@xs4all.net>
+To: "Simon Kirby" <sim@hostway.ca>,
+	"Trond Myklebust" <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59117 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:61013 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932263AbZICVDH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Sep 2009 17:03:07 -0400
-In-Reply-To: <1251924512.26601.59.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S932278AbZICVWB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Sep 2009 17:22:01 -0400
+In-Reply-To: <20090903200550.GB5257@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 02, 2009 at 04:48:32PM -0400, Trond Myklebust wrote:
-> NFSd: Fix filehandle leaks in exp_pseudoroot() and nfsd4_path()
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> All the callers of exp_pseudoroot() appear to expect the filehandle it
-> returns to be uninitialised if the function returns an error.
+Amen.  I understand that v4 wants to extend across domains, etc., but it
+goes out of its way to prevent the use of uids/gids, which in the vast
+majority of installations would work just fine and wouldn't incur the
+overhead of the mapping/unmapping operations.  There's no reason
+uids/gids couldn't coexist with string names.  If the 4.0 spec had a
+slightly different version of this paragraph:
 
-There are three callers:
+   To provide a greater degree of compatibility with previous versions
+   of NFS (i.e., v2 and v3), which identified users and groups by 32-bit
+   unsigned uid's and gid's, owner and group strings that consist of
+   decimal numeric values with no leading zeros can be given a special
+   interpretation by clients and servers which choose to provide such
+   support.  The receiver may treat such a user or group string as
+   representing the same user as would be represented by a v2/v3 uid or
+   gid having the corresponding numeric value.  A server is not
+   obligated to accept such a string, but may return an NFS4ERR_BADOWNER
+   instead.  To avoid this mechanism being used to subvert user and
+   group translation, so that a client might pass all of the owners and
+   groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
+   error when there is a valid translation for the user or owner
+   designated in this way.  In that case, the client must use the
+   appropriate name@domain string and not the special form for
+   compatibility.
 
-	- nfsd4_putrootfh treats failure and success cases no
-	  differently: it leaves the result in current_fh, and leaves
-	  freeing to the caller (nfsd4_proc_compound()) in either case.
-	- nfsd4_lookupp puts the result in a temporary variable and
-	  returns doing nothing on failure.  Oops!  Thanks, this fixes
-	  that.
-	- nfsd4_path(), as you say, stores it in a temporary variable
-	  and never frees it, success or failure.
+i.e., take out the "subvert" portion, and just plain allow string
+representations of uids/gids, then at least the conversion would just be
+an atoi and itoa.  Even better, allow the uids/gids to be used directly
+and avoid the atoi/itoa, perhaps with a flag.  Either case is better
+than idmapd and getting EDELAY and an X-second pause in odd places
+because NFS has to go to userspace for a translation.
 
-I agree that fixing nfsd4_path() to release in both cases, and
-exp_pseudoroot to release on failure, makes sense.  Applied.  Thanks,
-Trond!
+  -Dan Quixote
 
-> This is not
-> the case if the error is due to the check_nfsd_access() call failing.
+> -----Original Message-----
+> From: Simon Kirby [mailto:sim@hostway.ca] 
+> Sent: Thursday, September 03, 2009 1:06 PM
+> To: Trond Myklebust
+> Cc: Yohan; Andrew Morton; linux-kernel@vger.kernel.org; 
+> linux-nfs@vger.kernel.org; Neil Brown; J. Bruce Fields; 
+> mikevs@xs4all.net
+> Subject: Re: VM issue causing high CPU loads
 > 
-> In addition, nfsd4_path() currently allocates a temporary filehandle, then
-> fails to free it before the function exits.
+> On Thu, Sep 03, 2009 at 10:02:06AM -0400, Trond Myklebust wrote:
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> Note: this patch is still untested, but I can't see how it can
-> be wrong. The leak is obvious by code inspection, and doing an extra
-> fh_put() in the error case is obviously harmless.
-
-Yes.  Works for me.
-
-> Also note: there is apparently a similar leak in fh_compose() itself,
-> but I didn't want to spend the entire afternoon fixing all occurrences
-> of this bug...
-
-I think you're right.  I'll fix fh_compose()....
-
---b.
-
+> > OK, so 16 hash buckets are likely to be filled with ~10^6 
+> entries each.
+> > I can see that might be a performance issue...
 > 
->  fs/nfsd/export.c  |    2 ++
->  fs/nfsd/nfs4xdr.c |   15 ++++++++++-----
->  2 files changed, 12 insertions(+), 5 deletions(-)
+> We have a similar setup with millions of UIDs over NFS 
+> (currently NFSv3).
+> I _wish_ there were a way to use NFSv4 without having to use 
+> name-mapped UIDs and GIDs, since our user and group names 
+> come from MySQL anyway, and are guaranteed to be consistent 
+> across machines.
 > 
+> Why on earth does NFSv4 force the use of names?
 > 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index d946264..984a5eb 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -1341,6 +1341,8 @@ exp_pseudoroot(struct svc_rqst *rqstp, struct svc_fh *fhp)
->  	if (rv)
->  		goto out;
->  	rv = check_nfsd_access(exp, rqstp);
-> +	if (rv)
-> +		fh_put(fhp);
->  out:
->  	exp_put(exp);
->  	return rv;
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 1b07183..370c27e 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1599,7 +1599,8 @@ static __be32 nfsd4_encode_fs_location4(struct nfsd4_fs_location *location,
->  static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *stat)
->  {
->  	struct svc_fh tmp_fh;
-> -	char *path, *rootpath;
-> +	char *path = NULL, *rootpath;
-> +	size_t rootlen;
->  
->  	fh_init(&tmp_fh, NFS4_FHSIZE);
->  	*stat = exp_pseudoroot(rqstp, &tmp_fh);
-> @@ -1609,14 +1610,18 @@ static char *nfsd4_path(struct svc_rqst *rqstp, struct svc_export *exp, __be32 *
->  
->  	path = exp->ex_pathname;
->  
-> -	if (strncmp(path, rootpath, strlen(rootpath))) {
-> +	rootlen = strlen(rootpath);
-> +	if (strncmp(path, rootpath, rootlen)) {
->  		dprintk("nfsd: fs_locations failed;"
->  			"%s is not contained in %s\n", path, rootpath);
->  		*stat = nfserr_notsupp;
-> -		return NULL;
-> +		path = NULL;
-> +		goto out;
->  	}
-> -
-> -	return path + strlen(rootpath);
-> +	path += rootlen;
-> +out:
-> +	fh_put(&tmp_fh);
-> +	return path;
->  }
->  
->  /*
+> I was considering hacking the code to stick IDs in there 
+> anyway, but I haven't looked at the feasibility of this.  I 
+> suspect this would break or complicate other things, but the 
+> current NFSv4 design just seems like an incredible waste for 
+> this case.
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> Simon-
+> --
+> To unsubscribe from this list: send the line "unsubscribe 
+> linux-nfs" in the body of a message to 
+> majordomo@vger.kernel.org More majordomo info at  
+> http://vger.kernel.org/majordomo-info.html
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
