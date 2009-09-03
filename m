@@ -1,107 +1,63 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tundra.namei.org ([65.99.196.166]:54374 "EHLO tundra.namei.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752931AbZISPLY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 Sep 2009 11:11:24 -0400
-Date: Sun, 20 Sep 2009 01:09:54 +1000 (EST)
-From: James Morris <jmorris@namei.org>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Casey Schaufler <casey@schaufler-ca.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH 0/4][RFC] NFSv3: implement extended attribute (XATTR)
- protocol
-Message-ID: <alpine.LRH.2.00.0909200020360.31818@tundra.namei.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Subject: RE: POSIX ACL support for NFSV4 (using sideband protocol)
+From: "David P. Quigley" <dpquigl@tycho.nsa.gov>
+To: "Muntz, Daniel" <Dan.Muntz@netapp.com>
+In-Reply-To: <7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
+References: <7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
+Date: Thu, 03 Sep 2009 11:01:59 -0400
+Message-Id: <1251990119.4339.352.camel@moss-terrapins.epoch.ncsc.mil>
+Cc: linux-nfs@vger.kernel.org, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        nfsv4@linux-nfs.org, ffilzlnx@linux.vnet.ibm.com,
+        Steve French <smfrench@gmail.com>, jra@samba.org, agruen@suse.de
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is the initial posting of an implementation of extended 
-attribute support for the Linux NFSv3 code, and intended as an RFC.
+On Thu, 2009-09-03 at 00:46 -0700, Muntz, Daniel wrote:
+> 
+> ACLs could possibly be made completely opaque to NFS with a module-based
+> approach.
+> 
+>   -Dan
 
-This code is based initially on the GPL'd NFSv3 xattr code from IRIX 
-(thanks, Casey!), as well as the existing Linux NFSv3 ACL code. It is 
-implemented as a side-protocol and should not affect any existing protocol 
-operation.  These patches are against the devel branch of the linux-nfs 
-tree.
+Something to be aware of here is that once you turn a field opaque you
+introduce a bunch of other issues. The MAC attribute that I've been
+proposing in the IETF is mostly opaque and it has caused some problems
+with interoperability. Some questions to be answered are
 
-Currently, the code is implemented only to support Linux namespace.name 
-xattrs in the "user" namespace.  It could be extended to support other 
-similar name/value pair xattr implementations (and not far from IRIX wire 
-compat), although that's not an aim of this version.  There may also be 
-some scope for limited support of system xattrs (e.g. 'dumb' security 
-label transport), although I've not looked beyond user.* so far.
+1) what is the initial set of modules defined? They aren't going to let
+you take an opaque field and run away with it to do as you please. I've
+been working on ways to define an initial set of label formats to make
+the working group happier.
 
-Three operations are implemented by the new XATTR protocol and map to 
-syscalls:
+2) How are you going to specify these modules? It needs to be in a way
+that implementors can easily use it. Are these specifications maintained
+through the IETF or are they maintained by an outside organization?
 
- - GETXATTR     getxattr(2)
- - LISTXTTR     listxattr(2)
- - SETXATTR     setxattr(2) and removexattr(2)
+3) How do modules translate between themselves. Are you going to only
+allow like ACL modules to communicate? Will you have a mechanism for
+those with ACL type A to still use a system with ACL type B? Will a
+server be able to support both ACL type A and B? What happens if you
+want both a Windows NFSv4 client and a Linux NFSv4 client to use the
+same shares?
 
-This code passes basic testing of the above syscalls, although there are 
-some areas which still need work:
+These are just some ideas to think about when you decide to make this
+opaque.
 
- - Dynamic allocation of RPC buffers/pages (currently, the max size of 
-   e.g. the getxattr(2) value buffer is allocated at the RPC layer for 
-   each call -- suggestions on the best approach for this welcome)
-
- - Determine appropriate NFS error codes for each operation
-
- - Formal documentation of the XATTR protocol
-
- - Interoperability with other OSs (we probably should at least
-   discuss with BSD folk)
-
- - Handle size probing for getxattr(2) and listxattr(2) in the client 
-   (currently faked).  I think we should handle this at the client and not 
-   support it over the wire, as probes are almost always followed 
-   immediately by full calls, and the protocol can be kept simpler by 
-   expecting the client to perform a full call over the wire in response 
-   to a userland probe and caching the result.
-
- - Caching of xattrs at the client
-
-Please review and comment!
-
-Note that I'll be giving a talk on this at LinuxCon on Thursday: 
-http://linuxcon.linuxfoundation.org/meetings/1589 So, in addition to 
-discussion here, please come along to the talk if you're at the conf, and 
-we may also be able to discuss it at Plumbers in one of the BoFs.
-
-Full diffstat:
-
- fs/nfs/Kconfig             |   36 ++++
- fs/nfs/Makefile            |    2 
- fs/nfs/client.c            |   51 ++++++
- fs/nfs/dir.c               |    8 -
- fs/nfs/file.c              |    8 -
- fs/nfs/internal.h          |   19 ++
- fs/nfs/nfs3acl.c           |  155 +++++++++++--------
- fs/nfs/nfs3xattr.c         |  264 +++++++++++++++++++++++++++++++++
- fs/nfs/nfs3xattr_user.c    |   52 ++++++
- fs/nfs/nfs3xdr.c           |  187 +++++++++++++++++++++++
- fs/nfs/super.c             |    3 
- fs/nfsd/Kconfig            |    8 +
- fs/nfsd/Makefile           |    1 
- fs/nfsd/nfs3xattr.c        |  352 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsctl.c           |    3 
- fs/nfsd/nfssvc.c           |   60 +++++++
- fs/nfsd/vfs.c              |    5 
- include/linux/nfs_fs.h     |   16 --
- include/linux/nfs_fs_sb.h  |    3 
- include/linux/nfs_mount.h  |    3 
- include/linux/nfs_xattr.h  |   21 ++
- include/linux/nfs_xdr.h    |   45 +++++
- include/linux/nfsd/nfsd.h  |   13 +
- include/linux/nfsd/xdr3.h  |   46 +++++
- include/linux/sunrpc/svc.h |    2 
- 25 files changed, 1265 insertions(+), 98 deletions(-)
+Dave
 
 
-- James
--- 
-James Morris
-<jmorris@namei.org>
+
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
