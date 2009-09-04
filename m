@@ -1,77 +1,43 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:48732 "EHLO mail-out1.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934384AbZIDWts (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2009 18:49:48 -0400
-Subject: Re: Reading NFS file without copying to user-space?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Ben Greear <greearb@candelatech.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4AA19520.70305@candelatech.com>
-References: <4AA16F25.6050700@candelatech.com>
-	 <1252096543.2402.4.camel@heimdal.trondhjem.org>
-	 <4AA17D62.9020404@candelatech.com>
-	 <74C14419-4D21-4EC2-B01A-EAC04B354F06@fys.uio.no>
-	 <4AA18D32.50507@candelatech.com>
-	 <1252102506.5274.7.camel@heimdal.trondhjem.org>
-	 <4AA19520.70305@candelatech.com>
-Content-Type: text/plain
-Date: Fri, 04 Sep 2009 18:49:42 -0400
-Message-Id: <1252104582.5274.16.camel@heimdal.trondhjem.org>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@linux-nfs.org>
+Date: Fri, 4 Sep 2009 15:13:14 -0400
+Message-ID: <4d569c330909041213j213aad0bl52371fbffa346e6d@mail.gmail.com>
+Subject: nfs-utils: Status of authenticated callback patches
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Linux NFSv4 mailing list <nfsv4@linux-nfs.org>,
+        NFS list <linux-nfs@vger.kernel.org>
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
+List-Post: <mailto:nfsv4@linux-nfs.org>
+List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@linux-nfs.org
+Errors-To: nfsv4-bounces@linux-nfs.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-09-04 at 15:30 -0700, Ben Greear wrote:
-> On 09/04/2009 03:15 PM, Trond Myklebust wrote:
-> > On Fri, 2009-09-04 at 14:57 -0700, Ben Greear wrote:
-> >> On 09/04/2009 01:58 PM, Trond Myklebust wrote:
-> >>
-> >>> You're missing the point. O_DIRECT does not copy data from the kernel
-> >>> into userspace. The data is placed directly into the user buffer from
-> >>> the socket.
-> >>>
-> >>> The only faster alternative would be to directly discard the data in the
-> >>> socket, and we offer no option to do that.
-> >>
-> >> I was thinking I might be clever and use sendfile to send an nfs
-> >> file to /dev/zero, but unfortunately it seems sendfile can only send
-> >> to a destination that is a socket....
-> >
-> > Why do you think that would be any faster than standard O_DIRECT? It
-> > should be slower, since it involves an extra copy.
-> 
-> I was thinking that the kernel might take the data received in the skb's from
-> the file-server and send it to /dev/null, ie basically just immediately
-> discard the received data.  If it could do that, it would be a zero-copy
-> read:  The only copying would be the NIC DMA'ing the packet into the skb.
+This series of patches adds support for authenticated callbacks:
 
-No... The RPC layer will always copy the data from the socket into a
-buffer. If you are using O_DIRECT reads, then that buffer will be the
-same one that you supplied in userland (the kernel just uses page table
-trickery to map those pages into the kernel address space). If you are
-using any other type of read (even if it is being piped using sendfile()
-or splice()) then it will copy that data into the NFS filesystem's page
-cache.
+    http://markmail.org/thread/ikbfwcoomq5erjdy
 
-> It would also seem to me that if one allowed sendfile to copy between
-> files, it could do the same trick saving to a real file and save user-space
-> having to read the file in and then write it out again to disk.
+The new functionality requires that both NFS servers and clients now
+need to run both rpc.gssd and rpc.svcgssd.
 
-As I said above, sendfile and splice don't work that way. They both use
-the page cache as the source, so the filesystem needs to fill the page
-cache first.
+I proposed that these two daemons be combined before distributions
+changed their init scripts.  Unfortunately, I have not been able to
+get to this, and don't anticipate I'll get to it in the near future.
 
-> Out of curiosity, any one have any benchmarks for NFS on 10G hardware?
+I think Steve Dickson is waiting on this before committing the
+previously mentioned series.  If anyone has time to devote to this,
+that would be great!
 
-I'm not aware of any public figures. I'd be interested to hear how you
-max out.
+I'll be glad to discuss some of the issues that I am aware of with
+anyone looking to do this work.
 
-> Based on testing against another vendor's nfs server, it seems that the client
-> is loosing packets (the server shows tcp retransmits).
-
-Is the data being lost at the client, the switch or the server? Assuming
-that you are using a managed switch, then a look at its statistics
-should be able to answer that question.
-
-
+K.C.
+_______________________________________________
+NFSv4 mailing list
+NFSv4@linux-nfs.org
+http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
