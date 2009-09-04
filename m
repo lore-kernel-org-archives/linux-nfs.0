@@ -1,45 +1,42 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: mount.nfs oops [was: mmotm 2009-09-03-16-35 uploaded]
-Date: Fri, 04 Sep 2009 18:12:17 -0400
-Message-ID: <1252102337.5274.4.camel@heimdal.trondhjem.org>
-References: <200909032340.n83Ne6E6004708@imap1.linux-foundation.org>
-	 <4AA17E74.8060100@gmail.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: Reading NFS file without copying to user-space?
+Date: Fri, 04 Sep 2009 18:15:06 -0400
+Message-ID: <1252102506.5274.7.camel@heimdal.trondhjem.org>
+References: <4AA16F25.6050700@candelatech.com>
+	 <1252096543.2402.4.camel@heimdal.trondhjem.org>
+	 <4AA17D62.9020404@candelatech.com>
+	 <74C14419-4D21-4EC2-B01A-EAC04B354F06@fys.uio.no>
+	 <4AA18D32.50507@candelatech.com>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, mm-commits@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org
-To: Jiri Slaby <jirislaby@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Ben Greear <greearb@candelatech.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47097 "EHLO mx2.netapp.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:41336 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934349AbZIDWMW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2009 18:12:22 -0400
-In-Reply-To: <4AA17E74.8060100@gmail.com>
+	id S933995AbZIDWPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Sep 2009 18:15:07 -0400
+In-Reply-To: <4AA18D32.50507@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2009-09-04 at 22:54 +0200, Jiri Slaby wrote:
-> On 09/04/2009 01:40 AM, akpm@linux-foundation.org wrote:
-> > The mm-of-the-moment snapshot 2009-09-03-16-35 has been uploaded to
+On Fri, 2009-09-04 at 14:57 -0700, Ben Greear wrote:
+> On 09/04/2009 01:58 PM, Trond Myklebust wrote:
 > 
-> Hi, I got an oops while mounting an nfs:
-> BUG: unable to handle kernel NULL pointer dereference at 000000000000001d
-> IP: [<ffffffffa003924f>] rpcauth_lookupcred+0x4f/0xc0 [sunrpc]
+> > You're missing the point. O_DIRECT does not copy data from the kernel
+> > into userspace. The data is placed directly into the user buffer from
+> > the socket.
+> >
+> > The only faster alternative would be to directly discard the data in the
+> > socket, and we offer no option to do that.
+> 
+> I was thinking I might be clever and use sendfile to send an nfs
+> file to /dev/zero, but unfortunately it seems sendfile can only send
+> to a destination that is a socket....
 
-This looks like the auth->au_ops->lookup_cred() call failing due to a
-faulty pointer, which should be impossible.
+Why do you think that would be any faster than standard O_DIRECT? It
+should be slower, since it involves an extra copy.
 
-I note that you had a kernel taint due to a warning before this Oops
-happened. Any details?
+Trond
 
-Also, were you doing anything special at the time (for instance removing
-a module)?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
