@@ -1,46 +1,39 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: mount.nfs oops [was: mmotm 2009-09-03-16-35 uploaded]
-Date: Fri, 04 Sep 2009 18:53:17 -0400
-Message-ID: <1252104797.5274.19.camel@heimdal.trondhjem.org>
-References: <200909032340.n83Ne6E6004708@imap1.linux-foundation.org>
-	 <4AA17E74.8060100@gmail.com>
-	 <1252102337.5274.4.camel@heimdal.trondhjem.org>
-	 <4AA19420.5060503@gmail.com>
+From: Pacho Ramos <pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org>
+Subject: umount -a -f -t nfs doesn't work when a file has been written and
+ "-l" option is needed
+Date: Sat, 05 Sep 2009 10:31:38 +0200
+Message-ID: <1252139498.14467.12.camel@localhost>
+Reply-To: pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-kernel@vger.kernel.org, mm-commits@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-nfs@vger.kernel.org
-To: Jiri Slaby <jirislaby@gmail.com>
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51257 "EHLO mx2.netapp.com"
+Received: from smtp02.jazztel.es ([62.14.3.171]:47392 "EHLO smtp02.jazztel.es"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934427AbZIDWxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Sep 2009 18:53:42 -0400
-In-Reply-To: <4AA19420.5060503@gmail.com>
+	id S1757249AbZIEIzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Sep 2009 04:55:53 -0400
+Received: from [87.222.151.142] (helo=[192.168.1.201])
+	by smtp02.jazztel.es with esmtpa (Exim 4.69)
+	(envelope-from <pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org>)
+	id 1Mjqc9-0002wC-A5
+	for linux-nfs@vger.kernel.org; Sat, 05 Sep 2009 10:27:17 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2009-09-05 at 00:26 +0200, Jiri Slaby wrote:
-> On 09/05/2009 12:12 AM, Trond Myklebust wrote:
-> > Also, were you doing anything special at the time (for instance removing
-> > a module)?
-> 
-> Not at all. I just did
-> # mount /work
-> # grep work /etc/fstab
-> XXX.YYY.ZZZ:/work     /work           nfs     defaults,intr   0 0
-> 
-> Thanks.
+I suffer the following problem with nfs since a lot of time, now, I am
+using nfs-utils-1.2.0, but older versions were affected too.
 
-Hmm... Is it fully reproducible? I'm running the same NFS client code
-(although not the full linux-mm) on several different client platforms
-without seeing any issues.
+When I write a file on a mounted nfs filesystem and server goes down, I
+am unable to umount it even with "-f" option, it simply hangs. On the
+other hand, if no file was written (for example, it was simply read)
+there is no problem and "umount -f" works as expected.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Seems that I need to run "umount -l" for being able to unmount it, even
+when I expected that "-f" should be enough.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Is this the proper behavior or something is going wrong?
+
+Thanks a lot :-)
+
+ 
+
