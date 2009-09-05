@@ -1,22 +1,22 @@
 From: Pacho Ramos <pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org>
 Subject: umount -a -f -t nfs doesn't work when a file has been written and
  "-l" option is needed
-Date: Sat, 05 Sep 2009 10:31:38 +0200
-Message-ID: <1252139498.14467.12.camel@localhost>
+Date: Sat, 05 Sep 2009 11:16:14 +0200
+Message-ID: <1252142174.14467.24.camel@localhost>
 Reply-To: pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain
 To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp02.jazztel.es ([62.14.3.171]:47392 "EHLO smtp02.jazztel.es"
+Received: from smtp02.jazztel.es ([62.14.3.171]:49813 "EHLO smtp02.jazztel.es"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757249AbZIEIzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Sep 2009 04:55:53 -0400
+	id S1751072AbZIEJQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Sep 2009 05:16:13 -0400
 Received: from [87.222.151.142] (helo=[192.168.1.201])
 	by smtp02.jazztel.es with esmtpa (Exim 4.69)
 	(envelope-from <pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org>)
-	id 1Mjqc9-0002wC-A5
-	for linux-nfs@vger.kernel.org; Sat, 05 Sep 2009 10:27:17 +0200
+	id 1MjrJJ-0006VL-GW
+	for linux-nfs@vger.kernel.org; Sat, 05 Sep 2009 11:11:53 +0200
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -35,5 +35,5 @@ Is this the proper behavior or something is going wrong?
 
 Thanks a lot :-)
 
- 
+
 
