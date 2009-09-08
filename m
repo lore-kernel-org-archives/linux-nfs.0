@@ -1,69 +1,90 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] mount.nfs: Support "vers=4" in nfs_nfs_version()
-Date: Tue, 08 Sep 2009 17:02:49 -0400
-Message-ID: <20090908210249.3326.81339.stgit@matisse.1015granger.net>
+Subject: [PATCH 3/3] mount.nfs: Detect "-t nfs -o vers=4" mounts
+Date: Tue, 08 Sep 2009 17:03:07 -0400
+Message-ID: <20090908210307.3326.28874.stgit@matisse.1015granger.net>
 References: <20090908210012.3326.57767.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
 To: steved@redhat.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:28341 "EHLO
+Received: from acsinet12.oracle.com ([141.146.126.234]:28406 "EHLO
 	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751362AbZIHVEY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 17:04:24 -0400
+	with ESMTP id S1751584AbZIHVE0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 17:04:26 -0400
 In-Reply-To: <20090908210012.3326.57767.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To handle "-t nfs -o vers=4" the nfs_nfs_version() function must
-recognize "vers=4," "v4," and "nfsvers=4".
+For "-t nfs -o vers=4" mounts, we want to skip v2/v3 version/transport
+negotiation, but be sure to append the "clientaddr" option.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- utils/mount/network.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
+ utils/mount/network.c |    2 +-
+ utils/mount/network.h |    1 +
+ utils/mount/stropts.c |   10 ++++++++--
+ 3 files changed, 10 insertions(+), 3 deletions(-)
 
 diff --git a/utils/mount/network.c b/utils/mount/network.c
-index f6fa5fd..420e15a 100644
+index 420e15a..bd621be 100644
 --- a/utils/mount/network.c
 +++ b/utils/mount/network.c
-@@ -90,6 +90,7 @@ static const char *nfs_transport_opttbl[] = {
- static const char *nfs_version_opttbl[] = {
- 	"v2",
- 	"v3",
-+	"v4",
- 	"vers",
- 	"nfsvers",
- 	NULL,
-@@ -1215,10 +1216,13 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
- 	case 1: /* v3 */
- 		*version = 3;
- 		return 1;
--	case 2:	/* vers */
-+	case 2: /* v4 */
-+		*version = 4;
-+		return 1;
-+	case 3:	/* vers */
- 		switch (po_get_numeric(options, "vers", &tmp)) {
- 		case PO_FOUND:
--			if (tmp >= 2 && tmp <= 3) {
-+			if (tmp >= 2 && tmp <= 4) {
- 				*version = tmp;
- 				return 1;
- 			}
-@@ -1229,10 +1233,10 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
- 		case PO_BAD_VALUE:
+@@ -1204,7 +1204,7 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
+  * Returns TRUE if @version contains a valid value for this option,
+  * or FALSE if the option was specified with an invalid value.
+  */
+-static int
++int
+ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ {
+ 	long tmp;
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index db5134c..402e0a5 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -56,6 +56,7 @@ int clnt_ping(struct sockaddr_in *, const unsigned long,
+ 
+ struct mount_options;
+ 
++int nfs_nfs_version(struct mount_options *options, unsigned long *version);
+ int nfs_options2pmap(struct mount_options *,
+ 		      struct pmap *, struct pmap *);
+ 
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a12ace7..3eb661e 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -84,6 +84,7 @@ struct nfsmount_info {
+ 	struct mount_options	*options;	/* parsed mount options */
+ 	char			**extra_opts;	/* string for /etc/mtab */
+ 
++	unsigned long		version;	/* NFS version */
+ 	int			flags,		/* MS_ flags */
+ 				fake,		/* actually do the mount? */
+ 				child;		/* forked bg child? */
+@@ -272,7 +273,12 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ 	if (!nfs_name_to_address(mi->hostname, sap, &salen))
+ 		return 0;
+ 
+-	if (strncmp(mi->type, "nfs4", 4) == 0) {
++	if (!nfs_nfs_version(mi->options, &mi->version))
++		return 0;
++	if (strncmp(mi->type, "nfs4", 4) == 0)
++		mi->version = 4;
++
++	if (mi->version == 4) {
+ 		if (!nfs_append_clientaddr_option(sap, salen, mi->options))
  			return 0;
- 		}
--	case 3: /* nfsvers */
-+	case 4: /* nfsvers */
- 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
- 		case PO_FOUND:
--			if (tmp >= 2 && tmp <= 3) {
-+			if (tmp >= 2 && tmp <= 4) {
- 				*version = tmp;
- 				return 1;
- 			}
+ 	} else {
+@@ -488,7 +494,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+ 	char *options = NULL;
+ 	int result;
+ 
+-	if (strncmp(mi->type, "nfs4", 4) != 0) {
++	if (mi->version != 4) {
+ 		if (!nfs_rewrite_pmap_mount_options(mi->options))
+ 			return 0;
+ 	}
 
