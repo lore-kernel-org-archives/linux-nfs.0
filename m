@@ -1,46 +1,61 @@
-From: James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
-Subject: Text based mount options ignoring the preferred rwsize?
-Date: Tue, 08 Sep 2009 17:47:32 +0100
-Message-ID: <4AA68AA4.7090606@moving-picture.com>
+From: Pacho Ramos <pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org>
+Subject: Re: umount -a -f -t nfs doesn't work when a file has been written
+ and "-l" option is needed
+Date: Tue, 08 Sep 2009 19:54:38 +0200
+Message-ID: <1252432478.30628.5.camel@localhost>
+References: <1252139498.14467.12.camel@localhost>
+	 <4AA65ECF.2070701@RedHat.com>
+Reply-To: pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:48204 "EHLO
-	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750881AbZIHRQR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 13:16:17 -0400
-Received: from cassini.mpc.local ([172.16.15.37] helo=moving-picture.com)
-	by moving-picture.com with esmtp (Exim 4.43)
-	id 1Ml3qu-0006VP-5E
-	for linux-nfs@vger.kernel.org; Tue, 08 Sep 2009 17:47:32 +0100
+Received: from smtp02.jazztel.es ([62.14.3.171]:35285 "EHLO smtp02.jazztel.es"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751978AbZIHRyk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Sep 2009 13:54:40 -0400
+In-Reply-To: <4AA65ECF.2070701-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've noticed a difference in the rsize used when mounting a file system 
-  between using text and binary mount options.
+El mar, 08-09-2009 a las 09:40 -0400, Steve Dickson escribi=C3=B3:
+> On 09/05/2009 04:31 AM, Pacho Ramos wrote:
+> > I suffer the following problem with nfs since a lot of time, now, I=
+ am
+> > using nfs-utils-1.2.0, but older versions were affected too.
+> >=20
+> > When I write a file on a mounted nfs filesystem and server goes dow=
+n, I
+> > am unable to umount it even with "-f" option, it simply hangs. On t=
+he
+> > other hand, if no file was written (for example, it was simply read=
+)
+> > there is no problem and "umount -f" works as expected.
+> I believe 'umount -f' waits for all the async or sync (I can't rememb=
+er)
+> RPC tasks to complete before returning... That's the reason for the h=
+ang.
+>=20
+> >=20
+> > Seems that I need to run "umount -l" for being able to unmount it, =
+even
+> > when I expected that "-f" should be enough.
+> Hopefully you will be rebooting soon since kernel structures (ala the
+> super block) are not cleaned up with 'umount -l'. Which could make th=
+e
+> system somewhat unstable.=20
+>=20
+> >=20
+> > Is this the proper behavior or something is going wrong?
+> Its the known behaviour... whether its correct or not is up to
+> interpretation... ;-) Meaning, 'umount -f' probably should
+> not hang waiting for I/O to finish, but error-ing on the "lets=20
+> do everything we can not to corrupt data" is not a bad stand either..=
+=2E
+>=20
+> steved.
+>=20
 
-The client is running a CentOS5 based distro with a 2.6.32-rc8 kernel
+Thanks a lot for the info :-)
 
-The server has a preferred rsize of 128kb and maximum rsize of 512kb
-
-When I use mount.nfs from CentOS5/RHEL5 nfs-utils (based on v1.0.9) and 
-don't give any rsize option, it mounts the file system with a rsize of 
-128kb. This uses binary mount options
-
-But, when using mount.nfs from nfs-utils 1.2.0, the file system is 
-mounted with an rsize of 512kb
-
-Looking at the nfs-utils and kernel source, it appears that for binary 
-options, rsize is set to 0 if not given by mount.nfs, and the kernel 
-eventually, in this case, increases this to preferred size.
-
-But for text mount options, if not set by mount.nfs, the default size is 
-  set to NFS_MAX_FILE_IO_SIZE in the kernel, which, in this case, gets 
-reduced to the server maximum size.
-
-Should the kernel be setting rsize (and wsize) to 0 by default?
-
-Thanks
-
-James Pearson
