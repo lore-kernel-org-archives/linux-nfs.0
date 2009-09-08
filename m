@@ -1,44 +1,45 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/3] support "-t nfs -o vers=4" [take 3]
-Date: Tue, 8 Sep 2009 17:18:28 -0400
-Message-ID: <0922B0F5-8097-49FB-9624-00B260B181B6@oracle.com>
-References: <20090908210012.3326.57767.stgit@matisse.1015granger.net> <4AA6C89F.1030801@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: [PATCH] NFS: Use GFP_NOFS in nfs_direct_req_alloc
+Date: Tue, 08 Sep 2009 18:05:08 -0400
+Message-ID: <20090908220230.7590.69833.stgit@matisse.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:40717 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751870AbZIHVSp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 17:18:45 -0400
-In-Reply-To: <4AA6C89F.1030801-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:52948
+	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751651AbZIHWFJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 18:05:09 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 8, 2009, at 5:11 PM, Steve Dickson wrote:
-> On 09/08/2009 05:02 PM, Chuck Lever wrote:
->> Hi Steve-
->>
->> These changes accompany kernel support for "-t nfs -o vers=4".
->>
->> One patch description was clarified, and a bug was fixed in the last
->> patch of this series.
->>
-> I'm a bit concern about committing these since its not clear which
-> kernel the supporting patches will be in... Why document something
-> that does not work...
+Don't dive into memory reclaim in the NFS direct I/O paths, otherwise
+we can deadlock.
 
-If Trond doesn't accept the kernel patches, you can trash bin these.   
-Otherwise there's no need to do anything until we know how "vers=4"  
-will be supported.
+Reported by: Wengang Wang <wen.gang.wang@oracle.com>
+Fix-suggested-by: Zach Brown <zach.brown@oracle.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-But I wanted to be sure you had the version of this series with the  
-bug fix.
+Trond-
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Thoughts?
 
+ fs/nfs/direct.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index e4e089a..00f06b8 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -149,7 +149,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+ {
+ 	struct nfs_direct_req *dreq;
+ 
+-	dreq = kmem_cache_alloc(nfs_direct_cachep, GFP_KERNEL);
++	dreq = kmem_cache_alloc(nfs_direct_cachep, GFP_NOFS);
+ 	if (!dreq)
+ 		return NULL;
+ 
 
