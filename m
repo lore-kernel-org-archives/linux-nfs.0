@@ -1,48 +1,46 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Tue, 8 Sep 2009 19:00:02 +0200
-Message-ID: <20090908170002.GD29902@wotan.suse.de>
-References: <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu> <20090424104137.GA7601@sgi.com> <E1LxMlO-0000sU-1J@pomaz-ex.szeredi.hu> <1240592448.4946.35.camel@heimdal.trondhjem.org> <20090425051028.GC10088@wotan.suse.de> <20090908153007.GB2513@think> <20090908154132.GC29902@wotan.suse.de> <20090908163149.GB2975@think>
+From: James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
+Subject: Text based mount options ignoring the preferred rwsize?
+Date: Tue, 08 Sep 2009 17:47:32 +0100
+Message-ID: <4AA68AA4.7090606@moving-picture.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Chris Mason <chris.mason@oracle.com>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Miklos Szeredi <miklos@szeredi.hu>, holt@sgi.com,
-	linux-nfs@vger.kernel.org, linux-fsdevel-u79uwXL29TY@public.gmane.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36403 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751609AbZIHRAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Sep 2009 13:00:00 -0400
-In-Reply-To: <20090908163149.GB2975@think>
+Received: from mpc-26.sohonet.co.uk ([193.203.82.251]:48204 "EHLO
+	moving-picture.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750881AbZIHRQR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 13:16:17 -0400
+Received: from cassini.mpc.local ([172.16.15.37] helo=moving-picture.com)
+	by moving-picture.com with esmtp (Exim 4.43)
+	id 1Ml3qu-0006VP-5E
+	for linux-nfs@vger.kernel.org; Tue, 08 Sep 2009 17:47:32 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 08, 2009 at 12:31:49PM -0400, Chris Mason wrote:
-> On Tue, Sep 08, 2009 at 05:41:32PM +0200, Nick Piggin wrote:
-> > It hasn't fallen completely off my radar. fsblock has the same issue
-> > (although I've just been ignoring gup writes into fsblock fs for the
-> > time being).
-> 
-> Ok, I'll change my detection code a bit then.
+I've noticed a difference in the rsize used when mounting a file system 
+  between using text and binary mount options.
 
-OK.
+The client is running a CentOS5 based distro with a 2.6.32-rc8 kernel
 
+The server has a preferred rsize of 128kb and maximum rsize of 512kb
 
-> > I have a basic idea of what to do... It would be nice to change calling
-> > convention of get_user_pages and take the page lock. Database people might
-> > scream, in which case we could only take the page lock for filesystems that
-> > define ->page_mkwrite (so shared mem segments avoid the overhead). Lock
-> > ordering might get a bit interesting, but if we can have callers ensure they
-> > always submit and release partially fulfilled requirests, then we can always
-> > trylock them.
-> 
-> I think everyone will have page_mkwrite eventually, at least everyone
-> who the databases will care about ;)
+When I use mount.nfs from CentOS5/RHEL5 nfs-utils (based on v1.0.9) and 
+don't give any rsize option, it mounts the file system with a rsize of 
+128kb. This uses binary mount options
 
-Ah, the problem is not where the DIO write goes, it's where the read
-goes :) (ie. the read writes into get_user_pages pages).
+But, when using mount.nfs from nfs-utils 1.2.0, the file system is 
+mounted with an rsize of 512kb
 
-So for databases this should typically be shared memory segments I'd
-say (tmpfs), or maybe anonymous memory.
+Looking at the nfs-utils and kernel source, it appears that for binary 
+options, rsize is set to 0 if not given by mount.nfs, and the kernel 
+eventually, in this case, increases this to preferred size.
 
+But for text mount options, if not set by mount.nfs, the default size is 
+  set to NFS_MAX_FILE_IO_SIZE in the kernel, which, in this case, gets 
+reduced to the server maximum size.
+
+Should the kernel be setting rsize (and wsize) to 0 by default?
+
+Thanks
+
+James Pearson
