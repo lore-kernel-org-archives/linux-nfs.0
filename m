@@ -1,123 +1,92 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [Patch 7/8] NFS Mount Configuration File (Vers 2)
-Date: Mon, 3 Aug 2009 11:57:24 -0400
-Message-ID: <20090803155724.GG28838@fieldses.org>
-References: <4A76F8E6.2010607@RedHat.com> <4A76FB3B.1070004@RedHat.com> <20090803153113.GC28838@fieldses.org> <4A7707EA.104@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-	Linux NFSv4 mailing list <nfsv4@linux-nfs.org>
-To: Steve Dickson <SteveD@redhat.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60880 "EHLO fieldses.org"
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:18325 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755341AbZHCP5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Aug 2009 11:57:23 -0400
-In-Reply-To: <4A7707EA.104-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	id S1752293AbZIIS34 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2009 14:29:56 -0400
+Date: Wed, 9 Sep 2009 14:29:45 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st
+ part)
+Message-ID: <20090909142945.755da393@tlielax.poochiereds.net>
+In-Reply-To: <1249515004.5428.34.camel@heimdal.trondhjem.org>
+References: <20090805143550.12866.8377.stgit@matisse.1015granger.net>
+	<20090805144540.12866.22084.stgit@matisse.1015granger.net>
+	<20090805174811.GB9944@fieldses.org>
+	<DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com>
+	<20090805181545.GF9944@fieldses.org>
+	<7330021D-C95A-463D-8D18-29453EF185BC@oracle.com>
+	<1249507356.5428.11.camel@heimdal.trondhjem.org>
+	<D503383F-3D52-4F93-B850-AFE84316435C@oracle.com>
+	<1249515004.5428.34.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Mon, Aug 03, 2009 at 11:53:14AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 08/03/2009 11:31 AM, J. Bruce Fields wrote:
-> >> +.SH MOUNT CONFIGURATION FILE
-> >> +All of the mount options described in the previous section can also be configured in
-> >> +the 
-> >> +.I /etc/nfsmount.conf 
-> >> +file. This configuration file is made up of three
-> >> +different sections: Global, Server and MountPoint. See 
-> >> +.BR nfsmount.conf(5)
-> >> +for details.
-> >> +.PP
-> >> +The mount command parses section in a particular order, and will not use
-> >> +options that were set in previous sections.  The order of precedence is as follows:
-> >> +
-> >> +.B Command line option 
-> >> +.RS
-> >> +options set on the command line will always be used.
-> >> +.RE
-> >> +.B Mount Point options
-> >> +.RS
-> >> +options set in the 
-> >> +.B [<Mount_Point>]
-> >> +section  will
-> >> +be used only if they are not specified on the command line.
-> >> +.RE
-> >> +.B Server options
-> >> +.RS
-> >> +options set in the 
-> >> +.B [<Server_Name>] 
-> >> +section will be used
-> >> +if they are not specified on the command  line or  the
-> >> +mount point section.
-> >> +.RE
-> >> +.B Global options 
-> >> +.RS
-> >> +options set in the 
-> >> +.B [NFSMount_Global_Options] 
-> >> +will be used if they are not specified on the command line, mount point 
-> >> +section, or the server section.
-> >> +.RE
-> >>  .SH EXAMPLES
-> >>  To mount an export using NFS version 2,
-> >>  use the
-> >> diff --git a/utils/mount/nfsmount.conf.man b/utils/mount/nfsmount.conf.man
-> >> new file mode 100644
-> >> index 0000000..1a3bb68
-> >> --- /dev/null
-> >> +++ b/utils/mount/nfsmount.conf.man
-> >> @@ -0,0 +1,87 @@
-> >> +.\"@(#)nfsmount.conf.5"
-> >> +.TH NFSMOUNT.CONF 5 "9 Mar 2008"
-> >> +.SH NAME
-> >> +nfsmount.conf - Configuration file for NFS mounts
-> >> +.SH SYNOPSIS
-> >> +Configuration file for NFS mounts that allows options
-> >> +to be set globally, per server or per mount point.
-> >> +.SH DESCRIPTION
-> >> +The configuration file is made up of multiple sections 
-> >> +followed by variables associated with that section.
-> >> +A section is defined by a string enclosed by 
-> >> +.BR [
-> >> +and 
-> >> +.BR ]
-> >> +branches; for example, 
-> >> +.BR [nfsserver.foo.com] . 
-> >> +Variables are assignment statements that assign values 
-> >> +to particular variables using the  
-> >> +.BR = 
-> >> +operator, as in 
-> >> +.BR Proto=Tcp .
-> >> +Sections are broken up into three basic categories:
-> >> +Global options, Server options and Mount Point options.
-> >> +.HP
-> >> +.BR [NFSMount_Global_Options]
-> >> +- This statically named section
-> >> +defines all of the global mount options that can be 
-> >> +applied to every NFS mount.
-> >> +.HP
-> >> +.BR [<Server_Name>]
-> > 
-> > 
-> > I notice the git configuration file uses a similar format, but allows
-> > section headers that looks like:
-> > 
-> > 	[remote "origin"]
-> > 	        url =
-> > 		git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
-> > 		fetch = +refs/heads/*:refs/remotes/origin/*
-> > 	[remote "linux-nfs"]
-> > 	        url = ssh://linux-nfs.org/~bfields/exports/linux.git
-> > 		fetch = +refs/heads/*:refs/remotes/linux-nfs/*
-> > 
-> > That quoted part in the section name looks like it should allow
-> > arbitrary strings without the risk of clashing with section names that
-> > we might want to add in the future.  That might be a better way to
-> > handle server and mount point names?
-> 
-> Something similar to [Server "server_name"] or [MountPoint "directory" ] ??
+On Wed, 05 Aug 2009 19:30:04 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-Right.
+> On Wed, 2009-08-05 at 18:24 -0400, Chuck Lever wrote:
+> > On Aug 5, 2009, at 5:22 PM, Trond Myklebust wrote:
+> > > On Wed, 2009-08-05 at 14:26 -0400, Chuck Lever wrote:
+> > >> sqlite3 doesn't do anything special under the covers.  It uses only
+> > >> POSIX file access and locking calls, as far as I know.  So I think
+> > >> hosting /var on most well-behaved clustering file systems won't have
+> > >> any problem with this arrangement.
+> > >
+> > > So we're basically introducing a dependency on a completely new  
+> > > library
+> > > that will have to be added to boot partitions/nfsroot/etc, and we have
+> > > no real reason for doing it other than because we want to move from
+> > > using sync() to fsync()?
+> > >
+> > > Sounds like a NACK to me...
+> > 
+> > Which library are you talking about, libsqlite3 or libtirpc?  Because  
+> > NEITHER of those is in /lib.
+> 
+> libsqlite is the problem. Unlike libtirpc, it's utility has yet to be
+> established.
+>
 
---b.
+Sorry to revive this so late, but I think we need to come to some
+sort of resolution here. The only missing piece for client side IPv6
+support is statd...
+
+I'm not sure I understand the objection to using libsqlite3 here. We
+certainly could roll our own routines to handle data storage, but why
+would we want to do so? sqlite3 is quite good at what it does. Why
+wouldn't we want to use it?
+
+> > In any event, it's not just sync(2) that is a problem.  sync(2) by  
+> > itself is a boot performance problem, but it's the combination of  
+> > rename and sync that is known to be especially unreliable during  
+> > system crashes.  Statd, being a crash monitor, shouldn't depend on  
+> > rename/sync to maintain persistent data in the face of system  
+> > instability.  I'd call that a real reason to use something more robust.
+> 
+> What are you talking about? Is this about the truncate + rename issue
+> leaving empty files upon a crash?
+> That issue is solved trivially by doing an fsync() before you rename the
+> file. That entire discussion was about whether or not existing
+> applications should be _required_ to do this kind of POSIX pedantry,
+> when previously they could get away without it.
+> 
+> IOW: that issue alone does not justify replacing the current simple file
+> based scheme.
+>
+
+There are other reasons, not to use the simple file-based scheme too...
+
+Internationalized domain names will be easier to deal with via sqlite3,
+for instance.
+
+Certainly we could code this up ourselves, but what's the benefit to
+doing that when we have a perfectly good data storage engine available?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
