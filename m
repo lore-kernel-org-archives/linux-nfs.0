@@ -1,76 +1,170 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 4/9] sunrpc/cache: avoid variable over-loading in
-	cache_defer_req
+Subject: [PATCH 5/9] sunrpc/cache: allow threads to block while waiting for
+	cache update.
 Date: Wed, 09 Sep 2009 16:32:54 +1000
-Message-ID: <20090909063254.20462.68582.stgit@notabene.brown>
+Message-ID: <20090909063254.20462.99277.stgit@notabene.brown>
 References: <20090909062539.20462.67466.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56310 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:56314 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751627AbZIIGc7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Sep 2009 02:32:59 -0400
+	id S1751659AbZIIGdG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2009 02:33:06 -0400
 In-Reply-To: <20090909062539.20462.67466.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cache_defer_req, 'dreq' is used for two significantly different
-values that happen to be of the same type.
+The current practice of waiting for cache updates by queueing the
+whole request to be retried has (at least) two problems.
 
-This is both confusing, and makes it hard to extend the range of one of
-the values as we will in the next patch.
-So introduce 'discard' to take one of the values.
+1/ With NFSv4, requests can be quite complex and re-trying a whole
+  request when a latter part fails should only be a last-resort, not a
+  normal practice.
+
+2/ Large requests, and in particular any 'write' request, will not be
+  queued by the current code and doing so would be undesirable.
+
+In many cases only a very sort wait is needed before the cache gets
+valid data.
+
+So, providing the underlying transport permits it by setting
+ ->thread_wait,
+arrange to wait briefly for an upcall to be completed (as reflected in
+the clearing of CACHE_PENDING).
+If the short wait was not long enough and CACHE_PENDING is still set,
+fall back on the old approach.
+
+The 'thread_wait' value is set to 5 seconds when there are spare
+threads, and 1 second when there are no spare threads.
+
+These values are probably much higher than needed, but will ensure
+some forward progress.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
 
- net/sunrpc/cache.c |   18 +++++++++---------
- 1 files changed, 9 insertions(+), 9 deletions(-)
+ include/linux/sunrpc/cache.h |    3 +++
+ net/sunrpc/cache.c           |   44 +++++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/svc_xprt.c        |   11 +++++++++++
+ 3 files changed, 57 insertions(+), 1 deletions(-)
 
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 6f52b4d..ef3db11 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -125,6 +125,9 @@ struct cache_detail {
+  */
+ struct cache_req {
+ 	struct cache_deferred_req *(*defer)(struct cache_req *req);
++	int thread_wait;  /* How long (jiffies) we can block the
++			   * current thread to wait for updates.
++			   */
+ };
+ /* this must be embedded in a deferred_request that is being
+  * delayed awaiting cache-fill
 diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 9c8f0cc..54bbd83 100644
+index 54bbd83..46e9e2b 100644
 --- a/net/sunrpc/cache.c
 +++ b/net/sunrpc/cache.c
-@@ -500,7 +500,7 @@ static int cache_defer_cnt;
+@@ -498,10 +498,22 @@ static LIST_HEAD(cache_defer_list);
+ static struct list_head cache_defer_hash[DFR_HASHSIZE];
+ static int cache_defer_cnt;
  
++struct thread_deferred_req {
++	struct cache_deferred_req handle;
++	wait_queue_head_t wait;
++};
++static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
++{
++	struct thread_deferred_req *dr =
++		container_of(dreq, struct thread_deferred_req, handle);
++	wake_up(&dr->wait);
++}
++
  static int cache_defer_req(struct cache_req *req, struct cache_head *item)
  {
--	struct cache_deferred_req *dreq;
-+	struct cache_deferred_req *dreq, *discard;
+ 	struct cache_deferred_req *dreq, *discard;
  	int hash = DFR_HASH(item);
++	struct thread_deferred_req sleeper;
  
  	if (cache_defer_cnt >= DFR_MAX) {
-@@ -525,20 +525,20 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 	list_add(&dreq->hash, &cache_defer_hash[hash]);
- 
- 	/* it is in, now maybe clean up */
--	dreq = NULL;
-+	discard = NULL;
- 	if (++cache_defer_cnt > DFR_MAX) {
--		dreq = list_entry(cache_defer_list.prev,
--				  struct cache_deferred_req, recent);
--		list_del_init(&dreq->recent);
--		list_del_init(&dreq->hash);
-+		discard = list_entry(cache_defer_list.prev,
-+				     struct cache_deferred_req, recent);
-+		list_del_init(&discard->recent);
-+		list_del_init(&discard->hash);
- 		cache_defer_cnt--;
+ 		/* too much in the cache, randomly drop this one,
+@@ -510,7 +522,14 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		if (net_random()&1)
+ 			return -ENOMEM;
  	}
- 	spin_unlock(&cache_defer_lock);
- 
--	if (dreq) {
-+	if (discard)
- 		/* there was one too many */
--		dreq->revisit(dreq, 1);
--	}
-+		discard->revisit(discard, 1);
+-	dreq = req->defer(req);
++	if (req->thread_wait) {
++		dreq = &sleeper.handle;
++		init_waitqueue_head(&sleeper.wait);
++		dreq->revisit = cache_restart_thread;
++	} else
++		dreq = req->defer(req);
 +
- 	if (!test_bit(CACHE_PENDING, &item->flags)) {
- 		/* must have just been validated... */
++ retry:
+ 	if (dreq == NULL)
+ 		return -ENOMEM;
+ 
+@@ -544,6 +563,29 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
  		cache_revisit_request(item);
+ 		return -EAGAIN;
+ 	}
++
++	if (dreq == &sleeper.handle) {
++		wait_event_interruptible_timeout(
++			sleeper.wait,
++			!test_bit(CACHE_PENDING, &item->flags)
++			|| list_empty(&sleeper.handle.hash),
++			req->thread_wait);
++		spin_lock(&cache_defer_lock);
++		if (!list_empty(&sleeper.handle.hash)) {
++			list_del_init(&sleeper.handle.recent);
++			list_del_init(&sleeper.handle.hash);
++			cache_defer_cnt--;
++		}
++		spin_unlock(&cache_defer_lock);
++		if (test_bit(CACHE_PENDING, &item->flags)) {
++			/* item is still pending, try request
++			 * deferral
++			 */
++			dreq = req->defer(req);
++			goto retry;
++		}
++		return 0;
++	}
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 912dea5..65f6a25 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -655,12 +655,23 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 		pool->sp_nwaking--;
+ 		BUG_ON(pool->sp_nwaking < 0);
+ 	}
++
++	/* Normally we will wait up to 5 seconds for any required
++	 * cache information to be provided.
++	 */
++	rqstp->rq_chandle.thread_wait = 5*HZ;
+ 	xprt = svc_xprt_dequeue(pool);
+ 	if (xprt) {
+ 		rqstp->rq_xprt = xprt;
+ 		svc_xprt_get(xprt);
+ 		rqstp->rq_reserved = serv->sv_max_mesg;
+ 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
++
++		/* As there is a shortage of threads and this request
++		 * had to be queue, don't allow the thread to wait so
++		 * long for cache updates.
++		 */
++		rqstp->rq_chandle.thread_wait = 1*HZ;
+ 	} else {
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
 
 
