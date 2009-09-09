@@ -1,111 +1,64 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 2/9] sunrpc/cache: simplify cache_fresh_locked and
-	cache_fresh_unlocked.
+Subject: [PATCH 3/9] sunrpc/cache: use list_del_init for the list_head entries
+	in cache_deferred_req
 Date: Wed, 09 Sep 2009 16:32:54 +1000
-Message-ID: <20090909063254.20462.36051.stgit@notabene.brown>
+Message-ID: <20090909063254.20462.7969.stgit@notabene.brown>
 References: <20090909062539.20462.67466.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:56294 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:37950 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751514AbZIIGcq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Sep 2009 02:32:46 -0400
+	id S1751528AbZIIGcw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2009 02:32:52 -0400
 In-Reply-To: <20090909062539.20462.67466.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The extra call to cache_revisit_request in cache_fresh_unlocked is not
-needed, as should have been fairly clear at the time of
-   commit 4013edea9a0b6cdcb1fdf5d4011e47e068fd6efb
-
-If there are requests to be revisited, then we can be sure that
-CACHE_PENDING is set, so the second call is sufficient.
-
-So remove the first call.
-Then remove the 'new' parameter,
-then remove the return value for cache_fresh_locked which is only used
-to provide the value for 'new'.
+Using list_del_init is generally safer than list_del, and it will
+allow us, in a subsequent patch, to see if an entry has already been
+processed or not.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
 
- net/sunrpc/cache.c |   23 ++++++++++-------------
- 1 files changed, 10 insertions(+), 13 deletions(-)
+ net/sunrpc/cache.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index aafb0e7..baddb23 100644
+index baddb23..9c8f0cc 100644
 --- a/net/sunrpc/cache.c
 +++ b/net/sunrpc/cache.c
-@@ -105,18 +105,16 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
+@@ -529,8 +529,8 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 	if (++cache_defer_cnt > DFR_MAX) {
+ 		dreq = list_entry(cache_defer_list.prev,
+ 				  struct cache_deferred_req, recent);
+-		list_del(&dreq->recent);
+-		list_del(&dreq->hash);
++		list_del_init(&dreq->recent);
++		list_del_init(&dreq->hash);
+ 		cache_defer_cnt--;
+ 	}
+ 	spin_unlock(&cache_defer_lock);
+@@ -564,7 +564,7 @@ static void cache_revisit_request(struct cache_head *item)
+ 			dreq = list_entry(lp, struct cache_deferred_req, hash);
+ 			lp = lp->next;
+ 			if (dreq->item == item) {
+-				list_del(&dreq->hash);
++				list_del_init(&dreq->hash);
+ 				list_move(&dreq->recent, &pending);
+ 				cache_defer_cnt--;
+ 			}
+@@ -590,7 +590,7 @@ void cache_clean_deferred(void *owner)
  
- static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
- 
--static int cache_fresh_locked(struct cache_head *head, time_t expiry)
-+static void cache_fresh_locked(struct cache_head *head, time_t expiry)
- {
- 	head->expiry_time = expiry;
- 	head->last_refresh = get_seconds();
--	return !test_and_set_bit(CACHE_VALID, &head->flags);
-+	set_bit(CACHE_VALID, &head->flags);
- }
- 
- static void cache_fresh_unlocked(struct cache_head *head,
--			struct cache_detail *detail, int new)
-+				 struct cache_detail *detail)
- {
--	if (new)
--		cache_revisit_request(head);
- 	if (test_and_clear_bit(CACHE_PENDING, &head->flags)) {
- 		cache_revisit_request(head);
- 		cache_dequeue(detail, head);
-@@ -132,7 +130,6 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- 	 */
- 	struct cache_head **head;
- 	struct cache_head *tmp;
--	int is_new;
- 
- 	if (!test_bit(CACHE_VALID, &old->flags)) {
- 		write_lock(&detail->hash_lock);
-@@ -141,9 +138,9 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- 				set_bit(CACHE_NEGATIVE, &old->flags);
- 			else
- 				detail->update(old, new);
--			is_new = cache_fresh_locked(old, new->expiry_time);
-+			cache_fresh_locked(old, new->expiry_time);
- 			write_unlock(&detail->hash_lock);
--			cache_fresh_unlocked(old, detail, is_new);
-+			cache_fresh_unlocked(old, detail);
- 			return old;
+ 	list_for_each_entry_safe(dreq, tmp, &cache_defer_list, recent) {
+ 		if (dreq->owner == owner) {
+-			list_del(&dreq->hash);
++			list_del_init(&dreq->hash);
+ 			list_move(&dreq->recent, &pending);
+ 			cache_defer_cnt--;
  		}
- 		write_unlock(&detail->hash_lock);
-@@ -167,11 +164,11 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- 	*head = tmp;
- 	detail->entries++;
- 	cache_get(tmp);
--	is_new = cache_fresh_locked(tmp, new->expiry_time);
-+	cache_fresh_locked(tmp, new->expiry_time);
- 	cache_fresh_locked(old, 0);
- 	write_unlock(&detail->hash_lock);
--	cache_fresh_unlocked(tmp, detail, is_new);
--	cache_fresh_unlocked(old, detail, 0);
-+	cache_fresh_unlocked(tmp, detail);
-+	cache_fresh_unlocked(old, detail);
- 	cache_put(old, detail);
- 	return tmp;
- }
-@@ -240,8 +237,8 @@ int cache_check(struct cache_detail *detail,
- 				cache_revisit_request(h);
- 				if (rv == -EAGAIN) {
- 					set_bit(CACHE_NEGATIVE, &h->flags);
--					cache_fresh_unlocked(h, detail,
--					     cache_fresh_locked(h, get_seconds()+CACHE_NEW_EXPIRY));
-+					cache_fresh_locked(h, get_seconds()+CACHE_NEW_EXPIRY);
-+					cache_fresh_unlocked(h, detail);
- 					rv = -ENOENT;
- 				}
- 				break;
 
 
