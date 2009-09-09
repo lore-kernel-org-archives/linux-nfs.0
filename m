@@ -1,157 +1,171 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:64865 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752320AbZIJV0q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 17:26:46 -0400
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Jeff Layton <jlayton@redhat.com>, steved@redhat.com,
+Received: from mx1.redhat.com ([209.132.183.28]:21766 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752931AbZIITOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Sep 2009 15:14:04 -0400
+Date: Wed, 9 Sep 2009 15:13:54 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, steved@redhat.com,
         linux-nfs@vger.kernel.org
-Message-Id: <FB203098-178F-4C8A-A4B0-31285E43FE2A@oracle.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20090910204959.GN14406@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st part)
-Date: Thu, 10 Sep 2009 17:26:11 -0400
-References: <1249515004.5428.34.camel@heimdal.trondhjem.org> <20090909142945.755da393@tlielax.poochiereds.net> <1252521599.8722.53.camel@heimdal.trondhjem.org> <20B7C2F0-E566-4292-91E9-41A3FA6C9D4C@oracle.com> <1252525327.8722.81.camel@heimdal.trondhjem.org> <D2B488FA-2630-4355-8E3B-FE1243E4C3AE@oracle.com> <20090910150319.GA10704@fieldses.org> <AD3CA71A-8A67-4D8E-8138-92A01D672133@oracle.com> <20090910162327.GE11858@fieldses.org> <DE1F606D-CE0A-4646-88E3-5A1652540073@oracle.com> <20090910204959.GN14406@fieldses.org>
+Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st
+ part)
+Message-ID: <20090909151354.504ccdf6@tlielax.poochiereds.net>
+In-Reply-To: <1252521599.8722.53.camel@heimdal.trondhjem.org>
+References: <20090805143550.12866.8377.stgit@matisse.1015granger.net>
+	<20090805144540.12866.22084.stgit@matisse.1015granger.net>
+	<20090805174811.GB9944@fieldses.org>
+	<DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com>
+	<20090805181545.GF9944@fieldses.org>
+	<7330021D-C95A-463D-8D18-29453EF185BC@oracle.com>
+	<1249507356.5428.11.camel@heimdal.trondhjem.org>
+	<D503383F-3D52-4F93-B850-AFE84316435C@oracle.com>
+	<1249515004.5428.34.camel@heimdal.trondhjem.org>
+	<20090909142945.755da393@tlielax.poochiereds.net>
+	<1252521599.8722.53.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sep 10, 2009, at 4:49 PM, J. Bruce Fields wrote:
-> On Thu, Sep 10, 2009 at 04:39:51PM -0400, Chuck Lever wrote:
->> On Sep 10, 2009, at 12:23 PM, J. Bruce Fields wrote:
->>> On Thu, Sep 10, 2009 at 12:14:27PM -0400, Chuck Lever wrote:
->>>> On Sep 10, 2009, at 11:03 AM, J. Bruce Fields wrote:
->>>>> On Wed, Sep 09, 2009 at 06:18:11PM -0400, Chuck Lever wrote:
->>>>>> IDNs are UTF16.  /var therefore has to support UTF16 filenames;
->>>>>> either
->>>>>> byte in a double-byte character can be '/' or '\0'.  That means  
->>>>>> the
->>>>>> underlying fs implementation has to support UTF16 (FAT32  
->>>>>> anyone?),
->>>>>> and
->>>>>> the system's locale has to be configured correctly.  If we decide
->>>>>> not to
->>>>>> depend on the file system to support UTF16 filenames, then statd
->>>>>> has
->>>>>> to
->>>>>> be intelligent enough to figure out how to deal with converting
->>>>>> UTF16
->>>>>> hostnames before storing them as filenames.  Then, we have to  
->>>>>> teach
->>>>>> matchhostname() and friends how to deal with double-byte  
->>>>>> character
->>>>>> strings...
->>>>>
->>>>> Googling around.... Is this accurate?:
->>>>>
->>>>> 	http://en.wikipedia.org/wiki/Internationalized_domain_name
->>>>>
->>>>> That makes it sound like domain names are staying ascii, and  
->>>>> they're
->>>>> just adding something on top to allow encoding unicode using  
->>>>> ascii,
->>>>> which may optionally be used by applications.
->>>>
->>>> There is a mechanism that provides an ASCII-ized version of domain
->>>> names
->>>> that may contain non-ASCII characters, expressly for applications
->>>> that
->>>> need to perform DNS queries but can't be easily converted to handle
->>>> double-byte character strings.  This can be adapted for statd,
->>>> though I'm
->>>> not sure if the converted ASCII version of such names specifically
->>>> exclude '/'.
->>>>
->>>> Internationalized domain names themselves are still expressed in
->>>> UTF16,
->>>> as far as I understand it.
->>>
->>> From a quick skim of http://www.ietf.org/rfc/rfc3490.txt, it appears
->>> to
->>> me that protocols (at the very least, any preexisting protocols) are
->>> all
->>> expected to use the ascii representation on the wire, and that the
->>> translation to unicode is meant by use for applications.
->>>
->>> So in our case we'd continue to expect ascii domain names on the  
->>> wire,
->>> and I believe that's also what we should store in any database.  But
->>> if
->>> someone were to write a gui administrative interface to that data,  
->>> for
->>> example, they might choose to use idna for display.
->>
->> That's a reasonable and specific objection to my claim that our  
->> current
->> host record storage format is inadequate to support IDNA.  I've also
->> confirmed that ToAscii with the UseSTD3ASCIIRules flag set is not
->> supposed to generate a domain label string with a '/' in it.  My
->> remaining concern here is that we could possibly see hostnames that  
->> are
->> too long to be stored in directory entries of some file systems,
->> especially considering that the ASCII-fied Unicode names will be  
->> longer
->> than typical ASCII names we normally encounter today.
->
-> Googling around some more.... the normal limits for dns appear to be  
-> 63
-> bytes per component, and 255 for the whole string, and those limits  
-> are
-> still in force on the output of that mapping.  I suspect this isn't a
-> huge deal.
+On Wed, 09 Sep 2009 14:39:59 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
-I bring this up because NI_MAXHOST, declared in /usr/include/netdb.h,  
-is 1025, not 255.  You are probably correct, practically speaking.
+> On Wed, 2009-09-09 at 14:29 -0400, Jeff Layton wrote:
+> > On Wed, 05 Aug 2009 19:30:04 -0400
+> > Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+> > 
+> > > On Wed, 2009-08-05 at 18:24 -0400, Chuck Lever wrote:
+> > > > On Aug 5, 2009, at 5:22 PM, Trond Myklebust wrote:
+> > > > > On Wed, 2009-08-05 at 14:26 -0400, Chuck Lever wrote:
+> > > > >> sqlite3 doesn't do anything special under the covers.  It uses only
+> > > > >> POSIX file access and locking calls, as far as I know.  So I think
+> > > > >> hosting /var on most well-behaved clustering file systems won't have
+> > > > >> any problem with this arrangement.
+> > > > >
+> > > > > So we're basically introducing a dependency on a completely new  
+> > > > > library
+> > > > > that will have to be added to boot partitions/nfsroot/etc, and we have
+> > > > > no real reason for doing it other than because we want to move from
+> > > > > using sync() to fsync()?
+> > > > >
+> > > > > Sounds like a NACK to me...
+> > > > 
+> > > > Which library are you talking about, libsqlite3 or libtirpc?  Because  
+> > > > NEITHER of those is in /lib.
+> > > 
+> > > libsqlite is the problem. Unlike libtirpc, it's utility has yet to be
+> > > established.
+> > >
+> > 
+> > Sorry to revive this so late, but I think we need to come to some
+> > sort of resolution here. The only missing piece for client side IPv6
+> > support is statd...
+> > 
+> > I'm not sure I understand the objection to using libsqlite3 here. We
+> > certainly could roll our own routines to handle data storage, but why
+> > would we want to do so? sqlite3 is quite good at what it does. Why
+> > wouldn't we want to use it?
+> 
+> Backwards compatibility is one major reason. statd already exists, and
+> is in use out there. I shouldn't be forced to reboot all my clients when
+> I upgrade the nfs-utils package on my server.
+> 
 
->> What about multi-homed host support?  The same mon_name can be used  
->> with
->> more than one my_name, for multi-homed hosts.  Using the current on- 
->> disk
->> scheme, statd turns that SM_MON request into a no-op.
->
-> I don't know what we're supposed to do in that case.  You want to  
-> store
-> them all so you can send notifies to them all on reboot?
+We could roll a conversion utility for this if it would help. nfs-utils
+upgrades usually mean restarting statd anyway:
 
-Something like that.  Basically I think we want to send SM_NOTIFY to  
-the monitored host _from_ every registered my_name we have for that  
-mon_name.  The kernel will probably use a separate nsm_host for each  
-one of these, so statd should probably keep track of each of the  
-cookies as well.
+shut down old-statd
+convert flat file db to sqlite
+start up new-statd
 
-Remembering which my_names have been used is important because the  
-remote often uses the sender's name or IP address to identify which  
-monitored host has rebooted.
+...so I don't think we necessarily need to reboot the clients for this.
+It should (in theory) be possible to do the reverse even.
 
-We could throw up our hands and just keep track of all the my_names  
-that were used during the last reboot, and notify each mon_name from  
-all of those.  That doesn't help with remembering the cookies, though,  
-and makes sending all notifications at reboot take longer.
+> Simplicity is another reason. WTF do we need a full SQL database, when
+> all we want to do is store 2 pieces of data (a hostname and a cookie)?
+> It isn't as if this has been a major problem for us previously.
+> 
 
->> So additional
->> records for the same hostname can't be stored, or we have to resort  
->> to
->> adding multiple lines in the same file.  This is possible to do  
->> with just
->> POSIX file system calls, but it does add complexity to manage several
->> lines in each hostname file without increasing the risk of  
->> corruption if
->> a file update (especially the deletion of one record in the middle)  
->> is
->> interrupted.
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
+Been a little while since I took my initial look at new-statd, but I
+see that Chuck is has this (just a for-instance):
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+        rc = sqlite3_prepare_v2(db, "CREATE TABLE " STATD_MONITOR_TABLENAME
+                                        " (priv BLOB,"
+                                        " mon_name TEXT NOT NULL,"
+                                        " my_name TEXT NOT NULL,"
+                                        " program INTEGER,"
+                                        " version INTEGER,"
+                                        " procedure INTEGER,"
+                                        " protocol TEXT NOT NULL,"
+                                        " state INTEGER,"
+                                        " UNIQUE(mon_name,my_name));",
+                                                -1, &stmt, NULL);
 
 
+He's tracking some other info there too. Is this all necessary? Maybe
+not now, but having a storage engine that can cope with tracking extra
+info will make it easier to handle things like multihomed clients and
+servers correctly (something that the existing statd is not very good
+at at the moment).
 
+> > > > In any event, it's not just sync(2) that is a problem.  sync(2) by  
+> > > > itself is a boot performance problem, but it's the combination of  
+> > > > rename and sync that is known to be especially unreliable during  
+> > > > system crashes.  Statd, being a crash monitor, shouldn't depend on  
+> > > > rename/sync to maintain persistent data in the face of system  
+> > > > instability.  I'd call that a real reason to use something more robust.
+> > > 
+> > > What are you talking about? Is this about the truncate + rename issue
+> > > leaving empty files upon a crash?
+> > > That issue is solved trivially by doing an fsync() before you rename the
+> > > file. That entire discussion was about whether or not existing
+> > > applications should be _required_ to do this kind of POSIX pedantry,
+> > > when previously they could get away without it.
+> > > 
+> > > IOW: that issue alone does not justify replacing the current simple file
+> > > based scheme.
+> > >
+> > 
+> > There are other reasons, not to use the simple file-based scheme too...
+> > 
+> > Internationalized domain names will be easier to deal with via sqlite3,
+> > for instance.
+> 
+> Please explain...
+> 
+
+Well, we currently store statd info in flat files named with the
+hostname. With an internationalized domain name, we may have a
+multibyte character in that name. We could try to store that as an
+ASCII or UTF8 name, but we'd have to roll conversion routines for it.
+Why bother when we have a storage engine that does that work for us?
+
+> > Certainly we could code this up ourselves, but what's the benefit to
+> > doing that when we have a perfectly good data storage engine available?
+> 
+> Why change something that works???? Rewriting from scratch is _NOT_ the
+> Linux way, and has usually bitten us hard when we've done it.
+> 
+> The 2.6.19 rewrite of the kernel mount code springs to mind...
+> 
+
+A good point. Given who I work for, I *really* hate regressions since
+they tend to mean a lot of my time tends to get eaten up.
+
+At some point however it becomes very difficult to patch up old code.
+old-statd in particular hasn't seen the attention that it probably
+should have.
+
+I trust that Chuck will be willing to fix problems that come along. The
+new code seems to be on par with the old in complexity so I don't think
+we'd be taking on a great maintenance burden with it even if Chuck
+isn't available.
+
+Could we add IPv6 support as a patchset to the existing statd instead?
+Sure. That patch would be smaller than Chuck's rewrite, but I still
+think there are advantages to considering a major overhaul here.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
