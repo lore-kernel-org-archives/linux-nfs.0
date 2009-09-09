@@ -1,28 +1,51 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: Why doesn't zap_pte_range() call page_mkwrite()
-Date: Tue, 8 Sep 2009 22:21:02 -0400
-Message-ID: <20090909022102.GA28318@infradead.org>
-References: <1240510668.11148.40.camel@heimdal.trondhjem.org> <E1Lx4yU-0007A8-Gl@pomaz-ex.szeredi.hu> <1240519320.5602.9.camel@heimdal.trondhjem.org> <E1LxFd4-0008Ih-Rd@pomaz-ex.szeredi.hu> <20090424104137.GA7601@sgi.com> <E1LxMlO-0000sU-1J@pomaz-ex.szeredi.hu> <1240592448.4946.35.camel@heimdal.trondhjem.org> <20090425051028.GC10088@wotan.suse.de> <20090908153007.GB2513@think>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: Use GFP_NOFS in nfs_direct_req_alloc
+Date: Tue, 08 Sep 2009 23:49:53 -0400
+Message-ID: <1252468193.5092.29.camel@heimdal.trondhjem.org>
+References: <20090908220230.7590.69833.stgit@matisse.1015granger.net>
+	 <1252449178.8099.64.camel@heimdal.trondhjem.org>
+	 <931F30AB-DC64-4A02-A96C-FABF0DD4059A@oracle.com>
+	 <1252451130.8099.81.camel@heimdal.trondhjem.org>
+	 <91BC2823-945F-4E23-A3E1-3CE1456C05DC@oracle.com>
+	 <1252460233.5092.12.camel@heimdal.trondhjem.org>
+	 <CDD6BAFB-F9E3-4724-893E-94589560E8BF@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Chris Mason <chris.mason@oracle.com>,
-	Nick Piggin <npiggin@suse.de>,
-	Trond Myklebust <trond.myklebust@fys.uio.no>,
-	Miklos Szeredi <miklos@szeredi.hu>, holt@sgi.com,
-	linux-nfs-fy+rA21nqHI@public.gmane.org
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:43423 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbZIICVK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Sep 2009 22:21:10 -0400
-In-Reply-To: <20090908153007.GB2513@think>
+Received: from mx2.netapp.com ([216.240.18.37]:64232 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751627AbZIIDu2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Sep 2009 23:50:28 -0400
+In-Reply-To: <CDD6BAFB-F9E3-4724-893E-94589560E8BF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 08, 2009 at 11:30:07AM -0400, Chris Mason wrote:
-> Sorry for digging up an old thread, but is there any reason we can't
-> just use page_mkwrite here?  I'd love to get rid of the btrfs code to
-> detect places that use set_page_dirty without a page_mkwrite.
+On Tue, 2009-09-08 at 22:16 -0400, Chuck Lever wrote:
+> On Sep 8, 2009, at 9:37 PM, Trond Myklebust wrote:
+> > On Tue, 2009-09-08 at 21:01 -0400, Chuck Lever wrote:
+> >> That is precisely the case here, in fact.  The upper file system is
+> >> attempting to reclaim memory in the same kernel where the NFS client
+> >> is trying to allocate with GFP_KERNEL.
+> >
+> > That's the "upper file system"'s problem, not ours... Stacking
+> > filesystems causes issues. Screwing over the existing users of the
+> > underlying filesystem is not a fix for those issues...
+> 
+> How does this change "screw over" the existing users of NFS O_DIRECT?
 
-It's not just btrfs, it's also a complete pain in the a** for XFS and
-probably every filesystems using ->page_mkwrite for dirty page tracking.
+If they are low on memory, and call read() or write() on an O_DIRECT
+file, the kernel will fail to start the necessary memory reclaim. Given
+that by far the most common users of NFS O_DIRECT these days tend to be
+large databases with rather heavy memory requirements our code changes
+should rather be moving in the opposite direction w.r.t. use of
+GFP_NOFS.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
