@@ -1,75 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pz0-f204.google.com ([209.85.222.204]:63945 "EHLO
-	mail-pz0-f204.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751425AbZIBT1G convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Sep 2009 15:27:06 -0400
-Received: by pzk42 with SMTP id 42so968841pzk.19
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Sep 2009 12:27:09 -0700 (PDT)
-In-Reply-To: <e7ca40f70909021210p646e2635l267ac6def345b4c7@mail.gmail.com>
-References: <20090902180841.GF946@proxime.net>
-	 <e7ca40f70909021119r2f49724dj705e334cf1ae9b3a@mail.gmail.com>
-	 <1f808b4a0909021135m49c2e60o6b305babcaed295c@mail.gmail.com>
-	 <e7ca40f70909021210p646e2635l267ac6def345b4c7@mail.gmail.com>
-Date: Thu, 3 Sep 2009 00:57:09 +0530
-Message-ID: <1f808b4a0909021227k768695dbm66fbd4022f1b5b91@mail.gmail.com>
-Subject: Re: NFS for millions of files
-From: Peter Chacko <peterchacko35@gmail.com>
-To: Aaron Wiebe <epiphani@gmail.com>
-Cc: Jason Legate <linux-nfs@proxime.net>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from acsinet12.oracle.com ([141.146.126.234]:28842 "EHLO
+	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753786AbZIJUkV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 16:40:21 -0400
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Jeff Layton <jlayton@redhat.com>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Message-Id: <DE1F606D-CE0A-4646-88E3-5A1652540073@oracle.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20090910162327.GE11858@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st part)
+Date: Thu, 10 Sep 2009 16:39:51 -0400
+References: <1249507356.5428.11.camel@heimdal.trondhjem.org> <D503383F-3D52-4F93-B850-AFE84316435C@oracle.com> <1249515004.5428.34.camel@heimdal.trondhjem.org> <20090909142945.755da393@tlielax.poochiereds.net> <1252521599.8722.53.camel@heimdal.trondhjem.org> <20B7C2F0-E566-4292-91E9-41A3FA6C9D4C@oracle.com> <1252525327.8722.81.camel@heimdal.trondhjem.org> <D2B488FA-2630-4355-8E3B-FE1243E4C3AE@oracle.com> <20090910150319.GA10704@fieldses.org> <AD3CA71A-8A67-4D8E-8138-92A01D672133@oracle.com> <20090910162327.GE11858@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Of course fragmentation doesn't matter if there is no data IO...You
-true...I usually got significant performance with rszie/wsize around
-4K, while MTU was at 1.5 k.....As you said right balance  between the
-performance gains at the RPC/UDP stack and fragmentation overhead at
-L3/L2 stack....
-
-May be you can try adding more threads on the server, and if it is
-MIPIO capable, you can find better performance....and lastly NFS is
-not meant for performance...Until you use NFSoRDMA pr pNFS....As Chuck
-mentioned, sequential LOG based file systems based NFS server  offer
-better performance at a server storage level..
-
-And if you have a real need, i  have created an NFS load balancer that
- brings superior performance(better than local FS for large meta data
-intensive workloads or IO is spread to different files) for my
-previous employer...You can find more details here.. Its not open
-source...But i can have them contact you and give you a trial
-version...
-
-http://www.calsoftlabs.com/whitepapers/net-nfs.html
-
-thanks
-
-On Thu, Sep 3, 2009 at 12:40 AM, Aaron Wiebe<epiphani@gmail.com> wrote:
-> On Wed, Sep 2, 2009 at 2:35 PM, Peter Chacko<peterchacko35@gmail.com> wrote:
->> Is this NFSv4 ?  rsize and wsize > MTU size will cause fragmentation
->> and performance issues...Try making it around 4k .....You used  1<<15
->> fir your example. if you don't do writes....then this shouldn't
->> matter...and of course NFS is  Nfs is not For Scalability.. You cannot
->> get the same performance on NFS as you would get for localFS...May be
->> you can try 10g....still there is TCP/UDP/IP stack overhead.....
+On Sep 10, 2009, at 12:23 PM, J. Bruce Fields wrote:
+> On Thu, Sep 10, 2009 at 12:14:27PM -0400, Chuck Lever wrote:
+>> On Sep 10, 2009, at 11:03 AM, J. Bruce Fields wrote:
+>>> On Wed, Sep 09, 2009 at 06:18:11PM -0400, Chuck Lever wrote:
+>>>> IDNs are UTF16.  /var therefore has to support UTF16 filenames;
+>>>> either
+>>>> byte in a double-byte character can be '/' or '\0'.  That means the
+>>>> underlying fs implementation has to support UTF16 (FAT32 anyone?),
+>>>> and
+>>>> the system's locale has to be configured correctly.  If we decide
+>>>> not to
+>>>> depend on the file system to support UTF16 filenames, then statd  
+>>>> has
+>>>> to
+>>>> be intelligent enough to figure out how to deal with converting  
+>>>> UTF16
+>>>> hostnames before storing them as filenames.  Then, we have to teach
+>>>> matchhostname() and friends how to deal with double-byte character
+>>>> strings...
+>>>
+>>> Googling around.... Is this accurate?:
+>>>
+>>> 	http://en.wikipedia.org/wiki/Internationalized_domain_name
+>>>
+>>> That makes it sound like domain names are staying ascii, and they're
+>>> just adding something on top to allow encoding unicode using ascii,
+>>> which may optionally be used by applications.
+>>
+>> There is a mechanism that provides an ASCII-ized version of domain  
+>> names
+>> that may contain non-ASCII characters, expressly for applications  
+>> that
+>> need to perform DNS queries but can't be easily converted to handle
+>> double-byte character strings.  This can be adapted for statd,  
+>> though I'm
+>> not sure if the converted ASCII version of such names specifically
+>> exclude '/'.
+>>
+>> Internationalized domain names themselves are still expressed in  
+>> UTF16,
+>> as far as I understand it.
 >
-> Fragmentation won't hurt you that much, and it doesn't even apply to
-> opens, since those operations are significantly smaller.  The
-> performance gains higher in the stack from a larger rsize/wsize
-> generally outweigh the savings in frame size optimization.  Of course,
-> jumbo frames are always a good idea, but again, doesn't help here.
+> From a quick skim of http://www.ietf.org/rfc/rfc3490.txt, it appears  
+> to
+> me that protocols (at the very least, any preexisting protocols) are  
+> all
+> expected to use the ascii representation on the wire, and that the
+> translation to unicode is meant by use for applications.
 >
-> -Aaron
->
+> So in our case we'd continue to expect ascii domain names on the wire,
+> and I believe that's also what we should store in any database.  But  
+> if
+> someone were to write a gui administrative interface to that data, for
+> example, they might choose to use idna for display.
+
+That's a reasonable and specific objection to my claim that our  
+current host record storage format is inadequate to support IDNA.   
+I've also confirmed that ToAscii with the UseSTD3ASCIIRules flag set  
+is not supposed to generate a domain label string with a '/' in it.   
+My remaining concern here is that we could possibly see hostnames that  
+are too long to be stored in directory entries of some file systems,  
+especially considering that the ASCII-fied Unicode names will be  
+longer than typical ASCII names we normally encounter today.
+
+What about multi-homed host support?  The same mon_name can be used  
+with more than one my_name, for multi-homed hosts.  Using the current  
+on-disk scheme, statd turns that SM_MON request into a no-op.  So  
+additional records for the same hostname can't be stored, or we have  
+to resort to adding multiple lines in the same file.  This is possible  
+to do with just POSIX file system calls, but it does add complexity to  
+manage several lines in each hostname file without increasing the risk  
+of corruption if a file update (especially the deletion of one record  
+in the middle) is interrupted.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
 
--- 
-Best regards,
-Peter Chacko
-
-NetDiox computing systems,
-Network storage & OS  training and research.
-Bangalore, India.
-www.netdiox.com
-080 2664 0708
