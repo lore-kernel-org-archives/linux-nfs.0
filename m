@@ -1,125 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:52052 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751039AbZIWXsS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Sep 2009 19:48:18 -0400
-Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
-	(authenticated bits=0)
-	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id n8NNmL0E006454
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Sep 2009 16:48:22 -0700
-Message-ID: <4ABAB3C5.9060808@candelatech.com>
-Date: Wed, 23 Sep 2009 16:48:21 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Some NFS performance numbers for 2.6.31
-References: <4AB96F06.5040703@candelatech.com>
-In-Reply-To: <4AB96F06.5040703@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from acsinet11.oracle.com ([141.146.126.233]:18063 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753316AbZIJOJj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 10:09:39 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+To: NeilBrown <neilb@suse.de>
+In-Reply-To: <9eae93545189a6be6eebe0460b860fc7.squirrel@neil.brown.name>
+Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st part)
+References: <20090805143550.12866.8377.stgit@matisse.1015granger.net> <20090805144540.12866.22084.stgit@matisse.1015granger.net> <20090805174811.GB9944@fieldses.org> <DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com> <20090805181545.GF9944@fieldses.org> <7330021D-C95A-463D-8D18-29453EF185BC@oracle.com> <1249507356.5428.11.camel@heimdal.trondhjem.org> <D503383F-3D52-4F93-B850-AFE84316435C@oracle.com> <1249515004.5428.34.camel@heimdal.trondhjem.org> <20090909142945.755da393@tlielax.poochiereds.net> <1252521599.8722.53.camel@heimdal.trondhjem.org> <20B7C2F0-E566-4292-91E9-41A3FA6C9D4C@oracle.com> <1252525327.8722.81.camel@heimdal.trondhjem.org> <D2B488FA-2630-4355-8E3B-FE1243E4C3AE@oracle.com> <9eae93545189a6be6eebe0460b860fc7.squirrel@neil.brown.name>
+Message-Id: <BA66527C-2F6E-4378-8CC1-35B26C444D0E@oracle.com>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Date: Thu, 10 Sep 2009 10:09:09 -0400
+Cc: "Trond Myklebust" <trond.myklebust@fys.uio.no>,
+        "Jeff Layton" <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/22/2009 05:42 PM, Ben Greear wrote:
-> I'm running some performance tests on NFSv3 on a slightly hacked 2.6.31
-> kernel.
+On Sep 10, 2009, at 4:44 AM, NeilBrown wrote:
+> On Thu, September 10, 2009 8:18 am, Chuck Lever wrote:
+>> The idea that "the Linux way" is the best and only way is ridiculous
+>> on its face, anyway.  I mean, what do you expect when we have no
+>> requirements and specification process, no formal testing, C coding
+>> style conventions based on 20-year old coding practices, a hit-or- 
+>> miss
+>> review process that relies more on reviewers' personal preferences
+>> than any kind of standards, no static code analysis tools, no defect
+>> metrics or bug meta-analysis tools, kernel debuggers are verboten, a
+>> combative mailing list environment, and parts of our knowledge base
+>> and team history are lost every time a developer leaves (in this  
+>> case,
+>> Olaf and Neil)?  It's no wonder we never change anything unless
+>> absolutely necessary!
+>
+> And yet is largely works!
+> I could summarise a lot of your points by observing that the community
+> values people over process.  I really think that is the right place to
+> put value, because people are richer and more flexible than process.
 
-I realized that LRO on the NICs was disabled because I had enabled ip-forwarding.
+Agreed, but there are risks to that approach as well, which are  
+largely ignored by the Linux community.  The last point in my list is  
+probably the biggest risk: when people leave, we are stuck with  
+decades-old code that no-one understands.  Cf: statd.
 
-I re-enabled that, and now can get about 18Gbps read rates (on the wires), using MTU
-1500.
+My point is that many of the items I mentioned above are expressly  
+designed to allow quicker, less risky change, precisely to decrease  
+the amount of time and effort to get new features into our code.  Yet  
+we turn our back on all of them in favor of an antique "don't touch  
+that!" policy.  "Don't touch that!" is not a reasonable argument  
+against replacing components that need to be replaced.
 
-Take it easy,
-Ben
+> I agree that combative mailing lists are a problem, but even there, I
+> believe most of the aggression is more perceived than real, and that
+> a graceful, humble, polite attitude can have a positive-feedback  
+> effect
+> too.
 
->
-> Both: 64-bit linux.
-> Dual-port 10G NIC, 82599 (I think, at any rate it's the new Intel 5GT/s
-> pci-e gen2 chipset, ixgbe driver)
-> MTU 1500
->
-> Server: dual Intel E5530 2.4Ghz processors.
-> Serving 2 25M files from tmpfs (RAM)
->
-> Client: Core i7 3.2Ghz, quad-core.
-> I'm running 10 mac-vlans on each physical interface, one NFS mount per
-> interface
-> (my patches are to allow multiple mounts per client OS).
-> one reader for each mac-vlan and one on the physical, reading 16m chunks
-> O_DIRECT is enabled for the readers.
-> Mounts are using 'noatime', leaving everything else at defaults.
->
-> Total read bandwidth is about 12Gbps, but it varies quite a bit and I've
-> seen short term (10 seconds or so)
-> averages go up to 15Gbps. These are on-the-wire stats reported by the
-> NICs, not actual NFS throughput.
->
-> Some things of interest:
-> * Rates bounce around several Gbps
-> * I see tcp retransmits in netstat -s on the server
-> * I see zero errors (pkt loss, etc) reported by the NICs.
-> * Reading 100M files slows down the test.
-> * 2M and 16M reads are about equivalent (the normal bouncing of the
-> rates makes it hard to tell)
-> * Messing with rmem max, backlog, and other network tunings doesn't seem
-> to matter.
-> * Running 10 readers (5 on each physical NIC) ran at 16Gbps for a few
-> seconds (higher than I'd
-> seen with 10..but then it went back down to around 13Gbps.
-> * Running 6 seems slower..about 11.5Gbps on average.
-> * Using 9000 MTU yields a fairly steady 16.5Gbps throughput. This may be
-> about the max
-> IO bandwidth for the server machine...but I know the client can do full
-> 10Gbps tx + rx
-> on both ports (using pktgen and 1514 byte pkts).
->
-> Here is snippet of top on the client. bthelper is the thing doing the
-> reads:
->
-> top - 17:26:25 up 13 min, 3 users, load average: 25.45, 23.12, 13.98
-> Tasks: 227 total, 3 running, 224 sleeping, 0 stopped, 0 zombie
-> Cpu(s): 0.2%us, 1.4%sy, 0.0%ni, 74.4%id, 0.0%wa, 0.6%hi, 23.4%si, 0.0%st
-> Mem: 12326604k total, 1343680k used, 10982924k free, 30912k buffers
-> Swap: 14254072k total, 0k used, 14254072k free, 112084k cached
->
-> 1586 root 15 -5 0 0 0 R 39.2 0.0 1:47.91 rpciod/6
-> 22 root 15 -5 0 0 0 R 38.5 0.0 1:46.94 ksoftirqd/6
-> 3841 root 3 -17 49320 33m 980 D 20.3 0.3 0:23.05 bthelper
-> 3840 root 3 -17 49320 33m 980 D 18.9 0.3 0:23.43 bthelper
-> 3836 root 3 -17 49320 33m 980 D 12.0 0.3 0:26.39 bthelper
-> 3849 root 3 -17 49320 33m 980 D 11.3 0.3 0:22.74 bthelper
->
->
-> And, here is the server:
->
-> top - 17:28:02 up 2:03, 2 users, load average: 0.08, 0.47, 0.68
-> Tasks: 291 total, 1 running, 290 sleeping, 0 stopped, 0 zombie
-> Cpu(s): 0.0%us, 2.5%sy, 0.0%ni, 95.5%id, 0.0%wa, 0.2%hi, 1.7%si, 0.0%st
-> Mem: 12325312k total, 617720k used, 11707592k free, 8240k buffers
-> Swap: 0k total, 0k used, 0k free, 101016k cached
->
-> PID USER PR NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
-> 2171 root 15 -5 0 0 0 S 4.0 0.0 4:41.54 nfsd
-> 2163 root 15 -5 0 0 0 S 3.6 0.0 3:06.09 nfsd
-> 2166 root 15 -5 0 0 0 S 3.6 0.0 4:45.78 nfsd
-> 2176 root 15 -5 0 0 0 S 3.6 0.0 4:45.45 nfsd
-> 2164 root 15 -5 0 0 0 S 3.3 0.0 3:08.28 nfsd
-> 2165 root 15 -5 0 0 0 S 3.3 0.0 4:20.12 nfsd
-> 2167 root 15 -5 0 0 0 S 3.3 0.0 4:31.29 nfsd
-> 2170 root 15 -5 0 0 0 S 3.3 0.0 4:50.80 nfsd
-> 2174 root 15 -5 0 0 0 S 3.3 0.0 4:50.74 nfsd
-> 2168 root 15 -5 0 0 0 S 3.0 0.0 4:53.15 nfsd
-> 2169 root 15 -5 0 0 0 S 3.0 0.0 4:48.07 nfsd
->
->
-> I'm curious if anyone else has done similar testing...
->
-> Thanks,
-> Ben
->
+Years ago I believed that, but I have seen much evidence to the  
+contrary in this community.  More often such an attitude is entirely  
+ignored, or treated as an invitation for abuse, especially by people  
+who have no interest in politeness.  This kind of approach has no  
+effect on the leaders in the Linux community, who set an example of  
+extreme rudeness and belligerence.
+
+I've made an effort to stop arguing small points, and to make  
+observations and not argue.  I still get e-mail full of "crap" this  
+and "bullshit" that and "NACK!" with little explanation.
+
+> Yes, there are lots of practices that might improve things that we  
+> don't
+> have standardised.  But one practice we do have that has proven very
+> effective is incremental refinement.  It can be hard to understand  
+> what
+> order to make changes until after you have made them, but once you
+> understand what you want to do, going back and doing it in logical
+> order really is very effective.  It makes it easier for others to
+> review, it makes it easy for you to review yourself.  It means
+> less controversial bits can be included quickly leaving room for the
+> more controversial bits to be discussed in isolation.
+
+I am a fan of incremental refinement, and I use that approach as often  
+as I can.  There are some things that incremental refinement cannot  
+do, however.
+
+> I think that the switch from portmap to rpcbind was a bad idea,
+> and I think that a wholesale replacement of statd is probably a
+> bad idea too.  It might seem like the easiest way to get something
+> useful working, but you'll probably be paying the price for years as
+> little regression turn up because you didn't completely understand
+> the original statd (and face it, who does?)
+
+Yes, but _why_ is it a bad idea?  All I hear is "this is a bad idea"  
+and "you could do it some other way" but these are qualitative, not  
+quantitative arguments.  They are religious statements, not specific  
+technical criticisms.
+
+This leaves me with the impression that folks are responding out of a  
+fear of the unknown, and not out of a considered technical opinion.   
+If sqlite3 is outside of people's comfort zone, that's OK.  Please  
+let's be honest about it instead of slinging mud and throwing up a  
+bunch of generic arguments that no one can rebut.
+
+> As for the use of sql-lite ... I must admit that I wouldn't choose
+> it.  Maybe it is a good idea.  If it is, you probably need to merge
+> that change early with a clear argument and tools to make it  
+> manageable
+> (e.g. a developer will want to tool to be able to look inside the
+> database easily and make changes, without having to know sql).
+> It is much easier to discuss one thing at a time on these
+> combative mailing lists ;-)
+
+That's a fine and constructive comment, thanks.
+
+There is already a tool for managing the data in the database:  
+'sqlite3' the executable, which can be used in shell scripts.  There  
+are also sqlite3 libraries for Python and Perl and C.  This is really  
+not very different from POSIX file system calls and using 'cat'.  SQL  
+is not difficult to learn, and a one or two page recipe document is  
+easy to provide.  I certainly have not used any advanced features of  
+SQL to implement new statd.
+
+Given the complexity of the change, it makes it much easier to argue  
+against sqlite3, however, if it is separated from the set of changes  
+that motivate its use.  Bruce, for example, has stated to me  
+specifically that he prefers having such changes and their  
+motivational requirements included in the same patch.  I regularly  
+code for several different maintainers, and each one has his own  
+preferences, often contradicting other maintainers.  I don't think  
+regular maintainers have any idea how confusing and challenging this is.
+
+Note, however, I am not married to the specifics of sqlite3.  What I  
+am attached to is the ideas that the current system is inadequate for  
+the kinds of features we want to add to statd, and that statd should  
+not worry about the details of data storage, or search and management  
+of the host records, because we have other tools that are better at  
+this.  If there is another solution that provides a durable and  
+flexible way to store and search host records and offload the details  
+to pre-existing code, I'm open.  However, sqlite3 is the most widely  
+used embedded database on the planet, and is eminently suitable for  
+this task.
+
+> And we do have static code analysis tools.  Both 'gcc' and 'sparse'
+> fit that description.
+
+Yes, gcc can provide some static analysis, if the correct options are  
+specified, and care is taken to eliminate the noise of false  
+positives.  There is a prevailing attitude, however, that this is a  
+worthless endeavor.  Witness the amount of noise that comes out when  
+you build a Red Hat kernel or the nfs-utils package.  Witness also the  
+sarcasm of Linus who repeatedly chides folks for not running sparse  
+regularly.
+
+Additionally, gcc is not the best tool for this job, given the often  
+oblique way it calls out errors and warnings.  There are purify,  
+fortify, and splint, just to name three, that are standard analysis  
+tools we don't even consider.
+
+My comment goes more to the point that static analysis is not  
+considered of any value.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
 
