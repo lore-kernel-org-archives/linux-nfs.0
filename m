@@ -1,35 +1,39 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: NFS slow to respond on resumption from hibernate
-Date: Thu, 10 Sep 2009 13:00:40 -0400
-Message-ID: <1252602040.8722.128.camel@heimdal.trondhjem.org>
-References: <loom.20090910T180831-552@post.gmane.org>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [pnfs] [PATCH v2 0/12] nfsd41 backchannel patches for 2.6.32
+Date: Thu, 10 Sep 2009 13:10:15 -0400
+Message-ID: <1252602615.8722.131.camel@heimdal.trondhjem.org>
+References: <4AA13DE3.8020800@panasas.com> <4AA8C597.8080809@panasas.com>
+	 <4AA90F26.6010704@panasas.com>  <20090910162808.GG11858@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain
-Cc: linux-nfs@vger.kernel.org
-To: Orion Poplawski <orion@cora.nwra.com>
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	NFS list <linux-nfs@vger.kernel.org>,
+	pNFS Mailing List <pnfs@linux-nfs.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:56390 "EHLO mail-out2.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:38596 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750858AbZIJRAk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Sep 2009 13:00:40 -0400
-In-Reply-To: <loom.20090910T180831-552-eS7Uydv5nfjZ+VzJOa5vwg@public.gmane.org>
+	id S1750714AbZIJRLC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Sep 2009 13:11:02 -0400
+In-Reply-To: <20090910162808.GG11858@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2009-09-10 at 16:15 +0000, Orion Poplawski wrote:
-> I've started hibernating some of our Fedora desktop machines.  Problem is that
-> we have NFS mounted home (and some other) directories and access to these can be
-> *slow* (several minutes) to recover on resumption from hibernate.  Other network
-> activity is fine.  Fedora bug is here:
+On Thu, 2009-09-10 at 12:28 -0400, J. Bruce Fields wrote:
+> On Thu, Sep 10, 2009 at 05:37:26PM +0300, Benny Halevy wrote:
+> > Bruce, I've updated patches 2 and 3 based on Trond's comment to
+> > PATCH v2 02/12 and squashed Alexandros fix for it.
 > 
-> https://bugzilla.redhat.com/show_bug.cgi?id=510536
-> 
-> Any thoughts on what might be causing this or how to debug?
+> Thanks!  Trond, did you have any more comments?
 
-Start by upgrading to the very latest Fedora kernel, which is 2.6.30
-based. There are a couple of RPC/tcp reconnection fixes there that
-didn't make it into 2.6.29.
+No.
 
-Cheers
-  Trond
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
