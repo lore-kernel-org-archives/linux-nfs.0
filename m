@@ -1,107 +1,115 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: Revert default r/wsize behavior
-Date: Thu, 10 Sep 2009 17:30:30 -0400
-Message-ID: <7DFD3067-63EC-43D8-A5E0-163E30D293FF@oracle.com>
-References: <20090910205950.3670.7878.stgit@matisse.1015granger.net> <1252617432.8722.157.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: [PATCH] NFS: Add nfs_alloc_parsed_mount_data
+Date: Thu, 10 Sep 2009 17:57:35 -0400
+Message-ID: <20090910215556.4139.36866.stgit@matisse.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:28132 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753319AbZIJVbJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 17:31:09 -0400
-In-Reply-To: <1252617432.8722.157.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:57033
+	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754466AbZIJV5h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 17:57:37 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 10, 2009, at 5:17 PM, Trond Myklebust wrote:
-> On Thu, 2009-09-10 at 17:05 -0400, Chuck Lever wrote:
->> When the "rsize=" or "wsize=" mount options are not specified,
->> text-based mounts have slightly different behavior than legacy binary
->> mounts.  Text-based mounts use the smaller of the server's maximum
->> and the client's maximum, but binary mounts use the smaller of the
->> server's _preferred_ size and the client's maximum.
->>
->> This difference is actually pretty subtle.  Most servers advertise
->> the same value as their largest and their preferred transfer size, so
->> the end result is the same in most cases.
->>
->> The reason for this difference is that for text-based mounts, if
->> r/wsize are not specified, they are set to the largest value  
->> supported
->> by the client.  For binary mounts, the values are set to zero if  
->> these
->> options are not specified.
->>
->> nfs_server_set_fsinfo() can negotiate the defaults correctly in any
->> case.  There's no need to specify any particular value as default in
->> the text-based option parsing logic.
->>
->> Thanks to James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org> for reporting  
->> and
->> diagnosing the problem.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->> James-
->>
->> Is this what you want?
->
-> Hmm.... Strictly speaking, I don't think we need to do this for the
-> NFSv4 case, since that has no equivalent to the NFSv3 rtpref/wtpref
-> attribute. It might help make the code look more consistent, though.
+Allocating nfs_parsed_mount_data and setting up the defaults is nearly
+the same for both nfs and nfs4 mounts.
 
-I was just about to check that against mount.nfs4.
+Both paths seem to use nfs_validate_transport_protocol(), so setting a
+default value for nfs_server.protocol ought to be unnecessary.
 
-> Note: at some point soon, I want to clean those functions up by
-> introducing an 'alloc_nfs_parsed_mount_data()' function that both
-> allocates the nfs_parsed_mount_data structure and initialises it with
-> the common defaults.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Sounds good.
+Something like this untested patch?  I assume your tree has a few changes
+in it that might prevent this from applying.
 
-> fs/nfs/super.c |    4 ----
->> 1 files changed, 0 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index bde444b..cf0d754 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -1635,8 +1635,6 @@ static int nfs_validate_mount_data(void  
->> *options,
->> 		goto out_no_data;
->>
->> 	args->flags		= (NFS_MOUNT_VER3 | NFS_MOUNT_TCP);
->> -	args->rsize		= NFS_MAX_FILE_IO_SIZE;
->> -	args->wsize		= NFS_MAX_FILE_IO_SIZE;
->> 	args->acregmin		= NFS_DEF_ACREGMIN;
->> 	args->acregmax		= NFS_DEF_ACREGMAX;
->> 	args->acdirmin		= NFS_DEF_ACDIRMIN;
->> @@ -2351,8 +2349,6 @@ static int nfs4_validate_mount_data(void  
->> *options,
->> 	if (data == NULL)
->> 		goto out_no_data;
->>
->> -	args->rsize		= NFS_MAX_FILE_IO_SIZE;
->> -	args->wsize		= NFS_MAX_FILE_IO_SIZE;
->> 	args->acregmin		= NFS_DEF_ACREGMIN;
->> 	args->acregmax		= NFS_DEF_ACREGMAX;
->> 	args->acdirmin		= NFS_DEF_ACDIRMIN;
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux- 
->> nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+ fs/nfs/super.c |   44 +++++++++++++++++++++-----------------------
+ 1 files changed, 21 insertions(+), 23 deletions(-)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index cf0d754..8057074 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -728,6 +728,25 @@ static void nfs_umount_begin(struct super_block *sb)
+ 	unlock_kernel();
+ }
+ 
++static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(int flags)
++{
++	struct nfs_parsed_mount_data *data;
++
++	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	if (data) {
++		data->flags		= flags;
++		data->acregmin		= NFS_DEF_ACREGMIN;
++		data->acregmax		= NFS_DEF_ACREGMAX;
++		data->acdirmin		= NFS_DEF_ACDIRMIN;
++		data->acdirmax		= NFS_DEF_ACDIRMAX;
++		data->nfs_server.port	= NFS_UNSPEC_PORT;
++		data->auth_flavors[0]	= RPC_AUTH_UNIX;
++		data->auth_flavor_len	= 1;
++		data->minorversion	= 0;
++	}
++	return data;
++}
++
+ /*
+  * Sanity-check a server address provided by the mount command.
+  *
+@@ -1634,18 +1653,6 @@ static int nfs_validate_mount_data(void *options,
+ 	if (data == NULL)
+ 		goto out_no_data;
+ 
+-	args->flags		= (NFS_MOUNT_VER3 | NFS_MOUNT_TCP);
+-	args->acregmin		= NFS_DEF_ACREGMIN;
+-	args->acregmax		= NFS_DEF_ACREGMAX;
+-	args->acdirmin		= NFS_DEF_ACDIRMIN;
+-	args->acdirmax		= NFS_DEF_ACDIRMAX;
+-	args->mount_server.port	= NFS_UNSPEC_PORT;
+-	args->nfs_server.port	= NFS_UNSPEC_PORT;
+-	args->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+-	args->auth_flavors[0]	= RPC_AUTH_UNIX;
+-	args->auth_flavor_len	= 1;
+-	args->minorversion	= 0;
+-
+ 	switch (data->version) {
+ 	case 1:
+ 		data->namlen = 0;
+@@ -2087,7 +2094,7 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+ 	};
+ 	int error = -ENOMEM;
+ 
+-	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	data = nfs_alloc_parsed_mount_data(NFS_MOUNT_VER3 | NFS_MOUNT_TCP);
+ 	mntfh = kzalloc(sizeof(*mntfh), GFP_KERNEL);
+ 	if (data == NULL || mntfh == NULL)
+ 		goto out_free_fh;
+@@ -2349,15 +2356,6 @@ static int nfs4_validate_mount_data(void *options,
+ 	if (data == NULL)
+ 		goto out_no_data;
+ 
+-	args->acregmin		= NFS_DEF_ACREGMIN;
+-	args->acregmax		= NFS_DEF_ACREGMAX;
+-	args->acdirmin		= NFS_DEF_ACDIRMIN;
+-	args->acdirmax		= NFS_DEF_ACDIRMAX;
+-	args->nfs_server.port	= NFS_UNSPEC_PORT;
+-	args->auth_flavors[0]	= RPC_AUTH_UNIX;
+-	args->auth_flavor_len	= 1;
+-	args->minorversion	= 0;
+-
+ 	switch (data->version) {
+ 	case 1:
+ 		if (data->host_addrlen > sizeof(args->nfs_server.address))
+@@ -2640,7 +2638,7 @@ static int nfs4_get_sb(struct file_system_type *fs_type,
+ 	struct nfs_parsed_mount_data *data;
+ 	int error = -ENOMEM;
+ 
+-	data = kzalloc(sizeof(*data), GFP_KERNEL);
++	data = nfs_alloc_parsed_mount_data(0);
+ 	if (data == NULL)
+ 		goto out_free_data;
+ 
 
