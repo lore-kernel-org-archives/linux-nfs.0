@@ -1,63 +1,123 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Text based mount options ignoring the preferred rwsize?
-Date: Thu, 10 Sep 2009 13:49:32 -0400
-Message-ID: <E80C7303-A488-41D1-805C-E84CF5870736@oracle.com>
-References: <4AA68AA4.7090606@moving-picture.com>	 <188B198A-A113-4CA7-940D-EFBD026CBDD2@oracle.com>	 <4AA8225A.9060107@moving-picture.com> <1252536970.8722.110.camel@heimdal.trondhjem.org> <4AA8C215.2030002@moving-picture.com>
-Mime-Version: 1.0 (Apple Message framework v936)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-	linux-nfs@vger.kernel.org
-To: James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH] idmapd: rearm event handler after error in nfsdcb()
+Date: Thu, 10 Sep 2009 15:42:07 -0400
+Message-ID: <1252611727-19078-1-git-send-email-jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from acsinet11.oracle.com ([141.146.126.233]:54714 "EHLO
-	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750714AbZIJRuO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 13:50:14 -0400
-In-Reply-To: <4AA8C215.2030002-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:19076 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752913AbZIJTmH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Sep 2009 15:42:07 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 10, 2009, at 5:08 AM, James Pearson wrote:
-> Trond Myklebust wrote:
->> On Wed, 2009-09-09 at 22:47 +0100, James Pearson wrote:
->>> The default behaviour with binary mount options when no [rw]size  
->>> is to select these preferred values - which to me, makes sense -  
->>> as by not giving a [rw]size, you are leaving it up the server to  
->>> pick the 'best' values for you - which I guess in most (all  
->>> other?) cases happen to be the maximum size.
->> Right. The above was indeed the guiding principle back when I did the
->> rsize/wsize negotiation for NFSv3 and NFSv2 for the binary mount  
->> code.
->> The NFS protocol specifies that the maximum values are there to  
->> tell you
->> that the server will do short read/writes if you exceed these.  
->> However,
->> the preferred values may correspond to a different 'sweet spot' for  
->> the
->> server read and write implementations.
->
-> So does that mean that the binary mount options are doing the right  
-> thing, whereas the text mount options are not? Also, just to  
-> confirm, I'm using NFSv3.
+A couple of years ago, Bruce committed a patch to make knfsd send
+unsigned uid's and gid's to idmapd, rather than signed values. Part
+of that earlier discussion is here:
 
-I don't think there is a clear right or wrong here.  The binary  
-behavior follows protocol guidelines, which is fine.  But, there are  
-plenty of cases where using the server's preferred size by default is  
-not always optimal.  For example, the server may advertise a  
-preference for 32768, but using that setting with UDP on a congested  
-network would result in poor performance.
+http://linux-nfs.org/pipermail/nfsv4/2007-December/007321.html
 
-In other words, the client may decide that using a larger or smaller  
-setting than the server's preference would be better.  Or, it may use  
-the largest possible setting for r/wsize, but advertise the server's  
-preference number in stat(2) results.
+While this fixed the immediate problem, it doesn't appear that anything
+was ever done to make idmapd continue working when it gets a bogus
+upcall.
 
-Fwiw, I don't have any problem switching the text-based defaults to  
-zero.
+idmapd uses libevent for its main event handling loop. When idmapd gets
+an upcall from knfsd it will service the request and then rearm the
+event by calling event_add on the event structure again.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+When it hits an error though, it returns in most cases w/o rearming the
+event. That prevents idmapd from servicing any further requests from
+knfsd.
 
+I've made another change too. If an error is encountered while reading
+the channel file, this patch has it close and reopen the file prior to
+rearming the event.
 
+I've not been able to test this patch directly, but I have tested a
+backport of it to earlier idmapd code and verified that it did prevent
+idmapd from hanging when it got a badly formatted upcall from knfsd.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/idmapd/idmapd.c |   18 ++++++++++--------
+ 1 files changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index 65a6a2a..573abaa 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -139,6 +139,7 @@ static void nametoidres(struct idmap_msg *);
+ 
+ static int nfsdopen(void);
+ static int nfsdopenone(struct idmap_client *);
++static void nfsdreopen_one(struct idmap_client *);
+ static void nfsdreopen(void);
+ 
+ size_t  strlcat(char *, const char *, size_t);
+@@ -502,7 +503,8 @@ nfsdcb(int fd, short which, void *data)
+ 		xlog_warn("nfsdcb: read(%s) failed: errno %d (%s)",
+ 			     ic->ic_path, len?errno:0, 
+ 			     len?strerror(errno):"End of File");
+-		goto out;
++		nfsdreopen_one(ic);
++		return;
+ 	}
+ 
+ 	/* Get rid of newline and terminate buffer*/
+@@ -514,11 +516,11 @@ nfsdcb(int fd, short which, void *data)
+ 	/* Authentication name -- ignored for now*/
+ 	if (getfield(&bp, authbuf, sizeof(authbuf)) == -1) {
+ 		xlog_warn("nfsdcb: bad authentication name in upcall\n");
+-		return;
++		goto out;
+ 	}
+ 	if (getfield(&bp, typebuf, sizeof(typebuf)) == -1) {
+ 		xlog_warn("nfsdcb: bad type in upcall\n");
+-		return;
++		goto out;
+ 	}
+ 	if (verbose > 0)
+ 		xlog_warn("nfsdcb: authbuf=%s authtype=%s",
+@@ -532,26 +534,26 @@ nfsdcb(int fd, short which, void *data)
+ 		im.im_conv = IDMAP_CONV_NAMETOID;
+ 		if (getfield(&bp, im.im_name, sizeof(im.im_name)) == -1) {
+ 			xlog_warn("nfsdcb: bad name in upcall\n");
+-			return;
++			goto out;
+ 		}
+ 		break;
+ 	case IC_IDNAME:
+ 		im.im_conv = IDMAP_CONV_IDTONAME;
+ 		if (getfield(&bp, buf1, sizeof(buf1)) == -1) {
+ 			xlog_warn("nfsdcb: bad id in upcall\n");
+-			return;
++			goto out;
+ 		}
+ 		tmp = strtoul(buf1, (char **)NULL, 10);
+ 		im.im_id = (u_int32_t)tmp;
+ 		if ((tmp == ULONG_MAX && errno == ERANGE)
+ 				|| (unsigned long)im.im_id != tmp) {
+ 			xlog_warn("nfsdcb: id '%s' too big!\n", buf1);
+-			return;
++			goto out;
+ 		}
+ 		break;
+ 	default:
+ 		xlog_warn("nfsdcb: Unknown which type %d", ic->ic_which);
+-		return;
++		goto out;
+ 	}
+ 
+ 	imconv(ic, &im);
+@@ -612,7 +614,7 @@ nfsdcb(int fd, short which, void *data)
+ 		break;
+ 	default:
+ 		xlog_warn("nfsdcb: Unknown which type %d", ic->ic_which);
+-		return;
++		goto out;
+ 	}
+ 
+ 	bsiz = sizeof(buf) - bsiz;
+-- 
+1.5.5.6
 
