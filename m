@@ -1,156 +1,71 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] idmapd: rearm event handler after error in nfsdcb()
-Date: Thu, 10 Sep 2009 17:00:24 -0400
-Message-ID: <20090910170024.2853a48e@tlielax.poochiereds.net>
-References: <1252611727-19078-1-git-send-email-jlayton@redhat.com>
-	<20090910202825.GL14406@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Revert default r/wsize behavior
+Date: Thu, 10 Sep 2009 17:05:39 -0400
+Message-ID: <20090910205950.3670.7878.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+To: james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25220 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751883AbZIJVAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Sep 2009 17:00:39 -0400
-In-Reply-To: <20090910202825.GL14406@fieldses.org>
+Received: from adsl-76-241-169-38.dsl.sfldmi.sbcglobal.net ([76.241.169.38]:56946
+	"EHLO matisse.1015granger.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752652AbZIJVGI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Sep 2009 17:06:08 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Sep 2009 16:28:25 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+When the "rsize=" or "wsize=" mount options are not specified,
+text-based mounts have slightly different behavior than legacy binary
+mounts.  Text-based mounts use the smaller of the server's maximum
+and the client's maximum, but binary mounts use the smaller of the
+server's _preferred_ size and the client's maximum.
 
-> On Thu, Sep 10, 2009 at 03:42:07PM -0400, Jeff Layton wrote:
-> > A couple of years ago, Bruce committed a patch to make knfsd send
-> > unsigned uid's and gid's to idmapd, rather than signed values. Part
-> > of that earlier discussion is here:
-> > 
-> > http://linux-nfs.org/pipermail/nfsv4/2007-December/007321.html
-> > 
-> > While this fixed the immediate problem, it doesn't appear that anything
-> > was ever done to make idmapd continue working when it gets a bogus
-> > upcall.
-> 
-> Thanks for following up on this!
-> 
-> > 
-> > idmapd uses libevent for its main event handling loop. When idmapd gets
-> > an upcall from knfsd it will service the request and then rearm the
-> > event by calling event_add on the event structure again.
-> > 
-> > When it hits an error though, it returns in most cases w/o rearming the
-> > event. That prevents idmapd from servicing any further requests from
-> > knfsd.
-> > 
-> > I've made another change too. If an error is encountered while reading
-> > the channel file, this patch has it close and reopen the file prior to
-> > rearming the event.
-> > 
-> > I've not been able to test this patch directly, but I have tested a
-> > backport of it to earlier idmapd code and verified that it did prevent
-> > idmapd from hanging when it got a badly formatted upcall from knfsd.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  utils/idmapd/idmapd.c |   18 ++++++++++--------
-> >  1 files changed, 10 insertions(+), 8 deletions(-)
-> > 
-> > diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> > index 65a6a2a..573abaa 100644
-> > --- a/utils/idmapd/idmapd.c
-> > +++ b/utils/idmapd/idmapd.c
-> > @@ -139,6 +139,7 @@ static void nametoidres(struct idmap_msg *);
-> >  
-> >  static int nfsdopen(void);
-> >  static int nfsdopenone(struct idmap_client *);
-> > +static void nfsdreopen_one(struct idmap_client *);
-> >  static void nfsdreopen(void);
-> >  
-> >  size_t  strlcat(char *, const char *, size_t);
-> > @@ -502,7 +503,8 @@ nfsdcb(int fd, short which, void *data)
-> >  		xlog_warn("nfsdcb: read(%s) failed: errno %d (%s)",
-> >  			     ic->ic_path, len?errno:0, 
-> >  			     len?strerror(errno):"End of File");
-> > -		goto out;
-> > +		nfsdreopen_one(ic);
-> > +		return;
-> 
-> Why the "return"?  From your description above ("... close and reopen
-> the file prior to rearming the event"), I would have thought you'd want
-> the final event_add() that's done at "out".
-> 
-> --b.
-> 
+This difference is actually pretty subtle.  Most servers advertise
+the same value as their largest and their preferred transfer size, so
+the end result is the same in most cases.
 
-Ahh yeah...it's not very clear from the patch, but nfsdreopen_one()
-rearms the event after reopening the file. Doing a return there should
-be correct.
+The reason for this difference is that for text-based mounts, if
+r/wsize are not specified, they are set to the largest value supported
+by the client.  For binary mounts, the values are set to zero if these
+options are not specified.
 
-> >  	}
-> >  
-> >  	/* Get rid of newline and terminate buffer*/
-> > @@ -514,11 +516,11 @@ nfsdcb(int fd, short which, void *data)
-> >  	/* Authentication name -- ignored for now*/
-> >  	if (getfield(&bp, authbuf, sizeof(authbuf)) == -1) {
-> >  		xlog_warn("nfsdcb: bad authentication name in upcall\n");
-> > -		return;
-> > +		goto out;
-> >  	}
-> >  	if (getfield(&bp, typebuf, sizeof(typebuf)) == -1) {
-> >  		xlog_warn("nfsdcb: bad type in upcall\n");
-> > -		return;
-> > +		goto out;
-> >  	}
-> >  	if (verbose > 0)
-> >  		xlog_warn("nfsdcb: authbuf=%s authtype=%s",
-> > @@ -532,26 +534,26 @@ nfsdcb(int fd, short which, void *data)
-> >  		im.im_conv = IDMAP_CONV_NAMETOID;
-> >  		if (getfield(&bp, im.im_name, sizeof(im.im_name)) == -1) {
-> >  			xlog_warn("nfsdcb: bad name in upcall\n");
-> > -			return;
-> > +			goto out;
-> >  		}
-> >  		break;
-> >  	case IC_IDNAME:
-> >  		im.im_conv = IDMAP_CONV_IDTONAME;
-> >  		if (getfield(&bp, buf1, sizeof(buf1)) == -1) {
-> >  			xlog_warn("nfsdcb: bad id in upcall\n");
-> > -			return;
-> > +			goto out;
-> >  		}
-> >  		tmp = strtoul(buf1, (char **)NULL, 10);
-> >  		im.im_id = (u_int32_t)tmp;
-> >  		if ((tmp == ULONG_MAX && errno == ERANGE)
-> >  				|| (unsigned long)im.im_id != tmp) {
-> >  			xlog_warn("nfsdcb: id '%s' too big!\n", buf1);
-> > -			return;
-> > +			goto out;
-> >  		}
-> >  		break;
-> >  	default:
-> >  		xlog_warn("nfsdcb: Unknown which type %d", ic->ic_which);
-> > -		return;
-> > +		goto out;
-> >  	}
-> >  
-> >  	imconv(ic, &im);
-> > @@ -612,7 +614,7 @@ nfsdcb(int fd, short which, void *data)
-> >  		break;
-> >  	default:
-> >  		xlog_warn("nfsdcb: Unknown which type %d", ic->ic_which);
-> > -		return;
-> > +		goto out;
-> >  	}
-> >  
-> >  	bsiz = sizeof(buf) - bsiz;
-> > -- 
-> > 1.5.5.6
-> > 
-> > _______________________________________________
-> > NFSv4 mailing list
-> > NFSv4@linux-nfs.org
-> > http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
+nfs_server_set_fsinfo() can negotiate the defaults correctly in any
+case.  There's no need to specify any particular value as default in
+the text-based option parsing logic.
 
+Thanks to James Pearson <james-p-5Ol4pYTxKWu0ML75eksnrtBPR1lH4CV8@public.gmane.org> for reporting and
+diagnosing the problem.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+James-
+
+Is this what you want?
+
+ fs/nfs/super.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index bde444b..cf0d754 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1635,8 +1635,6 @@ static int nfs_validate_mount_data(void *options,
+ 		goto out_no_data;
+ 
+ 	args->flags		= (NFS_MOUNT_VER3 | NFS_MOUNT_TCP);
+-	args->rsize		= NFS_MAX_FILE_IO_SIZE;
+-	args->wsize		= NFS_MAX_FILE_IO_SIZE;
+ 	args->acregmin		= NFS_DEF_ACREGMIN;
+ 	args->acregmax		= NFS_DEF_ACREGMAX;
+ 	args->acdirmin		= NFS_DEF_ACDIRMIN;
+@@ -2351,8 +2349,6 @@ static int nfs4_validate_mount_data(void *options,
+ 	if (data == NULL)
+ 		goto out_no_data;
+ 
+-	args->rsize		= NFS_MAX_FILE_IO_SIZE;
+-	args->wsize		= NFS_MAX_FILE_IO_SIZE;
+ 	args->acregmin		= NFS_DEF_ACREGMIN;
+ 	args->acregmax		= NFS_DEF_ACREGMAX;
+ 	args->acdirmin		= NFS_DEF_ACDIRMIN;
+
