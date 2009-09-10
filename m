@@ -1,50 +1,114 @@
-Return-Path: <nfsv4-bounces@linux-nfs.org>
-Date: Thu, 3 Sep 2009 09:54:04 -0400
-To: Steve French <smfrench@gmail.com>
-Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-Message-ID: <20090903135404.GA4566@fieldses.org>
-References: <4A9F6027.9050807@s3group.cz>
-	<7A24DF798E223B4C9864E8F92E8C93EC03F0ABED@SACMVEXC1-PRD.hq.netapp.com>
-	<524f69650909030636g68706b09wa50ad91984407878@mail.gmail.com>
-In-Reply-To: <524f69650909030636g68706b09wa50ad91984407878@mail.gmail.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:47338 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751883AbZIJUuC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Sep 2009 16:50:02 -0400
+Date: Thu, 10 Sep 2009 16:49:59 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Jeff Layton <jlayton@redhat.com>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st
+	part)
+Message-ID: <20090910204959.GN14406@fieldses.org>
+References: <1249515004.5428.34.camel@heimdal.trondhjem.org> <20090909142945.755da393@tlielax.poochiereds.net> <1252521599.8722.53.camel@heimdal.trondhjem.org> <20B7C2F0-E566-4292-91E9-41A3FA6C9D4C@oracle.com> <1252525327.8722.81.camel@heimdal.trondhjem.org> <D2B488FA-2630-4355-8E3B-FE1243E4C3AE@oracle.com> <20090910150319.GA10704@fieldses.org> <AD3CA71A-8A67-4D8E-8138-92A01D672133@oracle.com> <20090910162327.GE11858@fieldses.org> <DE1F606D-CE0A-4646-88E3-5A1652540073@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <DE1F606D-CE0A-4646-88E3-5A1652540073@oracle.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        nfsv4@linux-nfs.org, ffilzlnx@linux.vnet.ibm.com, jra@samba.org,
-        agruen@suse.de
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/options/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/nfsv4>
-List-Post: <mailto:nfsv4@linux-nfs.org>
-List-Help: <mailto:nfsv4-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="utf-8"
-Sender: nfsv4-bounces@linux-nfs.org
-Errors-To: nfsv4-bounces@linux-nfs.org
-MIME-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-T24gVGh1LCBTZXAgMDMsIDIwMDkgYXQgMDg6MzY6NDRBTSAtMDUwMCwgU3RldmUgRnJlbmNoIHdy
-b3RlOgo+IE9uIFRodSwgU2VwIDMsIDIwMDkgYXQgMjo0NiBBTSwgTXVudHosIERhbmllbDxEYW4u
-TXVudHpAbmV0YXBwLmNvbT4gd3JvdGU6Cj4gPiBJJ3ZlIGFsd2F5cyB0aG91Z2h0IG9mIE5GUyBh
-cyBhIG1lYW5zIGZvciBtYWtpbmcgcGh5c2ljYWwgZmlsZSBzeXN0ZW1zCj4gPiBhdmFpbGFibGUg
-YWNyb3NzIGEgbmV0d29yay4gwqBORlMgaGF2aW5nIGl0cyBvd24gQUNMcyBkb2Vzbid0IGZpdCB0
-aGlzCj4gPiBtb2RlbC4gwqBFLmcuLCAiTkZTIEFDTHMiIHdpbGwgbmV2ZXIgYmUgaW50ZWdyYXRl
-ZCBpbnRvIE5URlMuIMKgSG93ZXZlciwgSQo+ID4gY291bGQgaW1hZ2luZSBORlMgQUNMcyBzb2x2
-aW5nIHRoZSBnZW5lcmFsIHByb2JsZW0gaWYgdGhleSB3ZXJlIHRvIGZvcm0KPiA+IGEgc3VwZXJz
-ZXQgb2YgdGhlIEFDTHMgb2YgZXhwb3J0YWJsZSBwaHlzaWNhbCBmaWxlIHN5c3RlbXMKPiAKPiBO
-RlN2NCBBQ0xzIGFyZSBzaW1pbGFyIHRvIENJRlMvTlRGUyBBQ0xTLiBORlN2NCBBQ0xzIHdlcmUK
-PiBvcmlnaW5hbGx5IGJhc2VkIG9uIENJRlMvTlRGUyBBQ0xzIHNvIGl0IHdvdWxkIGJlIHJlYXNv
-bmFibGUKPiB0byBleHBvcnQgdGhlbSBmcm9tIE5URlMgKGFsdGhvdWdoIHRoZSBTSURzIChVVUlE
-cykgaGF2ZSB0byBiZSBtYXBwZWQKPiB0byBsb2NhbCBMaW51eCBVSURzIC0gd2UgaGF2ZSB1c2Vy
-IHNwYWNlIGNvZGUgdGhhdCBjYW4gZG8gdGhpcyBpbiBTYW1iYSkuCgpPbiB0aGUgc2VydmVyIHNp
-ZGUsIHlvdSdkIGFjdHVhbGx5IGhhdmUgdG8gbWFwIGJldHdlZW4gU0lEcyBhbmQgTkZTdjQKbmFt
-ZXMgKHN0cmluZ3Mgb2YgdGhlIGZvcm0gdXNlckBkb21haW4pLgoKLS1iLgoKPiBOb3RlIFNhbWJh
-IHNlcnZlciBjYW4gbWFwIGJldHdlZW4gdGhlIENJRlMvTlRGUyBhbmQgTkZTdjQKPiBBQ0xzIGFs
-cmVhZHkgYW5kIGhhcyBmb3IgbWFueSB5ZWFycy4KPiAKPiBKUkEgb24gdGhlIFNhbWJhIHRlYW0g
-YW5kIEFuZHJlYXMgaGF2ZSBkb25lIHNvbWUgZ29vZAo+IHByZXNlbnRhdGlvbnMgb24gdGhlIGRp
-ZmZlcmVuY2VzIGluIEFDTCBtb2RlbHMsIGJ1dCBvdGhlciB0aGFuCj4gc3RvcmluZyB0aGUgIm1h
-c2siIG9yIGVxdWl2YWxlbnQgLSBQT1NJWCBBQ0xzIGNhbiBiZSB0aG91Z2h0IG9mIGFzCj4gYSBz
-dWJzZXQgb2YgTkZTdjQvQ0lGUy9OVEZTIEFDTHMKX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX18KTkZTdjQgbWFpbGluZyBsaXN0Ck5GU3Y0QGxpbnV4LW5mcy5v
-cmcKaHR0cDovL2xpbnV4LW5mcy5vcmcvY2dpLWJpbi9tYWlsbWFuL2xpc3RpbmZvL25mc3Y0
+On Thu, Sep 10, 2009 at 04:39:51PM -0400, Chuck Lever wrote:
+> On Sep 10, 2009, at 12:23 PM, J. Bruce Fields wrote:
+>> On Thu, Sep 10, 2009 at 12:14:27PM -0400, Chuck Lever wrote:
+>>> On Sep 10, 2009, at 11:03 AM, J. Bruce Fields wrote:
+>>>> On Wed, Sep 09, 2009 at 06:18:11PM -0400, Chuck Lever wrote:
+>>>>> IDNs are UTF16.  /var therefore has to support UTF16 filenames;
+>>>>> either
+>>>>> byte in a double-byte character can be '/' or '\0'.  That means the
+>>>>> underlying fs implementation has to support UTF16 (FAT32 anyone?),
+>>>>> and
+>>>>> the system's locale has to be configured correctly.  If we decide
+>>>>> not to
+>>>>> depend on the file system to support UTF16 filenames, then statd  
+>>>>> has
+>>>>> to
+>>>>> be intelligent enough to figure out how to deal with converting  
+>>>>> UTF16
+>>>>> hostnames before storing them as filenames.  Then, we have to teach
+>>>>> matchhostname() and friends how to deal with double-byte character
+>>>>> strings...
+>>>>
+>>>> Googling around.... Is this accurate?:
+>>>>
+>>>> 	http://en.wikipedia.org/wiki/Internationalized_domain_name
+>>>>
+>>>> That makes it sound like domain names are staying ascii, and they're
+>>>> just adding something on top to allow encoding unicode using ascii,
+>>>> which may optionally be used by applications.
+>>>
+>>> There is a mechanism that provides an ASCII-ized version of domain  
+>>> names
+>>> that may contain non-ASCII characters, expressly for applications  
+>>> that
+>>> need to perform DNS queries but can't be easily converted to handle
+>>> double-byte character strings.  This can be adapted for statd,  
+>>> though I'm
+>>> not sure if the converted ASCII version of such names specifically
+>>> exclude '/'.
+>>>
+>>> Internationalized domain names themselves are still expressed in  
+>>> UTF16,
+>>> as far as I understand it.
+>>
+>> From a quick skim of http://www.ietf.org/rfc/rfc3490.txt, it appears  
+>> to
+>> me that protocols (at the very least, any preexisting protocols) are  
+>> all
+>> expected to use the ascii representation on the wire, and that the
+>> translation to unicode is meant by use for applications.
+>>
+>> So in our case we'd continue to expect ascii domain names on the wire,
+>> and I believe that's also what we should store in any database.  But  
+>> if
+>> someone were to write a gui administrative interface to that data, for
+>> example, they might choose to use idna for display.
+>
+> That's a reasonable and specific objection to my claim that our current 
+> host record storage format is inadequate to support IDNA.  I've also 
+> confirmed that ToAscii with the UseSTD3ASCIIRules flag set is not 
+> supposed to generate a domain label string with a '/' in it.  My 
+> remaining concern here is that we could possibly see hostnames that are 
+> too long to be stored in directory entries of some file systems,  
+> especially considering that the ASCII-fied Unicode names will be longer 
+> than typical ASCII names we normally encounter today.
+
+Googling around some more.... the normal limits for dns appear to be 63
+bytes per component, and 255 for the whole string, and those limits are
+still in force on the output of that mapping.  I suspect this isn't a
+huge deal.
+
+> What about multi-homed host support?  The same mon_name can be used with 
+> more than one my_name, for multi-homed hosts.  Using the current on-disk 
+> scheme, statd turns that SM_MON request into a no-op.
+
+I don't know what we're supposed to do in that case.  You want to store
+them all so you can send notifies to them all on reboot?
+
+--b.
+
+> So additional 
+> records for the same hostname can't be stored, or we have to resort to 
+> adding multiple lines in the same file.  This is possible to do with just 
+> POSIX file system calls, but it does add complexity to manage several 
+> lines in each hostname file without increasing the risk of corruption if 
+> a file update (especially the deletion of one record in the middle) is 
+> interrupted.
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
