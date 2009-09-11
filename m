@@ -1,136 +1,103 @@
 From: NeilBrown <neilb@suse.de>
-Subject: [PATCH 1/2] NFS: support changing the soft/hard flag with remount
+Subject: [PATCH 2/2] NFS: support changing timeout and retransmit values with
+	remount
 Date: Fri, 11 Sep 2009 16:56:03 +1000
-Message-ID: <20090911065603.8193.4714.stgit@notabene.brown>
+Message-ID: <20090911065603.8193.19468.stgit@notabene.brown>
 References: <20090911065428.8193.8170.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:41617 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58860 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751222AbZIKGzf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2009 02:55:35 -0400
+	id S1751258AbZIKGzm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2009 02:55:42 -0400
 In-Reply-To: <20090911065428.8193.8170.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This allows
-   mount -o remount,soft
-or
-   mount -o remount,hard
-to be effective on NFS mounts.
+Changing either timeo or retrans in
+  mount -o remount
 
-Setting to 'soft' when the server is not responding is not as
-effective as might be hoped as Linux imposes a filesystem flush before
-actioning a remount, so the remount will block waiting for the server
-to come back.  Even before this the "mount" program will try to 'stat'
-the mountpoint, so this isn't very useful at all when the server is
-not responding.
-
-When switching to soft, and pending tasks (which the 'sync' didn't
-wait for) will be switched over to 'soft' mode.  However when
-switching to 'hard', tasks are not changed.  So the mount does not
-become fully hard until the server responds, or the soft requests
-time out.
+will now work.  Requests that are currently pending will not
+have their timeouts changed.  However once they do timeout, the
+next timeout will be based on the new values.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
 
- fs/nfs/super.c               |   27 ++++++++++++++++++++++++++-
- include/linux/sunrpc/sched.h |    1 +
- net/sunrpc/sched.c           |   21 +++++++++++++++++++++
- 3 files changed, 48 insertions(+), 1 deletions(-)
+ fs/nfs/client.c   |    4 ++--
+ fs/nfs/internal.h |    2 ++
+ fs/nfs/super.c    |   12 ++++++++++--
+ 3 files changed, 14 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 8d25ccb..056e0ce 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -551,8 +551,8 @@ int nfs4_check_client_ready(struct nfs_client *clp)
+ /*
+  * Initialise the timeout values for a connection
+  */
+-static void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+-				    unsigned int timeo, unsigned int retrans)
++void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
++			     unsigned int timeo, unsigned int retrans)
+ {
+ 	to->to_initval = timeo * HZ / 10;
+ 	to->to_retries = retrans;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7dd90a6..8395a7a 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -123,6 +123,8 @@ extern struct nfs_server *nfs_clone_server(struct nfs_server *,
+ 					   struct nfs_fattr *);
+ extern void nfs_mark_client_ready(struct nfs_client *clp, int state);
+ extern int nfs4_check_client_ready(struct nfs_client *clp);
++extern void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
++				    unsigned int timeo, unsigned int retrans);
+ #ifdef CONFIG_PROC_FS
+ extern int __init nfs_fs_proc_init(void);
+ extern void nfs_fs_proc_exit(void);
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 0b4cbdc..76b28ca 100644
+index 76b28ca..b064895 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1842,7 +1842,12 @@ static int
- nfs_compare_remount_data(struct nfs_server *nfss,
- 			 struct nfs_parsed_mount_data *data)
- {
--	if (data->flags != nfss->flags ||
-+	/* Check that the only fields changed are ones that are allowed
-+	 * to change.
-+	 * Currently they are:
-+	 *   flags: NFS_MOUNT_SOFT
-+	 */
-+	if (((data->flags ^ nfss->flags) & ~(NFS_MOUNT_SOFT)) ||
+@@ -1846,17 +1846,16 @@ nfs_compare_remount_data(struct nfs_server *nfss,
+ 	 * to change.
+ 	 * Currently they are:
+ 	 *   flags: NFS_MOUNT_SOFT
++	 *   timeo and retrans
+ 	 */
+ 	if (((data->flags ^ nfss->flags) & ~(NFS_MOUNT_SOFT)) ||
  	    data->rsize != nfss->rsize ||
  	    data->wsize != nfss->wsize ||
- 	    data->retrans != nfss->client->cl_timeout->to_retries ||
-@@ -1908,6 +1913,26 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+-	    data->retrans != nfss->client->cl_timeout->to_retries ||
+ 	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
+ 	    data->acregmin != nfss->acregmin / HZ ||
+ 	    data->acregmax != nfss->acregmax / HZ ||
+ 	    data->acdirmin != nfss->acdirmin / HZ ||
+ 	    data->acdirmax != nfss->acdirmax / HZ ||
+-	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
+ 	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
+ 	    memcmp(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
+ 		   data->nfs_server.addrlen) != 0)
+@@ -1933,6 +1932,15 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+ 			nfss->flags &= ~NFS_MOUNT_SOFT;
+ 	}
  
- 	/* compare new mount options with old ones */
- 	error = nfs_compare_remount_data(nfss, data);
-+	if (error)
-+		goto out;
-+	/* The only things that might have changed are ones that
-+	 * we know how to handle.
-+	 */
-+	if ((nfss->flags ^ data->flags) & NFS_MOUNT_SOFT) {
-+		int soft = !!(data->flags & NFS_MOUNT_SOFT);
-+
-+		/* Note that when setting to 'hard' we don't convert all
-+		 * tasks to hard.  This is unnecessary as any soft tasks
-+		 * will die soon enough.
-+		 */
-+		nfss->client->cl_softrtry  = soft;
-+		if (soft) {
-+			nfss->flags |= NFS_MOUNT_SOFT;
-+			rpc_alltasks_soft(nfss->client);
-+		} else
-+			nfss->flags &= ~NFS_MOUNT_SOFT;
++	if (data->retrans != nfss->client->cl_timeout->to_retries ||
++	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ)) {
++		struct rpc_timeout timeparms;
++		nfs_init_timeout_values(&timeparms, nfss->client->cl_xprt->prot,
++					data->timeo, data->retrans);
++		memcpy(&nfss->client->cl_timeout_default,
++		       &timeparms, sizeof(timeparms));
++		nfss->client->cl_timeout = &nfss->client->cl_timeout_default;
 +	}
-+
  out:
  	kfree(data);
  	unlock_kernel();
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 4010977..a6c401d 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -216,6 +216,7 @@ void		rpc_put_task(struct rpc_task *);
- void		rpc_exit_task(struct rpc_task *);
- void		rpc_release_calldata(const struct rpc_call_ops *, void *);
- void		rpc_killall_tasks(struct rpc_clnt *);
-+void		rpc_alltasks_soft(struct rpc_clnt *);
- void		rpc_execute(struct rpc_task *);
- void		rpc_init_priority_wait_queue(struct rpc_wait_queue *, const char *);
- void		rpc_init_wait_queue(struct rpc_wait_queue *, const char *);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 8f459ab..82b388f 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -949,6 +949,27 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
- }
- EXPORT_SYMBOL_GPL(rpc_killall_tasks);
- 
-+/*
-+ * Mark all tasks for the given client as 'soft'.
-+ */
-+void rpc_alltasks_soft(struct rpc_clnt *clnt)
-+{
-+	struct rpc_task *rovr;
-+
-+	if (list_empty(&clnt->cl_tasks))
-+		return;
-+	dprintk("RPC:       setting all tasks SOFT for client %p\n", clnt);
-+	/*
-+	 * Spin lock all_tasks to prevent changes...
-+	 */
-+	spin_lock(&clnt->cl_lock);
-+	list_for_each_entry(rovr, &clnt->cl_tasks, tk_task) {
-+		rovr->tk_flags |= RPC_TASK_SOFT;
-+	}
-+	spin_unlock(&clnt->cl_lock);
-+}
-+EXPORT_SYMBOL_GPL(rpc_alltasks_soft);
-+
- int rpciod_up(void)
- {
- 	return try_module_get(THIS_MODULE) ? 0 : -EINVAL;
 
 
