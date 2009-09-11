@@ -1,73 +1,80 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v3 03/12] nfsd41: sunrpc: add new xprt class for
-	nfsv4.1 backchannel
-Date: Fri, 11 Sep 2009 16:58:21 -0400
-Message-ID: <20090911205821.GE5701@fieldses.org>
-References: <4AA8C597.8080809@panasas.com> <1252574732-30108-1-git-send-email-bhalevy@panasas.com> <4AA90E3A.80400@panasas.com>
+Subject: Re: [PATCH 1/9] sunrpc/cache: change cache_defer_req to return -ve
+	error, not boolean.
+Date: Fri, 11 Sep 2009 17:03:55 -0400
+Message-ID: <20090911210355.GF5701@fieldses.org>
+References: <20090909062539.20462.67466.stgit@notabene.brown> <20090909063254.20462.57204.stgit@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Alexandros Batsakis <batsakis@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57119 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51167 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751925AbZIKU6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2009 16:58:20 -0400
-In-Reply-To: <4AA90E3A.80400@panasas.com>
+	id S1756640AbZIKVDw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2009 17:03:52 -0400
+In-Reply-To: <20090909063254.20462.57204.stgit-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 10, 2009 at 05:33:30PM +0300, Benny Halevy wrote:
-> diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
-> index 54a379c..c2f04e1 100644
-> --- a/include/linux/sunrpc/xprtrdma.h
-> +++ b/include/linux/sunrpc/xprtrdma.h
-> @@ -41,11 +41,6 @@
->  #define _LINUX_SUNRPC_XPRTRDMA_H
->  
->  /*
-> - * RPC transport identifier for RDMA
-> - */
-> -#define XPRT_TRANSPORT_RDMA	256
-> -
-> -/*
->   * rpcbind (v3+) RDMA netid.
->   */
->  #define RPCBIND_NETID_RDMA	"rdma"
-> diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xprtsock.h
-> index c2a46c4..d7c98d1 100644
-> --- a/include/linux/sunrpc/xprtsock.h
-> +++ b/include/linux/sunrpc/xprtsock.h
-> @@ -20,8 +20,13 @@ void		cleanup_socket_xprt(void);
->   * values. No such restriction exists for new transports, except that
->   * they may not collide with these values (17 and 6, respectively).
->   */
-> -#define XPRT_TRANSPORT_UDP	IPPROTO_UDP
-> -#define XPRT_TRANSPORT_TCP	IPPROTO_TCP
-> +#define XPRT_TRANSPORT_BC	(1 << 31)
-> +enum xprt_transports {
-> +	XPRT_TRANSPORT_UDP 	= IPPROTO_UDP,
-> +	XPRT_TRANSPORT_TCP 	= IPPROTO_TCP,
-> +	XPRT_TRANSPORT_BC_TCP 	= IPPROTO_TCP | XPRT_TRANSPORT_BC,
-> +	XPRT_TRANSPORT_RDMA	= 256
-> +};
+On Wed, Sep 09, 2009 at 04:32:54PM +1000, NeilBrown wrote:
+> As "cache_defer_req" does not sound like a predicate, having it return
+> a boolean value can be confusing.  It is more consistent to return
+> 0 for success and negative for error.
+> 
+> Exactly what error code to return is not important as we don't
+> differentiate between reasons why the request wasn't deferred,
+> we only care about whether it was deferred or not.
 
-This fails to compile when CONFIG_SUNRPC_XPRT_RDMA is set.
-
-A minimal fix might be:
-
-	--- a/net/sunrpc/xprtrdma/transport.c
-	+++ b/net/sunrpc/xprtrdma/transport.c
-	@@ -50,6 +50,8 @@
-	 #include <linux/module.h>
-	 #include <linux/init.h>
-	 #include <linux/seq_file.h>
-	+#include <linux/in.h>
-	+#include <linux/sunrpc/xprtsock.h>
- 
-	 #include "xprt_rdma.h"
- 
-Or maybe just ditch the enum and leave these as they were before.
+Thanks, applied.
 
 --b.
+
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+> 
+>  net/sunrpc/cache.c |   10 +++++-----
+>  1 files changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index 1a61401..aafb0e7 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -255,7 +255,7 @@ int cache_check(struct cache_detail *detail,
+>  	}
+>  
+>  	if (rv == -EAGAIN) {
+> -		if (cache_defer_req(rqstp, h) == 0) {
+> +		if (cache_defer_req(rqstp, h) < 0) {
+>  			/* Request is not deferred */
+>  			rv = cache_is_valid(detail, h);
+>  			if (rv == -EAGAIN)
+> @@ -511,11 +511,11 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  		 * or continue and drop the oldest below
+>  		 */
+>  		if (net_random()&1)
+> -			return 0;
+> +			return -ENOMEM;
+>  	}
+>  	dreq = req->defer(req);
+>  	if (dreq == NULL)
+> -		return 0;
+> +		return -ENOMEM;
+>  
+>  	dreq->item = item;
+>  
+> @@ -545,9 +545,9 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  	if (!test_bit(CACHE_PENDING, &item->flags)) {
+>  		/* must have just been validated... */
+>  		cache_revisit_request(item);
+> -		return 0;
+> +		return -EAGAIN;
+>  	}
+> -	return 1;
+> +	return 0;
+>  }
+>  
+>  static void cache_revisit_request(struct cache_head *item)
+> 
+> 
