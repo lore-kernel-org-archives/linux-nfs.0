@@ -1,49 +1,131 @@
-From: andros@netapp.com
-Subject: [PATCH 1/2] nfsd41: fix NFSD_MIN_HDR_SEQ_SZ
-Date: Fri, 11 Sep 2009 18:52:54 -0400
-Message-ID: <1252709575-3426-2-git-send-email-andros@netapp.com>
-References: <1252709575-3426-1-git-send-email-andros@netapp.com>
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Andy Adamson <andros@netapp.com>
-To: bfields@fieldses.org
+From: Neil Brown <neilb@suse.de>
+Subject: [PATCH] NFS/RPC: fix problems with reestablish_timeout and related code.
+Date: Sat, 12 Sep 2009 09:27:48 +1000
+Message-ID: <19114.56564.845241.525591@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+	Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19424 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:33173 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753713AbZIKWxU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Sep 2009 18:53:20 -0400
-In-Reply-To: <1252709575-3426-1-git-send-email-andros@netapp.com>
+	id S1753114AbZIKX0t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Sep 2009 19:26:49 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-The reply RPC header is 12 bytes, the NULL verifier is 8 bytes giving 20
-not 24 bytes in the NFSD_MIN_HDR_SEQ_SZ calculation,
+[[resending with correct cc:  - "vfs.kernel.org" just isn't right!]]
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+xprt->reestablish_timeout is used to cause TCP connection attempts to
+back off if the connection fails so as not to hammer the network,
+but to still allow immediate connections when there is no reason to
+believe there is a problem.
+
+It is not used for the first connection (when transport->sock is NULL)
+but only on reconnects.
+
+It is currently set:
+
+ a/ to 0 when xs_tcp_state_change finds a state of TCP_FIN_WAIT1
+    on the assumption that the client has closed the connection
+    so the reconnect should be immediate when needed.
+ b/ to at least XS_TCP_INIT_REEST_TO when xs_tcp_state_change
+    detects TCP_CLOSING or TCP_CLOSE_WAIT on the assumption that the
+    server closed the connection so a small delay at least is
+    required.
+ c/ as above when xs_tcp_state_change detects TCP_SYN_SENT, so that
+    it is never 0 while a connection has been attempted, else
+    the doubling will produce 0 and there will be no backoff.
+ d/ to double is value (up to a limit) when delaying a connection,
+    thus providing exponential backoff and
+ e/ to XS_TCP_INIT_REEST_TO in xs_setup_tcp as simple initialisation.
+
+So you can see it is highly dependant on xs_tcp_state_change being
+called as expected.  However experimental evidence shows that
+xs_tcp_state_change does not see all state changes.
+("rpcdebug -m rpc trans" can help show what actually happens).
+
+Results show:
+ TCP_ESTABLISHED is reported when a connection is made.  TCP_SYN_SENT
+ is never reported, so rule 'c' above is never effective.
+
+ When the server closes the connection, TCP_CLOSE_WAIT and
+ TCP_LAST_ACK *might* be reported, and TCP_CLOSE is always
+ reported.  This rule 'b' above will sometimes be effective, but
+ not reliably.
+
+ When the client closes the connection, it used to result in
+ TCP_FIN_WAIT1, TCP_FIN_WAIT2, TCP_CLOSE.  However since commit
+ f75e674 (SUNRPC: Fix the problem of EADDRNOTAVAIL syslog floods on
+ reconnect) we don't see *any* events on client-close.  I think this
+ is because xs_restore_old_callbacks is called to disconnect
+ xs_tcp_state_change before the socket is closed.
+ In any case, rule 'a' no longer applies.
+
+So all that is left are rule d, which successfully doubles the
+timeout which is never rest, and rule e which initialises the timeout.
+
+Even if the rules worked as expected, there would be a problem because
+a successful connection does not reset the timeout, so a sequence
+of events where the server closes the connection (e.g. during failover
+testing) will cause longer and longer timeouts with no good reason.
+
+This patch:
+
+ - sets reestablish_timeout to 0 in xs_close thus effecting rule 'a'
+ - sets it to 0 in xs_tcp_data_ready to ensure that a successful
+   connection resets the timeout
+ - sets it to at least XS_TCP_INIT_REEST_TO after it is doubled,
+   thus effecting rule c
+
+I have not reimplemented rule b and the new version of rule c
+seems sufficient.
+
+I suspect other code in xs_tcp_data_ready needs to be revised as well.
+For example I don't think connect_cookie is being incremented as often
+as it should be.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfs4state.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtsock.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 46e9ac5..5ecb42c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -420,12 +420,12 @@ gen_sessionid(struct nfsd4_session *ses)
-  * each time.  Therefore we can advertise a ca_maxresponssize_cached
-  * value that is the number of bytes in our cache plus a few additional
-  * bytes.  In order to stay on the safe side, and not promise more than
-- * we can cache, those additional bytes must be the minimum possible: 24
-+ * we can cache, those additional bytes must be the minimum possible: 20
-  * bytes of rpc header (xid through accept state, with AUTH_NULL
-  * verifier), 12 for the compound header (with zero-length tag), and 44
-  * for the SEQUENCE op response:
-  */
--#define NFSD_MIN_HDR_SEQ_SZ  (24 + 12 + 44)
-+#define NFSD_MIN_HDR_SEQ_SZ  (20 + 12 + 44)
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 83c73c4..24c9605 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -828,6 +828,7 @@ static void xs_close(struct rpc_xprt *xprt)
+ 	dprintk("RPC:       xs_close xprt %p\n", xprt);
  
- /*
-  * Give the client the number of ca_maxresponsesize_cached slots it
+ 	xs_reset_transport(transport);
++	xprt->reestablish_timeout = 0;
+ 
+ 	smp_mb__before_clear_bit();
+ 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+@@ -1319,6 +1320,12 @@ static void xs_tcp_data_ready(struct sock *sk, int bytes)
+ 	if (xprt->shutdown)
+ 		goto out;
+ 
++	/* Any data means we had a useful conversation, so
++	 * the we don't need to delay the next reconnect
++	 */
++	if (xprt->reestablish_timeout)
++		xprt->reestablish_timeout = 0;
++
+ 	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
+ 	rd_desc.arg.data = xprt;
+ 	do {
+@@ -2090,6 +2097,8 @@ static void xs_connect(struct rpc_task *task)
+ 				   &transport->connect_worker,
+ 				   xprt->reestablish_timeout);
+ 		xprt->reestablish_timeout <<= 1;
++		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
++			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+ 		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+ 			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+ 	} else {
 -- 
-1.6.2.5
+1.6.3.3
 
