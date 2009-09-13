@@ -1,153 +1,154 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 09/12] nfsd41: Backchannel: cb_sequence callback
-Date: Sun, 13 Sep 2009 16:27:18 -0400
-Message-ID: <20090913202718.GC13109@fieldses.org>
-References: <4AA8C597.8080809@panasas.com> <1252574811-30314-1-git-send-email-bhalevy@panasas.com>
+Subject: Re: [pnfs] [PATCH v3 03/12] nfsd41: sunrpc: add new xprt class for
+	nfsv4.1 backchannel
+Date: Sun, 13 Sep 2009 16:28:21 -0400
+Message-ID: <20090913202821.GD13109@fieldses.org>
+References: <4AA8C597.8080809@panasas.com> <1252574732-30108-1-git-send-email-bhalevy@panasas.com> <4AA90E3A.80400@panasas.com> <20090911205821.GE5701@fieldses.org> <5e24e8930909111412r2c7bdc58u119767517154d6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
-	Andy Adamson <andros@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=utf-8
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+	pnfs@linux-nfs.org
+To: Alexandros Batsakis <alexandros-4GNroTWusrE@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47313 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47318 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752138AbZIMU1S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Sep 2009 16:27:18 -0400
-In-Reply-To: <1252574811-30314-1-git-send-email-bhalevy@panasas.com>
+	id S1751719AbZIMU2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Sep 2009 16:28:20 -0400
+In-Reply-To: <5e24e8930909111412r2c7bdc58u119767517154d6-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 10, 2009 at 12:26:51PM +0300, Benny Halevy wrote:
-> Implement the cb_sequence callback conforming to draft-ietf-nfsv4-minorversion1
-> 
-> Note: highest slot id and target highest slot id do not have to be 0
-> as was previously implemented.  They can be greater than what the
-> nfs server sent if the client supports a larger slot table on the
-> backchannel.  At this point we just ignore that.
+On Fri, Sep 11, 2009 at 02:12:35PM -0700, Alexandros Batsakis wrote:
+> On Fri, Sep 11, 2009 at 1:58 PM, J. Bruce Fields <bfields-uC3wQj2KruMpug/h7KTFAQ@public.gmane.org=
+g> wrote:
+> > On Thu, Sep 10, 2009 at 05:33:30PM +0300, Benny Halevy wrote:
+> >> diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrp=
+c/xprtrdma.h
+> >> index 54a379c..c2f04e1 100644
+> >> --- a/include/linux/sunrpc/xprtrdma.h
+> >> +++ b/include/linux/sunrpc/xprtrdma.h
+> >> @@ -41,11 +41,6 @@
+> >> =C2=A0#define _LINUX_SUNRPC_XPRTRDMA_H
+> >>
+> >> =C2=A0/*
+> >> - * RPC transport identifier for RDMA
+> >> - */
+> >> -#define XPRT_TRANSPORT_RDMA =C2=A0256
+> >> -
+> >> -/*
+> >> =C2=A0 * rpcbind (v3+) RDMA netid.
+> >> =C2=A0 */
+> >> =C2=A0#define RPCBIND_NETID_RDMA =C2=A0 "rdma"
+> >> diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrp=
+c/xprtsock.h
+> >> index c2a46c4..d7c98d1 100644
+> >> --- a/include/linux/sunrpc/xprtsock.h
+> >> +++ b/include/linux/sunrpc/xprtsock.h
+> >> @@ -20,8 +20,13 @@ void =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 cleanup_socket_xprt(void);
+> >> =C2=A0 * values. No such restriction exists for new transports, ex=
+cept that
+> >> =C2=A0 * they may not collide with these values (17 and 6, respect=
+ively).
+> >> =C2=A0 */
+> >> -#define XPRT_TRANSPORT_UDP =C2=A0 IPPROTO_UDP
+> >> -#define XPRT_TRANSPORT_TCP =C2=A0 IPPROTO_TCP
+> >> +#define XPRT_TRANSPORT_BC =C2=A0 =C2=A0(1 << 31)
+> >> +enum xprt_transports {
+> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_UDP =C2=A0 =C2=A0 =C2=A0=3D IPPROTO=
+_UDP,
+> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_TCP =C2=A0 =C2=A0 =C2=A0=3D IPPROTO=
+_TCP,
+> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_BC_TCP =C2=A0 =3D IPPROTO_TCP | XPR=
+T_TRANSPORT_BC,
+> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_RDMA =C2=A0 =C2=A0 =3D 256
+> >> +};
+> >
+> > This fails to compile when CONFIG_SUNRPC_XPRT_RDMA is set.
+> >
+> > A minimal fix might be:
+> >
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0--- a/net/sunrpc/xprtrdma/transport.c
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0+++ b/net/sunrpc/xprtrdma/transport.c
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0@@ -50,6 +50,8 @@
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include <linux/module.h>
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include <linux/init.h>
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include <linux/seq_file.h>
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0+#include <linux/in.h>
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0+#include <linux/sunrpc/xprtsock.h>
+> >
+> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include "xprt_rdma.h"
+> >
+> > Or maybe just ditch the enum and leave these as they were before.
+> >
+>=20
+> The incentive here was to have all the transports definitions togethe=
+r
+> so that nobody re-uses a number by mistake (not very likely of
+> course), so I think the fix you suggested is appropriate.
 
-Minor point (applying as is), but, in future: a changelog that says how
-this version of the patch differs from a previous version won't be
-useful to someone reading the git history (and lacking the previous
-versions).  If you think the above mistake is one that someone might
-risk making again, a comment in the appropriate spot in the code might
-be more useful.
+OK.  Actually, rather than adding a socket-specific include to an
+rdma-specific file, how about the below?  Applying with the following
+change assuming no objections.
 
 --b.
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> [Rework the back channel xdr using the shared v4.0 and v4.1 framework.]
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> [fixed indentation]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfsd41: use nfsd4_cb_sequence for callback minorversion]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfsd41: fix verification of CB_SEQUENCE highest slot id[
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfsd41: Backchannel: Remove old backchannel serialization]
-> [nfsd41: Backchannel: First callback sequence ID should be 1]
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> [nfsd41: decode_cb_sequence does not need to actually decode ignored fields]
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4callback.c |   72 ++++++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 72 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index e79e3a4..5e9659c 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -256,6 +256,27 @@ encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
->  	hdr->nops++;
->  }
->  
-> +static void
-> +encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *args,
-> +		   struct nfs4_cb_compound_hdr *hdr)
-> +{
-> +	__be32 *p;
-> +
-> +	if (hdr->minorversion == 0)
-> +		return;
-> +
-> +	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
-> +
-> +	WRITE32(OP_CB_SEQUENCE);
-> +	WRITEMEM(args->cbs_clp->cl_sessionid.data, NFS4_MAX_SESSIONID_LEN);
-> +	WRITE32(args->cbs_clp->cl_cb_seq_nr);
-> +	WRITE32(0);		/* slotid, always 0 */
-> +	WRITE32(0);		/* highest slotid always 0 */
-> +	WRITE32(0);		/* cachethis always 0 */
-> +	WRITE32(0); /* FIXME: support referring_call_lists */
-> +	hdr->nops++;
-> +}
-> +
->  static int
->  nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
->  {
-> @@ -317,6 +338,57 @@ decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
->  	return 0;
->  }
->  
-> +/*
-> + * Our current back channel implmentation supports a single backchannel
-> + * with a single slot.
-> + */
-> +static int
-> +decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_cb_sequence *res,
-> +		   struct rpc_rqst *rqstp)
-> +{
-> +	struct nfs4_sessionid id;
-> +	int status;
-> +	u32 dummy;
-> +	__be32 *p;
-> +
-> +	if (res->cbs_minorversion == 0)
-> +		return 0;
-> +
-> +	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
-> +	if (status)
-> +		return status;
-> +
-> +	/*
-> +	 * If the server returns different values for sessionID, slotID or
-> +	 * sequence number, the server is looney tunes.
-> +	 */
-> +	status = -ESERVERFAULT;
-> +
-> +	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
-> +	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
-> +	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
-> +	if (memcmp(id.data, res->cbs_clp->cl_sessionid.data,
-> +		   NFS4_MAX_SESSIONID_LEN)) {
-> +		dprintk("%s Invalid session id\n", __func__);
-> +		goto out;
-> +	}
-> +	READ32(dummy);
-> +	if (dummy != res->cbs_clp->cl_cb_seq_nr) {
-> +		dprintk("%s Invalid sequence number\n", __func__);
-> +		goto out;
-> +	}
-> +	READ32(dummy); 	/* slotid must be 0 */
-> +	if (dummy != 0) {
-> +		dprintk("%s Invalid slotid\n", __func__);
-> +		goto out;
-> +	}
-> +	/* FIXME: process highest slotid and target highest slotid */
-> +	status = 0;
-> +out:
-> +	return status;
-> +}
-> +
-> +
->  static int
->  nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
->  {
-> -- 
-> 1.6.4
-> 
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 7cc42af..6f9457a 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -124,6 +124,23 @@ struct rpc_xprt_ops {
+ 	void		(*print_stats)(struct rpc_xprt *xprt, struct seq_file *seq);
+ };
+=20
++/*
++ * RPC transport identifiers
++ *
++ * To preserve compatibility with the historical use of raw IP protoco=
+l
++ * id's for transport selection, UDP and TCP identifiers are specified
++ * with the previous values. No such restriction exists for new transp=
+orts,
++ * except that they may not collide with these values (17 and 6,
++ * respectively).
++ */
++#define XPRT_TRANSPORT_BC       (1 << 31)
++enum xprt_transports {
++	XPRT_TRANSPORT_UDP	=3D IPPROTO_UDP,
++	XPRT_TRANSPORT_TCP	=3D IPPROTO_TCP,
++	XPRT_TRANSPORT_BC_TCP	=3D IPPROTO_TCP | XPRT_TRANSPORT_BC,
++	XPRT_TRANSPORT_RDMA	=3D 256
++};
++
+ struct rpc_xprt {
+ 	struct kref		kref;		/* Reference count */
+ 	struct rpc_xprt_ops *	ops;		/* transport methods */
+diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xpr=
+tsock.h
+index d7c98d1..3f14a02 100644
+--- a/include/linux/sunrpc/xprtsock.h
++++ b/include/linux/sunrpc/xprtsock.h
+@@ -13,22 +13,6 @@ int		init_socket_xprt(void);
+ void		cleanup_socket_xprt(void);
+=20
+ /*
+- * RPC transport identifiers for UDP, TCP
+- *
+- * To preserve compatibility with the historical use of raw IP protoco=
+l
+- * id's for transport selection, these are specified with the previous
+- * values. No such restriction exists for new transports, except that
+- * they may not collide with these values (17 and 6, respectively).
+- */
+-#define XPRT_TRANSPORT_BC	(1 << 31)
+-enum xprt_transports {
+-	XPRT_TRANSPORT_UDP 	=3D IPPROTO_UDP,
+-	XPRT_TRANSPORT_TCP 	=3D IPPROTO_TCP,
+-	XPRT_TRANSPORT_BC_TCP 	=3D IPPROTO_TCP | XPRT_TRANSPORT_BC,
+-	XPRT_TRANSPORT_RDMA	=3D 256
+-};
+-
+-/*
+  * RPC slot table sizes for UDP, TCP transports
+  */
+ extern unsigned int xprt_udp_slot_table_entries;
