@@ -1,51 +1,104 @@
-From: Pacho Ramos <pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org>
-Subject: Re: umount -a -f -t nfs doesn't work when a file has been written
- and "-l" option is needed
-Date: Sat, 12 Sep 2009 18:25:28 +0200
-Message-ID: <1252772728.32258.1.camel@localhost>
-References: <20090912150107.GE5858@ZenIV.linux.org.uk>
-Reply-To: pacho-wnk7FUYfzmtu2DZcH3qp6zJQgOOX0AMFMQBsIrBqeMw@public.gmane.org
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: Build error of latest Linux-pnfs 2.6.31
+Date: Sun, 13 Sep 2009 12:31:22 +0300
+Message-ID: <4AACBBEA.9040006@panasas.com>
+References: <4AA8C597.8080809@panasas.com>	<1252574717-30074-1-git-send-email-bhalevy@panasas.com><1252583366.8722.121.camel@heimdal.trondhjem.org> <4AA8F229.2060404@panasas.com> <44328C067A5E0945856BF1EF5BE23689A29888@CORPUSMX50C.corp.emc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, pnfs@linux-nfs.org, Sacks_Larry@emc.com
+To: Sun_Peixing@emc.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp01.jazztel.es ([62.14.3.170]:45576 "EHLO smtp01.jazztel.es"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753553AbZILQZb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 12 Sep 2009 12:25:31 -0400
-In-Reply-To: <20090912150107.GE5858@ZenIV.linux.org.uk>
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:28589 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750784AbZIMJa0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Sep 2009 05:30:26 -0400
+In-Reply-To: <44328C067A5E0945856BF1EF5BE23689A29888-1Zg0zMUlrbepizOVUD2tfjjd7nCn89gW@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-El s=C3=A1b, 12-09-2009 a las 16:01 +0100, Al Viro escribi=C3=B3:
-> > > Seems that I need to run "umount -l" for being able to unmount it=
-, even
-> > > when I expected that "-f" should be enough.
-> > Hopefully you will be rebooting soon since kernel structures (ala t=
-he
-> > super block) are not cleaned up with 'umount -l'. Which could make =
-the
-> > system somewhat unstable.=20
->=20
-> Um...  Not really.  The damn thing is detached from the namespace and
-> left alone until it's not busy anymore.  At that point it's hit with =
-the
-> rest of umount() (i.e. with filesystem driver being told to shut it d=
-own).
->=20
-> So it won't go away in that case, but you shouldn't get any instabili=
-ty from
-> that - from the VFS POV nothing nasty has happened, from the NFS clie=
-nt
-> code POV... well, it's not being unmounted yet, as far as NFS code ca=
-res.
-> Just a mounted fs from a stuck server...
+On 2009-09-12 01:29, Sun_Peixing@emc.com wrote:
+> I got the following error from include/linux/stats.h.  It looks
+> obviously that the line 481 and line 499 are duplicated.   If I remove
+> line 481 from that file, then I got error in the end  
+> "ERROR: "nfs4_reset_lease" [fs/nfsd/nfsd.ko] undefined!".   
+> 
+> Could you tell me how to fix that?    I downloaded the package using git
+> by doing:      
 
-OK :-)
+It looks like CONFIG_PNFSD is configured as 'n' isn't it?
+Anyway, does the following patch help?
 
-Anyway, I am running this just before halting system , to prevent
-suffering the hang when powering off my computer ;-)
+>From 9a0a09a7cb3116dcb2f1610eb7579e06e80a60f4 Mon Sep 17 00:00:00 2001
+From: Benny Halevy <bhalevy@panasas.com>
+Date: Sun, 13 Sep 2009 12:26:31 +0300
+Subject: [PATCH] SQUASHME: pnfsd: fix compiler warnings when CONFIG_PNFSD is not defined
 
-Thanks!
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/nfsd/state.h |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 9c0df5b..28e491d 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -478,14 +478,14 @@ extern struct nfs4_stateid * find_stateid(stateid_t *stid, int flags);
+ extern struct nfs4_delegation * find_delegation_stateid(struct inode *ino,
+ 		stateid_t *stid);
+ extern __be32 nfs4_check_stateid(stateid_t *stateid);
++extern void expire_client_lock(struct nfs4_client *clp);
++#if defined(CONFIG_PNFSD)
+ extern void release_pnfs_ds_dev_list(struct nfs4_stateid *stp);
+ extern void nfs4_pnfs_state_init(void);
+ extern int put_layoutrecall(struct nfs4_layoutrecall *);
+ extern void nomatching_layout(struct nfs4_layoutrecall *);
+ extern void *layoutrecall_done(struct nfs4_layoutrecall *);
+-extern void expire_client_lock(struct nfs4_client *clp);
+ extern int nfsd4_cb_layout(struct nfs4_layoutrecall *lp);
+-#if defined(CONFIG_PNFSD)
+ extern void nfsd4_free_pnfs_slabs(void);
+ extern void nfsd4_free_slab(struct kmem_cache **slab);
+ extern int nfsd4_init_pnfs_slabs(void);
+@@ -515,8 +515,8 @@ extern void pnfs_expire_client(struct nfs4_client *clp);
+ #else /* CONFIG_PNFSD */
+ static inline void nfsd4_free_pnfs_slabs(void) {}
+ static inline int nfsd4_init_pnfs_slabs(void) { return 0; }
+-static void release_pnfs_ds_dev_list(struct nfs4_stateid *stp) {}
+-static void pnfs_expire_client(struct nfs4_client *clp) {}
++static inline void release_pnfs_ds_dev_list(struct nfs4_stateid *stp) {}
++static inline void pnfs_expire_client(struct nfs4_client *clp) {}
+ #endif /* CONFIG_PNFSD */
+ 
+ static inline void
+-- 
+1.6.4
+
+
+> 
+> git clone git://git.linux-nfs.org/projects/bhalevy/linux-pnfs.git
+> 
+> On 09/11/2009.  So I got the latest patch.
+> 
+> When Make started,  I got error from 
+> 
+> Thanks for help
+> 
+> Peixing
+> 
+>   CC [M]  fs/nfsd/nfs4proc.o
+> In file included from fs/nfsd/nfs4proc.c:47:
+> include/linux/nfsd/state.h:483: warning: struct nfs4_layoutrecall
+> declared inside parameter list
+> include/linux/nfsd/state.h:483: warning: its scope is only this
+> definition or declaration, which is probably not what you want
+> include/linux/nfsd/state.h:484: warning: struct nfs4_layoutrecall
+> declared inside parameter list
+> include/linux/nfsd/state.h:485: warning: struct nfs4_layoutrecall
+> declared inside parameter list
+> include/linux/nfsd/state.h:487: warning: struct nfs4_layoutrecall
+> declared inside parameter list
+> include/linux/nfsd/state.h:518: error: static declaration of
+> release_pnfs_ds_dev_list follows non-static declaration
+> include/linux/nfsd/state.h:481: error: previous declaration of
+> release_pnfs_ds_dev_list was here
+> make[2]: *** [fs/nfsd/nfs4proc.o] Error 1
