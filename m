@@ -1,154 +1,233 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [pnfs] [PATCH v3 03/12] nfsd41: sunrpc: add new xprt class for
-	nfsv4.1 backchannel
-Date: Sun, 13 Sep 2009 16:28:21 -0400
-Message-ID: <20090913202821.GD13109@fieldses.org>
-References: <4AA8C597.8080809@panasas.com> <1252574732-30108-1-git-send-email-bhalevy@panasas.com> <4AA90E3A.80400@panasas.com> <20090911205821.GE5701@fieldses.org> <5e24e8930909111412r2c7bdc58u119767517154d6@mail.gmail.com>
+Subject: Re: [PATCH v2 10/12] nfsd41: Backchannel: Implement cb_recall over
+	NFSv4.1
+Date: Sun, 13 Sep 2009 16:39:49 -0400
+Message-ID: <20090913203949.GE13109@fieldses.org>
+References: <4AA8C597.8080809@panasas.com> <1252574824-30348-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-	pnfs@linux-nfs.org
-To: Alexandros Batsakis <alexandros-4GNroTWusrE@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+	Andy Adamson <andros@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47318 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39473 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751719AbZIMU2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Sep 2009 16:28:20 -0400
-In-Reply-To: <5e24e8930909111412r2c7bdc58u119767517154d6-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S1754393AbZIMUjq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 13 Sep 2009 16:39:46 -0400
+In-Reply-To: <1252574824-30348-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 11, 2009 at 02:12:35PM -0700, Alexandros Batsakis wrote:
-> On Fri, Sep 11, 2009 at 1:58 PM, J. Bruce Fields <bfields-uC3wQj2KruMpug/h7KTFAQ@public.gmane.org=
-g> wrote:
-> > On Thu, Sep 10, 2009 at 05:33:30PM +0300, Benny Halevy wrote:
-> >> diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrp=
-c/xprtrdma.h
-> >> index 54a379c..c2f04e1 100644
-> >> --- a/include/linux/sunrpc/xprtrdma.h
-> >> +++ b/include/linux/sunrpc/xprtrdma.h
-> >> @@ -41,11 +41,6 @@
-> >> =C2=A0#define _LINUX_SUNRPC_XPRTRDMA_H
-> >>
-> >> =C2=A0/*
-> >> - * RPC transport identifier for RDMA
-> >> - */
-> >> -#define XPRT_TRANSPORT_RDMA =C2=A0256
-> >> -
-> >> -/*
-> >> =C2=A0 * rpcbind (v3+) RDMA netid.
-> >> =C2=A0 */
-> >> =C2=A0#define RPCBIND_NETID_RDMA =C2=A0 "rdma"
-> >> diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrp=
-c/xprtsock.h
-> >> index c2a46c4..d7c98d1 100644
-> >> --- a/include/linux/sunrpc/xprtsock.h
-> >> +++ b/include/linux/sunrpc/xprtsock.h
-> >> @@ -20,8 +20,13 @@ void =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 cleanup_socket_xprt(void);
-> >> =C2=A0 * values. No such restriction exists for new transports, ex=
-cept that
-> >> =C2=A0 * they may not collide with these values (17 and 6, respect=
-ively).
-> >> =C2=A0 */
-> >> -#define XPRT_TRANSPORT_UDP =C2=A0 IPPROTO_UDP
-> >> -#define XPRT_TRANSPORT_TCP =C2=A0 IPPROTO_TCP
-> >> +#define XPRT_TRANSPORT_BC =C2=A0 =C2=A0(1 << 31)
-> >> +enum xprt_transports {
-> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_UDP =C2=A0 =C2=A0 =C2=A0=3D IPPROTO=
-_UDP,
-> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_TCP =C2=A0 =C2=A0 =C2=A0=3D IPPROTO=
-_TCP,
-> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_BC_TCP =C2=A0 =3D IPPROTO_TCP | XPR=
-T_TRANSPORT_BC,
-> >> + =C2=A0 =C2=A0 XPRT_TRANSPORT_RDMA =C2=A0 =C2=A0 =3D 256
-> >> +};
-> >
-> > This fails to compile when CONFIG_SUNRPC_XPRT_RDMA is set.
-> >
-> > A minimal fix might be:
-> >
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0--- a/net/sunrpc/xprtrdma/transport.c
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0+++ b/net/sunrpc/xprtrdma/transport.c
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0@@ -50,6 +50,8 @@
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include <linux/module.h>
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include <linux/init.h>
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include <linux/seq_file.h>
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0+#include <linux/in.h>
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0+#include <linux/sunrpc/xprtsock.h>
-> >
-> > =C2=A0 =C2=A0 =C2=A0 =C2=A0 #include "xprt_rdma.h"
-> >
-> > Or maybe just ditch the enum and leave these as they were before.
-> >
->=20
-> The incentive here was to have all the transports definitions togethe=
-r
-> so that nobody re-uses a number by mistake (not very likely of
-> course), so I think the fix you suggested is appropriate.
+On Thu, Sep 10, 2009 at 12:27:04PM +0300, Benny Halevy wrote:
+> @@ -668,16 +701,19 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+>  		break;
+>  	default:
+>  		/* success, or error we can't handle */
+> -		return;
+> +		goto done;
+>  	}
+>  	if (dp->dl_retries--) {
+>  		rpc_delay(task, 2*HZ);
+>  		task->tk_status = 0;
+>  		rpc_restart_call(task);
+> +		return;
+>  	} else {
+>  		atomic_set(&clp->cl_cb_conn.cb_set, 0);
+>  		warn_no_callback_path(clp, task->tk_status);
+>  	}
+> +done:
+> +	kfree(task->tk_msg.rpc_argp);
+>  }
+>  
+>  static void nfsd4_cb_recall_release(void *calldata)
+> @@ -703,16 +739,24 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+>  {
+>  	struct nfs4_client *clp = dp->dl_client;
+>  	struct rpc_clnt *clnt = clp->cl_cb_conn.cb_client;
+> +	struct nfs4_rpc_args *args;
+>  	struct rpc_message msg = {
+>  		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+> -		.rpc_argp = dp,
+>  		.rpc_cred = clp->cl_cb_conn.cb_cred
+>  	};
+>  	int status;
+>  
+> +	args = kzalloc(sizeof(*args), GFP_KERNEL);
+> +	if (!args) {
+> +		status = -ENOMEM;
+> +		goto out;
+> +	}
+> +	args->args_op = dp;
+> +	msg.rpc_argp = args;
+>  	dp->dl_retries = 1;
+>  	status = rpc_call_async(clnt, &msg, RPC_TASK_SOFT,
+>  				&nfsd4_cb_recall_ops, dp);
+> +out:
+>  	if (status) {
+>  		put_nfs4_client(clp);
+>  		nfs4_put_delegation(dp);
+> -- 
+> 1.6.4
+> 
 
-OK.  Actually, rather than adding a socket-specific include to an
-rdma-specific file, how about the below?  Applying with the following
-change assuming no objections.
+Tracing down through rpc_call_async.... It doesn't look to me like it
+will call rpc_call_done on returning an error, so you're leaking args in
+that case.  Probably just need a kfree(args); applying as below.
 
 --b.
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 7cc42af..6f9457a 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -124,6 +124,23 @@ struct rpc_xprt_ops {
- 	void		(*print_stats)(struct rpc_xprt *xprt, struct seq_file *seq);
- };
-=20
-+/*
-+ * RPC transport identifiers
-+ *
-+ * To preserve compatibility with the historical use of raw IP protoco=
-l
-+ * id's for transport selection, UDP and TCP identifiers are specified
-+ * with the previous values. No such restriction exists for new transp=
-orts,
-+ * except that they may not collide with these values (17 and 6,
-+ * respectively).
-+ */
-+#define XPRT_TRANSPORT_BC       (1 << 31)
-+enum xprt_transports {
-+	XPRT_TRANSPORT_UDP	=3D IPPROTO_UDP,
-+	XPRT_TRANSPORT_TCP	=3D IPPROTO_TCP,
-+	XPRT_TRANSPORT_BC_TCP	=3D IPPROTO_TCP | XPRT_TRANSPORT_BC,
-+	XPRT_TRANSPORT_RDMA	=3D 256
-+};
+commit 18d8774a149c28b8c9ac66592873e78bbc66330a
+Author: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Date:   Thu Sep 10 12:27:04 2009 +0300
+
+    nfsd41: Backchannel: Implement cb_recall over NFSv4.1
+    
+    Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+    [nfsd41: cb_recall callback]
+    [Share v4.0 and v4.1 back channel xdr]
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    [Share v4.0 and v4.1 back channel xdr]
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    [nfsd41: use nfsd4_cb_sequence for callback minorversion]
+    [nfsd41: conditionally decode_sequence in nfs4_xdr_dec_cb_recall]
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    [nfsd41: Backchannel: Add sequence arguments to callback RPC arguments]
+    Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+    [pulled-in definition of nfsd4_cb_done]
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 74c8b33..fabfe12 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -267,15 +267,19 @@ nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
+ }
+ 
+ static int
+-nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p, struct nfs4_delegation *args)
++nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
++		struct nfs4_rpc_args *rpc_args)
+ {
+ 	struct xdr_stream xdr;
++	struct nfs4_delegation *args = rpc_args->args_op;
+ 	struct nfs4_cb_compound_hdr hdr = {
+ 		.ident = args->dl_ident,
++		.minorversion = rpc_args->args_seq.cbs_minorversion,
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 	encode_cb_compound_hdr(&xdr, &hdr);
++	encode_cb_sequence(&xdr, &rpc_args->args_seq, &hdr);
+ 	encode_cb_recall(&xdr, args, &hdr);
+ 	encode_cb_nops(&hdr);
+ 	return 0;
+@@ -324,7 +328,8 @@ nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
+ }
+ 
+ static int
+-nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
++nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
++		struct nfsd4_cb_sequence *seq)
+ {
+ 	struct xdr_stream xdr;
+ 	struct nfs4_cb_compound_hdr hdr;
+@@ -334,6 +339,11 @@ nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p)
+ 	status = decode_cb_compound_hdr(&xdr, &hdr);
+ 	if (status)
+ 		goto out;
++	if (seq) {
++		status = decode_cb_sequence(&xdr, seq, rqstp);
++		if (status)
++			goto out;
++	}
+ 	status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
+ out:
+ 	return status;
+@@ -575,11 +585,34 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 	rpc_call_start(task);
+ }
+ 
++static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_delegation *dp = calldata;
++	struct nfs4_client *clp = dp->dl_client;
 +
- struct rpc_xprt {
- 	struct kref		kref;		/* Reference count */
- 	struct rpc_xprt_ops *	ops;		/* transport methods */
-diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xpr=
-tsock.h
-index d7c98d1..3f14a02 100644
---- a/include/linux/sunrpc/xprtsock.h
-+++ b/include/linux/sunrpc/xprtsock.h
-@@ -13,22 +13,6 @@ int		init_socket_xprt(void);
- void		cleanup_socket_xprt(void);
-=20
- /*
-- * RPC transport identifiers for UDP, TCP
-- *
-- * To preserve compatibility with the historical use of raw IP protoco=
-l
-- * id's for transport selection, these are specified with the previous
-- * values. No such restriction exists for new transports, except that
-- * they may not collide with these values (17 and 6, respectively).
-- */
--#define XPRT_TRANSPORT_BC	(1 << 31)
--enum xprt_transports {
--	XPRT_TRANSPORT_UDP 	=3D IPPROTO_UDP,
--	XPRT_TRANSPORT_TCP 	=3D IPPROTO_TCP,
--	XPRT_TRANSPORT_BC_TCP 	=3D IPPROTO_TCP | XPRT_TRANSPORT_BC,
--	XPRT_TRANSPORT_RDMA	=3D 256
--};
--
--/*
-  * RPC slot table sizes for UDP, TCP transports
-  */
- extern unsigned int xprt_udp_slot_table_entries;
++	dprintk("%s: minorversion=%d\n", __func__,
++		clp->cl_cb_conn.cb_minorversion);
++
++	if (clp->cl_cb_conn.cb_minorversion) {
++		/* No need for lock, access serialized in nfsd4_cb_prepare */
++		++clp->cl_cb_seq_nr;
++		clear_bit(0, &clp->cl_cb_slot_busy);
++		rpc_wake_up_next(&clp->cl_cb_waitq);
++		dprintk("%s: freed slot, new seqid=%d\n", __func__,
++			clp->cl_cb_seq_nr);
++
++		/* We're done looking into the sequence information */
++		task->tk_msg.rpc_resp = NULL;
++	}
++}
++
+ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_delegation *dp = calldata;
+ 	struct nfs4_client *clp = dp->dl_client;
+ 
++	nfsd4_cb_done(task, calldata);
++
+ 	switch (task->tk_status) {
+ 	case -EIO:
+ 		/* Network partition? */
+@@ -592,16 +625,19 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ 		break;
+ 	default:
+ 		/* success, or error we can't handle */
+-		return;
++		goto done;
+ 	}
+ 	if (dp->dl_retries--) {
+ 		rpc_delay(task, 2*HZ);
+ 		task->tk_status = 0;
+ 		rpc_restart_call(task);
++		return;
+ 	} else {
+ 		atomic_set(&clp->cl_cb_conn.cb_set, 0);
+ 		warn_no_callback_path(clp, task->tk_status);
+ 	}
++done:
++	kfree(task->tk_msg.rpc_argp);
+ }
+ 
+ static void nfsd4_cb_recall_release(void *calldata)
+@@ -627,17 +663,24 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_client *clp = dp->dl_client;
+ 	struct rpc_clnt *clnt = clp->cl_cb_conn.cb_client;
++	struct nfs4_rpc_args *args;
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+-		.rpc_argp = dp,
+ 		.rpc_cred = clp->cl_cb_conn.cb_cred
+ 	};
+-	int status;
++	int status = -ENOMEM;
+ 
++	args = kzalloc(sizeof(*args), GFP_KERNEL);
++	if (!args)
++		goto out;
++	args->args_op = dp;
++	msg.rpc_argp = args;
+ 	dp->dl_retries = 1;
+ 	status = rpc_call_async(clnt, &msg, RPC_TASK_SOFT,
+ 				&nfsd4_cb_recall_ops, dp);
++out:
+ 	if (status) {
++		kfree(args);
+ 		put_nfs4_client(clp);
+ 		nfs4_put_delegation(dp);
+ 	}
