@@ -1,65 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f188.google.com ([209.85.211.188]:56214 "EHLO
-	mail-yw0-f188.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753344AbZICNyM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Sep 2009 09:54:12 -0400
-Received: by ywh26 with SMTP id 26so2686953ywh.5
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Sep 2009 06:54:14 -0700 (PDT)
-In-Reply-To: <4A9F6027.9050807@s3group.cz>
-References: <524f69650909021156lf181c17uf800eba7c35a6f45@mail.gmail.com>
-	 <20090902202206.GJ17884@fieldses.org>
-	 <524f69650909021353o1e055cbema16495c57cb9909b@mail.gmail.com>
-	 <4A9F6027.9050807@s3group.cz>
-Date: Thu, 3 Sep 2009 08:54:06 -0500
-Message-ID: <524f69650909030654u7653d410kd5cde25ec223a87@mail.gmail.com>
-Subject: Re: POSIX ACL support for NFSV4 (using sideband protocol)
-From: Steve French <smfrench@gmail.com>
-To: Ondrej Valousek <webserv@s3group.cz>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        nfsv4@linux-nfs.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        ffilzlnx@linux.vnet.ibm.com, jra@samba.org, agruen@suse.de
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from lo.gmane.org ([80.91.229.12]:43460 "EHLO lo.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757318AbZINWSl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Sep 2009 18:18:41 -0400
+Received: from list by lo.gmane.org with local (Exim 4.50)
+	id 1MnJsg-0003Z1-Q8
+	for linux-nfs@vger.kernel.org; Tue, 15 Sep 2009 00:18:44 +0200
+Received: from inferno.cora.nwra.com ([65.44.101.162])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2009 00:18:42 +0200
+Received: from orion by inferno.cora.nwra.com with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Sep 2009 00:18:42 +0200
+To: linux-nfs@vger.kernel.org
+From: Orion Poplawski <orion@cora.nwra.com>
+Subject: Re: NFS slow to respond on resumption from hibernate
+Date: Mon, 14 Sep 2009 22:18:19 +0000 (UTC)
+Message-ID: <loom.20090915T001738-235@post.gmane.org>
+References: <loom.20090910T180831-552@post.gmane.org> <1252602040.8722.128.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 3, 2009 at 1:20 AM, Ondrej Valousek<webserv@s3group.cz> wrote:
->
->> 2) If POSIX->NFSv4 client mapping is done (as had been suggested IIRC
->> by others in the past) at least you lose less data (NFSv4 ACLs are
->> "richer"
->> in function than POSIX ACLs - so at least with the POSIX->NFSv4->POSIX
->> case you are limiting the user to the subset of choices which are actually
->> going to be able to be stored, no inheritence etc.)
->>
-> I must say that I do not understand the motivation either. POSIX is not even
-> a standard and should be replaced with NFSv4 acls.
-> Even now ext3/ext4 support NFSv4 acls (ok. patch is needed but the patch is
-> there already).
+Trond Myklebust <trond.myklebust@...> writes:
+> Start by upgrading to the very latest Fedora kernel, which is 2.6.30
+> based. There are a couple of RPC/tcp reconnection fixes there that
+> didn't make it into 2.6.29.
 
-If someone were able to convince the linux-fsdevel community to change
-fs/posix_acls.c
-(or add an fs/cifs_acls.c) to handle NFSv4/CIFS/NTFS ACL evaluation, and add
-support to store these richer ACLs on disk for the future (e.g. for
-btrfs), that would be
-great - but with no local file system in kernel which can store NFSv4 ACLs and
-no code to evaluate these ACLs in the VFS and with a NACK from fsdevel when
-others tried this a few years ago (even after MacOS and others moved to the
-CIFS/NTFS ACLs model)
+Updated to 2.6.30.5 in F11 and that indeed seems to have fixed it.  Thanks!
 
-> If the decision was up to me, I would forbid any nfsv4 acls if the server
-> can not store them properly (i.e. without any conversion)
+- Orion
 
-That would be a pretty dramatic loss of function - being forced to use
-the primitive
-mode bits to protect files if the server were Linux - and could be
-worseeven NetApp does
-some ACL mapping
-
-
-
-
--- 
-Thanks,
-
-Steve
