@@ -1,37 +1,190 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 1/4] nfs-utils: introduce new statd implementation (1st
- part)
-Date: Mon, 14 Sep 2009 11:55:46 -0400
-Message-ID: <4AAE6782.7000506@RedHat.com>
-References: <20090805143550.12866.8377.stgit@matisse.1015granger.net>	 <20090805144540.12866.22084.stgit@matisse.1015granger.net>	 <20090805174811.GB9944@fieldses.org>	 <DBAD3130-0633-414A-914B-CC2F15ABB219@oracle.com>	 <20090805181545.GF9944@fieldses.org>	 <7330021D-C95A-463D-8D18-29453EF185BC@oracle.com>	 <1249507356.5428.11.camel@heimdal.trondhjem.org>	 <D503383F-3D52-4F93-B850-AFE84316435C@oracle.com>	 <1249515004.5428.34.camel@heimdal.trondhjem.org>	 <20090909142945.755da393@tlielax.poochiereds.net>	 <1252521599.8722.53.camel@heimdal.trondhjem.org>	 <20B7C2F0-E566-4292-91E9-41A3FA6C9D4C@oracle.com>	 <1252525327.8722.81.camel@heimdal.trondhjem.org>	 <D2B488FA-2630-4355-8E3B-FE1243E4C3AE@oracle.com>	 <9eae93545189a6be6eebe0460b860fc7.squirrel@neil.brown.name>	 <BA66527C-2F6E-4378-8CC1-3
- 5B26C444D0E@oracle.com> <1252936467.6866.54.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH v2 05/12] nfsd41: Backchannel: callback infrastructure
+Date: Mon, 14 Sep 2009 12:35:35 -0400
+Message-ID: <20090914163535.GE30806@fieldses.org>
+References: <4AA8C597.8080809@panasas.com> <1252574759-30176-1-git-send-email-bhalevy@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.de>,
-	Jeff Layton <jlayton@redhat.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=us-ascii
+Cc: pnfs@linux-nfs.org, linux-nfs@vger.kernel.org,
+	Andy Adamson <andros@netapp.com>,
+	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62763 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:40231 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752535AbZINPzw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Sep 2009 11:55:52 -0400
-In-Reply-To: <1252936467.6866.54.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1756204AbZINQfe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Sep 2009 12:35:34 -0400
+In-Reply-To: <1252574759-30176-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> The problems with the code remain, and you will need to change it in
-> order to make it acceptable. The question I haven't seen you asking, and
-> that you should have be asking from the very start is "what would be the
-> minimal set of changes?".
+On Thu, Sep 10, 2009 at 12:25:59PM +0300, Benny Halevy wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Keep the xprt used for create_session in cl_cb_xprt.
+> Mark cl_callback.cb_minorversion = 1 and remember
+> the client provided cl_callback.cb_prog rpc program number.
+> Use it to probe the callback path.
+> 
+> Use the client's network address to initialize as the
+> callback's address as expected by the xprt creation
+> routines.
+> 
+> Define xdr sizes and code nfs4_cb_compound header to be able
+> to send a null callback rpc.
+> 
+> Signed-off-by: Andy Adamson<andros@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+> [get callback minorversion from fore channel's]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [nfsd41: change bc_sock to bc_xprt]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [pulled definition for cl_cb_xprt]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> [nfsd41: set up backchannel's cb_addr]
+> [moved rpc_create_args init to "nfsd: modify nfsd4.1 backchannel to use new xprt class"]
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfsd/nfs4callback.c     |   21 +++++++++++++++++++--
+>  fs/nfsd/nfs4state.c        |   14 ++++++++++++++
+>  include/linux/nfsd/state.h |    3 +++
+>  3 files changed, 36 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 63bb384..3e3e15b 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -43,6 +43,7 @@
+>  #include <linux/sunrpc/xdr.h>
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/svcsock.h>
+>  #include <linux/nfsd/nfsd.h>
+>  #include <linux/nfsd/state.h>
+>  #include <linux/sunrpc/sched.h>
+> @@ -52,16 +53,19 @@
+>  
+>  #define NFSPROC4_CB_NULL 0
+>  #define NFSPROC4_CB_COMPOUND 1
+> +#define NFS4_STATEID_SIZE 16
+>  
+>  /* Index of predefined Linux callback client operations */
+>  
+>  enum {
+>  	NFSPROC4_CLNT_CB_NULL = 0,
+>  	NFSPROC4_CLNT_CB_RECALL,
+> +	NFSPROC4_CLNT_CB_SEQUENCE,
+>  };
+>  
+>  enum nfs_cb_opnum4 {
+>  	OP_CB_RECALL            = 4,
+> +	OP_CB_SEQUENCE          = 11,
+>  };
+>  
+>  #define NFS4_MAXTAGLEN		20
+> @@ -70,15 +74,22 @@ enum nfs_cb_opnum4 {
+>  #define NFS4_dec_cb_null_sz		0
+>  #define cb_compound_enc_hdr_sz		4
+>  #define cb_compound_dec_hdr_sz		(3 + (NFS4_MAXTAGLEN >> 2))
+> +#define sessionid_sz			(NFS4_MAX_SESSIONID_LEN >> 2)
+> +#define cb_sequence_enc_sz		(sessionid_sz + 4 +             \
+> +					1 /* no referring calls list yet */)
+> +#define cb_sequence_dec_sz		(op_dec_sz + sessionid_sz + 4)
+> +
+>  #define op_enc_sz			1
+>  #define op_dec_sz			2
+>  #define enc_nfs4_fh_sz			(1 + (NFS4_FHSIZE >> 2))
+>  #define enc_stateid_sz			(NFS4_STATEID_SIZE >> 2)
+>  #define NFS4_enc_cb_recall_sz		(cb_compound_enc_hdr_sz +       \
+> +					cb_sequence_enc_sz +            \
+>  					1 + enc_stateid_sz +            \
+>  					enc_nfs4_fh_sz)
+>  
+>  #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
+> +					cb_sequence_dec_sz +            \
+>  					op_dec_sz)
+>  
+>  /*
+> @@ -137,11 +148,13 @@ xdr_error:                                      \
+>  } while (0)
+>  
+>  struct nfs4_cb_compound_hdr {
+> -	int		status;
+> -	u32		ident;
+> +	/* args */
+> +	u32		ident;	/* minorversion 0 only */
+>  	u32		nops;
+>  	__be32		*nops_p;
+>  	u32		minorversion;
+> +	/* res */
+> +	int		status;
+>  	u32		taglen;
+>  	char		*tag;
+>  };
+> @@ -399,6 +412,10 @@ int setup_callback_client(struct nfs4_client *clp)
+>  	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
+>  		return -EINVAL;
+>  
+> +	dprintk("%s: program %s 0x%x nrvers %u version %u minorversion %u\n",
+> +		__func__, args.program->name, args.prognumber,
+> +		args.program->nrvers, args.version, cb->cb_minorversion);
+> +
+>  	/* Create RPC client */
+>  	client = rpc_create(&args);
+>  	if (IS_ERR(client)) {
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 46e9ac5..e4c3223 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -706,6 +706,8 @@ static inline void
+>  free_client(struct nfs4_client *clp)
+>  {
+>  	shutdown_callback_client(clp);
+> +	if (clp->cl_cb_xprt)
+> +		svc_xprt_put(clp->cl_cb_xprt);
+>  	if (clp->cl_cred.cr_group_info)
+>  		put_group_info(clp->cl_cred.cr_group_info);
+>  	kfree(clp->cl_principal);
+> @@ -1321,6 +1323,18 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  		cr_ses->flags &= ~SESSION4_PERSIST;
+>  		cr_ses->flags &= ~SESSION4_RDMA;
+>  
+> +		if (cr_ses->flags & SESSION4_BACK_CHAN) {
+> +			unconf->cl_cb_xprt = rqstp->rq_xprt;
+> +			svc_xprt_get(unconf->cl_cb_xprt);
+> +			rpc_copy_addr(
+> +				(struct sockaddr *)&unconf->cl_cb_conn.cb_addr,
+> +				sa);
+> +			unconf->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
+> +			unconf->cl_cb_conn.cb_minorversion =
+> +				cstate->minorversion;
+> +			unconf->cl_cb_conn.cb_prog = cr_ses->callback_prog;
+> +			nfsd4_probe_callback(unconf);
 
-I too would like to see what are minimal change set would be... Just
-to see how much a db is really needed... If at all.. 
+This results in a NULL deference in rpcauth_lookup_credcache()--probably
+some callback parameters that aren't set up right yet.
 
-Now with that said... I've taken on the task of how to deal with
-pNFS exports and it might make sense that a db is need to deal with
-that complexity...  So I'm not totally against the idea of introducing 
-a db to nfs-utils I just think we need to do it for the right reason....
+--b.
 
-steved.
- 
+> +		}
+>  		conf = unconf;
+>  	} else {
+>  		status = nfserr_stale_clientid;
+> diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+> index 70ef5f4..243277b 100644
+> --- a/include/linux/nfsd/state.h
+> +++ b/include/linux/nfsd/state.h
+> @@ -212,6 +212,9 @@ struct nfs4_client {
+>  	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
+>  	u32			cl_exchange_flags;
+>  	struct nfs4_sessionid	cl_sessionid;
+> +
+> +	/* for nfs41 callbacks */
+> +	struct svc_xprt		*cl_cb_xprt;	/* 4.1 callback transport */
+>  };
+>  
+>  /* struct nfs4_client_reset
+> -- 
+> 1.6.4
+> 
