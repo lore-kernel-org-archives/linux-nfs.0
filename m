@@ -1,41 +1,60 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 0/3] support "-t nfs -o vers=4" [take 3]
-Date: Mon, 14 Sep 2009 14:13:42 -0400
-Message-ID: <4AAE87D6.4000209@RedHat.com>
-References: <20090908210012.3326.57767.stgit@matisse.1015granger.net>
+Subject: Re: [PATCH 0/4] Support "-t nfs,vers=4" mounts in the kernel [take
+ 4]
+Date: Mon, 14 Sep 2009 14:17:28 -0400
+Message-ID: <4AAE88B8.90908@RedHat.com>
+References: <20090902135032.3550.23170.stgit@matisse.1015granger.net>	 <4AA6A7B5.1060301@RedHat.com> <1252517471.8722.19.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2924 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:62806 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932574AbZINSNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Sep 2009 14:13:40 -0400
-In-Reply-To: <20090908210012.3326.57767.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S932680AbZINSR3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Sep 2009 14:17:29 -0400
+In-Reply-To: <1252517471.8722.19.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/08/2009 05:02 PM, Chuck Lever wrote:
-> Hi Steve-
+On 09/09/2009 01:31 PM, Trond Myklebust wrote:
+> On Tue, 2009-09-08 at 14:51 -0400, Steve Dickson wrote:
+>> On 09/02/2009 09:51 AM, Chuck Lever wrote:
+>>> Sorry for the repost.  After reading the patch descriptions again, I
+>>> thought they needed some clarification.
+>>>
+>>> ---
+>>>
+>>> Chuck Lever (4):
+>>>       NFS: Allow the "nfs" file system type to support NFSv4
+>>>       NFS: Move details of nfs4_get_sb() to a helper
+>>>       NFS: Refactor NFSv4 text-based mount option validation
+>>>       NFS: Mount option parser should detect missing "port="
+>>>
+>>>
+>>>  fs/nfs/internal.h    |   10 ++
+>>>  fs/nfs/super.c       |  202 +++++++++++++++++++++++++++++++++-----------------
+>>>  include/linux/nfs4.h |    1 These patches (after a bit of back porting) are now in the F-12 and Rawhide 
+kernels, 
+>>>  3 files changed, 144 insertions(+), 69 deletions(-)
+>>>
+>> Trond,
+>>
+>> I'm updating the mount.nfs man pages, and would like give 
+>> an guess-ta-mate as to which kernel these patches will be in.
+>> Any ideas?
 > 
-> These changes accompany kernel support for "-t nfs -o vers=4".
+> I'm planning on pushing them out in the upcoming merge window, since the
+> patches themselves seem pretty straightforward. I've applied the fixes
+> that I suggested, and added the patch to disable vers!=4 in the '-t
+> nfs4' case.
 > 
-> One patch description was clarified, and a bug was fixed in the last
-> patch of this series.
-> 
-> ---
-> 
-> Chuck Lever (3):
->       mount.nfs: Detect "-t nfs -o vers=4" mounts
->       umount.nfs: Skip UMNT call for "-t nfs -o vers=4" mounts
->       mount.nfs: Support "vers=4" in nfs_nfs_version()
-> 
-> 
-Committed... Note I rolled these three patches into one since the
-were all fairly straightforward and it will be easier to 
-manage them, if need be..
+> If you'd like to test it all out, I've pushed those patches into the
+> nfs-for-2.6.32 branch of my git tree. They should also appear in
+> linux-next.
+After a weekend of testing these patches along with Chunk's mount.nfs 
+patches, I committed these patches (after some back porting) to both 
+the Fedora F-12 and Rawhide kernels, which means they will get plenty 
+of testing by the time 2.6.32 rolls around...
 
 steved.
