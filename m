@@ -1,55 +1,53 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v2 05/12] nfsd41: Backchannel: callback infrastructure
-Date: Tue, 15 Sep 2009 11:10:48 -0400
-Message-ID: <20090915151048.GA19339@fieldses.org>
-References: <20090914163535.GE30806@fieldses.org> <20090914164951.GA32757@fieldses.org> <4AAE7C19.7070600@panasas.com> <20090914200423.GE1658@fieldses.org> <1252959452.6866.92.camel@heimdal.trondhjem.org> <20090914203910.GF1658@fieldses.org> <1252961253.6866.98.camel@heimdal.trondhjem.org> <20090914205648.GG1658@fieldses.org> <1252962546.6866.102.camel@heimdal.trondhjem.org> <1252962982.6866.104.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Benny Halevy <bhalevy@panasas.com>, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] sunrpc: xdr_xcode_hyper helpers cannot presume 64-bit alignment
+Date: Tue, 15 Sep 2009 19:05:24 +0300
+Message-ID: <1253030724-22196-1-git-send-email-bhalevy@panasas.com>
+References: <20090912140001.GD5858@ZenIV.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48856 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754680AbZIOPKt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Sep 2009 11:10:49 -0400
-In-Reply-To: <1252962982.6866.104.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from dip-colo-pa.panasas.com ([67.152.220.67]:11985 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751502AbZIOQEJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2009 12:04:09 -0400
+In-Reply-To: <20090912140001.GD5858@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 14, 2009 at 05:16:22PM -0400, Trond Myklebust wrote:
-> On Mon, 2009-09-14 at 17:09 -0400, Trond Myklebust wrote:
-> 
-> > I suppose we could. Alternatively, why not just call it once and for all
-> > when you start the NFSv4 server? The one cred will work on all
-> > rpc_clients.
-> 
-> (This is correct...)
-> 
-> > You just have to remember to bump the reference count
-> > before using it in an RPC call...
-> 
-> Oops! Sorry, this is incorrect. The RPC engine will take care of bumping
-> the ref count for you if necessary...
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ include/linux/sunrpc/xdr.h |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
 
-OK, on another look: I create a generic cred with
-rpc_lookup_machine_cred().  The gss cred then gets created by something
-like:
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 7da466b..f5cc089 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -11,6 +11,7 @@
+ 
+ #include <linux/uio.h>
+ #include <asm/byteorder.h>
++#include <asm/unaligned.h>
+ #include <linux/scatterlist.h>
+ 
+ /*
+@@ -117,14 +118,14 @@ static inline __be32 *xdr_encode_array(__be32 *p, const void *s, unsigned int le
+ static inline __be32 *
+ xdr_encode_hyper(__be32 *p, __u64 val)
+ {
+-	*(__be64 *)p = cpu_to_be64(val);
++	put_unaligned_be64(val, p);
+ 	return p + 2;
+ }
+ 
+ static inline __be32 *
+ xdr_decode_hyper(__be32 *p, __u64 *valp)
+ {
+-	*valp = be64_to_cpup((__be64 *)p);
++	*valp = get_unaligned_be64(p);
+ 	return p + 2;
+ }
+ 
+-- 
+1.6.4
 
-	rpc_call_async
-	  rpc_run_task
-	    rpc_new_task
-	      rpc_init_task
-	        rpcauth_bindcred
-		  cred->cr_ops->crbind == generic_bind_cred
-		    gss_auth->au_ops->lookup_cred(auth, acred, 0)
-		      rpcauth_lookup_credcache(gss_auth, acred, 0)
-
-But rpcauth_lookup_credcache ends up calling cr_init (gss_cred_init) and
-waiting synchronously for the gss upcall.  I want to avoid that.  Should
-I be setting up the cred differently, or could the rpc task
-initialization process be tweaked somehow?  (Or am I just
-misunderstanding the code?)
-
---b.
