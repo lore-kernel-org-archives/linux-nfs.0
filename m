@@ -1,45 +1,32 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: [PATCH v2 05/12] nfsd41: Backchannel: callback infrastructure
-Date: Mon, 14 Sep 2009 17:16:22 -0400
-Message-ID: <1252962982.6866.104.camel@heimdal.trondhjem.org>
-References: <4AA8C597.8080809@panasas.com>
-	 <1252574759-30176-1-git-send-email-bhalevy@panasas.com>
-	 <20090914163535.GE30806@fieldses.org> <20090914164951.GA32757@fieldses.org>
-	 <4AAE7C19.7070600@panasas.com> <20090914200423.GE1658@fieldses.org>
-	 <1252959452.6866.92.camel@heimdal.trondhjem.org>
-	 <20090914203910.GF1658@fieldses.org>
-	 <1252961253.6866.98.camel@heimdal.trondhjem.org>
-	 <20090914205648.GG1658@fieldses.org>
-	 <1252962546.6866.102.camel@heimdal.trondhjem.org>
+From: Lans Carstensen <Lans.Carstensen-hCDZnVt6e3JSwrhanM7KvQ@public.gmane.org>
+Subject: [PATCH 0/4] nfs-utils: nfs-iostat.py autofs cleanup and option to
+ sort by ops/s
+Date: Mon, 14 Sep 2009 21:57:30 -0700
+Message-ID: <4AAF1EBA.4090207@dreamworks.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Benny Halevy <bhalevy@panasas.com>, pnfs@linux-nfs.org,
-	linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-	Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: NFS list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:54917 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756942AbZINVQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Sep 2009 17:16:24 -0400
-In-Reply-To: <1252962546.6866.102.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mta1.dreamworks.com ([208.71.56.12]:11134 "EHLO
+	michael.anim.dreamworks.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751454AbZIOE5d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Sep 2009 00:57:33 -0400
+Received: from pinkboy.anim.dreamworks.com ([192.168.249.78])
+	by michael.anim.dreamworks.com (8.13.1/8.13.1) with ESMTP id n8F4vZ9g013555
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Sep 2009 21:57:36 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2009-09-14 at 17:09 -0400, Trond Myklebust wrote:
+Here's the testest/reworked patchset for nfs-iostat.py, separating out:
+* python path change for package dependency detection and LSB compliance
+* Updating list of mount points each interval for autofs environments
+* Introduce optparse and update usage/help to use it
+* Adding --sort and --list=n options
 
-> I suppose we could. Alternatively, why not just call it once and for all
-> when you start the NFSv4 server? The one cred will work on all
-> rpc_clients.
+Thanks in advance for reviewing this.
 
-(This is correct...)
+-- Lans Carstensen, Systems Engineering, Dreamworks Animation
+Because they consistently observe and listen, the humble improve.
+                                                -- Wynton Marsalis
 
-> You just have to remember to bump the reference count
-> before using it in an RPC call...
-
-Oops! Sorry, this is incorrect. The RPC engine will take care of bumping
-the ref count for you if necessary...
-
-Cheers
-  Trond
 
