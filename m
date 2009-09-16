@@ -1,22 +1,18 @@
 From: Aioanei Rares <krnl.list@gmail.com>
 Subject: Re: BUG: oops in gss_validate on 2.6.31
-Date: Wed, 16 Sep 2009 12:48:58 +0000 (UTC)
-Message-ID: <4AB2304F.80607@gmail.com>
+Date: Wed, 16 Sep 2009 12:48:59 +0000 (UTC)
+Message-ID: <4AB2304F.80607__47227.2631981925$1253105339$gmane$org@gmail.com>
 References: <20090916102953.GA18674@wavehammer.waldi.eu.org>	 <1253104249.5154.3.camel@heimdal.trondhjem.org>	 <4AB22E13.6020501@gmail.com> <1253105216.5154.8.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII;
 	format=flowed
-Cc: Bastian Blank <bastian-yyjItF7Rl6lg9hUCZPvPmw@public.gmane.org>, linux-kernel@vger.kernel.org,
+Cc: Bastian Blank <bastian@waldi.eu.org>, linux-kernel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f217.google.com ([209.85.220.217]:46395 "EHLO
-	mail-fx0-f217.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752911AbZIPMs3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2009 08:48:29 -0400
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758982AbZIPMsd@vger.kernel.org>
 Date: Thu, 17 Sep 2009 15:49:19 +0300
-In-Reply-To: <1253105216.5154.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <1253105216.5154.8.camel@heimdal.trondhjem.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Trond Myklebust wrote:
@@ -107,4 +103,3 @@ Trond Myklebust wrote:
 >
 >   
 Thanks a whole lot :-) Will keep you posted.
-
