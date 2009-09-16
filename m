@@ -1,112 +1,143 @@
 From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 3/4] nfsd4: allow nfs4 state startup to fail
-Date: Tue, 15 Sep 2009 21:07:57 -0400
-Message-ID: <1253063278-30137-3-git-send-email-bfields@citi.umich.edu>
+Subject: [PATCH 4/4] nfsd4: use common rpc_cred for all callbacks
+Date: Tue, 15 Sep 2009 21:07:58 -0400
+Message-ID: <1253063278-30137-4-git-send-email-bfields@citi.umich.edu>
 References: <20090916010604.GA29397@fieldses.org>
  <1253063278-30137-1-git-send-email-bfields@citi.umich.edu>
  <1253063278-30137-2-git-send-email-bfields@citi.umich.edu>
+ <1253063278-30137-3-git-send-email-bfields@citi.umich.edu>
 Cc: linux-nfs@vger.kernel.org,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
 To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33109 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33114 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751580AbZIPBHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1752329AbZIPBHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Tue, 15 Sep 2009 21:07:54 -0400
-In-Reply-To: <1253063278-30137-2-git-send-email-bfields@citi.umich.edu>
+In-Reply-To: <1253063278-30137-3-git-send-email-bfields@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The failure here is pretty unlikely, but we should handle it anyway.
+Callbacks are always made using the machine's identity, so we can use a
+single auth_generic credential shared among callbacks to all clients and
+let the rpc code take care of the rest.
 
 Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
 ---
- fs/nfsd/nfs4state.c       |   17 ++++++++++++-----
- fs/nfsd/nfssvc.c          |    4 +++-
- include/linux/nfsd/nfsd.h |    4 ++--
- 3 files changed, 17 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4callback.c     |   33 ++++++++++-----------------------
+ fs/nfsd/nfs4state.c        |    6 +-----
+ include/linux/nfsd/state.h |    2 +-
+ 3 files changed, 12 insertions(+), 29 deletions(-)
 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 4abb882..1285197 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -432,42 +432,29 @@ static const struct rpc_call_ops nfsd4_cb_probe_ops = {
+ 	.rpc_call_done = nfsd4_cb_probe_done,
+ };
+ 
+-static struct rpc_cred *lookup_cb_cred(struct nfs4_cb_conn *cb)
++static struct rpc_cred *callback_cred;
++
++int set_callback_cred(void)
+ {
+-	struct auth_cred acred = {
+-		.machine_cred = 1
+-	};
+-	struct rpc_auth *auth = cb->cb_client->cl_auth;
+-
+-	/*
+-	 * Note in the gss case this doesn't actually have to wait for a
+-	 * gss upcall (or any calls to the client); this just creates a
+-	 * non-uptodate cred which the rpc state machine will fill in with
+-	 * a refresh_upcall later.
+-	 */
+-	return auth->au_ops->lookup_cred(auth, &acred, RPCAUTH_LOOKUP_NEW);
++	callback_cred = rpc_lookup_machine_cred();
++	if (!callback_cred)
++		return -ENOMEM;
++	return 0;
+ }
+ 
++
+ void do_probe_callback(struct nfs4_client *clp)
+ {
+ 	struct nfs4_cb_conn *cb = &clp->cl_cb_conn;
+ 	struct rpc_message msg = {
+ 		.rpc_proc       = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_NULL],
+ 		.rpc_argp       = clp,
++		.rpc_cred	= callback_cred
+ 	};
+-	struct rpc_cred *cred;
+ 	int status;
+ 
+-	cred = lookup_cb_cred(cb);
+-	if (IS_ERR(cred)) {
+-		status = PTR_ERR(cred);
+-		goto out;
+-	}
+-	cb->cb_cred = cred;
+-	msg.rpc_cred = cb->cb_cred;
+ 	status = rpc_call_async(cb->cb_client, &msg, RPC_TASK_SOFT,
+ 				&nfsd4_cb_probe_ops, (void *)clp);
+-out:
+ 	if (status) {
+ 		warn_no_callback_path(clp, status);
+ 		put_nfs4_client(clp);
+@@ -550,7 +537,7 @@ nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+ 		.rpc_argp = dp,
+-		.rpc_cred = clp->cl_cb_conn.cb_cred
++		.rpc_cred = callback_cred
+ 	};
+ 	int status;
+ 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 46e9ac5..11db40c 100644
+index 11db40c..0445192 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4004,7 +4004,7 @@ set_max_delegations(void)
+@@ -696,10 +696,6 @@ shutdown_callback_client(struct nfs4_client *clp)
+ 		clp->cl_cb_conn.cb_client = NULL;
+ 		rpc_shutdown_client(clnt);
+ 	}
+-	if (clp->cl_cb_conn.cb_cred) {
+-		put_rpccred(clp->cl_cb_conn.cb_cred);
+-		clp->cl_cb_conn.cb_cred = NULL;
+-	}
+ }
  
- /* initialization to perform when the nfsd service is started: */
- 
--static void
-+static int
- __nfs4_state_start(void)
- {
- 	unsigned long grace_time;
-@@ -4016,19 +4016,26 @@ __nfs4_state_start(void)
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
- 	       grace_time/HZ);
- 	laundry_wq = create_singlethread_workqueue("nfsd4");
-+	if (laundry_wq == NULL)
-+		return -ENOMEM;
+ static inline void
+@@ -4020,7 +4016,7 @@ __nfs4_state_start(void)
+ 		return -ENOMEM;
  	queue_delayed_work(laundry_wq, &laundromat_work, grace_time);
  	set_max_delegations();
-+	return 0;
+-	return 0;
++	return set_callback_cred();
  }
  
--void
-+int
- nfs4_state_start(void)
- {
-+	int ret;
-+
- 	if (nfs4_init)
--		return;
-+		return 0;
- 	nfsd4_load_reboot_recovery_data();
--	__nfs4_state_start();
-+	ret = __nfs4_state_start();
-+	if (ret)
-+		return ret;
- 	nfs4_init = 1;
--	return;
-+	return 0;
- }
+ int
+diff --git a/include/linux/nfsd/state.h b/include/linux/nfsd/state.h
+index 70ef5f4..9bf3aa8 100644
+--- a/include/linux/nfsd/state.h
++++ b/include/linux/nfsd/state.h
+@@ -89,7 +89,6 @@ struct nfs4_cb_conn {
+ 	/* RPC client info */
+ 	atomic_t		cb_set;     /* successful CB_NULL call */
+ 	struct rpc_clnt *       cb_client;
+-	struct rpc_cred	*	cb_cred;
+ };
  
- time_t
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 4472449..fcc0010 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -411,7 +411,9 @@ nfsd_svc(unsigned short port, int nrservs)
- 	error =	nfsd_racache_init(2*nrservs);
- 	if (error<0)
- 		goto out;
--	nfs4_state_start();
-+	error = nfs4_state_start();
-+	if (error)
-+		goto out;
- 
- 	nfsd_reset_versions();
- 
-diff --git a/include/linux/nfsd/nfsd.h b/include/linux/nfsd/nfsd.h
-index 2812ed5..24fdf89 100644
---- a/include/linux/nfsd/nfsd.h
-+++ b/include/linux/nfsd/nfsd.h
-@@ -166,7 +166,7 @@ extern int nfsd_max_blksize;
- extern unsigned int max_delegations;
- int nfs4_state_init(void);
- void nfsd4_free_slabs(void);
--void nfs4_state_start(void);
-+int nfs4_state_start(void);
- void nfs4_state_shutdown(void);
- time_t nfs4_lease_time(void);
- void nfs4_reset_lease(time_t leasetime);
-@@ -174,7 +174,7 @@ int nfs4_reset_recoverydir(char *recdir);
- #else
- static inline int nfs4_state_init(void) { return 0; }
- static inline void nfsd4_free_slabs(void) { }
--static inline void nfs4_state_start(void) { }
-+static inline int nfs4_state_start(void) { }
- static inline void nfs4_state_shutdown(void) { }
- static inline time_t nfs4_lease_time(void) { return 0; }
- static inline void nfs4_reset_lease(time_t leasetime) { }
+ /* Maximum number of slots per session. 160 is useful for long haul TCP */
+@@ -362,6 +361,7 @@ extern int nfs4_in_grace(void);
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid);
+ extern void put_nfs4_client(struct nfs4_client *clp);
+ extern void nfs4_free_stateowner(struct kref *kref);
++extern int set_callback_cred(void);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
+ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
 -- 
 1.6.0.4
 
