@@ -1,58 +1,63 @@
-From: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 1/4] nfsd4: fix null dereference creating nfsv4 callback client
-Date: Tue, 15 Sep 2009 21:07:55 -0400
-Message-ID: <1253063278-30137-1-git-send-email-bfields@citi.umich.edu>
-References: <20090916010604.GA29397@fieldses.org>
-Cc: linux-nfs@vger.kernel.org,
-	"J. Bruce Fields" <bfields@citi.umich.edu>, stable@kernel.org
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+From: Bastian Blank <bastian-yyjItF7Rl6lg9hUCZPvPmw@public.gmane.org>
+Subject: BUG: oops in gss_validate on 2.6.31
+Date: Wed, 16 Sep 2009 12:29:53 +0200
+Message-ID: <20090916102953.GA18674@wavehammer.waldi.eu.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33112 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752037AbZIPBHy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Sep 2009 21:07:54 -0400
-In-Reply-To: <20090916010604.GA29397@fieldses.org>
+Received: from wavehammer.waldi.eu.org ([82.139.201.20]:40127 "EHLO
+	wavehammer.waldi.eu.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758846AbZIPK3i convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Sep 2009 06:29:38 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On setting up the callback to the client, we attempt to use the same
-authentication flavor the client did.  We find an rpc cred to use by
-calling rpcauth_lookup_credcache(), which assumes that the given
-authentication flavor has a credentials cache.  However, this is not
-required to be true--in particular, auth_null does not use one.
-Instead, we should call the auth's lookup_cred() method.
+Hi
 
-Without this, a client attempting to mount using nfsv4 and auth_null
-triggers a null dereference.
+Since 2.6.31 my gssapi authenticated nfs oopses.
 
-Cc: stable@kernel.org
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4callback.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+BUG: unable to handle kernel NULL pointer dereference at 00000010
+IP: [<f8dd594a>] gss_validate+0xad/0x175 [auth_rpcgss]
+*pdpt = 0000000001473001 *pde = 0000000000000000
+Oops: 0000 [#1] SMP
+last sysfs file: /sys/devices/virtual/block/dm-13/range
+Modules linked in: kvm_intel kvm ext4 jbd2 crc16 usb_storage usbhid hid i915 drm i2c_algo_bit sco bridge stp bnep rfcomm l2cap xt_mac ipt_REJECT xt_tcpudp xt_conntrack iptable_filter ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 ip_tables x_tables tun nfsd exportfs nfs lockd fscache nfs_acl deflate zlib_deflate ctr twofish twofish_common camellia serpent blowfish cast5 des_generic xcbc rmd160 sha1_generic hmac crypto_null af_key fuse rpcsec_gss_krb5 auth_rpcgss sunrpc loop acpi_cpufreq arc4 snd_hda_codec_analog ecb snd_hda_intel snd_hda_codec iwl3945 snd_hwdep iwlcore snd_pcm snd_seq snd_timer thinkpad_acpi snd_seq_device nsc_ircc i2c_i801 btusb mac80211 i2c_core serio_raw snd soundcore battery button psmouse processor rng_core snd_page_alloc evdev nvram a
+ c cfg80211 bluetooth irda rfkill crc_ccitt ext3 jbd mbcache sha256_generic aes_i586 aes_generic cbc dm_crypt dm_mod sd_mod crc_t10dif ata_generic ide_pci_generic ahci libata scsi_mod sdhci_pci piix sdhci firewire_ohci firewire_core crc_itu_t ide_core mmc_core led_class uhci_hcd ehci_hcd usbcore nls_base e1000e intel_agp agpgart video output thermal fan thermal_sys [last unloaded: kvm]
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 63bb384..4abb882 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -437,6 +437,7 @@ static struct rpc_cred *lookup_cb_cred(struct nfs4_cb_conn *cb)
- 	struct auth_cred acred = {
- 		.machine_cred = 1
- 	};
-+	struct rpc_auth *auth = cb->cb_client->cl_auth;
- 
- 	/*
- 	 * Note in the gss case this doesn't actually have to wait for a
-@@ -444,8 +445,7 @@ static struct rpc_cred *lookup_cb_cred(struct nfs4_cb_conn *cb)
- 	 * non-uptodate cred which the rpc state machine will fill in with
- 	 * a refresh_upcall later.
- 	 */
--	return rpcauth_lookup_credcache(cb->cb_client->cl_auth, &acred,
--							RPCAUTH_LOOKUP_NEW);
-+	return auth->au_ops->lookup_cred(auth, &acred, RPCAUTH_LOOKUP_NEW);
- }
- 
- void do_probe_callback(struct nfs4_client *clp)
+Pid: 2025, comm: rpciod/0 Not tainted (2.6.31-trunk-686-bigmem #1) 170255G
+EIP: 0060:[<f8dd594a>] EFLAGS: 00010246 CPU: 0
+EIP is at gss_validate+0xad/0x175 [auth_rpcgss]
+EAX: d5d7e830 EBX: f60f5ef8 ECX: f60f5ee4 EDX: f60f5ef8
+ESI: 00000025 EDI: 00000000 EBP: cdc30bc0 ESP: f60f5edc
+ DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
+Process rpciod/0 (pid: 2025, ti=f60f4000 task=f6685ae0 task.ti=f60f4000)
+Stack:
+ f5c512c0 d5d7e830 00000025 d5d7e830 f60f5ef4 00000004 9cd00000 f60f5ef4
+<0> 00000004 00000000 00000000 00000000 00000001 00000000 f847888c 00000004
+<0> 00000004 be91f5c4 cdc30bc0 f5c512c0 d5d7e828 f3c807f8 f8d9de34 be91f5c4
+Call Trace:
+ [<f8d9de34>] ? rpcauth_checkverf+0x4a/0x60 [sunrpc]
+ [<f8d972a0>] ? call_decode+0x30f/0x5de [sunrpc]
+ [<f8d96199>] ? rpcproc_decode_null+0x0/0x21 [sunrpc]
+ [<f8d9d246>] ? __rpc_execute+0x76/0x21e [sunrpc]
+ [<c10528b6>] ? worker_thread+0x146/0x1d9
+ [<f8d9d473>] ? rpc_async_schedule+0x0/0x29 [sunrpc]
+ [<c105710f>] ? autoremove_wake_function+0x0/0x4f
+ [<c1052770>] ? worker_thread+0x0/0x1d9
+ [<c1056d7f>] ? kthread+0x7a/0x7f
+ [<c1056d05>] ? kthread+0x0/0x7f
+ [<c1009d07>] ? kernel_thread_helper+0x7/0x10
+Code: 24 18 89 da 89 44 24 10 8d 44 24 10 c7 44 24 14 04 00 00 00 e8 a4 f0 fc ff 89 da 8b 44 24 04 89 74 24 08 8d 4c 24 08 89 44 24 0c <8b> 47 10 e8 3c 16 00 00 3d 00 00 0c 00 89 c2 75 0a 8d 45 28 f0
+EIP: [<f8dd594a>] gss_validate+0xad/0x175 [auth_rpcgss] SS:ESP 0068:f60f5edc
+CR2: 0000000000000010
+---[ end trace 92895856d62132dd ]---
+
+I saw this two times in the last days. Always under load. I've never
+seen this with 2.6.30. The server is a 2.6.30 machine.
+
+Bastian
+
 -- 
-1.6.0.4
-
+Without followers, evil cannot spread.
+		-- Spock, "And The Children Shall Lead", stardate 5029.5
